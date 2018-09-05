@@ -3,6 +3,7 @@ package config
 import (
 	"testing"
 	"fmt"
+	"github.com/spf13/viper"
 )
 
 func TestInitConfig(t *testing.T) {
@@ -13,46 +14,50 @@ func TestDefaultConfig(t *testing.T) {
 }
 func TestGetBoolVaule(t *testing.T) {
 	InitConfig()
-	a := GetBoolVaule("rpc.rpc_enable")
+	a := GetBoolValue("rpc.rpc_enable")
 	fmt.Println(a)
 }
 func TestGetIntVaule(t *testing.T) {
 	InitConfig()
-	a := GetIntVaule("port")
+	a := GetIntValue("port")
 	fmt.Println(a)
 }
 func TestGetStringVaule(t *testing.T) {
 	InitConfig()
-	a := GetStringVaule("bootstrap_peers")
+	a := GetStringValue("bootstrap_peers")
 	fmt.Println(a)
 }
 func TestGetFloatVaule(t *testing.T) {
 
 }
+func TestGetSliceValueValue(t *testing.T) {
+	InitConfig()
+	a := viper.GetStringSlice("bootstrap_peers")
+	for _, x := range a {
+		fmt.Printf("%v\n", x)
+	}
+}
 func TestSetBoolVaule(t *testing.T) {
 	InitConfig()
-	a := GetBoolVaule("rpc.rpc_enable")
+	a := GetBoolValue("rpc.rpc_enable")
 	fmt.Println(a)
-	SetBoolVaule("rpc.rpc_enable", false)
-	b := GetBoolVaule("rpc.rpc_enable")
+	SetBoolValue("rpc.rpc_enable", false)
+	b := GetBoolValue("rpc.rpc_enable")
 	fmt.Println(b)
 }
 func TestSetIntVaule(t *testing.T) {
 	InitConfig()
-	a := GetIntVaule("port")
+	a := GetIntValue("port")
 	fmt.Println(a)
-	SetIntVaule("port", 39734)
-	b := GetIntVaule("port")
+	SetIntValue("port", 39734)
+	b := GetIntValue("port")
 	fmt.Println(b)
 }
 func TestSetStringVaule(t *testing.T) {
 	InitConfig()
-	a := GetStringVaule("bootstrap_peers")
+	a := GetStringValue("bootstrap_peers")
 	fmt.Println(a)
-	SetStringVaule("bootstrap_peers", "47.91.166.18")
-	b := GetStringVaule("bootstrap_peers")
+	SetStringValue("bootstrap_peers", "47.91.166.18")
+	b := GetStringValue("bootstrap_peers")
 	fmt.Println(b)
-}
-func TestSetFloatVaule(t *testing.T) {
-
 }
