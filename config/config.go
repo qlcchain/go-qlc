@@ -12,7 +12,10 @@ var configpath string
 var defaultconfig = []byte(`{
 	"version": "1",
 	"port": 29734,
-	"bootstrap_peers": "48.90.89.43",
+	"bootstrap_peers": [
+	"47.90.89.43",
+	"47.91.166.18"
+	],
 	"rpc": {
 	"rpc_enable": true,
 	"host": "127.0.0.1",
@@ -67,27 +70,30 @@ func DefaultConfig() bool {
 	}
 	return true
 }
-func GetBoolVaule(key string) bool {
+func GetBoolValue(key string) bool {
 	return viper.GetBool(key)
 }
-func GetIntVaule(key string) int {
+func GetIntValue(key string) int {
 	return viper.GetInt(key)
 }
-func GetStringVaule(key string) string {
+func GetStringValue(key string) string {
 	return viper.GetString(key)
 }
-func GetFloatVaule(key string) float64 {
+func GetFloatValue(key string) float64 {
 	return viper.GetFloat64(key)
 }
-func SetBoolVaule(key string,vaule bool) {
-	viper.Set(key, vaule)
+func GetSliceValue(key string) []string {
+	return viper.GetStringSlice(key)
 }
-func SetIntVaule(key string,vaule int) {
-	viper.Set(key, vaule)
+func SetBoolValue(key string, value bool) {
+	viper.Set(key, value)
 }
-func SetStringVaule( key string,vaule string) {
-	viper.Set(key, vaule)
+func SetIntValue(key string, value int) {
+	viper.Set(key, value)
 }
-func SetFloatVaule(key string,vaule float64)  {
-	viper.Set(key, vaule)
+func SetStringValue(key string, value string) {
+	viper.Set(key, value)
+}
+func SetFloatValue(key string, value float64) {
+	viper.Set(key, value)
 }
