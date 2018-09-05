@@ -1,9 +1,12 @@
 package main
 
-import (
-	"fmt"
-)
+import "github.com/qlcchain/go-qlc/common"
 
 func main() {
-	fmt.Println("main...")
+	logger := common.NewLogger("module1")
+	logger.Info("ttt1")
+
+	logger2 := common.NewLogger("module2")
+
+	logger2.Info("ttt2")
 }
