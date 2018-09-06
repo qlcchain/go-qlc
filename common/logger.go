@@ -1,14 +1,22 @@
+/*
+ * Copyright (c) 2018 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
 package common
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/mitchellh/go-homedir"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 const (
@@ -19,7 +27,7 @@ const (
 var lumlog lumberjack.Logger
 var logger *zap.Logger
 
-func NewLogger(name string) (*zap.SugaredLogger) {
+func NewLogger(name string) *zap.SugaredLogger {
 	if logger == nil {
 		logFolder, _ := homedir.Expand(logDir)
 		createDirIfNotExist(logFolder)
