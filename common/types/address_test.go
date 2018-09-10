@@ -39,7 +39,7 @@ func TestValidateAddress(t *testing.T) {
 	}
 
 	for _, addr := range invalidAddresses {
-		if  IsValidHexAddress(addr)  {
+		if IsValidHexAddress(addr) {
 			t.Errorf("Invalid address was validated")
 		}
 	}
@@ -58,8 +58,8 @@ func TestKeypairFromSeed(t *testing.T) {
 	}
 
 	for i := uint32(0); i < uint32(len(expected)); i++ {
-		pub, _ := KeypairFromSeed(seed, i)
-		if PubToAddress(pub).String() != expected[i] {
+		pub, _, err := KeypairFromSeed(seed, i)
+		if err != nil || PubToAddress(pub).String() != expected[i] {
 			t.Errorf("Wallet generation from seed created the wrong address")
 		}
 	}

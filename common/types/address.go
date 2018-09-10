@@ -90,54 +90,54 @@ func IsValidHexAddress(hexStr string) bool {
 	return err == nil
 }
 
+// public key to address
 func PubToAddress(pub ed25519.PublicKey) Address {
-	// Pubkey is 256bits, base32 must be multiple of 5 bits
+	// Public key is 256bits, base32 must be multiple of 5 bits
 	// to encode properly.
 	addr, _ := BytesToAddress(pub)
 	return addr
 }
 
+// generate qlc address
 func GenerateAddress() (Address, ed25519.PrivateKey, error) {
 	pub, pri, err := ed25519.GenerateKey(rand.Reader)
 	return PubToAddress(pub), pri, err
 }
 
-func KeypairFromPrivateKey(private_key string) (ed25519.PublicKey, ed25519.PrivateKey) {
-	private_bytes, _ := hex.DecodeString(private_key)
-	pub, priv, _ := ed25519.GenerateKey(bytes.NewReader(private_bytes))
+// generate key pair from private key
+func KeypairFromPrivateKey(privateKey string) (ed25519.PublicKey, ed25519.PrivateKey) {
+	privateBytes, _ := hex.DecodeString(privateKey)
+	pub, priv, _ := ed25519.GenerateKey(bytes.NewReader(privateBytes))
 
 	return pub, priv
 }
 
-func KeypairFromSeed(seed string, index uint32) (ed25519.PublicKey, ed25519.PrivateKey) {
-	// We hash together the seed with an address index and use
-	// that as the private key. Whenever you "add" an address
-	// to your wallet the wallet software increases the index
-	// and generates a new address.
+// generate key pair from seed
+func KeypairFromSeed(seed string, index uint32) (ed25519.PublicKey, ed25519.PrivateKey, error) {
 	hash, err := blake2b.New(32, nil)
 	if err != nil {
-		panic("Unable to create hash")
+		return ed25519.PublicKey{}, ed25519.PrivateKey{}, errors.New("unable to create hash")
 	}
 
-	seed_data, err := hex.DecodeString(seed)
+	seedData, err := hex.DecodeString(seed)
 	if err != nil {
-		panic("Invalid seed")
+		return ed25519.PublicKey{}, ed25519.PrivateKey{}, errors.New("invalid seed")
 	}
 
 	bs := make([]byte, 4)
 	binary.BigEndian.PutUint32(bs, index)
 
-	hash.Write(seed_data)
+	hash.Write(seedData)
 	hash.Write(bs)
 
-	seed_bytes := hash.Sum(nil)
-	pub, priv, err := ed25519.GenerateKey(bytes.NewReader(seed_bytes))
+	seedBytes := hash.Sum(nil)
+	pub, priv, err := ed25519.GenerateKey(bytes.NewReader(seedBytes))
 
 	if err != nil {
-		panic("Unable to generate ed25519 key")
+		return ed25519.PublicKey{}, ed25519.PrivateKey{}, errors.New("unable to generate ed25519 key")
 	}
 
-	return pub, priv
+	return pub, priv, nil
 }
 
 // Set new address bytes
