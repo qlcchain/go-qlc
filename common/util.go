@@ -12,11 +12,11 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-func ReverseBytes(bytes []byte) []byte {
-	for i, j := 0, len(bytes)-1; i < j; i, j = i+1, j-1 {
-		bytes[i], bytes[j] = bytes[j], bytes[i]
+func ReverseBytes(str []byte) (result []byte) {
+	for i := len(str) - 1; i >= 0; i-- {
+		result = append(result, str[i])
 	}
-	return bytes
+	return result
 }
 
 func HexToBytes(s string) []byte {

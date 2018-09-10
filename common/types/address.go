@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/base32"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/qlcchain/go-qlc/common"
@@ -21,7 +23,9 @@ const (
 	addressChecksumSize = 5
 	addressPrefixLen    = len(AddressPrefix)
 	// AddressLen represents the string length of a Nano address.
-	AddressLen       = 2 * AddressSize
+	AddressLen = 60
+	// The following 52 characters form the address, and the final
+	// 8 are a checksum.
 	hexAddressLength = addressPrefixLen + AddressLen
 	// custom alphabet for base32 encoding
 	AddressEncodingAlphabet = "13456789abcdefghijkmnopqrstuwxyz"
@@ -55,16 +59,20 @@ func HexToAddress(hexStr string) (Address, error) {
 		return Address{}, ErrAddressPrefix
 	}
 
-	key, err := AddressEncoding.DecodeString("1111" + hexStr[addressPrefixLen:56])
+	addr := hexStr[addressPrefixLen:]
+
+	key, err := AddressEncoding.DecodeString("1111" + addr[0:52])
 	if err != nil {
 		return Address{}, ErrAddressEncoding
 	}
 
-	checksum, err := AddressEncoding.DecodeString(hexStr[56:])
+	checksum, err := AddressEncoding.DecodeString(addr[52:])
 	if err != nil {
 		return Address{}, ErrAddressEncoding
 	}
 
+	// strip off upper 24 bits (3 bytes). 20 padding was added by us,
+	// 4 is unused as account is 256 bits.
 	var address Address
 	copy(address[:], key[3:])
 
@@ -82,23 +90,54 @@ func IsValidHexAddress(hexStr string) bool {
 	return err == nil
 }
 
-func PubkeyToAddress(pubkey []byte) Address {
-	addr, _ := BytesToAddress(common.Hash(AddressSize, pubkey))
+func PubToAddress(pub ed25519.PublicKey) Address {
+	// Pubkey is 256bits, base32 must be multiple of 5 bits
+	// to encode properly.
+	addr, _ := BytesToAddress(pub)
 	return addr
 }
 
-func PrikeyToAddress(key ed25519.PrivateKey) Address {
-	return PubkeyToAddress(key.PubByte())
-}
-
-func CreateAddress() (Address, ed25519.PrivateKey, error) {
+func GenerateAddress() (Address, ed25519.PrivateKey, error) {
 	pub, pri, err := ed25519.GenerateKey(rand.Reader)
-	return PubkeyToAddress(pub), pri, err
+	return PubToAddress(pub), pri, err
 }
 
-func CreateAddressWithDeterministic(d [32]byte) (Address, ed25519.PrivateKey, error) {
-	pub, pri, err := ed25519.GenerateKeyFromD(d)
-	return PubkeyToAddress(pub), pri, err
+func KeypairFromPrivateKey(private_key string) (ed25519.PublicKey, ed25519.PrivateKey) {
+	private_bytes, _ := hex.DecodeString(private_key)
+	pub, priv, _ := ed25519.GenerateKey(bytes.NewReader(private_bytes))
+
+	return pub, priv
+}
+
+func KeypairFromSeed(seed string, index uint32) (ed25519.PublicKey, ed25519.PrivateKey) {
+	// We hash together the seed with an address index and use
+	// that as the private key. Whenever you "add" an address
+	// to your wallet the wallet software increases the index
+	// and generates a new address.
+	hash, err := blake2b.New(32, nil)
+	if err != nil {
+		panic("Unable to create hash")
+	}
+
+	seed_data, err := hex.DecodeString(seed)
+	if err != nil {
+		panic("Invalid seed")
+	}
+
+	bs := make([]byte, 4)
+	binary.BigEndian.PutUint32(bs, index)
+
+	hash.Write(seed_data)
+	hash.Write(bs)
+
+	seed_bytes := hash.Sum(nil)
+	pub, priv, err := ed25519.GenerateKey(bytes.NewReader(seed_bytes))
+
+	if err != nil {
+		panic("Unable to generate ed25519 key")
+	}
+
+	return pub, priv
 }
 
 // Set new address bytes

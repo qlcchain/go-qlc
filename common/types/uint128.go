@@ -99,7 +99,7 @@ func FromString(s string) (Uint128, error) {
 	}
 	bytes, err := hex.DecodeString(s)
 	if err != nil {
-		return Uint128{}, fmt.Errorf(err, "could not decode %s as hex", s)
+		return Uint128{}, fmt.Errorf("could not decode %s as hex: %v", s, err)
 	}
 
 	// Grow the byte slice if it's smaller than 16 bytes, by prepending 0s

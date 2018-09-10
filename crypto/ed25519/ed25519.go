@@ -1,3 +1,7 @@
+// Copyright 2016 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // Package ed25519 implements the Ed25519 signature algorithm. See
 // https://ed25519.cr.yp.to/.
 //
@@ -8,21 +12,16 @@ package ed25519
 // This code is a port of the public domain, “ref10” implementation of ed25519
 // from SUPERCOP.
 
-// Be Noted that This Ed25519 uses Blake2b instead of Sha512
-
 import (
 	"bytes"
 	"crypto"
-
 	cryptorand "crypto/rand"
-	"encoding/hex"
 	"errors"
-	"fmt"
+	"golang.org/x/crypto/blake2b"
 	"io"
 	"strconv"
 
 	"github.com/qlcchain/go-qlc/crypto/ed25519/internal/edwards25519"
-	"golang.org/x/crypto/blake2b"
 )
 
 const (
@@ -32,8 +31,6 @@ const (
 	PrivateKeySize = 64
 	// SignatureSize is the size, in bytes, of signatures generated and verified by this package.
 	SignatureSize = 64
-
-	dummyMessage = "vite is best"
 )
 
 // PublicKey is the type of Ed25519 public keys.
@@ -44,59 +41,9 @@ type PrivateKey []byte
 
 // Public returns the PublicKey corresponding to priv.
 func (priv PrivateKey) Public() crypto.PublicKey {
-	return PublicKey(priv.PubByte())
-}
-
-// Public returns the PublicKey in []byte type corresponding to priv.
-func (priv PrivateKey) PubByte() []byte {
 	publicKey := make([]byte, PublicKeySize)
 	copy(publicKey, priv[32:])
-	return publicKey
-}
-
-func (priv PrivateKey) Hex() string {
-	return hex.EncodeToString(priv)
-}
-func (pub PublicKey) Hex() string {
-	return hex.EncodeToString(pub)
-}
-func HexToPublicKey(hexstr string) (PublicKey, error) {
-	b, e := hex.DecodeString(hexstr)
-	if e != nil {
-		return nil, e
-	}
-	if len(b) != PublicKeySize {
-		return nil, fmt.Errorf("wrong pubkey size %v", len(b))
-	}
-	return b, nil
-}
-
-func HexToPrivateKey(hexstr string) (PrivateKey, error) {
-	b, e := hex.DecodeString(hexstr)
-	if e != nil {
-		return nil, e
-	}
-	if len(b) != PrivateKeySize {
-		return nil, fmt.Errorf("wrong private key size %v", len(b))
-	}
-	return b, nil
-}
-
-func IsValidPrivateKey(priv PrivateKey) bool {
-	if l := len(priv); l != PrivateKeySize {
-		return false
-	}
-
-	if Verify(priv.PubByte(), []byte(dummyMessage), Sign(priv, []byte(dummyMessage))) {
-		return true
-	}
-	return false
-}
-
-func (pri PrivateKey) Clear() {
-	for i := range pri {
-		pri[i] = 0
-	}
+	return PublicKey(publicKey)
 }
 
 // Sign signs the given message with priv.
@@ -119,22 +66,12 @@ func GenerateKey(rand io.Reader) (publicKey PublicKey, privateKey PrivateKey, er
 		rand = cryptorand.Reader
 	}
 
-	var randD [32]byte
-
-	_, err = io.ReadFull(rand, randD[:])
+	privateKey = make([]byte, PrivateKeySize)
+	publicKey = make([]byte, PublicKeySize)
+	_, err = io.ReadFull(rand, privateKey[:32])
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return GenerateKeyFromD(randD)
-}
-
-// GenerateKeyFromD generates a public/private key pair using user given Deterministic value called d
-func GenerateKeyFromD(d [32]byte) (publicKey PublicKey, privateKey PrivateKey, err error) {
-	privateKey = make([]byte, PrivateKeySize)
-	copy(privateKey[:32], d[:])
-
-	publicKey = make([]byte, PublicKeySize)
 
 	digest := blake2b.Sum512(privateKey[:32])
 	digest[0] &= 248
@@ -161,11 +98,7 @@ func Sign(privateKey PrivateKey, message []byte) []byte {
 		panic("ed25519: bad private key length: " + strconv.Itoa(l))
 	}
 
-	h, err := blake2b.New512(nil)
-	if err != nil {
-		panic("ed25519: blake2b New512 Fail in Sign: " + err.Error())
-	}
-
+	h, _ := blake2b.New512(nil)
 	h.Write(privateKey[:32])
 
 	var digest1, messageDigest, hramDigest [64]byte
@@ -227,11 +160,7 @@ func Verify(publicKey PublicKey, message, sig []byte) bool {
 	edwards25519.FeNeg(&A.X, &A.X)
 	edwards25519.FeNeg(&A.T, &A.T)
 
-	h, err := blake2b.New512(nil)
-	if err != nil {
-		panic("ed25519: blake2b New512 Fail in Verify : " + err.Error())
-	}
-
+	h, _ := blake2b.New512(nil)
 	h.Write(sig[:32])
 	h.Write(publicKey[:])
 	h.Write(message)
@@ -242,16 +171,9 @@ func Verify(publicKey PublicKey, message, sig []byte) bool {
 	edwards25519.ScReduce(&hReduced, &digest)
 
 	var R edwards25519.ProjectiveGroupElement
-	var s [32]byte
-	copy(s[:], sig[32:])
-
-	// https://tools.ietf.org/html/rfc8032#section-5.1.7 requires that s be in
-	// the range [0, order) in order to prevent signature malleability.
-	if !edwards25519.ScMinimal(&s) {
-		return false
-	}
-
-	edwards25519.GeDoubleScalarMultVartime(&R, &hReduced, &A, &s)
+	var b [32]byte
+	copy(b[:], sig[32:])
+	edwards25519.GeDoubleScalarMultVartime(&R, &hReduced, &A, &b)
 
 	var checkR [32]byte
 	R.ToBytes(&checkR)
