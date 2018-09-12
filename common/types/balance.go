@@ -1,12 +1,12 @@
 package types
 
 import (
-	"math/big"
-	"errors"
-	"github.com/shopspring/decimal"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common"
 	"encoding/binary"
+	"errors"
+	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
+	"github.com/qlcchain/go-qlc/common/types/internal/util"
+	"github.com/shopspring/decimal"
+	"math/big"
 )
 
 const (
@@ -32,12 +32,12 @@ var (
 		"Gqlc": decimal.New(1, 11),
 	}
 
-	ZeroBalance = Balance(types.Uint128{})
+	ZeroBalance = Balance(uint128.Uint128{})
 
 	ErrBadBalanceSize = errors.New("balances should be 16 bytes in size")
 )
 
-type Balance types.Uint128
+type Balance uint128.Uint128
 
 // ParseBalance parses the given balance string.
 func ParseBalance(s string, unit string) (Balance, error) {
@@ -69,10 +69,10 @@ func ParseBalance(s string, unit string) (Balance, error) {
 }
 
 func ParseBalanceInts(hi uint64, lo uint64) Balance {
-	return Balance(types.FromInts(hi, lo))
+	return Balance(uint128.FromInts(hi, lo))
 }
 func ParseBalanceString(b string) Balance {
-	balance,err:=types.FromString(b)
+	balance,err:=uint128.FromString(b)
 	if err!=nil{
 
 	}
@@ -82,13 +82,13 @@ func ParseBalanceString(b string) Balance {
 // Bytes returns the binary representation of this Balance with the given
 // endianness.
 func (b Balance) Bytes(order binary.ByteOrder) []byte {
-	bytes := types.Uint128(b).GetBytes()
+	bytes := uint128.Uint128(b).GetBytes()
 
 	switch order {
 	case binary.BigEndian:
 		return bytes
 	case binary.LittleEndian:
-		return common.ReverseBytes(bytes)
+		return util.ReverseBytes(bytes)
 	default:
 		panic("unsupported byte order")
 	}
@@ -96,19 +96,19 @@ func (b Balance) Bytes(order binary.ByteOrder) []byte {
 
 // Equal reports whether this balance and the given balance are equal.
 func (b Balance) Equal(b2 Balance) bool {
-	return types.Uint128(b).Equal(types.Uint128(b2))
+	return uint128.Uint128(b).Equal(uint128.Uint128(b2))
 }
 
 func (b Balance) Add(n Balance) Balance {
-	return Balance(types.Uint128(b).Add(types.Uint128(n)))
+	return Balance(uint128.Uint128(b).Add(uint128.Uint128(n)))
 }
 
 func (b Balance) Sub(n Balance) Balance {
-	return Balance(types.Uint128(b).Sub(types.Uint128(n)))
+	return Balance(uint128.Uint128(b).Sub(uint128.Uint128(n)))
 }
 
 func (b Balance) Compare(n Balance) BalanceComp {
-	res := types.Uint128(b).Compare(types.Uint128(n))
+	res := uint128.Uint128(b).Compare(uint128.Uint128(n))
 	switch res {
 	case 1:
 		return BalanceCompBigger
@@ -132,7 +132,7 @@ func (b *Balance) UnmarshalBinary(data []byte) error {
 		return ErrBadBalanceSize
 	}
 
-	*b = Balance(types.FromBytes(data))
+	*b = Balance(uint128.FromBytes(data))
 	return nil
 }
 

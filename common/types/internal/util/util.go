@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package common
+package util
 
 import (
 	"encoding/hex"

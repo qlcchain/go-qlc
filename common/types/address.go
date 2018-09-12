@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types/internal/util"
 
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"golang.org/x/crypto/blake2b"
@@ -160,7 +160,7 @@ func (addr Address) Checksum() []byte {
 	}
 
 	hash.Write(addr[:])
-	return common.ReverseBytes(hash.Sum(nil))
+	return util.ReverseBytes(hash.Sum(nil))
 }
 
 // String implements the fmt.Stringer interface.
