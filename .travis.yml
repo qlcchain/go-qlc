@@ -23,7 +23,7 @@ before_install:
 #    - GO111MODULE=on
 
 script:
-  - go test $(go list ./... | grep -v /vendor/)
+  - ./go.test.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
