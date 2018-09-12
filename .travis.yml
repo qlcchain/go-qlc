@@ -1,0 +1,28 @@
+language: go
+
+go:
+- 1.10.x
+- master
+
+os:
+- linux
+- osx
+
+dist: trusty
+sudo: false
+
+before_install:
+# Setup dependency management tool
+- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+- dep ensure
+
+#install:
+#  - eval "$(curl -sL https://raw.githubusercontent.com/travis-ci/gimme/master/gimme | GIMME_GO_VERSION=master bash)"
+
+#env:
+#  global:
+#    - GO111MODULE=on
+
+script:
+  - go test $(go list ./... | grep -v /vendor/)
+
