@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/rand"
-	"encoding/hex"
 	"github.com/qlcchain/go-qlc/crypto/ed25519/internal/edwards25519"
 	"testing"
 )
@@ -18,9 +17,9 @@ func (zeroReader) Read(buf []byte) (int, error) {
 	return len(buf), nil
 }
 
-func UnmarshalMarshal(pub []byte, t *testing.T) {
+func TestUnmarshalMarshal(t *testing.T) {
+	pub, _, _ := GenerateKey(rand.Reader)
 
-	println("Generate Pub key : ", hex.EncodeToString(pub))
 	var A edwards25519.ExtendedGroupElement
 	var pubBytes [32]byte
 	copy(pubBytes[:], pub)
@@ -36,49 +35,12 @@ func UnmarshalMarshal(pub []byte, t *testing.T) {
 	}
 }
 
-func TestIsValidPrivateKey(t *testing.T) {
-	if IsValidPrivateKey([]byte("123")) {
-		t.Fatal()
-	}
-	if IsValidPrivateKey([]byte("1234567812345678123456781234567812345678123456781234567812345678")) {
-		t.Fatal()
-	}
-	_, pri, _ := GenerateKey(rand.Reader)
-	if !IsValidPrivateKey(pri) {
-		t.Fatal()
-	}
-}
-
-func TestUnmarshalMarshal(t *testing.T) {
-	pub, _, _ := GenerateKey(rand.Reader)
-	UnmarshalMarshal(pub, t)
-}
-
-func TestUnmarshalMarshalDeterministic(t *testing.T) {
-	{
-		var zero [32]byte
-		pub, _, _ := GenerateKeyFromD(zero)
-		UnmarshalMarshal(pub, t)
-	}
-
-	{
-		var D1 [32]byte
-		for i, _ := range D1 {
-			D1[i] = byte(i)
-		}
-		pub, _, _ := GenerateKeyFromD(D1)
-		UnmarshalMarshal(pub, t)
-	}
-}
-
 func TestSignVerify(t *testing.T) {
 	var zero zeroReader
 	public, private, _ := GenerateKey(zero)
-	println("Generate Pub key : ", hex.EncodeToString(public))
 
 	message := []byte("test message")
 	sig := Sign(private, message)
-	println("Sign :", len(sig), hex.EncodeToString(sig))
 	if !Verify(public, message, sig) {
 		t.Errorf("valid signature rejected")
 	}
@@ -86,23 +48,6 @@ func TestSignVerify(t *testing.T) {
 	wrongMessage := []byte("wrong message")
 	if Verify(public, wrongMessage, sig) {
 		t.Errorf("signature of different message accepted")
-	}
-}
-
-func TestSignVerifyRandom(t *testing.T) {
-	for i := 0; i < 10000; i++ {
-		public, private, _ := GenerateKey(nil)
-
-		message := []byte("test message")
-		sig := Sign(private, message)
-		if !Verify(public, message, sig) {
-			t.Errorf("valid signature rejected")
-		}
-
-		wrongMessage := []byte("wrong message")
-		if Verify(public, wrongMessage, sig) {
-			t.Errorf("signature of different message accepted")
-		}
 	}
 }
 
@@ -133,6 +78,63 @@ func TestCryptoSigner(t *testing.T) {
 		t.Errorf("Verify failed on signature from Sign()")
 	}
 }
+
+/*func TestGolden(t *testing.T) {
+	// sign.input.gz is a selection of test cases from
+	// https://ed25519.cr.yp.to/python/sign.input
+	testDataZ, err := os.Open("testdata/sign.input.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testDataZ.Close()
+	testData, err := gzip.NewReader(testDataZ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testData.Close()
+
+	scanner := bufio.NewScanner(testData)
+	lineNo := 0
+
+	for scanner.Scan() {
+		lineNo++
+
+		line := scanner.Text()
+		parts := strings.Split(line, ":")
+		if len(parts) != 5 {
+			t.Fatalf("bad number of parts on line %d", lineNo)
+		}
+
+		privBytes, _ := hex.DecodeString(parts[0])
+		pubKey, _ := hex.DecodeString(parts[1])
+		msg, _ := hex.DecodeString(parts[2])
+		sig, _ := hex.DecodeString(parts[3])
+		// The signatures in the test vectors also include the message
+		// at the end, but we just want R and S.
+		sig = sig[:SignatureSize]
+
+		if l := len(pubKey); l != PublicKeySize {
+			t.Fatalf("bad public key length on line %d: got %d bytes", lineNo, l)
+		}
+
+		var priv [PrivateKeySize]byte
+		copy(priv[:], privBytes)
+		copy(priv[32:], pubKey)
+
+		sig2 := Sign(priv[:], msg)
+		if !bytes.Equal(sig, sig2[:]) {
+			t.Errorf("different signature result on line %d: %x vs %x", lineNo, sig, sig2)
+		}
+
+		if !Verify(pubKey, msg, sig2) {
+			t.Errorf("signature failed to verify on line %d", lineNo)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("error reading test data: %s", err)
+	}
+}*/
 
 func TestMalleability(t *testing.T) {
 	// https://tools.ietf.org/html/rfc8032#section-5.1.7 adds an additional test
@@ -191,23 +193,5 @@ func BenchmarkVerification(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Verify(pub, message, signature)
-	}
-}
-
-func TestPrivateKey_Clear(t *testing.T) {
-	priv := make([]byte, PrivateKeySize)
-	for i := range priv {
-		priv[i] = 1
-	}
-	var P PrivateKey
-	P = priv
-	P.Clear()
-	if IsValidPrivateKey(P) {
-		t.Fatal()
-	}
-	for i := range priv {
-		if priv[i] == 1 {
-			t.Fatal()
-		}
 	}
 }
