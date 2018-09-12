@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 )
 
+
 var configName = "qlc.json"
 var configpath string
 var defaultconfig = []byte(`{
@@ -22,6 +23,10 @@ var defaultconfig = []byte(`{
 	"rpc_port": 29735
 	}
 }`)
+
+type Config struct {
+
+}
 
 func InitConfig() int {
 	exit := DefaultConfig()
