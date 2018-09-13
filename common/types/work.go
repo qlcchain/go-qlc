@@ -11,16 +11,20 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"golang.org/x/crypto/blake2b"
 	"hash"
+
+	"golang.org/x/crypto/blake2b"
 )
 
 const (
+	//WorkSize work size
 	WorkSize = 8
 )
 
+// Work PoW work
 type Work uint64
 
+// Worker PoW
 type Worker struct {
 	Threshold uint64
 	root      *Hash
@@ -28,8 +32,13 @@ type Worker struct {
 	hash      hash.Hash
 }
 
-func (w Work) Valid(root Hash, threshold uint64) bool {
-	return NewWorker(w, root, threshold).Valid()
+// IsValid check work is valid
+func (w Work) IsValid(root Hash, threshold uint64) bool {
+	worker, err := NewWorker(w, root, threshold)
+	if err != nil {
+		return false
+	}
+	return worker.IsValid()
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.
@@ -61,21 +70,23 @@ func (w Work) String() string {
 	return hex.EncodeToString(bytes[:])
 }
 
-func NewWorker(work Work, root Hash, threshold uint64) *Worker {
-	hash, err := blake2b.New(WorkSize, nil)
+// NewWorker create new worker
+func NewWorker(work Work, root Hash, threshold uint64) (*Worker, error) {
+	h, err := blake2b.New(WorkSize, nil)
 	if err != nil {
-		panic(err)
+		return &Worker{}, err
 	}
 
 	return &Worker{
 		Threshold: threshold,
 		root:      &root,
 		work:      work,
-		hash:      hash,
-	}
+		hash:      h,
+	}, nil
 }
 
-func (w *Worker) Valid() bool {
+//IsValid check work is valid
+func (w *Worker) IsValid() bool {
 	var workBytes [WorkSize]byte
 	binary.LittleEndian.PutUint64(workBytes[:], uint64(w.work))
 
@@ -88,15 +99,17 @@ func (w *Worker) Valid() bool {
 	return value >= w.Threshold
 }
 
+//Generate new work
 func (w *Worker) Generate() Work {
 	for {
-		if w.Valid() {
+		if w.IsValid() {
 			return w.work
 		}
 		w.work++
 	}
 }
 
+//Reset worker
 func (w *Worker) Reset() {
 	w.work = 0
 	w.hash.Reset()
