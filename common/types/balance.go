@@ -84,10 +84,7 @@ func ParseBalanceInts(hi uint64, lo uint64) Balance {
 
 //ParseBalanceString create balance from string
 func ParseBalanceString(b string) Balance {
-	balance, err := uint128.FromString(b)
-	if err != nil {
-
-	}
+	balance, _ := uint128.FromString(b)
 	return Balance(balance)
 }
 
@@ -172,7 +169,7 @@ func (b Balance) String() string {
 }
 
 func bigPow(base int64, exp int64) *big.Int {
-	return new(big.Int).Exp(big.NewInt(10), big.NewInt(exp), nil)
+	return new(big.Int).Exp(big.NewInt(base), big.NewInt(exp), nil)
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.

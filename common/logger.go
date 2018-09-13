@@ -27,6 +27,7 @@ const (
 var lumlog lumberjack.Logger
 var logger *zap.Logger
 
+//NewLogger create logger by name
 func NewLogger(name string) *zap.SugaredLogger {
 	if logger == nil {
 		logFolder, _ := homedir.Expand(logDir)
@@ -46,13 +47,13 @@ func NewLogger(name string) *zap.SugaredLogger {
 }
 
 func lumberjackZapHook(e zapcore.Entry) error {
-	lumlog.Write([]byte(fmt.Sprintf("%s %s [%s] %s %s\n", e.Time.Format(time.RFC3339Nano), e.Level.CapitalString(), e.LoggerName, e.Caller.TrimmedPath(), e.Message)))
-	return nil
+	_, err := lumlog.Write([]byte(fmt.Sprintf("%s %s [%s] %s %s\n", e.Time.Format(time.RFC3339Nano), e.Level.CapitalString(), e.LoggerName, e.Caller.TrimmedPath(), e.Message)))
+	return err
 }
 
 func createDirIfNotExist(dir string) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0755)
+		err = os.MkdirAll(dir, 0750)
 		if err != nil {
 			fmt.Printf("create dir failed: %s", err)
 		}

@@ -80,63 +80,6 @@ func TestCryptoSigner(t *testing.T) {
 	}
 }
 
-/*func TestGolden(t *testing.T) {
-	// sign.input.gz is a selection of test cases from
-	// https://ed25519.cr.yp.to/python/sign.input
-	testDataZ, err := os.Open("testdata/sign.input.gz")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testDataZ.Close()
-	testData, err := gzip.NewReader(testDataZ)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testData.Close()
-
-	scanner := bufio.NewScanner(testData)
-	lineNo := 0
-
-	for scanner.Scan() {
-		lineNo++
-
-		line := scanner.Text()
-		parts := strings.Split(line, ":")
-		if len(parts) != 5 {
-			t.Fatalf("bad number of parts on line %d", lineNo)
-		}
-
-		privBytes, _ := hex.DecodeString(parts[0])
-		pubKey, _ := hex.DecodeString(parts[1])
-		msg, _ := hex.DecodeString(parts[2])
-		sig, _ := hex.DecodeString(parts[3])
-		// The signatures in the test vectors also include the message
-		// at the end, but we just want R and S.
-		sig = sig[:SignatureSize]
-
-		if l := len(pubKey); l != PublicKeySize {
-			t.Fatalf("bad public key length on line %d: got %d bytes", lineNo, l)
-		}
-
-		var priv [PrivateKeySize]byte
-		copy(priv[:], privBytes)
-		copy(priv[32:], pubKey)
-
-		sig2 := Sign(priv[:], msg)
-		if !bytes.Equal(sig, sig2[:]) {
-			t.Errorf("different signature result on line %d: %x vs %x", lineNo, sig, sig2)
-		}
-
-		if !Verify(pubKey, msg, sig2) {
-			t.Errorf("signature failed to verify on line %d", lineNo)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		t.Fatalf("error reading test data: %s", err)
-	}
-}*/
-
 func TestMalleability(t *testing.T) {
 	// https://tools.ietf.org/html/rfc8032#section-5.1.7 adds an additional test
 	// that s be in [0, order). This prevents someone from adding a multiple of
