@@ -8,11 +8,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common/types/internal/util"
+
+	"strings"
 
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"golang.org/x/crypto/blake2b"
-	"strings"
 )
 
 const (
@@ -28,47 +30,50 @@ const (
 	// 8 are a checksum.
 	hexAddressLength = addressPrefixLen + AddressLen
 	// custom alphabet for base32 encoding
-	AddressEncodingAlphabet = "13456789abcdefghijkmnopqrstuwxyz"
+	addressEncodingAlphabet = "13456789abcdefghijkmnopqrstuwxyz"
 )
 
 var (
 	// AddressEncoding is a base32 encoding using NanoEncodingAlphabet as its
 	// alphabet.
-	AddressEncoding = base32.NewEncoding(AddressEncodingAlphabet)
+	AddressEncoding = base32.NewEncoding(addressEncodingAlphabet)
 
-	ErrAddressLen      = errors.New("bad address length")
-	ErrAddressPrefix   = errors.New("bad address prefix")
-	ErrAddressEncoding = errors.New("bad address encoding")
-	ErrAddressChecksum = errors.New("bad address checksum")
+	errAddressLen      = errors.New("bad address length")
+	errAddressPrefix   = errors.New("bad address prefix")
+	errAddressEncoding = errors.New("bad address encoding")
+	errAddressChecksum = errors.New("bad address checksum")
 )
 
+//Address of account
 type Address [AddressSize]byte
 
+//BytesToAddress convert byte array to Address
 func BytesToAddress(b []byte) (Address, error) {
 	var a Address
 	err := a.SetBytes(b)
 	return a, err
 }
 
+// HexToAddress convert hex address string to Address
 func HexToAddress(hexStr string) (Address, error) {
 	if len(hexStr) != hexAddressLength {
-		return Address{}, ErrAddressLen
+		return Address{}, errAddressLen
 	}
 
 	if !strings.HasPrefix(hexStr, AddressPrefix) {
-		return Address{}, ErrAddressPrefix
+		return Address{}, errAddressPrefix
 	}
 
 	addr := hexStr[addressPrefixLen:]
 
 	key, err := AddressEncoding.DecodeString("1111" + addr[0:52])
 	if err != nil {
-		return Address{}, ErrAddressEncoding
+		return Address{}, errAddressEncoding
 	}
 
 	checksum, err := AddressEncoding.DecodeString(addr[52:])
 	if err != nil {
-		return Address{}, ErrAddressEncoding
+		return Address{}, errAddressEncoding
 	}
 
 	// strip off upper 24 bits (3 bytes). 20 padding was added by us,
@@ -77,20 +82,20 @@ func HexToAddress(hexStr string) (Address, error) {
 	copy(address[:], key[3:])
 
 	if !bytes.Equal(address.Checksum(), checksum) {
-		return Address{}, ErrAddressChecksum
+		return Address{}, errAddressChecksum
 	}
 
 	return address, nil
 }
 
-// Check Hex address string is valid
+// IsValidHexAddress check Hex address string is valid
 func IsValidHexAddress(hexStr string) bool {
 	_, err := HexToAddress(hexStr)
 
 	return err == nil
 }
 
-// public key to address
+// PubToAddress  convert ed25519.PublicKey to Address
 func PubToAddress(pub ed25519.PublicKey) Address {
 	// Public key is 256bits, base32 must be multiple of 5 bits
 	// to encode properly.
@@ -98,13 +103,13 @@ func PubToAddress(pub ed25519.PublicKey) Address {
 	return addr
 }
 
-// generate qlc address
+// GenerateAddress generate qlc address
 func GenerateAddress() (Address, ed25519.PrivateKey, error) {
 	pub, pri, err := ed25519.GenerateKey(rand.Reader)
 	return PubToAddress(pub), pri, err
 }
 
-// generate key pair from private key
+// KeypairFromPrivateKey generate key pair from private key
 func KeypairFromPrivateKey(privateKey string) (ed25519.PublicKey, ed25519.PrivateKey) {
 	privateBytes, _ := hex.DecodeString(privateKey)
 	pub, priv, _ := ed25519.GenerateKey(bytes.NewReader(privateBytes))
@@ -112,7 +117,7 @@ func KeypairFromPrivateKey(privateKey string) (ed25519.PublicKey, ed25519.Privat
 	return pub, priv
 }
 
-// generate key pair from seed
+// KeypairFromSeed generate key pair from seed
 func KeypairFromSeed(seed string, index uint32) (ed25519.PublicKey, ed25519.PrivateKey, error) {
 	hash, err := blake2b.New(32, nil)
 	if err != nil {
@@ -140,7 +145,7 @@ func KeypairFromSeed(seed string, index uint32) (ed25519.PublicKey, ed25519.Priv
 	return pub, priv, nil
 }
 
-// Set new address bytes
+// SetBytes new address bytes
 func (addr *Address) SetBytes(b []byte) error {
 	if length := len(b); length != AddressSize {
 		return fmt.Errorf("error address size  %v", length)
@@ -149,7 +154,7 @@ func (addr *Address) SetBytes(b []byte) error {
 	return nil
 }
 
-//Address byte array
+//Bytes get Address byte array
 func (addr Address) Bytes() []byte { return addr[:] }
 
 // Checksum calculates the checksum for this address' public key.
