@@ -13,17 +13,17 @@ sudo: false
 before_install:
 # Setup dependency management tool
 - go get -u -v github.com/golang/dep/cmd/dep
+- go get -u github.com/golang/lint/golint
 - dep ensure
-
-#install:
-#  - eval "$(curl -sL https://raw.githubusercontent.com/travis-ci/gimme/master/gimme | GIMME_GO_VERSION=master bash)"
 
 #env:
 #  global:
 #    - GO111MODULE=on
 
 script:
-  - ./go.test.sh
+  - ./ci/travis.gofmt.sh
+  - ./ci/travis.govet.sh
+  - ./ci/travis.codecov.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

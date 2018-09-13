@@ -105,7 +105,7 @@ func FromString(s string) (Uint128, error) {
 	// Grow the byte slice if it's smaller than 16 bytes, by prepending 0s
 	if len(bytes) < 16 {
 		bytesCopy := make([]byte, 16)
-		copy(bytesCopy[(16 - len(bytes)):], bytes)
+		copy(bytesCopy[(16-len(bytes)):], bytes)
 		bytes = bytesCopy
 	}
 

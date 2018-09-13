@@ -11,15 +11,20 @@ import (
 
 const (
 	// BalanceSize represents the size of a balance in bytes.
-	BalanceSize         = 16
+	BalanceSize = 16
+	// BalanceMaxPrecision  balance max precision
 	BalanceMaxPrecision = 11
 )
 
+// BalanceComp compare
 type BalanceComp byte
 
 const (
-	BalanceCompEqual   BalanceComp = iota
+	//BalanceCompEqual equal compare
+	BalanceCompEqual BalanceComp = iota
+	//BalanceCompBigger bigger compare
 	BalanceCompBigger
+	//BalanceCompSmaller smaller compare
 	BalanceCompSmaller
 )
 
@@ -32,11 +37,14 @@ var (
 		"Gqlc": decimal.New(1, 11),
 	}
 
+	// ZeroBalance zero
 	ZeroBalance = Balance(uint128.Uint128{})
 
+	//ErrBadBalanceSize bad size
 	ErrBadBalanceSize = errors.New("balances should be 16 bytes in size")
 )
 
+// Balance of account
 type Balance uint128.Uint128
 
 // ParseBalance parses the given balance string.
@@ -68,12 +76,15 @@ func ParseBalance(s string, unit string) (Balance, error) {
 	return balance, nil
 }
 
+//ParseBalanceInts create balance from uint64
 func ParseBalanceInts(hi uint64, lo uint64) Balance {
 	return Balance(uint128.FromInts(hi, lo))
 }
+
+//ParseBalanceString create balance from string
 func ParseBalanceString(b string) Balance {
-	balance,err:=uint128.FromString(b)
-	if err!=nil{
+	balance, err := uint128.FromString(b)
+	if err != nil {
 
 	}
 	return Balance(balance)
@@ -99,14 +110,17 @@ func (b Balance) Equal(b2 Balance) bool {
 	return uint128.Uint128(b).Equal(uint128.Uint128(b2))
 }
 
+// Add balances add
 func (b Balance) Add(n Balance) Balance {
 	return Balance(uint128.Uint128(b).Add(uint128.Uint128(n)))
 }
 
+// Sub balances sub
 func (b Balance) Sub(n Balance) Balance {
 	return Balance(uint128.Uint128(b).Sub(uint128.Uint128(n)))
 }
 
+//Compare two balances
 func (b Balance) Compare(n Balance) BalanceComp {
 	res := uint128.Uint128(b).Compare(uint128.Uint128(n))
 	switch res {
@@ -136,6 +150,7 @@ func (b *Balance) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// BigInt convert balance to int
 func (b Balance) BigInt() *big.Int {
 	i := big.NewInt(0)
 	i.SetBytes(b.Bytes(binary.BigEndian))

@@ -77,4 +77,3 @@ func (s *Seed) UnmarshalText(text []byte) error {
 	copy(s[:], text)
 	return nil
 }
-

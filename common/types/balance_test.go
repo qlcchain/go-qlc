@@ -1,49 +1,65 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 )
 
-func TestQlcBalance(t *testing.T) {
-	b1, err := ParseBalance("600000000.00000000", "Mqlc")
-	b2, e := ParseBalance("1", "raw")
-	if err != nil {
-		t.Errorf("ParseBalance err for b1 %s",err)
-	}
-	if e != nil {
-		t.Errorf("ParseBalance err for b2 %s",e)
-	}
-	b1Units := map[string]string{
+var (
+	b1Units = map[string]string{
 		"raw":  "60000000000000000",
 		"qlc":  "600000000000000",
 		"Kqlc": "600000000000",
 		"Mqlc": "600000000",
 		"Gqlc": "600000",
 	}
-	b2Units := map[string]string{
+	b2Units = map[string]string{
 		"raw":  "1",
 		"qlc":  "0.01",
 		"Kqlc": "0.00001",
 		"Mqlc": "0.00000001",
 		"Gqlc": "0.00000000001",
 	}
-	b1TruncatedUnits := map[string]string{
+	b1TruncatedUnits = map[string]string{
 		"raw":  "60000000000000000",
 		"qlc":  "600000000000000",
 		"Kqlc": "600000000000",
 		"Mqlc": "600000000",
 		"Gqlc": "600000",
 	}
-
-	compare := func(b Balance, m map[string]string, p int32) {
+	compare = func(b Balance, m map[string]string, p int32) error {
 		for unit, s := range m {
 			res := b.UnitString(unit, p)
 			if res != s {
-				t.Errorf("(%s) expected: %s, got: %s\n", unit, s, res)
+				return fmt.Errorf("(%s) expected: %s, got: %s", unit, s, res)
 			}
 		}
+
+		return nil
+	}
+)
+
+func TestParseBalance(t *testing.T) {
+	_, err := ParseBalance("600000000.00000000", "Mqlc")
+	_, e := ParseBalance("1", "raw")
+	if err != nil {
+		t.Errorf("ParseBalance err for b1 %s", err)
+	}
+	if e != nil {
+		t.Errorf("ParseBalance err for b2 %s", e)
 	}
 
+}
+
+func TestQlcBalance(t *testing.T) {
+	b1, err := ParseBalance("600000000.00000000", "Mqlc")
+	b2, e := ParseBalance("1", "raw")
+	if err != nil {
+		t.Errorf("ParseBalance err for b1 %s", err)
+	}
+	if e != nil {
+		t.Errorf("ParseBalance err for b2 %s", e)
+	}
 	compare(b1, b1Units, BalanceMaxPrecision)
 	compare(b1, b1TruncatedUnits, 6)
 	compare(b2, b2Units, BalanceMaxPrecision)

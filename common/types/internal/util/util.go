@@ -41,7 +41,6 @@ func Hex64ToBytes(s string) [64]byte {
 	return res
 }
 
-
 func Hash256(data ...[]byte) []byte {
 	d, _ := blake2b.New256(nil)
 	for _, item := range data {
