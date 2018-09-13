@@ -14,9 +14,11 @@ import (
 )
 
 const (
+	//SignatureSize size of signature
 	SignatureSize = ed25519.SignatureSize
 )
 
+// Signature of block
 type Signature [SignatureSize]byte
 
 // MarshalText implements the encoding.TextMarshaler interface.
@@ -43,4 +45,9 @@ func (s *Signature) UnmarshalText(text []byte) error {
 // String implements the fmt.Stringer interface.
 func (s Signature) String() string {
 	return hex.EncodeToString(s[:])
+}
+
+//Of convert hex string to Signature
+func (s *Signature) Of(hexString string) error {
+	return s.UnmarshalText([]byte(hexString))
 }

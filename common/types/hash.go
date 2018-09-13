@@ -10,15 +10,19 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
+
 	"golang.org/x/crypto/blake2b"
 )
 
 const (
+	//HashSize size of hash
 	HashSize = blake2b.Size256
 )
 
+//Hash blake2b hash
 type Hash [HashSize]byte
 
+//IsZero check hash is zero
 func (h Hash) IsZero() bool {
 	for _, b := range h {
 		if b != 0 {
@@ -52,4 +56,9 @@ func (h *Hash) UnmarshalText(text []byte) error {
 // String implements the fmt.Stringer interface.
 func (h Hash) String() string {
 	return hex.EncodeToString(h[:])
+}
+
+//Of convert hex string to Hash
+func (h *Hash) Of(hexString string) error {
+	return h.UnmarshalText([]byte(hexString))
 }

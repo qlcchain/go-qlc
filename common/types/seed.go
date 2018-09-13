@@ -63,17 +63,18 @@ func (s *Seed) String() string {
 	return hex.EncodeToString(s[:])
 }
 
-// From convert hex seed string to Seed
-func (s *Seed) From(hexString string) error {
-	b, err := hex.DecodeString(hexString)
-	if err != nil {
-		return err
-	}
+// MarshalText implements the encoding.TextMarshaler interface.
+func (s *Seed) MarshalText() ([]byte, error) {
+	return s[:], nil
+}
 
-	if len(b) != SeedSize {
-		return fmt.Errorf("invalid seed size, expect %d but %d", SeedSize, len(b))
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (s *Seed) UnmarshalText(text []byte) error {
+	if len(text) != SeedSize {
+		return fmt.Errorf("invalid seed size, expect %d but %d", SeedSize, len(text))
 
 	}
-	copy(s[:], b)
+	copy(s[:], text)
 	return nil
 }
+
