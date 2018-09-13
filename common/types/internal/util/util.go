@@ -9,6 +9,7 @@ package util
 
 import (
 	"encoding/hex"
+
 	"golang.org/x/crypto/blake2b"
 )
 

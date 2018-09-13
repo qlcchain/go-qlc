@@ -10,6 +10,7 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 )
 

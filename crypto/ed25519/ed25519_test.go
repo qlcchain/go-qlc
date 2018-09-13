@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/rand"
-	"github.com/qlcchain/go-qlc/crypto/ed25519/internal/edwards25519"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/crypto/ed25519/internal/edwards25519"
 )
 
 type zeroReader struct{}

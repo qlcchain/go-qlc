@@ -3,10 +3,11 @@ package types
 import (
 	"encoding/binary"
 	"errors"
+	"math/big"
+
 	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
 	"github.com/qlcchain/go-qlc/common/types/internal/util"
 	"github.com/shopspring/decimal"
-	"math/big"
 )
 
 const (

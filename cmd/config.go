@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/config"
 )
 

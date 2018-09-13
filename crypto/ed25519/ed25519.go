@@ -17,9 +17,10 @@ import (
 	"crypto"
 	cryptorand "crypto/rand"
 	"errors"
-	"golang.org/x/crypto/blake2b"
 	"io"
 	"strconv"
+
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/qlcchain/go-qlc/crypto/ed25519/internal/edwards25519"
 )
