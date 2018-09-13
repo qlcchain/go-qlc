@@ -8,9 +8,9 @@
 package main
 
 import (
-	"github.com/qlcchain/go-qlc/config"
-	"fmt"
 	"flag"
+	"fmt"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 func getConfig() *config.Config {

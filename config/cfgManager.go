@@ -1,11 +1,11 @@
 package config
 
 import (
-	"os/user"
-	"os"
-	"path"
-	"io/ioutil"
 	"encoding/json"
+	"io/ioutil"
+	"os"
+	"os/user"
+	"path"
 )
 
 type ConfigManager struct {
