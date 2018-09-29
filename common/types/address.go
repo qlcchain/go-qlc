@@ -18,13 +18,13 @@ import (
 )
 
 const (
-	// AddressPrefix is the prefix of Nano addresses.
+	// AddressPrefix is the prefix of qlc addresses.
 	AddressPrefix = "qlc_"
-	// AddressSize represents the binary size of a Nano address (a public key).
+	// AddressSize represents the binary size of a qlc address (a public key).
 	AddressSize         = ed25519.PublicKeySize
 	addressChecksumSize = 5
 	addressPrefixLen    = len(AddressPrefix)
-	// AddressLen represents the string length of a Nano address.
+	// AddressLen represents the string length of a qlc address.
 	AddressLen = 60
 	// The following 52 characters form the address, and the final
 	// 8 are a checksum.
@@ -34,7 +34,7 @@ const (
 )
 
 var (
-	// AddressEncoding is a base32 encoding using NanoEncodingAlphabet as its
+	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
 	// alphabet.
 	AddressEncoding = base32.NewEncoding(addressEncodingAlphabet)
 
