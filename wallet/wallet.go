@@ -2,17 +2,16 @@ package wallet
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger"
 )
 
 type Wallet struct {
 	seed     *types.Seed
-	accounts []*ledger.Account
+	accounts []*types.Account
 	index    uint32
 }
 
 func NewWallet(seed *types.Seed, index uint32) (*Wallet, error) {
-	var accounts []*ledger.Account
+	var accounts []*types.Account
 	s := seed.String()
 	for i := uint32(0); i < index+1; i++ {
 		_, priv, err := types.KeypairFromSeed(s, i)
@@ -20,7 +19,7 @@ func NewWallet(seed *types.Seed, index uint32) (*Wallet, error) {
 			return nil, err
 		}
 
-		accounts = append(accounts, ledger.NewAccount(priv))
+		accounts = append(accounts, types.NewAccount(priv))
 	}
 
 	return &Wallet{
@@ -39,8 +38,8 @@ func Generate() (*Wallet, error) {
 	return NewWallet(seed, 0)
 }
 
-func (w *Wallet) Accounts() []*ledger.Account {
-	accounts := make([]*ledger.Account, len(w.accounts))
+func (w *Wallet) Accounts() []*types.Account {
+	accounts := make([]*types.Account, len(w.accounts))
 	copy(accounts, w.accounts)
 	return accounts
 }
