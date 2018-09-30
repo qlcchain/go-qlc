@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tinylib/msgp/msgp"
+
 	"github.com/qlcchain/go-qlc/common/types/internal/util"
 
 	"strings"
@@ -16,6 +18,10 @@ import (
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"golang.org/x/crypto/blake2b"
 )
+
+func init() {
+	msgp.RegisterExtension(AddressExtensionType, func() msgp.Extension { return new(Address) })
+}
 
 const (
 	// AddressPrefix is the prefix of qlc addresses.
@@ -25,7 +31,8 @@ const (
 	addressChecksumSize = 5
 	addressPrefixLen    = len(AddressPrefix)
 	// AddressLen represents the string length of a qlc address.
-	AddressLen = 60
+	AddressLen           = 60
+	AddressExtensionType = 99
 	// The following 52 characters form the address, and the final
 	// 8 are a checksum.
 	hexAddressLength = addressPrefixLen + AddressLen
@@ -186,18 +193,33 @@ func (addr Address) Verify(data []byte, signature []byte) bool {
 	return ed25519.Verify(ed25519.PublicKey(addr[:]), data, signature)
 }
 
-// MarshalText implements the encoding.TextMarshaler interface.
-func (addr Address) MarshalText() ([]byte, error) {
-	return addr[:], nil
+//ExtensionType implements Extension.ExtensionType interface
+func (addr *Address) ExtensionType() int8 {
+	return AddressExtensionType
 }
 
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (addr *Address) UnmarshalText(text []byte) error {
-	a, err := HexToAddress(string(text))
-	if err != nil {
-		return err
-	}
+//ExtensionType implements Extension.Len interface
+func (addr *Address) Len() int {
+	return AddressSize
+}
 
-	*addr = a
+//ExtensionType implements Extension.MarshalBinaryTo interface
+func (addr *Address) MarshalBinaryTo(text []byte) error {
+	copy(text, (*addr)[:])
 	return nil
+}
+
+//ExtensionType implements Extension.UnmarshalBinary interface
+func (addr *Address) UnmarshalBinary(text []byte) error {
+	size := len(text)
+	if len(text) != AddressSize {
+		return fmt.Errorf("bad address size: %d", size)
+	}
+	copy((*addr)[:], text)
+	return nil
+}
+
+//MarshalJSON implements json.Marshaler interface
+func (addr *Address) MarshalJSON() ([]byte, error) {
+	return []byte(addr.String()), nil
 }

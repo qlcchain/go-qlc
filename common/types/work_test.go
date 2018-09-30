@@ -30,7 +30,7 @@ func TestBlockWork(t *testing.T) {
 		t.Fatal("NewWorker failed.")
 	}
 
-	v := worker.Generate()
+	v := worker.NewWork()
 	if v != work {
 		t.Fatalf("work not equal, expect:%s but %s", work.String(), v.String())
 	}

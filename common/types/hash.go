@@ -11,12 +11,18 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
 )
 
+func init() {
+	msgp.RegisterExtension(HashExtensionType, func() msgp.Extension { return new(Hash) })
+}
+
 const (
 	//HashSize size of hash
-	HashSize = blake2b.Size256
+	HashSize          = blake2b.Size256
+	HashExtensionType = 101
 )
 
 //Hash blake2b hash
@@ -32,27 +38,6 @@ func (h Hash) IsZero() bool {
 	return true
 }
 
-// MarshalText implements the encoding.TextMarshaler interface.
-func (h Hash) MarshalText() ([]byte, error) {
-	return []byte(h.String()), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (h *Hash) UnmarshalText(text []byte) error {
-	size := hex.DecodedLen(len(text))
-	if size != HashSize {
-		return fmt.Errorf("bad block hash size: %d", size)
-	}
-
-	var hash [HashSize]byte
-	if _, err := hex.Decode(hash[:], text); err != nil {
-		return err
-	}
-
-	*h = hash
-	return nil
-}
-
 // String implements the fmt.Stringer interface.
 func (h Hash) String() string {
 	return hex.EncodeToString(h[:])
@@ -60,5 +45,47 @@ func (h Hash) String() string {
 
 //Of convert hex string to Hash
 func (h *Hash) Of(hexString string) error {
-	return h.UnmarshalText([]byte(hexString))
+	size := hex.DecodedLen(len(hexString))
+	if size != HashSize {
+		return fmt.Errorf("bad block hash size: %d", size)
+	}
+
+	var hash [HashSize]byte
+	if _, err := hex.Decode(hash[:], []byte(hexString)); err != nil {
+		return err
+	}
+
+	*h = hash
+	return nil
+}
+
+//ExtensionType implements Extension.ExtensionType interface
+func (h *Hash) ExtensionType() int8 {
+	return HashExtensionType
+}
+
+//ExtensionType implements Extension.Len interface
+func (h *Hash) Len() int {
+	return HashSize
+}
+
+//ExtensionType implements Extension.MarshalBinaryTo interface
+func (h *Hash) MarshalBinaryTo(text []byte) error {
+	copy(text, (*h)[:])
+	return nil
+}
+
+//ExtensionType implements Extension.UnmarshalBinary interface
+func (h *Hash) UnmarshalBinary(text []byte) error {
+	size := len(text)
+	if len(text) != HashSize {
+		return fmt.Errorf("bad signature size: %d", size)
+	}
+	copy((*h)[:], text)
+	return nil
+}
+
+//MarshalJSON implements json.Marshaler interface
+func (h *Hash) MarshalJSON() ([]byte, error) {
+	return []byte(h.String()), nil
 }

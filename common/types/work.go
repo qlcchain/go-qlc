@@ -13,12 +13,18 @@ import (
 	"fmt"
 	"hash"
 
+	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
 )
 
+func init() {
+	msgp.RegisterExtension(WorkExtensionType, func() msgp.Extension { return new(Work) })
+}
+
 const (
 	//WorkSize work size
-	WorkSize = 8
+	WorkSize          = 8
+	WorkExtensionType = 104
 )
 
 // Work PoW work
@@ -41,33 +47,45 @@ func (w Work) IsValid(root Hash, threshold uint64) bool {
 	return worker.IsValid()
 }
 
-// MarshalText implements the encoding.TextMarshaler interface.
-func (w Work) MarshalText() ([]byte, error) {
-	return []byte(w.String()), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (w *Work) UnmarshalText(text []byte) error {
-	// todo: fix this, this can't be right
-	size := hex.DecodedLen(len(text))
-	if size != WorkSize {
-		return fmt.Errorf("bad work size: %d", size)
-	}
-
-	var work [WorkSize]byte
-	if _, err := hex.Decode(work[:], text); err != nil {
-		return err
-	}
-
-	*w = Work(binary.BigEndian.Uint64(work[:]))
-	return nil
-}
-
 // String implements the fmt.Stringer interface.
 func (w Work) String() string {
 	var bytes [WorkSize]byte
 	binary.BigEndian.PutUint64(bytes[:], uint64(w))
 	return hex.EncodeToString(bytes[:])
+}
+
+//ExtensionType implements Extension.ExtensionType interface
+func (w *Work) ExtensionType() int8 {
+	return WorkExtensionType
+}
+
+//ExtensionType implements Extension.Len interface
+func (w *Work) Len() int {
+	return WorkSize
+}
+
+//ExtensionType implements Extension.MarshalBinaryTo interface
+func (w *Work) MarshalBinaryTo(text []byte) error {
+	var bytes [WorkSize]byte
+	binary.BigEndian.PutUint64(bytes[:], uint64(*w))
+	copy(text, bytes[:])
+	return nil
+}
+
+//ExtensionType implements Extension.UnmarshalBinary interface
+func (w *Work) UnmarshalBinary(text []byte) error {
+	size := len(text)
+	if size != WorkSize {
+		return fmt.Errorf("bad work size: %d", size)
+	}
+
+	*w = Work(binary.BigEndian.Uint64(text[:]))
+	return nil
+}
+
+//MarshalJSON implements json.Marshaler interface
+func (w *Work) MarshalJSON() ([]byte, error) {
+	return []byte(w.String()), nil
 }
 
 // NewWorker create new worker
@@ -99,8 +117,8 @@ func (w *Worker) IsValid() bool {
 	return value >= w.Threshold
 }
 
-//Generate new work
-func (w *Worker) Generate() Work {
+//NewWork generate new work
+func (w *Worker) NewWork() Work {
 	for {
 		if w.IsValid() {
 			return w.work

@@ -5,10 +5,16 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/tinylib/msgp/msgp"
+
 	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
 	"github.com/qlcchain/go-qlc/common/types/internal/util"
 	"github.com/shopspring/decimal"
 )
+
+func init() {
+	msgp.RegisterExtension(BalanceExtensionType, func() msgp.Extension { return new(Address) })
+}
 
 const (
 	// BalanceSize represents the size of a balance in bytes.
@@ -27,6 +33,7 @@ const (
 	BalanceCompBigger
 	//BalanceCompSmaller smaller compare
 	BalanceCompSmaller
+	BalanceExtensionType = 100
 )
 
 var (
@@ -133,21 +140,6 @@ func (b Balance) Compare(n Balance) BalanceComp {
 	}
 }
 
-// MarshalBinary implements the encoding.BinaryMarshaler interface.
-func (b Balance) MarshalBinary() ([]byte, error) {
-	return b.Bytes(binary.LittleEndian), nil
-}
-
-// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
-func (b *Balance) UnmarshalBinary(data []byte) error {
-	if len(data) != BalanceSize {
-		return ErrBadBalanceSize
-	}
-
-	*b = Balance(uint128.FromBytes(data))
-	return nil
-}
-
 // BigInt convert balance to int
 func (b Balance) BigInt() *big.Int {
 	i := big.NewInt(0)
@@ -186,4 +178,34 @@ func (b *Balance) UnmarshalText(text []byte) error {
 
 	*b = balance
 	return nil
+}
+
+//ExtensionType implements Extension.ExtensionType interface
+func (b *Balance) ExtensionType() int8 {
+	return BalanceExtensionType
+}
+
+//ExtensionType implements Extension.Len interface
+func (b *Balance) Len() int { return BalanceSize }
+
+//ExtensionType implements Extension.UnmarshalBinary interface
+func (b *Balance) MarshalBinaryTo(text []byte) error {
+	copy(text, b.Bytes(binary.LittleEndian))
+	return nil
+}
+
+//ExtensionType implements Extension.UnmarshalBinary interface
+func (b *Balance) UnmarshalBinary(text []byte) error {
+	if len(text) != BalanceSize {
+		return ErrBadBalanceSize
+	}
+
+	*b = Balance(uint128.FromBytes(text))
+	return nil
+
+}
+
+//MarshalJSON implements json.Marshaler interface
+func (b *Balance) MarshalJSON() ([]byte, error) {
+	return []byte(b.String()), nil
 }

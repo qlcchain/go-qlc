@@ -15,12 +15,18 @@ import (
 
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
 )
 
+func init() {
+	msgp.RegisterExtension(SeedExtensionType, func() msgp.Extension { return new(Seed) })
+}
+
 const (
 	// SeedSize size of the seed
-	SeedSize = 32
+	SeedSize          = 32
+	SeedExtensionType = 102
 )
 
 //Seed of account
@@ -63,17 +69,33 @@ func (s *Seed) String() string {
 	return hex.EncodeToString(s[:])
 }
 
-// MarshalText implements the encoding.TextMarshaler interface.
-func (s *Seed) MarshalText() ([]byte, error) {
-	return s[:], nil
+//ExtensionType implements Extension.ExtensionType interface
+func (s *Seed) ExtensionType() int8 {
+	return SeedExtensionType
 }
 
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (s *Seed) UnmarshalText(text []byte) error {
-	if len(text) != SeedSize {
-		return fmt.Errorf("invalid seed size, expect %d but %d", SeedSize, len(text))
+//ExtensionType implements Extension.Len interface
+func (s *Seed) Len() int {
+	return AddressSize
+}
 
-	}
-	copy(s[:], text)
+//ExtensionType implements Extension.MarshalBinaryTo interface
+func (s *Seed) MarshalBinaryTo(text []byte) error {
+	copy(text, (*s)[:])
 	return nil
+}
+
+//ExtensionType implements Extension.UnmarshalBinary interface
+func (s *Seed) UnmarshalBinary(text []byte) error {
+	size := len(text)
+	if len(text) != SeedSize {
+		return fmt.Errorf("bad signature size: %d", size)
+	}
+	copy((*s)[:], text)
+	return nil
+}
+
+//MarshalJSON implements json.Marshaler interface
+func (s *Seed) MarshalJSON() ([]byte, error) {
+	return []byte(s.String()), nil
 }
