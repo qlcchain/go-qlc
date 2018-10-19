@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/bits"
 
+	"github.com/perlin-network/life/memory"
+
 	"github.com/perlin-network/life/compiler"
 	"github.com/perlin-network/life/compiler/opcodes"
 	"github.com/perlin-network/life/utils"
@@ -40,7 +42,7 @@ type VirtualMachine struct {
 	CurrentFrame    int
 	Table           []uint32
 	Globals         []int64
-	Memory          []byte
+	Memory          memory.VMemory
 	NumValueSlots   int
 	Yielded         int64
 	InsideExecute   bool
@@ -180,7 +182,7 @@ func NewVirtualMachine(
 	}
 
 	// Load linear memory.
-	memory := make([]byte, 0)
+	vMemory := memory.NewVMemory(0)
 	if m.Base.Memory != nil && len(m.Base.Memory.Entries) > 0 {
 		initialLimit := int(m.Base.Memory.Entries[0].Limits.Initial)
 		if config.MaxMemoryPages != 0 && initialLimit > config.MaxMemoryPages {
@@ -190,15 +192,20 @@ func NewVirtualMachine(
 		capacity := initialLimit * DefaultPageSize
 
 		// Initialize empty memory.
-		memory = make([]byte, capacity)
-		for i := 0; i < capacity; i++ {
-			memory[i] = 0
+		vMemory = memory.NewVMemory(uint64(capacity))
+		//for i := 0; i < capacity; i++ {
+		//	//memory[i] = 0
+		//}
+		size, _ := vMemory.MemSet(0, 0, capacity)
+		if size != capacity {
 		}
-
 		if m.Base.Data != nil && len(m.Base.Data.Entries) > 0 {
 			for _, e := range m.Base.Data.Entries {
-				offset := int(execInitExpr(e.Offset, globals))
-				copy(memory[int(offset):], e.Data)
+				//offset := int(execInitExpr(e.Offset, globals))
+				//copy(vMemory[int(offset):], e.Data)
+				tmp := []byte(e.Data)
+				index, _ := vMemory.SetPointerMemory(tmp)
+				fmt.Printf("SetPointerMemory index: %d", index)
 			}
 		}
 	}
@@ -212,7 +219,7 @@ func NewVirtualMachine(
 		CurrentFrame:    -1,
 		Table:           table,
 		Globals:         globals,
-		Memory:          memory,
+		Memory:          vMemory,
 		Exited:          true,
 	}, nil
 }
@@ -1160,7 +1167,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 12
 
 			effective := int(uint64(base) + uint64(offset))
-			frame.Regs[valueID] = int64(uint32(LE.Uint32(vm.Memory[effective : effective+4])))
+			//frame.Regs[valueID] = int64(uint32(LE.Uint32(vm.Memory[effective : effective+4])))
+			// TODO: verify
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			frame.Regs[valueID] = int64(uint32(LE.Uint32(data)))
 		case opcodes.I64Load32S:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1169,7 +1179,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 12
 
 			effective := int(uint64(base) + uint64(offset))
-			frame.Regs[valueID] = int64(int32(LE.Uint32(vm.Memory[effective : effective+4])))
+			//frame.Regs[valueID] = int64(int32(LE.Uint32(vm.Memory[effective : effective+4])))
+			// TODO: verify
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			frame.Regs[valueID] = int64(int32(LE.Uint32(data)))
 		case opcodes.I64Load:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1178,7 +1191,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 12
 
 			effective := int(uint64(base) + uint64(offset))
-			frame.Regs[valueID] = int64(LE.Uint64(vm.Memory[effective : effective+8]))
+			//frame.Regs[valueID] = int64(LE.Uint64(vm.Memory[effective : effective+8]))
+			// TODO: verify
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			frame.Regs[valueID] = int64(LE.Uint64(data))
 		case opcodes.I32Load8S, opcodes.I64Load8S:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1187,7 +1203,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 12
 
 			effective := int(uint64(base) + uint64(offset))
-			frame.Regs[valueID] = int64(int8(vm.Memory[effective]))
+			//frame.Regs[valueID] = int64(int8(vm.Memory[effective]))
+			// TODO: verify
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			frame.Regs[valueID] = int64(int8(data[0]))
 		case opcodes.I32Load8U, opcodes.I64Load8U:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1196,7 +1215,9 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 12
 
 			effective := int(uint64(base) + uint64(offset))
-			frame.Regs[valueID] = int64(uint8(vm.Memory[effective]))
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			// TODO: verify
+			frame.Regs[valueID] = int64(uint8(data[0]))
 		case opcodes.I32Load16S, opcodes.I64Load16S:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1205,7 +1226,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 12
 
 			effective := int(uint64(base) + uint64(offset))
-			frame.Regs[valueID] = int64(int16(LE.Uint16(vm.Memory[effective : effective+2])))
+			//frame.Regs[valueID] = int64(int16(LE.Uint16(vm.Memory[effective : effective+2])))
+			// TODO: verify
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			frame.Regs[valueID] = int64(int16(LE.Uint16(data)))
 		case opcodes.I32Load16U, opcodes.I64Load16U:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1214,7 +1238,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 12
 
 			effective := int(uint64(base) + uint64(offset))
-			frame.Regs[valueID] = int64(uint16(LE.Uint16(vm.Memory[effective : effective+2])))
+			//frame.Regs[valueID] = int64(uint16(LE.Uint16(vm.Memory[effective : effective+2])))
+			// TODO: verify
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			frame.Regs[valueID] = int64(uint16(LE.Uint16(data)))
 		case opcodes.I32Store, opcodes.I64Store32:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1225,7 +1252,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 16
 
 			effective := int(uint64(base) + uint64(offset))
-			LE.PutUint32(vm.Memory[effective:effective+4], uint32(value))
+			//LE.PutUint32(vm.Memory[effective:effective+4], uint32(value))
+			// TODO: verify
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			LE.PutUint32(data, uint32(value))
 		case opcodes.I64Store:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1236,7 +1266,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 16
 
 			effective := int(uint64(base) + uint64(offset))
-			LE.PutUint64(vm.Memory[effective:effective+8], uint64(value))
+			//LE.PutUint64(vm.Memory[effective:effective+8], uint64(value))
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			// TODO: verify
+			LE.PutUint64(data, uint64(value))
 		case opcodes.I32Store8, opcodes.I64Store8:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1247,7 +1280,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 16
 
 			effective := int(uint64(base) + uint64(offset))
-			vm.Memory[effective] = byte(value)
+			//vm.Memory[effective] = byte(value)
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			// TODO: verify
+			data[0] = byte(value)
 		case opcodes.I32Store16, opcodes.I64Store16:
 			LE.Uint32(frame.Code[frame.IP : frame.IP+4])
 			offset := LE.Uint32(frame.Code[frame.IP+4 : frame.IP+8])
@@ -1258,7 +1294,10 @@ func (vm *VirtualMachine) Execute() {
 			frame.IP += 16
 
 			effective := int(uint64(base) + uint64(offset))
-			LE.PutUint16(vm.Memory[effective:effective+2], uint16(value))
+			//LE.PutUint16(vm.Memory[effective:effective+2], uint16(value))
+			// TODO: verify
+			data, _ := vm.Memory.GetPointerMemory(uint64(effective))
+			LE.PutUint16(data, uint16(value))
 
 		case opcodes.Jmp:
 			target := int(LE.Uint32(frame.Code[frame.IP : frame.IP+4]))
@@ -1410,16 +1449,16 @@ func (vm *VirtualMachine) Execute() {
 			return
 
 		case opcodes.CurrentMemory:
-			frame.Regs[valueID] = int64(len(vm.Memory) / DefaultPageSize)
+			frame.Regs[valueID] = int64(len(vm.Memory.Memory) / DefaultPageSize)
 
 		case opcodes.GrowMemory:
 			n := int(uint32(frame.Regs[int(LE.Uint32(frame.Code[frame.IP:frame.IP+4]))]))
 			frame.IP += 4
 
-			current := len(vm.Memory) / DefaultPageSize
+			current := len(vm.Memory.Memory) / DefaultPageSize
 			if vm.Config.MaxMemoryPages == 0 || (current+n >= current && current+n <= vm.Config.MaxMemoryPages) {
 				frame.Regs[valueID] = int64(current)
-				vm.Memory = append(vm.Memory, make([]byte, n*DefaultPageSize)...)
+				vm.Memory.Grow(uint64(n * DefaultPageSize))
 			} else {
 				frame.Regs[valueID] = -1
 			}

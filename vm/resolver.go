@@ -24,8 +24,8 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 		case "__life_log":
 			return func(vm *exec.VirtualMachine) int64 {
 				ptr := int(uint32(vm.GetCurrentFrame().Locals[0]))
-				msgLen := int(uint32(vm.GetCurrentFrame().Locals[1]))
-				msg := vm.Memory[ptr : ptr+msgLen]
+				//msgLen := int(uint32(vm.GetCurrentFrame().Locals[1]))
+				msg, _ := vm.Memory.GetPointerMemory(uint64(ptr)) //[ptr : ptr+msgLen]
 				fmt.Printf("[app] %s\n", string(msg))
 				return 0
 			}
