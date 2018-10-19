@@ -5,12 +5,4 @@
  * https://opensource.org/licenses/MIT
  */
 
-package main
-
-import (
-	cmd "github.com/qlcchain/go-qlc/cmd/commands"
-)
-
-func main() {
-	cmd.Execute()
-}
+package common
