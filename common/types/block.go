@@ -8,9 +8,11 @@
 package types
 
 import (
-	"encoding/json"
+	"errors"
+	//"encoding/json"
 
 	"github.com/tinylib/msgp/msgp"
+	"golang.org/x/crypto/blake2b"
 )
 
 //msgp:shim Enum as:string using:(Enum).String/parseString
@@ -20,6 +22,11 @@ const (
 	State Enum = iota
 	SmartContract
 	Invalid
+)
+
+var (
+	ErrBadBlockType = errors.New("bad block type")
+	ErrNotABlock    = errors.New("block type is not_a_block")
 )
 
 func (e Enum) String() string {
@@ -45,23 +52,28 @@ func parseString(s string) Enum {
 }
 
 type Block interface {
-	Type() Enum
+	//Type() Enum
+	//Hash() Hash
+	//Addresses() []*Address
+	//PreviousHash() Hash
+	//Representative() Address
+	//Balance() Balance
+	//Link() Hash
+	//Signature() Signature
+	//Token() Hash
+	//Extra() Hash
+	//Work() Work
 	Hash() Hash
-	Addresses() []*Address
-	PreviousHash() Hash
-	Representative() Address
-	Balance() Balance
-	Link() Hash
-	Signature() Signature
-	Token() Hash
-	Extra() Hash
-	Work() Work
+	ID() Enum
+	Root() Hash
+	Size() int
+
 	msgp.Decodable
 	msgp.Encodable
 	msgp.Marshaler
 	msgp.Unmarshaler
-	json.Marshaler
-	json.Unmarshaler
+	//json.Marshaler
+	//json.Unmarshaler
 }
 
 //go:generate msgp
@@ -76,6 +88,7 @@ type StateBlock struct {
 	Token          Hash      `msg:"token,extension" json:"token"`
 	Work           Work      `msg:"work,extension" json:"work"`
 }
+
 
 //go:generate msgp
 type SmartContractBlock struct {
@@ -97,4 +110,64 @@ type BlockExtra struct {
 	KeyHash Hash    `msg:"key,extension" json:"key"`
 	Abi     []byte  `msg:"abi" json:"abi"`
 	Issuer  Address `msg:"issuer,extension" json:"issuer"`
+}
+
+func NewBlock(blockType byte) (Block, error) {
+	switch Enum(blockType) {
+	case State:
+		return new(StateBlock), nil
+	case SmartContract:
+		return new(SmartContractBlock), nil
+	case Invalid:
+		return nil, ErrNotABlock
+	default:
+		return nil, ErrBadBlockType
+	}
+}
+
+func hashBytes(inputs ...[]byte) Hash {
+	hash, err := blake2b.New(blake2b.Size256, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, data := range inputs {
+		hash.Write(data)
+	}
+
+	var result Hash
+	copy(result[:], hash.Sum(nil))
+	return result
+}
+
+func (b *StateBlock) Hash() Hash {
+	return hashBytes(b.Link[:], b.Representative[:], b.Address[:])
+}
+
+func (b *StateBlock) ID() Enum {
+	return State
+}
+
+func (b *StateBlock) Root() Hash {
+	panic("implement me")
+}
+
+func (z *StateBlock) Size() int {
+	panic("implement me")
+}
+
+func (b *SmartContractBlock) Hash() Hash {
+	return hashBytes(b.Link[:], b.Representative[:])
+}
+
+func (b *SmartContractBlock) ID() Enum {
+	return SmartContract
+}
+
+func (b *SmartContractBlock) Root() Hash {
+	panic("implement me")
+}
+
+func (z *SmartContractBlock) Size() int {
+	panic("implement me")
 }

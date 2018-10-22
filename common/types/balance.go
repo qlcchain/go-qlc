@@ -90,9 +90,12 @@ func ParseBalanceInts(hi uint64, lo uint64) Balance {
 }
 
 //ParseBalanceString create balance from string
-func ParseBalanceString(b string) Balance {
-	balance, _ := uint128.FromString(b)
-	return Balance(balance)
+func ParseBalanceString(b string) (Balance, error) {
+	balance, err := uint128.FromString(b)
+	if err != nil{
+		return ZeroBalance,  err
+	}
+	return Balance(balance), nil
 }
 
 // Bytes returns the binary representation of this Balance with the given
@@ -190,7 +193,7 @@ func (b *Balance) Len() int { return BalanceSize }
 
 //ExtensionType implements Extension.UnmarshalBinary interface
 func (b *Balance) MarshalBinaryTo(text []byte) error {
-	copy(text, b.Bytes(binary.LittleEndian))
+	copy(text, b.Bytes(binary.BigEndian))
 	return nil
 }
 
