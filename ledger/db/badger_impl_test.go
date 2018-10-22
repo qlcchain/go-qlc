@@ -627,7 +627,7 @@ func TestBadgerStoreTxn_SubRepresentation(t *testing.T) {
 		t.Fatal(err)
 	}
 	address := parseRepresentation(t)
-	amount,err := types.ParseBalance("100.004","Mqlc")
+	amount,err := types.ParseBalance("100.04","Mqlc")
 	if err!= nil{
 		t.Fatal(err)
 	}
