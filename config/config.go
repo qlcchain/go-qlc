@@ -1,6 +1,9 @@
 package config
 
 import (
+	"os/user"
+	"path"
+
 	"github.com/qlcchain/go-qlc/common"
 )
 
@@ -14,8 +17,9 @@ type RPC struct {
 	Port   uint   `json:"Port"`
 }
 type Node struct {
-	Version uint   `json:"Version"`
-	Network string `json:"Network"`
+	Version        uint   `json:"Version"`
+	Network        string `json:"Network"`
+	PrivateKeyPath string `json:"PrivateKeyPath"`
 }
 type Config struct {
 	*RPC  `json:"RPC"`
@@ -37,17 +41,31 @@ var (
 			Port:   29735,
 		},
 		Node: &Node{
-			Version: 1,
-			Network: "testnet",
+			Version:        1,
+			Network:        "testnet",
+			PrivateKeyPath: "",
 		},
 	}
 )
+
+func privateKeyPath() (string, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	dir := path.Join(usr.HomeDir, ".qlcchain")
+	return path.Join(dir, "network.key"), nil
+}
 
 var log = common.NewLogger("config")
 
 func init() {
 	cfg := DefaultlConfig
-	var err error
+	privateKeyPath, err := privateKeyPath()
+	if err != nil {
+		log.Errorf("privateKeyPath error: %s", err)
+	}
+	cfg.PrivateKeyPath = privateKeyPath
 	if qlccfg, err = NewCfgManager("", ""); err != nil {
 		log.Errorf("config manager error: %s", err)
 	}
