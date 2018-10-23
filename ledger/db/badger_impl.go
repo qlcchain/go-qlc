@@ -371,64 +371,37 @@ func (t *BadgerStoreTxn) CountBlocks() (uint64, error) {
 	return count, nil
 }
 
-func (t *BadgerStoreTxn) GetRandomBlock2() (types.Block, error) {
-	var count uint64
-	opts := badger.DefaultIteratorOptions
-	opts.PrefetchValues = false
-
-	it := t.txn.NewIterator(opts)
-	defer it.Close()
-
-	var items []*badger.Item
-	prefix := [...]byte{idPrefixBlock}
-	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
-		count++
-		fmt.Println(it.Item())
-		items = append(items, it.Item())
-	}
-
-	index := rand.Intn(len(items))
-	fmt.Println(index)
-	item := items[index]
-	fmt.Println(item)
-	blockType := item.UserMeta()
-	blk, err := types.NewBlock(blockType)
-	if err != nil {
-		return nil, err
-	}
-	err = item.Value(func(val []byte) {
-		blockBytes := val
-		blk.UnmarshalMsg(blockBytes)
-	})
-	return blk, nil
-}
-
 func (t *BadgerStoreTxn) GetRandomBlock() (types.Block, error) {
-	var count uint64
-	opts := badger.DefaultIteratorOptions
-	opts.PrefetchValues = false
-
-	it := t.txn.NewIterator(opts)
-	defer it.Close()
-
-	var items []*badger.Item
-	prefix := [...]byte{idPrefixBlock}
-	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
-		count++
-		items = append(items, it.Item())
-	}
-	index := rand.Intn(len(items))
-	item := items[index]
-	blockType := item.UserMeta()
-	blk, err := types.NewBlock(blockType)
+	count, err := t.CountBlocks()
 	if err != nil {
 		return nil, err
 	}
-	err = item.Value(func(val []byte) {
-		blockBytes := val
-		blk.UnmarshalMsg(blockBytes)
-	})
-	return blk, nil
+	index := rand.Int63n(int64(count))
+	fmt.Println(index)
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = false
+	it := t.txn.NewIterator(opts)
+	defer it.Close()
+
+	var temp int64
+	prefix := [...]byte{idPrefixBlock}
+	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
+		temp++
+		if temp == index{
+			item := it.Item()
+			blockType := item.UserMeta()
+			blk, err := types.NewBlock(blockType)
+			if err != nil {
+				return nil, err
+			}
+			err = item.Value(func(val []byte) {
+				blockBytes := val
+				blk.UnmarshalMsg(blockBytes)
+			})
+			return blk, nil
+		}
+	}
+	return nil, errors.New("block not found")
 }
 
 // ------------------- implement Representation CURD --------------------

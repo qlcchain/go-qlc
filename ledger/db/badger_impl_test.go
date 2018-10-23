@@ -7,6 +7,9 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"fmt"
 	"errors"
+	"math/rand"
+	"time"
+	"strconv"
 )
 
 const (
@@ -20,6 +23,8 @@ func TestBadgerStoreTxn_Empty(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer db.Close()
+
 	db.View(func(txn StoreTxn) error {
 		empty, err := txn.Empty()
 		if err !=nil{
@@ -78,7 +83,12 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 				t.Fatal(err)
 			}
 
-			blk.Link.Of(values["link"].(string))
+			rand.Seed(time.Now().UnixNano())
+			i := rand.Intn(1000000000000000)
+			link := strconv.Itoa(i) + values["link"].(string)[len(strconv.Itoa(i)):]
+			blk.Link.Of(link)
+			//blk.Link.Of(values["link"].(string))
+
 			blk.Signature.Of(values["signature"].(string))
 			blk.Token.Of(values["token"].(string))
 			blk.Work.ParseWorkHexString(values["work"].(string))
@@ -97,19 +107,28 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 	return
 }
 
+func TestBadgerStoreTxn_AddBlocks(t *testing.T) {
+	const n = 100
+	for i := 0; i < n; i++ {
+		TestBadgerStoreTxn_AddBlock(t)
+	}
+}
+
 func TestBadgerStoreTxn_AddBlock(t *testing.T) {
 	db, err := NewBadgerStore(dir)
-	if err!= nil{
+	if err != nil {
 		t.Fatal(err)
 	}
-	blocks := parseBlocks(t, "../testdata/blocks.json")
+	defer db.Close()
 
+	blocks := parseBlocks(t, "../testdata/blocks.json")
 	for _, blk := range blocks {
 		db.Update(func(txn StoreTxn) error {
 			err := txn.AddBlock(blk)
-			if err != nil{
+			if err != nil {
 				t.Fatal(err)
 			}
+
 			return nil
 		})
 	}
@@ -120,9 +139,11 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	db.View(func(txn StoreTxn) error {
 		hash := types.Hash{}
-		hash.Of("e0886391257961b2a544cee771530c3d86aad5beada9491f98b710823eb193c6")
+		hash.Of("e2e4a44fcc537f7ff2d5e365317a1a6c1d128e8f76b552b783381131ee832636")
 		block, err := txn.GetBlock(hash)
 
 		if err!= nil{
@@ -143,6 +164,8 @@ func TestBadgerStoreTxn_DeleteBlock(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	db.Update(func(txn StoreTxn) error {
 		hash := types.Hash{}
 		hash.Of("bbb23eab1706acaf717be7567c6b4568c801bfbae397503e885f8caf20e968a0")
@@ -159,6 +182,8 @@ func TestBadgerStoreTxn_HasBlock(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	db.View(func(txn StoreTxn) error {
 		hash := types.Hash{}
 		hash.Of("f9b38dad8588db575bd81bca7a806cd9e103994b74d79931724198d99b239f8c")
@@ -176,6 +201,8 @@ func TestBadgerStoreTxn_CountBlocks(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	db.View(func(txn StoreTxn) error {
 		b, err := txn.CountBlocks()
 		if err != nil{
@@ -191,6 +218,8 @@ func TestBadgerStoreTxn_GetRandomBlock(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	db.View(func(txn StoreTxn) error {
 		block, err := txn.GetRandomBlock()
 		if err!= nil{
@@ -253,6 +282,8 @@ func TestBadgerStoreTxn_AddAccountMeta(t *testing.T){
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	accountMetas := parseAccountMetas(t, "../testdata/account.json")
 	for _, accountmeta := range accountMetas {
 		db.Update(func(txn StoreTxn) error {
@@ -271,6 +302,8 @@ func TestBadgerStoreTxn_GetAccountMeta(t *testing.T){
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	db.View(func(txn StoreTxn) error {
 		address, err := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 		accountmeta, err := txn.GetAccountMeta(address)
@@ -290,6 +323,8 @@ func TestBadgerStoreTxn_UpdateAccountMeta(t *testing.T){
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	accountMetas := parseAccountMetas(t, "../testdata/accountupdate.json")
 	for _, accountmeta := range accountMetas {
 		db.Update(func(txn StoreTxn) error {
@@ -307,6 +342,8 @@ func TestBadgerStoreTxn_DeleteAccountMeta(t *testing.T){
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	db.Update(func(txn StoreTxn) error {
 		address, err := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
 		if err!= nil{
@@ -364,29 +401,12 @@ func TestBadgerStoreTxn_AddTokenMeta(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	tokenmeta, address , _ := parseToken(t)
 
 	err = db.Update(func(txn StoreTxn) error {
 		err = txn.AddTokenMeta(address, &tokenmeta)
-		if err != nil{
-			t.Fatal(err)
-		}
-		return nil
-	})
-	if err != nil{
-		t.Fatal(err)
-	}
-}
-
-func TestBadgerStoreTxn_DelTokenMeta(t *testing.T) {
-	db, err := NewBadgerStore(dir)
-	if err!= nil{
-		t.Fatal(err)
-	}
-
-	tokenmeta, address , _ := parseToken(t)
-	err = db.Update(func(txn StoreTxn) error {
-		err = txn.DelTokenMeta(address, &tokenmeta)
 		if err != nil{
 			t.Fatal(err)
 		}
@@ -402,6 +422,8 @@ func TestBadgerStoreTxn_GetTokenMeta(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	_, address , tokenType := parseToken(t)
 	db.View(func(txn StoreTxn) error {
 		tokenmeta , err := txn.GetTokenMeta(address, tokenType)
@@ -413,6 +435,26 @@ func TestBadgerStoreTxn_GetTokenMeta(t *testing.T) {
 	})
 }
 
+
+func TestBadgerStoreTxn_DelTokenMeta(t *testing.T) {
+	db, err := NewBadgerStore(dir)
+	if err!= nil{
+		t.Fatal(err)
+	}
+	defer  db.Close()
+
+	tokenmeta, address , _ := parseToken(t)
+	err = db.Update(func(txn StoreTxn) error {
+		err = txn.DelTokenMeta(address, &tokenmeta)
+		if err != nil{
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil{
+		t.Fatal(err)
+	}
+}
 // Test Badger Pending CURD
 
 func parsePending(t *testing.T)(address types.Address, hash types.Hash, pendinginfo types.PendingInfo){
@@ -442,6 +484,8 @@ func TestBadgerStoreTxn_AddPending(t *testing.T){
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	address, hash, pendinfo := parsePending(t)
 
 	db.Update(func(txn StoreTxn) error {
@@ -458,6 +502,8 @@ func TestBadgerStoreTxn_GetPending(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	address, hash, _ := parsePending(t)
 
 	db.View(func(txn StoreTxn) error {
@@ -475,6 +521,8 @@ func TestBadgerStoreTxn_DeletePending(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	address, hash, _ := parsePending(t)
 
 	db.Update(func(txn StoreTxn) error {
@@ -501,6 +549,8 @@ func TestBadgerStoreTxn_AddUncheckedBlock(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	parentHash, blk ,kind := parseUncheckedBlock(t)
 	db.Update(func(txn StoreTxn) error {
 		err := txn.AddUncheckedBlock(parentHash, blk ,kind)
@@ -516,6 +566,8 @@ func TestBadgerStoreTxn_GetUncheckedBlock(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	parentHash, _ ,kind := parseUncheckedBlock(t)
 
 	db.View(func(txn StoreTxn) error {
@@ -533,6 +585,8 @@ func TestBadgerStoreTxn_HasUncheckedBlock(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	parentHash, _ ,kind := parseUncheckedBlock(t)
 	db.View(func(txn StoreTxn) error {
 		r, err := txn.HasUncheckedBlock(parentHash, kind)
@@ -549,6 +603,8 @@ func TestBadgerStoreTxn_CountUncheckedBlocks(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	db.View(func(txn StoreTxn) error {
 		b, err := txn.CountUncheckedBlocks()
 		if err != nil{
@@ -564,6 +620,8 @@ func TestBadgerStoreTxn_DeleteUncheckedBlock(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	parentHash, _ ,kind := parseUncheckedBlock(t)
 
 	db.Update(func(txn StoreTxn) error {
@@ -590,6 +648,8 @@ func TestBadgerStoreTxn_GetRepresentation(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	address := parseRepresentation(t)
 	db.View(func(txn StoreTxn) error {
 		balance, err := txn.GetRepresentation(address)
@@ -606,6 +666,8 @@ func TestBadgerStoreTxn_AddRepresentation(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	address := parseRepresentation(t)
 	//amount,err := types.ParseBalanceString("1234.12")
 	amount,err := types.ParseBalance("400.004","Mqlc")
@@ -626,6 +688,8 @@ func TestBadgerStoreTxn_SubRepresentation(t *testing.T) {
 	if err!= nil{
 		t.Fatal(err)
 	}
+	defer  db.Close()
+
 	address := parseRepresentation(t)
 	amount,err := types.ParseBalance("10.04","Mqlc")
 	if err!= nil{
