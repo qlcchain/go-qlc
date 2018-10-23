@@ -2,8 +2,14 @@ package db
 
 import (
 	"io"
+	"errors"
 
 	"github.com/qlcchain/go-qlc/common/types"
+)
+
+var (
+	ErrBlockExists = errors.New("block already exists")
+	ErrStoreEmpty  = errors.New("the store is empty")
 )
 
 // Store is an interface that all stores need to implement.
@@ -19,22 +25,22 @@ type StoreTxn interface {
 	Flush() error
 
 	// account meta CURD
-	AddAccountMeta(account types.Address, meta *types.AccountMeta) error
+	AddAccountMeta(meta *types.AccountMeta) error
 	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
-	UpdateAccountMeta(address types.Address, meta *types.AccountMeta) error
+	UpdateAccountMeta(meta *types.AccountMeta) error
 	DeleteAccountMeta(address types.Address) error
 	HasAccountMeta(address types.Address) (bool, error)
 	// token meta CURD
-	AddTokenMeta(account types.Address, meta *types.TokenMeta) error
-	GetTokenMeta(account types.Address, meta *types.TokenMeta) error
-	DelTokenMeta(account types.Address, meta *types.TokenMeta) error
+	AddTokenMeta(address types.Address, meta *types.TokenMeta) error
+	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+	DelTokenMeta(address types.Address, meta *types.TokenMeta) error
 	// blocks CURD
 	AddBlock(blk types.Block) error
 	GetBlock(hash types.Hash) (types.Block, error)
 	DeleteBlock(hash types.Hash) error
 	HasBlock(hash types.Hash) (bool, error)
 	CountBlocks() (uint64, error)
-	GetRandomBlock() (*types.Block, error)
+	GetRandomBlock() (types.Block, error)
 
 	AddRepresentation(address types.Address, amount types.Balance) error
 	SubRepresentation(address types.Address, amount types.Balance) error
@@ -47,8 +53,8 @@ type StoreTxn interface {
 	HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (bool, error)
 	WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error
 	CountUncheckedBlocks() (uint64, error)
-	//
-	//
+
+	// pending CURD
 	AddPending(destination types.Address, hash types.Hash, pending *types.PendingInfo) error
 	GetPending(destination types.Address, hash types.Hash) (*types.PendingInfo, error)
 	DeletePending(destination types.Address, hash types.Hash) error
