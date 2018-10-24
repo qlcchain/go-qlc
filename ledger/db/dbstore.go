@@ -1,15 +1,20 @@
 package db
 
 import (
-	"io"
 	"errors"
+	"io"
 
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
 var (
-	ErrBlockExists = errors.New("block already exists")
-	ErrStoreEmpty  = errors.New("the store is empty")
+	ErrStoreEmpty    = errors.New("the store is empty")
+	ErrBlockExists   = errors.New("block already exists")
+	ErrBlockNotFound = errors.New("block not found")
+	ErrAccountExists = errors.New("account already exists")
+	ErrTokenExists   = errors.New("token already exists")
+	ErrTokenNotFound = errors.New("token not found")
+	ErrPendingExists = errors.New("pending transaction already exists")
 )
 
 // Store is an interface that all stores need to implement.

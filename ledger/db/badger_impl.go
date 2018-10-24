@@ -3,11 +3,10 @@ package db
 import (
 	"os"
 
-	"github.com/dgraph-io/badger"
-	"github.com/qlcchain/go-qlc/common/types"
-	badgerOpts "github.com/dgraph-io/badger/options"
 	"fmt"
-	"errors"
+	"github.com/dgraph-io/badger"
+	badgerOpts "github.com/dgraph-io/badger/options"
+	"github.com/qlcchain/go-qlc/common/types"
 	"math/rand"
 )
 
@@ -90,7 +89,8 @@ func (s *BadgerStore) Update(fn func(txn StoreTxn) error) error {
 	if err := fn(t); err != nil {
 		return err
 	}
-	return t.txn.Commit(nil)}
+	return t.txn.Commit(nil)
+}
 
 func (t *BadgerStoreTxn) set(key []byte, val []byte) error {
 	if err := t.txn.Set(key, val); err != nil {
@@ -149,7 +149,7 @@ func (t *BadgerStoreTxn) Flush() error {
 
 // ------------------- implement AccountMeta CURD -------------------
 
-func (t *BadgerStoreTxn) getAccountMetaKey(address types.Address) (key [1 + types.AddressSize]byte ){
+func (t *BadgerStoreTxn) getAccountMetaKey(address types.Address) (key [1 + types.AddressSize]byte) {
 	key[0] = idPrefixAccount
 	copy(key[1:], address[:])
 	return
@@ -168,7 +168,7 @@ func (t *BadgerStoreTxn) AddAccountMeta(meta *types.AccountMeta) error {
 	if _, err := t.txn.Get(key[:]); err != nil && err != badger.ErrKeyNotFound {
 		return err
 	} else if err == nil {
-		return errors.New("address already exists")
+		return ErrAccountExists
 	}
 	return t.set(key[:], metaBytes)
 
@@ -203,7 +203,7 @@ func (t *BadgerStoreTxn) UpdateAccountMeta(meta *types.AccountMeta) error {
 		return err
 	}
 
-	key := t.getAccountMetaKey( meta.Address)
+	key := t.getAccountMetaKey(meta.Address)
 	return t.set(key[:], metaBytes)
 }
 
@@ -229,62 +229,61 @@ func (t *BadgerStoreTxn) HasAccountMeta(address types.Address) (bool, error) {
 // ------------------- implement Token CURD ---------------------
 
 func (t *BadgerStoreTxn) AddTokenMeta(address types.Address, meta *types.TokenMeta) error {
-	accountmeta ,err := t.GetAccountMeta(address)
-	if err != nil{
+	accountmeta, err := t.GetAccountMeta(address)
+	if err != nil {
 		return err
 	}
 
-	for _ , t := range accountmeta.Tokens{
-		if t.Type == meta.Type{
-			return  errors.New("token already exists")
+	for _, t := range accountmeta.Tokens {
+		if t.Type == meta.Type {
+			return ErrTokenExists
 		}
 	}
 
 	accountmeta.Tokens = append(accountmeta.Tokens, meta)
 	err = t.UpdateAccountMeta(accountmeta)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
 func (t *BadgerStoreTxn) GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error) {
-	accountmeta ,err := t.GetAccountMeta(address)
-	if err != nil{
+	accountmeta, err := t.GetAccountMeta(address)
+	if err != nil {
 		return nil, err
 	}
-	for _ , token := range accountmeta.Tokens{
-		if token.Type == tokenType{
+	for _, token := range accountmeta.Tokens {
+		if token.Type == tokenType {
 			return token, nil
 		}
 	}
-	return nil, errors.New("token does not exist")
+	return nil, ErrTokenNotFound
 }
 
 func (t *BadgerStoreTxn) DelTokenMeta(address types.Address, meta *types.TokenMeta) error {
 	deleteTokenType := meta.Type
-	accountmeta ,err := t.GetAccountMeta(address)
-	if err != nil{
+	accountmeta, err := t.GetAccountMeta(address)
+	if err != nil {
 		return err
 	}
 	tokens := accountmeta.Tokens
-	for index , token := range tokens{
-		if token.Type == deleteTokenType{
-			accountmeta.Tokens = append(tokens[:index],tokens[index+1:]...)
+	for index, token := range tokens {
+		if token.Type == deleteTokenType {
+			accountmeta.Tokens = append(tokens[:index], tokens[index+1:]...)
 		}
 	}
 
 	err = t.UpdateAccountMeta(accountmeta)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
-
 // ------------------- implement Block CURD --------------------
 
-func (t *BadgerStoreTxn) getBlockKey(hash types.Hash) (key [1 + types.HashSize]byte ){
+func (t *BadgerStoreTxn) getBlockKey(hash types.Hash) (key [1 + types.HashSize]byte) {
 	key[0] = idPrefixBlock
 	copy(key[1:], hash[:])
 	return
@@ -339,7 +338,8 @@ func (t *BadgerStoreTxn) GetBlock(hash types.Hash) (types.Block, error) {
 // DeleteBlock deletes the given block in the database.
 func (t *BadgerStoreTxn) DeleteBlock(hash types.Hash) error {
 	key := t.getBlockKey(hash)
-	return t.delete(key[:])}
+	return t.delete(key[:])
+}
 
 // HasBlock reports whether the database contains a block with the given hash.
 func (t *BadgerStoreTxn) HasBlock(hash types.Hash) (bool, error) {
@@ -376,8 +376,10 @@ func (t *BadgerStoreTxn) GetRandomBlock() (types.Block, error) {
 	if err != nil {
 		return nil, err
 	}
+	if count == 0 {
+		return nil, ErrStoreEmpty
+	}
 	index := rand.Int63n(int64(count))
-	fmt.Println(index)
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = false
 	it := t.txn.NewIterator(opts)
@@ -386,8 +388,7 @@ func (t *BadgerStoreTxn) GetRandomBlock() (types.Block, error) {
 	var temp int64
 	prefix := [...]byte{idPrefixBlock}
 	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
-		temp++
-		if temp == index{
+		if temp == index {
 			item := it.Item()
 			blockType := item.UserMeta()
 			blk, err := types.NewBlock(blockType)
@@ -400,8 +401,10 @@ func (t *BadgerStoreTxn) GetRandomBlock() (types.Block, error) {
 			})
 			return blk, nil
 		}
+		temp++
+
 	}
-	return nil, errors.New("block not found")
+	return nil, ErrBlockNotFound
 }
 
 // ------------------- implement Representation CURD --------------------
@@ -424,14 +427,16 @@ func (t *BadgerStoreTxn) AddRepresentation(address types.Address, amount types.B
 	if err != nil {
 		return err
 	}
-	return t.setRepresentation(address, oldAmount.Add(amount))}
+	return t.setRepresentation(address, oldAmount.Add(amount))
+}
 
 func (t *BadgerStoreTxn) SubRepresentation(address types.Address, amount types.Balance) error {
 	oldAmount, err := t.GetRepresentation(address)
 	if err != nil {
 		return err
 	}
-	return t.setRepresentation(address, oldAmount.Sub(amount))}
+	return t.setRepresentation(address, oldAmount.Sub(amount))
+}
 
 func (t *BadgerStoreTxn) GetRepresentation(address types.Address) (types.Balance, error) {
 	var key [1 + types.AddressSize]byte
@@ -467,7 +472,7 @@ func (t *BadgerStoreTxn) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
 	}
 }
 
-func (t *BadgerStoreTxn) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind) (key [1 + types.HashSize]byte ){
+func (t *BadgerStoreTxn) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind) (key [1 + types.HashSize]byte) {
 	key[0] = t.uncheckedKindToPrefix(kind)
 	copy(key[1:], hash[:])
 	return
@@ -491,7 +496,7 @@ func (t *BadgerStoreTxn) AddUncheckedBlock(parentHash types.Hash, blk types.Bloc
 }
 
 func (t *BadgerStoreTxn) DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind) error {
-	key :=  t.getUncheckedBlockKey(parentHash, kind)
+	key := t.getUncheckedBlockKey(parentHash, kind)
 	return t.delete(key[:])
 }
 
@@ -531,7 +536,8 @@ func (t *BadgerStoreTxn) HasUncheckedBlock(hash types.Hash, kind types.Unchecked
 		return false, err
 	}
 
-	return true, nil}
+	return true, nil
+}
 
 func (t *BadgerStoreTxn) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error {
 	panic("implement me")
@@ -579,7 +585,7 @@ func (t *BadgerStoreTxn) AddPending(destination types.Address, hash types.Hash, 
 	if _, err := t.txn.Get(key[:]); err != nil && err != badger.ErrKeyNotFound {
 		return err
 	} else if err == nil {
-		return errors.New("pending transaction already exists")
+		return ErrPendingExists
 	}
 
 	return t.set(key[:], pendingBytes)
@@ -602,8 +608,10 @@ func (t *BadgerStoreTxn) GetPending(destination types.Address, hash types.Hash) 
 	if err != nil {
 		return nil, err
 	}
-	return &pending, nil}
+	return &pending, nil
+}
 
 func (t *BadgerStoreTxn) DeletePending(destination types.Address, hash types.Hash) error {
 	key := t.getPendingKey(destination, hash)
-	return t.delete(key[:])}
+	return t.delete(key[:])
+}
