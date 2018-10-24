@@ -221,7 +221,7 @@ func TestBadgerStoreTxn_GetRandomBlock(t *testing.T) {
 		block, err := txn.GetRandomBlock()
 		if err != nil {
 			if err == ErrStoreEmpty {
-				fmt.Println("the store is empty")
+				fmt.Println("warn:the store is empty")
 			} else {
 				t.Fatal(err)
 			}
