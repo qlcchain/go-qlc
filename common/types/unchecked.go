@@ -7,7 +7,6 @@
 
 package types
 
-
 const (
 	PendingKeySize = AddressSize + HashSize
 )

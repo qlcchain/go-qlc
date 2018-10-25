@@ -8,8 +8,7 @@
 package types
 
 import (
-	"errors"
-	//"encoding/json"
+	"errors" //"encoding/json"
 
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
@@ -89,7 +88,6 @@ type StateBlock struct {
 	Work           Work      `msg:"work,extension" json:"work"`
 }
 
-
 //go:generate msgp
 type SmartContractBlock struct {
 	Type           Enum       `msg:"type" json:"type"`
@@ -168,6 +166,6 @@ func (b *SmartContractBlock) Root() Hash {
 	panic("implement me")
 }
 
-func (z *SmartContractBlock) Size() int {
+func (b *SmartContractBlock) Size() int {
 	panic("implement me")
 }

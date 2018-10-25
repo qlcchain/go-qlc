@@ -5,11 +5,10 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/tinylib/msgp/msgp"
-
 	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
 	"github.com/qlcchain/go-qlc/common/types/internal/util"
 	"github.com/shopspring/decimal"
+	"github.com/tinylib/msgp/msgp"
 )
 
 func init() {
@@ -92,8 +91,8 @@ func ParseBalanceInts(hi uint64, lo uint64) Balance {
 //ParseBalanceString create balance from string
 func ParseBalanceString(b string) (Balance, error) {
 	balance, err := uint128.FromString(b)
-	if err != nil{
-		return ZeroBalance,  err
+	if err != nil {
+		return ZeroBalance, err
 	}
 	return Balance(balance), nil
 }
