@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger"
-	"github.com/qlcchain/go-qlc/common/types"
 	"io/ioutil"
 	"testing"
+
+	"github.com/dgraph-io/badger"
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 const (
@@ -59,36 +60,20 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 		if !ok {
 			t.Fatalf("no 'type' key found in block")
 		}
-
 		//var blk types.Block
 		switch id {
 		case "state":
-			blk := new(types.StateBlock)
-			blk.Type = types.State
-			blk.Address, err = types.HexToAddress(values["address"].(string))
-			if err != nil {
-				t.Fatal(err)
-			}
-			blk.PreviousHash.Of(values["previousHash"].(string))
-			blk.Representative, err = types.HexToAddress(values["representative"].(string))
-			if err != nil {
-				t.Fatal(err)
-			}
-			blk.Balance, err = types.ParseBalance(values["balance"].(string), "Mqlc")
-			if err != nil {
-				t.Fatal(err)
-			}
 
 			//rand.Seed(time.Now().UnixNano())
 			//i := rand.Int()
 			//link := strconv.Itoa(i) + values["link"].(string)[len(strconv.Itoa(i)):]
 			//blk.Link.Of(link)
-			blk.Link.Of(values["link"].(string))
 
-			blk.Signature.Of(values["signature"].(string))
-			blk.Token.Of(values["token"].(string))
-			blk.Work.ParseWorkHexString(values["work"].(string))
-			blocks = append(blocks, blk)
+			if blk, err := types.ParseStateBlock(data); err != nil {
+				t.Fatal(err)
+			} else {
+				blocks = append(blocks, blk)
+			}
 		case types.SmartContract:
 			//blk := new(types.SmartContractBlock)
 		default:
@@ -115,10 +100,9 @@ func TestBadgerStoreTxn_AddBlock(t *testing.T) {
 	blocks := parseBlocks(t, "../testdata/blocks.json")
 	for _, blk := range blocks {
 		db.Update(func(txn StoreTxn) error {
-			err := txn.AddBlock(blk)
-			if err != nil {
+			if err := txn.AddBlock(blk); err != nil {
 				if err == ErrBlockExists {
-					fmt.Println("warn:block already exists")
+					t.Log(err)
 				} else {
 					t.Fatal(err)
 				}
@@ -137,12 +121,10 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 
 	db.View(func(txn StoreTxn) error {
 		hash := types.Hash{}
-		hash.Of("bbb23eab1706acaf717be7567c6b4568c801bfbae397503e885f8caf20e968a0")
-		block, err := txn.GetBlock(hash)
-
-		if err != nil {
+		hash.Of("348af516ebef667fccb9f403f2baf6f7322919e88c6757ec212c6d4452638ff5")
+		if block, err := txn.GetBlock(hash); err != nil {
 			if err == badger.ErrKeyNotFound {
-				fmt.Println("warn:block not found")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
@@ -183,7 +165,7 @@ func TestBadgerStoreTxn_HasBlock(t *testing.T) {
 
 	db.View(func(txn StoreTxn) error {
 		hash := types.Hash{}
-		hash.Of("f9b38dad8588db575bd81bca7a806cd9e103994b74d79931724198d99b239f8c")
+		hash.Of("bbb23eab1706acaf717be7567c6b4568c801bfbae397503e885f8caf20e968a0")
 		b, err := txn.HasBlock(hash)
 		if err != nil {
 			t.Fatal(err)
@@ -218,10 +200,9 @@ func TestBadgerStoreTxn_GetRandomBlock(t *testing.T) {
 	defer db.Close()
 
 	db.View(func(txn StoreTxn) error {
-		block, err := txn.GetRandomBlock()
-		if err != nil {
+		if block, err := txn.GetRandomBlock(); err != nil {
 			if err == ErrStoreEmpty {
-				fmt.Println("warn:the store is empty")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
@@ -289,10 +270,9 @@ func TestBadgerStoreTxn_AddAccountMeta(t *testing.T) {
 	accountMetas := parseAccountMetas(t, "../testdata/account.json")
 	for _, accountmeta := range accountMetas {
 		db.Update(func(txn StoreTxn) error {
-			err := txn.AddAccountMeta(accountmeta)
-			if err != nil {
+			if err := txn.AddAccountMeta(accountmeta); err != nil {
 				if err == ErrAccountExists {
-					fmt.Println("warn:account already exists")
+					t.Log(err)
 				} else {
 					t.Fatal(err)
 				}
@@ -310,11 +290,10 @@ func TestBadgerStoreTxn_GetAccountMeta(t *testing.T) {
 	defer db.Close()
 
 	db.View(func(txn StoreTxn) error {
-		address, err := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-		accountmeta, err := txn.GetAccountMeta(address)
-		if err != nil {
+		address, _ := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
+		if accountmeta, err := txn.GetAccountMeta(address); err != nil {
 			if err == badger.ErrKeyNotFound {
-				fmt.Println("warn:account not found")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
@@ -416,10 +395,11 @@ func TestBadgerStoreTxn_AddTokenMeta(t *testing.T) {
 	tokenmeta, address, _ := parseToken(t)
 
 	err = db.Update(func(txn StoreTxn) error {
-		err = txn.AddTokenMeta(address, &tokenmeta)
-		if err != nil {
-			if err == ErrTokenExists {
-				fmt.Println("warn:token already exists")
+		if err = txn.AddTokenMeta(address, &tokenmeta); err != nil {
+			if err == ErrTokenExists || err == badger.ErrKeyNotFound {
+				t.Log(err)
+			} else {
+				t.Fatal(err)
 			}
 		}
 		return nil
@@ -438,10 +418,9 @@ func TestBadgerStoreTxn_GetTokenMeta(t *testing.T) {
 
 	_, address, tokenType := parseToken(t)
 	db.View(func(txn StoreTxn) error {
-		tokenmeta, err := txn.GetTokenMeta(address, tokenType)
-		if err != nil {
+		if tokenmeta, err := txn.GetTokenMeta(address, tokenType); err != nil {
 			if err == ErrTokenNotFound {
-				fmt.Println("warn:token not found")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
@@ -505,11 +484,9 @@ func TestBadgerStoreTxn_AddPending(t *testing.T) {
 	address, hash, pendinfo := parsePending(t)
 
 	db.Update(func(txn StoreTxn) error {
-		err := txn.AddPending(address, hash, &pendinfo)
-		fmt.Println(err)
-		if err != nil {
+		if err := txn.AddPending(address, hash, &pendinfo); err != nil {
 			if err == ErrPendingExists {
-				fmt.Println("warn:pending transation already exists")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
@@ -528,10 +505,9 @@ func TestBadgerStoreTxn_GetPending(t *testing.T) {
 	address, hash, _ := parsePending(t)
 
 	db.View(func(txn StoreTxn) error {
-		pendinginfo, err := txn.GetPending(address, hash)
-		if err != nil {
+		if pendinginfo, err := txn.GetPending(address, hash); err != nil {
 			if err == badger.ErrKeyNotFound {
-				fmt.Println("warn:pending not found")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
@@ -579,10 +555,9 @@ func TestBadgerStoreTxn_AddUncheckedBlock(t *testing.T) {
 
 	parentHash, blk, kind := parseUncheckedBlock(t)
 	db.Update(func(txn StoreTxn) error {
-		err := txn.AddUncheckedBlock(parentHash, blk, kind)
-		if err != nil {
+		if err := txn.AddUncheckedBlock(parentHash, blk, kind); err != nil {
 			if err == ErrBlockExists {
-				fmt.Println("warn:block already exists")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
@@ -601,10 +576,9 @@ func TestBadgerStoreTxn_GetUncheckedBlock(t *testing.T) {
 	parentHash, _, kind := parseUncheckedBlock(t)
 
 	db.View(func(txn StoreTxn) error {
-		uncheckedBlock, err := txn.GetUncheckedBlock(parentHash, kind)
-		if err != nil {
+		if uncheckedBlock, err := txn.GetUncheckedBlock(parentHash, kind); err != nil {
 			if err == badger.ErrKeyNotFound {
-				fmt.Println("block not found")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
@@ -671,7 +645,7 @@ func TestBadgerStoreTxn_DeleteUncheckedBlock(t *testing.T) {
 // Test Badger Representation CURD
 
 func parseRepresentation(t *testing.T) (address types.Address) {
-	address, err := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	address, err := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -687,15 +661,15 @@ func TestBadgerStoreTxn_GetRepresentation(t *testing.T) {
 
 	address := parseRepresentation(t)
 	db.View(func(txn StoreTxn) error {
-		balance, err := txn.GetRepresentation(address)
-		if err != nil {
+		if balance, err := txn.GetRepresentation(address); err != nil {
 			if err == badger.ErrKeyNotFound {
-				fmt.Println("address not found")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
+		} else {
+			fmt.Println(balance)
 		}
-		fmt.Println(balance)
 		return nil
 	})
 }
@@ -739,10 +713,9 @@ func TestBadgerStoreTxn_SubRepresentation(t *testing.T) {
 		t.Fatal(err)
 	}
 	db.Update(func(txn StoreTxn) error {
-		err = txn.SubRepresentation(address, amount)
-		if err != nil {
+		if err = txn.SubRepresentation(address, amount); err != nil {
 			if err == badger.ErrKeyNotFound {
-				fmt.Println("address not found")
+				t.Log(err)
 			} else {
 				t.Fatal(err)
 			}
