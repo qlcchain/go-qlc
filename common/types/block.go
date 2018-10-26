@@ -8,6 +8,7 @@
 package types
 
 import (
+	"encoding/json"
 	"errors" //"encoding/json"
 
 	"github.com/tinylib/msgp/msgp"
@@ -150,8 +151,47 @@ func (b *StateBlock) Root() Hash {
 	panic("implement me")
 }
 
-func (z *StateBlock) Size() int {
+func (b *StateBlock) Size() int {
 	panic("implement me")
+}
+
+func ParseStateBlock(b []byte) (*StateBlock, error) {
+	var blk StateBlock
+	var values map[string]interface{}
+	err := json.Unmarshal(b, &values)
+	if err != nil {
+		return nil, err
+	}
+	id, ok := values["type"]
+	if !ok || id != "state" {
+		return nil, errors.New("err block type")
+	}
+	blk.Type = State
+	if blk.Address, err = HexToAddress(values["address"].(string)); err != nil {
+		return nil, err
+	}
+	if err = blk.PreviousHash.Of(values["previousHash"].(string)); err != nil {
+		return nil, err
+	}
+	if blk.Representative, err = HexToAddress(values["representative"].(string)); err != nil {
+		return nil, err
+	}
+	if blk.Balance, err = ParseBalance(values["balance"].(string), "Mqlc"); err != nil {
+		return nil, err
+	}
+	if err = blk.Link.Of(values["link"].(string)); err != nil {
+		return nil, err
+	}
+	if err = blk.Signature.Of(values["signature"].(string)); err != nil {
+		return nil, err
+	}
+	if err = blk.Token.Of(values["token"].(string)); err != nil {
+		return nil, err
+	}
+	if err = blk.Work.ParseWorkHexString(values["work"].(string)); err != nil {
+		return nil, err
+	}
+	return &blk, nil
 }
 
 func (b *SmartContractBlock) Hash() Hash {
