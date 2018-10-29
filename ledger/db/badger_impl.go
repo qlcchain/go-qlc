@@ -89,7 +89,7 @@ func (s *BadgerStore) Update(fn func(txn StoreTxn) error) error {
 	if err := fn(t); err != nil {
 		return err
 	}
-	return t.txn.Commit()
+	return t.txn.Commit(nil)
 }
 
 func (t *BadgerStoreTxn) set(key []byte, val []byte) error {
@@ -137,7 +137,7 @@ func (t *BadgerStoreTxn) Empty() (bool, error) {
 
 func (t *BadgerStoreTxn) Flush() error {
 	if t.ops >= badgerMaxOps {
-		if err := t.txn.Commit(); err != nil {
+		if err := t.txn.Commit(nil); err != nil {
 			return err
 		}
 
@@ -184,14 +184,8 @@ func (t *BadgerStoreTxn) GetAccountMeta(address types.Address) (*types.AccountMe
 	}
 
 	var meta types.AccountMeta
-	err = item.Value(func(val []byte) error {
-		metaBytes := val
-		if _, err = meta.UnmarshalMsg(metaBytes); err != nil {
-			return err
-		} else {
-			return nil
-		}
-	})
+	val, err := item.Value()
+	meta.UnmarshalMsg(val)
 
 	if err != nil {
 		return nil, err
@@ -327,14 +321,14 @@ func (t *BadgerStoreTxn) GetBlock(hash types.Hash) (types.Block, error) {
 		return nil, err
 	}
 
-	err = item.Value(func(val []byte) error {
-		blockBytes := val
-		if _, err = blk.UnmarshalMsg(blockBytes); err != nil {
-			return err
-		} else {
-			return nil
-		}
-	})
+	//err = item.Value(func(val []byte) error {
+	//	blockBytes := val
+	//	if _, err = blk.UnmarshalMsg(blockBytes); err != nil {
+	//		return err
+	//	} else {
+	//		return nil
+	//	}
+	//})
 
 	if err != nil {
 		return nil, err
@@ -403,14 +397,14 @@ func (t *BadgerStoreTxn) GetRandomBlock() (types.Block, error) {
 			if err != nil {
 				return nil, err
 			}
-			err = item.Value(func(val []byte) error {
-				blockBytes := val
-				if _, err = blk.UnmarshalMsg(blockBytes); err != nil {
-					return err
-				} else {
-					return nil
-				}
-			})
+			//err = item.Value(func(val []byte) error {
+			//	blockBytes := val
+			//	if _, err = blk.UnmarshalMsg(blockBytes); err != nil {
+			//		return err
+			//	} else {
+			//		return nil
+			//	}
+			//})
 			if err != nil {
 				return nil, err
 			}
@@ -458,19 +452,19 @@ func (t *BadgerStoreTxn) GetRepresentation(address types.Address) (types.Balance
 	key[0] = idPrefixRepresentation
 	copy(key[1:], address[:])
 
-	item, err := t.txn.Get(key[:])
+	_, err := t.txn.Get(key[:])
 	if err != nil {
 		return types.ZeroBalance, err
 	}
 
 	var amount types.Balance
-	err = item.Value(func(val []byte) error {
-		if err := amount.UnmarshalText(val); err != nil {
-			return err
-		} else {
-			return nil
-		}
-	})
+	//err = item.Value(func(val []byte) error {
+	//	if err := amount.UnmarshalText(val); err != nil {
+	//		return err
+	//	} else {
+	//		return nil
+	//	}
+	//})
 
 	return amount, nil
 }
@@ -531,14 +525,14 @@ func (t *BadgerStoreTxn) GetUncheckedBlock(parentHash types.Hash, kind types.Unc
 		return nil, err
 	}
 
-	err = item.Value(func(val []byte) error {
-		blockBytes := val
-		if _, err := blk.UnmarshalMsg(blockBytes); err != nil {
-			return err
-		} else {
-			return nil
-		}
-	})
+	//err = item.Value(func(val []byte) error {
+	//	blockBytes := val
+	//	if _, err := blk.UnmarshalMsg(blockBytes); err != nil {
+	//		return err
+	//	} else {
+	//		return nil
+	//	}
+	//})
 
 	if err != nil {
 		return nil, err
@@ -614,20 +608,20 @@ func (t *BadgerStoreTxn) AddPending(destination types.Address, hash types.Hash, 
 func (t *BadgerStoreTxn) GetPending(destination types.Address, hash types.Hash) (*types.PendingInfo, error) {
 	key := t.getPendingKey(destination, hash)
 
-	item, err := t.txn.Get(key[:])
+	_, err := t.txn.Get(key[:])
 	if err != nil {
 		return nil, err
 	}
 
 	var pending types.PendingInfo
-	err = item.Value(func(val []byte) error {
-		infoBytes := val
-		if _, err := pending.UnmarshalMsg(infoBytes); err != nil {
-			return err
-		} else {
-			return nil
-		}
-	})
+	//err = item.Value(func(val []byte) error {
+	//	infoBytes := val
+	//	if _, err := pending.UnmarshalMsg(infoBytes); err != nil {
+	//		return err
+	//	} else {
+	//		return nil
+	//	}
+	//})
 
 	if err != nil {
 		return nil, err
