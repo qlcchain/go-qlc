@@ -17,9 +17,13 @@ type RPC struct {
 	Port   uint   `json:"Port"`
 }
 type Node struct {
-	Version        uint   `json:"Version"`
-	Network        string `json:"Network"`
-	PrivateKeyPath string `json:"PrivateKeyPath"`
+	Version        uint     `json:"Version"`
+	Network        string   `json:"Network"`
+	PrivateKeyPath string   `json:"PrivateKeyPath"`
+	MdnsEnabled    bool     `json:"MdnsEnabled"`
+	MdnsInterval   int      `json:"MdnsInterval"`
+	BootNodes      []string `json:"BootNode"`
+	Listen         string   `json:"Listen"`
 }
 type Config struct {
 	*RPC  `json:"RPC"`
@@ -44,6 +48,10 @@ var (
 			Version:        1,
 			Network:        "testnet",
 			PrivateKeyPath: "",
+			MdnsEnabled:    true,
+			MdnsInterval:   30,
+			BootNodes:      []string{"/ip4/127.0.0.1/tcp/29734/ipfs/QmSv2rmNMNvyN548Bx75ii4B6hFYTsbYL3ANJw9dZmry11"},
+			Listen:         "/ip4/0.0.0.0/tcp/29735",
 		},
 	}
 )
