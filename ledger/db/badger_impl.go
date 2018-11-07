@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"math/rand"
 	"os"
 
@@ -67,7 +66,7 @@ func (s *BadgerStore) Close() error {
 
 // Purge purges any old/deleted keys from the database.
 func (s *BadgerStore) Purge() error {
-	return nil
+	return s.db.RunValueLogGC(0.5)
 }
 
 func (s *BadgerStore) View(fn func(txn StoreTxn) error) error {
@@ -296,7 +295,6 @@ func (t *BadgerStoreTxn) getBlockKey(hash types.Hash) (key [1 + types.HashSize]b
 // AddBlock adds the given block to the database.
 func (t *BadgerStoreTxn) AddBlock(blk types.Block) error {
 	hash := blk.Hash()
-	fmt.Println(hash)
 	blockBytes, err := blk.MarshalMsg(nil)
 	if err != nil {
 		return err
