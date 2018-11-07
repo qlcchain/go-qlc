@@ -67,6 +67,7 @@ type Block interface {
 	ID() Enum
 	Root() Hash
 	Size() int
+	Valid(threshold uint64) bool
 
 	msgp.Decodable
 	msgp.Encodable
@@ -155,6 +156,18 @@ func (b *StateBlock) Size() int {
 	panic("implement me")
 }
 
+func (b *StateBlock) Valid(threshold uint64) bool {
+	if b.IsOpen() {
+		return b.Work.IsValid(b.PreviousHash, threshold)
+	}
+
+	return b.Work.IsValid(Hash(b.Address), threshold)
+}
+
+func (b *StateBlock) IsOpen() bool {
+	return !b.PreviousHash.IsZero()
+}
+
 func ParseStateBlock(b []byte) (*StateBlock, error) {
 	var blk StateBlock
 	var values map[string]interface{}
@@ -207,5 +220,9 @@ func (b *SmartContractBlock) Root() Hash {
 }
 
 func (b *SmartContractBlock) Size() int {
+	panic("implement me")
+}
+
+func (b *SmartContractBlock) Valid(threshold uint64) bool {
 	panic("implement me")
 }

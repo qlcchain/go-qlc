@@ -5,7 +5,8 @@ import (
 )
 
 type Genesis struct {
-	Block types.StateBlock
+	Block         types.StateBlock
+	WorkThreshold uint64
 }
 
 var (
@@ -18,7 +19,7 @@ var (
 			"link":"5670d55b612313711ce76e85ac81d80478d5d04d4cebc399aeace07ae05dd299",
 			"signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
 			"token":"991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728949",
-			"work": "3c82cc724905ee00"
+			"work": "2b61e26528833017" 
 		}
 		`
 )
@@ -28,5 +29,5 @@ func Get() (*Genesis, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Genesis{*gen}, nil
+	return &Genesis{*gen, uint64(0x0fffffc000000000)}, nil
 }
