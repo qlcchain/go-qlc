@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"testing"
+	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -63,12 +64,6 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 		//var blk types.Block
 		switch id {
 		case "state":
-
-			//rand.Seed(time.Now().UnixNano())
-			//i := rand.Int()
-			//link := strconv.Itoa(i) + values["link"].(string)[len(strconv.Itoa(i)):]
-			//blk.Link.Of(link)
-
 			if blk, err := types.ParseStateBlock(data); err != nil {
 				t.Fatal(err)
 			} else {
@@ -83,19 +78,13 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 	return
 }
 
-func TestBadgerStoreTxn_AddBlocks(t *testing.T) {
-	const n = 1
-	for i := 0; i < n; i++ {
-		TestBadgerStoreTxn_AddBlock(t)
-	}
-}
-
 func TestBadgerStoreTxn_AddBlock(t *testing.T) {
 	db, err := NewBadgerStore(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	start := time.Now()
 
 	blocks := parseBlocks(t, "../testdata/blocks.json")
 	for _, blk := range blocks {
@@ -110,6 +99,8 @@ func TestBadgerStoreTxn_AddBlock(t *testing.T) {
 			return nil
 		})
 	}
+	end := time.Now()
+	fmt.Printf("write benchmark: time span,%f \n", end.Sub(start).Seconds())
 }
 
 func TestBadgerStoreTxn_GetBlock(t *testing.T) {
@@ -118,10 +109,11 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	start := time.Now()
 
 	db.View(func(txn StoreTxn) error {
 		hash := types.Hash{}
-		hash.Of("348af516ebef667fccb9f403f2baf6f7322919e88c6757ec212c6d4452638ff5")
+		hash.Of("c22d7a499f40691de472f2f2fb5cff29b660cac4e6b05d412fd324295175a2f1")
 		if block, err := txn.GetBlock(hash); err != nil {
 			if err == badger.ErrKeyNotFound {
 				t.Log(err)
@@ -129,13 +121,16 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 				t.Fatal(err)
 			}
 		} else {
-			fmt.Println(block)
+			//fmt.Println(block)
 			if block.Hash() != hash {
 				t.Fatal(errors.New("get incorrect block"))
 			}
 		}
 		return nil
 	})
+	end := time.Now()
+	fmt.Printf("write benchmark: time span,%f \n", end.Sub(start).Seconds())
+
 }
 
 func TestBadgerStoreTxn_DeleteBlock(t *testing.T) {
@@ -290,7 +285,7 @@ func TestBadgerStoreTxn_GetAccountMeta(t *testing.T) {
 	defer db.Close()
 
 	db.View(func(txn StoreTxn) error {
-		address, _ := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
+		address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 		if accountmeta, err := txn.GetAccountMeta(address); err != nil {
 			if err == badger.ErrKeyNotFound {
 				t.Log(err)
