@@ -1,16 +1,20 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	libnet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-const PingInterval = time.Second * 30
+// Stream Errors
+var (
+	ErrShouldCloseConnectionAndExitLoop = errors.New("should close connection and exit loop")
+	ErrStreamIsNotConnected             = errors.New("stream is not connected")
+)
 
 // Stream define the structure of a stream in p2p network
 type Stream struct {
@@ -20,6 +24,7 @@ type Stream struct {
 	stream      libnet.Stream
 	node        *QlcNode
 	quitWriteCh chan bool
+	messageChan chan []byte
 }
 
 // NewStream return a new Stream
@@ -39,6 +44,7 @@ func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream libnet.Stream, nod
 		stream:      stream,
 		node:        node,
 		quitWriteCh: make(chan bool, 1),
+		messageChan: make(chan []byte, 2*1024),
 	}
 }
 
@@ -93,14 +99,52 @@ func (s *Stream) readLoop() {
 	logger.Info("connect ", s.pid.Pretty(), " success")
 	// loop.
 	buf := make([]byte, 1024*4)
+	messageBuffer := make([]byte, 0)
+
+	var message *QlcMessage
 
 	for {
-		logger.Info("wait for data from stream")
-		_, err := s.stream.Read(buf)
+		n, err := s.stream.Read(buf)
 		if err != nil {
-			logger.Errorf("Error occurred when reading data from network connection.")
+			logger.Debug("Error occurred when reading data from network connection.")
 			s.close()
 			return
+		}
+
+		messageBuffer = append(messageBuffer, buf[:n]...)
+
+		for {
+			if message == nil {
+				var err error
+
+				// waiting for header data.
+				if len(messageBuffer) < QlcMessageHeaderLength {
+					// continue reading.
+					break
+				}
+				message, err = ParseQlcMessage(messageBuffer)
+				if err != nil {
+					return
+				}
+				messageBuffer = messageBuffer[QlcMessageHeaderLength:]
+
+			}
+			// waiting for data.
+			if len(messageBuffer) < int(message.DataLength()) {
+				// continue reading.
+				break
+			}
+			message.content = append(message.content, messageBuffer[:message.DataLength()]...)
+			// remove data from buffer.
+			messageBuffer = messageBuffer[message.DataLength():]
+
+			// handle message.
+			if err := s.handleMessage(message); err == ErrShouldCloseConnectionAndExitLoop {
+				return
+			}
+
+			// reset message.
+			message = nil
 		}
 	}
 }
@@ -115,7 +159,7 @@ func (s *Stream) writeLoop() {
 	for {
 		select {
 		case took := <-ts:
-			logger.Info("ping took: ", took)
+			//logger.Info("ping took: ", took)
 			if took == 0 {
 				logger.Debug("failed to receive ping")
 				s.close()
@@ -124,6 +168,9 @@ func (s *Stream) writeLoop() {
 		case <-s.quitWriteCh:
 			logger.Debug("Quiting Stream Write Loop.")
 			return
+		case message := <-s.messageChan:
+			s.WriteQlcMessage(message)
+			continue
 		}
 	}
 
@@ -146,4 +193,40 @@ func (s *Stream) close() {
 	if s.stream != nil {
 		s.stream.Close()
 	}
+}
+
+// SendMessage send msg to buffer
+func (s *Stream) SendMessage(messageType string, data []byte) error {
+	message := NewQlcMessage(data, messageType)
+	s.messageChan <- message
+	return nil
+}
+
+// WriteQlcMessage write qlc msg in the stream
+func (s *Stream) WriteQlcMessage(message []byte) error {
+
+	err := s.Write(message)
+
+	return err
+}
+func (s *Stream) Write(data []byte) error {
+	if s.stream == nil {
+		s.close()
+		return ErrStreamIsNotConnected
+	}
+
+	n, err := s.stream.Write(data)
+	if err != nil {
+		logger.Error("Failed to send message to peer.")
+		s.close()
+		return err
+	}
+	logger.Infof("%d byte send to %v ", n, s.pid.Pretty())
+	return nil
+}
+func (s *Stream) handleMessage(message *QlcMessage) error {
+
+	s.node.netService.PutMessage(NewBaseMessage(message.MessageType(), s.pid.Pretty(), message.content))
+
+	return nil
 }

@@ -33,6 +33,7 @@ type QlcNode struct {
 	ping           *PingService
 	dis            *discovery.RoutingDiscovery
 	kadDht         *dht.IpfsDHT
+	netService     *QlcService
 }
 
 // NewNode return new QlcNode according to the config.
@@ -175,4 +176,23 @@ func (node *QlcNode) stopHost() {
 	}
 
 	node.host.Close()
+}
+
+// SetQlcService set netService
+func (node *QlcNode) SetQlcService(ns *QlcService) {
+	node.netService = ns
+}
+
+// Stop stop a node.
+func (node *QlcNode) Stop() {
+	logger.Info("Stop QlcService Node...")
+
+	node.stopHost()
+	node.streamManager.Stop()
+}
+
+// BroadcastMessage broadcast message.
+func (node *QlcNode) BroadcastMessage(messageName string, data []byte) {
+
+	node.streamManager.BroadcastMessage(messageName, data)
 }
