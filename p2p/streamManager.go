@@ -159,3 +159,13 @@ func (sm *StreamManager) CreateStreamWithPeer(pid peer.ID) {
 		sm.AddStream(stream)
 	}
 }
+
+// BroadcastMessage broadcast the message
+func (sm *StreamManager) BroadcastMessage(messageName string, messageContent []byte) {
+
+	sm.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		stream.SendMessage(messageName, messageContent)
+		return true
+	})
+}
