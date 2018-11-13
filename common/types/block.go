@@ -8,6 +8,7 @@
 package types
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors" //"encoding/json"
 
@@ -27,6 +28,12 @@ const (
 var (
 	ErrBadBlockType = errors.New("bad block type")
 	ErrNotABlock    = errors.New("block type is not_a_block")
+)
+
+const (
+	preambleSize    = 32
+	blockSizeCommon = SignatureSize + WorkSize
+	blockSizeState  = blockSizeCommon
 )
 
 func (e Enum) String() string {
@@ -67,6 +74,7 @@ type Block interface {
 	ID() Enum
 	Root() Hash
 	Size() int
+	Valid(threshold uint64) bool
 
 	msgp.Decodable
 	msgp.Encodable
@@ -140,7 +148,9 @@ func hashBytes(inputs ...[]byte) Hash {
 }
 
 func (b *StateBlock) Hash() Hash {
-	return hashBytes(b.Link[:], b.Representative[:], b.Address[:])
+	var preamble [preambleSize]byte
+	preamble[len(preamble)-1] = byte(State)
+	return hashBytes(preamble[:], b.Address[:], b.PreviousHash[:], b.Representative[:], b.Balance.Bytes(binary.BigEndian), b.Link[:])
 }
 
 func (b *StateBlock) ID() Enum {
@@ -148,11 +158,27 @@ func (b *StateBlock) ID() Enum {
 }
 
 func (b *StateBlock) Root() Hash {
-	panic("implement me")
+	if b.IsOpen() {
+		return b.PreviousHash
+	}
+
+	return b.Link
 }
 
 func (b *StateBlock) Size() int {
 	panic("implement me")
+}
+
+func (b *StateBlock) Valid(threshold uint64) bool {
+	if b.IsOpen() {
+		return b.Work.IsValid(b.PreviousHash, threshold)
+	}
+
+	return b.Work.IsValid(Hash(b.Address), threshold)
+}
+
+func (b *StateBlock) IsOpen() bool {
+	return !b.PreviousHash.IsZero()
 }
 
 func ParseStateBlock(b []byte) (*StateBlock, error) {
@@ -207,5 +233,9 @@ func (b *SmartContractBlock) Root() Hash {
 }
 
 func (b *SmartContractBlock) Size() int {
+	panic("implement me")
+}
+
+func (b *SmartContractBlock) Valid(threshold uint64) bool {
 	panic("implement me")
 }

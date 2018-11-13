@@ -28,7 +28,7 @@ type UncheckedKind byte
 
 const (
 	UncheckedKindPrevious UncheckedKind = iota
-	UncheckedKindSource
+	UncheckedKindLink
 )
 
 type UncheckedBlockWalkFunc func(block Block, kind UncheckedKind) error

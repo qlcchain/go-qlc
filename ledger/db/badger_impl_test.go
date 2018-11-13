@@ -113,7 +113,7 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 
 	db.View(func(txn StoreTxn) error {
 		hash := types.Hash{}
-		hash.Of("c22d7a499f40691de472f2f2fb5cff29b660cac4e6b05d412fd324295175a2f1")
+		hash.Of("a624942c313e8ddd7bc12cf6188e4fb9d10da4238086aceca7f81ea3fc595ba9")
 		if block, err := txn.GetBlock(hash); err != nil {
 			if err == badger.ErrKeyNotFound {
 				t.Log(err)
@@ -121,7 +121,7 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 				t.Fatal(err)
 			}
 		} else {
-			//fmt.Println(block)
+			fmt.Println(block)
 			if block.Hash() != hash {
 				t.Fatal(errors.New("get incorrect block"))
 			}
@@ -131,6 +131,25 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 	end := time.Now()
 	fmt.Printf("write benchmark: time span,%f \n", end.Sub(start).Seconds())
 
+}
+
+func TestBadgerStoreTxn_GetBlocks(t *testing.T) {
+	db, err := NewBadgerStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	db.View(func(txn StoreTxn) error {
+		if block, err := txn.GetBlocks(); err != nil {
+			t.Fatal(err)
+		} else {
+			for _, f := range block {
+				fmt.Println(*f)
+			}
+		}
+		return nil
+	})
 }
 
 func TestBadgerStoreTxn_DeleteBlock(t *testing.T) {
@@ -453,7 +472,7 @@ func parsePending(t *testing.T) (address types.Address, hash types.Hash, pending
 	if err != nil {
 		t.Fatal(err)
 	}
-	hash.Of("671cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722478")
+	hash.Of("a624942c313e8ddd7bc12cf6188e4fb9d10da4238086aceca7f81ea3fc595ba9")
 
 	balance, err := types.ParseBalance("2345.6789", "Mqlc")
 	if err != nil {
@@ -534,10 +553,10 @@ func TestBadgerStoreTxn_DeletePending(t *testing.T) {
 // Test Badger UncheckedBlock CURD
 
 func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, kind types.UncheckedKind) {
-	parentHash.Of("671cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722471")
+	parentHash.Of("d66750ccbb0ff65db134efaaec31d0b123a557df34e7e804d6884447ee589b3c")
 	blocks := parseBlocks(t, "../testdata/uncheckedblock.json")
 	blk = blocks[0]
-	kind = types.UncheckedKindPrevious
+	kind = types.UncheckedKindLink
 	return
 }
 
@@ -640,7 +659,7 @@ func TestBadgerStoreTxn_DeleteUncheckedBlock(t *testing.T) {
 // Test Badger Representation CURD
 
 func parseRepresentation(t *testing.T) (address types.Address) {
-	address, err := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
+	address, err := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -715,6 +734,118 @@ func TestBadgerStoreTxn_SubRepresentation(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+		return nil
+	})
+}
+
+// Test Badger Frontier CURD
+
+func parseFrontier(t *testing.T) (frontier types.Frontier) {
+	hash := "291cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
+	address := "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby"
+	frontier.Hash.Of(hash)
+	if address, err := types.HexToAddress(address); err != nil {
+		t.Fatal(err)
+	} else {
+		frontier.Address = address
+	}
+	return
+}
+
+func TestBadgerStoreTxn_AddFrontier(t *testing.T) {
+	db, err := NewBadgerStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	frontier := parseFrontier(t)
+
+	db.Update(func(txn StoreTxn) error {
+		if err := txn.AddFrontier(&frontier); err != nil {
+			if err == ErrFrontierExists {
+				t.Log(err)
+			} else {
+				t.Fatal(err)
+			}
+		}
+		return nil
+	})
+}
+
+func TestBadgerStoreTxn_GetFrontier(t *testing.T) {
+	db, err := NewBadgerStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	frontier := parseFrontier(t)
+	db.View(func(txn StoreTxn) error {
+		if frontier, err := txn.GetFrontier(frontier.Hash); err != nil {
+			if err == badger.ErrKeyNotFound {
+				t.Log(err)
+			} else {
+				t.Fatal(err)
+			}
+		} else {
+			fmt.Println(frontier)
+		}
+		return nil
+	})
+}
+
+func TestBadgerStoreTxn_GetFrontiers(t *testing.T) {
+	db, err := NewBadgerStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	db.View(func(txn StoreTxn) error {
+		if frontiers, err := txn.GetFrontiers(); err != nil {
+			t.Fatal(err)
+
+		} else {
+			for _, f := range frontiers {
+				fmt.Println(f)
+			}
+		}
+		return nil
+	})
+}
+
+func TestBadgerStoreTxn_DeleteFrontier(t *testing.T) {
+	db, err := NewBadgerStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	frontier := parseFrontier(t)
+
+	db.Update(func(txn StoreTxn) error {
+		err := txn.DeleteFrontier(frontier.Hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+}
+
+func TestBadgerStoreTxn_CountFrontiers(t *testing.T) {
+	db, err := NewBadgerStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	db.View(func(txn StoreTxn) error {
+		b, err := txn.CountFrontiers()
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println(b)
 		return nil
 	})
 }
