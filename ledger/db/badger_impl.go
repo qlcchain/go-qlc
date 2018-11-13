@@ -12,7 +12,7 @@ import (
 const (
 	idPrefixBlock byte = iota
 	idPrefixUncheckedBlockPrevious
-	idPrefixUncheckedBlockSource
+	idPrefixUncheckedBlockLink
 	idPrefixAccount
 	idPrefixToken
 	idPrefixFrontier
@@ -264,6 +264,26 @@ func (t *BadgerStoreTxn) GetTokenMeta(address types.Address, tokenType types.Has
 	return nil, ErrTokenNotFound
 }
 
+func (t *BadgerStoreTxn) UpdateTokenMeta(address types.Address, meta *types.TokenMeta) error {
+	accountmeta, err := t.GetAccountMeta(address)
+	if err != nil {
+		return err
+	}
+	for _, token := range accountmeta.Tokens {
+		if token.Type == meta.Type {
+			if err = t.DelTokenMeta(address, token); err != nil {
+				return err
+			}
+			if err := t.AddTokenMeta(address, meta); err != nil {
+				return err
+			} else {
+				return nil
+			}
+		}
+	}
+	return ErrTokenNotFound
+}
+
 func (t *BadgerStoreTxn) DelTokenMeta(address types.Address, meta *types.TokenMeta) error {
 	deleteTokenType := meta.Type
 	accountmeta, err := t.GetAccountMeta(address)
@@ -339,6 +359,38 @@ func (t *BadgerStoreTxn) GetBlock(hash types.Hash) (types.Block, error) {
 	}
 
 	return blk, nil
+}
+
+func (t *BadgerStoreTxn) GetBlocks() ([]*types.Block, error) {
+	var blocks []*types.Block
+
+	it := t.txn.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	prefix := [...]byte{idPrefixBlock}
+	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
+		item := it.Item()
+
+		block, err := types.NewBlock(byte(types.State))
+		if err != nil {
+			return nil, err
+		}
+		err = item.Value(func(val []byte) error {
+			blockBytes := val
+			if _, err := block.UnmarshalMsg(blockBytes); err != nil {
+				return err
+			} else {
+				blocks = append(blocks, &block)
+				return nil
+			}
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return blocks, nil
 }
 
 // DeleteBlock deletes the given block in the database.
@@ -479,8 +531,8 @@ func (t *BadgerStoreTxn) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
 	switch kind {
 	case types.UncheckedKindPrevious:
 		return idPrefixUncheckedBlockPrevious
-	case types.UncheckedKindSource:
-		return idPrefixUncheckedBlockSource
+	case types.UncheckedKindLink:
+		return idPrefixUncheckedBlockLink
 	default:
 		panic("bad unchecked block kind")
 	}
@@ -578,7 +630,7 @@ func (t *BadgerStoreTxn) countUncheckedBlocks(kind types.UncheckedKind) uint64 {
 }
 
 func (t *BadgerStoreTxn) CountUncheckedBlocks() (uint64, error) {
-	return t.countUncheckedBlocks(types.UncheckedKindSource) +
+	return t.countUncheckedBlocks(types.UncheckedKindLink) +
 		t.countUncheckedBlocks(types.UncheckedKindPrevious), nil
 }
 
@@ -636,4 +688,92 @@ func (t *BadgerStoreTxn) GetPending(destination types.Address, hash types.Hash) 
 func (t *BadgerStoreTxn) DeletePending(destination types.Address, hash types.Hash) error {
 	key := t.getPendingKey(destination, hash)
 	return t.delete(key[:])
+}
+
+// ------------------- implement Frontier CURD --------------------
+
+func (t *BadgerStoreTxn) getFrontierKey(hash types.Hash) [1 + types.HashSize]byte {
+	var key [1 + types.HashSize]byte
+	key[0] = idPrefixFrontier
+	copy(key[1:], hash[:])
+	return key
+}
+
+func (t *BadgerStoreTxn) AddFrontier(frontier *types.Frontier) error {
+	key := t.getFrontierKey(frontier.Hash)
+
+	// never overwrite implicitly
+	if _, err := t.txn.Get(key[:]); err != nil && err != badger.ErrKeyNotFound {
+		return err
+	} else if err == nil {
+		return ErrFrontierExists
+	}
+
+	return t.set(key[:], frontier.Address[:])
+}
+
+func (t *BadgerStoreTxn) GetFrontier(hash types.Hash) (*types.Frontier, error) {
+	key := t.getFrontierKey(hash)
+	item, err := t.txn.Get(key[:])
+
+	if err != nil {
+		return nil, err
+	}
+
+	frontier := types.Frontier{Hash: hash}
+	err = item.Value(func(val []byte) error {
+		copy(frontier.Address[:], val)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &frontier, nil
+}
+
+func (t *BadgerStoreTxn) GetFrontiers() ([]*types.Frontier, error) {
+	var frontiers []*types.Frontier
+	it := t.txn.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	prefix := [...]byte{idPrefixFrontier}
+	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
+		item := it.Item()
+
+		var frontier types.Frontier
+		err := item.Value(func(val []byte) error {
+			copy(frontier.Address[:], val)
+			copy(frontier.Hash[:], item.Key()[1:])
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+		frontiers = append(frontiers, &frontier)
+	}
+
+	return frontiers, nil
+}
+
+func (t *BadgerStoreTxn) DeleteFrontier(hash types.Hash) error {
+	key := t.getFrontierKey(hash)
+	return t.delete(key[:])
+}
+
+func (t *BadgerStoreTxn) CountFrontiers() (uint64, error) {
+	var count uint64
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = false
+
+	it := t.txn.NewIterator(opts)
+	defer it.Close()
+
+	prefix := [...]byte{idPrefixFrontier}
+	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
+		count++
+	}
+	return count, nil
 }
