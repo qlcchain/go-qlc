@@ -10,7 +10,7 @@ type Genesis struct {
 }
 
 var (
-	test_genesis_data = `{
+	Test_genesis_data = `{
 			"type": "state",
 			"address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
 			"previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -23,7 +23,7 @@ var (
 		}
 		`
 
-	test_genesis_data2 = `{
+	Test_genesis_data2 = `{
 			"type": "state",
 			"address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
 			"previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -37,16 +37,8 @@ var (
 		`
 )
 
-func Get() (*Genesis, error) {
-	gen, err := types.ParseStateBlock([]byte(test_genesis_data))
-	if err != nil {
-		return nil, err
-	}
-	return &Genesis{*gen, uint64(0x0fffffc000000000)}, nil
-}
-
-func Get2() (*Genesis, error) {
-	gen, err := types.ParseStateBlock([]byte(test_genesis_data2))
+func Get(genStr string) (*Genesis, error) {
+	gen, err := types.ParseStateBlock([]byte(genStr))
 	if err != nil {
 		return nil, err
 	}

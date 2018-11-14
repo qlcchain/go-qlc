@@ -113,7 +113,7 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 
 	db.View(func(txn StoreTxn) error {
 		hash := types.Hash{}
-		hash.Of("a624942c313e8ddd7bc12cf6188e4fb9d10da4238086aceca7f81ea3fc595ba9")
+		hash.Of("139170ab1cecd2ad88981521336e80faa07f82d9959a58502bc5656a3c05ef12")
 		if block, err := txn.GetBlock(hash); err != nil {
 			if err == badger.ErrKeyNotFound {
 				t.Log(err)
@@ -304,7 +304,7 @@ func TestBadgerStoreTxn_GetAccountMeta(t *testing.T) {
 	defer db.Close()
 
 	db.View(func(txn StoreTxn) error {
-		address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+		address, _ := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
 		if accountmeta, err := txn.GetAccountMeta(address); err != nil {
 			if err == badger.ErrKeyNotFound {
 				t.Log(err)
@@ -659,7 +659,7 @@ func TestBadgerStoreTxn_DeleteUncheckedBlock(t *testing.T) {
 // Test Badger Representation CURD
 
 func parseRepresentation(t *testing.T) (address types.Address) {
-	address, err := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	address, err := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
 	if err != nil {
 		t.Fatal(err)
 	}

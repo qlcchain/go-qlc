@@ -22,7 +22,7 @@ var (
 	ErrNotFound         = errors.New("item not found in the store")
 	ErrZeroSpend        = errors.New("zero spend not allowed")
 	ErrTokenBalance     = errors.New("err token balance for receive block")
-	ErrChangeNotAllowed = errors.New("balance change not allowed in change block")
+	ErrChangeNotAllowed = errors.New("balance change not allowed in change representative block")
 	ErrTokenType        = errors.New("err token type for change representation")
 )
 
@@ -138,6 +138,10 @@ func (l *Ledger) addOpenBlock(txn db.StoreTxn, blk *types.StateBlock) error {
 		return ErrMissingLink
 	}
 
+	if !blk.Balance.Equal(pending.Amount) {
+		log.Info("pending amount/block balance, ", pending.Amount, blk.Balance)
+		return ErrTokenBalance
+	}
 	if err = l.updateAccountMeta(txn, blk, pending.Amount); err != nil {
 		return err
 	}
@@ -239,6 +243,7 @@ func (l *Ledger) addReceiveBlock(txn db.StoreTxn, blk *types.StateBlock) error {
 	token.Balance = token.Balance.Add(pending.Amount)
 	token.Header = hash
 	if !token.Balance.Equal(blk.Balance) {
+		log.Info("token balance/block balance ", token.Balance, blk.Balance)
 		return ErrTokenBalance
 	}
 	if err := txn.UpdateTokenMeta(blk.Address, token); err != nil {
@@ -307,7 +312,7 @@ func (l *Ledger) addStateBlock(txn db.StoreTxn, blk *types.StateBlock) error {
 	// obtain account information if possible
 	token, err := txn.GetTokenMeta(blk.Address, blk.Token)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == db.ErrTokenNotFound || err == badger.ErrKeyNotFound {
 			// todo: check for key not found error
 			if !blk.IsOpen() {
 				return l.addOpenBlock(txn, blk)
@@ -497,7 +502,6 @@ func (l *Ledger) processUncheckedBlock(txn db.StoreTxn, blk types.Block, kind ty
 
 func (l *Ledger) updateFrontier(txn db.StoreTxn, blk *types.StateBlock) error {
 	frontier, _ := txn.GetFrontier(blk.PreviousHash)
-
 	if blk.IsOpen() {
 		if err := txn.DeleteFrontier(frontier.Hash); err != nil {
 			return err

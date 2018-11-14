@@ -23,12 +23,12 @@ func TestLedger_GetAddressHexStr(t *testing.T) {
 	}
 }
 
-func InitialiseLedger(t *testing.T) (*Ledger, error) {
+func InitialiseLedger(t *testing.T, genStr string) (*Ledger, error) {
 	store, err := db.NewBadgerStore(dir)
 	if err != nil {
 		return nil, err
 	}
-	gen, err := genesis.Get()
+	gen, err := genesis.Get(genStr)
 	if err != nil {
 		return nil, err
 	}
@@ -158,64 +158,143 @@ var (
 )
 
 func TestLedger_AddBlocks(t *testing.T) {
-	ledger, err := InitialiseLedger(t)
+	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ledger.db.Close()
 
-	blk, err := types.ParseStateBlock([]byte(test_send_block))
+	blk, err := types.NewBlock(byte(types.State))
+	if blk, err = types.ParseStateBlock([]byte(test_send_block)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	blk, err = types.ParseStateBlock([]byte(test_open_block))
+	if blk, err = types.ParseStateBlock([]byte(test_open_block)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	blk, err = types.ParseStateBlock([]byte(test_send_block2))
+	if blk, err = types.ParseStateBlock([]byte(test_send_block2)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	blk, err = types.ParseStateBlock([]byte(test_receiver_block))
+	if blk, err = types.ParseStateBlock([]byte(test_receiver_block)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	blk, err = types.ParseStateBlock([]byte(test_change_block))
+	if blk, err = types.ParseStateBlock([]byte(test_change_block)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestLedger_AddBlock_ErrMissingLink(t *testing.T) {
-	ledger, err := InitialiseLedger(t)
+	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ledger.db.Close()
 
-	blk, err := types.ParseStateBlock([]byte(test_MissingLink_receive_block))
+	blk, err := types.NewBlock(byte(types.State))
+
+	if blk, err = types.ParseStateBlock([]byte(test_MissingLink_receive_block)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingLink {
 		t.Fatal(err)
 	}
-	blk, err = types.ParseStateBlock([]byte(test_MissingLink_send_block))
+	if blk, err = types.ParseStateBlock([]byte(test_MissingLink_send_block)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestLedger_AddBlock_ErrMissingPrevious(t *testing.T) {
-	ledger, err := InitialiseLedger(t)
+	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ledger.db.Close()
 
-	blk, err := types.ParseStateBlock([]byte(test_MissingPrevious_send_block2))
+	blk, err := types.NewBlock(byte(types.State))
+	if blk, err = types.ParseStateBlock([]byte(test_MissingPrevious_send_block2)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {
 		t.Fatal(err)
 	}
-	blk, err = types.ParseStateBlock([]byte(test_MissingPrevious_send_block1))
+	if blk, err = types.ParseStateBlock([]byte(test_MissingPrevious_send_block1)); err != nil {
+		t.Fatal(err)
+	}
 	if err := ledger.AddBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger2_AddBlock(t *testing.T) {
+	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ledger.db.Close()
+}
+
+var (
+	test_send_block_ledger2 = `{
+      "type": "state",
+      "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "previousHash": "247230c7377a661e57d51b17b527198ed52392fb8b99367a234d28ccc378eb05",
+      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "balance": "90000",
+      "link":"7d35650e78d8d7037c90390357f8a59bf17eff82cbc03c94f0b6267335a8dcb3",
+      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
+      "token":"991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728949",
+      "work": "3c82cc724905ee00"
+	}
+	`
+
+	test_receiver_block_ledger2 = `{
+      "type": "state",
+      "address":"qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
+      "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "balance": "9910000",
+      "link":"cc71d22c6f7698de3d6912bcfd6e5182557efa682c478329a3f21789dba9aef7",
+      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
+      "token":"991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728949",
+      "work": "3c82cc724905ee00"
+	}
+	`
+)
+
+func TestLedger2_AddBlock2(t *testing.T) {
+	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ledger.db.Close()
+	blk, err := types.NewBlock(byte(types.State))
+	if blk, err = types.ParseStateBlock([]byte(test_send_block_ledger2)); err != nil {
+		t.Fatal(err)
+	}
+	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {
+		t.Fatal(err)
+	}
+	if blk, err = types.ParseStateBlock([]byte(test_receiver_block_ledger2)); err != nil {
+		t.Fatal(err)
+	}
+	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {
 		t.Fatal(err)
 	}
 }
