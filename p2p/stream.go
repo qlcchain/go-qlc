@@ -226,7 +226,7 @@ func (s *Stream) Write(data []byte) error {
 }
 func (s *Stream) handleMessage(message *QlcMessage) error {
 
-	s.node.netService.PutMessage(NewBaseMessage(message.MessageType(), s.pid.Pretty(), message.content))
+	s.node.netService.PutMessage(NewBaseMessage(message.MessageType(), s.pid.Pretty(), message.MessageData()))
 
 	return nil
 }
