@@ -57,3 +57,13 @@ func Hash(size int, data ...[]byte) []byte {
 	}
 	return d.Sum(nil)
 }
+
+// TrimQuotes trim quotes of string if quotes exist
+func TrimQuotes(s string) string {
+	if len(s) >= 2 {
+		if s[0] == '"' && s[len(s)-1] == '"' {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}

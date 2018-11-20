@@ -60,15 +60,16 @@ func BytesToAddress(b []byte) (Address, error) {
 
 // HexToAddress convert hex address string to Address
 func HexToAddress(hexStr string) (Address, error) {
-	if len(hexStr) != hexAddressLength {
+	s := util.TrimQuotes(hexStr)
+	if len(s) != hexAddressLength {
 		return Address{}, errAddressLen
 	}
 
-	if !strings.HasPrefix(hexStr, AddressPrefix) {
+	if !strings.HasPrefix(s, AddressPrefix) {
 		return Address{}, errAddressPrefix
 	}
 
-	addr := hexStr[addressPrefixLen:]
+	addr := s[addressPrefixLen:]
 
 	key, err := AddressEncoding.DecodeString("1111" + addr[0:52])
 	if err != nil {
@@ -218,5 +219,19 @@ func (addr *Address) UnmarshalBinary(text []byte) error {
 
 //MarshalJSON implements json.Marshaler interface
 func (addr *Address) MarshalJSON() ([]byte, error) {
-	return []byte(addr.String()), nil
+	//buffer := bytes.NewBufferString(`"`)
+	//buffer.WriteString(addr.String())
+	//buffer.WriteString(`"`)
+	//return buffer.Bytes(), nil
+	return []byte("\"" + addr.String() + "\""), nil
+}
+
+//UnmarshalJSON implements json.UnmarshalJSON interface
+func (addr *Address) UnmarshalJSON(b []byte) error {
+	tmp, err := HexToAddress(string(b))
+	if err != nil {
+		return err
+	}
+	copy((*addr)[:], tmp[:])
+	return nil
 }
