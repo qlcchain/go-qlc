@@ -1,6 +1,7 @@
 package genesis
 
 import (
+	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -38,9 +39,11 @@ var (
 )
 
 func Get(genStr string) (*Genesis, error) {
-	gen, err := types.ParseStateBlock([]byte(genStr))
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	var gen types.StateBlock
+	err := json.Unmarshal([]byte(genStr), &gen)
 	if err != nil {
 		return nil, err
 	}
-	return &Genesis{*gen, uint64(0x0fffffc000000000)}, nil
+	return &Genesis{gen, uint64(0x0fffffc000000000)}, nil
 }

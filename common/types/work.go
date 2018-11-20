@@ -14,6 +14,8 @@ import (
 	"hash"
 	"strconv"
 
+	"github.com/qlcchain/go-qlc/common/types/internal/util"
+
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
 )
@@ -56,8 +58,9 @@ func (w Work) String() string {
 }
 
 //ParseWorkHexString create Work from hex string
-func (w *Work) ParseWorkHexString(hexstring string) error {
-	work, err := strconv.ParseInt(hexstring, 16, 64)
+func (w *Work) ParseWorkHexString(hexString string) error {
+	s := util.TrimQuotes(hexString)
+	work, err := strconv.ParseInt(s, 16, 64)
 	if err != nil {
 		return err
 	}
@@ -97,6 +100,11 @@ func (w *Work) UnmarshalBinary(text []byte) error {
 //MarshalJSON implements json.Marshaler interface
 func (w *Work) MarshalJSON() ([]byte, error) {
 	return []byte(w.String()), nil
+}
+
+// UnmarshalJSON implements json.UnMarshaler interface
+func (w *Work) UnmarshalJSON(b []byte) error {
+	return w.ParseWorkHexString(string(b))
 }
 
 // NewWorker create new worker

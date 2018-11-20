@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/common/types/internal/util"
+
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
 )
@@ -29,7 +31,7 @@ const (
 type Hash [HashSize]byte
 
 //IsZero check hash is zero
-func (h Hash) IsZero() bool {
+func (h *Hash) IsZero() bool {
 	for _, b := range h {
 		if b != 0 {
 			return false
@@ -45,13 +47,14 @@ func (h Hash) String() string {
 
 //Of convert hex string to Hash
 func (h *Hash) Of(hexString string) error {
-	size := hex.DecodedLen(len(hexString))
+	s := util.TrimQuotes(hexString)
+	size := hex.DecodedLen(len(s))
 	if size != HashSize {
 		return fmt.Errorf("bad block hash size: %d", size)
 	}
 
 	var hash [HashSize]byte
-	if _, err := hex.Decode(hash[:], []byte(hexString)); err != nil {
+	if _, err := hex.Decode(hash[:], []byte(s)); err != nil {
 		return err
 	}
 
@@ -89,3 +92,20 @@ func (h *Hash) UnmarshalBinary(text []byte) error {
 func (h *Hash) MarshalJSON() ([]byte, error) {
 	return []byte(h.String()), nil
 }
+
+//UnmarshalJSON implements json.UnmarshalJSON interface
+func (h *Hash) UnmarshalJSON(b []byte) error {
+	err := h.Of(string(b))
+	return err
+}
+
+//func (h *Hash) UnmarshalText(text []byte) error {
+//	s := util.TrimQuotes(string(text))
+//	err := h.Of(s)
+//	return err
+//}
+//
+//func (h Hash) MarshalText() (text []byte, err error) {
+//	//fmt.Println(h.String())
+//	return []byte(h.String()), nil
+//}

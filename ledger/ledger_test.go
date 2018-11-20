@@ -3,6 +3,8 @@ package ledger
 import (
 	"testing"
 
+	"github.com/json-iterator/go"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/ledger/genesis"
@@ -165,31 +167,32 @@ func TestLedger_AddBlocks(t *testing.T) {
 	defer ledger.db.Close()
 
 	blk, err := types.NewBlock(byte(types.State))
-	if blk, err = types.ParseStateBlock([]byte(test_send_block)); err != nil {
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	if err = json.Unmarshal([]byte(test_send_block), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	if blk, err = types.ParseStateBlock([]byte(test_open_block)); err != nil {
+	if err = json.Unmarshal([]byte(test_open_block), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	if blk, err = types.ParseStateBlock([]byte(test_send_block2)); err != nil {
+	if err = json.Unmarshal([]byte(test_send_block2), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	if blk, err = types.ParseStateBlock([]byte(test_receiver_block)); err != nil {
+	if err = json.Unmarshal([]byte(test_receiver_block), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	if blk, err = types.ParseStateBlock([]byte(test_change_block)); err != nil {
+	if err = json.Unmarshal([]byte(test_change_block), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil {
@@ -205,14 +208,14 @@ func TestLedger_AddBlock_ErrMissingLink(t *testing.T) {
 	defer ledger.db.Close()
 
 	blk, err := types.NewBlock(byte(types.State))
-
-	if blk, err = types.ParseStateBlock([]byte(test_MissingLink_receive_block)); err != nil {
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	if err = json.Unmarshal([]byte(test_MissingLink_receive_block), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingLink {
 		t.Fatal(err)
 	}
-	if blk, err = types.ParseStateBlock([]byte(test_MissingLink_send_block)); err != nil {
+	if err = json.Unmarshal([]byte(test_MissingLink_send_block), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil {
@@ -228,13 +231,14 @@ func TestLedger_AddBlock_ErrMissingPrevious(t *testing.T) {
 	defer ledger.db.Close()
 
 	blk, err := types.NewBlock(byte(types.State))
-	if blk, err = types.ParseStateBlock([]byte(test_MissingPrevious_send_block2)); err != nil {
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	if err = json.Unmarshal([]byte(test_MissingPrevious_send_block2), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {
 		t.Fatal(err)
 	}
-	if blk, err = types.ParseStateBlock([]byte(test_MissingPrevious_send_block1)); err != nil {
+	if err = json.Unmarshal([]byte(test_MissingPrevious_send_block1), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil {
@@ -285,13 +289,14 @@ func TestLedger2_AddBlock2(t *testing.T) {
 	}
 	defer ledger.db.Close()
 	blk, err := types.NewBlock(byte(types.State))
-	if blk, err = types.ParseStateBlock([]byte(test_send_block_ledger2)); err != nil {
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	if err = json.Unmarshal([]byte(test_send_block_ledger2), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {
 		t.Fatal(err)
 	}
-	if blk, err = types.ParseStateBlock([]byte(test_receiver_block_ledger2)); err != nil {
+	if err = json.Unmarshal([]byte(test_receiver_block_ledger2), &blk); err != nil {
 		t.Fatal(err)
 	}
 	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {

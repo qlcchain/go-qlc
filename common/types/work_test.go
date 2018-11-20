@@ -8,7 +8,10 @@
 package types
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/json-iterator/go"
 )
 
 func TestBlockWork(t *testing.T) {
@@ -34,4 +37,26 @@ func TestBlockWork(t *testing.T) {
 	if v != work {
 		t.Fatalf("work not equal, expect:%s but %s", work.String(), v.String())
 	}
+}
+
+func TestWork_MarshalJSON(t *testing.T) {
+	work := Work(0x880ab6aa90a59d5d)
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	b, err := json.Marshal(&work)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(string(b))
+}
+
+func TestWork_UnmarshalJSON(t *testing.T) {
+	s := `"3c82cc724905ee00"`
+	var w Work
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	err := json.Unmarshal([]byte(s), &w)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(w)
 }

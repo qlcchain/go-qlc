@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/json-iterator/go"
+
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -64,10 +66,12 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 		//var blk types.Block
 		switch id {
 		case "state":
-			if blk, err := types.ParseStateBlock(data); err != nil {
+			var json = jsoniter.ConfigCompatibleWithStandardLibrary
+			var blk types.StateBlock
+			if err := json.Unmarshal(data, &blk); err != nil {
 				t.Fatal(err)
 			} else {
-				blocks = append(blocks, blk)
+				blocks = append(blocks, &blk)
 			}
 		case types.SmartContract:
 			//blk := new(types.SmartContractBlock)
@@ -122,7 +126,7 @@ func TestBadgerStoreTxn_GetBlock(t *testing.T) {
 			}
 		} else {
 			fmt.Println(block)
-			if block.Hash() != hash {
+			if block.GetHash() != hash {
 				t.Fatal(errors.New("get incorrect block"))
 			}
 		}

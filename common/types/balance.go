@@ -156,7 +156,7 @@ func (b Balance) UnitString(unit string, precision int32) string {
 	return d.DivRound(units[unit], BalanceMaxPrecision).Truncate(precision).String()
 }
 
-// String implements the fmt.Stringer interface. It returns the balance in Mxrb
+// String implements the fmt.Stringer interface. It returns the balance in Mqlc
 // with maximum precision.
 func (b Balance) String() string {
 	return b.UnitString("Mqlc", BalanceMaxPrecision)
@@ -164,22 +164,6 @@ func (b Balance) String() string {
 
 func bigPow(base int64, exp int64) *big.Int {
 	return new(big.Int).Exp(big.NewInt(base), big.NewInt(exp), nil)
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (b Balance) MarshalText() ([]byte, error) {
-	return []byte(b.String()), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (b *Balance) UnmarshalText(text []byte) error {
-	balance, err := ParseBalance(string(text), "Mqlc")
-	if err != nil {
-		return err
-	}
-
-	*b = balance
-	return nil
 }
 
 //ExtensionType implements Extension.ExtensionType interface
@@ -209,7 +193,7 @@ func (b *Balance) UnmarshalBinary(text []byte) error {
 
 //MarshalJSON implements json.Marshaler interface
 func (b *Balance) MarshalJSON() ([]byte, error) {
-	return []byte("\"" + b.String() + "\""), nil
+	return []byte(b.String()), nil
 }
 
 //UnmarshalJSON implements json.UnmarshalJSON interface
@@ -217,4 +201,20 @@ func (b *Balance) UnmarshalJSON(bb []byte) error {
 	s := util.TrimQuotes(string(bb))
 	err := b.UnmarshalText([]byte(s))
 	return err
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (b *Balance) MarshalText() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (b *Balance) UnmarshalText(text []byte) error {
+	balance, err := ParseBalance(string(text), "Mqlc")
+	if err != nil {
+		return err
+	}
+
+	*b = balance
+	return nil
 }

@@ -39,7 +39,7 @@ type LedgerOptions struct {
 	Genesis genesis.Genesis
 }
 
-var log = common.NewLogger("config")
+var log = common.NewLogger("ledger")
 
 func NewLedger(store db.Store, opts LedgerOptions) (*Ledger, error) {
 	ledger := Ledger{opts: opts, db: store}
@@ -348,7 +348,7 @@ func (l *Ledger) addStateBlock(txn db.StoreTxn, blk *types.StateBlock) error {
 }
 
 func (l *Ledger) addBlock(txn db.StoreTxn, blk types.Block) error {
-	hash := blk.Hash()
+	hash := blk.GetHash()
 
 	// make sure the work value is valid
 	if !blk.Valid(l.opts.Genesis.WorkThreshold) {
@@ -400,7 +400,7 @@ func (l *Ledger) addBlock(txn db.StoreTxn, blk types.Block) error {
 }
 
 func (l *Ledger) processBlock(txn db.StoreTxn, blk types.Block) error {
-	log.Info("processing block, ", blk.Hash())
+	log.Info("processing block, ", blk.GetHash())
 	err := l.addBlock(txn, blk)
 	switch err {
 	case ErrMissingPrevious:
@@ -425,7 +425,7 @@ func (l *Ledger) processBlock(txn db.StoreTxn, blk types.Block) error {
 		log.Info("missing link, added uncheckedblock")
 		return ErrUnchecked
 	case nil:
-		log.Info("added block, ", blk.Hash())
+		log.Info("added block, ", blk.GetHash())
 		// try to process any unchecked child blocks
 		if err := l.processUncheckedBlock(txn, blk, types.UncheckedKindPrevious); err != nil {
 			return err
@@ -435,7 +435,7 @@ func (l *Ledger) processBlock(txn db.StoreTxn, blk types.Block) error {
 		}
 		return nil
 	case db.ErrBlockExists:
-		log.Info("block already exists, ", blk.Hash())
+		log.Info("block already exists, ", blk.GetHash())
 		return nil
 	default:
 		log.Info(err)
@@ -476,7 +476,7 @@ func (l *Ledger) addUncheckedBlock(txn db.StoreTxn, parentHash types.Hash, blk t
 }
 
 func (l *Ledger) processUncheckedBlock(txn db.StoreTxn, blk types.Block, kind types.UncheckedKind) error {
-	hash := blk.Hash()
+	hash := blk.GetHash()
 
 	found, err := txn.HasUncheckedBlock(hash, kind)
 	if err != nil {

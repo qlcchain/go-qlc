@@ -100,7 +100,7 @@ func TestBalance_MarshalJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bs, err := json.Marshal(b1)
+	bs, err := json.Marshal(&b1)
 	if err != nil {
 		t.Fatal(err)
 	}

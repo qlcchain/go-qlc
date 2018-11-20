@@ -314,7 +314,7 @@ func (t *BadgerStoreTxn) getBlockKey(hash types.Hash) (key [1 + types.HashSize]b
 
 // AddBlock adds the given block to the database.
 func (t *BadgerStoreTxn) AddBlock(blk types.Block) error {
-	hash := blk.Hash()
+	hash := blk.GetHash()
 	blockBytes, err := blk.MarshalMsg(nil)
 	if err != nil {
 		return err

@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/common/types/internal/util"
+
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/tinylib/msgp/msgp"
 )
@@ -35,13 +37,14 @@ func (s Signature) String() string {
 
 //Of convert hex string to Signature
 func (s *Signature) Of(hexString string) error {
-	size := hex.DecodedLen(len(hexString))
+	ss := util.TrimQuotes(hexString)
+	size := hex.DecodedLen(len(ss))
 	if size != SignatureSize {
 		return fmt.Errorf("bad signature size: %d", size)
 	}
 
 	var signature [SignatureSize]byte
-	if _, err := hex.Decode(signature[:], []byte(hexString)); err != nil {
+	if _, err := hex.Decode(signature[:], []byte(ss)); err != nil {
 		return err
 	}
 
@@ -78,4 +81,9 @@ func (s *Signature) UnmarshalBinary(text []byte) error {
 //MarshalJSON implements json.Marshaler interface
 func (s *Signature) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
+}
+
+func (s *Signature) UnmarshalJSON(b []byte) error {
+	fmt.Println(string(b))
+	return s.Of(string(b))
 }
