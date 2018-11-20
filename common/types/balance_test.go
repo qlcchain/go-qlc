@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -92,4 +93,26 @@ func TestQlcBalance(t *testing.T) {
 			t.Errorf("(%s) expected: %s, got: %s\n", unit, s, res)
 		}
 	}
+}
+
+func TestBalance_MarshalJSON(t *testing.T) {
+	b1, err := ParseBalance("600000000.00000000", "Mqlc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bs, err := json.Marshal(b1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(string(bs))
+}
+
+func TestBalance_UnmarshalJSON(t *testing.T) {
+	b := "600000000"
+	var b1 Balance
+	err := json.Unmarshal([]byte(b), &b1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(b1)
 }

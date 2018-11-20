@@ -209,5 +209,12 @@ func (b *Balance) UnmarshalBinary(text []byte) error {
 
 //MarshalJSON implements json.Marshaler interface
 func (b *Balance) MarshalJSON() ([]byte, error) {
-	return []byte(b.String()), nil
+	return []byte("\"" + b.String() + "\""), nil
+}
+
+//UnmarshalJSON implements json.UnmarshalJSON interface
+func (b *Balance) UnmarshalJSON(bb []byte) error {
+	s := util.TrimQuotes(string(bb))
+	err := b.UnmarshalText([]byte(s))
+	return err
 }
