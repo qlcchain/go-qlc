@@ -175,7 +175,7 @@ func TestBadgerPerformance_CheckBlockMissing(t *testing.T) {
 			for i := 0; i < n; i++ {
 				blk := generateBlock(t)
 				txn.AddBlock(blk)
-				buffer.WriteString(blk.Hash().String())
+				buffer.WriteString(blk.GetHash().String())
 				buffer.WriteString("\n")
 			}
 			return nil
@@ -221,7 +221,7 @@ func TestBadgerPerformance_ReadBlock(t *testing.T) {
 								t.Fatal(err)
 							}
 						} else {
-							if hash == blk.Hash() {
+							if hash == blk.GetHash() {
 								index++
 							}
 						}
@@ -280,7 +280,7 @@ func TestBadgerPerformance_ReadBlockByGoroutine(t *testing.T) {
 									t.Fatal(err)
 								}
 							} else {
-								if hash == blk.Hash() {
+								if hash == blk.GetHash() {
 								}
 							}
 						}
