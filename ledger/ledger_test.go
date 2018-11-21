@@ -1,305 +1,828 @@
 package ledger
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/json-iterator/go"
-
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/ledger/genesis"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
-const (
-	dir string = "testdatabase"
-)
+func TestLedger_Empty(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
 
-func TestLedger_GetAddressHexStr(t *testing.T) {
-	addressstr := "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby"
-	if address, err := types.HexToAddress(addressstr); err != nil {
+	}
+	defer l.Close()
+
+	err = l.View(func() error {
+		r, err := l.Empty()
+		if err != nil {
+			return err
+		}
+		t.Log("empty,", r)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func generateBlock() types.Block {
+	var blk types.StateBlock
+	random.Bytes(blk.PreviousHash[:])
+	random.Bytes(blk.Representative[:])
+	random.Bytes(blk.Address[:])
+	random.Bytes(blk.Signature[:])
+	random.Bytes(blk.Link[:])
+	random.Bytes(blk.Signature[:])
+	random.Bytes(blk.Token[:])
+	return &blk
+}
+func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
+
+	type fileStruct struct {
+		Blocks []json.RawMessage `json:"blocks"`
+	}
+
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var file fileStruct
+	if err = json.Unmarshal(data, &file); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, data := range file.Blocks {
+		var values map[string]interface{}
+		if err = json.Unmarshal(data, &values); err != nil {
+			t.Fatal(err)
+		}
+
+		id, ok := values["type"]
+		if !ok {
+			t.Fatalf("no 'type' key found in block")
+		}
+		//var blk types.Block
+		switch id {
+		case "state":
+			var json = jsoniter.ConfigCompatibleWithStandardLibrary
+			var blk types.StateBlock
+			if err := json.Unmarshal(data, &blk); err != nil {
+				t.Fatal(err)
+			} else {
+				blocks = append(blocks, &blk)
+			}
+		case types.SmartContract:
+			//blk := new(types.SmartContractBlock)
+		default:
+			t.Fatalf("unsupported block type")
+		}
+	}
+	return
+}
+func TestLedger_AddBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	blks := parseBlocks(t, "testdata/blocks.json")
+	err = l.Update(func() error {
+		for _, b := range blks {
+			if err = l.AddBlock(b); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err = l.AddBlock(generateBlock()); err != nil {
+			return err
+		}
+		if err = l.AddBlock(generateBlock()); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	h := types.Hash{}
+	h.Of("f42eadd5e3316197bb1757feb9714c21a7f87cc3d32a415bd3cebbb4499ea9b2")
+	err = l.View(func() error {
+		blk, err := l.GetBlock(h)
+		t.Log("blk,", blk)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetBlocks(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	err = l.View(func() error {
+		blks, err := l.GetBlocks()
+		for index, b := range blks {
+			t.Log(index, b)
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_DeleteBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	h := types.Hash{}
+	h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
+	err = l.Update(func() error {
+		return l.DeleteBlock(h)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_HasBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	h := types.Hash{}
+	h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
+	err = l.View(func() error {
+		r, err := l.HasBlock(h)
+		t.Log("hasblock,", r)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_CountBlocks(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	err = l.View(func() error {
+		r, err := l.CountBlocks()
+		t.Log("blk count,", r)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetRandomBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	err = l.View(func() error {
+		b, err := l.GetRandomBlock()
+		t.Log("blk ,", b)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, kind types.UncheckedKind) {
+	parentHash.Of("d66750ccbb0ff65db134efaaec31d0b123a557df34e7e804d6884447ee589b3c")
+	blk, _ = types.NewBlock(byte(types.State))
+	blocks := parseBlocks(t, "testdata/uncheckedblock.json")
+	fmt.Println(blocks)
+	blk = blocks[0]
+	kind = types.UncheckedKindLink
+	return
+}
+func TestLedger_AddUncheckedBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	parentHash, blk, kind := parseUncheckedBlock(t)
+	err = l.Update(func() error {
+		err = l.AddUncheckedBlock(parentHash, blk, kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetUncheckedBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	parentHash, _, kind := parseUncheckedBlock(t)
+	err = l.Update(func() error {
+		b, err := l.GetUncheckedBlock(parentHash, kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("unchecked,", b)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_CountUncheckedBlocks(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	err = l.Update(func() error {
+		c, err := l.CountUncheckedBlocks()
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("unchecked count,", c)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_HasUncheckedBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	parentHash, _, kind := parseUncheckedBlock(t)
+
+	err = l.Update(func() error {
+		r, err := l.HasUncheckedBlock(parentHash, kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("has unchecked,", r)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_DeleteUncheckedBlock(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	parentHash, _, kind := parseUncheckedBlock(t)
+
+	err = l.Update(func() error {
+		err := l.DeleteUncheckedBlock(parentHash, kind)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func parseAccountMetas(t *testing.T, filename string) (accountmetas []*types.AccountMeta) {
+	type fileStruct struct {
+		AccountMetas []json.RawMessage `json:"accountmetas"`
+	}
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file fileStruct
+	if err = json.Unmarshal(data, &file); err != nil {
+		t.Fatal(err)
+	}
+	for _, data := range file.AccountMetas {
+		var accountmeta types.AccountMeta
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
+		if err := json.Unmarshal(data, &accountmeta); err != nil {
+			t.Fatal(err)
+		}
+		accountmetas = append(accountmetas, &accountmeta)
+	}
+
+	return
+}
+func TestLedger_AddAccountMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	accountMetas := parseAccountMetas(t, "testdata/account.json")
+	err = l.Update(func() error {
+		for _, a := range accountMetas {
+			fmt.Println(a)
+			err := l.AddAccountMeta(a)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetAccountMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	err = l.View(func() error {
+		a, err := l.GetAccountMeta(address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("account,", a)
+		for _, token := range a.Tokens {
+			t.Log("token,", token)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_HasAccountMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	err = l.View(func() error {
+		r, err := l.HasAccountMeta(address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("has account,", r)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_DeleteAccountMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+
+	err = l.Update(func() error {
+		err := l.DeleteAccountMeta(address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_UpdateAccountMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	accountMetas := parseAccountMetas(t, "testdata/accountupdate.json")
+	err = l.Update(func() error {
+		for _, a := range accountMetas {
+			err := l.UpdateAccountMeta(a)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func parseToken(t *testing.T) (tokenmeta types.TokenMeta, address types.Address, tokenType types.Hash) {
+	filename := "testdata/token.json"
+	type fileStruct struct {
+		TokenMetas []json.RawMessage `json:"tokens"`
+	}
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file fileStruct
+	if err = json.Unmarshal(data, &file); err != nil {
+		t.Fatal(err)
+	}
+
+	//only get one token
+	for _, data := range file.TokenMetas {
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
+		if err := json.Unmarshal(data, &tokenmeta); err != nil {
+			t.Fatal(err)
+		}
+		break
+	}
+
+	address, err = types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenType = tokenmeta.Type
+	return
+
+}
+func TestLedger_AddTokenMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	tokenmeta, address, _ := parseToken(t)
+
+	err = l.Update(func() error {
+		err = l.AddTokenMeta(address, &tokenmeta)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetTokenMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	_, address, tokenType := parseToken(t)
+
+	err = l.View(func() error {
+		token, err := l.GetTokenMeta(address, tokenType)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("token,", token)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_UpdateTokenMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	tokenmeta, address, _ := parseToken(t)
+
+	err = l.Update(func() error {
+		err = l.UpdateTokenMeta(address, &tokenmeta)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_DelTokenMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	_, address, tokentype := parseToken(t)
+
+	err = l.Update(func() error {
+		err = l.DeleteTokenMeta(address, tokentype)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_AddRepresentationWeight(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	amount, err := types.ParseBalance("400.004", "Mqlc")
+	err = l.Update(func() error {
+		err := l.AddRepresentationWeight(address, amount)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_SubRepresentationWeight(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	amount, err := types.ParseBalance("100.004", "Mqlc")
+	err = l.Update(func() error {
+		err := l.SubRepresentationWeight(address, amount)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetRepresentation(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	err = l.Update(func() error {
+		a, err := l.GetRepresentation(address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("amount,", a)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func parsePending(t *testing.T) (address types.Address, hash types.Hash, pendinginfo types.PendingInfo) {
+	address, err := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash.Of("a624942c313e8ddd7bc12cf6188e4fb9d10da4238086aceca7f81ea3fc595ba9")
+
+	balance, err := types.ParseBalance("2345.6789", "Mqlc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	typehash := types.Hash{}
+	typehash.Of("191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448")
+	pendinginfo = types.PendingInfo{
+		address,
+		balance,
+		typehash,
+	}
+	return
+}
+func TestLedger_AddPending(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	address, hash, pendinfo := parsePending(t)
+
+	err = l.Update(func() error {
+		err = l.AddPending(address, hash, &pendinfo)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetPending(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	address, hash, _ := parsePending(t)
+	err = l.View(func() error {
+		p, err := l.GetPending(address, hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("pending,", p)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_DeletePending(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	address, hash, _ := parsePending(t)
+
+	err = l.Update(func() error {
+		err = l.DeletePending(address, hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func parseFrontier(t *testing.T) (frontier types.Frontier) {
+	hash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
+	address := "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby"
+	frontier.Hash.Of(hash)
+	if address, err := types.HexToAddress(address); err != nil {
 		t.Fatal(err)
 	} else {
-		hash := new(types.Hash)
-		hash.UnmarshalBinary(address.Bytes())
-		t.Log(hash)
+		frontier.Address = address
 	}
+	return
 }
-
-func InitialiseLedger(t *testing.T, genStr string) (*Ledger, error) {
-	store, err := db.NewBadgerStore(dir)
-	if err != nil {
-		return nil, err
-	}
-	gen, err := genesis.Get(genStr)
-	if err != nil {
-		return nil, err
-	}
-	if ledger, err := NewLedger(store, LedgerOptions{Genesis: *gen}); err != nil {
-		return nil, err
-	} else {
-		return ledger, nil
-	}
-}
-
-var (
-	test_send_block = `{
-      "type": "state",
-      "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "previousHash": "b4badad5bf7aa378c35e92b00003c004ba588c6d0a5907db4b866332697876b4",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "500000",
-      "link":"7d35650e78d8d7037c90390357f8a59bf17eff82cbc03c94f0b6267335a8dcb3",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "3c82cc724905ee00"
-	}
-	`
-
-	test_open_block = `{
-      "type": "state",
-      "address":"qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
-      "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "100000",
-      "link":"84533798231c7fb7e78a796f7090c1d26db58eab284115beeb07825b187c1780",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "3c82cc724905ee00"
-	}
-	`
-	test_send_block2 = `{
-      "type": "state",
-      "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "previousHash": "84533798231c7fb7e78a796f7090c1d26db58eab284115beeb07825b187c1780",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "200000",
-      "link":"7d35650e78d8d7037c90390357f8a59bf17eff82cbc03c94f0b6267335a8dcb3",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "3c82cc724905ee00"
-	}
-	`
-
-	test_receiver_block = `{
-      "type": "state",
-      "address":"qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
-      "previousHash": "6c6f1c5dc777d3d7d3ee0e08c68219f6bca885f35e25baafe33ad3ed2955be01",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "400000",
-      "link":"cdefcf2f09f26ec43ef112a9b68f30cf390f4931126081402607bc6d1223ed8b",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "3c82cc724905ee00"
-	}
-	`
-
-	test_change_block = `{
-      "type": "state",
-      "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "previousHash": "cdefcf2f09f26ec43ef112a9b68f30cf390f4931126081402607bc6d1223ed8b",
-      "representative":"qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
-      "balance": "200000",
-      "link":"0000000000000000000000000000000000000000000000000000000000000000",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "3c82cc724905ee00"
-	}
-	`
-
-	test_MissingLink_send_block = `{
-      "type": "state",
-      "address":"qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
-      "previousHash": "4e30daf3879b3736bad1274fb237e4c2a77b0a4f1d7c01fe7355f424e0e43a8d",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "250000",
-      "link":"2845d6627542d95a0a2a54b0dbb6217e384304baa8ded8664bf258d7b9469fe0",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "3c82cc724905ee00"
-	}
-	`
-
-	test_MissingLink_receive_block = `{
-      "type": "state",
-      "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "previousHash": "1b78e3347c70284f2ead6367d224678361fd71210f4045da5785b3f6d92df0ee",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "350000",
-      "link":"d66750ccbb0ff65db134efaaec31d0b123a557df34e7e804d6884447ee589b3c",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "3c82cc724905ee00"
-	}
-	`
-
-	test_MissingPrevious_send_block1 = `{
-      "type": "state",
-      "address":"qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
-      "previousHash": "d66750ccbb0ff65db134efaaec31d0b123a557df34e7e804d6884447ee589b3c",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "50000",
-      "link":"2845d6627542d95a0a2a54b0dbb6217e384304baa8ded8664bf258d7b9469fe0",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "0082cc724905ee00"
-	}
-	`
-
-	test_MissingPrevious_send_block2 = `{
-      "type": "state",
-      "address":"qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
-      "previousHash": "7cbefae97608ac54b0142bcae45caf3fa1e6e9ebd354dff8f91e21f53fb2caef",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "20000",
-      "link":"2845d6627542d95a0a2a54b0dbb6217e384304baa8ded8664bf258d7b9469fe0",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36",
-      "work": "0082cc724905ee00"
-	}
-	`
-)
-
-func TestLedger_AddBlocks(t *testing.T) {
-	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data)
+func TestLedger_AddFrontier(t *testing.T) {
+	l, err := NewLedger()
 	if err != nil {
 		t.Fatal(err)
-	}
-	defer ledger.db.Close()
 
-	blk, err := types.NewBlock(byte(types.State))
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json.Unmarshal([]byte(test_send_block), &blk); err != nil {
-		t.Fatal(err)
 	}
-	if err := ledger.AddBlock(blk); err != nil {
-		t.Fatal(err)
-	}
-	if err = json.Unmarshal([]byte(test_open_block), &blk); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledger.AddBlock(blk); err != nil {
-		t.Fatal(err)
-	}
-	if err = json.Unmarshal([]byte(test_send_block2), &blk); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledger.AddBlock(blk); err != nil {
-		t.Fatal(err)
-	}
-	if err = json.Unmarshal([]byte(test_receiver_block), &blk); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledger.AddBlock(blk); err != nil {
-		t.Fatal(err)
-	}
-	if err = json.Unmarshal([]byte(test_change_block), &blk); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledger.AddBlock(blk); err != nil {
+	defer l.Close()
+	frontier := parseFrontier(t)
+	err = l.Update(func() error {
+		err = l.AddFrontier(&frontier)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 }
-
-func TestLedger_AddBlock_ErrMissingLink(t *testing.T) {
-	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data)
+func TestLedger_GetFrontier(t *testing.T) {
+	l, err := NewLedger()
 	if err != nil {
 		t.Fatal(err)
-	}
-	defer ledger.db.Close()
 
-	blk, err := types.NewBlock(byte(types.State))
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json.Unmarshal([]byte(test_MissingLink_receive_block), &blk); err != nil {
-		t.Fatal(err)
 	}
-	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingLink {
-		t.Fatal(err)
-	}
-	if err = json.Unmarshal([]byte(test_MissingLink_send_block), &blk); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledger.AddBlock(blk); err != nil {
+	defer l.Close()
+	frontier := parseFrontier(t)
+	err = l.View(func() error {
+		f, err := l.GetFrontier(frontier.Hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("frontier,", f)
+		return nil
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 }
-
-func TestLedger_AddBlock_ErrMissingPrevious(t *testing.T) {
-	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data)
+func TestLedger_GetFrontiers(t *testing.T) {
+	l, err := NewLedger()
 	if err != nil {
 		t.Fatal(err)
-	}
-	defer ledger.db.Close()
 
-	blk, err := types.NewBlock(byte(types.State))
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json.Unmarshal([]byte(test_MissingPrevious_send_block2), &blk); err != nil {
-		t.Fatal(err)
 	}
-	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {
-		t.Fatal(err)
-	}
-	if err = json.Unmarshal([]byte(test_MissingPrevious_send_block1), &blk); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledger.AddBlock(blk); err != nil {
+	defer l.Close()
+	err = l.View(func() error {
+		c, err := l.CountFrontiers()
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("frontier count,", c)
+
+		fs, err := l.GetFrontiers()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for index, f := range fs {
+			t.Log("frontier", index, f)
+		}
+		return nil
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 }
-
-func TestLedger2_AddBlock(t *testing.T) {
-	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data2)
+func TestLedger_DeleteFrontier(t *testing.T) {
+	l, err := NewLedger()
 	if err != nil {
 		t.Fatal(err)
-	}
-	defer ledger.db.Close()
-}
 
-var (
-	test_send_block_ledger2 = `{
-      "type": "state",
-      "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "previousHash": "247230c7377a661e57d51b17b527198ed52392fb8b99367a234d28ccc378eb05",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "90000",
-      "link":"7d35650e78d8d7037c90390357f8a59bf17eff82cbc03c94f0b6267335a8dcb3",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728949",
-      "work": "3c82cc724905ee00"
 	}
-	`
+	defer l.Close()
+	frontier := parseFrontier(t)
 
-	test_receiver_block_ledger2 = `{
-      "type": "state",
-      "address":"qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
-      "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
-      "representative":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
-      "balance": "9910000",
-      "link":"cc71d22c6f7698de3d6912bcfd6e5182557efa682c478329a3f21789dba9aef7",
-      "signature": "5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600",
-      "token":"991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728949",
-      "work": "3c82cc724905ee00"
-	}
-	`
-)
-
-func TestLedger2_AddBlock2(t *testing.T) {
-	ledger, err := InitialiseLedger(t, genesis.Test_genesis_data2)
+	err = l.Update(func() error {
+		err = l.DeleteFrontier(frontier.Hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatal(err)
-	}
-	defer ledger.db.Close()
-	blk, err := types.NewBlock(byte(types.State))
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json.Unmarshal([]byte(test_send_block_ledger2), &blk); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {
-		t.Fatal(err)
-	}
-	if err = json.Unmarshal([]byte(test_receiver_block_ledger2), &blk); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledger.AddBlock(blk); err != nil && err != ErrMissingPrevious {
 		t.Fatal(err)
 	}
 }

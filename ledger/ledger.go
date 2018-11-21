@@ -2,564 +2,626 @@ package ledger
 
 import (
 	"errors"
-	"strings"
+	"math/rand"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/ledger/genesis"
-)
-
-var (
-	ErrBadWork          = errors.New("bad work")
-	ErrBlockSignature   = errors.New("bad block signature")
-	ErrBadGenesis       = errors.New("genesis block in store doesn't match the given block")
-	ErrMissingPrevious  = errors.New("previous block does not exist")
-	ErrMissingLink      = errors.New("link block does not exist")
-	ErrUnchecked        = errors.New("block was added to the unchecked list")
-	ErrFork             = errors.New("a fork was detected")
-	ErrNotFound         = errors.New("item not found in the store")
-	ErrZeroSpend        = errors.New("zero spend not allowed")
-	ErrTokenBalance     = errors.New("err token balance for receive block")
-	ErrChangeNotAllowed = errors.New("balance change not allowed in change representative block")
-	ErrTokenType        = errors.New("err token type for change representation")
-)
-
-var (
-	chain_token_type = "125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36"
 )
 
 type Ledger struct {
-	opts LedgerOptions
-	db   db.Store
-}
-
-type LedgerOptions struct {
-	Genesis genesis.Genesis
+	store db.Store
+	txn   db.StoreTxn
 }
 
 var log = common.NewLogger("ledger")
 
-func NewLedger(store db.Store, opts LedgerOptions) (*Ledger, error) {
-	ledger := Ledger{opts: opts, db: store}
+var (
+	ErrStoreEmpty             = errors.New("the store is empty")
+	ErrBlockExists            = errors.New("block already exists")
+	ErrBlockNotFound          = errors.New("block not found")
+	ErrUncheckedBlockExists   = errors.New("unchecked block already exists")
+	ErrUncheckedBlockNotFound = errors.New("unchecked block not found")
+	ErrAccountExists          = errors.New("account already exists")
+	ErrAccountNotFound        = errors.New("account not found")
+	ErrTokenExists            = errors.New("token already exists")
+	ErrTokenNotFound          = errors.New("token not found")
+	ErrPendingExists          = errors.New("pending transaction already exists")
+	ErrPendingNotFound        = errors.New("pending transaction not found")
+	ErrFrontierExists         = errors.New("frontier already exists")
+	ErrFrontierNotFound       = errors.New("frontier not found")
+)
 
-	// initialize the store with the genesis block if needed
-	if err := ledger.setGenesis(&opts.Genesis.Block); err != nil {
+const (
+	idPrefixBlock byte = iota
+	idPrefixUncheckedBlockPrevious
+	idPrefixUncheckedBlockLink
+	idPrefixAccount
+	idPrefixToken
+	idPrefixFrontier
+	idPrefixPending
+	idPrefixRepresentation
+)
+
+func NewLedger() (*Ledger, error) {
+	store, err := db.NewBadgerStore()
+	if err != nil {
 		return nil, err
 	}
-
-	log.Info("new ledger created")
+	ledger := Ledger{store: store}
 	return &ledger, nil
+
 }
 
-func (l *Ledger) setGenesis(blk *types.StateBlock) error {
-	hash := blk.Hash()
-
-	// make sure the work value is valid
-	if !blk.Valid(l.opts.Genesis.WorkThreshold) {
-		return ErrBadWork
-	}
-
-	// make sure the signature of this block is valid
-	if blk.Address.Verify(hash[:], blk.Signature[:]) {
-		return ErrBlockSignature
-	}
-
-	return l.db.Update(func(txn db.StoreTxn) error {
-		if strings.EqualFold(blk.Token.String(), chain_token_type) {
-
-			empty, err := txn.Empty()
-			if err != nil {
-				return err
-			}
-
-			if !empty {
-				// if the database is not empty, check if it has the same genesis
-				// block as the one in the given options
-				found, err := txn.HasBlock(hash)
-				if err != nil {
-					return err
-				}
-				if !found {
-					return ErrBadGenesis
-				}
-			} else {
-				log.Info("add qlc chain genesis block, ", blk.Hash())
-				if err := txn.AddBlock(blk); err != nil {
-					return err
-				}
-
-				if err := l.updateAccountMeta(txn, blk, blk.Balance); err != nil {
-					return err
-				}
-
-				if err := txn.AddRepresentation(blk.Representative, blk.Balance); err != nil {
-					return err
-				}
-
-				return txn.AddFrontier(&types.Frontier{
-					Address: blk.Address,
-					Hash:    hash,
-				})
-			}
-		} else {
-			found, err := txn.HasBlock(hash)
-			if err != nil {
-				return err
-			}
-			if !found {
-				log.Info("add genesis block, ", blk.Hash())
-				if err := txn.AddBlock(blk); err != nil {
-					return err
-				}
-
-				if err := l.updateAccountMeta(txn, blk, blk.Balance); err != nil {
-					return err
-				}
-
-				return txn.AddFrontier(&types.Frontier{
-					Address: blk.Address,
-					Hash:    hash,
-				})
-			}
-		}
-		return nil
+func (l *Ledger) Close() error {
+	return l.store.Close()
+}
+func (l *Ledger) Update(fn func() error) error {
+	return l.store.Update(func(txn db.StoreTxn) error {
+		l.txn = txn
+		return fn()
+	})
+}
+func (l *Ledger) View(fn func() error) error {
+	return l.store.View(func(txn db.StoreTxn) error {
+		l.txn = txn
+		return fn()
 	})
 }
 
-func (l *Ledger) addOpenBlock(txn db.StoreTxn, blk *types.StateBlock) error {
-	log.Info("add open block ...")
-	hash := blk.Hash()
-	// account doesn't exist
-	// obtain the pending transaction info
-	pending, err := txn.GetPending(blk.Address, blk.Link)
+// Empty reports whether the database is empty or not.
+func (l *Ledger) Empty() (bool, error) {
+	log.Info(l.txn)
+	r := true
+	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
+		r = false
+		return nil
+	})
 	if err != nil {
-		return ErrMissingLink
+		return r, err
 	}
-
-	if !blk.Balance.Equal(pending.Amount) {
-		log.Info("pending amount/block balance, ", pending.Amount, blk.Balance)
-		return ErrTokenBalance
-	}
-	if err = l.updateAccountMeta(txn, blk, pending.Amount); err != nil {
-		return err
-	}
-
-	// delete the pending transaction
-	if err := txn.DeletePending(blk.Address, blk.Link); err != nil {
-		return err
-	}
-
-	// update representative voting weight
-	if strings.Compare(blk.Token.String(), chain_token_type) == 0 {
-		if err := txn.AddRepresentation(blk.Representative, pending.Amount); err != nil {
-			return err
-		}
-	}
-
-	// add a frontier for this address
-	frontier := types.Frontier{
-		Address: blk.Address,
-		Hash:    hash,
-	}
-	if err := txn.AddFrontier(&frontier); err != nil {
-		return err
-	}
-
-	// finally, add the block
-	return txn.AddBlock(blk)
+	return r, nil
 }
-
-func (l *Ledger) addSendBlock(txn db.StoreTxn, blk *types.StateBlock) error {
-	log.Info("add send block ...")
-
-	hash := blk.Hash()
-
-	// add pending
-	token, _ := txn.GetTokenMeta(blk.Address, blk.Token)
-	pending := types.PendingInfo{
-		Source: blk.Address,
-		Type:   blk.Token,
-		Amount: token.Balance.Sub(blk.Balance),
-	}
-	if err := txn.AddPending(types.Address(blk.Link), hash, &pending); err != nil {
-		return err
-	}
-
-	// update representative voting weight
-	if strings.Compare(blk.Token.String(), chain_token_type) == 0 {
-		rep, err := l.getRepresentativeAddress(txn, blk.Address, blk.Token)
-		if err != nil {
-			return err
-		}
-		if err := txn.SubRepresentation(rep, pending.Amount); err != nil {
-			return err
-		}
-	}
-
-	// update the token
-	token.Balance = token.Balance.Sub(pending.Amount)
-	token.Header = hash
-	if err := txn.UpdateTokenMeta(blk.Address, token); err != nil {
-		return err
-	}
-
-	// update the frontier of this account
-	if err := l.updateFrontier(txn, blk); err != nil {
-		return err
-	}
-
-	return txn.AddBlock(blk)
-}
-
-func (l *Ledger) addReceiveBlock(txn db.StoreTxn, blk *types.StateBlock) error {
-	log.Info("add receive block ...")
-
-	hash := blk.Hash()
-
-	// get pending
-	pending, err := txn.GetPending(blk.Address, blk.Link)
-	if err != nil {
-		return ErrMissingLink
-	}
-	if err := txn.DeletePending(blk.Address, blk.Link); err != nil {
-		return err
-	}
-
-	// update representative voting weight
-	if strings.Compare(blk.Token.String(), chain_token_type) == 0 {
-		rep, err := l.getRepresentativeAddress(txn, blk.Address, blk.Token)
-		if err != nil {
-			return err
-		}
-		if err := txn.AddRepresentation(rep, pending.Amount); err != nil {
-			return err
-		}
-	}
-
-	// update the token
-	token, _ := txn.GetTokenMeta(blk.Address, blk.Token)
-	token.Balance = token.Balance.Add(pending.Amount)
-	token.Header = hash
-	if !token.Balance.Equal(blk.Balance) {
-		log.Info("token balance/block balance ", token.Balance, blk.Balance)
-		return ErrTokenBalance
-	}
-	if err := txn.UpdateTokenMeta(blk.Address, token); err != nil {
-		return err
-	}
-
-	// update the frontier of this account
-	if err := l.updateFrontier(txn, blk); err != nil {
-		return err
-	}
-
-	return txn.AddBlock(blk)
-}
-
-func (l *Ledger) addChangeBlock(txn db.StoreTxn, blk *types.StateBlock) error {
-	log.Info("add change block ...")
-
-	hash := blk.Hash()
-
-	if !strings.EqualFold(blk.Token.String(), chain_token_type) {
-		log.Info("err token type for change representation ")
-		return ErrTokenType
-	}
-
-	token, _ := txn.GetTokenMeta(blk.Address, blk.Token)
-	if !blk.Balance.Equal(token.Balance) {
-		log.Infof("block balance:%s, token balance:%s", blk.Balance, token.Balance)
-		return ErrChangeNotAllowed
-	}
-
-	// update representative voting weight
-	rep, err := l.getRepresentativeAddress(txn, blk.Address, blk.Token)
-	if err != nil {
-		return err
-	}
-	if err := txn.SubRepresentation(rep, token.Balance); err != nil {
-		return err
-	}
-	if err := txn.AddRepresentation(blk.Representative, token.Balance); err != nil {
-		return err
-	}
-
-	// update the token info
-	token.Header = hash
-	token.RepBlock = hash
-	if err := txn.UpdateTokenMeta(blk.Address, token); err != nil {
-		return err
-	}
-
-	// update the frontier of this account
-	if err := l.updateFrontier(txn, blk); err != nil {
-		return err
-	}
-
-	return txn.AddBlock(blk)
-}
-
-func (l *Ledger) addStateBlock(txn db.StoreTxn, blk *types.StateBlock) error {
-	hash := blk.Hash()
-
-	// make sure the signature of this block is valid
-	if blk.Address.Verify(hash[:], blk.Signature[:]) {
-		return ErrBlockSignature
-	}
-
-	// obtain account information if possible
-	token, err := txn.GetTokenMeta(blk.Address, blk.Token)
-	if err != nil {
-		if err == db.ErrTokenNotFound || err == badger.ErrKeyNotFound {
-			// todo: check for key not found error
-			if !blk.IsOpen() {
-				return l.addOpenBlock(txn, blk)
-			}
-			return err
-		} else {
-			return err
-		}
-	} else {
-		// make sure the hash of the previous block is a frontier
-		_, err := txn.GetFrontier(blk.PreviousHash)
-		if err != nil {
-			return ErrFork
-		}
-
-		if blk.Link.IsZero() {
-			return l.addChangeBlock(txn, blk)
-		} else {
-			previous_balance := token.Balance
-			log.Info("previous balance/current balance, ", previous_balance, blk.Balance)
-
-			switch previous_balance.Compare(blk.Balance) {
-			case types.BalanceCompBigger:
-				return l.addSendBlock(txn, blk)
-			case types.BalanceCompSmaller:
-				return l.addReceiveBlock(txn, blk)
-			case types.BalanceCompEqual:
-				return ErrZeroSpend
-			}
-		}
-	}
+func (l *Ledger) Flush() error {
 	return nil
 }
 
-func (l *Ledger) addBlock(txn db.StoreTxn, blk types.Block) error {
-	hash := blk.GetHash()
+// -------------------  Block  --------------------
 
-	// make sure the work value is valid
-	if !blk.Valid(l.opts.Genesis.WorkThreshold) {
-		return ErrBadWork
-	}
-
-	// make sure the hash of this block doesn't exist yet
-	found, err := txn.HasBlock(hash)
-	if err != nil {
-		return err
-	}
-	if found {
-		return db.ErrBlockExists
-	}
-
-	// make sure the previous/link block exists
-	found, err = txn.HasBlock(blk.Root())
-	if err != nil {
-		return err
-	}
-
-	if !found {
-		switch b := blk.(type) {
-		case *types.StateBlock:
-			if b.IsOpen() {
-				return ErrMissingPrevious
-			}
-			return ErrMissingLink
-		default:
-			return types.ErrBadBlockType
-		}
-	}
-	switch b := blk.(type) {
-	case *types.StateBlock:
-		err = l.addStateBlock(txn, b)
-	case *types.SmartContractBlock:
-		// do...
-	default:
-		return types.ErrBadBlockType
-
-	}
-
-	if err != nil {
-		return err
-	}
-
-	// flush if needed
-	return txn.Flush()
+func (l *Ledger) getBlockKey(hash types.Hash) []byte {
+	var key [1 + types.HashSize]byte
+	key[0] = idPrefixBlock
+	copy(key[1:], hash[:])
+	return key[:]
 }
-
-func (l *Ledger) processBlock(txn db.StoreTxn, blk types.Block) error {
-	log.Info("processing block, ", blk.GetHash())
-	err := l.addBlock(txn, blk)
-	switch err {
-	case ErrMissingPrevious:
-		if err := l.addUncheckedBlock(txn, blk.Root(), blk, types.UncheckedKindPrevious); err != nil {
-			return err
-		}
-		log.Info("missing previous, added uncheckedblock")
-		return ErrUnchecked
-	case ErrMissingLink:
-		var source types.Hash
-		switch b := blk.(type) {
-		case *types.StateBlock:
-			source = b.Link
-		default:
-			return errors.New("unexpected block type")
-		}
-
-		// add to unchecked list
-		if err := l.addUncheckedBlock(txn, source, blk, types.UncheckedKindLink); err != nil {
-			return err
-		}
-		log.Info("missing link, added uncheckedblock")
-		return ErrUnchecked
-	case nil:
-		log.Info("added block, ", blk.GetHash())
-		// try to process any unchecked child blocks
-		if err := l.processUncheckedBlock(txn, blk, types.UncheckedKindPrevious); err != nil {
-			return err
-		}
-		if err := l.processUncheckedBlock(txn, blk, types.UncheckedKindLink); err != nil {
-			return err
-		}
-		return nil
-	case db.ErrBlockExists:
-		log.Info("block already exists, ", blk.GetHash())
-		return nil
-	default:
-		log.Info(err)
-		return err
-	}
-}
-
-func (l *Ledger) getRepresentativeAddress(txn db.StoreTxn, address types.Address, token types.Hash) (types.Address, error) {
-	info, err := txn.GetTokenMeta(address, token)
-	if err != nil {
-		return types.Address{}, err
-	}
-
-	blk, err := txn.GetBlock(info.RepBlock)
-	if err != nil {
-		return types.Address{}, err
-	}
-
-	switch b := blk.(type) {
-	case *types.StateBlock:
-		return b.Representative, nil
-	default:
-		return types.Address{}, types.ErrBadBlockType
-	}
-}
-
-func (l *Ledger) addUncheckedBlock(txn db.StoreTxn, parentHash types.Hash, blk types.Block, kind types.UncheckedKind) error {
-	found, err := txn.HasUncheckedBlock(parentHash, kind)
-	if err != nil {
-		return err
-	}
-
-	if found {
-		return nil
-	}
-
-	return txn.AddUncheckedBlock(parentHash, blk, kind)
-}
-
-func (l *Ledger) processUncheckedBlock(txn db.StoreTxn, blk types.Block, kind types.UncheckedKind) error {
-	hash := blk.GetHash()
-
-	found, err := txn.HasUncheckedBlock(hash, kind)
-	if err != nil {
-		return err
-	}
-	if found {
-		log.Info("unchecked block found,", kind)
-		uncheckedBlk, err := txn.GetUncheckedBlock(hash, kind)
-		if err != nil {
-			return err
-		}
-
-		if err := l.processBlock(txn, uncheckedBlk); err == nil {
-			// delete from the unchecked list if successful
-			if err := txn.DeleteUncheckedBlock(hash, kind); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (l *Ledger) updateFrontier(txn db.StoreTxn, blk *types.StateBlock) error {
-	frontier, _ := txn.GetFrontier(blk.PreviousHash)
-	if blk.IsOpen() {
-		if err := txn.DeleteFrontier(frontier.Hash); err != nil {
-			return err
-		}
-	}
-	frontier = &types.Frontier{
-		Address: blk.Address,
-		Hash:    blk.Hash(),
-	}
-	if err := txn.AddFrontier(frontier); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *Ledger) updateAccountMeta(txn db.StoreTxn, blk *types.StateBlock, balance types.Balance) error {
-	if account, err := txn.GetAccountMeta(blk.Address); err == badger.ErrKeyNotFound {
-		accountmeta := types.AccountMeta{
-			Address: blk.Address,
-			Tokens: []*types.TokenMeta{
-				&types.TokenMeta{
-					Type:      blk.Token,
-					Header:    blk.Hash(),
-					RepBlock:  blk.Hash(),
-					OpenBlock: blk.Hash(),
-					Balance:   balance,
-				},
-			},
-		}
-		if err := txn.AddAccountMeta(&accountmeta); err != nil {
-			return err
-		}
-		return nil
-	} else if err == nil {
-		// add token info
-		token := types.TokenMeta{
-			Type:      blk.Token,
-			Header:    blk.Hash(),
-			RepBlock:  blk.Hash(),
-			OpenBlock: blk.Hash(),
-			Balance:   balance,
-		}
-		account.Tokens = append(account.Tokens, &token)
-		if err := txn.UpdateAccountMeta(account); err != nil {
-			return err
-		}
-		return nil
-	} else {
-		return err
-	}
-}
-
 func (l *Ledger) AddBlock(blk types.Block) error {
-	return l.db.Update(func(txn db.StoreTxn) error {
-		err := l.processBlock(txn, blk)
-		if err != nil && err != ErrUnchecked {
+	log.Info("l.txn", l.txn)
+	hash := blk.GetHash()
+	log.Info("adding block,", hash)
+	blockBytes, err := blk.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	key := l.getBlockKey(hash)
+
+	//never overwrite implicitly
+	err = l.txn.Get(key, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrBlockExists
+	} else if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
+	return l.txn.SetWithMeta(key, blockBytes, byte(blk.GetType()))
+}
+func (l *Ledger) GetBlock(hash types.Hash) (types.Block, error) {
+	log.Info(l.txn)
+	key := l.getBlockKey(hash)
+	var blk types.Block
+	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+		if blk, err = types.NewBlock(b); err != nil {
+			return err
+		}
+		if _, err = blk.UnmarshalMsg(val); err != nil {
 			return err
 		}
 		return nil
 	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, err
+	}
+	return blk, nil
+}
+func (l *Ledger) GetBlocks() ([]types.Block, error) {
+	log.Info(l.txn)
+	var blocks []types.Block
+	//var blk types.Block
+	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) (err error) {
+		blk, err := types.NewBlock(b)
+		if err != nil {
+			return
+		}
+		_, err = blk.UnmarshalMsg(val)
+		blocks = append(blocks, blk)
+		return
+	})
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+func (l *Ledger) DeleteBlock(hash types.Hash) error {
+	log.Info(l.txn)
+	key := l.getBlockKey(hash)
+	return l.txn.Delete(key)
+
+}
+func (l *Ledger) HasBlock(hash types.Hash) (bool, error) {
+	log.Info(l.txn)
+	key := l.getBlockKey(hash)
+	err := l.txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+func (l *Ledger) CountBlocks() (uint64, error) {
+	log.Info(l.txn)
+	var count uint64
+
+	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
+		count++
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+func (l *Ledger) GetRandomBlock() (types.Block, error) {
+	c, err := l.CountBlocks()
+	if err != nil {
+		return nil, err
+	}
+	if c == 0 {
+		return nil, ErrStoreEmpty
+	}
+	index := rand.Int63n(int64(c))
+	var blk types.Block
+	var temp int64
+	err = l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
+		if temp == index {
+			blk, err = types.NewBlock(b)
+			if err != nil {
+				return err
+			}
+			_, err = blk.UnmarshalMsg(val)
+			if err != nil {
+				return err
+			}
+		}
+		temp++
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return blk, nil
+
+}
+
+// ------------------- unchecked Block  --------------------
+
+func (t *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
+	switch kind {
+	case types.UncheckedKindPrevious:
+		return idPrefixUncheckedBlockPrevious
+	case types.UncheckedKindLink:
+		return idPrefixUncheckedBlockLink
+	default:
+		panic("bad unchecked block kind")
+	}
+}
+func (t *Ledger) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind) []byte {
+	var key [1 + types.HashSize]byte
+	key[0] = t.uncheckedKindToPrefix(kind)
+	copy(key[1:], hash[:])
+	return key[:]
+}
+func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind) error {
+	log.Info("l.txn", l.txn)
+
+	blockBytes, err := blk.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	key := l.getUncheckedBlockKey(parentHash, kind)
+
+	//never overwrite implicitly
+	err = l.txn.Get(key, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrUncheckedBlockExists
+	} else if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
+
+	return l.txn.SetWithMeta(key, blockBytes, byte(blk.GetType()))
+}
+func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind) (types.Block, error) {
+	log.Info(l.txn)
+	key := l.getUncheckedBlockKey(parentHash, kind)
+	var blk types.Block
+	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+		if blk, err = types.NewBlock(b); err != nil {
+			return err
+		}
+		if _, err = blk.UnmarshalMsg(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrUncheckedBlockNotFound
+		}
+		return nil, err
+	}
+	return blk, nil
+}
+func (l *Ledger) DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind) error {
+	log.Info(l.txn)
+	key := l.getUncheckedBlockKey(parentHash, kind)
+	return l.txn.Delete(key)
+}
+func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (bool, error) {
+	log.Info(l.txn)
+	key := l.getUncheckedBlockKey(hash, kind)
+	err := l.txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error {
+	return nil
+}
+func (l *Ledger) CountUncheckedBlocks() (uint64, error) {
+	log.Info(l.txn)
+	var count uint64
+
+	err := l.txn.Iterator(idPrefixUncheckedBlockLink, func(key []byte, val []byte, b byte) error {
+		count++
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	err = l.txn.Iterator(idPrefixUncheckedBlockPrevious, func(key []byte, val []byte, b byte) error {
+		count++
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// ------------------- AccountMeta  --------------------
+
+func (l *Ledger) getAccountMetaKey(address types.Address) []byte {
+	var key [1 + types.AddressSize]byte
+	key[0] = idPrefixAccount
+	copy(key[1:], address[:])
+	return key[:]
+}
+func (l *Ledger) AddAccountMeta(meta *types.AccountMeta) error {
+	metaBytes, err := meta.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	key := l.getAccountMetaKey(meta.Address)
+
+	// never overwrite implicitly
+	err = l.txn.Get(key, func(vals []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrAccountExists
+	} else if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
+	return l.txn.Set(key, metaBytes)
+}
+func (l *Ledger) GetAccountMeta(address types.Address) (*types.AccountMeta, error) {
+	key := l.getAccountMetaKey(address)
+	var meta types.AccountMeta
+	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+		if _, err = meta.UnmarshalMsg(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrAccountNotFound
+		}
+		return nil, err
+	}
+	return &meta, nil
+}
+func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta) error {
+	metaBytes, err := meta.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	key := l.getAccountMetaKey(meta.Address)
+	return l.txn.Set(key, metaBytes)
+}
+func (l *Ledger) DeleteAccountMeta(address types.Address) error {
+	key := l.getAccountMetaKey(address)
+	return l.txn.Delete(key)
+}
+func (l *Ledger) HasAccountMeta(address types.Address) (bool, error) {
+	log.Info(l.txn)
+	key := l.getAccountMetaKey(address)
+	err := l.txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// ------------------- TokenMeta  --------------------
+
+func (l *Ledger) AddTokenMeta(address types.Address, meta *types.TokenMeta) error {
+	accountmeta, err := l.GetAccountMeta(address)
+	if err != nil {
+		return err
+	}
+	for _, t := range accountmeta.Tokens {
+		if t.Type == meta.Type {
+			return ErrTokenExists
+		}
+	}
+
+	accountmeta.Tokens = append(accountmeta.Tokens, meta)
+	return l.UpdateAccountMeta(accountmeta)
+}
+func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error) {
+	accountmeta, err := l.GetAccountMeta(address)
+	if err != nil {
+		return nil, err
+	}
+	for _, token := range accountmeta.Tokens {
+		if token.Type == tokenType {
+			return token, nil
+		}
+	}
+	return nil, ErrTokenNotFound
+}
+func (l *Ledger) UpdateTokenMeta(address types.Address, meta *types.TokenMeta) error {
+	accountmeta, err := l.GetAccountMeta(address)
+	if err != nil {
+		return err
+	}
+	tokens := accountmeta.Tokens
+	for index, token := range accountmeta.Tokens {
+		if token.Type == meta.Type {
+			accountmeta.Tokens = append(tokens[:index], tokens[index+1:]...)
+			accountmeta.Tokens = append(accountmeta.Tokens, meta)
+			return l.UpdateAccountMeta(accountmeta)
+		}
+	}
+	return ErrTokenNotFound
+}
+func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash) error {
+	accountmeta, err := l.GetAccountMeta(address)
+	if err != nil {
+		return err
+	}
+	tokens := accountmeta.Tokens
+	for index, token := range tokens {
+		if token.Type == tokenType {
+			accountmeta.Tokens = append(tokens[:index], tokens[index+1:]...)
+		}
+	}
+	return l.UpdateAccountMeta(accountmeta)
+}
+
+// ------------------- representation  --------------------
+
+func (t *Ledger) getRepresentationKey(address types.Address) []byte {
+	var key [1 + types.AddressSize]byte
+	key[0] = idPrefixRepresentation
+	copy(key[1:], address[:])
+	return key[:]
+}
+func (l *Ledger) AddRepresentationWeight(address types.Address, amount types.Balance) error {
+	oldAmount, err := l.GetRepresentation(address)
+	if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
+	amount = oldAmount.Add(amount)
+	key := l.getRepresentationKey(address)
+	amountBytes, err := amount.MarshalText()
+	if err != nil {
+		return err
+	}
+	return l.txn.Set(key, amountBytes)
+
+}
+func (l *Ledger) SubRepresentationWeight(address types.Address, amount types.Balance) error {
+	oldAmount, err := l.GetRepresentation(address)
+	if err != nil {
+		return err
+	}
+	amount = oldAmount.Sub(amount)
+	key := l.getRepresentationKey(address)
+	amountBytes, err := amount.MarshalText()
+	if err != nil {
+		return err
+	}
+	return l.txn.Set(key, amountBytes)
+}
+func (l *Ledger) GetRepresentation(address types.Address) (types.Balance, error) {
+	key := l.getRepresentationKey(address)
+	var amount types.Balance
+	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+		if err = amount.UnmarshalText(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return types.ZeroBalance, err
+	}
+	return amount, nil
+}
+
+// ------------------- pending  --------------------
+
+func (t *Ledger) getPendingKey(destination types.Address, hash types.Hash) []byte {
+	var key [1 + types.PendingKeySize]byte
+	key[0] = idPrefixPending
+	copy(key[1:], destination[:])
+	copy(key[1+types.AddressSize:], hash[:])
+	return key[:]
+}
+func (l *Ledger) AddPending(destination types.Address, hash types.Hash, pending *types.PendingInfo) error {
+	pendingBytes, err := pending.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	key := l.getPendingKey(destination, hash)
+
+	//never overwrite implicitly
+	err = l.txn.Get(key, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrPendingExists
+	} else if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
+	return l.txn.Set(key, pendingBytes)
+}
+func (l *Ledger) GetPending(destination types.Address, hash types.Hash) (*types.PendingInfo, error) {
+	log.Info(l.txn)
+	key := l.getPendingKey(destination, hash)
+	var pending types.PendingInfo
+	err := l.txn.Get(key[:], func(val []byte, b byte) (err error) {
+		if _, err = pending.UnmarshalMsg(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrPendingNotFound
+		}
+		return nil, err
+	}
+	return &pending, nil
+
+}
+func (l *Ledger) DeletePending(destination types.Address, hash types.Hash) error {
+	key := l.getPendingKey(destination, hash)
+	return l.txn.Delete(key)
+}
+
+// ------------------- frontier  --------------------
+
+func (t *Ledger) getFrontierKey(hash types.Hash) []byte {
+	var key [1 + types.HashSize]byte
+	key[0] = idPrefixFrontier
+	copy(key[1:], hash[:])
+	return key[:]
+}
+func (l *Ledger) AddFrontier(frontier *types.Frontier) error {
+	key := l.getFrontierKey(frontier.Hash)
+
+	// never overwrite implicitly
+	err := l.txn.Get(key, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrFrontierExists
+	} else if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
+	return l.txn.Set(key, frontier.Address[:])
+}
+func (l *Ledger) GetFrontier(hash types.Hash) (*types.Frontier, error) {
+	log.Info(l.txn)
+	key := l.getFrontierKey(hash)
+	frontier := types.Frontier{Hash: hash}
+	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+		copy(frontier.Address[:], val)
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrFrontierNotFound
+		}
+		return nil, err
+	}
+	return &frontier, nil
+}
+func (l *Ledger) GetFrontiers() ([]*types.Frontier, error) {
+	log.Info(l.txn)
+	var frontiers []*types.Frontier
+
+	err := l.txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
+		var frontier types.Frontier
+		copy(frontier.Hash[:], key[1:])
+		copy(frontier.Address[:], val)
+		frontiers = append(frontiers, &frontier)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return frontiers, nil
+}
+func (l *Ledger) DeleteFrontier(hash types.Hash) error {
+	key := l.getFrontierKey(hash)
+	return l.txn.Delete(key)
+}
+func (l *Ledger) CountFrontiers() (uint64, error) {
+	log.Info(l.txn)
+	var count uint64
+
+	err := l.txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
+		count++
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

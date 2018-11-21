@@ -1,39 +1,39 @@
 {
   "accountmetas": [
     {
-      "address": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "account": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "tokens": [
         {
           "type": "991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918",
           "header": "991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448",
-          "repBlock": "991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728967",
-          "openBlock": "991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728941",
+          "rep": "991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728967",
+          "open": "991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728941",
           "balance": "121.263454"
         },
         {
           "type": "191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918",
           "header": "191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448",
-          "repBlock": "191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728967",
-          "openBlock": "191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728941",
+          "rep": "191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728967",
+          "open": "191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728941",
           "balance": "2321.23454"
         }
       ]
     },
     {
-      "address": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
+      "account": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "tokens": [
         {
           "type": "391cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918",
           "header": "391cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448",
-          "repBlock": "391cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728967",
-          "openBlock": "391cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728941",
+          "rep": "391cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728967",
+          "open": "391cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728941",
           "balance": "31121.263454"
         },
         {
           "type": "491cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918",
           "header": "491cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448",
-          "repBlock": "491cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728967",
-          "openBlock": "491cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728941",
+          "rep": "491cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728967",
+          "open": "491cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728941",
           "balance": "43111.23454"
         }
       ]
