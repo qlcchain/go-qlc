@@ -27,32 +27,26 @@ type Store interface {
 }
 
 type StoreTxn interface {
+	Set(key, val []byte) error
+	SetWithMeta(key, val []byte, meta byte) error
+	Get(key []byte, fn func([]byte, byte) error) error
+	Delete(key []byte) error
+	Iterator(pre byte, fn func([]byte, []byte, byte) error) error
+}
+
+type StoreLedger interface {
 	Empty() (bool, error)
 	Flush() error
 
-	// account meta CURD
-	AddAccountMeta(meta *types.AccountMeta) error
-	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
-	UpdateAccountMeta(meta *types.AccountMeta) error
-	DeleteAccountMeta(address types.Address) error
-	HasAccountMeta(address types.Address) (bool, error)
-	// token meta CURD
-	AddTokenMeta(address types.Address, meta *types.TokenMeta) error
-	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
-	UpdateTokenMeta(address types.Address, meta *types.TokenMeta) error
-	DelTokenMeta(address types.Address, meta *types.TokenMeta) error
 	// blocks CURD
 	AddBlock(blk types.Block) error
 	GetBlock(hash types.Hash) (types.Block, error)
-	GetBlocks() ([]*types.Block, error)
+	GetBlocks() ([]types.Block, error)
 	DeleteBlock(hash types.Hash) error
 	HasBlock(hash types.Hash) (bool, error)
 	CountBlocks() (uint64, error)
 	GetRandomBlock() (types.Block, error)
-	// representation CURD
-	AddRepresentation(address types.Address, amount types.Balance) error
-	SubRepresentation(address types.Address, amount types.Balance) error
-	GetRepresentation(address types.Address) (types.Balance, error)
+
 	// unchecked CURD
 	AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind) error
 	GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind) (types.Block, error)
@@ -60,10 +54,30 @@ type StoreTxn interface {
 	HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (bool, error)
 	WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error
 	CountUncheckedBlocks() (uint64, error)
+
+	// account meta CURD
+	AddAccountMeta(meta *types.AccountMeta) error
+	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
+	UpdateAccountMeta(meta *types.AccountMeta) error
+	DeleteAccountMeta(address types.Address) error
+	HasAccountMeta(address types.Address) (bool, error)
+
+	// token meta CURD
+	AddTokenMeta(address types.Address, meta *types.TokenMeta) error
+	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+	UpdateTokenMeta(address types.Address, meta *types.TokenMeta) error
+	DeleteTokenMeta(address types.Address, tokenType types.Hash) error
+
+	// representation CURD
+	AddRepresentationWeight(address types.Address, amount types.Balance) error
+	SubRepresentationWeight(address types.Address, amount types.Balance) error
+	GetRepresentation(address types.Address) (types.Balance, error)
+
 	// pending CURD
 	AddPending(destination types.Address, hash types.Hash, pending *types.PendingInfo) error
 	GetPending(destination types.Address, hash types.Hash) (*types.PendingInfo, error)
 	DeletePending(destination types.Address, hash types.Hash) error
+
 	// frontier CURD
 	AddFrontier(frontier *types.Frontier) error
 	GetFrontier(hash types.Hash) (*types.Frontier, error)
