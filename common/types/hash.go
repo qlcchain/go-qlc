@@ -12,7 +12,6 @@ import (
 	"fmt"
 
 	"github.com/qlcchain/go-qlc/common/types/internal/util"
-
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
 )
