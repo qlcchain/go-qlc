@@ -12,7 +12,7 @@ type Dispatcher struct {
 	quitCh             chan bool
 	receivedMessageCh  chan Message
 	dispatchedMessages *lru.Cache
-	filters            map[string]bool
+	filters            map[MessageType]bool
 }
 
 // NewDispatcher create Dispatcher instance.
@@ -21,7 +21,7 @@ func NewDispatcher() *Dispatcher {
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 10),
 		receivedMessageCh: make(chan Message, 65536),
-		filters:           make(map[string]bool),
+		filters:           make(map[MessageType]bool),
 	}
 
 	dp.dispatchedMessages, _ = lru.New(51200)

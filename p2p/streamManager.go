@@ -22,12 +22,16 @@ type StreamManager struct {
 }
 
 // NewStreamManager return a new stream manager
-func NewStreamManager(node *QlcNode) *StreamManager {
+func NewStreamManager() *StreamManager {
 	return &StreamManager{
 		quitCh:     make(chan bool, 1),
 		allStreams: new(sync.Map),
-		node:       node,
 	}
+}
+
+// SetQlcService set netService
+func (sm *StreamManager) SetQlcNode(node *QlcNode) {
+	sm.node = node
 }
 
 // Start stream manager service

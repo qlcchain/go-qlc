@@ -38,12 +38,15 @@ type QlcNode struct {
 
 // NewNode return new QlcNode according to the config.
 func NewNode(config *config.Config) (*QlcNode, error) {
+	streamManager := NewStreamManager()
 	node := &QlcNode{
 		cfg:           config,
 		ctx:           context.Background(),
 		boostrapAddrs: config.BootNodes,
+		streamManager: streamManager,
 	}
-	node.streamManager = NewStreamManager(node)
+	streamManager.SetQlcNode(node)
+
 	// load private key
 	if err := node.LoadPrivateKey(); err != nil {
 		return nil, err

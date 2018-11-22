@@ -10,7 +10,7 @@ type MessageType string
 
 // Message interface for message.
 type Message interface {
-	MessageType() string
+	MessageType() MessageType
 	MessageFrom() string
 	Data() []byte
 	Hash() string
@@ -22,7 +22,7 @@ type Service interface {
 	Stop()
 
 	Node() *QlcNode
-
+	MessageEvent() *ConcreteSubject
 	Register(...*Subscriber)
 	Deregister(...*Subscriber)
 
@@ -38,14 +38,14 @@ type Subscriber struct {
 	msgChan chan Message
 
 	// msgType message type to subscribe
-	msgType string
+	msgType MessageType
 
 	// doFilter dup message
 	doFilter bool
 }
 
 // NewSubscriber return new Subscriber instance.
-func NewSubscriber(id interface{}, msgChan chan Message, doFilter bool, msgType string) *Subscriber {
+func NewSubscriber(id interface{}, msgChan chan Message, doFilter bool, msgType MessageType) *Subscriber {
 	return &Subscriber{id, msgChan, msgType, doFilter}
 }
 
@@ -55,7 +55,7 @@ func (s *Subscriber) ID() interface{} {
 }
 
 // MessageType return msgTypes.
-func (s *Subscriber) MessageType() string {
+func (s *Subscriber) MessageType() MessageType {
 	return s.msgType
 }
 
@@ -71,18 +71,18 @@ func (s *Subscriber) DoFilter() bool {
 
 // BaseMessage base message
 type BaseMessage struct {
-	messageType string
+	messageType MessageType
 	from        string
 	data        []byte
 }
 
 // NewBaseMessage new base message
-func NewBaseMessage(messageType string, from string, data []byte) Message {
+func NewBaseMessage(messageType MessageType, from string, data []byte) Message {
 	return &BaseMessage{messageType: messageType, from: from, data: data}
 }
 
 // MessageType get message type
-func (msg *BaseMessage) MessageType() string {
+func (msg *BaseMessage) MessageType() MessageType {
 	return msg.messageType
 }
 

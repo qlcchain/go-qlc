@@ -11,7 +11,7 @@ func TestQlcMessage(t *testing.T) {
 	content := NewQlcMessage([]byte(data), msgtype)
 	qlcMsg := &QlcMessage{
 		content:     content,
-		messageType: msgtype,
+		messageType: MessageType(msgtype),
 	}
 	if bytes.Compare(qlcMsg.MagicNumber(), MagicNumber) != 0 {
 		t.Fatal("Magic error")
@@ -19,7 +19,7 @@ func TestQlcMessage(t *testing.T) {
 	if qlcMsg.Version() != CurrentVersion {
 		t.Fatal("Version error")
 	}
-	if qlcMsg.MessageType() != msgtype {
+	if qlcMsg.MessageType() != MessageType(msgtype) {
 		t.Fatal("messageType error")
 	}
 	if bytes.Compare(qlcMsg.MessageData(), []byte(data)) != 0 {
