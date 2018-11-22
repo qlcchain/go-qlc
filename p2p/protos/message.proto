@@ -1,3 +1,28 @@
 syntax="proto3";
 
-package protos;
+package pb;
+
+message StateBlock {
+    bytes Type = 1;
+    bytes Address = 2;
+    bytes PreviousHash = 3;
+    bytes Representative = 4;
+    bytes Balance = 5;
+    bytes Link = 6;
+    bytes Signature = 7;
+    bytes Token = 8;
+    bytes Work = 9;
+}
+message SmartContractBlock {
+    bytes Type = 1;
+    bytes Address = 2;
+    bytes PreviousHash = 3;
+    bytes Representative = 4;
+    bytes Balance = 5;
+    bytes Link = 6;
+    bytes Signature = 7;
+    bytes Extra = 8;
+    bytes Work = 9;
+    bytes Owner = 10;
+    bytes Issuer = 11;
+}

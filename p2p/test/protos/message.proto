@@ -1,7 +1,0 @@
-syntax="proto3";
-
-package protos;
-
-message Test {
-    string strTest  = 1;
-}
