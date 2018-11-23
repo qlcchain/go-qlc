@@ -442,6 +442,27 @@ func TestLedger_DeleteAccountMeta(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	accountMetas := parseAccountMetas(t, "testdata/accountupdate.json")
+	err = l.Update(func() error {
+		for _, a := range accountMetas {
+			err := l.AddOrUpdateAccountMeta(a)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 func TestLedger_UpdateAccountMeta(t *testing.T) {
 	l, err := NewLedger()
 	if err != nil {
@@ -539,6 +560,27 @@ func TestLedger_GetTokenMeta(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	tokenmeta, address, _ := parseToken(t)
+
+	err = l.Update(func() error {
+		err = l.AddOrUpdateTokenMeta(address, &tokenmeta)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 func TestLedger_UpdateTokenMeta(t *testing.T) {
 	l, err := NewLedger()
 	if err != nil {
@@ -575,6 +617,28 @@ func TestLedger_DelTokenMeta(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestLedger_HasTokenMeta(t *testing.T) {
+	l, err := NewLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+
+	_, address, tokenType := parseToken(t)
+
+	err = l.View(func() error {
+		r, err := l.HasTokenMeta(address, tokenType)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("has token,", r)
 		return nil
 	})
 	if err != nil {
@@ -660,9 +724,9 @@ func parsePending(t *testing.T) (address types.Address, hash types.Hash, pending
 	typehash := types.Hash{}
 	typehash.Of("191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448")
 	pendinginfo = types.PendingInfo{
-		address,
-		balance,
-		typehash,
+		Source: address,
+		Amount: balance,
+		Type:   typehash,
 	}
 	return
 }

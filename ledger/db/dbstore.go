@@ -1,21 +1,9 @@
 package db
 
 import (
-	"errors"
 	"io"
 
 	"github.com/qlcchain/go-qlc/common/types"
-)
-
-var (
-	ErrStoreEmpty     = errors.New("the store is empty")
-	ErrBlockExists    = errors.New("block already exists")
-	ErrBlockNotFound  = errors.New("block not found")
-	ErrAccountExists  = errors.New("account already exists")
-	ErrTokenExists    = errors.New("token already exists")
-	ErrTokenNotFound  = errors.New("token not found")
-	ErrPendingExists  = errors.New("pending transaction already exists")
-	ErrFrontierExists = errors.New("frontier already exists")
 )
 
 // Store is an interface that all stores need to implement.
@@ -57,15 +45,18 @@ type StoreLedger interface {
 
 	// account meta CURD
 	AddAccountMeta(meta *types.AccountMeta) error
-	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
 	UpdateAccountMeta(meta *types.AccountMeta) error
-	DeleteAccountMeta(address types.Address) error
+	AddOrUpdateAccountMeta(meta *types.AccountMeta) error
+	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
 	HasAccountMeta(address types.Address) (bool, error)
+	DeleteAccountMeta(address types.Address) error
 
 	// token meta CURD
 	AddTokenMeta(address types.Address, meta *types.TokenMeta) error
-	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	UpdateTokenMeta(address types.Address, meta *types.TokenMeta) error
+	AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMeta) error
+	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+	HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error)
 	DeleteTokenMeta(address types.Address, tokenType types.Hash) error
 
 	// representation CURD
