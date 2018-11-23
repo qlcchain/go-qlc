@@ -177,5 +177,7 @@ build/
 go.sum
 # End of https://www.gitignore.io/api/go,linux,macos,windows,jetbrains+all,visualstudiocode
 
+coverage.txt
+
 # test data
-ledger/testdatabase/
+ledger/db/testdatabase/

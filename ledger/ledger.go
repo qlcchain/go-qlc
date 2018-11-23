@@ -38,7 +38,7 @@ const (
 	idPrefixUncheckedBlockPrevious
 	idPrefixUncheckedBlockLink
 	idPrefixAccount
-	idPrefixToken
+	//idPrefixToken
 	idPrefixFrontier
 	idPrefixPending
 	idPrefixRepresentation
@@ -72,7 +72,6 @@ func (l *Ledger) View(fn func() error) error {
 
 // Empty reports whether the database is empty or not.
 func (l *Ledger) Empty() (bool, error) {
-	log.Info(l.txn)
 	r := true
 	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		r = false
@@ -96,7 +95,6 @@ func (l *Ledger) getBlockKey(hash types.Hash) []byte {
 	return key[:]
 }
 func (l *Ledger) AddBlock(blk types.Block) error {
-	log.Info("l.txn", l.txn)
 	hash := blk.GetHash()
 	log.Info("adding block,", hash)
 	blockBytes, err := blk.MarshalMsg(nil)
@@ -118,7 +116,6 @@ func (l *Ledger) AddBlock(blk types.Block) error {
 	return l.txn.SetWithMeta(key, blockBytes, byte(blk.GetType()))
 }
 func (l *Ledger) GetBlock(hash types.Hash) (types.Block, error) {
-	log.Info(l.txn)
 	key := l.getBlockKey(hash)
 	var blk types.Block
 	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
@@ -139,7 +136,6 @@ func (l *Ledger) GetBlock(hash types.Hash) (types.Block, error) {
 	return blk, nil
 }
 func (l *Ledger) GetBlocks() ([]types.Block, error) {
-	log.Info(l.txn)
 	var blocks []types.Block
 	//var blk types.Block
 	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) (err error) {
@@ -157,13 +153,11 @@ func (l *Ledger) GetBlocks() ([]types.Block, error) {
 	return blocks, nil
 }
 func (l *Ledger) DeleteBlock(hash types.Hash) error {
-	log.Info(l.txn)
 	key := l.getBlockKey(hash)
 	return l.txn.Delete(key)
 
 }
 func (l *Ledger) HasBlock(hash types.Hash) (bool, error) {
-	log.Info(l.txn)
 	key := l.getBlockKey(hash)
 	err := l.txn.Get(key, func(val []byte, b byte) error {
 		return nil
@@ -177,7 +171,6 @@ func (l *Ledger) HasBlock(hash types.Hash) (bool, error) {
 	return true, nil
 }
 func (l *Ledger) CountBlocks() (uint64, error) {
-	log.Info(l.txn)
 	var count uint64
 
 	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
@@ -240,7 +233,6 @@ func (t *Ledger) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind)
 	return key[:]
 }
 func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind) error {
-	log.Info("l.txn", l.txn)
 
 	blockBytes, err := blk.MarshalMsg(nil)
 	if err != nil {
@@ -262,7 +254,6 @@ func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind 
 	return l.txn.SetWithMeta(key, blockBytes, byte(blk.GetType()))
 }
 func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind) (types.Block, error) {
-	log.Info(l.txn)
 	key := l.getUncheckedBlockKey(parentHash, kind)
 	var blk types.Block
 	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
@@ -283,12 +274,10 @@ func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKi
 	return blk, nil
 }
 func (l *Ledger) DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind) error {
-	log.Info(l.txn)
 	key := l.getUncheckedBlockKey(parentHash, kind)
 	return l.txn.Delete(key)
 }
 func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (bool, error) {
-	log.Info(l.txn)
 	key := l.getUncheckedBlockKey(hash, kind)
 	err := l.txn.Get(key, func(val []byte, b byte) error {
 		return nil
@@ -305,7 +294,6 @@ func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error {
 	return nil
 }
 func (l *Ledger) CountUncheckedBlocks() (uint64, error) {
-	log.Info(l.txn)
 	var count uint64
 
 	err := l.txn.Iterator(idPrefixUncheckedBlockLink, func(key []byte, val []byte, b byte) error {
@@ -375,6 +363,24 @@ func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta) error {
 		return err
 	}
 	key := l.getAccountMetaKey(meta.Address)
+
+	err = l.txn.Get(key, func(vals []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return ErrAccountNotFound
+		}
+		return err
+	}
+	return l.txn.Set(key, metaBytes)
+}
+func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta) error {
+	metaBytes, err := meta.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	key := l.getAccountMetaKey(meta.Address)
 	return l.txn.Set(key, metaBytes)
 }
 func (l *Ledger) DeleteAccountMeta(address types.Address) error {
@@ -382,7 +388,6 @@ func (l *Ledger) DeleteAccountMeta(address types.Address) error {
 	return l.txn.Delete(key)
 }
 func (l *Ledger) HasAccountMeta(address types.Address) (bool, error) {
-	log.Info(l.txn)
 	key := l.getAccountMetaKey(address)
 	err := l.txn.Get(key, func(val []byte, b byte) error {
 		return nil
@@ -439,6 +444,23 @@ func (l *Ledger) UpdateTokenMeta(address types.Address, meta *types.TokenMeta) e
 	}
 	return ErrTokenNotFound
 }
+func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMeta) error {
+	accountmeta, err := l.GetAccountMeta(address)
+	if err != nil {
+		return err
+	}
+	tokens := accountmeta.Tokens
+	for index, token := range accountmeta.Tokens {
+		if token.Type == meta.Type {
+			accountmeta.Tokens = append(tokens[:index], tokens[index+1:]...)
+			accountmeta.Tokens = append(accountmeta.Tokens, meta)
+			return l.UpdateAccountMeta(accountmeta)
+		}
+	}
+
+	accountmeta.Tokens = append(accountmeta.Tokens, meta)
+	return l.UpdateAccountMeta(accountmeta)
+}
 func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash) error {
 	accountmeta, err := l.GetAccountMeta(address)
 	if err != nil {
@@ -451,6 +473,19 @@ func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash) er
 		}
 	}
 	return l.UpdateAccountMeta(accountmeta)
+}
+func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error) {
+	accountmeta, err := l.GetAccountMeta(address)
+	if err != nil {
+		return false, err
+	}
+	for _, t := range accountmeta.Tokens {
+		if t.Type == tokenType {
+			return true, nil
+		}
+	}
+	return false, nil
+
 }
 
 // ------------------- representation  --------------------
@@ -531,7 +566,6 @@ func (l *Ledger) AddPending(destination types.Address, hash types.Hash, pending 
 	return l.txn.Set(key, pendingBytes)
 }
 func (l *Ledger) GetPending(destination types.Address, hash types.Hash) (*types.PendingInfo, error) {
-	log.Info(l.txn)
 	key := l.getPendingKey(destination, hash)
 	var pending types.PendingInfo
 	err := l.txn.Get(key[:], func(val []byte, b byte) (err error) {
@@ -577,7 +611,6 @@ func (l *Ledger) AddFrontier(frontier *types.Frontier) error {
 	return l.txn.Set(key, frontier.Address[:])
 }
 func (l *Ledger) GetFrontier(hash types.Hash) (*types.Frontier, error) {
-	log.Info(l.txn)
 	key := l.getFrontierKey(hash)
 	frontier := types.Frontier{Hash: hash}
 	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
@@ -593,7 +626,6 @@ func (l *Ledger) GetFrontier(hash types.Hash) (*types.Frontier, error) {
 	return &frontier, nil
 }
 func (l *Ledger) GetFrontiers() ([]*types.Frontier, error) {
-	log.Info(l.txn)
 	var frontiers []*types.Frontier
 
 	err := l.txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
@@ -613,7 +645,6 @@ func (l *Ledger) DeleteFrontier(hash types.Hash) error {
 	return l.txn.Delete(key)
 }
 func (l *Ledger) CountFrontiers() (uint64, error) {
-	log.Info(l.txn)
 	var count uint64
 
 	err := l.txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {

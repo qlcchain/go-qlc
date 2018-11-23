@@ -3,6 +3,8 @@ package db
 import (
 	"fmt"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
@@ -24,7 +26,7 @@ type BadgerStoreTxn struct {
 
 // NewBadgerStore initializes/opens a badger database in the given directory.
 func NewBadgerStore() (Store, error) {
-	dir := "testdatabase"
+	dir := getBadgerDir()
 	opts := badger.DefaultOptions
 	opts.Dir = dir
 	opts.ValueDir = dir
@@ -45,6 +47,13 @@ func NewBadgerStore() (Store, error) {
 	}
 
 	return &BadgerStore{db: db}, nil
+}
+
+func getBadgerDir() string {
+	root, _ := os.Getwd()
+	s := root[:strings.LastIndex(root, "go-qlc")]
+	dir := path.Join(path.Join(path.Join(path.Join(s, "go-qlc"), "ledger"), "db"), "testdatabase")
+	return dir
 }
 
 // Close closes the database
