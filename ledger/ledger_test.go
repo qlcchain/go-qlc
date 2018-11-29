@@ -4,12 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/random"
 )
+
+func TestLedger_RemoveDB(t *testing.T) {
+	if err := os.RemoveAll("db/testdatabase"); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestLedger_Empty(t *testing.T) {
 	l, err := NewLedger()
@@ -795,13 +802,18 @@ func TestLedger_DeletePending(t *testing.T) {
 
 func parseFrontier(t *testing.T) (frontier types.Frontier) {
 	headerhash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
-	openhash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
+	openhash := "001cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
 	frontier.HeaderBlock.Of(headerhash)
 	frontier.OpenBlock.Of(openhash)
 	return
-
 }
 
+func generateFrontier() *types.Frontier {
+	var frontier types.Frontier
+	random.Bytes(frontier.HeaderBlock[:])
+	random.Bytes(frontier.OpenBlock[:])
+	return &frontier
+}
 func TestLedger_AddFrontier(t *testing.T) {
 	l, err := NewLedger()
 	if err != nil {
@@ -812,8 +824,11 @@ func TestLedger_AddFrontier(t *testing.T) {
 	frontier := parseFrontier(t)
 	err = l.Update(func() error {
 		err = l.AddFrontier(&frontier)
-		if err != nil {
+		if err != nil && err != ErrFrontierExists {
 			t.Fatal(err)
+		}
+		for i := 0; i < 100; i++ {
+			l.AddFrontier(generateFrontier())
 		}
 		return nil
 	})

@@ -83,6 +83,5 @@ func (s *Signature) MarshalJSON() ([]byte, error) {
 }
 
 func (s *Signature) UnmarshalJSON(b []byte) error {
-	fmt.Println(string(b))
 	return s.Of(string(b))
 }

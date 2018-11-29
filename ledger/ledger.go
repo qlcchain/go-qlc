@@ -3,6 +3,7 @@ package ledger
 import (
 	"errors"
 	"math/rand"
+	"sort"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
@@ -625,8 +626,11 @@ func (l *Ledger) GetFrontier(hash types.Hash) (*types.Frontier, error) {
 	}
 	return &frontier, nil
 }
+func (l *Ledger) sortFrontiers() {
+
+}
 func (l *Ledger) GetFrontiers() ([]*types.Frontier, error) {
-	var frontiers []*types.Frontier
+	var frontiers types.Frontiers
 
 	err := l.txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
 		var frontier types.Frontier
@@ -638,6 +642,7 @@ func (l *Ledger) GetFrontiers() ([]*types.Frontier, error) {
 	if err != nil {
 		return nil, err
 	}
+	sort.Sort(frontiers)
 	return frontiers, nil
 }
 func (l *Ledger) DeleteFrontier(hash types.Hash) error {

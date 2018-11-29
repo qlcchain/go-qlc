@@ -22,12 +22,12 @@ func (z *Frontier) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "address":
+		case "headerblock":
 			err = dc.ReadExtension(&z.HeaderBlock)
 			if err != nil {
 				return
 			}
-		case "hash":
+		case "openblock":
 			err = dc.ReadExtension(&z.OpenBlock)
 			if err != nil {
 				return
@@ -45,8 +45,8 @@ func (z *Frontier) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z Frontier) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 2
-	// write "address"
-	err = en.Append(0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	// write "headerblock"
+	err = en.Append(0x82, 0xab, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
 	if err != nil {
 		return
 	}
@@ -54,8 +54,8 @@ func (z Frontier) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	// write "hash"
-	err = en.Append(0xa4, 0x68, 0x61, 0x73, 0x68)
+	// write "openblock"
+	err = en.Append(0xa9, 0x6f, 0x70, 0x65, 0x6e, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
 	if err != nil {
 		return
 	}
@@ -70,14 +70,14 @@ func (z Frontier) EncodeMsg(en *msgp.Writer) (err error) {
 func (z Frontier) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 2
-	// string "address"
-	o = append(o, 0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	// string "headerblock"
+	o = append(o, 0x82, 0xab, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.HeaderBlock)
 	if err != nil {
 		return
 	}
-	// string "hash"
-	o = append(o, 0xa4, 0x68, 0x61, 0x73, 0x68)
+	// string "openblock"
+	o = append(o, 0xa9, 0x6f, 0x70, 0x65, 0x6e, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.OpenBlock)
 	if err != nil {
 		return
@@ -101,12 +101,12 @@ func (z *Frontier) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "address":
+		case "headerblock":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.HeaderBlock)
 			if err != nil {
 				return
 			}
-		case "hash":
+		case "openblock":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.OpenBlock)
 			if err != nil {
 				return
@@ -124,6 +124,6 @@ func (z *Frontier) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z Frontier) Msgsize() (s int) {
-	s = 1 + 8 + msgp.ExtensionPrefixSize + z.HeaderBlock.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len()
+	s = 1 + 12 + msgp.ExtensionPrefixSize + z.HeaderBlock.Len() + 10 + msgp.ExtensionPrefixSize + z.OpenBlock.Len()
 	return
 }
