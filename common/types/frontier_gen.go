@@ -23,12 +23,12 @@ func (z *Frontier) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "address":
-			err = dc.ReadExtension(&z.Address)
+			err = dc.ReadExtension(&z.HeaderBlock)
 			if err != nil {
 				return
 			}
 		case "hash":
-			err = dc.ReadExtension(&z.Hash)
+			err = dc.ReadExtension(&z.OpenBlock)
 			if err != nil {
 				return
 			}
@@ -50,7 +50,7 @@ func (z Frontier) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Address)
+	err = en.WriteExtension(&z.HeaderBlock)
 	if err != nil {
 		return
 	}
@@ -59,7 +59,7 @@ func (z Frontier) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Hash)
+	err = en.WriteExtension(&z.OpenBlock)
 	if err != nil {
 		return
 	}
@@ -72,13 +72,13 @@ func (z Frontier) MarshalMsg(b []byte) (o []byte, err error) {
 	// map header, size 2
 	// string "address"
 	o = append(o, 0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
-	o, err = msgp.AppendExtension(o, &z.Address)
+	o, err = msgp.AppendExtension(o, &z.HeaderBlock)
 	if err != nil {
 		return
 	}
 	// string "hash"
 	o = append(o, 0xa4, 0x68, 0x61, 0x73, 0x68)
-	o, err = msgp.AppendExtension(o, &z.Hash)
+	o, err = msgp.AppendExtension(o, &z.OpenBlock)
 	if err != nil {
 		return
 	}
@@ -102,12 +102,12 @@ func (z *Frontier) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "address":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.HeaderBlock)
 			if err != nil {
 				return
 			}
 		case "hash":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Hash)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.OpenBlock)
 			if err != nil {
 				return
 			}
@@ -124,6 +124,6 @@ func (z *Frontier) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z Frontier) Msgsize() (s int) {
-	s = 1 + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 5 + msgp.ExtensionPrefixSize + z.Hash.Len()
+	s = 1 + 8 + msgp.ExtensionPrefixSize + z.HeaderBlock.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len()
 	return
 }

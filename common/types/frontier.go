@@ -6,10 +6,10 @@ const (
 
 //go:generate msgp
 type Frontier struct {
-	Address Address `msg:"address,extension" json:"address"`
-	Hash    Hash    `msg:"hash,extension" json:"hash"`
+	HeaderBlock Hash `msg:"address,extension" json:"headerblock"`
+	OpenBlock   Hash `msg:"hash,extension" json:"openblock"`
 }
 
 func (f *Frontier) IsZero() bool {
-	return f.Hash.IsZero()
+	return f.HeaderBlock.IsZero()
 }
