@@ -597,7 +597,7 @@ func (t *Ledger) getFrontierKey(hash types.Hash) []byte {
 	return key[:]
 }
 func (l *Ledger) AddFrontier(frontier *types.Frontier) error {
-	key := l.getFrontierKey(frontier.Hash)
+	key := l.getFrontierKey(frontier.HeaderBlock)
 
 	// never overwrite implicitly
 	err := l.txn.Get(key, func(bytes []byte, b byte) error {
@@ -608,13 +608,13 @@ func (l *Ledger) AddFrontier(frontier *types.Frontier) error {
 	} else if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
-	return l.txn.Set(key, frontier.Address[:])
+	return l.txn.Set(key, frontier.OpenBlock[:])
 }
 func (l *Ledger) GetFrontier(hash types.Hash) (*types.Frontier, error) {
 	key := l.getFrontierKey(hash)
-	frontier := types.Frontier{Hash: hash}
+	frontier := types.Frontier{HeaderBlock: hash}
 	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
-		copy(frontier.Address[:], val)
+		copy(frontier.OpenBlock[:], val)
 		return nil
 	})
 	if err != nil {
@@ -630,8 +630,8 @@ func (l *Ledger) GetFrontiers() ([]*types.Frontier, error) {
 
 	err := l.txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
 		var frontier types.Frontier
-		copy(frontier.Hash[:], key[1:])
-		copy(frontier.Address[:], val)
+		copy(frontier.HeaderBlock[:], key[1:])
+		copy(frontier.OpenBlock[:], val)
 		frontiers = append(frontiers, &frontier)
 		return nil
 	})

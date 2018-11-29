@@ -71,7 +71,7 @@ func TestBadgerPerformance_AddBlocks(t *testing.T) {
 	}
 	defer db.Close()
 
-	const m = 10
+	const m = 0
 	const n = 10000
 
 	start := time.Now()
@@ -319,7 +319,14 @@ func TestBadgerPerformance_ReadBlockByGoroutine(t *testing.T) {
 	end := time.Now()
 	fmt.Printf("read benchmark: %f s\n", end.Sub(start).Seconds())
 
+}
+
+func TestLedger_RemoveDB(t *testing.T) {
 	if err := os.RemoveAll(dir_checkblock); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.RemoveAll("testdatabase"); err != nil {
 		t.Fatal(err)
 	}
 }

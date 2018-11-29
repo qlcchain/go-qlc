@@ -794,16 +794,14 @@ func TestLedger_DeletePending(t *testing.T) {
 }
 
 func parseFrontier(t *testing.T) (frontier types.Frontier) {
-	hash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
-	address := "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby"
-	frontier.Hash.Of(hash)
-	if address, err := types.HexToAddress(address); err != nil {
-		t.Fatal(err)
-	} else {
-		frontier.Address = address
-	}
+	headerhash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
+	openhash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
+	frontier.HeaderBlock.Of(headerhash)
+	frontier.OpenBlock.Of(openhash)
 	return
+
 }
+
 func TestLedger_AddFrontier(t *testing.T) {
 	l, err := NewLedger()
 	if err != nil {
@@ -832,7 +830,7 @@ func TestLedger_GetFrontier(t *testing.T) {
 	defer l.Close()
 	frontier := parseFrontier(t)
 	err = l.View(func() error {
-		f, err := l.GetFrontier(frontier.Hash)
+		f, err := l.GetFrontier(frontier.HeaderBlock)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -880,7 +878,7 @@ func TestLedger_DeleteFrontier(t *testing.T) {
 	frontier := parseFrontier(t)
 
 	err = l.Update(func() error {
-		err = l.DeleteFrontier(frontier.Hash)
+		err = l.DeleteFrontier(frontier.HeaderBlock)
 		if err != nil {
 			t.Fatal(err)
 		}
