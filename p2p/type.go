@@ -16,6 +16,9 @@ type Message interface {
 	Hash() string
 }
 
+// PeersSlice is a slice which contains peers
+type PeersSlice []interface{}
+
 // Service net Service interface
 type Service interface {
 	Start() error
@@ -27,6 +30,7 @@ type Service interface {
 	Deregister(...*Subscriber)
 
 	Broadcast(string, []byte)
+	SendMessageToPeer(string, data []byte, peerID string) error
 }
 
 // Subscriber subscriber.

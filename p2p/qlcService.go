@@ -89,3 +89,8 @@ func (ns *QlcService) PutMessage(msg Message) {
 func (ns *QlcService) Broadcast(name string, msg []byte) {
 	ns.node.BroadcastMessage(name, msg)
 }
+
+// SendMessageToPeer send message to a peer.
+func (ns *QlcService) SendMessageToPeer(messageName string, data []byte, peerID string) error {
+	return ns.node.SendMessageToPeer(messageName, data, peerID)
+}

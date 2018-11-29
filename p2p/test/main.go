@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
-
 	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/config"
@@ -51,6 +50,7 @@ func main() {
 	node.MessageEvent().Regist(obs1)
 	node.MessageEvent().Regist(obs2)
 	node.Start()
+	fmt.Println(node.Node().GetID())
 	blk1, err := types.NewBlock(byte(types.State))
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(test_block1), &blk1); err != nil {
@@ -61,8 +61,13 @@ func main() {
 	data[0] = byte(types.State)
 	copy(data[1:], blockBytes)
 	for {
-		node.Broadcast(p2p.PublishRequest, data)
 		time.Sleep(time.Duration(2) * time.Second)
+		peerID, err := node.Node().StreamManager().RandomPeer()
+		if err != nil {
+			continue
+		}
+		fmt.Println(peerID)
+		node.SendMessageToPeer(p2p.PublishRequest, data, peerID)
 	}
 	select {}
 }
