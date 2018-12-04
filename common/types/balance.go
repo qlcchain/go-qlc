@@ -54,6 +54,8 @@ var (
 // Balance of account
 type Balance uint128.Uint128
 
+type Amount uint128.Uint128
+
 // ParseBalance parses the given balance string.
 func ParseBalance(s string, unit string) (Balance, error) {
 	d, err := decimal.NewFromString(s)

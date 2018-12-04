@@ -1,14 +1,16 @@
 package wallet
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
 type Wallet struct {
-	seed     *types.Seed
-	accounts []*types.Account
-	index    uint32
+	db      WalletStore
+	PoWChan chan types.Work
 }
+
+var log = common.NewLogger("wallet")
 
 func NewWallet(seed *types.Seed, index uint32) (*Wallet, error) {
 	var accounts []*types.Account
@@ -23,9 +25,9 @@ func NewWallet(seed *types.Seed, index uint32) (*Wallet, error) {
 	}
 
 	return &Wallet{
-		seed:     seed,
-		accounts: accounts,
-		index:    index,
+		//seed:     seed,
+		//accounts: accounts,
+		//index:    index,
 	}, nil
 }
 
@@ -36,10 +38,4 @@ func Generate() (*Wallet, error) {
 	}
 
 	return NewWallet(seed, 0)
-}
-
-func (w *Wallet) Accounts() []*types.Account {
-	accounts := make([]*types.Account, len(w.accounts))
-	copy(accounts, w.accounts)
-	return accounts
 }
