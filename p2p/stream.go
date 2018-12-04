@@ -14,6 +14,7 @@ import (
 var (
 	ErrShouldCloseConnectionAndExitLoop = errors.New("should close connection and exit loop")
 	ErrStreamIsNotConnected             = errors.New("stream is not connected")
+	ErrNoStream                         = errors.New("no stream")
 )
 
 // Stream define the structure of a stream in p2p network
@@ -150,21 +151,21 @@ func (s *Stream) readLoop() {
 }
 func (s *Stream) writeLoop() {
 	// ping func
-	ts, err := s.node.ping.Ping(s.node.ctx, s.pid)
-	if err != nil {
-		logger.Debug("ping error:", err)
-		return
-	}
-
+	/*	ts, err := s.node.ping.Ping(s.node.ctx, s.pid)
+		if err != nil {
+			logger.Debug("ping error:", err)
+			return
+		}
+	*/
 	for {
 		select {
-		case took := <-ts:
-			//logger.Info("ping took: ", took)
-			if took == 0 {
-				logger.Debug("failed to receive ping")
-				s.close()
-				return
-			}
+		/*		case took := <-ts:
+				//logger.Info("ping took: ", took)
+				if took == 0 {
+					logger.Debug("failed to receive ping")
+					s.close()
+					return
+				}*/
 		case <-s.quitWriteCh:
 			logger.Debug("Quiting Stream Write Loop.")
 			return
