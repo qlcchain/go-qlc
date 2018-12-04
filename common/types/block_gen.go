@@ -200,7 +200,7 @@ func (z Enum) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
-func (sc *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
+func (z *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
@@ -222,50 +222,50 @@ func (sc *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				if err != nil {
 					return
 				}
-				sc.Type = parseString(zb0002)
+				z.Type = parseString(zb0002)
 			}
 		case "previous":
-			err = dc.ReadExtension(&sc.PreviousHash)
+			err = dc.ReadExtension(&z.PreviousHash)
 			if err != nil {
 				return
 			}
 		case "representative":
-			err = dc.ReadExtension(&sc.Representative)
+			err = dc.ReadExtension(&z.Representative)
 			if err != nil {
 				return
 			}
 		case "balance":
-			err = dc.ReadExtension(&sc.Balance)
+			err = dc.ReadExtension(&z.Balance)
 			if err != nil {
 				return
 			}
 		case "link":
-			err = dc.ReadExtension(&sc.Link)
+			err = dc.ReadExtension(&z.Link)
 			if err != nil {
 				return
 			}
 		case "signature":
-			err = dc.ReadExtension(&sc.Signature)
+			err = dc.ReadExtension(&z.Signature)
 			if err != nil {
 				return
 			}
 		case "extra":
-			err = dc.ReadExtension(&sc.Extra)
+			err = dc.ReadExtension(&z.Extra)
 			if err != nil {
 				return
 			}
 		case "work":
-			err = dc.ReadExtension(&sc.Work)
+			err = dc.ReadExtension(&z.Work)
 			if err != nil {
 				return
 			}
 		case "owner":
-			err = dc.ReadExtension(&sc.Owner)
+			err = dc.ReadExtension(&z.Owner)
 			if err != nil {
 				return
 			}
 		case "issuer":
-			err = dc.ReadExtension(&sc.Issuer)
+			err = dc.ReadExtension(&z.Issuer)
 			if err != nil {
 				return
 			}
@@ -280,14 +280,14 @@ func (sc *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
+func (z *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 10
 	// write "type"
 	err = en.Append(0x8a, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	if err != nil {
 		return
 	}
-	err = en.WriteString((Enum).String(sc.Type))
+	err = en.WriteString((Enum).String(z.Type))
 	if err != nil {
 		return
 	}
@@ -296,7 +296,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.PreviousHash)
+	err = en.WriteExtension(&z.PreviousHash)
 	if err != nil {
 		return
 	}
@@ -305,7 +305,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.Representative)
+	err = en.WriteExtension(&z.Representative)
 	if err != nil {
 		return
 	}
@@ -314,7 +314,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.Balance)
+	err = en.WriteExtension(&z.Balance)
 	if err != nil {
 		return
 	}
@@ -323,7 +323,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.Link)
+	err = en.WriteExtension(&z.Link)
 	if err != nil {
 		return
 	}
@@ -332,7 +332,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.Signature)
+	err = en.WriteExtension(&z.Signature)
 	if err != nil {
 		return
 	}
@@ -341,7 +341,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.Extra)
+	err = en.WriteExtension(&z.Extra)
 	if err != nil {
 		return
 	}
@@ -350,7 +350,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.Work)
+	err = en.WriteExtension(&z.Work)
 	if err != nil {
 		return
 	}
@@ -359,7 +359,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.Owner)
+	err = en.WriteExtension(&z.Owner)
 	if err != nil {
 		return
 	}
@@ -368,7 +368,7 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&sc.Issuer)
+	err = en.WriteExtension(&z.Issuer)
 	if err != nil {
 		return
 	}
@@ -376,63 +376,63 @@ func (sc *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (sc *SmartContractBlock) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, sc.Msgsize())
+func (z *SmartContractBlock) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
 	// map header, size 10
 	// string "type"
 	o = append(o, 0x8a, 0xa4, 0x74, 0x79, 0x70, 0x65)
-	o = msgp.AppendString(o, (Enum).String(sc.Type))
+	o = msgp.AppendString(o, (Enum).String(z.Type))
 	// string "previous"
 	o = append(o, 0xa8, 0x70, 0x72, 0x65, 0x76, 0x69, 0x6f, 0x75, 0x73)
-	o, err = msgp.AppendExtension(o, &sc.PreviousHash)
+	o, err = msgp.AppendExtension(o, &z.PreviousHash)
 	if err != nil {
 		return
 	}
 	// string "representative"
 	o = append(o, 0xae, 0x72, 0x65, 0x70, 0x72, 0x65, 0x73, 0x65, 0x6e, 0x74, 0x61, 0x74, 0x69, 0x76, 0x65)
-	o, err = msgp.AppendExtension(o, &sc.Representative)
+	o, err = msgp.AppendExtension(o, &z.Representative)
 	if err != nil {
 		return
 	}
 	// string "balance"
 	o = append(o, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
-	o, err = msgp.AppendExtension(o, &sc.Balance)
+	o, err = msgp.AppendExtension(o, &z.Balance)
 	if err != nil {
 		return
 	}
 	// string "link"
 	o = append(o, 0xa4, 0x6c, 0x69, 0x6e, 0x6b)
-	o, err = msgp.AppendExtension(o, &sc.Link)
+	o, err = msgp.AppendExtension(o, &z.Link)
 	if err != nil {
 		return
 	}
 	// string "signature"
 	o = append(o, 0xa9, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
-	o, err = msgp.AppendExtension(o, &sc.Signature)
+	o, err = msgp.AppendExtension(o, &z.Signature)
 	if err != nil {
 		return
 	}
 	// string "extra"
 	o = append(o, 0xa5, 0x65, 0x78, 0x74, 0x72, 0x61)
-	o, err = msgp.AppendExtension(o, &sc.Extra)
+	o, err = msgp.AppendExtension(o, &z.Extra)
 	if err != nil {
 		return
 	}
 	// string "work"
 	o = append(o, 0xa4, 0x77, 0x6f, 0x72, 0x6b)
-	o, err = msgp.AppendExtension(o, &sc.Work)
+	o, err = msgp.AppendExtension(o, &z.Work)
 	if err != nil {
 		return
 	}
 	// string "owner"
 	o = append(o, 0xa5, 0x6f, 0x77, 0x6e, 0x65, 0x72)
-	o, err = msgp.AppendExtension(o, &sc.Owner)
+	o, err = msgp.AppendExtension(o, &z.Owner)
 	if err != nil {
 		return
 	}
 	// string "issuer"
 	o = append(o, 0xa6, 0x69, 0x73, 0x73, 0x75, 0x65, 0x72)
-	o, err = msgp.AppendExtension(o, &sc.Issuer)
+	o, err = msgp.AppendExtension(o, &z.Issuer)
 	if err != nil {
 		return
 	}
@@ -440,7 +440,7 @@ func (sc *SmartContractBlock) MarshalMsg(b []byte) (o []byte, err error) {
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
-func (sc *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
+func (z *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
@@ -462,50 +462,50 @@ func (sc *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				if err != nil {
 					return
 				}
-				sc.Type = parseString(zb0002)
+				z.Type = parseString(zb0002)
 			}
 		case "previous":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.PreviousHash)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.PreviousHash)
 			if err != nil {
 				return
 			}
 		case "representative":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.Representative)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Representative)
 			if err != nil {
 				return
 			}
 		case "balance":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.Balance)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Balance)
 			if err != nil {
 				return
 			}
 		case "link":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.Link)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Link)
 			if err != nil {
 				return
 			}
 		case "signature":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.Signature)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Signature)
 			if err != nil {
 				return
 			}
 		case "extra":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.Extra)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Extra)
 			if err != nil {
 				return
 			}
 		case "work":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.Work)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Work)
 			if err != nil {
 				return
 			}
 		case "owner":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.Owner)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Owner)
 			if err != nil {
 				return
 			}
 		case "issuer":
-			bts, err = msgp.ReadExtensionBytes(bts, &sc.Issuer)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Issuer)
 			if err != nil {
 				return
 			}
@@ -521,8 +521,8 @@ func (sc *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (sc *SmartContractBlock) Msgsize() (s int) {
-	s = 1 + 5 + msgp.StringPrefixSize + len((Enum).String(sc.Type)) + 9 + msgp.ExtensionPrefixSize + sc.PreviousHash.Len() + 15 + msgp.ExtensionPrefixSize + sc.Representative.Len() + 8 + msgp.ExtensionPrefixSize + sc.Balance.Len() + 5 + msgp.ExtensionPrefixSize + sc.Link.Len() + 10 + msgp.ExtensionPrefixSize + sc.Signature.Len() + 6 + msgp.ExtensionPrefixSize + sc.Extra.Len() + 5 + msgp.ExtensionPrefixSize + sc.Work.Len() + 6 + msgp.ExtensionPrefixSize + sc.Owner.Len() + 7 + msgp.ExtensionPrefixSize + sc.Issuer.Len()
+func (z *SmartContractBlock) Msgsize() (s int) {
+	s = 1 + 5 + msgp.StringPrefixSize + len((Enum).String(z.Type)) + 9 + msgp.ExtensionPrefixSize + z.PreviousHash.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len() + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 6 + msgp.ExtensionPrefixSize + z.Owner.Len() + 7 + msgp.ExtensionPrefixSize + z.Issuer.Len()
 	return
 }
 

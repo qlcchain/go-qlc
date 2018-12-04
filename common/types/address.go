@@ -49,7 +49,7 @@ var (
 )
 
 //Address of account
-//go:generate ffjson address.go
+//go:generate msgp
 type Address [AddressSize]byte
 
 //BytesToAddress convert byte array to Address

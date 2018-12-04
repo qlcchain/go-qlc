@@ -294,6 +294,11 @@ func (z *TokenMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "tokenAccount":
+			err = dc.ReadExtension(&z.TokenAccount)
+			if err != nil {
+				return
+			}
 		case "type":
 			err = dc.ReadExtension(&z.Type)
 			if err != nil {
@@ -319,6 +324,21 @@ func (z *TokenMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
+		case "account":
+			err = dc.ReadExtension(&z.BelongTo)
+			if err != nil {
+				return
+			}
+		case "modified":
+			z.Modified, err = dc.ReadInt64()
+			if err != nil {
+				return
+			}
+		case "blockCount":
+			z.BlockCount, err = dc.ReadInt64()
+			if err != nil {
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -331,9 +351,18 @@ func (z *TokenMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *TokenMeta) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 5
+	// map header, size 9
+	// write "tokenAccount"
+	err = en.Append(0x89, 0xac, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.TokenAccount)
+	if err != nil {
+		return
+	}
 	// write "type"
-	err = en.Append(0x85, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	err = en.Append(0xa4, 0x74, 0x79, 0x70, 0x65)
 	if err != nil {
 		return
 	}
@@ -377,15 +406,48 @@ func (z *TokenMeta) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
+	// write "account"
+	err = en.Append(0xa7, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.BelongTo)
+	if err != nil {
+		return
+	}
+	// write "modified"
+	err = en.Append(0xa8, 0x6d, 0x6f, 0x64, 0x69, 0x66, 0x69, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Modified)
+	if err != nil {
+		return
+	}
+	// write "blockCount"
+	err = en.Append(0xaa, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.BlockCount)
+	if err != nil {
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *TokenMeta) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 5
+	// map header, size 9
+	// string "tokenAccount"
+	o = append(o, 0x89, 0xac, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	o, err = msgp.AppendExtension(o, &z.TokenAccount)
+	if err != nil {
+		return
+	}
 	// string "type"
-	o = append(o, 0x85, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	o = append(o, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Type)
 	if err != nil {
 		return
@@ -414,6 +476,18 @@ func (z *TokenMeta) MarshalMsg(b []byte) (o []byte, err error) {
 	if err != nil {
 		return
 	}
+	// string "account"
+	o = append(o, 0xa7, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	o, err = msgp.AppendExtension(o, &z.BelongTo)
+	if err != nil {
+		return
+	}
+	// string "modified"
+	o = append(o, 0xa8, 0x6d, 0x6f, 0x64, 0x69, 0x66, 0x69, 0x65, 0x64)
+	o = msgp.AppendInt64(o, z.Modified)
+	// string "blockCount"
+	o = append(o, 0xaa, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	o = msgp.AppendInt64(o, z.BlockCount)
 	return
 }
 
@@ -433,6 +507,11 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "tokenAccount":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.TokenAccount)
+			if err != nil {
+				return
+			}
 		case "type":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Type)
 			if err != nil {
@@ -458,6 +537,21 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
+		case "account":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.BelongTo)
+			if err != nil {
+				return
+			}
+		case "modified":
+			z.Modified, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				return
+			}
+		case "blockCount":
+			z.BlockCount, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -471,6 +565,6 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TokenMeta) Msgsize() (s int) {
-	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 7 + msgp.ExtensionPrefixSize + z.Header.Len() + 4 + msgp.ExtensionPrefixSize + z.RepBlock.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len()
+	s = 1 + 13 + msgp.ExtensionPrefixSize + z.TokenAccount.Len() + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 7 + msgp.ExtensionPrefixSize + z.Header.Len() + 4 + msgp.ExtensionPrefixSize + z.RepBlock.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 8 + msgp.ExtensionPrefixSize + z.BelongTo.Len() + 9 + msgp.Int64Size + 11 + msgp.Int64Size
 	return
 }
