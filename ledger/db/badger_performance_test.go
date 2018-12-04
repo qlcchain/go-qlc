@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -34,7 +35,7 @@ func generateBlock(t testing.TB) types.Block {
 }
 
 func NewBadger() (*badger.DB, error) {
-	dir := getBadgerDir()
+	dir := util.QlcDir("test", "badger_pref")
 	opts := badger.DefaultOptions
 	opts.Dir = dir
 	opts.ValueDir = dir
