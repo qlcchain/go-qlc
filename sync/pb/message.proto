@@ -1,0 +1,27 @@
+syntax="proto3";
+
+package pb;
+
+message FrontierReq {
+    bytes Address = 1;
+    uint32 Age = 2;
+    uint32 Count = 3;
+}
+message FrontierRsp {
+    bytes HeaderBlock = 1;
+    bytes OpenBlock = 2;
+}
+message BulkPullRep {
+    bytes StartHash = 1;
+    bytes EndHash = 2;
+}
+message BulkPullRsp {
+    uint32  blocktype = 1;
+    bytes   block = 2;
+}
+message BulkPushBlock {
+    uint32  blocktype = 1;
+    bytes   block = 2;
+}
+
+
