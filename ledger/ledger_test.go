@@ -4,23 +4,41 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
+var dir_testdb = util.QlcDir("test", "ledger")
+
+func initTestLedger() (*Ledger, error) {
+	store, err := db.NewBadgerStore(dir_testdb)
+	if err != nil {
+		return nil, err
+	}
+	ledger := Ledger{store: store}
+	return &ledger, nil
+}
+func TestLedger_RemoveDB(t *testing.T) {
+	if err := os.RemoveAll(dir_testdb); err != nil {
+		t.Fatal(err)
+	}
+}
 func TestLedger_Empty(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 
-	err = l.View(func() error {
-		r, err := l.Empty()
+	err = l.GetDataInTransaction(func(txn db.StoreTxn) error {
+		r, err := l.Empty(txn)
 		if err != nil {
 			return err
 		}
@@ -87,35 +105,43 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 	}
 	return
 }
-func TestLedger_AddBlock(t *testing.T) {
-	l, err := NewLedger()
+func TestLedger_AddBlockWithSingleTxn(t *testing.T) {
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 	blks := parseBlocks(t, "testdata/blocks.json")
-	err = l.Update(func() error {
-		for _, b := range blks {
-			if err = l.AddBlock(b); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if err = l.AddBlock(generateBlock()); err != nil {
-			return err
-		}
-		if err = l.AddBlock(generateBlock()); err != nil {
-			return err
-		}
 
+	if err = l.AddBlock(blks[0], nil); err != nil {
+		t.Fatal(err)
+	}
+
+}
+func TestLedger_AddBlockWithBlockTxn(t *testing.T) {
+	l, err := initTestLedger()
+	if err != nil {
+		t.Fatal(err)
+
+	}
+	defer l.Close()
+	err = l.UpdateDataInTransaction(func(txn db.StoreTxn) error {
+		if err = l.AddBlock(generateBlock(), txn); err != nil {
+			t.Fatal(err)
+		}
+		if err = l.AddBlock(generateBlock(), txn); err != nil {
+			return err
+		}
 		return nil
+
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_GetBlock(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -124,8 +150,8 @@ func TestLedger_GetBlock(t *testing.T) {
 
 	h := types.Hash{}
 	h.Of("f42eadd5e3316197bb1757feb9714c21a7f87cc3d32a415bd3cebbb4499ea9b2")
-	err = l.View(func() error {
-		blk, err := l.GetBlock(h)
+	err = l.GetDataInTransaction(func(txn db.StoreTxn) error {
+		blk, err := l.GetBlock(h, txn)
 		t.Log("blk,", blk)
 		return err
 	})
@@ -133,26 +159,27 @@ func TestLedger_GetBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-func TestLedger_GetBlocks(t *testing.T) {
-	l, err := NewLedger()
+func TestLedger_GetAllBlocks(t *testing.T) {
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
-	err = l.View(func() error {
-		blks, err := l.GetBlocks()
-		for index, b := range blks {
-			t.Log(index, b)
-		}
-		return err
-	})
+	r, err := l.CountBlocks(nil)
+	t.Log("blk count, ", r)
+
+	blks, err := l.GetBlocks(nil)
+	for index, b := range blks {
+		t.Log(index, b)
+	}
+
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_DeleteBlock(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -161,15 +188,13 @@ func TestLedger_DeleteBlock(t *testing.T) {
 
 	h := types.Hash{}
 	h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
-	err = l.Update(func() error {
-		return l.DeleteBlock(h)
-	})
+	err = l.DeleteBlock(h, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_HasBlock(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -178,48 +203,28 @@ func TestLedger_HasBlock(t *testing.T) {
 
 	h := types.Hash{}
 	h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
-	err = l.View(func() error {
-		r, err := l.HasBlock(h)
-		t.Log("hasblock,", r)
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-func TestLedger_CountBlocks(t *testing.T) {
-	l, err := NewLedger()
-	if err != nil {
-		t.Fatal(err)
+	r, err := l.HasBlock(h, nil)
+	t.Log("hasblock,", r)
 
-	}
-	defer l.Close()
-
-	err = l.View(func() error {
-		r, err := l.CountBlocks()
-		t.Log("blk count,", r)
-		return err
-	})
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_GetRandomBlock(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 
-	err = l.View(func() error {
-		b, err := l.GetRandomBlock()
-		t.Log("blk ,", b)
-		return err
-	})
+	b, err := l.GetRandomBlock(nil)
+
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("blk ,", b)
+
 }
 
 func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, kind types.UncheckedKind) {
@@ -232,65 +237,51 @@ func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, 
 	return
 }
 func TestLedger_AddUncheckedBlock(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 	parentHash, blk, kind := parseUncheckedBlock(t)
-	err = l.Update(func() error {
-		err = l.AddUncheckedBlock(parentHash, blk, kind)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.AddUncheckedBlock(parentHash, blk, kind, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_GetUncheckedBlock(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 	parentHash, _, kind := parseUncheckedBlock(t)
-	err = l.Update(func() error {
-		b, err := l.GetUncheckedBlock(parentHash, kind)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("unchecked,", b)
-		return nil
-	})
+	b, err := l.GetUncheckedBlock(parentHash, kind, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("unchecked,", b)
 }
 func TestLedger_CountUncheckedBlocks(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
-	err = l.Update(func() error {
-		c, err := l.CountUncheckedBlocks()
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("unchecked count,", c)
-		return nil
-	})
+	c, err := l.CountUncheckedBlocks(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("unchecked count,", c)
 }
 func TestLedger_HasUncheckedBlock(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -298,34 +289,21 @@ func TestLedger_HasUncheckedBlock(t *testing.T) {
 	defer l.Close()
 	parentHash, _, kind := parseUncheckedBlock(t)
 
-	err = l.Update(func() error {
-		r, err := l.HasUncheckedBlock(parentHash, kind)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("has unchecked,", r)
-		return nil
-	})
+	r, err := l.HasUncheckedBlock(parentHash, kind, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("has unchecked,", r)
 }
 func TestLedger_DeleteUncheckedBlock(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 	parentHash, _, kind := parseUncheckedBlock(t)
-
-	err = l.Update(func() error {
-		err := l.DeleteUncheckedBlock(parentHash, kind)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.DeleteUncheckedBlock(parentHash, kind, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +333,7 @@ func parseAccountMetas(t *testing.T, filename string) (accountmetas []*types.Acc
 	return
 }
 func TestLedger_AddAccountMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -363,22 +341,15 @@ func TestLedger_AddAccountMeta(t *testing.T) {
 	defer l.Close()
 
 	accountMetas := parseAccountMetas(t, "testdata/account.json")
-	err = l.Update(func() error {
-		for _, a := range accountMetas {
-			fmt.Println(a)
-			err := l.AddAccountMeta(a)
-			if err != nil {
-				t.Fatal(err)
-			}
+	for _, a := range accountMetas {
+		err := l.AddAccountMeta(a, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 func TestLedger_GetAccountMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -386,23 +357,17 @@ func TestLedger_GetAccountMeta(t *testing.T) {
 	defer l.Close()
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	err = l.View(func() error {
-		a, err := l.GetAccountMeta(address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("account,", a)
-		for _, token := range a.Tokens {
-			t.Log("token,", token)
-		}
-		return nil
-	})
+	a, err := l.GetAccountMeta(address, nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	t.Log("account,", a)
+	for _, token := range a.Tokens {
+		t.Log("token,", token)
 	}
 }
 func TestLedger_HasAccountMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -410,20 +375,14 @@ func TestLedger_HasAccountMeta(t *testing.T) {
 	defer l.Close()
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	err = l.View(func() error {
-		r, err := l.HasAccountMeta(address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("has account,", r)
-		return nil
-	})
+	r, err := l.HasAccountMeta(address, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("has account,", r)
 }
 func TestLedger_DeleteAccountMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -431,59 +390,40 @@ func TestLedger_DeleteAccountMeta(t *testing.T) {
 	defer l.Close()
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 
-	err = l.Update(func() error {
-		err := l.DeleteAccountMeta(address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.DeleteAccountMeta(address, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 	accountMetas := parseAccountMetas(t, "testdata/accountupdate.json")
-	err = l.Update(func() error {
-		for _, a := range accountMetas {
-			err := l.AddOrUpdateAccountMeta(a)
-			if err != nil {
-				t.Fatal(err)
-			}
+	for _, a := range accountMetas {
+		err := l.AddOrUpdateAccountMeta(a, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 func TestLedger_UpdateAccountMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 	accountMetas := parseAccountMetas(t, "testdata/accountupdate.json")
-	err = l.Update(func() error {
-		for _, a := range accountMetas {
-			err := l.UpdateAccountMeta(a)
-			if err != nil {
-				t.Fatal(err)
-			}
+	for _, a := range accountMetas {
+		err := l.UpdateAccountMeta(a, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
-
 }
 
 func parseToken(t *testing.T) (tokenmeta types.TokenMeta, address types.Address, tokenType types.Hash) {
@@ -518,7 +458,7 @@ func parseToken(t *testing.T) (tokenmeta types.TokenMeta, address types.Address,
 
 }
 func TestLedger_AddTokenMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -527,19 +467,13 @@ func TestLedger_AddTokenMeta(t *testing.T) {
 
 	tokenmeta, address, _ := parseToken(t)
 
-	err = l.Update(func() error {
-		err = l.AddTokenMeta(address, &tokenmeta)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.AddTokenMeta(address, &tokenmeta, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_GetTokenMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -548,20 +482,14 @@ func TestLedger_GetTokenMeta(t *testing.T) {
 
 	_, address, tokenType := parseToken(t)
 
-	err = l.View(func() error {
-		token, err := l.GetTokenMeta(address, tokenType)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("token,", token)
-		return nil
-	})
+	token, err := l.GetTokenMeta(address, tokenType, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("token,", token)
 }
 func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -570,19 +498,13 @@ func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
 
 	tokenmeta, address, _ := parseToken(t)
 
-	err = l.Update(func() error {
-		err = l.AddOrUpdateTokenMeta(address, &tokenmeta)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.AddOrUpdateTokenMeta(address, &tokenmeta, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_UpdateTokenMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -591,19 +513,13 @@ func TestLedger_UpdateTokenMeta(t *testing.T) {
 
 	tokenmeta, address, _ := parseToken(t)
 
-	err = l.Update(func() error {
-		err = l.UpdateTokenMeta(address, &tokenmeta)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.UpdateTokenMeta(address, &tokenmeta, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_DelTokenMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -612,19 +528,13 @@ func TestLedger_DelTokenMeta(t *testing.T) {
 
 	_, address, tokentype := parseToken(t)
 
-	err = l.Update(func() error {
-		err = l.DeleteTokenMeta(address, tokentype)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.DeleteTokenMeta(address, tokentype, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_HasTokenMeta(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -633,21 +543,15 @@ func TestLedger_HasTokenMeta(t *testing.T) {
 
 	_, address, tokenType := parseToken(t)
 
-	err = l.View(func() error {
-		r, err := l.HasTokenMeta(address, tokenType)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("has token,", r)
-		return nil
-	})
+	r, err := l.HasTokenMeta(address, tokenType, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("has token,", r)
 }
 
 func TestLedger_AddRepresentationWeight(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -656,19 +560,13 @@ func TestLedger_AddRepresentationWeight(t *testing.T) {
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 	amount, err := types.ParseBalance("400.004", "Mqlc")
-	err = l.Update(func() error {
-		err := l.AddRepresentationWeight(address, amount)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.AddRepresentationWeight(address, amount, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_SubRepresentationWeight(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -677,19 +575,13 @@ func TestLedger_SubRepresentationWeight(t *testing.T) {
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 	amount, err := types.ParseBalance("100.004", "Mqlc")
-	err = l.Update(func() error {
-		err := l.SubRepresentationWeight(address, amount)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.SubRepresentationWeight(address, amount, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_GetRepresentation(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -697,17 +589,11 @@ func TestLedger_GetRepresentation(t *testing.T) {
 	defer l.Close()
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	err = l.Update(func() error {
-		a, err := l.GetRepresentation(address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("amount,", a)
-		return nil
-	})
+	a, err := l.GetRepresentation(address, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("amount,", a)
 }
 
 func parsePending(t *testing.T) (address types.Address, hash types.Hash, pendinginfo types.PendingInfo) {
@@ -731,7 +617,7 @@ func parsePending(t *testing.T) (address types.Address, hash types.Hash, pending
 	return
 }
 func TestLedger_AddPending(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -740,19 +626,13 @@ func TestLedger_AddPending(t *testing.T) {
 
 	address, hash, pendinfo := parsePending(t)
 
-	err = l.Update(func() error {
-		err = l.AddPending(address, hash, &pendinfo)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.AddPending(address, hash, &pendinfo, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_GetPending(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -760,20 +640,14 @@ func TestLedger_GetPending(t *testing.T) {
 	defer l.Close()
 
 	address, hash, _ := parsePending(t)
-	err = l.View(func() error {
-		p, err := l.GetPending(address, hash)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("pending,", p)
-		return nil
-	})
+	p, err := l.GetPending(address, hash, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("pending,", p)
 }
 func TestLedger_DeletePending(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -781,97 +655,81 @@ func TestLedger_DeletePending(t *testing.T) {
 	defer l.Close()
 	address, hash, _ := parsePending(t)
 
-	err = l.Update(func() error {
-		err = l.DeletePending(address, hash)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.DeletePending(address, hash, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func parseFrontier(t *testing.T) (frontier types.Frontier) {
-	hash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
-	address := "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby"
-	frontier.Hash.Of(hash)
-	if address, err := types.HexToAddress(address); err != nil {
-		t.Fatal(err)
-	} else {
-		frontier.Address = address
-	}
+	headerhash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
+	openhash := "001cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
+	frontier.HeaderBlock.Of(headerhash)
+	frontier.OpenBlock.Of(openhash)
 	return
 }
+func generateFrontier() *types.Frontier {
+	var frontier types.Frontier
+	random.Bytes(frontier.HeaderBlock[:])
+	random.Bytes(frontier.OpenBlock[:])
+	return &frontier
+}
 func TestLedger_AddFrontier(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 	frontier := parseFrontier(t)
-	err = l.Update(func() error {
-		err = l.AddFrontier(&frontier)
+	err = l.AddFrontier(&frontier, nil)
+	if err != nil && err != ErrFrontierExists {
+		t.Fatal(err)
+	}
+	for i := 0; i < 10; i++ {
+		err = l.AddFrontier(generateFrontier(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 func TestLedger_GetFrontier(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
 	frontier := parseFrontier(t)
-	err = l.View(func() error {
-		f, err := l.GetFrontier(frontier.Hash)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("frontier,", f)
-		return nil
-	})
+	f, err := l.GetFrontier(frontier.HeaderBlock, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("frontier,", f)
 }
-func TestLedger_GetFrontiers(t *testing.T) {
-	l, err := NewLedger()
+func TestLedger_GetAllFrontiers(t *testing.T) {
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
 	}
 	defer l.Close()
-	err = l.View(func() error {
-		c, err := l.CountFrontiers()
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("frontier count,", c)
-
-		fs, err := l.GetFrontiers()
-		if err != nil {
-			t.Fatal(err)
-		}
-		for index, f := range fs {
-			t.Log("frontier", index, f)
-		}
-		return nil
-	})
+	c, err := l.CountFrontiers(nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	t.Log("frontier count,", c)
+
+	fs, err := l.GetFrontiers(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, f := range fs {
+		t.Log("frontier", index, f)
 	}
 }
 func TestLedger_DeleteFrontier(t *testing.T) {
-	l, err := NewLedger()
+	l, err := initTestLedger()
 	if err != nil {
 		t.Fatal(err)
 
@@ -879,14 +737,14 @@ func TestLedger_DeleteFrontier(t *testing.T) {
 	defer l.Close()
 	frontier := parseFrontier(t)
 
-	err = l.Update(func() error {
-		err = l.DeleteFrontier(frontier.Hash)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return nil
-	})
+	err = l.DeleteFrontier(frontier.HeaderBlock, nil)
 	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_RemoveDB2(t *testing.T) {
+	if err := os.RemoveAll(dir_testdb); err != nil {
 		t.Fatal(err)
 	}
 }

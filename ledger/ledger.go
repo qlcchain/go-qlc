@@ -2,19 +2,19 @@ package ledger
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
-
-	"github.com/qlcchain/go-qlc/common/util"
+	"sort"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
 type Ledger struct {
 	store db.Store
-	txn   db.StoreTxn
 }
 
 var log = common.NewLogger("ledger")
@@ -59,23 +59,24 @@ func NewLedger() (*Ledger, error) {
 func (l *Ledger) Close() error {
 	return l.store.Close()
 }
-func (l *Ledger) Update(fn func() error) error {
+func (l *Ledger) UpdateDataInTransaction(fn func(txn db.StoreTxn) error) error {
 	return l.store.Update(func(txn db.StoreTxn) error {
-		l.txn = txn
-		return fn()
+		return fn(txn)
 	})
 }
-func (l *Ledger) View(fn func() error) error {
+func (l *Ledger) GetDataInTransaction(fn func(txn db.StoreTxn) error) error {
 	return l.store.View(func(txn db.StoreTxn) error {
-		l.txn = txn
-		return fn()
+		return fn(txn)
 	})
 }
+func (l *Ledger) Empty(txn db.StoreTxn) (bool, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 
-// Empty reports whether the database is empty or not.
-func (l *Ledger) Empty() (bool, error) {
 	r := true
-	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
+	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		r = false
 		return nil
 	})
@@ -84,7 +85,7 @@ func (l *Ledger) Empty() (bool, error) {
 	}
 	return r, nil
 }
-func (l *Ledger) Flush() error {
+func (l *Ledger) Flush(txn db.StoreTxn) error {
 	return nil
 }
 
@@ -96,7 +97,12 @@ func (l *Ledger) getBlockKey(hash types.Hash) []byte {
 	copy(key[1:], hash[:])
 	return key[:]
 }
-func (l *Ledger) AddBlock(blk types.Block) error {
+func (l *Ledger) AddBlock(blk types.Block, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+
 	hash := blk.GetHash()
 	log.Info("adding block,", hash)
 	blockBytes, err := blk.MarshalMsg(nil)
@@ -107,7 +113,7 @@ func (l *Ledger) AddBlock(blk types.Block) error {
 	key := l.getBlockKey(hash)
 
 	//never overwrite implicitly
-	err = l.txn.Get(key, func(bytes []byte, b byte) error {
+	err = txn.Get(key, func(bytes []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -115,12 +121,19 @@ func (l *Ledger) AddBlock(blk types.Block) error {
 	} else if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
-	return l.txn.SetWithMeta(key, blockBytes, byte(blk.GetType()))
+	if err = txn.SetWithMeta(key, blockBytes, byte(blk.GetType())); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) GetBlock(hash types.Hash) (types.Block, error) {
+func (l *Ledger) GetBlock(hash types.Hash, txn db.StoreTxn) (types.Block, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getBlockKey(hash)
 	var blk types.Block
-	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
 		if blk, err = types.NewBlock(b); err != nil {
 			return err
 		}
@@ -137,10 +150,14 @@ func (l *Ledger) GetBlock(hash types.Hash) (types.Block, error) {
 	}
 	return blk, nil
 }
-func (l *Ledger) GetBlocks() ([]types.Block, error) {
+func (l *Ledger) GetBlocks(txn db.StoreTxn) ([]types.Block, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	var blocks []types.Block
 	//var blk types.Block
-	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) (err error) {
+	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) (err error) {
 		blk, err := types.NewBlock(b)
 		if err != nil {
 			return
@@ -154,14 +171,24 @@ func (l *Ledger) GetBlocks() ([]types.Block, error) {
 	}
 	return blocks, nil
 }
-func (l *Ledger) DeleteBlock(hash types.Hash) error {
+func (l *Ledger) DeleteBlock(hash types.Hash, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	key := l.getBlockKey(hash)
-	return l.txn.Delete(key)
-
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) HasBlock(hash types.Hash) (bool, error) {
+func (l *Ledger) HasBlock(hash types.Hash, txn db.StoreTxn) (bool, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getBlockKey(hash)
-	err := l.txn.Get(key, func(val []byte, b byte) error {
+	err := txn.Get(key, func(val []byte, b byte) error {
 		return nil
 	})
 	if err != nil {
@@ -172,10 +199,14 @@ func (l *Ledger) HasBlock(hash types.Hash) (bool, error) {
 	}
 	return true, nil
 }
-func (l *Ledger) CountBlocks() (uint64, error) {
+func (l *Ledger) CountBlocks(txn db.StoreTxn) (uint64, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	var count uint64
 
-	err := l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
+	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		count++
 		return nil
 	})
@@ -184,8 +215,12 @@ func (l *Ledger) CountBlocks() (uint64, error) {
 	}
 	return count, nil
 }
-func (l *Ledger) GetRandomBlock() (types.Block, error) {
-	c, err := l.CountBlocks()
+func (l *Ledger) GetRandomBlock(txn db.StoreTxn) (types.Block, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
+	c, err := l.CountBlocks(txn)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +230,7 @@ func (l *Ledger) GetRandomBlock() (types.Block, error) {
 	index := rand.Int63n(int64(c))
 	var blk types.Block
 	var temp int64
-	err = l.txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
+	err = txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		if temp == index {
 			blk, err = types.NewBlock(b)
 			if err != nil {
@@ -234,8 +269,11 @@ func (t *Ledger) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind)
 	copy(key[1:], hash[:])
 	return key[:]
 }
-func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind) error {
-
+func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	blockBytes, err := blk.MarshalMsg(nil)
 	if err != nil {
 		return err
@@ -244,7 +282,7 @@ func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind 
 	key := l.getUncheckedBlockKey(parentHash, kind)
 
 	//never overwrite implicitly
-	err = l.txn.Get(key, func(bytes []byte, b byte) error {
+	err = txn.Get(key, func(bytes []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -253,12 +291,19 @@ func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind 
 		return err
 	}
 
-	return l.txn.SetWithMeta(key, blockBytes, byte(blk.GetType()))
+	if err = txn.SetWithMeta(key, blockBytes, byte(blk.GetType())); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind) (types.Block, error) {
+func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txn db.StoreTxn) (types.Block, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getUncheckedBlockKey(parentHash, kind)
 	var blk types.Block
-	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
 		if blk, err = types.NewBlock(b); err != nil {
 			return err
 		}
@@ -275,13 +320,24 @@ func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKi
 	}
 	return blk, nil
 }
-func (l *Ledger) DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind) error {
+func (l *Ledger) DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	key := l.getUncheckedBlockKey(parentHash, kind)
-	return l.txn.Delete(key)
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (bool, error) {
+func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind, txn db.StoreTxn) (bool, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getUncheckedBlockKey(hash, kind)
-	err := l.txn.Get(key, func(val []byte, b byte) error {
+	err := txn.Get(key, func(val []byte, b byte) error {
 		return nil
 	})
 	if err != nil {
@@ -292,20 +348,24 @@ func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (b
 	}
 	return true, nil
 }
-func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error {
+func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txn db.StoreTxn) error {
 	return nil
 }
-func (l *Ledger) CountUncheckedBlocks() (uint64, error) {
+func (l *Ledger) CountUncheckedBlocks(txn db.StoreTxn) (uint64, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	var count uint64
 
-	err := l.txn.Iterator(idPrefixUncheckedBlockLink, func(key []byte, val []byte, b byte) error {
+	err := txn.Iterator(idPrefixUncheckedBlockLink, func(key []byte, val []byte, b byte) error {
 		count++
 		return nil
 	})
 	if err != nil {
 		return 0, err
 	}
-	err = l.txn.Iterator(idPrefixUncheckedBlockPrevious, func(key []byte, val []byte, b byte) error {
+	err = txn.Iterator(idPrefixUncheckedBlockPrevious, func(key []byte, val []byte, b byte) error {
 		count++
 		return nil
 	})
@@ -323,7 +383,11 @@ func (l *Ledger) getAccountMetaKey(address types.Address) []byte {
 	copy(key[1:], address[:])
 	return key[:]
 }
-func (l *Ledger) AddAccountMeta(meta *types.AccountMeta) error {
+func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	metaBytes, err := meta.MarshalMsg(nil)
 	if err != nil {
 		return err
@@ -332,7 +396,7 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta) error {
 	key := l.getAccountMetaKey(meta.Address)
 
 	// never overwrite implicitly
-	err = l.txn.Get(key, func(vals []byte, b byte) error {
+	err = txn.Get(key, func(vals []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -340,12 +404,19 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta) error {
 	} else if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
-	return l.txn.Set(key, metaBytes)
+	if err := txn.Set(key, metaBytes); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) GetAccountMeta(address types.Address) (*types.AccountMeta, error) {
+func (l *Ledger) GetAccountMeta(address types.Address, txn db.StoreTxn) (*types.AccountMeta, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getAccountMetaKey(address)
 	var meta types.AccountMeta
-	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
 		if _, err = meta.UnmarshalMsg(val); err != nil {
 			return err
 		}
@@ -359,14 +430,18 @@ func (l *Ledger) GetAccountMeta(address types.Address) (*types.AccountMeta, erro
 	}
 	return &meta, nil
 }
-func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta) error {
+func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	metaBytes, err := meta.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
 	key := l.getAccountMetaKey(meta.Address)
 
-	err = l.txn.Get(key, func(vals []byte, b byte) error {
+	err = txn.Get(key, func(vals []byte, b byte) error {
 		return nil
 	})
 	if err != nil {
@@ -375,23 +450,44 @@ func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta) error {
 		}
 		return err
 	}
-	return l.txn.Set(key, metaBytes)
+	if err := txn.Set(key, metaBytes); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta) error {
+func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	metaBytes, err := meta.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
 	key := l.getAccountMetaKey(meta.Address)
-	return l.txn.Set(key, metaBytes)
+	if err := txn.Set(key, metaBytes); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) DeleteAccountMeta(address types.Address) error {
+func (l *Ledger) DeleteAccountMeta(address types.Address, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	key := l.getAccountMetaKey(address)
-	return l.txn.Delete(key)
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) HasAccountMeta(address types.Address) (bool, error) {
+func (l *Ledger) HasAccountMeta(address types.Address, txn db.StoreTxn) (bool, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getAccountMetaKey(address)
-	err := l.txn.Get(key, func(val []byte, b byte) error {
+	err := txn.Get(key, func(val []byte, b byte) error {
 		return nil
 	})
 	if err != nil {
@@ -405,22 +501,39 @@ func (l *Ledger) HasAccountMeta(address types.Address) (bool, error) {
 
 // ------------------- TokenMeta  --------------------
 
-func (l *Ledger) AddTokenMeta(address types.Address, meta *types.TokenMeta) error {
-	accountmeta, err := l.GetAccountMeta(address)
+func (l *Ledger) AddTokenMeta(address types.Address, tokenmeta *types.TokenMeta, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+	accountmeta, err := l.GetAccountMeta(address, txn)
 	if err != nil {
 		return err
 	}
 	for _, t := range accountmeta.Tokens {
-		if t.Type == meta.Type {
+		if t.Type == tokenmeta.Type {
 			return ErrTokenExists
 		}
 	}
+	accountmeta.Tokens = append(accountmeta.Tokens, tokenmeta)
 
-	accountmeta.Tokens = append(accountmeta.Tokens, meta)
-	return l.UpdateAccountMeta(accountmeta)
+	accountmetabytes, err := accountmeta.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	key := l.getAccountMetaKey(accountmeta.Address)
+	if err := txn.Set(key, accountmetabytes); err != nil {
+		return err
+	}
+
+	return txn.Commit(nil)
 }
-func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error) {
-	accountmeta, err := l.GetAccountMeta(address)
+func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash, txn db.StoreTxn) (*types.TokenMeta, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
+	accountmeta, err := l.GetAccountMeta(address, txn)
 	if err != nil {
 		return nil, err
 	}
@@ -431,41 +544,73 @@ func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash) (*typ
 	}
 	return nil, ErrTokenNotFound
 }
-func (l *Ledger) UpdateTokenMeta(address types.Address, meta *types.TokenMeta) error {
-	accountmeta, err := l.GetAccountMeta(address)
+func (l *Ledger) UpdateTokenMeta(address types.Address, tokenmeta *types.TokenMeta, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+	accountmeta, err := l.GetAccountMeta(address, txn)
 	if err != nil {
 		return err
 	}
 	tokens := accountmeta.Tokens
 	for index, token := range accountmeta.Tokens {
-		if token.Type == meta.Type {
+		if token.Type == tokenmeta.Type {
 			accountmeta.Tokens = append(tokens[:index], tokens[index+1:]...)
-			accountmeta.Tokens = append(accountmeta.Tokens, meta)
-			return l.UpdateAccountMeta(accountmeta)
+			accountmeta.Tokens = append(accountmeta.Tokens, tokenmeta)
+
+			accountmetabytes, err := accountmeta.MarshalMsg(nil)
+			if err != nil {
+				return err
+			}
+			key := l.getAccountMetaKey(accountmeta.Address)
+			if err := txn.Set(key, accountmetabytes); err != nil {
+				return err
+			}
+
+			return txn.Commit(nil)
 		}
 	}
 	return ErrTokenNotFound
 }
-func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMeta) error {
-	accountmeta, err := l.GetAccountMeta(address)
+func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, tokenmeta *types.TokenMeta, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+	accountmeta, err := l.GetAccountMeta(address, txn)
 	if err != nil {
 		return err
 	}
 	tokens := accountmeta.Tokens
 	for index, token := range accountmeta.Tokens {
-		if token.Type == meta.Type {
+		if token.Type == tokenmeta.Type {
 			accountmeta.Tokens = append(tokens[:index], tokens[index+1:]...)
-			accountmeta.Tokens = append(accountmeta.Tokens, meta)
-			return l.UpdateAccountMeta(accountmeta)
 		}
 	}
+	accountmeta.Tokens = append(accountmeta.Tokens, tokenmeta)
 
-	accountmeta.Tokens = append(accountmeta.Tokens, meta)
-	return l.UpdateAccountMeta(accountmeta)
-}
-func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash) error {
-	accountmeta, err := l.GetAccountMeta(address)
+	accountmetabytes, err := accountmeta.MarshalMsg(nil)
 	if err != nil {
+		return err
+	}
+	key := l.getAccountMetaKey(accountmeta.Address)
+	if err := txn.Set(key, accountmetabytes); err != nil {
+		return err
+	}
+
+	return txn.Commit(nil)
+}
+func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+	accountmeta, err := l.GetAccountMeta(address, txn)
+	if err != nil {
+		if err == ErrAccountNotFound {
+			return nil
+		}
 		return err
 	}
 	tokens := accountmeta.Tokens
@@ -474,11 +619,28 @@ func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash) er
 			accountmeta.Tokens = append(tokens[:index], tokens[index+1:]...)
 		}
 	}
-	return l.UpdateAccountMeta(accountmeta)
-}
-func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error) {
-	accountmeta, err := l.GetAccountMeta(address)
+
+	accountmetabytes, err := accountmeta.MarshalMsg(nil)
 	if err != nil {
+		return err
+	}
+	key := l.getAccountMetaKey(accountmeta.Address)
+	if err := txn.Set(key, accountmetabytes); err != nil {
+		return err
+	}
+
+	return txn.Commit(nil)
+}
+func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txn db.StoreTxn) (bool, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
+	accountmeta, err := l.GetAccountMeta(address, txn)
+	if err != nil {
+		if err == ErrAccountNotFound {
+			return false, nil
+		}
 		return false, err
 	}
 	for _, t := range accountmeta.Tokens {
@@ -498,8 +660,12 @@ func (t *Ledger) getRepresentationKey(address types.Address) []byte {
 	copy(key[1:], address[:])
 	return key[:]
 }
-func (l *Ledger) AddRepresentationWeight(address types.Address, amount types.Balance) error {
-	oldAmount, err := l.GetRepresentation(address)
+func (l *Ledger) AddRepresentationWeight(address types.Address, amount types.Balance, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+	oldAmount, err := l.GetRepresentation(address, txn)
 	if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
@@ -509,11 +675,19 @@ func (l *Ledger) AddRepresentationWeight(address types.Address, amount types.Bal
 	if err != nil {
 		return err
 	}
-	return l.txn.Set(key, amountBytes)
+	if err := txn.Set(key, amountBytes); err != nil {
+		fmt.Println(err)
+		return err
+	}
+	return txn.Commit(nil)
 
 }
-func (l *Ledger) SubRepresentationWeight(address types.Address, amount types.Balance) error {
-	oldAmount, err := l.GetRepresentation(address)
+func (l *Ledger) SubRepresentationWeight(address types.Address, amount types.Balance, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+	oldAmount, err := l.GetRepresentation(address, txn)
 	if err != nil {
 		return err
 	}
@@ -523,12 +697,19 @@ func (l *Ledger) SubRepresentationWeight(address types.Address, amount types.Bal
 	if err != nil {
 		return err
 	}
-	return l.txn.Set(key, amountBytes)
+	if err := txn.Set(key, amountBytes); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) GetRepresentation(address types.Address) (types.Balance, error) {
+func (l *Ledger) GetRepresentation(address types.Address, txn db.StoreTxn) (types.Balance, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getRepresentationKey(address)
 	var amount types.Balance
-	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
 		if err = amount.UnmarshalText(val); err != nil {
 			return err
 		}
@@ -549,7 +730,12 @@ func (t *Ledger) getPendingKey(destination types.Address, hash types.Hash) []byt
 	copy(key[1+types.AddressSize:], hash[:])
 	return key[:]
 }
-func (l *Ledger) AddPending(destination types.Address, hash types.Hash, pending *types.PendingInfo) error {
+func (l *Ledger) AddPending(destination types.Address, hash types.Hash, pending *types.PendingInfo, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+
 	pendingBytes, err := pending.MarshalMsg(nil)
 	if err != nil {
 		return err
@@ -557,7 +743,7 @@ func (l *Ledger) AddPending(destination types.Address, hash types.Hash, pending 
 	key := l.getPendingKey(destination, hash)
 
 	//never overwrite implicitly
-	err = l.txn.Get(key, func(bytes []byte, b byte) error {
+	err = txn.Get(key, func(bytes []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -565,12 +751,19 @@ func (l *Ledger) AddPending(destination types.Address, hash types.Hash, pending 
 	} else if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
-	return l.txn.Set(key, pendingBytes)
+	if err := txn.Set(key, pendingBytes); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) GetPending(destination types.Address, hash types.Hash) (*types.PendingInfo, error) {
+func (l *Ledger) GetPending(destination types.Address, hash types.Hash, txn db.StoreTxn) (*types.PendingInfo, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getPendingKey(destination, hash)
 	var pending types.PendingInfo
-	err := l.txn.Get(key[:], func(val []byte, b byte) (err error) {
+	err := txn.Get(key[:], func(val []byte, b byte) (err error) {
 		if _, err = pending.UnmarshalMsg(val); err != nil {
 			return err
 		}
@@ -585,9 +778,16 @@ func (l *Ledger) GetPending(destination types.Address, hash types.Hash) (*types.
 	return &pending, nil
 
 }
-func (l *Ledger) DeletePending(destination types.Address, hash types.Hash) error {
+func (l *Ledger) DeletePending(destination types.Address, hash types.Hash, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	key := l.getPendingKey(destination, hash)
-	return l.txn.Delete(key)
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
 
 // ------------------- frontier  --------------------
@@ -598,11 +798,15 @@ func (t *Ledger) getFrontierKey(hash types.Hash) []byte {
 	copy(key[1:], hash[:])
 	return key[:]
 }
-func (l *Ledger) AddFrontier(frontier *types.Frontier) error {
-	key := l.getFrontierKey(frontier.Hash)
+func (l *Ledger) AddFrontier(frontier *types.Frontier, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
+	key := l.getFrontierKey(frontier.HeaderBlock)
 
 	// never overwrite implicitly
-	err := l.txn.Get(key, func(bytes []byte, b byte) error {
+	err := txn.Get(key, func(bytes []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -610,13 +814,20 @@ func (l *Ledger) AddFrontier(frontier *types.Frontier) error {
 	} else if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
-	return l.txn.Set(key, frontier.Address[:])
+	if err := txn.Set(key, frontier.OpenBlock[:]); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) GetFrontier(hash types.Hash) (*types.Frontier, error) {
+func (l *Ledger) GetFrontier(hash types.Hash, txn db.StoreTxn) (*types.Frontier, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	key := l.getFrontierKey(hash)
-	frontier := types.Frontier{Hash: hash}
-	err := l.txn.Get(key, func(val []byte, b byte) (err error) {
-		copy(frontier.Address[:], val)
+	frontier := types.Frontier{HeaderBlock: hash}
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
+		copy(frontier.OpenBlock[:], val)
 		return nil
 	})
 	if err != nil {
@@ -627,29 +838,45 @@ func (l *Ledger) GetFrontier(hash types.Hash) (*types.Frontier, error) {
 	}
 	return &frontier, nil
 }
-func (l *Ledger) GetFrontiers() ([]*types.Frontier, error) {
-	var frontiers []*types.Frontier
+func (l *Ledger) GetFrontiers(txn db.StoreTxn) ([]*types.Frontier, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
+	var frontiers types.Frontiers
 
-	err := l.txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
+	err := txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
 		var frontier types.Frontier
-		copy(frontier.Hash[:], key[1:])
-		copy(frontier.Address[:], val)
+		copy(frontier.HeaderBlock[:], key[1:])
+		copy(frontier.OpenBlock[:], val)
 		frontiers = append(frontiers, &frontier)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+	sort.Sort(frontiers)
 	return frontiers, nil
 }
-func (l *Ledger) DeleteFrontier(hash types.Hash) error {
+func (l *Ledger) DeleteFrontier(hash types.Hash, txn db.StoreTxn) error {
+	if txn == nil {
+		txn = l.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 	key := l.getFrontierKey(hash)
-	return l.txn.Delete(key)
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
 }
-func (l *Ledger) CountFrontiers() (uint64, error) {
+func (l *Ledger) CountFrontiers(txn db.StoreTxn) (uint64, error) {
+	if txn == nil {
+		txn = l.store.NewTransaction(false)
+		defer txn.Discard()
+	}
 	var count uint64
 
-	err := l.txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
+	err := txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
 		count++
 		return nil
 	})
