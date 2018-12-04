@@ -9,6 +9,7 @@ package util
 
 import (
 	"encoding/hex"
+	"os"
 
 	"golang.org/x/crypto/blake2b"
 )
@@ -66,4 +67,13 @@ func TrimQuotes(s string) string {
 		}
 	}
 	return s
+}
+
+//CreateDirIfNotExist create given folder
+func CreateDirIfNotExist(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		return err
+	}
+	return nil
 }

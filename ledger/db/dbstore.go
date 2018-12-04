@@ -3,6 +3,7 @@ package db
 import (
 	"io"
 
+	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -12,6 +13,7 @@ type Store interface {
 	Purge() error
 	View(fn func(txn StoreTxn) error) error
 	Update(fn func(txn StoreTxn) error) error
+	BadgerDb() *badger.DB
 }
 
 type StoreTxn interface {
@@ -22,7 +24,7 @@ type StoreTxn interface {
 	Iterator(pre byte, fn func([]byte, []byte, byte) error) error
 }
 
-type StoreLedger interface {
+type LedgerStore interface {
 	Empty() (bool, error)
 	Flush() error
 

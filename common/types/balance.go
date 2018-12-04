@@ -6,7 +6,7 @@ import (
 	"math/big"
 
 	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
-	"github.com/qlcchain/go-qlc/common/types/internal/util"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/shopspring/decimal"
 	"github.com/tinylib/msgp/msgp"
 )

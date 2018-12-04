@@ -14,12 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-type WalletStore struct {
-	store   db.Store
-	txn     db.StoreTxn
-	version int64 // current version
-}
-
 type WalletStoreApi interface {
 	Erase() error
 	Import(content string, password string) error

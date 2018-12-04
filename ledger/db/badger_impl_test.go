@@ -1,18 +1,47 @@
 package db
 
 import (
+	"os"
 	"testing"
+
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-func TestBadgerStoreTxn_Set(t *testing.T) {
-	db, err := NewBadgerStore()
-	defer db.Close()
+var db Store
+
+func getBadgerDir() string {
+	dir, _ := homedir.Expand("~/.qlcchain/test/badger")
+	return dir
+}
+
+func setupTestCase(t *testing.T) func(t *testing.T) {
+	t.Log("setup test case")
+	dir := getBadgerDir()
+	var err error
+	db, err = NewBadgerStore(dir)
+
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = db.Update(func(txn StoreTxn) error {
+	return func(t *testing.T) {
+		t.Log("teardown test case")
+		err := db.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestBadgerStoreTxn_Set(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	err := db.Update(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
 		val, _ := blk.MarshalMsg(nil)
@@ -27,13 +56,10 @@ func TestBadgerStoreTxn_Set(t *testing.T) {
 }
 
 func TestBadgerStoreTxn_SetWithMeta(t *testing.T) {
-	db, err := NewBadgerStore()
-	defer db.Close()
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = db.Update(func(txn StoreTxn) error {
+	err := db.Update(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
 		val, _ := blk.MarshalMsg(nil)
@@ -48,19 +74,28 @@ func TestBadgerStoreTxn_SetWithMeta(t *testing.T) {
 }
 
 func TestBadgerStoreTxn_Get(t *testing.T) {
-	db, err := NewBadgerStore()
-	defer db.Close()
-
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	err := db.Update(func(txn StoreTxn) error {
+		blk := new(types.StateBlock)
+		key := blk.GetHash()
+		val, _ := blk.MarshalMsg(nil)
+		if err := txn.SetWithMeta(key[:], val, 0); err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	err = db.View(func(txn StoreTxn) error {
 		block := new(types.StateBlock)
 		key := block.GetHash()
 		blk := new(types.StateBlock)
 		err := txn.Get(key[:], func(val []byte, b byte) error {
-			if _, err = blk.UnmarshalMsg(val); err != nil {
-				t.Fatal(err)
+			if _, err2 := blk.UnmarshalMsg(val); err2 != nil {
+				t.Fatal(err2)
 			}
 			return nil
 		})
@@ -76,13 +111,9 @@ func TestBadgerStoreTxn_Get(t *testing.T) {
 }
 
 func TestBadgerStoreTxn_Iterator(t *testing.T) {
-	db, err := NewBadgerStore()
-	defer db.Close()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = db.View(func(txn StoreTxn) error {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	err := db.View(func(txn StoreTxn) error {
 		err := txn.Iterator(206, func(key []byte, val []byte, b byte) error {
 			t.Log(key)
 			return nil
@@ -98,13 +129,9 @@ func TestBadgerStoreTxn_Iterator(t *testing.T) {
 }
 
 func TestBadgerStoreTxn_Delete(t *testing.T) {
-	db, err := NewBadgerStore()
-	defer db.Close()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = db.Update(func(txn StoreTxn) error {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	err := db.Update(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
 		if err := txn.Delete(key[:]); err != nil {

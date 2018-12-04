@@ -2,7 +2,8 @@ package db
 
 import (
 	"fmt"
-	"os"
+
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
@@ -15,6 +16,10 @@ const (
 // BadgerStore represents a block lattice store backed by a badger database.
 type BadgerStore struct {
 	db *badger.DB
+}
+
+func (s *BadgerStore) BadgerDb() *badger.DB {
+	return s.db
 }
 
 type BadgerStoreTxn struct {
@@ -30,15 +35,15 @@ func NewBadgerStore(dir string) (Store, error) {
 	opts.ValueDir = dir
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
 
-	if _, err := os.Stat(dir); err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-		if err := os.Mkdir(dir, 0700); err != nil {
-			return nil, err
-		}
-	}
-
+	//if _, err := os.Stat(dir); err != nil {
+	//	if !os.IsNotExist(err) {
+	//		return nil, err
+	//	}
+	//	if err := os.Mkdir(dir, 0700); err != nil {
+	//		return nil, err
+	//	}
+	//}
+	_ = util.CreateDirIfNotExist(dir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
