@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/qlcchain/go-qlc/common/types/internal/util"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"

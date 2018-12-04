@@ -9,9 +9,10 @@ package common
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/mitchellh/go-homedir"
 	"go.uber.org/zap"
@@ -31,8 +32,10 @@ var logger *zap.Logger
 func NewLogger(name string) *zap.SugaredLogger {
 	if logger == nil {
 		logFolder, _ := homedir.Expand(logDir)
-		createDirIfNotExist(logFolder)
-
+		err := util.CreateDirIfNotExist(logFolder)
+		if err != nil {
+			fmt.Println(err)
+		}
 		logfile := filepath.Join(logFolder, logfile)
 		lumlog = lumberjack.Logger{
 			Filename:   logfile,
@@ -49,13 +52,4 @@ func NewLogger(name string) *zap.SugaredLogger {
 func lumberjackZapHook(e zapcore.Entry) error {
 	_, err := lumlog.Write([]byte(fmt.Sprintf("%s %s [%s] %s %s\n", e.Time.Format(time.RFC3339Nano), e.Level.CapitalString(), e.LoggerName, e.Caller.TrimmedPath(), e.Message)))
 	return err
-}
-
-func createDirIfNotExist(dir string) {
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0750)
-		if err != nil {
-			fmt.Printf("create dir failed: %s", err)
-		}
-	}
 }
