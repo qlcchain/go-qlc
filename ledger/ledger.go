@@ -3,9 +3,8 @@ package ledger
 import (
 	"errors"
 	"math/rand"
-	"os"
-	"path"
-	"strings"
+
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
@@ -48,20 +47,13 @@ const (
 )
 
 func NewLedger() (*Ledger, error) {
-	dir := getBadgerDir()
+	dir := util.QlcDir("ledger")
 	store, err := db.NewBadgerStore(dir)
 	if err != nil {
 		return nil, err
 	}
 	ledger := Ledger{store: store}
 	return &ledger, nil
-}
-
-//TODO: refine path
-func getBadgerDir() string {
-	root, _ := os.Getwd()
-	s := root[:strings.LastIndex(root, "go-qlc")]
-	return path.Join(path.Join(path.Join(s, "go-qlc"), "ledger"), "db")
 }
 
 func (l *Ledger) Close() error {

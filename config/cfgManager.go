@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 type ConfigManager struct {
@@ -13,22 +14,11 @@ type ConfigManager struct {
 	filename string
 }
 
-var defaultpath = &ConfigManager{
-	dir:      ".qlcchain",
-	filename: "qlc.json",
-}
+const QlcConfigFile = "qlc.json"
 
-func NewCfgManager(dir, filename string) (*ConfigManager, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	if dir == "" || filename == "" {
-		dir = defaultpath.dir
-		filename = defaultpath.filename
-	}
-	cfg := &ConfigManager{dir: path.Join(usr.HomeDir, dir)}
-	cfg.filename = path.Join(cfg.dir, filename)
+func NewCfgManager() (*ConfigManager, error) {
+	cfg := &ConfigManager{dir: util.QlcDir()}
+	cfg.filename = path.Join(cfg.dir, QlcConfigFile)
 	return cfg, nil
 }
 

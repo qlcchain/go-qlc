@@ -14,14 +14,12 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/util"
 
-	"github.com/mitchellh/go-homedir"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
-	logDir  = "~/.qlcchain/logs"
 	logfile = "qlc.log"
 )
 
@@ -31,7 +29,7 @@ var logger *zap.Logger
 //NewLogger create logger by name
 func NewLogger(name string) *zap.SugaredLogger {
 	if logger == nil {
-		logFolder, _ := homedir.Expand(logDir)
+		logFolder := util.QlcDir("log")
 		err := util.CreateDirIfNotExist(logFolder)
 		if err != nil {
 			fmt.Println(err)
