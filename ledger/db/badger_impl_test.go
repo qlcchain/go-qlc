@@ -4,21 +4,16 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mitchellh/go-homedir"
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
 var db Store
 
-func getBadgerDir() string {
-	dir, _ := homedir.Expand("~/.qlcchain/test/badger")
-	return dir
-}
-
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Log("setup test case")
-	dir := getBadgerDir()
+	dir := util.QlcDir("test", "badger")
 	var err error
 	db, err = NewBadgerStore(dir)
 
