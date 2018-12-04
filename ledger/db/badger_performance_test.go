@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -15,14 +14,16 @@ import (
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
-const (
-	dir_checkblock string = "checkblock"
+var (
+	dir_checkblock = util.QlcDir("test", "checkblock")
+	dir_testdb     = util.QlcDir("test", "badger_pref")
 )
 
-func generateBlock(t testing.TB) types.Block {
+func generateBlock() types.Block {
 	var blk types.StateBlock
 	random.Bytes(blk.PreviousHash[:])
 	random.Bytes(blk.Representative[:])
@@ -35,19 +36,12 @@ func generateBlock(t testing.TB) types.Block {
 }
 
 func NewBadger() (*badger.DB, error) {
-	dir := util.QlcDir("test", "badger_pref")
 	opts := badger.DefaultOptions
-	opts.Dir = dir
-	opts.ValueDir = dir
+	opts.Dir = dir_testdb
+	opts.ValueDir = dir_testdb
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
-	if _, err := os.Stat(dir); err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-		if err := os.Mkdir(dir, 0700); err != nil {
-			return nil, err
-		}
-	}
+
+	_ = util.CreateDirIfNotExist(dir_testdb)
 	db, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
@@ -72,14 +66,14 @@ func TestBadgerPerformance_AddBlocks(t *testing.T) {
 	}
 	defer db.Close()
 
-	const m = 10
+	const m = 0
 	const n = 10000
 
 	start := time.Now()
 	for k := 0; k < m; k++ {
 		db.Update(func(txn *badger.Txn) error {
 			for i := 0; i < n; i++ {
-				blk := generateBlock(t)
+				blk := generateBlock()
 				key := blk.GetHash()
 				val, _ := blk.MarshalMsg(nil)
 				if err := txn.Set(key[:], val); err != nil {
@@ -111,7 +105,7 @@ func TestBadgerPerformance_AddBlocksByGoroutine(t *testing.T) {
 		go func() {
 			db.Update(func(txn *badger.Txn) error {
 				for i := 0; i < n; i++ {
-					blk := generateBlock(t)
+					blk := generateBlock()
 					key := blk.GetHash()
 					val, _ := blk.MarshalMsg(nil)
 					if err := txn.Set(key[:], val); err != nil {
@@ -137,24 +131,19 @@ func TestBadgerPerformance_AddBlocksByGoroutine2(t *testing.T) {
 	start := time.Now()
 
 	for k := 0; k < m; k++ {
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
-
 			db, err := NewBadger()
-
 			if err != nil {
 				t.Fatal(err)
 			}
-
 			db.Update(func(txn *badger.Txn) error {
 				for i := 0; i < n; i++ {
-					for i := 0; i < n; i++ {
-						blk := generateBlock(t)
-						key := blk.GetHash()
-						val, _ := blk.MarshalMsg(nil)
-						if err := txn.Set(key[:], val); err != nil {
-							t.Fatal(err)
-						}
+					blk := generateBlock()
+					key := blk.GetHash()
+					val, _ := blk.MarshalMsg(nil)
+					if err := txn.Set(key[:], val); err != nil {
+						t.Fatal(err)
 					}
 				}
 				return nil
@@ -190,7 +179,7 @@ func TestBadgerPerformance_CheckBlockMissing(t *testing.T) {
 
 		db.Update(func(txn *badger.Txn) error {
 			for i := 0; i < n; i++ {
-				blk := generateBlock(t)
+				blk := generateBlock()
 				key := blk.GetHash()
 				val, _ := blk.MarshalMsg(nil)
 				if err := txn.Set(key[:], val); err != nil {
@@ -320,7 +309,13 @@ func TestBadgerPerformance_ReadBlockByGoroutine(t *testing.T) {
 	end := time.Now()
 	fmt.Printf("read benchmark: %f s\n", end.Sub(start).Seconds())
 
+}
+
+func TestLedger_RemoveDB(t *testing.T) {
 	if err := os.RemoveAll(dir_checkblock); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(dir_testdb); err != nil {
 		t.Fatal(err)
 	}
 }
