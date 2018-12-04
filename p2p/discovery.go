@@ -24,7 +24,7 @@ func (node *QlcNode) dhtFoundPeers() ([]pstore.PeerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Infof("Found %d peers!\n", len(peers))
+	logger.Infof("Found %d peers!", len(peers))
 	for _, p := range peers {
 		logger.Info("Peer: ", p)
 	}

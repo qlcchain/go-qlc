@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 
@@ -37,7 +38,6 @@ func (sm *StreamManager) SetQlcNode(node *QlcNode) {
 // Start stream manager service
 func (sm *StreamManager) Start() {
 	logger.Info("Start Qlc StreamManager...")
-
 	go sm.loop()
 }
 
@@ -113,7 +113,30 @@ func (sm *StreamManager) FindByPeerID(peerID string) *Stream {
 func (sm *StreamManager) Find(pid peer.ID) *Stream {
 	return sm.FindByPeerID(pid.Pretty())
 }
+func (sm *StreamManager) RandomPeer() (string, error) {
+	allPeers := make(PeersSlice, 0)
 
+	sm.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		if stream.IsConnected() {
+			allPeers = append(allPeers, value)
+		}
+		return true
+	})
+	var peerID string
+	rand.Seed(time.Now().Unix())
+	if (len(allPeers)) == 0 {
+		return "", ErrNoStream
+	}
+	randNum := rand.Intn(len(allPeers))
+	for i, v := range allPeers {
+		stream := v.(*Stream)
+		if i == randNum {
+			peerID = stream.pid.Pretty()
+		}
+	}
+	return peerID, nil
+}
 func (sm *StreamManager) loop() {
 	ticker := time.NewTicker(FindPeerInterval)
 	sm.findPeers()

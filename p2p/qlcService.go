@@ -2,19 +2,18 @@ package p2p
 
 import (
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 )
 
 // QlcService service for qlc p2p network
 type QlcService struct {
-	node           *QlcNode
-	dispatcher     *Dispatcher
-	messageEvent   *ConcreteSubject
-	messageService *MessageService
+	node         *QlcNode
+	dispatcher   *Dispatcher
+	messageEvent *ConcreteSubject
 }
 
 // NewQlcService create netService
-func NewQlcService(cfg *config.Config) (*QlcService, error) {
-
+func NewQlcService(cfg *config.Config, ledger *ledger.Ledger) (*QlcService, error) {
 	node, err := NewNode(cfg)
 	if err != nil {
 		return nil, err
@@ -22,15 +21,12 @@ func NewQlcService(cfg *config.Config) (*QlcService, error) {
 	cs := &ConcreteSubject{
 		Observers: make(map[Observer]struct{}),
 	}
-	msgs := NewMessageService()
 	ns := &QlcService{
-		node:           node,
-		dispatcher:     NewDispatcher(),
-		messageEvent:   cs,
-		messageService: msgs,
+		node:         node,
+		dispatcher:   NewDispatcher(),
+		messageEvent: cs,
 	}
 	node.SetQlcService(ns)
-	msgs.SetQlcService(ns)
 	return ns, nil
 }
 
@@ -57,7 +53,6 @@ func (ns *QlcService) Start() error {
 		logger.Error("Failed to start QlcService.")
 		return err
 	}
-	ns.messageService.Start()
 	logger.Info("Started QlcService.")
 	return nil
 }
@@ -88,4 +83,9 @@ func (ns *QlcService) PutMessage(msg Message) {
 // Broadcast message.
 func (ns *QlcService) Broadcast(name string, msg []byte) {
 	ns.node.BroadcastMessage(name, msg)
+}
+
+// SendMessageToPeer send message to a peer.
+func (ns *QlcService) SendMessageToPeer(messageName string, data []byte, peerID string) error {
+	return ns.node.SendMessageToPeer(messageName, data, peerID)
 }

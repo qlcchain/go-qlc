@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -18,6 +19,10 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
+// Error types
+var (
+	ErrPeerIsNotConnected = errors.New("peer is not connected")
+)
 var logger = common.NewLogger("p2p")
 
 type QlcNode struct {
@@ -172,6 +177,11 @@ func (node *QlcNode) handleStream(s inet.Stream) {
 func (node *QlcNode) GetID() string {
 	return node.ID.Pretty()
 }
+
+// ID return node ID.
+func (node *QlcNode) StreamManager() *StreamManager {
+	return node.streamManager
+}
 func (node *QlcNode) stopHost() {
 
 	if node.host == nil {
@@ -198,4 +208,15 @@ func (node *QlcNode) Stop() {
 func (node *QlcNode) BroadcastMessage(messageName string, data []byte) {
 
 	node.streamManager.BroadcastMessage(messageName, data)
+}
+
+// SendMessageToPeer send message to a peer.
+func (node *QlcNode) SendMessageToPeer(messageName string, data []byte, peerID string) error {
+	stream := node.streamManager.FindByPeerID(peerID)
+	if stream == nil {
+		logger.Debug("Failed to locate peer's stream")
+		return ErrPeerIsNotConnected
+	}
+
+	return stream.SendMessage(messageName, data)
 }
