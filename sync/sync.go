@@ -101,7 +101,9 @@ func (ss *ServiceSync) startLoop() {
 }
 func (ss *ServiceSync) onFrontierReq(message p2p.Message) error {
 	var fs []*types.Frontier
-	fs, err := ss.qlcLedger.GetFrontiers(nil)
+	session := ss.qlcLedger.NewLedgerSession(false)
+	defer session.Close()
+	fs, err := session.GetFrontiers()
 	if err != nil {
 		return err
 	}
@@ -133,6 +135,9 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 	}
 	fr := fsremote.Frontier
 	log.Info(fr.HeaderBlock, fr.OpenBlock)
+	session := ss.qlcLedger.NewLedgerSession(false)
+	defer session.Close()
+
 	if !fr.OpenBlock.IsZero() {
 		for {
 			if !openBlockHash.IsZero() && (openBlockHash.String() < fr.OpenBlock.String()) {
@@ -152,7 +157,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 				if headerBlockHash == fr.HeaderBlock {
 					log.Infof("this token %s have the same block", openBlockHash)
 				} else {
-					exit, _ := ss.qlcLedger.HasBlock(fr.HeaderBlock, nil)
+					exit, _ := session.HasBlock(fr.HeaderBlock)
 					if exit == true {
 						push := &Bulk{
 							StartHash: fr.HeaderBlock,
@@ -219,7 +224,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
-							blk, err = ss.qlcLedger.GetBlock(endHash, nil)
+							blk, err = session.GetBlock(endHash)
 							if err != nil {
 								return err
 							}
@@ -244,7 +249,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
-							blk, err = ss.qlcLedger.GetBlock(endHash, nil)
+							blk, err = session.GetBlock(endHash)
 							if err != nil {
 								return err
 							}
@@ -275,7 +280,9 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 }
 
 func (ss *ServiceSync) getLocalFrontier() (err error) {
-	frontiers, err = ss.qlcLedger.GetFrontiers(nil)
+	session := ss.qlcLedger.NewLedgerSession(false)
+	defer session.Close()
+	frontiers, err = session.GetFrontiers()
 	if err != nil {
 		return err
 	}
@@ -288,6 +295,8 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 	if err != nil {
 		return err
 	}
+	session := ss.qlcLedger.NewLedgerSession(false)
+	defer session.Close()
 	startHash := pullremote.StartHash
 	endHash := pullremote.EndHash
 	if startHash.IsZero() {
@@ -295,7 +304,7 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 		var bulkblk []types.Block
 		log.Info("need to send all the blocks of this account")
 		for {
-			blk, err = ss.qlcLedger.GetBlock(endHash, nil)
+			blk, err = session.GetBlock(endHash)
 			if err != nil {
 				return err
 			}
@@ -320,7 +329,7 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 		var bulkblk []types.Block
 		log.Info("need to send some blocks of this account")
 		for {
-			blk, err = ss.qlcLedger.GetBlock(endHash, nil)
+			blk, err = session.GetBlock(endHash)
 			if err != nil {
 				return err
 			}
@@ -348,14 +357,17 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 	if err != nil {
 		return err
 	}
+	session := ss.qlcLedger.NewLedgerSession(false)
+	defer session.Close()
+
 	block := blkpacket.blk
-	err = ss.qlcLedger.AddBlock(block)
+	err = session.AddBlock(block)
 	if err != nil {
 		return err
 	}
 	previousHash := block.GetPreviousHash()
 	if previousHash.IsZero() == false {
-		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPreviousHash())
+		currentfr, err := session.GetFrontier(block.GetPreviousHash())
 		if err != nil {
 			return err
 		}
@@ -363,11 +375,11 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   currentfr.OpenBlock,
 		}
-		err = ss.qlcLedger.DeleteFrontier(block.GetPreviousHash())
+		err = session.DeleteFrontier(block.GetPreviousHash())
 		if err != nil {
 			return err
 		}
-		err = ss.qlcLedger.AddFrontier(updatefr)
+		err = session.AddFrontier(updatefr)
 		if err != nil {
 			return err
 		}
@@ -376,7 +388,7 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   block.GetHash(),
 		}
-		err = ss.qlcLedger.AddFrontier(fr)
+		err = session.AddFrontier(fr)
 		if err != nil {
 			return err
 		}
@@ -389,13 +401,16 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 		return err
 	}
 	block := blkpacket.blk
-	err = ss.qlcLedger.AddBlock(block)
+	session := ss.qlcLedger.NewLedgerSession(false)
+	defer session.Close()
+
+	err = session.AddBlock(block)
 	if err != nil {
 		return err
 	}
 	previousHash := block.GetPreviousHash()
 	if previousHash.IsZero() == false {
-		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPreviousHash())
+		currentfr, err := session.GetFrontier(block.GetPreviousHash())
 		if err != nil {
 			return err
 		}
@@ -403,11 +418,11 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   currentfr.OpenBlock,
 		}
-		err = ss.qlcLedger.DeleteFrontier(block.GetPreviousHash())
+		err = session.DeleteFrontier(block.GetPreviousHash())
 		if err != nil {
 			return err
 		}
-		err = ss.qlcLedger.AddFrontier(updatefr)
+		err = session.AddFrontier(updatefr)
 		if err != nil {
 			return err
 		}
@@ -416,7 +431,7 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   block.GetHash(),
 		}
-		err = ss.qlcLedger.AddFrontier(fr)
+		err = session.AddFrontier(fr)
 		if err != nil {
 			return err
 		}
