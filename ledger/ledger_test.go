@@ -4,47 +4,134 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
+	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-var dir_testdb = util.QlcDir("test", "ledger")
+var (
+	l *Ledger
+	//dir = util.QlcDir("ledger")
+)
 
-func initTestLedger() (*Ledger, error) {
-	store, err := db.NewBadgerStore(dir_testdb)
-	if err != nil {
-		return nil, err
+func setupTestCase(t *testing.T) func(t *testing.T) {
+	l = NewLedger()
+
+	return func(t *testing.T) {
+		err := l.db.Erase()
+		//err := l.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		//err = os.RemoveAll(dir)
+		//if err != nil {
+		//	t.Fatal(err)
+		//}
 	}
-	ledger := Ledger{store: store}
-	return &ledger, nil
 }
-func TestLedger_RemoveDB(t *testing.T) {
-	if err := os.RemoveAll(dir_testdb); err != nil {
-		t.Fatal(err)
+
+func TestLedger_Instance(t *testing.T) {
+	l1 := NewLedger()
+	l2 := NewLedger()
+	b := reflect.DeepEqual(l1, l2)
+	if l1 == nil || l2 == nil || !b {
+		t.Fatal("error")
 	}
 }
+
 func TestLedger_Empty(t *testing.T) {
-	l, err := initTestLedger()
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	e, err := session.Empty()
+
 	if err != nil {
 		t.Fatal(err)
-
 	}
-	defer l.Close()
+	t.Logf("is empty %s", strconv.FormatBool(e))
+}
 
-	err = l.GetDataInTransaction(func(txn db.StoreTxn) error {
-		r, err := l.Empty(txn)
+func TestLedger_NewLedgerSession1(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	s1 := l.NewLedgerSession(false)
+	defer s1.Close()
+
+	s2 := l.NewLedgerSession(false)
+	defer s2.Close()
+
+	if s1 == s2 {
+		t.Fatal("s1==s2")
+	}
+
+	if s1.getTxn(false) == s2.getTxn(false) {
+		t.Fatal("s1_txn==s2_txn")
+	}
+}
+
+func TestLedger_NewLedgerSession2(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	s1 := l.NewLedgerSession(true)
+	defer s1.Close()
+
+	s2 := l.NewLedgerSession(true)
+	defer s2.Close()
+
+	if s1 == s2 {
+		t.Fatal("s1==s2")
+	}
+
+	if s1.getTxn(false) == s2.getTxn(false) {
+		t.Fatal("s1_txn==s2_txn")
+	}
+
+	if s1.getTxn(true) != s1.getTxn(true) {
+		t.Fatal("s1_txn1!=s1_txn2")
+	}
+	if s1.getTxn(false) != s1.getTxn(false) {
+		t.Fatal("s1_txn1!=s1_txn2")
+	}
+
+	if s1.getTxn(true) == s1.getTxn(false) {
+		t.Fatal("s1_txn1==s1_txn2'")
+	}
+}
+
+func TestLedgerSession_BatchUpdate(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	s1 := l.NewLedgerSession(true)
+	defer s1.Close()
+
+	ams := parseAccountMetas(t, "testdata/account.json")
+	tm, address, tokenType := parseToken(t)
+
+	err := s1.BatchUpdate(func() error {
+		for _, a := range ams {
+			err := s1.AddAccountMeta(a)
+			if err != nil {
+				return err
+			}
+		}
+		err := s1.AddTokenMeta(address, &tm)
 		if err != nil {
 			return err
 		}
-		t.Log("empty,", r)
+		r, err := s1.HasTokenMeta(address, tokenType)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("has token,", r)
 		return nil
 	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,70 +193,49 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 	return
 }
 func TestLedger_AddBlockWithSingleTxn(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	s := ledger.NewLedgerSession(false)
+	defer s.Close()
 
-	}
-	defer l.Close()
 	blks := parseBlocks(t, "testdata/blocks.json")
 
-	if err = l.AddBlock(blks[0], nil); err != nil {
-		t.Fatal(err)
-	}
-
-}
-func TestLedger_AddBlockWithBlockTxn(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
-
-	}
-	defer l.Close()
-	err = l.UpdateDataInTransaction(func(txn db.StoreTxn) error {
-		if err = l.AddBlock(generateBlock(), txn); err != nil {
-			t.Fatal(err)
-		}
-		if err = l.AddBlock(generateBlock(), txn); err != nil {
-			return err
-		}
-		return nil
-
-	})
-	if err != nil {
-		t.Fatal(err)
+	if err := s.AddBlock(blks[0]); err != nil {
+		t.Log(err)
 	}
 }
+
 func TestLedger_GetBlock(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	blks := parseBlocks(t, "testdata/blocks.json")
+	if err := session.AddBlock(blks[0]); err != nil {
 		t.Fatal(err)
-
 	}
-	defer l.Close()
 
-	h := types.Hash{}
-	h.Of("f42eadd5e3316197bb1757feb9714c21a7f87cc3d32a415bd3cebbb4499ea9b2")
-	err = l.GetDataInTransaction(func(txn db.StoreTxn) error {
-		blk, err := l.GetBlock(h, txn)
-		t.Log("blk,", blk)
-		return err
-	})
+	h := blks[0].GetHash()
+
+	blk, err := session.GetBlock(h)
+	t.Log("blk,", blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_GetAllBlocks(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
-	r, err := l.CountBlocks(nil)
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	r, err := session.CountBlocks()
 	t.Log("blk count, ", r)
 
-	blks, err := l.GetBlocks(nil)
+	blks, err := session.GetBlocks()
 	for index, b := range blks {
 		t.Log(index, b)
 	}
@@ -179,52 +245,50 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 	}
 }
 func TestLedger_DeleteBlock(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
-
-	}
-	defer l.Close()
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
 	h := types.Hash{}
 	h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
-	err = l.DeleteBlock(h, nil)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	err := session.DeleteBlock(h)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_HasBlock(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
-
-	}
-	defer l.Close()
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
 	h := types.Hash{}
 	h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
-	r, err := l.HasBlock(h, nil)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	r, err := session.HasBlock(h)
 	t.Log("hasblock,", r)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 }
-func TestLedger_GetRandomBlock(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+func TestLedger_GetRandomBlock_Empty(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 
-	b, err := l.GetRandomBlock(nil)
+	b, err := session.GetRandomBlock()
 
-	if err != nil {
+	if err != ErrStoreEmpty {
 		t.Fatal(err)
 	}
 	t.Log("blk ,", b)
-
 }
 
 func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, kind types.UncheckedKind) {
@@ -236,74 +300,76 @@ func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, 
 	kind = types.UncheckedKindLink
 	return
 }
-func TestLedger_AddUncheckedBlock(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
 
-	}
-	defer l.Close()
+func addUncheckedBlock(t *testing.T, ls *LedgerSession) {
 	parentHash, blk, kind := parseUncheckedBlock(t)
-	err = l.AddUncheckedBlock(parentHash, blk, kind, nil)
-	if err != nil {
+	if err := ls.AddUncheckedBlock(parentHash, blk, kind); err != nil && err != ErrUncheckedBlockExists {
 		t.Fatal(err)
 	}
+}
+func TestLedger_AddUncheckedBlock(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addUncheckedBlock(t, session)
 }
 func TestLedger_GetUncheckedBlock(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
 	parentHash, _, kind := parseUncheckedBlock(t)
-	b, err := l.GetUncheckedBlock(parentHash, kind, nil)
-	if err != nil {
+	addUncheckedBlock(t, session)
+
+	if b, err := session.GetUncheckedBlock(parentHash, kind); err != nil && err != ErrUncheckedBlockNotFound {
 		t.Fatal(err)
+	} else {
+		t.Log("unchecked,", b)
 	}
-	t.Log("unchecked,", b)
+
 }
 func TestLedger_CountUncheckedBlocks(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
-	c, err := l.CountUncheckedBlocks(nil)
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	c, err := session.CountUncheckedBlocks()
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("unchecked count,", c)
 }
 func TestLedger_HasUncheckedBlock(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
 	parentHash, _, kind := parseUncheckedBlock(t)
 
-	r, err := l.HasUncheckedBlock(parentHash, kind, nil)
+	r, err := session.HasUncheckedBlock(parentHash, kind)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("has unchecked,", r)
 }
 func TestLedger_DeleteUncheckedBlock(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
 	parentHash, _, kind := parseUncheckedBlock(t)
-	err = l.DeleteUncheckedBlock(parentHash, kind, nil)
+	err := session.DeleteUncheckedBlock(parentHash, kind)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,32 +398,47 @@ func parseAccountMetas(t *testing.T, filename string) (accountmetas []*types.Acc
 
 	return
 }
-func TestLedger_AddAccountMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
 
-	}
-	defer l.Close()
-
-	accountMetas := parseAccountMetas(t, "testdata/account.json")
-	for _, a := range accountMetas {
-		err := l.AddAccountMeta(a, nil)
+func addAccountMeta(t *testing.T, ls *LedgerSession) {
+	ams := parseAccountMetas(t, "testdata/account.json")
+	for _, a := range ams {
+		err := ls.AddAccountMeta(a)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 }
-func TestLedger_GetAccountMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+func TestLedger_AddAccountMeta(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+}
+func TestLedger_GetAccountMeta_Empty(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	a, err := l.GetAccountMeta(address, nil)
+	_, err := session.GetAccountMeta(address)
+	if err != ErrAccountNotFound {
+		t.Fatal(err)
+	}
+}
+func TestLedger_GetAccountMeta(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	addAccountMeta(t, session)
+	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	a, err := session.GetAccountMeta(address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,59 +448,57 @@ func TestLedger_GetAccountMeta(t *testing.T) {
 	}
 }
 func TestLedger_HasAccountMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
-
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	r, err := l.HasAccountMeta(address, nil)
+	r, err := session.HasAccountMeta(address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("has account,", r)
 }
 func TestLedger_DeleteAccountMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 
-	err = l.DeleteAccountMeta(address, nil)
+	err := session.DeleteAccountMeta(address)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
-	accountMetas := parseAccountMetas(t, "testdata/accountupdate.json")
-	for _, a := range accountMetas {
-		err := l.AddOrUpdateAccountMeta(a, nil)
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	ams := parseAccountMetas(t, "testdata/accountupdate.json")
+	for _, a := range ams {
+		err := session.AddOrUpdateAccountMeta(a)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 }
 func TestLedger_UpdateAccountMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
-	accountMetas := parseAccountMetas(t, "testdata/accountupdate.json")
-	for _, a := range accountMetas {
-		err := l.UpdateAccountMeta(a, nil)
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+	ams := parseAccountMetas(t, "testdata/accountupdate.json")
+	for _, a := range ams {
+		err := session.UpdateAccountMeta(a)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -457,139 +536,165 @@ func parseToken(t *testing.T) (tokenmeta types.TokenMeta, address types.Address,
 	return
 
 }
-func TestLedger_AddTokenMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
 
-	}
-	defer l.Close()
+func addTokenMeta(t *testing.T, ls *LedgerSession) {
+	addAccountMeta(t, ls)
 
-	tokenmeta, address, _ := parseToken(t)
+	tm, address, _ := parseToken(t)
 
-	err = l.AddTokenMeta(address, &tokenmeta, nil)
+	err := ls.AddTokenMeta(address, &tm)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
-func TestLedger_GetTokenMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
 
-	}
-	defer l.Close()
+func TestLedger_AddTokenMeta(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addTokenMeta(t, session)
+}
+func TestLedger_GetTokenMeta(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	addTokenMeta(t, session)
 
 	_, address, tokenType := parseToken(t)
 
-	token, err := l.GetTokenMeta(address, tokenType, nil)
+	token, err := session.GetTokenMeta(address, tokenType)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("token,", token)
 }
 func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	addTokenMeta(t, session)
 
-	tokenmeta, address, _ := parseToken(t)
+	tm, address, _ := parseToken(t)
 
-	err = l.AddOrUpdateTokenMeta(address, &tokenmeta, nil)
+	err := session.AddOrUpdateTokenMeta(address, &tm)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_UpdateTokenMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 
-	tokenmeta, address, _ := parseToken(t)
+	addTokenMeta(t, session)
+	tm, address, _ := parseToken(t)
 
-	err = l.UpdateTokenMeta(address, &tokenmeta, nil)
+	err := session.UpdateTokenMeta(address, &tm)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_DelTokenMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 
+	addTokenMeta(t, session)
 	_, address, tokentype := parseToken(t)
 
-	err = l.DeleteTokenMeta(address, tokentype, nil)
+	err := session.DeleteTokenMeta(address, tokentype)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
-func TestLedger_HasTokenMeta(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
+func TestLedger_HasTokenMeta_False(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	address, _, _ := types.GenerateAddress()
+	tokenType := types.Hash{}
+	addTokenMeta(t, session)
+
+	if _, err := session.HasTokenMeta(address, tokenType); err == ErrAccountNotFound {
+
+	} else {
 		t.Fatal(err)
-
 	}
-	defer l.Close()
+}
 
+func TestLedger_HasTokenMeta_True(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 	_, address, tokenType := parseToken(t)
 
-	r, err := l.HasTokenMeta(address, tokenType, nil)
+	addTokenMeta(t, session)
+	r, err := session.HasTokenMeta(address, tokenType)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("has token,", r)
 }
 
-func TestLedger_AddRepresentationWeight(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
-
-	}
-	defer l.Close()
-
+func addRepresentationWeight(t *testing.T, s *LedgerSession) {
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 	amount, err := types.ParseBalance("400.004", "Mqlc")
-	err = l.AddRepresentationWeight(address, amount, nil)
+
+	err = s.AddRepresentation(address, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
-func TestLedger_SubRepresentationWeight(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+func TestLedger_AddRepresentationWeight(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addRepresentationWeight(t, session)
+}
+func TestLedger_SubRepresentationWeight(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	addRepresentationWeight(t, session)
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 	amount, err := types.ParseBalance("100.004", "Mqlc")
-	err = l.SubRepresentationWeight(address, amount, nil)
+	err = session.SubRepresentation(address, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 func TestLedger_GetRepresentation(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	addRepresentationWeight(t, session)
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	a, err := l.GetRepresentation(address, nil)
+	a, err := session.GetRepresentation(address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -616,46 +721,46 @@ func parsePending(t *testing.T) (address types.Address, hash types.Hash, pending
 	}
 	return
 }
-func TestLedger_AddPending(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
 
-	}
-	defer l.Close()
-
+func addPending(t *testing.T, s *LedgerSession) {
 	address, hash, pendinfo := parsePending(t)
 
-	err = l.AddPending(address, hash, &pendinfo, nil)
+	err := s.AddPending(address, hash, &pendinfo)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+func TestLedger_AddPending(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	addPending(t, session)
+}
 func TestLedger_GetPending(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
-
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	addPending(t, session)
 	address, hash, _ := parsePending(t)
-	p, err := l.GetPending(address, hash, nil)
+	p, err := session.GetPending(address, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("pending,", p)
 }
 func TestLedger_DeletePending(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 	address, hash, _ := parsePending(t)
 
-	err = l.DeletePending(address, hash, nil)
+	err := session.DeletePending(address, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -675,52 +780,49 @@ func generateFrontier() *types.Frontier {
 	return &frontier
 }
 func TestLedger_AddFrontier(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 	frontier := parseFrontier(t)
-	err = l.AddFrontier(&frontier, nil)
-	if err != nil && err != ErrFrontierExists {
+	if err := session.AddFrontier(&frontier); err != nil && err != ErrFrontierExists {
 		t.Fatal(err)
 	}
+
 	for i := 0; i < 10; i++ {
-		err = l.AddFrontier(generateFrontier(), nil)
+		err := session.AddFrontier(generateFrontier())
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 }
 func TestLedger_GetFrontier(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 	frontier := parseFrontier(t)
-	f, err := l.GetFrontier(frontier.HeaderBlock, nil)
+	f, err := session.GetFrontier(frontier.HeaderBlock)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("frontier,", f)
 }
 func TestLedger_GetAllFrontiers(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
-	c, err := l.CountFrontiers(nil)
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+	c, err := session.CountFrontiers()
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("frontier count,", c)
 
-	fs, err := l.GetFrontiers(nil)
+	fs, err := session.GetFrontiers()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -729,22 +831,15 @@ func TestLedger_GetAllFrontiers(t *testing.T) {
 	}
 }
 func TestLedger_DeleteFrontier(t *testing.T) {
-	l, err := initTestLedger()
-	if err != nil {
-		t.Fatal(err)
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	}
-	defer l.Close()
+	session := l.NewLedgerSession(false)
+	defer session.Close()
 	frontier := parseFrontier(t)
 
-	err = l.DeleteFrontier(frontier.HeaderBlock, nil)
+	err := session.DeleteFrontier(frontier.HeaderBlock)
 	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestLedger_RemoveDB2(t *testing.T) {
-	if err := os.RemoveAll(dir_testdb); err != nil {
 		t.Fatal(err)
 	}
 }

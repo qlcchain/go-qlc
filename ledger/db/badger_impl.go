@@ -1,11 +1,11 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
 	"github.com/qlcchain/go-qlc/common/util"
+	"log"
+	"sort"
 )
 
 // BadgerStore represents a block lattice store backed by a badger database.
@@ -13,14 +13,9 @@ type BadgerStore struct {
 	db *badger.DB
 }
 
-func (s *BadgerStore) BadgerDb() *badger.DB {
-	return s.db
-}
-
 type BadgerStoreTxn struct {
-	db     *badger.DB
-	txn    *badger.Txn
-	single bool
+	db  *badger.DB
+	txn *badger.Txn
 }
 
 // NewBadgerStore initializes/opens a badger database in the given directory.
@@ -29,7 +24,6 @@ func NewBadgerStore(dir string) (Store, error) {
 	opts.Dir = dir
 	opts.ValueDir = dir
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
-
 	_ = util.CreateDirIfNotExist(dir)
 	db, err := badger.Open(opts)
 	if err != nil {
@@ -37,6 +31,28 @@ func NewBadgerStore(dir string) (Store, error) {
 	}
 
 	return &BadgerStore{db: db}, nil
+}
+
+func (s *BadgerStore) Erase() error {
+	return s.db.Update(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			err := txn.Delete(k)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		return nil
+	})
+}
+
+func (s *BadgerStore) NewTransaction(update bool) *BadgerStoreTxn {
+	return &BadgerStoreTxn{txn: s.db.NewTransaction(update), db: s.db}
 }
 
 // Close closes the database
@@ -49,32 +65,17 @@ func (s *BadgerStore) Purge() error {
 	return s.db.RunValueLogGC(0.5)
 }
 
-func (s *BadgerStore) NewTransaction(update bool) *BadgerStoreTxn {
-	fmt.Println("new txn, ", update)
-	t := &BadgerStoreTxn{txn: s.db.NewTransaction(update), db: s.db, single: true}
-	return t
+func (s *BadgerStore) ViewInTx(fn func(txn StoreTxn) error) error {
+	return s.db.View(func(txn *badger.Txn) error {
+		return fn(&BadgerStoreTxn{txn: txn, db: s.db})
+	})
 }
 
-func (s *BadgerStore) View(fn func(txn StoreTxn) error) error {
-	fmt.Println("new txn view")
-	t := &BadgerStoreTxn{txn: s.db.NewTransaction(true), db: s.db, single: false}
-	defer t.txn.Discard()
-
-	return fn(t)
-	//return s.db.View(func(txn *badger.Txn) error {
-	//	return fn(&BadgerStoreTxn{txn: txn, db: s.db})
-	//})
-}
-
-func (s *BadgerStore) Update(fn func(txn StoreTxn) error) error {
-	fmt.Println("new txn update")
-	t := &BadgerStoreTxn{txn: s.db.NewTransaction(true), db: s.db, single: false}
-	defer t.txn.Discard()
-
-	if err := fn(t); err != nil {
-		return err
-	}
-	return t.txn.Commit(nil)
+func (s *BadgerStore) UpdateInTx(fn func(txn StoreTxn) error) error {
+	return s.db.Update(func(txn *badger.Txn) error {
+		t := &BadgerStoreTxn{txn: txn, db: s.db}
+		return fn(t)
+	})
 }
 
 func (t *BadgerStoreTxn) Set(key []byte, val []byte) error {
@@ -129,11 +130,16 @@ func (t *BadgerStoreTxn) Iterator(pre byte, fn func([]byte, []byte, byte) error)
 	return nil
 }
 
-func (t *BadgerStoreTxn) Commit(callback func(error)) error {
-	if t.single == true {
-		return t.txn.Commit(callback)
+func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {
+	sort.Sort(Migrations(migrations))
+	for _, m := range migrations {
+		_ = m.Migrate(t)
 	}
 	return nil
+}
+
+func (t *BadgerStoreTxn) Commit(callback func(error)) error {
+	return t.txn.Commit(callback)
 }
 
 func (t *BadgerStoreTxn) Discard() {

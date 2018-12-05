@@ -35,7 +35,7 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 func TestBadgerStoreTxn_Set(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
-	err := db.Update(func(txn StoreTxn) error {
+	err := db.UpdateInTx(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
 		val, _ := blk.MarshalMsg(nil)
@@ -53,7 +53,7 @@ func TestBadgerStoreTxn_SetWithMeta(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	err := db.Update(func(txn StoreTxn) error {
+	err := db.UpdateInTx(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
 		val, _ := blk.MarshalMsg(nil)
@@ -70,7 +70,7 @@ func TestBadgerStoreTxn_SetWithMeta(t *testing.T) {
 func TestBadgerStoreTxn_Get(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
-	err := db.Update(func(txn StoreTxn) error {
+	err := db.UpdateInTx(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
 		val, _ := blk.MarshalMsg(nil)
@@ -83,7 +83,7 @@ func TestBadgerStoreTxn_Get(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = db.View(func(txn StoreTxn) error {
+	err = db.ViewInTx(func(txn StoreTxn) error {
 		block := new(types.StateBlock)
 		key := block.GetHash()
 		blk := new(types.StateBlock)
@@ -107,7 +107,7 @@ func TestBadgerStoreTxn_Get(t *testing.T) {
 func TestBadgerStoreTxn_Iterator(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
-	err := db.View(func(txn StoreTxn) error {
+	err := db.ViewInTx(func(txn StoreTxn) error {
 		err := txn.Iterator(206, func(key []byte, val []byte, b byte) error {
 			t.Log(key)
 			return nil
@@ -125,7 +125,7 @@ func TestBadgerStoreTxn_Iterator(t *testing.T) {
 func TestBadgerStoreTxn_Delete(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
-	err := db.Update(func(txn StoreTxn) error {
+	err := db.UpdateInTx(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
 		if err := txn.Delete(key[:]); err != nil {

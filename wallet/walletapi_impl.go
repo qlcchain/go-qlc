@@ -86,10 +86,6 @@ func (ws *WalletStore) Change(addr types.Address, representative types.Address) 
 	panic("implement me")
 }
 
-func (ws *WalletStore) Erase() error {
-	return ws.store.BadgerDb().DropAll()
-}
-
 func (ws *WalletStore) Import(content string, password string) error {
 	panic("implement me")
 }
@@ -104,7 +100,7 @@ func (ws *WalletStore) GetWalletId() (types.Hash, error) {
 
 func (ws *WalletStore) GetVersion() (int64, error) {
 	var i int64
-	err := ws.store.View(func(txn db.StoreTxn) error {
+	err := ws.store.ViewInTx(func(txn db.StoreTxn) error {
 
 		key := []byte{idPrefixIndex}
 		return txn.Get(key, func(val []byte, b byte) error {
@@ -117,7 +113,7 @@ func (ws *WalletStore) GetVersion() (int64, error) {
 }
 
 func (ws *WalletStore) SetVersion(version int64) error {
-	return ws.store.Update(func(txn db.StoreTxn) error {
+	return ws.store.UpdateInTx(func(txn db.StoreTxn) error {
 		key := []byte{idPrefixIndex}
 		buf := make([]byte, binary.MaxVarintLen64)
 		n := binary.PutVarint(buf, version)
@@ -188,28 +184,4 @@ func (ws *WalletStore) ChangePassword(password string) error {
 func (ws *WalletStore) encrypt(password string, salt []byte) []byte {
 	key := argon2.IDKey([]byte(password), salt, 1, KdfWork, 4, 32)
 	return key
-}
-
-func (ws *WalletStore) Close() error {
-	return ws.store.Close()
-}
-
-func (ws *WalletStore) Purge() error {
-	return ws.store.Purge()
-}
-
-func (ws *WalletStore) View(fn func(txn db.StoreTxn) error) error {
-	return ws.store.View(func(txn db.StoreTxn) error {
-		return fn(txn)
-	})
-}
-
-func (ws *WalletStore) Update(fn func(txn db.StoreTxn) error) error {
-	return ws.store.Update(func(txn db.StoreTxn) error {
-		return fn(txn)
-	})
-}
-
-func (ws *WalletStore) Upgrade(migrations []*db.Migration) error {
-	return nil
 }

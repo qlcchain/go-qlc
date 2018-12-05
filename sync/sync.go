@@ -349,13 +349,13 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 		return err
 	}
 	block := blkpacket.blk
-	err = ss.qlcLedger.AddBlock(block, nil)
+	err = ss.qlcLedger.AddBlock(block)
 	if err != nil {
 		return err
 	}
 	previousHash := block.GetPreviousHash()
 	if previousHash.IsZero() == false {
-		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPreviousHash(), nil)
+		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPreviousHash())
 		if err != nil {
 			return err
 		}
@@ -363,11 +363,11 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   currentfr.OpenBlock,
 		}
-		err = ss.qlcLedger.DeleteFrontier(block.GetPreviousHash(), nil)
+		err = ss.qlcLedger.DeleteFrontier(block.GetPreviousHash())
 		if err != nil {
 			return err
 		}
-		err = ss.qlcLedger.AddFrontier(updatefr, nil)
+		err = ss.qlcLedger.AddFrontier(updatefr)
 		if err != nil {
 			return err
 		}
@@ -376,7 +376,7 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   block.GetHash(),
 		}
-		err = ss.qlcLedger.AddFrontier(fr, nil)
+		err = ss.qlcLedger.AddFrontier(fr)
 		if err != nil {
 			return err
 		}
@@ -389,13 +389,13 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 		return err
 	}
 	block := blkpacket.blk
-	err = ss.qlcLedger.AddBlock(block, nil)
+	err = ss.qlcLedger.AddBlock(block)
 	if err != nil {
 		return err
 	}
 	previousHash := block.GetPreviousHash()
 	if previousHash.IsZero() == false {
-		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPreviousHash(), nil)
+		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPreviousHash())
 		if err != nil {
 			return err
 		}
@@ -403,11 +403,11 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   currentfr.OpenBlock,
 		}
-		err = ss.qlcLedger.DeleteFrontier(block.GetPreviousHash(), nil)
+		err = ss.qlcLedger.DeleteFrontier(block.GetPreviousHash())
 		if err != nil {
 			return err
 		}
-		err = ss.qlcLedger.AddFrontier(updatefr, nil)
+		err = ss.qlcLedger.AddFrontier(updatefr)
 		if err != nil {
 			return err
 		}
@@ -416,7 +416,7 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   block.GetHash(),
 		}
-		err = ss.qlcLedger.AddFrontier(fr, nil)
+		err = ss.qlcLedger.AddFrontier(fr)
 		if err != nil {
 			return err
 		}

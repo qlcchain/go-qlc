@@ -14,7 +14,6 @@ import (
 )
 
 type WalletStoreApi interface {
-	Erase() error
 	Import(content string, password string) error
 	Export(path string) error
 
