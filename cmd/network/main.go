@@ -54,10 +54,11 @@ var (
 
 func main() {
 	cfg := config.DefaultlConfig
-	ledger, err := ledger.NewLedger()
-	if err != nil {
-		fmt.Println(err)
-	}
+	ledger := ledger.NewLedger()
+	defer ledger.Close()
+
+	session := ledger.NewLedgerSession(false)
+	defer session.Close()
 	node, err := p2p.NewQlcService(cfg, ledger)
 	if err != nil {
 		fmt.Println(err)
@@ -83,7 +84,7 @@ func main() {
 		fmt.Println(err)
 	}
 
-	err = ledger.AddBlock(blk, nil)
+	err = session.AddBlock(blk)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -91,11 +92,11 @@ func main() {
 		HeaderBlock: blk.GetHash(),
 		OpenBlock:   blk.GetHash(),
 	}
-	err = ledger.AddFrontier(fr, nil)
+	err = session.AddFrontier(fr)
 	if err != nil {
 		fmt.Println(err)
 	}
-	err = ledger.AddBlock(blk1, nil)
+	err = session.AddBlock(blk1)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -103,15 +104,15 @@ func main() {
 		HeaderBlock: blk1.GetHash(),
 		OpenBlock:   blk.GetHash(),
 	}
-	err = ledger.DeleteFrontier(fr.HeaderBlock, nil)
+	err = session.DeleteFrontier(fr.HeaderBlock)
 	if err != nil {
 		fmt.Println(err)
 	}
-	err = ledger.AddFrontier(frs, nil)
+	err = session.AddFrontier(frs)
 	if err != nil {
 		fmt.Println(err)
 	}
-	err = ledger.AddBlock(blk2, nil)
+	err = session.AddBlock(blk2)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -119,7 +120,7 @@ func main() {
 		HeaderBlock: blk2.GetHash(),
 		OpenBlock:   blk2.GetHash(),
 	}
-	err = ledger.AddFrontier(frs2, nil)
+	err = session.AddFrontier(frs2)
 	if err != nil {
 		fmt.Println(err)
 	}
