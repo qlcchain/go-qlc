@@ -14,12 +14,14 @@ type ConfigManager struct {
 	filename string
 }
 
-const QlcConfigFile = "qlc.json"
-
-func NewCfgManager() (*ConfigManager, error) {
-	cfg := &ConfigManager{dir: util.QlcDir()}
-	cfg.filename = path.Join(cfg.dir, QlcConfigFile)
-	return cfg, nil
+func NewCfgManager() *ConfigManager {
+	rootpath := util.QlcDir()
+	filename := path.Join(rootpath, QlcConfigFile)
+	cfg := &ConfigManager{
+		dir:      util.QlcDir(),
+		filename: filename,
+	}
+	return cfg
 }
 
 func (m *ConfigManager) Write(i interface{}) error {

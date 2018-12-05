@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/opentracing/opentracing-go/log"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-discovery"
@@ -47,39 +49,23 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 	node := &QlcNode{
 		cfg:           config,
 		ctx:           context.Background(),
-		boostrapAddrs: config.BootNodes,
+		boostrapAddrs: config.P2P.BootNodes,
 		streamManager: streamManager,
+		ID:            peer.ID(config.ID.PeerID),
 	}
-	streamManager.SetQlcNode(node)
-
-	// load private key
-	if err := node.LoadPrivateKey(); err != nil {
+	privateKey, err := config.DecodePrivateKey()
+	if err != nil {
+		log.Error(err)
 		return nil, err
 	}
+	node.privateKey = privateKey
+	streamManager.SetQlcNode(node)
+
 	return node, nil
-}
-func (node *QlcNode) LoadPrivateKey() error {
-	if node.privateKey != nil {
-		logger.Warn("private key already loaded")
-		return nil
-	}
-
-	sk, err := LoadNetworkKeyFromFileOrCreateNew(node.cfg.PrivateKeyPath)
-	if err != nil {
-		return err
-	}
-
-	node.privateKey = sk
-	node.ID, err = peer.IDFromPublicKey(sk.GetPublic())
-	if err != nil {
-		logger.Errorf("Failed to generate ID from network key file.")
-		return err
-	}
-	return nil
 }
 func (node *QlcNode) startHost() error {
 	logger.Info("Start Qlc Host...")
-	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.Listen)
+	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
 	host, err := libp2p.New(
 		node.ctx,
 		libp2p.ListenAddrs(sourceMultiAddr),
