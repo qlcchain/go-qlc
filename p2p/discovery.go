@@ -41,12 +41,12 @@ func (node *QlcNode) HandlePeerFound(p pstore.PeerInfo) {
 	logger.Info("find a local peer , ID:", p.ID.Pretty())
 }
 func setupDiscoveryOption(cfg *config.Config) DiscoveryOption {
-	if cfg.MdnsEnabled {
+	if cfg.Discovery.MDNS.Enabled {
 		return func(ctx context.Context, h host.Host) (localdiscovery.Service, error) {
-			if cfg.MdnsInterval == 0 {
-				cfg.MdnsInterval = 5
+			if cfg.Discovery.MDNS.Interval == 0 {
+				cfg.Discovery.MDNS.Interval = 5
 			}
-			return localdiscovery.NewMdnsService(ctx, h, time.Duration(cfg.MdnsInterval)*time.Second, QlcProtocolID)
+			return localdiscovery.NewMdnsService(ctx, h, time.Duration(cfg.Discovery.MDNS.Interval)*time.Second, QlcProtocolID)
 		}
 	}
 	return nil

@@ -53,7 +53,11 @@ var (
 )
 
 func main() {
-	cfg := config.DefaultlConfig
+	cfg, err := config.InitConfig()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	ledger := ledger.NewLedger()
 	defer ledger.Close()
 
@@ -61,6 +65,7 @@ func main() {
 	defer session.Close()
 	node, err := p2p.NewQlcService(cfg, ledger)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	node.Start()
@@ -73,19 +78,23 @@ func main() {
 	blk2, err := types.NewBlock(byte(types.State))
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(test_block), &blk); err != nil {
+		return
 		fmt.Println(err)
 	}
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(test_block1), &blk1); err != nil {
+		return
 		fmt.Println(err)
 	}
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(test_block2), &blk2); err != nil {
+		return
 		fmt.Println(err)
 	}
 
 	err = session.AddBlock(blk)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	fr := &types.Frontier{
@@ -94,10 +103,12 @@ func main() {
 	}
 	err = session.AddFrontier(fr)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	err = session.AddBlock(blk1)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	frs := &types.Frontier{
@@ -106,14 +117,17 @@ func main() {
 	}
 	err = session.DeleteFrontier(fr.HeaderBlock)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	err = session.AddFrontier(frs)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	err = session.AddBlock(blk2)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	frs2 := &types.Frontier{
@@ -122,12 +136,14 @@ func main() {
 	}
 	err = session.AddFrontier(frs2)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	address := types.Address{}
 	Req := sync.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
 	data, err := sync.FrontierReqToProto(Req)
 	if err != nil {
+		return
 		fmt.Println(err)
 	}
 	for {

@@ -14,15 +14,21 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func getConfig() *config.Config {
-	var defaultConfig = config.DefaultlConfig
+func getConfig() (*config.Config, error) {
+	defaultConfig, err := config.InitConfig()
+	if err != nil {
+		return nil, err
+	}
 	//flag.UintVar(&defaultConfig.RPC.Port, "RPC_PORT", 29999, "the port of rpc")
-	flag.UintVar(&defaultConfig.RPC.Port, "RPC_PORT", defaultConfig.RPC.Port, "the port of rpc")
+	flag.StringVar(&defaultConfig.ID.PeerID, "PeerID", defaultConfig.ID.PeerID, "network id")
 	flag.Parse()
-	return defaultConfig
+	return defaultConfig, nil
 }
 
 func main() {
-	cfg := getConfig()
-	fmt.Println(cfg.RPC.Port)
+	cfg, err := getConfig()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(cfg.ID.PeerID)
 }
