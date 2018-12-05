@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -9,8 +8,6 @@ type Wallet struct {
 	db      WalletStore
 	PoWChan chan types.Work
 }
-
-var log = common.NewLogger("wallet")
 
 func NewWallet(seed *types.Seed, index uint32) (*Wallet, error) {
 	var accounts []*types.Account
