@@ -11,7 +11,6 @@ import (
 	"hash"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
 type WalletStoreApi interface {
@@ -52,10 +51,4 @@ type WalletAction interface {
 	Send(source types.Address, token types.Hash, to types.Address, amount types.Amount) (*types.Block, error)
 	Receive(account types.Address, token types.Hash) (*types.Block, error)
 	Change(addr types.Address, representative types.Address) (*types.Block, error)
-}
-
-type Migration interface {
-	Migrate(txn db.StoreTxn) error
-	StartVersion() int
-	EndVersion() int
 }
