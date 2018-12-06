@@ -27,23 +27,19 @@ var bulkPush, bulkPull []*Bulk
 
 // Service manage sync tasks
 type ServiceSync struct {
-	netService *p2p.QlcService
+	netService p2p.Service
 	quitCh     chan bool
 	messageCh  chan p2p.Message
 	qlcLedger  *ledger.Ledger
 }
 
 // NewService return new Service.
-func NewSyncService() *ServiceSync {
+func NewSyncService(netService p2p.Service) *ServiceSync {
 	return &ServiceSync{
-		quitCh:    make(chan bool, 1),
-		messageCh: make(chan p2p.Message, 128),
+		quitCh:     make(chan bool, 1),
+		messageCh:  make(chan p2p.Message, 128),
+		netService: netService,
 	}
-}
-
-// SetQlcService set netService
-func (ss *ServiceSync) SetQlcService(ns *p2p.QlcService) {
-	ss.netService = ns
 }
 
 // SetQlcService set ledger

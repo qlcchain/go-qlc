@@ -2,29 +2,26 @@ package p2p
 
 import (
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger"
 )
 
 // QlcService service for qlc p2p network
 type QlcService struct {
 	node         *QlcNode
 	dispatcher   *Dispatcher
-	messageEvent *ConcreteSubject
+	messageEvent *eventQueue
 }
 
 // NewQlcService create netService
-func NewQlcService(cfg *config.Config, ledger *ledger.Ledger) (*QlcService, error) {
+func NewQlcService(cfg *config.Config) (*QlcService, error) {
 	node, err := NewNode(cfg)
 	if err != nil {
 		return nil, err
 	}
-	cs := &ConcreteSubject{
-		Observers: make(map[Observer]struct{}),
-	}
+	event := NeweventQueue()
 	ns := &QlcService{
 		node:         node,
 		dispatcher:   NewDispatcher(),
-		messageEvent: cs,
+		messageEvent: event,
 	}
 	node.SetQlcService(ns)
 	return ns, nil
@@ -36,7 +33,7 @@ func (ns *QlcService) Node() *QlcNode {
 }
 
 // Node return the peer node
-func (ns *QlcService) MessageEvent() *ConcreteSubject {
+func (ns *QlcService) MessageEvent() *eventQueue {
 	return ns.messageEvent
 }
 
