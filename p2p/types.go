@@ -23,14 +23,12 @@ type PeersSlice []interface{}
 type Service interface {
 	Start() error
 	Stop()
-
 	Node() *QlcNode
-	MessageEvent() *ConcreteSubject
+	MessageEvent() *eventQueue
 	Register(...*Subscriber)
 	Deregister(...*Subscriber)
-
 	Broadcast(string, []byte)
-	SendMessageToPeer(string, data []byte, peerID string) error
+	SendMessageToPeer(messageName string, data []byte, peerID string) error
 }
 
 // Subscriber subscriber.

@@ -63,14 +63,13 @@ func main() {
 
 	session := ledger.NewLedgerSession(false)
 	defer session.Close()
-	node, err := p2p.NewQlcService(cfg, ledger)
+	node, err := p2p.NewQlcService(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	node.Start()
-	servicesync := sync.NewSyncService()
-	servicesync.SetQlcService(node)
+	servicesync := sync.NewSyncService(node)
 	servicesync.SetLedger(ledger)
 	servicesync.Start()
 	blk, err := types.NewBlock(byte(types.State))
