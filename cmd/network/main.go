@@ -65,8 +65,8 @@ func main() {
 	defer session.Close()
 	node, err := p2p.NewQlcService(cfg, ledger)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	node.Start()
 	servicesync := sync.NewSyncService()
@@ -78,24 +78,24 @@ func main() {
 	blk2, err := types.NewBlock(byte(types.State))
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(test_block), &blk); err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(test_block1), &blk1); err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(test_block2), &blk2); err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 
 	err = session.AddBlock(blk)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	fr := &types.Frontier{
 		HeaderBlock: blk.GetHash(),
@@ -103,13 +103,13 @@ func main() {
 	}
 	err = session.AddFrontier(fr)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	err = session.AddBlock(blk1)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	frs := &types.Frontier{
 		HeaderBlock: blk1.GetHash(),
@@ -117,18 +117,18 @@ func main() {
 	}
 	err = session.DeleteFrontier(fr.HeaderBlock)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	err = session.AddFrontier(frs)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	err = session.AddBlock(blk2)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	frs2 := &types.Frontier{
 		HeaderBlock: blk2.GetHash(),
@@ -136,15 +136,15 @@ func main() {
 	}
 	err = session.AddFrontier(frs2)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	address := types.Address{}
 	Req := sync.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
 	data, err := sync.FrontierReqToProto(Req)
 	if err != nil {
-		return
 		fmt.Println(err)
+		return
 	}
 	for {
 		peerID, err := node.Node().StreamManager().RandomPeer()
