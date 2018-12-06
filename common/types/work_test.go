@@ -40,7 +40,7 @@ func TestBlockWork(t *testing.T) {
 }
 
 func TestWork_MarshalJSON(t *testing.T) {
-	work := Work(0x880ab6aa90a59d5d)
+	work := Work(0xf3389dd67ced8429)
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	b, err := json.Marshal(&work)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestWork_MarshalJSON(t *testing.T) {
 }
 
 func TestWork_UnmarshalJSON(t *testing.T) {
-	s := `"3c82cc724905ee00"`
+	s := `"f3389dd67ced8429"`
 	var w Work
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	err := json.Unmarshal([]byte(s), &w)

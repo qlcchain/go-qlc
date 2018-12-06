@@ -59,7 +59,7 @@ func (w Work) String() string {
 //ParseWorkHexString create Work from hex string
 func (w *Work) ParseWorkHexString(hexString string) error {
 	s := util.TrimQuotes(hexString)
-	work, err := strconv.ParseInt(s, 16, 64)
+	work, err := strconv.ParseUint(s, 16, 64)
 	if err != nil {
 		return err
 	}
