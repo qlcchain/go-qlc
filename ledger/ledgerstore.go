@@ -13,7 +13,7 @@ import (
 
 type LedgerStore interface {
 	Empty() (bool, error)
-	BatchUpdate(fu func() error) error
+	BatchUpdate(fn func() error) error
 
 	// account meta CURD
 	AddAccountMeta(meta *types.AccountMeta) error
