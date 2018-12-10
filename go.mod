@@ -14,7 +14,7 @@ require (
 	github.com/go-check/check v0.0.0-20180628173108-788fd7840127 // indirect
 	github.com/gogo/protobuf v1.1.1
 	github.com/golang/protobuf v1.2.0
-	github.com/google/uuid v1.0.0 // indirect
+	github.com/google/uuid v1.1.0
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/gxed/GoEndian v0.0.0-20160916112711-0f5c6873267e // indirect
 	github.com/gxed/eventfd v0.0.0-20160916113412-80a92cca79a8 // indirect
@@ -88,7 +88,7 @@ require (
 	github.com/multiformats/go-multihash v1.0.8 // indirect
 	github.com/multiformats/go-multistream v0.3.9 // indirect
 	github.com/onsi/gomega v1.4.2 // indirect
-	github.com/opentracing/opentracing-go v1.0.2 // indirect
+	github.com/opentracing/opentracing-go v1.0.2
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
