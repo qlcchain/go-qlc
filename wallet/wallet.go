@@ -2,10 +2,13 @@ package wallet
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/db"
+	"io"
 )
 
 type Wallet struct {
-	db      WalletStore
+	io.Closer
+	db      db.Store
 	PoWChan chan types.Work
 }
 
