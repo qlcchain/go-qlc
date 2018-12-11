@@ -58,7 +58,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	ledger := ledger.NewLedger()
+	ledger := ledger.NewLedger(cfg.LedgerDir())
 	defer ledger.Close()
 
 	session := ledger.NewLedgerSession(false)

@@ -3,9 +3,8 @@ package p2p
 import (
 	"context"
 	"errors"
+	"github.com/qlcchain/go-qlc/log"
 	"time"
-
-	"github.com/opentracing/opentracing-go/log"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-crypto"
@@ -17,7 +16,6 @@ import (
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 )
 
@@ -25,7 +23,7 @@ import (
 var (
 	ErrPeerIsNotConnected = errors.New("peer is not connected")
 )
-var logger = common.NewLogger("p2p")
+var logger = log.NewLogger("p2p")
 
 type QlcNode struct {
 	ID             peer.ID

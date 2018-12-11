@@ -1,13 +1,13 @@
 package sync
 
 import (
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 )
 
-var log = common.NewLogger("sync")
+var logger = log.NewLogger("sync")
 var zeroHashString = "0000000000000000000000000000000000000000000000000000000000000000"
 var zeroHash types.Hash
 
@@ -49,7 +49,7 @@ func (ss *ServiceSync) SetLedger(ledger *ledger.Ledger) {
 
 // Start start sync service.
 func (ss *ServiceSync) Start() {
-	log.Info("Started sync Service.")
+	logger.Info("Started sync Service.")
 
 	zeroHash.Of(zeroHashString)
 	if len(frontiers) == 0 {
@@ -70,27 +70,27 @@ func (ss *ServiceSync) startLoop() {
 	for {
 		select {
 		case <-ss.quitCh:
-			log.Info("Stopped sync Service.")
+			logger.Info("Stopped sync Service.")
 			return
 		case message := <-ss.messageCh:
 			switch message.MessageType() {
 			case FrontierRequest:
-				log.Info("receive FrontierReq")
+				logger.Info("receive FrontierReq")
 				ss.onFrontierReq(message)
 			case FrontierRsp:
-				log.Info("receive FrontierRsp")
+				logger.Info("receive FrontierRsp")
 				ss.onFrontierRsp(message)
 			case BulkPullRequest:
-				log.Info("receive BulkPullRequest")
+				logger.Info("receive BulkPullRequest")
 				ss.onBulkPullRequest(message)
 			case BulkPullRsp:
-				log.Info("receive BulkPullRsp")
+				logger.Info("receive BulkPullRsp")
 				ss.onBulkPullRsp(message)
 			case BulkPushBlock:
-				log.Info("receive BulkPushBlock")
+				logger.Info("receive BulkPushBlock")
 				ss.onBulkPushBlock(message)
 			default:
-				log.Error("Received unknown message.")
+				logger.Error("Received unknown message.")
 			}
 		}
 	}
@@ -130,7 +130,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 		return err
 	}
 	fr := fsremote.Frontier
-	log.Info(fr.HeaderBlock, fr.OpenBlock)
+	logger.Info(fr.HeaderBlock, fr.OpenBlock)
 	session := ss.qlcLedger.NewLedgerSession(false)
 	defer session.Close()
 
@@ -151,7 +151,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 		if !openBlockHash.IsZero() {
 			if fr.OpenBlock == openBlockHash {
 				if headerBlockHash == fr.HeaderBlock {
-					log.Infof("this token %s have the same block", openBlockHash)
+					logger.Infof("this token %s have the same block", openBlockHash)
 				} else {
 					exit, _ := session.HasBlock(fr.HeaderBlock)
 					if exit == true {
@@ -216,7 +216,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 					startHash := value.StartHash
 					endHash := value.EndHash
 					if startHash.IsZero() {
-						log.Infof("need to send all the blocks of this account")
+						logger.Infof("need to send all the blocks of this account")
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
@@ -241,7 +241,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 							ss.netService.SendMessageToPeer(BulkPushBlock, blockBytes, message.MessageFrom())
 						}
 					} else {
-						log.Info("need to send some blocks of this account")
+						logger.Info("need to send some blocks of this account")
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
@@ -298,7 +298,7 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 	if startHash.IsZero() {
 		var blk types.Block
 		var bulkblk []types.Block
-		log.Info("need to send all the blocks of this account")
+		logger.Info("need to send all the blocks of this account")
 		for {
 			blk, err = session.GetBlock(endHash)
 			if err != nil {
@@ -323,7 +323,7 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 	} else {
 		var blk types.Block
 		var bulkblk []types.Block
-		log.Info("need to send some blocks of this account")
+		logger.Info("need to send some blocks of this account")
 		for {
 			blk, err = session.GetBlock(endHash)
 			if err != nil {
@@ -435,7 +435,7 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 	return nil
 }
 func (ss *ServiceSync) Stop() {
-	log.Info("stopped sync service")
+	logger.Info("stopped sync service")
 	// quit.
 	ss.quitCh <- true
 	ss.netService.Deregister(p2p.NewSubscriber(ss, ss.messageCh, false, FrontierRequest))
