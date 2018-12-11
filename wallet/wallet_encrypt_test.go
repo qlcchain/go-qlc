@@ -17,7 +17,6 @@ const (
 	seed       = "a7bcc2785e93226699618087528c4fbc8990fc247f12743e2a9caea8590756a0"
 )
 
-
 func TestEncryptSeed(t *testing.T) {
 	s, err := hex.DecodeString(seed)
 

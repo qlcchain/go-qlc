@@ -7,11 +7,9 @@
 
 package wallet
 
-import "github.com/google/uuid"
-
 type walletManager interface {
-	WalletIds() ([]uuid.UUID, error)
-	NewWallet() (uuid.UUID, error)
-	CurrentId() (uuid.UUID, error)
-	RemoveWallet(id uuid.UUID) error
+	WalletIds() ([]WalletId, error)
+	NewWallet() (WalletId, error)
+	CurrentId() (WalletId, error)
+	RemoveWallet(id WalletId) error
 }

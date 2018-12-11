@@ -49,7 +49,8 @@ func Init(config *config.Config) error {
 			LocalTime:  true,
 		}
 		var logCfg zap.Config
-		err = jsoniter.Unmarshal([]byte(config.LogConfig), &logCfg)
+		bytes, _ := jsoniter.Marshal(config.LogConfig)
+		err = jsoniter.Unmarshal(bytes, &logCfg)
 		if err != nil {
 			initErr = err
 			fmt.Println(err)

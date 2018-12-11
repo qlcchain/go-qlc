@@ -53,7 +53,7 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 	}
 	privateKey, err := config.DecodePrivateKey()
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return nil, err
 	}
 	node.privateKey = privateKey
