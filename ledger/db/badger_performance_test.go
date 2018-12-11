@@ -21,8 +21,8 @@ import (
 )
 
 var (
-	dir_checkblock = filepath.Join(config.DefaultDataDir(), "test", "checkblock")
-	dir_testdb     = filepath.Join(config.DefaultDataDir(), "test", "badger_pref")
+	dir_checkblock = filepath.Join(config.QlcTestDataDir(), "checkblock")
+	dir_testdb     = filepath.Join(config.QlcTestDataDir(), "badger_pref")
 )
 
 func generateBlock() types.Block {

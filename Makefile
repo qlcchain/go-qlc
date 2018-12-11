@@ -11,10 +11,10 @@ K := $(foreach exec,$(EXECUTABLES),\
 
 GO ?= latest
 
-MAIN = $(shell pwd)/cmd/config.go
+MAIN = $(shell pwd)/cmd/main.go
 BUILDDIR = $(shell pwd)/build
 GOBIN = $(BUILDDIR)
-BINARY = go-qlc
+BINARY = gqlc
 VERSION =0.0.1
 GITREV = $(shell git rev-parse HEAD)
 

@@ -13,7 +13,7 @@ var db Store
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Log("setup test case")
-	dir := filepath.Join(config.DefaultDataDir(), "test", "badger")
+	dir := filepath.Join(config.QlcTestDataDir(), "badger")
 	var err error
 	db, err = NewBadgerStore(dir)
 
