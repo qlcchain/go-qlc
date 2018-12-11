@@ -88,27 +88,27 @@ func EncryptSeed(seed []byte, passphrase []byte) ([]byte, error) {
 
 //DecryptSeed decrypt seed json to seed
 func DecryptSeed(encryptedJSON []byte, passphrase []byte) ([]byte, error) {
-	seed := cryptoJSON{}
-	err := jsoniter.Unmarshal(encryptedJSON, &seed)
+	encryptSeed := cryptoSeedJSON{}
+	err := jsoniter.Unmarshal(encryptedJSON, &encryptSeed)
 	if err != nil {
-		return nil, errors.New("invalid seed json")
+		return nil, errors.New("invalid encryptSeed json")
 	}
 
-	cipherData, err := hex.DecodeString(seed.CipherText)
+	cipherData, err := hex.DecodeString(encryptSeed.Crypto.CipherText)
 	if err != nil {
-		return nil, errors.New("invalid seed cipher text")
+		return nil, errors.New("invalid encryptSeed cipher text")
 	}
 
-	nonce, err := hex.DecodeString(seed.Nonce)
+	nonce, err := hex.DecodeString(encryptSeed.Crypto.Nonce)
 	if err != nil {
-		return nil, errors.New("invalid seed nonce")
+		return nil, errors.New("invalid encryptSeed nonce")
 	}
 
-	salt, err := hex.DecodeString(seed.ScryptParams.Salt)
+	scryptParams := encryptSeed.Crypto.ScryptParams
+	salt, err := hex.DecodeString(scryptParams.Salt)
 	if err != nil {
-		return nil, errors.New("invalid seed salt")
+		return nil, errors.New("invalid encryptSeed salt")
 	}
-	scryptParams := seed.ScryptParams
 	// begin decrypt
 	derivedKey, err := scrypt.Key(passphrase, salt, scryptParams.N, scryptParams.R, scryptParams.P, scryptParams.KeyLen)
 	if err != nil {
@@ -117,7 +117,7 @@ func DecryptSeed(encryptedJSON []byte, passphrase []byte) ([]byte, error) {
 
 	s, err := crypto.AesGCMDecrypt(derivedKey[:32], cipherData, nonce)
 	if err != nil {
-		return nil, errors.New("error decrypt seed")
+		return nil, errors.New("error decrypt encryptSeed")
 	}
 
 	return s, nil
