@@ -1,32 +1,29 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path"
-
-	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func InitConfig() (*Config, error) {
-	filename := path.Join(util.QlcDir(), QlcConfigFile)
+	filename := path.Join(homeDir(), QlcConfigFile)
 	var cfg *Config
 	manager := NewCfgManager()
 	_, err := os.Stat(filename)
 	if err == nil {
-		log.Info("config file already exit !!")
+		fmt.Println("config file already exit !!")
 		if err = manager.Read(&cfg); err != nil {
-			log.Errorf("config load error: %s", err)
-			return nil, err
+			return nil, fmt.Errorf("config load error: %s", err)
 		}
 	} else {
-		log.Info("config file not exit, use the default option")
+		fmt.Println("config file not exit, use the default option")
 		cfg, err = DefaultConfig()
 		if err != nil {
 			return nil, err
 		}
 		if err = manager.Write(&cfg); err != nil {
-			log.Errorf("config write error: %s", err)
-			return nil, err
+			return nil, fmt.Errorf("config write error: %s", err)
 		}
 	}
 	return cfg, nil
