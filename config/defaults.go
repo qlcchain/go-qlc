@@ -99,7 +99,7 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "GQlcchain")
+			return filepath.Join(home, "Library", "Application Support", "GQlcchain")
 		} else if runtime.GOOS == "windows" {
 			return filepath.Join(home, "AppData", "Roaming", "GQlcchain")
 		} else {

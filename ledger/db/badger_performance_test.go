@@ -3,8 +3,10 @@ package db
 import (
 	"bytes"
 	"fmt"
+	"github.com/qlcchain/go-qlc/config"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,8 +21,8 @@ import (
 )
 
 var (
-	dir_checkblock = util.QlcDir("test", "checkblock")
-	dir_testdb     = util.QlcDir("test", "badger_pref")
+	dir_checkblock = filepath.Join(config.DefaultDataDir(), "test", "checkblock")
+	dir_testdb     = filepath.Join(config.DefaultDataDir(), "test", "badger_pref")
 )
 
 func generateBlock() types.Block {
