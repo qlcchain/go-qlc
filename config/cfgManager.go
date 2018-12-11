@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-
-	"github.com/qlcchain/go-qlc/common/util"
 )
 
 type ConfigManager struct {
@@ -15,10 +13,10 @@ type ConfigManager struct {
 }
 
 func NewCfgManager() *ConfigManager {
-	rootpath := util.QlcDir()
-	filename := path.Join(rootpath, QlcConfigFile)
+	home := homeDir()
+	filename := path.Join(home, QlcConfigFile)
 	cfg := &ConfigManager{
-		dir:      util.QlcDir(),
+		dir:      home,
 		filename: filename,
 	}
 	return cfg
