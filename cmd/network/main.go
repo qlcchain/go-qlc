@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"path/filepath"
 	"time"
 
 	"github.com/json-iterator/go"
@@ -53,7 +54,8 @@ var (
 )
 
 func main() {
-	cfg, err := config.InitConfig()
+	cfgFile := filepath.Join(config.DefaultDataDir(), config.QlcConfigFile)
+	cfg, err := config.NewCfgManager(cfgFile).Load()
 	if err != nil {
 		fmt.Println(err)
 		return

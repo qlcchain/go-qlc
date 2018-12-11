@@ -2,6 +2,8 @@ package p2p
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	swarmt "github.com/libp2p/go-libp2p-swarm/testing"
@@ -13,7 +15,14 @@ func TestQlcNode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	h1 := bhost.New(swarmt.GenSwarm(t, ctx))
-	cfg, err := config.InitConfig()
+	cfgFile := filepath.Join(config.DefaultDataDir(), config.QlcConfigFile)
+	defer func() {
+		err := os.RemoveAll(cfgFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+	cfg, err := config.NewCfgManager(cfgFile).Load()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	Version    int        `json:"version"`
 	DataDir    string     `json:"DataDir"`
 	StorageMax string     `json:"StorageMax"`
 	Mode       string     `json:"mode"` // runtime mode: Test,Normal
