@@ -1,18 +1,19 @@
 package db
 
 import (
+	"github.com/qlcchain/go-qlc/config"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 )
 
 var db Store
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Log("setup test case")
-	dir := util.QlcDir("test", "badger")
+	dir := filepath.Join(config.DefaultDataDir(), "test", "badger")
 	var err error
 	db, err = NewBadgerStore(dir)
 

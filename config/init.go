@@ -7,7 +7,7 @@ import (
 )
 
 func InitConfig() (*Config, error) {
-	filename := path.Join(homeDir(), QlcConfigFile)
+	filename := path.Join(DefaultDataDir(), QlcConfigFile)
 	var cfg *Config
 	manager := NewCfgManager()
 	_, err := os.Stat(filename)
