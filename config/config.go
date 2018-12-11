@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	DataDir    string `json:"DataDir"`
-	StorageMax string `json:"StorageMax"`
-	Mode       string `json:"mode"` // runtime mode: Test,Normal
+	DataDir    string     `json:"DataDir"`
+	StorageMax string     `json:"StorageMax"`
+	Mode       string     `json:"mode"` // runtime mode: Test,Normal
 	LogConfig  *LogConfig `json:"log"`  //log config
 
 	RPC *RPCConfig `json:"rpc"`
