@@ -8,8 +8,6 @@
 package chain
 
 import (
-	"fmt"
-
 	"github.com/qlcchain/go-qlc/config"
 )
 
@@ -18,6 +16,5 @@ type QlcContext struct {
 }
 
 func New(cfg *config.Config) (*QlcContext, error) {
-	fmt.Println(cfg)
-	return &QlcContext{}, nil
+	return &QlcContext{config: cfg}, nil
 }

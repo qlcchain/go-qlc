@@ -5,14 +5,16 @@
  * https://opensource.org/licenses/MIT
  */
 
-package common
+package log
 
 import (
 	"fmt"
-	"path/filepath"
-	"time"
-
+	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
+	"path/filepath"
+	"sync"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -23,16 +25,19 @@ const (
 	logfile = "qlc.log"
 )
 
-var lumlog lumberjack.Logger
-var logger *zap.Logger
+var (
+	once      sync.Once
+	lumlog    lumberjack.Logger
+	logger, _ = zap.NewDevelopment()
+)
 
-//NewLogger create logger by name
-func NewLogger(name string) *zap.SugaredLogger {
-	if logger == nil {
-		logFolder := util.QlcDir("log")
+func Init(config *config.Config) error {
+	var initErr error
+	once.Do(func() {
+		logFolder := config.LogDir()
 		err := util.CreateDirIfNotExist(logFolder)
 		if err != nil {
-			fmt.Println(err)
+			initErr = err
 		}
 		logfile := filepath.Join(logFolder, logfile)
 		lumlog = lumberjack.Logger{
@@ -40,10 +45,24 @@ func NewLogger(name string) *zap.SugaredLogger {
 			MaxSize:    10, // megabytesÒ
 			MaxBackups: 10,
 			MaxAge:     28, // days
+			Compress:   true,
+			LocalTime:  true,
 		}
+		var logCfg zap.Config
+		err = jsoniter.Unmarshal([]byte(config.LogConfig), &logCfg)
+		if err != nil {
+			initErr = err
+			fmt.Println(err)
+		}
+		logCfg.EncoderConfig = zap.NewProductionEncoderConfig()
+		logger, _ = logCfg.Build(zap.Hooks(lumberjackZapHook))
+	})
 
-		logger, _ = zap.NewDevelopment(zap.Hooks(lumberjackZapHook))
-	}
+	return initErr
+}
+
+//NewLogger create logger by name
+func NewLogger(name string) *zap.SugaredLogger {
 	return logger.Sugar().Named(name)
 }
 
