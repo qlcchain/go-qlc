@@ -3,10 +3,9 @@ package ledger
 import (
 	"errors"
 	"github.com/dgraph-io/badger"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/log"
 	"io"
 	"math/rand"
 	"strconv"
@@ -15,19 +14,21 @@ import (
 
 type Ledger struct {
 	io.Closer
-	db db.Store
+	db  db.Store
+	dir string
 }
 
 //LedgerSession
 type LedgerSession struct {
 	db.Store
 	io.Closer
+
 	txn   db.StoreTxn
 	reuse bool
 	mode  bool
 }
 
-var log = common.NewLogger("ledger")
+var logger = log.NewLogger("ledger")
 
 var (
 	ErrStoreEmpty             = errors.New("the store is empty")
@@ -57,24 +58,29 @@ const (
 )
 
 var (
-	ledger *Ledger
-	once   sync.Once
+	cache = make(map[string]*Ledger)
+	lock  = sync.RWMutex{}
 )
 
-func NewLedger() *Ledger {
-	once.Do(func() {
-		dir := util.QlcDir("ledger")
+func NewLedger(dir string) *Ledger {
+	lock.RLock()
+	defer lock.RUnlock()
+	if _, ok := cache[dir]; !ok {
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
-			log.Fatal(err.Error())
+			logger.Fatal(err.Error())
 		}
-		ledger = &Ledger{db: store}
-	})
-	return ledger
+		cache[dir] = &Ledger{db: store, dir: dir}
+	}
+	return cache[dir]
 }
 
 func (l *Ledger) Close() error {
-	return l.db.Close()
+	lock.RLock()
+	defer lock.RUnlock()
+	err := l.db.Close()
+	delete(cache, l.dir)
+	return err
 }
 
 func (l *Ledger) NewLedgerSession(reuse bool) *LedgerSession {
@@ -84,7 +90,7 @@ func (l *Ledger) NewLedgerSession(reuse bool) *LedgerSession {
 func (ls *LedgerSession) Close() error {
 	if ls.txn != nil {
 		ls.txn.Discard()
-		log.Debugf("close txn session %p", ls.txn)
+		logger.Debugf("close txn session %p", ls.txn)
 		ls.txn = nil
 	}
 	return nil
@@ -772,15 +778,15 @@ func (ls *LedgerSession) getTxn(update bool) db.StoreTxn {
 		ls.Close()
 		ls.txn = ls.NewTransaction(update)
 	}
-	log.Debugf("txn: %p, flag: %s", ls.txn, strconv.FormatBool(update))
+	logger.Debugf("txn: %p, flag: %s", ls.txn, strconv.FormatBool(update))
 	return ls.txn
 }
 func (ls *LedgerSession) releaseTxn() {
 	if !ls.reuse {
-		log.Debug("commit")
+		logger.Debug("commit")
 		err := ls.txn.Commit(nil)
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 		ls.Close()
 	}

@@ -3,7 +3,10 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc/config"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
@@ -15,11 +18,11 @@ import (
 
 var (
 	l *Ledger
-	//dir = util.QlcDir("ledger")
 )
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
-	l = NewLedger()
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger")
+	l = NewLedger(dir)
 
 	return func(t *testing.T) {
 		err := l.db.Erase()
@@ -34,13 +37,28 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	}
 }
 
-func TestLedger_Instance(t *testing.T) {
-	l1 := NewLedger()
-	l2 := NewLedger()
+func TestLedger_Instance1(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
+	l1 := NewLedger(dir)
+	l2 := NewLedger(dir)
 	b := reflect.DeepEqual(l1, l2)
 	if l1 == nil || l2 == nil || !b {
 		t.Fatal("error")
 	}
+	_ = os.RemoveAll(dir)
+}
+
+func TestLedger_Instance2(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
+	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
+
+	l1 := NewLedger(dir)
+	l2 := NewLedger(dir2)
+	if l1 == nil || l2 == nil || reflect.DeepEqual(l1, l2) {
+		t.Fatal("error")
+	}
+	_ = os.RemoveAll(dir)
+	_ = os.RemoveAll(dir2)
 }
 
 func TestLedger_Empty(t *testing.T) {
@@ -195,7 +213,7 @@ func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
 func TestLedger_AddBlockWithSingleTxn(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
-	s := ledger.NewLedgerSession(false)
+	s := l.NewLedgerSession(false)
 	defer s.Close()
 
 	blks := parseBlocks(t, "testdata/blocks.json")
