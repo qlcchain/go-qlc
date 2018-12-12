@@ -30,10 +30,11 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		//err = os.RemoveAll(dir)
-		//if err != nil {
-		//	t.Fatal(err)
-		//}
+		CloseLedger()
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -41,12 +42,12 @@ func TestLedger_Instance1(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
 	l1 := NewLedger(dir)
 	l2 := NewLedger(dir)
+	t.Logf("l1:%v,l2:%v", l1, l2)
 	defer func() {
 		l1.Close()
-		l2.Close()
+		//l2.Close()
 		_ = os.RemoveAll(dir)
 	}()
-	t.Logf("l1:%v,l2:%v", l1, l2)
 	b := reflect.DeepEqual(l1, l2)
 	if l1 == nil || l2 == nil || !b {
 		t.Fatal("error")
@@ -67,8 +68,6 @@ func TestLedger_Instance2(t *testing.T) {
 	if l1 == nil || l2 == nil || reflect.DeepEqual(l1, l2) {
 		t.Fatal("error")
 	}
-	_ = os.RemoveAll(dir)
-	_ = os.RemoveAll(dir2)
 }
 
 func TestLedger_Empty(t *testing.T) {
@@ -233,18 +232,22 @@ func TestLedger_AddBlockWithSingleTxn(t *testing.T) {
 	}
 }
 
+func addblocks(t *testing.T, session *LedgerSession) {
+	blks := parseBlocks(t, "testdata/blocks.json")
+	if err := session.AddBlock(blks[0]); err != nil && err != ErrBlockExists {
+		t.Fatal(err)
+	}
+}
+
 func TestLedger_GetBlock(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	session := l.NewLedgerSession(false)
 	defer session.Close()
+	addblocks(t, session)
 
 	blks := parseBlocks(t, "testdata/blocks.json")
-	if err := session.AddBlock(blks[0]); err != nil {
-		t.Fatal(err)
-	}
-
 	h := blks[0].GetHash()
 
 	blk, err := session.GetBlock(h)
@@ -259,13 +262,13 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 
 	session := l.NewLedgerSession(false)
 	defer session.Close()
-
+	addblocks(t, session)
 	r, err := session.CountBlocks()
 	t.Log("blk count, ", r)
 
 	blks, err := session.GetBlocks()
 	for index, b := range blks {
-		t.Log(index, b)
+		t.Log(index, b, *b)
 	}
 
 	if err != nil {
@@ -277,11 +280,11 @@ func TestLedger_DeleteBlock(t *testing.T) {
 	defer teardownTestCase(t)
 
 	h := types.Hash{}
-	h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
+	_ = h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
 
 	session := l.NewLedgerSession(false)
 	defer session.Close()
-
+	addblocks(t, session)
 	err := session.DeleteBlock(h)
 	if err != nil {
 		t.Fatal(err)
@@ -320,7 +323,7 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 }
 
 func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, kind types.UncheckedKind) {
-	parentHash.Of("d66750ccbb0ff65db134efaaec31d0b123a557df34e7e804d6884447ee589b3c")
+	_ = parentHash.Of("d66750ccbb0ff65db134efaaec31d0b123a557df34e7e804d6884447ee589b3c")
 	blk, _ = types.NewBlock(byte(types.State))
 	blocks := parseBlocks(t, "testdata/uncheckedblock.json")
 	fmt.Println(blocks)
@@ -431,7 +434,7 @@ func addAccountMeta(t *testing.T, ls *LedgerSession) {
 	ams := parseAccountMetas(t, "testdata/account.json")
 	for _, a := range ams {
 		err := ls.AddAccountMeta(a)
-		if err != nil {
+		if err != nil && err != ErrAccountExists {
 			t.Fatal(err)
 		}
 	}
@@ -832,6 +835,9 @@ func TestLedger_GetFrontier(t *testing.T) {
 	session := l.NewLedgerSession(false)
 	defer session.Close()
 	frontier := parseFrontier(t)
+	if err := session.AddFrontier(&frontier); err != nil && err != ErrFrontierExists {
+		t.Fatal(err)
+	}
 	f, err := session.GetFrontier(frontier.HeaderBlock)
 	if err != nil {
 		t.Fatal(err)
@@ -869,5 +875,120 @@ func TestLedger_DeleteFrontier(t *testing.T) {
 	err := session.DeleteFrontier(frontier.HeaderBlock)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestReleaseLedger(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
+	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
+	l1 := NewLedger(dir)
+	_ = NewLedger(dir2)
+	defer func() {
+		//only release ledger1
+		l1.Close()
+		CloseLedger()
+		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(dir2)
+	}()
+}
+
+func TestLedgerSession_Latest(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	token := types.Hash{}
+	_ = token.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918")
+	hash, err := session.Latest(addr, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	latest := types.Hash{}
+	_ = latest.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448")
+
+	if hash != latest {
+		t.Fatal("err")
+	}
+}
+
+func TestLedgerSession_Account(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+	addblocks(t, session)
+	blks := parseBlocks(t, "testdata/blocks.json")
+	h := blks[0].GetHash()
+	am, err := session.Account(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(len(am.Tokens))
+}
+
+func TestLedgerSession_Token(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+	addblocks(t, session)
+	blks := parseBlocks(t, "testdata/blocks.json")
+	h := blks[0].GetHash()
+	t.Log(h)
+	tm, err := session.Token(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(*tm)
+}
+
+func TestLedgerSession_Pending(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+	addblocks(t, session)
+
+	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	pending, err := session.Pending(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, v := range pending {
+		t.Log(k, v)
+	}
+}
+
+func TestLedgerSession_Balance(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+	addblocks(t, session)
+
+	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	balances, err := session.Balance(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, v := range balances {
+		t.Log(k, v)
 	}
 }

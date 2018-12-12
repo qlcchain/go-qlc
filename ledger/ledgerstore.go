@@ -11,7 +11,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-type LedgerStore interface {
+type Store interface {
 	Empty() (bool, error)
 	BatchUpdate(fn func() error) error
 
@@ -25,7 +25,7 @@ type LedgerStore interface {
 	AddTokenMeta(address types.Address, meta *types.TokenMeta) error
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	UpdateTokenMeta(address types.Address, meta *types.TokenMeta) error
-	DeleteTokenMeta(address types.Address, meta *types.TokenMeta) error
+	DeleteTokenMeta(address types.Address, tokenType types.Hash) error
 	// blocks CURD
 	AddBlock(blk types.Block) error
 	GetBlock(hash types.Hash) (types.Block, error)
@@ -72,6 +72,6 @@ type LedgerStore interface {
 	BalancePending(account types.Address, token types.Hash) (types.Balance, error)
 	//Weight get vote weight for PoS
 	Weight(account types.Address) types.Balance
-	//Rollback account chain till reach the hash
-	Rollback(account types.Address, hash types.Hash) error
+	//Rollback blocks until `hash' doesn't exist
+	Rollback(hash types.Hash) error
 }

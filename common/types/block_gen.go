@@ -224,6 +224,11 @@ func (z *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Type = parseString(zb0002)
 			}
+		case "address":
+			err = dc.ReadExtension(&z.Address)
+			if err != nil {
+				return
+			}
 		case "previous":
 			err = dc.ReadExtension(&z.PreviousHash)
 			if err != nil {
@@ -281,13 +286,22 @@ func (z *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 10
+	// map header, size 11
 	// write "type"
-	err = en.Append(0x8a, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	err = en.Append(0x8b, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	if err != nil {
 		return
 	}
 	err = en.WriteString((Enum).String(z.Type))
+	if err != nil {
+		return
+	}
+	// write "address"
+	err = en.Append(0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Address)
 	if err != nil {
 		return
 	}
@@ -378,10 +392,16 @@ func (z *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *SmartContractBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 10
+	// map header, size 11
 	// string "type"
-	o = append(o, 0x8a, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	o = append(o, 0x8b, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o = msgp.AppendString(o, (Enum).String(z.Type))
+	// string "address"
+	o = append(o, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	o, err = msgp.AppendExtension(o, &z.Address)
+	if err != nil {
+		return
+	}
 	// string "previous"
 	o = append(o, 0xa8, 0x70, 0x72, 0x65, 0x76, 0x69, 0x6f, 0x75, 0x73)
 	o, err = msgp.AppendExtension(o, &z.PreviousHash)
@@ -464,6 +484,11 @@ func (z *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Type = parseString(zb0002)
 			}
+		case "address":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
+			if err != nil {
+				return
+			}
 		case "previous":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.PreviousHash)
 			if err != nil {
@@ -522,7 +547,7 @@ func (z *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *SmartContractBlock) Msgsize() (s int) {
-	s = 1 + 5 + msgp.StringPrefixSize + len((Enum).String(z.Type)) + 9 + msgp.ExtensionPrefixSize + z.PreviousHash.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len() + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 6 + msgp.ExtensionPrefixSize + z.Owner.Len() + 7 + msgp.ExtensionPrefixSize + z.Issuer.Len()
+	s = 1 + 5 + msgp.StringPrefixSize + len((Enum).String(z.Type)) + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 9 + msgp.ExtensionPrefixSize + z.PreviousHash.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len() + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 6 + msgp.ExtensionPrefixSize + z.Owner.Len() + 7 + msgp.ExtensionPrefixSize + z.Issuer.Len()
 	return
 }
 
