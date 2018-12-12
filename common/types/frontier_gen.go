@@ -127,3 +127,198 @@ func (z Frontier) Msgsize() (s int) {
 	s = 1 + 12 + msgp.ExtensionPrefixSize + z.HeaderBlock.Len() + 10 + msgp.ExtensionPrefixSize + z.OpenBlock.Len()
 	return
 }
+
+// DecodeMsg implements msgp.Decodable
+func (z *Frontiers) DecodeMsg(dc *msgp.Reader) (err error) {
+	var zb0002 uint32
+	zb0002, err = dc.ReadArrayHeader()
+	if err != nil {
+		return
+	}
+	if cap((*z)) >= int(zb0002) {
+		(*z) = (*z)[:zb0002]
+	} else {
+		(*z) = make(Frontiers, zb0002)
+	}
+	for zb0001 := range *z {
+		if dc.IsNil() {
+			err = dc.ReadNil()
+			if err != nil {
+				return
+			}
+			(*z)[zb0001] = nil
+		} else {
+			if (*z)[zb0001] == nil {
+				(*z)[zb0001] = new(Frontier)
+			}
+			var field []byte
+			_ = field
+			var zb0003 uint32
+			zb0003, err = dc.ReadMapHeader()
+			if err != nil {
+				return
+			}
+			for zb0003 > 0 {
+				zb0003--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "headerblock":
+					err = dc.ReadExtension(&(*z)[zb0001].HeaderBlock)
+					if err != nil {
+						return
+					}
+				case "openblock":
+					err = dc.ReadExtension(&(*z)[zb0001].OpenBlock)
+					if err != nil {
+						return
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						return
+					}
+				}
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z Frontiers) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteArrayHeader(uint32(len(z)))
+	if err != nil {
+		return
+	}
+	for zb0004 := range z {
+		if z[zb0004] == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			// map header, size 2
+			// write "headerblock"
+			err = en.Append(0x82, 0xab, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
+			if err != nil {
+				return
+			}
+			err = en.WriteExtension(&z[zb0004].HeaderBlock)
+			if err != nil {
+				return
+			}
+			// write "openblock"
+			err = en.Append(0xa9, 0x6f, 0x70, 0x65, 0x6e, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
+			if err != nil {
+				return
+			}
+			err = en.WriteExtension(&z[zb0004].OpenBlock)
+			if err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z Frontiers) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendArrayHeader(o, uint32(len(z)))
+	for zb0004 := range z {
+		if z[zb0004] == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			// map header, size 2
+			// string "headerblock"
+			o = append(o, 0x82, 0xab, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
+			o, err = msgp.AppendExtension(o, &z[zb0004].HeaderBlock)
+			if err != nil {
+				return
+			}
+			// string "openblock"
+			o = append(o, 0xa9, 0x6f, 0x70, 0x65, 0x6e, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
+			o, err = msgp.AppendExtension(o, &z[zb0004].OpenBlock)
+			if err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Frontiers) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var zb0002 uint32
+	zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+	if err != nil {
+		return
+	}
+	if cap((*z)) >= int(zb0002) {
+		(*z) = (*z)[:zb0002]
+	} else {
+		(*z) = make(Frontiers, zb0002)
+	}
+	for zb0001 := range *z {
+		if msgp.IsNil(bts) {
+			bts, err = msgp.ReadNilBytes(bts)
+			if err != nil {
+				return
+			}
+			(*z)[zb0001] = nil
+		} else {
+			if (*z)[zb0001] == nil {
+				(*z)[zb0001] = new(Frontier)
+			}
+			var field []byte
+			_ = field
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				return
+			}
+			for zb0003 > 0 {
+				zb0003--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "headerblock":
+					bts, err = msgp.ReadExtensionBytes(bts, &(*z)[zb0001].HeaderBlock)
+					if err != nil {
+						return
+					}
+				case "openblock":
+					bts, err = msgp.ReadExtensionBytes(bts, &(*z)[zb0001].OpenBlock)
+					if err != nil {
+						return
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						return
+					}
+				}
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z Frontiers) Msgsize() (s int) {
+	s = msgp.ArrayHeaderSize
+	for zb0004 := range z {
+		if z[zb0004] == nil {
+			s += msgp.NilSize
+		} else {
+			s += 1 + 12 + msgp.ExtensionPrefixSize + z[zb0004].HeaderBlock.Len() + 10 + msgp.ExtensionPrefixSize + z[zb0004].OpenBlock.Len()
+		}
+	}
+	return
+}
