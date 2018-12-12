@@ -41,19 +41,29 @@ func TestLedger_Instance1(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
 	l1 := NewLedger(dir)
 	l2 := NewLedger(dir)
+	defer func() {
+		l1.Close()
+		l2.Close()
+		_ = os.RemoveAll(dir)
+	}()
+	t.Logf("l1:%v,l2:%v", l1, l2)
 	b := reflect.DeepEqual(l1, l2)
 	if l1 == nil || l2 == nil || !b {
 		t.Fatal("error")
 	}
-	_ = os.RemoveAll(dir)
 }
 
 func TestLedger_Instance2(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
 	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
-
 	l1 := NewLedger(dir)
 	l2 := NewLedger(dir2)
+	defer func() {
+		l1.Close()
+		l2.Close()
+		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(dir2)
+	}()
 	if l1 == nil || l2 == nil || reflect.DeepEqual(l1, l2) {
 		t.Fatal("error")
 	}

@@ -55,4 +55,23 @@ type LedgerStore interface {
 	GetFrontiers() ([]*types.Frontier, error)
 	DeleteFrontier(hash types.Hash) error
 	CountFrontiers() (uint64, error)
+
+	//Latest block hash by account and token type
+	Latest(account types.Address, token types.Hash) (types.Hash, error)
+	//Account get account meta by block hash
+	Account(hash types.Hash) (*types.AccountMeta, error)
+	//Token get token meta by block hash
+	Token(hash types.Hash) (*types.TokenMeta, error)
+	//Pending get account pending (token_hash->pending)
+	Pending(account types.Address) (map[types.Hash]types.Balance, error)
+	//Balance get account balance (token_hash->pending)
+	Balance(account types.Address) (map[types.Hash]types.Balance, error)
+	//TokenPending get account token pending
+	TokenPending(account types.Address, token types.Hash) (types.Balance, error)
+	//BalancePending get account token balance
+	BalancePending(account types.Address, token types.Hash) (types.Balance, error)
+	//Weight get vote weight for PoS
+	Weight(account types.Address) types.Balance
+	//Rollback account chain till reach the hash
+	Rollback(account types.Address, hash types.Hash) error
 }
