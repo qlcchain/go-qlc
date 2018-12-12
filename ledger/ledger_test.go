@@ -992,3 +992,43 @@ func TestLedgerSession_Balance(t *testing.T) {
 		t.Log(k, v)
 	}
 }
+
+func TestLedgerSession_TokenBalance(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+	addblocks(t, session)
+
+	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	token := types.Hash{}
+	_ = token.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918")
+	balance, err := session.TokenBalance(addr,token )
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(balance)
+}
+
+func TestLedgerSession_TokenPending(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	session := l.NewLedgerSession(false)
+	defer session.Close()
+
+	addAccountMeta(t, session)
+	addblocks(t, session)
+
+	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	token := types.Hash{}
+	_ = token.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918")
+	pending, err := session.TokenPending(addr,token )
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(pending)
+}

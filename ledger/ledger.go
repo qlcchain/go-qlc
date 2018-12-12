@@ -918,7 +918,7 @@ func (ls *LedgerSession) TokenPending(account types.Address, token types.Hash) (
 	return types.ZeroBalance, fmt.Errorf("can not find %s pending", token)
 }
 
-func (ls *LedgerSession) BalancePending(account types.Address, token types.Hash) (types.Balance, error) {
+func (ls *LedgerSession) TokenBalance(account types.Address, token types.Hash) (types.Balance, error) {
 	am, err := ls.GetAccountMeta(account)
 	if err != nil {
 		return types.ZeroBalance, err
