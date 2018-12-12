@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"github.com/qlcchain/go-qlc/config"
 	"os"
-	"path/filepath"
 )
 
 func main() {
@@ -24,7 +23,7 @@ func main() {
 	flag.Parse()
 
 	if len(file) == 0 {
-		file = filepath.Join(config.DefaultDataDir(), config.QlcConfigFile)
+		file = config.DefaultConfigFile()
 	}
 	fmt.Println("cfg file: ", file)
 

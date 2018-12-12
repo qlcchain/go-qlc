@@ -324,6 +324,11 @@ func (z *TokenMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
+		case "pending":
+			err = dc.ReadExtension(&z.Pending)
+			if err != nil {
+				return
+			}
 		case "account":
 			err = dc.ReadExtension(&z.BelongTo)
 			if err != nil {
@@ -351,9 +356,9 @@ func (z *TokenMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *TokenMeta) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 9
+	// map header, size 10
 	// write "tokenAccount"
-	err = en.Append(0x89, 0xac, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	err = en.Append(0x8a, 0xac, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
@@ -406,6 +411,15 @@ func (z *TokenMeta) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
+	// write "pending"
+	err = en.Append(0xa7, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Pending)
+	if err != nil {
+		return
+	}
 	// write "account"
 	err = en.Append(0xa7, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 	if err != nil {
@@ -439,9 +453,9 @@ func (z *TokenMeta) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *TokenMeta) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 9
+	// map header, size 10
 	// string "tokenAccount"
-	o = append(o, 0x89, 0xac, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	o = append(o, 0x8a, 0xac, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 	o, err = msgp.AppendExtension(o, &z.TokenAccount)
 	if err != nil {
 		return
@@ -473,6 +487,12 @@ func (z *TokenMeta) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "balance"
 	o = append(o, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Balance)
+	if err != nil {
+		return
+	}
+	// string "pending"
+	o = append(o, 0xa7, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67)
+	o, err = msgp.AppendExtension(o, &z.Pending)
 	if err != nil {
 		return
 	}
@@ -537,6 +557,11 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
+		case "pending":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Pending)
+			if err != nil {
+				return
+			}
 		case "account":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.BelongTo)
 			if err != nil {
@@ -565,6 +590,6 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TokenMeta) Msgsize() (s int) {
-	s = 1 + 13 + msgp.ExtensionPrefixSize + z.TokenAccount.Len() + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 7 + msgp.ExtensionPrefixSize + z.Header.Len() + 4 + msgp.ExtensionPrefixSize + z.RepBlock.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 8 + msgp.ExtensionPrefixSize + z.BelongTo.Len() + 9 + msgp.Int64Size + 11 + msgp.Int64Size
+	s = 1 + 13 + msgp.ExtensionPrefixSize + z.TokenAccount.Len() + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 7 + msgp.ExtensionPrefixSize + z.Header.Len() + 4 + msgp.ExtensionPrefixSize + z.RepBlock.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 8 + msgp.ExtensionPrefixSize + z.Pending.Len() + 8 + msgp.ExtensionPrefixSize + z.BelongTo.Len() + 9 + msgp.Int64Size + 11 + msgp.Int64Size
 	return
 }

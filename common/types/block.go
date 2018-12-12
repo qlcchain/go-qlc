@@ -80,10 +80,11 @@ func (e Enum) MarshalJSON() ([]byte, error) {
 type Block interface {
 	GetType() Enum
 	GetHash() Hash
-	GetAddresses() []*Address
+	GetAddress() Address
 	GetPreviousHash() Hash
 	GetRepresentative() Address
 	GetBalance() Balance
+	GetExtraAddress() []Address
 	GetLink() Hash
 	GetSignature() Signature
 	GetToken() Hash
@@ -127,12 +128,16 @@ func (b *StateBlock) GetHash() Hash {
 	return hashBytes(preamble[:], b.Address[:], b.PreviousHash[:], b.Representative[:], b.Balance.Bytes(binary.BigEndian), b.Link[:], b.Extra[:])
 }
 
-func (b *StateBlock) GetAddresses() []*Address {
-	return []*Address{&b.Address}
-}
-
 func (b *StateBlock) GetPreviousHash() Hash {
 	return b.PreviousHash
+}
+
+func (b *StateBlock) GetAddress() Address {
+	return b.Address
+}
+
+func (b *StateBlock) GetExtraAddress() []Address {
+	return nil
 }
 
 func (b *StateBlock) GetRepresentative() Address {
@@ -165,17 +170,26 @@ func (b *StateBlock) GetWork() Work {
 
 //go:generate msgp
 type SmartContractBlock struct {
-	Type           Enum       `msg:"type" json:"type"`
-	Address        []*Address `msg:"addresses,extension" json:"addresses"`
-	PreviousHash   Hash       `msg:"previous,extension" json:"previous"`
-	Representative Address    `msg:"representative,extension" json:"representative"`
-	Balance        Balance    `msg:"balance,extension" json:"balance"`
-	Link           Hash       `msg:"link,extension" json:"link"`
-	Signature      Signature  `msg:"signature,extension" json:"signature"`
-	Extra          Hash       `msg:"extra,extension" json:"extra"`
-	Work           Work       `msg:"work,extension" json:"work"`
-	Owner          Address    `msg:"owner,extension" json:"owner"`
-	Issuer         Address    `msg:"issuer,extension" json:"issuer"`
+	Type           Enum      `msg:"type" json:"type"`
+	Address        Address   `msg:"address,extension" json:"address"`
+	PreviousHash   Hash      `msg:"previous,extension" json:"previous"`
+	Representative Address   `msg:"representative,extension" json:"representative"`
+	Balance        Balance   `msg:"balance,extension" json:"balance"`
+	Link           Hash      `msg:"link,extension" json:"link"`
+	Signature      Signature `msg:"signature,extension" json:"signature"`
+	Extra          Hash      `msg:"extra,extension" json:"extra"`
+	Work           Work      `msg:"work,extension" json:"work"`
+	Owner          Address   `msg:"owner,extension" json:"owner"`
+	Issuer         Address   `msg:"issuer,extension" json:"issuer"`
+	ExtraAddress   []Address `msg:"extraAddress,extension" json:"extraAddress"`
+}
+
+func (sc *SmartContractBlock) GetAddress() Address {
+	return sc.Address
+}
+
+func (sc *SmartContractBlock) GetExtraAddress() []Address {
+	return sc.ExtraAddress
 }
 
 func (sc *SmartContractBlock) GetType() Enum {
@@ -186,14 +200,10 @@ func (sc *SmartContractBlock) GetHash() Hash {
 	var preamble [preambleSize]byte
 	preamble[len(preamble)-1] = byte(SmartContract)
 	var a []byte
-	for _, address := range sc.Address {
-		a = append(a, address[:]...)
+	for _, addr := range sc.ExtraAddress {
+		a = append(a, addr[:]...)
 	}
-	return hashBytes(preamble[:], a, sc.PreviousHash[:], sc.Representative[:], sc.Link[:], sc.Extra[:], sc.Owner[:], sc.Issuer[:])
-}
-
-func (sc *SmartContractBlock) GetAddresses() []*Address {
-	return sc.Address
+	return hashBytes(preamble[:], a, sc.Address[:], sc.PreviousHash[:], sc.Representative[:], sc.Link[:], sc.Extra[:], sc.Owner[:], sc.Issuer[:])
 }
 
 func (sc *SmartContractBlock) GetPreviousHash() Hash {

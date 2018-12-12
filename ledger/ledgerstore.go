@@ -11,7 +11,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-type LedgerStore interface {
+type Store interface {
 	Empty() (bool, error)
 	BatchUpdate(fn func() error) error
 
@@ -25,7 +25,7 @@ type LedgerStore interface {
 	AddTokenMeta(address types.Address, meta *types.TokenMeta) error
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	UpdateTokenMeta(address types.Address, meta *types.TokenMeta) error
-	DeleteTokenMeta(address types.Address, meta *types.TokenMeta) error
+	DeleteTokenMeta(address types.Address, tokenType types.Hash) error
 	// blocks CURD
 	AddBlock(blk types.Block) error
 	GetBlock(hash types.Hash) (types.Block, error)
@@ -55,4 +55,23 @@ type LedgerStore interface {
 	GetFrontiers() ([]*types.Frontier, error)
 	DeleteFrontier(hash types.Hash) error
 	CountFrontiers() (uint64, error)
+
+	//Latest block hash by account and token type
+	Latest(account types.Address, token types.Hash) (types.Hash, error)
+	//Account get account meta by block hash
+	Account(hash types.Hash) (*types.AccountMeta, error)
+	//Token get token meta by block hash
+	Token(hash types.Hash) (*types.TokenMeta, error)
+	//Pending get account pending (token_hash->pending)
+	Pending(account types.Address) (map[types.Hash]types.Balance, error)
+	//Balance get account balance (token_hash->pending)
+	Balance(account types.Address) (map[types.Hash]types.Balance, error)
+	//TokenPending get account token pending
+	TokenPending(account types.Address, token types.Hash) (types.Balance, error)
+	//BalancePending get account token balance
+	BalancePending(account types.Address, token types.Hash) (types.Balance, error)
+	//Weight get vote weight for PoS
+	Weight(account types.Address) types.Balance
+	//Rollback blocks until `hash' doesn't exist
+	Rollback(hash types.Hash) error
 }

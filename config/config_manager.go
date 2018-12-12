@@ -11,19 +11,18 @@ import (
 )
 
 type ConfigManager struct {
-	cfgFile    string
-	migrations []CfgMigrate
+	cfgFile string
 }
 
 func NewCfgManager(file string) *ConfigManager {
 	cfg := &ConfigManager{
-		cfgFile:    file,
-		migrations: make([]CfgMigrate, 0),
+		cfgFile: file,
 	}
 	return cfg
 }
 
-func (c *ConfigManager) Load() (*Config, error) {
+//Load the config file and will create default if config file no exist
+func (c *ConfigManager) Load(migrations ...CfgMigrate) (*Config, error) {
 	_, err := os.Stat(c.cfgFile)
 	if err != nil {
 		fmt.Printf("%s not exist, create default", c.cfgFile)
@@ -31,7 +30,7 @@ func (c *ConfigManager) Load() (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = c.Save(cfg)
+		err = c.save(cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -49,22 +48,25 @@ func (c *ConfigManager) Load() (*Config, error) {
 	}
 	flag := false
 	// update cfg file
-	sort.Sort(CfgMigrations(c.migrations))
-	for _, m := range c.migrations {
-		err := m.Migration(&cfg)
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			flag = true
+	sort.Sort(CfgMigrations(migrations))
+	for _, m := range migrations {
+		version := cfg.Version
+		if version == m.StartVersion() {
+			err := m.Migration(&cfg)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				flag = true
+			}
 		}
 	}
 	if flag {
-		_ = c.Save(&cfg)
+		_ = c.save(&cfg)
 	}
 	return &cfg, nil
 }
 
-func (c *ConfigManager) Save(cfg *Config) error {
+func (c *ConfigManager) save(cfg *Config) error {
 	dir := filepath.Dir(c.cfgFile)
 	err := util.CreateDirIfNotExist(dir)
 	if err != nil {

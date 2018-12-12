@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"errors"
+	"fmt"
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
@@ -73,6 +74,19 @@ func NewLedger(dir string) *Ledger {
 		cache[dir] = &Ledger{db: store, dir: dir}
 	}
 	return cache[dir]
+}
+
+//CloseLedger force release all ledger instance
+func CloseLedger() {
+	lock.RLock()
+	defer lock.RUnlock()
+	for k, v := range cache {
+		if v != nil {
+			v.Close()
+			logger.Debugf("release ledger from %s", k)
+		}
+		delete(cache, k)
+	}
 }
 
 func (l *Ledger) Close() error {
@@ -173,8 +187,8 @@ func (ls *LedgerSession) GetBlock(hash types.Hash) (types.Block, error) {
 	}
 	return blk, nil
 }
-func (ls *LedgerSession) GetBlocks() ([]types.Block, error) {
-	var blocks []types.Block
+func (ls *LedgerSession) GetBlocks() ([]*types.Block, error) {
+	var blocks []*types.Block
 	//var blk types.Block
 	txn := ls.getTxn(true)
 	defer ls.releaseTxn()
@@ -185,7 +199,7 @@ func (ls *LedgerSession) GetBlocks() ([]types.Block, error) {
 			return
 		}
 		_, err = blk.UnmarshalMsg(val)
-		blocks = append(blocks, blk)
+		blocks = append(blocks, &blk)
 		return
 	})
 	if err != nil {
@@ -803,4 +817,141 @@ func (ls *LedgerSession) BatchUpdate(fn func() error) error {
 		return err
 	}
 	return txn.Commit(nil)
+}
+
+func (ls *LedgerSession) Latest(account types.Address, token types.Hash) (types.Hash, error) {
+	am, err := ls.GetAccountMeta(account)
+	zero := types.Hash{}
+	if err != nil {
+		return zero, err
+	}
+
+	for _, t := range am.Tokens {
+		if t.Type == token {
+			return t.Header, nil
+		}
+	}
+	//TODO: hash to token name
+	return zero, fmt.Errorf("can not find token %s", token)
+}
+
+func (ls *LedgerSession) Account(hash types.Hash) (*types.AccountMeta, error) {
+	block, err := ls.GetBlock(hash)
+	if err != nil {
+		return nil, err
+	}
+	addr := block.GetAddress()
+	am, err := ls.GetAccountMeta(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return am, nil
+}
+
+func (ls *LedgerSession) Token(hash types.Hash) (*types.TokenMeta, error) {
+	block, err := ls.GetBlock(hash)
+	if err != nil {
+		return nil, err
+	}
+	blkToken := block.GetToken()
+	addr := block.GetAddress()
+	am, err := ls.GetAccountMeta(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, tm := range am.Tokens {
+		if tm.Type == blkToken {
+			return tm, nil
+		}
+	}
+	//TODO: hash to token name
+	return nil, fmt.Errorf("can not find token %s", blkToken)
+}
+
+func (ls *LedgerSession) Pending(account types.Address) (map[types.Hash]types.Balance, error) {
+	cache := make(map[types.Hash]types.Balance)
+	am, err := ls.GetAccountMeta(account)
+	if err != nil {
+		return cache, err
+	}
+	for _, tm := range am.Tokens {
+		cache[tm.Type] = tm.Pending
+	}
+
+	if len(cache) == 0 {
+		return nil, fmt.Errorf("can not find any token pending")
+	}
+
+	return cache, nil
+}
+
+func (ls *LedgerSession) Balance(account types.Address) (map[types.Hash]types.Balance, error) {
+	cache := make(map[types.Hash]types.Balance)
+	am, err := ls.GetAccountMeta(account)
+	if err != nil {
+		return cache, err
+	}
+	for _, tm := range am.Tokens {
+		cache[tm.Type] = tm.Balance
+	}
+
+	if len(cache) == 0 {
+		return nil, fmt.Errorf("can not find any token balance ")
+	}
+
+	return cache, nil
+}
+
+func (ls *LedgerSession) TokenPending(account types.Address, token types.Hash) (types.Balance, error) {
+	am, err := ls.GetAccountMeta(account)
+	if err != nil {
+		return types.ZeroBalance, err
+	}
+	for _, tm := range am.Tokens {
+		if tm.Type == token {
+			return tm.Pending, nil
+		}
+	}
+
+	return types.ZeroBalance, fmt.Errorf("can not find %s pending", token)
+}
+
+func (ls *LedgerSession) TokenBalance(account types.Address, token types.Hash) (types.Balance, error) {
+	am, err := ls.GetAccountMeta(account)
+	if err != nil {
+		return types.ZeroBalance, err
+	}
+	for _, tm := range am.Tokens {
+		if tm.Type == token {
+			return tm.Balance, nil
+		}
+	}
+
+	return types.ZeroBalance, fmt.Errorf("can not find %s balance", token)
+}
+
+func (ls *LedgerSession) Weight(account types.Address) types.Balance {
+	balance, err := ls.GetRepresentation(account)
+	if err != nil {
+		return types.ZeroBalance
+	}
+	return balance
+}
+
+// TODO: implement
+func (ls *LedgerSession) Rollback(hash types.Hash) error {
+	return ls.BatchUpdate(func() error {
+		//tm, err := ls.Token(hash)
+		//if err != nil {
+		//	return err
+		//}
+		//block, err := ls.GetBlock(tm.Header)
+		//if err != nil {
+		//	return nil
+		//}
+
+		return nil
+	})
 }
