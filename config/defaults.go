@@ -20,7 +20,7 @@ import (
 
 const (
 	QlcConfigFile = "qlc.json"
-	Version       = 1
+	configVersion = 1
 )
 
 var defaultBootstrapAddresses = []string{
@@ -47,7 +47,7 @@ func DefaultConfig() (*Config, error) {
 	}`), &logCfg)
 
 	cfg := &Config{
-		Version:    Version,
+		Version:    configVersion,
 		DataDir:    DefaultDataDir(),
 		Mode:       "Normal",
 		StorageMax: "10GB",
@@ -109,6 +109,10 @@ func DefaultDataDir() string {
 		}
 	}
 	return ""
+}
+
+func DefaultConfigFile() string {
+	return filepath.Join(DefaultDataDir(), QlcConfigFile)
 }
 
 func QlcTestDataDir() string {
