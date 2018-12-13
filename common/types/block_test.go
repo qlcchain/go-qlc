@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
 	"testing"
 
 	"github.com/json-iterator/go"
@@ -38,4 +39,23 @@ func TestUnmarshalStateBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println(b)
+}
+
+func TestStateBlock(t *testing.T) {
+	b, err := NewBlock(State)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sb, ok := b.(*StateBlock); ok {
+		sb.Balance = Balance(uint128.Uint128{Lo: 120000000})
+		sb.Address, _ = HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+		sb.Token, _ = NewHash("2C353DA641277FD8379354307A54BECE090C51E52FB460EA5A8674B702BDCE5E")
+		bytes, err := jsoniter.Marshal(&sb)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(string(bytes))
+	} else {
+		t.Fatal("new state block error")
+	}
 }

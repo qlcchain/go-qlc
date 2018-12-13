@@ -24,7 +24,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 type StateBlock struct {
 	Type                 []byte   `protobuf:"bytes,1,opt,name=Type,proto3" json:"Type,omitempty"`
 	Address              []byte   `protobuf:"bytes,2,opt,name=Address,proto3" json:"Address,omitempty"`
-	PreviousHash         []byte   `protobuf:"bytes,3,opt,name=PreviousHash,proto3" json:"PreviousHash,omitempty"`
+	PreviousHash         []byte   `protobuf:"bytes,3,opt,name=Previous,proto3" json:"Previous,omitempty"`
 	Representative       []byte   `protobuf:"bytes,4,opt,name=Representative,proto3" json:"Representative,omitempty"`
 	Balance              []byte   `protobuf:"bytes,5,opt,name=Balance,proto3" json:"Balance,omitempty"`
 	Link                 []byte   `protobuf:"bytes,6,opt,name=Link,proto3" json:"Link,omitempty"`
@@ -127,7 +127,7 @@ func (m *StateBlock) GetWork() []byte {
 type SmartContractBlock struct {
 	Type                 []byte   `protobuf:"bytes,1,opt,name=Type,proto3" json:"Type,omitempty"`
 	Address              []byte   `protobuf:"bytes,2,opt,name=Address,proto3" json:"Address,omitempty"`
-	PreviousHash         []byte   `protobuf:"bytes,3,opt,name=PreviousHash,proto3" json:"PreviousHash,omitempty"`
+	PreviousHash         []byte   `protobuf:"bytes,3,opt,name=Previous,proto3" json:"Previous,omitempty"`
 	Representative       []byte   `protobuf:"bytes,4,opt,name=Representative,proto3" json:"Representative,omitempty"`
 	Balance              []byte   `protobuf:"bytes,5,opt,name=Balance,proto3" json:"Balance,omitempty"`
 	Link                 []byte   `protobuf:"bytes,6,opt,name=Link,proto3" json:"Link,omitempty"`

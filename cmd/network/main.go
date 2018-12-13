@@ -73,9 +73,9 @@ func main() {
 	servicesync := sync.NewSyncService(node)
 	servicesync.SetLedger(ledger)
 	servicesync.Start()
-	blk, err := types.NewBlock(byte(types.State))
-	blk1, err := types.NewBlock(byte(types.State))
-	blk2, err := types.NewBlock(byte(types.State))
+	blk, err := types.NewBlock(types.State)
+	blk1, err := types.NewBlock(types.State)
+	blk2, err := types.NewBlock(types.State)
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(test_block), &blk); err != nil {
 		fmt.Println(err)

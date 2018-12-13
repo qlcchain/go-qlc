@@ -18,11 +18,11 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-//msgp:shim Enum as:string using:(Enum).String/parseString
-type Enum byte
+//msgp:shim BlockType as:string using:(BlockType).String/parseString
+type BlockType byte
 
 const (
-	State Enum = iota
+	State BlockType = iota
 	SmartContract
 	Invalid
 )
@@ -38,7 +38,7 @@ const (
 	//blockSizeState  = blockSizeCommon
 )
 
-func (e Enum) String() string {
+func (e BlockType) String() string {
 	switch e {
 	case State:
 		return "State"
@@ -49,7 +49,7 @@ func (e Enum) String() string {
 	}
 }
 
-func parseString(s string) Enum {
+func parseString(s string) BlockType {
 	switch strings.ToLower(s) {
 	case "state":
 		return State
@@ -60,7 +60,7 @@ func parseString(s string) Enum {
 	}
 }
 
-func (e *Enum) UnmarshalJSON(b []byte) error {
+func (e *BlockType) UnmarshalJSON(b []byte) error {
 	var j string
 	err := json.Unmarshal(b, &j)
 	if err != nil {
@@ -70,28 +70,33 @@ func (e *Enum) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (e Enum) MarshalJSON() ([]byte, error) {
+func (e BlockType) MarshalJSON() ([]byte, error) {
 	buffer := bytes.NewBufferString(`"`)
 	buffer.WriteString(e.String())
 	buffer.WriteString(`"`)
 	return buffer.Bytes(), nil
 }
 
+func NewBlock(t BlockType) (Block, error) {
+	switch t {
+	case State:
+		return new(StateBlock), nil
+	case SmartContract:
+		return new(SmartContractBlock), nil
+	case Invalid:
+		return nil, ErrNotABlock
+	default:
+		return nil, ErrBadBlockType
+	}
+}
+
 type Block interface {
-	GetType() Enum
+	GetType() BlockType
 	GetHash() Hash
 	GetAddress() Address
-	GetPreviousHash() Hash
-	GetRepresentative() Address
-	GetBalance() Balance
-	GetExtraAddress() []Address
-	GetLink() Hash
 	GetSignature() Signature
-	GetToken() Hash
-	GetExtra() Hash
 	GetWork() Work
-
-	ID() Enum
+	GetPrevious() Hash
 	Root() Hash
 	Size() int
 	IsValid() bool
@@ -105,39 +110,52 @@ type Block interface {
 }
 
 //go:generate msgp
-type StateBlock struct {
-	Type           Enum      `msg:"type" json:"type"`
-	Address        Address   `msg:"addresses,extension" json:"addresses"`
-	PreviousHash   Hash      `msg:"previous,extension" json:"previous"`
-	Representative Address   `msg:"representative,extension" json:"representative"`
-	Balance        Balance   `msg:"balance,extension" json:"balance"`
-	Link           Hash      `msg:"link,extension" json:"link"`
-	Signature      Signature `msg:"signature,extension" json:"signature"`
-	Token          Hash      `msg:"token,extension" json:"token"`
-	Extra          Hash      `msg:"extra,extension" json:"extra"`
-	Work           Work      `msg:"work,extension" json:"work"`
+type CommonBlock struct {
+	Type      BlockType `msg:"type" json:"type"`
+	Address   Address   `msg:"addresses,extension" json:"addresses"`
+	Previous  Hash      `msg:"previous,extension" json:"previous"`
+	Signature Signature `msg:"signature,extension" json:"signature"`
+	Work      Work      `msg:"work,extension" json:"work"`
+	Extra     Hash      `msg:"extra,extension" json:"extra"`
 }
 
-func (b *StateBlock) GetType() Enum {
+func (b *CommonBlock) GetAddress() Address {
+	return b.Address
+}
+
+func (b *CommonBlock) GetPrevious() Hash {
+	return b.Previous
+}
+
+func (b *CommonBlock) GetSignature() Signature {
+	return b.Signature
+}
+
+func (b *CommonBlock) GetWork() Work {
+	return b.Work
+}
+
+func (b *CommonBlock) GetExtra() Hash {
+	return b.Extra
+}
+
+//go:generate msgp
+type StateBlock struct {
+	CommonBlock
+	Token          Hash    `msg:"token,extension" json:"token"`
+	Balance        Balance `msg:"balance,extension" json:"balance"`
+	Link           Hash    `msg:"link,extension" json:"link"`
+	Representative Address `msg:"representative,extension" json:"representative"`
+}
+
+func (b *StateBlock) GetType() BlockType {
 	return State
 }
 
 func (b *StateBlock) GetHash() Hash {
 	var preamble [preambleSize]byte
 	preamble[len(preamble)-1] = byte(State)
-	return hashBytes(preamble[:], b.Address[:], b.PreviousHash[:], b.Representative[:], b.Balance.Bytes(binary.BigEndian), b.Link[:], b.Extra[:])
-}
-
-func (b *StateBlock) GetPreviousHash() Hash {
-	return b.PreviousHash
-}
-
-func (b *StateBlock) GetAddress() Address {
-	return b.Address
-}
-
-func (b *StateBlock) GetExtraAddress() []Address {
-	return nil
+	return hashBytes(preamble[:], b.Address[:], b.Previous[:], b.Representative[:], b.Balance.Bytes(binary.BigEndian), b.Link[:], b.Extra[:])
 }
 
 func (b *StateBlock) GetRepresentative() Address {
@@ -152,47 +170,67 @@ func (b *StateBlock) GetLink() Hash {
 	return b.Link
 }
 
-func (b *StateBlock) GetSignature() Signature {
-	return b.Signature
-}
-
 func (b *StateBlock) GetToken() Hash {
 	return b.Token
 }
 
-func (b *StateBlock) GetExtra() Hash {
-	return b.Extra
+func (b *StateBlock) Root() Hash {
+	if b.isOpen() {
+		return b.Address.ToHash()
+	}
+
+	return b.Previous
 }
 
-func (b *StateBlock) GetWork() Work {
-	return b.Work
+func (b *StateBlock) Size() int {
+	return b.Msgsize()
+}
+
+func (b *StateBlock) IsValid() bool {
+	if b.isOpen() {
+		return b.Work.IsValid(b.Previous)
+	}
+
+	return b.Work.IsValid(Hash(b.Address))
+}
+
+func (b *StateBlock) isOpen() bool {
+	return !b.Previous.IsZero()
+}
+
+//go:generate msgp
+type BlockExtra struct {
+	KeyHash Hash    `msg:"key,extension" json:"key"`
+	Abi     []byte  `msg:"abi" json:"abi"`
+	Issuer  Address `msg:"issuer,extension" json:"issuer"`
 }
 
 //go:generate msgp
 type SmartContractBlock struct {
-	Type           Enum      `msg:"type" json:"type"`
-	Address        Address   `msg:"address,extension" json:"address"`
-	PreviousHash   Hash      `msg:"previous,extension" json:"previous"`
-	Representative Address   `msg:"representative,extension" json:"representative"`
-	Balance        Balance   `msg:"balance,extension" json:"balance"`
-	Link           Hash      `msg:"link,extension" json:"link"`
-	Signature      Signature `msg:"signature,extension" json:"signature"`
-	Extra          Hash      `msg:"extra,extension" json:"extra"`
-	Work           Work      `msg:"work,extension" json:"work"`
-	Owner          Address   `msg:"owner,extension" json:"owner"`
-	Issuer         Address   `msg:"issuer,extension" json:"issuer"`
-	ExtraAddress   []Address `msg:"extraAddress,extension" json:"extraAddress"`
+	CommonBlock
+	Owner        Address   `msg:"owner,extension" json:"owner"`
+	Issuer       Address   `msg:"issuer,extension" json:"issuer"`
+	ExtraAddress []Address `msg:"extraAddress,extension" json:"extraAddress"`
 }
 
-func (sc *SmartContractBlock) GetAddress() Address {
-	return sc.Address
+func (sc *SmartContractBlock) Root() Hash {
+	return sc.Address.ToHash()
+}
+
+func (sc *SmartContractBlock) Size() int {
+	return sc.Msgsize()
+}
+
+//TODO: improvement
+func (sc *SmartContractBlock) IsValid() bool {
+	return sc.Work.IsValid(sc.Address.ToHash())
 }
 
 func (sc *SmartContractBlock) GetExtraAddress() []Address {
 	return sc.ExtraAddress
 }
 
-func (sc *SmartContractBlock) GetType() Enum {
+func (sc *SmartContractBlock) GetType() BlockType {
 	return SmartContract
 }
 
@@ -203,59 +241,7 @@ func (sc *SmartContractBlock) GetHash() Hash {
 	for _, addr := range sc.ExtraAddress {
 		a = append(a, addr[:]...)
 	}
-	return hashBytes(preamble[:], a, sc.Address[:], sc.PreviousHash[:], sc.Representative[:], sc.Link[:], sc.Extra[:], sc.Owner[:], sc.Issuer[:])
-}
-
-func (sc *SmartContractBlock) GetPreviousHash() Hash {
-	return sc.PreviousHash
-}
-
-func (sc *SmartContractBlock) GetRepresentative() Address {
-	return sc.Representative
-}
-
-func (sc *SmartContractBlock) GetBalance() Balance {
-	return Balance{}
-}
-
-func (sc *SmartContractBlock) GetLink() Hash {
-	return sc.Link
-}
-
-func (sc *SmartContractBlock) GetSignature() Signature {
-	return sc.Signature
-}
-
-func (sc *SmartContractBlock) GetToken() Hash {
-	return Hash{}
-}
-
-func (sc *SmartContractBlock) GetExtra() Hash {
-	return sc.Extra
-}
-
-func (sc *SmartContractBlock) GetWork() Work {
-	return sc.Work
-}
-
-//go:generate msgp
-type BlockExtra struct {
-	KeyHash Hash    `msg:"key,extension" json:"key"`
-	Abi     []byte  `msg:"abi" json:"abi"`
-	Issuer  Address `msg:"issuer,extension" json:"issuer"`
-}
-
-func NewBlock(blockType byte) (Block, error) {
-	switch Enum(blockType) {
-	case State:
-		return new(StateBlock), nil
-	case SmartContract:
-		return new(SmartContractBlock), nil
-	case Invalid:
-		return nil, ErrNotABlock
-	default:
-		return nil, ErrBadBlockType
-	}
+	return hashBytes(preamble[:], a, sc.Address[:], sc.Previous[:], sc.Extra[:], sc.Owner[:], sc.Issuer[:])
 }
 
 func hashBytes(inputs ...[]byte) Hash {
@@ -271,55 +257,4 @@ func hashBytes(inputs ...[]byte) Hash {
 	var result Hash
 	copy(result[:], hash.Sum(nil))
 	return result
-}
-
-func (b *StateBlock) Hash() Hash {
-	var preamble [preambleSize]byte
-	preamble[len(preamble)-1] = byte(State)
-	return hashBytes(preamble[:], b.Address[:], b.PreviousHash[:], b.Representative[:], b.Balance.Bytes(binary.BigEndian), b.Link[:], b.Extra[:])
-}
-
-func (b *StateBlock) ID() Enum {
-	return State
-}
-
-func (b *StateBlock) Root() Hash {
-	if b.IsOpen() {
-		return b.PreviousHash
-	}
-
-	return b.Link
-}
-
-func (b *StateBlock) Size() int {
-	return b.Msgsize()
-}
-
-func (b *StateBlock) IsValid() bool {
-	if b.IsOpen() {
-		return b.Work.IsValid(b.PreviousHash)
-	}
-
-	return b.Work.IsValid(Hash(b.Address))
-}
-
-func (b *StateBlock) IsOpen() bool {
-	return !b.PreviousHash.IsZero()
-}
-
-func (sc *SmartContractBlock) ID() Enum {
-	return SmartContract
-}
-
-func (sc *SmartContractBlock) Root() Hash {
-	return sc.PreviousHash
-}
-
-func (sc *SmartContractBlock) Size() int {
-	return sc.Msgsize()
-}
-
-//TODO: implement
-func (sc *SmartContractBlock) IsValid() bool {
-	return true
 }

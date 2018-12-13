@@ -12,12 +12,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
-	"hash"
 	"io"
 )
 
@@ -78,7 +78,13 @@ func (ws *WalletStore) NewSession(walletId []byte) *Session {
 
 func (s *Session) Init() error {
 	err := s.SetDeterministicIndex(1)
+	if err != nil {
+		return err
+	}
 	_ = s.SetVersion(Version)
+	//default password is empty
+	_ = s.EnterPassword("")
+
 	seed, err := types.NewSeed()
 	if err != nil {
 		return err
@@ -105,7 +111,9 @@ func (s *Session) Remove() error {
 }
 
 func (s *Session) EnterPassword(password string) error {
-	panic("implement me")
+	s.setPassword(password)
+	_, err := s.GetSeed()
+	return err
 }
 
 func (s *Session) GetWalletId() ([]byte, error) {
@@ -143,7 +151,7 @@ func (s *Session) GetSeed() ([]byte, error) {
 
 		key := s.getKey(idPrefixSeed)
 		return txn.Get(key, func(val []byte, b byte) error {
-			s, err := DecryptSeed(val, []byte(s.password))
+			s, err := DecryptSeed(val, s.getPassword())
 			seed = append(seed, s...)
 			return err
 		})
@@ -153,7 +161,7 @@ func (s *Session) GetSeed() ([]byte, error) {
 }
 
 func (s *Session) SetSeed(seed []byte) error {
-	encryptSeed, err := EncryptSeed(seed, s.password)
+	encryptSeed, err := EncryptSeed(seed, s.getPassword())
 
 	if err != nil {
 		return err
@@ -248,11 +256,7 @@ func (s *Session) GetBalance(addr types.Address) (*types.AccountMeta, error) {
 	return nil, fmt.Errorf("can not find account(%s) balance", addr.String())
 }
 
-func (s *Session) SearchPending() {
-	panic("implement me")
-}
-
-func (s *Session) Open(source types.Hash, token hash.Hash, representative types.Address) (*types.Block, error) {
+func (s *Session) SearchPending() error {
 	panic("implement me")
 }
 
@@ -260,12 +264,38 @@ func (s *Session) Send(source types.Address, token types.Hash, to types.Address,
 	panic("implement me")
 }
 
-func (s *Session) Receive(account types.Address, token types.Hash) (*types.Block, error) {
+func (s *Session) Receive(block types.Hash) (*types.Block, error) {
 	panic("implement me")
 }
 
-func (s *Session) Change(addr types.Address, representative types.Address) (*types.Block, error) {
-	panic("implement me")
+func (s *Session) Change(account types.Address, representative types.Address) (*types.Block, error) {
+	if exist := s.IsAccountExist(account); exist {
+		session := s.ledger.NewLedgerSession(false)
+		defer session.Close()
+		//get latest chain token block
+		hash := session.Latest(account, common.ChainTokenType)
+
+		if !hash.IsZero() {
+			block, err := session.GetBlock(hash)
+			if err != nil {
+				return nil, err
+			}
+			if sb, ok := block.(*types.StateBlock); ok {
+				newBlock, err := types.NewBlock(types.State)
+				if err != nil {
+					return nil, err
+				}
+				if newSb, ok := newBlock.(*types.StateBlock); ok {
+					newSb.Balance = sb.GetBalance()
+				}
+				//newBlock.
+				return &newBlock, nil
+			}
+
+			return nil, fmt.Errorf("invalid block (%s) of account[%s]", hash, account.String())
+		}
+	}
+	return nil, fmt.Errorf("account[%s] is not exist", account.String())
 }
 
 func (s *Session) Import(content string, password string) error {
@@ -322,12 +352,41 @@ func (s *Session) SetDeterministicIndex(index int64) error {
 	})
 }
 
-func (s *Session) GetWork() (types.Work, error) {
-	panic("implement me")
+func (s *Session) GetWork(hash types.Hash) (types.Work, error) {
+	var work types.Work
+	err := s.ViewInTx(func(txn db.StoreTxn) error {
+		key := []byte{idPrefixWork}
+		key = append(key, hash[:]...)
+		return txn.Get(key, func(val []byte, b byte) error {
+			return work.UnmarshalBinary(val)
+		})
+	})
+
+	if err != nil {
+		worker, err := types.NewWorker(work, hash)
+		work = worker.NewWork()
+		if err != nil {
+			return work, err
+		}
+
+		//cache to db
+		_ = s.setWork(hash, work)
+	}
+
+	return work, nil
 }
 
-func (s *Session) SetWork(work types.Work) error {
-	panic("implement me")
+func (s *Session) setWork(hash types.Hash, work types.Work) error {
+	return s.UpdateInTx(func(txn db.StoreTxn) error {
+		key := []byte{idPrefixWork}
+		key = append(key, hash[:]...)
+		buf := make([]byte, work.Len())
+		err := work.MarshalBinaryTo(buf)
+		if err != nil {
+			return err
+		}
+		return txn.Set(key, buf)
+	})
 }
 
 func (s *Session) IsAccountExist(addr types.Address) bool {
@@ -369,15 +428,18 @@ func (s *Session) IsAccountExist(addr types.Address) bool {
 }
 
 func (s *Session) ValidPassword() bool {
-	panic("implement me")
-}
-
-func (s *Session) AttemptPassword(password string) error {
-	panic("implement me")
+	_, err := s.GetSeed()
+	return err == nil
 }
 
 func (s *Session) ChangePassword(password string) error {
-	panic("implement me")
+	seed, err := s.GetSeed()
+	if err != nil {
+		return nil
+	}
+	//set new password
+	s.setPassword(password)
+	return s.SetSeed(seed)
 }
 
 func (s *Session) getKey(t byte) []byte {
@@ -385,6 +447,15 @@ func (s *Session) getKey(t byte) []byte {
 	key = append(key, t)
 	key = append(key, s.walletId...)
 	return key[:]
+}
+
+func (s *Session) getPassword() []byte {
+	return s.password
+}
+
+//TODO: implement password fan
+func (s *Session) setPassword(password string) {
+	s.password = []byte(password)
 }
 
 // max returns the larger of x or y.

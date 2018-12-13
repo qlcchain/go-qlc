@@ -27,7 +27,7 @@ var (
 
 func generateBlock() types.Block {
 	var blk types.StateBlock
-	random.Bytes(blk.PreviousHash[:])
+	random.Bytes(blk.Previous[:])
 	random.Bytes(blk.Representative[:])
 	random.Bytes(blk.Address[:])
 	random.Bytes(blk.Signature[:])

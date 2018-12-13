@@ -31,6 +31,15 @@ const (
 //Hash blake2b hash
 type Hash [HashSize]byte
 
+func NewHash(hexStr string) (Hash, error) {
+	h := Hash{}
+	err := h.Of(hexStr)
+	if err != nil {
+		return h, err
+	}
+	return h, nil
+}
+
 //IsZero check hash is zero
 func (h *Hash) IsZero() bool {
 	for _, b := range h {
@@ -74,8 +83,8 @@ func (h *Hash) Len() int {
 }
 
 //ExtensionType implements Extension.MarshalBinaryTo interface
-func (h *Hash) MarshalBinaryTo(text []byte) error {
-	copy(text, (*h)[:])
+func (h Hash) MarshalBinaryTo(text []byte) error {
+	copy(text, h[:])
 	return nil
 }
 
@@ -90,7 +99,7 @@ func (h *Hash) UnmarshalBinary(text []byte) error {
 }
 
 //MarshalJSON implements json.Marshaler interface
-func (h *Hash) MarshalJSON() ([]byte, error) {
+func (h Hash) MarshalJSON() ([]byte, error) {
 	return []byte(h.String()), nil
 }
 
