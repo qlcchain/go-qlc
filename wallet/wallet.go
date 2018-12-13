@@ -3,6 +3,7 @@ package wallet
 import (
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"io"
 )
@@ -54,10 +55,11 @@ type walletStoreApi interface {
 	GetDeterministicIndex() (int64, error)
 	ResetDeterministicIndex() error
 	SetDeterministicIndex(index int64) error
-	GetWork(hash types.Hash) (types.Work, error)
+	GetWork(hash types.Address) (types.Work, error)
 	GetRepresentative() (types.Address, error)
 	SetRepresentative(address types.Address) error
 	IsAccountExist(addr types.Address) bool
+	GetAccounts() ([]types.Address, error)
 	ChangePassword(password string) error
 	EnterPassword(password string) error
 
@@ -69,12 +71,12 @@ type walletAction interface {
 	Import(content string, password string) error
 	Export(path string) error
 
-	GetBalances() ([]*types.AccountMeta, error)
-	GetBalance(account types.Address) (*types.AccountMeta, error)
-	GetPending(account types.Address) (map[types.Hash]types.Balance, error)
+	GetRawKey(account types.Address) (ed25519.PublicKey, ed25519.PrivateKey, error)
+	//GetBalances get all account balance ordered by token type
+	GetBalances() (map[types.Hash]types.Balance, error)
 	SearchPending() error
-	Send(source types.Address, token types.Hash, to types.Address, amount types.Amount) (*types.Block, error)
-	Receive(block types.Hash) (*types.Block, error)
+	Send(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error)
+	Receive(sendBlock types.Block) (*types.Block, error)
 	Change(account types.Address, representative types.Address) (*types.Block, error)
 }
 
