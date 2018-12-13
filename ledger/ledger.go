@@ -9,7 +9,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"io"
 	"math/rand"
-	"strconv"
 	"sync"
 )
 
@@ -781,6 +780,8 @@ func (ls *LedgerSession) CountFrontiers() (uint64, error) {
 	}
 	return count, nil
 }
+
+//getTxn get txn by `update` mode
 func (ls *LedgerSession) getTxn(update bool) db.StoreTxn {
 	if ls.reuse {
 		if update != ls.mode || ls.txn == nil {
@@ -792,12 +793,13 @@ func (ls *LedgerSession) getTxn(update bool) db.StoreTxn {
 		ls.Close()
 		ls.txn = ls.NewTransaction(update)
 	}
-	logger.Debugf("txn: %p, flag: %s", ls.txn, strconv.FormatBool(update))
+	//logger.Debugf("txn: %p, mode: %s", ls.txn, strconv.FormatBool(update))
 	return ls.txn
 }
+
+// releaseTxn commit change and close txn
 func (ls *LedgerSession) releaseTxn() {
 	if !ls.reuse {
-		logger.Debug("commit")
 		err := ls.txn.Commit(nil)
 		if err != nil {
 			logger.Fatal(err)
@@ -877,11 +879,11 @@ func (ls *LedgerSession) Pending(account types.Address) (map[types.Hash]types.Ba
 		return cache, err
 	}
 	for _, tm := range am.Tokens {
-		cache[tm.Type] = tm.Pending
-	}
-
-	if len(cache) == 0 {
-		return nil, fmt.Errorf("can not find any token pending")
+		info, err := ls.GetPending(account, tm.Type)
+		if err != nil {
+			continue
+		}
+		cache[tm.Type] = info.Amount
 	}
 
 	return cache, nil
@@ -905,17 +907,12 @@ func (ls *LedgerSession) Balance(account types.Address) (map[types.Hash]types.Ba
 }
 
 func (ls *LedgerSession) TokenPending(account types.Address, token types.Hash) (types.Balance, error) {
-	am, err := ls.GetAccountMeta(account)
+	info, err := ls.GetPending(account, token)
 	if err != nil {
 		return types.ZeroBalance, err
 	}
-	for _, tm := range am.Tokens {
-		if tm.Type == token {
-			return tm.Pending, nil
-		}
-	}
 
-	return types.ZeroBalance, fmt.Errorf("can not find %s pending", token)
+	return info.Amount, nil
 }
 
 func (ls *LedgerSession) TokenBalance(account types.Address, token types.Hash) (types.Balance, error) {
