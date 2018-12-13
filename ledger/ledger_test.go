@@ -757,7 +757,7 @@ func parsePending(t *testing.T) (address types.Address, hash types.Hash, pending
 func addPending(t *testing.T, s *LedgerSession) {
 	address, hash, pendinfo := parsePending(t)
 
-	err := s.AddPending(address, hash, &pendinfo)
+	err := s.AddPending(types.PendingKey{Address: address, Hash: hash}, &pendinfo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -778,7 +778,7 @@ func TestLedger_GetPending(t *testing.T) {
 	defer session.Close()
 	addPending(t, session)
 	address, hash, _ := parsePending(t)
-	p, err := session.GetPending(address, hash)
+	p, err := session.GetPending(types.PendingKey{Address: address, Hash: hash})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -792,7 +792,7 @@ func TestLedger_DeletePending(t *testing.T) {
 	defer session.Close()
 	address, hash, _ := parsePending(t)
 
-	err := session.DeletePending(address, hash)
+	err := session.DeletePending(types.PendingKey{Address: address, Hash: hash})
 	if err != nil {
 		t.Fatal(err)
 	}

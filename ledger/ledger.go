@@ -640,22 +640,20 @@ func (ls *LedgerSession) GetRepresentation(address types.Address) (types.Balance
 	}
 	return amount, nil
 }
-func (ls *LedgerSession) getPendingKey(destination types.Address, hash types.Hash) []byte {
-	var key [1 + types.PendingKeySize]byte
-	key[0] = idPrefixPending
-	copy(key[1:], destination[:])
-	copy(key[1+types.AddressSize:], hash[:])
+func (ls *LedgerSession) getPendingKey(pendingKey types.PendingKey) []byte {
+	key := []byte{idPrefixPending}
+	_, _ = pendingKey.MarshalMsg(key[1:])
 	return key[:]
 }
 
 // ------------------- pending  --------------------
 
-func (ls *LedgerSession) AddPending(destination types.Address, hash types.Hash, pending *types.PendingInfo) error {
+func (ls *LedgerSession) AddPending(pendingKey types.PendingKey, pending *types.PendingInfo) error {
 	pendingBytes, err := pending.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
-	key := ls.getPendingKey(destination, hash)
+	key := ls.getPendingKey(pendingKey)
 	txn := ls.getTxn(true)
 	defer ls.releaseTxn()
 
@@ -670,8 +668,9 @@ func (ls *LedgerSession) AddPending(destination types.Address, hash types.Hash, 
 	}
 	return txn.Set(key, pendingBytes)
 }
-func (ls *LedgerSession) GetPending(destination types.Address, hash types.Hash) (*types.PendingInfo, error) {
-	key := ls.getPendingKey(destination, hash)
+
+func (ls *LedgerSession) GetPending(pendingKey types.PendingKey) (*types.PendingInfo, error) {
+	key := ls.getPendingKey(pendingKey)
 	var pending types.PendingInfo
 	txn := ls.getTxn(true)
 	defer ls.releaseTxn()
@@ -691,13 +690,15 @@ func (ls *LedgerSession) GetPending(destination types.Address, hash types.Hash) 
 	return &pending, nil
 
 }
-func (ls *LedgerSession) DeletePending(destination types.Address, hash types.Hash) error {
-	key := ls.getPendingKey(destination, hash)
+
+func (ls *LedgerSession) DeletePending(pendingKey types.PendingKey) error {
+	key := ls.getPendingKey(pendingKey)
 	txn := ls.getTxn(true)
 	defer ls.releaseTxn()
 
 	return txn.Delete(key)
 }
+
 func (ls *LedgerSession) getFrontierKey(hash types.Hash) []byte {
 	var key [1 + types.HashSize]byte
 	key[0] = idPrefixFrontier
@@ -874,18 +875,25 @@ func (ls *LedgerSession) Token(hash types.Hash) (*types.TokenMeta, error) {
 	return nil, fmt.Errorf("invalid block by hash(%s)", hash)
 }
 
-func (ls *LedgerSession) Pending(account types.Address) (map[types.Hash]types.Balance, error) {
-	cache := make(map[types.Hash]types.Balance)
-	am, err := ls.GetAccountMeta(account)
-	if err != nil {
-		return cache, err
-	}
-	for _, tm := range am.Tokens {
-		info, err := ls.GetPending(account, tm.Type)
+func (ls *LedgerSession) Pending(account types.Address) ([]*types.PendingKey, error) {
+	var cache []*types.PendingKey
+	txn := ls.getTxn(true)
+	defer ls.releaseTxn()
+
+	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
+		pendingKey := types.PendingKey{}
+		_, err := pendingKey.UnmarshalMsg(key)
 		if err != nil {
-			continue
+			return nil
 		}
-		cache[tm.Type] = info.Amount
+		if pendingKey.Address == account {
+			cache = append(cache, &pendingKey)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	return cache, nil
@@ -908,13 +916,35 @@ func (ls *LedgerSession) Balance(account types.Address) (map[types.Hash]types.Ba
 	return cache, nil
 }
 
-func (ls *LedgerSession) TokenPending(account types.Address, token types.Hash) (types.Balance, error) {
-	info, err := ls.GetPending(account, token)
+func (ls *LedgerSession) TokenPending(account types.Address, token types.Hash) ([]*types.PendingKey, error) {
+	var cache []*types.PendingKey
+	txn := ls.getTxn(true)
+	defer ls.releaseTxn()
+
+	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
+		pendingKey := types.PendingKey{}
+		_, err := pendingKey.UnmarshalMsg(key)
+		if err != nil {
+			return nil
+		}
+		if pendingKey.Address == account {
+			var pending types.PendingInfo
+			_, err := pending.UnmarshalMsg(val)
+			if err != nil {
+				return err
+			}
+			if pending.Type == token {
+				cache = append(cache, &pendingKey)
+			}
+		}
+		return nil
+	})
+
 	if err != nil {
-		return types.ZeroBalance, err
+		return nil, err
 	}
 
-	return info.Amount, nil
+	return cache, nil
 }
 
 func (ls *LedgerSession) TokenBalance(account types.Address, token types.Hash) (types.Balance, error) {

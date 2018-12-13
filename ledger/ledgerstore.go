@@ -46,9 +46,9 @@ type Store interface {
 	WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error
 	CountUncheckedBlocks() (uint64, error)
 	// pending CURD
-	AddPending(destination types.Address, hash types.Hash, pending *types.PendingInfo) error
-	GetPending(destination types.Address, hash types.Hash) (*types.PendingInfo, error)
-	DeletePending(destination types.Address, hash types.Hash) error
+	AddPending(pendingKey types.PendingKey, pending *types.PendingInfo) error
+	GetPending(pendingKey types.PendingKey) (*types.PendingInfo, error)
+	DeletePending(pendingKey types.PendingKey) error
 	// frontier CURD
 	AddFrontier(frontier *types.Frontier) error
 	GetFrontier(hash types.Hash) (*types.Frontier, error)
@@ -63,13 +63,13 @@ type Store interface {
 	//Token get token meta by block hash
 	Token(hash types.Hash) (*types.TokenMeta, error)
 	//Pending get account pending (token_hash->pending)
-	Pending(account types.Address) (map[types.Hash]types.Balance, error)
+	Pending(account types.Address) ([]*types.PendingKey, error)
 	//Balance get account balance (token_hash->pending)
 	Balance(account types.Address) (map[types.Hash]types.Balance, error)
 	//TokenPending get account token pending
-	TokenPending(account types.Address, token types.Hash) (types.Balance, error)
-	//BalancePending get account token balance
-	BalancePending(account types.Address, token types.Hash) (types.Balance, error)
+	TokenPending(account types.Address, token types.Hash) ([]*types.PendingKey, error)
+	//TokenBalance get account token balance
+	TokenBalance(account types.Address, token types.Hash) (types.Balance, error)
 	//Weight get vote weight for PoS
 	Weight(account types.Address) types.Balance
 	//Rollback blocks until `hash' doesn't exist
