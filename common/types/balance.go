@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"math/big"
 
@@ -177,7 +178,7 @@ func (b *Balance) ExtensionType() int8 {
 func (b *Balance) Len() int { return BalanceSize }
 
 //ExtensionType implements Extension.UnmarshalBinary interface
-func (b *Balance) MarshalBinaryTo(text []byte) error {
+func (b Balance) MarshalBinaryTo(text []byte) error {
 	copy(text, b.Bytes(binary.BigEndian))
 	return nil
 }
@@ -193,30 +194,17 @@ func (b *Balance) UnmarshalBinary(text []byte) error {
 
 }
 
-//MarshalJSON implements json.Marshaler interface
-func (b *Balance) MarshalJSON() ([]byte, error) {
-	return []byte(b.String()), nil
-}
-
-//UnmarshalJSON implements json.UnmarshalJSON interface
-func (b *Balance) UnmarshalJSON(bb []byte) error {
-	s := util.TrimQuotes(string(bb))
-	err := b.UnmarshalText([]byte(s))
-	return err
-}
-
 // MarshalText implements the encoding.TextMarshaler interface.
-func (b *Balance) MarshalText() ([]byte, error) {
-	return []byte(b.String()), nil
+func (b Balance) MarshalText() ([]byte, error) {
+	return []byte(hex.EncodeToString(b.Bytes(binary.BigEndian))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (b *Balance) UnmarshalText(text []byte) error {
-	balance, err := ParseBalance(string(text), "Mqlc")
+	balance, err := ParseBalanceString(string(text))
 	if err != nil {
 		return err
 	}
-
 	*b = balance
 	return nil
 }

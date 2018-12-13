@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
 	"testing"
 )
 
@@ -96,23 +97,28 @@ func TestQlcBalance(t *testing.T) {
 }
 
 func TestBalance_MarshalJSON(t *testing.T) {
-	b1, err := ParseBalance("600000000.00000000", "Mqlc")
-	if err != nil {
-		t.Fatal(err)
-	}
+	b1 := Balance{Hi: 0, Lo: 1000}
 	bs, err := json.Marshal(&b1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(string(bs))
-}
-
-func TestBalance_UnmarshalJSON(t *testing.T) {
-	b := "600000000"
-	var b1 Balance
-	err := json.Unmarshal([]byte(b), &b1)
+	t.Log(string(bs))
+	b2 := Balance{}
+	err = json.Unmarshal(bs, &b2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(b1)
+	if b1.Compare(b2) != BalanceCompEqual {
+		t.Fatal("b1!=b2")
+	}
+	t.Log(b1.BigInt())
+}
+
+func TestParseBalanceInts(t *testing.T) {
+	b1 := Balance(uint128.FromInts(0, 1041321))
+	bytes, err := json.Marshal(b1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(bytes), b1.BigInt())
 }
