@@ -24,7 +24,6 @@ type TokenMeta struct {
 	RepBlock     Hash    `msg:"rep,extension" json:"rep"`
 	OpenBlock    Hash    `msg:"open,extension" json:"open"`
 	Balance      Balance `msg:"balance,extension" json:"balance"`
-	Pending      Balance `msg:"pending,extension" json:"pending"`
 	BelongTo     Address `msg:"account,extension" json:"account"`
 	Modified     int64   `msg:"modified" json:"modified"`
 	BlockCount   int64   `msg:"blockCount," json:"block_count"`

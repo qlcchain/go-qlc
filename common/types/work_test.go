@@ -16,7 +16,6 @@ import (
 
 func TestBlockWork(t *testing.T) {
 	work := Work(0x880ab6aa90a59d5d)
-	threshold := uint64(0xfffffe0000000000)
 	var hash Hash
 	err := hash.Of("2C353DA641277FD8379354307A54BECE090C51E52FB460EA5A8674B702BDCE5E")
 
@@ -24,11 +23,11 @@ func TestBlockWork(t *testing.T) {
 		t.Errorf("hash not valid")
 	}
 
-	if !work.IsValid(hash, threshold) {
+	if !work.IsValid(hash) {
 		t.Errorf("work not valid")
 	}
 
-	worker, err := NewWorker(work, hash, threshold)
+	worker, err := NewWorker(work, hash)
 	if err != nil {
 		t.Fatal("NewWorker failed.")
 	}

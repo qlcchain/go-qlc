@@ -29,6 +29,8 @@ const (
 	WorkExtensionType = 104
 )
 
+var WorkThreshold = uint64(0xfffffe0000000000)
+
 // Work PoW work
 type Work uint64
 
@@ -41,8 +43,8 @@ type Worker struct {
 }
 
 // IsValid check work is valid
-func (w Work) IsValid(root Hash, threshold uint64) bool {
-	worker, err := NewWorker(w, root, threshold)
+func (w Work) IsValid(root Hash) bool {
+	worker, err := NewWorker(w, root)
 	if err != nil {
 		return false
 	}
@@ -107,14 +109,14 @@ func (w *Work) UnmarshalJSON(b []byte) error {
 }
 
 // NewWorker create new worker
-func NewWorker(work Work, root Hash, threshold uint64) (*Worker, error) {
+func NewWorker(work Work, root Hash) (*Worker, error) {
 	h, err := blake2b.New(WorkSize, nil)
 	if err != nil {
 		return &Worker{}, err
 	}
 
 	return &Worker{
-		Threshold: threshold,
+		Threshold: WorkThreshold,
 		root:      &root,
 		work:      work,
 		hash:      h,

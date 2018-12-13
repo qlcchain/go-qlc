@@ -1028,7 +1028,7 @@ func TestLedgerSession_TokenPending(t *testing.T) {
 	token := types.Hash{}
 	_ = token.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918")
 	pending, err := session.TokenPending(addr, token)
-	if err != nil {
+	if err != nil && err != ErrPendingNotFound {
 		t.Fatal(err)
 	}
 	t.Log(pending)
