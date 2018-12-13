@@ -8,8 +8,7 @@ import (
 )
 
 var logger = log.NewLogger("sync")
-var zeroHashString = "0000000000000000000000000000000000000000000000000000000000000000"
-var zeroHash types.Hash
+var zeroHash = types.Hash{}
 
 //  sync Message Type
 const (
@@ -51,7 +50,6 @@ func (ss *ServiceSync) SetLedger(ledger *ledger.Ledger) {
 func (ss *ServiceSync) Start() {
 	logger.Info("Started sync Service.")
 
-	zeroHash.Of(zeroHashString)
 	if len(frontiers) == 0 {
 		ss.getLocalFrontier()
 		next()
@@ -225,7 +223,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 								return err
 							}
 							bulkblk = append(bulkblk, blk)
-							endHash = blk.GetPreviousHash()
+							endHash = blk.GetPrevious()
 							if endHash.IsZero() == true {
 								break
 							}
@@ -251,7 +249,7 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 							}
 							bulkblk = append(bulkblk, blk)
 
-							endHash = blk.GetPreviousHash()
+							endHash = blk.GetPrevious()
 							if endHash == startHash {
 								break
 							}
@@ -305,7 +303,7 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 				return err
 			}
 			bulkblk = append(bulkblk, blk)
-			endHash = blk.GetPreviousHash()
+			endHash = blk.GetPrevious()
 			if endHash.IsZero() == true {
 				break
 			}
@@ -330,7 +328,7 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 				return err
 			}
 			bulkblk = append(bulkblk, blk)
-			endHash = blk.GetPreviousHash()
+			endHash = blk.GetPrevious()
 			if endHash == startHash {
 				break
 			}
@@ -361,9 +359,9 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 	if err != nil {
 		return err
 	}
-	previousHash := block.GetPreviousHash()
+	previousHash := block.GetPrevious()
 	if previousHash.IsZero() == false {
-		currentfr, err := session.GetFrontier(block.GetPreviousHash())
+		currentfr, err := session.GetFrontier(block.GetPrevious())
 		if err != nil {
 			return err
 		}
@@ -371,7 +369,7 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   currentfr.OpenBlock,
 		}
-		err = session.DeleteFrontier(block.GetPreviousHash())
+		err = session.DeleteFrontier(block.GetPrevious())
 		if err != nil {
 			return err
 		}
@@ -404,9 +402,9 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 	if err != nil {
 		return err
 	}
-	previousHash := block.GetPreviousHash()
+	previousHash := block.GetPrevious()
 	if previousHash.IsZero() == false {
-		currentfr, err := session.GetFrontier(block.GetPreviousHash())
+		currentfr, err := session.GetFrontier(block.GetPrevious())
 		if err != nil {
 			return err
 		}
@@ -414,7 +412,7 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   currentfr.OpenBlock,
 		}
-		err = session.DeleteFrontier(block.GetPreviousHash())
+		err = session.DeleteFrontier(block.GetPrevious())
 		if err != nil {
 			return err
 		}

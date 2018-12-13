@@ -85,7 +85,7 @@ func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 		return nil, err
 	}
 	blockType := bp.Blocktype
-	blk, err := types.NewBlock(byte(blockType))
+	blk, err := types.NewBlock(types.BlockType(blockType))
 	if err != nil {
 		return nil, err
 	}

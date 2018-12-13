@@ -170,7 +170,7 @@ func (ls *LedgerSession) GetBlock(hash types.Hash) (types.Block, error) {
 	defer ls.releaseTxn()
 
 	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if blk, err = types.NewBlock(b); err != nil {
+		if blk, err = types.NewBlock(types.BlockType(b)); err != nil {
 			return err
 		}
 		if _, err = blk.UnmarshalMsg(val); err != nil {
@@ -193,7 +193,7 @@ func (ls *LedgerSession) GetBlocks() ([]*types.Block, error) {
 	defer ls.releaseTxn()
 
 	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) (err error) {
-		blk, err := types.NewBlock(b)
+		blk, err := types.NewBlock(types.BlockType(b))
 		if err != nil {
 			return
 		}
@@ -259,7 +259,7 @@ func (ls *LedgerSession) GetRandomBlock() (types.Block, error) {
 
 	err = txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		if temp == index {
-			blk, err = types.NewBlock(b)
+			blk, err = types.NewBlock(types.BlockType(b))
 			if err != nil {
 				return err
 			}
@@ -326,7 +326,7 @@ func (ls *LedgerSession) GetUncheckedBlock(parentHash types.Hash, kind types.Unc
 
 	var blk types.Block
 	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if blk, err = types.NewBlock(b); err != nil {
+		if blk, err = types.NewBlock(types.BlockType(b)); err != nil {
 			return err
 		}
 		if _, err = blk.UnmarshalMsg(val); err != nil {
@@ -821,20 +821,19 @@ func (ls *LedgerSession) BatchUpdate(fn func() error) error {
 	return txn.Commit(nil)
 }
 
-func (ls *LedgerSession) Latest(account types.Address, token types.Hash) (types.Hash, error) {
-	am, err := ls.GetAccountMeta(account)
+func (ls *LedgerSession) Latest(account types.Address, token types.Hash) types.Hash {
 	zero := types.Hash{}
+	am, err := ls.GetAccountMeta(account)
 	if err != nil {
-		return zero, err
+		return zero
 	}
 
 	for _, t := range am.Tokens {
 		if t.Type == token {
-			return t.Header, nil
+			return t.Header
 		}
 	}
-	//TODO: hash to token name
-	return zero, fmt.Errorf("can not find token %s", token)
+	return zero
 }
 
 func (ls *LedgerSession) Account(hash types.Hash) (*types.AccountMeta, error) {
@@ -856,20 +855,23 @@ func (ls *LedgerSession) Token(hash types.Hash) (*types.TokenMeta, error) {
 	if err != nil {
 		return nil, err
 	}
-	blkToken := block.GetToken()
-	addr := block.GetAddress()
-	am, err := ls.GetAccountMeta(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, tm := range am.Tokens {
-		if tm.Type == blkToken {
-			return tm, nil
+	if b, ok := block.(*types.StateBlock); ok {
+		token := b.GetToken()
+		addr := block.GetAddress()
+		am, err := ls.GetAccountMeta(addr)
+		if err != nil {
+			return nil, err
 		}
+
+		for _, tm := range am.Tokens {
+			if tm.Type == token {
+				return tm, nil
+			}
+		}
+		//TODO: hash to token name
+		return nil, fmt.Errorf("can not find token %s", token)
 	}
-	//TODO: hash to token name
-	return nil, fmt.Errorf("can not find token %s", blkToken)
+	return nil, fmt.Errorf("invalid block by hash(%s)", hash)
 }
 
 func (ls *LedgerSession) Pending(account types.Address) (map[types.Hash]types.Balance, error) {

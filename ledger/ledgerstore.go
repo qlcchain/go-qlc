@@ -56,8 +56,8 @@ type Store interface {
 	DeleteFrontier(hash types.Hash) error
 	CountFrontiers() (uint64, error)
 
-	//Latest block hash by account and token type
-	Latest(account types.Address, token types.Hash) (types.Hash, error)
+	//Latest block hash by account and token type, if not exist, return zero hash
+	Latest(account types.Address, token types.Hash) types.Hash
 	//Account get account meta by block hash
 	Account(hash types.Hash) (*types.AccountMeta, error)
 	//Token get token meta by block hash

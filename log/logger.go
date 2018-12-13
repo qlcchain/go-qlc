@@ -39,7 +39,7 @@ func Init(config *config.Config) error {
 		if err != nil {
 			initErr = err
 		}
-		logfile := filepath.Join(logFolder, logfile)
+		logfile, _ := filepath.Abs(filepath.Join(logFolder, logfile))
 		lumlog = lumberjack.Logger{
 			Filename:   logfile,
 			MaxSize:    10, // megabytesÒ

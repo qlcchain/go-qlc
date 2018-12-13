@@ -232,3 +232,7 @@ func (addr *Address) UnmarshalText(text []byte) error {
 func (addr *Address) MarshalText() (text []byte, err error) {
 	return []byte(addr.String()), nil
 }
+
+func (addr *Address) ToHash() Hash {
+	return Hash(*addr)
+}

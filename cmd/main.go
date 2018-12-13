@@ -14,6 +14,12 @@ import (
 	"os"
 )
 
+var (
+	version   string
+	sha1ver   string // sha1 revision used to build the program
+	buildTime string // when the executable was built
+)
+
 func main() {
 	var h bool
 	var file string
@@ -28,11 +34,11 @@ func main() {
 	fmt.Println("cfg file: ", file)
 
 	flag.Usage = func() {
-		_, _ = fmt.Fprintf(os.Stdout, `gqlc version: gqlc/1.10.0
-Usage: gqlc [-config filename] [-c filename]
+		_, _ = fmt.Fprintf(os.Stdout, `gqlc version: %s-%s.%s
+Usage: gqlc [-config filename] [-h]
 
 Options:
-`)
+`, version, sha1ver, buildTime)
 		flag.PrintDefaults()
 	}
 

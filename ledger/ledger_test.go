@@ -167,7 +167,7 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 
 func generateBlock() types.Block {
 	var blk types.StateBlock
-	random.Bytes(blk.PreviousHash[:])
+	random.Bytes(blk.Previous[:])
 	random.Bytes(blk.Representative[:])
 	random.Bytes(blk.Address[:])
 	random.Bytes(blk.Signature[:])
@@ -325,7 +325,7 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 
 func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, kind types.UncheckedKind) {
 	_ = parentHash.Of("d66750ccbb0ff65db134efaaec31d0b123a557df34e7e804d6884447ee589b3c")
-	blk, _ = types.NewBlock(byte(types.State))
+	blk, _ = types.NewBlock(types.State)
 	blocks := parseBlocks(t, "testdata/uncheckedblock.json")
 	fmt.Println(blocks)
 	blk = blocks[0]
@@ -904,10 +904,7 @@ func TestLedgerSession_Latest(t *testing.T) {
 	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 	token := types.Hash{}
 	_ = token.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918")
-	hash, err := session.Latest(addr, token)
-	if err != nil {
-		t.Fatal(err)
-	}
+	hash := session.Latest(addr, token)
 
 	latest := types.Hash{}
 	_ = latest.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448")
