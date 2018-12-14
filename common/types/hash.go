@@ -10,10 +10,7 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
-	"strings"
-
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
 )
@@ -107,17 +104,6 @@ func (h Hash) MarshalJSON() ([]byte, error) {
 func (h *Hash) UnmarshalJSON(b []byte) error {
 	err := h.Of(string(b))
 	return err
-}
-
-// Sign hash by privateKey
-func (h *Hash) Sign(privateKey ed25519.PrivateKey) (Signature, error) {
-	sig := hex.EncodeToString(ed25519.Sign(privateKey, h[:]))
-	s := Signature{}
-	err := s.Of(strings.ToUpper(sig))
-	if err != nil {
-		return s, err
-	}
-	return s, nil
 }
 
 //func (h *Hash) UnmarshalText(text []byte) error {

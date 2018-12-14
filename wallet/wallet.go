@@ -3,7 +3,6 @@ package wallet
 import (
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"io"
 )
@@ -71,7 +70,7 @@ type walletAction interface {
 	Import(content string, password string) error
 	Export(path string) error
 
-	GetRawKey(account types.Address) (ed25519.PublicKey, ed25519.PrivateKey, error)
+	GetRawKey(account types.Address) (*types.Account, error)
 	//GetBalances get all account balance ordered by token type
 	GetBalances() (map[types.Hash]types.Balance, error)
 	SearchPending() error

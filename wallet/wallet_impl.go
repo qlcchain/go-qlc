@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -231,7 +230,7 @@ func (s *Session) SearchPending() error {
 }
 
 func (s *Session) Send(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error) {
-	_, priv, err := s.GetRawKey(source)
+	acc, err := s.GetRawKey(source)
 	if err != nil {
 		return nil, err
 	}
@@ -262,11 +261,7 @@ func (s *Session) Send(source types.Address, token types.Hash, to types.Address,
 			sb.Previous = tm.Header
 			sb.Representative = repBlock.(*types.StateBlock).Representative
 			sb.Work, _ = s.GetWork(source)
-			h := sb.GetHash()
-			sb.Signature, err = h.Sign(priv)
-			if err != nil {
-				return nil, err
-			}
+			sb.Signature = acc.Sign(sb.GetHash())
 			if !sb.IsValid() {
 				sb.Work = s.generateWork(sb.Root())
 			}
@@ -306,7 +301,7 @@ func (s *Session) Receive(sendBlock types.Block) (*types.Block, error) {
 		return nil, fmt.Errorf("can not fetch account(%s) rep", account)
 	}
 
-	_, priv, err := s.GetRawKey(account)
+	acc, err := s.GetRawKey(account)
 
 	if err != nil {
 		return nil, err
@@ -322,11 +317,7 @@ func (s *Session) Receive(sendBlock types.Block) (*types.Block, error) {
 		sb.Token = tm.Type
 		sb.Extra = types.Hash{}
 		sb.Work, err = s.GetWork(account)
-		h := sb.GetHash()
-		sb.Signature, err = h.Sign(priv)
-		if err != nil {
-			return nil, err
-		}
+		sb.Signature = acc.Sign(sb.GetHash())
 		if !sb.IsValid() {
 			sb.Work = s.generateWork(sb.Root())
 		}
@@ -364,7 +355,7 @@ func (s *Session) Change(account types.Address, representative types.Address) (*
 		}
 		tm, err := session.GetTokenMeta(account, common.ChainTokenType)
 		if newSb, ok := changeBlock.(*types.StateBlock); ok {
-			_, priv, err := s.GetRawKey(account)
+			acc, err := s.GetRawKey(account)
 			if err != nil {
 				return nil, err
 			}
@@ -379,12 +370,7 @@ func (s *Session) Change(account types.Address, representative types.Address) (*
 			if err != nil {
 				return nil, err
 			}
-			hash := newSb.GetHash()
-			newSb.Signature, err = hash.Sign(priv)
-			if err != nil {
-				return nil, err
-			}
-
+			newSb.Signature = acc.Sign(newSb.GetHash())
 			if !newSb.IsValid() {
 				newSb.Work = s.generateWork(newSb.Root())
 				_ = s.setWork(account, newSb.Work)
@@ -490,7 +476,7 @@ func (s *Session) setWork(account types.Address, work types.Work) error {
 }
 
 func (s *Session) IsAccountExist(addr types.Address) bool {
-	_, _, err := s.GetRawKey(addr)
+	_, err := s.GetRawKey(addr)
 	return err == nil
 }
 
@@ -509,13 +495,13 @@ func (s *Session) ChangePassword(password string) error {
 	return s.SetSeed(seed)
 }
 
-func (s *Session) GetRawKey(account types.Address) (ed25519.PublicKey, ed25519.PrivateKey, error) {
+func (s *Session) GetRawKey(account types.Address) (*types.Account, error) {
 	session := s.ledger.NewLedgerSession(false)
 	defer session.Close()
 
 	_, err := session.GetAccountMeta(account)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	index, err := s.GetDeterministicIndex()
@@ -525,7 +511,7 @@ func (s *Session) GetRawKey(account types.Address) (ed25519.PublicKey, ed25519.P
 
 	seedArray, err := s.GetSeed()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	max := max(uint32(index), uint32(s.maxAccountCount))
@@ -538,11 +524,11 @@ func (s *Session) GetRawKey(account types.Address) (ed25519.PublicKey, ed25519.P
 		}
 		address := types.PubToAddress(pub)
 		if address == account {
-			return pub, priv, nil
+			return types.NewAccount(priv), nil
 		}
 	}
 
-	return nil, nil, fmt.Errorf("can not fetch account[%s]'s raw key", account.String())
+	return nil, fmt.Errorf("can not fetch account[%s]'s raw key", account.String())
 }
 
 func (s *Session) GetAccounts() (accounts []types.Address, err error) {
