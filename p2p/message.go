@@ -6,16 +6,16 @@ import (
 )
 
 var (
-	MagicNumber    = []byte{0x51, 0x4C, 0x43}
+	MagicNumber    = []byte{0x51, 0x4C, 0x43} //QLC
 	CurrentVersion = byte(0x01)
 )
 
 const (
-	QlcMessageHeaderLength      = 20
+	QlcMessageHeaderLength      = 10
 	QlcMessageMagicNumberEndIdx = 3
 	QlcMessageVersionEndIdx     = 4
-	QlcMessageTypeEndIdx        = 16
-	QlcMessageDataLengthEndIdx  = 20
+	QlcMessageTypeEndIdx        = 6
+	QlcMessageDataLengthEndIdx  = 10
 )
 
 type QlcMessage struct {

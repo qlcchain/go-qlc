@@ -1,4 +1,4 @@
-package sync
+package protos
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	test_block_push = `{
+	test_block_publish = `{
       "type": "state",
       "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "previousHash": "b4badad5bf7aa378c35e92b00003c004ba588c6d0a5907db4b866332697876b4",
@@ -22,40 +22,33 @@ var (
 	`
 )
 
-func TestBulkPushPacket(t *testing.T) {
+func TestPublishPacket(t *testing.T) {
 	blk, err := types.NewBlock(types.State)
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json.Unmarshal([]byte(test_block_push), &blk); err != nil {
+	if err = json.Unmarshal([]byte(test_block_publish), &blk); err != nil {
 		t.Fatal(err)
 	}
-	rsp := BulkPush{
-		blk: blk,
+	rsp := PublishBlock{
+		Blk: blk,
 	}
-	bytes, err := BulkPushBlockToProto(&rsp)
+	bytes, err := PublishBlockToProto(&rsp)
 	if err != nil {
 		t.Fatal(err)
 	}
-	block, err := BulkPushBlockFromProto(bytes)
+	block, err := PublishBlockFromProto(bytes)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	//if !reflect.DeepEqual(blk, block) {
-	//	t.Fatal("blk != block")
-	//}
-	if blk.GetType() != block.blk.GetType() {
-		t.Fatal("ID error")
-	}
-	if blk.GetType() != block.blk.GetType() {
+	if blk.GetType() != block.Blk.GetType() {
 		t.Fatal("type error")
 	}
-	if blk.GetPrevious() != block.blk.GetPrevious() {
-		t.Fatal("Previous error")
+	if blk.GetPrevious() != block.Blk.GetPrevious() {
+		t.Fatal("PreviousHash error")
 	}
-	//if blk.GetBalance() != block.blk.GetBalance() {
-	//	t.Fatal("Balance error")
-	//}
-	if blk.GetHash() != block.blk.GetHash() {
+	//	if blk.GetBalance() != block.Blk.GetBalance() {
+	//		t.Fatal("Balance error")
+	//	}
+	if blk.GetHash() != block.Blk.GetHash() {
 		t.Fatal("hash error")
 	}
 }

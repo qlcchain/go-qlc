@@ -3,8 +3,9 @@ package p2p
 import (
 	"context"
 	"errors"
-	"github.com/qlcchain/go-qlc/log"
 	"time"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-crypto"
@@ -43,12 +44,11 @@ type QlcNode struct {
 
 // NewNode return new QlcNode according to the config.
 func NewNode(config *config.Config) (*QlcNode, error) {
-	streamManager := NewStreamManager()
 	node := &QlcNode{
 		cfg:           config,
 		ctx:           context.Background(),
 		boostrapAddrs: config.P2P.BootNodes,
-		streamManager: streamManager,
+		streamManager: NewStreamManager(),
 		ID:            peer.ID(config.ID.PeerID),
 	}
 	privateKey, err := config.DecodePrivateKey()
@@ -57,14 +57,14 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		return nil, err
 	}
 	node.privateKey = privateKey
-	streamManager.SetQlcNode(node)
+	node.streamManager.SetQlcNode(node)
 
 	return node, nil
 }
 func (node *QlcNode) startHost() error {
 	logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
-	host, err := libp2p.New(
+	qlchost, err := libp2p.New(
 		node.ctx,
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(node.privateKey),
@@ -73,15 +73,15 @@ func (node *QlcNode) startHost() error {
 	if err != nil {
 		return err
 	}
-	host.SetStreamHandler(QlcProtocolID, node.handleStream)
-	node.host = host
+	qlchost.SetStreamHandler(QlcProtocolID, node.handleStream)
+	node.host = qlchost
 	kadDht, err := dht.New(node.ctx, node.host)
 	if err != nil {
 		return err
 	}
 	node.kadDht = kadDht
 	node.ping = NewPingService(node.host)
-	node.peerStore = host.Peerstore()
+	node.peerStore = qlchost.Peerstore()
 	node.peerStore.AddPrivKey(node.ID, node.privateKey)
 	node.peerStore.AddPubKey(node.ID, node.privateKey.GetPublic())
 	return nil

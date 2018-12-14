@@ -1,11 +1,11 @@
-package sync
+package protos
 
 import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/sync/pb"
+	"github.com/qlcchain/go-qlc/p2p/protos/pb"
 )
 
 type FrontierReq struct {
@@ -50,12 +50,12 @@ func FrontierReqFromProto(data []byte) (*FrontierReq, error) {
 	if err != nil {
 		fmt.Println("address error")
 	}
-	pb := &FrontierReq{
+	frq := &FrontierReq{
 		StartAddress: address,
 		Age:          fr.Age,
 		Count:        fr.Count,
 	}
-	return pb, nil
+	return frq, nil
 }
 
 type FrontierResponse struct {

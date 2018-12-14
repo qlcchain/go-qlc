@@ -2,28 +2,31 @@ package p2p
 
 import (
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 )
 
 // QlcService service for qlc p2p network
 type QlcService struct {
-	node         *QlcNode
-	dispatcher   *Dispatcher
-	messageEvent *eventQueue
+	node       *QlcNode
+	dispatcher *Dispatcher
+	msgEvent   *EventQueue
+	msgService *MessageService
 }
 
 // NewQlcService create netService
-func NewQlcService(cfg *config.Config) (*QlcService, error) {
+func NewQlcService(cfg *config.Config, ledger *ledger.Ledger) (*QlcService, error) {
 	node, err := NewNode(cfg)
 	if err != nil {
 		return nil, err
 	}
-	event := NeweventQueue()
 	ns := &QlcService{
-		node:         node,
-		dispatcher:   NewDispatcher(),
-		messageEvent: event,
+		node:       node,
+		dispatcher: NewDispatcher(),
+		msgEvent:   NeweventQueue(),
 	}
 	node.SetQlcService(ns)
+	msgService := NewMessageService(ns, ledger)
+	ns.msgService = msgService
 	return ns, nil
 }
 
@@ -32,9 +35,9 @@ func (ns *QlcService) Node() *QlcNode {
 	return ns.node
 }
 
-// Node return the peer node
-func (ns *QlcService) MessageEvent() *eventQueue {
-	return ns.messageEvent
+// EventQueue return EventQueue
+func (ns *QlcService) MessageEvent() *EventQueue {
+	return ns.msgEvent
 }
 
 // Start start p2p manager.
@@ -50,6 +53,8 @@ func (ns *QlcService) Start() error {
 		logger.Error("Failed to start QlcService.")
 		return err
 	}
+	// start msgService
+	ns.msgService.Start()
 	logger.Info("Started QlcService.")
 	return nil
 }

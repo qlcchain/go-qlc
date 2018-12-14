@@ -11,7 +11,7 @@ message FrontierRsp {
     bytes HeaderBlock = 1;
     bytes OpenBlock = 2;
 }
-message BulkPullRep {
+message BulkPullReq {
     bytes StartHash = 1;
     bytes EndHash = 2;
 }
@@ -22,6 +22,21 @@ message BulkPullRsp {
 message BulkPushBlock {
     uint32  blocktype = 1;
     bytes   block = 2;
+}
+message PublishBlock {
+    uint32  blocktype = 1;
+    bytes   block = 2;
+}
+message ConfirmReq {
+    uint32  blocktype = 1;
+    bytes   block = 2;
+}
+message ConfirmAck {
+    bytes   Account = 1;
+    bytes   Signature = 2;
+    bytes   Sequence = 3;
+    uint32  blocktype = 4;
+    bytes   block = 5;
 }
 
 

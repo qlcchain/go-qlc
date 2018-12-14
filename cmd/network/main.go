@@ -2,15 +2,13 @@ package main
 
 import (
 	"fmt"
-	"math"
-	"time"
+	"path/filepath"
 
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/sync"
 )
 
 var (
@@ -53,7 +51,7 @@ var (
 )
 
 func main() {
-	cfgFile := config.DefaultConfigFile()
+	cfgFile := filepath.Join(config.DefaultDataDir(), config.QlcConfigFile)
 	cfg, err := config.NewCfgManager(cfgFile).Load()
 	if err != nil {
 		fmt.Println(err)
@@ -64,15 +62,12 @@ func main() {
 
 	session := ledger.NewLedgerSession(false)
 	defer session.Close()
-	node, err := p2p.NewQlcService(cfg)
+	node, err := p2p.NewQlcService(cfg, ledger)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	node.Start()
-	servicesync := sync.NewSyncService(node)
-	servicesync.SetLedger(ledger)
-	servicesync.Start()
 	blk, err := types.NewBlock(types.State)
 	blk1, err := types.NewBlock(types.State)
 	blk2, err := types.NewBlock(types.State)
@@ -138,21 +133,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 		return
-	}
-	address := types.Address{}
-	Req := sync.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
-	data, err := sync.FrontierReqToProto(Req)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	for {
-		peerID, err := node.Node().StreamManager().RandomPeer()
-		if err != nil {
-			continue
-		}
-		node.SendMessageToPeer(sync.FrontierRequest, data, peerID)
-		time.Sleep(time.Duration(60) * time.Second)
 	}
 	select {}
 }

@@ -1,11 +1,11 @@
-package sync
+package protos
 
 import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/sync/pb"
+	"github.com/qlcchain/go-qlc/p2p/protos/pb"
 )
 
 type BulkPullReqPacket struct {
@@ -23,7 +23,7 @@ func NewBulkPullReqPacket(start, end types.Hash) (packet *BulkPullReqPacket) {
 // ToProto converts domain BulkPull into proto BulkPull
 func BulkPullReqPacketToProto(bp *BulkPullReqPacket) ([]byte, error) {
 
-	bppb := &pb.BulkPullRep{
+	bppb := &pb.BulkPullReq{
 		StartHash: bp.StartHash[:],
 		EndHash:   bp.EndHash[:],
 	}
@@ -36,7 +36,7 @@ func BulkPullReqPacketToProto(bp *BulkPullReqPacket) ([]byte, error) {
 
 /// BulkPullPacketFromProto parse the data into BulkPull message
 func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
-	bp := new(pb.BulkPullRep)
+	bp := new(pb.BulkPullReq)
 	var start, end types.Hash
 	if err := proto.Unmarshal(data, bp); err != nil {
 		fmt.Println("Failed to unmarshal BulkPullPacket message.")
@@ -50,25 +50,27 @@ func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
 	if err != nil {
 		fmt.Println("EndHash error")
 	}
-	pb := &BulkPullReqPacket{
+	bprp := &BulkPullReqPacket{
 		StartHash: start,
 		EndHash:   end,
 	}
-	return pb, nil
+	return bprp, nil
 }
 
 type BulkPullRspPacket struct {
-	blk types.Block
+	Blk types.Block
 }
 
 // ToProto converts domain BulkPull into proto BulkPull
 func BulkPullRspPacketToProto(bp *BulkPullRspPacket) ([]byte, error) {
-	blkdata, err := bp.blk.MarshalMsg(nil)
+	blkdata, err := bp.Blk.MarshalMsg(nil)
 	if err != nil {
 		return nil, err
 	}
+	blocktype := bp.Blk.GetType()
 	bppb := &pb.BulkPullRsp{
-		Block: blkdata,
+		Blocktype: uint32(blocktype),
+		Block:     blkdata,
 	}
 	data, err := proto.Marshal(bppb)
 	if err != nil {
@@ -92,8 +94,8 @@ func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 	if _, err = blk.UnmarshalMsg(bp.Block); err != nil {
 		return nil, err
 	}
-	pb := &BulkPullRspPacket{
-		blk: blk,
+	bprp := &BulkPullRspPacket{
+		Blk: blk,
 	}
-	return pb, nil
+	return bprp, nil
 }
