@@ -4,6 +4,7 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
+	github.com/awnumar/memguard v0.15.0
 	github.com/btcsuite/btcd v0.0.0-20181130015935-7d2daa5bfef2 // indirect
 	github.com/btcsuite/goleveldb v1.0.0 // indirect
 	github.com/coreos/go-semver v0.2.0 // indirect
