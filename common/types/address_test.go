@@ -90,3 +90,17 @@ func TestAddressMarshalJSON(t *testing.T) {
 	}
 	fmt.Println(addr2)
 }
+
+func TestAddress_ToHash(t *testing.T) {
+	addr, _ := HexToAddress("qlc_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3")
+	hash := addr.ToHash()
+
+	addr2, err := BytesToAddress(hash[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if addr != addr2 {
+		t.Fatal("addr!=addr2")
+	}
+}
