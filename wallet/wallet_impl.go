@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -40,14 +41,14 @@ type WalletStore struct {
 	io.Closer
 	db.Store
 	dir    string
-	ledger ledger.Ledger
+	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 }
 
 type Session struct {
 	db.Store
-	ledger          ledger.Ledger
-	log             *zap.SugaredLogger
+	ledger          *ledger.Ledger
+	logger          *zap.SugaredLogger
 	maxAccountCount uint64
 	walletId        []byte
 	password        []byte // TODO: password fan
@@ -57,13 +58,14 @@ var (
 	EmptyIdErr = errors.New("empty wallet id")
 )
 
-func (ws *WalletStore) NewSession(walletId []byte) *Session {
+func (ws *WalletStore) NewSession(walletId WalletId) *Session {
+	id, _ := walletId.MarshalBinary()
 	s := &Session{
 		Store:           ws.Store,
 		ledger:          ws.ledger,
-		log:             log.NewLogger("wallet session" + hex.EncodeToString(walletId)),
+		logger:          log.NewLogger("wallet session: " + walletId.String()),
 		maxAccountCount: searchAccountCount,
-		walletId:        walletId,
+		walletId:        id,
 		password:        []byte{},
 	}
 	//update database
@@ -77,38 +79,13 @@ func (ws *WalletStore) NewSession(walletId []byte) *Session {
 	return s
 }
 
-func (s *Session) Init() error {
-	err := s.SetDeterministicIndex(1)
-	if err != nil {
-		return err
-	}
-	_ = s.SetVersion(Version)
-	//default password is empty
-	_ = s.EnterPassword("")
-
-	seed, err := types.NewSeed()
-	if err != nil {
-		return err
-	}
-	err = s.SetSeed(seed[:])
-
-	return err
-}
-
-//Remove wallet by id
-func (s *Session) Remove() error {
-	return s.UpdateInTx(func(txn db.StoreTxn) error {
-		return s.removeWallet(txn)
-	})
-}
-
 func (s *Session) removeWallet(txn db.StoreTxn) error {
 	for _, val := range []byte{idPrefixId, idPrefixVersion, idPrefixSeed, idPrefixRepresentation} {
 		key := []byte{val}
 		key = append(key, s.walletId...)
 		err := txn.Delete(key)
 		if err != nil {
-			s.log.Fatal(err)
+			s.logger.Fatal(err)
 		}
 	}
 
@@ -117,8 +94,14 @@ func (s *Session) removeWallet(txn db.StoreTxn) error {
 
 func (s *Session) EnterPassword(password string) error {
 	s.setPassword(password)
-	_, err := s.GetSeed()
-	return err
+	seed, err := s.GetSeed()
+	if err != nil {
+		return err
+	}
+	if len(seed) == 0 {
+		return nil
+	}
+	return fmt.Errorf("already have encrypt seed")
 }
 
 func (s *Session) GetWalletId() ([]byte, error) {
@@ -153,7 +136,6 @@ func (s *Session) SetRepresentative(address types.Address) error {
 func (s *Session) GetSeed() ([]byte, error) {
 	var seed []byte
 	err := s.ViewInTx(func(txn db.StoreTxn) error {
-
 		key := s.getKey(idPrefixSeed)
 		return txn.Get(key, func(val []byte, b byte) error {
 			s, err := DecryptSeed(val, s.getPassword())
@@ -162,20 +144,28 @@ func (s *Session) GetSeed() ([]byte, error) {
 		})
 	})
 
+	if err == badger.ErrKeyNotFound {
+		err = nil
+	}
+
 	return seed, err
 }
 
 func (s *Session) SetSeed(seed []byte) error {
+	return s.UpdateInTx(func(txn db.StoreTxn) error {
+		return s.setSeed(txn, seed)
+	})
+}
+
+func (s *Session) setSeed(txn db.StoreTxn, seed []byte) error {
 	encryptSeed, err := EncryptSeed(seed, s.getPassword())
 
 	if err != nil {
 		return err
 	}
 
-	return s.UpdateInTx(func(txn db.StoreTxn) error {
-		key := s.getKey(idPrefixSeed)
-		return txn.Set(key, encryptSeed)
-	})
+	key := s.getKey(idPrefixSeed)
+	return txn.Set(key, encryptSeed)
 }
 
 func (s *Session) ResetDeterministicIndex() error {
@@ -224,7 +214,7 @@ func (s *Session) SearchPending() error {
 			for _, key := range keys {
 				if block, err := session.GetBlock(key.Hash); err == nil {
 					//TODO: implement
-					s.log.Debug(block)
+					s.logger.Debug(block)
 					//_, _ = s.Receive(block)
 				}
 			}
@@ -234,7 +224,7 @@ func (s *Session) SearchPending() error {
 	return nil
 }
 
-func (s *Session) Send(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error) {
+func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error) {
 	acc, err := s.GetRawKey(source)
 	if err != nil {
 		return nil, err
@@ -277,7 +267,7 @@ func (s *Session) Send(source types.Address, token types.Hash, to types.Address,
 	}
 }
 
-func (s *Session) Receive(sendBlock types.Block) (*types.Block, error) {
+func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (*types.Block, error) {
 	hash := sendBlock.GetHash()
 	if _, ok := sendBlock.(*types.StateBlock); !ok {
 		return nil, fmt.Errorf("invalid state sendBlock(%s)", hash.String())
@@ -321,7 +311,7 @@ func (s *Session) Receive(sendBlock types.Block) (*types.Block, error) {
 		sb.Representative = repBlock.(*types.StateBlock).Representative
 		sb.Token = tm.Type
 		sb.Extra = types.Hash{}
-		sb.Work, err = s.GetWork(account)
+		sb.Work, _ = s.GetWork(account)
 		sb.Signature = acc.Sign(sb.GetHash())
 		if !sb.IsValid() {
 			sb.Work = s.generateWork(sb.Root())
@@ -331,7 +321,7 @@ func (s *Session) Receive(sendBlock types.Block) (*types.Block, error) {
 	return &receiveBlock, nil
 }
 
-func (s *Session) Change(account types.Address, representative types.Address) (*types.Block, error) {
+func (s *Session) GenerateChangeBlock(account types.Address, representative types.Address) (*types.Block, error) {
 	if exist := s.IsAccountExist(account); !exist {
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
@@ -371,10 +361,7 @@ func (s *Session) Change(account types.Address, representative types.Address) (*
 			newSb.Representative = representative
 			newSb.Token = sb.Token
 			newSb.Extra = types.Hash{}
-			newSb.Work, err = s.GetWork(account)
-			if err != nil {
-				return nil, err
-			}
+			newSb.Work, _ = s.GetWork(account)
 			newSb.Signature = acc.Sign(newSb.GetHash())
 			if !newSb.IsValid() {
 				newSb.Work = s.generateWork(newSb.Root())
@@ -411,11 +398,15 @@ func (s *Session) GetVersion() (int64, error) {
 
 func (s *Session) SetVersion(version int64) error {
 	return s.UpdateInTx(func(txn db.StoreTxn) error {
-		key := s.getKey(idPrefixVersion)
-		buf := make([]byte, binary.MaxVarintLen64)
-		n := binary.PutVarint(buf, version)
-		return txn.Set(key, buf[:n])
+		return s.setVersion(txn, version)
 	})
+}
+
+func (s *Session) setVersion(txn db.StoreTxn, version int64) error {
+	key := s.getKey(idPrefixVersion)
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, version)
+	return txn.Set(key, buf[:n])
 }
 
 func (s *Session) GetDeterministicIndex() (int64, error) {
@@ -434,11 +425,15 @@ func (s *Session) GetDeterministicIndex() (int64, error) {
 
 func (s *Session) SetDeterministicIndex(index int64) error {
 	return s.UpdateInTx(func(txn db.StoreTxn) error {
-		key := s.getKey(idPrefixIndex)
-		buf := make([]byte, binary.MaxVarintLen64)
-		n := binary.PutVarint(buf, index)
-		return txn.Set(key, buf[:n])
+		return s.setDeterministicIndex(txn, index)
 	})
+}
+
+func (s *Session) setDeterministicIndex(txn db.StoreTxn, index int64) error {
+	key := s.getKey(idPrefixIndex)
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, index)
+	return txn.Set(key, buf[:n])
 }
 
 func (s *Session) GetWork(account types.Address) (types.Work, error) {
@@ -451,8 +446,8 @@ func (s *Session) GetWork(account types.Address) (types.Work, error) {
 		})
 	})
 
-	if err != nil {
-		return work, err
+	if err != nil && err == badger.ErrKeyNotFound {
+		err = nil
 	}
 
 	return work, nil
@@ -481,8 +476,14 @@ func (s *Session) setWork(account types.Address, work types.Work) error {
 }
 
 func (s *Session) IsAccountExist(addr types.Address) bool {
-	_, err := s.GetRawKey(addr)
-	return err == nil
+	session := s.ledger.NewLedgerSession(false)
+	defer session.Close()
+
+	if am, err := session.GetAccountMeta(addr); err == nil && am.Address == addr {
+		_, err := s.GetRawKey(addr)
+		return err == nil
+	}
+	return false
 }
 
 func (s *Session) ValidPassword() bool {
@@ -501,14 +502,6 @@ func (s *Session) ChangePassword(password string) error {
 }
 
 func (s *Session) GetRawKey(account types.Address) (*types.Account, error) {
-	session := s.ledger.NewLedgerSession(false)
-	defer session.Close()
-
-	_, err := session.GetAccountMeta(account)
-	if err != nil {
-		return nil, err
-	}
-
 	index, err := s.GetDeterministicIndex()
 	if err != nil {
 		index = 0
@@ -525,7 +518,7 @@ func (s *Session) GetRawKey(account types.Address) (*types.Account, error) {
 	for i := uint32(0); i < max; i++ {
 		pub, priv, err := types.KeypairFromSeed(seed, uint32(i))
 		if err != nil {
-			s.log.Fatal(err)
+			s.logger.Fatal(err)
 		}
 		address := types.PubToAddress(pub)
 		if address == account {
@@ -537,7 +530,7 @@ func (s *Session) GetRawKey(account types.Address) (*types.Account, error) {
 }
 
 func (s *Session) GetAccounts() (accounts []types.Address, err error) {
-	session := s.ledger.NewLedgerSession(false)
+	session := s.ledger.NewLedgerSession(true)
 	defer session.Close()
 
 	index, err := s.GetDeterministicIndex()
@@ -554,6 +547,8 @@ func (s *Session) GetAccounts() (accounts []types.Address, err error) {
 				address := types.PubToAddress(pub)
 				if _, err := session.GetAccountMeta(address); err == nil {
 					accounts = append(accounts, address)
+				} else {
+					//s.logger.Error(err)
 				}
 			}
 		}

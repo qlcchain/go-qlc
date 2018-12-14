@@ -28,9 +28,6 @@ type walletStoreApi interface {
 	GetAccounts() ([]types.Address, error)
 	ChangePassword(password string) error
 	EnterPassword(password string) error
-
-	Init() error
-	Remove() error
 }
 
 type walletAction interface {
@@ -41,12 +38,12 @@ type walletAction interface {
 	//GetBalances get all account balance ordered by token type
 	GetBalances() (map[types.Hash]types.Balance, error)
 	SearchPending() error
-	Send(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error)
-	Receive(sendBlock types.Block) (*types.Block, error)
-	Change(account types.Address, representative types.Address) (*types.Block, error)
+	GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error)
+	GenerateReceiveBlock(sendBlock types.Block) (*types.Block, error)
+	GenerateChangeBlock(account types.Address, representative types.Address) (*types.Block, error)
 }
 
-type Walleter interface {
+type IWallet interface {
 	walletAction
 	walletStoreApi
 }

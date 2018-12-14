@@ -13,6 +13,9 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"sync"
@@ -25,15 +28,18 @@ var (
 	ErrEmptyCurrentId = errors.New("can not find any wallet id")
 )
 
-func NewWalletStore(dir string) *WalletStore {
+func NewWalletStore(cfg *config.Config) *WalletStore {
 	lock.RLock()
 	defer lock.RUnlock()
+	dir := cfg.WalletDir()
 	if _, ok := cache[dir]; !ok {
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
 			logger.Fatal(err.Error())
 		}
+
 		cache[dir] = &WalletStore{
+			ledger: ledger.NewLedger(cfg.LedgerDir()),
 			logger: logger,
 			Store:  store,
 			dir:    dir,
@@ -69,14 +75,11 @@ func (ws *WalletStore) NewWallet() (WalletId, error) {
 	if err != nil {
 		return walletId, err
 	}
-	key, _ := walletId.MarshalBinary()
-	session := ws.NewSession(key)
-	err = session.Init()
-	if err != nil {
-		return walletId, err
-	}
+
+	session := ws.NewSession(walletId)
+
 	ids = append(ids, walletId)
-	currentId, _ := walletId.MarshalBinary()
+
 	err = ws.UpdateInTx(func(txn db.StoreTxn) error {
 		//add new walletId to ids
 		key := []byte{idPrefixIds}
@@ -85,12 +88,40 @@ func (ws *WalletStore) NewWallet() (WalletId, error) {
 			return err
 		}
 
+		err = txn.Set(key, bytes)
+		if err != nil {
+			return err
+		}
+
 		// update current wallet id
+		currentId, _ := walletId.MarshalBinary()
 		err = ws.setCurrentId(txn, currentId)
 		if err != nil {
 			return err
 		}
-		return txn.Set(key, bytes)
+
+		err = session.setDeterministicIndex(txn, 1)
+		if err != nil {
+			return err
+		}
+		_ = session.setVersion(txn, Version)
+		//default password is empty
+		err = session.EnterPassword("")
+		if err != nil {
+			return err
+		}
+
+		seed, err := types.NewSeed()
+		if err != nil {
+			return err
+		}
+		err = session.setSeed(txn, seed[:])
+
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
 
 	return walletId, err
@@ -148,8 +179,7 @@ func (ws *WalletStore) RemoveWallet(id WalletId) error {
 		}
 
 		// remove wallet data by walletId
-		walletId, _ := id.MarshalBinary()
-		session := ws.NewSession(walletId)
+		session := ws.NewSession(id)
 		err = session.removeWallet(txn)
 		if err != nil {
 			return err

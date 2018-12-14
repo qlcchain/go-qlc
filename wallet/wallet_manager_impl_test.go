@@ -17,9 +17,13 @@ import (
 )
 
 func TestNewWalletStore(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "wallet1")
-	store1 := NewWalletStore(dir)
-	store2 := NewWalletStore(dir)
+	dir := filepath.Join(config.QlcTestDataDir(), "wallet_test")
+	cfg1, _ := config.DefaultConfig()
+	cfg1.DataDir = dir
+	cfg2, _ := config.DefaultConfig()
+	cfg2.DataDir = dir
+	store1 := NewWalletStore(cfg1)
+	store2 := NewWalletStore(cfg2)
 	if store1 == nil || store2 == nil {
 		t.Fatal("error create store")
 	}
@@ -38,10 +42,14 @@ func TestNewWalletStore(t *testing.T) {
 }
 
 func TestNewWalletStore2(t *testing.T) {
-	dir1 := filepath.Join(config.QlcTestDataDir(), "wallet1")
-	dir2 := filepath.Join(config.QlcTestDataDir(), "wallet2")
-	store1 := NewWalletStore(dir1)
-	store2 := NewWalletStore(dir2)
+	dir1 := filepath.Join(config.QlcTestDataDir(), "wallet_test1")
+	dir2 := filepath.Join(config.QlcTestDataDir(), "wallet_test2")
+	cfg1, _ := config.DefaultConfig()
+	cfg1.DataDir = dir1
+	cfg2, _ := config.DefaultConfig()
+	cfg2.DataDir = dir2
+	store1 := NewWalletStore(cfg1)
+	store2 := NewWalletStore(cfg2)
 	if store1 == nil || store2 == nil {
 		t.Fatal("error create store")
 	}

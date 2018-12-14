@@ -4,6 +4,7 @@ import (
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
 	"github.com/qlcchain/go-qlc/common/util"
+	log2 "github.com/qlcchain/go-qlc/log"
 	"log"
 	"sort"
 )
@@ -17,6 +18,8 @@ type BadgerStoreTxn struct {
 	db  *badger.DB
 	txn *badger.Txn
 }
+
+var logger = log2.NewLogger("badger")
 
 // NewBadgerStore initializes/opens a badger database in the given directory.
 func NewBadgerStore(dir string) (Store, error) {
@@ -52,7 +55,9 @@ func (s *BadgerStore) Erase() error {
 }
 
 func (s *BadgerStore) NewTransaction(update bool) *BadgerStoreTxn {
-	return &BadgerStoreTxn{txn: s.db.NewTransaction(update), db: s.db}
+	txn := &BadgerStoreTxn{txn: s.db.NewTransaction(update), db: s.db}
+	logger.Debugf("NewTransaction %p", txn.txn)
+	return txn
 }
 
 // Close closes the database
@@ -143,5 +148,8 @@ func (t *BadgerStoreTxn) Commit(callback func(error)) error {
 }
 
 func (t *BadgerStoreTxn) Discard() {
-	t.txn.Discard()
+	if t.txn != nil {
+		logger.Debugf("Discard %p", t.txn)
+		t.txn.Discard()
+	}
 }
