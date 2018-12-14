@@ -7,10 +7,6 @@
 
 package types
 
-const (
-	PendingKeySize = AddressSize + HashSize
-)
-
 //go:generate msgp
 type PendingKey struct {
 	Address Address `msg:"account,extension" json:"account"`

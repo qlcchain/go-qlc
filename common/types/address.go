@@ -203,8 +203,8 @@ func (addr *Address) Len() int {
 }
 
 //ExtensionType implements Extension.MarshalBinaryTo interface
-func (addr *Address) MarshalBinaryTo(text []byte) error {
-	copy(text, (*addr)[:])
+func (addr Address) MarshalBinaryTo(text []byte) error {
+	copy(text, addr[:])
 	return nil
 }
 
@@ -229,7 +229,7 @@ func (addr *Address) UnmarshalText(text []byte) error {
 }
 
 //MarshalText implements encoding.Textmarshaler
-func (addr *Address) MarshalText() (text []byte, err error) {
+func (addr Address) MarshalText() (text []byte, err error) {
 	return []byte(addr.String()), nil
 }
 

@@ -794,7 +794,7 @@ func (ls *LedgerSession) getTxn(update bool) db.StoreTxn {
 		ls.Close()
 		ls.txn = ls.NewTransaction(update)
 	}
-	//logger.Debugf("txn: %p, mode: %s", ls.txn, strconv.FormatBool(update))
+	//logger.Debugf("get txn: %p, mode: %s", ls.txn, strconv.FormatBool(update))
 	return ls.txn
 }
 
@@ -805,6 +805,7 @@ func (ls *LedgerSession) releaseTxn() {
 		if err != nil {
 			logger.Fatal(err)
 		}
+		//logger.Debugf("releaseTxn and commit %p", ls.txn)
 		ls.Close()
 	}
 }
@@ -813,13 +814,17 @@ func (ls *LedgerSession) BatchUpdate(fn func() error) error {
 	if !ls.reuse {
 		return errors.New("batch update should enable reuse transaction")
 	}
-	txn := ls.NewTransaction(true)
-	defer txn.Discard()
+	ls.txn = ls.NewTransaction(true)
+	logger.Debugf("BatchUpdate NewTransaction %p", ls.txn)
+	defer func() {
+		logger.Debugf("BatchUpdate Discard %p", ls.txn)
+		ls.txn.Discard()
+	}()
 
 	if err := fn(); err != nil {
 		return err
 	}
-	return txn.Commit(nil)
+	return ls.txn.Commit(nil)
 }
 
 func (ls *LedgerSession) Latest(account types.Address, token types.Hash) types.Hash {

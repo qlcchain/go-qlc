@@ -95,24 +95,14 @@ func (h *Hash) UnmarshalBinary(text []byte) error {
 	return nil
 }
 
-//MarshalJSON implements json.Marshaler interface
-func (h Hash) MarshalJSON() ([]byte, error) {
-	return []byte(h.String()), nil
-}
-
-//UnmarshalJSON implements json.UnmarshalJSON interface
-func (h *Hash) UnmarshalJSON(b []byte) error {
-	err := h.Of(string(b))
+//UnmarshalText implements encoding.TextUnmarshaler
+func (h *Hash) UnmarshalText(text []byte) error {
+	s := util.TrimQuotes(string(text))
+	err := h.Of(s)
 	return err
 }
 
-//func (h *Hash) UnmarshalText(text []byte) error {
-//	s := util.TrimQuotes(string(text))
-//	err := h.Of(s)
-//	return err
-//}
-//
-//func (h Hash) MarshalText() (text []byte, err error) {
-//	//fmt.Println(h.String())
-//	return []byte(h.String()), nil
-//}
+// MarshalText implements the encoding.TextMarshaler interface.
+func (h Hash) MarshalText() (text []byte, err error) {
+	return []byte(h.String()), nil
+}

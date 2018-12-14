@@ -10,10 +10,43 @@ package wallet
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/dgraph-io/badger"
 	"github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/log"
+	"sync"
 )
+
+var (
+	cache             = make(map[string]*WalletStore)
+	lock              = sync.RWMutex{}
+	logger            = log.NewLogger("wallet store")
+	ErrEmptyCurrentId = errors.New("can not find any wallet id")
+)
+
+func NewWalletStore(cfg *config.Config) *WalletStore {
+	lock.RLock()
+	defer lock.RUnlock()
+	dir := cfg.WalletDir()
+	if _, ok := cache[dir]; !ok {
+		store, err := db.NewBadgerStore(dir)
+		if err != nil {
+			logger.Fatal(err.Error())
+		}
+
+		cache[dir] = &WalletStore{
+			ledger: ledger.NewLedger(cfg.LedgerDir()),
+			logger: logger,
+			Store:  store,
+			dir:    dir,
+		}
+	}
+	return cache[dir]
+}
 
 func (ws *WalletStore) WalletIds() ([]WalletId, error) {
 	var ids []WalletId
@@ -27,11 +60,14 @@ func (ws *WalletStore) WalletIds() ([]WalletId, error) {
 		})
 	})
 
+	if err != nil && err == badger.ErrKeyNotFound {
+		err = nil
+	}
+
 	return ids, err
 }
 
 //NewWallet create new wallet and save to db
-// TODO: handle error
 func (ws *WalletStore) NewWallet() (WalletId, error) {
 	walletId := NewWalletId()
 
@@ -39,23 +75,54 @@ func (ws *WalletStore) NewWallet() (WalletId, error) {
 	if err != nil {
 		return walletId, err
 	}
-	key, _ := walletId.MarshalBinary()
-	session := ws.NewSession(key)
-	err = session.Init()
-	if err != nil {
-		return walletId, err
-	}
+
+	session := ws.NewSession(walletId)
+
 	ids = append(ids, walletId)
+
 	err = ws.UpdateInTx(func(txn db.StoreTxn) error {
+		//add new walletId to ids
 		key := []byte{idPrefixIds}
 		bytes, err := jsoniter.Marshal(&ids)
 		if err != nil {
 			return err
 		}
-		return txn.Set(key, bytes)
+
+		err = txn.Set(key, bytes)
+		if err != nil {
+			return err
+		}
+
+		// update current wallet id
+		currentId, _ := walletId.MarshalBinary()
+		err = ws.setCurrentId(txn, currentId)
+		if err != nil {
+			return err
+		}
+
+		err = session.setDeterministicIndex(txn, 1)
+		if err != nil {
+			return err
+		}
+		_ = session.setVersion(txn, Version)
+		//default password is empty
+		err = session.EnterPassword("")
+		if err != nil {
+			return err
+		}
+
+		seed, err := types.NewSeed()
+		if err != nil {
+			return err
+		}
+		err = session.setSeed(txn, seed[:])
+
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
-	currentId, _ := walletId.MarshalBinary()
-	err = ws.setCurrentId(currentId)
 
 	return walletId, err
 }
@@ -67,7 +134,7 @@ func (ws *WalletStore) CurrentId() (WalletId, error) {
 		key := []byte{idPrefixId}
 		return txn.Get(key, func(val []byte, b byte) error {
 			if len(val) == 0 {
-				return errors.New("can not find any wallet id")
+				return ErrEmptyCurrentId
 			}
 			return id.UnmarshalBinary(val)
 		})
@@ -86,32 +153,52 @@ func (ws *WalletStore) RemoveWallet(id WalletId) error {
 	if err != nil {
 		return err
 	}
-	walletId, _ := id.MarshalBinary()
-	session := ws.NewSession(walletId)
-	err = session.Remove()
 
-	if err != nil {
-		return err
-	}
 	var newId []byte
 	if len(ids) > 0 {
 		newId, _ = ids[0].MarshalBinary()
 	} else {
 		newId, _ = hex.DecodeString("")
 	}
-	err = ws.setCurrentId(newId)
-	if err != nil {
-		return err
-	}
 
+	return ws.UpdateInTx(func(txn db.StoreTxn) error {
+		//update ids
+		key := []byte{idPrefixIds}
+		bytes, err := jsoniter.Marshal(&ids)
+		if err != nil {
+			return err
+		}
+		err = txn.Set(key, bytes)
+		if err != nil {
+			return err
+		}
+		//update current id
+		err = ws.setCurrentId(txn, newId)
+		if err != nil {
+			return err
+		}
+
+		// remove wallet data by walletId
+		session := ws.NewSession(id)
+		err = session.removeWallet(txn)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (ws *WalletStore) Close() error {
+	lock.RLock()
+	defer lock.RUnlock()
+	err := ws.Store.Close()
+	delete(cache, ws.dir)
 	return err
 }
 
-func (ws *WalletStore) setCurrentId(walletId []byte) error {
-	return ws.UpdateInTx(func(txn db.StoreTxn) error {
-		key := []byte{idPrefixId}
-		return txn.Set(key, walletId)
-	})
+func (ws *WalletStore) setCurrentId(txn db.StoreTxn, walletId []byte) error {
+	key := []byte{idPrefixId}
+	return txn.Set(key, walletId)
 }
 
 func indexOf(ids []WalletId, id WalletId) (int, error) {

@@ -7,7 +7,9 @@
 
 package random
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestBytes(t *testing.T) {
 	type args struct {
@@ -26,5 +28,32 @@ func TestBytes(t *testing.T) {
 				t.Errorf("Bytes() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestIntn(t *testing.T) {
+	i, err := Intn(100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(i)
+	if i >= 100 {
+		t.Fatal("err")
+	}
+}
+
+func TestPerm(t *testing.T) {
+	ints, err := Perm(10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ints) != 10 {
+		t.Fatal("wrong len")
+	}
+	for index, val := range ints {
+		if val > 10 {
+			t.Fatal("wrong val", index, "=>", val)
+		}
+		t.Log(index, "->", val)
 	}
 }
