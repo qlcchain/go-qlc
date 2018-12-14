@@ -39,8 +39,9 @@ const (
 type WalletStore struct {
 	io.Closer
 	db.Store
+	dir    string
 	ledger ledger.Ledger
-	log    *zap.SugaredLogger
+	logger *zap.SugaredLogger
 }
 
 type Session struct {
@@ -71,7 +72,7 @@ func (ws *WalletStore) NewSession(walletId []byte) *Session {
 		return txn.Upgrade(migrations)
 	})
 	if err != nil {
-		ws.log.Fatal(err)
+		ws.logger.Fatal(err)
 	}
 	return s
 }
@@ -97,17 +98,21 @@ func (s *Session) Init() error {
 //Remove wallet by id
 func (s *Session) Remove() error {
 	return s.UpdateInTx(func(txn db.StoreTxn) error {
-		for _, val := range []byte{idPrefixId, idPrefixVersion, idPrefixSeed, idPrefixRepresentation} {
-			seedKey := []byte{val}
-			seedKey = append(seedKey, s.walletId...)
-			err := txn.Delete(seedKey)
-			if err != nil {
-				s.log.Fatal(err)
-			}
-		}
-
-		return nil
+		return s.removeWallet(txn)
 	})
+}
+
+func (s *Session) removeWallet(txn db.StoreTxn) error {
+	for _, val := range []byte{idPrefixId, idPrefixVersion, idPrefixSeed, idPrefixRepresentation} {
+		key := []byte{val}
+		key = append(key, s.walletId...)
+		err := txn.Delete(key)
+		if err != nil {
+			s.log.Fatal(err)
+		}
+	}
+
+	return nil
 }
 
 func (s *Session) EnterPassword(password string) error {

@@ -116,7 +116,7 @@ func DefaultConfigFile() string {
 }
 
 func QlcTestDataDir() string {
-	return filepath.Join(homeDir(), "test")
+	return filepath.Join(DefaultDataDir(), "test")
 }
 
 func homeDir() string {
