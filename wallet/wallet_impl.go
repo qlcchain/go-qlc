@@ -15,6 +15,7 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -51,7 +52,7 @@ type Session struct {
 	logger          *zap.SugaredLogger
 	maxAccountCount uint64
 	walletId        []byte
-	password        []byte // TODO: password fan
+	password        *crypto.SecureString
 }
 
 var (
@@ -66,7 +67,6 @@ func (ws *WalletStore) NewSession(walletId WalletId) *Session {
 		logger:          log.NewLogger("wallet session: " + walletId.String()),
 		maxAccountCount: searchAccountCount,
 		walletId:        id,
-		password:        []byte{},
 	}
 	//update database
 	err := s.UpdateInTx(func(txn db.StoreTxn) error {
@@ -565,12 +565,17 @@ func (s *Session) getKey(t byte) []byte {
 }
 
 func (s *Session) getPassword() []byte {
-	return s.password
+	if s.password == nil {
+		return []byte{}
+	}
+	return s.password.Bytes()
 }
 
-//TODO: implement password fan
 func (s *Session) setPassword(password string) {
-	s.password = []byte(password)
+	if s.password != nil {
+		s.password.Destroy()
+	}
+	s.password, _ = crypto.NewSecureString(password)
 }
 
 // max returns the larger of x or y.
