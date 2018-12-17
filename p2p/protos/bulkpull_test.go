@@ -1,4 +1,4 @@
-package sync
+package protos
 
 import (
 	"testing"
@@ -55,7 +55,7 @@ func TestBulkPullRspPacket(t *testing.T) {
 		t.Fatal(err)
 	}
 	rsp := BulkPullRspPacket{
-		blk: blk,
+		Blk: blk,
 	}
 	bytes, err := BulkPullRspPacketToProto(&rsp)
 	if err != nil {
@@ -65,22 +65,19 @@ func TestBulkPullRspPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//if !reflect.DeepEqual(blk, block) {
-	//	t.Fatal("blk != block")
-	//}
-	if blk.GetType() != block.blk.GetType() {
+	if blk.GetType() != block.Blk.GetType() {
 		t.Fatal("ID error")
 	}
-	if blk.GetType() != block.blk.GetType() {
+	if blk.GetType() != block.Blk.GetType() {
 		t.Fatal("type error")
 	}
-	if blk.GetPrevious() != block.blk.GetPrevious() {
-		t.Fatal("Previous error")
+	if blk.GetPrevious() != block.Blk.GetPrevious() {
+		t.Fatal("PreviousHash error")
 	}
-	//if blk.GetBalance() != block.blk.GetBalance() {
-	//	t.Fatal("Balance error")
-	//}
-	if blk.GetHash() != block.blk.GetHash() {
+	//	if blk.GetBalance() != block.Blk.GetBalance() {
+	//		t.Fatal("Balance error")
+	//	}
+	if blk.GetHash() != block.Blk.GetHash() {
 		t.Fatal("hash error")
 	}
 }

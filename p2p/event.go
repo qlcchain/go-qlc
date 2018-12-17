@@ -10,6 +10,14 @@ type EventType int16
 type EventFunc func(v interface{})
 type EventSubscriber chan interface{}
 
+//  Event Type
+const (
+	EventPublish    EventType = 0
+	EventConfirmReq EventType = 1
+	EventConfirmAck EventType = 2
+	EventSyncBlock  EventType = 3
+)
+
 type Event struct {
 	m           sync.RWMutex
 	subscribers map[EventType]map[EventSubscriber]EventFunc

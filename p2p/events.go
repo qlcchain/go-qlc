@@ -1,20 +1,20 @@
 package p2p
 
-type eventQueue struct {
-	Block *Event
+type EventQueue struct {
+	Consensus *Event
 }
 
-func NeweventQueue() *eventQueue {
-	Block := NewEvent()
-	return &eventQueue{
-		Block: Block,
+func NeweventQueue() *EventQueue {
+	consensus := NewEvent()
+	return &EventQueue{
+		Consensus: consensus,
 	}
 }
 
-func (eq *eventQueue) GetEvent(eventName string) *Event {
+func (eq *EventQueue) GetEvent(eventName string) *Event {
 	switch eventName {
-	case "block":
-		return eq.Block
+	case "consensus":
+		return eq.Consensus
 	default:
 		logger.Debug("Unknow event")
 		return nil

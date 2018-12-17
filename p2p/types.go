@@ -24,9 +24,7 @@ type Service interface {
 	Start() error
 	Stop()
 	Node() *QlcNode
-	MessageEvent() *eventQueue
-	Register(...*Subscriber)
-	Deregister(...*Subscriber)
+	MessageEvent() *EventQueue
 	Broadcast(string, []byte)
 	SendMessageToPeer(messageName string, data []byte, peerID string) error
 }

@@ -1,11 +1,11 @@
-package sync
+package protos
 
 import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/sync/pb"
+	"github.com/qlcchain/go-qlc/p2p/protos/pb"
 )
 
 type Bulk struct {
@@ -13,17 +13,19 @@ type Bulk struct {
 	EndHash   types.Hash
 }
 type BulkPush struct {
-	blk types.Block
+	Blk types.Block
 }
 
 // ToProto converts domain BulkPull into proto BulkPull
 func BulkPushBlockToProto(bp *BulkPush) ([]byte, error) {
-	blkdata, err := bp.blk.MarshalMsg(nil)
+	blkdata, err := bp.Blk.MarshalMsg(nil)
 	if err != nil {
 		return nil, err
 	}
+	blocktype := bp.Blk.GetType()
 	bppb := &pb.BulkPushBlock{
-		Block: blkdata,
+		Blocktype: uint32(blocktype),
+		Block:     blkdata,
 	}
 	data, err := proto.Marshal(bppb)
 	if err != nil {
@@ -47,8 +49,8 @@ func BulkPushBlockFromProto(data []byte) (*BulkPush, error) {
 	if _, err = blk.UnmarshalMsg(bp.Block); err != nil {
 		return nil, err
 	}
-	pb := &BulkPush{
-		blk: blk,
+	bpush := &BulkPush{
+		Blk: blk,
 	}
-	return pb, nil
+	return bpush, nil
 }

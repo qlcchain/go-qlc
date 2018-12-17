@@ -1,99 +1,79 @@
-package sync
+package p2p
 
 import (
+	"math"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/p2p"
+	messagepb "github.com/qlcchain/go-qlc/p2p/protos"
 )
 
-var logger = log.NewLogger("sync")
-var zeroHash = types.Hash{}
-
-//  sync Message Type
 const (
-	FrontierRequest = "frontierreq" //frontierreq
-	FrontierRsp     = "frontierrsp" //frontierrsp
-	BulkPullRequest = "bulkpull"    //bulkpull
-	BulkPullRsp     = "bulkpullrsp" //bulkpullrsp
-	BulkPushBlock   = "bulkpush"    //bulkpushblock
+	SyncInterval = time.Minute * 5
 )
 
-var frontiers []*types.Frontier
+var zeroHash types.Hash
+
 var headerBlockHash types.Hash
 var openBlockHash types.Hash
-var bulkPush, bulkPull []*Bulk
+var bulkPush, bulkPull []*messagepb.Bulk
 
 // Service manage sync tasks
 type ServiceSync struct {
-	netService p2p.Service
-	quitCh     chan bool
-	messageCh  chan p2p.Message
+	netService *QlcService
 	qlcLedger  *ledger.Ledger
+	frontiers  []*types.Frontier
+	quitCh     chan bool
 }
 
 // NewService return new Service.
-func NewSyncService(netService p2p.Service) *ServiceSync {
-	return &ServiceSync{
-		quitCh:     make(chan bool, 1),
-		messageCh:  make(chan p2p.Message, 128),
+func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync {
+	frontiers, err := getLocalFrontier(ledger)
+	if err != nil {
+		logger.Error("New Sync Service error")
+	}
+	ss := &ServiceSync{
 		netService: netService,
+		qlcLedger:  ledger,
+		frontiers:  frontiers,
+		quitCh:     make(chan bool, 1),
 	}
+	ss.next()
+	return ss
 }
-
-// SetQlcService set ledger
-func (ss *ServiceSync) SetLedger(ledger *ledger.Ledger) {
-	ss.qlcLedger = ledger
-}
-
-// Start start sync service.
 func (ss *ServiceSync) Start() {
-	logger.Info("Started sync Service.")
-
-	if len(frontiers) == 0 {
-		ss.getLocalFrontier()
-		next()
+	logger.Info("started sync loop")
+	address := types.Address{}
+	Req := messagepb.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
+	data, err := messagepb.FrontierReqToProto(Req)
+	if err != nil {
+		logger.Error("New FrontierReq error")
+		return
 	}
-	// register the network handler.
-	netService := ss.netService
-	netService.Register(p2p.NewSubscriber(ss, ss.messageCh, false, FrontierRequest))
-	netService.Register(p2p.NewSubscriber(ss, ss.messageCh, false, FrontierRsp))
-	netService.Register(p2p.NewSubscriber(ss, ss.messageCh, false, BulkPullRequest))
-	netService.Register(p2p.NewSubscriber(ss, ss.messageCh, false, BulkPullRsp))
-	netService.Register(p2p.NewSubscriber(ss, ss.messageCh, false, BulkPushBlock))
-	// start loop().
-	go ss.startLoop()
-}
-func (ss *ServiceSync) startLoop() {
+	ticker := time.NewTicker(SyncInterval)
 	for {
+		peerID, err := ss.netService.node.StreamManager().RandomPeer()
+		if err != nil {
+			continue
+		}
 		select {
 		case <-ss.quitCh:
-			logger.Info("Stopped sync Service.")
+			logger.Info("Stopped Sync Loop.")
 			return
-		case message := <-ss.messageCh:
-			switch message.MessageType() {
-			case FrontierRequest:
-				logger.Info("receive FrontierReq")
-				ss.onFrontierReq(message)
-			case FrontierRsp:
-				logger.Info("receive FrontierRsp")
-				ss.onFrontierRsp(message)
-			case BulkPullRequest:
-				logger.Info("receive BulkPullRequest")
-				ss.onBulkPullRequest(message)
-			case BulkPullRsp:
-				logger.Info("receive BulkPullRsp")
-				ss.onBulkPullRsp(message)
-			case BulkPushBlock:
-				logger.Info("receive BulkPushBlock")
-				ss.onBulkPushBlock(message)
-			default:
-				logger.Error("Received unknown message.")
-			}
+		case <-ticker.C:
+			ss.netService.node.SendMessageToPeer(FrontierRequest, data, peerID)
 		}
 	}
 }
-func (ss *ServiceSync) onFrontierReq(message p2p.Message) error {
+
+// Stop sync service
+func (ss *ServiceSync) Stop() {
+	logger.Info("Stop Qlc sync...")
+
+	ss.quitCh <- true
+}
+func (ss *ServiceSync) onFrontierReq(message Message) error {
 	var fs []*types.Frontier
 	session := ss.qlcLedger.NewLedgerSession(false)
 	defer session.Close()
@@ -105,8 +85,8 @@ func (ss *ServiceSync) onFrontierReq(message p2p.Message) error {
 		return err
 	}
 	for _, f := range fs {
-		qlcfrs := NewFrontierRsp(f)
-		frsbytes, err := FrontierResponseToProto(qlcfrs)
+		qlcfrs := messagepb.NewFrontierRsp(f)
+		frsbytes, err := messagepb.FrontierResponseToProto(qlcfrs)
 		if err != nil {
 			return err
 		}
@@ -114,16 +94,16 @@ func (ss *ServiceSync) onFrontierReq(message p2p.Message) error {
 	}
 	//send frontier finished,last frontier is all zero,tell remote peer send finished
 	rsp := new(types.Frontier)
-	frsp := NewFrontierRsp(rsp)
-	bytes, err := FrontierResponseToProto(frsp)
+	frsp := messagepb.NewFrontierRsp(rsp)
+	bytes, err := messagepb.FrontierResponseToProto(frsp)
 	if err != nil {
 		return err
 	}
 	ss.netService.SendMessageToPeer(FrontierRsp, bytes, message.MessageFrom())
 	return nil
 }
-func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
-	fsremote, err := FrontierResponseFromProto(message.Data())
+func (ss *ServiceSync) onFrontierRsp(message Message) error {
+	fsremote, err := messagepb.FrontierResponseFromProto(message.Data())
 	if err != nil {
 		return err
 	}
@@ -136,12 +116,12 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 		for {
 			if !openBlockHash.IsZero() && (openBlockHash.String() < fr.OpenBlock.String()) {
 				// We have an account but remote peer have not.
-				push := &Bulk{
+				push := &messagepb.Bulk{
 					StartHash: zeroHash,
 					EndHash:   headerBlockHash,
 				}
 				bulkPush = append(bulkPush, push)
-				next()
+				ss.next()
 			} else {
 				break
 			}
@@ -153,32 +133,32 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 				} else {
 					exit, _ := session.HasBlock(fr.HeaderBlock)
 					if exit == true {
-						push := &Bulk{
+						push := &messagepb.Bulk{
 							StartHash: fr.HeaderBlock,
 							EndHash:   headerBlockHash,
 						}
 						bulkPush = append(bulkPush, push)
 					} else {
-						pull := &Bulk{
+						pull := &messagepb.Bulk{
 							StartHash: headerBlockHash,
 							EndHash:   fr.HeaderBlock,
 						}
 						bulkPull = append(bulkPull, pull)
 					}
 				}
-				next()
+				ss.next()
 			} else {
 				if fr.OpenBlock.String() > openBlockHash.String() {
 					return nil
 				}
-				pull := &Bulk{
+				pull := &messagepb.Bulk{
 					StartHash: zeroHash,
 					EndHash:   fr.HeaderBlock,
 				}
 				bulkPull = append(bulkPull, pull)
 			}
 		} else {
-			pull := &Bulk{
+			pull := &messagepb.Bulk{
 				StartHash: zeroHash,
 				EndHash:   fr.HeaderBlock,
 			}
@@ -188,23 +168,23 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 		for {
 			if !openBlockHash.IsZero() {
 				// We have an account but remote peer have not.
-				push := &Bulk{
+				push := &messagepb.Bulk{
 					StartHash: zeroHash,
 					EndHash:   headerBlockHash,
 				}
 				bulkPush = append(bulkPush, push)
-				next()
+				ss.next()
 			} else {
-				if len(frontiers) == 0 {
-					ss.getLocalFrontier()
-					next()
+				if len(ss.frontiers) == 0 {
+					getLocalFrontier(ss.qlcLedger)
+					ss.next()
 				}
 				for _, value := range bulkPull {
-					blkreqpk := &BulkPullReqPacket{
+					blkreqpk := &messagepb.BulkPullReqPacket{
 						StartHash: value.StartHash,
 						EndHash:   value.EndHash,
 					}
-					bytes, err := BulkPullReqPacketToProto(blkreqpk)
+					bytes, err := messagepb.BulkPullReqPacketToProto(blkreqpk)
 					if err != nil {
 						return err
 					}
@@ -229,10 +209,10 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 							}
 						}
 						for i := (len(bulkblk) - 1); i >= 0; i-- {
-							push := &BulkPush{
-								blk: bulkblk[i],
+							push := &messagepb.BulkPush{
+								Blk: bulkblk[i],
 							}
-							blockBytes, err := BulkPushBlockToProto(push)
+							blockBytes, err := messagepb.BulkPushBlockToProto(push)
 							if err != nil {
 								return err
 							}
@@ -255,10 +235,10 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 							}
 						}
 						for i := (len(bulkblk) - 1); i >= 0; i-- {
-							push := &BulkPush{
-								blk: bulkblk[i],
+							push := &messagepb.BulkPush{
+								Blk: bulkblk[i],
 							}
-							blockBytes, err := BulkPushBlockToProto(push)
+							blockBytes, err := messagepb.BulkPushBlockToProto(push)
 							if err != nil {
 								return err
 							}
@@ -273,19 +253,19 @@ func (ss *ServiceSync) onFrontierRsp(message p2p.Message) error {
 	return nil
 }
 
-func (ss *ServiceSync) getLocalFrontier() (err error) {
-	session := ss.qlcLedger.NewLedgerSession(false)
+func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
+	session := ledger.NewLedgerSession(false)
 	defer session.Close()
-	frontiers, err = session.GetFrontiers()
+	frontiers, err := session.GetFrontiers()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	fsback := new(types.Frontier)
 	frontiers = append(frontiers, fsback)
-	return nil
+	return frontiers, nil
 }
-func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
-	pullremote, err := BulkPullReqPacketFromProto(message.Data())
+func (ss *ServiceSync) onBulkPullRequest(message Message) error {
+	pullremote, err := messagepb.BulkPullReqPacketFromProto(message.Data())
 	if err != nil {
 		return err
 	}
@@ -309,10 +289,10 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 			}
 		}
 		for i := (len(bulkblk) - 1); i >= 0; i-- {
-			PullRsp := &BulkPullRspPacket{
-				blk: bulkblk[i],
+			PullRsp := &messagepb.BulkPullRspPacket{
+				Blk: bulkblk[i],
 			}
-			blockBytes, err := BulkPullRspPacketToProto(PullRsp)
+			blockBytes, err := messagepb.BulkPullRspPacketToProto(PullRsp)
 			if err != nil {
 				return err
 			}
@@ -334,10 +314,10 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 			}
 		}
 		for i := (len(bulkblk) - 1); i >= 0; i-- {
-			PullRsp := &BulkPullRspPacket{
-				blk: bulkblk[i],
+			PullRsp := &messagepb.BulkPullRspPacket{
+				Blk: bulkblk[i],
 			}
-			blockBytes, err := BulkPullRspPacketToProto(PullRsp)
+			blockBytes, err := messagepb.BulkPullRspPacketToProto(PullRsp)
 			if err != nil {
 				return err
 			}
@@ -346,15 +326,16 @@ func (ss *ServiceSync) onBulkPullRequest(message p2p.Message) error {
 	}
 	return nil
 }
-func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
-	blkpacket, err := BulkPushBlockFromProto(message.Data())
+func (ss *ServiceSync) onBulkPullRsp(message Message) error {
+	blkpacket, err := messagepb.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err
 	}
 	session := ss.qlcLedger.NewLedgerSession(false)
 	defer session.Close()
 
-	block := blkpacket.blk
+	block := blkpacket.Blk
+	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
 	err = session.AddBlock(block)
 	if err != nil {
 		return err
@@ -389,12 +370,13 @@ func (ss *ServiceSync) onBulkPullRsp(message p2p.Message) error {
 	}
 	return nil
 }
-func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
-	blkpacket, err := BulkPushBlockFromProto(message.Data())
+func (ss *ServiceSync) onBulkPushBlock(message Message) error {
+	blkpacket, err := messagepb.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err
 	}
-	block := blkpacket.blk
+	block := blkpacket.Blk
+	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
 	session := ss.qlcLedger.NewLedgerSession(false)
 	defer session.Close()
 
@@ -432,20 +414,11 @@ func (ss *ServiceSync) onBulkPushBlock(message p2p.Message) error {
 	}
 	return nil
 }
-func (ss *ServiceSync) Stop() {
-	logger.Info("stopped sync service")
-	// quit.
-	ss.quitCh <- true
-	ss.netService.Deregister(p2p.NewSubscriber(ss, ss.messageCh, false, FrontierRequest))
-	ss.netService.Deregister(p2p.NewSubscriber(ss, ss.messageCh, false, FrontierRsp))
-	ss.netService.Deregister(p2p.NewSubscriber(ss, ss.messageCh, false, BulkPullRequest))
-	ss.netService.Deregister(p2p.NewSubscriber(ss, ss.messageCh, false, BulkPullRsp))
-	ss.netService.Deregister(p2p.NewSubscriber(ss, ss.messageCh, false, BulkPushBlock))
-}
-func next() {
-	if len(frontiers) > 0 {
-		openBlockHash = frontiers[0].OpenBlock
-		headerBlockHash = frontiers[0].HeaderBlock
-		frontiers = frontiers[1:]
+
+func (ss *ServiceSync) next() {
+	if len(ss.frontiers) > 0 {
+		openBlockHash = ss.frontiers[0].OpenBlock
+		headerBlockHash = ss.frontiers[0].HeaderBlock
+		ss.frontiers = ss.frontiers[1:]
 	}
 }
