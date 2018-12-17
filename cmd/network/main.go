@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
-
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -51,7 +49,7 @@ var (
 )
 
 func main() {
-	cfgFile := filepath.Join(config.DefaultDataDir(), config.QlcConfigFile)
+	cfgFile := config.DefaultConfigFile()
 	cfg, err := config.NewCfgManager(cfgFile).Load()
 	if err != nil {
 		fmt.Println(err)
