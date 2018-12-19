@@ -64,6 +64,13 @@ func (s *Seed) Key(index uint32) (ed25519.PrivateKey, error) {
 	return key, nil
 }
 
+//MasterAddress the first address generate by seed
+func (s *Seed) MasterAddress() Address {
+	priv, _ := s.Key(0)
+	pub, _, _ := ed25519.GenerateKey(bytes.NewReader(priv))
+	return PubToAddress(pub)
+}
+
 // String seed tostring
 func (s *Seed) String() string {
 	return hex.EncodeToString(s[:])

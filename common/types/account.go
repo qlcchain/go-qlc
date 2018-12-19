@@ -18,7 +18,7 @@ type Account struct {
 
 //go:generate msgp
 type TokenMeta struct {
-	TokenAccount Address `msg:"tokenAccount,extension" json:"token_account"`
+	//TokenAccount Address `msg:"tokenAccount,extension" json:"token_account"`
 	Type         Hash    `msg:"type,extension" json:"type"`
 	Header       Hash    `msg:"header,extension" json:"header"`
 	RepBlock     Hash    `msg:"rep,extension" json:"rep"`

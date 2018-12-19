@@ -38,6 +38,8 @@ const (
 )
 
 var (
+	// ZeroAddress
+	ZeroAddress = Address{}
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
 	// alphabet.
 	AddressEncoding = base32.NewEncoding(addressEncodingAlphabet)

@@ -7,9 +7,11 @@
 
 package wallet
 
+import "github.com/qlcchain/go-qlc/common/types"
+
 type walletManager interface {
-	WalletIds() ([]WalletId, error)
-	NewWallet() (WalletId, error)
-	CurrentId() (WalletId, error)
-	RemoveWallet(id WalletId) error
+	WalletIds() ([]types.Address, error)
+	NewWallet() (types.Address, error)
+	CurrentId() (types.Address, error)
+	RemoveWallet(id types.Address) error
 }

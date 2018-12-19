@@ -21,6 +21,8 @@ import (
 	"sync"
 )
 
+const defaultPassword = ""
+
 var (
 	cache             = make(map[string]*WalletStore)
 	lock              = sync.RWMutex{}
@@ -48,8 +50,8 @@ func NewWalletStore(cfg *config.Config) *WalletStore {
 	return cache[dir]
 }
 
-func (ws *WalletStore) WalletIds() ([]WalletId, error) {
-	var ids []WalletId
+func (ws *WalletStore) WalletIds() ([]types.Address, error) {
+	var ids []types.Address
 	err := ws.ViewInTx(func(txn db.StoreTxn) error {
 		key := []byte{idPrefixIds}
 		return txn.Get(key, func(val []byte, b byte) error {
@@ -68,12 +70,17 @@ func (ws *WalletStore) WalletIds() ([]WalletId, error) {
 }
 
 //NewWallet create new wallet and save to db
-func (ws *WalletStore) NewWallet() (WalletId, error) {
-	walletId := NewWalletId()
+func (ws *WalletStore) NewWallet() (types.Address, error) {
+	seed, err := types.NewSeed()
+	if err != nil {
+		return types.ZeroAddress, err
+	}
+
+	walletId := seed.MasterAddress()
 
 	ids, err := ws.WalletIds()
 	if err != nil {
-		return walletId, err
+		return types.ZeroAddress, err
 	}
 
 	session := ws.NewSession(walletId)
@@ -94,8 +101,7 @@ func (ws *WalletStore) NewWallet() (WalletId, error) {
 		}
 
 		// update current wallet id
-		currentId, _ := walletId.MarshalBinary()
-		err = ws.setCurrentId(txn, currentId)
+		err = ws.setCurrentId(txn, walletId.Bytes())
 		if err != nil {
 			return err
 		}
@@ -105,16 +111,14 @@ func (ws *WalletStore) NewWallet() (WalletId, error) {
 			return err
 		}
 		_ = session.setVersion(txn, Version)
+
 		//default password is empty
-		err = session.EnterPassword("")
+
+		err = session.EnterPassword(defaultPassword)
 		if err != nil {
 			return err
 		}
 
-		seed, err := types.NewSeed()
-		if err != nil {
-			return err
-		}
 		err = session.setSeed(txn, seed[:])
 
 		if err != nil {
@@ -127,8 +131,8 @@ func (ws *WalletStore) NewWallet() (WalletId, error) {
 	return walletId, err
 }
 
-func (ws *WalletStore) CurrentId() (WalletId, error) {
-	var id WalletId
+func (ws *WalletStore) CurrentId() (types.Address, error) {
+	var id types.Address
 
 	err := ws.ViewInTx(func(txn db.StoreTxn) error {
 		key := []byte{idPrefixId}
@@ -136,14 +140,16 @@ func (ws *WalletStore) CurrentId() (WalletId, error) {
 			if len(val) == 0 {
 				return ErrEmptyCurrentId
 			}
-			return id.UnmarshalBinary(val)
+			addr, err := types.BytesToAddress(val)
+			id = addr
+			return err
 		})
 	})
 
 	return id, err
 }
 
-func (ws *WalletStore) RemoveWallet(id WalletId) error {
+func (ws *WalletStore) RemoveWallet(id types.Address) error {
 	ids, err := ws.WalletIds()
 	if err != nil {
 		return err
@@ -156,7 +162,7 @@ func (ws *WalletStore) RemoveWallet(id WalletId) error {
 
 	var newId []byte
 	if len(ids) > 0 {
-		newId, _ = ids[0].MarshalBinary()
+		newId = ids[0].Bytes()
 	} else {
 		newId, _ = hex.DecodeString("")
 	}
@@ -201,7 +207,7 @@ func (ws *WalletStore) setCurrentId(txn db.StoreTxn, walletId []byte) error {
 	return txn.Set(key, walletId)
 }
 
-func indexOf(ids []WalletId, id WalletId) (int, error) {
+func indexOf(ids []types.Address, id types.Address) (int, error) {
 	index := -1
 
 	for i, _id := range ids {
@@ -218,7 +224,7 @@ func indexOf(ids []WalletId, id WalletId) (int, error) {
 	return index, nil
 }
 
-func remove(ids []WalletId, id WalletId) ([]WalletId, error) {
+func remove(ids []types.Address, id types.Address) ([]types.Address, error) {
 	if i, err := indexOf(ids, id); err == nil {
 		ids = append(ids[:i], ids[i+1:]...)
 		return ids, nil

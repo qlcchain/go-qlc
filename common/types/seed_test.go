@@ -52,3 +52,22 @@ func TestSeed_Key(t *testing.T) {
 		}
 	}
 }
+
+func TestSeed_MasterAddress(t *testing.T) {
+	seed, err := NewSeed()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pub, _, err := KeypairFromSeed(seed.String(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := PubToAddress(pub)
+	t.Log(addr.String())
+	addr2 := seed.MasterAddress()
+
+	if addr != addr2 {
+		t.Fatal("addr != addr2")
+	}
+}

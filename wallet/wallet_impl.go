@@ -59,14 +59,13 @@ var (
 	EmptyIdErr = errors.New("empty wallet id")
 )
 
-func (ws *WalletStore) NewSession(walletId WalletId) *Session {
-	id, _ := walletId.MarshalBinary()
+func (ws *WalletStore) NewSession(walletId types.Address) *Session {
 	s := &Session{
 		Store:           ws.Store,
 		ledger:          ws.ledger,
 		logger:          log.NewLogger("wallet session: " + walletId.String()),
 		maxAccountCount: searchAccountCount,
-		walletId:        id,
+		walletId:        walletId.Bytes(),
 	}
 	//update database
 	err := s.UpdateInTx(func(txn db.StoreTxn) error {

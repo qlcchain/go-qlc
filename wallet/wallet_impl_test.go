@@ -195,7 +195,7 @@ func mockAccountMeta(addr types.Address) *types.AccountMeta {
 		s1, _ := random.Intn(math.MaxInt64)
 		s2, _ := random.Intn(math.MaxInt64)
 		t := types.TokenMeta{
-			TokenAccount: mockAddress(),
+			//TokenAccount: mockAddress(),
 			Type:         mockHash(),
 			BelongTo:     addr,
 			Balance:      types.ParseBalanceInts(uint64(s1), uint64(s2)),
