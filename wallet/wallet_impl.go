@@ -20,6 +20,7 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 	"io"
+	"sync"
 )
 
 const (
@@ -47,6 +48,7 @@ type WalletStore struct {
 
 type Session struct {
 	db.Store
+	lock            sync.RWMutex
 	ledger          *ledger.Ledger
 	logger          *zap.SugaredLogger
 	maxAccountCount uint64
@@ -72,7 +74,7 @@ func (ws *WalletStore) NewSession(walletId types.Address) *Session {
 		return txn.Upgrade(migrations)
 	})
 	if err != nil {
-		ws.logger.Fatal(err)
+		ws.logger.Error(err)
 	}
 	return s
 }
@@ -173,9 +175,7 @@ func (s *Session) ResetDeterministicIndex() error {
 func (s *Session) GetBalances() (map[types.Hash]types.Balance, error) {
 	cache := map[types.Hash]types.Balance{}
 
-	session := s.ledger.NewLedgerSession(false)
-	defer session.Close()
-
+	l := s.ledger
 	accounts, err := s.GetAccounts()
 
 	if err != nil {
@@ -183,7 +183,7 @@ func (s *Session) GetBalances() (map[types.Hash]types.Balance, error) {
 	}
 
 	for _, account := range accounts {
-		if am, err := session.GetAccountMeta(account); err == nil {
+		if am, err := l.GetAccountMeta(account); err == nil {
 			for _, tm := range am.Tokens {
 				if balance, ok := cache[tm.Type]; ok {
 					b := cache[tm.Type]
@@ -199,8 +199,7 @@ func (s *Session) GetBalances() (map[types.Hash]types.Balance, error) {
 }
 
 func (s *Session) SearchPending() error {
-	session := s.ledger.NewLedgerSession(false)
-	defer session.Close()
+	l := s.ledger
 
 	accounts, err := s.GetAccounts()
 
@@ -208,9 +207,9 @@ func (s *Session) SearchPending() error {
 		return err
 	}
 	for _, account := range accounts {
-		if keys, err := session.Pending(account); err == nil {
+		if keys, err := l.Pending(account); err == nil {
 			for _, key := range keys {
-				if block, err := session.GetBlock(key.Hash); err == nil {
+				if block, err := l.GetBlock(key.Hash); err == nil {
 					//TODO: implement
 					s.logger.Debug(block)
 					//_, _ = s.Receive(block)
@@ -228,17 +227,16 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 		return nil, err
 	}
 
-	session := s.ledger.NewLedgerSession(false)
-	defer session.Close()
-	tm, err := session.GetTokenMeta(source, token)
+	l := s.ledger
+	tm, err := l.GetTokenMeta(source, token)
 	if err != nil {
 		return nil, err
 	}
-	balance, err := session.TokenBalance(source, token)
+	balance, err := l.TokenBalance(source, token)
 	if err != nil {
 		return nil, err
 	}
-	repBlock, err := session.GetBlock(tm.RepBlock)
+	repBlock, err := l.GetBlock(tm.RepBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -271,25 +269,24 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (*types.Block, err
 		return nil, fmt.Errorf("invalid state sendBlock(%s)", hash.String())
 	}
 
-	session := s.ledger.NewLedgerSession(false)
-	defer session.Close()
+	l := s.ledger
 
 	// block not exist
-	if exist, err := session.HasBlock(hash); !exist || err != nil {
+	if exist, err := l.HasBlock(hash); !exist || err != nil {
 		return nil, fmt.Errorf("sendBlock(%s) does not exist", hash.String())
 	}
 
-	tm, err := session.Token(hash)
+	tm, err := l.Token(hash)
 	if err != nil {
 		return nil, err
 	}
 	account := tm.BelongTo
-	info, err := session.GetPending(types.PendingKey{Address: account, Hash: hash})
+	info, err := l.GetPending(types.PendingKey{Address: account, Hash: hash})
 	if err != nil {
 		return nil, err
 	}
 
-	repBlock, err := session.GetBlock(tm.RepBlock)
+	repBlock, err := l.GetBlock(tm.RepBlock)
 	if err != nil {
 		return nil, fmt.Errorf("can not fetch account(%s) rep", account)
 	}
@@ -324,20 +321,19 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
 
-	session := s.ledger.NewLedgerSession(false)
-	defer session.Close()
-	if _, err := session.GetAccountMeta(representative); err != nil {
+	l := s.ledger
+	if _, err := l.GetAccountMeta(representative); err != nil {
 		return nil, fmt.Errorf("invalid representative[%s]", representative.String())
 	}
 
 	//get latest chain token block
-	hash := session.Latest(account, common.ChainTokenType)
+	hash := l.Latest(account, common.ChainTokenType)
 
 	if hash.IsZero() {
 		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
 	}
 
-	block, err := session.GetBlock(hash)
+	block, err := l.GetBlock(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +342,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 		if err != nil {
 			return nil, err
 		}
-		tm, err := session.GetTokenMeta(account, common.ChainTokenType)
+		tm, err := l.GetTokenMeta(account, common.ChainTokenType)
 		if newSb, ok := changeBlock.(*types.StateBlock); ok {
 			acc, err := s.GetRawKey(account)
 			if err != nil {
@@ -474,10 +470,7 @@ func (s *Session) setWork(account types.Address, work types.Work) error {
 }
 
 func (s *Session) IsAccountExist(addr types.Address) bool {
-	session := s.ledger.NewLedgerSession(false)
-	defer session.Close()
-
-	if am, err := session.GetAccountMeta(addr); err == nil && am.Address == addr {
+	if am, err := s.ledger.GetAccountMeta(addr); err == nil && am.Address == addr {
 		_, err := s.GetRawKey(addr)
 		return err == nil
 	}
@@ -528,8 +521,7 @@ func (s *Session) GetRawKey(account types.Address) (*types.Account, error) {
 }
 
 func (s *Session) GetAccounts() ([]types.Address, error) {
-	session := s.ledger.NewLedgerSession(true)
-	defer session.Close()
+	l := s.ledger
 	var accounts []types.Address
 	index, err := s.GetDeterministicIndex()
 	if err != nil {
@@ -545,7 +537,7 @@ func (s *Session) GetAccounts() ([]types.Address, error) {
 		for i := uint32(0); i < max; i++ {
 			if account, err := s.Account(uint32(i)); err == nil {
 				address := account.Address()
-				if _, err := session.GetAccountMeta(address); err == nil {
+				if _, err := l.GetAccountMeta(address); err == nil {
 					accounts = append(accounts, address)
 				} else {
 					//s.logger.Error(err)
@@ -565,6 +557,8 @@ func (s *Session) getKey(t byte) []byte {
 }
 
 func (s *Session) getPassword() []byte {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	if s.password == nil {
 		return []byte{}
 	}
@@ -572,6 +566,8 @@ func (s *Session) getPassword() []byte {
 }
 
 func (s *Session) setPassword(password string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	if s.password != nil {
 		s.password.Destroy()
 	}

@@ -72,7 +72,7 @@ func TestNewWalletStore2(t *testing.T) {
 }
 
 func TestWalletStore_NewWallet(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	ids, err := store.WalletIds()

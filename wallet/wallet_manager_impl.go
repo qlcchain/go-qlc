@@ -31,8 +31,8 @@ var (
 )
 
 func NewWalletStore(cfg *config.Config) *WalletStore {
-	lock.RLock()
-	defer lock.RUnlock()
+	lock.Lock()
+	defer lock.Unlock()
 	dir := cfg.WalletDir()
 	if _, ok := cache[dir]; !ok {
 		store, err := db.NewBadgerStore(dir)
@@ -195,8 +195,8 @@ func (ws *WalletStore) RemoveWallet(id types.Address) error {
 }
 
 func (ws *WalletStore) Close() error {
-	lock.RLock()
-	defer lock.RUnlock()
+	lock.Lock()
+	defer lock.Unlock()
 	err := ws.Store.Close()
 	delete(cache, ws.dir)
 	return err

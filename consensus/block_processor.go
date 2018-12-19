@@ -53,11 +53,9 @@ func (bp *BlockProcessor) process_blocks() {
 	}
 }
 func (bp *BlockProcessor) process_receive_one(block types.Block) process_result {
-	session := bp.dp.ledger.NewLedgerSession(false)
-	defer session.Close()
 	if block.GetType() == types.State {
 		state := interface{}(block).(*types.StateBlock)
-		return bp.checkStateBasicInfo(*state, session)
+		return bp.checkStateBasicInfo(*state)
 	} else if block.GetType() == types.SmartContract {
 		return other
 	} else {
@@ -65,20 +63,19 @@ func (bp *BlockProcessor) process_receive_one(block types.Block) process_result 
 	}
 }
 
-func (bp *BlockProcessor) checkStateBasicInfo(block types.StateBlock, session *ledger.LedgerSession) process_result {
-
+func (bp *BlockProcessor) checkStateBasicInfo(block types.StateBlock) process_result {
 	hash := block.GetHash()
 	pre := block.GetPrevious()
 	link := block.GetLink()
 	address := block.GetAddress()
-
+	l := bp.dp.ledger
 	logger.Info("---- process block, ", hash)
 
 	// make sure smart contract token exist
 	// ...
 
 	// make sure the block does not exist
-	block_exist, err := session.HasBlock(hash)
+	block_exist, err := l.HasBlock(hash)
 	if err != nil {
 		return other
 	}
@@ -97,13 +94,13 @@ func (bp *BlockProcessor) checkStateBasicInfo(block types.StateBlock, session *l
 	is_send := false
 	transfer_amount := block.GetBalance()
 
-	tm_exist, err := session.HasTokenMeta(address, block.GetToken())
+	tm_exist, err := l.HasTokenMeta(address, block.GetToken())
 	if err != nil && err != ledger.ErrAccountNotFound {
 		return other
 	}
 	if tm_exist { // this tm chain exist , not open
 		logger.Info("tokenmeta exist")
-		tm, err := session.GetTokenMeta(address, block.GetToken())
+		tm, err := l.GetTokenMeta(address, block.GetToken())
 		if err != nil {
 			return other
 		}
@@ -112,7 +109,7 @@ func (bp *BlockProcessor) checkStateBasicInfo(block types.StateBlock, session *l
 			logger.Info("fork: tokenmeta exist, but pre is zero")
 			return fork
 		}
-		previous_exist, err := session.HasBlock(block.GetPrevious())
+		previous_exist, err := l.HasBlock(block.GetPrevious())
 		if err != nil {
 			return other
 		}
@@ -144,7 +141,7 @@ func (bp *BlockProcessor) checkStateBasicInfo(block types.StateBlock, session *l
 	}
 	if !is_send {
 		if !link.IsZero() { // open or receive
-			link_exist, err := session.HasBlock(link)
+			link_exist, err := l.HasBlock(link)
 			if err != nil {
 				return other
 			}
@@ -156,7 +153,7 @@ func (bp *BlockProcessor) checkStateBasicInfo(block types.StateBlock, session *l
 				Address: address,
 				Hash:    link,
 			}
-			pending, err := session.GetPending(PendingKey)
+			pending, err := l.GetPending(PendingKey)
 			if err != nil {
 				if err == ledger.ErrPendingNotFound {
 					logger.Info("unreceivable: open or receive block, but pending not exist")
@@ -175,42 +172,43 @@ func (bp *BlockProcessor) checkStateBasicInfo(block types.StateBlock, session *l
 			}
 		}
 	}
-	if err := bp.addBasicInfo(block, is_send, session); err != nil {
+	if err := bp.addBasicInfo(block, is_send); err != nil {
 		return other
 	}
 	return progress
 }
-func (bp *BlockProcessor) addBasicInfo(block types.StateBlock, is_send bool, session *ledger.LedgerSession) error {
+func (bp *BlockProcessor) addBasicInfo(block types.StateBlock, is_send bool) error {
 	hash := block.GetHash()
 	logger.Info("add block, ", hash)
-	if err := session.AddBlock(&block); err != nil {
+	l := bp.dp.ledger
+	if err := l.AddBlock(&block); err != nil {
 		return err
 	}
 
-	tm, err := session.GetTokenMeta(block.GetAddress(), block.GetToken())
+	tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken())
 	if err != nil && err != ledger.ErrTokenNotFound && err != ledger.ErrAccountNotFound {
 		return err
 	}
 
-	if err := bp.updateRepresentative(block, tm, session); err != nil {
+	if err := bp.updateRepresentative(block, tm, l); err != nil {
 		return err
 	}
 
-	if err := bp.updatePending(block, tm, is_send, session); err != nil {
+	if err := bp.updatePending(block, tm, is_send, l); err != nil {
 		return err
 	}
 
-	if err := bp.updateAccountMeta(hash, hash, block.GetAddress(), block.GetToken(), block.GetBalance(), session); err != nil {
+	if err := bp.updateAccountMeta(hash, hash, block.GetAddress(), block.GetToken(), block.GetBalance(), l); err != nil {
 		return err
 	}
 
-	if err := bp.updateFrontier(hash, tm, session); err != nil {
+	if err := bp.updateFrontier(hash, tm, l); err != nil {
 		return err
 	}
 
 	return nil
 }
-func (bp *BlockProcessor) updatePending(block types.StateBlock, tm *types.TokenMeta, is_send bool, session *ledger.LedgerSession) error {
+func (bp *BlockProcessor) updatePending(block types.StateBlock, tm *types.TokenMeta, is_send bool, session *ledger.Ledger) error {
 	hash := block.GetHash()
 	link := block.GetLink()
 	if is_send { // send
@@ -239,7 +237,7 @@ func (bp *BlockProcessor) updatePending(block types.StateBlock, tm *types.TokenM
 	}
 	return nil
 }
-func (bp *BlockProcessor) updateRepresentative(block types.StateBlock, tm *types.TokenMeta, session *ledger.LedgerSession) error {
+func (bp *BlockProcessor) updateRepresentative(block types.StateBlock, tm *types.TokenMeta, session *ledger.Ledger) error {
 	if strings.EqualFold(block.GetToken().String(), chain_token_type) {
 		if tm != nil && !tm.RepBlock.IsZero() {
 			blk, err := session.GetBlock(tm.RepBlock)
@@ -257,7 +255,7 @@ func (bp *BlockProcessor) updateRepresentative(block types.StateBlock, tm *types
 	}
 	return nil
 }
-func (bp *BlockProcessor) updateFrontier(hash types.Hash, tm *types.TokenMeta, session *ledger.LedgerSession) error {
+func (bp *BlockProcessor) updateFrontier(hash types.Hash, tm *types.TokenMeta, session *ledger.Ledger) error {
 	frontier := &types.Frontier{
 		HeaderBlock: hash,
 	}
@@ -278,7 +276,7 @@ func (bp *BlockProcessor) updateFrontier(hash types.Hash, tm *types.TokenMeta, s
 	}
 	return nil
 }
-func (bp *BlockProcessor) updateAccountMeta(hash types.Hash, rep_block types.Hash, address types.Address, token types.Hash, balance types.Balance, session *ledger.LedgerSession) error {
+func (bp *BlockProcessor) updateAccountMeta(hash types.Hash, rep_block types.Hash, address types.Address, token types.Hash, balance types.Balance, session *ledger.Ledger) error {
 	tm_exist, err := session.HasTokenMeta(address, token)
 	if err != nil && err != ledger.ErrAccountNotFound {
 		return err
