@@ -56,7 +56,7 @@ func (s *BadgerStore) Erase() error {
 
 func (s *BadgerStore) NewTransaction(update bool) *BadgerStoreTxn {
 	txn := &BadgerStoreTxn{txn: s.db.NewTransaction(update), db: s.db}
-	logger.Debugf("NewTransaction %p", txn.txn)
+	logger.Debugf("NewTransaction %p", txn)
 	return txn
 }
 
@@ -149,7 +149,7 @@ func (t *BadgerStoreTxn) Commit(callback func(error)) error {
 
 func (t *BadgerStoreTxn) Discard() {
 	if t.txn != nil {
-		logger.Debugf("Discard %p", t.txn)
+		logger.Debugf("Discard %p", t)
 		t.txn.Discard()
 	}
 }

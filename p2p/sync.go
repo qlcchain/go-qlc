@@ -75,9 +75,7 @@ func (ss *ServiceSync) Stop() {
 }
 func (ss *ServiceSync) onFrontierReq(message Message) error {
 	var fs []*types.Frontier
-	session := ss.qlcLedger.NewLedgerSession(false)
-	defer session.Close()
-	fs, err := session.GetFrontiers()
+	fs, err := ss.qlcLedger.GetFrontiers()
 	if err != nil {
 		return err
 	}
@@ -109,8 +107,6 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 	}
 	fr := fsremote.Frontier
 	logger.Info(fr.HeaderBlock, fr.OpenBlock)
-	session := ss.qlcLedger.NewLedgerSession(false)
-	defer session.Close()
 
 	if !fr.OpenBlock.IsZero() {
 		for {
@@ -131,7 +127,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 				if headerBlockHash == fr.HeaderBlock {
 					logger.Infof("this token %s have the same block", openBlockHash)
 				} else {
-					exit, _ := session.HasBlock(fr.HeaderBlock)
+					exit, _ := ss.qlcLedger.HasBlock(fr.HeaderBlock)
 					if exit == true {
 						push := &messagepb.Bulk{
 							StartHash: fr.HeaderBlock,
@@ -198,7 +194,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
-							blk, err = session.GetBlock(endHash)
+							blk, err = ss.qlcLedger.GetBlock(endHash)
 							if err != nil {
 								return err
 							}
@@ -223,7 +219,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
-							blk, err = session.GetBlock(endHash)
+							blk, err = ss.qlcLedger.GetBlock(endHash)
 							if err != nil {
 								return err
 							}
@@ -254,9 +250,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 }
 
 func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
-	session := ledger.NewLedgerSession(false)
-	defer session.Close()
-	frontiers, err := session.GetFrontiers()
+	frontiers, err := ledger.GetFrontiers()
 	if err != nil {
 		return nil, err
 	}
@@ -269,8 +263,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 	if err != nil {
 		return err
 	}
-	session := ss.qlcLedger.NewLedgerSession(false)
-	defer session.Close()
+
 	startHash := pullremote.StartHash
 	endHash := pullremote.EndHash
 	if startHash.IsZero() {
@@ -278,7 +271,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 		var bulkblk []types.Block
 		logger.Info("need to send all the blocks of this account")
 		for {
-			blk, err = session.GetBlock(endHash)
+			blk, err = ss.qlcLedger.GetBlock(endHash)
 			if err != nil {
 				return err
 			}
@@ -303,7 +296,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 		var bulkblk []types.Block
 		logger.Info("need to send some blocks of this account")
 		for {
-			blk, err = session.GetBlock(endHash)
+			blk, err = ss.qlcLedger.GetBlock(endHash)
 			if err != nil {
 				return err
 			}
@@ -331,18 +324,16 @@ func (ss *ServiceSync) onBulkPullRsp(message Message) error {
 	if err != nil {
 		return err
 	}
-	session := ss.qlcLedger.NewLedgerSession(false)
-	defer session.Close()
 
 	block := blkpacket.Blk
 	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
-	err = session.AddBlock(block)
+	err = ss.qlcLedger.AddBlock(block)
 	if err != nil {
 		return err
 	}
 	previousHash := block.GetPrevious()
 	if previousHash.IsZero() == false {
-		currentfr, err := session.GetFrontier(block.GetPrevious())
+		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPrevious())
 		if err != nil {
 			return err
 		}
@@ -350,11 +341,11 @@ func (ss *ServiceSync) onBulkPullRsp(message Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   currentfr.OpenBlock,
 		}
-		err = session.DeleteFrontier(block.GetPrevious())
+		err = ss.qlcLedger.DeleteFrontier(block.GetPrevious())
 		if err != nil {
 			return err
 		}
-		err = session.AddFrontier(updatefr)
+		err = ss.qlcLedger.AddFrontier(updatefr)
 		if err != nil {
 			return err
 		}
@@ -363,7 +354,7 @@ func (ss *ServiceSync) onBulkPullRsp(message Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   block.GetHash(),
 		}
-		err = session.AddFrontier(fr)
+		err = ss.qlcLedger.AddFrontier(fr)
 		if err != nil {
 			return err
 		}
@@ -377,16 +368,14 @@ func (ss *ServiceSync) onBulkPushBlock(message Message) error {
 	}
 	block := blkpacket.Blk
 	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
-	session := ss.qlcLedger.NewLedgerSession(false)
-	defer session.Close()
 
-	err = session.AddBlock(block)
+	err = ss.qlcLedger.AddBlock(block)
 	if err != nil {
 		return err
 	}
 	previousHash := block.GetPrevious()
 	if previousHash.IsZero() == false {
-		currentfr, err := session.GetFrontier(block.GetPrevious())
+		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPrevious())
 		if err != nil {
 			return err
 		}
@@ -394,11 +383,11 @@ func (ss *ServiceSync) onBulkPushBlock(message Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   currentfr.OpenBlock,
 		}
-		err = session.DeleteFrontier(block.GetPrevious())
+		err = ss.qlcLedger.DeleteFrontier(block.GetPrevious())
 		if err != nil {
 			return err
 		}
-		err = session.AddFrontier(updatefr)
+		err = ss.qlcLedger.AddFrontier(updatefr)
 		if err != nil {
 			return err
 		}
@@ -407,7 +396,7 @@ func (ss *ServiceSync) onBulkPushBlock(message Message) error {
 			HeaderBlock: block.GetHash(),
 			OpenBlock:   block.GetHash(),
 		}
-		err = session.AddFrontier(fr)
+		err = ss.qlcLedger.AddFrontier(fr)
 		if err != nil {
 			return err
 		}

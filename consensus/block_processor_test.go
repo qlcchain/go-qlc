@@ -65,8 +65,8 @@ func TestDpos_BlockBasicInfoCheck(t *testing.T) {
 	defer teardownTestCase(t)
 	dpos := NewDpos(nil, l)
 	blks := parseBlocks(t, "testdata/blocks.json")
-	session := l.NewLedgerSession(false)
-	err := dpos.bp.addBasicInfo(blks[0], false, session)
+
+	err := dpos.bp.addBasicInfo(blks[0], false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,30 +77,30 @@ func TestDpos_BlockBasicInfoCheck(t *testing.T) {
 		}
 		t.Log(r)
 	}
-	checkInfo(t, session)
+	checkInfo(t, l)
 }
 
-func checkInfo(t *testing.T, session *ledger.LedgerSession) {
-	blocks, _ := session.GetBlocks()
+func checkInfo(t *testing.T, l *ledger.Ledger) {
+	blocks, _ := l.GetBlocks()
 	fmt.Println("blocks: ")
 	for _, b := range blocks {
 		fmt.Println(*b)
 	}
 
 	fmt.Println("frontiers:")
-	fs, _ := session.GetFrontiers()
+	fs, _ := l.GetFrontiers()
 	for _, f := range fs {
 		fmt.Println(f)
 	}
 	fmt.Println("account: ")
 	a, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	ac, _ := session.GetAccountMeta(a)
+	ac, _ := l.GetAccountMeta(a)
 	fmt.Println(" account1,", ac.Address)
 	for _, t := range ac.Tokens {
 		fmt.Println("  token, ", t)
 	}
 	a, _ = types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
-	ac, _ = session.GetAccountMeta(a)
+	ac, _ = l.GetAccountMeta(a)
 	fmt.Println(" account2,", ac.Address)
 	for _, t := range ac.Tokens {
 		fmt.Println("  token, ", t)

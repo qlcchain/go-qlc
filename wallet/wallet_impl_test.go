@@ -9,32 +9,34 @@ package wallet
 
 import (
 	"encoding/hex"
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger/db"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
 
-var (
-	store *WalletStore
-)
-
-func setupTestCase(t *testing.T) func(t *testing.T) {
+func setupTestCase(t *testing.T) (func(t *testing.T), *WalletStore) {
+	t.Parallel()
 	start := time.Now()
 	cfg, _ := config.DefaultConfig()
-	cfg.DataDir = config.QlcTestDataDir()
+	cfg.DataDir = filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	dir := cfg.WalletDir()
 	t.Log("setup store test case", dir)
 	_ = os.RemoveAll(dir)
 
-	store = NewWalletStore(cfg)
+	store := NewWalletStore(cfg)
 	if store == nil {
 		t.Fatal("create store failed")
 	}
+	t.Logf("NewWalletStore cost %s", time.Since(start))
 	return func(t *testing.T) {
 		err := store.Close()
 		if err != nil {
@@ -44,13 +46,12 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		elapsed := time.Since(start)
-		t.Logf("teardown wallet test case: %s", elapsed)
-	}
+		t.Logf("teardown wallet test case: %s", time.Since(start))
+	}, store
 }
 
 func TestWalletStore_NewSession(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -67,7 +68,7 @@ func TestWalletStore_NewSession(t *testing.T) {
 }
 
 func TestSession_ChangePassword(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -98,7 +99,7 @@ func TestSession_ChangePassword(t *testing.T) {
 }
 
 func TestSession_ValidPassword(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -126,7 +127,7 @@ func TestSession_ValidPassword(t *testing.T) {
 }
 
 func TestSession_IsAccountExist(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -135,31 +136,26 @@ func TestSession_IsAccountExist(t *testing.T) {
 	}
 
 	session := store.NewSession(id)
-	seedArray, err := session.GetSeed()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(hex.EncodeToString(seedArray))
-	seed := hex.EncodeToString(seedArray)
-	pub, _, err := types.KeypairFromSeed(seed, 2)
+	seedArray, _ := session.GetSeed()
+	seed, _ := types.BytesToSeed(seedArray)
+	account, err := seed.Account(2)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	addr := types.PubToAddress(pub)
+	addr := account.Address()
 	t.Log(addr.String())
 
 	am := common.MockAccountMeta(addr)
-	s := session.ledger.NewLedgerSession(false)
-	defer s.Close()
+	l := session.ledger
 
-	err = s.AddAccountMeta(am)
+	err = l.AddAccountMeta(am)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	am2, err := s.GetAccountMeta(addr)
+	am2, err := l.GetAccountMeta(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,12 +167,12 @@ func TestSession_IsAccountExist(t *testing.T) {
 		t.Fatal("IsAccountExist1 failed", addr.String())
 	}
 
-	pub2, _, err := types.KeypairFromSeed(seed, 101)
+	account2, err := seed.Account(101)
 
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr2 := types.PubToAddress(pub2)
+	addr2 := account2.Address()
 
 	if exist := session.IsAccountExist(addr2); exist {
 		t.Fatal("IsAccountExist2 failed", addr2.String())
@@ -189,7 +185,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 }
 
 func TestSession_GetRawKey(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -228,7 +224,7 @@ func TestSession_GetRawKey(t *testing.T) {
 }
 
 func TestSession_SetSeed(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -259,7 +255,7 @@ func TestSession_SetSeed(t *testing.T) {
 }
 
 func TestSession_SetVersion(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -267,23 +263,29 @@ func TestSession_SetVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	start := time.Now()
 	session := store.NewSession(id)
+	t.Logf("NewSession cost %s", time.Since(start))
+	start = time.Now()
 	err = session.SetVersion(2)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("SetVersion cost %s", time.Since(start))
 
+	start = time.Now()
 	i, err := session.GetVersion()
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("GetVersion cost %s", time.Since(start))
 	if i != 2 {
 		t.Fatal("set version failed")
 	}
 }
 
 func TestSession_DeterministicIndex(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -316,7 +318,7 @@ func TestSession_DeterministicIndex(t *testing.T) {
 }
 
 func TestSession_GetWork(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -336,7 +338,7 @@ func TestSession_GetWork(t *testing.T) {
 }
 
 func TestGenerateWork(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -344,17 +346,22 @@ func TestGenerateWork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	session := store.NewSession(id)
-	hash := common.MockHash()
-	work := session.generateWork(hash)
-	if !work.IsValid(hash) {
-		t.Fatal("generateWork failed =>", hash.String())
-	}
-	t.Log(hash.String(), "=>", work.String())
+	done := make(chan string)
+	go func() {
+		session := store.NewSession(id)
+		hash := common.MockHash()
+		work := session.generateWork(hash)
+		if !work.IsValid(hash) {
+			t.Fatal("generateWork failed =>", hash.String())
+		}
+		done <- fmt.Sprintf("hash[%s]=>%s", hash.String(), work.String())
+	}()
+
+	t.Log(<-done)
 }
 
 func TestSession_GetAccounts(t *testing.T) {
-	teardownTestCase := setupTestCase(t)
+	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	id, err := store.NewWallet()
@@ -363,24 +370,23 @@ func TestSession_GetAccounts(t *testing.T) {
 	}
 
 	session := store.NewSession(id)
-	s := session.ledger.NewLedgerSession(true)
-	defer s.Close()
+	s := session.ledger
 
 	seed, err := session.GetSeed()
-	seedString := hex.EncodeToString(seed)
+	//seedString := hex.EncodeToString(seed)
 	//addresses, err := insertAccountMeta(session, seedString, t)
-
+	ss, _ := types.BytesToSeed(seed)
 	var addresses []types.Address
-	err = s.BatchUpdate(func() error {
+	err = s.BatchUpdate(func(txn db.StoreTxn) error {
 		for i := 0; i < 5; i++ {
-			pub, _, err := types.KeypairFromSeed(seedString, uint32(i))
-			addr := types.PubToAddress(pub)
+			account, _ := ss.Account(uint32(i))
+			addr := account.Address()
 			am := common.MockAccountMeta(addr)
-			err = s.AddAccountMeta(am)
+			err = s.AddAccountMeta(am, txn)
 			if err != nil {
 				t.Fatal(err)
 			}
-			meta, err := s.GetAccountMeta(addr)
+			meta, err := s.GetAccountMeta(addr, txn)
 			if err != nil {
 				t.Fatal(err)
 			}
