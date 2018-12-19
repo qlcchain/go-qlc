@@ -42,33 +42,42 @@ func NewSeed() (*Seed, error) {
 	return seed, nil
 }
 
-//Key get private key by index from seed
-func (s *Seed) Key(index uint32) (ed25519.PrivateKey, error) {
+func BytesToSeed(b []byte) (*Seed, error) {
+	seed := new(Seed)
+	if len(b) != SeedSize {
+		return nil, fmt.Errorf("invalid seed size[%d]", len(b))
+	}
+	copy(seed[:], b)
+
+	return seed, nil
+}
+
+//Account get account by index from seed
+func (s *Seed) Account(index uint32) (*Account, error) {
 	indexBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(indexBytes, index)
 
 	hash, err := blake2b.New(blake2b.Size256, nil)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	hash.Write(s[:])
 	hash.Write(indexBytes)
 
 	sum := hash.Sum(nil)
 	sumReader := bytes.NewReader(sum)
-	_, key, err := ed25519.GenerateKey(sumReader)
+	pub, priv, err := ed25519.GenerateKey(sumReader)
 	if err != nil {
 		return nil, err
 	}
 
-	return key, nil
+	return &Account{pubKey: pub, privKey: priv}, nil
 }
 
 //MasterAddress the first address generate by seed
 func (s *Seed) MasterAddress() Address {
-	priv, _ := s.Key(0)
-	pub, _, _ := ed25519.GenerateKey(bytes.NewReader(priv))
-	return PubToAddress(pub)
+	account, _ := s.Account(0)
+	return account.Address()
 }
 
 // String seed tostring

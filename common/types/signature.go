@@ -62,8 +62,8 @@ func (s *Signature) Len() int {
 }
 
 //ExtensionType implements Extension.MarshalBinaryTo interface
-func (s *Signature) MarshalBinaryTo(text []byte) error {
-	copy(text, (*s)[:])
+func (s Signature) MarshalBinaryTo(text []byte) error {
+	copy(text, s[:])
 	return nil
 }
 
@@ -78,7 +78,7 @@ func (s *Signature) UnmarshalBinary(text []byte) error {
 }
 
 //MarshalJSON implements json.Marshaler interface
-func (s *Signature) MarshalJSON() ([]byte, error) {
+func (s Signature) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
 }
 

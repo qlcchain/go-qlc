@@ -9,7 +9,6 @@ package wallet
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger"
@@ -512,26 +511,26 @@ func (s *Session) GetRawKey(account types.Address) (*types.Account, error) {
 	}
 
 	max := max(uint32(index), uint32(s.maxAccountCount))
-	seed := hex.EncodeToString(seedArray)
+	seed, _ := types.BytesToSeed(seedArray)
 
 	for i := uint32(0); i < max; i++ {
-		pub, priv, err := types.KeypairFromSeed(seed, uint32(i))
+		a, err := seed.Account(uint32(i))
 		if err != nil {
 			s.logger.Fatal(err)
 		}
-		address := types.PubToAddress(pub)
+		address := a.Address()
 		if address == account {
-			return types.NewAccount(priv), nil
+			return a, nil
 		}
 	}
 
 	return nil, fmt.Errorf("can not fetch account[%s]'s raw key", account.String())
 }
 
-func (s *Session) GetAccounts() (accounts []types.Address, err error) {
+func (s *Session) GetAccounts() ([]types.Address, error) {
 	session := s.ledger.NewLedgerSession(true)
 	defer session.Close()
-
+	var accounts []types.Address
 	index, err := s.GetDeterministicIndex()
 	if err != nil {
 		index = 0
@@ -539,11 +538,13 @@ func (s *Session) GetAccounts() (accounts []types.Address, err error) {
 
 	if seedArray, err := s.GetSeed(); err == nil {
 		max := max(uint32(index), uint32(s.maxAccountCount))
-		seed := hex.EncodeToString(seedArray)
-
+		s, err := types.BytesToSeed(seedArray)
+		if err != nil {
+			return accounts, err
+		}
 		for i := uint32(0); i < max; i++ {
-			if pub, _, err := types.KeypairFromSeed(seed, uint32(i)); err == nil {
-				address := types.PubToAddress(pub)
+			if account, err := s.Account(uint32(i)); err == nil {
+				address := account.Address()
 				if _, err := session.GetAccountMeta(address); err == nil {
 					accounts = append(accounts, address)
 				} else {
@@ -553,7 +554,7 @@ func (s *Session) GetAccounts() (accounts []types.Address, err error) {
 		}
 	}
 
-	return
+	return accounts, nil
 }
 
 func (s *Session) getKey(t byte) []byte {
