@@ -517,10 +517,9 @@ func (ls *LedgerSession) GetTokenMeta(address types.Address, tokenType types.Has
 	if err != nil {
 		return nil, err
 	}
-	for _, token := range am.Tokens {
-		if token.Type == tokenType {
-			return token, nil
-		}
+	tm := am.Token(tokenType)
+	if tm != nil {
+		return tm, nil
 	}
 	return nil, ErrTokenNotFound
 }
@@ -869,10 +868,9 @@ func (ls *LedgerSession) Token(hash types.Hash) (*types.TokenMeta, error) {
 			return nil, err
 		}
 
-		for _, tm := range am.Tokens {
-			if tm.Type == token {
-				return tm, nil
-			}
+		tm := am.Token(token)
+		if tm != nil {
+			return tm, nil
 		}
 		//TODO: hash to token name
 		return nil, fmt.Errorf("can not find token %s", token)

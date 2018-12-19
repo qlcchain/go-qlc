@@ -38,17 +38,36 @@ func TestSeed_From(t *testing.T) {
 	}
 }
 
-func TestSeed_Key(t *testing.T) {
+func TestSeed_Account(t *testing.T) {
 	const s = "1234567890123456789012345678901234567890123456789012345678901234"
 	seed, _ := NewSeed()
 	b, _ := hex.DecodeString(s)
 	_ = seed.UnmarshalBinary(b)
-	priv, err := seed.Key(0)
+	account, err := seed.Account(0)
 	if err != nil {
-		pub, _ := KeypairFromPrivateKey(hex.EncodeToString(priv))
+		pub, _ := KeypairFromPrivateKey(hex.EncodeToString(account.privKey))
 		addr := PubToAddress(pub)
 		if addr.String() != "qlc_3iwi45me3cgo9aza9wx5f7rder37hw11xtc1ek8psqxw5oxb8cujjad6qp9y" {
 			t.Error("generate seed failed.")
 		}
+	}
+}
+
+func TestSeed_MasterAddress(t *testing.T) {
+	seed, err := NewSeed()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pub, _, err := KeypairFromSeed(seed.String(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := PubToAddress(pub)
+	t.Log(addr.String())
+	addr2 := seed.MasterAddress()
+
+	if addr != addr2 {
+		t.Fatal("addr != addr2")
 	}
 }

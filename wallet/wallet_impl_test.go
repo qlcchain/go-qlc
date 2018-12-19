@@ -9,10 +9,9 @@ package wallet
 
 import (
 	"encoding/hex"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/crypto/random"
-	"math"
 	"os"
 	"reflect"
 	"strings"
@@ -25,6 +24,7 @@ var (
 )
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
+	start := time.Now()
 	cfg, _ := config.DefaultConfig()
 	cfg.DataDir = config.QlcTestDataDir()
 	dir := cfg.WalletDir()
@@ -36,7 +36,6 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 		t.Fatal("create store failed")
 	}
 	return func(t *testing.T) {
-		t.Log("teardown wallet test case")
 		err := store.Close()
 		if err != nil {
 			t.Fatal(err)
@@ -45,6 +44,8 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		elapsed := time.Since(start)
+		t.Logf("teardown wallet test case: %s", elapsed)
 	}
 }
 
@@ -149,7 +150,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 	addr := types.PubToAddress(pub)
 	t.Log(addr.String())
 
-	am := mockAccountMeta(addr)
+	am := common.MockAccountMeta(addr)
 	s := session.ledger.NewLedgerSession(false)
 	defer s.Close()
 
@@ -181,33 +182,10 @@ func TestSession_IsAccountExist(t *testing.T) {
 		t.Fatal("IsAccountExist2 failed", addr2.String())
 	}
 
-	addr3 := mockAddress()
+	addr3 := common.MockAddress()
 	if exist := session.IsAccountExist(addr3); exist {
 		t.Fatal("IsAccountExist3 failed", addr2.String())
 	}
-}
-
-func mockAccountMeta(addr types.Address) *types.AccountMeta {
-	var am types.AccountMeta
-	am.Address = addr
-	am.Tokens = []*types.TokenMeta{}
-	for i := 0; i < 5; i++ {
-		s1, _ := random.Intn(math.MaxInt64)
-		s2, _ := random.Intn(math.MaxInt64)
-		t := types.TokenMeta{
-			TokenAccount: mockAddress(),
-			Type:         mockHash(),
-			BelongTo:     addr,
-			Balance:      types.ParseBalanceInts(uint64(s1), uint64(s2)),
-			BlockCount:   1,
-			OpenBlock:    mockHash(),
-			Header:       mockHash(),
-			RepBlock:     mockHash(),
-			Modified:     time.Now().Unix(),
-		}
-		am.Tokens = append(am.Tokens, &t)
-	}
-	return &am
 }
 
 func TestSession_GetRawKey(t *testing.T) {
@@ -229,7 +207,7 @@ func TestSession_GetRawKey(t *testing.T) {
 	pub, priv, err := types.KeypairFromSeed(seed, 2)
 
 	acc1 := types.NewAccount(priv)
-	hash := mockHash()
+	hash := common.MockHash()
 
 	sign := acc1.Sign(hash)
 	addr := types.PubToAddress(pub)
@@ -243,7 +221,7 @@ func TestSession_GetRawKey(t *testing.T) {
 		t.Fatal("verify failed.")
 	}
 
-	addr2 := mockAddress()
+	addr2 := common.MockAddress()
 	if _, err = session.GetRawKey(addr2); err == nil {
 		t.Fatal("get invalid raw key failed")
 	}
@@ -348,7 +326,7 @@ func TestSession_GetWork(t *testing.T) {
 
 	session := store.NewSession(id)
 	//h:=mockHash()
-	addr := mockAddress()
+	addr := common.MockAddress()
 
 	work, err := session.GetWork(addr)
 	if err != nil {
@@ -367,7 +345,7 @@ func TestGenerateWork(t *testing.T) {
 	}
 
 	session := store.NewSession(id)
-	hash := mockHash()
+	hash := common.MockHash()
 	work := session.generateWork(hash)
 	if !work.IsValid(hash) {
 		t.Fatal("generateWork failed =>", hash.String())
@@ -397,7 +375,7 @@ func TestSession_GetAccounts(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			pub, _, err := types.KeypairFromSeed(seedString, uint32(i))
 			addr := types.PubToAddress(pub)
-			am := mockAccountMeta(addr)
+			am := common.MockAccountMeta(addr)
 			err = s.AddAccountMeta(am)
 			if err != nil {
 				t.Fatal(err)
@@ -446,18 +424,4 @@ func TestSession_GetAccounts(t *testing.T) {
 
 		t.Fatal("GetAccounts failed")
 	}
-}
-
-func mockAddress() types.Address {
-	address, _, _ := types.GenerateAddress()
-
-	return address
-}
-
-func mockHash() types.Hash {
-	b := [types.HashSize]byte{}
-	_ = random.Bytes(b[:])
-	h := types.Hash{}
-	_ = h.UnmarshalBinary(b[:])
-	return h
 }
