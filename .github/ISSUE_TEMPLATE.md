@@ -17,10 +17,10 @@ _Please put an `x` against the checkboxes._
 * Go version
 * Release tag/commit of the code
 
-### Expected behaviour
+### Expected behavior
 What should happen?
 
-### Actual behaviour
+### Actual behavior
 What is actually happening?
 
 ### Steps to reproduce
