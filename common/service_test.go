@@ -12,7 +12,7 @@ import (
 )
 
 func TestTaskLifecycle(t *testing.T) {
-	tl := &TaskLifecycle{}
+	tl := &ServiceLifecycle{}
 	t.Log(tl.Status, tl.String())
 	b := tl.PreInit()
 	if !b {
