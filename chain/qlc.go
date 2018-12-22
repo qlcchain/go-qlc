@@ -9,12 +9,16 @@ package chain
 
 import (
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/wallet"
 )
 
 type QlcContext struct {
-	config *config.Config
+	Config *config.Config
+	Wallet *wallet.WalletService
+	Ledger *ledger.LedgerService
 }
 
 func New(cfg *config.Config) (*QlcContext, error) {
-	return &QlcContext{config: cfg}, nil
+	return &QlcContext{Config: cfg}, nil
 }

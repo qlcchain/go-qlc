@@ -2,15 +2,7 @@ package wallet
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
-	"io"
 )
-
-type Wallet struct {
-	io.Closer
-	db      db.Store
-	PoWChan chan types.Work
-}
 
 type walletStoreApi interface {
 	GetWalletId() ([]byte, error)

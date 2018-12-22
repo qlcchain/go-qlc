@@ -47,7 +47,7 @@ func TestInit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = Init(cfg)
+	err = InitLog(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
