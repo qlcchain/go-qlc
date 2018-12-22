@@ -11,12 +11,25 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"math"
+	"math/big"
+	"sync"
 	"time"
 )
 
 var (
+	// TODO: change to real block hash
 	ChainTokenType, _ = types.NewHash("2C353DA641277FD8379354307A54BECE090C51E52FB460EA5A8674B702BDCE5E")
+	tokenCache        = sync.Map{}
 )
+
+type TokenInfo struct {
+	TokenId     types.Hash    `json:"tokenId"`
+	TokenName   string        `json:"tokenName"`
+	TokenSymbol string        `json:"tokenSymbol"`
+	TotalSupply *big.Int      `json:"totalSupply"`
+	Decimals    uint8         `json:"decimals"`
+	Owner       types.Address `json:"owner"`
+}
 
 func MockHash() types.Hash {
 	h := types.Hash{}

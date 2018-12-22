@@ -31,7 +31,7 @@ var (
 	logger, _ = zap.NewDevelopment()
 )
 
-func Init(config *config.Config) error {
+func InitLog(config *config.Config) error {
 	var initErr error
 	once.Do(func() {
 		logFolder := config.LogDir()
