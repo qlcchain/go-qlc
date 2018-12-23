@@ -3,9 +3,6 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger/db"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,9 +10,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
@@ -549,11 +549,11 @@ func TestLedger_HasTokenMeta_False(t *testing.T) {
 	tokenType := types.Hash{}
 	addTokenMeta(t, l)
 
-	if _, err := l.HasTokenMeta(address, tokenType); err == ErrAccountNotFound {
-
-	} else {
+	has, err := l.HasTokenMeta(address, tokenType)
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("has token,", has)
 }
 
 func TestLedger_HasTokenMeta_True(t *testing.T) {
@@ -877,4 +877,73 @@ func TestLedgerSession_TokenPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(pending)
+}
+
+func TestLedger_Rollback(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	blks := parseBlocks(t, "testdata/blocks_rollback.json")
+
+	err := l.BatchUpdate(func(txn db.StoreTxn) error {
+		state := blks[0].(*types.StateBlock)
+		return l.addBasicInfo(state, false, txn)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, b := range blks[1:] {
+		r := l.Process(b)
+		if r == Other {
+			t.Fatal(r)
+		}
+	}
+
+	check(t, l)
+	hash := types.Hash{}
+	hash.Of("ff7731f66512a7c66668ce04bf87eb2cdb2fa3c421c4188db7106fac67362a9b")
+	err = l.Rollback(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	check(t, l)
+
+}
+
+func check(t *testing.T, l *Ledger) {
+	blocks, _ := l.GetBlocks()
+	fmt.Println("----blocks: ")
+	for _, b := range blocks {
+		fmt.Println(*b)
+	}
+
+	fmt.Println("----frontiers:")
+	fs, _ := l.GetFrontiers()
+	for _, f := range fs {
+		fmt.Println(f)
+	}
+	fmt.Println("----account: ")
+	var addrs []types.Address
+	addr1, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	addrs = append(addrs, addr1)
+	addr2, _ := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
+	addrs = append(addrs, addr2)
+	addr3, _ := types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
+	addrs = append(addrs, addr3)
+	for index, addr := range addrs {
+		if ac, err := l.GetAccountMeta(addr); err == nil {
+			fmt.Println("   account ", index, " ", ac.Address)
+			for _, t := range ac.Tokens {
+				fmt.Println("       token ", t)
+			}
+		}
+	}
+	fmt.Println("----representation:")
+	for _, addr := range addrs {
+		if b, err := l.GetRepresentation(addr); err == nil {
+			fmt.Println(addr, b)
+		}
+
+	}
 }
