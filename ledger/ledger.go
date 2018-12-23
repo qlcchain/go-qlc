@@ -3,13 +3,14 @@ package ledger
 import (
 	"errors"
 	"fmt"
+	"io"
+	"math/rand"
+	"sync"
+
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
-	"io"
-	"math/rand"
-	"sync"
 )
 
 type Ledger struct {
@@ -537,21 +538,21 @@ func (l *Ledger) UpdateTokenMeta(address types.Address, meta *types.TokenMeta, t
 		return err
 	}
 
-	tm := am.Token(meta.Type)
-
-	if tm != nil {
-		tm = meta
-		return l.UpdateAccountMeta(am, txns...)
-	}
-	//tokens := am.Tokens
-	//for index, token := range am.Tokens {
-	//	if token.Type == meta.Type {
-	//		//am.Tokens = append(tokens[:index], tokens[index+1:]...)
-	//		//am.Tokens = append(am.Tokens, meta)
-	//		am.Tokens[index] = meta
-	//		return l.UpdateAccountMeta(am, txns...)
-	//	}
+	//tm := am.Token(meta.Type)
+	//
+	//if tm != nil {
+	//	tm = meta
+	//	return l.UpdateAccountMeta(am, txns...)
 	//}
+	//tokens := am.Tokens
+	for index, token := range am.Tokens {
+		if token.Type == meta.Type {
+			//am.Tokens = append(tokens[:index], tokens[index+1:]...)
+			//am.Tokens = append(am.Tokens, meta)
+			am.Tokens[index] = meta
+			return l.UpdateAccountMeta(am, txns...)
+		}
+	}
 	return ErrTokenNotFound
 }
 
@@ -570,7 +571,7 @@ func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMe
 	}
 
 	am.Tokens = append(am.Tokens, meta)
-	return l.UpdateAccountMeta(am)
+	return l.UpdateAccountMeta(am, txns...)
 }
 
 func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error {
@@ -584,12 +585,15 @@ func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, tx
 			am.Tokens = append(tokens[:index], tokens[index+1:]...)
 		}
 	}
-	return l.UpdateAccountMeta(am)
+	return l.UpdateAccountMeta(am, txns...)
 }
 
 func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (bool, error) {
 	am, err := l.GetAccountMeta(address, txns...)
 	if err != nil {
+		if err == ErrAccountNotFound {
+			return false, nil
+		}
 		return false, err
 	}
 	for _, t := range am.Tokens {
@@ -988,9 +992,272 @@ func (l *Ledger) Weight(account types.Address, txns ...db.StoreTxn) types.Balanc
 	return balance
 }
 
+const (
+	receive byte = iota
+	send
+	open
+	change
+	unknown
+)
+
 // TODO: implement
 func (l *Ledger) Rollback(hash types.Hash) error {
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		return nil
+		return l.processRollback(hash, true, txn)
 	})
+}
+
+func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) error {
+	tm, err := l.Token(hash, txn)
+	if err != nil {
+		return err
+	}
+
+	block_head, err := l.getStateBlock(tm.Header, txn)
+	if err != nil {
+		return err
+	}
+
+	block_cur := block_head
+	for {
+		hash_cur := block_cur.GetHash()
+		block_type, err := l.getBlockKind(hash_cur, txn)
+		if err != nil {
+			return err
+		}
+
+		block_pre := new(types.StateBlock)
+		if block_type != open {
+			block_pre, err = l.getStateBlock(block_cur.Previous, txn)
+			if err != nil {
+				return err
+			}
+		}
+
+		switch block_type {
+		case open:
+			logger.Info("---delete open block, ", hash_cur)
+			if err := l.DeleteBlock(hash_cur, txn); err != nil {
+				return err
+			}
+			if err := l.rollBackToken_del(tm, txn); err != nil {
+				return err
+			}
+			if err := l.rollBackFrontier(types.Hash{}, block_cur.GetHash(), txn); err != nil {
+				return err
+			}
+			if err := l.rollBackRep(block_cur.GetRepresentative(), block_cur.GetBalance(), false, txn); err != nil {
+				return err
+			}
+
+			if hash_cur != hash || isRoot {
+				if err := l.processRollback(block_cur.GetLink(), false, txn); err != nil {
+					return err
+				}
+			}
+		case send:
+			logger.Info("---delete send block, ", hash_cur)
+			if err := l.DeleteBlock(hash_cur, txn); err != nil {
+				return err
+			}
+			if err := l.rollBackToken(tm, block_cur.GetPrevious(), tm.RepBlock, block_pre.GetBalance(), txn); err != nil {
+				return err
+			}
+			if err := l.rollBackFrontier(block_pre.GetHash(), block_cur.GetHash(), txn); err != nil {
+				return err
+			}
+			if err := l.rollBackRep(block_cur.GetRepresentative(), block_pre.GetBalance().Sub(block_cur.GetBalance()), true, txn); err != nil {
+				return err
+			}
+
+			if hash_cur != hash || isRoot {
+				linkblock, err := l.getLinkBlock(block_cur, txn)
+				if err != nil {
+					return err
+				}
+				if err := l.processRollback(linkblock.GetHash(), false, txn); err != nil {
+					return err
+				}
+			}
+		case receive:
+			logger.Info("---delete receive block, ", hash_cur)
+			if err := l.DeleteBlock(hash_cur, txn); err != nil {
+				return err
+			}
+			if err := l.rollBackToken(tm, block_cur.GetPrevious(), tm.RepBlock, block_pre.GetBalance(), txn); err != nil {
+				return err
+			}
+			if err := l.rollBackFrontier(block_pre.GetHash(), block_cur.GetHash(), txn); err != nil {
+				return err
+			}
+			if err := l.rollBackRep(block_cur.GetRepresentative(), block_cur.GetBalance().Sub(block_pre.GetBalance()), false, txn); err != nil {
+				return err
+			}
+
+			if hash_cur != hash || isRoot {
+				if err := l.processRollback(block_cur.GetLink(), false, txn); err != nil {
+					return err
+				}
+			}
+		case change:
+			logger.Info("---delete change block, ", hash_cur)
+			if err := l.DeleteBlock(hash_cur, txn); err != nil {
+				return err
+			}
+			if err := l.rollBackToken(tm, block_cur.GetPrevious(), block_cur.GetPrevious(), tm.Balance, txn); err != nil {
+				return err
+			}
+			if err := l.rollBackFrontier(block_pre.GetHash(), block_cur.GetHash(), txn); err != nil {
+				return err
+			}
+			if err := l.rollBackRep_change(block_pre.GetRepresentative(), block_cur.GetRepresentative(), block_cur.Balance, txn); err != nil {
+				return err
+			}
+		}
+
+		if hash_cur == hash {
+			break
+		}
+
+		block_cur, err = l.getStateBlock(block_cur.GetPrevious(), txn)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Ledger) getBlockKind(hash types.Hash, txn db.StoreTxn) (byte, error) {
+	block, err := l.getStateBlock(hash, txn)
+	if err != nil {
+		return unknown, err
+	}
+
+	pre := block.GetPrevious()
+	if pre.IsZero() {
+		return open, nil
+	} else {
+		block_pre, err := l.getStateBlock(pre, txn)
+		if err != nil {
+			return unknown, err
+		}
+		if block_pre.GetBalance().Compare(block.GetBalance()) == types.BalanceCompSmaller {
+			return receive, nil
+		} else {
+			link := block.GetLink()
+			if link.IsZero() {
+				return change, nil
+			}
+			return send, nil
+		}
+	}
+}
+
+func (l *Ledger) getStateBlock(hash types.Hash, txn db.StoreTxn) (*types.StateBlock, error) {
+	b, err := l.GetBlock(hash, txn)
+	if err != nil {
+		return nil, err
+	}
+	bs, ok := b.(*types.StateBlock)
+	if !ok {
+		return nil, errors.New("unvalid block")
+	}
+	return bs, nil
+}
+
+func (l *Ledger) getLinkBlock(block *types.StateBlock, txn db.StoreTxn) (*types.StateBlock, error) {
+	tm, err := l.GetTokenMeta(types.Address(block.GetLink()), block.GetToken(), txn)
+	if err != nil {
+		return nil, err
+	}
+	block_link, err := l.getStateBlock(tm.Header, txn)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		if block_link.GetLink() == block.GetHash() {
+			break
+		}
+		block_link, err = l.getStateBlock(block_link.GetPrevious(), txn)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return block_link, nil
+}
+
+func (l *Ledger) rollBackFrontier(pre types.Hash, cur types.Hash, txn db.StoreTxn) error {
+	frontier, err := l.GetFrontier(cur, txn)
+	if err != nil {
+		return err
+	}
+	logger.Info("delete frontier, ", frontier)
+	if err := l.DeleteFrontier(cur, txn); err != nil {
+		return err
+	}
+	if !pre.IsZero() {
+		frontier.HeaderBlock = pre
+		logger.Info("add frontier, ", frontier)
+		if err := l.AddFrontier(frontier, txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Ledger) rollBackToken(tm *types.TokenMeta, header types.Hash, rep types.Hash, balance types.Balance, txn db.StoreTxn) error {
+	tm.Balance = balance
+	tm.Header = header
+	tm.RepBlock = rep
+	tm.BlockCount = tm.BlockCount - 1
+	logger.Info("update token, ", tm.BelongTo, tm.Type)
+	if err := l.UpdateTokenMeta(tm.BelongTo, tm, txn); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) rollBackToken_del(tm *types.TokenMeta, txn db.StoreTxn) error {
+	address := tm.BelongTo
+	logger.Info("delete token, ", address, tm.Type)
+	if err := l.DeleteTokenMeta(address, tm.Type, txn); err != nil {
+		return err
+	}
+	ac, err := l.GetAccountMeta(address, txn)
+	if err != nil {
+		return err
+	}
+	if len(ac.Tokens) == 0 {
+		if err := l.DeleteAccountMeta(address, txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Ledger) rollBackRep(address types.Address, balance types.Balance, isSend bool, txn db.StoreTxn) error {
+	if isSend {
+		logger.Infof("add rep %s to %s", balance, address)
+		if err := l.AddRepresentation(address, balance, txn); err != nil {
+			return err
+		}
+	} else {
+		logger.Infof("sub rep %s from %s", balance, address)
+		if err := l.SubRepresentation(address, balance, txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Ledger) rollBackRep_change(pre types.Address, cur types.Address, balance types.Balance, txn db.StoreTxn) error {
+	logger.Infof("add rep %s to %s", balance, pre)
+	if err := l.AddRepresentation(pre, balance, txn); err != nil {
+		return err
+	}
+	logger.Infof("sub rep %s from %s", balance, cur)
+	if err := l.SubRepresentation(cur, balance, txn); err != nil {
+		return err
+	}
+	return nil
 }
