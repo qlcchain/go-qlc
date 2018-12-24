@@ -332,38 +332,38 @@ func (ss *ServiceSync) onBulkPullRsp(message Message) error {
 
 	block := blkpacket.Blk
 	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
-	err = ss.qlcLedger.AddBlock(block)
-	if err != nil {
-		return err
-	}
-	previousHash := block.GetPrevious()
-	if previousHash.IsZero() == false {
-		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPrevious())
+	/*	err = ss.qlcLedger.AddBlock(block)
 		if err != nil {
 			return err
 		}
-		updatefr := &types.Frontier{
-			HeaderBlock: block.GetHash(),
-			OpenBlock:   currentfr.OpenBlock,
-		}
-		err = ss.qlcLedger.DeleteFrontier(block.GetPrevious())
-		if err != nil {
-			return err
-		}
-		err = ss.qlcLedger.AddFrontier(updatefr)
-		if err != nil {
-			return err
-		}
-	} else {
-		fr := &types.Frontier{
-			HeaderBlock: block.GetHash(),
-			OpenBlock:   block.GetHash(),
-		}
-		err = ss.qlcLedger.AddFrontier(fr)
-		if err != nil {
-			return err
-		}
-	}
+		previousHash := block.GetPrevious()
+		if previousHash.IsZero() == false {
+			currentfr, err := ss.qlcLedger.GetFrontier(block.GetPrevious())
+			if err != nil {
+				return err
+			}
+			updatefr := &types.Frontier{
+				HeaderBlock: block.GetHash(),
+				OpenBlock:   currentfr.OpenBlock,
+			}
+			err = ss.qlcLedger.DeleteFrontier(block.GetPrevious())
+			if err != nil {
+				return err
+			}
+			err = ss.qlcLedger.AddFrontier(updatefr)
+			if err != nil {
+				return err
+			}
+		} else {
+			fr := &types.Frontier{
+				HeaderBlock: block.GetHash(),
+				OpenBlock:   block.GetHash(),
+			}
+			err = ss.qlcLedger.AddFrontier(fr)
+			if err != nil {
+				return err
+			}
+		}*/
 	return nil
 }
 func (ss *ServiceSync) onBulkPushBlock(message Message) error {
@@ -374,38 +374,38 @@ func (ss *ServiceSync) onBulkPushBlock(message Message) error {
 	block := blkpacket.Blk
 	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
 
-	err = ss.qlcLedger.AddBlock(block)
-	if err != nil {
-		return err
-	}
-	previousHash := block.GetPrevious()
-	if previousHash.IsZero() == false {
-		currentfr, err := ss.qlcLedger.GetFrontier(block.GetPrevious())
+	/*	err = ss.qlcLedger.AddBlock(block)
 		if err != nil {
 			return err
 		}
-		updatefr := &types.Frontier{
-			HeaderBlock: block.GetHash(),
-			OpenBlock:   currentfr.OpenBlock,
-		}
-		err = ss.qlcLedger.DeleteFrontier(block.GetPrevious())
-		if err != nil {
-			return err
-		}
-		err = ss.qlcLedger.AddFrontier(updatefr)
-		if err != nil {
-			return err
-		}
-	} else {
-		fr := &types.Frontier{
-			HeaderBlock: block.GetHash(),
-			OpenBlock:   block.GetHash(),
-		}
-		err = ss.qlcLedger.AddFrontier(fr)
-		if err != nil {
-			return err
-		}
-	}
+		previousHash := block.GetPrevious()
+		if previousHash.IsZero() == false {
+			currentfr, err := ss.qlcLedger.GetFrontier(block.GetPrevious())
+			if err != nil {
+				return err
+			}
+			updatefr := &types.Frontier{
+				HeaderBlock: block.GetHash(),
+				OpenBlock:   currentfr.OpenBlock,
+			}
+			err = ss.qlcLedger.DeleteFrontier(block.GetPrevious())
+			if err != nil {
+				return err
+			}
+			err = ss.qlcLedger.AddFrontier(updatefr)
+			if err != nil {
+				return err
+			}
+		} else {
+			fr := &types.Frontier{
+				HeaderBlock: block.GetHash(),
+				OpenBlock:   block.GetHash(),
+			}
+			err = ss.qlcLedger.AddFrontier(fr)
+			if err != nil {
+				return err
+			}
+		}*/
 	return nil
 }
 
