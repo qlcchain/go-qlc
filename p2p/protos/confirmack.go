@@ -11,7 +11,7 @@ import (
 type ConfirmAckBlock struct {
 	Account   types.Address
 	Signature types.Signature
-	Sequence  []byte
+	Sequence  uint32
 	Blk       types.Block
 }
 
@@ -24,7 +24,7 @@ func ConfirmAckBlockToProto(confirmack *ConfirmAckBlock) ([]byte, error) {
 	bppb := &pb.ConfirmAck{
 		Account:   confirmack.Account.Bytes(),
 		Signature: confirmack.Signature[:],
-		Sequence:  confirmack.Sequence[:],
+		Sequence:  confirmack.Sequence,
 		Blocktype: uint32(confirmack.Blk.GetType()),
 		Block:     blkdata,
 	}

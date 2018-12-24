@@ -135,7 +135,9 @@ func (s *Stream) readLoop() {
 				// continue reading.
 				break
 			}
-			message.content = append(message.content, messageBuffer[:message.DataLength()]...)
+			if err := message.ParseMessageData(messageBuffer); err != nil {
+				return
+			}
 			// remove data from buffer.
 			messageBuffer = messageBuffer[message.DataLength():]
 
@@ -172,6 +174,7 @@ func (s *Stream) writeLoop() {
 		case message := <-s.messageChan:
 			s.WriteQlcMessage(message)
 			continue
+		default:
 		}
 	}
 
@@ -198,7 +201,8 @@ func (s *Stream) close() {
 
 // SendMessage send msg to buffer
 func (s *Stream) SendMessage(messageType string, data []byte) error {
-	message := NewQlcMessage(data, messageType)
+	version := s.node.cfg.Version
+	message := NewQlcMessage(data, byte(version), messageType)
 	s.messageChan <- message
 	return nil
 }

@@ -34,7 +34,7 @@ message ConfirmReq {
 message ConfirmAck {
     bytes   Account = 1;
     bytes   Signature = 2;
-    bytes   Sequence = 3;
+    uint32  Sequence = 3;
     uint32  blocktype = 4;
     bytes   block = 5;
 }

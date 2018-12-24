@@ -42,7 +42,7 @@ func TestConfirmAckBlockPacket(t *testing.T) {
 	rsp := ConfirmAckBlock{
 		Account:   address,
 		Signature: sign,
-		Sequence:  []byte{1},
+		Sequence:  0,
 		Blk:       blk,
 	}
 	bytes, err := ConfirmAckBlockToProto(&rsp)
