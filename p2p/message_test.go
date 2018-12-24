@@ -2,13 +2,16 @@ package p2p
 
 import (
 	"bytes"
+	"hash/crc32"
 	"testing"
 )
 
 func TestQlcMessage(t *testing.T) {
 	data := "testmessage"
 	msgtype := "test"
-	content := NewQlcMessage([]byte(data), msgtype)
+	version := byte(0x01)
+	reserved := []byte{0x00, 0x00, 0x00, 0x00}
+	content := NewQlcMessage([]byte(data), version, msgtype)
 	qlcMsg := &QlcMessage{
 		content:     content,
 		messageType: MessageType(msgtype),
@@ -16,20 +19,37 @@ func TestQlcMessage(t *testing.T) {
 	if bytes.Compare(qlcMsg.MagicNumber(), MagicNumber) != 0 {
 		t.Fatal("Magic error")
 	}
-	if qlcMsg.Version() != CurrentVersion {
+	if qlcMsg.Version() != version {
 		t.Fatal("Version error")
 	}
 	if qlcMsg.MessageType() != MessageType(msgtype) {
 		t.Fatal("messageType error")
 	}
-	if bytes.Compare(qlcMsg.MessageData(), []byte(data)) != 0 {
-		t.Fatal("MessageData error")
-	}
 	if qlcMsg.DataLength() != uint32(len(data)) {
 		t.Fatal("DataLength error")
 	}
-	msg, _ := ParseQlcMessage(qlcMsg.content[:QlcMessageHeaderLength])
-	if bytes.Compare(msg.content, qlcMsg.content[:QlcMessageHeaderLength]) != 0 {
+	if bytes.Compare(qlcMsg.Reserved(), reserved) != 0 {
+		t.Fatal("reserved error")
+	}
+	if qlcMsg.HeaderCheckSum() != crc32.ChecksumIEEE(qlcMsg.HeaderData()) {
+		t.Fatal("HeaderCheckSum error")
+	}
+	if qlcMsg.DataCheckSum() != crc32.ChecksumIEEE([]byte(data)) {
+		t.Fatal("DataCheckSum error")
+	}
+	if bytes.Compare(qlcMsg.MessageData(), []byte(data)) != 0 {
+		t.Fatal("MessageData error")
+	}
+	msg, err := ParseQlcMessage(qlcMsg.content[:QlcMessageHeaderLength])
+	if err != nil {
 		t.Fatal("ParseQlcMessage error")
+	}
+	if bytes.Compare(msg.content, qlcMsg.content[:QlcMessageHeaderLength]) != 0 {
+		t.Fatal("Compare ParseQlcMessage error")
+	}
+	qlcMsg.content = qlcMsg.content[:QlcMessageHeaderLength]
+	err = qlcMsg.ParseMessageData([]byte(data))
+	if err != nil {
+		t.Fatal(err)
 	}
 }
