@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	SyncInterval = time.Minute * 5
+	SyncInterval = time.Minute * 1
 )
 
-var zeroHash types.Hash
+var zeroHash = types.Hash{}
 
 var headerBlockHash types.Hash
 var openBlockHash types.Hash
@@ -29,17 +29,11 @@ type ServiceSync struct {
 
 // NewService return new Service.
 func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync {
-	frontiers, err := getLocalFrontier(ledger)
-	if err != nil {
-		logger.Error("New Sync Service error")
-	}
 	ss := &ServiceSync{
 		netService: netService,
 		qlcLedger:  ledger,
-		frontiers:  frontiers,
 		quitCh:     make(chan bool, 1),
 	}
-	ss.next()
 	return ss
 }
 func (ss *ServiceSync) Start() {
@@ -62,6 +56,17 @@ func (ss *ServiceSync) Start() {
 			logger.Info("Stopped Sync Loop.")
 			return
 		case <-ticker.C:
+			ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
+			if err != nil {
+				continue
+			}
+			logger.Info("begin print fr info")
+			for k, v := range ss.frontiers {
+				logger.Info(k, v)
+			}
+			ss.next()
+			bulkPull = bulkPull[:0:0]
+			bulkPush = bulkPush[:0:0]
 			ss.netService.node.SendMessageToPeer(FrontierRequest, data, peerID)
 		}
 	}
