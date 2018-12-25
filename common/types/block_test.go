@@ -38,7 +38,13 @@ func TestUnmarshalStateBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(b)
+	addr, err := HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if addr != b.Address {
+		t.Fatal("addr != address")
+	}
 }
 
 func TestStateBlock(t *testing.T) {

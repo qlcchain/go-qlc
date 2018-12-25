@@ -77,11 +77,20 @@ func (s *Signature) UnmarshalBinary(text []byte) error {
 	return nil
 }
 
-//MarshalJSON implements json.Marshaler interface
-func (s Signature) MarshalJSON() ([]byte, error) {
-	return []byte(s.String()), nil
+////MarshalJSON implements json.Marshaler interface
+//func (s Signature) MarshalJSON() ([]byte, error) {
+//	return []byte(s.String()), nil
+//}
+//
+//func (s *Signature) UnmarshalJSON(b []byte) error {
+//	return s.Of(string(b))
+//}
+
+func (s *Signature) UnmarshalText(text []byte) error {
+	return s.Of(string(text))
 }
 
-func (s *Signature) UnmarshalJSON(b []byte) error {
-	return s.Of(string(b))
+// MarshalText implements the encoding.TextMarshaler interface.
+func (s Signature) MarshalText() (text []byte, err error) {
+	return []byte(s.String()), nil
 }

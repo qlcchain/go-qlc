@@ -4,12 +4,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"math/big"
-
 	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/shopspring/decimal"
 	"github.com/tinylib/msgp/msgp"
+	"math/big"
 )
 
 func init() {
@@ -37,14 +35,6 @@ const (
 )
 
 var (
-	units = map[string]decimal.Decimal{
-		"raw":  decimal.New(1, 0),
-		"qlc":  decimal.New(1, 2),
-		"Kqlc": decimal.New(1, 5),
-		"Mqlc": decimal.New(1, 8),
-		"Gqlc": decimal.New(1, 11),
-	}
-
 	// ZeroBalance zero
 	ZeroBalance = Balance(uint128.Uint128{})
 
@@ -56,35 +46,6 @@ var (
 type Balance uint128.Uint128
 
 type Amount uint128.Uint128
-
-// ParseBalance parses the given balance string.
-func ParseBalance(s string, unit string) (Balance, error) {
-	d, err := decimal.NewFromString(s)
-	if err != nil {
-		return ZeroBalance, err
-	}
-
-	// zero is a special case
-	if d.Equals(decimal.Zero) {
-		return ZeroBalance, nil
-	}
-
-	d = d.Mul(units[unit])
-	c := d.Coefficient()
-	f := bigPow(10, int64(d.Exponent()))
-	i := c.Mul(c, f)
-
-	bytes := i.Bytes()
-	balanceBytes := make([]byte, BalanceSize)
-	copy(balanceBytes[len(balanceBytes)-len(bytes):], bytes)
-
-	var balance Balance
-	if err := balance.UnmarshalBinary(balanceBytes); err != nil {
-		return ZeroBalance, err
-	}
-
-	return balance, nil
-}
 
 //ParseBalanceInts create balance from uint64
 func ParseBalanceInts(hi uint64, lo uint64) Balance {
@@ -152,21 +113,10 @@ func (b Balance) BigInt() *big.Int {
 	return i
 }
 
-// UnitString returns a decimal representation of this uint128 converted to the
-// given unit.
-func (b Balance) UnitString(unit string, precision int32) string {
-	d := decimal.NewFromBigInt(b.BigInt(), 0)
-	return d.DivRound(units[unit], BalanceMaxPrecision).Truncate(precision).String()
-}
-
 // String implements the fmt.Stringer interface. It returns the balance in Mqlc
 // with maximum precision.
 func (b Balance) String() string {
-	return b.UnitString("Mqlc", BalanceMaxPrecision)
-}
-
-func bigPow(base int64, exp int64) *big.Int {
-	return new(big.Int).Exp(big.NewInt(base), big.NewInt(exp), nil)
+	return b.BigInt().String()
 }
 
 //ExtensionType implements Extension.ExtensionType interface
@@ -196,11 +146,16 @@ func (b *Balance) UnmarshalBinary(text []byte) error {
 
 // MarshalText implements the encoding.TextMarshaler interface.
 func (b Balance) MarshalText() ([]byte, error) {
+	//return []byte(strings.TrimLeft(hex.EncodeToString(b.Bytes(binary.BigEndian)), "0")), nil
 	return []byte(hex.EncodeToString(b.Bytes(binary.BigEndian))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (b *Balance) UnmarshalText(text []byte) error {
+	//l := len(text)
+	//if l%2 != 0 {
+	//	text = util.LeftPadBytes(text, 1)
+	//}
 	balance, err := ParseBalanceString(string(text))
 	if err != nil {
 		return err

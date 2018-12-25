@@ -98,15 +98,24 @@ func (w *Work) UnmarshalBinary(text []byte) error {
 	return nil
 }
 
-//MarshalJSON implements json.Marshaler interface
-func (w *Work) MarshalJSON() ([]byte, error) {
+func (w *Work) UnmarshalText(text []byte) error {
+	return w.ParseWorkHexString(string(text))
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (w Work) MarshalText() (text []byte, err error) {
 	return []byte(w.String()), nil
 }
 
-// UnmarshalJSON implements json.UnMarshaler interface
-func (w *Work) UnmarshalJSON(b []byte) error {
-	return w.ParseWorkHexString(string(b))
-}
+//MarshalJSON implements json.Marshaler interface
+//func (w *Work) MarshalJSON() ([]byte, error) {
+//	return []byte(w.String()), nil
+//}
+//
+//// UnmarshalJSON implements json.UnMarshaler interface
+//func (w *Work) UnmarshalJSON(b []byte) error {
+//	return w.ParseWorkHexString(string(b))
+//}
 
 // NewWorker create new worker
 func NewWorker(work Work, root Hash) (*Worker, error) {
