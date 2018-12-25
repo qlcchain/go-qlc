@@ -30,9 +30,9 @@ type walletAction interface {
 	//GetBalances get all account balance ordered by token type
 	GetBalances() (map[types.Hash]types.Balance, error)
 	SearchPending() error
-	GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error)
-	GenerateReceiveBlock(sendBlock types.Block) (*types.Block, error)
-	GenerateChangeBlock(account types.Address, representative types.Address) (*types.Block, error)
+	GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance) (types.Block, error)
+	GenerateReceiveBlock(sendBlock types.Block) (types.Block, error)
+	GenerateChangeBlock(account types.Address, representative types.Address) (types.Block, error)
 }
 
 type IWallet interface {

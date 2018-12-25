@@ -99,9 +99,9 @@ func (s *Session) EnterPassword(password string) error {
 		return err
 	}
 	if len(seed) == 0 {
-		return nil
+		return fmt.Errorf("already have encrypt seed")
 	}
-	return fmt.Errorf("already have encrypt seed")
+	return nil
 }
 
 func (s *Session) GetWalletId() ([]byte, error) {
@@ -221,7 +221,7 @@ func (s *Session) SearchPending() error {
 	return nil
 }
 
-func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error) {
+func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance) (types.Block, error) {
 	acc, err := s.GetRawKey(source)
 	if err != nil {
 		return nil, err
@@ -257,13 +257,13 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 				sb.Work = s.generateWork(sb.Root())
 			}
 		}
-		return &sendBlock, nil
+		return sendBlock, nil
 	} else {
 		return nil, fmt.Errorf("not enought balance(%s) of %s", balance.BigInt(), amount.BigInt())
 	}
 }
 
-func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (*types.Block, error) {
+func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, error) {
 	hash := sendBlock.GetHash()
 	if _, ok := sendBlock.(*types.StateBlock); !ok {
 		return nil, fmt.Errorf("invalid state sendBlock(%s)", hash.String())
@@ -313,10 +313,10 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (*types.Block, err
 		}
 	}
 
-	return &receiveBlock, nil
+	return receiveBlock, nil
 }
 
-func (s *Session) GenerateChangeBlock(account types.Address, representative types.Address) (*types.Block, error) {
+func (s *Session) GenerateChangeBlock(account types.Address, representative types.Address) (types.Block, error) {
 	if exist := s.IsAccountExist(account); !exist {
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
@@ -362,7 +362,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 				_ = s.setWork(account, newSb.Work)
 			}
 		}
-		return &changeBlock, nil
+		return changeBlock, nil
 	}
 
 	return nil, fmt.Errorf("invalid state block (%s) of account[%s]", hash, account.String())

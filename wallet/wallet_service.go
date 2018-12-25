@@ -13,7 +13,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-//TODO: implement
 func NewWalletService(cfg *config.Config) *WalletService {
 	return &WalletService{
 		wallet: NewWalletStore(cfg),
