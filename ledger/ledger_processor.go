@@ -10,10 +10,10 @@ import (
 
 var chain_token_type = "125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36"
 
-type process_result byte
+type ProcessResult byte
 
 const (
-	Progress process_result = iota
+	Progress ProcessResult = iota
 	Bad_signature
 	Old
 	Fork
@@ -24,7 +24,7 @@ const (
 	Other
 )
 
-func (l *Ledger) Process(block types.Block) process_result {
+func (l *Ledger) Process(block types.Block) ProcessResult {
 	process_result := Progress
 
 	err := l.BatchUpdate(func(txn db.StoreTxn) error {
@@ -52,7 +52,7 @@ func (l *Ledger) Process(block types.Block) process_result {
 	}
 	return process_result
 }
-func (l *Ledger) checkStateBasicInfo(block *types.StateBlock, txn db.StoreTxn) (process_result, error) {
+func (l *Ledger) checkStateBasicInfo(block *types.StateBlock, txn db.StoreTxn) (ProcessResult, error) {
 
 	hash := block.GetHash()
 	pre := block.GetPrevious()
