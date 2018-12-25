@@ -134,12 +134,11 @@ func setQlcContext() {
 }
 
 func getService() (*wallet.Session, *ledger.Ledger) {
-	wallet := ctx.Wallet.Wallet
-	id, _ := wallet.NewWallet()
-	session := wallet.NewSession(id)
-	ledger := ctx.Ledger.Ledger
-	return session, ledger
-
+	w := ctx.Wallet.Wallet
+	id, _ := w.NewWallet()
+	session := w.NewSession(id)
+	l := ctx.Ledger.Ledger
+	return session, l
 }
 
 func Create(seed, password string) error {
@@ -199,15 +198,15 @@ func send(fromStr, toStr, tokenStr, amountStr string) {
 	}
 	logger.Info("receive block, ", sendblock.GetHash())
 
-	net, err := p2p.NewQlcService(ctx.Config, ctx.Ledger.Ledger)
+	net, err := p2p.NewQlcService(ctx.Config)
 	blockBytes, err := sendblock.MarshalMsg(nil)
 	net.Broadcast(p2p.PublishReq, blockBytes)
 }
 
 func Receive() {
-	wallet, l := getService()
+	w, l := getService()
 
-	addrs, err := wallet.GetAccounts()
+	addrs, err := w.GetAccounts()
 	if err != nil {
 		logger.Fatal()
 	}
@@ -225,7 +224,7 @@ func Receive() {
 				if err != nil {
 					logger.Fatal()
 				}
-				receiveblock, err := wallet.GenerateReceiveBlock(sendblock)
+				receiveblock, err := w.GenerateReceiveBlock(sendblock)
 				if err != nil {
 					logger.Fatal()
 				}
@@ -235,7 +234,7 @@ func Receive() {
 				}
 				logger.Info("receive block, ", receiveblock.GetHash())
 
-				net, err := p2p.NewQlcService(ctx.Config, ctx.Ledger.Ledger)
+				net, err := p2p.NewQlcService(ctx.Config)
 				blockBytes, err := receiveblock.MarshalMsg(nil)
 				net.Broadcast(p2p.PublishReq, blockBytes)
 			}
