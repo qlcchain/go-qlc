@@ -99,9 +99,9 @@ func (s *Session) EnterPassword(password string) error {
 		return err
 	}
 	if len(seed) == 0 {
-		return fmt.Errorf("already have encrypt seed")
+		return nil
 	}
-	return nil
+	return fmt.Errorf("already have encrypt seed")
 }
 
 func (s *Session) GetWalletId() ([]byte, error) {

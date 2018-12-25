@@ -63,7 +63,8 @@ func (act *ActiveTrx) announceVotes() {
 			logger.Info("this block is already confirmed")
 			act.inactive = append(act.inactive, v.vote.id)
 		} else {
-			for _, k := range act.dps.accounts {
+			accounts := act.dps.getAccounts()
+			for _, k := range accounts {
 				isrep := act.dps.isThisAccountRepresentation(k)
 				if isrep == true {
 					logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
@@ -73,7 +74,7 @@ func (act *ActiveTrx) announceVotes() {
 					act.dps.sendConfirmReq(v.status.winner)
 				}
 			}
-			if len(act.dps.accounts) == 0 {
+			if len(accounts) == 0 {
 				logger.Info("this is just a node,not a wallet")
 				act.dps.sendConfirmReq(v.status.winner)
 			}

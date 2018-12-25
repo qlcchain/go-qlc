@@ -2,7 +2,7 @@
   "blocks": [
     {
       "type": "state",
-      "addresses": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "address": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "previous": "0000000000000000000000000000000000000000000000000000000000000000",
       "representative": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "balance": "00000000000000000000000000002710",
@@ -13,7 +13,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "address": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "previous": "318495ce8eae9175358671bc47c8b571c68d362cf266f630de7f182a598e9c3c",
       "representative": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "balance": "00000000000000000000000000000fa0",
@@ -24,7 +24,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
+      "address": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "previous": "0000000000000000000000000000000000000000000000000000000000000000",
       "representative": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "balance": "00000000000000000000000000001770",
@@ -35,7 +35,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
+      "address": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "previous": "ff7731f66512a7c66668ce04bf87eb2cdb2fa3c421c4188db7106fac67362a9b",
       "representative": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "balance": "00000000000000000000000000001770",
@@ -46,7 +46,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
+      "address": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "previous": "0d70c5b3dab7fdd74373a8750d638009f8a90273f41a38ed5814c4fba7b98b81",
       "representative": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "balance": "000000000000000000000000000007d0",
@@ -57,7 +57,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "address": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "previous": "31fc955e6d011a5752b271c5dced1133dc4eff972c20283d431eb297839e392e",
       "representative": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "balance": "00000000000000000000000000001f40",
@@ -68,7 +68,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "address": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "previous": "cdc1bac70db8e0161141b4781dfe89603eb296307e8fba337ee58a955abbc82a",
       "representative": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "balance": "000000000000000000000000000003e8",
@@ -79,7 +79,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5",
+      "address": "qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5",
       "previous": "0000000000000000000000000000000000000000000000000000000000000000",
       "representative": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "balance": "00000000000000000000000000001b58",
@@ -90,7 +90,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5",
+      "address": "qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5",
       "previous": "d75fbc34b019f4b2c9211a4395899f3f5c188b98d104df2b918a32791858fa4e",
       "representative": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "balance": "00000000000000000000000000001770",
@@ -101,7 +101,7 @@
     },
     {
       "type": "state",
-      "addresses": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
+      "address": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "previous": "e4fac296c5e82f8de5374c86f219b1263dcb73ee861ac5e8bd9bfa2652dceeed",
       "representative": "qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i",
       "balance": "00000000000000000000000000000bb8",

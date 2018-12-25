@@ -2,7 +2,7 @@
   "blocks": [
     {
       "type": "state",
-      "addresses": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
+      "address": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "previous": "991cf191094c40f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728948",
       "representative": "qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "balance": "00000000000000000000000000003039",

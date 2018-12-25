@@ -1,8 +1,9 @@
 package consensus
 
 import (
-	"encoding/hex"
-	"fmt"
+	"errors"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -14,45 +15,80 @@ import (
 )
 
 var logger = log.NewLogger("consensus")
-var seed = "DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9"
 
 type DposService struct {
+	common.ServiceLifecycle
 	ns       p2p.Service
 	ledger   *ledger.Ledger
 	eventMsg map[p2p.EventType]p2p.EventSubscriber
 	quitCh   chan bool
 	bp       *BlockProcessor
 	wallet   *wallet.WalletStore
-	accounts []types.Address
+	//accounts []types.Address
 	actrx    *ActiveTrx
+	account  types.Address
+	password string
 }
 
-func NewDposService(netService p2p.Service, ledger *ledger.Ledger) (*DposService, error) {
-	//test begin...
-	s, err := hex.DecodeString(seed)
-	seed, err := types.BytesToSeed(s)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
+func (dps *DposService) Init() error {
+	if !dps.PreInit() {
+		return errors.New("pre init fail")
 	}
-	ac, err := seed.Account(0)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
+	defer dps.PostInit()
+
+	return nil
+}
+
+func (dps *DposService) Start() error {
+	if !dps.PreStart() {
+		return errors.New("pre start fail")
 	}
-	//test end...
+	defer dps.PostStart()
+	dps.setEvent()
+	logger.Info("start dpos service")
+	go dps.bp.Start()
+	go dps.actrx.start()
+
+	return nil
+}
+
+func (dps *DposService) Stop() error {
+	if !dps.PreStop() {
+		return errors.New("pre stop fail")
+	}
+	defer dps.PostStop()
+	dps.quitCh <- true
+	dps.bp.quitCh <- true
+	dps.actrx.quitCh <- true
+	for i, j := range dps.eventMsg {
+		dps.ns.MessageEvent().GetEvent("consensus").UnSubscribe(i, j)
+	}
+
+	return nil
+}
+
+func (dps *DposService) Status() int32 {
+	panic("implement me")
+}
+
+func NewDposService(cfg *config.Config, netService p2p.Service, account types.Address, password string) (*DposService, error) {
 	bp := NewBlockProcessor()
 	actrx := NewActiveTrx()
+	l := ledger.NewLedger(cfg.LedgerDir())
+
 	dps := &DposService{
 		ns:       netService,
-		ledger:   ledger,
+		ledger:   l,
 		eventMsg: make(map[p2p.EventType]p2p.EventSubscriber),
 		quitCh:   make(chan bool, 1),
 		bp:       bp,
 		actrx:    actrx,
+		wallet:   wallet.NewWalletStore(cfg),
+		account:  account,
+		password: password,
 	}
 	//test begin...
-	dps.accounts = append(dps.accounts, ac.Address())
+	//dps.accounts = append(dps.accounts, ac.Address())
 	//test end...
 	dps.bp.SetDpos(dps)
 	dps.actrx.SetDposService(dps)
@@ -80,12 +116,7 @@ func (dps *DposService) setEvent() {
 	dps.eventMsg[p2p.EventConfirmAck] = event3
 	dps.eventMsg[p2p.EventSyncBlock] = event4
 }
-func (dps *DposService) Start() {
-	dps.setEvent()
-	logger.Info("start dpos service")
-	go dps.bp.Start()
-	go dps.actrx.start()
-}
+
 func (dps *DposService) ReceivePublish(v interface{}) {
 	logger.Info("Publish Event")
 	dps.bp.blocks <- v.(types.Block)
@@ -97,7 +128,8 @@ func (dps *DposService) ReceiveConfirmReq(v interface{}) {
 	dps.onReceiveConfirmReq(v.(types.Block))
 }
 func (dps *DposService) onReceiveConfirmReq(block types.Block) {
-	for _, k := range dps.accounts {
+	accounts := dps.getAccounts()
+	for _, k := range accounts {
 		isRep := dps.isThisAccountRepresentation(k)
 		if isRep == true {
 			logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Root())
@@ -107,7 +139,7 @@ func (dps *DposService) onReceiveConfirmReq(block types.Block) {
 			dps.sendConfirmReq(block)
 		}
 	}
-	if len(dps.accounts) == 0 {
+	if len(accounts) == 0 {
 		logger.Info("this is just a node,not a wallet")
 		dps.sendConfirmReq(block)
 	}
@@ -144,8 +176,9 @@ func (dps *DposService) onReceiveConfirmAck(vote_a *protos.ConfirmAckBlock) {
 		if err != nil {
 			return
 		}
-		if exit == true {
-			for _, k := range dps.accounts {
+		if exit {
+			accounts := dps.getAccounts()
+			for _, k := range accounts {
 				isRep := dps.isThisAccountRepresentation(k)
 				if isRep == true {
 					dps.sendConfirmAck(vote_a.Blk, k)
@@ -157,7 +190,7 @@ func (dps *DposService) onReceiveConfirmAck(vote_a *protos.ConfirmAckBlock) {
 					dps.ns.Broadcast(p2p.ConfirmAck, data)
 				}
 			}
-			if len(dps.accounts) == 0 {
+			if len(accounts) == 0 {
 				logger.Info("this is just a node,not a wallet")
 				data, err := protos.ConfirmAckBlockToProto(vote_a)
 				if err != nil {
@@ -186,8 +219,7 @@ func (dps *DposService) sendConfirmReq(block types.Block) error {
 	return nil
 }
 func (dps *DposService) sendConfirmAck(block types.Block, account types.Address) error {
-	var password string
-	vote_a, err := dps.voteGenerate(block, account, password)
+	vote_a, err := dps.voteGenerate(block, account)
 	if err != nil {
 		logger.Error("vote generate error")
 		return err
@@ -199,9 +231,9 @@ func (dps *DposService) sendConfirmAck(block types.Block, account types.Address)
 	dps.ns.Broadcast(p2p.ConfirmAck, data)
 	return nil
 }
-func (dps *DposService) voteGenerate(block types.Block, account types.Address, password string) (*protos.ConfirmAckBlock, error) {
+func (dps *DposService) voteGenerate(block types.Block, account types.Address) (*protos.ConfirmAckBlock, error) {
 	var vote_a protos.ConfirmAckBlock
-	prv, err := dps.GetAccountPrv(account, password)
+	prv, err := dps.GetAccountPrv(account)
 	if err != nil {
 		logger.Error("Get prv error")
 		return nil, err
@@ -228,20 +260,9 @@ func (dps *DposService) voteGenerate(block types.Block, account types.Address, p
 	}
 	return &vote_a, nil
 }
-func (dps *DposService) GetAccountPrv(account types.Address, password string) (*types.Account, error) {
-	/*	session := dps.wallet.NewSession(account)
-		session.EnterPassword(password)
-		return session.GetRawKey(account)*/
-	//test begin......
-	s, err := hex.DecodeString(seed)
-	seed, err := types.BytesToSeed(s)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	ac, err := seed.Account(0)
-	return ac, nil
-	//test end......
+func (dps *DposService) GetAccountPrv(account types.Address) (*types.Account, error) {
+	session := dps.wallet.NewSession(dps.account)
+	return session.GetRawKey(account)
 }
 func (dps *DposService) isThisAccountRepresentation(address types.Address) bool {
 	_, err := dps.ledger.GetRepresentation(address)
@@ -251,11 +272,13 @@ func (dps *DposService) isThisAccountRepresentation(address types.Address) bool 
 		return true
 	}
 }
-func (dp *DposService) Stop() {
-	dp.quitCh <- true
-	dp.bp.quitCh <- true
-	dp.actrx.quitCh <- true
-	for i, j := range dp.eventMsg {
-		dp.ns.MessageEvent().GetEvent("consensus").UnSubscribe(i, j)
+
+func (dps *DposService) getAccounts() []types.Address {
+	session := dps.wallet.NewSession(dps.account)
+	a, err := session.GetAccounts()
+	if err != nil {
+		logger.Error(err)
+		return []types.Address{}
 	}
+	return a
 }

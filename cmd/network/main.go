@@ -58,7 +58,7 @@ func main() {
 	l := ledger.NewLedger(cfg.LedgerDir())
 	defer l.Close()
 
-	node, err := p2p.NewQlcService(cfg, l)
+	node, err := p2p.NewQlcService(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return
