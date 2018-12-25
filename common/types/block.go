@@ -195,7 +195,7 @@ func (b *StateBlock) IsValid() bool {
 }
 
 func (b *StateBlock) isOpen() bool {
-	return !b.Previous.IsZero()
+	return b.Previous.IsZero()
 }
 
 //go:generate msgp
