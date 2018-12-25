@@ -199,9 +199,9 @@ func send(fromStr, toStr, tokenStr, amountStr string) {
 	}
 	logger.Info("receive block, ", sendblock.GetHash())
 
-	p2p, err := p2p.NewQlcService(ctx.Config, ctx.Ledger.Ledger)
+	net, err := p2p.NewQlcService(ctx.Config, ctx.Ledger.Ledger)
 	blockBytes, err := sendblock.MarshalMsg(nil)
-	p2p.Broadcast("publish", blockBytes)
+	net.Broadcast(p2p.PublishReq, blockBytes)
 }
 
 func Receive() {
@@ -235,9 +235,9 @@ func Receive() {
 				}
 				logger.Info("receive block, ", receiveblock.GetHash())
 
-				p2p, err := p2p.NewQlcService(ctx.Config, ctx.Ledger.Ledger)
+				net, err := p2p.NewQlcService(ctx.Config, ctx.Ledger.Ledger)
 				blockBytes, err := receiveblock.MarshalMsg(nil)
-				p2p.Broadcast("publish", blockBytes)
+				net.Broadcast(p2p.PublishReq, blockBytes)
 			}
 		}
 	}
