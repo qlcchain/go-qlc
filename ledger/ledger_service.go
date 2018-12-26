@@ -11,6 +11,8 @@ import (
 	"errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 type LedgerService struct {
@@ -29,8 +31,33 @@ func (ls *LedgerService) Init() error {
 		return errors.New("pre init fail")
 	}
 	defer ls.PostInit()
-
-	return nil
+	// TODO: remove
+	l := ls.Ledger
+	return l.BatchUpdate(func(txn db.StoreTxn) error {
+		//insert smart contract block
+		for _, sb := range mock.GetSmartContracts() {
+			h := sb.GetHash()
+			if b, err := l.HasBlock(h, txn); !b && err != nil {
+				err := l.AddBlock(sb, txn)
+				if err != nil {
+					logger.Error(err)
+					return nil
+				}
+			}
+		}
+		// insert genesis blocks
+		for _, b := range mock.GetGenesis() {
+			if l.BlockCheck(b) == Progress {
+				err := l.BlockProcess(b)
+				if err != nil {
+					logger.Error(err)
+					return err
+				}
+			}
+		}
+		//l.BlockProcess()
+		return nil
+	})
 }
 
 func (ls *LedgerService) Start() error {

@@ -224,7 +224,7 @@ func (z *CommonBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Type = parseString(zb0002)
 			}
-		case "addresses":
+		case "address":
 			err = dc.ReadExtension(&z.Address)
 			if err != nil {
 				return
@@ -234,8 +234,8 @@ func (z *CommonBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
-		case "signature":
-			err = dc.ReadExtension(&z.Signature)
+		case "extra":
+			err = dc.ReadExtension(&z.Extra)
 			if err != nil {
 				return
 			}
@@ -244,8 +244,8 @@ func (z *CommonBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
-		case "extra":
-			err = dc.ReadExtension(&z.Extra)
+		case "signature":
+			err = dc.ReadExtension(&z.Signature)
 			if err != nil {
 				return
 			}
@@ -271,8 +271,8 @@ func (z *CommonBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	// write "addresses"
-	err = en.Append(0xa9, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73)
+	// write "address"
+	err = en.Append(0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
 	if err != nil {
 		return
 	}
@@ -289,12 +289,12 @@ func (z *CommonBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	// write "signature"
-	err = en.Append(0xa9, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
+	// write "extra"
+	err = en.Append(0xa5, 0x65, 0x78, 0x74, 0x72, 0x61)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Signature)
+	err = en.WriteExtension(&z.Extra)
 	if err != nil {
 		return
 	}
@@ -307,12 +307,12 @@ func (z *CommonBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	// write "extra"
-	err = en.Append(0xa5, 0x65, 0x78, 0x74, 0x72, 0x61)
+	// write "signature"
+	err = en.Append(0xa9, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Extra)
+	err = en.WriteExtension(&z.Signature)
 	if err != nil {
 		return
 	}
@@ -326,8 +326,8 @@ func (z *CommonBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "type"
 	o = append(o, 0x86, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o = msgp.AppendString(o, (BlockType).String(z.Type))
-	// string "addresses"
-	o = append(o, 0xa9, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73)
+	// string "address"
+	o = append(o, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
 	o, err = msgp.AppendExtension(o, &z.Address)
 	if err != nil {
 		return
@@ -338,9 +338,9 @@ func (z *CommonBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	if err != nil {
 		return
 	}
-	// string "signature"
-	o = append(o, 0xa9, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
-	o, err = msgp.AppendExtension(o, &z.Signature)
+	// string "extra"
+	o = append(o, 0xa5, 0x65, 0x78, 0x74, 0x72, 0x61)
+	o, err = msgp.AppendExtension(o, &z.Extra)
 	if err != nil {
 		return
 	}
@@ -350,9 +350,9 @@ func (z *CommonBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	if err != nil {
 		return
 	}
-	// string "extra"
-	o = append(o, 0xa5, 0x65, 0x78, 0x74, 0x72, 0x61)
-	o, err = msgp.AppendExtension(o, &z.Extra)
+	// string "signature"
+	o = append(o, 0xa9, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
+	o, err = msgp.AppendExtension(o, &z.Signature)
 	if err != nil {
 		return
 	}
@@ -384,7 +384,7 @@ func (z *CommonBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Type = parseString(zb0002)
 			}
-		case "addresses":
+		case "address":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
 			if err != nil {
 				return
@@ -394,8 +394,8 @@ func (z *CommonBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "signature":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Signature)
+		case "extra":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Extra)
 			if err != nil {
 				return
 			}
@@ -404,8 +404,8 @@ func (z *CommonBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "extra":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Extra)
+		case "signature":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Signature)
 			if err != nil {
 				return
 			}
@@ -422,7 +422,7 @@ func (z *CommonBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CommonBlock) Msgsize() (s int) {
-	s = 1 + 5 + msgp.StringPrefixSize + len((BlockType).String(z.Type)) + 10 + msgp.ExtensionPrefixSize + z.Address.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len() + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 6 + msgp.ExtensionPrefixSize + z.Extra.Len()
+	s = 1 + 5 + msgp.StringPrefixSize + len((BlockType).String(z.Type)) + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len()
 	return
 }
 
@@ -442,18 +442,23 @@ func (z *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "CommonBlock":
-			err = z.CommonBlock.DecodeMsg(dc)
+		case "internalAccount":
+			err = dc.ReadExtension(&z.InternalAccount)
 			if err != nil {
 				return
 			}
-		case "owner":
-			err = dc.ReadExtension(&z.Owner)
+		case "contract":
+			err = dc.ReadExtension(&z.Abi)
 			if err != nil {
 				return
 			}
 		case "issuer":
 			err = dc.ReadExtension(&z.Issuer)
+			if err != nil {
+				return
+			}
+		case "CommonBlock":
+			err = z.CommonBlock.DecodeMsg(dc)
 			if err != nil {
 				return
 			}
@@ -469,22 +474,22 @@ func (z *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 3
-	// write "CommonBlock"
-	err = en.Append(0x83, 0xab, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x42, 0x6c, 0x6f, 0x63, 0x6b)
+	// map header, size 4
+	// write "internalAccount"
+	err = en.Append(0x84, 0xaf, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
-	err = z.CommonBlock.EncodeMsg(en)
+	err = en.WriteExtension(&z.InternalAccount)
 	if err != nil {
 		return
 	}
-	// write "owner"
-	err = en.Append(0xa5, 0x6f, 0x77, 0x6e, 0x65, 0x72)
+	// write "contract"
+	err = en.Append(0xa8, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Owner)
+	err = en.WriteExtension(&z.Abi)
 	if err != nil {
 		return
 	}
@@ -497,28 +502,43 @@ func (z *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
+	// write "CommonBlock"
+	err = en.Append(0xab, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x42, 0x6c, 0x6f, 0x63, 0x6b)
+	if err != nil {
+		return
+	}
+	err = z.CommonBlock.EncodeMsg(en)
+	if err != nil {
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *SmartContractBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 3
-	// string "CommonBlock"
-	o = append(o, 0x83, 0xab, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x42, 0x6c, 0x6f, 0x63, 0x6b)
-	o, err = z.CommonBlock.MarshalMsg(o)
+	// map header, size 4
+	// string "internalAccount"
+	o = append(o, 0x84, 0xaf, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	o, err = msgp.AppendExtension(o, &z.InternalAccount)
 	if err != nil {
 		return
 	}
-	// string "owner"
-	o = append(o, 0xa5, 0x6f, 0x77, 0x6e, 0x65, 0x72)
-	o, err = msgp.AppendExtension(o, &z.Owner)
+	// string "contract"
+	o = append(o, 0xa8, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74)
+	o, err = msgp.AppendExtension(o, &z.Abi)
 	if err != nil {
 		return
 	}
 	// string "issuer"
 	o = append(o, 0xa6, 0x69, 0x73, 0x73, 0x75, 0x65, 0x72)
 	o, err = msgp.AppendExtension(o, &z.Issuer)
+	if err != nil {
+		return
+	}
+	// string "CommonBlock"
+	o = append(o, 0xab, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x42, 0x6c, 0x6f, 0x63, 0x6b)
+	o, err = z.CommonBlock.MarshalMsg(o)
 	if err != nil {
 		return
 	}
@@ -541,18 +561,23 @@ func (z *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "CommonBlock":
-			bts, err = z.CommonBlock.UnmarshalMsg(bts)
+		case "internalAccount":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.InternalAccount)
 			if err != nil {
 				return
 			}
-		case "owner":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Owner)
+		case "contract":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Abi)
 			if err != nil {
 				return
 			}
 		case "issuer":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Issuer)
+			if err != nil {
+				return
+			}
+		case "CommonBlock":
+			bts, err = z.CommonBlock.UnmarshalMsg(bts)
 			if err != nil {
 				return
 			}
@@ -569,7 +594,7 @@ func (z *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *SmartContractBlock) Msgsize() (s int) {
-	s = 1 + 12 + z.CommonBlock.Msgsize() + 6 + msgp.ExtensionPrefixSize + z.Owner.Len() + 7 + msgp.ExtensionPrefixSize + z.Issuer.Len()
+	s = 1 + 16 + msgp.ExtensionPrefixSize + z.InternalAccount.Len() + 9 + msgp.ExtensionPrefixSize + z.Abi.Len() + 7 + msgp.ExtensionPrefixSize + z.Issuer.Len() + 12 + z.CommonBlock.Msgsize()
 	return
 }
 
@@ -589,11 +614,6 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "CommonBlock":
-			err = z.CommonBlock.DecodeMsg(dc)
-			if err != nil {
-				return
-			}
 		case "token":
 			err = dc.ReadExtension(&z.Token)
 			if err != nil {
@@ -614,6 +634,11 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
+		case "CommonBlock":
+			err = z.CommonBlock.DecodeMsg(dc)
+			if err != nil {
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -627,17 +652,8 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 5
-	// write "CommonBlock"
-	err = en.Append(0x85, 0xab, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x42, 0x6c, 0x6f, 0x63, 0x6b)
-	if err != nil {
-		return
-	}
-	err = z.CommonBlock.EncodeMsg(en)
-	if err != nil {
-		return
-	}
 	// write "token"
-	err = en.Append(0xa5, 0x74, 0x6f, 0x6b, 0x65, 0x6e)
+	err = en.Append(0x85, 0xa5, 0x74, 0x6f, 0x6b, 0x65, 0x6e)
 	if err != nil {
 		return
 	}
@@ -672,6 +688,15 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
+	// write "CommonBlock"
+	err = en.Append(0xab, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x42, 0x6c, 0x6f, 0x63, 0x6b)
+	if err != nil {
+		return
+	}
+	err = z.CommonBlock.EncodeMsg(en)
+	if err != nil {
+		return
+	}
 	return
 }
 
@@ -679,14 +704,8 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 5
-	// string "CommonBlock"
-	o = append(o, 0x85, 0xab, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x42, 0x6c, 0x6f, 0x63, 0x6b)
-	o, err = z.CommonBlock.MarshalMsg(o)
-	if err != nil {
-		return
-	}
 	// string "token"
-	o = append(o, 0xa5, 0x74, 0x6f, 0x6b, 0x65, 0x6e)
+	o = append(o, 0x85, 0xa5, 0x74, 0x6f, 0x6b, 0x65, 0x6e)
 	o, err = msgp.AppendExtension(o, &z.Token)
 	if err != nil {
 		return
@@ -709,6 +728,12 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	if err != nil {
 		return
 	}
+	// string "CommonBlock"
+	o = append(o, 0xab, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x42, 0x6c, 0x6f, 0x63, 0x6b)
+	o, err = z.CommonBlock.MarshalMsg(o)
+	if err != nil {
+		return
+	}
 	return
 }
 
@@ -728,11 +753,6 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "CommonBlock":
-			bts, err = z.CommonBlock.UnmarshalMsg(bts)
-			if err != nil {
-				return
-			}
 		case "token":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Token)
 			if err != nil {
@@ -753,6 +773,11 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
+		case "CommonBlock":
+			bts, err = z.CommonBlock.UnmarshalMsg(bts)
+			if err != nil {
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -766,6 +791,6 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *StateBlock) Msgsize() (s int) {
-	s = 1 + 12 + z.CommonBlock.Msgsize() + 6 + msgp.ExtensionPrefixSize + z.Token.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len()
+	s = 1 + 6 + msgp.ExtensionPrefixSize + z.Token.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 12 + z.CommonBlock.Msgsize()
 	return
 }

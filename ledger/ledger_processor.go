@@ -1,58 +1,77 @@
 package ledger
 
 import (
-	"strings"
+	"github.com/qlcchain/go-qlc/test/mock"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-var chain_token_type = "125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36"
-
-type process_result byte
+type ProcessResult byte
 
 const (
-	Progress process_result = iota
-	Bad_signature
+	Progress ProcessResult = iota
+	BadWork
+	BadSignature
 	Old
 	Fork
-	Gap_previous
-	Gap_source
-	Balance_mismatch
-	Unreceivable
+	GapPrevious
+	GapSource
+	BalanceMismatch
+	UnReceivable
 	Other
 )
 
-func (l *Ledger) Process(block types.Block) process_result {
-	process_result := Progress
-
-	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		switch block.GetType() {
-		case types.State:
-			if state, ok := block.(*types.StateBlock); ok {
-				result, err := l.checkStateBasicInfo(state, txn)
-				if err != nil {
-					return err
-				}
-				process_result = result
-				return nil
-			} else {
-				return errors.New("unvalid block")
-			}
-		case types.SmartContract:
-			return nil
-		default:
-			return errors.New("unvalid block type")
-
-		}
-	})
-	if err != nil {
+func (l *Ledger) Process(block types.Block) ProcessResult {
+	r := l.BlockCheck(block)
+	if r == Other {
+		return r
+	}
+	if err := l.BlockProcess(block); err != nil {
 		return Other
 	}
-	return process_result
+	return Progress
 }
-func (l *Ledger) checkStateBasicInfo(block *types.StateBlock, txn db.StoreTxn) (process_result, error) {
+
+func (l *Ledger) BlockCheck(block types.Block) ProcessResult {
+	processResult := Progress
+
+	txn, b := l.getTxn(false)
+	defer l.releaseTxn(txn, b)
+	//err := l.BatchUpdate(func(txn db.StoreTxn) error {
+	switch block.GetType() {
+	case types.State:
+		if state, ok := block.(*types.StateBlock); ok {
+			result, err := l.checkStateBlock(state, txn)
+			if err != nil {
+				processResult = Other
+				//return err
+			} else {
+				processResult = result
+			}
+			//return nil
+		} else {
+			processResult = Other
+			//return errors.New("invalid block")
+		}
+	case types.SmartContract:
+		processResult = Other
+		//return nil
+	default:
+		processResult = Other
+		//return errors.New("invalid block type")
+
+	}
+	//})
+	//if err != nil {
+	//	return Other
+	//}
+	return processResult
+}
+
+func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (ProcessResult, error) {
 
 	hash := block.GetHash()
 	pre := block.GetPrevious()
@@ -64,31 +83,35 @@ func (l *Ledger) checkStateBasicInfo(block *types.StateBlock, txn db.StoreTxn) (
 	// make sure smart contract token exist
 	// ...
 
-	// make sure the block does not exist
-	block_exist, err := l.HasBlock(hash, txn)
+	if !block.IsValid() {
+		logger.Info("invalid work")
+		return BadWork, nil
+	}
+
+	blockExist, err := l.HasBlock(hash, txn)
 	if err != nil {
 		return Other, err
 	}
-	if block_exist == true {
+	if blockExist == true {
 		logger.Info("block already exist")
 		return Old, nil
 	}
 
 	// make sure the signature of this block is valid
 	signature := block.GetSignature()
-	if address.Verify(hash[:], signature[:]) {
+	if !address.Verify(hash[:], signature[:]) {
 		logger.Info("bad signature")
-		return Bad_signature, nil
+		return BadSignature, nil
 	}
 
-	is_send := false
-	transfer_amount := block.GetBalance()
+	isSend := false
+	transferAmount := block.GetBalance()
 
-	tm_exist, err := l.HasTokenMeta(address, block.GetToken(), txn)
+	tmExist, err := l.HasTokenMeta(address, block.GetToken(), txn)
 	if err != nil {
 		return Other, err
 	}
-	if tm_exist { // this tm chain exist , not open
+	if tmExist { // this tm chain exist , not open
 		tm, err := l.GetTokenMeta(address, block.GetToken(), txn)
 		if err != nil {
 			return Other, err
@@ -98,44 +121,44 @@ func (l *Ledger) checkStateBasicInfo(block *types.StateBlock, txn db.StoreTxn) (
 			logger.Info("fork: token meta exist, but pre hash is zero")
 			return Fork, nil
 		}
-		previous_exist, err := l.HasBlock(block.GetPrevious(), txn)
+		preExist, err := l.HasBlock(block.GetPrevious(), txn)
 		if err != nil {
 			return Other, err
 		}
-		if !previous_exist {
+		if !preExist {
 			logger.Info("gap previous: token meta exist, but pre block not exist")
-			return Gap_previous, nil
+			return GapPrevious, nil
 		}
 		if block.GetPrevious() != tm.Header {
 			logger.Info("fork: pre block exist, but pre hash not equal account token's header hash")
 			return Fork, nil
 		}
 		if block.GetBalance().Compare(tm.Balance) == types.BalanceCompSmaller {
-			is_send = true
-			transfer_amount = tm.Balance.Sub(block.GetBalance()) // send
+			isSend = true
+			transferAmount = tm.Balance.Sub(block.GetBalance()) // send
 		} else {
-			transfer_amount = block.GetBalance().Sub(tm.Balance) // receive or change
+			transferAmount = block.GetBalance().Sub(tm.Balance) // receive or change
 		}
 
 	} else { // open
 		if !pre.IsZero() {
 			logger.Info("gap previous: token meta not exist, but pre hash is not zero")
-			return Gap_previous, nil
+			return GapPrevious, nil
 		}
 		if link.IsZero() {
 			logger.Info("gap source: token meta not exist, but link hash is zero")
-			return Gap_source, nil
+			return GapSource, nil
 		}
 	}
-	if !is_send {
+	if !isSend {
 		if !link.IsZero() { // open or receive
-			link_exist, err := l.HasBlock(link, txn)
+			linkExist, err := l.HasBlock(link, txn)
 			if err != nil {
 				return Other, err
 			}
-			if !link_exist {
+			if !linkExist {
 				logger.Info("gap source: open or receive block, but link block is not exist")
-				return Gap_source, nil
+				return GapSource, nil
 			}
 			PendingKey := types.PendingKey{
 				Address: address,
@@ -145,27 +168,48 @@ func (l *Ledger) checkStateBasicInfo(block *types.StateBlock, txn db.StoreTxn) (
 			if err != nil {
 				if err == ErrPendingNotFound {
 					logger.Info("unreceivable: open or receive block, but pending not exist")
-					return Unreceivable, nil
+					return UnReceivable, nil
 				}
 				return Other, err
 			}
-			if !pending.Amount.Equal(transfer_amount) {
-				logger.Infof("balance mismatch: open or receive block, but pending amount(%s) not equal transfer amount(%s)", pending.Amount, transfer_amount)
-				return Balance_mismatch, nil
+			if !pending.Amount.Equal(transferAmount) {
+				logger.Infof("balance mismatch: open or receive block, but pending amount(%s) not equal transfer amount(%s)", pending.Amount, transferAmount)
+				return BalanceMismatch, nil
 			}
 		} else { //change
-			if !transfer_amount.Equal(types.ParseBalanceInts(0, 0)) {
+			if !transferAmount.Equal(types.ParseBalanceInts(0, 0)) {
 				logger.Info("balance mismatch: change block, but transfer amount is not 0 ")
-				return Balance_mismatch, nil
+				return BalanceMismatch, nil
 			}
 		}
 	}
-	if err := l.addBasicInfo(block, is_send, txn); err != nil {
-		return Other, err
-	}
 	return Progress, nil
 }
-func (l *Ledger) addBasicInfo(block *types.StateBlock, is_send bool, txn db.StoreTxn) error {
+
+func (l *Ledger) BlockProcess(block types.Block) error {
+	txn, b := l.getTxn(true)
+	defer l.releaseTxn(txn, b)
+	//err := l.BatchUpdate(func(txn db.StoreTxn) error {
+	switch block.GetType() {
+	case types.State:
+		if state, ok := block.(*types.StateBlock); ok {
+			return l.processStateBlock(state, txn)
+		} else {
+			return errors.New("invalid block")
+		}
+	case types.SmartContract:
+		return nil
+	default:
+		return errors.New("invalid block type")
+	}
+	//})
+	//if err != nil {
+	//	return err
+	//}
+	//return nil
+}
+
+func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
 	hash := block.GetHash()
 	logger.Info("add block, ", hash)
 	if err := l.AddBlock(block, txn); err != nil {
@@ -181,7 +225,7 @@ func (l *Ledger) addBasicInfo(block *types.StateBlock, is_send bool, txn db.Stor
 		return err
 	}
 
-	if err := l.updatePending(block, tm, is_send, txn); err != nil {
+	if err := l.updatePending(block, tm, txn); err != nil {
 		return err
 	}
 
@@ -195,10 +239,15 @@ func (l *Ledger) addBasicInfo(block *types.StateBlock, is_send bool, txn db.Stor
 
 	return nil
 }
-func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, is_send bool, txn db.StoreTxn) error {
+
+func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
+	isSend, err := l.isSend(block, txn)
+	if err != nil {
+		return err
+	}
 	hash := block.GetHash()
 	link := block.GetLink()
-	if is_send { // send
+	if isSend { // send
 		pending := types.PendingInfo{
 			Source: block.GetAddress(),
 			Type:   block.GetToken(),
@@ -224,8 +273,27 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, is_
 	}
 	return nil
 }
+
+func (l *Ledger) isSend(block *types.StateBlock, txn db.StoreTxn) (bool, error) {
+	isSend := false
+	tmExist, err := l.HasTokenMeta(block.GetAddress(), block.GetToken(), txn)
+	if err != nil {
+		return false, err
+	}
+	if tmExist {
+		tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken(), txn)
+		if err != nil {
+			return false, err
+		}
+		if block.GetBalance().Compare(tm.Balance) == types.BalanceCompSmaller {
+			isSend = true
+		}
+	}
+	return isSend, nil
+}
+
 func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
-	if strings.EqualFold(block.GetToken().String(), chain_token_type) {
+	if block.GetToken() == mock.GetChainTokenType() {
 		if tm != nil && !tm.RepBlock.IsZero() {
 			blk, err := l.GetBlock(tm.RepBlock, txn)
 			if err != nil {
@@ -247,6 +315,7 @@ func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMe
 	}
 	return nil
 }
+
 func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.StoreTxn) error {
 	frontier := &types.Frontier{
 		HeaderBlock: hash,
@@ -268,39 +337,42 @@ func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.Sto
 	}
 	return nil
 }
-func (l *Ledger) updateAccountMeta(hash types.Hash, rep_block types.Hash, address types.Address, token types.Hash, balance types.Balance, txn db.StoreTxn) error {
-	tm_exist, err := l.HasTokenMeta(address, token, txn)
+
+func (l *Ledger) updateAccountMeta(hash types.Hash, repBlock types.Hash, address types.Address, token types.Hash, balance types.Balance, txn db.StoreTxn) error {
+	tmExist, err := l.HasTokenMeta(address, token, txn)
 	if err != nil {
 		return err
 	}
-	if tm_exist {
+	if tmExist {
 		token, err := l.GetTokenMeta(address, token, txn)
 		if err != nil {
 			return err
 		}
 		token.Header = hash
-		token.RepBlock = rep_block
+		token.RepBlock = repBlock
 		token.Balance = balance
 		token.BlockCount = token.BlockCount + 1
+		token.Modified = time.Now().Unix()
 		logger.Info("update tokenmeta, ", token)
 		if err := l.UpdateTokenMeta(address, token, txn); err != nil {
 			return err
 		}
 	} else {
-		account_exist, err := l.HasAccountMeta(address, txn)
+		acExist, err := l.HasAccountMeta(address, txn)
 		if err != nil {
 			return err
 		}
 		tm := types.TokenMeta{
 			Type:       token,
 			Header:     hash,
-			RepBlock:   rep_block,
+			RepBlock:   repBlock,
 			OpenBlock:  hash,
 			Balance:    balance,
 			BlockCount: 1,
 			BelongTo:   address,
+			Modified:   time.Now().Unix(),
 		}
-		if account_exist {
+		if acExist {
 			logger.Info("add tokenmeta,", token)
 			if err := l.AddTokenMeta(address, &tm, txn); err != nil {
 				return err

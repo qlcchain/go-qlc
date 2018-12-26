@@ -9,6 +9,7 @@ package wallet
 
 import (
 	"github.com/json-iterator/go"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"os"
 	"path/filepath"
@@ -129,4 +130,26 @@ func TestWalletStore_NewWallet(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(currentId.String())
+}
+
+func TestWalletStore_NewWalletBySeed(t *testing.T) {
+	teardownTestCase, store := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	seed, err := types.NewSeed()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	account, err := store.NewWalletBySeed(seed.String(), "1111")
+
+	s := store.NewSession(account)
+	b, err := s.VerifyPassword("1111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !b {
+		t.Fatal("invalid password")
+	}
+
 }

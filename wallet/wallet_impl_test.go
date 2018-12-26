@@ -11,10 +11,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/test/mock"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -147,7 +147,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 	addr := account.Address()
 	t.Log(addr.String())
 
-	am := common.MockAccountMeta(addr)
+	am := mock.MockAccountMeta(addr)
 	l := session.ledger
 
 	err = l.AddAccountMeta(am)
@@ -178,7 +178,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 		t.Fatal("IsAccountExist2 failed", addr2.String())
 	}
 
-	addr3 := common.MockAddress()
+	addr3 := mock.MockAddress()
 	if exist := session.IsAccountExist(addr3); exist {
 		t.Fatal("IsAccountExist3 failed", addr2.String())
 	}
@@ -203,7 +203,7 @@ func TestSession_GetRawKey(t *testing.T) {
 	pub, priv, err := types.KeypairFromSeed(seed, 2)
 
 	acc1 := types.NewAccount(priv)
-	hash := common.MockHash()
+	hash := mock.MockHash()
 
 	sign := acc1.Sign(hash)
 	addr := types.PubToAddress(pub)
@@ -217,7 +217,7 @@ func TestSession_GetRawKey(t *testing.T) {
 		t.Fatal("verify failed.")
 	}
 
-	addr2 := common.MockAddress()
+	addr2 := mock.MockAddress()
 	if _, err = session.GetRawKey(addr2); err == nil {
 		t.Fatal("get invalid raw key failed")
 	}
@@ -237,7 +237,7 @@ func TestSession_SetSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = session.SetSeed(seed[:])
+	err = session.setSeed(seed[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +328,7 @@ func TestSession_GetWork(t *testing.T) {
 
 	session := store.NewSession(id)
 	//h:=mockHash()
-	addr := common.MockAddress()
+	addr := mock.MockAddress()
 
 	work, err := session.GetWork(addr)
 	if err != nil {
@@ -349,7 +349,7 @@ func TestGenerateWork(t *testing.T) {
 	done := make(chan string)
 	go func() {
 		session := store.NewSession(id)
-		hash := common.MockHash()
+		hash := mock.MockHash()
 		work := session.generateWork(hash)
 		if !work.IsValid(hash) {
 			t.Fatal("generateWork failed =>", hash.String())
@@ -381,7 +381,7 @@ func TestSession_GetAccounts(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			account, _ := ss.Account(uint32(i))
 			addr := account.Address()
-			am := common.MockAccountMeta(addr)
+			am := mock.MockAccountMeta(addr)
 			err = s.AddAccountMeta(am, txn)
 			if err != nil {
 				t.Fatal(err)

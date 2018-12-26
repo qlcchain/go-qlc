@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
 func TestProcess_BlockBasicInfoCheck(t *testing.T) {
@@ -14,53 +13,41 @@ func TestProcess_BlockBasicInfoCheck(t *testing.T) {
 	blks := parseBlocks(t, "testdata/blocks_ledger_process.json")
 
 	logger.Info("------ genesis, addr(1c47) ------")
-	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		state := blks[0].(*types.StateBlock)
-		return l.addBasicInfo(state, false, txn)
-	})
+	err := l.BlockProcess(blks[0])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	logger.Info("------ addr(1c47) send to addr(1zbo) 6000 ------")
-	r := l.Process(blks[1])
-	if r == Other {
-		t.Fatal(r)
-	}
+	processBlock(t, l, blks[1])
 
 	logger.Info("------ addr(1zbo) open  ------")
-	r = l.Process(blks[2])
-	if r == Other {
-		t.Fatal(r)
-	}
+	processBlock(t, l, blks[2])
 
 	logger.Info("------ addr(1zbo) change rep to (1zbo) ------")
-	r = l.Process(blks[3])
-	if r == Other {
-		t.Fatal(r)
-	}
+	processBlock(t, l, blks[3])
 
 	logger.Info("------ addr(1zbo) send to addr(1c47) 4000 ------")
-	r = l.Process(blks[4])
-	if r == Other {
-		t.Fatal(r)
-	}
+	processBlock(t, l, blks[4])
 
 	logger.Info("------ addr(1c47) receive ------")
-	r = l.Process(blks[5])
-	if r == Other {
-		t.Fatal(r)
-	}
+	processBlock(t, l, blks[5])
 
 	logger.Info("------ add token ------")
-	err = l.BatchUpdate(func(txn db.StoreTxn) error {
-		state := blks[6].(*types.StateBlock)
-		return l.addBasicInfo(state, false, txn)
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	processBlock(t, l, blks[6])
+
 	checkInfo(t, l)
+}
+
+func processBlock(t *testing.T, l *Ledger, block types.Block) {
+	p := l.BlockCheck(block)
+	if p != Progress && p != BadSignature && p != BadWork {
+		t.Fatal(p)
+	}
+	r := l.BlockProcess(block)
+	if r != nil {
+		t.Fatal(r)
+	}
 }
 
 func checkInfo(t *testing.T, l *Ledger) {
@@ -69,7 +56,6 @@ func checkInfo(t *testing.T, l *Ledger) {
 	for _, b := range blocks {
 		fmt.Println(*b)
 	}
-
 	fmt.Println("----frontiers:")
 	fs, _ := l.GetFrontiers()
 	for _, f := range fs {

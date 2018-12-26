@@ -112,11 +112,11 @@ type Block interface {
 //go:generate msgp
 type CommonBlock struct {
 	Type      BlockType `msg:"type" json:"type"`
-	Address   Address   `msg:"addresses,extension" json:"addresses"`
+	Address   Address   `msg:"address,extension" json:"address"`
 	Previous  Hash      `msg:"previous,extension" json:"previous"`
-	Signature Signature `msg:"signature,extension" json:"signature"`
-	Work      Work      `msg:"work,extension" json:"work"`
 	Extra     Hash      `msg:"extra,extension" json:"extra"`
+	Work      Work      `msg:"work,extension" json:"work"`
+	Signature Signature `msg:"signature,extension" json:"signature"`
 }
 
 func (b *CommonBlock) GetAddress() Address {
@@ -141,11 +141,11 @@ func (b *CommonBlock) GetExtra() Hash {
 
 //go:generate msgp
 type StateBlock struct {
-	CommonBlock
 	Token          Hash    `msg:"token,extension" json:"token"`
 	Balance        Balance `msg:"balance,extension" json:"balance"`
 	Link           Hash    `msg:"link,extension" json:"link"`
 	Representative Address `msg:"representative,extension" json:"representative"`
+	CommonBlock
 }
 
 func (b *StateBlock) GetType() BlockType {
@@ -195,7 +195,7 @@ func (b *StateBlock) IsValid() bool {
 }
 
 func (b *StateBlock) isOpen() bool {
-	return !b.Previous.IsZero()
+	return b.Previous.IsZero()
 }
 
 //go:generate msgp
@@ -207,10 +207,11 @@ type BlockExtra struct {
 
 //go:generate msgp
 type SmartContractBlock struct {
+	InternalAccount Address     `msg:"internalAccount,extension" json:"internalAccount"`
+	Abi             ContractAbi `msg:"contract,extension" json:"contract"`
+	Issuer          Address     `msg:"issuer,extension" json:"issuer"`
+	ExtraAddress    []Address   `msg:"extraAddress,extension" json:"extraAddress,omitempty"`
 	CommonBlock
-	Owner        Address   `msg:"owner,extension" json:"owner"`
-	Issuer       Address   `msg:"issuer,extension" json:"issuer"`
-	ExtraAddress []Address `msg:"extraAddress,extension" json:"extraAddress"`
 }
 
 func (sc *SmartContractBlock) Root() Hash {
@@ -241,7 +242,7 @@ func (sc *SmartContractBlock) GetHash() Hash {
 	for _, addr := range sc.ExtraAddress {
 		a = append(a, addr[:]...)
 	}
-	return hashBytes(preamble[:], a, sc.Address[:], sc.Previous[:], sc.Extra[:], sc.Owner[:], sc.Issuer[:])
+	return hashBytes(preamble[:], a, sc.Address[:], sc.Previous[:], sc.Abi.AbiHash[:], sc.Extra[:], sc.InternalAccount[:], sc.Issuer[:])
 }
 
 func hashBytes(inputs ...[]byte) Hash {

@@ -25,6 +25,8 @@ const (
 	HashExtensionType = 101
 )
 
+var ZeroHash = Hash{}
+
 //Hash blake2b hash
 type Hash [HashSize]byte
 
@@ -105,4 +107,18 @@ func (h *Hash) UnmarshalText(text []byte) error {
 // MarshalText implements the encoding.TextMarshaler interface.
 func (h Hash) MarshalText() (text []byte, err error) {
 	return []byte(h.String()), nil
+}
+
+//HashBytes hash data by blake2b
+func HashBytes(data []byte) (Hash, error) {
+	hash, err := blake2b.New(blake2b.Size256, nil)
+	if err != nil {
+		return ZeroHash, err
+	}
+
+	hash.Write(data)
+
+	var result Hash
+	copy(result[:], hash.Sum(nil))
+	return result, nil
 }

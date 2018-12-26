@@ -13,16 +13,15 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-//TODO: implement
 func NewWalletService(cfg *config.Config) *WalletService {
 	return &WalletService{
-		wallet: NewWalletStore(cfg),
+		Wallet: NewWalletStore(cfg),
 	}
 }
 
 type WalletService struct {
 	common.ServiceLifecycle
-	wallet *WalletStore
+	Wallet *WalletStore
 }
 
 func (ws *WalletService) Init() error {
@@ -49,7 +48,7 @@ func (ws *WalletService) Stop() error {
 	}
 	defer ws.PostStop()
 
-	return ws.wallet.Close()
+	return ws.Wallet.Close()
 }
 
 func (ws *WalletService) Status() int32 {

@@ -98,7 +98,7 @@ func (ms *MessageService) onPublishReq(message Message) error {
 	if err != nil {
 		return err
 	}
-	ms.netService.msgEvent.GetEvent("consensus").Notify(EventPublish, blk)
+	ms.netService.msgEvent.GetEvent("consensus").Notify(EventPublish, blk.Blk)
 	return nil
 }
 func (ms *MessageService) onConfirmReq(message Message) error {
@@ -106,7 +106,7 @@ func (ms *MessageService) onConfirmReq(message Message) error {
 	if err != nil {
 		return err
 	}
-	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmReq, blk)
+	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmReq, blk.Blk)
 	return nil
 }
 func (ms *MessageService) onConfirmAck(message Message) error {

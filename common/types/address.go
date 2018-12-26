@@ -176,6 +176,16 @@ func (addr Address) Checksum() []byte {
 	return util.ReverseBytes(hash.Sum(nil))
 }
 
+// IsZero check address is zero
+func (addr Address) IsZero() bool {
+	for _, b := range addr {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // String implements the fmt.Stringer interface.
 func (addr Address) String() string {
 	key := append([]byte{0, 0, 0}, addr[:]...)

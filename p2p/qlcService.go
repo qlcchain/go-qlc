@@ -1,20 +1,36 @@
 package p2p
 
 import (
+	"errors"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 )
 
 // QlcService service for qlc p2p network
 type QlcService struct {
+	common.ServiceLifecycle
 	node       *QlcNode
 	dispatcher *Dispatcher
 	msgEvent   *EventQueue
 	msgService *MessageService
 }
 
+func (ns *QlcService) Init() error {
+	if !ns.PreInit() {
+		return errors.New("pre init fail")
+	}
+	defer ns.PostInit()
+
+	return nil
+}
+
+func (ns *QlcService) Status() int32 {
+	return ns.Status()
+}
+
 // NewQlcService create netService
-func NewQlcService(cfg *config.Config, ledger *ledger.Ledger) (*QlcService, error) {
+func NewQlcService(cfg *config.Config) (*QlcService, error) {
 	node, err := NewNode(cfg)
 	if err != nil {
 		return nil, err
@@ -25,7 +41,8 @@ func NewQlcService(cfg *config.Config, ledger *ledger.Ledger) (*QlcService, erro
 		msgEvent:   NeweventQueue(),
 	}
 	node.SetQlcService(ns)
-	msgService := NewMessageService(ns, ledger)
+	l := ledger.NewLedger(cfg.LedgerDir())
+	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
 	return ns, nil
 }
@@ -42,6 +59,10 @@ func (ns *QlcService) MessageEvent() *EventQueue {
 
 // Start start p2p manager.
 func (ns *QlcService) Start() error {
+	if !ns.PreStart() {
+		return errors.New("pre start fail")
+	}
+	defer ns.PostStart()
 	logger.Info("Starting QlcService...")
 
 	// start dispatcher.
@@ -60,11 +81,17 @@ func (ns *QlcService) Start() error {
 }
 
 // Stop stop p2p manager.
-func (ns *QlcService) Stop() {
+func (ns *QlcService) Stop() error {
+	if !ns.PreStop() {
+		return errors.New("pre stop fail")
+	}
+	defer ns.PostStop()
 	logger.Info("Stopping QlcService...")
 
 	ns.node.Stop()
 	ns.dispatcher.Stop()
+
+	return nil
 }
 
 // Register register the subscribers.

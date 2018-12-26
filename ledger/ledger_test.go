@@ -16,6 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
@@ -572,7 +573,7 @@ func TestLedger_HasTokenMeta_True(t *testing.T) {
 
 func addRepresentationWeight(t *testing.T, l *Ledger) {
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	amount, err := types.ParseBalance("400.004", "Mqlc")
+	amount, err := mock.ParseBalance("400.004", "Mqlc")
 
 	err = l.AddRepresentation(address, amount)
 	if err != nil {
@@ -593,7 +594,7 @@ func TestLedger_SubRepresentationWeight(t *testing.T) {
 	addRepresentationWeight(t, l)
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	amount, err := types.ParseBalance("100.004", "Mqlc")
+	amount, err := mock.ParseBalance("100.004", "Mqlc")
 	err = l.SubRepresentation(address, amount)
 	if err != nil {
 		t.Fatal(err)
@@ -620,7 +621,7 @@ func parsePending(t *testing.T) (address types.Address, hash types.Hash, pending
 	}
 	_ = hash.Of("a624942c313e8ddd7bc12cf6188e4fb9d10da4238086aceca7f81ea3fc595ba9")
 
-	balance, err := types.ParseBalance("2345.6789", "Mqlc")
+	balance, err := mock.ParseBalance("2345.6789", "Mqlc")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -884,17 +885,18 @@ func TestLedger_Rollback(t *testing.T) {
 	defer teardownTestCase(t)
 	blks := parseBlocks(t, "testdata/blocks_rollback.json")
 
-	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		state := blks[0].(*types.StateBlock)
-		return l.addBasicInfo(state, false, txn)
-	})
+	err := l.BlockProcess(blks[0])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, b := range blks[1:] {
-		r := l.Process(b)
-		if r == Other {
+		p := l.BlockCheck(b)
+		if p != Progress && p != BadSignature && p != BadWork {
+			t.Fatal(p)
+		}
+		r := l.BlockProcess(b)
+		if r != nil {
 			t.Fatal(r)
 		}
 	}
@@ -908,7 +910,6 @@ func TestLedger_Rollback(t *testing.T) {
 	}
 
 	check(t, l)
-
 }
 
 func check(t *testing.T, l *Ledger) {

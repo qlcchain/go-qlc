@@ -12,12 +12,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/test/mock"
 	"go.uber.org/zap"
 	"io"
 	"sync"
@@ -104,6 +104,18 @@ func (s *Session) EnterPassword(password string) error {
 	return fmt.Errorf("already have encrypt seed")
 }
 
+func (s *Session) VerifyPassword(password string) (bool, error) {
+	s.setPassword(password)
+	seed, err := s.GetSeed()
+	if err != nil {
+		return false, err
+	}
+	if len(seed) == 0 {
+		return false, fmt.Errorf("password is invalid")
+	}
+	return true, nil
+}
+
 func (s *Session) GetWalletId() ([]byte, error) {
 	if len(s.walletId) == 0 {
 		return nil, EmptyIdErr
@@ -151,13 +163,13 @@ func (s *Session) GetSeed() ([]byte, error) {
 	return seed, err
 }
 
-func (s *Session) SetSeed(seed []byte) error {
+func (s *Session) setSeed(seed []byte) error {
 	return s.UpdateInTx(func(txn db.StoreTxn) error {
-		return s.setSeed(txn, seed)
+		return s.setSeedByTxn(txn, seed)
 	})
 }
 
-func (s *Session) setSeed(txn db.StoreTxn, seed []byte) error {
+func (s *Session) setSeedByTxn(txn db.StoreTxn, seed []byte) error {
 	encryptSeed, err := EncryptSeed(seed, s.getPassword())
 
 	if err != nil {
@@ -221,7 +233,7 @@ func (s *Session) SearchPending() error {
 	return nil
 }
 
-func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance) (*types.Block, error) {
+func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance) (types.Block, error) {
 	acc, err := s.GetRawKey(source)
 	if err != nil {
 		return nil, err
@@ -257,13 +269,13 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 				sb.Work = s.generateWork(sb.Root())
 			}
 		}
-		return &sendBlock, nil
+		return sendBlock, nil
 	} else {
 		return nil, fmt.Errorf("not enought balance(%s) of %s", balance.BigInt(), amount.BigInt())
 	}
 }
 
-func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (*types.Block, error) {
+func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, error) {
 	hash := sendBlock.GetHash()
 	if _, ok := sendBlock.(*types.StateBlock); !ok {
 		return nil, fmt.Errorf("invalid state sendBlock(%s)", hash.String())
@@ -313,10 +325,10 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (*types.Block, err
 		}
 	}
 
-	return &receiveBlock, nil
+	return receiveBlock, nil
 }
 
-func (s *Session) GenerateChangeBlock(account types.Address, representative types.Address) (*types.Block, error) {
+func (s *Session) GenerateChangeBlock(account types.Address, representative types.Address) (types.Block, error) {
 	if exist := s.IsAccountExist(account); !exist {
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
@@ -327,7 +339,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 	}
 
 	//get latest chain token block
-	hash := l.Latest(account, common.ChainTokenType)
+	hash := l.Latest(account, mock.GetChainTokenType())
 
 	if hash.IsZero() {
 		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
@@ -342,7 +354,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 		if err != nil {
 			return nil, err
 		}
-		tm, err := l.GetTokenMeta(account, common.ChainTokenType)
+		tm, err := l.GetTokenMeta(account, mock.GetChainTokenType())
 		if newSb, ok := changeBlock.(*types.StateBlock); ok {
 			acc, err := s.GetRawKey(account)
 			if err != nil {
@@ -362,7 +374,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 				_ = s.setWork(account, newSb.Work)
 			}
 		}
-		return &changeBlock, nil
+		return changeBlock, nil
 	}
 
 	return nil, fmt.Errorf("invalid state block (%s) of account[%s]", hash, account.String())
@@ -489,7 +501,7 @@ func (s *Session) ChangePassword(password string) error {
 	}
 	//set new password
 	s.setPassword(password)
-	return s.SetSeed(seed)
+	return s.setSeed(seed)
 }
 
 func (s *Session) GetRawKey(account types.Address) (*types.Account, error) {
