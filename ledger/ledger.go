@@ -814,11 +814,11 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 //getTxn get txn by `update` mode
 func (l *Ledger) getTxn(update bool, txns ...db.StoreTxn) (db.StoreTxn, bool) {
 	if len(txns) > 0 {
-		logger.Debugf("getTxn %p", txns[0])
+		//logger.Debugf("getTxn %p", txns[0])
 		return txns[0], false
 	} else {
 		txn := l.db.NewTransaction(update)
-		logger.Debugf("getTxn new %p", txn)
+		//logger.Debugf("getTxn new %p", txn)
 		return txn, true
 	}
 }

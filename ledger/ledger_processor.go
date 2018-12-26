@@ -1,15 +1,13 @@
 package ledger
 
 import (
-	"strings"
+	"github.com/qlcchain/go-qlc/test/mock"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
-
-var chainTokenType = "125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36"
 
 type ProcessResult byte
 
@@ -40,29 +38,36 @@ func (l *Ledger) Process(block types.Block) ProcessResult {
 func (l *Ledger) BlockCheck(block types.Block) ProcessResult {
 	processResult := Progress
 
-	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		switch block.GetType() {
-		case types.State:
-			if state, ok := block.(*types.StateBlock); ok {
-				result, err := l.checkStateBlock(state, txn)
-				if err != nil {
-					return err
-				}
-				processResult = result
-				return nil
+	txn, b := l.getTxn(false)
+	defer l.releaseTxn(txn, b)
+	//err := l.BatchUpdate(func(txn db.StoreTxn) error {
+	switch block.GetType() {
+	case types.State:
+		if state, ok := block.(*types.StateBlock); ok {
+			result, err := l.checkStateBlock(state, txn)
+			if err != nil {
+				processResult = Other
+				//return err
 			} else {
-				return errors.New("invalid block")
+				processResult = result
 			}
-		case types.SmartContract:
-			return nil
-		default:
-			return errors.New("invalid block type")
-
+			//return nil
+		} else {
+			processResult = Other
+			//return errors.New("invalid block")
 		}
-	})
-	if err != nil {
-		return Other
+	case types.SmartContract:
+		processResult = Other
+		//return nil
+	default:
+		processResult = Other
+		//return errors.New("invalid block type")
+
 	}
+	//})
+	//if err != nil {
+	//	return Other
+	//}
 	return processResult
 }
 
@@ -182,24 +187,26 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 }
 
 func (l *Ledger) BlockProcess(block types.Block) error {
-	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		switch block.GetType() {
-		case types.State:
-			if state, ok := block.(*types.StateBlock); ok {
-				return l.processStateBlock(state, txn)
-			} else {
-				return errors.New("invalid block")
-			}
-		case types.SmartContract:
-			return nil
-		default:
-			return errors.New("invalid block type")
+	txn, b := l.getTxn(true)
+	defer l.releaseTxn(txn, b)
+	//err := l.BatchUpdate(func(txn db.StoreTxn) error {
+	switch block.GetType() {
+	case types.State:
+		if state, ok := block.(*types.StateBlock); ok {
+			return l.processStateBlock(state, txn)
+		} else {
+			return errors.New("invalid block")
 		}
-	})
-	if err != nil {
-		return err
+	case types.SmartContract:
+		return nil
+	default:
+		return errors.New("invalid block type")
 	}
-	return nil
+	//})
+	//if err != nil {
+	//	return err
+	//}
+	//return nil
 }
 
 func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
@@ -286,7 +293,7 @@ func (l *Ledger) isSend(block *types.StateBlock, txn db.StoreTxn) (bool, error) 
 }
 
 func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
-	if strings.EqualFold(block.GetToken().String(), chainTokenType) {
+	if block.GetToken() == mock.GetChainTokenType() {
 		if tm != nil && !tm.RepBlock.IsZero() {
 			blk, err := l.GetBlock(tm.RepBlock, txn)
 			if err != nil {

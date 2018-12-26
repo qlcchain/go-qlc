@@ -35,14 +35,14 @@ func init() {
 		block := genesisBlocks[i]
 		hash := block.GetHash()
 		if i == 0 {
-			chainTokenType = hash
+			chainTokenType = smartContractBlocks[i].GetHash()
 		}
 
 		if _, ok := tokenCache.LoadOrStore(hash, TokenInfo{
 			TokenId: hash, TokenName: tokenNames[i], TokenSymbol: tokenSymbols[i],
 			Owner: smartContractBlocks[i].InternalAccount, Decimals: uint8(8), TotalSupply: block.Balance,
 		}); !ok {
-			logger.Debugf("add token[%s] to cache", hash.String())
+			//logger.Debugf("add token[%s] to cache", hash.String())
 		}
 	}
 }
@@ -332,4 +332,20 @@ func bigPow(base int64, exp int64) *big.Int {
 func UnitString(b types.Balance, unit string, precision int32) string {
 	d := decimal.NewFromBigInt(b.BigInt(), 0)
 	return d.DivRound(units[unit], types.BalanceMaxPrecision).Truncate(precision).String()
+}
+
+func GetGenesis() []types.Block {
+	var b []types.Block
+	for _, sb := range genesisBlocks {
+		b = append(b, &sb)
+	}
+	return b
+}
+
+func GetSmartContracts() []types.Block {
+	var b []types.Block
+	for _, sb := range smartContractBlocks {
+		b = append(b, &sb)
+	}
+	return b
 }

@@ -38,6 +38,8 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
+	fmt.Printf("qo-qlc %s-%s.%s", version, sha1ver, buildTime)
+
 	//	var h bool
 	//	var file string
 	//	var password string
@@ -84,7 +86,7 @@ func main() {
 
 	importCmd := flag.NewFlagSet("import", flag.ExitOnError)
 	seed := importCmd.String("seed", "", "seed")
-	importpwd := importCmd.String("pwd", "", "password")
+	importPwd := importCmd.String("pwd", "", "password")
 
 	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
 	sendFrom := sendCmd.String("from", "", "transfer from")
@@ -93,10 +95,10 @@ func main() {
 	sendAmount := sendCmd.String("amount", "", "transfer amount")
 	sendPwd := sendCmd.String("pwd", "", "password")
 	var services []common.Service
-	if len(os.Args) < 2 {
-		logger.Error("invalid args.")
-		return
-	}
+	//if len(os.Args) < 2 {
+	//	logger.Error("invalid args.")
+	//	return
+	//}
 	switch os.Args[1] {
 	case "create":
 		err := createCmd.Parse(os.Args[2:])
@@ -138,7 +140,7 @@ func main() {
 		if err != nil {
 			logger.Error(err)
 		}
-		err = Import(*seed, *importpwd)
+		err = Import(*seed, *importPwd)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -187,7 +189,8 @@ func main() {
 
 func initNode(account types.Address, password string) error {
 	cfg, _ := config.DefaultConfig()
-	ctx, err := chain.New(cfg)
+	var err error
+	ctx, err = chain.New(cfg)
 	if err != nil {
 		logger.Fatal()
 	}
