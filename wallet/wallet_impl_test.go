@@ -237,7 +237,7 @@ func TestSession_SetSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = session.SetSeed(seed[:])
+	err = session.setSeed(seed[:])
 	if err != nil {
 		t.Fatal(err)
 	}

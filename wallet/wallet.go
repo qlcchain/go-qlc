@@ -9,7 +9,7 @@ type walletStoreApi interface {
 	GetVersion() (int64, error)
 	SetVersion(version int64) error
 	GetSeed() ([]byte, error)
-	SetSeed(seed []byte) error
+	//setSeed(seed []byte) error
 	GetDeterministicIndex() (int64, error)
 	ResetDeterministicIndex() error
 	SetDeterministicIndex(index int64) error
@@ -20,6 +20,7 @@ type walletStoreApi interface {
 	GetAccounts() ([]types.Address, error)
 	ChangePassword(password string) error
 	EnterPassword(password string) error
+	VerifyPassword(password string) (bool, error)
 }
 
 type walletAction interface {

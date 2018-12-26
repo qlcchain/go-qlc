@@ -104,6 +104,18 @@ func (s *Session) EnterPassword(password string) error {
 	return fmt.Errorf("already have encrypt seed")
 }
 
+func (s *Session) VerifyPassword(password string) (bool, error) {
+	s.setPassword(password)
+	seed, err := s.GetSeed()
+	if err != nil {
+		return false, err
+	}
+	if len(seed) == 0 {
+		return false, fmt.Errorf("password is invalid")
+	}
+	return true, nil
+}
+
 func (s *Session) GetWalletId() ([]byte, error) {
 	if len(s.walletId) == 0 {
 		return nil, EmptyIdErr
@@ -151,13 +163,13 @@ func (s *Session) GetSeed() ([]byte, error) {
 	return seed, err
 }
 
-func (s *Session) SetSeed(seed []byte) error {
+func (s *Session) setSeed(seed []byte) error {
 	return s.UpdateInTx(func(txn db.StoreTxn) error {
-		return s.setSeed(txn, seed)
+		return s.setSeedByTxn(txn, seed)
 	})
 }
 
-func (s *Session) setSeed(txn db.StoreTxn, seed []byte) error {
+func (s *Session) setSeedByTxn(txn db.StoreTxn, seed []byte) error {
 	encryptSeed, err := EncryptSeed(seed, s.getPassword())
 
 	if err != nil {
@@ -489,7 +501,7 @@ func (s *Session) ChangePassword(password string) error {
 	}
 	//set new password
 	s.setPassword(password)
-	return s.SetSeed(seed)
+	return s.setSeed(seed)
 }
 
 func (s *Session) GetRawKey(account types.Address) (*types.Account, error) {

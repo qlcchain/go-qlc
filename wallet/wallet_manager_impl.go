@@ -69,21 +69,28 @@ func (ws *WalletStore) WalletIds() ([]types.Address, error) {
 	return ids, err
 }
 
-//NewWallet create new wallet and save to db
-func (ws *WalletStore) NewWallet() (types.Address, error) {
-	seed, err := types.NewSeed()
+// NewWalletBySeed create wallet from hex seed string
+func (ws *WalletStore) NewWalletBySeed(seed, password string) (types.Address, error) {
+	var walletId types.Address
+	bytes, err := hex.DecodeString(seed)
 	if err != nil {
-		return types.ZeroAddress, err
+		return walletId, err
 	}
 
-	walletId := seed.MasterAddress()
+	s, err := types.BytesToSeed(bytes)
+	if err != nil {
+		return walletId, err
+	}
+	walletId = s.MasterAddress()
+	if b, err := ws.IsWalletExist(walletId); b && err == nil {
+		return walletId, fmt.Errorf("seed[%s] already exist", seed)
+	}
 
+	session := ws.NewSession(walletId)
 	ids, err := ws.WalletIds()
 	if err != nil {
 		return types.ZeroAddress, err
 	}
-
-	session := ws.NewSession(walletId)
 
 	ids = append(ids, walletId)
 
@@ -112,14 +119,12 @@ func (ws *WalletStore) NewWallet() (types.Address, error) {
 		}
 		_ = session.setVersion(txn, Version)
 
-		//default password is empty
-
-		err = session.EnterPassword(defaultPassword)
+		err = session.EnterPassword(password)
 		if err != nil {
 			return err
 		}
 
-		err = session.setSeed(txn, seed[:])
+		err = session.setSeedByTxn(txn, s[:])
 
 		if err != nil {
 			return err
@@ -129,6 +134,30 @@ func (ws *WalletStore) NewWallet() (types.Address, error) {
 	})
 
 	return walletId, err
+}
+
+// IsWalletExist check is the wallet exist by master address
+func (ws *WalletStore) IsWalletExist(address types.Address) (bool, error) {
+	addresses, err := ws.WalletIds()
+	if err != nil {
+		return false, err
+	}
+	for _, addr := range addresses {
+		if addr == address {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//NewWallet create new wallet and save to db
+func (ws *WalletStore) NewWallet() (types.Address, error) {
+	seed, err := types.NewSeed()
+	if err != nil {
+		return types.ZeroAddress, err
+	}
+
+	return ws.NewWalletBySeed(seed.String(), "")
 }
 
 func (ws *WalletStore) CurrentId() (types.Address, error) {

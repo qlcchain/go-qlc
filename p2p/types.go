@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 )
 
 // MessageType a string for message type.
@@ -21,8 +22,7 @@ type PeersSlice []interface{}
 
 // Service net Service interface
 type Service interface {
-	Start() error
-	Stop()
+	common.Service
 	Node() *QlcNode
 	MessageEvent() *EventQueue
 	Broadcast(string, []byte)

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
 type LedgerService struct {
@@ -29,8 +30,11 @@ func (ls *LedgerService) Init() error {
 		return errors.New("pre init fail")
 	}
 	defer ls.PostInit()
+	// TODO: remove
+	l := ls.Ledger
+	return l.BatchUpdate(func(txn db.StoreTxn) error {
 
-	return nil
+	})
 }
 
 func (ls *LedgerService) Start() error {
