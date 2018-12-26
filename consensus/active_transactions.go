@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	announcement_min     = 4 //Minimum number of block announcements
-	announce_interval_ms = 16 * time.Second
+	announcementmin    = 4 //Minimum number of block announcements
+	announceIntervalms = 16 * time.Second
 )
 
 type ActiveTrx struct {
@@ -27,11 +27,13 @@ func NewActiveTrx() *ActiveTrx {
 		roots:  make(map[types.Hash]*Election),
 	}
 }
+
 func (act *ActiveTrx) SetDposService(dps *DposService) {
 	act.dps = dps
 }
+
 func (act *ActiveTrx) start() {
-	timer2 := time.NewTicker(announce_interval_ms)
+	timer2 := time.NewTicker(announceIntervalms)
 	for {
 		select {
 		case <-timer2.C:
@@ -43,6 +45,7 @@ func (act *ActiveTrx) start() {
 		}
 	}
 }
+
 func (act *ActiveTrx) addToRoots(block types.Block) bool {
 	if _, ok := act.roots[block.Root()]; !ok {
 		ele, err := NewElection(act.dps, block)
@@ -57,9 +60,10 @@ func (act *ActiveTrx) addToRoots(block types.Block) bool {
 		return false
 	}
 }
+
 func (act *ActiveTrx) announceVotes() {
 	for _, v := range act.roots {
-		if v.confirmed && v.announcements >= announcement_min-1 {
+		if v.confirmed && v.announcements >= announcementmin-1 {
 			logger.Info("this block is already confirmed")
 			act.inactive = append(act.inactive, v.vote.id)
 		} else {
@@ -88,11 +92,13 @@ func (act *ActiveTrx) announceVotes() {
 	}
 	act.inactive = act.inactive[:0:0]
 }
-func (act *ActiveTrx) vote(vote_a *protos.ConfirmAckBlock) {
-	if value, ok := act.roots[vote_a.Blk.Root()]; ok {
-		value.voteAction(vote_a)
+
+func (act *ActiveTrx) vote(va *protos.ConfirmAckBlock) {
+	if value, ok := act.roots[va.Blk.Root()]; ok {
+		value.voteAction(va)
 	}
 }
+
 func (act *ActiveTrx) stop() {
 	act.quitCh <- true
 }

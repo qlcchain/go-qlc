@@ -10,6 +10,7 @@ type electionStatus struct {
 	winner types.Block
 	tally  types.Balance
 }
+
 type Election struct {
 	vote          *Votes
 	status        electionStatus
@@ -38,25 +39,26 @@ func NewElection(dps *DposService, block types.Block) (*Election, error) {
 		announcements: 0,
 	}, nil
 }
-func (el *Election) voteAction(vote_a *protos.ConfirmAckBlock) {
-	valid := IsAckSignValidate(vote_a)
+
+func (el *Election) voteAction(va *protos.ConfirmAckBlock) {
+	valid := IsAckSignValidate(va)
 	if valid != true {
 		return
 	}
-	var should_process bool
-	exit, vt := el.vote.voteExit(vote_a.Account)
+	var shouldProcess bool
+	exit, vt := el.vote.voteExit(va.Account)
 	if exit == true {
-		if vt.Sequence < vote_a.Sequence {
-			should_process = true
+		if vt.Sequence < va.Sequence {
+			shouldProcess = true
 		} else {
-			should_process = false
+			shouldProcess = false
 		}
 	} else {
-		should_process = true
+		shouldProcess = true
 	}
-	if should_process {
-		el.vote.rep_votes[vote_a.Account] = vote_a
-		data, err := protos.ConfirmAckBlockToProto(vote_a)
+	if shouldProcess {
+		el.vote.repVotes[va.Account] = va
+		data, err := protos.ConfirmAckBlockToProto(va)
 		if err != nil {
 			logger.Error("vote to proto error")
 		}
@@ -64,14 +66,15 @@ func (el *Election) voteAction(vote_a *protos.ConfirmAckBlock) {
 	}
 	el.haveQuorum()
 }
+
 func (el *Election) haveQuorum() {
-	tally_l := el.tally()
-	if !(len(tally_l) > 0) {
+	t := el.tally()
+	if !(len(t) > 0) {
 		return
 	}
 	var blk types.Block
 	var balance = types.ZeroBalance
-	for key, value := range tally_l {
+	for key, value := range t {
 		if balance.Compare(value) == types.BalanceCompSmaller {
 			balance = value
 			blk = key
@@ -84,9 +87,10 @@ func (el *Election) haveQuorum() {
 		el.status.tally = balance
 	}
 }
+
 func (el *Election) tally() map[types.Block]types.Balance {
 	totals := make(map[types.Block]types.Balance)
-	for key, value := range el.vote.rep_votes {
+	for key, value := range el.vote.repVotes {
 		if _, ok := totals[value.Blk]; !ok {
 			totals[value.Blk] = types.ZeroBalance
 		}

@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 
@@ -94,6 +95,7 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 	dps.actrx.SetDposService(dps)
 	return dps, nil
 }
+
 func (dps *DposService) SetWalletStore(wallet *wallet.WalletStore) {
 	dps.wallet = wallet
 }
@@ -106,6 +108,7 @@ func (dps *DposService) SetWalletStore(wallet *wallet.WalletStore) {
 	dps.accounts = accounts
 	return nil
 }*/
+
 func (dps *DposService) setEvent() {
 	event1 := dps.ns.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventPublish, dps.ReceivePublish)
 	event2 := dps.ns.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmReq, dps.ReceiveConfirmReq)
@@ -120,13 +123,14 @@ func (dps *DposService) setEvent() {
 func (dps *DposService) ReceivePublish(v interface{}) {
 	logger.Info("Publish Event")
 	dps.bp.blocks <- v.(types.Block)
-
 }
+
 func (dps *DposService) ReceiveConfirmReq(v interface{}) {
 	logger.Info("ConfirmReq Event")
 	dps.bp.blocks <- v.(types.Block)
 	dps.onReceiveConfirmReq(v.(types.Block))
 }
+
 func (dps *DposService) onReceiveConfirmReq(block types.Block) {
 	accounts := dps.getAccounts()
 	for _, k := range accounts {
@@ -139,40 +143,42 @@ func (dps *DposService) onReceiveConfirmReq(block types.Block) {
 			dps.sendConfirmReq(block)
 		}
 	}
-	if len(accounts) == 0 {
-		logger.Info("this is just a node,not a wallet")
-		dps.sendConfirmReq(block)
-	}
+	//if len(accounts) == 0 {
+	//	logger.Info("this is just a node,not a wallet")
+	//	dps.sendConfirmReq(block)
+	//}
 }
+
 func (dps *DposService) ReceiveConfirmAck(v interface{}) {
 	logger.Info("ConfirmAck Event")
 	vote := v.(*protos.ConfirmAckBlock)
 	dps.bp.blocks <- vote.Blk
 	dps.onReceiveConfirmAck(vote)
 }
-func (dps *DposService) onReceiveConfirmAck(vote_a *protos.ConfirmAckBlock) {
-	valid := IsAckSignValidate(vote_a)
+
+func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
+	valid := IsAckSignValidate(va)
 	if valid != true {
 		return
 	}
-	if v, ok := dps.actrx.roots[vote_a.Blk.Root()]; ok {
-		result, vt := v.vote.voteExit(vote_a.Account)
+	if v, ok := dps.actrx.roots[va.Blk.Root()]; ok {
+		result, vt := v.vote.voteExit(va.Account)
 		if result == true {
-			if vt.Sequence < vote_a.Sequence {
-				v.vote.rep_votes[vote_a.Account] = vote_a
+			if vt.Sequence < va.Sequence {
+				v.vote.repVotes[va.Account] = va
 			}
 		} else {
-			ta := v.vote.voteStatus(vote_a)
+			ta := v.vote.voteStatus(va)
 			if ta == confirm {
-				currentvote := v.vote.rep_votes[vote_a.Account]
-				if currentvote.Sequence < vote_a.Sequence {
-					v.vote.rep_votes[vote_a.Account] = vote_a
+				currentvote := v.vote.repVotes[va.Account]
+				if currentvote.Sequence < va.Sequence {
+					v.vote.repVotes[va.Account] = va
 				}
 			}
 		}
-		dps.actrx.vote(vote_a)
+		dps.actrx.vote(va)
 	} else {
-		exit, err := dps.ledger.HasBlock(vote_a.Blk.GetHash())
+		exit, err := dps.ledger.HasBlock(va.Blk.GetHash())
 		if err != nil {
 			return
 		}
@@ -181,23 +187,23 @@ func (dps *DposService) onReceiveConfirmAck(vote_a *protos.ConfirmAckBlock) {
 			for _, k := range accounts {
 				isRep := dps.isThisAccountRepresentation(k)
 				if isRep == true {
-					dps.sendConfirmAck(vote_a.Blk, k)
+					dps.sendConfirmAck(va.Blk, k)
 				} else {
-					data, err := protos.ConfirmAckBlockToProto(vote_a)
+					data, err := protos.ConfirmAckBlockToProto(va)
 					if err != nil {
 						logger.Error("vote to proto error")
 					}
 					dps.ns.Broadcast(p2p.ConfirmAck, data)
 				}
 			}
-			if len(accounts) == 0 {
-				logger.Info("this is just a node,not a wallet")
-				data, err := protos.ConfirmAckBlockToProto(vote_a)
-				if err != nil {
-					logger.Error("vote to proto error")
-				}
-				dps.ns.Broadcast(p2p.ConfirmAck, data)
-			}
+			//if len(accounts) == 0 {
+			//	logger.Info("this is just a node,not a wallet")
+			//	data, err := protos.ConfirmAckBlockToProto(va)
+			//	if err != nil {
+			//		logger.Error("vote to proto error")
+			//	}
+			//	dps.ns.Broadcast(p2p.ConfirmAck, data)
+			//}
 		}
 	}
 }
@@ -206,6 +212,7 @@ func (dps *DposService) ReceiveSyncBlock(v interface{}) {
 	logger.Info("Sync Event")
 	dps.bp.blocks <- v.(types.Block)
 }
+
 func (dps *DposService) sendConfirmReq(block types.Block) error {
 	packet := &protos.ConfirmReqBlock{
 		Blk: block,
@@ -218,21 +225,23 @@ func (dps *DposService) sendConfirmReq(block types.Block) error {
 	dps.ns.Broadcast(p2p.ConfirmReq, data)
 	return nil
 }
+
 func (dps *DposService) sendConfirmAck(block types.Block, account types.Address) error {
-	vote_a, err := dps.voteGenerate(block, account)
+	va, err := dps.voteGenerate(block, account)
 	if err != nil {
 		logger.Error("vote generate error")
 		return err
 	}
-	data, err := protos.ConfirmAckBlockToProto(vote_a)
+	data, err := protos.ConfirmAckBlockToProto(va)
 	if err != nil {
 		logger.Error("vote to proto error")
 	}
 	dps.ns.Broadcast(p2p.ConfirmAck, data)
 	return nil
 }
+
 func (dps *DposService) voteGenerate(block types.Block, account types.Address) (*protos.ConfirmAckBlock, error) {
-	var vote_a protos.ConfirmAckBlock
+	var va protos.ConfirmAckBlock
 	prv, err := dps.GetAccountPrv(account)
 	if err != nil {
 		logger.Error("Get prv error")
@@ -241,29 +250,31 @@ func (dps *DposService) voteGenerate(block types.Block, account types.Address) (
 	if v, ok := dps.actrx.roots[block.Root()]; ok {
 		result, vt := v.vote.voteExit(account)
 		if result == true {
-			vote_a.Sequence = vt.Sequence + 1
-			vote_a.Blk = block
-			vote_a.Account = account
-			vote_a.Signature = prv.Sign(block.GetHash())
+			va.Sequence = vt.Sequence + 1
+			va.Blk = block
+			va.Account = account
+			va.Signature = prv.Sign(block.GetHash())
 		} else {
-			vote_a.Sequence = 0
-			vote_a.Blk = block
-			vote_a.Account = account
-			vote_a.Signature = prv.Sign(block.GetHash())
+			va.Sequence = 0
+			va.Blk = block
+			va.Account = account
+			va.Signature = prv.Sign(block.GetHash())
 		}
-		v.vote.voteStatus(&vote_a)
+		v.vote.voteStatus(&va)
 	} else {
-		vote_a.Sequence = 0
-		vote_a.Blk = block
-		vote_a.Account = account
-		vote_a.Signature = prv.Sign(block.GetHash())
+		va.Sequence = 0
+		va.Blk = block
+		va.Account = account
+		va.Signature = prv.Sign(block.GetHash())
 	}
-	return &vote_a, nil
+	return &va, nil
 }
+
 func (dps *DposService) GetAccountPrv(account types.Address) (*types.Account, error) {
 	session := dps.wallet.NewSession(dps.account)
 	return session.GetRawKey(account)
 }
+
 func (dps *DposService) isThisAccountRepresentation(address types.Address) bool {
 	_, err := dps.ledger.GetRepresentation(address)
 	if err != nil {

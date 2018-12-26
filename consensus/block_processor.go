@@ -17,12 +17,15 @@ func NewBlockProcessor() *BlockProcessor {
 		quitCh: make(chan bool, 1),
 	}
 }
+
 func (bp *BlockProcessor) SetDpos(dp *DposService) {
 	bp.dp = dp
 }
+
 func (bp *BlockProcessor) Start() {
 	bp.processBlocks()
 }
+
 func (bp *BlockProcessor) processBlocks() {
 	for {
 		select {
@@ -35,6 +38,7 @@ func (bp *BlockProcessor) processBlocks() {
 		}
 	}
 }
+
 func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types.Block) error {
 	switch result {
 	case ledger.Progress:
@@ -78,9 +82,11 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types
 	}
 	return nil
 }
+
 func (bp *BlockProcessor) processFork(block types.Block) {
 
 }
+
 func (bp *BlockProcessor) queueUnchecked(hash types.Hash) error {
 	blklink, err := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
 	if err != nil {
@@ -106,6 +112,7 @@ func (bp *BlockProcessor) queueUnchecked(hash types.Hash) error {
 	}
 	return nil
 }
+
 func (bp *BlockProcessor) Stop() {
 	bp.quitCh <- true
 }

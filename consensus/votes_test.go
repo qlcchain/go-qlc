@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	test_blk = `{
+	testVotesBlk = `{
     "type": "state",
 	"addresses": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
 	"previous": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -22,7 +22,7 @@ var (
 	"work": "13389dd67ced8429"
 	}
 	`
-	test_blk1 = `{
+	testVotesBlk1 = `{
     "type": "state",
 	"addresses": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
 	"previous": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -39,12 +39,12 @@ var (
 func TestVotes(t *testing.T) {
 	blk, err := types.NewBlock(types.State)
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json.Unmarshal([]byte(test_blk), &blk); err != nil {
+	if err = json.Unmarshal([]byte(testVotesBlk), &blk); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
 	blk1, err := types.NewBlock(types.State)
 	var json1 = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json1.Unmarshal([]byte(test_blk1), &blk1); err != nil {
+	if err = json1.Unmarshal([]byte(testVotesBlk1), &blk1); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
 	vts := NewVotes(blk)
@@ -65,25 +65,25 @@ func TestVotes(t *testing.T) {
 	if err != nil {
 		t.Fatal("seed to account error")
 	}
-	var vote_a protos.ConfirmAckBlock
-	vote_a.Sequence = 0
-	vote_a.Blk = blk
-	vote_a.Account = ac.Address()
-	vote_a.Signature = ac.Sign(blk.GetHash())
-	status := vts.voteStatus(&vote_a)
+	var va protos.ConfirmAckBlock
+	va.Sequence = 0
+	va.Blk = blk
+	va.Account = ac.Address()
+	va.Signature = ac.Sign(blk.GetHash())
+	status := vts.voteStatus(&va)
 	if status != vote {
 		t.Fatal("vote status error: vote")
 	}
-	status = vts.voteStatus(&vote_a)
+	status = vts.voteStatus(&va)
 	if status != confirm {
 		t.Fatal("vote status error: confirm")
 	}
-	var vote_b protos.ConfirmAckBlock
-	vote_b.Sequence = 0
-	vote_b.Blk = blk1
-	vote_b.Account = ac.Address()
-	vote_b.Signature = ac.Sign(blk1.GetHash())
-	status = vts.voteStatus(&vote_b)
+	var vb protos.ConfirmAckBlock
+	vb.Sequence = 0
+	vb.Blk = blk1
+	vb.Account = ac.Address()
+	vb.Signature = ac.Sign(blk1.GetHash())
+	status = vts.voteStatus(&vb)
 	if status != changed {
 		t.Fatal("vote status error: changed")
 	}

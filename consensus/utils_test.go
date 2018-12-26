@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	test_block = `{
+	utilsblock = `{
     "type": "state",
 	"addresses": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
 	"previous": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -28,7 +28,7 @@ var (
 func TestIsAckSignValidate(t *testing.T) {
 	blk, err := types.NewBlock(types.State)
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json.Unmarshal([]byte(test_block), &blk); err != nil {
+	if err = json.Unmarshal([]byte(utilsblock), &blk); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
 	var seedstring = "DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9"
@@ -44,12 +44,12 @@ func TestIsAckSignValidate(t *testing.T) {
 	if err != nil {
 		t.Fatal("seed to account error")
 	}
-	var vote_a protos.ConfirmAckBlock
-	vote_a.Sequence = 0
-	vote_a.Blk = blk
-	vote_a.Account = ac.Address()
-	vote_a.Signature = ac.Sign(blk.GetHash())
-	verify := IsAckSignValidate(&vote_a)
+	var va protos.ConfirmAckBlock
+	va.Sequence = 0
+	va.Blk = blk
+	va.Account = ac.Address()
+	va.Signature = ac.Sign(blk.GetHash())
+	verify := IsAckSignValidate(&va)
 	if verify != true {
 		t.Fatal("verify error")
 	}
