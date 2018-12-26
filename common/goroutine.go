@@ -30,7 +30,7 @@ func catch() {
 		case string:
 			e = errors.New(t)
 		default:
-			e = errors.Errorf("unknown type", err)
+			e = errors.Errorf("unknown type: %v", err)
 		}
 		fmt.Println(e)
 		panic(err)

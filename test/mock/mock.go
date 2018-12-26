@@ -32,15 +32,15 @@ func init() {
 	}
 
 	for i := range genesisBlocks {
-		block := genesisBlocks[i]
+		block := smartContractBlocks[i]
 		hash := block.GetHash()
 		if i == 0 {
-			chainTokenType = smartContractBlocks[i].GetHash()
+			chainTokenType = hash
 		}
 
 		if _, ok := tokenCache.LoadOrStore(hash, TokenInfo{
 			TokenId: hash, TokenName: tokenNames[i], TokenSymbol: tokenSymbols[i],
-			Owner: smartContractBlocks[i].InternalAccount, Decimals: uint8(8), TotalSupply: block.Balance,
+			Owner: smartContractBlocks[i].InternalAccount, Decimals: uint8(8), TotalSupply: genesisBlocks[i].Balance,
 		}); !ok {
 			//logger.Debugf("add token[%s] to cache", hash.String())
 		}
