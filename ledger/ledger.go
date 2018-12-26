@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -1013,65 +1014,65 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 		return err
 	}
 
-	block_head, err := l.getStateBlock(tm.Header, txn)
+	blockHead, err := l.getStateBlock(tm.Header, txn)
 	if err != nil {
 		return err
 	}
 
-	block_cur := block_head
+	blockCur := blockHead
 	for {
-		hash_cur := block_cur.GetHash()
-		block_type, err := l.getBlockKind(hash_cur, txn)
+		hashCur := blockCur.GetHash()
+		blockType, err := l.getBlockKind(hashCur, txn)
 		if err != nil {
 			return err
 		}
 
-		block_pre := new(types.StateBlock)
-		if block_type != open {
-			block_pre, err = l.getStateBlock(block_cur.Previous, txn)
+		blockPre := new(types.StateBlock)
+		if blockType != open {
+			blockPre, err = l.getStateBlock(blockCur.Previous, txn)
 			if err != nil {
 				return err
 			}
 		}
 
-		switch block_type {
+		switch blockType {
 		case open:
-			logger.Info("---delete open block, ", hash_cur)
-			if err := l.DeleteBlock(hash_cur, txn); err != nil {
+			logger.Info("---delete open block, ", hashCur)
+			if err := l.DeleteBlock(hashCur, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackToken_del(tm, txn); err != nil {
+			if err := l.rollBackTokenDel(tm, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackFrontier(types.Hash{}, block_cur.GetHash(), txn); err != nil {
+			if err := l.rollBackFrontier(types.Hash{}, blockCur.GetHash(), txn); err != nil {
 				return err
 			}
-			if err := l.rollBackRep(block_cur.GetRepresentative(), block_cur.GetBalance(), false, txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance(), false, txn); err != nil {
 				return err
 			}
 
-			if hash_cur != hash || isRoot {
-				if err := l.processRollback(block_cur.GetLink(), false, txn); err != nil {
+			if hashCur != hash || isRoot {
+				if err := l.processRollback(blockCur.GetLink(), false, txn); err != nil {
 					return err
 				}
 			}
 		case send:
-			logger.Info("---delete send block, ", hash_cur)
-			if err := l.DeleteBlock(hash_cur, txn); err != nil {
+			logger.Info("---delete send block, ", hashCur)
+			if err := l.DeleteBlock(hashCur, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackToken(tm, block_cur.GetPrevious(), tm.RepBlock, block_pre.GetBalance(), txn); err != nil {
+			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.RepBlock, blockPre.GetBalance(), txn); err != nil {
 				return err
 			}
-			if err := l.rollBackFrontier(block_pre.GetHash(), block_cur.GetHash(), txn); err != nil {
+			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
 				return err
 			}
-			if err := l.rollBackRep(block_cur.GetRepresentative(), block_pre.GetBalance().Sub(block_cur.GetBalance()), true, txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockPre.GetBalance().Sub(blockCur.GetBalance()), true, txn); err != nil {
 				return err
 			}
 
-			if hash_cur != hash || isRoot {
-				linkblock, err := l.getLinkBlock(block_cur, txn)
+			if hashCur != hash || isRoot {
+				linkblock, err := l.getLinkBlock(blockCur, txn)
 				if err != nil {
 					return err
 				}
@@ -1080,46 +1081,46 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 				}
 			}
 		case receive:
-			logger.Info("---delete receive block, ", hash_cur)
-			if err := l.DeleteBlock(hash_cur, txn); err != nil {
+			logger.Info("---delete receive block, ", hashCur)
+			if err := l.DeleteBlock(hashCur, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackToken(tm, block_cur.GetPrevious(), tm.RepBlock, block_pre.GetBalance(), txn); err != nil {
+			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.RepBlock, blockPre.GetBalance(), txn); err != nil {
 				return err
 			}
-			if err := l.rollBackFrontier(block_pre.GetHash(), block_cur.GetHash(), txn); err != nil {
+			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
 				return err
 			}
-			if err := l.rollBackRep(block_cur.GetRepresentative(), block_cur.GetBalance().Sub(block_pre.GetBalance()), false, txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance().Sub(blockPre.GetBalance()), false, txn); err != nil {
 				return err
 			}
 
-			if hash_cur != hash || isRoot {
-				if err := l.processRollback(block_cur.GetLink(), false, txn); err != nil {
+			if hashCur != hash || isRoot {
+				if err := l.processRollback(blockCur.GetLink(), false, txn); err != nil {
 					return err
 				}
 			}
 		case change:
-			logger.Info("---delete change block, ", hash_cur)
-			if err := l.DeleteBlock(hash_cur, txn); err != nil {
+			logger.Info("---delete change block, ", hashCur)
+			if err := l.DeleteBlock(hashCur, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackToken(tm, block_cur.GetPrevious(), block_cur.GetPrevious(), tm.Balance, txn); err != nil {
+			if err := l.rollBackToken(tm, blockCur.GetPrevious(), blockCur.GetPrevious(), tm.Balance, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackFrontier(block_pre.GetHash(), block_cur.GetHash(), txn); err != nil {
+			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
 				return err
 			}
-			if err := l.rollBackRep_change(block_pre.GetRepresentative(), block_cur.GetRepresentative(), block_cur.Balance, txn); err != nil {
+			if err := l.rollBackRepChange(blockPre.GetRepresentative(), blockCur.GetRepresentative(), blockCur.Balance, txn); err != nil {
 				return err
 			}
 		}
 
-		if hash_cur == hash {
+		if hashCur == hash {
 			break
 		}
 
-		block_cur, err = l.getStateBlock(block_cur.GetPrevious(), txn)
+		blockCur, err = l.getStateBlock(blockCur.GetPrevious(), txn)
 		if err != nil {
 			return err
 		}
@@ -1137,11 +1138,11 @@ func (l *Ledger) getBlockKind(hash types.Hash, txn db.StoreTxn) (byte, error) {
 	if pre.IsZero() {
 		return open, nil
 	} else {
-		block_pre, err := l.getStateBlock(pre, txn)
+		blockPre, err := l.getStateBlock(pre, txn)
 		if err != nil {
 			return unknown, err
 		}
-		if block_pre.GetBalance().Compare(block.GetBalance()) == types.BalanceCompSmaller {
+		if blockPre.GetBalance().Compare(block.GetBalance()) == types.BalanceCompSmaller {
 			return receive, nil
 		} else {
 			link := block.GetLink()
@@ -1160,7 +1161,7 @@ func (l *Ledger) getStateBlock(hash types.Hash, txn db.StoreTxn) (*types.StateBl
 	}
 	bs, ok := b.(*types.StateBlock)
 	if !ok {
-		return nil, errors.New("unvalid block")
+		return nil, errors.New("invalid block")
 	}
 	return bs, nil
 }
@@ -1170,20 +1171,20 @@ func (l *Ledger) getLinkBlock(block *types.StateBlock, txn db.StoreTxn) (*types.
 	if err != nil {
 		return nil, err
 	}
-	block_link, err := l.getStateBlock(tm.Header, txn)
+	blockLink, err := l.getStateBlock(tm.Header, txn)
 	if err != nil {
 		return nil, err
 	}
 	for {
-		if block_link.GetLink() == block.GetHash() {
+		if blockLink.GetLink() == block.GetHash() {
 			break
 		}
-		block_link, err = l.getStateBlock(block_link.GetPrevious(), txn)
+		blockLink, err = l.getStateBlock(blockLink.GetPrevious(), txn)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return block_link, nil
+	return blockLink, nil
 }
 
 func (l *Ledger) rollBackFrontier(pre types.Hash, cur types.Hash, txn db.StoreTxn) error {
@@ -1210,6 +1211,7 @@ func (l *Ledger) rollBackToken(tm *types.TokenMeta, header types.Hash, rep types
 	tm.Header = header
 	tm.RepBlock = rep
 	tm.BlockCount = tm.BlockCount - 1
+	tm.Modified = time.Now().Unix()
 	logger.Info("update token, ", tm.BelongTo, tm.Type)
 	if err := l.UpdateTokenMeta(tm.BelongTo, tm, txn); err != nil {
 		return err
@@ -1217,7 +1219,7 @@ func (l *Ledger) rollBackToken(tm *types.TokenMeta, header types.Hash, rep types
 	return nil
 }
 
-func (l *Ledger) rollBackToken_del(tm *types.TokenMeta, txn db.StoreTxn) error {
+func (l *Ledger) rollBackTokenDel(tm *types.TokenMeta, txn db.StoreTxn) error {
 	address := tm.BelongTo
 	logger.Info("delete token, ", address, tm.Type)
 	if err := l.DeleteTokenMeta(address, tm.Type, txn); err != nil {
@@ -1250,7 +1252,7 @@ func (l *Ledger) rollBackRep(address types.Address, balance types.Balance, isSen
 	return nil
 }
 
-func (l *Ledger) rollBackRep_change(pre types.Address, cur types.Address, balance types.Balance, txn db.StoreTxn) error {
+func (l *Ledger) rollBackRepChange(pre types.Address, cur types.Address, balance types.Balance, txn db.StoreTxn) error {
 	logger.Infof("add rep %s to %s", balance, pre)
 	if err := l.AddRepresentation(pre, balance, txn); err != nil {
 		return err

@@ -3,7 +3,6 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
@@ -885,17 +885,18 @@ func TestLedger_Rollback(t *testing.T) {
 	defer teardownTestCase(t)
 	blks := parseBlocks(t, "testdata/blocks_rollback.json")
 
-	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		state := blks[0].(*types.StateBlock)
-		return l.addBasicInfo(state, false, txn)
-	})
+	err := l.BlockProcess(blks[0])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, b := range blks[1:] {
-		r := l.Process(b)
-		if r == Other {
+		p := l.BlockCheck(b)
+		if p != Progress && p != BadSignature && p != BadWork {
+			t.Fatal(p)
+		}
+		r := l.BlockProcess(b)
+		if r != nil {
 			t.Fatal(r)
 		}
 	}
@@ -909,7 +910,6 @@ func TestLedger_Rollback(t *testing.T) {
 	}
 
 	check(t, l)
-
 }
 
 func check(t *testing.T, l *Ledger) {
