@@ -244,7 +244,7 @@ func TestGenerate(t *testing.T) {
 
 		block.Type = types.State
 		block.Address = masterAddress
-		block.Token = hash
+		block.Token = h
 		block.Representative = masterAddress
 		block.Balance, _ = types.ParseBalanceString(token.balance)
 		block.Link = masterAddress.ToHash()
@@ -317,5 +317,16 @@ func TestGetGenesis2(t *testing.T) {
 	g := GetGenesis()
 	for _, b := range g {
 		t.Logf("%v", b)
+	}
+}
+
+func TestGetChainTokenType(t *testing.T) {
+	h := GetChainTokenType()
+	h2 := smartContractBlocks[0].GetHash()
+	if h != h2 {
+		t.Fatal("GetChainTokenType error")
+	}
+	if genesisBlocks[0].Token != h {
+		t.Fatal("genesis error")
 	}
 }
