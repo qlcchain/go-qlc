@@ -42,17 +42,17 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types
 		bp.dp.actrx.addToRoots(block)
 		bp.queueUnchecked(block.GetHash())
 		break
-	case ledger.Bad_signature:
+	case ledger.BadSignature:
 		logger.Infof("Bad signature for: %s", block.GetHash())
 		break
-	case ledger.Balance_mismatch:
+	case ledger.BalanceMismatch:
 		logger.Infof("Balance mismatch for: %s", block.GetHash())
 		break
 	case ledger.Old:
 		logger.Infof("Old for: %s", block.GetHash())
 		break
-	case ledger.Unreceivable:
-		logger.Infof("Unreceivable for: %s", block.GetHash())
+	case ledger.UnReceivable:
+		logger.Infof("UnReceivable for: %s", block.GetHash())
 		break
 	case ledger.Other:
 		logger.Infof("Unknow process result for: %s", block.GetHash())
@@ -61,14 +61,14 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types
 		logger.Infof("Fork for: %s", block.GetHash())
 		bp.processFork(block)
 		break
-	case ledger.Gap_previous:
+	case ledger.GapPrevious:
 		logger.Infof("Gap previous for: %s", block.GetHash())
 		err := bp.dp.ledger.AddUncheckedBlock(block.Root(), block, types.UncheckedKindPrevious)
 		if err != nil {
 			return err
 		}
 		break
-	case ledger.Gap_source:
+	case ledger.GapSource:
 		logger.Infof("Gap source for: %s", block.GetHash())
 		err := bp.dp.ledger.AddUncheckedBlock(block.Root(), block, types.UncheckedKindLink)
 		if err != nil {
