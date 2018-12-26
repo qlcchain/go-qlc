@@ -526,7 +526,6 @@ func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash, txns 
 
 	tm := am.Token(tokenType)
 	if tm == nil {
-
 		return nil, ErrTokenNotFound
 	}
 
@@ -837,9 +836,9 @@ func (l *Ledger) releaseTxn(txn db.StoreTxn, flag bool) {
 // BatchUpdate MUST pass the same txn
 func (l *Ledger) BatchUpdate(fn func(txn db.StoreTxn) error) error {
 	txn := l.db.NewTransaction(true)
-	logger.Debugf("BatchUpdate NewTransaction %p", txn)
+	//logger.Debugf("BatchUpdate NewTransaction %p", txn)
 	defer func() {
-		logger.Debugf("BatchUpdate Discard %p", txn)
+		//logger.Debugf("BatchUpdate Discard %p", txn)
 		txn.Discard()
 	}()
 

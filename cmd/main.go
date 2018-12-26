@@ -94,6 +94,11 @@ func main() {
 	sendToken := sendCmd.String("token", "", "transfer token")
 	sendAmount := sendCmd.String("amount", "", "transfer amount")
 	sendPwd := sendCmd.String("pwd", "", "password")
+
+	runCmd := flag.NewFlagSet("run", flag.ExitOnError)
+	addr := runCmd.String("addr", "", "account string")
+	runPwd := runCmd.String("pwd", "", "")
+
 	var services []common.Service
 	//if len(os.Args) < 2 {
 	//	logger.Error("invalid args.")
@@ -112,6 +117,11 @@ func main() {
 		}
 	case "send":
 		err := sendCmd.Parse(os.Args[2:])
+		if err != nil {
+			logger.Fatal(err)
+		}
+	case "run":
+		err := runCmd.Parse(os.Args[2:])
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -144,6 +154,29 @@ func main() {
 		if err != nil {
 			logger.Error(err)
 		}
+		return
+	}
+
+	if runCmd.Parsed() {
+		if len(*addr) == 0 {
+			logger.Fatal("invalid account")
+		}
+
+		account, err := types.HexToAddress(*addr)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		err = initNode(account, *runPwd)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		services, err := startNode()
+		// Block until a signal is received.
+		s := <-c
+		fmt.Println("Got signal:", s)
+		stopNode(services)
 		return
 	}
 
@@ -188,8 +221,9 @@ func main() {
 }
 
 func initNode(account types.Address, password string) error {
-	cfg, _ := config.DefaultConfig()
-	var err error
+	cm := config.NewCfgManager(config.DefaultConfigFile())
+	cfg, err := cm.Load()
+
 	ctx, err = chain.New(cfg)
 	if err != nil {
 		logger.Fatal()
@@ -292,12 +326,13 @@ func Import(seed string, password string) error {
 func send(from, to types.Address, token types.Hash, amount types.Balance, password string) {
 	w := ctx.Wallet.Wallet
 	l := ctx.Ledger.Ledger
+	logger.Debug(from.String())
 	session := w.NewSession(from)
 
 	if b, err := session.VerifyPassword(password); b && err == nil {
 		sendblock, err := session.GenerateSendBlock(from, token, to, amount)
 		if err != nil {
-			logger.Fatal()
+			logger.Fatal(err)
 		}
 		if l.Process(sendblock) == ledger.Other {
 			logger.Fatal()
@@ -308,6 +343,6 @@ func send(from, to types.Address, token types.Hash, amount types.Balance, passwo
 		blockBytes, err := sendblock.MarshalMsg(nil)
 		net.Broadcast(p2p.PublishReq, blockBytes)
 	} else {
-		logger.Error("invalid password")
+		logger.Error("invalid password ", err, " valid: ", b)
 	}
 }

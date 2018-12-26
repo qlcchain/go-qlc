@@ -188,10 +188,9 @@ func (b *StateBlock) Size() int {
 
 func (b *StateBlock) IsValid() bool {
 	if b.isOpen() {
-		return b.Work.IsValid(b.Previous)
+		return b.Work.IsValid(Hash(b.Address))
 	}
-
-	return b.Work.IsValid(Hash(b.Address))
+	return b.Work.IsValid(b.Previous)
 }
 
 func (b *StateBlock) isOpen() bool {
