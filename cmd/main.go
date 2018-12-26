@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -326,6 +327,7 @@ func Import(seed string, password string) error {
 func send(from, to types.Address, token types.Hash, amount types.Balance, password string) {
 	w := ctx.Wallet.Wallet
 	l := ctx.Ledger.Ledger
+	n := ctx.NetService
 	logger.Debug(from.String())
 	session := w.NewSession(from)
 
@@ -334,14 +336,25 @@ func send(from, to types.Address, token types.Hash, amount types.Balance, passwo
 		if err != nil {
 			logger.Fatal(err)
 		}
-		if l.Process(sendblock) == ledger.Other {
-			logger.Fatal()
-		}
-		logger.Info("send block, ", sendblock.GetHash())
 
-		net, err := p2p.NewQlcService(ctx.Config)
-		blockBytes, err := sendblock.MarshalMsg(nil)
-		net.Broadcast(p2p.PublishReq, blockBytes)
+		if l.Process(sendblock) == ledger.Other {
+			logger.Debug(jsoniter.MarshalToString(&sendblock))
+			logger.Error("process block error")
+		} else {
+			logger.Info("send block, ", sendblock.GetHash())
+
+			meta, err := l.GetAccountMeta(from)
+			if err != nil {
+				logger.Error(err)
+			}
+			logger.Debug(jsoniter.MarshalToString(&meta))
+			blockBytes, err := sendblock.MarshalMsg(nil)
+			if err != nil {
+				logger.Error(err)
+			} else {
+				n.Broadcast(p2p.PublishReq, blockBytes)
+			}
+		}
 	} else {
 		logger.Error("invalid password ", err, " valid: ", b)
 	}
