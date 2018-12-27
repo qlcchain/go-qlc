@@ -9,15 +9,16 @@ package mock
 
 import (
 	"fmt"
+	"math"
+	"math/big"
+	"sync"
+	"time"
+
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/shopspring/decimal"
-	"math"
-	"math/big"
-	"sync"
-	"time"
 )
 
 func init() {
@@ -338,4 +339,58 @@ func StateBlock() types.Block {
 	sb.Work = worker.NewWork()
 
 	return b
+}
+
+func MockBlockChain() ([]types.Block, error) {
+	var blocks []types.Block
+	const seed1 = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133372bf4b94"
+	_, priv, err := types.KeypairFromSeed(seed1, 1)
+	if err != nil {
+		return nil, err
+	}
+	const seed2 = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133000bf4b94"
+	_, priv2, err := types.KeypairFromSeed(seed2, 1)
+	if err != nil {
+		return nil, err
+	}
+	ac1 := types.NewAccount(priv)
+	token := GetChainTokenType()
+	link := types.Hash(ac1.Address())
+
+	ac2 := types.NewAccount(priv2)
+	if err != nil {
+		return nil, err
+	}
+
+	b := createBlock(*ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(10000000))}, link, ac1.Address())
+	blocks = append(blocks, b)
+
+	link = types.Hash(ac2.Address())
+	b = createBlock(*ac1, b.GetHash(), token, types.Balance{Int: big.NewInt(int64(8000000))}, link, ac1.Address())
+	blocks = append(blocks, b)
+
+	b = createBlock(*ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(2000000))}, b.GetHash(), ac1.Address())
+	blocks = append(blocks, b)
+
+	b = createBlock(*ac2, b.GetHash(), token, types.Balance{Int: big.NewInt(int64(2000000))}, types.ZeroHash, ac2.Address())
+	blocks = append(blocks, b)
+
+	return blocks, nil
+
+}
+
+func createBlock(ac types.Account, pre types.Hash, token types.Hash, balance types.Balance, link types.Hash, rep types.Address) *types.StateBlock {
+	blk := new(types.StateBlock)
+	blk.Type = types.State
+	blk.Address = ac.Address()
+	blk.Previous = pre
+	blk.Token = token
+	blk.Balance = balance
+	blk.Link = link
+	blk.Representative = rep
+	blk.Signature = ac.Sign(blk.GetHash())
+	var w types.Work
+	worker, _ := types.NewWorker(w, blk.Root())
+	blk.Work = worker.NewWork()
+	return blk
 }
