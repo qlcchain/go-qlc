@@ -305,7 +305,7 @@ func (z *TokenMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "rep":
-			err = dc.ReadExtension(&z.RepBlock)
+			err = dc.ReadExtension(&z.Representative)
 			if err != nil {
 				return
 			}
@@ -370,7 +370,7 @@ func (z *TokenMeta) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.RepBlock)
+	err = en.WriteExtension(&z.Representative)
 	if err != nil {
 		return
 	}
@@ -440,7 +440,7 @@ func (z *TokenMeta) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// string "rep"
 	o = append(o, 0xa3, 0x72, 0x65, 0x70)
-	o, err = msgp.AppendExtension(o, &z.RepBlock)
+	o, err = msgp.AppendExtension(o, &z.Representative)
 	if err != nil {
 		return
 	}
@@ -498,7 +498,7 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "rep":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.RepBlock)
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Representative)
 			if err != nil {
 				return
 			}
@@ -540,6 +540,6 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TokenMeta) Msgsize() (s int) {
-	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 7 + msgp.ExtensionPrefixSize + z.Header.Len() + 4 + msgp.ExtensionPrefixSize + z.RepBlock.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 8 + msgp.ExtensionPrefixSize + z.BelongTo.Len() + 9 + msgp.Int64Size + 11 + msgp.Int64Size
+	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 7 + msgp.ExtensionPrefixSize + z.Header.Len() + 4 + msgp.ExtensionPrefixSize + z.Representative.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 8 + msgp.ExtensionPrefixSize + z.BelongTo.Len() + 9 + msgp.Int64Size + 11 + msgp.Int64Size
 	return
 }

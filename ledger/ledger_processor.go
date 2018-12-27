@@ -208,7 +208,7 @@ func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) err
 		return err
 	}
 
-	if err := l.updateAccountMeta(hash, hash, block.GetAddress(), block.GetToken(), block.GetBalance(), txn); err != nil {
+	if err := l.updateAccountMeta(hash, block.GetRepresentative(), block.GetAddress(), block.GetToken(), block.GetBalance(), txn); err != nil {
 		return err
 	}
 
@@ -273,19 +273,22 @@ func (l *Ledger) isSend(block *types.StateBlock, txn db.StoreTxn) (bool, error) 
 
 func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
 	if block.GetToken() == mock.GetChainTokenType() {
-		if tm != nil && !tm.RepBlock.IsZero() {
-			blk, err := l.GetBlock(tm.RepBlock, txn)
-			if err != nil {
+		if tm != nil && !tm.Representative.IsZero() {
+			if err := l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {
 				return err
 			}
-			if state, ok := blk.(*types.StateBlock); ok {
-				logger.Infof("sub rep %s from %s ", tm.Balance, state.GetRepresentative())
-				if err := l.SubRepresentation(state.GetRepresentative(), tm.Balance, txn); err != nil {
-					return err
-				}
-			} else {
-				return errors.New("invalid block")
-			}
+			//blk, err := l.GetBlock(tm.Representative, txn)
+			//if err != nil {
+			//	return err
+			//}
+			//if state, ok := blk.(*types.StateBlock); ok {
+			//	logger.Infof("sub rep %s from %s ", tm.Balance, state.GetRepresentative())
+			//	if err := l.SubRepresentation(state.GetRepresentative(), tm.Balance, txn); err != nil {
+			//		return err
+			//	}
+			//} else {
+			//	return errors.New("invalid block")
+			//}
 		}
 		logger.Infof("add rep %s to %s ", block.GetBalance(), block.GetRepresentative())
 		if err := l.AddRepresentation(block.GetRepresentative(), block.GetBalance(), txn); err != nil {
@@ -317,7 +320,7 @@ func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.Sto
 	return nil
 }
 
-func (l *Ledger) updateAccountMeta(hash types.Hash, repBlock types.Hash, address types.Address, token types.Hash, balance types.Balance, txn db.StoreTxn) error {
+func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address types.Address, token types.Hash, balance types.Balance, txn db.StoreTxn) error {
 	tmExist, err := l.HasTokenMeta(address, token, txn)
 	if err != nil {
 		return err
@@ -328,7 +331,7 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, repBlock types.Hash, address
 			return err
 		}
 		token.Header = hash
-		token.RepBlock = repBlock
+		token.Representative = rep
 		token.Balance = balance
 		token.BlockCount = token.BlockCount + 1
 		token.Modified = time.Now().Unix()
@@ -342,14 +345,14 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, repBlock types.Hash, address
 			return err
 		}
 		tm := types.TokenMeta{
-			Type:       token,
-			Header:     hash,
-			RepBlock:   repBlock,
-			OpenBlock:  hash,
-			Balance:    balance,
-			BlockCount: 1,
-			BelongTo:   address,
-			Modified:   time.Now().Unix(),
+			Type:           token,
+			Header:         hash,
+			Representative: rep,
+			OpenBlock:      hash,
+			Balance:        balance,
+			BlockCount:     1,
+			BelongTo:       address,
+			Modified:       time.Now().Unix(),
 		}
 		if acExist {
 			logger.Info("add tokenmeta,", token)

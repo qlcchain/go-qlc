@@ -263,14 +263,14 @@ func MockTokenMeta(addr types.Address) *types.TokenMeta {
 	s2, _ := random.Intn(math.MaxInt64)
 	t := types.TokenMeta{
 		//TokenAccount: MockAddress(),
-		Type:       MockHash(),
-		BelongTo:   addr,
-		Balance:    types.ParseBalanceInts(uint64(s1), uint64(s2)),
-		BlockCount: 1,
-		OpenBlock:  MockHash(),
-		Header:     MockHash(),
-		RepBlock:   MockHash(),
-		Modified:   time.Now().Unix(),
+		Type:           MockHash(),
+		BelongTo:       addr,
+		Balance:        types.ParseBalanceInts(uint64(s1), uint64(s2)),
+		BlockCount:     1,
+		OpenBlock:      MockHash(),
+		Header:         MockHash(),
+		Representative: MockAddress(),
+		Modified:       time.Now().Unix(),
 	}
 
 	return &t
