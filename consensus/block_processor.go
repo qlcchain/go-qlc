@@ -33,7 +33,7 @@ func (bp *BlockProcessor) processBlocks() {
 			logger.Info("Stopped process blocks.")
 			return
 		case block := <-bp.blocks:
-			result := bp.dp.ledger.Process(block)
+			result, _ := bp.dp.ledger.Process(block)
 			bp.processResult(result, block)
 		}
 	}
@@ -48,6 +48,9 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types
 		break
 	case ledger.BadSignature:
 		logger.Infof("Bad signature for: %s", block.GetHash())
+		break
+	case ledger.BadWork:
+		logger.Infof("Bad work for: %s", block.GetHash())
 		break
 	case ledger.BalanceMismatch:
 		logger.Infof("Balance mismatch for: %s", block.GetHash())

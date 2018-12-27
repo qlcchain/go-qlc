@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	test_block = `{
+	testBulkPull = `{
       "type": "state",
       "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "previousHash": "b4badad5bf7aa378c35e92b00003c004ba588c6d0a5907db4b866332697876b4",
@@ -48,10 +48,11 @@ func TestBulkPullReqPacket(t *testing.T) {
 		t.Fatal("EndHash error")
 	}
 }
+
 func TestBulkPullRspPacket(t *testing.T) {
 	blk, err := types.NewBlock(types.State)
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json.Unmarshal([]byte(test_block), &blk); err != nil {
+	if err = json.Unmarshal([]byte(testBulkPull), &blk); err != nil {
 		t.Fatal(err)
 	}
 	rsp := BulkPullRspPacket{
@@ -74,9 +75,6 @@ func TestBulkPullRspPacket(t *testing.T) {
 	if blk.GetPrevious() != block.Blk.GetPrevious() {
 		t.Fatal("PreviousHash error")
 	}
-	//	if blk.GetBalance() != block.Blk.GetBalance() {
-	//		t.Fatal("Balance error")
-	//	}
 	if blk.GetHash() != block.Blk.GetHash() {
 		t.Fatal("hash error")
 	}

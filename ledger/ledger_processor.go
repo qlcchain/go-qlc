@@ -1,12 +1,13 @@
 package ledger
 
 import (
-	"github.com/qlcchain/go-qlc/test/mock"
+	"bytes"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 type ProcessResult byte
@@ -24,51 +25,31 @@ const (
 	Other
 )
 
-func (l *Ledger) Process(block types.Block) ProcessResult {
-	r := l.BlockCheck(block)
-	if r == Other {
-		return r
+func (l *Ledger) Process(block types.Block) (ProcessResult, error) {
+	r, err := l.BlockCheck(block)
+	if r != Progress {
+		return r, err
 	}
 	if err := l.BlockProcess(block); err != nil {
-		return Other
+		return Other, err
 	}
-	return Progress
+	return Progress, nil
 }
 
-func (l *Ledger) BlockCheck(block types.Block) ProcessResult {
-	processResult := Progress
-
+func (l *Ledger) BlockCheck(block types.Block) (ProcessResult, error) {
 	txn, b := l.getTxn(false)
 	defer l.releaseTxn(txn, b)
-	//err := l.BatchUpdate(func(txn db.StoreTxn) error {
+
 	switch block.GetType() {
 	case types.State:
 		if state, ok := block.(*types.StateBlock); ok {
-			result, err := l.checkStateBlock(state, txn)
-			if err != nil {
-				processResult = Other
-				//return err
-			} else {
-				processResult = result
-			}
-			//return nil
-		} else {
-			processResult = Other
-			//return errors.New("invalid block")
+			return l.checkStateBlock(state, txn)
 		}
 	case types.SmartContract:
-		processResult = Other
-		//return nil
+		return Other, errors.New("smartcontract block")
 	default:
-		processResult = Other
-		//return errors.New("invalid block type")
-
 	}
-	//})
-	//if err != nil {
-	//	return Other
-	//}
-	return processResult
+	return Other, errors.New("invalid block")
 }
 
 func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (ProcessResult, error) {
@@ -78,7 +59,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 	link := block.GetLink()
 	address := block.GetAddress()
 
-	logger.Info("process block, ", hash)
+	logger.Info("---process block, ", hash)
 
 	// make sure smart contract token exist
 	// ...
@@ -104,13 +85,17 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		return BadSignature, nil
 	}
 
-	isSend := false
-	transferAmount := block.GetBalance()
+	if pre.IsZero() && bytes.EqualFold(address[:], link[:]) {
+		logger.Info("genesis block")
+		return Progress, nil
+	}
 
+	transferAmount := block.GetBalance()
 	tmExist, err := l.HasTokenMeta(address, block.GetToken(), txn)
 	if err != nil {
 		return Other, err
 	}
+	isSend := false
 	if tmExist { // this tm chain exist , not open
 		tm, err := l.GetTokenMeta(address, block.GetToken(), txn)
 		if err != nil {
@@ -177,7 +162,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 				return BalanceMismatch, nil
 			}
 		} else { //change
-			if !transferAmount.Equal(types.ParseBalanceInts(0, 0)) {
+			if !transferAmount.Equal(types.ZeroBalance) {
 				logger.Info("balance mismatch: change block, but transfer amount is not 0 ")
 				return BalanceMismatch, nil
 			}
@@ -229,7 +214,7 @@ func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) err
 		return err
 	}
 
-	if err := l.updateAccountMeta(hash, hash, block.GetAddress(), block.GetToken(), block.GetBalance(), txn); err != nil {
+	if err := l.updateAccountMeta(hash, block.GetRepresentative(), block.GetAddress(), block.GetToken(), block.GetBalance(), txn); err != nil {
 		return err
 	}
 
@@ -261,7 +246,7 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn
 		if err := l.AddPending(pendingkey, &pending, txn); err != nil {
 			return err
 		}
-	} else if !link.IsZero() { // receive or open
+	} else if !link.IsZero() { // not change
 		logger.Info("delete pending")
 		pendingkey := types.PendingKey{
 			Address: block.GetAddress(),
@@ -294,19 +279,22 @@ func (l *Ledger) isSend(block *types.StateBlock, txn db.StoreTxn) (bool, error) 
 
 func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
 	if block.GetToken() == mock.GetChainTokenType() {
-		if tm != nil && !tm.RepBlock.IsZero() {
-			blk, err := l.GetBlock(tm.RepBlock, txn)
-			if err != nil {
+		if tm != nil && !tm.Representative.IsZero() {
+			if err := l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {
 				return err
 			}
-			if state, ok := blk.(*types.StateBlock); ok {
-				logger.Infof("sub rep %s from %s ", tm.Balance, state.GetRepresentative())
-				if err := l.SubRepresentation(state.GetRepresentative(), tm.Balance, txn); err != nil {
-					return err
-				}
-			} else {
-				return errors.New("invalid block")
-			}
+			//blk, err := l.GetBlock(tm.Representative, txn)
+			//if err != nil {
+			//	return err
+			//}
+			//if state, ok := blk.(*types.StateBlock); ok {
+			//	logger.Infof("sub rep %s from %s ", tm.Balance, state.GetRepresentative())
+			//	if err := l.SubRepresentation(state.GetRepresentative(), tm.Balance, txn); err != nil {
+			//		return err
+			//	}
+			//} else {
+			//	return errors.New("invalid block")
+			//}
 		}
 		logger.Infof("add rep %s to %s ", block.GetBalance(), block.GetRepresentative())
 		if err := l.AddRepresentation(block.GetRepresentative(), block.GetBalance(), txn); err != nil {
@@ -338,7 +326,7 @@ func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.Sto
 	return nil
 }
 
-func (l *Ledger) updateAccountMeta(hash types.Hash, repBlock types.Hash, address types.Address, token types.Hash, balance types.Balance, txn db.StoreTxn) error {
+func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address types.Address, token types.Hash, balance types.Balance, txn db.StoreTxn) error {
 	tmExist, err := l.HasTokenMeta(address, token, txn)
 	if err != nil {
 		return err
@@ -349,7 +337,7 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, repBlock types.Hash, address
 			return err
 		}
 		token.Header = hash
-		token.RepBlock = repBlock
+		token.Representative = rep
 		token.Balance = balance
 		token.BlockCount = token.BlockCount + 1
 		token.Modified = time.Now().Unix()
@@ -363,14 +351,14 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, repBlock types.Hash, address
 			return err
 		}
 		tm := types.TokenMeta{
-			Type:       token,
-			Header:     hash,
-			RepBlock:   repBlock,
-			OpenBlock:  hash,
-			Balance:    balance,
-			BlockCount: 1,
-			BelongTo:   address,
-			Modified:   time.Now().Unix(),
+			Type:           token,
+			Header:         hash,
+			Representative: rep,
+			OpenBlock:      hash,
+			Balance:        balance,
+			BlockCount:     1,
+			BelongTo:       address,
+			Modified:       time.Now().Unix(),
 		}
 		if acExist {
 			logger.Info("add tokenmeta,", token)

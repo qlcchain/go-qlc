@@ -12,10 +12,11 @@ type EventSubscriber chan interface{}
 
 //  Event Type
 const (
-	EventPublish    EventType = 0
-	EventConfirmReq EventType = 1
-	EventConfirmAck EventType = 2
-	EventSyncBlock  EventType = 3
+	EventPublish        EventType = 0
+	EventConfirmReq     EventType = 1
+	EventConfirmAck     EventType = 2
+	EventSyncBlock      EventType = 3
+	EventConfirmedBlock EventType = 4
 )
 
 type Event struct {

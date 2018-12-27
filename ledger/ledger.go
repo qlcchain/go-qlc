@@ -526,7 +526,6 @@ func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash, txns 
 
 	tm := am.Token(tokenType)
 	if tm == nil {
-
 		return nil, ErrTokenNotFound
 	}
 
@@ -837,9 +836,9 @@ func (l *Ledger) releaseTxn(txn db.StoreTxn, flag bool) {
 // BatchUpdate MUST pass the same txn
 func (l *Ledger) BatchUpdate(fn func(txn db.StoreTxn) error) error {
 	txn := l.db.NewTransaction(true)
-	logger.Debugf("BatchUpdate NewTransaction %p", txn)
+	//logger.Debugf("BatchUpdate NewTransaction %p", txn)
 	defer func() {
-		logger.Debugf("BatchUpdate Discard %p", txn)
+		//logger.Debugf("BatchUpdate Discard %p", txn)
 		txn.Discard()
 	}()
 
@@ -1061,7 +1060,7 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 			if err := l.DeleteBlock(hashCur, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.RepBlock, blockPre.GetBalance(), txn); err != nil {
+			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.Representative, blockPre.GetBalance(), txn); err != nil {
 				return err
 			}
 			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
@@ -1085,7 +1084,7 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 			if err := l.DeleteBlock(hashCur, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.RepBlock, blockPre.GetBalance(), txn); err != nil {
+			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.Representative, blockPre.GetBalance(), txn); err != nil {
 				return err
 			}
 			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
@@ -1105,7 +1104,7 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 			if err := l.DeleteBlock(hashCur, txn); err != nil {
 				return err
 			}
-			if err := l.rollBackToken(tm, blockCur.GetPrevious(), blockCur.GetPrevious(), tm.Balance, txn); err != nil {
+			if err := l.rollBackToken(tm, blockCur.GetPrevious(), blockCur.GetRepresentative(), tm.Balance, txn); err != nil {
 				return err
 			}
 			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
@@ -1206,10 +1205,10 @@ func (l *Ledger) rollBackFrontier(pre types.Hash, cur types.Hash, txn db.StoreTx
 	return nil
 }
 
-func (l *Ledger) rollBackToken(tm *types.TokenMeta, header types.Hash, rep types.Hash, balance types.Balance, txn db.StoreTxn) error {
+func (l *Ledger) rollBackToken(tm *types.TokenMeta, header types.Hash, rep types.Address, balance types.Balance, txn db.StoreTxn) error {
 	tm.Balance = balance
 	tm.Header = header
-	tm.RepBlock = rep
+	tm.Representative = rep
 	tm.BlockCount = tm.BlockCount - 1
 	tm.Modified = time.Now().Unix()
 	logger.Info("update token, ", tm.BelongTo, tm.Type)

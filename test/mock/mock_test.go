@@ -95,32 +95,6 @@ func TestMockGenesisBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//addr, _ := types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
-	//if block1.Address != addr {
-	//	t.Fatal("addr != address")
-	//}
-	//rep, _ := types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
-	//if rep != block1.Representative {
-	//	t.Fatal("rep != Representative")
-	//}
-	//
-	//b := types.Balance{Hi: 6, Lo: 0}
-	//if block1.Balance != b {
-	//	t.Fatalf("b(%d)!=Balance(%d)", b.BigInt(), block1.Balance.BigInt())
-	//}
-	//link, _ := types.NewHash("D5BA6C7BB3F4F6545E08B03D6DA1258840E0395080378A890601991A2A9E3163")
-	//if link != block1.Link {
-	//	t.Fatal("link != Link")
-	//}
-	//h, _ := types.NewHash("125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36")
-	//if h != block1.Token {
-	//	t.Fatal("h != Token")
-	//}
-	//var work types.Work
-	//_ = work.UnmarshalText([]byte("f3389dd67ced8429"))
-	//if work != block1.Work {
-	//	t.Fatal("work != Work")
-	//}
 	var sign types.Signature
 	err = sign.Of("AD57AA8819FA6A7811A13FF0684A79AFDEFB05077BCAD4EC7365C32D2A88D78C8C7C54717B40C0888A0692D05BF3771DF6D16A1F24AE612172922BBD4D93370F")
 	if err != nil {
@@ -156,19 +130,29 @@ func TestMockGenesisScBlock(t *testing.T) {
 	sb.Issuer = MockAddress()
 	sb.InternalAccount, _ = types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
 
-	account := types.NewAccount([]byte("425E747CFCDD993019EB1AAC97FD2F5D3A94835D9A779C9BDC590739EDD1BB45"))
+	_, priv, err := types.KeypairFromSeed("425E747CFCDD993019EB1AAC97FD2F5D3A94835D9A779C9BDC590739EDD1BB45", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	account := types.NewAccount(priv)
+
 	hash = sb.GetHash()
 	t.Log(strings.ToUpper(hash.String()))
-	sign := account.Sign(hash)
-	sb.Signature = sign
+	sb.Signature = account.Sign(hash)
+	verify := account.Address().Verify(hash[:], sb.Signature[:])
+	if !verify {
+		t.Fatal("invalid Signature")
+	}
+	t.Log("verify: ", verify)
 	if !sb.IsValid() {
 		var work types.Work
-		worker, err := types.NewWorker(work, hash)
+		worker, err := types.NewWorker(work, sb.Address.ToHash())
 		if err != nil {
 			t.Fatal(err)
 		}
 		work = worker.NewWork()
 		sb.Work = work
+		t.Log("IsValid: ", sb.IsValid())
 	}
 	bytes, err := jsoniter.Marshal(&sb)
 	if err != nil {
@@ -192,8 +176,9 @@ func TestGenerate(t *testing.T) {
 	for index, token := range keys {
 		var block types.StateBlock
 		var sb types.SmartContractBlock
-		scAccount := types.NewAccount([]byte(token.scKey))
-		account := types.NewAccount([]byte(token.key))
+		_, priv, _ := types.KeypairFromSeed(token.scKey, 0)
+		account := types.NewAccount(priv)
+
 		masterAddress := account.Address()
 		sb.Type = types.SmartContract
 		i := rand.Intn(100)
@@ -205,17 +190,21 @@ func TestGenerate(t *testing.T) {
 		sb.Issuer = MockAddress()
 		sb.InternalAccount = masterAddress
 
-		hash = sb.GetHash()
-		sign := scAccount.Sign(hash)
+		h := sb.GetHash()
+		sign := account.Sign(h)
+		verify2 := masterAddress.Verify(h[:], sign[:])
 		sb.Signature = sign
+		verify1 := masterAddress.Verify(h[:], sb.Signature[:])
+		t.Log(h.String(), "=>sign: ", verify1, ", ", verify2)
 		if !sb.IsValid() {
 			var work types.Work
-			worker, err := types.NewWorker(work, hash)
+			worker, err := types.NewWorker(work, sb.Address.ToHash())
 			if err != nil {
 				t.Fatal(err)
 			}
 			work = worker.NewWork()
 			sb.Work = work
+			t.Log(h.String(), "=>valid: ", sb.IsValid())
 		}
 		bytes, err := jsoniter.MarshalToString(&sb)
 		if err != nil {
@@ -229,20 +218,23 @@ func TestGenerate(t *testing.T) {
 
 		block.Type = types.State
 		block.Address = masterAddress
-		block.Token = hash
+		block.Token = h
 		block.Representative = masterAddress
-		block.Balance, _ = types.ParseBalanceString(token.balance)
+		block.Balance = types.StringToBalance(token.balance)
 		block.Link = masterAddress.ToHash()
-		h := block.GetHash()
-		block.Signature = account.Sign(h)
+		bh := block.GetHash()
+		block.Signature = account.Sign(bh)
+		v1 := masterAddress.Verify(bh[:], block.Signature[:])
+		t.Log(bh.String(), "=>sign: ", v1)
 		if !block.IsValid() {
 			var work types.Work
-			worker, err := types.NewWorker(work, hash)
+			worker, err := types.NewWorker(work, masterAddress.ToHash())
 			if err != nil {
 				t.Fatal(err)
 			}
 			work = worker.NewWork()
 			block.Work = work
+			//t.Log(block, block.IsValid())
 		}
 		s, err := jsoniter.MarshalToString(block)
 		if err != nil {
@@ -284,4 +276,31 @@ func TestGetTokenById(t *testing.T) {
 	}
 
 	t.Log(jsoniter.MarshalToString(ti))
+}
+
+func TestGetGenesis(t *testing.T) {
+	g := GetGenesis()
+
+	for i := 0; i < len(g); i++ {
+		block := g[i]
+		t.Logf("%v: %s", &block, block)
+	}
+}
+
+func TestGetGenesis2(t *testing.T) {
+	g := GetGenesis()
+	for _, b := range g {
+		t.Logf("%v", b)
+	}
+}
+
+func TestGetChainTokenType(t *testing.T) {
+	h := GetChainTokenType()
+	h2 := smartContractBlocks[0].GetHash()
+	if h != h2 {
+		t.Fatal("GetChainTokenType error")
+	}
+	if genesisBlocks[0].Token != h {
+		t.Fatal("genesis error")
+	}
 }

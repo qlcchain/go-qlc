@@ -1,8 +1,6 @@
 package protos
 
 import (
-	"fmt"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
@@ -14,27 +12,27 @@ type PublishBlock struct {
 
 // ToProto converts domain PublishBlock into proto PublishBlock
 func PublishBlockToProto(publish *PublishBlock) ([]byte, error) {
-	blkdata, err := publish.Blk.MarshalMsg(nil)
+	blkData, err := publish.Blk.MarshalMsg(nil)
 	if err != nil {
 		return nil, err
 	}
-	blocktype := publish.Blk.GetType()
-	bppb := &pb.PublishBlock{
-		Blocktype: uint32(blocktype),
-		Block:     blkdata,
+	blockType := publish.Blk.GetType()
+	bpPb := &pb.PublishBlock{
+		Blocktype: uint32(blockType),
+		Block:     blkData,
 	}
-	data, err := proto.Marshal(bppb)
+	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
-/// PublishBlockFromProto parse the data into PublishBlock message
+// PublishBlockFromProto parse the data into PublishBlock message
 func PublishBlockFromProto(data []byte) (*PublishBlock, error) {
 	bp := new(pb.PublishBlock)
 	if err := proto.Unmarshal(data, bp); err != nil {
-		fmt.Println("Failed to unmarshal BulkPullRspPacket message.")
+		logger.Error("Failed to unmarshal PublishBlock message.")
 		return nil, err
 	}
 	blockType := bp.Blocktype
@@ -45,8 +43,8 @@ func PublishBlockFromProto(data []byte) (*PublishBlock, error) {
 	if _, err = blk.UnmarshalMsg(bp.Block); err != nil {
 		return nil, err
 	}
-	bpush := &PublishBlock{
+	bPush := &PublishBlock{
 		Blk: blk,
 	}
-	return bpush, nil
+	return bPush, nil
 }

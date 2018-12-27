@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/qlcchain/go-qlc/p2p"
 	"time"
 
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -65,6 +66,7 @@ func (act *ActiveTrx) announceVotes() {
 	for _, v := range act.roots {
 		if v.confirmed && v.announcements >= announcementmin-1 {
 			logger.Info("this block is already confirmed")
+			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, v.status.winner)
 			act.inactive = append(act.inactive, v.vote.id)
 		} else {
 			accounts := act.dps.getAccounts()

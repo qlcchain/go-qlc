@@ -9,15 +9,16 @@ package mock
 
 import (
 	"fmt"
+	"math"
+	"math/big"
+	"sync"
+	"time"
+
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/shopspring/decimal"
-	"math"
-	"math/big"
-	"sync"
-	"time"
 )
 
 func init() {
@@ -57,169 +58,169 @@ var (
 	tokenCache          = sync.Map{}
 	genesisBlockstring  = `[
   {
-    "token": "199a92277a3f8eb3e8ddb2aeafecf6546cae91ba953a576401c0bddf1e9865ca",
-    "balance": "00000000000000060000000000000000",
-    "link": "3732344132304238334638423644374436464635394435353246343033463936",
-    "representative": "qlc_1fsk8j1m6e4491sneg448s45gj3pas55cgc68ntm6jjn81snegbpac5gh7ro",
+    "token": "4627e2a0c1d68238bb4f848c59f4e18288c36fb7c959d220c9914728db890de8",
+    "balance": "600000000",
+    "link": "d5ba6c7bb3f4f6545e08b03d6da1258840e0395080378a890601991a2a9e3163",
+    "representative": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
     "type": "State",
-    "address": "qlc_1fsk8j1m6e4491sneg448s45gj3pas55cgc68ntm6jjn81snegbpac5gh7ro",
+    "address": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000495b22",
-    "signature": "4595d7bd47e66414beaadfe4d85dc83fedbac20d64d58af6a51481a92cb125138df164d00fd67ab70e31d977c7c1f65326c133857840bb4e99ee88495369cf0f"
+    "work": "000000000000e408",
+    "signature": "c4f00f9558db30c59be7bfd40abffd16eb6d2e2700a12d15fb73e83e5de7c4439284c57fb24f7127fc3eb9f42f3a1e026469a4da3fa24ddb64b8924c5fb5b804"
   },
   {
-    "token": "0aa34c9b43a7445d96da9ce4834372d3b4c20ff063df89cc62550d88a6613089",
-    "balance": "00000000000000070000000000000000",
-    "link": "3037464436433842353938453332303637323439354543383430333239313044",
-    "representative": "qlc_1e3qas45eisraatmkg478es51fjq8at5kfc7aew5ae3m8awm4e46q3ooio3y",
+    "token": "a5d898709a685f1940b33a3e2819c3079240669025af3876d159b20ed59c1c69",
+    "balance": "700000000",
+    "link": "6f6b4becca470084032121e7923a668da0bbc3ad1ef0c46513cdcf67080bc9b0",
+    "representative": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
     "type": "State",
-    "address": "qlc_1e3qas45eisraatmkg478es51fjq8at5kfc7aew5ae3m8awm4e46q3ooio3y",
+    "address": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000371627",
-    "signature": "206beefe26a7b9f945f71727d3cbb129c6344dc3fddebabd7cbde77068dec2cd6d3a4935315b529092c6727e45b60fdaf6662890f5c3cf83909c20879dc12b08"
+    "work": "0000000000c662c2",
+    "signature": "667bcb0be84eb4ea9c1ffe35d30f29c16f50445c8acd44006d179d05db26a627f7718d951bf41b2268fd2a4de00fc83a9db9f676b477d9f76974e60444a4cd0e"
   },
   {
-    "token": "4b542f291def8b48ec66340e98c54b5d3bb110c029297a54455876a6bc6153ed",
-    "balance": "00000000000000050000000000000000",
-    "link": "3943344231383934384235313636463043464546454245324532443038353631",
-    "representative": "qlc_1gc58j354g3s8iw66fbj8ru6ee45as4nejc4ans6cek681w5cfjjsk3c1szw",
+    "token": "08177e04124d29af243d30dfe1e52821ac6441f9ca9cc1fc11a2c1a4f748619a",
+    "balance": "500000000",
+    "link": "e4087493c2572dd52ab4ab67ae91c72dff25ca2efececec8205ff1764d75ddbb",
+    "representative": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
     "type": "State",
-    "address": "qlc_1gc58j354g3s8iw66fbj8ru6ee45as4nejc4ans6cek681w5cfjjsk3c1szw",
+    "address": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "00000000006b5fac",
-    "signature": "a46d8b746ddfd64ba43bddf605454c9bbaca5ea51345ab5c41922cc609f767a152547a558b575029b5d9c38dc2a57391cdf4f5a41a52d76328fe0e36467f9206"
+    "work": "0000000000ce1618",
+    "signature": "0cf6b28965c18ae4b5a9d9c41aaf220bbd15031790389790322c3add3126b57bb5c7008e5b38e911f00b0cfad3e2b371661132f08ca741ecbc4b317f95703903"
   },
   {
-    "token": "59930056d4fae0fe994daf6ea07478bc945d65ac2aba72e78b01f98d749b5b0e",
-    "balance": "00000000000000090000000000000000",
-    "link": "3142423143463546344244423745363045444345414435414142463232443736",
-    "representative": "qlc_1ec4aarn8jjoart66j448x4mee47aj3ncic68o1n4ik88as6afspyb8j7s8z",
+    "token": "7ec06dc236636cb15ccca4da8473463dca1b5e09d10f1bb82d962576a107f90c",
+    "balance": "900000000",
+    "link": "2f51df2104bae5a0feaaaa575f9ae458ac7353dfdf86f393a8d068bb5bcea95d",
+    "representative": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
     "type": "State",
-    "address": "qlc_1ec4aarn8jjoart66j448x4mee47aj3ncic68o1n4ik88as6afspyb8j7s8z",
+    "address": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000518fb7",
-    "signature": "7402a52307e4acfa58e58277b2cb01715de7f0834a3f9cdcf03cf807e8912905fc81ce13539cfff6dd6d2d576e236f09f0c09538327f7df628589ab125688108"
+    "work": "000000000075bd2e",
+    "signature": "0ef7bca15ae3a1250f9e2891f042b26689ba737914e093849bf053814473d938acb640bee8c3754ae45852bff39d3e83a7557c69ff3d5243532b73acdf739a0b"
   },
   {
-    "token": "b70b717c8677be04dec3a643c6f04c55e660df5af3769c6b6383cd0930caa3a5",
-    "balance": "00000000000000080000000000000000",
-    "link": "3643433833463046333142343842383436453237334241334442433735383934",
-    "representative": "qlc_1fk5aew58jjiarsm4ijn9335if3pans5get4a6snaik58wtmigbn8faf16kg",
+    "token": "54da86f58c3196a9fbd4f05b452c11589eeef5e7f4ba688d97b49df978f6adea",
+    "balance": "800000000",
+    "link": "eee2111fbc1a25c3afb02760b3fdd499d20ca507dec145e2e7f9c07a1d9b9b30",
+    "representative": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
     "type": "State",
-    "address": "qlc_1fk5aew58jjiarsm4ijn9335if3pans5get4a6snaik58wtmigbn8faf16kg",
+    "address": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000fc6868",
-    "signature": "b35008a38a711b59eeeb395afb4fb035b6962ef85138a5e1380553bb6e98de13fe089604240eab73bdd937c497c240ea3843ddae9c454c35d6c5999799307408"
+    "work": "00000000008027a6",
+    "signature": "34b7aa18266f321502d1a2c6fc839321ed51b61404ea661b305b085741f3bd1492334bcebd8598106b1b2e3184818ed62c6e971285d8e58bd8cf0787c35d9507"
   },
   {
-    "token": "4efaf4e434f28d54963ae7a01e866d2d155071ceec3e500ff840ce75decd918a",
-    "balance": "00000000000000090000000000000000",
-    "link": "3330304641374334463434343835313737424342463939333830373543303538",
-    "representative": "qlc_1esi83564ft58j55af3n91tm4fsqab3n6jjs96smie3q8o3m1fbro44y69im",
+    "token": "9fc49a7899e29518e335e72fdc97663e8469d318981e3b2d96d22d72dc39ec72",
+    "balance": "900000000",
+    "link": "7b6f0909957f2d5b25a01836b1527599dfd4453705397e7c89967dee27e15286",
+    "representative": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
     "type": "State",
-    "address": "qlc_1esi83564ft58j55af3n91tm4fsqab3n6jjs96smie3q8o3m1fbro44y69im",
+    "address": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "00000000000c015a",
-    "signature": "82d3967e12dd592baf29d8bdbab8958467e148bcfdf9774504e68abed3ef1c21a78880cb2385daa2d685b1eea7f06d21102f4449621d0e05a1eef364ed679f0f"
+    "work": "00000000009fc06f",
+    "signature": "ad68d0592619695dd70b38fca5961563cd8e2a6842c98291d6349290e10cb4b5ee8783c5b2181ad4b75247d961e7ff73dea808a25e139379847ac0b319d17d09"
   }
 ]
 `
 	scBlockstring = `[
   {
-    "internalAccount": "qlc_1fsk8j1m6e4491sneg448s45gj3pas55cgc68ntm6jjn81snegbpac5gh7ro",
+    "internalAccount": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
     "contract": {
-      "abi": "tldLHqruPVZt3355hwyhEjIY4+YkMs9IM4vZc36mHYsqK3JF1ccMctcm4qKeIHPsEgU4zKE+BY7K4Gu1oLG8HtuU42c28FYAf+sdCBq9nMzF",
+      "abi": "TAacHjHVOyrJesALAUU720QZSl0Mx2fynH0wuOZWObmGL5K47quVdNZ/mG5dB33LxHGUiHJvcUj+LqJLLXAZwAZAdfz5hOdLJmH0n13V5FiD",
       "abiLength": 81,
-      "abiHash": "7be6bf13ebf8a91bfefbdf47a055b7b317b5f2627d403f3ce8ed31f37fde402a"
+      "abiHash": "c175ebefdca681861e2102fcced29eaa9332d79b10daa2a28551c57b099d0dd1"
     },
-    "issuer": "qlc_1c8wg9eqjkcoeoc5hf7bbq1jc1hgoyayygt89adpxmbi55h7rmghumw4e78j",
+    "issuer": "qlc_3wkuticdgwxp36oonh4fm953cbkhz1ufmdraphodkn5aouqomoamt9trbxww",
     "type": "SmartContract",
-    "address": "qlc_3tsbd1w65ujy6at6kwz81f8sry1ihixewsp44hshmmkymjc4ro6zhqbuxqdk",
+    "address": "qlc_3n47dh3n3maq3fygctz5e9wmcezk4qsjg16w7yn3zowcn6z3mg95hjnkq4ku",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000495b22",
-    "signature": "358ce17185339de541b398b34933d8e4909c8e2695092a70f70ac902fff9ebac2badc3835d95a07fb8a8a5f1cda7a06bd2491507e13dce3a70c3d9b8b5553500"
+    "work": "0000000000133602",
+    "signature": "e4ee3679d522b06d20956e2e4377bad41d8c413028958b13b0dbf8b67eb2a091db845e4a2458775cc7e9029012328eada9c29d8d91c25416d84214a35f2faf01"
   },
   {
-    "internalAccount": "qlc_1e3qas45eisraatmkg478es51fjq8at5kfc7aew5ae3m8awm4e46q3ooio3y",
+    "internalAccount": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
     "contract": {
-      "abi": "RXHF5ANW7jdqYEyLqV/oXBPdqFN9qnG9Q5u8cYakVCi0Q1GhLxKX77Ye7iBf8hynPuuTN2WIllms8Z5vQpmQX5ajPSJCEE4cTEq6WRT4A6Pf8T70nKk4",
+      "abi": "XBcf6qN2bLrKdYgOSrsRc4hYIp3QqX/LqLOfKTLw0YRqwMh7IurVirLtNKstNWlGT475kLbdrLVjPy46TdD2OMuhvAuss7D6eyONzCfBKNN3YMgnfXxO",
       "abiLength": 87,
-      "abiHash": "7352b3c2ec12a5efe973b9aa776d6ce40a2c1ac2c9111c431c98bcd84a12a846"
+      "abiHash": "0f2fec3bf1b07f17551a24a34ae5b5b932aead04bcfde1511e75e58ce9d15db0"
     },
-    "issuer": "qlc_3shroc3oimccschg4gxdhbaryumqdswd7by8bsrg3ytmq8dzh3p9u3abuyx5",
+    "issuer": "qlc_3s8tydowm7ce6xc4iwubqsc5qxokefxzu5iuk35xieknqxn7pak7ufkb3h1u",
     "type": "SmartContract",
-    "address": "qlc_38zuqywdfspj8ucq31fffo56uobagxeqmhd3wpqmxn6jmudogfrp7afrdnec",
+    "address": "qlc_1rq4hd91x8k9oqei5jt811tyaaho7undj5x3ki76epd5oruek9pwdfm3r8t9",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000371627",
-    "signature": "c62ef11e9393175efb2995d69d06e4f376c8bd53adf32eec991b15fc5af02992257fa17c0cd300e614680e42808f850a04107bde6cc6d33cab89a083aeb23403"
+    "work": "0000000001212a60",
+    "signature": "4a2fc8ddb36abe5f046bcf47efa794632d89c746c307970195d262ec22f7ee01fc4cc408b37ef6eae050852865a193e12fab99f56e76b31fef5ffdacd7939f08"
   },
   {
-    "internalAccount": "qlc_1gc58j354g3s8iw66fbj8ru6ee45as4nejc4ans6cek681w5cfjjsk3c1szw",
+    "internalAccount": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
     "contract": {
-      "abi": "U7GBDJV3eDLd4Nna/zVpWippa1gY0EDF1bMKU+ttQvb9n0YxlHm04TAbp7d6NIM=",
+      "abi": "vQuBj/ZTFa830VuX2jq1WDtFvzj8DlpJoHsdtAzVPxc5onHAw4yII0yipsuZNDs=",
       "abiLength": 47,
-      "abiHash": "2a12310c2f095353abf4f8dd2d70286f4e679d413695c2ddf2b223e4edfde4a7"
+      "abiHash": "07acc3715dafde2efb12fee92d67e131903aed48fa13a710f7f6b6962f460062"
     },
-    "issuer": "qlc_3xxyra16x4aox395p5r77kbkmm6fncabtkjh37rjf313aawm3hhsas5nraa8",
+    "issuer": "qlc_3u83toxzi5o3ohxtzycbnkorf9i96d6hkikydnk48ob4zen6fosruz6mqzi7",
     "type": "SmartContract",
-    "address": "qlc_3up3sosbrxdob4gr8rc5sjwnc9o7ozqd6597bg69sih31p9cxh5efd33cii6",
+    "address": "qlc_1hdpob4up9hjzhurzqirpubg74sfsch11ghytajdjo8h8maunog3szjgw9te",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "00000000006b5fac",
-    "signature": "67362c7658a2fdd5c20330f1ec0ac9afc0255f4619e66f4ed3b76fec1a44d6ff099b61ff8fc08e6ee0cc279cca4a082530359137b426e11603959cdfbc16c009"
+    "work": "0000000000245418",
+    "signature": "dcce8c6a78634d790eedb557cefeb89c4f97503b096b6cbc67d86c48cafc17d8028b7c89e034400c1e013bcfbb0a5d570e4023eccac9507f3a249f07a8949400"
   },
   {
-    "internalAccount": "qlc_1ec4aarn8jjoart66j448x4mee47aj3ncic68o1n4ik88as6afspyb8j7s8z",
+    "internalAccount": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
     "contract": {
-      "abi": "z5FsM8OwbbhKVwZqXn6HQxDrrjNmLChBKjtE+NjNt2fHefi1mrke3sONoJRml2x2fN7VdMTdEJBDjLg=",
+      "abi": "NrgEDMTkMefaXrlQ761kB7+gddN2nRvgs9VDW6Eyxhj/NotFjEsXEdINk96v+KUtnlkJ0ctfm2Yvfj4=",
       "abiLength": 59,
-      "abiHash": "d515f611993366497945c5710c85911582a8d35bd09b04c93446a2503bb914eb"
+      "abiHash": "8a5f5c624431adeeb2ab131de4ae15fdbf5a68a74140a98cfd6a01896d7be4ea"
     },
-    "issuer": "qlc_3bseyncp61pbkwdect4k4jpkc5txa8n9st3f6opofzpuyw81znckcut9kraa",
+    "issuer": "qlc_16o7g3muhar87nw5onsk7mk7kxqxbqtj354ocp7gnzpxjmt39fm9n37i76pp",
     "type": "SmartContract",
-    "address": "qlc_3tcoy4q1f4ui1rfy1pbpgmhpxjbqfk3dtmbzkk1687men6emrm5rqfsanepq",
+    "address": "qlc_18cowq4jmyqw7hk7kb77er8gfn5i64p6kixep3hweo1mh5ji67reayc65sqe",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000518fb7",
-    "signature": "b63bea22d2b8a4ba4b4f14c7750c95a6fe1f39eecb6ba9c10b5e8aaaa6507ada83691a9f78fbdf76ecd415c62918e1722c9702e26da849843bed21037dcda20c"
+    "work": "000000000156bbef",
+    "signature": "ba2c571cca4f35ed9e6c6091d6bdc55642406af78f27a273f765c0d1d747ab85a95ae41d266941566cc044c09e85fd9c821c7223f0aa9ff6ab10dd02c4a80502"
   },
   {
-    "internalAccount": "qlc_1fk5aew58jjiarsm4ijn9335if3pans5get4a6snaik58wtmigbn8faf16kg",
+    "internalAccount": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
     "contract": {
-      "abi": "643z8JAIQAWGh27RsXUE7K7MTqUXidZIP9fYjggSTmcQ6JxB8yDYdNc/xCC5B0n1r7MH1bRlA/YU4Yul0qlDjmHPMaElim/rHaPnlMiM8F8K",
+      "abi": "23zYqMrthgG9s63cXr7pCIsoZZbtXMHLMHQey4GmMtKOzYlnDdLB2NIhBl4qDL8hKupH+gNRKHjDGx3NS1Yf7u13ewx5Wp/uhiZ8qIDRvkwm",
       "abiLength": 81,
-      "abiHash": "cea5b990ad7bf9785cc9ab6896853779d06c9716a282c011df8a722e9d874111"
+      "abiHash": "1d0b2a3567a840a5268a5dd6869cd2b01b37c2da0e23d297b38b7a1799c79684"
     },
-    "issuer": "qlc_1cq44htgau4c9bh4sy58dy8j6mo5abdqxfrpd4ztbrn494g3p8ir56tkhdu8",
+    "issuer": "qlc_1hsjckbhikcwuardss1y7wpugcb57mezhqtoecoh3p8dfwqc5y5mot8k8wfo",
     "type": "SmartContract",
-    "address": "qlc_3uxxmr7y6fxp8ta7f3o5q5319ry18143tkg6xh566bzgrg7q53db4xi8orcn",
+    "address": "qlc_19i6etepwcxaejdagwaofqsff6n9nch4hj7go73t3ufk7b8swmrk5c1c1fjm",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000fc6868",
-    "signature": "23efe1e2e0c4c7df0559a67e8d0212c9cfd0eb99b753caf230c4b10abf6cdfe9336cf141fb3a4b43124ed4f9886b989705cd60da01856e2c53b311a0658eef0c"
+    "work": "000000000022b7c6",
+    "signature": "dc8431761ab9123097cf35e3c5b0b9adfcfb11b291473dee4228c1c7c3984fcf667866550f4fc74922fa08cf3dcc5a6efcb784b7364cfbdfd61c5076321b820e"
   },
   {
-    "internalAccount": "qlc_1esi83564ft58j55af3n91tm4fsqab3n6jjs96smie3q8o3m1fbro44y69im",
+    "internalAccount": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
     "contract": {
-      "abi": "05jQsJqNY+cClDzrixYWBd3/",
+      "abi": "sFt2joRwc02+gV1f+agS+P8W",
       "abiLength": 18,
-      "abiHash": "1de52ced6c8511a05088c5b24ed59801e21fa6a6ab4f5fee3aa616a8d60179b7"
+      "abiHash": "01d548def8e2b35588dc5c9e319763df4189dc913e1c1d880612010d84680275"
     },
-    "issuer": "qlc_18nszuxspjmt7bz7mr4hq3cnj77d79be9n1w4rf6sobinysgasykxpzg494u",
+    "issuer": "qlc_3e9ootmpr5dd6o376y6e4wtf7ieqa1819f778zyqu3o13hp6o7pffjsghaj9",
     "type": "SmartContract",
-    "address": "qlc_39rjjq7ke5n33dcmypgmsi3in686dx4zdy8sjjtyz815k645epmnk6qcmz75",
+    "address": "qlc_3bugapghmk6w9o3ayby6cky5tffaipbtcdfxohntgq31z5hy7qqwur7t81t8",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "00000000000c015a",
-    "signature": "ee1d25afbeab0d469b3fe680ebbe4af9cce4d0e372b5e402b0843e03f30ff1f91c2a66b2c80655c5a4e0d1d3f8eea796822797c83fd3ac7f10d9134dea231c0a"
+    "work": "0000000000228426",
+    "signature": "13b91a4d0519b7ce07f690d9358190f7909089cef4136fad8dd8231ac3e8a9e32a9a52b3e7eeb4217f409a8e524db3b18428a88afab8b4c0d7d08e8b9fe08f0c"
   }
 ]
 `
@@ -260,17 +261,17 @@ func MockAccountMeta(addr types.Address) *types.AccountMeta {
 
 func MockTokenMeta(addr types.Address) *types.TokenMeta {
 	s1, _ := random.Intn(math.MaxInt64)
-	s2, _ := random.Intn(math.MaxInt64)
+	i := new(big.Int).SetInt64(int64(s1))
 	t := types.TokenMeta{
 		//TokenAccount: MockAddress(),
-		Type:       MockHash(),
-		BelongTo:   addr,
-		Balance:    types.ParseBalanceInts(uint64(s1), uint64(s2)),
-		BlockCount: 1,
-		OpenBlock:  MockHash(),
-		Header:     MockHash(),
-		RepBlock:   MockHash(),
-		Modified:   time.Now().Unix(),
+		Type:           MockHash(),
+		BelongTo:       addr,
+		Balance:        types.Balance{Int: i},
+		BlockCount:     1,
+		OpenBlock:      MockHash(),
+		Header:         MockHash(),
+		Representative: MockAddress(),
+		Modified:       time.Now().Unix(),
 	}
 
 	return &t
@@ -294,58 +295,102 @@ func GetChainTokenType() types.Hash {
 	return chainTokenType
 }
 
-// ParseBalance parses the given balance string.
-func ParseBalance(s string, unit string) (types.Balance, error) {
-	d, err := decimal.NewFromString(s)
-	if err != nil {
-		return types.ZeroBalance, err
-	}
-
-	// zero is a special case
-	if d.Equals(decimal.Zero) {
-		return types.ZeroBalance, nil
-	}
-
-	d = d.Mul(units[unit])
-	c := d.Coefficient()
-	f := bigPow(10, int64(d.Exponent()))
-	i := c.Mul(c, f)
-
-	bytes := i.Bytes()
-	balanceBytes := make([]byte, types.BalanceSize)
-	copy(balanceBytes[len(balanceBytes)-len(bytes):], bytes)
-
-	var balance types.Balance
-	if err := balance.UnmarshalBinary(balanceBytes); err != nil {
-		return types.ZeroBalance, err
-	}
-
-	return balance, nil
-}
-
-func bigPow(base int64, exp int64) *big.Int {
-	return new(big.Int).Exp(big.NewInt(base), big.NewInt(exp), nil)
-}
-
-// UnitString returns a decimal representation of this uint128 converted to the
-// given unit.
-func UnitString(b types.Balance, unit string, precision int32) string {
-	d := decimal.NewFromBigInt(b.BigInt(), 0)
-	return d.DivRound(units[unit], types.BalanceMaxPrecision).Truncate(precision).String()
-}
-
 func GetGenesis() []types.Block {
-	var b []types.Block
-	for _, sb := range genesisBlocks {
-		b = append(b, &sb)
+	size := len(genesisBlocks)
+	b := make([]types.Block, size)
+	for i := 0; i < size; i++ {
+		b[i] = &genesisBlocks[i]
 	}
 	return b
 }
 
 func GetSmartContracts() []types.Block {
-	var b []types.Block
-	for _, sb := range smartContractBlocks {
-		b = append(b, &sb)
+	size := len(smartContractBlocks)
+	b := make([]types.Block, size)
+	for i := 0; i < size; i++ {
+		b[i] = &smartContractBlocks[i]
 	}
 	return b
+}
+
+func Account() *types.Account {
+	seed, _ := types.NewSeed()
+	_, priv, _ := types.KeypairFromSeed(seed.String(), 0)
+	return types.NewAccount(priv)
+}
+
+func StateBlock() types.Block {
+	a := Account()
+	b, _ := types.NewBlock(types.State)
+	sb := b.(*types.StateBlock)
+	i, _ := random.Intn(math.MaxUint32)
+	sb.Type = types.State
+	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
+	sb.Address = MockAddress()
+	sb.Token = chainTokenType
+	sb.Previous = MockHash()
+	sb.Representative = genesisBlocks[0].Representative
+	addr := MockAddress()
+	sb.Link = addr.ToHash()
+	sb.Signature = a.Sign(sb.GetHash())
+	var w types.Work
+	worker, _ := types.NewWorker(w, sb.Root())
+
+	sb.Work = worker.NewWork()
+
+	return b
+}
+
+func MockBlockChain() ([]types.Block, error) {
+	var blocks []types.Block
+	const seed1 = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133372bf4b94"
+	_, priv, err := types.KeypairFromSeed(seed1, 1)
+	if err != nil {
+		return nil, err
+	}
+	const seed2 = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133000bf4b94"
+	_, priv2, err := types.KeypairFromSeed(seed2, 1)
+	if err != nil {
+		return nil, err
+	}
+	ac1 := types.NewAccount(priv)
+	token := GetChainTokenType()
+	link := types.Hash(ac1.Address())
+
+	ac2 := types.NewAccount(priv2)
+	if err != nil {
+		return nil, err
+	}
+
+	b := createBlock(*ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(10000000))}, link, ac1.Address())
+	blocks = append(blocks, b)
+
+	link = types.Hash(ac2.Address())
+	b = createBlock(*ac1, b.GetHash(), token, types.Balance{Int: big.NewInt(int64(8000000))}, link, ac1.Address())
+	blocks = append(blocks, b)
+
+	b = createBlock(*ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(2000000))}, b.GetHash(), ac1.Address())
+	blocks = append(blocks, b)
+
+	b = createBlock(*ac2, b.GetHash(), token, types.Balance{Int: big.NewInt(int64(2000000))}, types.ZeroHash, ac2.Address())
+	blocks = append(blocks, b)
+
+	return blocks, nil
+
+}
+
+func createBlock(ac types.Account, pre types.Hash, token types.Hash, balance types.Balance, link types.Hash, rep types.Address) *types.StateBlock {
+	blk := new(types.StateBlock)
+	blk.Type = types.State
+	blk.Address = ac.Address()
+	blk.Previous = pre
+	blk.Token = token
+	blk.Balance = balance
+	blk.Link = link
+	blk.Representative = rep
+	blk.Signature = ac.Sign(blk.GetHash())
+	var w types.Work
+	worker, _ := types.NewWorker(w, blk.Root())
+	blk.Work = worker.NewWork()
+	return blk
 }

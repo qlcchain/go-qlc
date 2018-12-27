@@ -19,14 +19,14 @@ type Account struct {
 //go:generate msgp
 type TokenMeta struct {
 	//TokenAccount Address `msg:"tokenAccount,extension" json:"token_account"`
-	Type       Hash    `msg:"type,extension" json:"type"`
-	Header     Hash    `msg:"header,extension" json:"header"`
-	RepBlock   Hash    `msg:"rep,extension" json:"rep"`
-	OpenBlock  Hash    `msg:"open,extension" json:"open"`
-	Balance    Balance `msg:"balance,extension" json:"balance"`
-	BelongTo   Address `msg:"account,extension" json:"account"`
-	Modified   int64   `msg:"modified" json:"modified"`
-	BlockCount int64   `msg:"blockCount," json:"block_count"`
+	Type           Hash    `msg:"type,extension" json:"type"`
+	Header         Hash    `msg:"header,extension" json:"header"`
+	Representative Address `msg:"rep,extension" json:"rep"`
+	OpenBlock      Hash    `msg:"open,extension" json:"open"`
+	Balance        Balance `msg:"balance,extension" json:"balance"`
+	BelongTo       Address `msg:"account,extension" json:"account"`
+	Modified       int64   `msg:"modified" json:"modified"`
+	BlockCount     int64   `msg:"blockCount," json:"block_count"`
 }
 
 //go:generate msgp

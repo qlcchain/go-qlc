@@ -248,10 +248,7 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 	if err != nil {
 		return nil, err
 	}
-	repBlock, err := l.GetBlock(tm.RepBlock)
-	if err != nil {
-		return nil, err
-	}
+
 	if balance.Compare(amount) == types.BalanceCompBigger {
 		newBalance := balance.Sub(amount)
 		sendBlock, _ := types.NewBlock(types.State)
@@ -262,7 +259,7 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 			sb.Link = to.ToHash()
 			sb.Balance = newBalance
 			sb.Previous = tm.Header
-			sb.Representative = repBlock.(*types.StateBlock).Representative
+			sb.Representative = tm.Representative
 			sb.Work, _ = s.GetWork(source)
 			sb.Signature = acc.Sign(sb.GetHash())
 			if !sb.IsValid() {
@@ -271,13 +268,15 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 		}
 		return sendBlock, nil
 	} else {
-		return nil, fmt.Errorf("not enought balance(%s) of %s", balance.BigInt(), amount.BigInt())
+		return nil, fmt.Errorf("not enought balance(%s) of %s", balance, amount)
 	}
 }
 
 func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, error) {
 	hash := sendBlock.GetHash()
-	if _, ok := sendBlock.(*types.StateBlock); !ok {
+	var state *types.StateBlock
+	ok := false
+	if state, ok = sendBlock.(*types.StateBlock); !ok {
 		return nil, fmt.Errorf("invalid state sendBlock(%s)", hash.String())
 	}
 
@@ -287,44 +286,61 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, erro
 	if exist, err := l.HasBlock(hash); !exist || err != nil {
 		return nil, fmt.Errorf("sendBlock(%s) does not exist", hash.String())
 	}
-
-	tm, err := l.Token(hash)
+	sendTm, err := l.Token(hash)
 	if err != nil {
 		return nil, err
 	}
-	account := tm.BelongTo
-	info, err := l.GetPending(types.PendingKey{Address: account, Hash: hash})
+	rxAccount := types.Address(state.Link)
+
+	acc, err := s.GetRawKey(rxAccount)
 	if err != nil {
 		return nil, err
 	}
-
-	repBlock, err := l.GetBlock(tm.RepBlock)
-	if err != nil {
-		return nil, fmt.Errorf("can not fetch account(%s) rep", account)
-	}
-
-	acc, err := s.GetRawKey(account)
-
+	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
 	if err != nil {
 		return nil, err
 	}
 	receiveBlock, _ := types.NewBlock(types.State)
-
-	if sb, ok := receiveBlock.(*types.StateBlock); ok {
-		sb.Address = account
-		sb.Balance = info.Amount
-		sb.Previous = tm.Header
-		sb.Link = hash
-		sb.Representative = repBlock.(*types.StateBlock).Representative
-		sb.Token = tm.Type
-		sb.Extra = types.Hash{}
-		sb.Work, _ = s.GetWork(account)
-		sb.Signature = acc.Sign(sb.GetHash())
-		if !sb.IsValid() {
-			sb.Work = s.generateWork(sb.Root())
+	has, err := l.HasAccountMeta(rxAccount)
+	if err != nil {
+		return nil, err
+	}
+	if has {
+		rxAm, err := l.GetAccountMeta(rxAccount)
+		if err != nil {
+			return nil, err
+		}
+		rxTm := rxAm.Token(state.Token)
+		if sb, ok := receiveBlock.(*types.StateBlock); ok {
+			sb.Address = rxAccount
+			sb.Balance = rxTm.Balance.Add(info.Amount)
+			sb.Previous = rxTm.Header
+			sb.Link = hash
+			sb.Representative = rxTm.Representative
+			sb.Token = rxTm.Type
+			sb.Extra = types.Hash{}
+			sb.Work, _ = s.GetWork(rxAccount)
+			sb.Signature = acc.Sign(sb.GetHash())
+			if !sb.IsValid() {
+				sb.Work = s.generateWork(sb.Root())
+			}
+		}
+	} else {
+		if sb, ok := receiveBlock.(*types.StateBlock); ok {
+			sb.Address = rxAccount
+			sb.Balance = info.Amount
+			sb.Previous = types.Hash{}
+			sb.Link = hash
+			sb.Representative = sendTm.Representative
+			sb.Token = sendTm.Type
+			sb.Extra = types.Hash{}
+			sb.Work, _ = s.GetWork(rxAccount)
+			sb.Signature = acc.Sign(sb.GetHash())
+			if !sb.IsValid() {
+				sb.Work = s.generateWork(sb.Root())
+			}
 		}
 	}
-
 	return receiveBlock, nil
 }
 

@@ -157,7 +157,7 @@ func (ws *WalletStore) NewWallet() (types.Address, error) {
 		return types.ZeroAddress, err
 	}
 
-	return ws.NewWalletBySeed(seed.String(), "")
+	return ws.NewWalletBySeed(seed.String(), defaultPassword)
 }
 
 func (ws *WalletStore) CurrentId() (types.Address, error) {

@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -18,11 +19,11 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
+	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/wallet"
 	"os"
 	"os/signal"
 	"reflect"
-	"strconv"
 )
 
 var (
@@ -94,6 +95,11 @@ func main() {
 	sendToken := sendCmd.String("token", "", "transfer token")
 	sendAmount := sendCmd.String("amount", "", "transfer amount")
 	sendPwd := sendCmd.String("pwd", "", "password")
+
+	runCmd := flag.NewFlagSet("run", flag.ExitOnError)
+	addr := runCmd.String("addr", "", "account string")
+	runPwd := runCmd.String("pwd", "", "")
+
 	var services []common.Service
 	//if len(os.Args) < 2 {
 	//	logger.Error("invalid args.")
@@ -112,6 +118,11 @@ func main() {
 		}
 	case "send":
 		err := sendCmd.Parse(os.Args[2:])
+		if err != nil {
+			logger.Fatal(err)
+		}
+	case "run":
+		err := runCmd.Parse(os.Args[2:])
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -147,6 +158,29 @@ func main() {
 		return
 	}
 
+	if runCmd.Parsed() {
+		if len(*addr) == 0 {
+			logger.Fatal("invalid account")
+		}
+
+		account, err := types.HexToAddress(*addr)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		err = initNode(account, *runPwd)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		services, err := startNode()
+		// Block until a signal is received.
+		s := <-c
+		fmt.Println("Got signal:", s)
+		stopNode(services)
+		return
+	}
+
 	if sendCmd.Parsed() {
 		if *sendFrom == "" || *sendTo == "" || *sendAmount == "" || *sendToken == "" {
 			logger.Fatal("err transfer info")
@@ -164,12 +198,7 @@ func main() {
 			logger.Error(err)
 		}
 
-		u, err := strconv.ParseUint(*sendAmount, 10, 64)
-		if err != nil {
-			logger.Error(err)
-		}
-
-		amount := types.ParseBalanceInts(uint64(0), u)
+		amount := types.StringToBalance(*sendAmount)
 		err = initNode(source, *sendPwd)
 		if err != nil {
 			logger.Error(err)
@@ -188,8 +217,9 @@ func main() {
 }
 
 func initNode(account types.Address, password string) error {
-	cfg, _ := config.DefaultConfig()
-	var err error
+	cm := config.NewCfgManager(config.DefaultConfigFile())
+	cfg, err := cm.Load()
+
 	ctx, err = chain.New(cfg)
 	if err != nil {
 		logger.Fatal()
@@ -207,21 +237,20 @@ func initNode(account types.Address, password string) error {
 	}
 
 	if !account.IsZero() {
-		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventPublish, func(v interface{}) {
+		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
 
 			if b, ok := v.(*types.StateBlock); ok {
 				if b.Address.ToHash() != b.Link {
 					s := ctx.Wallet.Wallet.NewSession(account)
 					if isValid, err := s.VerifyPassword(password); isValid && err == nil {
-						accounts, err := s.GetAccounts()
-						if err != nil {
-							logger.Error(err)
-						}
-
-						for _, a := range accounts {
-							if a.ToHash() == b.Link {
-								logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), a.String(), b.Balance.BigInt())
-								break
+						if a, err := s.GetRawKey(types.Address(b.Link)); err == nil {
+							addr := a.Address()
+							if addr.ToHash() == b.Link {
+								logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), addr.String(), b.Balance)
+								err = receive(b, s, addr)
+								if err != nil {
+									logger.Debugf("err[%s] when generate receive block.", err)
+								}
 							}
 						}
 					}
@@ -292,22 +321,73 @@ func Import(seed string, password string) error {
 func send(from, to types.Address, token types.Hash, amount types.Balance, password string) {
 	w := ctx.Wallet.Wallet
 	l := ctx.Ledger.Ledger
+	n := ctx.NetService
+	logger.Debug(from.String())
 	session := w.NewSession(from)
 
 	if b, err := session.VerifyPassword(password); b && err == nil {
 		sendblock, err := session.GenerateSendBlock(from, token, to, amount)
 		if err != nil {
-			logger.Fatal()
+			logger.Fatal(err)
 		}
-		if l.Process(sendblock) == ledger.Other {
-			logger.Fatal()
-		}
-		logger.Info("send block, ", sendblock.GetHash())
 
-		net, err := p2p.NewQlcService(ctx.Config)
-		blockBytes, err := sendblock.MarshalMsg(nil)
-		net.Broadcast(p2p.PublishReq, blockBytes)
+		if r, err := l.Process(sendblock); err != nil || r == ledger.Other {
+			logger.Debug(jsoniter.MarshalToString(&sendblock))
+			logger.Error("process block error", err)
+		} else {
+			logger.Info("send block, ", sendblock.GetHash())
+
+			meta, err := l.GetAccountMeta(from)
+			if err != nil {
+				logger.Error(err)
+			}
+			logger.Debug(jsoniter.MarshalToString(&meta))
+			pushBlock := protos.PublishBlock{
+				Blk: sendblock,
+			}
+			bytes, err := protos.PublishBlockToProto(&pushBlock)
+			if err != nil {
+				logger.Error(err)
+			} else {
+				n.Broadcast(p2p.PublishReq, bytes)
+			}
+		}
 	} else {
-		logger.Error("invalid password")
+		logger.Error("invalid password ", err, " valid: ", b)
 	}
+}
+func receive(sendBlock types.Block, session *wallet.Session, address types.Address) error {
+	l := ctx.Ledger.Ledger
+	n := ctx.NetService
+
+	receiveBlock, err := session.GenerateReceiveBlock(sendBlock)
+	if err != nil {
+		return err
+	}
+	logger.Debug(jsoniter.MarshalToString(&receiveBlock))
+	if r, err := l.Process(receiveBlock); err != nil || r == ledger.Other {
+		logger.Debug(jsoniter.MarshalToString(&receiveBlock))
+		logger.Error("process block error", err)
+		return err
+	} else {
+		logger.Info("receive block, ", receiveBlock.GetHash())
+
+		meta, err := l.GetAccountMeta(address)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		logger.Debug(jsoniter.MarshalToString(&meta))
+		pushBlock := protos.PublishBlock{
+			Blk: receiveBlock,
+		}
+		bytes, err := protos.PublishBlockToProto(&pushBlock)
+		if err != nil {
+			logger.Error(err)
+			return err
+		} else {
+			n.Broadcast(p2p.PublishReq, bytes)
+		}
+	}
+	return nil
 }

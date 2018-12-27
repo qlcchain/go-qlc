@@ -21,6 +21,7 @@ import (
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	t.Parallel()
+
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	l := NewLedger(dir)
@@ -102,26 +103,16 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	ams := parseAccountMetas(t, "testdata/account.json")
-	tm, address, tokenType := parseToken(t)
-
 	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		for _, a := range ams {
-			err := l.AddAccountMeta(a, txn)
-			if err != nil {
-				return err
-			}
-		}
-		err := l.AddTokenMeta(address, &tm, txn)
-		if err != nil {
-			return err
-		}
-		r, err := l.HasTokenMeta(address, tokenType, txn)
+		addAccountMeta(t, l)
+		am := getAccount(t)
+		a, err := l.GetAccountMeta(am.Address)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Log("has token,", r)
+		logger.Info(a)
 		return nil
+
 	})
 
 	if err != nil {
@@ -352,20 +343,27 @@ func parseAccountMetas(t *testing.T, filename string) (accountmetas []*types.Acc
 	return
 }
 
+func getAccount(t *testing.T) *types.AccountMeta {
+	const seed = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133000bf4b94"
+	_, priv, err := types.KeypairFromSeed(seed, 1)
+	if err != nil {
+		t.Fatal()
+	}
+	ac1 := types.NewAccount(priv)
+	am := mock.MockAccountMeta(ac1.Address())
+	return am
+}
+
 func addAccountMeta(t *testing.T, l *Ledger) {
-	ams := parseAccountMetas(t, "testdata/account.json")
-	for _, a := range ams {
-		err := l.AddAccountMeta(a)
-		if err != nil && err != ErrAccountExists {
-			t.Fatal(err)
-		}
+	am := getAccount(t)
+	if err := l.AddAccountMeta(am); err != nil {
+		t.Fatal()
 	}
 }
 
 func TestLedger_AddAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
 	addAccountMeta(t, l)
 }
 
@@ -384,8 +382,8 @@ func TestLedger_GetAccountMeta(t *testing.T) {
 	defer teardownTestCase(t)
 
 	addAccountMeta(t, l)
-	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	a, err := l.GetAccountMeta(address)
+	am := getAccount(t)
+	a, err := l.GetAccountMeta(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,8 +396,9 @@ func TestLedger_HasAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	r, err := l.HasAccountMeta(address)
+	addAccountMeta(t, l)
+	am := getAccount(t)
+	r, err := l.HasAccountMeta(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,9 +409,9 @@ func TestLedger_DeleteAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-
-	err := l.DeleteAccountMeta(address)
+	addAccountMeta(t, l)
+	am := getAccount(t)
+	err := l.DeleteAccountMeta(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,26 +419,28 @@ func TestLedger_DeleteAccountMeta(t *testing.T) {
 func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
+	addAccountMeta(t, l)
+	am := getAccount(t)
+	token := mock.MockTokenMeta(am.Address)
+	am.Tokens = append(am.Tokens, token)
 
-	ams := parseAccountMetas(t, "testdata/accountupdate.json")
-	for _, a := range ams {
-		err := l.AddOrUpdateAccountMeta(a)
-		if err != nil {
-			t.Fatal(err)
-		}
+	err := l.AddOrUpdateAccountMeta(am)
+	if err != nil {
+		t.Fatal(err)
 	}
+
 }
 func TestLedger_UpdateAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
 	addAccountMeta(t, l)
-	ams := parseAccountMetas(t, "testdata/accountupdate.json")
-	for _, a := range ams {
-		err := l.UpdateAccountMeta(a)
-		if err != nil {
-			t.Fatal(err)
-		}
+	am := getAccount(t)
+	token := mock.MockTokenMeta(am.Address)
+	am.Tokens = append(am.Tokens, token)
+
+	err := l.AddOrUpdateAccountMeta(am)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -474,13 +475,15 @@ func parseToken(t *testing.T) (tokenmeta types.TokenMeta, address types.Address,
 
 }
 
-func addTokenMeta(t *testing.T, l *Ledger) {
+func getToken(addr types.Address) *types.TokenMeta {
+	token := mock.MockTokenMeta(addr)
+	return token
+
+}
+
+func addTokenMeta(t *testing.T, l *Ledger, token *types.TokenMeta) {
 	addAccountMeta(t, l)
-
-	tm, address, _ := parseToken(t)
-
-	err := l.AddTokenMeta(address, &tm)
-	if err != nil {
+	if err := l.AddTokenMeta(token.BelongTo, token); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -488,18 +491,20 @@ func addTokenMeta(t *testing.T, l *Ledger) {
 func TestLedger_AddTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	addTokenMeta(t, l)
+	tm := getAccount(t)
+	token := mock.MockTokenMeta(tm.Address)
+	addTokenMeta(t, l, token)
 }
+
 func TestLedger_GetTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addTokenMeta(t, l)
+	tm := getAccount(t)
+	token := mock.MockTokenMeta(tm.Address)
+	addTokenMeta(t, l, token)
 
-	_, address, tokenType := parseToken(t)
-
-	token, err := l.GetTokenMeta(address, tokenType)
+	token, err := l.GetTokenMeta(tm.Address, token.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,11 +514,13 @@ func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addTokenMeta(t, l)
+	tm := getAccount(t)
+	token := mock.MockTokenMeta(tm.Address)
+	addTokenMeta(t, l, token)
 
-	tm, address, _ := parseToken(t)
+	token2 := mock.MockTokenMeta(tm.Address)
 
-	err := l.AddOrUpdateTokenMeta(address, &tm)
+	err := l.AddOrUpdateTokenMeta(tm.Address, token2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -522,10 +529,14 @@ func TestLedger_UpdateTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addTokenMeta(t, l)
-	tm, address, _ := parseToken(t)
+	tm := getAccount(t)
+	token := mock.MockTokenMeta(tm.Address)
+	addTokenMeta(t, l, token)
 
-	err := l.UpdateTokenMeta(address, &tm)
+	token2 := mock.MockTokenMeta(tm.Address)
+	token2.Type = token.Type
+
+	err := l.UpdateTokenMeta(tm.Address, token2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -534,10 +545,11 @@ func TestLedger_DelTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addTokenMeta(t, l)
-	_, address, tokentype := parseToken(t)
+	tm := getAccount(t)
+	token := mock.MockTokenMeta(tm.Address)
+	addTokenMeta(t, l, token)
 
-	err := l.DeleteTokenMeta(address, tokentype)
+	err := l.DeleteTokenMeta(tm.Address, token.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -548,7 +560,10 @@ func TestLedger_HasTokenMeta_False(t *testing.T) {
 
 	address, _, _ := types.GenerateAddress()
 	tokenType := types.Hash{}
-	addTokenMeta(t, l)
+	tm := getAccount(t)
+	token := mock.MockTokenMeta(tm.Address)
+
+	addTokenMeta(t, l, token)
 
 	has, err := l.HasTokenMeta(address, tokenType)
 	if err != nil {
@@ -561,10 +576,11 @@ func TestLedger_HasTokenMeta_True(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	_, address, tokenType := parseToken(t)
+	tm := getAccount(t)
+	token := mock.MockTokenMeta(tm.Address)
+	addTokenMeta(t, l, token)
 
-	addTokenMeta(t, l)
-	r, err := l.HasTokenMeta(address, tokenType)
+	r, err := l.HasTokenMeta(tm.Address, token.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,9 +589,9 @@ func TestLedger_HasTokenMeta_True(t *testing.T) {
 
 func addRepresentationWeight(t *testing.T, l *Ledger) {
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	amount, err := mock.ParseBalance("400.004", "Mqlc")
+	amount := types.StringToBalance("400004")
 
-	err = l.AddRepresentation(address, amount)
+	err := l.AddRepresentation(address, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -594,8 +610,8 @@ func TestLedger_SubRepresentationWeight(t *testing.T) {
 	addRepresentationWeight(t, l)
 
 	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	amount, err := mock.ParseBalance("100.004", "Mqlc")
-	err = l.SubRepresentation(address, amount)
+	amount := types.StringToBalance("100004")
+	err := l.SubRepresentation(address, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,10 +637,7 @@ func parsePending(t *testing.T) (address types.Address, hash types.Hash, pending
 	}
 	_ = hash.Of("a624942c313e8ddd7bc12cf6188e4fb9d10da4238086aceca7f81ea3fc595ba9")
 
-	balance, err := mock.ParseBalance("2345.6789", "Mqlc")
-	if err != nil {
-		t.Fatal(err)
-	}
+	balance := types.StringToBalance("23456789")
 	typehash := types.Hash{}
 	_ = typehash.Of("191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448")
 	pendinginfo = types.PendingInfo{
@@ -768,15 +781,16 @@ func TestLedgerSession_Latest(t *testing.T) {
 	defer teardownTestCase(t)
 
 	addAccountMeta(t, l)
-	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	token := types.Hash{}
-	_ = token.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918")
-	hash := l.Latest(addr, token)
+	block := mock.StateBlock()
+	ac := mock.MockAccountMeta(block.GetAddress())
+	ac.Tokens[0].Header = block.GetHash()
+	ac.Tokens[0].Type = block.(*types.StateBlock).Token
+	l.AddAccountMeta(ac)
+	l.AddBlock(block)
 
-	latest := types.Hash{}
-	_ = latest.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448")
+	hash := l.Latest(ac.Address, ac.Tokens[0].Type)
 
-	if hash != latest {
+	if hash != block.GetHash() {
 		t.Fatal("err")
 	}
 }
@@ -786,10 +800,13 @@ func TestLedgerSession_Account(t *testing.T) {
 	defer teardownTestCase(t)
 
 	addAccountMeta(t, l)
-	addBlocks(t, l)
-	blks := parseBlocks(t, "testdata/blocks.json")
-	h := blks[0].GetHash()
-	am, err := l.Account(h)
+	block := mock.StateBlock()
+	ac := mock.MockAccountMeta(block.GetAddress())
+	l.AddAccountMeta(ac)
+
+	l.AddBlock(block)
+
+	am, err := l.Account(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -801,11 +818,13 @@ func TestLedgerSession_Token(t *testing.T) {
 	defer teardownTestCase(t)
 
 	addAccountMeta(t, l)
-	addBlocks(t, l)
-	blks := parseBlocks(t, "testdata/blocks.json")
-	h := blks[0].GetHash()
-	t.Log(h)
-	tm, err := l.Token(h)
+	block := mock.StateBlock()
+	ac := mock.MockAccountMeta(block.GetAddress())
+	ac.Tokens[0].Type = block.(*types.StateBlock).Token
+	l.AddAccountMeta(ac)
+
+	l.AddBlock(block)
+	tm, err := l.Token(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -833,11 +852,11 @@ func TestLedgerSession_Balance(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addAccountMeta(t, l)
-	addBlocks(t, l)
+	ac := getAccount(t)
+	am := mock.MockAccountMeta(ac.Address)
+	l.AddAccountMeta(am)
 
-	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	balances, err := l.Balance(addr)
+	balances, err := l.Balance(ac.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -850,13 +869,10 @@ func TestLedgerSession_TokenBalance(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addAccountMeta(t, l)
-	addBlocks(t, l)
-
-	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	token := types.Hash{}
-	_ = token.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918")
-	balance, err := l.TokenBalance(addr, token)
+	ac := getAccount(t)
+	am := mock.MockAccountMeta(ac.Address)
+	l.AddAccountMeta(am)
+	balance, err := l.TokenBalance(ac.Address, am.Tokens[0].Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -883,33 +899,20 @@ func TestLedgerSession_TokenPending(t *testing.T) {
 func TestLedger_Rollback(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	blks := parseBlocks(t, "testdata/blocks_rollback.json")
 
-	err := l.BlockProcess(blks[0])
+	bs, err := mock.MockBlockChain()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal()
+	}
+	for _, b := range bs {
+		processBlock(t, l, b)
+	}
+	h := bs[2].GetHash()
+	if err := l.Rollback(h); err != nil {
+		t.Fatal()
 	}
 
-	for _, b := range blks[1:] {
-		p := l.BlockCheck(b)
-		if p != Progress && p != BadSignature && p != BadWork {
-			t.Fatal(p)
-		}
-		r := l.BlockProcess(b)
-		if r != nil {
-			t.Fatal(r)
-		}
-	}
-
-	check(t, l)
-	hash := types.Hash{}
-	hash.Of("ff7731f66512a7c66668ce04bf87eb2cdb2fa3c421c4188db7106fac67362a9b")
-	err = l.Rollback(hash)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	check(t, l)
+	//check(t, l)
 }
 
 func check(t *testing.T, l *Ledger) {

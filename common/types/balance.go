@@ -1,10 +1,8 @@
 package types
 
 import (
-	"encoding/binary"
-	"encoding/hex"
 	"errors"
-	"github.com/qlcchain/go-qlc/common/types/internal/uint128"
+	"fmt"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
 	"math/big"
@@ -15,8 +13,6 @@ func init() {
 }
 
 const (
-	// BalanceSize represents the size of a balance in bytes.
-	BalanceSize = 16
 	// BalanceMaxPrecision  balance max precision
 	BalanceMaxPrecision = 11
 )
@@ -36,64 +32,58 @@ const (
 
 var (
 	// ZeroBalance zero
-	ZeroBalance = Balance(uint128.Uint128{})
+	ZeroBalance = Balance{big.NewInt(0)}
 
 	//ErrBadBalanceSize bad size
 	ErrBadBalanceSize = errors.New("balances should be 16 bytes in size")
 )
 
 // Balance of account
-type Balance uint128.Uint128
-
-type Amount uint128.Uint128
-
-//ParseBalanceInts create balance from uint64
-func ParseBalanceInts(hi uint64, lo uint64) Balance {
-	return Balance(uint128.FromInts(hi, lo))
+type Balance struct {
+	*big.Int
 }
 
-//ParseBalanceString create balance from string
-func ParseBalanceString(b string) (Balance, error) {
-	balance, err := uint128.FromString(b)
-	if err != nil {
-		return ZeroBalance, err
-	}
-	return Balance(balance), nil
+//StringToBalance create balance from string
+func StringToBalance(b string) Balance {
+	t := new(big.Int)
+	t.SetString(b, 10)
+	return Balance{t}
+}
+
+// BytesToBalance create balance from byte slice
+func BytesToBalance(b []byte) Balance {
+	t := new(big.Int)
+	t.SetBytes(b)
+	return Balance{t}
 }
 
 // Bytes returns the binary representation of this Balance with the given
 // endianness.
-func (b Balance) Bytes(order binary.ByteOrder) []byte {
-	bytes := uint128.Uint128(b).GetBytes()
-
-	switch order {
-	case binary.BigEndian:
-		return bytes
-	case binary.LittleEndian:
-		return util.ReverseBytes(bytes)
-	default:
-		panic("unsupported byte order")
+func (b Balance) Bytes() []byte {
+	if b.Int == nil {
+		return ZeroBalance.Bytes()
 	}
+	return b.Int.Bytes()
 }
 
 // Equal reports whether this balance and the given balance are equal.
 func (b Balance) Equal(b2 Balance) bool {
-	return uint128.Uint128(b).Equal(uint128.Uint128(b2))
+	return b.Int != nil && b2.Int != nil && b.Int.Cmp(b2.Int) == 0
 }
 
 // Add balances add
 func (b Balance) Add(n Balance) Balance {
-	return Balance(uint128.Uint128(b).Add(uint128.Uint128(n)))
+	return Balance{new(big.Int).Add(b.Int, n.Int)}
 }
 
 // Sub balances sub
 func (b Balance) Sub(n Balance) Balance {
-	return Balance(uint128.Uint128(b).Sub(uint128.Uint128(n)))
+	return Balance{new(big.Int).Sub(b.Int, n.Int)}
 }
 
 //Compare two balances
 func (b Balance) Compare(n Balance) BalanceComp {
-	res := uint128.Uint128(b).Compare(uint128.Uint128(n))
+	res := b.Int.Cmp(n.Int)
 	switch res {
 	case 1:
 		return BalanceCompBigger
@@ -106,60 +96,55 @@ func (b Balance) Compare(n Balance) BalanceComp {
 	}
 }
 
-// BigInt convert balance to int
-func (b Balance) BigInt() *big.Int {
-	i := big.NewInt(0)
-	i.SetBytes(b.Bytes(binary.BigEndian))
-	return i
-}
-
-// String implements the fmt.Stringer interface. It returns the balance in Mqlc
-// with maximum precision.
-func (b Balance) String() string {
-	return b.BigInt().String()
-}
-
 //ExtensionType implements Extension.ExtensionType interface
 func (b *Balance) ExtensionType() int8 {
 	return BalanceExtensionType
 }
 
 //ExtensionType implements Extension.Len interface
-func (b *Balance) Len() int { return BalanceSize }
+func (b *Balance) Len() int { return len(b.Bytes()) }
 
 //ExtensionType implements Extension.UnmarshalBinary interface
-func (b Balance) MarshalBinaryTo(text []byte) error {
-	copy(text, b.Bytes(binary.BigEndian))
+func (b *Balance) MarshalBinaryTo(text []byte) error {
+	copy(text, b.Bytes())
 	return nil
 }
 
 //ExtensionType implements Extension.UnmarshalBinary interface
 func (b *Balance) UnmarshalBinary(text []byte) error {
-	if len(text) != BalanceSize {
-		return ErrBadBalanceSize
-	}
+	i := new(big.Int)
+	i.SetBytes(text)
+	*b = Balance{i}
 
-	*b = Balance(uint128.FromBytes(text))
 	return nil
-
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.
 func (b Balance) MarshalText() ([]byte, error) {
-	//return []byte(strings.TrimLeft(hex.EncodeToString(b.Bytes(binary.BigEndian)), "0")), nil
-	return []byte(hex.EncodeToString(b.Bytes(binary.BigEndian))), nil
+	return []byte(b.String()), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (b *Balance) UnmarshalText(text []byte) error {
-	//l := len(text)
-	//if l%2 != 0 {
-	//	text = util.LeftPadBytes(text, 1)
-	//}
-	balance, err := ParseBalanceString(string(text))
-	if err != nil {
-		return err
-	}
+	s := util.TrimQuotes(string(text))
+	balance := StringToBalance(s)
 	*b = balance
 	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (b *Balance) MarshalJSON() ([]byte, error) {
+	s := ""
+
+	if b.Int == nil {
+		s = fmt.Sprintf("\"%s\"", ZeroBalance)
+	} else {
+		s = fmt.Sprintf("\"%s\"", b.String())
+	}
+	return []byte(s), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (b *Balance) UnmarshalJSON(text []byte) error {
+	return b.UnmarshalText(text)
 }
