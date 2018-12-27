@@ -1,8 +1,6 @@
 package protos
 
 import (
-	"fmt"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
@@ -26,29 +24,29 @@ func NewFrontierReq(addr types.Address, Age, Count uint32) (packet *FrontierReq)
 func FrontierReqToProto(fr *FrontierReq) ([]byte, error) {
 	//pb := new(pb.Frontier)
 	address := fr.StartAddress.Bytes()
-	frpb := &pb.FrontierReq{
+	frPb := &pb.FrontierReq{
 		Address: address,
 		Age:     fr.Age,
 		Count:   fr.Count,
 	}
-	data, err := proto.Marshal(frpb)
+	data, err := proto.Marshal(frPb)
 	if err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
-/// FrontierReqFromProto parse the data into frontier message
+// FrontierReqFromProto parse the data into frontier message
 func FrontierReqFromProto(data []byte) (*FrontierReq, error) {
 	fr := new(pb.FrontierReq)
 
 	if err := proto.Unmarshal(data, fr); err != nil {
-		fmt.Println("Failed to unmarshal FrontierReqPacket message.")
+		logger.Error("Failed to unmarshal FrontierReqPacket message.")
 		return nil, err
 	}
 	address, err := types.BytesToAddress(fr.Address)
 	if err != nil {
-		fmt.Println("address error")
+		logger.Error("address error")
 	}
 	frq := &FrontierReq{
 		StartAddress: address,
@@ -81,12 +79,12 @@ func FrontierResponseToProto(fr *FrontierResponse) ([]byte, error) {
 	return data, nil
 }
 
-/// FrontierResponseFromProto parse the data into frontier message
+// FrontierResponseFromProto parse the data into frontier message
 func FrontierResponseFromProto(data []byte) (*FrontierResponse, error) {
 	fr := new(pb.FrontierRsp)
 	frp := new(types.Frontier)
 	if err := proto.Unmarshal(data, fr); err != nil {
-		fmt.Println("Failed to unmarshal FrontierRspPacket message.")
+		logger.Error("Failed to unmarshal FrontierRspPacket message.")
 		return nil, err
 	}
 	err := frp.HeaderBlock.UnmarshalBinary(fr.HeaderBlock[:])
@@ -97,8 +95,8 @@ func FrontierResponseFromProto(data []byte) (*FrontierResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	frps := &FrontierResponse{
+	frPs := &FrontierResponse{
 		Frontier: frp,
 	}
-	return frps, nil
+	return frPs, nil
 }
