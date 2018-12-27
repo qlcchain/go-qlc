@@ -33,7 +33,7 @@ func (bp *BlockProcessor) processBlocks() {
 			logger.Info("Stopped process blocks.")
 			return
 		case block := <-bp.blocks:
-			result := bp.dp.ledger.Process(block)
+			result, _ := bp.dp.ledger.Process(block)
 			bp.processResult(result, block)
 		}
 	}
