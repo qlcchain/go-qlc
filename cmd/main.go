@@ -250,16 +250,8 @@ func initNode(account types.Address, password string) error {
 				if b.Address.ToHash() != b.Link {
 					s := ctx.Wallet.Wallet.NewSession(account)
 					if isValid, err := s.VerifyPassword(password); isValid && err == nil {
-						accounts, err := s.GetAccounts()
-						if err != nil {
-							logger.Error(err)
-						}
-
-						for _, a := range accounts {
-							if a.ToHash() == b.Link {
-								logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), a.String(), b.Balance.BigInt())
-								break
-							}
+						if a, err := s.GetRawKey(b.GetAddress()); err == nil && a.Address().ToHash() == b.Link {
+							logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), a.Address().String(), b.Balance.BigInt())
 						}
 					}
 				}
