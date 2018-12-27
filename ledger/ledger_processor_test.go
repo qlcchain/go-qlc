@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/test/mock"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -10,31 +11,14 @@ import (
 func TestProcess_BlockBasicInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	blks := parseBlocks(t, "testdata/blocks_ledger_process.json")
 
-	logger.Info("------ genesis, addr(1c47) ------")
-	err := l.BlockProcess(blks[0])
+	bs, err := mock.MockBlockChain()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal()
 	}
-
-	logger.Info("------ addr(1c47) send to addr(1zbo) 6000 ------")
-	processBlock(t, l, blks[1])
-
-	logger.Info("------ addr(1zbo) open  ------")
-	processBlock(t, l, blks[2])
-
-	logger.Info("------ addr(1zbo) change rep to (1zbo) ------")
-	processBlock(t, l, blks[3])
-
-	logger.Info("------ addr(1zbo) send to addr(1c47) 4000 ------")
-	processBlock(t, l, blks[4])
-
-	logger.Info("------ addr(1c47) receive ------")
-	processBlock(t, l, blks[5])
-
-	logger.Info("------ add token ------")
-	processBlock(t, l, blks[6])
+	for _, b := range bs {
+		processBlock(t, l, b)
+	}
 
 	//checkInfo(t, l)
 }
@@ -44,7 +28,7 @@ func processBlock(t *testing.T, l *Ledger, block types.Block) {
 	if err != nil {
 		t.Fatal()
 	}
-	if p != Progress && p != BadSignature && p != BadWork {
+	if p != Progress {
 		t.Fatal(p)
 	}
 	r := l.BlockProcess(block)

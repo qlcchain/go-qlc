@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"bytes"
 	"time"
 
 	"github.com/pkg/errors"
@@ -58,7 +59,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 	link := block.GetLink()
 	address := block.GetAddress()
 
-	logger.Info("process block, ", hash)
+	logger.Info("---process block, ", hash)
 
 	// make sure smart contract token exist
 	// ...
@@ -82,6 +83,11 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 	if !address.Verify(hash[:], signature[:]) {
 		logger.Info("bad signature")
 		return BadSignature, nil
+	}
+
+	if pre.IsZero() && bytes.EqualFold(address[:], link[:]) {
+		logger.Info("genesis block")
+		return Progress, nil
 	}
 
 	transferAmount := block.GetBalance()
