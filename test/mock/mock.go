@@ -57,8 +57,8 @@ var (
 	tokenCache          = sync.Map{}
 	genesisBlockstring  = `[
   {
-    "token": "705d1a62cdc6a7c35ff3a0ba59b8683e5e33818abfde93c98009d721762a9d52",
-    "balance": "00000000000000060000000000000000",
+    "token": "4627e2a0c1d68238bb4f848c59f4e18288c36fb7c959d220c9914728db890de8",
+    "balance": "600000000",
     "link": "d5ba6c7bb3f4f6545e08b03d6da1258840e0395080378a890601991a2a9e3163",
     "representative": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
     "type": "State",
@@ -66,11 +66,11 @@ var (
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "000000000000e408",
-    "signature": "fb481e2aac799c6ec4d6f53a525277d185ab84373225199152fba3cc63ef4d067d5c5ab22842d4ffc8f6b88f34f859884a303a32e95146b54429019eddf1fd03"
+    "signature": "c4f00f9558db30c59be7bfd40abffd16eb6d2e2700a12d15fb73e83e5de7c4439284c57fb24f7127fc3eb9f42f3a1e026469a4da3fa24ddb64b8924c5fb5b804"
   },
   {
-    "token": "8d827353240b5edb8de3abb4ca8988efcd777b0b2fa6498e6e2d6a37b21d83e5",
-    "balance": "00000000000000070000000000000000",
+    "token": "a5d898709a685f1940b33a3e2819c3079240669025af3876d159b20ed59c1c69",
+    "balance": "700000000",
     "link": "6f6b4becca470084032121e7923a668da0bbc3ad1ef0c46513cdcf67080bc9b0",
     "representative": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
     "type": "State",
@@ -78,11 +78,11 @@ var (
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "0000000000c662c2",
-    "signature": "e4d28c5646f41ef7d31381ae08120c8cc420989c8256add7f92415e444bf5c461aae0ab045a8a08211bd081e6a3245ba74d8d77f5df37d1b7496fdd20f283a0d"
+    "signature": "667bcb0be84eb4ea9c1ffe35d30f29c16f50445c8acd44006d179d05db26a627f7718d951bf41b2268fd2a4de00fc83a9db9f676b477d9f76974e60444a4cd0e"
   },
   {
-    "token": "592ddd5f8cbd0e5074b1185e03a8558eeed5c8b6ebe578419ec3ac566c12e2ae",
-    "balance": "00000000000000050000000000000000",
+    "token": "08177e04124d29af243d30dfe1e52821ac6441f9ca9cc1fc11a2c1a4f748619a",
+    "balance": "500000000",
     "link": "e4087493c2572dd52ab4ab67ae91c72dff25ca2efececec8205ff1764d75ddbb",
     "representative": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
     "type": "State",
@@ -90,11 +90,11 @@ var (
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "0000000000ce1618",
-    "signature": "228a38f7e8c9b4ec72b5635e76ab5a25ea2680879eef2c37bfc507b7b878f2e75b605e376a754d569ffef8c74ba0593e16ec7b41eea3adccf4fcce88cdc56e04"
+    "signature": "0cf6b28965c18ae4b5a9d9c41aaf220bbd15031790389790322c3add3126b57bb5c7008e5b38e911f00b0cfad3e2b371661132f08ca741ecbc4b317f95703903"
   },
   {
-    "token": "ae21ba8acc1828e6c47943f1121386cb5ead014a366fb3f10fec585fe0641a23",
-    "balance": "00000000000000090000000000000000",
+    "token": "7ec06dc236636cb15ccca4da8473463dca1b5e09d10f1bb82d962576a107f90c",
+    "balance": "900000000",
     "link": "2f51df2104bae5a0feaaaa575f9ae458ac7353dfdf86f393a8d068bb5bcea95d",
     "representative": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
     "type": "State",
@@ -102,11 +102,11 @@ var (
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "000000000075bd2e",
-    "signature": "6f9c85728d3d29cf09975d62ab93978e74b0c20d9ba0e9e26370a4d60a0217ff7e77a50b8cd4277e9f341e667f310b591a6b3507ec5f59972dd180c94389040d"
+    "signature": "0ef7bca15ae3a1250f9e2891f042b26689ba737914e093849bf053814473d938acb640bee8c3754ae45852bff39d3e83a7557c69ff3d5243532b73acdf739a0b"
   },
   {
-    "token": "f93e94e35e5992ac847ee1e586d88eacd1c30a9ba84fc1da02d4362681f1907f",
-    "balance": "00000000000000080000000000000000",
+    "token": "54da86f58c3196a9fbd4f05b452c11589eeef5e7f4ba688d97b49df978f6adea",
+    "balance": "800000000",
     "link": "eee2111fbc1a25c3afb02760b3fdd499d20ca507dec145e2e7f9c07a1d9b9b30",
     "representative": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
     "type": "State",
@@ -114,11 +114,11 @@ var (
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000008027a6",
-    "signature": "4394b1ad3d429976ab2500da186006e428019ea71363bddc39b7afbfa33a82d7619b92296fe5537fe99b970e0db0857b68ea0f8ca416438c554eaa806f19fc0e"
+    "signature": "34b7aa18266f321502d1a2c6fc839321ed51b61404ea661b305b085741f3bd1492334bcebd8598106b1b2e3184818ed62c6e971285d8e58bd8cf0787c35d9507"
   },
   {
-    "token": "7f3909f36647ae2520c5ac0077ee0133f0485a25df7b58a44a001447b4e98b3a",
-    "balance": "00000000000000090000000000000000",
+    "token": "9fc49a7899e29518e335e72fdc97663e8469d318981e3b2d96d22d72dc39ec72",
+    "balance": "900000000",
     "link": "7b6f0909957f2d5b25a01836b1527599dfd4453705397e7c89967dee27e15286",
     "representative": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
     "type": "State",
@@ -126,7 +126,7 @@ var (
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000009fc06f",
-    "signature": "3d9d6310b1dcb678976a2fd3ecd14ef5fffbeeea9d82447bbd821b222b9146f157844833a72e0a0f37a36699b3e92a6a555e2692c10050cfc9f38ac29ab74706"
+    "signature": "ad68d0592619695dd70b38fca5961563cd8e2a6842c98291d6349290e10cb4b5ee8783c5b2181ad4b75247d961e7ff73dea808a25e139379847ac0b319d17d09"
   }
 ]
 `
@@ -134,92 +134,92 @@ var (
   {
     "internalAccount": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
     "contract": {
-      "abi": "VBPLA0t2DwbasyBqQYLnb8RZ1iVHgUyxK3t5xwbX7ePkC3ozIScdQERrEn5XX5FgYC/32hy70SUyzIEGRn+lv4NlGwIKxHVW3Ikp0vwfC3eN",
+      "abi": "TAacHjHVOyrJesALAUU720QZSl0Mx2fynH0wuOZWObmGL5K47quVdNZ/mG5dB33LxHGUiHJvcUj+LqJLLXAZwAZAdfz5hOdLJmH0n13V5FiD",
       "abiLength": 81,
-      "abiHash": "5cc0e822f0c26404b375f85375688e4d5cc2de7c743fc7fca55d90ffaaab2721"
+      "abiHash": "c175ebefdca681861e2102fcced29eaa9332d79b10daa2a28551c57b099d0dd1"
     },
-    "issuer": "qlc_1tss8rbi5w11q17umcoxauuitrr5wd76pjkf9eu71c4f3uqw4t7n7p6rxpkd",
+    "issuer": "qlc_3wkuticdgwxp36oonh4fm953cbkhz1ufmdraphodkn5aouqomoamt9trbxww",
     "type": "SmartContract",
-    "address": "qlc_36bir9qr5iswkhzn45dn6c1gxjpyqxwqj7qfodz4j11i53bdwrxorepkm8dk",
+    "address": "qlc_3n47dh3n3maq3fygctz5e9wmcezk4qsjg16w7yn3zowcn6z3mg95hjnkq4ku",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "00000000003519ef",
-    "signature": "eabc576d2ab01101aacc56849218ac40d15df38540da4258426c302d77a4e4980d44378b7cd81b88fdf140a5fff57c881977ab72b66a19b77d1bc50517307207"
+    "work": "0000000000133602",
+    "signature": "e4ee3679d522b06d20956e2e4377bad41d8c413028958b13b0dbf8b67eb2a091db845e4a2458775cc7e9029012328eada9c29d8d91c25416d84214a35f2faf01"
   },
   {
     "internalAccount": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
     "contract": {
-      "abi": "2u2Iw74dnuQRkc4t9Dhv7B7VJ2EHjhW6MsMv9esZ2BogvFKd4/dRi0jdhAfAYT7gxSjCon3g5eFyt/Ig7cWfvJugq30OwhlryhZFMRKAbREg3jUnY7rf",
+      "abi": "XBcf6qN2bLrKdYgOSrsRc4hYIp3QqX/LqLOfKTLw0YRqwMh7IurVirLtNKstNWlGT475kLbdrLVjPy46TdD2OMuhvAuss7D6eyONzCfBKNN3YMgnfXxO",
       "abiLength": 87,
-      "abiHash": "06cc5b829332033c98a2e4f39dbec71d1e37a8fe08d45d399fbf2fb25ee1cacc"
+      "abiHash": "0f2fec3bf1b07f17551a24a34ae5b5b932aead04bcfde1511e75e58ce9d15db0"
     },
-    "issuer": "qlc_1ntwb1t4ddyzo8m9chjsso8hzs83di66jim6deun67n5emfanutby9x57ww1",
+    "issuer": "qlc_3s8tydowm7ce6xc4iwubqsc5qxokefxzu5iuk35xieknqxn7pak7ufkb3h1u",
     "type": "SmartContract",
-    "address": "qlc_1mswgm6opoefuh6dpktwe4j68cogbmbusktehexze3iata4qerzhwkwjzr9e",
+    "address": "qlc_1rq4hd91x8k9oqei5jt811tyaaho7undj5x3ki76epd5oruek9pwdfm3r8t9",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000001284498",
-    "signature": "6a32eb6c30595a8a589f7ada93d8dbf1bedf2c8025e762cb3a67765df341cb97378cd3b0737abee5df3518377737d4e2e3c4d7838edbfda020151cfd0c82cd07"
+    "work": "0000000001212a60",
+    "signature": "4a2fc8ddb36abe5f046bcf47efa794632d89c746c307970195d262ec22f7ee01fc4cc408b37ef6eae050852865a193e12fab99f56e76b31fef5ffdacd7939f08"
   },
   {
     "internalAccount": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
     "contract": {
-      "abi": "DR/N92U5L6D+N0WEavnYc1m91wWZkT7qY9I31mKn0vHntkQ/sBFplEknkWrTPuA=",
+      "abi": "vQuBj/ZTFa830VuX2jq1WDtFvzj8DlpJoHsdtAzVPxc5onHAw4yII0yipsuZNDs=",
       "abiLength": 47,
-      "abiHash": "d2dad8fa925bbb4a07474c0a5aa9229a0587f9f2cb9effe07858885990a0760b"
+      "abiHash": "07acc3715dafde2efb12fee92d67e131903aed48fa13a710f7f6b6962f460062"
     },
-    "issuer": "qlc_3j9saxnba5t1i5sfd418qexpq8sdf3s6a4hihp1owe7j3agiy3puwioq5mw8",
+    "issuer": "qlc_3u83toxzi5o3ohxtzycbnkorf9i96d6hkikydnk48ob4zen6fosruz6mqzi7",
     "type": "SmartContract",
-    "address": "qlc_1dafhe75wz3r33kxpe9ycc8krd3xbhaeccz7jfns3uwf5c8o1c9esryxh4h5",
+    "address": "qlc_1hdpob4up9hjzhurzqirpubg74sfsch11ghytajdjo8h8maunog3szjgw9te",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "00000000009919a2",
-    "signature": "d14eb5b1416177da80500062efaae4780d2e04c826fa24014b28ee5d4a83ad3efacca4d1d6b4bba66619f96561399ab9d0110927b3f6f51e7879bb35d2d1830b"
+    "work": "0000000000245418",
+    "signature": "dcce8c6a78634d790eedb557cefeb89c4f97503b096b6cbc67d86c48cafc17d8028b7c89e034400c1e013bcfbb0a5d570e4023eccac9507f3a249f07a8949400"
   },
   {
     "internalAccount": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
     "contract": {
-      "abi": "ZEd0YfvsYNCrmj/TnURy2Fdq07liSMoAK0L/6VAwCsOvTecT8G35Z6CHMIMSP3u9ISoi1qmvGxGaxIU=",
+      "abi": "NrgEDMTkMefaXrlQ761kB7+gddN2nRvgs9VDW6Eyxhj/NotFjEsXEdINk96v+KUtnlkJ0ctfm2Yvfj4=",
       "abiLength": 59,
-      "abiHash": "5f368d2094e52ad626df9064cf5e0f1284a1fb668fadabb930aa19e449d9fd5e"
+      "abiHash": "8a5f5c624431adeeb2ab131de4ae15fdbf5a68a74140a98cfd6a01896d7be4ea"
     },
-    "issuer": "qlc_3aupdo1cdjdyh6i9ssy91h41zxbb3kkruq6nh5bewhthgoete7azwd8pb8ox",
+    "issuer": "qlc_16o7g3muhar87nw5onsk7mk7kxqxbqtj354ocp7gnzpxjmt39fm9n37i76pp",
     "type": "SmartContract",
-    "address": "qlc_1k6upokk5z6rnrpgezebphsc73qs1ofyfiqggtcj48d153yxht3yiyfxhnpy",
+    "address": "qlc_18cowq4jmyqw7hk7kb77er8gfn5i64p6kixep3hweo1mh5ji67reayc65sqe",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000861712",
-    "signature": "b8dc494172c75a616a1271b89e0721b32a571ac27935b8d059f59ae5da07adf0df61a347ce0800503c719735878a7a6e59ae9dd350723b8410fb48ba8c34920e"
+    "work": "000000000156bbef",
+    "signature": "ba2c571cca4f35ed9e6c6091d6bdc55642406af78f27a273f765c0d1d747ab85a95ae41d266941566cc044c09e85fd9c821c7223f0aa9ff6ab10dd02c4a80502"
   },
   {
     "internalAccount": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
     "contract": {
-      "abi": "POleSX9PF2xMhkjXPxGC74Pj3UtelPdVfL2EhZOd/sog8As8YTDTRRZfXZwf4ehc0T1r3M1BPoPUFT/ufgNUtRX0n1s03lMCTnSjZZEli0fE",
+      "abi": "23zYqMrthgG9s63cXr7pCIsoZZbtXMHLMHQey4GmMtKOzYlnDdLB2NIhBl4qDL8hKupH+gNRKHjDGx3NS1Yf7u13ewx5Wp/uhiZ8qIDRvkwm",
       "abiLength": 81,
-      "abiHash": "0fedca3707b384e35cf3edb1097f3a2ea5d264c40e16dba2118230e3353b6a27"
+      "abiHash": "1d0b2a3567a840a5268a5dd6869cd2b01b37c2da0e23d297b38b7a1799c79684"
     },
-    "issuer": "qlc_11za3oeptb4ka8p338peih6j7359gzgdbmooywrp7kfo5it4fdb6ybyrikdf",
+    "issuer": "qlc_1hsjckbhikcwuardss1y7wpugcb57mezhqtoecoh3p8dfwqc5y5mot8k8wfo",
     "type": "SmartContract",
-    "address": "qlc_3usq3t7gng38b4rd8zbp5hdboypymztifeupurw8wgubnxhr9ampen6sz6ue",
+    "address": "qlc_19i6etepwcxaejdagwaofqsff6n9nch4hj7go73t3ufk7b8swmrk5c1c1fjm",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000fabb65",
-    "signature": "bb3e7d136b9e4f19c5b7f80189aa2a87cdf41c2a9de402a97381c3874c159ee8cd8ac4bf5756fa3a678d33f185a9731ab8044450f4f8de9e3f770a2f3af56e01"
+    "work": "000000000022b7c6",
+    "signature": "dc8431761ab9123097cf35e3c5b0b9adfcfb11b291473dee4228c1c7c3984fcf667866550f4fc74922fa08cf3dcc5a6efcb784b7364cfbdfd61c5076321b820e"
   },
   {
     "internalAccount": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
     "contract": {
-      "abi": "ldsVbV9SbzRoiiDLU/mxYvSx",
+      "abi": "sFt2joRwc02+gV1f+agS+P8W",
       "abiLength": 18,
-      "abiHash": "3de094fb7b46f419ad9f814493932ce86a0186a5c4444dd5a60a9bb9676f8439"
+      "abiHash": "01d548def8e2b35588dc5c9e319763df4189dc913e1c1d880612010d84680275"
     },
-    "issuer": "qlc_1euz8fsw1qi86y6xzj9zjze13656554cxkwk648fkmzojbkerq77ik1aj84p",
+    "issuer": "qlc_3e9ootmpr5dd6o376y6e4wtf7ieqa1819f778zyqu3o13hp6o7pffjsghaj9",
     "type": "SmartContract",
-    "address": "qlc_1qr3hnh6w76ttqh8obn3hedqj5uhq9ys7ymkskyenbwuxwez5ubk3isw18km",
+    "address": "qlc_3bugapghmk6w9o3ayby6cky5tffaipbtcdfxohntgq31z5hy7qqwur7t81t8",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
-    "work": "0000000000f1d99c",
-    "signature": "28e0ae8f1486cae3c838c8c03ad607d74cbaeee53b436cdb4b9bca4c1dc7a9ffe98cf1a360adac25c069fe3c091804d5898ff32e86a3f461c206ef75f75bfd00"
+    "work": "0000000000228426",
+    "signature": "13b91a4d0519b7ce07f690d9358190f7909089cef4136fad8dd8231ac3e8a9e32a9a52b3e7eeb4217f409a8e524db3b18428a88afab8b4c0d7d08e8b9fe08f0c"
   }
 ]
 `

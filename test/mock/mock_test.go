@@ -95,32 +95,6 @@ func TestMockGenesisBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//addr, _ := types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
-	//if block1.Address != addr {
-	//	t.Fatal("addr != address")
-	//}
-	//rep, _ := types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
-	//if rep != block1.Representative {
-	//	t.Fatal("rep != Representative")
-	//}
-	//
-	//b := types.Balance{Hi: 6, Lo: 0}
-	//if block1.Balance != b {
-	//	t.Fatalf("b(%d)!=Balance(%d)", b.BigInt(), block1.Balance.BigInt())
-	//}
-	//link, _ := types.NewHash("D5BA6C7BB3F4F6545E08B03D6DA1258840E0395080378A890601991A2A9E3163")
-	//if link != block1.Link {
-	//	t.Fatal("link != Link")
-	//}
-	//h, _ := types.NewHash("125998E086F7011384F89554676B69FCD86769642080CE7EED4A8AA83EF58F36")
-	//if h != block1.Token {
-	//	t.Fatal("h != Token")
-	//}
-	//var work types.Work
-	//_ = work.UnmarshalText([]byte("f3389dd67ced8429"))
-	//if work != block1.Work {
-	//	t.Fatal("work != Work")
-	//}
 	var sign types.Signature
 	err = sign.Of("AD57AA8819FA6A7811A13FF0684A79AFDEFB05077BCAD4EC7365C32D2A88D78C8C7C54717B40C0888A0692D05BF3771DF6D16A1F24AE612172922BBD4D93370F")
 	if err != nil {

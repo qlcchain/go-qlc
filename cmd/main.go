@@ -246,7 +246,7 @@ func initNode(account types.Address, password string) error {
 						if a, err := s.GetRawKey(types.Address(b.Link)); err == nil {
 							addr := a.Address()
 							if addr.ToHash() == b.Link {
-								logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), addr.String(), b.Balance.BigInt())
+								logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), addr.String(), b.Balance)
 								err = receive(b, s, addr)
 								if err != nil {
 									logger.Debugf("err[%s] when generate receive block.", err)
