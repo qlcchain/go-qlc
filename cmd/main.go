@@ -250,10 +250,14 @@ func initNode(account types.Address, password string) error {
 				if b.Address.ToHash() != b.Link {
 					s := ctx.Wallet.Wallet.NewSession(account)
 					if isValid, err := s.VerifyPassword(password); isValid && err == nil {
-						if a, err := s.GetRawKey(b.GetAddress()); err == nil {
+						if a, err := s.GetRawKey(types.Address(b.Link)); err == nil {
 							addr := a.Address()
 							if addr.ToHash() == b.Link {
 								logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), addr.String(), b.Balance.BigInt())
+								err = receive(b, s, addr)
+								if err != nil {
+									logger.Debugf("err[%s] when generate receive block.", err)
+								}
 							}
 						}
 					}
@@ -358,4 +362,39 @@ func send(from, to types.Address, token types.Hash, amount types.Balance, passwo
 	} else {
 		logger.Error("invalid password ", err, " valid: ", b)
 	}
+}
+func receive(sendBlock types.Block, session *wallet.Session, address types.Address) error {
+	l := ctx.Ledger.Ledger
+	n := ctx.NetService
+
+	receiveBlock, err := session.GenerateReceiveBlock(sendBlock)
+	if err != nil {
+		return err
+	}
+	logger.Debug(jsoniter.MarshalToString(&receiveBlock))
+	if r, err := l.Process(receiveBlock); err != nil || r == ledger.Other {
+		logger.Debug(jsoniter.MarshalToString(&receiveBlock))
+		logger.Error("process block error", err)
+		return err
+	} else {
+		logger.Info("receive block, ", receiveBlock.GetHash())
+
+		meta, err := l.GetAccountMeta(address)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		logger.Debug(jsoniter.MarshalToString(&meta))
+		pushBlock := protos.PublishBlock{
+			Blk: receiveBlock,
+		}
+		bytes, err := protos.PublishBlockToProto(&pushBlock)
+		if err != nil {
+			logger.Error(err)
+			return err
+		} else {
+			n.Broadcast(p2p.PublishReq, bytes)
+		}
+	}
+	return nil
 }

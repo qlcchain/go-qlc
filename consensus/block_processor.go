@@ -49,6 +49,9 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types
 	case ledger.BadSignature:
 		logger.Infof("Bad signature for: %s", block.GetHash())
 		break
+	case ledger.BadWork:
+		logger.Infof("Bad work for: %s", block.GetHash())
+		break
 	case ledger.BalanceMismatch:
 		logger.Infof("Balance mismatch for: %s", block.GetHash())
 		break
