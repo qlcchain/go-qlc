@@ -248,10 +248,7 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 	if err != nil {
 		return nil, err
 	}
-	repBlock, err := l.GetBlock(tm.RepBlock)
-	if err != nil {
-		return nil, err
-	}
+
 	if balance.Compare(amount) == types.BalanceCompBigger {
 		newBalance := balance.Sub(amount)
 		sendBlock, _ := types.NewBlock(types.State)
@@ -262,7 +259,7 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 			sb.Link = to.ToHash()
 			sb.Balance = newBalance
 			sb.Previous = tm.Header
-			sb.Representative = repBlock.(*types.StateBlock).Representative
+			sb.Representative = tm.Representative
 			sb.Work, _ = s.GetWork(source)
 			sb.Signature = acc.Sign(sb.GetHash())
 			if !sb.IsValid() {
@@ -298,11 +295,6 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, erro
 		return nil, err
 	}
 
-	repBlock, err := l.GetBlock(tm.RepBlock)
-	if err != nil {
-		return nil, fmt.Errorf("can not fetch account(%s) rep", account)
-	}
-
 	acc, err := s.GetRawKey(account)
 
 	if err != nil {
@@ -315,7 +307,7 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, erro
 		sb.Balance = info.Amount
 		sb.Previous = tm.Header
 		sb.Link = hash
-		sb.Representative = repBlock.(*types.StateBlock).Representative
+		sb.Representative = tm.Representative
 		sb.Token = tm.Type
 		sb.Extra = types.Hash{}
 		sb.Work, _ = s.GetWork(account)
