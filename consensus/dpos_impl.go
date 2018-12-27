@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"github.com/json-iterator/go"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
@@ -25,7 +26,6 @@ type DposService struct {
 	quitCh   chan bool
 	bp       *BlockProcessor
 	wallet   *wallet.WalletStore
-	//accounts []types.Address
 	actrx    *ActiveTrx
 	account  types.Address
 	password string
@@ -286,10 +286,21 @@ func (dps *DposService) isThisAccountRepresentation(address types.Address) bool 
 
 func (dps *DposService) getAccounts() []types.Address {
 	session := dps.wallet.NewSession(dps.account)
-	a, err := session.GetAccounts()
-	if err != nil {
-		logger.Error(err)
-		return []types.Address{}
+	if verify, err := session.VerifyPassword(dps.password); verify && err == nil {
+		if a, err := session.GetAccounts(); err == nil {
+			if len(a) == 0 {
+				if addresses, e := dps.wallet.WalletIds(); e == nil {
+					logger.Debug(jsoniter.MarshalToString(&addresses))
+				}
+			}
+
+			return a
+		} else {
+			logger.Error(err)
+		}
+	} else {
+		logger.Debugf("verify password[%s] faild", dps.password)
 	}
-	return a
+
+	return []types.Address{}
 }

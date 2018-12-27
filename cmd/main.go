@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/qlcchain/go-qlc/p2p/protos"
 	"os"
 	"os/signal"
 	"reflect"
@@ -243,7 +244,7 @@ func initNode(account types.Address, password string) error {
 	}
 
 	if !account.IsZero() {
-		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventPublish, func(v interface{}) {
+		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
 
 			if b, ok := v.(*types.StateBlock); ok {
 				if b.Address.ToHash() != b.Link {
@@ -349,11 +350,14 @@ func send(from, to types.Address, token types.Hash, amount types.Balance, passwo
 				logger.Error(err)
 			}
 			logger.Debug(jsoniter.MarshalToString(&meta))
-			blockBytes, err := sendblock.MarshalMsg(nil)
+			pushBlock := protos.PublishBlock{
+				Blk: sendblock,
+			}
+			bytes, err := protos.PublishBlockToProto(&pushBlock)
 			if err != nil {
 				logger.Error(err)
 			} else {
-				n.Broadcast(p2p.PublishReq, blockBytes)
+				n.Broadcast(p2p.PublishReq, bytes)
 			}
 		}
 	} else {
