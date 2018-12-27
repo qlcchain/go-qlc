@@ -1,12 +1,12 @@
 package ledger
 
 import (
-	"github.com/qlcchain/go-qlc/test/mock"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 type ProcessResult byte
@@ -24,51 +24,31 @@ const (
 	Other
 )
 
-func (l *Ledger) Process(block types.Block) ProcessResult {
-	r := l.BlockCheck(block)
-	if r == Other {
-		return r
+func (l *Ledger) Process(block types.Block) (ProcessResult, error) {
+	r, err := l.BlockCheck(block)
+	if r != Progress {
+		return r, err
 	}
 	if err := l.BlockProcess(block); err != nil {
-		return Other
+		return Other, err
 	}
-	return Progress
+	return Progress, nil
 }
 
-func (l *Ledger) BlockCheck(block types.Block) ProcessResult {
-	processResult := Progress
-
+func (l *Ledger) BlockCheck(block types.Block) (ProcessResult, error) {
 	txn, b := l.getTxn(false)
 	defer l.releaseTxn(txn, b)
-	//err := l.BatchUpdate(func(txn db.StoreTxn) error {
+
 	switch block.GetType() {
 	case types.State:
 		if state, ok := block.(*types.StateBlock); ok {
-			result, err := l.checkStateBlock(state, txn)
-			if err != nil {
-				processResult = Other
-				//return err
-			} else {
-				processResult = result
-			}
-			//return nil
-		} else {
-			processResult = Other
-			//return errors.New("invalid block")
+			return l.checkStateBlock(state, txn)
 		}
 	case types.SmartContract:
-		processResult = Other
-		//return nil
+		return Other, errors.New("smartcontract block")
 	default:
-		processResult = Other
-		//return errors.New("invalid block type")
-
 	}
-	//})
-	//if err != nil {
-	//	return Other
-	//}
-	return processResult
+	return Other, errors.New("invalid block")
 }
 
 func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (ProcessResult, error) {
@@ -261,7 +241,7 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn
 		if err := l.AddPending(pendingkey, &pending, txn); err != nil {
 			return err
 		}
-	} else if !link.IsZero() { // receive or open
+	} else if !link.IsZero() { // not change
 		logger.Info("delete pending")
 		pendingkey := types.PendingKey{
 			Address: block.GetAddress(),

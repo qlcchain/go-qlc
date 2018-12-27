@@ -10,6 +10,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"os/signal"
+	"reflect"
+	"strconv"
+
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
@@ -20,10 +25,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/wallet"
-	"os"
-	"os/signal"
-	"reflect"
-	"strconv"
 )
 
 var (
@@ -337,9 +338,9 @@ func send(from, to types.Address, token types.Hash, amount types.Balance, passwo
 			logger.Fatal(err)
 		}
 
-		if l.Process(sendblock) == ledger.Other {
+		if r, err := l.Process(sendblock); err != nil || r == ledger.Other {
 			logger.Debug(jsoniter.MarshalToString(&sendblock))
-			logger.Error("process block error")
+			logger.Error("process block error", err)
 		} else {
 			logger.Info("send block, ", sendblock.GetHash())
 
