@@ -246,7 +246,7 @@ func TestGenerate(t *testing.T) {
 		block.Address = masterAddress
 		block.Token = h
 		block.Representative = masterAddress
-		block.Balance, _ = types.ParseBalanceString(token.balance)
+		block.Balance = types.StringToBalance(token.balance)
 		block.Link = masterAddress.ToHash()
 		bh := block.GetHash()
 		block.Signature = account.Sign(bh)

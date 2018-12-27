@@ -268,7 +268,7 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 		}
 		return sendBlock, nil
 	} else {
-		return nil, fmt.Errorf("not enought balance(%s) of %s", balance.BigInt(), amount.BigInt())
+		return nil, fmt.Errorf("not enought balance(%s) of %s", balance, amount)
 	}
 }
 

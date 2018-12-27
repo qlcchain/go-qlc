@@ -260,12 +260,12 @@ func MockAccountMeta(addr types.Address) *types.AccountMeta {
 
 func MockTokenMeta(addr types.Address) *types.TokenMeta {
 	s1, _ := random.Intn(math.MaxInt64)
-	s2, _ := random.Intn(math.MaxInt64)
+	i := new(big.Int).SetInt64(int64(s1))
 	t := types.TokenMeta{
 		//TokenAccount: MockAddress(),
 		Type:           MockHash(),
 		BelongTo:       addr,
-		Balance:        types.ParseBalanceInts(uint64(s1), uint64(s2)),
+		Balance:        types.Balance{Int: i},
 		BlockCount:     1,
 		OpenBlock:      MockHash(),
 		Header:         MockHash(),
@@ -294,46 +294,6 @@ func GetChainTokenType() types.Hash {
 	return chainTokenType
 }
 
-// ParseBalance parses the given balance string.
-func ParseBalance(s string, unit string) (types.Balance, error) {
-	d, err := decimal.NewFromString(s)
-	if err != nil {
-		return types.ZeroBalance, err
-	}
-
-	// zero is a special case
-	if d.Equals(decimal.Zero) {
-		return types.ZeroBalance, nil
-	}
-
-	d = d.Mul(units[unit])
-	c := d.Coefficient()
-	f := bigPow(10, int64(d.Exponent()))
-	i := c.Mul(c, f)
-
-	bytes := i.Bytes()
-	balanceBytes := make([]byte, types.BalanceSize)
-	copy(balanceBytes[len(balanceBytes)-len(bytes):], bytes)
-
-	var balance types.Balance
-	if err := balance.UnmarshalBinary(balanceBytes); err != nil {
-		return types.ZeroBalance, err
-	}
-
-	return balance, nil
-}
-
-func bigPow(base int64, exp int64) *big.Int {
-	return new(big.Int).Exp(big.NewInt(base), big.NewInt(exp), nil)
-}
-
-// UnitString returns a decimal representation of this uint128 converted to the
-// given unit.
-func UnitString(b types.Balance, unit string, precision int32) string {
-	d := decimal.NewFromBigInt(b.BigInt(), 0)
-	return d.DivRound(units[unit], types.BalanceMaxPrecision).Truncate(precision).String()
-}
-
 func GetGenesis() []types.Block {
 	size := len(genesisBlocks)
 	b := make([]types.Block, size)
@@ -349,5 +309,33 @@ func GetSmartContracts() []types.Block {
 	for i := 0; i < size; i++ {
 		b[i] = &smartContractBlocks[i]
 	}
+	return b
+}
+
+func Account() *types.Account {
+	seed, _ := types.NewSeed()
+	_, priv, _ := types.KeypairFromSeed(seed.String(), 0)
+	return types.NewAccount(priv)
+}
+
+func StateBlock() types.Block {
+	a := Account()
+	b, _ := types.NewBlock(types.State)
+	sb := b.(*types.StateBlock)
+	i, _ := random.Intn(math.MaxUint32)
+	sb.Type = types.State
+	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
+	sb.Address = MockAddress()
+	sb.Token = chainTokenType
+	sb.Previous = MockHash()
+	sb.Representative = genesisBlocks[0].Representative
+	addr := MockAddress()
+	sb.Link = addr.ToHash()
+	sb.Signature = a.Sign(sb.GetHash())
+	var w types.Work
+	worker, _ := types.NewWorker(w, sb.Root())
+
+	sb.Work = worker.NewWork()
+
 	return b
 }

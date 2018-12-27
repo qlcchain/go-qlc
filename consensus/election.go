@@ -23,12 +23,7 @@ type Election struct {
 func NewElection(dps *DposService, block types.Block) (*Election, error) {
 	vt := NewVotes(block)
 	status := electionStatus{block, types.ZeroBalance}
-	//tokenId := mock.GetChainTokenType()
-	//ti, err := mock.GetTokenById(tokenId)
-	//if err != nil {
-	//	return nil, err
-	//}
-	b1 := types.Balance{Hi: 0, Lo: 40}
+	b1 := types.StringToBalance("40")
 
 	return &Election{
 		vote:          vt,

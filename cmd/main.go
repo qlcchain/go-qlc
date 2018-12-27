@@ -10,12 +10,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/qlcchain/go-qlc/p2p/protos"
-	"os"
-	"os/signal"
-	"reflect"
-	"strconv"
-
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
@@ -25,7 +19,11 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
+	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/wallet"
+	"os"
+	"os/signal"
+	"reflect"
 )
 
 var (
@@ -200,12 +198,7 @@ func main() {
 			logger.Error(err)
 		}
 
-		u, err := strconv.ParseUint(*sendAmount, 10, 64)
-		if err != nil {
-			logger.Error(err)
-		}
-
-		amount := types.ParseBalanceInts(uint64(0), u)
+		amount := types.StringToBalance(*sendAmount)
 		err = initNode(source, *sendPwd)
 		if err != nil {
 			logger.Error(err)

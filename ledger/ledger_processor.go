@@ -156,7 +156,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 				return BalanceMismatch, nil
 			}
 		} else { //change
-			if !transferAmount.Equal(types.ParseBalanceInts(0, 0)) {
+			if !transferAmount.Equal(types.ZeroBalance) {
 				logger.Info("balance mismatch: change block, but transfer amount is not 0 ")
 				return BalanceMismatch, nil
 			}

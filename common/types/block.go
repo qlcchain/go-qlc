@@ -9,7 +9,6 @@ package types
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"errors" //"encoding/json"
 	"strings"
@@ -155,7 +154,7 @@ func (b *StateBlock) GetType() BlockType {
 func (b *StateBlock) GetHash() Hash {
 	var preamble [preambleSize]byte
 	preamble[len(preamble)-1] = byte(State)
-	return hashBytes(preamble[:], b.Address[:], b.Previous[:], b.Token[:], b.Representative[:], b.Balance.Bytes(binary.BigEndian), b.Link[:], b.Extra[:])
+	return hashBytes(preamble[:], b.Address[:], b.Previous[:], b.Token[:], b.Representative[:], b.Balance.Bytes(), b.Link[:], b.Extra[:])
 }
 
 func (b *StateBlock) GetRepresentative() Address {
