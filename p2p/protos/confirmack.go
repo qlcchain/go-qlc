@@ -1,8 +1,6 @@
 package protos
 
 import (
-	"fmt"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
@@ -16,19 +14,19 @@ type ConfirmAckBlock struct {
 }
 
 // ToProto converts domain ConfirmAckBlock into proto ConfirmAckBlock
-func ConfirmAckBlockToProto(confirmack *ConfirmAckBlock) ([]byte, error) {
-	blkdata, err := confirmack.Blk.MarshalMsg(nil)
+func ConfirmAckBlockToProto(confirmAck *ConfirmAckBlock) ([]byte, error) {
+	blkData, err := confirmAck.Blk.MarshalMsg(nil)
 	if err != nil {
 		return nil, err
 	}
-	bppb := &pb.ConfirmAck{
-		Account:   confirmack.Account.Bytes(),
-		Signature: confirmack.Signature[:],
-		Sequence:  confirmack.Sequence,
-		Blocktype: uint32(confirmack.Blk.GetType()),
-		Block:     blkdata,
+	bpPb := &pb.ConfirmAck{
+		Account:   confirmAck.Account.Bytes(),
+		Signature: confirmAck.Signature[:],
+		Sequence:  confirmAck.Sequence,
+		Blocktype: uint32(confirmAck.Blk.GetType()),
+		Block:     blkData,
 	}
-	data, err := proto.Marshal(bppb)
+	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +37,7 @@ func ConfirmAckBlockToProto(confirmack *ConfirmAckBlock) ([]byte, error) {
 func ConfirmAckBlockFromProto(data []byte) (*ConfirmAckBlock, error) {
 	ca := new(pb.ConfirmAck)
 	if err := proto.Unmarshal(data, ca); err != nil {
-		fmt.Println("Failed to unmarshal BulkPullRspPacket message.")
+		logger.Error("Failed to unmarshal BulkPullRspPacket message.")
 		return nil, err
 	}
 	blockType := ca.Blocktype

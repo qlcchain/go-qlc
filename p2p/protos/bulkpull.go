@@ -1,10 +1,9 @@
 package protos
 
 import (
-	"fmt"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
 )
 
@@ -12,6 +11,8 @@ type BulkPullReqPacket struct {
 	StartHash types.Hash
 	EndHash   types.Hash
 }
+
+var logger = log.NewLogger("p2p/pb")
 
 func NewBulkPullReqPacket(start, end types.Hash) (packet *BulkPullReqPacket) {
 	return &BulkPullReqPacket{
@@ -34,21 +35,21 @@ func BulkPullReqPacketToProto(bp *BulkPullReqPacket) ([]byte, error) {
 	return data, nil
 }
 
-/// BulkPullPacketFromProto parse the data into BulkPull message
+// BulkPullPacketFromProto parse the data into BulkPull message
 func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
 	bp := new(pb.BulkPullReq)
 	var start, end types.Hash
 	if err := proto.Unmarshal(data, bp); err != nil {
-		fmt.Println("Failed to unmarshal BulkPullPacket message.")
+		logger.Error("Failed to unmarshal BulkPullPacket message.")
 		return nil, err
 	}
 	err := start.UnmarshalBinary(bp.StartHash)
 	if err != nil {
-		fmt.Println("StartHash error")
+		logger.Error("StartHash error")
 	}
 	err = end.UnmarshalBinary(bp.EndHash)
 	if err != nil {
-		fmt.Println("EndHash error")
+		logger.Error("EndHash error")
 	}
 	bprp := &BulkPullReqPacket{
 		StartHash: start,
@@ -79,11 +80,11 @@ func BulkPullRspPacketToProto(bp *BulkPullRspPacket) ([]byte, error) {
 	return data, nil
 }
 
-/// BulkPullPacketFromProto parse the data into BulkPull message
+// BulkPullPacketFromProto parse the data into BulkPull message
 func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 	bp := new(pb.BulkPullRsp)
 	if err := proto.Unmarshal(data, bp); err != nil {
-		fmt.Println("Failed to unmarshal BulkPullRspPacket message.")
+		logger.Error("Failed to unmarshal BulkPullRspPacket message.")
 		return nil, err
 	}
 	blockType := bp.Blocktype
