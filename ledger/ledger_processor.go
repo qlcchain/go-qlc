@@ -84,13 +84,12 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		return BadSignature, nil
 	}
 
-	isSend := false
 	transferAmount := block.GetBalance()
-
 	tmExist, err := l.HasTokenMeta(address, block.GetToken(), txn)
 	if err != nil {
 		return Other, err
 	}
+	isSend := false
 	if tmExist { // this tm chain exist , not open
 		tm, err := l.GetTokenMeta(address, block.GetToken(), txn)
 		if err != nil {
