@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"fmt"
 	"github.com/json-iterator/go"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -272,7 +273,11 @@ func (dps *DposService) voteGenerate(block types.Block, account types.Address) (
 
 func (dps *DposService) GetAccountPrv(account types.Address) (*types.Account, error) {
 	session := dps.wallet.NewSession(dps.account)
-	return session.GetRawKey(account)
+	if b, err := session.VerifyPassword(dps.password); b && err == nil {
+		return session.GetRawKey(account)
+	} else {
+		return nil, fmt.Errorf("invalid password")
+	}
 }
 
 func (dps *DposService) isThisAccountRepresentation(address types.Address) bool {
