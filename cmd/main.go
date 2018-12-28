@@ -10,13 +10,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"math/rand"
 	"os"
 	"os/signal"
 	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/qlcchain/go-qlc/test/mock"
 
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
@@ -86,7 +87,7 @@ func main() {
 	//	if h {
 	//		flag.Usage()
 	//	}
-	defaultToekn := "4627e2a0c1d68238bb4f848c59f4e18288c36fb7c959d220c9914728db890de8"
+	defaultToken := mock.GetChainTokenType()
 	createCmd := flag.NewFlagSet("create", flag.ExitOnError)
 	pwd := createCmd.String("pwd", "", "password")
 
@@ -97,7 +98,7 @@ func main() {
 	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
 	sendFrom := sendCmd.String("from", "", "transfer from")
 	sendTo := sendCmd.String("to", "", "transfer to")
-	sendToken := sendCmd.String("token", defaultToekn, "transfer token")
+	sendToken := sendCmd.String("token", defaultToken.String(), "transfer token")
 	sendAmount := sendCmd.String("amount", "", "transfer amount")
 	sendPwd := sendCmd.String("pwd", "", "password")
 	sendCount := sendCmd.Int("count", 1, "transfer count")
@@ -132,6 +133,12 @@ func main() {
 		if err != nil {
 			logger.Fatal(err)
 		}
+	case "count":
+		err := CountBlock()
+		if err != nil {
+			logger.Error(err)
+		}
+		return
 	default:
 		//logger.Errorf("invalid args %s", os.Args[1])
 		return
@@ -330,6 +337,21 @@ func Import(seed string, password string) error {
 	} else {
 		logger.Infof("import seed[%s] password[%s] => %s", seed, password, addr.String())
 	}
+	return nil
+}
+
+func CountBlock() error {
+	err := initNode(types.ZeroAddress, "")
+	if err != nil {
+		return err
+	}
+	l := ctx.Ledger.Ledger
+
+	count, err := l.CountBlocks()
+	if err != nil {
+		return err
+	}
+	logger.Debugf("counts of block is[%d]", count)
 	return nil
 }
 
