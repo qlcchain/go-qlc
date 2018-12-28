@@ -382,40 +382,41 @@ func StateBlock() types.Block {
 
 func BlockChain() ([]types.Block, error) {
 	var blocks []types.Block
-	const seed1 = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133372bf4b94"
-	_, priv, err := types.KeypairFromSeed(seed1, 1)
-	if err != nil {
-		return nil, err
-	}
-	const seed2 = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133000bf4b94"
-	_, priv2, err := types.KeypairFromSeed(seed2, 1)
-	if err != nil {
-		return nil, err
-	}
-	ac1 := types.NewAccount(priv)
+	ac1 := Account()
+	ac2 := Account()
+	//ac3 := Account()
+
 	token := GetChainTokenType()
-	link := types.Hash(ac1.Address())
 
-	ac2 := types.NewAccount(priv2)
-	if err != nil {
-		return nil, err
-	}
+	b0 := createBlock(*ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(10000000))}, types.Hash(ac1.Address()), ac1.Address()) // genesis
+	blocks = append(blocks, b0)
 
-	b := createBlock(*ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(10000000))}, link, ac1.Address())
-	blocks = append(blocks, b)
+	b1 := createBlock(*ac1, b0.GetHash(), token, types.Balance{Int: big.NewInt(int64(4000000))}, types.Hash(ac2.Address()), ac1.Address()) //a1 send
+	blocks = append(blocks, b1)
 
-	link = types.Hash(ac2.Address())
-	b = createBlock(*ac1, b.GetHash(), token, types.Balance{Int: big.NewInt(int64(8000000))}, link, ac1.Address())
-	blocks = append(blocks, b)
+	b2 := createBlock(*ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(6000000))}, b1.GetHash(), ac1.Address()) //a2 open
+	blocks = append(blocks, b2)
 
-	b = createBlock(*ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(2000000))}, b.GetHash(), ac1.Address())
-	blocks = append(blocks, b)
+	b3 := createBlock(*ac2, b2.GetHash(), token, types.Balance{Int: big.NewInt(int64(6000000))}, types.ZeroHash, ac2.Address()) //a2 change
+	blocks = append(blocks, b3)
 
-	b = createBlock(*ac2, b.GetHash(), token, types.Balance{Int: big.NewInt(int64(2000000))}, types.ZeroHash, ac2.Address())
-	blocks = append(blocks, b)
+	b4 := createBlock(*ac2, b3.GetHash(), token, types.Balance{Int: big.NewInt(int64(3000000))}, types.Hash(ac1.Address()), ac2.Address()) //a2 send
+	blocks = append(blocks, b4)
+
+	b5 := createBlock(*ac1, b1.GetHash(), token, types.Balance{Int: big.NewInt(int64(7000000))}, b4.GetHash(), ac1.Address()) //a1 receive
+	blocks = append(blocks, b5)
+
+	//b6 := createBlock(*ac2, b4.GetHash(), token, types.Balance{Int: big.NewInt(int64(2000000))}, types.Hash(ac3.Address()), ac2.Address()) //a2 send
+	//blocks = append(blocks, b6)
+	//
+	//b7 := createBlock(*ac3, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(1000000))}, b6.GetHash(), ac1.Address()) //a3 open
+	//blocks = append(blocks, b7)
+	//
+	//token2 := MockHash()
+	//b8 := createBlock(*ac3, types.ZeroHash, token2, types.Balance{Int: big.NewInt(int64(100000000))}, types.Hash(ac3.Address()), ac1.Address()) //new token
+	//blocks = append(blocks, b8)
 
 	return blocks, nil
-
 }
 
 func createBlock(ac types.Account, pre types.Hash, token types.Hash, balance types.Balance, link types.Hash, rep types.Address) *types.StateBlock {

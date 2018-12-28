@@ -1,9 +1,8 @@
 package ledger
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"math"
+	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -11,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
@@ -104,15 +102,17 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	defer teardownTestCase(t)
 
 	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		addAccountMeta(t, l)
-		am := getAccount(t)
-		a, err := l.GetAccountMeta(am.Address)
-		if err != nil {
-			t.Fatal(err)
+		blk := mock.StateBlock()
+		if err := l.AddBlock(blk); err != nil {
+			t.Fatal()
 		}
-		logger.Info(a)
+		if err := l.AddBlock(mock.StateBlock()); err != nil {
+			t.Fatal()
+		}
+		if ok, err := l.HasBlock(blk.GetHash()); err != nil || !ok {
+			t.Fatal()
+		}
 		return nil
-
 	})
 
 	if err != nil {
@@ -120,125 +120,72 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	}
 }
 
-func parseBlocks(t *testing.T, filename string) (blocks []types.Block) {
-	type fileStruct struct {
-		Blocks []json.RawMessage `json:"blocks"`
-	}
-
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var file fileStruct
-	if err = json.Unmarshal(data, &file); err != nil {
-		t.Fatal(err)
-	}
-
-	for _, data := range file.Blocks {
-		var values map[string]interface{}
-		if err = json.Unmarshal(data, &values); err != nil {
-			t.Fatal(err)
-		}
-
-		id, ok := values["type"]
-		if !ok {
-			t.Fatalf("no 'type' key found in block")
-		}
-		//var blk types.Block
-		switch id {
-		case "state":
-			var blk types.StateBlock
-			if err := jsoniter.Unmarshal(data, &blk); err != nil {
-				t.Fatal(err)
-			} else {
-				blocks = append(blocks, &blk)
-			}
-		case types.SmartContract:
-			//blk := new(types.SmartContractBlock)
-		default:
-			t.Fatalf("unsupported block type")
-		}
-	}
-	return
-}
-func TestLedger_AddBlockWithSingleTxn(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	blks := parseBlocks(t, "testdata/blocks.json")
-
-	if err := l.AddBlock(blks[0]); err != nil {
+func addblock(t *testing.T, l *Ledger) types.Block {
+	blk := mock.StateBlock()
+	if err := l.AddBlock(blk); err != nil {
 		t.Log(err)
 	}
+	return blk
 }
 
-func addBlocks(t *testing.T, l *Ledger) {
-	blks := parseBlocks(t, "testdata/blocks.json")
-	if err := l.AddBlock(blks[0]); err != nil && err != ErrBlockExists {
-		t.Fatal(err)
-	}
+func TestLedger_AddBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addblock(t, l)
 }
 
 func TestLedger_GetBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addBlocks(t, l)
-
-	blks := parseBlocks(t, "testdata/blocks.json")
-	h := blks[0].GetHash()
-
-	blk, err := l.GetBlock(h)
+	block := addblock(t, l)
+	blk, err := l.GetBlock(block.GetHash())
 	t.Log("blk,", blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_GetAllBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addBlocks(t, l)
-	r, err := l.CountBlocks()
-	t.Log("blk count, ", r)
-
+	addblock(t, l)
+	addblock(t, l)
 	blks, err := l.GetBlocks()
 	for index, b := range blks {
-		t.Log(index, b, *b)
+		t.Log(index, b, b)
 	}
 
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_DeleteBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	h := types.Hash{}
-	_ = h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
-
-	addBlocks(t, l)
-	err := l.DeleteBlock(h)
+	block := addblock(t, l)
+	err := l.DeleteBlock(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_HasBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	h := types.Hash{}
-	_ = h.Of("f464d89184c7a9046cadabc4b8bc40782e0147b61f30f8a8b01e533b0566df1c")
-
-	r, err := l.HasBlock(h)
-	t.Log("hasblock,", r)
-
+	block := addblock(t, l)
+	r, err := l.HasBlock(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("hasblock,", r)
+
 }
+
 func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
@@ -248,48 +195,44 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 	if err != ErrStoreEmpty {
 		t.Fatal(err)
 	}
-	t.Log("blk ,", b)
+	t.Log("block ,", b)
 }
 
-func parseUncheckedBlock(t *testing.T) (parentHash types.Hash, blk types.Block, kind types.UncheckedKind) {
-	_ = parentHash.Of("d66750ccbb0ff65db134efaaec31d0b123a557df34e7e804d6884447ee589b3c")
-	blk, _ = types.NewBlock(types.State)
-	blocks := parseBlocks(t, "testdata/uncheckedblock.json")
-	fmt.Println(blocks)
-	blk = blocks[0]
-	kind = types.UncheckedKindLink
+func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block types.Block, kind types.UncheckedKind) {
+	block = mock.StateBlock()
+	hash = block.GetPrevious()
+	kind = types.UncheckedKindPrevious
+	if err := l.AddUncheckedBlock(hash, block, kind); err != nil {
+		t.Fatal(err)
+	}
 	return
 }
 
-func addUncheckedBlock(t *testing.T, l *Ledger) {
-	parentHash, blk, kind := parseUncheckedBlock(t)
-	if err := l.AddUncheckedBlock(parentHash, blk, kind); err != nil && err != ErrUncheckedBlockExists {
-		t.Fatal(err)
-	}
-}
 func TestLedger_AddUncheckedBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
 	addUncheckedBlock(t, l)
 }
+
 func TestLedger_GetUncheckedBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	parentHash, _, kind := parseUncheckedBlock(t)
-	addUncheckedBlock(t, l)
+	parentHash, _, kind := addUncheckedBlock(t, l)
 
-	if b, err := l.GetUncheckedBlock(parentHash, kind); err != nil && err != ErrUncheckedBlockNotFound {
+	if b, err := l.GetUncheckedBlock(parentHash, kind); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log("unchecked,", b)
 	}
 
 }
+
 func TestLedger_CountUncheckedBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
+	addUncheckedBlock(t, l)
+	addUncheckedBlock(t, l)
 
 	c, err := l.CountUncheckedBlocks()
 	if err != nil {
@@ -297,68 +240,38 @@ func TestLedger_CountUncheckedBlocks(t *testing.T) {
 	}
 	t.Log("unchecked count,", c)
 }
+
 func TestLedger_HasUncheckedBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	parentHash, _, kind := parseUncheckedBlock(t)
-
+	parentHash, _, kind := addUncheckedBlock(t, l)
 	r, err := l.HasUncheckedBlock(parentHash, kind)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("has unchecked,", r)
 }
+
 func TestLedger_DeleteUncheckedBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	parentHash, _, kind := parseUncheckedBlock(t)
+	parentHash, _, kind := addUncheckedBlock(t, l)
 	err := l.DeleteUncheckedBlock(parentHash, kind)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func parseAccountMetas(t *testing.T, filename string) (accountmetas []*types.AccountMeta) {
-	type fileStruct struct {
-		AccountMetas []json.RawMessage `json:"accountmetas"`
-	}
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var file fileStruct
-	if err = json.Unmarshal(data, &file); err != nil {
-		t.Fatal(err)
-	}
-	for _, data := range file.AccountMetas {
-		var am types.AccountMeta
-		if err := jsoniter.Unmarshal(data, &am); err != nil {
-			t.Fatal(err)
-		}
-		accountmetas = append(accountmetas, &am)
-	}
+func addAccountMeta(t *testing.T, l *Ledger) *types.AccountMeta {
 
-	return
-}
-
-func getAccount(t *testing.T) *types.AccountMeta {
-	const seed = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133000bf4b94"
-	_, priv, err := types.KeypairFromSeed(seed, 1)
-	if err != nil {
-		t.Fatal()
-	}
-	ac1 := types.NewAccount(priv)
-	am := mock.AccountMeta(ac1.Address())
-	return am
-}
-
-func addAccountMeta(t *testing.T, l *Ledger) {
-	am := getAccount(t)
+	ac := mock.Account()
+	am := mock.AccountMeta(ac.Address())
 	if err := l.AddAccountMeta(am); err != nil {
 		t.Fatal()
 	}
+	return am
 }
 
 func TestLedger_AddAccountMeta(t *testing.T) {
@@ -371,18 +284,18 @@ func TestLedger_GetAccountMeta_Empty(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
+	address := mock.Address()
 	_, err := l.GetAccountMeta(address)
 	if err != ErrAccountNotFound {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_GetAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addAccountMeta(t, l)
-	am := getAccount(t)
+	am := addAccountMeta(t, l)
 	a, err := l.GetAccountMeta(am.Address)
 	if err != nil {
 		t.Fatal(err)
@@ -392,12 +305,11 @@ func TestLedger_GetAccountMeta(t *testing.T) {
 		t.Log("token,", token)
 	}
 }
+
 func TestLedger_HasAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	addAccountMeta(t, l)
-	am := getAccount(t)
+	am := addAccountMeta(t, l)
 	r, err := l.HasAccountMeta(am.Address)
 	if err != nil {
 		t.Fatal(err)
@@ -408,19 +320,17 @@ func TestLedger_HasAccountMeta(t *testing.T) {
 func TestLedger_DeleteAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	addAccountMeta(t, l)
-	am := getAccount(t)
+	am := addAccountMeta(t, l)
 	err := l.DeleteAccountMeta(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	addAccountMeta(t, l)
-	am := getAccount(t)
+	am := addAccountMeta(t, l)
 	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
@@ -430,11 +340,11 @@ func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	}
 
 }
+
 func TestLedger_UpdateAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	addAccountMeta(t, l)
-	am := getAccount(t)
+	am := addAccountMeta(t, l)
 	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
@@ -444,128 +354,73 @@ func TestLedger_UpdateAccountMeta(t *testing.T) {
 	}
 }
 
-func parseToken(t *testing.T) (tokenmeta types.TokenMeta, address types.Address, tokenType types.Hash) {
-	filename := "testdata/token.json"
-	type fileStruct struct {
-		TokenMetas []json.RawMessage `json:"tokens"`
-	}
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var file fileStruct
-	if err = json.Unmarshal(data, &file); err != nil {
-		t.Fatal(err)
-	}
-
-	//only get one token
-	for _, data := range file.TokenMetas {
-		if err := jsoniter.Unmarshal(data, &tokenmeta); err != nil {
-			t.Fatal(err)
-		}
-		break
-	}
-
-	address, err = types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	if err != nil {
-		t.Fatal(err)
-	}
-	tokenType = tokenmeta.Type
-	return
-
-}
-
-func getToken(addr types.Address) *types.TokenMeta {
-	token := mock.TokenMeta(addr)
-	return token
-
-}
-
-func addTokenMeta(t *testing.T, l *Ledger, token *types.TokenMeta) {
-	addAccountMeta(t, l)
+func addTokenMeta(t *testing.T, l *Ledger) *types.TokenMeta {
+	tm := addAccountMeta(t, l)
+	token := mock.TokenMeta(tm.Address)
 	if err := l.AddTokenMeta(token.BelongTo, token); err != nil {
 		t.Fatal(err)
 	}
+	return token
 }
 
 func TestLedger_AddTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	tm := getAccount(t)
-	token := mock.TokenMeta(tm.Address)
-	addTokenMeta(t, l, token)
+	addTokenMeta(t, l)
 }
 
 func TestLedger_GetTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	tm := getAccount(t)
-	token := mock.TokenMeta(tm.Address)
-	addTokenMeta(t, l, token)
-
-	token, err := l.GetTokenMeta(tm.Address, token.Type)
+	token := addTokenMeta(t, l)
+	token, err := l.GetTokenMeta(token.BelongTo, token.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("token,", token)
 }
+
 func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	tm := getAccount(t)
-	token := mock.TokenMeta(tm.Address)
-	addTokenMeta(t, l, token)
-
-	token2 := mock.TokenMeta(tm.Address)
-
-	err := l.AddOrUpdateTokenMeta(tm.Address, token2)
+	token := addTokenMeta(t, l)
+	token2 := mock.TokenMeta(token.BelongTo)
+	err := l.AddOrUpdateTokenMeta(token.BelongTo, token2)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_UpdateTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	tm := getAccount(t)
-	token := mock.TokenMeta(tm.Address)
-	addTokenMeta(t, l, token)
-
-	token2 := mock.TokenMeta(tm.Address)
-	token2.Type = token.Type
-
-	err := l.UpdateTokenMeta(tm.Address, token2)
+	token := addTokenMeta(t, l)
+	token2 := mock.TokenMeta(token.BelongTo)
+	err := l.AddOrUpdateTokenMeta(token.BelongTo, token2)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_DelTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	tm := getAccount(t)
-	token := mock.TokenMeta(tm.Address)
-	addTokenMeta(t, l, token)
-
-	err := l.DeleteTokenMeta(tm.Address, token.Type)
+	token := addTokenMeta(t, l)
+	err := l.DeleteTokenMeta(token.BelongTo, token.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_HasTokenMeta_False(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	address, _, _ := types.GenerateAddress()
-	tokenType := types.Hash{}
-	tm := getAccount(t)
-	token := mock.TokenMeta(tm.Address)
-
-	addTokenMeta(t, l, token)
-
-	has, err := l.HasTokenMeta(address, tokenType)
+	token := addTokenMeta(t, l)
+	token2 := mock.TokenMeta(token.BelongTo)
+	has, err := l.HasTokenMeta(token.BelongTo, token2.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -576,11 +431,8 @@ func TestLedger_HasTokenMeta_True(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	tm := getAccount(t)
-	token := mock.TokenMeta(tm.Address)
-	addTokenMeta(t, l, token)
-
-	r, err := l.HasTokenMeta(tm.Address, token.Type)
+	token := addTokenMeta(t, l)
+	r, err := l.HasTokenMeta(token.BelongTo, token.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -616,6 +468,7 @@ func TestLedger_SubRepresentationWeight(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func TestLedger_GetRepresentation(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
@@ -630,31 +483,23 @@ func TestLedger_GetRepresentation(t *testing.T) {
 	t.Log("amount,", a)
 }
 
-func parsePending(t *testing.T) (address types.Address, hash types.Hash, pendinginfo types.PendingInfo) {
-	address, err := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = hash.Of("a624942c313e8ddd7bc12cf6188e4fb9d10da4238086aceca7f81ea3fc595ba9")
+func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendinginfo types.PendingInfo) {
+	address := mock.Address()
+	hash := mock.Hash()
 
-	balance := types.StringToBalance("23456789")
-	typehash := types.Hash{}
-	_ = typehash.Of("191cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b722448")
+	i, _ := random.Intn(math.MaxUint32)
+	balance := types.Balance{Int: big.NewInt(int64(i))}
 	pendinginfo = types.PendingInfo{
 		Source: address,
 		Amount: balance,
-		Type:   typehash,
+		Type:   mock.Hash(),
 	}
-	return
-}
-
-func addPending(t *testing.T, l *Ledger) {
-	address, hash, pendinfo := parsePending(t)
-
-	err := l.AddPending(types.PendingKey{Address: address, Hash: hash}, &pendinfo)
+	pendingkey = types.PendingKey{Address: address, Hash: hash}
+	err := l.AddPending(pendingkey, &pendinginfo)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return
 }
 
 func TestLedger_AddPending(t *testing.T) {
@@ -663,68 +508,57 @@ func TestLedger_AddPending(t *testing.T) {
 
 	addPending(t, l)
 }
+
 func TestLedger_GetPending(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	addPending(t, l)
-	address, hash, _ := parsePending(t)
-	p, err := l.GetPending(types.PendingKey{Address: address, Hash: hash})
+	pendingkey, _ := addPending(t, l)
+	p, err := l.GetPending(pendingkey)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("pending,", p)
 }
+
 func TestLedger_DeletePending(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	address, hash, _ := parsePending(t)
+	pendingkey, _ := addPending(t, l)
 
-	err := l.DeletePending(types.PendingKey{Address: address, Hash: hash})
+	err := l.DeletePending(pendingkey)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := l.GetPending(pendingkey); err != nil && err != ErrPendingNotFound {
+		t.Fatal(err)
+	}
+	t.Log("delete pending success")
 }
 
-func parseFrontier(t *testing.T) (frontier types.Frontier) {
-	headerhash := "391cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
-	openhash := "001cf191094c40f0b68e2e5f75f6bee92a2e0bd93ceaa4a6738db9f19b728948"
-	frontier.HeaderBlock.Of(headerhash)
-	frontier.OpenBlock.Of(openhash)
-	return
+func addFrontier(t *testing.T, l *Ledger) *types.Frontier {
+	frontier := new(types.Frontier)
+	frontier.HeaderBlock = mock.Hash()
+	frontier.OpenBlock = mock.Hash()
+	if err := l.AddFrontier(frontier); err != nil {
+		t.Fatal()
+	}
+	return frontier
 }
-func generateFrontier() *types.Frontier {
-	var frontier types.Frontier
-	_ = random.Bytes(frontier.HeaderBlock[:])
-	_ = random.Bytes(frontier.OpenBlock[:])
-	return &frontier
-}
+
 func TestLedger_AddFrontier(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	frontier := parseFrontier(t)
-	if err := l.AddFrontier(&frontier); err != nil && err != ErrFrontierExists {
-		t.Fatal(err)
-	}
-
-	for i := 0; i < 10; i++ {
-		err := l.AddFrontier(generateFrontier())
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
+	addFrontier(t, l)
 }
+
 func TestLedger_GetFrontier(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	frontier := parseFrontier(t)
-	if err := l.AddFrontier(&frontier); err != nil && err != ErrFrontierExists {
-		t.Fatal(err)
-	}
-	f, err := l.GetFrontier(frontier.HeaderBlock)
+	f := addFrontier(t, l)
+	f, err := l.GetFrontier(f.HeaderBlock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -734,6 +568,9 @@ func TestLedger_GetFrontier(t *testing.T) {
 func TestLedger_GetAllFrontiers(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
+	addFrontier(t, l)
+	addFrontier(t, l)
+	addFrontier(t, l)
 
 	c, err := l.CountFrontiers()
 	if err != nil {
@@ -754,12 +591,15 @@ func TestLedger_DeleteFrontier(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	frontier := parseFrontier(t)
-
-	err := l.DeleteFrontier(frontier.HeaderBlock)
+	f := addFrontier(t, l)
+	err := l.DeleteFrontier(f.HeaderBlock)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := l.GetFrontier(f.HeaderBlock); err != nil && err != ErrFrontierNotFound {
+		t.Fatal(err)
+	}
+	t.Log("delete frontier success")
 }
 
 func TestReleaseLedger(t *testing.T) {
@@ -780,15 +620,16 @@ func TestLedgerSession_Latest(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addAccountMeta(t, l)
-	block := mock.StateBlock()
-	ac := mock.AccountMeta(block.GetAddress())
-	ac.Tokens[0].Header = block.GetHash()
-	ac.Tokens[0].Type = block.(*types.StateBlock).Token
-	l.AddAccountMeta(ac)
-	l.AddBlock(block)
+	block := addblock(t, l)
+	token := mock.TokenMeta(block.GetAddress())
+	token.Header = block.GetHash()
+	token.Type = block.(*types.StateBlock).GetToken()
+	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
+	if err := l.AddAccountMeta(&ac); err != nil {
+		t.Fatal()
+	}
 
-	hash := l.Latest(ac.Address, ac.Tokens[0].Type)
+	hash := l.Latest(ac.Address, token.Type)
 
 	if hash != block.GetHash() {
 		t.Fatal("err")
@@ -799,12 +640,15 @@ func TestLedgerSession_Account(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addAccountMeta(t, l)
-	block := mock.StateBlock()
-	ac := mock.AccountMeta(block.GetAddress())
-	l.AddAccountMeta(ac)
-
-	l.AddBlock(block)
+	block := addblock(t, l)
+	token := mock.TokenMeta(block.GetAddress())
+	token.Type = block.(*types.StateBlock).GetToken()
+	token2 := mock.TokenMeta(block.GetAddress())
+	token2.Type = block.(*types.StateBlock).GetToken()
+	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token, token2}}
+	if err := l.AddAccountMeta(&ac); err != nil {
+		t.Fatal()
+	}
 
 	am, err := l.Account(block.GetHash())
 	if err != nil {
@@ -817,13 +661,14 @@ func TestLedgerSession_Token(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addAccountMeta(t, l)
-	block := mock.StateBlock()
-	ac := mock.AccountMeta(block.GetAddress())
-	ac.Tokens[0].Type = block.(*types.StateBlock).Token
-	l.AddAccountMeta(ac)
+	block := addblock(t, l)
+	token := mock.TokenMeta(block.GetAddress())
+	token.Type = block.(*types.StateBlock).GetToken()
+	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
+	if err := l.AddAccountMeta(&ac); err != nil {
+		t.Fatal()
+	}
 
-	l.AddBlock(block)
 	tm, err := l.Token(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
@@ -835,11 +680,8 @@ func TestLedgerSession_Pending(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addAccountMeta(t, l)
-	addBlocks(t, l)
-
-	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	pending, err := l.Pending(addr)
+	pendingkey, _ := addPending(t, l)
+	pending, err := l.Pending(pendingkey.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -852,11 +694,8 @@ func TestLedgerSession_Balance(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	ac := getAccount(t)
-	am := mock.AccountMeta(ac.Address)
-	l.AddAccountMeta(am)
-
-	balances, err := l.Balance(ac.Address)
+	am := addAccountMeta(t, l)
+	balances, err := l.Balance(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -869,10 +708,8 @@ func TestLedgerSession_TokenBalance(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	ac := getAccount(t)
-	am := mock.AccountMeta(ac.Address)
-	l.AddAccountMeta(am)
-	balance, err := l.TokenBalance(ac.Address, am.Tokens[0].Type)
+	tm := addTokenMeta(t, l)
+	balance, err := l.TokenBalance(tm.BelongTo, tm.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -883,17 +720,14 @@ func TestLedgerSession_TokenPending(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addAccountMeta(t, l)
-	addBlocks(t, l)
-
-	addr, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	token := types.Hash{}
-	_ = token.Of("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728918")
-	pending, err := l.TokenPending(addr, token)
+	pendingkey, pendinginfo := addPending(t, l)
+	pending, err := l.TokenPending(pendingkey.Address, pendinginfo.Type)
 	if err != nil && err != ErrPendingNotFound {
 		t.Fatal(err)
 	}
-	t.Log(pending)
+	for k, v := range pending {
+		t.Log(k, v)
+	}
 }
 
 func TestLedger_Rollback(t *testing.T) {
@@ -905,49 +739,13 @@ func TestLedger_Rollback(t *testing.T) {
 		t.Fatal()
 	}
 	for _, b := range bs {
-		processBlock(t, l, b)
+		if _, err := l.Process(b); err != nil {
+			t.Fatal()
+		}
 	}
 	h := bs[2].GetHash()
 	if err := l.Rollback(h); err != nil {
 		t.Fatal()
 	}
-
-	//check(t, l)
-}
-
-func check(t *testing.T, l *Ledger) {
-	blocks, _ := l.GetBlocks()
-	fmt.Println("----blocks: ")
-	for _, b := range blocks {
-		fmt.Println(*b)
-	}
-
-	fmt.Println("----frontiers:")
-	fs, _ := l.GetFrontiers()
-	for _, f := range fs {
-		fmt.Println(f)
-	}
-	fmt.Println("----account: ")
-	var addrs []types.Address
-	addr1, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	addrs = append(addrs, addr1)
-	addr2, _ := types.HexToAddress("qlc_1zboen99jp8q1fyb1ga5czwcd8zjhuzr7ky19kch3fj8gettjq7mudwuio6i")
-	addrs = append(addrs, addr2)
-	addr3, _ := types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
-	addrs = append(addrs, addr3)
-	for index, addr := range addrs {
-		if ac, err := l.GetAccountMeta(addr); err == nil {
-			fmt.Println("   account ", index, " ", ac.Address)
-			for _, t := range ac.Tokens {
-				fmt.Println("       token ", t)
-			}
-		}
-	}
-	fmt.Println("----representation:")
-	for _, addr := range addrs {
-		if b, err := l.GetRepresentation(addr); err == nil {
-			fmt.Println(addr, b)
-		}
-
-	}
+	checkInfo(t, l)
 }

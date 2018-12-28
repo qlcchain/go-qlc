@@ -10,6 +10,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math/rand"
+	"os"
+	"os/signal"
+	"reflect"
+	"strconv"
+	"time"
+
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
@@ -21,9 +28,6 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/wallet"
-	"os"
-	"os/signal"
-	"reflect"
 )
 
 var (
@@ -39,7 +43,7 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	fmt.Printf("qo-qlc %s-%s.%s", version, sha1ver, buildTime)
+	fmt.Printf("go-qlc %s-%s.%s", version, sha1ver, buildTime)
 
 	//	var h bool
 	//	var file string
@@ -81,7 +85,7 @@ func main() {
 	//	if h {
 	//		flag.Usage()
 	//	}
-
+	defaultToekn := "4627e2a0c1d68238bb4f848c59f4e18288c36fb7c959d220c9914728db890de8"
 	createCmd := flag.NewFlagSet("create", flag.ExitOnError)
 	pwd := createCmd.String("pwd", "", "password")
 
@@ -92,9 +96,10 @@ func main() {
 	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
 	sendFrom := sendCmd.String("from", "", "transfer from")
 	sendTo := sendCmd.String("to", "", "transfer to")
-	sendToken := sendCmd.String("token", "", "transfer token")
+	sendToken := sendCmd.String("token", defaultToekn, "transfer token")
 	sendAmount := sendCmd.String("amount", "", "transfer amount")
 	sendPwd := sendCmd.String("pwd", "", "password")
+	sendCount := sendCmd.Int("count", 1, "transfer count")
 
 	runCmd := flag.NewFlagSet("run", flag.ExitOnError)
 	addr := runCmd.String("addr", "", "account string")
@@ -198,7 +203,8 @@ func main() {
 			logger.Error(err)
 		}
 
-		amount := types.StringToBalance(*sendAmount)
+		//amount := types.StringToBalance(*sendAmount)
+		index, _ := strconv.Atoi(*sendAmount)
 		err = initNode(source, *sendPwd)
 		if err != nil {
 			logger.Error(err)
@@ -208,7 +214,14 @@ func main() {
 			logger.Error(err)
 		}
 
-		send(source, to, token, amount, *sendPwd)
+		var bs string
+		var amount types.Balance
+		for i := 0; i < *sendCount; i++ {
+			rand.Seed(time.Now().Unix())
+			bs = strconv.Itoa(rand.Intn(index))
+			amount = types.StringToBalance(bs)
+			send(source, to, token, amount, *sendPwd)
+		}
 		// Block until a signal is received.
 		s := <-c
 		fmt.Println("Got signal:", s)
