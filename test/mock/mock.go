@@ -241,7 +241,7 @@ var (
 		bigPow(10, 11),
 	}
 
-	key = []string{"", "k", "M", "G"}
+	key = []string{"", "k", "", "M"}
 
 	units = map[string]*big.Int{"raw": big.NewInt(1)}
 	//units = map[string]decimal.Decimal{

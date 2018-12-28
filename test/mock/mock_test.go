@@ -322,10 +322,11 @@ func TestBalanceToRaw(t *testing.T) {
 		want    types.Balance
 		wantErr bool
 	}{
-		{"Mqlc", args{b: b1, unit: "MQLC"}, b2, false},
-		{"Mqn1", args{b: b1, unit: "MQN1"}, b2, false},
-		{"Mqn3", args{b: b1, unit: "MQN3"}, b2, false},
-		{"Mqn5", args{b: b1, unit: "MQN5"}, b2, false},
+		{"Mqlc", args{b: b1, unit: "QLC"}, b2, false},
+		{"Mqn1", args{b: b1, unit: "QN1"}, b2, false},
+		{"Mqn3", args{b: b1, unit: "QN3"}, b2, false},
+		{"Mqn5", args{b: b1, unit: "QN5"}, b2, false},
+		{"Mqn6", args{b: b1, unit: "QN6"}, b1, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -355,10 +356,11 @@ func TestRawToBalance(t *testing.T) {
 		want    types.Balance
 		wantErr bool
 	}{
-		{"Mqlc", args{b: b2, unit: "MQLC"}, b1, false},
-		{"Mqn1", args{b: b2, unit: "MQN1"}, b1, false},
-		{"Mqn3", args{b: b2, unit: "MQN3"}, b1, false},
-		{"Mqn5", args{b: b2, unit: "MQN5"}, b1, false},
+		{"Mqlc", args{b: b2, unit: "QLC"}, b1, false},
+		{"Mqn1", args{b: b2, unit: "QN1"}, b1, false},
+		{"Mqn3", args{b: b2, unit: "QN3"}, b1, false},
+		{"Mqn5", args{b: b2, unit: "QN5"}, b1, false},
+		{"Mqn6", args{b: b2, unit: "QN6"}, b2, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
