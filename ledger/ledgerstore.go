@@ -30,7 +30,7 @@ type Store interface {
 	// blocks CURD
 	AddBlock(blk types.Block, txns ...db.StoreTxn) error
 	GetBlock(hash types.Hash, txns ...db.StoreTxn) (types.Block, error)
-	GetBlocks(txns ...db.StoreTxn) ([]*types.Block, error)
+	GetBlocks(txns ...db.StoreTxn) ([]types.Block, error)
 	DeleteBlock(hash types.Hash, txns ...db.StoreTxn) error
 	HasBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	CountBlocks(txns ...db.StoreTxn) (uint64, error)
