@@ -36,6 +36,7 @@ var (
 	ErrPendingNotFound        = errors.New("pending transaction not found")
 	ErrFrontierExists         = errors.New("frontier already exists")
 	ErrFrontierNotFound       = errors.New("frontier not found")
+	ErrRepresentationNotFound = errors.New("representation not found")
 )
 
 const (
@@ -112,8 +113,6 @@ func (l *Ledger) getBlockKey(hash types.Hash) []byte {
 	return key[:]
 }
 
-// -------------------  Block  --------------------
-
 func (l *Ledger) block2badger(blk types.Block) ([]byte, []byte, error) {
 	hash := blk.GetHash()
 	blockBytes, err := blk.MarshalMsg(nil)
@@ -169,8 +168,8 @@ func (l *Ledger) GetBlock(hash types.Hash, txns ...db.StoreTxn) (types.Block, er
 	return blk, nil
 }
 
-func (l *Ledger) GetBlocks(txns ...db.StoreTxn) ([]*types.Block, error) {
-	var blocks []*types.Block
+func (l *Ledger) GetBlocks(txns ...db.StoreTxn) ([]types.Block, error) {
+	var blocks []types.Block
 	//var blk types.Block
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -181,7 +180,7 @@ func (l *Ledger) GetBlocks(txns ...db.StoreTxn) ([]*types.Block, error) {
 			return
 		}
 		_, err = blk.UnmarshalMsg(val)
-		blocks = append(blocks, &blk)
+		blocks = append(blocks, blk)
 		return
 	})
 
@@ -279,8 +278,6 @@ func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
 		panic("bad unchecked block kind")
 	}
 }
-
-// ------------------- unchecked Block  --------------------
 
 func (l *Ledger) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind) []byte {
 	var key [1 + types.HashSize]byte
@@ -394,8 +391,6 @@ func (l *Ledger) getAccountMetaKey(address types.Address) []byte {
 	copy(key[1:], address[:])
 	return key[:]
 }
-
-// ------------------- AccountMeta  --------------------
 
 func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error {
 	metaBytes, err := meta.MarshalMsg(nil)
@@ -516,8 +511,6 @@ func (l *Ledger) AddTokenMeta(address types.Address, meta *types.TokenMeta, txns
 	return l.UpdateAccountMeta(am, txns...)
 }
 
-// ------------------- TokenMeta  --------------------
-
 func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
 	am, err := l.GetAccountMeta(address, txns...)
 	if err != nil {
@@ -611,11 +604,9 @@ func (l *Ledger) getRepresentationKey(address types.Address) []byte {
 	return key[:]
 }
 
-// ------------------- representation  --------------------
-
 func (l *Ledger) AddRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error {
 	oldAmount, err := l.GetRepresentation(address, txns...)
-	if err != nil && err != badger.ErrKeyNotFound {
+	if err != nil && err != ErrRepresentationNotFound {
 		return err
 	}
 	amount = oldAmount.Add(amount)
@@ -660,18 +651,26 @@ func (l *Ledger) GetRepresentation(address types.Address, txns ...db.StoreTxn) (
 		return nil
 	})
 	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return types.ZeroBalance, ErrRepresentationNotFound
+		}
 		return types.ZeroBalance, err
 	}
 	return amount, nil
 }
 
 func (l *Ledger) getPendingKey(pendingKey types.PendingKey) []byte {
-	key := []byte{idPrefixPending}
-	_, _ = pendingKey.MarshalMsg(key[1:])
-	return key[:]
-}
+	//key := []byte{idPrefixPending}
+	//_, _ = pendingKey.MarshalMsg(key[1:])
+	//return key[:]
 
-// ------------------- pending  --------------------
+	msg, _ := pendingKey.MarshalMsg(nil)
+	key := make([]byte, 1+len(msg))
+	key[0] = idPrefixPending
+	copy(key[1:], msg)
+	return key[:]
+
+}
 
 func (l *Ledger) AddPending(pendingKey types.PendingKey, pending *types.PendingInfo, txns ...db.StoreTxn) error {
 	pendingBytes, err := pending.MarshalMsg(nil)
@@ -730,8 +729,6 @@ func (l *Ledger) getFrontierKey(hash types.Hash) []byte {
 	copy(key[1:], hash[:])
 	return key[:]
 }
-
-// ------------------- frontier  --------------------
 
 func (l *Ledger) AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) error {
 	key := l.getFrontierKey(frontier.HeaderBlock)
@@ -906,9 +903,9 @@ func (l *Ledger) Pending(account types.Address, txns ...db.StoreTxn) ([]*types.P
 
 	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
 		pendingKey := types.PendingKey{}
-		_, err := pendingKey.UnmarshalMsg(key)
+		_, err := pendingKey.UnmarshalMsg(key[1:])
 		if err != nil {
-			return nil
+			return err
 		}
 		if pendingKey.Address == account {
 			cache = append(cache, &pendingKey)
@@ -947,7 +944,7 @@ func (l *Ledger) TokenPending(account types.Address, token types.Hash, txns ...d
 
 	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
 		pendingKey := types.PendingKey{}
-		_, err := pendingKey.UnmarshalMsg(key)
+		_, err := pendingKey.UnmarshalMsg(key[1:])
 		if err != nil {
 			return nil
 		}
