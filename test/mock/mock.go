@@ -299,7 +299,7 @@ func bigPow(base int64, exp int64) *big.Int {
 }
 
 func TokenMeta(addr types.Address) *types.TokenMeta {
-	s1, _ := random.Intn(math.MaxInt64)
+	s1, _ := random.Intn(math.MaxInt32)
 	i := new(big.Int).SetInt64(int64(s1))
 	t := types.TokenMeta{
 		//TokenAccount: Address(),
@@ -362,7 +362,7 @@ func StateBlock() types.Block {
 	a := Account()
 	b, _ := types.NewBlock(types.State)
 	sb := b.(*types.StateBlock)
-	i, _ := random.Intn(math.MaxUint32)
+	i, _ := random.Intn(math.MaxInt16)
 	sb.Type = types.State
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
 	sb.Address = Address()

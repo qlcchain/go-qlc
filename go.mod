@@ -41,7 +41,7 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kr/pty v1.1.3 // indirect
 	github.com/libp2p/go-addr-util v2.0.7+incompatible // indirect
-	github.com/libp2p/go-buffer-pool v0.1.1 // indirect
+	github.com/libp2p/go-buffer-pool v0.0.0-20181009104743-058210c5a0d0 // indirect
 	github.com/libp2p/go-conn-security v0.1.15 // indirect
 	github.com/libp2p/go-conn-security-multistream v0.1.15 // indirect
 	github.com/libp2p/go-flow-metrics v0.2.0 // indirect
