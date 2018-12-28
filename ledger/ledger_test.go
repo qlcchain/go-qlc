@@ -350,7 +350,7 @@ func getAccount(t *testing.T) *types.AccountMeta {
 		t.Fatal()
 	}
 	ac1 := types.NewAccount(priv)
-	am := mock.MockAccountMeta(ac1.Address())
+	am := mock.AccountMeta(ac1.Address())
 	return am
 }
 
@@ -421,7 +421,7 @@ func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	defer teardownTestCase(t)
 	addAccountMeta(t, l)
 	am := getAccount(t)
-	token := mock.MockTokenMeta(am.Address)
+	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
 	err := l.AddOrUpdateAccountMeta(am)
@@ -435,7 +435,7 @@ func TestLedger_UpdateAccountMeta(t *testing.T) {
 	defer teardownTestCase(t)
 	addAccountMeta(t, l)
 	am := getAccount(t)
-	token := mock.MockTokenMeta(am.Address)
+	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
 	err := l.AddOrUpdateAccountMeta(am)
@@ -476,7 +476,7 @@ func parseToken(t *testing.T) (tokenmeta types.TokenMeta, address types.Address,
 }
 
 func getToken(addr types.Address) *types.TokenMeta {
-	token := mock.MockTokenMeta(addr)
+	token := mock.TokenMeta(addr)
 	return token
 
 }
@@ -492,7 +492,7 @@ func TestLedger_AddTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	tm := getAccount(t)
-	token := mock.MockTokenMeta(tm.Address)
+	token := mock.TokenMeta(tm.Address)
 	addTokenMeta(t, l, token)
 }
 
@@ -501,7 +501,7 @@ func TestLedger_GetTokenMeta(t *testing.T) {
 	defer teardownTestCase(t)
 
 	tm := getAccount(t)
-	token := mock.MockTokenMeta(tm.Address)
+	token := mock.TokenMeta(tm.Address)
 	addTokenMeta(t, l, token)
 
 	token, err := l.GetTokenMeta(tm.Address, token.Type)
@@ -515,10 +515,10 @@ func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
 	defer teardownTestCase(t)
 
 	tm := getAccount(t)
-	token := mock.MockTokenMeta(tm.Address)
+	token := mock.TokenMeta(tm.Address)
 	addTokenMeta(t, l, token)
 
-	token2 := mock.MockTokenMeta(tm.Address)
+	token2 := mock.TokenMeta(tm.Address)
 
 	err := l.AddOrUpdateTokenMeta(tm.Address, token2)
 	if err != nil {
@@ -530,10 +530,10 @@ func TestLedger_UpdateTokenMeta(t *testing.T) {
 	defer teardownTestCase(t)
 
 	tm := getAccount(t)
-	token := mock.MockTokenMeta(tm.Address)
+	token := mock.TokenMeta(tm.Address)
 	addTokenMeta(t, l, token)
 
-	token2 := mock.MockTokenMeta(tm.Address)
+	token2 := mock.TokenMeta(tm.Address)
 	token2.Type = token.Type
 
 	err := l.UpdateTokenMeta(tm.Address, token2)
@@ -546,7 +546,7 @@ func TestLedger_DelTokenMeta(t *testing.T) {
 	defer teardownTestCase(t)
 
 	tm := getAccount(t)
-	token := mock.MockTokenMeta(tm.Address)
+	token := mock.TokenMeta(tm.Address)
 	addTokenMeta(t, l, token)
 
 	err := l.DeleteTokenMeta(tm.Address, token.Type)
@@ -561,7 +561,7 @@ func TestLedger_HasTokenMeta_False(t *testing.T) {
 	address, _, _ := types.GenerateAddress()
 	tokenType := types.Hash{}
 	tm := getAccount(t)
-	token := mock.MockTokenMeta(tm.Address)
+	token := mock.TokenMeta(tm.Address)
 
 	addTokenMeta(t, l, token)
 
@@ -577,7 +577,7 @@ func TestLedger_HasTokenMeta_True(t *testing.T) {
 	defer teardownTestCase(t)
 
 	tm := getAccount(t)
-	token := mock.MockTokenMeta(tm.Address)
+	token := mock.TokenMeta(tm.Address)
 	addTokenMeta(t, l, token)
 
 	r, err := l.HasTokenMeta(tm.Address, token.Type)
@@ -782,7 +782,7 @@ func TestLedgerSession_Latest(t *testing.T) {
 
 	addAccountMeta(t, l)
 	block := mock.StateBlock()
-	ac := mock.MockAccountMeta(block.GetAddress())
+	ac := mock.AccountMeta(block.GetAddress())
 	ac.Tokens[0].Header = block.GetHash()
 	ac.Tokens[0].Type = block.(*types.StateBlock).Token
 	l.AddAccountMeta(ac)
@@ -801,7 +801,7 @@ func TestLedgerSession_Account(t *testing.T) {
 
 	addAccountMeta(t, l)
 	block := mock.StateBlock()
-	ac := mock.MockAccountMeta(block.GetAddress())
+	ac := mock.AccountMeta(block.GetAddress())
 	l.AddAccountMeta(ac)
 
 	l.AddBlock(block)
@@ -819,7 +819,7 @@ func TestLedgerSession_Token(t *testing.T) {
 
 	addAccountMeta(t, l)
 	block := mock.StateBlock()
-	ac := mock.MockAccountMeta(block.GetAddress())
+	ac := mock.AccountMeta(block.GetAddress())
 	ac.Tokens[0].Type = block.(*types.StateBlock).Token
 	l.AddAccountMeta(ac)
 
@@ -853,7 +853,7 @@ func TestLedgerSession_Balance(t *testing.T) {
 	defer teardownTestCase(t)
 
 	ac := getAccount(t)
-	am := mock.MockAccountMeta(ac.Address)
+	am := mock.AccountMeta(ac.Address)
 	l.AddAccountMeta(am)
 
 	balances, err := l.Balance(ac.Address)
@@ -870,7 +870,7 @@ func TestLedgerSession_TokenBalance(t *testing.T) {
 	defer teardownTestCase(t)
 
 	ac := getAccount(t)
-	am := mock.MockAccountMeta(ac.Address)
+	am := mock.AccountMeta(ac.Address)
 	l.AddAccountMeta(am)
 	balance, err := l.TokenBalance(ac.Address, am.Tokens[0].Type)
 	if err != nil {
@@ -900,7 +900,7 @@ func TestLedger_Rollback(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	bs, err := mock.MockBlockChain()
+	bs, err := mock.BlockChain()
 	if err != nil {
 		t.Fatal()
 	}

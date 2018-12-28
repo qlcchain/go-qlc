@@ -11,17 +11,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/json-iterator/go"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/crypto/random"
+	"math/big"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 func TestMockHash(t *testing.T) {
-	hash := MockHash()
+	hash := Hash()
 	if hash.IsZero() {
 		t.Fatal("create hash failed.")
 	} else {
@@ -30,15 +32,15 @@ func TestMockHash(t *testing.T) {
 }
 
 func TestMockAddress(t *testing.T) {
-	address := MockAddress()
+	address := Address()
 	if !types.IsValidHexAddress(address.String()) {
 		t.Fatal("mock address failed")
 	}
 }
 
 func TestAccountMeta_Token(t *testing.T) {
-	addr := MockAddress()
-	am := MockAccountMeta(addr)
+	addr := Address()
+	am := AccountMeta(addr)
 	token := am.Token(types.Hash{})
 	if token != nil {
 		t.Fatal("get token failed")
@@ -54,15 +56,15 @@ func TestAccountMeta_Token(t *testing.T) {
 }
 
 func TestMockAccountMeta(t *testing.T) {
-	addr := MockAddress()
-	am := MockAccountMeta(addr)
+	addr := Address()
+	am := AccountMeta(addr)
 	bytes, err := jsoniter.Marshal(am)
 	if err != nil {
 		t.Log(err)
 	}
 	t.Log(string(bytes))
 
-	tm := MockTokenMeta(addr)
+	tm := TokenMeta(addr)
 	tm.Type = types.Hash{}
 
 	am.Tokens[0] = tm
@@ -126,8 +128,8 @@ func TestMockGenesisScBlock(t *testing.T) {
 	abi := []byte("6060604052341561000F57600080FD5B336000806101000A81548173FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF021916908373FFFFFFFFFFFFFFFFFFFF")
 	hash, _ := types.HashBytes(abi)
 	sb.Abi = types.ContractAbi{Abi: abi, AbiLength: 64, AbiHash: hash}
-	sb.Address = MockAddress()
-	sb.Issuer = MockAddress()
+	sb.Address = Address()
+	sb.Issuer = Address()
 	sb.InternalAccount, _ = types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
 
 	_, priv, err := types.KeypairFromSeed("425E747CFCDD993019EB1AAC97FD2F5D3A94835D9A779C9BDC590739EDD1BB45", 0)
@@ -186,8 +188,8 @@ func TestGenerate(t *testing.T) {
 		_ = random.Bytes(abi)
 		hash, _ := types.HashBytes(abi)
 		sb.Abi = types.ContractAbi{Abi: abi, AbiLength: uint64(i), AbiHash: hash}
-		sb.Address = MockAddress()
-		sb.Issuer = MockAddress()
+		sb.Address = Address()
+		sb.Issuer = Address()
 		sb.InternalAccount = masterAddress
 
 		h := sb.GetHash()
@@ -302,5 +304,106 @@ func TestGetChainTokenType(t *testing.T) {
 	}
 	if genesisBlocks[0].Token != h {
 		t.Fatal("genesis error")
+	}
+}
+
+func TestBalanceToRaw(t *testing.T) {
+	b1 := types.Balance{Int: big.NewInt(2)}
+	i, _ := new(big.Int).SetString("200000000", 10)
+	b2 := types.Balance{Int: i}
+
+	type args struct {
+		b    types.Balance
+		unit string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    types.Balance
+		wantErr bool
+	}{
+		{"Mqlc", args{b: b1, unit: "MQLC"}, b2, false},
+		{"Mqn1", args{b: b1, unit: "MQN1"}, b2, false},
+		{"Mqn3", args{b: b1, unit: "MQN3"}, b2, false},
+		{"Mqn5", args{b: b1, unit: "MQN5"}, b2, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := BalanceToRaw(tt.args.b, tt.args.unit)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BalanceToRaw() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("BalanceToRaw() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRawToBalance(t *testing.T) {
+	b1 := types.Balance{Int: big.NewInt(2)}
+	i, _ := new(big.Int).SetString("200000000", 10)
+	b2 := types.Balance{Int: i}
+	type args struct {
+		b    types.Balance
+		unit string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    types.Balance
+		wantErr bool
+	}{
+		{"Mqlc", args{b: b2, unit: "MQLC"}, b1, false},
+		{"Mqn1", args{b: b2, unit: "MQN1"}, b1, false},
+		{"Mqn3", args{b: b2, unit: "MQN3"}, b1, false},
+		{"Mqn5", args{b: b2, unit: "MQN5"}, b1, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := RawToBalance(tt.args.b, tt.args.unit)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RawToBalance() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RawToBalance() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetSmartContracts(t *testing.T) {
+	contracts := GetSmartContracts()
+	for _, c := range contracts {
+		t.Logf("%p: %s", &c, c.GetHash().String())
+	}
+}
+
+func TestStateBlock(t *testing.T) {
+	b := StateBlock()
+	if valid := b.IsValid(); !valid {
+		t.Fatal("state block is invalid")
+	}
+}
+
+func TestAccount(t *testing.T) {
+	account := Account()
+	h := Hash()
+	sign := account.Sign(h)
+	if !account.Address().Verify(h[:], sign[:]) {
+		t.Fatal("account verify error")
+	}
+}
+
+func TestBlockChain(t *testing.T) {
+	blocks, err := BlockChain()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(blocks) == 0 {
+		t.Fatal("create blocks error")
 	}
 }

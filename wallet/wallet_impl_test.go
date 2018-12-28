@@ -152,7 +152,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 	addr := account.Address()
 	t.Log(addr.String())
 
-	am := mock.MockAccountMeta(addr)
+	am := mock.AccountMeta(addr)
 	l := session.ledger
 
 	err = l.AddAccountMeta(am)
@@ -183,7 +183,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 		t.Fatal("IsAccountExist2 failed", addr2.String())
 	}
 
-	addr3 := mock.MockAddress()
+	addr3 := mock.Address()
 	if exist := session.IsAccountExist(addr3); exist {
 		t.Fatal("IsAccountExist3 failed", addr2.String())
 	}
@@ -208,7 +208,7 @@ func TestSession_GetRawKey(t *testing.T) {
 	pub, priv, err := types.KeypairFromSeed(seed, 2)
 
 	acc1 := types.NewAccount(priv)
-	hash := mock.MockHash()
+	hash := mock.Hash()
 
 	sign := acc1.Sign(hash)
 	addr := types.PubToAddress(pub)
@@ -222,7 +222,7 @@ func TestSession_GetRawKey(t *testing.T) {
 		t.Fatal("verify failed.")
 	}
 
-	addr2 := mock.MockAddress()
+	addr2 := mock.Address()
 	if _, err = session.GetRawKey(addr2); err == nil {
 		t.Fatal("get invalid raw key failed")
 	}
@@ -333,7 +333,7 @@ func TestSession_GetWork(t *testing.T) {
 
 	session := store.NewSession(id)
 	//h:=mockHash()
-	addr := mock.MockAddress()
+	addr := mock.Address()
 
 	work, err := session.GetWork(addr)
 	if err != nil {
@@ -354,7 +354,7 @@ func TestGenerateWork(t *testing.T) {
 	done := make(chan string)
 	go func() {
 		session := store.NewSession(id)
-		hash := mock.MockHash()
+		hash := mock.Hash()
 		work := session.generateWork(hash)
 		if !work.IsValid(hash) {
 			t.Fatal("generateWork failed =>", hash.String())
@@ -386,7 +386,7 @@ func TestSession_GetAccounts(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			account, _ := ss.Account(uint32(i))
 			addr := account.Address()
-			am := mock.MockAccountMeta(addr)
+			am := mock.AccountMeta(addr)
 			err = s.AddAccountMeta(am, txn)
 			if err != nil {
 				t.Fatal(err)
@@ -458,7 +458,7 @@ func TestSession_SetDeterministicIndex(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"SetDeterministicIndex", fields{Store: store, walletId: mock.MockAddress().Bytes()}, args{3}, false},
+		{"SetDeterministicIndex", fields{Store: store, walletId: mock.Address().Bytes()}, args{3}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -547,7 +547,7 @@ func TestSession_setWork(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"setWork", fields{Store: store}, args{account: mock.MockAddress(), work: types.Work(1111)}, false},
+		{"setWork", fields{Store: store}, args{account: mock.Address(), work: types.Work(1111)}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -631,7 +631,7 @@ func TestSession_getPassword(t *testing.T) {
 		fields fields
 		want   []byte
 	}{
-		{"getPassword", fields{Store: store, walletId: mock.MockAddress().Bytes(), password: pwd}, pwd.Bytes()},
+		{"getPassword", fields{Store: store, walletId: mock.Address().Bytes(), password: pwd}, pwd.Bytes()},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -671,7 +671,7 @@ func TestSession_setPassword(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"setPassword", fields{Store: store, walletId: mock.MockAddress().Bytes()}, args{"v3FGe68mFYGewjQ3zjb9"}},
+		{"setPassword", fields{Store: store, walletId: mock.Address().Bytes()}, args{"v3FGe68mFYGewjQ3zjb9"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
