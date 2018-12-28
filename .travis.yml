@@ -24,7 +24,7 @@ script:
   - ./ci/travis.gofmt.sh
   - ./ci/travis.govet.sh
   - ./ci/travis.codecov.sh
-  - make all
+  - make
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
