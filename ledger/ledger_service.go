@@ -41,7 +41,7 @@ func (ls *LedgerService) Init() error {
 		for i := 0; i < len(sbs); i++ {
 			sb := sbs[i]
 			h := sb.GetHash()
-			if b, err := l.HasBlock(h, txn); !b && err != nil {
+			if b, err := l.HasBlock(h, txn); !b && err == nil {
 				err := l.AddBlock(sb, txn)
 				if err != nil {
 					logger.Error(err)

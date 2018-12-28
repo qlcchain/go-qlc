@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/qlcchain/go-qlc/test/mock"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -259,7 +260,8 @@ func initNode(account types.Address, password string) error {
 						if a, err := s.GetRawKey(types.Address(b.Link)); err == nil {
 							addr := a.Address()
 							if addr.ToHash() == b.Link {
-								logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), addr.String(), b.Balance)
+								balance, _ := mock.RawToBalance(b.Balance, "QLC")
+								logger.Debugf("receive block from [%s] to[%s] amount[%d]", b.Address.String(), addr.String(), balance)
 								err = receive(b, s, addr)
 								if err != nil {
 									logger.Debugf("err[%s] when generate receive block.", err)
@@ -339,7 +341,8 @@ func send(from, to types.Address, token types.Hash, amount types.Balance, passwo
 	session := w.NewSession(from)
 
 	if b, err := session.VerifyPassword(password); b && err == nil {
-		sendblock, err := session.GenerateSendBlock(from, token, to, amount)
+		a, _ := mock.BalanceToRaw(amount, "QLC")
+		sendblock, err := session.GenerateSendBlock(from, token, to, a)
 		if err != nil {
 			logger.Fatal(err)
 		}

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
@@ -33,9 +32,6 @@ const (
 var (
 	// ZeroBalance zero
 	ZeroBalance = Balance{big.NewInt(0)}
-
-	//ErrBadBalanceSize bad size
-	ErrBadBalanceSize = errors.New("balances should be 16 bytes in size")
 )
 
 // Balance of account
@@ -147,4 +143,9 @@ func (b *Balance) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (b *Balance) UnmarshalJSON(text []byte) error {
 	return b.UnmarshalText(text)
+}
+
+// IsZero check balance is zero
+func (b *Balance) IsZero() bool {
+	return b.Equal(ZeroBalance)
 }

@@ -12,7 +12,7 @@ func TestProcess_BlockBasicInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	bs, err := mock.MockBlockChain()
+	bs, err := mock.BlockChain()
 	if err != nil {
 		t.Fatal()
 	}

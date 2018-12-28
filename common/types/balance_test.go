@@ -118,3 +118,27 @@ func TestBalance_MarshalBinaryTo(t *testing.T) {
 		t.Fatal("b != b2")
 	}
 }
+
+func TestBalance_IsZero(t *testing.T) {
+	type fields struct {
+		Int *big.Int
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{"iszero1", fields{Int: big.NewInt(0)}, true},
+		{"iszero2", fields{Int: big.NewInt(222)}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &Balance{
+				Int: tt.fields.Int,
+			}
+			if got := b.IsZero(); got != tt.want {
+				t.Errorf("Balance.IsZero() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -267,7 +267,7 @@ func TestLedger_DeleteUncheckedBlock(t *testing.T) {
 func addAccountMeta(t *testing.T, l *Ledger) *types.AccountMeta {
 
 	ac := mock.Account()
-	am := mock.MockAccountMeta(ac.Address())
+	am := mock.AccountMeta(ac.Address())
 	if err := l.AddAccountMeta(am); err != nil {
 		t.Fatal()
 	}
@@ -284,7 +284,7 @@ func TestLedger_GetAccountMeta_Empty(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	address := mock.MockAddress()
+	address := mock.Address()
 	_, err := l.GetAccountMeta(address)
 	if err != ErrAccountNotFound {
 		t.Fatal(err)
@@ -331,7 +331,7 @@ func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMeta(t, l)
-	token := mock.MockTokenMeta(am.Address)
+	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
 	err := l.AddOrUpdateAccountMeta(am)
@@ -345,7 +345,7 @@ func TestLedger_UpdateAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMeta(t, l)
-	token := mock.MockTokenMeta(am.Address)
+	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
 	err := l.AddOrUpdateAccountMeta(am)
@@ -356,7 +356,7 @@ func TestLedger_UpdateAccountMeta(t *testing.T) {
 
 func addTokenMeta(t *testing.T, l *Ledger) *types.TokenMeta {
 	tm := addAccountMeta(t, l)
-	token := mock.MockTokenMeta(tm.Address)
+	token := mock.TokenMeta(tm.Address)
 	if err := l.AddTokenMeta(token.BelongTo, token); err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +386,7 @@ func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
 	defer teardownTestCase(t)
 
 	token := addTokenMeta(t, l)
-	token2 := mock.MockTokenMeta(token.BelongTo)
+	token2 := mock.TokenMeta(token.BelongTo)
 	err := l.AddOrUpdateTokenMeta(token.BelongTo, token2)
 	if err != nil {
 		t.Fatal(err)
@@ -397,7 +397,7 @@ func TestLedger_UpdateTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	token := addTokenMeta(t, l)
-	token2 := mock.MockTokenMeta(token.BelongTo)
+	token2 := mock.TokenMeta(token.BelongTo)
 	err := l.AddOrUpdateTokenMeta(token.BelongTo, token2)
 	if err != nil {
 		t.Fatal(err)
@@ -419,7 +419,7 @@ func TestLedger_HasTokenMeta_False(t *testing.T) {
 	defer teardownTestCase(t)
 
 	token := addTokenMeta(t, l)
-	token2 := mock.MockTokenMeta(token.BelongTo)
+	token2 := mock.TokenMeta(token.BelongTo)
 	has, err := l.HasTokenMeta(token.BelongTo, token2.Type)
 	if err != nil {
 		t.Fatal(err)
@@ -484,15 +484,15 @@ func TestLedger_GetRepresentation(t *testing.T) {
 }
 
 func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendinginfo types.PendingInfo) {
-	address := mock.MockAddress()
-	hash := mock.MockHash()
+	address := mock.Address()
+	hash := mock.Hash()
 
 	i, _ := random.Intn(math.MaxUint32)
 	balance := types.Balance{Int: big.NewInt(int64(i))}
 	pendinginfo = types.PendingInfo{
 		Source: address,
 		Amount: balance,
-		Type:   mock.MockHash(),
+		Type:   mock.Hash(),
 	}
 	pendingkey = types.PendingKey{Address: address, Hash: hash}
 	err := l.AddPending(pendingkey, &pendinginfo)
@@ -540,8 +540,8 @@ func TestLedger_DeletePending(t *testing.T) {
 
 func addFrontier(t *testing.T, l *Ledger) *types.Frontier {
 	frontier := new(types.Frontier)
-	frontier.HeaderBlock = mock.MockHash()
-	frontier.OpenBlock = mock.MockHash()
+	frontier.HeaderBlock = mock.Hash()
+	frontier.OpenBlock = mock.Hash()
 	if err := l.AddFrontier(frontier); err != nil {
 		t.Fatal()
 	}
@@ -621,7 +621,7 @@ func TestLedgerSession_Latest(t *testing.T) {
 	defer teardownTestCase(t)
 
 	block := addblock(t, l)
-	token := mock.MockTokenMeta(block.GetAddress())
+	token := mock.TokenMeta(block.GetAddress())
 	token.Header = block.GetHash()
 	token.Type = block.(*types.StateBlock).GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
@@ -641,9 +641,9 @@ func TestLedgerSession_Account(t *testing.T) {
 	defer teardownTestCase(t)
 
 	block := addblock(t, l)
-	token := mock.MockTokenMeta(block.GetAddress())
+	token := mock.TokenMeta(block.GetAddress())
 	token.Type = block.(*types.StateBlock).GetToken()
-	token2 := mock.MockTokenMeta(block.GetAddress())
+	token2 := mock.TokenMeta(block.GetAddress())
 	token2.Type = block.(*types.StateBlock).GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token, token2}}
 	if err := l.AddAccountMeta(&ac); err != nil {
@@ -662,7 +662,7 @@ func TestLedgerSession_Token(t *testing.T) {
 	defer teardownTestCase(t)
 
 	block := addblock(t, l)
-	token := mock.MockTokenMeta(block.GetAddress())
+	token := mock.TokenMeta(block.GetAddress())
 	token.Type = block.(*types.StateBlock).GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
 	if err := l.AddAccountMeta(&ac); err != nil {
@@ -734,7 +734,7 @@ func TestLedger_Rollback(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	bs, err := mock.MockBlockChain()
+	bs, err := mock.BlockChain()
 	if err != nil {
 		t.Fatal()
 	}
