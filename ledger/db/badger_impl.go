@@ -1,12 +1,13 @@
 package db
 
 import (
+	"log"
+	"sort"
+
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
 	"github.com/qlcchain/go-qlc/common/util"
 	log2 "github.com/qlcchain/go-qlc/log"
-	"log"
-	"sort"
 )
 
 // BadgerStore represents a block lattice store backed by a badger database.

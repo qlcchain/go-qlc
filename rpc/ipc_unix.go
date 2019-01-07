@@ -28,6 +28,7 @@ import (
 // ipcListen will create a Unix socket on the given endpoint.
 func ipcListen(endpoint string) (net.Listener, error) {
 	// Ensure the IPC path exists and remove any previous leftover
+	logger.Info("create endpoint file")
 	if err := os.MkdirAll(filepath.Dir(endpoint), 0751); err != nil {
 		return nil, err
 	}

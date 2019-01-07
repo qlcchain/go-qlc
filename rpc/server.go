@@ -51,20 +51,20 @@ func NewServer() *Server {
 
 	// register a default service which will provide meta information about the RPC service such as the services and
 	// methods it offers.
-	rpcService := &RPCService{server}
+	rpcService := &RPCServices{server}
 	server.RegisterName(MetadataApi, rpcService)
 
 	return server
 }
 
-// RPCService gives meta information about the server.
+// RPCServices gives meta information about the server.
 // e.g. gives information about the loaded modules.
-type RPCService struct {
+type RPCServices struct {
 	server *Server
 }
 
 // Modules returns the list of RPC services with their version number
-func (s *RPCService) Modules() map[string]string {
+func (s *RPCServices) Modules() map[string]string {
 	modules := make(map[string]string)
 	for name := range s.server.services {
 		modules[name] = "1.0"
@@ -227,7 +227,7 @@ func (s *Server) ServeSingleRequest(ctx context.Context, codec ServerCodec, opti
 // close all codecs which will cancel pending requests/subscriptions.
 func (s *Server) Stop() {
 	if atomic.CompareAndSwapInt32(&s.run, 1, 0) {
-		logger.Debug("RPC Server shutdown initiatied")
+		//logger.Debug("RPC Server shutdown initiatied")
 		s.codecsMu.Lock()
 		defer s.codecsMu.Unlock()
 		s.codecs.Each(func(c interface{}) bool {
@@ -379,14 +379,11 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) {
 	logger.Info("func: readRequest")
 	reqs, batch, err := codec.ReadRequestHeaders()
-	logger.Info(err)
 	if err != nil {
-
 		logger.Info(err)
 		return nil, batch, err
 	}
 
-	logger.Info()
 	requests := make([]*serverRequest, len(reqs))
 
 	// verify requests

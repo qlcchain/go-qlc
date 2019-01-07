@@ -69,7 +69,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		return BadWork, nil
 	}
 
-	blockExist, err := l.HasBlock(hash, txn)
+	blockExist, err := l.HasStateBlock(hash, txn)
 	if err != nil {
 		return Other, err
 	}
@@ -106,7 +106,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 			logger.Info("fork: token meta exist, but pre hash is zero")
 			return Fork, nil
 		}
-		preExist, err := l.HasBlock(block.GetPrevious(), txn)
+		preExist, err := l.HasStateBlock(block.GetPrevious(), txn)
 		if err != nil {
 			return Other, err
 		}
@@ -137,7 +137,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 	}
 	if !isSend {
 		if !link.IsZero() { // open or receive
-			linkExist, err := l.HasBlock(link, txn)
+			linkExist, err := l.HasStateBlock(link, txn)
 			if err != nil {
 				return Other, err
 			}
@@ -288,7 +288,7 @@ func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMe
 			if err := l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {
 				return err
 			}
-			//blk, err := l.GetBlock(tm.Representative, txn)
+			//blk, err := l.GetStateBlock(tm.Representative, txn)
 			//if err != nil {
 			//	return err
 			//}

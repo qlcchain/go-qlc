@@ -27,14 +27,17 @@ type Store interface {
 	GetTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error)
 	UpdateTokenMeta(address types.Address, meta *types.TokenMeta, txns ...db.StoreTxn) error
 	DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error
-	// blocks CURD
+	// state block CURD
 	AddBlock(blk types.Block, txns ...db.StoreTxn) error
-	GetBlock(hash types.Hash, txns ...db.StoreTxn) (types.Block, error)
-	GetBlocks(txns ...db.StoreTxn) ([]types.Block, error)
-	DeleteBlock(hash types.Hash, txns ...db.StoreTxn) error
-	HasBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
+	GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)
+	GetStateBlocks(txns ...db.StoreTxn) ([]*types.StateBlock, error)
+	DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error
+	HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	CountBlocks(txns ...db.StoreTxn) (uint64, error)
-	GetRandomBlock(txns ...db.StoreTxn) (types.Block, error)
+	GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error)
+	// smartcontrant block CURD
+	GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error)
+	GetSmartContrantBlocks(txns ...db.StoreTxn) ([]*types.SmartContractBlock, error)
 	// representation CURD
 	AddRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
 	SubRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error

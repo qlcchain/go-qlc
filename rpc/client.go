@@ -165,7 +165,7 @@ func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("url, ", u)
+	logger.Info("dial url, ", u)
 	switch u.Scheme {
 	case "http", "https":
 		return DialHTTP(rawurl)

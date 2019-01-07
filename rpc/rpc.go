@@ -2,39 +2,18 @@ package rpc
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/log"
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/wallet"
 )
 
 var logger = log.NewLogger("rpc")
-
-type RPCConfig struct {
-	Enable bool   `json:"Enable"`
-	Listen string `json:"Listen"`
-
-	RPCEnabled bool `json:"RPCEnabled"`
-	IPCEnabled bool `json:"IPCEnabled"`
-	WSEnabled  bool `json:"WSEnabled"`
-
-	IPCPath          string   `json:"IPCPath"`
-	HttpHost         string   `json:"HttpHost"`
-	HttpPort         int      `json:"HttpPort"`
-	HttpVirtualHosts []string `json:"HttpVirtualHosts"`
-	WSHost           string   `json:"WSHost"`
-	WSPort           int      `json:"WSPort"`
-
-	HTTPCors            []string `json:"HTTPCors"`
-	WSOrigins           []string `json:"WSOrigins"`
-	PublicModules       []string `json:"PublicModules"`
-	WSExposeAll         bool     `json:"WSExposeAll"`
-	HttpExposeAll       bool     `json:"HttpExposeAll"`
-	TestTokenHexPrivKey string   `json:"TestTokenHexPrivKey"`
-	TestTokenTti        string   `json:"TestTokenTti"`
-
-	PowServerUrl string `json:"PowServerUrl"`
-}
 
 type RPC struct {
 	//p2pServer *p2p.Server
@@ -42,81 +21,51 @@ type RPC struct {
 	rpcAPIs          []API
 	inProcessHandler *Server
 
-	ipcEndpoint string
 	ipcListener net.Listener
 	ipcHandler  *Server
 
-	httpEndpoint  string
 	httpWhitelist []string
 	httpListener  net.Listener
 	httpHandler   *Server
 
-	wsEndpoint string
 	wsListener net.Listener
 	wsHandler  *Server
 
-	wsCli *WebSocketCli
-	config *RPCConfig
-	DashboardTargetURL     string
-	NetID                uint     `json:"NetID"`
-
+	wsCli              *WebSocketCli
+	config             *config.Config
+	DashboardTargetURL string
+	NetID              uint `json:"NetID"`
 
 	lock sync.RWMutex
+
+	ledger *ledger.Ledger
+	wallet *wallet.WalletStore
+	dpos   *consensus.DposService
 }
 
-func NewRPC(cfg RPCConfig) *RPC {
-	r := new(RPC)
-	r.wsEndpoint = "127.0.0.1:29734"
-	r.httpEndpoint = "127.0.0.1:29735"
-	r.ipcEndpoint = "29736"
-	r.config = &cfg
+func NewRPC(cfg *config.Config, dpos *consensus.DposService) *RPC {
+	r := RPC{
+		ledger: ledger.NewLedger(cfg.LedgerDir()),
+		wallet: wallet.NewWalletStore(cfg),
+		dpos:   dpos,
+		config: cfg,
+	}
+	return &r
 
-	return r
-}
-
-//In-proc apis
-func (r *RPC) GetInProcessApis() []API {
-	//return GetApis("ledger", "wallet", "private_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "testapi", "pow", "tx")
-	return GetApis("qlc")
-}
-
-//Ipc apis
-func (r *RPC) GetIpcApis() []API {
-	return GetApis("qlc")
-	//return GetApis("ledger", "wallet", "private_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "testapi", "pow", "tx")
-}
-
-//Http apis
-func (r *RPC) GetHttpApis() []API {
-	apiModules := []string{"qlc"}
-	//apiModules := []string{"ledger", "public_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "pow", "tx"}
-	//if node.Config().NetID > 1 {
-	//	apiModules = append(apiModules, "testapi")
-	//}
-	return GetApis(apiModules...)
-}
-
-//WS apis
-func (r *RPC) GetWSApis() []API {
-	apiModules := []string{"ledger", "public_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "pow", "tx"}
-	//if node.Config().NetID > 1 {
-	//	apiModules = append(apiModules, "testapi")
-	//}
-	return GetApis(apiModules...)
 }
 
 // startIPC initializes and starts the IPC RPC endpoint.
 func (r *RPC) startIPC(apis []API) error {
-	if r.ipcEndpoint == "" {
+	if r.config.RPC.IPCEndpoint == "" {
 		return nil // IPC disabled.
 	}
-	listener, handler, err := StartIPCEndpoint(r.ipcEndpoint, apis)
+	listener, handler, err := StartIPCEndpoint(r.config.RPC.IPCEndpoint, apis)
 	if err != nil {
 		return err
 	}
 	r.ipcListener = listener
 	r.ipcHandler = handler
-	logger.Info("IPC endpoint opened ", "url ", r.ipcEndpoint)
+	logger.Info("IPC endpoint opened ", "url ", r.config.RPC.IPCEndpoint)
 	return nil
 }
 
@@ -126,7 +75,7 @@ func (r *RPC) stopIPC() {
 		r.ipcListener.Close()
 		r.ipcListener = nil
 
-		logger.Info("IPC endpoint closed ", "endpoint ", r.ipcEndpoint)
+		logger.Info("IPC endpoint closed ", "endpoint ", r.config.RPC.IPCEndpoint)
 	}
 	if r.ipcHandler != nil {
 		r.ipcHandler.Stop()
@@ -146,7 +95,7 @@ func (r *RPC) startHTTP(endpoint string, apis []API, modules []string, cors []st
 	}
 	logger.Info("HTTP endpoint opened ", "url ", fmt.Sprintf("http://%s", endpoint), " cors ", strings.Join(cors, ","), " vhosts ", strings.Join(vhosts, ","))
 	// All listeners booted successfully
-	r.httpEndpoint = endpoint
+	//r.httpEndpoint = endpoint
 	r.httpListener = listener
 	r.httpHandler = handler
 
@@ -159,7 +108,7 @@ func (r *RPC) stopHTTP() {
 		r.httpListener.Close()
 		r.httpListener = nil
 
-		logger.Info("HTTP endpoint closed ", "url ", fmt.Sprintf("http://%s", r.httpEndpoint))
+		logger.Info("HTTP endpoint closed ", "url ", fmt.Sprintf("http://%s", r.config.RPC.HTTPEndpoint))
 	}
 	if r.httpHandler != nil {
 		r.httpHandler.Stop()
@@ -179,7 +128,7 @@ func (r *RPC) startWS(endpoint string, apis []API, modules []string, wsOrigins [
 	}
 	logger.Info("WebSocket endpoint opened ", "url ", fmt.Sprintf("ws://%s", listener.Addr()))
 	// All listeners booted successfully
-	r.wsEndpoint = endpoint
+	//r.wsEndpoint = endpoint
 	r.wsListener = listener
 	r.wsHandler = handler
 
@@ -191,7 +140,7 @@ func (r *RPC) stopWS() {
 	if r.wsListener != nil {
 		r.wsListener.Close()
 		r.wsListener = nil
-		logger.Info("WebSocket endpoint closed ", "url ", fmt.Sprintf("ws://%s", r.wsEndpoint))
+		logger.Info("WebSocket endpoint closed ", "url ", fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
 	}
 	if r.wsHandler != nil {
 		r.wsHandler.Stop()
@@ -218,8 +167,8 @@ func (r *RPC) startInProcess(apis []API) error {
 	// Register all the APIs exposed by the services
 	handler := NewServer()
 	for _, api := range apis {
-		logger.Info(api)
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
+			logger.Info(err)
 			return err
 		}
 		logger.Debug("InProc registered ", "service ", api.Service, " namespace ", api.Namespace)
@@ -234,4 +183,89 @@ func (r *RPC) stopInProcess() {
 		r.inProcessHandler.Stop()
 		r.inProcessHandler = nil
 	}
+}
+
+func (r *RPC) StopRPC() {
+	r.stopInProcess()
+	r.stopIPC()
+	r.stopHTTP()
+	r.stopWS()
+}
+
+func (r *RPC) StartRPC() error {
+
+	// Init rpc log
+	//rpcapi.Init(node.config.DataDir, node.config.LogLevel, node.config.TestTokenHexPrivKey, node.config.TestTokenTti)
+
+	// Start the various API endpoints, terminating all in case of errors
+	if err := r.startInProcess(r.GetInProcessApis()); err != nil {
+		return err
+	}
+
+	//Start rpc
+	if r.config.RPC.IPCEnabled {
+		api := r.GetIpcApis()
+		if err := r.startIPC(api); err != nil {
+			r.stopInProcess()
+			return err
+		}
+	}
+
+	if r.config.RPC.HTTPEnabled {
+		//apis := GetPublicApis()
+		//if len(r.config.PublicModules) != 0 {
+		//	apis = GetApis(r.config.PublicModules...)
+		//}
+		//if err := r.startHTTP(r.httpEndpoint, apis, nil, r.config.HTTPCors, r.config.HttpVirtualHosts, HTTPTimeouts{}, r.config.HttpExposeAll); err != nil {
+		apis := r.GetHttpApis()
+		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, []string{}, []string{}, HTTPTimeouts{}, false); err != nil {
+			logger.Info(err)
+			r.stopInProcess()
+			r.stopIPC()
+			return err
+		}
+	}
+
+	if r.config.RPC.WSEnabled {
+		//apis := GetPublicApis()
+		//if len(r.config.PublicModules) != 0 {
+		//	apis = GetApis(r.config.PublicModules...)
+		//}
+		//if err := r.startWS(r.wsEndpoint, apis, nil, r.config.WSOrigins, r.config.WSExposeAll); err != nil {
+		apis := r.GetWSApis()
+		if err := r.startWS(r.config.RPC.WSEndpoint, apis, nil, []string{}, false); err != nil {
+			logger.Info(err)
+			r.stopInProcess()
+			r.stopIPC()
+			r.stopHTTP()
+			return err
+		}
+	}
+	//if len(r.config.DashboardTargetURL) > 0 {
+	//	apis := api.GetPublicApis()
+	//	if len(r.config.PublicModules) != 0 {
+	//		apis = api.GetApis(r.config.PublicModules...)
+	//	}
+	//
+	//	targetUrl := r.config.DashboardTargetURL + "/ws/gvite/" + strconv.FormatUint(uint64(r.config.NetID), 10) + "@" + hex.EncodeToString(node.p2pServer.PrivateKey.PubByte())
+	//
+	//	u, e := url.Parse(targetUrl)
+	//	if e != nil {
+	//		return e
+	//	}
+	//	if u.Scheme != "ws" && u.Scheme != "wss" {
+	//		return errors.New("DashboardTargetURL need match WebSocket Protocol.")
+	//	}
+	//
+	//	cli, server, e := StartWSCliEndpoint(u, apis, nil, r.config.WSExposeAll)
+	//	if e != nil {
+	//		cli.Close()
+	//		server.Stop()
+	//		return e
+	//	} else {
+	//		r.wsCli = cli
+	//	}
+	//}
+
+	return nil
 }

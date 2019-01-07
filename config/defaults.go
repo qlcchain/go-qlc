@@ -9,13 +9,14 @@ package config
 
 import (
 	"encoding/base64"
-	"github.com/json-iterator/go"
-	ic "github.com/libp2p/go-libp2p-crypto"
-	"github.com/libp2p/go-libp2p-peer"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+
+	"github.com/json-iterator/go"
+	ic "github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-peer"
 )
 
 const (
@@ -53,8 +54,14 @@ func DefaultConfig() (*Config, error) {
 		StorageMax: "10GB",
 		LogConfig:  &logCfg,
 		RPC: &RPCConfig{
-			Enable: false,
-			Listen: "/ip4/0.0.0.0/tcp/29735",
+			Enable: true,
+			//Listen:       "/ip4/0.0.0.0/tcp/29735",
+			HTTPEnabled:  true,
+			HTTPEndpoint: "0.0.0.0:29734",
+			WSEnabled:    true,
+			WSEndpoint:   "0.0.0.0:29735",
+			IPCEnabled:   true,
+			IPCEndpoint:  "29736",
 		},
 		P2P: &P2PConfig{
 			BootNodes: defaultBootstrapAddresses,

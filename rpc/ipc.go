@@ -23,7 +23,6 @@ import (
 
 // ServeListener accepts connections on l, serving JSON-RPC on them.
 func (srv *Server) ServeListener(l net.Listener) error {
-	logger.Info("qlc rpc start success!")
 	for {
 		conn, err := l.Accept()
 		if err != nil {

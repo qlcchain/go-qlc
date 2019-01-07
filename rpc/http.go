@@ -202,15 +202,15 @@ func NewHTTPServer(cors []string, vhosts []string, timeouts HTTPTimeouts, srv *S
 	logger.Info("timeouts, ", timeouts)
 	// Make sure timeout values are meaningful
 	if timeouts.ReadTimeout < time.Second {
-		logger.Warn("Sanitizing invalid HTTP read timeout ", "provided ", timeouts.ReadTimeout, " updated ", DefaultHTTPTimeouts.ReadTimeout)
+		logger.Info("Sanitizing invalid HTTP read timeout ", "provided ", timeouts.ReadTimeout, " updated ", DefaultHTTPTimeouts.ReadTimeout)
 		timeouts.ReadTimeout = DefaultHTTPTimeouts.ReadTimeout
 	}
 	if timeouts.WriteTimeout < time.Second {
-		logger.Warn("Sanitizing invalid HTTP write timeout ", "provided ", timeouts.WriteTimeout, " updated ", DefaultHTTPTimeouts.WriteTimeout)
+		logger.Info("Sanitizing invalid HTTP write timeout ", "provided ", timeouts.WriteTimeout, " updated ", DefaultHTTPTimeouts.WriteTimeout)
 		timeouts.WriteTimeout = DefaultHTTPTimeouts.WriteTimeout
 	}
 	if timeouts.IdleTimeout < time.Second {
-		logger.Warn("Sanitizing invalid HTTP idle timeout ", "provided ", timeouts.IdleTimeout, " updated ", DefaultHTTPTimeouts.IdleTimeout)
+		logger.Info("Sanitizing invalid HTTP idle timeout ", "provided ", timeouts.IdleTimeout, " updated ", DefaultHTTPTimeouts.IdleTimeout)
 		timeouts.IdleTimeout = DefaultHTTPTimeouts.IdleTimeout
 	}
 	// Bundle and start the HTTP server
@@ -224,8 +224,6 @@ func NewHTTPServer(cors []string, vhosts []string, timeouts HTTPTimeouts, srv *S
 
 // ServeHTTP serves JSON-RPC requests over HTTP.
 func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger.Info(w)
-	logger.Info(r.Body)
 	logger.Info("func:ServeHTTP")
 	// Permit dumb empty requests for remote health-checks (AWS)
 	if r.Method == http.MethodGet && r.ContentLength == 0 && r.URL.RawQuery == "" {

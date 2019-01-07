@@ -41,6 +41,7 @@ var (
 
 const (
 	idPrefixBlock byte = iota
+	idPrefixSmartContractBlock
 	idPrefixUncheckedBlockPrevious
 	idPrefixUncheckedBlockLink
 	idPrefixAccount
@@ -106,9 +107,13 @@ func (l *Ledger) Empty(txns ...db.StoreTxn) (bool, error) {
 	return r, nil
 }
 
-func (l *Ledger) getBlockKey(hash types.Hash) []byte {
+func (l *Ledger) getBlockKey(hash types.Hash, blockType types.BlockType) []byte {
 	var key [1 + types.HashSize]byte
-	key[0] = idPrefixBlock
+	if blockType == types.State {
+		key[0] = idPrefixBlock
+	} else if blockType == types.SmartContract {
+		key[0] = idPrefixSmartContractBlock
+	}
 	copy(key[1:], hash[:])
 	return key[:]
 }
@@ -117,7 +122,7 @@ func (l *Ledger) block2badger(blk types.Block) ([]byte, []byte, error) {
 	hash := blk.GetHash()
 	blockBytes, err := blk.MarshalMsg(nil)
 
-	key := l.getBlockKey(hash)
+	key := l.getBlockKey(hash, blk.GetType())
 
 	return key[:], blockBytes, err
 }
@@ -143,8 +148,7 @@ func (l *Ledger) AddBlock(blk types.Block, txns ...db.StoreTxn) error {
 	return txn.SetWithMeta(key, val, byte(blk.GetType()))
 }
 
-func (l *Ledger) GetBlock(hash types.Hash, txns ...db.StoreTxn) (types.Block, error) {
-	key := l.getBlockKey(hash)
+func (l *Ledger) getBlock(hash types.Hash, key []byte, txns ...db.StoreTxn) (types.Block, error) {
 	var blk types.Block
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -168,20 +172,46 @@ func (l *Ledger) GetBlock(hash types.Hash, txns ...db.StoreTxn) (types.Block, er
 	return blk, nil
 }
 
-func (l *Ledger) GetBlocks(txns ...db.StoreTxn) ([]types.Block, error) {
-	var blocks []types.Block
+func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	key := l.getBlockKey(hash, types.State)
+	blk, err := l.getBlock(hash, key, txns...)
+	if err != nil {
+		return nil, err
+	}
+	sb, ok := blk.(*types.StateBlock)
+	if !ok {
+		return nil, err
+	}
+	return sb, nil
+}
+
+func (l *Ledger) GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error) {
+	key := l.getBlockKey(hash, types.SmartContract)
+	blk, err := l.getBlock(hash, key, txns...)
+	if err != nil {
+		return nil, err
+	}
+	scb, ok := blk.(*types.SmartContractBlock)
+	if !ok {
+		return nil, err
+	}
+	return scb, nil
+}
+
+func (l *Ledger) GetStateBlocks(txns ...db.StoreTxn) ([]*types.StateBlock, error) {
+	var blocks []*types.StateBlock
 	//var blk types.Block
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) (err error) {
-		blk, err := types.NewBlock(types.BlockType(b))
+	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
+		blk := new(types.StateBlock)
+		_, err := blk.UnmarshalMsg(val)
 		if err != nil {
-			return
+			return err
 		}
-		_, err = blk.UnmarshalMsg(val)
 		blocks = append(blocks, blk)
-		return
+		return nil
 	})
 
 	if err != nil {
@@ -190,16 +220,38 @@ func (l *Ledger) GetBlocks(txns ...db.StoreTxn) ([]types.Block, error) {
 	return blocks, nil
 }
 
-func (l *Ledger) DeleteBlock(hash types.Hash, txns ...db.StoreTxn) error {
-	key := l.getBlockKey(hash)
+func (l *Ledger) GetSmartContrantBlocks(txns ...db.StoreTxn) ([]*types.SmartContractBlock, error) {
+	var blocks []*types.SmartContractBlock
+	//var blk types.Block
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
+		blk := new(types.SmartContractBlock)
+		_, err := blk.UnmarshalMsg(val)
+		if err != nil {
+			return err
+		}
+		blocks = append(blocks, blk)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+
+func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
+	key := l.getBlockKey(hash, types.State)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	return txn.Delete(key)
 }
 
-func (l *Ledger) HasBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
-	key := l.getBlockKey(hash)
+func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	key := l.getBlockKey(hash, types.State)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -232,7 +284,7 @@ func (l *Ledger) CountBlocks(txns ...db.StoreTxn) (uint64, error) {
 	return count, nil
 }
 
-func (l *Ledger) GetRandomBlock(txns ...db.StoreTxn) (types.Block, error) {
+func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error) {
 	c, err := l.CountBlocks()
 	if err != nil {
 		return nil, err
@@ -859,7 +911,7 @@ func (l *Ledger) Latest(account types.Address, token types.Hash, txns ...db.Stor
 }
 
 func (l *Ledger) Account(hash types.Hash, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	block, err := l.GetBlock(hash, txns...)
+	block, err := l.GetStateBlock(hash, txns...)
 	if err != nil {
 		return nil, err
 	}
@@ -873,27 +925,24 @@ func (l *Ledger) Account(hash types.Hash, txns ...db.StoreTxn) (*types.AccountMe
 }
 
 func (l *Ledger) Token(hash types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
-	block, err := l.GetBlock(hash, txns...)
+	block, err := l.GetStateBlock(hash, txns...)
 	if err != nil {
 		return nil, err
 	}
-	if b, ok := block.(*types.StateBlock); ok {
-		token := b.GetToken()
-		addr := block.GetAddress()
-		am, err := l.GetAccountMeta(addr, txns...)
-		if err != nil {
-			return nil, err
-		}
-
-		tm := am.Token(token)
-		if tm != nil {
-			return tm, nil
-		}
-
-		//TODO: hash to token name
-		return nil, fmt.Errorf("can not find token %s", token)
+	token := block.GetToken()
+	addr := block.GetAddress()
+	am, err := l.GetAccountMeta(addr, txns...)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("invalid block by hash(%s)", hash)
+
+	tm := am.Token(token)
+	if tm != nil {
+		return tm, nil
+	}
+
+	//TODO: hash to token name
+	return nil, fmt.Errorf("can not find token %s", token)
 }
 
 func (l *Ledger) Pending(account types.Address, txns ...db.StoreTxn) ([]*types.PendingKey, error) {
@@ -968,6 +1017,37 @@ func (l *Ledger) TokenPending(account types.Address, token types.Hash, txns ...d
 	return cache, nil
 }
 
+func (l *Ledger) TokenPendingInfo(account types.Address, token types.Hash, txns ...db.StoreTxn) ([]*types.PendingInfo, error) {
+	var cache []*types.PendingInfo
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
+		pendingKey := types.PendingKey{}
+		_, err := pendingKey.UnmarshalMsg(key[1:])
+		if err != nil {
+			return nil
+		}
+		if pendingKey.Address == account {
+			var pendingInfo types.PendingInfo
+			_, err := pendingInfo.UnmarshalMsg(val)
+			if err != nil {
+				return err
+			}
+			if pendingInfo.Type == token {
+				cache = append(cache, &pendingInfo)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cache, nil
+}
+
 func (l *Ledger) TokenBalance(account types.Address, token types.Hash, txns ...db.StoreTxn) (types.Balance, error) {
 	am, err := l.GetAccountMeta(account, txns...)
 	if err != nil {
@@ -990,11 +1070,11 @@ func (l *Ledger) Weight(account types.Address, txns ...db.StoreTxn) types.Balanc
 }
 
 const (
-	receive byte = iota
-	send
-	open
-	change
-	unknown
+	Receive byte = iota
+	Send
+	Open
+	Change
+	Unknown
 )
 
 // TODO: implement
@@ -1018,13 +1098,13 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 	blockCur := blockHead
 	for {
 		hashCur := blockCur.GetHash()
-		blockType, err := l.getBlockKind(hashCur, txn)
+		blockType, err := l.JudgeBlockKind(hashCur, txn)
 		if err != nil {
 			return err
 		}
 
 		blockPre := new(types.StateBlock)
-		if blockType != open {
+		if blockType != Open {
 			blockPre, err = l.getStateBlock(blockCur.Previous, txn)
 			if err != nil {
 				return err
@@ -1032,9 +1112,9 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 		}
 
 		switch blockType {
-		case open:
+		case Open:
 			logger.Info("---delete open block, ", hashCur)
-			if err := l.DeleteBlock(hashCur, txn); err != nil {
+			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return err
 			}
 			if err := l.rollBackTokenDel(tm, txn); err != nil {
@@ -1052,9 +1132,9 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 					return err
 				}
 			}
-		case send:
+		case Send:
 			logger.Info("---delete send block, ", hashCur)
-			if err := l.DeleteBlock(hashCur, txn); err != nil {
+			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return err
 			}
 			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.Representative, blockPre.GetBalance(), txn); err != nil {
@@ -1076,9 +1156,9 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 					return err
 				}
 			}
-		case receive:
+		case Receive:
 			logger.Info("---delete receive block, ", hashCur)
-			if err := l.DeleteBlock(hashCur, txn); err != nil {
+			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return err
 			}
 			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.Representative, blockPre.GetBalance(), txn); err != nil {
@@ -1096,9 +1176,9 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 					return err
 				}
 			}
-		case change:
+		case Change:
 			logger.Info("---delete change block, ", hashCur)
-			if err := l.DeleteBlock(hashCur, txn); err != nil {
+			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return err
 			}
 			if err := l.rollBackToken(tm, blockCur.GetPrevious(), blockCur.GetRepresentative(), tm.Balance, txn); err != nil {
@@ -1124,42 +1204,38 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 	return nil
 }
 
-func (l *Ledger) getBlockKind(hash types.Hash, txn db.StoreTxn) (byte, error) {
-	block, err := l.getStateBlock(hash, txn)
+func (l *Ledger) JudgeBlockKind(hash types.Hash, txn ...db.StoreTxn) (byte, error) {
+	block, err := l.getStateBlock(hash, txn...)
 	if err != nil {
-		return unknown, err
+		return Unknown, err
 	}
 
 	pre := block.GetPrevious()
 	if pre.IsZero() {
-		return open, nil
+		return Open, nil
 	} else {
-		blockPre, err := l.getStateBlock(pre, txn)
+		blockPre, err := l.getStateBlock(pre, txn...)
 		if err != nil {
-			return unknown, err
+			return Unknown, err
 		}
 		if blockPre.GetBalance().Compare(block.GetBalance()) == types.BalanceCompSmaller {
-			return receive, nil
+			return Receive, nil
 		} else {
 			link := block.GetLink()
 			if link.IsZero() {
-				return change, nil
+				return Change, nil
 			}
-			return send, nil
+			return Send, nil
 		}
 	}
 }
 
-func (l *Ledger) getStateBlock(hash types.Hash, txn db.StoreTxn) (*types.StateBlock, error) {
-	b, err := l.GetBlock(hash, txn)
+func (l *Ledger) getStateBlock(hash types.Hash, txn ...db.StoreTxn) (*types.StateBlock, error) {
+	b, err := l.GetStateBlock(hash, txn...)
 	if err != nil {
 		return nil, err
 	}
-	bs, ok := b.(*types.StateBlock)
-	if !ok {
-		return nil, errors.New("invalid block")
-	}
-	return bs, nil
+	return b, nil
 }
 
 func (l *Ledger) getLinkBlock(block *types.StateBlock, txn db.StoreTxn) (*types.StateBlock, error) {
