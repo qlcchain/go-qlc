@@ -33,12 +33,12 @@ gqlc-linux: gqlc-linux-amd64
 	@echo "Linux cross compilation done:"
 
 gqlc-linux-amd64:
-	env GOOS=linux GOARCH=amd64 go build -i -o $(BUILDDIR)/$(BINARY)-linux-amd64-v$(VERSION)-$(GITREV) $(SERVERMAIN)
+	env GOOS=linux GOARCH=amd64 go build ${LDFLAGS} -i -o $(BUILDDIR)/$(BINARY)-linux-amd64-v$(VERSION)-$(GITREV) $(SERVERMAIN)
 	@echo "Build linux server done."
 	@ls -ld $(BUILDDIR)/$(BINARY)-linux-amd64-v$(VERSION)-$(GITREV)
 
 gqlc-darwin:
-	env GOOS=darwin GOARCH=amd64 go build -i -o $(BUILDDIR)/$(BINARY)-darwin-amd64-v$(VERSION)-$(GITREV) $(SERVERMAIN)
+	env GOOS=darwin GOARCH=amd64 go build ${LDFLAGS} -i -o $(BUILDDIR)/$(BINARY)-darwin-amd64-v$(VERSION)-$(GITREV) $(SERVERMAIN)
 	@echo "Build darwin server done."
 	@ls -ld $(BUILDDIR)/$(BINARY)-darwin-amd64-v$(VERSION)-$(GITREV)
 
@@ -47,11 +47,11 @@ gqlc-windows: gqlc-windows-amd64 gqlc-windows-386
 	@ls -ld $(BUILDDIR)/$(BINARY)-windows-*
 
 gqlc-windows-386:
-	env GOOS=windows GOARCH=386 go build -i -o $(BUILDDIR)/$(BINARY)-windows-386-v$(VERSION)-$(GITREV).exe $(SERVERMAIN)
+	env GOOS=windows GOARCH=386 go build ${LDFLAGS} -i -o $(BUILDDIR)/$(BINARY)-windows-386-v$(VERSION)-$(GITREV).exe $(SERVERMAIN)
 	@echo "Build windows x86 server done."
 	@ls -ld $(BUILDDIR)/$(BINARY)-windows-386-v$(VERSION)-$(GITREV).exe
 
 gqlc-windows-amd64:
-	env GOOS=windows GOARCH=amd64 go build -i -o $(BUILDDIR)/$(BINARY)-windows-amd64-v$(VERSION)-$(GITREV).exe $(SERVERMAIN)
+	env GOOS=windows GOARCH=amd64 go build ${LDFLAGS} -i -o $(BUILDDIR)/$(BINARY)-windows-amd64-v$(VERSION)-$(GITREV).exe $(SERVERMAIN)
 	@echo "Build windows server done."
 	@ls -ld $(BUILDDIR)/$(BINARY)-windows-amd64-v$(VERSION)-$(GITREV).exe
