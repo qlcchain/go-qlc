@@ -11,6 +11,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
+	"sync"
+
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto"
@@ -19,8 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/test/mock"
 	"go.uber.org/zap"
-	"io"
-	"sync"
 )
 
 const (
@@ -221,7 +222,7 @@ func (s *Session) SearchPending() error {
 	for _, account := range accounts {
 		if keys, err := l.Pending(account); err == nil {
 			for _, key := range keys {
-				if block, err := l.GetBlock(key.Hash); err == nil {
+				if block, err := l.GetStateBlock(key.Hash); err == nil {
 					//TODO: implement
 					s.logger.Debug(block)
 					//_, _ = s.Receive(block)
@@ -283,7 +284,7 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, erro
 	l := s.ledger
 
 	// block not exist
-	if exist, err := l.HasBlock(hash); !exist || err != nil {
+	if exist, err := l.HasStateBlock(hash); !exist || err != nil {
 		return nil, fmt.Errorf("sendBlock(%s) does not exist", hash.String())
 	}
 	sendTm, err := l.Token(hash)
@@ -361,39 +362,36 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
 	}
 
-	block, err := l.GetBlock(hash)
+	block, err := l.GetStateBlock(hash)
 	if err != nil {
 		return nil, err
 	}
-	if sb, ok := block.(*types.StateBlock); ok {
-		changeBlock, err := types.NewBlock(types.State)
+	changeBlock, err := types.NewBlock(types.State)
+	if err != nil {
+		return nil, err
+	}
+	tm, err := l.GetTokenMeta(account, mock.GetChainTokenType())
+	if newSb, ok := changeBlock.(*types.StateBlock); ok {
+		acc, err := s.GetRawKey(account)
 		if err != nil {
 			return nil, err
 		}
-		tm, err := l.GetTokenMeta(account, mock.GetChainTokenType())
-		if newSb, ok := changeBlock.(*types.StateBlock); ok {
-			acc, err := s.GetRawKey(account)
-			if err != nil {
-				return nil, err
-			}
-			newSb.Address = account
-			newSb.Balance = tm.Balance
-			newSb.Previous = tm.Header
-			newSb.Link = account.ToHash()
-			newSb.Representative = representative
-			newSb.Token = sb.Token
-			newSb.Extra = types.Hash{}
-			newSb.Work, _ = s.GetWork(account)
-			newSb.Signature = acc.Sign(newSb.GetHash())
-			if !newSb.IsValid() {
-				newSb.Work = s.generateWork(newSb.Root())
-				_ = s.setWork(account, newSb.Work)
-			}
+		newSb.Address = account
+		newSb.Balance = tm.Balance
+		newSb.Previous = tm.Header
+		newSb.Link = account.ToHash()
+		newSb.Representative = representative
+		newSb.Token = block.Token
+		newSb.Extra = types.Hash{}
+		newSb.Work, _ = s.GetWork(account)
+		newSb.Signature = acc.Sign(newSb.GetHash())
+		if !newSb.IsValid() {
+			newSb.Work = s.generateWork(newSb.Root())
+			_ = s.setWork(account, newSb.Work)
 		}
-		return changeBlock, nil
 	}
+	return changeBlock, nil
 
-	return nil, fmt.Errorf("invalid state block (%s) of account[%s]", hash, account.String())
 }
 
 func (s *Session) Import(content string, password string) error {

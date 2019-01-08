@@ -65,7 +65,7 @@ func countBlock() (uint64, error) {
 	}
 	l := ctx.Ledger.Ledger
 
-	count, err := l.CountBlocks()
+	count, err := l.CountStateBlocks()
 	if err != nil {
 		return 0, err
 	}

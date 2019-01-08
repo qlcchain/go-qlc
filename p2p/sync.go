@@ -132,7 +132,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 				if headerBlockHash == fr.HeaderBlock {
 					logger.Infof("this token %s have the same block", openBlockHash)
 				} else {
-					exit, _ := ss.qlcLedger.HasBlock(fr.HeaderBlock)
+					exit, _ := ss.qlcLedger.HasStateBlock(fr.HeaderBlock)
 					if exit == true {
 						push := &messagepb.Bulk{
 							StartHash: fr.HeaderBlock,
@@ -199,7 +199,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
-							blk, err = ss.qlcLedger.GetBlock(endHash)
+							blk, err = ss.qlcLedger.GetStateBlock(endHash)
 							if err != nil {
 								return err
 							}
@@ -224,7 +224,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
-							blk, err = ss.qlcLedger.GetBlock(endHash)
+							blk, err = ss.qlcLedger.GetStateBlock(endHash)
 							if err != nil {
 								return err
 							}
@@ -276,7 +276,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 		var bulkblk []types.Block
 		logger.Info("need to send all the blocks of this account")
 		for {
-			blk, err = ss.qlcLedger.GetBlock(endHash)
+			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
 				return err
 			}
@@ -301,7 +301,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 		var bulkblk []types.Block
 		logger.Info("need to send some blocks of this account")
 		for {
-			blk, err = ss.qlcLedger.GetBlock(endHash)
+			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
 				return err
 			}

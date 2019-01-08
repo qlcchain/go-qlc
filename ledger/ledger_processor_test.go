@@ -26,7 +26,7 @@ func TestProcess_BlockBasicInfoCheck(t *testing.T) {
 }
 
 func checkInfo(t *testing.T, l *Ledger) {
-	blocks, _ := l.GetBlocks()
+	blocks, _ := l.GetStateBlocks()
 	addrs := make(map[types.Address]int)
 	fmt.Println("----blocks----")
 	for i, b := range blocks {

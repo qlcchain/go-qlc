@@ -9,6 +9,7 @@ package ledger
 
 import (
 	"errors"
+
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -41,7 +42,7 @@ func (ls *LedgerService) Init() error {
 		for i := 0; i < len(sbs); i++ {
 			sb := sbs[i]
 			h := sb.GetHash()
-			if b, err := l.HasBlock(h, txn); !b && err == nil {
+			if b, err := l.HasStateBlock(h, txn); !b && err == nil {
 				err := l.AddBlock(sb, txn)
 				if err != nil {
 					logger.Error(err)
@@ -55,7 +56,7 @@ func (ls *LedgerService) Init() error {
 		for i := 0; i < len(genesis); i++ {
 			b := genesis[i].(*types.StateBlock)
 			hash := b.GetHash()
-			if exist, err := l.HasBlock(hash); !exist && err == nil {
+			if exist, err := l.HasStateBlock(hash); !exist && err == nil {
 				err := l.BlockProcess(b)
 				if err != nil {
 					logger.Error(err)

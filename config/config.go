@@ -2,9 +2,10 @@ package config
 
 import (
 	"encoding/base64"
-	ic "github.com/libp2p/go-libp2p-crypto"
 	"path/filepath"
 	"time"
+
+	ic "github.com/libp2p/go-libp2p-crypto"
 )
 
 type Config struct {
@@ -34,8 +35,16 @@ type LogConfig struct {
 }
 
 type RPCConfig struct {
-	Enable bool   `json:"Enable"`
-	Listen string `json:"Listen"`
+	Enable bool `json:"Enable"`
+	//Listen string `json:"Listen"`
+
+	HTTPEnabled bool `json:"HTTPEnabled"`
+	WSEnabled   bool `json:"WSEnabled"`
+	IPCEnabled  bool `json:"IPCEnabled"`
+
+	HTTPEndpoint string `json:"HTTPEndpoint"`
+	WSEndpoint   string `json:"WSEndpoint"`
+	IPCEndpoint  string `json:"IPCEndpoint"`
 }
 
 type P2PConfig struct {

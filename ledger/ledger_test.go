@@ -109,7 +109,7 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 		if err := l.AddBlock(mock.StateBlock()); err != nil {
 			t.Fatal()
 		}
-		if ok, err := l.HasBlock(blk.GetHash()); err != nil || !ok {
+		if ok, err := l.HasStateBlock(blk.GetHash()); err != nil || !ok {
 			t.Fatal()
 		}
 		return nil
@@ -139,7 +139,7 @@ func TestLedger_GetBlock(t *testing.T) {
 	defer teardownTestCase(t)
 
 	block := addblock(t, l)
-	blk, err := l.GetBlock(block.GetHash())
+	blk, err := l.GetStateBlock(block.GetHash())
 	t.Log("blk,", blk)
 	if err != nil {
 		t.Fatal(err)
@@ -152,7 +152,7 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 
 	addblock(t, l)
 	addblock(t, l)
-	blks, err := l.GetBlocks()
+	blks, err := l.GetStateBlocks()
 	for index, b := range blks {
 		t.Log(index, b, b)
 	}
@@ -167,7 +167,7 @@ func TestLedger_DeleteBlock(t *testing.T) {
 	defer teardownTestCase(t)
 
 	block := addblock(t, l)
-	err := l.DeleteBlock(block.GetHash())
+	err := l.DeleteStateBlock(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestLedger_HasBlock(t *testing.T) {
 	defer teardownTestCase(t)
 
 	block := addblock(t, l)
-	r, err := l.HasBlock(block.GetHash())
+	r, err := l.HasStateBlock(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	b, err := l.GetRandomBlock()
+	b, err := l.GetRandomStateBlock()
 
 	if err != ErrStoreEmpty {
 		t.Fatal(err)
@@ -495,6 +495,7 @@ func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendingin
 		Type:   mock.Hash(),
 	}
 	pendingkey = types.PendingKey{Address: address, Hash: hash}
+	t.Log(pendinginfo)
 	err := l.AddPending(pendingkey, &pendinginfo)
 	if err != nil {
 		t.Fatal(err)

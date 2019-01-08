@@ -3,33 +3,32 @@ package consensus
 import (
 	"errors"
 	"fmt"
+
 	"github.com/json-iterator/go"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/wallet"
-
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/p2p"
 )
 
 var logger = log.NewLogger("consensus")
 
 type DposService struct {
 	common.ServiceLifecycle
-	ns       p2p.Service
-	ledger   *ledger.Ledger
-	eventMsg map[p2p.EventType]p2p.EventSubscriber
-	quitCh   chan bool
-	bp       *BlockProcessor
-	wallet   *wallet.WalletStore
-	actrx    *ActiveTrx
-	account  types.Address
-	password string
+	ns                 p2p.Service
+	ledger             *ledger.Ledger
+	eventMsg           map[p2p.EventType]p2p.EventSubscriber
+	quitCh             chan bool
+	bp                 *BlockProcessor
+	wallet             *wallet.WalletStore
+	actrx              *ActiveTrx
+	account            types.Address
+	password           string
+	onlineRepAddresses []types.Address
 }
 
 func (dps *DposService) Init() error {
@@ -136,7 +135,7 @@ func (dps *DposService) onReceiveConfirmReq(block types.Block) {
 	accounts := dps.getAccounts()
 	for _, k := range accounts {
 		isRep := dps.isThisAccountRepresentation(k)
-		if isRep == true {
+		if isRep {
 			logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Root())
 			dps.sendConfirmAck(block, k)
 		} else {
@@ -159,12 +158,13 @@ func (dps *DposService) ReceiveConfirmAck(v interface{}) {
 
 func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 	valid := IsAckSignValidate(va)
-	if valid != true {
+	if !valid {
 		return
 	}
+	dps.putRepresentativesToOnline(va.Account)
 	if v, ok := dps.actrx.roots[va.Blk.Root()]; ok {
 		result, vt := v.vote.voteExit(va.Account)
-		if result == true {
+		if result {
 			if vt.Sequence < va.Sequence {
 				v.vote.repVotes[va.Account] = va
 			}
@@ -179,7 +179,7 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 		}
 		dps.actrx.vote(va)
 	} else {
-		exit, err := dps.ledger.HasBlock(va.Blk.GetHash())
+		exit, err := dps.ledger.HasStateBlock(va.Blk.GetHash())
 		if err != nil {
 			return
 		}
@@ -187,7 +187,7 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 			accounts := dps.getAccounts()
 			for _, k := range accounts {
 				isRep := dps.isThisAccountRepresentation(k)
-				if isRep == true {
+				if isRep {
 					dps.sendConfirmAck(va.Blk, k)
 				} else {
 					data, err := protos.ConfirmAckBlockToProto(va)
@@ -250,7 +250,7 @@ func (dps *DposService) voteGenerate(block types.Block, account types.Address) (
 	}
 	if v, ok := dps.actrx.roots[block.Root()]; ok {
 		result, vt := v.vote.voteExit(account)
-		if result == true {
+		if result {
 			va.Sequence = vt.Sequence + 1
 			va.Blk = block
 			va.Account = account
@@ -308,4 +308,23 @@ func (dps *DposService) getAccounts() []types.Address {
 	}
 
 	return []types.Address{}
+}
+
+func (dps *DposService) putRepresentativesToOnline(addr types.Address) {
+	if len(dps.onlineRepAddresses) == 0 {
+		dps.onlineRepAddresses = append(dps.onlineRepAddresses, addr)
+	} else {
+		for i, v := range dps.onlineRepAddresses {
+			if v == addr {
+				break
+			}
+			if i == len(dps.onlineRepAddresses) {
+				dps.onlineRepAddresses = append(dps.onlineRepAddresses, addr)
+			}
+		}
+	}
+}
+
+func (dps *DposService) GetOnlineRepresentatives() []types.Address {
+	return dps.onlineRepAddresses
 }
