@@ -135,7 +135,6 @@ func isBatch(msg json.RawMessage) bool {
 // return a collection of requests, an indication if these requests are in batch
 // form or an error when the incoming message could not be read/parsed.
 func (c *jsonCodec) ReadRequestHeaders() ([]rpcRequest, bool, Error) {
-	logger.Info("func: ReadRequestHeaders ")
 	c.decMu.Lock()
 	defer c.decMu.Unlock()
 
@@ -169,7 +168,7 @@ func checkReqId(reqId json.RawMessage) error {
 // the parsed request, an indication if the request was a batch or an error when
 // the request could not be parsed.
 func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
-	logger.Info("incomingMsg,", string(incomingMsg))
+	logger.Info("incomingMsg, ", string(incomingMsg))
 	var in jsonRequest
 	if err := json.Unmarshal(incomingMsg, &in); err != nil {
 		logger.Info(err)
@@ -288,7 +287,6 @@ func (c *jsonCodec) ParseRequestArguments(argTypes []reflect.Type, params interf
 // parsed. Missing optional arguments are returned as reflect.Zero values.
 func parsePositionalArguments(rawArgs json.RawMessage, types []reflect.Type) ([]reflect.Value, Error) {
 	// Read beginning of the args array.
-	logger.Info("params,", string(rawArgs))
 	dec := json.NewDecoder(bytes.NewReader(rawArgs))
 	if tok, _ := dec.Token(); tok != json.Delim('[') {
 		return nil, &invalidParamsError{"non-array args"}

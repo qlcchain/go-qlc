@@ -12,6 +12,7 @@ import (
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/p2p"
+	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
@@ -21,6 +22,7 @@ type QlcContext struct {
 	Ledger      *ledger.LedgerService
 	NetService  *p2p.QlcService
 	DPosService *consensus.DposService
+	RPC         *rpc.RPCService
 }
 
 func New(cfg *config.Config) (*QlcContext, error) {

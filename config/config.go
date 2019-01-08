@@ -35,16 +35,16 @@ type LogConfig struct {
 }
 
 type RPCConfig struct {
-	Enable bool `json:"Enable"`
+	Enable bool `json:"enable"`
 	//Listen string `json:"Listen"`
 
-	HTTPEnabled bool `json:"HTTPEnabled"`
-	WSEnabled   bool `json:"WSEnabled"`
-	IPCEnabled  bool `json:"IPCEnabled"`
+	HTTPEnabled bool `json:"hTTPEnabled"`
+	WSEnabled   bool `json:"wSEnabled"`
+	IPCEnabled  bool `json:"iPCEnabled"`
 
-	HTTPEndpoint string `json:"HTTPEndpoint"`
-	WSEndpoint   string `json:"WSEndpoint"`
-	IPCEndpoint  string `json:"IPCEndpoint"`
+	HTTPEndpoint string `json:"hTTPEndpoint"`
+	WSEndpoint   string `json:"wSEndpoint"`
+	IPCEndpoint  string `json:"iPCEndpoint"`
 }
 
 type P2PConfig struct {
