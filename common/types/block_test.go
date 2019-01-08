@@ -1,11 +1,10 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"testing"
-
-	"github.com/json-iterator/go"
 )
 
 var testBlk = `{
@@ -24,7 +23,7 @@ var testBlk = `{
 func TestMarshalStateBlock(t *testing.T) {
 	blk := StateBlock{}
 	//fmt.Println(blk)
-	bytes, err := jsoniter.Marshal(blk)
+	bytes, err := json.Marshal(blk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +32,7 @@ func TestMarshalStateBlock(t *testing.T) {
 
 func TestUnmarshalStateBlock(t *testing.T) {
 	b := StateBlock{}
-	err := jsoniter.Unmarshal([]byte(testBlk), &b)
+	err := json.Unmarshal([]byte(testBlk), &b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +58,7 @@ func TestStateBlock(t *testing.T) {
 		sb.Balance = Balance{big.NewInt(123454)}
 		sb.Address, _ = HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
 		sb.Token, _ = NewHash("2C353DA641277FD8379354307A54BECE090C51E52FB460EA5A8674B702BDCE5E")
-		bytes, err := jsoniter.Marshal(&sb)
+		bytes, err := json.Marshal(&sb)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +70,7 @@ func TestStateBlock(t *testing.T) {
 
 func TestStateBlock_MarshalMsg(t *testing.T) {
 	b := StateBlock{}
-	err := jsoniter.Unmarshal([]byte(testBlk), &b)
+	err := json.Unmarshal([]byte(testBlk), &b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,5 +86,7 @@ func TestStateBlock_MarshalMsg(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log(jsoniter.MarshalToString(&b2))
+	bytes, _ := json.Marshal(&b2)
+
+	t.Log(string(bytes))
 }
