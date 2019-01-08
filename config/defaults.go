@@ -25,7 +25,7 @@ const (
 )
 
 var defaultBootstrapAddresses = []string{
-	"/ip4/47.244.138.61/tcp/29735/ipfs/QmaKU4cvFJ7x6A4nSEgcfirvJbn7eJbJgVBnU9QQuk2Kam",
+	"/ip4/47.244.138.61/tcp/9734/ipfs/QmeSBhQe5kYtKqEQfSt7K3NR36Z3rBxF9JBBBWTBrDVap3",
 }
 
 func DefaultConfig() (*Config, error) {
@@ -57,15 +57,15 @@ func DefaultConfig() (*Config, error) {
 			Enable: true,
 			//Listen:       "/ip4/0.0.0.0/tcp/29735",
 			HTTPEnabled:  true,
-			HTTPEndpoint: "0.0.0.0:29735",
+			HTTPEndpoint: "0.0.0.0:9735",
 			WSEnabled:    true,
-			WSEndpoint:   "0.0.0.0:29736",
+			WSEndpoint:   "0.0.0.0:9736",
 			IPCEnabled:   true,
-			IPCEndpoint:  "29737",
+			IPCEndpoint:  "9737",
 		},
 		P2P: &P2PConfig{
 			BootNodes: defaultBootstrapAddresses,
-			Listen:    "/ip4/0.0.0.0/tcp/29734",
+			Listen:    "/ip4/0.0.0.0/tcp/9734",
 		},
 		Discovery: &DiscoveryConfig{
 			MDNS: MDNS{
