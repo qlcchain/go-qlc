@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	libnet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-peer"
@@ -175,6 +176,7 @@ func (s *Stream) writeLoop() {
 			s.WriteQlcMessage(message)
 			continue
 		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 

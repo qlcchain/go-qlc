@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"time"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 )
@@ -35,6 +37,8 @@ func (bp *BlockProcessor) processBlocks() {
 		case block := <-bp.blocks:
 			result, _ := bp.dp.ledger.Process(block)
 			bp.processResult(result, block)
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

@@ -1,8 +1,9 @@
 package consensus
 
 import (
-	"github.com/qlcchain/go-qlc/p2p"
 	"time"
+
+	"github.com/qlcchain/go-qlc/p2p"
 
 	"github.com/qlcchain/go-qlc/p2p/protos"
 
@@ -43,6 +44,8 @@ func (act *ActiveTrx) start() {
 		case <-act.quitCh:
 			logger.Info("Stopped ActiveTrx Loop.")
 			return
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

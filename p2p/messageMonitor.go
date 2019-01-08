@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"time"
+
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
@@ -89,6 +91,7 @@ func (ms *MessageService) startLoop() {
 				ms.syncService.onBulkPushBlock(message)
 			default:
 				logger.Error("Received unknown message.")
+				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}

@@ -147,6 +147,8 @@ func (sm *StreamManager) loop() {
 			return
 		case <-ticker.C:
 			sm.findPeers()
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

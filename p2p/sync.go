@@ -49,6 +49,7 @@ func (ss *ServiceSync) Start() {
 	for {
 		peerID, err := ss.netService.node.StreamManager().RandomPeer()
 		if err != nil {
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 		select {
@@ -68,6 +69,8 @@ func (ss *ServiceSync) Start() {
 			bulkPull = bulkPull[:0:0]
 			bulkPush = bulkPush[:0:0]
 			ss.netService.node.SendMessageToPeer(FrontierRequest, data, peerID)
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
