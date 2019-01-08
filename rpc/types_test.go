@@ -18,9 +18,8 @@ package rpc
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
-
-	"github.com/qlcchain/go-qlc/common/util/math"
 )
 
 func TestBlockNumberJSONUnmarshal(t *testing.T) {
