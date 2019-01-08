@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
+	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/test/mock"
 	"github.com/qlcchain/go-qlc/wallet"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -61,6 +61,7 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 	if err != nil {
 		return err
 	}
+	ctx.RPC = rpc.NewRPCService(cfg, ctx.DPosService)
 
 	if !account.IsZero() {
 		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
@@ -86,7 +87,7 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 		})
 	}
 
-	services = []common.Service{logService, ctx.NetService, ctx.DPosService, ctx.Ledger, ctx.Wallet}
+	services = []common.Service{logService, ctx.NetService, ctx.DPosService, ctx.Ledger, ctx.Wallet, ctx.RPC}
 
 	return nil
 }

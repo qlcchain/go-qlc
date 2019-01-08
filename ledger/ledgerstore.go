@@ -79,4 +79,10 @@ type Store interface {
 	Weight(account types.Address, txns ...db.StoreTxn) types.Balance
 	//Rollback blocks until `hash' doesn't exist
 	Rollback(hash types.Hash) error
+	//Process check block and process block to badger
+	Process(block types.Block) (ProcessResult, error)
+	//BlockCheck check block valid
+	BlockCheck(block types.Block) (ProcessResult, error)
+	//BlockProcess process block to badger
+	BlockProcess(block types.Block) error
 }

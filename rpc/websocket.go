@@ -58,7 +58,7 @@ func (srv *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 	return websocket.Server{
 		Handshake: wsHandshakeValidator(allowedOrigins),
 		Handler: func(conn *websocket.Conn) {
-			logger.Info("websocket handler")
+			logger.Info("websocket request")
 			// Create a custom encode/decode pair to enforce payload size and number encoding
 			conn.MaxPayloadBytes = maxRequestContentLength
 
@@ -130,7 +130,6 @@ func wsHandshakeValidator(allowedOrigins []string) func(*websocket.Config, *http
 // The context is used for the initial connection establishment. It does not
 // affect subsequent interactions with the client.
 func DialWebsocket(ctx context.Context, endpoint, origin string) (*Client, error) {
-	logger.Info("DialWebsocket")
 	if origin == "" {
 		var err error
 		if origin, err = os.Hostname(); err != nil {

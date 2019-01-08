@@ -105,6 +105,9 @@ func (q *QlcApi) AccountsPending(addresses []types.Address, n int) (map[types.Ad
 				break
 			}
 		}
+		if tps == nil {
+			tps = make([]*TokenPending, 0)
+		}
 		apMap[addr] = tps
 	}
 	return apMap, nil

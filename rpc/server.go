@@ -219,7 +219,6 @@ func (s *Server) ServeCodec(codec ServerCodec, options CodecOption) error {
 // close the codec unless a non-recoverable error has occurred. Note, this method will return after
 // a single request has been processed!
 func (s *Server) ServeSingleRequest(ctx context.Context, codec ServerCodec, options CodecOption) {
-	logger.Info("func:ServeSingleRequest")
 	s.serveRequest(ctx, codec, true, options)
 }
 
@@ -377,7 +376,6 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 // of requests, an indication if the request was a batch, the invalid request identifier and an
 // error when the request could not be read/parsed.
 func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) {
-	logger.Info("func: readRequest")
 	reqs, batch, err := codec.ReadRequestHeaders()
 	if err != nil {
 		logger.Info(err)

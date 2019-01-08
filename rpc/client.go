@@ -225,6 +225,7 @@ func newClient(initctx context.Context, connectFunc func(context.Context) (net.C
 		return nil, err
 	}
 	_, isHTTP := conn.(*httpConn)
+	logger.Info("isHttp,", isHTTP)
 	c := &Client{
 		writeConn:   conn,
 		isHTTP:      isHTTP,

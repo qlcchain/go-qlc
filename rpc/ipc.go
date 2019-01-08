@@ -38,6 +38,7 @@ func (srv *Server) ServeListener(l net.Listener) error {
 		if conn != nil {
 			logger.Info("Accepted connection ", conn.RemoteAddr(), "addr ", conn.LocalAddr())
 		}
+		logger.Info("ipc request")
 		go srv.ServeCodec(NewJSONCodec(conn), OptionMethodInvocation|OptionSubscriptions)
 	}
 }

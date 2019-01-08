@@ -24,9 +24,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 	rs := NewRPCService(cfg, &dpos)
 
 	cfg.RPC = new(config.RPCConfig)
-	cfg.RPC.HTTPEndpoint = "0.0.0.0:29734"
-	cfg.RPC.WSEndpoint = "0.0.0.0:29735"
-	cfg.RPC.IPCEndpoint = "29736"
+	cfg.RPC.HTTPEndpoint = "0.0.0.0:29735"
+	cfg.RPC.WSEndpoint = "0.0.0.0:29736"
+	cfg.RPC.IPCEndpoint = "29737"
 	cfg.RPC.WSEnabled = true
 	cfg.RPC.IPCEnabled = true
 	cfg.RPC.HTTPEnabled = true
