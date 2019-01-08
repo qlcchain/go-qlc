@@ -25,7 +25,7 @@ func NewCfgManager(file string) *ConfigManager {
 func (c *ConfigManager) Load(migrations ...CfgMigrate) (*Config, error) {
 	_, err := os.Stat(c.cfgFile)
 	if err != nil {
-		fmt.Printf("%s not exist, create default", c.cfgFile)
+		fmt.Printf("%s not exist, create default\n", c.cfgFile)
 		cfg, err := DefaultConfig()
 		if err != nil {
 			return nil, err
