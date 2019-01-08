@@ -114,7 +114,11 @@ func (q *QlcApi) AccountsPending(addresses []types.Address, n int) (map[types.Ad
 }
 
 func (q *QlcApi) GetOnlineRepresentatives() []types.Address {
-	return q.dpos.GetOnlineRepresentatives()
+	as := q.dpos.GetOnlineRepresentatives()
+	if as == nil {
+		return make([]types.Address, 0)
+	}
+	return as
 }
 
 func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
