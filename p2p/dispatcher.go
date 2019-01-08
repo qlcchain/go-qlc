@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"sync"
+	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 )
@@ -81,9 +82,12 @@ func (dp *Dispatcher) loop() {
 				case key.(*Subscriber).msgChan <- msg:
 				default:
 					logger.Debug("timeout to dispatch message.")
+					time.Sleep(100 * time.Millisecond)
 				}
 				return true
 			})
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
