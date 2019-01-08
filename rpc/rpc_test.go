@@ -14,7 +14,6 @@ import (
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
-	t.Parallel()
 
 	rpcDir := filepath.Join(config.DefaultDataDir(), "rpc")
 	dir := filepath.Join(rpcDir, "config.json")

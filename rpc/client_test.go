@@ -279,7 +279,7 @@ func TestClientSubscribeCustomNamespace(t *testing.T) {
 		t.Fatalf("subscription not closed within 1s after unsubscribe")
 	}
 }
-*/
+
 // In this test, the connection drops while EthSubscribe is
 // waiting for a response.
 func TestClientSubscribeClose(t *testing.T) {
@@ -370,7 +370,7 @@ func TestClientNotificationStorm(t *testing.T) {
 	doTest(8000, false)
 	doTest(10000, true)
 }
-
+*/
 func TestClientHTTP(t *testing.T) {
 	server := newTestServer("service", new(Service))
 	defer server.Stop()

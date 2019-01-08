@@ -33,11 +33,12 @@ type Store interface {
 	GetStateBlocks(txns ...db.StoreTxn) ([]*types.StateBlock, error)
 	DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error
 	HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
-	CountBlocks(txns ...db.StoreTxn) (uint64, error)
+	CountStateBlocks(txns ...db.StoreTxn) (uint64, error)
 	GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error)
 	// smartcontrant block CURD
 	GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error)
 	GetSmartContrantBlocks(txns ...db.StoreTxn) ([]*types.SmartContractBlock, error)
+	CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error)
 	// representation CURD
 	AddRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
 	SubRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error

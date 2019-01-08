@@ -268,7 +268,7 @@ func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, erro
 	return true, nil
 }
 
-func (l *Ledger) CountBlocks(txns ...db.StoreTxn) (uint64, error) {
+func (l *Ledger) CountStateBlocks(txns ...db.StoreTxn) (uint64, error) {
 	var count uint64
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -284,8 +284,24 @@ func (l *Ledger) CountBlocks(txns ...db.StoreTxn) (uint64, error) {
 	return count, nil
 }
 
+func (l *Ledger) CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error) {
+	var count uint64
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
+		count++
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error) {
-	c, err := l.CountBlocks()
+	c, err := l.CountStateBlocks()
 	if err != nil {
 		return nil, err
 	}
