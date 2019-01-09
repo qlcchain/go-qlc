@@ -50,7 +50,7 @@ func init() {
 		}
 
 		if _, ok := tokenCache.LoadOrStore(hash, TokenInfo{
-			TokenId: hash, TokenName: tokenNames[i], TokenSymbol: tokenSymbols[i],
+			TokenId: hash, TokenName: tokenNames[i], TokenSymbol: strings.ToUpper(tokenSymbols[i]),
 			Owner: smartContractBlocks[i].InternalAccount, Decimals: uint8(8), TotalSupply: genesisBlocks[i].Balance,
 		}); !ok {
 			//logger.Debugf("add token[%s] to cache", hash.String())
