@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -159,8 +160,17 @@ func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	return bs, nil
 }
 
-func (q *QlcApi) Process(block *types.StateBlock) (ledger.ProcessResult, error) {
-	return q.ledger.Process(block)
+func (q *QlcApi) Process(block *types.StateBlock) (types.Hash, error) {
+	flag, err := q.ledger.Process(block)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	if flag != ledger.Other {
+		return block.GetHash(), nil
+	} else {
+		return types.ZeroHash, fmt.Errorf("%d", flag)
+	}
+
 }
 
 func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance, error) {
