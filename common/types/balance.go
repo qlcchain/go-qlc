@@ -74,7 +74,8 @@ func (b Balance) Add(n Balance) Balance {
 
 // Sub balances sub
 func (b Balance) Sub(n Balance) Balance {
-	return Balance{new(big.Int).Sub(b.Int, n.Int)}
+	sub := new(big.Int).Sub(b.Int, n.Int)
+	return Balance{sub}
 }
 
 //Compare two balances

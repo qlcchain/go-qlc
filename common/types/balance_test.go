@@ -142,3 +142,15 @@ func TestBalance_IsZero(t *testing.T) {
 		})
 	}
 }
+
+func TestBalance_Sub(t *testing.T) {
+	bb1 := Balance{big.NewInt(10000)}
+	bb2 := Balance{big.NewInt(12000)}
+	t.Log("bb1-bb2: ", bb1.Sub(bb2))
+}
+
+func TestBalance_Add(t *testing.T) {
+	bb1 := Balance{big.NewInt(10000)}
+	bb2 := Balance{big.NewInt(12000)}
+	t.Log("bb1+bb2: ", bb1.Add(bb2))
+}
