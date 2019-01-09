@@ -218,7 +218,7 @@ func (r *RPC) StartRPC() error {
 		//}
 		//if err := r.startHTTP(r.httpEndpoint, apis, nil, r.config.HTTPCors, r.config.HttpVirtualHosts, HTTPTimeouts{}, r.config.HttpExposeAll); err != nil {
 		apis := r.GetHttpApis()
-		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, []string{}, []string{}, HTTPTimeouts{}, false); err != nil {
+		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, []string{"*"}, []string{}, HTTPTimeouts{}, false); err != nil {
 			logger.Info(err)
 			r.stopInProcess()
 			r.stopIPC()

@@ -22,9 +22,11 @@ type TokenPending struct {
 }
 
 type APIBlock struct {
-	Block     *types.StateBlock `json:"block"`
-	SubType   string            `json:"subType"`
-	TokenName string            `json:"tokenName"`
+	*types.StateBlock
+	SubType   string        `json:"subType"`
+	TokenName string        `json:"tokenName"`
+	Amount    types.Balance `json:"amount"`
+	Hash      types.Hash    `json:"hash"`
 }
 
 func NewQlcApi(l *ledger.Ledger, dpos *consensus.DposService) *QlcApi {
@@ -121,6 +123,12 @@ func (q *QlcApi) GetOnlineRepresentatives() []types.Address {
 	return as
 }
 
+func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
+	b.StateBlock = block
+	b.Hash = block.GetHash()
+	return b
+}
+
 func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	var bs []*APIBlock
 	for _, h := range hash {
@@ -129,12 +137,12 @@ func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.Block = block
-		//b.SubType, err = q.judgeBlockKind(block.GetHash())
-		//if err != nil {
-		//	return nil, err
-		//}
-		b.SubType = "state"
+		b = b.fromStateBlock(block)
+		b.SubType, b.Amount, err = q.judgeBlockKind(block)
+		if err != nil {
+			return nil, err
+		}
+		//b.SubType = "state"
 		logger.Info("getToken,", block.GetToken())
 		token, err := mock.GetTokenById(block.GetToken())
 		if err != nil {
@@ -153,22 +161,24 @@ func (q *QlcApi) Process(block *types.StateBlock) (ledger.ProcessResult, error) 
 	return q.ledger.Process(block)
 }
 
-func (q *QlcApi) judgeBlockKind(hash types.Hash) (string, error) {
+func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance, error) {
+	hash := block.GetHash()
 	blkType, err := q.ledger.JudgeBlockKind(hash)
 	if err != nil {
-		return "", err
+		return "", types.ZeroBalance, err
 	}
+	prevBlock, _ := q.ledger.GetStateBlock(block.Previous)
 	switch blkType {
 	case ledger.Open:
-		return "open", nil
+		return "open", block.Balance, nil
 	case ledger.Receive:
-		return "receive", nil
+		return "receive", prevBlock.Balance.Sub(block.Balance), nil
 	case ledger.Send:
-		return "send", nil
+		return "send", block.Balance.Sub(prevBlock.Balance), nil
 	case ledger.Change:
-		return "change", nil
+		return "change", types.ZeroBalance, nil
 	default:
-		return "unknow", nil
+		return "unknow", types.ZeroBalance, nil
 	}
 }
 
@@ -185,7 +195,7 @@ func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, 
 		if block.GetAddress() == address {
 			b := new(APIBlock)
 			logger.Info(b)
-			b.SubType, err = q.judgeBlockKind(block.GetHash())
+			b.SubType, b.Amount, err = q.judgeBlockKind(block)
 			logger.Info(b.SubType)
 			if err != nil {
 				logger.Info(err)
@@ -198,7 +208,7 @@ func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, 
 				return nil, err
 			}
 			b.TokenName = token.TokenName
-			b.Block = block
+			b = b.fromStateBlock(block)
 			bs = append(bs, b)
 		}
 		if len(bs) > n {
