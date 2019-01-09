@@ -6,13 +6,13 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/test/mock"
+	"go.uber.org/zap"
 )
-
-var logger = log.NewLogger("rpcapi")
 
 type QlcApi struct {
 	ledger *ledger.Ledger
 	dpos   *consensus.DposService
+	logger *zap.SugaredLogger
 }
 
 type TokenPending struct {
@@ -30,11 +30,11 @@ type APIBlock struct {
 }
 
 func NewQlcApi(l *ledger.Ledger, dpos *consensus.DposService) *QlcApi {
-	return &QlcApi{ledger: l, dpos: dpos}
+	return &QlcApi{ledger: l, dpos: dpos, logger: log.NewLogger("rpcapi")}
 }
 
 func (q *QlcApi) AccountsBalances(addresses []types.Address) (map[types.Address]map[types.Hash][]types.Balance, error) {
-	logger.Info("addresses", addresses)
+	q.logger.Info("addresses", addresses)
 	r := make(map[types.Address]map[types.Hash][]types.Balance)
 	for _, addr := range addresses {
 		ac, err := q.ledger.GetAccountMeta(addr)
@@ -60,7 +60,7 @@ func (q *QlcApi) AccountsBalances(addresses []types.Address) (map[types.Address]
 }
 
 func (q *QlcApi) AccountsFrontiers(addresses []types.Address) (map[types.Address]map[types.Hash]types.Hash, error) {
-	logger.Info("addresses", addresses)
+	q.logger.Info("addresses", addresses)
 	r := make(map[types.Address]map[types.Hash]types.Hash)
 	for _, addr := range addresses {
 		ac, err := q.ledger.GetAccountMeta(addr)
@@ -77,7 +77,7 @@ func (q *QlcApi) AccountsFrontiers(addresses []types.Address) (map[types.Address
 }
 
 func (q *QlcApi) AccountsPending(addresses []types.Address, n int) (map[types.Address][]*TokenPending, error) {
-	logger.Info("addresses", addresses)
+	q.logger.Info("addresses", addresses)
 	apMap := make(map[types.Address][]*TokenPending)
 	for _, addr := range addresses {
 		pendingkeys, err := q.ledger.Pending(addr)
@@ -133,7 +133,9 @@ func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	var bs []*APIBlock
 	for _, h := range hash {
 		b := new(APIBlock)
+		q.logger.Debug(h.String())
 		block, err := q.ledger.GetStateBlock(h)
+		q.logger.Debug(block)
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +145,7 @@ func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			return nil, err
 		}
 		//b.SubType = "state"
-		logger.Info("getToken,", block.GetToken())
+		q.logger.Info("getToken,", block.GetToken())
 		token, err := mock.GetTokenById(block.GetToken())
 		if err != nil {
 			return nil, err
@@ -163,6 +165,7 @@ func (q *QlcApi) Process(block *types.StateBlock) (ledger.ProcessResult, error) 
 
 func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance, error) {
 	hash := block.GetHash()
+	q.logger.Debug(hash.String())
 	blkType, err := q.ledger.JudgeBlockKind(hash)
 	if err != nil {
 		return "", types.ZeroBalance, err
@@ -183,28 +186,28 @@ func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance,
 }
 
 func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, error) {
-	logger.Info(address)
+	q.logger.Info(address)
 	blocks, err := q.ledger.GetStateBlocks()
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Info(n)
+	q.logger.Info(n)
 	var bs []*APIBlock
 	for _, block := range blocks {
 		if block.GetAddress() == address {
 			b := new(APIBlock)
-			logger.Info(b)
+			q.logger.Info(b)
 			b.SubType, b.Amount, err = q.judgeBlockKind(block)
-			logger.Info(b.SubType)
+			q.logger.Info(b.SubType)
 			if err != nil {
-				logger.Info(err)
+				q.logger.Info(err)
 				return nil, err
 			}
-			logger.Info("getToken,", block.GetToken())
+			q.logger.Info("getToken,", block.GetToken())
 			token, err := mock.GetTokenById(block.GetToken())
 			if err != nil {
-				logger.Info(err)
+				q.logger.Info(err)
 				return nil, err
 			}
 			b.TokenName = token.TokenName
