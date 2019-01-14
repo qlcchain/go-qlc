@@ -3,6 +3,7 @@ package consensus
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common"
@@ -16,6 +17,10 @@ import (
 )
 
 var logger = log.NewLogger("consensus")
+
+const (
+	findOnlineRepresentativesIntervalms = 60 * time.Second
+)
 
 type DposService struct {
 	common.ServiceLifecycle
@@ -141,11 +146,12 @@ func (dps *DposService) onReceiveConfirmReq(block types.Block) {
 		isRep := dps.isThisAccountRepresentation(k)
 		if isRep {
 			logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Root())
+			dps.putRepresentativesToOnline(k)
 			dps.sendConfirmAck(block, k)
-		} else {
+		} /*else {
 			logger.Infof("send confirm req for hash %s,previous hash is %s", block.GetHash(), block.Root())
 			dps.sendConfirmReq(block)
-		}
+		}*/
 	}
 	//if len(accounts) == 0 {
 	//	logger.Info("this is just a node,not a wallet")
@@ -193,12 +199,6 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 				isRep := dps.isThisAccountRepresentation(k)
 				if isRep {
 					dps.sendConfirmAck(va.Blk, k)
-				} else {
-					data, err := protos.ConfirmAckBlockToProto(va)
-					if err != nil {
-						logger.Error("vote to proto error")
-					}
-					dps.ns.Broadcast(p2p.ConfirmAck, data)
 				}
 			}
 			//if len(accounts) == 0 {
@@ -209,6 +209,8 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 			//	}
 			//	dps.ns.Broadcast(p2p.ConfirmAck, data)
 			//}
+		} else {
+			dps.bp.blocks <- va.Blk
 		}
 	}
 }
@@ -331,4 +333,16 @@ func (dps *DposService) putRepresentativesToOnline(addr types.Address) {
 
 func (dps *DposService) GetOnlineRepresentatives() []types.Address {
 	return dps.onlineRepAddresses
+}
+
+func (dps *DposService) findOnlineRepresentatives() error {
+	blk, err := dps.ledger.GetRandomStateBlock()
+	if err != nil {
+		return err
+	}
+	err = dps.sendConfirmReq(blk)
+	if err != nil {
+		return err
+	}
+	return nil
 }

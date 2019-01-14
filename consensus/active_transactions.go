@@ -75,8 +75,9 @@ func (act *ActiveTrx) announceVotes() {
 			accounts := act.dps.getAccounts()
 			for _, k := range accounts {
 				isrep := act.dps.isThisAccountRepresentation(k)
-				if isrep == true {
+				if isrep {
 					logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
+					act.dps.putRepresentativesToOnline(k)
 					act.dps.sendConfirmAck(v.status.winner, k)
 				} else {
 					logger.Infof("send confirm req for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
