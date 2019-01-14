@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -31,8 +33,6 @@ type APIBlock struct {
 	Amount    types.Balance `json:"amount"`
 	Hash      types.Hash    `json:"hash"`
 }
-
-var logger = log.NewLogger("rpcapi")
 
 func NewQlcApi(l *ledger.Ledger, dpos *consensus.DposService) *QlcApi {
 	return &QlcApi{ledger: l, dpos: dpos, logger: log.NewLogger("rpcapi")}
@@ -89,9 +89,12 @@ func (q *QlcApi) AccountsPending(addresses []types.Address, n int) (map[types.Ad
 		if err != nil {
 			return nil, err
 		}
-		var tps []*TokenPending
+		tps := make([]*TokenPending, 0)
 
 		for _, pendingkey := range pendingkeys {
+			if len(tps) >= n {
+				break
+			}
 			pendinginfo, err := q.ledger.GetPending(*pendingkey)
 			if err != nil {
 				return nil, err
@@ -108,12 +111,6 @@ func (q *QlcApi) AccountsPending(addresses []types.Address, n int) (map[types.Ad
 				Hash:        pendingkey.Hash,
 			}
 			tps = append(tps, &tp)
-			if len(tps) > n {
-				break
-			}
-		}
-		if tps == nil {
-			tps = make([]*TokenPending, 0)
 		}
 		apMap[addr] = tps
 	}
@@ -135,31 +132,28 @@ func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
 }
 
 func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
-	var bs []*APIBlock
+	bs := make([]*APIBlock, 0)
 	for _, h := range hash {
 		b := new(APIBlock)
 		q.logger.Debug(h.String())
 		block, err := q.ledger.GetStateBlock(h)
 		q.logger.Debug(block)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s, %s", h, err)
 		}
 		b = b.fromStateBlock(block)
 		b.SubType, b.Amount, err = q.judgeBlockKind(block)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s, %s", h, err)
 		}
 		//b.SubType = "state"
 		q.logger.Info("getToken,", block.GetToken())
 		token, err := mock.GetTokenById(block.GetToken())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s, %s", h, err)
 		}
 		b.TokenName = token.TokenName
 		bs = append(bs, b)
-	}
-	if bs == nil {
-		bs = make([]*APIBlock, 0)
 	}
 	return bs, nil
 }
@@ -177,7 +171,7 @@ func (q *QlcApi) Process(block *types.StateBlock) (types.Hash, error) {
 	//	return types.ZeroHash, fmt.Errorf("%d", flag)
 	//}
 
-	logger.Info("process result, ", flag)
+	q.logger.Info("process result, ", flag)
 	switch flag {
 	case ledger.Progress:
 		pushBlock := protos.PublishBlock{
@@ -185,7 +179,7 @@ func (q *QlcApi) Process(block *types.StateBlock) (types.Hash, error) {
 		}
 		bytes, err := protos.PublishBlockToProto(&pushBlock)
 		if err != nil {
-			logger.Error(err)
+			q.logger.Error(err)
 			return types.ZeroHash, err
 		} else {
 			q.logger.Info("broadcast block")
@@ -243,9 +237,12 @@ func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, 
 	}
 
 	q.logger.Info(n)
-	var bs []*APIBlock
+	bs := make([]*APIBlock, 0)
 	for _, block := range blocks {
 		if block.GetAddress() == address {
+			if len(bs) >= n {
+				break
+			}
 			b := new(APIBlock)
 			q.logger.Info(b)
 			b.SubType, b.Amount, err = q.judgeBlockKind(block)
@@ -264,13 +261,6 @@ func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, 
 			b = b.fromStateBlock(block)
 			bs = append(bs, b)
 		}
-		if len(bs) > n {
-			break
-		}
-	}
-
-	if bs == nil {
-		bs = make([]*APIBlock, 0)
 	}
 	return bs, nil
 }
