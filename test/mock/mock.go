@@ -365,7 +365,7 @@ func StateBlock() types.Block {
 	i, _ := random.Intn(math.MaxInt16)
 	sb.Type = types.State
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
-	sb.Address = Address()
+	sb.Address = a.Address()
 	sb.Token = chainTokenType
 	sb.Previous = Hash()
 	sb.Representative = genesisBlocks[0].Representative
