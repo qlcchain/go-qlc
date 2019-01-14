@@ -61,7 +61,7 @@ func DefaultConfig() (*Config, error) {
 			WSEnabled:    true,
 			WSEndpoint:   "0.0.0.0:9736",
 			IPCEnabled:   true,
-			IPCEndpoint:  "9737",
+			IPCEndpoint:  filepath.Join(DefaultDataDir(), "qlc.ipc"),
 		},
 		P2P: &P2PConfig{
 			BootNodes: defaultBootstrapAddresses,

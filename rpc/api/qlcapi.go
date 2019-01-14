@@ -1,11 +1,13 @@
 package api
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/p2p"
+	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/test/mock"
 	"go.uber.org/zap"
 )
@@ -29,6 +31,8 @@ type APIBlock struct {
 	Amount    types.Balance `json:"amount"`
 	Hash      types.Hash    `json:"hash"`
 }
+
+var logger = log.NewLogger("rpcapi")
 
 func NewQlcApi(l *ledger.Ledger, dpos *consensus.DposService) *QlcApi {
 	return &QlcApi{ledger: l, dpos: dpos, logger: log.NewLogger("rpcapi")}
@@ -165,12 +169,48 @@ func (q *QlcApi) Process(block *types.StateBlock) (types.Hash, error) {
 	if err != nil {
 		return types.ZeroHash, err
 	}
-	if flag != ledger.Other {
-		return block.GetHash(), nil
-	} else {
-		return types.ZeroHash, fmt.Errorf("%d", flag)
-	}
 
+	//if flag != ledger.Other {
+	//
+	//	return block.GetHash(), nil
+	//} else {
+	//	return types.ZeroHash, fmt.Errorf("%d", flag)
+	//}
+
+	logger.Info("process result, ", flag)
+	switch flag {
+	case ledger.Progress:
+		pushBlock := protos.PublishBlock{
+			Blk: block,
+		}
+		bytes, err := protos.PublishBlockToProto(&pushBlock)
+		if err != nil {
+			logger.Error(err)
+			return types.ZeroHash, err
+		} else {
+			q.logger.Info("broadcast block")
+			q.dpos.GetP2PService().Broadcast(p2p.PublishReq, bytes)
+			return block.GetHash(), nil
+		}
+	case ledger.BadWork:
+		return types.ZeroHash, errors.New("bad work")
+	case ledger.BadSignature:
+		return types.ZeroHash, errors.New("bad signature")
+	case ledger.Old:
+		return types.ZeroHash, errors.New("old block")
+	case ledger.Fork:
+		return types.ZeroHash, errors.New("fork")
+	case ledger.GapSource:
+		return types.ZeroHash, errors.New("gap source block")
+	case ledger.GapPrevious:
+		return types.ZeroHash, errors.New("gap previous block")
+	case ledger.BalanceMismatch:
+		return types.ZeroHash, errors.New("balance mismatch")
+	case ledger.UnReceivable:
+		return types.ZeroHash, errors.New("unReceivable")
+	default:
+		return types.ZeroHash, errors.New("error processing block")
+	}
 }
 
 func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance, error) {

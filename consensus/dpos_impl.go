@@ -31,6 +31,10 @@ type DposService struct {
 	onlineRepAddresses []types.Address
 }
 
+func (dps *DposService) GetP2PService() p2p.Service {
+	return dps.ns
+}
+
 func (dps *DposService) Init() error {
 	if !dps.PreInit() {
 		return errors.New("pre init fail")
