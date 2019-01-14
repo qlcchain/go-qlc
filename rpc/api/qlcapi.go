@@ -53,7 +53,7 @@ func (q *QlcApi) AccountsBalances(addresses []types.Address) (map[types.Address]
 			if err != nil {
 				return nil, err
 			}
-			var b types.Balance
+			b := types.ZeroBalance
 			for _, pending := range pendings {
 				b = b.Add(pending.Amount)
 			}
@@ -225,9 +225,9 @@ func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance,
 	case ledger.Open:
 		return "open", block.Balance, nil
 	case ledger.Receive:
-		return "receive", prevBlock.Balance.Sub(block.Balance), nil
+		return "receive", block.Balance.Sub(prevBlock.Balance), nil
 	case ledger.Send:
-		return "send", block.Balance.Sub(prevBlock.Balance), nil
+		return "send", prevBlock.Balance.Sub(block.Balance), nil
 	case ledger.Change:
 		return "change", types.ZeroBalance, nil
 	default:
