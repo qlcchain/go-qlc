@@ -212,7 +212,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 								break
 							}
 						}
-						for i := (len(bulkblk) - 1); i >= 0; i-- {
+						for i := len(bulkblk) - 1; i >= 0; i-- {
 							push := &messagepb.BulkPush{
 								Blk: bulkblk[i],
 							}
@@ -238,7 +238,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 								break
 							}
 						}
-						for i := (len(bulkblk) - 1); i >= 0; i-- {
+						for i := len(bulkblk) - 1; i >= 0; i-- {
 							push := &messagepb.BulkPush{
 								Blk: bulkblk[i],
 							}
@@ -289,7 +289,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 				break
 			}
 		}
-		for i := (len(bulkblk) - 1); i >= 0; i-- {
+		for i := len(bulkblk) - 1; i >= 0; i-- {
 			PullRsp := &messagepb.BulkPullRspPacket{
 				Blk: bulkblk[i],
 			}
@@ -314,7 +314,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 				break
 			}
 		}
-		for i := (len(bulkblk) - 1); i >= 0; i-- {
+		for i := len(bulkblk) - 1; i >= 0; i-- {
 			PullRsp := &messagepb.BulkPullRspPacket{
 				Blk: bulkblk[i],
 			}
