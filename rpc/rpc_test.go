@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -25,7 +26,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 	cfg.RPC = new(config.RPCConfig)
 	cfg.RPC.HTTPEndpoint = "0.0.0.0:9735"
 	cfg.RPC.WSEndpoint = "0.0.0.0:9736"
-	cfg.RPC.IPCEndpoint = filepath.Join(cfg.DataDir, "qlc_test.ipc")
+	cfg.RPC.IPCEndpoint = defaultIPCEndpoint(filepath.Join(cfg.DataDir, "qlc_test.ipc"))
 	cfg.RPC.WSEnabled = true
 	cfg.RPC.IPCEnabled = true
 	cfg.RPC.HTTPEnabled = true
@@ -38,6 +39,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 	logger.Info("rpc started")
 	return func(t *testing.T) {
 		rs.Stop()
+		rs.rpc.ledger.Close()
+		rs.rpc.dpos.Stop()
+		rs.rpc.wallet.Close()
 		err = os.RemoveAll(rpcDir)
 		if err != nil {
 			t.Fatal(err)
@@ -122,4 +126,11 @@ func TestRPC_Client3(t *testing.T) {
 		t.Log(err)
 	}
 	logger.Info(resp)
+}
+
+func defaultIPCEndpoint(str string) string {
+	if runtime.GOOS == "windows" {
+		return `\\.\pipe\gqlc.ipc`
+	}
+	return str
 }

@@ -124,7 +124,7 @@ func defaultIPCEndpoint() string {
 		//if strings.HasPrefix(dir, `\\.\pipe\`) {
 		//	return dir
 		//}
-		return `\\.\pipe\` + dir
+		return `\\.\pipe\gqlc.ipc`
 	}
 	return dir
 }
