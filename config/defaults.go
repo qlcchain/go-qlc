@@ -61,7 +61,7 @@ func DefaultConfig() (*Config, error) {
 			WSEnabled:    true,
 			WSEndpoint:   "0.0.0.0:9736",
 			IPCEnabled:   true,
-			IPCEndpoint:  filepath.Join(DefaultDataDir(), "qlc.ipc"),
+			IPCEndpoint:  defaultIPCEndpoint(),
 		},
 		P2P: &P2PConfig{
 			BootNodes: defaultBootstrapAddresses,
@@ -116,6 +116,17 @@ func DefaultDataDir() string {
 		}
 	}
 	return ""
+}
+
+func defaultIPCEndpoint() string {
+	dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
+	if runtime.GOOS == "windows" {
+		//if strings.HasPrefix(dir, `\\.\pipe\`) {
+		//	return dir
+		//}
+		return `\\.\pipe\` + dir
+	}
+	return dir
 }
 
 func DefaultConfigFile() string {

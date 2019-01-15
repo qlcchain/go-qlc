@@ -231,27 +231,34 @@ func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance,
 
 func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, error) {
 	q.logger.Info(address)
-	blocks, err := q.ledger.GetStateBlocks()
+	bs := make([]*APIBlock, 0)
+	ac, err := q.ledger.GetAccountMeta(address)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("ac", ac)
+	for _, token := range ac.Tokens {
+		h := token.Header
+		count_limit := 0
 
-	q.logger.Info(n)
-	bs := make([]*APIBlock, 0)
-	for _, block := range blocks {
-		if block.GetAddress() == address {
-			if len(bs) >= n {
-				break
+		for count_limit < n {
+
+			block, err := q.ledger.GetStateBlock(h)
+
+			if err != nil {
+				if err == ledger.ErrBlockNotFound {
+					break
+				}
+				return nil, err
 			}
+
 			b := new(APIBlock)
-			q.logger.Info(b)
 			b.SubType, b.Amount, err = q.judgeBlockKind(block)
-			q.logger.Info(b.SubType)
 			if err != nil {
 				q.logger.Info(err)
 				return nil, err
 			}
-			q.logger.Info("getToken,", block.GetToken())
+			q.logger.Info("token,", block.GetToken())
 			token, err := mock.GetTokenById(block.GetToken())
 			if err != nil {
 				q.logger.Info(err)
@@ -260,6 +267,9 @@ func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, 
 			b.TokenName = token.TokenName
 			b = b.fromStateBlock(block)
 			bs = append(bs, b)
+
+			h = block.GetPrevious()
+			count_limit = count_limit + 1
 		}
 	}
 	return bs, nil
