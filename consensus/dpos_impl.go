@@ -193,14 +193,8 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 		if err != nil {
 			return
 		}
-		if exit {
-			accounts := dps.getAccounts()
-			for _, k := range accounts {
-				isRep := dps.isThisAccountRepresentation(k)
-				if isRep {
-					dps.sendConfirmAck(va.Blk, k)
-				}
-			}
+		if !exit {
+			dps.bp.blocks <- va.Blk
 			//if len(accounts) == 0 {
 			//	logger.Info("this is just a node,not a wallet")
 			//	data, err := protos.ConfirmAckBlockToProto(va)
@@ -209,8 +203,6 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 			//	}
 			//	dps.ns.Broadcast(p2p.ConfirmAck, data)
 			//}
-		} else {
-			dps.bp.blocks <- va.Blk
 		}
 	}
 }
@@ -324,7 +316,7 @@ func (dps *DposService) putRepresentativesToOnline(addr types.Address) {
 			if v == addr {
 				break
 			}
-			if i == len(dps.onlineRepAddresses) {
+			if i == (len(dps.onlineRepAddresses) - 1) {
 				dps.onlineRepAddresses = append(dps.onlineRepAddresses, addr)
 			}
 		}

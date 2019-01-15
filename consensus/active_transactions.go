@@ -78,10 +78,18 @@ func (act *ActiveTrx) announceVotes() {
 				if isrep {
 					logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
 					act.dps.putRepresentativesToOnline(k)
-					act.dps.sendConfirmAck(v.status.winner, k)
+					va, err := act.dps.voteGenerate(v.status.winner, k)
+					if err != nil {
+						logger.Error("vote generate error")
+						continue
+					}
+					act.vote(va)
 				} else {
 					logger.Infof("send confirm req for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
-					act.dps.sendConfirmReq(v.status.winner)
+					err := act.dps.sendConfirmReq(v.status.winner)
+					if err != nil {
+						continue
+					}
 				}
 			}
 			if len(accounts) == 0 {
