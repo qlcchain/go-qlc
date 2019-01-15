@@ -130,7 +130,7 @@ func TestRPC_Client3(t *testing.T) {
 
 func defaultIPCEndpoint(str string) string {
 	if runtime.GOOS == "windows" {
-		return `\\.\pipe\gqlc.ipc`
+		return `\\.\pipe\gqlc_test.ipc`
 	}
 	return str
 }
