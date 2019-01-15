@@ -59,7 +59,7 @@ func importWallet() (types.Address, error) {
 		return types.ZeroAddress, errors.New("invalid seed")
 	}
 	if cfgPath == "" {
-		cfgPath = config.DefaultConfigFile()
+		cfgPath = config.DefaultDataDir()
 	}
 	cm := config.NewCfgManager(cfgPath)
 	cfg, err := cm.Load()

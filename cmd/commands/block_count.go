@@ -52,7 +52,7 @@ func init() {
 
 func countBlock() (uint64, error) {
 	if cfgPath == "" {
-		cfgPath = config.DefaultConfigFile()
+		cfgPath = config.DefaultDataDir()
 	}
 	cm := config.NewCfgManager(cfgPath)
 	cfg, err := cm.Load()

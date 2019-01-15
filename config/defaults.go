@@ -28,7 +28,7 @@ var defaultBootstrapAddresses = []string{
 	"/ip4/47.244.138.61/tcp/9734/ipfs/QmeSBhQe5kYtKqEQfSt7K3NR36Z3rBxF9JBBBWTBrDVap3",
 }
 
-func DefaultConfig() (*Config, error) {
+func DefaultConfig(dir string) (*Config, error) {
 	identity, err := identityConfig()
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func DefaultConfig() (*Config, error) {
 
 	cfg := &Config{
 		Version:    configVersion,
-		DataDir:    DefaultDataDir(),
+		DataDir:    dir,
 		Mode:       "Normal",
 		StorageMax: "10GB",
 		LogConfig:  &logCfg,
@@ -61,7 +61,7 @@ func DefaultConfig() (*Config, error) {
 			WSEnabled:    true,
 			WSEndpoint:   "0.0.0.0:9736",
 			IPCEnabled:   true,
-			IPCEndpoint:  defaultIPCEndpoint(),
+			IPCEndpoint:  filepath.Join(DefaultDataDir(), "qlc.ipc"),
 		},
 		P2P: &P2PConfig{
 			BootNodes: defaultBootstrapAddresses,
@@ -116,17 +116,6 @@ func DefaultDataDir() string {
 		}
 	}
 	return ""
-}
-
-func defaultIPCEndpoint() string {
-	dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
-	if runtime.GOOS == "windows" {
-		//if strings.HasPrefix(dir, `\\.\pipe\`) {
-		//	return dir
-		//}
-		return `\\.\pipe\gqlc.ipc`
-	}
-	return dir
 }
 
 func DefaultConfigFile() string {

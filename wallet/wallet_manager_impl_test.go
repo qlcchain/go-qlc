@@ -8,20 +8,21 @@
 package wallet
 
 import (
-	"github.com/json-iterator/go"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/json-iterator/go"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestNewWalletStore(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "wallet_test")
-	cfg1, _ := config.DefaultConfig()
+	cfg1, _ := config.DefaultConfig(config.DefaultDataDir())
 	cfg1.DataDir = dir
-	cfg2, _ := config.DefaultConfig()
+	cfg2, _ := config.DefaultConfig(config.DefaultDataDir())
 	cfg2.DataDir = dir
 	store1 := NewWalletStore(cfg1)
 	store2 := NewWalletStore(cfg2)
@@ -45,9 +46,9 @@ func TestNewWalletStore(t *testing.T) {
 func TestNewWalletStore2(t *testing.T) {
 	dir1 := filepath.Join(config.QlcTestDataDir(), "wallet_test1")
 	dir2 := filepath.Join(config.QlcTestDataDir(), "wallet_test2")
-	cfg1, _ := config.DefaultConfig()
+	cfg1, _ := config.DefaultConfig(config.DefaultDataDir())
 	cfg1.DataDir = dir1
-	cfg2, _ := config.DefaultConfig()
+	cfg2, _ := config.DefaultConfig(config.DefaultDataDir())
 	cfg2.DataDir = dir2
 	store1 := NewWalletStore(cfg1)
 	store2 := NewWalletStore(cfg2)

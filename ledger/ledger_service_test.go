@@ -8,12 +8,13 @@
 package ledger
 
 import (
-	"github.com/qlcchain/go-qlc/config"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestNewLedgerService(t *testing.T) {
-	cfg, err := config.DefaultConfig()
+	cfg, err := config.DefaultConfig(config.DefaultDataDir())
 	if err != nil {
 		t.Fatal(err)
 	}

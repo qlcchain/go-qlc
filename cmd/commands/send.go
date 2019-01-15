@@ -26,6 +26,7 @@ import (
 	"github.com/qlcchain/go-qlc/test/mock"
 
 	"github.com/spf13/cobra"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var (
@@ -88,7 +89,7 @@ func sendAction() error {
 
 	am := types.StringToBalance(amount)
 	if cfgPath == "" {
-		cfgPath = config.DefaultConfigFile()
+		cfgPath = config.DefaultDataDir()
 	}
 	cm := config.NewCfgManager(cfgPath)
 	cfg, err := cm.Load()
@@ -105,6 +106,9 @@ func sendAction() error {
 		logger.Error(err)
 	}
 	send(source, t, tk, am, pwd)
+	cmn.TrapSignal(func() {
+		stopNode(services)
+	})
 	return nil
 }
 

@@ -31,7 +31,7 @@ import (
 func setupTestCase(t *testing.T) (func(t *testing.T), *WalletStore) {
 	t.Parallel()
 	start := time.Now()
-	cfg, _ := config.DefaultConfig()
+	cfg, _ := config.DefaultConfig(config.DefaultDataDir())
 	cfg.DataDir = filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	dir := cfg.WalletDir()
 	t.Log("setup store test case", dir)
