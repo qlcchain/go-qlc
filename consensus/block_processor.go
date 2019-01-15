@@ -29,7 +29,7 @@ func (bp *BlockProcessor) Start() {
 }
 
 func (bp *BlockProcessor) processBlocks() {
-	//timer := time.NewTicker(findOnlineRepresentativesIntervalms)
+	timer := time.NewTicker(findOnlineRepresentativesIntervalms)
 	for {
 		select {
 		case <-bp.quitCh:
@@ -38,9 +38,9 @@ func (bp *BlockProcessor) processBlocks() {
 		case block := <-bp.blocks:
 			result, _ := bp.dp.ledger.Process(block)
 			bp.processResult(result, block)
-		//case <-timer.C:
-		//	logger.Info("begin Find Online Representatives.")
-		//	bp.dp.findOnlineRepresentatives()
+		case <-timer.C:
+			logger.Info("begin Find Online Representatives.")
+			bp.dp.findOnlineRepresentatives()
 		default:
 			time.Sleep(100 * time.Millisecond)
 		}
