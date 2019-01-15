@@ -16,6 +16,7 @@ package commands
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -68,22 +69,22 @@ func init() {
 
 func sendAction() error {
 	if from == "" || to == "" || amount == "" {
-		logger.Fatal("err transfer info")
+		fmt.Println("err transfer info")
 		return errors.New("err transfer info")
 	}
 	source, err := types.HexToAddress(from)
 	if err != nil {
-		logger.Error(err)
+		fmt.Println(err)
 		return err
 	}
 	t, err := types.HexToAddress(to)
 	if err != nil {
-		logger.Error(err)
+		fmt.Println(err)
 		return err
 	}
 	tk, err := types.NewHash(token)
 	if err != nil {
-		logger.Error(err)
+		fmt.Println(err)
 		return err
 	}
 
@@ -98,12 +99,12 @@ func sendAction() error {
 	}
 	err = initNode(source, pwd, cfg)
 	if err != nil {
-		logger.Error(err)
+		fmt.Println(err)
 		return err
 	}
 	services, err = startNode()
 	if err != nil {
-		logger.Error(err)
+		fmt.Println(err)
 	}
 	send(source, t, tk, am, pwd)
 	cmn.TrapSignal(func() {
@@ -116,38 +117,38 @@ func send(from, to types.Address, token types.Hash, amount types.Balance, passwo
 	w := ctx.Wallet.Wallet
 	l := ctx.Ledger.Ledger
 	n := ctx.NetService
-	logger.Debug(from.String())
+	fmt.Println(from.String())
 	session := w.NewSession(from)
 
 	if b, err := session.VerifyPassword(password); b && err == nil {
 		a, _ := mock.BalanceToRaw(amount, "QLC")
 		sendBlock, err := session.GenerateSendBlock(from, token, to, a)
 		if err != nil {
-			logger.Fatal(err)
+			fmt.Println(err)
 		}
 
 		if r, err := l.Process(sendBlock); err != nil || r == ledger.Other {
-			logger.Debug(jsoniter.MarshalToString(&sendBlock))
-			logger.Error("process block error", err)
+			fmt.Println(jsoniter.MarshalToString(&sendBlock))
+			fmt.Println("process block error", err)
 		} else {
-			logger.Info("send block, ", sendBlock.GetHash())
+			fmt.Println("send block, ", sendBlock.GetHash())
 
 			meta, err := l.GetAccountMeta(from)
 			if err != nil {
-				logger.Error(err)
+				fmt.Println(err)
 			}
-			logger.Debug(jsoniter.MarshalToString(&meta))
+			fmt.Println(jsoniter.MarshalToString(&meta))
 			pushBlock := protos.PublishBlock{
 				Blk: sendBlock,
 			}
 			bytes, err := protos.PublishBlockToProto(&pushBlock)
 			if err != nil {
-				logger.Error(err)
+				fmt.Println(err)
 			} else {
 				n.Broadcast(p2p.PublishReq, bytes)
 			}
 		}
 	} else {
-		logger.Error("invalid password ", err, " valid: ", b)
+		fmt.Println("invalid password ", err, " valid: ", b)
 	}
 }

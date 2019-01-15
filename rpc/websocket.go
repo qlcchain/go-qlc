@@ -58,7 +58,7 @@ func (srv *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 	return websocket.Server{
 		Handshake: wsHandshakeValidator(allowedOrigins),
 		Handler: func(conn *websocket.Conn) {
-			logger.Info("websocket request")
+			//logger.Info("websocket request")
 			// Create a custom encode/decode pair to enforce payload size and number encoding
 			conn.MaxPayloadBytes = maxRequestContentLength
 
@@ -110,14 +110,14 @@ func wsHandshakeValidator(allowedOrigins []string) func(*websocket.Config, *http
 		}
 	}
 
-	logger.Debug(fmt.Sprintf("Allowed origin(s) for WS RPC interface %v\n", origins.ToSlice()))
+	//logger.Debug(fmt.Sprintf("Allowed origin(s) for WS RPC interface %v\n", origins.ToSlice()))
 
 	f := func(cfg *websocket.Config, req *http.Request) error {
 		origin := strings.ToLower(req.Header.Get("Origin"))
 		if allowAllOrigins || origins.Contains(origin) {
 			return nil
 		}
-		logger.Warn(fmt.Sprintf("origin '%s' not allowed on WS-RPC interface\n", origin))
+		//logger.Warn(fmt.Sprintf("origin '%s' not allowed on WS-RPC interface\n", origin))
 		return fmt.Errorf("origin %s not allowed", origin)
 	}
 
@@ -233,7 +233,7 @@ func (self *WebSocketCli) Close() {
 }
 func (self *WebSocketCli) Handle() {
 	if self.u == nil {
-		logger.Warn("websocket url is nil.")
+		//logger.Warn("websocket url is nil.")
 		return
 	}
 	for {
@@ -242,18 +242,18 @@ func (self *WebSocketCli) Handle() {
 			return
 		default:
 		}
-		logger.Info("connecting to " + self.u.String() + ".")
+		//logger.Info("connecting to " + self.u.String() + ".")
 		c, err := websocket.Dial(self.u.String(), "", "*")
 		if err == nil {
-			logger.Info("connect to " + self.u.String() + " success.")
+			//logger.Info("connect to " + self.u.String() + " success.")
 			self.c = c
 		} else {
-			logger.Warn("can't connect to "+self.u.String()+" by websocket.", "err", err)
+			//logger.Warn("can't connect to "+self.u.String()+" by websocket.", "err", err)
 		}
 		if c != nil {
 			err = self.Srv(c)
 			if err != nil {
-				logger.Warn("deal message error", err)
+				//logger.Warn("deal message error", err)
 			}
 			self.c = nil
 		}

@@ -15,6 +15,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/spf13/cobra"
@@ -67,7 +69,7 @@ func changePassword() error {
 	}
 	err = initNode(ac, pwd, cfg)
 	if err != nil {
-		logger.Error(err)
+		fmt.Println(err)
 		return err
 	}
 	w := ctx.Wallet.Wallet

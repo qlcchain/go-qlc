@@ -56,41 +56,41 @@ func (ms *MessageService) Start() {
 	go ms.syncService.Start()
 }
 func (ms *MessageService) startLoop() {
-	logger.Info("Started Message Service.")
+	ms.netService.node.logger.Info("Started Message Service.")
 
 	for {
 		select {
 		case <-ms.quitCh:
-			logger.Info("Stopped Message Service.")
+			ms.netService.node.logger.Info("Stopped Message Service.")
 			return
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
 			case PublishReq:
-				logger.Info("receive PublishReq")
+				ms.netService.node.logger.Info("receive PublishReq")
 				ms.onPublishReq(message)
 			case ConfirmReq:
-				logger.Info("receive ConfirmReq")
+				ms.netService.node.logger.Info("receive ConfirmReq")
 				ms.onConfirmReq(message)
 			case ConfirmAck:
-				logger.Info("receive ConfirmAck")
+				ms.netService.node.logger.Info("receive ConfirmAck")
 				ms.onConfirmAck(message)
 			case FrontierRequest:
-				logger.Info("receive FrontierReq")
+				ms.netService.node.logger.Info("receive FrontierReq")
 				ms.syncService.onFrontierReq(message)
 			case FrontierRsp:
-				logger.Info("receive FrontierRsp")
+				ms.netService.node.logger.Info("receive FrontierRsp")
 				ms.syncService.onFrontierRsp(message)
 			case BulkPullRequest:
-				logger.Info("receive BulkPullRequest")
+				ms.netService.node.logger.Info("receive BulkPullRequest")
 				ms.syncService.onBulkPullRequest(message)
 			case BulkPullRsp:
-				logger.Info("receive BulkPullRsp")
+				ms.netService.node.logger.Info("receive BulkPullRsp")
 				ms.syncService.onBulkPullRsp(message)
 			case BulkPushBlock:
-				logger.Info("receive BulkPushBlock")
+				ms.netService.node.logger.Info("receive BulkPushBlock")
 				ms.syncService.onBulkPushBlock(message)
 			default:
-				logger.Error("Received unknown message.")
+				ms.netService.node.logger.Error("Received unknown message.")
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
@@ -121,7 +121,7 @@ func (ms *MessageService) onConfirmAck(message Message) error {
 	return nil
 }
 func (ms *MessageService) Stop() {
-	logger.Info("stopped message monitor")
+	ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
 	ms.quitCh <- true
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, PublishReq))

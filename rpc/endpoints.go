@@ -36,10 +36,10 @@ func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []str
 	for _, api := range apis {
 		if exposeAll || whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
-				logger.Info("RegisterName")
+				//logger.Info("RegisterName")
 				return nil, nil, err
 			}
-			logger.Debug("HTTP registered ", "namespace ", api.Namespace)
+			//logger.Debug("HTTP registered ", "namespace ", api.Namespace)
 		}
 	}
 	// All APIs registered, start the HTTP listener
@@ -48,7 +48,7 @@ func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []str
 		err      error
 	)
 	if listener, err = net.Listen("tcp", endpoint); err != nil {
-		logger.Info(err)
+		//logger.Info(err)
 		return nil, nil, err
 	}
 
@@ -72,7 +72,7 @@ func StartWSEndpoint(endpoint string, apis []API, modules []string, wsOrigins []
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 				return nil, nil, err
 			}
-			logger.Debug("WebSocket registered ", " service ", api.Service, " namespace ", api.Namespace)
+			//logger.Debug("WebSocket registered ", " service ", api.Service, " namespace ", api.Namespace)
 		}
 	}
 	// All APIs registered, start the HTTP listener
@@ -98,7 +98,7 @@ func StartIPCEndpoint(ipcEndpoint string, apis []API) (net.Listener, *Server, er
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 			return nil, nil, err
 		}
-		logger.Debug("IPC registered ", "namespace ", api.Namespace)
+		//logger.Debug("IPC registered ", "namespace ", api.Namespace)
 	}
 	// All APIs registered, start the IPC listener.
 	listener, err := ipcListen(ipcEndpoint)
@@ -107,7 +107,7 @@ func StartIPCEndpoint(ipcEndpoint string, apis []API) (net.Listener, *Server, er
 	signal.Notify(exitSig, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-exitSig
-		logger.Info("receiver term sig")
+		//logger.Info("receiver term sig")
 		if listener != nil {
 			listener.Close()
 		}
@@ -137,7 +137,7 @@ func StartWSCliEndpoint(u *url.URL, apis []API, modules []string, exposeAll bool
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 				return nil, nil, err
 			}
-			logger.Debug("WebSocket registered", "service", api.Service, "namespace", api.Namespace)
+			//logger.Debug("WebSocket registered", "service", api.Service, "namespace", api.Namespace)
 		}
 	}
 	// All APIs registered, start the HTTP listener

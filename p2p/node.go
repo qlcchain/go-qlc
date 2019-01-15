@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-crypto"
@@ -24,7 +25,8 @@ import (
 var (
 	ErrPeerIsNotConnected = errors.New("peer is not connected")
 )
-var logger = log.NewLogger("p2p")
+
+//var logger = log.NewLogger("p2p")
 
 type QlcNode struct {
 	ID             peer.ID
@@ -40,6 +42,7 @@ type QlcNode struct {
 	dis            *discovery.RoutingDiscovery
 	kadDht         *dht.IpfsDHT
 	netService     *QlcService
+	logger         *zap.SugaredLogger
 }
 
 // NewNode return new QlcNode according to the config.
@@ -50,10 +53,11 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		boostrapAddrs: config.P2P.BootNodes,
 		streamManager: NewStreamManager(),
 		ID:            peer.ID(config.ID.PeerID),
+		logger:        log.NewLogger("p2p"),
 	}
 	privateKey, err := config.DecodePrivateKey()
 	if err != nil {
-		logger.Error(err)
+		node.logger.Error(err)
 		return nil, err
 	}
 	node.privateKey = privateKey
@@ -62,7 +66,7 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 	return node, nil
 }
 func (node *QlcNode) startHost() error {
-	logger.Info("Start Qlc Host...")
+	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
 	qlchost, err := libp2p.New(
 		node.ctx,
@@ -88,12 +92,12 @@ func (node *QlcNode) startHost() error {
 }
 func (node *QlcNode) startLocalDiscovery() error {
 	// setup local discovery
-	logger.Info("Start Qlc Local Discovery...")
+	node.logger.Info("Start Qlc Local Discovery...")
 	do := setupDiscoveryOption(node.cfg)
 	if do != nil {
 		service, err := do(node.ctx, node.host)
 		if err != nil {
-			logger.Error("mdns error: ", err)
+			node.logger.Error("mdns error: ", err)
 			return err
 		} else {
 			service.RegisterNotifee(node)
@@ -122,7 +126,7 @@ func (node *QlcNode) StartServices() error {
 	if len(node.boostrapAddrs) != 0 {
 		pinfos, err := convertPeers(node.boostrapAddrs)
 		if err != nil {
-			logger.Errorf("Failed to convert bootnode address")
+			node.logger.Errorf("Failed to convert bootnode address")
 			return err
 		}
 
@@ -132,6 +136,7 @@ func (node *QlcNode) StartServices() error {
 				time.Sleep(time.Duration(10) * time.Second)
 				continue
 			}
+			node.logger.Info("connect to bootstrap success")
 			break
 
 		}
@@ -153,7 +158,7 @@ func (node *QlcNode) StartServices() error {
 }
 
 func (node *QlcNode) handleStream(s inet.Stream) {
-	logger.Infof("Got a new stream from %s!", s.Conn().RemotePeer().Pretty())
+	node.logger.Infof("Got a new stream from %s!", s.Conn().RemotePeer().Pretty())
 	node.streamManager.Add(s)
 }
 
@@ -182,7 +187,7 @@ func (node *QlcNode) SetQlcService(ns *QlcService) {
 
 // Stop stop a node.
 func (node *QlcNode) Stop() {
-	logger.Info("Stop QlcService Node...")
+	node.logger.Info("Stop QlcService Node...")
 
 	node.stopHost()
 	node.streamManager.Stop()
@@ -198,7 +203,7 @@ func (node *QlcNode) BroadcastMessage(messageName string, data []byte) {
 func (node *QlcNode) SendMessageToPeer(messageName string, data []byte, peerID string) error {
 	stream := node.streamManager.FindByPeerID(peerID)
 	if stream == nil {
-		logger.Debug("Failed to locate peer's stream")
+		node.logger.Debug("Failed to locate peer's stream")
 		return ErrPeerIsNotConnected
 	}
 

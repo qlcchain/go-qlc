@@ -55,7 +55,7 @@ func (el *Election) voteAction(va *protos.ConfirmAckBlock) {
 		el.vote.repVotes[va.Account] = va
 		data, err := protos.ConfirmAckBlockToProto(va)
 		if err != nil {
-			logger.Error("vote to proto error")
+			el.dps.logger.Error("vote to proto error")
 		}
 		el.dps.ns.Broadcast(p2p.ConfirmAck, data)
 	}
@@ -76,7 +76,7 @@ func (el *Election) haveQuorum() {
 		}
 	}
 	if balance.Compare(el.supply) == types.BalanceCompBigger {
-		logger.Infof("hash:%s block has confirmed", blk.GetHash())
+		el.dps.logger.Infof("hash:%s block has confirmed", blk.GetHash())
 		el.status.winner = blk
 		el.confirmed = true
 		el.status.tally = balance

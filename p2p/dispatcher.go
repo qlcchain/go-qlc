@@ -4,6 +4,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
+
 	lru "github.com/hashicorp/golang-lru"
 )
 
@@ -14,6 +17,7 @@ type Dispatcher struct {
 	receivedMessageCh  chan Message
 	dispatchedMessages *lru.Cache
 	filters            map[MessageType]bool
+	logger             *zap.SugaredLogger
 }
 
 // NewDispatcher create Dispatcher instance.
@@ -23,6 +27,7 @@ func NewDispatcher() *Dispatcher {
 		quitCh:            make(chan bool, 10),
 		receivedMessageCh: make(chan Message, 65536),
 		filters:           make(map[MessageType]bool),
+		logger:            log.NewLogger("dispatcher"),
 	}
 
 	dp.dispatchedMessages, _ = lru.New(51200)
@@ -61,12 +66,12 @@ func (dp *Dispatcher) Start() {
 }
 
 func (dp *Dispatcher) loop() {
-	logger.Info("Started NewService Dispatcher.")
+	dp.logger.Info("Started NewService Dispatcher.")
 
 	for {
 		select {
 		case <-dp.quitCh:
-			logger.Info("Stoped Qlc Dispatcher.")
+			dp.logger.Info("Stoped Qlc Dispatcher.")
 			return
 		case msg := <-dp.receivedMessageCh:
 			msgType := msg.MessageType()
@@ -81,7 +86,7 @@ func (dp *Dispatcher) loop() {
 				select {
 				case key.(*Subscriber).msgChan <- msg:
 				default:
-					logger.Debug("timeout to dispatch message.")
+					dp.logger.Debug("timeout to dispatch message.")
 					time.Sleep(100 * time.Millisecond)
 				}
 				return true
@@ -94,7 +99,7 @@ func (dp *Dispatcher) loop() {
 
 // Stop stop goroutine.
 func (dp *Dispatcher) Stop() {
-	logger.Info("Stopping QlcService Dispatcher...")
+	dp.logger.Info("Stopping QlcService Dispatcher...")
 
 	dp.quitCh <- true
 }

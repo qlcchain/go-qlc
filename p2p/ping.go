@@ -7,6 +7,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
+
 	u "github.com/ipfs/go-ipfs-util"
 	"github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"
@@ -20,11 +23,12 @@ const (
 )
 
 type PingService struct {
-	Host host.Host
+	Host   host.Host
+	logger *zap.SugaredLogger
 }
 
 func NewPingService(h host.Host) *PingService {
-	ps := &PingService{h}
+	ps := &PingService{h, log.NewLogger("dispatcher")}
 	h.SetStreamHandler(ID, ps.PingHandler)
 	return ps
 }
@@ -40,12 +44,12 @@ func (p *PingService) PingHandler(s inet.Stream) {
 	go func() {
 		select {
 		case <-timer.C:
-			logger.Debug("ping timeout")
+			p.logger.Debug("ping timeout")
 		case err, ok := <-errCh:
 			if ok {
-				logger.Debug(err)
+				p.logger.Debug(err)
 			} else {
-				logger.Error("ping loop failed without error")
+				p.logger.Error("ping loop failed without error")
 			}
 		}
 		s.Reset()
@@ -89,7 +93,6 @@ func Ping(ctx context.Context, h host.Host, p peer.ID) (<-chan time.Duration, er
 			default:
 				t, err := ping(s)
 				if err != nil {
-					logger.Debugf("ping error: %s", err)
 					return
 				}
 

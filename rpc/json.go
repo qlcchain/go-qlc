@@ -168,15 +168,15 @@ func checkReqId(reqId json.RawMessage) error {
 // the parsed request, an indication if the request was a batch or an error when
 // the request could not be parsed.
 func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
-	logger.Info("incomingMsg, ", string(incomingMsg))
+	//logger.Info("incomingMsg, ", string(incomingMsg))
 	var in jsonRequest
 	if err := json.Unmarshal(incomingMsg, &in); err != nil {
-		logger.Info(err)
+		//logger.Info(err)
 		return nil, false, &invalidMessageError{err.Error()}
 	}
 
 	if err := checkReqId(in.Id); err != nil {
-		logger.Info(err)
+		//logger.Info(err)
 		return nil, false, &invalidMessageError{err.Error()}
 	}
 
@@ -187,7 +187,7 @@ func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
 			// first param must be subscription name
 			var subscribeMethod [1]string
 			if err := json.Unmarshal(in.Payload, &subscribeMethod); err != nil {
-				logger.Debug(fmt.Sprintf("Unable to parse subscription method: %v\n", err))
+				//logger.Debug(fmt.Sprintf("Unable to parse subscription method: %v\n", err))
 				return nil, false, &invalidRequestError{"Unable to parse subscription request"}
 			}
 
@@ -240,7 +240,7 @@ func parseBatchRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) 
 				// first param must be subscription name
 				var subscribeMethod [1]string
 				if err := json.Unmarshal(r.Payload, &subscribeMethod); err != nil {
-					logger.Debug(fmt.Sprintf("Unable to parse subscription method: %v\n", err))
+					//logger.Debug(fmt.Sprintf("Unable to parse subscription method: %v\n", err))
 					return nil, false, &invalidRequestError{"Unable to parse subscription request"}
 				}
 

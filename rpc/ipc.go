@@ -26,7 +26,7 @@ func (srv *Server) ServeListener(l net.Listener) error {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			logger.Error("ServeListener ", "err", err)
+			//logger.Error("ServeListener ", "err", err)
 			return err
 		}
 		//if netutil.IsTemporaryError(err) {
@@ -36,9 +36,9 @@ func (srv *Server) ServeListener(l net.Listener) error {
 		//	return err
 		//}
 		if conn != nil {
-			logger.Info("Accepted connection ", conn.RemoteAddr(), "addr ", conn.LocalAddr())
+			//logger.Info("Accepted connection ", conn.RemoteAddr(), "addr ", conn.LocalAddr())
 		}
-		logger.Info("ipc request")
+		//logger.Info("ipc request")
 		go srv.ServeCodec(NewJSONCodec(conn), OptionMethodInvocation|OptionSubscriptions)
 	}
 }
@@ -50,7 +50,7 @@ func (srv *Server) ServeListener(l net.Listener) error {
 // The context is used for the initial connection establishment. It does not
 // affect subsequent interactions with the client.
 func DialIPC(ctx context.Context, endpoint string) (*Client, error) {
-	logger.Info("DialIPC")
+	//logger.Info("DialIPC")
 	return newClient(ctx, func(ctx context.Context) (net.Conn, error) {
 		return newIPCConnection(ctx, endpoint)
 	})

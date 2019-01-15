@@ -25,6 +25,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/qlcchain/go-qlc/log"
+
 	mapset "github.com/deckarep/golang-set"
 )
 
@@ -47,6 +49,7 @@ func NewServer() *Server {
 		services: make(serviceRegistry),
 		codecs:   mapset.NewSet(),
 		run:      1,
+		logger:   log.NewLogger("rpcServer"),
 	}
 
 	// register a default service which will provide meta information about the RPC service such as the services and
@@ -129,7 +132,7 @@ func (s *Server) serveRequest(ctx context.Context, codec ServerCodec, singleShot
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			logger.Error(string(buf))
+			s.logger.Error(string(buf))
 		}
 		s.codecsMu.Lock()
 		s.codecs.Remove(codec)
@@ -160,7 +163,7 @@ func (s *Server) serveRequest(ctx context.Context, codec ServerCodec, singleShot
 		if err != nil {
 			// If a parsing error occurred, send an error
 			if err.Error() != "EOF" {
-				logger.Debug(fmt.Sprintf("read error:  %v\n", err))
+				s.logger.Debug(fmt.Sprintf("read error:  %v\n", err))
 				codec.Write(codec.CreateErrorResponse(nil, err))
 			}
 			// Error or end of stream, wait for requests and tear down
@@ -226,7 +229,7 @@ func (s *Server) ServeSingleRequest(ctx context.Context, codec ServerCodec, opti
 // close all codecs which will cancel pending requests/subscriptions.
 func (s *Server) Stop() {
 	if atomic.CompareAndSwapInt32(&s.run, 1, 0) {
-		//logger.Debug("RPC Server shutdown initiatied")
+		s.logger.Debug("RPC Server shutdown initiatied")
 		s.codecsMu.Lock()
 		defer s.codecsMu.Unlock()
 		s.codecs.Each(func(c interface{}) bool {
@@ -335,7 +338,7 @@ func (s *Server) exec(ctx context.Context, codec ServerCodec, req *serverRequest
 	}
 
 	if err := codec.Write(response); err != nil {
-		logger.Error(fmt.Sprintf("%v\n", err))
+		s.logger.Error(fmt.Sprintf("%v\n", err))
 		codec.Close()
 	}
 
@@ -362,7 +365,7 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 	}
 
 	if err := codec.Write(responses); err != nil {
-		logger.Error(fmt.Sprintf("%v\n", err))
+		s.logger.Error(fmt.Sprintf("%v\n", err))
 		codec.Close()
 	}
 
@@ -378,7 +381,7 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) {
 	reqs, batch, err := codec.ReadRequestHeaders()
 	if err != nil {
-		logger.Info(err)
+		s.logger.Error(err)
 		return nil, batch, err
 	}
 
