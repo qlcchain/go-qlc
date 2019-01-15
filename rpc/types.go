@@ -23,6 +23,8 @@ import (
 	"strings"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/deckarep/golang-set"
 	"github.com/qlcchain/go-qlc/common/util/hexutil"
 )
@@ -74,6 +76,7 @@ type Server struct {
 	run      int32
 	codecsMu sync.Mutex
 	codecs   mapset.Set
+	logger   *zap.SugaredLogger
 }
 
 // rpcRequest represents a raw incoming RPC request

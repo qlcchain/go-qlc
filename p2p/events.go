@@ -16,7 +16,6 @@ func (eq *EventQueue) GetEvent(eventName string) *Event {
 	case "consensus":
 		return eq.Consensus
 	default:
-		logger.Debug("Unknow event")
 		return nil
 	}
 }

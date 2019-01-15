@@ -14,7 +14,7 @@ func NewRPCService(cfg *config.Config, dpos *consensus.DposService) *RPCService 
 }
 
 func (rs *RPCService) Init() error {
-	logger.Info("rpc service init")
+	rs.rpc.logger.Info("rpc service init")
 	/*
 		addr1, _ := types.HexToAddress("qlc_3nihnp4a5zf5iq9pz54twp1dmksxnouc4i5k4y6f8gbnkc41p1b5ewm3inpw")
 		addr2, _ := types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
@@ -87,7 +87,7 @@ func (rs *RPCService) Start() error {
 }
 
 func (rs *RPCService) Stop() error {
-	logger.Info("rpc stopping...")
+	rs.rpc.logger.Info("rpc stopping...")
 	rs.rpc.StopRPC()
 	return nil
 }

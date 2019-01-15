@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
+
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
-var logger = log.NewLogger("consensus")
+//var logger = log.NewLogger("consensus")
 
 const (
 	findOnlineRepresentativesIntervalms = 60 * time.Second
@@ -34,6 +36,7 @@ type DposService struct {
 	account            types.Address
 	password           string
 	onlineRepAddresses []types.Address
+	logger             *zap.SugaredLogger
 }
 
 func (dps *DposService) GetP2PService() p2p.Service {
@@ -55,7 +58,7 @@ func (dps *DposService) Start() error {
 	}
 	defer dps.PostStart()
 	dps.setEvent()
-	logger.Info("start dpos service")
+	dps.logger.Info("start dpos service")
 	go dps.bp.Start()
 	go dps.actrx.start()
 
@@ -96,6 +99,7 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 		wallet:   wallet.NewWalletStore(cfg),
 		account:  account,
 		password: password,
+		logger:   log.NewLogger("consensus"),
 	}
 	//test begin...
 	//dps.accounts = append(dps.accounts, ac.Address())
@@ -130,12 +134,12 @@ func (dps *DposService) setEvent() {
 }
 
 func (dps *DposService) ReceivePublish(v interface{}) {
-	logger.Info("Publish Event")
+	dps.logger.Info("Publish Event")
 	dps.bp.blocks <- v.(types.Block)
 }
 
 func (dps *DposService) ReceiveConfirmReq(v interface{}) {
-	logger.Info("ConfirmReq Event")
+	dps.logger.Info("ConfirmReq Event")
 	dps.bp.blocks <- v.(types.Block)
 	dps.onReceiveConfirmReq(v.(types.Block))
 }
@@ -145,7 +149,7 @@ func (dps *DposService) onReceiveConfirmReq(block types.Block) {
 	for _, k := range accounts {
 		isRep := dps.isThisAccountRepresentation(k)
 		if isRep {
-			logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Root())
+			dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Root())
 			dps.putRepresentativesToOnline(k)
 			dps.sendConfirmAck(block, k)
 		} /*else {
@@ -160,7 +164,7 @@ func (dps *DposService) onReceiveConfirmReq(block types.Block) {
 }
 
 func (dps *DposService) ReceiveConfirmAck(v interface{}) {
-	logger.Info("ConfirmAck Event")
+	dps.logger.Info("ConfirmAck Event")
 	vote := v.(*protos.ConfirmAckBlock)
 	dps.bp.blocks <- vote.Blk
 	dps.onReceiveConfirmAck(vote)
@@ -208,7 +212,7 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 }
 
 func (dps *DposService) ReceiveSyncBlock(v interface{}) {
-	logger.Info("Sync Event")
+	dps.logger.Info("Sync Event")
 	dps.bp.blocks <- v.(types.Block)
 }
 
@@ -218,7 +222,7 @@ func (dps *DposService) sendConfirmReq(block types.Block) error {
 	}
 	data, err := protos.ConfirmReqBlockToProto(packet)
 	if err != nil {
-		logger.Error("ConfirmReq Block to Proto error")
+		dps.logger.Error("ConfirmReq Block to Proto error")
 		return err
 	}
 	dps.ns.Broadcast(p2p.ConfirmReq, data)
@@ -228,12 +232,12 @@ func (dps *DposService) sendConfirmReq(block types.Block) error {
 func (dps *DposService) sendConfirmAck(block types.Block, account types.Address) error {
 	va, err := dps.voteGenerate(block, account)
 	if err != nil {
-		logger.Error("vote generate error")
+		dps.logger.Error("vote generate error")
 		return err
 	}
 	data, err := protos.ConfirmAckBlockToProto(va)
 	if err != nil {
-		logger.Error("vote to proto error")
+		dps.logger.Error("vote to proto error")
 	}
 	dps.ns.Broadcast(p2p.ConfirmAck, data)
 	return nil
@@ -243,7 +247,7 @@ func (dps *DposService) voteGenerate(block types.Block, account types.Address) (
 	var va protos.ConfirmAckBlock
 	prv, err := dps.GetAccountPrv(account)
 	if err != nil {
-		logger.Error("Get prv error")
+		dps.logger.Error("Get prv error")
 		return nil, err
 	}
 	if v, ok := dps.actrx.roots[block.Root()]; ok {
@@ -293,16 +297,16 @@ func (dps *DposService) getAccounts() []types.Address {
 		if a, err := session.GetAccounts(); err == nil {
 			if len(a) == 0 {
 				if addresses, e := dps.wallet.WalletIds(); e == nil {
-					logger.Debug(jsoniter.MarshalToString(&addresses))
+					dps.logger.Debug(jsoniter.MarshalToString(&addresses))
 				}
 			}
 
 			return a
 		} else {
-			logger.Error(err)
+			dps.logger.Error(err)
 		}
 	} else {
-		logger.Debugf("verify password[%s] faild", dps.password)
+		dps.logger.Debugf("verify password[%s] faild", dps.password)
 	}
 
 	return []types.Address{}

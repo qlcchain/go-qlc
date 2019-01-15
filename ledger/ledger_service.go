@@ -45,10 +45,10 @@ func (ls *LedgerService) Init() error {
 			if b, err := l.HasStateBlock(h, txn); !b && err == nil {
 				err := l.AddBlock(sb, txn)
 				if err != nil {
-					logger.Error(err)
+					ls.Ledger.logger.Error(err)
 					return nil
 				}
-				logger.Debugf("save sb[%s] successful", h.String())
+				ls.Ledger.logger.Debugf("save sb[%s] successful", h.String())
 			}
 		}
 		// insert genesis blocks
@@ -59,17 +59,17 @@ func (ls *LedgerService) Init() error {
 			if exist, err := l.HasStateBlock(hash); !exist && err == nil {
 				err := l.BlockProcess(b)
 				if err != nil {
-					logger.Error(err)
+					ls.Ledger.logger.Error(err)
 				} else {
-					logger.Debugf("save block[%s]", hash.String())
+					ls.Ledger.logger.Debugf("save block[%s]", hash.String())
 				}
 				if err != nil {
-					logger.Error(err)
+					ls.Ledger.logger.Error(err)
 				}
 			} else {
-				logger.Debugf("%s, %v", hash.String(), err)
+				ls.Ledger.logger.Debugf("%s, %v", hash.String(), err)
 				meta, _ := l.GetAccountMeta(b.Address)
-				logger.Debug(jsoniter.MarshalToString(&meta))
+				ls.Ledger.logger.Debug(jsoniter.MarshalToString(&meta))
 			}
 		}
 

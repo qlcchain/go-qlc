@@ -25,7 +25,7 @@ import (
 func DialInProc(handler *Server) *Client {
 	initctx := context.Background()
 	c, _ := newClient(initctx, func(context.Context) (net.Conn, error) {
-		logger.Info("process")
+		//logger.Info("process")
 		p1, p2 := net.Pipe()
 		go handler.ServeCodec(NewJSONCodec(p1), OptionMethodInvocation|OptionSubscriptions)
 		return p2, nil

@@ -59,13 +59,13 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 	link := block.GetLink()
 	address := block.GetAddress()
 
-	logger.Info("process block, ", hash)
+	l.logger.Info("process block, ", hash)
 
 	// make sure smart contract token exist
 	// ...
 
 	if !block.IsValid() {
-		logger.Info("invalid work")
+		l.logger.Info("invalid work")
 		return BadWork, nil
 	}
 
@@ -74,19 +74,19 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		return Other, err
 	}
 	if blockExist == true {
-		logger.Info("block already exist")
+		l.logger.Info("block already exist")
 		return Old, nil
 	}
 
 	// make sure the signature of this block is valid
 	signature := block.GetSignature()
 	if !address.Verify(hash[:], signature[:]) {
-		logger.Info("bad signature")
+		l.logger.Info("bad signature")
 		return BadSignature, nil
 	}
 
 	if pre.IsZero() && bytes.EqualFold(address[:], link[:]) {
-		logger.Info("genesis block")
+		l.logger.Info("genesis block")
 		return Progress, nil
 	}
 
@@ -103,7 +103,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		}
 
 		if pre.IsZero() {
-			logger.Info("fork: token meta exist, but pre hash is zero")
+			l.logger.Info("fork: token meta exist, but pre hash is zero")
 			return Fork, nil
 		}
 		preExist, err := l.HasStateBlock(block.GetPrevious(), txn)
@@ -111,11 +111,11 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 			return Other, err
 		}
 		if !preExist {
-			logger.Info("gap previous: token meta exist, but pre block not exist")
+			l.logger.Info("gap previous: token meta exist, but pre block not exist")
 			return GapPrevious, nil
 		}
 		if block.GetPrevious() != tm.Header {
-			logger.Info("fork: pre block exist, but pre hash not equal account token's header hash")
+			l.logger.Info("fork: pre block exist, but pre hash not equal account token's header hash")
 			return Fork, nil
 		}
 		if block.GetBalance().Compare(tm.Balance) == types.BalanceCompSmaller {
@@ -127,11 +127,11 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 
 	} else { // open
 		if !pre.IsZero() {
-			logger.Info("gap previous: token meta not exist, but pre hash is not zero")
+			l.logger.Info("gap previous: token meta not exist, but pre hash is not zero")
 			return GapPrevious, nil
 		}
 		if link.IsZero() {
-			logger.Info("gap source: token meta not exist, but link hash is zero")
+			l.logger.Info("gap source: token meta not exist, but link hash is zero")
 			return GapSource, nil
 		}
 	}
@@ -142,7 +142,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 				return Other, err
 			}
 			if !linkExist {
-				logger.Info("gap source: open or receive block, but link block is not exist")
+				l.logger.Info("gap source: open or receive block, but link block is not exist")
 				return GapSource, nil
 			}
 			PendingKey := types.PendingKey{
@@ -152,18 +152,18 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 			pending, err := l.GetPending(PendingKey, txn)
 			if err != nil {
 				if err == ErrPendingNotFound {
-					logger.Info("unreceivable: open or receive block, but pending not exist")
+					l.logger.Info("unreceivable: open or receive block, but pending not exist")
 					return UnReceivable, nil
 				}
 				return Other, err
 			}
 			if !pending.Amount.Equal(transferAmount) {
-				logger.Infof("balance mismatch: open or receive block, but pending amount(%s) not equal transfer amount(%s)", pending.Amount, transferAmount)
+				l.logger.Infof("balance mismatch: open or receive block, but pending amount(%s) not equal transfer amount(%s)", pending.Amount, transferAmount)
 				return BalanceMismatch, nil
 			}
 		} else { //change
 			if !transferAmount.Equal(types.ZeroBalance) {
-				logger.Info("balance mismatch: change block, but transfer amount is not 0 ")
+				l.logger.Info("balance mismatch: change block, but transfer amount is not 0 ")
 				return BalanceMismatch, nil
 			}
 		}
@@ -196,7 +196,7 @@ func (l *Ledger) BlockProcess(block types.Block) error {
 
 func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
 	hash := block.GetHash()
-	logger.Info("add block, ", hash)
+	l.logger.Info("add block, ", hash)
 	if err := l.AddBlock(block, txn); err != nil {
 		return err
 	}
@@ -242,7 +242,7 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn
 			Address: types.Address(block.GetLink()),
 			Hash:    hash,
 		}
-		logger.Info("add pending, ", pendingkey)
+		l.logger.Info("add pending, ", pendingkey)
 		if err := l.AddPending(pendingkey, &pending, txn); err != nil {
 			return err
 		}
@@ -254,7 +254,7 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn
 				Address: block.GetAddress(),
 				Hash:    block.GetLink(),
 			}
-			logger.Info("delete pending, ", pendingkey)
+			l.logger.Info("delete pending, ", pendingkey)
 			if err := l.DeletePending(pendingkey, txn); err != nil {
 				return err
 			}
@@ -284,7 +284,7 @@ func (l *Ledger) isSend(block *types.StateBlock, txn db.StoreTxn) (bool, error) 
 func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
 	if block.GetToken() == mock.GetChainTokenType() {
 		if tm != nil && !tm.Representative.IsZero() {
-			logger.Infof("sub rep %s from %s ", tm.Balance, tm.Representative)
+			l.logger.Infof("sub rep %s from %s ", tm.Balance, tm.Representative)
 			if err := l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {
 				return err
 			}
@@ -301,7 +301,7 @@ func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMe
 			//	return errors.New("invalid block")
 			//}
 		}
-		logger.Infof("add rep %s to %s ", block.GetBalance(), block.GetRepresentative())
+		l.logger.Infof("add rep %s to %s ", block.GetBalance(), block.GetRepresentative())
 		if err := l.AddRepresentation(block.GetRepresentative(), block.GetBalance(), txn); err != nil {
 			return err
 		}
@@ -315,7 +315,7 @@ func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.Sto
 	}
 	if tm != nil {
 		if frontier, err := l.GetFrontier(tm.Header, txn); err == nil {
-			logger.Info("delete frontier, ", *frontier)
+			l.logger.Info("delete frontier, ", *frontier)
 			if err := l.DeleteFrontier(frontier.HeaderBlock, txn); err != nil {
 				return err
 			}
@@ -324,7 +324,7 @@ func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.Sto
 	} else {
 		frontier.OpenBlock = hash
 	}
-	logger.Info("add frontier,", *frontier)
+	l.logger.Info("add frontier,", *frontier)
 	if err := l.AddFrontier(frontier, txn); err != nil {
 		return err
 	}
@@ -346,7 +346,7 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address t
 		token.Balance = balance
 		token.BlockCount = token.BlockCount + 1
 		token.Modified = time.Now().Unix()
-		logger.Info("update tokenmeta, ", *token)
+		l.logger.Info("update tokenmeta, ", *token)
 		if err := l.UpdateTokenMeta(address, token, txn); err != nil {
 			return err
 		}
@@ -366,7 +366,7 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address t
 			Modified:       time.Now().Unix(),
 		}
 		if acExist {
-			logger.Info("add tokenmeta,", token)
+			l.logger.Info("add tokenmeta,", token)
 			if err := l.AddTokenMeta(address, &tm, txn); err != nil {
 				return err
 			}
@@ -375,7 +375,7 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address t
 				Address: address,
 				Tokens:  []*types.TokenMeta{&tm},
 			}
-			logger.Info("add accountmeta,", token)
+			l.logger.Info("add accountmeta,", token)
 			if err := l.AddAccountMeta(&account, txn); err != nil {
 				return err
 			}

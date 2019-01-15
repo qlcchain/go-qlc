@@ -42,17 +42,17 @@ func bootstrapConnect(ctx context.Context, ph host.Host, peers []pstore.PeerInfo
 		wg.Add(1)
 		go func(p pstore.PeerInfo) {
 			defer wg.Done()
-			defer logger.Debug(ctx, "bootstrapDial", ph.ID(), p.ID)
-			logger.Debugf("%s bootstrapping to %s", ph.ID(), p.ID)
+			//defer logger.Debug(ctx, "bootstrapDial", ph.ID(), p.ID)
+			//logger.Debugf("%s bootstrapping to %s", ph.ID(), p.ID)
 
 			ph.Peerstore().AddAddrs(p.ID, p.Addrs, pstore.PermanentAddrTTL)
 			if err := ph.Connect(ctx, p); err != nil {
-				logger.Errorf("Failed to bootstrap with %v: %s", p.ID, err)
+				//logger.Errorf("Failed to bootstrap with %v: %s", p.ID, err)
 				errs <- err
 				return
 			}
-			logger.Debug(ctx, "bootstrapDialSuccess", p.ID)
-			logger.Debugf("Bootstrapped with %v", p.ID)
+			//logger.Debug(ctx, "bootstrapDialSuccess", p.ID)
+			//logger.Debugf("Bootstrapped with %v", p.ID)
 		}(p)
 	}
 	wg.Wait()

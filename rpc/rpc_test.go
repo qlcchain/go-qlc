@@ -15,9 +15,9 @@ import (
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 
-	rpcDir := filepath.Join(config.DefaultDataDir(), "rpc")
-	dir := filepath.Join(rpcDir, "config.json")
-	cm := config.NewCfgManager(dir)
+	rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc")
+	//dir := filepath.Join(rpcDir, "config.json")
+	cm := config.NewCfgManager(rpcDir)
 	cfg, err := cm.Load()
 	cfg.DataDir = rpcDir
 	dpos := consensus.DposService{}
@@ -34,9 +34,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 
 	err = rs.Start()
 	if err != nil {
-		logger.Info(err)
+		t.Fatal(err)
 	}
-	logger.Info("rpc started")
+	t.Log("rpc started")
 	return func(t *testing.T) {
 		rs.Stop()
 		rs.rpc.ledger.Close()
@@ -57,7 +57,7 @@ func TestRPC_Client(t *testing.T) {
 	client, err := Dial(fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
 	//client, err := Dial(r.config.RPC.IPCEndpoint)
 	if err != nil {
-		logger.Info(err)
+		t.Fatal(err)
 	}
 
 	addr := mock.Address()
@@ -72,7 +72,7 @@ func TestRPC_Client(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	logger.Info(resp)
+	t.Log(resp)
 }
 
 func TestRPC_Client2(t *testing.T) {
@@ -83,7 +83,7 @@ func TestRPC_Client2(t *testing.T) {
 	//client, err := Dial(fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
 	//client, err := Dial(r.config.RPC.IPCEndpoint)
 	if err != nil {
-		logger.Info(err)
+		t.Fatal(err)
 	}
 
 	b1 := mock.StateBlock()
@@ -102,7 +102,7 @@ func TestRPC_Client2(t *testing.T) {
 	//if err != nil {
 	//	t.Fatal(err)
 	//}
-	logger.Info(resp)
+	t.Log(resp)
 	for _, b := range resp {
 		fmt.Println(b.GetHash())
 	}
@@ -116,7 +116,7 @@ func TestRPC_Client3(t *testing.T) {
 	//client, err := Dial(fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
 	client, err := Dial(r.config.RPC.IPCEndpoint)
 	if err != nil {
-		logger.Info(err)
+		t.Fatal(err)
 	}
 
 	var resp types.Hash
@@ -125,7 +125,7 @@ func TestRPC_Client3(t *testing.T) {
 	if err != nil {
 		t.Log(err)
 	}
-	logger.Info(resp)
+	t.Log(resp)
 }
 
 func defaultIPCEndpoint(str string) string {

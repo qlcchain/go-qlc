@@ -17,7 +17,7 @@ func TestProcess_BlockBasicInfoCheck(t *testing.T) {
 		t.Fatal()
 	}
 	for i, b := range bs {
-		logger.Info(i)
+		t.Log(i)
 		if _, err := l.Process(b); err != nil {
 			t.Fatal()
 		}

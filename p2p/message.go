@@ -139,12 +139,10 @@ func (message *QlcMessage) ParseMessageData(data []byte) error {
 //VerifyHeader verify qlc message header
 func (message *QlcMessage) VerifyHeader() error {
 	if !Equal(MagicNumber, message.MagicNumber()) {
-		logger.Error("Failed to verify header.")
 		return ErrInvalidMagicNumber
 	}
 	headerCheckSum := crc32.ChecksumIEEE(message.HeaderData())
 	if headerCheckSum != message.HeaderCheckSum() {
-		logger.Error("Failed to verify header.")
 		return ErrInvalidHeaderCheckSum
 	}
 	return nil
@@ -154,7 +152,6 @@ func (message *QlcMessage) VerifyHeader() error {
 func (message *QlcMessage) VerifyData() error {
 	dataCheckSum := crc32.ChecksumIEEE(message.MessageData())
 	if dataCheckSum != message.DataCheckSum() {
-		logger.Error("Failed to verify data")
 		return ErrInvalidDataCheckSum
 	}
 	return nil

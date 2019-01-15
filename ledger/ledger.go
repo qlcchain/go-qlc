@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
@@ -16,11 +18,12 @@ import (
 
 type Ledger struct {
 	io.Closer
-	db  db.Store
-	dir string
+	db     db.Store
+	dir    string
+	logger *zap.SugaredLogger
 }
 
-var logger = log.NewLogger("ledger")
+//var logger = log.NewLogger("ledger")
 
 var (
 	ErrStoreEmpty             = errors.New("the store is empty")
@@ -62,11 +65,12 @@ func NewLedger(dir string) *Ledger {
 	if _, ok := cache[dir]; !ok {
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
-			logger.Fatal(err.Error())
+			fmt.Println(err.Error())
 		}
 
 		cache[dir] = &Ledger{db: store, dir: dir}
 	}
+	cache[dir].logger = log.NewLogger("ledger")
 	return cache[dir]
 }
 
@@ -75,7 +79,7 @@ func CloseLedger() {
 	for k, v := range cache {
 		if v != nil {
 			v.Close()
-			logger.Debugf("release ledger from %s", k)
+			//logger.Debugf("release ledger from %s", k)
 		}
 		lock.Lock()
 		delete(cache, k)
@@ -892,7 +896,7 @@ func (l *Ledger) releaseTxn(txn db.StoreTxn, flag bool) {
 	if flag {
 		err := txn.Commit(nil)
 		if err != nil {
-			logger.Error(err)
+			l.logger.Error(err)
 		}
 		txn.Discard()
 	}
@@ -1129,7 +1133,7 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 
 		switch blockType {
 		case Open:
-			logger.Info("---delete open block, ", hashCur)
+			l.logger.Info("---delete open block, ", hashCur)
 			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return err
 			}
@@ -1149,7 +1153,7 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 				}
 			}
 		case Send:
-			logger.Info("---delete send block, ", hashCur)
+			l.logger.Info("---delete send block, ", hashCur)
 			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return err
 			}
@@ -1173,7 +1177,7 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 				}
 			}
 		case Receive:
-			logger.Info("---delete receive block, ", hashCur)
+			l.logger.Info("---delete receive block, ", hashCur)
 			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return err
 			}
@@ -1193,7 +1197,7 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 				}
 			}
 		case Change:
-			logger.Info("---delete change block, ", hashCur)
+			l.logger.Info("---delete change block, ", hashCur)
 			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return err
 			}
@@ -1280,13 +1284,13 @@ func (l *Ledger) rollBackFrontier(pre types.Hash, cur types.Hash, txn db.StoreTx
 	if err != nil {
 		return err
 	}
-	logger.Info("delete frontier, ", frontier)
+	l.logger.Info("delete frontier, ", frontier)
 	if err := l.DeleteFrontier(cur, txn); err != nil {
 		return err
 	}
 	if !pre.IsZero() {
 		frontier.HeaderBlock = pre
-		logger.Info("add frontier, ", frontier)
+		l.logger.Info("add frontier, ", frontier)
 		if err := l.AddFrontier(frontier, txn); err != nil {
 			return err
 		}
@@ -1300,7 +1304,7 @@ func (l *Ledger) rollBackToken(tm *types.TokenMeta, header types.Hash, rep types
 	tm.Representative = rep
 	tm.BlockCount = tm.BlockCount - 1
 	tm.Modified = time.Now().Unix()
-	logger.Info("update token, ", tm.BelongTo, tm.Type)
+	l.logger.Info("update token, ", tm.BelongTo, tm.Type)
 	if err := l.UpdateTokenMeta(tm.BelongTo, tm, txn); err != nil {
 		return err
 	}
@@ -1309,7 +1313,7 @@ func (l *Ledger) rollBackToken(tm *types.TokenMeta, header types.Hash, rep types
 
 func (l *Ledger) rollBackTokenDel(tm *types.TokenMeta, txn db.StoreTxn) error {
 	address := tm.BelongTo
-	logger.Info("delete token, ", address, tm.Type)
+	l.logger.Info("delete token, ", address, tm.Type)
 	if err := l.DeleteTokenMeta(address, tm.Type, txn); err != nil {
 		return err
 	}
@@ -1327,12 +1331,12 @@ func (l *Ledger) rollBackTokenDel(tm *types.TokenMeta, txn db.StoreTxn) error {
 
 func (l *Ledger) rollBackRep(address types.Address, balance types.Balance, isSend bool, txn db.StoreTxn) error {
 	if isSend {
-		logger.Infof("add rep %s to %s", balance, address)
+		l.logger.Infof("add rep %s to %s", balance, address)
 		if err := l.AddRepresentation(address, balance, txn); err != nil {
 			return err
 		}
 	} else {
-		logger.Infof("sub rep %s from %s", balance, address)
+		l.logger.Infof("sub rep %s from %s", balance, address)
 		if err := l.SubRepresentation(address, balance, txn); err != nil {
 			return err
 		}
@@ -1341,11 +1345,11 @@ func (l *Ledger) rollBackRep(address types.Address, balance types.Balance, isSen
 }
 
 func (l *Ledger) rollBackRepChange(pre types.Address, cur types.Address, balance types.Balance, txn db.StoreTxn) error {
-	logger.Infof("add rep %s to %s", balance, pre)
+	l.logger.Infof("add rep %s to %s", balance, pre)
 	if err := l.AddRepresentation(pre, balance, txn); err != nil {
 		return err
 	}
-	logger.Infof("sub rep %s from %s", balance, cur)
+	l.logger.Infof("sub rep %s from %s", balance, cur)
 	if err := l.SubRepresentation(cur, balance, txn); err != nil {
 		return err
 	}

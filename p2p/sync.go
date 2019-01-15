@@ -4,6 +4,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	messagepb "github.com/qlcchain/go-qlc/p2p/protos"
@@ -25,6 +28,7 @@ type ServiceSync struct {
 	qlcLedger  *ledger.Ledger
 	frontiers  []*types.Frontier
 	quitCh     chan bool
+	logger     *zap.SugaredLogger
 }
 
 // NewService return new Service.
@@ -33,16 +37,17 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		netService: netService,
 		qlcLedger:  ledger,
 		quitCh:     make(chan bool, 1),
+		logger:     log.NewLogger("sync"),
 	}
 	return ss
 }
 func (ss *ServiceSync) Start() {
-	logger.Info("started sync loop")
+	ss.logger.Info("started sync loop")
 	address := types.Address{}
 	Req := messagepb.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
 	data, err := messagepb.FrontierReqToProto(Req)
 	if err != nil {
-		logger.Error("New FrontierReq error")
+		ss.logger.Error("New FrontierReq error")
 		return
 	}
 	ticker := time.NewTicker(SyncInterval)
@@ -54,16 +59,16 @@ func (ss *ServiceSync) Start() {
 		}
 		select {
 		case <-ss.quitCh:
-			logger.Info("Stopped Sync Loop.")
+			ss.logger.Info("Stopped Sync Loop.")
 			return
 		case <-ticker.C:
 			ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
 			if err != nil {
 				continue
 			}
-			logger.Info("begin print fr info")
+			ss.logger.Info("begin print fr info")
 			for k, v := range ss.frontiers {
-				logger.Info(k, v)
+				ss.logger.Info(k, v)
 			}
 			ss.next()
 			bulkPull = bulkPull[:0:0]
@@ -77,7 +82,7 @@ func (ss *ServiceSync) Start() {
 
 // Stop sync service
 func (ss *ServiceSync) Stop() {
-	logger.Info("Stop Qlc sync...")
+	ss.logger.Info("Stop Qlc sync...")
 
 	ss.quitCh <- true
 }
@@ -114,7 +119,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 		return err
 	}
 	fr := fsremote.Frontier
-	logger.Info(fr.HeaderBlock, fr.OpenBlock)
+	ss.logger.Info(fr.HeaderBlock, fr.OpenBlock)
 
 	if !fr.OpenBlock.IsZero() {
 		for {
@@ -133,7 +138,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 		if !openBlockHash.IsZero() {
 			if fr.OpenBlock == openBlockHash {
 				if headerBlockHash == fr.HeaderBlock {
-					logger.Infof("this token %s have the same block", openBlockHash)
+					ss.logger.Infof("this token %s have the same block", openBlockHash)
 				} else {
 					exit, _ := ss.qlcLedger.HasStateBlock(fr.HeaderBlock)
 					if exit == true {
@@ -198,7 +203,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 					startHash := value.StartHash
 					endHash := value.EndHash
 					if startHash.IsZero() {
-						logger.Infof("need to send all the blocks of this account")
+						ss.logger.Infof("need to send all the blocks of this account")
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
@@ -223,7 +228,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 							ss.netService.SendMessageToPeer(BulkPushBlock, blockBytes, message.MessageFrom())
 						}
 					} else {
-						logger.Info("need to send some blocks of this account")
+						ss.logger.Info("need to send some blocks of this account")
 						var blk types.Block
 						var bulkblk []types.Block
 						for {
@@ -277,7 +282,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 	if startHash.IsZero() {
 		var blk types.Block
 		var bulkblk []types.Block
-		logger.Info("need to send all the blocks of this account")
+		ss.logger.Info("need to send all the blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
@@ -302,7 +307,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 	} else {
 		var blk types.Block
 		var bulkblk []types.Block
-		logger.Info("need to send some blocks of this account")
+		ss.logger.Info("need to send some blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {

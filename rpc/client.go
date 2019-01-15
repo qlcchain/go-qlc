@@ -165,7 +165,7 @@ func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("dial url, ", u)
+	//logger.Info("dial url, ", u)
 	switch u.Scheme {
 	case "http", "https":
 		return DialHTTP(rawurl)
@@ -225,7 +225,7 @@ func newClient(initctx context.Context, connectFunc func(context.Context) (net.C
 		return nil, err
 	}
 	_, isHTTP := conn.(*httpConn)
-	logger.Info("isHttp,", isHTTP)
+	//logger.Info("isHttp,", isHTTP)
 	c := &Client{
 		writeConn:   conn,
 		isHTTP:      isHTTP,
@@ -500,7 +500,7 @@ func (c *Client) write(ctx context.Context, msg interface{}) error {
 func (c *Client) reconnect(ctx context.Context) error {
 	newconn, err := c.connectFunc(ctx)
 	if err != nil {
-		logger.Debug(fmt.Sprintf("reconnect failed: %v", err))
+		//logger.Debug(fmt.Sprintf("reconnect failed: %v", err))
 		return err
 	}
 	select {
@@ -571,13 +571,13 @@ func (c *Client) dispatch(conn net.Conn) {
 			}
 
 		case err := <-c.readErr:
-			logger.Debug("<-readErr", "err", err)
+			//logger.Debug("<-readErr", "err", err)
 			c.closeRequestOps(err)
 			conn.Close()
 			reading = false
 
 		case newconn := <-c.reconnected:
-			logger.Debug("<-reconnected", "reading", reading, "remote", conn.RemoteAddr())
+			//logger.Debug("<-reconnected", "reading", reading, "remote", conn.RemoteAddr())
 			if reading {
 				// Wait for the previous read loop to exit. This is a rare case.
 				conn.Close()
@@ -634,7 +634,7 @@ func (c *Client) closeRequestOps(err error) {
 
 func (c *Client) handleNotification(msg *jsonrpcMessage) {
 	if !strings.HasSuffix(msg.Method, notificationMethodSuffix) {
-		logger.Debug("dropping non-subscription message", "msg", msg)
+		//logger.Debug("dropping non-subscription message", "msg", msg)
 		return
 	}
 	var subResult struct {
@@ -642,7 +642,7 @@ func (c *Client) handleNotification(msg *jsonrpcMessage) {
 		Result json.RawMessage `json:"result"`
 	}
 	if err := json.Unmarshal(msg.Params, &subResult); err != nil {
-		logger.Debug("dropping invalid subscription message", "msg", msg)
+		//logger.Debug("dropping invalid subscription message", "msg", msg)
 		return
 	}
 	if c.subs[subResult.ID] != nil {
@@ -653,7 +653,7 @@ func (c *Client) handleNotification(msg *jsonrpcMessage) {
 func (c *Client) handleResponse(msg *jsonrpcMessage) {
 	op := c.respWait[string(msg.ID)]
 	if op == nil {
-		logger.Debug("unsolicited response", "msg", msg)
+		//logger.Debug("unsolicited response", "msg", msg)
 		return
 	}
 	delete(c.respWait, string(msg.ID))

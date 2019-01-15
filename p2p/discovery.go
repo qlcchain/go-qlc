@@ -24,9 +24,9 @@ func (node *QlcNode) dhtFoundPeers() ([]pstore.PeerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Infof("Found %d peers!", len(peers))
+	node.logger.Infof("Found %d peers!", len(peers))
 	for _, p := range peers {
-		logger.Info("Peer: ", p)
+		node.logger.Info("Peer: ", p)
 	}
 	return peers, nil
 }
@@ -36,9 +36,9 @@ func (node *QlcNode) HandlePeerFound(p pstore.PeerInfo) {
 	ctx, cancel := context.WithTimeout(node.ctx, discoveryConnTimeout)
 	defer cancel()
 	if err := node.host.Connect(ctx, p); err != nil {
-		logger.Error("Failed to connect to peer found by discovery: ", err)
+		node.logger.Error("Failed to connect to peer found by discovery: ", err)
 	}
-	logger.Info("find a local peer , ID:", p.ID.Pretty())
+	node.logger.Info("find a local peer , ID:", p.ID.Pretty())
 }
 func setupDiscoveryOption(cfg *config.Config) DiscoveryOption {
 	if cfg.Discovery.MDNS.Enabled {

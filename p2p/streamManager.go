@@ -37,13 +37,13 @@ func (sm *StreamManager) SetQlcNode(node *QlcNode) {
 
 // Start stream manager service
 func (sm *StreamManager) Start() {
-	logger.Info("Start Qlc StreamManager...")
+	sm.node.logger.Info("Start Qlc StreamManager...")
 	go sm.loop()
 }
 
 // Stop stream manager service
 func (sm *StreamManager) Stop() {
-	logger.Info("Stop Qlc StreamManager...")
+	sm.node.logger.Info("Stop Qlc StreamManager...")
 
 	sm.quitCh <- true
 }
@@ -64,7 +64,7 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 	if v, ok := sm.allStreams.Load(stream.pid.Pretty()); ok {
 		old, _ := v.(*Stream)
 
-		logger.Info("Removing old stream.")
+		sm.node.logger.Info("Removing old stream.")
 
 		sm.allStreams.Delete(old.pid.Pretty())
 
@@ -73,7 +73,7 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 		}
 	}
 
-	logger.Info("Added a new stream.")
+	sm.node.logger.Info("Added a new stream.")
 
 	sm.allStreams.Store(stream.pid.Pretty(), stream)
 	stream.StartLoop()
@@ -95,7 +95,7 @@ func (sm *StreamManager) RemoveStream(s *Stream) {
 		return
 	}
 
-	logger.Info("Removing a stream.")
+	sm.node.logger.Info("Removing a stream.")
 
 	sm.allStreams.Delete(s.pid.Pretty())
 }
@@ -143,7 +143,7 @@ func (sm *StreamManager) loop() {
 	for {
 		select {
 		case <-sm.quitCh:
-			logger.Info("Stopped Stream Manager Loop.")
+			sm.node.logger.Info("Stopped Stream Manager Loop.")
 			return
 		case <-ticker.C:
 			sm.findPeers()

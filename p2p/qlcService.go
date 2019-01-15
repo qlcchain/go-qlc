@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -63,7 +64,7 @@ func (ns *QlcService) Start() error {
 		return errors.New("pre start fail")
 	}
 	defer ns.PostStart()
-	logger.Info("Starting QlcService...")
+	ns.node.logger.Info("Starting QlcService...")
 
 	// start dispatcher.
 	ns.dispatcher.Start()
@@ -71,12 +72,12 @@ func (ns *QlcService) Start() error {
 	// start node.
 	if err := ns.node.StartServices(); err != nil {
 		ns.dispatcher.Stop()
-		logger.Error("Failed to start QlcService.")
+		ns.node.logger.Error("Failed to start QlcService.")
 		return err
 	}
 	// start msgService
 	ns.msgService.Start()
-	logger.Info("Started QlcService.")
+	ns.node.logger.Info("Started QlcService.")
 	return nil
 }
 
@@ -86,7 +87,7 @@ func (ns *QlcService) Stop() error {
 		return errors.New("pre stop fail")
 	}
 	defer ns.PostStop()
-	logger.Info("Stopping QlcService...")
+	ns.node.logger.Info("Stopping QlcService...")
 
 	ns.node.Stop()
 	ns.dispatcher.Stop()

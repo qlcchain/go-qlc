@@ -9,8 +9,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/log"
-
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +18,6 @@ var (
 	cfgPath  string
 	ctx      *chain.QlcContext
 	services []common.Service
-	logger   = log.NewLogger("cli")
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -60,7 +57,7 @@ func start() error {
 	} else {
 		addr, err = types.HexToAddress(account)
 		if err != nil {
-			logger.Fatal(err)
+			fmt.Println(err)
 		}
 	}
 	err = runNode(addr, pwd, cfg)

@@ -52,7 +52,7 @@ func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream libnet.Stream, nod
 
 // Connect to the stream
 func (s *Stream) Connect() error {
-	logger.Info("Connecting to peer.")
+	s.node.logger.Info("Connecting to peer.")
 
 	// connect to host.
 	stream, err := s.node.host.NewStream(
@@ -63,7 +63,7 @@ func (s *Stream) Connect() error {
 	if err != nil {
 		return err
 	}
-	logger.Info("connect success to :", s.pid)
+	s.node.logger.Info("connect success to :", s.pid)
 	s.stream = stream
 	s.addr = stream.Conn().RemoteMultiaddr()
 	return nil
@@ -92,13 +92,13 @@ func (s *Stream) readLoop() {
 
 	if !s.IsConnected() {
 		if err := s.Connect(); err != nil {
-			logger.Debug(err)
+			s.node.logger.Debug(err)
 			s.close()
 			return
 		}
 
 	}
-	logger.Info("connect ", s.pid.Pretty(), " success")
+	s.node.logger.Info("connect ", s.pid.Pretty(), " success")
 	// loop.
 	buf := make([]byte, 1024*4)
 	messageBuffer := make([]byte, 0)
@@ -108,7 +108,7 @@ func (s *Stream) readLoop() {
 	for {
 		n, err := s.stream.Read(buf)
 		if err != nil {
-			logger.Debug("Error occurred when reading data from network connection.")
+			s.node.logger.Debug("Error occurred when reading data from network connection.")
 			s.close()
 			return
 		}
@@ -170,7 +170,7 @@ func (s *Stream) writeLoop() {
 					return
 				}*/
 		case <-s.quitWriteCh:
-			logger.Debug("Quiting Stream Write Loop.")
+			s.node.logger.Debug("Quiting Stream Write Loop.")
 			return
 		case message := <-s.messageChan:
 			s.WriteQlcMessage(message)
@@ -187,7 +187,7 @@ func (s *Stream) close() {
 	// Add lock & close flag to prevent multi call.
 	s.syncMutex.Lock()
 	defer s.syncMutex.Unlock()
-	logger.Info("Closing stream.")
+	s.node.logger.Info("Closing stream.")
 
 	// cleanup.
 	s.node.streamManager.RemoveStream(s)
@@ -224,11 +224,11 @@ func (s *Stream) Write(data []byte) error {
 
 	n, err := s.stream.Write(data)
 	if err != nil {
-		logger.Error("Failed to send message to peer.")
+		s.node.logger.Error("Failed to send message to peer.")
 		s.close()
 		return err
 	}
-	logger.Infof("%d byte send to %v ", n, s.pid.Pretty())
+	s.node.logger.Infof("%d byte send to %v ", n, s.pid.Pretty())
 	return nil
 }
 func (s *Stream) handleMessage(message *QlcMessage) error {

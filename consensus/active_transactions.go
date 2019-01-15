@@ -39,10 +39,10 @@ func (act *ActiveTrx) start() {
 	for {
 		select {
 		case <-timer2.C:
-			logger.Info("begin check roots.")
+			act.dps.logger.Info("begin check roots.")
 			act.announceVotes()
 		case <-act.quitCh:
-			logger.Info("Stopped ActiveTrx Loop.")
+			act.dps.logger.Info("Stopped ActiveTrx Loop.")
 			return
 		default:
 			time.Sleep(100 * time.Millisecond)
@@ -54,13 +54,13 @@ func (act *ActiveTrx) addToRoots(block types.Block) bool {
 	if _, ok := act.roots[block.Root()]; !ok {
 		ele, err := NewElection(act.dps, block)
 		if err != nil {
-			logger.Infof("block :%s add to roots error", block.GetHash())
+			act.dps.logger.Infof("block :%s add to roots error", block.GetHash())
 			return false
 		}
 		act.roots[block.Root()] = ele
 		return true
 	} else {
-		logger.Infof("block :%s already exit in roots", block.GetHash())
+		act.dps.logger.Infof("block :%s already exit in roots", block.GetHash())
 		return false
 	}
 }
@@ -68,7 +68,7 @@ func (act *ActiveTrx) addToRoots(block types.Block) bool {
 func (act *ActiveTrx) announceVotes() {
 	for _, v := range act.roots {
 		if v.confirmed && v.announcements >= announcementmin-1 {
-			logger.Info("this block is already confirmed")
+			act.dps.logger.Info("this block is already confirmed")
 			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, v.status.winner)
 			act.inactive = append(act.inactive, v.vote.id)
 		} else {
@@ -76,16 +76,16 @@ func (act *ActiveTrx) announceVotes() {
 			for _, k := range accounts {
 				isrep := act.dps.isThisAccountRepresentation(k)
 				if isrep {
-					logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
+					act.dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
 					act.dps.putRepresentativesToOnline(k)
 					va, err := act.dps.voteGenerate(v.status.winner, k)
 					if err != nil {
-						logger.Error("vote generate error")
+						act.dps.logger.Error("vote generate error")
 						continue
 					}
 					act.vote(va)
 				} else {
-					logger.Infof("send confirm req for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
+					act.dps.logger.Infof("send confirm req for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
 					err := act.dps.sendConfirmReq(v.status.winner)
 					if err != nil {
 						continue
@@ -93,7 +93,7 @@ func (act *ActiveTrx) announceVotes() {
 				}
 			}
 			if len(accounts) == 0 {
-				logger.Info("this is just a node,not a wallet")
+				act.dps.logger.Info("this is just a node,not a wallet")
 				act.dps.sendConfirmReq(v.status.winner)
 			}
 			v.announcements++
