@@ -1,13 +1,14 @@
 package config
 
 import (
-	"github.com/json-iterator/go"
-	"github.com/libp2p/go-libp2p-peer"
 	"os"
 	"testing"
+
+	"github.com/json-iterator/go"
+	"github.com/libp2p/go-libp2p-peer"
 )
 
-var cfgFile = DefaultConfigFile()
+var cfgFile = DefaultDataDir()
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Log("setup test case")

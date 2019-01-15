@@ -49,7 +49,7 @@ func init() {
 
 func createWallet() (types.Address, error) {
 	if cfgPath == "" {
-		cfgPath = config.DefaultConfigFile()
+		cfgPath = config.DefaultDataDir()
 	}
 	cm := config.NewCfgManager(cfgPath)
 	cfg, err := cm.Load()

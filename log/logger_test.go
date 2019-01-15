@@ -8,10 +8,11 @@
 package log
 
 import (
+	"testing"
+
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/config"
 	"go.uber.org/zap"
-	"testing"
 )
 
 func TestNewLogger(t *testing.T) {
@@ -42,7 +43,7 @@ func TestNewLogger(t *testing.T) {
 }
 
 func TestInit(t *testing.T) {
-	cfg, err := config.DefaultConfig()
+	cfg, err := config.DefaultConfig(config.DefaultDataDir())
 	if err != nil {
 		t.Fatal(err)
 	}

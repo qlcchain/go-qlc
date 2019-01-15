@@ -2,21 +2,25 @@ package config
 
 import (
 	"fmt"
-	"github.com/json-iterator/go"
-	"github.com/qlcchain/go-qlc/common/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/json-iterator/go"
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 type ConfigManager struct {
 	cfgFile string
+	cfgPath string
 }
 
-func NewCfgManager(file string) *ConfigManager {
+func NewCfgManager(path string) *ConfigManager {
+	file := filepath.Join(path, QlcConfigFile)
 	cfg := &ConfigManager{
 		cfgFile: file,
+		cfgPath: path,
 	}
 	return cfg
 }
@@ -26,7 +30,7 @@ func (c *ConfigManager) Load(migrations ...CfgMigrate) (*Config, error) {
 	_, err := os.Stat(c.cfgFile)
 	if err != nil {
 		fmt.Printf("%s not exist, create default\n", c.cfgFile)
-		cfg, err := DefaultConfig()
+		cfg, err := DefaultConfig(c.cfgPath)
 		if err != nil {
 			return nil, err
 		}

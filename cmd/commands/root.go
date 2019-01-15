@@ -48,7 +48,7 @@ var rootCmd = &cobra.Command{
 func start() error {
 	var addr types.Address
 	if cfgPath == "" {
-		cfgPath = config.DefaultConfigFile()
+		cfgPath = config.DefaultDataDir()
 	}
 	cm := config.NewCfgManager(cfgPath)
 	cfg, err := cm.Load()
