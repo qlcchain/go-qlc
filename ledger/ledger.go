@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 
@@ -853,6 +854,7 @@ func (l *Ledger) GetFrontiers(txns ...db.StoreTxn) ([]*types.Frontier, error) {
 	if err != nil {
 		return nil, err
 	}
+	sort.Sort(types.Frontiers(frontiers))
 	return frontiers, nil
 }
 
