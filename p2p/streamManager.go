@@ -198,3 +198,17 @@ func (sm *StreamManager) BroadcastMessage(messageName string, messageContent []b
 		return true
 	})
 }
+
+func (sm *StreamManager) PeerCounts() int {
+	allPeers := make(PeersSlice, 0)
+
+	sm.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		if stream.IsConnected() {
+			allPeers = append(allPeers, value)
+		}
+		return true
+	})
+
+	return len(allPeers)
+}

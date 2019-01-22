@@ -3,6 +3,7 @@ package consensus
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -37,6 +38,8 @@ type DposService struct {
 	password           string
 	onlineRepAddresses []types.Address
 	logger             *zap.SugaredLogger
+	priInfos           *sync.Map
+	session            *wallet.Session
 }
 
 func (dps *DposService) GetP2PService() p2p.Service {
@@ -100,10 +103,17 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 		account:  account,
 		password: password,
 		logger:   log.NewLogger("consensus"),
+		priInfos: new(sync.Map),
 	}
+	dps.session = dps.wallet.NewSession(account)
 	//test begin...
 	//dps.accounts = append(dps.accounts, ac.Address())
 	//test end...
+	err := dps.setPriInfo()
+	if err != nil {
+		dps.logger.Error(err)
+		return nil, err
+	}
 	dps.bp.SetDpos(dps)
 	dps.actrx.SetDposService(dps)
 	return dps, nil
@@ -111,6 +121,47 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 
 func (dps *DposService) SetWalletStore(wallet *wallet.WalletStore) {
 	dps.wallet = wallet
+}
+
+func (dps *DposService) setPriInfo() error {
+	err := dps.getPriInfo(dps.session)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dps *DposService) getPriInfo(session *wallet.Session) error {
+	if dps.account != types.ZeroAddress {
+		if verify, err := session.VerifyPassword(dps.password); verify && err == nil {
+			if a, err := session.GetAccounts(); err == nil {
+				for i := 0; i < len(a); i++ {
+					acc, err := session.GetRawKey(a[i])
+					if err != nil {
+						continue
+					}
+					dps.priInfos.LoadOrStore(a[i], acc)
+				}
+			} else {
+				return err
+			}
+		} else {
+			return errors.New("invalid password")
+		}
+	}
+	return nil
+}
+
+func (dps *DposService) refreshPriInfo() error {
+	dps.priInfos.Range(func(key, value interface{}) bool {
+		dps.priInfos.Delete(key.(types.Address))
+		return true
+	})
+	err := dps.setPriInfo()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*func (dps *DposService) SetAccounts() error {
@@ -145,18 +196,15 @@ func (dps *DposService) ReceiveConfirmReq(v interface{}) {
 }
 
 func (dps *DposService) onReceiveConfirmReq(block types.Block) {
-	accounts := dps.getAccounts()
-	for _, k := range accounts {
-		isRep := dps.isThisAccountRepresentation(k)
+	dps.priInfos.Range(func(key, value interface{}) bool {
+		isRep := dps.isThisAccountRepresentation(key.(types.Address))
 		if isRep {
 			dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Root())
-			dps.putRepresentativesToOnline(k)
-			dps.sendConfirmAck(block, k)
-		} /*else {
-			logger.Infof("send confirm req for hash %s,previous hash is %s", block.GetHash(), block.Root())
-			dps.sendConfirmReq(block)
-		}*/
-	}
+			dps.putRepresentativesToOnline(key.(types.Address))
+			dps.sendConfirmAck(block, key.(types.Address), value.(*types.Account))
+		}
+		return true
+	})
 	//if len(accounts) == 0 {
 	//	logger.Info("this is just a node,not a wallet")
 	//	dps.sendConfirmReq(block)
@@ -229,8 +277,8 @@ func (dps *DposService) sendConfirmReq(block types.Block) error {
 	return nil
 }
 
-func (dps *DposService) sendConfirmAck(block types.Block, account types.Address) error {
-	va, err := dps.voteGenerate(block, account)
+func (dps *DposService) sendConfirmAck(block types.Block, account types.Address, acc *types.Account) error {
+	va, err := dps.voteGenerate(block, account, acc)
 	if err != nil {
 		dps.logger.Error("vote generate error")
 		return err
@@ -243,32 +291,28 @@ func (dps *DposService) sendConfirmAck(block types.Block, account types.Address)
 	return nil
 }
 
-func (dps *DposService) voteGenerate(block types.Block, account types.Address) (*protos.ConfirmAckBlock, error) {
+func (dps *DposService) voteGenerate(block types.Block, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
 	var va protos.ConfirmAckBlock
-	prv, err := dps.GetAccountPrv(account)
-	if err != nil {
-		dps.logger.Error("Get prv error")
-		return nil, err
-	}
+
 	if v, ok := dps.actrx.roots[block.Root()]; ok {
 		result, vt := v.vote.voteExit(account)
 		if result {
 			va.Sequence = vt.Sequence + 1
 			va.Blk = block
 			va.Account = account
-			va.Signature = prv.Sign(block.GetHash())
+			va.Signature = acc.Sign(block.GetHash())
 		} else {
 			va.Sequence = 0
 			va.Blk = block
 			va.Account = account
-			va.Signature = prv.Sign(block.GetHash())
+			va.Signature = acc.Sign(block.GetHash())
 		}
 		v.vote.voteStatus(&va)
 	} else {
 		va.Sequence = 0
 		va.Blk = block
 		va.Account = account
-		va.Signature = prv.Sign(block.GetHash())
+		va.Signature = acc.Sign(block.GetHash())
 	}
 	return &va, nil
 }

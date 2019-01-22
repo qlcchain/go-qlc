@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SyncInterval = time.Minute * 1
+	SyncInterval = time.Minute * 2
 )
 
 var zeroHash = types.Hash{}
@@ -52,16 +52,15 @@ func (ss *ServiceSync) Start() {
 	}
 	ticker := time.NewTicker(SyncInterval)
 	for {
-		peerID, err := ss.netService.node.StreamManager().RandomPeer()
-		if err != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
 		select {
 		case <-ss.quitCh:
 			ss.logger.Info("Stopped Sync Loop.")
 			return
 		case <-ticker.C:
+			peerID, err := ss.netService.node.StreamManager().RandomPeer()
+			if err != nil {
+				continue
+			}
 			ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
 			if err != nil {
 				continue

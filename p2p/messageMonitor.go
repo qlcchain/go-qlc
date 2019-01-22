@@ -31,7 +31,7 @@ type MessageService struct {
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
 		quitCh:     make(chan bool, 1),
-		messageCh:  make(chan Message, 128),
+		messageCh:  make(chan Message, 4096),
 		ledger:     ledger,
 		netService: netService,
 	}
@@ -93,6 +93,8 @@ func (ms *MessageService) startLoop() {
 				ms.netService.node.logger.Error("Received unknown message.")
 				time.Sleep(100 * time.Millisecond)
 			}
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
