@@ -24,13 +24,13 @@ script:
   - ./ci/travis.gofmt.sh
   - ./ci/travis.govet.sh
   - ./ci/travis.codecov.sh
-  - make
+  - make clean all
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
 
-before_deploy:
-- make clean all -j2
+#before_deploy:
+#- make clean all -j2
 
 deploy:
   provider: releases
