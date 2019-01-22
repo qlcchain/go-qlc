@@ -14,8 +14,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var logger = log.NewLogger("rpc")
-
 type RPC struct {
 	//p2pServer *p2p.Server
 
