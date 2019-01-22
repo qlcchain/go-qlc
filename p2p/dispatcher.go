@@ -24,7 +24,7 @@ type Dispatcher struct {
 func NewDispatcher() *Dispatcher {
 	dp := &Dispatcher{
 		subscribersMap:    new(sync.Map),
-		quitCh:            make(chan bool, 10),
+		quitCh:            make(chan bool, 1),
 		receivedMessageCh: make(chan Message, 65536),
 		filters:           make(map[MessageType]bool),
 		logger:            log.NewLogger("dispatcher"),

@@ -13,6 +13,7 @@ import (
 const (
 	announcementmin    = 4 //Minimum number of block announcements
 	announceIntervalms = 16 * time.Second
+	refreshPriInfoms   = 1 * time.Hour
 )
 
 type ActiveTrx struct {
@@ -36,6 +37,7 @@ func (act *ActiveTrx) SetDposService(dps *DposService) {
 
 func (act *ActiveTrx) start() {
 	timer2 := time.NewTicker(announceIntervalms)
+	timer3 := time.NewTicker(refreshPriInfoms)
 	for {
 		select {
 		case <-timer2.C:
@@ -44,6 +46,9 @@ func (act *ActiveTrx) start() {
 		case <-act.quitCh:
 			act.dps.logger.Info("Stopped ActiveTrx Loop.")
 			return
+		case <-timer3.C:
+			act.dps.logger.Info("refresh pri info.")
+			act.dps.refreshPriInfo()
 		default:
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -66,33 +71,35 @@ func (act *ActiveTrx) addToRoots(block types.Block) bool {
 }
 
 func (act *ActiveTrx) announceVotes() {
+	var count = 0
 	for _, v := range act.roots {
 		if v.confirmed && v.announcements >= announcementmin-1 {
 			act.dps.logger.Info("this block is already confirmed")
 			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, v.status.winner)
 			act.inactive = append(act.inactive, v.vote.id)
 		} else {
-			accounts := act.dps.getAccounts()
-			for _, k := range accounts {
-				isrep := act.dps.isThisAccountRepresentation(k)
+			act.dps.priInfos.Range(func(key, value interface{}) bool {
+				count++
+				isrep := act.dps.isThisAccountRepresentation(key.(types.Address))
 				if isrep {
 					act.dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
-					act.dps.putRepresentativesToOnline(k)
-					va, err := act.dps.voteGenerate(v.status.winner, k)
+					act.dps.putRepresentativesToOnline(key.(types.Address))
+					va, err := act.dps.voteGenerate(v.status.winner, key.(types.Address), value.(*types.Account))
 					if err != nil {
 						act.dps.logger.Error("vote generate error")
-						continue
+					} else {
+						act.vote(va)
 					}
-					act.vote(va)
 				} else {
 					act.dps.logger.Infof("send confirm req for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
 					err := act.dps.sendConfirmReq(v.status.winner)
 					if err != nil {
-						continue
+						act.dps.logger.Error("send confirm req fail.")
 					}
 				}
-			}
-			if len(accounts) == 0 {
+				return true
+			})
+			if count == 0 {
 				act.dps.logger.Info("this is just a node,not a wallet")
 				act.dps.sendConfirmReq(v.status.winner)
 			}
