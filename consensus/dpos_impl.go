@@ -376,6 +376,13 @@ func (dps *DposService) GetOnlineRepresentatives() []types.Address {
 }
 
 func (dps *DposService) findOnlineRepresentatives() error {
+	dps.priInfos.Range(func(key, value interface{}) bool {
+		isRep := dps.isThisAccountRepresentation(key.(types.Address))
+		if isRep {
+			dps.putRepresentativesToOnline(key.(types.Address))
+		}
+		return true
+	})
 	blk, err := dps.ledger.GetRandomStateBlock()
 	if err != nil {
 		return err
