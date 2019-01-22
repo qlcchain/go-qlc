@@ -6,16 +6,15 @@ import (
 	"strings"
 	"sync"
 
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
+	"go.uber.org/zap"
 )
 
-//var logger = log.NewLogger("rpc")
+var logger = log.NewLogger("rpc")
 
 type RPC struct {
 	//p2pServer *p2p.Server

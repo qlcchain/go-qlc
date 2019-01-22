@@ -168,7 +168,7 @@ func checkReqId(reqId json.RawMessage) error {
 // the parsed request, an indication if the request was a batch or an error when
 // the request could not be parsed.
 func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
-	//logger.Info("incomingMsg, ", string(incomingMsg))
+	logger.Debugf("incomingMsg: %s ", string(incomingMsg))
 	var in jsonRequest
 	if err := json.Unmarshal(incomingMsg, &in); err != nil {
 		//logger.Info(err)
