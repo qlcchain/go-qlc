@@ -25,6 +25,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 const (
@@ -81,6 +84,7 @@ type jsonCodec struct {
 	encMu  sync.Mutex                // guards the encoder
 	encode func(v interface{}) error // encoder to allow multiple transports
 	rw     io.ReadWriteCloser        // connection
+	logger *zap.SugaredLogger
 }
 
 func (err *jsonError) Error() string {
@@ -102,6 +106,7 @@ func NewCodec(rwc io.ReadWriteCloser, encode, decode func(v interface{}) error) 
 		encode: encode,
 		decode: decode,
 		rw:     rwc,
+		logger: log.NewLogger("rpcCodec"),
 	}
 }
 
@@ -116,6 +121,7 @@ func NewJSONCodec(rwc io.ReadWriteCloser) ServerCodec {
 		encode: enc.Encode,
 		decode: dec.Decode,
 		rw:     rwc,
+		logger: log.NewLogger("rpcCodec"),
 	}
 }
 
@@ -145,6 +151,7 @@ func (c *jsonCodec) ReadRequestHeaders() ([]rpcRequest, bool, Error) {
 	if isBatch(incomingMsg) {
 		return parseBatchRequest(incomingMsg)
 	}
+	c.logger.Debugf("incomingMsg: %s ", string(incomingMsg))
 	return parseRequest(incomingMsg)
 }
 
@@ -168,7 +175,7 @@ func checkReqId(reqId json.RawMessage) error {
 // the parsed request, an indication if the request was a batch or an error when
 // the request could not be parsed.
 func parseRequest(incomingMsg json.RawMessage) ([]rpcRequest, bool, Error) {
-	//logger.Info("incomingMsg, ", string(incomingMsg))
+	//logger.Debugf("incomingMsg: %s ", string(incomingMsg))
 	var in jsonRequest
 	if err := json.Unmarshal(incomingMsg, &in); err != nil {
 		//logger.Info(err)
