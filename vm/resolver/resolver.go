@@ -1,9 +1,8 @@
-package vm
+package resolver
 
 import (
 	"fmt"
-
-	"github.com/perlin-network/life/exec"
+	"github.com/qlcchain/go-qlc/vm/exec"
 )
 
 // Resolver defines imports for WebAssembly modules ran in Life.

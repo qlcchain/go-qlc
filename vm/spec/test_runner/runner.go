@@ -8,8 +8,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/perlin-network/life/compiler"
-	"github.com/perlin-network/life/exec"
+	"github.com/qlcchain/go-qlc/vm/compiler"
+	"github.com/qlcchain/go-qlc/vm/exec"
 )
 
 type Resolver struct{}

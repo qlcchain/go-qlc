@@ -5,10 +5,9 @@ import (
 
 	"math"
 
-	"strings"
-
 	"github.com/go-interpreter/wagon/disasm"
 	"github.com/go-interpreter/wagon/wasm"
+	"strings"
 )
 
 type TyValueID uint64

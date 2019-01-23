@@ -10,8 +10,8 @@ import (
 
 	//"github.com/go-interpreter/wagon/validate"
 	"github.com/go-interpreter/wagon/wasm/leb128"
-	"github.com/perlin-network/life/compiler/opcodes"
-	"github.com/perlin-network/life/utils"
+	"github.com/qlcchain/go-qlc/vm/compiler/opcodes"
+	"github.com/qlcchain/go-qlc/vm/utils"
 )
 
 type Module struct {

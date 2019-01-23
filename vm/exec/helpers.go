@@ -3,7 +3,7 @@ package exec
 import (
 	"errors"
 
-	"github.com/perlin-network/life/utils"
+	"github.com/qlcchain/go-qlc/vm/utils"
 )
 
 var _ ImportResolver = (*NopResolver)(nil)
