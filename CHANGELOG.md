@@ -1,3 +1,14 @@
+##  (2019-01-23)
+
+* chore: build all platforms binary ([b58e86d](https://github.com/qlcchain/go-qlc/commit/b58e86d))
+* chore: bump version to v0.0.3 ([171d927](https://github.com/qlcchain/go-qlc/commit/171d927))
+* chore: make online Representatives easier to find ([e069b9d](https://github.com/qlcchain/go-qlc/commit/e069b9d))
+* fix: cpu too high. ([4fc01cf](https://github.com/qlcchain/go-qlc/commit/4fc01cf))
+* fix: solve synchronization problems caused by frontier incorrect sorting ([07bece7](https://github.com/qlcchain/go-qlc/commit/07bece7))
+* feat: print debug info to rpc request (#89) ([38bc3d2](https://github.com/qlcchain/go-qlc/commit/38bc3d2)), closes [#89](https://github.com/qlcchain/go-qlc/issues/89)
+
+
+
 ##  (2019-01-15)
 
 * chore: add LDFLAGS ([645f1bc](https://github.com/qlcchain/go-qlc/commit/645f1bc))
