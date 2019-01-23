@@ -224,18 +224,18 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 		return
 	}
 	dps.putRepresentativesToOnline(va.Account)
-	if v, ok := dps.actrx.roots[va.Blk.Root()]; ok {
-		result, vt := v.vote.voteExit(va.Account)
+	if v, ok := dps.actrx.roots.Load(va.Blk.Root()); ok {
+		result, vt := v.(*Election).vote.voteExit(va.Account)
 		if result {
 			if vt.Sequence < va.Sequence {
-				v.vote.repVotes[va.Account] = va
+				v.(*Election).vote.repVotes[va.Account] = va
 			}
 		} else {
-			ta := v.vote.voteStatus(va)
+			ta := v.(*Election).vote.voteStatus(va)
 			if ta == confirm {
-				currentvote := v.vote.repVotes[va.Account]
+				currentvote := v.(*Election).vote.repVotes[va.Account]
 				if currentvote.Sequence < va.Sequence {
-					v.vote.repVotes[va.Account] = va
+					v.(*Election).vote.repVotes[va.Account] = va
 				}
 			}
 		}
@@ -247,14 +247,6 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 		}
 		if !exit {
 			dps.bp.blocks <- va.Blk
-			//if len(accounts) == 0 {
-			//	logger.Info("this is just a node,not a wallet")
-			//	data, err := protos.ConfirmAckBlockToProto(va)
-			//	if err != nil {
-			//		logger.Error("vote to proto error")
-			//	}
-			//	dps.ns.Broadcast(p2p.ConfirmAck, data)
-			//}
 		}
 	}
 }
@@ -293,9 +285,8 @@ func (dps *DposService) sendConfirmAck(block types.Block, account types.Address,
 
 func (dps *DposService) voteGenerate(block types.Block, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
 	var va protos.ConfirmAckBlock
-
-	if v, ok := dps.actrx.roots[block.Root()]; ok {
-		result, vt := v.vote.voteExit(account)
+	if v, ok := dps.actrx.roots.Load(block.Root()); ok {
+		result, vt := v.(*Election).vote.voteExit(account)
 		if result {
 			va.Sequence = vt.Sequence + 1
 			va.Blk = block
@@ -307,7 +298,7 @@ func (dps *DposService) voteGenerate(block types.Block, account types.Address, a
 			va.Account = account
 			va.Signature = acc.Sign(block.GetHash())
 		}
-		v.vote.voteStatus(&va)
+		v.(*Election).vote.voteStatus(&va)
 	} else {
 		va.Sequence = 0
 		va.Blk = block

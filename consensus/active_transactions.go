@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/p2p"
@@ -19,15 +20,17 @@ const (
 type ActiveTrx struct {
 	confirmed electionStatus
 	dps       *DposService
-	roots     map[types.Hash]*Election
-	quitCh    chan bool
-	inactive  []types.Hash
+	//roots     map[types.Hash]*Election
+	roots    *sync.Map
+	quitCh   chan bool
+	inactive []types.Hash
 }
 
 func NewActiveTrx() *ActiveTrx {
 	return &ActiveTrx{
 		quitCh: make(chan bool, 1),
-		roots:  make(map[types.Hash]*Election),
+		//roots:  make(map[types.Hash]*Election),
+		roots: new(sync.Map),
 	}
 }
 
@@ -56,43 +59,55 @@ func (act *ActiveTrx) start() {
 }
 
 func (act *ActiveTrx) addToRoots(block types.Block) bool {
-	if _, ok := act.roots[block.Root()]; !ok {
+	if _, ok := act.roots.Load(block.Root()); !ok {
 		ele, err := NewElection(act.dps, block)
 		if err != nil {
 			act.dps.logger.Infof("block :%s add to roots error", block.GetHash())
 			return false
 		}
-		act.roots[block.Root()] = ele
+		act.roots.Store(block.Root(), ele)
 		return true
 	} else {
 		act.dps.logger.Infof("block :%s already exit in roots", block.GetHash())
 		return false
 	}
+	//if _, ok := act.roots[block.Root()]; !ok {
+	//	ele, err := NewElection(act.dps, block)
+	//	if err != nil {
+	//		act.dps.logger.Infof("block :%s add to roots error", block.GetHash())
+	//		return false
+	//	}
+	//	act.roots[block.Root()] = ele
+	//	return true
+	//} else {
+	//	act.dps.logger.Infof("block :%s already exit in roots", block.GetHash())
+	//	return false
+	//}
 }
 
 func (act *ActiveTrx) announceVotes() {
 	var count = 0
-	for _, v := range act.roots {
-		if v.confirmed && v.announcements >= announcementmin-1 {
+	act.roots.Range(func(key, value interface{}) bool {
+		if value.(*Election).confirmed && value.(*Election).announcements >= announcementmin-1 {
 			act.dps.logger.Info("this block is already confirmed")
-			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, v.status.winner)
-			act.inactive = append(act.inactive, v.vote.id)
+			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, value.(*Election).status.winner)
+			act.inactive = append(act.inactive, value.(*Election).vote.id)
 		} else {
-			act.dps.priInfos.Range(func(key, value interface{}) bool {
+			act.dps.priInfos.Range(func(k, v interface{}) bool {
 				count++
-				isrep := act.dps.isThisAccountRepresentation(key.(types.Address))
+				isrep := act.dps.isThisAccountRepresentation(k.(types.Address))
 				if isrep {
-					act.dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
-					act.dps.putRepresentativesToOnline(key.(types.Address))
-					va, err := act.dps.voteGenerate(v.status.winner, key.(types.Address), value.(*types.Account))
+					act.dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", value.(*Election).status.winner.GetHash(), value.(*Election).status.winner.Root())
+					act.dps.putRepresentativesToOnline(k.(types.Address))
+					va, err := act.dps.voteGenerate(value.(*Election).status.winner, k.(types.Address), v.(*types.Account))
 					if err != nil {
 						act.dps.logger.Error("vote generate error")
 					} else {
 						act.vote(va)
 					}
 				} else {
-					act.dps.logger.Infof("send confirm req for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
-					err := act.dps.sendConfirmReq(v.status.winner)
+					act.dps.logger.Infof("send confirm req for hash %s,previous hash is %s", value.(*Election).status.winner.GetHash(), value.(*Election).status.winner.Root())
+					err := act.dps.sendConfirmReq(value.(*Election).status.winner)
 					if err != nil {
 						act.dps.logger.Error("send confirm req fail.")
 					}
@@ -101,23 +116,61 @@ func (act *ActiveTrx) announceVotes() {
 			})
 			if count == 0 {
 				act.dps.logger.Info("this is just a node,not a wallet")
-				act.dps.sendConfirmReq(v.status.winner)
+				act.dps.sendConfirmReq(value.(*Election).status.winner)
 			}
-			v.announcements++
+			value.(*Election).announcements++
 		}
-	}
+		return true
+	})
+	//for _, v := range act.roots {
+	//	if v.confirmed && v.announcements >= announcementmin-1 {
+	//		act.dps.logger.Info("this block is already confirmed")
+	//		act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, v.status.winner)
+	//		act.inactive = append(act.inactive, v.vote.id)
+	//	} else {
+	//		act.dps.priInfos.Range(func(key, value interface{}) bool {
+	//			count++
+	//			isrep := act.dps.isThisAccountRepresentation(key.(types.Address))
+	//			if isrep {
+	//				act.dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
+	//				act.dps.putRepresentativesToOnline(key.(types.Address))
+	//				va, err := act.dps.voteGenerate(v.status.winner, key.(types.Address), value.(*types.Account))
+	//				if err != nil {
+	//					act.dps.logger.Error("vote generate error")
+	//				} else {
+	//					act.vote(va)
+	//				}
+	//			} else {
+	//				act.dps.logger.Infof("send confirm req for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
+	//				err := act.dps.sendConfirmReq(v.status.winner)
+	//				if err != nil {
+	//					act.dps.logger.Error("send confirm req fail.")
+	//				}
+	//			}
+	//			return true
+	//		})
+	//		if count == 0 {
+	//			act.dps.logger.Info("this is just a node,not a wallet")
+	//			act.dps.sendConfirmReq(v.status.winner)
+	//		}
+	//		v.announcements++
+	//	}
+	//}
 	for _, value := range act.inactive {
-		if _, ok := act.roots[value]; ok {
-			delete(act.roots, value)
+		if _, ok := act.roots.Load(value); ok {
+			act.roots.Delete(value)
 		}
 	}
 	act.inactive = act.inactive[:0:0]
 }
 
 func (act *ActiveTrx) vote(va *protos.ConfirmAckBlock) {
-	if value, ok := act.roots[va.Blk.Root()]; ok {
-		value.voteAction(va)
+	if v, ok := act.roots.Load(va.Blk.Root()); ok {
+		v.(*Election).voteAction(va)
 	}
+	//if value, ok := act.roots[va.Blk.Root()]; ok {
+	//	value.voteAction(va)
+	//}
 }
 
 func (act *ActiveTrx) stop() {
