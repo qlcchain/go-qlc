@@ -8,6 +8,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 )
 
@@ -64,4 +65,8 @@ func (a *Account) Sign(hash Hash) Signature {
 	var sig Signature
 	copy(sig[:], ed25519.Sign(a.privKey, hash[:]))
 	return sig
+}
+
+func (a *Account) PrivateKey() string {
+	return hex.EncodeToString(a.privKey)
 }

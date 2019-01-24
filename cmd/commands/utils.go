@@ -51,7 +51,7 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 		return err
 	}
 	logService := log.NewLogService(cfg)
-	logService.Init()
+	_ = logService.Init()
 	ctx.Ledger = ledger.NewLedgerService(cfg)
 	ctx.Wallet = wallet.NewWalletService(cfg)
 	ctx.NetService, err = p2p.NewQlcService(cfg)
