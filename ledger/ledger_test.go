@@ -415,6 +415,32 @@ func TestLedger_DelTokenMeta(t *testing.T) {
 	}
 }
 
+func TestLedger_GetAccountMetas(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addAccountMeta(t, l)
+	addAccountMeta(t, l)
+	a, err := l.GetAccountMetas()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("account,", a)
+}
+
+func TestLedger_CountAccountMetas(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addAccountMeta(t, l)
+	addAccountMeta(t, l)
+	num, err := l.CountAccountMetas()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("account,", num)
+}
+
 func TestLedger_HasTokenMeta_False(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
@@ -440,14 +466,16 @@ func TestLedger_HasTokenMeta_True(t *testing.T) {
 	t.Log("has token,", r)
 }
 
-func addRepresentationWeight(t *testing.T, l *Ledger) {
-	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	amount := types.StringToBalance("400004")
+func addRepresentationWeight(t *testing.T, l *Ledger) types.Address {
+	address := mock.Address()
+	i, _ := random.Intn(math.MaxInt16)
+	amount := types.Balance{Int: big.NewInt(int64(i))}
 
 	err := l.AddRepresentation(address, amount)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return address
 }
 
 func TestLedger_AddRepresentationWeight(t *testing.T) {
@@ -460,10 +488,8 @@ func TestLedger_SubRepresentationWeight(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addRepresentationWeight(t, l)
-
-	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	amount := types.StringToBalance("100004")
+	address := addRepresentationWeight(t, l)
+	amount := types.Balance{Int: big.NewInt(int64(1000))}
 	err := l.SubRepresentation(address, amount)
 	if err != nil {
 		t.Fatal(err)
@@ -474,10 +500,22 @@ func TestLedger_GetRepresentation(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	address := addRepresentationWeight(t, l)
+	a, err := l.GetRepresentation(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("amount,", a)
+}
+
+func TestLedger_GetRepresentations(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addRepresentationWeight(t, l)
 	addRepresentationWeight(t, l)
 
-	address, _ := types.HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	a, err := l.GetRepresentation(address)
+	a, err := l.GetRepresentations()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,6 +19,8 @@ type Store interface {
 	// account meta CURD
 	AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error
 	GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error)
+	GetAccountMetas(txns ...db.StoreTxn) ([]*types.AccountMeta, error)
+	CountAccountMetas(txns ...db.StoreTxn) (uint64, error)
 	UpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error
 	DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) error
 	HasAccountMeta(address types.Address, txns ...db.StoreTxn) (bool, error)
@@ -43,6 +45,7 @@ type Store interface {
 	AddRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
 	SubRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
 	GetRepresentation(address types.Address, txns ...db.StoreTxn) (types.Balance, error)
+	GetRepresentations(txns ...db.StoreTxn) (map[types.Address]types.Balance, error)
 	// unchecked CURD
 	AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, txns ...db.StoreTxn) error
 	GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, error)

@@ -45,7 +45,7 @@ func init() {
 
 	bctCmd.Flags().IntVarP(&blockcount, "blockcount", "b", 100, "maxinum block count")
 	bctCmd.Flags().IntVarP(&seedbegin, "seedbegin", "s", 0, "seed for send account begin index")
-	bctCmd.Flags().IntVarP(&seedend, "seedend", "e", 0, "seed for send account end index")
+	bctCmd.Flags().IntVarP(&seedend, "seedend", "e", 10, "seed for send account end index")
 
 	rootCmd.AddCommand(bctCmd)
 }

@@ -128,6 +128,28 @@ func TestRPC_Client3(t *testing.T) {
 	t.Log(resp)
 }
 
+func TestRPC_Client4(t *testing.T) {
+	teardownTestCase, r := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	//client, err := Dial(fmt.Sprintf("http://%s", r.config.RPC.HTTPEndpoint))
+	//client, err := Dial(fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
+	client, err := r.Attach()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr := mock.Address()
+	ac := mock.AccountMeta(addr)
+	r.ledger.AddAccountMeta(ac)
+	var resp map[types.Address]map[types.Hash]types.Balance
+	err = client.Call(&resp, "qlcclassic_accountsBalances", []types.Address{addr})
+	if err != nil {
+		t.Log(err)
+	}
+	t.Log(resp)
+}
+
 func defaultIPCEndpoint(str string) string {
 	if runtime.GOOS == "windows" {
 		return `\\.\pipe\gqlc_test.ipc`

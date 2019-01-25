@@ -8,15 +8,20 @@
 package mock
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/log"
 )
@@ -358,6 +363,32 @@ func Account() *types.Account {
 	return types.NewAccount(priv)
 }
 
+func Tokens() ([]*TokenInfo, error) {
+	var tis []*TokenInfo
+	scs := GetSmartContracts()
+	for _, sc := range scs {
+		hash := sc.GetHash()
+		ti, err := GetTokenById(hash)
+		if err != nil {
+			return nil, err
+		}
+		tis = append(tis, &ti)
+	}
+	return tis, nil
+}
+
+func GetTokenByName(tokenName string) (*TokenInfo, error) {
+	var info TokenInfo
+	tokenCache.Range(func(key, value interface{}) bool {
+		i := value.(TokenInfo)
+		if i.TokenName == tokenName {
+			info = i
+		}
+		return true
+	})
+	return &info, nil
+}
+
 func StateBlock() types.Block {
 	a := Account()
 	b, _ := types.NewBlock(types.State)
@@ -380,8 +411,22 @@ func StateBlock() types.Block {
 	return b
 }
 
-func BlockChain() ([]types.Block, error) {
-	var blocks []types.Block
+func BlockChain() ([]*types.StateBlock, error) {
+	dir := filepath.Join(config.QlcTestDataDir(), "blocks.json")
+	_, err := os.Stat(dir)
+	if err == nil {
+		if f, err := os.Open(dir); err == nil {
+			defer f.Close()
+			if r, err := ioutil.ReadAll(f); err == nil {
+				var blocks []*types.StateBlock
+				if err = json.Unmarshal(r, &blocks); err == nil {
+					return blocks, nil
+				}
+			}
+		}
+	}
+
+	var blocks []*types.StateBlock
 	ac1 := Account()
 	ac2 := Account()
 	//ac3 := Account()
@@ -412,10 +457,21 @@ func BlockChain() ([]types.Block, error) {
 	//b7 := createBlock(*ac3, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(1000000))}, b6.GetHash(), ac1.Address()) //a3 open
 	//blocks = append(blocks, b7)
 	//
-	//token2 := MockHash()
+	//token2 := Hash()
 	//b8 := createBlock(*ac3, types.ZeroHash, token2, types.Balance{Int: big.NewInt(int64(100000000))}, types.Hash(ac3.Address()), ac1.Address()) //new token
 	//blocks = append(blocks, b8)
 
+	r, err := json.Marshal(blocks)
+	if err != nil {
+		return nil, err
+	}
+
+	f, error := os.OpenFile(dir, os.O_RDWR|os.O_CREATE, 0766)
+	if error != nil {
+		fmt.Println(error)
+	}
+	defer f.Close()
+	f.Write(r)
 	return blocks, nil
 }
 
