@@ -2,9 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"reflect"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -118,9 +118,9 @@ func receive(sendBlock types.Block, session *wallet.Session, address types.Addre
 	if err != nil {
 		return err
 	}
-	fmt.Println(jsoniter.MarshalToString(&receiveBlock))
-	if r, err := l.Process(receiveBlock); err != nil || r != ledger.Progress {
-		fmt.Println(jsoniter.MarshalToString(&receiveBlock))
+	fmt.Println(util.ToString(&receiveBlock))
+	if r, err := l.Process(receiveBlock); err != nil || r == ledger.Other {
+		fmt.Println(util.ToString(&receiveBlock))
 		fmt.Println("process block error", err)
 		return err
 	} else {
@@ -131,7 +131,7 @@ func receive(sendBlock types.Block, session *wallet.Session, address types.Addre
 			fmt.Println(err)
 			return err
 		}
-		fmt.Println(jsoniter.MarshalToString(&meta))
+		fmt.Println(util.ToString(&meta))
 		pushBlock := protos.PublishBlock{
 			Blk: receiveBlock,
 		}
@@ -154,9 +154,9 @@ func receiveblock(sendBlock types.Block, address types.Address, prk ed25519.Priv
 	if err != nil {
 		return err
 	}
-	fmt.Println(jsoniter.MarshalToString(&receiveBlock))
-	if r, err := l.Process(receiveBlock); err != nil || r != ledger.Progress {
-		fmt.Println(jsoniter.MarshalToString(&receiveBlock))
+	fmt.Println(util.ToString(&receiveBlock))
+	if r, err := l.Process(receiveBlock); err != nil || r == ledger.Other {
+		fmt.Println(util.ToString(&receiveBlock))
 		fmt.Println("process block error", err)
 		return err
 	} else {
@@ -167,7 +167,7 @@ func receiveblock(sendBlock types.Block, address types.Address, prk ed25519.Priv
 			fmt.Println(err)
 			return err
 		}
-		fmt.Println(jsoniter.MarshalToString(&meta))
+		fmt.Println(util.ToString(&meta))
 		pushBlock := protos.PublishBlock{
 			Blk: receiveBlock,
 		}

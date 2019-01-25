@@ -2,9 +2,8 @@ package consensus
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"testing"
-
-	"github.com/json-iterator/go"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -27,7 +26,6 @@ var (
 
 func TestIsAckSignValidate(t *testing.T) {
 	blk, err := types.NewBlock(types.State)
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(utilsblock), &blk); err != nil {
 		t.Fatal("Unmarshal block error")
 	}

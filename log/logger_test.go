@@ -8,9 +8,9 @@
 package log
 
 import (
+	"encoding/json"
 	"testing"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/config"
 	"go.uber.org/zap"
 )
@@ -32,7 +32,7 @@ func TestNewLogger(t *testing.T) {
 		}
 	}`)
 	var config zap.Config
-	if err := jsoniter.Unmarshal(rawJSON, &config); err != nil {
+	if err := json.Unmarshal(rawJSON, &config); err != nil {
 		t.Fatal(err)
 	}
 	//config.DisableStacktrace = false

@@ -1,13 +1,13 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
@@ -46,7 +46,7 @@ func (c *ConfigManager) Load(migrations ...CfgMigrate) (*Config, error) {
 
 	var cfg Config
 
-	err = jsoniter.Unmarshal(bytes, &cfg)
+	err = json.Unmarshal(bytes, &cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (c *ConfigManager) save(cfg *Config) error {
 		return err
 	}
 
-	bytes, err := jsoniter.Marshal(cfg)
+	bytes, err := json.Marshal(cfg)
 	if err != nil {
 		return err
 	}

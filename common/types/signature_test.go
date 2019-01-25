@@ -26,14 +26,6 @@ func TestSignature(t *testing.T) {
 
 func TestSignature_UnmarshalJSON(t *testing.T) {
 	s := `"5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600"`
-	//var sign Signature
-	//err := sign.Of(s)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//
-	//var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	//bytes, _ := json.Marshal(&sign)
 	var sign2 Signature
 	err := json.Unmarshal([]byte(s), &sign2)
 	if err != nil {

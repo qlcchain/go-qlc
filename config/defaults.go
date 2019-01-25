@@ -9,12 +9,12 @@ package config
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 
-	"github.com/json-iterator/go"
 	ic "github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-peer"
 )
@@ -35,7 +35,7 @@ func DefaultConfig(dir string) (*Config, error) {
 	}
 
 	var logCfg LogConfig
-	_ = jsoniter.Unmarshal([]byte(`{
+	_ = json.Unmarshal([]byte(`{
 		"level": "info",
 		"outputPaths": ["stdout"],
 		"errorOutputPaths": ["stderr"],

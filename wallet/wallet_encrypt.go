@@ -9,8 +9,8 @@ package wallet
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/crypto"
 	"golang.org/x/crypto/scrypt"
 	"time"
@@ -83,13 +83,13 @@ func EncryptSeed(seed []byte, passphrase []byte) ([]byte, error) {
 		Timestamp: time.Now().UTC().Unix(),
 	}
 
-	return jsoniter.Marshal(encryptedJSON)
+	return json.Marshal(encryptedJSON)
 }
 
 //DecryptSeed decrypt seed json to seed
 func DecryptSeed(encryptedJSON []byte, passphrase []byte) ([]byte, error) {
 	encryptSeed := cryptoSeedJSON{}
-	err := jsoniter.Unmarshal(encryptedJSON, &encryptSeed)
+	err := json.Unmarshal(encryptedJSON, &encryptSeed)
 	if err != nil {
 		return nil, errors.New("invalid encryptSeed json")
 	}

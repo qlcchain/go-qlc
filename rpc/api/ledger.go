@@ -486,8 +486,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		return types.ZeroHash, errors.New("bad signature")
 	case ledger.Old:
 		l.logger.Info("old block")
-		return block.GetHash(), nil
-		//return types.ZeroHash, errors.New("old block")
+		//return block.GetHash(), nil
+		return types.ZeroHash, errors.New("old block")
 	case ledger.Fork:
 		return types.ZeroHash, errors.New("fork")
 	case ledger.GapSource:
