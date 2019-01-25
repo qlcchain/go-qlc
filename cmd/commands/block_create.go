@@ -2,13 +2,12 @@ package commands
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -44,7 +43,7 @@ var bctCmd = &cobra.Command{
 func init() {
 
 	bctCmd.Flags().IntVarP(&blockcount, "blockcount", "b", 100, "maxinum block count")
-	bctCmd.Flags().IntVarP(&seedbegin, "seedbegin", "s", 0, "seed for send account begin index")
+	bctCmd.Flags().IntVarP(&seedbegin, "seedbegin", "s", 1, "seed for send account begin index")
 	bctCmd.Flags().IntVarP(&seedend, "seedend", "e", 10, "seed for send account end index")
 
 	rootCmd.AddCommand(bctCmd)
@@ -123,7 +122,6 @@ func processSendBlock(c chan types.Block) {
 			flag, err := ctx.Ledger.Ledger.Process(block)
 			if err != nil {
 				fmt.Println(err)
-				return
 			}
 
 			switch flag {
@@ -134,7 +132,6 @@ func processSendBlock(c chan types.Block) {
 				bytes, err := protos.PublishBlockToProto(&pushBlock)
 				if err != nil {
 					fmt.Println(err)
-					return
 				} else {
 					fmt.Println("broadcast block")
 					ctx.DPosService.GetP2PService().Broadcast(p2p.PublishReq, bytes)
@@ -173,7 +170,7 @@ type SeedData struct {
 }
 
 func getSeeds() ([]*SeedData, error) {
-	dir := filepath.Join(config.DefaultDataDir(), "seed.txt")
+	dir := filepath.Join(config.DefaultDataDir(), "seeds.txt")
 	fmt.Println(dir)
 	_, err := os.Stat(dir)
 	if err != nil {
@@ -184,53 +181,33 @@ func getSeeds() ([]*SeedData, error) {
 		return nil, err
 	}
 	defer f.Close()
-	seeds := make([]*SeedData, 0)
+	seeddatas := make([]*SeedData, 0)
+
 	//acs := make([]*types.Account, 0)
 	if r, err := ioutil.ReadAll(f); err == nil {
-		seedStrs := strings.Split(string(r), "\n")
-		for _, s := range seedStrs {
-			r, _ := regexp.Compile(`PrivateKey:\s*([0-9a-f]*)`)
-			match := r.FindStringSubmatch(s)
-			if len(match) == 0 {
-				continue
-			}
-			prkStr := match[1]
-
-			r, _ = regexp.Compile(`Seed:\s*(\S*)\s*,`)
-			match = r.FindStringSubmatch(s)
-			if len(match) == 0 {
-				continue
-			}
-			seedStr := match[1]
-
-			r, _ = regexp.Compile(`Address:\s*(\S*)\s*,`)
-			match = r.FindStringSubmatch(s)
-			if len(match) == 0 {
-				continue
-			}
-			addrStr := match[1]
-
-			addr, err := types.HexToAddress(addrStr)
-			if err != nil {
-				return nil, err
-			}
-			prk, err := hex.DecodeString(prkStr)
-			if err != nil {
-				return nil, err
-			}
-			sbyte, err := hex.DecodeString(seedStr)
+		var seeds []string
+		err := json.Unmarshal(r, &seeds)
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range seeds {
+			sd := new(SeedData)
+			sbyte, err := hex.DecodeString(s)
 			if err != nil {
 				return nil, err
 			}
 			seed, err := types.BytesToSeed(sbyte)
+			acc, err := seed.Account(0)
 			if err != nil {
 				return nil, err
 			}
-			s := SeedData{addr, prk, *seed}
-			seeds = append(seeds, &s)
+			sd.address = acc.Address()
+			sd.seed = *seed
+			sd.privateKey = acc.PrivateKey()
+			seeddatas = append(seeddatas, sd)
 		}
 	}
-	return seeds, nil
+	return seeddatas, nil
 }
 
 func findAccount(seeds []*SeedData, addr types.Address) *SeedData {

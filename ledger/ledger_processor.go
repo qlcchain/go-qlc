@@ -501,5 +501,53 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock types.Block, prk ed25519.Private
 		}
 	}
 	return receiveBlock, nil
-	//return nil, nil
+}
+
+func (l *Ledger) GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (types.Block, error) {
+	if b, err := l.HasAccountMeta(account); err != nil || !b {
+		return nil, fmt.Errorf("account[%s] is not exist", account.String())
+	}
+
+	if _, err := l.GetAccountMeta(representative); err != nil {
+		return nil, fmt.Errorf("invalid representative[%s]", representative.String())
+	}
+
+	//get latest chain token block
+	hash := l.Latest(account, mock.GetChainTokenType())
+
+	l.logger.Info(hash)
+	if hash.IsZero() {
+		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
+	}
+
+	block, err := l.GetStateBlock(hash)
+
+	if err != nil {
+		return nil, err
+	}
+	changeBlock, err := types.NewBlock(types.State)
+	if err != nil {
+		return nil, err
+	}
+	tm, err := l.GetTokenMeta(account, mock.GetChainTokenType())
+	acc := types.NewAccount(prk)
+	if sb, ok := changeBlock.(*types.StateBlock); ok {
+
+		sb.Address = account
+		sb.Balance = tm.Balance
+		sb.Previous = tm.Header
+		sb.Link = account.ToHash()
+		sb.Representative = representative
+		sb.Token = block.Token
+		sb.Extra = types.Hash{}
+		sb.Signature = acc.Sign(sb.GetHash())
+
+		//sb.Work, _ = s.GetWork(account)
+		//if !sb.IsValid() {
+		//	sb.Work = s.generateWork(sb.Root())
+		//	_ = s.setWork(account, sb.Work)
+		//}
+		sb.Work = l.generateWork(sb.Root())
+	}
+	return changeBlock, nil
 }
