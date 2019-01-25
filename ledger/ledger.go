@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -53,6 +54,7 @@ const (
 	idPrefixFrontier
 	idPrefixPending
 	idPrefixRepresentation
+	idPrefixPerformance
 )
 
 var (
@@ -1356,4 +1358,40 @@ func (l *Ledger) rollBackRepChange(pre types.Address, cur types.Address, balance
 		return err
 	}
 	return nil
+}
+
+func (l *Ledger) AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error {
+	var key []byte
+	key = append(key, idPrefixPerformance)
+	key = append(key, p.Hash[:]...)
+
+	bytes, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Set(key, bytes)
+}
+
+func (l *Ledger) GetPerformanceTime(txns ...db.StoreTxn) ([]*types.PerformanceTime, error) {
+	var times []*types.PerformanceTime
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixPerformance, func(key []byte, val []byte, b byte) error {
+		pt := new(types.PerformanceTime)
+		err := json.Unmarshal(val, pt)
+		if err != nil {
+			return err
+		}
+		times = append(times, pt)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return times, nil
 }

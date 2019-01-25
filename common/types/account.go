@@ -9,6 +9,7 @@ package types
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 )
 
@@ -67,6 +68,7 @@ func (a *Account) Sign(hash Hash) Signature {
 	return sig
 }
 
-func (a *Account) PrivateKey() string {
-	return hex.EncodeToString(a.privKey)
+// String implements the fmt.Stringer interface.
+func (a *Account) String() string {
+	return fmt.Sprintf("Address: %s, Private key: %s", a.Address().String(), hex.EncodeToString(a.privKey))
 }

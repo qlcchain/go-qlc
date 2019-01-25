@@ -1,6 +1,12 @@
 package ledger
 
 import (
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/test/mock"
 	"math"
 	"math/big"
 	"os"
@@ -8,13 +14,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
-
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/crypto/random"
-	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/test/mock"
+	"time"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
@@ -749,4 +749,60 @@ func TestLedger_Rollback(t *testing.T) {
 		t.Fatal()
 	}
 	checkInfo(t, l)
+}
+
+func TestLedger_AddOrUpdatePerformance(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	for i := 0; i < 20; i++ {
+		pt := types.NewPerformanceTime()
+		pt.Hash = mock.Hash()
+		err := l.AddOrUpdatePerformance(pt)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	times, err := l.GetPerformanceTime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, pt := range times {
+		t.Logf("%d=>%s", i, pt.String())
+	}
+}
+
+func TestLedger_AddOrUpdatePerformance2(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	pt := types.NewPerformanceTime()
+	h := mock.Hash()
+	pt.Hash = h
+
+	err := l.AddOrUpdatePerformance(pt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t3 := time.Now().AddDate(0, 0, 1)
+	pt.T3 = t3
+
+	err = l.AddOrUpdatePerformance(pt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	times, err := l.GetPerformanceTime()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, pt := range times {
+		if pt.Hash == h && pt.T3 != t3 {
+			t.Fatal("err time t3")
+		}
+
+	}
+
 }
