@@ -26,14 +26,6 @@ type TokenPending struct {
 	Hash        types.Hash         `json:"hash"`
 }
 
-type APIBlock struct {
-	*types.StateBlock
-	SubType   string        `json:"subType"`
-	TokenName string        `json:"tokenName"`
-	Amount    types.Balance `json:"amount"`
-	Hash      types.Hash    `json:"hash"`
-}
-
 func NewQlcApi(l *ledger.Ledger, dpos *consensus.DposService) *QlcApi {
 	return &QlcApi{ledger: l, dpos: dpos, logger: log.NewLogger("rpcapi")}
 }
@@ -123,12 +115,6 @@ func (q *QlcApi) GetOnlineRepresentatives() []types.Address {
 		return make([]types.Address, 0)
 	}
 	return as
-}
-
-func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
-	b.StateBlock = block
-	b.Hash = block.GetHash()
-	return b
 }
 
 func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {

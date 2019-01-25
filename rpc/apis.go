@@ -13,6 +13,20 @@ func (r *RPC) getApi(apiModule string) API {
 			Service:   api.NewQlcApi(r.ledger, r.dpos),
 			Public:    true,
 		}
+	case "account":
+		return API{
+			Namespace: "account",
+			Version:   "1.0",
+			Service:   api.NewAccountApi(),
+			Public:    true,
+		}
+	case "ledger":
+		return API{
+			Namespace: "ledger",
+			Version:   "1.0",
+			Service:   api.NewLedgerApi(r.ledger, r.dpos),
+			Public:    true,
+		}
 	default:
 		return API{}
 	}
@@ -28,19 +42,18 @@ func (r *RPC) GetApis(apiModule ...string) []API {
 
 //In-proc apis
 func (r *RPC) GetInProcessApis() []API {
-	//return GetApis("ledger", "wallet", "private_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "testapi", "pow", "tx")
-	return r.GetApis("qlcclassic")
+	return r.GetApis("qlcclassic", "ledger")
 }
 
 //Ipc apis
 func (r *RPC) GetIpcApis() []API {
-	return r.GetApis("qlcclassic")
+	return r.GetApis("qlcclassic", "ledger")
 	//return GetApis("ledger", "wallet", "private_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "testapi", "pow", "tx")
 }
 
 //Http apis
 func (r *RPC) GetHttpApis() []API {
-	apiModules := []string{"qlcclassic"}
+	apiModules := []string{"qlcclassic", "ledger"}
 	//apiModules := []string{"ledger", "public_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "pow", "tx"}
 	//if node.Config().NetID > 1 {
 	//	apiModules = append(apiModules, "testapi")
@@ -50,11 +63,7 @@ func (r *RPC) GetHttpApis() []API {
 
 //WS apis
 func (r *RPC) GetWSApis() []API {
-	apiModules := []string{"qlcclassic"}
-	//apiModules := []string{"ledger", "public_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "pow", "tx"}
-	//if node.Config().NetID > 1 {
-	//	apiModules = append(apiModules, "testapi")
-	//}
+	apiModules := []string{"qlcclassic", "ledger"}
 	return r.GetApis(apiModules...)
 }
 

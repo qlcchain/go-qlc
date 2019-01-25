@@ -10,12 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type Ledger struct {
@@ -511,6 +510,43 @@ func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*ty
 	return &meta, nil
 }
 
+func (l *Ledger) GetAccountMetas(txns ...db.StoreTxn) ([]*types.AccountMeta, error) {
+	var ams []*types.AccountMeta
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
+		am := new(types.AccountMeta)
+		_, err := am.UnmarshalMsg(val)
+		if err != nil {
+			return err
+		}
+		ams = append(ams, am)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return ams, nil
+}
+
+func (l *Ledger) CountAccountMetas(txns ...db.StoreTxn) (uint64, error) {
+	var count uint64
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
+		count++
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error {
 	metaBytes, err := meta.MarshalMsg(nil)
 	if err != nil {
@@ -731,6 +767,29 @@ func (l *Ledger) GetRepresentation(address types.Address, txns ...db.StoreTxn) (
 		return types.ZeroBalance, err
 	}
 	return amount, nil
+}
+
+func (l *Ledger) GetRepresentations(txns ...db.StoreTxn) (map[types.Address]types.Balance, error) {
+	rs := make(map[types.Address]types.Balance)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	err := txn.Iterator(idPrefixRepresentation, func(key []byte, val []byte, b byte) error {
+		var amount types.Balance
+		var address types.Address
+		address, err := types.BytesToAddress(key[1:])
+		if err != nil {
+			return err
+		}
+		if err := amount.UnmarshalText(val); err != nil {
+			return err
+		}
+		rs[address] = amount
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rs, nil
 }
 
 func (l *Ledger) getPendingKey(pendingKey types.PendingKey) []byte {

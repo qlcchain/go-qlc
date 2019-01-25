@@ -119,7 +119,7 @@ func receive(sendBlock types.Block, session *wallet.Session, address types.Addre
 		return err
 	}
 	fmt.Println(jsoniter.MarshalToString(&receiveBlock))
-	if r, err := l.Process(receiveBlock); err != nil || r == ledger.Other {
+	if r, err := l.Process(receiveBlock); err != nil || r != ledger.Progress {
 		fmt.Println(jsoniter.MarshalToString(&receiveBlock))
 		fmt.Println("process block error", err)
 		return err
@@ -155,7 +155,7 @@ func receiveblock(sendBlock types.Block, address types.Address, prk ed25519.Priv
 		return err
 	}
 	fmt.Println(jsoniter.MarshalToString(&receiveBlock))
-	if r, err := l.Process(receiveBlock); err != nil || r == ledger.Other {
+	if r, err := l.Process(receiveBlock); err != nil || r != ledger.Progress {
 		fmt.Println(jsoniter.MarshalToString(&receiveBlock))
 		fmt.Println("process block error", err)
 		return err
