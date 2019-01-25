@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,8 +25,6 @@ type Ledger struct {
 	logger *zap.SugaredLogger
 }
 
-//var logger = log.NewLogger("ledger")
-
 var (
 	ErrStoreEmpty             = errors.New("the store is empty")
 	ErrBlockExists            = errors.New("block already exists")
@@ -41,6 +40,7 @@ var (
 	ErrFrontierExists         = errors.New("frontier already exists")
 	ErrFrontierNotFound       = errors.New("frontier not found")
 	ErrRepresentationNotFound = errors.New("representation not found")
+	ErrPerformanceNotFound    = errors.New("performance not found")
 )
 
 const (
@@ -53,6 +53,7 @@ const (
 	idPrefixFrontier
 	idPrefixPending
 	idPrefixRepresentation
+	idPrefixPerformance
 )
 
 var (
@@ -1356,4 +1357,77 @@ func (l *Ledger) rollBackRepChange(pre types.Address, cur types.Address, balance
 		return err
 	}
 	return nil
+}
+
+func (l *Ledger) AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error {
+	key := l.getPerformanceKey(p.Hash)
+	bytes, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Set(key, bytes)
+}
+
+func (l *Ledger) PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixPerformance, func(key []byte, val []byte, b byte) error {
+		pt := new(types.PerformanceTime)
+		err := json.Unmarshal(val, pt)
+		if err != nil {
+			return err
+		}
+		fn(pt)
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key := l.getPerformanceKey(hash)
+	pt := types.NewPerformanceTime()
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
+		return json.Unmarshal(val, &pt)
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrPerformanceNotFound
+		}
+		return nil, err
+	}
+	return pt, nil
+}
+
+func (l *Ledger) getPerformanceKey(hash types.Hash) []byte {
+	var key []byte
+	key = append(key, idPrefixPerformance)
+	key = append(key, hash[:]...)
+	return key
+}
+
+func (l *Ledger) IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	if _, err := l.GetPerformanceTime(hash); err == nil {
+		return true, nil
+	} else {
+		if err == ErrPerformanceNotFound {
+			return false, nil
+		} else {
+			return false, err
+		}
+	}
 }

@@ -85,4 +85,9 @@ type Store interface {
 	BlockCheck(block types.Block) (ProcessResult, error)
 	//BlockProcess process block to badger
 	BlockProcess(block types.Block) error
+	// performance test time
+	AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error
+	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
+	GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error)
+	IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 }

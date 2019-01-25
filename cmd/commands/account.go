@@ -50,8 +50,7 @@ func accountAction() error {
 			fmt.Println(err)
 		}
 		a, _ := s.Account(0)
-		fmt.Printf("Seed: %s, Master Address: %s, PrivateKey: %s\n", s.String(),
-			a.Address().String(), a.PrivateKey())
+		fmt.Printf("Seed: %s, %s\n", s.String(), a.String())
 	} else {
 		c, err := strconv.Atoi(count)
 		if err != nil {
@@ -62,8 +61,7 @@ func accountAction() error {
 			seed, err := types.NewSeed()
 			if err == nil {
 				if a, err := seed.Account(0); err == nil {
-					fmt.Printf("Seed: %s, Master Address: %s, PrivateKey: %s\n", seed.String(),
-						a.Address().String(), a.PrivateKey())
+					fmt.Printf("Seed: %s, %s\n", seed.String(), a.String())
 				}
 			}
 		}

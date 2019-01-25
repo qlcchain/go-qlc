@@ -8,8 +8,9 @@
 package types
 
 import (
-	"github.com/qlcchain/go-qlc/crypto/random"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 const seed = "5a32b2325437cc10c07e36161fcda24f01ec0038969ecaaa709a133372bf4b94"
@@ -20,6 +21,7 @@ func TestAccount_Address(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := NewAccount(priv)
+	t.Log(account.String())
 	address := account.Address()
 	if address != PubToAddress(pub) {
 		t.Fatal("invalid address")
