@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/qlcchain/go-qlc/log"
-
 	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -115,6 +115,42 @@ func receive(sendBlock types.Block, session *wallet.Session, address types.Addre
 	n := ctx.NetService
 
 	receiveBlock, err := session.GenerateReceiveBlock(sendBlock)
+	if err != nil {
+		return err
+	}
+	fmt.Println(jsoniter.MarshalToString(&receiveBlock))
+	if r, err := l.Process(receiveBlock); err != nil || r == ledger.Other {
+		fmt.Println(jsoniter.MarshalToString(&receiveBlock))
+		fmt.Println("process block error", err)
+		return err
+	} else {
+		fmt.Println("receive block, ", receiveBlock.GetHash())
+
+		meta, err := l.GetAccountMeta(address)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		fmt.Println(jsoniter.MarshalToString(&meta))
+		pushBlock := protos.PublishBlock{
+			Blk: receiveBlock,
+		}
+		bytes, err := protos.PublishBlockToProto(&pushBlock)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		} else {
+			n.Broadcast(p2p.PublishReq, bytes)
+		}
+	}
+	return nil
+}
+
+func receiveblock(sendBlock types.Block, address types.Address, prk ed25519.PrivateKey) error {
+	l := ctx.Ledger.Ledger
+	n := ctx.NetService
+
+	receiveBlock, err := l.GenerateReceiveBlock(sendBlock, prk)
 	if err != nil {
 		return err
 	}
