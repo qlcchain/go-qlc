@@ -1,12 +1,6 @@
 package ledger
 
 import (
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/crypto/random"
-	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"math"
 	"math/big"
 	"os"
@@ -15,6 +9,13 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
@@ -784,7 +785,7 @@ func TestLedger_AddOrUpdatePerformance2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t3 := time.Now().AddDate(0, 0, 1)
+	t3 := time.Now().AddDate(0, 0, 1).Unix()
 	pt.T3 = t3
 
 	err = l.AddOrUpdatePerformance(pt)
