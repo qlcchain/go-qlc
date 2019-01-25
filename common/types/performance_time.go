@@ -13,15 +13,15 @@ import (
 )
 
 type PerformanceTime struct {
-	Hash Hash      `json:"hash"`
-	T0   time.Time `json:"t0"`
-	T1   time.Time `json:"t1"`
-	T2   time.Time `json:"t2"`
-	T3   time.Time `json:"t3"`
+	Hash Hash  `json:"hash"`
+	T0   int64 `json:"t0"`
+	T1   int64 `json:"t1"`
+	T2   int64 `json:"t2"`
+	T3   int64 `json:"t3"`
 }
 
 func NewPerformanceTime() *PerformanceTime {
-	now := time.Now()
+	now := time.Now().Unix()
 	p := PerformanceTime{T0: now, T1: now, T2: now, T3: now, Hash: ZeroHash}
 	return &p
 }

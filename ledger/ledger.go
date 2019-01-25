@@ -25,8 +25,6 @@ type Ledger struct {
 	logger *zap.SugaredLogger
 }
 
-//var logger = log.NewLogger("ledger")
-
 var (
 	ErrStoreEmpty             = errors.New("the store is empty")
 	ErrBlockExists            = errors.New("block already exists")
@@ -42,6 +40,7 @@ var (
 	ErrFrontierExists         = errors.New("frontier already exists")
 	ErrFrontierNotFound       = errors.New("frontier not found")
 	ErrRepresentationNotFound = errors.New("representation not found")
+	ErrPerformanceNotFound    = errors.New("performance not found")
 )
 
 const (
@@ -1361,10 +1360,7 @@ func (l *Ledger) rollBackRepChange(pre types.Address, cur types.Address, balance
 }
 
 func (l *Ledger) AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error {
-	var key []byte
-	key = append(key, idPrefixPerformance)
-	key = append(key, p.Hash[:]...)
-
+	key := l.getPerformanceKey(p.Hash)
 	bytes, err := json.Marshal(p)
 	if err != nil {
 		return err
@@ -1375,8 +1371,7 @@ func (l *Ledger) AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.Sto
 	return txn.Set(key, bytes)
 }
 
-func (l *Ledger) GetPerformanceTime(txns ...db.StoreTxn) ([]*types.PerformanceTime, error) {
-	var times []*types.PerformanceTime
+func (l *Ledger) PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -1386,12 +1381,53 @@ func (l *Ledger) GetPerformanceTime(txns ...db.StoreTxn) ([]*types.PerformanceTi
 		if err != nil {
 			return err
 		}
-		times = append(times, pt)
+		fn(pt)
 		return nil
 	})
 
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key := l.getPerformanceKey(hash)
+	pt := types.NewPerformanceTime()
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
+		return json.Unmarshal(val, &pt)
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrPerformanceNotFound
+		}
 		return nil, err
 	}
-	return times, nil
+	return pt, nil
+}
+
+func (l *Ledger) getPerformanceKey(hash types.Hash) []byte {
+	var key []byte
+	key = append(key, idPrefixPerformance)
+	key = append(key, hash[:]...)
+	return key
+}
+
+func (l *Ledger) IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	if _, err := l.GetPerformanceTime(hash); err == nil {
+		return true, nil
+	} else {
+		if err == ErrPerformanceNotFound {
+			return false, nil
+		} else {
+			return false, err
+		}
+	}
 }

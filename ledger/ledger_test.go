@@ -763,12 +763,11 @@ func TestLedger_AddOrUpdatePerformance(t *testing.T) {
 		}
 	}
 
-	times, err := l.GetPerformanceTime()
+	err := l.PerformanceTimes(func(p *types.PerformanceTime) {
+		t.Logf("%s", p.String())
+	})
 	if err != nil {
 		t.Fatal(err)
-	}
-	for i, pt := range times {
-		t.Logf("%d=>%s", i, pt.String())
 	}
 }
 
@@ -793,16 +792,29 @@ func TestLedger_AddOrUpdatePerformance2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	times, err := l.GetPerformanceTime()
+	exist, err := l.IsPerformanceTimeExist(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exist {
+		t.Fatal("error exist")
+	}
+
+	pt2, err := l.GetPerformanceTime(h)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for _, pt := range times {
-		if pt.Hash == h && pt.T3 != t3 {
-			t.Fatal("err time t3")
-		}
+	if pt2.T3 != t3 {
+		t.Fatal("err t3z")
+	}
 
+	b, err := l.IsPerformanceTimeExist(types.ZeroHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b {
+		t.Fatal("error exist2")
 	}
 
 }
