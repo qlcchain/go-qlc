@@ -42,18 +42,18 @@ func (r *RPC) GetApis(apiModule ...string) []API {
 
 //In-proc apis
 func (r *RPC) GetInProcessApis() []API {
-	return r.GetApis("qlcclassic", "ledger")
+	return r.GetApis("qlcclassic", "ledger", "account")
 }
 
 //Ipc apis
 func (r *RPC) GetIpcApis() []API {
-	return r.GetApis("qlcclassic", "ledger")
+	return r.GetApis("qlcclassic", "ledger", "account")
 	//return GetApis("ledger", "wallet", "private_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "testapi", "pow", "tx")
 }
 
 //Http apis
 func (r *RPC) GetHttpApis() []API {
-	apiModules := []string{"qlcclassic", "ledger"}
+	apiModules := []string{"qlcclassic", "ledger", "account"}
 	//apiModules := []string{"ledger", "public_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "pow", "tx"}
 	//if node.Config().NetID > 1 {
 	//	apiModules = append(apiModules, "testapi")
@@ -63,7 +63,7 @@ func (r *RPC) GetHttpApis() []API {
 
 //WS apis
 func (r *RPC) GetWSApis() []API {
-	apiModules := []string{"qlcclassic", "ledger"}
+	apiModules := []string{"qlcclassic", "ledger", "account"}
 	return r.GetApis(apiModules...)
 }
 

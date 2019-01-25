@@ -135,15 +135,29 @@ func initData() {
 		ledger.AddBlock(sc)
 	}
 
+	// change block
+	addr5, _ := types.HexToAddress("qlc_3c6ezoskbkgajq8f89ntcu75fdpcsokscgp9q5cdadndg1ju85fief7rrt11")
+
+	sb3 := types.StateBlock{
+		CommonBlock: types.CommonBlock{
+			Type:    types.State,
+			Address: addr5,
+		},
+		Token: mock.GetChainTokenType(),
+	}
+	ledger.AddBlock(&sb3)
+	fmt.Println("hash,", sb.GetHash())
+
 	// generate block
 	var am5 types.AccountMeta
-	addr5, _ := types.HexToAddress("qlc_3c6ezoskbkgajq8f89ntcu75fdpcsokscgp9q5cdadndg1ju85fief7rrt11")
 	am5.Address = addr5
 	t5 := mock.TokenMeta(addr5)
 	t5.Type = mock.GetChainTokenType()
+	t5.Header = sb3.GetHash()
 	t5.Balance = types.Balance{Int: big.NewInt(int64(10000000000001))}
 	t5.Representative, _ = types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
 	am5.Tokens = append(am5.Tokens, t5)
 	ledger.AddAccountMeta(&am5)
 	ledger.AddRepresentation(t5.Representative, types.Balance{Int: big.NewInt(int64(10000001))})
+
 }
