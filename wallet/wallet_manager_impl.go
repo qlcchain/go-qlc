@@ -9,9 +9,9 @@ package wallet
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/dgraph-io/badger"
-	"github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -56,7 +56,7 @@ func (ws *WalletStore) WalletIds() ([]types.Address, error) {
 		key := []byte{idPrefixIds}
 		return txn.Get(key, func(val []byte, b byte) error {
 			if len(val) != 0 {
-				return jsoniter.Unmarshal(val, &ids)
+				return json.Unmarshal(val, &ids)
 			}
 			return nil
 		})
@@ -97,7 +97,7 @@ func (ws *WalletStore) NewWalletBySeed(seed, password string) (types.Address, er
 	err = ws.UpdateInTx(func(txn db.StoreTxn) error {
 		//add new walletId to ids
 		key := []byte{idPrefixIds}
-		bytes, err := jsoniter.Marshal(&ids)
+		bytes, err := json.Marshal(&ids)
 		if err != nil {
 			return err
 		}
@@ -199,7 +199,7 @@ func (ws *WalletStore) RemoveWallet(id types.Address) error {
 	return ws.UpdateInTx(func(txn db.StoreTxn) error {
 		//update ids
 		key := []byte{idPrefixIds}
-		bytes, err := jsoniter.Marshal(&ids)
+		bytes, err := json.Marshal(&ids)
 		if err != nil {
 			return err
 		}

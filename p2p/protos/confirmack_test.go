@@ -1,9 +1,9 @@
 package protos
 
 import (
+	"encoding/json"
 	"testing"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -35,7 +35,7 @@ func TestConfirmAckBlockPacket(t *testing.T) {
 		t.Fatal("sign error")
 	}
 	blk, err := types.NewBlock(types.State)
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
 	if err = json.Unmarshal([]byte(testBlockConfirmack), &blk); err != nil {
 		t.Fatal(err)
 	}

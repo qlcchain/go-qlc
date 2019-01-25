@@ -19,7 +19,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
@@ -27,12 +26,12 @@ import (
 )
 
 func init() {
-	err := jsoniter.Unmarshal([]byte(genesisBlockstring), &genesisBlocks)
+	err := json.Unmarshal([]byte(genesisBlockstring), &genesisBlocks)
 	if err != nil {
 		logger.Error(err)
 	}
 
-	err = jsoniter.Unmarshal([]byte(scBlockstring), &smartContractBlocks)
+	err = json.Unmarshal([]byte(scBlockstring), &smartContractBlocks)
 	if err != nil {
 		logger.Error(err)
 	}

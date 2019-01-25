@@ -2,9 +2,9 @@ package consensus
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"testing"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
@@ -38,13 +38,11 @@ var (
 
 func TestVotes(t *testing.T) {
 	blk, err := types.NewBlock(types.State)
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	if err = json.Unmarshal([]byte(testVotesBlk), &blk); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
 	blk1, err := types.NewBlock(types.State)
-	var json1 = jsoniter.ConfigCompatibleWithStandardLibrary
-	if err = json1.Unmarshal([]byte(testVotesBlk1), &blk1); err != nil {
+	if err = json.Unmarshal([]byte(testVotesBlk1), &blk1); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
 	vts := NewVotes(blk)

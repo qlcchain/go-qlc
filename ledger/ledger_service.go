@@ -9,8 +9,8 @@ package ledger
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/common/util"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -69,7 +69,7 @@ func (ls *LedgerService) Init() error {
 			} else {
 				ls.Ledger.logger.Debugf("%s, %v", hash.String(), err)
 				meta, _ := l.GetAccountMeta(b.Address)
-				ls.Ledger.logger.Debug(jsoniter.MarshalToString(&meta))
+				ls.Ledger.logger.Debug(util.ToString(&meta))
 			}
 		}
 

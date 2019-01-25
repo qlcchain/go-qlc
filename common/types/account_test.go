@@ -8,6 +8,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/crypto/random"
@@ -40,4 +41,6 @@ func TestAccount_Address(t *testing.T) {
 	if !address.Verify(h[:], sign[:]) {
 		t.Fatal("sign failed")
 	}
+
+	t.Log(hex.EncodeToString(account.PrivateKey()))
 }

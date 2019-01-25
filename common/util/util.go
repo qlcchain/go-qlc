@@ -9,6 +9,7 @@ package util
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"os"
 
 	"golang.org/x/crypto/blake2b"
@@ -76,4 +77,12 @@ func CreateDirIfNotExist(dir string) error {
 		return err
 	}
 	return nil
+}
+
+func ToString(v interface{}) string {
+	bytes, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	return string(bytes)
 }

@@ -1,10 +1,10 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 
-	"github.com/json-iterator/go"
 	"github.com/libp2p/go-libp2p-peer"
 )
 
@@ -42,6 +42,6 @@ func TestConfigManager_Load(t *testing.T) {
 	if ID.Pretty() != cfg.ID.PeerID {
 		t.Fatal("peer id error")
 	}
-	bytes, err := jsoniter.Marshal(cfg)
+	bytes, err := json.Marshal(cfg)
 	t.Log(string(bytes))
 }

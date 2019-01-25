@@ -1,9 +1,9 @@
 package protos
 
 import (
+	"encoding/json"
 	"testing"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -51,7 +51,7 @@ func TestBulkPullReqPacket(t *testing.T) {
 
 func TestBulkPullRspPacket(t *testing.T) {
 	blk, err := types.NewBlock(types.State)
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
 	if err = json.Unmarshal([]byte(testBulkPull), &blk); err != nil {
 		t.Fatal(err)
 	}

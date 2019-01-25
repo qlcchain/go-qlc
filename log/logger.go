@@ -8,8 +8,8 @@
 package log
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"path/filepath"
@@ -49,8 +49,8 @@ func InitLog(config *config.Config) error {
 			LocalTime:  true,
 		}
 		var logCfg zap.Config
-		bytes, _ := jsoniter.Marshal(config.LogConfig)
-		err = jsoniter.Unmarshal(bytes, &logCfg)
+		bytes, _ := json.Marshal(config.LogConfig)
+		err = json.Unmarshal(bytes, &logCfg)
 		if err != nil {
 			initErr = err
 			fmt.Println(err)

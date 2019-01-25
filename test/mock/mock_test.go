@@ -10,7 +10,7 @@ package mock
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/json-iterator/go"
+	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -58,7 +58,7 @@ func TestAccountMeta_Token(t *testing.T) {
 func TestMockAccountMeta(t *testing.T) {
 	addr := Address()
 	am := AccountMeta(addr)
-	bytes, err := jsoniter.Marshal(am)
+	bytes, err := json.Marshal(am)
 	if err != nil {
 		t.Log(err)
 	}
@@ -70,7 +70,7 @@ func TestMockAccountMeta(t *testing.T) {
 	am.Tokens[0] = tm
 
 	t.Log(strings.Repeat("*", 20))
-	bytes2, err2 := jsoniter.Marshal(am)
+	bytes2, err2 := json.Marshal(am)
 	if err2 != nil {
 		t.Fatal(err2)
 	}
@@ -92,7 +92,7 @@ func TestMockGenesisBlock(t *testing.T) {
 }`
 
 	var block1 types.StateBlock
-	err := jsoniter.Unmarshal([]byte(qlc), &block1)
+	err := json.Unmarshal([]byte(qlc), &block1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestMockGenesisBlock(t *testing.T) {
 		block1.Work = work
 	}
 
-	t.Log(jsoniter.MarshalToString(block1))
+	t.Log(util.ToString(block1))
 }
 
 func TestMockGenesisScBlock(t *testing.T) {
@@ -156,7 +156,7 @@ func TestMockGenesisScBlock(t *testing.T) {
 		sb.Work = work
 		t.Log("IsValid: ", sb.IsValid())
 	}
-	bytes, err := jsoniter.Marshal(&sb)
+	bytes, err := json.Marshal(&sb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,13 +208,10 @@ func TestGenerate(t *testing.T) {
 			sb.Work = work
 			t.Log(h.String(), "=>valid: ", sb.IsValid())
 		}
-		bytes, err := jsoniter.MarshalToString(&sb)
-		if err != nil {
-			t.Fatal(err)
-		}
+		sbstring := util.ToString(&sb)
 		var buff strings.Builder
 		buff.WriteString(strconv.Itoa(index) + strings.Repeat("*", 50) + "\n")
-		tmp1 := jsonPrettyPrint(bytes)
+		tmp1 := jsonPrettyPrint(sbstring)
 		buff.WriteString("smart contract: " + token.scKey + "\n" + tmp1 + "\n")
 		s1 = append(s1, tmp1)
 
@@ -238,10 +235,8 @@ func TestGenerate(t *testing.T) {
 			block.Work = work
 			//t.Log(block, block.IsValid())
 		}
-		s, err := jsoniter.MarshalToString(block)
-		if err != nil {
-			t.Fatal(err)
-		}
+		s := util.ToString(block)
+
 		tmp2 := jsonPrettyPrint(s)
 		buff.WriteString("genesis: " + token.key + "\n" + tmp2 + "\n")
 		s2 = append(s2, tmp2)
@@ -276,8 +271,9 @@ func TestGetTokenById(t *testing.T) {
 	if GetChainTokenType() != hash {
 		t.Fatal("chain token error")
 	}
+	marshal, _ := json.Marshal(&ti)
 
-	t.Log(jsoniter.MarshalToString(ti))
+	t.Log(string(marshal))
 }
 
 func TestGetGenesis(t *testing.T) {

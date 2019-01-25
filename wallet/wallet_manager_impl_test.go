@@ -8,12 +8,12 @@
 package wallet
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -83,7 +83,7 @@ func TestWalletStore_NewWallet(t *testing.T) {
 	}
 
 	if len(ids) != 0 {
-		bytes, _ := jsoniter.Marshal(ids)
+		bytes, _ := json.Marshal(ids)
 		t.Fatal("invalid ids", string(bytes))
 	}
 

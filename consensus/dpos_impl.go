@@ -3,13 +3,13 @@ package consensus
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 
-	"github.com/json-iterator/go"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -332,7 +332,7 @@ func (dps *DposService) getAccounts() []types.Address {
 		if a, err := session.GetAccounts(); err == nil {
 			if len(a) == 0 {
 				if addresses, e := dps.wallet.WalletIds(); e == nil {
-					dps.logger.Debug(jsoniter.MarshalToString(&addresses))
+					dps.logger.Debug(util.ToString(&addresses))
 				}
 			}
 
@@ -341,7 +341,7 @@ func (dps *DposService) getAccounts() []types.Address {
 			dps.logger.Error(err)
 		}
 	} else {
-		dps.logger.Debugf("verify password[%s] faild", dps.password)
+		dps.logger.Debugf("verify password[%s] failed", dps.password)
 	}
 
 	return []types.Address{}

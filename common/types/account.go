@@ -63,6 +63,10 @@ func (a *Account) Address() Address {
 	return address
 }
 
+func (a *Account) PrivateKey() ed25519.PrivateKey {
+	return a.privKey
+}
+
 func (a *Account) Sign(hash Hash) Signature {
 	var sig Signature
 	copy(sig[:], ed25519.Sign(a.privKey, hash[:]))
