@@ -31,10 +31,16 @@ type APIBlock struct {
 }
 
 type APIAccount struct {
-	Address        types.Address      `json:"account"`
-	CoinBalance    types.Balance      `json:"coinBalance"`
-	Representative types.Address      `json:"representative"`
-	Tokens         []*types.TokenMeta `json:"tokens"`
+	Address        types.Address   `json:"account"`
+	CoinBalance    types.Balance   `json:"coinBalance"`
+	Representative types.Address   `json:"representative"`
+	Tokens         []*APITokenMeta `json:"tokens"`
+}
+
+type APITokenMeta struct {
+	*types.TokenMeta
+	TokenName string        `json:"tokenName"`
+	Pending   types.Balance `json:"pending"`
 }
 
 type APIPending struct {
@@ -140,9 +146,9 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBloc
 	return bs, nil
 }
 
-func (l *LedgerApi) AccountInfo(addr types.Address) (*APIAccount, error) {
+func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 	aa := new(APIAccount)
-	am, err := l.ledger.GetAccountMeta(addr)
+	am, err := l.ledger.GetAccountMeta(address)
 	if err != nil {
 		return nil, err
 	}
@@ -151,9 +157,32 @@ func (l *LedgerApi) AccountInfo(addr types.Address) (*APIAccount, error) {
 			aa.CoinBalance = t.Balance
 			aa.Representative = t.Representative
 		}
+		info, err := mock.GetTokenById(t.Type)
+		if err != nil {
+			return nil, err
+		}
+		pendingKeys, err := l.ledger.TokenPending(address, t.Type)
+		pendingAmount := types.ZeroBalance
+		for _, key := range pendingKeys {
+			pendinginfo, err := l.ledger.GetPending(*key)
+			if err != nil {
+				return nil, err
+			}
+			pendingAmount = pendingAmount.Add(pendinginfo.Amount)
+
+		}
+		if err != nil {
+			return nil, err
+		}
+		tm := APITokenMeta{
+			TokenMeta: t,
+			TokenName: info.TokenName,
+			Pending:   pendingAmount,
+		}
+		aa.Tokens = append(aa.Tokens, &tm)
+
 	}
-	aa.Address = addr
-	aa.Tokens = am.Tokens
+	aa.Address = address
 	return aa, nil
 }
 
@@ -420,10 +449,14 @@ type APISendBlockPara struct {
 	Send      types.Address `json:"send"`
 	TokenName string        `json:"tokenName"`
 	To        types.Address `json:"to"`
-	Balance   types.Balance `json:"amount"`
+	Amount    types.Balance `json:"amount"`
 }
 
 func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (types.Block, error) {
+	if para.Amount.Int == nil || para.Send.IsZero() || para.To.IsZero() || para.TokenName == "" {
+		return nil, errors.New("invalid send parameter")
+	}
+	fmt.Println(para.TokenName)
 	prk, err := hex.DecodeString(prkStr)
 	if err != nil {
 		return nil, err
@@ -432,7 +465,11 @@ func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (typ
 	if err != nil {
 		return nil, err
 	}
-	block, err := l.ledger.GenerateSendBlock(para.Send, info.TokenId, para.To, para.Balance, prk)
+	amount, err := mock.BalanceToRaw(para.Amount, para.TokenName)
+	if err != nil {
+		return nil, err
+	}
+	block, err := l.ledger.GenerateSendBlock(para.Send, info.TokenId, para.To, amount, prk)
 	if err != nil {
 		return nil, err
 	}
@@ -519,8 +556,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 }
 
 type APIRepresentative struct {
-	Address types.Address
-	Balance types.Balance
+	Address types.Address `json:"address"`
+	Balance types.Balance `json:"balance"`
 }
 
 type APIRepresentatives []APIRepresentative

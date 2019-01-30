@@ -16,8 +16,29 @@ func NewAccountApi() *AccountApi {
 	return &AccountApi{logger: log.NewLogger("api_account")}
 }
 
-func (a *AccountApi) Create(seed string, index *uint32) (*types.Account, error) {
-	return nil, nil
+func (a *AccountApi) Create(seedStr string, i *uint32) (map[string]string, error) {
+	var index uint32
+	b, err := hex.DecodeString(seedStr)
+	if err != nil {
+		return nil, err
+	}
+	if i == nil {
+		index = 0
+	} else {
+		index = *i
+	}
+	seed, err := types.BytesToSeed(b)
+	if err != nil {
+		return nil, err
+	}
+	acc, err := seed.Account(index)
+	if err != nil {
+		return nil, err
+	}
+	r := make(map[string]string)
+	r["pubKey"] = hex.EncodeToString(acc.Address().Bytes())
+	r["privKey"] = hex.EncodeToString(acc.PrivateKey())
+	return r, nil
 }
 
 func (a *AccountApi) ForPublicKey(pubStr string) (types.Address, error) {

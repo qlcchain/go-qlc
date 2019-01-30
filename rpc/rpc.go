@@ -172,7 +172,7 @@ func (r *RPC) startInProcess(apis []API) error {
 			r.logger.Info(err)
 			return err
 		}
-		r.logger.Debug("InProc registered ", "service ", api.Service, " namespace ", api.Namespace)
+		//r.logger.Debug("InProc registered ", "service ", api.Service, " namespace ", api.Namespace)
 	}
 	r.inProcessHandler = handler
 	return nil

@@ -16,6 +16,7 @@ import (
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
@@ -151,7 +152,7 @@ func (s *Session) GetSeed() ([]byte, error) {
 	err := s.ViewInTx(func(txn db.StoreTxn) error {
 		key := s.getKey(idPrefixSeed)
 		return txn.Get(key, func(val []byte, b byte) error {
-			s, err := DecryptSeed(val, s.getPassword())
+			s, err := util.DecryptBytes(val, s.getPassword())
 			seed = append(seed, s...)
 			return err
 		})
@@ -171,7 +172,7 @@ func (s *Session) setSeed(seed []byte) error {
 }
 
 func (s *Session) setSeedByTxn(txn db.StoreTxn, seed []byte) error {
-	encryptSeed, err := EncryptSeed(seed, s.getPassword())
+	encryptSeed, err := util.EncryptBytes(seed, s.getPassword())
 
 	if err != nil {
 		return err
@@ -199,10 +200,10 @@ func (s *Session) GetBalances() (map[types.Hash]types.Balance, error) {
 		if am, err := l.GetAccountMeta(account); err == nil {
 			for _, tm := range am.Tokens {
 				if balance, ok := cache[tm.Type]; ok {
-					b := cache[tm.Type]
-					cache[tm.Type] = balance.Add(b)
+					//b := cache[tm.Type]
+					cache[tm.Type] = balance.Add(tm.Balance)
 				} else {
-					cache[tm.Type] = balance
+					cache[tm.Type] = tm.Balance
 				}
 			}
 		}
@@ -570,6 +571,8 @@ func (s *Session) GetAccounts() ([]types.Address, error) {
 				}
 			}
 		}
+	} else {
+		return nil, err
 	}
 
 	return accounts, nil

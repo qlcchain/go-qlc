@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package wallet
+package util
 
 import (
 	"encoding/hex"
@@ -40,21 +40,20 @@ func TestEncryptSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	encryptSeed, err := EncryptSeed(s, []byte(passphrase))
+	encryptSeed, err := EncryptBytes(s, []byte(passphrase))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Log(string(encryptSeed))
 
-	t.Logf("EncryptSeed cost %s", time.Since(start))
+	t.Logf("EncryptBytes cost %s", time.Since(start))
 }
 
 func TestDecryptSeed(t *testing.T) {
 	t.Parallel()
 	start := time.Now()
-	bytes, err := DecryptSeed([]byte(encryptSeed), []byte(passphrase))
+	bytes, err := DecryptBytes([]byte(encryptSeed), []byte(passphrase))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,5 +61,5 @@ func TestDecryptSeed(t *testing.T) {
 	if hex.EncodeToString(bytes) != seed {
 		t.Fatal("decrypt err.")
 	}
-	t.Logf("DecryptSeed cost %s", time.Since(start))
+	t.Logf("DecryptBytes cost %s", time.Since(start))
 }
