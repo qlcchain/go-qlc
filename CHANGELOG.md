@@ -1,3 +1,18 @@
+##  (2019-01-30)
+
+* feat: add create account and batch send token commands ([001f8b0](https://github.com/qlcchain/go-qlc/commit/001f8b0))
+* feat: add wallet,util and net interface to json-rpc ([8e25058](https://github.com/qlcchain/go-qlc/commit/8e25058))
+* feat: implement save/load performance test time (#96) ([f0891b5](https://github.com/qlcchain/go-qlc/commit/f0891b5)), closes [#96](https://github.com/qlcchain/go-qlc/issues/96)
+* feat: use std json ([b18f4a3](https://github.com/qlcchain/go-qlc/commit/b18f4a3))
+* feat:add account interface to json-rpc ([45f1212](https://github.com/qlcchain/go-qlc/commit/45f1212))
+* feat:add ledger interface in json-rpc ([476c9fb](https://github.com/qlcchain/go-qlc/commit/476c9fb))
+* feature: add batch create block command ([096cd26](https://github.com/qlcchain/go-qlc/commit/096cd26))
+* feature: add flags for block create command ([7d406e5](https://github.com/qlcchain/go-qlc/commit/7d406e5))
+* fix: change map to sync.map for roots ([4e1381c](https://github.com/qlcchain/go-qlc/commit/4e1381c))
+* chore: update travis authorize key ([39567ff](https://github.com/qlcchain/go-qlc/commit/39567ff))
+
+
+
 ##  (2019-01-23)
 
 * chore: build all platforms binary ([b58e86d](https://github.com/qlcchain/go-qlc/commit/b58e86d))
