@@ -26,15 +26,19 @@ func TestProcess_BlockBasicInfoCheck(t *testing.T) {
 }
 
 func checkInfo(t *testing.T, l *Ledger) {
-	blocks, _ := l.GetStateBlocks()
 	addrs := make(map[types.Address]int)
 	fmt.Println("----blocks----")
-	for i, b := range blocks {
-		fmt.Println(b)
-		if _, ok := addrs[b.GetAddress()]; !ok {
-			addrs[b.GetAddress()] = i
+	err := l.GetStateBlocks(func(block *types.StateBlock) error {
+		fmt.Println(block)
+		if _, ok := addrs[block.GetAddress()]; !ok {
+			addrs[block.GetAddress()] = 0
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
+
 	fmt.Println(addrs)
 	fmt.Println("----frontiers----")
 	fs, _ := l.GetFrontiers()

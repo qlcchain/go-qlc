@@ -153,10 +153,10 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 
 	addblock(t, l)
 	addblock(t, l)
-	blks, err := l.GetStateBlocks()
-	for index, b := range blks {
-		t.Log(index, b, b)
-	}
+	err := l.GetStateBlocks(func(block *types.StateBlock) error {
+		t.Log(block)
+		return nil
+	})
 
 	if err != nil {
 		t.Fatal(err)
@@ -252,6 +252,21 @@ func TestLedger_HasUncheckedBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("has unchecked,", r)
+}
+
+func TestLedger_GetUncheckedBlocks(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addUncheckedBlock(t, l)
+	addUncheckedBlock(t, l)
+
+	err := l.WalkUncheckedBlocks(func(block types.Block, kind types.UncheckedKind) error {
+		t.Log(kind, block)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_DeleteUncheckedBlock(t *testing.T) {
@@ -421,11 +436,14 @@ func TestLedger_GetAccountMetas(t *testing.T) {
 
 	addAccountMeta(t, l)
 	addAccountMeta(t, l)
-	a, err := l.GetAccountMetas()
+
+	err := l.GetAccountMetas(func(am *types.AccountMeta) error {
+		t.Log(am)
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("account,", a)
 }
 
 func TestLedger_CountAccountMetas(t *testing.T) {
@@ -515,11 +533,13 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	addRepresentationWeight(t, l)
 	addRepresentationWeight(t, l)
 
-	a, err := l.GetRepresentations()
+	err := l.GetRepresentations(func(address types.Address, balance types.Balance) error {
+		t.Log(address, balance)
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("amount,", a)
 }
 
 func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendinginfo types.PendingInfo) {

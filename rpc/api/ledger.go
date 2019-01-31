@@ -337,14 +337,10 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 //BlocksCountByType reports the number of blocks in the ledger by type (send, receive, open, change)
 func (l *LedgerApi) BlocksCountByType() (map[string]uint64, error) {
 	c := map[string]uint64{"open": 0, "send": 0, "receive": 0, "change": 0}
-	blocks, err := l.ledger.GetStateBlocks()
-	if err != nil {
-		return nil, err
-	}
-	for _, b := range blocks {
-		blkType, err := l.ledger.JudgeBlockKind(b.GetHash())
+	err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+		blkType, err := l.ledger.JudgeBlockKind(block.GetHash())
 		if err != nil {
-			return nil, err
+			return err
 		}
 		switch blkType {
 		case ledger.Open:
@@ -356,6 +352,10 @@ func (l *LedgerApi) BlocksCountByType() (map[string]uint64, error) {
 		case ledger.Change:
 			c["change"] = c["change"] + 1
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return c, nil
 }
@@ -411,18 +411,19 @@ func (l *LedgerApi) Chain(hash types.Hash, n int) ([]types.Hash, error) {
 
 // Delegators returns a list of pairs of delegator names given account a representative and its balance
 func (l *LedgerApi) Delegators(hash types.Address) (map[types.Address]types.Balance, error) {
-	ams, err := l.ledger.GetAccountMetas()
-	if err != nil {
-		return nil, err
-	}
 	ds := make(map[types.Address]types.Balance)
-	for _, am := range ams {
+
+	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
 		t := am.Token(mock.GetChainTokenType())
 		if t != nil {
 			if t.Representative == hash {
 				ds[am.Address] = t.Balance
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return ds, nil
 }
@@ -430,17 +431,17 @@ func (l *LedgerApi) Delegators(hash types.Address) (map[types.Address]types.Bala
 // DelegatorsCount gets number of delegators for a specific representative account
 func (l *LedgerApi) DelegatorsCount(hash types.Address) (int64, error) {
 	var count int64
-	ams, err := l.ledger.GetAccountMetas()
-	if err != nil {
-		return 0, err
-	}
-	for _, am := range ams {
+	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
 		t := am.Token(mock.GetChainTokenType())
 		if t != nil {
 			if t.Representative == hash {
 				count = count + 1
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
 	}
 	return count, nil
 }
@@ -456,7 +457,6 @@ func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (typ
 	if para.Amount.Int == nil || para.Send.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid send parameter")
 	}
-	fmt.Println(para.TokenName)
 	prk, err := hex.DecodeString(prkStr)
 	if err != nil {
 		return nil, err
@@ -579,20 +579,20 @@ func (r APIRepresentatives) Less(i, j int) bool {
 
 //Representatives returns a list of pairs of representative and its voting weight
 func (l *LedgerApi) Representatives(sorting *bool) (*APIRepresentatives, error) {
-	rs, err := l.ledger.GetRepresentations()
+	rs := make(APIRepresentatives, 0)
+	err := l.ledger.GetRepresentations(func(address types.Address, balance types.Balance) error {
+		r := APIRepresentative{address, balance}
+		rs = append(rs, r)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	p := make(APIRepresentatives, len(rs))
-	i := 0
-	for k, v := range rs {
-		p[i] = APIRepresentative{k, v}
-		i = i + 1
-	}
+
 	if sorting != nil && *sorting {
-		sort.Sort(p)
+		sort.Sort(rs)
 	}
-	return &p, nil
+	return &rs, nil
 }
 
 func (l *LedgerApi) Tokens() ([]*mock.TokenInfo, error) {

@@ -9,6 +9,7 @@ package ledger
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
@@ -19,7 +20,7 @@ type Store interface {
 	// account meta CURD
 	AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error
 	GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error)
-	GetAccountMetas(txns ...db.StoreTxn) ([]*types.AccountMeta, error)
+	GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...db.StoreTxn) error
 	CountAccountMetas(txns ...db.StoreTxn) (uint64, error)
 	UpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error
 	DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) error
@@ -32,20 +33,20 @@ type Store interface {
 	// state block CURD
 	AddBlock(blk types.Block, txns ...db.StoreTxn) error
 	GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)
-	GetStateBlocks(txns ...db.StoreTxn) ([]*types.StateBlock, error)
+	GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error
 	DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error
 	HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	CountStateBlocks(txns ...db.StoreTxn) (uint64, error)
 	GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error)
 	// smartcontrant block CURD
 	GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error)
-	GetSmartContrantBlocks(txns ...db.StoreTxn) ([]*types.SmartContractBlock, error)
+	GetSmartContrantBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error
 	CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error)
 	// representation CURD
 	AddRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
 	SubRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
 	GetRepresentation(address types.Address, txns ...db.StoreTxn) (types.Balance, error)
-	GetRepresentations(txns ...db.StoreTxn) (map[types.Address]types.Balance, error)
+	GetRepresentations(fn func(types.Address, types.Balance) error, txns ...db.StoreTxn) error
 	// unchecked CURD
 	AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, txns ...db.StoreTxn) error
 	GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, error)
@@ -93,4 +94,8 @@ type Store interface {
 	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
 	GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error)
 	IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error)
+	//GenerateBlock
+	GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (types.Block, error)
+	GenerateReceiveBlock(sendBlock types.Block, prk ed25519.PrivateKey) (types.Block, error)
+	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (types.Block, error)
 }
