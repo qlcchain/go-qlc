@@ -38,8 +38,7 @@ type TypeLength struct {
 type VMemory struct {
 	Memory            []byte // linear memory
 	AllocatedMemIndex int    // index of allocated memory
-	PointedMemIndex   int
-	ParamIndex        int
+	PointedMemIndex   int    //for the pointed objects,string,array,structs
 	MemPoints         map[uint64]*TypeLength
 }
 
@@ -48,7 +47,6 @@ func NewVMemory(size uint64) VMemory {
 		Memory:            make([]byte, size),
 		AllocatedMemIndex: 0,
 		PointedMemIndex:   0,
-		ParamIndex:        0,
 		MemPoints:         make(map[uint64]*TypeLength),
 	}
 }
@@ -250,7 +248,7 @@ func (vm *VMemory) SetStructMemory(val interface{}) (int, error) {
 			}
 		} else {
 			var fieldVal interface{}
-			//todo how to determine the value is int or int64
+			//TODO: how to determine the value is int or int64
 			var idx int
 			var err error
 			switch field.Kind() {

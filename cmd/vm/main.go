@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/qlcchain/go-qlc/vm/exec"
+	"github.com/qlcchain/go-qlc/vm/platform"
 	"github.com/qlcchain/go-qlc/vm/resolver"
 	"io/ioutil"
 	"strconv"
@@ -11,8 +12,9 @@ import (
 )
 
 func main() {
-	entryFunctionFlag := flag.String("entry", "app_main", "entry function id")
-	jitFlag := flag.Bool("jit", false, "enable jit")
+	entryFunctionFlag := flag.String("entry", "app_main", "entry function name")
+	pmFlag := flag.Bool("polymerase", false, "enable the Polymerase engine")
+	noFloatingPointFlag := flag.Bool("no-fp", false, "disable floating point")
 	flag.Parse()
 
 	// Read WebAssembly *.wasm file.
@@ -23,13 +25,26 @@ func main() {
 
 	// Instantiate a new WebAssembly VM with a few resolved imports.
 	vm, err := exec.NewVirtualMachine(input, exec.VMConfig{
-		EnableJIT:          *jitFlag,
-		DefaultMemoryPages: 128,
-		DefaultTableSize:   65536,
+		DefaultMemoryPages:   128,
+		DefaultTableSize:     65536,
+		DisableFloatingPoint: *noFloatingPointFlag,
 	}, new(resolver.Resolver), nil)
 
 	if err != nil {
 		panic(err)
+	}
+
+	if *pmFlag {
+		compileStartTime := time.Now()
+		fmt.Println("[Polymerase] Compilation started.")
+		aotSvc := platform.FullAOTCompile(vm)
+		if aotSvc != nil {
+			compileEndTime := time.Now()
+			fmt.Printf("[Polymerase] Compilation finished successfully in %+v.\n", compileEndTime.Sub(compileStartTime))
+			vm.SetAOTService(aotSvc)
+		} else {
+			fmt.Println("[Polymerase] The current platform is not yet supported.")
+		}
 	}
 
 	// Get the function ID of the entry function to be executed.

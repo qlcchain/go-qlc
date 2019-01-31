@@ -18,7 +18,7 @@ failure_list = []
 for name in wast_files:
     try:
         json_name = name + ".json"
-        ret = subprocess.call(["wast2json", name, "-o", json_name ])
+        ret = subprocess.call(["wast2json", name, "-o", json_name])
         if ret != 0:
             raise Exception("wast2json")
         ret = subprocess.call(["./test_runner", json_name])
