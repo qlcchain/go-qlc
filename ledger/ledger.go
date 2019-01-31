@@ -150,7 +150,7 @@ func (l *Ledger) AddBlock(blk types.Block, txns ...db.StoreTxn) error {
 	} else if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.SetWithMeta(key, val, byte(blk.GetType()))
+	return txn.Set(key, val)
 }
 
 func (l *Ledger) getBlock(hash types.Hash, key []byte, txns ...db.StoreTxn) (types.Block, error) {
@@ -203,10 +203,8 @@ func (l *Ledger) GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*t
 	return scb, nil
 }
 
-func (l *Ledger) GetStateBlocks(txns ...db.StoreTxn) ([]*types.StateBlock, error) {
-	var blocks []*types.StateBlock
-	//var blk types.Block
-	txn, flag := l.getTxn(true, txns...)
+func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
@@ -215,20 +213,20 @@ func (l *Ledger) GetStateBlocks(txns ...db.StoreTxn) ([]*types.StateBlock, error
 		if err != nil {
 			return err
 		}
-		blocks = append(blocks, blk)
+		if err := fn(blk); err != nil {
+			return err
+		}
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return blocks, nil
+	return nil
 }
 
-func (l *Ledger) GetSmartContrantBlocks(txns ...db.StoreTxn) ([]*types.SmartContractBlock, error) {
-	var blocks []*types.SmartContractBlock
-	//var blk types.Block
-	txn, flag := l.getTxn(true, txns...)
+func (l *Ledger) GetSmartContrantBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
@@ -237,14 +235,16 @@ func (l *Ledger) GetSmartContrantBlocks(txns ...db.StoreTxn) ([]*types.SmartCont
 		if err != nil {
 			return err
 		}
-		blocks = append(blocks, blk)
+		if err := fn(blk); err != nil {
+			return err
+		}
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return blocks, nil
+	return nil
 }
 
 func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
@@ -379,7 +379,7 @@ func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind 
 		return err
 	}
 
-	return txn.SetWithMeta(key, blockBytes, byte(blk.GetType()))
+	return txn.Set(key, blockBytes)
 }
 
 func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, error) {
@@ -432,8 +432,33 @@ func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind, tx
 	return true, nil
 }
 
-func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ...db.StoreTxn) error {
+func (l *Ledger) walkUncheckedBlocks(kind types.UncheckedKind, visit types.UncheckedBlockWalkFunc, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	prefix := l.uncheckedKindToPrefix(kind)
+	err := txn.Iterator(prefix, func(key []byte, val []byte, b byte) error {
+		blk := new(types.StateBlock)
+		if _, err := blk.UnmarshalMsg(val); err != nil {
+			return err
+		}
+		if err := visit(blk, kind); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ...db.StoreTxn) error {
+	if err := l.walkUncheckedBlocks(types.UncheckedKindPrevious, visit, txns...); err != nil {
+		return err
+	}
+
+	return l.walkUncheckedBlocks(types.UncheckedKindLink, visit, txns...)
 }
 
 func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
@@ -510,8 +535,7 @@ func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*ty
 	return &meta, nil
 }
 
-func (l *Ledger) GetAccountMetas(txns ...db.StoreTxn) ([]*types.AccountMeta, error) {
-	var ams []*types.AccountMeta
+func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -521,14 +545,16 @@ func (l *Ledger) GetAccountMetas(txns ...db.StoreTxn) ([]*types.AccountMeta, err
 		if err != nil {
 			return err
 		}
-		ams = append(ams, am)
+		if err := fn(am); err != nil {
+			return err
+		}
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return ams, nil
+	return nil
 }
 
 func (l *Ledger) CountAccountMetas(txns ...db.StoreTxn) (uint64, error) {
@@ -769,8 +795,7 @@ func (l *Ledger) GetRepresentation(address types.Address, txns ...db.StoreTxn) (
 	return amount, nil
 }
 
-func (l *Ledger) GetRepresentations(txns ...db.StoreTxn) (map[types.Address]types.Balance, error) {
-	rs := make(map[types.Address]types.Balance)
+func (l *Ledger) GetRepresentations(fn func(types.Address, types.Balance) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	err := txn.Iterator(idPrefixRepresentation, func(key []byte, val []byte, b byte) error {
@@ -783,13 +808,15 @@ func (l *Ledger) GetRepresentations(txns ...db.StoreTxn) (map[types.Address]type
 		if err := amount.UnmarshalText(val); err != nil {
 			return err
 		}
-		rs[address] = amount
+		if err := fn(address, amount); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return rs, nil
+	return nil
 }
 
 func (l *Ledger) getPendingKey(pendingKey types.PendingKey) []byte {
