@@ -39,6 +39,7 @@ type VMemory struct {
 	Memory            []byte // linear memory
 	AllocatedMemIndex int    // index of allocated memory
 	PointedMemIndex   int    //for the pointed objects,string,array,structs
+	ParamIndex        int
 	MemPoints         map[uint64]*TypeLength
 }
 

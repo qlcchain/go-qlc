@@ -28,7 +28,7 @@ func main() {
 		DefaultMemoryPages:   128,
 		DefaultTableSize:     65536,
 		DisableFloatingPoint: *noFloatingPointFlag,
-	}, new(resolver.Resolver), nil)
+	}, resolver.NewResolver(), nil)
 
 	if err != nil {
 		panic(err)

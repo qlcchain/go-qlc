@@ -5,8 +5,13 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/exec"
+	"github.com/qlcchain/go-qlc/vm/memory"
+	"go.uber.org/zap"
 	"io"
+	"strconv"
 	"time"
 )
 
@@ -16,6 +21,11 @@ type Resolver struct {
 	BlockedCalls []FCall
 	PendingCalls []FCall
 	NewCalls     int
+	logger       *zap.SugaredLogger
+}
+
+func NewResolver() *Resolver {
+	return &Resolver{logger: log.NewLogger("Resolver")}
 }
 
 // ResolveFunc defines a set of import functions that may be called within a WebAssembly module.
@@ -30,8 +40,9 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 			}
 		case "__life_log":
 			return func(vm *exec.VirtualMachine) int64 {
-				ptr := int(uint32(vm.GetCurrentFrame().Locals[0]))
-				msgLen := int(uint32(vm.GetCurrentFrame().Locals[1]))
+				frame := vm.GetCurrentFrame()
+				ptr := int(uint32(frame.Locals[0]))
+				msgLen := int(uint32(frame.Locals[1]))
 				//TODO: verify
 				msg := vm.Memory.Memory[ptr : ptr+msgLen]
 				fmt.Printf("[app] %s\n", string(msg))
@@ -42,7 +53,195 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 				fmt.Printf("[app] print_i64: %d\n", vm.GetCurrentFrame().Locals[0])
 				return 0
 			}
+		case "memcpy":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+				dest := int(frame.Locals[0])
+				src := int(frame.Locals[1])
+				length := int(frame.Locals[2])
 
+				//memcpy overlapped
+				if dest < src && dest+length > src {
+					return 0
+				}
+				copy(vm.Memory.Memory[dest:dest+length], vm.Memory.Memory[src:src+length])
+				return int64(dest)
+			}
+		case "calloc":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+				count := int(frame.Locals[0])
+				length := int(frame.Locals[1])
+
+				//we don't know whats the alloc type here
+				index, err := vm.Memory.MallocPointer(count*length, memory.PUnkown)
+				if err != nil {
+					return 0
+				}
+				return int64(index)
+			}
+		case "malloc":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+				count := int(frame.Locals[0])
+				index, err := vm.Memory.MallocPointer(count, memory.PUnkown)
+
+				if err != nil {
+					return 0
+				}
+				return int64(index)
+			}
+		case "memset":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+				dest := int(frame.Locals[0])
+				char := int(frame.Locals[1])
+				cnt := int(frame.Locals[2])
+
+				tmp := make([]byte, cnt)
+				for i := 0; i < cnt; i++ {
+					tmp[i] = byte(char)
+				}
+				copy(vm.Memory.Memory[dest:dest+cnt], tmp)
+
+				return int64(dest)
+			}
+		case "strcmp":
+			return func(vm *exec.VirtualMachine) int64 {
+				var ret int64
+				frame := vm.GetCurrentFrame()
+				addr1 := uint64(frame.Locals[0])
+				addr2 := uint64(frame.Locals[1])
+
+				if addr1 == addr2 {
+					ret = 0
+				} else {
+					bytes1, err := vm.Memory.GetPointerMemory(addr1)
+					if err != nil {
+						return -1
+					}
+
+					bytes2, err := vm.Memory.GetPointerMemory(addr2)
+					if err != nil {
+						return -1
+					}
+
+					if util.TrimBuffToString(bytes1) == util.TrimBuffToString(bytes2) {
+						ret = 0
+					} else {
+						ret = 1
+					}
+				}
+				return ret
+			}
+		case "strcat":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+
+				str1, err := vm.Memory.GetPointerMemory(uint64(frame.Locals[0]))
+				if err != nil {
+					return 0
+				}
+
+				str2, err := vm.Memory.GetPointerMemory(uint64(frame.Locals[1]))
+				if err != nil {
+					return 0
+				}
+
+				newString := util.TrimBuffToString(str1) + util.TrimBuffToString(str2)
+
+				idx, err := vm.Memory.SetPointerMemory(newString)
+				if err != nil {
+					return 0
+				}
+
+				return int64(idx)
+			}
+		case "atoi":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+				if len(frame.Locals) != 1 {
+					return 0
+				}
+
+				addr := frame.Locals[0]
+
+				pBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
+				if err != nil {
+					return 0
+				}
+				if pBytes == nil || len(pBytes) == 0 {
+					return 0
+				}
+
+				str := util.TrimBuffToString(pBytes)
+				i, err := strconv.Atoi(str)
+				if err != nil {
+					return 0
+				}
+
+				return int64(i)
+			}
+		case "atoi64":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+				if len(frame.Locals) != 1 {
+					return 0
+				}
+
+				addr := frame.Locals[0]
+
+				pBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
+				if err != nil {
+					return 0
+				}
+				if pBytes == nil || len(pBytes) == 0 {
+					return 0
+				}
+
+				str := util.TrimBuffToString(pBytes)
+				i, err := strconv.ParseInt(str, 10, 64)
+				if err != nil {
+					return 0
+				}
+
+				return int64(i)
+			}
+		case "itoa":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+				i := int(frame.Locals[0])
+
+				str := strconv.Itoa(i)
+
+				idx, err := vm.Memory.SetPointerMemory(str)
+				if err != nil {
+					return 0
+				}
+				return int64(idx)
+			}
+		case "i64toa":
+			return func(vm *exec.VirtualMachine) int64 {
+				frame := vm.GetCurrentFrame()
+				i := int(frame.Locals[0])
+				radix := int(frame.Locals[1])
+
+				str := strconv.FormatInt(int64(i), radix)
+				idx, err := vm.Memory.SetPointerMemory(str)
+				if err != nil {
+					return 0
+				}
+
+				return int64(idx)
+			}
+		case "QLC_arrayLen":
+			return r.qlc_ArrayLen
+		case "QLC_ReadInt32Param":
+			return r.qlc_ReadInt32Param
+		case "QLC_ReadInt64Param":
+			return r.qlc_ReadInt64Param
+		case "QLC_ReadStringParam":
+			return r.qlc_ReadStringParam
 		default:
 			panic(fmt.Errorf("unknown field: %s", field))
 		}

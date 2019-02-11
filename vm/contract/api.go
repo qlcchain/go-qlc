@@ -27,8 +27,4 @@ type ContractApi interface {
 	QLC_ReadStringParam(vm *exec.VirtualMachine) (bool, error)
 	QLC_GetCallerAddress(vm *exec.VirtualMachine) (bool, error)
 	QLC_GetSelfAddress(vm *exec.VirtualMachine) (bool, error)
-	//storage
-	ONT_Storage_Put(vm *exec.VirtualMachine) (bool, error)
-	ONT_Storage_Get(vm *exec.VirtualMachine) (bool, error)
-	ONT_Storage_Delete(vm *exec.VirtualMachine) (bool, error)
 }

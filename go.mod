@@ -17,6 +17,7 @@ require (
 	github.com/fd/go-nat v1.0.0 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/go-check/check v0.0.0-20180628173108-788fd7840127 // indirect
+	github.com/go-interpreter/wagon v0.0.0
 	github.com/go-kit/kit v0.8.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
@@ -87,8 +88,6 @@ require (
 	github.com/miekg/dns v1.1.1 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v0.0.0-20181005183134-51976451ce19 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/mr-tron/base58 v1.1.0 // indirect
 	github.com/multiformats/go-multiaddr v1.3.0
 	github.com/multiformats/go-multiaddr-dns v0.2.5 // indirect
