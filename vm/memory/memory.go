@@ -19,7 +19,7 @@ const (
 	PFloat64
 	PString
 	PStruct
-	PUnkown
+	PUnknown
 )
 
 var (
@@ -231,11 +231,11 @@ func (vm *VMemory) SetStructMemory(val interface{}) (int, error) {
 	if reflect.TypeOf(val).Kind() != reflect.Struct {
 		return 0, errors.New("SetStructMemory :input is not a struct")
 	}
-	valref := reflect.ValueOf(val)
+	valRef := reflect.ValueOf(val)
 	//var totalsize = 0
 	var index = 0
-	for i := 0; i < valref.NumField(); i++ {
-		field := valref.Field(i)
+	for i := 0; i < valRef.NumField(); i++ {
+		field := valRef.Field(i)
 
 		//nested struct case
 		if reflect.TypeOf(field.Type()).Kind() == reflect.Struct {

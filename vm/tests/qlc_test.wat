@@ -1,0 +1,41 @@
+(module
+ (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
+ (type $FUNCSIG$iiiii (func (param i32 i32 i32 i32) (result i32)))
+ (type $FUNCSIG$vii (func (param i32 i32)))
+ (import "env" "QLC_Test" (func $QLC_Test (param i32 i32 i32 i32) (result i32)))
+ (import "env" "__life_log" (func $__life_log (param i32 i32)))
+ (import "env" "calloc" (func $calloc (param i32 i32) (result i32)))
+ (table 0 anyfunc)
+ (memory $0 1)
+ (data (i32.const 16) "hello, go-qlc@WASM!\00")
+ (export "memory" (memory $0))
+ (export "test" (func $test))
+ (export "main" (func $main))
+ (func $test (; 3 ;) (param $0 i32) (param $1 i32) (result i32)
+  (i32.store
+   (get_local $1)
+   (i32.const 19)
+  )
+  (drop
+   (call $QLC_Test
+    (i32.const 19)
+    (i32.const 16)
+    (i32.const 19)
+    (tee_local $1
+     (call $calloc
+      (i32.const 1)
+      (i32.const 29)
+     )
+    )
+   )
+  )
+  (call $__life_log
+   (get_local $1)
+   (i32.const 29)
+  )
+  (get_local $1)
+ )
+ (func $main (; 4 ;) (result i32)
+  (i32.const 42)
+ )
+)

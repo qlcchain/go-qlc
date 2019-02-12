@@ -74,7 +74,7 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 				length := int(frame.Locals[1])
 
 				//we don't know whats the alloc type here
-				index, err := vm.Memory.MallocPointer(count*length, memory.PUnkown)
+				index, err := vm.Memory.MallocPointer(count*length, memory.PUnknown)
 				if err != nil {
 					return 0
 				}
@@ -84,7 +84,7 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 			return func(vm *exec.VirtualMachine) int64 {
 				frame := vm.GetCurrentFrame()
 				count := int(frame.Locals[0])
-				index, err := vm.Memory.MallocPointer(count, memory.PUnkown)
+				index, err := vm.Memory.MallocPointer(count, memory.PUnknown)
 
 				if err != nil {
 					return 0
@@ -223,10 +223,10 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 		case "i64toa":
 			return func(vm *exec.VirtualMachine) int64 {
 				frame := vm.GetCurrentFrame()
-				i := int(frame.Locals[0])
+				i := frame.Locals[0]
 				radix := int(frame.Locals[1])
 
-				str := strconv.FormatInt(int64(i), radix)
+				str := strconv.FormatInt(i, radix)
 				idx, err := vm.Memory.SetPointerMemory(str)
 				if err != nil {
 					return 0
@@ -234,14 +234,18 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 
 				return int64(idx)
 			}
-		case "QLC_arrayLen":
-			return r.qlc_ArrayLen
+		case "QLC_ArrayLen":
+			return r.qlcArrayLen
 		case "QLC_ReadInt32Param":
-			return r.qlc_ReadInt32Param
+			return r.qlcReadInt32Param
 		case "QLC_ReadInt64Param":
-			return r.qlc_ReadInt64Param
+			return r.qlcReadInt64Param
 		case "QLC_ReadStringParam":
-			return r.qlc_ReadStringParam
+			return r.qlcReadStringParam
+		case "QLC_Test":
+			return r.qlcTest
+		case "QLC_Hash":
+			return r.qlcHash
 		default:
 			panic(fmt.Errorf("unknown field: %s", field))
 		}

@@ -9,15 +9,37 @@ package resolver
 
 import (
 	"encoding/binary"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/exec"
 	"github.com/qlcchain/go-qlc/vm/memory"
+	"strconv"
 )
 
-func (r *Resolver) qlc_test(vm *exec.VirtualMachine) int64 {
-	return 0
+func (r *Resolver) qlcTest(vm *exec.VirtualMachine) int64 {
+	frame := vm.GetCurrentFrame()
+	i := frame.Locals[0]
+	r.logger.Debug(i)
+	pointer := frame.Locals[1]
+
+	bytes, err := vm.Memory.GetPointerMemory(uint64(pointer))
+	var msg string
+	if err != nil {
+		r.logger.Error(err)
+		ptrSize := frame.Locals[2]
+		msg = util.TrimBuffToString(vm.Memory.Memory[pointer : pointer+ptrSize])
+	} else {
+		msg = util.TrimBuffToString(bytes)
+	}
+
+	pIdx, err := vm.Memory.SetMemory(strconv.FormatInt(i, 10) + " >>> " + msg)
+	if err != nil {
+		r.logger.Error(err)
+		return 0
+	}
+	return int64(pIdx)
 }
 
-func (r *Resolver) qlc_ArrayLen(vm *exec.VirtualMachine) int64 {
+func (r *Resolver) qlcArrayLen(vm *exec.VirtualMachine) int64 {
 	frame := vm.GetCurrentFrame()
 	pointer := uint64(frame.Locals[0])
 	var result int64
@@ -31,7 +53,7 @@ func (r *Resolver) qlc_ArrayLen(vm *exec.VirtualMachine) int64 {
 			result = int64(tl.Length / 4)
 		case memory.PInt64, memory.PFloat64:
 			result = int64(tl.Length / 8)
-		case memory.PUnkown:
+		case memory.PUnknown:
 			//TODO: assume it's byte
 			result = int64(tl.Length / 1)
 		default:
@@ -44,7 +66,7 @@ func (r *Resolver) qlc_ArrayLen(vm *exec.VirtualMachine) int64 {
 	return result
 }
 
-func (r *Resolver) qlc_ReadInt32Param(vm *exec.VirtualMachine) int64 {
+func (r *Resolver) qlcReadInt32Param(vm *exec.VirtualMachine) int64 {
 	frame := vm.GetCurrentFrame()
 	addr := frame.Locals[0]
 	paramBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
@@ -52,19 +74,19 @@ func (r *Resolver) qlc_ReadInt32Param(vm *exec.VirtualMachine) int64 {
 		return 0
 	}
 
-	pidx := vm.Memory.ParamIndex
+	pIdx := vm.Memory.ParamIndex
 
-	if pidx+4 > len(paramBytes) {
+	if pIdx+4 > len(paramBytes) {
 		return 0
 	}
 
-	retInt := binary.LittleEndian.Uint32(paramBytes[pidx : pidx+4])
+	retInt := binary.LittleEndian.Uint32(paramBytes[pIdx : pIdx+4])
 	vm.Memory.ParamIndex += 4
 
 	return int64(retInt)
 }
 
-func (r *Resolver) qlc_ReadInt64Param(vm *exec.VirtualMachine) int64 {
+func (r *Resolver) qlcReadInt64Param(vm *exec.VirtualMachine) int64 {
 	frame := vm.GetCurrentFrame()
 	addr := frame.Locals[0]
 	paramBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
@@ -84,7 +106,7 @@ func (r *Resolver) qlc_ReadInt64Param(vm *exec.VirtualMachine) int64 {
 	return int64(retInt)
 }
 
-func (r *Resolver) qlc_ReadStringParam(vm *exec.VirtualMachine) int64 {
+func (r *Resolver) qlcReadStringParam(vm *exec.VirtualMachine) int64 {
 	frame := vm.GetCurrentFrame()
 	addr := frame.Locals[0]
 	paramBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
@@ -93,47 +115,47 @@ func (r *Resolver) qlc_ReadStringParam(vm *exec.VirtualMachine) int64 {
 		return 0
 	}
 	var length int
-	pidx := vm.Memory.ParamIndex
-	switch paramBytes[pidx] {
+	pIdx := vm.Memory.ParamIndex
+	switch paramBytes[pIdx] {
 	case 0xfd: //uint16
-		if pidx+3 > len(paramBytes) {
+		if pIdx+3 > len(paramBytes) {
 			return 0
 		}
-		length = int(binary.LittleEndian.Uint16(paramBytes[pidx+1 : pidx+3]))
-		pidx += 3
+		length = int(binary.LittleEndian.Uint16(paramBytes[pIdx+1 : pIdx+3]))
+		pIdx += 3
 	case 0xfe: //uint32
-		if pidx+5 > len(paramBytes) {
+		if pIdx+5 > len(paramBytes) {
 			return 0
 		}
-		length = int(binary.LittleEndian.Uint16(paramBytes[pidx+1 : pidx+5]))
-		pidx += 5
+		length = int(binary.LittleEndian.Uint16(paramBytes[pIdx+1 : pIdx+5]))
+		pIdx += 5
 	case 0xff:
-		if pidx+9 > len(paramBytes) {
+		if pIdx+9 > len(paramBytes) {
 			return 0
 		}
-		length = int(binary.LittleEndian.Uint16(paramBytes[pidx+1 : pidx+9]))
-		pidx += 9
+		length = int(binary.LittleEndian.Uint16(paramBytes[pIdx+1 : pIdx+9]))
+		pIdx += 9
 	default:
-		length = int(paramBytes[pidx])
+		length = int(paramBytes[pIdx])
 	}
 
-	if pidx+length > len(paramBytes) {
+	if pIdx+length > len(paramBytes) {
 		return 0
 	}
-	pidx += length + 1
+	pIdx += length + 1
 
-	bytes := paramBytes[vm.Memory.ParamIndex+1 : pidx]
+	bytes := paramBytes[vm.Memory.ParamIndex+1 : pIdx]
 
 	retIdx, err := vm.Memory.SetPointerMemory(bytes)
 	if err != nil {
 		return 0
 	}
 
-	vm.Memory.ParamIndex = pidx
+	vm.Memory.ParamIndex = pIdx
 
 	return int64(retIdx)
 }
 
-func (r *Resolver) qlc_hash(vm *exec.VirtualMachine) int64 {
-
+func (r *Resolver) qlcHash(vm *exec.VirtualMachine) int64 {
+	return 0
 }
