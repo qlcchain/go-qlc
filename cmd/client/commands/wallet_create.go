@@ -16,13 +16,13 @@ package commands
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/spf13/cobra"
 )
 
 // wcCmd represents the wc command
 var wcCmd = &cobra.Command{
-	Use:   "wc",
+	Use:   "walletcreate",
 	Short: "create a wallet for QLCChain node",
 	Run: func(cmd *cobra.Command, args []string) {
 		addr, err := createWallet()
@@ -30,46 +30,25 @@ var wcCmd = &cobra.Command{
 			cmd.Println(err)
 		} else {
 			cmd.Printf("create wallet: address=>%s, password=>%s success", addr.String(), pwd)
+			cmd.Println()
 		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(wcCmd)
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// wcCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// wcCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 func createWallet() (types.Address, error) {
-	if cfgPath == "" {
-		cfgPath = config.DefaultDataDir()
-	}
-	cm := config.NewCfgManager(cfgPath)
-	cfg, err := cm.Load()
+	client, err := rpc.Dial(endpoint)
 	if err != nil {
 		return types.ZeroAddress, err
 	}
-	err = initNode(types.ZeroAddress, "", cfg)
+	defer client.Close()
+	var addr types.Address
+	err = client.Call(&addr, "wallet_newWallet", pwd)
 	if err != nil {
 		return types.ZeroAddress, err
 	}
-	w := ctx.Wallet.Wallet
-	address, err := w.NewWallet()
-	if err != nil {
-		return types.ZeroAddress, err
-	}
-
-	if len(pwd) > 0 {
-		if err := w.NewSession(address).ChangePassword(pwd); err != nil {
-			return types.ZeroAddress, err
-		}
-	}
-	return address, nil
+	return addr, nil
 }

@@ -10,9 +10,9 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"strconv"
 
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/spf13/cobra"
 )
 
@@ -43,18 +43,21 @@ func accountAction() error {
 	if len(seedString) > 0 {
 		bytes, err := hex.DecodeString(seedString)
 		if err != nil {
-			fmt.Println(err)
+			return err
 		}
 		s, err := types.BytesToSeed(bytes)
 		if err != nil {
-			fmt.Println(err)
+			return err
 		}
-		a, _ := s.Account(0)
+		a, err := s.Account(0)
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Seed: %s, %s\n", s.String(), a.String())
 	} else {
 		c, err := strconv.Atoi(count)
 		if err != nil {
-			fmt.Println(err)
+			return err
 		}
 
 		for i := 0; i < c; i++ {

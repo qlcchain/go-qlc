@@ -90,3 +90,31 @@ func (w *WalletApi) NewWallet(passphrase string, seed *string) (types.Address, e
 	//w.logger.Debug(seedStr)
 	return w.wallet.NewWalletBySeed(seedStr, passphrase)
 }
+
+func (w *WalletApi) List() ([]types.Address, error) {
+	addrs, err := w.wallet.WalletIds()
+	if err != nil {
+		return nil, err
+	}
+	return addrs, nil
+}
+
+func (w *WalletApi) Remove(addr types.Address) error {
+	return w.wallet.RemoveWallet(addr)
+}
+
+func (w *WalletApi) ChangePassword(addr types.Address, pwd string, newPwd string) error {
+	session := w.wallet.NewSession(addr)
+	b, err := session.VerifyPassword(pwd)
+	if err != nil {
+		return err
+	}
+	if !b {
+		return errors.New("password is invalid")
+	}
+	err = session.ChangePassword(newPwd)
+	if err != nil {
+		return err
+	}
+	return nil
+}
