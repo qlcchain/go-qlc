@@ -1,21 +1,16 @@
-// Copyright © 2019 NAME HERE <EMAIL ADDRESS>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Copyright (c) 2019 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
 
 package commands
 
 import (
-	"github.com/qlcchain/go-qlc/config"
+	"strings"
+
+	"github.com/qlcchain/go-qlc"
 	"github.com/spf13/cobra"
 )
 
@@ -24,28 +19,17 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "show version info",
 	Run: func(cmd *cobra.Command, args []string) {
-		v, err := getVersion()
-		if err != nil {
-			cmd.Println(err)
-		} else {
-			cmd.Printf("current version is : %d", v)
-			cmd.Println()
-		}
+		version := goqlc.VERSION
+		buildTime := goqlc.BUILDTIME
+		gitrev := goqlc.GITREV
+		ts := strings.Split(buildTime, "_")
+		cmd.Printf("build time: %s %s ", ts[0], ts[1])
+		cmd.Println()
+		cmd.Println("version:   ", version)
+		cmd.Println("hash: 	   ", gitrev)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-}
-
-func getVersion() (int, error) {
-	if cfgPath == "" {
-		cfgPath = config.DefaultDataDir()
-	}
-	cm := config.NewCfgManager(cfgPath)
-	cfg, err := cm.Load()
-	if err != nil {
-		return 0, err
-	}
-	return cfg.Version, nil
 }

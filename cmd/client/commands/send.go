@@ -64,7 +64,9 @@ func sendAction() error {
 	}
 
 	am := types.StringToBalance(amount)
-	sendTx(fromAccount, t, token, am)
+	if err := sendTx(fromAccount, t, token, am); err != nil {
+		return err
+	}
 	return nil
 }
 
