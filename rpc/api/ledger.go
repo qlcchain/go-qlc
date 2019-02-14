@@ -474,10 +474,6 @@ func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (typ
 		return nil, err
 	}
 	l.logger.Debug(block)
-	err = l.ledger.BlockProcess(block)
-	if err != nil {
-		return nil, err
-	}
 	return block, nil
 	//return nil, nil
 }
@@ -492,7 +488,6 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr str
 	if err != nil {
 		return nil, err
 	}
-
 	l.logger.Debug(block)
 	return block, nil
 }
@@ -553,6 +548,17 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	default:
 		return types.ZeroHash, errors.New("error processing block")
 	}
+}
+
+func (l *LedgerApi) Performance() ([]*types.PerformanceTime, error) {
+	pts := make([]*types.PerformanceTime, 0)
+	err := l.ledger.PerformanceTimes(func(p *types.PerformanceTime) {
+		pts = append(pts, p)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pts, nil
 }
 
 type APIRepresentative struct {

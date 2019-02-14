@@ -151,7 +151,7 @@ func (c *jsonCodec) ReadRequestHeaders() ([]rpcRequest, bool, Error) {
 	if isBatch(incomingMsg) {
 		return parseBatchRequest(incomingMsg)
 	}
-	c.logger.Debugf("incomingMsg: %s ", string(incomingMsg))
+	c.logger.Infof("incomingMsg: %s ", string(incomingMsg))
 	return parseRequest(incomingMsg)
 }
 

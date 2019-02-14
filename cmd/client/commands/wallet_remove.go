@@ -15,17 +15,13 @@
 package commands
 
 import (
-	"fmt"
-
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
-
+	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/spf13/cobra"
 )
 
 // wrCmd represents the wr command
 var wrCmd = &cobra.Command{
-	Use:   "wr",
+	Use:   "walletremove",
 	Short: "remove wallet",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := removeWallet()
@@ -33,46 +29,22 @@ var wrCmd = &cobra.Command{
 			cmd.Println(err)
 		} else {
 			cmd.Printf("remove wallet: %s success", account)
+			cmd.Println()
 		}
 	},
 }
 
 func init() {
-
 	rootCmd.AddCommand(wrCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// wrCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// wrCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 func removeWallet() error {
-	if cfgPath == "" {
-		cfgPath = config.DefaultDataDir()
-	}
-	cm := config.NewCfgManager(cfgPath)
-	cfg, err := cm.Load()
+	client, err := rpc.Dial(endpoint)
 	if err != nil {
 		return err
 	}
-	ac, err := types.HexToAddress(account)
-	if err != nil {
-		return err
-	}
-	err = initNode(ac, pwd, cfg)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	w := ctx.Wallet.Wallet
-
-	err = w.RemoveWallet(ac)
+	defer client.Close()
+	err = client.Call(nil, "wallet_remove", account)
 	if err != nil {
 		return err
 	}

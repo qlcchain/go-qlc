@@ -15,64 +15,55 @@
 package commands
 
 import (
+	"errors"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/spf13/cobra"
 )
 
-// wlCmd represents the wl command
-var wlCmd = &cobra.Command{
-	Use:   "wl",
-	Short: "wallet address list",
+var seed string
+
+// wiCmd represents the wi command
+var wiCmd = &cobra.Command{
+	Use:   "walletimport",
+	Short: "import a wallet",
 	Run: func(cmd *cobra.Command, args []string) {
-		addrs, err := walletList()
+		addr, err := importWallet()
 		if err != nil {
 			cmd.Println(err)
 		} else {
-			if len(addrs) == 0 {
-				cmd.Println("no account ,you can try import one!")
-			} else {
-				for _, v := range addrs {
-					cmd.Println(v)
-				}
-			}
-
+			cmd.Printf("import seed[%s] password[%s] => %s success", seed, pwd, addr.String())
+			cmd.Println()
 		}
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(wlCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// wlCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// wlCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	wiCmd.Flags().StringVarP(&seed, "seed", "s", "", "seed for a wallet")
+	rootCmd.AddCommand(wiCmd)
 }
 
-func walletList() ([]types.Address, error) {
+func importWallet() (types.Address, error) {
+	if len(seed) == 0 {
+		return types.ZeroAddress, errors.New("invalid seed")
+	}
 	if cfgPath == "" {
 		cfgPath = config.DefaultDataDir()
 	}
 	cm := config.NewCfgManager(cfgPath)
 	cfg, err := cm.Load()
 	if err != nil {
-		return []types.Address{}, err
+		return types.ZeroAddress, err
 	}
 	err = initNode(types.ZeroAddress, "", cfg)
 	if err != nil {
-		return []types.Address{}, err
+		return types.ZeroAddress, err
 	}
 	w := ctx.Wallet.Wallet
-
-	addresses, err := w.WalletIds()
-	if err != nil {
-		return []types.Address{}, err
+	if addr, err := w.NewWalletBySeed(seed, pwd); err != nil {
+		return types.ZeroAddress, err
+	} else {
+		return addr, nil
 	}
-	return addresses, nil
 }

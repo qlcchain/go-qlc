@@ -15,42 +15,30 @@
 package commands
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-
 	"github.com/spf13/cobra"
 )
 
-// bcCmd represents the bc command
-var bcCmd = &cobra.Command{
-	Use:   "bc",
-	Short: "block count",
+// versionCmd represents the version command
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "show version info",
 	Run: func(cmd *cobra.Command, args []string) {
-		count, err := countBlock()
+		v, err := getVersion()
 		if err != nil {
 			cmd.Println(err)
 		} else {
-			cmd.Printf("total block count is : %d", count)
+			cmd.Printf("current version is : %d", v)
+			cmd.Println()
 		}
-
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(bcCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// bcCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// bcCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.AddCommand(versionCmd)
 }
 
-func countBlock() (uint64, error) {
+func getVersion() (int, error) {
 	if cfgPath == "" {
 		cfgPath = config.DefaultDataDir()
 	}
@@ -59,15 +47,5 @@ func countBlock() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	err = initNode(types.ZeroAddress, "", cfg)
-	if err != nil {
-		return 0, err
-	}
-	l := ctx.Ledger.Ledger
-
-	count, err := l.CountStateBlocks()
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
+	return cfg.Version, nil
 }

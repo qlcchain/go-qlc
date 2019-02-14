@@ -2,13 +2,9 @@ package commands
 
 import (
 	"fmt"
+	_ "net/http/pprof"
 	"os"
 
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
-
-	"github.com/qlcchain/go-qlc/chain"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/spf13/cobra"
 )
 
@@ -16,8 +12,7 @@ var (
 	account  string
 	pwd      string
 	cfgPath  string
-	ctx      *chain.QlcContext
-	services []common.Service
+	endpoint string
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -30,8 +25,8 @@ func Execute() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "QLCChain",
-	Short: "CLI for QLCChain.",
+	Use:   "QLCC",
+	Short: "CLI for QLCChain Client.",
 	Long:  `QLC Chain is the next generation public blockchain designed for the NaaS.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		err := start()
@@ -43,27 +38,6 @@ var rootCmd = &cobra.Command{
 }
 
 func start() error {
-	var addr types.Address
-	if cfgPath == "" {
-		cfgPath = config.DefaultDataDir()
-	}
-	cm := config.NewCfgManager(cfgPath)
-	cfg, err := cm.Load()
-	if err != nil {
-		return err
-	}
-	if account == "" {
-		addr = types.ZeroAddress
-	} else {
-		addr, err = types.HexToAddress(account)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-	err = runNode(addr, pwd, cfg)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -71,7 +45,8 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file")
-	rootCmd.PersistentFlags().StringVarP(&account, "account", "a", "", "wallet address,if is nil,just run a node")
+	rootCmd.PersistentFlags().StringVarP(&account, "account", "a", "", "wallet address")
 	rootCmd.PersistentFlags().StringVarP(&pwd, "password", "p", "", "password for wallet")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file")
+	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "ws://0.0.0.0:9736", "endpoint for client")
 }
