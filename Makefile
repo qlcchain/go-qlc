@@ -19,13 +19,18 @@ CLIENTBINARY = gqlcc
 CLIENTMAIN = $(shell pwd)/cmd/client/main.go
 
 BUILDDIR = $(shell pwd)/build
-VERSION = $(shell cat buildversion)
+VERSION = $(shell cat version)
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%Y-%m-%d_%T')
 LDFLAGS=-ldflags "-X main.version=${VERSION} -X main.sha1ver=${GITREV} -X main.buildTime=${BUILDTIME}"
 
 
 build:
+	@echo "package goqlc" > $(shell pwd)/version.go
+	@echo  "">> $(shell pwd)/version.go
+	@echo "const GITREV = \""$(GITREV)"\"" >> $(shell pwd)/version.go
+	@echo "const VERSION = \""$(VERSION)"\"" >> $(shell pwd)/version.go
+	@echo "const BUILDTIME = \""$(BUILDTIME)"\"" >> $(shell pwd)/version.go
 	go build ${LDFLAGS} -v -i -o $(BUILDDIR)/$(SERVERBINARY) $(SERVERMAIN)
 	@echo "Build server done."
 	@echo "Run \"$(BUILDDIR)/$(SERVERBINARY)\" to start gqlc."
@@ -71,11 +76,21 @@ gqlcc-linux: gqlcc-linux-amd64
 	@echo "Linux cross compilation done:"
 
 gqlcc-linux-amd64:
+	@echo "package goqlc" > $(shell pwd)/version.go
+	@echo  "">> $(shell pwd)/version.go
+	@echo "const GITREV = \""$(GITREV)"\"" >> $(shell pwd)/version.go
+	@echo "const VERSION = \""$(VERSION)"\"" >> $(shell pwd)/version.go
+	@echo "const BUILDTIME = \""$(BUILDTIME)"\"" >> $(shell pwd)/version.go
 	env GOOS=linux GOARCH=amd64 go build ${LDFLAGS} -i -o $(BUILDDIR)/$(CLIENTBINARY)-linux-amd64-v$(VERSION)-$(GITREV) $(CLIENTMAIN)
 	@echo "Build linux client done."
 	@ls -ld $(BUILDDIR)/$(CLIENTBINARY)-linux-amd64-v$(VERSION)-$(GITREV)
 
 gqlcc-darwin:
+	@echo "package goqlc" > $(shell pwd)/version.go
+	@echo  "">> $(shell pwd)/version.go
+	@echo "const GITREV = \""$(GITREV)"\"" >> $(shell pwd)/version.go
+	@echo "const VERSION = \""$(VERSION)"\"" >> $(shell pwd)/version.go
+	@echo "const BUILDTIME = \""$(BUILDTIME)"\"" >> $(shell pwd)/version.go
 	env GOOS=darwin GOARCH=amd64 go build ${LDFLAGS} -i -o $(BUILDDIR)/$(CLIENTBINARY)-darwin-amd64-v$(VERSION)-$(GITREV) $(CLIENTMAIN)
 	@echo "Build darwin client done."
 	@ls -ld $(BUILDDIR)/$(CLIENTBINARY)-darwin-amd64-v$(VERSION)-$(GITREV)
@@ -85,11 +100,21 @@ gqlcc-windows: gqlcc-windows-amd64 gqlcc-windows-386
 	@ls -ld $(BUILDDIR)/$(CLIENTBINARY)-windows-*
 
 gqlcc-windows-386:
+	@echo "package goqlc" > $(shell pwd)/version.go
+	@echo  "">> $(shell pwd)/version.go
+	@echo "const GITREV = \""$(GITREV)"\"" >> $(shell pwd)/version.go
+	@echo "const VERSION = \""$(VERSION)"\"" >> $(shell pwd)/version.go
+	@echo "const BUILDTIME = \""$(BUILDTIME)"\"" >> $(shell pwd)/version.go
 	env GOOS=windows GOARCH=386 go build ${LDFLAGS} -i -o $(BUILDDIR)/$(CLIENTBINARY)-windows-386-v$(VERSION)-$(GITREV).exe $(CLIENTMAIN)
 	@echo "Build windows x86 client done."
 	@ls -ld $(BUILDDIR)/$(CLIENTBINARY)-windows-386-v$(VERSION)-$(GITREV).exe
 
 gqlcc-windows-amd64:
+	@echo "package goqlc" > $(shell pwd)/version.go
+	@echo  "">> $(shell pwd)/version.go
+	@echo "const GITREV = \""$(GITREV)"\"" >> $(shell pwd)/version.go
+	@echo "const VERSION = \""$(VERSION)"\"" >> $(shell pwd)/version.go
+	@echo "const BUILDTIME = \""$(BUILDTIME)"\"" >> $(shell pwd)/version.go
 	env GOOS=windows GOARCH=amd64 go build ${LDFLAGS} -i -o $(BUILDDIR)/$(CLIENTBINARY)-windows-amd64-v$(VERSION)-$(GITREV).exe $(CLIENTMAIN)
 	@echo "Build windows client done."
 	@ls -ld $(BUILDDIR)/$(CLIENTBINARY)-windows-amd64-v$(VERSION)-$(GITREV).exe

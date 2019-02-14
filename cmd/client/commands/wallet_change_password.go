@@ -1,16 +1,9 @@
-// Copyright © 2019 NAME HERE <EMAIL ADDRESS>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Copyright (c) 2019 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
 
 package commands
 
@@ -31,7 +24,8 @@ var wcpCmd = &cobra.Command{
 		if err != nil {
 			cmd.Println(err)
 		} else {
-			cmd.Printf("change password success for account: %s\n", account)
+			cmd.Printf("change password success for account: %s", account)
+			cmd.Println()
 		}
 	},
 }
