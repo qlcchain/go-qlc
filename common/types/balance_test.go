@@ -154,3 +154,9 @@ func TestBalance_Add(t *testing.T) {
 	bb2 := Balance{big.NewInt(12000)}
 	t.Log("bb1+bb2: ", bb1.Add(bb2))
 }
+
+func TestBalance_Div(t *testing.T) {
+	bb1 := Balance{big.NewInt(10000)}
+	bb2 := bb1.Div(2)
+	t.Log("bb1,bb2: ", bb1, bb2)
+}

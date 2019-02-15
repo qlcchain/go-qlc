@@ -17,19 +17,16 @@ type Election struct {
 	confirmed     bool
 	dps           *DposService
 	announcements uint
-	supply        types.Balance
 }
 
 func NewElection(dps *DposService, block types.Block) (*Election, error) {
 	vt := NewVotes(block)
 	status := electionStatus{block, types.ZeroBalance}
-	b1 := types.StringToBalance("40")
 
 	return &Election{
 		vote:          vt,
 		status:        status,
 		confirmed:     false,
-		supply:        b1,
 		dps:           dps,
 		announcements: 0,
 	}, nil
@@ -67,30 +64,50 @@ func (el *Election) haveQuorum() {
 	if !(len(t) > 0) {
 		return
 	}
-	var blk types.Block
+	var hash types.Hash
 	var balance = types.ZeroBalance
 	for key, value := range t {
 		if balance.Compare(value) == types.BalanceCompSmaller {
 			balance = value
-			blk = key
+			hash = key
 		}
 	}
-	if balance.Compare(el.supply) == types.BalanceCompBigger {
+	blk, err := el.dps.ledger.GetStateBlock(hash)
+	if err != nil {
+		el.dps.logger.Infof("err:[%s] when get block", err)
+	}
+	supply := el.getOnlineRepresentativesBalance()
+
+	if balance.Compare(supply.Div(2)) == types.BalanceCompBigger {
 		el.dps.logger.Infof("hash:%s block has confirmed", blk.GetHash())
 		el.status.winner = blk
 		el.confirmed = true
 		el.status.tally = balance
+	} else {
+		el.dps.logger.Infof("wait for enough rep vote,current vote is [%s]", balance.String())
 	}
 }
 
-func (el *Election) tally() map[types.Block]types.Balance {
-	totals := make(map[types.Block]types.Balance)
+func (el *Election) tally() map[types.Hash]types.Balance {
+	totals := make(map[types.Hash]types.Balance)
 	for key, value := range el.vote.repVotes {
-		if _, ok := totals[value.Blk]; !ok {
-			totals[value.Blk] = types.ZeroBalance
+		if _, ok := totals[value.Blk.GetHash()]; !ok {
+			totals[value.Blk.GetHash()] = types.ZeroBalance
 		}
 		weight := el.dps.ledger.Weight(key)
-		totals[value.Blk] = totals[value.Blk].Add(weight)
+		totals[value.Blk.GetHash()] = totals[value.Blk.GetHash()].Add(weight)
 	}
 	return totals
+}
+
+func (el *Election) getOnlineRepresentativesBalance() types.Balance {
+	b := types.ZeroBalance
+	addresses := el.dps.onlineRepAddresses
+	for _, v := range addresses {
+		b1, err := el.dps.ledger.GetRepresentation(v)
+		if err != nil {
+			b = b.Add(b1)
+		}
+	}
+	return b
 }
