@@ -102,11 +102,17 @@ func (l *LedgerApi) judgeBlockKind(block *types.StateBlock) (string, types.Balan
 
 // AccountHistoryTopn returns blocks of the account, blocks count of each token in the account up to n
 // if set n to -1,  will list all blocks of this account
-func (l *LedgerApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, error) {
-	if n < -1 {
-		return nil, errors.New("wrong count number")
+func (l *LedgerApi) AccountHistoryTopn(address types.Address, num int, offset *int) ([]*APIBlock, error) {
+	if num < 1 {
+		return nil, errors.New("err count")
 	}
-	l.logger.Info(address)
+	o := 0
+	if offset != nil {
+		o = *offset
+		if o < -1 {
+			return nil, errors.New("err offset")
+		}
+	}
 	bs := make([]*APIBlock, 0)
 	ac, err := l.ledger.GetAccountMeta(address)
 	if err != nil {
@@ -114,9 +120,8 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBloc
 	}
 	for _, token := range ac.Tokens {
 		h := token.Header
-		count := 0
 
-		for (n != -1 && count < n) || n == -1 {
+		for {
 			block, err := l.ledger.GetStateBlock(h)
 			if err != nil {
 				return nil, err
@@ -140,10 +145,17 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBloc
 			if h.IsZero() {
 				break
 			}
-			count = count + 1
 		}
 	}
-	return bs, nil
+	l.logger.Info("block count,", len(bs))
+	if len(bs) > o {
+		if len(bs) >= o+num {
+			return bs[o : num+o], nil
+		}
+		return bs[o:], nil
+	} else {
+		return make([]*APIBlock, 0), nil
+	}
 }
 
 func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
@@ -302,6 +314,32 @@ func (l *LedgerApi) AccountsCount() (uint64, error) {
 	return l.ledger.CountAccountMetas()
 }
 
+func (l *LedgerApi) Accounts(num int, offset *int) ([]*types.Address, error) {
+	if num < 1 {
+		return nil, errors.New("err count")
+	}
+	o := 0
+	if offset != nil {
+		o = *offset
+		if o < -1 {
+			return nil, errors.New("err offset")
+		}
+	}
+	as := make([]*types.Address, 0)
+	index := 0
+	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
+		if index >= o && index < o+num {
+			as = append(as, &am.Address)
+		}
+		index = index + 1
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return as, nil
+}
+
 func (l *LedgerApi) BlockAccount(hash types.Hash) (types.Address, error) {
 	sb, err := l.ledger.GetStateBlock(hash)
 	if err != nil {
@@ -384,6 +422,32 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 		bs = append(bs, b)
 	}
 	return bs, nil
+}
+
+func (l *LedgerApi) Blocks(num int, offset *int) ([]types.Block, error) {
+	if num < 1 {
+		return nil, errors.New("err count")
+	}
+	o := 0
+	if offset != nil {
+		o = *offset
+		if o < -1 {
+			return nil, errors.New("err offset")
+		}
+	}
+	sb := make([]types.Block, 0)
+	index := 0
+	err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+		if index >= o && index < o+num {
+			sb = append(sb, block)
+		}
+		index = index + 1
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sb, nil
 }
 
 // Chain returns a consecutive list of block hashes in the account chain starting at block up to count
