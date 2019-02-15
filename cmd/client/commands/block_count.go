@@ -20,6 +20,7 @@ var blockcountCmd = &cobra.Command{
 		client, err := rpc.Dial(endpoint)
 		if err != nil {
 			cmd.Println(err)
+			return
 		}
 		defer client.Close()
 
@@ -27,16 +28,13 @@ var blockcountCmd = &cobra.Command{
 		err = client.Call(&resp, "ledger_transactionsCount")
 		if err != nil {
 			cmd.Println(err)
+			return
 		}
 		state := resp["count"]
 		unchecked := resp["unchecked"]
 
-		if err != nil {
-			cmd.Println(err)
-		} else {
-			cmd.Printf("total stateblock count is : %d, unchecked count is: %d", state, unchecked)
-			cmd.Println()
-		}
+		cmd.Printf("total stateblock count is : %d, unchecked count is: %d", state, unchecked)
+		cmd.Println()
 	},
 }
 
