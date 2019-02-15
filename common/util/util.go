@@ -86,3 +86,14 @@ func ToString(v interface{}) string {
 	}
 	return string(bytes)
 }
+
+//trim the '\00' byte
+func TrimBuffToString(bytes []byte) string {
+	for i, b := range bytes {
+		if b == 0 {
+			return string(bytes[:i])
+		}
+	}
+	return string(bytes)
+
+}

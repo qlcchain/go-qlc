@@ -1,5 +1,7 @@
 module github.com/qlcchain/go-qlc
 
+replace github.com/go-interpreter/wagon v0.0.0 => github.com/perlin-network/wagon v0.3.1-0.20180825141017-f8cb99b55a39
+
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
@@ -15,6 +17,7 @@ require (
 	github.com/fd/go-nat v1.0.0 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/go-check/check v0.0.0-20180628173108-788fd7840127 // indirect
+	github.com/go-interpreter/wagon v0.0.0
 	github.com/go-kit/kit v0.8.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
