@@ -157,6 +157,13 @@ func TestBalance_Add(t *testing.T) {
 
 func TestBalance_Div(t *testing.T) {
 	bb1 := Balance{big.NewInt(10000)}
-	bb2 := bb1.Div(2)
-	t.Log("bb1,bb2: ", bb1, bb2)
+	bb2, err := bb1.Div(2)
+	if err != nil {
+		t.Fatal("err should be nil")
+	}
+	bb3, err := bb1.Div(0)
+	if err == nil {
+		t.Fatal("err should not be nil")
+	}
+	t.Log("bb1,bb2: ", bb1, bb2, bb3)
 }

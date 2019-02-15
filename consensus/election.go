@@ -77,8 +77,11 @@ func (el *Election) haveQuorum() {
 		el.dps.logger.Infof("err:[%s] when get block", err)
 	}
 	supply := el.getOnlineRepresentativesBalance()
-
-	if balance.Compare(supply.Div(2)) == types.BalanceCompBigger {
+	b, err := supply.Div(2)
+	if err != nil {
+		return
+	}
+	if balance.Compare(b) == types.BalanceCompBigger {
 		el.dps.logger.Infof("hash:%s block has confirmed", blk.GetHash())
 		el.status.winner = blk
 		el.confirmed = true
@@ -90,12 +93,14 @@ func (el *Election) haveQuorum() {
 
 func (el *Election) tally() map[types.Hash]types.Balance {
 	totals := make(map[types.Hash]types.Balance)
+	var hash types.Hash
 	for key, value := range el.vote.repVotes {
-		if _, ok := totals[value.Blk.GetHash()]; !ok {
-			totals[value.Blk.GetHash()] = types.ZeroBalance
+		hash = value.Blk.GetHash()
+		if _, ok := totals[hash]; !ok {
+			totals[hash] = types.ZeroBalance
 		}
 		weight := el.dps.ledger.Weight(key)
-		totals[value.Blk.GetHash()] = totals[value.Blk.GetHash()].Add(weight)
+		totals[hash] = totals[hash].Add(weight)
 	}
 	return totals
 }

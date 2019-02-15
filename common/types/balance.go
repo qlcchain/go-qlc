@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -80,10 +81,13 @@ func (b Balance) Sub(n Balance) Balance {
 }
 
 // Div balances div
-func (b Balance) Div(n int64) Balance {
+func (b Balance) Div(n int64) (Balance, error) {
+	if n == 0 {
+		return ZeroBalance, errors.New("n should not be zero")
+	}
 	div := b.Int64() / n
 	b1 := new(big.Int).SetInt64(div)
-	return Balance{b1}
+	return Balance{b1}, nil
 }
 
 //Compare two balances
