@@ -190,10 +190,14 @@ func (sm *StreamManager) CreateStreamWithPeer(pid peer.ID) {
 }
 
 // BroadcastMessage broadcast the message
-func (sm *StreamManager) BroadcastMessage(messageName string, messageContent []byte) {
-
+func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
+		messageContent, err := MarshalMessage(messageName, v)
+		if err != nil {
+			sm.node.logger.Errorf("receive [%s] when MarshalMessage", err)
+			return true
+		}
 		stream.SendMessage(messageName, messageContent)
 		return true
 	})

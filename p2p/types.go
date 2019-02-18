@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common"
 )
 
@@ -25,8 +26,8 @@ type Service interface {
 	common.Service
 	Node() *QlcNode
 	MessageEvent() *EventQueue
-	Broadcast(string, []byte)
-	SendMessageToPeer(messageName string, data []byte, peerID string) error
+	Broadcast(messageName string, value interface{})
+	SendMessageToPeer(messageName string, value interface{}, peerID string) error
 }
 
 // Subscriber subscriber.

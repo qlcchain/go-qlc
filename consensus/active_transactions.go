@@ -95,8 +95,8 @@ func (act *ActiveTrx) announceVotes() {
 		} else {
 			act.dps.priInfos.Range(func(k, v interface{}) bool {
 				count++
-				isrep := act.dps.isThisAccountRepresentation(k.(types.Address))
-				if isrep {
+				isRep := act.dps.isThisAccountRepresentation(k.(types.Address))
+				if isRep {
 					act.dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", value.(*Election).status.winner.GetHash(), value.(*Election).status.winner.Root())
 					act.dps.putRepresentativesToOnline(k.(types.Address))
 					va, err := act.dps.voteGenerate(value.(*Election).status.winner, k.(types.Address), v.(*types.Account))
@@ -107,10 +107,7 @@ func (act *ActiveTrx) announceVotes() {
 					}
 				} else {
 					act.dps.logger.Infof("send confirm req for hash %s,previous hash is %s", value.(*Election).status.winner.GetHash(), value.(*Election).status.winner.Root())
-					err := act.dps.sendConfirmReq(value.(*Election).status.winner)
-					if err != nil {
-						act.dps.logger.Error("send confirm req fail.")
-					}
+					act.dps.sendConfirmReq(value.(*Election).status.winner)
 				}
 				return true
 			})

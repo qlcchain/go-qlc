@@ -3,9 +3,10 @@ package consensus
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -89,7 +90,7 @@ func (dps *DposService) Status() int32 {
 
 func NewDposService(cfg *config.Config, netService p2p.Service, account types.Address, password string) (*DposService, error) {
 	bp := NewBlockProcessor()
-	actrx := NewActiveTrx()
+	acTrx := NewActiveTrx()
 	l := ledger.NewLedger(cfg.LedgerDir())
 
 	dps := &DposService{
@@ -98,7 +99,7 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 		eventMsg: make(map[p2p.EventType]p2p.EventSubscriber),
 		quitCh:   make(chan bool, 1),
 		bp:       bp,
-		actrx:    actrx,
+		actrx:    acTrx,
 		wallet:   wallet.NewWalletStore(cfg),
 		account:  account,
 		password: password,
@@ -233,8 +234,8 @@ func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
 		} else {
 			ta := v.(*Election).vote.voteStatus(va)
 			if ta == confirm {
-				currentvote := v.(*Election).vote.repVotes[va.Account]
-				if currentvote.Sequence < va.Sequence {
+				currentVote := v.(*Election).vote.repVotes[va.Account]
+				if currentVote.Sequence < va.Sequence {
 					v.(*Election).vote.repVotes[va.Account] = va
 				}
 			}
@@ -256,17 +257,8 @@ func (dps *DposService) ReceiveSyncBlock(v interface{}) {
 	dps.bp.blocks <- v.(types.Block)
 }
 
-func (dps *DposService) sendConfirmReq(block types.Block) error {
-	packet := &protos.ConfirmReqBlock{
-		Blk: block,
-	}
-	data, err := protos.ConfirmReqBlockToProto(packet)
-	if err != nil {
-		dps.logger.Error("ConfirmReq Block to Proto error")
-		return err
-	}
-	dps.ns.Broadcast(p2p.ConfirmReq, data)
-	return nil
+func (dps *DposService) sendConfirmReq(block types.Block) {
+	dps.ns.Broadcast(p2p.ConfirmReq, block)
 }
 
 func (dps *DposService) sendConfirmAck(block types.Block, account types.Address, acc *types.Account) error {
@@ -275,11 +267,7 @@ func (dps *DposService) sendConfirmAck(block types.Block, account types.Address,
 		dps.logger.Error("vote generate error")
 		return err
 	}
-	data, err := protos.ConfirmAckBlockToProto(va)
-	if err != nil {
-		dps.logger.Error("vote to proto error")
-	}
-	dps.ns.Broadcast(p2p.ConfirmAck, data)
+	dps.ns.Broadcast(p2p.ConfirmAck, va)
 	return nil
 }
 
@@ -378,9 +366,6 @@ func (dps *DposService) findOnlineRepresentatives() error {
 	if err != nil {
 		return err
 	}
-	err = dps.sendConfirmReq(blk)
-	if err != nil {
-		return err
-	}
+	dps.sendConfirmReq(blk)
 	return nil
 }

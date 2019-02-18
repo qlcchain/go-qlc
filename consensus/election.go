@@ -50,11 +50,7 @@ func (el *Election) voteAction(va *protos.ConfirmAckBlock) {
 	}
 	if shouldProcess {
 		el.vote.repVotes[va.Account] = va
-		data, err := protos.ConfirmAckBlockToProto(va)
-		if err != nil {
-			el.dps.logger.Error("vote to proto error")
-		}
-		el.dps.ns.Broadcast(p2p.ConfirmAck, data)
+		el.dps.ns.Broadcast(p2p.ConfirmAck, va)
 	}
 	el.haveQuorum()
 }

@@ -194,18 +194,21 @@ func (node *QlcNode) Stop() {
 }
 
 // BroadcastMessage broadcast message.
-func (node *QlcNode) BroadcastMessage(messageName string, data []byte) {
+func (node *QlcNode) BroadcastMessage(messageName string, value interface{}) {
 
-	node.streamManager.BroadcastMessage(messageName, data)
+	node.streamManager.BroadcastMessage(messageName, value)
 }
 
 // SendMessageToPeer send message to a peer.
-func (node *QlcNode) SendMessageToPeer(messageName string, data []byte, peerID string) error {
+func (node *QlcNode) SendMessageToPeer(messageName string, value interface{}, peerID string) error {
 	stream := node.streamManager.FindByPeerID(peerID)
 	if stream == nil {
 		node.logger.Debug("Failed to locate peer's stream")
 		return ErrPeerIsNotConnected
 	}
-
+	data, err := MarshalMessage(messageName, value)
+	if err != nil {
+		return err
+	}
 	return stream.SendMessage(messageName, data)
 }

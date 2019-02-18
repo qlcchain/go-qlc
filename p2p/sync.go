@@ -9,7 +9,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
-	messagepb "github.com/qlcchain/go-qlc/p2p/protos"
+	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 const (
@@ -20,7 +20,7 @@ var zeroHash = types.Hash{}
 
 var headerBlockHash types.Hash
 var openBlockHash types.Hash
-var bulkPush, bulkPull []*messagepb.Bulk
+var bulkPush, bulkPull []*protos.Bulk
 
 // Service manage sync tasks
 type ServiceSync struct {
@@ -41,15 +41,11 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 	}
 	return ss
 }
+
 func (ss *ServiceSync) Start() {
 	ss.logger.Info("started sync loop")
 	address := types.Address{}
-	Req := messagepb.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
-	data, err := messagepb.FrontierReqToProto(Req)
-	if err != nil {
-		ss.logger.Error("New FrontierReq error")
-		return
-	}
+	Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
 	ticker := time.NewTicker(SyncInterval)
 	for {
 		select {
@@ -72,7 +68,10 @@ func (ss *ServiceSync) Start() {
 			ss.next()
 			bulkPull = bulkPull[:0:0]
 			bulkPush = bulkPush[:0:0]
-			ss.netService.node.SendMessageToPeer(FrontierRequest, data, peerID)
+			err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
+			if err != nil {
+				ss.logger.Errorf("err [%s] when send FrontierRequest", err)
+			}
 		default:
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -85,46 +84,42 @@ func (ss *ServiceSync) Stop() {
 
 	ss.quitCh <- true
 }
+
 func (ss *ServiceSync) onFrontierReq(message Message) error {
 	var fs []*types.Frontier
 	fs, err := ss.qlcLedger.GetFrontiers()
 	if err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
+
 	for _, f := range fs {
-		qlcfrs := messagepb.NewFrontierRsp(f)
-		frsbytes, err := messagepb.FrontierResponseToProto(qlcfrs)
+		err = ss.netService.SendMessageToPeer(FrontierRsp, f, message.MessageFrom())
 		if err != nil {
-			return err
+			ss.logger.Errorf("send FrontierRsp err [%s]", err)
 		}
-		ss.netService.SendMessageToPeer(FrontierRsp, frsbytes, message.MessageFrom())
 	}
 	//send frontier finished,last frontier is all zero,tell remote peer send finished
-	rsp := new(types.Frontier)
-	frsp := messagepb.NewFrontierRsp(rsp)
-	bytes, err := messagepb.FrontierResponseToProto(frsp)
+	zeroFrontier := new(types.Frontier)
+	err = ss.netService.SendMessageToPeer(FrontierRsp, zeroFrontier, message.MessageFrom())
 	if err != nil {
-		return err
+		ss.logger.Errorf("send FrontierRsp err [%s] for zeroFrontier", err)
 	}
-	ss.netService.SendMessageToPeer(FrontierRsp, bytes, message.MessageFrom())
 	return nil
 }
+
 func (ss *ServiceSync) onFrontierRsp(message Message) error {
-	fsremote, err := messagepb.FrontierResponseFromProto(message.Data())
+	fsRemote, err := protos.FrontierResponseFromProto(message.Data())
 	if err != nil {
 		return err
 	}
-	fr := fsremote.Frontier
+	fr := fsRemote.Frontier
 	ss.logger.Info(fr.HeaderBlock, fr.OpenBlock)
 
 	if !fr.OpenBlock.IsZero() {
 		for {
 			if !openBlockHash.IsZero() && (openBlockHash.String() < fr.OpenBlock.String()) {
 				// We have an account but remote peer have not.
-				push := &messagepb.Bulk{
+				push := &protos.Bulk{
 					StartHash: zeroHash,
 					EndHash:   headerBlockHash,
 				}
@@ -141,13 +136,13 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 				} else {
 					exit, _ := ss.qlcLedger.HasStateBlock(fr.HeaderBlock)
 					if exit == true {
-						push := &messagepb.Bulk{
+						push := &protos.Bulk{
 							StartHash: fr.HeaderBlock,
 							EndHash:   headerBlockHash,
 						}
 						bulkPush = append(bulkPush, push)
 					} else {
-						pull := &messagepb.Bulk{
+						pull := &protos.Bulk{
 							StartHash: headerBlockHash,
 							EndHash:   fr.HeaderBlock,
 						}
@@ -159,14 +154,14 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 				if fr.OpenBlock.String() > openBlockHash.String() {
 					return nil
 				}
-				pull := &messagepb.Bulk{
+				pull := &protos.Bulk{
 					StartHash: zeroHash,
 					EndHash:   fr.HeaderBlock,
 				}
 				bulkPull = append(bulkPull, pull)
 			}
 		} else {
-			pull := &messagepb.Bulk{
+			pull := &protos.Bulk{
 				StartHash: zeroHash,
 				EndHash:   fr.HeaderBlock,
 			}
@@ -176,7 +171,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 		for {
 			if !openBlockHash.IsZero() {
 				// We have an account but remote peer have not.
-				push := &messagepb.Bulk{
+				push := &protos.Bulk{
 					StartHash: zeroHash,
 					EndHash:   headerBlockHash,
 				}
@@ -188,15 +183,14 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 					ss.next()
 				}
 				for _, value := range bulkPull {
-					blkreqpk := &messagepb.BulkPullReqPacket{
+					blkReq := &protos.BulkPullReqPacket{
 						StartHash: value.StartHash,
 						EndHash:   value.EndHash,
 					}
-					bytes, err := messagepb.BulkPullReqPacketToProto(blkreqpk)
+					err = ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, message.MessageFrom())
 					if err != nil {
-						return err
+						ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 					}
-					ss.netService.SendMessageToPeer(BulkPullRequest, bytes, message.MessageFrom())
 				}
 				for _, value := range bulkPush {
 					startHash := value.StartHash
@@ -204,53 +198,45 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 					if startHash.IsZero() {
 						ss.logger.Infof("need to send all the blocks of this account")
 						var blk types.Block
-						var bulkblk []types.Block
+						var bulkBlk []types.Block
 						for {
 							blk, err = ss.qlcLedger.GetStateBlock(endHash)
 							if err != nil {
 								return err
 							}
-							bulkblk = append(bulkblk, blk)
+							bulkBlk = append(bulkBlk, blk)
 							endHash = blk.GetPrevious()
 							if endHash.IsZero() == true {
 								break
 							}
 						}
-						for i := len(bulkblk) - 1; i >= 0; i-- {
-							push := &messagepb.BulkPush{
-								Blk: bulkblk[i],
-							}
-							blockBytes, err := messagepb.BulkPushBlockToProto(push)
+						for i := len(bulkBlk) - 1; i >= 0; i-- {
+							err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], message.MessageFrom())
 							if err != nil {
-								return err
+								ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 							}
-							ss.netService.SendMessageToPeer(BulkPushBlock, blockBytes, message.MessageFrom())
 						}
 					} else {
 						ss.logger.Info("need to send some blocks of this account")
 						var blk types.Block
-						var bulkblk []types.Block
+						var bulkBlk []types.Block
 						for {
 							blk, err = ss.qlcLedger.GetStateBlock(endHash)
 							if err != nil {
 								return err
 							}
-							bulkblk = append(bulkblk, blk)
+							bulkBlk = append(bulkBlk, blk)
 
 							endHash = blk.GetPrevious()
 							if endHash == startHash {
 								break
 							}
 						}
-						for i := len(bulkblk) - 1; i >= 0; i-- {
-							push := &messagepb.BulkPush{
-								Blk: bulkblk[i],
-							}
-							blockBytes, err := messagepb.BulkPushBlockToProto(push)
+						for i := len(bulkBlk) - 1; i >= 0; i-- {
+							err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], message.MessageFrom())
 							if err != nil {
-								return err
+								ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 							}
-							ss.netService.SendMessageToPeer(BulkPushBlock, blockBytes, message.MessageFrom())
 						}
 					}
 				}
@@ -266,78 +252,72 @@ func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
 	if err != nil {
 		return nil, err
 	}
-	fsback := new(types.Frontier)
-	frontiers = append(frontiers, fsback)
+	fsBack := new(types.Frontier)
+	frontiers = append(frontiers, fsBack)
 	return frontiers, nil
 }
+
 func (ss *ServiceSync) onBulkPullRequest(message Message) error {
-	pullremote, err := messagepb.BulkPullReqPacketFromProto(message.Data())
+	pullRemote, err := protos.BulkPullReqPacketFromProto(message.Data())
 	if err != nil {
 		return err
 	}
 
-	startHash := pullremote.StartHash
-	endHash := pullremote.EndHash
+	startHash := pullRemote.StartHash
+	endHash := pullRemote.EndHash
 	if startHash.IsZero() {
 		var blk types.Block
-		var bulkblk []types.Block
+		var bulkBlk []types.Block
 		ss.logger.Info("need to send all the blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
 				return err
 			}
-			bulkblk = append(bulkblk, blk)
+			bulkBlk = append(bulkBlk, blk)
 			endHash = blk.GetPrevious()
 			if endHash.IsZero() == true {
 				break
 			}
 		}
-		for i := len(bulkblk) - 1; i >= 0; i-- {
-			PullRsp := &messagepb.BulkPullRspPacket{
-				Blk: bulkblk[i],
-			}
-			blockBytes, err := messagepb.BulkPullRspPacketToProto(PullRsp)
+		for i := len(bulkBlk) - 1; i >= 0; i-- {
+			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
 			if err != nil {
-				return err
+				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
 			}
-			ss.netService.SendMessageToPeer(BulkPullRsp, blockBytes, message.MessageFrom())
 		}
 	} else {
 		var blk types.Block
-		var bulkblk []types.Block
+		var bulkBlk []types.Block
 		ss.logger.Info("need to send some blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
 				return err
 			}
-			bulkblk = append(bulkblk, blk)
+			bulkBlk = append(bulkBlk, blk)
 			endHash = blk.GetPrevious()
 			if endHash == startHash {
 				break
 			}
 		}
-		for i := len(bulkblk) - 1; i >= 0; i-- {
-			PullRsp := &messagepb.BulkPullRspPacket{
-				Blk: bulkblk[i],
-			}
-			blockBytes, err := messagepb.BulkPullRspPacketToProto(PullRsp)
+		for i := len(bulkBlk) - 1; i >= 0; i-- {
+			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
 			if err != nil {
-				return err
+				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
 			}
-			ss.netService.SendMessageToPeer(BulkPullRsp, blockBytes, message.MessageFrom())
 		}
 	}
 	return nil
 }
+
 func (ss *ServiceSync) onBulkPullRsp(message Message) error {
-	blkpacket, err := messagepb.BulkPushBlockFromProto(message.Data())
+	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err
 	}
 
-	block := blkpacket.Blk
+	block := blkPacket.Blk
 	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
 	/*	err = ss.qlcLedger.AddBlock(block)
 		if err != nil {
@@ -373,12 +353,13 @@ func (ss *ServiceSync) onBulkPullRsp(message Message) error {
 		}*/
 	return nil
 }
+
 func (ss *ServiceSync) onBulkPushBlock(message Message) error {
-	blkpacket, err := messagepb.BulkPushBlockFromProto(message.Data())
+	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err
 	}
-	block := blkpacket.Blk
+	block := blkPacket.Blk
 	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
 
 	/*	err = ss.qlcLedger.AddBlock(block)
