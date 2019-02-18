@@ -1,10 +1,12 @@
 package types
 
 import (
+	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
-	"math/big"
 )
 
 func init() {
@@ -76,6 +78,16 @@ func (b Balance) Add(n Balance) Balance {
 func (b Balance) Sub(n Balance) Balance {
 	sub := new(big.Int).Sub(b.Int, n.Int)
 	return Balance{sub}
+}
+
+// Div balances div
+func (b Balance) Div(n int64) (Balance, error) {
+	if n == 0 {
+		return ZeroBalance, errors.New("n should not be zero")
+	}
+	div := b.Int64() / n
+	b1 := new(big.Int).SetInt64(div)
+	return Balance{b1}, nil
 }
 
 //Compare two balances
