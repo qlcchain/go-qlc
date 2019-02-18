@@ -78,14 +78,14 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types
 		break
 	case ledger.GapPrevious:
 		bp.dp.logger.Infof("Gap previous for: %s", block.GetHash())
-		err := bp.dp.ledger.AddUncheckedBlock(block.Root(), block, types.UncheckedKindPrevious)
+		err := bp.dp.ledger.AddUncheckedBlock(block.GetPrevious(), block, types.UncheckedKindPrevious)
 		if err != nil {
 			return err
 		}
 		break
 	case ledger.GapSource:
 		bp.dp.logger.Infof("Gap source for: %s", block.GetHash())
-		err := bp.dp.ledger.AddUncheckedBlock(block.Root(), block, types.UncheckedKindLink)
+		err := bp.dp.ledger.AddUncheckedBlock(block.(*types.StateBlock).Link, block, types.UncheckedKindLink)
 		if err != nil {
 			return err
 		}
@@ -98,30 +98,34 @@ func (bp *BlockProcessor) processFork(block types.Block) {
 
 }
 
-func (bp *BlockProcessor) queueUnchecked(hash types.Hash) error {
-	blklink, err := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
-	if err != nil {
-		return err
-	}
-	if blklink != nil {
-		bp.blocks <- blklink
-		err = bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+func (bp *BlockProcessor) queueUnchecked(hash types.Hash) {
+	blkLink, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	//if err != nil {
+	//	bp.dp.logger.Infof("Get blkLink err [%s] for hash: %s", err,hash)
+	//	return err
+	//}
+	if blkLink != nil {
+		bp.dp.logger.Infof("Get blkLink for hash: [%s]", blkLink.GetHash())
+		bp.blocks <- blkLink
+		err := bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
 		if err != nil {
-			return err
+			bp.dp.logger.Infof("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 		}
 	}
-	blkpre, err := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
-	if err != nil {
-		return err
-	}
-	if blkpre != nil {
-		bp.blocks <- blkpre
-		bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+	blkPre, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+	//if err != nil {
+	//	bp.dp.logger.Infof("Get blkPre err [%s] for hash: %s", err,hash)
+	//	return err
+	//}
+	if blkPre != nil {
+		bp.blocks <- blkPre
+		bp.dp.logger.Infof("Get blkPre for hash: %s", blkPre.GetHash())
+		err := bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
 		if err != nil {
-			return err
+			bp.dp.logger.Infof("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+
 		}
 	}
-	return nil
 }
 
 func (bp *BlockProcessor) Stop() {
