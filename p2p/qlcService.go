@@ -111,11 +111,11 @@ func (ns *QlcService) PutMessage(msg Message) {
 }
 
 // Broadcast message.
-func (ns *QlcService) Broadcast(name string, msg []byte) {
-	ns.node.BroadcastMessage(name, msg)
+func (ns *QlcService) Broadcast(name string, value interface{}) {
+	ns.node.BroadcastMessage(name, value)
 }
 
 // SendMessageToPeer send message to a peer.
-func (ns *QlcService) SendMessageToPeer(messageName string, data []byte, peerID string) error {
-	return ns.node.SendMessageToPeer(messageName, data, peerID)
+func (ns *QlcService) SendMessageToPeer(messageName string, value interface{}, peerID string) error {
+	return ns.node.SendMessageToPeer(messageName, value, peerID)
 }

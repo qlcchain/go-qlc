@@ -1,7 +1,10 @@
 package p2p
 
 import (
+	"errors"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -55,6 +58,7 @@ func (ms *MessageService) Start() {
 	go ms.startLoop()
 	go ms.syncService.Start()
 }
+
 func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
 
@@ -98,6 +102,7 @@ func (ms *MessageService) startLoop() {
 		}
 	}
 }
+
 func (ms *MessageService) onPublishReq(message Message) error {
 	blk, err := protos.PublishBlockFromProto(message.Data())
 	if err != nil {
@@ -106,6 +111,7 @@ func (ms *MessageService) onPublishReq(message Message) error {
 	ms.netService.msgEvent.GetEvent("consensus").Notify(EventPublish, blk.Blk)
 	return nil
 }
+
 func (ms *MessageService) onConfirmReq(message Message) error {
 	blk, err := protos.ConfirmReqBlockFromProto(message.Data())
 	if err != nil {
@@ -114,6 +120,7 @@ func (ms *MessageService) onConfirmReq(message Message) error {
 	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmReq, blk.Blk)
 	return nil
 }
+
 func (ms *MessageService) onConfirmAck(message Message) error {
 	ack, err := protos.ConfirmAckBlockFromProto(message.Data())
 	if err != nil {
@@ -122,6 +129,7 @@ func (ms *MessageService) onConfirmAck(message Message) error {
 	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmAck, ack)
 	return nil
 }
+
 func (ms *MessageService) Stop() {
 	ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
@@ -134,4 +142,75 @@ func (ms *MessageService) Stop() {
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
+}
+
+func MarshalMessage(messageName string, value interface{}) ([]byte, error) {
+	switch messageName {
+	case PublishReq:
+		packet := protos.PublishBlock{
+			Blk: value.(types.Block),
+		}
+		data, err := protos.PublishBlockToProto(&packet)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+
+	case ConfirmReq:
+		packet := &protos.ConfirmReqBlock{
+			Blk: value.(types.Block),
+		}
+		data, err := protos.ConfirmReqBlockToProto(packet)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	case ConfirmAck:
+		data, err := protos.ConfirmAckBlockToProto(value.(*protos.ConfirmAckBlock))
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	case FrontierRequest:
+		data, err := protos.FrontierReqToProto(value.(*protos.FrontierReq))
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	case FrontierRsp:
+		packet := &protos.FrontierResponse{
+			Frontier: value.(*types.Frontier),
+		}
+		data, err := protos.FrontierResponseToProto(packet)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	case BulkPullRequest:
+		data, err := protos.BulkPullReqPacketToProto(value.(*protos.BulkPullReqPacket))
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	case BulkPullRsp:
+		PullRsp := &protos.BulkPullRspPacket{
+			Blk: value.(types.Block),
+		}
+		data, err := protos.BulkPullRspPacketToProto(PullRsp)
+		if err != nil {
+			return nil, err
+		}
+		return data, err
+	case BulkPushBlock:
+		push := &protos.BulkPush{
+			Blk: value.(types.Block),
+		}
+		data, err := protos.BulkPushBlockToProto(push)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	default:
+		return nil, errors.New("unKnow Message Type")
+	}
 }
