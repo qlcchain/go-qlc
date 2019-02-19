@@ -135,8 +135,8 @@ func initData() {
 	ledger.AddRepresentation(addr2, types.Balance{Int: big.NewInt(int64(10000000020))})
 
 	// unchecked
-	ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlock(), types.UncheckedKindLink)
-	ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlock(), types.UncheckedKindPrevious)
+	ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlock(), types.UncheckedKindLink, types.UnSynchronized)
+	ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlock(), types.UncheckedKindPrevious, types.UnSynchronized)
 
 	scs := mock.GetSmartContracts()
 	for _, sc := range scs {

@@ -27,4 +27,11 @@ const (
 	UncheckedKindLink
 )
 
+type SynchronizedKind byte
+
+const (
+	Synchronized SynchronizedKind = iota
+	UnSynchronized
+)
+
 type UncheckedBlockWalkFunc func(block Block, kind UncheckedKind) error

@@ -153,54 +153,40 @@ func (l *Ledger) AddBlock(blk types.Block, txns ...db.StoreTxn) error {
 	return txn.Set(key, val)
 }
 
-func (l *Ledger) getBlock(hash types.Hash, key []byte, txns ...db.StoreTxn) (types.Block, error) {
-	var blk types.Block
-	txn, flag := l.getTxn(true, txns...)
+func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	key := l.getBlockKey(hash, types.State)
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
-
-	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if blk, err = types.NewBlock(types.BlockType(b)); err != nil {
-			return err
-		}
-		if _, err = blk.UnmarshalMsg(val); err != nil {
+	blk := new(types.StateBlock)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		_, err := blk.UnmarshalMsg(val)
+		if err != nil {
 			return err
 		}
 		return nil
 	})
-
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, ErrBlockNotFound
-		}
 		return nil, err
 	}
 	return blk, nil
 }
 
-func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
-	key := l.getBlockKey(hash, types.State)
-	blk, err := l.getBlock(hash, key, txns...)
-	if err != nil {
-		return nil, err
-	}
-	sb, ok := blk.(*types.StateBlock)
-	if !ok {
-		return nil, err
-	}
-	return sb, nil
-}
-
 func (l *Ledger) GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error) {
 	key := l.getBlockKey(hash, types.SmartContract)
-	blk, err := l.getBlock(hash, key, txns...)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	blk := new(types.SmartContractBlock)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		_, err := blk.UnmarshalMsg(val)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	scb, ok := blk.(*types.SmartContractBlock)
-	if !ok {
-		return nil, err
-	}
-	return scb, nil
+	return blk, nil
 }
 
 func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error {
@@ -359,7 +345,7 @@ func (l *Ledger) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind)
 	return key[:]
 }
 
-func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, txns ...db.StoreTxn) error {
+func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
 	blockBytes, err := blk.MarshalMsg(nil)
 	if err != nil {
 		return err
@@ -379,32 +365,31 @@ func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind 
 		return err
 	}
 
-	return txn.Set(key, blockBytes)
+	return txn.SetWithMeta(key, blockBytes, byte(sync))
 }
 
-func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, error) {
+func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, types.SynchronizedKind, error) {
 	key := l.getUncheckedBlockKey(parentHash, kind)
 
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	var blk types.Block
+	blk := new(types.StateBlock)
+	var sync types.SynchronizedKind
 	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if blk, err = types.NewBlock(types.BlockType(b)); err != nil {
-			return err
-		}
 		if _, err = blk.UnmarshalMsg(val); err != nil {
 			return err
 		}
+		sync = types.SynchronizedKind(b)
 		return nil
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return nil, ErrUncheckedBlockNotFound
+			return nil, 0, ErrUncheckedBlockNotFound
 		}
-		return nil, err
+		return nil, 0, err
 	}
-	return blk, nil
+	return blk, sync, nil
 }
 
 func (l *Ledger) DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) error {
