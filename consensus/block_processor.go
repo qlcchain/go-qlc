@@ -78,14 +78,14 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types
 		break
 	case ledger.GapPrevious:
 		bp.dp.logger.Infof("Gap previous for: %s", block.GetHash())
-		err := bp.dp.ledger.AddUncheckedBlock(block.GetPrevious(), block, types.UncheckedKindPrevious)
+		err := bp.dp.ledger.AddUncheckedBlock(block.GetPrevious(), block, types.UncheckedKindPrevious, types.UnSynchronized)
 		if err != nil {
 			return err
 		}
 		break
 	case ledger.GapSource:
 		bp.dp.logger.Infof("Gap source for: %s", block.GetHash())
-		err := bp.dp.ledger.AddUncheckedBlock(block.(*types.StateBlock).Link, block, types.UncheckedKindLink)
+		err := bp.dp.ledger.AddUncheckedBlock(block.(*types.StateBlock).Link, block, types.UncheckedKindLink, types.UnSynchronized)
 		if err != nil {
 			return err
 		}
@@ -99,7 +99,7 @@ func (bp *BlockProcessor) processFork(block types.Block) {
 }
 
 func (bp *BlockProcessor) queueUnchecked(hash types.Hash) {
-	blkLink, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	blkLink, _, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
 	//if err != nil {
 	//	bp.dp.logger.Infof("Get blkLink err [%s] for hash: %s", err,hash)
 	//	return err
@@ -112,7 +112,7 @@ func (bp *BlockProcessor) queueUnchecked(hash types.Hash) {
 			bp.dp.logger.Infof("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 		}
 	}
-	blkPre, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+	blkPre, _, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
 	//if err != nil {
 	//	bp.dp.logger.Infof("Get blkPre err [%s] for hash: %s", err,hash)
 	//	return err

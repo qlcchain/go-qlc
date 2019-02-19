@@ -121,8 +121,16 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	}
 }
 
-func addblock(t *testing.T, l *Ledger) types.Block {
+func addStateblock(t *testing.T, l *Ledger) types.Block {
 	blk := mock.StateBlock()
+	if err := l.AddBlock(blk); err != nil {
+		t.Log(err)
+	}
+	return blk
+}
+
+func addSmartContractBlockblock(t *testing.T, l *Ledger) types.Block {
+	blk := mock.GetSmartContracts()[0]
 	if err := l.AddBlock(blk); err != nil {
 		t.Log(err)
 	}
@@ -132,17 +140,29 @@ func addblock(t *testing.T, l *Ledger) types.Block {
 func TestLedger_AddBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	addblock(t, l)
+	addStateblock(t, l)
 }
 
 func TestLedger_GetBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addblock(t, l)
+	block := addStateblock(t, l)
 	blk, err := l.GetStateBlock(block.GetHash())
 	t.Log("blk,", blk)
-	if err != nil {
+	if err != nil || blk == nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_GetSmartContrantBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	block := addSmartContractBlockblock(t, l)
+	blk, err := l.GetSmartContrantBlock(block.GetHash())
+	t.Log("blk,", blk)
+	if err != nil || blk == nil {
 		t.Fatal(err)
 	}
 }
@@ -151,8 +171,8 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addblock(t, l)
-	addblock(t, l)
+	addStateblock(t, l)
+	addStateblock(t, l)
 	err := l.GetStateBlocks(func(block *types.StateBlock) error {
 		t.Log(block)
 		return nil
@@ -167,7 +187,7 @@ func TestLedger_DeleteBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addblock(t, l)
+	block := addStateblock(t, l)
 	err := l.DeleteStateBlock(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +198,7 @@ func TestLedger_HasBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addblock(t, l)
+	block := addStateblock(t, l)
 	r, err := l.HasStateBlock(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
@@ -203,7 +223,7 @@ func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block types.Bl
 	block = mock.StateBlock()
 	hash = block.GetPrevious()
 	kind = types.UncheckedKindPrevious
-	if err := l.AddUncheckedBlock(hash, block, kind); err != nil {
+	if err := l.AddUncheckedBlock(hash, block, kind, types.UnSynchronized); err != nil {
 		t.Fatal(err)
 	}
 	return
@@ -221,10 +241,11 @@ func TestLedger_GetUncheckedBlock(t *testing.T) {
 
 	parentHash, _, kind := addUncheckedBlock(t, l)
 
-	if b, err := l.GetUncheckedBlock(parentHash, kind); err != nil {
+	if b, s, err := l.GetUncheckedBlock(parentHash, kind); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Log("unchecked,", b)
+		t.Logf("unchecked,%s", b)
+		t.Log(s)
 	}
 
 }
@@ -680,7 +701,7 @@ func TestLedgerSession_Latest(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addblock(t, l)
+	block := addStateblock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
 	token.Header = block.GetHash()
 	token.Type = block.(*types.StateBlock).GetToken()
@@ -700,7 +721,7 @@ func TestLedgerSession_Account(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addblock(t, l)
+	block := addStateblock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
 	token.Type = block.(*types.StateBlock).GetToken()
 	token2 := mock.TokenMeta(block.GetAddress())
@@ -721,7 +742,7 @@ func TestLedgerSession_Token(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addblock(t, l)
+	block := addStateblock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
 	token.Type = block.(*types.StateBlock).GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}

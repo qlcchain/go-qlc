@@ -48,8 +48,8 @@ type Store interface {
 	GetRepresentation(address types.Address, txns ...db.StoreTxn) (types.Balance, error)
 	GetRepresentations(fn func(types.Address, types.Balance) error, txns ...db.StoreTxn) error
 	// unchecked CURD
-	AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, txns ...db.StoreTxn) error
-	GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, error)
+	AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, sync types.SynchronizedKind, txns ...db.StoreTxn) error
+	GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, types.SynchronizedKind, error)
 	DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) error
 	HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (bool, error)
 	WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ...db.StoreTxn) error
