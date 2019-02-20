@@ -1,8 +1,8 @@
 package rpc
 
 import (
-	"fmt"
 	"net"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -66,7 +66,7 @@ func (r *RPC) startIPC(apis []API) error {
 	}
 	r.ipcListener = listener
 	r.ipcHandler = handler
-	r.logger.Info("IPC endpoint opened ", "url ", r.config.RPC.IPCEndpoint)
+	r.logger.Info("IPC endpoint opened, ", "url:", r.config.RPC.IPCEndpoint)
 	return nil
 }
 
@@ -76,7 +76,7 @@ func (r *RPC) stopIPC() {
 		r.ipcListener.Close()
 		r.ipcListener = nil
 
-		r.logger.Info("IPC endpoint closed ", "endpoint ", r.config.RPC.IPCEndpoint)
+		r.logger.Info("IPC endpoint closed, ", "endpoint:", r.config.RPC.IPCEndpoint)
 	}
 	if r.ipcHandler != nil {
 		r.ipcHandler.Stop()
@@ -94,7 +94,7 @@ func (r *RPC) startHTTP(endpoint string, apis []API, modules []string, cors []st
 	if err != nil {
 		return err
 	}
-	r.logger.Info("HTTP endpoint opened ", "url ", fmt.Sprintf("http://%s", endpoint), " cors ", strings.Join(cors, ","), " vhosts ", strings.Join(vhosts, ","))
+	r.logger.Info("HTTP endpoint opened,", " url:", listener.Addr(), ", cors:", strings.Join(cors, ","), ", vhosts:", strings.Join(vhosts, ","))
 	// All listeners booted successfully
 	//r.httpEndpoint = endpoint
 	r.httpListener = listener
@@ -109,7 +109,7 @@ func (r *RPC) stopHTTP() {
 		r.httpListener.Close()
 		r.httpListener = nil
 
-		r.logger.Info("HTTP endpoint closed ", "url ", fmt.Sprintf("http://%s", r.config.RPC.HTTPEndpoint))
+		r.logger.Info("HTTP endpoint closed, ", "endpoint:", r.config.RPC.HTTPEndpoint)
 	}
 	if r.httpHandler != nil {
 		r.httpHandler.Stop()
@@ -127,7 +127,7 @@ func (r *RPC) startWS(endpoint string, apis []API, modules []string, wsOrigins [
 	if err != nil {
 		return err
 	}
-	r.logger.Info("WebSocket endpoint opened ", "url ", fmt.Sprintf("ws://%s", listener.Addr()))
+	r.logger.Info("WebSocket endpoint opened, ", "url:", listener.Addr())
 	// All listeners booted successfully
 	//r.wsEndpoint = endpoint
 	r.wsListener = listener
@@ -141,7 +141,7 @@ func (r *RPC) stopWS() {
 	if r.wsListener != nil {
 		r.wsListener.Close()
 		r.wsListener = nil
-		r.logger.Info("WebSocket endpoint closed ", "url ", fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
+		r.logger.Info("WebSocket endpoint closed, ", "endpoint:", r.config.RPC.WSEndpoint)
 	}
 	if r.wsHandler != nil {
 		r.wsHandler.Stop()
@@ -219,7 +219,7 @@ func (r *RPC) StartRPC() error {
 		//}
 		//if err := r.startHTTP(r.httpEndpoint, apis, nil, r.config.HTTPCors, r.config.HttpVirtualHosts, HTTPTimeouts{}, r.config.HttpExposeAll); err != nil {
 		apis := r.GetHttpApis()
-		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, []string{"*"}, []string{}, HTTPTimeouts{}, false); err != nil {
+		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, HTTPTimeouts{}, false); err != nil {
 			r.logger.Info(err)
 			r.stopInProcess()
 			r.stopIPC()
@@ -269,4 +269,12 @@ func (r *RPC) StartRPC() error {
 	//}
 
 	return nil
+}
+
+func scheme(endpoint string) (string, string, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return "", "", err
+	}
+	return u.Scheme, u.Host, nil
 }

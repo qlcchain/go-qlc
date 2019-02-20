@@ -5,149 +5,171 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/qlcchain/go-qlc/test/mock"
 )
 
-func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
+var (
+	rs    *RPCService
+	count int
+	lock  = sync.RWMutex{}
+	lock2 = sync.RWMutex{}
+)
 
+func setupTestCase(t *testing.T) func(t *testing.T) {
+	t.Parallel()
+	lock.Lock()
+	defer lock.Unlock()
+	count = count + 1
 	rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc")
-	//dir := filepath.Join(rpcDir, "config.json")
-	cm := config.NewCfgManager(rpcDir)
-	cfg, err := cm.Load()
-	cfg.DataDir = rpcDir
-	dpos := consensus.DposService{}
-	rs := NewRPCService(cfg, &dpos)
+	if rs == nil {
+		//dir := filepath.Join(rpcDir, "config.json")
+		cm := config.NewCfgManager(rpcDir)
+		cfg, err := cm.Load()
+		cfg.DataDir = rpcDir
+		dpos := consensus.DposService{}
+		rs = NewRPCService(cfg, &dpos)
 
-	cfg.RPC = new(config.RPCConfig)
-	cfg.RPC.HTTPEndpoint = "0.0.0.0:9735"
-	cfg.RPC.WSEndpoint = "0.0.0.0:9736"
-	cfg.RPC.IPCEndpoint = defaultIPCEndpoint(filepath.Join(cfg.DataDir, "qlc_test.ipc"))
-	cfg.RPC.WSEnabled = true
-	cfg.RPC.IPCEnabled = true
-	cfg.RPC.HTTPEnabled = true
-	rs.rpc.config = cfg
+		cfg.RPC = new(config.RPCConfig)
+		cfg.RPC.HTTPEndpoint = "tcp://0.0.0.0:19735"
+		cfg.RPC.WSEndpoint = "tcp://0.0.0.0:19736"
+		cfg.RPC.IPCEndpoint = defaultIPCEndpoint(filepath.Join(cfg.DataDir, "qlc_test.ipc"))
+		cfg.RPC.WSEnabled = true
+		cfg.RPC.IPCEnabled = true
+		cfg.RPC.HTTPEnabled = true
+		rs.rpc.config = cfg
 
-	err = rs.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("rpc started")
-	return func(t *testing.T) {
-		rs.Stop()
-		rs.rpc.ledger.Close()
-		rs.rpc.dpos.Stop()
-		rs.rpc.wallet.Close()
-		err = os.RemoveAll(rpcDir)
+		err = rs.Start()
 		if err != nil {
 			t.Fatal(err)
 		}
-	}, rs.rpc
+		t.Log("rpc started")
+	}
+	return func(t *testing.T) {
+		lock2.Lock()
+		defer lock2.Unlock()
+		count = count - 1
+		if count == 0 {
+			rs.Stop()
+			rs.rpc.ledger.Close()
+			rs.rpc.dpos.Stop()
+			rs.rpc.wallet.Close()
+			err := os.RemoveAll(rpcDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 }
 
-func TestRPC_Client(t *testing.T) {
-	teardownTestCase, r := setupTestCase(t)
+func TestRPC_HTTP(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	//client, err := Dial(fmt.Sprintf("http://%s", r.config.RPC.HTTPEndpoint))
-	client, err := Dial(fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
-	//client, err := Dial(r.config.RPC.IPCEndpoint)
+	_, address, _ := scheme(rs.rpc.config.RPC.HTTPEndpoint)
+	client, err := Dial(fmt.Sprintf("http://%s", address))
+	defer client.Close()
+
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	addr := mock.Address()
-	ac := mock.AccountMeta(addr)
-	r.ledger.AddAccountMeta(ac)
-	addr2 := mock.Address()
-	ac2 := mock.AccountMeta(addr2)
-	r.ledger.AddAccountMeta(ac2)
-	var resp map[types.Address]map[types.Hash]types.Balance
-	err = client.Call(&resp, "qlcclassic_accountsBalances", []types.Address{addr, addr2})
-	//err = client.Call(&resp, "qlcclassic_accountsBalances", []string{addr.String(), addr2.String()})
+	var resp bool
+	err = client.Call(&resp, "account_validate", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resp {
+		t.Fatal()
+	}
+
+	blk := new(types.StateBlock)
+	blk.Token = mock.GetChainTokenType()
+	rs.rpc.ledger.AddBlock(blk)
+	var resp2 types.Hash
+	err = client.Call(&resp2, "ledger_blockHash", blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blk.GetHash() != resp2 {
+		t.Fatal()
+	}
+}
+
+func TestRPC_WebSocket(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	_, address, _ := scheme(rs.rpc.config.RPC.WSEndpoint)
+	client, err := Dial(fmt.Sprintf("ws://%s", address))
+	defer client.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	acc := mock.Account()
+	blk := new(types.StateBlock)
+	blk.Address = acc.Address()
+	blk.Previous = types.ZeroHash
+	blk.Token = mock.GetChainTokenType()
+	rs.rpc.ledger.AddBlock(blk)
+
+	var resp []api.APIBlock
+	err = client.Call(&resp, "ledger_blocksInfo", []types.Hash{blk.GetHash()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(resp)
 }
 
-func TestRPC_Client2(t *testing.T) {
-	teardownTestCase, r := setupTestCase(t)
+func TestRPC_IPC(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	client, err := Dial(fmt.Sprintf("http://%s", r.config.RPC.HTTPEndpoint))
-	//client, err := Dial(fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
-	//client, err := Dial(r.config.RPC.IPCEndpoint)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client, err := Dial(rs.rpc.config.RPC.IPCEndpoint)
+	defer client.Close()
 
-	b1 := mock.StateBlock()
-	err = r.ledger.AddBlock(b1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b2 := mock.StateBlock()
-	err = r.ledger.AddBlock(b2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var resp []*types.StateBlock
-	err = client.Call(&resp, "qlcclassic_blocksInfo", []types.Hash{b1.GetHash(), b2.GetHash()})
-	//TODO: fix this
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	t.Log(resp)
-	for _, b := range resp {
-		fmt.Println(b.GetHash())
-	}
-}
-
-func TestRPC_Client3(t *testing.T) {
-	teardownTestCase, r := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	//client, err := Dial(fmt.Sprintf("http://%s", r.config.RPC.HTTPEndpoint))
-	//client, err := Dial(fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
-	client, err := Dial(r.config.RPC.IPCEndpoint)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var resp types.Hash
-	b := mock.StateBlock()
-	err = client.Call(&resp, "qlcclassic_process", b)
-	if err != nil {
-		t.Log(err)
-	}
-	t.Log(resp)
-}
-
-func TestRPC_Client4(t *testing.T) {
-	teardownTestCase, r := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	//client, err := Dial(fmt.Sprintf("http://%s", r.config.RPC.HTTPEndpoint))
-	//client, err := Dial(fmt.Sprintf("ws://%s", r.config.RPC.WSEndpoint))
-	client, err := r.Attach()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	addr := mock.Address()
-	ac := mock.AccountMeta(addr)
-	r.ledger.AddAccountMeta(ac)
-	var resp map[types.Address]map[types.Hash]types.Balance
-	err = client.Call(&resp, "qlcclassic_accountsBalances", []types.Address{addr})
+	var resp bool
+	err = client.Call(&resp, "account_validate", addr)
 	if err != nil {
-		t.Log(err)
+		t.Fatal(err)
 	}
-	t.Log(resp)
+	if !resp {
+		t.Fatal()
+	}
+}
+
+func TestRPC_Attach(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	client, err := rs.rpc.Attach()
+	defer client.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr := mock.Address()
+	var resp bool
+	err = client.Call(&resp, "account_validate", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resp {
+		t.Fatal()
+	}
 }
 
 func defaultIPCEndpoint(str string) string {
