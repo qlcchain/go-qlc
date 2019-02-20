@@ -47,7 +47,11 @@ func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []str
 		listener net.Listener
 		err      error
 	)
-	if listener, err = net.Listen("tcp4", endpoint); err != nil {
+	network, address, err := scheme(endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+	if listener, err = net.Listen(network, address); err != nil {
 		//logger.Info(err)
 		return nil, nil, err
 	}
@@ -80,7 +84,11 @@ func StartWSEndpoint(endpoint string, apis []API, modules []string, wsOrigins []
 		listener net.Listener
 		err      error
 	)
-	if listener, err = net.Listen("tcp4", endpoint); err != nil {
+	network, address, err := scheme(endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+	if listener, err = net.Listen(network, address); err != nil {
 		return nil, nil, err
 	}
 

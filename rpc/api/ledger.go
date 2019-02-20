@@ -211,7 +211,19 @@ func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, er
 }
 
 func (l *LedgerApi) AccountVotingWeight(addr types.Address) (types.Balance, error) {
-	return l.ledger.GetRepresentation(addr)
+	raw, err := l.ledger.GetRepresentation(addr)
+	if err != nil {
+		return types.ZeroBalance, err
+	}
+	info, err := mock.GetTokenById(mock.GetChainTokenType())
+	if err != nil {
+		return types.ZeroBalance, err
+	}
+	balance, err := mock.RawToBalance(raw, info.TokenName)
+	if err != nil {
+		return types.ZeroBalance, err
+	}
+	return balance, nil
 }
 
 func (l *LedgerApi) AccountsBalances(addresses []types.Address) (map[types.Address]map[string]map[string]types.Balance, error) {
@@ -240,7 +252,12 @@ func (l *LedgerApi) AccountsBalances(addresses []types.Address) (map[types.Addre
 			for _, pending := range pendings {
 				amount = amount.Add(pending.Amount)
 			}
-			b["balance"] = t.Balance
+			raw := t.Balance
+			balance, err := mock.RawToBalance(raw, info.TokenName)
+			if err != nil {
+				return nil, err
+			}
+			b["balance"] = balance
 			b["pending"] = amount
 			ts[info.TokenName] = b
 		}
@@ -480,7 +497,16 @@ func (l *LedgerApi) Delegators(hash types.Address) (map[types.Address]types.Bala
 		t := am.Token(mock.GetChainTokenType())
 		if t != nil {
 			if t.Representative == hash {
-				ds[am.Address] = t.Balance
+				info, err := mock.GetTokenById(mock.GetChainTokenType())
+				if err != nil {
+					return err
+				}
+				raw := t.Balance
+				balance, err := mock.RawToBalance(raw, info.TokenName)
+				if err != nil {
+					return err
+				}
+				ds[am.Address] = balance
 			}
 		}
 		return nil
@@ -641,7 +667,15 @@ func (r APIRepresentatives) Less(i, j int) bool {
 //Representatives returns a list of pairs of representative and its voting weight
 func (l *LedgerApi) Representatives(sorting *bool) (*APIRepresentatives, error) {
 	rs := make(APIRepresentatives, 0)
-	err := l.ledger.GetRepresentations(func(address types.Address, balance types.Balance) error {
+	err := l.ledger.GetRepresentations(func(address types.Address, raw types.Balance) error {
+		info, err := mock.GetTokenById(mock.GetChainTokenType())
+		if err != nil {
+			return err
+		}
+		balance, err := mock.RawToBalance(raw, info.TokenName)
+		if err != nil {
+			return err
+		}
 		r := APIRepresentative{address, balance}
 		rs = append(rs, r)
 		return nil

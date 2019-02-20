@@ -37,14 +37,16 @@ type LogConfig struct {
 type RPCConfig struct {
 	Enable bool `json:"enable"`
 	//Listen string `json:"Listen"`
+	HTTPEndpoint     string   `json:"hTTPEndpoint"`
+	HTTPEnabled      bool     `json:"hTTPEnabled"`
+	HTTPCors         []string `json:"hTTPCors"`
+	HttpVirtualHosts []string `json:"httpVirtualHosts"`
 
-	HTTPEnabled bool `json:"hTTPEnabled"`
-	WSEnabled   bool `json:"wSEnabled"`
-	IPCEnabled  bool `json:"iPCEnabled"`
+	WSEnabled   bool   `json:"wSEnabled"`
+	WSEndpoint  string `json:"wSEndpoint"`
+	IPCEndpoint string `json:"iPCEndpoint"`
 
-	HTTPEndpoint string `json:"hTTPEndpoint"`
-	WSEndpoint   string `json:"wSEndpoint"`
-	IPCEndpoint  string `json:"iPCEndpoint"`
+	IPCEnabled bool `json:"iPCEnabled"`
 }
 
 type P2PConfig struct {
