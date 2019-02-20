@@ -8,38 +8,52 @@
 package commands
 
 import (
+	"fmt"
+
+	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
-	"github.com/spf13/cobra"
 )
 
-// wcCmd represents the wc command
-var wcCmd = &cobra.Command{
-	Use:   "walletcreate",
-	Short: "create a wallet for QLCChain node",
-	Run: func(cmd *cobra.Command, args []string) {
-		addr, err := createWallet()
-		if err != nil {
-			cmd.Println(err)
-		} else {
-			cmd.Printf("create wallet: address=>%s, password=>%s success", addr.String(), pwd)
-			cmd.Println()
-		}
-	},
-}
-
 func init() {
-	rootCmd.AddCommand(wcCmd)
+	pwd := Flag{
+		Name:  "password",
+		Must:  true,
+		Usage: "password for new wallet",
+		Value: "",
+	}
+	c := &ishell.Cmd{
+		Name: "walletcreate",
+		Help: "create a wallet for QLCChain node",
+		Func: func(c *ishell.Context) {
+			args := []Flag{pwd}
+			if HelpText(c, args) {
+				return
+			}
+			if err := CheckArgs(c, args); err != nil {
+				Warn(err)
+				return
+			}
+			pwdP := StringVar(c.Args, pwd)
+			addr, err := createWallet(pwdP)
+			if err != nil {
+				Warn(err)
+			} else {
+				Info(fmt.Sprintf("create wallet: address=>%s, password=>%s success", addr.String(), pwdP))
+			}
+		},
+	}
+	shell.AddCmd(c)
 }
 
-func createWallet() (types.Address, error) {
-	client, err := rpc.Dial(endpoint)
+func createWallet(pwdP string) (types.Address, error) {
+	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return types.ZeroAddress, err
 	}
 	defer client.Close()
 	var addr types.Address
-	err = client.Call(&addr, "wallet_newWallet", pwd)
+	err = client.Call(&addr, "wallet_newWallet", pwdP)
 	if err != nil {
 		return types.ZeroAddress, err
 	}

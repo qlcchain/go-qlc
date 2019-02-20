@@ -8,51 +8,57 @@
 package commands
 
 import (
+	"fmt"
+
+	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
-	"github.com/spf13/cobra"
 )
-
-var (
-	addresses []string
-)
-
-// bcCmd represents the bc command
-var balanceCmd = &cobra.Command{
-	Use:   "balance",
-	Short: " balance for accounts",
-	Run: func(cmd *cobra.Command, args []string) {
-		client, err := rpc.Dial(endpoint)
-		if err != nil {
-			cmd.Println(err)
-			return
-		}
-		defer client.Close()
-		if len(addresses) < 1 {
-			cmd.Println("err account")
-			return
-		}
-		para := make([]string, 0)
-		for _, a := range addresses {
-			para = append(para, a)
-		}
-		var resp map[types.Address]map[string]map[string]types.Balance
-		err = client.Call(&resp, "ledger_accountsBalances", para)
-		if err != nil {
-			cmd.Println(err)
-			return
-		}
-		for key, value := range resp {
-			cmd.Println(key)
-			for k, v := range value {
-				cmd.Printf("	%s, balance:%s, pending:%s", k, v["balance"], v["pending"])
-				cmd.Println()
-			}
-		}
-	},
-}
 
 func init() {
-	balanceCmd.Flags().StringSliceVar(&addresses, "address", addresses, "address for accounts")
-	rootCmd.AddCommand(balanceCmd)
+	address := Flag{
+		Name:  "address",
+		Must:  true,
+		Usage: "address for account",
+		Value: "",
+	}
+	s := &ishell.Cmd{
+		Name: "balance",
+		Help: "balance for accounts",
+		Func: func(c *ishell.Context) {
+			args := []Flag{address}
+			if HelpText(c, args) {
+				return
+			}
+			if err := CheckArgs(c, args); err != nil {
+				Warn(err)
+				return
+			}
+			addresses := StringSliceVar(c.Args, address)
+
+			client, err := rpc.Dial(endpointP)
+			if err != nil {
+				Warn(err)
+				return
+			}
+			defer client.Close()
+			var resp map[types.Address]map[string]map[string]types.Balance
+			err = client.Call(&resp, "ledger_accountsBalances", addresses)
+			if err != nil {
+				Warn(err)
+				return
+			}
+			if len(resp) == 0 {
+				Warn("can not find addresses in wallet")
+			}
+			for key, value := range resp {
+				Info(key, ":")
+				for k, v := range value {
+					fmt.Printf("      %s: balance is %s, pending is %s", k, v["balance"], v["pending"])
+					fmt.Println()
+				}
+			}
+		},
+	}
+	shell.AddCmd(s)
 }

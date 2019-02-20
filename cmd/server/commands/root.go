@@ -18,65 +18,121 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/abiosoft/ishell"
+	"github.com/abiosoft/readline"
 	"github.com/qlcchain/go-qlc/chain"
+	"github.com/qlcchain/go-qlc/cmd/client/commands"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/spf13/cobra"
 )
 
+var shell = ishell.NewWithConfig(
+	&readline.Config{
+		Prompt:      fmt.Sprintf("%c[1;0;32m%s%c[0m", 0x1B, ">> ", 0x1B),
+		HistoryFile: "/tmp/readline.tmp",
+		//AutoComplete:      completer,
+		InterruptPrompt:   "^C",
+		EOFPrompt:         "exit",
+		HistorySearchFold: true,
+		//FuncFilterInputRune: filterInput,
+	})
+
 var (
-	account   string
-	pwd       string
-	isProfile bool
-	cfgPath   string
-	ctx       *chain.QlcContext
-	services  []common.Service
+	//accountP  string
+	account commands.Flag
+	//passwordP string
+	password commands.Flag
+	//cfgPathP  string
+	cfgPath commands.Flag
+
+	ctx      *chain.QlcContext
+	services []common.Service
 )
+
+func init() {
+	account = commands.Flag{
+		Name:  "account",
+		Must:  false,
+		Usage: "wallet address,if is nil,just run a node",
+		Value: "",
+	}
+	password = commands.Flag{
+		Name:  "password",
+		Must:  false,
+		Usage: "password for wallet",
+		Value: "",
+	}
+	cfgPath = commands.Flag{
+		Name:  "config",
+		Must:  false,
+		Usage: "config file path",
+		Value: "",
+	}
+
+	isProfile := commands.Flag{
+		Name:  "profile",
+		Must:  false,
+		Usage: "enable profile",
+		Value: false,
+	}
+
+	s := &ishell.Cmd{
+		Name: "run",
+		Help: "start qlc server",
+		Func: func(c *ishell.Context) {
+			args := []commands.Flag{account, password, cfgPath, isProfile}
+			if commands.HelpText(c, args) {
+				return
+			}
+			if err := commands.CheckArgs(c, args); err != nil {
+				commands.Warn(err)
+				return
+			}
+			accountP := commands.StringVar(c.Args, account)
+			passwordP := commands.StringVar(c.Args, password)
+			cfgPathP := commands.StringVar(c.Args, cfgPath)
+			isProfileP := commands.BoolVar(c.Args, isProfile)
+
+			err := start(accountP, passwordP, cfgPathP, isProfileP)
+			if err != nil {
+				commands.Warn(err)
+			}
+		},
+	}
+
+	shell.AddCmd(s)
+}
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	shell.Println("QLC Chain Server")
+	shell.Run()
+
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "QLCCChain",
-	Short: "CLI for QLCChain Server",
-	Long:  `QLC Chain is the next generation public blockchain designed for the NaaS.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		err := start()
-		if err != nil {
-			cmd.Println(err)
-		}
-
-	},
-}
-
-func start() error {
+func start(accountP, passwordP, cfgPathP string, isProfileP bool) error {
 	var addr types.Address
-	if cfgPath == "" {
-		cfgPath = config.DefaultDataDir()
+	if cfgPathP == "" {
+		cfgPathP = config.DefaultDataDir()
 	}
-	cm := config.NewCfgManager(cfgPath)
+	cm := config.NewCfgManager(cfgPathP)
 	cfg, err := cm.Load()
 	if err != nil {
 		return err
 	}
-	if account == "" {
+	if accountP == "" {
 		addr = types.ZeroAddress
 	} else {
-		addr, err = types.HexToAddress(account)
+		addr, err = types.HexToAddress(accountP)
 		if err != nil {
-			fmt.Println(err)
+			return err
 		}
 	}
 
-	if isProfile {
+	if isProfileP {
 		profDir := filepath.Join(cfg.DataDir, "pprof", time.Now().Format("2006-01-02T15-04"))
 		_ = util.CreateDirIfNotExist(profDir)
 		//CPU profile
@@ -121,19 +177,9 @@ func start() error {
 		}()
 	}
 
-	err = runNode(addr, pwd, cfg)
+	err = runNode(addr, passwordP, cfg)
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file")
-	rootCmd.PersistentFlags().StringVarP(&account, "account", "a", "", "wallet address,if is nil,just run a node")
-	rootCmd.PersistentFlags().StringVarP(&pwd, "password", "p", "", "password for wallet")
-	rootCmd.PersistentFlags().BoolVar(&isProfile, "profile", false, "enable profile")
 }

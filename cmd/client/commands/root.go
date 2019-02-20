@@ -9,51 +9,52 @@ package commands
 
 import (
 	"fmt"
-	_ "net/http/pprof"
-	"os"
 
-	"github.com/spf13/cobra"
+	"github.com/abiosoft/ishell"
+	"github.com/abiosoft/readline"
 )
+
+type Flag struct {
+	Name  string
+	Usage string
+	Must  bool
+	Value interface{}
+}
+
+var shell = ishell.NewWithConfig(&readline.Config{
+	Prompt:      fmt.Sprintf("%c[1;0;32m%s%c[0m", 0x1B, ">> ", 0x1B),
+	HistoryFile: "/tmp/readline.tmp",
+	//AutoComplete:      completer,
+	InterruptPrompt:   "^C",
+	EOFPrompt:         "exit",
+	HistorySearchFold: true,
+	//FuncFilterInputRune: filterInput,
+})
 
 var (
-	account  string
-	pwd      string
-	cfgPath  string
-	endpoint string
+	endpointP  string
+	endpoint   Flag
+	commonFlag []Flag
 )
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+// set global variable
+func init() {
+	endpointP = "ws://0.0.0.0:9736"
+	endpoint = Flag{
+		Name:  "endpoint",
+		Must:  false,
+		Usage: "endpoint for client to connect to server",
+		Value: endpointP,
 	}
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "QLCC",
-	Short: "CLI for QLCChain Client.",
-	Long:  `QLC Chain is the next generation public blockchain designed for the NaaS.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		err := start()
-		if err != nil {
-			cmd.Println(err)
-		}
+func Execute() {
+	shell.Println("QLC Chain Client")
 
-	},
-}
+	//set common variable
+	commonFlag = make([]Flag, 0)
+	// commonFlag = append(commonFlag, p)
 
-func start() error {
-	return nil
-}
-
-func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	rootCmd.PersistentFlags().StringVarP(&account, "account", "a", "", "wallet address")
-	rootCmd.PersistentFlags().StringVarP(&pwd, "password", "p", "", "password for wallet")
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file")
-	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "ws://0.0.0.0:9736", "endpoint for client")
+	// run shell
+	shell.Run()
 }

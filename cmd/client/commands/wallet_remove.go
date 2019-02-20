@@ -8,36 +8,51 @@
 package commands
 
 import (
+	"fmt"
+
+	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/rpc"
-	"github.com/spf13/cobra"
 )
 
-// wrCmd represents the wr command
-var wrCmd = &cobra.Command{
-	Use:   "walletremove",
-	Short: "remove wallet",
-	Run: func(cmd *cobra.Command, args []string) {
-		err := removeWallet()
-		if err != nil {
-			cmd.Println(err)
-		} else {
-			cmd.Printf("remove wallet: %s success", account)
-			cmd.Println()
-		}
-	},
-}
-
 func init() {
-	rootCmd.AddCommand(wrCmd)
+	account := Flag{
+		Name:  "account",
+		Must:  true,
+		Usage: "account for wallet",
+		Value: "",
+	}
+	c := &ishell.Cmd{
+		Name: "walletremove",
+		Help: "remove a wallet",
+		Func: func(c *ishell.Context) {
+			args := []Flag{account}
+			if HelpText(c, args) {
+				return
+			}
+			if err := CheckArgs(c, args); err != nil {
+				Warn(err)
+				return
+			}
+			accountP := StringVar(c.Args, account)
+
+			err := removeWallet(accountP)
+			if err != nil {
+				Warn(err)
+			} else {
+				Info(fmt.Sprintf("remove wallet: %s success", accountP))
+			}
+		},
+	}
+	shell.AddCmd(c)
 }
 
-func removeWallet() error {
-	client, err := rpc.Dial(endpoint)
+func removeWallet(accountP string) error {
+	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	err = client.Call(nil, "wallet_remove", account)
+	err = client.Call(nil, "wallet_remove", accountP)
 	if err != nil {
 		return err
 	}

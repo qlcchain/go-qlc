@@ -14,34 +14,47 @@ import (
 	"sort"
 	"time"
 
+	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/rpc"
-	"github.com/spf13/cobra"
 )
 
-// bcCmd represents the bc command
-var performanceTimeCmd = &cobra.Command{
-	Use:   "performance",
-	Short: "get performance time",
-	Run: func(cmd *cobra.Command, args []string) {
-		err := getPerformanceTime()
-		if err != nil {
-			cmd.Println(err)
-		}
-	},
-}
-
 func init() {
-	rootCmd.AddCommand(performanceTimeCmd)
+	cfgPath := Flag{
+		Name:  "config",
+		Must:  false,
+		Usage: "config file path",
+		Value: "",
+	}
+	c := &ishell.Cmd{
+		Name: "performance",
+		Help: "get performance time",
+		Func: func(c *ishell.Context) {
+			args := []Flag{cfgPath}
+			if HelpText(c, args) {
+				return
+			}
+			if err := CheckArgs(c, args); err != nil {
+				Warn(err)
+				return
+			}
+			cfgPathP := StringVar(c.Args, cfgPath)
+			err := getPerformanceTime(cfgPathP)
+			if err != nil {
+				Warn(err)
+			}
+		},
+	}
+	shell.AddCmd(c)
 }
 
-func getPerformanceTime() error {
-	if cfgPath == "" {
-		cfgPath = config.DefaultDataDir()
+func getPerformanceTime(cfgPathP string) error {
+	if cfgPathP == "" {
+		cfgPathP = config.DefaultDataDir()
 	}
 
-	path1 := filepath.Join(cfgPath, "performanceTime.json")
+	path1 := filepath.Join(cfgPathP, "performanceTime.json")
 	_ = os.Remove(path1)
 
 	fd1, err := os.OpenFile(path1, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
@@ -49,7 +62,7 @@ func getPerformanceTime() error {
 		return err
 	}
 
-	path2 := filepath.Join(cfgPath, "performanceTime_orig.json")
+	path2 := filepath.Join(cfgPathP, "performanceTime_orig.json")
 	_ = os.Remove(path2)
 
 	fd2, err := os.OpenFile(path2, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
@@ -64,7 +77,7 @@ func getPerformanceTime() error {
 
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 
-	client, err := rpc.Dial(endpoint)
+	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
 	}
