@@ -8,33 +8,36 @@
 package commands
 
 import (
+	"fmt"
+
+	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/test/mock"
-	"github.com/spf13/cobra"
 )
 
-// tlCmd represents the tl command
-var tlCmd = &cobra.Command{
-	Use:   "tokens",
-	Short: "token list",
-	Run: func(cmd *cobra.Command, args []string) {
-		client, err := rpc.Dial(endpoint)
-		if err != nil {
-			cmd.Println(err)
-			return
-		}
-		defer client.Close()
-
-		var tokeninfos []*mock.TokenInfo
-		err = client.Call(&tokeninfos, "ledger_tokens")
-
-		for _, v := range tokeninfos {
-			cmd.Printf("TokenId:%s  TokenName:%s  TokenSymbol:%s  TotalSupply:%s  Decimals:%d  Owner:%s", v.TokenId, v.TokenName, v.TokenSymbol, v.TotalSupply, v.Decimals, v.Owner)
-			cmd.Println()
-		}
-	},
-}
-
 func init() {
-	rootCmd.AddCommand(tlCmd)
+	c := &ishell.Cmd{
+		Name: "tokens",
+		Help: "return token info list of chain",
+		Func: func(c *ishell.Context) {
+			if HelpText(c, nil) {
+				return
+			}
+			client, err := rpc.Dial(endpointP)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			defer client.Close()
+
+			var tokeninfos []*mock.TokenInfo
+			err = client.Call(&tokeninfos, "ledger_tokens")
+
+			for _, v := range tokeninfos {
+				fmt.Printf("TokenId:%s  TokenName:%s  TokenSymbol:%s  TotalSupply:%s  Decimals:%d  Owner:%s", v.TokenId, v.TokenName, v.TokenSymbol, v.TotalSupply, v.Decimals, v.Owner)
+				fmt.Println()
+			}
+		},
+	}
+	shell.AddCmd(c)
 }
