@@ -165,7 +165,16 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 	}
 	for _, t := range am.Tokens {
 		if t.Type == mock.GetChainTokenType() {
-			aa.CoinBalance = t.Balance
+			c, err := mock.GetTokenById(mock.GetChainTokenType())
+			if err != nil {
+				return nil, err
+			}
+			raw := t.Balance
+			amount, err := mock.RawToBalance(raw, c.TokenName)
+			if err != nil {
+				return nil, err
+			}
+			aa.CoinBalance = amount
 			aa.Representative = t.Representative
 		}
 		info, err := mock.GetTokenById(t.Type)
@@ -173,6 +182,9 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 			return nil, err
 		}
 		pendingKeys, err := l.ledger.TokenPending(address, t.Type)
+		if err != nil {
+			return nil, err
+		}
 		pendingAmount := types.ZeroBalance
 		for _, key := range pendingKeys {
 			pendinginfo, err := l.ledger.GetPending(*key)
@@ -180,15 +192,20 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 				return nil, err
 			}
 			pendingAmount = pendingAmount.Add(pendinginfo.Amount)
-
 		}
+		t.Balance, err = mock.RawToBalance(t.Balance, info.TokenName)
 		if err != nil {
 			return nil, err
 		}
+		p, err := mock.RawToBalance(pendingAmount, info.TokenName)
+		if err != nil {
+			return nil, err
+		}
+
 		tm := APITokenMeta{
 			TokenMeta: t,
 			TokenName: info.TokenName,
-			Pending:   pendingAmount,
+			Pending:   p,
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
 
@@ -248,17 +265,22 @@ func (l *LedgerApi) AccountsBalances(addresses []types.Address) (map[types.Addre
 			if err != nil {
 				return nil, err
 			}
-			amount := types.ZeroBalance
-			for _, pending := range pendings {
-				amount = amount.Add(pending.Amount)
-			}
 			raw := t.Balance
 			balance, err := mock.RawToBalance(raw, info.TokenName)
 			if err != nil {
 				return nil, err
 			}
 			b["balance"] = balance
-			b["pending"] = amount
+
+			amount := types.ZeroBalance
+			for _, pending := range pendings {
+				amount = amount.Add(pending.Amount)
+			}
+			a, err := mock.RawToBalance(amount, info.TokenName)
+			if err != nil {
+				return nil, err
+			}
+			b["pending"] = a
 			ts[info.TokenName] = b
 		}
 		as[addr] = ts
@@ -426,15 +448,23 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 		}
 		b := new(APIBlock)
 		b = b.fromStateBlock(block)
-		b.SubType, b.Amount, err = l.judgeBlockKind(block)
-		if err != nil {
-			return nil, fmt.Errorf("judge block kind error, %s, %s", h, err)
-		}
 		token, err := mock.GetTokenById(block.GetToken())
 		if err != nil {
 			return nil, fmt.Errorf("get tokeninfo error, %s, %s", h, err)
 		}
 		b.TokenName = token.TokenName
+		b.SubType, b.Amount, err = l.judgeBlockKind(block)
+		if err != nil {
+			return nil, fmt.Errorf("judge block kind error, %s, %s", h, err)
+		}
+		b.Amount, err = mock.RawToBalance(b.Amount, b.TokenName)
+		if err != nil {
+			return nil, err
+		}
+		b.Balance, err = mock.RawToBalance(b.GetBalance(), b.TokenName)
+		if err != nil {
+			return nil, err
+		}
 		bs = append(bs, b)
 	}
 	return bs, nil

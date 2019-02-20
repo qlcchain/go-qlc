@@ -68,7 +68,7 @@ func initData() {
 	t1.Type = mock.GetChainTokenType()
 	// delegators
 	t1.Representative, _ = types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
-	t1.Balance = types.Balance{Int: big.NewInt(int64(1000000000001))}
+	t1.Balance = types.Balance{Int: big.NewInt(int64(110000000000000000))}
 	// accountBlocksCount
 	t1.BlockCount = 12
 	am1.Tokens = append(am1.Tokens, t1)
@@ -82,7 +82,7 @@ func initData() {
 	am2.Address = addr2
 	t3 := mock.TokenMeta(addr2)
 	t3.Type = mock.GetChainTokenType()
-	t3.Balance = types.Balance{Int: big.NewInt(int64(200000000002))}
+	t3.Balance = types.Balance{Int: big.NewInt(int64(2000000000000000))}
 	t3.Representative, _ = types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
 
 	am2.Tokens = append(am2.Tokens, t3)
@@ -105,7 +105,7 @@ func initData() {
 	pendinginfo := types.PendingInfo{
 		Source: addr2,
 		Type:   blocks[0].GetToken(),
-		Amount: types.StringToBalance("200000000000002"),
+		Amount: types.StringToBalance("2100000000000000000"),
 	}
 	ledger.AddPending(pendingkey, &pendinginfo)
 
@@ -116,7 +116,7 @@ func initData() {
 	pendinginfo2 := types.PendingInfo{
 		Source: addr2,
 		Type:   blocks[1].GetToken(),
-		Amount: types.StringToBalance("80000000008"),
+		Amount: types.StringToBalance("80000000000000"),
 	}
 	ledger.AddPending(pendingkey2, &pendinginfo2)
 
@@ -131,8 +131,8 @@ func initData() {
 	ledger.AddBlock(&sb)
 
 	//accountVotingWeight
-	ledger.AddRepresentation(addr1, types.Balance{Int: big.NewInt(int64(1000000000300))})
-	ledger.AddRepresentation(addr2, types.Balance{Int: big.NewInt(int64(10000000020))})
+	ledger.AddRepresentation(addr1, types.Balance{Int: big.NewInt(int64(120000000000000))})
+	ledger.AddRepresentation(addr2, types.Balance{Int: big.NewInt(int64(100000000000))})
 
 	// unchecked
 	ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlock(), types.UncheckedKindLink, types.UnSynchronized)
@@ -162,11 +162,11 @@ func initData() {
 	t5 := mock.TokenMeta(addr5)
 	t5.Type = mock.GetChainTokenType()
 	t5.Header = sb3.GetHash()
-	t5.Balance = types.Balance{Int: big.NewInt(int64(12000000000001))}
+	t5.Balance = types.Balance{Int: big.NewInt(int64(120000000000000))}
 	t5.Representative, _ = types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
 	am5.Tokens = append(am5.Tokens, t5)
 	ledger.AddAccountMeta(&am5)
-	ledger.AddRepresentation(t5.Representative, types.Balance{Int: big.NewInt(int64(20000000001))})
+	ledger.AddRepresentation(t5.Representative, types.Balance{Int: big.NewInt(int64(200000000000))})
 
 	//wallet
 	// seed : 3197189ef9ef28f2496a24a18f740820915bf3fd7076a46513301c52b3d3b59d
@@ -177,17 +177,17 @@ func initData() {
 	am6.Address = addr6
 	t6 := mock.TokenMeta(addr6)
 	t6.Type = mock.GetChainTokenType()
-	t6.Balance = types.Balance{Int: big.NewInt(int64(10000000000100))}
+	t6.Balance = types.Balance{Int: big.NewInt(int64(600000000000000))}
 	am6.Tokens = append(am6.Tokens, t6)
 
 	t7 := mock.TokenMeta(addr6)
 	t7.Type = mock.GetChainTokenType()
-	t7.Balance = types.Balance{Int: big.NewInt(int64(9000000000090))}
+	t7.Balance = types.Balance{Int: big.NewInt(int64(90000000000000))}
 	am6.Tokens = append(am6.Tokens, t7)
 
 	t8 := mock.TokenMeta(addr6)
 	t8.Type = mock.GetSmartContracts()[1].GetHash()
-	t8.Balance = types.Balance{Int: big.NewInt(int64(10000000090))}
+	t8.Balance = types.Balance{Int: big.NewInt(int64(10000000000))}
 	am6.Tokens = append(am6.Tokens, t8)
 	ledger.AddAccountMeta(&am6)
 

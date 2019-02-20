@@ -432,32 +432,32 @@ func BlockChain() ([]*types.StateBlock, error) {
 
 	token := GetChainTokenType()
 
-	b0 := createBlock(*ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(10000000))}, types.Hash(ac1.Address()), ac1.Address()) // genesis
+	b0 := createBlock(*ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, types.Hash(ac1.Address()), ac1.Address()) // genesis
 	blocks = append(blocks, b0)
 
-	b1 := createBlock(*ac1, b0.GetHash(), token, types.Balance{Int: big.NewInt(int64(4000000))}, types.Hash(ac2.Address()), ac1.Address()) //a1 send
+	b1 := createBlock(*ac1, b0.GetHash(), token, types.Balance{Int: big.NewInt(int64(40000000000))}, types.Hash(ac2.Address()), ac1.Address()) //a1 send
 	blocks = append(blocks, b1)
 
-	b2 := createBlock(*ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(6000000))}, b1.GetHash(), ac1.Address()) //a2 open
+	b2 := createBlock(*ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(60000000000))}, b1.GetHash(), ac1.Address()) //a2 open
 	blocks = append(blocks, b2)
 
-	b3 := createBlock(*ac2, b2.GetHash(), token, types.Balance{Int: big.NewInt(int64(6000000))}, types.ZeroHash, ac2.Address()) //a2 change
+	b3 := createBlock(*ac2, b2.GetHash(), token, types.Balance{Int: big.NewInt(int64(60000000000))}, types.ZeroHash, ac2.Address()) //a2 change
 	blocks = append(blocks, b3)
 
-	b4 := createBlock(*ac2, b3.GetHash(), token, types.Balance{Int: big.NewInt(int64(3000000))}, types.Hash(ac1.Address()), ac2.Address()) //a2 send
+	b4 := createBlock(*ac2, b3.GetHash(), token, types.Balance{Int: big.NewInt(int64(30000000000))}, types.Hash(ac1.Address()), ac2.Address()) //a2 send
 	blocks = append(blocks, b4)
 
-	b5 := createBlock(*ac1, b1.GetHash(), token, types.Balance{Int: big.NewInt(int64(7000000))}, b4.GetHash(), ac1.Address()) //a1 receive
+	b5 := createBlock(*ac1, b1.GetHash(), token, types.Balance{Int: big.NewInt(int64(70000000000))}, b4.GetHash(), ac1.Address()) //a1 receive
 	blocks = append(blocks, b5)
 
-	//b6 := createBlock(*ac2, b4.GetHash(), token, types.Balance{Int: big.NewInt(int64(2000000))}, types.Hash(ac3.Address()), ac2.Address()) //a2 send
+	//b6 := createBlock(*ac2, b4.GetHash(), token, types.Balance{Int: big.NewInt(int64(20000000000))}, types.Hash(ac3.Address()), ac2.Address()) //a2 send
 	//blocks = append(blocks, b6)
 	//
-	//b7 := createBlock(*ac3, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(1000000))}, b6.GetHash(), ac1.Address()) //a3 open
+	//b7 := createBlock(*ac3, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(10000000000))}, b6.GetHash(), ac1.Address()) //a3 open
 	//blocks = append(blocks, b7)
 	//
 	//token2 := Hash()
-	//b8 := createBlock(*ac3, types.ZeroHash, token2, types.Balance{Int: big.NewInt(int64(100000000))}, types.Hash(ac3.Address()), ac1.Address()) //new token
+	//b8 := createBlock(*ac3, types.ZeroHash, token2, types.Balance{Int: big.NewInt(int64(1000000000000))}, types.Hash(ac3.Address()), ac1.Address()) //new token
 	//blocks = append(blocks, b8)
 
 	r, err := json.Marshal(blocks)
