@@ -23,6 +23,10 @@ func walletList() {
 				if HelpText(c, nil) {
 					return
 				}
+				if err := CheckArgs(c, nil); err != nil {
+					Warn(err)
+					return
+				}
 				addrs, err := wallets()
 				if err != nil {
 					Warn(err)

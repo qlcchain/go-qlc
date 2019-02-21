@@ -24,6 +24,10 @@ func blockCount() {
 				if HelpText(c, nil) {
 					return
 				}
+				if err := CheckArgs(c, nil); err != nil {
+					Warn(err)
+					return
+				}
 				resp, err := blocks()
 				if err != nil {
 					Warn(err)

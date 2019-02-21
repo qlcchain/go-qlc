@@ -25,6 +25,10 @@ func version() {
 				if HelpText(c, nil) {
 					return
 				}
+				if err := CheckArgs(c, nil); err != nil {
+					Warn(err)
+					return
+				}
 				version := goqlc.VERSION
 				buildTime := goqlc.BUILDTIME
 				gitrev := goqlc.GITREV

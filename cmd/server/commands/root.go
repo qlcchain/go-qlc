@@ -26,94 +26,84 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/spf13/cobra"
 )
 
-var shell = ishell.NewWithConfig(
-	&readline.Config{
-		Prompt:      fmt.Sprintf("%c[1;0;32m%s%c[0m", 0x1B, ">> ", 0x1B),
-		HistoryFile: "/tmp/readline.tmp",
-		//AutoComplete:      completer,
-		InterruptPrompt:   "^C",
-		EOFPrompt:         "exit",
-		HistorySearchFold: true,
-		//FuncFilterInputRune: filterInput,
-	})
+var (
+	shell       *ishell.Shell
+	rootCmd     *cobra.Command
+	interactive bool
+)
 
 var (
-	//accountP  string
-	account commands.Flag
-	//passwordP string
-	password commands.Flag
-	//cfgPathP  string
-	cfgPath commands.Flag
+	accountP   string
+	passwordP  string
+	cfgPathP   string
+	isProfileP bool
+
+	account   commands.Flag
+	password  commands.Flag
+	cfgPath   commands.Flag
+	isProfile commands.Flag
 
 	ctx      *chain.QlcContext
 	services []common.Service
 )
 
-func init() {
-	account = commands.Flag{
-		Name:  "account",
-		Must:  false,
-		Usage: "wallet address,if is nil,just run a node",
-		Value: "",
-	}
-	password = commands.Flag{
-		Name:  "password",
-		Must:  false,
-		Usage: "password for wallet",
-		Value: "",
-	}
-	cfgPath = commands.Flag{
-		Name:  "config",
-		Must:  false,
-		Usage: "config file path",
-		Value: "",
-	}
-
-	isProfile := commands.Flag{
-		Name:  "profile",
-		Must:  false,
-		Usage: "enable profile",
-		Value: false,
-	}
-
-	s := &ishell.Cmd{
-		Name: "run",
-		Help: "start qlc server",
-		Func: func(c *ishell.Context) {
-			args := []commands.Flag{account, password, cfgPath, isProfile}
-			if commands.HelpText(c, args) {
-				return
-			}
-			if err := commands.CheckArgs(c, args); err != nil {
-				commands.Warn(err)
-				return
-			}
-			accountP := commands.StringVar(c.Args, account)
-			passwordP := commands.StringVar(c.Args, password)
-			cfgPathP := commands.StringVar(c.Args, cfgPath)
-			isProfileP := commands.BoolVar(c.Args, isProfile)
-
-			err := start(accountP, passwordP, cfgPathP, isProfileP)
-			if err != nil {
-				commands.Warn(err)
-			}
-		},
-	}
-
-	shell.AddCmd(s)
-}
-
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	shell.Println("QLC Chain Server")
-	shell.Run()
+func Execute(osArgs []string) {
+	if len(osArgs) == 2 && osArgs[1] == "-i" {
+		interactive = true
+	}
+	if interactive {
+		shell = ishell.NewWithConfig(
+			&readline.Config{
+				Prompt:      fmt.Sprintf("%c[1;0;32m%s%c[0m", 0x1B, ">> ", 0x1B),
+				HistoryFile: "/tmp/readline.tmp",
+				//AutoComplete:      completer,
+				InterruptPrompt:   "^C",
+				EOFPrompt:         "exit",
+				HistorySearchFold: true,
+				//FuncFilterInputRune: filterInput,
+			})
+		shell.Println("QLC Chain Server")
+		addcommand()
+		shell.Run()
+	} else {
+		rootCmd = &cobra.Command{
+			Use:   "QLCCChain",
+			Short: "CLI for QLCChain Server",
+			Long:  `QLC Chain is the next generation public blockchain designed for the NaaS.`,
+			Run: func(cmd *cobra.Command, args []string) {
+				err := start()
+				if err != nil {
+					cmd.Println(err)
+				}
+
+			},
+		}
+		rootCmd.PersistentFlags().StringVarP(&cfgPathP, "config", "c", "", "config file")
+		rootCmd.PersistentFlags().StringVarP(&accountP, "account", "a", "", "wallet address,if is nil,just run a node")
+		rootCmd.PersistentFlags().StringVarP(&passwordP, "password", "p", "", "password for wallet")
+		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
+		addcommand()
+		if err := rootCmd.Execute(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
 
 }
 
-func start(accountP, passwordP, cfgPathP string, isProfileP bool) error {
+func addcommand() {
+	if interactive {
+		run()
+	}
+	walletimport()
+}
+
+func start() error {
 	var addr types.Address
 	if cfgPathP == "" {
 		cfgPathP = config.DefaultDataDir()
@@ -182,4 +172,57 @@ func start(accountP, passwordP, cfgPathP string, isProfileP bool) error {
 		return err
 	}
 	return nil
+}
+
+func run() {
+	account = commands.Flag{
+		Name:  "account",
+		Must:  false,
+		Usage: "wallet address,if is nil,just run a node",
+		Value: "",
+	}
+	password = commands.Flag{
+		Name:  "password",
+		Must:  false,
+		Usage: "password for wallet",
+		Value: "",
+	}
+	cfgPath = commands.Flag{
+		Name:  "config",
+		Must:  false,
+		Usage: "config file path",
+		Value: "",
+	}
+
+	isProfile = commands.Flag{
+		Name:  "profile",
+		Must:  false,
+		Usage: "enable profile",
+		Value: false,
+	}
+
+	s := &ishell.Cmd{
+		Name: "run",
+		Help: "start qlc server",
+		Func: func(c *ishell.Context) {
+			args := []commands.Flag{account, password, cfgPath, isProfile}
+			if commands.HelpText(c, args) {
+				return
+			}
+			if err := commands.CheckArgs(c, args); err != nil {
+				commands.Warn(err)
+				return
+			}
+			accountP = commands.StringVar(c.Args, account)
+			passwordP = commands.StringVar(c.Args, password)
+			cfgPathP = commands.StringVar(c.Args, cfgPath)
+			isProfileP = commands.BoolVar(c.Args, isProfile)
+
+			err := start()
+			if err != nil {
+				commands.Warn(err)
+			}
+		},
+	}
+	shell.AddCmd(s)
 }

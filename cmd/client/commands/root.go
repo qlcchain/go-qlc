@@ -37,7 +37,7 @@ var (
 
 // set global variable
 func init() {
-	endpointP = "ws://0.0.0.0:9736"
+	endpointP = "ws://0.0.0.0:9737"
 	endpoint = Flag{
 		Name:  "endpoint",
 		Must:  false,
@@ -81,7 +81,6 @@ func Execute(osArgs []string) {
 		//rootCmd.PersistentFlags().StringVarP(&pwd, "password", "p", "", "password for wallet")
 		//rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file")
 		rootCmd.PersistentFlags().StringVarP(&endpointP, "endpoint", "e", "ws://0.0.0.0:9736", "endpoint for client")
-
 		addcommands()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)

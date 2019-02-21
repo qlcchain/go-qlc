@@ -63,6 +63,7 @@ func CheckArgs(c *ishell.Context, args []Flag) error {
 	// help
 	rawArgs := c.Args
 	argsMap := make(map[string]interface{})
+
 	args = append(args, commonFlag...)
 	for _, a := range args {
 		argsMap[prefix+a.Name] = a.Value
@@ -92,7 +93,7 @@ func CheckArgs(c *ishell.Context, args []Flag) error {
 				index = index + 2
 			}
 		} else {
-			return errors.New(fmt.Sprintf("'%s' is not a qlcc command. Please see 'help'", rawArgs[index]))
+			return errors.New(fmt.Sprintf("'%s' is not a qlcc command. Please see 'COMMAND --help'", rawArgs[index]))
 		}
 	}
 
@@ -132,12 +133,12 @@ func Info(a ...interface{}) {
 }
 
 func warnPrefix() {
-	shell.Printf("%c[1;0;31m%s%c[0m", 0x1B, "warn ", 0x1B)
+	fmt.Printf("%c[1;0;31m%s%c[0m", 0x1B, "warn ", 0x1B)
 }
 
 func Warn(a ...interface{}) {
 	warnPrefix()
-	shell.Println(a...)
+	fmt.Println(a...)
 }
 
 //

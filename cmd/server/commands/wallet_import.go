@@ -15,47 +15,63 @@ import (
 	"github.com/qlcchain/go-qlc/cmd/client/commands"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/spf13/cobra"
 )
 
-func init() {
-	seed := commands.Flag{
-		Name:  "seed",
-		Must:  true,
-		Usage: "seed for a wallet",
-		Value: "",
+func walletimport() {
+	var seedP string
+	if interactive {
+		seed := commands.Flag{
+			Name:  "seed",
+			Must:  true,
+			Usage: "seed for a wallet",
+			Value: "",
+		}
+		s := &ishell.Cmd{
+			Name: "walletimport",
+			Help: "import a wallet",
+			Func: func(c *ishell.Context) {
+				args := []commands.Flag{seed, password, cfgPath}
+				if commands.HelpText(c, args) {
+					return
+				}
+				if err := commands.CheckArgs(c, args); err != nil {
+					commands.Warn(err)
+					return
+				}
+				seedP = commands.StringVar(c.Args, seed)
+				passwordP = commands.StringVar(c.Args, password)
+				cfgPathP = commands.StringVar(c.Args, cfgPath)
+				//if passwordP = ""
+				addr, err := importWallet(seedP)
+				if err != nil {
+					commands.Warn(err)
+				} else {
+					commands.Info(fmt.Sprintf("import seed[%s] password[%s] => %s success", seedP, passwordP, addr.String()))
+				}
+			},
+		}
+		shell.AddCmd(s)
+	} else {
+		var wiCmd = &cobra.Command{
+			Use:   "walletimport",
+			Short: "import a wallet",
+			Run: func(cmd *cobra.Command, args []string) {
+				addr, err := importWallet(seedP)
+				if err != nil {
+					cmd.Println(err)
+				} else {
+					cmd.Printf("import seed[%s] password[%s] => %s success", seedP, passwordP, addr.String())
+					cmd.Println()
+				}
+			},
+		}
+		wiCmd.Flags().StringVarP(&seedP, "seed", "s", "", "seed for a wallet")
+		rootCmd.AddCommand(wiCmd)
 	}
-
-	s := &ishell.Cmd{
-		Name: "walletimport",
-		Help: "import a wallet",
-		Func: func(c *ishell.Context) {
-			args := []commands.Flag{seed, password, cfgPath}
-			if commands.HelpText(c, args) {
-				return
-			}
-			if err := commands.CheckArgs(c, args); err != nil {
-				commands.Warn(err)
-				return
-			}
-			seedP := commands.StringVar(c.Args, seed)
-			passwordP := commands.StringVar(c.Args, password)
-			cfgPathP := commands.StringVar(c.Args, cfgPath)
-			//if passwordP = ""
-
-			addr, err := importWallet(seedP, passwordP, cfgPathP)
-			if err != nil {
-				commands.Warn(err)
-			} else {
-				commands.Info(fmt.Sprintf("import seed[%s] password[%s] => %s success", seedP, passwordP, addr.String()))
-			}
-		},
-	}
-
-	shell.AddCmd(s)
-
 }
 
-func importWallet(seedP, passwordP, cfgPathP string) (types.Address, error) {
+func importWallet(seedP string) (types.Address, error) {
 	if len(seedP) == 0 {
 		return types.ZeroAddress, errors.New("invalid seed")
 	}

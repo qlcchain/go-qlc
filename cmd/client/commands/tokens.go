@@ -26,6 +26,10 @@ func tokens() {
 				if HelpText(c, nil) {
 					return
 				}
+				if err := CheckArgs(c, nil); err != nil {
+					Warn(err)
+					return
+				}
 				err := tokensinfo()
 				if err != nil {
 					Warn(err)
