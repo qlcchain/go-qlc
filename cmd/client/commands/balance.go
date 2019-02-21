@@ -38,7 +38,6 @@ func balance() {
 					return
 				}
 				addresses = StringSliceVar(c.Args, address)
-
 				err := accountBalance(addresses)
 				if err != nil {
 					Warn(err)
@@ -52,17 +51,11 @@ func balance() {
 			Use:   "balance",
 			Short: " balance for accounts",
 			Run: func(cmd *cobra.Command, args []string) {
-				client, err := rpc.Dial(endpointP)
-				if err != nil {
-					cmd.Println(err)
-					return
-				}
-				defer client.Close()
 				if len(addresses) < 1 {
 					cmd.Println("err account")
 					return
 				}
-				err = accountBalance(addresses)
+				err := accountBalance(addresses)
 				if err != nil {
 					cmd.Println(err)
 					return

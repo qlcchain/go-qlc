@@ -74,6 +74,7 @@ func changePassword() {
 				} else {
 					cmd.Printf("change password success for account: %s", accountP)
 					cmd.Println()
+					return
 				}
 			},
 		}

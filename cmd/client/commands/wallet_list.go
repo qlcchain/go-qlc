@@ -8,7 +8,10 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/abiosoft/ishell"
+	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/spf13/cobra"
@@ -27,19 +30,12 @@ func walletList() {
 					Warn(err)
 					return
 				}
-				addrs, err := wallets()
+				err := wallets()
 				if err != nil {
 					Warn(err)
-				} else {
-					if len(addrs) == 0 {
-						Warn("no account ,you can try import one!")
-					} else {
-						for _, v := range addrs {
-							Info(v)
-						}
-					}
-
+					return
 				}
+
 			},
 		}
 		shell.AddCmd(c)
@@ -48,17 +44,10 @@ func walletList() {
 			Use:   "walletlist",
 			Short: "wallet address list",
 			Run: func(cmd *cobra.Command, args []string) {
-				addrs, err := wallets()
+				err := wallets()
 				if err != nil {
 					cmd.Println(err)
-				} else {
-					if len(addrs) == 0 {
-						cmd.Println("no account ,you can try import one!")
-					} else {
-						for _, v := range addrs {
-							cmd.Println(v)
-						}
-					}
+					return
 				}
 			},
 		}
@@ -66,16 +55,29 @@ func walletList() {
 	}
 }
 
-func wallets() ([]types.Address, error) {
+func wallets() error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer client.Close()
 	var addresses []types.Address
 	err = client.Call(&addresses, "wallet_list")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return addresses, nil
+
+	if len(addresses) == 0 {
+		return errors.New("no account ,you can try import one!")
+	} else {
+		for _, v := range addresses {
+			if interactive {
+				Info(v)
+			} else {
+				fmt.Println(v)
+			}
+		}
+	}
+
+	return nil
 }

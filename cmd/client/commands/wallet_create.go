@@ -38,11 +38,10 @@ func walletCreate() {
 					return
 				}
 				pwdP = StringVar(c.Args, pwd)
-				addr, err := createWallet(pwdP)
+				err := createWallet(pwdP)
 				if err != nil {
 					Warn(err)
-				} else {
-					Info(fmt.Sprintf("create wallet: address=>%s, password=>%s success", addr.String(), pwdP))
+					return
 				}
 			},
 		}
@@ -52,12 +51,10 @@ func walletCreate() {
 			Use:   "walletcreate",
 			Short: "create a wallet for QLCChain node",
 			Run: func(cmd *cobra.Command, args []string) {
-				addr, err := createWallet(pwdP)
+				err := createWallet(pwdP)
 				if err != nil {
 					cmd.Println(err)
-				} else {
-					cmd.Printf("create wallet: address=>%s, password=>%s success", addr.String(), pwdP)
-					cmd.Println()
+					return
 				}
 			},
 		}
@@ -66,16 +63,22 @@ func walletCreate() {
 	}
 }
 
-func createWallet(pwdP string) (types.Address, error) {
+func createWallet(pwdP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
-		return types.ZeroAddress, err
+		return err
 	}
 	defer client.Close()
 	var addr types.Address
 	err = client.Call(&addr, "wallet_newWallet", pwdP)
 	if err != nil {
-		return types.ZeroAddress, err
+		return err
 	}
-	return addr, nil
+	s := fmt.Sprintf("create wallet: address=>%s, password=>%s success", addr.String(), pwdP)
+	if interactive {
+		Info(s)
+	} else {
+		fmt.Println(s)
+	}
+	return nil
 }

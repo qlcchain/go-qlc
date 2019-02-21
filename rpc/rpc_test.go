@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -101,6 +102,8 @@ func TestRPC_HTTP(t *testing.T) {
 	if blk.GetHash() != resp2 {
 		t.Fatal()
 	}
+	time.Sleep(10000 * time.Second)
+
 }
 
 func TestRPC_WebSocket(t *testing.T) {

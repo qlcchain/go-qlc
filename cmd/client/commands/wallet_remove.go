@@ -41,8 +41,7 @@ func walletRemove() {
 				err := removeWallet(accountP)
 				if err != nil {
 					Warn(err)
-				} else {
-					Info(fmt.Sprintf("remove wallet: %s success", accountP))
+					return
 				}
 			},
 		}
@@ -55,9 +54,7 @@ func walletRemove() {
 				err := removeWallet(accountP)
 				if err != nil {
 					cmd.Println(err)
-				} else {
-					cmd.Printf("remove wallet: %s success", accountP)
-					cmd.Println()
+					return
 				}
 			},
 		}
@@ -75,6 +72,12 @@ func removeWallet(accountP string) error {
 	err = client.Call(nil, "wallet_remove", accountP)
 	if err != nil {
 		return err
+	}
+	s := fmt.Sprintf("remove wallet %s success", accountP)
+	if interactive {
+		Info(s)
+	} else {
+		fmt.Println(s)
 	}
 	return nil
 }

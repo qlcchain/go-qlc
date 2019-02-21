@@ -46,6 +46,7 @@ func performance() {
 				err := getPerformanceTime(cfgPathP)
 				if err != nil {
 					Warn(err)
+					return
 				}
 			},
 		}
@@ -58,6 +59,7 @@ func performance() {
 				err := getPerformanceTime(cfgPathP)
 				if err != nil {
 					cmd.Println(err)
+					return
 				}
 			},
 		}

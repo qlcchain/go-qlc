@@ -43,11 +43,10 @@ func walletimport() {
 				passwordP = commands.StringVar(c.Args, password)
 				cfgPathP = commands.StringVar(c.Args, cfgPath)
 				//if passwordP = ""
-				addr, err := importWallet(seedP)
+				err := importWallet(seedP)
 				if err != nil {
 					commands.Warn(err)
-				} else {
-					commands.Info(fmt.Sprintf("import seed[%s] password[%s] => %s success", seedP, passwordP, addr.String()))
+					return
 				}
 			},
 		}
@@ -57,12 +56,10 @@ func walletimport() {
 			Use:   "walletimport",
 			Short: "import a wallet",
 			Run: func(cmd *cobra.Command, args []string) {
-				addr, err := importWallet(seedP)
+				err := importWallet(seedP)
 				if err != nil {
 					cmd.Println(err)
-				} else {
-					cmd.Printf("import seed[%s] password[%s] => %s success", seedP, passwordP, addr.String())
-					cmd.Println()
+					return
 				}
 			},
 		}
@@ -71,9 +68,9 @@ func walletimport() {
 	}
 }
 
-func importWallet(seedP string) (types.Address, error) {
+func importWallet(seedP string) error {
 	if len(seedP) == 0 {
-		return types.ZeroAddress, errors.New("invalid seed")
+		return errors.New("invalid seed")
 	}
 	if cfgPathP == "" {
 		cfgPathP = config.DefaultDataDir()
@@ -81,16 +78,23 @@ func importWallet(seedP string) (types.Address, error) {
 	cm := config.NewCfgManager(cfgPathP)
 	cfg, err := cm.Load()
 	if err != nil {
-		return types.ZeroAddress, err
+		return err
 	}
 	err = initNode(types.ZeroAddress, "", cfg)
 	if err != nil {
-		return types.ZeroAddress, err
+		return err
 	}
 	w := ctx.Wallet.Wallet
-	if addr, err := w.NewWalletBySeed(seedP, passwordP); err != nil {
-		return types.ZeroAddress, err
-	} else {
-		return addr, nil
+	addr, err := w.NewWalletBySeed(seedP, passwordP)
+	if err != nil {
+		return err
 	}
+
+	s := fmt.Sprintf("import seed[%s] password[%s] => %s success", seedP, passwordP, addr.String())
+	if interactive {
+		commands.Info(s)
+	} else {
+		fmt.Println(s)
+	}
+	return nil
 }

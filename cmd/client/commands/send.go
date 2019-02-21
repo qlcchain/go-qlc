@@ -83,6 +83,7 @@ func send() {
 				err := sendAction(fromP, toP, tokenP, amountP)
 				if err != nil {
 					cmd.Println(err)
+					return
 				}
 				fmt.Println("send transaction success!")
 			},
@@ -138,10 +139,11 @@ func sendTx(account *types.Account, to types.Address, token string, amount types
 		return err
 	}
 	from := account.Address()
+	s := fmt.Sprintf("send %s %s from %s to %s", amount, token, from.String(), to.String())
 	if interactive {
-		Info(fmt.Sprintf("send %s from %s to %s", token, from.String(), to.String()))
+		Info(s)
 	} else {
-		fmt.Println(fmt.Sprintf("send %s from %s to %s", token, from.String(), to.String()))
+		fmt.Println(s)
 	}
 	//Info(fmt.Sprintf("block hash: %s", sendBlock.GetHash()))
 

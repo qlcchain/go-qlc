@@ -29,13 +29,7 @@ func version() {
 					Warn(err)
 					return
 				}
-				version := goqlc.VERSION
-				buildTime := goqlc.BUILDTIME
-				gitrev := goqlc.GITREV
-				ts := strings.Split(buildTime, "_")
-				Info(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
-				Info(fmt.Sprintf("%-15s%s", "version:", version))
-				Info(fmt.Sprintf("%-15s%s", "hash:", gitrev))
+				versionInfo()
 			},
 		}
 		shell.AddCmd(c)
@@ -44,15 +38,25 @@ func version() {
 			Use:   "version",
 			Short: "show version info",
 			Run: func(cmd *cobra.Command, args []string) {
-				version := goqlc.VERSION
-				buildTime := goqlc.BUILDTIME
-				gitrev := goqlc.GITREV
-				ts := strings.Split(buildTime, "_")
-				cmd.Println(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
-				cmd.Println(fmt.Sprintf("%-15s%s", "version:", version))
-				cmd.Println(fmt.Sprintf("%-15s%s", "hash:", gitrev))
+				versionInfo()
 			},
 		}
 		rootCmd.AddCommand(versionCmd)
+	}
+}
+
+func versionInfo() {
+	version := goqlc.VERSION
+	buildTime := goqlc.BUILDTIME
+	gitrev := goqlc.GITREV
+	ts := strings.Split(buildTime, "_")
+	if interactive {
+		Info(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
+		Info(fmt.Sprintf("%-15s%s", "version:", version))
+		Info(fmt.Sprintf("%-15s%s", "hash:", gitrev))
+	} else {
+		fmt.Println(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
+		fmt.Println(fmt.Sprintf("%-15s%s", "version:", version))
+		fmt.Println(fmt.Sprintf("%-15s%s", "hash:", gitrev))
 	}
 }
