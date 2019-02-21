@@ -18,7 +18,7 @@ require (
 	github.com/dgraph-io/badger v1.5.5-0.20181004181505-439fd464b155
 	github.com/dgryski/go-farm v0.0.0-20180109070241-2de33835d102 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/fatih/color v1.7.0 // indirect
+	github.com/fatih/color v1.7.0
 	github.com/fd/go-nat v1.0.0 // indirect
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect

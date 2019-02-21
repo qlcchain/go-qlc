@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/abiosoft/ishell"
+	"github.com/fatih/color"
 )
 
 var prefix = "--"
@@ -124,7 +125,9 @@ func HelpText(c *ishell.Context, args []Flag) bool {
 }
 
 func infoPrefix() {
-	fmt.Printf("%c[1;0;35m%s%c[0m", 0x1B, "==> ", 0x1B)
+	color.Set(color.FgMagenta, color.Bold)
+	defer color.Unset()
+	fmt.Print("==> ")
 }
 
 func Info(a ...interface{}) {
@@ -133,7 +136,9 @@ func Info(a ...interface{}) {
 }
 
 func warnPrefix() {
-	fmt.Printf("%c[1;0;31m%s%c[0m", 0x1B, "warn ", 0x1B)
+	color.Set(color.FgMagenta, color.Bold)
+	defer color.Unset()
+	fmt.Print("warn ")
 }
 
 func Warn(a ...interface{}) {
