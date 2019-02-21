@@ -16,75 +16,97 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/rpc/api"
+	"github.com/spf13/cobra"
 )
 
-func init() {
-	from := Flag{
-		Name:  "from",
-		Must:  true,
-		Usage: "send account private key",
-		Value: "",
+func send() {
+	var fromP string
+	var toP string
+	var tokenP string
+	var amountP string
+
+	if interactive {
+		from := Flag{
+			Name:  "from",
+			Must:  true,
+			Usage: "send account private key",
+			Value: "",
+		}
+		to := Flag{
+			Name:  "to",
+			Must:  true,
+			Usage: "receive account",
+			Value: "",
+		}
+		token := Flag{
+			Name:  "token",
+			Must:  false,
+			Usage: "token name for send action(defalut is QLC)",
+			Value: "QLC",
+		}
+		amount := Flag{
+			Name:  "amount",
+			Must:  true,
+			Usage: "send amount",
+			Value: "0",
+		}
+		c := &ishell.Cmd{
+			Name: "send",
+			Help: "send transaction",
+			Func: func(c *ishell.Context) {
+				args := []Flag{from, to, token, amount}
+				if HelpText(c, args) {
+					return
+				}
+				if err := CheckArgs(c, args); err != nil {
+					Warn(err)
+					return
+				}
+				fromP := StringVar(c.Args, from)
+				toP := StringVar(c.Args, to)
+				tokenP := StringVar(c.Args, token)
+				amountP := StringVar(c.Args, amount)
+				err := sendAction(fromP, toP, tokenP, amountP)
+				if err != nil {
+					Warn(err)
+					return
+				}
+				Info("send transaction success!")
+			},
+		}
+		shell.AddCmd(c)
+	} else {
+		var sendCmd = &cobra.Command{
+			Use:   "send",
+			Short: "send transaction",
+			Run: func(cmd *cobra.Command, args []string) {
+				err := sendAction(fromP, toP, tokenP, amountP)
+				if err != nil {
+					cmd.Println(err)
+				}
+				fmt.Println("send transaction success!")
+			},
+		}
+		sendCmd.Flags().StringVarP(&fromP, "from", "f", "", "send account private key")
+		sendCmd.Flags().StringVarP(&toP, "to", "t", "", "receive account")
+		sendCmd.Flags().StringVarP(&tokenP, "token", "k", "QLC", "token for send action")
+		sendCmd.Flags().StringVarP(&amountP, "amount", "m", "", "send amount")
+		rootCmd.AddCommand(sendCmd)
 	}
-	to := Flag{
-		Name:  "to",
-		Must:  true,
-		Usage: "receive account",
-		Value: "",
-	}
-	token := Flag{
-		Name:  "token",
-		Must:  false,
-		Usage: "token name for send action(defalut is QLC)",
-		Value: "QLC",
-	}
-	amount := Flag{
-		Name:  "amount",
-		Must:  true,
-		Usage: "send amount",
-		Value: "",
-	}
-	c := &ishell.Cmd{
-		Name: "send",
-		Help: "send transaction",
-		Func: func(c *ishell.Context) {
-			args := []Flag{from, to, token, amount}
-			if HelpText(c, args) {
-				return
-			}
-			if err := CheckArgs(c, args); err != nil {
-				Warn(err)
-				return
-			}
-			fromP := StringVar(c.Args, from)
-			toP := StringVar(c.Args, to)
-			tokenP := StringVar(c.Args, token)
-			amountP := StringVar(c.Args, amount)
-			err := sendAction(fromP, toP, tokenP, amountP)
-			if err != nil {
-				Warn(err)
-				return
-			}
-			Info("send transaction success!")
-		},
-	}
-	shell.AddCmd(c)
 }
 
 func sendAction(fromP, toP, tokenP, amountP string) error {
 	if fromP == "" || toP == "" || amountP == "" {
-		fmt.Println("err transfer info")
 		return errors.New("err transfer info")
 	}
 	bytes, err := hex.DecodeString(fromP)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	fromAccount := types.NewAccount(bytes)
 
 	t, err := types.HexToAddress(toP)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 
@@ -116,13 +138,16 @@ func sendTx(account *types.Account, to types.Address, token string, amount types
 		return err
 	}
 	from := account.Address()
-	Info(fmt.Sprintf("send token(%s) from %s  to %s", token, from.String(), to.String()))
+	if interactive {
+		Info(fmt.Sprintf("send %s from %s to %s", token, from.String(), to.String()))
+	} else {
+		fmt.Println(fmt.Sprintf("send %s from %s to %s", token, from.String(), to.String()))
+	}
 	//Info(fmt.Sprintf("block hash: %s", sendBlock.GetHash()))
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &sendBlock)
 	if err != nil {
-		Warn("process block error, ", err)
 		return err
 	}
 	return nil

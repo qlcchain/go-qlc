@@ -13,31 +13,63 @@ import (
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/test/mock"
+	"github.com/spf13/cobra"
 )
 
-func init() {
-	c := &ishell.Cmd{
-		Name: "tokens",
-		Help: "return token info list of chain",
-		Func: func(c *ishell.Context) {
-			if HelpText(c, nil) {
-				return
-			}
-			client, err := rpc.Dial(endpointP)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			defer client.Close()
+func tokens() {
 
-			var tokeninfos []*mock.TokenInfo
-			err = client.Call(&tokeninfos, "ledger_tokens")
+	if interactive {
+		c := &ishell.Cmd{
+			Name: "tokens",
+			Help: "return token info list of chain",
+			Func: func(c *ishell.Context) {
+				if HelpText(c, nil) {
+					return
+				}
+				err := tokensinfo()
+				if err != nil {
+					Warn(err)
+					return
+				}
+			},
+		}
+		shell.AddCmd(c)
+	} else {
+		var tlCmd = &cobra.Command{
+			Use:   "tokens",
+			Short: "return token info list of chain",
+			Run: func(cmd *cobra.Command, args []string) {
+				err := tokensinfo()
+				if err != nil {
+					cmd.Println(err)
+					return
+				}
 
-			for _, v := range tokeninfos {
-				fmt.Printf("TokenId:%s  TokenName:%s  TokenSymbol:%s  TotalSupply:%s  Decimals:%d  Owner:%s", v.TokenId, v.TokenName, v.TokenSymbol, v.TotalSupply, v.Decimals, v.Owner)
-				fmt.Println()
-			}
-		},
+			},
+		}
+		rootCmd.AddCommand(tlCmd)
 	}
-	shell.AddCmd(c)
+}
+
+func tokensinfo() error {
+	client, err := rpc.Dial(endpointP)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	var tokeninfos []*mock.TokenInfo
+	err = client.Call(&tokeninfos, "ledger_tokens")
+	if err != nil {
+		return err
+	}
+	if interactive {
+		Info(fmt.Sprintf("%d tokens found:", len(tokeninfos)))
+	}
+	for _, v := range tokeninfos {
+		fmt.Printf("TokenId:%s  TokenName:%s  TokenSymbol:%s  TotalSupply:%s  Decimals:%d  Owner:%s", v.TokenId, v.TokenName, v.TokenSymbol, v.TotalSupply, v.Decimals, v.Owner)
+		fmt.Println()
+	}
+	return nil
+
 }

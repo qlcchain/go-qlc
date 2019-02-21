@@ -103,13 +103,16 @@ func HelpText(c *ishell.Context, args []Flag) bool {
 	rawArgs := c.Args
 	if len(rawArgs) == 1 && rawArgs[0] == prefix+"help" {
 		fmt.Println(c.Cmd.HelpText())
+		if len(args) == 0 {
+			return true
+		}
 		fmt.Println("args:")
 		for _, a := range args {
 			var t string
 			if a.Must {
-				t = fmt.Sprintf("    %s%-10s %s", prefix, a.Name, a.Usage)
+				t = fmt.Sprintf("    %s%-12s %s", prefix, a.Name, a.Usage)
 			} else {
-				t = fmt.Sprintf("    %s%-10s (Optional) %s", prefix, a.Name, a.Usage)
+				t = fmt.Sprintf("    %s%-12s (Optional) %s", prefix, a.Name, a.Usage)
 			}
 			fmt.Println(t)
 		}

@@ -9,9 +9,17 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
+	"github.com/spf13/cobra"
+)
+
+var (
+	shell       *ishell.Shell
+	rootCmd     *cobra.Command
+	interactive bool
 )
 
 type Flag struct {
@@ -20,16 +28,6 @@ type Flag struct {
 	Must  bool
 	Value interface{}
 }
-
-var shell = ishell.NewWithConfig(&readline.Config{
-	Prompt:      fmt.Sprintf("%c[1;0;32m%s%c[0m", 0x1B, ">> ", 0x1B),
-	HistoryFile: "/tmp/readline.tmp",
-	//AutoComplete:      completer,
-	InterruptPrompt:   "^C",
-	EOFPrompt:         "exit",
-	HistorySearchFold: true,
-	//FuncFilterInputRune: filterInput,
-})
 
 var (
 	endpointP  string
@@ -48,13 +46,72 @@ func init() {
 	}
 }
 
-func Execute() {
-	shell.Println("QLC Chain Client")
+func Execute(osArgs []string) {
+	interactive = IsInteractive(osArgs)
+	if interactive {
+		shell = ishell.NewWithConfig(&readline.Config{
+			Prompt:      fmt.Sprintf("%c[1;0;32m%s%c[0m", 0x1B, ">> ", 0x1B),
+			HistoryFile: "/tmp/readline.tmp",
+			//AutoComplete:      completer,
+			InterruptPrompt:   "^C",
+			EOFPrompt:         "exit",
+			HistorySearchFold: true,
+			//FuncFilterInputRune: filterInput,
+		})
+		shell.Println("QLC Chain Client")
+		//set common variable
+		commonFlag = make([]Flag, 0)
+		addcommands()
+		// commonFlag = append(commonFlag, p)
+		// run shell
+		shell.Run()
+	} else {
+		rootCmd = &cobra.Command{
+			Use:   "QLCC",
+			Short: "CLI for QLCChain Client.",
+			Long:  `QLC Chain is the next generation public blockchain designed for the NaaS.`,
+			Run: func(cmd *cobra.Command, args []string) {
+				//err := start()
+				//if err != nil {
+				//	cmd.Println(err)
+				//}
+			},
+		}
+		//rootCmd.PersistentFlags().StringVarP(&account, "account", "a", "", "wallet address")
+		//rootCmd.PersistentFlags().StringVarP(&pwd, "password", "p", "", "password for wallet")
+		//rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file")
+		rootCmd.PersistentFlags().StringVarP(&endpointP, "endpoint", "e", "ws://0.0.0.0:9736", "endpoint for client")
 
-	//set common variable
-	commonFlag = make([]Flag, 0)
-	// commonFlag = append(commonFlag, p)
+		addcommands()
+		if err := rootCmd.Execute(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
+}
 
-	// run shell
-	shell.Run()
+func IsInteractive(osArgs []string) bool {
+	if len(osArgs) == 2 && osArgs[1] == "-i" {
+		return true
+	}
+	if len(osArgs) == 4 && osArgs[1] == "-i" && osArgs[2] == "--endpoint" {
+		endpointP = osArgs[3]
+		return true
+	}
+	return false
+}
+
+func addcommands() {
+	account()
+	balance()
+	batchSend()
+	blockCount()
+	performance()
+	send()
+	tokens()
+	version()
+	changePassword()
+	walletCreate()
+	walletList()
+	walletRemove()
 }

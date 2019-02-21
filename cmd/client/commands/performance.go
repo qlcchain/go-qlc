@@ -18,35 +18,52 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/rpc"
+	"github.com/spf13/cobra"
 )
 
-func init() {
-	cfgPath := Flag{
-		Name:  "config",
-		Must:  false,
-		Usage: "config file path",
-		Value: "",
+func performance() {
+	var cfgPathP string
+	if interactive {
+		cfgPath := Flag{
+			Name:  "config",
+			Must:  false,
+			Usage: "config file path",
+			Value: "",
+		}
+		c := &ishell.Cmd{
+			Name: "performance",
+			Help: "get performance time",
+			Func: func(c *ishell.Context) {
+				args := []Flag{cfgPath}
+				if HelpText(c, args) {
+					return
+				}
+				if err := CheckArgs(c, args); err != nil {
+					Warn(err)
+					return
+				}
+				cfgPathP := StringVar(c.Args, cfgPath)
+				err := getPerformanceTime(cfgPathP)
+				if err != nil {
+					Warn(err)
+				}
+			},
+		}
+		shell.AddCmd(c)
+	} else {
+		var performanceTimeCmd = &cobra.Command{
+			Use:   "performance",
+			Short: "get performance time",
+			Run: func(cmd *cobra.Command, args []string) {
+				err := getPerformanceTime(cfgPathP)
+				if err != nil {
+					cmd.Println(err)
+				}
+			},
+		}
+		rootCmd.PersistentFlags().StringVarP(&cfgPathP, "config", "c", "", "config file path")
+		rootCmd.AddCommand(performanceTimeCmd)
 	}
-	c := &ishell.Cmd{
-		Name: "performance",
-		Help: "get performance time",
-		Func: func(c *ishell.Context) {
-			args := []Flag{cfgPath}
-			if HelpText(c, args) {
-				return
-			}
-			if err := CheckArgs(c, args); err != nil {
-				Warn(err)
-				return
-			}
-			cfgPathP := StringVar(c.Args, cfgPath)
-			err := getPerformanceTime(cfgPathP)
-			if err != nil {
-				Warn(err)
-			}
-		},
-	}
-	shell.AddCmd(c)
 }
 
 func getPerformanceTime(cfgPathP string) error {
