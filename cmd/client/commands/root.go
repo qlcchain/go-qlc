@@ -37,7 +37,7 @@ var (
 
 // set global variable
 func init() {
-	endpointP = "ws://0.0.0.0:9737"
+	endpointP = "ws://0.0.0.0:9736"
 	endpoint = Flag{
 		Name:  "endpoint",
 		Must:  false,

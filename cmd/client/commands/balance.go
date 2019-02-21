@@ -39,17 +39,10 @@ func balance() {
 				}
 				addresses = StringSliceVar(c.Args, address)
 
-				resp, err := accountBalance(addresses)
+				err := accountBalance(addresses)
 				if err != nil {
 					Warn(err)
 					return
-				}
-				for key, value := range resp {
-					Info(key, ":")
-					for k, v := range value {
-						fmt.Printf("    %s: balance is %s, pending is %s", k, v["balance"], v["pending"])
-						fmt.Println()
-					}
 				}
 			},
 		}
@@ -69,17 +62,10 @@ func balance() {
 					cmd.Println("err account")
 					return
 				}
-
-				resp, err := accountBalance(addresses)
+				err = accountBalance(addresses)
 				if err != nil {
+					cmd.Println(err)
 					return
-				}
-				for key, value := range resp {
-					cmd.Println(key)
-					for k, v := range value {
-						cmd.Printf("	%s, balance:%s, pending:%s", k, v["balance"], v["pending"])
-						cmd.Println()
-					}
 				}
 			},
 		}
@@ -88,16 +74,40 @@ func balance() {
 	}
 }
 
-func accountBalance(addresses []string) (map[types.Address]map[string]map[string]types.Balance, error) {
+func accountBalance(addresses []string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer client.Close()
 	var resp map[types.Address]map[string]map[string]types.Balance
 	err = client.Call(&resp, "ledger_accountsBalances", addresses)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return resp, nil
+
+	for _, a := range addresses {
+		addr, err := types.HexToAddress(a)
+		if err != nil {
+			return err
+		}
+		if value, ok := resp[addr]; ok {
+			if interactive {
+				Info(a, ":")
+			} else {
+				fmt.Println(a, ":")
+			}
+			for k, v := range value {
+				fmt.Printf("    %s: balance is %s, pending is %s", k, v["balance"], v["pending"])
+				fmt.Println()
+			}
+		} else {
+			if interactive {
+				Info(a, " not found")
+			} else {
+				fmt.Println(a, " not found")
+			}
+		}
+	}
+	return nil
 }

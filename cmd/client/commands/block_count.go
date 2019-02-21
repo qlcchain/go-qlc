@@ -28,14 +28,11 @@ func blockCount() {
 					Warn(err)
 					return
 				}
-				resp, err := blocks()
+				err := blocks()
 				if err != nil {
 					Warn(err)
 					return
 				}
-				state := resp["count"]
-				unchecked := resp["unchecked"]
-				Info(fmt.Sprintf("total state block count is: %d, unchecked block count is: %d", state, unchecked))
 			},
 		}
 		shell.AddCmd(c)
@@ -44,32 +41,40 @@ func blockCount() {
 			Use:   "blockcount",
 			Short: "block count",
 			Run: func(cmd *cobra.Command, args []string) {
-				resp, err := blocks()
+				err := blocks()
 				if err != nil {
 					cmd.Println(err)
 					return
 				}
-				state := resp["count"]
-				unchecked := resp["unchecked"]
-				cmd.Printf("total state block count is: %d, unchecked block count is: %d", state, unchecked)
-				cmd.Println()
+
 			},
 		}
 		rootCmd.AddCommand(blockcountCmd)
 	}
 }
 
-func blocks() (map[string]uint64, error) {
+func blocks() error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer client.Close()
 
 	var resp map[string]uint64
 	err = client.Call(&resp, "ledger_transactionsCount")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return resp, nil
+
+	state := resp["count"]
+	unchecked := resp["unchecked"]
+	s := fmt.Sprintf("total state block count is: %d, unchecked block count is: %d", state, unchecked)
+	if interactive {
+		Info(s)
+	} else {
+		fmt.Println(s)
+	}
+
+	return nil
+
 }
