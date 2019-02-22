@@ -13,47 +13,68 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/spf13/cobra"
 )
 
-func init() {
-	count := Flag{
-		Name:  "count",
-		Must:  false,
-		Usage: "account count",
-		Value: 10,
-	}
-	seed := Flag{
-		Name:  "seed",
-		Must:  false,
-		Usage: "account seed",
-		Value: "",
-	}
+func account() {
+	var countP int
+	var seedP string
 
-	s := &ishell.Cmd{
-		Name: "account",
-		Help: "generate account",
-		Func: func(c *ishell.Context) {
-			args := []Flag{count, seed}
-			if HelpText(c, args) {
-				return
-			}
-			if err := CheckArgs(c, args); err != nil {
-				Warn(err)
-				return
-			}
-			countP, err := IntVar(c.Args, count)
-			if err != nil {
-				Warn(err)
-				return
-			}
-			seedP := StringVar(c.Args, seed)
-			if err := accountAction(countP, seedP); err != nil {
-				Warn(err)
-				return
-			}
-		},
+	if interactive {
+		count := Flag{
+			Name:  "count",
+			Must:  false,
+			Usage: "account count",
+			Value: 10,
+		}
+		seed := Flag{
+			Name:  "seed",
+			Must:  false,
+			Usage: "account seed",
+			Value: "",
+		}
+
+		s := &ishell.Cmd{
+			Name: "account",
+			Help: "generate account",
+			Func: func(c *ishell.Context) {
+				args := []Flag{count, seed}
+				if HelpText(c, args) {
+					return
+				}
+				err := CheckArgs(c, args)
+				if err != nil {
+					Warn(err)
+					return
+				}
+				countP, err = IntVar(c.Args, count)
+				if err != nil {
+					Warn(err)
+					return
+				}
+				seedP = StringVar(c.Args, seed)
+				if err := accountAction(countP, seedP); err != nil {
+					Warn(err)
+					return
+				}
+			},
+		}
+		shell.AddCmd(s)
+	} else {
+		var accountCmd = &cobra.Command{
+			Use:   "account",
+			Short: "generate account",
+			Run: func(cmd *cobra.Command, args []string) {
+				err := accountAction(countP, seedP)
+				if err != nil {
+					cmd.Println(err)
+				}
+			},
+		}
+		accountCmd.Flags().IntVar(&countP, "count", 10, "account count")
+		accountCmd.Flags().StringVar(&seedP, "seed", "", "account seed")
+		rootCmd.AddCommand(accountCmd)
 	}
-	shell.AddCmd(s)
 }
 
 func accountAction(countP int, seedP string) error {
@@ -70,12 +91,16 @@ func accountAction(countP int, seedP string) error {
 		if err != nil {
 			return err
 		}
-		Info("account created:")
+		if interactive {
+			Info("account created:")
+		}
 		fmt.Println("Seed:", s.String())
 		fmt.Println("Address:", a.Address())
 		fmt.Println("Private:", hex.EncodeToString(a.PrivateKey()))
 	} else {
-		Info(fmt.Sprintf("%d accounts created:", countP))
+		if interactive {
+			Info(fmt.Sprintf("%d accounts created:", countP))
+		}
 		for i := 0; i < countP; i++ {
 			seed, err := types.NewSeed()
 			if err == nil {

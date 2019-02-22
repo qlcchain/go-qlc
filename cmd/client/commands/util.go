@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/abiosoft/ishell"
+	"github.com/fatih/color"
 )
 
 var prefix = "--"
@@ -63,6 +64,7 @@ func CheckArgs(c *ishell.Context, args []Flag) error {
 	// help
 	rawArgs := c.Args
 	argsMap := make(map[string]interface{})
+
 	args = append(args, commonFlag...)
 	for _, a := range args {
 		argsMap[prefix+a.Name] = a.Value
@@ -92,7 +94,7 @@ func CheckArgs(c *ishell.Context, args []Flag) error {
 				index = index + 2
 			}
 		} else {
-			return errors.New(fmt.Sprintf("'%s' is not a qlcc command. Please see 'help'", rawArgs[index]))
+			return errors.New(fmt.Sprintf("'%s' is not a qlcc command. Please see 'COMMAND --help'", rawArgs[index]))
 		}
 	}
 
@@ -103,13 +105,16 @@ func HelpText(c *ishell.Context, args []Flag) bool {
 	rawArgs := c.Args
 	if len(rawArgs) == 1 && rawArgs[0] == prefix+"help" {
 		fmt.Println(c.Cmd.HelpText())
+		if len(args) == 0 {
+			return true
+		}
 		fmt.Println("args:")
 		for _, a := range args {
 			var t string
 			if a.Must {
-				t = fmt.Sprintf("    %s%-10s %s", prefix, a.Name, a.Usage)
+				t = fmt.Sprintf("    %s%-12s %s", prefix, a.Name, a.Usage)
 			} else {
-				t = fmt.Sprintf("    %s%-10s (Optional) %s", prefix, a.Name, a.Usage)
+				t = fmt.Sprintf("    %s%-12s (Optional) %s", prefix, a.Name, a.Usage)
 			}
 			fmt.Println(t)
 		}
@@ -120,7 +125,9 @@ func HelpText(c *ishell.Context, args []Flag) bool {
 }
 
 func infoPrefix() {
-	fmt.Printf("%c[1;0;35m%s%c[0m", 0x1B, "==> ", 0x1B)
+	color.Set(color.FgMagenta, color.Bold)
+	defer color.Unset()
+	fmt.Print("==> ")
 }
 
 func Info(a ...interface{}) {
@@ -129,12 +136,14 @@ func Info(a ...interface{}) {
 }
 
 func warnPrefix() {
-	shell.Printf("%c[1;0;31m%s%c[0m", 0x1B, "warn ", 0x1B)
+	color.Set(color.FgMagenta, color.Bold)
+	defer color.Unset()
+	fmt.Print("warn ")
 }
 
 func Warn(a ...interface{}) {
 	warnPrefix()
-	shell.Println(a...)
+	fmt.Println(a...)
 }
 
 //

@@ -13,55 +13,79 @@ import (
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
+	"github.com/spf13/cobra"
 )
 
-func init() {
-	account := Flag{
-		Name:  "account",
-		Must:  true,
-		Usage: "account for wallet",
-		Value: "",
+func changePassword() {
+	var accountP string
+	var passwordP string
+	var newpasswordP string
+	if interactive {
+		account := Flag{
+			Name:  "account",
+			Must:  true,
+			Usage: "account for wallet",
+			Value: "",
+		}
+		pwd := Flag{
+			Name:  "password",
+			Must:  true,
+			Usage: "password for wallet",
+			Value: "",
+		}
+		newPwd := Flag{
+			Name:  "newpassword",
+			Must:  true,
+			Usage: "new password for wallet",
+			Value: "",
+		}
+		c := &ishell.Cmd{
+			Name: "changepassword",
+			Help: "change wallet password",
+			Func: func(c *ishell.Context) {
+				args := []Flag{account, pwd, newPwd}
+				if HelpText(c, args) {
+					return
+				}
+				if err := CheckArgs(c, args); err != nil {
+					Warn(err)
+					return
+				}
+				accountP = StringVar(c.Args, account)
+				passwordP = StringVar(c.Args, pwd)
+				newpasswordP = StringVar(c.Args, newPwd)
+				err := changePwd(accountP, passwordP, newpasswordP)
+				if err != nil {
+					Warn(err)
+				} else {
+					Info(fmt.Sprintf("change password success for account: %s", accountP))
+				}
+			},
+		}
+		shell.AddCmd(c)
+	} else {
+		var wcpCmd = &cobra.Command{
+			Use:   "changepassword",
+			Short: "change wallet password",
+			Run: func(cmd *cobra.Command, args []string) {
+				err := changePwd(accountP, passwordP, newpasswordP)
+				if err != nil {
+					cmd.Println(err)
+				} else {
+					cmd.Printf("change password success for account: %s", accountP)
+					cmd.Println()
+					return
+				}
+			},
+		}
+		wcpCmd.Flags().StringVarP(&accountP, "account", "a", "", "wallet address")
+		wcpCmd.Flags().StringVarP(&passwordP, "password", "p", "", "password for wallet")
+		wcpCmd.Flags().StringVarP(&newpasswordP, "newpassword", "n", "", "new password for wallet")
+		rootCmd.AddCommand(wcpCmd)
 	}
-	pwd := Flag{
-		Name:  "password",
-		Must:  true,
-		Usage: "password for wallet",
-		Value: "",
-	}
-	newPwd := Flag{
-		Name:  "newpassword",
-		Must:  true,
-		Usage: "new password for wallet",
-		Value: "",
-	}
-	c := &ishell.Cmd{
-		Name: "changepassword",
-		Help: "change wallet password",
-		Func: func(c *ishell.Context) {
-			args := []Flag{account, pwd, newPwd}
-			if HelpText(c, args) {
-				return
-			}
-			if err := CheckArgs(c, args); err != nil {
-				Warn(err)
-				return
-			}
-			accountP := StringVar(c.Args, account)
-			pwdP := StringVar(c.Args, pwd)
-			newPwdP := StringVar(c.Args, newPwd)
-			err := changePassword(accountP, pwdP, newPwdP)
-			if err != nil {
-				Warn(err)
-			} else {
-				Info(fmt.Sprintf("change password success for account: %s", accountP))
-			}
-		},
-	}
-	shell.AddCmd(c)
-
 }
 
-func changePassword(accountP, pwdP, newPwdP string) error {
+func changePwd(accountP, pwdP, newPwdP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err

@@ -12,34 +12,69 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/rpc"
+	"github.com/spf13/cobra"
 )
 
-func init() {
-	c := &ishell.Cmd{
-		Name: "blockcount",
-		Help: "return the total count of block in db",
-		Func: func(c *ishell.Context) {
-			if HelpText(c, nil) {
-				return
-			}
-			client, err := rpc.Dial(endpointP)
-			if err != nil {
-				Warn(err)
-				return
-			}
-			defer client.Close()
+func blockCount() {
+	if interactive {
+		c := &ishell.Cmd{
+			Name: "blockcount",
+			Help: "return the total count of block in db",
+			Func: func(c *ishell.Context) {
+				if HelpText(c, nil) {
+					return
+				}
+				if err := CheckArgs(c, nil); err != nil {
+					Warn(err)
+					return
+				}
+				err := blocks()
+				if err != nil {
+					Warn(err)
+					return
+				}
+			},
+		}
+		shell.AddCmd(c)
+	} else {
+		var blockcountCmd = &cobra.Command{
+			Use:   "blockcount",
+			Short: "block count",
+			Run: func(cmd *cobra.Command, args []string) {
+				err := blocks()
+				if err != nil {
+					cmd.Println(err)
+					return
+				}
 
-			var resp map[string]uint64
-			err = client.Call(&resp, "ledger_transactionsCount")
-			if err != nil {
-				Warn(err)
-				return
-			}
-			state := resp["count"]
-			unchecked := resp["unchecked"]
-
-			Info(fmt.Sprintf("total state block count is : %d, unchecked block count is: %d", state, unchecked))
-		},
+			},
+		}
+		rootCmd.AddCommand(blockcountCmd)
 	}
-	shell.AddCmd(c)
+}
+
+func blocks() error {
+	client, err := rpc.Dial(endpointP)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	var resp map[string]uint64
+	err = client.Call(&resp, "ledger_transactionsCount")
+	if err != nil {
+		return err
+	}
+
+	state := resp["count"]
+	unchecked := resp["unchecked"]
+	s := fmt.Sprintf("total state block count is: %d, unchecked block count is: %d", state, unchecked)
+	if interactive {
+		Info(s)
+	} else {
+		fmt.Println(s)
+	}
+
+	return nil
+
 }

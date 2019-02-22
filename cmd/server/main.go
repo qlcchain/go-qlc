@@ -8,9 +8,11 @@
 package main
 
 import (
+	"os"
+
 	cmd "github.com/qlcchain/go-qlc/cmd/server/commands"
 )
 
 func main() {
-	cmd.Execute()
+	cmd.Execute(os.Args)
 }
