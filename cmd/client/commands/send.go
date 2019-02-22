@@ -139,7 +139,7 @@ func sendTx(account *types.Account, to types.Address, token string, amount types
 		return err
 	}
 	from := account.Address()
-	s := fmt.Sprintf("send %s %s from %s to %s", amount, token, from.String(), to.String())
+	s := fmt.Sprintf("send %s from %s to %s （hash: %s）", token, from.String(), to.String(), sendBlock.GetHash())
 	if interactive {
 		Info(s)
 	} else {

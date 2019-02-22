@@ -3,12 +3,15 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/libp2p/go-libp2p-peer"
 )
 
-var cfgFile = DefaultDataDir()
+var cfgFile = filepath.Join(QlcTestDataDir(), "config")
+
+//var cfgFile = DefaultDataDir()
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Log("setup test case")

@@ -21,6 +21,7 @@ func (rs *RPCService) Init() error {
 func (rs *RPCService) Start() error {
 	err := rs.rpc.StartRPC()
 	if err != nil {
+		rs.rpc.logger.Error(err)
 		return err
 	}
 	return nil
