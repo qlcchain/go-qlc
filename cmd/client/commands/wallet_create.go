@@ -18,18 +18,25 @@ import (
 
 func walletCreate() {
 	var pwdP string
+	var seedP string
 	if interactive {
 		pwd := Flag{
 			Name:  "password",
-			Must:  true,
+			Must:  false,
 			Usage: "password for new wallet",
+			Value: "",
+		}
+		seed := Flag{
+			Name:  "seed",
+			Must:  false,
+			Usage: "seed for wallet",
 			Value: "",
 		}
 		c := &ishell.Cmd{
 			Name: "walletcreate",
 			Help: "create a wallet for QLCChain node",
 			Func: func(c *ishell.Context) {
-				args := []Flag{pwd}
+				args := []Flag{pwd, seed}
 				if HelpText(c, args) {
 					return
 				}
@@ -38,7 +45,8 @@ func walletCreate() {
 					return
 				}
 				pwdP = StringVar(c.Args, pwd)
-				err := createWallet(pwdP)
+				seedP = StringVar(c.Args, seed)
+				err := createWallet(pwdP, seedP)
 				if err != nil {
 					Warn(err)
 					return
@@ -51,26 +59,31 @@ func walletCreate() {
 			Use:   "walletcreate",
 			Short: "create a wallet for QLCChain node",
 			Run: func(cmd *cobra.Command, args []string) {
-				err := createWallet(pwdP)
+				err := createWallet(pwdP, seedP)
 				if err != nil {
 					cmd.Println(err)
 					return
 				}
 			},
 		}
+		wcCmd.Flags().StringVarP(&seedP, "seed", "s", "", "seed for wallet")
 		wcCmd.Flags().StringVarP(&pwdP, "password", "p", "", "password for wallet")
 		rootCmd.AddCommand(wcCmd)
 	}
 }
 
-func createWallet(pwdP string) error {
+func createWallet(pwdP, seedP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 	var addr types.Address
-	err = client.Call(&addr, "wallet_newWallet", pwdP)
+	if seedP == "" {
+		err = client.Call(&addr, "wallet_newWallet", pwdP)
+	} else {
+		err = client.Call(&addr, "wallet_newWallet", pwdP, seedP)
+	}
 	if err != nil {
 		return err
 	}

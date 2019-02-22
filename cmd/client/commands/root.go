@@ -80,7 +80,7 @@ func Execute(osArgs []string) {
 		//rootCmd.PersistentFlags().StringVarP(&account, "account", "a", "", "wallet address")
 		//rootCmd.PersistentFlags().StringVarP(&pwd, "password", "p", "", "password for wallet")
 		//rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file")
-		rootCmd.PersistentFlags().StringVarP(&endpointP, "endpoint", "e", "ws://0.0.0.0:9736", "endpoint for client")
+		rootCmd.PersistentFlags().StringVarP(&endpointP, "endpoint", "e", endpointP, "endpoint for client")
 		addcommands()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)

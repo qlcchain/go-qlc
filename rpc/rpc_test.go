@@ -37,8 +37,8 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 		rs = NewRPCService(cfg, &dpos)
 
 		cfg.RPC = new(config.RPCConfig)
-		cfg.RPC.HTTPEndpoint = "tcp://0.0.0.0:19735"
-		cfg.RPC.WSEndpoint = "tcp://0.0.0.0:19736"
+		cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:19735"
+		cfg.RPC.WSEndpoint = "tcp4://0.0.0.0:19736"
 		cfg.RPC.IPCEndpoint = defaultIPCEndpoint(filepath.Join(cfg.DataDir, "qlc_test.ipc"))
 		cfg.RPC.WSEnabled = true
 		cfg.RPC.IPCEnabled = true
