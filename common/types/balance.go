@@ -71,13 +71,20 @@ func (b Balance) Equal(b2 Balance) bool {
 
 // Add balances add
 func (b Balance) Add(n Balance) Balance {
-	return Balance{new(big.Int).Add(b.Int, n.Int)}
+	if u, i := util.SafeAdd(b.Uint64(), n.Uint64()); !i {
+		r := new(big.Int).SetUint64(u)
+		return Balance{r}
+	}
+	return ZeroBalance
 }
 
 // Sub balances sub
 func (b Balance) Sub(n Balance) Balance {
-	sub := new(big.Int).Sub(b.Int, n.Int)
-	return Balance{sub}
+	if u, b := util.SafeSub(b.Uint64(), n.Uint64()); !b {
+		return Balance{new(big.Int).SetUint64(u)}
+	}
+
+	return ZeroBalance
 }
 
 // Div balances div
