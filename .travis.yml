@@ -10,9 +10,11 @@ dist: trusty
 
 sudo: true
 
-before_install:
-  - sudo apt install -y linux-headers-$(uname -r)
-  - ls -l /usr/src/linux-headers-$(uname -r)
+#before_install:
+#  - sudo apt install -y linux-headers-$(uname -r)
+#  - ls -l /usr/src/linux-headers-$(uname -r)
+#  - sudo apt-get install --only-upgrade git-core
+#  - git --version
 
 addons:
   apt:
