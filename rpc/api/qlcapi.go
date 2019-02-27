@@ -211,7 +211,7 @@ func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance,
 	case ledger.Change:
 		return "change", types.ZeroBalance, nil
 	default:
-		return "unknow", types.ZeroBalance, nil
+		return "unknown", types.ZeroBalance, nil
 	}
 }
 
