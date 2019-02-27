@@ -9,6 +9,7 @@ package types
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
@@ -37,6 +38,16 @@ func NewHash(hexStr string) (Hash, error) {
 		return h, err
 	}
 	return h, nil
+}
+
+func BytesToHash(data []byte) (Hash, error) {
+	if len(data) != HashSize {
+		return ZeroHash, errors.New("invalid Hash size")
+	}
+
+	var hash [HashSize]byte
+	copy(hash[:], data)
+	return hash, nil
 }
 
 //IsZero check hash is zero
@@ -109,7 +120,7 @@ func (h Hash) MarshalText() (text []byte, err error) {
 	return []byte(h.String()), nil
 }
 
-func HashData(data [] byte) Hash {
+func HashData(data []byte) Hash {
 	h, _ := HashBytes(data)
 	return h
 }

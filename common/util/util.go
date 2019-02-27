@@ -124,6 +124,7 @@ var (
 	Tt256   = BigPow(2, 256)
 	Tt256m1 = new(big.Int).Sub(Tt256, big.NewInt(1))
 )
+
 // ToWordSize returns the ceiled word size required for memory expansion.
 func ToWordSize(size uint64) uint64 {
 	if size > MaxUint64-WordSize+1 {
@@ -147,7 +148,6 @@ func BytesToString(data []byte) string {
 	}
 	return string(data)
 }
-
 
 func AllZero(b []byte) bool {
 	for _, byte := range b {

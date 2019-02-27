@@ -119,4 +119,3 @@ func BigMax(x, y *big.Int) *big.Int {
 	}
 	return x
 }
-

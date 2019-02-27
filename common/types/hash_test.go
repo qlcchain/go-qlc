@@ -8,6 +8,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -65,5 +66,19 @@ func TestHash_String(t *testing.T) {
 	t.Log(h.String())
 	if !h.IsZero() {
 		t.Fatal("zero hash error")
+	}
+}
+
+func TestBytesToHash(t *testing.T) {
+	bytes, err := hex.DecodeString("2C353DA641277FD8379354307A54BECE090C51E52FB460EA5A8674B702BDCE5E")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BytesToHash(bytes); err != nil {
+		t.Fatal(err)
+	}
+	bytes = append(bytes, 0x01)
+	if _, err := BytesToHash(bytes); err == nil {
+		t.Fatal("bytes2hash failed")
 	}
 }
