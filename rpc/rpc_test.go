@@ -92,7 +92,7 @@ func TestRPC_HTTP(t *testing.T) {
 
 	blk := new(types.StateBlock)
 	blk.Token = mock.GetChainTokenType()
-	rs.rpc.ledger.AddBlock(blk)
+	rs.rpc.ledger.AddStateBlock(blk)
 	var resp2 types.Hash
 	err = client.Call(&resp2, "ledger_blockHash", blk)
 	if err != nil {
@@ -118,7 +118,7 @@ func TestRPC_WebSocket(t *testing.T) {
 	blk.Address = acc.Address()
 	blk.Previous = types.ZeroHash
 	blk.Token = mock.GetChainTokenType()
-	rs.rpc.ledger.AddBlock(blk)
+	rs.rpc.ledger.AddStateBlock(blk)
 
 	var resp []api.APIBlock
 	err = client.Call(&resp, "ledger_blocksInfo", []types.Hash{blk.GetHash()})

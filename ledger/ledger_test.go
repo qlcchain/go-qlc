@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"os"
@@ -39,6 +40,8 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	}, l
 }
 
+var bc, _ = mock.BlockChain()
+
 func TestLedger_Instance1(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
 	l1 := NewLedger(dir)
@@ -53,7 +56,7 @@ func TestLedger_Instance1(t *testing.T) {
 	if l1 == nil || l2 == nil || !b {
 		t.Fatal("error")
 	}
-	_ = os.RemoveAll(dir)
+	//_ = os.RemoveAll(dir)
 }
 
 func TestLedger_Instance2(t *testing.T) {
@@ -76,6 +79,7 @@ func TestGetTxn(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	txn := l.db.NewTransaction(false)
+	fmt.Println(txn)
 	txn2, flag := l.getTxn(false, txn)
 	if flag {
 		t.Fatal("get txn flag error")
@@ -104,10 +108,10 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 
 	err := l.BatchUpdate(func(txn db.StoreTxn) error {
 		blk := mock.StateBlock()
-		if err := l.AddBlock(blk); err != nil {
+		if err := l.AddStateBlock(blk); err != nil {
 			t.Fatal()
 		}
-		if err := l.AddBlock(mock.StateBlock()); err != nil {
+		if err := l.AddStateBlock(mock.StateBlock()); err != nil {
 			t.Fatal()
 		}
 		if ok, err := l.HasStateBlock(blk.GetHash()); err != nil || !ok {
@@ -123,7 +127,7 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 
 func addStateblock(t *testing.T, l *Ledger) types.Block {
 	blk := mock.StateBlock()
-	if err := l.AddBlock(blk); err != nil {
+	if err := l.AddStateBlock(blk); err != nil {
 		t.Log(err)
 	}
 	return blk
@@ -131,7 +135,7 @@ func addStateblock(t *testing.T, l *Ledger) types.Block {
 
 func addSmartContractBlockblock(t *testing.T, l *Ledger) types.Block {
 	blk := mock.GetSmartContracts()[0]
-	if err := l.AddBlock(blk); err != nil {
+	if err := l.AddSmartContrantBlock(blk); err != nil {
 		t.Log(err)
 	}
 	return blk
@@ -140,11 +144,24 @@ func addSmartContractBlockblock(t *testing.T, l *Ledger) types.Block {
 func TestLedger_AddBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	addStateblock(t, l)
+	if err := l.AddStateBlock(bc[0]); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(bc[1]); err != nil {
+		t.Fatal(err)
+	}
+	a, err := l.GetPosterior(bc[0].GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a != bc[1].GetHash() {
+		t.Fatal()
+	}
 }
 
 func TestLedger_GetBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
+
 	defer teardownTestCase(t)
 
 	block := addStateblock(t, l)
@@ -163,6 +180,30 @@ func TestLedger_GetSmartContrantBlock(t *testing.T) {
 	blk, err := l.GetSmartContrantBlock(block.GetHash())
 	t.Log("blk,", blk)
 	if err != nil || blk == nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_GetSmartContrantBlocks(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	block := addSmartContractBlockblock(t, l)
+	blk, err := l.GetSmartContrantBlock(block.GetHash())
+	t.Log("blk,", blk)
+	if err != nil || blk == nil {
+		t.Fatal(err)
+	}
+	n, err := l.CountSmartContrantBlocks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(n)
+	err = l.GetSmartContrantBlocks(func(block *types.SmartContractBlock) error {
+		fmt.Println(block)
+		return nil
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 }
@@ -187,9 +228,18 @@ func TestLedger_DeleteBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addStateblock(t, l)
-	err := l.DeleteStateBlock(block.GetHash())
+	if err := l.AddStateBlock(bc[0]); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(bc[1]); err != nil {
+		t.Fatal(err)
+	}
+	err := l.DeleteStateBlock(bc[1].GetHash())
 	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = l.GetPosterior(bc[0].GetHash())
+	if err != nil && err != ErrPosteriorNotFound {
 		t.Fatal(err)
 	}
 }
@@ -815,16 +865,12 @@ func TestLedger_Rollback(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	bs, err := mock.BlockChain()
-	if err != nil {
-		t.Fatal()
-	}
-	for _, b := range bs {
+	for _, b := range bc {
 		if _, err := l.Process(b); err != nil {
 			t.Fatal()
 		}
 	}
-	h := bs[2].GetHash()
+	h := bc[2].GetHash()
 	if err := l.Rollback(h); err != nil {
 		t.Fatal()
 	}

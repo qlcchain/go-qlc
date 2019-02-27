@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,6 +41,9 @@ var (
 	ErrFrontierNotFound       = errors.New("frontier not found")
 	ErrRepresentationNotFound = errors.New("representation not found")
 	ErrPerformanceNotFound    = errors.New("performance not found")
+	ErrPosteriorExists        = errors.New("posterior already exists")
+	ErrPosteriorNotFound      = errors.New("posterior not found")
+	ErrVersionNotFound        = errors.New("version not found")
 )
 
 const (
@@ -53,12 +57,16 @@ const (
 	idPrefixPending
 	idPrefixRepresentation
 	idPrefixPerformance
+	idPrefixPosterior
+	idPrefixVersion
 )
 
 var (
 	cache = make(map[string]*Ledger)
 	lock  = sync.RWMutex{}
 )
+
+const version = 1
 
 func NewLedger(dir string) *Ledger {
 	lock.Lock()
@@ -68,10 +76,15 @@ func NewLedger(dir string) *Ledger {
 		if err != nil {
 			fmt.Println(err.Error())
 		}
+		l := &Ledger{db: store, dir: dir}
+		l.logger = log.NewLogger("ledger")
 
-		cache[dir] = &Ledger{db: store, dir: dir}
+		if err := l.upgrade(); err != nil {
+			l.logger.Error(err)
+		}
+		cache[dir] = l
 	}
-	cache[dir].logger = log.NewLogger("ledger")
+	//cache[dir].logger = log.NewLogger("ledger")
 	return cache[dir]
 }
 
@@ -96,6 +109,24 @@ func (l *Ledger) Close() error {
 	return err
 }
 
+func (l *Ledger) upgrade() error {
+	return l.BatchUpdate(func(txn db.StoreTxn) error {
+		v, err := getVersion(txn)
+		l.logger.Info("version,", v)
+		if err != nil {
+			if err == ErrVersionNotFound {
+				if err := setVersion(version, txn); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+		ms := []db.Migration{new(BlockPosterior)}
+		return txn.Upgrade(ms)
+	})
+}
+
 // Empty reports whether the database is empty or not.
 func (l *Ledger) Empty(txns ...db.StoreTxn) (bool, error) {
 	r := true
@@ -112,37 +143,27 @@ func (l *Ledger) Empty(txns ...db.StoreTxn) (bool, error) {
 	return r, nil
 }
 
-func (l *Ledger) getBlockKey(hash types.Hash, blockType types.BlockType) []byte {
+func getKey(hash types.Hash, t byte) []byte {
 	var key [1 + types.HashSize]byte
-	if blockType == types.State {
-		key[0] = idPrefixBlock
-	} else if blockType == types.SmartContract {
-		key[0] = idPrefixSmartContractBlock
-	}
+	key[0] = t
 	copy(key[1:], hash[:])
 	return key[:]
 }
 
-func (l *Ledger) block2badger(blk types.Block) ([]byte, []byte, error) {
-	hash := blk.GetHash()
-	blockBytes, err := blk.MarshalMsg(nil)
-
-	key := l.getBlockKey(hash, blk.GetType())
-
-	return key[:], blockBytes, err
+func (l *Ledger) getPosteriorBlockKey(hash types.Hash) []byte {
+	var key [1 + types.HashSize]byte
+	key[0] = idPrefixPosterior
+	copy(key[1:], hash[:])
+	return key[:]
 }
 
-func (l *Ledger) AddBlock(blk types.Block, txns ...db.StoreTxn) error {
-	key, val, err := l.block2badger(blk)
-	if err != nil {
-		return err
-	}
-
+func (l *Ledger) AddStateBlock(blk types.Block, txns ...db.StoreTxn) error {
+	key := getKey(blk.GetHash(), idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	//never overwrite implicitly
-	err = txn.Get(key, func(bytes []byte, b byte) error {
+	err := txn.Get(key, func(bytes []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -150,11 +171,52 @@ func (l *Ledger) AddBlock(blk types.Block, txns ...db.StoreTxn) error {
 	} else if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(key, val)
+
+	blockBytes, err := blk.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	if err := txn.Set(key, blockBytes); err != nil {
+		return err
+	}
+	if err := l.addPosterior(blk.GetPrevious(), blk.GetHash(), txn); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) addPosterior(previous, block types.Hash, txn db.StoreTxn) error {
+	if !previous.IsZero() {
+		bKey := getKey(previous, idPrefixBlock)
+		err := txn.Get(bKey, func(val []byte, b byte) error {
+			return nil
+		})
+		if err == nil {
+			pKey := getKey(previous, idPrefixPosterior)
+			err := txn.Get(pKey, func(val []byte, b byte) error {
+				return nil
+			})
+			if err == nil {
+				return ErrPosteriorExists
+			} else if err != nil && err != badger.ErrKeyNotFound {
+				return err
+			}
+			val := make([]byte, types.HashSize)
+			err = block.MarshalBinaryTo(val)
+			if err != nil {
+				return err
+			}
+			if err := txn.Set(pKey, val); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
-	key := l.getBlockKey(hash, types.State)
+	key := getKey(hash, idPrefixBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	blk := new(types.StateBlock)
@@ -166,24 +228,9 @@ func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.Sta
 		return nil
 	})
 	if err != nil {
-		return nil, err
-	}
-	return blk, nil
-}
-
-func (l *Ledger) GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error) {
-	key := l.getBlockKey(hash, types.SmartContract)
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-	blk := new(types.SmartContractBlock)
-	err := txn.Get(key, func(val []byte, b byte) error {
-		_, err := blk.UnmarshalMsg(val)
-		if err != nil {
-			return err
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
 		}
-		return nil
-	})
-	if err != nil {
 		return nil, err
 	}
 	return blk, nil
@@ -211,39 +258,37 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 	return nil
 }
 
-func (l *Ledger) GetSmartContrantBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
+func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
+	key := getKey(hash, idPrefixBlock)
+	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
-		blk := new(types.SmartContractBlock)
+	blk := new(types.StateBlock)
+	err := txn.Get(key, func(val []byte, b byte) error {
 		_, err := blk.UnmarshalMsg(val)
 		if err != nil {
 			return err
 		}
-		if err := fn(blk); err != nil {
-			return err
-		}
 		return nil
 	})
+	if err != nil && err != ErrBlockNotFound {
+		return err
+	}
 
-	if err != nil {
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+
+	pKey := getKey(blk.GetPrevious(), idPrefixPosterior)
+	if err := txn.Delete(pKey); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
-	key := l.getBlockKey(hash, types.State)
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	return txn.Delete(key)
-}
-
 func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
-	key := l.getBlockKey(hash, types.State)
-	txn, flag := l.getTxn(true, txns...)
+	key := getKey(hash, idPrefixBlock)
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	err := txn.Get(key, func(val []byte, b byte) error {
@@ -261,26 +306,10 @@ func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, erro
 
 func (l *Ledger) CountStateBlocks(txns ...db.StoreTxn) (uint64, error) {
 	var count uint64
-	txn, flag := l.getTxn(true, txns...)
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
-		count++
-		return nil
-	})
-
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
-func (l *Ledger) CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error) {
-	var count uint64
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
 		count++
 		return nil
 	})
@@ -325,6 +354,88 @@ func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error) {
 	}
 	return blk, nil
 
+}
+
+func (l *Ledger) AddSmartContrantBlock(blk types.Block, txns ...db.StoreTxn) error {
+	key := getKey(blk.GetHash(), idPrefixSmartContractBlock)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	//never overwrite implicitly
+	err := txn.Get(key, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrBlockExists
+	} else if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
+
+	blockBytes, err := blk.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	return txn.Set(key, blockBytes)
+}
+
+func (l *Ledger) GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error) {
+	key := getKey(hash, idPrefixSmartContractBlock)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	blk := new(types.SmartContractBlock)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		_, err := blk.UnmarshalMsg(val)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, err
+	}
+	return blk, nil
+}
+
+func (l *Ledger) GetSmartContrantBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
+		blk := new(types.SmartContractBlock)
+		_, err := blk.UnmarshalMsg(val)
+		if err != nil {
+			return err
+		}
+		if err := fn(blk); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error) {
+	var count uint64
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
+		count++
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
@@ -868,15 +979,8 @@ func (l *Ledger) DeletePending(pendingKey types.PendingKey, txns ...db.StoreTxn)
 	return txn.Delete(key)
 }
 
-func (l *Ledger) getFrontierKey(hash types.Hash) []byte {
-	var key [1 + types.HashSize]byte
-	key[0] = idPrefixFrontier
-	copy(key[1:], hash[:])
-	return key[:]
-}
-
 func (l *Ledger) AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) error {
-	key := l.getFrontierKey(frontier.HeaderBlock)
+	key := getKey(frontier.HeaderBlock, idPrefixFrontier)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -893,9 +997,9 @@ func (l *Ledger) AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) erro
 }
 
 func (l *Ledger) GetFrontier(hash types.Hash, txns ...db.StoreTxn) (*types.Frontier, error) {
-	key := l.getFrontierKey(hash)
+	key := getKey(hash, idPrefixFrontier)
 	frontier := types.Frontier{HeaderBlock: hash}
-	txn, flag := l.getTxn(true, txns...)
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	err := txn.Get(key, func(val []byte, b byte) (err error) {
@@ -913,7 +1017,7 @@ func (l *Ledger) GetFrontier(hash types.Hash, txns ...db.StoreTxn) (*types.Front
 
 func (l *Ledger) GetFrontiers(txns ...db.StoreTxn) ([]*types.Frontier, error) {
 	var frontiers []*types.Frontier
-	txn, flag := l.getTxn(true, txns...)
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	err := txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
@@ -931,7 +1035,7 @@ func (l *Ledger) GetFrontiers(txns ...db.StoreTxn) ([]*types.Frontier, error) {
 }
 
 func (l *Ledger) DeleteFrontier(hash types.Hash, txns ...db.StoreTxn) error {
-	key := l.getFrontierKey(hash)
+	key := getKey(hash, idPrefixFrontier)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -951,6 +1055,53 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+func (l *Ledger) GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
+	key := getKey(hash, idPrefixPosterior)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	h := new(types.Hash)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		if err := h.UnmarshalBinary(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return types.ZeroHash, ErrPosteriorNotFound
+		}
+		return types.ZeroHash, err
+	}
+	return *h, nil
+}
+
+func getVersionKey() []byte {
+	return []byte{idPrefixVersion}
+}
+
+func setVersion(version int64, txn db.StoreTxn) error {
+	key := getVersionKey()
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, version)
+	return txn.Set(key, buf[:n])
+}
+
+func getVersion(txn db.StoreTxn) (int64, error) {
+	var i int64
+	key := getVersionKey()
+	err := txn.Get(key, func(val []byte, b byte) error {
+		i, _ = binary.Varint(val)
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return 0, ErrVersionNotFound
+		}
+		return i, err
+	}
+	return i, nil
 }
 
 //getTxn get txn by `update` mode
@@ -1174,11 +1325,11 @@ const (
 // TODO: implement
 func (l *Ledger) Rollback(hash types.Hash) error {
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		return l.processRollback(hash, true, txn)
+		return l.processRollback(hash, nil, true, txn)
 	})
 }
 
-func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) error {
+func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, isRoot bool, txn db.StoreTxn) error {
 	tm, err := l.Token(hash, txn)
 	if err != nil {
 		return err
@@ -1220,9 +1371,12 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance(), false, txn); err != nil {
 				return err
 			}
+			if err := l.rollBackPendingAdd(blockCur, blockLink, tm.Balance, blockCur.GetToken(), txn); err != nil {
+				return err
+			}
 
 			if hashCur != hash || isRoot {
-				if err := l.processRollback(blockCur.GetLink(), false, txn); err != nil {
+				if err := l.processRollback(blockCur.GetLink(), blockCur, false, txn); err != nil {
 					return err
 				}
 			}
@@ -1240,13 +1394,16 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 			if err := l.rollBackRep(blockCur.GetRepresentative(), blockPre.GetBalance().Sub(blockCur.GetBalance()), true, txn); err != nil {
 				return err
 			}
+			if err := l.rollBackPendingDel(types.Address(blockCur.Link), blockCur.GetHash(), txn); err != nil {
+				return err
+			}
 
 			if hashCur != hash || isRoot {
 				linkblock, err := l.getLinkBlock(blockCur, txn)
 				if err != nil {
 					return err
 				}
-				if err := l.processRollback(linkblock.GetHash(), false, txn); err != nil {
+				if err := l.processRollback(linkblock.GetHash(), blockCur, false, txn); err != nil {
 					return err
 				}
 			}
@@ -1264,9 +1421,12 @@ func (l *Ledger) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) 
 			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance().Sub(blockPre.GetBalance()), false, txn); err != nil {
 				return err
 			}
+			if err := l.rollBackPendingAdd(blockCur, blockLink, blockCur.GetBalance().Sub(blockPre.GetBalance()), blockCur.GetToken(), txn); err != nil {
+				return err
+			}
 
 			if hashCur != hash || isRoot {
-				if err := l.processRollback(blockCur.GetLink(), false, txn); err != nil {
+				if err := l.processRollback(blockCur.GetLink(), blockCur, false, txn); err != nil {
 					return err
 				}
 			}
@@ -1425,6 +1585,42 @@ func (l *Ledger) rollBackRepChange(pre types.Address, cur types.Address, balance
 	}
 	l.logger.Infof("sub rep %s from %s", balance, cur)
 	if err := l.SubRepresentation(cur, balance, txn); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) rollBackPendingAdd(blockCur *types.StateBlock, blockLink *types.StateBlock, amount types.Balance, token types.Hash, txn db.StoreTxn) error {
+	if blockLink == nil {
+		link, err := l.getStateBlock(blockCur.GetLink(), txn)
+		if err != nil {
+			return err
+		}
+		blockLink = link
+	}
+	pendingkey := types.PendingKey{
+		Address: blockCur.GetAddress(),
+		Hash:    blockLink.GetHash(),
+	}
+	pendinginfo := types.PendingInfo{
+		Source: blockLink.GetAddress(),
+		Amount: amount,
+		Type:   token,
+	}
+	l.logger.Info("add pending, ", pendingkey, pendinginfo)
+	if err := l.AddPending(pendingkey, &pendinginfo, txn); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) rollBackPendingDel(address types.Address, hash types.Hash, txn db.StoreTxn) error {
+	pendingkey := types.PendingKey{
+		Address: address,
+		Hash:    hash,
+	}
+	l.logger.Info("delete pending ,", pendingkey)
+	if err := l.DeletePending(pendingkey, txn); err != nil {
 		return err
 	}
 	return nil

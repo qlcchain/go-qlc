@@ -128,7 +128,7 @@ func initData() {
 		},
 		Token: mock.GetChainTokenType(),
 	}
-	ledger.AddBlock(&sb)
+	ledger.AddStateBlock(&sb)
 
 	//accountVotingWeight
 	ledger.AddRepresentation(addr1, types.Balance{Int: big.NewInt(int64(120000000000000))})
@@ -140,7 +140,7 @@ func initData() {
 
 	scs := mock.GetSmartContracts()
 	for _, sc := range scs {
-		ledger.AddBlock(sc)
+		ledger.AddStateBlock(sc)
 	}
 
 	// change block
@@ -153,7 +153,7 @@ func initData() {
 		},
 		Token: mock.GetChainTokenType(),
 	}
-	ledger.AddBlock(&sb3)
+	ledger.AddStateBlock(&sb3)
 	fmt.Println("hash,", sb.GetHash())
 
 	// generate block
