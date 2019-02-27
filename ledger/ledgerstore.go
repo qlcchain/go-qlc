@@ -31,7 +31,7 @@ type Store interface {
 	UpdateTokenMeta(address types.Address, meta *types.TokenMeta, txns ...db.StoreTxn) error
 	DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error
 	// state block CURD
-	AddBlock(blk types.Block, txns ...db.StoreTxn) error
+	AddStateBlock(blk types.Block, txns ...db.StoreTxn) error
 	GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)
 	GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error
 	DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error
@@ -39,6 +39,7 @@ type Store interface {
 	CountStateBlocks(txns ...db.StoreTxn) (uint64, error)
 	GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error)
 	// smartcontrant block CURD
+	AddSmartContrantBlock(blk types.Block, txns ...db.StoreTxn) error
 	GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error)
 	GetSmartContrantBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error
 	CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error)
@@ -64,6 +65,8 @@ type Store interface {
 	GetFrontiers(txns ...db.StoreTxn) ([]*types.Frontier, error)
 	DeleteFrontier(hash types.Hash, txns ...db.StoreTxn) error
 	CountFrontiers(txns ...db.StoreTxn) (uint64, error)
+	// posterior
+	GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
 
 	//Latest block hash by account and token type, if not exist, return zero hash
 	Latest(account types.Address, token types.Hash, txns ...db.StoreTxn) types.Hash

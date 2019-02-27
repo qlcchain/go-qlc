@@ -9,10 +9,10 @@ package ledger
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/test/mock"
@@ -43,7 +43,7 @@ func (ls *LedgerService) Init() error {
 			sb := sbs[i]
 			h := sb.GetHash()
 			if b, err := l.HasStateBlock(h, txn); !b && err == nil {
-				err := l.AddBlock(sb, txn)
+				err := l.AddStateBlock(sb, txn)
 				if err != nil {
 					ls.Ledger.logger.Error(err)
 					return nil

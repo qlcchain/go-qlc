@@ -139,7 +139,10 @@ func (t *BadgerStoreTxn) Iterator(pre byte, fn func([]byte, []byte, byte) error)
 func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {
 	sort.Sort(Migrations(migrations))
 	for _, m := range migrations {
-		_ = m.Migrate(t)
+		err := m.Migrate(t)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

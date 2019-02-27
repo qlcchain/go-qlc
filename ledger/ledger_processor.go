@@ -199,7 +199,7 @@ func (l *Ledger) BlockProcess(block types.Block) error {
 func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
 	hash := block.GetHash()
 	l.logger.Info("add block, ", hash)
-	if err := l.AddBlock(block, txn); err != nil {
+	if err := l.AddStateBlock(block, txn); err != nil {
 		return err
 	}
 

@@ -5,18 +5,13 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func TestProcess_BlockBasicInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	bs, err := mock.BlockChain()
-	if err != nil {
-		t.Fatal()
-	}
-	for i, b := range bs {
+	for i, b := range bc {
 		t.Log(i)
 		if _, err := l.Process(b); err != nil {
 			t.Fatal()

@@ -203,11 +203,11 @@ func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance,
 	prevBlock, _ := q.ledger.GetStateBlock(block.Previous)
 	switch blkType {
 	case ledger.Open:
-		return "open", block.Balance, nil
+		return "open", block.GetBalance(), nil
 	case ledger.Receive:
-		return "receive", block.Balance.Sub(prevBlock.Balance), nil
+		return "receive", block.GetBalance().Sub(prevBlock.GetBalance()), nil
 	case ledger.Send:
-		return "send", prevBlock.Balance.Sub(block.Balance), nil
+		return "send", prevBlock.GetBalance().Sub(block.GetBalance()), nil
 	case ledger.Change:
 		return "change", types.ZeroBalance, nil
 	default:
