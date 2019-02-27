@@ -111,8 +111,7 @@ func (l *Ledger) Close() error {
 
 func (l *Ledger) upgrade() error {
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		v, err := getVersion(txn)
-		l.logger.Info("version,", v)
+		_, err := getVersion(txn)
 		if err != nil {
 			if err == ErrVersionNotFound {
 				if err := setVersion(version, txn); err != nil {
