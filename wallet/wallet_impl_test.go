@@ -47,7 +47,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *WalletStore) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(dir)
+		err = os.RemoveAll(cfg.DataDir)
 		if err != nil {
 			t.Fatal(err)
 		}

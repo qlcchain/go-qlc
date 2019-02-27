@@ -39,7 +39,7 @@ func TestNewWalletStore(t *testing.T) {
 			t.Fatal(err)
 		}
 		//store2.Close()
-		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(cfg1.DataDir)
 	}()
 }
 
