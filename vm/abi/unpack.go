@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2019 QLC Chain Team
- *
- * This software is released under the MIT License.
- * https://opensource.org/licenses/MIT
- */
-
 package abi
 
 import (
@@ -174,7 +167,7 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 	case BoolTy:
 		return readBool(returnOutput)
 	case AddressTy:
-		addr, _ := types.BytesToAddress(returnOutput[util.WordSize-types.AddressSize : util.WordSize])
+		addr, _ := types.BytesToAddress(returnOutput)
 		return addr, nil
 	case TokenIdTy:
 		tokenId, _ := types.BytesToHash(returnOutput)

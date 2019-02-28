@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2019 QLC Chain Team
- *
- * This software is released under the MIT License.
- * https://opensource.org/licenses/MIT
- */
-
 package abi
 
 import (
@@ -238,10 +231,9 @@ func TestTypeCheck(t *testing.T) {
 		{"string", []byte{}, "abi: cannot use slice as type string as argument"},
 		{"bytes32[]", [][32]byte{{}}, ""},
 		{"function", [24]byte{}, ""},
-		{"bytes20", types.Address{}, ""},
+		{"bytes32", types.Address{}, ""},
 		{"address", [20]byte{}, ""},
 		{"address", types.Address{}, ""},
-		{"gid", [10]byte{}, ""},
 		{"tokenId", [10]byte{}, ""},
 		{"address", types.Hash{}, ""},
 		{"tokenId[]]", "", "invalid arg type in abi"},
@@ -260,7 +252,7 @@ func TestTypeCheck(t *testing.T) {
 
 		err = typeCheck(typ, reflect.ValueOf(test.input))
 		if err != nil && len(test.err) == 0 {
-			t.Errorf("%d failed. Expected no err but got: %v", i, err)
+			t.Errorf("%d (%s) failed. Expected no err but got: %v", i, typ, err)
 			continue
 		}
 		if err == nil && len(test.err) != 0 {
