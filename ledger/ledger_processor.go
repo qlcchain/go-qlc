@@ -55,7 +55,7 @@ func (l *Ledger) BlockCheck(block types.Block) (ProcessResult, error) {
 	case types.SmartContract:
 		return Other, errors.New("smartcontract block")
 	default:
-		return Other, errors.New("invalid block")
+		return Other, errors.New("invalid block type")
 	}
 	return Other, errors.New("invalid block")
 }
