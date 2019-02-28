@@ -15,7 +15,7 @@ func TestQlcNode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	h1 := bhost.New(swarmt.GenSwarm(t, ctx))
-	cfgFile := filepath.Join(config.DefaultDataDir(), config.QlcConfigFile)
+	cfgFile := filepath.Join(config.DefaultDataDir())
 	defer func() {
 		err := os.RemoveAll(cfgFile)
 		if err != nil {

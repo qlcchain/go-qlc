@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bluele/gcache"
+
 	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -23,7 +25,9 @@ import (
 //var logger = log.NewLogger("consensus")
 
 const (
-	findOnlineRepresentativesIntervalms = 60 * time.Second
+	msgCacheSize                       = 65536
+	msgCacheExpirationTime             = 10 * time.Minute
+	findOnlineRepresentativesIntervals = 2 * time.Minute
 )
 
 type DposService struct {
@@ -34,13 +38,14 @@ type DposService struct {
 	quitCh             chan bool
 	bp                 *BlockProcessor
 	wallet             *wallet.WalletStore
-	actrx              *ActiveTrx
+	acTrx              *ActiveTrx
 	account            types.Address
 	password           string
 	onlineRepAddresses []types.Address
 	logger             *zap.SugaredLogger
 	priInfos           *sync.Map
 	session            *wallet.Session
+	cache              gcache.Cache
 }
 
 func (dps *DposService) GetP2PService() p2p.Service {
@@ -64,7 +69,7 @@ func (dps *DposService) Start() error {
 	dps.setEvent()
 	dps.logger.Info("start dpos service")
 	go dps.bp.Start()
-	go dps.actrx.start()
+	go dps.acTrx.start()
 
 	return nil
 }
@@ -76,7 +81,7 @@ func (dps *DposService) Stop() error {
 	defer dps.PostStop()
 	dps.quitCh <- true
 	dps.bp.quitCh <- true
-	dps.actrx.quitCh <- true
+	dps.acTrx.quitCh <- true
 	for i, j := range dps.eventMsg {
 		dps.ns.MessageEvent().GetEvent("consensus").UnSubscribe(i, j)
 	}
@@ -99,24 +104,22 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 		eventMsg: make(map[p2p.EventType]p2p.EventSubscriber),
 		quitCh:   make(chan bool, 1),
 		bp:       bp,
-		actrx:    acTrx,
+		acTrx:    acTrx,
 		wallet:   wallet.NewWalletStore(cfg),
 		account:  account,
 		password: password,
 		logger:   log.NewLogger("consensus"),
 		priInfos: new(sync.Map),
+		cache:    gcache.New(msgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
 	}
 	dps.session = dps.wallet.NewSession(account)
-	//test begin...
-	//dps.accounts = append(dps.accounts, ac.Address())
-	//test end...
 	err := dps.setPriInfo()
 	if err != nil {
 		dps.logger.Error(err)
 		return nil, err
 	}
 	dps.bp.SetDpos(dps)
-	dps.actrx.SetDposService(dps)
+	dps.acTrx.SetDposService(dps)
 	return dps, nil
 }
 
@@ -187,78 +190,123 @@ func (dps *DposService) setEvent() {
 
 func (dps *DposService) ReceivePublish(v interface{}) {
 	dps.logger.Info("Publish Event")
-	dps.bp.blocks <- v.(types.Block)
+	e := v.(p2p.Message)
+	p, err := protos.PublishBlockFromProto(e.Data())
+	if err != nil {
+		dps.logger.Info(err)
+		return
+	}
+	bs := BlockSource{
+		block:     p.Blk,
+		blockFrom: types.UnSynchronized,
+	}
+	dps.bp.blocks <- bs
+	dps.onReceivePublish(e, p.Blk)
+}
+
+func (dps *DposService) onReceivePublish(e p2p.Message, blk types.Block) {
+	if !dps.cache.Has(e.Hash()) {
+		dps.ns.SendMessageToPeers(p2p.PublishReq, blk, e.MessageFrom())
+		err := dps.cache.Set(e.Hash(), "")
+		if err != nil {
+			dps.logger.Errorf("Set cache error [%s] for block [%s] with publish message", err, blk.GetHash())
+		}
+	}
 }
 
 func (dps *DposService) ReceiveConfirmReq(v interface{}) {
 	dps.logger.Info("ConfirmReq Event")
-	dps.bp.blocks <- v.(types.Block)
-	dps.onReceiveConfirmReq(v.(types.Block))
+	e := v.(p2p.Message)
+	r, err := protos.ConfirmReqBlockFromProto(e.Data())
+	if err != nil {
+		dps.logger.Error(err)
+		return
+	}
+	dps.onReceiveConfirmReq(e, r.Blk)
 }
 
-func (dps *DposService) onReceiveConfirmReq(block types.Block) {
-	dps.priInfos.Range(func(key, value interface{}) bool {
-		isRep := dps.isThisAccountRepresentation(key.(types.Address))
-		if isRep {
-			dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Root())
-			dps.putRepresentativesToOnline(key.(types.Address))
-			dps.sendConfirmAck(block, key.(types.Address), value.(*types.Account))
+func (dps *DposService) onReceiveConfirmReq(e p2p.Message, blk types.Block) {
+	bs := BlockSource{
+		block:     blk,
+		blockFrom: types.UnSynchronized,
+	}
+	if !dps.cache.Has(e.Hash()) {
+		dps.priInfos.Range(func(key, value interface{}) bool {
+			isRep := dps.isThisAccountRepresentation(key.(types.Address))
+			if isRep {
+				dps.putRepresentativesToOnline(key.(types.Address))
+				result, _ := dps.ledger.Process(bs.block)
+				if result == ledger.Old {
+					dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
+					dps.sendConfirmAck(bs.block, key.(types.Address), value.(*types.Account))
+				}
+				dps.bp.processResult(result, bs)
+			} else {
+				dps.bp.blocks <- bs
+			}
+			return true
+		})
+		dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
+		err := dps.cache.Set(e.Hash(), "")
+		if err != nil {
+			dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmReq message", err, blk.GetHash())
 		}
-		return true
-	})
-	//if len(accounts) == 0 {
-	//	logger.Info("this is just a node,not a wallet")
-	//	dps.sendConfirmReq(block)
-	//}
+	}
 }
 
 func (dps *DposService) ReceiveConfirmAck(v interface{}) {
 	dps.logger.Info("ConfirmAck Event")
-	vote := v.(*protos.ConfirmAckBlock)
-	dps.bp.blocks <- vote.Blk
-	dps.onReceiveConfirmAck(vote)
+	e := v.(p2p.Message)
+	ack, err := protos.ConfirmAckBlockFromProto(e.Data())
+	if err != nil {
+		dps.logger.Info(err)
+		return
+	}
+	dps.onReceiveConfirmAck(e, ack)
 }
 
-func (dps *DposService) onReceiveConfirmAck(va *protos.ConfirmAckBlock) {
-	valid := IsAckSignValidate(va)
+func (dps *DposService) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock) {
+	bs := BlockSource{
+		block:     ack.Blk,
+		blockFrom: types.UnSynchronized,
+	}
+	valid := IsAckSignValidate(ack)
 	if !valid {
 		return
 	}
-	dps.putRepresentativesToOnline(va.Account)
-	if v, ok := dps.actrx.roots.Load(va.Blk.Root()); ok {
-		result, vt := v.(*Election).vote.voteExit(va.Account)
-		if result {
-			if vt.Sequence < va.Sequence {
-				v.(*Election).vote.repVotes[va.Account] = va
-			}
-		} else {
-			ta := v.(*Election).vote.voteStatus(va)
-			if ta == confirm {
-				currentVote := v.(*Election).vote.repVotes[va.Account]
-				if currentVote.Sequence < va.Sequence {
-					v.(*Election).vote.repVotes[va.Account] = va
+	dps.putRepresentativesToOnline(ack.Account)
+	dps.acTrx.vote(ack)
+	if !dps.cache.Has(e.Hash()) {
+		dps.priInfos.Range(func(key, value interface{}) bool {
+			isRep := dps.isThisAccountRepresentation(key.(types.Address))
+			if isRep {
+				dps.putRepresentativesToOnline(key.(types.Address))
+				result, _ := dps.ledger.Process(bs.block)
+				if result == ledger.Old {
+					dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
+					dps.sendConfirmAck(bs.block, key.(types.Address), value.(*types.Account))
 				}
+				dps.bp.processResult(result, bs)
+			} else {
+				dps.bp.blocks <- bs
 			}
-		}
-		dps.actrx.vote(va)
-	} else {
-		exit, err := dps.ledger.HasStateBlock(va.Blk.GetHash())
+			return true
+		})
+		dps.ns.SendMessageToPeers(p2p.ConfirmAck, ack, e.MessageFrom())
+		err := dps.cache.Set(e.Hash(), "")
 		if err != nil {
-			return
-		}
-		if !exit {
-			dps.bp.blocks <- va.Blk
+			dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmAck message", err, ack.Blk.GetHash())
 		}
 	}
 }
 
 func (dps *DposService) ReceiveSyncBlock(v interface{}) {
 	dps.logger.Info("Sync Event")
-	dps.bp.blocks <- v.(types.Block)
-}
-
-func (dps *DposService) sendConfirmReq(block types.Block) {
-	dps.ns.Broadcast(p2p.ConfirmReq, block)
+	bs := BlockSource{
+		block:     v.(types.Block),
+		blockFrom: types.Synchronized,
+	}
+	dps.bp.blocks <- bs
 }
 
 func (dps *DposService) sendConfirmAck(block types.Block, account types.Address, acc *types.Account) error {
@@ -272,28 +320,33 @@ func (dps *DposService) sendConfirmAck(block types.Block, account types.Address,
 }
 
 func (dps *DposService) voteGenerate(block types.Block, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
-	var va protos.ConfirmAckBlock
-	if v, ok := dps.actrx.roots.Load(block.Root()); ok {
-		result, vt := v.(*Election).vote.voteExit(account)
-		if result {
-			va.Sequence = vt.Sequence + 1
-			va.Blk = block
-			va.Account = account
-			va.Signature = acc.Sign(block.GetHash())
-		} else {
-			va.Sequence = 0
-			va.Blk = block
-			va.Account = account
-			va.Signature = acc.Sign(block.GetHash())
-		}
-		v.(*Election).vote.voteStatus(&va)
-	} else {
-		va.Sequence = 0
-		va.Blk = block
-		va.Account = account
-		va.Signature = acc.Sign(block.GetHash())
+	//var va protos.ConfirmAckBlock
+	//if v, ok := dps.acTrx.roots.Load(block.Root()); ok {
+	//	result, vt := v.(*Election).vote.voteExit(account)
+	//	if result {
+	//		va.Sequence = vt.Sequence + 1
+	//		va.Blk = block
+	//		va.Account = account
+	//		va.Signature = acc.Sign(block.GetHash())
+	//	} else {
+	//		va.Sequence = 0
+	//		va.Blk = block
+	//		va.Account = account
+	//		va.Signature = acc.Sign(block.GetHash())
+	//	}
+	//} else {
+	va := &protos.ConfirmAckBlock{
+		Sequence:  0,
+		Blk:       block,
+		Account:   account,
+		Signature: acc.Sign(block.GetHash()),
 	}
-	return &va, nil
+	//va.Sequence = 0
+	//va.Blk = block
+	//va.Account = account
+	//va.Signature = acc.Sign(block.GetHash())
+	//}
+	return va, nil
 }
 
 func (dps *DposService) GetAccountPrv(account types.Address) (*types.Account, error) {
@@ -366,6 +419,6 @@ func (dps *DposService) findOnlineRepresentatives() error {
 	if err != nil {
 		return err
 	}
-	dps.sendConfirmReq(blk)
+	dps.ns.Broadcast(p2p.ConfirmReq, blk)
 	return nil
 }

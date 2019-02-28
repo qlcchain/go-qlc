@@ -26,6 +26,7 @@ func TestBootstrap(t *testing.T) {
 	}
 
 }
+
 func TestConvertPeers(t *testing.T) {
 	BootNodes := []string{"/ip4/47.90.89.43/tcp/29735/ipfs/QmVSWnHEdCD2AciuCECdxspvH3Ej7VSewY1vtiEMAYqoYN",
 		"/ip4/127.0.0.1/tcp/29735/ipfs/QmVSWnHEdCD2AciuCECdxspvH3Ej7VSewY1vtiEMAYqoYN",

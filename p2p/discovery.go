@@ -40,6 +40,7 @@ func (node *QlcNode) HandlePeerFound(p pstore.PeerInfo) {
 	}
 	node.logger.Info("find a local peer , ID:", p.ID.Pretty())
 }
+
 func setupDiscoveryOption(cfg *config.Config) DiscoveryOption {
 	if cfg.Discovery.MDNS.Enabled {
 		return func(ctx context.Context, h host.Host) (localdiscovery.Service, error) {

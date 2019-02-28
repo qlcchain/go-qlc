@@ -9,7 +9,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/test/mock"
 	"go.uber.org/zap"
 )
@@ -160,18 +159,9 @@ func (q *QlcApi) Process(block *types.StateBlock) (types.Hash, error) {
 	q.logger.Info("process result, ", flag)
 	switch flag {
 	case ledger.Progress:
-		pushBlock := protos.PublishBlock{
-			Blk: block,
-		}
-		bytes, err := protos.PublishBlockToProto(&pushBlock)
-		if err != nil {
-			q.logger.Error(err)
-			return types.ZeroHash, err
-		} else {
-			q.logger.Info("broadcast block")
-			q.dpos.GetP2PService().Broadcast(p2p.PublishReq, bytes)
-			return block.GetHash(), nil
-		}
+		q.logger.Debug("broadcast block")
+		q.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
+		return block.GetHash(), nil
 	case ledger.BadWork:
 		return types.ZeroHash, errors.New("bad work")
 	case ledger.BadSignature:

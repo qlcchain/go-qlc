@@ -65,10 +65,11 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 
 	return node, nil
 }
+
 func (node *QlcNode) startHost() error {
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
-	qlchost, err := libp2p.New(
+	qlcHost, err := libp2p.New(
 		node.ctx,
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(node.privateKey),
@@ -77,19 +78,20 @@ func (node *QlcNode) startHost() error {
 	if err != nil {
 		return err
 	}
-	qlchost.SetStreamHandler(QlcProtocolID, node.handleStream)
-	node.host = qlchost
+	qlcHost.SetStreamHandler(QlcProtocolID, node.handleStream)
+	node.host = qlcHost
 	kadDht, err := dht.New(node.ctx, node.host)
 	if err != nil {
 		return err
 	}
 	node.kadDht = kadDht
 	node.ping = NewPingService(node.host)
-	node.peerStore = qlchost.Peerstore()
+	node.peerStore = qlcHost.Peerstore()
 	node.peerStore.AddPrivKey(node.ID, node.privateKey)
 	node.peerStore.AddPubKey(node.ID, node.privateKey.GetPublic())
 	return nil
 }
+
 func (node *QlcNode) startLocalDiscovery() error {
 	// setup local discovery
 	node.logger.Info("Start Qlc Local Discovery...")
@@ -171,6 +173,7 @@ func (node *QlcNode) GetID() string {
 func (node *QlcNode) StreamManager() *StreamManager {
 	return node.streamManager
 }
+
 func (node *QlcNode) stopHost() {
 
 	if node.host == nil {
@@ -199,6 +202,11 @@ func (node *QlcNode) BroadcastMessage(messageName string, value interface{}) {
 	node.streamManager.BroadcastMessage(messageName, value)
 }
 
+// BroadcastMessage broadcast message.
+func (node *QlcNode) SendMessageToPeers(messageName string, value interface{}, peerID string) {
+	node.streamManager.SendMessageToPeers(messageName, value, peerID)
+}
+
 // SendMessageToPeer send message to a peer.
 func (node *QlcNode) SendMessageToPeer(messageName string, value interface{}, peerID string) error {
 	stream := node.streamManager.FindByPeerID(peerID)
@@ -206,9 +214,9 @@ func (node *QlcNode) SendMessageToPeer(messageName string, value interface{}, pe
 		node.logger.Debug("Failed to locate peer's stream")
 		return ErrPeerIsNotConnected
 	}
-	data, err := MarshalMessage(messageName, value)
+	data, err := marshalMessage(messageName, value)
 	if err != nil {
 		return err
 	}
-	return stream.SendMessage(messageName, data)
+	return stream.SendMessageToPeer(messageName, data)
 }

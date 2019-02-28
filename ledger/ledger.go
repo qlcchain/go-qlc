@@ -1420,8 +1420,10 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 				if err != nil {
 					return err
 				}
-				if err := l.processRollback(linkblock.GetHash(), blockCur, false, txn); err != nil {
-					return err
+				if linkblock != nil {
+					if err := l.processRollback(linkblock.GetHash(), blockCur, false, txn); err != nil {
+						return err
+					}
 				}
 			}
 		case Receive:
@@ -1512,6 +1514,9 @@ func (l *Ledger) getStateBlock(hash types.Hash, txn ...db.StoreTxn) (*types.Stat
 func (l *Ledger) getLinkBlock(block *types.StateBlock, txn db.StoreTxn) (*types.StateBlock, error) {
 	tm, err := l.GetTokenMeta(types.Address(block.GetLink()), block.GetToken(), txn)
 	if err != nil {
+		if err == ErrAccountNotFound || err == ErrTokenNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 	blockLink, err := l.getStateBlock(tm.Header, txn)

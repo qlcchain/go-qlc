@@ -33,7 +33,7 @@ func NewPingService(h host.Host) *PingService {
 	return ps
 }
 
-func (p *PingService) PingHandler(s inet.Stream) {
+func (ps *PingService) PingHandler(s inet.Stream) {
 	buf := make([]byte, PingSize)
 
 	errCh := make(chan error, 1)
@@ -44,12 +44,12 @@ func (p *PingService) PingHandler(s inet.Stream) {
 	go func() {
 		select {
 		case <-timer.C:
-			p.logger.Debug("ping timeout")
+			ps.logger.Debug("ping timeout")
 		case err, ok := <-errCh:
 			if ok {
-				p.logger.Debug(err)
+				ps.logger.Debug(err)
 			} else {
-				p.logger.Error("ping loop failed without error")
+				ps.logger.Error("ping loop failed without error")
 			}
 		}
 		s.Reset()

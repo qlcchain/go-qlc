@@ -16,7 +16,6 @@ const (
 )
 
 var zeroHash = types.Hash{}
-
 var headerBlockHash types.Hash
 var openBlockHash types.Hash
 var bulkPush, bulkPull []*protos.Bulk
@@ -85,6 +84,7 @@ func (ss *ServiceSync) Stop() {
 }
 
 func (ss *ServiceSync) onFrontierReq(message Message) error {
+	ss.netService.node.logger.Info("receive FrontierReq")
 	var fs []*types.Frontier
 	fs, err := ss.qlcLedger.GetFrontiers()
 	if err != nil {
@@ -107,6 +107,7 @@ func (ss *ServiceSync) onFrontierReq(message Message) error {
 }
 
 func (ss *ServiceSync) onFrontierRsp(message Message) error {
+	ss.netService.node.logger.Info("receive FrontierRsp")
 	fsRemote, err := protos.FrontierResponseFromProto(message.Data())
 	if err != nil {
 		return err
@@ -257,6 +258,7 @@ func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
 }
 
 func (ss *ServiceSync) onBulkPullRequest(message Message) error {
+	ss.netService.node.logger.Info("receive BulkPullRequest")
 	pullRemote, err := protos.BulkPullReqPacketFromProto(message.Data())
 	if err != nil {
 		return err
@@ -311,6 +313,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 }
 
 func (ss *ServiceSync) onBulkPullRsp(message Message) error {
+	ss.netService.node.logger.Info("receive BulkPullRsp")
 	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err
@@ -354,6 +357,7 @@ func (ss *ServiceSync) onBulkPullRsp(message Message) error {
 }
 
 func (ss *ServiceSync) onBulkPushBlock(message Message) error {
+	ss.netService.node.logger.Info("receive BulkPushBlock")
 	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err

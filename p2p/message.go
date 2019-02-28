@@ -40,10 +40,12 @@ type QlcMessage struct {
 func (message *QlcMessage) MagicNumber() []byte {
 	return message.content[:QlcMessageMagicNumberEndIdx]
 }
+
 func (message *QlcMessage) Version() byte {
 
 	return message.content[QlcMessageMagicNumberEndIdx]
 }
+
 func (message *QlcMessage) MessageType() MessageType {
 	if message.messageType == "" {
 		data := message.content[QlcMessageVersionEndIdx:QlcMessageTypeEndIdx]
@@ -56,6 +58,7 @@ func (message *QlcMessage) MessageType() MessageType {
 	}
 	return message.messageType
 }
+
 func (message *QlcMessage) MessageData() []byte {
 	return message.content[QlcMessageDataCheckSumEndIdx:]
 }
@@ -86,14 +89,14 @@ func (message *QlcMessage) HeaderData() []byte {
 }
 
 // NewQlcMessage new qlc message
-func NewQlcMessage(data []byte, currentVersion byte, messagetype string) []byte {
+func NewQlcMessage(data []byte, currentVersion byte, messageType string) []byte {
 	message := &QlcMessage{
 		content: make([]byte, QlcMessageHeaderLength+len(data)),
 	}
 	// copy header.
 	copy(message.content[0:QlcMessageMagicNumberEndIdx], MagicNumber)
 	message.content[QlcMessageMagicNumberEndIdx] = currentVersion
-	copy(message.content[QlcMessageVersionEndIdx:QlcMessageTypeEndIdx], []byte(messagetype))
+	copy(message.content[QlcMessageVersionEndIdx:QlcMessageTypeEndIdx], []byte(messageType))
 
 	//copy datalength
 	copy(message.content[QlcMessageTypeEndIdx:QlcMessageDataLengthEndIdx], FromUint32(uint32(len(data))))
