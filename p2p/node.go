@@ -126,14 +126,14 @@ func (node *QlcNode) StartServices() error {
 	}
 
 	if len(node.boostrapAddrs) != 0 {
-		pinfos, err := convertPeers(node.boostrapAddrs)
+		pInfoS, err := convertPeers(node.boostrapAddrs)
 		if err != nil {
-			node.logger.Errorf("Failed to convert bootnode address")
+			node.logger.Errorf("Failed to convert bootNode address")
 			return err
 		}
 
 		for {
-			err = bootstrapConnect(node.ctx, node.host, pinfos)
+			err = bootstrapConnect(node.ctx, node.host, pInfoS)
 			if err != nil {
 				time.Sleep(time.Duration(10) * time.Second)
 				continue

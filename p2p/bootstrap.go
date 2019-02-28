@@ -12,16 +12,16 @@ import (
 )
 
 func convertPeers(peers []string) ([]pstore.PeerInfo, error) {
-	pinfos := make([]pstore.PeerInfo, len(peers))
+	pInfoS := make([]pstore.PeerInfo, len(peers))
 	for i, peer := range peers {
-		maddr := ma.StringCast(peer)
-		p, err := pstore.InfoFromP2pAddr(maddr)
+		mAddr := ma.StringCast(peer)
+		p, err := pstore.InfoFromP2pAddr(mAddr)
 		if err != nil {
 			return nil, err
 		}
-		pinfos[i] = *p
+		pInfoS[i] = *p
 	}
-	return pinfos, nil
+	return pInfoS, nil
 }
 
 // This code is borrowed from the go-ipfs bootstrap process
@@ -68,7 +68,8 @@ func bootstrapConnect(ctx context.Context, ph host.Host, peers []pstore.PeerInfo
 		}
 	}
 	if count == len(peers) {
-		return fmt.Errorf("Failed to bootstrap. %s", err)
+		s := fmt.Sprintf("Failed to bootstrap. %s", err)
+		return errors.New(s)
 	}
 	return nil
 }

@@ -41,12 +41,11 @@ func FrontierReqFromProto(data []byte) (*FrontierReq, error) {
 	fr := new(pb.FrontierReq)
 
 	if err := proto.Unmarshal(data, fr); err != nil {
-		logger.Error("Failed to unmarshal FrontierReqPacket message.")
 		return nil, err
 	}
 	address, err := types.BytesToAddress(fr.Address)
 	if err != nil {
-		logger.Error("address error")
+		return nil, err
 	}
 	frq := &FrontierReq{
 		StartAddress: address,
@@ -84,7 +83,6 @@ func FrontierResponseFromProto(data []byte) (*FrontierResponse, error) {
 	fr := new(pb.FrontierRsp)
 	frp := new(types.Frontier)
 	if err := proto.Unmarshal(data, fr); err != nil {
-		logger.Error("Failed to unmarshal FrontierRspPacket message.")
 		return nil, err
 	}
 	err := frp.HeaderBlock.UnmarshalBinary(fr.HeaderBlock[:])

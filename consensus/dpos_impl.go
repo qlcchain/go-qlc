@@ -196,7 +196,7 @@ func (dps *DposService) ReceivePublish(v interface{}) {
 		dps.logger.Info(err)
 		return
 	}
-	bs := BlockSource{
+	bs := blockSource{
 		block:     p.Blk,
 		blockFrom: types.UnSynchronized,
 	}
@@ -226,7 +226,7 @@ func (dps *DposService) ReceiveConfirmReq(v interface{}) {
 }
 
 func (dps *DposService) onReceiveConfirmReq(e p2p.Message, blk types.Block) {
-	bs := BlockSource{
+	bs := blockSource{
 		block:     blk,
 		blockFrom: types.UnSynchronized,
 	}
@@ -266,7 +266,7 @@ func (dps *DposService) ReceiveConfirmAck(v interface{}) {
 }
 
 func (dps *DposService) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock) {
-	bs := BlockSource{
+	bs := blockSource{
 		block:     ack.Blk,
 		blockFrom: types.UnSynchronized,
 	}
@@ -302,7 +302,7 @@ func (dps *DposService) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAc
 
 func (dps *DposService) ReceiveSyncBlock(v interface{}) {
 	dps.logger.Info("Sync Event")
-	bs := BlockSource{
+	bs := blockSource{
 		block:     v.(types.Block),
 		blockFrom: types.Synchronized,
 	}

@@ -59,10 +59,11 @@ func (ss *ServiceSync) Start() {
 			if err != nil {
 				continue
 			}
-			ss.logger.Info("begin print fr info")
-			for k, v := range ss.frontiers {
-				ss.logger.Info(k, v)
-			}
+			ss.logger.Infof("begin sync block from [%s]", peerID)
+			//ss.logger.Info("begin print fr info")
+			//for k, v := range ss.frontiers {
+			//	ss.logger.Info(k, v)
+			//}
 			ss.next()
 			bulkPull = bulkPull[:0:0]
 			bulkPush = bulkPush[:0:0]
@@ -78,7 +79,7 @@ func (ss *ServiceSync) Start() {
 
 // Stop sync service
 func (ss *ServiceSync) Stop() {
-	ss.logger.Info("Stop Qlc sync...")
+	//ss.logger.Info("Stop Qlc sync...")
 
 	ss.quitCh <- true
 }
@@ -113,7 +114,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 		return err
 	}
 	fr := fsRemote.Frontier
-	ss.logger.Info(fr.HeaderBlock, fr.OpenBlock)
+	//ss.logger.Info(fr.HeaderBlock, fr.OpenBlock)
 
 	if !fr.OpenBlock.IsZero() {
 		for {
@@ -132,7 +133,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 		if !openBlockHash.IsZero() {
 			if fr.OpenBlock == openBlockHash {
 				if headerBlockHash == fr.HeaderBlock {
-					ss.logger.Infof("this token %s have the same block", openBlockHash)
+					//ss.logger.Infof("this token %s have the same block", openBlockHash)
 				} else {
 					exit, _ := ss.qlcLedger.HasStateBlock(fr.HeaderBlock)
 					if exit == true {
@@ -196,7 +197,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 					startHash := value.StartHash
 					endHash := value.EndHash
 					if startHash.IsZero() {
-						ss.logger.Infof("need to send all the blocks of this account")
+						//ss.logger.Infof("need to send all the blocks of this account")
 						var blk types.Block
 						var bulkBlk []types.Block
 						for {
@@ -217,7 +218,7 @@ func (ss *ServiceSync) onFrontierRsp(message Message) error {
 							}
 						}
 					} else {
-						ss.logger.Info("need to send some blocks of this account")
+						//ss.logger.Info("need to send some blocks of this account")
 						var blk types.Block
 						var bulkBlk []types.Block
 						for {
@@ -269,7 +270,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 	if startHash.IsZero() {
 		var blk types.Block
 		var bulkBlk []types.Block
-		ss.logger.Info("need to send all the blocks of this account")
+		//ss.logger.Info("need to send all the blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
@@ -290,7 +291,7 @@ func (ss *ServiceSync) onBulkPullRequest(message Message) error {
 	} else {
 		var blk types.Block
 		var bulkBlk []types.Block
-		ss.logger.Info("need to send some blocks of this account")
+		//ss.logger.Info("need to send some blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {

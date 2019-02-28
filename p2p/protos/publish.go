@@ -32,7 +32,6 @@ func PublishBlockToProto(publish *PublishBlock) ([]byte, error) {
 func PublishBlockFromProto(data []byte) (*PublishBlock, error) {
 	bp := new(pb.PublishBlock)
 	if err := proto.Unmarshal(data, bp); err != nil {
-		logger.Error("Failed to unmarshal PublishBlock message.")
 		return nil, err
 	}
 	blockType := bp.Blocktype

@@ -74,7 +74,7 @@ func (el *Election) haveQuorum() {
 	}
 	if balance.Compare(b) == types.BalanceCompBigger {
 		confirmedHash := blk.GetHash()
-		el.dps.logger.Infof("hash:%s block has confirmed", confirmedHash)
+		el.dps.logger.Infof("hash:%s block has confirmed,total vote is [%s]", confirmedHash, balance.String())
 		if el.status.winner.GetHash().String() != confirmedHash.String() {
 			el.dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash().String())
 			el.status.loser = append(el.status.loser, el.status.winner)

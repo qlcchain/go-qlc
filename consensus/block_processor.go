@@ -10,20 +10,20 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 )
 
-type BlockSource struct {
+type blockSource struct {
 	block     types.Block
 	blockFrom types.SynchronizedKind
 }
 
 type BlockProcessor struct {
-	blocks chan BlockSource
+	blocks chan blockSource
 	quitCh chan bool
 	dp     *DposService
 }
 
 func NewBlockProcessor() *BlockProcessor {
 	return &BlockProcessor{
-		blocks: make(chan BlockSource, 16384),
+		blocks: make(chan blockSource, 16384),
 		quitCh: make(chan bool, 1),
 	}
 }
@@ -48,22 +48,22 @@ func (bp *BlockProcessor) processBlocks() {
 			bp.processResult(result, bs)
 		case <-timer.C:
 			bp.dp.logger.Info("begin Find Online Representatives.")
-			bp.dp.findOnlineRepresentatives()
+			go bp.dp.findOnlineRepresentatives()
 		default:
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
 
-func (bp *BlockProcessor) processResult(result ledger.ProcessResult, bs BlockSource) error {
+func (bp *BlockProcessor) processResult(result ledger.ProcessResult, bs blockSource) error {
 	blk := bs.block
 	hash := blk.GetHash()
 	switch result {
 	case ledger.Progress:
 		if bs.blockFrom == types.Synchronized {
-			bp.dp.logger.Infof("Block %s from sync,no need consensus", hash)
+			bp.dp.logger.Debugf("Block %s from sync,no need consensus", hash)
 		} else if bs.blockFrom == types.UnSynchronized {
-			bp.dp.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
+			bp.dp.logger.Debugf("Block %s basic info is correct,begin add it to roots", hash)
 			bp.dp.acTrx.addToRoots(blk)
 		} else {
 			bp.dp.logger.Errorf("Block %s UnKnow from", hash)
@@ -161,29 +161,29 @@ func (bp *BlockProcessor) findAnotherForkedBlock(block types.Block) types.Block 
 func (bp *BlockProcessor) queueUnchecked(hash types.Hash) {
 	blkLink, bf, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
 	if blkLink != nil {
-		bp.dp.logger.Infof("Get blkLink for hash: [%s]", blkLink.GetHash())
-		bs := BlockSource{
+		//bp.dp.logger.Debugf("Get blkLink for hash: [%s]", blkLink.GetHash())
+		bs := blockSource{
 			block:     blkLink,
 			blockFrom: bf,
 		}
 		bp.blocks <- bs
 		err := bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
 		if err != nil {
-			bp.dp.logger.Infof("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+			bp.dp.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 		}
 	}
 
 	blkPre, bf, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
 	if blkPre != nil {
-		bp.dp.logger.Infof("Get blkPre for hash: %s", blkPre.GetHash())
-		bs := BlockSource{
+		//bp.dp.logger.Infof("Get blkPre for hash: %s", blkPre.GetHash())
+		bs := blockSource{
 			block:     blkPre,
 			blockFrom: bf,
 		}
 		bp.blocks <- bs
 		err := bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
 		if err != nil {
-			bp.dp.logger.Infof("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+			bp.dp.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
 
 		}
 	}

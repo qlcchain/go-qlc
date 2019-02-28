@@ -159,7 +159,7 @@ func (ms *MessageService) checkMessageCache() {
 				}
 				continue
 			}
-			ms.netService.node.logger.Info("resend cache message times................5:", value.resendTimes)
+			//ms.netService.node.logger.Info("resend cache message times................5:", value.resendTimes)
 		}
 	}
 
@@ -174,7 +174,7 @@ func (ms *MessageService) onMessageResponse(message Message) {
 		ms.netService.node.logger.Errorf("onMessageResponse err:[%s]", err)
 		return
 	}
-	ms.netService.node.logger.Info("hash is....... :", hash)
+	//ms.netService.node.logger.Info("hash is....... :", hash)
 	v, err := ms.cache.Get(hash)
 	if err != nil {
 		if err == gcache.KeyNotFoundError {
@@ -210,7 +210,7 @@ func (ms *MessageService) onPublishReq(message Message) {
 
 func (ms *MessageService) onConfirmReq(message Message) {
 	ms.netService.node.logger.Info("receive ConfirmReq")
-	ms.netService.node.logger.Info("message hash is:", message.Hash())
+	//ms.netService.node.logger.Info("message hash is:", message.Hash())
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send ConfirmReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
@@ -228,7 +228,7 @@ func (ms *MessageService) onConfirmAck(message Message) {
 }
 
 func (ms *MessageService) Stop() {
-	ms.netService.node.logger.Info("stopped message monitor")
+	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
 	ms.quitCh <- true
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, PublishReq))
@@ -312,6 +312,6 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		data, _ := hash.MarshalText()
 		return data, nil
 	default:
-		return nil, errors.New("unKnow Message Type")
+		return nil, errors.New("unKnown Message Type")
 	}
 }
