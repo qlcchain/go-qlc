@@ -1,21 +1,29 @@
 package consensus
 
 import (
+	"errors"
 	"time"
+
+	"github.com/qlcchain/go-qlc/p2p"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 )
 
+type BlockSource struct {
+	block     types.Block
+	blockFrom types.SynchronizedKind
+}
+
 type BlockProcessor struct {
-	blocks chan types.Block
+	blocks chan BlockSource
 	quitCh chan bool
 	dp     *DposService
 }
 
 func NewBlockProcessor() *BlockProcessor {
 	return &BlockProcessor{
-		blocks: make(chan types.Block, 16384),
+		blocks: make(chan BlockSource, 16384),
 		quitCh: make(chan bool, 1),
 	}
 }
@@ -29,15 +37,15 @@ func (bp *BlockProcessor) Start() {
 }
 
 func (bp *BlockProcessor) processBlocks() {
-	timer := time.NewTicker(findOnlineRepresentativesIntervalms)
+	timer := time.NewTicker(findOnlineRepresentativesIntervals)
 	for {
 		select {
 		case <-bp.quitCh:
 			bp.dp.logger.Info("Stopped process blocks.")
 			return
-		case block := <-bp.blocks:
-			result, _ := bp.dp.ledger.Process(block)
-			bp.processResult(result, block)
+		case bs := <-bp.blocks:
+			result, _ := bp.dp.ledger.Process(bs.block)
+			bp.processResult(result, bs)
 		case <-timer.C:
 			bp.dp.logger.Info("begin Find Online Representatives.")
 			bp.dp.findOnlineRepresentatives()
@@ -47,45 +55,54 @@ func (bp *BlockProcessor) processBlocks() {
 	}
 }
 
-func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types.Block) error {
+func (bp *BlockProcessor) processResult(result ledger.ProcessResult, bs BlockSource) error {
+	blk := bs.block
+	hash := blk.GetHash()
 	switch result {
 	case ledger.Progress:
-		bp.dp.logger.Infof("Block %s basic info is correct,begin add it to roots", block.GetHash())
-		bp.dp.actrx.addToRoots(block)
-		bp.queueUnchecked(block.GetHash())
+		if bs.blockFrom == types.Synchronized {
+			bp.dp.logger.Infof("Block %s from sync,no need consensus", hash)
+		} else if bs.blockFrom == types.UnSynchronized {
+			bp.dp.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
+			bp.dp.acTrx.addToRoots(blk)
+		} else {
+			bp.dp.logger.Errorf("Block %s UnKnow from", hash)
+			return errors.New("UnKnow block from")
+		}
+		bp.queueUnchecked(hash)
 		break
 	case ledger.BadSignature:
-		bp.dp.logger.Infof("Bad signature for: %s", block.GetHash())
+		bp.dp.logger.Errorf("Bad signature for: %s", hash)
 		break
 	case ledger.BadWork:
-		bp.dp.logger.Infof("Bad work for: %s", block.GetHash())
+		bp.dp.logger.Errorf("Bad work for: %s", hash)
 		break
 	case ledger.BalanceMismatch:
-		bp.dp.logger.Infof("Balance mismatch for: %s", block.GetHash())
+		bp.dp.logger.Errorf("Balance mismatch for: %s", hash)
 		break
 	case ledger.Old:
-		bp.dp.logger.Infof("Old for: %s", block.GetHash())
+		bp.dp.logger.Infof("Old for: %s", hash)
 		break
 	case ledger.UnReceivable:
-		bp.dp.logger.Infof("UnReceivable for: %s", block.GetHash())
+		bp.dp.logger.Errorf("UnReceivable for: %s", hash)
 		break
 	case ledger.Other:
-		bp.dp.logger.Infof("Unknow process result for: %s", block.GetHash())
+		bp.dp.logger.Errorf("UnKnow process result for: %s", hash)
 		break
 	case ledger.Fork:
-		bp.dp.logger.Infof("Fork for: %s", block.GetHash())
-		bp.processFork(block)
+		bp.dp.logger.Errorf("Fork for: %s", hash)
+		bp.processFork(blk)
 		break
 	case ledger.GapPrevious:
-		bp.dp.logger.Infof("Gap previous for: %s", block.GetHash())
-		err := bp.dp.ledger.AddUncheckedBlock(block.GetPrevious(), block, types.UncheckedKindPrevious, types.UnSynchronized)
+		bp.dp.logger.Debugf("Gap previous for: %s", hash)
+		err := bp.dp.ledger.AddUncheckedBlock(blk.GetPrevious(), blk, types.UncheckedKindPrevious, bs.blockFrom)
 		if err != nil {
 			return err
 		}
 		break
 	case ledger.GapSource:
-		bp.dp.logger.Infof("Gap source for: %s", block.GetHash())
-		err := bp.dp.ledger.AddUncheckedBlock(block.(*types.StateBlock).Link, block, types.UncheckedKindLink, types.UnSynchronized)
+		bp.dp.logger.Debugf("Gap source for: %s", hash)
+		err := bp.dp.ledger.AddUncheckedBlock(blk.(*types.StateBlock).Link, blk, types.UncheckedKindLink, bs.blockFrom)
 		if err != nil {
 			return err
 		}
@@ -95,31 +112,75 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, block types
 }
 
 func (bp *BlockProcessor) processFork(block types.Block) {
+	blk := bp.findAnotherForkedBlock(block)
+	if _, ok := bp.dp.acTrx.roots.Load(blk.Root()); !ok {
+		bp.dp.acTrx.addToRoots(blk)
+		bp.dp.ns.Broadcast(p2p.ConfirmReq, blk)
+	}
+	//count := 0
+	//bp.dp.priInfos.Range(func(key, value interface{}) bool {
+	//	count++
+	//	isRep := bp.dp.isThisAccountRepresentation(key.(types.Address))
+	//	if isRep {
+	//		bp.dp.putRepresentativesToOnline(key.(types.Address))
+	//		blk = bp.findAnotherForkedBlock(block)
+	//
+	//	} else {
+	//		blk = block
+	//	}
+	//	if _, ok := bp.dp.acTrx.roots.Load(blk.Root()); !ok {
+	//		bp.dp.acTrx.addToRoots(blk)
+	//		bp.dp.ns.Broadcast(p2p.ConfirmReq, blk)
+	//	}
+	//
+	//	return true
+	//})
+	//if count == 0 {
+	//	if _, ok := bp.dp.acTrx.roots.Load(blk.Root()); !ok {
+	//		bp.dp.acTrx.addToRoots(block)
+	//		bp.dp.ns.Broadcast(p2p.ConfirmReq, blk)
+	//	}
+	//}
+}
 
+func (bp *BlockProcessor) findAnotherForkedBlock(block types.Block) types.Block {
+	hash := block.Root()
+	forkedHash, err := bp.dp.ledger.GetPosterior(hash)
+	if err != nil {
+		bp.dp.logger.Error(err)
+		return block
+	}
+	forkedBlock, err := bp.dp.ledger.GetStateBlock(forkedHash)
+	if err != nil {
+		bp.dp.logger.Error(err)
+		return block
+	}
+	return forkedBlock
 }
 
 func (bp *BlockProcessor) queueUnchecked(hash types.Hash) {
-	blkLink, _, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
-	//if err != nil {
-	//	bp.dp.logger.Infof("Get blkLink err [%s] for hash: %s", err,hash)
-	//	return err
-	//}
+	blkLink, bf, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
 	if blkLink != nil {
 		bp.dp.logger.Infof("Get blkLink for hash: [%s]", blkLink.GetHash())
-		bp.blocks <- blkLink
+		bs := BlockSource{
+			block:     blkLink,
+			blockFrom: bf,
+		}
+		bp.blocks <- bs
 		err := bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
 		if err != nil {
 			bp.dp.logger.Infof("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 		}
 	}
-	blkPre, _, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
-	//if err != nil {
-	//	bp.dp.logger.Infof("Get blkPre err [%s] for hash: %s", err,hash)
-	//	return err
-	//}
+
+	blkPre, bf, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
 	if blkPre != nil {
-		bp.blocks <- blkPre
 		bp.dp.logger.Infof("Get blkPre for hash: %s", blkPre.GetHash())
+		bs := BlockSource{
+			block:     blkPre,
+			blockFrom: bf,
+		}
+		bp.blocks <- bs
 		err := bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
 		if err != nil {
 			bp.dp.logger.Infof("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())

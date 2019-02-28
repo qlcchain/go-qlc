@@ -13,7 +13,7 @@ import (
 
 func TestMarshalMessage(t *testing.T) {
 	blk := mock.StateBlock()
-	data1, err := MarshalMessage(PublishReq, blk)
+	data1, err := marshalMessage(PublishReq, blk)
 	if err != nil {
 		t.Fatal("Marshal PublishReq err1")
 	}
@@ -27,7 +27,7 @@ func TestMarshalMessage(t *testing.T) {
 	if bytes.Compare(data1, data2) != 0 {
 		t.Fatal("Marshal PublishReq err3")
 	}
-	data3, err := MarshalMessage(ConfirmReq, blk)
+	data3, err := marshalMessage(ConfirmReq, blk)
 	if err != nil {
 		t.Fatal("Marshal ConfirmReq err1")
 	}
@@ -47,7 +47,7 @@ func TestMarshalMessage(t *testing.T) {
 	va.Blk = blk
 	va.Account = a.Address()
 	va.Signature = a.Sign(blk.GetHash())
-	data5, err := MarshalMessage(ConfirmAck, &va)
+	data5, err := marshalMessage(ConfirmAck, &va)
 	if err != nil {
 		t.Fatal("Marshal ConfirmAck err1")
 	}
@@ -60,7 +60,7 @@ func TestMarshalMessage(t *testing.T) {
 	}
 	address := types.Address{}
 	Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
-	data7, err := MarshalMessage(FrontierRequest, Req)
+	data7, err := marshalMessage(FrontierRequest, Req)
 	if err != nil {
 		t.Fatal("Marshal FrontierRequest err1")
 	}
@@ -72,7 +72,7 @@ func TestMarshalMessage(t *testing.T) {
 		t.Fatal("Marshal FrontierRequest err3")
 	}
 	zeroFrontier := new(types.Frontier)
-	data9, err := MarshalMessage(FrontierRsp, zeroFrontier)
+	data9, err := marshalMessage(FrontierRsp, zeroFrontier)
 	if err != nil {
 		t.Fatal("Marshal FrontierRsp err1")
 	}
@@ -88,7 +88,7 @@ func TestMarshalMessage(t *testing.T) {
 		StartHash: types.ZeroHash,
 		EndHash:   types.ZeroHash,
 	}
-	data11, err := MarshalMessage(BulkPullRequest, b)
+	data11, err := marshalMessage(BulkPullRequest, b)
 	if err != nil {
 		t.Fatal("Marshal BulkPullRequest err1")
 	}
@@ -99,7 +99,7 @@ func TestMarshalMessage(t *testing.T) {
 	if bytes.Compare(data11, data12) != 0 {
 		t.Fatal("Marshal BulkPullRequest err3")
 	}
-	data13, err := MarshalMessage(BulkPullRsp, blk)
+	data13, err := marshalMessage(BulkPullRsp, blk)
 	if err != nil {
 		t.Fatal("Marshal BulkPullRsp err1")
 	}
@@ -113,7 +113,7 @@ func TestMarshalMessage(t *testing.T) {
 	if bytes.Compare(data13, data14) != 0 {
 		t.Fatal("Marshal BulkPullRsp err3")
 	}
-	data15, err := MarshalMessage(BulkPushBlock, blk)
+	data15, err := marshalMessage(BulkPushBlock, blk)
 	if err != nil {
 		t.Fatal("Marshal BulkPushBlock err1")
 	}

@@ -115,6 +115,10 @@ func (ns *QlcService) Broadcast(name string, value interface{}) {
 	ns.node.BroadcastMessage(name, value)
 }
 
+func (ns *QlcService) SendMessageToPeers(messageName string, value interface{}, peerID string) {
+	ns.node.SendMessageToPeers(messageName, value, peerID)
+}
+
 // SendMessageToPeer send message to a peer.
 func (ns *QlcService) SendMessageToPeer(messageName string, value interface{}, peerID string) error {
 	return ns.node.SendMessageToPeer(messageName, value, peerID)

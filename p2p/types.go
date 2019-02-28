@@ -1,8 +1,9 @@
 package p2p
 
 import (
-	"encoding/hex"
 	"fmt"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/common"
 )
@@ -15,7 +16,8 @@ type Message interface {
 	MessageType() MessageType
 	MessageFrom() string
 	Data() []byte
-	Hash() string
+	Hash() types.Hash
+	Content() []byte
 }
 
 // PeersSlice is a slice which contains peers
@@ -28,6 +30,8 @@ type Service interface {
 	MessageEvent() *EventQueue
 	Broadcast(messageName string, value interface{})
 	SendMessageToPeer(messageName string, value interface{}, peerID string) error
+	//Broadcast message, except for the peerID in the parameter
+	SendMessageToPeers(messageName string, value interface{}, peerID string)
 }
 
 // Subscriber subscriber.
@@ -74,12 +78,13 @@ func (s *Subscriber) DoFilter() bool {
 type BaseMessage struct {
 	messageType MessageType
 	from        string
-	data        []byte
+	data        []byte //removed the header
+	content     []byte //complete message data
 }
 
 // NewBaseMessage new base message
-func NewBaseMessage(messageType MessageType, from string, data []byte) Message {
-	return &BaseMessage{messageType: messageType, from: from, data: data}
+func NewBaseMessage(messageType MessageType, from string, data []byte, content []byte) Message {
+	return &BaseMessage{messageType: messageType, from: from, data: data, content: content}
 }
 
 // MessageType get message type
@@ -97,9 +102,15 @@ func (msg *BaseMessage) Data() []byte {
 	return msg.data
 }
 
+// Content get the message content
+func (msg *BaseMessage) Content() []byte {
+	return msg.content
+}
+
 // Hash return the message hash
-func (msg *BaseMessage) Hash() string {
-	return hex.EncodeToString(msg.data[:])
+func (msg *BaseMessage) Hash() types.Hash {
+	hash, _ := types.HashBytes(msg.content)
+	return hash
 }
 
 // String get the message to string

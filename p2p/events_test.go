@@ -14,11 +14,13 @@ func BlockReceiveEvent(v interface{}) {
 	defer m1.Unlock()
 	count1++
 }
+
 func BlockPushEvent(v interface{}) {
 	m2.Lock()
 	defer m2.Unlock()
 	count2++
 }
+
 func TestEvents(t *testing.T) {
 	count1 = 0
 	count2 = 0

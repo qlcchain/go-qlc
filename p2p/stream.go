@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/types"
+
 	libnet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -13,9 +15,8 @@ import (
 
 // Stream Errors
 var (
-	ErrShouldCloseConnectionAndExitLoop = errors.New("should close connection and exit loop")
-	ErrStreamIsNotConnected             = errors.New("stream is not connected")
-	ErrNoStream                         = errors.New("no stream")
+	ErrStreamIsNotConnected = errors.New("stream is not connected")
+	ErrNoStream             = errors.New("no stream")
 )
 
 // Stream define the structure of a stream in p2p network
@@ -88,6 +89,7 @@ func (s *Stream) StartLoop() {
 	go s.writeLoop()
 	go s.readLoop()
 }
+
 func (s *Stream) readLoop() {
 
 	if !s.IsConnected() {
@@ -143,15 +145,13 @@ func (s *Stream) readLoop() {
 			messageBuffer = messageBuffer[message.DataLength():]
 
 			// handle message.
-			if err := s.handleMessage(message); err == ErrShouldCloseConnectionAndExitLoop {
-				return
-			}
-
+			s.handleMessage(message)
 			// reset message.
 			message = nil
 		}
 	}
 }
+
 func (s *Stream) writeLoop() {
 	// ping func
 	/*	ts, err := s.node.ping.Ping(s.node.ctx, s.pid)
@@ -201,8 +201,39 @@ func (s *Stream) close() {
 	}
 }
 
-// SendMessage send msg to buffer
-func (s *Stream) SendMessage(messageType string, data []byte) error {
+// SendMessage send msg to peers
+func (s *Stream) SendMessageToPeers(messageType string, data []byte) error {
+	s.messageChan <- data
+	if messageType == PublishReq || messageType == ConfirmReq || messageType == ConfirmAck {
+		var c *cacheValue
+		hash, err := types.HashBytes(data)
+		if err != nil {
+			return err
+		}
+		exitCache, err := s.node.netService.msgService.cache.Get(hash)
+		if err == nil {
+			c = exitCache.(*cacheValue)
+			c.resendTimes++
+		} else {
+			c = &cacheValue{
+				peerID:      s.pid.Pretty(),
+				resendTimes: 0,
+				startTime:   time.Now(),
+				data:        data,
+				t:           messageType,
+			}
+			err = s.node.netService.msgService.cache.Set(hash, c)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	return nil
+}
+
+// SendMessage send msg to peer
+func (s *Stream) SendMessageToPeer(messageType string, data []byte) error {
 	version := s.node.cfg.Version
 	message := NewQlcMessage(data, byte(version), messageType)
 	s.messageChan <- message
@@ -216,6 +247,7 @@ func (s *Stream) WriteQlcMessage(message []byte) error {
 
 	return err
 }
+
 func (s *Stream) Write(data []byte) error {
 	if s.stream == nil {
 		s.close()
@@ -231,9 +263,8 @@ func (s *Stream) Write(data []byte) error {
 	s.node.logger.Infof("%d byte send to %v ", n, s.pid.Pretty())
 	return nil
 }
-func (s *Stream) handleMessage(message *QlcMessage) error {
 
-	s.node.netService.PutMessage(NewBaseMessage(message.MessageType(), s.pid.Pretty(), message.MessageData()))
-
-	return nil
+func (s *Stream) handleMessage(message *QlcMessage) {
+	m := NewBaseMessage(message.MessageType(), s.pid.Pretty(), message.MessageData(), message.content)
+	s.node.netService.PutMessage(m)
 }

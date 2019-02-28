@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/bluele/gcache"
+
 	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/ledger"
@@ -15,12 +17,28 @@ const (
 	PublishReq      = "0" //PublishReq
 	ConfirmReq      = "1" //ConfirmReq
 	ConfirmAck      = "2" //ConfirmAck
-	FrontierRequest = "3" //frontierreq
-	FrontierRsp     = "4" //frontierrsp
-	BulkPullRequest = "5" //bulkpull
-	BulkPullRsp     = "6" //bulkpullrsp
-	BulkPushBlock   = "7" //bulkpushblock
+	FrontierRequest = "3" //FrontierReq
+	FrontierRsp     = "4" //FrontierRsp
+	BulkPullRequest = "5" //BulkPullRequest
+	BulkPullRsp     = "6" //BulkPullRsp
+	BulkPushBlock   = "7" //BulkPushBlock
+	MessageResponse = "8" //MessageResponse
 )
+
+const (
+	msgCacheSize           = 4096
+	checkCacheTimeInterval = 10 * time.Second
+	msgResendMaxTimes      = 20
+	msgNeedResendInterval  = 1 * time.Second
+)
+
+type cacheValue struct {
+	peerID      string
+	resendTimes uint32
+	startTime   time.Time
+	data        []byte
+	t           string
+}
 
 type MessageService struct {
 	netService  *QlcService
@@ -28,6 +46,7 @@ type MessageService struct {
 	messageCh   chan Message
 	ledger      *ledger.Ledger
 	syncService *ServiceSync
+	cache       gcache.Cache
 }
 
 // NewService return new Service.
@@ -37,6 +56,7 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 		messageCh:  make(chan Message, 4096),
 		ledger:     ledger,
 		netService: netService,
+		cache:      gcache.New(msgCacheSize).LRU().Build(),
 	}
 	ms.syncService = NewSyncService(netService, ledger)
 	return ms
@@ -54,6 +74,7 @@ func (ms *MessageService) Start() {
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, MessageResponse))
 	// start loop().
 	go ms.startLoop()
 	go ms.syncService.Start()
@@ -61,38 +82,34 @@ func (ms *MessageService) Start() {
 
 func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
-
+	ticker := time.NewTicker(checkCacheTimeInterval)
 	for {
 		select {
 		case <-ms.quitCh:
 			ms.netService.node.logger.Info("Stopped Message Service.")
 			return
+		case <-ticker.C:
+			ms.checkMessageCache()
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
 			case PublishReq:
-				ms.netService.node.logger.Info("receive PublishReq")
 				ms.onPublishReq(message)
 			case ConfirmReq:
-				ms.netService.node.logger.Info("receive ConfirmReq")
 				ms.onConfirmReq(message)
 			case ConfirmAck:
-				ms.netService.node.logger.Info("receive ConfirmAck")
 				ms.onConfirmAck(message)
 			case FrontierRequest:
-				ms.netService.node.logger.Info("receive FrontierReq")
 				ms.syncService.onFrontierReq(message)
 			case FrontierRsp:
-				ms.netService.node.logger.Info("receive FrontierRsp")
 				ms.syncService.onFrontierRsp(message)
 			case BulkPullRequest:
-				ms.netService.node.logger.Info("receive BulkPullRequest")
 				ms.syncService.onBulkPullRequest(message)
 			case BulkPullRsp:
-				ms.netService.node.logger.Info("receive BulkPullRsp")
 				ms.syncService.onBulkPullRsp(message)
 			case BulkPushBlock:
-				ms.netService.node.logger.Info("receive BulkPushBlock")
 				ms.syncService.onBulkPushBlock(message)
+			case MessageResponse:
+				ms.onMessageResponse(message)
 			default:
 				ms.netService.node.logger.Error("Received unknown message.")
 				time.Sleep(100 * time.Millisecond)
@@ -103,31 +120,111 @@ func (ms *MessageService) startLoop() {
 	}
 }
 
-func (ms *MessageService) onPublishReq(message Message) error {
-	blk, err := protos.PublishBlockFromProto(message.Data())
-	if err != nil {
-		return err
+func (ms *MessageService) checkMessageCache() {
+	var cs []*cacheValue
+	var hash types.Hash
+	m := ms.cache.GetALL()
+	for k, v := range m {
+		hash = k.(types.Hash)
+		cs = v.([]*cacheValue)
+		for i, value := range cs {
+			if value.resendTimes > msgResendMaxTimes {
+				cs = append(cs[:i], cs[i+1:]...)
+				if len(cs) == 0 {
+					ms.cache.Remove(hash)
+					break
+				}
+				continue
+			}
+			if time.Now().Sub(value.startTime) < msgNeedResendInterval {
+				continue
+			}
+			stream := ms.netService.node.streamManager.FindByPeerID(value.peerID)
+			if stream == nil {
+				ms.netService.node.logger.Debug("Failed to locate peer's stream,maybe lost connect")
+				cs = append(cs[:i], cs[i+1:]...)
+				if len(cs) == 0 {
+					ms.cache.Remove(hash)
+					break
+				}
+				continue
+			}
+			stream.messageChan <- value.data
+			value.resendTimes++
+			if value.resendTimes > msgResendMaxTimes {
+				cs = append(cs[:i], cs[i+1:]...)
+				if len(cs) == 0 {
+					ms.cache.Remove(hash)
+					break
+				}
+				continue
+			}
+			ms.netService.node.logger.Info("resend cache message times................5:", value.resendTimes)
+		}
 	}
-	ms.netService.msgEvent.GetEvent("consensus").Notify(EventPublish, blk.Blk)
-	return nil
+
 }
 
-func (ms *MessageService) onConfirmReq(message Message) error {
-	blk, err := protos.ConfirmReqBlockFromProto(message.Data())
+func (ms *MessageService) onMessageResponse(message Message) {
+	ms.netService.node.logger.Info("receive MessageResponse")
+	var hash types.Hash
+	var cs []*cacheValue
+	err := hash.UnmarshalText(message.Data())
 	if err != nil {
-		return err
+		ms.netService.node.logger.Errorf("onMessageResponse err:[%s]", err)
+		return
 	}
-	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmReq, blk.Blk)
-	return nil
+	ms.netService.node.logger.Info("hash is....... :", hash)
+	v, err := ms.cache.Get(hash)
+	if err != nil {
+		if err == gcache.KeyNotFoundError {
+			ms.netService.node.logger.Debugf("this hash:[%s] is not in cache", hash)
+		} else {
+			ms.netService.node.logger.Errorf("Get cache err:[%s] for hash:[%s]", err, hash)
+		}
+		return
+	}
+	cs = v.([]*cacheValue)
+	for k, v := range cs {
+		if v.peerID == message.MessageFrom() {
+			cs = append(cs[:k], cs[k+1:]...)
+			if len(cs) == 0 {
+				t := ms.cache.Remove(hash)
+				if t {
+					ms.netService.node.logger.Infof("remove message cache for hash:[%s] success", hash)
+				}
+				break
+			}
+		}
+	}
 }
 
-func (ms *MessageService) onConfirmAck(message Message) error {
-	ack, err := protos.ConfirmAckBlockFromProto(message.Data())
+func (ms *MessageService) onPublishReq(message Message) {
+	ms.netService.node.logger.Info("receive PublishReq")
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
-		return err
+		ms.netService.node.logger.Errorf("send Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
-	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmAck, ack)
-	return nil
+	ms.netService.msgEvent.GetEvent("consensus").Notify(EventPublish, message)
+}
+
+func (ms *MessageService) onConfirmReq(message Message) {
+	ms.netService.node.logger.Info("receive ConfirmReq")
+	ms.netService.node.logger.Info("message hash is:", message.Hash())
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
+	if err != nil {
+		ms.netService.node.logger.Errorf("send ConfirmReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
+	}
+	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmReq, message)
+}
+
+func (ms *MessageService) onConfirmAck(message Message) {
+	ms.netService.node.logger.Info("receive ConfirmAck")
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
+	if err != nil {
+		ms.netService.node.logger.Errorf("send ConfirmAck Response err:[%s] for message hash:[%s]", err, message.Hash().String())
+	}
+	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmAck, message)
 }
 
 func (ms *MessageService) Stop() {
@@ -142,9 +239,10 @@ func (ms *MessageService) Stop() {
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, MessageResponse))
 }
 
-func MarshalMessage(messageName string, value interface{}) ([]byte, error) {
+func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 	switch messageName {
 	case PublishReq:
 		packet := protos.PublishBlock{
@@ -155,7 +253,6 @@ func MarshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
-
 	case ConfirmReq:
 		packet := &protos.ConfirmReqBlock{
 			Blk: value.(types.Block),
@@ -209,6 +306,10 @@ func MarshalMessage(messageName string, value interface{}) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		return data, nil
+	case MessageResponse:
+		hash := value.(types.Hash)
+		data, _ := hash.MarshalText()
 		return data, nil
 	default:
 		return nil, errors.New("unKnow Message Type")

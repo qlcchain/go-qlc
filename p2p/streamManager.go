@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/types"
+
 	libnet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-peer"
 )
@@ -113,6 +115,7 @@ func (sm *StreamManager) FindByPeerID(peerID string) *Stream {
 func (sm *StreamManager) Find(pid peer.ID) *Stream {
 	return sm.FindByPeerID(pid.Pretty())
 }
+
 func (sm *StreamManager) RandomPeer() (string, error) {
 	allPeers := make(PeersSlice, 0)
 
@@ -137,6 +140,7 @@ func (sm *StreamManager) RandomPeer() (string, error) {
 	}
 	return peerID, nil
 }
+
 func (sm *StreamManager) loop() {
 	ticker := time.NewTicker(FindPeerInterval)
 	sm.findPeers()
@@ -191,14 +195,119 @@ func (sm *StreamManager) CreateStreamWithPeer(pid peer.ID) {
 
 // BroadcastMessage broadcast the message
 func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
+	var cs []*cacheValue
+	var c *cacheValue
+	messageContent, err := marshalMessage(messageName, v)
+	if err != nil {
+		sm.node.logger.Error(err)
+		return
+	}
+	version := sm.node.cfg.Version
+	message := NewQlcMessage(messageContent, byte(version), messageName)
+	hash, err := types.HashBytes(message)
+	if err != nil {
+		sm.node.logger.Error(err)
+		return
+	}
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
-		messageContent, err := MarshalMessage(messageName, v)
-		if err != nil {
-			sm.node.logger.Errorf("receive [%s] when MarshalMessage", err)
-			return true
+		stream.messageChan <- message
+		if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
+			exitCache, err := sm.node.netService.msgService.cache.Get(hash)
+			if err == nil {
+				cs = exitCache.([]*cacheValue)
+				for k, v := range cs {
+					if v.peerID == stream.pid.Pretty() {
+						v.resendTimes++
+						break
+					}
+					if k == (len(cs) - 1) {
+						c = &cacheValue{
+							peerID:      stream.pid.Pretty(),
+							resendTimes: 0,
+							startTime:   time.Now(),
+							data:        message,
+							t:           messageName,
+						}
+						cs = append(cs, c)
+					}
+				}
+			} else {
+				c = &cacheValue{
+					peerID:      stream.pid.Pretty(),
+					resendTimes: 0,
+					startTime:   time.Now(),
+					data:        message,
+					t:           messageName,
+				}
+				cs = append(cs, c)
+				err = sm.node.netService.msgService.cache.Set(hash, cs)
+				if err != nil {
+					sm.node.logger.Error(err)
+				}
+			}
+
 		}
-		stream.SendMessage(messageName, messageContent)
+		return true
+	})
+
+}
+
+func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, peerID string) {
+	var cs []*cacheValue
+	var c *cacheValue
+	messageContent, err := marshalMessage(messageName, v)
+	if err != nil {
+		sm.node.logger.Error(err)
+		return
+	}
+	version := sm.node.cfg.Version
+	message := NewQlcMessage(messageContent, byte(version), messageName)
+	hash, err := types.HashBytes(message)
+	if err != nil {
+		sm.node.logger.Error(err)
+		return
+	}
+	sm.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		if stream.pid.Pretty() != peerID {
+			stream.messageChan <- message
+			if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
+				exitCache, err := sm.node.netService.msgService.cache.Get(hash)
+				if err == nil {
+					cs = exitCache.([]*cacheValue)
+					for k, v := range cs {
+						if v.peerID == stream.pid.Pretty() {
+							v.resendTimes++
+							break
+						}
+						if k == (len(cs) - 1) {
+							c = &cacheValue{
+								peerID:      stream.pid.Pretty(),
+								resendTimes: 0,
+								startTime:   time.Now(),
+								data:        message,
+								t:           messageName,
+							}
+							cs = append(cs, c)
+						}
+					}
+				} else {
+					c = &cacheValue{
+						peerID:      stream.pid.Pretty(),
+						resendTimes: 0,
+						startTime:   time.Now(),
+						data:        message,
+						t:           messageName,
+					}
+					cs = append(cs, c)
+					err = sm.node.netService.msgService.cache.Set(hash, cs)
+					if err != nil {
+						sm.node.logger.Error(err)
+					}
+				}
+			}
+		}
 		return true
 	})
 }
