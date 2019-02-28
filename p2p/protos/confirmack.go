@@ -37,7 +37,6 @@ func ConfirmAckBlockToProto(confirmAck *ConfirmAckBlock) ([]byte, error) {
 func ConfirmAckBlockFromProto(data []byte) (*ConfirmAckBlock, error) {
 	ca := new(pb.ConfirmAck)
 	if err := proto.Unmarshal(data, ca); err != nil {
-		logger.Error("Failed to unmarshal BulkPullRspPacket message.")
 		return nil, err
 	}
 	blockType := ca.Blocktype

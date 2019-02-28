@@ -64,7 +64,7 @@ func (ns *QlcService) Start() error {
 		return errors.New("pre start fail")
 	}
 	defer ns.PostStart()
-	ns.node.logger.Info("Starting QlcService...")
+	//ns.node.logger.Info("Starting QlcService...")
 
 	// start dispatcher.
 	ns.dispatcher.Start()

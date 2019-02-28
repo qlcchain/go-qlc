@@ -31,26 +31,26 @@ func NewEvent() *Event {
 }
 
 //  adds a new subscriber to Event.
-func (e *Event) Subscribe(eventtype EventType, eventfunc EventFunc) EventSubscriber {
+func (e *Event) Subscribe(et EventType, ef EventFunc) EventSubscriber {
 	e.m.Lock()
 	defer e.m.Unlock()
 
 	sub := make(chan interface{})
-	_, ok := e.subscribers[eventtype]
+	_, ok := e.subscribers[et]
 	if !ok {
-		e.subscribers[eventtype] = make(map[EventSubscriber]EventFunc)
+		e.subscribers[et] = make(map[EventSubscriber]EventFunc)
 	}
-	e.subscribers[eventtype][sub] = eventfunc
+	e.subscribers[et][sub] = ef
 
 	return sub
 }
 
 // UnSubscribe removes the specified subscriber
-func (e *Event) UnSubscribe(eventtype EventType, subscriber EventSubscriber) (err error) {
+func (e *Event) UnSubscribe(et EventType, subscriber EventSubscriber) (err error) {
 	e.m.Lock()
 	defer e.m.Unlock()
 
-	subEvent, ok := e.subscribers[eventtype]
+	subEvent, ok := e.subscribers[et]
 	if !ok {
 		err = errors.New("No event type.")
 		return err
@@ -63,11 +63,11 @@ func (e *Event) UnSubscribe(eventtype EventType, subscriber EventSubscriber) (er
 }
 
 //Notify subscribers that Subscribe specified event
-func (e *Event) Notify(eventtype EventType, value interface{}) (err error) {
+func (e *Event) Notify(et EventType, value interface{}) (err error) {
 	e.m.RLock()
 	defer e.m.RUnlock()
 
-	subs, ok := e.subscribers[eventtype]
+	subs, ok := e.subscribers[et]
 	if !ok {
 		err = errors.New("No event type.")
 		return err
@@ -79,12 +79,12 @@ func (e *Event) Notify(eventtype EventType, value interface{}) (err error) {
 	return nil
 }
 
-func (e *Event) NotifySubscriber(eventfunc EventFunc, value interface{}) {
-	if eventfunc == nil {
+func (e *Event) NotifySubscriber(ef EventFunc, value interface{}) {
+	if ef == nil {
 		return
 	}
 	//invode subscriber event func
-	eventfunc(value)
+	ef(value)
 
 }
 
@@ -93,8 +93,8 @@ func (e *Event) NotifyAll() (errs []error) {
 	e.m.RLock()
 	defer e.m.RUnlock()
 
-	for eventtype, _ := range e.subscribers {
-		if err := e.Notify(eventtype, nil); err != nil {
+	for eventType, _ := range e.subscribers {
+		if err := e.Notify(eventType, nil); err != nil {
 			errs = append(errs, err)
 		}
 	}

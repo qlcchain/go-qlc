@@ -3,7 +3,6 @@ package protos
 import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
 )
 
@@ -12,7 +11,7 @@ type BulkPullReqPacket struct {
 	EndHash   types.Hash
 }
 
-var logger = log.NewLogger("p2p/pb")
+//var logger = log.NewLogger("p2p/pb")
 
 func NewBulkPullReqPacket(start, end types.Hash) (packet *BulkPullReqPacket) {
 	return &BulkPullReqPacket{
@@ -24,11 +23,11 @@ func NewBulkPullReqPacket(start, end types.Hash) (packet *BulkPullReqPacket) {
 // ToProto converts domain BulkPull into proto BulkPull
 func BulkPullReqPacketToProto(bp *BulkPullReqPacket) ([]byte, error) {
 
-	bppb := &pb.BulkPullReq{
+	bpPb := &pb.BulkPullReq{
 		StartHash: bp.StartHash[:],
 		EndHash:   bp.EndHash[:],
 	}
-	data, err := proto.Marshal(bppb)
+	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
 	}
@@ -40,22 +39,21 @@ func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
 	bp := new(pb.BulkPullReq)
 	var start, end types.Hash
 	if err := proto.Unmarshal(data, bp); err != nil {
-		logger.Error("Failed to unmarshal BulkPullPacket message.")
 		return nil, err
 	}
 	err := start.UnmarshalBinary(bp.StartHash)
 	if err != nil {
-		logger.Error("StartHash error")
+		return nil, err
 	}
 	err = end.UnmarshalBinary(bp.EndHash)
 	if err != nil {
-		logger.Error("EndHash error")
+		return nil, err
 	}
-	bprp := &BulkPullReqPacket{
+	bpRp := &BulkPullReqPacket{
 		StartHash: start,
 		EndHash:   end,
 	}
-	return bprp, nil
+	return bpRp, nil
 }
 
 type BulkPullRspPacket struct {
@@ -64,16 +62,16 @@ type BulkPullRspPacket struct {
 
 // ToProto converts domain BulkPull into proto BulkPull
 func BulkPullRspPacketToProto(bp *BulkPullRspPacket) ([]byte, error) {
-	blkdata, err := bp.Blk.MarshalMsg(nil)
+	blkData, err := bp.Blk.MarshalMsg(nil)
 	if err != nil {
 		return nil, err
 	}
-	blocktype := bp.Blk.GetType()
-	bppb := &pb.BulkPullRsp{
-		Blocktype: uint32(blocktype),
-		Block:     blkdata,
+	blockType := bp.Blk.GetType()
+	bpPb := &pb.BulkPullRsp{
+		Blocktype: uint32(blockType),
+		Block:     blkData,
 	}
-	data, err := proto.Marshal(bppb)
+	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +82,6 @@ func BulkPullRspPacketToProto(bp *BulkPullRspPacket) ([]byte, error) {
 func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 	bp := new(pb.BulkPullRsp)
 	if err := proto.Unmarshal(data, bp); err != nil {
-		logger.Error("Failed to unmarshal BulkPullRspPacket message.")
 		return nil, err
 	}
 	blockType := bp.Blocktype
@@ -95,8 +92,8 @@ func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 	if _, err = blk.UnmarshalMsg(bp.Block); err != nil {
 		return nil, err
 	}
-	bprp := &BulkPullRspPacket{
+	bpRp := &BulkPullRspPacket{
 		Blk: blk,
 	}
-	return bprp, nil
+	return bpRp, nil
 }

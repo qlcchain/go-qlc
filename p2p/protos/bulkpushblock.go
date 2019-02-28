@@ -37,7 +37,6 @@ func BulkPushBlockToProto(bp *BulkPush) ([]byte, error) {
 func BulkPushBlockFromProto(data []byte) (*BulkPush, error) {
 	bp := new(pb.BulkPullRsp)
 	if err := proto.Unmarshal(data, bp); err != nil {
-		logger.Error("Failed to unmarshal BulkPushBlockPacket message.")
 		return nil, err
 	}
 	blockType := bp.Blocktype

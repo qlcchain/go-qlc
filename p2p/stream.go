@@ -53,7 +53,7 @@ func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream libnet.Stream, nod
 
 // Connect to the stream
 func (s *Stream) Connect() error {
-	s.node.logger.Info("Connecting to peer.")
+	//s.node.logger.Info("Connecting to peer.")
 
 	// connect to host.
 	stream, err := s.node.host.NewStream(
@@ -64,7 +64,7 @@ func (s *Stream) Connect() error {
 	if err != nil {
 		return err
 	}
-	s.node.logger.Info("connect success to :", s.pid)
+	//s.node.logger.Info("connect success to :", s.pid.Pretty())
 	s.stream = stream
 	s.addr = stream.Conn().RemoteMultiaddr()
 	return nil
@@ -187,7 +187,7 @@ func (s *Stream) close() {
 	// Add lock & close flag to prevent multi call.
 	s.syncMutex.Lock()
 	defer s.syncMutex.Unlock()
-	s.node.logger.Info("Closing stream.")
+	//s.node.logger.Info("Closing stream.")
 
 	// cleanup.
 	s.node.streamManager.RemoveStream(s)
@@ -260,7 +260,7 @@ func (s *Stream) Write(data []byte) error {
 		s.close()
 		return err
 	}
-	s.node.logger.Infof("%d byte send to %v ", n, s.pid.Pretty())
+	s.node.logger.Debugf("%d byte send to %v ", n, s.pid.Pretty())
 	return nil
 }
 

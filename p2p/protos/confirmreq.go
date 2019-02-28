@@ -17,11 +17,11 @@ func ConfirmReqBlockToProto(confirmReq *ConfirmReqBlock) ([]byte, error) {
 		return nil, err
 	}
 	blockType := confirmReq.Blk.GetType()
-	bppb := &pb.PublishBlock{
+	bpPb := &pb.PublishBlock{
 		Blocktype: uint32(blockType),
 		Block:     blkData,
 	}
-	data, err := proto.Marshal(bppb)
+	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,6 @@ func ConfirmReqBlockToProto(confirmReq *ConfirmReqBlock) ([]byte, error) {
 func ConfirmReqBlockFromProto(data []byte) (*ConfirmReqBlock, error) {
 	bp := new(pb.ConfirmReq)
 	if err := proto.Unmarshal(data, bp); err != nil {
-		logger.Error("Failed to unmarshal BulkPullRspPacket message.")
 		return nil, err
 	}
 	blockType := bp.Blocktype

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	announcementMin        = 4 //Minimum number of block announcements
+	//announcementMin        = 4 //Minimum number of block announcements
 	announceIntervalSecond = 16 * time.Second
 	refreshPriInfoHour     = 1 * time.Hour
 )
@@ -66,7 +66,6 @@ func (act *ActiveTrx) addToRoots(block types.Block) bool {
 			return false
 		}
 		act.roots.Store(block.Root(), ele)
-		act.dps.logger.Info("add hash...............to root:", block.GetHash())
 		return true
 	} else {
 		act.dps.logger.Infof("block :%s already exit in roots", block.GetHash())
@@ -78,7 +77,7 @@ func (act *ActiveTrx) announceVotes() {
 	var count = 0
 	act.roots.Range(func(key, value interface{}) bool {
 		if value.(*Election).confirmed { //&& value.(*Election).announcements >= announcementMin-1 {
-			act.dps.logger.Info("this block is already confirmed")
+			act.dps.logger.Infof("block [%s] is already confirmed", value.(*Election).status.winner.GetHash())
 			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, value.(*Election).status.winner)
 			act.inactive = append(act.inactive, value.(*Election).vote.id)
 			act.rollBack(value.(*Election).status.loser)
@@ -168,8 +167,6 @@ func (act *ActiveTrx) addWinner2Ledger(block types.Block) {
 }
 
 func (act *ActiveTrx) rollBack(blocks []types.Block) {
-	act.dps.logger.Info("22222222333333333333444444444")
-	act.dps.logger.Info("len.........:", len(blocks))
 	for _, v := range blocks {
 		hash := v.GetHash()
 		act.dps.logger.Info("loser hash is :", hash.String())
