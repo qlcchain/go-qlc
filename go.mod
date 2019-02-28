@@ -66,6 +66,7 @@ require (
 	github.com/rs/cors v1.6.0
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
+	github.com/stretchr/testify v1.3.0
 	github.com/tendermint/tmlibs v0.9.0
 	github.com/tinylib/msgp v1.1.0
 	github.com/whyrusleeping/mdns v0.0.0-20180901202407-ef14215e6b30 // indirect
