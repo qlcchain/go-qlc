@@ -29,10 +29,15 @@ const (
 
 func (l *Ledger) Process(block types.Block) (ProcessResult, error) {
 	r, err := l.BlockCheck(block)
+	if err != nil {
+		l.logger.Error(err)
+		return Other, err
+	}
 	if r != Progress {
-		return r, err
+		return r, nil
 	}
 	if err := l.BlockProcess(block); err != nil {
+		l.logger.Error(err)
 		return Other, err
 	}
 	return Progress, nil
@@ -50,6 +55,7 @@ func (l *Ledger) BlockCheck(block types.Block) (ProcessResult, error) {
 	case types.SmartContract:
 		return Other, errors.New("smartcontract block")
 	default:
+		return Other, errors.New("invalid block")
 	}
 	return Other, errors.New("invalid block")
 }
@@ -174,26 +180,20 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 }
 
 func (l *Ledger) BlockProcess(block types.Block) error {
-	txn, b := l.getTxn(true)
-	defer l.releaseTxn(txn, b)
-	//err := l.BatchUpdate(func(txn db.StoreTxn) error {
-	switch block.GetType() {
-	case types.State:
-		if state, ok := block.(*types.StateBlock); ok {
-			return l.processStateBlock(state, txn)
-		} else {
-			return errors.New("invalid block")
+	return l.BatchUpdate(func(txn db.StoreTxn) error {
+		switch block.GetType() {
+		case types.State:
+			if state, ok := block.(*types.StateBlock); ok {
+				return l.processStateBlock(state, txn)
+			} else {
+				return errors.New("invalid block")
+			}
+		case types.SmartContract:
+			return nil
+		default:
+			return errors.New("invalid block type")
 		}
-	case types.SmartContract:
-		return nil
-	default:
-		return errors.New("invalid block type")
-	}
-	//})
-	//if err != nil {
-	//	return err
-	//}
-	//return nil
+	})
 }
 
 func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {

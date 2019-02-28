@@ -8,13 +8,20 @@
 package ledger
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestNewLedgerService(t *testing.T) {
-	cfg, err := config.DefaultConfig(config.DefaultDataDir())
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
+	cfg, err := config.DefaultConfig(dir)
 	if err != nil {
 		t.Fatal(err)
 	}

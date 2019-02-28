@@ -42,8 +42,8 @@ func (ls *LedgerService) Init() error {
 		for i := 0; i < len(sbs); i++ {
 			sb := sbs[i]
 			h := sb.GetHash()
-			if b, err := l.HasStateBlock(h, txn); !b && err == nil {
-				err := l.AddStateBlock(sb, txn)
+			if b, err := l.HasSmartContrantBlock(h, txn); !b && err == nil {
+				err := l.AddSmartContrantBlock(sb, txn)
 				if err != nil {
 					ls.Ledger.logger.Error(err)
 					return nil

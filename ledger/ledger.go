@@ -421,6 +421,24 @@ func (l *Ledger) GetSmartContrantBlocks(fn func(block *types.SmartContractBlock)
 	return nil
 }
 
+func (l *Ledger) HasSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	key := getKey(hash, idPrefixSmartContractBlock)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 func (l *Ledger) CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error) {
 	var count uint64
 	txn, flag := l.getTxn(false, txns...)
