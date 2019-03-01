@@ -297,13 +297,26 @@ func TestGetGenesis2(t *testing.T) {
 func TestGetChainTokenType(t *testing.T) {
 	h := GetChainTokenType()
 	h2 := smartContractBlocks[0].GetHash()
-	fmt.Println(h2)
 	if h != h2 {
 		t.Fatal("GetChainTokenType error")
 	}
 	if genesisBlocks[0].Token != h {
 		t.Fatal("genesis error")
 	}
+}
+
+func TestTokenType(t *testing.T) {
+	num := len(smartContractBlocks)
+	for i := 0; i < num; i++ {
+		h := smartContractBlocks[i].GetHash()
+
+		if genesisBlocks[i].Token != h {
+			fmt.Println(i)
+			fmt.Println(h)
+			t.Fatal("genesis error")
+		}
+	}
+
 }
 
 func TestBalanceToRaw(t *testing.T) {
@@ -409,29 +422,30 @@ func TestBlockChain(t *testing.T) {
 	}
 }
 
-func TestAccount_Sign(t *testing.T) {
-	seedStr := "DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9"
-	seed, err := hex.DecodeString(seedStr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	s, err := types.BytesToSeed(seed)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ac, err := s.Account(0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	//fmt.Println(s)
-	//fmt.Println(ac)
+var seedStr = []string{
+	"DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9",
+	"E4935D4D9DEF9D12BC2059C34848C444DBC462FBFF592428C218BF0BC174D065",
+	"192C4DDFD9BCC7DF27701197FBC972E6D07854F718BE09AD1D5E9338C435C1A9",
+	"AAB43DFBFCC6702504F03F64B66B0482A206EFDD5990D0C5FFCE164EBB088E06",
+	"FBEA7F04DC9AD25E2CBC05FAEF6CEF98DF08CF04582937832F67B3883075244A",
+	"0578B09D725C77432886632364FDE29D3DAFB4A7748B7801FBD6D79BBF013B73",
+}
 
-	sc := smartContractBlocks[0]
-	sign := ac.Sign(sc.GetHash())
-	fmt.Println(sign)
+func Test_sign(t *testing.T) {
+	for i := 0; i < len(seedStr); i++ {
+		sByte, _ := hex.DecodeString(seedStr[i])
+		seed, _ := types.BytesToSeed(sByte)
+		ac, _ := seed.Account(0)
+		fmt.Println(i)
+		s := ac.Sign(smartContractBlocks[i].GetHash())
+		fmt.Println(s)
 
-	b := genesisBlocks[0]
-	sign1 := ac.Sign(b.GetHash())
-	fmt.Println(sign1)
+		var w types.Work
+		worker, _ := types.NewWorker(w, genesisBlocks[i].Root())
+		t := worker.NewWork()
+		fmt.Println(t)
 
+		s1 := ac.Sign(genesisBlocks[i].GetHash())
+		fmt.Println(s1)
+	}
 }
