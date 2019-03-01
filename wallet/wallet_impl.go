@@ -149,10 +149,13 @@ func (s *Session) SetRepresentative(address types.Address) error {
 
 func (s *Session) GetSeed() ([]byte, error) {
 	var seed []byte
+	pw := s.getPassword()
+	tmp := make([]byte, len(pw))
+	copy(tmp, pw)
 	err := s.ViewInTx(func(txn db.StoreTxn) error {
 		key := s.getKey(idPrefixSeed)
 		return txn.Get(key, func(val []byte, b byte) error {
-			s, err := util.DecryptBytes(val, s.getPassword())
+			s, err := util.DecryptBytes(val, tmp)
 			seed = append(seed, s...)
 			return err
 		})
@@ -600,7 +603,11 @@ func (s *Session) setPassword(password string) {
 	if s.password != nil {
 		s.password.Destroy()
 	}
-	s.password, _ = crypto.NewSecureString(password)
+	var err error
+	s.password, err = crypto.NewSecureString(password)
+	if err != nil {
+		s.logger.Error(err)
+	}
 }
 
 // max returns the larger of x or y.

@@ -148,7 +148,7 @@ func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {
 }
 
 func (t *BadgerStoreTxn) Commit(callback func(error)) error {
-	return t.txn.Commit()
+	return t.txn.Commit(callback)
 }
 
 func (t *BadgerStoreTxn) Discard() {

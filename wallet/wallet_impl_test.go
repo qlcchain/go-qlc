@@ -31,9 +31,12 @@ import (
 func setupTestCase(t *testing.T) (func(t *testing.T), *WalletStore) {
 	t.Parallel()
 	start := time.Now()
-	cfg, _ := config.DefaultConfig(config.DefaultDataDir())
-	cfg.DataDir = filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	dir := cfg.WalletDir()
+
+	dir := filepath.Join(config.QlcTestDataDir(), "wallet", uuid.New().String())
+	cfg, err := config.DefaultConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Log("setup store test case", dir)
 	_ = os.RemoveAll(dir)
 
@@ -47,7 +50,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *WalletStore) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(cfg.DataDir)
+		err = os.RemoveAll(dir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -352,8 +355,9 @@ func TestGenerateWork(t *testing.T) {
 	}
 
 	done := make(chan string)
+	session := store.NewSession(id)
+
 	go func() {
-		session := store.NewSession(id)
 		hash := mock.Hash()
 		work := session.generateWork(hash)
 		if !work.IsValid(hash) {

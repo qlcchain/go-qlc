@@ -144,6 +144,9 @@ func TestWalletStore_NewWalletBySeed(t *testing.T) {
 
 	account, err := store.NewWalletBySeed(seed.String(), "1111")
 
+	if err != nil {
+		t.Fatal(err)
+	}
 	s := store.NewSession(account)
 	b, err := s.VerifyPassword("1111")
 	if err != nil {
