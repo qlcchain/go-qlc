@@ -8,10 +8,10 @@ os:
 
 dist: xenial
 
-# cache:
-#   directories:
-#     - $HOME/.cache/go-build
-#     - $HOME/gopath/pkg/mod
+cache:
+  directories:
+    - $HOME/.cache/go-build
+    - $HOME/gopath/pkg/mod
 
 sudo: true
 
