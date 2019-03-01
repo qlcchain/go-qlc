@@ -54,7 +54,12 @@ func (dps *DposService) Init() error {
 		return errors.New("pre init fail")
 	}
 	defer dps.PostInit()
-
+	dps.session = dps.wallet.NewSession(dps.account)
+	err := dps.setPriInfo()
+	if err != nil {
+		dps.logger.Error(err)
+		return err
+	}
 	return nil
 }
 
@@ -108,12 +113,6 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 		logger:   log.NewLogger("consensus"),
 		priInfos: new(sync.Map),
 		cache:    gcache.New(msgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
-	}
-	dps.session = dps.wallet.NewSession(account)
-	err := dps.setPriInfo()
-	if err != nil {
-		dps.logger.Error(err)
-		return nil, err
 	}
 	dps.bp.SetDpos(dps)
 	dps.acTrx.SetDposService(dps)
