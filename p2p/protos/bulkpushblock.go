@@ -12,12 +12,12 @@ type Bulk struct {
 }
 
 type BulkPush struct {
-	Blk types.Block
+	Blk *types.StateBlock
 }
 
 // ToProto converts domain BulkPush into proto BulkPush
 func BulkPushBlockToProto(bp *BulkPush) ([]byte, error) {
-	blkData, err := bp.Blk.MarshalMsg(nil)
+	blkData, err := bp.Blk.Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -39,12 +39,9 @@ func BulkPushBlockFromProto(data []byte) (*BulkPush, error) {
 	if err := proto.Unmarshal(data, bp); err != nil {
 		return nil, err
 	}
-	blockType := bp.Blocktype
-	blk, err := types.NewBlock(types.BlockType(blockType))
-	if err != nil {
-		return nil, err
-	}
-	if _, err = blk.UnmarshalMsg(bp.Block); err != nil {
+	blk := new(types.StateBlock)
+
+	if err := blk.Deserialize(bp.Block); err != nil {
 		return nil, err
 	}
 	bPush := &BulkPush{

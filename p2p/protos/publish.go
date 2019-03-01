@@ -7,12 +7,12 @@ import (
 )
 
 type PublishBlock struct {
-	Blk types.Block
+	Blk *types.StateBlock
 }
 
 // ToProto converts domain PublishBlock into proto PublishBlock
 func PublishBlockToProto(publish *PublishBlock) ([]byte, error) {
-	blkData, err := publish.Blk.MarshalMsg(nil)
+	blkData, err := publish.Blk.Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -34,12 +34,8 @@ func PublishBlockFromProto(data []byte) (*PublishBlock, error) {
 	if err := proto.Unmarshal(data, bp); err != nil {
 		return nil, err
 	}
-	blockType := bp.Blocktype
-	blk, err := types.NewBlock(types.BlockType(blockType))
-	if err != nil {
-		return nil, err
-	}
-	if _, err = blk.UnmarshalMsg(bp.Block); err != nil {
+	blk := new(types.StateBlock)
+	if err := blk.Deserialize(bp.Block); err != nil {
 		return nil, err
 	}
 	bPush := &PublishBlock{

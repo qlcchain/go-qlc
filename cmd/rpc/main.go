@@ -122,11 +122,9 @@ func initData() {
 
 	//blockAccount
 	sb := types.StateBlock{
-		CommonBlock: types.CommonBlock{
-			Type:    types.State,
-			Address: addr1,
-		},
-		Token: mock.GetChainTokenType(),
+		Type:    types.State,
+		Address: addr1,
+		Token:   mock.GetChainTokenType(),
 	}
 	ledger.AddStateBlock(&sb)
 
@@ -140,18 +138,16 @@ func initData() {
 
 	scs := mock.GetSmartContracts()
 	for _, sc := range scs {
-		ledger.AddStateBlock(sc)
+		ledger.AddSmartContrantBlock(sc)
 	}
 
 	// change block
 	addr5, _ := types.HexToAddress("qlc_3c6ezoskbkgajq8f89ntcu75fdpcsokscgp9q5cdadndg1ju85fief7rrt11")
 
 	sb3 := types.StateBlock{
-		CommonBlock: types.CommonBlock{
-			Type:    types.State,
-			Address: addr5,
-		},
-		Token: mock.GetChainTokenType(),
+		Type:    types.State,
+		Address: addr5,
+		Token:   mock.GetChainTokenType(),
 	}
 	ledger.AddStateBlock(&sb3)
 	fmt.Println("hash,", sb.GetHash())

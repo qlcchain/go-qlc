@@ -4,11 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/p2p"
-
-	"github.com/qlcchain/go-qlc/p2p/protos"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/p2p"
+	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 const (
@@ -58,7 +56,7 @@ func (act *ActiveTrx) start() {
 	}
 }
 
-func (act *ActiveTrx) addToRoots(block types.Block) bool {
+func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 	if _, ok := act.roots.Load(block.Root()); !ok {
 		ele, err := NewElection(act.dps, block)
 		if err != nil {
@@ -152,7 +150,7 @@ func (act *ActiveTrx) announceVotes() {
 	act.inactive = act.inactive[:0:0]
 }
 
-func (act *ActiveTrx) addWinner2Ledger(block types.Block) {
+func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	hash := block.GetHash()
 	if exist, err := act.dps.ledger.HasStateBlock(hash); !exist && err == nil {
 		err := act.dps.ledger.BlockProcess(block)
@@ -166,7 +164,7 @@ func (act *ActiveTrx) addWinner2Ledger(block types.Block) {
 	}
 }
 
-func (act *ActiveTrx) rollBack(blocks []types.Block) {
+func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 	for _, v := range blocks {
 		hash := v.GetHash()
 		act.dps.logger.Info("loser hash is :", hash.String())

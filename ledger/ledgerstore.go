@@ -31,16 +31,17 @@ type Store interface {
 	UpdateTokenMeta(address types.Address, meta *types.TokenMeta, txns ...db.StoreTxn) error
 	DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error
 	// state block CURD
-	AddStateBlock(blk types.Block, txns ...db.StoreTxn) error
+	AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)
 	GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error
 	DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error
 	HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	CountStateBlocks(txns ...db.StoreTxn) (uint64, error)
-	GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error)
+	GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, error)
 	// smartcontrant block CURD
-	AddSmartContrantBlock(blk types.Block, txns ...db.StoreTxn) error
+	AddSmartContrantBlock(blk *types.SmartContractBlock, txns ...db.StoreTxn) error
 	GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error)
+	HasSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	GetSmartContrantBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error
 	CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error)
 	// representation CURD
@@ -49,8 +50,8 @@ type Store interface {
 	GetRepresentation(address types.Address, txns ...db.StoreTxn) (types.Balance, error)
 	GetRepresentations(fn func(types.Address, types.Balance) error, txns ...db.StoreTxn) error
 	// unchecked CURD
-	AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, sync types.SynchronizedKind, txns ...db.StoreTxn) error
-	GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, types.SynchronizedKind, error)
+	AddUncheckedBlock(parentHash types.Hash, blk *types.StateBlock, kind types.UncheckedKind, sync types.SynchronizedKind, txns ...db.StoreTxn) error
+	GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (*types.StateBlock, types.SynchronizedKind, error)
 	DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) error
 	HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (bool, error)
 	WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ...db.StoreTxn) error

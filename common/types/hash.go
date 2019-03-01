@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
@@ -70,7 +71,7 @@ func (h *Hash) Of(hexString string) error {
 	s := util.TrimQuotes(hexString)
 	size := hex.DecodedLen(len(s))
 	if size != HashSize {
-		return fmt.Errorf("bad block hash size: %d", size)
+		return fmt.Errorf("bad hash size: %d", size)
 	}
 
 	var hash [HashSize]byte
@@ -102,7 +103,7 @@ func (h Hash) MarshalBinaryTo(text []byte) error {
 func (h *Hash) UnmarshalBinary(text []byte) error {
 	size := len(text)
 	if len(text) != HashSize {
-		return fmt.Errorf("bad signature size: %d", size)
+		return fmt.Errorf("bad hash size: %d", size)
 	}
 	copy((*h)[:], text)
 	return nil
@@ -126,13 +127,15 @@ func HashData(data []byte) Hash {
 }
 
 //HashBytes hash data by blake2b
-func HashBytes(data []byte) (Hash, error) {
+func HashBytes(inputs ...[]byte) (Hash, error) {
 	hash, err := blake2b.New(blake2b.Size256, nil)
 	if err != nil {
 		return ZeroHash, err
 	}
 
-	hash.Write(data)
+	for _, data := range inputs {
+		hash.Write(data)
+	}
 
 	var result Hash
 	copy(result[:], hash.Sum(nil))

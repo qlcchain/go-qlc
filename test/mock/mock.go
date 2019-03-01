@@ -72,76 +72,112 @@ var (
 	tokenCache          = sync.Map{}
 	genesisBlockstring  = `[
   {
-    "token": "9bf0dd78eb52f56cf698990d7d3e4f0827de858f6bdabc7713c869482abfd914",
+    "token": "6d16280fe32d51f661cd6e60d1316e6d19a35d7ee032fd691f835ff602bdf00f",
     "balance": "60000000000000000",
     "link": "d5ba6c7bb3f4f6545e08b03d6da1258840e0395080378a890601991a2a9e3163",
     "representative": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
     "type": "State",
     "address": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "000000000000e408",
-    "signature": "d33ab1facf29f636c482ca7bfb402181bc7cf6fe0bbe1426b3283d4bc6d35ac06a1976d45fd7e3f0607f91bf2d9b2fd3cfd1d96d24bf167bf19eb13247c1190f"
+    "signature": "c6d88344c17e9acfd5221882e32e6bc1a5a9906b8d378d2f6f15aebf0d66122c38fccd87fc02b367680c5e9487c5b39f8978ae5c6b7c7cd1ed73d2d21b3a2300"
   },
   {
-    "token": "02acb4a0e87c1fdd09b794a317ccaa6eddcb143c5fa0139f6fe145e9d94fcb17",
+    "token": "822d045630542776a79c1cc84f4c3a0ae7bec75c6507a265e4fb4050f9745812",
     "balance": "70000000000000000",
     "link": "6f6b4becca470084032121e7923a668da0bbc3ad1ef0c46513cdcf67080bc9b0",
     "representative": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
     "type": "State",
     "address": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "0000000000c662c2",
-    "signature": "b27f45042dae3918c5baf69ddb3631aeb8e1076f96c46721f0f36fd4f760cc28774ee23b9dd3e6dfa18d4db6de410bd91d471a3ae22e17d6998da9727aa6b903"
+    "signature": "28ccec0faf5dc737dee1fa4ff603afb1ad3f0f9e7fdbf827be4cd8ae0612beb25f6a2b6ec83da2c296f0ed91a23ca9f004a44afa4934cf9654897b0e8acf2900"
   },
   {
-    "token": "3b32f29885c04d9931319a8a564692880f68d1310a4ed527dd65bfd87896e8e4",
+    "token": "d58e691b12dadbb2b4f0918293fbd0bdf10e5f5612e6de7924d1a4a61385a11c",
     "balance": "50000000000000000",
     "link": "e4087493c2572dd52ab4ab67ae91c72dff25ca2efececec8205ff1764d75ddbb",
     "representative": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
     "type": "State",
     "address": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "0000000000ce1618",
-    "signature": "f3f310bf1957bb7eacb738f3b7fc497b3c6973e2e77a693b9c3b5c591766fbfe32c7401ca4bd9a82f193ba454a096f9583d1189e3bea693f964fe742b533070b"
+    "signature": "cfd16cf088093cf5a7d7cf178d9beff1d59ebf56582aa6fc0cf529c3c376b1cd260f2e483f2ddcb9644188d97034ac3be39cc4a9dd5284659f3d2a846cded90e"
   },
   {
-    "token": "6b50aa569c41d3a4efdfbc2138590fb39c556db4a39deb589c3f8b55530ce074",
+    "token": "3a3ac14c452b69ab9cfcf4338fd8b5f7134435c8fa0c1420cb2aa427b1591960",
     "balance": "90000000000000000",
     "link": "2f51df2104bae5a0feaaaa575f9ae458ac7353dfdf86f393a8d068bb5bcea95d",
     "representative": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
     "type": "State",
     "address": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "000000000075bd2e",
-    "signature": "cfe00b7135d6a116bde9faa5ea07bb43bb05190034ec5790cc4e727c4fed78e621268aee9153ddca9598c005b622e6359d85d4d14e6b51583f7648894bce3703"
+    "signature": "6ad03d54d498f8294661ed348bda82e42fd58d10b3f2aae8f958c5719049fb5dfd625affb225fb43564f47383d923165f67ce7071ec4174d69da86981876c600"
   },
   {
-    "token": "f8a2f79c397875d86cdf9342fc060449a95843cbcf46d2cfcac34f7489660604",
+    "token": "fb5c54408d07cdcff5c237f0f08409bc73c8665d5d2696a98774fab0350e5254",
     "balance": "80000000000000000",
     "link": "eee2111fbc1a25c3afb02760b3fdd499d20ca507dec145e2e7f9c07a1d9b9b30",
     "representative": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
     "type": "State",
     "address": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000008027a6",
-    "signature": "13bc561710ae620190f05b17b03d1ae9d1242bccefa7e569850050fa755fd59a01c7e6252c025c74b360ea72e02280ea53eeeed242c990cb76b404be9ae68b05"
+    "signature": "00ba9d4291f9d0d653ea7e22464bc7d5b9161f887ec5391ebdd1e2993f343ea729b9b58ba37a32485b9b150d5a4e5dfb9df8a7af7ce44ffeed59b00173aae009"
   },
   {
-    "token": "b9cd84de89deb22305779c39d9a94461ce7b31bf91bf9d4f631d09c1881d18b2",
+    "token": "4dbc7ee15cb22213555ed1b3cf835d0318f0a3f801333cc96c91c47dae1aa40e",
     "balance": "90000000000000000",
     "link": "7b6f0909957f2d5b25a01836b1527599dfd4453705397e7c89967dee27e15286",
     "representative": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
     "type": "State",
     "address": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000009fc06f",
-    "signature": "cafd215d4c3b6f5c71da503587f03b4ac5d94d3c6d015ae1d0d8a86e765e2d0e7c8ef2acf70355569790d18a8947a7242644d3d189c66f447fe240395d1ed803"
+    "signature": "161cf2568a89cc6ca23ba43e8a9b85c341c41b729eaf4e7b5f78a05904253cfc32e24bbd46d9b6fcbe81cd78c4c714225452e8a20e360411981fb5f23689ee0c"
   }
 ]
 `
@@ -153,13 +189,14 @@ var (
       "abiLength": 81,
       "abiHash": "79dab43dcc97205918b297c3aba6259e3ab1ed7d0779dc78eec6f57e5d6307ce"
     },
-    "issuer": "qlc_1nawsw4yatupd47p3scd5x5i3s9szbsggxbxmfy56f8jroyu945i5seu1cdd",
+    "owner": "qlc_1nawsw4yatupd47p3scd5x5i3s9szbsggxbxmfy56f8jroyu945i5seu1cdd",
+	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_3watpnwym9i43kbkt35yfp8xnqo7c9ujp3b6udajza71mspjfzpnpdgoydzn",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000007bb1fe",
-    "signature": "0e5a3f6b246c99f20bbe302c4cdfb4639ef3358620a85dc996ba38b0e2ae463d3e4a1184b36abfa63d3d11f56c3242446d381f837f2fb6f7336cf303a5cbca08"
+    "signature": "d9d71c82eccdca0324e102c089b28c1430b0ae61f2af809e6134b289d5186b16cbcb6fcd4bfc1424fd34aa40e9bdd05069bc56d05fecf833470d80d047048a05"
   },
   {
     "internalAccount": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
@@ -168,13 +205,14 @@ var (
       "abiLength": 87,
       "abiHash": "bdc16324e2450ca21293df43e16ffd658e8c486d633521d595f135e23b68ddf1"
     },
-    "issuer": "qlc_188wtseurfgqrtsnph6jpd71jqdyb94oqj8zm8x1ger3qemy15g6168xmkyo",
+    "owner": "qlc_188wtseurfgqrtsnph6jpd71jqdyb94oqj8zm8x1ger3qemy15g6168xmkyo",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_16npf7a86tucn7ei9x1zkccwzqoethz57ajhgt6kfp66hdnht66qqbjhskjq",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000006831fa",
-    "signature": "8205c069cf253089880eafa5bb4c676531139553bd9687e673fc1f8f1bb2b73b4a9b55a5cad342a7d17f840b4238f533cdb3507ee0c8ae9745da5d2e83bb6309"
+    "signature": "6aa248d86286a2b5b86220345393c22ee044e4df658b84a68e314d9ed4ae4583d824047c2f57089f3ad0fd47fee094f875c218203086b9a31dce677a3c03ba02"
   },
   {
     "internalAccount": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
@@ -183,13 +221,14 @@ var (
       "abiLength": 47,
       "abiHash": "e3b27d19ad41ec75971a0910967a88d368f589e9a85d3e2d1f3b7db1de2426c2"
     },
-    "issuer": "qlc_1cchdoqsiqs1z6jsmp318pd647cdkg8gsb51mghoo74csmsccrzz8m381wsh",
+    "owner": "qlc_1cchdoqsiqs1z6jsmp318pd647cdkg8gsb51mghoo74csmsccrzz8m381wsh",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_3mm5zqhnzug3ymmmbpjdmpbc4rgqzwt3aqbnpc69qhunbn1fo6a5168i8uzk",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000004d1eca",
-    "signature": "eebd4cfa391f8f9fd1e1af278d844397c6a61d3df26bf9100c7c6f3c9fd4c458c1580089490b869bc3443220adb166298528bab41930fe157e0c7d6ffc7e6806"
+    "signature": "2030955bb654311a23c43ad9e7cf740c1d0533c08c657bf1bd5836db8d0950fa2cce8a4052fbe849c6db2de8a1348565a08eafd9174c77d918d6fd098b44210f"
   },
   {
     "internalAccount": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
@@ -198,13 +237,14 @@ var (
       "abiLength": 59,
       "abiHash": "6985746f764e467a959ced7f25139978e8ee57bcfaff3bc14bd51ad47aab29ee"
     },
-    "issuer": "qlc_3m176fthnjx4pqrkufty7fot8kcmt9ugkmb9cagpec7b3iwaoxzuuzihh8px",
+    "owner": "qlc_3m176fthnjx4pqrkufty7fot8kcmt9ugkmb9cagpec7b3iwaoxzuuzihh8px",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_19adrdpewyhsrd9q7hhjc869uqsajyt66qt5dr64rqbtwiresbq4odkh4yit",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000009d763f",
-    "signature": "ee24e6a845b877b4326ec102d8f759f11f066952eef2d983c38cefcb43f065ce68c67462060bda3dad0a704c517afe2c43839ecd80d8be99b50b8c6dbf36d00b"
+    "signature": "029e5279928c317b23ba6af41e9e5330cbdfc4b7fd272e94921d0b475fa1591516122c1a19a7af2f93f9f15bc70c77d781792f02633d884d609473fdb81d8905"
   },
   {
     "internalAccount": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
@@ -213,13 +253,14 @@ var (
       "abiLength": 81,
       "abiHash": "b4fcdc674cc456fa24b87cc98209f3edd514515233ae8e6c575511839d2f92f2"
     },
-    "issuer": "qlc_31nrezhfzgrka9ae1k9ymn9fx4dwpjntdz6x3fss7h58n3ro1tepudnfmxyo",
+    "owner": "qlc_31nrezhfzgrka9ae1k9ymn9fx4dwpjntdz6x3fss7h58n3ro1tepudnfmxyo",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_1td67f5da5yy3d4qi9fjhpwzubw6hi4du7i8fmhg964664dsnfdpfmqabnra",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000004d6775",
-    "signature": "de745f3169b2f610fbc993fc20cc96ffa76b60a3d8843288f4e69e36140088c2b75970130ce99ed72614a6b994efedf42c8f05a67c2f6257d6f1de03ef3c6204"
+    "signature": "c5e0a359a38ca35046431740ccf746ff4e726fb8a5495fb1290975820c840f30bb939a0184520e0620684e86e37835a627bf9b45b83d047eba269279c8888705"
   },
   {
     "internalAccount": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
@@ -228,13 +269,14 @@ var (
       "abiLength": 18,
       "abiHash": "89fd3c99a475442d27fb8409aaed67ce6e545f757b1abc8375cd69c0a65f9f32"
     },
-    "issuer": "qlc_3ucju4ug747fye8r9zyasyap64imekmidjfg7ga83g1gk17dbfs3m1gafefa",
+    "owner": "qlc_3ucju4ug747fye8r9zyasyap64imekmidjfg7ga83g1gk17dbfs3m1gafefa",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_1y74rcprdspfijga3myfh9868p8xjm14k1f75qndzwe1otkwcftw7ypjq88o",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "000000000084273b",
-    "signature": "84c86c2ccd62d542c22aed78d9a1da3bbcccd693ca69c6c01099ce2c6446cbe93c6d167f5618a4d27d7446021d9c5e3671a06d9972bc813a03cdd422806ae401"
+    "signature": "6132b3f7d2b4807724e258e4f194e8dd24572cb347ed2806cb35cfafc1635df1676e04b291c4868c6dd1e1ed5ae42cd23b079264b047a28ea03c078adab91c0c"
   }
 ]
 `
@@ -347,9 +389,9 @@ func GetGenesis() []types.Block {
 	return b
 }
 
-func GetSmartContracts() []types.Block {
+func GetSmartContracts() []*types.SmartContractBlock {
 	size := len(smartContractBlocks)
-	b := make([]types.Block, size)
+	b := make([]*types.SmartContractBlock, size)
 	for i := 0; i < size; i++ {
 		b[i] = &smartContractBlocks[i]
 	}
@@ -388,7 +430,7 @@ func GetTokenByName(tokenName string) (*TokenInfo, error) {
 	return &info, nil
 }
 
-func StateBlock() types.Block {
+func StateBlock() *types.StateBlock {
 	a := Account()
 	b, _ := types.NewBlock(types.State)
 	sb := b.(*types.StateBlock)
@@ -407,7 +449,7 @@ func StateBlock() types.Block {
 
 	sb.Work = worker.NewWork()
 
-	return b
+	return sb
 }
 
 func BlockChain() ([]*types.StateBlock, error) {

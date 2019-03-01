@@ -34,7 +34,7 @@ func TestConfirmAckBlockPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal("sign error")
 	}
-	blk, err := types.NewBlock(types.State)
+	blk := new(types.StateBlock)
 
 	if err = json.Unmarshal([]byte(testBlockConfirmack), &blk); err != nil {
 		t.Fatal(err)

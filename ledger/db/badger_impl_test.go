@@ -1,12 +1,12 @@
 package db
 
 import (
-	"github.com/qlcchain/go-qlc/config"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 var db Store
@@ -39,7 +39,7 @@ func TestBadgerStoreTxn_Set(t *testing.T) {
 	err := db.UpdateInTx(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
-		val, _ := blk.MarshalMsg(nil)
+		val, _ := blk.Serialize()
 		if err := txn.Set(key[:], val); err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +57,7 @@ func TestBadgerStoreTxn_SetWithMeta(t *testing.T) {
 	err := db.UpdateInTx(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
-		val, _ := blk.MarshalMsg(nil)
+		val, _ := blk.Serialize()
 		if err := txn.SetWithMeta(key[:], val, 0); err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +74,7 @@ func TestBadgerStoreTxn_Get(t *testing.T) {
 	err := db.UpdateInTx(func(txn StoreTxn) error {
 		blk := new(types.StateBlock)
 		key := blk.GetHash()
-		val, _ := blk.MarshalMsg(nil)
+		val, _ := blk.Serialize()
 		if err := txn.SetWithMeta(key[:], val, 0); err != nil {
 			t.Fatal(err)
 		}
@@ -89,7 +89,7 @@ func TestBadgerStoreTxn_Get(t *testing.T) {
 		key := block.GetHash()
 		blk := new(types.StateBlock)
 		err := txn.Get(key[:], func(val []byte, b byte) error {
-			if _, err2 := blk.UnmarshalMsg(val); err2 != nil {
+			if err2 := blk.Deserialize(val); err2 != nil {
 				t.Fatal(err2)
 			}
 			return nil

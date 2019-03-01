@@ -25,8 +25,8 @@ var (
 )
 
 func TestIsAckSignValidate(t *testing.T) {
-	blk, err := types.NewBlock(types.State)
-	if err = json.Unmarshal([]byte(utilsblock), &blk); err != nil {
+	blk := new(types.StateBlock)
+	if err := json.Unmarshal([]byte(utilsblock), &blk); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
 	var seedstring = "DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9"

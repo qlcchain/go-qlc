@@ -105,7 +105,7 @@ func (s *Seed) MarshalBinaryTo(text []byte) error {
 func (s *Seed) UnmarshalBinary(text []byte) error {
 	size := len(text)
 	if len(text) != SeedSize {
-		return fmt.Errorf("bad signature size: %d", size)
+		return fmt.Errorf("bad seed size: %d", size)
 	}
 	copy((*s)[:], text)
 	return nil

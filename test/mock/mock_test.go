@@ -9,8 +9,9 @@ package mock
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common/util"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -19,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
@@ -129,7 +131,7 @@ func TestMockGenesisScBlock(t *testing.T) {
 	hash, _ := types.HashBytes(abi)
 	sb.Abi = types.ContractAbi{Abi: abi, AbiLength: 64, AbiHash: hash}
 	sb.Address = Address()
-	sb.Issuer = Address()
+	sb.Owner = Address()
 	sb.InternalAccount, _ = types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
 
 	_, priv, err := types.KeypairFromSeed("425E747CFCDD993019EB1AAC97FD2F5D3A94835D9A779C9BDC590739EDD1BB45", 0)
@@ -189,7 +191,7 @@ func TestGenerate(t *testing.T) {
 		hash, _ := types.HashBytes(abi)
 		sb.Abi = types.ContractAbi{Abi: abi, AbiLength: uint64(i), AbiHash: hash}
 		sb.Address = Address()
-		sb.Issuer = Address()
+		sb.Owner = Address()
 		sb.InternalAccount = masterAddress
 
 		h := sb.GetHash()
@@ -403,5 +405,63 @@ func TestBlockChain(t *testing.T) {
 
 	if len(blocks) == 0 {
 		t.Fatal("create blocks error")
+	}
+}
+
+func TestTokenType(t *testing.T) {
+	num := len(smartContractBlocks)
+	for i := 0; i < num; i++ {
+		h := smartContractBlocks[i].GetHash()
+		if genesisBlocks[i].Token != h {
+			t.Log(h)
+			t.Fatal(i, " genesis error")
+		}
+	}
+
+}
+
+var seedStr = []string{
+	"DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9",
+	"E4935D4D9DEF9D12BC2059C34848C444DBC462FBFF592428C218BF0BC174D065",
+	"192C4DDFD9BCC7DF27701197FBC972E6D07854F718BE09AD1D5E9338C435C1A9",
+	"AAB43DFBFCC6702504F03F64B66B0482A206EFDD5990D0C5FFCE164EBB088E06",
+	"FBEA7F04DC9AD25E2CBC05FAEF6CEF98DF08CF04582937832F67B3883075244A",
+	"0578B09D725C77432886632364FDE29D3DAFB4A7748B7801FBD6D79BBF013B73",
+}
+
+func TestGenesisSign(t *testing.T) {
+	for i := 0; i < len(seedStr); i++ {
+		sByte, _ := hex.DecodeString(seedStr[i])
+		seed, _ := types.BytesToSeed(sByte)
+		ac, _ := seed.Account(0)
+		fmt.Println(i)
+		s := ac.Sign(smartContractBlocks[i].GetHash())
+		fmt.Println(s)
+
+		var w types.Work
+		worker, _ := types.NewWorker(w, genesisBlocks[i].Root())
+		t := worker.NewWork()
+		fmt.Println(t)
+
+		s1 := ac.Sign(genesisBlocks[i].GetHash())
+		fmt.Println(s1)
+	}
+}
+
+func TestGenesisVerify(t *testing.T) {
+	for i := 0; i < len(genesisBlocks); i++ {
+		addr := genesisBlocks[i].GetAddress()
+		sign := genesisBlocks[i].GetSignature()
+		h := genesisBlocks[i].GetHash()
+		if !addr.Verify(h[:], sign[:]) {
+			t.Fatal(i)
+		}
+
+		addr1 := smartContractBlocks[i].InternalAccount
+		sign1 := smartContractBlocks[i].Signature
+		h1 := smartContractBlocks[i].GetHash()
+		if !addr1.Verify(h1[:], sign1[:]) {
+			t.Fatal(i)
+		}
 	}
 }

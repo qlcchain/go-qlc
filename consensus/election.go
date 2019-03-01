@@ -7,14 +7,14 @@ import (
 )
 
 type BlockReceivedVotes struct {
-	block   types.Block
+	block   *types.StateBlock
 	balance types.Balance
 }
 
 type electionStatus struct {
-	winner types.Block
+	winner *types.StateBlock
 	tally  types.Balance
-	loser  []types.Block
+	loser  []*types.StateBlock
 }
 
 type Election struct {
@@ -25,7 +25,7 @@ type Election struct {
 	//announcements uint
 }
 
-func NewElection(dps *DposService, block types.Block) (*Election, error) {
+func NewElection(dps *DposService, block *types.StateBlock) (*Election, error) {
 	vt := NewVotes(block)
 	status := electionStatus{block, types.ZeroBalance, nil}
 
@@ -56,7 +56,7 @@ func (el *Election) haveQuorum() {
 		return
 	}
 	var balance = types.ZeroBalance
-	var blk types.Block
+	blk := new(types.StateBlock)
 	for _, value := range t {
 		if balance.Compare(value.balance) == types.BalanceCompSmaller {
 			balance = value.balance

@@ -18,7 +18,7 @@ type Votes struct {
 	repVotes map[types.Address]*protos.ConfirmAckBlock // All votes received by account
 }
 
-func NewVotes(blk types.Block) *Votes {
+func NewVotes(blk *types.StateBlock) *Votes {
 	return &Votes{
 		id:       blk.Root(),
 		repVotes: make(map[types.Address]*protos.ConfirmAckBlock),

@@ -125,7 +125,7 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	}
 }
 
-func addStateblock(t *testing.T, l *Ledger) types.Block {
+func addStateblock(t *testing.T, l *Ledger) *types.StateBlock {
 	blk := mock.StateBlock()
 	if err := l.AddStateBlock(blk); err != nil {
 		t.Log(err)
@@ -133,7 +133,7 @@ func addStateblock(t *testing.T, l *Ledger) types.Block {
 	return blk
 }
 
-func addSmartContractBlockblock(t *testing.T, l *Ledger) types.Block {
+func addSmartContractBlockblock(t *testing.T, l *Ledger) *types.SmartContractBlock {
 	blk := mock.GetSmartContracts()[0]
 	if err := l.AddSmartContrantBlock(blk); err != nil {
 		t.Log(err)
@@ -180,6 +180,18 @@ func TestLedger_GetSmartContrantBlock(t *testing.T) {
 	blk, err := l.GetSmartContrantBlock(block.GetHash())
 	t.Log("blk,", blk)
 	if err != nil || blk == nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_HasSmartContrantBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	block := addSmartContractBlockblock(t, l)
+	b, err := l.HasSmartContrantBlock(block.GetHash())
+	t.Log(b)
+	if err != nil || !b {
 		t.Fatal(err)
 	}
 }
@@ -269,7 +281,7 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 	t.Log("block ,", b)
 }
 
-func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block types.Block, kind types.UncheckedKind) {
+func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
 	block = mock.StateBlock()
 	hash = block.GetPrevious()
 	kind = types.UncheckedKindPrevious
@@ -754,7 +766,7 @@ func TestLedgerSession_Latest(t *testing.T) {
 	block := addStateblock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
 	token.Header = block.GetHash()
-	token.Type = block.(*types.StateBlock).GetToken()
+	token.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
 	if err := l.AddAccountMeta(&ac); err != nil {
 		t.Fatal()
@@ -773,9 +785,9 @@ func TestLedgerSession_Account(t *testing.T) {
 
 	block := addStateblock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
-	token.Type = block.(*types.StateBlock).GetToken()
+	token.Type = block.GetToken()
 	token2 := mock.TokenMeta(block.GetAddress())
-	token2.Type = block.(*types.StateBlock).GetToken()
+	token2.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token, token2}}
 	if err := l.AddAccountMeta(&ac); err != nil {
 		t.Fatal()
@@ -794,7 +806,7 @@ func TestLedgerSession_Token(t *testing.T) {
 
 	block := addStateblock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
-	token.Type = block.(*types.StateBlock).GetToken()
+	token.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
 	if err := l.AddAccountMeta(&ac); err != nil {
 		t.Fatal()

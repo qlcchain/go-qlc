@@ -156,7 +156,7 @@ func (l *Ledger) getPosteriorBlockKey(hash types.Hash) []byte {
 	return key[:]
 }
 
-func (l *Ledger) AddStateBlock(blk types.Block, txns ...db.StoreTxn) error {
+func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error {
 	key := getKey(blk.GetHash(), idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -171,7 +171,7 @@ func (l *Ledger) AddStateBlock(blk types.Block, txns ...db.StoreTxn) error {
 		return err
 	}
 
-	blockBytes, err := blk.MarshalMsg(nil)
+	blockBytes, err := blk.Serialize()
 	if err != nil {
 		return err
 	}
@@ -220,8 +220,7 @@ func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.Sta
 	defer l.releaseTxn(txn, flag)
 	blk := new(types.StateBlock)
 	err := txn.Get(key, func(val []byte, b byte) error {
-		_, err := blk.UnmarshalMsg(val)
-		if err != nil {
+		if err := blk.Deserialize(val); err != nil {
 			return err
 		}
 		return nil
@@ -241,8 +240,7 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 
 	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
-		_, err := blk.UnmarshalMsg(val)
-		if err != nil {
+		if err := blk.Deserialize(val); err != nil {
 			return err
 		}
 		if err := fn(blk); err != nil {
@@ -264,8 +262,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 
 	blk := new(types.StateBlock)
 	err := txn.Get(key, func(val []byte, b byte) error {
-		_, err := blk.UnmarshalMsg(val)
-		if err != nil {
+		if err := blk.Deserialize(val); err != nil {
 			return err
 		}
 		return nil
@@ -319,7 +316,10 @@ func (l *Ledger) CountStateBlocks(txns ...db.StoreTxn) (uint64, error) {
 	return count, nil
 }
 
-func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error) {
+func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	c, err := l.CountStateBlocks()
 	if err != nil {
 		return nil, err
@@ -328,19 +328,11 @@ func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error) {
 		return nil, ErrStoreEmpty
 	}
 	index := rand.Int63n(int64(c))
-	var blk types.Block
+	blk := new(types.StateBlock)
 	var temp int64
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
 	err = txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		if temp == index {
-			blk, err = types.NewBlock(types.BlockType(b))
-			if err != nil {
-				return err
-			}
-			_, err = blk.UnmarshalMsg(val)
-			if err != nil {
+			if err = blk.Deserialize(val); err != nil {
 				return err
 			}
 		}
@@ -355,7 +347,7 @@ func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (types.Block, error) {
 
 }
 
-func (l *Ledger) AddSmartContrantBlock(blk types.Block, txns ...db.StoreTxn) error {
+func (l *Ledger) AddSmartContrantBlock(blk *types.SmartContractBlock, txns ...db.StoreTxn) error {
 	key := getKey(blk.GetHash(), idPrefixSmartContractBlock)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -370,7 +362,7 @@ func (l *Ledger) AddSmartContrantBlock(blk types.Block, txns ...db.StoreTxn) err
 		return err
 	}
 
-	blockBytes, err := blk.MarshalMsg(nil)
+	blockBytes, err := blk.Serialize()
 	if err != nil {
 		return err
 	}
@@ -383,8 +375,7 @@ func (l *Ledger) GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*t
 	defer l.releaseTxn(txn, flag)
 	blk := new(types.SmartContractBlock)
 	err := txn.Get(key, func(val []byte, b byte) error {
-		_, err := blk.UnmarshalMsg(val)
-		if err != nil {
+		if err := blk.Deserialize(val); err != nil {
 			return err
 		}
 		return nil
@@ -405,8 +396,7 @@ func (l *Ledger) GetSmartContrantBlocks(fn func(block *types.SmartContractBlock)
 
 	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
 		blk := new(types.SmartContractBlock)
-		_, err := blk.UnmarshalMsg(val)
-		if err != nil {
+		if err := blk.Deserialize(val); err != nil {
 			return err
 		}
 		if err := fn(blk); err != nil {
@@ -473,8 +463,8 @@ func (l *Ledger) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind)
 	return key[:]
 }
 
-func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind types.UncheckedKind, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
-	blockBytes, err := blk.MarshalMsg(nil)
+func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk *types.StateBlock, kind types.UncheckedKind, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
+	blockBytes, err := blk.Serialize()
 	if err != nil {
 		return err
 	}
@@ -496,7 +486,7 @@ func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk types.Block, kind 
 	return txn.SetWithMeta(key, blockBytes, byte(sync))
 }
 
-func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (types.Block, types.SynchronizedKind, error) {
+func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (*types.StateBlock, types.SynchronizedKind, error) {
 	key := l.getUncheckedBlockKey(parentHash, kind)
 
 	txn, flag := l.getTxn(false, txns...)
@@ -505,7 +495,7 @@ func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKi
 	blk := new(types.StateBlock)
 	var sync types.SynchronizedKind
 	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if _, err = blk.UnmarshalMsg(val); err != nil {
+		if err = blk.Deserialize(val); err != nil {
 			return err
 		}
 		sync = types.SynchronizedKind(b)
@@ -552,7 +542,7 @@ func (l *Ledger) walkUncheckedBlocks(kind types.UncheckedKind, visit types.Unche
 	prefix := l.uncheckedKindToPrefix(kind)
 	err := txn.Iterator(prefix, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
-		if _, err := blk.UnmarshalMsg(val); err != nil {
+		if err := blk.Deserialize(val); err != nil {
 			return err
 		}
 		if err := visit(blk, kind); err != nil {
@@ -1342,7 +1332,11 @@ const (
 // TODO: implement
 func (l *Ledger) Rollback(hash types.Hash) error {
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		return l.processRollback(hash, nil, true, txn)
+		err := l.processRollback(hash, nil, true, txn)
+		if err != nil {
+			l.logger.Error(err)
+		}
+		return err
 	})
 }
 
