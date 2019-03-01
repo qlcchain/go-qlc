@@ -12,7 +12,7 @@ require (
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/deckarep/golang-set v1.7.1
-	github.com/dgraph-io/badger v0.0.0-20190227051053-8115aed38f8f
+	github.com/dgraph-io/badger v0.0.0-20190227051053-439fd464b155
 	github.com/dgryski/go-farm v0.0.0-20190104051053-3adb47b1fb0f // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/color v1.7.0
