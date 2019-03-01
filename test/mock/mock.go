@@ -72,16 +72,22 @@ var (
 	tokenCache          = sync.Map{}
 	genesisBlockstring  = `[
   {
-    "token": "9bf0dd78eb52f56cf698990d7d3e4f0827de858f6bdabc7713c869482abfd914",
+    "token": "6d16280fe32d51f661cd6e60d1316e6d19a35d7ee032fd691f835ff602bdf00f",
     "balance": "60000000000000000",
     "link": "d5ba6c7bb3f4f6545e08b03d6da1258840e0395080378a890601991a2a9e3163",
     "representative": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
     "type": "State",
     "address": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "000000000000e408",
-    "signature": "d33ab1facf29f636c482ca7bfb402181bc7cf6fe0bbe1426b3283d4bc6d35ac06a1976d45fd7e3f0607f91bf2d9b2fd3cfd1d96d24bf167bf19eb13247c1190f"
+    "signature": "c6d88344c17e9acfd5221882e32e6bc1a5a9906b8d378d2f6f15aebf0d66122c38fccd87fc02b367680c5e9487c5b39f8978ae5c6b7c7cd1ed73d2d21b3a2300"
   },
   {
     "token": "02acb4a0e87c1fdd09b794a317ccaa6eddcb143c5fa0139f6fe145e9d94fcb17",
@@ -90,6 +96,12 @@ var (
     "representative": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
     "type": "State",
     "address": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "0000000000c662c2",
@@ -102,6 +114,12 @@ var (
     "representative": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
     "type": "State",
     "address": "qlc_3s1agkbw6osftnodbcu9otawgdhz6q74xzpgsu641qzjgs8qdqfujim3z7ii",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "0000000000ce1618",
@@ -114,6 +132,12 @@ var (
     "representative": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
     "type": "State",
     "address": "qlc_1dtjuwiibgq7n5zcockqdyfgap7egfbxzqw8ygbtjn5aqffwxccxensu53i8",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "000000000075bd2e",
@@ -126,6 +150,12 @@ var (
     "representative": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
     "type": "State",
     "address": "qlc_3uq446hur8j7rgqu1bu1phyxb8gk3kkihqp3aqjghyg1hagsq8sizm4n7596",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000008027a6",
@@ -138,6 +168,12 @@ var (
     "representative": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
     "type": "State",
     "address": "qlc_1yuh366sczsfdekt183pp7b9d8gztj4mg3bshsyam7mxxrmy4nn89638o3me",
+	"sender": "",
+	"receiver": "",
+	"data": "",
+	"quota": 0,
+	"timestamp": 0,
+	"message": "0000000000000000000000000000000000000000000000000000000000000000",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000009fc06f",
@@ -153,13 +189,14 @@ var (
       "abiLength": 81,
       "abiHash": "79dab43dcc97205918b297c3aba6259e3ab1ed7d0779dc78eec6f57e5d6307ce"
     },
-    "issuer": "qlc_1nawsw4yatupd47p3scd5x5i3s9szbsggxbxmfy56f8jroyu945i5seu1cdd",
+    "owner": "qlc_1nawsw4yatupd47p3scd5x5i3s9szbsggxbxmfy56f8jroyu945i5seu1cdd",
+	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_3watpnwym9i43kbkt35yfp8xnqo7c9ujp3b6udajza71mspjfzpnpdgoydzn",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
     "extra": "0000000000000000000000000000000000000000000000000000000000000000",
     "work": "00000000007bb1fe",
-    "signature": "0e5a3f6b246c99f20bbe302c4cdfb4639ef3358620a85dc996ba38b0e2ae463d3e4a1184b36abfa63d3d11f56c3242446d381f837f2fb6f7336cf303a5cbca08"
+    "signature": "d9d71c82eccdca0324e102c089b28c1430b0ae61f2af809e6134b289d5186b16cbcb6fcd4bfc1424fd34aa40e9bdd05069bc56d05fecf833470d80d047048a05"
   },
   {
     "internalAccount": "qlc_1uudbhpenjr1ii3k4ah9kax8f5f1qh3tt9qirjkj9mghew61qkfibw4haxtc",
@@ -168,7 +205,8 @@ var (
       "abiLength": 87,
       "abiHash": "bdc16324e2450ca21293df43e16ffd658e8c486d633521d595f135e23b68ddf1"
     },
-    "issuer": "qlc_188wtseurfgqrtsnph6jpd71jqdyb94oqj8zm8x1ger3qemy15g6168xmkyo",
+    "owner": "qlc_188wtseurfgqrtsnph6jpd71jqdyb94oqj8zm8x1ger3qemy15g6168xmkyo",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_16npf7a86tucn7ei9x1zkccwzqoethz57ajhgt6kfp66hdnht66qqbjhskjq",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -183,7 +221,8 @@ var (
       "abiLength": 47,
       "abiHash": "e3b27d19ad41ec75971a0910967a88d368f589e9a85d3e2d1f3b7db1de2426c2"
     },
-    "issuer": "qlc_1cchdoqsiqs1z6jsmp318pd647cdkg8gsb51mghoo74csmsccrzz8m381wsh",
+    "owner": "qlc_1cchdoqsiqs1z6jsmp318pd647cdkg8gsb51mghoo74csmsccrzz8m381wsh",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_3mm5zqhnzug3ymmmbpjdmpbc4rgqzwt3aqbnpc69qhunbn1fo6a5168i8uzk",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -198,7 +237,8 @@ var (
       "abiLength": 59,
       "abiHash": "6985746f764e467a959ced7f25139978e8ee57bcfaff3bc14bd51ad47aab29ee"
     },
-    "issuer": "qlc_3m176fthnjx4pqrkufty7fot8kcmt9ugkmb9cagpec7b3iwaoxzuuzihh8px",
+    "owner": "qlc_3m176fthnjx4pqrkufty7fot8kcmt9ugkmb9cagpec7b3iwaoxzuuzihh8px",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_19adrdpewyhsrd9q7hhjc869uqsajyt66qt5dr64rqbtwiresbq4odkh4yit",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -213,7 +253,8 @@ var (
       "abiLength": 81,
       "abiHash": "b4fcdc674cc456fa24b87cc98209f3edd514515233ae8e6c575511839d2f92f2"
     },
-    "issuer": "qlc_31nrezhfzgrka9ae1k9ymn9fx4dwpjntdz6x3fss7h58n3ro1tepudnfmxyo",
+    "owner": "qlc_31nrezhfzgrka9ae1k9ymn9fx4dwpjntdz6x3fss7h58n3ro1tepudnfmxyo",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_1td67f5da5yy3d4qi9fjhpwzubw6hi4du7i8fmhg964664dsnfdpfmqabnra",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -228,7 +269,8 @@ var (
       "abiLength": 18,
       "abiHash": "89fd3c99a475442d27fb8409aaed67ce6e545f757b1abc8375cd69c0a65f9f32"
     },
-    "issuer": "qlc_3ucju4ug747fye8r9zyasyap64imekmidjfg7ga83g1gk17dbfs3m1gafefa",
+    "owner": "qlc_3ucju4ug747fye8r9zyasyap64imekmidjfg7ga83g1gk17dbfs3m1gafefa",
+ 	"isUseStorage": false,
     "type": "SmartContract",
     "address": "qlc_1y74rcprdspfijga3myfh9868p8xjm14k1f75qndzwe1otkwcftw7ypjq88o",
     "previous": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -347,9 +389,9 @@ func GetGenesis() []types.Block {
 	return b
 }
 
-func GetSmartContracts() []types.Block {
+func GetSmartContracts() []*types.SmartContractBlock {
 	size := len(smartContractBlocks)
-	b := make([]types.Block, size)
+	b := make([]*types.SmartContractBlock, size)
 	for i := 0; i < size; i++ {
 		b[i] = &smartContractBlocks[i]
 	}
@@ -388,7 +430,7 @@ func GetTokenByName(tokenName string) (*TokenInfo, error) {
 	return &info, nil
 }
 
-func StateBlock() types.Block {
+func StateBlock() *types.StateBlock {
 	a := Account()
 	b, _ := types.NewBlock(types.State)
 	sb := b.(*types.StateBlock)
@@ -407,7 +449,7 @@ func StateBlock() types.Block {
 
 	sb.Work = worker.NewWork()
 
-	return b
+	return sb
 }
 
 func BlockChain() ([]*types.StateBlock, error) {

@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-
 	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
@@ -246,7 +244,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 	switch messageName {
 	case PublishReq:
 		packet := protos.PublishBlock{
-			Blk: value.(types.Block),
+			Blk: value.(*types.StateBlock),
 		}
 		data, err := protos.PublishBlockToProto(&packet)
 		if err != nil {
@@ -255,7 +253,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, nil
 	case ConfirmReq:
 		packet := &protos.ConfirmReqBlock{
-			Blk: value.(types.Block),
+			Blk: value.(*types.StateBlock),
 		}
 		data, err := protos.ConfirmReqBlockToProto(packet)
 		if err != nil {
@@ -291,7 +289,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, nil
 	case BulkPullRsp:
 		PullRsp := &protos.BulkPullRspPacket{
-			Blk: value.(types.Block),
+			Blk: value.(*types.StateBlock),
 		}
 		data, err := protos.BulkPullRspPacketToProto(PullRsp)
 		if err != nil {
@@ -300,7 +298,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, err
 	case BulkPushBlock:
 		push := &protos.BulkPush{
-			Blk: value.(types.Block),
+			Blk: value.(*types.StateBlock),
 		}
 		data, err := protos.BulkPushBlockToProto(push)
 		if err != nil {

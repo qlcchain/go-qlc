@@ -46,16 +46,10 @@ func (l *Ledger) Process(block types.Block) (ProcessResult, error) {
 func (l *Ledger) BlockCheck(block types.Block) (ProcessResult, error) {
 	txn, b := l.getTxn(false)
 	defer l.releaseTxn(txn, b)
-
-	switch block.GetType() {
-	case types.State:
-		if state, ok := block.(*types.StateBlock); ok {
-			return l.checkStateBlock(state, txn)
-		}
-	case types.SmartContract:
-		return Other, errors.New("smartcontract block")
-	default:
-		return Other, errors.New("invalid block type")
+	if b, ok := block.(*types.StateBlock); ok {
+		return l.checkStateBlock(b, txn)
+	} else if _, ok := block.(*types.SmartContractBlock); ok {
+		return Other, errors.New("smart contract block")
 	}
 	return Other, errors.New("invalid block")
 }
@@ -181,18 +175,12 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 
 func (l *Ledger) BlockProcess(block types.Block) error {
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		switch block.GetType() {
-		case types.State:
-			if state, ok := block.(*types.StateBlock); ok {
-				return l.processStateBlock(state, txn)
-			} else {
-				return errors.New("invalid block")
-			}
-		case types.SmartContract:
+		if state, ok := block.(*types.StateBlock); ok {
+			return l.processStateBlock(state, txn)
+		} else if _, ok := block.(*types.SmartContractBlock); ok {
 			return nil
-		default:
-			return errors.New("invalid block type")
 		}
+		return errors.New("invalid block")
 	})
 }
 
@@ -433,13 +421,12 @@ func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to ty
 }
 
 func (l *Ledger) GenerateReceiveBlock(sendBlock types.Block, prk ed25519.PrivateKey) (types.Block, error) {
-	hash := sendBlock.GetHash()
 	var state *types.StateBlock
 	ok := false
 	if state, ok = sendBlock.(*types.StateBlock); !ok {
-		return nil, fmt.Errorf("invalid state sendBlock(%s)", hash.String())
+		return nil, errors.New("invalid state sendBlock")
 	}
-
+	hash := state.GetHash()
 	// block not exist
 	if exist, err := l.HasStateBlock(hash); !exist || err != nil {
 		return nil, fmt.Errorf("sendBlock(%s) does not exist", hash.String())

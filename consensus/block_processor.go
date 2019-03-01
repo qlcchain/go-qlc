@@ -4,14 +4,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/qlcchain/go-qlc/p2p"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/p2p"
 )
 
 type blockSource struct {
-	block     types.Block
+	block     *types.StateBlock
 	blockFrom types.SynchronizedKind
 }
 
@@ -102,7 +101,7 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, bs blockSou
 		break
 	case ledger.GapSource:
 		bp.dp.logger.Debugf("Gap source for: %s", hash)
-		err := bp.dp.ledger.AddUncheckedBlock(blk.(*types.StateBlock).Link, blk, types.UncheckedKindLink, bs.blockFrom)
+		err := bp.dp.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.blockFrom)
 		if err != nil {
 			return err
 		}
@@ -111,7 +110,7 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, bs blockSou
 	return nil
 }
 
-func (bp *BlockProcessor) processFork(block types.Block) {
+func (bp *BlockProcessor) processFork(block *types.StateBlock) {
 	blk := bp.findAnotherForkedBlock(block)
 	if _, ok := bp.dp.acTrx.roots.Load(blk.Root()); !ok {
 		bp.dp.acTrx.addToRoots(blk)
@@ -143,7 +142,7 @@ func (bp *BlockProcessor) processFork(block types.Block) {
 	//}
 }
 
-func (bp *BlockProcessor) findAnotherForkedBlock(block types.Block) types.Block {
+func (bp *BlockProcessor) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlock {
 	hash := block.Root()
 	forkedHash, err := bp.dp.ledger.GetPosterior(hash)
 	if err != nil {

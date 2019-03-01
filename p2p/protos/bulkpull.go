@@ -57,12 +57,12 @@ func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
 }
 
 type BulkPullRspPacket struct {
-	Blk types.Block
+	Blk *types.StateBlock
 }
 
 // ToProto converts domain BulkPull into proto BulkPull
 func BulkPullRspPacketToProto(bp *BulkPullRspPacket) ([]byte, error) {
-	blkData, err := bp.Blk.MarshalMsg(nil)
+	blkData, err := bp.Blk.Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -84,12 +84,8 @@ func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 	if err := proto.Unmarshal(data, bp); err != nil {
 		return nil, err
 	}
-	blockType := bp.Blocktype
-	blk, err := types.NewBlock(types.BlockType(blockType))
-	if err != nil {
-		return nil, err
-	}
-	if _, err = blk.UnmarshalMsg(bp.Block); err != nil {
+	blk := new(types.StateBlock)
+	if err := blk.Deserialize(bp.Block); err != nil {
 		return nil, err
 	}
 	bpRp := &BulkPullRspPacket{

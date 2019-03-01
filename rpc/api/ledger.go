@@ -585,6 +585,7 @@ func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative ty
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	flag, err := l.ledger.Process(block)
 	if err != nil {
+		l.logger.Error(err)
 		return types.ZeroHash, err
 	}
 

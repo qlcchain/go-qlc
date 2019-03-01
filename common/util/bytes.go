@@ -8,7 +8,12 @@
 // Package common contains various helper functions.
 package util
 
-import "encoding/hex"
+import (
+	"bytes"
+	"encoding/binary"
+	"encoding/gob"
+	"encoding/hex"
+)
 
 // ToHex returns the hex representation of b, prefixed with '0x'.
 // For empty slices, the return value is "0x0".
@@ -117,4 +122,21 @@ func LeftPadBytes(slice []byte, l int) []byte {
 	copy(padded[l-len(slice):], slice)
 
 	return padded
+}
+
+func String2Bytes(s string) []byte {
+	return []byte(s)
+}
+
+func Int2Bytes(i int64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(i))
+	return b
+}
+
+func Bool2Bytes(b bool) []byte {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	enc.Encode(b)
+	return buf.Bytes()
 }

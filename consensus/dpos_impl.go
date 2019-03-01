@@ -7,19 +7,16 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-
-	"github.com/qlcchain/go-qlc/common/util"
-
-	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/wallet"
+	"go.uber.org/zap"
 )
 
 //var logger = log.NewLogger("consensus")
@@ -204,7 +201,7 @@ func (dps *DposService) ReceivePublish(v interface{}) {
 	dps.onReceivePublish(e, p.Blk)
 }
 
-func (dps *DposService) onReceivePublish(e p2p.Message, blk types.Block) {
+func (dps *DposService) onReceivePublish(e p2p.Message, blk *types.StateBlock) {
 	if !dps.cache.Has(e.Hash()) {
 		dps.ns.SendMessageToPeers(p2p.PublishReq, blk, e.MessageFrom())
 		err := dps.cache.Set(e.Hash(), "")
@@ -225,7 +222,7 @@ func (dps *DposService) ReceiveConfirmReq(v interface{}) {
 	dps.onReceiveConfirmReq(e, r.Blk)
 }
 
-func (dps *DposService) onReceiveConfirmReq(e p2p.Message, blk types.Block) {
+func (dps *DposService) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 	bs := blockSource{
 		block:     blk,
 		blockFrom: types.UnSynchronized,
@@ -303,13 +300,13 @@ func (dps *DposService) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAc
 func (dps *DposService) ReceiveSyncBlock(v interface{}) {
 	dps.logger.Info("Sync Event")
 	bs := blockSource{
-		block:     v.(types.Block),
+		block:     v.(*types.StateBlock),
 		blockFrom: types.Synchronized,
 	}
 	dps.bp.blocks <- bs
 }
 
-func (dps *DposService) sendConfirmAck(block types.Block, account types.Address, acc *types.Account) error {
+func (dps *DposService) sendConfirmAck(block *types.StateBlock, account types.Address, acc *types.Account) error {
 	va, err := dps.voteGenerate(block, account, acc)
 	if err != nil {
 		dps.logger.Error("vote generate error")
@@ -319,7 +316,7 @@ func (dps *DposService) sendConfirmAck(block types.Block, account types.Address,
 	return nil
 }
 
-func (dps *DposService) voteGenerate(block types.Block, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
+func (dps *DposService) voteGenerate(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
 	//var va protos.ConfirmAckBlock
 	//if v, ok := dps.acTrx.roots.Load(block.Root()); ok {
 	//	result, vt := v.(*Election).vote.voteExit(account)

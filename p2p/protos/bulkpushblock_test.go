@@ -23,9 +23,9 @@ var (
 )
 
 func TestBulkPushPacket(t *testing.T) {
-	blk, err := types.NewBlock(types.State)
+	blk := new(types.StateBlock)
 
-	if err = json.Unmarshal([]byte(testBulkPushBlock), &blk); err != nil {
+	if err := json.Unmarshal([]byte(testBulkPushBlock), &blk); err != nil {
 		t.Fatal(err)
 	}
 	rsp := BulkPush{

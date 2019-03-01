@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"fmt"
-	"github.com/qlcchain/go-qlc/config"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	badgerOpts "github.com/dgraph-io/badger/options"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
@@ -25,7 +25,7 @@ var (
 	dir_testdb     = filepath.Join(config.QlcTestDataDir(), "badger_pref")
 )
 
-func generateBlock() types.Block {
+func generateBlock() *types.StateBlock {
 	var blk types.StateBlock
 	random.Bytes(blk.Previous[:])
 	random.Bytes(blk.Representative[:])
@@ -77,7 +77,7 @@ func TestBadgerPerformance_AddBlocks(t *testing.T) {
 			for i := 0; i < n; i++ {
 				blk := generateBlock()
 				key := blk.GetHash()
-				val, _ := blk.MarshalMsg(nil)
+				val, _ := blk.Serialize()
 				if err := txn.Set(key[:], val); err != nil {
 					t.Fatal(err)
 				}

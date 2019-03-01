@@ -278,14 +278,15 @@ func (s *Session) GenerateSendBlock(source types.Address, token types.Hash, to t
 }
 
 func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, error) {
-	hash := sendBlock.GetHash()
 	var state *types.StateBlock
 	ok := false
 	if state, ok = sendBlock.(*types.StateBlock); !ok {
-		return nil, fmt.Errorf("invalid state sendBlock(%s)", hash.String())
+		return nil, errors.New("invalid state sendBlock")
 	}
 
 	l := s.ledger
+
+	hash := state.GetHash()
 
 	// block not exist
 	if exist, err := l.HasStateBlock(hash); !exist || err != nil {

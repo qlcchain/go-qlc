@@ -37,12 +37,12 @@ var (
 )
 
 func TestVotes(t *testing.T) {
-	blk, err := types.NewBlock(types.State)
-	if err = json.Unmarshal([]byte(testVotesBlk), &blk); err != nil {
+	blk := new(types.StateBlock)
+	if err := json.Unmarshal([]byte(testVotesBlk), &blk); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
-	blk1, err := types.NewBlock(types.State)
-	if err = json.Unmarshal([]byte(testVotesBlk1), &blk1); err != nil {
+	blk1 := new(types.StateBlock)
+	if err := json.Unmarshal([]byte(testVotesBlk1), &blk1); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
 	vts := NewVotes(blk)

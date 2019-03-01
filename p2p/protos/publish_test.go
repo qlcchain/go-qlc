@@ -23,8 +23,8 @@ var (
 )
 
 func TestPublishPacket(t *testing.T) {
-	blk, err := types.NewBlock(types.State)
-	if err = json.Unmarshal([]byte(testBlockPublish), &blk); err != nil {
+	blk := new(types.StateBlock)
+	if err := json.Unmarshal([]byte(testBlockPublish), &blk); err != nil {
 		t.Fatal(err)
 	}
 	rsp := PublishBlock{

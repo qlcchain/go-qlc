@@ -9,8 +9,9 @@ package mock
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common/util"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -19,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
@@ -129,7 +131,7 @@ func TestMockGenesisScBlock(t *testing.T) {
 	hash, _ := types.HashBytes(abi)
 	sb.Abi = types.ContractAbi{Abi: abi, AbiLength: 64, AbiHash: hash}
 	sb.Address = Address()
-	sb.Issuer = Address()
+	sb.Owner = Address()
 	sb.InternalAccount, _ = types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
 
 	_, priv, err := types.KeypairFromSeed("425E747CFCDD993019EB1AAC97FD2F5D3A94835D9A779C9BDC590739EDD1BB45", 0)
@@ -189,7 +191,7 @@ func TestGenerate(t *testing.T) {
 		hash, _ := types.HashBytes(abi)
 		sb.Abi = types.ContractAbi{Abi: abi, AbiLength: uint64(i), AbiHash: hash}
 		sb.Address = Address()
-		sb.Issuer = Address()
+		sb.Owner = Address()
 		sb.InternalAccount = masterAddress
 
 		h := sb.GetHash()
@@ -295,6 +297,7 @@ func TestGetGenesis2(t *testing.T) {
 func TestGetChainTokenType(t *testing.T) {
 	h := GetChainTokenType()
 	h2 := smartContractBlocks[0].GetHash()
+	fmt.Println(h2)
 	if h != h2 {
 		t.Fatal("GetChainTokenType error")
 	}
@@ -404,4 +407,31 @@ func TestBlockChain(t *testing.T) {
 	if len(blocks) == 0 {
 		t.Fatal("create blocks error")
 	}
+}
+
+func TestAccount_Sign(t *testing.T) {
+	seedStr := "DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9"
+	seed, err := hex.DecodeString(seedStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := types.BytesToSeed(seed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ac, err := s.Account(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	//fmt.Println(s)
+	//fmt.Println(ac)
+
+	sc := smartContractBlocks[0]
+	sign := ac.Sign(sc.GetHash())
+	fmt.Println(sign)
+
+	b := genesisBlocks[0]
+	sign1 := ac.Sign(b.GetHash())
+	fmt.Println(sign1)
+
 }

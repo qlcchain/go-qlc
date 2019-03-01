@@ -7,12 +7,12 @@ import (
 )
 
 type ConfirmReqBlock struct {
-	Blk types.Block
+	Blk *types.StateBlock
 }
 
 // ToProto converts domain ConfirmReqBlock into proto ConfirmReqBlock
 func ConfirmReqBlockToProto(confirmReq *ConfirmReqBlock) ([]byte, error) {
-	blkData, err := confirmReq.Blk.MarshalMsg(nil)
+	blkData, err := confirmReq.Blk.Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -34,12 +34,8 @@ func ConfirmReqBlockFromProto(data []byte) (*ConfirmReqBlock, error) {
 	if err := proto.Unmarshal(data, bp); err != nil {
 		return nil, err
 	}
-	blockType := bp.Blocktype
-	blk, err := types.NewBlock(types.BlockType(blockType))
-	if err != nil {
-		return nil, err
-	}
-	if _, err = blk.UnmarshalMsg(bp.Block); err != nil {
+	blk := new(types.StateBlock)
+	if err := blk.Deserialize(bp.Block); err != nil {
 		return nil, err
 	}
 	confirmReqBlock := &ConfirmReqBlock{
