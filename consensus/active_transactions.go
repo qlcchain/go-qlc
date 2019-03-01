@@ -97,14 +97,14 @@ func (act *ActiveTrx) announceVotes() {
 						act.vote(va)
 					}
 				} else {
-					act.dps.logger.Infof("vote:send publish for hash %s,previous hash is %s", value.(*Election).status.winner.GetHash(), value.(*Election).status.winner.Root())
-					act.dps.ns.Broadcast(p2p.PublishReq, value.(*Election).status.winner)
+					act.dps.logger.Infof("vote:send confirmReq for hash %s,previous hash is %s", value.(*Election).status.winner.GetHash(), value.(*Election).status.winner.Root())
+					act.dps.ns.Broadcast(p2p.ConfirmReq, value.(*Election).status.winner)
 				}
 				return true
 			})
 			if count == 0 {
 				act.dps.logger.Info("this is just a node,not a wallet")
-				act.dps.ns.Broadcast(p2p.PublishReq, value.(*Election).status.winner)
+				act.dps.ns.Broadcast(p2p.ConfirmReq, value.(*Election).status.winner)
 			}
 			//value.(*Election).announcements++
 		}
