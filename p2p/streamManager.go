@@ -19,7 +19,6 @@ const (
 // StreamManager manages all streams
 type StreamManager struct {
 	mu         sync.Mutex
-	quitCh     chan bool
 	allStreams *sync.Map
 	node       *QlcNode
 }
@@ -27,7 +26,6 @@ type StreamManager struct {
 // NewStreamManager return a new stream manager
 func NewStreamManager() *StreamManager {
 	return &StreamManager{
-		quitCh:     make(chan bool, 1),
 		allStreams: new(sync.Map),
 	}
 }
@@ -35,19 +33,6 @@ func NewStreamManager() *StreamManager {
 // SetQlcService set netService
 func (sm *StreamManager) SetQlcNode(node *QlcNode) {
 	sm.node = node
-}
-
-// Start stream manager service
-func (sm *StreamManager) Start() {
-	sm.node.logger.Info("Start Qlc StreamManager...")
-	go sm.loop()
-}
-
-// Stop stream manager service
-func (sm *StreamManager) Stop() {
-	sm.node.logger.Info("Stop Qlc StreamManager...")
-
-	sm.quitCh <- true
 }
 
 // Add a new stream into the stream manager
@@ -141,22 +126,6 @@ func (sm *StreamManager) RandomPeer() (string, error) {
 	return peerID, nil
 }
 
-func (sm *StreamManager) loop() {
-	ticker := time.NewTicker(FindPeerInterval)
-	sm.findPeers()
-	for {
-		select {
-		case <-sm.quitCh:
-			sm.node.logger.Info("Stopped Stream Manager Loop.")
-			return
-		case <-ticker.C:
-			sm.findPeers()
-		default:
-			time.Sleep(100 * time.Millisecond)
-		}
-	}
-}
-
 // CloseStream with the given pid and reason
 func (sm *StreamManager) CloseStream(peerID string) {
 	stream := sm.FindByPeerID(peerID)
@@ -165,25 +134,8 @@ func (sm *StreamManager) CloseStream(peerID string) {
 	}
 }
 
-// findPeers
-func (sm *StreamManager) findPeers() error {
-
-	peers, err := sm.node.dhtFoundPeers()
-	if err != nil {
-		return err
-	}
-	for _, p := range peers {
-		if p.ID == sm.node.ID || len(p.Addrs) == 0 {
-			// No sense connecting to ourselves or if addrs are not available
-			continue
-		}
-		sm.CreateStreamWithPeer(p.ID)
-	}
-	return nil
-}
-
 // CreateStreamWithPeer create stream with a peer.
-func (sm *StreamManager) CreateStreamWithPeer(pid peer.ID) {
+func (sm *StreamManager) createStreamWithPeer(pid peer.ID) {
 
 	stream := sm.Find(pid)
 
