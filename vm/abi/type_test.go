@@ -72,6 +72,7 @@ func TestTypeRegexp(t *testing.T) {
 		{"tokenId", Type{Kind: reflect.Array, Type: tokenIdT, Size: 32, T: TokenIdTy, stringKind: "tokenId"}},
 		{"tokenId[]", Type{T: SliceTy, Kind: reflect.Slice, Type: reflect.TypeOf([]types.Hash{}), Elem: &Type{Kind: reflect.Array, Type: tokenIdT, Size: 32, T: TokenIdTy, stringKind: "tokenId"}, stringKind: "tokenId[]"}},
 		{"tokenId[2]", Type{Kind: reflect.Array, T: ArrayTy, Size: 2, Type: reflect.TypeOf([2]types.Hash{}), Elem: &Type{Kind: reflect.Array, Type: tokenIdT, Size: 32, T: TokenIdTy, stringKind: "tokenId"}, stringKind: "tokenId[2]"}},
+		{"balance", Type{Kind: reflect.Array, Type: balanceT, Size: 256, T: BalanceTy, stringKind: "balance"}},
 	}
 
 	for _, tt := range tests {
@@ -235,6 +236,7 @@ func TestTypeCheck(t *testing.T) {
 		{"address", [20]byte{}, ""},
 		{"address", types.Address{}, ""},
 		{"tokenId", [10]byte{}, ""},
+		{"balance", types.ZeroBalance, ""},
 		{"address", types.Hash{}, ""},
 		{"tokenId[]]", "", "invalid arg type in abi"},
 		{"invalidType", "", "unsupported arg type: invalidType"},

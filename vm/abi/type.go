@@ -23,6 +23,7 @@ const (
 	BytesTy
 	HashTy
 	FunctionTy
+	BalanceTy
 )
 
 // Type is the reflection of the supported argument type
@@ -128,6 +129,11 @@ func NewType(t string) (typ Type, err error) {
 		typ.Type = tokenIdT
 		typ.Size = types.HashSize
 		typ.T = TokenIdTy
+	case "balance":
+		typ.Kind = reflect.Array
+		typ.Size = 256
+		typ.Type = balanceT
+		typ.T = BalanceTy
 	case "string":
 		typ.Kind = reflect.String
 		typ.Type = reflect.TypeOf("")

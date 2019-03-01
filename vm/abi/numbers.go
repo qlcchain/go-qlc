@@ -20,6 +20,7 @@ var (
 	int64T    = reflect.TypeOf(int64(0))
 	addressT  = reflect.TypeOf(types.Address{})
 	tokenIdT  = reflect.TypeOf(types.Hash{})
+	balanceT  = reflect.TypeOf(types.Balance{})
 )
 
 // U256 converts a big Int into a 256bit VM number.

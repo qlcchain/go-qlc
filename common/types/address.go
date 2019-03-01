@@ -40,6 +40,12 @@ const (
 var (
 	// ZeroAddress
 	ZeroAddress = Address{}
+
+	MintageAddress, _ = HexToAddress("qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1")
+	PledgeAddress, _  = HexToAddress("qlc_3fwi6r1fzjwmiys819pw8jxrcmcottsj4iq56kkgcmzi3b87596jwskwqrr5")
+
+	ChainContractAddressList = []Address{PledgeAddress, MintageAddress}
+
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
 	// alphabet.
 	AddressEncoding = base32.NewEncoding(addressEncodingAlphabet)

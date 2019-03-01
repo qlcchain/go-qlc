@@ -38,12 +38,12 @@ type Store interface {
 	HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	CountStateBlocks(txns ...db.StoreTxn) (uint64, error)
 	GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, error)
-	// smartcontrant block CURD
-	AddSmartContrantBlock(blk *types.SmartContractBlock, txns ...db.StoreTxn) error
-	GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error)
-	HasSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
-	GetSmartContrantBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error
-	CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error)
+	// smart contract block CURD
+	AddSmartContractBlock(blk types.SmartContractBlock, txns ...db.StoreTxn) error
+	GetSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error)
+	HasSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
+	GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error
+	CountSmartContractBlocks(txns ...db.StoreTxn) (uint64, error)
 	// representation CURD
 	AddRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
 	SubRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
@@ -102,4 +102,18 @@ type Store interface {
 	GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (types.Block, error)
 	GenerateReceiveBlock(sendBlock types.Block, prk ed25519.PrivateKey) (types.Block, error)
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (types.Block, error)
+
+	// Contract storage
+	//GetStorage
+	GetStorage(addr *types.Address, key []byte) []byte
+	SetStorage(key []byte, value []byte) error
+
+	//Token
+	ListTokens() []*types.TokenInfo
+	GetTokenById(tokenId types.Hash) (types.TokenInfo, error)
+	GetTokenByName(tokenName string) (*types.TokenInfo, error)
+	GetGenesis() []*types.StateBlock
+
+	//CalculateAmount calculate block amount by balance and check block type
+	CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (bool, types.Balance)
 }

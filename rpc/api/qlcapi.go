@@ -263,8 +263,8 @@ func (q *QlcApi) ValidateAccount(addr string) bool {
 	return types.IsValidHexAddress(addr)
 }
 
-func (q *QlcApi) Tokens() ([]*mock.TokenInfo, error) {
-	var tis []*mock.TokenInfo
+func (q *QlcApi) Tokens() ([]*types.TokenInfo, error) {
+	var tis []*types.TokenInfo
 	scs := mock.GetSmartContracts()
 	for _, sc := range scs {
 		hash := sc.GetHash()
