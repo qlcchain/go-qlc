@@ -305,20 +305,6 @@ func TestGetChainTokenType(t *testing.T) {
 	}
 }
 
-func TestTokenType(t *testing.T) {
-	num := len(smartContractBlocks)
-	for i := 0; i < num; i++ {
-		h := smartContractBlocks[i].GetHash()
-
-		if genesisBlocks[i].Token != h {
-			fmt.Println(i)
-			fmt.Println(h)
-			t.Fatal("genesis error")
-		}
-	}
-
-}
-
 func TestBalanceToRaw(t *testing.T) {
 	b1 := types.Balance{Int: big.NewInt(2)}
 	i, _ := new(big.Int).SetString("200000000", 10)
@@ -422,6 +408,18 @@ func TestBlockChain(t *testing.T) {
 	}
 }
 
+func TestTokenType(t *testing.T) {
+	num := len(smartContractBlocks)
+	for i := 0; i < num; i++ {
+		h := smartContractBlocks[i].GetHash()
+		if genesisBlocks[i].Token != h {
+			t.Log(h)
+			t.Fatal(i, " genesis error")
+		}
+	}
+
+}
+
 var seedStr = []string{
 	"DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9",
 	"E4935D4D9DEF9D12BC2059C34848C444DBC462FBFF592428C218BF0BC174D065",
@@ -431,7 +429,7 @@ var seedStr = []string{
 	"0578B09D725C77432886632364FDE29D3DAFB4A7748B7801FBD6D79BBF013B73",
 }
 
-func Test_sign(t *testing.T) {
+func TestGenesisSign(t *testing.T) {
 	for i := 0; i < len(seedStr); i++ {
 		sByte, _ := hex.DecodeString(seedStr[i])
 		seed, _ := types.BytesToSeed(sByte)
@@ -447,5 +445,23 @@ func Test_sign(t *testing.T) {
 
 		s1 := ac.Sign(genesisBlocks[i].GetHash())
 		fmt.Println(s1)
+	}
+}
+
+func TestGenesisVerify(t *testing.T) {
+	for i := 0; i < len(genesisBlocks); i++ {
+		addr := genesisBlocks[i].GetAddress()
+		sign := genesisBlocks[i].GetSignature()
+		h := genesisBlocks[i].GetHash()
+		if !addr.Verify(h[:], sign[:]) {
+			t.Fatal(i)
+		}
+
+		addr1 := smartContractBlocks[i].InternalAccount
+		sign1 := smartContractBlocks[i].Signature
+		h1 := smartContractBlocks[i].GetHash()
+		if !addr1.Verify(h1[:], sign1[:]) {
+			t.Fatal(i)
+		}
 	}
 }

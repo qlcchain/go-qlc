@@ -108,7 +108,7 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 		}
 	}
 
-	services = []common.Service{ctx.NetService, ctx.DPosService, ctx.Ledger, ctx.Wallet, ctx.RPC}
+	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
 
 	return nil
 }
