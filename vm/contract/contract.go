@@ -24,8 +24,8 @@ type ContractBlock struct {
 
 type ChainContract interface {
 	GetFee(ledger *ledger.Ledger, block *types.StateBlock) (types.Balance, error)
-	// calc and use quota, check tx data
-	DoSend(ledger *ledger.Ledger, block *types.StateBlock) (uint64, error)
+	// DoSend verify or update StateBlock.Data
+	DoSend(ledger *ledger.Ledger, block *types.StateBlock) error
 	// check status, update state
 	DoReceive(ledger *ledger.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error)
 	// refund data at receive error

@@ -138,7 +138,7 @@ func initData() {
 
 	scs := mock.GetSmartContracts()
 	for _, sc := range scs {
-		ledger.AddSmartContrantBlock(sc)
+		ledger.AddSmartContractBlock(*sc)
 	}
 
 	// change block

@@ -3,6 +3,7 @@ package abi
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
@@ -181,6 +182,13 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 		return readFixedBytes(t, returnOutput)
 	case FunctionTy:
 		return readFunctionType(t, returnOutput)
+	case BalanceTy:
+		tmp := readInteger(t.Kind, returnOutput)
+		if i, ok := tmp.(*big.Int); ok {
+			return types.Balance{Int: i}, nil
+		} else {
+			return types.ZeroBalance, errors.New("invalid balance")
+		}
 	default:
 		return nil, fmt.Errorf("abi: unknown type %v", t.T)
 	}

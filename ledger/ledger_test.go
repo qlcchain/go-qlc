@@ -125,7 +125,7 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	}
 }
 
-func addStateblock(t *testing.T, l *Ledger) *types.StateBlock {
+func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
 	blk := mock.StateBlock()
 	if err := l.AddStateBlock(blk); err != nil {
 		t.Log(err)
@@ -133,9 +133,9 @@ func addStateblock(t *testing.T, l *Ledger) *types.StateBlock {
 	return blk
 }
 
-func addSmartContractBlockblock(t *testing.T, l *Ledger) *types.SmartContractBlock {
+func addSmartContractBlock(t *testing.T, l *Ledger) *types.SmartContractBlock {
 	blk := mock.GetSmartContracts()[0]
-	if err := l.AddSmartContrantBlock(blk); err != nil {
+	if err := l.AddSmartContractBlock(*blk); err != nil {
 		t.Log(err)
 	}
 	return blk
@@ -164,7 +164,7 @@ func TestLedger_GetBlock(t *testing.T) {
 
 	defer teardownTestCase(t)
 
-	block := addStateblock(t, l)
+	block := addStateBlock(t, l)
 	blk, err := l.GetStateBlock(block.GetHash())
 	t.Log("blk,", blk)
 	if err != nil || blk == nil {
@@ -176,8 +176,8 @@ func TestLedger_GetSmartContrantBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addSmartContractBlockblock(t, l)
-	blk, err := l.GetSmartContrantBlock(block.GetHash())
+	block := addSmartContractBlock(t, l)
+	blk, err := l.GetSmartContractBlock(block.GetHash())
 	t.Log("blk,", blk)
 	if err != nil || blk == nil {
 		t.Fatal(err)
@@ -188,8 +188,8 @@ func TestLedger_HasSmartContrantBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addSmartContractBlockblock(t, l)
-	b, err := l.HasSmartContrantBlock(block.GetHash())
+	block := addSmartContractBlock(t, l)
+	b, err := l.HasSmartContractBlock(block.GetHash())
 	t.Log(b)
 	if err != nil || !b {
 		t.Fatal(err)
@@ -200,18 +200,18 @@ func TestLedger_GetSmartContrantBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addSmartContractBlockblock(t, l)
-	blk, err := l.GetSmartContrantBlock(block.GetHash())
+	block := addSmartContractBlock(t, l)
+	blk, err := l.GetSmartContractBlock(block.GetHash())
 	t.Log("blk,", blk)
 	if err != nil || blk == nil {
 		t.Fatal(err)
 	}
-	n, err := l.CountSmartContrantBlocks()
+	n, err := l.CountSmartContractBlocks()
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println(n)
-	err = l.GetSmartContrantBlocks(func(block *types.SmartContractBlock) error {
+	err = l.GetSmartContractBlocks(func(block *types.SmartContractBlock) error {
 		fmt.Println(block)
 		return nil
 	})
@@ -224,8 +224,8 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addStateblock(t, l)
-	addStateblock(t, l)
+	addStateBlock(t, l)
+	addStateBlock(t, l)
 	err := l.GetStateBlocks(func(block *types.StateBlock) error {
 		t.Log(block)
 		return nil
@@ -260,7 +260,7 @@ func TestLedger_HasBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addStateblock(t, l)
+	block := addStateBlock(t, l)
 	r, err := l.HasStateBlock(block.GetHash())
 	if err != nil {
 		t.Fatal(err)
@@ -763,7 +763,7 @@ func TestLedgerSession_Latest(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addStateblock(t, l)
+	block := addStateBlock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
 	token.Header = block.GetHash()
 	token.Type = block.GetToken()
@@ -783,7 +783,7 @@ func TestLedgerSession_Account(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addStateblock(t, l)
+	block := addStateBlock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
 	token.Type = block.GetToken()
 	token2 := mock.TokenMeta(block.GetAddress())
@@ -804,7 +804,7 @@ func TestLedgerSession_Token(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	block := addStateblock(t, l)
+	block := addStateBlock(t, l)
 	token := mock.TokenMeta(block.GetAddress())
 	token.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}

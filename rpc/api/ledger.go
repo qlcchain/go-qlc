@@ -356,7 +356,7 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	scbCount, err := l.ledger.CountSmartContrantBlocks()
+	scbCount, err := l.ledger.CountSmartContractBlocks()
 	if err != nil {
 		return nil, err
 	}
@@ -669,7 +669,7 @@ func (l *LedgerApi) Representatives(sorting *bool) (*APIRepresentatives, error) 
 	return &rs, nil
 }
 
-func (l *LedgerApi) Tokens() ([]*mock.TokenInfo, error) {
+func (l *LedgerApi) Tokens() ([]*types.TokenInfo, error) {
 	return mock.Tokens()
 }
 

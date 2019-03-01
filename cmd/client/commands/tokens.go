@@ -9,10 +9,10 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/rpc"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +62,7 @@ func tokensinfo() error {
 	}
 	defer client.Close()
 
-	var tokeninfos []*mock.TokenInfo
+	var tokeninfos []*types.TokenInfo
 	err = client.Call(&tokeninfos, "ledger_tokens")
 	if err != nil {
 		return err

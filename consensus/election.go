@@ -128,5 +128,5 @@ func (el *Election) getGenesisBalance() (types.Balance, error) {
 	if err != nil {
 		return types.ZeroBalance, err
 	}
-	return i.TotalSupply, nil
+	return types.Balance{Int: i.TotalSupply}, nil
 }

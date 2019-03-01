@@ -347,7 +347,7 @@ func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, er
 
 }
 
-func (l *Ledger) AddSmartContrantBlock(blk *types.SmartContractBlock, txns ...db.StoreTxn) error {
+func (l *Ledger) AddSmartContractBlock(blk types.SmartContractBlock, txns ...db.StoreTxn) error {
 	key := getKey(blk.GetHash(), idPrefixSmartContractBlock)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -369,7 +369,7 @@ func (l *Ledger) AddSmartContrantBlock(blk *types.SmartContractBlock, txns ...db
 	return txn.Set(key, blockBytes)
 }
 
-func (l *Ledger) GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error) {
+func (l *Ledger) GetSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error) {
 	key := getKey(hash, idPrefixSmartContractBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -390,7 +390,7 @@ func (l *Ledger) GetSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (*t
 	return blk, nil
 }
 
-func (l *Ledger) GetSmartContrantBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error {
+func (l *Ledger) GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -411,7 +411,7 @@ func (l *Ledger) GetSmartContrantBlocks(fn func(block *types.SmartContractBlock)
 	return nil
 }
 
-func (l *Ledger) HasSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+func (l *Ledger) HasSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
 	key := getKey(hash, idPrefixSmartContractBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -429,7 +429,7 @@ func (l *Ledger) HasSmartContrantBlock(hash types.Hash, txns ...db.StoreTxn) (bo
 	return true, nil
 }
 
-func (l *Ledger) CountSmartContrantBlocks(txns ...db.StoreTxn) (uint64, error) {
+func (l *Ledger) CountSmartContractBlocks(txns ...db.StoreTxn) (uint64, error) {
 	var count uint64
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -1713,4 +1713,20 @@ func (l *Ledger) IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (b
 			return false, err
 		}
 	}
+}
+
+func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (bool, types.Balance) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	if prev, err := l.getStateBlock(block.Previous); err != nil {
+		return false, types.ZeroBalance
+	} else {
+		if block.GetBalance().Compare(prev.Balance) == types.BalanceCompSmaller {
+			return true, prev.Balance.Sub(block.GetBalance()) // send
+		} else {
+			return false, block.GetBalance().Sub(prev.Balance) // receive or change
+		}
+	}
+
 }

@@ -10,6 +10,7 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"io/ioutil"
 	"math"
 	"math/big"
@@ -53,9 +54,9 @@ func init() {
 			units[key[i]+s] = d
 		}
 
-		if _, ok := tokenCache.LoadOrStore(hash, TokenInfo{
+		if _, ok := tokenCache.LoadOrStore(hash, types.TokenInfo{
 			TokenId: hash, TokenName: tokenNames[i], TokenSymbol: strings.ToUpper(tokenSymbols[i]),
-			Owner: smartContractBlocks[i].InternalAccount, Decimals: uint8(8), TotalSupply: genesisBlocks[i].Balance,
+			Owner: smartContractBlocks[i].InternalAccount, Decimals: uint8(8), TotalSupply: genesisBlocks[i].Balance.Int,
 		}); !ok {
 			//logger.Debugf("add token[%s] to cache", hash.String())
 		}
@@ -281,10 +282,10 @@ var (
 ]
 `
 	decimals = []*big.Int{
-		bigPow(10, 0),
-		bigPow(10, 3),
-		bigPow(10, 8),
-		bigPow(10, 11),
+		util.BigPow(10, 0),
+		util.BigPow(10, 3),
+		util.BigPow(10, 8),
+		util.BigPow(10, 11),
 	}
 
 	key = []string{"", "k", "", "M"}
@@ -297,15 +298,6 @@ var (
 	//	"Gqlc": decimal.New(1, 11),
 	//}
 )
-
-type TokenInfo struct {
-	TokenId     types.Hash    `json:"tokenId"`
-	TokenName   string        `json:"tokenName"`
-	TokenSymbol string        `json:"tokenSymbol"`
-	TotalSupply types.Balance `json:"totalSupply"`
-	Decimals    uint8         `json:"decimals"`
-	Owner       types.Address `json:"owner"`
-}
 
 func Hash() types.Hash {
 	h := types.Hash{}
@@ -340,10 +332,6 @@ func RawToBalance(b types.Balance, unit string) (types.Balance, error) {
 	return b, fmt.Errorf("invalid unit %s", unit)
 }
 
-func bigPow(base int64, exp int64) *big.Int {
-	return new(big.Int).Exp(big.NewInt(base), big.NewInt(exp), nil)
-}
-
 func TokenMeta(addr types.Address) *types.TokenMeta {
 	s1, _ := random.Intn(math.MaxInt32)
 	i := new(big.Int).SetInt64(int64(s1))
@@ -368,12 +356,12 @@ func Address() types.Address {
 	return address
 }
 
-func GetTokenById(tokenId types.Hash) (TokenInfo, error) {
+func GetTokenById(tokenId types.Hash) (types.TokenInfo, error) {
 	if v, ok := tokenCache.Load(tokenId); ok {
-		return v.(TokenInfo), nil
+		return v.(types.TokenInfo), nil
 	}
 
-	return TokenInfo{}, fmt.Errorf("can not find token info by id(%s)", tokenId.String())
+	return types.TokenInfo{}, fmt.Errorf("can not find token info by id(%s)", tokenId.String())
 }
 
 func GetChainTokenType() types.Hash {
@@ -404,8 +392,8 @@ func Account() *types.Account {
 	return types.NewAccount(priv)
 }
 
-func Tokens() ([]*TokenInfo, error) {
-	var tis []*TokenInfo
+func Tokens() ([]*types.TokenInfo, error) {
+	var tis []*types.TokenInfo
 	scs := GetSmartContracts()
 	for _, sc := range scs {
 		hash := sc.GetHash()
@@ -418,10 +406,10 @@ func Tokens() ([]*TokenInfo, error) {
 	return tis, nil
 }
 
-func GetTokenByName(tokenName string) (*TokenInfo, error) {
-	var info TokenInfo
+func GetTokenByName(tokenName string) (*types.TokenInfo, error) {
+	var info types.TokenInfo
 	tokenCache.Range(func(key, value interface{}) bool {
-		i := value.(TokenInfo)
+		i := value.(types.TokenInfo)
 		if i.TokenName == tokenName {
 			info = i
 		}
