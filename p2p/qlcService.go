@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"errors"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
@@ -87,11 +88,12 @@ func (ns *QlcService) Stop() error {
 		return errors.New("pre stop fail")
 	}
 	defer ns.PostStop()
-	ns.node.logger.Info("Stopping QlcService...")
+	//ns.node.logger.Info("Stopping QlcService...")
 
 	ns.node.Stop()
 	ns.dispatcher.Stop()
-
+	ns.msgService.Stop()
+	time.Sleep(100 * time.Millisecond)
 	return nil
 }
 

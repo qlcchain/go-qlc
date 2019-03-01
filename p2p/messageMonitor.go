@@ -231,6 +231,7 @@ func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
 	ms.quitCh <- true
+	ms.syncService.quitCh <- true
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, PublishReq))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, ConfirmReq))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, ConfirmAck))
