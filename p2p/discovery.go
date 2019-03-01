@@ -39,6 +39,7 @@ func (node *QlcNode) HandlePeerFound(p pstore.PeerInfo) {
 		node.logger.Error("Failed to connect to peer found by discovery: ", err)
 	}
 	node.logger.Info("find a local peer , ID:", p.ID.Pretty())
+	node.streamManager.createStreamWithPeer(p.ID)
 }
 
 func setupDiscoveryOption(cfg *config.Config) DiscoveryOption {
