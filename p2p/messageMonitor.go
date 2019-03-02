@@ -205,21 +205,7 @@ func (ms *MessageService) onPublishReq(message Message) {
 			return
 		}
 		hash := blk.Blk.GetHash()
-		if exit, err := ms.ledger.IsPerformanceTimeExist(hash); !exit && err == nil {
-			if b, err := ms.ledger.HasStateBlock(hash); !b && err == nil {
-				t := &types.PerformanceTime{
-					Hash: hash,
-					T0:   time.Now().UnixNano(),
-					T1:   0,
-					T2:   0,
-					T3:   0,
-				}
-				err = ms.ledger.AddOrUpdatePerformance(t)
-				if err != nil {
-					ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onPublishReq func")
-				}
-			}
-		}
+		ms.addPerformanceTime(hash)
 	}
 	ms.netService.node.logger.Info("receive PublishReq")
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
@@ -238,21 +224,7 @@ func (ms *MessageService) onConfirmReq(message Message) {
 			return
 		}
 		hash := blk.Blk.GetHash()
-		if exit, err := ms.ledger.IsPerformanceTimeExist(hash); !exit && err == nil {
-			if b, err := ms.ledger.HasStateBlock(hash); !b && err == nil {
-				t := &types.PerformanceTime{
-					Hash: hash,
-					T0:   time.Now().UnixNano(),
-					T1:   0,
-					T2:   0,
-					T3:   0,
-				}
-				err = ms.ledger.AddOrUpdatePerformance(t)
-				if err != nil {
-					ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onConfirmReq func")
-				}
-			}
-		}
+		ms.addPerformanceTime(hash)
 	}
 	ms.netService.node.logger.Info("receive ConfirmReq")
 	//ms.netService.node.logger.Info("message hash is:", message.Hash())
@@ -271,22 +243,7 @@ func (ms *MessageService) onConfirmAck(message Message) {
 			ms.netService.node.logger.Error(err)
 			return
 		}
-		hash := ack.Blk.GetHash()
-		if exit, err := ms.ledger.IsPerformanceTimeExist(hash); !exit && err == nil {
-			if b, err := ms.ledger.HasStateBlock(hash); !b && err == nil {
-				t := &types.PerformanceTime{
-					Hash: hash,
-					T0:   time.Now().UnixNano(),
-					T1:   0,
-					T2:   0,
-					T3:   0,
-				}
-				err = ms.ledger.AddOrUpdatePerformance(t)
-				if err != nil {
-					ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onConfirmAck func")
-				}
-			}
-		}
+		ms.addPerformanceTime(ack.Blk.GetHash())
 	}
 	ms.netService.node.logger.Info("receive ConfirmAck")
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
@@ -384,5 +341,23 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, nil
 	default:
 		return nil, errors.New("unKnown Message Type")
+	}
+}
+
+func (ms *MessageService) addPerformanceTime(hash types.Hash) {
+	if exit, err := ms.ledger.IsPerformanceTimeExist(hash); !exit && err == nil {
+		if b, err := ms.ledger.HasStateBlock(hash); !b && err == nil {
+			t := &types.PerformanceTime{
+				Hash: hash,
+				T0:   time.Now().UnixNano(),
+				T1:   0,
+				T2:   0,
+				T3:   0,
+			}
+			err = ms.ledger.AddOrUpdatePerformance(t)
+			if err != nil {
+				ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onConfirmAck func")
+			}
+		}
 	}
 }
