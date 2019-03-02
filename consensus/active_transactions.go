@@ -74,74 +74,98 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 func (act *ActiveTrx) announceVotes() {
 	var count = 0
 	act.roots.Range(func(key, value interface{}) bool {
+		block := value.(*Election).status.winner
+		hash := block.GetHash()
+		if act.dps.cfg.PerformanceTest.Enabled {
+			if value.(*Election).announcements == 0 {
+				if p, err := act.dps.ledger.GetPerformanceTime(hash); p != nil && err == nil {
+					t := &types.PerformanceTime{
+						Hash: hash,
+						T0:   p.T0,
+						T1:   p.T1,
+						T2:   time.Now().UnixNano(),
+						T3:   p.T3,
+					}
+					act.dps.ledger.AddOrUpdatePerformance(t)
+					if err != nil {
+						act.dps.logger.Info("AddOrUpdatePerformance error T2")
+					}
+				} else {
+					act.dps.logger.Info("get performanceTime error T2")
+				}
+			}
+		}
 		if value.(*Election).confirmed { //&& value.(*Election).announcements >= announcementMin-1 {
-			act.dps.logger.Infof("block [%s] is already confirmed", value.(*Election).status.winner.GetHash())
-			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, value.(*Election).status.winner)
+			if act.dps.cfg.PerformanceTest.Enabled {
+				if p, err := act.dps.ledger.GetPerformanceTime(hash); p != nil && err == nil {
+					t := &types.PerformanceTime{
+						Hash: hash,
+						T0:   p.T0,
+						T1:   time.Now().UnixNano(),
+						T2:   p.T2,
+						T3:   p.T3,
+					}
+					err := act.dps.ledger.AddOrUpdatePerformance(t)
+					if err != nil {
+						act.dps.logger.Info("AddOrUpdatePerformance error T1")
+					}
+				} else {
+					act.dps.logger.Info("get performanceTime error T1")
+				}
+			}
+			act.dps.logger.Infof("block [%s] is already confirmed", hash)
+			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, block)
 			act.inactive = append(act.inactive, value.(*Election).vote.id)
 			act.rollBack(value.(*Election).status.loser)
-			act.addWinner2Ledger(value.(*Election).status.winner)
+			act.addWinner2Ledger(block)
 		} else {
 			act.dps.priInfos.Range(func(k, v interface{}) bool {
 				count++
 				isRep := act.dps.isThisAccountRepresentation(k.(types.Address))
 				if isRep {
 					act.dps.putRepresentativesToOnline(k.(types.Address))
-					va, err := act.dps.voteGenerate(value.(*Election).status.winner, k.(types.Address), v.(*types.Account))
+					va, err := act.dps.voteGenerate(block, k.(types.Address), v.(*types.Account))
 					if err != nil {
 						act.dps.logger.Error("vote generate error")
 					} else {
-						act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", value.(*Election).status.winner.GetHash(), value.(*Election).status.winner.Root())
+						act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", hash, block.Root())
 						act.dps.ns.Broadcast(p2p.ConfirmAck, va)
 						act.vote(va)
 					}
 				} else {
-					act.dps.logger.Infof("vote:send confirmReq for hash %s,previous hash is %s", value.(*Election).status.winner.GetHash(), value.(*Election).status.winner.Root())
-					act.dps.ns.Broadcast(p2p.ConfirmReq, value.(*Election).status.winner)
+					act.dps.logger.Infof("vote:send confirmReq for hash %s,previous hash is %s", hash, block.Root())
+					act.dps.ns.Broadcast(p2p.ConfirmReq, block)
 				}
 				return true
 			})
 			if count == 0 {
 				act.dps.logger.Info("this is just a node,not a wallet")
-				act.dps.ns.Broadcast(p2p.ConfirmReq, value.(*Election).status.winner)
+				act.dps.ns.Broadcast(p2p.ConfirmReq, block)
 			}
-			//value.(*Election).announcements++
+			if act.dps.cfg.PerformanceTest.Enabled {
+				if value.(*Election).announcements == 0 {
+					if p, err := act.dps.ledger.GetPerformanceTime(hash); p != nil && err == nil {
+						t := &types.PerformanceTime{
+							Hash: hash,
+							T0:   p.T0,
+							T1:   p.T1,
+							T2:   p.T2,
+							T3:   time.Now().UnixNano(),
+						}
+						act.dps.ledger.AddOrUpdatePerformance(t)
+						if err != nil {
+							act.dps.logger.Info("AddOrUpdatePerformance error T3")
+						}
+					} else {
+						act.dps.logger.Info("get performanceTime error T3")
+					}
+				}
+			}
+			value.(*Election).announcements++
 		}
 		return true
 	})
-	//for _, v := range act.roots {
-	//	if v.confirmed && v.announcements >= announcementmin-1 {
-	//		act.dps.logger.Info("this block is already confirmed")
-	//		act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, v.status.winner)
-	//		act.inactive = append(act.inactive, v.vote.id)
-	//	} else {
-	//		act.dps.priInfos.Range(func(key, value interface{}) bool {
-	//			count++
-	//			isrep := act.dps.isThisAccountRepresentation(key.(types.Address))
-	//			if isrep {
-	//				act.dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
-	//				act.dps.putRepresentativesToOnline(key.(types.Address))
-	//				va, err := act.dps.voteGenerate(v.status.winner, key.(types.Address), value.(*types.Account))
-	//				if err != nil {
-	//					act.dps.logger.Error("vote generate error")
-	//				} else {
-	//					act.vote(va)
-	//				}
-	//			} else {
-	//				act.dps.logger.Infof("send confirm req for hash %s,previous hash is %s", v.status.winner.GetHash(), v.status.winner.Root())
-	//				err := act.dps.sendConfirmReq(v.status.winner)
-	//				if err != nil {
-	//					act.dps.logger.Error("send confirm req fail.")
-	//				}
-	//			}
-	//			return true
-	//		})
-	//		if count == 0 {
-	//			act.dps.logger.Info("this is just a node,not a wallet")
-	//			act.dps.sendConfirmReq(v.status.winner)
-	//		}
-	//		v.announcements++
-	//	}
-	//}
+
 	for _, value := range act.inactive {
 		if _, ok := act.roots.Load(value); ok {
 			act.roots.Delete(value)

@@ -76,6 +76,9 @@ func DefaultConfig(dir string) (*Config, error) {
 			},
 		},
 		ID: identity,
+		PerformanceTest: &PerformanceTestConfig{
+			Enabled: false,
+		},
 	}
 	return cfg, nil
 }
