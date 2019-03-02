@@ -43,6 +43,7 @@ type DposService struct {
 	priInfos           *sync.Map
 	session            *wallet.Session
 	cache              gcache.Cache
+	cfg                *config.Config
 }
 
 func (dps *DposService) GetP2PService() p2p.Service {
@@ -113,6 +114,7 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 		logger:   log.NewLogger("consensus"),
 		priInfos: new(sync.Map),
 		cache:    gcache.New(msgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
+		cfg:      cfg,
 	}
 	dps.bp.SetDpos(dps)
 	dps.acTrx.SetDposService(dps)

@@ -34,6 +34,10 @@ func TestConfigManager_Load(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pt := cfg.PerformanceTest
+	if pt.Enabled {
+		t.Fatal("Performance test config error")
+	}
 	pri, err := cfg.DecodePrivateKey()
 	if err != nil {
 		t.Fatal(err)

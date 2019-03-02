@@ -321,39 +321,25 @@ func (ss *ServiceSync) onBulkPullRsp(message Message) error {
 	}
 
 	block := blkPacket.Blk
-	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
-	/*	err = ss.qlcLedger.AddBlock(block)
-		if err != nil {
-			return err
+	if ss.netService.node.cfg.PerformanceTest.Enabled {
+		hash := block.GetHash()
+		if exit, err := ss.qlcLedger.IsPerformanceTimeExist(hash); !exit && err == nil {
+			if b, err := ss.qlcLedger.HasStateBlock(hash); !b && err == nil {
+				t := &types.PerformanceTime{
+					Hash: hash,
+					T0:   time.Now().UnixNano(),
+					T1:   0,
+					T2:   0,
+					T3:   0,
+				}
+				err = ss.qlcLedger.AddOrUpdatePerformance(t)
+				if err != nil {
+					ss.netService.node.logger.Error("error when run AddOrUpdatePerformance in onBulkPullRsp func")
+				}
+			}
 		}
-		previousHash := block.GetPrevious()
-		if previousHash.IsZero() == false {
-			currentfr, err := ss.qlcLedger.GetFrontier(block.GetPrevious())
-			if err != nil {
-				return err
-			}
-			updatefr := &types.Frontier{
-				HeaderBlock: block.GetHash(),
-				OpenBlock:   currentfr.OpenBlock,
-			}
-			err = ss.qlcLedger.DeleteFrontier(block.GetPrevious())
-			if err != nil {
-				return err
-			}
-			err = ss.qlcLedger.AddFrontier(updatefr)
-			if err != nil {
-				return err
-			}
-		} else {
-			fr := &types.Frontier{
-				HeaderBlock: block.GetHash(),
-				OpenBlock:   block.GetHash(),
-			}
-			err = ss.qlcLedger.AddFrontier(fr)
-			if err != nil {
-				return err
-			}
-		}*/
+	}
+	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
 	return nil
 }
 
@@ -364,40 +350,26 @@ func (ss *ServiceSync) onBulkPushBlock(message Message) error {
 		return err
 	}
 	block := blkPacket.Blk
-	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
 
-	/*	err = ss.qlcLedger.AddBlock(block)
-		if err != nil {
-			return err
+	if ss.netService.node.cfg.PerformanceTest.Enabled {
+		hash := block.GetHash()
+		if exit, err := ss.qlcLedger.IsPerformanceTimeExist(hash); !exit && err == nil {
+			if b, err := ss.qlcLedger.HasStateBlock(hash); !b && err == nil {
+				t := &types.PerformanceTime{
+					Hash: hash,
+					T0:   time.Now().UnixNano(),
+					T1:   0,
+					T2:   0,
+					T3:   0,
+				}
+				err = ss.qlcLedger.AddOrUpdatePerformance(t)
+				if err != nil {
+					ss.netService.node.logger.Error("error when run AddOrUpdatePerformance in onBulkPushBlock func")
+				}
+			}
 		}
-		previousHash := block.GetPrevious()
-		if previousHash.IsZero() == false {
-			currentfr, err := ss.qlcLedger.GetFrontier(block.GetPrevious())
-			if err != nil {
-				return err
-			}
-			updatefr := &types.Frontier{
-				HeaderBlock: block.GetHash(),
-				OpenBlock:   currentfr.OpenBlock,
-			}
-			err = ss.qlcLedger.DeleteFrontier(block.GetPrevious())
-			if err != nil {
-				return err
-			}
-			err = ss.qlcLedger.AddFrontier(updatefr)
-			if err != nil {
-				return err
-			}
-		} else {
-			fr := &types.Frontier{
-				HeaderBlock: block.GetHash(),
-				OpenBlock:   block.GetHash(),
-			}
-			err = ss.qlcLedger.AddFrontier(fr)
-			if err != nil {
-				return err
-			}
-		}*/
+	}
+	ss.netService.msgEvent.GetEvent("consensus").Notify(EventSyncBlock, block)
 	return nil
 }
 

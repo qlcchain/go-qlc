@@ -20,6 +20,8 @@ type Config struct {
 
 	Discovery *DiscoveryConfig `json:"Discovery"`
 	ID        *IdentityConfig  `json:"Identity"`
+
+	PerformanceTest *PerformanceTestConfig
 }
 
 type LogConfig struct {
@@ -68,6 +70,10 @@ type MDNS struct {
 type IdentityConfig struct {
 	PeerID  string
 	PrivKey string `json:",omitempty"`
+}
+
+type PerformanceTestConfig struct {
+	Enabled bool
 }
 
 // DecodePrivateKey is a helper to decode the users PrivateKey

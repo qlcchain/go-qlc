@@ -13,11 +13,11 @@ import (
 )
 
 type PerformanceTime struct {
-	Hash Hash  `json:"hash"`
-	T0   int64 `json:"t0"`
-	T1   int64 `json:"t1"`
-	T2   int64 `json:"t2"`
-	T3   int64 `json:"t3"`
+	Hash Hash  `json:"hash"` //block hash
+	T0   int64 `json:"t0"`   //The time when the block message was received for the first time
+	T1   int64 `json:"t1"`   //The time when the block was confirmed
+	T2   int64 `json:"t2"`   //The time when the block begin consensus
+	T3   int64 `json:"t3"`   //The time when the block first consensus complete
 }
 
 func NewPerformanceTime() *PerformanceTime {

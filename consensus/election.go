@@ -18,11 +18,11 @@ type electionStatus struct {
 }
 
 type Election struct {
-	vote      *Votes
-	status    electionStatus
-	confirmed bool
-	dps       *DposService
-	//announcements uint
+	vote          *Votes
+	status        electionStatus
+	confirmed     bool
+	dps           *DposService
+	announcements uint
 }
 
 func NewElection(dps *DposService, block *types.StateBlock) (*Election, error) {
@@ -30,11 +30,11 @@ func NewElection(dps *DposService, block *types.StateBlock) (*Election, error) {
 	status := electionStatus{block, types.ZeroBalance, nil}
 
 	return &Election{
-		vote:      vt,
-		status:    status,
-		confirmed: false,
-		dps:       dps,
-		//announcements: 0,
+		vote:          vt,
+		status:        status,
+		confirmed:     false,
+		dps:           dps,
+		announcements: 0,
 	}, nil
 }
 

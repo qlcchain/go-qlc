@@ -198,30 +198,102 @@ func (ms *MessageService) onMessageResponse(message Message) {
 }
 
 func (ms *MessageService) onPublishReq(message Message) {
+	if ms.netService.node.cfg.PerformanceTest.Enabled {
+		blk, err := protos.PublishBlockFromProto(message.Data())
+		if err != nil {
+			ms.netService.node.logger.Error(err)
+			return
+		}
+		hash := blk.Blk.GetHash()
+		if exit, err := ms.ledger.IsPerformanceTimeExist(hash); !exit && err == nil {
+			if b, err := ms.ledger.HasStateBlock(hash); !b && err == nil {
+				t := &types.PerformanceTime{
+					Hash: hash,
+					T0:   time.Now().UnixNano(),
+					T1:   0,
+					T2:   0,
+					T3:   0,
+				}
+				err = ms.ledger.AddOrUpdatePerformance(t)
+				if err != nil {
+					ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onPublishReq func")
+				}
+			}
+		}
+	}
 	ms.netService.node.logger.Info("receive PublishReq")
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
+
 	ms.netService.msgEvent.GetEvent("consensus").Notify(EventPublish, message)
 }
 
 func (ms *MessageService) onConfirmReq(message Message) {
+	if ms.netService.node.cfg.PerformanceTest.Enabled {
+		blk, err := protos.ConfirmReqBlockFromProto(message.Data())
+		if err != nil {
+			ms.netService.node.logger.Error(err)
+			return
+		}
+		hash := blk.Blk.GetHash()
+		if exit, err := ms.ledger.IsPerformanceTimeExist(hash); !exit && err == nil {
+			if b, err := ms.ledger.HasStateBlock(hash); !b && err == nil {
+				t := &types.PerformanceTime{
+					Hash: hash,
+					T0:   time.Now().UnixNano(),
+					T1:   0,
+					T2:   0,
+					T3:   0,
+				}
+				err = ms.ledger.AddOrUpdatePerformance(t)
+				if err != nil {
+					ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onConfirmReq func")
+				}
+			}
+		}
+	}
 	ms.netService.node.logger.Info("receive ConfirmReq")
 	//ms.netService.node.logger.Info("message hash is:", message.Hash())
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send ConfirmReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
+
 	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmReq, message)
 }
 
 func (ms *MessageService) onConfirmAck(message Message) {
+	if ms.netService.node.cfg.PerformanceTest.Enabled {
+		ack, err := protos.ConfirmAckBlockFromProto(message.Data())
+		if err != nil {
+			ms.netService.node.logger.Error(err)
+			return
+		}
+		hash := ack.Blk.GetHash()
+		if exit, err := ms.ledger.IsPerformanceTimeExist(hash); !exit && err == nil {
+			if b, err := ms.ledger.HasStateBlock(hash); !b && err == nil {
+				t := &types.PerformanceTime{
+					Hash: hash,
+					T0:   time.Now().UnixNano(),
+					T1:   0,
+					T2:   0,
+					T3:   0,
+				}
+				err = ms.ledger.AddOrUpdatePerformance(t)
+				if err != nil {
+					ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onConfirmAck func")
+				}
+			}
+		}
+	}
 	ms.netService.node.logger.Info("receive ConfirmAck")
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send ConfirmAck Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
+
 	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmAck, message)
 }
 
