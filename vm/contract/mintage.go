@@ -41,11 +41,8 @@ func (m *Mintage) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
 	if err = verifyToken(*param); err != nil {
 		return err
 	}
-	var tmp []byte
-	tmp = append(tmp, block.Address[:]...)
-	tmp = append(tmp, block.Previous[:]...)
 
-	tokenId, _ := types.BytesToHash(util.Hash256(tmp))
+	tokenId := cabi.NewTokenHash(param)
 	if _, err = ledger.GetTokenById(types.Hash(tokenId)); err != nil {
 		return errors.New("invalid token Id")
 	}
@@ -135,13 +132,13 @@ func (m *Mintage) GetQuota() uint64 {
 	return 0
 }
 
-type MintageWithdraw struct{}
+type WithdrawMintage struct{}
 
-func (m *MintageWithdraw) GetFee(ledger *l.Ledger, block *types.StateBlock) (types.Balance, error) {
+func (m *WithdrawMintage) GetFee(ledger *l.Ledger, block *types.StateBlock) (types.Balance, error) {
 	return types.ZeroBalance, nil
 }
 
-func (m *MintageWithdraw) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
+func (m *WithdrawMintage) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
 	if isSend, amount := ledger.CalculateAmount(block); amount.Compare(types.ZeroBalance) != types.BalanceCompEqual || !isSend {
 		return errors.New("invalid block ")
 	}
@@ -152,7 +149,7 @@ func (m *MintageWithdraw) DoSend(ledger *l.Ledger, block *types.StateBlock) erro
 	return nil
 }
 
-func (m *MintageWithdraw) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
 	_ = cabi.ABIMintage.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
 	tokenInfo := new(types.TokenInfo)
@@ -179,9 +176,8 @@ func (m *MintageWithdraw) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 		tokenInfo.Owner,
 		big.NewInt(0),
 		uint64(0))
-	var storageKey []byte
-	storageKey = append(storageKey, block.Address[:]...)
-	storageKey = append(storageKey, tokenId[:]...)
+	storageKey := cabi.GetStorageKey(tokenId[:])
+
 	if err := ledger.SetStorage(storageKey, newTokenInfo); err != nil {
 		return nil, err
 	}
@@ -201,10 +197,10 @@ func (m *MintageWithdraw) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 	return nil, nil
 }
 
-func (m *MintageWithdraw) GetRefundData() []byte {
+func (m *WithdrawMintage) GetRefundData() []byte {
 	return []byte{2}
 }
 
-func (m *MintageWithdraw) GetQuota() uint64 {
+func (m *WithdrawMintage) GetQuota() uint64 {
 	return 0
 }

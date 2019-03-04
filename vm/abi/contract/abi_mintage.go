@@ -48,3 +48,15 @@ func ParseTokenInfo(data []byte) (*types.TokenInfo, error) {
 	err := ABIMintage.UnpackVariable(tokenInfo, VariableNameToken, data)
 	return tokenInfo, err
 }
+
+func NewTokenHash(param *ParamMintage) types.Hash {
+	return types.ZeroHash
+}
+
+func GetStorageKey(key []byte) []byte {
+	var tmp []byte
+	tmp = append(tmp, types.MintageAddress[:]...)
+	tmp = append(tmp, key...)
+
+	return tmp
+}

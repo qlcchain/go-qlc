@@ -48,6 +48,13 @@ func (r *RPC) getApi(apiModule string) API {
 			Service:   api.NewWalletApi(r.wallet),
 			Public:    true,
 		}
+	case "contract":
+		return API{
+			Namespace: "contract",
+			Version:   "1.0",
+			Service:   api.NewContractApi(r.ledger),
+			Public:    true,
+		}
 	default:
 		return API{}
 	}
