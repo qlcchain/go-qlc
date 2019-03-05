@@ -12,15 +12,14 @@ import (
 )
 
 const (
-	QlcProtocolID           = "qlc/1.0.0"
-	QlcProtocolFOUND        = "/qlc/discovery/1.0.0"
-	discoveryConnTimeout    = time.Second * 30
-	EachTimeFoundPeersLimit = 20
+	QlcProtocolID        = "qlc/1.0.0"
+	QlcProtocolFOUND     = "/qlc/discovery/1.0.0"
+	discoveryConnTimeout = time.Second * 30
 )
 
 func (node *QlcNode) dhtFoundPeers() ([]pstore.PeerInfo, error) {
 	//discovery peers
-	peers, err := discovery.FindPeers(node.ctx, node.dis, QlcProtocolFOUND, EachTimeFoundPeersLimit)
+	peers, err := discovery.FindPeers(node.ctx, node.dis, QlcProtocolFOUND, node.cfg.Discovery.Limit)
 	if err != nil {
 		return nil, err
 	}

@@ -66,10 +66,13 @@ func DefaultConfig(dir string) (*Config, error) {
 			IPCEndpoint:      defaultIPCEndpoint(),
 		},
 		P2P: &P2PConfig{
-			BootNodes: defaultBootstrapAddresses,
-			Listen:    "/ip4/0.0.0.0/tcp/9734",
+			BootNodes:    defaultBootstrapAddresses,
+			Listen:       "/ip4/0.0.0.0/tcp/9734",
+			SyncInterval: 120,
 		},
 		Discovery: &DiscoveryConfig{
+			DiscoveryInterval: 30,
+			Limit:             20,
 			MDNS: MDNS{
 				Enabled:  true,
 				Interval: 30,
