@@ -12,40 +12,17 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	l "github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/vm/abi"
+	cabi "github.com/qlcchain/go-qlc/vm/abi/contract"
 	"math/big"
 	"regexp"
-	"strings"
 	"time"
 )
 
-const (
-	jsonMintage = `
-	[
-		{"type":"function","name":"Mintage","inputs":[{"name":"tokenId","type":"tokenId"},{"name":"tokenName","type":"string"},{"name":"tokenSymbol","type":"string"},{"name":"totalSupply","type":"uint256"},{"name":"decimals","type":"uint8"}]},
-		{"type":"function","name":"Withdraw","inputs":[{"name":"tokenId","type":"tokenId"}]},
-		{"type":"variable","name":"token","inputs":[{"name":"tokenName","type":"string"},{"name":"tokenSymbol","type":"string"},{"name":"totalSupply","type":"uint256"},{"name":"decimals","type":"uint8"},{"name":"owner","type":"address"},{"name":"pledgeAmount","type":"uint256"},{"name":"withdrawTime","type":"uint64"}]}
-	]`
-
-	MethodNameMintage         = "Mintage"
-	MethodNameMintageWithdraw = "Withdraw"
-	VariableNameToken         = "token"
-)
-
 var (
-	ABIMintage, _        = abi.JSONToABIContract(strings.NewReader(jsonMintage))
 	tokenNameLengthMax   = 40                         // Maximum length of a token name(include)
 	tokenSymbolLengthMax = 10                         // Maximum length of a token symbol(include)
 	minWithdrawTime      = time.Duration(24 * 30 * 3) // minWithdrawTime 3 months
 )
-
-type ParamMintage struct {
-	Token       types.Hash
-	TokenName   string
-	TokenSymbol string
-	TotalSupply *big.Int
-	Decimals    uint8
-}
 
 type Mintage struct{}
 
@@ -55,8 +32,8 @@ func (m *Mintage) GetFee(ledger *l.Ledger, block *types.StateBlock) (types.Balan
 }
 
 func (m *Mintage) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
-	param := new(ParamMintage)
-	err := ABIMintage.UnpackMethod(param, MethodNameMintage, block.Data)
+	param := new(cabi.ParamMintage)
+	err := cabi.ABIMintage.UnpackMethod(param, cabi.MethodNameMintage, block.Data)
 	if err != nil {
 		return err
 	}
@@ -72,8 +49,8 @@ func (m *Mintage) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
 		return errors.New("invalid token Id")
 	}
 
-	if block.Data, err = ABIMintage.PackMethod(
-		VariableNameToken,
+	if block.Data, err = cabi.ABIMintage.PackMethod(
+		cabi.VariableNameToken,
 		tokenId,
 		param.TokenName,
 		param.TokenSymbol,
@@ -84,7 +61,7 @@ func (m *Mintage) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
 	return nil
 }
 
-func verifyToken(param ParamMintage) error {
+func verifyToken(param cabi.ParamMintage) error {
 	if param.TotalSupply.Cmp(util.Tt256m1) > 0 ||
 		param.TotalSupply.Cmp(new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)) < 0 ||
 		len(param.TokenName) == 0 || len(param.TokenName) > tokenNameLengthMax ||
@@ -102,8 +79,8 @@ func verifyToken(param ParamMintage) error {
 
 //TODO: verify input block timestamp
 func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	param := new(ParamMintage)
-	_ = ABIMintage.UnpackMethod(param, MethodNameMintage, input.Data)
+	param := new(cabi.ParamMintage)
+	_ = cabi.ABIMintage.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
 	if len(ledger.GetStorage(&block.Address, param.Token[:])) > 0 {
 		return nil, errors.New("invalid token")
 	}
@@ -111,8 +88,8 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 	var tokenInfo []byte
 	_, amount := ledger.CalculateAmount(input)
 	if amount.Sign() == 0 {
-		tokenInfo, _ = ABIMintage.PackVariable(
-			VariableNameToken,
+		tokenInfo, _ = cabi.ABIMintage.PackVariable(
+			cabi.VariableNameToken,
 			param.TokenName,
 			param.TokenSymbol,
 			param.TotalSupply,
@@ -122,8 +99,8 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 			time.Now().UTC().Unix())
 	} else {
 		withdrawTime := time.Now().UTC().Add(time.Hour * minWithdrawTime).Unix()
-		tokenInfo, _ = ABIMintage.PackVariable(
-			VariableNameToken,
+		tokenInfo, _ = cabi.ABIMintage.PackVariable(
+			cabi.VariableNameToken,
 			param.TokenName,
 			param.TokenSymbol,
 			param.TotalSupply,
@@ -164,7 +141,7 @@ func (m *MintageWithdraw) DoSend(ledger *l.Ledger, block *types.StateBlock) erro
 		return errors.New("invalid block ")
 	}
 	tokenId := new(types.Hash)
-	if err := ABIMintage.UnpackMethod(tokenId, MethodNameMintageWithdraw, block.Data); err != nil {
+	if err := cabi.ABIMintage.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, block.Data); err != nil {
 		return errors.New("invalid input data")
 	}
 	return nil
@@ -172,9 +149,9 @@ func (m *MintageWithdraw) DoSend(ledger *l.Ledger, block *types.StateBlock) erro
 
 func (m *MintageWithdraw) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
-	_ = ABIMintage.UnpackMethod(tokenId, MethodNameMintageWithdraw, input.Data)
+	_ = cabi.ABIMintage.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
 	tokenInfo := new(types.TokenInfo)
-	_ = ABIMintage.UnpackVariable(tokenInfo, VariableNameToken, ledger.GetStorage(&block.Address, tokenId[:]))
+	_ = cabi.ABIMintage.UnpackVariable(tokenInfo, cabi.VariableNameToken, ledger.GetStorage(&block.Address, tokenId[:]))
 
 	now := time.Now().UTC().Unix()
 
@@ -184,8 +161,8 @@ func (m *MintageWithdraw) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 		return nil, errors.New("cannot withdraw mintage pledge, status error")
 	}
 
-	newTokenInfo, _ := ABIMintage.PackVariable(
-		VariableNameToken,
+	newTokenInfo, _ := cabi.ABIMintage.PackVariable(
+		cabi.VariableNameToken,
 		tokenInfo.TokenName,
 		tokenInfo.TokenSymbol,
 		tokenInfo.TotalSupply,
