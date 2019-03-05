@@ -7,7 +7,10 @@
 
 package ledger
 
-import "github.com/qlcchain/go-qlc/common/types"
+import (
+	"github.com/qlcchain/go-qlc/common/types"
+	cabi "github.com/qlcchain/go-qlc/vm/abi/contract"
+)
 
 //TODO: implement
 func (l *Ledger) GetStorage(addr *types.Address, key []byte) []byte {
@@ -32,4 +35,12 @@ func (l *Ledger) GetTokenByName(tokenName string) (*types.TokenInfo, error) {
 
 func (l *Ledger) GetGenesis() []*types.StateBlock {
 	return nil
+}
+
+func (l *Ledger) testUnpack() {
+	block := types.StateBlock{}
+	_, err := cabi.ParseTokenInfo(block.Data)
+	if err != nil {
+		l.logger.Error(err)
+	}
 }
