@@ -8,8 +8,9 @@
 package ledger
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/qlcchain/go-qlc/common/types"
+	cabi "github.com/qlcchain/go-qlc/vm/abi/contract"
+)
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -147,4 +148,12 @@ func (l *Ledger) GetGenesis(txns ...db.StoreTxn) ([]*types.StateBlock, error) {
 		return nil, err
 	}
 	return blocks, nil
+}
+
+func (l *Ledger) testUnpack() {
+	block := types.StateBlock{}
+	_, err := cabi.ParseTokenInfo(block.Data)
+	if err != nil {
+		l.logger.Error(err)
+	}
 }
