@@ -11,11 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p-peer"
 )
 
-// const
-const (
-	FindPeerInterval = time.Second * 30
-)
-
 // StreamManager manages all streams
 type StreamManager struct {
 	mu         sync.Mutex

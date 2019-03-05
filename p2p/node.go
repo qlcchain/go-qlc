@@ -168,7 +168,7 @@ func (node *QlcNode) connectBootstrap() {
 }
 
 func (node *QlcNode) startPeerDiscovery() {
-	ticker := time.NewTicker(FindPeerInterval)
+	ticker := time.NewTicker(time.Duration(node.cfg.Discovery.DiscoveryInterval) * time.Second)
 	node.findPeers()
 	for {
 		select {

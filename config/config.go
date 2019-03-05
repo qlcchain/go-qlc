@@ -54,15 +54,21 @@ type RPCConfig struct {
 type P2PConfig struct {
 	BootNodes []string `json:"BootNode"`
 	Listen    string   `json:"Listen"`
+	//Time in seconds between sync block interval
+	SyncInterval int `json:"SyncInterval"`
 }
 
 type DiscoveryConfig struct {
-	MDNS MDNS
+	// Time in seconds between remote discovery rounds
+	DiscoveryInterval int
+	//The maximum number of discovered nodes at a time
+	Limit int
+	MDNS  MDNS
 }
 
 type MDNS struct {
 	Enabled bool
-	// Time in seconds between discovery rounds
+	// Time in seconds between local discovery rounds
 	Interval int
 }
 

@@ -11,10 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	SyncInterval = time.Minute * 2
-)
-
 var zeroHash = types.Hash{}
 var headerBlockHash types.Hash
 var openBlockHash types.Hash
@@ -44,7 +40,7 @@ func (ss *ServiceSync) Start() {
 	ss.logger.Info("started sync loop")
 	address := types.Address{}
 	Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
-	ticker := time.NewTicker(SyncInterval)
+	ticker := time.NewTicker(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
 	for {
 		select {
 		case <-ss.quitCh:
