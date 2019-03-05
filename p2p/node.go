@@ -53,7 +53,6 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		ctx:                 context.Background(),
 		boostrapAddrs:       config.P2P.BootNodes,
 		streamManager:       NewStreamManager(),
-		ID:                  peer.ID(config.ID.PeerID),
 		logger:              log.NewLogger("p2p"),
 		quitPeerDiscoveryCh: make(chan bool, 1),
 	}
@@ -64,7 +63,10 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 	}
 	node.privateKey = privateKey
 	node.streamManager.SetQlcNode(node)
-
+	node.ID, err = peer.IDFromPrivateKey(privateKey)
+	if err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
