@@ -13,8 +13,10 @@ import (
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
+	cabi "github.com/qlcchain/go-qlc/vm/abi/contract"
 	"go.uber.org/zap"
 )
 
@@ -44,6 +46,8 @@ var (
 	ErrPosteriorExists        = errors.New("posterior already exists")
 	ErrPosteriorNotFound      = errors.New("posterior not found")
 	ErrVersionNotFound        = errors.New("version not found")
+	ErrStorageExists          = errors.New("storage already exists")
+	ErrStorageNotFound        = errors.New("storage not found")
 )
 
 const (
@@ -59,6 +63,8 @@ const (
 	idPrefixPerformance
 	idPrefixPosterior
 	idPrefixVersion
+	idPrefixStorage
+	idPrefixToken
 )
 
 var (
@@ -149,17 +155,9 @@ func getKey(hash types.Hash, t byte) []byte {
 	return key[:]
 }
 
-func (l *Ledger) getPosteriorBlockKey(hash types.Hash) []byte {
-	var key [1 + types.HashSize]byte
-	key[0] = idPrefixPosterior
-	copy(key[1:], hash[:])
-	return key[:]
-}
-
 func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error {
 	key := getKey(blk.GetHash(), idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	//never overwrite implicitly
 	err := txn.Get(key, func(bytes []byte, b byte) error {
@@ -182,6 +180,11 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 		return err
 	}
 
+	if err := l.addTokenInfo(blk, txn); err != nil {
+		return err
+	}
+
+	l.releaseTxn(txn, flag)
 	return nil
 }
 
@@ -210,6 +213,49 @@ func (l *Ledger) addPosterior(previous, block types.Hash, txn db.StoreTxn) error
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func (l *Ledger) isGenesisBlock(blk *types.StateBlock, txn db.StoreTxn) (bool, error) {
+	pre := blk.GetPrevious()
+
+	if pre.IsZero() && blk.GetData() != nil && !util.BytesEqual(blk.GetData(), []byte{}) {
+		linkBlock, err := l.getStateBlock(blk.GetLink(), txn)
+		if err != nil {
+			return false, err
+		}
+		if linkBlock.GetType() == types.ContractSend {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (l *Ledger) addTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
+	isGenesis, err := l.isGenesisBlock(blk, txn)
+	if err != nil {
+		return err
+	}
+	if isGenesis {
+		token, err := cabi.ParseTokenInfo(blk.GetData())
+		if err != nil {
+			return err
+		}
+		tokenKey := getKey(token.TokenId, idPrefixToken)
+		err = txn.Get(tokenKey, func(bytes []byte, b byte) error {
+			return nil
+		})
+		if err == nil {
+			return errors.New("token already exist")
+		} else if err != nil && err != badger.ErrKeyNotFound {
+			return err
+		}
+		val, err := json.Marshal(token)
+		if err != nil {
+			return err
+		}
+		return txn.Set(tokenKey, val)
 	}
 	return nil
 }
@@ -258,7 +304,6 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	key := getKey(hash, idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	blk := new(types.StateBlock)
 	err := txn.Get(key, func(val []byte, b byte) error {
@@ -275,9 +320,40 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 		return err
 	}
 
+	if err := l.deletePosterior(blk, txn); err != nil {
+		return err
+	}
+
+	if err := l.deleteTokenInfo(blk, txn); err != nil {
+		return err
+	}
+
+	l.releaseTxn(txn, flag)
+	return nil
+}
+
+func (l *Ledger) deletePosterior(blk *types.StateBlock, txn db.StoreTxn) error {
 	pKey := getKey(blk.GetPrevious(), idPrefixPosterior)
 	if err := txn.Delete(pKey); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (l *Ledger) deleteTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
+	isGenesis, err := l.isGenesisBlock(blk, txn)
+	if err != nil {
+		return err
+	}
+	if isGenesis {
+		token, err := cabi.ParseTokenInfo(blk.GetData())
+		if err != nil {
+			return err
+		}
+		tokenKey := getKey(token.TokenId, idPrefixToken)
+		if err := txn.Delete(tokenKey); err != nil {
+			return err
+		}
 	}
 	return nil
 }

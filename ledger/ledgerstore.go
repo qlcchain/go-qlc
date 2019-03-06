@@ -105,14 +105,14 @@ type Store interface {
 
 	// Contract storage
 	//GetStorage
-	GetStorage(addr *types.Address, key []byte) []byte
-	SetStorage(key []byte, value []byte) error
+	GetStorage(addr *types.Address, key []byte, txns ...db.StoreTxn) ([]byte, error)
+	SetStorage(key []byte, value []byte, txns ...db.StoreTxn) error
 
 	//Token
-	ListTokens() []*types.TokenInfo
-	GetTokenById(tokenId types.Hash) (types.TokenInfo, error)
-	GetTokenByName(tokenName string) (*types.TokenInfo, error)
-	GetGenesis() []*types.StateBlock
+	ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error)
+	GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.TokenInfo, error)
+	GetTokenByName(tokenName string, txns ...db.StoreTxn) (*types.TokenInfo, error)
+	GetGenesis(txns ...db.StoreTxn) ([]*types.StateBlock, error)
 
 	//CalculateAmount calculate block amount by balance and check block type
 	CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (bool, types.Balance)
