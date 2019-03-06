@@ -2,21 +2,18 @@ package types
 
 import (
 	"encoding/json"
-
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
 //go:generate msgp
 type SmartContractBlock struct {
-	Type            BlockType   `msg:"type" json:"type"`
 	Address         Address     `msg:"address,extension" json:"address"`
-	Previous        Hash        `msg:"previous,extension" json:"previous"`
 	InternalAccount Address     `msg:"internalAccount,extension" json:"internalAccount"`
 	ExtraAddress    []Address   `msg:"extraAddress" json:"extraAddress,omitempty"`
 	Owner           Address     `msg:"owner,extension" json:"owner"`
 	Abi             ContractAbi `msg:"contract,extension" json:"contract"`
+	AbiSchema       string      `msg:"schema" json:"schema"`
 	IsUseStorage    bool        `msg:"isUseStorage" json:"isUseStorage"`
-	Extra           Hash        `msg:"extra,extension" json:"extra"`
 	Work            Work        `msg:"work,extension" json:"work"`
 	Signature       Signature   `msg:"signature,extension" json:"signature"`
 }
@@ -26,14 +23,9 @@ func (sc *SmartContractBlock) GetHash() Hash {
 	for _, addr := range sc.ExtraAddress {
 		extra = append(extra, addr[:]...)
 	}
-	t := []byte{byte(sc.Type)}
-	hash, _ := HashBytes(t, sc.Address[:], sc.Previous[:], sc.InternalAccount[:], extra, sc.Owner[:],
-		util.Bool2Bytes(sc.IsUseStorage), sc.Abi.AbiHash[:], sc.Extra[:])
+	hash, _ := HashBytes(sc.Address[:], util.String2Bytes(sc.AbiSchema), sc.InternalAccount[:], extra, sc.Owner[:],
+		util.Bool2Bytes(sc.IsUseStorage), sc.Abi.AbiHash[:])
 	return hash
-}
-
-func (sc *SmartContractBlock) Root() Hash {
-	return sc.Address.ToHash()
 }
 
 func (sc *SmartContractBlock) Size() int {
@@ -56,13 +48,9 @@ func (sc *SmartContractBlock) Deserialize(text []byte) error {
 	return nil
 }
 
-func (sc *SmartContractBlock) GetType() BlockType {
-	return sc.Type
-}
-
 //TODO: improvement
 func (sc *SmartContractBlock) IsValid() bool {
-	return sc.Work.IsValid(sc.Address.ToHash())
+	return sc.Work.IsValid(sc.GetHash())
 }
 
 func (sc *SmartContractBlock) String() string {

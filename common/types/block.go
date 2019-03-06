@@ -102,7 +102,6 @@ func NewBlock(t BlockType) (Block, error) {
 		return sb, nil
 	case SmartContract:
 		sc := new(SmartContractBlock)
-		sc.Type = t
 		return sc, nil
 	case Invalid:
 		return nil, ErrNotABlock
