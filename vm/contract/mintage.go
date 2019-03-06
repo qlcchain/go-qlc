@@ -9,13 +9,14 @@ package contract
 
 import (
 	"errors"
+	"math/big"
+	"regexp"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	l "github.com/qlcchain/go-qlc/ledger"
 	cabi "github.com/qlcchain/go-qlc/vm/abi/contract"
-	"math/big"
-	"regexp"
-	"time"
 )
 
 var (
@@ -81,7 +82,11 @@ func verifyToken(param cabi.ParamMintage) error {
 func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.ParamMintage)
 	_ = cabi.ABIMintage.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
-	if len(ledger.GetStorage(&block.Address, param.Token[:])) > 0 {
+	storage, err := ledger.GetStorage(&block.Address, param.Token[:])
+	if err != nil {
+		return nil, err
+	}
+	if len(storage) > 0 {
 		return nil, errors.New("invalid token")
 	}
 
@@ -151,7 +156,11 @@ func (m *MintageWithdraw) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 	tokenId := new(types.Hash)
 	_ = cabi.ABIMintage.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
 	tokenInfo := new(types.TokenInfo)
-	_ = cabi.ABIMintage.UnpackVariable(tokenInfo, cabi.VariableNameToken, ledger.GetStorage(&block.Address, tokenId[:]))
+	storage, err := ledger.GetStorage(&block.Address, tokenId[:])
+	if err != nil {
+		return nil, err
+	}
+	_ = cabi.ABIMintage.UnpackVariable(tokenInfo, cabi.VariableNameToken, storage)
 
 	now := time.Now().UTC().Unix()
 

@@ -53,6 +53,10 @@ func (b *StateBlock) GetBalance() Balance {
 	return b.Balance
 }
 
+func (b *StateBlock) GetData() []byte {
+	return b.Data
+}
+
 func (b *StateBlock) GetLink() Hash {
 	return b.Link
 }
