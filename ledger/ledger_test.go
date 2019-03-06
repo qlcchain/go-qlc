@@ -330,6 +330,17 @@ func TestLedger_GetSenderBlocks(t *testing.T) {
 	if len(h4) != 1 || h4[0] != b2.GetHash() {
 		t.Fatal()
 	}
+
+	if err := l.DeleteStateBlock(b2.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	h5, err := l.GetSenderBlocks(sender)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(h5) != 0 {
+		t.Fatal()
+	}
 }
 
 func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
