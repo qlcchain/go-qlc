@@ -31,6 +31,10 @@ type BlockType byte
 
 const (
 	State BlockType = iota
+	Send
+	Receive
+	Change
+	Open
 	ContractReward
 	ContractSend
 	ContractRefund
@@ -43,6 +47,14 @@ func parseString(s string) BlockType {
 	switch strings.ToLower(s) {
 	case "state":
 		return State
+	case "send":
+		return Send
+	case "receive":
+		return Receive
+	case "change":
+		return Change
+	case "open":
+		return Open
 	case "contractReward":
 		return ContractReward
 	case "contractSend":
@@ -62,6 +74,14 @@ func (t BlockType) String() string {
 	switch t {
 	case State:
 		return "State"
+	case Send:
+		return "Send"
+	case Receive:
+		return "Receive"
+	case Change:
+		return "Change"
+	case Open:
+		return "Open"
 	case ContractReward:
 		return "ContractReward"
 	case ContractSend:
@@ -96,7 +116,7 @@ func (e BlockType) MarshalJSON() ([]byte, error) {
 
 func NewBlock(t BlockType) (Block, error) {
 	switch t {
-	case State, ContractSend, ContractRefund, ContractReward, ContractError:
+	case State, ContractSend, ContractRefund, ContractReward, ContractError, Send, Receive, Change, Open:
 		sb := new(StateBlock)
 		sb.Type = t
 		return sb, nil

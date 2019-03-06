@@ -16,7 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
-	cabi "github.com/qlcchain/go-qlc/vm/abi/contract"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"go.uber.org/zap"
 )
 

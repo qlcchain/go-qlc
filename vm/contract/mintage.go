@@ -16,7 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	l "github.com/qlcchain/go-qlc/ledger"
-	cabi "github.com/qlcchain/go-qlc/vm/abi/contract"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
 var (

@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package contract
+package abi
 
 import (
 	"errors"

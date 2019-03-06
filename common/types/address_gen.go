@@ -10,6 +10,7 @@ import (
 func (z *Address) DecodeMsg(dc *msgp.Reader) (err error) {
 	err = dc.ReadExactBytes((z)[:])
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	return
@@ -19,6 +20,7 @@ func (z *Address) DecodeMsg(dc *msgp.Reader) (err error) {
 func (z *Address) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteBytes((z)[:])
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	return
@@ -35,6 +37,7 @@ func (z *Address) MarshalMsg(b []byte) (o []byte, err error) {
 func (z *Address) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	bts, err = msgp.ReadExactBytes(bts, (z)[:])
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	o = bts

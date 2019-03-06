@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
@@ -122,6 +121,14 @@ func (b *StateBlock) Deserialize(text []byte) error {
 func (b *StateBlock) String() string {
 	bytes, _ := json.Marshal(b)
 	return string(bytes)
+}
+
+func (b *StateBlock) IsReceiveBlock() bool {
+	return b.Type == Receive || b.Type == Open
+}
+
+func (b *StateBlock) IsSendBlock() bool {
+	return b.Type == Send || b.Type == ContractReward || b.Type == ContractSend || b.Type == ContractRefund
 }
 
 //go:generate msgp
