@@ -13,7 +13,6 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
-	"fmt"
 )
 
 // ToHex returns the hex representation of b, prefixed with '0x'.
@@ -127,18 +126,15 @@ func LeftPadBytes(slice []byte, l int) []byte {
 
 func BytesEqual(a, b []byte) bool {
 	if (a == nil) != (b == nil) {
-		fmt.Println(1)
 		return false
 	}
 
 	if len(a) != len(b) {
-		fmt.Println(2)
 		return false
 	}
 
 	for i, v := range a {
 		if v != b[i] {
-			fmt.Println(3)
 			return false
 		}
 	}
