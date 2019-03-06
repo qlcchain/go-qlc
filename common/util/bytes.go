@@ -141,6 +141,16 @@ func BytesEqual(a, b []byte) bool {
 	return true
 }
 
+func Uint64ToBytes(i uint64) []byte {
+	tmp := make([]byte, 8)
+	binary.LittleEndian.PutUint64(tmp, i)
+	return tmp
+}
+
+func Int64ToBytes(i int64) []byte {
+	return Uint64ToBytes(uint64(i))
+}
+
 func String2Bytes(s string) []byte {
 	return []byte(s)
 }

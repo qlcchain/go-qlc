@@ -16,6 +16,7 @@ type SmartContractBlock struct {
 	IsUseStorage    bool        `msg:"isUseStorage" json:"isUseStorage"`
 	Work            Work        `msg:"work,extension" json:"work"`
 	Signature       Signature   `msg:"signature,extension" json:"signature"`
+	Version         uint64      `msg:"version" json:"version"`
 }
 
 func (sc *SmartContractBlock) GetHash() Hash {
@@ -30,10 +31,6 @@ func (sc *SmartContractBlock) GetHash() Hash {
 
 func (sc *SmartContractBlock) Size() int {
 	return sc.Msgsize()
-}
-
-func (sc *SmartContractBlock) GetExtraAddress() []Address {
-	return sc.ExtraAddress
 }
 
 func (sc *SmartContractBlock) Serialize() ([]byte, error) {

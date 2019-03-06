@@ -91,6 +91,12 @@ func (z *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Signature")
 				return
 			}
+		case "version":
+			z.Version, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Version")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -104,9 +110,9 @@ func (z *SmartContractBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 9
+	// map header, size 10
 	// write "address"
-	err = en.Append(0x89, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	err = en.Append(0x8a, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
 	if err != nil {
 		return
 	}
@@ -202,15 +208,25 @@ func (z *SmartContractBlock) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Signature")
 		return
 	}
+	// write "version"
+	err = en.Append(0xa7, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.Version)
+	if err != nil {
+		err = msgp.WrapError(err, "Version")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *SmartContractBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 9
+	// map header, size 10
 	// string "address"
-	o = append(o, 0x89, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	o = append(o, 0x8a, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
 	o, err = msgp.AppendExtension(o, &z.Address)
 	if err != nil {
 		err = msgp.WrapError(err, "Address")
@@ -267,6 +283,9 @@ func (z *SmartContractBlock) MarshalMsg(b []byte) (o []byte, err error) {
 		err = msgp.WrapError(err, "Signature")
 		return
 	}
+	// string "version"
+	o = append(o, 0xa7, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+	o = msgp.AppendUint64(o, z.Version)
 	return
 }
 
@@ -355,6 +374,12 @@ func (z *SmartContractBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Signature")
 				return
 			}
+		case "version":
+			z.Version, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Version")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -373,6 +398,6 @@ func (z *SmartContractBlock) Msgsize() (s int) {
 	for za0001 := range z.ExtraAddress {
 		s += z.ExtraAddress[za0001].Msgsize()
 	}
-	s += 6 + msgp.ExtensionPrefixSize + z.Owner.Len() + 9 + msgp.ExtensionPrefixSize + z.Abi.Len() + 7 + msgp.StringPrefixSize + len(z.AbiSchema) + 13 + msgp.BoolSize + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len()
+	s += 6 + msgp.ExtensionPrefixSize + z.Owner.Len() + 9 + msgp.ExtensionPrefixSize + z.Abi.Len() + 7 + msgp.StringPrefixSize + len(z.AbiSchema) + 13 + msgp.BoolSize + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len() + 8 + msgp.Uint64Size
 	return
 }
