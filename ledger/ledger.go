@@ -225,7 +225,7 @@ func (l *Ledger) isGenesisBlock(blk *types.StateBlock, txn db.StoreTxn) (bool, e
 		if err != nil {
 			return false, err
 		}
-		if linkBlock.GetType() == types.ContractSend {
+		if linkBlock.GetLink() == types.Hash(types.MintageAddress) {
 			return true, nil
 		}
 	}
