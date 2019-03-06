@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -31,8 +32,9 @@ func main() {
 	switch os.Args[1] {
 
 	case "rpc":
-		initData()
-		cm := config.NewCfgManager(config.QlcTestDataDir())
+		dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+		initData(dir)
+		cm := config.NewCfgManager(dir)
 		cfg, err := cm.Load()
 		if cfg.RPC.Enable == false {
 			return
@@ -48,15 +50,18 @@ func main() {
 		if err != nil {
 			logger.Fatal(err)
 		}
-		defer rs.Stop()
+		defer func() {
+			rs.Stop()
+			os.RemoveAll(dir)
+		}()
 		logger.Info("rpc started")
 		s := <-c
 		fmt.Println("Got signal: ", s)
 	}
 }
 
-func initData() {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger")
+func initData(p string) {
+	dir := filepath.Join(p, "ledger")
 	ledger := ledger.NewLedger(dir)
 	defer ledger.Close()
 
@@ -187,4 +192,32 @@ func initData() {
 	am6.Tokens = append(am6.Tokens, t8)
 	ledger.AddAccountMeta(&am6)
 
+	// sender or receiver
+	p1 := &types.StateBlock{
+		Address:  mock.Address(),
+		Token:    mock.GetChainTokenType(),
+		Sender:   "1801111111",
+		Receiver: "",
+	}
+	p2 := &types.StateBlock{
+		Address:  mock.Address(),
+		Token:    mock.GetChainTokenType(),
+		Sender:   "1801111111",
+		Receiver: "18000000000",
+	}
+	p3 := &types.StateBlock{
+		Address:  mock.Address(),
+		Token:    mock.GetChainTokenType(),
+		Sender:   "1801111111",
+		Receiver: "",
+	}
+	if err := ledger.AddStateBlock(p1); err != nil {
+		fmt.Errorf("err block, %s", p1)
+	}
+	if err := ledger.AddStateBlock(p2); err != nil {
+		fmt.Errorf("err block, %s", p2)
+	}
+	if err := ledger.AddStateBlock(p3); err != nil {
+		fmt.Errorf("err block, %s", p3)
+	}
 }
