@@ -120,6 +120,7 @@ func (ms *MessageService) startLoop() {
 
 func (ms *MessageService) checkMessageCache() {
 	var cs []*cacheValue
+	var csTemp []*cacheValue
 	var hash types.Hash
 	m := ms.cache.GetALL()
 	for k, v := range m {
@@ -127,11 +128,7 @@ func (ms *MessageService) checkMessageCache() {
 		cs = v.([]*cacheValue)
 		for i, value := range cs {
 			if value.resendTimes > msgResendMaxTimes {
-				cs = append(cs[:i], cs[i+1:]...)
-				if len(cs) == 0 {
-					ms.cache.Remove(hash)
-					break
-				}
+				csTemp = append(csTemp, cs[i])
 				continue
 			}
 			if time.Now().Sub(value.startTime) < msgNeedResendInterval {
@@ -140,33 +137,37 @@ func (ms *MessageService) checkMessageCache() {
 			stream := ms.netService.node.streamManager.FindByPeerID(value.peerID)
 			if stream == nil {
 				ms.netService.node.logger.Debug("Failed to locate peer's stream,maybe lost connect")
-				cs = append(cs[:i], cs[i+1:]...)
-				if len(cs) == 0 {
-					ms.cache.Remove(hash)
-					break
-				}
+				csTemp = append(csTemp, cs[i])
 				continue
 			}
 			stream.messageChan <- value.data
 			value.resendTimes++
 			if value.resendTimes > msgResendMaxTimes {
-				cs = append(cs[:i], cs[i+1:]...)
-				if len(cs) == 0 {
-					ms.cache.Remove(hash)
-					break
-				}
+				csTemp = append(csTemp, cs[i])
 				continue
 			}
-			//ms.netService.node.logger.Info("resend cache message times................5:", value.resendTimes)
+		}
+
+		if len(csTemp) == len(cs) {
+			t := ms.cache.Remove(hash)
+			if t {
+				ms.netService.node.logger.Debugf("remove message:[%s] success", hash.String())
+			}
+		} else {
+			csDiff := sliceDiff(cs, csTemp)
+			err := ms.cache.Set(hash, csDiff)
+			if err != nil {
+				ms.netService.node.logger.Error(err)
+			}
 		}
 	}
-
 }
 
 func (ms *MessageService) onMessageResponse(message Message) {
 	ms.netService.node.logger.Info("receive MessageResponse")
 	var hash types.Hash
 	var cs []*cacheValue
+	var csTemp []*cacheValue
 	err := hash.UnmarshalText(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Errorf("onMessageResponse err:[%s]", err)
@@ -185,14 +186,20 @@ func (ms *MessageService) onMessageResponse(message Message) {
 	cs = v.([]*cacheValue)
 	for k, v := range cs {
 		if v.peerID == message.MessageFrom() {
-			cs = append(cs[:k], cs[k+1:]...)
-			if len(cs) == 0 {
-				t := ms.cache.Remove(hash)
-				if t {
-					ms.netService.node.logger.Infof("remove message cache for hash:[%s] success", hash)
-				}
-				break
-			}
+			csTemp = append(csTemp, cs[k])
+		}
+	}
+
+	if len(csTemp) == len(cs) {
+		t := ms.cache.Remove(hash)
+		if t {
+			ms.netService.node.logger.Infof("remove message cache for hash:[%s] success", hash)
+		}
+	} else {
+		csDiff := sliceDiff(cs, csTemp)
+		err := ms.cache.Set(hash, csDiff)
+		if err != nil {
+			ms.netService.node.logger.Error(err)
 		}
 	}
 }
@@ -360,4 +367,24 @@ func (ms *MessageService) addPerformanceTime(hash types.Hash) {
 			}
 		}
 	}
+}
+
+// InSliceIface checks given interface in interface slice.
+func inSliceIface(v interface{}, sl []*cacheValue) bool {
+	for _, vv := range sl {
+		if vv == v {
+			return true
+		}
+	}
+	return false
+}
+
+// SliceDiff returns diff slice of slice1 - slice2.
+func sliceDiff(slice1, slice2 []*cacheValue) (diffslice []*cacheValue) {
+	for _, v := range slice1 {
+		if !inSliceIface(v, slice2) {
+			diffslice = append(diffslice, v)
+		}
+	}
+	return
 }

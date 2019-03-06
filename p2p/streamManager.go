@@ -5,10 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	libnet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-peer"
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 // StreamManager manages all streams
@@ -177,6 +176,10 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 							t:           messageName,
 						}
 						cs = append(cs, c)
+						err = sm.node.netService.msgService.cache.Set(hash, cs)
+						if err != nil {
+							sm.node.logger.Error(err)
+						}
 					}
 				}
 			} else {
@@ -237,6 +240,10 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 								t:           messageName,
 							}
 							cs = append(cs, c)
+							err = sm.node.netService.msgService.cache.Set(hash, cs)
+							if err != nil {
+								sm.node.logger.Error(err)
+							}
 						}
 					}
 				} else {
