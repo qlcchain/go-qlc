@@ -65,6 +65,8 @@ const (
 	idPrefixVersion
 	idPrefixStorage
 	idPrefixToken
+	idPrefixSender
+	idPrefixReceiver
 )
 
 var (
@@ -148,15 +150,22 @@ func (l *Ledger) Empty(txns ...db.StoreTxn) (bool, error) {
 	return r, nil
 }
 
-func getKey(hash types.Hash, t byte) []byte {
+func getKeyOfHash(hash types.Hash, t byte) []byte {
 	var key [1 + types.HashSize]byte
 	key[0] = t
 	copy(key[1:], hash[:])
 	return key[:]
 }
 
+func getKeyOfBytes(bytes []byte, t byte) []byte {
+	var key []byte
+	key = append(key, t)
+	key = append(key, bytes...)
+	return key
+}
+
 func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error {
-	key := getKey(blk.GetHash(), idPrefixBlock)
+	key := getKeyOfHash(blk.GetHash(), idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 
 	//never overwrite implicitly
@@ -179,23 +188,24 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	if err := l.addPosterior(blk.GetPrevious(), blk.GetHash(), txn); err != nil {
 		return err
 	}
-
 	if err := l.addTokenInfo(blk, txn); err != nil {
 		return err
 	}
-
+	if err := l.addSenderAndReceiver(blk, txn); err != nil {
+		return err
+	}
 	l.releaseTxn(txn, flag)
 	return nil
 }
 
 func (l *Ledger) addPosterior(previous, block types.Hash, txn db.StoreTxn) error {
 	if !previous.IsZero() {
-		bKey := getKey(previous, idPrefixBlock)
+		bKey := getKeyOfHash(previous, idPrefixBlock)
 		err := txn.Get(bKey, func(val []byte, b byte) error {
 			return nil
 		})
 		if err == nil {
-			pKey := getKey(previous, idPrefixPosterior)
+			pKey := getKeyOfHash(previous, idPrefixPosterior)
 			err := txn.Get(pKey, func(val []byte, b byte) error {
 				return nil
 			})
@@ -242,7 +252,7 @@ func (l *Ledger) addTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
 		if err != nil {
 			return err
 		}
-		tokenKey := getKey(token.TokenId, idPrefixToken)
+		tokenKey := getKeyOfHash(token.TokenId, idPrefixToken)
 		err = txn.Get(tokenKey, func(bytes []byte, b byte) error {
 			return nil
 		})
@@ -260,8 +270,58 @@ func (l *Ledger) addTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
 	return nil
 }
 
+func (l *Ledger) addSenderOrReceiver(number string, t byte, hash types.Hash, txn db.StoreTxn) error {
+	if number != "" {
+		key := getKeyOfBytes(util.String2Bytes(number), t)
+		err := txn.Get(key, func(val []byte, b byte) error {
+			hs := new([]types.Hash)
+			if err := json.Unmarshal(val, hs); err != nil {
+				return err
+			}
+			for _, h := range *hs {
+				if h == hash {
+					return nil
+				}
+			}
+			*hs = append(*hs, hash)
+			val2, err := json.Marshal(*hs)
+			if err != nil {
+				return err
+			}
+
+			return txn.Set(key, val2)
+		})
+
+		if err != nil {
+			if err == badger.ErrKeyNotFound {
+				v := []types.Hash{hash}
+				val, err := json.Marshal(v)
+				if err != nil {
+					return err
+				}
+				return txn.Set(key, val)
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Ledger) addSenderAndReceiver(blk *types.StateBlock, txn db.StoreTxn) error {
+	sender := blk.GetSender()
+	receiver := blk.GetReceiver()
+	hash := blk.GetHash()
+	if err := l.addSenderOrReceiver(sender, idPrefixSender, hash, txn); err != nil {
+		return err
+	}
+	if err := l.addSenderOrReceiver(receiver, idPrefixReceiver, hash, txn); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
-	key := getKey(hash, idPrefixBlock)
+	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	blk := new(types.StateBlock)
@@ -302,7 +362,7 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 }
 
 func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
-	key := getKey(hash, idPrefixBlock)
+	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 
 	blk := new(types.StateBlock)
@@ -328,12 +388,16 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 		return err
 	}
 
+	if err := l.deleteSenderAndReceiver(blk, txn); err != nil {
+		return err
+	}
+
 	l.releaseTxn(txn, flag)
 	return nil
 }
 
 func (l *Ledger) deletePosterior(blk *types.StateBlock, txn db.StoreTxn) error {
-	pKey := getKey(blk.GetPrevious(), idPrefixPosterior)
+	pKey := getKeyOfHash(blk.GetPrevious(), idPrefixPosterior)
 	if err := txn.Delete(pKey); err != nil {
 		return err
 	}
@@ -350,7 +414,7 @@ func (l *Ledger) deleteTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
 		if err != nil {
 			return err
 		}
-		tokenKey := getKey(token.TokenId, idPrefixToken)
+		tokenKey := getKeyOfHash(token.TokenId, idPrefixToken)
 		if err := txn.Delete(tokenKey); err != nil {
 			return err
 		}
@@ -358,8 +422,53 @@ func (l *Ledger) deleteTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
 	return nil
 }
 
+func (l *Ledger) deleteSenderOrReceiver(number string, t byte, hash types.Hash, txn db.StoreTxn) error {
+	if number != "" {
+		key := getKeyOfBytes(util.String2Bytes(number), t)
+		err := txn.Get(key, func(val []byte, b byte) error {
+			hs := new([]types.Hash)
+			if err := json.Unmarshal(val, hs); err != nil {
+				return err
+			}
+			hashes := *hs
+			if len(hashes) == 1 {
+				return txn.Delete(key)
+			}
+			var hashes2 []types.Hash
+			for index, h := range hashes {
+				if h == hash {
+					hashes2 = append(hashes[:index], hashes[index+1:]...)
+					break
+				}
+			}
+			val2, err := json.Marshal(hashes2)
+			if err != nil {
+				return err
+			}
+			return txn.Set(key, val2)
+		})
+		if err != nil && err != badger.ErrKeyNotFound {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Ledger) deleteSenderAndReceiver(blk *types.StateBlock, txn db.StoreTxn) error {
+	sender := blk.GetSender()
+	receiver := blk.GetReceiver()
+	hash := blk.GetHash()
+	if err := l.deleteSenderOrReceiver(sender, idPrefixSender, hash, txn); err != nil {
+		return err
+	}
+	if err := l.deleteSenderOrReceiver(receiver, idPrefixReceiver, hash, txn); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
-	key := getKey(hash, idPrefixBlock)
+	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -424,7 +533,7 @@ func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, er
 }
 
 func (l *Ledger) AddSmartContractBlock(blk types.SmartContractBlock, txns ...db.StoreTxn) error {
-	key := getKey(blk.GetHash(), idPrefixSmartContractBlock)
+	key := getKeyOfHash(blk.GetHash(), idPrefixSmartContractBlock)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -446,7 +555,7 @@ func (l *Ledger) AddSmartContractBlock(blk types.SmartContractBlock, txns ...db.
 }
 
 func (l *Ledger) GetSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error) {
-	key := getKey(hash, idPrefixSmartContractBlock)
+	key := getKeyOfHash(hash, idPrefixSmartContractBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	blk := new(types.SmartContractBlock)
@@ -488,7 +597,7 @@ func (l *Ledger) GetSmartContractBlocks(fn func(block *types.SmartContractBlock)
 }
 
 func (l *Ledger) HasSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
-	key := getKey(hash, idPrefixSmartContractBlock)
+	key := getKeyOfHash(hash, idPrefixSmartContractBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -1063,7 +1172,7 @@ func (l *Ledger) DeletePending(pendingKey types.PendingKey, txns ...db.StoreTxn)
 }
 
 func (l *Ledger) AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) error {
-	key := getKey(frontier.HeaderBlock, idPrefixFrontier)
+	key := getKeyOfHash(frontier.HeaderBlock, idPrefixFrontier)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -1080,7 +1189,7 @@ func (l *Ledger) AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) erro
 }
 
 func (l *Ledger) GetFrontier(hash types.Hash, txns ...db.StoreTxn) (*types.Frontier, error) {
-	key := getKey(hash, idPrefixFrontier)
+	key := getKeyOfHash(hash, idPrefixFrontier)
 	frontier := types.Frontier{HeaderBlock: hash}
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -1118,7 +1227,7 @@ func (l *Ledger) GetFrontiers(txns ...db.StoreTxn) ([]*types.Frontier, error) {
 }
 
 func (l *Ledger) DeleteFrontier(hash types.Hash, txns ...db.StoreTxn) error {
-	key := getKey(hash, idPrefixFrontier)
+	key := getKeyOfHash(hash, idPrefixFrontier)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -1141,7 +1250,7 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 }
 
 func (l *Ledger) GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
-	key := getKey(hash, idPrefixPosterior)
+	key := getKeyOfHash(hash, idPrefixPosterior)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	h := new(types.Hash)
@@ -1158,6 +1267,41 @@ func (l *Ledger) GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash,
 		return types.ZeroHash, err
 	}
 	return *h, nil
+}
+
+func (l *Ledger) getSenderOrReceiver(number string, t byte, txn db.StoreTxn) ([]types.Hash, error) {
+	key := getKeyOfBytes(util.String2Bytes(number), t)
+	h := new([]types.Hash)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		if err := json.Unmarshal(val, h); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil && err != badger.ErrKeyNotFound {
+		return []types.Hash{}, err
+	}
+	return *h, nil
+}
+
+func (l *Ledger) GetSenderBlocks(sender string, txns ...db.StoreTxn) ([]types.Hash, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	h, err := l.getSenderOrReceiver(sender, idPrefixSender, txn)
+	if err != nil {
+		return []types.Hash{}, err
+	}
+	return h, nil
+}
+
+func (l *Ledger) GetReceiverBlocks(receiver string, txns ...db.StoreTxn) ([]types.Hash, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	h, err := l.getSenderOrReceiver(receiver, idPrefixReceiver, txn)
+	if err != nil {
+		return []types.Hash{}, err
+	}
+	return h, nil
 }
 
 func getVersionKey() []byte {

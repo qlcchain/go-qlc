@@ -68,6 +68,9 @@ type Store interface {
 	CountFrontiers(txns ...db.StoreTxn) (uint64, error)
 	// posterior
 	GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
+	// sender or receiver
+	GetSenderBlocks(sender string, txns ...db.StoreTxn) ([]types.Hash, error)
+	GetReceiverBlocks(receiver string, txns ...db.StoreTxn) ([]types.Hash, error)
 
 	//Latest block hash by account and token type, if not exist, return zero hash
 	Latest(account types.Address, token types.Hash, txns ...db.StoreTxn) types.Hash

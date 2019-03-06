@@ -281,6 +281,57 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 	t.Log("block ,", b)
 }
 
+func TestLedger_GetSenderBlocks(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	b := mock.StateBlock()
+	sender := "18000001111"
+	receiver := "18011110000"
+	b.Sender = sender
+	b.Receiver = receiver
+	if err := l.AddStateBlock(b); err != nil {
+		t.Fatal(err)
+	}
+	h, err := l.GetSenderBlocks(sender)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h[0] != b.GetHash() {
+		t.Fatal()
+	}
+	h2, err := l.GetReceiverBlocks(receiver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h[0] != b.GetHash() || h[0] != h2[0] {
+		t.Fatal()
+	}
+
+	b2 := mock.StateBlock()
+	b2.Sender = sender
+	if err := l.AddStateBlock(b2); err != nil {
+		t.Fatal(err)
+	}
+	h3, err := l.GetSenderBlocks(sender)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(h3) != 2 {
+		t.Fatal()
+	}
+
+	if err := l.DeleteStateBlock(b.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	h4, err := l.GetSenderBlocks(sender)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(h4) != 1 || h4[0] != b2.GetHash() {
+		t.Fatal()
+	}
+}
+
 func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
 	block = mock.StateBlock()
 	hash = block.GetPrevious()

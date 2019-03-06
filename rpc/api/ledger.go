@@ -688,3 +688,81 @@ func (l *LedgerApi) TransactionsCount() (map[string]uint64, error) {
 	c["unchecked"] = unCount
 	return c, nil
 }
+
+func (l *LedgerApi) getSenderOrReceiver(hashes []types.Hash, count int, offset *int) ([]*APIBlock, error) {
+	if count < 1 {
+		return nil, errors.New("err count")
+	}
+	o := 0
+	if offset != nil {
+		o = *offset
+		if o < -1 {
+			return nil, errors.New("err offset")
+		}
+	}
+	var hs []types.Hash
+	if len(hashes) > o {
+		if len(hashes) >= o+count {
+			hs = hashes[o : count+o]
+		} else {
+			hs = hashes[o:]
+		}
+	} else {
+		return make([]*APIBlock, 0), nil
+	}
+
+	ab := make([]*APIBlock, 0)
+	for _, h := range hs {
+		b := new(APIBlock)
+		block, err := l.ledger.GetStateBlock(h)
+		if err != nil {
+			return nil, err
+		}
+
+		token, err := mock.GetTokenById(block.GetToken())
+		if err != nil {
+			return nil, err
+		}
+		b.TokenName = token.TokenName
+		b = b.fromStateBlock(block)
+		ab = append(ab, b)
+	}
+	return ab, nil
+
+}
+
+func (l *LedgerApi) SenderBlocks(sender string, count int, offset *int) ([]*APIBlock, error) {
+	hashes, err := l.ledger.GetSenderBlocks(sender)
+	if err != nil {
+		return nil, err
+	}
+	return l.getSenderOrReceiver(hashes, count, offset)
+}
+
+func (l *LedgerApi) ReceiverBlocks(receiver string, count int, offset *int) ([]*APIBlock, error) {
+	hashes, err := l.ledger.GetReceiverBlocks(receiver)
+	if err != nil {
+		return nil, err
+	}
+	return l.getSenderOrReceiver(hashes, count, offset)
+}
+
+func (l *LedgerApi) SenderBlocksCount(sender string) (int, error) {
+	hashes, err := l.ledger.GetSenderBlocks(sender)
+	if err != nil {
+		return 0, err
+	}
+	var num int
+	num = len(hashes)
+	return num, nil
+}
+
+func (l *LedgerApi) ReceiverBlocksCount(receiver string) (int, error) {
+	hashes, err := l.ledger.GetReceiverBlocks(receiver)
+	if err != nil {
+		return 0, err
+	}
+	var num int
+	num = len(hashes)
+	return num, nil
+}
