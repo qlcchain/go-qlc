@@ -24,7 +24,7 @@ func (m BlockPosterior) Migrate(txn db.StoreTxn) error {
 		}
 		pre := blk.GetPrevious()
 		if !pre.IsZero() {
-			pKey := getKey(pre, idPrefixPosterior)
+			pKey := getKeyOfHash(pre, idPrefixPosterior)
 			if err := txn.Set(pKey, key[1:]); err != nil {
 				return err
 			}

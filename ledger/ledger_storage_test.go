@@ -15,7 +15,7 @@ func addtokens(l *Ledger, t *testing.T) []*types.TokenInfo {
 	}
 	txn := l.db.NewTransaction(true)
 	for _, token := range ts {
-		key := getKey(token.TokenId, idPrefixToken)
+		key := getKeyOfHash(token.TokenId, idPrefixToken)
 		val, _ := json.Marshal(token)
 
 		if err := txn.Set(key, val); err != nil {

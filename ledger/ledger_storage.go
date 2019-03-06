@@ -84,7 +84,7 @@ func (l *Ledger) GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.T
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key := getKey(tokenId, idPrefixToken)
+	key := getKeyOfHash(tokenId, idPrefixToken)
 	token := new(types.TokenInfo)
 	err := txn.Get(key, func(val []byte, b byte) (err error) {
 		if err := json.Unmarshal(val, token); err != nil {
