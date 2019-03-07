@@ -10,6 +10,7 @@ package abi
 import (
 	"errors"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"math/big"
 	"strings"
@@ -49,8 +50,9 @@ func ParseTokenInfo(data []byte) (*types.TokenInfo, error) {
 	return tokenInfo, err
 }
 
-func NewTokenHash(param *ParamMintage) types.Hash {
-	return types.ZeroHash
+func NewTokenHash(address types.Address, previous types.Hash, tokenName string) types.Hash {
+	h, _ := types.HashBytes(address[:], previous[:], util.String2Bytes(tokenName))
+	return h
 }
 
 func GetStorageKey(key []byte) []byte {

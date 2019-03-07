@@ -15,8 +15,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
-	"github.com/qlcchain/go-qlc/vm/contract"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"go.uber.org/zap"
 	"math/big"
 	"strings"
@@ -29,15 +27,6 @@ type ContractApi struct {
 
 func NewContractApi(ledger *ledger.Ledger) *ContractApi {
 	return &ContractApi{logger: log.NewLogger("api_contract"), ledger: ledger}
-}
-
-func (c *ContractApi) Mintage(param *cabi.ParamMintage) []*contract.ContractBlock {
-	return nil
-}
-
-//TODO: add param
-func (c *ContractApi) Pledge() []*contract.ContractBlock {
-	return nil
 }
 
 func (c *ContractApi) PackContractData(abiStr string, methodName string, params []string) ([]byte, error) {

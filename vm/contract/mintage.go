@@ -42,7 +42,7 @@ func (m *Mintage) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
 		return err
 	}
 
-	tokenId := cabi.NewTokenHash(param)
+	tokenId := cabi.NewTokenHash(block.Address, block.Previous, param.TokenName)
 	if _, err = ledger.GetTokenById(types.Hash(tokenId)); err != nil {
 		return errors.New("invalid token Id")
 	}

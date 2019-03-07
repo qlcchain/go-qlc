@@ -7,8 +7,14 @@
 
 package util
 
-import "math/big"
+import (
+	"errors"
+	"math/big"
+)
 
+var (
+	convertError = errors.New("convert error")
+)
 // BigPow returns a ** b as a big integer.
 func BigPow(a, b int64) *big.Int {
 	r := big.NewInt(a)
@@ -118,4 +124,16 @@ func BigMax(x, y *big.Int) *big.Int {
 		return y
 	}
 	return x
+}
+
+func StringToBigInt(str *string) (*big.Int, error) {
+	if str == nil {
+		return nil, convertError
+	}
+	n := new(big.Int)
+	n, ok := n.SetString(*str, 10)
+	if n == nil || !ok {
+		return nil, convertError
+	}
+	return n, nil
 }

@@ -55,6 +55,12 @@ func (r *RPC) getApi(apiModule string) API {
 			Service:   api.NewContractApi(r.ledger),
 			Public:    true,
 		}
+	case "mintage":
+		return API{Namespace: "mintage",
+			Version: "1.0",
+			Service: api.NewMintageApi(r.ledger),
+			Public:  true,
+		}
 	default:
 		return API{}
 	}
