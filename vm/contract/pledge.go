@@ -8,8 +8,16 @@
 package contract
 
 import (
+	"errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	"math/big"
+	"time"
+)
+
+var (
+	minPledgeTime = time.Duration(24 * 30 * 3) // minWithdrawTime 3 months)
 )
 
 type Pledge struct {
@@ -20,15 +28,54 @@ func (p *Pledge) GetFee(ledger *ledger.Ledger, block *types.StateBlock) (types.B
 }
 
 func (*Pledge) DoSend(ledger *ledger.Ledger, block *types.StateBlock) error {
-	panic("implement me")
+	// check pledge chain coin
+	// - address is normal user address
+	// - big than min pledge amount
+	// transfer quota to beneficial address
+	return nil
 }
 
 func (*Pledge) DoReceive(ledger *ledger.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	panic("implement me")
+	beneficialAddr := new(types.Address)
+	_ = cabi.ABIPledge.UnpackMethod(beneficialAddr, cabi.MethodNamePledge, input.Data)
+	beneficialKey := cabi.GetPledgeBeneficialKey(*beneficialAddr)
+	pledgeKey := cabi.GetPledgeKey(input.Address, beneficialKey)
+	oldPledgeData, err := ledger.GetStorage(&block.Address, pledgeKey)
+	if err != nil {
+		return nil, err
+	}
+	amount := big.NewInt(0)
+	if len(oldPledgeData) > 0 {
+		oldPledge := new(cabi.PledgeInfo)
+		_ = cabi.ABIPledge.UnpackVariable(oldPledge, cabi.VariableNamePledgeInfo, oldPledgeData)
+		amount = oldPledge.Amount
+	}
+	_, a := ledger.CalculateAmount(input)
+	amount.Add(amount, a.Int)
+
+	pledgeTime := time.Now().UTC().Add(time.Hour * minPledgeTime).Unix()
+	pledgeInfo, _ := cabi.ABIPledge.PackVariable(cabi.VariableNamePledgeInfo, amount, pledgeTime)
+	_ = ledger.SetStorage(pledgeKey, pledgeInfo)
+
+	oldBeneficialData, err := ledger.GetStorage(&block.Address, beneficialKey)
+	beneficialAmount := big.NewInt(0)
+	if len(oldBeneficialData) > 0 {
+		oldBeneficial := new(cabi.VariablePledgeBeneficial)
+		_ = cabi.ABIPledge.UnpackVariable(oldBeneficial, cabi.VariableNamePledgeBeneficial, oldBeneficialData)
+		beneficialAmount = oldBeneficial.Amount
+	}
+
+	beneficialAmount.Add(beneficialAmount, a.Int)
+	beneficialData, _ := cabi.ABIPledge.PackVariable(cabi.VariableNamePledgeBeneficial, beneficialAmount)
+	err = ledger.SetStorage(beneficialKey, beneficialData)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 func (*Pledge) GetRefundData() []byte {
-	panic("implement me")
+	return []byte{1}
 }
 
 func (*Pledge) GetQuota() uint64 {
@@ -42,8 +89,20 @@ func (*WithdrawPledge) GetFee(ledger *ledger.Ledger, block *types.StateBlock) (t
 	return types.ZeroBalance, nil
 }
 
-func (*WithdrawPledge) DoSend(ledger *ledger.Ledger, block *types.StateBlock) error {
-	panic("implement me")
+func (*WithdrawPledge) DoSend(ledger *ledger.Ledger, block *types.StateBlock) (err error) {
+	if isSend, amount := ledger.CalculateAmount(block); amount.Compare(types.ZeroBalance) != types.BalanceCompEqual || !isSend {
+		return errors.New("invalid block ")
+	}
+	param := new(cabi.ParamCancelPledge)
+	if err := cabi.ABIPledge.UnpackMethod(param, cabi.MethodNameWithdrawPledge, block.Data); err != nil {
+		return errors.New("invalid input data")
+	}
+
+	if block.Data, err = cabi.ABIPledge.PackMethod(cabi.MethodNameWithdrawPledge, param.Beneficial, param.Amount); err != nil {
+		return
+	}
+
+	return nil
 }
 
 func (*WithdrawPledge) DoReceive(ledger *ledger.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
@@ -51,7 +110,7 @@ func (*WithdrawPledge) DoReceive(ledger *ledger.Ledger, block *types.StateBlock,
 }
 
 func (*WithdrawPledge) GetRefundData() []byte {
-	panic("implement me")
+	return []byte{2}
 }
 
 func (*WithdrawPledge) GetQuota() uint64 {

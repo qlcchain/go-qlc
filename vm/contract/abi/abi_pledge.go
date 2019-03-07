@@ -47,3 +47,14 @@ type PledgeInfo struct {
 	WithdrawTime      uint64
 	BeneficialAddress types.Address
 }
+
+func GetPledgeBeneficialKey(beneficial types.Address) []byte {
+	return beneficial.Bytes()
+}
+
+func GetPledgeKey(addr types.Address, pledgeBeneficialKey []byte) []byte {
+	return append(addr.Bytes(), pledgeBeneficialKey...)
+}
+func IsPledgeKey(key []byte) bool {
+	return len(key) == 2*types.AddressSize
+}

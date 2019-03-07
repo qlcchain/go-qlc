@@ -15,6 +15,7 @@ import (
 var (
 	convertError = errors.New("convert error")
 )
+
 // BigPow returns a ** b as a big integer.
 func BigPow(a, b int64) *big.Int {
 	r := big.NewInt(a)
