@@ -10,7 +10,6 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"io/ioutil"
 	"math"
 	"math/big"
@@ -21,6 +20,7 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/log"
@@ -462,22 +462,22 @@ func BlockChain() ([]*types.StateBlock, error) {
 
 	token := GetChainTokenType()
 
-	b0 := createBlock(*ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, types.Hash(ac1.Address()), ac1.Address()) // genesis
+	b0 := createBlock(types.Open, *ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, types.Hash(ac1.Address()), ac1.Address()) // genesis
 	blocks = append(blocks, b0)
 
-	b1 := createBlock(*ac1, b0.GetHash(), token, types.Balance{Int: big.NewInt(int64(40000000000))}, types.Hash(ac2.Address()), ac1.Address()) //a1 send
+	b1 := createBlock(types.Send, *ac1, b0.GetHash(), token, types.Balance{Int: big.NewInt(int64(40000000000))}, types.Hash(ac2.Address()), ac1.Address()) //a1 send
 	blocks = append(blocks, b1)
 
-	b2 := createBlock(*ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(60000000000))}, b1.GetHash(), ac1.Address()) //a2 open
+	b2 := createBlock(types.Open, *ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(60000000000))}, b1.GetHash(), ac1.Address()) //a2 open
 	blocks = append(blocks, b2)
 
-	b3 := createBlock(*ac2, b2.GetHash(), token, types.Balance{Int: big.NewInt(int64(60000000000))}, types.ZeroHash, ac2.Address()) //a2 change
+	b3 := createBlock(types.Change, *ac2, b2.GetHash(), token, types.Balance{Int: big.NewInt(int64(60000000000))}, types.ZeroHash, ac2.Address()) //a2 change
 	blocks = append(blocks, b3)
 
-	b4 := createBlock(*ac2, b3.GetHash(), token, types.Balance{Int: big.NewInt(int64(30000000000))}, types.Hash(ac1.Address()), ac2.Address()) //a2 send
+	b4 := createBlock(types.Send, *ac2, b3.GetHash(), token, types.Balance{Int: big.NewInt(int64(30000000000))}, types.Hash(ac1.Address()), ac2.Address()) //a2 send
 	blocks = append(blocks, b4)
 
-	b5 := createBlock(*ac1, b1.GetHash(), token, types.Balance{Int: big.NewInt(int64(70000000000))}, b4.GetHash(), ac1.Address()) //a1 receive
+	b5 := createBlock(types.Receive, *ac1, b1.GetHash(), token, types.Balance{Int: big.NewInt(int64(70000000000))}, b4.GetHash(), ac1.Address()) //a1 receive
 	blocks = append(blocks, b5)
 
 	//b6 := createBlock(*ac2, b4.GetHash(), token, types.Balance{Int: big.NewInt(int64(20000000000))}, types.Hash(ac3.Address()), ac2.Address()) //a2 send
@@ -504,9 +504,9 @@ func BlockChain() ([]*types.StateBlock, error) {
 	return blocks, nil
 }
 
-func createBlock(ac types.Account, pre types.Hash, token types.Hash, balance types.Balance, link types.Hash, rep types.Address) *types.StateBlock {
+func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token types.Hash, balance types.Balance, link types.Hash, rep types.Address) *types.StateBlock {
 	blk := new(types.StateBlock)
-	blk.Type = types.State
+	blk.Type = t
 	blk.Address = ac.Address()
 	blk.Previous = pre
 	blk.Token = token

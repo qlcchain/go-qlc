@@ -130,6 +130,11 @@ func getPerformanceTime(cfgPathP string) error {
 		}
 	}
 
+	if len(consensus) == 0 {
+		fmt.Println("no transaction has completed consensus")
+		return nil
+	}
+
 	sort.Slice(consensus, func(i, j int) bool {
 		return consensus[i] < consensus[j]
 	})

@@ -127,7 +127,7 @@ func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
 		b = b.fromStateBlock(block)
-		b.SubType, b.Amount, err = q.judgeBlockKind(block)
+		_, b.Amount, err = q.judgeBlockKind(block)
 		if err != nil {
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
@@ -186,19 +186,15 @@ func (q *QlcApi) Process(block *types.StateBlock) (types.Hash, error) {
 func (q *QlcApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance, error) {
 	hash := block.GetHash()
 	q.logger.Debug(hash.String())
-	blkType, err := q.ledger.JudgeBlockKind(hash)
-	if err != nil {
-		return "", types.ZeroBalance, err
-	}
 	prevBlock, _ := q.ledger.GetStateBlock(block.Previous)
-	switch blkType {
-	case ledger.Open:
+	switch block.GetType() {
+	case types.Open:
 		return "open", block.GetBalance(), nil
-	case ledger.Receive:
+	case types.Receive:
 		return "receive", block.GetBalance().Sub(prevBlock.GetBalance()), nil
-	case ledger.Send:
+	case types.Send:
 		return "send", prevBlock.GetBalance().Sub(block.GetBalance()), nil
-	case ledger.Change:
+	case types.Change:
 		return "change", types.ZeroBalance, nil
 	default:
 		return "unknown", types.ZeroBalance, nil
@@ -229,7 +225,7 @@ func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, 
 			}
 
 			b := new(APIBlock)
-			b.SubType, b.Amount, err = q.judgeBlockKind(block)
+			_, b.Amount, err = q.judgeBlockKind(block)
 			if err != nil {
 				q.logger.Info(err)
 				return nil, err

@@ -37,7 +37,9 @@ func main() {
 		if cfg.RPC.Enable == false {
 			return
 		}
-
+		logService := log.NewLogService(cfg)
+		_ = logService.Init()
+		logService.Start()
 		dp := &consensus.DposService{}
 		rs := rpc.NewRPCService(cfg, dp)
 		err = rs.Init()
@@ -92,7 +94,9 @@ func initData() {
 
 	// accountHistoryTopn
 	blocks, _ := mock.BlockChain()
-	for _, b := range blocks {
+	ledger.BlockProcess(blocks[0])
+	for i, b := range blocks[1:] {
+		fmt.Println(i)
 		ledger.Process(b)
 	}
 	fmt.Println("accountHistoryTopn, ", blocks[0].GetAddress())
@@ -122,7 +126,7 @@ func initData() {
 
 	//blockAccount
 	sb := types.StateBlock{
-		Type:    types.State,
+		Type:    types.Send,
 		Address: addr1,
 		Token:   mock.GetChainTokenType(),
 	}
@@ -145,7 +149,7 @@ func initData() {
 	addr5, _ := types.HexToAddress("qlc_3c6ezoskbkgajq8f89ntcu75fdpcsokscgp9q5cdadndg1ju85fief7rrt11")
 
 	sb3 := types.StateBlock{
-		Type:    types.State,
+		Type:    types.Change,
 		Address: addr5,
 		Token:   mock.GetChainTokenType(),
 	}

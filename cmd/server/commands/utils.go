@@ -34,6 +34,9 @@ func runNode(account types.Address, password string, cfg *config.Config) error {
 		return err
 	}
 	services, err := startNode()
+	if err != nil {
+		fmt.Println(err)
+	}
 	cmn.TrapSignal(func() {
 		stopNode(services)
 	})
@@ -129,7 +132,7 @@ func startNode() ([]common.Service, error) {
 	return services, nil
 }
 
-func receive(sendBlock types.Block, account *types.Account) error {
+func receive(sendBlock *types.StateBlock, account *types.Account) error {
 	l := ctx.Ledger.Ledger
 
 	receiveBlock, err := l.GenerateReceiveBlock(sendBlock, account.PrivateKey())

@@ -55,19 +55,18 @@ func (l *Ledger) BlockCheck(block types.Block) (ProcessResult, error) {
 }
 
 func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (ProcessResult, error) {
-
 	hash := block.GetHash()
 	pre := block.GetPrevious()
 	link := block.GetLink()
 	address := block.GetAddress()
 
-	l.logger.Info("process block, ", hash)
+	l.logger.Debug("process block ", hash)
 
 	// make sure smart contract token exist
 	// ...
 
 	if !block.IsValid() {
-		l.logger.Info("invalid work")
+		l.logger.Infof("invalid work (%s)", hash)
 		return BadWork, nil
 	}
 
@@ -75,21 +74,21 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 	if err != nil {
 		return Other, err
 	}
+
 	if blockExist == true {
-		l.logger.Info("block already exist")
+		l.logger.Infof("block already exist (%s)", hash)
 		return Old, nil
 	}
 
-	// make sure the signature of this block is valid
 	signature := block.GetSignature()
 	if !address.Verify(hash[:], signature[:]) {
-		l.logger.Info("bad signature")
+		l.logger.Infof("bad signature (%s)", hash)
 		return BadSignature, nil
 	}
 
 	if pre.IsZero() && bytes.EqualFold(address[:], link[:]) {
 		l.logger.Info("genesis block")
-		return Progress, nil
+		//return Progress, nil
 	}
 
 	transferAmount := block.GetBalance()
@@ -103,9 +102,8 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		if err != nil {
 			return Other, err
 		}
-
 		if pre.IsZero() {
-			l.logger.Info("fork: token meta exist, but pre hash is zero")
+			l.logger.Info("fork: token meta exist, but pre hash is zero (%s)", hash)
 			return Fork, nil
 		}
 		preExist, err := l.HasStateBlock(block.GetPrevious(), txn)
@@ -113,11 +111,11 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 			return Other, err
 		}
 		if !preExist {
-			l.logger.Info("gap previous: token meta exist, but pre block not exist")
+			l.logger.Infof("gap previous: token meta exist, but pre block not exist (%s)", hash)
 			return GapPrevious, nil
 		}
 		if block.GetPrevious() != tm.Header {
-			l.logger.Info("fork: pre block exist, but pre hash not equal account token's header hash")
+			l.logger.Infof("fork: pre block exist, but pre hash not equal account token's header hash (%s)", hash)
 			return Fork, nil
 		}
 		if block.GetBalance().Compare(tm.Balance) == types.BalanceCompSmaller {
@@ -126,14 +124,13 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		} else {
 			transferAmount = block.GetBalance().Sub(tm.Balance) // receive or change
 		}
-
 	} else { // open
 		if !pre.IsZero() {
-			l.logger.Info("gap previous: token meta not exist, but pre hash is not zero")
+			l.logger.Infof("gap previous: token meta not exist, but pre hash is not zero (%s)", hash)
 			return GapPrevious, nil
 		}
 		if link.IsZero() {
-			l.logger.Info("gap source: token meta not exist, but link hash is zero")
+			l.logger.Infof("gap source: token meta not exist, but link hash is zero (%s)", hash)
 			return GapSource, nil
 		}
 	}
@@ -144,7 +141,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 				return Other, err
 			}
 			if !linkExist {
-				l.logger.Info("gap source: open or receive block, but link block is not exist")
+				l.logger.Infof("gap source: open or receive block, but link block is not exist (%s)", hash)
 				return GapSource, nil
 			}
 			PendingKey := types.PendingKey{
@@ -154,18 +151,18 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 			pending, err := l.GetPending(PendingKey, txn)
 			if err != nil {
 				if err == ErrPendingNotFound {
-					l.logger.Info("unreceivable: open or receive block, but pending not exist")
+					l.logger.Infof("unreceivable: open or receive block, but pending not exist (%s)", hash)
 					return UnReceivable, nil
 				}
 				return Other, err
 			}
 			if !pending.Amount.Equal(transferAmount) {
-				l.logger.Infof("balance mismatch: open or receive block, but pending amount(%s) not equal transfer amount(%s)", pending.Amount, transferAmount)
+				l.logger.Infof("balance mismatch: open or receive block, but pending amount(%s) not equal transfer amount(%s) (%s)", pending.Amount, transferAmount, hash)
 				return BalanceMismatch, nil
 			}
 		} else { //change
 			if !transferAmount.Equal(types.ZeroBalance) {
-				l.logger.Info("balance mismatch: change block, but transfer amount is not 0 ")
+				l.logger.Infof("balance mismatch: change block, but transfer amount is not 0 (%s)", hash)
 				return BalanceMismatch, nil
 			}
 		}
@@ -186,7 +183,7 @@ func (l *Ledger) BlockProcess(block types.Block) error {
 
 func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
 	hash := block.GetHash()
-	l.logger.Info("add block, ", hash)
+	l.logger.Debug("add block, ", hash)
 	if err := l.AddStateBlock(block, txn); err != nil {
 		return err
 	}
@@ -195,34 +192,25 @@ func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) err
 	if err != nil && err != ErrTokenNotFound && err != ErrAccountNotFound {
 		return err
 	}
-
 	if err := l.updateRepresentative(block, tm, txn); err != nil {
 		return err
 	}
-
 	if err := l.updatePending(block, tm, txn); err != nil {
 		return err
 	}
-
 	if err := l.updateAccountMeta(hash, block.GetRepresentative(), block.GetAddress(), block.GetToken(), block.GetBalance(), txn); err != nil {
 		return err
 	}
-
 	if err := l.updateFrontier(hash, tm, txn); err != nil {
 		return err
 	}
-
 	return nil
 }
 
 func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
-	isSend, err := l.isSend(block, txn)
-	if err != nil {
-		return err
-	}
 	hash := block.GetHash()
 	link := block.GetLink()
-	if isSend { // send
+	if block.GetType() == types.Send { // send
 		pending := types.PendingInfo{
 			Source: block.GetAddress(),
 			Type:   block.GetToken(),
@@ -232,7 +220,7 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn
 			Address: types.Address(block.GetLink()),
 			Hash:    hash,
 		}
-		l.logger.Info("add pending, ", pendingkey)
+		l.logger.Debug("add pending, ", pendingkey)
 		if err := l.AddPending(pendingkey, &pending, txn); err != nil {
 			return err
 		}
@@ -244,7 +232,7 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn
 				Address: block.GetAddress(),
 				Hash:    block.GetLink(),
 			}
-			l.logger.Info("delete pending, ", pendingkey)
+			l.logger.Debug("delete pending, ", pendingkey)
 			if err := l.DeletePending(pendingkey, txn); err != nil {
 				return err
 			}
@@ -253,28 +241,10 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn
 	return nil
 }
 
-func (l *Ledger) isSend(block *types.StateBlock, txn db.StoreTxn) (bool, error) {
-	isSend := false
-	tmExist, err := l.HasTokenMeta(block.GetAddress(), block.GetToken(), txn)
-	if err != nil {
-		return false, err
-	}
-	if tmExist {
-		tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken(), txn)
-		if err != nil {
-			return false, err
-		}
-		if block.GetBalance().Compare(tm.Balance) == types.BalanceCompSmaller {
-			isSend = true
-		}
-	}
-	return isSend, nil
-}
-
 func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
 	if block.GetToken() == mock.GetChainTokenType() {
 		if tm != nil && !tm.Representative.IsZero() {
-			l.logger.Infof("sub rep %s from %s ", tm.Balance, tm.Representative)
+			l.logger.Debugf("sub rep %s from %s ", tm.Balance, tm.Representative)
 			if err := l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {
 				return err
 			}
@@ -291,7 +261,7 @@ func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMe
 			//	return errors.New("invalid block")
 			//}
 		}
-		l.logger.Infof("add rep %s to %s ", block.GetBalance(), block.GetRepresentative())
+		l.logger.Debugf("add rep %s to %s ", block.GetBalance(), block.GetRepresentative())
 		if err := l.AddRepresentation(block.GetRepresentative(), block.GetBalance(), txn); err != nil {
 			return err
 		}
@@ -305,7 +275,7 @@ func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.Sto
 	}
 	if tm != nil {
 		if frontier, err := l.GetFrontier(tm.Header, txn); err == nil {
-			l.logger.Info("delete frontier, ", *frontier)
+			l.logger.Debug("delete frontier, ", *frontier)
 			if err := l.DeleteFrontier(frontier.HeaderBlock, txn); err != nil {
 				return err
 			}
@@ -314,7 +284,7 @@ func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.Sto
 	} else {
 		frontier.OpenBlock = hash
 	}
-	l.logger.Info("add frontier,", *frontier)
+	l.logger.Debug("add frontier,", *frontier)
 	if err := l.AddFrontier(frontier, txn); err != nil {
 		return err
 	}
@@ -336,7 +306,7 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address t
 		token.Balance = balance
 		token.BlockCount = token.BlockCount + 1
 		token.Modified = time.Now().Unix()
-		l.logger.Info("update tokenmeta, ", *token)
+		l.logger.Debug("update tokenmeta, ", *token)
 		if err := l.UpdateTokenMeta(address, token, txn); err != nil {
 			return err
 		}
@@ -356,7 +326,7 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address t
 			Modified:       time.Now().Unix(),
 		}
 		if acExist {
-			l.logger.Info("add tokenmeta,", token)
+			l.logger.Debug("add tokenmeta,", token)
 			if err := l.AddTokenMeta(address, &tm, txn); err != nil {
 				return err
 			}
@@ -365,7 +335,7 @@ func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address t
 				Address: address,
 				Tokens:  []*types.TokenMeta{&tm},
 			}
-			l.logger.Info("add accountmeta,", token)
+			l.logger.Debug("add accountmeta,", token)
 			if err := l.AddAccountMeta(&account, txn); err != nil {
 				return err
 			}
@@ -383,7 +353,7 @@ func (l *Ledger) generateWork(hash types.Hash) types.Work {
 	//_ = s.setWork(hash, work)
 }
 
-func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (types.Block, error) {
+func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error) {
 	tm, err := l.GetTokenMeta(source, token)
 	if err != nil {
 		return nil, err
@@ -393,104 +363,83 @@ func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to ty
 		return nil, err
 	}
 
-	acc := types.NewAccount(prk)
-	if balance.Compare(amount) == types.BalanceCompBigger {
+	if balance.Compare(amount) != types.BalanceCompSmaller {
 		newBalance := balance.Sub(amount)
-		sendBlock, err := types.NewBlock(types.State)
-		if err != nil {
-			return nil, err
+		sb := types.StateBlock{
+			Type:           types.Send,
+			Address:        source,
+			Token:          token,
+			Link:           to.ToHash(),
+			Balance:        newBalance,
+			Previous:       tm.Header,
+			Representative: tm.Representative,
 		}
-		if sb, ok := sendBlock.(*types.StateBlock); ok {
-			sb.Address = source
-			sb.Token = token
-			sb.Link = to.ToHash()
-			sb.Balance = newBalance
-			sb.Previous = tm.Header
-			sb.Representative = tm.Representative
-			sb.Signature = acc.Sign(sb.GetHash())
-			//sb.Work, _ = s.GetWork(source)
-			//if !sb.IsValid() {
-			//	sb.Work = s.generateWork(sb.Root())
-			//}
-			sb.Work = l.generateWork(sb.Root())
-		}
-		return sendBlock, nil
+		acc := types.NewAccount(prk)
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+		return &sb, nil
 	} else {
 		return nil, fmt.Errorf("not enought balance(%s) of %s", balance, amount)
 	}
 }
 
-func (l *Ledger) GenerateReceiveBlock(sendBlock types.Block, prk ed25519.PrivateKey) (types.Block, error) {
-	var state *types.StateBlock
-	ok := false
-	if state, ok = sendBlock.(*types.StateBlock); !ok {
-		return nil, errors.New("invalid state sendBlock")
-	}
-	hash := state.GetHash()
-	// block not exist
+func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error) {
+	hash := sendBlock.GetHash()
 	if exist, err := l.HasStateBlock(hash); !exist || err != nil {
 		return nil, fmt.Errorf("sendBlock(%s) does not exist", hash.String())
 	}
-	sendTm, err := l.Token(hash)
-	if err != nil {
-		return nil, err
-	}
-	rxAccount := types.Address(state.Link)
-	acc := types.NewAccount(prk)
-	if err != nil {
-		return nil, err
-	}
+
+	rxAccount := types.Address(sendBlock.Link)
 	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
 	if err != nil {
 		return nil, err
 	}
-	receiveBlock, _ := types.NewBlock(types.State)
 	has, err := l.HasAccountMeta(rxAccount)
 	if err != nil {
 		return nil, err
 	}
+	acc := types.NewAccount(prk)
+	sb := new(types.StateBlock)
 	if has {
 		rxAm, err := l.GetAccountMeta(rxAccount)
 		if err != nil {
 			return nil, err
 		}
-		rxTm := rxAm.Token(state.Token)
-		if sb, ok := receiveBlock.(*types.StateBlock); ok {
-			sb.Address = rxAccount
-			sb.Balance = rxTm.Balance.Add(info.Amount)
-			sb.Previous = rxTm.Header
-			sb.Link = hash
-			sb.Representative = rxTm.Representative
-			sb.Token = rxTm.Type
-			sb.Extra = types.Hash{}
-			sb.Signature = acc.Sign(sb.GetHash())
-			//sb.Work, _ = s.GetWork(rxAccount)
-			//if !sb.IsValid() {
-			//	sb.Work = s.generateWork(sb.Root())
-			//}
-			sb.Work = l.generateWork(sb.Root())
+		rxTm := rxAm.Token(sendBlock.GetToken())
+		sb = &types.StateBlock{
+			Type:           types.Receive,
+			Address:        rxAccount,
+			Balance:        rxTm.Balance.Add(info.Amount),
+			Previous:       rxTm.Header,
+			Link:           hash,
+			Representative: rxTm.Representative,
+			Token:          rxTm.Type,
+			Extra:          types.ZeroHash,
 		}
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
 	} else {
-		if sb, ok := receiveBlock.(*types.StateBlock); ok {
-			sb.Address = rxAccount
-			sb.Balance = info.Amount
-			sb.Previous = types.Hash{}
-			sb.Link = hash
-			sb.Representative = sendTm.Representative
-			sb.Token = sendTm.Type
-			sb.Extra = types.Hash{}
-			sb.Signature = acc.Sign(sb.GetHash())
-			//sb.Work, _ = s.GetWork(rxAccount)
-			//if !sb.IsValid() {
-			//	sb.Work = s.generateWork(sb.Root())
-			//}
-			sb.Work = l.generateWork(sb.Root())
+		genesis, err := mock.GetTokenById(mock.GetChainTokenType())
+		if err != nil {
+			return nil, err
 		}
+		sb = &types.StateBlock{
+			Type:           types.Open,
+			Address:        rxAccount,
+			Balance:        info.Amount,
+			Previous:       types.ZeroHash,
+			Link:           hash,
+			Representative: genesis.Owner,
+			Token:          sendBlock.GetToken(),
+			Extra:          types.ZeroHash,
+		}
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
 	}
-	return receiveBlock, nil
+	return sb, nil
 }
 
-func (l *Ledger) GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (types.Block, error) {
+func (l *Ledger) GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error) {
 	if b, err := l.HasAccountMeta(account); err != nil || !b {
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
@@ -501,40 +450,28 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 
 	//get latest chain token block
 	hash := l.Latest(account, mock.GetChainTokenType())
-
-	l.logger.Info(hash)
 	if hash.IsZero() {
 		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
 	}
 
 	block, err := l.GetStateBlock(hash)
+	if err != nil {
+		return nil, err
+	}
 
-	if err != nil {
-		return nil, err
-	}
-	changeBlock, err := types.NewBlock(types.State)
-	if err != nil {
-		return nil, err
-	}
 	tm, err := l.GetTokenMeta(account, mock.GetChainTokenType())
-	acc := types.NewAccount(prk)
-	if sb, ok := changeBlock.(*types.StateBlock); ok {
-
-		sb.Address = account
-		sb.Balance = tm.Balance
-		sb.Previous = tm.Header
-		sb.Link = account.ToHash()
-		sb.Representative = representative
-		sb.Token = block.Token
-		sb.Extra = types.Hash{}
-		sb.Signature = acc.Sign(sb.GetHash())
-
-		//sb.Work, _ = s.GetWork(account)
-		//if !sb.IsValid() {
-		//	sb.Work = s.generateWork(sb.Root())
-		//	_ = s.setWork(account, sb.Work)
-		//}
-		sb.Work = l.generateWork(sb.Root())
+	sb := types.StateBlock{
+		Type:           types.Change,
+		Address:        account,
+		Balance:        tm.Balance,
+		Previous:       tm.Header,
+		Link:           types.ZeroHash,
+		Representative: representative,
+		Token:          block.Token,
+		Extra:          types.ZeroHash,
 	}
-	return changeBlock, nil
+	acc := types.NewAccount(prk)
+	sb.Signature = acc.Sign(sb.GetHash())
+	sb.Work = l.generateWork(sb.Root())
+	return &sb, nil
 }

@@ -11,7 +11,8 @@ func TestProcess_BlockBasicInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	for i, b := range bc {
+	l.BlockProcess(bc[0])
+	for i, b := range bc[1:] {
 		t.Log(i)
 		if _, err := l.Process(b); err != nil {
 			t.Fatal()

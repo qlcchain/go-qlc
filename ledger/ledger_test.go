@@ -877,14 +877,15 @@ func TestLedger_Rollback(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	for _, b := range bc {
+	l.BlockProcess(bc[0])
+	for _, b := range bc[1:] {
 		if _, err := l.Process(b); err != nil {
-			t.Fatal()
+			t.Fatal(err)
 		}
 	}
 	h := bc[2].GetHash()
 	if err := l.Rollback(h); err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 	checkInfo(t, l)
 }
