@@ -126,7 +126,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		}
 	} else { // open
 		if !pre.IsZero() {
-			l.logger.Infof("gap previous: token meta not exist, but pre hash is not zero (%s)", hash)
+			l.logger.Infof("gap previous: token meta not exist, but pre hash is not zero (%s) ", hash)
 			return GapPrevious, nil
 		}
 		if link.IsZero() {
@@ -358,19 +358,18 @@ func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to ty
 	if err != nil {
 		return nil, err
 	}
-	balance, err := l.TokenBalance(source, token)
-	if err != nil {
-		return nil, err
-	}
+	//balance, err := l.TokenBalance(source, token)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	if balance.Compare(amount) != types.BalanceCompSmaller {
-		newBalance := balance.Sub(amount)
+	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		sb := types.StateBlock{
 			Type:           types.Send,
 			Address:        source,
 			Token:          token,
 			Link:           to.ToHash(),
-			Balance:        newBalance,
+			Balance:        tm.Balance.Sub(amount),
 			Previous:       tm.Header,
 			Representative: tm.Representative,
 		}
@@ -379,16 +378,19 @@ func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to ty
 		sb.Work = l.generateWork(sb.Root())
 		return &sb, nil
 	} else {
-		return nil, fmt.Errorf("not enought balance(%s) of %s", balance, amount)
+		return nil, fmt.Errorf("not enought balance(%s) of %s", tm.Balance, amount)
 	}
 }
 
 func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error) {
 	hash := sendBlock.GetHash()
-	if exist, err := l.HasStateBlock(hash); !exist || err != nil {
-		return nil, fmt.Errorf("sendBlock(%s) does not exist", hash.String())
+	if !sendBlock.GetType().Equal(types.Send) {
+		return nil, fmt.Errorf("(%s) is not send block", hash.String())
 	}
-
+	if exist, err := l.HasStateBlock(hash); !exist || err != nil {
+		return nil, fmt.Errorf("send block(%s) does not exist", hash.String())
+	}
+	acc := types.NewAccount(prk)
 	rxAccount := types.Address(sendBlock.Link)
 	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
 	if err != nil {
@@ -398,15 +400,13 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 	if err != nil {
 		return nil, err
 	}
-	acc := types.NewAccount(prk)
-	sb := new(types.StateBlock)
 	if has {
 		rxAm, err := l.GetAccountMeta(rxAccount)
 		if err != nil {
 			return nil, err
 		}
 		rxTm := rxAm.Token(sendBlock.GetToken())
-		sb = &types.StateBlock{
+		sb := types.StateBlock{
 			Type:           types.Receive,
 			Address:        rxAccount,
 			Balance:        rxTm.Balance.Add(info.Amount),
@@ -418,25 +418,26 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		}
 		sb.Signature = acc.Sign(sb.GetHash())
 		sb.Work = l.generateWork(sb.Root())
+		return &sb, nil
 	} else {
-		genesis, err := mock.GetTokenById(mock.GetChainTokenType())
-		if err != nil {
-			return nil, err
-		}
-		sb = &types.StateBlock{
+		//genesis, err := mock.GetTokenById(mock.GetChainTokenType())
+		//if err != nil {
+		//	return nil, err
+		//}
+		sb := &types.StateBlock{
 			Type:           types.Open,
 			Address:        rxAccount,
 			Balance:        info.Amount,
 			Previous:       types.ZeroHash,
 			Link:           hash,
-			Representative: genesis.Owner,
+			Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
 			Token:          sendBlock.GetToken(),
 			Extra:          types.ZeroHash,
 		}
 		sb.Signature = acc.Sign(sb.GetHash())
 		sb.Work = l.generateWork(sb.Root())
+		return sb, nil
 	}
-	return sb, nil
 }
 
 func (l *Ledger) GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error) {

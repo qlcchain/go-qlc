@@ -436,10 +436,10 @@ func TestGenesisSign(t *testing.T) {
 		s := ac.Sign(smartContractBlocks[i].GetHash())
 		fmt.Println(s)
 
-		var w types.Work
-		worker, _ := types.NewWorker(w, genesisBlocks[i].Root())
-		t := worker.NewWork()
-		fmt.Println(t)
+		//var w types.Work
+		//worker, _ := types.NewWorker(w, genesisBlocks[i].Root())
+		//t := worker.NewWork()
+		//fmt.Println(t)
 
 		s1 := ac.Sign(genesisBlocks[i].GetHash())
 		fmt.Println(s1)

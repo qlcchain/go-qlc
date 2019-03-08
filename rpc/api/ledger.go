@@ -48,7 +48,7 @@ type APIPending struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, dpos *consensus.DposService) *LedgerApi {
-	return &LedgerApi{ledger: l, dpos: dpos, logger: log.NewLogger("api_ledger")}
+	return &LedgerApi{ledger: l, dpos: dpos, logger: log.NewLogger("rpc/ledger")}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -431,14 +431,15 @@ func (l *LedgerApi) Chain(hash types.Hash, n int) ([]types.Hash, error) {
 }
 
 // Delegators returns a list of pairs of delegator names given account a representative and its balance
-func (l *LedgerApi) Delegators(hash types.Address) (map[types.Address]types.Balance, error) {
-	ds := make(map[types.Address]types.Balance)
+func (l *LedgerApi) Delegators(hash types.Address) ([]*APIAccountBalance, error) {
+	abs := make([]*APIAccountBalance, 0)
 
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
 		t := am.Token(mock.GetChainTokenType())
 		if t != nil {
 			if t.Representative == hash {
-				ds[am.Address] = t.Balance
+				ab := &APIAccountBalance{am.Address, t.Balance}
+				abs = append(abs, ab)
 			}
 		}
 		return nil
@@ -446,7 +447,7 @@ func (l *LedgerApi) Delegators(hash types.Address) (map[types.Address]types.Bala
 	if err != nil {
 		return nil, err
 	}
-	return ds, nil
+	return abs, nil
 }
 
 // DelegatorsCount gets number of delegators for a specific representative account
@@ -486,10 +487,6 @@ func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (*ty
 	if err != nil {
 		return nil, err
 	}
-	//amount, err := mock.BalanceToRaw(para.Amount, para.TokenName)
-	//if err != nil {
-	//	return nil, err
-	//}
 	block, err := l.ledger.GenerateSendBlock(para.Send, info.TokenId, para.To, para.Amount, prk)
 	if err != nil {
 		return nil, err
@@ -574,22 +571,22 @@ func (l *LedgerApi) Performance() ([]*types.PerformanceTime, error) {
 	return pts, nil
 }
 
-type APIRepresentative struct {
+type APIAccountBalance struct {
 	Address types.Address `json:"address"`
 	Balance types.Balance `json:"balance"`
 }
 
-type APIRepresentatives []APIRepresentative
+type APIAccountBalances []APIAccountBalance
 
-func (r APIRepresentatives) Swap(i, j int) {
+func (r APIAccountBalances) Swap(i, j int) {
 	r[i], r[j] = r[j], r[i]
 }
 
-func (r APIRepresentatives) Len() int {
+func (r APIAccountBalances) Len() int {
 	return len(r)
 }
 
-func (r APIRepresentatives) Less(i, j int) bool {
+func (r APIAccountBalances) Less(i, j int) bool {
 	if r[i].Balance.Compare(r[j].Balance) == types.BalanceCompSmaller {
 		return false
 	}
@@ -597,10 +594,10 @@ func (r APIRepresentatives) Less(i, j int) bool {
 }
 
 //Representatives returns a list of pairs of representative and its voting weight
-func (l *LedgerApi) Representatives(sorting *bool) (*APIRepresentatives, error) {
-	rs := make(APIRepresentatives, 0)
+func (l *LedgerApi) Representatives(sorting *bool) (*APIAccountBalances, error) {
+	rs := make(APIAccountBalances, 0)
 	err := l.ledger.GetRepresentations(func(address types.Address, balance types.Balance) error {
-		r := APIRepresentative{address, balance}
+		r := APIAccountBalance{address, balance}
 		rs = append(rs, r)
 		return nil
 	})

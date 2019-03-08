@@ -114,6 +114,10 @@ func (e BlockType) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+func (e BlockType) Equal(t BlockType) bool {
+	return byte(e) == byte(t)
+}
+
 func NewBlock(t BlockType) (Block, error) {
 	switch t {
 	case State, ContractSend, ContractRefund, ContractReward, ContractError, Send, Receive, Change, Open:

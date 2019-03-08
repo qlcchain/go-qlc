@@ -37,9 +37,7 @@ func main() {
 		if cfg.RPC.Enable == false {
 			return
 		}
-		logService := log.NewLogService(cfg)
-		_ = logService.Init()
-		logService.Start()
+
 		dp := &consensus.DposService{}
 		rs := rpc.NewRPCService(cfg, dp)
 		err = rs.Init()

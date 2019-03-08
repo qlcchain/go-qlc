@@ -17,7 +17,7 @@ type WalletApi struct {
 }
 
 func NewWalletApi(wallet *wallet.WalletStore) *WalletApi {
-	return &WalletApi{wallet: wallet, logger: log.NewLogger("util_account")}
+	return &WalletApi{wallet: wallet, logger: log.NewLogger("rpc/wallet")}
 }
 
 // GetBalance returns balance for each token of the wallet
