@@ -44,17 +44,15 @@ func (l *Ledger) Process(block types.Block) (ProcessResult, error) {
 }
 
 func (l *Ledger) BlockCheck(block types.Block) (ProcessResult, error) {
-	txn, b := l.getTxn(false)
-	defer l.releaseTxn(txn, b)
 	if b, ok := block.(*types.StateBlock); ok {
-		return l.checkStateBlock(b, txn)
+		return l.checkStateBlock(b)
 	} else if _, ok := block.(*types.SmartContractBlock); ok {
 		return Other, errors.New("smart contract block")
 	}
 	return Other, errors.New("invalid block")
 }
 
-func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (ProcessResult, error) {
+func (l *Ledger) checkStateBlock(block *types.StateBlock) (ProcessResult, error) {
 	hash := block.GetHash()
 	pre := block.GetPrevious()
 	link := block.GetLink()
@@ -70,7 +68,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		return BadWork, nil
 	}
 
-	blockExist, err := l.HasStateBlock(hash, txn)
+	blockExist, err := l.HasStateBlock(hash)
 	if err != nil {
 		return Other, err
 	}
@@ -92,13 +90,13 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 	}
 
 	transferAmount := block.GetBalance()
-	tmExist, err := l.HasTokenMeta(address, block.GetToken(), txn)
+	tmExist, err := l.HasTokenMeta(address, block.GetToken())
 	if err != nil {
 		return Other, err
 	}
 	isSend := false
-	if tmExist { // this tm chain exist , not open
-		tm, err := l.GetTokenMeta(address, block.GetToken(), txn)
+	if tmExist {
+		tm, err := l.GetTokenMeta(address, block.GetToken())
 		if err != nil {
 			return Other, err
 		}
@@ -106,7 +104,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 			l.logger.Info("fork: token meta exist, but pre hash is zero (%s)", hash)
 			return Fork, nil
 		}
-		preExist, err := l.HasStateBlock(block.GetPrevious(), txn)
+		preExist, err := l.HasStateBlock(block.GetPrevious())
 		if err != nil {
 			return Other, err
 		}
@@ -124,7 +122,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 		} else {
 			transferAmount = block.GetBalance().Sub(tm.Balance) // receive or change
 		}
-	} else { // open
+	} else {
 		if !pre.IsZero() {
 			l.logger.Infof("gap previous: token meta not exist, but pre hash is not zero (%s) ", hash)
 			return GapPrevious, nil
@@ -136,7 +134,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 	}
 	if !isSend {
 		if !link.IsZero() { // open or receive
-			linkExist, err := l.HasStateBlock(link, txn)
+			linkExist, err := l.HasStateBlock(link)
 			if err != nil {
 				return Other, err
 			}
@@ -148,7 +146,7 @@ func (l *Ledger) checkStateBlock(block *types.StateBlock, txn db.StoreTxn) (Proc
 				Address: address,
 				Hash:    link,
 			}
-			pending, err := l.GetPending(PendingKey, txn)
+			pending, err := l.GetPending(PendingKey)
 			if err != nil {
 				if err == ErrPendingNotFound {
 					l.logger.Infof("unreceivable: open or receive block, but pending not exist (%s)", hash)
@@ -175,7 +173,7 @@ func (l *Ledger) BlockProcess(block types.Block) error {
 		if state, ok := block.(*types.StateBlock); ok {
 			return l.processStateBlock(state, txn)
 		} else if _, ok := block.(*types.SmartContractBlock); ok {
-			return nil
+			return errors.New("smart contract block")
 		}
 		return errors.New("invalid block")
 	})
@@ -198,7 +196,7 @@ func (l *Ledger) processStateBlock(block *types.StateBlock, txn db.StoreTxn) err
 	if err := l.updatePending(block, tm, txn); err != nil {
 		return err
 	}
-	if err := l.updateAccountMeta(hash, block.GetRepresentative(), block.GetAddress(), block.GetToken(), block.GetBalance(), txn); err != nil {
+	if err := l.updateAccountMeta(block, txn); err != nil {
 		return err
 	}
 	if err := l.updateFrontier(hash, tm, txn); err != nil {
@@ -291,7 +289,12 @@ func (l *Ledger) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.Sto
 	return nil
 }
 
-func (l *Ledger) updateAccountMeta(hash types.Hash, rep types.Address, address types.Address, token types.Hash, balance types.Balance, txn db.StoreTxn) error {
+func (l *Ledger) updateAccountMeta(block *types.StateBlock, txn db.StoreTxn) error {
+	hash := block.GetHash()
+	rep := block.GetRepresentative()
+	address := block.GetAddress()
+	token := block.GetToken()
+	balance := block.GetBalance()
 	tmExist, err := l.HasTokenMeta(address, token, txn)
 	if err != nil {
 		return err
