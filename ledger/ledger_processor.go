@@ -454,8 +454,6 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 
 	//get latest chain token block
 	hash := l.Latest(account, common.QLCChainToken)
-
-	l.logger.Info(hash)
 	if hash.IsZero() {
 		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
 	}
@@ -464,19 +462,17 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	if err != nil {
 		return nil, err
 	}
-	tm, err := l.GetTokenMeta(account, common.QLCChainToken)
-	acc := types.NewAccount(prk)
-	if sb, ok := changeBlock.(*types.StateBlock); ok {
-		sb.Address = account
-		sb.Balance = tm.Balance
-		sb.Previous = tm.Header
-		sb.Link = account.ToHash()
-		sb.Representative = representative
-		sb.Token = block.Token
-		sb.Extra = types.Hash{}
-		sb.Signature = acc.Sign(sb.GetHash())
 
-		sb.Work = l.generateWork(sb.Root())
+	tm, err := l.GetTokenMeta(account, common.QLCChainToken)
+	sb := types.StateBlock{
+		Type:           types.Change,
+		Address:        account,
+		Balance:        tm.Balance,
+		Previous:       tm.Header,
+		Link:           types.ZeroHash,
+		Representative: representative,
+		Token:          block.Token,
+		Extra:          types.ZeroHash,
 	}
 	acc := types.NewAccount(prk)
 	sb.Signature = acc.Sign(sb.GetHash())

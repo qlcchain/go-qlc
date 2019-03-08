@@ -88,7 +88,7 @@ func (l *LedgerApi) generateAPIBlock(block *types.StateBlock) (*APIBlock, error)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
 	_, ab.Amount = l.ledger.CalculateAmount(block)
-	token, err := mock.GetTokenById(block.GetToken())
+	token, err := l.ledger.GetTokenById(block.GetToken())
 	if err != nil {
 		return nil, err
 	}
@@ -114,14 +114,7 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 			if err != nil {
 				return nil, err
 			}
-
-			b := new(APIBlock)
-			b.SubType, b.Amount, err = l.judgeBlockKind(block)
-			if err != nil {
-				l.logger.Info(err)
-				return nil, err
-			}
-			token, err := l.ledger.GetTokenById(block.GetToken())
+			b, err := l.generateAPIBlock(block)
 			if err != nil {
 				return nil, err
 			}
@@ -382,13 +375,7 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b := new(APIBlock)
-		b = b.fromStateBlock(block)
-		b.SubType, b.Amount, err = l.judgeBlockKind(block)
-		if err != nil {
-			return nil, fmt.Errorf("judge block kind error, %s, %s", h, err)
-		}
-		token, err := l.ledger.GetTokenById(block.GetToken())
+		b, err := l.generateAPIBlock(block)
 		if err != nil {
 			return nil, err
 		}
@@ -404,16 +391,9 @@ func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
 	}
 	ab := make([]*APIBlock, 0)
 	index := 0
-	err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		if index >= o && index < o+num {
-			b := new(APIBlock)
-			var err error
-			b.SubType, b.Amount, err = l.judgeBlockKind(block)
-			if err != nil {
-				l.logger.Info(err)
-				return err
-			}
-			token, err := l.ledger.GetTokenById(block.GetToken())
+	err = l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+		if index >= o && index < o+c {
+			b, err := l.generateAPIBlock(block)
 			if err != nil {
 				return err
 			}

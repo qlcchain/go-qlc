@@ -9,7 +9,7 @@ package contract
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/chain"
+	"github.com/qlcchain/go-qlc/common"
 	"math/big"
 	"regexp"
 	"time"
@@ -191,7 +191,7 @@ func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 				tokenInfo.Owner,
 				types.ContractRefund,
 				types.Balance{Int: tokenInfo.PledgeAmount},
-				chain.QLCChainToken,
+				common.QLCChainToken,
 				[]byte{},
 			},
 		}, nil

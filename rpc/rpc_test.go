@@ -107,6 +107,7 @@ func TestRPC_HTTP(t *testing.T) {
 func TestRPC_WebSocket(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
+	t.Skip()
 
 	_, address, _ := scheme(rs.rpc.config.RPC.WSEndpoint)
 	client, err := Dial(fmt.Sprintf("ws://%s", address))
