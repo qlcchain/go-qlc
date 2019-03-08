@@ -33,9 +33,15 @@ func (ls *LedgerService) Init() error {
 	defer ls.PostInit()
 	l := ls.Ledger
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		//TODO: init genesis block
 		genesis := common.QLCGenesisBlock
 		_ = l.SetStorage(genesis.Token[:], genesis.Data)
+		if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
+			_ = l.AddStateBlock(&common.GenesisMintageBlock)
+		}
+
+		if b, err := l.HasStateBlock(common.QLCGenesisBlockHash); !b && err == nil {
+			_ = l.AddStateBlock(&common.QLCGenesisBlock)
+		}
 		return nil
 	})
 }
