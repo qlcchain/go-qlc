@@ -9,6 +9,7 @@ package contract
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/chain"
 	"math/big"
 	"regexp"
 	"time"
@@ -152,11 +153,12 @@ func (m *WithdrawMintage) DoSend(ledger *l.Ledger, block *types.StateBlock) erro
 func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
 	_ = cabi.ABIMintage.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
-	tokenInfo := new(types.TokenInfo)
 	storage, err := ledger.GetStorage(&block.Address, tokenId[:])
 	if err != nil {
 		return nil, err
 	}
+
+	tokenInfo := new(types.TokenInfo)
 	_ = cabi.ABIMintage.UnpackVariable(tokenInfo, cabi.VariableNameToken, storage)
 
 	now := time.Now().UTC().Unix()
@@ -189,7 +191,7 @@ func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 				tokenInfo.Owner,
 				types.ContractRefund,
 				types.Balance{Int: tokenInfo.PledgeAmount},
-				l.QLCChainToken,
+				chain.QLCChainToken,
 				[]byte{},
 			},
 		}, nil

@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func addtokens(l *Ledger, t *testing.T) []*types.TokenInfo {
-	ts, err := mock.Tokens()
+	ts, err := l.ListTokens()
 	if err != nil {
 		t.Fatal(err)
 	}

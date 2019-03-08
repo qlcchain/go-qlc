@@ -13,13 +13,13 @@ type StateBlock struct {
 	Balance        Balance   `msg:"balance,extension" json:"balance"`
 	Previous       Hash      `msg:"previous,extension" json:"previous"`
 	Link           Hash      `msg:"link,extension" json:"link"`
-	Sender         string    `msg:"sender" json:"sender"`
-	Receiver       string    `msg:"receiver" json:"receiver"`
-	Message        Hash      `msg:"message,extension" json:"message"`
-	Data           []byte    `msg:"data" json:"data"`
+	Sender         string    `msg:"sender" json:"sender,omitempty"`
+	Receiver       string    `msg:"receiver" json:"receiver,omitempty"`
+	Message        Hash      `msg:"message,extension" json:"message,omitempty"`
+	Data           []byte    `msg:"data" json:"data,omitempty"`
 	Quota          int64     `msg:"quota" json:"quota"`
 	Timestamp      int64     `msg:"timestamp" json:"timestamp"`
-	Extra          Hash      `msg:"extra,extension" json:"extra"`
+	Extra          Hash      `msg:"extra,extension" json:"extra,omitempty"`
 	Representative Address   `msg:"representative,extension" json:"representative"`
 	Work           Work      `msg:"work,extension" json:"work"`
 	Signature      Signature `msg:"signature,extension" json:"signature"`

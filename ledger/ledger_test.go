@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
@@ -134,7 +135,24 @@ func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
 }
 
 func addSmartContractBlock(t *testing.T, l *Ledger) *types.SmartContractBlock {
-	blk := mock.GetSmartContracts()[0]
+	jsonBlock := `{
+    "internalAccount": "qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic",
+    "contract": {
+      "abi": "mcvnzY+zF5mVDjsvknvPfFgRToMQAVI4wivQGRZBwerbUIvfrKD6/suZJWiFVOI5sbTa98bpY9+1cUhE2T9yidxSCpvZ4kkBVBMfcL3OJIqG",
+      "abiLength": 81,
+      "abiHash": "79dab43dcc97205918b297c3aba6259e3ab1ed7d0779dc78eec6f57e5d6307ce"
+    },
+    "owner": "qlc_1nawsw4yatupd47p3scd5x5i3s9szbsggxbxmfy56f8jroyu945i5seu1cdd",
+	"isUseStorage": false,
+    "type": "SmartContract",
+    "address": "qlc_3watpnwym9i43kbkt35yfp8xnqo7c9ujp3b6udajza71mspjfzpnpdgoydzn",
+    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+    "extra": "0000000000000000000000000000000000000000000000000000000000000000",
+    "work": "00000000007bb1fe",
+    "signature": "d9d71c82eccdca0324e102c089b28c1430b0ae61f2af809e6134b289d5186b16cbcb6fcd4bfc1424fd34aa40e9bdd05069bc56d05fecf833470d80d047048a05"
+  }`
+	blk := new(types.SmartContractBlock)
+	_ = json.Unmarshal([]byte(jsonBlock), blk)
 	if err := l.AddSmartContractBlock(*blk); err != nil {
 		t.Log(err)
 	}

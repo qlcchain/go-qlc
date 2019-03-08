@@ -3,13 +3,13 @@ package ledger
 import (
 	"bytes"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 type ProcessResult byte
@@ -240,7 +240,7 @@ func (l *Ledger) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn
 }
 
 func (l *Ledger) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
-	if block.GetToken() == mock.GetChainTokenType() {
+	if block.GetToken() == common.QLCChainToken {
 		if tm != nil && !tm.Representative.IsZero() {
 			l.logger.Debugf("sub rep %s from %s ", tm.Balance, tm.Representative)
 			if err := l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {
@@ -453,7 +453,9 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	}
 
 	//get latest chain token block
-	hash := l.Latest(account, mock.GetChainTokenType())
+	hash := l.Latest(account, common.QLCChainToken)
+
+	l.logger.Info(hash)
 	if hash.IsZero() {
 		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
 	}
@@ -462,17 +464,19 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	if err != nil {
 		return nil, err
 	}
+	tm, err := l.GetTokenMeta(account, common.QLCChainToken)
+	acc := types.NewAccount(prk)
+	if sb, ok := changeBlock.(*types.StateBlock); ok {
+		sb.Address = account
+		sb.Balance = tm.Balance
+		sb.Previous = tm.Header
+		sb.Link = account.ToHash()
+		sb.Representative = representative
+		sb.Token = block.Token
+		sb.Extra = types.Hash{}
+		sb.Signature = acc.Sign(sb.GetHash())
 
-	tm, err := l.GetTokenMeta(account, mock.GetChainTokenType())
-	sb := types.StateBlock{
-		Type:           types.Change,
-		Address:        account,
-		Balance:        tm.Balance,
-		Previous:       tm.Header,
-		Link:           types.ZeroHash,
-		Representative: representative,
-		Token:          block.Token,
-		Extra:          types.ZeroHash,
+		sb.Work = l.generateWork(sb.Root())
 	}
 	acc := types.NewAccount(prk)
 	sb.Signature = acc.Sign(sb.GetHash())

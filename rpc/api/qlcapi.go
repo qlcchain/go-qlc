@@ -9,7 +9,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"go.uber.org/zap"
 )
 
@@ -91,7 +90,7 @@ func (q *QlcApi) AccountsPending(addresses []types.Address, n int) (map[types.Ad
 				return nil, err
 			}
 
-			token, err := mock.GetTokenById(pendinginfo.Type)
+			token, err := q.ledger.GetTokenById(pendinginfo.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -133,7 +132,7 @@ func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 		}
 		//b.SubType = "state"
 		q.logger.Info("getToken,", block.GetToken())
-		token, err := mock.GetTokenById(block.GetToken())
+		token, err := q.ledger.GetTokenById(block.GetToken())
 		if err != nil {
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
@@ -231,7 +230,7 @@ func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, 
 				return nil, err
 			}
 			q.logger.Info("token,", block.GetToken())
-			token, err := mock.GetTokenById(block.GetToken())
+			token, err := q.ledger.GetTokenById(block.GetToken())
 			if err != nil {
 				q.logger.Info(err)
 				return nil, err
@@ -260,15 +259,5 @@ func (q *QlcApi) ValidateAccount(addr string) bool {
 }
 
 func (q *QlcApi) Tokens() ([]*types.TokenInfo, error) {
-	var tis []*types.TokenInfo
-	scs := mock.GetSmartContracts()
-	for _, sc := range scs {
-		hash := sc.GetHash()
-		ti, err := mock.GetTokenById(hash)
-		if err != nil {
-			return nil, err
-		}
-		tis = append(tis, &ti)
-	}
-	return tis, nil
+	return q.ledger.ListTokens()
 }

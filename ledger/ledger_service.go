@@ -11,11 +11,8 @@ import (
 	"errors"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 type LedgerService struct {
@@ -34,45 +31,11 @@ func (ls *LedgerService) Init() error {
 		return errors.New("pre init fail")
 	}
 	defer ls.PostInit()
-	// TODO: remove
 	l := ls.Ledger
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		//insert smart contract block
-		sbs := mock.GetSmartContracts()
-		for i := 0; i < len(sbs); i++ {
-			sb := sbs[i]
-			h := sb.GetHash()
-			if b, err := l.HasSmartContractBlock(h, txn); !b && err == nil {
-				err := l.AddSmartContractBlock(*sb, txn)
-				if err != nil {
-					ls.Ledger.logger.Error(err)
-					return nil
-				}
-				ls.Ledger.logger.Debugf("save sb[%s] successful", h.String())
-			}
-		}
-		// insert genesis blocks
-		genesis := mock.GetGenesis()
-		for i := 0; i < len(genesis); i++ {
-			b := genesis[i].(*types.StateBlock)
-			hash := b.GetHash()
-			if exist, err := l.HasStateBlock(hash); !exist && err == nil {
-				err := l.BlockProcess(b)
-				if err != nil {
-					ls.Ledger.logger.Error(err)
-				} else {
-					ls.Ledger.logger.Debugf("save block[%s]", hash.String())
-				}
-				if err != nil {
-					ls.Ledger.logger.Error(err)
-				}
-			} else {
-				ls.Ledger.logger.Debugf("%s, %v", hash.String(), err)
-				meta, _ := l.GetAccountMeta(b.Address)
-				ls.Ledger.logger.Debug(util.ToString(&meta))
-			}
-		}
-
+		//TODO: init genesis block
+		genesis := common.QLCGenesisBlock
+		_ = l.SetStorage(genesis.Token[:], genesis.Data)
 		return nil
 	})
 }

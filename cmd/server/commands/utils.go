@@ -22,7 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/rpc"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"github.com/qlcchain/go-qlc/wallet"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -96,7 +95,7 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 					}
 
 					if account, ok := cache.Load(address); ok {
-						balance, _ := mock.RawToBalance(b.Balance, "QLC")
+						balance, _ := common.RawToBalance(b.Balance, "QLC")
 						fmt.Printf("receive block from [%s] to[%s] amount[%d]\n", b.Address.String(), address.String(), balance)
 						err = receive(b, account.(*types.Account))
 						if err != nil {

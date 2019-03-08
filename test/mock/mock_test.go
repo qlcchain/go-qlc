@@ -9,19 +9,15 @@ package mock
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"math/big"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 func TestMockHash(t *testing.T) {
@@ -256,129 +252,6 @@ func jsonPrettyPrint(in string) string {
 	return out.String()
 }
 
-func TestGetTokenById(t *testing.T) {
-	hash := smartContractBlocks[0].GetHash()
-	t.Log(hash)
-	ti, err := GetTokenById(hash)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if ti.TokenName != "QLC" {
-		t.Fatal("err token name")
-	}
-
-	if GetChainTokenType() != hash {
-		t.Fatal("chain token error")
-	}
-	marshal, _ := json.Marshal(&ti)
-
-	t.Log(string(marshal))
-}
-
-func TestGetGenesis(t *testing.T) {
-	g := GetGenesis()
-
-	for i := 0; i < len(g); i++ {
-		block := g[i]
-		t.Logf("%v: %s", &block, block)
-	}
-}
-
-func TestGetGenesis2(t *testing.T) {
-	g := GetGenesis()
-	for _, b := range g {
-		t.Logf("%v", b)
-	}
-}
-
-func TestGetChainTokenType(t *testing.T) {
-	h := GetChainTokenType()
-	h2 := smartContractBlocks[0].GetHash()
-	if h != h2 {
-		t.Fatal("GetChainTokenType error")
-	}
-	//if genesisBlocks[0].Token != h {
-	//	t.Fatal("genesis error")
-	//}
-}
-
-func TestBalanceToRaw(t *testing.T) {
-	b1 := types.Balance{Int: big.NewInt(2)}
-	i, _ := new(big.Int).SetString("200000000", 10)
-	b2 := types.Balance{Int: i}
-
-	type args struct {
-		b    types.Balance
-		unit string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    types.Balance
-		wantErr bool
-	}{
-		{"Mqlc", args{b: b1, unit: "QLC"}, b2, false},
-		{"Mqn1", args{b: b1, unit: "QN1"}, b2, false},
-		{"Mqn3", args{b: b1, unit: "QN3"}, b2, false},
-		{"Mqn5", args{b: b1, unit: "QN5"}, b2, false},
-		{"Mqn6", args{b: b1, unit: "QN6"}, b1, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := BalanceToRaw(tt.args.b, tt.args.unit)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("BalanceToRaw() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BalanceToRaw() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestRawToBalance(t *testing.T) {
-	b1 := types.Balance{Int: big.NewInt(2)}
-	i, _ := new(big.Int).SetString("200000000", 10)
-	b2 := types.Balance{Int: i}
-	type args struct {
-		b    types.Balance
-		unit string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    types.Balance
-		wantErr bool
-	}{
-		{"Mqlc", args{b: b2, unit: "QLC"}, b1, false},
-		{"Mqn1", args{b: b2, unit: "QN1"}, b1, false},
-		{"Mqn3", args{b: b2, unit: "QN3"}, b1, false},
-		{"Mqn5", args{b: b2, unit: "QN5"}, b1, false},
-		{"Mqn6", args{b: b2, unit: "QN6"}, b2, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := RawToBalance(tt.args.b, tt.args.unit)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RawToBalance() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("RawToBalance() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestGetSmartContracts(t *testing.T) {
-	contracts := GetSmartContracts()
-	for _, c := range contracts {
-		t.Logf("%p: %s", &c, c.GetHash().String())
-	}
-}
-
 func TestStateBlock(t *testing.T) {
 	b := StateBlock()
 	if valid := b.IsValid(); !valid {
@@ -406,18 +279,6 @@ func TestBlockChain(t *testing.T) {
 	}
 }
 
-func TestTokenType(t *testing.T) {
-	num := len(smartContractBlocks)
-	for i := 0; i < num; i++ {
-		//h := smartContractBlocks[i].GetHash()
-		//if genesisBlocks[i].Token != h {
-		//	t.Log(h)
-		//	t.Fatal(i, " genesis error")
-		//}
-	}
-
-}
-
 var seedStr = []string{
 	"DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9",
 	"E4935D4D9DEF9D12BC2059C34848C444DBC462FBFF592428C218BF0BC174D065",
@@ -425,41 +286,4 @@ var seedStr = []string{
 	"AAB43DFBFCC6702504F03F64B66B0482A206EFDD5990D0C5FFCE164EBB088E06",
 	"FBEA7F04DC9AD25E2CBC05FAEF6CEF98DF08CF04582937832F67B3883075244A",
 	"0578B09D725C77432886632364FDE29D3DAFB4A7748B7801FBD6D79BBF013B73",
-}
-
-func TestGenesisSign(t *testing.T) {
-	for i := 0; i < len(seedStr); i++ {
-		sByte, _ := hex.DecodeString(seedStr[i])
-		seed, _ := types.BytesToSeed(sByte)
-		ac, _ := seed.Account(0)
-		fmt.Println(i)
-		s := ac.Sign(smartContractBlocks[i].GetHash())
-		fmt.Println(s)
-
-		//var w types.Work
-		//worker, _ := types.NewWorker(w, genesisBlocks[i].Root())
-		//t := worker.NewWork()
-		//fmt.Println(t)
-
-		s1 := ac.Sign(genesisBlocks[i].GetHash())
-		fmt.Println(s1)
-	}
-}
-
-func TestGenesisVerify(t *testing.T) {
-	for i := 0; i < len(genesisBlocks); i++ {
-		//addr := genesisBlocks[i].GetAddress()
-		//sign := genesisBlocks[i].GetSignature()
-		//h := genesisBlocks[i].GetHash()
-		//if !addr.Verify(h[:], sign[:]) {
-		//	t.Fatal(i)
-		//}
-		//
-		//addr1 := smartContractBlocks[i].InternalAccount
-		//sign1 := smartContractBlocks[i].Signature
-		//h1 := smartContractBlocks[i].GetHash()
-		//if !addr1.Verify(h1[:], sign1[:]) {
-		//	t.Fatal(i)
-		//}
-	}
 }

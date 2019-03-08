@@ -2,22 +2,23 @@ package api
 
 import (
 	"encoding/hex"
+	"github.com/qlcchain/go-qlc/ledger"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"github.com/qlcchain/go-qlc/wallet"
 	"go.uber.org/zap"
 )
 
 type WalletApi struct {
 	wallet *wallet.WalletStore
+	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 }
 
-func NewWalletApi(wallet *wallet.WalletStore) *WalletApi {
-	return &WalletApi{wallet: wallet, logger: log.NewLogger("rpc/wallet")}
+func NewWalletApi(ledger *ledger.Ledger, wallet *wallet.WalletStore) *WalletApi {
+	return &WalletApi{ledger: ledger, wallet: wallet, logger: log.NewLogger("util_account")}
 }
 
 // GetBalance returns balance for each token of the wallet
@@ -37,7 +38,7 @@ func (w *WalletApi) GetBalances(address types.Address, passphrase string) (map[s
 	cache := make(map[string]types.Balance)
 
 	for token, balance := range balances {
-		info, err := mock.GetTokenById(token)
+		info, err := w.ledger.GetTokenById(token)
 		if err != nil {
 			return nil, err
 		}

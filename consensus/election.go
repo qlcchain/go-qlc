@@ -1,9 +1,9 @@
 package consensus
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 type BlockReceivedVotes struct {
@@ -123,8 +123,8 @@ func (el *Election) getOnlineRepresentativesBalance() types.Balance {
 }
 
 func (el *Election) getGenesisBalance() (types.Balance, error) {
-	hash := mock.GetChainTokenType()
-	i, err := mock.GetTokenById(hash)
+	hash := common.QLCChainToken
+	i, err := el.dps.ledger.GetTokenById(hash)
 	if err != nil {
 		return types.ZeroBalance, err
 	}
