@@ -113,4 +113,5 @@ func addcommands() {
 	walletCreate()
 	walletList()
 	walletRemove()
+	mintage()
 }
