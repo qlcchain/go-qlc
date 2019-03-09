@@ -2,7 +2,7 @@ We at QLC Chain love reaching out to the open-source community and are open to a
 
 # About the code base
 
-It is written in [Golang](https://golang.org). And we use [Modules](https://github.com/golang/go/wiki/Modules) for for versioned modules. 
+It is written in [Golang](https://golang.org). And we use [Modules](https://github.com/golang/go/wiki/Modules) for versioned modules. 
 
 ## Development Prerequisites
 
