@@ -43,10 +43,7 @@ func (el *Election) voteAction(va *protos.ConfirmAckBlock) {
 	if !valid {
 		return
 	}
-	exit, _ := el.vote.voteExit(va.Account)
-	if !exit {
-		el.vote.repVotes[va.Account] = va
-	}
+	el.vote.voteStatus(va)
 	el.haveQuorum()
 }
 
@@ -95,18 +92,18 @@ func (el *Election) haveQuorum() {
 func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 	totals := make(map[types.Hash]*BlockReceivedVotes)
 	var hash types.Hash
-	for key, value := range el.vote.repVotes {
-		hash = value.Blk.GetHash()
+	el.vote.repVotes.Range(func(key, value interface{}) bool {
+		hash = value.(*protos.ConfirmAckBlock).Blk.GetHash()
 		if _, ok := totals[hash]; !ok {
 			totals[hash] = &BlockReceivedVotes{
-				block:   value.Blk,
+				block:   value.(*protos.ConfirmAckBlock).Blk,
 				balance: types.ZeroBalance,
 			}
 		}
-		weight := el.dps.ledger.Weight(key)
+		weight := el.dps.ledger.Weight(key.(types.Address))
 		totals[hash].balance = totals[hash].balance.Add(weight)
-	}
-
+		return true
+	})
 	return totals
 }
 

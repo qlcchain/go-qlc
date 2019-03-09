@@ -51,7 +51,7 @@ func (act *ActiveTrx) start() {
 			act.dps.logger.Info("refresh pri info.")
 			go act.dps.refreshPriInfo()
 		default:
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -97,13 +97,24 @@ func (act *ActiveTrx) announceVotes() {
 		}
 		if value.(*Election).confirmed { //&& value.(*Election).announcements >= announcementMin-1 {
 			if act.dps.cfg.PerformanceTest.Enabled {
+				var t *types.PerformanceTime
 				if p, err := act.dps.ledger.GetPerformanceTime(hash); p != nil && err == nil {
-					t := &types.PerformanceTime{
-						Hash: hash,
-						T0:   p.T0,
-						T1:   time.Now().UnixNano(),
-						T2:   p.T2,
-						T3:   p.T3,
+					if value.(*Election).announcements == 0 {
+						t = &types.PerformanceTime{
+							Hash: hash,
+							T0:   p.T0,
+							T1:   time.Now().UnixNano(),
+							T2:   p.T2,
+							T3:   time.Now().UnixNano(),
+						}
+					} else {
+						t = &types.PerformanceTime{
+							Hash: hash,
+							T0:   p.T0,
+							T1:   time.Now().UnixNano(),
+							T2:   p.T2,
+							T3:   p.T3,
+						}
 					}
 					err := act.dps.ledger.AddOrUpdatePerformance(t)
 					if err != nil {
@@ -130,7 +141,7 @@ func (act *ActiveTrx) announceVotes() {
 					} else {
 						act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", hash, block.Root())
 						act.dps.ns.Broadcast(p2p.ConfirmAck, va)
-						act.vote(va)
+						value.(*Election).voteAction(va)
 					}
 				} else {
 					act.dps.logger.Infof("vote:send confirmReq for hash %s,previous hash is %s", hash, block.Root())

@@ -23,7 +23,7 @@ import (
 
 const (
 	msgCacheSize                       = 65536
-	msgCacheExpirationTime             = 10 * time.Minute
+	msgCacheExpirationTime             = 30 * time.Minute
 	findOnlineRepresentativesIntervals = 2 * time.Minute
 )
 
@@ -32,7 +32,6 @@ type DposService struct {
 	ns                 p2p.Service
 	ledger             *ledger.Ledger
 	eventMsg           map[p2p.EventType]p2p.EventSubscriber
-	quitCh             chan bool
 	bp                 *BlockProcessor
 	wallet             *wallet.WalletStore
 	acTrx              *ActiveTrx
@@ -82,7 +81,6 @@ func (dps *DposService) Stop() error {
 		return errors.New("pre stop fail")
 	}
 	defer dps.PostStop()
-	dps.quitCh <- true
 	dps.bp.quitCh <- true
 	dps.acTrx.quitCh <- true
 	for i, j := range dps.eventMsg {
@@ -105,7 +103,6 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 		ns:       netService,
 		ledger:   l,
 		eventMsg: make(map[p2p.EventType]p2p.EventSubscriber),
-		quitCh:   make(chan bool, 1),
 		bp:       bp,
 		acTrx:    acTrx,
 		wallet:   wallet.NewWalletStore(cfg),
@@ -229,8 +226,9 @@ func (dps *DposService) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock
 		blockFrom: types.UnSynchronized,
 	}
 	if !dps.cache.Has(e.Hash()) {
+		var isRep bool
 		dps.priInfos.Range(func(key, value interface{}) bool {
-			isRep := dps.isThisAccountRepresentation(key.(types.Address))
+			isRep = dps.isThisAccountRepresentation(key.(types.Address))
 			if isRep {
 				dps.putRepresentativesToOnline(key.(types.Address))
 				result, _ := dps.ledger.Process(bs.block)
@@ -239,11 +237,12 @@ func (dps *DposService) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock
 					dps.sendConfirmAck(bs.block, key.(types.Address), value.(*types.Account))
 				}
 				dps.bp.processResult(result, bs)
-			} else {
-				dps.bp.blocks <- bs
 			}
 			return true
 		})
+		if !isRep {
+			dps.bp.blocks <- bs
+		}
 		dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
 		err := dps.cache.Set(e.Hash(), "")
 		if err != nil {
@@ -272,11 +271,12 @@ func (dps *DposService) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAc
 	if !valid {
 		return
 	}
-	dps.putRepresentativesToOnline(ack.Account)
 	dps.acTrx.vote(ack)
 	if !dps.cache.Has(e.Hash()) {
+		var isRep bool
+		dps.putRepresentativesToOnline(ack.Account)
 		dps.priInfos.Range(func(key, value interface{}) bool {
-			isRep := dps.isThisAccountRepresentation(key.(types.Address))
+			isRep = dps.isThisAccountRepresentation(key.(types.Address))
 			if isRep {
 				dps.putRepresentativesToOnline(key.(types.Address))
 				result, _ := dps.ledger.Process(bs.block)
@@ -285,11 +285,16 @@ func (dps *DposService) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAc
 					dps.sendConfirmAck(bs.block, key.(types.Address), value.(*types.Account))
 				}
 				dps.bp.processResult(result, bs)
-			} else {
-				dps.bp.blocks <- bs
+				if result == ledger.Progress {
+					dps.acTrx.vote(ack)
+				}
 			}
 			return true
 		})
+		if !isRep {
+			dps.bp.blocks <- bs
+		}
+
 		dps.ns.SendMessageToPeers(p2p.ConfirmAck, ack, e.MessageFrom())
 		err := dps.cache.Set(e.Hash(), "")
 		if err != nil {
@@ -318,32 +323,12 @@ func (dps *DposService) sendConfirmAck(block *types.StateBlock, account types.Ad
 }
 
 func (dps *DposService) voteGenerate(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
-	//var va protos.ConfirmAckBlock
-	//if v, ok := dps.acTrx.roots.Load(block.Root()); ok {
-	//	result, vt := v.(*Election).vote.voteExit(account)
-	//	if result {
-	//		va.Sequence = vt.Sequence + 1
-	//		va.Blk = block
-	//		va.Account = account
-	//		va.Signature = acc.Sign(block.GetHash())
-	//	} else {
-	//		va.Sequence = 0
-	//		va.Blk = block
-	//		va.Account = account
-	//		va.Signature = acc.Sign(block.GetHash())
-	//	}
-	//} else {
 	va := &protos.ConfirmAckBlock{
 		Sequence:  0,
 		Blk:       block,
 		Account:   account,
 		Signature: acc.Sign(block.GetHash()),
 	}
-	//va.Sequence = 0
-	//va.Blk = block
-	//va.Account = account
-	//va.Signature = acc.Sign(block.GetHash())
-	//}
 	return va, nil
 }
 
