@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	swarmt "github.com/libp2p/go-libp2p-swarm/testing"
 	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/qlcchain/go-qlc/config"
@@ -15,9 +16,9 @@ func TestQlcNode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	h1 := bhost.New(swarmt.GenSwarm(t, ctx))
-	cfgFile := filepath.Join(config.DefaultDataDir())
+	cfgFile := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	defer func() {
-		err := os.RemoveAll(cfgFile)
+		err := os.RemoveAll(config.QlcTestDataDir())
 		if err != nil {
 			t.Fatal(err)
 		}

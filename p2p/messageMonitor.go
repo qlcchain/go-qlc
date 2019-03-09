@@ -54,7 +54,7 @@ type MessageService struct {
 // NewService return new Service.
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
-		quitCh:              make(chan bool, 1),
+		quitCh:              make(chan bool, 6),
 		messageCh:           make(chan Message, 65535),
 		publishMessageCh:    make(chan Message, 65535),
 		confirmReqMessageCh: make(chan Message, 65535),
@@ -197,7 +197,6 @@ func (ms *MessageService) checkMessageCacheLoop() {
 	for {
 		select {
 		case <-ms.quitCh:
-			ms.netService.node.logger.Info("Stopped Message Service.")
 			return
 		case <-ticker.C:
 			ms.checkMessageCache()
@@ -352,7 +351,9 @@ func (ms *MessageService) onConfirmAck(message Message) {
 func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
-	ms.quitCh <- true
+	for i := 0; i < 6; i++ {
+		ms.quitCh <- true
+	}
 	ms.syncService.quitCh <- true
 	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
 	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))

@@ -52,4 +52,27 @@ func TestQlcMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	//test VerifyHeader()
+	err = qlcMsg.VerifyHeader()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := []byte{0x00, 0x01, 0x02}
+	copy(qlcMsg.content[0:QlcMessageMagicNumberEndIdx], h)
+	err = qlcMsg.VerifyHeader()
+	if err == nil {
+		t.Fatal("VerifyHeader error")
+	}
+
+	//test VerifyData()
+	err = qlcMsg.VerifyData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	copy(qlcMsg.content[QlcMessageDataCheckSumEndIdx:QlcMessageDataCheckSumEndIdx+3], h)
+	err = qlcMsg.VerifyData()
+	if err == nil {
+		t.Fatal("VerifyData error")
+	}
 }
