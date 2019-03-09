@@ -5,11 +5,12 @@
  * https://opensource.org/licenses/MIT
  */
 
-package contract
+package abi
 
 import (
 	"errors"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"math/big"
 	"strings"
@@ -47,4 +48,17 @@ func ParseTokenInfo(data []byte) (*types.TokenInfo, error) {
 	tokenInfo := new(types.TokenInfo)
 	err := ABIMintage.UnpackVariable(tokenInfo, VariableNameToken, data)
 	return tokenInfo, err
+}
+
+func NewTokenHash(address types.Address, previous types.Hash, tokenName string) types.Hash {
+	h, _ := types.HashBytes(address[:], previous[:], util.String2Bytes(tokenName))
+	return h
+}
+
+func GetStorageKey(key []byte) []byte {
+	var tmp []byte
+	tmp = append(tmp, types.MintageAddress[:]...)
+	tmp = append(tmp, key...)
+
+	return tmp
 }

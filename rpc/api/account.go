@@ -13,7 +13,7 @@ type AccountApi struct {
 }
 
 func NewAccountApi() *AccountApi {
-	return &AccountApi{logger: log.NewLogger("api_account")}
+	return &AccountApi{logger: log.NewLogger("rpc/account")}
 }
 
 func (a *AccountApi) Create(seedStr string, i *uint32) (map[string]string, error) {

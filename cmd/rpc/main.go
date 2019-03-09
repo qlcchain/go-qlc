@@ -9,6 +9,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"math/big"
 	"os"
 	"os/signal"
@@ -70,7 +71,7 @@ func initData(p string) {
 	addr1, _ := types.HexToAddress("qlc_3nihnp4a5zf5iq9pz54twp1dmksxnouc4i5k4y6f8gbnkc41p1b5ewm3inpw")
 	am1.Address = addr1
 	t1 := mock.TokenMeta(addr1)
-	t1.Type = mock.GetChainTokenType()
+	t1.Type = common.QLCChainToken
 	// delegators
 	t1.Representative, _ = types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
 	t1.Balance = types.Balance{Int: big.NewInt(int64(110000000000000000))}
@@ -78,7 +79,7 @@ func initData(p string) {
 	t1.BlockCount = 12
 	am1.Tokens = append(am1.Tokens, t1)
 	t2 := mock.TokenMeta(addr1)
-	t2.Type = mock.GetSmartContracts()[1].GetHash()
+	t2.Type = mock.SmartContractBlock().GetHash()
 	am1.Tokens = append(am1.Tokens, t2)
 	ledger.AddAccountMeta(&am1)
 
@@ -86,7 +87,7 @@ func initData(p string) {
 	addr2, _ := types.HexToAddress("qlc_3oftfjxu9x9pcjh1je3xfpikd441w1wo313qjc6ie1es5aobwed5x4pjojic")
 	am2.Address = addr2
 	t3 := mock.TokenMeta(addr2)
-	t3.Type = mock.GetChainTokenType()
+	t3.Type = common.QLCChainToken
 	t3.Balance = types.Balance{Int: big.NewInt(int64(2000000000000000))}
 	t3.Representative, _ = types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
 
@@ -97,7 +98,9 @@ func initData(p string) {
 
 	// accountHistoryTopn
 	blocks, _ := mock.BlockChain()
-	for _, b := range blocks {
+	ledger.BlockProcess(blocks[0])
+	for i, b := range blocks[1:] {
+		fmt.Println(i)
 		ledger.Process(b)
 	}
 	fmt.Println("accountHistoryTopn, ", blocks[0].GetAddress())
@@ -127,9 +130,9 @@ func initData(p string) {
 
 	//blockAccount
 	sb := types.StateBlock{
-		Type:    types.State,
+		Type:    types.Send,
 		Address: addr1,
-		Token:   mock.GetChainTokenType(),
+		Token:   common.QLCChainToken,
 	}
 	ledger.AddStateBlock(&sb)
 
@@ -141,18 +144,18 @@ func initData(p string) {
 	ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlock(), types.UncheckedKindLink, types.UnSynchronized)
 	ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlock(), types.UncheckedKindPrevious, types.UnSynchronized)
 
-	scs := mock.GetSmartContracts()
-	for _, sc := range scs {
-		ledger.AddSmartContractBlock(*sc)
+	for i := 0; i < 10; i++ {
+		s := mock.SmartContractBlock()
+		ledger.AddSmartContractBlock(*s)
 	}
 
 	// change block
 	addr5, _ := types.HexToAddress("qlc_3c6ezoskbkgajq8f89ntcu75fdpcsokscgp9q5cdadndg1ju85fief7rrt11")
 
 	sb3 := types.StateBlock{
-		Type:    types.State,
+		Type:    types.Change,
 		Address: addr5,
-		Token:   mock.GetChainTokenType(),
+		Token:   common.QLCChainToken,
 	}
 	ledger.AddStateBlock(&sb3)
 	fmt.Println("hash,", sb.GetHash())
@@ -161,7 +164,7 @@ func initData(p string) {
 	var am5 types.AccountMeta
 	am5.Address = addr5
 	t5 := mock.TokenMeta(addr5)
-	t5.Type = mock.GetChainTokenType()
+	t5.Type = common.QLCChainToken
 	t5.Header = sb3.GetHash()
 	t5.Balance = types.Balance{Int: big.NewInt(int64(120000000000000))}
 	t5.Representative, _ = types.HexToAddress("qlc_3pu4ggyg36nienoa9s9x95a615m1natqcqe7bcrn3t3ckq1srnnkh8q5xst5")
@@ -177,17 +180,17 @@ func initData(p string) {
 	var am6 types.AccountMeta
 	am6.Address = addr6
 	t6 := mock.TokenMeta(addr6)
-	t6.Type = mock.GetChainTokenType()
+	t6.Type = common.QLCChainToken
 	t6.Balance = types.Balance{Int: big.NewInt(int64(600000000000000))}
 	am6.Tokens = append(am6.Tokens, t6)
 
 	t7 := mock.TokenMeta(addr6)
-	t7.Type = mock.GetChainTokenType()
+	t7.Type = common.QLCChainToken
 	t7.Balance = types.Balance{Int: big.NewInt(int64(90000000000000))}
 	am6.Tokens = append(am6.Tokens, t7)
 
 	t8 := mock.TokenMeta(addr6)
-	t8.Type = mock.GetSmartContracts()[1].GetHash()
+	t8.Type = mock.SmartContractBlock().GetHash()
 	t8.Balance = types.Balance{Int: big.NewInt(int64(10000000000))}
 	am6.Tokens = append(am6.Tokens, t8)
 	ledger.AddAccountMeta(&am6)

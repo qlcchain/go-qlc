@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -11,7 +12,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"go.uber.org/zap"
 )
 
@@ -23,7 +23,6 @@ type LedgerApi struct {
 
 type APIBlock struct {
 	*types.StateBlock
-	SubType   string        `json:"subType"`
 	TokenName string        `json:"tokenName"`
 	Amount    types.Balance `json:"amount"`
 	Hash      types.Hash    `json:"hash"`
@@ -49,7 +48,7 @@ type APIPending struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, dpos *consensus.DposService) *LedgerApi {
-	return &LedgerApi{ledger: l, dpos: dpos, logger: log.NewLogger("api_ledger")}
+	return &LedgerApi{ledger: l, dpos: dpos, logger: log.NewLogger("rpc/ledger")}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -70,47 +69,38 @@ func (l *LedgerApi) AccountBlocksCount(addr types.Address) (int64, error) {
 	return count, nil
 }
 
-func (l *LedgerApi) judgeBlockKind(block *types.StateBlock) (string, types.Balance, error) {
-	hash := block.GetHash()
-	blkType, err := l.ledger.JudgeBlockKind(hash)
-	if err != nil {
-		return "", types.ZeroBalance, err
-	}
-
-	switch blkType {
-	case ledger.Open:
-		return "open", block.GetBalance(), nil
-	case ledger.Receive:
-		prevBlock, err := l.ledger.GetStateBlock(block.GetPrevious())
-		if err != nil {
-			return "", types.ZeroBalance, err
-		}
-		return "receive", block.GetBalance().Sub(prevBlock.GetBalance()), nil
-	case ledger.Send:
-		prevBlock, err := l.ledger.GetStateBlock(block.GetPrevious())
-		if err != nil {
-			return "", types.ZeroBalance, err
-		}
-		return "send", prevBlock.GetBalance().Sub(block.GetBalance()), nil
-	case ledger.Change:
-		return "change", types.ZeroBalance, nil
-	default:
-		return "unknown", types.ZeroBalance, nil
-	}
-}
-
-// AccountHistoryTopn returns blocks of the account, blocks count of each token in the account up to n
-// if set n to -1,  will list all blocks of this account
-func (l *LedgerApi) AccountHistoryTopn(address types.Address, num int, offset *int) ([]*APIBlock, error) {
-	if num < 1 {
-		return nil, errors.New("err count")
+func checkOffset(count int, offset *int) (int, int, error) {
+	if count < 1 {
+		return 0, 0, errors.New("err count")
 	}
 	o := 0
 	if offset != nil {
 		o = *offset
-		if o < -1 {
-			return nil, errors.New("err offset")
+		if o < 0 {
+			return 0, 0, errors.New("err offset")
 		}
+	}
+	return count, o, nil
+}
+
+func (l *LedgerApi) generateAPIBlock(block *types.StateBlock) (*APIBlock, error) {
+	ab := new(APIBlock)
+	ab.StateBlock = block
+	ab.Hash = block.GetHash()
+	_, ab.Amount = l.ledger.CalculateAmount(block)
+	token, err := l.ledger.GetTokenById(block.GetToken())
+	if err != nil {
+		return nil, err
+	}
+	ab.TokenName = token.TokenName
+	return ab, nil
+}
+
+// AccountHistoryTopn returns blocks of the account, blocks count of each token in the account up to n
+func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset *int) ([]*APIBlock, error) {
+	c, o, err := checkOffset(count, offset)
+	if err != nil {
+		return nil, err
 	}
 	bs := make([]*APIBlock, 0)
 	ac, err := l.ledger.GetAccountMeta(address)
@@ -119,37 +109,26 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, num int, offset *i
 	}
 	for _, token := range ac.Tokens {
 		h := token.Header
-
 		for {
 			block, err := l.ledger.GetStateBlock(h)
 			if err != nil {
 				return nil, err
 			}
-
-			b := new(APIBlock)
-			b.SubType, b.Amount, err = l.judgeBlockKind(block)
-			if err != nil {
-				l.logger.Info(err)
-				return nil, err
-			}
-			token, err := mock.GetTokenById(block.GetToken())
+			b, err := l.generateAPIBlock(block)
 			if err != nil {
 				return nil, err
 			}
-			b.TokenName = token.TokenName
-			b = b.fromStateBlock(block)
 			bs = append(bs, b)
-
-			h = block.GetPrevious()
+			h = b.GetPrevious()
 			if h.IsZero() {
 				break
 			}
 		}
 	}
-	l.logger.Info("block count,", len(bs))
+	l.logger.Debug("block count,", len(bs))
 	if len(bs) > o {
-		if len(bs) >= o+num {
-			return bs[o : num+o], nil
+		if len(bs) >= o+c {
+			return bs[o : c+o], nil
 		}
 		return bs[o:], nil
 	} else {
@@ -164,11 +143,11 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		return nil, err
 	}
 	for _, t := range am.Tokens {
-		if t.Type == mock.GetChainTokenType() {
+		if t.Type == common.QLCChainToken {
 			aa.CoinBalance = t.Balance
 			aa.Representative = t.Representative
 		}
-		info, err := mock.GetTokenById(t.Type)
+		info, err := l.ledger.GetTokenById(t.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -202,7 +181,7 @@ func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, er
 		return types.ZeroAddress, err
 	}
 	for _, t := range am.Tokens {
-		if t.Type == mock.GetChainTokenType() {
+		if t.Type == common.QLCChainToken {
 			return t.Representative, nil
 		}
 	}
@@ -226,7 +205,7 @@ func (l *LedgerApi) AccountsBalances(addresses []types.Address) (map[types.Addre
 		}
 		ts := make(map[string]map[string]types.Balance)
 		for _, t := range ac.Tokens {
-			info, err := mock.GetTokenById(t.Type)
+			info, err := l.ledger.GetTokenById(t.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -260,7 +239,7 @@ func (l *LedgerApi) AccountsFrontiers(addresses []types.Address) (map[types.Addr
 		}
 		t := make(map[string]types.Hash)
 		for _, token := range ac.Tokens {
-			info, err := mock.GetTokenById(token.Type)
+			info, err := l.ledger.GetTokenById(token.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -289,7 +268,7 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 				return nil, err
 			}
 
-			token, err := mock.GetTokenById(pendinginfo.Type)
+			token, err := l.ledger.GetTokenById(pendinginfo.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -312,21 +291,15 @@ func (l *LedgerApi) AccountsCount() (uint64, error) {
 	return l.ledger.CountAccountMetas()
 }
 
-func (l *LedgerApi) Accounts(num int, offset *int) ([]*types.Address, error) {
-	if num < 1 {
-		return nil, errors.New("err count")
-	}
-	o := 0
-	if offset != nil {
-		o = *offset
-		if o < -1 {
-			return nil, errors.New("err offset")
-		}
+func (l *LedgerApi) Accounts(count int, offset *int) ([]*types.Address, error) {
+	c, o, err := checkOffset(count, offset)
+	if err != nil {
+		return nil, err
 	}
 	as := make([]*types.Address, 0)
 	index := 0
-	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		if index >= o && index < o+num {
+	err = l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
+		if index >= o && index < o+c {
 			as = append(as, &am.Address)
 		}
 		index = index + 1
@@ -374,18 +347,14 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 func (l *LedgerApi) BlocksCountByType() (map[string]uint64, error) {
 	c := map[string]uint64{"open": 0, "send": 0, "receive": 0, "change": 0}
 	err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		blkType, err := l.ledger.JudgeBlockKind(block.GetHash())
-		if err != nil {
-			return err
-		}
-		switch blkType {
-		case ledger.Open:
+		switch block.GetType() {
+		case types.Open:
 			c["open"] = c["open"] + 1
-		case ledger.Send:
+		case types.Send:
 			c["send"] = c["send"] + 1
-		case ledger.Receive:
+		case types.Receive:
 			c["receive"] = c["receive"] + 1
-		case ledger.Change:
+		case types.Change:
 			c["change"] = c["change"] + 1
 		}
 		return nil
@@ -406,50 +375,28 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b := new(APIBlock)
-		b = b.fromStateBlock(block)
-		b.SubType, b.Amount, err = l.judgeBlockKind(block)
+		b, err := l.generateAPIBlock(block)
 		if err != nil {
-			return nil, fmt.Errorf("judge block kind error, %s, %s", h, err)
+			return nil, err
 		}
-		token, err := mock.GetTokenById(block.GetToken())
-		if err != nil {
-			return nil, fmt.Errorf("get tokeninfo error, %s, %s", h, err)
-		}
-		b.TokenName = token.TokenName
 		bs = append(bs, b)
 	}
 	return bs, nil
 }
 
-func (l *LedgerApi) Blocks(num int, offset *int) ([]*APIBlock, error) {
-	if num < 1 {
-		return nil, errors.New("err count")
-	}
-	o := 0
-	if offset != nil {
-		o = *offset
-		if o < -1 {
-			return nil, errors.New("err offset")
-		}
+func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
+	c, o, err := checkOffset(count, offset)
+	if err != nil {
+		return nil, err
 	}
 	ab := make([]*APIBlock, 0)
 	index := 0
-	err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		if index >= o && index < o+num {
-			b := new(APIBlock)
-			var err error
-			b.SubType, b.Amount, err = l.judgeBlockKind(block)
-			if err != nil {
-				l.logger.Info(err)
-				return err
-			}
-			token, err := mock.GetTokenById(block.GetToken())
+	err = l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+		if index >= o && index < o+c {
+			b, err := l.generateAPIBlock(block)
 			if err != nil {
 				return err
 			}
-			b.TokenName = token.TokenName
-			b = b.fromStateBlock(block)
 			ab = append(ab, b)
 		}
 		index = index + 1
@@ -462,7 +409,6 @@ func (l *LedgerApi) Blocks(num int, offset *int) ([]*APIBlock, error) {
 }
 
 // Chain returns a consecutive list of block hashes in the account chain starting at block up to count
-// if set n to -1,  will list blocks to open block
 func (l *LedgerApi) Chain(hash types.Hash, n int) ([]types.Hash, error) {
 	if n < -1 {
 		return nil, errors.New("wrong count number")
@@ -485,14 +431,15 @@ func (l *LedgerApi) Chain(hash types.Hash, n int) ([]types.Hash, error) {
 }
 
 // Delegators returns a list of pairs of delegator names given account a representative and its balance
-func (l *LedgerApi) Delegators(hash types.Address) (map[types.Address]types.Balance, error) {
-	ds := make(map[types.Address]types.Balance)
+func (l *LedgerApi) Delegators(hash types.Address) ([]*APIAccountBalance, error) {
+	abs := make([]*APIAccountBalance, 0)
 
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		t := am.Token(mock.GetChainTokenType())
+		t := am.Token(common.QLCChainToken)
 		if t != nil {
 			if t.Representative == hash {
-				ds[am.Address] = t.Balance
+				ab := &APIAccountBalance{am.Address, t.Balance}
+				abs = append(abs, ab)
 			}
 		}
 		return nil
@@ -500,14 +447,14 @@ func (l *LedgerApi) Delegators(hash types.Address) (map[types.Address]types.Bala
 	if err != nil {
 		return nil, err
 	}
-	return ds, nil
+	return abs, nil
 }
 
 // DelegatorsCount gets number of delegators for a specific representative account
 func (l *LedgerApi) DelegatorsCount(hash types.Address) (int64, error) {
 	var count int64
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		t := am.Token(mock.GetChainTokenType())
+		t := am.Token(common.QLCChainToken)
 		if t != nil {
 			if t.Representative == hash {
 				count = count + 1
@@ -528,7 +475,7 @@ type APISendBlockPara struct {
 	Amount    types.Balance `json:"amount"`
 }
 
-func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (types.Block, error) {
+func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (*types.StateBlock, error) {
 	if para.Amount.Int == nil || para.Send.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid send parameter")
 	}
@@ -536,24 +483,19 @@ func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (typ
 	if err != nil {
 		return nil, err
 	}
-	info, err := mock.GetTokenByName(para.TokenName)
+	info, err := l.ledger.GetTokenByName(para.TokenName)
 	if err != nil {
 		return nil, err
 	}
-	//amount, err := mock.BalanceToRaw(para.Amount, para.TokenName)
-	//if err != nil {
-	//	return nil, err
-	//}
 	block, err := l.ledger.GenerateSendBlock(para.Send, info.TokenId, para.To, para.Amount, prk)
 	if err != nil {
 		return nil, err
 	}
 	l.logger.Debug(block)
 	return block, nil
-	//return nil, nil
 }
 
-func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr string) (types.Block, error) {
+func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr string) (*types.StateBlock, error) {
 	prk, err := hex.DecodeString(prkStr)
 	if err != nil {
 		return nil, err
@@ -567,7 +509,7 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr str
 	return block, nil
 }
 
-func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr string) (types.Block, error) {
+func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr string) (*types.StateBlock, error) {
 	prk, err := hex.DecodeString(prkStr)
 	if err != nil {
 		return nil, err
@@ -629,22 +571,22 @@ func (l *LedgerApi) Performance() ([]*types.PerformanceTime, error) {
 	return pts, nil
 }
 
-type APIRepresentative struct {
+type APIAccountBalance struct {
 	Address types.Address `json:"address"`
 	Balance types.Balance `json:"balance"`
 }
 
-type APIRepresentatives []APIRepresentative
+type APIAccountBalances []APIAccountBalance
 
-func (r APIRepresentatives) Swap(i, j int) {
+func (r APIAccountBalances) Swap(i, j int) {
 	r[i], r[j] = r[j], r[i]
 }
 
-func (r APIRepresentatives) Len() int {
+func (r APIAccountBalances) Len() int {
 	return len(r)
 }
 
-func (r APIRepresentatives) Less(i, j int) bool {
+func (r APIAccountBalances) Less(i, j int) bool {
 	if r[i].Balance.Compare(r[j].Balance) == types.BalanceCompSmaller {
 		return false
 	}
@@ -652,10 +594,10 @@ func (r APIRepresentatives) Less(i, j int) bool {
 }
 
 //Representatives returns a list of pairs of representative and its voting weight
-func (l *LedgerApi) Representatives(sorting *bool) (*APIRepresentatives, error) {
-	rs := make(APIRepresentatives, 0)
+func (l *LedgerApi) Representatives(sorting *bool) (*APIAccountBalances, error) {
+	rs := make(APIAccountBalances, 0)
 	err := l.ledger.GetRepresentations(func(address types.Address, balance types.Balance) error {
-		r := APIRepresentative{address, balance}
+		r := APIAccountBalance{address, balance}
 		rs = append(rs, r)
 		return nil
 	})
@@ -670,7 +612,7 @@ func (l *LedgerApi) Representatives(sorting *bool) (*APIRepresentatives, error) 
 }
 
 func (l *LedgerApi) Tokens() ([]*types.TokenInfo, error) {
-	return mock.Tokens()
+	return l.ledger.ListTokens()
 }
 
 // BlocksCount returns the number of blocks (not include smartcontrant block) in the ledger and unchecked synchronizing blocks

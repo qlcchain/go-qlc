@@ -242,6 +242,14 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 			return r.qlcReadInt64Param
 		case "QLC_ReadStringParam":
 			return r.qlcReadStringParam
+		case "QLC_UnmarshalInputs":
+			return r.qlcUnMarshalInputs
+		case "QLC_MarshalResult":
+			return r.qlcMarshalResult
+		case "QLC_GetCallerAddress":
+			return r.qlcGetCaller
+		case "QLC_GetSelfAddress":
+			return r.qlcGetSelfAddress
 		case "QLC_Test":
 			return r.qlcTest
 		case "QLC_Hash":

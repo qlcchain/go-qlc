@@ -76,7 +76,7 @@ func (r *RPC) stopIPC() {
 		r.ipcListener.Close()
 		r.ipcListener = nil
 
-		r.logger.Info("IPC endpoint closed, ", "endpoint:", r.config.RPC.IPCEndpoint)
+		r.logger.Debug("IPC endpoint closed, ", "endpoint:", r.config.RPC.IPCEndpoint)
 	}
 	if r.ipcHandler != nil {
 		r.ipcHandler.Stop()
@@ -109,7 +109,7 @@ func (r *RPC) stopHTTP() {
 		r.httpListener.Close()
 		r.httpListener = nil
 
-		r.logger.Info("HTTP endpoint closed, ", "endpoint:", r.config.RPC.HTTPEndpoint)
+		r.logger.Debug("HTTP endpoint closed, ", "endpoint:", r.config.RPC.HTTPEndpoint)
 	}
 	if r.httpHandler != nil {
 		r.httpHandler.Stop()
@@ -141,7 +141,7 @@ func (r *RPC) stopWS() {
 	if r.wsListener != nil {
 		r.wsListener.Close()
 		r.wsListener = nil
-		r.logger.Info("WebSocket endpoint closed, ", "endpoint:", r.config.RPC.WSEndpoint)
+		r.logger.Debug("WebSocket endpoint closed, ", "endpoint:", r.config.RPC.WSEndpoint)
 	}
 	if r.wsHandler != nil {
 		r.wsHandler.Stop()

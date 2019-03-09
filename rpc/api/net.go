@@ -13,7 +13,7 @@ type NetApi struct {
 }
 
 func NewNetApi(dpos *consensus.DposService) *NetApi {
-	return &NetApi{dpos: dpos, logger: log.NewLogger("api_net")}
+	return &NetApi{dpos: dpos, logger: log.NewLogger("rpc/net")}
 }
 
 func (q *NetApi) OnlineRepresentatives() []types.Address {
