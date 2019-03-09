@@ -48,16 +48,16 @@ func TestReader(t *testing.T) {
 		Constructor: Method{
 			"", false, []Argument{
 				{"owner", typeAddress, false},
-			},
+			}, nil,
 		},
 		Methods: map[string]Method{
 			"balance": {
-				"balance", true, nil,
+				"balance", true, nil, nil,
 			},
 			"send": {
 				"send", false, []Argument{
 					{"amount", typeUint256, false},
-				},
+				}, nil,
 			},
 		},
 		Events: map[string]Event{
@@ -213,7 +213,7 @@ func TestTestSlice(t *testing.T) {
 
 func TestMethodSignature(t *testing.T) {
 	String, _ := NewType("string")
-	m := Method{"foo", false, []Argument{{"bar", String, false}, {"baz", String, false}}}
+	m := Method{"foo", false, []Argument{{"bar", String, false}, {"baz", String, false}}, nil}
 	exp := "foo(string,string)"
 	if m.Sig() != exp {
 		t.Error("signature mismatch", exp, "!=", m.Sig())
@@ -226,7 +226,7 @@ func TestMethodSignature(t *testing.T) {
 	}
 
 	uintt, _ := NewType("uint256")
-	m = Method{"foo", false, []Argument{{"bar", uintt, false}}}
+	m = Method{"foo", false, []Argument{{"bar", uintt, false}}, nil}
 	exp = "foo(uint256)"
 	if m.Sig() != exp {
 		t.Error("signature mismatch", exp, "!=", m.Sig())

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Method represents a callable given a `Names` and whether the method is a constant.
+// Method represents a callable given a `Name` and whether the method is a constant.
 // If the method is `Const` no transaction needs to be created for this
 // particular Method call. It can easily be simulated using a local VM.
 // For example a `Balance()` method only needs to retrieve something
@@ -15,9 +15,10 @@ import (
 // be flagged `true`.
 // Input specifies the required input parameters for this gives method.
 type Method struct {
-	Name   string
-	Const  bool
-	Inputs Arguments
+	Name    string
+	Const   bool
+	Inputs  Arguments
+	Outputs Arguments
 }
 
 // Sig returns the methods string signature according to the ABI spec.
@@ -40,11 +41,18 @@ func (method Method) String() string {
 	for i, input := range method.Inputs {
 		inputs[i] = fmt.Sprintf("%v %v", input.Type, input.Name)
 	}
+	outputs := make([]string, len(method.Outputs))
+	for i, output := range method.Outputs {
+		outputs[i] = output.Type.String()
+		if len(output.Name) > 0 {
+			outputs[i] += fmt.Sprintf(" %v", output.Name)
+		}
+	}
 	constant := ""
 	if method.Const {
-		constant = "constant"
+		constant = "constant "
 	}
-	return fmt.Sprintf("function %v(%v) %s", method.Name, strings.Join(inputs, ", "), constant)
+	return fmt.Sprintf("function %v(%v) %sreturns(%v)", method.Name, strings.Join(inputs, ", "), constant, strings.Join(outputs, ", "))
 }
 
 func (method Method) Id() []byte {

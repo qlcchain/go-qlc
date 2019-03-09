@@ -11,6 +11,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"io"
 	"sync"
 
@@ -21,7 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"go.uber.org/zap"
 )
 
@@ -361,7 +361,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 	}
 
 	//get latest chain token block
-	hash := l.Latest(account, mock.GetChainTokenType())
+	hash := l.Latest(account, common.QLCChainToken)
 
 	if hash.IsZero() {
 		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
@@ -375,7 +375,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 	if err != nil {
 		return nil, err
 	}
-	tm, err := l.GetTokenMeta(account, mock.GetChainTokenType())
+	tm, err := l.GetTokenMeta(account, common.QLCChainToken)
 	if newSb, ok := changeBlock.(*types.StateBlock); ok {
 		acc, err := s.GetRawKey(account)
 		if err != nil {

@@ -156,6 +156,26 @@ func (r *Resolver) qlcReadStringParam(vm *exec.VirtualMachine) int64 {
 	return int64(retIdx)
 }
 
+//TODO: call abi.pack to []byte and set to vm memory
+//char * QLC_MarshalResult(void * val,char *types);
+func (r *Resolver) qlcMarshalResult(vm *exec.VirtualMachine) int64 {
+	return 0
+}
+
+//TODO: call abi.unpack to structure and set to vm memory
+//void QLC_UnmarshalInput(void * addr,int size,char * arg);
+func (r *Resolver) qlcUnMarshalInputs(vm *exec.VirtualMachine) int64 {
+	return 0
+}
+
+func (r *Resolver) qlcGetCaller(vm *exec.VirtualMachine) int64 {
+	return 0
+}
+
+func (r *Resolver) qlcGetSelfAddress(vm *exec.VirtualMachine) int64 {
+	return 0
+}
+
 func (r *Resolver) qlcHash(vm *exec.VirtualMachine) int64 {
 	return 0
 }

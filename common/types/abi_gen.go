@@ -13,33 +13,39 @@ func (z *ContractAbi) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0001 uint32
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "abi":
 			z.Abi, err = dc.ReadBytes(z.Abi)
 			if err != nil {
+				err = msgp.WrapError(err, "Abi")
 				return
 			}
 		case "abiLength":
 			z.AbiLength, err = dc.ReadUint64()
 			if err != nil {
+				err = msgp.WrapError(err, "AbiLength")
 				return
 			}
 		case "abiHash":
 			err = dc.ReadExtension(&z.AbiHash)
 			if err != nil {
+				err = msgp.WrapError(err, "AbiHash")
 				return
 			}
 		default:
 			err = dc.Skip()
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -57,6 +63,7 @@ func (z *ContractAbi) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteBytes(z.Abi)
 	if err != nil {
+		err = msgp.WrapError(err, "Abi")
 		return
 	}
 	// write "abiLength"
@@ -66,6 +73,7 @@ func (z *ContractAbi) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteUint64(z.AbiLength)
 	if err != nil {
+		err = msgp.WrapError(err, "AbiLength")
 		return
 	}
 	// write "abiHash"
@@ -75,6 +83,7 @@ func (z *ContractAbi) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.AbiHash)
 	if err != nil {
+		err = msgp.WrapError(err, "AbiHash")
 		return
 	}
 	return
@@ -94,6 +103,7 @@ func (z *ContractAbi) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0xa7, 0x61, 0x62, 0x69, 0x48, 0x61, 0x73, 0x68)
 	o, err = msgp.AppendExtension(o, &z.AbiHash)
 	if err != nil {
+		err = msgp.WrapError(err, "AbiHash")
 		return
 	}
 	return
@@ -106,33 +116,39 @@ func (z *ContractAbi) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0001 uint32
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "abi":
 			z.Abi, bts, err = msgp.ReadBytesBytes(bts, z.Abi)
 			if err != nil {
+				err = msgp.WrapError(err, "Abi")
 				return
 			}
 		case "abiLength":
 			z.AbiLength, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
+				err = msgp.WrapError(err, "AbiLength")
 				return
 			}
 		case "abiHash":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.AbiHash)
 			if err != nil {
+				err = msgp.WrapError(err, "AbiHash")
 				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}

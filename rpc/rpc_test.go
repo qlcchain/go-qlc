@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -91,7 +92,7 @@ func TestRPC_HTTP(t *testing.T) {
 	}
 
 	blk := new(types.StateBlock)
-	blk.Token = mock.GetChainTokenType()
+	blk.Token = common.QLCChainToken
 	rs.rpc.ledger.AddStateBlock(blk)
 	var resp2 types.Hash
 	err = client.Call(&resp2, "ledger_blockHash", blk)
@@ -106,6 +107,7 @@ func TestRPC_HTTP(t *testing.T) {
 func TestRPC_WebSocket(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
+	t.Skip()
 
 	_, address, _ := scheme(rs.rpc.config.RPC.WSEndpoint)
 	client, err := Dial(fmt.Sprintf("ws://%s", address))
@@ -117,7 +119,7 @@ func TestRPC_WebSocket(t *testing.T) {
 	blk := new(types.StateBlock)
 	blk.Address = acc.Address()
 	blk.Previous = types.ZeroHash
-	blk.Token = mock.GetChainTokenType()
+	blk.Token = common.QLCChainToken
 	rs.rpc.ledger.AddStateBlock(blk)
 
 	var resp []api.APIBlock

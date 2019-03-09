@@ -159,7 +159,7 @@ func (s *Server) serveRequest(ctx context.Context, codec ServerCodec, singleShot
 	// test if the server is ordered to stop
 	for atomic.LoadInt32(&s.run) == 1 {
 		reqs, batch, err := s.readRequest(codec)
-		s.logger.Infof("single shot:%t, batch requset:%t", singleShot, batch)
+		s.logger.Debugf("single shot:%t, batch requset:%t", singleShot, batch)
 		if err != nil {
 			// If a parsing error occurred, send an error
 			if err.Error() != "EOF" {
@@ -381,7 +381,7 @@ func (s *Server) execBatch(ctx context.Context, codec ServerCodec, requests []*s
 func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) {
 	reqs, batch, err := codec.ReadRequestHeaders()
 	if err != nil {
-		s.logger.Error(err)
+		s.logger.Debug(err)
 		return nil, batch, err
 	}
 

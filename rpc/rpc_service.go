@@ -14,7 +14,7 @@ func NewRPCService(cfg *config.Config, dpos *consensus.DposService) *RPCService 
 }
 
 func (rs *RPCService) Init() error {
-	rs.rpc.logger.Info("rpc service init")
+	rs.rpc.logger.Debug("rpc service init")
 	return nil
 }
 
@@ -30,6 +30,7 @@ func (rs *RPCService) Start() error {
 func (rs *RPCService) Stop() error {
 	rs.rpc.logger.Info("rpc stopping...")
 	rs.rpc.StopRPC()
+	rs.rpc.logger.Info("rpc stopped")
 	return nil
 }
 

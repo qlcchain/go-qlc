@@ -1,10 +1,10 @@
 package api
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"go.uber.org/zap"
 )
 
@@ -13,7 +13,7 @@ type UtilApi struct {
 }
 
 func NewUtilApi() *UtilApi {
-	return &UtilApi{logger: log.NewLogger("util_account")}
+	return &UtilApi{logger: log.NewLogger("rpc/util")}
 }
 
 func (u *UtilApi) Decrypt(cryptograph string, passphrase string) (string, error) {
@@ -25,7 +25,7 @@ func (u *UtilApi) Encrypt(raw string, passphrase string) (string, error) {
 }
 
 func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
-	b, err := mock.RawToBalance(balance, unit)
+	b, err := common.RawToBalance(balance, unit)
 	if err != nil {
 		return types.ZeroBalance, err
 	}
@@ -33,7 +33,7 @@ func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *st
 }
 
 func (u *UtilApi) BalanceToRaw(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
-	b, err := mock.BalanceToRaw(balance, unit)
+	b, err := common.BalanceToRaw(balance, unit)
 	if err != nil {
 		return types.ZeroBalance, err
 	}

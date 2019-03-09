@@ -13,28 +13,33 @@ func (z *Frontier) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0001 uint32
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "headerblock":
 			err = dc.ReadExtension(&z.HeaderBlock)
 			if err != nil {
+				err = msgp.WrapError(err, "HeaderBlock")
 				return
 			}
 		case "openblock":
 			err = dc.ReadExtension(&z.OpenBlock)
 			if err != nil {
+				err = msgp.WrapError(err, "OpenBlock")
 				return
 			}
 		default:
 			err = dc.Skip()
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -52,6 +57,7 @@ func (z Frontier) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.HeaderBlock)
 	if err != nil {
+		err = msgp.WrapError(err, "HeaderBlock")
 		return
 	}
 	// write "openblock"
@@ -61,6 +67,7 @@ func (z Frontier) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.OpenBlock)
 	if err != nil {
+		err = msgp.WrapError(err, "OpenBlock")
 		return
 	}
 	return
@@ -74,12 +81,14 @@ func (z Frontier) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0x82, 0xab, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.HeaderBlock)
 	if err != nil {
+		err = msgp.WrapError(err, "HeaderBlock")
 		return
 	}
 	// string "openblock"
 	o = append(o, 0xa9, 0x6f, 0x70, 0x65, 0x6e, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.OpenBlock)
 	if err != nil {
+		err = msgp.WrapError(err, "OpenBlock")
 		return
 	}
 	return
@@ -92,28 +101,33 @@ func (z *Frontier) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0001 uint32
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "headerblock":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.HeaderBlock)
 			if err != nil {
+				err = msgp.WrapError(err, "HeaderBlock")
 				return
 			}
 		case "openblock":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.OpenBlock)
 			if err != nil {
+				err = msgp.WrapError(err, "OpenBlock")
 				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -133,6 +147,7 @@ func (z *Frontiers) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0002 uint32
 	zb0002, err = dc.ReadArrayHeader()
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	if cap((*z)) >= int(zb0002) {
@@ -144,6 +159,7 @@ func (z *Frontiers) DecodeMsg(dc *msgp.Reader) (err error) {
 		if dc.IsNil() {
 			err = dc.ReadNil()
 			if err != nil {
+				err = msgp.WrapError(err, zb0001)
 				return
 			}
 			(*z)[zb0001] = nil
@@ -156,28 +172,33 @@ func (z *Frontiers) DecodeMsg(dc *msgp.Reader) (err error) {
 			var zb0003 uint32
 			zb0003, err = dc.ReadMapHeader()
 			if err != nil {
+				err = msgp.WrapError(err, zb0001)
 				return
 			}
 			for zb0003 > 0 {
 				zb0003--
 				field, err = dc.ReadMapKeyPtr()
 				if err != nil {
+					err = msgp.WrapError(err, zb0001)
 					return
 				}
 				switch msgp.UnsafeString(field) {
 				case "headerblock":
 					err = dc.ReadExtension(&(*z)[zb0001].HeaderBlock)
 					if err != nil {
+						err = msgp.WrapError(err, zb0001, "HeaderBlock")
 						return
 					}
 				case "openblock":
 					err = dc.ReadExtension(&(*z)[zb0001].OpenBlock)
 					if err != nil {
+						err = msgp.WrapError(err, zb0001, "OpenBlock")
 						return
 					}
 				default:
 					err = dc.Skip()
 					if err != nil {
+						err = msgp.WrapError(err, zb0001)
 						return
 					}
 				}
@@ -191,6 +212,7 @@ func (z *Frontiers) DecodeMsg(dc *msgp.Reader) (err error) {
 func (z Frontiers) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteArrayHeader(uint32(len(z)))
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0004 := range z {
@@ -208,6 +230,7 @@ func (z Frontiers) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 			err = en.WriteExtension(&z[zb0004].HeaderBlock)
 			if err != nil {
+				err = msgp.WrapError(err, zb0004, "HeaderBlock")
 				return
 			}
 			// write "openblock"
@@ -217,6 +240,7 @@ func (z Frontiers) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 			err = en.WriteExtension(&z[zb0004].OpenBlock)
 			if err != nil {
+				err = msgp.WrapError(err, zb0004, "OpenBlock")
 				return
 			}
 		}
@@ -237,12 +261,14 @@ func (z Frontiers) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0x82, 0xab, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
 			o, err = msgp.AppendExtension(o, &z[zb0004].HeaderBlock)
 			if err != nil {
+				err = msgp.WrapError(err, zb0004, "HeaderBlock")
 				return
 			}
 			// string "openblock"
 			o = append(o, 0xa9, 0x6f, 0x70, 0x65, 0x6e, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
 			o, err = msgp.AppendExtension(o, &z[zb0004].OpenBlock)
 			if err != nil {
+				err = msgp.WrapError(err, zb0004, "OpenBlock")
 				return
 			}
 		}
@@ -255,6 +281,7 @@ func (z *Frontiers) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0002 uint32
 	zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	if cap((*z)) >= int(zb0002) {
@@ -278,28 +305,33 @@ func (z *Frontiers) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			var zb0003 uint32
 			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {
+				err = msgp.WrapError(err, zb0001)
 				return
 			}
 			for zb0003 > 0 {
 				zb0003--
 				field, bts, err = msgp.ReadMapKeyZC(bts)
 				if err != nil {
+					err = msgp.WrapError(err, zb0001)
 					return
 				}
 				switch msgp.UnsafeString(field) {
 				case "headerblock":
 					bts, err = msgp.ReadExtensionBytes(bts, &(*z)[zb0001].HeaderBlock)
 					if err != nil {
+						err = msgp.WrapError(err, zb0001, "HeaderBlock")
 						return
 					}
 				case "openblock":
 					bts, err = msgp.ReadExtensionBytes(bts, &(*z)[zb0001].OpenBlock)
 					if err != nil {
+						err = msgp.WrapError(err, zb0001, "OpenBlock")
 						return
 					}
 				default:
 					bts, err = msgp.Skip(bts)
 					if err != nil {
+						err = msgp.WrapError(err, zb0001)
 						return
 					}
 				}
