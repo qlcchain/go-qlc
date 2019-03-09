@@ -661,7 +661,7 @@ func (l *LedgerApi) getSenderOrReceiver(hashes []types.Hash, count int, offset *
 			return nil, err
 		}
 
-		token, err := mock.GetTokenById(block.GetToken())
+		token, err := l.ledger.GetTokenById(block.GetToken())
 		if err != nil {
 			return nil, err
 		}

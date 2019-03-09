@@ -198,19 +198,19 @@ func initData(p string) {
 	// sender or receiver
 	p1 := &types.StateBlock{
 		Address:  mock.Address(),
-		Token:    mock.GetChainTokenType(),
+		Token:    common.QLCChainToken,
 		Sender:   "1801111111",
 		Receiver: "",
 	}
 	p2 := &types.StateBlock{
 		Address:  mock.Address(),
-		Token:    mock.GetChainTokenType(),
+		Token:    common.QLCChainToken,
 		Sender:   "1801111111",
 		Receiver: "18000000000",
 	}
 	p3 := &types.StateBlock{
 		Address:  mock.Address(),
-		Token:    mock.GetChainTokenType(),
+		Token:    common.QLCChainToken,
 		Sender:   "1801111111",
 		Receiver: "",
 	}
