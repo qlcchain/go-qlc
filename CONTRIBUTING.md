@@ -33,7 +33,7 @@ and there are the branch protection rules:
   - Require status checks to pass before merging
 
 ## Fork and do all your work on a branch
-We prefers the standard GitHub workflow. You create a fork of the QLCWallet repository, make branches for features/issues, and commit and push to the develop branch. 
+We prefer the standard GitHub workflow. You create a fork of the QLCWallet repository, make branches for features/issues, and commit and push to the develop branch. 
 
 ## Create pull requests
 Before:
