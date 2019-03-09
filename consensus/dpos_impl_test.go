@@ -213,7 +213,7 @@ func Test_Trx_Confirmed(t *testing.T) {
 		t.Fatal("node2 block count not correct")
 	}
 
-	p, err := ledger2.Ledger.GetPerformanceTime(send.(*types.StateBlock).GetHash())
+	p, err := ledger2.Ledger.GetPerformanceTime(send.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
