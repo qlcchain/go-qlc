@@ -61,10 +61,11 @@ func (el *Election) haveQuorum() {
 		}
 	}
 	//supply := el.getOnlineRepresentativesBalance()
-	supply, err := el.getGenesisBalance()
-	if err != nil {
-		return
-	}
+	supply := common.QLCGenesisBlock.Balance
+	//supply, err := el.getGenesisBalance()
+	//if err != nil {
+	//	return
+	//}
 	b, err := supply.Div(2)
 	if err != nil {
 		return
