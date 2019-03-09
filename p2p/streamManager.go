@@ -54,7 +54,7 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 		}
 	}
 
-	sm.node.logger.Info("Added a new stream.")
+	sm.node.logger.Infof("Added a new stream:[%s]", stream.pid.Pretty())
 
 	sm.allStreams.Store(stream.pid.Pretty(), stream)
 	stream.StartLoop()
@@ -76,7 +76,7 @@ func (sm *StreamManager) RemoveStream(s *Stream) {
 		return
 	}
 
-	sm.node.logger.Info("Removing a stream.")
+	sm.node.logger.Infof("Removing a stream:[%s]", s.pid.Pretty())
 
 	sm.allStreams.Delete(s.pid.Pretty())
 }

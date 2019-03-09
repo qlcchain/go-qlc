@@ -174,9 +174,8 @@ func (s *Stream) writeLoop() {
 			return
 		case message := <-s.messageChan:
 			s.WriteQlcMessage(message)
-			continue
 		default:
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(5 * time.Millisecond)
 		}
 	}
 
@@ -256,8 +255,8 @@ func (s *Stream) Write(data []byte) error {
 
 	n, err := s.stream.Write(data)
 	if err != nil {
-		s.node.logger.Error("Failed to send message to peer.")
-		s.close()
+		s.node.logger.Errorf("Failed to send message to peer [%s].", s.pid.Pretty())
+		//s.close()
 		return err
 	}
 	s.node.logger.Debugf("%d byte send to %v ", n, s.pid.Pretty())

@@ -24,7 +24,7 @@ const (
 )
 
 const (
-	msgCacheSize           = 4096
+	msgCacheSize           = 65535
 	checkCacheTimeInterval = 10 * time.Second
 	msgResendMaxTimes      = 20
 	msgNeedResendInterval  = 1 * time.Second
@@ -39,22 +39,30 @@ type cacheValue struct {
 }
 
 type MessageService struct {
-	netService  *QlcService
-	quitCh      chan bool
-	messageCh   chan Message
-	ledger      *ledger.Ledger
-	syncService *ServiceSync
-	cache       gcache.Cache
+	netService          *QlcService
+	quitCh              chan bool
+	messageCh           chan Message
+	publishMessageCh    chan Message
+	confirmReqMessageCh chan Message
+	confirmAckMessageCh chan Message
+	rspMessageCh        chan Message
+	ledger              *ledger.Ledger
+	syncService         *ServiceSync
+	cache               gcache.Cache
 }
 
 // NewService return new Service.
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
-		quitCh:     make(chan bool, 1),
-		messageCh:  make(chan Message, 4096),
-		ledger:     ledger,
-		netService: netService,
-		cache:      gcache.New(msgCacheSize).LRU().Build(),
+		quitCh:              make(chan bool, 1),
+		messageCh:           make(chan Message, 65535),
+		publishMessageCh:    make(chan Message, 65535),
+		confirmReqMessageCh: make(chan Message, 65535),
+		confirmAckMessageCh: make(chan Message, 65535),
+		rspMessageCh:        make(chan Message, 65535),
+		ledger:              ledger,
+		netService:          netService,
+		cache:               gcache.New(msgCacheSize).LRU().Build(),
 	}
 	ms.syncService = NewSyncService(netService, ledger)
 	return ms
@@ -64,38 +72,34 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 func (ms *MessageService) Start() {
 	// register the network handler.
 	netService := ms.netService
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, PublishReq))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, ConfirmReq))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, ConfirmAck))
+	netService.Register(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
+	netService.Register(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
+	netService.Register(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, MessageResponse))
+	netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
 	// start loop().
 	go ms.startLoop()
 	go ms.syncService.Start()
+	go ms.checkMessageCacheLoop()
+	go ms.messageResponseLoop()
+	go ms.publishReqLoop()
+	go ms.confirmReqLoop()
+	go ms.confirmAckLoop()
 }
 
 func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
-	ticker := time.NewTicker(checkCacheTimeInterval)
 	for {
 		select {
 		case <-ms.quitCh:
 			ms.netService.node.logger.Info("Stopped Message Service.")
 			return
-		case <-ticker.C:
-			ms.checkMessageCache()
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
-			case PublishReq:
-				ms.onPublishReq(message)
-			case ConfirmReq:
-				ms.onConfirmReq(message)
-			case ConfirmAck:
-				ms.onConfirmAck(message)
 			case FrontierRequest:
 				ms.syncService.onFrontierReq(message)
 			case FrontierRsp:
@@ -106,14 +110,99 @@ func (ms *MessageService) startLoop() {
 				ms.syncService.onBulkPullRsp(message)
 			case BulkPushBlock:
 				ms.syncService.onBulkPushBlock(message)
+			default:
+				ms.netService.node.logger.Error("Received unknown message.")
+				time.Sleep(5 * time.Millisecond)
+			}
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+func (ms *MessageService) messageResponseLoop() {
+	for {
+		select {
+		case <-ms.quitCh:
+			return
+		case message := <-ms.rspMessageCh:
+			switch message.MessageType() {
 			case MessageResponse:
 				ms.onMessageResponse(message)
 			default:
-				ms.netService.node.logger.Error("Received unknown message.")
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(5 * time.Millisecond)
 			}
 		default:
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+func (ms *MessageService) publishReqLoop() {
+	for {
+		select {
+		case <-ms.quitCh:
+			return
+		case message := <-ms.publishMessageCh:
+			switch message.MessageType() {
+			case PublishReq:
+				ms.onPublishReq(message)
+			default:
+				time.Sleep(5 * time.Millisecond)
+			}
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+func (ms *MessageService) confirmReqLoop() {
+	for {
+		select {
+		case <-ms.quitCh:
+			return
+		case message := <-ms.confirmReqMessageCh:
+			switch message.MessageType() {
+			case ConfirmReq:
+				ms.onConfirmReq(message)
+			default:
+				time.Sleep(5 * time.Millisecond)
+			}
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+func (ms *MessageService) confirmAckLoop() {
+	for {
+		select {
+		case <-ms.quitCh:
+			return
+		case message := <-ms.confirmAckMessageCh:
+			switch message.MessageType() {
+			case ConfirmAck:
+				ms.onConfirmAck(message)
+			default:
+				time.Sleep(5 * time.Millisecond)
+			}
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+func (ms *MessageService) checkMessageCacheLoop() {
+	ticker := time.NewTicker(checkCacheTimeInterval)
+	for {
+		select {
+		case <-ms.quitCh:
+			ms.netService.node.logger.Info("Stopped Message Service.")
+			return
+		case <-ticker.C:
+			ms.checkMessageCache()
+		default:
+			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -164,7 +253,7 @@ func (ms *MessageService) checkMessageCache() {
 }
 
 func (ms *MessageService) onMessageResponse(message Message) {
-	ms.netService.node.logger.Info("receive MessageResponse")
+	//ms.netService.node.logger.Info("receive MessageResponse")
 	var hash types.Hash
 	var cs []*cacheValue
 	var csTemp []*cacheValue
@@ -173,7 +262,6 @@ func (ms *MessageService) onMessageResponse(message Message) {
 		ms.netService.node.logger.Errorf("onMessageResponse err:[%s]", err)
 		return
 	}
-	//ms.netService.node.logger.Info("hash is....... :", hash)
 	v, err := ms.cache.Get(hash)
 	if err != nil {
 		if err == gcache.KeyNotFoundError {
@@ -193,7 +281,7 @@ func (ms *MessageService) onMessageResponse(message Message) {
 	if len(csTemp) == len(cs) {
 		t := ms.cache.Remove(hash)
 		if t {
-			ms.netService.node.logger.Infof("remove message cache for hash:[%s] success", hash)
+			ms.netService.node.logger.Debugf("remove message cache for hash:[%s] success", hash)
 		}
 	} else {
 		csDiff := sliceDiff(cs, csTemp)
@@ -214,7 +302,7 @@ func (ms *MessageService) onPublishReq(message Message) {
 		hash := blk.Blk.GetHash()
 		ms.addPerformanceTime(hash)
 	}
-	ms.netService.node.logger.Info("receive PublishReq")
+	ms.netService.node.logger.Infof("receive PublishReq from:[%s]", message.MessageFrom())
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
@@ -233,7 +321,7 @@ func (ms *MessageService) onConfirmReq(message Message) {
 		hash := blk.Blk.GetHash()
 		ms.addPerformanceTime(hash)
 	}
-	ms.netService.node.logger.Info("receive ConfirmReq")
+	ms.netService.node.logger.Infof("receive ConfirmReq from :[%s]", message.MessageFrom())
 	//ms.netService.node.logger.Info("message hash is:", message.Hash())
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
@@ -252,7 +340,7 @@ func (ms *MessageService) onConfirmAck(message Message) {
 		}
 		ms.addPerformanceTime(ack.Blk.GetHash())
 	}
-	ms.netService.node.logger.Info("receive ConfirmAck")
+	ms.netService.node.logger.Infof("receive ConfirmAck from :[%s]", message.MessageFrom())
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send ConfirmAck Response err:[%s] for message hash:[%s]", err, message.Hash().String())
@@ -266,15 +354,15 @@ func (ms *MessageService) Stop() {
 	// quit.
 	ms.quitCh <- true
 	ms.syncService.quitCh <- true
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, PublishReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, ConfirmReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, ConfirmAck))
+	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
+	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
+	ms.netService.Deregister(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
 	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, MessageResponse))
+	ms.netService.Deregister(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
 }
 
 func marshalMessage(messageName string, value interface{}) ([]byte, error) {

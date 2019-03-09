@@ -25,7 +25,7 @@ func NewDispatcher() *Dispatcher {
 	dp := &Dispatcher{
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
-		receivedMessageCh: make(chan Message, 65536),
+		receivedMessageCh: make(chan Message, 655350),
 		filters:           make(map[MessageType]bool),
 		logger:            log.NewLogger("dispatcher"),
 	}
@@ -87,12 +87,12 @@ func (dp *Dispatcher) loop() {
 				case key.(*Subscriber).msgChan <- msg:
 				default:
 					dp.logger.Debug("timeout to dispatch message.")
-					time.Sleep(100 * time.Millisecond)
+					time.Sleep(5 * time.Millisecond)
 				}
 				return true
 			})
 		default:
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }

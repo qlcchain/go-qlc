@@ -49,7 +49,7 @@ func (bp *BlockProcessor) processBlocks() {
 			bp.dp.logger.Info("begin Find Online Representatives.")
 			go bp.dp.findOnlineRepresentatives()
 		default:
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
