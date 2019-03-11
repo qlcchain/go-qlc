@@ -2,8 +2,9 @@ package consensus
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"time"
+
+	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p"
@@ -43,7 +44,11 @@ func (bp *BlockProcessor) processBlocks() {
 			bp.dp.logger.Info("Stopped process blocks.")
 			return
 		case bs := <-bp.blocks:
-			result, _ := bp.dp.verifier.Process(bs.block)
+			result, err := bp.dp.verifier.Process(bs.block)
+			if err != nil {
+				bp.dp.logger.Error("error: [%s] when verify block:[%s]", err, bs.block.GetHash())
+				continue
+			}
 			bp.processResult(result, bs)
 		case <-timer.C:
 			bp.dp.logger.Info("begin Find Online Representatives.")
@@ -71,36 +76,43 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 		bp.queueUnchecked(hash)
 		break
 	case process.BadSignature:
-		bp.dp.logger.Errorf("Bad signature for: %s", hash)
+		bp.dp.logger.Errorf("Bad signature for block: %s", hash)
 		break
 	case process.BadWork:
-		bp.dp.logger.Errorf("Bad work for: %s", hash)
+		bp.dp.logger.Errorf("Bad work for block: %s", hash)
 		break
 	case process.BalanceMismatch:
-		bp.dp.logger.Errorf("Balance mismatch for: %s", hash)
+		bp.dp.logger.Errorf("Balance mismatch for block: %s", hash)
 		break
 	case process.Old:
-		bp.dp.logger.Infof("Old for: %s", hash)
+		bp.dp.logger.Infof("Old for block: %s", hash)
 		break
 	case process.UnReceivable:
-		bp.dp.logger.Errorf("UnReceivable for: %s", hash)
+		bp.dp.logger.Errorf("UnReceivable for block: %s", hash)
+		break
+	case process.GapSmartContract:
+		bp.dp.logger.Errorf("GapSmartContract for block: %s", hash)
+		bp.processGapSmartContract(blk)
+		break
+	case process.InvalidData:
+		bp.dp.logger.Errorf("InvalidData for block: %s", hash)
 		break
 	case process.Other:
 		bp.dp.logger.Errorf("UnKnow process result for: %s", hash)
 		break
 	case process.Fork:
-		bp.dp.logger.Errorf("Fork for: %s", hash)
+		bp.dp.logger.Errorf("Fork for block: %s", hash)
 		bp.processFork(blk)
 		break
 	case process.GapPrevious:
-		bp.dp.logger.Debugf("Gap previous for: %s", hash)
+		bp.dp.logger.Debugf("Gap previous for block: %s", hash)
 		err := bp.dp.ledger.AddUncheckedBlock(blk.GetPrevious(), blk, types.UncheckedKindPrevious, bs.blockFrom)
 		if err != nil {
 			return err
 		}
 		break
 	case process.GapSource:
-		bp.dp.logger.Debugf("Gap source for: %s", hash)
+		bp.dp.logger.Debugf("Gap source for block: %s", hash)
 		err := bp.dp.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.blockFrom)
 		if err != nil {
 			return err
@@ -108,6 +120,10 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 		break
 	}
 	return nil
+}
+
+func (bp *BlockProcessor) processGapSmartContract(block *types.StateBlock) {
+
 }
 
 func (bp *BlockProcessor) processFork(block *types.StateBlock) {

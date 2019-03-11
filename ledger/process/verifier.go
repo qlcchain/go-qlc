@@ -25,7 +25,6 @@ const (
 	BalanceMismatch
 	UnReceivable
 	InvalidData
-	Invalid
 	Other
 )
 
