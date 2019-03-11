@@ -188,11 +188,12 @@ func Test_MarshalMessage(t *testing.T) {
 		t.Fatal("Marshal FrontierRequest err3")
 	}
 	zeroFrontier := new(types.Frontier)
-	data9, err := marshalMessage(FrontierRsp, zeroFrontier)
+	frontierRspTest := protos.NewFrontierRsp(zeroFrontier, 0)
+	data9, err := marshalMessage(FrontierRsp, frontierRspTest)
 	if err != nil {
 		t.Fatal("Marshal FrontierRsp err1")
 	}
-	f := protos.NewFrontierRsp(zeroFrontier)
+	f := protos.NewFrontierRsp(zeroFrontier, 0)
 	data10, err := protos.FrontierResponseToProto(f)
 	if err != nil {
 		t.Fatal("Marshal FrontierRsp err2")

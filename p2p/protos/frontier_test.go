@@ -45,19 +45,22 @@ func TestFrontierRsp(t *testing.T) {
 	if err != nil {
 		t.Fatal("string to openblockhash error")
 	}
-	fr := NewFrontierRsp(Frontier)
+	fr := NewFrontierRsp(Frontier, 5)
 	frBytes, err := FrontierResponseToProto(fr)
 	if err != nil {
 		t.Fatal("FrontierResponseToProto error")
 	}
-	frontier, err := FrontierResponseFromProto(frBytes)
+	frontierRsp, err := FrontierResponseFromProto(frBytes)
 	if err != nil {
 		t.Fatal("FrontierResponseFromProto error")
 	}
-	if frontier.Frontier.HeaderBlock != Frontier.HeaderBlock {
+	if frontierRsp.Frontier.HeaderBlock != Frontier.HeaderBlock {
 		t.Fatal("parse Headerblock error")
 	}
-	if frontier.Frontier.OpenBlock != Frontier.OpenBlock {
+	if frontierRsp.Frontier.OpenBlock != Frontier.OpenBlock {
 		t.Fatal("parse Openblock error")
+	}
+	if frontierRsp.TotalFrontierNum != fr.TotalFrontierNum {
+		t.Fatal("parse TotalFrontierNum error")
 	}
 }
