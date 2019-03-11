@@ -9,11 +9,11 @@ package contract
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/common"
 	"math/big"
 	"regexp"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	l "github.com/qlcchain/go-qlc/ledger"
@@ -49,7 +49,7 @@ func (m *Mintage) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
 	}
 
 	if block.Data, err = cabi.ABIMintage.PackMethod(
-		cabi.VariableNameToken,
+		cabi.MethodNameMintage,
 		tokenId,
 		param.TokenName,
 		param.TokenSymbol,
@@ -89,10 +89,11 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 	}
 
 	var tokenInfo []byte
-	_, amount := ledger.CalculateAmount(input)
+	amount, _ := ledger.CalculateAmount(input)
 	if amount.Sign() == 0 {
 		tokenInfo, _ = cabi.ABIMintage.PackVariable(
 			cabi.VariableNameToken,
+			param.Token,
 			param.TokenName,
 			param.TokenSymbol,
 			param.TotalSupply,
@@ -104,6 +105,7 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 		withdrawTime := time.Now().UTC().Add(time.Hour * minWithdrawTime).Unix()
 		tokenInfo, _ = cabi.ABIMintage.PackVariable(
 			cabi.VariableNameToken,
+			param.Token,
 			param.TokenName,
 			param.TokenSymbol,
 			param.TotalSupply,
@@ -112,6 +114,8 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 			amount.Int,
 			withdrawTime)
 	}
+
+	block.Data = tokenInfo
 	_ = ledger.SetStorage(param.Token[:], tokenInfo)
 	return []*ContractBlock{
 		{
@@ -140,7 +144,7 @@ func (m *WithdrawMintage) GetFee(ledger *l.Ledger, block *types.StateBlock) (typ
 }
 
 func (m *WithdrawMintage) DoSend(ledger *l.Ledger, block *types.StateBlock) error {
-	if isSend, amount := ledger.CalculateAmount(block); amount.Compare(types.ZeroBalance) != types.BalanceCompEqual || !isSend {
+	if amount, err := ledger.CalculateAmount(block); block.Type != types.Send || amount.Compare(types.ZeroBalance) != types.BalanceCompEqual || err != nil {
 		return errors.New("invalid block ")
 	}
 	tokenId := new(types.Hash)
@@ -171,6 +175,7 @@ func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 
 	newTokenInfo, _ := cabi.ABIMintage.PackVariable(
 		cabi.VariableNameToken,
+		tokenInfo.TokenId,
 		tokenInfo.TokenName,
 		tokenInfo.TokenSymbol,
 		tokenInfo.TotalSupply,

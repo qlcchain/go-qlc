@@ -9,6 +9,7 @@ package ledger
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
@@ -34,7 +35,10 @@ func (ls *LedgerService) Init() error {
 	l := ls.Ledger
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
 		genesis := common.QLCGenesisBlock
-		_ = l.SetStorage(genesis.Token[:], genesis.Data)
+		var key []byte
+		key = append(key, types.MintageAddress[:]...)
+		key = append(key, genesis.Token[:]...)
+		_ = l.SetStorage(key, genesis.Data)
 		if b, err := l.HasStateBlock(common.GenesisMintageHash, txn); !b && err == nil {
 			if err := l.AddStateBlock(&common.GenesisMintageBlock, txn); err != nil {
 				ls.Ledger.logger.Error(err)

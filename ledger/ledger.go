@@ -231,14 +231,11 @@ func (l *Ledger) addPosterior(previous, block types.Hash, txn db.StoreTxn) error
 
 func (l *Ledger) addTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
 	if blk.GetType() == types.ContractReward {
-		linkBlock, err := l.GetStateBlock(blk.GetLink(), txn)
+		token, err := cabi.ParseTokenInfo(blk.GetData())
 		if err != nil {
 			return err
 		}
-		token, err := cabi.ParseTokenInfo(linkBlock.GetData())
-		if err != nil {
-			return err
-		}
+		l.logger.Info(util.ToString(token))
 		tokenKey := getKeyOfHash(token.TokenId, idPrefixToken)
 		err = txn.Get(tokenKey, func(bytes []byte, b byte) error {
 			return nil
@@ -1885,18 +1882,33 @@ func (l *Ledger) IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (b
 	}
 }
 
-func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (bool, types.Balance) {
+func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (types.Balance, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	if prev, err := l.GetStateBlock(block.Previous); err != nil {
-		return false, types.ZeroBalance
-	} else {
-		if block.GetBalance().Compare(prev.Balance) == types.BalanceCompSmaller {
-			return true, prev.Balance.Sub(block.GetBalance()) // send
-		} else {
-			return false, block.GetBalance().Sub(prev.Balance) // receive or change
+	var prev *types.StateBlock
+	var err error
+	switch block.GetType() {
+	case types.Open:
+		return block.GetBalance(), err
+	case types.Send:
+		if prev, err = l.GetStateBlock(block.Previous); err != nil {
+			return types.ZeroBalance, err
 		}
+		return prev.Balance.Sub(block.GetBalance()), nil
+	case types.Receive:
+		if prev, err = l.GetStateBlock(block.Previous); err != nil {
+			return types.ZeroBalance, err
+		}
+		return block.GetBalance().Sub(prev.Balance), nil
+	case types.Change:
+		return types.ZeroBalance, nil
+	case types.ContractReward:
+		return block.GetBalance(), nil
+	case types.ContractSend:
+		return block.GetBalance(), nil
+	default:
+		return types.ZeroBalance, errors.New("invalid block type")
 	}
 
 }

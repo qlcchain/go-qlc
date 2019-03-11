@@ -9,11 +9,12 @@ package contract
 
 import (
 	"errors"
+	"math/big"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
-	"math/big"
-	"time"
 )
 
 var (
@@ -50,7 +51,7 @@ func (*Pledge) DoReceive(ledger *ledger.Ledger, block *types.StateBlock, input *
 		_ = cabi.ABIPledge.UnpackVariable(oldPledge, cabi.VariableNamePledgeInfo, oldPledgeData)
 		amount = oldPledge.Amount
 	}
-	_, a := ledger.CalculateAmount(input)
+	a, _ := ledger.CalculateAmount(input)
 	amount.Add(amount, a.Int)
 
 	pledgeTime := time.Now().UTC().Add(time.Hour * minPledgeTime).Unix()
@@ -90,7 +91,7 @@ func (*WithdrawPledge) GetFee(ledger *ledger.Ledger, block *types.StateBlock) (t
 }
 
 func (*WithdrawPledge) DoSend(ledger *ledger.Ledger, block *types.StateBlock) (err error) {
-	if isSend, amount := ledger.CalculateAmount(block); amount.Compare(types.ZeroBalance) != types.BalanceCompEqual || !isSend {
+	if amount, err := ledger.CalculateAmount(block); block.Type != types.Send || amount.Compare(types.ZeroBalance) != types.BalanceCompEqual || err != nil {
 		return errors.New("invalid block ")
 	}
 	param := new(cabi.ParamCancelPledge)
