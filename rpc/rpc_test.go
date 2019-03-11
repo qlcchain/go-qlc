@@ -2,17 +2,16 @@ package rpc
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/qlcchain/go-qlc/test/mock"
 )
 
@@ -107,7 +106,6 @@ func TestRPC_HTTP(t *testing.T) {
 func TestRPC_WebSocket(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
-	t.Skip()
 
 	_, address, _ := scheme(rs.rpc.config.RPC.WSEndpoint)
 	client, err := Dial(fmt.Sprintf("ws://%s", address))
@@ -115,19 +113,17 @@ func TestRPC_WebSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	acc := mock.Account()
+
 	blk := new(types.StateBlock)
-	blk.Address = acc.Address()
-	blk.Previous = types.ZeroHash
 	blk.Token = common.QLCChainToken
 	rs.rpc.ledger.AddStateBlock(blk)
+	var resp2 types.Hash
+	err = client.Call(&resp2, "ledger_blockHash", blk)
 
-	var resp []api.APIBlock
-	err = client.Call(&resp, "ledger_blocksInfo", []types.Hash{blk.GetHash()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(resp)
+	t.Log(resp2)
 }
 
 func TestRPC_IPC(t *testing.T) {

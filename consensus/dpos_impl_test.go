@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -33,7 +34,8 @@ func creatGenesisBlock(l *ledger.Ledger) {
 	ac, _ = seed.Account(0)
 	fmt.Println(ac.Address())
 	genesisBlock = createBlock(*ac, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(60000000000000000))}, types.Hash(ac.Address()), ac.Address())
-	l.BlockProcess(genesisBlock)
+	verifier := process.NewLedgerVerifier(l)
+	verifier.BlockProcess(genesisBlock)
 }
 
 func importWallet(cfg *config.Config) error {
@@ -205,7 +207,7 @@ func Test_Trx_Confirmed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	consensusService1.ledger.Process(send)
+	consensusService1.verifier.Process(send)
 	node1.Broadcast(p2p.PublishReq, send)
 	time.Sleep(30 * time.Second)
 	c, err := consensusService2.ledger.CountStateBlocks()

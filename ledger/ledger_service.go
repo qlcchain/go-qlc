@@ -35,12 +35,16 @@ func (ls *LedgerService) Init() error {
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
 		genesis := common.QLCGenesisBlock
 		_ = l.SetStorage(genesis.Token[:], genesis.Data)
-		if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
-			_ = l.AddStateBlock(&common.GenesisMintageBlock)
+		if b, err := l.HasStateBlock(common.GenesisMintageHash, txn); !b && err == nil {
+			if err := l.AddStateBlock(&common.GenesisMintageBlock, txn); err != nil {
+				ls.Ledger.logger.Error(err)
+			}
 		}
 
-		if b, err := l.HasStateBlock(common.QLCGenesisBlockHash); !b && err == nil {
-			_ = l.AddStateBlock(&common.QLCGenesisBlock)
+		if b, err := l.HasStateBlock(common.QLCGenesisBlockHash, txn); !b && err == nil {
+			if err := l.AddStateBlock(&common.QLCGenesisBlock, txn); err != nil {
+				ls.Ledger.logger.Error(err)
+			}
 		}
 		return nil
 	})

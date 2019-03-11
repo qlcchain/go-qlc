@@ -131,6 +131,34 @@ func (b *StateBlock) IsSendBlock() bool {
 	return b.Type == Send || b.Type == ContractReward || b.Type == ContractSend || b.Type == ContractRefund
 }
 
+func (b *StateBlock) IsContractBlock() bool {
+	return b.Type == ContractReward || b.Type == ContractSend || b.Type == ContractRefund || b.Type == ContractError
+}
+
+func (b *StateBlock) Clone() *StateBlock {
+	clone := StateBlock{
+		//Type:           b.Type,
+		//Token:          b.Token,
+		//Address:        b.Address,
+		//Balance:        b.Balance,
+		//Previous:       b.Previous,
+		//Link:           b.Link,
+		//Sender:         b.Sender,
+		//Receiver:       b.Receiver,
+		//Message:        b.Message,
+		//Data:           b.Data,
+		//Quota:          b.Quota,
+		//Timestamp:      b.Timestamp,
+		//Extra:          b.Extra,
+		//Representative: b.Representative,
+		//Work:           b.Work,
+		//Signature:      b.Signature,
+	}
+	bytes, _ := b.Serialize()
+	_ = clone.Deserialize(bytes)
+	return &clone
+}
+
 //go:generate msgp
 type BlockExtra struct {
 	KeyHash Hash    `msg:"key,extension" json:"key"`
