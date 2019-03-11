@@ -269,7 +269,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 			if bytes.EqualFold(block.Data, clone.Data) {
 				return Progress, nil
 			} else {
-				return Invalid, nil
+				return InvalidData, nil
 			}
 		} else {
 			return Other, err
