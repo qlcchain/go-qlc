@@ -92,16 +92,16 @@ type Store interface {
 	Rollback(hash types.Hash) error
 
 	//BlockProcess process block to badger
-	BlockProcess(block types.Block) error
+	//BlockProcess(block types.Block) error
 	// performance test time
 	AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error
 	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
 	GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error)
 	IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	//GenerateBlock
-	GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (types.Block, error)
-	GenerateReceiveBlock(sendBlock types.Block, prk ed25519.PrivateKey) (types.Block, error)
-	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (types.Block, error)
+	GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
 
 	// Contract storage
 	//GetStorage
