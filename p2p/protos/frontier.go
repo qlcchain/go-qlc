@@ -56,20 +56,23 @@ func FrontierReqFromProto(data []byte) (*FrontierReq, error) {
 }
 
 type FrontierResponse struct {
-	Frontier *types.Frontier
+	Frontier         *types.Frontier
+	TotalFrontierNum uint32
 }
 
-func NewFrontierRsp(fr *types.Frontier) (packet *FrontierResponse) {
+func NewFrontierRsp(fr *types.Frontier, num uint32) (packet *FrontierResponse) {
 	return &FrontierResponse{
-		Frontier: fr,
+		Frontier:         fr,
+		TotalFrontierNum: num,
 	}
 }
 
 // ToProto converts domain FrontierResponse into proto FrontierResponse
 func FrontierResponseToProto(fr *FrontierResponse) ([]byte, error) {
 	pi := &pb.FrontierRsp{
-		HeaderBlock: fr.Frontier.HeaderBlock[:],
-		OpenBlock:   fr.Frontier.OpenBlock[:],
+		TotalFrontierNum: fr.TotalFrontierNum,
+		HeaderBlock:      fr.Frontier.HeaderBlock[:],
+		OpenBlock:        fr.Frontier.OpenBlock[:],
 	}
 	data, err := proto.Marshal(pi)
 	if err != nil {
@@ -94,7 +97,8 @@ func FrontierResponseFromProto(data []byte) (*FrontierResponse, error) {
 		return nil, err
 	}
 	frPs := &FrontierResponse{
-		Frontier: frp,
+		TotalFrontierNum: fr.TotalFrontierNum,
+		Frontier:         frp,
 	}
 	return frPs, nil
 }

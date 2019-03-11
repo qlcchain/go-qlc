@@ -103,7 +103,8 @@ func (ms *MessageService) startLoop() {
 			case FrontierRequest:
 				ms.syncService.onFrontierReq(message)
 			case FrontierRsp:
-				ms.syncService.onFrontierRsp(message)
+				ms.syncService.checkFrontier(message)
+				//ms.syncService.onFrontierRsp(message)
 			case BulkPullRequest:
 				ms.syncService.onBulkPullRequest(message)
 			case BulkPullRsp:
@@ -399,9 +400,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		}
 		return data, nil
 	case FrontierRsp:
-		packet := &protos.FrontierResponse{
-			Frontier: value.(*types.Frontier),
-		}
+		packet := value.(*protos.FrontierResponse)
 		data, err := protos.FrontierResponseToProto(packet)
 		if err != nil {
 			return nil, err
