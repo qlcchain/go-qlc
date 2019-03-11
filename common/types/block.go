@@ -55,13 +55,13 @@ func parseString(s string) BlockType {
 		return Change
 	case "open":
 		return Open
-	case "contractReward":
+	case "contractreward":
 		return ContractReward
-	case "contractSend":
+	case "contractsend":
 		return ContractSend
-	case "contractRefund":
+	case "contractrefund":
 		return ContractRefund
-	case "contractError":
+	case "contracterror":
 		return ContractError
 	case "smartcontract":
 		return SmartContract

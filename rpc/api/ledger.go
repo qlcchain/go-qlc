@@ -4,13 +4,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"sort"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"go.uber.org/zap"
@@ -89,7 +89,11 @@ func (l *LedgerApi) generateAPIBlock(block *types.StateBlock) (*APIBlock, error)
 	ab := new(APIBlock)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
-	_, ab.Amount = l.ledger.CalculateAmount(block)
+	if amount, err := l.ledger.CalculateAmount(block); err != nil {
+		return nil, err
+	} else {
+		ab.Amount = amount
+	}
 	token, err := l.ledger.GetTokenById(block.GetToken())
 	if err != nil {
 		return nil, err
@@ -634,20 +638,15 @@ func (l *LedgerApi) TransactionsCount() (map[string]uint64, error) {
 }
 
 func (l *LedgerApi) getSenderOrReceiver(hashes []types.Hash, count int, offset *int) ([]*APIBlock, error) {
-	if count < 1 {
-		return nil, errors.New("err count")
+	c, o, err := checkOffset(count, offset)
+	if err != nil {
+		return nil, err
 	}
-	o := 0
-	if offset != nil {
-		o = *offset
-		if o < -1 {
-			return nil, errors.New("err offset")
-		}
-	}
+
 	var hs []types.Hash
 	if len(hashes) > o {
-		if len(hashes) >= o+count {
-			hs = hashes[o : count+o]
+		if len(hashes) >= o+c {
+			hs = hashes[o : c+o]
 		} else {
 			hs = hashes[o:]
 		}
@@ -657,18 +656,14 @@ func (l *LedgerApi) getSenderOrReceiver(hashes []types.Hash, count int, offset *
 
 	ab := make([]*APIBlock, 0)
 	for _, h := range hs {
-		b := new(APIBlock)
 		block, err := l.ledger.GetStateBlock(h)
 		if err != nil {
 			return nil, err
 		}
-
-		token, err := l.ledger.GetTokenById(block.GetToken())
+		b, err := l.generateAPIBlock(block)
 		if err != nil {
 			return nil, err
 		}
-		b.TokenName = token.TokenName
-		b = b.fromStateBlock(block)
 		ab = append(ab, b)
 	}
 	return ab, nil
