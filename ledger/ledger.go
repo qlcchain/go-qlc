@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -227,28 +229,13 @@ func (l *Ledger) addPosterior(previous, block types.Hash, txn db.StoreTxn) error
 	return nil
 }
 
-func (l *Ledger) isGenesisBlock(blk *types.StateBlock, txn db.StoreTxn) (bool, error) {
-	pre := blk.GetPrevious()
-
-	if pre.IsZero() && blk.GetData() != nil && !util.BytesEqual(blk.GetData(), []byte{}) {
+func (l *Ledger) addTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
+	if blk.GetType() == types.ContractReward {
 		linkBlock, err := l.GetStateBlock(blk.GetLink(), txn)
 		if err != nil {
-			return false, err
+			return err
 		}
-		if linkBlock.GetLink() == types.Hash(types.MintageAddress) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func (l *Ledger) addTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
-	isGenesis, err := l.isGenesisBlock(blk, txn)
-	if err != nil {
-		return err
-	}
-	if isGenesis {
-		token, err := cabi.ParseTokenInfo(blk.GetData())
+		token, err := cabi.ParseTokenInfo(linkBlock.GetData())
 		if err != nil {
 			return err
 		}
@@ -405,11 +392,7 @@ func (l *Ledger) deletePosterior(blk *types.StateBlock, txn db.StoreTxn) error {
 }
 
 func (l *Ledger) deleteTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
-	isGenesis, err := l.isGenesisBlock(blk, txn)
-	if err != nil {
-		return err
-	}
-	if isGenesis {
+	if blk.GetType() == types.ContractReward {
 		token, err := cabi.ParseTokenInfo(blk.GetData())
 		if err != nil {
 			return err
@@ -1916,4 +1899,137 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 		}
 	}
 
+}
+
+func (l *Ledger) generateWork(hash types.Hash) types.Work {
+	var work types.Work
+	worker, _ := types.NewWorker(work, hash)
+	return worker.NewWork()
+	//
+	////cache to db
+	//_ = s.setWork(hash, work)
+}
+
+func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error) {
+	tm, err := l.GetTokenMeta(source, token)
+	if err != nil {
+		return nil, err
+	}
+	//balance, err := l.TokenBalance(source, token)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
+		sb := types.StateBlock{
+			Type:           types.Send,
+			Address:        source,
+			Token:          token,
+			Link:           to.ToHash(),
+			Balance:        tm.Balance.Sub(amount),
+			Previous:       tm.Header,
+			Representative: tm.Representative,
+		}
+		acc := types.NewAccount(prk)
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+		return &sb, nil
+	} else {
+		return nil, fmt.Errorf("not enought balance(%s) of %s", tm.Balance, amount)
+	}
+}
+
+func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error) {
+	hash := sendBlock.GetHash()
+	if !sendBlock.GetType().Equal(types.Send) {
+		return nil, fmt.Errorf("(%s) is not send block", hash.String())
+	}
+	if exist, err := l.HasStateBlock(hash); !exist || err != nil {
+		return nil, fmt.Errorf("send block(%s) does not exist", hash.String())
+	}
+	acc := types.NewAccount(prk)
+	rxAccount := types.Address(sendBlock.Link)
+	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
+	if err != nil {
+		return nil, err
+	}
+	has, err := l.HasAccountMeta(rxAccount)
+	if err != nil {
+		return nil, err
+	}
+	if has {
+		rxAm, err := l.GetAccountMeta(rxAccount)
+		if err != nil {
+			return nil, err
+		}
+		rxTm := rxAm.Token(sendBlock.GetToken())
+		sb := types.StateBlock{
+			Type:           types.Receive,
+			Address:        rxAccount,
+			Balance:        rxTm.Balance.Add(info.Amount),
+			Previous:       rxTm.Header,
+			Link:           hash,
+			Representative: rxTm.Representative,
+			Token:          rxTm.Type,
+			Extra:          types.ZeroHash,
+		}
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+		return &sb, nil
+	} else {
+		//genesis, err := mock.GetTokenById(mock.GetChainTokenType())
+		//if err != nil {
+		//	return nil, err
+		//}
+		sb := &types.StateBlock{
+			Type:           types.Open,
+			Address:        rxAccount,
+			Balance:        info.Amount,
+			Previous:       types.ZeroHash,
+			Link:           hash,
+			Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
+			Token:          sendBlock.GetToken(),
+			Extra:          types.ZeroHash,
+		}
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+		return sb, nil
+	}
+}
+
+func (l *Ledger) GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error) {
+	if b, err := l.HasAccountMeta(account); err != nil || !b {
+		return nil, fmt.Errorf("account[%s] is not exist", account.String())
+	}
+
+	if _, err := l.GetAccountMeta(representative); err != nil {
+		return nil, fmt.Errorf("invalid representative[%s]", representative.String())
+	}
+
+	//get latest chain token block
+	hash := l.Latest(account, common.QLCChainToken)
+	if hash.IsZero() {
+		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
+	}
+
+	block, err := l.GetStateBlock(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	tm, err := l.GetTokenMeta(account, common.QLCChainToken)
+	sb := types.StateBlock{
+		Type:           types.Change,
+		Address:        account,
+		Balance:        tm.Balance,
+		Previous:       tm.Header,
+		Link:           types.ZeroHash,
+		Representative: representative,
+		Token:          block.Token,
+		Extra:          types.ZeroHash,
+	}
+	acc := types.NewAccount(prk)
+	sb.Signature = acc.Sign(sb.GetHash())
+	sb.Work = l.generateWork(sb.Root())
+	return &sb, nil
 }

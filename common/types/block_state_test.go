@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"reflect"
 	"testing"
 )
 
@@ -106,5 +107,22 @@ func TestStateBlock_Serialize(t *testing.T) {
 	}
 	if hex.EncodeToString(b2.Data) != hex.EncodeToString(b.Data) {
 		t.Fatal("data error")
+	}
+}
+
+func TestStateBlock_Clone(t *testing.T) {
+	b := StateBlock{}
+	err := json.Unmarshal([]byte(testBlk), &b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(b.Balance)
+	b1 := b.Clone()
+
+	if reflect.DeepEqual(b, b1) {
+		t.Fatal("invalid clone")
+	}
+	if b.String() != b1.String() {
+		t.Fatal("invalid clone ")
 	}
 }

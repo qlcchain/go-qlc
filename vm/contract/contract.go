@@ -70,3 +70,10 @@ func GetChainContract(addr types.Address, methodSelector []byte) (ChainContract,
 	}
 	return nil, ok, nil
 }
+
+func IsChainContract(addr types.Address) bool {
+	if _, ok := contractCache[addr]; ok {
+		return true
+	}
+	return false
+}

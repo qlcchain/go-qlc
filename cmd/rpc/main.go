@@ -10,6 +10,7 @@ package main
 import (
 	"fmt"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"math/big"
 	"os"
 	"os/signal"
@@ -65,6 +66,7 @@ func initData(p string) {
 	dir := filepath.Join(p, "ledger")
 	ledger := ledger.NewLedger(dir)
 	defer ledger.Close()
+	verifier := process.NewLedgerVerifier(ledger)
 
 	// accountsFrontiers / accountInfo
 	var am1 types.AccountMeta
@@ -98,10 +100,10 @@ func initData(p string) {
 
 	// accountHistoryTopn
 	blocks, _ := mock.BlockChain()
-	ledger.BlockProcess(blocks[0])
+	verifier.BlockProcess(blocks[0])
 	for i, b := range blocks[1:] {
 		fmt.Println(i)
-		ledger.Process(b)
+		verifier.Process(b)
 	}
 	fmt.Println("accountHistoryTopn, ", blocks[0].GetAddress())
 

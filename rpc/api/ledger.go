@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -16,9 +17,10 @@ import (
 )
 
 type LedgerApi struct {
-	ledger *ledger.Ledger
-	dpos   *consensus.DposService
-	logger *zap.SugaredLogger
+	ledger   *ledger.Ledger
+	verifier *process.LedgerVerifier
+	dpos     *consensus.DposService
+	logger   *zap.SugaredLogger
 }
 
 type APIBlock struct {
@@ -48,7 +50,7 @@ type APIPending struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, dpos *consensus.DposService) *LedgerApi {
-	return &LedgerApi{ledger: l, dpos: dpos, logger: log.NewLogger("rpc/ledger")}
+	return &LedgerApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("rpc/ledger")}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -525,7 +527,7 @@ func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative ty
 }
 
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
-	flag, err := l.ledger.Process(block)
+	flag, err := l.verifier.Process(block)
 	if err != nil {
 		l.logger.Error(err)
 		return types.ZeroHash, err
@@ -533,27 +535,27 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 
 	l.logger.Debug("process result, ", flag)
 	switch flag {
-	case ledger.Progress:
+	case process.Progress:
 		l.logger.Debug("broadcast block")
 		l.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
 		return block.GetHash(), nil
-	case ledger.BadWork:
+	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")
-	case ledger.BadSignature:
+	case process.BadSignature:
 		return types.ZeroHash, errors.New("bad signature")
-	case ledger.Old:
+	case process.Old:
 		l.logger.Info("old block")
 		//return block.GetHash(), nil
 		return types.ZeroHash, errors.New("old block")
-	case ledger.Fork:
+	case process.Fork:
 		return types.ZeroHash, errors.New("fork")
-	case ledger.GapSource:
+	case process.GapSource:
 		return types.ZeroHash, errors.New("gap source block")
-	case ledger.GapPrevious:
+	case process.GapPrevious:
 		return types.ZeroHash, errors.New("gap previous block")
-	case ledger.BalanceMismatch:
+	case process.BalanceMismatch:
 		return types.ZeroHash, errors.New("balance mismatch")
-	case ledger.UnReceivable:
+	case process.UnReceivable:
 		return types.ZeroHash, errors.New("unReceivable")
 	default:
 		return types.ZeroHash, errors.New("error processing block")

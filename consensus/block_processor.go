@@ -2,10 +2,10 @@ package consensus
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/p2p"
 )
 
@@ -43,7 +43,7 @@ func (bp *BlockProcessor) processBlocks() {
 			bp.dp.logger.Info("Stopped process blocks.")
 			return
 		case bs := <-bp.blocks:
-			result, _ := bp.dp.ledger.Process(bs.block)
+			result, _ := bp.dp.verifier.Process(bs.block)
 			bp.processResult(result, bs)
 		case <-timer.C:
 			bp.dp.logger.Info("begin Find Online Representatives.")
@@ -54,11 +54,11 @@ func (bp *BlockProcessor) processBlocks() {
 	}
 }
 
-func (bp *BlockProcessor) processResult(result ledger.ProcessResult, bs blockSource) error {
+func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSource) error {
 	blk := bs.block
 	hash := blk.GetHash()
 	switch result {
-	case ledger.Progress:
+	case process.Progress:
 		if bs.blockFrom == types.Synchronized {
 			bp.dp.logger.Debugf("Block %s from sync,no need consensus", hash)
 		} else if bs.blockFrom == types.UnSynchronized {
@@ -70,36 +70,36 @@ func (bp *BlockProcessor) processResult(result ledger.ProcessResult, bs blockSou
 		}
 		bp.queueUnchecked(hash)
 		break
-	case ledger.BadSignature:
+	case process.BadSignature:
 		bp.dp.logger.Errorf("Bad signature for: %s", hash)
 		break
-	case ledger.BadWork:
+	case process.BadWork:
 		bp.dp.logger.Errorf("Bad work for: %s", hash)
 		break
-	case ledger.BalanceMismatch:
+	case process.BalanceMismatch:
 		bp.dp.logger.Errorf("Balance mismatch for: %s", hash)
 		break
-	case ledger.Old:
+	case process.Old:
 		bp.dp.logger.Infof("Old for: %s", hash)
 		break
-	case ledger.UnReceivable:
+	case process.UnReceivable:
 		bp.dp.logger.Errorf("UnReceivable for: %s", hash)
 		break
-	case ledger.Other:
+	case process.Other:
 		bp.dp.logger.Errorf("UnKnow process result for: %s", hash)
 		break
-	case ledger.Fork:
+	case process.Fork:
 		bp.dp.logger.Errorf("Fork for: %s", hash)
 		bp.processFork(blk)
 		break
-	case ledger.GapPrevious:
+	case process.GapPrevious:
 		bp.dp.logger.Debugf("Gap previous for: %s", hash)
 		err := bp.dp.ledger.AddUncheckedBlock(blk.GetPrevious(), blk, types.UncheckedKindPrevious, bs.blockFrom)
 		if err != nil {
 			return err
 		}
 		break
-	case ledger.GapSource:
+	case process.GapSource:
 		bp.dp.logger.Debugf("Gap source for: %s", hash)
 		err := bp.dp.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.blockFrom)
 		if err != nil {

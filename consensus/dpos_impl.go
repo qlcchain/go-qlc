@@ -3,6 +3,7 @@ package consensus
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"sync"
 	"time"
 
@@ -31,6 +32,7 @@ type DposService struct {
 	common.ServiceLifecycle
 	ns                 p2p.Service
 	ledger             *ledger.Ledger
+	verifier           *process.LedgerVerifier
 	eventMsg           map[p2p.EventType]p2p.EventSubscriber
 	bp                 *BlockProcessor
 	wallet             *wallet.WalletStore
@@ -102,6 +104,7 @@ func NewDposService(cfg *config.Config, netService p2p.Service, account types.Ad
 	dps := &DposService{
 		ns:       netService,
 		ledger:   l,
+		verifier: process.NewLedgerVerifier(l),
 		eventMsg: make(map[p2p.EventType]p2p.EventSubscriber),
 		bp:       bp,
 		acTrx:    acTrx,
@@ -231,8 +234,8 @@ func (dps *DposService) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock
 			isRep = dps.isThisAccountRepresentation(key.(types.Address))
 			if isRep {
 				dps.putRepresentativesToOnline(key.(types.Address))
-				result, _ := dps.ledger.Process(bs.block)
-				if result == ledger.Old {
+				result, _ := dps.verifier.Process(bs.block)
+				if result == process.Old {
 					dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
 					dps.sendConfirmAck(bs.block, key.(types.Address), value.(*types.Account))
 				}
@@ -279,13 +282,13 @@ func (dps *DposService) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAc
 			isRep = dps.isThisAccountRepresentation(key.(types.Address))
 			if isRep {
 				dps.putRepresentativesToOnline(key.(types.Address))
-				result, _ := dps.ledger.Process(bs.block)
-				if result == ledger.Old {
+				result, _ := dps.verifier.Process(bs.block)
+				if result == process.Old {
 					dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
 					dps.sendConfirmAck(bs.block, key.(types.Address), value.(*types.Account))
 				}
 				dps.bp.processResult(result, bs)
-				if result == ledger.Progress {
+				if result == process.Progress {
 					dps.acTrx.vote(ack)
 				}
 			}

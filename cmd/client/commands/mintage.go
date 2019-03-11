@@ -9,10 +9,14 @@ package commands
 
 import (
 	"encoding/hex"
+	"fmt"
+
 	"github.com/abiosoft/ishell"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/rpc/api"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/spf13/cobra"
 )
 
@@ -136,29 +140,72 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 	}
 	d := uint8(decimals)
 
-	var bs = make([]rpc.BatchElem, 0)
 	mintageParam := api.MintageParams{
 		SelfAddr: a.Address(), PrevHash: previous, TokenName: tokenName,
 		TotalSupply: totalSupply, TokenSymbol: tokenSymbol, Decimals: d,
 	}
-	mintageElem := buildBatchElem("mintage_getMintageData", mintageParam, &data)
-	bs = append(bs, mintageElem)
-
-	var balances map[types.Address]map[string]map[string]types.Balance
-	balanceElem := buildBatchElem("ledger_accountsBalances", a.Address(), &balances)
-	bs = append(bs, balanceElem)
-
-	err = client.BatchCall(bs)
+	err = client.Call(&data, "ledger_accountsBalances", &mintageParam)
 	if err != nil {
 		return err
 	}
-	for _, v := range bs {
-		if v.Error != nil {
-			return v.Error
+
+	//generate send contract, genesis block and broadcast to network
+	token, err := cabi.ParseTokenInfo(data)
+	if err != nil {
+		return err
+	}
+
+	var am api.APIAccount
+	err = client.Call(&am, "ledger_accountInfo", a.Address())
+	if err != nil {
+		return err
+	}
+
+	tm := new(api.APITokenMeta)
+	for _, t := range am.Tokens {
+		if t.TokenMeta.Type == common.QLCChainToken {
+			tm = t
 		}
 	}
-	//TODO: generate send contract, genesis block and broadcast to network
+	if tm.TokenMeta.Type.IsZero() {
+		return fmt.Errorf("account does not have chain token")
+	}
+	send := types.StateBlock{
+		Type:           types.ContractSend,
+		Token:          tm.Type,
+		Address:        a.Address(),
+		Balance:        tm.Balance,
+		Previous:       tm.Header,
+		Link:           types.Hash(types.MintageAddress),
+		Representative: tm.Representative,
+		Data:           data,
+	}
+	send.Signature = a.Sign(send.GetHash())
+	var w types.Work
+	worker, _ := types.NewWorker(w, send.Root())
+	send.Work = worker.NewWork()
+	err = client.Call(nil, "ledger_process", &send)
+	if err != nil {
+		return err
+	}
 
+	reward := types.StateBlock{
+		Type:           types.ContractReward,
+		Token:          token.TokenId,
+		Address:        a.Address(),
+		Balance:        types.Balance{token.TotalSupply},
+		Previous:       types.ZeroHash,
+		Link:           send.GetHash(),
+		Representative: a.Address(),
+	}
+	reward.Signature = a.Sign(reward.GetHash())
+	var w2 types.Work
+	worker2, _ := types.NewWorker(w2, reward.Root())
+	reward.Work = worker2.NewWork()
+	err = client.Call(nil, "ledger_process", &reward)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
