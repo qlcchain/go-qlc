@@ -351,18 +351,16 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 
 //BlocksCountByType reports the number of blocks in the ledger by type (send, receive, open, change)
 func (l *LedgerApi) BlocksCountByType() (map[string]uint64, error) {
-	c := map[string]uint64{"open": 0, "send": 0, "receive": 0, "change": 0}
+	c := make(map[string]uint64)
+	c[types.Open.String()] = 0
+	c[types.Send.String()] = 0
+	c[types.Receive.String()] = 0
+	c[types.Change.String()] = 0
+	c[types.ContractReward.String()] = 0
+	c[types.ContractSend.String()] = 0
+	c[types.ContractRefund.String()] = 0
 	err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		switch block.GetType() {
-		case types.Open:
-			c["open"] = c["open"] + 1
-		case types.Send:
-			c["send"] = c["send"] + 1
-		case types.Receive:
-			c["receive"] = c["receive"] + 1
-		case types.Change:
-			c["change"] = c["change"] + 1
-		}
+		c[block.GetType().String()] = 1 + c[block.GetType().String()]
 		return nil
 	})
 	if err != nil {

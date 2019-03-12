@@ -10,16 +10,16 @@ package process
 import (
 	"bytes"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/contract"
-	"go.uber.org/zap"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/contract"
+	"go.uber.org/zap"
 )
 
 var (
@@ -75,7 +75,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 	hash := block.GetHash()
 	address := block.GetAddress()
 
-	lv.logger.Debug("process block ", hash)
+	lv.logger.Debug("check block ", hash)
 
 	if !block.IsValid() {
 		lv.logger.Infof("invalid work (%s)", hash)
@@ -194,7 +194,7 @@ func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResul
 			return Fork, nil
 		} else {
 			//check balance
-			if block.Balance.Compare(tm.Balance) == types.BalanceCompEqual {
+			if block.Balance.Compare(tm.Balance) != types.BalanceCompEqual {
 				return BalanceMismatch, nil
 			}
 		}
@@ -343,8 +343,7 @@ func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
-	hash := block.GetHash()
-	lv.logger.Debug("add block, ", hash)
+	lv.logger.Debug("process block, ", block.GetHash())
 	if err := lv.l.AddStateBlock(block, txn); err != nil {
 		return err
 	}
@@ -359,10 +358,10 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 	if err := lv.updatePending(block, tm, txn); err != nil {
 		return err
 	}
-	if err := lv.updateAccountMeta(block, txn); err != nil {
+	if err := lv.updateFrontier(block, tm, txn); err != nil {
 		return err
 	}
-	if err := lv.updateFrontier(hash, tm, txn); err != nil {
+	if err := lv.updateAccountMeta(block, tm, txn); err != nil {
 		return err
 	}
 	return nil
@@ -370,8 +369,8 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 
 func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
 	hash := block.GetHash()
-	link := block.GetLink()
-	if block.GetType() == types.Send { // send
+	switch block.Type {
+	case types.Send:
 		pending := types.PendingInfo{
 			Source: block.GetAddress(),
 			Type:   block.GetToken(),
@@ -385,18 +384,14 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 		if err := lv.l.AddPending(pendingKey, &pending, txn); err != nil {
 			return err
 		}
-	} else if !link.IsZero() { // not change
-		pre := block.GetPrevious()
-		address := block.GetAddress()
-		if !(pre.IsZero() && bytes.EqualFold(address[:], link[:])) { // not genesis
-			pendingKey := types.PendingKey{
-				Address: block.GetAddress(),
-				Hash:    block.GetLink(),
-			}
-			lv.logger.Debug("delete pending, ", pendingKey)
-			if err := lv.l.DeletePending(pendingKey, txn); err != nil {
-				return err
-			}
+	case types.Open, types.Receive:
+		pendingKey := types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		lv.logger.Debug("delete pending, ", pendingKey)
+		if err := lv.l.DeletePending(pendingKey, txn); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -409,18 +404,6 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, tm *type
 			if err := lv.l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {
 				return err
 			}
-			//blk, err := l.GetStateBlock(tm.Representative, txn)
-			//if err != nil {
-			//	return err
-			//}
-			//if state, ok := blk.(*types.StateBlock); ok {
-			//	logger.Infof("sub rep %s from %s ", tm.Balance, state.GetRepresentative())
-			//	if err := l.SubRepresentation(state.GetRepresentative(), tm.Balance, txn); err != nil {
-			//		return err
-			//	}
-			//} else {
-			//	return errors.New("invalid block")
-			//}
 		}
 		lv.logger.Debugf("add rep %s to %s ", block.GetBalance(), block.GetRepresentative())
 		if err := lv.l.AddRepresentation(block.GetRepresentative(), block.GetBalance(), txn); err != nil {
@@ -430,7 +413,8 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, tm *type
 	return nil
 }
 
-func (lv *LedgerVerifier) updateFrontier(hash types.Hash, tm *types.TokenMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateFrontier(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
+	hash := block.GetHash()
 	frontier := &types.Frontier{
 		HeaderBlock: hash,
 	}
@@ -440,6 +424,8 @@ func (lv *LedgerVerifier) updateFrontier(hash types.Hash, tm *types.TokenMeta, t
 			if err := lv.l.DeleteFrontier(frontier.HeaderBlock, txn); err != nil {
 				return err
 			}
+		} else {
+			return err
 		}
 		frontier.OpenBlock = tm.OpenBlock
 	} else {
@@ -452,28 +438,20 @@ func (lv *LedgerVerifier) updateFrontier(hash types.Hash, tm *types.TokenMeta, t
 	return nil
 }
 
-func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
 	address := block.GetAddress()
 	token := block.GetToken()
 	balance := block.GetBalance()
-	tmExist, err := lv.l.HasTokenMeta(address, token, txn)
-	if err != nil {
-		return err
-	}
-	if tmExist {
-		token, err := lv.l.GetTokenMeta(address, token, txn)
-		if err != nil {
-			return err
-		}
-		token.Header = hash
-		token.Representative = rep
-		token.Balance = balance
-		token.BlockCount = token.BlockCount + 1
-		token.Modified = time.Now().Unix()
-		lv.logger.Debug("update tokenmeta, ", *token)
-		if err := lv.l.UpdateTokenMeta(address, token, txn); err != nil {
+	if tm != nil {
+		tm.Header = hash
+		tm.Representative = rep
+		tm.Balance = balance
+		tm.BlockCount = tm.BlockCount + 1
+		tm.Modified = time.Now().Unix()
+		lv.logger.Debug("update tokenmeta, ", *tm)
+		if err := lv.l.UpdateTokenMeta(address, tm, txn); err != nil {
 			return err
 		}
 	} else {
@@ -481,7 +459,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, txn db.Stor
 		if err != nil {
 			return err
 		}
-		tm := types.TokenMeta{
+		tmNew := types.TokenMeta{
 			Type:           token,
 			Header:         hash,
 			Representative: rep,
@@ -493,13 +471,13 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, txn db.Stor
 		}
 		if acExist {
 			lv.logger.Debug("add tokenmeta,", token)
-			if err := lv.l.AddTokenMeta(address, &tm, txn); err != nil {
+			if err := lv.l.AddTokenMeta(address, &tmNew, txn); err != nil {
 				return err
 			}
 		} else {
 			account := types.AccountMeta{
 				Address: address,
-				Tokens:  []*types.TokenMeta{&tm},
+				Tokens:  []*types.TokenMeta{&tmNew},
 			}
 			lv.logger.Debug("add accountmeta,", token)
 			if err := lv.l.AddAccountMeta(&account, txn); err != nil {
