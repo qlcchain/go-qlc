@@ -34,7 +34,7 @@ var (
 )
 
 type ParamMintage struct {
-	Token       types.Hash
+	TokenId     types.Hash
 	TokenName   string
 	TokenSymbol string
 	TotalSupply *big.Int
