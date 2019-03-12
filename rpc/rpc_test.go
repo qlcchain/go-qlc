@@ -11,12 +11,11 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 var (
-	rs    *RPCService
+	rpc   *RPC
 	count int
 	lock  = sync.RWMutex{}
 	lock2 = sync.RWMutex{}
@@ -28,27 +27,20 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	defer lock.Unlock()
 	count = count + 1
 	rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc")
-	if rs == nil {
-		//dir := filepath.Join(rpcDir, "config.json")
-		cm := config.NewCfgManager(rpcDir)
-		cfg, err := cm.Load()
-		cfg.DataDir = rpcDir
-		dpos := consensus.DposService{}
-		rs = NewRPCService(cfg, &dpos)
-
-		cfg.RPC = new(config.RPCConfig)
-		cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:19735"
-		cfg.RPC.WSEndpoint = "tcp4://0.0.0.0:19736"
-		cfg.RPC.IPCEndpoint = defaultIPCEndpoint(filepath.Join(cfg.DataDir, "qlc_test.ipc"))
-		cfg.RPC.WSEnabled = true
-		cfg.RPC.IPCEnabled = true
-		cfg.RPC.HTTPEnabled = true
-		rs.rpc.config = cfg
-
-		err = rs.Start()
-		if err != nil {
-			t.Fatal(err)
+	if rpc == nil {
+		rpcConfig := new(config.RPCConfig)
+		rpcConfig.HTTPEndpoint = "tcp4://0.0.0.0:19735"
+		rpcConfig.WSEndpoint = "tcp4://0.0.0.0:19736"
+		rpcConfig.IPCEndpoint = defaultIPCEndpoint(filepath.Join(config.QlcConfigFile, "qlc_test.ipc"))
+		rpcConfig.WSEnabled = true
+		rpcConfig.IPCEnabled = true
+		rpcConfig.HTTPEnabled = true
+		config := &config.Config{
+			DataDir: rpcDir,
+			RPC:     rpcConfig,
 		}
+		rpc = NewRPC(config, nil)
+		rpc.StartRPC()
 		t.Log("rpc started")
 	}
 	return func(t *testing.T) {
@@ -56,10 +48,9 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 		defer lock2.Unlock()
 		count = count - 1
 		if count == 0 {
-			rs.Stop()
-			rs.rpc.ledger.Close()
-			rs.rpc.dpos.Stop()
-			rs.rpc.wallet.Close()
+			rpc.StopRPC()
+			rpc.ledger.Close()
+			rpc.wallet.Close()
 			err := os.RemoveAll(rpcDir)
 			if err != nil {
 				t.Fatal(err)
@@ -72,7 +63,7 @@ func TestRPC_HTTP(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	_, address, _ := scheme(rs.rpc.config.RPC.HTTPEndpoint)
+	_, address, _ := scheme(rpc.config.RPC.HTTPEndpoint)
 	client, err := Dial(fmt.Sprintf("http://%s", address))
 	defer client.Close()
 
@@ -92,7 +83,7 @@ func TestRPC_HTTP(t *testing.T) {
 
 	blk := new(types.StateBlock)
 	blk.Token = common.QLCChainToken
-	rs.rpc.ledger.AddStateBlock(blk)
+	rpc.ledger.AddStateBlock(blk)
 	var resp2 types.Hash
 	err = client.Call(&resp2, "ledger_blockHash", blk)
 	if err != nil {
@@ -107,7 +98,7 @@ func TestRPC_WebSocket(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	_, address, _ := scheme(rs.rpc.config.RPC.WSEndpoint)
+	_, address, _ := scheme(rpc.config.RPC.WSEndpoint)
 	client, err := Dial(fmt.Sprintf("ws://%s", address))
 	defer client.Close()
 	if err != nil {
@@ -116,7 +107,7 @@ func TestRPC_WebSocket(t *testing.T) {
 
 	blk := new(types.StateBlock)
 	blk.Token = common.QLCChainToken
-	rs.rpc.ledger.AddStateBlock(blk)
+	rpc.ledger.AddStateBlock(blk)
 	var resp2 types.Hash
 	err = client.Call(&resp2, "ledger_blockHash", blk)
 
@@ -130,7 +121,7 @@ func TestRPC_IPC(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	client, err := Dial(rs.rpc.config.RPC.IPCEndpoint)
+	client, err := Dial(rpc.config.RPC.IPCEndpoint)
 	defer client.Close()
 
 	if err != nil {
@@ -152,7 +143,7 @@ func TestRPC_Attach(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	client, err := rs.rpc.Attach()
+	client, err := rpc.Attach()
 	defer client.Close()
 
 	if err != nil {
