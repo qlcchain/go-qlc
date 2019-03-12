@@ -28,16 +28,16 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	count = count + 1
 	rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc")
 	if rpc == nil {
-		rpcConfig := new(config.RPCConfig)
-		rpcConfig.HTTPEndpoint = "tcp4://0.0.0.0:19735"
-		rpcConfig.WSEndpoint = "tcp4://0.0.0.0:19736"
-		rpcConfig.IPCEndpoint = defaultIPCEndpoint(filepath.Join(config.QlcConfigFile, "qlc_test.ipc"))
-		rpcConfig.WSEnabled = true
-		rpcConfig.IPCEnabled = true
-		rpcConfig.HTTPEnabled = true
 		config := &config.Config{
 			DataDir: rpcDir,
-			RPC:     rpcConfig,
+			RPC: &config.RPCConfig{
+				HTTPEndpoint: "tcp4://0.0.0.0:19735",
+				WSEndpoint:   "tcp4://0.0.0.0:19736",
+				IPCEndpoint:  defaultIPCEndpoint(filepath.Join(rpcDir, "qlc_test.ipc")),
+				WSEnabled:    true,
+				IPCEnabled:   true,
+				HTTPEnabled:  true,
+			},
 		}
 		rpc = NewRPC(config, nil)
 		rpc.StartRPC()

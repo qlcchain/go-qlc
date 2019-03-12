@@ -2,10 +2,10 @@ package api
 
 import (
 	"encoding/hex"
-	"github.com/qlcchain/go-qlc/ledger"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
 	"go.uber.org/zap"
@@ -18,7 +18,7 @@ type WalletApi struct {
 }
 
 func NewWalletApi(ledger *ledger.Ledger, wallet *wallet.WalletStore) *WalletApi {
-	return &WalletApi{ledger: ledger, wallet: wallet, logger: log.NewLogger("util_account")}
+	return &WalletApi{ledger: ledger, wallet: wallet, logger: log.NewLogger("api_wallet")}
 }
 
 // GetBalance returns balance for each token of the wallet
