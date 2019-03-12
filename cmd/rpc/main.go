@@ -9,18 +9,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/chain/services"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"math/big"
 	"os"
 	"os/signal"
 	"path/filepath"
 
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/chain/services"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/test/mock"
 )
@@ -34,36 +34,45 @@ func main() {
 
 	case "rpc":
 		dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-		initData(dir)
 		cm := config.NewCfgManager(dir)
 		cfg, err := cm.Load()
 		if cfg.RPC.Enable == false {
 			return
 		}
 
-		rs := services.NewRPCService(cfg, nil)
-		err = rs.Init()
-		if err != nil {
+		l := services.NewLedgerService(cfg)
+		if err := l.Init(); err != nil {
+			return
+		}
+		if err = l.Start(); err != nil {
 			logger.Fatal(err)
 		}
-		err = rs.Start()
-		if err != nil {
+		logger.Info("ledger started")
+		initData(l.Ledger)
+
+		rs := services.NewRPCService(cfg, services.NewDPosService(cfg, nil, nil))
+		if err = rs.Init(); err != nil {
 			logger.Fatal(err)
 		}
+		if err = rs.Start(); err != nil {
+			logger.Fatal(err)
+		}
+		logger.Info("rpc started")
+
 		defer func() {
+			l.Stop()
 			rs.Stop()
 			os.RemoveAll(dir)
 		}()
-		logger.Info("rpc started")
 		s := <-c
 		fmt.Println("Got signal: ", s)
 	}
 }
 
-func initData(p string) {
-	dir := filepath.Join(p, "ledger")
-	ledger := ledger.NewLedger(dir)
-	defer ledger.Close()
+func initData(ledger *ledger.Ledger) {
+	//dir := filepath.Join(p, "ledger")
+	//ledger := ledger.NewLedger(dir)
+	//defer ledger.Close()
 	verifier := process.NewLedgerVerifier(ledger)
 
 	// accountsFrontiers / accountInfo
@@ -197,22 +206,29 @@ func initData(p string) {
 
 	// sender or receiver
 	p1 := &types.StateBlock{
+		Type:     types.Open,
 		Address:  mock.Address(),
 		Token:    common.QLCChainToken,
 		Sender:   "1801111111",
 		Receiver: "",
 	}
 	p2 := &types.StateBlock{
+		Type:     types.Open,
 		Address:  mock.Address(),
 		Token:    common.QLCChainToken,
 		Sender:   "1801111111",
 		Receiver: "18000000000",
 	}
+	h := "87cc4915ae6e46aa0a744b4b1eca65b3ca8afcf1486b0dc40353b1b0feec6241"
+	mHash := new(types.Hash)
+	mHash.Of(h)
 	p3 := &types.StateBlock{
+		Type:     types.Open,
 		Address:  mock.Address(),
 		Token:    common.QLCChainToken,
-		Sender:   "1801111111",
-		Receiver: "",
+		Sender:   "18000000000",
+		Receiver: "1801111111",
+		Message:  *mHash,
 	}
 	if err := ledger.AddStateBlock(p1); err != nil {
 		fmt.Errorf("err block, %s", p1)

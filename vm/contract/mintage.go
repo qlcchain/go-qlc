@@ -49,6 +49,7 @@ func (m *Mintage) DoSend(l *l.Ledger, block *types.StateBlock) error {
 	if _, err = l.GetTokenById(types.Hash(tokenId)); err == nil {
 		return fmt.Errorf("token Id[%s] already exist", tokenId.String())
 	}
+	fmt.Println(tokenId.String())
 
 	if block.Data, err = cabi.ABIMintage.PackMethod(
 		cabi.MethodNameMintage,
@@ -82,16 +83,13 @@ func verifyToken(param cabi.ParamMintage) error {
 func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.ParamMintage)
 	_ = cabi.ABIMintage.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
-	if _, err := ledger.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
-		return nil, fmt.Errorf("invalid token")
-	}
-
 	var tokenInfo []byte
 	amount, _ := ledger.CalculateAmount(input)
 	if amount.Sign() > 0 &&
-		amount.Compare(types.Balance{Int: minPledgeAmount}) == types.BalanceCompBigger &&
+		amount.Compare(types.Balance{Int: minPledgeAmount}) != types.BalanceCompSmaller &&
 		input.Token == common.QLCChainToken {
-		tokenInfo, _ = cabi.ABIMintage.PackVariable(
+		var err error
+		tokenInfo, err = cabi.ABIMintage.PackVariable(
 			cabi.VariableNameToken,
 			param.TokenId,
 			param.TokenName,
@@ -100,7 +98,10 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 			param.Decimals,
 			input.Address,
 			amount.Int,
-			time.Now().Add(minWithdrawTime).UTC().Unix())
+			time.Unix(input.Timestamp, 0).Add(minWithdrawTime).UTC().Unix())
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		return nil, fmt.Errorf("invalid block amount %d", amount.Int)
 	}
@@ -116,9 +117,13 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 	block.Balance = totalSupply
 	block.Timestamp = time.Now().UTC().Unix()
 
-	//block.Data = tokenInfo
-	if err := ledger.SetStorage(types.MintageAddress[:], param.TokenId[:], tokenInfo); err != nil {
-		return nil, err
+	if _, err := ledger.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
+		//return nil, fmt.Errorf("invalid token")
+	} else {
+		//block.Data = tokenInfo
+		if err := ledger.SetStorage(types.MintageAddress[:], param.TokenId[:], tokenInfo); err != nil {
+			return nil, err
+		}
 	}
 
 	return []*ContractBlock{

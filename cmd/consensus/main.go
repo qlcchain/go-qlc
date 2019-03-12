@@ -16,15 +16,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/qlcchain/go-qlc/chain/services"
-	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/ledger/process"
-
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/test/mock"
 )
@@ -213,7 +212,15 @@ func main() {
 		break
 	}
 	dst := mock.Account()
-	send, err := ledger1.Ledger.GenerateSendBlock(ac.Address(), dst.Address(), token, types.Balance{Int: big.NewInt(int64(1000))}, "", "", "", ac.PrivateKey())
+	sb := types.StateBlock{
+		Address:  ac.Address(),
+		Token:    token,
+		Link:     dst.Address().ToHash(),
+		Sender:   "",
+		Receiver: "",
+		Message:  types.ZeroHash,
+	}
+	send, err := ledger1.Ledger.GenerateSendBlock(&sb, types.Balance{Int: big.NewInt(int64(1000))}, ac.PrivateKey())
 	if err != nil {
 		//t.Fatal(err)
 	}

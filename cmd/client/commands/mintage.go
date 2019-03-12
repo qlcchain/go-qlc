@@ -10,9 +10,9 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/spf13/cobra"
@@ -159,17 +159,13 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 	worker, _ := types.NewWorker(w, send.Root())
 	send.Work = worker.NewWork()
 
-	fmt.Println("send: " + util.ToString(send))
-
 	err = client.Call(nil, "ledger_process", &send)
 	if err != nil {
 		return err
 	}
 
-	err = client.Call(&send, "mintage_getMintageBlock", &mintageParam)
-
 	reward := types.StateBlock{}
-	err = client.Call(&reward, "mintage_getRewardBlock", send)
+	err = client.Call(&reward, "mintage_getRewardBlock", &send)
 
 	if err != nil {
 		return err
@@ -178,13 +174,10 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 	reward.Address = a.Address()
 	reward.Representative = a.Address()
 	reward.Link = sendHash
-
 	reward.Signature = a.Sign(reward.GetHash())
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
-
-	fmt.Println("reward: " + util.ToString(reward))
 
 	err = client.Call(nil, "ledger_process", &reward)
 	if err != nil {

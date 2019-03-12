@@ -1,8 +1,9 @@
 package api
 
 import (
+	"encoding/json"
+
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -17,25 +18,9 @@ func NewSMSApi(ledger *ledger.Ledger) *SMSApi {
 	return &SMSApi{ledger: ledger, logger: log.NewLogger("api_sms")}
 }
 
-func (s *SMSApi) getSenderOrReceiver(hashes []types.Hash, count int, offset *int) ([]*APIBlock, error) {
-	c, o, err := checkOffset(count, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	var hs []types.Hash
-	if len(hashes) > o {
-		if len(hashes) >= o+c {
-			hs = hashes[o : c+o]
-		} else {
-			hs = hashes[o:]
-		}
-	} else {
-		return make([]*APIBlock, 0), nil
-	}
-
+func (s *SMSApi) getSenderOrReceiver(hashes []types.Hash) ([]*APIBlock, error) {
 	ab := make([]*APIBlock, 0)
-	for _, h := range hs {
+	for _, h := range hashes {
 		block, err := s.ledger.GetStateBlock(h)
 		if err != nil {
 			return nil, err
@@ -50,49 +35,27 @@ func (s *SMSApi) getSenderOrReceiver(hashes []types.Hash, count int, offset *int
 
 }
 
-func (s *SMSApi) SenderBlocks(sender string, count int, offset *int) ([]*APIBlock, error) {
-	hashes, err := s.ledger.GetSenderBlocks(sender)
+func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
+	sHash, err := s.ledger.GetSenderBlocks(sender)
 	if err != nil {
 		return nil, err
 	}
-	return s.getSenderOrReceiver(hashes, count, offset)
-}
-
-func (s *SMSApi) ReceiverBlocks(receiver string, count int, offset *int) ([]*APIBlock, error) {
-	hashes, err := s.ledger.GetReceiverBlocks(receiver)
+	senders, err := s.getSenderOrReceiver(sHash)
 	if err != nil {
 		return nil, err
 	}
-	return s.getSenderOrReceiver(hashes, count, offset)
-}
-
-func (s *SMSApi) SenderBlocksCount(sender string) (int, error) {
-	hashes, err := s.ledger.GetSenderBlocks(sender)
+	rHash, err := s.ledger.GetReceiverBlocks(sender)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	var num int
-	num = len(hashes)
-	return num, nil
-}
-
-func (s *SMSApi) ReceiverBlocksCount(receiver string) (int, error) {
-	hashes, err := s.ledger.GetReceiverBlocks(receiver)
+	receivers, err := s.getSenderOrReceiver(rHash)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	var num int
-	num = len(hashes)
-	return num, nil
-}
-
-func (s *SMSApi) MessageHash(message string) (types.Hash, error) {
-	m := util.String2Bytes(message)
-	hash, err := types.HashBytes(m)
-	if err != nil {
-		return types.ZeroHash, err
-	}
-	return hash, nil
+	abs := make(map[string][]*APIBlock)
+	abs["send"] = senders
+	abs["receive"] = receivers
+	return abs, nil
 }
 
 func (s *SMSApi) MessageBlock(hash types.Hash) (*APIBlock, error) {
@@ -105,4 +68,57 @@ func (s *SMSApi) MessageBlock(hash types.Hash) (*APIBlock, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+func messageSeri(message string) (types.Hash, []byte, error) {
+	m, err := json.Marshal(message)
+	if err != nil {
+		return types.ZeroHash, nil, err
+	}
+	mHash, err := types.HashBytes(m)
+	if err != nil {
+		return types.ZeroHash, nil, err
+	}
+	return mHash, m, nil
+}
+
+func messageDeSeri(m []byte) (string, error) {
+	var str string
+	err := json.Unmarshal(m, &str)
+	if err != nil {
+		return "", err
+	}
+	return str, nil
+}
+
+func (s *SMSApi) MessageHash(message string) (types.Hash, error) {
+	mHash, _, err := messageSeri(message)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	return mHash, nil
+}
+
+func (s *SMSApi) MessageStore(message string) (types.Hash, error) {
+	mHash, m, err := messageSeri(message)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	err = s.ledger.AddMessageInfo(mHash, m)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	return mHash, nil
+}
+
+func (s *SMSApi) MessageInfo(mHash types.Hash) (string, error) {
+	m, err := s.ledger.GetMessageInfo(mHash)
+	if err != nil {
+		return "", err
+	}
+	str, err := messageDeSeri(m)
+	if err != nil {
+		return "", err
+	}
+	return str, nil
 }
