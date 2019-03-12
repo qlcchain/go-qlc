@@ -9,15 +9,15 @@ package process
 
 import (
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/test/mock"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVerifier) {
@@ -43,16 +43,29 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 
 var bc, _ = mock.BlockChain()
 
-func TestProcess_BlockBasicInfoCheck(t *testing.T) {
+//func TestProcess_BlockCheck(t *testing.T) {
+//	teardownTestCase, l, lv := setupTestCase(t)
+//	defer teardownTestCase(t)
+//	blockCheck(t, lv)
+//	checkInfo(t, l)
+//}
+
+func TestLedger_Rollback(t *testing.T) {
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	lv.BlockProcess(bc[0])
+	if err := lv.BlockProcess(bc[0]); err != nil {
+		t.Fatal(err)
+	}
 	for i, b := range bc[1:] {
-		t.Log(i)
-		if _, err := lv.Process(b); err != nil {
-			t.Fatal()
+		fmt.Println(i + 1)
+		if p, err := lv.Process(b); err != nil || p != Progress {
+			t.Fatal(p, err)
 		}
+	}
+
+	h := bc[2].GetHash()
+	if err := l.Rollback(h); err != nil {
+		t.Fatal(err)
 	}
 	checkInfo(t, l)
 }
@@ -97,21 +110,4 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 			fmt.Println(k, b)
 		}
 	}
-}
-
-func TestLedger_Rollback(t *testing.T) {
-	teardownTestCase, l, lv := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	lv.BlockProcess(bc[0])
-	for _, b := range bc[1:] {
-		if _, err := lv.Process(b); err != nil {
-			t.Fatal(err)
-		}
-	}
-	h := bc[2].GetHash()
-	if err := l.Rollback(h); err != nil {
-		t.Fatal(err)
-	}
-	checkInfo(t, l)
 }
