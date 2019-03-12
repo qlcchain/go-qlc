@@ -24,7 +24,7 @@ func BlockPushEvent(v interface{}) {
 func TestEvents(t *testing.T) {
 	count1 = 0
 	count2 = 0
-	eventQ := NeweventQueue()
+	eventQ := NewEventQueue()
 	eventQ.Consensus.Subscribe(EventSyncBlock, BlockReceiveEvent)
 	sub1 := eventQ.Consensus.Subscribe(EventPublish, BlockPushEvent)
 	eventQ.GetEvent("consensus").Notify(EventSyncBlock, "test count1")

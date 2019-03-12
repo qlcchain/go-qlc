@@ -71,6 +71,7 @@ const (
 	idPrefixReceiver
 	idPrefixMessage
 	idPrefixMessageInfo
+	idPrefixOnlineReps
 )
 
 var (
@@ -2033,4 +2034,32 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	sb.Signature = acc.Sign(sb.GetHash())
 	sb.Work = l.generateWork(sb.Root())
 	return &sb, nil
+}
+
+func (l *Ledger) GetOnlineRepresentations(txns ...db.StoreTxn) ([]types.Address, error) {
+	key := []byte{idPrefixOnlineReps}
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+	var result []types.Address
+	err := txn.Get(key, func(bytes []byte, b byte) error {
+		if len(bytes) > 0 {
+			return json.Unmarshal(bytes, &result)
+		}
+		return nil
+	})
+
+	return result, err
+}
+
+func (l *Ledger) SetOnlineRepresentations(addresses []*types.Address, txns ...db.StoreTxn) error {
+	bytes, err := json.Marshal(addresses)
+	if err != nil {
+		return err
+	}
+
+	key := []byte{idPrefixOnlineReps}
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Set(key, bytes)
 }

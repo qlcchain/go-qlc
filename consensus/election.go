@@ -21,11 +21,11 @@ type Election struct {
 	vote          *Votes
 	status        electionStatus
 	confirmed     bool
-	dps           *DposService
+	dps           *DPoS
 	announcements uint
 }
 
-func NewElection(dps *DposService, block *types.StateBlock) (*Election, error) {
+func NewElection(dps *DPoS, block *types.StateBlock) (*Election, error) {
 	vt := NewVotes(block)
 	status := electionStatus{block, types.ZeroBalance, nil}
 
@@ -110,10 +110,9 @@ func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 
 func (el *Election) getOnlineRepresentativesBalance() types.Balance {
 	b := types.ZeroBalance
-	addresses := el.dps.onlineRepAddresses
-	for _, v := range addresses {
-		b1, err := el.dps.ledger.GetRepresentation(v)
-		if err != nil {
+	reps := el.dps.GetOnlineRepresentatives()
+	for _, addr := range reps {
+		if b1, err := el.dps.ledger.GetRepresentation(*addr); err != nil {
 			b = b.Add(b1)
 		}
 	}

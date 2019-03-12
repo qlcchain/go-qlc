@@ -2,21 +2,20 @@ package api
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/p2p"
 	"go.uber.org/zap"
 )
 
 type QlcApi struct {
 	ledger   *ledger.Ledger
 	verifier *process.LedgerVerifier
-	dpos     *consensus.DposService
+	dpos     *consensus.DPoS
 	logger   *zap.SugaredLogger
 }
 
@@ -26,7 +25,7 @@ type TokenPending struct {
 	Hash        types.Hash         `json:"hash"`
 }
 
-func NewQlcApi(l *ledger.Ledger, dpos *consensus.DposService) *QlcApi {
+func NewQlcApi(l *ledger.Ledger, dpos *consensus.DPoS) *QlcApi {
 	return &QlcApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("rpcapi")}
 }
 
@@ -110,7 +109,7 @@ func (q *QlcApi) AccountsPending(addresses []types.Address, n int) (map[types.Ad
 }
 
 func (q *QlcApi) GetOnlineRepresentatives() []types.Address {
-	as := q.dpos.GetOnlineRepresentatives()
+	as, _ := q.ledger.GetOnlineRepresentations()
 	if as == nil {
 		return make([]types.Address, 0)
 	}
@@ -161,7 +160,8 @@ func (q *QlcApi) Process(block *types.StateBlock) (types.Hash, error) {
 	switch flag {
 	case process.Progress:
 		q.logger.Debug("broadcast block")
-		q.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
+		//TODO: fix this
+		//q.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
 		return block.GetHash(), nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")

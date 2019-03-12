@@ -20,7 +20,7 @@ import (
 type LedgerApi struct {
 	ledger   *ledger.Ledger
 	verifier *process.LedgerVerifier
-	dpos     *consensus.DposService
+	dpos     *consensus.DPoS
 	logger   *zap.SugaredLogger
 }
 
@@ -50,7 +50,7 @@ type APIPending struct {
 	Hash      types.Hash `json:"hash"`
 }
 
-func NewLedgerApi(l *ledger.Ledger, dpos *consensus.DposService) *LedgerApi {
+func NewLedgerApi(l *ledger.Ledger, dpos *consensus.DPoS) *LedgerApi {
 	return &LedgerApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("rpc/ledger")}
 }
 
@@ -543,6 +543,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	switch flag {
 	case process.Progress:
 		l.logger.Debug("broadcast block")
+		//TODO: refine
 		l.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
 		return block.GetHash(), nil
 	case process.BadWork:

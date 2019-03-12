@@ -8,21 +8,18 @@
 package chain
 
 import (
+	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/rpc"
-	"github.com/qlcchain/go-qlc/wallet"
 )
 
 type QlcContext struct {
 	Config      *config.Config
-	Wallet      *wallet.WalletService
-	Ledger      *ledger.LedgerService
+	Wallet      *services.WalletService
+	Ledger      *services.LedgerService
 	NetService  *p2p.QlcService
-	DPosService *consensus.DposService
-	RPC         *rpc.RPCService
+	DPosService *services.DPosService
+	RPC         *services.RPCService
 }
 
 func New(cfg *config.Config) (*QlcContext, error) {

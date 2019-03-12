@@ -1020,3 +1020,51 @@ func TestLedger_AddOrUpdatePerformance2(t *testing.T) {
 	}
 
 }
+
+func TestLedger_OnlineRepresentations(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	var addr []*types.Address
+	for i := 0; i < 10; i++ {
+		a1 := mock.Address()
+		addr = append(addr, &a1)
+	}
+
+	err := l.SetOnlineRepresentations(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if addr2, err := l.GetOnlineRepresentations(); err == nil {
+		if len(addr) != len(addr2) || len(addr2) != 10 {
+			t.Fatal("invalid online rep size")
+		}
+		for i, v := range addr {
+			if v.String() != addr2[i].String() {
+				t.Fatal("invalid ")
+			} else {
+				t.Log(v.String())
+			}
+		}
+	} else {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_SetOnlineRepresentations(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	var addr []*types.Address
+	err := l.SetOnlineRepresentations(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if addr2, err := l.GetOnlineRepresentations(); err == nil {
+		if len(addr2) != 0 {
+			t.Fatal("invalid online rep")
+		}
+	} else {
+		t.Fatal(err)
+	}
+}

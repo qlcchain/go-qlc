@@ -1,27 +1,28 @@
 /*
- * Copyright (c) 2018 QLC Chain Team
+ * Copyright (c) 2019 QLC Chain Team
  *
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
  */
 
-package wallet
+package services
 
 import (
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/wallet"
 )
 
 func NewWalletService(cfg *config.Config) *WalletService {
 	return &WalletService{
-		Wallet: NewWalletStore(cfg),
+		Wallet: wallet.NewWalletStore(cfg),
 	}
 }
 
 type WalletService struct {
 	common.ServiceLifecycle
-	Wallet *WalletStore
+	Wallet *wallet.WalletStore
 }
 
 func (ws *WalletService) Init() error {

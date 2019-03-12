@@ -13,17 +13,13 @@ import (
 	"sync"
 
 	"github.com/qlcchain/go-qlc/chain"
+	ss "github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/rpc"
-	"github.com/qlcchain/go-qlc/wallet"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -38,26 +34,26 @@ func runNode(account types.Address, password string, cfg *config.Config) error {
 		fmt.Println(err)
 	}
 
-	l := ctx.Ledger.Ledger
-	genesis := common.QLCGenesisBlock
-	//var key []byte
-	//key = append(key, types.MintageAddress[:]...)
-	//key = append(key, genesis.Token[:]...)
-	if err := l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data); err != nil {
-		fmt.Println(err)
-	}
-	verifier := process.NewLedgerVerifier(l)
-	if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
-		if err := l.AddStateBlock(&common.GenesisMintageBlock); err != nil {
-			fmt.Println(err)
-		}
-	}
-
-	if b, err := l.HasStateBlock(common.QLCGenesisBlockHash); !b && err == nil {
-		if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
-			fmt.Println(err)
-		}
-	}
+	//l := ctx.Ledger.Ledger
+	//genesis := common.QLCGenesisBlock
+	////var key []byte
+	////key = append(key, types.MintageAddress[:]...)
+	////key = append(key, genesis.Token[:]...)
+	//if err := l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data); err != nil {
+	//	fmt.Println(err)
+	//}
+	//verifier := process.NewLedgerVerifier(l)
+	//if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
+	//	if err := l.AddStateBlock(&common.GenesisMintageBlock); err != nil {
+	//		fmt.Println(err)
+	//	}
+	//}
+	//
+	//if b, err := l.HasStateBlock(common.QLCGenesisBlockHash); !b && err == nil {
+	//	if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
+	//		fmt.Println(err)
+	//	}
+	//}
 
 	cmn.TrapSignal(func() {
 		stopNode(services)
@@ -83,18 +79,19 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 	}
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
-	ctx.Ledger = ledger.NewLedgerService(cfg)
-	ctx.Wallet = wallet.NewWalletService(cfg)
+	ctx.Ledger = ss.NewLedgerService(cfg)
+	ctx.Wallet = ss.NewWalletService(cfg)
 	ctx.NetService, err = p2p.NewQlcService(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
-	ctx.DPosService, err = consensus.NewDposService(cfg, ctx.NetService, account, password)
+
+	ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
 	if err != nil {
 		return err
 	}
-	ctx.RPC = rpc.NewRPCService(cfg, ctx.DPosService)
+	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
 
 	if !account.IsZero() {
 		s := ctx.Wallet.Wallet.NewSession(account)
@@ -105,26 +102,23 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 			_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
 
 				if b, ok := v.(*types.StateBlock); ok {
-					address := types.Address(b.Link)
-					// genesis block
-					if b.Address.ToHash() == b.Link {
-						return
-					}
+					if b.Type == types.Send {
+						address := types.Address(b.Link)
 
-					if _, ok := cache.Load(address); !ok {
-						if account, err := s.GetRawKey(address); err == nil {
-							cache.Store(address, account)
-						}
-					}
-
-					if account, ok := cache.Load(address); ok {
-						balance, _ := common.RawToBalance(b.Balance, "QLC")
-						fmt.Printf("receive block from [%s] to[%s] amount[%d]\n", b.Address.String(), address.String(), balance)
-						err = receive(b, account.(*types.Account))
-						if err != nil {
-							fmt.Printf("err[%s] when generate receive block.\n", err)
+						if _, ok := cache.Load(address); !ok {
+							if account, err := s.GetRawKey(address); err == nil {
+								cache.Store(address, account)
+							}
 						}
 
+						if account, ok := cache.Load(address); ok {
+							balance, _ := common.RawToBalance(b.Balance, "QLC")
+							fmt.Printf("receive block from [%s] to[%s] amount[%d]\n", b.Address.String(), address.String(), balance)
+							err = receive(b, account.(*types.Account))
+							if err != nil {
+								fmt.Printf("err[%s] when generate receive block.\n", err)
+							}
+						}
 					}
 				}
 			})
