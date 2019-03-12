@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 
@@ -68,15 +67,12 @@ func (l *Ledger) GetMessageBlock(hash types.Hash, txns ...db.StoreTxn) (*types.S
 }
 
 func (l *Ledger) addMessageInfo(message string, txns ...db.StoreTxn) (types.Hash, error) {
-	txn, flag := l.getTxn(false, txns...)
+	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 	if message == "" {
 		return types.ZeroHash, nil
 	}
-	m, err := base64.StdEncoding.DecodeString(message)
-	if err != nil {
-		return types.ZeroHash, err
-	}
+	m := util.String2Bytes(message)
 	hash, err := types.HashBytes(m)
 	if err != nil {
 		return types.ZeroHash, err

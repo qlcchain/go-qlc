@@ -62,6 +62,13 @@ func (r *RPC) getApi(apiModule string) API {
 			Service:   api.NewMintageApi(r.ledger),
 			Public:    true,
 		}
+	case "sms":
+		return API{
+			Namespace: "sms",
+			Version:   "1.0",
+			Service:   api.NewSMSApi(r.ledger),
+			Public:    true,
+		}
 	default:
 		return API{}
 	}
@@ -77,33 +84,27 @@ func (r *RPC) GetApis(apiModule ...string) []API {
 
 //In-proc apis
 func (r *RPC) GetInProcessApis() []API {
-	return r.GetApis("qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract")
+	return r.GetPublicApis()
 }
 
 //Ipc apis
 func (r *RPC) GetIpcApis() []API {
-	return r.GetApis("qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract")
+	return r.GetPublicApis()
 }
 
 //Http apis
 func (r *RPC) GetHttpApis() []API {
-	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract"}
-	//apiModules := []string{"ledger", "public_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "pow", "tx"}
-	//if node.Config().NetID > 1 {
-	//	apiModules = append(apiModules, "testapi")
-	//}
-	return r.GetApis(apiModules...)
+	return r.GetPublicApis()
 }
 
 //WS apis
 func (r *RPC) GetWSApis() []API {
-	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract"}
-	return r.GetApis(apiModules...)
+	return r.GetPublicApis()
 }
 
 func (r *RPC) GetPublicApis() []API {
-	//return GetApis("ledger", "public_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "testapi", "pow", "tx", "debug", "dashboard")
-	return r.GetApis("qlc")
+	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms"}
+	return r.GetApis(apiModules...)
 }
 
 func (r *RPC) GetAllApis() []API {

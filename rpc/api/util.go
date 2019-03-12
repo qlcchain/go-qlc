@@ -13,7 +13,7 @@ type UtilApi struct {
 }
 
 func NewUtilApi() *UtilApi {
-	return &UtilApi{logger: log.NewLogger("rpc/util")}
+	return &UtilApi{logger: log.NewLogger("api_util")}
 }
 
 func (u *UtilApi) Decrypt(cryptograph string, passphrase string) (string, error) {

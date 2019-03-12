@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -51,7 +50,7 @@ type APIPending struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, dpos *consensus.DPoS) *LedgerApi {
-	return &LedgerApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("rpc/ledger")}
+	return &LedgerApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("api_ledger")}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -86,16 +85,16 @@ func checkOffset(count int, offset *int) (int, int, error) {
 	return count, o, nil
 }
 
-func (l *LedgerApi) generateAPIBlock(block *types.StateBlock) (*APIBlock, error) {
+func generateAPIBlock(l *ledger.Ledger, block *types.StateBlock) (*APIBlock, error) {
 	ab := new(APIBlock)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
-	if amount, err := l.ledger.CalculateAmount(block); err != nil {
+	if amount, err := l.CalculateAmount(block); err != nil {
 		return nil, err
 	} else {
 		ab.Amount = amount
 	}
-	token, err := l.ledger.GetTokenById(block.GetToken())
+	token, err := l.GetTokenById(block.GetToken())
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +120,7 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 			if err != nil {
 				return nil, err
 			}
-			b, err := l.generateAPIBlock(block)
+			b, err := generateAPIBlock(l.ledger, block)
 			if err != nil {
 				return nil, err
 			}
@@ -380,7 +379,7 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b, err := l.generateAPIBlock(block)
+		b, err := generateAPIBlock(l.ledger, block)
 		if err != nil {
 			return nil, err
 		}
@@ -398,7 +397,7 @@ func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
 	index := 0
 	err = l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
 		if index >= o && index < o+c {
-			b, err := l.generateAPIBlock(block)
+			b, err := generateAPIBlock(l.ledger, block)
 			if err != nil {
 				return err
 			}
@@ -638,85 +637,4 @@ func (l *LedgerApi) TransactionsCount() (map[string]uint64, error) {
 	c["count"] = sbCount
 	c["unchecked"] = unCount
 	return c, nil
-}
-
-func (l *LedgerApi) getSenderOrReceiver(hashes []types.Hash, count int, offset *int) ([]*APIBlock, error) {
-	c, o, err := checkOffset(count, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	var hs []types.Hash
-	if len(hashes) > o {
-		if len(hashes) >= o+c {
-			hs = hashes[o : c+o]
-		} else {
-			hs = hashes[o:]
-		}
-	} else {
-		return make([]*APIBlock, 0), nil
-	}
-
-	ab := make([]*APIBlock, 0)
-	for _, h := range hs {
-		block, err := l.ledger.GetStateBlock(h)
-		if err != nil {
-			return nil, err
-		}
-		b, err := l.generateAPIBlock(block)
-		if err != nil {
-			return nil, err
-		}
-		ab = append(ab, b)
-	}
-	return ab, nil
-
-}
-
-func (l *LedgerApi) SenderBlocks(sender string, count int, offset *int) ([]*APIBlock, error) {
-	hashes, err := l.ledger.GetSenderBlocks(sender)
-	if err != nil {
-		return nil, err
-	}
-	return l.getSenderOrReceiver(hashes, count, offset)
-}
-
-func (l *LedgerApi) ReceiverBlocks(receiver string, count int, offset *int) ([]*APIBlock, error) {
-	hashes, err := l.ledger.GetReceiverBlocks(receiver)
-	if err != nil {
-		return nil, err
-	}
-	return l.getSenderOrReceiver(hashes, count, offset)
-}
-
-func (l *LedgerApi) SenderBlocksCount(sender string) (int, error) {
-	hashes, err := l.ledger.GetSenderBlocks(sender)
-	if err != nil {
-		return 0, err
-	}
-	var num int
-	num = len(hashes)
-	return num, nil
-}
-
-func (l *LedgerApi) ReceiverBlocksCount(receiver string) (int, error) {
-	hashes, err := l.ledger.GetReceiverBlocks(receiver)
-	if err != nil {
-		return 0, err
-	}
-	var num int
-	num = len(hashes)
-	return num, nil
-}
-
-func (l *LedgerApi) MessageHash(message string) (types.Hash, error) {
-	m, err := base64.StdEncoding.DecodeString(message)
-	if err != nil {
-		return types.ZeroHash, err
-	}
-	hash, err := types.HashBytes(m)
-	if err != nil {
-		return types.ZeroHash, err
-	}
-	return hash, nil
 }

@@ -13,7 +13,7 @@ type NetApi struct {
 }
 
 func NewNetApi(l *ledger.Ledger) *NetApi {
-	return &NetApi{ledger: l, logger: log.NewLogger("rpc/net")}
+	return &NetApi{ledger: l, logger: log.NewLogger("api_net")}
 }
 
 func (q *NetApi) OnlineRepresentatives() []types.Address {
