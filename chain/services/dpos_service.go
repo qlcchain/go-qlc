@@ -9,6 +9,7 @@ package services
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/log"
@@ -25,8 +26,8 @@ type DPosService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewDPosService(cfg *config.Config, p2p p2p.Service, account types.Address, password string) *DPosService {
-	dPoS, _ := consensus.NewDPoS(cfg, p2p, account, password)
+func NewDPosService(cfg *config.Config, p2p p2p.Service, accounts []*types.Account) *DPosService {
+	dPoS, _ := consensus.NewDPoS(cfg, p2p, accounts)
 	return &DPosService{
 		dpos:   dPoS,
 		logger: log.NewLogger("ledger_service"),

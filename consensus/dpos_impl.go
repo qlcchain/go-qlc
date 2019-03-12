@@ -1,21 +1,18 @@
 package consensus
 
 import (
-	"errors"
-	"fmt"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/ledger/process"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"github.com/qlcchain/go-qlc/wallet"
 	"go.uber.org/zap"
 )
 
@@ -26,23 +23,22 @@ const (
 	repTimeout                        = 5 * time.Minute
 )
 
+var (
+	localRepAccount []*types.Account
+)
+
 type DPoS struct {
 	ns         p2p.Service
 	ledger     *ledger.Ledger
 	verifier   *process.LedgerVerifier
 	eventMsg   map[p2p.EventType]p2p.EventSubscriber
 	bp         *BlockProcessor
-	wallet     *wallet.WalletStore
 	acTrx      *ActiveTrx
-	account    types.Address
-	password   string
+	accounts   []*types.Account
 	onlineReps sync.Map
-	//onlineRepAddresses []types.Address
-	logger   *zap.SugaredLogger
-	priInfos *sync.Map
-	session  *wallet.Session
-	cache    gcache.Cache
-	cfg      *config.Config
+	logger     *zap.SugaredLogger
+	cache      gcache.Cache
+	cfg        *config.Config
 }
 
 type repInfo struct {
@@ -55,15 +51,23 @@ func (dps *DPoS) GetP2PService() p2p.Service {
 }
 
 func (dps *DPoS) Init() error {
-	if dps.account != types.ZeroAddress {
-		dps.session = dps.wallet.NewSession(dps.account)
-		err := dps.refreshPriInfo()
-		if err != nil {
-			dps.logger.Error(err)
-			return err
-		}
+	if len(dps.accounts) != 0 {
+		dps.refreshAccount()
 	}
 	return nil
+}
+
+func (dps *DPoS) refreshAccount() {
+	var b bool
+	for _, v := range dps.accounts {
+		b = dps.isRepresentation(v.Address())
+		if b {
+			localRepAccount = append(localRepAccount, v)
+		}
+	}
+	if len(localRepAccount) > 1 {
+		dps.logger.Error("it is very dangerous to run two representatives on one node")
+	}
 }
 
 func (dps *DPoS) Start() error {
@@ -81,13 +85,10 @@ func (dps *DPoS) Stop() error {
 	for i, j := range dps.eventMsg {
 		_ = dps.ns.MessageEvent().GetEvent("consensus").UnSubscribe(i, j)
 	}
-
-	_ = dps.wallet.Close()
-
 	return nil
 }
 
-func NewDPoS(cfg *config.Config, netService p2p.Service, account types.Address, password string) (*DPoS, error) {
+func NewDPoS(cfg *config.Config, netService p2p.Service, accounts []*types.Account) (*DPoS, error) {
 	bp := NewBlockProcessor()
 	acTrx := NewActiveTrx()
 	l := ledger.NewLedger(cfg.LedgerDir())
@@ -99,47 +100,14 @@ func NewDPoS(cfg *config.Config, netService p2p.Service, account types.Address, 
 		eventMsg: make(map[p2p.EventType]p2p.EventSubscriber),
 		bp:       bp,
 		acTrx:    acTrx,
-		wallet:   wallet.NewWalletStore(cfg),
-		account:  account,
-		password: password,
+		accounts: accounts,
 		logger:   log.NewLogger("consensus"),
-		priInfos: new(sync.Map),
 		cache:    gcache.New(msgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
 		cfg:      cfg,
 	}
 	dps.bp.SetDpos(dps)
 	dps.acTrx.SetDposService(dps)
 	return dps, nil
-}
-
-func (dps *DPoS) SetWalletStore(wallet *wallet.WalletStore) {
-	dps.wallet = wallet
-}
-
-func (dps *DPoS) refreshPriInfo() error {
-	dps.priInfos.Range(func(key, value interface{}) bool {
-		dps.priInfos.Delete(key.(types.Address))
-		return true
-	})
-	if dps.account != types.ZeroAddress {
-		session := dps.session
-		if verify, err := session.VerifyPassword(dps.password); verify && err == nil {
-			if a, err := session.GetAccounts(); err == nil {
-				for i := 0; i < len(a); i++ {
-					acc, err := session.GetRawKey(a[i])
-					if err != nil {
-						continue
-					}
-					dps.priInfos.LoadOrStore(a[i], acc)
-				}
-			} else {
-				return err
-			}
-		} else {
-			return errors.New("invalid password")
-		}
-	}
-	return nil
 }
 
 func (dps *DPoS) setEvent() {
@@ -191,26 +159,23 @@ func (dps *DPoS) ReceiveConfirmReq(v interface{}) {
 }
 
 func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
+	var address types.Address
 	bs := blockSource{
 		block:     blk,
 		blockFrom: types.UnSynchronized,
 	}
 	if !dps.cache.Has(e.Hash()) {
-		var isRep bool
-		dps.priInfos.Range(func(key, value interface{}) bool {
-			isRep = dps.isRepresentation(key.(types.Address))
-			if isRep {
-				dps.saveOnlineRep(key.(types.Address))
-				result, _ := dps.verifier.Process(bs.block)
-				if result == process.Old {
-					dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
-					dps.sendConfirmAck(bs.block, key.(types.Address), value.(*types.Account))
-				}
-				dps.bp.processResult(result, bs)
+		for _, v := range localRepAccount {
+			address = v.Address()
+			dps.saveOnlineRep(address)
+			result, _ := dps.verifier.Process(bs.block)
+			if result == process.Old {
+				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
+				dps.sendConfirmAck(bs.block, address, v)
 			}
-			return true
-		})
-		if !isRep {
+			dps.bp.processResult(result, bs)
+		}
+		if len(localRepAccount) == 0 {
 			dps.bp.blocks <- bs
 		}
 		dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
@@ -233,6 +198,7 @@ func (dps *DPoS) ReceiveConfirmAck(v interface{}) {
 }
 
 func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock) {
+	var address types.Address
 	bs := blockSource{
 		block:     ack.Blk,
 		blockFrom: types.UnSynchronized,
@@ -243,25 +209,21 @@ func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock)
 	}
 	dps.acTrx.vote(ack)
 	if !dps.cache.Has(e.Hash()) {
-		var isRep bool
 		dps.saveOnlineRep(ack.Account)
-		dps.priInfos.Range(func(key, value interface{}) bool {
-			isRep = dps.isRepresentation(key.(types.Address))
-			if isRep {
-				dps.saveOnlineRep(key.(types.Address))
-				result, _ := dps.verifier.Process(bs.block)
-				if result == process.Old {
-					dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
-					dps.sendConfirmAck(bs.block, key.(types.Address), value.(*types.Account))
-				}
-				dps.bp.processResult(result, bs)
-				if result == process.Progress {
-					dps.acTrx.vote(ack)
-				}
+		for _, v := range localRepAccount {
+			address = v.Address()
+			dps.saveOnlineRep(address)
+			result, _ := dps.verifier.Process(bs.block)
+			if result == process.Old {
+				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
+				dps.sendConfirmAck(bs.block, address, v)
 			}
-			return true
-		})
-		if !isRep {
+			dps.bp.processResult(result, bs)
+			if result == process.Progress {
+				dps.acTrx.vote(ack)
+			}
+		}
+		if len(localRepAccount) == 0 {
 			dps.bp.blocks <- bs
 		}
 
@@ -302,41 +264,11 @@ func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, ac
 	return va, nil
 }
 
-func (dps *DPoS) GetAccountPrv(account types.Address) (*types.Account, error) {
-	session := dps.wallet.NewSession(dps.account)
-	if b, err := session.VerifyPassword(dps.password); b && err == nil {
-		return session.GetRawKey(account)
-	} else {
-		return nil, fmt.Errorf("invalid password")
-	}
-}
-
 func (dps *DPoS) isRepresentation(address types.Address) bool {
 	if _, err := dps.ledger.GetRepresentation(address); err != nil {
 		return false
 	}
 	return true
-}
-
-func (dps *DPoS) getAccounts() []types.Address {
-	session := dps.wallet.NewSession(dps.account)
-	if verify, err := session.VerifyPassword(dps.password); verify && err == nil {
-		if a, err := session.GetAccounts(); err == nil {
-			if len(a) == 0 {
-				if addresses, e := dps.wallet.WalletIds(); e == nil {
-					dps.logger.Debug(util.ToString(&addresses))
-				}
-			}
-
-			return a
-		} else {
-			dps.logger.Error(err)
-		}
-	} else {
-		dps.logger.Debugf("verify password[%s] failed", dps.password)
-	}
-
-	return []types.Address{}
 }
 
 func (dps *DPoS) saveOnlineRep(addr types.Address) {
@@ -355,13 +287,14 @@ func (dps *DPoS) GetOnlineRepresentatives() []*types.Address {
 }
 
 func (dps *DPoS) findOnlineRepresentatives() error {
-	dps.priInfos.Range(func(key, value interface{}) bool {
-		isRep := dps.isRepresentation(key.(types.Address))
+	var address types.Address
+	for _, v := range dps.accounts {
+		address = v.Address()
+		isRep := dps.isRepresentation(address)
 		if isRep {
-			dps.saveOnlineRep(key.(types.Address))
+			dps.saveOnlineRep(address)
 		}
-		return true
-	})
+	}
 	blk, err := dps.ledger.GetRandomStateBlock()
 	if err != nil {
 		return err

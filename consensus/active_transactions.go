@@ -12,7 +12,7 @@ import (
 const (
 	//announcementMin        = 4 //Minimum number of block announcements
 	announceIntervalSecond = 16 * time.Second
-	refreshPriInterval     = 1 * time.Hour
+	refreshPriInterval     = 5 * time.Minute
 )
 
 type ActiveTrx struct {
@@ -50,7 +50,7 @@ func (act *ActiveTrx) start() {
 		case <-timer3.C:
 			act.dps.logger.Info("refresh pri info.")
 			go func() {
-				_ = act.dps.refreshPriInfo()
+				act.dps.refreshAccount()
 			}()
 		default:
 			time.Sleep(5 * time.Millisecond)
@@ -74,7 +74,7 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 }
 
 func (act *ActiveTrx) announceVotes() {
-	var count = 0
+	var address types.Address
 	act.roots.Range(func(key, value interface{}) bool {
 		block := value.(*Election).status.winner
 		hash := block.GetHash()
@@ -132,27 +132,20 @@ func (act *ActiveTrx) announceVotes() {
 			act.rollBack(value.(*Election).status.loser)
 			act.addWinner2Ledger(block)
 		} else {
-			act.dps.priInfos.Range(func(k, v interface{}) bool {
-				count++
-				isRep := act.dps.isRepresentation(k.(types.Address))
-				if isRep {
-					act.dps.saveOnlineRep(k.(types.Address))
-					va, err := act.dps.voteGenerate(block, k.(types.Address), v.(*types.Account))
-					if err != nil {
-						act.dps.logger.Error("vote generate error")
-					} else {
-						act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", hash, block.Root())
-						act.dps.ns.Broadcast(p2p.ConfirmAck, va)
-						value.(*Election).voteAction(va)
-					}
+			for _, v := range localRepAccount {
+				address = v.Address()
+				act.dps.saveOnlineRep(address)
+				va, err := act.dps.voteGenerate(block, address, v)
+				if err != nil {
+					act.dps.logger.Error("vote generate error")
 				} else {
-					act.dps.logger.Infof("vote:send confirmReq for hash %s,previous hash is %s", hash, block.Root())
-					act.dps.ns.Broadcast(p2p.ConfirmReq, block)
+					act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", hash, block.Root())
+					act.dps.ns.Broadcast(p2p.ConfirmAck, va)
+					value.(*Election).voteAction(va)
 				}
-				return true
-			})
-			if count == 0 {
-				act.dps.logger.Info("this is just a node,not a wallet")
+			}
+			if len(localRepAccount) == 0 {
+				act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
 				act.dps.ns.Broadcast(p2p.ConfirmReq, block)
 			}
 			if act.dps.cfg.PerformanceTest.Enabled {
