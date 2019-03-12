@@ -254,7 +254,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	}
 
 	//check smart c exist
-	address := block.Address
+	address := types.Address(block.GetLink())
 
 	if !contract.IsChainContract(address) {
 		if b, err := lv.l.HasSmartContractBlock(address.ToHash()); !b && err == nil {
@@ -292,19 +292,20 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	}
 
 	//check smart c exist
-	address := block.Address
-
-	if !contract.IsChainContract(address) {
-		if b, err := lv.l.HasSmartContractBlock(address.ToHash()); !b && err == nil {
-			return GapSmartContract, nil
-		}
+	send, err := lv.l.GetStateBlock(block.GetLink())
+	if err != nil {
+		return Other, err
 	}
+	address := types.Address(send.GetLink())
 
 	//verify data
-	if c, ok, _ := contract.GetChainContract(address, block.Data); ok {
+	input, err := lv.l.GetStateBlock(block.Link)
+	if err != nil {
+		return Other, err
+	}
+	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
 		clone := block.Clone()
-		input, _ := lv.l.GetStateBlock(block.Link)
-		if g, err := c.DoReceive(lv.l, clone, input); err == nil {
+		if g, e := c.DoReceive(lv.l, clone, input); e == nil {
 			if len(g) > 0 {
 				if bytes.EqualFold(g[0].Block.Data, block.Data) {
 					return Progress, nil
@@ -315,7 +316,7 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 				return Other, fmt.Errorf("can not generate receive block")
 			}
 		} else {
-			return Other, err
+			return Other, e
 		}
 	} else {
 		//call vm.Run();

@@ -62,6 +62,9 @@ func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
 func (l *LedgerApi) AccountBlocksCount(addr types.Address) (int64, error) {
 	am, err := l.ledger.GetAccountMeta(addr)
 	if err != nil {
+		if err == ledger.ErrAccountNotFound {
+			return 0, nil
+		}
 		return -1, err
 	}
 	var count int64
@@ -111,6 +114,9 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 	bs := make([]*APIBlock, 0)
 	ac, err := l.ledger.GetAccountMeta(address)
 	if err != nil {
+		if err == ledger.ErrAccountNotFound {
+			return bs, nil
+		}
 		return nil, err
 	}
 	for _, token := range ac.Tokens {
@@ -479,7 +485,7 @@ type APISendBlockPara struct {
 	Amount    types.Balance `json:"amount"`
 	Sender    string        `json:"sender"`
 	Receiver  string        `json:"receiver"`
-	Message   string        `json:"message"`
+	Message   types.Hash    `json:"message"`
 }
 
 func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (*types.StateBlock, error) {
@@ -494,7 +500,15 @@ func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (*ty
 	if err != nil {
 		return nil, err
 	}
-	block, err := l.ledger.GenerateSendBlock(para.Send, para.To, info.TokenId, para.Amount, para.Sender, para.Receiver, para.Message, prk)
+	sb := types.StateBlock{
+		Address:  para.Send,
+		Token:    info.TokenId,
+		Link:     para.To.ToHash(),
+		Sender:   para.Sender,
+		Receiver: para.Receiver,
+		Message:  para.Message,
+	}
+	block, err := l.ledger.GenerateSendBlock(&sb, para.Amount, prk)
 	if err != nil {
 		return nil, err
 	}
@@ -563,6 +577,10 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		return types.ZeroHash, errors.New("balance mismatch")
 	case process.UnReceivable:
 		return types.ZeroHash, errors.New("unReceivable")
+	case process.GapSmartContract:
+		return types.ZeroHash, errors.New("gap SmartContract")
+	case process.InvalidData:
+		return types.ZeroHash, errors.New("invalid data")
 	default:
 		return types.ZeroHash, errors.New("error processing block")
 	}

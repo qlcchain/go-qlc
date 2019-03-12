@@ -98,7 +98,7 @@ type Store interface {
 	Rollback(hash types.Hash) error
 
 	//GenerateBlock
-	GenerateSendBlock(from, to types.Address, token types.Hash, amount types.Balance, sender, receiver, message string, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
 

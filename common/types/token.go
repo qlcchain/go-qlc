@@ -17,5 +17,5 @@ type TokenInfo struct {
 	Decimals     uint8    `json:"decimals"`
 	Owner        Address  `json:"owner"`
 	PledgeAmount *big.Int `json:"pledgeAmount"`
-	WithdrawTime uint64   `json:"withdrawTime"`
+	WithdrawTime int64    `json:"withdrawTime"`
 }

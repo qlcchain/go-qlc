@@ -7,7 +7,6 @@ import (
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
 	"github.com/qlcchain/go-qlc/common/util"
-	log2 "github.com/qlcchain/go-qlc/log"
 )
 
 // BadgerStore represents a block lattice store backed by a badger database.
@@ -20,7 +19,7 @@ type BadgerStoreTxn struct {
 	txn *badger.Txn
 }
 
-var logger = log2.NewLogger("badger")
+//var logger = log2.NewLogger("badger")
 
 // NewBadgerStore initializes/opens a badger database in the given directory.
 func NewBadgerStore(dir string) (Store, error) {
@@ -57,7 +56,6 @@ func (s *BadgerStore) Erase() error {
 
 func (s *BadgerStore) NewTransaction(update bool) *BadgerStoreTxn {
 	txn := &BadgerStoreTxn{txn: s.db.NewTransaction(update), db: s.db}
-	//logger.Debugf("NewTransaction %p", txn)
 	return txn
 }
 
@@ -153,7 +151,6 @@ func (t *BadgerStoreTxn) Commit(callback func(error)) error {
 
 func (t *BadgerStoreTxn) Discard() {
 	if t.txn != nil {
-		//logger.Debugf("Discard %p", t)
 		t.txn.Discard()
 	}
 }

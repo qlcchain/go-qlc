@@ -14,7 +14,6 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -347,38 +346,6 @@ func deleteToken(blk *types.StateBlock, txn db.StoreTxn) error {
 		}
 		tokenKey := getKeyOfHash(token.TokenId, idPrefixToken)
 		if err := txn.Delete(tokenKey); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func deleteSenderOrReceiver(number string, t byte, hash types.Hash, txn db.StoreTxn) error {
-	if number != "" {
-		key := getKeyOfBytes(util.String2Bytes(number), t)
-		err := txn.Get(key, func(val []byte, b byte) error {
-			hs := new([]types.Hash)
-			if err := json.Unmarshal(val, hs); err != nil {
-				return err
-			}
-			hashes := *hs
-			if len(hashes) == 1 {
-				return txn.Delete(key)
-			}
-			var hashes2 []types.Hash
-			for index, h := range hashes {
-				if h == hash {
-					hashes2 = append(hashes[:index], hashes[index+1:]...)
-					break
-				}
-			}
-			val2, err := json.Marshal(hashes2)
-			if err != nil {
-				return err
-			}
-			return txn.Set(key, val2)
-		})
-		if err != nil && err != badger.ErrKeyNotFound {
 			return err
 		}
 	}
@@ -1786,7 +1753,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 	switch block.GetType() {
 	case types.Open:
 		return block.GetBalance(), err
-	case types.Send:
+	case types.Send, types.ContractSend:
 		if prev, err = l.GetStateBlock(block.Previous); err != nil {
 			return types.ZeroBalance, err
 		}
@@ -1800,8 +1767,6 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 		return types.ZeroBalance, nil
 	case types.ContractReward:
 		return block.GetBalance(), nil
-	case types.ContractSend:
-		return types.ZeroBalance, nil
 	default:
 		return types.ZeroBalance, errors.New("invalid block type")
 	}
@@ -1905,37 +1870,26 @@ func (l *Ledger) generateWork(hash types.Hash) types.Work {
 	//_ = s.setWork(hash, work)
 }
 
-func (l *Ledger) GenerateSendBlock(from, to types.Address, token types.Hash, amount types.Balance, sender, receiver, message string, prk ed25519.PrivateKey) (*types.StateBlock, error) {
-	tm, err := l.GetTokenMeta(from, token)
+func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error) {
+	tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken())
 	if err != nil {
 		return nil, err
 	}
 	//balance, err := l.TokenBalance(source, token)
 	//if err != nil {
 	//	return nil, err
-	//}
-	mHash, err := l.addMessageInfo(message)
-	if err != nil {
-		return nil, err
-	}
-
+	//
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
-		sb := types.StateBlock{
-			Type:           types.Send,
-			Address:        from,
-			Token:          token,
-			Link:           to.ToHash(),
-			Balance:        tm.Balance.Sub(amount),
-			Previous:       tm.Header,
-			Representative: tm.Representative,
-			Sender:         sender,
-			Receiver:       receiver,
-			Message:        mHash,
-		}
+		block.Type = types.Send
+		block.Balance = tm.Balance.Sub(amount)
+		block.Previous = tm.Header
+		block.Representative = tm.Representative
+		block.Timestamp = time.Now().Unix()
+
 		acc := types.NewAccount(prk)
-		sb.Signature = acc.Sign(sb.GetHash())
-		sb.Work = l.generateWork(sb.Root())
-		return &sb, nil
+		block.Signature = acc.Sign(block.GetHash())
+		block.Work = l.generateWork(block.Root())
+		return block, nil
 	} else {
 		return nil, fmt.Errorf("not enought balance(%s) of %s", tm.Balance, amount)
 	}
@@ -1974,6 +1928,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 			Representative: rxTm.Representative,
 			Token:          rxTm.Type,
 			Extra:          types.ZeroHash,
+			Timestamp:      time.Now().Unix(),
 		}
 		sb.Signature = acc.Sign(sb.GetHash())
 		sb.Work = l.generateWork(sb.Root())
@@ -1992,6 +1947,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 			Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
 			Token:          sendBlock.GetToken(),
 			Extra:          types.ZeroHash,
+			Timestamp:      time.Now().Unix(),
 		}
 		sb.Signature = acc.Sign(sb.GetHash())
 		sb.Work = l.generateWork(sb.Root())
@@ -2029,6 +1985,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Representative: representative,
 		Token:          block.Token,
 		Extra:          types.ZeroHash,
+		Timestamp:      time.Now().Unix(),
 	}
 	acc := types.NewAccount(prk)
 	sb.Signature = acc.Sign(sb.GetHash())

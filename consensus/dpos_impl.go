@@ -4,12 +4,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/ledger/process"
-
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -167,7 +166,7 @@ func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 	if !dps.cache.Has(e.Hash()) {
 		for _, v := range localRepAccount {
 			address = v.Address()
-			dps.saveOnlineRep(address)
+			dps.saveOnlineRep(&address)
 			result, _ := dps.verifier.Process(bs.block)
 			if result == process.Old {
 				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
@@ -209,10 +208,10 @@ func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock)
 	}
 	dps.acTrx.vote(ack)
 	if !dps.cache.Has(e.Hash()) {
-		dps.saveOnlineRep(ack.Account)
+		dps.saveOnlineRep(&ack.Account)
 		for _, v := range localRepAccount {
 			address = v.Address()
-			dps.saveOnlineRep(address)
+			dps.saveOnlineRep(&address)
 			result, _ := dps.verifier.Process(bs.block)
 			if result == process.Old {
 				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
@@ -271,7 +270,7 @@ func (dps *DPoS) isRepresentation(address types.Address) bool {
 	return true
 }
 
-func (dps *DPoS) saveOnlineRep(addr types.Address) {
+func (dps *DPoS) saveOnlineRep(addr *types.Address) {
 	now := time.Now().Add(repTimeout).UTC().Unix()
 	_, _ = dps.onlineReps.LoadOrStore(addr, now)
 }
@@ -292,7 +291,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 		address = v.Address()
 		isRep := dps.isRepresentation(address)
 		if isRep {
-			dps.saveOnlineRep(address)
+			dps.saveOnlineRep(&address)
 		}
 	}
 	blk, err := dps.ledger.GetRandomStateBlock()
@@ -308,8 +307,8 @@ func (dps *DPoS) cleanOnlineReps() {
 	now := time.Now().Add(repTimeout).UTC().Unix()
 	dps.onlineReps.Range(func(key, value interface{}) bool {
 		addr := key.(*types.Address)
-		v := value.(*int64)
-		if *v < now {
+		v := value.(int64)
+		if v < now {
 			dps.onlineReps.Delete(addr)
 		} else {
 			repAddresses = append(repAddresses, addr)
