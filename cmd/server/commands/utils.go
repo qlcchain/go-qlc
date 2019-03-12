@@ -10,7 +10,6 @@ package commands
 import (
 	"fmt"
 	"reflect"
-	"sync"
 
 	"github.com/qlcchain/go-qlc/chain"
 	ss "github.com/qlcchain/go-qlc/chain/services"
@@ -23,8 +22,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-func runNode(account types.Address, password string, cfg *config.Config) error {
-	err := initNode(account, password, cfg)
+func runNode(seed types.Seed, cfg *config.Config) error {
+	err := initNode(seed, cfg)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -70,12 +69,20 @@ func stopNode(services []common.Service) {
 	}
 }
 
-func initNode(account types.Address, password string, cfg *config.Config) error {
+func initNode(seed types.Seed, cfg *config.Config) error {
 	var err error
+	var accounts []*types.Account
+	var addr types.Address
 	ctx, err = chain.New(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return err
+	}
+	if !seed.IsZero() {
+		for i := 0; i < 100; i++ {
+			acc, _ := seed.Account(uint32(i))
+			accounts = append(accounts, acc)
+		}
 	}
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
@@ -87,34 +94,27 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 		return err
 	}
 
-	ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
+	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
+	ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, accounts)
 	if err != nil {
 		return err
 	}
 	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
 
-	if !account.IsZero() {
-		s := ctx.Wallet.Wallet.NewSession(account)
+	if !seed.IsZero() {
 
-		var cache sync.Map
-
-		if isValid, err := s.VerifyPassword(password); isValid && err == nil {
+		for _, value := range accounts {
+			addr = value.Address()
 			_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
 
 				if b, ok := v.(*types.StateBlock); ok {
 					if b.Type == types.Send {
 						address := types.Address(b.Link)
 
-						if _, ok := cache.Load(address); !ok {
-							if account, err := s.GetRawKey(address); err == nil {
-								cache.Store(address, account)
-							}
-						}
-
-						if account, ok := cache.Load(address); ok {
+						if addr.String() == address.String() {
 							balance, _ := common.RawToBalance(b.Balance, "QLC")
 							fmt.Printf("receive block from [%s] to[%s] amount[%d]\n", b.Address.String(), address.String(), balance)
-							err = receive(b, account.(*types.Account))
+							err = receive(b, value)
 							if err != nil {
 								fmt.Printf("err[%s] when generate receive block.\n", err)
 							}
@@ -122,8 +122,6 @@ func initNode(account types.Address, password string, cfg *config.Config) error 
 					}
 				}
 			})
-		} else {
-			fmt.Println("invalid password")
 		}
 	}
 

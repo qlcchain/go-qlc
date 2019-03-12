@@ -8,6 +8,7 @@
 package commands
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -36,13 +37,15 @@ var (
 )
 
 var (
-	accountP   string
+	//	accountP   string
 	passwordP  string
+	seedP      string
 	cfgPathP   string
 	isProfileP bool
 
-	account   commands.Flag
+	//account   commands.Flag
 	password  commands.Flag
+	seed      commands.Flag
 	cfgPath   commands.Flag
 	isProfile commands.Flag
 
@@ -84,8 +87,9 @@ func Execute(osArgs []string) {
 			},
 		}
 		rootCmd.PersistentFlags().StringVarP(&cfgPathP, "config", "c", "", "config file")
-		rootCmd.PersistentFlags().StringVarP(&accountP, "account", "a", "", "wallet address,if is nil,just run a node")
+		//		rootCmd.PersistentFlags().StringVarP(&accountP, "account", "a", "", "wallet address,if is nil,just run a node")
 		rootCmd.PersistentFlags().StringVarP(&passwordP, "password", "p", "", "password for wallet")
+		rootCmd.PersistentFlags().StringVarP(&seedP, "seed", "s", "", "seed for accounts")
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
 		addcommand()
 		if err := rootCmd.Execute(); err != nil {
@@ -104,7 +108,7 @@ func addcommand() {
 }
 
 func start() error {
-	var addr types.Address
+	var seed types.Seed
 	if cfgPathP == "" {
 		cfgPathP = config.DefaultDataDir()
 	}
@@ -113,13 +117,15 @@ func start() error {
 	if err != nil {
 		return err
 	}
-	if accountP == "" {
-		addr = types.ZeroAddress
+	if seedP == "" {
+		seed = types.ZeroSeed
 	} else {
-		addr, err = types.HexToAddress(accountP)
+		sByte, _ := hex.DecodeString(seedP)
+		seedT, err := types.BytesToSeed(sByte)
 		if err != nil {
 			return err
 		}
+		seed = *seedT
 	}
 
 	if isProfileP {
@@ -167,7 +173,7 @@ func start() error {
 		}()
 	}
 
-	err = runNode(addr, passwordP, cfg)
+	err = runNode(seed, cfg)
 	if err != nil {
 		return err
 	}
@@ -175,16 +181,22 @@ func start() error {
 }
 
 func run() {
-	account = commands.Flag{
-		Name:  "account",
-		Must:  false,
-		Usage: "wallet address,if is nil,just run a node",
-		Value: "",
-	}
+	//account = commands.Flag{
+	//	Name:  "account",
+	//	Must:  false,
+	//	Usage: "wallet address,if is nil,just run a node",
+	//	Value: "",
+	//}
 	password = commands.Flag{
 		Name:  "password",
 		Must:  false,
 		Usage: "password for wallet",
+		Value: "",
+	}
+	seed = commands.Flag{
+		Name:  "seed",
+		Must:  false,
+		Usage: "seed for wallet,if is nil,just run a node",
 		Value: "",
 	}
 	cfgPath = commands.Flag{
@@ -205,7 +217,7 @@ func run() {
 		Name: "run",
 		Help: "start qlc server",
 		Func: func(c *ishell.Context) {
-			args := []commands.Flag{account, password, cfgPath, isProfile}
+			args := []commands.Flag{seed, cfgPath, isProfile}
 			if commands.HelpText(c, args) {
 				return
 			}
@@ -213,8 +225,9 @@ func run() {
 				commands.Warn(err)
 				return
 			}
-			accountP = commands.StringVar(c.Args, account)
+			//accountP = commands.StringVar(c.Args, account)
 			passwordP = commands.StringVar(c.Args, password)
+			seedP = commands.StringVar(c.Args, seed)
 			cfgPathP = commands.StringVar(c.Args, cfgPath)
 			isProfileP = commands.BoolVar(c.Args, isProfile)
 

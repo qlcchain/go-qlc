@@ -71,3 +71,26 @@ func TestSeed_MasterAddress(t *testing.T) {
 		t.Fatal("addr != addr2")
 	}
 }
+
+func TestSeed_IsZero(t *testing.T) {
+	const s = "1234567890123456789012345678901234567890123456789012345678901234"
+	const s0 = "0000000000000000000000000000000000000000000000000000000000000000"
+	sByte, _ := hex.DecodeString(s)
+	seed, err := BytesToSeed(sByte)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := seed.IsZero()
+	if b {
+		t.Fatal("seed should not be zero")
+	}
+	sByte0, _ := hex.DecodeString(s0)
+	seed0, err := BytesToSeed(sByte0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b0 := seed0.IsZero()
+	if !b0 {
+		t.Fatal("seed should be zero")
+	}
+}

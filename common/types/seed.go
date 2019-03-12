@@ -32,6 +32,9 @@ const (
 //Seed of account
 type Seed [SeedSize]byte
 
+// ZeroAddress
+var ZeroSeed = Seed{}
+
 //NewSeed generate new seed
 func NewSeed() (*Seed, error) {
 	seed := new(Seed)
@@ -114,4 +117,14 @@ func (s *Seed) UnmarshalBinary(text []byte) error {
 //MarshalJSON implements json.Marshaler interface
 func (s *Seed) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
+}
+
+// IsZero check address is zero
+func (s *Seed) IsZero() bool {
+	for _, b := range s {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }

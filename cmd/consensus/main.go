@@ -11,13 +11,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/chain/services"
-	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"math/big"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/qlcchain/go-qlc/chain/services"
+	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
@@ -107,7 +108,9 @@ func main() {
 	//import wallet
 	importWallet(cfgFile1)
 	//new dpos service
-	consensusService1, err := consensus.NewDPoS(cfgFile1, node1, address, password)
+	var accs []*types.Account
+	accs = append(accs, ac)
+	consensusService1, err := consensus.NewDPoS(cfgFile1, node1, accs)
 	//start node1 dpos service
 	err = consensusService1.Init()
 	if err != nil {
@@ -142,7 +145,7 @@ func main() {
 		//t.Fatal(err)
 	}
 
-	consensusService2 := services.NewDPosService(cfgFile2, node2, types.ZeroAddress, "")
+	consensusService2 := services.NewDPosService(cfgFile2, node2, nil)
 	//start node2 dpos service
 	err = consensusService2.Init()
 	if err != nil {
