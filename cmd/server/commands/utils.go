@@ -19,6 +19,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -36,6 +37,26 @@ func runNode(account types.Address, password string, cfg *config.Config) error {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	l := ctx.Ledger.Ledger
+	genesis := common.QLCGenesisBlock
+	var key []byte
+	key = append(key, types.MintageAddress[:]...)
+	key = append(key, genesis.Token[:]...)
+	_ = l.SetStorage(key, genesis.Data)
+	verifier := process.NewLedgerVerifier(l)
+	if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
+		if err := l.AddStateBlock(&common.GenesisMintageBlock); err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	if b, err := l.HasStateBlock(common.QLCGenesisBlockHash); !b && err == nil {
+		if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
+			fmt.Println(err)
+		}
+	}
+
 	cmn.TrapSignal(func() {
 		stopNode(services)
 	})
