@@ -14,6 +14,8 @@ import (
 )
 
 type Store interface {
+	smsStore
+	contractStore
 	Empty(txns ...db.StoreTxn) (bool, error)
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
 
@@ -68,9 +70,11 @@ type Store interface {
 	CountFrontiers(txns ...db.StoreTxn) (uint64, error)
 	// posterior
 	GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
-	// sender or receiver
-	GetSenderBlocks(sender string, txns ...db.StoreTxn) ([]types.Hash, error)
-	GetReceiverBlocks(receiver string, txns ...db.StoreTxn) ([]types.Hash, error)
+	// performance
+	AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error
+	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
+	GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error)
+	IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 
 	//Latest block hash by account and token type, if not exist, return zero hash
 	Latest(account types.Address, token types.Hash, txns ...db.StoreTxn) types.Hash
@@ -91,22 +95,10 @@ type Store interface {
 	//Rollback blocks until `hash' doesn't exist
 	Rollback(hash types.Hash) error
 
-	//BlockProcess process block to badger
-	//BlockProcess(block types.Block) error
-	// performance test time
-	AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error
-	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
-	GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error)
-	IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	//GenerateBlock
-	GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateSendBlock(from, to types.Address, token types.Hash, amount types.Balance, sender, receiver, message string, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
-
-	// Contract storage
-	//GetStorage
-	GetStorage(addr *types.Address, key []byte, txns ...db.StoreTxn) ([]byte, error)
-	SetStorage(key []byte, value []byte, txns ...db.StoreTxn) error
 
 	//Token
 	ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error)
@@ -115,5 +107,5 @@ type Store interface {
 	GetGenesis(txns ...db.StoreTxn) ([]*types.StateBlock, error)
 
 	//CalculateAmount calculate block amount by balance and check block type
-	CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (bool, types.Balance)
+	CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (types.Balance, error)
 }

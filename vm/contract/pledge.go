@@ -41,7 +41,8 @@ func (*Pledge) DoReceive(ledger *ledger.Ledger, block *types.StateBlock, input *
 	_ = cabi.ABIPledge.UnpackMethod(beneficialAddr, cabi.MethodNamePledge, input.Data)
 	beneficialKey := cabi.GetPledgeBeneficialKey(*beneficialAddr)
 	pledgeKey := cabi.GetPledgeKey(input.Address, beneficialKey)
-	oldPledgeData, err := ledger.GetStorage(&block.Address, pledgeKey)
+	address := block.Address
+	oldPledgeData, err := ledger.GetStorage(address[:], pledgeKey)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +57,15 @@ func (*Pledge) DoReceive(ledger *ledger.Ledger, block *types.StateBlock, input *
 
 	pledgeTime := time.Now().UTC().Add(time.Hour * minPledgeTime).Unix()
 	pledgeInfo, _ := cabi.ABIPledge.PackVariable(cabi.VariableNamePledgeInfo, amount, pledgeTime)
-	_ = ledger.SetStorage(pledgeKey, pledgeInfo)
+	if err := ledger.SetStorage(nil, pledgeKey, pledgeInfo); err != nil {
+		return nil, err
+	}
 
-	oldBeneficialData, err := ledger.GetStorage(&block.Address, beneficialKey)
+	address = block.Address
+	oldBeneficialData, err := ledger.GetStorage(address[:], beneficialKey)
+	if err != nil {
+		return nil, err
+	}
 	beneficialAmount := big.NewInt(0)
 	if len(oldBeneficialData) > 0 {
 		oldBeneficial := new(cabi.VariablePledgeBeneficial)
@@ -68,8 +75,7 @@ func (*Pledge) DoReceive(ledger *ledger.Ledger, block *types.StateBlock, input *
 
 	beneficialAmount.Add(beneficialAmount, a.Int)
 	beneficialData, _ := cabi.ABIPledge.PackVariable(cabi.VariableNamePledgeBeneficial, beneficialAmount)
-	err = ledger.SetStorage(beneficialKey, beneficialData)
-	if err != nil {
+	if err = ledger.SetStorage(nil, beneficialKey, beneficialData); err != nil {
 		return nil, err
 	}
 	return nil, nil

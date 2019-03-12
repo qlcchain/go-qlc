@@ -70,6 +70,7 @@ const (
 	idPrefixSender
 	idPrefixReceiver
 	idPrefixMessage
+	idPrefixMessageInfo
 )
 
 var (
@@ -188,23 +189,16 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
 	}
-	if err := addExtraDataForBlock(blk, txn); err != nil {
-		return err
-	}
-	l.releaseTxn(txn, flag)
-	return nil
-}
-
-func addExtraDataForBlock(blk *types.StateBlock, txn db.StoreTxn) error {
 	if err := addPosterior(blk, txn); err != nil {
 		return err
 	}
-	if err := addTokenInfo(blk, txn); err != nil {
+	if err := addToken(blk, txn); err != nil {
 		return err
 	}
-	if err := addSenderAndReceiver(blk, txn); err != nil {
+	if err := addSMSDataForBlock(blk, txn); err != nil {
 		return err
 	}
+	l.releaseTxn(txn, flag)
 	return nil
 }
 
@@ -239,7 +233,7 @@ func addPosterior(blk *types.StateBlock, txn db.StoreTxn) error {
 	return nil
 }
 
-func addTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
+func addToken(blk *types.StateBlock, txn db.StoreTxn) error {
 	if blk.GetType() == types.ContractReward {
 		token, err := cabi.ParseTokenInfo(blk.GetData())
 		if err != nil {
@@ -259,56 +253,6 @@ func addTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
 			return err
 		}
 		return txn.Set(tokenKey, val)
-	}
-	return nil
-}
-
-func addSenderOrReceiver(number string, t byte, hash types.Hash, txn db.StoreTxn) error {
-	if number != "" {
-		key := getKeyOfBytes(util.String2Bytes(number), t)
-		err := txn.Get(key, func(val []byte, b byte) error {
-			hs := new([]types.Hash)
-			if err := json.Unmarshal(val, hs); err != nil {
-				return err
-			}
-			//for _, h := range *hs {
-			//	if h == hash {
-			//		return nil
-			//	}
-			//}
-			*hs = append(*hs, hash)
-			val2, err := json.Marshal(*hs)
-			if err != nil {
-				return err
-			}
-
-			return txn.Set(key, val2)
-		})
-
-		if err != nil {
-			if err == badger.ErrKeyNotFound {
-				v := []types.Hash{hash}
-				val, err := json.Marshal(v)
-				if err != nil {
-					return err
-				}
-				return txn.Set(key, val)
-			}
-			return err
-		}
-	}
-	return nil
-}
-
-func addSenderAndReceiver(blk *types.StateBlock, txn db.StoreTxn) error {
-	sender := blk.GetSender()
-	receiver := blk.GetReceiver()
-	hash := blk.GetHash()
-	if err := addSenderOrReceiver(sender, idPrefixSender, hash, txn); err != nil {
-		return err
-	}
-	if err := addSenderOrReceiver(receiver, idPrefixReceiver, hash, txn); err != nil {
-		return err
 	}
 	return nil
 }
@@ -372,26 +316,17 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	if err := txn.Delete(key); err != nil {
 		return err
 	}
-	if err := deleteExtraDataForBlock(blk, txn); err != nil {
+	if err := deletePosterior(blk, txn); err != nil {
+		return err
+	}
+	if err := deleteToken(blk, txn); err != nil {
+		return err
+	}
+	if err := deleteSmsDataForBlock(blk, txn); err != nil {
 		return err
 	}
 
 	l.releaseTxn(txn, flag)
-	return nil
-}
-
-func deleteExtraDataForBlock(blk *types.StateBlock, txn db.StoreTxn) error {
-	if err := deletePosterior(blk, txn); err != nil {
-		return err
-	}
-
-	if err := deleteTokenInfo(blk, txn); err != nil {
-		return err
-	}
-
-	if err := deleteSenderAndReceiver(blk, txn); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -403,7 +338,7 @@ func deletePosterior(blk *types.StateBlock, txn db.StoreTxn) error {
 	return nil
 }
 
-func deleteTokenInfo(blk *types.StateBlock, txn db.StoreTxn) error {
+func deleteToken(blk *types.StateBlock, txn db.StoreTxn) error {
 	if blk.GetType() == types.ContractReward {
 		token, err := cabi.ParseTokenInfo(blk.GetData())
 		if err != nil {
@@ -445,19 +380,6 @@ func deleteSenderOrReceiver(number string, t byte, hash types.Hash, txn db.Store
 		if err != nil && err != badger.ErrKeyNotFound {
 			return err
 		}
-	}
-	return nil
-}
-
-func deleteSenderAndReceiver(blk *types.StateBlock, txn db.StoreTxn) error {
-	sender := blk.GetSender()
-	receiver := blk.GetReceiver()
-	hash := blk.GetHash()
-	if err := deleteSenderOrReceiver(sender, idPrefixSender, hash, txn); err != nil {
-		return err
-	}
-	if err := deleteSenderOrReceiver(receiver, idPrefixReceiver, hash, txn); err != nil {
-		return err
 	}
 	return nil
 }
@@ -1264,41 +1186,6 @@ func (l *Ledger) GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash,
 	return *h, nil
 }
 
-func (l *Ledger) getSenderOrReceiver(number string, t byte, txn db.StoreTxn) ([]types.Hash, error) {
-	key := getKeyOfBytes(util.String2Bytes(number), t)
-	h := new([]types.Hash)
-	err := txn.Get(key, func(val []byte, b byte) error {
-		if err := json.Unmarshal(val, h); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil && err != badger.ErrKeyNotFound {
-		return []types.Hash{}, err
-	}
-	return *h, nil
-}
-
-func (l *Ledger) GetSenderBlocks(sender string, txns ...db.StoreTxn) ([]types.Hash, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-	h, err := l.getSenderOrReceiver(sender, idPrefixSender, txn)
-	if err != nil {
-		return []types.Hash{}, err
-	}
-	return h, nil
-}
-
-func (l *Ledger) GetReceiverBlocks(receiver string, txns ...db.StoreTxn) ([]types.Hash, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-	h, err := l.getSenderOrReceiver(receiver, idPrefixReceiver, txn)
-	if err != nil {
-		return []types.Hash{}, err
-	}
-	return h, nil
-}
-
 func getVersionKey() []byte {
 	return []byte{idPrefixVersion}
 }
@@ -1679,14 +1566,6 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 	return nil
 }
 
-//func (l *Ledger) getStateBlock(hash types.Hash, txn ...db.StoreTxn) (*types.StateBlock, error) {
-//	b, err := l.GetStateBlock(hash, txn...)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return b, nil
-//}
-
 func (l *Ledger) getLinkBlock(block *types.StateBlock, txn db.StoreTxn) (*types.StateBlock, error) {
 	tm, err := l.GetTokenMeta(types.Address(block.GetLink()), block.GetToken(), txn)
 	if err != nil {
@@ -1927,6 +1806,95 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 	}
 }
 
+func (l *Ledger) ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	var tokens []*types.TokenInfo
+	err := txn.Iterator(idPrefixToken, func(key []byte, val []byte, b byte) error {
+		token := new(types.TokenInfo)
+		if err := json.Unmarshal(val, token); err != nil {
+			fmt.Println(err)
+			return err
+		}
+		tokens = append(tokens, token)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tokens, nil
+}
+
+func (l *Ledger) GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.TokenInfo, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key := getKeyOfHash(tokenId, idPrefixToken)
+	token := new(types.TokenInfo)
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
+		if err := json.Unmarshal(val, token); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrTokenNotFound
+		}
+		return nil, err
+	}
+	return token, nil
+}
+
+func (l *Ledger) GetTokenByName(tokenName string, txns ...db.StoreTxn) (*types.TokenInfo, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	var token *types.TokenInfo
+	err := txn.Iterator(idPrefixToken, func(key []byte, val []byte, b byte) error {
+		t := new(types.TokenInfo)
+		if err := json.Unmarshal(val, t); err != nil {
+			return err
+		}
+		if t.TokenName == tokenName {
+			token = t
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return token, nil
+}
+
+func (l *Ledger) GetGenesis(txns ...db.StoreTxn) ([]*types.StateBlock, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	var blocks []*types.StateBlock
+	err := txn.Iterator(idPrefixToken, func(key []byte, val []byte, b byte) error {
+		t := new(types.TokenInfo)
+		if err := json.Unmarshal(val, t); err != nil {
+			return err
+		}
+		tm, err := l.GetTokenMeta(t.Owner, t.TokenId, txn)
+		if err != nil {
+			return err
+		}
+		block, err := l.GetStateBlock(tm.OpenBlock, txn)
+		if err != nil {
+			return err
+		}
+		blocks = append(blocks, block)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+
 func (l *Ledger) generateWork(hash types.Hash) types.Work {
 	var work types.Work
 	worker, _ := types.NewWorker(work, hash)
@@ -1936,8 +1904,8 @@ func (l *Ledger) generateWork(hash types.Hash) types.Work {
 	//_ = s.setWork(hash, work)
 }
 
-func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to types.Address, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error) {
-	tm, err := l.GetTokenMeta(source, token)
+func (l *Ledger) GenerateSendBlock(from, to types.Address, token types.Hash, amount types.Balance, sender, receiver, message string, prk ed25519.PrivateKey) (*types.StateBlock, error) {
+	tm, err := l.GetTokenMeta(from, token)
 	if err != nil {
 		return nil, err
 	}
@@ -1945,16 +1913,23 @@ func (l *Ledger) GenerateSendBlock(source types.Address, token types.Hash, to ty
 	//if err != nil {
 	//	return nil, err
 	//}
+	mHash, err := l.addMessageInfo(message)
+	if err != nil {
+		return nil, err
+	}
 
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		sb := types.StateBlock{
 			Type:           types.Send,
-			Address:        source,
+			Address:        from,
 			Token:          token,
 			Link:           to.ToHash(),
 			Balance:        tm.Balance.Sub(amount),
 			Previous:       tm.Header,
 			Representative: tm.Representative,
+			Sender:         sender,
+			Receiver:       receiver,
+			Message:        mHash,
 		}
 		acc := types.NewAccount(prk)
 		sb.Signature = acc.Sign(sb.GetHash())

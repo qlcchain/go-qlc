@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
@@ -82,6 +83,10 @@ func (b *StateBlock) GetReceiver() string {
 
 func (b *StateBlock) GetSender() string {
 	return b.Sender
+}
+
+func (b *StateBlock) GetMessage() Hash {
+	return b.Message
 }
 
 func (b *StateBlock) Root() Hash {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -477,6 +478,9 @@ type APISendBlockPara struct {
 	TokenName string        `json:"tokenName"`
 	To        types.Address `json:"to"`
 	Amount    types.Balance `json:"amount"`
+	Sender    string        `json:"sender"`
+	Receiver  string        `json:"receiver"`
+	Message   string        `json:"message"`
 }
 
 func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (*types.StateBlock, error) {
@@ -491,7 +495,7 @@ func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (*ty
 	if err != nil {
 		return nil, err
 	}
-	block, err := l.ledger.GenerateSendBlock(para.Send, info.TokenId, para.To, para.Amount, prk)
+	block, err := l.ledger.GenerateSendBlock(para.Send, para.To, info.TokenId, para.Amount, para.Sender, para.Receiver, para.Message, prk)
 	if err != nil {
 		return nil, err
 	}
@@ -702,4 +706,16 @@ func (l *LedgerApi) ReceiverBlocksCount(receiver string) (int, error) {
 	var num int
 	num = len(hashes)
 	return num, nil
+}
+
+func (l *LedgerApi) MessageHash(message string) (types.Hash, error) {
+	m, err := base64.StdEncoding.DecodeString(message)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	hash, err := types.HashBytes(m)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	return hash, nil
 }

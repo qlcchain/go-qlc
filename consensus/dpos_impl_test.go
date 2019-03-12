@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/test/mock"
 	"github.com/qlcchain/go-qlc/wallet"
@@ -203,7 +203,7 @@ func Test_Trx_Confirmed(t *testing.T) {
 		break
 	}
 	dst := mock.Account()
-	send, err := ledger2.Ledger.GenerateSendBlock(ac.Address(), token, dst.Address(), types.Balance{Int: big.NewInt(int64(1000))}, ac.PrivateKey())
+	send, err := ledger2.Ledger.GenerateSendBlock(ac.Address(), dst.Address(), token, types.Balance{Int: big.NewInt(int64(1000))}, "", "", "", ac.PrivateKey())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -80,7 +80,8 @@ func verifyToken(param cabi.ParamMintage) error {
 func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.ParamMintage)
 	_ = cabi.ABIMintage.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
-	storage, err := ledger.GetStorage(&block.Address, param.Token[:])
+	address := block.Address
+	storage, err := ledger.GetStorage(address[:], param.Token[:])
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +117,9 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 	}
 
 	block.Data = tokenInfo
-	_ = ledger.SetStorage(param.Token[:], tokenInfo)
+	if err := ledger.SetStorage(types.MintageAddress[:], param.Token[:], tokenInfo); err != nil {
+		return nil, err
+	}
 	return []*ContractBlock{
 		{
 			block,
@@ -157,7 +160,8 @@ func (m *WithdrawMintage) DoSend(ledger *l.Ledger, block *types.StateBlock) erro
 func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
 	_ = cabi.ABIMintage.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
-	storage, err := ledger.GetStorage(&block.Address, tokenId[:])
+	address := block.Address
+	storage, err := ledger.GetStorage(address[:], tokenId[:])
 	if err != nil {
 		return nil, err
 	}
@@ -183,9 +187,8 @@ func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 		tokenInfo.Owner,
 		big.NewInt(0),
 		uint64(0))
-	storageKey := cabi.GetStorageKey(tokenId[:])
-
-	if err := ledger.SetStorage(storageKey, newTokenInfo); err != nil {
+	//storageKey := cabi.GetStorageKey(tokenId[:])
+	if err := ledger.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
 		return nil, err
 	}
 

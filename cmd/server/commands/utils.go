@@ -40,10 +40,12 @@ func runNode(account types.Address, password string, cfg *config.Config) error {
 
 	l := ctx.Ledger.Ledger
 	genesis := common.QLCGenesisBlock
-	var key []byte
-	key = append(key, types.MintageAddress[:]...)
-	key = append(key, genesis.Token[:]...)
-	_ = l.SetStorage(key, genesis.Data)
+	//var key []byte
+	//key = append(key, types.MintageAddress[:]...)
+	//key = append(key, genesis.Token[:]...)
+	if err := l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data); err != nil {
+		fmt.Println(err)
+	}
 	verifier := process.NewLedgerVerifier(l)
 	if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
 		if err := l.AddStateBlock(&common.GenesisMintageBlock); err != nil {
