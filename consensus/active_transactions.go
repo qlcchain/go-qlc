@@ -12,12 +12,12 @@ import (
 const (
 	//announcementMin        = 4 //Minimum number of block announcements
 	announceIntervalSecond = 16 * time.Second
-	refreshPriInfoHour     = 1 * time.Hour
+	refreshPriInterval     = 1 * time.Hour
 )
 
 type ActiveTrx struct {
 	confirmed electionStatus
-	dps       *DposService
+	dps       *DPoS
 	//roots     map[types.Hash]*Election
 	roots    *sync.Map
 	quitCh   chan bool
@@ -32,13 +32,13 @@ func NewActiveTrx() *ActiveTrx {
 	}
 }
 
-func (act *ActiveTrx) SetDposService(dps *DposService) {
+func (act *ActiveTrx) SetDposService(dps *DPoS) {
 	act.dps = dps
 }
 
 func (act *ActiveTrx) start() {
 	timer2 := time.NewTicker(announceIntervalSecond)
-	timer3 := time.NewTicker(refreshPriInfoHour)
+	timer3 := time.NewTicker(refreshPriInterval)
 	for {
 		select {
 		case <-timer2.C:
@@ -49,7 +49,9 @@ func (act *ActiveTrx) start() {
 			return
 		case <-timer3.C:
 			act.dps.logger.Info("refresh pri info.")
-			go act.dps.refreshPriInfo()
+			go func() {
+				_ = act.dps.refreshPriInfo()
+			}()
 		default:
 			time.Sleep(5 * time.Millisecond)
 		}
@@ -132,9 +134,9 @@ func (act *ActiveTrx) announceVotes() {
 		} else {
 			act.dps.priInfos.Range(func(k, v interface{}) bool {
 				count++
-				isRep := act.dps.isThisAccountRepresentation(k.(types.Address))
+				isRep := act.dps.isRepresentation(k.(types.Address))
 				if isRep {
-					act.dps.putRepresentativesToOnline(k.(types.Address))
+					act.dps.saveOnlineRep(k.(types.Address))
 					va, err := act.dps.voteGenerate(block, k.(types.Address), v.(*types.Account))
 					if err != nil {
 						act.dps.logger.Error("vote generate error")

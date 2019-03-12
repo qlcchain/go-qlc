@@ -78,11 +78,12 @@ func mintage() {
 					Warn(err)
 					return
 				}
+
 				accountP = StringVar(c.Args, account)
 				preHashP = StringVar(c.Args, preHash)
-				preHashP = StringVar(c.Args, tokenName)
-				preHashP = StringVar(c.Args, tokenSymbol)
-				preHashP = StringVar(c.Args, totalSupply)
+				tokenNameP = StringVar(c.Args, tokenName)
+				tokenSymbolP = StringVar(c.Args, tokenSymbol)
+				totalSupplyP = StringVar(c.Args, totalSupply)
 				decimalsP, err = IntVar(c.Args, decimals)
 				if err != nil {
 					Warn(err)
@@ -93,6 +94,7 @@ func mintage() {
 					Warn(err)
 					return
 				}
+				fmt.Println(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP, pledgeAmountP)
 				if err := mintageAction(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP, pledgeAmountP); err != nil {
 					Warn(err)
 					return
@@ -117,6 +119,7 @@ func mintage() {
 		accountCmd.Flags().StringVar(&tokenSymbolP, "tokenSymbol", "", "token symbol")
 		accountCmd.Flags().StringVar(&totalSupplyP, "totalSupply", "", "token total supply")
 		accountCmd.Flags().IntVar(&decimalsP, "decimals", 8, "token decimals")
+		accountCmd.Flags().IntVar(&pledgeAmountP, "pledgeAmount", 100, "pledge Amount")
 		rootCmd.AddCommand(accountCmd)
 	}
 }
@@ -144,7 +147,7 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 		SelfAddr: a.Address(), PrevHash: previous, TokenName: tokenName,
 		TotalSupply: totalSupply, TokenSymbol: tokenSymbol, Decimals: d,
 	}
-	err = client.Call(&data, "ledger_accountsBalances", &mintageParam)
+	err = client.Call(&data, "mintage_getMintageData", &mintageParam)
 	if err != nil {
 		return err
 	}

@@ -40,7 +40,7 @@ func NewQlcService(cfg *config.Config) (*QlcService, error) {
 	ns := &QlcService{
 		node:       node,
 		dispatcher: NewDispatcher(),
-		msgEvent:   NeweventQueue(),
+		msgEvent:   NewEventQueue(),
 	}
 	node.SetQlcService(ns)
 	l := ledger.NewLedger(cfg.LedgerDir())

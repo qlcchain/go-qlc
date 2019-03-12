@@ -9,6 +9,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"math/big"
@@ -19,10 +20,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/test/mock"
 )
 
@@ -42,8 +41,7 @@ func main() {
 			return
 		}
 
-		dp := &consensus.DposService{}
-		rs := rpc.NewRPCService(cfg, dp)
+		rs := services.NewRPCService(cfg, nil)
 		err = rs.Init()
 		if err != nil {
 			logger.Fatal(err)

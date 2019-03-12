@@ -18,7 +18,7 @@ type blockSource struct {
 type BlockProcessor struct {
 	blocks chan blockSource
 	quitCh chan bool
-	dp     *DposService
+	dp     *DPoS
 }
 
 func NewBlockProcessor() *BlockProcessor {
@@ -28,7 +28,7 @@ func NewBlockProcessor() *BlockProcessor {
 	}
 }
 
-func (bp *BlockProcessor) SetDpos(dp *DposService) {
+func (bp *BlockProcessor) SetDpos(dp *DPoS) {
 	bp.dp = dp
 }
 
@@ -37,7 +37,7 @@ func (bp *BlockProcessor) Start() {
 }
 
 func (bp *BlockProcessor) processBlocks() {
-	timer := time.NewTicker(findOnlineRepresentativesIntervals)
+	timer := time.NewTicker(findOnlineRepresentativesInterval)
 	for {
 		select {
 		case <-bp.quitCh:
@@ -52,7 +52,13 @@ func (bp *BlockProcessor) processBlocks() {
 			bp.processResult(result, bs)
 		case <-timer.C:
 			bp.dp.logger.Info("begin Find Online Representatives.")
-			go bp.dp.findOnlineRepresentatives()
+			go func() {
+				err := bp.dp.findOnlineRepresentatives()
+				if err != nil {
+					bp.dp.logger.Error(err)
+				}
+				bp.dp.cleanOnlineReps()
+			}()
 		default:
 			time.Sleep(5 * time.Millisecond)
 		}
@@ -135,9 +141,9 @@ func (bp *BlockProcessor) processFork(block *types.StateBlock) {
 	//count := 0
 	//bp.dp.priInfos.Range(func(key, value interface{}) bool {
 	//	count++
-	//	isRep := bp.dp.isThisAccountRepresentation(key.(types.Address))
+	//	isRep := bp.dp.isRepresentation(key.(types.Address))
 	//	if isRep {
-	//		bp.dp.putRepresentativesToOnline(key.(types.Address))
+	//		bp.dp.saveOnlineRep(key.(types.Address))
 	//		blk = bp.findAnotherForkedBlock(block)
 	//
 	//	} else {

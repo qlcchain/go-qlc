@@ -1,14 +1,19 @@
 /*
- * Copyright (c) 2018 QLC Chain Team
+ * Copyright (c) 2019 QLC Chain Team
  *
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
  */
 
-package ledger
+package services
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
@@ -16,12 +21,14 @@ import (
 
 type LedgerService struct {
 	common.ServiceLifecycle
-	Ledger *Ledger
+	Ledger *ledger.Ledger
+	logger *zap.SugaredLogger
 }
 
 func NewLedgerService(cfg *config.Config) *LedgerService {
 	return &LedgerService{
-		Ledger: NewLedger(cfg.LedgerDir()),
+		Ledger: ledger.NewLedger(cfg.LedgerDir()),
+		logger: log.NewLogger("ledger_service"),
 	}
 }
 
@@ -30,28 +37,46 @@ func (ls *LedgerService) Init() error {
 		return errors.New("pre init fail")
 	}
 	defer ls.PostInit()
-	//l := ls.Ledger
+	l := ls.Ledger
+
+	genesis := common.QLCGenesisBlock
+	_ = l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
+	verifier := process.NewLedgerVerifier(l)
+	if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
+		if err := l.AddStateBlock(&common.GenesisMintageBlock); err != nil {
+			ls.logger.Error(err)
+		}
+	} else {
+		return err
+	}
+
+	if b, err := l.HasStateBlock(common.QLCGenesisBlockHash); !b && err == nil {
+		if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
+			ls.logger.Error(err)
+		}
+	} else {
+		return err
+	}
+
+	return nil
+
 	//return l.BatchUpdate(func(txn db.StoreTxn) error {
 	//	genesis := common.QLCGenesisBlock
-	//	var key []byte
-	//	key = append(key, types.MintageAddress[:]...)
-	//	key = append(key, genesis.Token[:]...)
-	//	_ = l.SetStorage(key, genesis.Data)
+	//	_ = l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
 	//	verifier := process.NewLedgerVerifier(l)
 	//	if b, err := l.HasStateBlock(common.GenesisMintageHash, txn); !b && err == nil {
 	//		if err := l.AddStateBlock(&common.GenesisMintageBlock, txn); err != nil {
-	//			ls.Ledger.logger.Error(err)
+	//			ls.logger.Error(err)
 	//		}
 	//	}
 	//
 	//	if b, err := l.HasStateBlock(common.QLCGenesisBlockHash, txn); !b && err == nil {
 	//		if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
-	//			ls.Ledger.logger.Error(err)
+	//			ls.logger.Error(err)
 	//		}
 	//	}
 	//	return nil
 	//})
-	return nil
 }
 
 func (ls *LedgerService) Start() error {
@@ -71,7 +96,7 @@ func (ls *LedgerService) Stop() error {
 
 	ls.Ledger.Close()
 	// close all ledger
-	CloseLedger()
+	ledger.CloseLedger()
 
 	return nil
 }

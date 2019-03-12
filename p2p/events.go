@@ -4,7 +4,7 @@ type EventQueue struct {
 	Consensus *Event
 }
 
-func NeweventQueue() *EventQueue {
+func NewEventQueue() *EventQueue {
 	consensus := NewEvent()
 	return &EventQueue{
 		Consensus: consensus,

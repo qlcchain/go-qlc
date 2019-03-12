@@ -39,11 +39,11 @@ type RPC struct {
 
 	ledger *ledger.Ledger
 	wallet *wallet.WalletStore
-	dpos   *consensus.DposService
+	dpos   *consensus.DPoS
 	logger *zap.SugaredLogger
 }
 
-func NewRPC(cfg *config.Config, dpos *consensus.DposService) *RPC {
+func NewRPC(cfg *config.Config, dpos *consensus.DPoS) *RPC {
 	r := RPC{
 		ledger: ledger.NewLedger(cfg.LedgerDir()),
 		wallet: wallet.NewWalletStore(cfg),

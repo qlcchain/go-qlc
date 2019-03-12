@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2018 QLC Chain Team
+ * Copyright (c) 2019 QLC Chain Team
  *
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
  */
 
-package wallet
+package services
 
 import (
 	"os"
@@ -16,7 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestWalletService_Init(t *testing.T) {
+func TestNewLedgerService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
 		_ = os.RemoveAll(dir)
@@ -25,21 +25,21 @@ func TestWalletService_Init(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := NewWalletService(cfg)
-	err = s.Init()
+	ls := NewLedgerService(cfg)
+	err = ls.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.State() != 2 {
+	if ls.State() != 2 {
 		t.Fatal("ledger init failed")
 	}
-	_ = s.Start()
-	err = s.Stop()
+	_ = ls.Start()
+	err = ls.Stop()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if s.Status() != 6 {
+	if ls.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
 }

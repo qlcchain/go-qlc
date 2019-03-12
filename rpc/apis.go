@@ -56,10 +56,11 @@ func (r *RPC) getApi(apiModule string) API {
 			Public:    true,
 		}
 	case "mintage":
-		return API{Namespace: "mintage",
-			Version: "1.0",
-			Service: api.NewMintageApi(r.ledger),
-			Public:  true,
+		return API{
+			Namespace: "mintage",
+			Version:   "1.0",
+			Service:   api.NewMintageApi(r.ledger),
+			Public:    true,
 		}
 	default:
 		return API{}
@@ -76,17 +77,17 @@ func (r *RPC) GetApis(apiModule ...string) []API {
 
 //In-proc apis
 func (r *RPC) GetInProcessApis() []API {
-	return r.GetApis("qlcclassic", "ledger", "account", "net", "util", "wallet")
+	return r.GetApis("qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract")
 }
 
 //Ipc apis
 func (r *RPC) GetIpcApis() []API {
-	return r.GetApis("qlcclassic", "ledger", "account", "net", "util", "wallet")
+	return r.GetApis("qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract")
 }
 
 //Http apis
 func (r *RPC) GetHttpApis() []API {
-	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet"}
+	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract"}
 	//apiModules := []string{"ledger", "public_onroad", "net", "contract", "pledge", "register", "vote", "mintage", "consensusGroup", "pow", "tx"}
 	//if node.Config().NetID > 1 {
 	//	apiModules = append(apiModules, "testapi")
@@ -96,7 +97,7 @@ func (r *RPC) GetHttpApis() []API {
 
 //WS apis
 func (r *RPC) GetWSApis() []API {
-	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet"}
+	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract"}
 	return r.GetApis(apiModules...)
 }
 
