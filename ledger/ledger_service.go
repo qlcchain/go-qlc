@@ -9,6 +9,7 @@ package ledger
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -39,6 +40,7 @@ func (ls *LedgerService) Init() error {
 		key = append(key, types.MintageAddress[:]...)
 		key = append(key, genesis.Token[:]...)
 		_ = l.SetStorage(key, genesis.Data)
+		verifier := process.NewLedgerVerifier(l)
 		if b, err := l.HasStateBlock(common.GenesisMintageHash, txn); !b && err == nil {
 			if err := l.AddStateBlock(&common.GenesisMintageBlock, txn); err != nil {
 				ls.Ledger.logger.Error(err)
@@ -46,7 +48,7 @@ func (ls *LedgerService) Init() error {
 		}
 
 		if b, err := l.HasStateBlock(common.QLCGenesisBlockHash, txn); !b && err == nil {
-			if err := l.AddStateBlock(&common.QLCGenesisBlock, txn); err != nil {
+			if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
 				ls.Ledger.logger.Error(err)
 			}
 		}
