@@ -75,6 +75,7 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 
 func (act *ActiveTrx) announceVotes() {
 	var address types.Address
+	var count uint32
 	act.roots.Range(func(key, value interface{}) bool {
 		block := value.(*Election).status.winner
 		hash := block.GetHash()
@@ -132,10 +133,10 @@ func (act *ActiveTrx) announceVotes() {
 			act.rollBack(value.(*Election).status.loser)
 			act.addWinner2Ledger(block)
 		} else {
-			for _, v := range localRepAccount {
-				address = v.Address()
+			localRepAccount.Range(func(key, value interface{}) bool {
+				address = key.(types.Address)
 				act.dps.saveOnlineRep(&address)
-				va, err := act.dps.voteGenerate(block, address, v)
+				va, err := act.dps.voteGenerate(block, address, value.(*types.Account))
 				if err != nil {
 					act.dps.logger.Error("vote generate error")
 				} else {
@@ -143,8 +144,9 @@ func (act *ActiveTrx) announceVotes() {
 					act.dps.ns.Broadcast(p2p.ConfirmAck, va)
 					value.(*Election).voteAction(va)
 				}
-			}
-			if len(localRepAccount) == 0 {
+				return true
+			})
+			if count == 0 {
 				act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
 				act.dps.ns.Broadcast(p2p.ConfirmReq, block)
 			}
