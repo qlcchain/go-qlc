@@ -1,6 +1,7 @@
+#!/usr/bin/env bash
 echo "start qlc node"
 
-if [ ! -n "$seed" ]; then
+if [[ ! -n "$seed" ]]; then
     # node mode
     exec ./gqlc
 else
