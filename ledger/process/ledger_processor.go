@@ -288,9 +288,14 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 }
 
 func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkReceiveBlock(lv, block)
+	result, err := checkStateBlock(lv, block)
 	if err != nil || result != Progress {
 		return result, err
+	}
+
+	//check previous
+	if !block.Previous.IsZero() {
+		return Other, fmt.Errorf("open block previous is not zero")
 	}
 
 	//ignore chain genesis block
@@ -314,7 +319,8 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 		clone := block.Clone()
 		if g, e := c.DoReceive(lv.l, clone, input); e == nil {
 			if len(g) > 0 {
-				if bytes.EqualFold(g[0].Block.Data, block.Data) {
+				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
+					g[0].Amount.Compare(block.Balance) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
 					return Progress, nil
 				} else {
 					return InvalidData, nil
