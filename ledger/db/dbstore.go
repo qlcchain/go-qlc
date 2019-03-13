@@ -1,6 +1,8 @@
 package db
 
 import (
+	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/pb"
 	"io"
 )
 
@@ -23,4 +25,6 @@ type StoreTxn interface {
 	Commit(callback func(error)) error
 	Discard()
 	Upgrade(migrations []Migration) error
+	Count(prefix []byte) (uint64, error)
+	Stream(prefix []byte, filter func(item *badger.Item) bool, callback func(list *pb.KVList) error) error
 }

@@ -1,6 +1,8 @@
 package db
 
 import (
+	"context"
+	"github.com/dgraph-io/badger/pb"
 	"log"
 	"sort"
 
@@ -26,6 +28,7 @@ func NewBadgerStore(dir string) (Store, error) {
 	opts := badger.DefaultOptions
 	opts.Dir = dir
 	opts.ValueDir = dir
+	opts.Logger = nil
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
 	_ = util.CreateDirIfNotExist(dir)
 	db, err := badger.Open(opts)
@@ -146,11 +149,54 @@ func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {
 }
 
 func (t *BadgerStoreTxn) Commit(callback func(error)) error {
-	return t.txn.Commit(callback)
+	return t.txn.Commit()
 }
 
 func (t *BadgerStoreTxn) Discard() {
 	if t.txn != nil {
 		t.txn.Discard()
 	}
+}
+
+func (t *BadgerStoreTxn) Count(prefix []byte) (uint64, error) {
+	var i uint64
+	err := t.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			i++
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return i, nil
+}
+
+func (t *BadgerStoreTxn) Stream(prefix []byte, filter func(item *badger.Item) bool, callback func(list *pb.KVList) error) error {
+	stream := t.db.NewStream()
+	stream.Prefix = prefix // Leave nil for iteration over the whole DB.
+	//stream.LogPrefix = "Badger.Streaming" // For identifying stream logs. Outputs to Logger.
+
+	// ChooseKey is called concurrently for every key. If left nil, assumes true by default.
+	stream.ChooseKey = filter
+
+	// KeyToList is called concurrently for chosen keys. This can be used to convert
+	// Badger data into custom key-values. If nil, uses stream.ToList, a default
+	// implementation, which picks all valid key-values.
+	stream.KeyToList = nil
+
+	// -- End of optional settings.
+
+	// Send is called serially, while Stream.Orchestrate is running.
+	stream.Send = callback
+
+	// Run the stream
+	if err := stream.Orchestrate(context.Background()); err != nil {
+		return err
+	}
+	return nil
 }

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dgraph-io/badger/pb"
+	"github.com/qlcchain/go-qlc/common/util"
 	"io"
 	"math/rand"
 	"sort"
@@ -371,19 +373,10 @@ func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, erro
 }
 
 func (l *Ledger) CountStateBlocks(txns ...db.StoreTxn) (uint64, error) {
-	var count uint64
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
-		count++
-		return nil
-	})
-
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
+	return txn.Count([]byte{idPrefixBlock})
 }
 
 func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, error) {
@@ -513,19 +506,9 @@ func (l *Ledger) HasSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (bo
 }
 
 func (l *Ledger) CountSmartContractBlocks(txns ...db.StoreTxn) (uint64, error) {
-	var count uint64
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
-		count++
-		return nil
-	})
-
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
+	return txn.Count([]byte{idPrefixSmartContractBlock})
 }
 
 func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
@@ -652,21 +635,17 @@ func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Iterator(idPrefixUncheckedBlockLink, func(key []byte, val []byte, b byte) error {
-		count++
-		return nil
-	})
+	count, err := txn.Count([]byte{idPrefixUncheckedBlockLink})
 	if err != nil {
 		return 0, err
 	}
-	err = txn.Iterator(idPrefixUncheckedBlockPrevious, func(key []byte, val []byte, b byte) error {
-		count++
-		return nil
-	})
+
+	count2, err := txn.Count([]byte{idPrefixUncheckedBlockPrevious})
 	if err != nil {
 		return 0, err
 	}
-	return count, nil
+
+	return count + count2, nil
 }
 
 func (l *Ledger) getAccountMetaKey(address types.Address) []byte {
@@ -744,19 +723,9 @@ func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...d
 }
 
 func (l *Ledger) CountAccountMetas(txns ...db.StoreTxn) (uint64, error) {
-	var count uint64
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
-		count++
-		return nil
-	})
-
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
+	return txn.Count([]byte{idPrefixAccount})
 }
 
 func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error {
@@ -1061,6 +1030,38 @@ func (l *Ledger) GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*
 
 }
 
+func (l *Ledger) SearchPending(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Stream([]byte{idPrefixPending}, func(item *badger.Item) bool {
+		key := &types.PendingKey{}
+		if _, err := key.UnmarshalMsg(item.Key()[1:]); err == nil {
+			return key.Address == address
+		} else {
+			l.logger.Error(util.ToString(key), err)
+		}
+		return false
+	}, func(list *pb.KVList) error {
+		for _, v := range list.Kv {
+			pk := &types.PendingKey{}
+			pi := &types.PendingInfo{}
+
+			if _, err := pk.UnmarshalMsg(v.Key[1:]); err != nil {
+				continue
+			}
+			if _, err := pi.UnmarshalMsg(v.Value); err != nil {
+				continue
+			}
+			err := fn(pk, pi)
+			if err != nil {
+				l.logger.Error(err)
+			}
+		}
+		return nil
+	})
+}
+
 func (l *Ledger) DeletePending(pendingKey types.PendingKey, txns ...db.StoreTxn) error {
 	key := l.getPendingKey(pendingKey)
 	txn, flag := l.getTxn(true, txns...)
@@ -1133,18 +1134,10 @@ func (l *Ledger) DeleteFrontier(hash types.Hash, txns ...db.StoreTxn) error {
 }
 
 func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
-	var count uint64
-	txn, flag := l.getTxn(true, txns...)
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
-		count++
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
+	return txn.Count([]byte{idPrefixFrontier})
 }
 
 func (l *Ledger) GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {

@@ -3,6 +3,7 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"math"
 	"math/big"
 	"os"
@@ -759,6 +760,45 @@ func TestLedger_DeletePending(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("delete pending success")
+}
+
+func TestLedger_SearchPending(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	address := mock.Address()
+	for idx := 0; idx < 10; idx++ {
+		hash := mock.Hash()
+		i, _ := random.Intn(math.MaxUint32)
+		balance := types.Balance{Int: big.NewInt(int64(i))}
+		v := &types.PendingInfo{
+			Source: address,
+			Amount: balance,
+			Type:   mock.Hash(),
+		}
+		k := &types.PendingKey{Address: address, Hash: hash}
+		err := l.AddPending(*k, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		//t.Log(idx, util.ToString(k), util.ToString(v))
+	}
+	//t.Log("build cache done")
+
+	counter := 0
+	err := l.SearchPending(address, func(key *types.PendingKey, value *types.PendingInfo) error {
+		t.Log(counter, util.ToString(key), util.ToString(value))
+		counter++
+		return nil
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if counter != 10 {
+		t.Fatal("invalid", counter)
+	}
 }
 
 func addFrontier(t *testing.T, l *Ledger) *types.Frontier {
