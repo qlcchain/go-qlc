@@ -103,14 +103,12 @@ func initNode(seed types.Seed, cfg *config.Config) error {
 
 	if !seed.IsZero() {
 
-		for _, value := range accounts {
-			addr = value.Address()
-			_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
-
+		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
+			for _, value := range accounts {
+				addr = value.Address()
 				if b, ok := v.(*types.StateBlock); ok {
 					if b.Type == types.Send {
 						address := types.Address(b.Link)
-
 						if addr.String() == address.String() {
 							balance, _ := common.RawToBalance(b.Balance, "QLC")
 							fmt.Printf("receive block from [%s] to[%s] amount[%d]\n", b.Address.String(), address.String(), balance)
@@ -118,11 +116,12 @@ func initNode(seed types.Seed, cfg *config.Config) error {
 							if err != nil {
 								fmt.Printf("err[%s] when generate receive block.\n", err)
 							}
+							break
 						}
 					}
 				}
-			})
-		}
+			}
+		})
 	}
 
 	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
