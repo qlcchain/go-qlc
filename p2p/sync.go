@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -111,20 +110,20 @@ func (ss *ServiceSync) checkFrontier(message Message) {
 		ss.logger.Error(err)
 		return
 	}
-	fmt.Println("Total Frontier Num is:", rsp.TotalFrontierNum)
 	if uint32(len(ss.remoteFrontiers)) < rsp.TotalFrontierNum {
 		ss.remoteFrontiers = append(ss.remoteFrontiers, rsp.Frontier)
+		if uint32(len(ss.remoteFrontiers)) == rsp.TotalFrontierNum {
+			var remoteFrontiers []*types.Frontier
+			remoteFrontiers = append(remoteFrontiers, ss.remoteFrontiers...)
+			sort.Sort(types.Frontiers(remoteFrontiers))
+			zeroFrontier := new(types.Frontier)
+			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
+			ss.remoteFrontiers = ss.remoteFrontiers[:0:0]
+			go ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+		}
 		return
 	}
-	if uint32(len(ss.remoteFrontiers)) == rsp.TotalFrontierNum {
-		var remoteFrontiers []*types.Frontier
-		remoteFrontiers = append(remoteFrontiers, ss.remoteFrontiers...)
-		sort.Sort(types.Frontiers(remoteFrontiers))
-		zeroFrontier := new(types.Frontier)
-		remoteFrontiers = append(remoteFrontiers, zeroFrontier)
-		ss.remoteFrontiers = ss.remoteFrontiers[:0:0]
-		go ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-	}
+
 }
 
 func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID string) error {
