@@ -397,24 +397,37 @@ func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, er
 	if c == 0 {
 		return nil, ErrStoreEmpty
 	}
-	index := rand.Int63n(int64(c))
 	blk := new(types.StateBlock)
-	var temp int64
-	err = txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
-		if temp == index {
-			if err = blk.Deserialize(val); err != nil {
-				return err
-			}
-		}
-		temp++
-		return nil
-	})
+	errFound := errors.New("state block found")
 
-	if err != nil {
-		return nil, err
+	for i := 0; i < 3; i++ {
+		index := rand.Int63n(int64(c))
+		var temp int64
+		err = txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
+			if temp == index {
+				var b = new(types.StateBlock)
+				if err = b.Deserialize(val); err != nil {
+					return err
+				}
+				if b.GetType() != types.ContractSend && b.GetType() != types.ContractReward {
+					blk = b
+					return errFound
+				}
+			}
+			temp++
+			return nil
+		})
+		if err != nil && err != errFound {
+			return nil, err
+		}
+		if !blk.Token.IsZero() {
+			break
+		}
+	}
+	if blk.Token.IsZero() {
+		return nil, errors.New("state block not found")
 	}
 	return blk, nil
-
 }
 
 func (l *Ledger) AddSmartContractBlock(blk types.SmartContractBlock, txns ...db.StoreTxn) error {
@@ -1780,6 +1793,7 @@ func (l *Ledger) ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error) {
 	err := txn.Iterator(idPrefixToken, func(key []byte, val []byte, b byte) error {
 		token := new(types.TokenInfo)
 		if err := json.Unmarshal(val, token); err != nil {
+			fmt.Println(err)
 			return err
 		}
 		tokens = append(tokens, token)
