@@ -1780,7 +1780,6 @@ func (l *Ledger) ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error) {
 	err := txn.Iterator(idPrefixToken, func(key []byte, val []byte, b byte) error {
 		token := new(types.TokenInfo)
 		if err := json.Unmarshal(val, token); err != nil {
-			fmt.Println(err)
 			return err
 		}
 		tokens = append(tokens, token)

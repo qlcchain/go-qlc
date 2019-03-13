@@ -49,7 +49,14 @@ func (m *Mintage) DoSend(l *l.Ledger, block *types.StateBlock) error {
 	if _, err = l.GetTokenById(types.Hash(tokenId)); err == nil {
 		return fmt.Errorf("token Id[%s] already exist", tokenId.String())
 	}
-	fmt.Println(tokenId.String())
+
+	if infos, err := l.ListTokens(); err == nil {
+		for _, v := range infos {
+			if v.TokenName == param.TokenName || v.TokenSymbol == param.TokenSymbol {
+				return fmt.Errorf("invalid token name(%s) or token symbol(%s)", param.TokenName, param.TokenSymbol)
+			}
+		}
+	}
 
 	if block.Data, err = cabi.ABIMintage.PackMethod(
 		cabi.MethodNameMintage,
