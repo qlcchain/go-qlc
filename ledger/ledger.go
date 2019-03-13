@@ -40,6 +40,8 @@ var (
 	ErrAccountNotFound        = errors.New("account not found")
 	ErrTokenExists            = errors.New("token already exists")
 	ErrTokenNotFound          = errors.New("token not found")
+	ErrTokenInfoExists        = errors.New("token info already exists")
+	ErrTokenInfoNotFound      = errors.New("token info not found")
 	ErrPendingExists          = errors.New("pending transaction already exists")
 	ErrPendingNotFound        = errors.New("pending transaction not found")
 	ErrFrontierExists         = errors.New("frontier already exists")
@@ -246,7 +248,7 @@ func addToken(blk *types.StateBlock, txn db.StoreTxn) error {
 			return nil
 		})
 		if err == nil {
-			return errors.New("token already exist")
+			return ErrTokenInfoExists
 		} else if err != nil && err != badger.ErrKeyNotFound {
 			return err
 		}
@@ -1813,7 +1815,7 @@ func (l *Ledger) GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.T
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return nil, ErrTokenNotFound
+			return nil, ErrTokenInfoNotFound
 		}
 		return nil, err
 	}

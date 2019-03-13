@@ -8,6 +8,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
@@ -204,31 +205,34 @@ func initData(ledger *ledger.Ledger) {
 	am6.Tokens = append(am6.Tokens, t8)
 	ledger.AddAccountMeta(&am6)
 
+	ph1 := ""
+	ph2 := ""
+	ph1h, _ := json.Marshal(ph1)
+	ph2h, _ := json.Marshal(ph2)
+
 	// sender or receiver
 	p1 := &types.StateBlock{
 		Type:     types.Open,
 		Address:  mock.Address(),
 		Token:    common.QLCChainToken,
-		Sender:   "1801111111",
-		Receiver: "",
+		Sender:   ph1h,
+		Receiver: ph2h,
 	}
 	p2 := &types.StateBlock{
-		Type:     types.Open,
-		Address:  mock.Address(),
-		Token:    common.QLCChainToken,
-		Sender:   "1801111111",
-		Receiver: "18000000000",
+		Type:    types.Open,
+		Address: mock.Address(),
+		Token:   common.QLCChainToken,
+		Sender:  ph1h,
 	}
 	h := "87cc4915ae6e46aa0a744b4b1eca65b3ca8afcf1486b0dc40353b1b0feec6241"
 	mHash := new(types.Hash)
 	mHash.Of(h)
 	p3 := &types.StateBlock{
-		Type:     types.Open,
-		Address:  mock.Address(),
-		Token:    common.QLCChainToken,
-		Sender:   "18000000000",
-		Receiver: "1801111111",
-		Message:  *mHash,
+		Type:    types.Open,
+		Address: mock.Address(),
+		Token:   common.QLCChainToken,
+		Message: *mHash,
+		Sender:  ph1h,
 	}
 	if err := ledger.AddStateBlock(p1); err != nil {
 		fmt.Errorf("err block, %s", p1)

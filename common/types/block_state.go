@@ -14,8 +14,8 @@ type StateBlock struct {
 	Balance        Balance   `msg:"balance,extension" json:"balance"`
 	Previous       Hash      `msg:"previous,extension" json:"previous"`
 	Link           Hash      `msg:"link,extension" json:"link"`
-	Sender         string    `msg:"sender" json:"sender,omitempty"`
-	Receiver       string    `msg:"receiver" json:"receiver,omitempty"`
+	Sender         []byte    `msg:"sender" json:"sender,omitempty"`
+	Receiver       []byte    `msg:"receiver" json:"receiver,omitempty"`
 	Message        Hash      `msg:"message,extension" json:"message,omitempty"`
 	Data           []byte    `msg:"data" json:"data,omitempty"`
 	Quota          int64     `msg:"quota" json:"quota"`
@@ -28,8 +28,8 @@ type StateBlock struct {
 
 func (b *StateBlock) GetHash() Hash {
 	t := []byte{byte(b.Type)}
-	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Previous[:], b.Link[:], util.String2Bytes(b.Sender),
-		util.String2Bytes(b.Receiver), b.Message[:], b.Data, util.Int2Bytes(b.Quota), util.Int2Bytes(b.Timestamp), b.Extra[:], b.Representative[:])
+	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Previous[:], b.Link[:], b.Sender,
+		b.Receiver, b.Message[:], b.Data, util.Int2Bytes(b.Quota), util.Int2Bytes(b.Timestamp), b.Extra[:], b.Representative[:])
 	return hash
 }
 
@@ -77,11 +77,11 @@ func (b *StateBlock) GetRepresentative() Address {
 	return b.Representative
 }
 
-func (b *StateBlock) GetReceiver() string {
+func (b *StateBlock) GetReceiver() []byte {
 	return b.Receiver
 }
 
-func (b *StateBlock) GetSender() string {
+func (b *StateBlock) GetSender() []byte {
 	return b.Sender
 }
 

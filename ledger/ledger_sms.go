@@ -6,13 +6,12 @@ import (
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-func addSenderOrReceiver(number string, t byte, hash types.Hash, txn db.StoreTxn) error {
-	if number != "" {
-		key := getKeyOfBytes(util.String2Bytes(number), t)
+func addSenderOrReceiver(number []byte, t byte, hash types.Hash, txn db.StoreTxn) error {
+	if number != nil && len(number) != 0 {
+		key := getKeyOfBytes(number, t)
 		err := txn.Get(key, func(val []byte, b byte) error {
 			hs := new([]types.Hash)
 			if err := json.Unmarshal(val, hs); err != nil {
@@ -60,8 +59,8 @@ func addSenderAndReceiver(blk *types.StateBlock, txn db.StoreTxn) error {
 	return nil
 }
 
-func getSenderOrReceiver(number string, t byte, txn db.StoreTxn) ([]types.Hash, error) {
-	key := getKeyOfBytes(util.String2Bytes(number), t)
+func getSenderOrReceiver(number []byte, t byte, txn db.StoreTxn) ([]types.Hash, error) {
+	key := getKeyOfBytes(number, t)
 	h := new([]types.Hash)
 	err := txn.Get(key, func(val []byte, b byte) error {
 		if err := json.Unmarshal(val, h); err != nil {
@@ -75,7 +74,7 @@ func getSenderOrReceiver(number string, t byte, txn db.StoreTxn) ([]types.Hash, 
 	return *h, nil
 }
 
-func (l *Ledger) GetSenderBlocks(sender string, txns ...db.StoreTxn) ([]types.Hash, error) {
+func (l *Ledger) GetSenderBlocks(sender []byte, txns ...db.StoreTxn) ([]types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	h, err := getSenderOrReceiver(sender, idPrefixSender, txn)
@@ -85,7 +84,7 @@ func (l *Ledger) GetSenderBlocks(sender string, txns ...db.StoreTxn) ([]types.Ha
 	return h, nil
 }
 
-func (l *Ledger) GetReceiverBlocks(receiver string, txns ...db.StoreTxn) ([]types.Hash, error) {
+func (l *Ledger) GetReceiverBlocks(receiver []byte, txns ...db.StoreTxn) ([]types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	h, err := getSenderOrReceiver(receiver, idPrefixReceiver, txn)
@@ -108,9 +107,9 @@ func deleteSenderAndReceiver(blk *types.StateBlock, txn db.StoreTxn) error {
 	return nil
 }
 
-func deleteSenderOrReceiver(number string, t byte, hash types.Hash, txn db.StoreTxn) error {
-	if number != "" {
-		key := getKeyOfBytes(util.String2Bytes(number), t)
+func deleteSenderOrReceiver(number []byte, t byte, hash types.Hash, txn db.StoreTxn) error {
+	if number != nil && len(number) != 0 {
+		key := getKeyOfBytes(number, t)
 		err := txn.Get(key, func(val []byte, b byte) error {
 			hs := new([]types.Hash)
 			if err := json.Unmarshal(val, hs); err != nil {
