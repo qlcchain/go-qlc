@@ -9,6 +9,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/ledger"
 	"reflect"
 
 	"github.com/qlcchain/go-qlc/chain"
@@ -101,27 +102,68 @@ func initNode(seed types.Seed, cfg *config.Config) error {
 	}
 	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
 
-	if !seed.IsZero() {
-
+	if len(accounts) > 0 {
 		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
-			for _, value := range accounts {
-				addr = value.Address()
-				if b, ok := v.(*types.StateBlock); ok {
-					if b.Type == types.Send {
-						address := types.Address(b.Link)
-						if addr.String() == address.String() {
-							balance, _ := common.RawToBalance(b.Balance, "QLC")
-							fmt.Printf("receive block from [%s] to[%s] amount[%d]\n", b.Address.String(), address.String(), balance)
-							err = receive(b, value)
-							if err != nil {
-								fmt.Printf("err[%s] when generate receive block.\n", err)
+			defer func() {
+				if err := recover(); err != nil {
+					fmt.Println(err)
+				}
+			}()
+
+			go func(accounts []*types.Account) {
+				for _, value := range accounts {
+					addr = value.Address()
+					if b, ok := v.(*types.StateBlock); ok {
+						if b.Type == types.Send {
+							address := types.Address(b.Link)
+							if addr.String() == address.String() {
+								var balance types.Balance
+								if b.Token == common.QLCChainToken {
+									balance, _ = common.RawToBalance(b.Balance, "QLC")
+									fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", b.Address.String(), address.String(), balance)
+								} else {
+									fmt.Printf("receive block from [%s] to[%s] balance[%s]", b.Address.String(), address.String(), b.Balance.String())
+								}
+								err = receive(b, value)
+								if err != nil {
+									fmt.Printf("err[%s] when generate receive block.\n", err)
+								}
+								break
 							}
-							break
 						}
 					}
 				}
-			}
+			}(accounts)
 		})
+
+		//search pending and generate receive block
+		go func(l *ledger.Ledger, accounts []*types.Account) {
+			defer func() {
+				if err := recover(); err != nil {
+					fmt.Println(err)
+				}
+			}()
+
+			for _, account := range accounts {
+				err := l.SearchPending(account.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
+					fmt.Printf("%s receive %s[%s] from %s (%s)\n", key.Address, value.Type.String(), value.Source.String(), value.Amount.String(), key.Hash.String())
+					if send, err := l.GetStateBlock(key.Hash); err != nil {
+						fmt.Println(err)
+					} else {
+						err = receive(send, account)
+						if err != nil {
+							fmt.Printf("err[%s] when generate receive block.\n", err)
+						}
+					}
+					return nil
+				})
+
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+		}(ctx.Ledger.Ledger, accounts)
 	}
 
 	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
