@@ -64,7 +64,11 @@ func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
 
 func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
-		return lv.checkStateBlock(b)
+		if fn, ok := checkBlockFns[b.Type]; ok {
+			return fn(lv, b)
+		} else {
+			return Other, fmt.Errorf("unsupport block type %s", b.Type.String())
+		}
 	} else if _, ok := block.(*types.SmartContractBlock); ok {
 		return Other, errors.New("smart contract block")
 	}
@@ -103,7 +107,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 
 func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	result, err := checkStateBlock(lv, block)
-	if err != nil {
+	if err != nil || result != Progress {
 		return result, err
 	}
 
@@ -113,6 +117,9 @@ func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 	} else {
 		//check fork
 		if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+			fmt.Println("block.previous, ", block.GetPrevious())
+			fmt.Println("previous.hash, ", previous.GetHash())
+			fmt.Println("tm.Header, ", tm.Header)
 			return Fork, nil
 		}
 
@@ -127,7 +134,7 @@ func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 
 func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	result, err := checkStateBlock(lv, block)
-	if err != nil {
+	if err != nil || result != Progress {
 		return result, err
 	}
 
@@ -171,7 +178,7 @@ func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResu
 
 func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	result, err := checkStateBlock(lv, block)
-	if err != nil {
+	if err != nil || result != Progress {
 		return result, err
 	}
 
@@ -205,7 +212,7 @@ func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResul
 
 func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	result, err := checkStateBlock(lv, block)
-	if err != nil {
+	if err != nil || result != Progress {
 		return result, err
 	}
 
@@ -244,7 +251,7 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 
 func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	result, err := checkSendBlock(lv, block)
-	if err != nil {
+	if err != nil || result != Progress {
 		return result, err
 	}
 
@@ -282,7 +289,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 
 func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	result, err := checkReceiveBlock(lv, block)
-	if err != nil {
+	if err != nil || result != Progress {
 		return result, err
 	}
 
@@ -321,14 +328,6 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	} else {
 		//call vm.Run();
 		return Other, fmt.Errorf("can not find chain contract %s", address.String())
-	}
-}
-
-func (lv *LedgerVerifier) checkStateBlock(block *types.StateBlock) (ProcessResult, error) {
-	if fn, ok := checkBlockFns[block.Type]; ok {
-		return fn(lv, block)
-	} else {
-		return Other, fmt.Errorf("unsupport block type %s", block.Type.String())
 	}
 }
 
