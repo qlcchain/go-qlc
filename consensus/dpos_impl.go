@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	localRepAccount []*types.Account
+	localRepAccount sync.Map
 )
 
 type DPoS struct {
@@ -58,14 +58,21 @@ func (dps *DPoS) Init() error {
 
 func (dps *DPoS) refreshAccount() {
 	var b bool
+	var addr types.Address
 	for _, v := range dps.accounts {
-		b = dps.isRepresentation(v.Address())
+		addr = v.Address()
+		b = dps.isRepresentation(addr)
 		if b {
-			localRepAccount = append(localRepAccount, v)
+			_, _ = localRepAccount.LoadOrStore(addr, v)
 		}
 	}
-	if len(localRepAccount) > 1 {
-		dps.logger.Error("it is very dangerous to run two representatives on one node")
+	var count uint32
+	localRepAccount.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+	if count > 1 {
+		dps.logger.Error("it is very dangerous to run two or more representatives on one node")
 	}
 }
 
@@ -159,22 +166,25 @@ func (dps *DPoS) ReceiveConfirmReq(v interface{}) {
 
 func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 	var address types.Address
+	var count uint32
 	bs := blockSource{
 		block:     blk,
 		blockFrom: types.UnSynchronized,
 	}
 	if !dps.cache.Has(e.Hash()) {
-		for _, v := range localRepAccount {
-			address = v.Address()
+		localRepAccount.Range(func(key, value interface{}) bool {
+			count++
+			address = key.(types.Address)
 			dps.saveOnlineRep(&address)
 			result, _ := dps.verifier.Process(bs.block)
 			if result == process.Old {
 				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
-				dps.sendConfirmAck(bs.block, address, v)
+				dps.sendConfirmAck(bs.block, address, value.(*types.Account))
 			}
 			dps.bp.processResult(result, bs)
-		}
-		if len(localRepAccount) == 0 {
+			return true
+		})
+		if count == 0 {
 			dps.bp.blocks <- bs
 		}
 		dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
@@ -198,6 +208,7 @@ func (dps *DPoS) ReceiveConfirmAck(v interface{}) {
 
 func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock) {
 	var address types.Address
+	var count uint32
 	bs := blockSource{
 		block:     ack.Blk,
 		blockFrom: types.UnSynchronized,
@@ -209,20 +220,22 @@ func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock)
 	dps.acTrx.vote(ack)
 	if !dps.cache.Has(e.Hash()) {
 		dps.saveOnlineRep(&ack.Account)
-		for _, v := range localRepAccount {
-			address = v.Address()
+		localRepAccount.Range(func(key, value interface{}) bool {
+			count++
+			address = key.(types.Address)
 			dps.saveOnlineRep(&address)
 			result, _ := dps.verifier.Process(bs.block)
 			if result == process.Old {
 				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
-				dps.sendConfirmAck(bs.block, address, v)
+				dps.sendConfirmAck(bs.block, address, value.(*types.Account))
 			}
 			dps.bp.processResult(result, bs)
 			if result == process.Progress {
 				dps.acTrx.vote(ack)
 			}
-		}
-		if len(localRepAccount) == 0 {
+			return true
+		})
+		if count == 0 {
 			dps.bp.blocks <- bs
 		}
 
@@ -287,10 +300,11 @@ func (dps *DPoS) GetOnlineRepresentatives() []*types.Address {
 
 func (dps *DPoS) findOnlineRepresentatives() error {
 	var address types.Address
-	for _, v := range localRepAccount {
-		address = v.Address()
+	localRepAccount.Range(func(key, value interface{}) bool {
+		address = key.(types.Address)
 		dps.saveOnlineRep(&address)
-	}
+		return true
+	})
 	blk, err := dps.ledger.GetRandomStateBlock()
 	if err != nil {
 		return err
