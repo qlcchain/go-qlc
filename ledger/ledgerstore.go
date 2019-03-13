@@ -64,6 +64,7 @@ type Store interface {
 	AddPending(pendingKey types.PendingKey, pending *types.PendingInfo, txns ...db.StoreTxn) error
 	GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error)
 	DeletePending(pendingKey types.PendingKey, txns ...db.StoreTxn) error
+	SearchPending(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error, txns ...db.StoreTxn) error
 	// frontier CURD
 	AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) error
 	GetFrontier(hash types.Hash, txns ...db.StoreTxn) (*types.Frontier, error)
