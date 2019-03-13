@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger/pb"
-	"github.com/qlcchain/go-qlc/common/util"
 	"io"
 	"math/rand"
 	"sort"
@@ -14,8 +12,10 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -1756,6 +1756,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 
 	var prev *types.StateBlock
 	var err error
+	fmt.Println(util.ToString(block))
 	switch block.GetType() {
 	case types.Open:
 		return block.GetBalance(), err
@@ -1915,7 +1916,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 	if err != nil {
 		return nil, err
 	}
-	has, err := l.HasAccountMeta(rxAccount)
+	has, err := l.HasTokenMeta(rxAccount, sendBlock.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -1925,40 +1926,37 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 			return nil, err
 		}
 		rxTm := rxAm.Token(sendBlock.GetToken())
-		sb := types.StateBlock{
-			Type:           types.Receive,
-			Address:        rxAccount,
-			Balance:        rxTm.Balance.Add(info.Amount),
-			Previous:       rxTm.Header,
-			Link:           hash,
-			Representative: rxTm.Representative,
-			Token:          rxTm.Type,
-			Extra:          types.ZeroHash,
-			Timestamp:      time.Now().Unix(),
+		if rxTm != nil {
+			sb := types.StateBlock{
+				Type:           types.Receive,
+				Address:        rxAccount,
+				Balance:        rxTm.Balance.Add(info.Amount),
+				Previous:       rxTm.Header,
+				Link:           hash,
+				Representative: rxTm.Representative,
+				Token:          rxTm.Type,
+				Extra:          types.ZeroHash,
+				Timestamp:      time.Now().Unix(),
+			}
+			sb.Signature = acc.Sign(sb.GetHash())
+			sb.Work = l.generateWork(sb.Root())
+			return &sb, nil
 		}
-		sb.Signature = acc.Sign(sb.GetHash())
-		sb.Work = l.generateWork(sb.Root())
-		return &sb, nil
-	} else {
-		//genesis, err := mock.GetTokenById(mock.GetChainTokenType())
-		//if err != nil {
-		//	return nil, err
-		//}
-		sb := &types.StateBlock{
-			Type:           types.Open,
-			Address:        rxAccount,
-			Balance:        info.Amount,
-			Previous:       types.ZeroHash,
-			Link:           hash,
-			Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
-			Token:          sendBlock.GetToken(),
-			Extra:          types.ZeroHash,
-			Timestamp:      time.Now().Unix(),
-		}
-		sb.Signature = acc.Sign(sb.GetHash())
-		sb.Work = l.generateWork(sb.Root())
-		return sb, nil
 	}
+	sb := types.StateBlock{
+		Type:           types.Open,
+		Address:        rxAccount,
+		Balance:        info.Amount,
+		Previous:       types.ZeroHash,
+		Link:           hash,
+		Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
+		Token:          sendBlock.GetToken(),
+		Extra:          types.ZeroHash,
+		Timestamp:      time.Now().Unix(),
+	}
+	sb.Signature = acc.Sign(sb.GetHash())
+	sb.Work = l.generateWork(sb.Root())
+	return &sb, nil
 }
 
 func (l *Ledger) GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error) {
