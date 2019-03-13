@@ -212,10 +212,11 @@ func main() {
 		break
 	}
 	dst := mock.Account()
+	addr := dst.Address()
 	sb := types.StateBlock{
 		Address:  ac.Address(),
 		Token:    token,
-		Link:     dst.Address().ToHash(),
+		Link:     addr.ToHash(),
 		Sender:   "",
 		Receiver: "",
 		Message:  types.ZeroHash,

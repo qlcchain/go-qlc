@@ -287,12 +287,9 @@ func (dps *DPoS) GetOnlineRepresentatives() []*types.Address {
 
 func (dps *DPoS) findOnlineRepresentatives() error {
 	var address types.Address
-	for _, v := range dps.accounts {
+	for _, v := range localRepAccount {
 		address = v.Address()
-		isRep := dps.isRepresentation(address)
-		if isRep {
-			dps.saveOnlineRep(&address)
-		}
+		dps.saveOnlineRep(&address)
 	}
 	blk, err := dps.ledger.GetRandomStateBlock()
 	if err != nil {
