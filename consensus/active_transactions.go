@@ -133,10 +133,10 @@ func (act *ActiveTrx) announceVotes() {
 			act.rollBack(value.(*Election).status.loser)
 			act.addWinner2Ledger(block)
 		} else {
-			localRepAccount.Range(func(key, value interface{}) bool {
-				address = key.(types.Address)
+			localRepAccount.Range(func(k, v interface{}) bool {
+				address = k.(types.Address)
 				act.dps.saveOnlineRep(&address)
-				va, err := act.dps.voteGenerate(block, address, value.(*types.Account))
+				va, err := act.dps.voteGenerate(block, address, v.(*types.Account))
 				if err != nil {
 					act.dps.logger.Error("vote generate error")
 				} else {
