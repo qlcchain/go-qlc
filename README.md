@@ -32,6 +32,46 @@ make clean build
 ./gqlc
 ```
 
+## Docker
+You can build the docker image yourself or download it from docker hub
+### Build docker images
+
+```bash
+cd docker
+./build.sh
+```
+
+### Download docker images from docker hub
+
+```bash
+docker pull qlcchain/go-qlc:latest
+```
+
+### Start docker container
+You can choose to run a normal node without an account or run an account node.
+
+#### Run a normal node without an account
+
+```bash
+docker container run -d --name go-qlc \
+    -p 9734:9734 \
+    -p 127.0.0.1:9735:9735 \
+    -p 127.0.0.1:9736:9736 \
+    qlcchain/go-qlc:latest
+```
+
+#### Run an account node
+You only need to assign a value to the environment variable `seed` to run the account node
+
+```bash
+docker container run -d --name go-qlc \
+    -e seed = "B4F6494E3DD8A036EFF547C0293055B2A0644605DE4D9AC91B45343CD0E0E559" \
+    -p 9734:9734 \
+    -p 127.0.0.1:9735:9735 \
+    -p 127.0.0.1:9736:9736 \
+    qlcchain/go-qlc:latest
+```
+
 ## Contributions
 
 We love reaching out to the open-source community and are open to accepting issues and pull-requests.
