@@ -128,7 +128,7 @@ func sendTx(account *types.Account, to types.Address, token string, amount types
 	//a, _ := mock.BalanceToRaw(amount, "QLC")
 	//fmt.Println(a)
 	para := api.APISendBlockPara{
-		Send:      account.Address(),
+		From:      account.Address(),
 		TokenName: token,
 		To:        to,
 		Amount:    amount,

@@ -13,39 +13,33 @@ func (z *BlockExtra) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0001 uint32
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
-			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "key":
 			err = dc.ReadExtension(&z.KeyHash)
 			if err != nil {
-				err = msgp.WrapError(err, "KeyHash")
 				return
 			}
 		case "abi":
 			z.Abi, err = dc.ReadBytes(z.Abi)
 			if err != nil {
-				err = msgp.WrapError(err, "Abi")
 				return
 			}
 		case "issuer":
 			err = dc.ReadExtension(&z.Issuer)
 			if err != nil {
-				err = msgp.WrapError(err, "Issuer")
 				return
 			}
 		default:
 			err = dc.Skip()
 			if err != nil {
-				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -63,7 +57,6 @@ func (z *BlockExtra) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.KeyHash)
 	if err != nil {
-		err = msgp.WrapError(err, "KeyHash")
 		return
 	}
 	// write "abi"
@@ -73,7 +66,6 @@ func (z *BlockExtra) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteBytes(z.Abi)
 	if err != nil {
-		err = msgp.WrapError(err, "Abi")
 		return
 	}
 	// write "issuer"
@@ -83,7 +75,6 @@ func (z *BlockExtra) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Issuer)
 	if err != nil {
-		err = msgp.WrapError(err, "Issuer")
 		return
 	}
 	return
@@ -97,7 +88,6 @@ func (z *BlockExtra) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0x83, 0xa3, 0x6b, 0x65, 0x79)
 	o, err = msgp.AppendExtension(o, &z.KeyHash)
 	if err != nil {
-		err = msgp.WrapError(err, "KeyHash")
 		return
 	}
 	// string "abi"
@@ -107,7 +97,6 @@ func (z *BlockExtra) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0xa6, 0x69, 0x73, 0x73, 0x75, 0x65, 0x72)
 	o, err = msgp.AppendExtension(o, &z.Issuer)
 	if err != nil {
-		err = msgp.WrapError(err, "Issuer")
 		return
 	}
 	return
@@ -120,39 +109,33 @@ func (z *BlockExtra) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0001 uint32
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
-			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "key":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.KeyHash)
 			if err != nil {
-				err = msgp.WrapError(err, "KeyHash")
 				return
 			}
 		case "abi":
 			z.Abi, bts, err = msgp.ReadBytesBytes(bts, z.Abi)
 			if err != nil {
-				err = msgp.WrapError(err, "Abi")
 				return
 			}
 		case "issuer":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Issuer)
 			if err != nil {
-				err = msgp.WrapError(err, "Issuer")
 				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
-				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -174,117 +157,98 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0001 uint32
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
-			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "type":
 			err = z.Type.DecodeMsg(dc)
 			if err != nil {
-				err = msgp.WrapError(err, "Type")
 				return
 			}
 		case "token":
 			err = dc.ReadExtension(&z.Token)
 			if err != nil {
-				err = msgp.WrapError(err, "Token")
 				return
 			}
 		case "address":
 			err = dc.ReadExtension(&z.Address)
 			if err != nil {
-				err = msgp.WrapError(err, "Address")
 				return
 			}
 		case "balance":
 			err = dc.ReadExtension(&z.Balance)
 			if err != nil {
-				err = msgp.WrapError(err, "Balance")
 				return
 			}
 		case "previous":
 			err = dc.ReadExtension(&z.Previous)
 			if err != nil {
-				err = msgp.WrapError(err, "Previous")
 				return
 			}
 		case "link":
 			err = dc.ReadExtension(&z.Link)
 			if err != nil {
-				err = msgp.WrapError(err, "Link")
 				return
 			}
 		case "sender":
-			z.Sender, err = dc.ReadString()
+			z.Sender, err = dc.ReadBytes(z.Sender)
 			if err != nil {
-				err = msgp.WrapError(err, "Sender")
 				return
 			}
 		case "receiver":
-			z.Receiver, err = dc.ReadString()
+			z.Receiver, err = dc.ReadBytes(z.Receiver)
 			if err != nil {
-				err = msgp.WrapError(err, "Receiver")
 				return
 			}
 		case "message":
 			err = dc.ReadExtension(&z.Message)
 			if err != nil {
-				err = msgp.WrapError(err, "Message")
 				return
 			}
 		case "data":
 			z.Data, err = dc.ReadBytes(z.Data)
 			if err != nil {
-				err = msgp.WrapError(err, "Data")
 				return
 			}
 		case "quota":
 			z.Quota, err = dc.ReadInt64()
 			if err != nil {
-				err = msgp.WrapError(err, "Quota")
 				return
 			}
 		case "timestamp":
 			z.Timestamp, err = dc.ReadInt64()
 			if err != nil {
-				err = msgp.WrapError(err, "Timestamp")
 				return
 			}
 		case "extra":
 			err = dc.ReadExtension(&z.Extra)
 			if err != nil {
-				err = msgp.WrapError(err, "Extra")
 				return
 			}
 		case "representative":
 			err = dc.ReadExtension(&z.Representative)
 			if err != nil {
-				err = msgp.WrapError(err, "Representative")
 				return
 			}
 		case "work":
 			err = dc.ReadExtension(&z.Work)
 			if err != nil {
-				err = msgp.WrapError(err, "Work")
 				return
 			}
 		case "signature":
 			err = dc.ReadExtension(&z.Signature)
 			if err != nil {
-				err = msgp.WrapError(err, "Signature")
 				return
 			}
 		default:
 			err = dc.Skip()
 			if err != nil {
-				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -302,7 +266,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = z.Type.EncodeMsg(en)
 	if err != nil {
-		err = msgp.WrapError(err, "Type")
 		return
 	}
 	// write "token"
@@ -312,7 +275,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Token)
 	if err != nil {
-		err = msgp.WrapError(err, "Token")
 		return
 	}
 	// write "address"
@@ -322,7 +284,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Address)
 	if err != nil {
-		err = msgp.WrapError(err, "Address")
 		return
 	}
 	// write "balance"
@@ -332,7 +293,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Balance)
 	if err != nil {
-		err = msgp.WrapError(err, "Balance")
 		return
 	}
 	// write "previous"
@@ -342,7 +302,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Previous)
 	if err != nil {
-		err = msgp.WrapError(err, "Previous")
 		return
 	}
 	// write "link"
@@ -352,7 +311,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Link)
 	if err != nil {
-		err = msgp.WrapError(err, "Link")
 		return
 	}
 	// write "sender"
@@ -360,9 +318,8 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteString(z.Sender)
+	err = en.WriteBytes(z.Sender)
 	if err != nil {
-		err = msgp.WrapError(err, "Sender")
 		return
 	}
 	// write "receiver"
@@ -370,9 +327,8 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteString(z.Receiver)
+	err = en.WriteBytes(z.Receiver)
 	if err != nil {
-		err = msgp.WrapError(err, "Receiver")
 		return
 	}
 	// write "message"
@@ -382,7 +338,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Message)
 	if err != nil {
-		err = msgp.WrapError(err, "Message")
 		return
 	}
 	// write "data"
@@ -392,7 +347,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteBytes(z.Data)
 	if err != nil {
-		err = msgp.WrapError(err, "Data")
 		return
 	}
 	// write "quota"
@@ -402,7 +356,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteInt64(z.Quota)
 	if err != nil {
-		err = msgp.WrapError(err, "Quota")
 		return
 	}
 	// write "timestamp"
@@ -412,7 +365,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteInt64(z.Timestamp)
 	if err != nil {
-		err = msgp.WrapError(err, "Timestamp")
 		return
 	}
 	// write "extra"
@@ -422,7 +374,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Extra)
 	if err != nil {
-		err = msgp.WrapError(err, "Extra")
 		return
 	}
 	// write "representative"
@@ -432,7 +383,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Representative)
 	if err != nil {
-		err = msgp.WrapError(err, "Representative")
 		return
 	}
 	// write "work"
@@ -442,7 +392,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Work)
 	if err != nil {
-		err = msgp.WrapError(err, "Work")
 		return
 	}
 	// write "signature"
@@ -452,7 +401,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Signature)
 	if err != nil {
-		err = msgp.WrapError(err, "Signature")
 		return
 	}
 	return
@@ -466,55 +414,48 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0xde, 0x0, 0x10, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o, err = z.Type.MarshalMsg(o)
 	if err != nil {
-		err = msgp.WrapError(err, "Type")
 		return
 	}
 	// string "token"
 	o = append(o, 0xa5, 0x74, 0x6f, 0x6b, 0x65, 0x6e)
 	o, err = msgp.AppendExtension(o, &z.Token)
 	if err != nil {
-		err = msgp.WrapError(err, "Token")
 		return
 	}
 	// string "address"
 	o = append(o, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
 	o, err = msgp.AppendExtension(o, &z.Address)
 	if err != nil {
-		err = msgp.WrapError(err, "Address")
 		return
 	}
 	// string "balance"
 	o = append(o, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Balance)
 	if err != nil {
-		err = msgp.WrapError(err, "Balance")
 		return
 	}
 	// string "previous"
 	o = append(o, 0xa8, 0x70, 0x72, 0x65, 0x76, 0x69, 0x6f, 0x75, 0x73)
 	o, err = msgp.AppendExtension(o, &z.Previous)
 	if err != nil {
-		err = msgp.WrapError(err, "Previous")
 		return
 	}
 	// string "link"
 	o = append(o, 0xa4, 0x6c, 0x69, 0x6e, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.Link)
 	if err != nil {
-		err = msgp.WrapError(err, "Link")
 		return
 	}
 	// string "sender"
 	o = append(o, 0xa6, 0x73, 0x65, 0x6e, 0x64, 0x65, 0x72)
-	o = msgp.AppendString(o, z.Sender)
+	o = msgp.AppendBytes(o, z.Sender)
 	// string "receiver"
 	o = append(o, 0xa8, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x72)
-	o = msgp.AppendString(o, z.Receiver)
+	o = msgp.AppendBytes(o, z.Receiver)
 	// string "message"
 	o = append(o, 0xa7, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Message)
 	if err != nil {
-		err = msgp.WrapError(err, "Message")
 		return
 	}
 	// string "data"
@@ -530,28 +471,24 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0xa5, 0x65, 0x78, 0x74, 0x72, 0x61)
 	o, err = msgp.AppendExtension(o, &z.Extra)
 	if err != nil {
-		err = msgp.WrapError(err, "Extra")
 		return
 	}
 	// string "representative"
 	o = append(o, 0xae, 0x72, 0x65, 0x70, 0x72, 0x65, 0x73, 0x65, 0x6e, 0x74, 0x61, 0x74, 0x69, 0x76, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Representative)
 	if err != nil {
-		err = msgp.WrapError(err, "Representative")
 		return
 	}
 	// string "work"
 	o = append(o, 0xa4, 0x77, 0x6f, 0x72, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.Work)
 	if err != nil {
-		err = msgp.WrapError(err, "Work")
 		return
 	}
 	// string "signature"
 	o = append(o, 0xa9, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Signature)
 	if err != nil {
-		err = msgp.WrapError(err, "Signature")
 		return
 	}
 	return
@@ -564,117 +501,98 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0001 uint32
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
-			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "type":
 			bts, err = z.Type.UnmarshalMsg(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Type")
 				return
 			}
 		case "token":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Token)
 			if err != nil {
-				err = msgp.WrapError(err, "Token")
 				return
 			}
 		case "address":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
 			if err != nil {
-				err = msgp.WrapError(err, "Address")
 				return
 			}
 		case "balance":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Balance)
 			if err != nil {
-				err = msgp.WrapError(err, "Balance")
 				return
 			}
 		case "previous":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Previous)
 			if err != nil {
-				err = msgp.WrapError(err, "Previous")
 				return
 			}
 		case "link":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Link)
 			if err != nil {
-				err = msgp.WrapError(err, "Link")
 				return
 			}
 		case "sender":
-			z.Sender, bts, err = msgp.ReadStringBytes(bts)
+			z.Sender, bts, err = msgp.ReadBytesBytes(bts, z.Sender)
 			if err != nil {
-				err = msgp.WrapError(err, "Sender")
 				return
 			}
 		case "receiver":
-			z.Receiver, bts, err = msgp.ReadStringBytes(bts)
+			z.Receiver, bts, err = msgp.ReadBytesBytes(bts, z.Receiver)
 			if err != nil {
-				err = msgp.WrapError(err, "Receiver")
 				return
 			}
 		case "message":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Message)
 			if err != nil {
-				err = msgp.WrapError(err, "Message")
 				return
 			}
 		case "data":
 			z.Data, bts, err = msgp.ReadBytesBytes(bts, z.Data)
 			if err != nil {
-				err = msgp.WrapError(err, "Data")
 				return
 			}
 		case "quota":
 			z.Quota, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Quota")
 				return
 			}
 		case "timestamp":
 			z.Timestamp, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Timestamp")
 				return
 			}
 		case "extra":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Extra)
 			if err != nil {
-				err = msgp.WrapError(err, "Extra")
 				return
 			}
 		case "representative":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Representative)
 			if err != nil {
-				err = msgp.WrapError(err, "Representative")
 				return
 			}
 		case "work":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Work)
 			if err != nil {
-				err = msgp.WrapError(err, "Work")
 				return
 			}
 		case "signature":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Signature)
 			if err != nil {
-				err = msgp.WrapError(err, "Signature")
 				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
-				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -685,6 +603,6 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *StateBlock) Msgsize() (s int) {
-	s = 3 + 5 + z.Type.Msgsize() + 6 + msgp.ExtensionPrefixSize + z.Token.Len() + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 7 + msgp.StringPrefixSize + len(z.Sender) + 9 + msgp.StringPrefixSize + len(z.Receiver) + 8 + msgp.ExtensionPrefixSize + z.Message.Len() + 5 + msgp.BytesPrefixSize + len(z.Data) + 6 + msgp.Int64Size + 10 + msgp.Int64Size + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len()
+	s = 3 + 5 + z.Type.Msgsize() + 6 + msgp.ExtensionPrefixSize + z.Token.Len() + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 7 + msgp.BytesPrefixSize + len(z.Sender) + 9 + msgp.BytesPrefixSize + len(z.Receiver) + 8 + msgp.ExtensionPrefixSize + z.Message.Len() + 5 + msgp.BytesPrefixSize + len(z.Data) + 6 + msgp.Int64Size + 10 + msgp.Int64Size + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len()
 	return
 }

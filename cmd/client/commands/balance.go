@@ -74,7 +74,7 @@ func accountBalance(addresses []string) error {
 	}
 	defer client.Close()
 	var resp map[types.Address]map[string]map[string]types.Balance
-	err = client.Call(&resp, "ledger_accountsBalances", addresses)
+	err = client.Call(&resp, "ledger_accountsBalance", addresses)
 	if err != nil {
 		return err
 	}

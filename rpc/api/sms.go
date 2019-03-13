@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 
+	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -16,6 +17,17 @@ type SMSApi struct {
 
 func NewSMSApi(ledger *ledger.Ledger) *SMSApi {
 	return &SMSApi{ledger: ledger, logger: log.NewLogger("api_sms")}
+}
+
+func phoneNumberSeri(number string) ([]byte, error) {
+	if number == "" {
+		return nil, nil
+	}
+	b, err := json.Marshal(number)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
 func (s *SMSApi) getSenderOrReceiver(hashes []types.Hash) ([]*APIBlock, error) {
@@ -36,7 +48,11 @@ func (s *SMSApi) getSenderOrReceiver(hashes []types.Hash) ([]*APIBlock, error) {
 }
 
 func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
-	sHash, err := s.ledger.GetSenderBlocks(sender)
+	p, err := phoneNumberSeri(sender)
+	if err != nil {
+		return nil, errors.New("error phone number")
+	}
+	sHash, err := s.ledger.GetSenderBlocks(p)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +60,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	rHash, err := s.ledger.GetReceiverBlocks(sender)
+	rHash, err := s.ledger.GetReceiverBlocks(p)
 	if err != nil {
 		return nil, err
 	}

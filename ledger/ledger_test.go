@@ -3,7 +3,6 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"math"
 	"math/big"
 	"os"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/ledger/db"
@@ -304,8 +304,10 @@ func TestLedger_GetSenderBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	b := mock.StateBlock()
-	sender := "18000001111"
-	receiver := "18011110000"
+	s := "18000001111"
+	r := "18011110000"
+	sender, _ := json.Marshal(s)
+	receiver, _ := json.Marshal(r)
 	b.Sender = sender
 	b.Receiver = receiver
 	if err := l.AddStateBlock(b); err != nil {

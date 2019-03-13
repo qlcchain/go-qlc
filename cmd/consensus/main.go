@@ -214,12 +214,10 @@ func main() {
 	dst := mock.Account()
 	addr := dst.Address()
 	sb := types.StateBlock{
-		Address:  ac.Address(),
-		Token:    token,
-		Link:     addr.ToHash(),
-		Sender:   "",
-		Receiver: "",
-		Message:  types.ZeroHash,
+		Address: ac.Address(),
+		Token:   token,
+		Link:    addr.ToHash(),
+		Message: types.ZeroHash,
 	}
 	send, err := ledger1.Ledger.GenerateSendBlock(&sb, types.Balance{Int: big.NewInt(int64(1000))}, ac.PrivateKey())
 	if err != nil {
