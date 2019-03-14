@@ -25,7 +25,8 @@ const (
 )
 
 var defaultBootstrapAddresses = []string{
-	"/ip4/47.244.138.61/tcp/9734/ipfs/QmeSBhQe5kYtKqEQfSt7K3NR36Z3rBxF9JBBBWTBrDVap3",
+	"/ip4/47.244.138.61/tcp/9734/ipfs/QmdFSukPUMF3t1JxjvTo14SEEb5JV9JBT6PukGRo6A2g4f",
+	"/ip4/47.75.145.146/tcp/9734/ipfs/QmW9ocg4fRjckCMQvRNYGyKxQd6GiutAY4HBRxMrGrZRfc",
 }
 
 func DefaultConfig(dir string) (*Config, error) {
