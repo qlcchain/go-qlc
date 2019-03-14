@@ -488,7 +488,7 @@ type APISendBlockPara struct {
 	Message   types.Hash    `json:"message"`
 }
 
-func (l *LedgerApi) GenerateSendBlock(para APISendBlockPara, prkStr string) (*types.StateBlock, error) {
+func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr string) (*types.StateBlock, error) {
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}

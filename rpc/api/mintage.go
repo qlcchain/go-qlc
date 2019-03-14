@@ -44,7 +44,7 @@ type MintageParams struct {
 	PledgeAmount big.Int       `json:"pledgeAmount"`
 }
 
-func (m *MintageApi) GetMintageData(param MintageParams) ([]byte, error) {
+func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
 	tokenId := cabi.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
 	totalSupply, err := util.StringToBigInt(&param.TotalSupply)
 	if err != nil {
@@ -53,7 +53,7 @@ func (m *MintageApi) GetMintageData(param MintageParams) ([]byte, error) {
 	return cabi.ABIMintage.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals)
 }
 
-func (m *MintageApi) GetMintageBlock(param MintageParams) (*types.StateBlock, error) {
+func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, error) {
 	tokenId := cabi.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
 	totalSupply, err := util.StringToBigInt(&param.TotalSupply)
 	if err != nil {

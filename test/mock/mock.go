@@ -10,7 +10,6 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"io/ioutil"
 	"math"
 	"math/big"
@@ -19,6 +18,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
@@ -114,6 +114,21 @@ func SmartContractBlock() *types.SmartContractBlock {
 	sb.Signature = account.Sign(h)
 
 	return &sb
+}
+
+func StateBlockWithoutWork() *types.StateBlock {
+	sb := new(types.StateBlock)
+	a := Account()
+	i, _ := random.Intn(math.MaxInt16)
+	sb.Type = types.Open
+	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
+	sb.Address = a.Address()
+	sb.Token = common.QLCChainToken
+	sb.Previous = Hash()
+	sb.Representative = common.GenesisAccountAddress
+	addr := Address()
+	sb.Link = addr.ToHash()
+	return sb
 }
 
 func BlockChain() ([]*types.StateBlock, error) {
