@@ -2,7 +2,6 @@ package ledger
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -203,7 +202,7 @@ func (l *Ledger) GetMessageBlock(mHash types.Hash, txns ...db.StoreTxn) (*types.
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return nil, errors.New("message block can not found")
+			return nil, ErrBlockNotFound
 		}
 		return nil, err
 	}

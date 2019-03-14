@@ -93,7 +93,7 @@ func generateAPIBlock(l *ledger.Ledger, block *types.StateBlock) (*APIBlock, err
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
 	if amount, err := l.CalculateAmount(block); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err.Error())
 	} else {
 		ab.Amount = amount
 	}

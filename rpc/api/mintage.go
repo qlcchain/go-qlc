@@ -9,6 +9,10 @@ package api
 
 import (
 	"fmt"
+	"math/big"
+	"sort"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -18,9 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"go.uber.org/zap"
-	"math/big"
-	"sort"
-	"time"
 )
 
 type MintageApi struct {
@@ -30,17 +31,17 @@ type MintageApi struct {
 }
 
 func NewMintageApi(ledger *ledger.Ledger) *MintageApi {
-	return &MintageApi{ledger: ledger, logger: log.NewLogger("rpc/mintage"), mintage: &contract.Mintage{}}
+	return &MintageApi{ledger: ledger, logger: log.NewLogger("api_mintage"), mintage: &contract.Mintage{}}
 }
 
 type MintageParams struct {
-	SelfAddr     types.Address
-	PrevHash     types.Hash
-	TokenName    string
-	TokenSymbol  string
-	TotalSupply  string
-	Decimals     uint8
-	PledgeAmount big.Int
+	SelfAddr     types.Address `json:"selfAddr"`
+	PrevHash     types.Hash    `json:"prevHash"`
+	TokenName    string        `json:"tokenName"`
+	TokenSymbol  string        `json:"tokenSymbol"`
+	TotalSupply  string        `json:"totalSupply"`
+	Decimals     uint8         `json:"decimals"`
+	PledgeAmount big.Int       `json:"pledgeAmount"`
 }
 
 func (m *MintageApi) GetMintageData(param MintageParams) ([]byte, error) {
@@ -136,7 +137,7 @@ func (a byName) Less(i, j int) bool {
 	return a[i].TokenName < a[j].TokenName
 }
 
-func (m *MintageApi) GetTokenInfoList(index int, count int) (*TokenInfoList, error) {
+func (m *MintageApi) GetTokenInfoList(count int, index int) (*TokenInfoList, error) {
 	tokens, err := m.ledger.ListTokens()
 	if err != nil {
 		return nil, err
