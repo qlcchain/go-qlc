@@ -1450,7 +1450,7 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 			if err := l.rollBackFrontier(types.Hash{}, blockCur.GetHash(), txn); err != nil {
 				return fmt.Errorf("rollback frontier fail(%s), open(%s)", err, hashCur)
 			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance(), false, txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance(), false, blockCur.GetToken(), txn); err != nil {
 				return fmt.Errorf("rollback representative fail(%s), open(%s)", err, hashCur)
 			}
 			if err := l.rollBackPendingAdd(blockCur, blockLink, tm.Balance, blockCur.GetToken(), txn); err != nil {
@@ -1473,7 +1473,7 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
 				return fmt.Errorf("rollback frontier fail(%s), send(%s)", err, hashCur)
 			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockPre.GetBalance().Sub(blockCur.GetBalance()), true, txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockPre.GetBalance().Sub(blockCur.GetBalance()), true, blockCur.GetToken(), txn); err != nil {
 				return fmt.Errorf("rollback representative fail(%s), send(%s)", err, hashCur)
 			}
 			if err := l.rollBackPendingDel(types.Address(blockCur.Link), blockCur.GetHash(), txn); err != nil {
@@ -1502,7 +1502,7 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
 				return fmt.Errorf("rollback frontier fail(%s), receive(%s)", err, hashCur)
 			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance().Sub(blockPre.GetBalance()), false, txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance().Sub(blockPre.GetBalance()), false, blockCur.GetToken(), txn); err != nil {
 				return fmt.Errorf("rollback representative fail(%s), receive(%s)", err, hashCur)
 			}
 			if err := l.rollBackPendingAdd(blockCur, blockLink, blockCur.GetBalance().Sub(blockPre.GetBalance()), blockCur.GetToken(), txn); err != nil {
@@ -1616,16 +1616,18 @@ func (l *Ledger) rollBackTokenDel(tm *types.TokenMeta, txn db.StoreTxn) error {
 	return nil
 }
 
-func (l *Ledger) rollBackRep(address types.Address, balance types.Balance, isSend bool, txn db.StoreTxn) error {
-	if isSend {
-		l.logger.Debugf("add rep %s to %s", balance, address)
-		if err := l.AddRepresentation(address, balance, txn); err != nil {
-			return err
-		}
-	} else {
-		l.logger.Debugf("sub rep %s from %s", balance, address)
-		if err := l.SubRepresentation(address, balance, txn); err != nil {
-			return err
+func (l *Ledger) rollBackRep(address types.Address, balance types.Balance, isSend bool, token types.Hash, txn db.StoreTxn) error {
+	if token == common.QLCChainToken {
+		if isSend {
+			l.logger.Debugf("add rep %s to %s", balance, address)
+			if err := l.AddRepresentation(address, balance, txn); err != nil {
+				return err
+			}
+		} else {
+			l.logger.Debugf("sub rep %s from %s", balance, address)
+			if err := l.SubRepresentation(address, balance, txn); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1758,7 +1760,6 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 
 	var prev *types.StateBlock
 	var err error
-	fmt.Println(util.ToString(block))
 	switch block.GetType() {
 	case types.Open:
 		return block.GetBalance(), err

@@ -47,16 +47,10 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 }
 
 func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
-	r, err := lv.BlockCheck(block)
-	if err != nil {
-		lv.logger.Error(err)
-		return Other, err
-	}
-	if r != Progress {
-		return r, nil
+	if r, err := lv.BlockCheck(block); r != Progress || err != nil {
+		return r, err
 	}
 	if err := lv.BlockProcess(block); err != nil {
-		lv.logger.Error(err)
 		return Other, err
 	}
 	return Progress, nil
@@ -65,7 +59,14 @@ func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
 func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
 		if fn, ok := checkBlockFns[b.Type]; ok {
-			return fn(lv, b)
+			r, err := fn(lv, b)
+			if err != nil {
+				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
+			}
+			if r != Progress {
+				lv.logger.Info(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
+			}
+			return r, err
 		} else {
 			return Other, fmt.Errorf("unsupport block type %s", b.Type.String())
 		}
@@ -82,7 +83,6 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 	lv.logger.Debug("check block ", hash)
 
 	if !block.IsValid() {
-		lv.logger.Infof("invalid work (%s)", hash)
 		return BadWork, nil
 	}
 
@@ -92,13 +92,11 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 	}
 
 	if blockExist {
-		lv.logger.Infof("block already exist (%s)", hash)
 		return Old, nil
 	}
 
 	signature := block.GetSignature()
 	if !address.Verify(hash[:], signature[:]) {
-		lv.logger.Infof("bad signature (%s)", hash)
 		return BadSignature, nil
 	}
 
@@ -117,9 +115,6 @@ func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 	} else {
 		//check fork
 		if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-			fmt.Println("block.previous, ", block.GetPrevious())
-			fmt.Println("previous.hash, ", previous.GetHash())
-			fmt.Println("tm.Header, ", tm.Header)
 			return Fork, nil
 		}
 
@@ -340,7 +335,12 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
-			return lv.processStateBlock(state, txn)
+			err := lv.processStateBlock(state, txn)
+			if err != nil {
+				lv.logger.Error(fmt.Sprintf("err:%s, block:%s", err.Error(), state.GetHash().String()))
+				return err
+			}
+			return nil
 		} else if _, ok := block.(*types.SmartContractBlock); ok {
 			return errors.New("smart contract block")
 		}
