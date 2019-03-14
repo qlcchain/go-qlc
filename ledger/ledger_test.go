@@ -42,7 +42,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	}, l
 }
 
-var bc, _ = mock.BlockChain()
+//var bc, _ = mock.BlockChain()
 
 func TestLedger_Instance1(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
@@ -109,11 +109,11 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	defer teardownTestCase(t)
 
 	err := l.BatchUpdate(func(txn db.StoreTxn) error {
-		blk := mock.StateBlock()
+		blk := mock.StateBlockWithoutWork()
 		if err := l.AddStateBlock(blk); err != nil {
 			t.Fatal()
 		}
-		if err := l.AddStateBlock(mock.StateBlock()); err != nil {
+		if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
 			t.Fatal()
 		}
 		if ok, err := l.HasStateBlock(blk.GetHash()); err != nil || !ok {
@@ -128,7 +128,7 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 }
 
 func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
-	blk := mock.StateBlock()
+	blk := mock.StateBlockWithoutWork()
 	if err := l.AddStateBlock(blk); err != nil {
 		t.Log(err)
 	}
@@ -163,17 +163,20 @@ func addSmartContractBlock(t *testing.T, l *Ledger) *types.SmartContractBlock {
 func TestLedger_AddBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	if err := l.AddStateBlock(bc[0]); err != nil {
+	bc1 := mock.StateBlockWithoutWork()
+	bc2 := mock.StateBlockWithoutWork()
+	bc2.Previous = bc1.GetHash()
+	if err := l.AddStateBlock(bc1); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.AddStateBlock(bc[1]); err != nil {
+	if err := l.AddStateBlock(bc2); err != nil {
 		t.Fatal(err)
 	}
-	a, err := l.GetPosterior(bc[0].GetHash())
+	a, err := l.GetPosterior(bc1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a != bc[1].GetHash() {
+	if a != bc2.GetHash() {
 		t.Fatal()
 	}
 }
@@ -258,18 +261,20 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 func TestLedger_DeleteBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-
-	if err := l.AddStateBlock(bc[0]); err != nil {
+	bc1 := mock.StateBlockWithoutWork()
+	bc2 := mock.StateBlockWithoutWork()
+	bc2.Previous = bc1.GetHash()
+	if err := l.AddStateBlock(bc1); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.AddStateBlock(bc[1]); err != nil {
+	if err := l.AddStateBlock(bc2); err != nil {
 		t.Fatal(err)
 	}
-	err := l.DeleteStateBlock(bc[1].GetHash())
+	err := l.DeleteStateBlock(bc1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = l.GetPosterior(bc[0].GetHash())
+	_, err = l.GetPosterior(bc2.GetHash())
 	if err != nil && err != ErrPosteriorNotFound {
 		t.Fatal(err)
 	}
@@ -303,7 +308,7 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 func TestLedger_GetSenderBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	b := mock.StateBlock()
+	b := mock.StateBlockWithoutWork()
 	s := "18000001111"
 	r := "18011110000"
 	sender, _ := json.Marshal(s)
@@ -328,7 +333,7 @@ func TestLedger_GetSenderBlocks(t *testing.T) {
 		t.Fatal()
 	}
 
-	b2 := mock.StateBlock()
+	b2 := mock.StateBlockWithoutWork()
 	b2.Sender = sender
 	if err := l.AddStateBlock(b2); err != nil {
 		t.Fatal(err)
@@ -365,7 +370,7 @@ func TestLedger_GetSenderBlocks(t *testing.T) {
 }
 
 func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
-	block = mock.StateBlock()
+	block = mock.StateBlockWithoutWork()
 	hash = block.GetPrevious()
 	kind = types.UncheckedKindPrevious
 	if err := l.AddUncheckedBlock(hash, block, kind, types.UnSynchronized); err != nil {
