@@ -89,6 +89,7 @@ func (node *QlcNode) startHost() error {
 		return err
 	}
 	node.kadDht = kadDht
+	node.dis = discovery.NewRoutingDiscovery(node.kadDht)
 	node.ping = NewPingService(node.host)
 	node.peerStore = qlcHost.Peerstore()
 	node.peerStore.AddPrivKey(node.ID, node.privateKey)
@@ -129,6 +130,10 @@ func (node *QlcNode) StartServices() error {
 		}
 	}
 
+	if node.dis != nil {
+		go node.startPeerDiscovery()
+	}
+
 	if len(node.boostrapAddrs) != 0 {
 		go node.connectBootstrap()
 	}
@@ -153,18 +158,18 @@ func (node *QlcNode) connectBootstrap() {
 
 	}
 
-	dis := discovery.NewRoutingDiscovery(node.kadDht)
+	//dis := discovery.NewRoutingDiscovery(node.kadDht)
 	for {
-		_, err := dis.Advertise(node.ctx, QlcProtocolFOUND)
+		_, err := node.dis.Advertise(node.ctx, QlcProtocolFOUND)
 		if err != nil {
 			time.Sleep(time.Duration(1) * time.Second)
 			continue
 		}
-		node.dis = dis
+		//node.dis = dis
 		break
 	}
 
-	node.startPeerDiscovery()
+	//node.startPeerDiscovery()
 }
 
 func (node *QlcNode) startPeerDiscovery() {
