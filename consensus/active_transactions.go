@@ -136,7 +136,7 @@ func (act *ActiveTrx) announceVotes() {
 			localRepAccount.Range(func(k, v interface{}) bool {
 				count++
 				address = k.(types.Address)
-				act.dps.saveOnlineRep(&address)
+				act.dps.saveOnlineRep(address)
 				va, err := act.dps.voteGenerate(block, address, v.(*types.Account))
 				if err != nil {
 					act.dps.logger.Error("vote generate error")

@@ -40,11 +40,6 @@ type DPoS struct {
 	cfg        *config.Config
 }
 
-type repInfo struct {
-	time  int64
-	state bool
-}
-
 func (dps *DPoS) GetP2PService() p2p.Service {
 	return dps.ns
 }
@@ -63,7 +58,7 @@ func (dps *DPoS) refreshAccount() {
 		addr = v.Address()
 		b = dps.isRepresentation(addr)
 		if b {
-			_, _ = localRepAccount.LoadOrStore(addr, v)
+			localRepAccount.Store(addr, v)
 		}
 	}
 	var count uint32
@@ -175,7 +170,7 @@ func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			count++
 			address = key.(types.Address)
-			dps.saveOnlineRep(&address)
+			dps.saveOnlineRep(address)
 			result, _ := dps.verifier.Process(bs.block)
 			if result == process.Old {
 				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
@@ -219,11 +214,11 @@ func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock)
 	}
 	dps.acTrx.vote(ack)
 	if !dps.cache.Has(e.Hash()) {
-		dps.saveOnlineRep(&ack.Account)
+		dps.saveOnlineRep(ack.Account)
 		localRepAccount.Range(func(key, value interface{}) bool {
 			count++
 			address = key.(types.Address)
-			dps.saveOnlineRep(&address)
+			dps.saveOnlineRep(address)
 			result, _ := dps.verifier.Process(bs.block)
 			if result == process.Old {
 				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
@@ -283,16 +278,16 @@ func (dps *DPoS) isRepresentation(address types.Address) bool {
 	return true
 }
 
-func (dps *DPoS) saveOnlineRep(addr *types.Address) {
+func (dps *DPoS) saveOnlineRep(addr types.Address) {
 	now := time.Now().Add(repTimeout).UTC().Unix()
-	_, _ = dps.onlineReps.LoadOrStore(addr, now)
+	dps.onlineReps.Store(addr, now)
 }
 
-func (dps *DPoS) GetOnlineRepresentatives() []*types.Address {
-	var repAddresses []*types.Address
+func (dps *DPoS) GetOnlineRepresentatives() []types.Address {
+	var repAddresses []types.Address
 	dps.onlineReps.Range(func(key, value interface{}) bool {
 
-		addr := key.(*types.Address)
+		addr := key.(types.Address)
 		repAddresses = append(repAddresses, addr)
 		return true
 	})
@@ -303,7 +298,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 	var address types.Address
 	localRepAccount.Range(func(key, value interface{}) bool {
 		address = key.(types.Address)
-		dps.saveOnlineRep(&address)
+		dps.saveOnlineRep(address)
 		return true
 	})
 	blk, err := dps.ledger.GetRandomStateBlock()
@@ -318,12 +313,12 @@ func (dps *DPoS) cleanOnlineReps() {
 	var repAddresses []*types.Address
 	now := time.Now().UTC().Unix()
 	dps.onlineReps.Range(func(key, value interface{}) bool {
-		addr := key.(*types.Address)
+		addr := key.(types.Address)
 		v := value.(int64)
 		if v < now {
 			dps.onlineReps.Delete(addr)
 		} else {
-			repAddresses = append(repAddresses, addr)
+			repAddresses = append(repAddresses, &addr)
 		}
 		return true
 	})
