@@ -291,6 +291,7 @@ func (dps *DPoS) saveOnlineRep(addr *types.Address) {
 func (dps *DPoS) GetOnlineRepresentatives() []*types.Address {
 	var repAddresses []*types.Address
 	dps.onlineReps.Range(func(key, value interface{}) bool {
+
 		addr := key.(*types.Address)
 		repAddresses = append(repAddresses, addr)
 		return true
@@ -315,7 +316,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 
 func (dps *DPoS) cleanOnlineReps() {
 	var repAddresses []*types.Address
-	now := time.Now().Add(repTimeout).UTC().Unix()
+	now := time.Now().UTC().Unix()
 	dps.onlineReps.Range(func(key, value interface{}) bool {
 		addr := key.(*types.Address)
 		v := value.(int64)
