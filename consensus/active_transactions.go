@@ -134,6 +134,7 @@ func (act *ActiveTrx) announceVotes() {
 			act.addWinner2Ledger(block)
 		} else {
 			localRepAccount.Range(func(k, v interface{}) bool {
+				count++
 				address = k.(types.Address)
 				act.dps.saveOnlineRep(&address)
 				va, err := act.dps.voteGenerate(block, address, v.(*types.Account))
