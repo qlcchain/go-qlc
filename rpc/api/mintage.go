@@ -10,7 +10,6 @@ package api
 import (
 	"fmt"
 	"math/big"
-	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -115,59 +114,4 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 
 func (m *MintageApi) GetWithdrawMintageData(tokenId types.Hash) ([]byte, error) {
 	return cabi.ABIMintage.PackMethod(cabi.MethodNameMintageWithdraw, tokenId)
-}
-
-type ApiTokenInfo struct {
-	types.TokenInfo
-}
-
-type TokenInfoList struct {
-	Count int             `json:"totalCount"`
-	List  []*ApiTokenInfo `json:"tokenInfos"`
-}
-
-type byName []*ApiTokenInfo
-
-func (a byName) Len() int      { return len(a) }
-func (a byName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a byName) Less(i, j int) bool {
-	if a[i].TokenName == a[j].TokenName {
-		return a[i].TokenId.String() < a[j].TokenId.String()
-	}
-	return a[i].TokenName < a[j].TokenName
-}
-
-func (m *MintageApi) GetTokenInfoList(count int, index int) (*TokenInfoList, error) {
-	tokens, err := m.ledger.ListTokens()
-	if err != nil {
-		return nil, err
-	}
-	tokenList := make([]*ApiTokenInfo, 0)
-	for _, v := range tokens {
-		tokenList = append(tokenList, &ApiTokenInfo{TokenInfo: *v})
-	}
-	sort.Sort(byName(tokenList))
-	length := len(tokens)
-	start, end := getRange(index, count, length)
-	return &TokenInfoList{length, tokenList[start:end]}, nil
-}
-
-func (m *MintageApi) GetTokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
-	token, err := m.ledger.GetTokenById(tokenId)
-	if err != nil {
-		return nil, err
-	}
-	return &ApiTokenInfo{*token}, nil
-}
-
-func getRange(index, count, listLen int) (int, int) {
-	start := index * count
-	if start >= listLen {
-		return listLen, listLen
-	}
-	end := start + count
-	if end >= listLen {
-		return start, listLen
-	}
-	return start, end
 }
