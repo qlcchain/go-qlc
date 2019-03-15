@@ -10,14 +10,15 @@ package mock
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/crypto/random"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 func TestMockHash(t *testing.T) {
@@ -256,6 +257,13 @@ func TestStateBlock(t *testing.T) {
 	b := StateBlock()
 	if valid := b.IsValid(); !valid {
 		t.Fatal("state block is invalid")
+	}
+}
+
+func TestStateBlockWithoutWork(t *testing.T) {
+	b := StateBlockWithoutWork()
+	if b == nil {
+		t.Fatal("mock blocks error")
 	}
 }
 

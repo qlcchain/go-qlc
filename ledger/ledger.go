@@ -425,7 +425,7 @@ func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, er
 	return blk, nil
 }
 
-func (l *Ledger) AddSmartContractBlock(blk types.SmartContractBlock, txns ...db.StoreTxn) error {
+func (l *Ledger) AddSmartContractBlock(blk *types.SmartContractBlock, txns ...db.StoreTxn) error {
 	key := getKeyOfHash(blk.GetHash(), idPrefixSmartContractBlock)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -1763,7 +1763,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 	switch block.GetType() {
 	case types.Open:
 		return block.GetBalance(), err
-	case types.Send, types.ContractSend:
+	case types.Send:
 		if prev, err = l.GetStateBlock(block.Previous); err != nil {
 			return types.ZeroBalance, err
 		}
@@ -1777,6 +1777,15 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 		return types.ZeroBalance, nil
 	case types.ContractReward:
 		return block.GetBalance(), nil
+	case types.ContractSend:
+		if block.GetToken() == common.QLCChainToken {
+			return block.GetBalance(), nil
+		} else {
+			if prev, err = l.GetStateBlock(block.Previous); err != nil {
+				return types.ZeroBalance, err
+			}
+			return prev.Balance.Sub(block.GetBalance()), nil
+		}
 	default:
 		return types.ZeroBalance, errors.New("invalid block type")
 	}

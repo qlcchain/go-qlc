@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -23,10 +24,7 @@ func phoneNumberSeri(number string) ([]byte, error) {
 	if number == "" {
 		return nil, nil
 	}
-	b, err := json.Marshal(number)
-	if err != nil {
-		return nil, err
-	}
+	b := util.String2Bytes(number)
 	return b, nil
 }
 
