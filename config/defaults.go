@@ -49,11 +49,12 @@ func DefaultConfig(dir string) (*Config, error) {
 	}`), &logCfg)
 
 	cfg := &Config{
-		Version:    configVersion,
-		DataDir:    dir,
-		Mode:       "Normal",
-		StorageMax: "10GB",
-		LogConfig:  &logCfg,
+		Version:             configVersion,
+		DataDir:             dir,
+		Mode:                "Normal",
+		StorageMax:          "10GB",
+		AutoGenerateReceive: false,
+		LogConfig:           &logCfg,
 		RPC: &RPCConfig{
 			Enable: true,
 			//Listen:       "/ip4/0.0.0.0/tcp/29735",

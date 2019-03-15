@@ -9,8 +9,9 @@ package commands
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/ledger"
 	"reflect"
+
+	"github.com/qlcchain/go-qlc/ledger"
 
 	"github.com/qlcchain/go-qlc/chain"
 	ss "github.com/qlcchain/go-qlc/chain/services"
@@ -103,38 +104,40 @@ func initNode(seed types.Seed, cfg *config.Config) error {
 	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
 
 	if len(accounts) > 0 {
-		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
-			defer func() {
-				if err := recover(); err != nil {
-					fmt.Println(err)
-				}
-			}()
+		if cfg.AutoGenerateReceive {
+			_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
+				defer func() {
+					if err := recover(); err != nil {
+						fmt.Println(err)
+					}
+				}()
 
-			go func(accounts []*types.Account) {
-				for _, value := range accounts {
-					addr = value.Address()
-					if b, ok := v.(*types.StateBlock); ok {
-						if b.Type == types.Send {
-							address := types.Address(b.Link)
-							if addr.String() == address.String() {
-								var balance types.Balance
-								if b.Token == common.QLCChainToken {
-									balance, _ = common.RawToBalance(b.Balance, "QLC")
-									fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", b.Address.String(), address.String(), balance)
-								} else {
-									fmt.Printf("receive block from [%s] to[%s] balance[%s]", b.Address.String(), address.String(), b.Balance.String())
+				go func(accounts []*types.Account) {
+					for _, value := range accounts {
+						addr = value.Address()
+						if b, ok := v.(*types.StateBlock); ok {
+							if b.Type == types.Send {
+								address := types.Address(b.Link)
+								if addr.String() == address.String() {
+									var balance types.Balance
+									if b.Token == common.QLCChainToken {
+										balance, _ = common.RawToBalance(b.Balance, "QLC")
+										fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", b.Address.String(), address.String(), balance)
+									} else {
+										fmt.Printf("receive block from [%s] to[%s] balance[%s]", b.Address.String(), address.String(), b.Balance.String())
+									}
+									err = receive(b, value)
+									if err != nil {
+										fmt.Printf("err[%s] when generate receive block.\n", err)
+									}
+									break
 								}
-								err = receive(b, value)
-								if err != nil {
-									fmt.Printf("err[%s] when generate receive block.\n", err)
-								}
-								break
 							}
 						}
 					}
-				}
-			}(accounts)
-		})
+				}(accounts)
+			})
+		}
 
 		//search pending and generate receive block
 		go func(l *ledger.Ledger, accounts []*types.Account) {
