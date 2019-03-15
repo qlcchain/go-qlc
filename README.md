@@ -91,7 +91,7 @@ To grab our attention, just make a PR and start contributing.
 ## Links & Resources
 * [Yellow Paper](https://github.com/qlcchain/YellowPaper)
 * [QLC Website](https://qlcchain.org)
-* [Reddit](https://www.reddit.com/r/Qlink/)
+* [Reddit](https://www.reddit.com/r/QLCChain/)
 * [Medium](https://medium.com/qlc-chain)
 * [Twitter](https://twitter.com/QLCchain)
 * [Telegram](https://t.me/qlinkmobile)
