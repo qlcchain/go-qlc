@@ -63,7 +63,7 @@ deploy:
     script: docker/docker_push.sh
     on:
       tags: true
-      all_branches: true
+      branch: master
 
 notifications:
   email: false
