@@ -105,6 +105,7 @@ func addcommand() {
 		run()
 	}
 	walletimport()
+	version()
 }
 
 func start() error {
