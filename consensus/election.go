@@ -43,7 +43,10 @@ func (el *Election) voteAction(va *protos.ConfirmAckBlock) {
 	if !valid {
 		return
 	}
-	el.vote.voteStatus(va)
+	result := el.vote.voteStatus(va)
+	if result == confirm {
+		return
+	}
 	el.haveQuorum()
 }
 
