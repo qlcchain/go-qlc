@@ -265,36 +265,30 @@ func (l *LedgerApi) AccountsFrontiers(addresses []types.Address) (map[types.Addr
 func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types.Address][]*APIPending, error) {
 	apMap := make(map[types.Address][]*APIPending)
 	for _, addr := range addresses {
-		pendingkeys, err := l.ledger.Pending(addr)
-		if err != nil {
-			return nil, err
-		}
-
 		ps := make([]*APIPending, 0)
-		for _, pendingkey := range pendingkeys {
-			if len(ps) >= n {
-				break
-			}
-			pendinginfo, err := l.ledger.GetPending(*pendingkey)
+		err := l.ledger.SearchPending(addr, func(key *types.PendingKey, info *types.PendingInfo) error {
+			token, err := l.ledger.GetTokenById(info.Type)
 			if err != nil {
-				return nil, err
+				return err
 			}
+			tokenName := token.TokenName
+			ap := APIPending{
+				PendingInfo: info,
+				TokenName:   tokenName,
+				Hash:        key.Hash,
+			}
+			ps = append(ps, &ap)
+			return nil
+		})
 
-			token, err := l.ledger.GetTokenById(pendinginfo.Type)
-			if err != nil {
-				return nil, err
-			}
-			tokenname := token.TokenName
-			tp := APIPending{
-				PendingInfo: pendinginfo,
-				TokenName:   tokenname,
-				Hash:        pendingkey.Hash,
-			}
-			ps = append(ps, &tp)
+		if err != nil {
+			fmt.Println(err)
 		}
-		if len(ps) > 0 {
-			apMap[addr] = ps
+		pt := ps
+		if len(ps) > n {
+			pt = ps[:n]
 		}
+		apMap[addr] = pt
 	}
 	return apMap, nil
 }

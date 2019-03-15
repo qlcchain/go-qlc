@@ -41,7 +41,7 @@ type Store interface {
 	CountStateBlocks(txns ...db.StoreTxn) (uint64, error)
 	GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, error)
 	// smart contract block CURD
-	AddSmartContractBlock(blk types.SmartContractBlock, txns ...db.StoreTxn) error
+	AddSmartContractBlock(blk *types.SmartContractBlock, txns ...db.StoreTxn) error
 	GetSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (*types.SmartContractBlock, error)
 	HasSmartContractBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error

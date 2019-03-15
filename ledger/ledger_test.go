@@ -154,7 +154,7 @@ func addSmartContractBlock(t *testing.T, l *Ledger) *types.SmartContractBlock {
   }`
 	blk := new(types.SmartContractBlock)
 	_ = json.Unmarshal([]byte(jsonBlock), blk)
-	if err := l.AddSmartContractBlock(*blk); err != nil {
+	if err := l.AddSmartContractBlock(blk); err != nil {
 		t.Log(err)
 	}
 	return blk
