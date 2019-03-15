@@ -9,8 +9,9 @@ package commands
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/ledger"
 	"reflect"
+
+	"github.com/qlcchain/go-qlc/ledger"
 
 	"github.com/qlcchain/go-qlc/chain"
 	ss "github.com/qlcchain/go-qlc/chain/services"
@@ -102,7 +103,7 @@ func initNode(seed types.Seed, cfg *config.Config) error {
 	}
 	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
 
-	if len(accounts) > 0 {
+	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
 			defer func() {
 				if err := recover(); err != nil {

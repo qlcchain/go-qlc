@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Version    int        `json:"version"`
-	DataDir    string     `json:"DataDir"`
-	StorageMax string     `json:"StorageMax"`
-	Mode       string     `json:"mode"` // runtime mode: Test,Normal
-	LogConfig  *LogConfig `json:"log"`  //log config
+	Version             int        `json:"version"`
+	DataDir             string     `json:"DataDir"`
+	StorageMax          string     `json:"StorageMax"`
+	Mode                string     `json:"mode"` // runtime mode: Test,Normal
+	AutoGenerateReceive bool       `json:"AutoGenerateReceive"`
+	LogConfig           *LogConfig `json:"log"` //log config
 
 	RPC *RPCConfig `json:"rpc"`
 	P2P *P2PConfig `json:"p2p"`
