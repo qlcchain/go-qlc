@@ -49,6 +49,10 @@ type APIPending struct {
 	Hash      types.Hash `json:"hash"`
 }
 
+type ApiTokenInfo struct {
+	types.TokenInfo
+}
+
 func NewLedgerApi(l *ledger.Ledger, dpos *consensus.DPoS) *LedgerApi {
 	return &LedgerApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("api_ledger")}
 }
@@ -658,4 +662,20 @@ func (l *LedgerApi) TransactionsCount() (map[string]uint64, error) {
 	c["count"] = sbCount
 	c["unchecked"] = unCount
 	return c, nil
+}
+
+func (l *LedgerApi) TokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
+	token, err := l.ledger.GetTokenById(tokenId)
+	if err != nil {
+		return nil, err
+	}
+	return &ApiTokenInfo{*token}, nil
+}
+
+func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
+	token, err := l.ledger.GetTokenByName(tokenName)
+	if err != nil {
+		return nil, err
+	}
+	return &ApiTokenInfo{*token}, nil
 }
