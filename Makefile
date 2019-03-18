@@ -35,10 +35,10 @@ build: update-version
 
 build-test: update-test-version
 	go build -v -i -o $(BUILDDIR)/$(SERVERBINARY) $(SERVERMAIN)
-	@echo "Build server done."
+	@echo "Build test server done."
 	@echo "Run \"$(BUILDDIR)/$(SERVERBINARY)\" to start gqlc."
 	go build -v -i -o $(BUILDDIR)/$(CLIENTBINARY) $(CLIENTMAIN)
-	@echo "Build client done."
+	@echo "Build test client done."
 	@echo "Run \"$(BUILDDIR)/$(CLIENTBINARY)\" to start gqlcc."
 
 all: gqlc-windows gqlc-darwin gqlc-linux gqlct-windows gqlct-darwin gqlct-linux gqlcc-windows gqlcc-darwin gqlcc-linux

@@ -40,7 +40,7 @@ script:
   - ./ci/travis.govet.sh
   - ./ci/travis.codecov.sh
   - make clean all
-  - chmod +x docker/build.sh && ./docker/build.sh live
+  - chmod +x docker/build.sh && ./docker/build.sh live && ./docker/build.sh test
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
