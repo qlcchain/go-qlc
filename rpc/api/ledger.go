@@ -12,6 +12,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/p2p"
 	"go.uber.org/zap"
 )
 
@@ -563,7 +564,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	case process.Progress:
 		l.logger.Debug("broadcast block")
 		//TODO: refine
-		//l.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
+		l.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
 		return block.GetHash(), nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")

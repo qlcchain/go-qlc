@@ -63,7 +63,7 @@ func TestLedger_Rollback(t *testing.T) {
 		}
 	}
 
-	h := bc[3].GetHash()
+	h := bc[2].GetHash()
 	if err := l.Rollback(h); err != nil {
 		t.Fatal(err)
 	}
