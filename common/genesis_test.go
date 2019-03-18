@@ -15,16 +15,35 @@ import (
 	"testing"
 )
 
-func TestIsGenesisBlock(t *testing.T) {
+func TestGenesisBlock(t *testing.T) {
 	h, _ := types.NewHash("758f79b656340c329cb5b11302865c5ff0b0c99fd8a268d6b8760170e33e8cd1")
-	h2 := QLCGenesisBlock.GetHash()
+	genesis := GenesisBlock()
+	h2 := genesis.GetHash()
 	if h2 != h {
-		t.Log(util.ToString(QLCGenesisBlock))
+		t.Log(util.ToString(genesis))
 		t.Fatal("invalid genesis block", h2.String(), h.String())
 	}
 
 	h3, _ := types.NewHash("bf1cb34e79f8739367ad7de4a16c87c0e72ea483521fec0f0ddf7b5e90d03abd")
-	h4 := GenesisMintageBlock.GetHash()
+	mintage := GenesisMintageBlock()
+	h4 := mintage.GetHash()
+	if h3 != h4 {
+		t.Fatal(h3.String(), h4.String())
+	}
+}
+
+func TestGenesisBlock2(t *testing.T) {
+	h, _ := types.NewHash("80a4b6bc4f69ffd0ede34cb7d20b5c3c8f242bedd3d599412cf0d5fbdf86ca11")
+	genesis := testGenesisBlock
+	h2 := genesis.GetHash()
+	if h2 != h {
+		t.Log(util.ToString(genesis))
+		t.Fatal("invalid genesis block", h2.String(), h.String())
+	}
+
+	h3, _ := types.NewHash("f1042ef1472b02ee61048cf4eba923b81d0a64876665888b44bb2c46534f9655")
+	mintage := testGenesisMintageBlock
+	h4 := mintage.GetHash()
 	if h3 != h4 {
 		t.Fatal(h3.String(), h4.String())
 	}

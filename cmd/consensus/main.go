@@ -32,7 +32,7 @@ var seed = "EE8B2F389880D23D1656652EDE146149A7A2E9DDCE2A95D511C55354CBB5ED50"
 var password = "123456"
 var address types.Address
 var ac *types.Account
-var token = common.QLCChainToken
+var token = common.ChainToken()
 var genesisBlock *types.StateBlock
 
 func creatGenesisBlock(l *ledger.Ledger) {

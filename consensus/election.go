@@ -64,7 +64,7 @@ func (el *Election) haveQuorum() {
 		}
 	}
 	//supply := el.getOnlineRepresentativesBalance()
-	supply := common.QLCGenesisBlock.Balance
+	supply := common.GenesisBlock().Balance
 	//supply, err := el.getGenesisBalance()
 	//if err != nil {
 	//	return
@@ -123,7 +123,7 @@ func (el *Election) getOnlineRepresentativesBalance() types.Balance {
 }
 
 func (el *Election) getGenesisBalance() (types.Balance, error) {
-	hash := common.QLCChainToken
+	hash := common.ChainToken()
 	i, err := el.dps.ledger.GetTokenById(hash)
 	if err != nil {
 		return types.ZeroBalance, err

@@ -183,7 +183,7 @@ func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResul
 	}
 
 	// check chain token
-	if block.Token != common.QLCChainToken {
+	if block.Token != common.ChainToken() {
 		return Other, fmt.Errorf("invalid token Id")
 	}
 
@@ -404,7 +404,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 }
 
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
-	if block.GetToken() == common.QLCChainToken {
+	if block.GetToken() == common.ChainToken() {
 		if tm != nil && !tm.Representative.IsZero() {
 			lv.logger.Debugf("sub rep %s from %s ", tm.Balance, tm.Representative)
 			if err := lv.l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {

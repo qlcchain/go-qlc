@@ -94,7 +94,7 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 	amount, _ := ledger.CalculateAmount(input)
 	if amount.Sign() > 0 &&
 		amount.Compare(types.Balance{Int: minPledgeAmount}) != types.BalanceCompSmaller &&
-		input.Token == common.QLCChainToken {
+		input.Token == common.ChainToken() {
 		var err error
 		tokenInfo, err = cabi.ABIMintage.PackVariable(
 			cabi.VariableNameToken,
@@ -210,7 +210,7 @@ func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 				tokenInfo.Owner,
 				types.ContractRefund,
 				types.Balance{Int: tokenInfo.PledgeAmount},
-				common.QLCChainToken,
+				common.ChainToken(),
 				[]byte{},
 			},
 		}, nil
