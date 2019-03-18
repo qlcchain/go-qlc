@@ -80,50 +80,38 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 			return errors.New("UnKnow block from")
 		}
 		bp.queueUnchecked(hash)
-		break
 	case process.BadSignature:
 		bp.dp.logger.Errorf("Bad signature for block: %s", hash)
-		break
 	case process.BadWork:
 		bp.dp.logger.Errorf("Bad work for block: %s", hash)
-		break
 	case process.BalanceMismatch:
 		bp.dp.logger.Errorf("Balance mismatch for block: %s", hash)
-		break
 	case process.Old:
-		bp.dp.logger.Infof("Old for block: %s", hash)
-		break
+		bp.dp.logger.Debugf("Old for block: %s", hash)
 	case process.UnReceivable:
 		bp.dp.logger.Errorf("UnReceivable for block: %s", hash)
-		break
 	case process.GapSmartContract:
 		bp.dp.logger.Errorf("GapSmartContract for block: %s", hash)
 		bp.processGapSmartContract(blk)
-		break
 	case process.InvalidData:
 		bp.dp.logger.Errorf("InvalidData for block: %s", hash)
-		break
 	case process.Other:
 		bp.dp.logger.Errorf("UnKnow process result for: %s", hash)
-		break
 	case process.Fork:
 		bp.dp.logger.Errorf("Fork for block: %s", hash)
 		bp.processFork(blk)
-		break
 	case process.GapPrevious:
 		bp.dp.logger.Debugf("Gap previous for block: %s", hash)
 		err := bp.dp.ledger.AddUncheckedBlock(blk.GetPrevious(), blk, types.UncheckedKindPrevious, bs.blockFrom)
 		if err != nil {
 			return err
 		}
-		break
 	case process.GapSource:
 		bp.dp.logger.Debugf("Gap source for block: %s", hash)
 		err := bp.dp.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.blockFrom)
 		if err != nil {
 			return err
 		}
-		break
 	}
 	return nil
 }
