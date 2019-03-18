@@ -82,7 +82,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 1
+const version = 2
 
 func NewLedger(dir string) *Ledger {
 	lock.Lock()
@@ -207,7 +207,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 }
 
 func addPosterior(blk *types.StateBlock, txn db.StoreTxn) error {
-	previous := blk.GetPrevious()
+	previous := blk.Root()
 	hash := blk.GetHash()
 	if !previous.IsZero() {
 		bKey := getKeyOfHash(previous, idPrefixBlock)
@@ -335,7 +335,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 }
 
 func deletePosterior(blk *types.StateBlock, txn db.StoreTxn) error {
-	pKey := getKeyOfHash(blk.GetPrevious(), idPrefixPosterior)
+	pKey := getKeyOfHash(blk.Root(), idPrefixPosterior)
 	if err := txn.Delete(pKey); err != nil {
 		return err
 	}
@@ -1457,7 +1457,7 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 				return fmt.Errorf("rollback pending fail(%s), open(%s)", err, hashCur)
 			}
 
-			if hashCur != hash || isRoot {
+			if hashCur != hash {
 				if err := l.processRollback(blockCur.GetLink(), blockCur, false, txn); err != nil {
 					return err
 				}
@@ -1509,7 +1509,7 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 				return fmt.Errorf("rollback pending fail(%s), receive(%s)", err, hashCur)
 			}
 
-			if hashCur != hash || isRoot {
+			if hashCur != hash {
 				if err := l.processRollback(blockCur.GetLink(), blockCur, false, txn); err != nil {
 					return err
 				}
