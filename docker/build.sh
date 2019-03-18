@@ -40,5 +40,6 @@ esac
 REPO_ROOT=`git rev-parse --show-toplevel`
 COMMIT_SHA=`git rev-parse --short HEAD`
 pushd $REPO_ROOT
-docker build --build-arg BUILDARG="${build_flag}" -f docker/Dockerfile -t qlcchain/go-qlc${network_tag}:latest .
+echo ${build_flag}
+docker build --build-arg BUILD_ACT="${build_flag}" -f docker/Dockerfile -t qlcchain/go-qlc${network_tag}:latest .
 popd

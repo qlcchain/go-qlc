@@ -40,10 +40,11 @@ script:
   - ./ci/travis.govet.sh
   - ./ci/travis.codecov.sh
   - make clean all
-  - chmod +x docker/build.sh && ./docker/build.sh live && ./docker/build.sh test
+  # - chmod +x docker/build.sh && ./docker/build.sh live && ./docker/build.sh test
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+  - git reset --hard HEAD
 
 #before_deploy:
 #- make clean all -j2
@@ -59,10 +60,10 @@ deploy:
     on:
       tags: true
   - provider: script
-    script: docker/docker_push.sh
+    script: ci/deploy-docker.sh
+    skip_cleanup: true
     on:
-      tags: true
-      branch: master
+      all_branches: true
 
 notifications:
   email: false
