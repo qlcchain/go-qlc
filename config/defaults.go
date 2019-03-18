@@ -10,6 +10,7 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
+	"github.com/qlcchain/go-qlc"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -22,6 +23,8 @@ import (
 const (
 	QlcConfigFile = "qlc.json"
 	configVersion = 1
+	cfgDir        = "GQlcchain"
+	nixCfgDir     = ".gqlcchain"
 )
 
 var defaultBootstrapAddresses = []string{
@@ -118,11 +121,29 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "Application Support", "GQlcchain")
+			var d string
+			if goqlc.MAINNET {
+				d = cfgDir
+			} else {
+				d = cfgDir + "_test"
+			}
+			return filepath.Join(home, "Library", "Application Support", d)
 		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", "GQlcchain")
+			var d string
+			if goqlc.MAINNET {
+				d = cfgDir
+			} else {
+				d = cfgDir + "_test"
+			}
+			return filepath.Join(home, "AppData", "Roaming", d)
 		} else {
-			return filepath.Join(home, ".gqlcchain")
+			var d string
+			if goqlc.MAINNET {
+				d = nixCfgDir
+			} else {
+				d = nixCfgDir + "_test"
+			}
+			return filepath.Join(home, d)
 		}
 	}
 	return ""
