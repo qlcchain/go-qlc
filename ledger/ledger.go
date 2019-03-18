@@ -48,8 +48,8 @@ var (
 	ErrFrontierNotFound       = errors.New("frontier not found")
 	ErrRepresentationNotFound = errors.New("representation not found")
 	ErrPerformanceNotFound    = errors.New("performance not found")
-	ErrPosteriorExists        = errors.New("posterior already exists")
-	ErrPosteriorNotFound      = errors.New("posterior not found")
+	ErrChildExists            = errors.New("child already exists")
+	ErrChildNotFound          = errors.New("child not found")
 	ErrVersionNotFound        = errors.New("version not found")
 	ErrStorageExists          = errors.New("storage already exists")
 	ErrStorageNotFound        = errors.New("storage not found")
@@ -193,7 +193,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
 	}
-	if err := addPosterior(blk, txn); err != nil {
+	if err := addChild(blk, txn); err != nil {
 		return err
 	}
 	if err := addToken(blk, txn); err != nil {
@@ -206,21 +206,21 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	return nil
 }
 
-func addPosterior(blk *types.StateBlock, txn db.StoreTxn) error {
-	previous := blk.Root()
+func addChild(blk *types.StateBlock, txn db.StoreTxn) error {
+	parent := blk.Parent()
 	hash := blk.GetHash()
-	if !previous.IsZero() {
-		bKey := getKeyOfHash(previous, idPrefixBlock)
+	if !parent.IsZero() {
+		bKey := getKeyOfHash(parent, idPrefixBlock)
 		err := txn.Get(bKey, func(val []byte, b byte) error {
 			return nil
 		})
 		if err == nil {
-			pKey := getKeyOfHash(previous, idPrefixPosterior)
+			pKey := getKeyOfHash(parent, idPrefixPosterior)
 			err := txn.Get(pKey, func(val []byte, b byte) error {
 				return nil
 			})
 			if err == nil {
-				return ErrPosteriorExists
+				return ErrChildExists
 			} else if err != nil && err != badger.ErrKeyNotFound {
 				return err
 			}
@@ -320,7 +320,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	if err := txn.Delete(key); err != nil {
 		return err
 	}
-	if err := deletePosterior(blk, txn); err != nil {
+	if err := deleteChild(blk, txn); err != nil {
 		return err
 	}
 	if err := deleteToken(blk, txn); err != nil {
@@ -334,8 +334,8 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	return nil
 }
 
-func deletePosterior(blk *types.StateBlock, txn db.StoreTxn) error {
-	pKey := getKeyOfHash(blk.Root(), idPrefixPosterior)
+func deleteChild(blk *types.StateBlock, txn db.StoreTxn) error {
+	pKey := getKeyOfHash(blk.Parent(), idPrefixPosterior)
 	if err := txn.Delete(pKey); err != nil {
 		return err
 	}
@@ -1142,7 +1142,7 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 	return txn.Count([]byte{idPrefixFrontier})
 }
 
-func (l *Ledger) GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
+func (l *Ledger) GetChild(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
 	key := getKeyOfHash(hash, idPrefixPosterior)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -1155,7 +1155,7 @@ func (l *Ledger) GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash,
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return types.ZeroHash, ErrPosteriorNotFound
+			return types.ZeroHash, ErrChildNotFound
 		}
 		return types.ZeroHash, err
 	}

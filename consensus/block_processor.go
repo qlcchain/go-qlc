@@ -4,9 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/qlcchain/go-qlc/ledger/process"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 )
 
@@ -154,7 +153,7 @@ func (bp *BlockProcessor) processFork(block *types.StateBlock) {
 
 func (bp *BlockProcessor) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlock {
 	hash := block.Root()
-	forkedHash, err := bp.dp.ledger.GetPosterior(hash)
+	forkedHash, err := bp.dp.ledger.GetChild(hash)
 	if err != nil {
 		bp.dp.logger.Error(err)
 		return block

@@ -164,15 +164,16 @@ func TestLedger_AddBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	bc1 := mock.StateBlockWithoutWork()
+	bc1.Link = types.ZeroHash
 	bc2 := mock.StateBlockWithoutWork()
-	bc2.Previous = bc1.GetHash()
+	bc2.Link = bc1.GetHash()
 	if err := l.AddStateBlock(bc1); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.AddStateBlock(bc2); err != nil {
 		t.Fatal(err)
 	}
-	a, err := l.GetPosterior(bc1.GetHash())
+	a, err := l.GetChild(bc1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,8 +275,8 @@ func TestLedger_DeleteBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = l.GetPosterior(bc2.GetHash())
-	if err != nil && err != ErrPosteriorNotFound {
+	_, err = l.GetChild(bc2.GetHash())
+	if err != nil && err != ErrChildNotFound {
 		t.Fatal(err)
 	}
 }

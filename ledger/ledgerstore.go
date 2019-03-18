@@ -72,7 +72,7 @@ type Store interface {
 	DeleteFrontier(hash types.Hash, txns ...db.StoreTxn) error
 	CountFrontiers(txns ...db.StoreTxn) (uint64, error)
 	// posterior
-	GetPosterior(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
+	GetChild(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
 	// performance
 	AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error
 	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
