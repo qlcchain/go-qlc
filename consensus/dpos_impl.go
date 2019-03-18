@@ -123,7 +123,6 @@ func (dps *DPoS) setEvent() {
 }
 
 func (dps *DPoS) ReceivePublish(v interface{}) {
-	dps.logger.Info("Publish Event")
 	e := v.(p2p.Message)
 	p, err := protos.PublishBlockFromProto(e.Data())
 	if err != nil {
@@ -134,6 +133,7 @@ func (dps *DPoS) ReceivePublish(v interface{}) {
 		block:     p.Blk,
 		blockFrom: types.UnSynchronized,
 	}
+	dps.logger.Info("Publish Event for block:[%s] from [%s]", p.Blk.GetHash(), e.MessageFrom())
 	dps.bp.blocks <- bs
 	dps.onReceivePublish(e, p.Blk)
 }
@@ -149,13 +149,13 @@ func (dps *DPoS) onReceivePublish(e p2p.Message, blk *types.StateBlock) {
 }
 
 func (dps *DPoS) ReceiveConfirmReq(v interface{}) {
-	dps.logger.Info("ConfirmReq Event")
 	e := v.(p2p.Message)
 	r, err := protos.ConfirmReqBlockFromProto(e.Data())
 	if err != nil {
 		dps.logger.Error(err)
 		return
 	}
+	dps.logger.Info("ConfirmReq Event for block:[%s] from [%s]", r.Blk.GetHash(), e.MessageFrom())
 	dps.onReceiveConfirmReq(e, r.Blk)
 }
 
@@ -191,13 +191,13 @@ func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 }
 
 func (dps *DPoS) ReceiveConfirmAck(v interface{}) {
-	dps.logger.Info("ConfirmAck Event")
 	e := v.(p2p.Message)
 	ack, err := protos.ConfirmAckBlockFromProto(e.Data())
 	if err != nil {
 		dps.logger.Info(err)
 		return
 	}
+	dps.logger.Info("ConfirmAck Event for block:[%s] from [%s]", ack.Blk.GetHash(), e.MessageFrom())
 	dps.onReceiveConfirmAck(e, ack)
 }
 
