@@ -133,7 +133,7 @@ func (dps *DPoS) ReceivePublish(v interface{}) {
 		block:     p.Blk,
 		blockFrom: types.UnSynchronized,
 	}
-	dps.logger.Info("Publish Event for block:[%s] from [%s]", p.Blk.GetHash(), e.MessageFrom())
+	dps.logger.Infof("Publish Event for block:[%s] from [%s]", p.Blk.GetHash(), e.MessageFrom())
 	dps.bp.blocks <- bs
 	dps.onReceivePublish(e, p.Blk)
 }
@@ -155,7 +155,7 @@ func (dps *DPoS) ReceiveConfirmReq(v interface{}) {
 		dps.logger.Error(err)
 		return
 	}
-	dps.logger.Info("ConfirmReq Event for block:[%s] from [%s]", r.Blk.GetHash(), e.MessageFrom())
+	dps.logger.Infof("ConfirmReq Event for block:[%s] from [%s]", r.Blk.GetHash(), e.MessageFrom())
 	dps.onReceiveConfirmReq(e, r.Blk)
 }
 
@@ -197,7 +197,7 @@ func (dps *DPoS) ReceiveConfirmAck(v interface{}) {
 		dps.logger.Info(err)
 		return
 	}
-	dps.logger.Info("ConfirmAck Event for block:[%s] from [%s]", ack.Blk.GetHash(), e.MessageFrom())
+	dps.logger.Infof("ConfirmAck Event for block:[%s] from [%s]", ack.Blk.GetHash(), e.MessageFrom())
 	dps.onReceiveConfirmAck(e, ack)
 }
 
@@ -248,6 +248,7 @@ func (dps *DPoS) ReceiveSyncBlock(v interface{}) {
 		block:     v.(*types.StateBlock),
 		blockFrom: types.Synchronized,
 	}
+	dps.logger.Infof("Sync Event for block:[%s]", bs.block.GetHash())
 	dps.bp.blocks <- bs
 }
 
