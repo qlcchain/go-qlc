@@ -232,7 +232,7 @@ func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 			return err
 		}
 		if len(childs) >= 2 {
-			return fmt.Errorf("%s have more than two childs %v", pHash.String(), childs)
+			return fmt.Errorf("%s already have two childs %v", pHash.String(), childs)
 		}
 
 		// add new relationship
@@ -1186,7 +1186,7 @@ func (l *Ledger) GetChild(hash types.Hash, address types.Address, txns ...db.Sto
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	childs, err := getChilds(hash, txn)
-	l.logger.Info(childs)
+	l.logger.Debug(childs)
 	if err != nil {
 		return types.ZeroHash, err
 	}

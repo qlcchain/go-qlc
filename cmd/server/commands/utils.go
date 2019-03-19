@@ -11,14 +11,13 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/qlcchain/go-qlc/ledger"
-
 	"github.com/qlcchain/go-qlc/chain"
 	ss "github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -34,27 +33,6 @@ func runNode(seed types.Seed, cfg *config.Config) error {
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	//l := ctx.Ledger.Ledger
-	//genesis := common.QLCGenesisBlock
-	////var key []byte
-	////key = append(key, types.MintageAddress[:]...)
-	////key = append(key, genesis.Token[:]...)
-	//if err := l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data); err != nil {
-	//	fmt.Println(err)
-	//}
-	//verifier := process.NewLedgerVerifier(l)
-	//if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
-	//	if err := l.AddStateBlock(&common.GenesisMintageBlock); err != nil {
-	//		fmt.Println(err)
-	//	}
-	//}
-	//
-	//if b, err := l.HasStateBlock(common.QLCGenesisBlockHash); !b && err == nil {
-	//	if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
-	//		fmt.Println(err)
-	//	}
-	//}
 
 	cmn.TrapSignal(func() {
 		stopNode(services)
