@@ -184,11 +184,11 @@ func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 		})
 		if count == 0 {
 			dps.bp.blocks <- bs
-		}
-		dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
-		err := dps.cache.Set(e.Hash(), "")
-		if err != nil {
-			dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmReq message", err, blk.GetHash())
+			dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
+			err := dps.cache.Set(e.Hash(), "")
+			if err != nil {
+				dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmReq message", err, blk.GetHash())
+			}
 		}
 	}
 }
