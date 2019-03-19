@@ -71,7 +71,7 @@ func (h *Hash) Of(hexString string) error {
 	s := util.TrimQuotes(hexString)
 	size := hex.DecodedLen(len(s))
 	if size != HashSize {
-		return fmt.Errorf("bad hash size: %d", size)
+		return fmt.Errorf("hash convert, bad hash size: %d", size)
 	}
 
 	var hash [HashSize]byte
@@ -103,7 +103,7 @@ func (h Hash) MarshalBinaryTo(text []byte) error {
 func (h *Hash) UnmarshalBinary(text []byte) error {
 	size := len(text)
 	if len(text) != HashSize {
-		return fmt.Errorf("bad hash size: %d", size)
+		return fmt.Errorf("hash unmarshal, bad hash size: %d", size)
 	}
 	copy((*h)[:], text)
 	return nil

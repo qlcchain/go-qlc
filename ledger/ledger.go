@@ -66,7 +66,7 @@ const (
 	idPrefixPending
 	idPrefixRepresentation
 	idPrefixPerformance
-	idPrefixPosterior
+	idPrefixChild
 	idPrefixVersion
 	idPrefixStorage
 	idPrefixToken
@@ -206,32 +206,54 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	return nil
 }
 
-func addChild(blk *types.StateBlock, txn db.StoreTxn) error {
-	parent := blk.Parent()
-	hash := blk.GetHash()
-	if !parent.IsZero() {
-		bKey := getKeyOfHash(parent, idPrefixBlock)
-		err := txn.Get(bKey, func(val []byte, b byte) error {
+func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
+	pHash := cBlock.Parent()
+	cHash := cBlock.GetHash()
+	if !pHash.IsZero() {
+		// is parent block existed
+		pBlock := new(types.StateBlock)
+		err := txn.Get(getKeyOfHash(pHash, idPrefixBlock), func(val []byte, b byte) error {
+			if err := pBlock.Deserialize(val); err != nil {
+				return err
+			}
 			return nil
 		})
-		if err == nil {
-			pKey := getKeyOfHash(parent, idPrefixPosterior)
-			err := txn.Get(pKey, func(val []byte, b byte) error {
-				return nil
-			})
-			if err == nil {
-				return ErrChildExists
-			} else if err != nil && err != badger.ErrKeyNotFound {
-				return err
+		if err != nil {
+			return fmt.Errorf("%s can not find parent %s", cHash.String(), pHash.String())
+		}
+
+		// is parent have used
+		pKey := getKeyOfHash(pHash, idPrefixChild)
+		childs := make(map[types.Hash]int)
+		err = txn.Get(pKey, func(val []byte, b byte) error {
+			return json.Unmarshal(val, &childs)
+		})
+		if err != nil && err != badger.ErrKeyNotFound {
+			return err
+		}
+		if len(childs) >= 2 {
+			return fmt.Errorf("%s have more than two childs %v", pHash.String(), childs)
+		}
+
+		// add new relationship
+		if pBlock.GetAddress() == cBlock.GetAddress() {
+			if _, ok := childs[cHash]; ok {
+				return fmt.Errorf("%s already have child %s", pHash.String(), cHash.String())
 			}
-			val := make([]byte, types.HashSize)
-			err = hash.MarshalBinaryTo(val)
-			if err != nil {
-				return err
+			childs[cHash] = 0
+		}
+		if pBlock.GetAddress() != cBlock.GetAddress() {
+			if _, ok := childs[cHash]; ok {
+				return fmt.Errorf("%s already have child %s", pHash.String(), cHash.String())
 			}
-			if err := txn.Set(pKey, val); err != nil {
-				return err
-			}
+			childs[cHash] = 1
+		}
+		val, err := json.Marshal(childs)
+		if err != nil {
+			return err
+		}
+		if err := txn.Set(pKey, val); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -335,9 +357,27 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 }
 
 func deleteChild(blk *types.StateBlock, txn db.StoreTxn) error {
-	pKey := getKeyOfHash(blk.Parent(), idPrefixPosterior)
-	if err := txn.Delete(pKey); err != nil {
-		return err
+	pHash := blk.Parent()
+	if !pHash.IsZero() {
+		childs, err := getChilds(pHash, txn)
+		if err != nil {
+			return fmt.Errorf("%s can not find child", pHash.String())
+		}
+		pKey := getKeyOfHash(pHash, idPrefixChild)
+		if len(childs) == 1 {
+			if err := txn.Delete(pKey); err != nil {
+				return err
+			}
+		} else {
+			delete(childs, blk.GetHash())
+			val, err := json.Marshal(childs)
+			if err != nil {
+				return err
+			}
+			if err := txn.Set(pKey, val); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -1142,24 +1182,36 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 	return txn.Count([]byte{idPrefixFrontier})
 }
 
-func (l *Ledger) GetChild(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
-	key := getKeyOfHash(hash, idPrefixPosterior)
+func (l *Ledger) GetChild(hash types.Hash, address types.Address, txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
-	h := new(types.Hash)
-	err := txn.Get(key, func(val []byte, b byte) error {
-		if err := h.UnmarshalBinary(val); err != nil {
-			return err
-		}
-		return nil
-	})
+	childs, err := getChilds(hash, txn)
+	l.logger.Info(childs)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return types.ZeroHash, ErrChildNotFound
-		}
 		return types.ZeroHash, err
 	}
-	return *h, nil
+	for k, _ := range childs {
+		b, err := l.GetStateBlock(k)
+		if err != nil {
+			return types.ZeroHash, fmt.Errorf("%s can not find child block %s", hash.String(), k.String())
+		}
+		if address == b.GetAddress() {
+			return b.GetHash(), nil
+		}
+	}
+	return types.ZeroHash, fmt.Errorf("%s can not find child for address %s", hash.String(), address.String())
+}
+
+func getChilds(hash types.Hash, txn db.StoreTxn) (map[types.Hash]int, error) {
+	key := getKeyOfHash(hash, idPrefixChild)
+	childs := make(map[types.Hash]int)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return json.Unmarshal(val, &childs)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return childs, nil
 }
 
 func getVersionKey() []byte {

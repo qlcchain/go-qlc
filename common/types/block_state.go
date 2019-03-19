@@ -97,7 +97,7 @@ func (b *StateBlock) Root() Hash {
 }
 
 func (b *StateBlock) Parent() Hash {
-	if b.Type.Equal(Open) {
+	if b.Type.Equal(Open) || b.Type.Equal(ContractReward) {
 		return b.Link
 	}
 	return b.Previous
