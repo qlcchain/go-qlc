@@ -198,7 +198,7 @@ func defaultIPCEndpoint() string {
 	} else {
 		dir := filepath.Join(DefaultDataDir(), "gqlc_test.ipc")
 		if runtime.GOOS == "windows" {
-			return `\\.\pipe\gqlc_test.ipc`
+			return `\\.\pipe\gqlc-test.ipc`
 		}
 		return dir
 	}
