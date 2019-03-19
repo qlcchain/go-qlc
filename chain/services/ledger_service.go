@@ -39,19 +39,22 @@ func (ls *LedgerService) Init() error {
 	defer ls.PostInit()
 	l := ls.Ledger
 
-	genesis := common.QLCGenesisBlock
+	genesis := common.GenesisBlock()
 	_ = l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
 	verifier := process.NewLedgerVerifier(l)
-	if b, err := l.HasStateBlock(common.GenesisMintageHash); !b && err == nil {
-		if err := l.AddStateBlock(&common.GenesisMintageBlock); err != nil {
+	mintageHash := common.GenesisMintageHash()
+	if b, err := l.HasStateBlock(mintageHash); !b && err == nil {
+		mintage := common.GenesisMintageBlock()
+		if err := l.AddStateBlock(&mintage); err != nil {
 			ls.logger.Error(err)
 		}
 	} else {
 		return err
 	}
 
-	if b, err := l.HasStateBlock(common.QLCGenesisBlockHash); !b && err == nil {
-		if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
+	genesisHash := common.GenesisBlockHash()
+	if b, err := l.HasStateBlock(genesisHash); !b && err == nil {
+		if err := verifier.BlockProcess(&genesis); err != nil {
 			ls.logger.Error(err)
 		}
 	} else {

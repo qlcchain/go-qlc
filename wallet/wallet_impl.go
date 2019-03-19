@@ -361,7 +361,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 	}
 
 	//get latest chain token block
-	hash := l.Latest(account, common.QLCChainToken)
+	hash := l.Latest(account, common.ChainToken())
 
 	if hash.IsZero() {
 		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
@@ -375,7 +375,7 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 	if err != nil {
 		return nil, err
 	}
-	tm, err := l.GetTokenMeta(account, common.QLCChainToken)
+	tm, err := l.GetTokenMeta(account, common.ChainToken())
 	if newSb, ok := changeBlock.(*types.StateBlock); ok {
 		acc, err := s.GetRawKey(account)
 		if err != nil {

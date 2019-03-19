@@ -97,7 +97,7 @@ func initNode(seed types.Seed, cfg *config.Config) error {
 							address := types.Address(b.Link)
 							if addr.String() == address.String() {
 								var balance types.Balance
-								if b.Token == common.QLCChainToken {
+								if b.Token == common.ChainToken() {
 									balance, _ = common.RawToBalance(b.Balance, "QLC")
 									fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", b.Address.String(), address.String(), balance)
 								} else {

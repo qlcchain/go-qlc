@@ -68,7 +68,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		return nil, err
 	}
 
-	tm := am.Token(common.QLCChainToken)
+	tm := am.Token(common.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not hava any chain token", param.SelfAddr.String())
 	}

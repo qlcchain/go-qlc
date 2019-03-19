@@ -82,7 +82,7 @@ func TestRPC_HTTP(t *testing.T) {
 	}
 
 	blk := new(types.StateBlock)
-	blk.Token = common.QLCChainToken
+	blk.Token = common.ChainToken()
 	rpc.ledger.AddStateBlock(blk)
 	var resp2 types.Hash
 	err = client.Call(&resp2, "ledger_blockHash", blk)
@@ -106,7 +106,7 @@ func TestRPC_WebSocket(t *testing.T) {
 	}
 
 	blk := new(types.StateBlock)
-	blk.Token = common.QLCChainToken
+	blk.Token = common.ChainToken()
 	rpc.ledger.AddStateBlock(blk)
 	var resp2 types.Hash
 	err = client.Call(&resp2, "ledger_blockHash", blk)

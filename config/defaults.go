@@ -17,17 +17,16 @@ import (
 
 	ic "github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-peer"
+	"github.com/qlcchain/go-qlc"
 )
 
 const (
 	QlcConfigFile = "qlc.json"
 	configVersion = 1
+	cfgDir        = "GQlcchain"
+	nixCfgDir     = ".gqlcchain"
+	suffix        = "_test"
 )
-
-var defaultBootstrapAddresses = []string{
-	"/ip4/47.244.138.61/tcp/9734/ipfs/QmdFSukPUMF3t1JxjvTo14SEEb5JV9JBT6PukGRo6A2g4f",
-	"/ip4/47.75.145.146/tcp/9734/ipfs/QmW9ocg4fRjckCMQvRNYGyKxQd6GiutAY4HBRxMrGrZRfc",
-}
 
 func DefaultConfig(dir string) (*Config, error) {
 	identity, err := identityConfig()
@@ -48,7 +47,49 @@ func DefaultConfig(dir string) (*Config, error) {
 		}
 	}`), &logCfg)
 
-	cfg := &Config{
+	if goqlc.MAINNET {
+		return &Config{
+			Version:             configVersion,
+			DataDir:             dir,
+			Mode:                "Normal",
+			StorageMax:          "10GB",
+			AutoGenerateReceive: false,
+			LogConfig:           &logCfg,
+			RPC: &RPCConfig{
+				Enable:           true,
+				HTTPEnabled:      true,
+				HTTPEndpoint:     "tcp4://0.0.0.0:9735",
+				HTTPCors:         []string{"*"},
+				HttpVirtualHosts: []string{},
+				WSEnabled:        true,
+				WSEndpoint:       "tcp4://0.0.0.0:9736",
+				IPCEnabled:       true,
+				IPCEndpoint:      defaultIPCEndpoint(),
+			},
+			P2P: &P2PConfig{
+				BootNodes: []string{
+					"/ip4/47.244.138.61/tcp/9734/ipfs/QmdFSukPUMF3t1JxjvTo14SEEb5JV9JBT6PukGRo6A2g4f",
+					"/ip4/47.75.145.146/tcp/9734/ipfs/QmW9ocg4fRjckCMQvRNYGyKxQd6GiutAY4HBRxMrGrZRfc",
+				},
+				Listen:       "/ip4/0.0.0.0/tcp/9734",
+				SyncInterval: 120,
+			},
+			Discovery: &DiscoveryConfig{
+				DiscoveryInterval: 30,
+				Limit:             20,
+				MDNS: MDNS{
+					Enabled:  true,
+					Interval: 30,
+				},
+			},
+			ID: identity,
+			PerformanceTest: &PerformanceTestConfig{
+				Enabled: false,
+			},
+		}, nil
+	}
+
+	return &Config{
 		Version:             configVersion,
 		DataDir:             dir,
 		Mode:                "Normal",
@@ -56,20 +97,22 @@ func DefaultConfig(dir string) (*Config, error) {
 		AutoGenerateReceive: false,
 		LogConfig:           &logCfg,
 		RPC: &RPCConfig{
-			Enable: true,
-			//Listen:       "/ip4/0.0.0.0/tcp/29735",
+			Enable:           true,
 			HTTPEnabled:      true,
-			HTTPEndpoint:     "tcp4://0.0.0.0:9735",
+			HTTPEndpoint:     "tcp4://0.0.0.0:19735",
 			HTTPCors:         []string{"*"},
 			HttpVirtualHosts: []string{},
 			WSEnabled:        true,
-			WSEndpoint:       "tcp4://0.0.0.0:9736",
+			WSEndpoint:       "tcp4://0.0.0.0:19736",
 			IPCEnabled:       true,
 			IPCEndpoint:      defaultIPCEndpoint(),
 		},
 		P2P: &P2PConfig{
-			BootNodes:    defaultBootstrapAddresses,
-			Listen:       "/ip4/0.0.0.0/tcp/9734",
+			BootNodes: []string{
+				"/ip4/47.244.138.61/tcp/19734/ipfs/QmdFSukPUMF3t1JxjvTo14SEEb5JV9JBT6PukGRo6A2g4f",
+				"/ip4/47.75.145.146/tcp/19734/ipfs/QmW9ocg4fRjckCMQvRNYGyKxQd6GiutAY4HBRxMrGrZRfc",
+			},
+			Listen:       "/ip4/0.0.0.0/tcp/19734",
 			SyncInterval: 120,
 		},
 		Discovery: &DiscoveryConfig{
@@ -84,8 +127,7 @@ func DefaultConfig(dir string) (*Config, error) {
 		PerformanceTest: &PerformanceTestConfig{
 			Enabled: false,
 		},
-	}
-	return cfg, nil
+	}, nil
 }
 
 // identityConfig initializes a new identity.
@@ -118,25 +160,48 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "Application Support", "GQlcchain")
+			var d string
+			if goqlc.MAINNET {
+				d = cfgDir
+			} else {
+				d = cfgDir + suffix
+			}
+			return filepath.Join(home, "Library", "Application Support", d)
 		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", "GQlcchain")
+			var d string
+			if goqlc.MAINNET {
+				d = cfgDir
+			} else {
+				d = cfgDir + suffix
+			}
+			return filepath.Join(home, "AppData", "Roaming", d)
 		} else {
-			return filepath.Join(home, ".gqlcchain")
+			var d string
+			if goqlc.MAINNET {
+				d = nixCfgDir
+			} else {
+				d = nixCfgDir + suffix
+			}
+			return filepath.Join(home, d)
 		}
 	}
 	return ""
 }
 
 func defaultIPCEndpoint() string {
-	dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
-	if runtime.GOOS == "windows" {
-		//if strings.HasPrefix(dir, `\\.\pipe\`) {
-		//	return dir
-		//}
-		return `\\.\pipe\gqlc.ipc`
+	if goqlc.MAINNET {
+		dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
+		if runtime.GOOS == "windows" {
+			return `\\.\pipe\gqlc.ipc`
+		}
+		return dir
+	} else {
+		dir := filepath.Join(DefaultDataDir(), "gqlc_test.ipc")
+		if runtime.GOOS == "windows" {
+			return `\\.\pipe\gqlc-test.ipc`
+		}
+		return dir
 	}
-	return dir
 }
 
 func DefaultConfigFile() string {

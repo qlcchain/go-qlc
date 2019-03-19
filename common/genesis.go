@@ -10,6 +10,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc"
 	"github.com/qlcchain/go-qlc/common/types"
 	"math/big"
 )
@@ -48,6 +49,39 @@ var (
         "signature": "3420612d28da9e5990bec8aa53d5dab89c9bcc70d020ce1dc8c74c844274e6eaf3eb7bba24bca95e566b036b17c9f01936835042dde70d0bd8f49659f83c0306"
     }`
 
+	testJsonMintage = `{
+        "type": "ContractSend",
+        "token": "a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582",
+        "address": "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
+        "balance": "0",
+        "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+        "link": "0000000000000000000000000000000000000000000000000000000000000000",
+        "message": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": "RtDOi6fo+jDAY+lqSJpHvEOQlQW9hnNdpKEJ3KKL6TYRioWCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADVKa6ehgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1FMQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANRTEMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+        "quota": 0,
+        "timestamp": 1553990401,
+        "extra": "0000000000000000000000000000000000000000000000000000000000000000",
+        "representative": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
+        "work": "0000000000000000",
+        "signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }`
+
+	testJsonGenesis = `{
+        "type": "ContractReward",
+        "token": "a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582",
+        "address": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
+        "balance": "60000000000000000",
+        "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+        "link": "f1042ef1472b02ee61048cf4eba923b81d0a64876665888b44bb2c46534f9655",
+        "message": "0000000000000000000000000000000000000000000000000000000000000000",
+        "quota": 0,
+        "timestamp": 1553990410,
+        "extra": "0000000000000000000000000000000000000000000000000000000000000000",
+        "representative": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
+        "work": "0000000000455bde",
+        "signature": "4c1d6048e2273e5548e66ea7697e8ba1fe9a8c418387f2a9f8626910b3978a0b2c9f020cb2eff4276bb5c0ed46f38e210f887f6bd4797c8208a9ed5d77f9f306"
+    }`
+
 	units = map[string]*big.Int{
 		"qlc":  big.NewInt(1),
 		"Kqlc": big.NewInt(1e5),
@@ -55,25 +89,85 @@ var (
 		"MQLC": big.NewInt(1e11),
 	}
 
-	QLCChainToken, _         = types.NewHash("45dd217cd9ff89f7b64ceda4886cc68dde9dfa47a8a422d165e2ce6f9a834fad")
-	GenesisAccountAddress, _ = types.HexToAddress("qlc_1t1uynkmrs597z4ns6ymppwt65baksgdjy1dnw483ubzm97oayyo38ertg44")
-	GenesisMintageBlock      types.StateBlock
-	GenesisMintageHash       types.Hash
-	QLCGenesisBlock          types.StateBlock
-	QLCGenesisBlockHash      types.Hash
+	//main net
+	chainToken, _       = types.NewHash("45dd217cd9ff89f7b64ceda4886cc68dde9dfa47a8a422d165e2ce6f9a834fad")
+	genesisAddress, _   = types.HexToAddress("qlc_1t1uynkmrs597z4ns6ymppwt65baksgdjy1dnw483ubzm97oayyo38ertg44")
+	genesisMintageBlock types.StateBlock
+	genesisMintageHash  types.Hash
+	genesisBlock        types.StateBlock
+	genesisBlockHash    types.Hash
+
+	//test net
+	testChainToken, _       = types.NewHash("a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582")
+	testGenesisAddress, _   = types.HexToAddress("qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4")
+	testGenesisMintageBlock types.StateBlock
+	testGenesisMintageHash  types.Hash
+	testGenesisBlock        types.StateBlock
+	testGenesisBlockHash    types.Hash
 )
 
 func init() {
-	_ = json.Unmarshal([]byte(jsonMintage), &GenesisMintageBlock)
-	_ = json.Unmarshal([]byte(jsonGenesis), &QLCGenesisBlock)
-	GenesisMintageHash = GenesisMintageBlock.GetHash()
-	QLCGenesisBlockHash = QLCGenesisBlock.GetHash()
+	_ = json.Unmarshal([]byte(jsonMintage), &genesisMintageBlock)
+	_ = json.Unmarshal([]byte(jsonGenesis), &genesisBlock)
+	genesisMintageHash = genesisMintageBlock.GetHash()
+	genesisBlockHash = genesisBlock.GetHash()
+
+	_ = json.Unmarshal([]byte(testJsonMintage), &testGenesisMintageBlock)
+	_ = json.Unmarshal([]byte(testJsonGenesis), &testGenesisBlock)
+	testGenesisMintageHash = testGenesisMintageBlock.GetHash()
+	testGenesisBlockHash = testGenesisBlock.GetHash()
+}
+
+func GenesisAddress() types.Address {
+	if goqlc.MAINNET {
+		return genesisAddress
+	}
+	return testGenesisAddress
+}
+
+func ChainToken() types.Hash {
+	if goqlc.MAINNET {
+		return chainToken
+	}
+	return testChainToken
+}
+
+func GenesisMintageBlock() types.StateBlock {
+	if goqlc.MAINNET {
+		return genesisMintageBlock
+	}
+	return testGenesisMintageBlock
+}
+
+func GenesisMintageHash() types.Hash {
+	if goqlc.MAINNET {
+		return genesisMintageHash
+	}
+	return testGenesisMintageHash
+}
+
+func GenesisBlock() types.StateBlock {
+	if goqlc.MAINNET {
+		return genesisBlock
+	}
+	return testGenesisBlock
+}
+
+func GenesisBlockHash() types.Hash {
+	if goqlc.MAINNET {
+		return genesisBlockHash
+	}
+	return testGenesisBlockHash
 }
 
 // IsGenesis check block is chain token genesis
 func IsGenesisBlock(block *types.StateBlock) bool {
 	h := block.GetHash()
-	return h == GenesisMintageHash || h == QLCGenesisBlockHash
+	if goqlc.MAINNET {
+		return h == genesisMintageHash || h == genesisBlockHash
+	}
+
+	return h == testGenesisMintageHash || h == testGenesisBlockHash
 }
 
 func BalanceToRaw(b types.Balance, unit string) (types.Balance, error) {

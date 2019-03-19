@@ -91,7 +91,7 @@ func (cfg *Config) DecodePrivateKey() (ic.PrivKey, error) {
 	}
 
 	// currently storing key unencrypted. in the future we need to encrypt it.
-	// TODO(security)
+	// TODO:(security)
 	return ic.UnmarshalPrivateKey(pkb)
 }
 

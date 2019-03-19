@@ -159,7 +159,7 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		return nil, err
 	}
 	for _, t := range am.Tokens {
-		if t.Type == common.QLCChainToken {
+		if t.Type == common.ChainToken() {
 			aa.CoinBalance = t.Balance
 			aa.Representative = t.Representative
 		}
@@ -197,7 +197,7 @@ func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, er
 		return types.ZeroAddress, err
 	}
 	for _, t := range am.Tokens {
-		if t.Type == common.QLCChainToken {
+		if t.Type == common.ChainToken() {
 			return t.Representative, nil
 		}
 	}
@@ -443,7 +443,7 @@ func (l *LedgerApi) Delegators(hash types.Address) ([]*APIAccountBalance, error)
 	abs := make([]*APIAccountBalance, 0)
 
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		t := am.Token(common.QLCChainToken)
+		t := am.Token(common.ChainToken())
 		if t != nil {
 			if t.Representative == hash {
 				ab := &APIAccountBalance{am.Address, t.Balance}
@@ -462,7 +462,7 @@ func (l *LedgerApi) Delegators(hash types.Address) ([]*APIAccountBalance, error)
 func (l *LedgerApi) DelegatorsCount(hash types.Address) (int64, error) {
 	var count int64
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		t := am.Token(common.QLCChainToken)
+		t := am.Token(common.ChainToken())
 		if t != nil {
 			if t.Representative == hash {
 				count = count + 1

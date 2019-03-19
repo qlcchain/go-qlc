@@ -79,9 +79,9 @@ func StateBlock() *types.StateBlock {
 	sb.Type = types.State
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
 	sb.Address = a.Address()
-	sb.Token = common.QLCChainToken
+	sb.Token = common.ChainToken()
 	sb.Previous = Hash()
-	sb.Representative = common.GenesisAccountAddress
+	sb.Representative = common.GenesisAddress()
 	addr := Address()
 	sb.Link = addr.ToHash()
 	sb.Signature = a.Sign(sb.GetHash())
@@ -123,9 +123,9 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Type = types.Open
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
 	sb.Address = a.Address()
-	sb.Token = common.QLCChainToken
+	sb.Token = common.ChainToken()
 	sb.Previous = Hash()
-	sb.Representative = common.GenesisAccountAddress
+	sb.Representative = common.GenesisAddress()
 	//addr := Address()
 	sb.Link = types.ZeroHash
 	return sb
@@ -151,7 +151,7 @@ func BlockChain() ([]*types.StateBlock, error) {
 	ac2 := Account()
 	//ac3 := Account()
 
-	token := common.QLCChainToken
+	token := common.ChainToken()
 
 	b0 := createBlock(types.Open, *ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, types.ZeroHash, ac1.Address()) //a1 open
 	blocks = append(blocks, b0)
