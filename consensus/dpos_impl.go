@@ -140,8 +140,6 @@ func (dps *DPoS) ReceivePublish(v interface{}) {
 
 func (dps *DPoS) onReceivePublish(e p2p.Message, blk *types.StateBlock) {
 	if !dps.cache.Has(e.Hash()) {
-		//	dps.logger.Info("cache Publish for block  is :", blk.GetHash().String(), " content is ", e.Content())
-		//	dps.logger.Infof("cache hash for publish is [%s],block hash is [%s]", e.Hash().String(), blk.GetHash())
 		dps.ns.SendMessageToPeers(p2p.PublishReq, blk, e.MessageFrom())
 		err := dps.cache.Set(e.Hash(), "")
 		if err != nil {
@@ -169,8 +167,6 @@ func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 		blockFrom: types.UnSynchronized,
 	}
 	if !dps.cache.Has(e.Hash()) {
-		//	dps.logger.Info("cache ConfirmReq for block  is :", blk.GetHash().String(), " content is ", e.Content())
-		//	dps.logger.Infof("cache hash for confirmReq is [%s],block hash is [%s]", e.Hash().String(), bs.block.GetHash())
 		localRepAccount.Range(func(key, value interface{}) bool {
 			count++
 			address = key.(types.Address)
@@ -221,8 +217,6 @@ func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock)
 	}
 	dps.acTrx.vote(ack)
 	if !dps.cache.Has(e.Hash()) {
-		//		dps.logger.Info("cache ConfirmAck for block  is :", ack.Blk.GetHash().String(), " content is ", e.Content())
-		//		dps.logger.Infof("cache hash for confirmAck is [%s],block hash is [%s],from peer [%s]", e.Hash().String(), ack.Blk.GetHash(), e.MessageFrom())
 		dps.saveOnlineRep(ack.Account)
 		localRepAccount.Range(func(key, value interface{}) bool {
 			count++
@@ -358,7 +352,7 @@ func (dps *DPoS) sendAckIfResultIsOld(block *types.StateBlock, account types.Add
 	return nil
 }
 
-func (dps *DPoS) CalculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error) {
+func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error) {
 	data, err := protos.ConfirmAckBlockToProto(va)
 	if err != nil {
 		return types.ZeroHash, err
