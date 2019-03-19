@@ -172,10 +172,10 @@ func (act *ActiveTrx) announceVotes() {
 				}
 			}
 			value.(*Election).announcements++
-			if value.(*Election).announcements == announcementMax {
-				if _, ok := act.roots.Load(value); !ok {
-					act.inactive = append(act.inactive, value.(*Election).vote.id)
-				}
+		}
+		if value.(*Election).announcements == announcementMax {
+			if _, ok := act.roots.Load(value); !ok {
+				act.inactive = append(act.inactive, value.(*Election).vote.id)
 			}
 		}
 		return true
