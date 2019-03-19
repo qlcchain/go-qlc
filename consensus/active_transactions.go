@@ -11,6 +11,7 @@ import (
 
 const (
 	//announcementMin        = 4 //Minimum number of block announcements
+	announcementMax        = 20 //Max number of block announcements
 	announceIntervalSecond = 16 * time.Second
 	refreshPriInterval     = 5 * time.Minute
 )
@@ -59,13 +60,13 @@ func (act *ActiveTrx) start() {
 }
 
 func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
-	if _, ok := act.roots.Load(block.Root()); !ok {
+	if _, ok := act.roots.Load(block.Parent()); !ok {
 		ele, err := NewElection(act.dps, block)
 		if err != nil {
 			act.dps.logger.Errorf("block :%s add to roots error", block.GetHash())
 			return false
 		}
-		act.roots.Store(block.Root(), ele)
+		act.roots.Store(block.Parent(), ele)
 		return true
 	} else {
 		act.dps.logger.Infof("block :%s already exit in roots", block.GetHash())
@@ -141,7 +142,7 @@ func (act *ActiveTrx) announceVotes() {
 				if err != nil {
 					act.dps.logger.Error("vote generate error")
 				} else {
-					act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", hash, block.Root())
+					act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", hash, block.Parent())
 					act.dps.ns.Broadcast(p2p.ConfirmAck, va)
 					value.(*Election).voteAction(va)
 				}
@@ -171,6 +172,11 @@ func (act *ActiveTrx) announceVotes() {
 				}
 			}
 			value.(*Election).announcements++
+			if value.(*Election).announcements == announcementMax {
+				if _, ok := act.roots.Load(value); !ok {
+					act.inactive = append(act.inactive, value.(*Election).vote.id)
+				}
+			}
 		}
 		return true
 	})
@@ -216,7 +222,7 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 }
 
 func (act *ActiveTrx) vote(va *protos.ConfirmAckBlock) {
-	if v, ok := act.roots.Load(va.Blk.Root()); ok {
+	if v, ok := act.roots.Load(va.Blk.Parent()); ok {
 		v.(*Election).voteAction(va)
 	}
 }

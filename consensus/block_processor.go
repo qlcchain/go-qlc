@@ -45,7 +45,7 @@ func (bp *BlockProcessor) processBlocks() {
 		case bs := <-bp.blocks:
 			result, err := bp.dp.verifier.Process(bs.block)
 			if err != nil {
-				bp.dp.logger.Error("error: [%s] when verify block:[%s]", err, bs.block.GetHash())
+				bp.dp.logger.Errorf("error: [%s] when verify block:[%s]", err, bs.block.GetHash())
 				continue
 			}
 			bp.processResult(result, bs)
@@ -121,7 +121,7 @@ func (bp *BlockProcessor) processGapSmartContract(block *types.StateBlock) {
 
 func (bp *BlockProcessor) processFork(block *types.StateBlock) {
 	blk := bp.findAnotherForkedBlock(block)
-	if _, ok := bp.dp.acTrx.roots.Load(blk.Root()); !ok {
+	if _, ok := bp.dp.acTrx.roots.Load(blk.Parent()); !ok {
 		bp.dp.acTrx.addToRoots(blk)
 		bp.dp.ns.Broadcast(p2p.ConfirmReq, blk)
 	}
@@ -152,8 +152,8 @@ func (bp *BlockProcessor) processFork(block *types.StateBlock) {
 }
 
 func (bp *BlockProcessor) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlock {
-	hash := block.Root()
-	forkedHash, err := bp.dp.ledger.GetChild(hash)
+	hash := block.Parent()
+	forkedHash, err := bp.dp.ledger.GetChild(hash, block.Address)
 	if err != nil {
 		bp.dp.logger.Error(err)
 		return block
