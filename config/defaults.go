@@ -10,7 +10,6 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
-	"github.com/qlcchain/go-qlc"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -18,6 +17,7 @@ import (
 
 	ic "github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-peer"
+	"github.com/qlcchain/go-qlc"
 )
 
 const (
@@ -189,14 +189,19 @@ func DefaultDataDir() string {
 }
 
 func defaultIPCEndpoint() string {
-	dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
-	if runtime.GOOS == "windows" {
-		//if strings.HasPrefix(dir, `\\.\pipe\`) {
-		//	return dir
-		//}
-		return `\\.\pipe\gqlc.ipc`
+	if goqlc.MAINNET {
+		dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
+		if runtime.GOOS == "windows" {
+			return `\\.\pipe\gqlc.ipc`
+		}
+		return dir
+	} else {
+		dir := filepath.Join(DefaultDataDir(), "gqlc_test.ipc")
+		if runtime.GOOS == "windows" {
+			return `\\.\pipe\gqlc_test.ipc`
+		}
+		return dir
 	}
-	return dir
 }
 
 func DefaultConfigFile() string {

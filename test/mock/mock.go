@@ -126,8 +126,8 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Token = common.ChainToken()
 	sb.Previous = Hash()
 	sb.Representative = common.GenesisAddress()
-	addr := Address()
-	sb.Link = addr.ToHash()
+	//addr := Address()
+	sb.Link = types.ZeroHash
 	return sb
 }
 
