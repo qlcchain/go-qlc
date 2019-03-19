@@ -8,11 +8,12 @@
 package common
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func TestGenesisBlock(t *testing.T) {
@@ -33,7 +34,7 @@ func TestGenesisBlock(t *testing.T) {
 }
 
 func TestGenesisBlock2(t *testing.T) {
-	h, _ := types.NewHash("80a4b6bc4f69ffd0ede34cb7d20b5c3c8f242bedd3d599412cf0d5fbdf86ca11")
+	h, _ := types.NewHash("a217c8d4374377562e891d0f6b50fcdcd02c68ab7fe7d72efd14ea5c4136a214")
 	genesis := testGenesisBlock
 	h2 := genesis.GetHash()
 	if h2 != h {
