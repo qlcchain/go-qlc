@@ -23,8 +23,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-func runNode(seed types.Seed, cfg *config.Config) error {
-	err := initNode(seed, cfg)
+func runNode(accounts []*types.Account, cfg *config.Config) error {
+	err := initNode(accounts, cfg)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -49,20 +49,12 @@ func stopNode(services []common.Service) {
 	}
 }
 
-func initNode(seed types.Seed, cfg *config.Config) error {
+func initNode(accounts []*types.Account, cfg *config.Config) error {
 	var err error
-	var accounts []*types.Account
-	var addr types.Address
 	ctx, err = chain.New(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return err
-	}
-	if !seed.IsZero() {
-		for i := 0; i < 100; i++ {
-			acc, _ := seed.Account(uint32(i))
-			accounts = append(accounts, acc)
-		}
 	}
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
@@ -91,7 +83,7 @@ func initNode(seed types.Seed, cfg *config.Config) error {
 
 			go func(accounts []*types.Account) {
 				for _, value := range accounts {
-					addr = value.Address()
+					addr := value.Address()
 					if b, ok := v.(*types.StateBlock); ok {
 						if b.Type == types.Send {
 							address := types.Address(b.Link)

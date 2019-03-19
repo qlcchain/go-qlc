@@ -80,7 +80,8 @@ func importWallet(seedP string) error {
 	if err != nil {
 		return err
 	}
-	err = initNode(types.ZeroSeed, cfg)
+	var accounts []*types.Account
+	err = initNode(accounts, cfg)
 	if err != nil {
 		return err
 	}

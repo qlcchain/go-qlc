@@ -22,6 +22,7 @@ import (
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
 	"github.com/qlcchain/go-qlc/chain"
+	ss "github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/cmd/client/commands"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -37,20 +38,23 @@ var (
 )
 
 var (
-	//	accountP   string
-	passwordP  string
-	seedP      string
-	cfgPathP   string
-	isProfileP bool
+	seedP       string
+	privateKeyP string
+	accountP    string
+	passwordP   string
+	cfgPathP    string
+	isProfileP  bool
 
-	//account   commands.Flag
-	password  commands.Flag
-	seed      commands.Flag
-	cfgPath   commands.Flag
-	isProfile commands.Flag
+	privateKey commands.Flag
+	account    commands.Flag
+	password   commands.Flag
+	seed       commands.Flag
+	cfgPath    commands.Flag
+	isProfile  commands.Flag
 
-	ctx      *chain.QlcContext
-	services []common.Service
+	ctx            *chain.QlcContext
+	services       []common.Service
+	maxAccountSize = 100
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -71,13 +75,13 @@ func Execute(osArgs []string) {
 				//FuncFilterInputRune: filterInput,
 			})
 		shell.Println("QLC Chain Server")
-		addcommand()
+		addCommand()
 		shell.Run()
 	} else {
 		rootCmd = &cobra.Command{
-			Use:   "QLCCChain",
+			Use:   "gqlc",
 			Short: "CLI for QLCChain Server",
-			Long:  `QLC Chain is the next generation public blockchain designed for the NaaS.`,
+			Long:  `QLC Chain is the next generation public block chain designed for the NaaS.`,
 			Run: func(cmd *cobra.Command, args []string) {
 				err := start()
 				if err != nil {
@@ -86,21 +90,21 @@ func Execute(osArgs []string) {
 
 			},
 		}
-		rootCmd.PersistentFlags().StringVarP(&cfgPathP, "config", "c", "", "config file")
-		//		rootCmd.PersistentFlags().StringVarP(&accountP, "account", "a", "", "wallet address,if is nil,just run a node")
-		rootCmd.PersistentFlags().StringVarP(&passwordP, "password", "p", "", "password for wallet")
-		rootCmd.PersistentFlags().StringVarP(&seedP, "seed", "s", "", "seed for accounts")
+		rootCmd.PersistentFlags().StringVar(&cfgPathP, "config", "", "config file")
+		rootCmd.PersistentFlags().StringVar(&accountP, "account", "", "wallet address, if is nil,just run a node")
+		rootCmd.PersistentFlags().StringVar(&passwordP, "password", "", "password for wallet")
+		rootCmd.PersistentFlags().StringVar(&seedP, "seed", "", "seed for accounts")
+		rootCmd.PersistentFlags().StringVar(&privateKeyP, "privateKey", "", "seed for accounts")
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
-		addcommand()
+		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 	}
-
 }
 
-func addcommand() {
+func addCommand() {
 	if interactive {
 		run()
 	}
@@ -109,7 +113,7 @@ func addcommand() {
 }
 
 func start() error {
-	var seed types.Seed
+	var accounts []*types.Account
 	if cfgPathP == "" {
 		cfgPathP = config.DefaultDataDir()
 	}
@@ -118,15 +122,51 @@ func start() error {
 	if err != nil {
 		return err
 	}
-	if seedP == "" {
-		seed = types.ZeroSeed
-	} else {
+
+	if len(seedP) > 0 {
+		fmt.Println("run node SEED mode")
 		sByte, _ := hex.DecodeString(seedP)
-		seedT, err := types.BytesToSeed(sByte)
+		tmp, err := seedToAccounts(sByte)
 		if err != nil {
 			return err
 		}
-		seed = *seedT
+		accounts = append(accounts, tmp...)
+	} else if len(privateKeyP) > 0 {
+		fmt.Println("run node PRIVATE KEY mode")
+		bytes, err := hex.DecodeString(privateKeyP)
+		if err != nil {
+			return err
+		}
+		account := types.NewAccount(bytes)
+		accounts = append(accounts, account)
+	} else if len(accountP) > 0 {
+		fmt.Println("run node WALLET mode")
+		address, err := types.HexToAddress(accountP)
+		if err != nil {
+			return err
+		}
+
+		w := ss.NewWalletService(cfg).Wallet
+		session := w.NewSession(address)
+		defer func() {
+			err := session.Close()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}()
+
+		if b, err := session.VerifyPassword(passwordP); b && err == nil {
+			bytes, err := session.GetSeed()
+			tmp, err := seedToAccounts(bytes)
+			if err != nil {
+				return err
+			}
+			accounts = append(accounts, tmp...)
+		} else {
+			return fmt.Errorf("invalid wallet password of %s", accountP)
+		}
+	} else {
+		fmt.Println("run node without account")
 	}
 
 	if isProfileP {
@@ -174,20 +214,34 @@ func start() error {
 		}()
 	}
 
-	err = runNode(seed, cfg)
+	err = runNode(accounts, cfg)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+func seedToAccounts(data []byte) ([]*types.Account, error) {
+	seed, err := types.BytesToSeed(data)
+	if err != nil {
+		return nil, err
+	}
+	var accounts []*types.Account
+	for i := 0; i < maxAccountSize; i++ {
+		account, _ := seed.Account(uint32(i))
+		accounts = append(accounts, account)
+	}
+
+	return accounts, nil
+}
+
 func run() {
-	//account = commands.Flag{
-	//	Name:  "account",
-	//	Must:  false,
-	//	Usage: "wallet address,if is nil,just run a node",
-	//	Value: "",
-	//}
+	account = commands.Flag{
+		Name:  "account",
+		Must:  false,
+		Usage: "wallet address,if is nil,just run a node",
+		Value: "",
+	}
 	password = commands.Flag{
 		Name:  "password",
 		Must:  false,
@@ -198,6 +252,12 @@ func run() {
 		Name:  "seed",
 		Must:  false,
 		Usage: "seed for wallet,if is nil,just run a node",
+		Value: "",
+	}
+	privateKey = commands.Flag{
+		Name:  "privateKey",
+		Must:  false,
+		Usage: "account private key",
 		Value: "",
 	}
 	cfgPath = commands.Flag{
@@ -226,8 +286,9 @@ func run() {
 				commands.Warn(err)
 				return
 			}
-			//accountP = commands.StringVar(c.Args, account)
+			accountP = commands.StringVar(c.Args, account)
 			passwordP = commands.StringVar(c.Args, password)
+			privateKeyP = commands.StringVar(c.Args, privateKey)
 			seedP = commands.StringVar(c.Args, seed)
 			cfgPathP = commands.StringVar(c.Args, cfgPath)
 			isProfileP = commands.BoolVar(c.Args, isProfile)
