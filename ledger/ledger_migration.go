@@ -22,13 +22,7 @@ func (m BlockPosterior) Migrate(txn db.StoreTxn) error {
 		if err != nil {
 			return err
 		}
-		pre := blk.GetPrevious()
-		if !pre.IsZero() {
-			pKey := getKeyOfHash(pre, idPrefixPosterior)
-			if err := txn.Set(pKey, key[1:]); err != nil {
-				return err
-			}
-		}
+		addChild(blk, txn)
 		return nil
 	})
 	if err := setVersion(int64(m.EndVersion()), txn); err != nil {

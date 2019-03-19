@@ -22,7 +22,7 @@ type Votes struct {
 
 func NewVotes(blk *types.StateBlock) *Votes {
 	return &Votes{
-		id:       blk.Root(),
+		id:       blk.Parent(),
 		repVotes: new(sync.Map),
 	}
 }

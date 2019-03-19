@@ -73,8 +73,8 @@ func (el *Election) haveQuorum() {
 	if err != nil {
 		return
 	}
+	confirmedHash := blk.GetHash()
 	if balance.Compare(b) == types.BalanceCompBigger {
-		confirmedHash := blk.GetHash()
 		el.dps.logger.Infof("hash:%s block has confirmed,total vote is [%s]", confirmedHash, balance.String())
 		if el.status.winner.GetHash().String() != confirmedHash.String() {
 			el.dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash().String())
@@ -89,7 +89,7 @@ func (el *Election) haveQuorum() {
 			}
 		}
 	} else {
-		el.dps.logger.Infof("wait for enough rep vote,current vote is [%s]", balance.String())
+		el.dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance.String())
 	}
 }
 

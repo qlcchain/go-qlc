@@ -90,8 +90,15 @@ func (b *StateBlock) GetMessage() Hash {
 }
 
 func (b *StateBlock) Root() Hash {
-	if b.isOpen() {
+	if b.Type.Equal(Open) {
 		return b.Address.ToHash()
+	}
+	return b.Previous
+}
+
+func (b *StateBlock) Parent() Hash {
+	if b.Type.Equal(Open) || b.Type.Equal(ContractReward) {
+		return b.Link
 	}
 	return b.Previous
 }
@@ -101,14 +108,10 @@ func (b *StateBlock) Size() int {
 }
 
 func (b *StateBlock) IsValid() bool {
-	if b.isOpen() {
+	if b.Type.Equal(Open) {
 		return b.Work.IsValid(Hash(b.Address))
 	}
 	return b.Work.IsValid(b.Previous)
-}
-
-func (b *StateBlock) isOpen() bool {
-	return b.Previous.IsZero()
 }
 
 func (b *StateBlock) Serialize() ([]byte, error) {

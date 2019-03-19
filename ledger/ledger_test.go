@@ -130,7 +130,7 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
 	blk := mock.StateBlockWithoutWork()
 	if err := l.AddStateBlock(blk); err != nil {
-		t.Log(err)
+		t.Fatal(err)
 	}
 	return blk
 }
@@ -163,27 +163,11 @@ func addSmartContractBlock(t *testing.T, l *Ledger) *types.SmartContractBlock {
 func TestLedger_AddBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	bc1 := mock.StateBlockWithoutWork()
-	bc2 := mock.StateBlockWithoutWork()
-	bc2.Previous = bc1.GetHash()
-	if err := l.AddStateBlock(bc1); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.AddStateBlock(bc2); err != nil {
-		t.Fatal(err)
-	}
-	a, err := l.GetPosterior(bc1.GetHash())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if a != bc2.GetHash() {
-		t.Fatal()
-	}
+	addStateBlock(t, l)
 }
 
 func TestLedger_GetBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
-
 	defer teardownTestCase(t)
 
 	block := addStateBlock(t, l)
@@ -261,21 +245,8 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 func TestLedger_DeleteBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	bc1 := mock.StateBlockWithoutWork()
-	bc2 := mock.StateBlockWithoutWork()
-	bc2.Previous = bc1.GetHash()
-	if err := l.AddStateBlock(bc1); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.AddStateBlock(bc2); err != nil {
-		t.Fatal(err)
-	}
-	err := l.DeleteStateBlock(bc1.GetHash())
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = l.GetPosterior(bc2.GetHash())
-	if err != nil && err != ErrPosteriorNotFound {
+	block := addStateBlock(t, l)
+	if err := l.DeleteStateBlock(block.GetHash()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -286,7 +257,7 @@ func TestLedger_HasBlock(t *testing.T) {
 
 	block := addStateBlock(t, l)
 	r, err := l.HasStateBlock(block.GetHash())
-	if err != nil {
+	if err != nil || !r {
 		t.Fatal(err)
 	}
 	t.Log("hasblock,", r)
@@ -1112,6 +1083,76 @@ func TestLedger_SetOnlineRepresentations(t *testing.T) {
 			t.Fatal("invalid online rep")
 		}
 	} else {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_BlockChild(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addr1 := mock.Address()
+	addr2 := mock.Address()
+	b1 := mock.StateBlockWithoutWork()
+	b1.Address = addr1
+
+	b2 := mock.StateBlockWithoutWork()
+	b2.Address = addr1
+	b2.Type = types.Send
+	b2.Previous = b1.GetHash()
+
+	b3 := mock.StateBlockWithoutWork()
+	b3.Address = addr2
+	b3.Link = b1.GetHash()
+
+	b4 := mock.StateBlockWithoutWork()
+	b4.Address = addr1
+	b4.Type = types.Send
+	b4.Previous = b1.GetHash()
+
+	if err := l.AddStateBlock(b1); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(b2); err != nil {
+		t.Fatal(err)
+	}
+	h, err := l.GetChild(b1.GetHash(), b2.GetAddress())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h != b2.GetHash() {
+		t.Fatal()
+	}
+
+	if err := l.AddStateBlock(b3); err != nil {
+		t.Fatal(err)
+	}
+	h, err = l.GetChild(b1.GetHash(), b3.GetAddress())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h != b3.GetHash() {
+		t.Fatal()
+	}
+
+	if err := l.AddStateBlock(b4); err == nil {
+		t.Fatal()
+	}
+
+	if err := l.DeleteStateBlock(b2.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+
+	h, err = l.GetChild(b1.GetHash(), b2.GetAddress())
+	if err != nil {
+		t.Log(err)
+	}
+
+	if err := l.AddStateBlock(b4); err != nil {
+		t.Fatal(err)
+	}
+
+	h, err = l.GetChild(b1.GetHash(), b4.GetAddress())
+	if err != nil {
 		t.Fatal(err)
 	}
 }

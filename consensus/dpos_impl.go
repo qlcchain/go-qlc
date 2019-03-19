@@ -17,7 +17,7 @@ import (
 
 const (
 	msgCacheSize                      = 65536
-	msgCacheExpirationTime            = 30 * time.Minute
+	msgCacheExpirationTime            = 15 * time.Minute
 	findOnlineRepresentativesInterval = 2 * time.Minute
 	repTimeout                        = 5 * time.Minute
 )
@@ -123,7 +123,6 @@ func (dps *DPoS) setEvent() {
 }
 
 func (dps *DPoS) ReceivePublish(v interface{}) {
-	dps.logger.Info("Publish Event")
 	e := v.(p2p.Message)
 	p, err := protos.PublishBlockFromProto(e.Data())
 	if err != nil {
@@ -134,6 +133,7 @@ func (dps *DPoS) ReceivePublish(v interface{}) {
 		block:     p.Blk,
 		blockFrom: types.UnSynchronized,
 	}
+	dps.logger.Infof("Publish Event for block:[%s] from [%s]", p.Blk.GetHash(), e.MessageFrom())
 	dps.bp.blocks <- bs
 	dps.onReceivePublish(e, p.Blk)
 }
@@ -149,13 +149,13 @@ func (dps *DPoS) onReceivePublish(e p2p.Message, blk *types.StateBlock) {
 }
 
 func (dps *DPoS) ReceiveConfirmReq(v interface{}) {
-	dps.logger.Info("ConfirmReq Event")
 	e := v.(p2p.Message)
 	r, err := protos.ConfirmReqBlockFromProto(e.Data())
 	if err != nil {
 		dps.logger.Error(err)
 		return
 	}
+	dps.logger.Infof("ConfirmReq Event for block:[%s] from [%s]", r.Blk.GetHash(), e.MessageFrom())
 	dps.onReceiveConfirmReq(e, r.Blk)
 }
 
@@ -173,31 +173,34 @@ func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 			dps.saveOnlineRep(address)
 			result, _ := dps.verifier.Process(bs.block)
 			if result == process.Old {
-				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
-				dps.sendConfirmAck(bs.block, address, value.(*types.Account))
+				err := dps.sendAckIfResultIsOld(bs.block, address, value.(*types.Account))
+				if err != nil {
+					return true
+				}
+			} else {
+				dps.bp.processResult(result, bs)
 			}
-			dps.bp.processResult(result, bs)
 			return true
 		})
 		if count == 0 {
 			dps.bp.blocks <- bs
-		}
-		dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
-		err := dps.cache.Set(e.Hash(), "")
-		if err != nil {
-			dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmReq message", err, blk.GetHash())
+			dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
+			err := dps.cache.Set(e.Hash(), "")
+			if err != nil {
+				dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmReq message", err, blk.GetHash())
+			}
 		}
 	}
 }
 
 func (dps *DPoS) ReceiveConfirmAck(v interface{}) {
-	dps.logger.Info("ConfirmAck Event")
 	e := v.(p2p.Message)
 	ack, err := protos.ConfirmAckBlockFromProto(e.Data())
 	if err != nil {
 		dps.logger.Info(err)
 		return
 	}
+	dps.logger.Infof("ConfirmAck Event for block:[%s] from [%s]", ack.Blk.GetHash(), e.MessageFrom())
 	dps.onReceiveConfirmAck(e, ack)
 }
 
@@ -221,10 +224,13 @@ func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock)
 			dps.saveOnlineRep(address)
 			result, _ := dps.verifier.Process(bs.block)
 			if result == process.Old {
-				dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", bs.block.GetHash(), bs.block.Root())
-				dps.sendConfirmAck(bs.block, address, value.(*types.Account))
+				err := dps.sendAckIfResultIsOld(bs.block, address, value.(*types.Account))
+				if err != nil {
+					return true
+				}
+			} else {
+				dps.bp.processResult(result, bs)
 			}
-			dps.bp.processResult(result, bs)
 			if result == process.Progress {
 				dps.acTrx.vote(ack)
 			}
@@ -248,6 +254,7 @@ func (dps *DPoS) ReceiveSyncBlock(v interface{}) {
 		block:     v.(*types.StateBlock),
 		blockFrom: types.Synchronized,
 	}
+	dps.logger.Infof("Sync Event for block:[%s]", bs.block.GetHash())
 	dps.bp.blocks <- bs
 }
 
@@ -323,4 +330,38 @@ func (dps *DPoS) cleanOnlineReps() {
 		return true
 	})
 	_ = dps.ledger.SetOnlineRepresentations(repAddresses)
+}
+
+func (dps *DPoS) sendAckIfResultIsOld(block *types.StateBlock, account types.Address, acc *types.Account) error {
+	va, err := dps.voteGenerate(block, account, acc)
+	if err != nil {
+		return err
+	}
+	msgHash, err := dps.calculateAckHash(va)
+	if err != nil {
+		return err
+	}
+	if !dps.cache.Has(msgHash) {
+		dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Parent())
+		dps.ns.Broadcast(p2p.ConfirmAck, va)
+		err := dps.cache.Set(msgHash, "")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error) {
+	data, err := protos.ConfirmAckBlockToProto(va)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	version := dps.cfg.Version
+	message := p2p.NewQlcMessage(data, byte(version), p2p.ConfirmAck)
+	hash, err := types.HashBytes(message)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	return hash, nil
 }
