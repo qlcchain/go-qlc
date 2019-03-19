@@ -126,7 +126,7 @@ func start() error {
 	if len(seedP) > 0 {
 		fmt.Println("run node SEED mode")
 		sByte, _ := hex.DecodeString(seedP)
-		tmp, err := seedToAccouts(sByte)
+		tmp, err := seedToAccounts(sByte)
 		if err != nil {
 			return err
 		}
@@ -157,7 +157,7 @@ func start() error {
 
 		if b, err := session.VerifyPassword(passwordP); b && err == nil {
 			bytes, err := session.GetSeed()
-			tmp, err := seedToAccouts(bytes)
+			tmp, err := seedToAccounts(bytes)
 			if err != nil {
 				return err
 			}
@@ -221,7 +221,7 @@ func start() error {
 	return nil
 }
 
-func seedToAccouts(data []byte) ([]*types.Account, error) {
+func seedToAccounts(data []byte) ([]*types.Account, error) {
 	seed, err := types.BytesToSeed(data)
 	if err != nil {
 		return nil, err
@@ -236,12 +236,12 @@ func seedToAccouts(data []byte) ([]*types.Account, error) {
 }
 
 func run() {
-	//account = commands.Flag{
-	//	Name:  "account",
-	//	Must:  false,
-	//	Usage: "wallet address,if is nil,just run a node",
-	//	Value: "",
-	//}
+	account = commands.Flag{
+		Name:  "account",
+		Must:  false,
+		Usage: "wallet address,if is nil,just run a node",
+		Value: "",
+	}
 	password = commands.Flag{
 		Name:  "password",
 		Must:  false,
@@ -252,6 +252,12 @@ func run() {
 		Name:  "seed",
 		Must:  false,
 		Usage: "seed for wallet,if is nil,just run a node",
+		Value: "",
+	}
+	privateKey = commands.Flag{
+		Name:  "privateKey",
+		Must:  false,
+		Usage: "account private key",
 		Value: "",
 	}
 	cfgPath = commands.Flag{
