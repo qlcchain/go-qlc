@@ -49,8 +49,22 @@ func InitLog(config *config.Config) error {
 			LocalTime:  true,
 		}
 		var logCfg zap.Config
-		bytes, _ := json.Marshal(config.LogConfig)
-		err = json.Unmarshal(bytes, &logCfg)
+		err = json.Unmarshal([]byte(`{
+		"level": "error",
+		"outputPaths": ["stdout"],
+		"errorOutputPaths": ["stderr"],
+		"encoding": "json",
+		"encoderConfig": {
+			"messageKey": "message",
+			"levelKey": "level",
+			"levelEncoder": "lowercase"
+		}
+	}`), &logCfg)
+		if err != nil {
+			initErr = err
+			fmt.Println(err)
+		}
+		err = logCfg.Level.UnmarshalText([]byte(config.LogLevel))
 		if err != nil {
 			initErr = err
 			fmt.Println(err)

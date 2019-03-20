@@ -19,7 +19,7 @@ const (
 
 func (node *QlcNode) dhtFoundPeers() ([]pstore.PeerInfo, error) {
 	//discovery peers
-	peers, err := discovery.FindPeers(node.ctx, node.dis, QlcProtocolFOUND, node.cfg.Discovery.Limit)
+	peers, err := discovery.FindPeers(node.ctx, node.dis, QlcProtocolFOUND, node.cfg.P2P.Discovery.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -42,12 +42,12 @@ func (node *QlcNode) HandlePeerFound(p pstore.PeerInfo) {
 }
 
 func setupDiscoveryOption(cfg *config.Config) DiscoveryOption {
-	if cfg.Discovery.MDNS.Enabled {
+	if cfg.P2P.Discovery.MDNSEnabled {
 		return func(ctx context.Context, h host.Host) (localdiscovery.Service, error) {
-			if cfg.Discovery.MDNS.Interval == 0 {
-				cfg.Discovery.MDNS.Interval = 5
+			if cfg.P2P.Discovery.MDNSInterval == 0 {
+				cfg.P2P.Discovery.MDNSInterval = 5
 			}
-			return localdiscovery.NewMdnsService(ctx, h, time.Duration(cfg.Discovery.MDNS.Interval)*time.Second, QlcProtocolID)
+			return localdiscovery.NewMdnsService(ctx, h, time.Duration(cfg.P2P.Discovery.MDNSInterval)*time.Second, QlcProtocolID)
 		}
 	}
 	return nil

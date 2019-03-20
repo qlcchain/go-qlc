@@ -80,7 +80,7 @@ func (act *ActiveTrx) announceVotes() {
 	act.roots.Range(func(key, value interface{}) bool {
 		block := value.(*Election).status.winner
 		hash := block.GetHash()
-		if act.dps.cfg.PerformanceTest.Enabled {
+		if act.dps.cfg.PerformanceEnabled {
 			if value.(*Election).announcements == 0 {
 				if p, err := act.dps.ledger.GetPerformanceTime(hash); p != nil && err == nil {
 					t := &types.PerformanceTime{
@@ -100,7 +100,7 @@ func (act *ActiveTrx) announceVotes() {
 			}
 		}
 		if value.(*Election).confirmed { //&& value.(*Election).announcements >= announcementMin-1 {
-			if act.dps.cfg.PerformanceTest.Enabled {
+			if act.dps.cfg.PerformanceEnabled {
 				var t *types.PerformanceTime
 				if p, err := act.dps.ledger.GetPerformanceTime(hash); p != nil && err == nil {
 					if value.(*Election).announcements == 0 {
@@ -152,7 +152,7 @@ func (act *ActiveTrx) announceVotes() {
 				act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
 				act.dps.ns.Broadcast(p2p.ConfirmReq, block)
 			}
-			if act.dps.cfg.PerformanceTest.Enabled {
+			if act.dps.cfg.PerformanceEnabled {
 				if value.(*Election).announcements == 0 {
 					if p, err := act.dps.ledger.GetPerformanceTime(hash); p != nil && err == nil {
 						t := &types.PerformanceTime{

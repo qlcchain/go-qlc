@@ -118,7 +118,7 @@ func start() error {
 		cfgPathP = config.DefaultDataDir()
 	}
 	cm := config.NewCfgManager(cfgPathP)
-	cfg, err := cm.Load()
+	cfg, err := cm.Load(config.NewMigrationV1ToV2())
 	if err != nil {
 		return err
 	}

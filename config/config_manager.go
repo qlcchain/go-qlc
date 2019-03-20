@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,14 +12,14 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
-type ConfigManager struct {
+type CfgManager struct {
 	cfgFile string
 	cfgPath string
 }
 
-func NewCfgManager(path string) *ConfigManager {
+func NewCfgManager(path string) *CfgManager {
 	file := filepath.Join(path, QlcConfigFile)
-	cfg := &ConfigManager{
+	cfg := &CfgManager{
 		cfgFile: file,
 		cfgPath: path,
 	}
@@ -26,15 +27,10 @@ func NewCfgManager(path string) *ConfigManager {
 }
 
 //Load the config file and will create default if config file no exist
-func (c *ConfigManager) Load(migrations ...CfgMigrate) (*Config, error) {
+func (c *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 	_, err := os.Stat(c.cfgFile)
 	if err != nil {
-		fmt.Printf("%s not exist, create default\n", c.cfgFile)
-		cfg, err := DefaultConfig(c.cfgPath)
-		if err != nil {
-			return nil, err
-		}
-		err = c.save(cfg)
+		err := c.createAndSave()
 		if err != nil {
 			return nil, err
 		}
@@ -44,19 +40,23 @@ func (c *ConfigManager) Load(migrations ...CfgMigrate) (*Config, error) {
 		return nil, err
 	}
 
-	var cfg Config
-
-	err = json.Unmarshal(bytes, &cfg)
+	version, err := c.parseVersion(bytes)
 	if err != nil {
-		return nil, err
+		fmt.Println(err)
+		version = configVersion
+		err := c.createAndSave()
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	flag := false
-	// update cfg file
 	sort.Sort(CfgMigrations(migrations))
 	for _, m := range migrations {
-		version := cfg.Version
+		var err error
 		if version == m.StartVersion() {
-			err := m.Migration(&cfg)
+			fmt.Printf("migration cfg from %d to %d\n", m.StartVersion(), m.EndVersion())
+			bytes, version, err = m.Migration(bytes, version)
 			if err != nil {
 				fmt.Println(err)
 			} else {
@@ -64,22 +64,65 @@ func (c *ConfigManager) Load(migrations ...CfgMigrate) (*Config, error) {
 			}
 		}
 	}
+
+	// unmarshal as latest config
+	var cfg Config
+	err = json.Unmarshal(bytes, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	if flag {
 		_ = c.save(&cfg)
 	}
+
 	return &cfg, nil
 }
 
-func (c *ConfigManager) save(cfg *Config) error {
+func (c *CfgManager) createAndSave() error {
+	cfg, err := DefaultConfigV2(c.cfgPath)
+	if err != nil {
+		return err
+	}
+
+	err = c.save(cfg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *CfgManager) save(cfg interface{}) error {
 	dir := filepath.Dir(c.cfgFile)
 	err := util.CreateDirIfNotExist(dir)
 	if err != nil {
 		return err
 	}
 
-	bytes, err := json.Marshal(cfg)
+	//bytes, err := json.Marshal(cfg)
+	//if err != nil {
+	//	return err
+	//}
+	s := util.ToIndentString(cfg)
+	return ioutil.WriteFile(c.cfgFile, []byte(s), 0600)
+}
+
+func (c *CfgManager) parseVersion(data []byte) (int, error) {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(data, &objMap)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return ioutil.WriteFile(c.cfgFile, bytes, 0600)
+
+	if v, ok := objMap["version"]; ok {
+		var version int
+		if err := json.Unmarshal([]byte(*v), &version); err == nil {
+			return version, nil
+		} else {
+			return 0, err
+		}
+	} else {
+		return 0, errors.New("can not find any version")
+	}
 }

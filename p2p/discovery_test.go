@@ -15,12 +15,14 @@ func TestMDNS(t *testing.T) {
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19734"
+	cfgFile1.P2P.Discovery.MDNSEnabled = true
 	cfgFile1.P2P.BootNodes = []string{}
 
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile2, _ := config.DefaultConfig(dir2)
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19735"
+	cfgFile2.P2P.Discovery.MDNSEnabled = true
 	cfgFile2.P2P.BootNodes = []string{}
 
 	//start node1
@@ -78,7 +80,7 @@ func TestMDNS(t *testing.T) {
 			t.Fatal("local discovery error")
 			return
 		case <-ticker2.C:
-			s := node1.node.streamManager.FindByPeerID(node2.node.cfg.ID.PeerID)
+			s := node1.node.streamManager.FindByPeerID(node2.node.cfg.P2P.ID.PeerID)
 			if s != nil {
 				return
 			}
@@ -93,25 +95,25 @@ func TestNodeDiscovery(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
 	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19736"
-	cfgFile.Discovery.MDNS.Enabled = false
+	cfgFile.P2P.Discovery.MDNSEnabled = false
 	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19736/ipfs/" + cfgFile.ID.PeerID
+	b := "/ip4/0.0.0.0/tcp/19736/ipfs/" + cfgFile.P2P.ID.PeerID
 
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19737"
-	cfgFile1.Discovery.MDNS.Enabled = false
+	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.Discovery.DiscoveryInterval = 3
+	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
 
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile2, _ := config.DefaultConfig(dir2)
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19738"
-	cfgFile2.Discovery.MDNS.Enabled = false
+	cfgFile2.P2P.Discovery.MDNSEnabled = false
 	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
 
 	//start bootNode
 	node, err := NewQlcService(cfgFile)
@@ -187,7 +189,7 @@ func TestNodeDiscovery(t *testing.T) {
 			t.Fatal("find node error")
 			return
 		case <-ticker2.C:
-			s := node1.node.streamManager.FindByPeerID(node2.node.cfg.ID.PeerID)
+			s := node1.node.streamManager.FindByPeerID(node2.node.cfg.P2P.ID.PeerID)
 			if s != nil {
 				return
 			}

@@ -342,7 +342,7 @@ func (ss *ServiceSync) onBulkPullRsp(message Message) error {
 	}
 
 	block := blkPacket.Blk
-	if ss.netService.node.cfg.PerformanceTest.Enabled {
+	if ss.netService.node.cfg.PerformanceEnabled {
 		hash := block.GetHash()
 		ss.netService.msgService.addPerformanceTime(hash)
 	}
@@ -358,7 +358,7 @@ func (ss *ServiceSync) onBulkPushBlock(message Message) error {
 	}
 	block := blkPacket.Blk
 
-	if ss.netService.node.cfg.PerformanceTest.Enabled {
+	if ss.netService.node.cfg.PerformanceEnabled {
 		hash := block.GetHash()
 		ss.netService.msgService.addPerformanceTime(hash)
 	}
