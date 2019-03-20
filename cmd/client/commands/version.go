@@ -50,13 +50,24 @@ func versionInfo() {
 	buildTime := goqlc.BUILDTIME
 	gitrev := goqlc.GITREV
 	ts := strings.Split(buildTime, "_")
-	if interactive {
-		Info(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
-		Info(fmt.Sprintf("%-15s%s", "version:", version))
-		Info(fmt.Sprintf("%-15s%s", "hash:", gitrev))
+	v := fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1])
+	b := fmt.Sprintf("%-15s%s", "version:", version)
+	g := fmt.Sprintf("%-15s%s", "hash:", gitrev)
+	var ver string
+	if goqlc.MAINNET {
+		ver = fmt.Sprintf("%-15s%s", "mainnet:", "true")
 	} else {
-		fmt.Println(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
-		fmt.Println(fmt.Sprintf("%-15s%s", "version:", version))
-		fmt.Println(fmt.Sprintf("%-15s%s", "hash:", gitrev))
+		ver = fmt.Sprintf("%-15s%s", "mainnet:", "false")
+	}
+	if interactive {
+		Info(v)
+		Info(b)
+		Info(g)
+		Info(ver)
+	} else {
+		fmt.Println(v)
+		fmt.Println(b)
+		fmt.Println(g)
+		fmt.Println(ver)
 	}
 }

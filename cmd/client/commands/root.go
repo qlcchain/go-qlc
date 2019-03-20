@@ -13,6 +13,7 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
+	"github.com/qlcchain/go-qlc"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +38,11 @@ var (
 
 // set global variable
 func init() {
-	endpointP = "ws://0.0.0.0:9736"
+	if goqlc.MAINNET {
+		endpointP = "ws://0.0.0.0:9736"
+	} else {
+		endpointP = "ws://0.0.0.0:19736"
+	}
 	endpoint = Flag{
 		Name:  "endpoint",
 		Must:  false,
