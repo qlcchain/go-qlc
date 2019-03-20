@@ -88,6 +88,14 @@ func ToString(v interface{}) string {
 	return string(bytes)
 }
 
+func ToIndentString(v interface{}) string {
+	b, err := json.MarshalIndent(&v, "", "\t")
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
 //trim the '\00' byte
 func TrimBuffToString(bytes []byte) string {
 	for i, b := range bytes {

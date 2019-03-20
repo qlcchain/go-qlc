@@ -8,84 +8,21 @@ import (
 	ic "github.com/libp2p/go-libp2p-crypto"
 )
 
-type Config struct {
-	Version             int        `json:"version"`
-	DataDir             string     `json:"DataDir"`
-	StorageMax          string     `json:"StorageMax"`
-	Mode                string     `json:"mode"` // runtime mode: Test,Normal
-	AutoGenerateReceive bool       `json:"AutoGenerateReceive"`
-	LogConfig           *LogConfig `json:"log"` //log config
+type Config ConfigV2
 
-	RPC *RPCConfig `json:"rpc"`
-	P2P *P2PConfig `json:"p2p"`
+func DefaultConfig(dir string) (*Config, error) {
+	v2, err := DefaultConfigV2(dir)
+	if err != nil {
+		return &Config{}, err
+	}
+	cfg := Config(*v2)
 
-	Discovery *DiscoveryConfig `json:"Discovery"`
-	ID        *IdentityConfig  `json:"Identity"`
-
-	PerformanceTest *PerformanceTestConfig
-}
-
-type LogConfig struct {
-	Level            string   `json:"level"` // log level: info,warn,debug
-	OutputPaths      []string `json:"outputPaths"`
-	ErrorOutputPaths []string `json:"errorOutputPaths"`
-	Encoding         string   `json:"encoding"`
-	EncoderConfig    struct {
-		MessageKey   string `json:"messageKey"`
-		LevelKey     string `json:"levelKey"`
-		LevelEncoder string `json:"levelEncoder"`
-	} `json:"encoderConfig"`
-}
-
-type RPCConfig struct {
-	Enable bool `json:"enable"`
-	//Listen string `json:"Listen"`
-	HTTPEndpoint     string   `json:"hTTPEndpoint"`
-	HTTPEnabled      bool     `json:"hTTPEnabled"`
-	HTTPCors         []string `json:"hTTPCors"`
-	HttpVirtualHosts []string `json:"httpVirtualHosts"`
-
-	WSEnabled   bool   `json:"wSEnabled"`
-	WSEndpoint  string `json:"wSEndpoint"`
-	IPCEndpoint string `json:"iPCEndpoint"`
-
-	IPCEnabled bool `json:"iPCEnabled"`
-}
-
-type P2PConfig struct {
-	BootNodes []string `json:"BootNode"`
-	Listen    string   `json:"Listen"`
-	//Time in seconds between sync block interval
-	SyncInterval int `json:"SyncInterval"`
-}
-
-type DiscoveryConfig struct {
-	// Time in seconds between remote discovery rounds
-	DiscoveryInterval int
-	//The maximum number of discovered nodes at a time
-	Limit int
-	MDNS  MDNS
-}
-
-type MDNS struct {
-	Enabled bool
-	// Time in seconds between local discovery rounds
-	Interval int
-}
-
-// Identity tracks the configuration of the local node's identity.
-type IdentityConfig struct {
-	PeerID  string
-	PrivKey string `json:",omitempty"`
-}
-
-type PerformanceTestConfig struct {
-	Enabled bool
+	return &cfg, nil
 }
 
 // DecodePrivateKey is a helper to decode the users PrivateKey
 func (cfg *Config) DecodePrivateKey() (ic.PrivKey, error) {
-	pkb, err := base64.StdEncoding.DecodeString(cfg.ID.PrivKey)
+	pkb, err := base64.StdEncoding.DecodeString(cfg.P2P.ID.PrivKey)
 	if err != nil {
 		return nil, err
 	}

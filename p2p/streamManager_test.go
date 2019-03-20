@@ -15,25 +15,25 @@ func Test_StreamManager(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
 	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19747"
-	cfgFile.Discovery.MDNS.Enabled = false
+	cfgFile.P2P.Discovery.MDNSEnabled = false
 	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19747/ipfs/" + cfgFile.ID.PeerID
+	b := "/ip4/0.0.0.0/tcp/19747/ipfs/" + cfgFile.P2P.ID.PeerID
 
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19748"
-	cfgFile1.Discovery.MDNS.Enabled = false
+	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.Discovery.DiscoveryInterval = 3
+	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
 
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile2, _ := config.DefaultConfig(dir2)
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19749"
-	cfgFile2.Discovery.MDNS.Enabled = false
+	cfgFile2.P2P.Discovery.MDNSEnabled = false
 	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
 
 	//start bootNode
 	node, err := NewQlcService(cfgFile)
@@ -109,7 +109,7 @@ func Test_StreamManager(t *testing.T) {
 		default:
 		}
 
-		s := node1.node.streamManager.FindByPeerID(node2.node.cfg.ID.PeerID)
+		s := node1.node.streamManager.FindByPeerID(node2.node.cfg.P2P.ID.PeerID)
 		if s != nil {
 			if s.IsConnected() {
 				break
@@ -126,7 +126,7 @@ func Test_StreamManager(t *testing.T) {
 		t.Fatal("find peer2 error")
 	}
 	p1, err := node1.node.streamManager.RandomPeer()
-	if p1 != cfgFile2.ID.PeerID || err != nil {
+	if p1 != cfgFile2.P2P.ID.PeerID || err != nil {
 		t.Fatal("node1 random peer error")
 	}
 	node1.node.streamManager.RemoveStream(s)

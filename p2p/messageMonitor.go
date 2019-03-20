@@ -293,7 +293,7 @@ func (ms *MessageService) onMessageResponse(message Message) {
 }
 
 func (ms *MessageService) onPublishReq(message Message) {
-	if ms.netService.node.cfg.PerformanceTest.Enabled {
+	if ms.netService.node.cfg.PerformanceEnabled {
 		blk, err := protos.PublishBlockFromProto(message.Data())
 		if err != nil {
 			ms.netService.node.logger.Error(err)
@@ -311,7 +311,7 @@ func (ms *MessageService) onPublishReq(message Message) {
 }
 
 func (ms *MessageService) onConfirmReq(message Message) {
-	if ms.netService.node.cfg.PerformanceTest.Enabled {
+	if ms.netService.node.cfg.PerformanceEnabled {
 		blk, err := protos.ConfirmReqBlockFromProto(message.Data())
 		if err != nil {
 			ms.netService.node.logger.Error(err)
@@ -329,7 +329,7 @@ func (ms *MessageService) onConfirmReq(message Message) {
 }
 
 func (ms *MessageService) onConfirmAck(message Message) {
-	if ms.netService.node.cfg.PerformanceTest.Enabled {
+	if ms.netService.node.cfg.PerformanceEnabled {
 		ack, err := protos.ConfirmAckBlockFromProto(message.Data())
 		if err != nil {
 			ms.netService.node.logger.Error(err)

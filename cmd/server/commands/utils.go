@@ -169,7 +169,7 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(util.ToString(&receiveBlock))
+	fmt.Println(util.ToIndentString(&receiveBlock))
 
 	client, err := ctx.RPC.RPC().Attach()
 	defer client.Close()

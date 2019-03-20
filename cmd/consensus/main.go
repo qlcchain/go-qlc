@@ -64,9 +64,9 @@ func main() {
 	dir := filepath.Join(config.QlcTestDataDir(), "consensus", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
 	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19740"
-	cfgFile.Discovery.MDNS.Enabled = false
+	cfgFile.P2P.Discovery.MDNSEnabled = false
 	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.ID.PeerID
+	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
 	//new ledger
 	l := services.NewLedgerService(cfgFile)
 
@@ -86,8 +86,8 @@ func main() {
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19741"
 	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.Discovery.MDNS.Enabled = false
-	cfgFile1.Discovery.DiscoveryInterval = 3
+	cfgFile1.P2P.Discovery.MDNSEnabled = false
+	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
 	//new ledger
 	ledger1 := services.NewLedgerService(cfgFile1)
 
@@ -125,9 +125,9 @@ func main() {
 	cfgFile2, _ := config.DefaultConfig(dir2)
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19742"
 	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.Discovery.MDNS.Enabled = false
-	cfgFile2.Discovery.DiscoveryInterval = 3
-	cfgFile2.PerformanceTest.Enabled = true
+	cfgFile2.P2P.Discovery.MDNSEnabled = false
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile2.PerformanceEnabled = true
 
 	//new ledger
 	ledger2 := services.NewLedgerService(cfgFile2)

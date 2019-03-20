@@ -20,7 +20,7 @@ func Test_MessageService_Stop(t *testing.T) {
 	dir1 := filepath.Join(config.QlcTestDataDir())
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19739"
-	cfgFile1.Discovery.MDNS.Enabled = false
+	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.BootNodes = []string{}
 
 	//start node
@@ -251,9 +251,9 @@ func Test_SendMessage(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
 	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19740"
-	cfgFile.Discovery.MDNS.Enabled = false
+	cfgFile.P2P.Discovery.MDNSEnabled = false
 	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.ID.PeerID
+	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
 
 	//start bootNode
 	node, err := NewQlcService(cfgFile)
@@ -271,8 +271,8 @@ func Test_SendMessage(t *testing.T) {
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19741"
 	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.Discovery.MDNS.Enabled = false
-	cfgFile1.Discovery.DiscoveryInterval = 3
+	cfgFile1.P2P.Discovery.MDNSEnabled = false
+	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
 
 	//start1 node
 	node1, err := NewQlcService(cfgFile1)
@@ -290,8 +290,8 @@ func Test_SendMessage(t *testing.T) {
 	cfgFile2, _ := config.DefaultConfig(dir2)
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19742"
 	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.Discovery.MDNS.Enabled = false
-	cfgFile2.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.MDNSEnabled = false
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
 
 	//start node2
 	node2, err := NewQlcService(cfgFile2)
@@ -411,9 +411,9 @@ func Test_MessageCache(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
 	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19743"
-	cfgFile.Discovery.MDNS.Enabled = false
+	cfgFile.P2P.Discovery.MDNSEnabled = false
 	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19743/ipfs/" + cfgFile.ID.PeerID
+	b := "/ip4/0.0.0.0/tcp/19743/ipfs/" + cfgFile.P2P.ID.PeerID
 
 	//start bootNode
 	node, err := NewQlcService(cfgFile)
@@ -431,8 +431,8 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19744"
 	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.Discovery.MDNS.Enabled = false
-	cfgFile1.Discovery.DiscoveryInterval = 3
+	cfgFile1.P2P.Discovery.MDNSEnabled = false
+	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
 
 	//start1 node
 	node1, err := NewQlcService(cfgFile1)
@@ -450,8 +450,8 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile2, _ := config.DefaultConfig(dir2)
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19745"
 	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.Discovery.MDNS.Enabled = false
-	cfgFile2.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.MDNSEnabled = false
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
 
 	//start node2
 	node2, err := NewQlcService(cfgFile2)
@@ -469,8 +469,8 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile3, _ := config.DefaultConfig(dir3)
 	cfgFile3.P2P.Listen = "/ip4/0.0.0.0/tcp/19746"
 	cfgFile3.P2P.BootNodes = []string{b}
-	cfgFile3.Discovery.MDNS.Enabled = false
-	cfgFile3.Discovery.DiscoveryInterval = 3
+	cfgFile3.P2P.Discovery.MDNSEnabled = false
+	cfgFile3.P2P.Discovery.DiscoveryInterval = 3
 
 	//start node2
 	node3, err := NewQlcService(cfgFile3)
