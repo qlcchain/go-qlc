@@ -56,19 +56,19 @@ func versionInfo() {
 	g := fmt.Sprintf("%-15s%s", "hash:", gitrev)
 	var ver string
 	if goqlc.MAINNET {
-		ver = fmt.Sprintf("%-15s%s", "mainnet:", "true")
+		ver = fmt.Sprintf("%-15s", "mainnet")
 	} else {
-		ver = fmt.Sprintf("%-15s%s", "mainnet:", "false")
+		ver = fmt.Sprintf("%-15s", "testnet")
 	}
 	if interactive {
+		commands.Info(ver)
 		commands.Info(v)
 		commands.Info(b)
 		commands.Info(g)
-		commands.Info(ver)
 	} else {
+		fmt.Println(ver)
 		fmt.Println(v)
 		fmt.Println(b)
 		fmt.Println(g)
-		fmt.Println(ver)
 	}
 }

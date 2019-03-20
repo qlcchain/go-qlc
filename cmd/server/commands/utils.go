@@ -71,7 +71,6 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
@@ -137,7 +136,12 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		}(ctx.Ledger.Ledger, accounts)
 	}
 
-	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
+	if cfg.RPC.Enable {
+		ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
+		services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
+	} else {
+		services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService}
+	}
 
 	return nil
 }
