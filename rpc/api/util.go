@@ -3,6 +3,7 @@ package api
 import (
 	"math"
 
+	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -28,6 +29,14 @@ func (u *UtilApi) Encrypt(raw string, passphrase string) (string, error) {
 	return util.Encrypt(raw, passphrase)
 }
 
+func decimal(d uint8) int64 {
+	m := int64(math.Pow10(int(d)))
+	if m <= 0 {
+		return 0
+	}
+	return m
+}
+
 func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
 	if tokenName != nil {
 		token, err := u.ledger.GetTokenByName(*tokenName)
@@ -35,7 +44,11 @@ func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *st
 			return types.ZeroBalance, err
 		}
 		if token.TokenId != common.ChainToken() {
-			b, err := balance.Div(int64(math.Pow10(int(token.Decimals))))
+			d := decimal(token.Decimals)
+			if d == 0 {
+				return types.ZeroBalance, errors.New("error decimals")
+			}
+			b, err := balance.Div(d)
 			if err != nil {
 				return types.ZeroBalance, nil
 			}
@@ -56,7 +69,11 @@ func (u *UtilApi) BalanceToRaw(balance types.Balance, unit string, tokenName *st
 			return types.ZeroBalance, err
 		}
 		if token.TokenId != common.ChainToken() {
-			return balance.Mul(int64(math.Pow10(int(token.Decimals)))), nil
+			d := decimal(token.Decimals)
+			if d == 0 {
+				return types.ZeroBalance, errors.New("error decimals")
+			}
+			return balance.Mul(d), nil
 		}
 	}
 	b, err := common.BalanceToRaw(balance, unit)
