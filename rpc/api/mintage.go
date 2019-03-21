@@ -9,7 +9,6 @@ package api
 
 import (
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/pkg/errors"
@@ -34,13 +33,12 @@ func NewMintageApi(ledger *ledger.Ledger) *MintageApi {
 }
 
 type MintageParams struct {
-	SelfAddr     types.Address `json:"selfAddr"`
-	PrevHash     types.Hash    `json:"prevHash"`
-	TokenName    string        `json:"tokenName"`
-	TokenSymbol  string        `json:"tokenSymbol"`
-	TotalSupply  string        `json:"totalSupply"`
-	Decimals     uint8         `json:"decimals"`
-	PledgeAmount big.Int       `json:"pledgeAmount"`
+	SelfAddr    types.Address `json:"selfAddr"`
+	PrevHash    types.Hash    `json:"prevHash"`
+	TokenName   string        `json:"tokenName"`
+	TokenSymbol string        `json:"tokenSymbol"`
+	TotalSupply string        `json:"totalSupply"`
+	Decimals    uint8         `json:"decimals"`
 }
 
 func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
@@ -73,7 +71,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		return nil, fmt.Errorf("%s do not hava any chain token", param.SelfAddr.String())
 	}
 
-	minPledgeAmount := types.Balance{Int: big.NewInt(1e12)}
+	minPledgeAmount := types.Balance{Int: contract.MinPledgeAmount}
 
 	if tm.Balance.Compare(minPledgeAmount) == types.BalanceCompSmaller {
 		return nil, fmt.Errorf("not enough balance %s, expect %s", tm.Balance, tm.Balance)

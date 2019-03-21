@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	minPledgeAmount      = big.NewInt(1e12)           // 10K QLC
+	MinPledgeAmount      = big.NewInt(1e12)           // 10K QLC
 	tokenNameLengthMax   = 40                         // Maximum length of a token name(include)
 	tokenSymbolLengthMax = 10                         // Maximum length of a token symbol(include)
 	minWithdrawTime      = time.Duration(24 * 30 * 3) // minWithdrawTime 3 months
@@ -93,7 +93,7 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 	var tokenInfo []byte
 	amount, _ := ledger.CalculateAmount(input)
 	if amount.Sign() > 0 &&
-		amount.Compare(types.Balance{Int: minPledgeAmount}) != types.BalanceCompSmaller &&
+		amount.Compare(types.Balance{Int: MinPledgeAmount}) != types.BalanceCompSmaller &&
 		input.Token == common.ChainToken() {
 		var err error
 		tokenInfo, err = cabi.ABIMintage.PackVariable(
@@ -104,7 +104,7 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 			param.TotalSupply,
 			param.Decimals,
 			input.Address,
-			amount.Int,
+			MinPledgeAmount,
 			time.Unix(input.Timestamp, 0).Add(minWithdrawTime).UTC().Unix())
 		if err != nil {
 			return nil, err

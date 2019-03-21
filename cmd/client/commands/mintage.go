@@ -25,7 +25,7 @@ func mintage() {
 	var tokenSymbolP string
 	var totalSupplyP string
 	var decimalsP int
-	var pledgeAmountP int
+
 	if interactive {
 		account := Flag{
 			Name:  "account",
@@ -57,17 +57,12 @@ func mintage() {
 			Must:  true,
 			Usage: "token decimals",
 		}
-		pledgeAmount := Flag{
-			Name:  "pledgeAmount",
-			Must:  true,
-			Usage: "token decimals",
-		}
 
 		s := &ishell.Cmd{
 			Name: "mine",
 			Help: "mine token",
 			Func: func(c *ishell.Context) {
-				args := []Flag{account, preHash, tokenName, tokenSymbol, totalSupply, decimals, pledgeAmount}
+				args := []Flag{account, preHash, tokenName, tokenSymbol, totalSupply, decimals}
 				if HelpText(c, args) {
 					return
 				}
@@ -87,13 +82,9 @@ func mintage() {
 					Warn(err)
 					return
 				}
-				pledgeAmountP, err = IntVar(c.Args, pledgeAmount)
-				if err != nil {
-					Warn(err)
-					return
-				}
-				fmt.Println(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP, pledgeAmountP)
-				if err := mintageAction(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP, pledgeAmountP); err != nil {
+
+				fmt.Println(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP)
+				if err := mintageAction(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP); err != nil {
 					Warn(err)
 					return
 				}
@@ -105,7 +96,7 @@ func mintage() {
 			Use:   "mine",
 			Short: "mine token",
 			Run: func(cmd *cobra.Command, args []string) {
-				err := mintageAction(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP, pledgeAmountP)
+				err := mintageAction(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP)
 				if err != nil {
 					cmd.Println(err)
 				}
@@ -117,12 +108,11 @@ func mintage() {
 		accountCmd.Flags().StringVar(&tokenSymbolP, "tokenSymbol", "", "token symbol")
 		accountCmd.Flags().StringVar(&totalSupplyP, "totalSupply", "", "token total supply")
 		accountCmd.Flags().IntVar(&decimalsP, "decimals", 8, "token decimals")
-		accountCmd.Flags().IntVar(&pledgeAmountP, "pledgeAmount", 100, "pledge Amount")
 		rootCmd.AddCommand(accountCmd)
 	}
 }
 
-func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string, decimals int, pledgeAmount int) error {
+func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string, decimals int) error {
 	bytes, err := hex.DecodeString(account)
 	if err != nil {
 		return err
@@ -184,11 +174,4 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 		return err
 	}
 	return nil
-}
-
-func buildBatchElem(method string, result interface{}, args ...interface{}) rpc.BatchElem {
-	var batchArgs []interface{}
-	batchArgs = append(batchArgs, args...)
-	var err error
-	return rpc.BatchElem{Method: method, Args: batchArgs, Result: result, Error: err}
 }
