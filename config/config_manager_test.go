@@ -152,6 +152,10 @@ func TestCfgManager_Load(t *testing.T) {
 		t.Fatal(err)
 	}
 	if cfg2.P2P.Discovery.MDNSEnabled {
-		t.Fatal("migration error")
+		t.Fatal("migration p2p error")
+	}
+
+	if cfg2.RPC.PublicModules == nil {
+		t.Fatal("migration rpc error")
 	}
 }
