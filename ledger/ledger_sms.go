@@ -8,37 +8,38 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-func addSenderOrReceiver(number []byte, t byte, hash types.Hash, txn db.StoreTxn) error {
-	if number != nil && len(number) != 0 {
-		key := getKeyOfBytes(number, t)
-		err := txn.Get(key, func(val []byte, b byte) error {
-			hs := new([]types.Hash)
-			if err := json.Unmarshal(val, hs); err != nil {
-				return err
-			}
-			//for _, h := range *hs {
-			//	if h == hash {
-			//		return nil
-			//	}
-			//}
-			*hs = append(*hs, hash)
-			val2, err := json.Marshal(*hs)
+func addSMSInfo(key []byte, hash types.Hash, txn db.StoreTxn) error {
+	err := txn.Get(key, func(val []byte, b byte) error {
+		hs := new([]types.Hash)
+		if err := json.Unmarshal(val, hs); err != nil {
+			return err
+		}
+		*hs = append(*hs, hash)
+		val2, err := json.Marshal(*hs)
+		if err != nil {
+			return err
+		}
+		return txn.Set(key, val2)
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			v := []types.Hash{hash}
+			val, err := json.Marshal(v)
 			if err != nil {
 				return err
 			}
+			return txn.Set(key, val)
+		}
+		return err
+	}
+	return nil
+}
 
-			return txn.Set(key, val2)
-		})
-
-		if err != nil {
-			if err == badger.ErrKeyNotFound {
-				v := []types.Hash{hash}
-				val, err := json.Marshal(v)
-				if err != nil {
-					return err
-				}
-				return txn.Set(key, val)
-			}
+func addSenderOrReceiver(number []byte, t byte, hash types.Hash, txn db.StoreTxn) error {
+	if number != nil && len(number) != 0 {
+		key := getKeyOfBytes(number, t)
+		if err := addSMSInfo(key, hash, txn); err != nil {
 			return err
 		}
 	}
@@ -67,7 +68,7 @@ func getSenderOrReceiver(number []byte, t byte, txn db.StoreTxn) ([]types.Hash, 
 		}
 		return nil
 	})
-	if err != nil && err != badger.ErrKeyNotFound {
+	if err != nil {
 		return []types.Hash{}, err
 	}
 	return *h, nil
@@ -77,7 +78,7 @@ func (l *Ledger) GetSenderBlocks(sender []byte, txns ...db.StoreTxn) ([]types.Ha
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	h, err := getSenderOrReceiver(sender, idPrefixSender, txn)
-	if err != nil {
+	if err != nil && err != badger.ErrKeyNotFound {
 		return []types.Hash{}, err
 	}
 	return h, nil
@@ -87,7 +88,7 @@ func (l *Ledger) GetReceiverBlocks(receiver []byte, txns ...db.StoreTxn) ([]type
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	h, err := getSenderOrReceiver(receiver, idPrefixReceiver, txn)
-	if err != nil {
+	if err != nil && err != badger.ErrKeyNotFound {
 		return []types.Hash{}, err
 	}
 	return h, nil
@@ -169,44 +170,65 @@ func addMessage(blk *types.StateBlock, txn db.StoreTxn) error {
 	message := blk.GetMessage()
 	if !message.IsZero() {
 		hash := blk.GetHash()
-		key := getKeyOfHash(blk.GetMessage(), idPrefixMessage)
-		val := make([]byte, types.HashSize)
-		err := hash.MarshalBinaryTo(val)
-		if err != nil {
+		key := getKeyOfHash(message, idPrefixMessage)
+		if err := addSMSInfo(key, hash, txn); err != nil {
 			return err
 		}
-		return txn.Set(key, val)
 	}
 	return nil
 }
 
 func deleteMessage(blk *types.StateBlock, txn db.StoreTxn) error {
 	key := getKeyOfHash(blk.GetMessage(), idPrefixMessage)
-	if err := txn.Delete(key); err != nil {
+	hash := blk.GetHash()
+	err := txn.Get(key, func(val []byte, b byte) error {
+		hs := new([]types.Hash)
+		if err := json.Unmarshal(val, hs); err != nil {
+			return err
+		}
+		hashes := *hs
+		if len(hashes) == 1 {
+			mKey := getKeyOfHash(blk.GetMessage(), idPrefixMessageInfo)
+			if err := txn.Delete(mKey); err != nil {
+				return err
+			}
+			return txn.Delete(key)
+		}
+		var hashes2 []types.Hash
+		for index, h := range hashes {
+			if h == hash {
+				hashes2 = append(hashes[:index], hashes[index+1:]...)
+				break
+			}
+		}
+		val2, err := json.Marshal(hashes2)
+		if err != nil {
+			return err
+		}
+		return txn.Set(key, val2)
+	})
+	if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
 	return nil
 }
 
-func (l *Ledger) GetMessageBlock(mHash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+func (l *Ledger) GetMessageBlocks(mHash types.Hash, txns ...db.StoreTxn) ([]types.Hash, error) {
 	key := getKeyOfHash(mHash, idPrefixMessage)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	h := new(types.Hash)
+	h := new([]types.Hash)
 	err := txn.Get(key, func(val []byte, b byte) error {
-		if err := h.UnmarshalBinary(val); err != nil {
+		if err := json.Unmarshal(val, h); err != nil {
 			return err
 		}
 		return nil
 	})
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, ErrBlockNotFound
-		}
-		return nil, err
+	if err != nil && err != badger.ErrKeyNotFound {
+		return []types.Hash{}, err
 	}
-	return l.GetStateBlock(*h)
+	return *h, nil
 }
 
 func addSMSDataForBlock(blk *types.StateBlock, txn db.StoreTxn) error {

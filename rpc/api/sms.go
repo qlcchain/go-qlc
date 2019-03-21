@@ -28,7 +28,7 @@ func phoneNumberSeri(number string) ([]byte, error) {
 	return b, nil
 }
 
-func (s *SMSApi) getSenderOrReceiver(hashes []types.Hash) ([]*APIBlock, error) {
+func (s *SMSApi) getApiBlocksByHash(hashes []types.Hash) ([]*APIBlock, error) {
 	ab := make([]*APIBlock, 0)
 	for _, h := range hashes {
 		block, err := s.ledger.GetStateBlock(h)
@@ -54,7 +54,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	senders, err := s.getSenderOrReceiver(sHash)
+	senders, err := s.getApiBlocksByHash(sHash)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	receivers, err := s.getSenderOrReceiver(rHash)
+	receivers, err := s.getApiBlocksByHash(rHash)
 	if err != nil {
 		return nil, err
 	}
@@ -72,12 +72,12 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	return abs, nil
 }
 
-func (s *SMSApi) MessageBlock(hash types.Hash) (*APIBlock, error) {
-	block, err := s.ledger.GetMessageBlock(hash)
+func (s *SMSApi) MessageBlocks(hash types.Hash) ([]*APIBlock, error) {
+	hashes, err := s.ledger.GetMessageBlocks(hash)
 	if err != nil {
 		return nil, err
 	}
-	b, err := generateAPIBlock(s.ledger, block)
+	b, err := s.getApiBlocksByHash(hashes)
 	if err != nil {
 		return nil, err
 	}

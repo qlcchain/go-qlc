@@ -170,3 +170,12 @@ func TestBalance_Div(t *testing.T) {
 	}
 	t.Log("bb1,bb2: ", bb1, bb2, bb3)
 }
+
+func TestBalance_Mul(t *testing.T) {
+	b1 := Balance{big.NewInt(100000000)}
+	b2 := b1.Mul(100000)
+	if b2 == ZeroBalance {
+		t.Fatal("mul failed")
+	}
+	t.Log(b2)
+}
