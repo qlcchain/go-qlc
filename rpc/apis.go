@@ -38,7 +38,7 @@ func (r *RPC) getApi(apiModule string) API {
 		return API{
 			Namespace: "util",
 			Version:   "1.0",
-			Service:   api.NewUtilApi(),
+			Service:   api.NewUtilApi(r.ledger),
 			Public:    true,
 		}
 	case "wallet":

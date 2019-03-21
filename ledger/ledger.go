@@ -1902,6 +1902,9 @@ func (l *Ledger) GetTokenByName(tokenName string, txns ...db.StoreTxn) (*types.T
 	if err != nil {
 		return nil, err
 	}
+	if token == nil {
+		return nil, ErrTokenInfoNotFound
+	}
 	return token, nil
 }
 

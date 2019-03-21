@@ -35,12 +35,10 @@ func TestLedger_MessageBlock(t *testing.T) {
 	r := "1800000"
 	sender, _ := json.Marshal(s)
 	receiver, _ := json.Marshal(r)
-	message := mock.Hash()
 	block := types.StateBlock{
 		Type:     types.Send,
 		Sender:   sender,
 		Receiver: receiver,
-		Message:  message,
 	}
 	if err := l.AddStateBlock(&block); err != nil {
 		t.Fatal(err)
@@ -59,11 +57,63 @@ func TestLedger_MessageBlock(t *testing.T) {
 	if b[0] != block.GetHash() {
 		t.Fatal("err store")
 	}
-	blk, err := l.GetMessageBlock(message)
+	if err := l.DeleteStateBlock(block.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	b, err = l.GetReceiverBlocks(receiver)
+	if err != nil || len(b) != 0 {
+		t.Fatal(err)
+	}
+
+}
+
+func TestLedger_GetMessageBlocks(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	message := mock.Hash()
+	block1 := types.StateBlock{
+		Type:    types.Send,
+		Message: message,
+	}
+	block2 := types.StateBlock{
+		Type:    types.Receive,
+		Message: message,
+	}
+	if err := l.AddMessageInfo(message, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(&block1); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(&block2); err != nil {
+		t.Fatal(err)
+	}
+	h, err := l.GetMessageBlocks(message)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if blk.GetHash() != block.GetHash() {
-		t.Fatal("err store")
+	if len(h) != 2 {
+		t.Fatal()
+	}
+	if err := l.DeleteStateBlock(block1.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	h, err = l.GetMessageBlocks(message)
+	if err != nil || len(h) != 1 {
+		t.Fatal(err)
+	}
+	if _, err := l.GetMessageInfo(message); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.DeleteStateBlock(block2.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	h, err = l.GetMessageBlocks(message)
+	if err != nil || len(h) != 0 {
+		t.Fatal(err)
+	}
+	if _, err := l.GetMessageInfo(message); err == nil {
+		t.Fatal(err)
 	}
 }

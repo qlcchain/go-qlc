@@ -97,6 +97,14 @@ func (b Balance) Div(n int64) (Balance, error) {
 	return Balance{b1}, nil
 }
 
+// Mul balances mul
+func (b Balance) Mul(n int64) Balance {
+	if u, b := util.SafeMul(b.Uint64(), uint64(n)); !b {
+		return Balance{new(big.Int).SetUint64(u)}
+	}
+	return ZeroBalance
+}
+
 //Compare two balances
 func (b Balance) Compare(n Balance) BalanceComp {
 	res := b.Int.Cmp(n.Int)
