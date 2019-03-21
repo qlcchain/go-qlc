@@ -67,6 +67,7 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 		return nil, err
 	}
 	var cfg ConfigV2
+	modules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms"}
 	if goqlc.MAINNET {
 		cfg = ConfigV2{
 			Version:             2,
@@ -85,6 +86,7 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 				WSEndpoint:       "tcp4://0.0.0.0:9736",
 				IPCEnabled:       true,
 				IPCEndpoint:      defaultIPCEndpoint(),
+				PublicModules:    modules,
 			},
 			P2P: &P2PConfigV2{
 				BootNodes: []string{
@@ -120,6 +122,7 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 				WSEndpoint:       "tcp4://0.0.0.0:19736",
 				IPCEnabled:       true,
 				IPCEndpoint:      defaultIPCEndpoint(),
+				PublicModules:    modules,
 			},
 			P2P: &P2PConfigV2{
 				BootNodes: []string{
