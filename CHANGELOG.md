@@ -1,5 +1,44 @@
-##  (2019-03-14)
+##  (2019-03-22)
 
+* feat: add endpoint for testnet ([699944d](https://github.com/qlcchain/go-qlc/commit/699944d))
+* feat: add timestamp to AccountsPending api ([070e01a](https://github.com/qlcchain/go-qlc/commit/070e01a))
+* feat: add version for mainnet ([a0abc6c](https://github.com/qlcchain/go-qlc/commit/a0abc6c))
+* feat: check rpc enable ([d5d5e07](https://github.com/qlcchain/go-qlc/commit/d5d5e07))
+* feat: configure rpc module enable ([2ba4c2f](https://github.com/qlcchain/go-qlc/commit/2ba4c2f))
+* feat: enhance server cli (#209) ([a6e853c](https://github.com/qlcchain/go-qlc/commit/a6e853c)), closes [#209](https://github.com/qlcchain/go-qlc/issues/209)
+* feat: implement migration config ([84226fb](https://github.com/qlcchain/go-qlc/commit/84226fb))
+* feat: modify balance unit conversion ([81d29bb](https://github.com/qlcchain/go-qlc/commit/81d29bb))
+* feat: multiple block can contain the same message hash ([7fff501](https://github.com/qlcchain/go-qlc/commit/7fff501))
+* fix: default rpc public modules is nil ([2f95ca9](https://github.com/qlcchain/go-qlc/commit/2f95ca9))
+* fix: migration rpc/p2p config to v2 ([764e2f7](https://github.com/qlcchain/go-qlc/commit/764e2f7))
+* fix: mintage contract pledger amount ([cc6479d](https://github.com/qlcchain/go-qlc/commit/cc6479d))
+* fix: testnet genesis block data field error ([7c60177](https://github.com/qlcchain/go-qlc/commit/7c60177))
+* refactor: move consensus test case to test folder ([2db4cc8](https://github.com/qlcchain/go-qlc/commit/2db4cc8))
+* chore: modify testnet bootnode address ([80d55d1](https://github.com/qlcchain/go-qlc/commit/80d55d1))
+* fix：solve the bug when openblock appears fork (#210) ([3761f84](https://github.com/qlcchain/go-qlc/commit/3761f84)), closes [#210](https://github.com/qlcchain/go-qlc/issues/210)
+* split main net and test net config (#208) ([64d5e07](https://github.com/qlcchain/go-qlc/commit/64d5e07)), closes [#208](https://github.com/qlcchain/go-qlc/issues/208)
+
+
+
+## 1.0.0 (2019-03-15)
+
+* chore: deploy docker when update master or tagged ([8927f5a](https://github.com/qlcchain/go-qlc/commit/8927f5a))
+* chore: Optimize the code for calculating weights ([a40716c](https://github.com/qlcchain/go-qlc/commit/a40716c))
+* feat: add ledger testcase ([d387d24](https://github.com/qlcchain/go-qlc/commit/d387d24))
+* feat: add switch that automatically generates receive block (#198) ([4c575e0](https://github.com/qlcchain/go-qlc/commit/4c575e0)), closes [#198](https://github.com/qlcchain/go-qlc/issues/198)
+* feat: add version command for cli server ([3f4606e](https://github.com/qlcchain/go-qlc/commit/3f4606e))
+* feat: move tokeninfo interface from mintage to ledger ([c4385d0](https://github.com/qlcchain/go-qlc/commit/c4385d0))
+* fix Reddit link ([be8e7c4](https://github.com/qlcchain/go-qlc/commit/be8e7c4))
+* refactor: accountsPending rpc interface ([8274ee1](https://github.com/qlcchain/go-qlc/commit/8274ee1))
+* fix: online Representatives bug ([f7e5c59](https://github.com/qlcchain/go-qlc/commit/f7e5c59))
+
+
+
+## 0.1.0 (2019-03-14)
+
+* fix: find online representatives bug ([019f4eb](https://github.com/qlcchain/go-qlc/commit/019f4eb))
+* chore: bump version to v1.0.0 ([f0de4b6](https://github.com/qlcchain/go-qlc/commit/f0de4b6)), closes [#23](https://github.com/qlcchain/go-qlc/issues/23)
+* chore: update change log ([2e8768d](https://github.com/qlcchain/go-qlc/commit/2e8768d))
 
 
 
