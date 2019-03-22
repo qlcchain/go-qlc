@@ -47,6 +47,7 @@ type APIPending struct {
 	*types.PendingInfo
 	TokenName string     `json:"tokenName"`
 	Hash      types.Hash `json:"hash"`
+	Timestamp int64      `json:"timestamp"`
 }
 
 type ApiTokenInfo struct {
@@ -276,10 +277,15 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 				return err
 			}
 			tokenName := token.TokenName
+			blk, err := l.ledger.GetStateBlock(key.Hash)
+			if err != nil {
+				return err
+			}
 			ap := APIPending{
 				PendingInfo: info,
 				TokenName:   tokenName,
 				Hash:        key.Hash,
+				Timestamp:   blk.Timestamp,
 			}
 			ps = append(ps, &ap)
 			return nil

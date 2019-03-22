@@ -93,6 +93,10 @@ func IsInteractive(osArgs []string) bool {
 	if len(osArgs) == 2 && osArgs[1] == "-i" {
 		return true
 	}
+	if len(osArgs) == 3 && osArgs[1] == "-i" && osArgs[2] == "--testnet" {
+		endpointP = "ws://0.0.0.0:19736"
+		return true
+	}
 	if len(osArgs) == 4 && osArgs[1] == "-i" && osArgs[2] == "--endpoint" {
 		endpointP = osArgs[3]
 		return true
