@@ -33,6 +33,10 @@ func main() {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	cm := config.NewCfgManager(dir)
 	cfg, err := cm.Load()
+	cfg.RPC.Enable = true
+	if cfg.RPC.Enable == false {
+		return
+	}
 
 	l := services.NewLedgerService(cfg)
 	if err := l.Init(); err != nil {
