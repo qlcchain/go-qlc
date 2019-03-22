@@ -202,6 +202,7 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	blk.Previous = pre
 	blk.Token = token
 	blk.Balance = balance
+	blk.Timestamp = time.Now().Unix()
 	blk.Link = link
 	blk.Representative = rep
 	blk.Signature = ac.Sign(blk.GetHash())
