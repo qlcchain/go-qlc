@@ -55,7 +55,7 @@ func (c *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 	for _, m := range migrations {
 		var err error
 		if version == m.StartVersion() {
-			fmt.Printf("migration cfg from %d to %d\n", m.StartVersion(), m.EndVersion())
+			fmt.Printf("migration cfg from v%d to v%d\n", m.StartVersion(), m.EndVersion())
 			bytes, version, err = m.Migration(bytes, version)
 			if err != nil {
 				fmt.Println(err)
@@ -80,7 +80,7 @@ func (c *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 }
 
 func (c *CfgManager) createAndSave() error {
-	cfg, err := DefaultConfigV2(c.cfgPath)
+	cfg, err := DefaultConfig(c.cfgPath)
 	if err != nil {
 		return err
 	}

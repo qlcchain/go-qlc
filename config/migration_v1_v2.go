@@ -31,6 +31,22 @@ func (m *MigrationV1ToV2) Migration(data []byte, version int) ([]byte, int, erro
 	}
 
 	cfg2.AutoGenerateReceive = cfg1.AutoGenerateReceive
+	cfg2.PerformanceEnabled = cfg1.PerformanceTest.Enabled
+	// p2p
+	cfg2.P2P.BootNodes = cfg1.P2P.BootNodes
+	cfg2.P2P.Listen = cfg1.P2P.Listen
+	cfg2.P2P.SyncInterval = cfg1.P2P.SyncInterval
+	cfg2.P2P.Discovery.Limit = cfg1.Discovery.Limit
+	cfg2.P2P.Discovery.DiscoveryInterval = cfg1.Discovery.DiscoveryInterval
+	cfg2.P2P.Discovery.MDNSInterval = cfg1.Discovery.MDNS.Interval
+	cfg2.P2P.ID.PeerID = cfg1.ID.PeerID
+	cfg2.P2P.ID.PrivKey = cfg1.ID.PrivKey
+
+	//rpc
+	cfg2.RPC.HTTPEndpoint = cfg1.RPC.HTTPEndpoint
+	cfg2.RPC.HTTPCors = cfg1.RPC.HTTPCors
+	cfg2.RPC.IPCEndpoint = cfg1.RPC.IPCEndpoint
+	cfg2.RPC.WSEndpoint = cfg1.RPC.WSEndpoint
 
 	bytes, err := json.Marshal(cfg2)
 	return bytes, m.endVersion, err
