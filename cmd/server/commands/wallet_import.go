@@ -69,16 +69,23 @@ func walletimport() {
 }
 
 func importWallet(seedP string) error {
+	var cfg *config.Config
+	var err error
 	if len(seedP) == 0 {
 		return errors.New("invalid seed")
 	}
 	if cfgPathP == "" {
 		cfgPathP = config.DefaultDataDir()
-	}
-	cm := config.NewCfgManager(cfgPathP)
-	cfg, err := cm.Load()
-	if err != nil {
-		return err
+		cm := config.NewCfgManager(cfgPathP)
+		cfg, err = cm.Load(config.NewMigrationV1ToV2())
+		if err != nil {
+			return err
+		}
+	} else {
+		cfg, err = loadConfig()
+		if err != nil {
+			return err
+		}
 	}
 	var accounts []*types.Account
 	err = initNode(accounts, cfg)
