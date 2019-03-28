@@ -12,13 +12,16 @@ type StateBlock struct {
 	Token          Hash      `msg:"token,extension" json:"token"`
 	Address        Address   `msg:"address,extension" json:"address"`
 	Balance        Balance   `msg:"balance,extension" json:"balance"`
+	Vote           Balance   `msg:"vote,extension" json:"vote"`
+	Network        Balance   `msg:"network,extension" json:"network"`
+	Storage        Balance   `msg:"storage,extension" json:"storage"`
+	Oracle         Balance   `msg:"oracle,extension" json:"oracle"`
 	Previous       Hash      `msg:"previous,extension" json:"previous"`
 	Link           Hash      `msg:"link,extension" json:"link"`
 	Sender         []byte    `msg:"sender" json:"sender,omitempty"`
 	Receiver       []byte    `msg:"receiver" json:"receiver,omitempty"`
 	Message        Hash      `msg:"message,extension" json:"message,omitempty"`
 	Data           []byte    `msg:"data" json:"data,omitempty"`
-	Quota          int64     `msg:"quota" json:"quota"`
 	Timestamp      int64     `msg:"timestamp" json:"timestamp"`
 	Extra          Hash      `msg:"extra,extension" json:"extra,omitempty"`
 	Representative Address   `msg:"representative,extension" json:"representative"`
@@ -28,8 +31,9 @@ type StateBlock struct {
 
 func (b *StateBlock) GetHash() Hash {
 	t := []byte{byte(b.Type)}
-	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Previous[:], b.Link[:], b.Sender,
-		b.Receiver, b.Message[:], b.Data, util.Int2Bytes(b.Quota), util.Int2Bytes(b.Timestamp), b.Extra[:], b.Representative[:])
+	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Vote.Bytes(), b.Network.Bytes(), b.Storage.Bytes(), b.Oracle.Bytes(),
+		b.Previous[:], b.Link[:], b.Sender,
+		b.Receiver, b.Message[:], b.Data, util.Int2Bytes(b.Timestamp), b.Extra[:], b.Representative[:])
 	return hash
 }
 
@@ -144,24 +148,7 @@ func (b *StateBlock) IsContractBlock() bool {
 }
 
 func (b *StateBlock) Clone() *StateBlock {
-	clone := StateBlock{
-		//Type:           b.Type,
-		//Token:          b.Token,
-		//Address:        b.Address,
-		//Balance:        b.Balance,
-		//Previous:       b.Previous,
-		//Link:           b.Link,
-		//Sender:         b.Sender,
-		//Receiver:       b.Receiver,
-		//Message:        b.Message,
-		//Data:           b.Data,
-		//Quota:          b.Quota,
-		//Timestamp:      b.Timestamp,
-		//Extra:          b.Extra,
-		//Representative: b.Representative,
-		//Work:           b.Work,
-		//Signature:      b.Signature,
-	}
+	clone := StateBlock{}
 	bytes, _ := b.Serialize()
 	_ = clone.Deserialize(bytes)
 	return &clone

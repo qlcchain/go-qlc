@@ -8,16 +8,15 @@
 package common
 
 import (
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
 	"reflect"
 	"testing"
-
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func TestGenesisBlock(t *testing.T) {
-	h, _ := types.NewHash("758f79b656340c329cb5b11302865c5ff0b0c99fd8a268d6b8760170e33e8cd1")
+	h, _ := types.NewHash("6fb8b79a65d77b9d54fc0a8d44e2f522afe426426b54f8680125c71d84122d1b")
 	genesis := GenesisBlock()
 	h2 := genesis.GetHash()
 	if h2 != h {
@@ -25,7 +24,7 @@ func TestGenesisBlock(t *testing.T) {
 		t.Fatal("invalid genesis block", h2.String(), h.String())
 	}
 
-	h3, _ := types.NewHash("bf1cb34e79f8739367ad7de4a16c87c0e72ea483521fec0f0ddf7b5e90d03abd")
+	h3, _ := types.NewHash("8407598dfb87ebc48a0926272599d99bf47a6447dc19bfd1de61e2789eeea8a8")
 	mintage := GenesisMintageBlock()
 	h4 := mintage.GetHash()
 	if h3 != h4 {
@@ -34,7 +33,7 @@ func TestGenesisBlock(t *testing.T) {
 }
 
 func TestGenesisBlock2(t *testing.T) {
-	h, _ := types.NewHash("a217c8d4374377562e891d0f6b50fcdcd02c68ab7fe7d72efd14ea5c4136a214")
+	h, _ := types.NewHash("d40525ddc07849fdfda84679acc2b279207fa711f0e20d96ee115158b8061bf4")
 	genesis := testGenesisBlock
 	h2 := genesis.GetHash()
 	if h2 != h {
@@ -42,7 +41,7 @@ func TestGenesisBlock2(t *testing.T) {
 		t.Fatal("invalid genesis block", h2.String(), h.String())
 	}
 
-	h3, _ := types.NewHash("f1042ef1472b02ee61048cf4eba923b81d0a64876665888b44bb2c46534f9655")
+	h3, _ := types.NewHash("989b152a7bbfcc7e120772f563a9edaa087d655fab6daec1ddf411ad1e080943")
 	mintage := testGenesisMintageBlock
 	h4 := mintage.GetHash()
 	if h3 != h4 {
