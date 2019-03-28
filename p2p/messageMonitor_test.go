@@ -572,6 +572,7 @@ func Test_MessageCache(t *testing.T) {
 	if c[0].resendTimes != 0 || c[1].resendTimes != 0 {
 		t.Fatal("message cache resendTimes error")
 	}
+	time.Sleep(10 * time.Second)
 	node1.msgService.checkMessageCache()
 	if c[0].resendTimes != 1 || c[1].resendTimes != 1 {
 		t.Fatal("message cache resendTimes error")

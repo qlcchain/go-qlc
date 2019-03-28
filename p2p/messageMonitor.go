@@ -25,9 +25,9 @@ const (
 
 const (
 	msgCacheSize           = 65535
-	checkCacheTimeInterval = 10 * time.Second
-	msgResendMaxTimes      = 20
-	msgNeedResendInterval  = 1 * time.Second
+	checkCacheTimeInterval = 30 * time.Second
+	msgResendMaxTimes      = 10
+	msgNeedResendInterval  = 10 * time.Second
 )
 
 type cacheValue struct {
@@ -226,7 +226,8 @@ func (ms *MessageService) checkMessageCache() {
 			stream := ms.netService.node.streamManager.FindByPeerID(value.peerID)
 			if stream == nil {
 				ms.netService.node.logger.Debug("Failed to locate peer's stream,maybe lost connect")
-				csTemp = append(csTemp, cs[i])
+				//csTemp = append(csTemp, cs[i])
+				value.resendTimes++
 				continue
 			}
 			stream.messageChan <- value.data
