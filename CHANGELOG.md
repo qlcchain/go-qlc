@@ -1,5 +1,15 @@
-##  (2019-03-22)
+##  (2019-03-28)
 
+* refactor: --config is followed by the configuration file ([8a580b2](https://github.com/qlcchain/go-qlc/commit/8a580b2))
+* fix: p2p bug ([c2bf0f9](https://github.com/qlcchain/go-qlc/commit/c2bf0f9))
+* chore: echo sha256 hash for build file ([9406ee2](https://github.com/qlcchain/go-qlc/commit/9406ee2))
+
+
+
+## <small>1.0.1 (2019-03-22)</small>
+
+* chore: bump version to v1.0.1 ([b32960b](https://github.com/qlcchain/go-qlc/commit/b32960b))
+* chore: modify testnet bootnode address ([80d55d1](https://github.com/qlcchain/go-qlc/commit/80d55d1))
 * feat: add endpoint for testnet ([699944d](https://github.com/qlcchain/go-qlc/commit/699944d))
 * feat: add timestamp to AccountsPending api ([070e01a](https://github.com/qlcchain/go-qlc/commit/070e01a))
 * feat: add version for mainnet ([a0abc6c](https://github.com/qlcchain/go-qlc/commit/a0abc6c))
@@ -14,7 +24,6 @@
 * fix: mintage contract pledger amount ([cc6479d](https://github.com/qlcchain/go-qlc/commit/cc6479d))
 * fix: testnet genesis block data field error ([7c60177](https://github.com/qlcchain/go-qlc/commit/7c60177))
 * refactor: move consensus test case to test folder ([2db4cc8](https://github.com/qlcchain/go-qlc/commit/2db4cc8))
-* chore: modify testnet bootnode address ([80d55d1](https://github.com/qlcchain/go-qlc/commit/80d55d1))
 * fix：solve the bug when openblock appears fork (#210) ([3761f84](https://github.com/qlcchain/go-qlc/commit/3761f84)), closes [#210](https://github.com/qlcchain/go-qlc/issues/210)
 * split main net and test net config (#208) ([64d5e07](https://github.com/qlcchain/go-qlc/commit/64d5e07)), closes [#208](https://github.com/qlcchain/go-qlc/issues/208)
 
