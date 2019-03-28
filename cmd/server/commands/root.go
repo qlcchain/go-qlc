@@ -9,7 +9,9 @@ package commands
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -114,15 +116,21 @@ func addCommand() {
 
 func start() error {
 	var accounts []*types.Account
+	var cfg *config.Config
+	var err error
 	if cfgPathP == "" {
 		cfgPathP = config.DefaultDataDir()
+		cm := config.NewCfgManager(cfgPathP)
+		cfg, err = cm.Load(config.NewMigrationV1ToV2())
+		if err != nil {
+			return err
+		}
+	} else {
+		cfg, err = loadConfig()
+		if err != nil {
+			return err
+		}
 	}
-	cm := config.NewCfgManager(cfgPathP)
-	cfg, err := cm.Load(config.NewMigrationV1ToV2())
-	if err != nil {
-		return err
-	}
-
 	if len(seedP) > 0 {
 		fmt.Println("run node SEED mode")
 		sByte, _ := hex.DecodeString(seedP)
@@ -300,4 +308,20 @@ func run() {
 		},
 	}
 	shell.AddCmd(s)
+}
+
+//Load the config file from --config
+func loadConfig() (*config.Config, error) {
+	bytes, err := ioutil.ReadFile(cfgPathP)
+	if err != nil {
+		return nil, err
+	}
+
+	// unmarshal config
+	var cfg config.Config
+	err = json.Unmarshal(bytes, &cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &cfg, nil
 }
