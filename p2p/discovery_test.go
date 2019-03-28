@@ -14,14 +14,14 @@ func TestMDNS(t *testing.T) {
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19734"
+	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19523"
 	cfgFile1.P2P.Discovery.MDNSEnabled = true
 	cfgFile1.P2P.BootNodes = []string{}
 
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19735"
+	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19524"
 	cfgFile2.P2P.Discovery.MDNSEnabled = true
 	cfgFile2.P2P.BootNodes = []string{}
 

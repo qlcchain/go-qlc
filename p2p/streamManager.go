@@ -38,8 +38,8 @@ func (sm *StreamManager) Add(s libnet.Stream) {
 // AddStream into the stream manager
 func (sm *StreamManager) AddStream(stream *Stream) {
 
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
+	//sm.mu.Lock()
+	//defer sm.mu.Unlock()
 
 	// check & close old stream
 	if v, ok := sm.allStreams.Load(stream.pid.Pretty()); ok {
@@ -62,37 +62,22 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 
 // RemoveStream from the stream manager
 func (sm *StreamManager) RemoveStream(s *Stream) {
-
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
-	v, ok := sm.allStreams.Load(s.pid.Pretty())
-	if !ok {
-		return
+	if v, ok := sm.allStreams.Load(s.pid.Pretty()); ok {
+		exist, _ := v.(*Stream)
+		if s != exist {
+			return
+		}
+		sm.node.logger.Errorf("Removing a stream:[%s]", s.pid.Pretty())
+		sm.allStreams.Delete(s.pid.Pretty())
 	}
-
-	exist, _ := v.(*Stream)
-	if s != exist {
-		return
-	}
-
-	sm.node.logger.Infof("Removing a stream:[%s]", s.pid.Pretty())
-
-	sm.allStreams.Delete(s.pid.Pretty())
 }
 
 // FindByPeerID find the stream with the given peerID
 func (sm *StreamManager) FindByPeerID(peerID string) *Stream {
-	v, _ := sm.allStreams.Load(peerID)
-	if v == nil {
-		return nil
+	if v, ok := sm.allStreams.Load(peerID); ok {
+		return v.(*Stream)
 	}
-	return v.(*Stream)
-}
-
-// Find the stream with the given pid
-func (sm *StreamManager) Find(pid peer.ID) *Stream {
-	return sm.FindByPeerID(pid.Pretty())
+	return nil
 }
 
 func (sm *StreamManager) RandomPeer() (string, error) {
@@ -131,7 +116,7 @@ func (sm *StreamManager) CloseStream(peerID string) {
 // CreateStreamWithPeer create stream with a peer.
 func (sm *StreamManager) createStreamWithPeer(pid peer.ID) {
 
-	stream := sm.Find(pid)
+	stream := sm.FindByPeerID(pid.Pretty())
 
 	if stream == nil {
 		stream = NewStreamFromPID(pid, sm.node)
@@ -196,11 +181,9 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 					sm.node.logger.Error(err)
 				}
 			}
-
 		}
 		return true
 	})
-
 }
 
 func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, peerID string) {

@@ -121,7 +121,7 @@ func Test_StreamManager(t *testing.T) {
 		t.Fatal("peer1 count error")
 	}
 
-	s := node1.node.streamManager.Find(node2.node.ID)
+	s := node1.node.streamManager.FindByPeerID(node2.node.ID.Pretty())
 	if s == nil {
 		t.Fatal("find peer2 error")
 	}
@@ -130,11 +130,11 @@ func Test_StreamManager(t *testing.T) {
 		t.Fatal("node1 random peer error")
 	}
 	node1.node.streamManager.RemoveStream(s)
-	if node1.node.streamManager.Find(node2.node.ID) != nil {
+	if node1.node.streamManager.FindByPeerID(node2.node.ID.Pretty()) != nil {
 		t.Fatal("node1 RemoveStream error")
 	}
 	node1.node.streamManager.createStreamWithPeer(node2.node.ID)
-	if node1.node.streamManager.Find(node2.node.ID) == nil {
+	if node1.node.streamManager.FindByPeerID(node2.node.ID.Pretty()) == nil {
 		t.Fatal("node1 create Stream With node2 error")
 	}
 }

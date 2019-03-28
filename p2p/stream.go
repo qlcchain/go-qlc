@@ -94,7 +94,7 @@ func (s *Stream) readLoop() {
 
 	if !s.IsConnected() {
 		if err := s.Connect(); err != nil {
-			s.node.logger.Debug(err)
+			s.node.logger.Error(err)
 			s.close()
 			return
 		}
@@ -110,7 +110,7 @@ func (s *Stream) readLoop() {
 	for {
 		n, err := s.stream.Read(buf)
 		if err != nil {
-			s.node.logger.Debug("Error occurred when reading data from network connection.")
+			s.node.logger.Errorf("Error occurred when reading data from network connection.")
 			s.close()
 			return
 		}
@@ -184,8 +184,8 @@ func (s *Stream) writeLoop() {
 // Close close the stream
 func (s *Stream) close() {
 	// Add lock & close flag to prevent multi call.
-	s.syncMutex.Lock()
-	defer s.syncMutex.Unlock()
+	//s.syncMutex.Lock()
+	//defer s.syncMutex.Unlock()
 	//s.node.logger.Info("Closing stream.")
 
 	// cleanup.
