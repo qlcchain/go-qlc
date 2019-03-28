@@ -250,3 +250,5 @@ func deleteSmsDataForBlock(blk *types.StateBlock, txn db.StoreTxn) error {
 	}
 	return nil
 }
+
+
