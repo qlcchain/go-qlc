@@ -85,10 +85,6 @@ func (*Pledge) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (*Pledge) GetQuota() uint64 {
-	return 0
-}
-
 type WithdrawPledge struct {
 }
 
@@ -118,8 +114,4 @@ func (*WithdrawPledge) DoReceive(ledger *ledger.Ledger, block *types.StateBlock,
 
 func (*WithdrawPledge) GetRefundData() []byte {
 	return []byte{2}
-}
-
-func (*WithdrawPledge) GetQuota() uint64 {
-	return 0
 }

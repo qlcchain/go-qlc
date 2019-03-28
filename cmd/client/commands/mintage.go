@@ -134,7 +134,7 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 
 	mintageParam := api.MintageParams{
 		SelfAddr: a.Address(), PrevHash: previous, TokenName: tokenName,
-		TotalSupply: totalSupply, TokenSymbol: tokenSymbol, Decimals: d,
+		TotalSupply: totalSupply, TokenSymbol: tokenSymbol, Decimals: d, Beneficial: a.Address(),
 	}
 
 	send := types.StateBlock{}
@@ -161,9 +161,9 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 		return err
 	}
 
-	reward.Address = a.Address()
-	reward.Representative = a.Address()
-	reward.Link = sendHash
+	//reward.Address = a.Address()
+	//reward.Representative = a.Address()
+	//reward.Link = sendHash
 	reward.Signature = a.Sign(reward.GetHash())
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
