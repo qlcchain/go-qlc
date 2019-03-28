@@ -50,8 +50,8 @@ var contractCache = map[types.Address]*qlcchainContract{
 	},
 	types.PledgeAddress: {
 		map[string]ChainContract{
-			cabi.MethodNameMintage:         &Pledge{},
-			cabi.MethodNameMintageWithdraw: &WithdrawPledge{},
+			cabi.MethodNameMintage:         &VotePledge{},
+			cabi.MethodNameMintageWithdraw: &WithdrawVotePledge{},
 		},
 		cabi.ABIPledge,
 	},
