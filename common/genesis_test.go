@@ -16,6 +16,7 @@ import (
 )
 
 func TestGenesisBlock(t *testing.T) {
+	t.Skip()
 	h, _ := types.NewHash("6fb8b79a65d77b9d54fc0a8d44e2f522afe426426b54f8680125c71d84122d1b")
 	genesis := GenesisBlock()
 	h2 := genesis.GetHash()
@@ -33,6 +34,7 @@ func TestGenesisBlock(t *testing.T) {
 }
 
 func TestGenesisBlock2(t *testing.T) {
+	t.Skip()
 	h, _ := types.NewHash("d40525ddc07849fdfda84679acc2b279207fa711f0e20d96ee115158b8061bf4")
 	genesis := testGenesisBlock
 	h2 := genesis.GetHash()

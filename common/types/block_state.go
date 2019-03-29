@@ -22,6 +22,7 @@ type StateBlock struct {
 	Receiver       []byte    `msg:"receiver" json:"receiver,omitempty"`
 	Message        Hash      `msg:"message,extension" json:"message,omitempty"`
 	Data           []byte    `msg:"data" json:"data,omitempty"`
+	PoVHeight      uint64    `msg:"povHeight" json:"povHeight"`
 	Timestamp      int64     `msg:"timestamp" json:"timestamp"`
 	Extra          Hash      `msg:"extra,extension" json:"extra,omitempty"`
 	Representative Address   `msg:"representative,extension" json:"representative"`
@@ -31,9 +32,10 @@ type StateBlock struct {
 
 func (b *StateBlock) GetHash() Hash {
 	t := []byte{byte(b.Type)}
-	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Vote.Bytes(), b.Network.Bytes(), b.Storage.Bytes(), b.Oracle.Bytes(),
-		b.Previous[:], b.Link[:], b.Sender,
-		b.Receiver, b.Message[:], b.Data, util.Int2Bytes(b.Timestamp), b.Extra[:], b.Representative[:])
+	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Vote.Bytes(), b.Network.Bytes(),
+		b.Storage.Bytes(), b.Oracle.Bytes(), b.Previous[:], b.Link[:], b.Sender, b.Receiver, b.Message[:], b.Data,
+		util.Int2Bytes(b.Timestamp), util.Uint64ToBytes(b.PoVHeight),
+		b.Extra[:], b.Representative[:])
 	return hash
 }
 
@@ -154,9 +156,10 @@ func (b *StateBlock) Clone() *StateBlock {
 	return &clone
 }
 
-//go:generate msgp
-type BlockExtra struct {
-	KeyHash Hash    `msg:"key,extension" json:"key"`
-	Abi     []byte  `msg:"abi" json:"abi"`
-	Issuer  Address `msg:"issuer,extension" json:"issuer"`
-}
+//
+////go:generate msgp
+//type BlockExtra struct {
+//	KeyHash Hash    `msg:"key,extension" json:"key"`
+//	Abi     []byte  `msg:"abi" json:"abi"`
+//	Issuer  Address `msg:"issuer,extension" json:"issuer"`
+//}
