@@ -1,8 +1,15 @@
-##  (2019-03-28)
+##  (2019-03-29)
 
+* update chain contract (#229) ([a13cd2b](https://github.com/qlcchain/go-qlc/commit/a13cd2b)), closes [#229](https://github.com/qlcchain/go-qlc/issues/229)
+
+
+
+## <small>1.0.2 (2019-03-28)</small>
+
+* chore: bump version to v1.0.2 ([401d6b6](https://github.com/qlcchain/go-qlc/commit/401d6b6))
+* chore: echo sha256 hash for build file ([9406ee2](https://github.com/qlcchain/go-qlc/commit/9406ee2))
 * refactor: --config is followed by the configuration file ([8a580b2](https://github.com/qlcchain/go-qlc/commit/8a580b2))
 * fix: p2p bug ([c2bf0f9](https://github.com/qlcchain/go-qlc/commit/c2bf0f9))
-* chore: echo sha256 hash for build file ([9406ee2](https://github.com/qlcchain/go-qlc/commit/9406ee2))
 
 
 

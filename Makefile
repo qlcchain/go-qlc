@@ -20,7 +20,7 @@ CLIENTMAIN = $(shell pwd)/cmd/client/main.go
 SERVERTESTBINARY = gqlct
 
 BUILDDIR = $(shell pwd)/build
-VERSION = 1.0.2
+VERSION = 1.0.3
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%Y-%m-%d_%T')
 LDFLAGS=-ldflags "-X main.version=${VERSION} -X main.sha1ver=${GITREV} -X main.buildTime=${BUILDTIME}"
