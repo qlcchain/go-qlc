@@ -233,7 +233,7 @@ func (s *Stream) SendMessageToPeers(messageType string, data []byte) error {
 
 // SendMessage send msg to peer
 func (s *Stream) SendMessageToPeer(messageType string, data []byte) error {
-	version := s.node.cfg.Version
+	version := p2pVersion
 	message := NewQlcMessage(data, byte(version), messageType)
 	s.messageChan <- message
 	return nil
@@ -264,6 +264,10 @@ func (s *Stream) Write(data []byte) error {
 }
 
 func (s *Stream) handleMessage(message *QlcMessage) {
+	if message.Version() < byte(p2pVersion) {
+		s.node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
+		return
+	}
 	m := NewBaseMessage(message.MessageType(), s.pid.Pretty(), message.MessageData(), message.content)
 	s.node.netService.PutMessage(m)
 }
