@@ -68,5 +68,3 @@ func (l *Ledger) Iterator(prefix []byte, fn func(key []byte, value []byte) error
 
 	return nil
 }
-
-
