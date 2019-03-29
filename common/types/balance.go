@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	msgp.RegisterExtension(BalanceExtensionType, func() msgp.Extension { return new(Address) })
+	msgp.RegisterExtension(BalanceExtensionType, func() msgp.Extension { return new(Balance) })
 }
 
 const (
