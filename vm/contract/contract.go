@@ -33,7 +33,6 @@ type ChainContract interface {
 	DoReceive(ledger *ledger.Ledger, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error)
 	// refund data at receive error
 	GetRefundData() []byte
-	GetQuota() uint64
 }
 
 type qlcchainContract struct {
@@ -51,8 +50,8 @@ var contractCache = map[types.Address]*qlcchainContract{
 	},
 	types.PledgeAddress: {
 		map[string]ChainContract{
-			cabi.MethodNameMintage:         &Pledge{},
-			cabi.MethodNameMintageWithdraw: &WithdrawPledge{},
+			cabi.MethodNameMintage:         &VotePledge{},
+			cabi.MethodNameMintageWithdraw: &WithdrawVotePledge{},
 		},
 		cabi.ABIPledge,
 	},

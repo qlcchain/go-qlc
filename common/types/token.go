@@ -10,12 +10,13 @@ package types
 import "math/big"
 
 type TokenInfo struct {
-	TokenId      Hash     `json:"tokenId"`
-	TokenName    string   `json:"tokenName"`
-	TokenSymbol  string   `json:"tokenSymbol"`
-	TotalSupply  *big.Int `json:"totalSupply"`
-	Decimals     uint8    `json:"decimals"`
-	Owner        Address  `json:"owner"`
-	PledgeAmount *big.Int `json:"pledgeAmount"`
-	WithdrawTime int64    `json:"withdrawTime"`
+	TokenId       Hash     `json:"tokenId"`
+	TokenName     string   `json:"tokenName"`
+	TokenSymbol   string   `json:"tokenSymbol"`
+	TotalSupply   *big.Int `json:"totalSupply"`
+	Decimals      uint8    `json:"decimals"`
+	Owner         Address  `json:"owner"`
+	PledgeAmount  *big.Int `json:"pledgeAmount"`
+	WithdrawTime  int64    `json:"withdrawTime"`
+	PledgeAddress Address  `json:"pledgeAddress"`
 }

@@ -9,7 +9,8 @@ type smsStore interface {
 	// sender or receiver
 	GetSenderBlocks(sender []byte, txns ...db.StoreTxn) ([]types.Hash, error)
 	GetReceiverBlocks(receiver []byte, txns ...db.StoreTxn) ([]types.Hash, error)
-	GetMessageBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)
+	//GetMessageBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)
 	AddMessageInfo(mHash types.Hash, message []byte, txns ...db.StoreTxn) error
 	GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, error)
+	GetMessageBlocks(mHash types.Hash, txns ...db.StoreTxn) ([]types.Hash, error)
 }

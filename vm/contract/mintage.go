@@ -25,7 +25,7 @@ var (
 	MinPledgeAmount      = big.NewInt(1e12)           // 10K QLC
 	tokenNameLengthMax   = 40                         // Maximum length of a token name(include)
 	tokenSymbolLengthMax = 10                         // Maximum length of a token symbol(include)
-	minWithdrawTime      = time.Duration(24 * 30 * 3) // minWithdrawTime 3 months
+	minWithdrawTime      = time.Duration(24 * 30 * 6) // minWithdrawTime 3 months
 )
 
 type Mintage struct{}
@@ -64,7 +64,8 @@ func (m *Mintage) DoSend(l *l.Ledger, block *types.StateBlock) error {
 		param.TokenName,
 		param.TokenSymbol,
 		param.TotalSupply,
-		param.Decimals); err != nil {
+		param.Decimals,
+		param.Beneficial); err != nil {
 		return err
 	}
 	return nil
@@ -103,9 +104,10 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 			param.TokenSymbol,
 			param.TotalSupply,
 			param.Decimals,
-			input.Address,
+			param.Beneficial,
 			MinPledgeAmount,
-			time.Unix(input.Timestamp, 0).Add(minWithdrawTime).UTC().Unix())
+			time.Unix(input.Timestamp, 0).Add(minWithdrawTime).UTC().Unix(),
+			input.Address)
 		if err != nil {
 			return nil, err
 		}
@@ -117,8 +119,10 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 	totalSupply := types.Balance{Int: new(big.Int).Mul(param.TotalSupply, exp)}
 
 	block.Type = types.ContractReward
+	block.Address = param.Beneficial
+	block.Representative = param.Beneficial
 	block.Token = param.TokenId
-	block.Link = input.Address.ToHash()
+	block.Link = input.GetHash()
 	block.Data = tokenInfo
 	block.Previous = types.ZeroHash
 	block.Balance = totalSupply
@@ -147,10 +151,6 @@ func (m *Mintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, input *ty
 
 func (m *Mintage) GetRefundData() []byte {
 	return []byte{1}
-}
-
-func (m *Mintage) GetQuota() uint64 {
-	return 0
 }
 
 type WithdrawMintage struct{}
@@ -198,7 +198,24 @@ func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 		tokenInfo.Decimals,
 		tokenInfo.Owner,
 		big.NewInt(0),
-		uint64(0))
+		uint64(0),
+		tokenInfo.PledgeAddress)
+
+	b := types.ZeroBalance
+	if tm, err := ledger.GetTokenMeta(tokenInfo.Owner, common.ChainToken()); err == nil {
+		b = tm.Balance
+	}
+
+	block.Type = types.ContractReward
+	block.Address = tokenInfo.Owner
+	block.Representative = tokenInfo.Owner
+	block.Token = common.ChainToken()
+	block.Link = input.GetHash()
+	block.Data = newTokenInfo
+	block.Previous = types.ZeroHash
+	block.Balance = b.Add(types.Balance{Int: MinPledgeAmount})
+	block.Timestamp = time.Now().UTC().Unix()
+
 	if err := ledger.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
 		return nil, err
 	}
@@ -211,7 +228,7 @@ func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 				types.ContractRefund,
 				types.Balance{Int: tokenInfo.PledgeAmount},
 				common.ChainToken(),
-				[]byte{},
+				newTokenInfo,
 			},
 		}, nil
 	}
@@ -220,8 +237,4 @@ func (m *WithdrawMintage) DoReceive(ledger *l.Ledger, block *types.StateBlock, i
 
 func (m *WithdrawMintage) GetRefundData() []byte {
 	return []byte{2}
-}
-
-func (m *WithdrawMintage) GetQuota() uint64 {
-	return 0
 }

@@ -8,45 +8,44 @@
 package common
 
 import (
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
 	"reflect"
 	"testing"
-
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func TestGenesisBlock(t *testing.T) {
-	h, _ := types.NewHash("758f79b656340c329cb5b11302865c5ff0b0c99fd8a268d6b8760170e33e8cd1")
-	genesis := GenesisBlock()
-	h2 := genesis.GetHash()
+	h, _ := types.NewHash("8858a2b2563f6a702690beb4f29b61a88fc5a56dc50f3a26f2c97db1bf99c114")
+
+	h2 := genesisBlock.GetHash()
 	if h2 != h {
-		t.Log(util.ToString(genesis))
+		t.Log(util.ToString(genesisBlock))
 		t.Fatal("invalid genesis block", h2.String(), h.String())
 	}
 
-	h3, _ := types.NewHash("bf1cb34e79f8739367ad7de4a16c87c0e72ea483521fec0f0ddf7b5e90d03abd")
-	mintage := GenesisMintageBlock()
-	h4 := mintage.GetHash()
+	h3, _ := types.NewHash("90f28436423396887ccb08362b62061ca4b3c5a297a84e30f405e8973f652484")
+	h4 := genesisMintageBlock.GetHash()
 	if h3 != h4 {
-		t.Fatal(h3.String(), h4.String())
+		t.Log(util.ToIndentString(genesisMintageBlock))
+		t.Fatal("invalid genesis mintage block", h3.String(), h4.String())
 	}
 }
 
 func TestGenesisBlock2(t *testing.T) {
-	h, _ := types.NewHash("a217c8d4374377562e891d0f6b50fcdcd02c68ab7fe7d72efd14ea5c4136a214")
-	genesis := testGenesisBlock
-	h2 := genesis.GetHash()
+	h, _ := types.NewHash("b14e95d66841ea82f77d5293a1e477691fe66e9c1a68db92d2bb040a2b67ba71")
+
+	h2 := testGenesisBlock.GetHash()
 	if h2 != h {
-		t.Log(util.ToString(genesis))
+		t.Log(util.ToString(testGenesisBlock))
 		t.Fatal("invalid genesis block", h2.String(), h.String())
 	}
 
-	h3, _ := types.NewHash("f1042ef1472b02ee61048cf4eba923b81d0a64876665888b44bb2c46534f9655")
-	mintage := testGenesisMintageBlock
-	h4 := mintage.GetHash()
+	h3, _ := types.NewHash("67513e803863279bc62d8e49a087b623895c8e2b21160a874f337ce147c859f1")
+	h4 := testGenesisMintageBlock.GetHash()
 	if h3 != h4 {
-		t.Fatal(h3.String(), h4.String())
+		t.Log(util.ToIndentString(testGenesisMintageBlock))
+		t.Fatal("invalid genesis mintage block", h3.String(), h4.String())
 	}
 }
 

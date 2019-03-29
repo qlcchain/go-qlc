@@ -20,9 +20,9 @@ import (
 const (
 	jsonMintage = `
 	[
-		{"type":"function","name":"Mintage","inputs":[{"name":"tokenId","type":"tokenId"},{"name":"tokenName","type":"string"},{"name":"tokenSymbol","type":"string"},{"name":"totalSupply","type":"uint256"},{"name":"decimals","type":"uint8"}]},
+		{"type":"function","name":"Mintage","inputs":[{"name":"tokenId","type":"tokenId"},{"name":"tokenName","type":"string"},{"name":"tokenSymbol","type":"string"},{"name":"totalSupply","type":"uint256"},{"name":"decimals","type":"uint8"},{"name":"beneficial","type":"address"}]},
 		{"type":"function","name":"Withdraw","inputs":[{"name":"tokenId","type":"tokenId"}]},
-		{"type":"variable","name":"token","inputs":[{"name":"tokenId","type":"tokenId"},{"name":"tokenName","type":"string"},{"name":"tokenSymbol","type":"string"},{"name":"totalSupply","type":"uint256"},{"name":"decimals","type":"uint8"},{"name":"owner","type":"address"},{"name":"pledgeAmount","type":"uint256"},{"name":"withdrawTime","type":"int64"}]}
+		{"type":"variable","name":"token","inputs":[{"name":"tokenId","type":"tokenId"},{"name":"tokenName","type":"string"},{"name":"tokenSymbol","type":"string"},{"name":"totalSupply","type":"uint256"},{"name":"decimals","type":"uint8"},{"name":"owner","type":"address"},{"name":"pledgeAmount","type":"uint256"},{"name":"withdrawTime","type":"int64"},{"name":"pledgeAddress","type":"address"}]}
 	]`
 
 	MethodNameMintage         = "Mintage"
@@ -40,6 +40,7 @@ type ParamMintage struct {
 	TokenSymbol string
 	TotalSupply *big.Int
 	Decimals    uint8
+	Beneficial  types.Address
 }
 
 func ParseTokenInfo(data []byte) (*types.TokenInfo, error) {
@@ -48,18 +49,13 @@ func ParseTokenInfo(data []byte) (*types.TokenInfo, error) {
 	}
 	tokenInfo := new(types.TokenInfo)
 	err := ABIMintage.UnpackVariable(tokenInfo, VariableNameToken, data)
+	if err == nil && tokenInfo.PledgeAddress.IsZero() {
+		tokenInfo.PledgeAddress = tokenInfo.Owner
+	}
 	return tokenInfo, err
 }
 
 func NewTokenHash(address types.Address, previous types.Hash, tokenName string) types.Hash {
 	h, _ := types.HashBytes(address[:], previous[:], util.String2Bytes(tokenName))
 	return h
-}
-
-func GetStorageKey(key []byte) []byte {
-	var tmp []byte
-	tmp = append(tmp, types.MintageAddress[:]...)
-	tmp = append(tmp, key...)
-
-	return tmp
 }

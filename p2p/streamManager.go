@@ -133,7 +133,7 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 		sm.node.logger.Error(err)
 		return
 	}
-	version := sm.node.cfg.Version
+	version := p2pVersion
 	message := NewQlcMessage(messageContent, byte(version), messageName)
 	hash, err := types.HashBytes(message)
 	if err != nil {
@@ -194,7 +194,7 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 		sm.node.logger.Error(err)
 		return
 	}
-	version := sm.node.cfg.Version
+	version := p2pVersion
 	message := NewQlcMessage(messageContent, byte(version), messageName)
 	hash, err := types.HashBytes(message)
 	if err != nil {

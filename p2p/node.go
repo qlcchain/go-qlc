@@ -26,6 +26,9 @@ var (
 	ErrPeerIsNotConnected = errors.New("peer is not connected")
 )
 
+// p2p protocol version
+var p2pVersion = 3
+
 //var logger = log.NewLogger("p2p")
 
 type QlcNode struct {
