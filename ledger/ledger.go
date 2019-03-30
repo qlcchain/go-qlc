@@ -1830,7 +1830,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 	case types.ContractReward:
 		return block.GetBalance(), nil
 	case types.ContractSend:
-		if block.GetToken() == common.ChainToken() || block.GetToken() == common.GasToken() {
+		if common.IsGenesisToken(block.GetToken()) {
 			return block.GetBalance(), nil
 		} else {
 			if prev, err = l.GetStateBlock(block.Previous); err != nil {

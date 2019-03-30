@@ -84,6 +84,19 @@ func TestGasBlock2(t *testing.T) {
 	}
 }
 
+func TestIsGenesisToken(t *testing.T) {
+	h1, _ := types.NewHash("327531148b1a6302632aa7ad6eb369437d8269a08a55b344bd06b514e4e6ae97")
+	h2, _ := types.NewHash("45dd217cd9ff89f7b64ceda4886cc68dde9dfa47a8a422d165e2ce6f9a834fad")
+	b1 := IsGenesisToken(h1)
+	if b1 {
+		t.Fatal("h1 should not be Genesis Token")
+	}
+	b2 := IsGenesisToken(h2)
+	if !b2 {
+		t.Fatal("h2 should be Genesis Token")
+	}
+}
+
 func TestBalanceToRaw(t *testing.T) {
 	b1 := types.Balance{Int: big.NewInt(2)}
 	i, _ := new(big.Int).SetString("200000000", 10)

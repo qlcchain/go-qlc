@@ -160,7 +160,7 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		return nil, err
 	}
 	for _, t := range am.Tokens {
-		if t.Type == common.ChainToken() || t.Type == common.GasToken() {
+		if common.IsGenesisToken(t.Type) {
 			aa.CoinBalance = t.Balance
 			aa.Representative = t.Representative
 		}
@@ -198,7 +198,7 @@ func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, er
 		return types.ZeroAddress, err
 	}
 	for _, t := range am.Tokens {
-		if t.Type == common.ChainToken() || t.Type == common.GasToken() {
+		if common.IsGenesisToken(t.Type) {
 			return t.Representative, nil
 		}
 	}

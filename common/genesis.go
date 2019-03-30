@@ -58,7 +58,7 @@ var (
         	"signature": "d468c4c750eca3cb3a4005918f4dba4b72f4882a39caafc057d32f120e54e8173cd548f1779890cdff02f11ac2e09d62003327b0e027d2c09d78db6302b9fc07"
         }`
 
-	jsonMintageQAS = `{
+	jsonMintageQGAS = `{
         	"type": "ContractSend",
         	"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
         	"address": "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
@@ -78,7 +78,7 @@ var (
         	"work": "000000000048f5b9",
         	"signature": "ce19037a1ebde7a276704096ca40ab566644cfc25cdcf6648de095d79e4cbb25f327f4d98c506d3e249b79fbbae887d3a6aec8d7f1a4f3d00623b20e491ded00"
         }`
-	jsonGenesisQAS = `{
+	jsonGenesisQGAS = `{
         	"type": "ContractReward",
         	"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
         	"address": "qlc_3qe19joxq85rnff5wj5ybp6djqtheqqetfgqc3iogxagnjq4rrbmbp1ews7d",
@@ -141,7 +141,7 @@ var (
         	"signature": "60f7265b7379cc41d7ec533a4d2de08840e8d15d63599aa7e665c12d199d91b6ead07ab4a2b437e3e3957e60cf63bb79dcb1a82670339f7b3568b5207fa83b0d"
         }`
 
-	testJsonMintageQAS = `{
+	testJsonMintageQGAS = `{
         	"type": "ContractSend",
         	"token": "89066d747a3c74ff1dec8ea6a7011bde010dd404aec454880f23d58cbf9280e4",
         	"address": "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
@@ -162,7 +162,7 @@ var (
         	"signature": "d1391de3eb0b197065fbaa39008cb1f18db440e208811883f8f9edfc7a34dbff4990947da3f25cdd1d9a210d064e38c30cf70344ae44c7a02a1a2848446a4f03"
         }`
 
-	testJsonGenesisQAS = `{
+	testJsonGenesisQGAS = `{
         	"type": "ContractReward",
         	"token": "89066d747a3c74ff1dec8ea6a7011bde010dd404aec454880f23d58cbf9280e4",
         	"address": "qlc_3t1mwnf8u4oyn7wc7wuptnsfz83wsbrubs8hdhgkty56xrrez4x7fcttk5f3",
@@ -229,8 +229,8 @@ func init() {
 	genesisMintageHash = genesisMintageBlock.GetHash()
 	genesisBlockHash = genesisBlock.GetHash()
 	//main net gas
-	_ = json.Unmarshal([]byte(jsonMintageQAS), &gasMintageBlock)
-	_ = json.Unmarshal([]byte(jsonGenesisQAS), &gasBlock)
+	_ = json.Unmarshal([]byte(jsonMintageQGAS), &gasMintageBlock)
+	_ = json.Unmarshal([]byte(jsonGenesisQGAS), &gasBlock)
 	gasMintageHash = gasMintageBlock.GetHash()
 	gasBlockHash = gasBlock.GetHash()
 
@@ -239,8 +239,8 @@ func init() {
 	testGenesisMintageHash = testGenesisMintageBlock.GetHash()
 	testGenesisBlockHash = testGenesisBlock.GetHash()
 	//test net gas
-	_ = json.Unmarshal([]byte(testJsonMintageQAS), &testGasMintageBlock)
-	_ = json.Unmarshal([]byte(testJsonGenesisQAS), &testGasBlock)
+	_ = json.Unmarshal([]byte(testJsonMintageQGAS), &testGasMintageBlock)
+	_ = json.Unmarshal([]byte(testJsonGenesisQGAS), &testGasBlock)
 	testGasMintageHash = testGasMintageBlock.GetHash()
 	testGasBlockHash = testGasBlock.GetHash()
 }
@@ -337,6 +337,14 @@ func IsGenesisBlock(block *types.StateBlock) bool {
 	}
 
 	return h == testGenesisMintageHash || h == testGenesisBlockHash || h == testGasMintageHash || h == testGasBlockHash
+}
+
+// IsGenesis check token is chain token genesis
+func IsGenesisToken(hash types.Hash) bool {
+	if goqlc.MAINNET {
+		return hash == chainToken || hash == gasToken
+	}
+	return hash == testChainToken || hash == testGasBlockHash
 }
 
 func BalanceToRaw(b types.Balance, unit string) (types.Balance, error) {
