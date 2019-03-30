@@ -8,11 +8,12 @@
 package common
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func TestGenesisBlock(t *testing.T) {
@@ -46,6 +47,40 @@ func TestGenesisBlock2(t *testing.T) {
 	if h3 != h4 {
 		t.Log(util.ToIndentString(testGenesisMintageBlock))
 		t.Fatal("invalid genesis mintage block", h3.String(), h4.String())
+	}
+}
+
+func TestGasBlock1(t *testing.T) {
+	h, _ := types.NewHash("f72abf493f9b9378e67d4b24aa470be5a2cb71c22cf8d1a60e52b1f0e222a5d4")
+
+	h2 := gasBlock.GetHash()
+	if h2 != h {
+		t.Log(util.ToString(testGasBlock))
+		t.Fatal("invalid gas block", h2.String(), h.String())
+	}
+
+	h3, _ := types.NewHash("3b8c3acfbef2a93d9ba506073976f293cc1cca98892b7c545603945dd78f824f")
+	h4 := gasMintageBlock.GetHash()
+	if h3 != h4 {
+		t.Log(util.ToIndentString(testGasMintageBlock))
+		t.Fatal("invalid gas mintage block", h3.String(), h4.String())
+	}
+}
+
+func TestGasBlock2(t *testing.T) {
+	h, _ := types.NewHash("10043836573fdc1a4250913008c844a3572c2724ccc813e87bc2c341814d1afd")
+
+	h2 := testGasBlock.GetHash()
+	if h2 != h {
+		t.Log(util.ToString(testGasBlock))
+		t.Fatal("invalid gas block", h2.String(), h.String())
+	}
+
+	h3, _ := types.NewHash("327531148b1a6302632aa7ad6eb369437d8269a08a55b344bd06b514e4e6ae97")
+	h4 := testGasMintageBlock.GetHash()
+	if h3 != h4 {
+		t.Log(util.ToIndentString(testGasMintageBlock))
+		t.Fatal("invalid gas mintage block", h3.String(), h4.String())
 	}
 }
 
