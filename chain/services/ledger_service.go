@@ -61,6 +61,28 @@ func (ls *LedgerService) Init() error {
 		return err
 	}
 
+	//gas block storage
+	gas := common.GasBlock()
+	_ = l.SetStorage(types.MintageAddress[:], gas.Token[:], gas.Data)
+	gasMintageHash := common.GasMintageHash()
+	if b, err := l.HasStateBlock(gasMintageHash); !b && err == nil {
+		gasMintage := common.GasMintageBlock()
+		if err := l.AddStateBlock(&gasMintage); err != nil {
+			ls.logger.Error(err)
+		}
+	} else {
+		return err
+	}
+
+	gasHash := common.GasBlockHash()
+	if b, err := l.HasStateBlock(gasHash); !b && err == nil {
+		if err := verifier.BlockProcess(&gas); err != nil {
+			ls.logger.Error(err)
+		}
+	} else {
+		return err
+	}
+
 	return nil
 
 	//return l.BatchUpdate(func(txn db.StoreTxn) error {

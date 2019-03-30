@@ -32,8 +32,8 @@ type APIBlock struct {
 
 type APIAccount struct {
 	Address        types.Address   `json:"account"`
-	CoinBalance    types.Balance   `json:"coinBalance"`
-	Representative types.Address   `json:"representative"`
+	CoinBalance    *types.Balance  `json:"coinBalance,omitempty"`
+	Representative *types.Address  `json:"representative,omitempty"`
 	Tokens         []*APITokenMeta `json:"tokens"`
 }
 
@@ -161,8 +161,8 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 	}
 	for _, t := range am.Tokens {
 		if t.Type == common.ChainToken() {
-			aa.CoinBalance = t.Balance
-			aa.Representative = t.Representative
+			aa.CoinBalance = &t.Balance
+			aa.Representative = &t.Representative
 		}
 		info, err := l.ledger.GetTokenById(t.Type)
 		if err != nil {
@@ -202,7 +202,7 @@ func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, er
 			return t.Representative, nil
 		}
 	}
-	return types.ZeroAddress, err
+	return types.ZeroAddress, errors.New("account has no representative")
 }
 
 func (l *LedgerApi) AccountVotingWeight(addr types.Address) (types.Balance, error) {
