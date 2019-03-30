@@ -1,5 +1,12 @@
-##  (2019-03-29)
+##  (2019-03-30)
 
+* feat: add QGAS genesis block info (#230) ([df07d7e](https://github.com/qlcchain/go-qlc/commit/df07d7e)), closes [#230](https://github.com/qlcchain/go-qlc/issues/230)
+
+
+
+## <small>1.0.3 (2019-03-29)</small>
+
+* chore: bump version to v1.0.3 ([0ea1f7f](https://github.com/qlcchain/go-qlc/commit/0ea1f7f))
 * update chain contract (#229) ([a13cd2b](https://github.com/qlcchain/go-qlc/commit/a13cd2b)), closes [#229](https://github.com/qlcchain/go-qlc/issues/229)
 
 
