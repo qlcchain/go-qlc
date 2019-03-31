@@ -31,6 +31,7 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 		config := &config.Config{
 			DataDir: rpcDir,
 			RPC: &config.RPCConfigV2{
+				Enable:       true,
 				HTTPEndpoint: "tcp4://0.0.0.0:19735",
 				WSEndpoint:   "tcp4://0.0.0.0:19736",
 				IPCEndpoint:  defaultIPCEndpoint(filepath.Join(rpcDir, "qlc_test.ipc")),
