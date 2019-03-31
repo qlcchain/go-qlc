@@ -165,7 +165,14 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 	fmt.Println(util.ToIndentString(&receiveBlock))
 
 	client, err := ctx.RPC.RPC().Attach()
-	defer client.Close()
+	if err != nil {
+		fmt.Println("create rpc client error:", err)
+	}
+	defer func() {
+		if client != nil {
+			client.Close()
+		}
+	}()
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &receiveBlock)
