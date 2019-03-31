@@ -18,7 +18,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -69,9 +68,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 
 	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
 	ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, accounts)
-	if err != nil {
-		return err
-	}
+	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
@@ -137,12 +134,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		}(ctx.Ledger.Ledger, accounts)
 	}
 
-	if cfg.RPC.Enable {
-		ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
-		services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
-	} else {
-		services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService}
-	}
+	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
 
 	return nil
 }
@@ -172,10 +164,14 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 	}
 	fmt.Println(util.ToIndentString(&receiveBlock))
 
-	verifier := process.NewLedgerVerifier(l)
-	r, err := verifier.Process(receiveBlock)
+	client, err := ctx.RPC.RPC().Attach()
+	defer client.Close()
+
+	var h types.Hash
+	err = client.Call(&h, "ledger_process", &receiveBlock)
 	if err != nil {
-		fmt.Println("process block error: ", r.String())
+		fmt.Println(util.ToString(&receiveBlock))
+		fmt.Println("process block error", err)
 	}
 
 	return nil

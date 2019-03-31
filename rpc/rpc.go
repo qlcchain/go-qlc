@@ -188,9 +188,16 @@ func (r *RPC) stopInProcess() {
 
 func (r *RPC) StopRPC() {
 	r.stopInProcess()
-	r.stopIPC()
-	r.stopHTTP()
-	r.stopWS()
+	if r.config.RPC.Enable && r.config.RPC.IPCEnabled {
+		r.stopIPC()
+	}
+	if r.config.RPC.Enable && r.config.RPC.HTTPEnabled {
+		r.stopHTTP()
+	}
+	if r.config.RPC.Enable && r.config.RPC.WSEnabled {
+		r.stopWS()
+	}
+
 }
 
 func (r *RPC) StartRPC() error {
@@ -204,7 +211,7 @@ func (r *RPC) StartRPC() error {
 	}
 
 	//Start rpc
-	if r.config.RPC.IPCEnabled {
+	if r.config.RPC.Enable && r.config.RPC.IPCEnabled {
 		api := r.GetIpcApis()
 		if err := r.startIPC(api); err != nil {
 			r.stopInProcess()
@@ -212,12 +219,7 @@ func (r *RPC) StartRPC() error {
 		}
 	}
 
-	if r.config.RPC.HTTPEnabled {
-		//apis := GetPublicApis()
-		//if len(r.config.PublicModules) != 0 {
-		//	apis = GetApis(r.config.PublicModules...)
-		//}
-		//if err := r.startHTTP(r.httpEndpoint, apis, nil, r.config.HTTPCors, r.config.HttpVirtualHosts, HTTPTimeouts{}, r.config.HttpExposeAll); err != nil {
+	if r.config.RPC.Enable && r.config.RPC.HTTPEnabled {
 		apis := r.GetHttpApis()
 		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, HTTPTimeouts{}, false); err != nil {
 			r.logger.Info(err)
@@ -227,12 +229,7 @@ func (r *RPC) StartRPC() error {
 		}
 	}
 
-	if r.config.RPC.WSEnabled {
-		//apis := GetPublicApis()
-		//if len(r.config.PublicModules) != 0 {
-		//	apis = GetApis(r.config.PublicModules...)
-		//}
-		//if err := r.startWS(r.wsEndpoint, apis, nil, r.config.WSOrigins, r.config.WSExposeAll); err != nil {
+	if r.config.RPC.Enable && r.config.RPC.WSEnabled {
 		apis := r.GetWSApis()
 		if err := r.startWS(r.config.RPC.WSEndpoint, apis, nil, []string{}, false); err != nil {
 			r.logger.Info(err)
