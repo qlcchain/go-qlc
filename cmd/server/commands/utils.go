@@ -18,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -171,14 +172,10 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 	}
 	fmt.Println(util.ToIndentString(&receiveBlock))
 
-	client, err := ctx.RPC.RPC().Attach()
-	defer client.Close()
-
-	var h types.Hash
-	err = client.Call(&h, "ledger_process", &receiveBlock)
+	verifier := process.NewLedgerVerifier(l)
+	r, err := verifier.Process(receiveBlock)
 	if err != nil {
-		fmt.Println(util.ToString(&receiveBlock))
-		fmt.Println("process block error", err)
+		fmt.Println("process block error: ", r.String())
 	}
 
 	return nil
