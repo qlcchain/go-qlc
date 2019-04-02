@@ -20,6 +20,8 @@ type QlcContext struct {
 	NetService  *p2p.QlcService
 	DPosService *services.DPosService
 	RPC         *services.RPCService
+	PoVService  *services.PoVService
+	Miner       *services.MinerService
 }
 
 func New(cfg *config.Config) (*QlcContext, error) {

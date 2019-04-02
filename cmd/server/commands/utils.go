@@ -70,6 +70,9 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, accounts)
 	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
 
+	ctx.PoVService = ss.NewPoVService(cfg, ctx.NetService)
+	ctx.Miner = ss.NewMinerService(cfg)
+
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
 			defer func() {
@@ -134,7 +137,8 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		}(ctx.Ledger.Ledger, accounts)
 	}
 
-	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
+	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC,
+		ctx.PoVService, ctx.Miner}
 
 	return nil
 }
