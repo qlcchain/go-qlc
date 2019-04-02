@@ -54,6 +54,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/tendermint/tmlibs v0.9.0
 	github.com/tinylib/msgp v1.1.0
+	github.com/ttacon/chalk v0.0.0-20160626202418-22c06c80ed31 // indirect
 	github.com/whyrusleeping/mdns v0.0.0-20180901202407-ef14215e6b30 // indirect
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
