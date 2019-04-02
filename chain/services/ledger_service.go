@@ -49,7 +49,9 @@ func (ls *LedgerService) Init() error {
 			ls.logger.Error(err)
 		}
 	} else {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	genesisHash := common.GenesisBlockHash()
@@ -58,7 +60,9 @@ func (ls *LedgerService) Init() error {
 			ls.logger.Error(err)
 		}
 	} else {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	//gas block storage
@@ -71,7 +75,9 @@ func (ls *LedgerService) Init() error {
 			ls.logger.Error(err)
 		}
 	} else {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	gasHash := common.GasBlockHash()
@@ -80,7 +86,9 @@ func (ls *LedgerService) Init() error {
 			ls.logger.Error(err)
 		}
 	} else {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
