@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"net"
 	"net/url"
 	"strings"
@@ -160,6 +161,9 @@ func (r *RPC) Attach() (*Client, error) {
 	//	return nil, ErrNodeStopped
 	//}
 
+	if r.inProcessHandler == nil {
+		return nil, errors.New("server not started")
+	}
 	return DialInProc(r.inProcessHandler), nil
 }
 
