@@ -29,7 +29,7 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 		fmt.Println(err)
 		return err
 	}
-	services, err := startNode()
+	services, err := startNode(accounts)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -103,35 +103,6 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 				}
 			}(accounts)
 		})
-
-		//search pending and generate receive block
-		go func(l *ledger.Ledger, accounts []*types.Account) {
-			defer func() {
-				if err := recover(); err != nil {
-					fmt.Println(err)
-				}
-			}()
-
-			for _, account := range accounts {
-				err := l.SearchPending(account.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
-					fmt.Printf("%s receive %s[%s] from %s (%s)\n", key.Address, value.Type.String(), value.Source.String(), value.Amount.String(), key.Hash.String())
-					if send, err := l.GetStateBlock(key.Hash); err != nil {
-						fmt.Println(err)
-					} else {
-						err = receive(send, account)
-						if err != nil {
-							fmt.Printf("err[%s] when generate receive block.\n", err)
-						}
-					}
-					return nil
-				})
-
-				if err != nil {
-					fmt.Println(err)
-				}
-			}
-
-		}(ctx.Ledger.Ledger, accounts)
 	}
 
 	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC}
@@ -139,7 +110,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	return nil
 }
 
-func startNode() ([]common.Service, error) {
+func startNode(accounts []*types.Account) ([]common.Service, error) {
 	for _, service := range services {
 		err := service.Init()
 		if err != nil {
@@ -151,6 +122,35 @@ func startNode() ([]common.Service, error) {
 		}
 		fmt.Printf("%s start successful.\n", reflect.TypeOf(service))
 	}
+
+	//search pending and generate receive block
+	go func(l *ledger.Ledger, accounts []*types.Account) {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Println(err)
+			}
+		}()
+
+		for _, account := range accounts {
+			err := l.SearchPending(account.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
+				fmt.Printf("%s receive %s[%s] from %s (%s)\n", key.Address, value.Type.String(), value.Source.String(), value.Amount.String(), key.Hash.String())
+				if send, err := l.GetStateBlock(key.Hash); err != nil {
+					fmt.Println(err)
+				} else {
+					err = receive(send, account)
+					if err != nil {
+						fmt.Printf("err[%s] when generate receive block.\n", err)
+					}
+				}
+				return nil
+			})
+
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+	}(ctx.Ledger.Ledger, accounts)
 
 	return services, nil
 }
