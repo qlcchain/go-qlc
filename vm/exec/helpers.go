@@ -3,6 +3,7 @@ package exec
 import (
 	"errors"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/vm/compiler"
 
 	"github.com/qlcchain/go-qlc/vm/utils"

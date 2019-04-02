@@ -3,9 +3,10 @@ package abi
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"reflect"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 // Argument holds the name of the argument and the corresponding type.

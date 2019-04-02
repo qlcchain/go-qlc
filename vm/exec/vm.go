@@ -5,11 +5,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/vm/memory"
 	"math"
 	"math/bits"
 	"runtime/debug"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/vm/memory"
 
 	"github.com/qlcchain/go-qlc/vm/compiler"
 	"github.com/qlcchain/go-qlc/vm/compiler/opcodes"

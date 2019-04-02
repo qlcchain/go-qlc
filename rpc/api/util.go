@@ -3,6 +3,9 @@ package api
 import (
 	"math"
 
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -14,11 +17,11 @@ import (
 
 type UtilApi struct {
 	logger *zap.SugaredLogger
-	ledger *ledger.Ledger
+	ctx    *vmstore.VMContext
 }
 
 func NewUtilApi(l *ledger.Ledger) *UtilApi {
-	return &UtilApi{ledger: l, logger: log.NewLogger("api_util")}
+	return &UtilApi{ctx: vmstore.NewVMContext(l), logger: log.NewLogger("api_util")}
 }
 
 func (u *UtilApi) Decrypt(cryptograph string, passphrase string) (string, error) {
@@ -39,7 +42,7 @@ func decimal(d uint8) int64 {
 
 func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
 	if tokenName != nil {
-		token, err := u.ledger.GetTokenByName(*tokenName)
+		token, err := abi.GetTokenByName(u.ctx, *tokenName)
 		if err != nil {
 			return types.ZeroBalance, err
 		}
@@ -64,7 +67,7 @@ func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *st
 
 func (u *UtilApi) BalanceToRaw(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
 	if tokenName != nil {
-		token, err := u.ledger.GetTokenByName(*tokenName)
+		token, err := abi.GetTokenByName(u.ctx, *tokenName)
 		if err != nil {
 			return types.ZeroBalance, err
 		}

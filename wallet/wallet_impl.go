@@ -11,9 +11,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"io"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"

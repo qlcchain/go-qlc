@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/qlcchain/go-qlc"
+	goqlc "github.com/qlcchain/go-qlc"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 

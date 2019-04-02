@@ -9,6 +9,7 @@ package abi
 
 import (
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/vm/compiler"
 )
 

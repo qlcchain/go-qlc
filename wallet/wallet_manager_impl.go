@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sync"
+
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -18,7 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
-	"sync"
 )
 
 const defaultPassword = ""

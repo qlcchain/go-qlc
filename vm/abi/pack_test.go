@@ -2,13 +2,14 @@ package abi
 
 import (
 	"bytes"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"math"
 	"math/big"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func TestPack(t *testing.T) {

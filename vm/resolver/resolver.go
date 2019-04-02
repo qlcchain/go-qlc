@@ -5,14 +5,15 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strconv"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/exec"
 	"github.com/qlcchain/go-qlc/vm/memory"
 	"go.uber.org/zap"
-	"io"
-	"strconv"
-	"time"
 )
 
 // Resolver defines imports for WebAssembly modules ran in Life.

@@ -10,11 +10,12 @@ package log
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

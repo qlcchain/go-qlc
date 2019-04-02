@@ -3,11 +3,12 @@ package abi
 import (
 	"encoding/binary"
 	"fmt"
+	"math/big"
+	"reflect"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"math/big"
-	"reflect"
 )
 
 // reads the integer based on its kind

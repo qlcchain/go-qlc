@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"log"
 	"math/big"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 const jsondata = `

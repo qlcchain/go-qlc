@@ -10,6 +10,8 @@ package services
 import (
 	"errors"
 
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -40,7 +42,8 @@ func (ls *LedgerService) Init() error {
 	l := ls.Ledger
 
 	genesis := common.GenesisBlock()
-	_ = l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
+	ctx := vmstore.NewVMContext(l)
+	_ = ctx.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
 	verifier := process.NewLedgerVerifier(l)
 	mintageHash := common.GenesisMintageHash()
 	if b, err := l.HasStateBlock(mintageHash); !b && err == nil {
@@ -67,7 +70,7 @@ func (ls *LedgerService) Init() error {
 
 	//gas block storage
 	gas := common.GasBlock()
-	_ = l.SetStorage(types.MintageAddress[:], gas.Token[:], gas.Data)
+	_ = ctx.SetStorage(types.MintageAddress[:], gas.Token[:], gas.Data)
 	gasMintageHash := common.GasMintageHash()
 	if b, err := l.HasStateBlock(gasMintageHash); !b && err == nil {
 		gasMintage := common.GasMintageBlock()

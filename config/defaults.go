@@ -15,8 +15,8 @@ import (
 	"runtime"
 
 	ic "github.com/libp2p/go-libp2p-crypto"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/qlcchain/go-qlc"
+	peer "github.com/libp2p/go-libp2p-peer"
+	goqlc "github.com/qlcchain/go-qlc"
 )
 
 const (

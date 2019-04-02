@@ -3,6 +3,9 @@ package api
 import (
 	"encoding/hex"
 
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -12,13 +15,13 @@ import (
 )
 
 type WalletApi struct {
-	wallet *wallet.WalletStore
-	ledger *ledger.Ledger
-	logger *zap.SugaredLogger
+	wallet    *wallet.WalletStore
+	vmContext *vmstore.VMContext
+	logger    *zap.SugaredLogger
 }
 
 func NewWalletApi(ledger *ledger.Ledger, wallet *wallet.WalletStore) *WalletApi {
-	return &WalletApi{ledger: ledger, wallet: wallet, logger: log.NewLogger("api_wallet")}
+	return &WalletApi{vmContext: vmstore.NewVMContext(ledger), wallet: wallet, logger: log.NewLogger("api_wallet")}
 }
 
 // GetBalance returns balance for each token of the wallet
@@ -38,7 +41,7 @@ func (w *WalletApi) GetBalances(address types.Address, passphrase string) (map[s
 	cache := make(map[string]types.Balance)
 
 	for token, balance := range balances {
-		info, err := w.ledger.GetTokenById(token)
+		info, err := abi.GetTokenById(w.vmContext, token)
 		if err != nil {
 			return nil, err
 		}

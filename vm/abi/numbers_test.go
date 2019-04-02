@@ -2,9 +2,10 @@ package abi
 
 import (
 	"bytes"
-	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func TestNumberTypes(t *testing.T) {
