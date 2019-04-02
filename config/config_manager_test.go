@@ -2,12 +2,13 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common/util"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/qlcchain/go-qlc/common/util"
+
+	peer "github.com/libp2p/go-libp2p-peer"
 )
 
 var cfgFile = filepath.Join(QlcTestDataDir(), "config")

@@ -3,21 +3,24 @@ package api
 import (
 	"encoding/json"
 
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"go.uber.org/zap"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type SMSApi struct {
-	ledger *ledger.Ledger
-	logger *zap.SugaredLogger
+	ledger    *ledger.Ledger
+	vmContext *vmstore.VMContext
+	logger    *zap.SugaredLogger
 }
 
 func NewSMSApi(ledger *ledger.Ledger) *SMSApi {
-	return &SMSApi{ledger: ledger, logger: log.NewLogger("api_sms")}
+	return &SMSApi{ledger: ledger, vmContext: vmstore.NewVMContext(ledger), logger: log.NewLogger("api_sms")}
 }
 
 func phoneNumberSeri(number string) ([]byte, error) {
@@ -35,7 +38,7 @@ func (s *SMSApi) getApiBlocksByHash(hashes []types.Hash) ([]*APIBlock, error) {
 		if err != nil {
 			return nil, err
 		}
-		b, err := generateAPIBlock(s.ledger, block)
+		b, err := generateAPIBlock(s.vmContext, block)
 		if err != nil {
 			return nil, err
 		}

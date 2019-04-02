@@ -123,10 +123,6 @@ func (el *Election) getOnlineRepresentativesBalance() types.Balance {
 }
 
 func (el *Election) getGenesisBalance() (types.Balance, error) {
-	hash := common.ChainToken()
-	i, err := el.dps.ledger.GetTokenById(hash)
-	if err != nil {
-		return types.ZeroBalance, err
-	}
-	return types.Balance{Int: i.TotalSupply}, nil
+	genesis := common.GenesisBlock()
+	return genesis.Balance, nil
 }

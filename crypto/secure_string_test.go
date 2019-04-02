@@ -9,8 +9,9 @@ package crypto
 
 import (
 	"fmt"
-	"github.com/awnumar/memguard"
 	"testing"
+
+	"github.com/awnumar/memguard"
 )
 
 func TestNewSecureString(t *testing.T) {

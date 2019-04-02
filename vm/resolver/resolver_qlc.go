@@ -9,10 +9,11 @@ package resolver
 
 import (
 	"encoding/binary"
+	"strconv"
+
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/exec"
 	"github.com/qlcchain/go-qlc/vm/memory"
-	"strconv"
 )
 
 func (r *Resolver) qlcTest(vm *exec.VirtualMachine) int64 {

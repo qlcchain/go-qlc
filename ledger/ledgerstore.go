@@ -15,7 +15,6 @@ import (
 
 type Store interface {
 	smsStore
-	contractStore
 	Empty(txns ...db.StoreTxn) (bool, error)
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
 
@@ -104,9 +103,9 @@ type Store interface {
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
 
 	//Token
-	ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error)
-	GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.TokenInfo, error)
-	GetTokenByName(tokenName string, txns ...db.StoreTxn) (*types.TokenInfo, error)
+	//ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error)
+	//GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.TokenInfo, error)
+	//GetTokenByName(tokenName string, txns ...db.StoreTxn) (*types.TokenInfo, error)
 	GetGenesis(txns ...db.StoreTxn) ([]*types.StateBlock, error)
 
 	//CalculateAmount calculate block amount by balance and check block type

@@ -10,6 +10,7 @@ package types
 import (
 	"encoding/binary"
 	"encoding/hex"
+
 	"github.com/tinylib/msgp/msgp"
 )
 

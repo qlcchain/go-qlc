@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -23,13 +25,15 @@ import (
 )
 
 type MintageApi struct {
-	logger  *zap.SugaredLogger
-	ledger  *ledger.Ledger
-	mintage *contract.Mintage
+	logger    *zap.SugaredLogger
+	ledger    *ledger.Ledger
+	vmContext *vmstore.VMContext
+	mintage   *contract.Mintage
 }
 
 func NewMintageApi(ledger *ledger.Ledger) *MintageApi {
-	return &MintageApi{ledger: ledger, logger: log.NewLogger("api_mintage"), mintage: &contract.Mintage{}}
+	return &MintageApi{ledger: ledger, vmContext: vmstore.NewVMContext(ledger),
+		logger: log.NewLogger("api_mintage"), mintage: &contract.Mintage{}}
 }
 
 type MintageParams struct {
@@ -48,7 +52,7 @@ func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cabi.ABIMintage.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals)
+	return cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals)
 }
 
 func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, error) {
@@ -57,7 +61,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	if err != nil {
 		return nil, err
 	}
-	data, err := cabi.ABIMintage.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals, param.Beneficial)
+	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals, param.Beneficial)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +93,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		Timestamp:      time.Now().UTC().Unix(),
 	}
 
-	err = m.mintage.DoSend(m.ledger, send)
+	err = m.mintage.DoSend(m.vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +104,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	reward := &types.StateBlock{}
 
-	blocks, err := m.mintage.DoReceive(m.ledger, reward, input)
+	blocks, err := m.mintage.DoReceive(m.vmContext, reward, input)
 	if err != nil {
 		return nil, err
 	}
@@ -112,5 +116,5 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 }
 
 func (m *MintageApi) GetWithdrawMintageData(tokenId types.Hash) ([]byte, error) {
-	return cabi.ABIMintage.PackMethod(cabi.MethodNameMintageWithdraw, tokenId)
+	return cabi.MintageABI.PackMethod(cabi.MethodNameMintageWithdraw, tokenId)
 }

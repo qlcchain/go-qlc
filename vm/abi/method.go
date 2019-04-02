@@ -2,8 +2,9 @@ package abi
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 // Method represents a callable given a `Name` and whether the method is a constant.

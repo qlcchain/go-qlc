@@ -1,10 +1,11 @@
 package abi
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 // typeWithoutStringer is a alias for the Type type which simply doesn't implement

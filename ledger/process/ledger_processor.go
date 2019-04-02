@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -38,12 +40,13 @@ func init() {
 type checkBlock func(*LedgerVerifier, *types.StateBlock) (ProcessResult, error)
 
 type LedgerVerifier struct {
-	l      *ledger.Ledger
-	logger *zap.SugaredLogger
+	l         *ledger.Ledger
+	vmContext *vmstore.VMContext
+	logger    *zap.SugaredLogger
 }
 
 func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
-	return &LedgerVerifier{l: l, logger: log.NewLogger("ledger_verifier")}
+	return &LedgerVerifier{l: l, logger: log.NewLogger("ledger_verifier"), vmContext: vmstore.NewVMContext(l)}
 }
 
 func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
@@ -267,7 +270,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	//verify data
 	if c, ok, _ := contract.GetChainContract(address, block.Data); ok {
 		clone := block.Clone()
-		if err := c.DoSend(lv.l, clone); err == nil {
+		if err := c.DoSend(lv.vmContext, clone); err == nil {
 			if bytes.EqualFold(block.Data, clone.Data) {
 				return Progress, nil
 			} else {
@@ -312,7 +315,7 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	}
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
 		clone := block.Clone()
-		if g, e := c.DoReceive(lv.l, clone, input); e == nil {
+		if g, e := c.DoReceive(lv.vmContext, clone, input); e == nil {
 			if len(g) > 0 {
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 					g[0].Amount.Compare(block.Balance) == types.BalanceCompEqual && g[0].ToAddress == block.Address {

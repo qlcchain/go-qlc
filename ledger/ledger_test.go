@@ -29,7 +29,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	l := NewLedger(dir)
 
 	return func(t *testing.T) {
-		//err := l.db.Erase()
+		//err := l.Store.Erase()
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)
@@ -80,7 +80,7 @@ func TestLedger_Instance2(t *testing.T) {
 func TestGetTxn(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	txn := l.db.NewTransaction(false)
+	txn := l.Store.NewTransaction(false)
 	fmt.Println(txn)
 	txn2, flag := l.getTxn(false, txn)
 	if flag {

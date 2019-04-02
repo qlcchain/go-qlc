@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+
 	"github.com/qlcchain/go-qlc/common/util"
 )
 

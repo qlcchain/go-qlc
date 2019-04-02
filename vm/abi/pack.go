@@ -1,9 +1,10 @@
 package abi
 
 import (
-	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
 	"reflect"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 // packBytesSlice packs the given bytes as [L, V] as the canonical representation

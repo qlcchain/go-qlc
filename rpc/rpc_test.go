@@ -41,7 +41,10 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 			},
 		}
 		rpc = NewRPC(config, nil)
-		rpc.StartRPC()
+		err := rpc.StartRPC()
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Log("rpc started")
 	}
 	return func(t *testing.T) {

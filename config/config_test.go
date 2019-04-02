@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/qlcchain/go-qlc/common/util"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func TestConfig_LogDir(t *testing.T) {

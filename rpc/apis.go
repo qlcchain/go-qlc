@@ -6,13 +6,13 @@ import (
 
 func (r *RPC) getApi(apiModule string) API {
 	switch apiModule {
-	case "qlcclassic":
-		return API{
-			Namespace: "qlcclassic",
-			Version:   "1.0",
-			Service:   api.NewQlcApi(r.ledger, r.dpos),
-			Public:    true,
-		}
+	//case "qlcclassic":
+	//	return API{
+	//		Namespace: "qlcclassic",
+	//		Version:   "1.0",
+	//		Service:   api.NewQlcApi(r.ledger, r.dpos),
+	//		Public:    true,
+	//	}
 	case "account":
 		return API{
 			Namespace: "account",
@@ -103,7 +103,7 @@ func (r *RPC) GetWSApis() []API {
 }
 
 func (r *RPC) GetPublicApis() []API {
-	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms"}
+	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms"}
 	return r.GetApis(apiModules...)
 }
 

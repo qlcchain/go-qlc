@@ -10,6 +10,12 @@ package test
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
@@ -20,11 +26,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/test/mock"
-	"math/big"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 var (
