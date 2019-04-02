@@ -75,6 +75,7 @@ const (
 	idPrefixMessage
 	idPrefixMessageInfo
 	idPrefixOnlineReps
+	idPrefixPovBlock
 )
 
 var (
