@@ -19,6 +19,7 @@ type ConfigV2 struct {
 
 	RPC *RPCConfigV2 `json:"rpc"`
 	P2P *P2PConfigV2 `json:"p2p"`
+	PoV *PoVConfigV2 `json:"pov"`
 }
 
 type P2PConfigV2 struct {
@@ -59,6 +60,14 @@ type DiscoveryConfigV2 struct {
 type IdentityConfigV2 struct {
 	PeerID  string `json:"peerId"`
 	PrivKey string `json:"privateKey,omitempty"`
+}
+
+type PoVConfigV2 struct {
+	BlockInterval int    `json:"blockInterval"`
+	BlockSize     int    `json:"blockSize"`
+	TargetCycle   int    `json:"targetCycle"`
+	ForkHeight    int    `json:"forkHeight"`
+	Coinbase      string `json:"coinbase"`
 }
 
 func DefaultConfigV2(dir string) (*ConfigV2, error) {
@@ -103,6 +112,13 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 				},
 				ID: &IdentityConfigV2{id, pk},
 			},
+			PoV: &PoVConfigV2{
+				BlockInterval: 30,
+				BlockSize: 4 * 1024 * 1024,
+				TargetCycle: 20,
+				ForkHeight: 3,
+				//Coinbase: "qlc_xxx",
+			},
 		}
 	} else {
 		cfg = ConfigV2{
@@ -138,6 +154,13 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 					MDNSInterval:      30,
 				},
 				ID: &IdentityConfigV2{id, pk},
+			},
+			PoV: &PoVConfigV2{
+				BlockInterval: 30,
+				BlockSize: 4 * 1024 * 1024,
+				TargetCycle: 20,
+				ForkHeight: 3,
+				//Coinbase: "qlc_xxx",
 			},
 		}
 	}
