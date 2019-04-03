@@ -113,6 +113,36 @@ func (z *AccountMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Address")
 				return
 			}
+		case "balance":
+			err = dc.ReadExtension(&z.CoinBalance)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinBalance")
+				return
+			}
+		case "vote":
+			err = dc.ReadExtension(&z.CoinVote)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinVote")
+				return
+			}
+		case "network":
+			err = dc.ReadExtension(&z.CoinNetwork)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinNetwork")
+				return
+			}
+		case "storage":
+			err = dc.ReadExtension(&z.CoinStorage)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinStorage")
+				return
+			}
+		case "oracle":
+			err = dc.ReadExtension(&z.CoinOracle)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinOracle")
+				return
+			}
 		case "tokens":
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
@@ -157,15 +187,65 @@ func (z *AccountMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *AccountMeta) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+	// map header, size 7
 	// write "account"
-	err = en.Append(0x82, 0xa7, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	err = en.Append(0x87, 0xa7, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
 	err = en.WriteExtension(&z.Address)
 	if err != nil {
 		err = msgp.WrapError(err, "Address")
+		return
+	}
+	// write "balance"
+	err = en.Append(0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.CoinBalance)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinBalance")
+		return
+	}
+	// write "vote"
+	err = en.Append(0xa4, 0x76, 0x6f, 0x74, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.CoinVote)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinVote")
+		return
+	}
+	// write "network"
+	err = en.Append(0xa7, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.CoinNetwork)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinNetwork")
+		return
+	}
+	// write "storage"
+	err = en.Append(0xa7, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.CoinStorage)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinStorage")
+		return
+	}
+	// write "oracle"
+	err = en.Append(0xa6, 0x6f, 0x72, 0x61, 0x63, 0x6c, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.CoinOracle)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinOracle")
 		return
 	}
 	// write "tokens"
@@ -198,12 +278,47 @@ func (z *AccountMeta) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *AccountMeta) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 7
 	// string "account"
-	o = append(o, 0x82, 0xa7, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+	o = append(o, 0x87, 0xa7, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 	o, err = msgp.AppendExtension(o, &z.Address)
 	if err != nil {
 		err = msgp.WrapError(err, "Address")
+		return
+	}
+	// string "balance"
+	o = append(o, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
+	o, err = msgp.AppendExtension(o, &z.CoinBalance)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinBalance")
+		return
+	}
+	// string "vote"
+	o = append(o, 0xa4, 0x76, 0x6f, 0x74, 0x65)
+	o, err = msgp.AppendExtension(o, &z.CoinVote)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinVote")
+		return
+	}
+	// string "network"
+	o = append(o, 0xa7, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b)
+	o, err = msgp.AppendExtension(o, &z.CoinNetwork)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinNetwork")
+		return
+	}
+	// string "storage"
+	o = append(o, 0xa7, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65)
+	o, err = msgp.AppendExtension(o, &z.CoinStorage)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinStorage")
+		return
+	}
+	// string "oracle"
+	o = append(o, 0xa6, 0x6f, 0x72, 0x61, 0x63, 0x6c, 0x65)
+	o, err = msgp.AppendExtension(o, &z.CoinOracle)
+	if err != nil {
+		err = msgp.WrapError(err, "CoinOracle")
 		return
 	}
 	// string "tokens"
@@ -245,6 +360,36 @@ func (z *AccountMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
 			if err != nil {
 				err = msgp.WrapError(err, "Address")
+				return
+			}
+		case "balance":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.CoinBalance)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinBalance")
+				return
+			}
+		case "vote":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.CoinVote)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinVote")
+				return
+			}
+		case "network":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.CoinNetwork)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinNetwork")
+				return
+			}
+		case "storage":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.CoinStorage)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinStorage")
+				return
+			}
+		case "oracle":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.CoinOracle)
+			if err != nil {
+				err = msgp.WrapError(err, "CoinOracle")
 				return
 			}
 		case "tokens":
@@ -291,7 +436,7 @@ func (z *AccountMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *AccountMeta) Msgsize() (s int) {
-	s = 1 + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 7 + msgp.ArrayHeaderSize
+	s = 1 + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 8 + msgp.ExtensionPrefixSize + z.CoinBalance.Len() + 5 + msgp.ExtensionPrefixSize + z.CoinVote.Len() + 8 + msgp.ExtensionPrefixSize + z.CoinNetwork.Len() + 8 + msgp.ExtensionPrefixSize + z.CoinStorage.Len() + 7 + msgp.ExtensionPrefixSize + z.CoinOracle.Len() + 7 + msgp.ArrayHeaderSize
 	for za0001 := range z.Tokens {
 		if z.Tokens[za0001] == nil {
 			s += msgp.NilSize

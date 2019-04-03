@@ -24,7 +24,7 @@ import (
 var (
 	minPledgeTime = time.Duration(24 * 30 * 6) // minWithdrawTime 6 months)
 	config        = map[cabi.PledgeType]pledgeInfo{
-		cabi.Netowrk: {
+		cabi.Network: {
 			pledgeTime:   minPledgeTime,
 			pledgeAmount: big.NewInt(2300),
 		},
@@ -136,19 +136,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	if err != nil {
 		return nil, err
 	}
-	//tm, err := ctx.GetTokenMeta(param.Beneficial, common.ChainToken())
-	//
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//if tm != nil {
-	//	block.Previous = tm.Header
-	//	block.Balance = tm.Balance
-	//} else {
-	//	block.Previous = types.ZeroHash
-	//	block.Balance = types.ZeroBalance
-	//}
+
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
 	block.Token = input.Token
@@ -160,8 +148,9 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	block.Storage = types.ZeroBalance
 	//block.Timestamp = time.Now().UTC().Unix()
 
+	//TODO: query snapshot balance
 	switch param.PType {
-	case cabi.Netowrk:
+	case cabi.Network:
 		block.Network = amount
 	case cabi.Oracle:
 		block.Oracle = amount
