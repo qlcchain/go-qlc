@@ -301,7 +301,7 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	//check smart c exist
 	send, err := lv.l.GetStateBlock(block.GetLink())
 	if err != nil {
-		return Other, err
+		return GapSource, nil
 	}
 	address := types.Address(send.GetLink())
 

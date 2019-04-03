@@ -1,9 +1,10 @@
 package db
 
 import (
+	"io"
+
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/pb"
-	"io"
 )
 
 // Store is an interface that all stores need to implement.
@@ -24,6 +25,7 @@ type StoreTxn interface {
 	Iterator(pre byte, fn func([]byte, []byte, byte) error) error
 	Commit(callback func(error)) error
 	Discard()
+	Drop(prefix []byte) error
 	Upgrade(migrations []Migration) error
 	Count(prefix []byte) (uint64, error)
 	Stream(prefix []byte, filter func(item *badger.Item) bool, callback func(list *pb.KVList) error) error
