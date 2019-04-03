@@ -33,6 +33,10 @@ func Hash() types.Hash {
 func AccountMeta(addr types.Address) *types.AccountMeta {
 	var am types.AccountMeta
 	am.Address = addr
+	am.CoinNetwork = types.ZeroBalance
+	am.CoinBalance = types.ZeroBalance
+	am.CoinStorage = types.ZeroBalance
+	am.CoinOracle = types.ZeroBalance
 	am.Tokens = []*types.TokenMeta{}
 	for i := 0; i < 5; i++ {
 		t := TokenMeta(addr)
