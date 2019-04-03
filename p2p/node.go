@@ -27,7 +27,7 @@ var (
 )
 
 // p2p protocol version
-var p2pVersion = 3
+var p2pVersion = 4
 
 //var logger = log.NewLogger("p2p")
 
