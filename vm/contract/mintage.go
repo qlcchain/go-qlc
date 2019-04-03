@@ -159,7 +159,7 @@ func (m *WithdrawMintage) GetFee(ledger *vmstore.VMContext, block *types.StateBl
 }
 
 func (m *WithdrawMintage) DoSend(ledger *vmstore.VMContext, block *types.StateBlock) error {
-	if amount, err := ledger.CalculateAmount(block); block.Type != types.Send || err != nil ||
+	if amount, err := ledger.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
 		amount.Compare(types.ZeroBalance) != types.BalanceCompEqual {
 		return errors.New("invalid block ")
 	}
