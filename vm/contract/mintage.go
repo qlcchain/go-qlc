@@ -31,7 +31,6 @@ var (
 
 type Mintage struct{}
 
-//TODO: implement
 func (m *Mintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
 	return types.ZeroBalance, nil
 }
@@ -127,7 +126,6 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 	block.Data = tokenInfo
 	block.Previous = types.ZeroHash
 	block.Balance = totalSupply
-	//block.Timestamp = time.Now().UTC().Unix()
 
 	if _, err := ledger.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
 		//return nil, fmt.Errorf("invalid token")
@@ -161,7 +159,8 @@ func (m *WithdrawMintage) GetFee(ledger *vmstore.VMContext, block *types.StateBl
 }
 
 func (m *WithdrawMintage) DoSend(ledger *vmstore.VMContext, block *types.StateBlock) error {
-	if amount, err := ledger.CalculateAmount(block); block.Type != types.Send || amount.Compare(types.ZeroBalance) != types.BalanceCompEqual || err != nil {
+	if amount, err := ledger.CalculateAmount(block); block.Type != types.Send || err != nil ||
+		amount.Compare(types.ZeroBalance) != types.BalanceCompEqual {
 		return errors.New("invalid block ")
 	}
 	tokenId := new(types.Hash)
@@ -171,7 +170,7 @@ func (m *WithdrawMintage) DoSend(ledger *vmstore.VMContext, block *types.StateBl
 	return nil
 }
 
-func (m *WithdrawMintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (m *WithdrawMintage) DoReceive(ledger *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
 	_ = cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
 	ti, err := ledger.GetStorage(types.MintageAddress[:], tokenId[:])
@@ -210,9 +209,9 @@ func (m *WithdrawMintage) DoReceive(ledger *vmstore.VMContext, block *types.Stat
 	//block.Type = types.ContractReward
 	//block.Address = tokenInfo.Owner
 	//block.Representative = tokenInfo.Owner
-	//block.Token = common.ChainToken()
+	block.Token = common.ChainToken()
 	//block.Link = input.GetHash()
-	//block.Data = newTokenInfo
+	block.Data = newTokenInfo
 	//block.Previous = types.ZeroHash
 	//block.Balance = b.Add(types.Balance{Int: MinPledgeAmount})
 	//block.Timestamp = time.Now().UTC().Unix()
@@ -225,8 +224,8 @@ func (m *WithdrawMintage) DoReceive(ledger *vmstore.VMContext, block *types.Stat
 		return []*ContractBlock{
 			{
 				block,
-				tokenInfo.Owner,
-				types.ContractRefund,
+				tokenInfo.PledgeAddress,
+				types.ContractReward,
 				types.Balance{Int: tokenInfo.PledgeAmount},
 				common.ChainToken(),
 				newTokenInfo,
