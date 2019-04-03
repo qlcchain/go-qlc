@@ -315,6 +315,7 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	}
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
 		clone := block.Clone()
+		//TODO:verify extra hash and commit to db
 		if g, e := c.DoReceive(lv.vmContext, clone, input); e == nil {
 			if len(g) > 0 {
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
