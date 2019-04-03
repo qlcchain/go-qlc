@@ -1,5 +1,7 @@
-##  (2019-03-31)
 
+## <small>1.0.4 (2019-03-31)</small>
+* feat:  add generate test ledger cli(#245) ([df3863a](https://github.com/qlcchain/go-qlc/commit/df3863a)), closes [#245](https://github.com/qlcchain/go-qlc/issues/245)
+* docs: update change log ([3a4ae9c](https://github.com/qlcchain/go-qlc/commit/3a4ae9c))
 * feat: add QGAS genesis block info (#230) ([df07d7e](https://github.com/qlcchain/go-qlc/commit/df07d7e)), closes [#230](https://github.com/qlcchain/go-qlc/issues/230)
 * feat: modify rpc switch (#231) ([9ab42e7](https://github.com/qlcchain/go-qlc/commit/9ab42e7)), closes [#231](https://github.com/qlcchain/go-qlc/issues/231)
 * chore: bump version to v1.0.4 ([87ff5de](https://github.com/qlcchain/go-qlc/commit/87ff5de))
