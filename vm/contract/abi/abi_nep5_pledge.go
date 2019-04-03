@@ -25,7 +25,7 @@ const (
 	jsonNEP5Pledge = `
 	[
 		{"type":"function","name":"NEP5Pledge", "inputs":[{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"pType","type":"uint8"}]},
-		{"type":"function","name":"WithdrawNEP5Pledge","inputs":[{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"}]},
+		{"type":"function","name":"WithdrawNEP5Pledge","inputs":[{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"pType","type":"uint8"}]},
 		{"type":"variable","name":"nep5PledgeInfo","inputs":[{"name":"pType","type":"uint8"},{"name":"amount","type":"uint256"},{"name":"withdrawTime","type":"int64"},{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"}]}
 	]`
 
@@ -41,7 +41,7 @@ var (
 type PledgeType uint8
 
 const (
-	Netowrk PledgeType = iota
+	Network PledgeType = iota
 	Vote
 	Storage
 	Oracle

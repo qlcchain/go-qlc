@@ -26,6 +26,7 @@ type Block interface {
 	fmt.Stringer
 }
 
+//go:generate msgp
 //msgp:shim BlockType as:string using:(BlockType).String/parseString
 type BlockType byte
 

@@ -34,8 +34,13 @@ type TokenMeta struct {
 
 //go:generate msgp
 type AccountMeta struct {
-	Address Address      `msg:"account,extension" json:"account"`
-	Tokens  []*TokenMeta `msg:"tokens" json:"tokens"`
+	Address     Address      `msg:"account,extension" json:"account"`
+	CoinBalance Balance      `msg:"balance,extension" json:"balance"`
+	CoinVote    Balance      `msg:"vote,extension" json:"vote"`
+	CoinNetwork Balance      `msg:"network,extension" json:"network"`
+	CoinStorage Balance      `msg:"storage,extension" json:"storage"`
+	CoinOracle  Balance      `msg:"oracle,extension" json:"oracle"`
+	Tokens      []*TokenMeta `msg:"tokens" json:"tokens"`
 }
 
 //Token get token meta by token type hash

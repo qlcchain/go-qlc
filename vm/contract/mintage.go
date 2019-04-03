@@ -126,6 +126,10 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 	block.Data = tokenInfo
 	block.Previous = types.ZeroHash
 	block.Balance = totalSupply
+	block.Vote = types.ZeroBalance
+	block.Storage = types.ZeroBalance
+	block.Network = types.ZeroBalance
+	block.Oracle = types.ZeroBalance
 
 	if _, err := ledger.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
 		//return nil, fmt.Errorf("invalid token")
@@ -154,12 +158,12 @@ func (m *Mintage) GetRefundData() []byte {
 
 type WithdrawMintage struct{}
 
-func (m *WithdrawMintage) GetFee(ledger *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
+func (m *WithdrawMintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
 	return types.ZeroBalance, nil
 }
 
-func (m *WithdrawMintage) DoSend(ledger *vmstore.VMContext, block *types.StateBlock) error {
-	if amount, err := ledger.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
+func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
+	if amount, err := ctx.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
 		amount.Compare(types.ZeroBalance) != types.BalanceCompEqual {
 		return errors.New("invalid block ")
 	}
@@ -170,10 +174,10 @@ func (m *WithdrawMintage) DoSend(ledger *vmstore.VMContext, block *types.StateBl
 	return nil
 }
 
-func (m *WithdrawMintage) DoReceive(ledger *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
+func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
 	_ = cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
-	ti, err := ledger.GetStorage(types.MintageAddress[:], tokenId[:])
+	ti, err := ctx.GetStorage(types.MintageAddress[:], tokenId[:])
 	if err != nil {
 		return nil, err
 	}
@@ -201,22 +205,23 @@ func (m *WithdrawMintage) DoReceive(ledger *vmstore.VMContext, block, input *typ
 		uint64(0),
 		tokenInfo.PledgeAddress)
 
-	//b := types.ZeroBalance
-	//if tm, err := ledger.GetTokenMeta(tokenInfo.Owner, common.ChainToken()); err == nil {
-	//	b = tm.Balance
-	//}
-	//
-	//block.Type = types.ContractReward
-	//block.Address = tokenInfo.Owner
-	//block.Representative = tokenInfo.Owner
-	block.Token = common.ChainToken()
-	//block.Link = input.GetHash()
-	block.Data = newTokenInfo
-	//block.Previous = types.ZeroHash
-	//block.Balance = b.Add(types.Balance{Int: MinPledgeAmount})
-	//block.Timestamp = time.Now().UTC().Unix()
+	am, _ := ctx.GetAccountMeta(tokenInfo.PledgeAddress)
+	tm := am.Token(common.ChainToken())
 
-	if err := ledger.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
+	block.Type = types.ContractReward
+	block.Address = tokenInfo.PledgeAddress
+	block.Representative = tm.Representative
+	block.Token = tm.Type
+	block.Link = input.GetHash()
+	block.Data = newTokenInfo
+	block.Balance = tm.Balance.Add(types.Balance{Int: MinPledgeAmount})
+	block.Vote = am.CoinVote
+	block.Oracle = am.CoinOracle
+	block.Storage = am.CoinStorage
+	block.Network = am.CoinNetwork
+	block.Previous = tm.Header
+
+	if err := ctx.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
 		return nil, err
 	}
 

@@ -10,12 +10,10 @@ package vmstore
 import (
 	"bytes"
 	"errors"
-	"sync"
-
-	"github.com/qlcchain/go-qlc/ledger"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -27,6 +25,7 @@ type ContractStore interface {
 
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	IsUserAccount(address types.Address) (bool, error)
+	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
 }
 
 const (
@@ -34,8 +33,6 @@ const (
 )
 
 var (
-	cache              = make(map[string]*VMContext)
-	lock               = sync.RWMutex{}
 	ErrStorageExists   = errors.New("storage already exists")
 	ErrStorageNotFound = errors.New("storage not found")
 )
@@ -130,4 +127,8 @@ func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) er
 func (v *VMContext) CalculateAmount(block *types.StateBlock) (types.Balance, error) {
 	return v.ledger.CalculateAmount(block)
 
+}
+
+func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, error) {
+	return v.ledger.GetAccountMeta(address)
 }
