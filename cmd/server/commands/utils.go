@@ -8,6 +8,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -156,6 +157,9 @@ func startNode(accounts []*types.Account) ([]common.Service, error) {
 }
 
 func receive(sendBlock *types.StateBlock, account *types.Account) error {
+	if ctx.RPC.State() != 4 || ctx.Ledger.State() != 4 {
+		return errors.New("rpc or ledger service not started")
+	}
 	l := ctx.Ledger.Ledger
 
 	receiveBlock, err := l.GenerateReceiveBlock(sendBlock, account.PrivateKey())

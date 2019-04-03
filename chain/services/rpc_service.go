@@ -8,6 +8,9 @@
 package services
 
 import (
+	"errors"
+
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -15,6 +18,7 @@ import (
 )
 
 type RPCService struct {
+	common.ServiceLifecycle
 	rpc    *rpc.RPC
 	logger *zap.SugaredLogger
 }
@@ -24,28 +28,40 @@ func NewRPCService(cfg *config.Config, dpos *DPosService) *RPCService {
 }
 
 func (rs *RPCService) Init() error {
-	rs.logger.Debug("rpc service init")
+	if !rs.PreInit() {
+		return errors.New("pre init fail.")
+	}
+	defer rs.PostInit()
+
 	return nil
 }
 
 func (rs *RPCService) Start() error {
+	if !rs.PreStart() {
+		return errors.New("pre start fail.")
+	}
 	err := rs.rpc.StartRPC()
 	if err != nil {
 		rs.logger.Error(err)
 		return err
 	}
+	rs.PostStart()
 	return nil
 }
 
 func (rs *RPCService) Stop() error {
-	rs.logger.Info("rpc stopping...")
+	if !rs.PreStop() {
+		return errors.New("pre stop fail")
+	}
+	defer rs.PostStop()
+
 	rs.rpc.StopRPC()
 	rs.logger.Info("rpc stopped")
 	return nil
 }
 
 func (rs *RPCService) Status() int32 {
-	panic("implement me")
+	return rs.State()
 }
 
 func (rs *RPCService) RPC() *rpc.RPC {
