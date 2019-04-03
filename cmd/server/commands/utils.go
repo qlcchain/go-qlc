@@ -157,7 +157,7 @@ func startNode(accounts []*types.Account) ([]common.Service, error) {
 }
 
 func receive(sendBlock *types.StateBlock, account *types.Account) error {
-	if ctx.RPC.State() != 4 || ctx.Ledger.State() != 4 {
+	if ctx.RPC.State() != int32(common.Started) || ctx.Ledger.State() != int32(common.Started) {
 		return errors.New("rpc or ledger service not started")
 	}
 	l := ctx.Ledger.Ledger

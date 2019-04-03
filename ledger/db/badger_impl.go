@@ -2,12 +2,12 @@ package db
 
 import (
 	"context"
-	"github.com/dgraph-io/badger/pb"
 	"log"
 	"sort"
 
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
+	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
@@ -135,6 +135,14 @@ func (t *BadgerStoreTxn) Iterator(pre byte, fn func([]byte, []byte, byte) error)
 		}
 	}
 	return nil
+}
+
+func (t *BadgerStoreTxn) Drop(prefix []byte) error {
+	if prefix == nil {
+		return t.db.DropAll()
+	} else {
+		return t.db.DropPrefix(prefix)
+	}
 }
 
 func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {
