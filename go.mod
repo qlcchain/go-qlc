@@ -3,7 +3,6 @@ module github.com/qlcchain/go-qlc
 replace github.com/go-interpreter/wagon v0.0.0 => github.com/qlcchain/wagon v0.0.0-20180825141017-92ea8d8b1861
 
 require (
-	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db
@@ -12,9 +11,7 @@ require (
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/deckarep/golang-set v1.7.1
-	github.com/dgraph-io/badger v0.0.0-20190313051053-deee8c7ae70
-	github.com/dgryski/go-farm v0.0.0-20190104051053-3adb47b1fb0f // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/dgraph-io/badger v2.0.0-rc.2+incompatible
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
@@ -25,26 +22,21 @@ require (
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.3.0
 	github.com/google/uuid v1.1.1
-	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/huin/goupnp v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/ipfs/go-ipfs-util v0.0.0-20181102233336-05b6094b6fa9
+	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/jackpal/gateway v1.0.5 // indirect
-	github.com/libp2p/go-libp2p v0.0.0-20190227195236-c4577c770392
-	github.com/libp2p/go-libp2p-autonat v0.0.0-20190227195159-ca1e8793f443 // indirect
-	github.com/libp2p/go-libp2p-circuit v0.0.0-20190227195141-ae9b94afecf5 // indirect
+	github.com/libp2p/go-libp2p v0.0.3
 	github.com/libp2p/go-libp2p-crypto v0.0.1
-	github.com/libp2p/go-libp2p-discovery v0.0.0-20190227195151-f6df2e8dcd01
-	github.com/libp2p/go-libp2p-host v0.0.0-20190226202054-2aa838333967
-	github.com/libp2p/go-libp2p-kad-dht v0.0.2-0.20190228145514-f1a42512708e
-	github.com/libp2p/go-libp2p-net v0.0.0-20190226201932-e71fff5ba6e9
+	github.com/libp2p/go-libp2p-discovery v0.0.1
+	github.com/libp2p/go-libp2p-host v0.0.1
+	github.com/libp2p/go-libp2p-kad-dht v0.0.6
+	github.com/libp2p/go-libp2p-net v0.0.1
 	github.com/libp2p/go-libp2p-peer v0.0.1
-	github.com/libp2p/go-libp2p-peerstore v0.0.0-20190226201924-e2df3e49eabf
-	github.com/libp2p/go-libp2p-swarm v0.0.0-20190228072411-22f358a2d09a
-	github.com/libp2p/go-ws-transport v0.0.0-20190227195148-7b8b65749f06 // indirect
+	github.com/libp2p/go-libp2p-peerstore v0.0.1
+	github.com/libp2p/go-libp2p-swarm v0.0.1
 	github.com/mattn/go-isatty v0.0.6 // indirect
-	github.com/miekg/dns v1.1.4 // indirect
 	github.com/multiformats/go-multiaddr v0.0.1
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1
@@ -54,7 +46,6 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/tendermint/tmlibs v0.9.0
 	github.com/tinylib/msgp v1.1.0
-	github.com/whyrusleeping/mdns v0.0.0-20180901202407-ef14215e6b30 // indirect
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
