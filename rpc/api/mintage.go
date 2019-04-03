@@ -29,11 +29,13 @@ type MintageApi struct {
 	ledger    *ledger.Ledger
 	vmContext *vmstore.VMContext
 	mintage   *contract.Mintage
+	withdraw  *contract.WithdrawMintage
 }
 
 func NewMintageApi(ledger *ledger.Ledger) *MintageApi {
 	return &MintageApi{ledger: ledger, vmContext: vmstore.NewVMContext(ledger),
-		logger: log.NewLogger("api_mintage"), mintage: &contract.Mintage{}}
+		logger: log.NewLogger("api_mintage"), mintage: &contract.Mintage{},
+		withdraw: &contract.WithdrawMintage{}}
 }
 
 type MintageParams struct {
@@ -79,7 +81,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	minPledgeAmount := types.Balance{Int: contract.MinPledgeAmount}
 
 	if tm.Balance.Compare(minPledgeAmount) == types.BalanceCompSmaller {
-		return nil, fmt.Errorf("not enough balance %s, expect %s", tm.Balance, tm.Balance)
+		return nil, fmt.Errorf("not enough balance %s, expect %s", tm.Balance, minPledgeAmount)
 	}
 	send := &types.StateBlock{
 		Type:           types.ContractSend,
@@ -112,9 +114,59 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 		return reward, nil
 	}
 
-	return nil, errors.New("can not generate reward block")
+	return nil, errors.New("can not generate mintage reward block")
 }
 
 func (m *MintageApi) GetWithdrawMintageData(tokenId types.Hash) ([]byte, error) {
 	return cabi.MintageABI.PackMethod(cabi.MethodNameMintageWithdraw, tokenId)
+}
+
+type WithdrawParams struct {
+	SelfAddr types.Address `json:"selfAddr"`
+	TokenId  types.Hash    `json:"tokenId"`
+}
+
+func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.StateBlock, error) {
+	tm, _ := m.ledger.GetTokenMeta(param.SelfAddr, common.ChainToken())
+	if tm == nil {
+		return nil, fmt.Errorf("%s do not hava any chain token", param.SelfAddr.String())
+	}
+	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintageWithdraw, param.TokenId)
+	if err != nil {
+		return nil, err
+	}
+
+	send := &types.StateBlock{
+		Type:           types.ContractSend,
+		Token:          tm.Type,
+		Address:        param.SelfAddr,
+		Balance:        tm.Balance,
+		Previous:       tm.Header,
+		Link:           types.Hash(types.MintageAddress),
+		Representative: tm.Representative,
+		Data:           data,
+		Timestamp:      time.Now().UTC().Unix(),
+	}
+
+	err = m.withdraw.DoSend(m.vmContext, send)
+	if err != nil {
+		return nil, err
+	}
+
+	return send, nil
+}
+
+func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	reward := &types.StateBlock{}
+
+	blocks, err := m.withdraw.DoReceive(m.vmContext, reward, input)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(blocks) > 0 {
+		return reward, nil
+	}
+
+	return nil, errors.New("can not generate withdraw reward block")
 }
