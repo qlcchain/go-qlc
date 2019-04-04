@@ -137,6 +137,23 @@ func (t *BadgerStoreTxn) Iterator(pre byte, fn func([]byte, []byte, byte) error)
 	return nil
 }
 
+func (t *BadgerStoreTxn) KeyIterator(pre byte, fn func([]byte) error) error {
+	prefix := []byte{pre}
+	it := t.txn.NewKeyIterator(prefix, badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	for it.Rewind(); it.Valid(); it.Next() {
+		item := it.Item()
+		key := item.Key()
+		err := fn(key)
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {
 	sort.Sort(Migrations(migrations))
 	for _, m := range migrations {

@@ -123,6 +123,44 @@ func TestBadgerStoreTxn_Iterator(t *testing.T) {
 	}
 }
 
+func TestBadgerStoreTxn_KeyIterator(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	keys := [][]byte{[]byte{1, 206}, []byte{2, 207}, []byte{1, 208}}
+	vals := keys
+	err := db.UpdateInTx(func(txn StoreTxn) error {
+		for i, key := range keys {
+			if err := txn.SetWithMeta(key, vals[i], 0); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectKeyCnt := 0
+	err = db.ViewInTx(func(txn StoreTxn) error {
+		err := txn.KeyIterator(byte(1), func(key []byte) error {
+			t.Log(key)
+			expectKeyCnt++
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if expectKeyCnt != 2 {
+		t.Fatal(err)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestBadgerStoreTxn_Delete(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)

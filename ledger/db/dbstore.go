@@ -22,6 +22,7 @@ type StoreTxn interface {
 	Get(key []byte, fn func([]byte, byte) error) error
 	Delete(key []byte) error
 	Iterator(pre byte, fn func([]byte, []byte, byte) error) error
+	KeyIterator(pre byte, fn func([]byte) error) error
 	Commit(callback func(error)) error
 	Discard()
 	Upgrade(migrations []Migration) error
