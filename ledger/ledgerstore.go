@@ -111,4 +111,14 @@ type Store interface {
 
 	//CalculateAmount calculate block amount by balance and check block type
 	CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (types.Balance, error)
+
+	//PoV blocks
+	AddPovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error
+	AddPovTxLookup(txHash types.Hash, povHeight uint64, txns... db.StoreTxn) error
+	DeletePovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error
+	DeletePovTxLookup(txHash types.Hash, txns... db.StoreTxn) error
+
+	GetPovBlockByHash(hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error)
+	GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error
+	GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 }

@@ -76,6 +76,8 @@ const (
 	idPrefixMessageInfo
 	idPrefixOnlineReps
 	idPrefixPovBlock
+	idPrefixPovBlockHash
+	idPrefixPovTxHash
 )
 
 var (
@@ -171,6 +173,39 @@ func getKeyOfBytes(bytes []byte, t byte) []byte {
 	key = append(key, t)
 	key = append(key, bytes...)
 	return key
+}
+
+func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
+	var buffer = []byte{t}
+	for _, part := range partList {
+		var src []byte
+		switch part.(type) {
+		case int:
+			src = util.Uint64ToBytes(uint64(part.(int)))
+		case int32:
+			src = util.Uint64ToBytes(uint64(part.(int32)))
+		case uint32:
+			src = util.Uint64ToBytes(uint64(part.(uint32)))
+		case int64:
+			src = util.Uint64ToBytes(uint64(part.(int64)))
+		case uint64:
+			src = util.Uint64ToBytes(part.(uint64))
+		case []byte:
+			src = part.([]byte)
+		case types.Hash:
+			hash := part.(types.Hash)
+			src = hash[:]
+		case *types.Hash:
+			hash := part.(*types.Hash)
+			src = hash[:]
+		default:
+			return nil, errors.New("Key contains of uint64 and []byte.")
+		}
+
+		buffer = append(buffer, src...)
+	}
+
+	return buffer, nil
 }
 
 func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error {
