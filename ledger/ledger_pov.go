@@ -11,7 +11,6 @@ import (
 func (l *Ledger) AddPovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error {
 	key, _ := getKeyOfParts(idPrefixPovBlock, blk.GetHeight(), blk.GetHash())
 	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	err := txn.Get(key, func(bytes []byte, b byte) error {
 		return nil
@@ -34,6 +33,7 @@ func (l *Ledger) AddPovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error {
 		return err
 	}
 
+	l.releaseTxn(txn, flag)
 	return nil
 }
 
@@ -77,7 +77,6 @@ func (l *Ledger) AddPovTxLookup(txHash types.Hash, povHeight uint64, txns... db.
 func (l *Ledger) DeletePovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error {
 	key, _ := getKeyOfParts(idPrefixPovBlock, blk.Height, blk.GetHash())
 	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	if err := txn.Delete(key); err != nil {
 		return err
@@ -86,6 +85,8 @@ func (l *Ledger) DeletePovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error 
 	if err := l.deletePovBlockHash(blk.GetHash(), txn); err != nil {
 		return err
 	}
+
+	l.releaseTxn(txn, flag)
 
 	return nil
 }
