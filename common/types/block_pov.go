@@ -12,14 +12,14 @@ type PovBlock struct {
 
 	Previous      Hash      `msg:"previous,extension" json:"previous"`
 	MerkleRoot    Hash      `msg:"merkleRoot,extension" json:"merkleRoot"`
-	Nonce         int64     `msg:"nonce" json:"nonce"`
+	Nonce         uint64    `msg:"nonce" json:"nonce"`
 	VoteSignature Signature `msg:"voteSignature,extension" json:"voteSignature"`
 
-	Height       int64     `msg:"height" json:"height"`
+	Height       uint64    `msg:"height" json:"height"`
 	Timestamp    int64     `msg:"timestamp" json:"timestamp"`
-	NextTarget   Signature `msg:"nextTarget,extension" json:"nextTarget"`
+	Target       Signature `msg:"target,extension" json:"target"`
 	CoinbaseHash Hash      `msg:"coinbaseHash,extension" json:"coinbaseHash"`
-	TxCount      int64     `msg:"txCount" json:"txCount"`
+	TxCount      uint32    `msg:"txCount" json:"txCount"`
 
 	Signature Signature `msg:"signature,extension" json:"signature"`
 
@@ -28,18 +28,18 @@ type PovBlock struct {
 }
 
 func (b *PovBlock) ComputeVoteHash() Hash {
-	hash, _ := HashBytes(b.Previous[:], b.MerkleRoot[:], util.Int2Bytes(b.Nonce))
+	hash, _ := HashBytes(b.Previous[:], b.MerkleRoot[:], util.Uint64ToBytes(b.Nonce))
 	return hash
 }
 
 func (b *PovBlock) ComputeHash() Hash {
 	hash, _ := HashBytes(
-		b.Previous[:], b.MerkleRoot[:], util.Int2Bytes(b.Nonce), b.VoteSignature[:],
-		util.Int2Bytes(b.Height),
+		b.Previous[:], b.MerkleRoot[:], util.Uint64ToBytes(b.Nonce), b.VoteSignature[:],
+		util.Uint64ToBytes(b.Height),
 		util.Int2Bytes(b.Timestamp),
-		b.NextTarget[:],
+		b.Target[:],
 		b.CoinbaseHash[:],
-		util.Int2Bytes(b.TxCount))
+		util.Uint32ToBytes(b.TxCount))
 	return hash
 }
 
@@ -55,7 +55,7 @@ func (b *PovBlock) GetMerkleRoot() Hash {
 	return b.MerkleRoot
 }
 
-func (b *PovBlock) GetNonce() int64 {
+func (b *PovBlock) GetNonce() uint64 {
 	return b.Nonce
 }
 
@@ -63,7 +63,7 @@ func (b *PovBlock) GetVoteSignature() Signature {
 	return b.VoteSignature
 }
 
-func (b *PovBlock) GetHeight() int64 {
+func (b *PovBlock) GetHeight() uint64 {
 	return b.Height
 }
 
@@ -71,15 +71,15 @@ func (b *PovBlock) GetTimestamp() int64 {
 	return b.Timestamp
 }
 
-func (b *PovBlock) GetNextTarget() Signature {
-	return b.NextTarget
+func (b *PovBlock) GetTarget() Signature {
+	return b.Target
 }
 
 func (b *PovBlock) GetCoinbaseHash() Hash {
 	return b.CoinbaseHash
 }
 
-func (b *PovBlock) GetTxCount() int64 {
+func (b *PovBlock) GetTxCount() uint32 {
 	return b.TxCount
 }
 

@@ -141,6 +141,12 @@ func BytesEqual(a, b []byte) bool {
 	return true
 }
 
+func Uint32ToBytes(i uint32) []byte {
+	tmp := make([]byte, 4)
+	binary.BigEndian.PutUint32(tmp, i)
+	return tmp
+}
+
 func Uint64ToBytes(i uint64) []byte {
 	tmp := make([]byte, 8)
 	binary.LittleEndian.PutUint64(tmp, i)

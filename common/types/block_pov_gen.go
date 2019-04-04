@@ -49,7 +49,7 @@ func (z *PovBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "nonce":
-			z.Nonce, err = dc.ReadInt64()
+			z.Nonce, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "Nonce")
 				return
@@ -61,7 +61,7 @@ func (z *PovBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "height":
-			z.Height, err = dc.ReadInt64()
+			z.Height, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "Height")
 				return
@@ -72,10 +72,10 @@ func (z *PovBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Timestamp")
 				return
 			}
-		case "nextTarget":
-			err = dc.ReadExtension(&z.NextTarget)
+		case "target":
+			err = dc.ReadExtension(&z.Target)
 			if err != nil {
-				err = msgp.WrapError(err, "NextTarget")
+				err = msgp.WrapError(err, "Target")
 				return
 			}
 		case "coinbaseHash":
@@ -85,7 +85,7 @@ func (z *PovBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "txCount":
-			z.TxCount, err = dc.ReadInt64()
+			z.TxCount, err = dc.ReadUint32()
 			if err != nil {
 				err = msgp.WrapError(err, "TxCount")
 				return
@@ -203,7 +203,7 @@ func (z *PovBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteInt64(z.Nonce)
+	err = en.WriteUint64(z.Nonce)
 	if err != nil {
 		err = msgp.WrapError(err, "Nonce")
 		return
@@ -223,7 +223,7 @@ func (z *PovBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteInt64(z.Height)
+	err = en.WriteUint64(z.Height)
 	if err != nil {
 		err = msgp.WrapError(err, "Height")
 		return
@@ -238,14 +238,14 @@ func (z *PovBlock) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Timestamp")
 		return
 	}
-	// write "nextTarget"
-	err = en.Append(0xaa, 0x6e, 0x65, 0x78, 0x74, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74)
+	// write "target"
+	err = en.Append(0xa6, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.NextTarget)
+	err = en.WriteExtension(&z.Target)
 	if err != nil {
-		err = msgp.WrapError(err, "NextTarget")
+		err = msgp.WrapError(err, "Target")
 		return
 	}
 	// write "coinbaseHash"
@@ -263,7 +263,7 @@ func (z *PovBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteInt64(z.TxCount)
+	err = en.WriteUint32(z.TxCount)
 	if err != nil {
 		err = msgp.WrapError(err, "TxCount")
 		return
@@ -344,7 +344,7 @@ func (z *PovBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// string "nonce"
 	o = append(o, 0xa5, 0x6e, 0x6f, 0x6e, 0x63, 0x65)
-	o = msgp.AppendInt64(o, z.Nonce)
+	o = msgp.AppendUint64(o, z.Nonce)
 	// string "voteSignature"
 	o = append(o, 0xad, 0x76, 0x6f, 0x74, 0x65, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
 	o, err = msgp.AppendExtension(o, &z.VoteSignature)
@@ -354,15 +354,15 @@ func (z *PovBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// string "height"
 	o = append(o, 0xa6, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74)
-	o = msgp.AppendInt64(o, z.Height)
+	o = msgp.AppendUint64(o, z.Height)
 	// string "timestamp"
 	o = append(o, 0xa9, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70)
 	o = msgp.AppendInt64(o, z.Timestamp)
-	// string "nextTarget"
-	o = append(o, 0xaa, 0x6e, 0x65, 0x78, 0x74, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74)
-	o, err = msgp.AppendExtension(o, &z.NextTarget)
+	// string "target"
+	o = append(o, 0xa6, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74)
+	o, err = msgp.AppendExtension(o, &z.Target)
 	if err != nil {
-		err = msgp.WrapError(err, "NextTarget")
+		err = msgp.WrapError(err, "Target")
 		return
 	}
 	// string "coinbaseHash"
@@ -374,7 +374,7 @@ func (z *PovBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// string "txCount"
 	o = append(o, 0xa7, 0x74, 0x78, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	o = msgp.AppendInt64(o, z.TxCount)
+	o = msgp.AppendUint32(o, z.TxCount)
 	// string "signature"
 	o = append(o, 0xa9, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Signature)
@@ -448,7 +448,7 @@ func (z *PovBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "nonce":
-			z.Nonce, bts, err = msgp.ReadInt64Bytes(bts)
+			z.Nonce, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Nonce")
 				return
@@ -460,7 +460,7 @@ func (z *PovBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "height":
-			z.Height, bts, err = msgp.ReadInt64Bytes(bts)
+			z.Height, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Height")
 				return
@@ -471,10 +471,10 @@ func (z *PovBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Timestamp")
 				return
 			}
-		case "nextTarget":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.NextTarget)
+		case "target":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Target)
 			if err != nil {
-				err = msgp.WrapError(err, "NextTarget")
+				err = msgp.WrapError(err, "Target")
 				return
 			}
 		case "coinbaseHash":
@@ -484,7 +484,7 @@ func (z *PovBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "txCount":
-			z.TxCount, bts, err = msgp.ReadInt64Bytes(bts)
+			z.TxCount, bts, err = msgp.ReadUint32Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TxCount")
 				return
@@ -557,7 +557,7 @@ func (z *PovBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PovBlock) Msgsize() (s int) {
-	s = 1 + 8 + msgp.Int32Size + 5 + msgp.ExtensionPrefixSize + z.Hash.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 11 + msgp.ExtensionPrefixSize + z.MerkleRoot.Len() + 6 + msgp.Int64Size + 14 + msgp.ExtensionPrefixSize + z.VoteSignature.Len() + 7 + msgp.Int64Size + 10 + msgp.Int64Size + 11 + msgp.ExtensionPrefixSize + z.NextTarget.Len() + 13 + msgp.ExtensionPrefixSize + z.CoinbaseHash.Len() + 8 + msgp.Int64Size + 10 + msgp.ExtensionPrefixSize + z.Signature.Len() + 9 + z.Coinbase.Msgsize() + 13 + msgp.ArrayHeaderSize
+	s = 1 + 8 + msgp.Int32Size + 5 + msgp.ExtensionPrefixSize + z.Hash.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 11 + msgp.ExtensionPrefixSize + z.MerkleRoot.Len() + 6 + msgp.Uint64Size + 14 + msgp.ExtensionPrefixSize + z.VoteSignature.Len() + 7 + msgp.Uint64Size + 10 + msgp.Int64Size + 7 + msgp.ExtensionPrefixSize + z.Target.Len() + 13 + msgp.ExtensionPrefixSize + z.CoinbaseHash.Len() + 8 + msgp.Uint32Size + 10 + msgp.ExtensionPrefixSize + z.Signature.Len() + 9 + z.Coinbase.Msgsize() + 13 + msgp.ArrayHeaderSize
 	for za0001 := range z.Transactions {
 		s += 1 + 5 + msgp.ExtensionPrefixSize + z.Transactions[za0001].Hash.Len()
 	}
