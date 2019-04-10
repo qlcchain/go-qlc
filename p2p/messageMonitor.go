@@ -4,23 +4,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-)
-
-//  Message Type
-const (
-	PublishReq      = "0" //PublishReq
-	ConfirmReq      = "1" //ConfirmReq
-	ConfirmAck      = "2" //ConfirmAck
-	FrontierRequest = "3" //FrontierReq
-	FrontierRsp     = "4" //FrontierRsp
-	BulkPullRequest = "5" //BulkPullRequest
-	BulkPullRsp     = "6" //BulkPullRsp
-	BulkPushBlock   = "7" //BulkPushBlock
-	MessageResponse = "8" //MessageResponse
 )
 
 const (
@@ -41,11 +30,11 @@ type cacheValue struct {
 type MessageService struct {
 	netService          *QlcService
 	quitCh              chan bool
-	messageCh           chan Message
-	publishMessageCh    chan Message
-	confirmReqMessageCh chan Message
-	confirmAckMessageCh chan Message
-	rspMessageCh        chan Message
+	messageCh           chan *Message
+	publishMessageCh    chan *Message
+	confirmReqMessageCh chan *Message
+	confirmAckMessageCh chan *Message
+	rspMessageCh        chan *Message
 	ledger              *ledger.Ledger
 	syncService         *ServiceSync
 	cache               gcache.Cache
@@ -55,11 +44,11 @@ type MessageService struct {
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
 		quitCh:              make(chan bool, 6),
-		messageCh:           make(chan Message, 65535),
-		publishMessageCh:    make(chan Message, 65535),
-		confirmReqMessageCh: make(chan Message, 65535),
-		confirmAckMessageCh: make(chan Message, 65535),
-		rspMessageCh:        make(chan Message, 65535),
+		messageCh:           make(chan *Message, 65535),
+		publishMessageCh:    make(chan *Message, 65535),
+		confirmReqMessageCh: make(chan *Message, 65535),
+		confirmAckMessageCh: make(chan *Message, 65535),
+		rspMessageCh:        make(chan *Message, 65535),
 		ledger:              ledger,
 		netService:          netService,
 		cache:               gcache.New(msgCacheSize).LRU().Build(),
@@ -72,15 +61,15 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 func (ms *MessageService) Start() {
 	// register the network handler.
 	netService := ms.netService
-	netService.Register(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
-	netService.Register(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
-	netService.Register(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
+	netService.Register(NewSubscriber(ms, ms.publishMessageCh, false, common.PublishReq))
+	netService.Register(NewSubscriber(ms, ms.confirmReqMessageCh, false, common.ConfirmReq))
+	netService.Register(NewSubscriber(ms, ms.confirmAckMessageCh, false, common.ConfirmAck))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.FrontierRequest))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.FrontierRsp))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.BulkPullRequest))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.BulkPullRsp))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.BulkPushBlock))
+	netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, common.MessageResponse))
 	// start loop().
 	go ms.startLoop()
 	go ms.syncService.Start()
@@ -100,16 +89,16 @@ func (ms *MessageService) startLoop() {
 			return
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
-			case FrontierRequest:
+			case common.FrontierRequest:
 				ms.syncService.onFrontierReq(message)
-			case FrontierRsp:
+			case common.FrontierRsp:
 				ms.syncService.checkFrontier(message)
 				//ms.syncService.onFrontierRsp(message)
-			case BulkPullRequest:
+			case common.BulkPullRequest:
 				ms.syncService.onBulkPullRequest(message)
-			case BulkPullRsp:
+			case common.BulkPullRsp:
 				ms.syncService.onBulkPullRsp(message)
-			case BulkPushBlock:
+			case common.BulkPushBlock:
 				ms.syncService.onBulkPushBlock(message)
 			default:
 				ms.netService.node.logger.Error("Received unknown message.")
@@ -128,7 +117,7 @@ func (ms *MessageService) messageResponseLoop() {
 			return
 		case message := <-ms.rspMessageCh:
 			switch message.MessageType() {
-			case MessageResponse:
+			case common.MessageResponse:
 				ms.onMessageResponse(message)
 			default:
 				time.Sleep(5 * time.Millisecond)
@@ -146,7 +135,7 @@ func (ms *MessageService) publishReqLoop() {
 			return
 		case message := <-ms.publishMessageCh:
 			switch message.MessageType() {
-			case PublishReq:
+			case common.PublishReq:
 				ms.onPublishReq(message)
 			default:
 				time.Sleep(5 * time.Millisecond)
@@ -164,7 +153,7 @@ func (ms *MessageService) confirmReqLoop() {
 			return
 		case message := <-ms.confirmReqMessageCh:
 			switch message.MessageType() {
-			case ConfirmReq:
+			case common.ConfirmReq:
 				ms.onConfirmReq(message)
 			default:
 				time.Sleep(5 * time.Millisecond)
@@ -182,7 +171,7 @@ func (ms *MessageService) confirmAckLoop() {
 			return
 		case message := <-ms.confirmAckMessageCh:
 			switch message.MessageType() {
-			case ConfirmAck:
+			case common.ConfirmAck:
 				ms.onConfirmAck(message)
 			default:
 				time.Sleep(5 * time.Millisecond)
@@ -253,7 +242,7 @@ func (ms *MessageService) checkMessageCache() {
 	}
 }
 
-func (ms *MessageService) onMessageResponse(message Message) {
+func (ms *MessageService) onMessageResponse(message *Message) {
 	//ms.netService.node.logger.Info("receive MessageResponse")
 	var hash types.Hash
 	var cs []*cacheValue
@@ -293,7 +282,7 @@ func (ms *MessageService) onMessageResponse(message Message) {
 	}
 }
 
-func (ms *MessageService) onPublishReq(message Message) {
+func (ms *MessageService) onPublishReq(message *Message) {
 	if ms.netService.node.cfg.PerformanceEnabled {
 		blk, err := protos.PublishBlockFromProto(message.Data())
 		if err != nil {
@@ -303,15 +292,24 @@ func (ms *MessageService) onPublishReq(message Message) {
 		hash := blk.Blk.GetHash()
 		ms.addPerformanceTime(hash)
 	}
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
-
-	ms.netService.msgEvent.GetEvent("consensus").Notify(EventPublish, message)
+	hash, err := types.HashBytes(message.Content())
+	if err != nil {
+		ms.netService.node.logger.Error(err)
+		return
+	}
+	p, err := protos.PublishBlockFromProto(message.Data())
+	if err != nil {
+		ms.netService.node.logger.Info(err)
+		return
+	}
+	ms.netService.msgEvent.Publish(string(common.EventPublish), p.Blk, hash, message.MessageFrom())
 }
 
-func (ms *MessageService) onConfirmReq(message Message) {
+func (ms *MessageService) onConfirmReq(message *Message) {
 	if ms.netService.node.cfg.PerformanceEnabled {
 		blk, err := protos.ConfirmReqBlockFromProto(message.Data())
 		if err != nil {
@@ -321,15 +319,24 @@ func (ms *MessageService) onConfirmReq(message Message) {
 		hash := blk.Blk.GetHash()
 		ms.addPerformanceTime(hash)
 	}
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send ConfirmReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
-
-	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmReq, message)
+	hash, err := types.HashBytes(message.Content())
+	if err != nil {
+		ms.netService.node.logger.Error(err)
+		return
+	}
+	r, err := protos.ConfirmReqBlockFromProto(message.Data())
+	if err != nil {
+		ms.netService.node.logger.Error(err)
+		return
+	}
+	ms.netService.msgEvent.Publish(string(common.EventConfirmReq), r.Blk, hash, message.MessageFrom())
 }
 
-func (ms *MessageService) onConfirmAck(message Message) {
+func (ms *MessageService) onConfirmAck(message *Message) {
 	if ms.netService.node.cfg.PerformanceEnabled {
 		ack, err := protos.ConfirmAckBlockFromProto(message.Data())
 		if err != nil {
@@ -338,12 +345,22 @@ func (ms *MessageService) onConfirmAck(message Message) {
 		}
 		ms.addPerformanceTime(ack.Blk.GetHash())
 	}
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send ConfirmAck Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
 
-	ms.netService.msgEvent.GetEvent("consensus").Notify(EventConfirmAck, message)
+	hash, err := types.HashBytes(message.Content())
+	if err != nil {
+		ms.netService.node.logger.Error(err)
+		return
+	}
+	ack, err := protos.ConfirmAckBlockFromProto(message.Data())
+	if err != nil {
+		ms.netService.node.logger.Info(err)
+		return
+	}
+	ms.netService.msgEvent.Publish(string(common.EventConfirmAck), ack, hash, message.MessageFrom())
 }
 
 func (ms *MessageService) Stop() {
@@ -353,20 +370,20 @@ func (ms *MessageService) Stop() {
 		ms.quitCh <- true
 	}
 	ms.syncService.quitCh <- true
-	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	ms.netService.Deregister(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
+	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, common.PublishReq))
+	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, common.ConfirmReq))
+	ms.netService.Deregister(NewSubscriber(ms, ms.confirmAckMessageCh, false, common.ConfirmAck))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.FrontierRequest))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.FrontierRsp))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.BulkPullRequest))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.BulkPullRsp))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.BulkPushBlock))
+	ms.netService.Deregister(NewSubscriber(ms, ms.rspMessageCh, false, common.MessageResponse))
 }
 
 func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 	switch messageName {
-	case PublishReq:
+	case common.PublishReq:
 		packet := protos.PublishBlock{
 			Blk: value.(*types.StateBlock),
 		}
@@ -375,7 +392,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
-	case ConfirmReq:
+	case common.ConfirmReq:
 		packet := &protos.ConfirmReqBlock{
 			Blk: value.(*types.StateBlock),
 		}
@@ -384,32 +401,32 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
-	case ConfirmAck:
+	case common.ConfirmAck:
 		data, err := protos.ConfirmAckBlockToProto(value.(*protos.ConfirmAckBlock))
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case FrontierRequest:
+	case common.FrontierRequest:
 		data, err := protos.FrontierReqToProto(value.(*protos.FrontierReq))
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case FrontierRsp:
+	case common.FrontierRsp:
 		packet := value.(*protos.FrontierResponse)
 		data, err := protos.FrontierResponseToProto(packet)
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case BulkPullRequest:
+	case common.BulkPullRequest:
 		data, err := protos.BulkPullReqPacketToProto(value.(*protos.BulkPullReqPacket))
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case BulkPullRsp:
+	case common.BulkPullRsp:
 		PullRsp := &protos.BulkPullRspPacket{
 			Blk: value.(*types.StateBlock),
 		}
@@ -418,7 +435,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, err
-	case BulkPushBlock:
+	case common.BulkPushBlock:
 		push := &protos.BulkPush{
 			Blk: value.(*types.StateBlock),
 		}
@@ -427,7 +444,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
-	case MessageResponse:
+	case common.MessageResponse:
 		hash := value.(types.Hash)
 		data, _ := hash.MarshalText()
 		return data, nil

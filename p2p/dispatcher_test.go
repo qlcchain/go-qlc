@@ -7,7 +7,7 @@ import (
 
 func TestDispatcher(t *testing.T) {
 	dp := NewDispatcher()
-	sb := NewSubscriber("", make(chan Message, 128), false, "test")
+	sb := NewSubscriber("", make(chan *Message, 128), false, "test")
 	types := sb.MessageType()
 	dp.Register(sb)
 	mt, _ := dp.subscribersMap.Load(types)

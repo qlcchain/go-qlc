@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/event"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -11,11 +12,9 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/p2p"
 	"go.uber.org/zap"
 )
 
@@ -23,7 +22,7 @@ type LedgerApi struct {
 	ledger    *ledger.Ledger
 	verifier  *process.LedgerVerifier
 	vmContext *vmstore.VMContext
-	dpos      *consensus.DPoS
+	eb        event.EventBus
 	logger    *zap.SugaredLogger
 }
 
@@ -58,8 +57,8 @@ type ApiTokenInfo struct {
 	types.TokenInfo
 }
 
-func NewLedgerApi(l *ledger.Ledger, dpos *consensus.DPoS) *LedgerApi {
-	return &LedgerApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), vmContext: vmstore.NewVMContext(l),
+func NewLedgerApi(l *ledger.Ledger, eb event.EventBus) *LedgerApi {
+	return &LedgerApi{ledger: l, eb: eb, verifier: process.NewLedgerVerifier(l), vmContext: vmstore.NewVMContext(l),
 		logger: log.NewLogger("api_ledger")}
 }
 
@@ -575,7 +574,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	case process.Progress:
 		l.logger.Debug("broadcast block")
 		//TODO: refine
-		l.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
+		//l.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
+		l.eb.Publish(string(common.EventBroadcast), common.PublishReq, block)
 		return block.GetHash(), nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")

@@ -134,49 +134,40 @@ func (node *QlcNode) StartServices() error {
 	}
 
 	if node.dis != nil {
-		go node.startPeerDiscovery()
+		go func() {
+			pInfoS, err := convertPeers(node.boostrapAddrs)
+			if err != nil {
+				node.logger.Errorf("Failed to convert bootNode address")
+				return
+			}
+			node.startPeerDiscovery(pInfoS)
+		}()
 	}
 
-	if len(node.boostrapAddrs) != 0 {
-		go node.connectBootstrap()
-	}
+	//if len(node.boostrapAddrs) != 0 {
+	//	go node.connectBootstrap()
+	//}
 	return nil
 }
 
-func (node *QlcNode) connectBootstrap() {
-	pInfoS, err := convertPeers(node.boostrapAddrs)
+func (node *QlcNode) connectBootstrap(pInfoS []pstore.PeerInfo) {
+
+	err := bootstrapConnect(node.ctx, node.host, pInfoS)
 	if err != nil {
-		node.logger.Errorf("Failed to convert bootNode address")
 		return
 	}
+	node.logger.Info("connect to bootstrap success")
 
-	for {
-		err = bootstrapConnect(node.ctx, node.host, pInfoS)
-		if err != nil {
-			time.Sleep(time.Duration(10) * time.Second)
-			continue
-		}
-		node.logger.Info("connect to bootstrap success")
-		break
-
+	_, err = node.dis.Advertise(node.ctx, QlcProtocolFOUND)
+	if err != nil {
+		return
 	}
-
-	//dis := discovery.NewRoutingDiscovery(node.kadDht)
-	for {
-		_, err := node.dis.Advertise(node.ctx, QlcProtocolFOUND)
-		if err != nil {
-			time.Sleep(time.Duration(1) * time.Second)
-			continue
-		}
-		//node.dis = dis
-		break
-	}
-
-	//node.startPeerDiscovery()
 }
 
-func (node *QlcNode) startPeerDiscovery() {
+func (node *QlcNode) startPeerDiscovery(pInfoS []pstore.PeerInfo) {
 	ticker := time.NewTicker(time.Duration(node.cfg.P2P.Discovery.DiscoveryInterval) * time.Second)
+	ticker1 := time.NewTicker(60 * time.Second)
+	node.connectBootstrap(pInfoS)
 	node.findPeers()
 	for {
 		select {
@@ -185,6 +176,8 @@ func (node *QlcNode) startPeerDiscovery() {
 			return
 		case <-ticker.C:
 			node.findPeers()
+		case <-ticker1.C:
+			node.connectBootstrap(pInfoS)
 		default:
 			time.Sleep(5 * time.Millisecond)
 		}

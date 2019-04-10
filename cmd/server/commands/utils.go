@@ -15,12 +15,12 @@ import (
 	"github.com/qlcchain/go-qlc/chain"
 	ss "github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -30,11 +30,10 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 		fmt.Println(err)
 		return err
 	}
-	services, err := startNode(accounts)
+	services, err := startNode(accounts, cfg)
 	if err != nil {
 		fmt.Println(err)
 	}
-
 	cmn.TrapSignal(func() {
 		stopNode(services)
 	})
@@ -57,22 +56,23 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		fmt.Println(err)
 		return err
 	}
+	eventBus := event.New()
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
 	ctx.Ledger = ss.NewLedgerService(cfg)
 	ctx.Wallet = ss.NewWalletService(cfg)
-	ctx.NetService, err = p2p.NewQlcService(cfg)
+	ctx.NetService, err = ss.NewP2PService(cfg, eventBus)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 
 	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
-	ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, accounts)
-	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
+	ctx.DPosService = ss.NewDPosService(cfg, accounts, eventBus)
+	ctx.RPC = ss.NewRPCService(cfg, eventBus)
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
-		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
+		_ = eventBus.Subscribe(string(common.EventConfirmedBlock), func(blk *types.StateBlock) {
 			defer func() {
 				if err := recover(); err != nil {
 					fmt.Println(err)
@@ -82,23 +82,21 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 			go func(accounts []*types.Account) {
 				for _, value := range accounts {
 					addr := value.Address()
-					if b, ok := v.(*types.StateBlock); ok {
-						if b.Type == types.Send {
-							address := types.Address(b.Link)
-							if addr.String() == address.String() {
-								var balance types.Balance
-								if b.Token == common.ChainToken() {
-									balance, _ = common.RawToBalance(b.Balance, "QLC")
-									fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", b.Address.String(), address.String(), balance)
-								} else {
-									fmt.Printf("receive block from [%s] to[%s] balance[%s]", b.Address.String(), address.String(), b.Balance.String())
-								}
-								err = receive(b, value)
-								if err != nil {
-									fmt.Printf("err[%s] when generate receive block.\n", err)
-								}
-								break
+					if blk.Type == types.Send {
+						address := types.Address(blk.Link)
+						if addr.String() == address.String() {
+							var balance types.Balance
+							if blk.Token == common.ChainToken() {
+								balance, _ = common.RawToBalance(blk.Balance, "QLC")
+								fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", blk.Address.String(), address.String(), balance)
+							} else {
+								fmt.Printf("receive block from [%s] to[%s] balance[%s]", blk.Address.String(), address.String(), blk.Balance.String())
 							}
+							err = receive(blk, value)
+							if err != nil {
+								fmt.Printf("err[%s] when generate receive block.\n", err)
+							}
+							break
 						}
 					}
 				}
@@ -111,7 +109,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	return nil
 }
 
-func startNode(accounts []*types.Account) ([]common.Service, error) {
+func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service, error) {
 	for _, service := range services {
 		err := service.Init()
 		if err != nil {
@@ -125,33 +123,35 @@ func startNode(accounts []*types.Account) ([]common.Service, error) {
 	}
 
 	//search pending and generate receive block
-	go func(l *ledger.Ledger, accounts []*types.Account) {
-		defer func() {
-			if err := recover(); err != nil {
-				fmt.Println(err)
-			}
-		}()
-
-		for _, account := range accounts {
-			err := l.SearchPending(account.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
-				fmt.Printf("%s receive %s[%s] from %s (%s)\n", key.Address, value.Type.String(), value.Source.String(), value.Amount.String(), key.Hash.String())
-				if send, err := l.GetStateBlock(key.Hash); err != nil {
+	if len(accounts) > 0 && cfg.AutoGenerateReceive {
+		go func(l *ledger.Ledger, accounts []*types.Account) {
+			defer func() {
+				if err := recover(); err != nil {
 					fmt.Println(err)
-				} else {
-					err = receive(send, account)
-					if err != nil {
-						fmt.Printf("err[%s] when generate receive block.\n", err)
-					}
 				}
-				return nil
-			})
+			}()
 
-			if err != nil {
-				fmt.Println(err)
+			for _, account := range accounts {
+				err := l.SearchPending(account.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
+					fmt.Printf("%s receive %s[%s] from %s (%s)\n", key.Address, value.Type.String(), value.Source.String(), value.Amount.String(), key.Hash.String())
+					if send, err := l.GetStateBlock(key.Hash); err != nil {
+						fmt.Println(err)
+					} else {
+						err = receive(send, account)
+						if err != nil {
+							fmt.Printf("err[%s] when generate receive block.\n", err)
+						}
+					}
+					return nil
+				})
+
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
-		}
 
-	}(ctx.Ledger.Ledger, accounts)
+		}(ctx.Ledger.Ledger, accounts)
+	}
 
 	return services, nil
 }

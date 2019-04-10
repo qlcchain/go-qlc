@@ -10,6 +10,8 @@ package services
 import (
 	"errors"
 
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
@@ -23,8 +25,8 @@ type RPCService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewRPCService(cfg *config.Config, dpos *DPosService) *RPCService {
-	return &RPCService{rpc: rpc.NewRPC(cfg, dpos.dpos), logger: log.NewLogger("rpc_service")}
+func NewRPCService(cfg *config.Config, eb event.EventBus) *RPCService {
+	return &RPCService{rpc: rpc.NewRPC(cfg, eb), logger: log.NewLogger("rpc_service")}
 }
 
 func (rs *RPCService) Init() error {
