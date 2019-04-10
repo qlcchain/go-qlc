@@ -108,7 +108,7 @@ func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) er
 	}()
 
 	err := txn.Iterator(idPrefixStorage, func(key []byte, val []byte, b byte) error {
-		if bytes.HasPrefix(key, prefix) {
+		if bytes.HasPrefix(key[1:], prefix) {
 			err := fn(key, val)
 			if err != nil {
 				v.logger.Error(err)
