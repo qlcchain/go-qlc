@@ -7,6 +7,8 @@ const (
 	TableBlockMessage
 )
 
+const LikeSign = "_like_"
+
 func (t TableName) String() string {
 	switch t {
 	case TableBlockHash:

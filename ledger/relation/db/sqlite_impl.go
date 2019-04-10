@@ -38,15 +38,15 @@ func (s *DBSQL) initDB() error {
 		`CREATE TABLE IF NOT EXISTS BLOCKHASH
 		(   id integer PRIMARY KEY AUTOINCREMENT,
 			hash char(32),
-			type char(10),
+			type varchar(10),
 			address char(32),
 			timestamp integer
 		)`,
 		`CREATE TABLE IF NOT EXISTS BLOCKMESSAGE 
 		(	id integer PRIMARY KEY AUTOINCREMENT,
 			hash char(32),
-			sender text ,
-			receiver text ,
+			sender varchar(15),
+			receiver varchar(15) ,
 			message	char(32),
 			timestamp integer
 		)`,
@@ -99,9 +99,9 @@ func (s *DBSQL) Delete(table TableName, condition map[Column]interface{}) error 
 }
 
 func (s *DBSQL) Count(table TableName, dest interface{}) error {
-	sql := fmt.Sprintf("select count (*) as count from %s", table.String())
+	sql := fmt.Sprintf("select count (*) as total from %s", table.String())
 	s.logger.Debug(sql)
-	err := s.db.Get(&dest, sql)
+	err := s.db.Get(dest, sql)
 	if err != nil {
 		s.logger.Error(err)
 		return err
@@ -143,7 +143,12 @@ func readSql(table TableName, condition map[Column]interface{}, offset int, limi
 		for k, v := range condition {
 			switch v.(type) {
 			case string:
-				para = append(para, k.String()+" = '"+v.(string)+"' ")
+				s := v.(string)
+				if strings.HasPrefix(s, LikeSign) {
+					para = append(para, k.String()+" like '"+strings.TrimLeft(s, LikeSign)+"' ")
+				} else {
+					para = append(para, k.String()+" = '"+s+"' ")
+				}
 			case int64:
 				para = append(para, k.String()+" = "+strconv.FormatInt(v.(int64), 10))
 			}

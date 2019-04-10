@@ -1,6 +1,8 @@
 package relation
 
 import (
+	"fmt"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -21,7 +23,7 @@ type blocksHash struct {
 }
 
 type blocksMessage struct {
-	ID        int64
+	Id        int64
 	Hash      string
 	Sender    string
 	Receiver  string
@@ -52,9 +54,15 @@ func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) (
 	return blockHash(h)
 }
 
+type blocksCount struct {
+	count uint64
+}
+
 func (r *Relation) BlocksCount() (uint64, error) {
 	var count uint64
+	//var count blocksCount
 	err := r.store.Count(db.TableBlockHash, &count)
+	fmt.Println(count)
 	if err != nil {
 		return 0, err
 	}
@@ -84,16 +92,19 @@ func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 	return blockHash(h)
 }
 
-func (r *Relation) PhoneBlocks(phone []byte) ([]types.Hash, error) {
+func (r *Relation) PhoneBlocks(phone []byte, sender bool) ([]types.Hash, error) {
 	condition := make(map[db.Column]interface{})
-	condition[db.ColumnSender] = byteToString(phone)
-	condition[db.ColumnReceiver] = byteToString(phone)
-	var h []blocksMessage
-	err := r.store.Read(db.TableBlockHash, condition, -1, -1, db.ColumnNoNeed, &h)
+	if sender == true {
+		condition[db.ColumnSender] = byteToString(phone)
+	} else {
+		condition[db.ColumnSender] = byteToString(phone)
+	}
+	var m []blocksMessage
+	err := r.store.Read(db.TableBlockHash, condition, -1, -1, db.ColumnNoNeed, &m)
 	if err != nil {
 		return nil, err
 	}
-	return blockMessage(h)
+	return blockMessage(m)
 }
 
 func (r *Relation) MessageBlocks(hash types.Hash) ([]types.Hash, error) {
