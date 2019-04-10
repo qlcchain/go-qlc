@@ -83,13 +83,14 @@ func TestGetTxn(t *testing.T) {
 	txn := l.Store.NewTransaction(false)
 	fmt.Println(txn)
 	txn2, flag := l.getTxn(false, txn)
+
 	if flag {
 		t.Fatal("get txn flag error")
-		if txn != txn2 {
-			t.Fatal("txn!=tnx2")
-		}
 	}
 
+	if txn != txn2 {
+		t.Fatal("txn!=tnx2")
+	}
 }
 
 func TestLedger_Empty(t *testing.T) {
