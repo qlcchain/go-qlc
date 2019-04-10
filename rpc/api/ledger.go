@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +24,7 @@ type LedgerApi struct {
 	verifier  *process.LedgerVerifier
 	vmContext *vmstore.VMContext
 	dpos      *consensus.DPoS
+	relation  *relation.Relation
 	logger    *zap.SugaredLogger
 }
 
@@ -121,41 +122,21 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 	if err != nil {
 		return nil, err
 	}
-	bs := make([]*APIBlock, 0)
-	ac, err := l.ledger.GetAccountMeta(address)
+	hashes, err := l.relation.AccountBlocks(address, c, o)
 	if err != nil {
-		if err == ledger.ErrAccountNotFound {
-			return bs, nil
-		}
+		l.logger.Error(err)
 		return nil, err
 	}
-	for _, token := range ac.Tokens {
-		h := token.Header
-		for {
-			block, err := l.ledger.GetStateBlock(h)
-			if err != nil {
-				return nil, err
-			}
-			b, err := generateAPIBlock(l.vmContext, block)
-			if err != nil {
-				return nil, err
-			}
-			bs = append(bs, b)
-			h = b.GetPrevious()
-			if h.IsZero() {
-				break
-			}
+	bs := make([]*APIBlock, 0)
+	for _, h := range hashes {
+		block, _ := l.ledger.GetStateBlock(h)
+		b, err := generateAPIBlock(l.vmContext, block)
+		if err != nil {
+			return nil, err
 		}
+		bs = append(bs, b)
 	}
-	l.logger.Debug("block count,", len(bs))
-	if len(bs) > o {
-		if len(bs) >= o+c {
-			return bs[o : c+o], nil
-		}
-		return bs[o:], nil
-	} else {
-		return make([]*APIBlock, 0), nil
-	}
+	return bs, nil
 }
 
 func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
@@ -346,7 +327,7 @@ func (l *LedgerApi) BlockHash(block types.StateBlock) types.Hash {
 
 // BlocksCount returns the number of blocks (include smartcontrant block) in the ctx and unchecked synchronizing blocks
 func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
-	sbCount, err := l.ledger.CountStateBlocks()
+	sbCount, err := l.relation.BlocksCount()
 	if err != nil {
 		return nil, err
 	}
@@ -374,12 +355,12 @@ func (l *LedgerApi) BlocksCountByType() (map[string]uint64, error) {
 	c[types.ContractReward.String()] = 0
 	c[types.ContractSend.String()] = 0
 	c[types.ContractRefund.String()] = 0
-	err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		c[block.GetType().String()] = 1 + c[block.GetType().String()]
-		return nil
-	})
+	ts, err := l.relation.BlocksCountByType()
 	if err != nil {
-		return nil, err
+		l.logger.Error(err)
+	}
+	for k, v := range ts {
+		c[k] = v
 	}
 	return c, nil
 }
@@ -408,23 +389,20 @@ func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	ab := make([]*APIBlock, 0)
-	index := 0
-	err = l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		if index >= o && index < o+c {
-			b, err := generateAPIBlock(l.vmContext, block)
-			if err != nil {
-				return err
-			}
-			ab = append(ab, b)
-		}
-		index = index + 1
-		return nil
-	})
+	hashes, err := l.relation.Blocks(c, o)
 	if err != nil {
 		return nil, err
 	}
-	return ab, nil
+	bs := make([]*APIBlock, 0)
+	for _, h := range hashes {
+		block, _ := l.ledger.GetStateBlock(h)
+		b, err := generateAPIBlock(l.vmContext, block)
+		if err != nil {
+			return nil, err
+		}
+		bs = append(bs, b)
+	}
+	return bs, nil
 }
 
 // Chain returns a consecutive list of block hashes in the account chain starting at block up to count
@@ -661,7 +639,7 @@ func (l *LedgerApi) Tokens() ([]*types.TokenInfo, error) {
 
 // BlocksCount returns the number of blocks (not include smartcontrant block) in the ctx and unchecked synchronizing blocks
 func (l *LedgerApi) TransactionsCount() (map[string]uint64, error) {
-	sbCount, err := l.ledger.CountStateBlocks()
+	sbCount, err := l.relation.BlocksCount()
 	if err != nil {
 		return nil, err
 	}

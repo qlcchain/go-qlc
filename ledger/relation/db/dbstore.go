@@ -1,5 +1,7 @@
 package db
 
+import "io"
+
 type TableName byte
 
 const (
@@ -54,6 +56,7 @@ func (c Column) String() string {
 }
 
 type DbStore interface {
+	io.Closer
 	Create(table TableName, condition map[Column]interface{}) error
 	Read(table TableName, condition map[Column]interface{}, offset int, limit int, order Column, dest interface{}) error
 	Update(table TableName, condition map[Column]interface{}) error

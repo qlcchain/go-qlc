@@ -200,9 +200,6 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	//if err := addToken(blk, txn); err != nil {
 	//	return err
 	//}
-	if err := addSMSDataForBlock(blk, txn); err != nil {
-		return err
-	}
 	l.releaseTxn(txn, flag)
 	return nil
 }
@@ -349,9 +346,6 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	//if err := deleteToken(blk, txn); err != nil {
 	//	return err
 	//}
-	if err := deleteSmsDataForBlock(blk, txn); err != nil {
-		return err
-	}
 
 	l.releaseTxn(txn, flag)
 	return nil
@@ -360,18 +354,18 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 func deleteChild(blk *types.StateBlock, txn db.StoreTxn) error {
 	pHash := blk.Parent()
 	if !pHash.IsZero() {
-		childs, err := getChilds(pHash, txn)
+		children, err := getChildren(pHash, txn)
 		if err != nil {
 			return fmt.Errorf("%s can not find child", pHash.String())
 		}
 		pKey := getKeyOfHash(pHash, idPrefixChild)
-		if len(childs) == 1 {
+		if len(children) == 1 {
 			if err := txn.Delete(pKey); err != nil {
 				return err
 			}
 		} else {
-			delete(childs, blk.GetHash())
-			val, err := json.Marshal(childs)
+			delete(children, blk.GetHash())
+			val, err := json.Marshal(children)
 			if err != nil {
 				return err
 			}
@@ -1186,12 +1180,12 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 func (l *Ledger) GetChild(hash types.Hash, address types.Address, txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
-	childs, err := getChilds(hash, txn)
-	l.logger.Debug(childs)
+	children, err := getChildren(hash, txn)
+	l.logger.Debug(children)
 	if err != nil {
 		return types.ZeroHash, err
 	}
-	for k, _ := range childs {
+	for k, _ := range children {
 		b, err := l.GetStateBlock(k)
 		if err != nil {
 			return types.ZeroHash, fmt.Errorf("%s can not find child block %s", hash.String(), k.String())
@@ -1203,16 +1197,16 @@ func (l *Ledger) GetChild(hash types.Hash, address types.Address, txns ...db.Sto
 	return types.ZeroHash, fmt.Errorf("%s can not find child for address %s", hash.String(), address.String())
 }
 
-func getChilds(hash types.Hash, txn db.StoreTxn) (map[types.Hash]int, error) {
+func getChildren(hash types.Hash, txn db.StoreTxn) (map[types.Hash]int, error) {
 	key := getKeyOfHash(hash, idPrefixChild)
-	childs := make(map[types.Hash]int)
+	children := make(map[types.Hash]int)
 	err := txn.Get(key, func(val []byte, b byte) error {
-		return json.Unmarshal(val, &childs)
+		return json.Unmarshal(val, &children)
 	})
 	if err != nil {
 		return nil, err
 	}
-	return childs, nil
+	return children, nil
 }
 
 func getVersionKey() []byte {
@@ -2091,4 +2085,31 @@ func (l *Ledger) SetOnlineRepresentations(addresses []*types.Address, txns ...db
 	defer l.releaseTxn(txn, flag)
 
 	return txn.Set(key, bytes)
+}
+
+func (l *Ledger) AddMessageInfo(mHash types.Hash, message []byte, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key := getKeyOfHash(mHash, idPrefixMessageInfo)
+	if err := txn.Set(key, message); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key := getKeyOfHash(mHash, idPrefixMessageInfo)
+	var m []byte
+	err := txn.Get(key, func(val []byte, b byte) error {
+		m = val
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
 }

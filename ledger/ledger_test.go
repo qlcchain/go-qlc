@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -274,70 +275,6 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("block ,", b)
-}
-
-func TestLedger_GetSenderBlocks(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-	b := mock.StateBlockWithoutWork()
-	s := "18000001111"
-	r := "18011110000"
-	sender, _ := json.Marshal(s)
-	receiver, _ := json.Marshal(r)
-	b.Sender = sender
-	b.Receiver = receiver
-	if err := l.AddStateBlock(b); err != nil {
-		t.Fatal(err)
-	}
-	h, err := l.GetSenderBlocks(sender)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h[0] != b.GetHash() {
-		t.Fatal()
-	}
-	h2, err := l.GetReceiverBlocks(receiver)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h[0] != b.GetHash() || h[0] != h2[0] {
-		t.Fatal()
-	}
-
-	b2 := mock.StateBlockWithoutWork()
-	b2.Sender = sender
-	if err := l.AddStateBlock(b2); err != nil {
-		t.Fatal(err)
-	}
-	h3, err := l.GetSenderBlocks(sender)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(h3) != 2 {
-		t.Fatal()
-	}
-
-	if err := l.DeleteStateBlock(b.GetHash()); err != nil {
-		t.Fatal(err)
-	}
-	h4, err := l.GetSenderBlocks(sender)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(h4) != 1 || h4[0] != b2.GetHash() {
-		t.Fatal()
-	}
-
-	if err := l.DeleteStateBlock(b2.GetHash()); err != nil {
-		t.Fatal(err)
-	}
-	h5, err := l.GetSenderBlocks(sender)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(h5) != 0 {
-		t.Fatal()
-	}
 }
 
 func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
@@ -1154,5 +1091,22 @@ func TestLedger_BlockChild(t *testing.T) {
 	h, err = l.GetChild(b1.GetHash(), b4.GetAddress())
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestLedger_MessageInfo(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	h := mock.Hash()
+	m := []byte{1, 2, 3}
+	if err := l.AddMessageInfo(h, m); err != nil {
+		t.Fatal(err)
+	}
+	m2, err := l.GetMessageInfo(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(m, m2) {
+		t.Fatal("wrong result")
 	}
 }

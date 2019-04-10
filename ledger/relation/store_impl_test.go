@@ -21,9 +21,9 @@ func TestRelation_CreateData(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		//if err := r.Close(); err != nil {
-		//	t.Fatal(err)
-		//}
+		if err := r.Close(); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.Remove(dir); err != nil {
 			t.Fatal(err)
 		}

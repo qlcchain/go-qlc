@@ -120,6 +120,10 @@ func (s *DBSQL) Group(table TableName, column Column, dest interface{}) error {
 	return nil
 }
 
+func (s *DBSQL) Close() error {
+	return s.db.Close()
+}
+
 func createSql(table TableName, condition map[Column]interface{}) string {
 	var key []string
 	var value []string
@@ -155,7 +159,7 @@ func readSql(table TableName, condition map[Column]interface{}, offset int, limi
 		}
 	}
 	if len(para) != 0 {
-		sql = fmt.Sprintf("select * from %s  where %s ", table.String(), strings.Join(para, " or "))
+		sql = fmt.Sprintf("select * from %s  where %s ", table.String(), strings.Join(para, " and "))
 	} else {
 		sql = fmt.Sprintf("select * from %s ", table.String())
 	}

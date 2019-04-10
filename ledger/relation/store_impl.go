@@ -40,7 +40,7 @@ func NewRelation(dir string) (*Relation, error) {
 }
 
 func (r *Relation) Close() error {
-	panic("implement me")
+	return r.store.Close()
 }
 
 func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) ([]types.Hash, error) {
@@ -54,13 +54,8 @@ func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) (
 	return blockHash(h)
 }
 
-type blocksCount struct {
-	count uint64
-}
-
 func (r *Relation) BlocksCount() (uint64, error) {
 	var count uint64
-	//var count blocksCount
 	err := r.store.Count(db.TableBlockHash, &count)
 	fmt.Println(count)
 	if err != nil {

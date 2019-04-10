@@ -14,7 +14,6 @@ import (
 )
 
 type Store interface {
-	smsStore
 	Empty(txns ...db.StoreTxn) (bool, error)
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
 
@@ -110,4 +109,6 @@ type Store interface {
 
 	//CalculateAmount calculate block amount by balance and check block type
 	CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (types.Balance, error)
+	AddMessageInfo(mHash types.Hash, message []byte, txns ...db.StoreTxn) error
+	GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, error)
 }
