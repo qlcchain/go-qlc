@@ -67,9 +67,9 @@ const (
 	idPrefixVersion
 	idPrefixStorage
 	idPrefixToken
-	idPrefixSender
-	idPrefixReceiver
-	idPrefixMessage
+	idPrefixSender   //discard
+	idPrefixReceiver //discard
+	idPrefixMessage  //discard
 	idPrefixMessageInfo
 	idPrefixOnlineReps
 )
