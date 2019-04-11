@@ -130,8 +130,10 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Token = common.ChainToken()
 	sb.Previous = Hash()
 	sb.Representative = common.GenesisAddress()
+	sb.Timestamp = time.Now().Unix()
 	//addr := Address()
 	sb.Link = types.ZeroHash
+	sb.Message = Hash()
 	return sb
 }
 

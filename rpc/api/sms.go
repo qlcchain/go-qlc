@@ -3,19 +3,20 @@ package api
 import (
 	"encoding/json"
 
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"go.uber.org/zap"
-
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"go.uber.org/zap"
 )
 
 type SMSApi struct {
 	ledger    *ledger.Ledger
 	vmContext *vmstore.VMContext
+	relation  *relation.Relation
 	logger    *zap.SugaredLogger
 }
 
@@ -53,7 +54,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	if err != nil {
 		return nil, errors.New("error phone number")
 	}
-	sHash, err := s.ledger.GetSenderBlocks(p)
+	sHash, err := s.relation.PhoneBlocks(p, true)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	rHash, err := s.ledger.GetReceiverBlocks(p)
+	rHash, err := s.relation.PhoneBlocks(p, false)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +77,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 }
 
 func (s *SMSApi) MessageBlocks(hash types.Hash) ([]*APIBlock, error) {
-	hashes, err := s.ledger.GetMessageBlocks(hash)
+	hashes, err := s.relation.MessageBlocks(hash)
 	if err != nil {
 		return nil, err
 	}
