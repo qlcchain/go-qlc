@@ -189,40 +189,6 @@ func TestSubscribeAsyncTopic(t *testing.T) {
 	}
 }
 
-func TestSubscribeAsyncTopic2(t *testing.T) {
-	results := make([]int, 0)
-
-	type result struct {
-		A int
-	}
-
-	bus := New()
-	fn := func(a *result, out *[]int, dur string) {
-		//sleep, _ := time.ParseDuration(dur)
-		//time.Sleep(sleep)
-		*out = append(*out, a.A)
-		t.Log(&a, a.A, dur)
-	}
-	err := bus.SubscribeAsync("topic:*", fn, false)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	bus.Publish("topic:", &result{3}, &results, "1s")
-
-	bus.Publish("topic:1st", &result{1}, &results, "1s")
-
-	bus.Publish("topic:2nd", &result{2}, &results, "0s")
-
-	bus.WaitAsync()
-	time.Sleep(10 * time.Millisecond)
-	if len(results) != 3 {
-		t.Log(results)
-		t.Fatalf("len is err %d", len(results))
-	}
-}
-
 func TestSubscribeAsync(t *testing.T) {
 	results := make(chan int)
 
