@@ -75,9 +75,10 @@ const (
 	idPrefixMessage
 	idPrefixMessageInfo
 	idPrefixOnlineReps
-	idPrefixPovBlock
-	idPrefixPovBlockHash
-	idPrefixPovTxHash
+	idPrefixPovBlockHeader // prefix + height + hash => PovHeader
+	idPrefixPovBlockBody // prefix + height + hash => PovBody
+	idPrefixPovBlockNumber // prefix + hash => height (uint64)
+	idPrefixPovTxLookup // prefix + hash => TxLookup
 )
 
 var (
@@ -199,7 +200,7 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 			hash := part.(*types.Hash)
 			src = hash[:]
 		default:
-			return nil, errors.New("Key contains of uint64 and []byte.")
+			return nil, errors.New("Key contains of invalid part.")
 		}
 
 		buffer = append(buffer, src...)
