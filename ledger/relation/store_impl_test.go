@@ -5,18 +5,24 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func TestRelation_CreateData(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "sqlite.db")
 	blk := mock.StateBlockWithoutWork()
 	blk.Type = types.Send
 	blk.Sender = []byte("1580000")
 	blk.Receiver = []byte("1851111")
-	r, err := NewRelation(dir)
+	dir := filepath.Join(config.QlcTestDataDir(), "sqlite")
+	cfg, err := config.DefaultConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eb := event.New()
+	r, err := NewRelation(cfg, eb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +30,7 @@ func TestRelation_CreateData(t *testing.T) {
 		if err := r.Close(); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Remove(dir); err != nil {
+		if err := os.RemoveAll(dir); err != nil {
 			t.Fatal(err)
 		}
 	}()

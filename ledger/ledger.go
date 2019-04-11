@@ -14,6 +14,7 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
@@ -26,6 +27,7 @@ type Ledger struct {
 	io.Closer
 	Store  db.Store
 	dir    string
+	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
@@ -81,7 +83,7 @@ var (
 
 const version = 3
 
-func NewLedger(dir string) *Ledger {
+func NewLedger(dir string, eb event.EventBus) *Ledger {
 	lock.Lock()
 	defer lock.Unlock()
 	if _, ok := cache[dir]; !ok {
@@ -89,7 +91,7 @@ func NewLedger(dir string) *Ledger {
 		if err != nil {
 			fmt.Println(err.Error())
 		}
-		l := &Ledger{Store: store, dir: dir}
+		l := &Ledger{Store: store, dir: dir, eb: eb}
 		l.logger = log.NewLogger("ledger")
 
 		if err := l.upgrade(); err != nil {
@@ -201,6 +203,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	//	return err
 	//}
 	l.releaseTxn(txn, flag)
+	l.eb.Publish(string(common.EventAddRelation), blk)
 	return nil
 }
 
@@ -348,6 +351,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	//}
 
 	l.releaseTxn(txn, flag)
+	l.eb.Publish(string(common.EventDeleteRelation), hash)
 	return nil
 }
 

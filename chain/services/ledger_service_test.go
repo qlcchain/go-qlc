@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 )
 
@@ -25,7 +26,7 @@ func TestNewLedgerService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls := NewLedgerService(cfg)
+	ls := NewLedgerService(cfg, event.New())
 	err = ls.Init()
 	if err != nil {
 		t.Fatal(err)

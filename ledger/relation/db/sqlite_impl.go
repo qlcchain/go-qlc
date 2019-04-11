@@ -2,11 +2,14 @@ package db
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -15,6 +18,11 @@ type DBSQL struct {
 	db     *sqlx.DB
 	logger *zap.SugaredLogger
 }
+
+var (
+	once  sync.Once
+	store *sqlx.DB
+)
 
 func NewSQLDB(path string) (*DBSQL, error) {
 	db, err := createDBBySqlite(path)
@@ -29,8 +37,22 @@ func NewSQLDB(path string) (*DBSQL, error) {
 	return &dbsql, nil
 }
 
-func createDBBySqlite(path string) (*sqlx.DB, error) {
-	return sqlx.Connect("sqlite3", path)
+func createDBBySqlite(dir string) (*sqlx.DB, error) {
+	var err error
+	once.Do(func() {
+		_ = util.CreateDirIfNotExist(dir)
+		store, err = sqlx.Connect("sqlite3", path.Join(dir, "sqlite3.db"))
+		if err != nil {
+			fmt.Println(err)
+		}
+		store.SetMaxOpenConns(200)
+		store.SetMaxIdleConns(100)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return store, nil
+
 }
 
 func (s *DBSQL) initDB() error {

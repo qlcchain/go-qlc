@@ -59,6 +59,7 @@ var (
 	netService     *ss.P2PService
 	dPosService    *ss.DPosService
 	rPCService     *ss.RPCService
+	sqliteService  *ss.SqliteService
 	services       []common.Service
 	maxAccountSize = 100
 )

@@ -58,7 +58,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	eventBus := event.New()
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
-	ledgerService = ss.NewLedgerService(cfg)
+	ledgerService = ss.NewLedgerService(cfg, eventBus)
 	walletService = ss.NewWalletService(cfg)
 	netService, err = ss.NewP2PService(cfg, eventBus)
 	if err != nil {
@@ -68,7 +68,12 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 
 	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
 	dPosService = ss.NewDPosService(cfg, accounts, eventBus)
-	rPCService = ss.NewRPCService(cfg, eventBus)
+	if rPCService, err = ss.NewRPCService(cfg, eventBus); err != nil {
+		return err
+	}
+	if sqliteService, err = ss.NewSqliteService(cfg, eventBus); err != nil {
+		return err
+	}
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		_ = eventBus.Subscribe(string(common.EventConfirmedBlock), func(blk *types.StateBlock) {
@@ -103,7 +108,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		})
 	}
 
-	services = []common.Service{ledgerService, netService, walletService, dPosService, rPCService}
+	services = []common.Service{ledgerService, netService, walletService, dPosService, rPCService, sqliteService}
 
 	return nil
 }
@@ -118,9 +123,9 @@ func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service,
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("%s start successful.\n", reflect.TypeOf(service))
+		fmt.Printf("%s start successfully.\n", reflect.TypeOf(service))
 	}
-
+	fmt.Println("qlc node start successfully")
 	//search pending and generate receive block
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		go func(l *ledger.Ledger, accounts []*types.Account) {

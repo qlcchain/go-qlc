@@ -96,7 +96,7 @@ func (m MigrationV3ToV4) Migrate(txn db.StoreTxn) error {
 		if err != nil {
 			return err
 		}
-		relation, err := relation.NewRelation(cfg.DataDir)
+		relation, err := relation.NewRelation(cfg, nil)
 		if err != nil {
 			return err
 		}

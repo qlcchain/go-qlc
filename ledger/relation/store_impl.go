@@ -3,7 +3,10 @@ package relation
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -11,6 +14,7 @@ import (
 
 type Relation struct {
 	store  db.DbStore
+	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
@@ -31,12 +35,13 @@ type blocksMessage struct {
 	Timestamp int64
 }
 
-func NewRelation(dir string) (*Relation, error) {
-	s, err := db.NewSQLDB(dir)
+func NewRelation(config *config.Config, eb event.EventBus) (*Relation, error) {
+	s, err := db.NewSQLDB(config.SqliteDir())
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
-	return &Relation{store: s, logger: log.NewLogger("relation")}, nil
+	return &Relation{store: s, eb: eb, logger: log.NewLogger("relation")}, nil
 }
 
 func (r *Relation) Close() error {
@@ -184,4 +189,32 @@ func blockType(bs []blocksType) map[string]uint64 {
 		t[b.Type] = b.Count
 	}
 	return t
+}
+
+func (r *Relation) SetEvent() error {
+	err := r.eb.Subscribe(string(common.EventAddRelation), r.AddBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (r *Relation) UnsubscribeEvent() error {
+	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.AddBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	return nil
 }

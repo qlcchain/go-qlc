@@ -12,9 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 )
 
@@ -28,7 +27,10 @@ func TestNewRPCService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls := NewRPCService(cfg, eventBus)
+	ls, err := NewRPCService(cfg, eventBus)
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = ls.Init()
 	if err != nil {
 		t.Fatal(err)

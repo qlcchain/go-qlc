@@ -12,7 +12,7 @@ import (
 )
 
 func TestDBSQL_Create(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "db_test.db")
+	dir := filepath.Join(config.QlcTestDataDir(), "sqlite3")
 	d, err := NewSQLDB(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -21,7 +21,7 @@ func TestDBSQL_Create(t *testing.T) {
 		if err := d.Close(); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Remove(dir); err != nil {
+		if err := os.RemoveAll(dir); err != nil {
 			t.Fatal(err)
 		}
 	}()
