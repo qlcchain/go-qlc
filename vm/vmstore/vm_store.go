@@ -68,6 +68,7 @@ func (v *VMContext) GetStorage(prefix, key []byte) ([]byte, error) {
 	txn := v.ledger.Store.NewTransaction(false)
 	defer func() {
 		txn.Commit(nil)
+		txn.Discard()
 	}()
 	storageKey := getStorageKey(prefix, key)
 	var storage []byte
@@ -88,6 +89,7 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 	txn := v.ledger.Store.NewTransaction(true)
 	defer func() {
 		txn.Commit(nil)
+		txn.Discard()
 	}()
 	storageKey := getStorageKey(prefix, key)
 	err := txn.Get(storageKey, func(bytes []byte, b byte) error {
@@ -104,7 +106,7 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
 	txn := v.ledger.Store.NewTransaction(false)
 	defer func() {
-		txn.Commit(nil)
+		txn.Discard()
 	}()
 
 	err := txn.Iterator(idPrefixStorage, func(key []byte, val []byte, b byte) error {
