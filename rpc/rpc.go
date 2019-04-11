@@ -7,8 +7,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
@@ -40,15 +41,15 @@ type RPC struct {
 
 	ledger *ledger.Ledger
 	wallet *wallet.WalletStore
-	dpos   *consensus.DPoS
+	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
-func NewRPC(cfg *config.Config, dpos *consensus.DPoS) *RPC {
+func NewRPC(cfg *config.Config, eb event.EventBus) *RPC {
 	r := RPC{
 		ledger: ledger.NewLedger(cfg.LedgerDir()),
 		wallet: wallet.NewWalletStore(cfg),
-		dpos:   dpos,
+		eb:     eb,
 		config: cfg,
 		logger: log.NewLogger("rpc"),
 	}

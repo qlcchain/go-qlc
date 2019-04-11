@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -25,23 +27,16 @@ func TestMDNS(t *testing.T) {
 	cfgFile2.P2P.Discovery.MDNSEnabled = true
 	cfgFile2.P2P.BootNodes = []string{}
 
+	eventBus := event.New()
 	//start node1
-	node1, err := NewQlcService(cfgFile1)
-	err = node1.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node1, err := NewQlcService(cfgFile1, eventBus)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2)
-	err = node2.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node2, err := NewQlcService(cfgFile2, eventBus)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -115,34 +110,23 @@ func TestNodeDiscovery(t *testing.T) {
 	cfgFile2.P2P.BootNodes = []string{b}
 	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
 
+	eventBus := event.New()
 	//start bootNode
-	node, err := NewQlcService(cfgFile)
-	err = node.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node, err := NewQlcService(cfgFile, eventBus)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node1
-	node1, err := NewQlcService(cfgFile1)
-	err = node1.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node1, err := NewQlcService(cfgFile1, eventBus)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2)
-	err = node2.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node2, err := NewQlcService(cfgFile2, eventBus)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)

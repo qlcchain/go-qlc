@@ -4,9 +4,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/p2p"
 )
 
 type blockSource struct {
@@ -48,7 +49,10 @@ func (bp *BlockProcessor) processBlocks() {
 				bp.dp.logger.Errorf("error: [%s] when verify block:[%s]", err, bs.block.GetHash())
 				continue
 			}
-			bp.processResult(result, bs)
+			err = bp.processResult(result, bs)
+			if err != nil {
+				bp.dp.logger.Error(err)
+			}
 		case <-timer.C:
 			bp.dp.logger.Info("begin Find Online Representatives.")
 			go func() {
@@ -103,12 +107,14 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 		bp.dp.logger.Debugf("Gap previous for block: %s", hash)
 		err := bp.dp.ledger.AddUncheckedBlock(blk.GetPrevious(), blk, types.UncheckedKindPrevious, bs.blockFrom)
 		if err != nil {
+			bp.dp.logger.Errorf("gap previous,add uncheckedBlock error,block is [%s]", hash)
 			return err
 		}
 	case process.GapSource:
 		bp.dp.logger.Debugf("Gap source for block: %s", hash)
 		err := bp.dp.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.blockFrom)
 		if err != nil {
+			bp.dp.logger.Errorf("gap source,add uncheckedBlock error,block is [%s]", hash)
 			return err
 		}
 	}
@@ -123,32 +129,8 @@ func (bp *BlockProcessor) processFork(block *types.StateBlock) {
 	blk := bp.findAnotherForkedBlock(block)
 	if _, ok := bp.dp.acTrx.roots.Load(blk.Parent()); !ok {
 		bp.dp.acTrx.addToRoots(blk)
-		bp.dp.ns.Broadcast(p2p.ConfirmReq, blk)
+		bp.dp.eb.Publish(string(common.EventBroadcast), common.ConfirmReq, blk)
 	}
-	//count := 0
-	//bp.dp.priInfos.Range(func(key, value interface{}) bool {
-	//	count++
-	//	isRep := bp.dp.isRepresentation(key.(types.Address))
-	//	if isRep {
-	//		bp.dp.saveOnlineRep(key.(types.Address))
-	//		blk = bp.findAnotherForkedBlock(block)
-	//
-	//	} else {
-	//		blk = block
-	//	}
-	//	if _, ok := bp.dp.acTrx.roots.Load(blk.Root()); !ok {
-	//		bp.dp.acTrx.addToRoots(blk)
-	//		bp.dp.ns.Broadcast(p2p.ConfirmReq, blk)
-	//	}
-	//
-	//	return true
-	//})
-	//if count == 0 {
-	//	if _, ok := bp.dp.acTrx.roots.Load(blk.Root()); !ok {
-	//		bp.dp.acTrx.addToRoots(block)
-	//		bp.dp.ns.Broadcast(p2p.ConfirmReq, blk)
-	//	}
-	//}
 }
 
 func (bp *BlockProcessor) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlock {

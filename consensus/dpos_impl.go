@@ -4,6 +4,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -27,10 +30,9 @@ var (
 )
 
 type DPoS struct {
-	ns         p2p.Service
 	ledger     *ledger.Ledger
 	verifier   *process.LedgerVerifier
-	eventMsg   map[p2p.EventType]p2p.EventSubscriber
+	eb         event.EventBus
 	bp         *BlockProcessor
 	acTrx      *ActiveTrx
 	accounts   []*types.Account
@@ -38,10 +40,6 @@ type DPoS struct {
 	logger     *zap.SugaredLogger
 	cache      gcache.Cache
 	cfg        *config.Config
-}
-
-func (dps *DPoS) GetP2PService() p2p.Service {
-	return dps.ns
 }
 
 func (dps *DPoS) Init() error {
@@ -72,7 +70,10 @@ func (dps *DPoS) refreshAccount() {
 }
 
 func (dps *DPoS) Start() error {
-	dps.setEvent()
+	err := dps.setEvent()
+	if err != nil {
+		return err
+	}
 	dps.logger.Info("start dpos service")
 	go dps.bp.Start()
 	go dps.acTrx.start()
@@ -83,22 +84,34 @@ func (dps *DPoS) Start() error {
 func (dps *DPoS) Stop() error {
 	dps.bp.quitCh <- true
 	dps.acTrx.quitCh <- true
-	for i, j := range dps.eventMsg {
-		_ = dps.ns.MessageEvent().GetEvent("consensus").UnSubscribe(i, j)
+	err := dps.eb.Unsubscribe(string(common.EventPublish), dps.ReceivePublish)
+	if err != nil {
+		return err
+	}
+	err = dps.eb.Unsubscribe(string(common.EventConfirmReq), dps.ReceiveConfirmReq)
+	if err != nil {
+		return err
+	}
+	err = dps.eb.Unsubscribe(string(common.EventConfirmAck), dps.ReceiveConfirmAck)
+	if err != nil {
+		return err
+	}
+	err = dps.eb.Unsubscribe(string(common.EventSyncBlock), dps.ReceiveSyncBlock)
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-func NewDPoS(cfg *config.Config, netService p2p.Service, accounts []*types.Account) (*DPoS, error) {
+func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) (*DPoS, error) {
 	bp := NewBlockProcessor()
 	acTrx := NewActiveTrx()
 	l := ledger.NewLedger(cfg.LedgerDir())
 
 	dps := &DPoS{
-		ns:       netService,
 		ledger:   l,
 		verifier: process.NewLedgerVerifier(l),
-		eventMsg: make(map[p2p.EventType]p2p.EventSubscriber),
+		eb:       eb,
 		bp:       bp,
 		acTrx:    acTrx,
 		accounts: accounts,
@@ -111,62 +124,56 @@ func NewDPoS(cfg *config.Config, netService p2p.Service, accounts []*types.Accou
 	return dps, nil
 }
 
-func (dps *DPoS) setEvent() {
-	event1 := dps.ns.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventPublish, dps.ReceivePublish)
-	event2 := dps.ns.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmReq, dps.ReceiveConfirmReq)
-	event3 := dps.ns.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmAck, dps.ReceiveConfirmAck)
-	event4 := dps.ns.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventSyncBlock, dps.ReceiveSyncBlock)
-	dps.eventMsg[p2p.EventPublish] = event1
-	dps.eventMsg[p2p.EventConfirmReq] = event2
-	dps.eventMsg[p2p.EventConfirmAck] = event3
-	dps.eventMsg[p2p.EventSyncBlock] = event4
+func (dps *DPoS) setEvent() error {
+	err := dps.eb.SubscribeAsync(string(common.EventPublish), dps.ReceivePublish, false)
+	if err != nil {
+		return err
+	}
+	err = dps.eb.SubscribeAsync(string(common.EventConfirmReq), dps.ReceiveConfirmReq, false)
+	if err != nil {
+		return err
+	}
+	err = dps.eb.SubscribeAsync(string(common.EventConfirmAck), dps.ReceiveConfirmAck, false)
+	if err != nil {
+		return err
+	}
+	err = dps.eb.SubscribeAsync(string(common.EventSyncBlock), dps.ReceiveSyncBlock, false)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (dps *DPoS) ReceivePublish(v interface{}) {
-	e := v.(p2p.Message)
-	p, err := protos.PublishBlockFromProto(e.Data())
-	if err != nil {
-		dps.logger.Info(err)
-		return
-	}
+func (dps *DPoS) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFrom string) {
+	dps.logger.Infof("receive publish block [%s] from [%s]", blk.GetHash(), msgFrom)
 	bs := blockSource{
-		block:     p.Blk,
+		block:     blk,
 		blockFrom: types.UnSynchronized,
 	}
-	dps.logger.Infof("Publish Event for block:[%s] from [%s]", p.Blk.GetHash(), e.MessageFrom())
 	dps.bp.blocks <- bs
-	dps.onReceivePublish(e, p.Blk)
+	dps.onReceivePublish(hash, blk, msgFrom)
 }
 
-func (dps *DPoS) onReceivePublish(e p2p.Message, blk *types.StateBlock) {
-	if !dps.cache.Has(e.Hash()) {
-		dps.ns.SendMessageToPeers(p2p.PublishReq, blk, e.MessageFrom())
-		err := dps.cache.Set(e.Hash(), "")
+func (dps *DPoS) onReceivePublish(hash types.Hash, blk *types.StateBlock, msgFrom string) {
+	if !dps.cache.Has(hash) {
+		//dps.ns.SendMessageToPeers(p2p.PublishReq, blk, msgFrom)
+		dps.eb.Publish(string(common.EventSendMsgToPeers), common.PublishReq, blk, msgFrom)
+		err := dps.cache.Set(hash, "")
 		if err != nil {
 			dps.logger.Errorf("Set cache error [%s] for block [%s] with publish message", err, blk.GetHash())
 		}
 	}
 }
 
-func (dps *DPoS) ReceiveConfirmReq(v interface{}) {
-	e := v.(p2p.Message)
-	r, err := protos.ConfirmReqBlockFromProto(e.Data())
-	if err != nil {
-		dps.logger.Error(err)
-		return
-	}
-	dps.logger.Infof("ConfirmReq Event for block:[%s] from [%s]", r.Blk.GetHash(), e.MessageFrom())
-	dps.onReceiveConfirmReq(e, r.Blk)
-}
-
-func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
+func (dps *DPoS) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msgFrom string) {
+	dps.logger.Infof("receive ConfirmReq block [%s] from [%s]", blk.GetHash(), msgFrom)
 	var address types.Address
 	var count uint32
 	bs := blockSource{
 		block:     blk,
 		blockFrom: types.UnSynchronized,
 	}
-	if !dps.cache.Has(e.Hash()) {
+	if !dps.cache.Has(hash) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			count++
 			address = key.(types.Address)
@@ -184,8 +191,9 @@ func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 		})
 		if count == 0 {
 			dps.bp.blocks <- bs
-			dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, e.MessageFrom())
-			err := dps.cache.Set(e.Hash(), "")
+			//dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, msgFrom)
+			dps.eb.Publish(string(common.EventSendMsgToPeers), common.ConfirmReq, blk, msgFrom)
+			err := dps.cache.Set(hash, "")
 			if err != nil {
 				dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmReq message", err, blk.GetHash())
 			}
@@ -193,18 +201,8 @@ func (dps *DPoS) onReceiveConfirmReq(e p2p.Message, blk *types.StateBlock) {
 	}
 }
 
-func (dps *DPoS) ReceiveConfirmAck(v interface{}) {
-	e := v.(p2p.Message)
-	ack, err := protos.ConfirmAckBlockFromProto(e.Data())
-	if err != nil {
-		dps.logger.Info(err)
-		return
-	}
-	dps.logger.Infof("ConfirmAck Event for block:[%s] from [%s]", ack.Blk.GetHash(), e.MessageFrom())
-	dps.onReceiveConfirmAck(e, ack)
-}
-
-func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock) {
+func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash, msgFrom string) {
+	dps.logger.Infof("receive ConfirmAck block [%s] from [%s]", ack.Blk.GetHash(), msgFrom)
 	var address types.Address
 	var count uint32
 	bs := blockSource{
@@ -216,7 +214,7 @@ func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock)
 		return
 	}
 	dps.acTrx.vote(ack)
-	if !dps.cache.Has(e.Hash()) {
+	if !dps.cache.Has(hash) {
 		dps.saveOnlineRep(ack.Account)
 		localRepAccount.Range(func(key, value interface{}) bool {
 			count++
@@ -240,18 +238,19 @@ func (dps *DPoS) onReceiveConfirmAck(e p2p.Message, ack *protos.ConfirmAckBlock)
 			dps.bp.blocks <- bs
 		}
 
-		dps.ns.SendMessageToPeers(p2p.ConfirmAck, ack, e.MessageFrom())
-		err := dps.cache.Set(e.Hash(), "")
+		//dps.ns.SendMessageToPeers(p2p.ConfirmAck, ack, msgFrom)
+		dps.eb.Publish(string(common.EventSendMsgToPeers), common.ConfirmAck, ack, msgFrom)
+		err := dps.cache.Set(hash, "")
 		if err != nil {
 			dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmAck message", err, ack.Blk.GetHash())
 		}
 	}
 }
 
-func (dps *DPoS) ReceiveSyncBlock(v interface{}) {
+func (dps *DPoS) ReceiveSyncBlock(blk *types.StateBlock) {
 	dps.logger.Info("Sync Event")
 	bs := blockSource{
-		block:     v.(*types.StateBlock),
+		block:     blk,
 		blockFrom: types.Synchronized,
 	}
 	dps.logger.Infof("Sync Event for block:[%s]", bs.block.GetHash())
@@ -264,7 +263,8 @@ func (dps *DPoS) sendConfirmAck(block *types.StateBlock, account types.Address, 
 		dps.logger.Error("vote generate error")
 		return err
 	}
-	dps.ns.Broadcast(p2p.ConfirmAck, va)
+	//dps.ns.Broadcast(p2p.ConfirmAck, va)
+	dps.eb.Publish(string(common.EventBroadcast), common.ConfirmAck, va)
 	return nil
 }
 
@@ -312,7 +312,8 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 	if err != nil {
 		return err
 	}
-	dps.ns.Broadcast(p2p.ConfirmReq, blk)
+	//dps.ns.Broadcast(p2p.ConfirmReq, blk)
+	dps.eb.Publish(string(common.EventBroadcast), common.ConfirmReq, blk)
 	return nil
 }
 
@@ -343,7 +344,8 @@ func (dps *DPoS) sendAckIfResultIsOld(block *types.StateBlock, account types.Add
 	}
 	if !dps.cache.Has(msgHash) {
 		dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Parent())
-		dps.ns.Broadcast(p2p.ConfirmAck, va)
+		//dps.ns.Broadcast(p2p.ConfirmAck, va)
+		dps.eb.Publish(string(common.EventBroadcast), common.ConfirmAck, va)
 		err := dps.cache.Set(msgHash, "")
 		if err != nil {
 			return err
@@ -358,7 +360,7 @@ func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error
 		return types.ZeroHash, err
 	}
 	version := dps.cfg.Version
-	message := p2p.NewQlcMessage(data, byte(version), p2p.ConfirmAck)
+	message := p2p.NewQlcMessage(data, byte(version), common.ConfirmAck)
 	hash, err := types.HashBytes(message)
 	if err != nil {
 		return types.ZeroHash, err

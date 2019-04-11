@@ -14,6 +14,8 @@ import (
 	"os/signal"
 	"path/filepath"
 
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -56,8 +58,8 @@ func main() {
 		logger.Fatal(err)
 	}
 	logger.Info("wallet started")
-
-	rs := services.NewRPCService(cfg, services.NewDPosService(cfg, nil, nil))
+	eventBus := event.New()
+	rs := services.NewRPCService(cfg, eventBus)
 	if err = rs.Init(); err != nil {
 		logger.Fatal(err)
 	}
