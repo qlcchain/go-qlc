@@ -92,7 +92,7 @@ func importWallet(seedP string) error {
 	if err != nil {
 		return err
 	}
-	w := ctx.Wallet.Wallet
+	w := walletService.Wallet
 	addr, err := w.NewWalletBySeed(seedP, passwordP)
 	if err != nil {
 		return err
