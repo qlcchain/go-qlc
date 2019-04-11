@@ -106,7 +106,6 @@ func (m MigrationV3ToV4) Migrate(txn db.StoreTxn) error {
 			if err != nil {
 				return err
 			}
-			return nil
 			if err := relation.AddBlock(blk); err != nil {
 				return err
 			}

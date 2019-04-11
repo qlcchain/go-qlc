@@ -189,7 +189,7 @@ func deleteSql(table TableName, condition map[Column]interface{}) string {
 		}
 	}
 	if len(para) != 0 {
-		sql = fmt.Sprintf("delete from %s  where %s ", table.String(), strings.Join(para, " or "))
+		sql = fmt.Sprintf("delete from %s  where %s ", table.String(), strings.Join(para, " and "))
 	} else {
 		sql = fmt.Sprintf("delete from %s ", table.String())
 	}

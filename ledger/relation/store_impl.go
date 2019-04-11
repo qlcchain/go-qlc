@@ -92,7 +92,7 @@ func (r *Relation) PhoneBlocks(phone []byte, sender bool) ([]types.Hash, error) 
 	if sender == true {
 		condition[db.ColumnSender] = byteToString(phone)
 	} else {
-		condition[db.ColumnSender] = byteToString(phone)
+		condition[db.ColumnReceiver] = byteToString(phone)
 	}
 	var m []blocksMessage
 	err := r.store.Read(db.TableBlockHash, condition, -1, -1, db.ColumnNoNeed, &m)
@@ -116,7 +116,7 @@ func (r *Relation) MessageBlocks(hash types.Hash) ([]types.Hash, error) {
 func (r *Relation) AddBlock(block *types.StateBlock) error {
 	conHash := make(map[db.Column]interface{})
 	conHash[db.ColumnHash] = block.GetHash().String()
-	conHash[db.ColumnTimestamp] = block.Timestamp
+	conHash[db.ColumnTimestamp] = block.GetTimestamp()
 	conHash[db.ColumnType] = block.GetType().String()
 	conHash[db.ColumnAddress] = block.GetAddress().String()
 	if err := r.store.Create(db.TableBlockHash, conHash); err != nil {
@@ -129,7 +129,7 @@ func (r *Relation) AddBlock(block *types.StateBlock) error {
 		conMessage[db.ColumnMessage] = message.String()
 		conMessage[db.ColumnSender] = byteToString(block.GetSender())
 		conMessage[db.ColumnReceiver] = byteToString(block.GetReceiver())
-		conHash[db.ColumnTimestamp] = block.Timestamp
+		conHash[db.ColumnTimestamp] = block.GetTimestamp()
 		if err := r.store.Create(db.TableBlockMessage, conMessage); err != nil {
 			return err
 		}
