@@ -10,6 +10,7 @@ require (
 	github.com/bluele/gcache v0.0.0-20190203144525-2016d595ccb0
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
+	github.com/dchest/siphash v1.2.1
 	github.com/deckarep/golang-set v1.7.1
 	github.com/dgraph-io/badger v2.0.0-rc.2+incompatible
 	github.com/fatih/color v1.7.0
