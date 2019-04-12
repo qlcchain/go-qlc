@@ -20,17 +20,15 @@ const (
 type ActiveTrx struct {
 	confirmed electionStatus
 	dps       *DPoS
-	//roots     map[types.Hash]*Election
-	roots    *sync.Map
-	quitCh   chan bool
-	inactive []types.Hash
+	roots     *sync.Map
+	quitCh    chan bool
+	inactive  []types.Hash
 }
 
 func NewActiveTrx() *ActiveTrx {
 	return &ActiveTrx{
 		quitCh: make(chan bool, 1),
-		//roots:  make(map[types.Hash]*Election),
-		roots: new(sync.Map),
+		roots:  new(sync.Map),
 	}
 }
 

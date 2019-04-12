@@ -269,7 +269,7 @@ func Test_SendMessage(t *testing.T) {
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19741"
 	cfgFile1.P2P.BootNodes = []string{b}
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
 
 	//start1 node
 	node1, err := NewQlcService(cfgFile1, eventBus)
@@ -284,7 +284,7 @@ func Test_SendMessage(t *testing.T) {
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19742"
 	cfgFile2.P2P.BootNodes = []string{b}
 	cfgFile2.P2P.Discovery.MDNSEnabled = false
-	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
 	node2, err := NewQlcService(cfgFile2, eventBus)
@@ -418,7 +418,7 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19744"
 	cfgFile1.P2P.BootNodes = []string{b}
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
 
 	//start1 node
 	node1, err := NewQlcService(cfgFile1, eventBus)
@@ -433,7 +433,7 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19745"
 	cfgFile2.P2P.BootNodes = []string{b}
 	cfgFile2.P2P.Discovery.MDNSEnabled = false
-	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
 	node2, err := NewQlcService(cfgFile2, eventBus)
@@ -448,7 +448,7 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile3.P2P.Listen = "/ip4/0.0.0.0/tcp/19746"
 	cfgFile3.P2P.BootNodes = []string{b}
 	cfgFile3.P2P.Discovery.MDNSEnabled = false
-	cfgFile3.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile3.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
 	node3, err := NewQlcService(cfgFile3, eventBus)

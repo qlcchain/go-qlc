@@ -27,7 +27,7 @@ func Test_StreamManager(t *testing.T) {
 	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19748"
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
@@ -35,7 +35,7 @@ func Test_StreamManager(t *testing.T) {
 	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19749"
 	cfgFile2.P2P.Discovery.MDNSEnabled = false
 	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start bootNode
 	eventBus := event.New()

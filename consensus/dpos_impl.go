@@ -20,9 +20,12 @@ import (
 
 const (
 	msgCacheSize                      = 65536
-	msgCacheExpirationTime            = 15 * time.Minute
+	msgCacheExpirationTime            = 10 * time.Minute
 	findOnlineRepresentativesInterval = 2 * time.Minute
 	repTimeout                        = 5 * time.Minute
+	uncheckedTimeout                  = 5 * time.Minute
+	searchUncheckedCacheInterval      = 2 * time.Minute
+	blockCacheExpirationTime          = 10 * time.Minute
 )
 
 var (
@@ -150,48 +153,61 @@ func (dps *DPoS) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFrom 
 		block:     blk,
 		blockFrom: types.UnSynchronized,
 	}
-	dps.bp.blocks <- bs
-	dps.onReceivePublish(hash, blk, msgFrom)
+	dps.onReceivePublish(hash, bs, msgFrom)
 }
 
-func (dps *DPoS) onReceivePublish(hash types.Hash, blk *types.StateBlock, msgFrom string) {
+func (dps *DPoS) onReceivePublish(hash types.Hash, bs blockSource, msgFrom string) {
+	blkHash := bs.block.GetHash()
 	if !dps.cache.Has(hash) {
-		//dps.ns.SendMessageToPeers(p2p.PublishReq, blk, msgFrom)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), common.PublishReq, blk, msgFrom)
+		if !dps.bp.blockCache.Has(blkHash) {
+			dps.bp.blockCache.Set(blkHash, "")
+			dps.bp.blocks <- bs
+		}
+		dps.eb.Publish(string(common.EventSendMsgToPeers), common.PublishReq, bs.block, msgFrom)
 		err := dps.cache.Set(hash, "")
 		if err != nil {
-			dps.logger.Errorf("Set cache error [%s] for block [%s] with publish message", err, blk.GetHash())
+			dps.logger.Errorf("Set cache error [%s] for block [%s] with publish message", err, bs.block.GetHash())
 		}
 	}
 }
 
 func (dps *DPoS) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msgFrom string) {
-	dps.logger.Infof("receive ConfirmReq block [%s] from [%s]", blk.GetHash(), msgFrom)
+	//dps.logger.Infof("receive ConfirmReq block [%s] from [%s]", blk.GetHash(), msgFrom)
 	var address types.Address
 	var count uint32
 	bs := blockSource{
 		block:     blk,
 		blockFrom: types.UnSynchronized,
 	}
+	blkHash := bs.block.GetHash()
 	if !dps.cache.Has(hash) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			count++
 			address = key.(types.Address)
 			dps.saveOnlineRep(address)
-			result, _ := dps.verifier.Process(bs.block)
+			result, _ := dps.verifier.BlockCheck(bs.block)
 			if result == process.Old {
 				err := dps.sendAckIfResultIsOld(bs.block, address, value.(*types.Account))
 				if err != nil {
 					return true
 				}
-			} else {
-				dps.bp.processResult(result, bs)
+			}
+			if !dps.bp.blockCache.Has(blkHash) {
+				if result == process.Progress {
+					dps.verifier.BlockProcess(bs.block)
+					dps.bp.processResult(result, bs)
+				} else {
+					dps.bp.processResult(result, bs)
+				}
+				dps.bp.blockCache.Set(blkHash, "")
 			}
 			return true
 		})
 		if count == 0 {
-			dps.bp.blocks <- bs
-			//dps.ns.SendMessageToPeers(p2p.ConfirmReq, blk, msgFrom)
+			if !dps.bp.blockCache.Has(blkHash) {
+				dps.bp.blocks <- bs
+				dps.bp.blockCache.Set(blkHash, "")
+			}
 			dps.eb.Publish(string(common.EventSendMsgToPeers), common.ConfirmReq, blk, msgFrom)
 			err := dps.cache.Set(hash, "")
 			if err != nil {
@@ -202,17 +218,19 @@ func (dps *DPoS) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msgFr
 }
 
 func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash, msgFrom string) {
-	dps.logger.Infof("receive ConfirmAck block [%s] from [%s]", ack.Blk.GetHash(), msgFrom)
+	//dps.logger.Infof("receive ConfirmAck block [%s] from [%s]", ack.Blk.GetHash(), msgFrom)
 	var address types.Address
 	var count uint32
 	bs := blockSource{
 		block:     ack.Blk,
 		blockFrom: types.UnSynchronized,
 	}
+	blkHash := bs.block.GetHash()
 	valid := IsAckSignValidate(ack)
 	if !valid {
 		return
 	}
+
 	dps.acTrx.vote(ack)
 	if !dps.cache.Has(hash) {
 		dps.saveOnlineRep(ack.Account)
@@ -220,24 +238,90 @@ func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash,
 			count++
 			address = key.(types.Address)
 			dps.saveOnlineRep(address)
-			result, _ := dps.verifier.Process(bs.block)
+			result, _ := dps.verifier.BlockCheck(bs.block)
 			if result == process.Old {
 				err := dps.sendAckIfResultIsOld(bs.block, address, value.(*types.Account))
 				if err != nil {
-					return true
+					dps.logger.Error(err)
+				}
+			}
+			if dps.bp.uncheckedCache.Has(bs.block.Previous) {
+				ci, err := dps.bp.uncheckedCache.Get(bs.block.Previous)
+				if err != nil {
+					return false
+				}
+				c := ci.(*cacheInfo)
+				var cs *cacheInfo
+				cv := c.votes
+				if len(cv) == 0 {
+					cv = append(cv, ack)
+					cs = &cacheInfo{
+						b:             c.b,
+						uncheckedKind: c.uncheckedKind,
+						time:          c.time,
+						votes:         cv,
+					}
+					err = dps.bp.uncheckedCache.Set(bs.block.Previous, cs)
+					if err != nil {
+						dps.logger.Errorf("confirmAck set error :[%s]\n", err)
+					}
+				} else {
+					for k, v := range cv {
+						if v.Account.String() == ack.Account.String() {
+							break
+						}
+						if k == (len(cv) - 1) {
+							cv = append(cv, ack)
+							cs = &cacheInfo{
+								b:             c.b,
+								uncheckedKind: c.uncheckedKind,
+								time:          c.time,
+								votes:         cv,
+							}
+							_ = dps.bp.uncheckedCache.Set(bs.block.Previous, cs)
+						}
+					}
 				}
 			} else {
-				dps.bp.processResult(result, bs)
+				if result == process.GapSource || result == process.GapPrevious {
+					now := time.Now().Add(uncheckedTimeout).UTC().Unix()
+					var votes []*protos.ConfirmAckBlock
+					votes = append(votes, ack)
+					var kind types.UncheckedKind
+					if result == process.GapSource {
+						kind = types.UncheckedKindLink
+					} else {
+						kind = types.UncheckedKindPrevious
+					}
+					cache := &cacheInfo{
+						b:             bs,
+						uncheckedKind: kind,
+						time:          now,
+						votes:         votes,
+					}
+					err := dps.bp.uncheckedCache.Set(bs.block.Previous, cache)
+					if err != nil {
+						dps.logger.Error(err)
+					}
+				}
 			}
-			if result == process.Progress {
-				dps.acTrx.vote(ack)
+			if !dps.bp.blockCache.Has(blkHash) {
+				dps.logger.Errorf("confirmAck blockCache :[%s]\n", blkHash.String())
+				if result == process.Progress {
+					dps.verifier.BlockProcess(bs.block)
+					dps.bp.processResult(result, bs)
+					dps.acTrx.vote(ack)
+				}
+				dps.bp.blockCache.Set(blkHash, "")
 			}
 			return true
 		})
 		if count == 0 {
-			dps.bp.blocks <- bs
+			if !dps.bp.blockCache.Has(blkHash) {
+				dps.bp.blocks <- bs
+				dps.bp.blockCache.Set(blkHash, "")
+			}
 		}
-
 		//dps.ns.SendMessageToPeers(p2p.ConfirmAck, ack, msgFrom)
 		dps.eb.Publish(string(common.EventSendMsgToPeers), common.ConfirmAck, ack, msgFrom)
 		err := dps.cache.Set(hash, "")
@@ -253,8 +337,12 @@ func (dps *DPoS) ReceiveSyncBlock(blk *types.StateBlock) {
 		block:     blk,
 		blockFrom: types.Synchronized,
 	}
-	dps.logger.Infof("Sync Event for block:[%s]", bs.block.GetHash())
-	dps.bp.blocks <- bs
+	//dps.logger.Infof("Sync Event for block:[%s]", bs.block.GetHash())
+	hash := bs.block.GetHash()
+	if !dps.bp.blockCache.Has(hash) {
+		dps.bp.blocks <- bs
+		dps.bp.blockCache.Set(hash, "")
+	}
 }
 
 func (dps *DPoS) sendConfirmAck(block *types.StateBlock, account types.Address, acc *types.Account) error {
