@@ -48,9 +48,9 @@ func TestConsensus(t *testing.T) {
 	//new ledger
 	l := services.NewLedgerService(cfgFile)
 
-	eventBus := event.New()
+	eventBus1 := event.New()
 	//start bootNode
-	node, err := p2p.NewQlcService(cfgFile, eventBus)
+	node, err := p2p.NewQlcService(cfgFile, eventBus1)
 	err = node.Start()
 	if err != nil {
 		//t.Fatal(err)
@@ -69,8 +69,9 @@ func TestConsensus(t *testing.T) {
 	//storage genesisBlock
 	creatGenesisBlock(ledger1.Ledger)
 
+	eventBus2 := event.New()
 	//start node1
-	node1, err := p2p.NewQlcService(cfgFile1, eventBus)
+	node1, err := p2p.NewQlcService(cfgFile1, eventBus1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +81,7 @@ func TestConsensus(t *testing.T) {
 	//new dpos service
 	var accs []*types.Account
 	accs = append(accs, ac)
-	consensusService1, err := consensus.NewDPoS(cfgFile1, accs, eventBus)
+	consensusService1, err := consensus.NewDPoS(cfgFile1, accs, eventBus1)
 	//start node1 dpos service
 	err = consensusService1.Init()
 	if err != nil {
@@ -105,13 +106,13 @@ func TestConsensus(t *testing.T) {
 	//storage genesisBlock
 	creatGenesisBlock(ledger2.Ledger)
 	//start node2
-	node2, err := p2p.NewQlcService(cfgFile2, eventBus)
+	node2, err := p2p.NewQlcService(cfgFile2, eventBus2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	consensusService2 := services.NewDPosService(cfgFile2, nil, eventBus)
+	consensusService2 := services.NewDPosService(cfgFile2, nil, eventBus2)
 	//start node2 dpos service
 	err = consensusService2.Init()
 	if err != nil {

@@ -127,9 +127,11 @@ func (node *QlcNode) StartServices() error {
 	}
 
 	if node.localDiscovery == nil {
-		err := node.startLocalDiscovery()
-		if err != nil {
-			return err
+		if node.cfg.P2P.Discovery.MDNSEnabled {
+			err := node.startLocalDiscovery()
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -166,7 +168,7 @@ func (node *QlcNode) connectBootstrap(pInfoS []pstore.PeerInfo) {
 
 func (node *QlcNode) startPeerDiscovery(pInfoS []pstore.PeerInfo) {
 	ticker := time.NewTicker(time.Duration(node.cfg.P2P.Discovery.DiscoveryInterval) * time.Second)
-	ticker1 := time.NewTicker(60 * time.Second)
+	ticker1 := time.NewTicker(15 * time.Second)
 	node.connectBootstrap(pInfoS)
 	node.findPeers()
 	for {

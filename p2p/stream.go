@@ -108,7 +108,7 @@ func (s *Stream) readLoop() {
 	for {
 		n, err := s.stream.Read(buf)
 		if err != nil {
-			s.node.logger.Errorf("Error occurred when reading data from network connection.")
+			s.node.logger.Debugf("Error occurred when reading data from network connection.")
 			s.close()
 			return
 		}

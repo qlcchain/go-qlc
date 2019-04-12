@@ -69,7 +69,7 @@ func (sm *StreamManager) RemoveStream(s *Stream) {
 		if s != exist {
 			return
 		}
-		sm.node.logger.Errorf("Removing a stream:[%s]", s.pid.Pretty())
+		sm.node.logger.Debugf("Removing a stream:[%s]", s.pid.Pretty())
 		sm.allStreams.Delete(s.pid.Pretty())
 	}
 }
@@ -146,7 +146,7 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 		stream := value.(*Stream)
 		stream.messageChan <- message
 		if messageName == common.PublishReq || messageName == common.ConfirmReq || messageName == common.ConfirmAck {
-			go sm.searchCache(stream, hash, message, messageName)
+			sm.searchCache(stream, hash, message, messageName)
 			//exitCache, err := sm.node.netService.msgService.cache.Get(hash)
 			//if err == nil {
 			//	cs = exitCache.([]*cacheValue)
@@ -209,7 +209,7 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 		if stream.pid.Pretty() != peerID {
 			stream.messageChan <- message
 			if messageName == common.PublishReq || messageName == common.ConfirmReq || messageName == common.ConfirmAck {
-				go sm.searchCache(stream, hash, message, messageName)
+				sm.searchCache(stream, hash, message, messageName)
 				//exitCache, err := sm.node.netService.msgService.cache.Get(hash)
 				//if err == nil {
 				//	cs = exitCache.([]*cacheValue)
@@ -256,8 +256,8 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []byte, messageName string) {
 	var cs []*cacheValue
 	var c *cacheValue
-	exitCache, err := sm.node.netService.msgService.cache.Get(hash)
-	if err == nil {
+	if sm.node.netService.msgService.cache.Has(hash) {
+		exitCache, _ := sm.node.netService.msgService.cache.Get(hash)
 		cs = exitCache.([]*cacheValue)
 		for k, v := range cs {
 			if v.peerID == stream.pid.Pretty() {
@@ -273,7 +273,7 @@ func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []
 					t:           messageName,
 				}
 				cs = append(cs, c)
-				err = sm.node.netService.msgService.cache.Set(hash, cs)
+				err := sm.node.netService.msgService.cache.Set(hash, cs)
 				if err != nil {
 					sm.node.logger.Error(err)
 				}
@@ -288,7 +288,7 @@ func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []
 			t:           messageName,
 		}
 		cs = append(cs, c)
-		err = sm.node.netService.msgService.cache.Set(hash, cs)
+		err := sm.node.netService.msgService.cache.Set(hash, cs)
 		if err != nil {
 			sm.node.logger.Error(err)
 		}

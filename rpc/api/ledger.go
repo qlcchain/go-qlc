@@ -4,8 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/event"
 	"sort"
+
+	"github.com/qlcchain/go-qlc/common/event"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -13,7 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
@@ -24,7 +24,6 @@ type LedgerApi struct {
 	verifier  *process.LedgerVerifier
 	vmContext *vmstore.VMContext
 	eb        event.EventBus
-	dpos      *consensus.DPoS
 	relation  *relation.Relation
 	logger    *zap.SugaredLogger
 }

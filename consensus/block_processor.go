@@ -65,11 +65,11 @@ func (bp *BlockProcessor) processBlocks() {
 			result, err := bp.dp.verifier.Process(bs.block)
 			if err != nil {
 				bp.dp.logger.Errorf("error: [%s] when verify block:[%s]", err, bs.block.GetHash())
-				return
-			}
-			err = bp.processResult(result, bs)
-			if err != nil {
-				bp.dp.logger.Error(err)
+			} else {
+				err = bp.processResult(result, bs)
+				if err != nil {
+					bp.dp.logger.Error(err)
+				}
 			}
 		case <-timer.C:
 			bp.dp.logger.Info("begin Find Online Representatives.")

@@ -399,8 +399,7 @@ func Test_MessageCache(t *testing.T) {
 	//bootNode config
 	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
-	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19743"
-	cfgFile.P2P.Discovery.MDNSEnabled = false
+	cfgFile.P2P.Listen = "/ip4/127.0.0.1/tcp/19743"
 	cfgFile.P2P.BootNodes = []string{}
 	b := "/ip4/0.0.0.0/tcp/19743/ipfs/" + cfgFile.P2P.ID.PeerID
 
@@ -537,7 +536,7 @@ func Test_MessageCache(t *testing.T) {
 	c := v.([]*cacheValue)
 
 	if len(c) != 2 {
-		t.Fatal("message cache value lens error")
+		t.Fatal("message cache value lens error:", len(c))
 	}
 
 	if c[0].peerID != node2.node.ID.Pretty() && c[1].peerID != node2.node.ID.Pretty() {
