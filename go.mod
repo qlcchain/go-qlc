@@ -28,6 +28,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/jackpal/gateway v1.0.5 // indirect
+	github.com/jmoiron/sqlx v1.2.0
 	github.com/libp2p/go-libp2p v0.0.3
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-discovery v0.0.1
@@ -38,6 +39,7 @@ require (
 	github.com/libp2p/go-libp2p-peerstore v0.0.1
 	github.com/libp2p/go-libp2p-swarm v0.0.1
 	github.com/mattn/go-isatty v0.0.6 // indirect
+	github.com/mattn/go-sqlite3 v1.9.0
 	github.com/multiformats/go-multiaddr v0.0.1
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1

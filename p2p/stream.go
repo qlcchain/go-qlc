@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -110,7 +108,7 @@ func (s *Stream) readLoop() {
 	for {
 		n, err := s.stream.Read(buf)
 		if err != nil {
-			s.node.logger.Errorf("Error occurred when reading data from network connection.")
+			s.node.logger.Debugf("Error occurred when reading data from network connection.")
 			s.close()
 			return
 		}
@@ -200,37 +198,6 @@ func (s *Stream) close() {
 	}
 }
 
-// SendMessage send msg to peers
-func (s *Stream) SendMessageToPeers(messageType string, data []byte) error {
-	s.messageChan <- data
-	if messageType == PublishReq || messageType == ConfirmReq || messageType == ConfirmAck {
-		var c *cacheValue
-		hash, err := types.HashBytes(data)
-		if err != nil {
-			return err
-		}
-		exitCache, err := s.node.netService.msgService.cache.Get(hash)
-		if err == nil {
-			c = exitCache.(*cacheValue)
-			c.resendTimes++
-		} else {
-			c = &cacheValue{
-				peerID:      s.pid.Pretty(),
-				resendTimes: 0,
-				startTime:   time.Now(),
-				data:        data,
-				t:           messageType,
-			}
-			err = s.node.netService.msgService.cache.Set(hash, c)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-	return nil
-}
-
 // SendMessage send msg to peer
 func (s *Stream) SendMessageToPeer(messageType string, data []byte) error {
 	version := p2pVersion
@@ -268,6 +235,6 @@ func (s *Stream) handleMessage(message *QlcMessage) {
 		s.node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
 		return
 	}
-	m := NewBaseMessage(message.MessageType(), s.pid.Pretty(), message.MessageData(), message.content)
+	m := NewMessage(message.MessageType(), s.pid.Pretty(), message.MessageData(), message.content)
 	s.node.netService.PutMessage(m)
 }

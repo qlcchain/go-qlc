@@ -6,13 +6,13 @@ import (
 
 func (r *RPC) getApi(apiModule string) API {
 	switch apiModule {
-	//case "qlcclassic":
-	//	return API{
-	//		Namespace: "qlcclassic",
-	//		Version:   "1.0",
-	//		Service:   api.NewQlcApi(r.ledger, r.dpos),
-	//		Public:    true,
-	//	}
+	case "qlcclassic":
+		return API{
+			Namespace: "qlcclassic",
+			Version:   "1.0",
+			Service:   api.NewQlcApi(r.ledger, r.eb),
+			Public:    true,
+		}
 	case "account":
 		return API{
 			Namespace: "account",
@@ -24,7 +24,7 @@ func (r *RPC) getApi(apiModule string) API {
 		return API{
 			Namespace: "ledger",
 			Version:   "1.0",
-			Service:   api.NewLedgerApi(r.ledger, r.dpos),
+			Service:   api.NewLedgerApi(r.ledger, r.eb),
 			Public:    true,
 		}
 	case "net":

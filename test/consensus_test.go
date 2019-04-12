@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
@@ -46,12 +48,9 @@ func TestConsensus(t *testing.T) {
 	//new ledger
 	l := services.NewLedgerService(cfgFile)
 
+	eventBus1 := event.New()
 	//start bootNode
-	node, err := p2p.NewQlcService(cfgFile)
-	err = node.Init()
-	if err != nil {
-		//t.Fatal(err)
-	}
+	node, err := p2p.NewQlcService(cfgFile, eventBus1)
 	err = node.Start()
 	if err != nil {
 		//t.Fatal(err)
@@ -70,12 +69,9 @@ func TestConsensus(t *testing.T) {
 	//storage genesisBlock
 	creatGenesisBlock(ledger1.Ledger)
 
+	eventBus2 := event.New()
 	//start node1
-	node1, err := p2p.NewQlcService(cfgFile1)
-	err = node1.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node1, err := p2p.NewQlcService(cfgFile1, eventBus1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +81,7 @@ func TestConsensus(t *testing.T) {
 	//new dpos service
 	var accs []*types.Account
 	accs = append(accs, ac)
-	consensusService1, err := consensus.NewDPoS(cfgFile1, node1, accs)
+	consensusService1, err := consensus.NewDPoS(cfgFile1, accs, eventBus1)
 	//start node1 dpos service
 	err = consensusService1.Init()
 	if err != nil {
@@ -110,17 +106,13 @@ func TestConsensus(t *testing.T) {
 	//storage genesisBlock
 	creatGenesisBlock(ledger2.Ledger)
 	//start node2
-	node2, err := p2p.NewQlcService(cfgFile2)
-	err = node2.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node2, err := p2p.NewQlcService(cfgFile2, eventBus2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	consensusService2 := services.NewDPosService(cfgFile2, node2, nil)
+	consensusService2 := services.NewDPosService(cfgFile2, nil, eventBus2)
 	//start node2 dpos service
 	err = consensusService2.Init()
 	if err != nil {
@@ -201,7 +193,7 @@ func TestConsensus(t *testing.T) {
 	}
 	verifier1 := process.NewLedgerVerifier(ledger1.Ledger)
 	/**/ verifier1.Process(send)
-	node1.Broadcast(p2p.PublishReq, send)
+	node1.Broadcast(common.PublishReq, send)
 	time.Sleep(30 * time.Second)
 	c, err := ledger2.Ledger.CountStateBlocks()
 	if err != nil {

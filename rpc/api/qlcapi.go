@@ -3,7 +3,8 @@ package api
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ import (
 type QlcApi struct {
 	ledger   *ledger.Ledger
 	verifier *process.LedgerVerifier
-	dpos     *consensus.DPoS
+	eb       event.EventBus
 	logger   *zap.SugaredLogger
 }
 
@@ -26,8 +27,8 @@ type TokenPending struct {
 	Hash        types.Hash         `json:"hash"`
 }
 
-func NewQlcApi(l *ledger.Ledger, dpos *consensus.DPoS) *QlcApi {
-	return &QlcApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("rpcapi")}
+func NewQlcApi(l *ledger.Ledger, eb event.EventBus) *QlcApi {
+	return &QlcApi{ledger: l, eb: eb, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("rpcapi")}
 }
 
 func (q *QlcApi) AccountsBalances(addresses []types.Address) (map[types.Address]map[types.Hash][]types.Balance, error) {

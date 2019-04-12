@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -67,7 +69,7 @@ func (sm *StreamManager) RemoveStream(s *Stream) {
 		if s != exist {
 			return
 		}
-		sm.node.logger.Errorf("Removing a stream:[%s]", s.pid.Pretty())
+		sm.node.logger.Debugf("Removing a stream:[%s]", s.pid.Pretty())
 		sm.allStreams.Delete(s.pid.Pretty())
 	}
 }
@@ -126,8 +128,8 @@ func (sm *StreamManager) createStreamWithPeer(pid peer.ID) {
 
 // BroadcastMessage broadcast the message
 func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
-	var cs []*cacheValue
-	var c *cacheValue
+	//var cs []*cacheValue
+	//var c *cacheValue
 	messageContent, err := marshalMessage(messageName, v)
 	if err != nil {
 		sm.node.logger.Error(err)
@@ -143,52 +145,53 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
 		stream.messageChan <- message
-		if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
-			exitCache, err := sm.node.netService.msgService.cache.Get(hash)
-			if err == nil {
-				cs = exitCache.([]*cacheValue)
-				for k, v := range cs {
-					if v.peerID == stream.pid.Pretty() {
-						v.resendTimes++
-						break
-					}
-					if k == (len(cs) - 1) {
-						c = &cacheValue{
-							peerID:      stream.pid.Pretty(),
-							resendTimes: 0,
-							startTime:   time.Now(),
-							data:        message,
-							t:           messageName,
-						}
-						cs = append(cs, c)
-						err = sm.node.netService.msgService.cache.Set(hash, cs)
-						if err != nil {
-							sm.node.logger.Error(err)
-						}
-					}
-				}
-			} else {
-				c = &cacheValue{
-					peerID:      stream.pid.Pretty(),
-					resendTimes: 0,
-					startTime:   time.Now(),
-					data:        message,
-					t:           messageName,
-				}
-				cs = append(cs, c)
-				err = sm.node.netService.msgService.cache.Set(hash, cs)
-				if err != nil {
-					sm.node.logger.Error(err)
-				}
-			}
+		if messageName == common.PublishReq || messageName == common.ConfirmReq || messageName == common.ConfirmAck {
+			sm.searchCache(stream, hash, message, messageName)
+			//exitCache, err := sm.node.netService.msgService.cache.Get(hash)
+			//if err == nil {
+			//	cs = exitCache.([]*cacheValue)
+			//	for k, v := range cs {
+			//		if v.peerID == stream.pid.Pretty() {
+			//			v.resendTimes++
+			//			break
+			//		}
+			//		if k == (len(cs) - 1) {
+			//			c = &cacheValue{
+			//				peerID:      stream.pid.Pretty(),
+			//				resendTimes: 0,
+			//				startTime:   time.Now(),
+			//				data:        message,
+			//				t:           messageName,
+			//			}
+			//			cs = append(cs, c)
+			//			err = sm.node.netService.msgService.cache.Set(hash, cs)
+			//			if err != nil {
+			//				sm.node.logger.Error(err)
+			//			}
+			//		}
+			//	}
+			//} else {
+			//	c = &cacheValue{
+			//		peerID:      stream.pid.Pretty(),
+			//		resendTimes: 0,
+			//		startTime:   time.Now(),
+			//		data:        message,
+			//		t:           messageName,
+			//	}
+			//	cs = append(cs, c)
+			//	err = sm.node.netService.msgService.cache.Set(hash, cs)
+			//	if err != nil {
+			//		sm.node.logger.Error(err)
+			//	}
+			//}
 		}
 		return true
 	})
 }
 
 func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, peerID string) {
-	var cs []*cacheValue
-	var c *cacheValue
+	//var cs []*cacheValue
+	//var c *cacheValue
 	messageContent, err := marshalMessage(messageName, v)
 	if err != nil {
 		sm.node.logger.Error(err)
@@ -205,48 +208,91 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 		stream := value.(*Stream)
 		if stream.pid.Pretty() != peerID {
 			stream.messageChan <- message
-			if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
-				exitCache, err := sm.node.netService.msgService.cache.Get(hash)
-				if err == nil {
-					cs = exitCache.([]*cacheValue)
-					for k, v := range cs {
-						if v.peerID == stream.pid.Pretty() {
-							v.resendTimes++
-							break
-						}
-						if k == (len(cs) - 1) {
-							c = &cacheValue{
-								peerID:      stream.pid.Pretty(),
-								resendTimes: 0,
-								startTime:   time.Now(),
-								data:        message,
-								t:           messageName,
-							}
-							cs = append(cs, c)
-							err = sm.node.netService.msgService.cache.Set(hash, cs)
-							if err != nil {
-								sm.node.logger.Error(err)
-							}
-						}
-					}
-				} else {
-					c = &cacheValue{
-						peerID:      stream.pid.Pretty(),
-						resendTimes: 0,
-						startTime:   time.Now(),
-						data:        message,
-						t:           messageName,
-					}
-					cs = append(cs, c)
-					err = sm.node.netService.msgService.cache.Set(hash, cs)
-					if err != nil {
-						sm.node.logger.Error(err)
-					}
-				}
+			if messageName == common.PublishReq || messageName == common.ConfirmReq || messageName == common.ConfirmAck {
+				sm.searchCache(stream, hash, message, messageName)
+				//exitCache, err := sm.node.netService.msgService.cache.Get(hash)
+				//if err == nil {
+				//	cs = exitCache.([]*cacheValue)
+				//	for k, v := range cs {
+				//		if v.peerID == stream.pid.Pretty() {
+				//			v.resendTimes++
+				//			break
+				//		}
+				//		if k == (len(cs) - 1) {
+				//			c = &cacheValue{
+				//				peerID:      stream.pid.Pretty(),
+				//				resendTimes: 0,
+				//				startTime:   time.Now(),
+				//				data:        message,
+				//				t:           messageName,
+				//			}
+				//			cs = append(cs, c)
+				//			err = sm.node.netService.msgService.cache.Set(hash, cs)
+				//			if err != nil {
+				//				sm.node.logger.Error(err)
+				//			}
+				//		}
+				//	}
+				//} else {
+				//	c = &cacheValue{
+				//		peerID:      stream.pid.Pretty(),
+				//		resendTimes: 0,
+				//		startTime:   time.Now(),
+				//		data:        message,
+				//		t:           messageName,
+				//	}
+				//	cs = append(cs, c)
+				//	err = sm.node.netService.msgService.cache.Set(hash, cs)
+				//	if err != nil {
+				//		sm.node.logger.Error(err)
+				//	}
+				//}
 			}
 		}
 		return true
 	})
+}
+
+func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []byte, messageName string) {
+	var cs []*cacheValue
+	var c *cacheValue
+	if sm.node.netService.msgService.cache.Has(hash) {
+		exitCache, _ := sm.node.netService.msgService.cache.Get(hash)
+		cs = exitCache.([]*cacheValue)
+		for k, v := range cs {
+			if v.peerID == stream.pid.Pretty() {
+				v.resendTimes++
+				break
+			}
+			if k == (len(cs) - 1) {
+				c = &cacheValue{
+					peerID:      stream.pid.Pretty(),
+					resendTimes: 0,
+					startTime:   time.Now(),
+					data:        message,
+					t:           messageName,
+				}
+				cs = append(cs, c)
+				err := sm.node.netService.msgService.cache.Set(hash, cs)
+				if err != nil {
+					sm.node.logger.Error(err)
+				}
+			}
+		}
+	} else {
+		c = &cacheValue{
+			peerID:      stream.pid.Pretty(),
+			resendTimes: 0,
+			startTime:   time.Now(),
+			data:        message,
+			t:           messageName,
+		}
+		cs = append(cs, c)
+		err := sm.node.netService.msgService.cache.Set(hash, cs)
+		if err != nil {
+			sm.node.logger.Error(err)
+		}
+	}
 }
 
 func (sm *StreamManager) PeerCounts() int {
