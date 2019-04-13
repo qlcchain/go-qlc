@@ -4,10 +4,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
-
-	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -109,7 +108,7 @@ func (dps *DPoS) Stop() error {
 func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) (*DPoS, error) {
 	bp := NewBlockProcessor()
 	acTrx := NewActiveTrx()
-	l := ledger.NewLedger(cfg.LedgerDir())
+	l := ledger.NewLedger(cfg.LedgerDir(), eb)
 
 	dps := &DPoS{
 		ledger:   l,

@@ -3,9 +3,8 @@ package p2p
 import (
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 )
@@ -30,7 +29,7 @@ func NewQlcService(cfg *config.Config, eb event.EventBus) (*QlcService, error) {
 		msgEvent:   eb,
 	}
 	node.SetQlcService(ns)
-	l := ledger.NewLedger(cfg.LedgerDir())
+	l := ledger.NewLedger(cfg.LedgerDir(), eb)
 	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
 	return ns, nil

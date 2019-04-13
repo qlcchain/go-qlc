@@ -10,26 +10,27 @@ package services
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
 type LedgerService struct {
 	common.ServiceLifecycle
 	Ledger *ledger.Ledger
+	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
-func NewLedgerService(cfg *config.Config) *LedgerService {
+func NewLedgerService(cfg *config.Config, eb event.EventBus) *LedgerService {
 	return &LedgerService{
-		Ledger: ledger.NewLedger(cfg.LedgerDir()),
+		Ledger: ledger.NewLedger(cfg.LedgerDir(), eb),
 		logger: log.NewLogger("ledger_service"),
 	}
 }

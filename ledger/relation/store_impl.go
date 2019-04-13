@@ -2,8 +2,12 @@ package relation
 
 import (
 	"fmt"
+	"sync"
 
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -11,6 +15,7 @@ import (
 
 type Relation struct {
 	store  db.DbStore
+	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
@@ -31,12 +36,23 @@ type blocksMessage struct {
 	Timestamp int64
 }
 
-func NewRelation(dir string) (*Relation, error) {
-	s, err := db.NewSQLDB(dir)
+var (
+	once     sync.Once
+	relation *Relation
+)
+
+func NewRelation(config *config.Config, eb event.EventBus) (*Relation, error) {
+	var err error
+	once.Do(func() {
+		store := new(db.DBSQL)
+		store, err = db.NewSQLDB(config.SqliteDir())
+		relation = &Relation{store: store, eb: eb, logger: log.NewLogger("relation")}
+	})
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
-	return &Relation{store: s, logger: log.NewLogger("relation")}, nil
+	return relation, nil
 }
 
 func (r *Relation) Close() error {
@@ -57,7 +73,6 @@ func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) (
 func (r *Relation) BlocksCount() (uint64, error) {
 	var count uint64
 	err := r.store.Count(db.TableBlockHash, &count)
-	fmt.Println(count)
 	if err != nil {
 		return 0, err
 	}
@@ -79,6 +94,7 @@ func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
 }
 
 func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
+	r.logger.Info(r.store)
 	var h []blocksHash
 	err := r.store.Read(db.TableBlockHash, nil, offset, limit, db.ColumnTimestamp, &h)
 	if err != nil {
@@ -184,4 +200,32 @@ func blockType(bs []blocksType) map[string]uint64 {
 		t[b.Type] = b.Count
 	}
 	return t
+}
+
+func (r *Relation) SetEvent() error {
+	err := r.eb.Subscribe(string(common.EventAddRelation), r.AddBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (r *Relation) UnsubscribeEvent() error {
+	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.AddBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	return nil
 }

@@ -2,11 +2,13 @@ package db
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -29,8 +31,22 @@ func NewSQLDB(path string) (*DBSQL, error) {
 	return &dbsql, nil
 }
 
-func createDBBySqlite(path string) (*sqlx.DB, error) {
-	return sqlx.Connect("sqlite3", path)
+func createDBBySqlite(dir string) (*sqlx.DB, error) {
+	if err := util.CreateDirIfNotExist(dir); err != nil {
+		return nil, err
+	}
+	dataSourceName := fmt.Sprintf("file:%s?_auth&_auth_user=%s&_auth_pass=%s", path.Join(dir, "sqlite3.db"), "qlc", "qlc1234")
+	store, err := sqlx.Connect("sqlite3", dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+	store.SetMaxOpenConns(200)
+	store.SetMaxIdleConns(100)
+	if err != nil {
+		return nil, err
+	}
+	return store, nil
+
 }
 
 func (s *DBSQL) initDB() error {

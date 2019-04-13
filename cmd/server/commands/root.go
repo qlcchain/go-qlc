@@ -23,7 +23,6 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
-	"github.com/qlcchain/go-qlc/chain"
 	ss "github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/cmd/client/commands"
 	"github.com/qlcchain/go-qlc/common"
@@ -54,7 +53,13 @@ var (
 	cfgPath    commands.Flag
 	isProfile  commands.Flag
 
-	ctx            *chain.QlcContext
+	//ctx            *chain.QlcContext
+	ledgerService  *ss.LedgerService
+	walletService  *ss.WalletService
+	netService     *ss.P2PService
+	dPosService    *ss.DPosService
+	rPCService     *ss.RPCService
+	sqliteService  *ss.SqliteService
 	services       []common.Service
 	maxAccountSize = 100
 )
