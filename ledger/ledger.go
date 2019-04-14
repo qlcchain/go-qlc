@@ -81,7 +81,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 3
+const version = 4
 
 func NewLedger(dir string, eb event.EventBus) *Ledger {
 	lock.Lock()
@@ -136,7 +136,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3)}
+		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3), new(MigrationV3ToV4)}
 		err = txn.Upgrade(ms)
 		if err != nil {
 			l.logger.Error(err)
@@ -203,6 +203,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	//	return err
 	//}
 	l.releaseTxn(txn, flag)
+	l.logger.Debug("publish addRelation,", blk.GetHash())
 	l.eb.Publish(string(common.EventAddRelation), blk)
 	return nil
 }
@@ -351,6 +352,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	//}
 
 	l.releaseTxn(txn, flag)
+	l.logger.Debug("publish deleteRelation,", hash.String())
 	l.eb.Publish(string(common.EventDeleteRelation), hash)
 	return nil
 }

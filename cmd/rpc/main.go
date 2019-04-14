@@ -129,14 +129,13 @@ func initData(ledger *ledger.Ledger) {
 		fmt.Println(err)
 		return
 	}
-	ph1 := []byte("180")
-	ph2 := []byte("160")
+	ph1 := []byte("15800001111")
+	ph2 := []byte("15811110000")
 	message := "hello"
 	m, _ := json.Marshal(message)
 	mHash, _ := types.HashBytes(m)
 	blk1 := mock.StateBlockWithoutWork()
 	blk1.Sender = ph1
-	blk1.Receiver = ph2
 	blk2 := mock.StateBlockWithoutWork()
 	blk2.Sender = ph2
 	blk2.Receiver = ph1

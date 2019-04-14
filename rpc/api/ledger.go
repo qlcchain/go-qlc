@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
@@ -59,9 +58,9 @@ type ApiTokenInfo struct {
 	types.TokenInfo
 }
 
-func NewLedgerApi(l *ledger.Ledger, eb event.EventBus) *LedgerApi {
+func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
 	return &LedgerApi{ledger: l, eb: eb, verifier: process.NewLedgerVerifier(l), vmContext: vmstore.NewVMContext(l),
-		logger: log.NewLogger("api_ledger")}
+		relation: relation, logger: log.NewLogger("api_ledger")}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {

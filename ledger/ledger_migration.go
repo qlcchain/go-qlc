@@ -91,7 +91,7 @@ func (m MigrationV3ToV4) Migrate(txn db.StoreTxn) error {
 		return err
 	}
 	if b {
-		fmt.Println("migrate ledger v3 to v4 ")
+		fmt.Println("migrating ledger v3 to v4 ... ")
 		cfg, err := config.DefaultConfig(config.DefaultDataDir())
 		if err != nil {
 			return err
@@ -100,6 +100,7 @@ func (m MigrationV3ToV4) Migrate(txn db.StoreTxn) error {
 		if err != nil {
 			return err
 		}
+		defer relation.Close()
 		err = txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 			blk := new(types.StateBlock)
 			_, err := blk.UnmarshalMsg(val)
@@ -156,9 +157,9 @@ func checkVersion(m db.Migration, txn db.StoreTxn) (bool, error) {
 }
 
 func updateVersion(m db.Migration, txn db.StoreTxn) error {
-	fmt.Printf("update ledger version %d to %d\n", m.StartVersion(), m.EndVersion())
 	if err := setVersion(int64(m.EndVersion()), txn); err != nil {
 		return err
 	}
+	fmt.Printf("update ledger version %d to %d\n successfully", m.StartVersion(), m.EndVersion())
 	return nil
 }
