@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -17,7 +18,7 @@ func TestRelation_CreateData(t *testing.T) {
 	blk.Type = types.Send
 	blk.Sender = []byte("1580000")
 	blk.Receiver = []byte("1851111")
-	dir := filepath.Join(config.QlcTestDataDir())
+	dir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
 	cfg, err := config.DefaultConfig(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +66,7 @@ func TestRelation_CreateData(t *testing.T) {
 }
 
 func TestNewRelation(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir())
+	dir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
 	cfg, err := config.DefaultConfig(dir)
 	if err != nil {
 		t.Fatal(err)

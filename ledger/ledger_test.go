@@ -47,7 +47,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 //var bc, _ = mock.BlockChain()
 
 func TestLedger_Instance1(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	l1 := NewLedger(dir, event.New())
 	l2 := NewLedger(dir, event.New())
 	t.Logf("l1:%v,l2:%v", l1, l2)
@@ -64,8 +64,8 @@ func TestLedger_Instance1(t *testing.T) {
 }
 
 func TestLedger_Instance2(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
-	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	dir2 := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	l1 := NewLedger(dir, event.New())
 	l2 := NewLedger(dir2, event.New())
 	defer func() {

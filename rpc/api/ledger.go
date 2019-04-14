@@ -279,11 +279,13 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 		if err != nil {
 			fmt.Println(err)
 		}
-		pt := ps
-		if n > -1 && len(ps) > n {
-			pt = ps[:n]
+		if len(ps) > 0 {
+			pt := ps
+			if n > -1 && len(ps) > n {
+				pt = ps[:n]
+			}
+			apMap[addr] = pt
 		}
-		apMap[addr] = pt
 	}
 	return apMap, nil
 }

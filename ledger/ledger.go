@@ -203,7 +203,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	//	return err
 	//}
 	l.releaseTxn(txn, flag)
-	l.logger.Debug("publish addRelation,", blk.GetHash())
+	l.logger.Info("publish addRelation,", blk.GetHash())
 	l.eb.Publish(string(common.EventAddRelation), blk)
 	return nil
 }
@@ -352,7 +352,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	//}
 
 	l.releaseTxn(txn, flag)
-	l.logger.Debug("publish deleteRelation,", hash.String())
+	l.logger.Info("publish deleteRelation,", hash.String())
 	l.eb.Publish(string(common.EventDeleteRelation), hash)
 	return nil
 }
@@ -1466,12 +1466,12 @@ func (l *Ledger) Rollback(hash types.Hash) error {
 func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, isRoot bool, txn db.StoreTxn) error {
 	tm, err := l.Token(hash, txn)
 	if err != nil {
-		return err
+		return fmt.Errorf("get block(%s) token err : %s", hash.String(), err)
 	}
 
 	blockHead, err := l.GetStateBlock(tm.Header, txn)
 	if err != nil {
-		return err
+		return fmt.Errorf("get header block %s : %s", tm.Header.String(), err)
 	}
 
 	blockCur := blockHead
@@ -1479,15 +1479,12 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 		hashCur := blockCur.GetHash()
 		//blockType, err := l.JudgeBlockKind(hashCur, txn)
 		blockType := blockCur.GetType()
-		if err != nil {
-			return err
-		}
 
 		blockPre := new(types.StateBlock)
 		if blockType != types.Open {
 			blockPre, err = l.GetStateBlock(blockCur.Previous, txn)
 			if err != nil {
-				return err
+				return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
 			}
 		}
 
@@ -1536,7 +1533,7 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 			if hashCur != hash || isRoot {
 				linkblock, err := l.getLinkBlock(blockCur, txn)
 				if err != nil {
-					return err
+					return fmt.Errorf("get block(%s)'s link : %s", blockCur.GetHash().String(), err)
 				}
 				if linkblock != nil {
 					if err := l.processRollback(linkblock.GetHash(), blockCur, false, txn); err != nil {
@@ -1589,7 +1586,7 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 
 		blockCur, err = l.GetStateBlock(blockCur.GetPrevious(), txn)
 		if err != nil {
-			return err
+			return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
 		}
 	}
 	return nil
@@ -1614,6 +1611,10 @@ func (l *Ledger) getLinkBlock(block *types.StateBlock, txn db.StoreTxn) (*types.
 		blockLink, err = l.GetStateBlock(blockLink.GetPrevious(), txn)
 		if err != nil {
 			return nil, err
+		}
+		p := blockLink.GetPrevious()
+		if p.IsZero() {
+			return nil, nil
 		}
 	}
 	return blockLink, nil

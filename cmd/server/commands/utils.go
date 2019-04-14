@@ -108,7 +108,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		})
 	}
 
-	services = []common.Service{ledgerService, netService, walletService, dPosService, rPCService, sqliteService}
+	services = []common.Service{sqliteService, ledgerService, netService, walletService, dPosService, rPCService}
 
 	return nil
 }

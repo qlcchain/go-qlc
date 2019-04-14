@@ -160,6 +160,6 @@ func updateVersion(m db.Migration, txn db.StoreTxn) error {
 	if err := setVersion(int64(m.EndVersion()), txn); err != nil {
 		return err
 	}
-	fmt.Printf("update ledger version %d to %d\n successfully", m.StartVersion(), m.EndVersion())
+	fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
 	return nil
 }

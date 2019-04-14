@@ -107,14 +107,20 @@ func initData(ledger *ledger.Ledger) {
 	}
 	for i, b := range blocks[1:5] {
 		fmt.Println(i + 1)
+		fmt.Println(b.String())
 		if r, err := verifier.Process(b); r != process.Progress || err != nil {
-			fmt.Println(b.String())
 			fmt.Println(r.String(), err)
 			return
 		}
 	}
 	fmt.Println("account1, ", blocks[0].GetAddress().String())
 	fmt.Println("account2, ", blocks[2].GetAddress().String())
+
+	fmt.Println("roll back hash: ", blocks[4].GetHash())
+	if err := ledger.Rollback(blocks[4].GetHash()); err != nil {
+		fmt.Println("rollback err, ", err)
+		return
+	}
 
 	// unchecked
 	if err := ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlockWithoutWork(), types.UncheckedKindLink, types.UnSynchronized); err != nil {

@@ -138,7 +138,7 @@ func (r *Relation) MessageBlocks(hash types.Hash) ([]types.Hash, error) {
 }
 
 func (r *Relation) AddBlock(block *types.StateBlock) error {
-	r.logger.Debug("add relation, ", block.GetHash())
+	r.logger.Info("add relation, ", block.GetHash())
 	conHash := make(map[db.Column]interface{})
 	conHash[db.ColumnHash] = block.GetHash().String()
 	conHash[db.ColumnTimestamp] = block.GetTimestamp()
@@ -163,7 +163,7 @@ func (r *Relation) AddBlock(block *types.StateBlock) error {
 }
 
 func (r *Relation) DeleteBlock(hash types.Hash) error {
-	r.logger.Debug("delete relation, ", hash.String())
+	r.logger.Info("delete relation, ", hash.String())
 	condition := make(map[db.Column]interface{})
 	condition[db.ColumnHash] = hash.String()
 	err := r.store.Delete(db.TableBlockHash, condition)

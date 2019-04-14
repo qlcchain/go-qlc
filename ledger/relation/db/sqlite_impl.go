@@ -178,7 +178,7 @@ func readSql(table TableName, condition map[Column]interface{}, offset int, limi
 		sql = fmt.Sprintf("select * from %s ", string(table))
 	}
 	if order != ColumnNoNeed {
-		sql = sql + " order by  " + string(order)
+		sql = sql + " order by  " + string(order) + " desc "
 	}
 	if limit != -1 {
 		sql = sql + " limit " + strconv.Itoa(limit)
