@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	//"fmt"
-	"github.com/go-interpreter/wagon/disasm"
+
 	"github.com/go-interpreter/wagon/wasm"
 
 	//"github.com/go-interpreter/wagon/validate"
@@ -144,31 +144,31 @@ func (m *Module) CompileWithNGen(gp GasPolicy, numGlobals uint64) (out string, r
 
 	out += importStubBuilder.String()
 
-	for i, f := range m.Base.FunctionIndexSpace {
-		//fmt.Printf("Compiling function %d (%+v) with %d locals\n", i, f.Sig, len(f.Body.Locals))
-		d, err := disasm.SimpleDisassemble(f, m.Base)
-		if err != nil {
-			panic(err)
-		}
-		compiler := NewSSAFunctionCompiler(m.Base, d)
-		compiler.CallIndexOffset = numFuncImports
-		compiler.Compile(importTypeIDs)
-		if m.DisableFloatingPoint {
-			compiler.FilterFloatingPoint()
-		}
-		if gp != nil {
-			compiler.InsertGasCounters(gp)
-		}
-		//fmt.Println(compiler.Code)
-		//fmt.Printf("%+v\n", compiler.NewCFGraph())
-		//numRegs := compiler.RegAlloc()
-		//fmt.Println(compiler.Code)
-		numLocals := 0
-		for _, v := range f.Body.Locals {
-			numLocals += int(v.Count)
-		}
-		out += compiler.NGen(uint64(numFuncImports+i), uint64(len(f.Sig.ParamTypes)), uint64(numLocals), numGlobals)
-	}
+	// for i, f := range m.Base.FunctionIndexSpace {
+	//fmt.Printf("Compiling function %d (%+v) with %d locals\n", i, f.Sig, len(f.Body.Locals))
+	// d, err := disasm.SimpleDisassemble(f, m.Base)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// compiler := NewSSAFunctionCompiler(m.Base, d)
+	// compiler.CallIndexOffset = numFuncImports
+	// compiler.Compile(importTypeIDs)
+	// if m.DisableFloatingPoint {
+	// 	compiler.FilterFloatingPoint()
+	// }
+	// if gp != nil {
+	// 	compiler.InsertGasCounters(gp)
+	// }
+	// //fmt.Println(compiler.Code)
+	// //fmt.Printf("%+v\n", compiler.NewCFGraph())
+	// //numRegs := compiler.RegAlloc()
+	// //fmt.Println(compiler.Code)
+	// numLocals := 0
+	// for _, v := range f.Body.Locals {
+	// 	numLocals += int(v.Count)
+	// }
+	// out += compiler.NGen(uint64(numFuncImports+i), uint64(len(f.Sig.ParamTypes)), uint64(numLocals), numGlobals)
+	// }
 
 	return
 }
@@ -215,40 +215,40 @@ func (m *Module) CompileForInterpreter(gp GasPolicy) (_retCode []InterpreterCode
 		}
 	}
 
-	numFuncImports := len(ret)
+	// numFuncImports := len(ret)
 	ret = append(ret, make([]InterpreterCode, len(m.Base.FunctionIndexSpace))...)
 
-	for i, f := range m.Base.FunctionIndexSpace {
-		//fmt.Printf("Compiling function %d (%+v) with %d locals\n", i, f.Sig, len(f.Body.Locals))
-		d, err := disasm.SimpleDisassemble(f, m.Base)
-		if err != nil {
-			panic(err)
-		}
-		compiler := NewSSAFunctionCompiler(m.Base, d)
-		compiler.CallIndexOffset = numFuncImports
-		compiler.Compile(importTypeIDs)
-		if m.DisableFloatingPoint {
-			compiler.FilterFloatingPoint()
-		}
-		if gp != nil {
-			compiler.InsertGasCounters(gp)
-		}
-		//fmt.Println(compiler.Code)
-		//fmt.Printf("%+v\n", compiler.NewCFGraph())
-		numRegs := compiler.RegAlloc()
-		//fmt.Println(compiler.Code)
-		numLocals := 0
-		for _, v := range f.Body.Locals {
-			numLocals += int(v.Count)
-		}
-		ret[numFuncImports+i] = InterpreterCode{
-			NumRegs:    numRegs,
-			NumParams:  len(f.Sig.ParamTypes),
-			NumLocals:  numLocals,
-			NumReturns: len(f.Sig.ReturnTypes),
-			Bytes:      compiler.Serialize(),
-		}
-	}
+	// for i, f := range m.Base.FunctionIndexSpace {
+	//fmt.Printf("Compiling function %d (%+v) with %d locals\n", i, f.Sig, len(f.Body.Locals))
+	// d, err := disasm.SimpleDisassemble(f, m.Base)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// compiler := NewSSAFunctionCompiler(m.Base, d)
+	// compiler.CallIndexOffset = numFuncImports
+	// compiler.Compile(importTypeIDs)
+	// if m.DisableFloatingPoint {
+	// 	compiler.FilterFloatingPoint()
+	// }
+	// if gp != nil {
+	// 	compiler.InsertGasCounters(gp)
+	// }
+	// //fmt.Println(compiler.Code)
+	// //fmt.Printf("%+v\n", compiler.NewCFGraph())
+	// numRegs := compiler.RegAlloc()
+	// //fmt.Println(compiler.Code)
+	// numLocals := 0
+	// for _, v := range f.Body.Locals {
+	// 	numLocals += int(v.Count)
+	// }
+	// ret[numFuncImports+i] = InterpreterCode{
+	// 	NumRegs:    numRegs,
+	// 	NumParams:  len(f.Sig.ParamTypes),
+	// 	NumLocals:  numLocals,
+	// 	NumReturns: len(f.Sig.ReturnTypes),
+	// 	Bytes:      compiler.Serialize(),
+	// }
+	// }
 
 	return ret, nil
 }

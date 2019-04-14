@@ -1,7 +1,5 @@
 module github.com/qlcchain/go-qlc
 
-replace github.com/go-interpreter/wagon v0.0.0 => github.com/qlcchain/wagon v0.0.0-20180825141017-92ea8d8b1861
-
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/abiosoft/ishell v2.0.0+incompatible
@@ -16,7 +14,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
-	github.com/go-interpreter/wagon v0.0.0
+	github.com/go-interpreter/wagon v0.4.0
 	github.com/go-kit/kit v0.8.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
