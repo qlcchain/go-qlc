@@ -336,9 +336,9 @@ func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	var latestKey []byte
-	err := txn.KeyIterator(idPrefixPovBlockNumber, func(key []byte) error {
-		latestKey = key
+	var latestVal []byte
+	err := txn.Iterator(idPrefixPovBlockHeader, func(key []byte, val []byte, meta byte) error {
+		latestVal = val
 		return nil
 	})
 
@@ -346,8 +346,16 @@ func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 		return nil, err
 	}
 
-	var latestHash types.Hash
-	copy(latestHash[:], latestKey)
+	header := new(types.PovHeader)
+	if err := header.Deserialize(latestVal); err != nil {
+		return nil, err
+	}
 
-	return l.GetPovBlockByHash(latestHash, txns...)
+	body, err := l.GetPovBlockBody(header.Height, txns...)
+	if err != nil{
+		return nil, err
+	}
+
+	blk := types.NewPovBlockWithBody(header, body)
+	return blk, nil
 }
