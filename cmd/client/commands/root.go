@@ -113,4 +113,5 @@ func addcommands() {
 	walletRemove()
 	mintage()
 	generateTestLedger()
+	pledge()
 }

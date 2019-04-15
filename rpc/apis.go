@@ -62,6 +62,13 @@ func (r *RPC) getApi(apiModule string) API {
 			Service:   api.NewMintageApi(r.ledger),
 			Public:    true,
 		}
+	case "pledge":
+		return API{
+			Namespace: "pledge",
+			Version:   "1.0",
+			Service:   api.NewNEP5PledgeApi(r.ledger),
+			Public:    true,
+		}
 	case "sms":
 		return API{
 			Namespace: "sms",
@@ -103,7 +110,7 @@ func (r *RPC) GetWSApis() []API {
 }
 
 func (r *RPC) GetPublicApis() []API {
-	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms"}
+	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge"}
 	return r.GetApis(apiModules...)
 }
 

@@ -50,7 +50,7 @@ const (
 type PledgeParam struct {
 	Beneficial    types.Address
 	PledgeAddress types.Address
-	PType         PledgeType
+	PType         uint8
 }
 
 type VariablePledgeBeneficial struct {
