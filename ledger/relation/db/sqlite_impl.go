@@ -9,7 +9,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -19,11 +18,10 @@ type DBSQL struct {
 	logger *zap.SugaredLogger
 }
 
-func NewSQLDB(config *config.Config) (*DBSQL, error) {
-	path := config.SqliteDir()
+func NewSQLDB(dir string) (*DBSQL, error) {
 	user := "qlc"
 	password := "qlc1234"
-	db, err := createDBBySqlite(path, user, password)
+	db, err := createDBBySqlite(dir, user, password)
 	if err != nil {
 		return nil, err
 	}
