@@ -211,6 +211,9 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	blk.Timestamp = time.Now().Unix()
 	blk.Link = link
 	blk.Representative = rep
+	blk.Message = Hash()
+	blk.Sender = []byte("15811110000")
+	blk.Receiver = []byte("15800001111")
 	blk.Signature = ac.Sign(blk.GetHash())
 	var w types.Work
 	worker, _ := types.NewWorker(w, blk.Root())

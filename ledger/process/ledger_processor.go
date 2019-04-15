@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -21,6 +19,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
@@ -391,7 +390,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    hash,
 		}
 		lv.logger.Debug("add pending, ", pendingKey)
-		if err := lv.l.AddPending(pendingKey, &pending, txn); err != nil {
+		if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
 			return err
 		}
 	case types.Open, types.Receive:
@@ -400,7 +399,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    block.GetLink(),
 		}
 		lv.logger.Debug("delete pending, ", pendingKey)
-		if err := lv.l.DeletePending(pendingKey, txn); err != nil {
+		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
 			return err
 		}
 	}

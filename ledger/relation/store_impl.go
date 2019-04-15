@@ -1,9 +1,13 @@
 package relation
 
 import (
-	"fmt"
+	"encoding/base64"
+	"sync"
 
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -11,6 +15,7 @@ import (
 
 type Relation struct {
 	store  db.DbStore
+	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
@@ -31,15 +36,26 @@ type blocksMessage struct {
 	Timestamp int64
 }
 
-func NewRelation(dir string) (*Relation, error) {
-	s, err := db.NewSQLDB(dir)
+var (
+	once     sync.Once
+	relation *Relation
+)
+
+func NewRelation(config *config.Config, eb event.EventBus) (*Relation, error) {
+	var err error
+	once.Do(func() {
+		store := new(db.DBSQL)
+		store, err = db.NewSQLDB(config.SqliteDir())
+		relation = &Relation{store: store, eb: eb, logger: log.NewLogger("relation")}
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &Relation{store: s, logger: log.NewLogger("relation")}, nil
+	return relation, nil
 }
 
 func (r *Relation) Close() error {
+	r.logger.Debugf("close sqlite, %p, ", r.store)
 	return r.store.Close()
 }
 
@@ -57,7 +73,6 @@ func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) (
 func (r *Relation) BlocksCount() (uint64, error) {
 	var count uint64
 	err := r.store.Count(db.TableBlockHash, &count)
-	fmt.Println(count)
 	if err != nil {
 		return 0, err
 	}
@@ -79,6 +94,7 @@ func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
 }
 
 func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
+	r.logger.Info(r.store)
 	var h []blocksHash
 	err := r.store.Read(db.TableBlockHash, nil, offset, limit, db.ColumnTimestamp, &h)
 	if err != nil {
@@ -90,12 +106,12 @@ func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 func (r *Relation) PhoneBlocks(phone []byte, sender bool) ([]types.Hash, error) {
 	condition := make(map[db.Column]interface{})
 	if sender == true {
-		condition[db.ColumnSender] = byteToString(phone)
+		condition[db.ColumnSender] = phoneToString(phone)
 	} else {
-		condition[db.ColumnReceiver] = byteToString(phone)
+		condition[db.ColumnReceiver] = phoneToString(phone)
 	}
 	var m []blocksMessage
-	err := r.store.Read(db.TableBlockHash, condition, -1, -1, db.ColumnNoNeed, &m)
+	err := r.store.Read(db.TableBlockMessage, condition, -1, -1, db.ColumnNoNeed, &m)
 	if err != nil {
 		return nil, err
 	}
@@ -105,15 +121,16 @@ func (r *Relation) PhoneBlocks(phone []byte, sender bool) ([]types.Hash, error) 
 func (r *Relation) MessageBlocks(hash types.Hash) ([]types.Hash, error) {
 	condition := make(map[db.Column]interface{})
 	condition[db.ColumnMessage] = hash.String()
-	var h []blocksMessage
-	err := r.store.Read(db.TableBlockHash, condition, -1, -1, db.ColumnNoNeed, &h)
+	var m []blocksMessage
+	err := r.store.Read(db.TableBlockMessage, condition, -1, -1, db.ColumnNoNeed, &m)
 	if err != nil {
 		return nil, err
 	}
-	return blockMessage(h)
+	return blockMessage(m)
 }
 
 func (r *Relation) AddBlock(block *types.StateBlock) error {
+	r.logger.Info("add relation, ", block.GetHash())
 	conHash := make(map[db.Column]interface{})
 	conHash[db.ColumnHash] = block.GetHash().String()
 	conHash[db.ColumnTimestamp] = block.GetTimestamp()
@@ -127,9 +144,9 @@ func (r *Relation) AddBlock(block *types.StateBlock) error {
 		conMessage := make(map[db.Column]interface{})
 		conMessage[db.ColumnHash] = block.GetHash().String()
 		conMessage[db.ColumnMessage] = message.String()
-		conMessage[db.ColumnSender] = byteToString(block.GetSender())
-		conMessage[db.ColumnReceiver] = byteToString(block.GetReceiver())
-		conHash[db.ColumnTimestamp] = block.GetTimestamp()
+		conMessage[db.ColumnSender] = phoneToString(block.GetSender())
+		conMessage[db.ColumnReceiver] = phoneToString(block.GetReceiver())
+		conMessage[db.ColumnTimestamp] = block.GetTimestamp()
 		if err := r.store.Create(db.TableBlockMessage, conMessage); err != nil {
 			return err
 		}
@@ -138,6 +155,7 @@ func (r *Relation) AddBlock(block *types.StateBlock) error {
 }
 
 func (r *Relation) DeleteBlock(hash types.Hash) error {
+	r.logger.Info("delete relation, ", hash.String())
 	condition := make(map[db.Column]interface{})
 	condition[db.ColumnHash] = hash.String()
 	err := r.store.Delete(db.TableBlockHash, condition)
@@ -147,11 +165,8 @@ func (r *Relation) DeleteBlock(hash types.Hash) error {
 	return r.store.Delete(db.TableBlockMessage, condition)
 }
 
-func byteToString(b []byte) string {
-	if b == nil {
-		return ""
-	}
-	return string(b)
+func phoneToString(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
 }
 
 func blockHash(bs []blocksHash) ([]types.Hash, error) {
@@ -184,4 +199,32 @@ func blockType(bs []blocksType) map[string]uint64 {
 		t[b.Type] = b.Count
 	}
 	return t
+}
+
+func (r *Relation) SetEvent() error {
+	err := r.eb.Subscribe(string(common.EventAddRelation), r.AddBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (r *Relation) UnsubscribeEvent() error {
+	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.AddBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	return nil
 }

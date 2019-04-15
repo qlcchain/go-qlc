@@ -9,7 +9,7 @@ type Store interface {
 	BlocksCount() (uint64, error)
 	BlocksCountByType() (map[string]uint64, error)
 	Blocks(limit int, offset int) ([]types.Hash, error)
-	PhoneBlocks(phone []byte) ([]types.Hash, error)
+	PhoneBlocks(phone []byte, sender bool) ([]types.Hash, error)
 	MessageBlocks(hash types.Hash) ([]types.Hash, error)
 	AddBlock(block *types.StateBlock) error
 	DeleteBlock(hash types.Hash) error

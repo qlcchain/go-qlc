@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
@@ -49,19 +48,19 @@ type APITokenMeta struct {
 }
 
 type APIPending struct {
+	*types.PendingKey
 	*types.PendingInfo
-	TokenName string     `json:"tokenName"`
-	Hash      types.Hash `json:"hash"`
-	Timestamp int64      `json:"timestamp"`
+	TokenName string `json:"tokenName"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 type ApiTokenInfo struct {
 	types.TokenInfo
 }
 
-func NewLedgerApi(l *ledger.Ledger, eb event.EventBus) *LedgerApi {
+func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
 	return &LedgerApi{ledger: l, eb: eb, verifier: process.NewLedgerVerifier(l), vmContext: vmstore.NewVMContext(l),
-		logger: log.NewLogger("api_ledger")}
+		relation: relation, logger: log.NewLogger("api_ledger")}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -268,9 +267,9 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 				return err
 			}
 			ap := APIPending{
+				PendingKey:  key,
 				PendingInfo: info,
 				TokenName:   tokenName,
-				Hash:        key.Hash,
 				Timestamp:   blk.Timestamp,
 			}
 			ps = append(ps, &ap)
@@ -280,11 +279,13 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 		if err != nil {
 			fmt.Println(err)
 		}
-		pt := ps
-		if n > -1 && len(ps) > n {
-			pt = ps[:n]
+		if len(ps) > 0 {
+			pt := ps
+			if n > -1 && len(ps) > n {
+				pt = ps[:n]
+			}
+			apMap[addr] = pt
 		}
-		apMap[addr] = pt
 	}
 	return apMap, nil
 }
@@ -539,6 +540,33 @@ func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative ty
 
 	l.logger.Debug(block)
 	return block, nil
+}
+
+func (l *LedgerApi) Pendings() ([]*APIPending, error) {
+	aps := make([]*APIPending, 0)
+	err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		token, err := abi.GetTokenById(l.vmContext, pendingInfo.Type)
+		if err != nil {
+			return err
+		}
+		tokenName := token.TokenName
+		blk, err := l.ledger.GetStateBlock(pendingKey.Hash)
+		if err != nil {
+			return err
+		}
+		ap := APIPending{
+			PendingKey:  pendingKey,
+			PendingInfo: pendingInfo,
+			TokenName:   tokenName,
+			Timestamp:   blk.Timestamp,
+		}
+		aps = append(aps, &ap)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return aps, nil
 }
 
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {

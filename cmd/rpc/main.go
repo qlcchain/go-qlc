@@ -14,10 +14,8 @@ import (
 	"os/signal"
 	"path/filepath"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
-	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -32,7 +30,7 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "cmd")
 	cm := config.NewCfgManager(dir)
 	cfg, err := cm.Load()
 	cfg.RPC.Enable = true
@@ -40,7 +38,22 @@ func main() {
 		return
 	}
 
-	l := services.NewLedgerService(cfg)
+	eb := event.New()
+
+	ss, err := services.NewSqliteService(cfg, eb)
+	if err != nil {
+		logger.Fatal(err)
+		return
+	}
+	if err = ss.Init(); err != nil {
+		logger.Fatal(err)
+	}
+	if err = ss.Start(); err != nil {
+		logger.Fatal(err)
+	}
+	logger.Info("sqlite started")
+
+	l := services.NewLedgerService(cfg, eb)
 	if err := l.Init(); err != nil {
 		return
 	}
@@ -58,8 +71,12 @@ func main() {
 		logger.Fatal(err)
 	}
 	logger.Info("wallet started")
-	eventBus := event.New()
-	rs := services.NewRPCService(cfg, eventBus)
+
+	rs, err := services.NewRPCService(cfg, eb)
+	if err != nil {
+		logger.Fatal(err)
+		return
+	}
 	if err = rs.Init(); err != nil {
 		logger.Fatal(err)
 	}
@@ -72,6 +89,7 @@ func main() {
 		l.Stop()
 		w.Stop()
 		rs.Stop()
+		ss.Stop()
 		os.RemoveAll(dir)
 	}()
 	s := <-c
@@ -89,14 +107,20 @@ func initData(ledger *ledger.Ledger) {
 	}
 	for i, b := range blocks[1:5] {
 		fmt.Println(i + 1)
+		fmt.Println(b.String())
 		if r, err := verifier.Process(b); r != process.Progress || err != nil {
-			fmt.Println(b.String())
 			fmt.Println(r.String(), err)
 			return
 		}
 	}
 	fmt.Println("account1, ", blocks[0].GetAddress().String())
 	fmt.Println("account2, ", blocks[2].GetAddress().String())
+	//
+	//fmt.Println("roll back hash: ", blocks[4].GetHash())
+	//if err := ledger.Rollback(blocks[4].GetHash()); err != nil {
+	//	fmt.Println("rollback err, ", err)
+	//	return
+	//}
 
 	// unchecked
 	if err := ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlockWithoutWork(), types.UncheckedKindLink, types.UnSynchronized); err != nil {
@@ -111,14 +135,13 @@ func initData(ledger *ledger.Ledger) {
 		fmt.Println(err)
 		return
 	}
-	ph1 := []byte("180")
-	ph2 := []byte("160")
+	ph1 := []byte("15800001111")
+	ph2 := []byte("15811110000")
 	message := "hello"
 	m, _ := json.Marshal(message)
 	mHash, _ := types.HashBytes(m)
 	blk1 := mock.StateBlockWithoutWork()
 	blk1.Sender = ph1
-	blk1.Receiver = ph2
 	blk2 := mock.StateBlockWithoutWork()
 	blk2.Sender = ph2
 	blk2.Receiver = ph1
@@ -128,6 +151,19 @@ func initData(ledger *ledger.Ledger) {
 		return
 	}
 	if err := ledger.AddStateBlock(blk2); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	pk := types.PendingKey{
+		Hash:    blocks[3].GetHash(),
+		Address: mock.Address(),
+	}
+	pi := types.PendingInfo{
+		Type:   blocks[3].GetToken(),
+		Source: mock.Address(),
+	}
+	if err := ledger.AddPending(&pk, &pi); err != nil {
 		fmt.Println(err)
 		return
 	}

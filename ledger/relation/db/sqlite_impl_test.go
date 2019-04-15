@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func TestDBSQL_Create(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "db_test.db")
+	dir := filepath.Join(config.QlcTestDataDir(), "sqlite3", uuid.New().String())
 	d, err := NewSQLDB(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -21,7 +22,7 @@ func TestDBSQL_Create(t *testing.T) {
 		if err := d.Close(); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Remove(dir); err != nil {
+		if err := os.RemoveAll(dir); err != nil {
 			t.Fatal(err)
 		}
 	}()

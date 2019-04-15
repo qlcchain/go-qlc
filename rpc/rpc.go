@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
 	"go.uber.org/zap"
@@ -39,22 +39,27 @@ type RPC struct {
 
 	lock sync.RWMutex
 
-	ledger *ledger.Ledger
-	wallet *wallet.WalletStore
-	eb     event.EventBus
-	logger *zap.SugaredLogger
+	ledger   *ledger.Ledger
+	wallet   *wallet.WalletStore
+	relation *relation.Relation
+	eb       event.EventBus
+	logger   *zap.SugaredLogger
 }
 
-func NewRPC(cfg *config.Config, eb event.EventBus) *RPC {
-	r := RPC{
-		ledger: ledger.NewLedger(cfg.LedgerDir()),
-		wallet: wallet.NewWalletStore(cfg),
-		eb:     eb,
-		config: cfg,
-		logger: log.NewLogger("rpc"),
+func NewRPC(cfg *config.Config, eb event.EventBus) (*RPC, error) {
+	rl, err := relation.NewRelation(cfg, eb)
+	if err != nil {
+		return nil, err
 	}
-	return &r
-
+	r := RPC{
+		ledger:   ledger.NewLedger(cfg.LedgerDir(), eb),
+		wallet:   wallet.NewWalletStore(cfg),
+		relation: rl,
+		eb:       eb,
+		config:   cfg,
+		logger:   log.NewLogger("rpc"),
+	}
+	return &r, nil
 }
 
 // startIPC initializes and starts the IPC RPC endpoint.

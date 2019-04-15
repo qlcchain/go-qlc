@@ -17,7 +17,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestNewRPCService(t *testing.T) {
+func TestSqliteService(t *testing.T) {
 	eventBus := event.New()
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
@@ -27,7 +27,7 @@ func TestNewRPCService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls, err := NewRPCService(cfg, eventBus)
+	ls, err := NewSqliteService(cfg, eventBus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,14 +36,14 @@ func TestNewRPCService(t *testing.T) {
 		t.Fatal(err)
 	}
 	if ls.State() != 2 {
-		t.Fatal("rpc init failed")
+		t.Fatal("service init failed")
 	}
 	err = ls.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ls.State() != 4 {
-		t.Fatal("rpc start failed")
+		t.Fatal("service start failed")
 	}
 	err = ls.Stop()
 	if err != nil {

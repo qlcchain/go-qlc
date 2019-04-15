@@ -43,3 +43,7 @@ func (c *Config) LedgerDir() string {
 func (c *Config) WalletDir() string {
 	return filepath.Join(c.DataDir, "wallet")
 }
+
+func (c *Config) SqliteDir() string {
+	return filepath.Join(c.DataDir, "sqlite")
+}

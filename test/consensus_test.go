@@ -16,11 +16,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -46,9 +45,9 @@ func TestConsensus(t *testing.T) {
 	cfgFile.P2P.BootNodes = []string{}
 	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
 	//new ledger
-	l := services.NewLedgerService(cfgFile)
-
 	eventBus1 := event.New()
+	l := services.NewLedgerService(cfgFile, eventBus1)
+
 	//start bootNode
 	node, err := p2p.NewQlcService(cfgFile, eventBus1)
 	err = node.Start()
@@ -64,7 +63,7 @@ func TestConsensus(t *testing.T) {
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
 	//new ledger
-	ledger1 := services.NewLedgerService(cfgFile1)
+	ledger1 := services.NewLedgerService(cfgFile1, eventBus1)
 
 	//storage genesisBlock
 	creatGenesisBlock(ledger1.Ledger)
@@ -102,7 +101,7 @@ func TestConsensus(t *testing.T) {
 	cfgFile2.PerformanceEnabled = true
 
 	//new ledger
-	ledger2 := services.NewLedgerService(cfgFile2)
+	ledger2 := services.NewLedgerService(cfgFile2, eventBus2)
 	//storage genesisBlock
 	creatGenesisBlock(ledger2.Ledger)
 	//start node2

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
@@ -27,7 +28,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := NewLedger(dir)
+	l := NewLedger(dir, event.New())
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()
@@ -46,9 +47,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 //var bc, _ = mock.BlockChain()
 
 func TestLedger_Instance1(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
-	l1 := NewLedger(dir)
-	l2 := NewLedger(dir)
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	l1 := NewLedger(dir, event.New())
+	l2 := NewLedger(dir, event.New())
 	t.Logf("l1:%v,l2:%v", l1, l2)
 	defer func() {
 		l1.Close()
@@ -63,10 +64,10 @@ func TestLedger_Instance1(t *testing.T) {
 }
 
 func TestLedger_Instance2(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
-	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
-	l1 := NewLedger(dir)
-	l2 := NewLedger(dir2)
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	dir2 := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	l1 := NewLedger(dir, event.New())
+	l2 := NewLedger(dir2, event.New())
 	defer func() {
 		l1.Close()
 		l2.Close()
@@ -84,11 +85,9 @@ func TestGetTxn(t *testing.T) {
 	txn := l.Store.NewTransaction(false)
 	fmt.Println(txn)
 	txn2, flag := l.getTxn(false, txn)
-
 	if flag {
 		t.Fatal("get txn flag error")
 	}
-
 	if txn != txn2 {
 		t.Fatal("txn!=tnx2")
 	}
@@ -635,7 +634,7 @@ func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendingin
 	}
 	pendingkey = types.PendingKey{Address: address, Hash: hash}
 	t.Log(pendinginfo)
-	err := l.AddPending(pendingkey, &pendinginfo)
+	err := l.AddPending(&pendingkey, &pendinginfo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,7 +667,7 @@ func TestLedger_DeletePending(t *testing.T) {
 
 	pendingkey, _ := addPending(t, l)
 
-	err := l.DeletePending(pendingkey)
+	err := l.DeletePending(&pendingkey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -693,7 +692,7 @@ func TestLedger_SearchPending(t *testing.T) {
 			Type:   mock.Hash(),
 		}
 		k := &types.PendingKey{Address: address, Hash: hash}
-		err := l.AddPending(*k, v)
+		err := l.AddPending(k, v)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -784,8 +783,9 @@ func TestLedger_DeleteFrontier(t *testing.T) {
 func TestReleaseLedger(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
 	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
-	l1 := NewLedger(dir)
-	_ = NewLedger(dir2)
+	eb := event.New()
+	l1 := NewLedger(dir, eb)
+	_ = NewLedger(dir2, eb)
 	defer func() {
 		//only release ledger1
 		l1.Close()

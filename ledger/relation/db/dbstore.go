@@ -2,58 +2,27 @@ package db
 
 import "io"
 
-type TableName byte
+type TableName string
 
 const (
-	TableBlockHash TableName = iota
-	TableBlockMessage
+	TableBlockHash    TableName = "blockhash"
+	TableBlockMessage TableName = "blockmessage"
 )
 
 const LikeSign = "_like_"
 
-func (t TableName) String() string {
-	switch t {
-	case TableBlockHash:
-		return "blockhash"
-	case TableBlockMessage:
-		return "blockmessage"
-	}
-	return ""
-}
-
-type Column byte
+type Column string
 
 const (
-	ColumnHash Column = iota
-	ColumnType
-	ColumnAddress
-	ColumnSender
-	ColumnReceiver
-	ColumnMessage
-	ColumnTimestamp
-	ColumnNoNeed
+	ColumnHash      Column = "hash"
+	ColumnType      Column = "type"
+	ColumnAddress   Column = "address"
+	ColumnSender    Column = "sender"
+	ColumnReceiver  Column = "receiver"
+	ColumnMessage   Column = "message"
+	ColumnTimestamp Column = "timestamp"
+	ColumnNoNeed    Column = ""
 )
-
-func (c Column) String() string {
-	switch c {
-	case ColumnHash:
-		return "hash"
-	case ColumnType:
-		return "type"
-	case ColumnAddress:
-		return "address"
-	case ColumnSender:
-		return "sender"
-	case ColumnReceiver:
-		return "receiver"
-	case ColumnMessage:
-		return "message"
-	case ColumnTimestamp:
-		return "timestamp"
-	}
-
-	return ""
-}
 
 type DbStore interface {
 	io.Closer
