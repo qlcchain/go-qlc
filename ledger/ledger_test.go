@@ -635,7 +635,7 @@ func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendingin
 	}
 	pendingkey = types.PendingKey{Address: address, Hash: hash}
 	t.Log(pendinginfo)
-	err := l.AddPending(pendingkey, &pendinginfo)
+	err := l.AddPending(&pendingkey, &pendinginfo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,7 +668,7 @@ func TestLedger_DeletePending(t *testing.T) {
 
 	pendingkey, _ := addPending(t, l)
 
-	err := l.DeletePending(pendingkey)
+	err := l.DeletePending(&pendingkey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -693,7 +693,7 @@ func TestLedger_SearchPending(t *testing.T) {
 			Type:   mock.Hash(),
 		}
 		k := &types.PendingKey{Address: address, Hash: hash}
-		err := l.AddPending(*k, v)
+		err := l.AddPending(k, v)
 		if err != nil {
 			t.Fatal(err)
 		}

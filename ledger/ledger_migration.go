@@ -86,21 +86,20 @@ type MigrationV3ToV4 struct {
 }
 
 func (m MigrationV3ToV4) Migrate(txn db.StoreTxn) error {
-	b, err := checkVersion(m, txn)
+	cfg, err := config.DefaultConfig(config.DefaultDataDir())
 	if err != nil {
 		return err
 	}
-	if b {
-		fmt.Println("migrating ledger v3 to v4 ... ")
-		cfg, err := config.DefaultConfig(config.DefaultDataDir())
-		if err != nil {
-			return err
-		}
-		relation, err := relation.NewRelation(cfg, nil)
-		if err != nil {
-			return err
-		}
-		defer relation.Close()
+	relation, err := relation.NewRelation(cfg, nil)
+	if err != nil {
+		return err
+	}
+	defer relation.Close()
+	c, err := relation.BlocksCount()
+	if err != nil {
+		return err
+	}
+	if c == 0 {
 		err = txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 			blk := new(types.StateBlock)
 			_, err := blk.UnmarshalMsg(val)
@@ -115,6 +114,14 @@ func (m MigrationV3ToV4) Migrate(txn db.StoreTxn) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	b, err := checkVersion(m, txn)
+	if err != nil {
+		return err
+	}
+	if b {
+		fmt.Println("migrating ledger v3 to v4 ... ")
 		deleteTable := []byte{idPrefixSender, idPrefixReceiver, idPrefixMessage}
 		for _, d := range deleteTable {
 			prefix := []byte{d}

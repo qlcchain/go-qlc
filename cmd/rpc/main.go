@@ -115,12 +115,12 @@ func initData(ledger *ledger.Ledger) {
 	}
 	fmt.Println("account1, ", blocks[0].GetAddress().String())
 	fmt.Println("account2, ", blocks[2].GetAddress().String())
-
-	fmt.Println("roll back hash: ", blocks[4].GetHash())
-	if err := ledger.Rollback(blocks[4].GetHash()); err != nil {
-		fmt.Println("rollback err, ", err)
-		return
-	}
+	//
+	//fmt.Println("roll back hash: ", blocks[4].GetHash())
+	//if err := ledger.Rollback(blocks[4].GetHash()); err != nil {
+	//	fmt.Println("rollback err, ", err)
+	//	return
+	//}
 
 	// unchecked
 	if err := ledger.AddUncheckedBlock(mock.Hash(), mock.StateBlockWithoutWork(), types.UncheckedKindLink, types.UnSynchronized); err != nil {
@@ -151,6 +151,19 @@ func initData(ledger *ledger.Ledger) {
 		return
 	}
 	if err := ledger.AddStateBlock(blk2); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	pk := types.PendingKey{
+		Hash:    blocks[3].GetHash(),
+		Address: mock.Address(),
+	}
+	pi := types.PendingInfo{
+		Type:   blocks[3].GetToken(),
+		Source: mock.Address(),
+	}
+	if err := ledger.AddPending(&pk, &pi); err != nil {
 		fmt.Println(err)
 		return
 	}

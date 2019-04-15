@@ -1030,12 +1030,12 @@ func (l *Ledger) getPendingKey(pendingKey types.PendingKey) []byte {
 
 }
 
-func (l *Ledger) AddPending(pendingKey types.PendingKey, pending *types.PendingInfo, txns ...db.StoreTxn) error {
+func (l *Ledger) AddPending(pendingKey *types.PendingKey, pending *types.PendingInfo, txns ...db.StoreTxn) error {
 	pendingBytes, err := pending.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
-	key := l.getPendingKey(pendingKey)
+	key := l.getPendingKey(*pendingKey)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -1073,6 +1073,30 @@ func (l *Ledger) GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*
 
 }
 
+func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
+		pendingKey := new(types.PendingKey)
+		if _, err := pendingKey.UnmarshalMsg(key[1:]); err != nil {
+			return err
+		}
+		pendingInfo := new(types.PendingInfo)
+		if _, err := pendingInfo.UnmarshalMsg(val); err != nil {
+			return err
+		}
+		if err := fn(pendingKey, pendingInfo); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (l *Ledger) SearchPending(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -1105,8 +1129,8 @@ func (l *Ledger) SearchPending(address types.Address, fn func(key *types.Pending
 	})
 }
 
-func (l *Ledger) DeletePending(pendingKey types.PendingKey, txns ...db.StoreTxn) error {
-	key := l.getPendingKey(pendingKey)
+func (l *Ledger) DeletePending(pendingKey *types.PendingKey, txns ...db.StoreTxn) error {
+	key := l.getPendingKey(*pendingKey)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -1717,7 +1741,7 @@ func (l *Ledger) rollBackPendingAdd(blockCur *types.StateBlock, blockLink *types
 		Type:   token,
 	}
 	l.logger.Debug("add pending, ", pendingkey, pendinginfo)
-	if err := l.AddPending(pendingkey, &pendinginfo, txn); err != nil {
+	if err := l.AddPending(&pendingkey, &pendinginfo, txn); err != nil {
 		return err
 	}
 	return nil
@@ -1729,7 +1753,7 @@ func (l *Ledger) rollBackPendingDel(address types.Address, hash types.Hash, txn 
 		Hash:    hash,
 	}
 	l.logger.Debug("delete pending ,", pendingkey)
-	if err := l.DeletePending(pendingkey, txn); err != nil {
+	if err := l.DeletePending(&pendingkey, txn); err != nil {
 		return err
 	}
 	return nil

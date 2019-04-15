@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -18,8 +19,11 @@ type DBSQL struct {
 	logger *zap.SugaredLogger
 }
 
-func NewSQLDB(path string) (*DBSQL, error) {
-	db, err := createDBBySqlite(path)
+func NewSQLDB(config *config.Config) (*DBSQL, error) {
+	path := config.SqliteDir()
+	user := "qlc"
+	password := "qlc1234"
+	db, err := createDBBySqlite(path, user, password)
 	if err != nil {
 		return nil, err
 	}
@@ -30,11 +34,11 @@ func NewSQLDB(path string) (*DBSQL, error) {
 	return &dbsql, nil
 }
 
-func createDBBySqlite(dir string) (*sqlx.DB, error) {
+func createDBBySqlite(dir, user, password string) (*sqlx.DB, error) {
 	if err := util.CreateDirIfNotExist(dir); err != nil {
 		return nil, err
 	}
-	dataSourceName := fmt.Sprintf("file:%s?_auth&_auth_user=%s&_auth_pass=%s", path.Join(dir, "sqlite3.db"), "qlc", "qlc1234")
+	dataSourceName := fmt.Sprintf("file:%s?_auth&_auth_user=%s&_auth_pass=%s", path.Join(dir, "sqlite3.db"), user, password)
 	store, err := sqlx.Connect("sqlite3", dataSourceName)
 	if err != nil {
 		fmt.Println("connect sqlite error: ", err)

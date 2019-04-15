@@ -48,10 +48,10 @@ type APITokenMeta struct {
 }
 
 type APIPending struct {
+	*types.PendingKey
 	*types.PendingInfo
-	TokenName string     `json:"tokenName"`
-	Hash      types.Hash `json:"hash"`
-	Timestamp int64      `json:"timestamp"`
+	TokenName string `json:"tokenName"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 type ApiTokenInfo struct {
@@ -267,9 +267,9 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 				return err
 			}
 			ap := APIPending{
+				PendingKey:  key,
 				PendingInfo: info,
 				TokenName:   tokenName,
-				Hash:        key.Hash,
 				Timestamp:   blk.Timestamp,
 			}
 			ps = append(ps, &ap)
@@ -540,6 +540,33 @@ func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative ty
 
 	l.logger.Debug(block)
 	return block, nil
+}
+
+func (l *LedgerApi) Pendings() ([]*APIPending, error) {
+	aps := make([]*APIPending, 0)
+	err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		token, err := abi.GetTokenById(l.vmContext, pendingInfo.Type)
+		if err != nil {
+			return err
+		}
+		tokenName := token.TokenName
+		blk, err := l.ledger.GetStateBlock(pendingKey.Hash)
+		if err != nil {
+			return err
+		}
+		ap := APIPending{
+			PendingKey:  pendingKey,
+			PendingInfo: pendingInfo,
+			TokenName:   tokenName,
+			Timestamp:   blk.Timestamp,
+		}
+		aps = append(aps, &ap)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return aps, nil
 }
 
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
