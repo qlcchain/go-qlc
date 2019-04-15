@@ -137,8 +137,25 @@ func (t *BadgerStoreTxn) Iterator(pre byte, fn func([]byte, []byte, byte) error)
 	return nil
 }
 
-func (t *BadgerStoreTxn) KeyIterator(pre byte, fn func([]byte) error) error {
-	prefix := []byte{pre}
+func (t *BadgerStoreTxn) PrefixIterator(prefix []byte, fn func([]byte, []byte, byte) error) error {
+	it := t.txn.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
+		item := it.Item()
+		key := item.Key()
+		err := item.Value(func(val []byte) error {
+			return fn(key, val, item.UserMeta())
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *BadgerStoreTxn) KeyIterator(prefix []byte, fn func([]byte) error) error {
 	it := t.txn.NewKeyIterator(prefix, badger.DefaultIteratorOptions)
 	defer it.Close()
 

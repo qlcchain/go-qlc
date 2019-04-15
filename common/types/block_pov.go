@@ -119,7 +119,7 @@ func (blk *PovBlock) ComputeHash() Hash {
 	return hash
 }
 
-func (blk *PovBlock) ToHeader() *PovHeader {
+func (blk *PovBlock) GetHeader() *PovHeader {
 	header := &PovHeader{
 		Hash: blk.Hash,
 
@@ -139,7 +139,7 @@ func (blk *PovBlock) ToHeader() *PovHeader {
 	return header
 }
 
-func (blk *PovBlock) ToBody() *PovBody {
+func (blk *PovBlock) GetBody() *PovBody {
 	body := &PovBody{
 		Transactions: blk.Transactions,
 	}

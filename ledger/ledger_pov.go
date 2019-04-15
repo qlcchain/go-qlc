@@ -11,11 +11,11 @@ import (
 func (l *Ledger) AddPovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 
-	if err := l.addPovBlockHeader(blk.ToHeader(), txn); err != nil {
+	if err := l.addPovBlockHeader(blk.GetHeader(), txn); err != nil {
 		return err
 	}
 
-	if err := l.addPovBlockBody(blk.GetHeight(), blk.ToBody(), txn); err != nil {
+	if err := l.addPovBlockBody(blk.GetHeight(), blk.GetBody(), txn); err != nil {
 		return err
 	}
 
@@ -110,6 +110,36 @@ func (l *Ledger) GetPovBlockHeader(height uint64, hash types.Hash, txns ...db.St
 		return nil, err
 	}
 	return hdr, nil
+}
+
+func (l *Ledger) GetPovBlockHeaderByHeight(height uint64, txns ...db.StoreTxn) (*types.PovHeader, error) {
+	key, err := getKeyOfParts(idPrefixPovBlockHeader, height)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	var latestVal []byte
+	err = txn.PrefixIterator(key, func(key []byte, val []byte, meta byte) error {
+		latestVal = val
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, err
+	}
+
+	header := new(types.PovHeader)
+	if err := header.Deserialize(latestVal); err != nil {
+		return nil, err
+	}
+
+	return header, nil
 }
 
 func (l *Ledger) addPovBlockBody(height uint64, body *types.PovBody, txn db.StoreTxn) error {
@@ -274,11 +304,11 @@ func (l *Ledger) DeletePovTxLookup(txHash types.Hash, txns... db.StoreTxn) error
 	return nil
 }
 
-func (l *Ledger) GetPovBlockByHeight(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error) {
+func (l *Ledger) GetPovBlockByHeight(height uint64, txns ...db.StoreTxn) (*types.PovBlock, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	header, err := l.GetPovBlockHeader(height, hash, txns...)
+	header, err := l.GetPovBlockHeaderByHeight(height, txns...)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +331,7 @@ func (l *Ledger) GetPovBlockByHash(hash types.Hash, txns ...db.StoreTxn) (*types
 		return nil, err
 	}
 
-	return l.GetPovBlockByHeight(height, hash, txns...)
+	return l.GetPovBlockByHeight(height, txns...)
 }
 
 func (l *Ledger) GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error {
@@ -343,6 +373,9 @@ func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 	})
 
 	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
 		return nil, err
 	}
 
