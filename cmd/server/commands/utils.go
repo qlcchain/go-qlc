@@ -53,18 +53,12 @@ func stopNode(services []common.Service) {
 }
 
 func initNode(accounts []*types.Account, cfg *config.Config) error {
-	var err error
-	//ctx, err = chain.New(cfg)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
 	eventBus := event.New()
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
 	ledgerService = ss.NewLedgerService(cfg, eventBus)
 	walletService = ss.NewWalletService(cfg)
-	netService, err = ss.NewP2PService(cfg, eventBus)
+	netService, err := ss.NewP2PService(cfg, eventBus)
 	if err != nil {
 		fmt.Println(err)
 		return err
