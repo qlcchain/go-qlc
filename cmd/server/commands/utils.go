@@ -33,6 +33,10 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 	if err != nil {
 		fmt.Println(err)
 	}
+	if err := initDb(); err != nil {
+		fmt.Println(err)
+		return err
+	}
 	cmn.TrapSignal(func() {
 		stopNode(services)
 	})
@@ -191,5 +195,22 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 		return err
 	}
 
+	return nil
+}
+
+func initDb() error {
+	relation := sqliteService.Relation
+	c, err := relation.BlocksCount()
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
+			if err := relation.AddBlock(block); err != nil {
+				return err
+			}
+			return nil
+		})
+	}
 	return nil
 }

@@ -42,24 +42,16 @@ var (
 )
 
 func NewRelation(config *config.Config, eb event.EventBus) (*Relation, error) {
-	if eb == nil {
-		if store, err := db.NewSQLDB(config.SqliteDir()); err != nil {
-			return nil, err
-		} else {
-			return &Relation{store: store, logger: log.NewLogger("relation")}, nil
-		}
-	} else {
-		var err error
-		once.Do(func() {
-			store := new(db.DBSQL)
-			store, err = db.NewSQLDB(config.SqliteDir())
-			relation = &Relation{store: store, eb: eb, logger: log.NewLogger("relation")}
-		})
-		if err != nil {
-			return nil, err
-		}
-		return relation, nil
+	var err error
+	once.Do(func() {
+		store := new(db.DBSQL)
+		store, err = db.NewSQLDB(config.SqliteDir())
+		relation = &Relation{store: store, eb: eb, logger: log.NewLogger("relation")}
+	})
+	if err != nil {
+		return nil, err
 	}
+	return relation, nil
 }
 
 func (r *Relation) Close() error {

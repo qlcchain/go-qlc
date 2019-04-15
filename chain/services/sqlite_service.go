@@ -13,7 +13,7 @@ import (
 
 type SqliteService struct {
 	common.ServiceLifecycle
-	relation *relation.Relation
+	Relation *relation.Relation
 	logger   *zap.SugaredLogger
 }
 
@@ -22,7 +22,7 @@ func NewSqliteService(cfg *config.Config, eb event.EventBus) (*SqliteService, er
 	if err != nil {
 		return nil, err
 	}
-	return &SqliteService{relation: r, logger: log.NewLogger("sqlite_service")}, nil
+	return &SqliteService{Relation: r, logger: log.NewLogger("sqlite_service")}, nil
 }
 
 func (r *SqliteService) Init() error {
@@ -39,7 +39,7 @@ func (r *SqliteService) Start() error {
 		return errors.New("pre start fail.")
 	}
 	defer r.PostStart()
-	if err := r.relation.SetEvent(); err != nil {
+	if err := r.Relation.SetEvent(); err != nil {
 		return err
 	}
 	return nil
@@ -50,10 +50,10 @@ func (r *SqliteService) Stop() error {
 		return errors.New("pre stop fail")
 	}
 	defer r.PostStop()
-	if err := r.relation.UnsubscribeEvent(); err != nil {
+	if err := r.Relation.UnsubscribeEvent(); err != nil {
 		return err
 	}
-	if err := r.relation.Close(); err != nil {
+	if err := r.Relation.Close(); err != nil {
 		r.logger.Error(err)
 		return err
 	}

@@ -7,9 +7,7 @@ import (
 	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/ledger/relation"
 )
 
 type MigrationV1ToV2 struct {
@@ -86,36 +84,6 @@ type MigrationV3ToV4 struct {
 }
 
 func (m MigrationV3ToV4) Migrate(txn db.StoreTxn) error {
-	cfg, err := config.DefaultConfig(config.DefaultDataDir())
-	if err != nil {
-		return err
-	}
-	relation, err := relation.NewRelation(cfg, nil)
-	if err != nil {
-		return err
-	}
-	defer relation.Close()
-	c, err := relation.BlocksCount()
-	if err != nil {
-		return err
-	}
-	if c == 0 {
-		err = txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
-			blk := new(types.StateBlock)
-			_, err := blk.UnmarshalMsg(val)
-			if err != nil {
-				return err
-			}
-			if err := relation.AddBlock(blk); err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-
 	b, err := checkVersion(m, txn)
 	if err != nil {
 		return err
