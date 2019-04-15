@@ -28,7 +28,6 @@ const (
 	BalanceCompBigger
 	//BalanceCompSmaller smaller compare
 	BalanceCompSmaller
-	BalanceExtensionType = 100
 )
 
 var (

@@ -22,8 +22,7 @@ func init() {
 
 const (
 	//SignatureSize size of signature
-	SignatureSize          = ed25519.SignatureSize
-	SignatureExtensionType = 103
+	SignatureSize = ed25519.SignatureSize
 )
 
 // Signature of block
