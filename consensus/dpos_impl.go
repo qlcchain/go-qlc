@@ -305,7 +305,6 @@ func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash,
 				}
 			}
 			if !dps.bp.blockCache.Has(blkHash) {
-				dps.logger.Errorf("confirmAck blockCache :[%s]\n", blkHash.String())
 				if result == process.Progress {
 					dps.verifier.BlockProcess(bs.block)
 					dps.bp.processResult(result, bs)
