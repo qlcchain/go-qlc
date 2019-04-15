@@ -41,9 +41,9 @@ func TestConsensus(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "consensus", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
 	cfgFile.P2P.Listen = "/ip4/127.0.0.1/tcp/19740"
-	cfgFile.P2P.Discovery.MDNSEnabled = false
 	cfgFile.P2P.BootNodes = []string{}
 	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
+	fmt.Printf("bootNode peer id is [%s]\n", cfgFile.P2P.ID.PeerID)
 
 	eventBus := event.New()
 	l := services.NewLedgerService(cfgFile, eventBus)
@@ -59,8 +59,8 @@ func TestConsensus(t *testing.T) {
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
 	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
+	fmt.Printf("Node1 peer id is [%s]\n", cfgFile1.P2P.ID.PeerID)
 
 	eventBus1 := event.New()
 	//new ledger
@@ -96,9 +96,9 @@ func TestConsensus(t *testing.T) {
 	cfgFile2, _ := config.DefaultConfig(dir2)
 	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
 	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.P2P.Discovery.MDNSEnabled = false
-	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 15
 	cfgFile2.PerformanceEnabled = true
+	fmt.Printf("Node2 peer id is [%s]\n", cfgFile2.P2P.ID.PeerID)
 
 	//new ledger
 	ledger2 := services.NewLedgerService(cfgFile2, eventBus2)
@@ -193,7 +193,7 @@ func TestConsensus(t *testing.T) {
 	verifier1 := process.NewLedgerVerifier(ledger1.Ledger)
 	/**/ verifier1.Process(send)
 	node1.Broadcast(common.PublishReq, send)
-	time.Sleep(30 * time.Second)
+	time.Sleep(33 * time.Second)
 	c, err := ledger2.Ledger.CountStateBlocks()
 	if err != nil {
 		t.Fatal(err)
