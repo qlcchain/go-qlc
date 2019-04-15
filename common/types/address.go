@@ -28,8 +28,8 @@ const (
 	addressChecksumSize = 5
 	addressPrefixLen    = len(AddressPrefix)
 	// AddressLen represents the string length of a qlc address.
-	AddressLen           = 60
-	AddressExtensionType = 99
+	AddressLen = 60
+
 	// The following 52 characters form the address, and the final
 	// 8 are a checksum.
 	hexAddressLength = addressPrefixLen + AddressLen

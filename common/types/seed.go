@@ -25,8 +25,7 @@ func init() {
 
 const (
 	// SeedSize size of the seed
-	SeedSize          = 32
-	SeedExtensionType = 102
+	SeedSize = 32
 )
 
 //Seed of account

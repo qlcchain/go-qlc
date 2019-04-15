@@ -40,6 +40,12 @@ var (
 type VMContext struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
+	cache  *VMCache
+}
+
+func NewVMContext(l *ledger.Ledger) *VMContext {
+	context := &VMContext{ledger: l, logger: log.NewLogger("vm_context")}
+	return context
 }
 
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
@@ -48,12 +54,6 @@ func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
 	} else {
 		return false, err
 	}
-}
-
-func NewVMContext(l *ledger.Ledger) *VMContext {
-	context := &VMContext{ledger: l}
-	context.logger = log.NewLogger("vm_context")
-	return context
 }
 
 func getStorageKey(prefix, key []byte) []byte {
