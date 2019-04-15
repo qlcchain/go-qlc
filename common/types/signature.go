@@ -10,6 +10,7 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
 
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
@@ -93,4 +94,47 @@ func (s *Signature) UnmarshalText(text []byte) error {
 // MarshalText implements the encoding.TextMarshaler interface.
 func (s Signature) MarshalText() (text []byte, err error) {
 	return []byte(s.String()), nil
+}
+
+// ToBigInt converts a types.Signature into a big.Int that can be used to
+// perform math comparisons.
+func (s *Signature) ToBigInt() *big.Int {
+	// A Signature is in little-endian, but the big package wants the bytes in
+	// big-endian, so reverse them.
+	var sigBuf [SignatureSize]byte
+	copy(sigBuf[:], s[:])
+
+	buf := sigBuf
+	blen := len(buf)
+	for i := 0; i < blen/2; i++ {
+		buf[i], buf[blen-1-i] = buf[blen-1-i], buf[i]
+	}
+
+	//fmt.Println("ToBigInt", hex.EncodeToString(s[:]), hex.EncodeToString(sigBuf[:]), hex.EncodeToString(buf[:]))
+
+	return new(big.Int).SetBytes(buf[:])
+}
+
+// FromBigInt converts a big.Int into a types.Signature.
+func (s *Signature) FromBigInt(num *big.Int) error {
+	// A big.Int is in big-endian, but a Signature is in little-endian, so reverse them.
+	numBuf := num.Bytes()
+	if len(numBuf) > SignatureSize {
+		return fmt.Errorf("bad big.Int bytes size: %d", len(numBuf))
+	}
+
+	var sigBuf [SignatureSize]byte
+
+	startPos := SignatureSize - len(numBuf)
+	copy(sigBuf[startPos:], numBuf)
+
+	buf := sigBuf
+	blen := len(buf)
+	for i := 0; i < blen/2; i++ {
+		buf[i], buf[blen-1-i] = buf[blen-1-i], buf[i]
+	}
+
+	*s = buf
+
+	return nil
 }
