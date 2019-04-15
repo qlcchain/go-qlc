@@ -50,8 +50,8 @@ var contractCache = map[types.Address]*qlcchainContract{
 	},
 	types.NEP5PledgeAddress: {
 		map[string]ChainContract{
-			cabi.MethodNameMintage:         &Nep5Pledge{},
-			cabi.MethodNameMintageWithdraw: &WithdrawNep5Pledge{},
+			cabi.MethodNEP5Pledge:         &Nep5Pledge{},
+			cabi.MethodWithdrawNEP5Pledge: &WithdrawNep5Pledge{},
 		},
 		cabi.NEP5PledgeABI,
 	},

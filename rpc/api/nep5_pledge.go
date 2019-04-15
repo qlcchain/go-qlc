@@ -68,9 +68,9 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		return nil, errors.New("invalid param")
 	}
 
-	am, err := p.ledger.GetAccountMeta(param.Beneficial)
+	am, err := p.ledger.GetAccountMeta(param.PledgeAddress)
 	if am == nil {
-		return nil, fmt.Errorf("invalid user account:%s, %s", param.Beneficial.String(), err)
+		return nil, fmt.Errorf("invalid user account:%s, %s", param.PledgeAddress.String(), err)
 	}
 
 	tm := am.Token(common.ChainToken())
@@ -93,7 +93,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.MintageAddress),
+		Link:           types.Hash(types.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		Timestamp:      time.Now().UTC().Unix(),
@@ -107,7 +107,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 	return send, nil
 }
 
-func (p *NEP5PledgeApi) GetPledgeRewordBlock(input *types.StateBlock) (*types.StateBlock, error) {
+func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	reward := &types.StateBlock{}
 
 	blocks, err := p.pledge.DoReceive(p.vmContext, reward, input)

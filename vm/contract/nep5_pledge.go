@@ -70,11 +70,13 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 
 	param := new(cabi.PledgeParam)
 	if err := cabi.NEP5PledgeABI.UnpackMethod(param, cabi.MethodNEP5Pledge, block.Data); err != nil {
+		fmt.Println(err)
 		return errors.New("invalid beneficial address")
 	}
 
-	if info, b := config[param.PType]; !b {
-		return fmt.Errorf("unsupport type %s", param.PType.String())
+	pt := cabi.PledgeType(param.PType)
+	if info, b := config[pt]; !b {
+		return fmt.Errorf("unsupport type %s", pt.String())
 	} else if amount.Compare(types.Balance{Int: info.pledgeAmount}) == types.BalanceCompSmaller {
 		return fmt.Errorf("not enough pledge amount %s, expect %s", amount.String(), info.pledgeAmount)
 	}
@@ -98,14 +100,15 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	amount, _ := ctx.CalculateAmount(input)
 
 	var withdrawTime int64
-	if info, b := config[param.PType]; b {
+	pt := cabi.PledgeType(param.PType)
+	if info, b := config[pt]; b {
 		withdrawTime = time.Unix(input.Timestamp, 0).Add(info.pledgeTime).UTC().Unix()
 	} else {
-		return nil, fmt.Errorf("unsupport type %s", param.PType.String())
+		return nil, fmt.Errorf("unsupport type %s", pt.String())
 	}
 
 	info := cabi.NEP5PledgeInfo{
-		PType:         uint8(param.PType),
+		PType:         param.PType,
 		Amount:        amount.Int,
 		WithdrawTime:  withdrawTime,
 		Beneficial:    param.Beneficial,
@@ -149,7 +152,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	//block.Timestamp = time.Now().UTC().Unix()
 
 	//TODO: query snapshot balance
-	switch param.PType {
+	switch cabi.PledgeType(param.PType) {
 	case cabi.Network:
 		block.Network = amount
 	case cabi.Oracle:
