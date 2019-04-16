@@ -59,6 +59,22 @@ func (b *StateBlock) GetBalance() Balance {
 	return b.Balance
 }
 
+func (b *StateBlock) GetVote() Balance {
+	return b.Vote
+}
+
+func (b *StateBlock) GetOracle() Balance {
+	return b.Oracle
+}
+
+func (b *StateBlock) GetNetwork() Balance {
+	return b.Network
+}
+
+func (b *StateBlock) GetStorage() Balance {
+	return b.Storage
+}
+
 func (b *StateBlock) GetData() []byte {
 	return b.Data
 }
@@ -97,6 +113,10 @@ func (b *StateBlock) GetMessage() Hash {
 
 func (b *StateBlock) GetTimestamp() int64 {
 	return b.Timestamp
+}
+
+func (b *StateBlock) TotalBalance() Balance {
+	return b.Balance.Add(b.Vote).Add(b.Network).Add(b.Oracle).Add(b.Storage)
 }
 
 func (b *StateBlock) Root() Hash {
