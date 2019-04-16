@@ -8,18 +8,18 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
-	"github.com/qlcchain/go-qlc/chain"
 	ss "github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -29,11 +29,14 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 		fmt.Println(err)
 		return err
 	}
-	services, err := startNode()
+	services, err := startNode(accounts, cfg)
 	if err != nil {
 		fmt.Println(err)
 	}
-
+	if err := initDb(); err != nil {
+		fmt.Println(err)
+		return err
+	}
 	cmn.TrapSignal(func() {
 		stopNode(services)
 	})
@@ -50,31 +53,31 @@ func stopNode(services []common.Service) {
 }
 
 func initNode(accounts []*types.Account, cfg *config.Config) error {
-	var err error
-	ctx, err = chain.New(cfg)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
+	eventBus := event.New()
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
-	ctx.Ledger = ss.NewLedgerService(cfg)
-	ctx.Wallet = ss.NewWalletService(cfg)
-	ctx.NetService, err = p2p.NewQlcService(cfg)
+	ledgerService = ss.NewLedgerService(cfg, eventBus)
+	walletService = ss.NewWalletService(cfg)
+	netService, err := ss.NewP2PService(cfg, eventBus)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 
 	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
-	ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, accounts)
-	ctx.RPC = ss.NewRPCService(cfg, ctx.DPosService)
+	dPosService = ss.NewDPosService(cfg, accounts, eventBus)
+	if rPCService, err = ss.NewRPCService(cfg, eventBus); err != nil {
+		return err
+	}
+	if sqliteService, err = ss.NewSqliteService(cfg, eventBus); err != nil {
+		return err
+	}
 
-	ctx.PoVService = ss.NewPoVService(cfg, ctx.NetService)
-	ctx.Miner = ss.NewMinerService(cfg)
+	povService = ss.NewPoVService(cfg, eventBus)
+	minerService = ss.NewMinerService(cfg)
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
-		_ = ctx.NetService.MessageEvent().GetEvent("consensus").Subscribe(p2p.EventConfirmedBlock, func(v interface{}) {
+		_ = eventBus.Subscribe(string(common.EventConfirmedBlock), func(blk *types.StateBlock) {
 			defer func() {
 				if err := recover(); err != nil {
 					fmt.Println(err)
@@ -84,30 +87,48 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 			go func(accounts []*types.Account) {
 				for _, value := range accounts {
 					addr := value.Address()
-					if b, ok := v.(*types.StateBlock); ok {
-						if b.Type == types.Send {
-							address := types.Address(b.Link)
-							if addr.String() == address.String() {
-								var balance types.Balance
-								if b.Token == common.ChainToken() {
-									balance, _ = common.RawToBalance(b.Balance, "QLC")
-									fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", b.Address.String(), address.String(), balance)
-								} else {
-									fmt.Printf("receive block from [%s] to[%s] balance[%s]", b.Address.String(), address.String(), b.Balance.String())
-								}
-								err = receive(b, value)
-								if err != nil {
-									fmt.Printf("err[%s] when generate receive block.\n", err)
-								}
-								break
+					if blk.Type == types.Send {
+						address := types.Address(blk.Link)
+						if addr.String() == address.String() {
+							var balance types.Balance
+							if blk.Token == common.ChainToken() {
+								balance, _ = common.RawToBalance(blk.Balance, "QLC")
+								fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", blk.Address.String(), address.String(), balance)
+							} else {
+								fmt.Printf("receive block from [%s] to[%s] balance[%s]", blk.Address.String(), address.String(), blk.Balance.String())
 							}
+							err = receive(blk, value)
+							if err != nil {
+								fmt.Printf("err[%s] when generate receive block.\n", err)
+							}
+							break
 						}
 					}
 				}
 			}(accounts)
 		})
+	}
 
-		//search pending and generate receive block
+	services = []common.Service{sqliteService, ledgerService, netService, walletService, dPosService, rPCService, povService, minerService}
+
+	return nil
+}
+
+func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service, error) {
+	for _, service := range services {
+		err := service.Init()
+		if err != nil {
+			return nil, err
+		}
+		err = service.Start()
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("%s start successfully.\n", reflect.TypeOf(service))
+	}
+	fmt.Println("qlc node start successfully")
+	//search pending and generate receive block
+	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		go func(l *ledger.Ledger, accounts []*types.Account) {
 			defer func() {
 				if err := recover(); err != nil {
@@ -134,33 +155,17 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 				}
 			}
 
-		}(ctx.Ledger.Ledger, accounts)
-	}
-
-	services = []common.Service{ctx.Ledger, ctx.NetService, ctx.Wallet, ctx.DPosService, ctx.RPC,
-		ctx.PoVService, ctx.Miner}
-
-	return nil
-}
-
-func startNode() ([]common.Service, error) {
-	for _, service := range services {
-		err := service.Init()
-		if err != nil {
-			return nil, err
-		}
-		err = service.Start()
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("%s start successful.\n", reflect.TypeOf(service))
+		}(ledgerService.Ledger, accounts)
 	}
 
 	return services, nil
 }
 
 func receive(sendBlock *types.StateBlock, account *types.Account) error {
-	l := ctx.Ledger.Ledger
+	if rPCService.State() != int32(common.Started) || ledgerService.State() != int32(common.Started) {
+		return errors.New("rpc or ledger service not started")
+	}
+	l := ledgerService.Ledger
 
 	receiveBlock, err := l.GenerateReceiveBlock(sendBlock, account.PrivateKey())
 	if err != nil {
@@ -168,7 +173,7 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 	}
 	fmt.Println(util.ToIndentString(&receiveBlock))
 
-	client, err := ctx.RPC.RPC().Attach()
+	client, err := rPCService.RPC().Attach()
 	if err != nil {
 		fmt.Println("create rpc client error:", err)
 		return err
@@ -187,5 +192,22 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 		return err
 	}
 
+	return nil
+}
+
+func initDb() error {
+	relation := sqliteService.Relation
+	c, err := relation.BlocksCount()
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
+			if err := relation.AddBlock(block); err != nil {
+				return err
+			}
+			return nil
+		})
+	}
 	return nil
 }

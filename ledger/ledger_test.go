@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
@@ -26,10 +28,10 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := NewLedger(dir)
+	l := NewLedger(dir, event.New())
 
 	return func(t *testing.T) {
-		//err := l.db.Erase()
+		//err := l.Store.Erase()
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)
@@ -45,9 +47,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 //var bc, _ = mock.BlockChain()
 
 func TestLedger_Instance1(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
-	l1 := NewLedger(dir)
-	l2 := NewLedger(dir)
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	l1 := NewLedger(dir, event.New())
+	l2 := NewLedger(dir, event.New())
 	t.Logf("l1:%v,l2:%v", l1, l2)
 	defer func() {
 		l1.Close()
@@ -62,10 +64,10 @@ func TestLedger_Instance1(t *testing.T) {
 }
 
 func TestLedger_Instance2(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
-	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
-	l1 := NewLedger(dir)
-	l2 := NewLedger(dir2)
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	dir2 := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	l1 := NewLedger(dir, event.New())
+	l2 := NewLedger(dir2, event.New())
 	defer func() {
 		l1.Close()
 		l2.Close()
@@ -80,16 +82,15 @@ func TestLedger_Instance2(t *testing.T) {
 func TestGetTxn(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	txn := l.db.NewTransaction(false)
+	txn := l.Store.NewTransaction(false)
 	fmt.Println(txn)
 	txn2, flag := l.getTxn(false, txn)
 	if flag {
 		t.Fatal("get txn flag error")
-		if txn != txn2 {
-			t.Fatal("txn!=tnx2")
-		}
 	}
-
+	if txn != txn2 {
+		t.Fatal("txn!=tnx2")
+	}
 }
 
 func TestLedger_Empty(t *testing.T) {
@@ -274,70 +275,6 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("block ,", b)
-}
-
-func TestLedger_GetSenderBlocks(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-	b := mock.StateBlockWithoutWork()
-	s := "18000001111"
-	r := "18011110000"
-	sender, _ := json.Marshal(s)
-	receiver, _ := json.Marshal(r)
-	b.Sender = sender
-	b.Receiver = receiver
-	if err := l.AddStateBlock(b); err != nil {
-		t.Fatal(err)
-	}
-	h, err := l.GetSenderBlocks(sender)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h[0] != b.GetHash() {
-		t.Fatal()
-	}
-	h2, err := l.GetReceiverBlocks(receiver)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h[0] != b.GetHash() || h[0] != h2[0] {
-		t.Fatal()
-	}
-
-	b2 := mock.StateBlockWithoutWork()
-	b2.Sender = sender
-	if err := l.AddStateBlock(b2); err != nil {
-		t.Fatal(err)
-	}
-	h3, err := l.GetSenderBlocks(sender)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(h3) != 2 {
-		t.Fatal()
-	}
-
-	if err := l.DeleteStateBlock(b.GetHash()); err != nil {
-		t.Fatal(err)
-	}
-	h4, err := l.GetSenderBlocks(sender)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(h4) != 1 || h4[0] != b2.GetHash() {
-		t.Fatal()
-	}
-
-	if err := l.DeleteStateBlock(b2.GetHash()); err != nil {
-		t.Fatal(err)
-	}
-	h5, err := l.GetSenderBlocks(sender)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(h5) != 0 {
-		t.Fatal()
-	}
 }
 
 func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
@@ -697,7 +634,7 @@ func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendingin
 	}
 	pendingkey = types.PendingKey{Address: address, Hash: hash}
 	t.Log(pendinginfo)
-	err := l.AddPending(pendingkey, &pendinginfo)
+	err := l.AddPending(&pendingkey, &pendinginfo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -730,7 +667,7 @@ func TestLedger_DeletePending(t *testing.T) {
 
 	pendingkey, _ := addPending(t, l)
 
-	err := l.DeletePending(pendingkey)
+	err := l.DeletePending(&pendingkey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -755,7 +692,7 @@ func TestLedger_SearchPending(t *testing.T) {
 			Type:   mock.Hash(),
 		}
 		k := &types.PendingKey{Address: address, Hash: hash}
-		err := l.AddPending(*k, v)
+		err := l.AddPending(k, v)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -846,8 +783,9 @@ func TestLedger_DeleteFrontier(t *testing.T) {
 func TestReleaseLedger(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
 	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
-	l1 := NewLedger(dir)
-	_ = NewLedger(dir2)
+	eb := event.New()
+	l1 := NewLedger(dir, eb)
+	_ = NewLedger(dir2, eb)
 	defer func() {
 		//only release ledger1
 		l1.Close()
@@ -1154,5 +1092,22 @@ func TestLedger_BlockChild(t *testing.T) {
 	h, err = l.GetChild(b1.GetHash(), b4.GetAddress())
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestLedger_MessageInfo(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	h := mock.Hash()
+	m := []byte{1, 2, 3}
+	if err := l.AddMessageInfo(h, m); err != nil {
+		t.Fatal(err)
+	}
+	m2, err := l.GetMessageInfo(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(m, m2) {
+		t.Fatal("wrong result")
 	}
 }

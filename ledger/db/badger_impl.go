@@ -2,9 +2,10 @@ package db
 
 import (
 	"context"
-	"github.com/dgraph-io/badger/pb"
 	"log"
 	"sort"
+
+	"github.com/dgraph-io/badger/pb"
 
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
@@ -169,6 +170,14 @@ func (t *BadgerStoreTxn) KeyIterator(prefix []byte, fn func([]byte) error) error
 		}
 	}
 	return nil
+}
+
+func (t *BadgerStoreTxn) Drop(prefix []byte) error {
+	if prefix == nil {
+		return t.db.DropAll()
+	} else {
+		return t.db.DropPrefix(prefix)
+	}
 }
 
 func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {

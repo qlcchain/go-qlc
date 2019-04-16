@@ -7,7 +7,7 @@
 
 package config
 
-import "github.com/qlcchain/go-qlc"
+import goqlc "github.com/qlcchain/go-qlc"
 
 type ConfigV2 struct {
 	Version             int    `json:"version"`

@@ -1,38 +1,24 @@
 package p2p
 
 import (
-	"errors"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 )
 
 // QlcService service for qlc p2p network
 type QlcService struct {
-	common.ServiceLifecycle
 	node       *QlcNode
 	dispatcher *Dispatcher
-	msgEvent   *EventQueue
+	msgEvent   event.EventBus
 	msgService *MessageService
 }
 
-func (ns *QlcService) Init() error {
-	if !ns.PreInit() {
-		return errors.New("pre init fail")
-	}
-	defer ns.PostInit()
-
-	return nil
-}
-
-func (ns *QlcService) Status() int32 {
-	return ns.Status()
-}
-
 // NewQlcService create netService
-func NewQlcService(cfg *config.Config) (*QlcService, error) {
+func NewQlcService(cfg *config.Config, eb event.EventBus) (*QlcService, error) {
 	node, err := NewNode(cfg)
 	if err != nil {
 		return nil, err
@@ -40,10 +26,10 @@ func NewQlcService(cfg *config.Config) (*QlcService, error) {
 	ns := &QlcService{
 		node:       node,
 		dispatcher: NewDispatcher(),
-		msgEvent:   NewEventQueue(),
+		msgEvent:   eb,
 	}
 	node.SetQlcService(ns)
-	l := ledger.NewLedger(cfg.LedgerDir())
+	l := ledger.NewLedger(cfg.LedgerDir(), eb)
 	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
 	return ns, nil
@@ -55,21 +41,22 @@ func (ns *QlcService) Node() *QlcNode {
 }
 
 // EventQueue return EventQueue
-func (ns *QlcService) MessageEvent() *EventQueue {
+func (ns *QlcService) MessageEvent() event.EventBus {
 	return ns.msgEvent
 }
 
 // Start start p2p manager.
 func (ns *QlcService) Start() error {
-	if !ns.PreStart() {
-		return errors.New("pre start fail")
-	}
-	defer ns.PostStart()
 	//ns.node.logger.Info("Starting QlcService...")
 
 	// start dispatcher.
 	ns.dispatcher.Start()
 
+	//set event
+	err := ns.setEvent()
+	if err != nil {
+		return err
+	}
 	// start node.
 	if err := ns.node.StartServices(); err != nil {
 		ns.dispatcher.Stop()
@@ -82,17 +69,45 @@ func (ns *QlcService) Start() error {
 	return nil
 }
 
+func (ns *QlcService) setEvent() error {
+	err := ns.msgEvent.SubscribeAsync(string(common.EventBroadcast), ns.Broadcast, false)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.SubscribeAsync(string(common.EventSendMsgToPeers), ns.SendMessageToPeers, false)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (ns *QlcService) unsubscribeEvent() error {
+	err := ns.msgEvent.Unsubscribe(string(common.EventBroadcast), ns.Broadcast)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToPeers), ns.SendMessageToPeers)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	return nil
+}
+
 // Stop stop p2p manager.
 func (ns *QlcService) Stop() error {
-	if !ns.PreStop() {
-		return errors.New("pre stop fail")
-	}
-	defer ns.PostStop()
 	//ns.node.logger.Info("Stopping QlcService...")
 
 	ns.node.Stop()
 	ns.dispatcher.Stop()
 	ns.msgService.Stop()
+	err := ns.unsubscribeEvent()
+	if err != nil {
+		return err
+	}
 	time.Sleep(100 * time.Millisecond)
 	return nil
 }
@@ -108,7 +123,7 @@ func (ns *QlcService) Deregister(subscribers ...*Subscriber) {
 }
 
 // PutMessage put message to dispatcher.
-func (ns *QlcService) PutMessage(msg Message) {
+func (ns *QlcService) PutMessage(msg *Message) {
 	ns.dispatcher.PutMessage(msg)
 }
 

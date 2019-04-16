@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -25,7 +26,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := ledger.NewLedger(dir)
+	l := ledger.NewLedger(dir, event.New())
 
 	return func(t *testing.T) {
 		//err := l.db.Erase()
@@ -63,7 +64,7 @@ func TestLedger_Rollback(t *testing.T) {
 		}
 	}
 
-	h := bc[2].GetHash()
+	h := bc[5].GetHash()
 	if err := l.Rollback(h); err != nil {
 		t.Fatal(err)
 	}

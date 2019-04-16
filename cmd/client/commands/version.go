@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/abiosoft/ishell"
-	"github.com/qlcchain/go-qlc"
+	goqlc "github.com/qlcchain/go-qlc"
 	"github.com/spf13/cobra"
 )
 

@@ -12,6 +12,7 @@ func (z *BlockType) DecodeMsg(dc *msgp.Reader) (err error) {
 		var zb0001 string
 		zb0001, err = dc.ReadString()
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		(*z) = parseString(zb0001)
@@ -23,6 +24,7 @@ func (z *BlockType) DecodeMsg(dc *msgp.Reader) (err error) {
 func (z BlockType) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteString((BlockType).String(z))
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	return
@@ -41,6 +43,7 @@ func (z *BlockType) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		var zb0001 string
 		zb0001, bts, err = msgp.ReadStringBytes(bts)
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		(*z) = parseString(zb0001)

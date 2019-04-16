@@ -2,7 +2,9 @@ package api
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/consensus"
+
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/pkg/errors"
@@ -15,7 +17,7 @@ import (
 type QlcApi struct {
 	ledger   *ledger.Ledger
 	verifier *process.LedgerVerifier
-	dpos     *consensus.DPoS
+	eb       event.EventBus
 	logger   *zap.SugaredLogger
 }
 
@@ -25,8 +27,8 @@ type TokenPending struct {
 	Hash        types.Hash         `json:"hash"`
 }
 
-func NewQlcApi(l *ledger.Ledger, dpos *consensus.DPoS) *QlcApi {
-	return &QlcApi{ledger: l, dpos: dpos, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("rpcapi")}
+func NewQlcApi(l *ledger.Ledger, eb event.EventBus) *QlcApi {
+	return &QlcApi{ledger: l, eb: eb, verifier: process.NewLedgerVerifier(l), logger: log.NewLogger("rpcapi")}
 }
 
 func (q *QlcApi) AccountsBalances(addresses []types.Address) (map[types.Address]map[types.Hash][]types.Balance, error) {
@@ -75,36 +77,36 @@ func (q *QlcApi) AccountsFrontiers(addresses []types.Address) (map[types.Address
 func (q *QlcApi) AccountsPending(addresses []types.Address, n int) (map[types.Address][]*TokenPending, error) {
 	q.logger.Info("addresses", addresses)
 	apMap := make(map[types.Address][]*TokenPending)
-	for _, addr := range addresses {
-		pendingkeys, err := q.ledger.Pending(addr)
-		if err != nil {
-			return nil, err
-		}
-		tps := make([]*TokenPending, 0)
-
-		for _, pendingkey := range pendingkeys {
-			if len(tps) >= n {
-				break
-			}
-			pendinginfo, err := q.ledger.GetPending(*pendingkey)
-			if err != nil {
-				return nil, err
-			}
-
-			token, err := q.ledger.GetTokenById(pendinginfo.Type)
-			if err != nil {
-				return nil, err
-			}
-			tokenname := token.TokenName
-			tp := TokenPending{
-				PendingInfo: pendinginfo,
-				TokenName:   tokenname,
-				Hash:        pendingkey.Hash,
-			}
-			tps = append(tps, &tp)
-		}
-		apMap[addr] = tps
-	}
+	//for _, addr := range addresses {
+	//	pendingkeys, err := q.ctx.Pending(addr)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	tps := make([]*TokenPending, 0)
+	//
+	//	for _, pendingkey := range pendingkeys {
+	//		if len(tps) >= n {
+	//			break
+	//		}
+	//		pendinginfo, err := q.ctx.GetPending(*pendingkey)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//
+	//		token, err := q.ctx.GetTokenById(pendinginfo.Type)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		tokenname := token.TokenName
+	//		tp := TokenPending{
+	//			PendingInfo: pendinginfo,
+	//			TokenName:   tokenname,
+	//			Hash:        pendingkey.Hash,
+	//		}
+	//		tps = append(tps, &tp)
+	//	}
+	//	apMap[addr] = tps
+	//}
 	return apMap, nil
 }
 
@@ -118,28 +120,28 @@ func (q *QlcApi) GetOnlineRepresentatives() []types.Address {
 
 func (q *QlcApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	bs := make([]*APIBlock, 0)
-	for _, h := range hash {
-		b := new(APIBlock)
-		q.logger.Debug(h.String())
-		block, err := q.ledger.GetStateBlock(h)
-		q.logger.Debug(block)
-		if err != nil {
-			return nil, fmt.Errorf("%s, %s", h, err)
-		}
-		b = b.fromStateBlock(block)
-		_, b.Amount, err = q.judgeBlockKind(block)
-		if err != nil {
-			return nil, fmt.Errorf("%s, %s", h, err)
-		}
-		//b.SubType = "state"
-		q.logger.Info("getToken,", block.GetToken())
-		token, err := q.ledger.GetTokenById(block.GetToken())
-		if err != nil {
-			return nil, fmt.Errorf("%s, %s", h, err)
-		}
-		b.TokenName = token.TokenName
-		bs = append(bs, b)
-	}
+	//for _, h := range hash {
+	//	b := new(APIBlock)
+	//	q.logger.Debug(h.String())
+	//	block, err := q.ctx.GetStateBlock(h)
+	//	q.logger.Debug(block)
+	//	if err != nil {
+	//		return nil, fmt.Errorf("%s, %s", h, err)
+	//	}
+	//	b = b.fromStateBlock(block)
+	//	_, b.Amount, err = q.judgeBlockKind(block)
+	//	if err != nil {
+	//		return nil, fmt.Errorf("%s, %s", h, err)
+	//	}
+	//	//b.SubType = "state"
+	//	q.logger.Info("getToken,", block.GetToken())
+	//	token, err := q.ctx.GetTokenById(block.GetToken())
+	//	if err != nil {
+	//		return nil, fmt.Errorf("%s, %s", h, err)
+	//	}
+	//	b.TokenName = token.TokenName
+	//	bs = append(bs, b)
+	//}
 	return bs, nil
 }
 
@@ -149,7 +151,7 @@ func (q *QlcApi) Process(block *types.StateBlock) (types.Hash, error) {
 		return types.ZeroHash, err
 	}
 
-	//if flag != ledger.Other {
+	//if flag != ctx.Other {
 	//
 	//	return block.GetHash(), nil
 	//} else {
@@ -210,41 +212,41 @@ func (q *QlcApi) AccountHistoryTopn(address types.Address, n int) ([]*APIBlock, 
 		return nil, err
 	}
 	fmt.Println("ac", ac)
-	for _, token := range ac.Tokens {
-		h := token.Header
-		count_limit := 0
-
-		for count_limit < n {
-
-			block, err := q.ledger.GetStateBlock(h)
-
-			if err != nil {
-				if err == ledger.ErrBlockNotFound {
-					break
-				}
-				return nil, err
-			}
-
-			b := new(APIBlock)
-			_, b.Amount, err = q.judgeBlockKind(block)
-			if err != nil {
-				q.logger.Info(err)
-				return nil, err
-			}
-			q.logger.Info("token,", block.GetToken())
-			token, err := q.ledger.GetTokenById(block.GetToken())
-			if err != nil {
-				q.logger.Info(err)
-				return nil, err
-			}
-			b.TokenName = token.TokenName
-			b = b.fromStateBlock(block)
-			bs = append(bs, b)
-
-			h = block.GetPrevious()
-			count_limit = count_limit + 1
-		}
-	}
+	//for _, token := range ac.Tokens {
+	//	h := token.Header
+	//	count_limit := 0
+	//
+	//	for count_limit < n {
+	//
+	//		block, err := q.ctx.GetStateBlock(h)
+	//
+	//		if err != nil {
+	//			if err == ctx.ErrBlockNotFound {
+	//				break
+	//			}
+	//			return nil, err
+	//		}
+	//
+	//		b := new(APIBlock)
+	//		_, b.Amount, err = q.judgeBlockKind(block)
+	//		if err != nil {
+	//			q.logger.Info(err)
+	//			return nil, err
+	//		}
+	//		q.logger.Info("token,", block.GetToken())
+	//		token, err := q.ctx.GetTokenById(block.GetToken())
+	//		if err != nil {
+	//			q.logger.Info(err)
+	//			return nil, err
+	//		}
+	//		b.TokenName = token.TokenName
+	//		b = b.fromStateBlock(block)
+	//		bs = append(bs, b)
+	//
+	//		h = block.GetPrevious()
+	//		count_limit = count_limit + 1
+	//	}
+	//}
 	return bs, nil
 }
 
@@ -260,6 +262,6 @@ func (q *QlcApi) ValidateAccount(addr string) bool {
 	return types.IsValidHexAddress(addr)
 }
 
-func (q *QlcApi) Tokens() ([]*types.TokenInfo, error) {
-	return q.ledger.ListTokens()
-}
+//func (q *QlcApi) Tokens() ([]*types.TokenInfo, error) {
+//	return q.ctx.ListTokens()
+//}

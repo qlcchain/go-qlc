@@ -19,6 +19,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
@@ -38,12 +39,13 @@ func init() {
 type checkBlock func(*LedgerVerifier, *types.StateBlock) (ProcessResult, error)
 
 type LedgerVerifier struct {
-	l      *ledger.Ledger
-	logger *zap.SugaredLogger
+	l         *ledger.Ledger
+	vmContext *vmstore.VMContext
+	logger    *zap.SugaredLogger
 }
 
 func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
-	return &LedgerVerifier{l: l, logger: log.NewLogger("ledger_verifier")}
+	return &LedgerVerifier{l: l, logger: log.NewLogger("ledger_verifier"), vmContext: vmstore.NewVMContext(l)}
 }
 
 func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
@@ -267,7 +269,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	//verify data
 	if c, ok, _ := contract.GetChainContract(address, block.Data); ok {
 		clone := block.Clone()
-		if err := c.DoSend(lv.l, clone); err == nil {
+		if err := c.DoSend(lv.vmContext, clone); err == nil {
 			if bytes.EqualFold(block.Data, clone.Data) {
 				return Progress, nil
 			} else {
@@ -301,7 +303,7 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	//check smart c exist
 	send, err := lv.l.GetStateBlock(block.GetLink())
 	if err != nil {
-		return Other, err
+		return GapSource, nil
 	}
 	address := types.Address(send.GetLink())
 
@@ -312,7 +314,8 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	}
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
 		clone := block.Clone()
-		if g, e := c.DoReceive(lv.l, clone, input); e == nil {
+		//TODO:verify extra hash and commit to db
+		if g, e := c.DoReceive(lv.vmContext, clone, input); e == nil {
 			if len(g) > 0 {
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 					g[0].Amount.Compare(block.Balance) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
@@ -387,7 +390,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    hash,
 		}
 		lv.logger.Debug("add pending, ", pendingKey)
-		if err := lv.l.AddPending(pendingKey, &pending, txn); err != nil {
+		if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
 			return err
 		}
 	case types.Open, types.Receive:
@@ -396,7 +399,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    block.GetLink(),
 		}
 		lv.logger.Debug("delete pending, ", pendingKey)
-		if err := lv.l.DeletePending(pendingKey, txn); err != nil {
+		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
 			return err
 		}
 	}

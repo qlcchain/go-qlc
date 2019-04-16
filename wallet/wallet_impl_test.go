@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/util"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -167,7 +169,9 @@ func TestSession_IsAccountExist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(am, am2) {
+	if util.ToString(am) != util.ToString(am2) {
+		t.Log(util.ToIndentString(am))
+		t.Log(util.ToIndentString(am2))
 		t.Fatal("am!=am2")
 	}
 
@@ -399,7 +403,7 @@ func TestSession_GetAccounts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(am, meta) {
+			if util.ToString(am) != util.ToString(meta) {
 				t.Log(am, meta)
 				t.Fatal("save am failed")
 			}

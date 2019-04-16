@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -175,4 +176,33 @@ func TestBadgerStoreTxn_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestBadgerStoreTxn_Drop(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	txn := db.NewTransaction(true)
+	blk := new(types.StateBlock)
+	key := blk.GetHash()
+	val, _ := blk.Serialize()
+	if err := txn.Set(key[:], val); err != nil {
+		t.Fatal(err)
+	}
+	if err := txn.Commit(nil); err != nil {
+		t.Fatal(err)
+	}
+
+	txn = db.NewTransaction(true)
+	if err := txn.Drop(nil); err != nil {
+		t.Fatal(err)
+	}
+	txn.Commit(nil)
+	txn = db.NewTransaction(false)
+	err := txn.Get(key[:], func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err != badger.ErrKeyNotFound {
+		t.Fatal(err)
+	}
+
 }

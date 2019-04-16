@@ -10,9 +10,16 @@ package test
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -20,11 +27,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/test/mock"
-	"math/big"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 var (
@@ -38,53 +40,47 @@ func TestConsensus(t *testing.T) {
 	//bootNode config
 	dir := filepath.Join(config.QlcTestDataDir(), "consensus", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
-	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19740"
-	cfgFile.P2P.Discovery.MDNSEnabled = false
+	cfgFile.P2P.Listen = "/ip4/127.0.0.1/tcp/19740"
 	cfgFile.P2P.BootNodes = []string{}
 	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
-	//new ledger
-	l := services.NewLedgerService(cfgFile)
+	fmt.Printf("bootNode peer id is [%s]\n", cfgFile.P2P.ID.PeerID)
 
+	eventBus := event.New()
+	l := services.NewLedgerService(cfgFile, eventBus)
 	//start bootNode
-	node, err := p2p.NewQlcService(cfgFile)
-	err = node.Init()
-	if err != nil {
-		//t.Fatal(err)
-	}
+	node, err := p2p.NewQlcService(cfgFile, eventBus)
 	err = node.Start()
 	if err != nil {
-		//t.Fatal(err)
+		t.Fatal(err)
 	}
 
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "consensus", uuid.New().String())
 	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19741"
+	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
 	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
+	fmt.Printf("Node1 peer id is [%s]\n", cfgFile1.P2P.ID.PeerID)
+
+	eventBus1 := event.New()
 	//new ledger
-	ledger1 := services.NewLedgerService(cfgFile1)
+	ledger1 := services.NewLedgerService(cfgFile1, eventBus1)
 
 	//storage genesisBlock
 	creatGenesisBlock(ledger1.Ledger)
 
 	//start node1
-	node1, err := p2p.NewQlcService(cfgFile1)
-	err = node1.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node1, err := p2p.NewQlcService(cfgFile1, eventBus1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	//import wallet
-	//importWallet(cfgFile1)
-	//new dpos service
+
+	eventBus2 := event.New()
+
 	var accs []*types.Account
 	accs = append(accs, ac)
-	consensusService1, err := consensus.NewDPoS(cfgFile1, node1, accs)
+	consensusService1, err := consensus.NewDPoS(cfgFile1, accs, eventBus1)
 	//start node1 dpos service
 	err = consensusService1.Init()
 	if err != nil {
@@ -98,28 +94,24 @@ func TestConsensus(t *testing.T) {
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "consensus", uuid.New().String())
 	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19742"
+	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
 	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.P2P.Discovery.MDNSEnabled = false
-	cfgFile2.P2P.Discovery.DiscoveryInterval = 3
+	cfgFile2.P2P.Discovery.DiscoveryInterval = 15
 	cfgFile2.PerformanceEnabled = true
+	fmt.Printf("Node2 peer id is [%s]\n", cfgFile2.P2P.ID.PeerID)
 
 	//new ledger
-	ledger2 := services.NewLedgerService(cfgFile2)
+	ledger2 := services.NewLedgerService(cfgFile2, eventBus2)
 	//storage genesisBlock
 	creatGenesisBlock(ledger2.Ledger)
 	//start node2
-	node2, err := p2p.NewQlcService(cfgFile2)
-	err = node2.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
+	node2, err := p2p.NewQlcService(cfgFile2, eventBus2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	consensusService2 := services.NewDPosService(cfgFile2, node2, nil)
+	consensusService2 := services.NewDPosService(cfgFile2, nil, eventBus2)
 	//start node2 dpos service
 	err = consensusService2.Init()
 	if err != nil {
@@ -200,8 +192,8 @@ func TestConsensus(t *testing.T) {
 	}
 	verifier1 := process.NewLedgerVerifier(ledger1.Ledger)
 	/**/ verifier1.Process(send)
-	node1.Broadcast(p2p.PublishReq, send)
-	time.Sleep(30 * time.Second)
+	node1.Broadcast(common.PublishReq, send)
+	time.Sleep(33 * time.Second)
 	c, err := ledger2.Ledger.CountStateBlocks()
 	if err != nil {
 		t.Fatal(err)
@@ -223,7 +215,6 @@ func creatGenesisBlock(l *ledger.Ledger) {
 	sByte, _ := hex.DecodeString(seed)
 	seed, _ := types.BytesToSeed(sByte)
 	ac, _ = seed.Account(0)
-	fmt.Println(ac.Address())
 	genesisBlock = createBlock(*ac, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(60000000000000000))}, types.Hash(ac.Address()), ac.Address())
 	verifier := process.NewLedgerVerifier(l)
 	verifier.BlockProcess(genesisBlock)

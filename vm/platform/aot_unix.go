@@ -81,7 +81,6 @@ static uint64_t unsafe_invoke_function_2(struct VirtualMachine *vm, void *sym, u
 import "C"
 
 import (
-	"github.com/qlcchain/go-qlc/vm/exec"
 	"io/ioutil"
 	"log"
 	os_exec "os/exec"
@@ -89,6 +88,8 @@ import (
 	"reflect"
 	"runtime"
 	"unsafe"
+
+	"github.com/qlcchain/go-qlc/vm/exec"
 )
 
 //export go_vm_throw_s

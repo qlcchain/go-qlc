@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/qlcchain/go-qlc/vm/exec"
 	"io/ioutil"
+
+	"github.com/qlcchain/go-qlc/vm/exec"
 )
 
 func main() {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/libp2p/go-libp2p-discovery"
-	"github.com/libp2p/go-libp2p-host"
+	discovery "github.com/libp2p/go-libp2p-discovery"
+	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/qlcchain/go-qlc/config"

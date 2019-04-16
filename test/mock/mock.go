@@ -33,6 +33,10 @@ func Hash() types.Hash {
 func AccountMeta(addr types.Address) *types.AccountMeta {
 	var am types.AccountMeta
 	am.Address = addr
+	am.CoinNetwork = types.ZeroBalance
+	am.CoinBalance = types.ZeroBalance
+	am.CoinStorage = types.ZeroBalance
+	am.CoinOracle = types.ZeroBalance
 	am.Tokens = []*types.TokenMeta{}
 	for i := 0; i < 5; i++ {
 		t := TokenMeta(addr)
@@ -126,8 +130,10 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Token = common.ChainToken()
 	sb.Previous = Hash()
 	sb.Representative = common.GenesisAddress()
+	sb.Timestamp = time.Now().Unix()
 	//addr := Address()
 	sb.Link = types.ZeroHash
+	sb.Message = Hash()
 	return sb
 }
 
@@ -205,6 +211,9 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	blk.Timestamp = time.Now().Unix()
 	blk.Link = link
 	blk.Representative = rep
+	blk.Message = Hash()
+	blk.Sender = []byte("15811110000")
+	blk.Receiver = []byte("15800001111")
 	blk.Signature = ac.Sign(blk.GetHash())
 	var w types.Work
 	worker, _ := types.NewWorker(w, blk.Root())

@@ -2,11 +2,12 @@ package abi
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 // Type enumerator

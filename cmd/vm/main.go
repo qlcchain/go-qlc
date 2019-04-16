@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/qlcchain/go-qlc/vm/exec"
-	"github.com/qlcchain/go-qlc/vm/platform"
-	"github.com/qlcchain/go-qlc/vm/resolver"
 	"io/ioutil"
 	"strconv"
 	"time"
+
+	"github.com/qlcchain/go-qlc/vm/exec"
+	"github.com/qlcchain/go-qlc/vm/platform"
+	"github.com/qlcchain/go-qlc/vm/resolver"
 )
 
 func main() {

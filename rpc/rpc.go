@@ -1,14 +1,16 @@
 package rpc
 
 import (
+	"errors"
 	"net"
 	"net/url"
 	"strings"
 	"sync"
 
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
 	"go.uber.org/zap"
@@ -37,22 +39,27 @@ type RPC struct {
 
 	lock sync.RWMutex
 
-	ledger *ledger.Ledger
-	wallet *wallet.WalletStore
-	dpos   *consensus.DPoS
-	logger *zap.SugaredLogger
+	ledger   *ledger.Ledger
+	wallet   *wallet.WalletStore
+	relation *relation.Relation
+	eb       event.EventBus
+	logger   *zap.SugaredLogger
 }
 
-func NewRPC(cfg *config.Config, dpos *consensus.DPoS) *RPC {
-	r := RPC{
-		ledger: ledger.NewLedger(cfg.LedgerDir()),
-		wallet: wallet.NewWalletStore(cfg),
-		dpos:   dpos,
-		config: cfg,
-		logger: log.NewLogger("rpc"),
+func NewRPC(cfg *config.Config, eb event.EventBus) (*RPC, error) {
+	rl, err := relation.NewRelation(cfg, eb)
+	if err != nil {
+		return nil, err
 	}
-	return &r
-
+	r := RPC{
+		ledger:   ledger.NewLedger(cfg.LedgerDir(), eb),
+		wallet:   wallet.NewWalletStore(cfg),
+		relation: rl,
+		eb:       eb,
+		config:   cfg,
+		logger:   log.NewLogger("rpc"),
+	}
+	return &r, nil
 }
 
 // startIPC initializes and starts the IPC RPC endpoint.
@@ -160,6 +167,9 @@ func (r *RPC) Attach() (*Client, error) {
 	//	return nil, ErrNodeStopped
 	//}
 
+	if r.inProcessHandler == nil {
+		return nil, errors.New("server not started")
+	}
 	return DialInProc(r.inProcessHandler), nil
 }
 

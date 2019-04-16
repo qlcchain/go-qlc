@@ -9,7 +9,8 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/qlcchain/go-qlc"
+
+	goqlc "github.com/qlcchain/go-qlc"
 )
 
 type ConfigV1 struct {

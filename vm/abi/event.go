@@ -2,8 +2,9 @@ package abi
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 // Event is an event potentially triggered by the VM's LOG mechanism. The Event

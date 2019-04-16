@@ -10,14 +10,13 @@ package chain
 import (
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/p2p"
 )
 
 type QlcContext struct {
 	Config      *config.Config
 	Wallet      *services.WalletService
 	Ledger      *services.LedgerService
-	NetService  *p2p.QlcService
+	NetService  *services.P2PService
 	DPosService *services.DPosService
 	RPC         *services.RPCService
 	PoVService  *services.PoVService

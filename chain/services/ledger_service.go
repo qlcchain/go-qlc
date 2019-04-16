@@ -11,23 +11,26 @@ import (
 	"errors"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
 type LedgerService struct {
 	common.ServiceLifecycle
 	Ledger *ledger.Ledger
+	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
-func NewLedgerService(cfg *config.Config) *LedgerService {
+func NewLedgerService(cfg *config.Config, eb event.EventBus) *LedgerService {
 	return &LedgerService{
-		Ledger: ledger.NewLedger(cfg.LedgerDir()),
+		Ledger: ledger.NewLedger(cfg.LedgerDir(), eb),
 		logger: log.NewLogger("ledger_service"),
 	}
 }
@@ -40,7 +43,8 @@ func (ls *LedgerService) Init() error {
 	l := ls.Ledger
 
 	genesis := common.GenesisBlock()
-	_ = l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
+	ctx := vmstore.NewVMContext(l)
+	_ = ctx.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
 	verifier := process.NewLedgerVerifier(l)
 	mintageHash := common.GenesisMintageHash()
 	if b, err := l.HasStateBlock(mintageHash); !b && err == nil {
@@ -49,7 +53,9 @@ func (ls *LedgerService) Init() error {
 			ls.logger.Error(err)
 		}
 	} else {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	genesisHash := common.GenesisBlockHash()
@@ -58,12 +64,14 @@ func (ls *LedgerService) Init() error {
 			ls.logger.Error(err)
 		}
 	} else {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	//gas block storage
 	gas := common.GasBlock()
-	_ = l.SetStorage(types.MintageAddress[:], gas.Token[:], gas.Data)
+	_ = ctx.SetStorage(types.MintageAddress[:], gas.Token[:], gas.Data)
 	gasMintageHash := common.GasMintageHash()
 	if b, err := l.HasStateBlock(gasMintageHash); !b && err == nil {
 		gasMintage := common.GasMintageBlock()
@@ -71,7 +79,9 @@ func (ls *LedgerService) Init() error {
 			ls.logger.Error(err)
 		}
 	} else {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	gasHash := common.GasBlockHash()
@@ -80,7 +90,9 @@ func (ls *LedgerService) Init() error {
 			ls.logger.Error(err)
 		}
 	} else {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

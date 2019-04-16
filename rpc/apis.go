@@ -10,7 +10,7 @@ func (r *RPC) getApi(apiModule string) API {
 		return API{
 			Namespace: "qlcclassic",
 			Version:   "1.0",
-			Service:   api.NewQlcApi(r.ledger, r.dpos),
+			Service:   api.NewQlcApi(r.ledger, r.eb),
 			Public:    true,
 		}
 	case "account":
@@ -24,7 +24,7 @@ func (r *RPC) getApi(apiModule string) API {
 		return API{
 			Namespace: "ledger",
 			Version:   "1.0",
-			Service:   api.NewLedgerApi(r.ledger, r.dpos),
+			Service:   api.NewLedgerApi(r.ledger, r.relation, r.eb),
 			Public:    true,
 		}
 	case "net":
@@ -66,7 +66,7 @@ func (r *RPC) getApi(apiModule string) API {
 		return API{
 			Namespace: "sms",
 			Version:   "1.0",
-			Service:   api.NewSMSApi(r.ledger),
+			Service:   api.NewSMSApi(r.ledger, r.relation),
 			Public:    true,
 		}
 	default:
@@ -103,7 +103,7 @@ func (r *RPC) GetWSApis() []API {
 }
 
 func (r *RPC) GetPublicApis() []API {
-	apiModules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms"}
+	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms"}
 	return r.GetApis(apiModules...)
 }
 

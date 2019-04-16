@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/test/mock"
@@ -40,8 +41,16 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 				HTTPEnabled:  true,
 			},
 		}
-		rpc = NewRPC(config, nil)
-		rpc.StartRPC()
+		eb := event.New()
+		var err error
+		rpc, err = NewRPC(config, eb)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = rpc.StartRPC()
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Log("rpc started")
 	}
 	return func(t *testing.T) {

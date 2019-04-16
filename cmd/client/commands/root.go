@@ -118,4 +118,5 @@ func addcommands() {
 	walletList()
 	walletRemove()
 	mintage()
+	generateTestLedger()
 }

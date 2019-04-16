@@ -31,7 +31,7 @@ func TestWalletService_Init(t *testing.T) {
 		t.Fatal(err)
 	}
 	if s.State() != 2 {
-		t.Fatal("ledger init failed")
+		t.Fatal("wallet init failed")
 	}
 	_ = s.Start()
 	err = s.Stop()

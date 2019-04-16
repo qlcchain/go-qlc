@@ -11,9 +11,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"io"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -604,10 +605,12 @@ func (s *Session) setPassword(password string) {
 	if s.password != nil {
 		s.password.Destroy()
 	}
-	var err error
-	s.password, err = crypto.NewSecureString(password)
-	if err != nil {
-		s.logger.Error(err)
+	if len(password) > 0 {
+		var err error
+		s.password, err = crypto.NewSecureString(password)
+		if err != nil {
+			s.logger.Error(err)
+		}
 	}
 }
 

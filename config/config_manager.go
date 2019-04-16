@@ -3,11 +3,12 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/pkg/errors"
 
 	"github.com/qlcchain/go-qlc/common/util"
 )

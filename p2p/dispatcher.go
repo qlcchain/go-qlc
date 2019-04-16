@@ -14,7 +14,7 @@ import (
 type Dispatcher struct {
 	subscribersMap     *sync.Map
 	quitCh             chan bool
-	receivedMessageCh  chan Message
+	receivedMessageCh  chan *Message
 	dispatchedMessages *lru.Cache
 	filters            map[MessageType]bool
 	logger             *zap.SugaredLogger
@@ -25,7 +25,7 @@ func NewDispatcher() *Dispatcher {
 	dp := &Dispatcher{
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
-		receivedMessageCh: make(chan Message, 655350),
+		receivedMessageCh: make(chan *Message, 655350),
 		filters:           make(map[MessageType]bool),
 		logger:            log.NewLogger("dispatcher"),
 	}
@@ -105,7 +105,7 @@ func (dp *Dispatcher) Stop() {
 }
 
 // PutMessage put new message to chan, then subscribers will be notified to process.
-func (dp *Dispatcher) PutMessage(msg Message) {
+func (dp *Dispatcher) PutMessage(msg *Message) {
 	hash := msg.Hash()
 	if dp.filters[msg.MessageType()] {
 		if exist, _ := dp.dispatchedMessages.ContainsOrAdd(hash, hash); exist == true {

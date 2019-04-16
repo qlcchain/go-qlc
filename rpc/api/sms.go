@@ -7,17 +7,22 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
 type SMSApi struct {
-	ledger *ledger.Ledger
-	logger *zap.SugaredLogger
+	ledger    *ledger.Ledger
+	vmContext *vmstore.VMContext
+	relation  *relation.Relation
+	logger    *zap.SugaredLogger
 }
 
-func NewSMSApi(ledger *ledger.Ledger) *SMSApi {
-	return &SMSApi{ledger: ledger, logger: log.NewLogger("api_sms")}
+func NewSMSApi(ledger *ledger.Ledger, relation *relation.Relation) *SMSApi {
+	return &SMSApi{ledger: ledger, vmContext: vmstore.NewVMContext(ledger),
+		relation: relation, logger: log.NewLogger("api_sms")}
 }
 
 func phoneNumberSeri(number string) ([]byte, error) {
@@ -35,7 +40,7 @@ func (s *SMSApi) getApiBlocksByHash(hashes []types.Hash) ([]*APIBlock, error) {
 		if err != nil {
 			return nil, err
 		}
-		b, err := generateAPIBlock(s.ledger, block)
+		b, err := generateAPIBlock(s.vmContext, block)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +55,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	if err != nil {
 		return nil, errors.New("error phone number")
 	}
-	sHash, err := s.ledger.GetSenderBlocks(p)
+	sHash, err := s.relation.PhoneBlocks(p, true)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +63,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	rHash, err := s.ledger.GetReceiverBlocks(p)
+	rHash, err := s.relation.PhoneBlocks(p, false)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +78,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 }
 
 func (s *SMSApi) MessageBlocks(hash types.Hash) ([]*APIBlock, error) {
-	hashes, err := s.ledger.GetMessageBlocks(hash)
+	hashes, err := s.relation.MessageBlocks(hash)
 	if err != nil {
 		return nil, err
 	}

@@ -4,8 +4,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
@@ -19,17 +20,15 @@ const (
 type ActiveTrx struct {
 	confirmed electionStatus
 	dps       *DPoS
-	//roots     map[types.Hash]*Election
-	roots    *sync.Map
-	quitCh   chan bool
-	inactive []types.Hash
+	roots     *sync.Map
+	quitCh    chan bool
+	inactive  []types.Hash
 }
 
 func NewActiveTrx() *ActiveTrx {
 	return &ActiveTrx{
 		quitCh: make(chan bool, 1),
-		//roots:  make(map[types.Hash]*Election),
-		roots: new(sync.Map),
+		roots:  new(sync.Map),
 	}
 }
 
@@ -129,7 +128,8 @@ func (act *ActiveTrx) announceVotes() {
 				}
 			}
 			act.dps.logger.Infof("block [%s] is already confirmed", hash)
-			act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, block)
+			act.dps.eb.Publish(string(common.EventConfirmedBlock), block)
+			//act.dps.ns.MessageEvent().GetEvent("consensus").Notify(p2p.EventConfirmedBlock, block)
 			act.inactive = append(act.inactive, value.(*Election).vote.id)
 			act.rollBack(value.(*Election).status.loser)
 			act.addWinner2Ledger(block)
@@ -143,14 +143,16 @@ func (act *ActiveTrx) announceVotes() {
 					act.dps.logger.Error("vote generate error")
 				} else {
 					act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", hash, block.Parent())
-					act.dps.ns.Broadcast(p2p.ConfirmAck, va)
+					//act.dps.ns.Broadcast(p2p.ConfirmAck, va)
+					act.dps.eb.Publish(string(common.EventBroadcast), common.ConfirmAck, va)
 					value.(*Election).voteAction(va)
 				}
 				return true
 			})
 			if count == 0 {
 				act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
-				act.dps.ns.Broadcast(p2p.ConfirmReq, block)
+				//act.dps.ns.Broadcast(p2p.ConfirmReq, block)
+				act.dps.eb.Publish(string(common.EventBroadcast), common.ConfirmReq, block)
 			}
 			if act.dps.cfg.PerformanceEnabled {
 				if value.(*Election).announcements == 0 {

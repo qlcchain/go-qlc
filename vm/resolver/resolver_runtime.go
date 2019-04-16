@@ -9,8 +9,9 @@ package resolver
 
 import (
 	"encoding/binary"
-	"github.com/qlcchain/go-qlc/vm/exec"
 	"math"
+
+	"github.com/qlcchain/go-qlc/vm/exec"
 )
 
 // see https://github.com/golang/go/blob/master/src/syscall/js/js.go

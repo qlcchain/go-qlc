@@ -14,9 +14,6 @@ import (
 )
 
 type Store interface {
-	smsStore
-	contractStore
-	povStore
 	Empty(txns ...db.StoreTxn) (bool, error)
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
 
@@ -62,9 +59,10 @@ type Store interface {
 	WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ...db.StoreTxn) error
 	CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error)
 	// pending CURD
-	AddPending(pendingKey types.PendingKey, pending *types.PendingInfo, txns ...db.StoreTxn) error
+	AddPending(pendingKey *types.PendingKey, pending *types.PendingInfo, txns ...db.StoreTxn) error
 	GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error)
-	DeletePending(pendingKey types.PendingKey, txns ...db.StoreTxn) error
+	GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error, txns ...db.StoreTxn) error
+	DeletePending(pendingKey *types.PendingKey, txns ...db.StoreTxn) error
 	SearchPending(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error, txns ...db.StoreTxn) error
 	// frontier CURD
 	AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) error
@@ -105,11 +103,41 @@ type Store interface {
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
 
 	//Token
-	ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error)
-	GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.TokenInfo, error)
-	GetTokenByName(tokenName string, txns ...db.StoreTxn) (*types.TokenInfo, error)
+	//ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error)
+	//GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.TokenInfo, error)
+	//GetTokenByName(tokenName string, txns ...db.StoreTxn) (*types.TokenInfo, error)
 	GetGenesis(txns ...db.StoreTxn) ([]*types.StateBlock, error)
 
 	//CalculateAmount calculate block amount by balance and check block type
 	CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (types.Balance, error)
+	AddMessageInfo(mHash types.Hash, message []byte, txns ...db.StoreTxn) error
+	GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, error)
+
+	//POV blocks base CRUD
+	AddPovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error
+	DeletePovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error
+	AddPovHeader(header *types.PovHeader, txns ...db.StoreTxn) error
+	DeletePovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) error
+	GetPovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovHeader, error)
+	HasPovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) bool
+	AddPovBody(height uint64, hash types.Hash, body *types.PovBody, txns ...db.StoreTxn) error
+	DeletePovBody(height uint64, hash types.Hash, txns ...db.StoreTxn) error
+	GetPovBody(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBody, error)
+	AddPovHeight(hash types.Hash, height uint64, txns ...db.StoreTxn) error
+	DeletePovHeight(hash types.Hash, txns ...db.StoreTxn) error
+	GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, error)
+	AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns... db.StoreTxn) error
+	DeletePovTxLookup(txHash types.Hash, txns... db.StoreTxn) error
+
+	// POV best chain CURD
+	AddPovBestHash(height uint64, hash types.Hash, txns ...db.StoreTxn) error
+	DeletePovBestHash(height uint64, txns ...db.StoreTxn) error
+	GetPovBestHash(height uint64, txns ...db.StoreTxn) (types.Hash, error)
+
+	// POV blocks complex queries
+	GetPovBlockByHeightAndHash(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error)
+	GetPovBlockByHeight(height uint64, txns ...db.StoreTxn) (*types.PovBlock, error)
+	GetPovBlockByHash(hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error)
+	GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error
+	GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 }

@@ -9,8 +9,13 @@ package abi
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/log"
+
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -31,7 +36,7 @@ const (
 )
 
 var (
-	ABIMintage, _ = abi.JSONToABIContract(strings.NewReader(jsonMintage))
+	MintageABI, _ = abi.JSONToABIContract(strings.NewReader(jsonMintage))
 )
 
 type ParamMintage struct {
@@ -48,14 +53,64 @@ func ParseTokenInfo(data []byte) (*types.TokenInfo, error) {
 		return nil, errors.New("token info data is nil")
 	}
 	tokenInfo := new(types.TokenInfo)
-	err := ABIMintage.UnpackVariable(tokenInfo, VariableNameToken, data)
-	if err == nil && tokenInfo.PledgeAddress.IsZero() {
-		tokenInfo.PledgeAddress = tokenInfo.Owner
+	if err := MintageABI.UnpackVariable(tokenInfo, VariableNameToken, data); err == nil {
+		return tokenInfo, nil
+	} else {
+		return nil, err
 	}
-	return tokenInfo, err
 }
 
 func NewTokenHash(address types.Address, previous types.Hash, tokenName string) types.Hash {
 	h, _ := types.HashBytes(address[:], previous[:], util.String2Bytes(tokenName))
 	return h
+}
+
+func ListTokens(ctx *vmstore.VMContext) ([]*types.TokenInfo, error) {
+	logger := log.NewLogger("ListTokens")
+	defer func() {
+		logger.Sync()
+	}()
+	var infos []*types.TokenInfo
+	if err := ctx.Iterator(types.MintageAddress[:], func(key []byte, value []byte) error {
+		if len(value) > 0 {
+			if info, err := ParseTokenInfo(value); err == nil {
+				infos = append(infos, info)
+			} else {
+				logger.Error(err)
+			}
+		}
+		return nil
+	}); err == nil {
+		return infos, nil
+	} else {
+		return nil, err
+	}
+}
+
+func GetTokenById(ctx *vmstore.VMContext, tokenId types.Hash) (*types.TokenInfo, error) {
+	if infos, err := ListTokens(ctx); err == nil {
+		for _, v := range infos {
+			if v.TokenId == tokenId {
+				return v, nil
+			}
+		}
+	} else {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("can not find token %s", tokenId.String())
+}
+
+func GetTokenByName(ctx *vmstore.VMContext, tokenName string) (*types.TokenInfo, error) {
+	if infos, err := ListTokens(ctx); err == nil {
+		for _, v := range infos {
+			if v.TokenName == tokenName {
+				return v, nil
+			}
+		}
+	} else {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("can not find token %s", tokenName)
 }

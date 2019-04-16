@@ -8,6 +8,8 @@
 package engine
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -18,7 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/vm/platform"
 	"github.com/qlcchain/go-qlc/vm/resolver"
 	"go.uber.org/zap"
-	"strings"
 )
 
 const (

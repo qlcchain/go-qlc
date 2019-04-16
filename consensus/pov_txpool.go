@@ -2,8 +2,8 @@ package consensus
 
 import (
 	"container/list"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 )
 
@@ -24,10 +24,10 @@ func NewPovTxPool(povImpl *PoVEngine) *PovTxPool {
 }
 
 func (tp *PovTxPool) Start() {
-	ns := tp.povImpl.GetNetService()
-	if ns != nil {
-		event := ns.MessageEvent().GetEvent("consensus")
-		event.Subscribe(p2p.EventConfirmedBlock, tp.onEventConfirmedBlock)
+	eb := tp.povImpl.GetEventBus()
+	if eb != nil {
+		eb.Subscribe(string(common.EventAddRelation), tp.onAddStateBlock)
+		eb.Subscribe(string(common.EventDeleteRelation), tp.onDeleteStateBlock)
 	}
 }
 
@@ -36,10 +36,16 @@ func (tp *PovTxPool) Stop() {
 	tp.accountTxs = nil
 }
 
-func (tp *PovTxPool) onEventConfirmedBlock(v interface{}) {
-	tx := v.(*types.StateBlock)
+func (tp *PovTxPool) onAddStateBlock(tx *types.StateBlock) error {
 	txHash := tx.GetHash()
 	tp.addTx(&txHash, tx)
+	return nil
+}
+
+func (tp *PovTxPool) onDeleteStateBlock(tx *types.StateBlock) error {
+	txHash := tx.GetHash()
+	tp.delTx(&txHash)
+	return nil
 }
 
 func (tp *PovTxPool) addTx(txHash *types.Hash, tx *types.StateBlock) {

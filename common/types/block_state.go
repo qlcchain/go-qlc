@@ -95,6 +95,10 @@ func (b *StateBlock) GetMessage() Hash {
 	return b.Message
 }
 
+func (b *StateBlock) GetTimestamp() int64 {
+	return b.Timestamp
+}
+
 func (b *StateBlock) Root() Hash {
 	if b.Type.Equal(Open) {
 		return b.Address.ToHash()
