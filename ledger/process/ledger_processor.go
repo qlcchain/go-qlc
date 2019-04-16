@@ -488,7 +488,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
-		if err := lv.l.AddOrUpdateAccountMeta(am, txn); err != nil {
+		if err := lv.l.UpdateAccountMeta(am, txn); err != nil {
 			return err
 		}
 	} else {

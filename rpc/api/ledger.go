@@ -396,12 +396,17 @@ func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
 	}
 	bs := make([]*APIBlock, 0)
 	for _, h := range hashes {
-		block, _ := l.ledger.GetStateBlock(h)
-		b, err := generateAPIBlock(l.vmContext, block)
-		if err != nil {
+		block, err := l.ledger.GetStateBlock(h)
+		if err != nil && err != ledger.ErrBlockNotFound {
 			return nil, err
 		}
-		bs = append(bs, b)
+		if block != nil {
+			b, err := generateAPIBlock(l.vmContext, block)
+			if err != nil {
+				return nil, err
+			}
+			bs = append(bs, b)
+		}
 	}
 	return bs, nil
 }

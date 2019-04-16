@@ -1979,13 +1979,13 @@ func (l *Ledger) generateWork(hash types.Hash) types.Work {
 }
 
 func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error) {
-	am, err := l.GetAccountMeta(block.GetAddress())
-	if err != nil {
-		return nil, err
-	}
 	tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken())
 	if err != nil {
 		return nil, errors.New("token not found")
+	}
+	prev, err := l.GetStateBlock(block.GetPrevious())
+	if err != nil {
+		return nil, err
 	}
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		block.Type = types.Send
@@ -1993,10 +1993,10 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 		block.Previous = tm.Header
 		block.Representative = tm.Representative
 		block.Timestamp = time.Now().Unix()
-		block.Vote = am.CoinVote
-		block.Network = am.CoinNetwork
-		block.Oracle = am.CoinOracle
-		block.Storage = am.CoinStorage
+		block.Vote = prev.GetVote()
+		block.Network = prev.GetNetwork()
+		block.Oracle = prev.GetOracle()
+		block.Storage = prev.GetStorage()
 
 		acc := types.NewAccount(prk)
 		block.Signature = acc.Sign(block.GetHash())
@@ -2026,20 +2026,23 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		return nil, err
 	}
 	if has {
-		rxAm, err := l.GetAccountMeta(rxAccount)
+		rxTm, err := l.GetTokenMeta(rxAccount, sendBlock.GetToken())
 		if err != nil {
 			return nil, err
 		}
-		rxTm := rxAm.Token(sendBlock.GetToken())
+		prev, err := l.GetStateBlock(rxTm.Header)
+		if err != nil {
+			return nil, err
+		}
 		if rxTm != nil {
 			sb := types.StateBlock{
 				Type:           types.Receive,
 				Address:        rxAccount,
 				Balance:        rxTm.Balance.Add(info.Amount),
-				Vote:           rxAm.CoinVote,
-				Oracle:         rxAm.CoinOracle,
-				Network:        rxAm.CoinNetwork,
-				Storage:        rxAm.CoinStorage,
+				Vote:           prev.GetVote(),
+				Oracle:         prev.GetOracle(),
+				Network:        prev.GetNetwork(),
+				Storage:        prev.GetStorage(),
 				Previous:       rxTm.Header,
 				Link:           hash,
 				Representative: rxTm.Representative,
@@ -2056,6 +2059,10 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		Type:           types.Open,
 		Address:        rxAccount,
 		Balance:        info.Amount,
+		Vote:           types.ZeroBalance,
+		Oracle:         types.ZeroBalance,
+		Network:        types.ZeroBalance,
+		Storage:        types.ZeroBalance,
 		Previous:       types.ZeroHash,
 		Link:           hash,
 		Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
@@ -2077,19 +2084,23 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	if err != nil {
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
-	tm, err := l.GetTokenMeta(account, common.ChainToken())
-	if err != nil {
+	tm := am.Token(common.ChainToken())
+	if tm == nil {
 		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
+	}
+	prev, err := l.GetStateBlock(tm.Header)
+	if err != nil {
+		return nil, fmt.Errorf("token header block not found")
 	}
 
 	sb := types.StateBlock{
 		Type:           types.Change,
 		Address:        account,
 		Balance:        tm.Balance,
-		Vote:           am.CoinVote,
-		Oracle:         am.CoinOracle,
-		Network:        am.CoinNetwork,
-		Storage:        am.CoinStorage,
+		Vote:           prev.GetVote(),
+		Oracle:         prev.GetOracle(),
+		Network:        prev.GetNetwork(),
+		Storage:        prev.GetStorage(),
 		Previous:       tm.Header,
 		Link:           types.ZeroHash,
 		Representative: representative,
