@@ -46,11 +46,20 @@ type AccountMeta struct {
 //Token get token meta by token type hash
 func (am *AccountMeta) Token(tt Hash) *TokenMeta {
 	for _, token := range am.Tokens {
+		fmt.Printf("token: %p\n", token)
 		if token.Type == tt {
 			return token
 		}
 	}
 	return nil
+}
+
+func (a *AccountMeta) VoteBalance() Balance {
+	return a.CoinBalance.Add(a.CoinVote)
+}
+
+func (a *AccountMeta) TotalBalance() Balance {
+	return a.CoinBalance.Add(a.CoinVote).Add(a.CoinStorage).Add(a.CoinNetwork).Add(a.CoinOracle)
 }
 
 // NewAccount creates a new account with the given private key.
