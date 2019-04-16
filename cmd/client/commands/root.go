@@ -114,4 +114,5 @@ func addcommands() {
 	mintage()
 	generateTestLedger()
 	pledge()
+	withdrawPledge()
 }

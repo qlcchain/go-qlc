@@ -291,9 +291,9 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	}
 
 	//check previous
-	if !block.Previous.IsZero() {
-		return Other, fmt.Errorf("open block previous is not zero")
-	}
+	//if !block.Previous.IsZero() {
+	//	return Other, fmt.Errorf("open block previous is not zero")
+	//}
 
 	//ignore chain genesis block
 	if common.IsGenesisBlock(block) {
