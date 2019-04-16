@@ -317,8 +317,9 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 		//TODO:verify extra hash and commit to db
 		if g, e := c.DoReceive(lv.vmContext, clone, input); e == nil {
 			if len(g) > 0 {
+				amount, _ := lv.l.CalculateAmount(block)
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
-					g[0].Amount.Compare(block.TotalBalance()) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
+					g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
 					return Progress, nil
 				} else {
 					return InvalidData, nil
