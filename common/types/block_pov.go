@@ -21,8 +21,62 @@ type PovHeader struct {
 	Target    Signature `msg:"target,extension" json:"target"`
 	Coinbase  Address   `msg:"coinbase,extension" json:"coinbase"`
 	TxNum     uint32    `msg:"txNum" json:"txNum"`
+	StateHash Hash      `msg:"stateHash,extension" json:"stateHash"`
 
 	Signature Signature `msg:"signature,extension" json:"signature"`
+}
+
+func (header *PovHeader) GetHash() Hash {
+	return header.Hash
+}
+
+func (header *PovHeader) GetPrevious() Hash {
+	return header.Previous
+}
+
+func (header *PovHeader) GetMerkleRoot() Hash {
+	return header.MerkleRoot
+}
+
+func (header *PovHeader) GetNonce() uint64 {
+	return header.Nonce
+}
+
+func (header *PovHeader) GetVoteSignature() Signature {
+	return header.VoteSignature
+}
+
+func (header *PovHeader) GetHeight() uint64 {
+	return header.Height
+}
+
+func (header *PovHeader) GetTimestamp() int64 {
+	return header.Timestamp
+}
+
+func (header *PovHeader) GetTarget() Signature {
+	return header.Target
+}
+
+func (header *PovHeader) GetCoinbase() Address {
+	return header.Coinbase
+}
+
+func (header *PovHeader) GetTxNum() uint32 {
+	return header.TxNum
+}
+
+func (header *PovHeader) GetStateHash() Hash {
+	return header.StateHash
+}
+
+func (header *PovHeader) GetSignature() Signature {
+	return header.Signature
+}
+
+func (header *PovHeader) Copy() *PovHeader {
+	newHeader := *header
+	return &newHeader
 }
 
 func (header *PovHeader) Serialize() ([]byte, error) {
@@ -69,6 +123,7 @@ type PovBlock struct {
 	Target    Signature `msg:"target,extension" json:"target"`
 	Coinbase  Address   `msg:"coinbase,extension" json:"coinbase"`
 	TxNum     uint32    `msg:"txNum" json:"txNum"`
+	StateHash Hash      `msg:"stateHash,extension" json:"stateHash"`
 
 	Signature Signature `msg:"signature,extension" json:"signature"`
 
@@ -89,6 +144,7 @@ func NewPovBlockWithHeader(header *PovHeader) *PovBlock {
 		Target:    header.Target,
 		Coinbase:  header.Coinbase,
 		TxNum:     header.TxNum,
+		StateHash: header.StateHash,
 
 		Signature: header.Signature,
 	}
@@ -133,6 +189,7 @@ func (blk *PovBlock) GetHeader() *PovHeader {
 		Target:    blk.Target,
 		Coinbase:  blk.Coinbase,
 		TxNum:     blk.TxNum,
+		StateHash: blk.StateHash,
 
 		Signature: blk.Signature,
 	}
@@ -184,6 +241,10 @@ func (blk *PovBlock) GetCoinbase() Address {
 
 func (blk *PovBlock) GetTxNum() uint32 {
 	return blk.TxNum
+}
+
+func (blk *PovBlock) GetStateHash() Hash {
+	return blk.StateHash
 }
 
 func (blk *PovBlock) GetSignature() Signature {

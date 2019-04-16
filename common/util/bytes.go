@@ -147,10 +147,18 @@ func Uint32ToBytes(i uint32) []byte {
 	return tmp
 }
 
+func BytesToUint32(buf []byte) uint32 {
+	return binary.BigEndian.Uint32(buf)
+}
+
 func Uint64ToBytes(i uint64) []byte {
 	tmp := make([]byte, 8)
 	binary.LittleEndian.PutUint64(tmp, i)
 	return tmp
+}
+
+func BytesToUint64(buf []byte) uint64 {
+	return binary.LittleEndian.Uint64(buf)
 }
 
 func Int64ToBytes(i int64) []byte {
@@ -165,6 +173,10 @@ func Int2Bytes(i int64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, uint64(i))
 	return b
+}
+
+func Bytes2Int(buf []byte) int64 {
+	return int64(binary.BigEndian.Uint64(buf))
 }
 
 func Bool2Bytes(b bool) []byte {

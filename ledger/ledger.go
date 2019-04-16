@@ -75,10 +75,11 @@ const (
 	idPrefixMessage
 	idPrefixMessageInfo
 	idPrefixOnlineReps
-	idPrefixPovBlockHeader // prefix + height + hash => PovHeader
-	idPrefixPovBlockBody // prefix + height + hash => PovBody
-	idPrefixPovBlockNumber // prefix + hash => height (uint64)
-	idPrefixPovTxLookup // prefix + hash => TxLookup
+	idPrefixPovHeader    // prefix + height + hash => header
+	idPrefixPovBody      // prefix + height + hash => body
+	idPrefixPovHeight    // prefix + hash => height (uint64)
+	idPrefixPovTxLookup  // prefix + txHash => TxLookup
+	idPrefixPovBestHash  // prefix + height => hash
 )
 
 var (
