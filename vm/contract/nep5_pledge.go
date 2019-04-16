@@ -146,28 +146,43 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 			}
 		}
 	}
-
-	block.Type = types.ContractReward
-	block.Address = param.Beneficial
-	block.Token = input.Token
-	block.Link = input.GetHash()
-	block.Data = pledgeData
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
-	//block.Timestamp = time.Now().UTC().Unix()
+	am, _ := ctx.GetAccountMeta(param.Beneficial)
+	if am != nil {
+		tm := am.Token(common.ChainToken())
+		block.Type = types.ContractReward
+		block.Address = param.Beneficial
+		block.Token = input.Token
+		block.Link = input.GetHash()
+		block.Data = pledgeData
+		block.Vote = am.CoinVote
+		block.Network = am.CoinNetwork
+		block.Oracle = am.CoinOracle
+		block.Storage = am.CoinStorage
+		block.Previous = tm.Header
+		block.Representative = tm.Representative
+	} else {
+		block.Type = types.ContractReward
+		block.Address = param.Beneficial
+		block.Token = input.Token
+		block.Link = input.GetHash()
+		block.Data = pledgeData
+		block.Vote = types.ZeroBalance
+		block.Network = types.ZeroBalance
+		block.Oracle = types.ZeroBalance
+		block.Storage = types.ZeroBalance
+		block.Previous = types.ZeroHash
+	}
 
 	//TODO: query snapshot balance
 	switch cabi.PledgeType(param.PType) {
 	case cabi.Network:
-		block.Network = amount
+		block.Network = block.Network.Add(amount)
 	case cabi.Oracle:
-		block.Oracle = amount
+		block.Oracle = block.Oracle.Add(amount)
 	case cabi.Storage:
-		block.Storage = amount
+		block.Storage = block.Storage.Add(amount)
 	case cabi.Vote:
-		block.Vote = amount
+		block.Vote = block.Vote.Add(amount)
 	default:
 		break
 	}
@@ -175,7 +190,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	return []*ContractBlock{
 		{
 			Block:     block,
-			ToAddress: input.Address,
+			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
 			Amount:    amount,
 			Token:     input.Token,
@@ -250,15 +265,22 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		return nil, err
 	}
 
+	am, _ := ctx.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
+	if am == nil {
+		return nil, fmt.Errorf("%s do not found", pledgeInfo.PledgeInfo.PledgeAddress.String())
+	}
+	tm := am.Token(common.ChainToken())
 	block.Type = types.ContractReward
 	block.Address = pledgeInfo.PledgeInfo.PledgeAddress
 	block.Token = input.Token
 	block.Link = input.GetHash()
 	block.Data = data
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
+	block.Vote = am.CoinVote
+	block.Network = am.CoinNetwork
+	block.Oracle = am.CoinOracle
+	block.Storage = am.CoinStorage
+	block.Previous = tm.Header
+	block.Representative = tm.Representative
 
 	return []*ContractBlock{
 		{

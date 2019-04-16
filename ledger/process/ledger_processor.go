@@ -317,8 +317,14 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 		//TODO:verify extra hash and commit to db
 		if g, e := c.DoReceive(lv.vmContext, clone, input); e == nil {
 			if len(g) > 0 {
+				fmt.Println("g[0]:", g[0].Block.String())
+				fmt.Println("block:", block.String())
+				fmt.Println(g[0].Amount)
+				fmt.Println(block.TotalBalance())
+				fmt.Println(g[0].ToAddress)
+				fmt.Println(block.Address)
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
-					g[0].Amount.Compare(block.Balance) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
+					g[0].Amount.Compare(block.TotalBalance()) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
 					return Progress, nil
 				} else {
 					return InvalidData, nil
@@ -340,7 +346,7 @@ func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 		if state, ok := block.(*types.StateBlock); ok {
 			err := lv.processStateBlock(state, txn)
 			if err != nil {
-				lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
+				lv.logger.Error(fmt.Sprintf("err:%s, block:%s", err.Error(), state.GetHash().String()))
 				return err
 			}
 			return nil
@@ -357,25 +363,21 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 		return err
 	}
 
-	am, err := lv.l.GetAccountMeta(block.GetAddress(), txn)
-	if err != nil && err != ledger.ErrAccountNotFound {
-		return fmt.Errorf("get account meta error: %s", err)
-	}
 	tm, err := lv.l.GetTokenMeta(block.GetAddress(), block.GetToken(), txn)
-	if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
-		return fmt.Errorf("get token meta error: %s", err)
+	if err != nil && err != ledger.ErrTokenNotFound && err != ledger.ErrAccountNotFound {
+		return err
 	}
-	if err := lv.updateRepresentative(block, am, tm, txn); err != nil {
-		return fmt.Errorf("update representative error: %s", err)
+	if err := lv.updateRepresentative(block, tm, txn); err != nil {
+		return err
 	}
 	if err := lv.updatePending(block, tm, txn); err != nil {
-		return fmt.Errorf("update pending error: %s", err)
+		return err
 	}
 	if err := lv.updateFrontier(block, tm, txn); err != nil {
-		return fmt.Errorf("update frontier error: %s", err)
+		return err
 	}
-	if err := lv.updateAccountMeta(block, am, txn); err != nil {
-		return fmt.Errorf("update account meta error: %s", err)
+	if err := lv.updateAccountMeta(block, tm, txn); err != nil {
+		return err
 	}
 	return nil
 }
@@ -410,17 +412,16 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	return nil
 }
 
-func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
 	if block.GetToken() == common.ChainToken() {
 		if tm != nil && !tm.Representative.IsZero() {
-			lv.logger.Debugf("sub rep %s from %s ", am.VoteBalance(), tm.Representative)
-			if err := lv.l.SubRepresentation(tm.Representative, am.VoteBalance(), txn); err != nil {
+			lv.logger.Debugf("sub rep %s from %s ", tm.Balance, tm.Representative)
+			if err := lv.l.SubRepresentation(tm.Representative, tm.Balance, txn); err != nil {
 				return err
 			}
 		}
-		add := block.GetBalance().Add(block.GetVote())
-		lv.logger.Debugf("add rep %s to %s ", add, block.GetRepresentative())
-		if err := lv.l.AddRepresentation(block.GetRepresentative(), add, txn); err != nil {
+		lv.logger.Debugf("add rep %s to %s ", block.GetBalance(), block.GetRepresentative())
+		if err := lv.l.AddRepresentation(block.GetRepresentative(), block.GetBalance(), txn); err != nil {
 			return err
 		}
 	}
@@ -452,59 +453,51 @@ func (lv *LedgerVerifier) updateFrontier(block *types.StateBlock, tm *types.Toke
 	return nil
 }
 
-func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
 	address := block.GetAddress()
 	token := block.GetToken()
 	balance := block.GetBalance()
-
-	tmNew := &types.TokenMeta{
-		Type:           token,
-		Header:         hash,
-		Representative: rep,
-		OpenBlock:      hash,
-		Balance:        balance,
-		BlockCount:     1,
-		BelongTo:       address,
-		Modified:       time.Now().Unix(),
-	}
-
-	if am != nil {
-		tm := am.Token(block.GetToken())
-		if block.GetToken() == common.ChainToken() {
-			am.CoinBalance = balance
-			am.CoinOracle = block.GetOracle()
-			am.CoinNetwork = block.GetNetwork()
-			am.CoinVote = block.GetVote()
-			am.CoinStorage = block.GetStorage()
-		}
-		if tm != nil {
-			tm.Header = hash
-			tm.Representative = rep
-			tm.Balance = balance
-			tm.BlockCount = tm.BlockCount + 1
-			tm.Modified = time.Now().Unix()
-		} else {
-			am.Tokens = append(am.Tokens, tmNew)
-		}
-		if err := lv.l.AddOrUpdateAccountMeta(am, txn); err != nil {
+	if tm != nil {
+		tm.Header = hash
+		tm.Representative = rep
+		tm.Balance = balance
+		tm.BlockCount = tm.BlockCount + 1
+		tm.Modified = time.Now().Unix()
+		lv.logger.Debug("update tokenmeta, ", *tm)
+		if err := lv.l.UpdateTokenMeta(address, tm, txn); err != nil {
 			return err
 		}
 	} else {
-		account := types.AccountMeta{
-			Address: address,
-			Tokens:  []*types.TokenMeta{tmNew},
-		}
-		if block.GetToken() == common.ChainToken() {
-			account.CoinBalance = balance
-			account.CoinOracle = block.GetOracle()
-			account.CoinNetwork = block.GetNetwork()
-			account.CoinVote = block.GetVote()
-			account.CoinStorage = block.GetStorage()
-		}
-		if err := lv.l.AddAccountMeta(&account, txn); err != nil {
+		acExist, err := lv.l.HasAccountMeta(address, txn)
+		if err != nil {
 			return err
+		}
+		tmNew := types.TokenMeta{
+			Type:           token,
+			Header:         hash,
+			Representative: rep,
+			OpenBlock:      hash,
+			Balance:        balance,
+			BlockCount:     1,
+			BelongTo:       address,
+			Modified:       time.Now().Unix(),
+		}
+		if acExist {
+			lv.logger.Debug("add tokenmeta,", token)
+			if err := lv.l.AddTokenMeta(address, &tmNew, txn); err != nil {
+				return err
+			}
+		} else {
+			account := types.AccountMeta{
+				Address: address,
+				Tokens:  []*types.TokenMeta{&tmNew},
+			}
+			lv.logger.Debug("add accountmeta,", token)
+			if err := lv.l.AddAccountMeta(&account, txn); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
