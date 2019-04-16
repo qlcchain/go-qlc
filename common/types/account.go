@@ -46,7 +46,6 @@ type AccountMeta struct {
 //Token get token meta by token type hash
 func (am *AccountMeta) Token(tt Hash) *TokenMeta {
 	for _, token := range am.Tokens {
-		fmt.Printf("token: %p\n", token)
 		if token.Type == tt {
 			return token
 		}
