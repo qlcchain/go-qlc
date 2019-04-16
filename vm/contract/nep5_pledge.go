@@ -154,6 +154,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		block.Token = input.Token
 		block.Link = input.GetHash()
 		block.Data = pledgeData
+		block.Balance = am.CoinBalance
 		block.Vote = am.CoinVote
 		block.Network = am.CoinNetwork
 		block.Oracle = am.CoinOracle
@@ -281,7 +282,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	block.Storage = am.CoinStorage
 	block.Previous = tm.Header
 	block.Representative = tm.Representative
-
+	block.Balance = am.CoinBalance.Add(amount)
 	return []*ContractBlock{
 		{
 			Block:     block,
