@@ -10,7 +10,6 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"time"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -65,10 +64,6 @@ func pledge() {
 				pledgeAccountP = StringVar(c.Args, pledgeAccount)
 				amountP = StringVar(c.Args, amount)
 				pTypeP = StringVar(c.Args, pType)
-				if err != nil {
-					Warn(err)
-					return
-				}
 
 				fmt.Println(beneficialAccountP, pledgeAccountP, amountP, pTypeP)
 				if err := pledgeAction(beneficialAccountP, pledgeAccountP, amountP, pTypeP); err != nil {
@@ -128,17 +123,11 @@ func pledgeAction(beneficialAccount, pledgeAccount, amount, pType string) error 
 	if err != nil {
 		return err
 	}
-	send.Timestamp = time.Now().UTC().Unix()
 	sendHash := send.GetHash()
 	send.Signature = p.Sign(sendHash)
 	var w types.Work
 	worker, _ := types.NewWorker(w, send.Root())
 	send.Work = worker.NewWork()
-
-	err = client.Call(nil, "ledger_process", &send)
-	if err != nil {
-		return err
-	}
 
 	reward := types.StateBlock{}
 	err = client.Call(&reward, "pledge_getPledgeRewardBlock", &send)
@@ -146,11 +135,16 @@ func pledgeAction(beneficialAccount, pledgeAccount, amount, pType string) error 
 	if err != nil {
 		return err
 	}
-	reward.Timestamp = time.Now().UTC().Unix()
 	reward.Signature = b.Sign(reward.GetHash())
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
+
+	//TODO: batch process send/reward
+	err = client.Call(nil, "ledger_process", &send)
+	if err != nil {
+		return err
+	}
 
 	err = client.Call(nil, "ledger_process", &reward)
 	if err != nil {

@@ -117,12 +117,15 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 
 	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, input.Timestamp)
 
-	if oldPledgeData, err := ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
+	var pledgeData []byte
+	var err error
+	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	} else {
-		if len(oldPledgeData) > 0 {
+		// already exist,verify data
+		if len(pledgeData) > 0 {
 			oldPledge := new(cabi.NEP5PledgeInfo)
-			err := cabi.NEP5PledgeABI.UnpackVariable(oldPledge, cabi.VariableNEP5PledgeInfo, oldPledgeData)
+			err := cabi.NEP5PledgeABI.UnpackVariable(oldPledge, cabi.VariableNEP5PledgeInfo, pledgeData)
 			if err != nil {
 				return nil, err
 			}
@@ -130,21 +133,25 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 				oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType {
 				return nil, errors.New("invalid saved pledge info")
 			}
+		} else {
+			// save data
+			pledgeData, err = cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, info.PType, info.Amount,
+				info.WithdrawTime, info.Beneficial, info.PledgeAddress)
+			if err != nil {
+				return nil, err
+			}
+			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData)
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-
-	newPledgeInfo, _ := cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, info.PType, info.Amount,
-		info.Beneficial, info.PledgeAddress)
-	err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, newPledgeInfo)
-	if err != nil {
-		return nil, err
 	}
 
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
 	block.Token = input.Token
 	block.Link = input.GetHash()
-	block.Data = newPledgeInfo
+	block.Data = pledgeData
 	block.Vote = types.ZeroBalance
 	block.Network = types.ZeroBalance
 	block.Oracle = types.ZeroBalance
@@ -172,7 +179,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 			BlockType: types.ContractReward,
 			Amount:    amount,
 			Token:     input.Token,
-			Data:      newPledgeInfo,
+			Data:      pledgeData,
 		},
 	}, nil
 }

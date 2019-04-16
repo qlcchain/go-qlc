@@ -108,7 +108,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 }
 
 func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
-	reward := &types.StateBlock{}
+	reward := &types.StateBlock{Timestamp: time.Now().UTC().Unix()}
 
 	blocks, err := p.pledge.DoReceive(p.vmContext, reward, input)
 	if err != nil {
