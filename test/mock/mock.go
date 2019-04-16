@@ -82,6 +82,10 @@ func StateBlock() *types.StateBlock {
 	i, _ := random.Intn(math.MaxInt16)
 	sb.Type = types.State
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
+	sb.Vote = types.ZeroBalance
+	sb.Oracle = types.ZeroBalance
+	sb.Network = types.ZeroBalance
+	sb.Storage = types.ZeroBalance
 	sb.Address = a.Address()
 	sb.Token = common.ChainToken()
 	sb.Previous = Hash()
@@ -208,6 +212,10 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	blk.Previous = pre
 	blk.Token = token
 	blk.Balance = balance
+	blk.Vote = types.ZeroBalance
+	blk.Oracle = types.ZeroBalance
+	blk.Network = types.ZeroBalance
+	blk.Storage = types.ZeroBalance
 	blk.Timestamp = time.Now().Unix()
 	blk.Link = link
 	blk.Representative = rep
