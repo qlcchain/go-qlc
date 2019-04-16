@@ -121,9 +121,9 @@ func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 		}
 
 		//check balance
-		if previous.Balance.Compare(block.Balance) == types.BalanceCompSmaller {
-			return BalanceMismatch, nil
-		}
+		//if previous.Balance.Compare(block.Balance) == types.BalanceCompSmaller {
+		//	return BalanceMismatch, nil
+		//}
 	}
 
 	return Progress, nil

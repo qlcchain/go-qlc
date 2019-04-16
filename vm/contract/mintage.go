@@ -73,7 +73,7 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 
 func verifyToken(param cabi.ParamMintage) error {
 	if param.TotalSupply.Cmp(util.Tt256m1) > 0 ||
-		param.TotalSupply.Cmp(new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)) < 0 ||
+		//param.TotalSupply.Cmp(new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)) < 0 ||
 		len(param.TokenName) == 0 || len(param.TokenName) > tokenNameLengthMax ||
 		len(param.TokenSymbol) == 0 || len(param.TokenSymbol) > tokenSymbolLengthMax {
 		return errors.New("invalid token param")
@@ -130,6 +130,7 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 	block.Storage = types.ZeroBalance
 	block.Network = types.ZeroBalance
 	block.Oracle = types.ZeroBalance
+	block.Timestamp = time.Now().UTC().Unix()
 
 	if _, err := ledger.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
 		//return nil, fmt.Errorf("invalid token")
@@ -186,10 +187,9 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	_ = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, ti)
 
 	now := time.Now().UTC().Unix()
-
 	if tokenInfo.Owner != input.Address ||
 		tokenInfo.PledgeAmount.Sign() == 0 ||
-		now > input.Timestamp {
+		now < tokenInfo.WithdrawTime {
 		return nil, errors.New("cannot withdraw mintage pledge, status error")
 	}
 
@@ -220,9 +220,30 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	block.Storage = am.CoinStorage
 	block.Network = am.CoinNetwork
 	block.Previous = tm.Header
+	block.Timestamp = time.Now().UTC().Unix()
 
-	if err := ctx.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
+	var pledgeData []byte
+	if pledgeData, err = ctx.GetStorage(types.MintageAddress[:], tokenId[:]); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
+	} else {
+		// already exist,verify data
+		if len(pledgeData) > 0 {
+			oldPledge := new(types.TokenInfo)
+			err := cabi.MintageABI.UnpackVariable(oldPledge, cabi.VariableNameToken, pledgeData)
+			if err != nil {
+				return nil, err
+			}
+			if oldPledge.PledgeAddress != tokenInfo.PledgeAddress || oldPledge.WithdrawTime != tokenInfo.WithdrawTime ||
+				oldPledge.TokenId != tokenInfo.TokenId || oldPledge.Owner != tokenInfo.Owner || oldPledge.Decimals != tokenInfo.Decimals ||
+				oldPledge.TotalSupply.String() != tokenInfo.TotalSupply.String() || oldPledge.TokenSymbol != tokenInfo.TokenSymbol ||
+				oldPledge.TokenName != tokenInfo.TokenName || oldPledge.PledgeAmount.String() != tokenInfo.PledgeAmount.String() {
+				return nil, errors.New("invalid saved mine info")
+			}
+		} else {
+			if err := ctx.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	if tokenInfo.PledgeAmount.Sign() > 0 {

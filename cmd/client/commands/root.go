@@ -115,4 +115,5 @@ func addcommands() {
 	generateTestLedger()
 	pledge()
 	withdrawPledge()
+	withdrawMintage()
 }
