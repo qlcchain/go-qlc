@@ -1,7 +1,7 @@
-// +build  mainnet
+// +build  testnet
 
 /*
- * Copyright (c) 2018 QLC Chain Team
+ * Copyright (c) 2019 QLC Chain Team
  *
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
@@ -56,20 +56,23 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "Application Support", cfgDir)
+			d := cfgDir + suffix
+			return filepath.Join(home, "Library", "Application Support", d)
 		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", cfgDir)
+			d := cfgDir + suffix
+			return filepath.Join(home, "AppData", "Roaming", d)
 		} else {
-			return filepath.Join(home, nixCfgDir)
+			d := nixCfgDir + suffix
+			return filepath.Join(home, d)
 		}
 	}
 	return ""
 }
 
 func defaultIPCEndpoint() string {
-	dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
+	dir := filepath.Join(DefaultDataDir(), "gqlc_test.ipc")
 	if runtime.GOOS == "windows" {
-		return `\\.\pipe\gqlc.ipc`
+		return `\\.\pipe\gqlc-test.ipc`
 	}
 	return dir
 }

@@ -1,4 +1,11 @@
-package commands
+/*
+ * Copyright (c) 2019 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
+package util
 
 import (
 	"errors"
@@ -11,6 +18,14 @@ import (
 )
 
 var prefix = "--"
+
+type Flag struct {
+	Name  string
+	Usage string
+	Must  bool
+	Value interface{}
+}
+
 
 func sliceIndex(array []string, s string) int {
 	for i, a := range array {
@@ -65,7 +80,7 @@ func CheckArgs(c *ishell.Context, args []Flag) error {
 	rawArgs := c.Args
 	argsMap := make(map[string]interface{})
 
-	args = append(args, commonFlag...)
+	//args = append(args, commonFlag...)
 	for _, a := range args {
 		argsMap[prefix+a.Name] = a.Value
 		i := sliceIndex(rawArgs, prefix+a.Name)

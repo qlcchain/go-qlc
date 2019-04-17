@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -24,7 +25,6 @@ import (
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
 	ss "github.com/qlcchain/go-qlc/chain/services"
-	"github.com/qlcchain/go-qlc/cmd/client/commands"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -46,12 +46,12 @@ var (
 	cfgPathP    string
 	isProfileP  bool
 
-	privateKey commands.Flag
-	account    commands.Flag
-	password   commands.Flag
-	seed       commands.Flag
-	cfgPath    commands.Flag
-	isProfile  commands.Flag
+	privateKey cmdutil.Flag
+	account    cmdutil.Flag
+	password   cmdutil.Flag
+	seed       cmdutil.Flag
+	cfgPath    cmdutil.Flag
+	isProfile  cmdutil.Flag
 
 	//ctx            *chain.QlcContext
 	ledgerService  *ss.LedgerService
@@ -249,38 +249,38 @@ func seedToAccounts(data []byte) ([]*types.Account, error) {
 }
 
 func run() {
-	account = commands.Flag{
+	account = cmdutil.Flag{
 		Name:  "account",
 		Must:  false,
 		Usage: "wallet address,if is nil,just run a node",
 		Value: "",
 	}
-	password = commands.Flag{
+	password = cmdutil.Flag{
 		Name:  "password",
 		Must:  false,
 		Usage: "password for wallet",
 		Value: "",
 	}
-	seed = commands.Flag{
+	seed = cmdutil.Flag{
 		Name:  "seed",
 		Must:  false,
 		Usage: "seed for wallet,if is nil,just run a node",
 		Value: "",
 	}
-	privateKey = commands.Flag{
+	privateKey = cmdutil.Flag{
 		Name:  "privateKey",
 		Must:  false,
 		Usage: "account private key",
 		Value: "",
 	}
-	cfgPath = commands.Flag{
+	cfgPath = cmdutil.Flag{
 		Name:  "config",
 		Must:  false,
 		Usage: "config file path",
 		Value: "",
 	}
 
-	isProfile = commands.Flag{
+	isProfile = cmdutil.Flag{
 		Name:  "profile",
 		Must:  false,
 		Usage: "enable profile",
@@ -291,24 +291,24 @@ func run() {
 		Name: "run",
 		Help: "start qlc server",
 		Func: func(c *ishell.Context) {
-			args := []commands.Flag{seed, cfgPath, isProfile}
-			if commands.HelpText(c, args) {
+			args := []cmdutil.Flag{seed, cfgPath, isProfile}
+			if cmdutil.HelpText(c, args) {
 				return
 			}
-			if err := commands.CheckArgs(c, args); err != nil {
-				commands.Warn(err)
+			if err := cmdutil.CheckArgs(c, args); err != nil {
+				cmdutil.Warn(err)
 				return
 			}
-			accountP = commands.StringVar(c.Args, account)
-			passwordP = commands.StringVar(c.Args, password)
-			privateKeyP = commands.StringVar(c.Args, privateKey)
-			seedP = commands.StringVar(c.Args, seed)
-			cfgPathP = commands.StringVar(c.Args, cfgPath)
-			isProfileP = commands.BoolVar(c.Args, isProfile)
+			accountP = cmdutil.StringVar(c.Args, account)
+			passwordP = cmdutil.StringVar(c.Args, password)
+			privateKeyP = cmdutil.StringVar(c.Args, privateKey)
+			seedP = cmdutil.StringVar(c.Args, seed)
+			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
+			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
 
 			err := start()
 			if err != nil {
-				commands.Warn(err)
+				cmdutil.Warn(err)
 			}
 		},
 	}

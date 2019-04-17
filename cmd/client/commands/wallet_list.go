@@ -9,6 +9,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/pkg/errors"
@@ -23,16 +24,16 @@ func walletList() {
 			Name: "walletlist",
 			Help: "return wallet list",
 			Func: func(c *ishell.Context) {
-				if HelpText(c, nil) {
+				if util.HelpText(c, nil) {
 					return
 				}
-				if err := CheckArgs(c, nil); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, nil); err != nil {
+					util.Warn(err)
 					return
 				}
 				err := wallets()
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 
@@ -72,7 +73,7 @@ func wallets() error {
 	} else {
 		for _, v := range addresses {
 			if interactive {
-				Info(v)
+				util.Info(v)
 			} else {
 				fmt.Println(v)
 			}

@@ -9,6 +9,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -19,7 +20,7 @@ import (
 func balance() {
 	var addresses []string
 	if interactive {
-		address := Flag{
+		address := util.Flag{
 			Name:  "address",
 			Must:  true,
 			Usage: "address for account",
@@ -29,18 +30,18 @@ func balance() {
 			Name: "balance",
 			Help: "balance for accounts",
 			Func: func(c *ishell.Context) {
-				args := []Flag{address}
-				if HelpText(c, args) {
+				args := []util.Flag{address}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := CheckArgs(c, args); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				addresses = StringSliceVar(c.Args, address)
+				addresses = util.StringSliceVar(c.Args, address)
 				err := accountBalance(addresses)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
@@ -86,7 +87,7 @@ func accountBalance(addresses []string) error {
 		}
 		if value, ok := resp[addr]; ok {
 			if interactive {
-				Info(a, ":")
+				util.Info(a, ":")
 			} else {
 				fmt.Println(a, ":")
 			}
@@ -96,7 +97,7 @@ func accountBalance(addresses []string) error {
 			}
 		} else {
 			if interactive {
-				Info(a, " not found")
+				util.Info(a, " not found")
 			} else {
 				fmt.Println(a, " not found")
 			}

@@ -9,6 +9,7 @@ package commands
 
 import (
 	"github.com/abiosoft/ishell"
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/spf13/cobra"
 )
 
@@ -19,25 +20,25 @@ func batchSend() {
 	var amountP string
 
 	if interactive {
-		from := Flag{
+		from := util.Flag{
 			Name:  "from",
 			Must:  true,
 			Usage: "send account private key",
 			Value: "",
 		}
-		to := Flag{
+		to := util.Flag{
 			Name:  "to",
 			Must:  true,
 			Usage: "receive accounts",
 			Value: "",
 		}
-		token := Flag{
+		token := util.Flag{
 			Name:  "token",
 			Must:  false,
 			Usage: "token name for send action(defalut is QLC)",
 			Value: "QLC",
 		}
-		amount := Flag{
+		amount := util.Flag{
 			Name:  "amount",
 			Must:  true,
 			Usage: "send amount",
@@ -47,26 +48,26 @@ func batchSend() {
 			Name: "batchsend",
 			Help: "batch send transaction",
 			Func: func(c *ishell.Context) {
-				args := []Flag{from, to, token, amount}
-				if HelpText(c, args) {
+				args := []util.Flag{from, to, token, amount}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := CheckArgs(c, args); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				fromAccountP = StringVar(c.Args, from)
-				toAccountsP = StringSliceVar(c.Args, to)
-				tokenP := StringVar(c.Args, token)
-				amountP := StringVar(c.Args, amount)
+				fromAccountP = util.StringVar(c.Args, from)
+				toAccountsP = util.StringSliceVar(c.Args, to)
+				tokenP := util.StringVar(c.Args, token)
+				amountP := util.StringVar(c.Args, amount)
 
 				for _, toAccount := range toAccountsP {
 					if err := sendAction(fromAccountP, toAccount, tokenP, amountP); err != nil {
-						Warn(err)
+						util.Warn(err)
 						return
 					}
 				}
-				Info("batch transaction done")
+				util.Info("batch transaction done")
 			},
 		}
 		shell.AddCmd(c)

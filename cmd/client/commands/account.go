@@ -10,6 +10,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -21,13 +22,13 @@ func account() {
 	var seedP string
 
 	if interactive {
-		count := Flag{
+		count := util.Flag{
 			Name:  "count",
 			Must:  false,
 			Usage: "account count",
 			Value: 10,
 		}
-		seed := Flag{
+		seed := util.Flag{
 			Name:  "seed",
 			Must:  false,
 			Usage: "account seed",
@@ -38,23 +39,23 @@ func account() {
 			Name: "account",
 			Help: "generate account",
 			Func: func(c *ishell.Context) {
-				args := []Flag{count, seed}
-				if HelpText(c, args) {
+				args := []util.Flag{count, seed}
+				if util.HelpText(c, args) {
 					return
 				}
-				err := CheckArgs(c, args)
+				err := util.CheckArgs(c, args)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
-				countP, err = IntVar(c.Args, count)
+				countP, err = util.IntVar(c.Args, count)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
-				seedP = StringVar(c.Args, seed)
+				seedP = util.StringVar(c.Args, seed)
 				if err := accountAction(countP, seedP); err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
@@ -92,14 +93,14 @@ func accountAction(countP int, seedP string) error {
 			return err
 		}
 		if interactive {
-			Info("account created:")
+			util.Info("account created:")
 		}
 		fmt.Println("Seed:", s.String())
 		fmt.Println("Address:", a.Address())
 		fmt.Println("Private:", hex.EncodeToString(a.PrivateKey()))
 	} else {
 		if interactive {
-			Info(fmt.Sprintf("%d accounts created:", countP))
+			util.Info(fmt.Sprintf("%d accounts created:", countP))
 		}
 		for i := 0; i < countP; i++ {
 			seed, err := types.NewSeed()

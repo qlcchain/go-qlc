@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -26,25 +27,25 @@ func send() {
 	var amountP string
 
 	if interactive {
-		from := Flag{
+		from := util.Flag{
 			Name:  "from",
 			Must:  true,
 			Usage: "send account private key",
 			Value: "",
 		}
-		to := Flag{
+		to := util.Flag{
 			Name:  "to",
 			Must:  true,
 			Usage: "receive account",
 			Value: "",
 		}
-		token := Flag{
+		token := util.Flag{
 			Name:  "token",
 			Must:  false,
 			Usage: "token name for send action(defalut is QLC)",
 			Value: "QLC",
 		}
-		amount := Flag{
+		amount := util.Flag{
 			Name:  "amount",
 			Must:  true,
 			Usage: "send amount",
@@ -54,24 +55,24 @@ func send() {
 			Name: "send",
 			Help: "send transaction",
 			Func: func(c *ishell.Context) {
-				args := []Flag{from, to, token, amount}
-				if HelpText(c, args) {
+				args := []util.Flag{from, to, token, amount}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := CheckArgs(c, args); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				fromP := StringVar(c.Args, from)
-				toP := StringVar(c.Args, to)
-				tokenP := StringVar(c.Args, token)
-				amountP := StringVar(c.Args, amount)
+				fromP := util.StringVar(c.Args, from)
+				toP := util.StringVar(c.Args, to)
+				tokenP := util.StringVar(c.Args, token)
+				amountP := util.StringVar(c.Args, amount)
 				err := sendAction(fromP, toP, tokenP, amountP)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
-				Info("send transaction success!")
+				util.Info("send transaction success!")
 			},
 		}
 		shell.AddCmd(c)
@@ -141,7 +142,7 @@ func sendTx(account *types.Account, to types.Address, token string, amount types
 	from := account.Address()
 	s := fmt.Sprintf("send %s from %s to %s （hash: %s）", token, from.String(), to.String(), sendBlock.GetHash())
 	if interactive {
-		Info(s)
+		util.Info(s)
 	} else {
 		fmt.Println(s)
 	}
