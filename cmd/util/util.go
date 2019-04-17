@@ -26,7 +26,6 @@ type Flag struct {
 	Value interface{}
 }
 
-
 func sliceIndex(array []string, s string) int {
 	for i, a := range array {
 		if a == s {

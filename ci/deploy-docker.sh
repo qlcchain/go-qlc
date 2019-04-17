@@ -6,12 +6,10 @@ scripts="$(dirname "$0")"
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 tags=()
-if [ -n "$TRAVIS_TAG" ]; then
+if [[ -n "$TRAVIS_TAG" ]]; then
     tags+=("$TRAVIS_TAG" latest)
-elif [ -n "$TRAVIS_BRANCH" ]; then
-    if [ "$TRAVIS_BRANCH" = "master" ]; then
-        tags+=(latest)
-    else
+elif [[ -n "$TRAVIS_BRANCH" ]]; then
+    if [[ "$TRAVIS_BRANCH" != "master" ]]; then
         tags+=("$TRAVIS_BRANCH")
     fi
 fi
