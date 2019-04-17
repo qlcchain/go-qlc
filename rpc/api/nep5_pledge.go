@@ -42,6 +42,7 @@ type PledgeParam struct {
 	PledgeAddress types.Address
 	Amount        types.Balance
 	PType         string
+	NEP5TxId      string
 }
 
 func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
@@ -60,11 +61,11 @@ func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
 		return nil, fmt.Errorf("unsupport pledge type %s", param.PType)
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, t)
+	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, t, param.NEP5TxId)
 }
 
 func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, error) {
-	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 {
+	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
 

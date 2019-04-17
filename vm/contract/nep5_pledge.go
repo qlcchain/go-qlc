@@ -22,7 +22,8 @@ import (
 )
 
 var (
-	minPledgeTime = time.Duration(24 * 30 * 6) // minWithdrawTime 6 months)
+	//minPledgeTime = time.Duration(24 * 30 * 6) // minWithdrawTime 6 months)
+	minPledgeTime = time.Duration(10 * time.Second) // minWithdrawTime 6 months)
 	config        = map[cabi.PledgeType]pledgeInfo{
 		cabi.Network: {
 			pledgeTime:   minPledgeTime,
@@ -87,7 +88,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 	}
 
 	block.Data, err = cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial,
-		param.PledgeAddress, uint8(param.PType))
+		param.PledgeAddress, uint8(param.PType), param.NEP5TxId)
 	if err != nil {
 		return err
 	}
@@ -113,6 +114,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		WithdrawTime:  withdrawTime,
 		Beneficial:    param.Beneficial,
 		PledgeAddress: param.PledgeAddress,
+		NEP5TxId:      param.NEP5TxId,
 	}
 
 	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, input.Timestamp)
@@ -130,13 +132,14 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 				return nil, err
 			}
 			if oldPledge.PledgeAddress != info.PledgeAddress || oldPledge.WithdrawTime != info.WithdrawTime ||
-				oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType {
+				oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType ||
+				oldPledge.NEP5TxId != info.NEP5TxId {
 				return nil, errors.New("invalid saved pledge info")
 			}
 		} else {
 			// save data
 			pledgeData, err = cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, info.PType, info.Amount,
-				info.WithdrawTime, info.Beneficial, info.PledgeAddress)
+				info.WithdrawTime, info.Beneficial, info.PledgeAddress, info.NEP5TxId)
 			if err != nil {
 				return nil, err
 			}
@@ -269,14 +272,15 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 				return nil, err
 			}
 			if oldPledge.PledgeAddress != pledgeInfo.PledgeInfo.PledgeAddress || oldPledge.WithdrawTime != pledgeInfo.PledgeInfo.WithdrawTime ||
-				oldPledge.Beneficial != pledgeInfo.PledgeInfo.Beneficial || oldPledge.PType != pledgeInfo.PledgeInfo.PType {
+				oldPledge.Beneficial != pledgeInfo.PledgeInfo.Beneficial || oldPledge.PType != pledgeInfo.PledgeInfo.PType ||
+				oldPledge.NEP5TxId != pledgeInfo.PledgeInfo.NEP5TxId {
 				return nil, errors.New("invalid saved pledge info")
 			}
 		} else {
 			// save data
 			pledgeData, err = cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, pledgeInfo.PledgeInfo.PType,
 				pledgeInfo.PledgeInfo.Amount, pledgeInfo.PledgeInfo.WithdrawTime, pledgeInfo.PledgeInfo.Beneficial,
-				pledgeInfo.PledgeInfo.PledgeAddress)
+				pledgeInfo.PledgeInfo.PledgeAddress, pledgeInfo.PledgeInfo.NEP5TxId)
 			if err != nil {
 				return nil, err
 			}

@@ -112,10 +112,10 @@ func pledgeAction(beneficialAccount, pledgeAccount, amount, pType string) error 
 	defer client.Close()
 
 	am := types.StringToBalance(amount)
-
+	NEP5tTxId := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 	pledgeParam := api.PledgeParam{
 		Beneficial: b.Address(), PledgeAddress: p.Address(), Amount: am,
-		PType: pType,
+		PType: pType, NEP5TxId: NEP5tTxId,
 	}
 
 	send := types.StateBlock{}

@@ -65,7 +65,8 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 		param.TokenSymbol,
 		param.TotalSupply,
 		param.Decimals,
-		param.Beneficial); err != nil {
+		param.Beneficial,
+		param.NEP5TxId); err != nil {
 		return err
 	}
 	return nil
@@ -107,7 +108,8 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 			param.Beneficial,
 			MinPledgeAmount,
 			time.Unix(input.Timestamp, 0).Add(minWithdrawTime).UTC().Unix(),
-			input.Address)
+			input.Address,
+			param.NEP5TxId)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +205,8 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		tokenInfo.Owner,
 		big.NewInt(0),
 		uint64(0),
-		tokenInfo.PledgeAddress)
+		tokenInfo.PledgeAddress,
+		tokenInfo.NEP5TxId)
 
 	am, _ := ctx.GetAccountMeta(tokenInfo.PledgeAddress)
 	tm := am.Token(common.ChainToken())
@@ -236,7 +239,8 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 			if oldPledge.PledgeAddress != tokenInfo.PledgeAddress || oldPledge.WithdrawTime != tokenInfo.WithdrawTime ||
 				oldPledge.TokenId != tokenInfo.TokenId || oldPledge.Owner != tokenInfo.Owner || oldPledge.Decimals != tokenInfo.Decimals ||
 				oldPledge.TotalSupply.String() != tokenInfo.TotalSupply.String() || oldPledge.TokenSymbol != tokenInfo.TokenSymbol ||
-				oldPledge.TokenName != tokenInfo.TokenName || oldPledge.PledgeAmount.String() != tokenInfo.PledgeAmount.String() {
+				oldPledge.TokenName != tokenInfo.TokenName || oldPledge.PledgeAmount.String() != tokenInfo.PledgeAmount.String() ||
+				oldPledge.NEP5TxId != tokenInfo.NEP5TxId {
 				return nil, errors.New("invalid saved mine info")
 			}
 		} else {

@@ -19,4 +19,5 @@ type TokenInfo struct {
 	PledgeAmount  *big.Int `json:"pledgeAmount"`
 	WithdrawTime  int64    `json:"withdrawTime"`
 	PledgeAddress Address  `json:"pledgeAddress"`
+	NEP5TxId      string   `json:"NEP5TxId"`
 }
