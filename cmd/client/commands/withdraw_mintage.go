@@ -113,11 +113,6 @@ func withdrawMintageAction(account, tokenId string) error {
 	worker, _ := types.NewWorker(w, send.Root())
 	send.Work = worker.NewWork()
 
-	err = client.Call(nil, "ledger_process", &send)
-	if err != nil {
-		return err
-	}
-
 	reward := types.StateBlock{}
 	err = client.Call(&reward, "mintage_getWithdrawRewardBlock", &send)
 
@@ -132,6 +127,11 @@ func withdrawMintageAction(account, tokenId string) error {
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
+
+	err = client.Call(nil, "ledger_process", &send)
+	if err != nil {
+		return err
+	}
 
 	err = client.Call(nil, "ledger_process", &reward)
 	if err != nil {

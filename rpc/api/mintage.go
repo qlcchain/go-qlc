@@ -46,6 +46,7 @@ type MintageParams struct {
 	TotalSupply string        `json:"totalSupply"`
 	Decimals    uint8         `json:"decimals"`
 	Beneficial  types.Address `json:"beneficial"`
+	NEP5TxId    string        `json:"NEP5TxId"`
 }
 
 func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
@@ -63,7 +64,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	if err != nil {
 		return nil, err
 	}
-	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals, param.Beneficial)
+	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals, param.Beneficial, param.NEP5TxId)
 	if err != nil {
 		return nil, err
 	}

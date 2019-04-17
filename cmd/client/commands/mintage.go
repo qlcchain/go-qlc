@@ -132,10 +132,11 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 	}
 
 	d := uint8(decimals)
-
+	NEP5tTxId := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 	mintageParam := api.MintageParams{
 		SelfAddr: a.Address(), PrevHash: previous, TokenName: tokenName,
 		TotalSupply: totalSupply, TokenSymbol: tokenSymbol, Decimals: d, Beneficial: a.Address(),
+		NEP5TxId: NEP5tTxId,
 	}
 
 	send := types.StateBlock{}

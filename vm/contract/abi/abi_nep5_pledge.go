@@ -24,9 +24,9 @@ import (
 const (
 	jsonNEP5Pledge = `
 	[
-		{"type":"function","name":"NEP5Pledge", "inputs":[{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"pType","type":"uint8"}]},
+		{"type":"function","name":"NEP5Pledge", "inputs":[{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"pType","type":"uint8"},{"name":"NEP5TxId","type":"string"}]},
 		{"type":"function","name":"WithdrawNEP5Pledge","inputs":[{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"pType","type":"uint8"}]},
-		{"type":"variable","name":"nep5PledgeInfo","inputs":[{"name":"pType","type":"uint8"},{"name":"amount","type":"uint256"},{"name":"withdrawTime","type":"int64"},{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"}]}
+		{"type":"variable","name":"nep5PledgeInfo","inputs":[{"name":"pType","type":"uint8"},{"name":"amount","type":"uint256"},{"name":"withdrawTime","type":"int64"},{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"NEP5TxId","type":"string"}]}
 	]`
 
 	MethodNEP5Pledge         = "NEP5Pledge"
@@ -51,6 +51,7 @@ type PledgeParam struct {
 	Beneficial    types.Address
 	PledgeAddress types.Address
 	PType         uint8
+	NEP5TxId      string
 }
 
 type VariablePledgeBeneficial struct {
@@ -70,6 +71,7 @@ type NEP5PledgeInfo struct {
 	WithdrawTime  int64
 	Beneficial    types.Address
 	PledgeAddress types.Address
+	NEP5TxId      string
 }
 
 func GetPledgeKey(addr types.Address, beneficial types.Address, time int64) []byte {
