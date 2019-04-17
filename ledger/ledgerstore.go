@@ -144,4 +144,6 @@ type Store interface {
 	GetPovBlockByHash(hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error)
 	GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error
 	GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
+
+	DropAllPovBlocks() error
 }

@@ -17,8 +17,8 @@ type PovBlockSource struct {
 type PovBlockProcessor struct {
 	povEngine *PoVEngine
 
-	orphanBlocks  map[types.Hash]*types.PovBlock
-	parentOrphans map[types.Hash][]*types.PovBlock
+	orphanBlocks  map[types.Hash]*PovBlockSource
+	parentOrphans map[types.Hash][]*PovBlockSource
 
 	blockCh chan *PovBlockSource
 	quitCh  chan struct{}
@@ -29,8 +29,8 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 		povEngine: povEngine,
 	}
 
-	bp.orphanBlocks = make(map[types.Hash]*types.PovBlock)
-	bp.parentOrphans = make(map[types.Hash][]*types.PovBlock)
+	bp.orphanBlocks = make(map[types.Hash]*PovBlockSource)
+	bp.parentOrphans = make(map[types.Hash][]*PovBlockSource)
 
 	bp.blockCh = make(chan *PovBlockSource, blockChanSize)
 	bp.quitCh = make(chan struct{})
@@ -70,7 +70,24 @@ func (bp *PovBlockProcessor) loop() {
 }
 
 func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
+	block := blockSrc.block
 	blockHash := blockSrc.block.GetHash()
 	bp.povEngine.GetLogger().Infof("process block, hash %s, height %d", blockHash, blockSrc.block.GetHeight())
+
+	chain := bp.povEngine.GetChain()
+
+	// duplicate block
+	if chain.HasBlock(blockHash, block.GetHeight()) {
+		return nil
+	}
+
+	// orphan block
+	prevBlock := chain.GetBlockByHash(block.GetPrevious())
+	if prevBlock == nil {
+		bp.orphanBlocks[blockHash] = blockSrc
+		bp.parentOrphans[block.GetPrevious()] = append(bp.parentOrphans[block.GetPrevious()], blockSrc)
+		return nil
+	}
+
 	return nil
 }

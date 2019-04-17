@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	ErrPovInvalidHash     = errors.New("invalid pov block hash")
 	ErrPovNoGenesis       = errors.New("pov genesis block not found in chain")
 	ErrPovUnknownAncestor = errors.New("unknown pov block ancestor")
 	ErrPovFutureBlock     = errors.New("pov block in the future")
@@ -30,7 +31,7 @@ type PovBlockChain struct {
 	logger    *zap.SugaredLogger
 
 	genesisBlock *types.PovBlock
-	currentBlock atomic.Value // Current head of the block chain
+	latestBlock atomic.Value // Current head of the best block chain
 
 	blockCache   gcache.Cache // Cache for the most recent entire blocks
 	heightCache  gcache.Cache
@@ -58,6 +59,10 @@ func (bc *PovBlockChain) getConfig() *config.Config {
 	return bc.povEngine.GetConfig()
 }
 
+func (bc *PovBlockChain) getTxPool() *PovTxPool {
+	return bc.povEngine.GetTxPool()
+}
+
 func (bc *PovBlockChain) Init() error {
 	var err error
 
@@ -80,6 +85,14 @@ func (bc *PovBlockChain) Init() error {
 	return nil
 }
 
+func (bc *PovBlockChain) Start() error {
+	return nil
+}
+
+func (bc *PovBlockChain) Stop() error {
+	return nil
+}
+
 func (bc *PovBlockChain) loadLastState() error {
 	// Make sure the entire head block is available
 	currentBlock, _ := bc.getLedger().GetLatestPovBlock()
@@ -90,7 +103,7 @@ func (bc *PovBlockChain) loadLastState() error {
 	}
 
 	// Everything seems to be fine, set as the head block
-	bc.currentBlock.Store(currentBlock)
+	bc.latestBlock.Store(currentBlock)
 
 	bc.logger.Infof("Loaded most recent local full block, number %d hash %s", currentBlock.GetHeight(), currentBlock.GetHash())
 
@@ -98,34 +111,28 @@ func (bc *PovBlockChain) loadLastState() error {
 }
 
 func (bc *PovBlockChain) Reset() error {
+	_ = bc.getLedger().DropAllPovBlocks()
+
 	return bc.ResetWithGenesisBlock(bc.genesisBlock)
 }
 
 func (bc *PovBlockChain) ResetWithGenesisBlock(genesis *types.PovBlock) error {
-	bc.getLedger().DeletePovBlock(genesis)
-	bc.getLedger().DeletePovBestHash(genesis.GetHeight())
-
 	// Prepare the genesis block and reinitialise the chain
 	err := bc.getLedger().AddPovBlock(genesis)
 	if err != nil {
 		return err
 	}
-	bc.getLedger().AddPovBestHash(genesis.GetHeight(), genesis.GetHash())
+	err = bc.getLedger().AddPovBestHash(genesis.GetHeight(), genesis.GetHash())
+	if err != nil {
+		return err
+	}
 
 	bc.genesisBlock = genesis
 
 	bc.logger.Infof("Reset with genesis block, height %d hash %s", genesis.Height, genesis.Hash)
 
-	bc.currentBlock.Store(genesis)
+	bc.latestBlock.Store(genesis)
 
-	return nil
-}
-
-func (bc *PovBlockChain) Start() error {
-	return nil
-}
-
-func (bc *PovBlockChain) Stop() error {
 	return nil
 }
 
@@ -133,8 +140,8 @@ func (bc *PovBlockChain) GenesisBlock() *types.PovBlock {
 	return bc.genesisBlock
 }
 
-func (bc *PovBlockChain) CurrentBlock() *types.PovBlock {
-	return bc.currentBlock.Load().(*types.PovBlock)
+func (bc *PovBlockChain) LatestBlock() *types.PovBlock {
+	return bc.latestBlock.Load().(*types.PovBlock)
 }
 
 func (bc *PovBlockChain) IsGenesisBlock(block *types.PovBlock) bool {
@@ -192,23 +199,165 @@ func (bc *PovBlockChain) HasBlock(hash types.Hash, number uint64) bool {
 	return bc.getLedger().HasPovBody(number, hash)
 }
 
-func (bc *PovBlockChain) insert(block *types.PovBlock) {
-	// Add the block to the canonical chain number scheme and mark as the head
-	bc.getLedger().AddPovBestHash(block.GetHeight(), block.GetHash())
+func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) error {
+	currentBlock := bc.LatestBlock()
 
-	bc.currentBlock.Store(block)
-}
-
-func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) {
-	currentBlock := bc.CurrentBlock()
-
-	bc.getLedger().AddPovBlock(block)
+	err := bc.getLedger().AddPovBlock(block)
+	if err != nil {
+		return err
+	}
 
 	if block.GetPrevious() == currentBlock.GetHash() {
-
+		if block.GetHeight() != currentBlock.GetHeight() + 1 {
+			bc.logger.Errorf("invalid height, currentBlock %s/%d, newBlock %s/%d",
+				currentBlock.GetHash(), currentBlock.GetHeight(), block.GetHash(), block.GetHeight())
+			return ErrPovInvalidHeight
+		}
+		return bc.connectBestBlock(block)
 	}
 
 	if block.GetHeight() >= currentBlock.GetHeight() + uint64(bc.getConfig().PoV.ForkHeight) {
-
+		return bc.processFork(block)
 	}
+
+	return nil
+}
+
+func (bc *PovBlockChain) connectBestBlock(block *types.PovBlock) error {
+	err := bc.connectBlock(block)
+	if err != nil {
+		return err
+	}
+
+	err = bc.connectTransactions(block)
+	if err != nil {
+		return err
+	}
+
+	bc.latestBlock.Store(block)
+
+	return nil
+}
+
+func (bc *PovBlockChain) disconnectBestBlock(block *types.PovBlock) error {
+	err := bc.disconnectBlock(block)
+	if err != nil {
+		return err
+	}
+
+	err = bc.disconnectTransactions(block)
+	if err != nil {
+		return err
+	}
+
+	bc.latestBlock.Store(block)
+
+	return nil
+}
+
+func (bc *PovBlockChain) processFork(newBlock *types.PovBlock) error {
+	oldBlock := bc.LatestBlock()
+
+	var detachBlocks []*types.PovBlock
+	var attachBlocks []*types.PovBlock
+	var forkHash types.Hash
+
+	attachBlock := newBlock
+	for height := attachBlock.GetHeight(); height > oldBlock.GetHeight(); height-- {
+		attachBlocks = append(attachBlocks, attachBlock)
+
+		attachBlock = bc.GetBlockByHash(attachBlock.GetPrevious())
+		if attachBlock == nil {
+			return ErrPovInvalidPrevious
+		}
+	}
+
+	detachBlock := oldBlock
+
+	for {
+		if attachBlock == nil || detachBlock == nil {
+			return ErrPovInvalidPrevious
+		}
+
+		attachBlocks = append(attachBlocks, attachBlock)
+		detachBlocks = append(detachBlocks, detachBlock)
+
+		if attachBlock.GetPrevious() == detachBlock.GetPrevious() {
+			forkHash = attachBlock.GetPrevious()
+			break
+		}
+
+		attachBlock = bc.GetBlockByHash(attachBlock.GetPrevious())
+		if attachBlock == nil {
+			break
+		}
+
+		detachBlock = bc.GetBlockByHash(detachBlock.GetPrevious())
+		if detachBlock == nil {
+			break
+		}
+	}
+
+	forkBlock := bc.GetBlockByHash(forkHash)
+	if forkBlock == nil {
+		return ErrPovInvalidHash
+	}
+
+	bc.logger.Infof("find fork block %s/%d, detach %d, attach %d",
+		forkBlock.GetHash(), forkBlock.GetHeight(), len(detachBlocks), len(attachBlocks))
+
+	for _, detachBlock := range detachBlocks {
+		err := bc.disconnectTransactions(detachBlock)
+		if err != nil {
+			return err
+		}
+
+		err = bc.disconnectBlock(detachBlock)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, attachBlock := range attachBlocks {
+		err := bc.connectBestBlock(attachBlock)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (bc *PovBlockChain) connectBlock(block *types.PovBlock) error {
+	return bc.getLedger().AddPovBestHash(block.GetHeight(), block.GetHash())
+}
+
+func (bc *PovBlockChain) disconnectBlock(block *types.PovBlock) error {
+	return bc.getLedger().DeletePovBestHash(block.GetHeight())
+}
+
+func (bc *PovBlockChain) connectTransactions(block *types.PovBlock) error {
+	txpool := bc.getTxPool()
+
+	for _, txPov := range block.Transactions {
+		txpool.delTx(txPov.Hash)
+	}
+
+	return nil
+}
+
+func (bc *PovBlockChain) disconnectTransactions(block *types.PovBlock) error {
+	txpool := bc.getTxPool()
+	ldger := bc.getLedger()
+
+	for _, txPov := range block.Transactions {
+		txBlock, _ := ldger.GetStateBlock(txPov.Hash)
+		if txBlock == nil {
+			continue
+		}
+
+		txpool.addTx(txPov.Hash, txBlock)
+	}
+
+	return nil
 }

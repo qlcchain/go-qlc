@@ -29,20 +29,25 @@ func (tp *PovTxPool) Init() {
 	logger := tp.povEngine.GetLogger()
 
 	startTime := time.Now()
+	totalStateBlockNum := 0
+	unpackStateBlockNum := 0
 	err := ledger.GetStateBlocks(func(tx *types.StateBlock) error {
+		totalStateBlockNum++
+
 		txHash := tx.GetHash()
 
 		if ledger.HasPovTxLookup(txHash) {
 			return nil
 		}
 
-		logger.Infof("account block %s not in pov block", txHash)
+		logger.Debugf("account block %s not in pov block", txHash)
+		unpackStateBlockNum++
 
 		tp.addTx(txHash, tx)
 		return nil
 	})
 	usedTime := time.Since(startTime)
-	logger.Infof("scan all account blocks used time %s", usedTime.String())
+	logger.Infof("scan all account blocks used time %s, %d, %d", usedTime.String(), totalStateBlockNum, unpackStateBlockNum)
 
 	if err != nil {
 		logger.Errorf("scan all account blocks failed")

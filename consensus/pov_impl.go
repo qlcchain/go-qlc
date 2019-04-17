@@ -83,6 +83,14 @@ func (pov *PoVEngine) GetLedger() ledger.Store {
 	return pov.ledger
 }
 
+func (pov *PoVEngine) GetChain() *PovBlockChain {
+	return pov.chain
+}
+
+func (pov *PoVEngine) GetTxPool() *PovTxPool {
+	return pov.txpool
+}
+
 func (pov *PoVEngine) setEvent() error {
 	/*
 		err := pov.eb.SubscribeAsync(string(common.EventRecvPovBlock), pov.onRecvPovBlock, false)
@@ -94,7 +102,7 @@ func (pov *PoVEngine) setEvent() error {
 }
 
 func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockFrom) error {
-	pov.logger.Infof("receive block [%s] from [%s]", block.GetHash(), from)
+	pov.logger.Infof("receive block [%s] from [%d]", block.GetHash(), from)
 	pov.bp.AddBlock(block, from)
 	return nil
 }

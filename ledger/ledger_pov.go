@@ -585,3 +585,25 @@ func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 
 	return l.GetPovBlockByHash(latestHash, txn)
 }
+
+func (l *Ledger) DropAllPovBlocks() error {
+	txn, flag := l.getTxn(true)
+	defer l.releaseTxn(txn, flag)
+
+	prefix, _ := getKeyOfParts(idPrefixPovHeader)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovBody)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovHeight)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovTxLookup)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovBestHash)
+	_ = txn.Drop(prefix)
+
+	return nil
+}
