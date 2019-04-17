@@ -2,10 +2,20 @@ package ledger
 
 import (
 	"encoding/binary"
+	"errors"
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
+)
+
+var (
+	ErrPovKeyNotFound      = errors.New("pov key not found")
+	ErrPovHeaderNotFound   = errors.New("pov header not found")
+	ErrPovBodyNotFound     = errors.New("pov body not found")
+	ErrPovHeightNotFound   = errors.New("pov height not found")
+	ErrPovHashNotFound     = errors.New("pov hash not found")
+	ErrPovTxLookupNotFound = errors.New("pov tx lookup not found")
 )
 
 func (l *Ledger) AddPovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error {
@@ -119,7 +129,7 @@ func (l *Ledger) GetPovHeader(height uint64, hash types.Hash, txns ...db.StoreTx
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return nil, ErrBlockNotFound
+			return nil, ErrPovHeaderNotFound
 		}
 		return nil, err
 	}
@@ -127,8 +137,18 @@ func (l *Ledger) GetPovHeader(height uint64, hash types.Hash, txns ...db.StoreTx
 }
 
 func (l *Ledger) HasPovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) bool {
-	header, err := l.GetPovHeader(height, hash)
-	if err != nil || header == nil {
+	key, err := getKeyOfParts(idPrefixPovHeader, height, hash)
+	if err != nil {
+		return false
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err = txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
 		return false
 	}
 
@@ -170,7 +190,7 @@ func (l *Ledger) AddPovBody(height uint64, hash types.Hash, body *types.PovBody,
 }
 
 func (l *Ledger) deletePovBody(height uint64, hash types.Hash, txn db.StoreTxn) error {
-	key, err := getKeyOfParts(idPrefixPovBody, height)
+	key, err := getKeyOfParts(idPrefixPovBody, height, hash)
 	if err != nil {
 		return err
 	}
@@ -207,11 +227,30 @@ func (l *Ledger) GetPovBody(height uint64, hash types.Hash, txns ...db.StoreTxn)
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return nil, ErrBlockNotFound
+			return nil, ErrPovBodyNotFound
 		}
 		return nil, err
 	}
 	return body, nil
+}
+
+func (l *Ledger) HasPovBody(height uint64, hash types.Hash, txns ...db.StoreTxn) bool {
+	key, err := getKeyOfParts(idPrefixPovBody, height, hash)
+	if err != nil {
+		return false
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err = txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		return false
+	}
+
+	return true
 }
 
 func (l *Ledger) addPovHeight(hash types.Hash, height uint64, txn db.StoreTxn) error {
@@ -281,14 +320,33 @@ func (l *Ledger) GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, err
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return 0, ErrBlockNotFound
+			return 0, ErrPovHeightNotFound
 		}
 		return 0, err
 	}
 	return height, nil
 }
 
-func (l *Ledger) AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns... db.StoreTxn) error {
+func (l *Ledger) HasPovHeight(hash types.Hash, txns ...db.StoreTxn) bool {
+	key, err := getKeyOfParts(idPrefixPovHeight, hash)
+	if err != nil {
+		return false
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err = txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (l *Ledger) AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns ...db.StoreTxn) error {
 	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
 	if err != nil {
 		return err
@@ -309,7 +367,7 @@ func (l *Ledger) AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, 
 	return nil
 }
 
-func (l *Ledger) DeletePovTxLookup(txHash types.Hash, txns... db.StoreTxn) error {
+func (l *Ledger) DeletePovTxLookup(txHash types.Hash, txns ...db.StoreTxn) error {
 	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
 	if err != nil {
 		return err
@@ -323,6 +381,50 @@ func (l *Ledger) DeletePovTxLookup(txHash types.Hash, txns... db.StoreTxn) error
 	}
 
 	return nil
+}
+
+func (l *Ledger) GetPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) (*types.PovTxLookup, error) {
+	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	txLookup := new(types.PovTxLookup)
+	err = txn.Get(key, func(val []byte, b byte) error {
+		if err := txLookup.Deserialize(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrPovTxLookupNotFound
+		}
+		return nil, err
+	}
+	return txLookup, nil
+}
+
+func (l *Ledger) HasPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) bool {
+	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
+	if err != nil {
+		return false
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err = txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		return false
+	}
+
+	return true
 }
 
 func (l *Ledger) AddPovBestHash(height uint64, hash types.Hash, txns ...db.StoreTxn) error {
@@ -382,7 +484,7 @@ func (l *Ledger) GetPovBestHash(height uint64, txns ...db.StoreTxn) (types.Hash,
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return types.ZeroHash, ErrBlockNotFound
+			return types.ZeroHash, ErrPovHashNotFound
 		}
 		return types.ZeroHash, err
 	}
@@ -399,7 +501,7 @@ func (l *Ledger) GetPovBlockByHeightAndHash(height uint64, hash types.Hash, txns
 	}
 
 	body, err := l.GetPovBody(height, hash, txns...)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -463,29 +565,23 @@ func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	var latestKey []byte
 	var latestVal []byte
 	err := txn.Iterator(idPrefixPovBestHash, func(key []byte, val []byte, meta byte) error {
-		latestKey = key
 		latestVal = val
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	if latestKey == nil || latestVal == nil {
+	if latestVal == nil {
 		return nil, err
 	}
 
-	latestHeight := util.BytesToUint64(latestKey)
-	if latestHeight < 0 {
-		return nil, err
-	}
 	var latestHash types.Hash
 	latestHash.UnmarshalBinary(latestVal)
 	if latestHash == types.ZeroHash {
 		return nil, err
 	}
 
-	return l.GetPovBlockByHeightAndHash(latestHeight, latestHash, txn)
+	return l.GetPovBlockByHash(latestHash, txn)
 }
