@@ -4,7 +4,7 @@
 .PHONY: deps
 
 # Check for required command tools to build or stop immediately
-EXECUTABLES = git go find pwd docker
+EXECUTABLES = git go find pwd
 K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
@@ -21,7 +21,7 @@ CLIENTVERSION = 1.0.4
 CLIENTBINARY = gqlcc
 CLIENTMAIN = cmd/client/main.go
 
-BUILDDIR = $(shell pwd)/build
+BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%Y-%m-%d_%T')
 
@@ -45,37 +45,37 @@ deps:
 	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 
 build:
-	go build -tags "mainnet sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	GO111MODULE=on go build -tags "mainnet sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build server done."
-	@echo "Run \"$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERTESTBINARY)."
-	go build -tags mainnet -ldflags $(CLIENTLDFLAGS) -v -i -o $(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
+	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
+	GO111MODULE=on go build -tags mainnet -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
 	@echo "Build client done."
-	@echo "Run \"$(BUILDDIR)/$(CLIENTBINARY)\" to start $(SERVERTESTBINARY)."
+	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
 build-test:
-	go build -tags "testnet sqlite_userauth" -ldflags $(TESTLDFLAGS) -v -i -o $(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	GO111MODULE=on go build -tags "testnet sqlite_userauth" -ldflags $(TESTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build test server done."
 	@echo "Run \"$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
-	go build -tags mainnet -ldflags $(CLIENTLDFLAGS) -v -i -o $(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
+	GO111MODULE=on go build -tags mainnet -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
 	@echo "Build test client done."
 	@echo "Run \"$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
 all: gqlc-server gqlc-server-test gqlc-client
 
 clean:
-	rm -rf $(BUILDDIR)/
+	rm -rf $(shell pwd)/$(BUILDDIR)/
 
 gqlc-server:
-	xgo --dest=$(BUILDDIR) --tags="mainnet sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
-	--targets="windows/*,darwin/amd64,linux/amd64,linux/386,linux/arm64,linux/mips64, linux/mips64le" \
+	xgo --dest=$(BUILDDIR) -v --tags="mainnet sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
+	--targets="windows-6.0/*,darwin-10.10/amd64,linux/amd64,linux/386,linux/arm64,linux/mips64, linux/mips64le" \
 	--pkg=$(SERVERMAIN) .
 
 gqlc-server-test:
-	xgo --dest=$(BUILDDIR) --tags="testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
-	--targets="windows/amd64,darwin/amd64,linux/amd64,linux/386,linux/arm64,linux/mips64, linux/mips64le" \
+	xgo --dest=$(BUILDDIR) -v --tags="testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
+	--targets="windows-6.0/amd64,darwin-10.10/amd64,linux/amd64,linux/386,linux/arm64,linux/mips64, linux/mips64le" \
 	--pkg=$(SERVERMAIN) .
 
 gqlc-client:
-	xgo --tags=mainnet --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \
-	--targets="windows/amd64,darwin/amd64,linux/amd64" \
+	xgo --tags=mainnet -v --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \
+	--targets="windows-6.0/amd64,darwin-10.10/amd64,linux/amd64" \
 	--pkg=$(CLIENTMAIN) .
