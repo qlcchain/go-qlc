@@ -37,6 +37,10 @@ type APIBlock struct {
 type APIAccount struct {
 	Address        types.Address   `json:"account"`
 	CoinBalance    *types.Balance  `json:"coinBalance,omitempty"`
+	CoinVote       *types.Balance  `json:"vote,omitempty"`
+	CoinNetwork    *types.Balance  `json:"network,omitempty"`
+	CoinStorage    *types.Balance  `json:"storage,omitempty"`
+	CoinOracle     *types.Balance  `json:"oracle,omitempty"`
 	Representative *types.Address  `json:"representative,omitempty"`
 	Tokens         []*APITokenMeta `json:"tokens"`
 }
@@ -148,6 +152,10 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		if t.Type == common.ChainToken() {
 			aa.CoinBalance = &t.Balance
 			aa.Representative = &t.Representative
+			aa.CoinVote = &am.CoinVote
+			aa.CoinNetwork = &am.CoinNetwork
+			aa.CoinOracle = &am.CoinOracle
+			aa.CoinStorage = &am.CoinStorage
 		}
 		info, err := abi.GetTokenById(l.vmContext, t.Type)
 		if err != nil {
@@ -222,6 +230,14 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 			}
 			b["balance"] = t.Balance
 			b["pending"] = amount
+			if info.TokenId == common.ChainToken() {
+				if !ac.CoinVote.IsZero() || !ac.CoinStorage.IsZero() || !ac.CoinOracle.IsZero() || !ac.CoinNetwork.IsZero() {
+					b["vote"] = ac.CoinVote
+					b["network"] = ac.CoinNetwork
+					b["oracle"] = ac.CoinOracle
+					b["storage"] = ac.CoinStorage
+				}
+			}
 			ts[info.TokenName] = b
 		}
 		as[addr] = ts
@@ -441,7 +457,7 @@ func (l *LedgerApi) Delegators(hash types.Address) ([]*APIAccountBalance, error)
 		t := am.Token(common.ChainToken())
 		if t != nil {
 			if t.Representative == hash {
-				ab := &APIAccountBalance{am.Address, t.Balance}
+				ab := &APIAccountBalance{am.Address, am.VoteBalance()}
 				abs = append(abs, ab)
 			}
 		}
