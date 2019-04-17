@@ -22,8 +22,7 @@ import (
 )
 
 var (
-	//minPledgeTime = time.Duration(24 * 30 * 6) // minWithdrawTime 6 months)
-	minPledgeTime = time.Duration(10 * time.Second) // minWithdrawTime 6 months)
+	minPledgeTime = time.Duration(24 * 30 * 6) // minWithdrawTime 6 months)
 	config        = map[cabi.PledgeType]pledgeInfo{
 		cabi.Network: {
 			pledgeTime:   minPledgeTime,

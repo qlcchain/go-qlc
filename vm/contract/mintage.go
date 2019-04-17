@@ -239,8 +239,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 			if oldPledge.PledgeAddress != tokenInfo.PledgeAddress || oldPledge.WithdrawTime != tokenInfo.WithdrawTime ||
 				oldPledge.TokenId != tokenInfo.TokenId || oldPledge.Owner != tokenInfo.Owner || oldPledge.Decimals != tokenInfo.Decimals ||
 				oldPledge.TotalSupply.String() != tokenInfo.TotalSupply.String() || oldPledge.TokenSymbol != tokenInfo.TokenSymbol ||
-				oldPledge.TokenName != tokenInfo.TokenName || oldPledge.PledgeAmount.String() != tokenInfo.PledgeAmount.String() ||
-				oldPledge.NEP5TxId != tokenInfo.NEP5TxId {
+				oldPledge.TokenName != tokenInfo.TokenName || oldPledge.PledgeAmount.String() != tokenInfo.PledgeAmount.String() {
 				return nil, errors.New("invalid saved mine info")
 			}
 		} else {
