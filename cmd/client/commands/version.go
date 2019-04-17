@@ -9,11 +9,17 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"strings"
 
 	"github.com/abiosoft/ishell"
-	goqlc "github.com/qlcchain/go-qlc"
 	"github.com/spf13/cobra"
+)
+
+var (
+	Version   = ""
+	GitRev    = ""
+	BuildTime = ""
 )
 
 func version() {
@@ -22,11 +28,11 @@ func version() {
 			Name: "version",
 			Help: "show version info for client",
 			Func: func(c *ishell.Context) {
-				if HelpText(c, nil) {
+				if util.HelpText(c, nil) {
 					return
 				}
-				if err := CheckArgs(c, nil); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, nil); err != nil {
+					util.Warn(err)
 					return
 				}
 				versionInfo()
@@ -46,17 +52,14 @@ func version() {
 }
 
 func versionInfo() {
-	version := goqlc.VERSION
-	buildTime := goqlc.BUILDTIME
-	gitrev := goqlc.GITREV
-	ts := strings.Split(buildTime, "_")
+	ts := strings.Split(BuildTime, "_")
 	if interactive {
-		Info(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
-		Info(fmt.Sprintf("%-15s%s", "version:", version))
-		Info(fmt.Sprintf("%-15s%s", "hash:", gitrev))
+		util.Info(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
+		util.Info(fmt.Sprintf("%-15s%s", "version:", Version))
+		util.Info(fmt.Sprintf("%-15s%s", "hash:", GitRev))
 	} else {
 		fmt.Println(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
-		fmt.Println(fmt.Sprintf("%-15s%s", "version:", version))
-		fmt.Println(fmt.Sprintf("%-15s%s", "hash:", gitrev))
+		fmt.Println(fmt.Sprintf("%-15s%s", "version:", Version))
+		fmt.Println(fmt.Sprintf("%-15s%s", "hash:", GitRev))
 	}
 }

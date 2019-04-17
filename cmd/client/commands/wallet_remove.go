@@ -9,6 +9,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -18,7 +19,7 @@ import (
 func walletRemove() {
 	var accountP string
 	if interactive {
-		account := Flag{
+		account := util.Flag{
 			Name:  "account",
 			Must:  true,
 			Usage: "account for wallet",
@@ -28,19 +29,19 @@ func walletRemove() {
 			Name: "walletremove",
 			Help: "remove a wallet",
 			Func: func(c *ishell.Context) {
-				args := []Flag{account}
-				if HelpText(c, args) {
+				args := []util.Flag{account}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := CheckArgs(c, args); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				accountP = StringVar(c.Args, account)
+				accountP = util.StringVar(c.Args, account)
 
 				err := removeWallet(accountP)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
@@ -75,7 +76,7 @@ func removeWallet(accountP string) error {
 	}
 	s := fmt.Sprintf("remove wallet %s success", accountP)
 	if interactive {
-		Info(s)
+		util.Info(s)
 	} else {
 		fmt.Println(s)
 	}

@@ -10,9 +10,9 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
-	"github.com/qlcchain/go-qlc/cmd/client/commands"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ import (
 func walletimport() {
 	var seedP string
 	if interactive {
-		seed := commands.Flag{
+		seed := util.Flag{
 			Name:  "seed",
 			Must:  true,
 			Usage: "seed for a wallet",
@@ -31,21 +31,21 @@ func walletimport() {
 			Name: "walletimport",
 			Help: "import a wallet",
 			Func: func(c *ishell.Context) {
-				args := []commands.Flag{seed, password, cfgPath}
-				if commands.HelpText(c, args) {
+				args := []util.Flag{seed, password, cfgPath}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := commands.CheckArgs(c, args); err != nil {
-					commands.Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				seedP = commands.StringVar(c.Args, seed)
-				passwordP = commands.StringVar(c.Args, password)
-				cfgPathP = commands.StringVar(c.Args, cfgPath)
+				seedP = util.StringVar(c.Args, seed)
+				passwordP = util.StringVar(c.Args, password)
+				cfgPathP = util.StringVar(c.Args, cfgPath)
 				//if passwordP = ""
 				err := importWallet(seedP)
 				if err != nil {
-					commands.Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
@@ -100,7 +100,7 @@ func importWallet(seedP string) error {
 
 	s := fmt.Sprintf("import seed[%s] password[%s] => %s success", seedP, passwordP, addr.String())
 	if interactive {
-		commands.Info(s)
+		util.Info(s)
 	} else {
 		fmt.Println(s)
 	}

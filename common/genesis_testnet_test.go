@@ -1,4 +1,4 @@
-// +build  mainnet
+// +build  testnet
 
 /*
  * Copyright (c) 2019 QLC Chain Team
@@ -18,44 +18,43 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
-func TestGenesisBlock(t *testing.T) {
-	h, _ := types.NewHash("7201b4c283b7a32e88ec4c5867198da574de1718eb18c7f95ee8ef733c0b5609")
-	genesisBlock := GenesisBlock()
-	h2 := genesisBlock.GetHash()
+func TestGenesisBlock2(t *testing.T) {
+	h, _ := types.NewHash("5594c690c3618a170a77d2696688f908efec4da2b94363fcb96749516307031d")
+
+	h2 := testGenesisBlock.GetHash()
 	if h2 != h {
-		t.Log(util.ToString(genesisBlock))
+		t.Log(util.ToString(testGenesisBlock))
 		t.Fatal("invalid genesis block", h2.String(), h.String())
 	}
 
-	h3, _ := types.NewHash("c0d330096ec4ab6ccf5481e06cc54e74b14f534e99e38df486f47d1123cbd1ae")
-	h4 := genesisMintageBlock.GetHash()
+	h3, _ := types.NewHash("8b54787c668dddd4f22ad64a8b0d241810871b9a52a989eb97670f345ad5dc90")
+	h4 := testGenesisMintageBlock.GetHash()
 	if h3 != h4 {
-		t.Log(util.ToIndentString(genesisMintageBlock))
+		t.Log(util.ToIndentString(testGenesisMintageBlock))
 		t.Fatal("invalid genesis mintage block", h3.String(), h4.String())
 	}
 }
 
-func TestGasBlock1(t *testing.T) {
-	h, _ := types.NewHash("b9e2ea2e4310c38ed82ff492cb83229b4361d89f9c47ebbd6653ddec8a07ebe1")
-	gasBlock := GasBlock()
-	h2 := gasBlock.GetHash()
+func TestGasBlock2(t *testing.T) {
+	h, _ := types.NewHash("424b367da2e0ff991d3086f599ce26547b80ae948b209f1cb7d63e19231ab213")
+
+	h2 := testGasBlock.GetHash()
 	if h2 != h {
-		t.Log(util.ToString(gasBlock))
+		t.Log(util.ToString(testGasBlock))
 		t.Fatal("invalid gas block", h2.String(), h.String())
 	}
 
-	h3, _ := types.NewHash("bdac41b3ff7ac35aee3028d60eabeb9578ea6f7bd148d611133a3b26dfa6a9be")
-	gasMintageBlock := GasMintageBlock()
-	h4 := gasMintageBlock.GetHash()
+	h3, _ := types.NewHash("f798089896ffdf45ccce2e039666014b8c666ea0f47f0df4ee7e73b49dac0945")
+	h4 := testGasMintageBlock.GetHash()
 	if h3 != h4 {
-		t.Log(util.ToIndentString(gasMintageBlock))
+		t.Log(util.ToIndentString(testGasMintageBlock))
 		t.Fatal("invalid gas mintage block", h3.String(), h4.String())
 	}
 }
 
 func TestIsGenesisToken(t *testing.T) {
 	h1, _ := types.NewHash("327531148b1a6302632aa7ad6eb369437d8269a08a55b344bd06b514e4e6ae97")
-	h2, _ := types.NewHash("45dd217cd9ff89f7b64ceda4886cc68dde9dfa47a8a422d165e2ce6f9a834fad")
+	h2, _ := types.NewHash("89066d747a3c74ff1dec8ea6a7011bde010dd404aec454880f23d58cbf9280e4")
 	b1 := IsGenesisToken(h1)
 	if b1 {
 		t.Fatal("h1 should not be Genesis Token")

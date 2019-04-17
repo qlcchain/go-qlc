@@ -1,3 +1,5 @@
+// +build  mainnet
+
 /*
  * Copyright (c) 2019 QLC Chain Team
  *
@@ -9,10 +11,6 @@ package common
 
 import (
 	"encoding/json"
-	"fmt"
-	"math/big"
-
-	goqlc "github.com/qlcchain/go-qlc"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -99,97 +97,6 @@ var (
         	"signature": "4e605d4ccfe3f061c1139eecec25b1129dbe491b12c42eb34e3febadc40971ff42e7240f9f42432591172cc5a91292406fe7b3115c757945e9c8848b83836001"
         }`
 
-	testJsonMintage = `{
-        	"type": "ContractSend",
-        	"token": "a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582",
-        	"address": "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
-        	"balance": "0",
-        	"vote": "0",
-        	"network": "0",
-        	"storage": "0",
-        	"oracle": "0",
-        	"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"link": "bf86c83fb4bfb9f49b9b8fa593c8cf4128c9e21720c487565b52fc6640a9e8f3",
-        	"message": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"data": "6TrdxKfo+jDAY+lqSJpHvEOQlQW9hnNdpKEJ3KKL6TYRioWCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADVKa6ehgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAi/hsg/tL+59Jubj6WTyM9BKMniFyDEh1ZbUvxmQKno8wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADUUxDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1FMQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        	"povHeight": 0,
-        	"timestamp": 1553990401,
-        	"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"representative": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
-        	"work": "000000000048f5b9",
-        	"signature": "18fcd023d9c14bede4a5abad71eca562c8bd5df48ac293466b48b3c2ece42fa00c0e64b68cccf5cfa0f0077ebdc9e05efd757999e3f3c68280975458e9cad40e"
-        }`
-
-	testJsonGenesis = `{
-        	"type": "ContractReward",
-        	"token": "a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582",
-        	"address": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
-        	"balance": "60000000000000000",
-        	"vote": "0",
-        	"network": "0",
-        	"storage": "0",
-        	"oracle": "0",
-        	"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"link": "8b54787c668dddd4f22ad64a8b0d241810871b9a52a989eb97670f345ad5dc90",
-        	"message": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"data": "p+j6MMBj6WpImke8Q5CVBb2Gc12koQncoovpNhGKhYIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANUprp6GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACL+GyD+0v7n0m5uPpZPIz0EoyeIXIMSHVltS/GZAqejzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL+GyD+0v7n0m5uPpZPIz0EoyeIXIMSHVltS/GZAqejzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANRTEMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADUUxDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-        	"povHeight": 0,
-        	"timestamp": 1553990410,
-        	"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"representative": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
-        	"work": "000000000048f5b9",
-        	"signature": "a717e690216e357d1b4e200478ef74c51d0b6ab28893fd5cf22aff6f1403d60996ec97bd84214c7a7aed4b0428671e81048afa9b86126c7484b3a88b725e1202"
-        }`
-
-	testJsonMintageQGAS = `{
-        	"type": "ContractSend",
-        	"token": "89066d747a3c74ff1dec8ea6a7011bde010dd404aec454880f23d58cbf9280e4",
-        	"address": "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
-        	"balance": "0",
-        	"vote": "0",
-        	"network": "0",
-        	"storage": "0",
-        	"oracle": "0",
-        	"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"link": "e813e51a6d8abea178a2f376d532df983cca71b4e4cf5bdd2d7864ee30cf8ba5",
-        	"message": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"data": "6TrdxIkGbXR6PHT/HeyOpqcBG94BDdQErsRUiA8j1Yy/koDkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjhvJvwQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjoE+UabYq+oXii83bVMt+YPMpxtOTPW90teGTuMM+LpQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEUUdBUwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABFFHQVMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        	"povHeight": 0,
-        	"timestamp": 1553990401,
-        	"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"representative": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
-        	"work": "000000000048f5b9",
-        	"signature": "441b26cf4318cea394fe07a5e30cde18f967406a9c26158417bcd29abd5a4c79d05746f838bc42f0a7d681cf4a3b4e6b29992fcd7fa7cafe72a4e00e133d310f"
-        }`
-
-	testJsonGenesisQGAS = `{
-        	"type": "ContractReward",
-        	"token": "89066d747a3c74ff1dec8ea6a7011bde010dd404aec454880f23d58cbf9280e4",
-        	"address": "qlc_3t1mwnf8u4oyn7wc7wuptnsfz83wsbrubs8hdhgkty56xrrez4x7fcttk5f3",
-        	"balance": "10000000000000000",
-        	"vote": "0",
-        	"network": "0",
-        	"storage": "0",
-        	"oracle": "0",
-        	"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"link": "f798089896ffdf45ccce2e039666014b8c666ea0f47f0df4ee7e73b49dac0945",
-        	"message": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"data": "iQZtdHo8dP8d7I6mpwEb3gEN1ASuxFSIDyPVjL+SgOQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACOG8m/BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACOgT5Rptir6heKLzdtUy35g8ynG05M9b3S14ZO4wz4ulAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOgT5Rptir6heKLzdtUy35g8ynG05M9b3S14ZO4wz4ulAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARRR0FTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEUUdBUwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-        	"povHeight": 0,
-        	"timestamp": 1553990410,
-        	"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"representative": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
-        	"work": "000000000048f5b9",
-        	"signature": "69903343b5188cedc3b301288a553f3e094bffdf8d1173eb897e630860642a4d62d1022b002c290ca996027d5e424056adad04b340f52d0185362dfd41e07e0c"
-        }`
-
-	units = map[string]*big.Int{
-		"qlc":  big.NewInt(1),
-		"Kqlc": big.NewInt(1e5),
-		"QLC":  big.NewInt(1e8),
-		"MQLC": big.NewInt(1e11),
-	}
-
 	//main net
 	chainToken, _       = types.NewHash("45dd217cd9ff89f7b64ceda4886cc68dde9dfa47a8a422d165e2ce6f9a834fad")
 	genesisAddress, _   = types.HexToAddress("qlc_1t1uynkmrs597z4ns6ymppwt65baksgdjy1dnw483ubzm97oayyo38ertg44")
@@ -205,22 +112,6 @@ var (
 	gasMintageHash  types.Hash
 	gasBlock        types.StateBlock
 	gasBlockHash    types.Hash
-
-	//test net
-	testChainToken, _       = types.NewHash("a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582")
-	testGenesisAddress, _   = types.HexToAddress("qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4")
-	testGenesisMintageBlock types.StateBlock
-	testGenesisMintageHash  types.Hash
-	testGenesisBlock        types.StateBlock
-	testGenesisBlockHash    types.Hash
-
-	//test net gas
-	testGasToken, _     = types.NewHash("89066d747a3c74ff1dec8ea6a7011bde010dd404aec454880f23d58cbf9280e4")
-	testGasAddress, _   = types.HexToAddress("qlc_3t1mwnf8u4oyn7wc7wuptnsfz83wsbrubs8hdhgkty56xrrez4x7fcttk5f3")
-	testGasMintageBlock types.StateBlock
-	testGasMintageHash  types.Hash
-	testGasBlock        types.StateBlock
-	testGasBlockHash    types.Hash
 )
 
 func init() {
@@ -233,132 +124,65 @@ func init() {
 	_ = json.Unmarshal([]byte(jsonGenesisQGAS), &gasBlock)
 	gasMintageHash = gasMintageBlock.GetHash()
 	gasBlockHash = gasBlock.GetHash()
-
-	_ = json.Unmarshal([]byte(testJsonMintage), &testGenesisMintageBlock)
-	_ = json.Unmarshal([]byte(testJsonGenesis), &testGenesisBlock)
-	testGenesisMintageHash = testGenesisMintageBlock.GetHash()
-	testGenesisBlockHash = testGenesisBlock.GetHash()
-	//test net gas
-	_ = json.Unmarshal([]byte(testJsonMintageQGAS), &testGasMintageBlock)
-	_ = json.Unmarshal([]byte(testJsonGenesisQGAS), &testGasBlock)
-	testGasMintageHash = testGasMintageBlock.GetHash()
-	testGasBlockHash = testGasBlock.GetHash()
 }
 
 func GenesisAddress() types.Address {
-	if goqlc.MAINNET {
-		return genesisAddress
-	}
-	return testGenesisAddress
+	return genesisAddress
 }
 
 func GasAddress() types.Address {
-	if goqlc.MAINNET {
-		return gasAddress
-	}
-	return testGasAddress
+	return gasAddress
+
 }
 
 func ChainToken() types.Hash {
-	if goqlc.MAINNET {
-		return chainToken
-	}
-	return testChainToken
+	return chainToken
 }
 
 func GasToken() types.Hash {
-	if goqlc.MAINNET {
-		return gasToken
-	}
-	return testGasToken
+	return gasToken
 }
 
 func GenesisMintageBlock() types.StateBlock {
-	if goqlc.MAINNET {
-		return genesisMintageBlock
-	}
-	return testGenesisMintageBlock
+	return genesisMintageBlock
 }
 
 func GasMintageBlock() types.StateBlock {
-	if goqlc.MAINNET {
-		return gasMintageBlock
-	}
-	return testGasMintageBlock
+	return gasMintageBlock
 }
 
 func GenesisMintageHash() types.Hash {
-	if goqlc.MAINNET {
-		return genesisMintageHash
-	}
-	return testGenesisMintageHash
+	return genesisMintageHash
 }
 
 func GasMintageHash() types.Hash {
-	if goqlc.MAINNET {
-		return gasMintageHash
-	}
-	return testGasMintageHash
+	return gasMintageHash
 }
 
 func GenesisBlock() types.StateBlock {
-	if goqlc.MAINNET {
-		return genesisBlock
-	}
-	return testGenesisBlock
+	return genesisBlock
 }
 
 func GasBlock() types.StateBlock {
-	if goqlc.MAINNET {
-		return gasBlock
-	}
-	return testGasBlock
+	return gasBlock
+
 }
 
 func GenesisBlockHash() types.Hash {
-	if goqlc.MAINNET {
-		return genesisBlockHash
-	}
-	return testGenesisBlockHash
+	return genesisBlockHash
 }
 
 func GasBlockHash() types.Hash {
-	if goqlc.MAINNET {
-		return gasBlockHash
-	}
-	return testGasBlockHash
+	return gasBlockHash
 }
 
 // IsGenesis check block is chain token genesis
 func IsGenesisBlock(block *types.StateBlock) bool {
 	h := block.GetHash()
-	if goqlc.MAINNET {
-		return h == genesisMintageHash || h == genesisBlockHash || h == gasMintageHash || h == gasBlockHash
-	}
-
-	return h == testGenesisMintageHash || h == testGenesisBlockHash || h == testGasMintageHash || h == testGasBlockHash
+	return h == genesisMintageHash || h == genesisBlockHash || h == gasMintageHash || h == gasBlockHash
 }
 
 // IsGenesis check token is chain token genesis
 func IsGenesisToken(hash types.Hash) bool {
-	if goqlc.MAINNET {
-		return hash == chainToken || hash == gasToken
-	}
-	return hash == testChainToken || hash == testGasToken
-}
-
-func BalanceToRaw(b types.Balance, unit string) (types.Balance, error) {
-	if v, ok := units[unit]; ok {
-		//v = v.Div(v, units["raw"])
-		return types.Balance{Int: new(big.Int).Mul(b.Int, v)}, nil
-	}
-	return b, fmt.Errorf("invalid unit %s", unit)
-}
-
-func RawToBalance(b types.Balance, unit string) (types.Balance, error) {
-	if v, ok := units[unit]; ok {
-		//v = v.Div(v, units["raw"])
-		return types.Balance{Int: new(big.Int).Div(b.Int, v)}, nil
-	}
-	return b, fmt.Errorf("invalid unit %s", unit)
+	return hash == chainToken || hash == gasToken
 }

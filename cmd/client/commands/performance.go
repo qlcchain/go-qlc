@@ -9,6 +9,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,7 +25,7 @@ import (
 func performance() {
 	var cfgPathP string
 	if interactive {
-		cfgPath := Flag{
+		cfgPath := util.Flag{
 			Name:  "config",
 			Must:  false,
 			Usage: "config file path",
@@ -34,18 +35,18 @@ func performance() {
 			Name: "performance",
 			Help: "get performance time",
 			Func: func(c *ishell.Context) {
-				args := []Flag{cfgPath}
-				if HelpText(c, args) {
+				args := []util.Flag{cfgPath}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := CheckArgs(c, args); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				cfgPathP := StringVar(c.Args, cfgPath)
+				cfgPathP := util.StringVar(c.Args, cfgPath)
 				err := getPerformanceTime(cfgPathP)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
