@@ -2,9 +2,10 @@ package consensus
 
 import (
 	"errors"
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -12,73 +13,49 @@ import (
 )
 
 var (
-	ErrNoGenesis = errors.New("Genesis not found in chain")
-
-	// ErrUnknownAncestor is returned when validating a block requires an ancestor
-	// that is unknown.
-	ErrUnknownAncestor = errors.New("unknown ancestor")
-
-	// ErrPrunedAncestor is returned when validating a block requires an ancestor
-	// that is known, but the state of which is not available.
-	ErrPrunedAncestor = errors.New("pruned ancestor")
-
-	// ErrFutureBlock is returned when a block's timestamp is in the future according
-	// to the current node.
-	ErrFutureBlock = errors.New("block in the future")
-
-	// ErrInvalidNumber is returned if a block's number doesn't equal it's parent's
-	// plus one.
-	ErrInvalidNumber = errors.New("invalid block number")
-
-	// ErrInvalidHash is returned if a block's previous doesn't equal it's parent's
-	// hash.
-	ErrInvalidPrevious = errors.New("invalid block previous")
-)
-
-// WriteStatus status of write
-type WriteStatus byte
-
-const (
-	NonStatTy WriteStatus = iota
-	CanonStatTy
-	SideStatTy
+	ErrPovNoGenesis       = errors.New("pov genesis block not found in chain")
+	ErrPovUnknownAncestor = errors.New("unknown pov block ancestor")
+	ErrPovFutureBlock     = errors.New("pov block in the future")
+	ErrPovInvalidHeight   = errors.New("invalid pov block height")
+	ErrPovInvalidPrevious = errors.New("invalid pov block previous")
 )
 
 const (
-	bodyCacheLimit      = 256
-	blockCacheLimit     = 256
-	maxFutureBlocks     = 256
-	maxTimeFutureBlocks = 30 * 2
+	blockCacheLimit  = 512
+	numberCacheLimit = 2048
 )
 
 type PovBlockChain struct {
 	povEngine *PoVEngine
-	logger *zap.SugaredLogger
+	logger    *zap.SugaredLogger
 
 	genesisBlock *types.PovBlock
-	latestBlock  *types.PovBlock
-
 	currentBlock atomic.Value // Current head of the block chain
-	bodyCache     *lru.Cache     // Cache for the most recent block bodies
-	blockCache    *lru.Cache     // Cache for the most recent entire blocks
+
+	blockCache   gcache.Cache // Cache for the most recent entire blocks
+	heightCache  gcache.Cache
 }
 
 func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
-	bodyCache, _ := lru.New(bodyCacheLimit)
-	blockCache, _ := lru.New(blockCacheLimit)
+	blockCache := gcache.New(blockCacheLimit).Build()
+	heightCache := gcache.New(numberCacheLimit).Build()
 
 	chain := &PovBlockChain{
 		povEngine: povEngine,
-		logger: log.NewLogger("pov_blockchain"),
+		logger:    log.NewLogger("pov_chain"),
 
-		bodyCache:      bodyCache,
-		blockCache:     blockCache,
+		blockCache:  blockCache,
+		heightCache: heightCache,
 	}
 	return chain
 }
 
 func (bc *PovBlockChain) getLedger() ledger.Store {
 	return bc.povEngine.GetLedger()
+}
+
+func (bc *PovBlockChain) getConfig() *config.Config {
+	return bc.povEngine.GetConfig()
 }
 
 func (bc *PovBlockChain) Init() error {
@@ -115,7 +92,7 @@ func (bc *PovBlockChain) loadLastState() error {
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock.Store(currentBlock)
 
-	bc.logger.Info("Loaded most recent local full block", "number", currentBlock.GetHeight(), "hash", currentBlock.GetHash())
+	bc.logger.Infof("Loaded most recent local full block, number %d hash %s", currentBlock.GetHeight(), currentBlock.GetHash())
 
 	return nil
 }
@@ -125,17 +102,21 @@ func (bc *PovBlockChain) Reset() error {
 }
 
 func (bc *PovBlockChain) ResetWithGenesisBlock(genesis *types.PovBlock) error {
+	bc.getLedger().DeletePovBlock(genesis)
+	bc.getLedger().DeletePovBestHash(genesis.GetHeight())
+
 	// Prepare the genesis block and reinitialise the chain
 	err := bc.getLedger().AddPovBlock(genesis)
 	if err != nil {
 		return err
 	}
+	bc.getLedger().AddPovBestHash(genesis.GetHeight(), genesis.GetHash())
 
 	bc.genesisBlock = genesis
 
 	bc.logger.Infof("Reset with genesis block, height %d hash %s", genesis.Height, genesis.Hash)
 
-	bc.latestBlock = genesis
+	bc.currentBlock.Store(genesis)
 
 	return nil
 }
@@ -148,12 +129,12 @@ func (bc *PovBlockChain) Stop() error {
 	return nil
 }
 
-func (bc *PovBlockChain) GetLatestBlock() *types.PovBlock {
-	return bc.latestBlock
+func (bc *PovBlockChain) GenesisBlock() *types.PovBlock {
+	return bc.genesisBlock
 }
 
-func (bc *PovBlockChain) GetGenesisBlock() *types.PovBlock {
-	return bc.genesisBlock
+func (bc *PovBlockChain) CurrentBlock() *types.PovBlock {
+	return bc.currentBlock.Load().(*types.PovBlock)
 }
 
 func (bc *PovBlockChain) IsGenesisBlock(block *types.PovBlock) bool {
@@ -161,25 +142,73 @@ func (bc *PovBlockChain) IsGenesisBlock(block *types.PovBlock) bool {
 }
 
 func (bc *PovBlockChain) GetBlockByHeight(height uint64) (*types.PovBlock, error) {
+	v, _ := bc.heightCache.Get(height)
+	if v != nil {
+		return v.(*types.PovBlock), nil
+	}
+
 	block, err := bc.povEngine.GetLedger().GetPovBlockByHeight(height)
+	if block != nil {
+		bc.heightCache.Set(height, block)
+		bc.blockCache.Set(block.GetHash(), block)
+	}
 	return block, err
 }
 
-func (bc *PovBlockChain) GetBlockByHash(hash types.Hash) (*types.PovBlock, error) {
-	block, err := bc.povEngine.GetLedger().GetPovBlockByHash(hash)
-	return block, err
+func (bc *PovBlockChain) GetBlockHeight(hash types.Hash) uint64 {
+	v, _ := bc.heightCache.Get(hash)
+	if v != nil {
+		return v.(uint64)
+	}
+
+	block, _ := bc.povEngine.GetLedger().GetPovBlockByHash(hash)
+	if block != nil {
+		bc.heightCache.Set(hash, block.GetHeight())
+		return block.GetHeight()
+	}
+
+	return 0
 }
 
-// CurrentBlock retrieves the current head block of the canonical chain. The
-// block is retrieved from the blockchain's internal cache.
-func (bc *PovBlockChain) CurrentBlock() *types.PovBlock {
-	return bc.currentBlock.Load().(*types.PovBlock)
-}
+func (bc *PovBlockChain) GetBlockByHash(hash types.Hash) *types.PovBlock {
+	v, _ := bc.blockCache.Get(hash)
+	if v != nil {
+		return v.(*types.PovBlock)
+	}
 
-func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) error {
+	block, _ := bc.povEngine.GetLedger().GetPovBlockByHash(hash)
+	if block != nil {
+		bc.blockCache.Set(hash, block)
+		return block
+	}
+
 	return nil
 }
 
-func (bc *PovBlockChain) processFork(oldBlock *types.PovBlock, newBlock *types.PovBlock) error {
-	return nil
+func (bc *PovBlockChain) HasBlock(hash types.Hash, number uint64) bool {
+	if bc.blockCache.Has(hash) {
+		return true
+	}
+	return bc.getLedger().HasPovBody(number, hash)
+}
+
+func (bc *PovBlockChain) insert(block *types.PovBlock) {
+	// Add the block to the canonical chain number scheme and mark as the head
+	bc.getLedger().AddPovBestHash(block.GetHeight(), block.GetHash())
+
+	bc.currentBlock.Store(block)
+}
+
+func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) {
+	currentBlock := bc.CurrentBlock()
+
+	bc.getLedger().AddPovBlock(block)
+
+	if block.GetPrevious() == currentBlock.GetHash() {
+
+	}
+
+	if block.GetHeight() >= currentBlock.GetHeight() + uint64(bc.getConfig().PoV.ForkHeight) {
+
+	}
 }

@@ -5,26 +5,52 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"sync"
+	"time"
 )
 
 type PovTxPool struct {
+	povEngine *PoVEngine
 	txMu   sync.RWMutex
 	accountTxs map[types.Address]*list.List
 	allTxs map[types.Hash]*types.StateBlock
-	povImpl *PoVEngine
 }
 
 func NewPovTxPool(povImpl *PoVEngine) *PovTxPool {
 	txPool := &PovTxPool{
-		povImpl: povImpl,
+		povEngine: povImpl,
 	}
 	txPool.accountTxs = make(map[types.Address]*list.List)
 	txPool.allTxs = make(map[types.Hash]*types.StateBlock)
 	return txPool
 }
 
+func (tp *PovTxPool) Init() {
+	ledger := tp.povEngine.GetLedger()
+	logger := tp.povEngine.GetLogger()
+
+	startTime := time.Now()
+	err := ledger.GetStateBlocks(func(tx *types.StateBlock) error {
+		txHash := tx.GetHash()
+
+		if ledger.HasPovTxLookup(txHash) {
+			return nil
+		}
+
+		logger.Infof("account block %s not in pov block", txHash)
+
+		tp.addTx(txHash, tx)
+		return nil
+	})
+	usedTime := time.Since(startTime)
+	logger.Infof("scan all account blocks used time %s", usedTime.String())
+
+	if err != nil {
+		logger.Errorf("scan all account blocks failed")
+	}
+}
+
 func (tp *PovTxPool) Start() {
-	eb := tp.povImpl.GetEventBus()
+	eb := tp.povEngine.GetEventBus()
 	if eb != nil {
 		eb.Subscribe(string(common.EventAddRelation), tp.onAddStateBlock)
 		eb.Subscribe(string(common.EventDeleteRelation), tp.onDeleteStateBlock)
@@ -37,20 +63,29 @@ func (tp *PovTxPool) Stop() {
 }
 
 func (tp *PovTxPool) onAddStateBlock(tx *types.StateBlock) error {
+	tp.povEngine.GetLogger().Infof("recv event, add state block hash %s", tx.GetHash())
+
 	txHash := tx.GetHash()
-	tp.addTx(&txHash, tx)
+	tp.addTx(txHash, tx)
 	return nil
 }
 
 func (tp *PovTxPool) onDeleteStateBlock(tx *types.StateBlock) error {
+	tp.povEngine.GetLogger().Infof("recv event, delete state block hash %s", tx.GetHash())
+
 	txHash := tx.GetHash()
-	tp.delTx(&txHash)
+	tp.delTx(txHash)
 	return nil
 }
 
-func (tp *PovTxPool) addTx(txHash *types.Hash, tx *types.StateBlock) {
+func (tp *PovTxPool) addTx(txHash types.Hash, tx *types.StateBlock) {
 	tp.txMu.Lock()
 	defer tp.txMu.Unlock()
+
+	txExist, ok := tp.allTxs[txHash]
+	if ok && txExist != nil {
+		return
+	}
 
 	accTxList, ok := tp.accountTxs[tx.Address]
 	if !ok {
@@ -59,19 +94,19 @@ func (tp *PovTxPool) addTx(txHash *types.Hash, tx *types.StateBlock) {
 	}
 
 	accTxList.PushBack(tx)
-	tp.allTxs[*txHash] = tx
+	tp.allTxs[txHash] = tx
 }
 
-func (tp *PovTxPool) delTx(txHash *types.Hash) {
+func (tp *PovTxPool) delTx(txHash types.Hash) {
 	tp.txMu.Lock()
 	defer tp.txMu.Unlock()
 
-	tx, ok := tp.allTxs[*txHash]
+	tx, ok := tp.allTxs[txHash]
 	if !ok {
 		return
 	}
 
-	delete(tp.allTxs, *txHash)
+	delete(tp.allTxs, txHash)
 
 	if tx == nil {
 		return
@@ -96,7 +131,7 @@ func (tp *PovTxPool) delTx(txHash *types.Hash) {
 	}
 }
 
-func (tp *PovTxPool) selectTxs(limit int) []*types.Block {
+func (tp *PovTxPool) SelectPendingTxs(limit int) []*types.Block {
 	tp.txMu.RLock()
 	defer tp.txMu.RUnlock()
 

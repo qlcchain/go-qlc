@@ -7,6 +7,16 @@ import (
 
 //go:generate msgp
 
+type PovBlockFrom uint16
+
+const (
+	Unkonwn PovBlockFrom = iota
+	PovBlockFromLocal
+	PovBlockFromRemoteBroadcast
+	PovBlockFromRemoteFetch
+	PovBlockFromRemoteSync
+)
+
 // PovHeader represents a block header in the PoV blockchain.
 type PovHeader struct {
 	Hash Hash `msg:"hash,extension" json:"hash"`
