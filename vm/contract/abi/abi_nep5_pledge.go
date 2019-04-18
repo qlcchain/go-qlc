@@ -74,10 +74,10 @@ type NEP5PledgeInfo struct {
 	NEP5TxId      string
 }
 
-func GetPledgeKey(addr types.Address, beneficial types.Address, time int64) []byte {
+func GetPledgeKey(addr types.Address, beneficial types.Address, neoTxId string) []byte {
 	result := []byte(beneficial[:])
 	result = append(result, addr[:]...)
-	result = append(result, util.Int2Bytes(time)...)
+	result = append(result, []byte(neoTxId)...)
 	return result
 }
 

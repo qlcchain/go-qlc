@@ -90,11 +90,11 @@ func verifyToken(param cabi.ParamMintage) error {
 }
 
 //TODO: verify input block timestamp
-func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.ParamMintage)
 	_ = cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
 	var tokenInfo []byte
-	amount, _ := ledger.CalculateAmount(input)
+	amount, _ := ctx.CalculateAmount(input)
 	if amount.Sign() > 0 &&
 		amount.Compare(types.Balance{Int: MinPledgeAmount}) != types.BalanceCompSmaller &&
 		input.Token == common.ChainToken() {
@@ -118,6 +118,14 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 		return nil, fmt.Errorf("invalid block amount %d", amount.Int)
 	}
 
+	if _, err := ctx.GetStorage(types.MintageAddress[:], []byte(param.NEP5TxId)); err == nil {
+		return nil, fmt.Errorf("invalid nep5 tx id")
+	} else {
+		if err := ctx.SetStorage(types.MintageAddress[:], []byte(param.NEP5TxId), nil); err != nil {
+			return nil, err
+		}
+	}
+
 	exp := new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)
 	totalSupply := types.Balance{Int: new(big.Int).Mul(param.TotalSupply, exp)}
 
@@ -133,19 +141,18 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 	block.Storage = types.ZeroBalance
 	block.Network = types.ZeroBalance
 	block.Oracle = types.ZeroBalance
-	block.Timestamp = time.Now().UTC().Unix()
 
-	if _, err := ledger.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
-		//return nil, fmt.Errorf("invalid token")
+	if _, err := ctx.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
+		return nil, fmt.Errorf("invalid token")
 	} else {
-		//block.Data = tokenInfo
-		if err := ledger.SetStorage(types.MintageAddress[:], param.TokenId[:], tokenInfo); err != nil {
+		if err := ctx.SetStorage(types.MintageAddress[:], param.TokenId[:], tokenInfo); err != nil {
 			return nil, err
 		}
 	}
 
 	return []*ContractBlock{
 		{
+			VMContext: ctx,
 			Block:     block,
 			ToAddress: input.Address,
 			BlockType: types.ContractReward,
@@ -224,7 +231,6 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	block.Storage = am.CoinStorage
 	block.Network = am.CoinNetwork
 	block.Previous = tm.Header
-	block.Timestamp = time.Now().UTC().Unix()
 
 	var pledgeData []byte
 	if pledgeData, err = ctx.GetStorage(types.MintageAddress[:], tokenId[:]); err != nil && err != vmstore.ErrStorageNotFound {
@@ -253,12 +259,13 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	if tokenInfo.PledgeAmount.Sign() > 0 {
 		return []*ContractBlock{
 			{
-				block,
-				tokenInfo.PledgeAddress,
-				types.ContractReward,
-				types.Balance{Int: tokenInfo.PledgeAmount},
-				common.ChainToken(),
-				newTokenInfo,
+				VMContext: ctx,
+				Block:     block,
+				ToAddress: tokenInfo.PledgeAddress,
+				BlockType: types.ContractReward,
+				Amount:    types.Balance{Int: tokenInfo.PledgeAmount},
+				Token:     common.ChainToken(),
+				Data:      newTokenInfo,
 			},
 		}, nil
 	}
