@@ -23,10 +23,11 @@ import (
 )
 
 var (
-	MinPledgeAmount      = big.NewInt(1e12)           // 10K QLC
-	tokenNameLengthMax   = 40                         // Maximum length of a token name(include)
-	tokenSymbolLengthMax = 10                         // Maximum length of a token symbol(include)
-	minWithdrawTime      = time.Duration(24 * 30 * 6) // minWithdrawTime 3 months
+	MinPledgeAmount      = big.NewInt(5 * 1e13) // 50K QLC
+	tokenNameLengthMax   = 40                   // Maximum length of a token name(include)
+	tokenSymbolLengthMax = 10                   // Maximum length of a token symbol(include)
+	minWithdrawTime      = 6                    // minWithdrawTime 6 months
+
 )
 
 type Mintage struct{}
@@ -107,7 +108,7 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 			param.Decimals,
 			param.Beneficial,
 			MinPledgeAmount,
-			time.Unix(input.Timestamp, 0).Add(minWithdrawTime).UTC().Unix(),
+			time.Unix(input.Timestamp, 0).AddDate(0, minWithdrawTime, 0).UTC().Unix(),
 			input.Address,
 			param.NEP5TxId)
 		if err != nil {

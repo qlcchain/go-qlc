@@ -22,21 +22,22 @@ import (
 )
 
 var (
-	minPledgeTime = time.Duration(24 * 30 * 6) // minWithdrawTime 6 months)
-	config        = map[cabi.PledgeType]pledgeInfo{
+	minNetworkPledgeTime = 3  // minWithdrawTime 3 months
+	minVotePledgeTime    = 10 // minWithdrawTime 10 days
+	config               = map[cabi.PledgeType]pledgeInfo{
 		cabi.Network: {
-			pledgeTime:   minPledgeTime,
-			pledgeAmount: big.NewInt(2300),
+			pledgeTime:   time.Unix(0, 0).AddDate(0, minNetworkPledgeTime, 0).UTC().Unix(),
+			pledgeAmount: big.NewInt(2000),
 		},
 		cabi.Vote: {
-			pledgeTime:   minPledgeTime,
+			pledgeTime:   time.Unix(0, 0).AddDate(0, 0, minVotePledgeTime).UTC().Unix(),
 			pledgeAmount: big.NewInt(1),
 		},
 	}
 )
 
 type pledgeInfo struct {
-	pledgeTime   time.Duration
+	pledgeTime   int64
 	pledgeAmount *big.Int
 }
 
@@ -102,7 +103,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	var withdrawTime int64
 	pt := cabi.PledgeType(param.PType)
 	if info, b := config[pt]; b {
-		withdrawTime = time.Unix(input.Timestamp, 0).Add(info.pledgeTime).UTC().Unix()
+		withdrawTime = time.Unix(input.Timestamp, 0).UTC().Unix() + info.pledgeTime
 	} else {
 		return nil, fmt.Errorf("unsupport type %s", pt.String())
 	}
