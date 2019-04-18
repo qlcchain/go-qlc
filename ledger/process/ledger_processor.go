@@ -320,6 +320,18 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 				amount, _ := lv.l.CalculateAmount(block)
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 					g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
+					//save contract data
+					ctx := g[0].VMContext
+					if ctx != nil {
+						err := ctx.SaveStorage()
+						if err != nil {
+							return InvalidData, nil
+						}
+						err = ctx.SaveTrie()
+						if err != nil {
+							return InvalidData, nil
+						}
+					}
 					return Progress, nil
 				} else {
 					return InvalidData, nil

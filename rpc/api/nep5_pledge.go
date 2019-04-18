@@ -109,13 +109,16 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 }
 
 func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
-	reward := &types.StateBlock{Timestamp: time.Now().UTC().Unix()}
+	reward := &types.StateBlock{}
 
 	blocks, err := p.pledge.DoReceive(p.vmContext, reward, input)
 	if err != nil {
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		reward.Timestamp = time.Now().UTC().Unix()
+		h := blocks[0].VMContext.Cache.Trie().Hash()
+		reward.Extra = *h
 		return reward, nil
 	}
 
@@ -213,6 +216,9 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		reward.Timestamp = time.Now().UTC().Unix()
+		h := blocks[0].VMContext.Cache.Trie().Hash()
+		reward.Extra = *h
 		return reward, nil
 	}
 

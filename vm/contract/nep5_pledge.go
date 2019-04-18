@@ -116,7 +116,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		NEP5TxId:      param.NEP5TxId,
 	}
 
-	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, input.Timestamp)
+	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, param.NEP5TxId)
 
 	var pledgeData []byte
 	var err error
@@ -193,6 +193,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 
 	return []*ContractBlock{
 		{
+			VMContext: ctx,
 			Block:     block,
 			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
@@ -307,8 +308,10 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	block.Previous = tm.Header
 	block.Representative = tm.Representative
 	block.Balance = am.CoinBalance.Add(amount)
+
 	return []*ContractBlock{
 		{
+			VMContext: ctx,
 			Block:     block,
 			ToAddress: pledgeInfo.PledgeInfo.PledgeAddress,
 			BlockType: types.ContractReward,

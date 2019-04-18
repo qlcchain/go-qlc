@@ -112,6 +112,9 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		reward.Timestamp = time.Now().UTC().Unix()
+		h := blocks[0].VMContext.Cache.Trie().Hash()
+		reward.Extra = *h
 		return reward, nil
 	}
 
@@ -170,6 +173,9 @@ func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 	}
 
 	if len(blocks) > 0 {
+		reward.Timestamp = time.Now().UTC().Unix()
+		h := blocks[0].VMContext.Cache.Trie().Hash()
+		reward.Extra = *h
 		return reward, nil
 	}
 
