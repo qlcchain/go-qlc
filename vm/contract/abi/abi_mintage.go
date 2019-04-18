@@ -103,7 +103,7 @@ func ListTokens(ctx *vmstore.VMContext) ([]*types.TokenInfo, error) {
 	var infos []*types.TokenInfo
 	if err := ctx.Iterator(types.MintageAddress[:], func(key []byte, value []byte) error {
 		if len(value) > 0 {
-			tokenId, _ := types.BytesToHash(key[33:])
+			tokenId, _ := types.BytesToHash(key[(types.AddressSize + 1):])
 			if common.IsGenesisToken(tokenId) {
 				if info, err := ParseGenesisTokenInfo(value); err == nil {
 					infos = append(infos, info)
