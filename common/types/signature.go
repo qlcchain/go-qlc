@@ -96,6 +96,10 @@ func (s Signature) MarshalText() (text []byte, err error) {
 	return []byte(s.String()), nil
 }
 
+func (s Signature) Bytes() []byte {
+	return s[:]
+}
+
 // ToBigInt converts a types.Signature into a big.Int that can be used to
 // perform math comparisons.
 func (s *Signature) ToBigInt() *big.Int {

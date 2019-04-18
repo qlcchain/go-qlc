@@ -9,7 +9,9 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"math/big"
 	"sync/atomic"
+	"time"
 )
 
 var (
@@ -360,4 +362,57 @@ func (bc *PovBlockChain) disconnectTransactions(block *types.PovBlock) error {
 	}
 
 	return nil
+}
+
+func (bc *PovBlockChain) FindAncestor(block *types.PovBlock, height uint64) *types.PovBlock {
+	if height < 0 || height > block.GetHeight() {
+		return nil
+	}
+
+	for {
+		prevBlock := bc.GetBlockByHash(block.GetPrevious())
+		if prevBlock == nil {
+			return nil
+		}
+
+		if prevBlock.GetHeight() == height {
+			return prevBlock
+		}
+	}
+}
+
+func (bc *PovBlockChain) RelativeAncestor(block *types.PovBlock, distance uint64) *types.PovBlock {
+	return bc.FindAncestor(block, block.GetHeight() - distance)
+}
+
+func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Signature, error) {
+	if (block.GetHeight() + 1) % uint64(bc.getConfig().PoV.TargetCycle) != 0 {
+		return block.Target, nil
+	}
+
+	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
+
+	firstBlock := bc.RelativeAncestor(block, uint64(bc.getConfig().PoV.TargetCycle - 1))
+	if firstBlock == nil {
+		return types.Signature{}, ErrPovUnknownAncestor
+	}
+
+	actualTimespan := block.Timestamp - firstBlock.Timestamp
+	targetTimeSpan := int64(bc.getConfig().PoV.TargetCycle * bc.getConfig().PoV.BlockInterval)
+
+	oldTargetInt := block.Target.ToBigInt()
+	nextTargetInt := new(big.Int).Set(oldTargetInt)
+	nextTargetInt.Mul(oldTargetInt, big.NewInt(actualTimespan))
+	nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
+
+	var nextTarget types.Signature
+	nextTarget.FromBigInt(nextTargetInt)
+
+	bc.logger.Debugf("Difficulty retarget at block height %d", block.GetHeight()+1)
+	bc.logger.Debugf("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
+	bc.logger.Debugf("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
+	bc.logger.Debugf("Actual timespan %v, target timespan %v",
+		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
+
+	return nextTarget, nil
 }

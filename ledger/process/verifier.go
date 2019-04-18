@@ -17,14 +17,20 @@ const (
 	Progress ProcessResult = iota
 	BadWork
 	BadSignature
+	BadHash
+	BadMerkleRoot
+	BadTarget
 	Old
 	Fork
 	GapPrevious
 	GapSource
 	GapSmartContract
+	GapTransaction
 	BalanceMismatch
 	UnReceivable
 	InvalidData
+	InvalidTime
+	InvalidTxNum
 	Other
 )
 
@@ -36,6 +42,12 @@ func (r ProcessResult) String() string {
 		return "BadWork"
 	case BadSignature:
 		return "BadSignature"
+	case BadHash:
+		return "BadHash"
+	case BadMerkleRoot:
+		return "BadMerkleRoot"
+	case BadTarget:
+		return "BadTarget"
 	case Old:
 		return "Old"
 	case Fork:
@@ -46,12 +58,16 @@ func (r ProcessResult) String() string {
 		return "GapSource"
 	case GapSmartContract:
 		return "GapSmartContract"
+	case GapTransaction:
+		return "GapTransaction"
 	case BalanceMismatch:
 		return "BalanceMismatch"
 	case UnReceivable:
 		return "UnReceivable"
 	case InvalidData:
 		return "InvalidData"
+	case InvalidTxNum:
+		return "InvalidTxNum"
 	default:
 		return "<invalid>"
 	}

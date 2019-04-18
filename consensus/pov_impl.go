@@ -1,10 +1,12 @@
 package consensus
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -18,6 +20,7 @@ type PoVEngine struct {
 	bp     *PovBlockProcessor
 	txpool *PovTxPool
 	chain  *PovBlockChain
+	verifier process.BlockVerifier
 }
 
 func NewPovEngine(cfg *config.Config, eb event.EventBus) (*PoVEngine, error) {
@@ -33,6 +36,7 @@ func NewPovEngine(cfg *config.Config, eb event.EventBus) (*PoVEngine, error) {
 	pov.bp = NewPovBlockProcessor(pov)
 	pov.txpool = NewPovTxPool(pov)
 	pov.chain = NewPovBlockChain(pov)
+	pov.verifier = process.NewPovVerifier(ledger, pov.chain)
 
 	return pov, nil
 }
@@ -54,10 +58,14 @@ func (pov *PoVEngine) Start() error {
 
 	pov.bp.Start()
 
+	pov.setEvent()
+
 	return nil
 }
 
 func (pov *PoVEngine) Stop() error {
+	pov.unsetEvent()
+
 	pov.txpool.Stop()
 
 	pov.chain.Stop()
@@ -91,13 +99,23 @@ func (pov *PoVEngine) GetTxPool() *PovTxPool {
 	return pov.txpool
 }
 
+func (pov *PoVEngine) GetVerifier() process.BlockVerifier {
+	return pov.verifier
+}
+
 func (pov *PoVEngine) setEvent() error {
-	/*
-		err := pov.eb.SubscribeAsync(string(common.EventRecvPovBlock), pov.onRecvPovBlock, false)
-		if err != nil {
-			return err
-		}
-	*/
+	err := pov.eb.SubscribeAsync(string(common.EventRecvPovBlock), pov.onRecvPovBlock, false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pov *PoVEngine) unsetEvent() error {
+	err := pov.eb.Unsubscribe(string(common.EventRecvPovBlock), pov.onRecvPovBlock)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

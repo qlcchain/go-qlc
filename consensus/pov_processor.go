@@ -3,6 +3,7 @@ package consensus
 import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/process"
 )
 
 const (
@@ -81,13 +82,21 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 		return nil
 	}
 
+	// check block
+	result, err := bp.povEngine.GetVerifier().BlockCheck(block)
+	if err != nil {
+		bp.povEngine.GetLogger().Errorf("error: [%s] when verify block:[%s]", err, block.GetHash())
+		return err
+	}
+
 	// orphan block
-	prevBlock := chain.GetBlockByHash(block.GetPrevious())
-	if prevBlock == nil {
+	if result == process.GapPrevious {
 		bp.orphanBlocks[blockHash] = blockSrc
 		bp.parentOrphans[block.GetPrevious()] = append(bp.parentOrphans[block.GetPrevious()], blockSrc)
 		return nil
 	}
 
-	return nil
+	err = bp.povEngine.GetChain().InsertBlock(block)
+
+	return err
 }

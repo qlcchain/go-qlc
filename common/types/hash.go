@@ -121,6 +121,10 @@ func (h Hash) MarshalText() (text []byte, err error) {
 	return []byte(h.String()), nil
 }
 
+func (h Hash) Bytes() []byte {
+	return h[:]
+}
+
 func HashData(data []byte) Hash {
 	h, _ := HashBytes(data)
 	return h
