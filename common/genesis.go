@@ -11,6 +11,7 @@ package common
 
 import (
 	"encoding/json"
+
 	"github.com/qlcchain/go-qlc/common/types"
 )
 

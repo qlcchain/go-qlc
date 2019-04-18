@@ -9,11 +9,12 @@ package commands
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/cmd/util"
 	"os"
 	"path/filepath"
 	"sort"
 	"time"
+
+	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"

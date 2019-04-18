@@ -9,8 +9,9 @@ package common
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"math/big"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 var (

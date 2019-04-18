@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,6 +20,8 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"time"
+
+	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"

@@ -10,9 +10,10 @@ package abi
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"math/big"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/qlcchain/go-qlc/log"
 

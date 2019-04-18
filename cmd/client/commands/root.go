@@ -9,8 +9,9 @@ package commands
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/cmd/util"
 	"os"
+
+	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"

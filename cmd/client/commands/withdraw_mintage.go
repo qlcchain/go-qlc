@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
+
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -23,12 +25,12 @@ func withdrawMintage() {
 	var tokenIdP string
 
 	if interactive {
-		account := Flag{
+		account := util.Flag{
 			Name:  "account",
 			Must:  true,
 			Usage: "account private hex string",
 		}
-		tokenId := Flag{
+		tokenId := util.Flag{
 			Name:  "tokenId",
 			Must:  true,
 			Usage: "token id hash hex string",
@@ -38,26 +40,22 @@ func withdrawMintage() {
 			Name: "withdrawMine",
 			Help: "withdraw mine token",
 			Func: func(c *ishell.Context) {
-				args := []Flag{account, tokenId}
-				if HelpText(c, args) {
+				args := []util.Flag{account, tokenId}
+				if util.HelpText(c, args) {
 					return
 				}
-				err := CheckArgs(c, args)
+				err := util.CheckArgs(c, args)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 
-				accountP = StringVar(c.Args, account)
-				tokenIdP = StringVar(c.Args, tokenId)
-				if err != nil {
-					Warn(err)
-					return
-				}
+				accountP = util.StringVar(c.Args, account)
+				tokenIdP = util.StringVar(c.Args, tokenId)
 
 				fmt.Println(accountP, tokenIdP)
 				if err := withdrawMintageAction(accountP, tokenIdP); err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
