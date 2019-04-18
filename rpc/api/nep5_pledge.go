@@ -274,7 +274,7 @@ func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*nep5PledgeInfo, error) {
 func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*nep5PledgeInfo, error) {
 	var result []*nep5PledgeInfo
 	err := p.vmContext.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[33:], param.Beneficial[:]) && len(value) > 0 {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			pledgeInfo := new(cabi.NEP5PledgeInfo)
 			var t uint8
 			switch strings.ToLower(param.PType) {
@@ -307,20 +307,7 @@ func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*nep5Ple
 	if err != nil {
 		return nil, err
 	}
-	sort.Sort(nep5PledgeInfos(result))
+
+	sort.Slice(result, func(i, j int) bool { return result[i].WithdrawTime < result[j].WithdrawTime })
 	return result, nil
-}
-
-type nep5PledgeInfos []*nep5PledgeInfo
-
-func (npi nep5PledgeInfos) Len() int {
-	return len(npi)
-}
-
-func (npi nep5PledgeInfos) Less(i, j int) bool {
-	return npi[i].WithdrawTime < npi[j].WithdrawTime
-}
-
-func (npi nep5PledgeInfos) Swap(i, j int) {
-	npi[i], npi[j] = npi[j], npi[i]
 }
