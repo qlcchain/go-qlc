@@ -60,9 +60,9 @@ type VariablePledgeBeneficial struct {
 }
 
 type WithdrawPledgeParam struct {
-	Beneficial types.Address
-	Amount     *big.Int
-	PType      uint8
+	Beneficial types.Address `json:"beneficial"`
+	Amount     *big.Int      `json:"amount"`
+	PType      uint8         `json:"pType"`
 }
 
 type NEP5PledgeInfo struct {
