@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
+
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -25,22 +27,22 @@ func withdrawPledge() {
 	var pTypeP string
 
 	if interactive {
-		beneficialAccount := Flag{
+		beneficialAccount := util.Flag{
 			Name:  "beneficialAccount",
 			Must:  true,
 			Usage: "beneficial account private hex string",
 		}
-		pledgeAccount := Flag{
+		pledgeAccount := util.Flag{
 			Name:  "pledgeAccount",
 			Must:  true,
 			Usage: "pledge account private hex string",
 		}
-		amount := Flag{
+		amount := util.Flag{
 			Name:  "amount",
 			Must:  true,
 			Usage: "pledge amount",
 		}
-		pType := Flag{
+		pType := util.Flag{
 			Name:  "pType",
 			Must:  true,
 			Usage: "pledge type",
@@ -50,24 +52,24 @@ func withdrawPledge() {
 			Name: "withdrawPledge",
 			Help: "withdraw pledge token",
 			Func: func(c *ishell.Context) {
-				args := []Flag{beneficialAccount, pledgeAccount, amount, pType}
-				if HelpText(c, args) {
+				args := []util.Flag{beneficialAccount, pledgeAccount, amount, pType}
+				if util.HelpText(c, args) {
 					return
 				}
-				err := CheckArgs(c, args)
+				err := util.CheckArgs(c, args)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 
-				beneficialAccountP = StringVar(c.Args, beneficialAccount)
-				pledgeAccountP = StringVar(c.Args, pledgeAccount)
-				amountP = StringVar(c.Args, amount)
-				pTypeP = StringVar(c.Args, pType)
+				beneficialAccountP = util.StringVar(c.Args, beneficialAccount)
+				pledgeAccountP = util.StringVar(c.Args, pledgeAccount)
+				amountP = util.StringVar(c.Args, amount)
+				pTypeP = util.StringVar(c.Args, pType)
 
 				fmt.Println(beneficialAccountP, pledgeAccountP, amountP, pTypeP)
 				if err := withdrawPledgeAction(beneficialAccountP, pledgeAccountP, amountP, pTypeP); err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
