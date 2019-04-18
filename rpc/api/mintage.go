@@ -46,7 +46,7 @@ type MintageParams struct {
 	TotalSupply string        `json:"totalSupply"`
 	Decimals    uint8         `json:"decimals"`
 	Beneficial  types.Address `json:"beneficial"`
-	NEP5TxId    string        `json:"NEP5TxId"`
+	NEP5TxId    string        `json:"nep5TxId"`
 }
 
 func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
