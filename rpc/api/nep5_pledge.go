@@ -8,7 +8,10 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
+	"math/big"
+	"sort"
 	"strings"
 	"time"
 
@@ -42,6 +45,7 @@ type PledgeParam struct {
 	PledgeAddress types.Address
 	Amount        types.Balance
 	PType         string
+	NEP5TxId      string
 }
 
 func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
@@ -60,17 +64,17 @@ func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
 		return nil, fmt.Errorf("unsupport pledge type %s", param.PType)
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, t)
+	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, t, param.NEP5TxId)
 }
 
 func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, error) {
-	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 {
+	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
 
-	am, err := p.ledger.GetAccountMeta(param.Beneficial)
+	am, err := p.ledger.GetAccountMeta(param.PledgeAddress)
 	if am == nil {
-		return nil, fmt.Errorf("invalid user account:%s, %s", param.Beneficial.String(), err)
+		return nil, fmt.Errorf("invalid user account:%s, %s", param.PledgeAddress.String(), err)
 	}
 
 	tm := am.Token(common.ChainToken())
@@ -93,7 +97,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.MintageAddress),
+		Link:           types.Hash(types.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		Timestamp:      time.Now().UTC().Unix(),
@@ -107,7 +111,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 	return send, nil
 }
 
-func (p *NEP5PledgeApi) GetPledgeRewordBlock(input *types.StateBlock) (*types.StateBlock, error) {
+func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	reward := &types.StateBlock{}
 
 	blocks, err := p.pledge.DoReceive(p.vmContext, reward, input)
@@ -115,6 +119,9 @@ func (p *NEP5PledgeApi) GetPledgeRewordBlock(input *types.StateBlock) (*types.St
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		reward.Timestamp = time.Now().UTC().Unix()
+		h := blocks[0].VMContext.Cache.Trie().Hash()
+		reward.Extra = *h
 		return reward, nil
 	}
 
@@ -122,9 +129,9 @@ func (p *NEP5PledgeApi) GetPledgeRewordBlock(input *types.StateBlock) (*types.St
 }
 
 type WithdrawPledgeParam struct {
-	Beneficial types.Address
-	Amount     types.Balance
-	PType      string
+	Beneficial types.Address `json:"beneficial"`
+	Amount     types.Balance `json:"amount"`
+	PType      string        `json:"pType"`
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byte, error) {
@@ -171,6 +178,10 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 		Token:          tm.Type,
 		Address:        param.Beneficial,
 		Balance:        am.CoinBalance,
+		Vote:           am.CoinVote,
+		Network:        am.CoinNetwork,
+		Oracle:         am.CoinOracle,
+		Storage:        am.CoinStorage,
 		Previous:       tm.Header,
 		Link:           types.Hash(types.NEP5PledgeAddress),
 		Representative: tm.Representative,
@@ -208,8 +219,95 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		reward.Timestamp = time.Now().UTC().Unix()
+		h := blocks[0].VMContext.Cache.Trie().Hash()
+		reward.Extra = *h
 		return reward, nil
 	}
 
 	return nil, errors.New("can not generate pledge withdraw reward block")
+}
+
+type nep5PledgeInfo struct {
+	PType         string
+	Amount        *big.Int
+	WithdrawTime  string
+	Beneficial    types.Address
+	PledgeAddress types.Address
+	NEP5TxId      string
+}
+
+func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*nep5PledgeInfo, error) {
+	var result []*nep5PledgeInfo
+	err := p.vmContext.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+		if len(key) > 2*types.AddressSize && len(value) > 0 {
+			pledgeInfo := new(cabi.NEP5PledgeInfo)
+
+			if err := cabi.NEP5PledgeABI.UnpackVariable(pledgeInfo, cabi.VariableNEP5PledgeInfo, value); err == nil {
+				var t string
+				switch pledgeInfo.PType {
+				case uint8(0):
+					t = "network"
+				case uint8(1):
+					t = "vote"
+				}
+				p := &nep5PledgeInfo{
+					PType:         t,
+					Amount:        pledgeInfo.Amount,
+					WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).String(),
+					Beneficial:    pledgeInfo.Beneficial,
+					PledgeAddress: pledgeInfo.PledgeAddress,
+					NEP5TxId:      pledgeInfo.NEP5TxId,
+				}
+				result = append(result, p)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*nep5PledgeInfo, error) {
+	var result []*nep5PledgeInfo
+	err := p.vmContext.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+			pledgeInfo := new(cabi.NEP5PledgeInfo)
+			var t uint8
+			switch strings.ToLower(param.PType) {
+			case "network", "confidant":
+				t = uint8(0)
+			case "vote":
+				t = uint8(1)
+			}
+			if err := cabi.NEP5PledgeABI.UnpackVariable(pledgeInfo, cabi.VariableNEP5PledgeInfo, value); err == nil {
+				if pledgeInfo.PType == t && pledgeInfo.Amount.String() == param.Amount.String() &&
+					pledgeInfo.Beneficial == param.Beneficial {
+
+					p := &nep5PledgeInfo{
+						PType:         param.PType,
+						Amount:        pledgeInfo.Amount,
+						WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).String(),
+						Beneficial:    pledgeInfo.Beneficial,
+						PledgeAddress: pledgeInfo.PledgeAddress,
+						NEP5TxId:      pledgeInfo.NEP5TxId,
+					}
+					result = append(result, p)
+				}
+			} else {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i].WithdrawTime < result[j].WithdrawTime })
+	return result, nil
 }

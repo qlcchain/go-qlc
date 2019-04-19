@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
+
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
 	"github.com/spf13/cobra"
@@ -22,23 +24,16 @@ var (
 	interactive bool
 )
 
-type Flag struct {
-	Name  string
-	Usage string
-	Must  bool
-	Value interface{}
-}
-
 var (
 	endpointP  string
-	endpoint   Flag
-	commonFlag []Flag
+	endpoint   util.Flag
+	commonFlag []util.Flag
 )
 
 // set global variable
 func init() {
 	endpointP = "ws://0.0.0.0:9736"
-	endpoint = Flag{
+	endpoint = util.Flag{
 		Name:  "endpoint",
 		Must:  false,
 		Usage: "endpoint for client to connect to server",
@@ -60,7 +55,7 @@ func Execute(osArgs []string) {
 		})
 		shell.Println("QLC Chain Client")
 		//set common variable
-		commonFlag = make([]Flag, 0)
+		commonFlag = make([]util.Flag, 0)
 		addcommands()
 		// commonFlag = append(commonFlag, p)
 		// run shell
@@ -119,4 +114,7 @@ func addcommands() {
 	walletRemove()
 	mintage()
 	generateTestLedger()
+	pledge()
+	withdrawPledge()
+	withdrawMintage()
 }

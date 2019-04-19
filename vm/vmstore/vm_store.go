@@ -11,6 +11,8 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/qlcchain/go-qlc/trie"
+
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -26,6 +28,7 @@ type ContractStore interface {
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	IsUserAccount(address types.Address) (bool, error)
 	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
+	SaveStorage() error
 }
 
 const (
@@ -40,6 +43,17 @@ var (
 type VMContext struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
+	Cache  *VMCache
+}
+
+func NewVMContext(l *ledger.Ledger) *VMContext {
+	//TODO: fix trie
+	t := trie.NewTrie(l.Store, nil, nil)
+	return &VMContext{
+		ledger: l,
+		logger: log.NewLogger("vm_context"),
+		Cache:  NewVMCache(t),
+	}
 }
 
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
@@ -48,12 +62,6 @@ func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
 	} else {
 		return false, err
 	}
-}
-
-func NewVMContext(l *ledger.Ledger) *VMContext {
-	context := &VMContext{ledger: l}
-	context.logger = log.NewLogger("vm_context")
-	return context
 }
 
 func getStorageKey(prefix, key []byte) []byte {
@@ -133,4 +141,25 @@ func (v *VMContext) CalculateAmount(block *types.StateBlock) (types.Balance, err
 
 func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, error) {
 	return v.ledger.GetAccountMeta(address)
+}
+
+func (v *VMContext) SaveStorage() error {
+	storage := v.Cache.storage
+	for k, val := range storage {
+		err := v.SetStorage(nil, []byte(k), val)
+		if err != nil {
+			v.logger.Error(err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (v *VMContext) SaveTrie() error {
+	fn, err := v.Cache.Trie().Save()
+	if err != nil {
+		return err
+	}
+	fn()
+	return nil
 }

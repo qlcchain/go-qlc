@@ -10,6 +10,8 @@ package commands
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
+
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -21,19 +23,19 @@ func changePassword() {
 	var passwordP string
 	var newpasswordP string
 	if interactive {
-		account := Flag{
+		account := util.Flag{
 			Name:  "account",
 			Must:  true,
 			Usage: "account for wallet",
 			Value: "",
 		}
-		pwd := Flag{
+		pwd := util.Flag{
 			Name:  "password",
 			Must:  true,
 			Usage: "password for wallet",
 			Value: "",
 		}
-		newPwd := Flag{
+		newPwd := util.Flag{
 			Name:  "newpassword",
 			Must:  true,
 			Usage: "new password for wallet",
@@ -43,22 +45,22 @@ func changePassword() {
 			Name: "changepassword",
 			Help: "change wallet password",
 			Func: func(c *ishell.Context) {
-				args := []Flag{account, pwd, newPwd}
-				if HelpText(c, args) {
+				args := []util.Flag{account, pwd, newPwd}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := CheckArgs(c, args); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				accountP = StringVar(c.Args, account)
-				passwordP = StringVar(c.Args, pwd)
-				newpasswordP = StringVar(c.Args, newPwd)
+				accountP = util.StringVar(c.Args, account)
+				passwordP = util.StringVar(c.Args, pwd)
+				newpasswordP = util.StringVar(c.Args, newPwd)
 				err := changePwd(accountP, passwordP, newpasswordP)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 				} else {
-					Info(fmt.Sprintf("change password success for account: %s", accountP))
+					util.Info(fmt.Sprintf("change password success for account: %s", accountP))
 				}
 			},
 		}

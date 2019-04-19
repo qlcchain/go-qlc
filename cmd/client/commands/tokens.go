@@ -10,6 +10,8 @@ package commands
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
+
 	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/abiosoft/ishell"
@@ -24,16 +26,16 @@ func tokens() {
 			Name: "tokens",
 			Help: "return token info list of chain",
 			Func: func(c *ishell.Context) {
-				if HelpText(c, nil) {
+				if util.HelpText(c, nil) {
 					return
 				}
-				if err := CheckArgs(c, nil); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, nil); err != nil {
+					util.Warn(err)
 					return
 				}
 				err := tokensinfo()
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
@@ -69,7 +71,7 @@ func tokensinfo() error {
 		return err
 	}
 	if interactive {
-		Info(fmt.Sprintf("%d tokens found:", len(tokeninfos)))
+		util.Info(fmt.Sprintf("%d tokens found:", len(tokeninfos)))
 	}
 	for _, v := range tokeninfos {
 		fmt.Printf("TokenId:%s  TokenName:%s  TokenSymbol:%s  TotalSupply:%s  Decimals:%d  Owner:%s", v.TokenId, v.TokenName, v.TokenSymbol, v.TotalSupply, v.Decimals, v.Owner)

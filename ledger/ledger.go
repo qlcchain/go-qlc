@@ -1878,29 +1878,37 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 	var err error
 	switch block.GetType() {
 	case types.Open:
-		return block.GetBalance(), err
+		return block.TotalBalance(), err
 	case types.Send:
-		if prev, err = l.GetStateBlock(block.Previous); err != nil {
+		if prev, err = l.GetStateBlock(block.GetPrevious(), txn); err != nil {
 			return types.ZeroBalance, err
 		}
-		return prev.Balance.Sub(block.GetBalance()), nil
+		return prev.TotalBalance().Sub(block.TotalBalance()), nil
 	case types.Receive:
-		if prev, err = l.GetStateBlock(block.Previous); err != nil {
+		if prev, err = l.GetStateBlock(block.GetPrevious(), txn); err != nil {
 			return types.ZeroBalance, err
 		}
-		return block.GetBalance().Sub(prev.Balance), nil
+		return block.TotalBalance().Sub(prev.TotalBalance()), nil
 	case types.Change:
 		return types.ZeroBalance, nil
 	case types.ContractReward:
-		return block.GetBalance(), nil
-	case types.ContractSend:
-		if common.IsGenesisToken(block.GetToken()) {
-			return block.GetBalance(), nil
+		prevHash := block.GetPrevious()
+		if prevHash.IsZero() {
+			return block.TotalBalance(), nil
 		} else {
-			if prev, err = l.GetStateBlock(block.Previous); err != nil {
+			if prev, err = l.GetStateBlock(prevHash, txn); err != nil {
 				return types.ZeroBalance, err
 			}
-			return prev.Balance.Sub(block.GetBalance()), nil
+			return block.TotalBalance().Sub(prev.TotalBalance()), nil
+		}
+	case types.ContractSend:
+		if common.IsGenesisBlock(block) {
+			return block.GetBalance(), nil
+		} else {
+			if prev, err = l.GetStateBlock(block.GetPrevious(), txn); err != nil {
+				return types.ZeroBalance, err
+			}
+			return prev.TotalBalance().Sub(block.TotalBalance()), nil
 		}
 	default:
 		return types.ZeroBalance, errors.New("invalid block type")
@@ -2011,18 +2019,22 @@ func (l *Ledger) generateWork(hash types.Hash) types.Work {
 func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error) {
 	tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken())
 	if err != nil {
+		return nil, errors.New("token not found")
+	}
+	prev, err := l.GetStateBlock(block.GetPrevious())
+	if err != nil {
 		return nil, err
 	}
-	//balance, err := l.TokenBalance(source, token)
-	//if err != nil {
-	//	return nil, err
-	//
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		block.Type = types.Send
 		block.Balance = tm.Balance.Sub(amount)
 		block.Previous = tm.Header
 		block.Representative = tm.Representative
 		block.Timestamp = time.Now().Unix()
+		block.Vote = prev.GetVote()
+		block.Network = prev.GetNetwork()
+		block.Oracle = prev.GetOracle()
+		block.Storage = prev.GetStorage()
 
 		acc := types.NewAccount(prk)
 		block.Signature = acc.Sign(block.GetHash())
@@ -2052,16 +2064,23 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		return nil, err
 	}
 	if has {
-		rxAm, err := l.GetAccountMeta(rxAccount)
+		rxTm, err := l.GetTokenMeta(rxAccount, sendBlock.GetToken())
 		if err != nil {
 			return nil, err
 		}
-		rxTm := rxAm.Token(sendBlock.GetToken())
+		prev, err := l.GetStateBlock(rxTm.Header)
+		if err != nil {
+			return nil, err
+		}
 		if rxTm != nil {
 			sb := types.StateBlock{
 				Type:           types.Receive,
 				Address:        rxAccount,
 				Balance:        rxTm.Balance.Add(info.Amount),
+				Vote:           prev.GetVote(),
+				Oracle:         prev.GetOracle(),
+				Network:        prev.GetNetwork(),
+				Storage:        prev.GetStorage(),
 				Previous:       rxTm.Header,
 				Link:           hash,
 				Representative: rxTm.Representative,
@@ -2078,6 +2097,10 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		Type:           types.Open,
 		Address:        rxAccount,
 		Balance:        info.Amount,
+		Vote:           types.ZeroBalance,
+		Oracle:         types.ZeroBalance,
+		Network:        types.ZeroBalance,
+		Storage:        types.ZeroBalance,
 		Previous:       types.ZeroHash,
 		Link:           hash,
 		Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
@@ -2091,34 +2114,35 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 }
 
 func (l *Ledger) GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error) {
-	if b, err := l.HasAccountMeta(account); err != nil || !b {
-		return nil, fmt.Errorf("account[%s] is not exist", account.String())
-	}
-
 	if _, err := l.GetAccountMeta(representative); err != nil {
 		return nil, fmt.Errorf("invalid representative[%s]", representative.String())
 	}
 
-	//get latest chain token block
-	hash := l.Latest(account, common.ChainToken())
-	if hash.IsZero() {
-		return nil, fmt.Errorf("account [%s] does not have the main chain account", account.String())
-	}
-
-	block, err := l.GetStateBlock(hash)
+	am, err := l.GetAccountMeta(account)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("account[%s] is not exist", account.String())
+	}
+	tm := am.Token(common.ChainToken())
+	if tm == nil {
+		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
+	}
+	prev, err := l.GetStateBlock(tm.Header)
+	if err != nil {
+		return nil, fmt.Errorf("token header block not found")
 	}
 
-	tm, err := l.GetTokenMeta(account, common.ChainToken())
 	sb := types.StateBlock{
 		Type:           types.Change,
 		Address:        account,
 		Balance:        tm.Balance,
+		Vote:           prev.GetVote(),
+		Oracle:         prev.GetOracle(),
+		Network:        prev.GetNetwork(),
+		Storage:        prev.GetStorage(),
 		Previous:       tm.Header,
 		Link:           types.ZeroHash,
 		Representative: representative,
-		Token:          block.Token,
+		Token:          tm.Type,
 		Extra:          types.ZeroHash,
 		Timestamp:      time.Now().Unix(),
 	}

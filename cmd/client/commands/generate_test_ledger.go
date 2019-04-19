@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/rpc/api"
@@ -27,13 +29,13 @@ func generateTestLedger() {
 	var fromAccountP string
 	var repCountsP int
 	if interactive {
-		from := Flag{
+		from := util.Flag{
 			Name:  "from",
 			Must:  true,
 			Usage: "send account private key",
 			Value: "",
 		}
-		repCounts := Flag{
+		repCounts := util.Flag{
 			Name:  "repCounts",
 			Must:  true,
 			Usage: "rep counts",
@@ -43,23 +45,23 @@ func generateTestLedger() {
 			Name: "generateTestLedger",
 			Help: "generate test ledger",
 			Func: func(c *ishell.Context) {
-				args := []Flag{from, repCounts}
-				if HelpText(c, args) {
+				args := []util.Flag{from, repCounts}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := CheckArgs(c, args); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				fromAccountP = StringVar(c.Args, from)
-				repCountsP, _ = IntVar(c.Args, repCounts)
+				fromAccountP = util.StringVar(c.Args, from)
+				repCountsP, _ = util.IntVar(c.Args, repCounts)
 				err := generateLedger(fromAccountP, repCountsP)
 				if err != nil {
-					Info(err)
+					util.Info(err)
 					return
 				}
 
-				Info("generate test ledger success")
+				util.Info("generate test ledger success")
 			},
 		}
 		shell.AddCmd(c)

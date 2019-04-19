@@ -10,6 +10,8 @@ package commands
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
+
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -20,13 +22,13 @@ func walletCreate() {
 	var pwdP string
 	var seedP string
 	if interactive {
-		pwd := Flag{
+		pwd := util.Flag{
 			Name:  "password",
 			Must:  false,
 			Usage: "password for new wallet",
 			Value: "",
 		}
-		seed := Flag{
+		seed := util.Flag{
 			Name:  "seed",
 			Must:  false,
 			Usage: "seed for wallet",
@@ -36,19 +38,19 @@ func walletCreate() {
 			Name: "walletcreate",
 			Help: "create a wallet for QLCChain node",
 			Func: func(c *ishell.Context) {
-				args := []Flag{pwd, seed}
-				if HelpText(c, args) {
+				args := []util.Flag{pwd, seed}
+				if util.HelpText(c, args) {
 					return
 				}
-				if err := CheckArgs(c, args); err != nil {
-					Warn(err)
+				if err := util.CheckArgs(c, args); err != nil {
+					util.Warn(err)
 					return
 				}
-				pwdP = StringVar(c.Args, pwd)
-				seedP = StringVar(c.Args, seed)
+				pwdP = util.StringVar(c.Args, pwd)
+				seedP = util.StringVar(c.Args, seed)
 				err := createWallet(pwdP, seedP)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
@@ -89,7 +91,7 @@ func createWallet(pwdP, seedP string) error {
 	}
 	s := fmt.Sprintf("create wallet: address=>%s, password=>%s success", addr.String(), pwdP)
 	if interactive {
-		Info(s)
+		util.Info(s)
 	} else {
 		fmt.Println(s)
 	}

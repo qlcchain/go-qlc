@@ -24,9 +24,9 @@ import (
 const (
 	jsonNEP5Pledge = `
 	[
-		{"type":"function","name":"NEP5Pledge", "inputs":[{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"pType","type":"uint8"}]},
+		{"type":"function","name":"NEP5Pledge", "inputs":[{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"pType","type":"uint8"},{"name":"NEP5TxId","type":"string"}]},
 		{"type":"function","name":"WithdrawNEP5Pledge","inputs":[{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"pType","type":"uint8"}]},
-		{"type":"variable","name":"nep5PledgeInfo","inputs":[{"name":"pType","type":"uint8"},{"name":"amount","type":"uint256"},{"name":"withdrawTime","type":"int64"},{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"}]}
+		{"type":"variable","name":"nep5PledgeInfo","inputs":[{"name":"pType","type":"uint8"},{"name":"amount","type":"uint256"},{"name":"withdrawTime","type":"int64"},{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"NEP5TxId","type":"string"}]}
 	]`
 
 	MethodNEP5Pledge         = "NEP5Pledge"
@@ -50,7 +50,8 @@ const (
 type PledgeParam struct {
 	Beneficial    types.Address
 	PledgeAddress types.Address
-	PType         PledgeType
+	PType         uint8
+	NEP5TxId      string
 }
 
 type VariablePledgeBeneficial struct {
@@ -59,9 +60,9 @@ type VariablePledgeBeneficial struct {
 }
 
 type WithdrawPledgeParam struct {
-	Beneficial types.Address
-	Amount     *big.Int
-	PType      uint8
+	Beneficial types.Address `json:"beneficial"`
+	Amount     *big.Int      `json:"amount"`
+	PType      uint8         `json:"pType"`
 }
 
 type NEP5PledgeInfo struct {
@@ -70,12 +71,13 @@ type NEP5PledgeInfo struct {
 	WithdrawTime  int64
 	Beneficial    types.Address
 	PledgeAddress types.Address
+	NEP5TxId      string
 }
 
-func GetPledgeKey(addr types.Address, beneficial types.Address, time int64) []byte {
+func GetPledgeKey(addr types.Address, beneficial types.Address, neoTxId string) []byte {
 	result := []byte(beneficial[:])
 	result = append(result, addr[:]...)
-	result = append(result, util.Int2Bytes(time)...)
+	result = append(result, []byte(neoTxId)...)
 	return result
 }
 
@@ -212,11 +214,11 @@ func SearchBeneficialPledgeInfo(ctx *vmstore.VMContext, param *WithdrawPledgePar
 	var result []*PledgeResult
 	now := time.Now().UTC().Unix()
 	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key, param.Beneficial[:]) && len(value) > 0 {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			pledgeInfo := new(NEP5PledgeInfo)
 			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
 				if pledgeInfo.PType == param.PType &&
-					pledgeInfo.Amount == param.Amount && now >= pledgeInfo.WithdrawTime {
+					pledgeInfo.Amount.String() == param.Amount.String() && now >= pledgeInfo.WithdrawTime {
 					result = append(result, &PledgeResult{Key: key, PledgeInfo: pledgeInfo})
 				}
 			} else {

@@ -22,21 +22,22 @@ import (
 )
 
 var (
-	minPledgeTime = time.Duration(24 * 30 * 6) // minWithdrawTime 6 months)
-	config        = map[cabi.PledgeType]pledgeInfo{
+	minNetworkPledgeTime = 3  // minWithdrawTime 3 months
+	minVotePledgeTime    = 10 // minWithdrawTime 10 days
+	config               = map[cabi.PledgeType]pledgeInfo{
 		cabi.Network: {
-			pledgeTime:   minPledgeTime,
-			pledgeAmount: big.NewInt(2300),
+			pledgeTime:   time.Unix(0, 0).AddDate(0, minNetworkPledgeTime, 0).UTC().Unix(),
+			pledgeAmount: big.NewInt(2000),
 		},
 		cabi.Vote: {
-			pledgeTime:   minPledgeTime,
+			pledgeTime:   time.Unix(0, 0).AddDate(0, 0, minVotePledgeTime).UTC().Unix(),
 			pledgeAmount: big.NewInt(1),
 		},
 	}
 )
 
 type pledgeInfo struct {
-	pledgeTime   time.Duration
+	pledgeTime   int64
 	pledgeAmount *big.Int
 }
 
@@ -70,11 +71,13 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 
 	param := new(cabi.PledgeParam)
 	if err := cabi.NEP5PledgeABI.UnpackMethod(param, cabi.MethodNEP5Pledge, block.Data); err != nil {
+		fmt.Println(err)
 		return errors.New("invalid beneficial address")
 	}
 
-	if info, b := config[param.PType]; !b {
-		return fmt.Errorf("unsupport type %s", param.PType.String())
+	pt := cabi.PledgeType(param.PType)
+	if info, b := config[pt]; !b {
+		return fmt.Errorf("unsupport type %s", pt.String())
 	} else if amount.Compare(types.Balance{Int: info.pledgeAmount}) == types.BalanceCompSmaller {
 		return fmt.Errorf("not enough pledge amount %s, expect %s", amount.String(), info.pledgeAmount)
 	}
@@ -85,7 +88,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 	}
 
 	block.Data, err = cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial,
-		param.PledgeAddress, uint8(param.PType))
+		param.PledgeAddress, uint8(param.PType), param.NEP5TxId)
 	if err != nil {
 		return err
 	}
@@ -98,78 +101,106 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	amount, _ := ctx.CalculateAmount(input)
 
 	var withdrawTime int64
-	if info, b := config[param.PType]; b {
-		withdrawTime = time.Unix(input.Timestamp, 0).Add(info.pledgeTime).UTC().Unix()
+	pt := cabi.PledgeType(param.PType)
+	if info, b := config[pt]; b {
+		withdrawTime = time.Unix(input.Timestamp, 0).UTC().Unix() + info.pledgeTime
 	} else {
-		return nil, fmt.Errorf("unsupport type %s", param.PType.String())
+		return nil, fmt.Errorf("unsupport type %s", pt.String())
 	}
 
 	info := cabi.NEP5PledgeInfo{
-		PType:         uint8(param.PType),
+		PType:         param.PType,
 		Amount:        amount.Int,
 		WithdrawTime:  withdrawTime,
 		Beneficial:    param.Beneficial,
 		PledgeAddress: param.PledgeAddress,
+		NEP5TxId:      param.NEP5TxId,
 	}
 
-	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, input.Timestamp)
+	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, param.NEP5TxId)
 
-	if oldPledgeData, err := ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
+	var pledgeData []byte
+	var err error
+	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	} else {
-		if len(oldPledgeData) > 0 {
+		// already exist,verify data
+		if len(pledgeData) > 0 {
 			oldPledge := new(cabi.NEP5PledgeInfo)
-			err := cabi.NEP5PledgeABI.UnpackVariable(oldPledge, cabi.VariableNEP5PledgeInfo, oldPledgeData)
+			err := cabi.NEP5PledgeABI.UnpackVariable(oldPledge, cabi.VariableNEP5PledgeInfo, pledgeData)
 			if err != nil {
 				return nil, err
 			}
 			if oldPledge.PledgeAddress != info.PledgeAddress || oldPledge.WithdrawTime != info.WithdrawTime ||
-				oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType {
+				oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType ||
+				oldPledge.NEP5TxId != info.NEP5TxId {
 				return nil, errors.New("invalid saved pledge info")
+			}
+		} else {
+			// save data
+			pledgeData, err = cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, info.PType, info.Amount,
+				info.WithdrawTime, info.Beneficial, info.PledgeAddress, info.NEP5TxId)
+			if err != nil {
+				return nil, err
+			}
+			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
-
-	newPledgeInfo, _ := cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, info.PType, info.Amount,
-		info.Beneficial, info.PledgeAddress)
-	err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, newPledgeInfo)
-	if err != nil {
-		return nil, err
+	am, _ := ctx.GetAccountMeta(param.Beneficial)
+	if am != nil {
+		tm := am.Token(common.ChainToken())
+		block.Type = types.ContractReward
+		block.Address = param.Beneficial
+		block.Token = input.Token
+		block.Link = input.GetHash()
+		block.Data = pledgeData
+		block.Balance = am.CoinBalance
+		block.Vote = am.CoinVote
+		block.Network = am.CoinNetwork
+		block.Oracle = am.CoinOracle
+		block.Storage = am.CoinStorage
+		block.Previous = tm.Header
+		block.Representative = tm.Representative
+	} else {
+		block.Type = types.ContractReward
+		block.Address = param.Beneficial
+		block.Token = input.Token
+		block.Link = input.GetHash()
+		block.Data = pledgeData
+		block.Vote = types.ZeroBalance
+		block.Network = types.ZeroBalance
+		block.Oracle = types.ZeroBalance
+		block.Storage = types.ZeroBalance
+		block.Previous = types.ZeroHash
+		block.Representative = input.Representative
 	}
 
-	block.Type = types.ContractReward
-	block.Address = param.Beneficial
-	block.Token = input.Token
-	block.Link = input.GetHash()
-	block.Data = newPledgeInfo
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
-	//block.Timestamp = time.Now().UTC().Unix()
-
 	//TODO: query snapshot balance
-	switch param.PType {
+	switch cabi.PledgeType(param.PType) {
 	case cabi.Network:
-		block.Network = amount
+		block.Network = block.Network.Add(amount)
 	case cabi.Oracle:
-		block.Oracle = amount
+		block.Oracle = block.Oracle.Add(amount)
 	case cabi.Storage:
-		block.Storage = amount
+		block.Storage = block.Storage.Add(amount)
 	case cabi.Vote:
-		block.Vote = amount
+		block.Vote = block.Vote.Add(amount)
 	default:
 		break
 	}
 
 	return []*ContractBlock{
 		{
+			VMContext: ctx,
 			Block:     block,
-			ToAddress: input.Address,
+			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
 			Amount:    amount,
 			Token:     input.Token,
-			Data:      newPledgeInfo,
+			Data:      pledgeData,
 		},
 	}, nil
 }
@@ -189,7 +220,7 @@ func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBloc
 	if amount, err := ctx.CalculateAmount(block); err != nil {
 		return err
 	} else {
-		if block.Type != types.Send || amount.Compare(types.ZeroBalance) != types.BalanceCompEqual {
+		if block.Type != types.ContractSend || amount.Compare(types.ZeroBalance) == types.BalanceCompEqual {
 			return errors.New("invalid block ")
 		}
 	}
@@ -230,34 +261,64 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 
 	amount, _ := ctx.CalculateAmount(input)
 
-	err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key, nil)
-	if err != nil {
+	var pledgeData []byte
+	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
+	} else {
+		// already exist,verify data
+		if len(pledgeData) > 0 {
+			oldPledge := new(cabi.NEP5PledgeInfo)
+			err := cabi.NEP5PledgeABI.UnpackVariable(oldPledge, cabi.VariableNEP5PledgeInfo, pledgeData)
+			if err != nil {
+				return nil, err
+			}
+			if oldPledge.PledgeAddress != pledgeInfo.PledgeInfo.PledgeAddress || oldPledge.WithdrawTime != pledgeInfo.PledgeInfo.WithdrawTime ||
+				oldPledge.Beneficial != pledgeInfo.PledgeInfo.Beneficial || oldPledge.PType != pledgeInfo.PledgeInfo.PType ||
+				oldPledge.NEP5TxId != pledgeInfo.PledgeInfo.NEP5TxId {
+				return nil, errors.New("invalid saved pledge info")
+			}
+		} else {
+			// save data
+			pledgeData, err = cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, pledgeInfo.PledgeInfo.PType,
+				pledgeInfo.PledgeInfo.Amount, pledgeInfo.PledgeInfo.WithdrawTime, pledgeInfo.PledgeInfo.Beneficial,
+				pledgeInfo.PledgeInfo.PledgeAddress, pledgeInfo.PledgeInfo.NEP5TxId)
+			if err != nil {
+				return nil, err
+			}
+			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key, pledgeData)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	data, err := cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, pledgeInfo)
-	if err != nil {
-		return nil, err
+	am, _ := ctx.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
+	if am == nil {
+		return nil, fmt.Errorf("%s do not found", pledgeInfo.PledgeInfo.PledgeAddress.String())
 	}
-
+	tm := am.Token(common.ChainToken())
 	block.Type = types.ContractReward
 	block.Address = pledgeInfo.PledgeInfo.PledgeAddress
 	block.Token = input.Token
 	block.Link = input.GetHash()
-	block.Data = data
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
+	block.Data = pledgeData
+	block.Vote = am.CoinVote
+	block.Network = am.CoinNetwork
+	block.Oracle = am.CoinOracle
+	block.Storage = am.CoinStorage
+	block.Previous = tm.Header
+	block.Representative = tm.Representative
+	block.Balance = am.CoinBalance.Add(amount)
 
 	return []*ContractBlock{
 		{
+			VMContext: ctx,
 			Block:     block,
 			ToAddress: pledgeInfo.PledgeInfo.PledgeAddress,
 			BlockType: types.ContractReward,
 			Amount:    amount,
 			Token:     input.Token,
-			Data:      data,
+			Data:      pledgeData,
 		},
 	}, nil
 }

@@ -23,13 +23,13 @@ func init() {
 
 const (
 	//HashSize size of hash
-	HashSize          = blake2b.Size256
-	HashExtensionType = 101
+	HashSize = blake2b.Size256
 )
 
 var ZeroHash = Hash{}
 
 //Hash blake2b hash
+//go:generate msgp
 type Hash [HashSize]byte
 
 func NewHash(hexStr string) (Hash, error) {

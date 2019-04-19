@@ -23,10 +23,11 @@ import (
 )
 
 var (
-	MinPledgeAmount      = big.NewInt(1e12)           // 10K QLC
-	tokenNameLengthMax   = 40                         // Maximum length of a token name(include)
-	tokenSymbolLengthMax = 10                         // Maximum length of a token symbol(include)
-	minWithdrawTime      = time.Duration(24 * 30 * 6) // minWithdrawTime 3 months
+	MinPledgeAmount      = big.NewInt(5 * 1e13) // 50K QLC
+	tokenNameLengthMax   = 40                   // Maximum length of a token name(include)
+	tokenSymbolLengthMax = 10                   // Maximum length of a token symbol(include)
+	minWithdrawTime      = 6                    // minWithdrawTime 6 months
+
 )
 
 type Mintage struct{}
@@ -65,7 +66,8 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 		param.TokenSymbol,
 		param.TotalSupply,
 		param.Decimals,
-		param.Beneficial); err != nil {
+		param.Beneficial,
+		param.NEP5TxId); err != nil {
 		return err
 	}
 	return nil
@@ -73,7 +75,7 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 
 func verifyToken(param cabi.ParamMintage) error {
 	if param.TotalSupply.Cmp(util.Tt256m1) > 0 ||
-		param.TotalSupply.Cmp(new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)) < 0 ||
+		//param.TotalSupply.Cmp(new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)) < 0 ||
 		len(param.TokenName) == 0 || len(param.TokenName) > tokenNameLengthMax ||
 		len(param.TokenSymbol) == 0 || len(param.TokenSymbol) > tokenSymbolLengthMax {
 		return errors.New("invalid token param")
@@ -88,11 +90,11 @@ func verifyToken(param cabi.ParamMintage) error {
 }
 
 //TODO: verify input block timestamp
-func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.ParamMintage)
 	_ = cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
 	var tokenInfo []byte
-	amount, _ := ledger.CalculateAmount(input)
+	amount, _ := ctx.CalculateAmount(input)
 	if amount.Sign() > 0 &&
 		amount.Compare(types.Balance{Int: MinPledgeAmount}) != types.BalanceCompSmaller &&
 		input.Token == common.ChainToken() {
@@ -106,13 +108,22 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 			param.Decimals,
 			param.Beneficial,
 			MinPledgeAmount,
-			time.Unix(input.Timestamp, 0).Add(minWithdrawTime).UTC().Unix(),
-			input.Address)
+			time.Unix(input.Timestamp, 0).AddDate(0, minWithdrawTime, 0).UTC().Unix(),
+			input.Address,
+			param.NEP5TxId)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		return nil, fmt.Errorf("invalid block amount %d", amount.Int)
+	}
+
+	if _, err := ctx.GetStorage(types.MintageAddress[:], []byte(param.NEP5TxId)); err == nil {
+		return nil, fmt.Errorf("invalid nep5 tx id")
+	} else {
+		if err := ctx.SetStorage(types.MintageAddress[:], []byte(param.NEP5TxId), nil); err != nil {
+			return nil, err
+		}
 	}
 
 	exp := new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)
@@ -131,17 +142,17 @@ func (m *Mintage) DoReceive(ledger *vmstore.VMContext, block *types.StateBlock, 
 	block.Network = types.ZeroBalance
 	block.Oracle = types.ZeroBalance
 
-	if _, err := ledger.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
-		//return nil, fmt.Errorf("invalid token")
+	if _, err := ctx.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
+		return nil, fmt.Errorf("invalid token")
 	} else {
-		//block.Data = tokenInfo
-		if err := ledger.SetStorage(types.MintageAddress[:], param.TokenId[:], tokenInfo); err != nil {
+		if err := ctx.SetStorage(types.MintageAddress[:], param.TokenId[:], tokenInfo); err != nil {
 			return nil, err
 		}
 	}
 
 	return []*ContractBlock{
 		{
+			VMContext: ctx,
 			Block:     block,
 			ToAddress: input.Address,
 			BlockType: types.ContractReward,
@@ -186,10 +197,9 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	_ = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, ti)
 
 	now := time.Now().UTC().Unix()
-
 	if tokenInfo.Owner != input.Address ||
 		tokenInfo.PledgeAmount.Sign() == 0 ||
-		now > input.Timestamp {
+		now < tokenInfo.WithdrawTime {
 		return nil, errors.New("cannot withdraw mintage pledge, status error")
 	}
 
@@ -203,7 +213,8 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		tokenInfo.Owner,
 		big.NewInt(0),
 		uint64(0),
-		tokenInfo.PledgeAddress)
+		tokenInfo.PledgeAddress,
+		tokenInfo.NEP5TxId)
 
 	am, _ := ctx.GetAccountMeta(tokenInfo.PledgeAddress)
 	tm := am.Token(common.ChainToken())
@@ -221,19 +232,40 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	block.Network = am.CoinNetwork
 	block.Previous = tm.Header
 
-	if err := ctx.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
+	var pledgeData []byte
+	if pledgeData, err = ctx.GetStorage(types.MintageAddress[:], tokenId[:]); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
+	} else {
+		// already exist,verify data
+		if len(pledgeData) > 0 {
+			oldPledge := new(types.TokenInfo)
+			err := cabi.MintageABI.UnpackVariable(oldPledge, cabi.VariableNameToken, pledgeData)
+			if err != nil {
+				return nil, err
+			}
+			if oldPledge.PledgeAddress != tokenInfo.PledgeAddress || oldPledge.WithdrawTime != tokenInfo.WithdrawTime ||
+				oldPledge.TokenId != tokenInfo.TokenId || oldPledge.Owner != tokenInfo.Owner || oldPledge.Decimals != tokenInfo.Decimals ||
+				oldPledge.TotalSupply.String() != tokenInfo.TotalSupply.String() || oldPledge.TokenSymbol != tokenInfo.TokenSymbol ||
+				oldPledge.TokenName != tokenInfo.TokenName || oldPledge.PledgeAmount.String() != tokenInfo.PledgeAmount.String() {
+				return nil, errors.New("invalid saved mine info")
+			}
+		} else {
+			if err := ctx.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	if tokenInfo.PledgeAmount.Sign() > 0 {
 		return []*ContractBlock{
 			{
-				block,
-				tokenInfo.PledgeAddress,
-				types.ContractReward,
-				types.Balance{Int: tokenInfo.PledgeAmount},
-				common.ChainToken(),
-				newTokenInfo,
+				VMContext: ctx,
+				Block:     block,
+				ToAddress: tokenInfo.PledgeAddress,
+				BlockType: types.ContractReward,
+				Amount:    types.Balance{Int: tokenInfo.PledgeAmount},
+				Token:     common.ChainToken(),
+				Data:      newTokenInfo,
 			},
 		}, nil
 	}

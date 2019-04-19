@@ -53,6 +53,14 @@ func (am *AccountMeta) Token(tt Hash) *TokenMeta {
 	return nil
 }
 
+func (a *AccountMeta) VoteBalance() Balance {
+	return a.CoinBalance.Add(a.CoinVote)
+}
+
+func (a *AccountMeta) TotalBalance() Balance {
+	return a.CoinBalance.Add(a.CoinVote).Add(a.CoinStorage).Add(a.CoinNetwork).Add(a.CoinOracle)
+}
+
 // NewAccount creates a new account with the given private key.
 func NewAccount(key ed25519.PrivateKey) *Account {
 	return &Account{

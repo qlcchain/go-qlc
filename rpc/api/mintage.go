@@ -46,6 +46,7 @@ type MintageParams struct {
 	TotalSupply string        `json:"totalSupply"`
 	Decimals    uint8         `json:"decimals"`
 	Beneficial  types.Address `json:"beneficial"`
+	NEP5TxId    string        `json:"nep5TxId"`
 }
 
 func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
@@ -63,7 +64,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	if err != nil {
 		return nil, err
 	}
-	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals, param.Beneficial)
+	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals, param.Beneficial, param.NEP5TxId)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +112,9 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		reward.Timestamp = time.Now().UTC().Unix()
+		h := blocks[0].VMContext.Cache.Trie().Hash()
+		reward.Extra = *h
 		return reward, nil
 	}
 
@@ -141,6 +145,10 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		Token:          tm.Type,
 		Address:        param.SelfAddr,
 		Balance:        tm.Balance,
+		Vote:           types.ZeroBalance,
+		Network:        types.ZeroBalance,
+		Storage:        types.ZeroBalance,
+		Oracle:         types.ZeroBalance,
 		Previous:       tm.Header,
 		Link:           types.Hash(types.MintageAddress),
 		Representative: tm.Representative,
@@ -165,6 +173,9 @@ func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 	}
 
 	if len(blocks) > 0 {
+		reward.Timestamp = time.Now().UTC().Unix()
+		h := blocks[0].VMContext.Cache.Trie().Hash()
+		reward.Extra = *h
 		return reward, nil
 	}
 

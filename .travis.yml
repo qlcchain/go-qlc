@@ -10,7 +10,6 @@ dist: xenial
 
 cache:
   directories:
-    - $HOME/.cache/go-build
     - $HOME/gopath/pkg/mod
 
 services:
@@ -20,10 +19,7 @@ sudo: true
 
 before_install:
   - docker --version
-#  - sudo apt install -y linux-headers-$(uname -r)
-#  - ls -l /usr/src/linux-headers-$(uname -r)
-#  - sudo apt-get install --only-upgrade git-core
-#  - git --version
+  - go get -u github.com/gythialy/xgo
 
 addons:
   apt:
@@ -39,15 +35,18 @@ script:
   - ./ci/travis.gofmt.sh
   - ./ci/travis.govet.sh
   - ./ci/travis.codecov.sh
-  - make clean all
-  - ./ci/travis.sha256.sh
+  - make clean build
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
-  - git reset --hard HEAD
 
-#before_deploy:
-#- make clean all -j2
+before_deploy:
+  - | 
+    if [[ -n "$TRAVIS_TAG" ]]
+    then 
+        make clean all
+        bash ci/travis.sha256.sh 
+    fi
 
 deploy:
   - provider: releases
@@ -63,7 +62,7 @@ deploy:
     script: ci/deploy-docker.sh
     skip_cleanup: true
     on:
-      all_branches: true
+      tags: true
 
 notifications:
   email: false

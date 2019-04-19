@@ -37,14 +37,16 @@ func (s *SMSApi) getApiBlocksByHash(hashes []types.Hash) ([]*APIBlock, error) {
 	ab := make([]*APIBlock, 0)
 	for _, h := range hashes {
 		block, err := s.ledger.GetStateBlock(h)
-		if err != nil {
+		if err != nil && err != ledger.ErrBlockNotFound {
 			return nil, err
 		}
-		b, err := generateAPIBlock(s.vmContext, block)
-		if err != nil {
-			return nil, err
+		if block != nil {
+			b, err := generateAPIBlock(s.vmContext, block)
+			if err != nil {
+				return nil, err
+			}
+			ab = append(ab, b)
 		}
-		ab = append(ab, b)
 	}
 	return ab, nil
 

@@ -25,8 +25,7 @@ func init() {
 
 const (
 	//WorkSize work size
-	WorkSize          = 8
-	WorkExtensionType = 104
+	WorkSize = 8
 )
 
 var WorkThreshold = uint64(0xfffffe0000000000)

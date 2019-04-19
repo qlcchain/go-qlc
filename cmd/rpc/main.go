@@ -10,6 +10,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -115,6 +116,16 @@ func initData(ledger *ledger.Ledger) {
 	}
 	fmt.Println("account1, ", blocks[0].GetAddress().String())
 	fmt.Println("account2, ", blocks[2].GetAddress().String())
+	fmt.Println("account1 resp,", blocks[0].GetRepresentative())
+	ac, err := ledger.GetAccountMeta(blocks[0].GetAddress())
+	if err != nil {
+		return
+	}
+	ac.CoinVote = types.Balance{big.NewInt(123)}
+	err = ledger.UpdateAccountMeta(ac)
+	if err != nil {
+		return
+	}
 	//
 	//fmt.Println("roll back hash: ", blocks[4].GetHash())
 	//if err := ledger.Rollback(blocks[4].GetHash()); err != nil {

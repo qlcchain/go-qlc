@@ -18,10 +18,6 @@ func init() {
 	msgp.RegisterExtension(AbiExtensionType, func() msgp.Extension { return new(ContractAbi) })
 }
 
-const (
-	AbiExtensionType = 105
-)
-
 //go:generate msgp
 type ContractAbi struct {
 	Abi       []byte `msg:"abi" json:"abi"`

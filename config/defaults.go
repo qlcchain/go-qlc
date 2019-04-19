@@ -1,3 +1,5 @@
+// +build  mainnet
+
 /*
  * Copyright (c) 2018 QLC Chain Team
  *
@@ -16,7 +18,6 @@ import (
 
 	ic "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
-	goqlc "github.com/qlcchain/go-qlc"
 )
 
 const (
@@ -55,48 +56,22 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			var d string
-			if goqlc.MAINNET {
-				d = cfgDir
-			} else {
-				d = cfgDir + suffix
-			}
-			return filepath.Join(home, "Library", "Application Support", d)
+			return filepath.Join(home, "Library", "Application Support", cfgDir)
 		} else if runtime.GOOS == "windows" {
-			var d string
-			if goqlc.MAINNET {
-				d = cfgDir
-			} else {
-				d = cfgDir + suffix
-			}
-			return filepath.Join(home, "AppData", "Roaming", d)
+			return filepath.Join(home, "AppData", "Roaming", cfgDir)
 		} else {
-			var d string
-			if goqlc.MAINNET {
-				d = nixCfgDir
-			} else {
-				d = nixCfgDir + suffix
-			}
-			return filepath.Join(home, d)
+			return filepath.Join(home, nixCfgDir)
 		}
 	}
 	return ""
 }
 
 func defaultIPCEndpoint() string {
-	if goqlc.MAINNET {
-		dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
-		if runtime.GOOS == "windows" {
-			return `\\.\pipe\gqlc.ipc`
-		}
-		return dir
-	} else {
-		dir := filepath.Join(DefaultDataDir(), "gqlc_test.ipc")
-		if runtime.GOOS == "windows" {
-			return `\\.\pipe\gqlc-test.ipc`
-		}
-		return dir
+	dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
+	if runtime.GOOS == "windows" {
+		return `\\.\pipe\gqlc.ipc`
 	}
+	return dir
 }
 
 func QlcTestDataDir() string {

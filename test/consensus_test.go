@@ -181,10 +181,11 @@ func TestConsensus(t *testing.T) {
 	dst := mock.Account()
 	addr := dst.Address()
 	sb := types.StateBlock{
-		Address: ac.Address(),
-		Token:   token,
-		Link:    addr.ToHash(),
-		Message: types.ZeroHash,
+		Address:  ac.Address(),
+		Token:    token,
+		Link:     addr.ToHash(),
+		Message:  types.ZeroHash,
+		Previous: genesisBlock.GetHash(),
 	}
 	send, err := ledger1.Ledger.GenerateSendBlock(&sb, types.Balance{Int: big.NewInt(int64(1000))}, ac.PrivateKey())
 	if err != nil {
@@ -227,6 +228,10 @@ func createBlock(ac types.Account, pre types.Hash, token types.Hash, balance typ
 	blk.Previous = pre
 	blk.Token = token
 	blk.Balance = balance
+	blk.Vote = types.ZeroBalance
+	blk.Network = types.ZeroBalance
+	blk.Oracle = types.ZeroBalance
+	blk.Storage = types.ZeroBalance
 	blk.Link = link
 	blk.Representative = rep
 	blk.Signature = ac.Sign(blk.GetHash())

@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
+
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -27,32 +29,32 @@ func mintage() {
 	var decimalsP int
 
 	if interactive {
-		account := Flag{
+		account := util.Flag{
 			Name:  "account",
 			Must:  true,
 			Usage: "account private hex string",
 		}
-		preHash := Flag{
+		preHash := util.Flag{
 			Name:  "preHash",
 			Must:  true,
 			Usage: "account previous hash hex string",
 		}
-		tokenName := Flag{
+		tokenName := util.Flag{
 			Name:  "tokenName",
 			Must:  true,
 			Usage: "token name",
 		}
-		tokenSymbol := Flag{
+		tokenSymbol := util.Flag{
 			Name:  "tokenSymbol",
 			Must:  true,
 			Usage: "token symbol",
 		}
-		totalSupply := Flag{
+		totalSupply := util.Flag{
 			Name:  "totalSupply",
 			Must:  true,
 			Usage: "token total supply",
 		}
-		decimals := Flag{
+		decimals := util.Flag{
 			Name:  "decimals",
 			Must:  true,
 			Usage: "token decimals",
@@ -62,30 +64,30 @@ func mintage() {
 			Name: "mine",
 			Help: "mine token",
 			Func: func(c *ishell.Context) {
-				args := []Flag{account, preHash, tokenName, tokenSymbol, totalSupply, decimals}
-				if HelpText(c, args) {
+				args := []util.Flag{account, preHash, tokenName, tokenSymbol, totalSupply, decimals}
+				if util.HelpText(c, args) {
 					return
 				}
-				err := CheckArgs(c, args)
+				err := util.CheckArgs(c, args)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 
-				accountP = StringVar(c.Args, account)
-				preHashP = StringVar(c.Args, preHash)
-				tokenNameP = StringVar(c.Args, tokenName)
-				tokenSymbolP = StringVar(c.Args, tokenSymbol)
-				totalSupplyP = StringVar(c.Args, totalSupply)
-				decimalsP, err = IntVar(c.Args, decimals)
+				accountP = util.StringVar(c.Args, account)
+				preHashP = util.StringVar(c.Args, preHash)
+				tokenNameP = util.StringVar(c.Args, tokenName)
+				tokenSymbolP = util.StringVar(c.Args, tokenSymbol)
+				totalSupplyP = util.StringVar(c.Args, totalSupply)
+				decimalsP, err = util.IntVar(c.Args, decimals)
 				if err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 
 				fmt.Println(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP)
 				if err := mintageAction(accountP, preHashP, tokenNameP, tokenSymbolP, totalSupplyP, decimalsP); err != nil {
-					Warn(err)
+					util.Warn(err)
 					return
 				}
 			},
@@ -131,10 +133,11 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 	}
 
 	d := uint8(decimals)
-
+	NEP5tTxId := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 	mintageParam := api.MintageParams{
 		SelfAddr: a.Address(), PrevHash: previous, TokenName: tokenName,
 		TotalSupply: totalSupply, TokenSymbol: tokenSymbol, Decimals: d, Beneficial: a.Address(),
+		NEP5TxId: NEP5tTxId,
 	}
 
 	send := types.StateBlock{}

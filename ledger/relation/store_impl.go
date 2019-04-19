@@ -94,7 +94,6 @@ func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
 }
 
 func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
-	r.logger.Info(r.store)
 	var h []blocksHash
 	err := r.store.Read(db.TableBlockHash, nil, offset, limit, db.ColumnTimestamp, &h)
 	if err != nil {
