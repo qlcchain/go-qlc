@@ -7,9 +7,11 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 	"math/big"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -37,6 +39,8 @@ type PovBlockChain struct {
 
 	blockCache   gcache.Cache // Cache for the most recent entire blocks
 	heightCache  gcache.Cache
+
+	wg sync.WaitGroup
 }
 
 func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
@@ -92,6 +96,7 @@ func (bc *PovBlockChain) Start() error {
 }
 
 func (bc *PovBlockChain) Stop() error {
+	bc.wg.Wait()
 	return nil
 }
 
@@ -101,7 +106,7 @@ func (bc *PovBlockChain) loadLastState() error {
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		bc.logger.Warn("Head block missing, resetting chain")
-		return bc.Reset()
+		return bc.ResetChainState()
 	}
 
 	// Everything seems to be fine, set as the head block
@@ -112,7 +117,7 @@ func (bc *PovBlockChain) loadLastState() error {
 	return nil
 }
 
-func (bc *PovBlockChain) Reset() error {
+func (bc *PovBlockChain) ResetChainState() error {
 	_ = bc.getLedger().DropAllPovBlocks()
 
 	return bc.ResetWithGenesisBlock(bc.genesisBlock)
@@ -202,9 +207,17 @@ func (bc *PovBlockChain) HasBlock(hash types.Hash, number uint64) bool {
 }
 
 func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) error {
+	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
+		return bc.insertBlock(txn, block)
+	})
+
+	return err
+}
+
+func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock) error {
 	currentBlock := bc.LatestBlock()
 
-	err := bc.getLedger().AddPovBlock(block)
+	err := bc.getLedger().AddPovBlock(block, txn)
 	if err != nil {
 		return err
 	}
@@ -215,23 +228,42 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) error {
 				currentBlock.GetHash(), currentBlock.GetHeight(), block.GetHash(), block.GetHeight())
 			return ErrPovInvalidHeight
 		}
-		return bc.connectBestBlock(block)
+		return bc.connectBestBlock(txn, block)
 	}
 
 	if block.GetHeight() >= currentBlock.GetHeight() + uint64(bc.getConfig().PoV.ForkHeight) {
-		return bc.processFork(block)
+		return bc.processFork(txn, block)
 	}
 
 	return nil
 }
 
-func (bc *PovBlockChain) connectBestBlock(block *types.PovBlock) error {
-	err := bc.connectBlock(block)
+func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock) error {
+	err := bc.connectBlock(txn, block)
 	if err != nil {
 		return err
 	}
 
-	err = bc.connectTransactions(block)
+	err = bc.connectTransactions(txn, block)
+	if err != nil {
+		return err
+	}
+
+	bc.latestBlock.Store(block)
+
+	bc.heightCache.Set(block.GetHash(), block)
+	bc.blockCache.Set(block.GetHeight(), block)
+
+	return nil
+}
+
+func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBlock) error {
+	err := bc.disconnectBlock(txn, block)
+	if err != nil {
+		return err
+	}
+
+	err = bc.disconnectTransactions(txn, block)
 	if err != nil {
 		return err
 	}
@@ -241,23 +273,7 @@ func (bc *PovBlockChain) connectBestBlock(block *types.PovBlock) error {
 	return nil
 }
 
-func (bc *PovBlockChain) disconnectBestBlock(block *types.PovBlock) error {
-	err := bc.disconnectBlock(block)
-	if err != nil {
-		return err
-	}
-
-	err = bc.disconnectTransactions(block)
-	if err != nil {
-		return err
-	}
-
-	bc.latestBlock.Store(block)
-
-	return nil
-}
-
-func (bc *PovBlockChain) processFork(newBlock *types.PovBlock) error {
+func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) error {
 	oldBlock := bc.LatestBlock()
 
 	var detachBlocks []*types.PovBlock
@@ -309,19 +325,19 @@ func (bc *PovBlockChain) processFork(newBlock *types.PovBlock) error {
 		forkBlock.GetHash(), forkBlock.GetHeight(), len(detachBlocks), len(attachBlocks))
 
 	for _, detachBlock := range detachBlocks {
-		err := bc.disconnectTransactions(detachBlock)
+		err := bc.disconnectTransactions(txn, detachBlock)
 		if err != nil {
 			return err
 		}
 
-		err = bc.disconnectBlock(detachBlock)
+		err = bc.disconnectBlock(txn, detachBlock)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, attachBlock := range attachBlocks {
-		err := bc.connectBestBlock(attachBlock)
+		err := bc.connectBestBlock(txn, attachBlock)
 		if err != nil {
 			return err
 		}
@@ -330,35 +346,45 @@ func (bc *PovBlockChain) processFork(newBlock *types.PovBlock) error {
 	return nil
 }
 
-func (bc *PovBlockChain) connectBlock(block *types.PovBlock) error {
-	return bc.getLedger().AddPovBestHash(block.GetHeight(), block.GetHash())
+func (bc *PovBlockChain) connectBlock(txn db.StoreTxn, block *types.PovBlock) error {
+	return bc.getLedger().AddPovBestHash(block.GetHeight(), block.GetHash(), txn)
 }
 
-func (bc *PovBlockChain) disconnectBlock(block *types.PovBlock) error {
-	return bc.getLedger().DeletePovBestHash(block.GetHeight())
+func (bc *PovBlockChain) disconnectBlock(txn db.StoreTxn, block *types.PovBlock) error {
+	return bc.getLedger().DeletePovBestHash(block.GetHeight(), txn)
 }
 
-func (bc *PovBlockChain) connectTransactions(block *types.PovBlock) error {
+func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBlock) error {
 	txpool := bc.getTxPool()
+	ledger := bc.getLedger()
 
-	for _, txPov := range block.Transactions {
+	for txIndex, txPov := range block.Transactions {
 		txpool.delTx(txPov.Hash)
+
+		txLookup := &types.PovTxLookup{
+			BlockHash: block.GetHash(),
+			BlockHeight: block.GetHeight(),
+			TxIndex: uint64(txIndex),
+		}
+		ledger.AddPovTxLookup(txPov.Hash, txLookup, txn)
 	}
 
 	return nil
 }
 
-func (bc *PovBlockChain) disconnectTransactions(block *types.PovBlock) error {
+func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.PovBlock) error {
 	txpool := bc.getTxPool()
-	ldger := bc.getLedger()
+	ledger := bc.getLedger()
 
 	for _, txPov := range block.Transactions {
-		txBlock, _ := ldger.GetStateBlock(txPov.Hash)
+		txBlock, _ := ledger.GetStateBlock(txPov.Hash, txn)
 		if txBlock == nil {
 			continue
 		}
 
 		txpool.addTx(txPov.Hash, txBlock)
+
+		ledger.DeletePovTxLookup(txPov.Hash)
 	}
 
 	return nil

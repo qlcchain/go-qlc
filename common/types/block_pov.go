@@ -310,9 +310,9 @@ func (tx *PovTransaction) Deserialize(text []byte) error {
 // TxLookupEntry is a positional metadata to help looking up the data content of
 // a transaction given only its hash.
 type PovTxLookup struct {
-	BlockHash  Hash   `msg:"blockHash,extension" json:"blockHash"`
-	BlockIndex uint64 `msg:"blockIndex" json:"blockIndex"`
-	Index      uint64 `msg:"index" json:"index"`
+	BlockHash   Hash   `msg:"blockHash,extension" json:"blockHash"`
+	BlockHeight uint64 `msg:"blockHeight" json:"blockHeight"`
+	TxIndex     uint64 `msg:"txIndex" json:"txIndex"`
 }
 
 func (txl *PovTxLookup) Serialize() ([]byte, error) {
