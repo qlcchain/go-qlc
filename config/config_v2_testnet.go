@@ -19,6 +19,7 @@ type ConfigV2 struct {
 
 	RPC *RPCConfigV2 `json:"rpc"`
 	P2P *P2PConfigV2 `json:"p2p"`
+	DB  *DBConfigV2  `json:"db"`
 }
 
 type P2PConfigV2 struct {
@@ -59,6 +60,10 @@ type DiscoveryConfigV2 struct {
 type IdentityConfigV2 struct {
 	PeerID  string `json:"peerId"`
 	PrivKey string `json:"privateKey,omitempty"`
+}
+
+type DBConfigV2 struct {
+	Connection string `json:"connection"`
 }
 
 func DefaultConfigV2(dir string) (*ConfigV2, error) {
@@ -102,7 +107,9 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 			},
 			ID: &IdentityConfigV2{id, pk},
 		},
+		DB: &DBConfigV2{
+			Connection: defaultDbConfig(),
+		},
 	}
-
 	return &cfg, nil
 }

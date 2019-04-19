@@ -87,3 +87,7 @@ func homeDir() string {
 	}
 	return ""
 }
+
+func defaultDbConfig() string {
+	return ""
+}
