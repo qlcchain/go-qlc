@@ -1,3 +1,5 @@
+// +build  !debug
+
 /*
  * Copyright (c) 2018 QLC Chain Team
  *
