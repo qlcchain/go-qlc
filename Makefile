@@ -45,18 +45,18 @@ deps:
 	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 
 build:
-	GO111MODULE=on go build -tags "mainnet sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
-	@echo "Build server done."
+	GO111MODULE=on go build -tags "sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	@echo "Build $(SERVERBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
-	GO111MODULE=on go build -tags mainnet -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
-	@echo "Build client done."
+	GO111MODULE=on go build -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
+	@echo "Build $(CLIENTBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
 build-test:
 	GO111MODULE=on go build -tags "testnet sqlite_userauth" -ldflags $(TESTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build test server done."
 	@echo "Run \"$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
-	GO111MODULE=on go build -tags mainnet -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
+	GO111MODULE=on go build -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
 	@echo "Build test client done."
 	@echo "Run \"$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
@@ -66,7 +66,7 @@ clean:
 	rm -rf $(shell pwd)/$(BUILDDIR)/
 
 gqlc-server:
-	xgo --dest=$(BUILDDIR) -v --tags="mainnet sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
+	xgo --dest=$(BUILDDIR) -v --tags="sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
 	--targets="windows-6.0/*,darwin-10.10/amd64,linux/amd64,linux/386,linux/arm64,linux/mips64, linux/mips64le" \
 	--pkg=$(SERVERMAIN) .
 
@@ -76,6 +76,6 @@ gqlc-server-test:
 	--pkg=$(SERVERMAIN) .
 
 gqlc-client:
-	xgo --tags=mainnet -v --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \
+	xgo -v --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \
 	--targets="windows-6.0/amd64,darwin-10.10/amd64,linux/amd64" \
 	--pkg=$(CLIENTMAIN) .

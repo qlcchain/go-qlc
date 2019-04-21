@@ -27,7 +27,6 @@ const defaultPassword = ""
 var (
 	cache             = make(map[string]*WalletStore)
 	lock              = sync.RWMutex{}
-	logger            = log.NewLogger("wallet store")
 	ErrEmptyCurrentId = errors.New("can not find any wallet id")
 )
 
@@ -35,6 +34,7 @@ func NewWalletStore(cfg *config.Config) *WalletStore {
 	lock.Lock()
 	defer lock.Unlock()
 	dir := cfg.WalletDir()
+	logger := log.NewLogger("wallet store")
 	if _, ok := cache[dir]; !ok {
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
