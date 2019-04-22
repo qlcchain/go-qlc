@@ -48,7 +48,7 @@ type VMContext struct {
 
 func NewVMContext(l *ledger.Ledger) *VMContext {
 	//TODO: fix trie
-	t := trie.NewTrie(l.Store, nil, nil)
+	t := trie.NewTrie(l.Store, nil, trie.NewSimpleTrieNodePool())
 	return &VMContext{
 		ledger: l,
 		logger: log.NewLogger("vm_context"),
@@ -73,42 +73,24 @@ func getStorageKey(prefix, key []byte) []byte {
 }
 
 func (v *VMContext) GetStorage(prefix, key []byte) ([]byte, error) {
-	txn := v.ledger.Store.NewTransaction(false)
-	defer func() {
-		txn.Commit(nil)
-		txn.Discard()
-	}()
 	storageKey := getStorageKey(prefix, key)
-	var storage []byte
-	err := txn.Get(storageKey, func(val []byte, b byte) (err error) {
-		storage = val
-		return nil
-	})
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, ErrStorageNotFound
+	if storage := v.Cache.GetStorage(storageKey); storage == nil {
+		if val, err := v.get(storage); err == nil {
+			return val, nil
+		} else {
+			return nil, err
 		}
-		return nil, err
+	} else {
+		return storage, nil
 	}
-	return storage, nil
 }
 
 func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
-	txn := v.ledger.Store.NewTransaction(true)
-	defer func() {
-		txn.Commit(nil)
-		txn.Discard()
-	}()
 	storageKey := getStorageKey(prefix, key)
-	err := txn.Get(storageKey, func(bytes []byte, b byte) error {
-		return nil
-	})
-	if err == nil {
-		return ErrStorageExists
-	} else if err != badger.ErrKeyNotFound {
-		return err
-	}
-	return txn.Set(storageKey, value)
+
+	v.Cache.SetStorage(storageKey, value)
+
+	return nil
 }
 
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
@@ -146,7 +128,7 @@ func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, e
 func (v *VMContext) SaveStorage() error {
 	storage := v.Cache.storage
 	for k, val := range storage {
-		err := v.SetStorage(nil, []byte(k), val)
+		err := v.set([]byte(k), val)
 		if err != nil {
 			v.logger.Error(err)
 			return err
@@ -162,4 +144,43 @@ func (v *VMContext) SaveTrie() error {
 	}
 	fn()
 	return nil
+}
+
+func (v *VMContext) get(key []byte) ([]byte, error) {
+	txn := v.ledger.Store.NewTransaction(false)
+	defer func() {
+		txn.Commit(nil)
+		txn.Discard()
+	}()
+	storageKey := getStorageKey(nil, key)
+	var storage []byte
+	err := txn.Get(storageKey, func(val []byte, b byte) (err error) {
+		storage = val
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrStorageNotFound
+		}
+		return nil, err
+	}
+	return storage, nil
+}
+
+func (v *VMContext) set(key []byte, value []byte) error {
+	txn := v.ledger.Store.NewTransaction(true)
+	defer func() {
+		txn.Commit(nil)
+		txn.Discard()
+	}()
+	storageKey := getStorageKey(nil, key)
+	err := txn.Get(storageKey, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrStorageExists
+	} else if err != badger.ErrKeyNotFound {
+		return err
+	}
+	return txn.Set(storageKey, value)
 }

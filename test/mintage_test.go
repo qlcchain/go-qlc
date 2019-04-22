@@ -3,6 +3,9 @@ package test
 import (
 	"encoding/hex"
 	"encoding/json"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -10,8 +13,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/rpc/api"
-	"path/filepath"
-	"testing"
 )
 
 var beneficial = "dd20a386c735a077206619eca312072ad19266a161b8269d2f9b49785a3afde95d56683fb3f03c259dc0a703645ae0fb4f883d492d059665e4dee58c56c4e853"
