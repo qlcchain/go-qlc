@@ -220,3 +220,12 @@ func TestSubscribeAsync(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestGetEventBus(t *testing.T) {
+	eb1 := SimpleEventBus()
+	eb2 := SimpleEventBus()
+
+	if eb1 != eb2 {
+		t.Fatal("eb1!=eb2")
+	}
+}
