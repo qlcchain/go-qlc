@@ -9,7 +9,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -46,7 +45,7 @@ func (ls *LedgerService) Init() error {
 	ctx := vmstore.NewVMContext(l)
 	err := ctx.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
 	if err != nil {
-		fmt.Println(err)
+		ls.logger.Error(err)
 	}
 	verifier := process.NewLedgerVerifier(l)
 	mintageHash := common.GenesisMintageHash()

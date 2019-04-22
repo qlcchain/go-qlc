@@ -197,8 +197,6 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	_ = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, ti)
 
 	now := time.Now().UTC().Unix()
-	fmt.Println(tokenInfo.Owner)
-	fmt.Println(input.Address)
 	if tokenInfo.PledgeAddress != input.Address ||
 		tokenInfo.PledgeAmount.Sign() == 0 ||
 		now < tokenInfo.WithdrawTime {
