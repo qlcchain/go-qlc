@@ -10,7 +10,6 @@ package vmstore
 import (
 	"bytes"
 	"errors"
-
 	"github.com/qlcchain/go-qlc/trie"
 
 	"github.com/dgraph-io/badger"
@@ -75,7 +74,7 @@ func getStorageKey(prefix, key []byte) []byte {
 func (v *VMContext) GetStorage(prefix, key []byte) ([]byte, error) {
 	storageKey := getStorageKey(prefix, key)
 	if storage := v.Cache.GetStorage(storageKey); storage == nil {
-		if val, err := v.get(storage); err == nil {
+		if val, err := v.get(storageKey); err == nil {
 			return val, nil
 		} else {
 			return nil, err
@@ -152,9 +151,9 @@ func (v *VMContext) get(key []byte) ([]byte, error) {
 		txn.Commit(nil)
 		txn.Discard()
 	}()
-	storageKey := getStorageKey(nil, key)
+
 	var storage []byte
-	err := txn.Get(storageKey, func(val []byte, b byte) (err error) {
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
 		storage = val
 		return nil
 	})
@@ -173,8 +172,7 @@ func (v *VMContext) set(key []byte, value []byte) error {
 		txn.Commit(nil)
 		txn.Discard()
 	}()
-	storageKey := getStorageKey(nil, key)
-	err := txn.Get(storageKey, func(bytes []byte, b byte) error {
+	err := txn.Get(key, func(bytes []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -182,5 +180,5 @@ func (v *VMContext) set(key []byte, value []byte) error {
 	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(storageKey, value)
+	return txn.Set(key, value)
 }

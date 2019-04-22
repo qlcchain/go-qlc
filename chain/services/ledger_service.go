@@ -9,7 +9,7 @@ package services
 
 import (
 	"errors"
-
+	"fmt"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -44,7 +44,10 @@ func (ls *LedgerService) Init() error {
 
 	genesis := common.GenesisBlock()
 	ctx := vmstore.NewVMContext(l)
-	_ = ctx.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
+	err := ctx.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
+	if err != nil {
+		fmt.Println(err)
+	}
 	verifier := process.NewLedgerVerifier(l)
 	mintageHash := common.GenesisMintageHash()
 	if b, err := l.HasStateBlock(mintageHash); !b && err == nil {
@@ -71,7 +74,16 @@ func (ls *LedgerService) Init() error {
 
 	//gas block storage
 	gas := common.GasBlock()
-	_ = ctx.SetStorage(types.MintageAddress[:], gas.Token[:], gas.Data)
+	err = ctx.SetStorage(types.MintageAddress[:], gas.Token[:], gas.Data)
+	if err != nil {
+		ls.logger.Error(err)
+	}
+
+	err = ctx.SaveStorage()
+	if err != nil {
+		ls.logger.Error(err)
+	}
+
 	gasMintageHash := common.GasMintageHash()
 	if b, err := l.HasStateBlock(gasMintageHash); !b && err == nil {
 		gasMintage := common.GasMintageBlock()

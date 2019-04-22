@@ -228,7 +228,7 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 	return nil, errors.New("can not generate pledge withdraw reward block")
 }
 
-type nep5PledgeInfo struct {
+type NEP5PledgeInfo struct {
 	PType         string
 	Amount        *big.Int
 	WithdrawTime  string
@@ -237,8 +237,8 @@ type nep5PledgeInfo struct {
 	NEP5TxId      string
 }
 
-func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*nep5PledgeInfo, error) {
-	var result []*nep5PledgeInfo
+func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
+	var result []*NEP5PledgeInfo
 	err := p.vmContext.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && len(value) > 0 {
 			pledgeInfo := new(cabi.NEP5PledgeInfo)
@@ -251,7 +251,7 @@ func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*nep5PledgeInfo, error) {
 				case uint8(1):
 					t = "vote"
 				}
-				p := &nep5PledgeInfo{
+				p := &NEP5PledgeInfo{
 					PType:         t,
 					Amount:        pledgeInfo.Amount,
 					WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).String(),
@@ -271,8 +271,8 @@ func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*nep5PledgeInfo, error) {
 	return result, nil
 }
 
-func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*nep5PledgeInfo, error) {
-	var result []*nep5PledgeInfo
+func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
+	var result []*NEP5PledgeInfo
 	err := p.vmContext.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			pledgeInfo := new(cabi.NEP5PledgeInfo)
@@ -287,7 +287,7 @@ func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*nep5Ple
 				if pledgeInfo.PType == t && pledgeInfo.Amount.String() == param.Amount.String() &&
 					pledgeInfo.Beneficial == param.Beneficial {
 
-					p := &nep5PledgeInfo{
+					p := &NEP5PledgeInfo{
 						PType:         param.PType,
 						Amount:        pledgeInfo.Amount,
 						WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).String(),

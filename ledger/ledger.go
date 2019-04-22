@@ -68,7 +68,7 @@ const (
 	idPrefixChild
 	idPrefixVersion
 	idPrefixStorage
-	idPrefixToken
+	idPrefixToken    //discard
 	idPrefixSender   //discard
 	idPrefixReceiver //discard
 	idPrefixMessage  //discard
