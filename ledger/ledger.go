@@ -1983,7 +1983,7 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 	if err != nil {
 		return nil, errors.New("token not found")
 	}
-	prev, err := l.GetStateBlock(block.GetPrevious())
+	prev, err := l.GetStateBlock(tm.Header)
 	if err != nil {
 		return nil, err
 	}
