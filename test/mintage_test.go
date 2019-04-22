@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
@@ -20,10 +19,8 @@ import (
 var beneficial = "dd20a386c735a077206619eca312072ad19266a161b8269d2f9b49785a3afde95d56683fb3f03c259dc0a703645ae0fb4f883d492d059665e4dee58c56c4e853"
 
 func startService_Mintage(t *testing.T) (func(t *testing.T), *rpc.Client, *services.LedgerService) {
-	t.Parallel()
-
 	eventBus := event.New()
-	dir := filepath.Join(config.QlcTestDataDir(), "mintage", uuid.New().String())
+	dir := filepath.Join(config.DefaultDataDir(), "mintage")
 	cfgFile, _ := config.DefaultConfig(dir)
 	ls := services.NewLedgerService(cfgFile, eventBus)
 	err := ls.Init()
@@ -34,15 +31,15 @@ func startService_Mintage(t *testing.T) (func(t *testing.T), *rpc.Client, *servi
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = json.Unmarshal([]byte(jsonTestSend), &testSendBlock)
-	_ = json.Unmarshal([]byte(jsonTestReceive), &testReceiveBlock)
+	_ = json.Unmarshal([]byte(jsonTestSend), &testMintageSendBlock)
+	_ = json.Unmarshal([]byte(jsonTestReceive), &testMintageReceiveBlock)
 	l := ls.Ledger
 	verifier := process.NewLedgerVerifier(l)
-	p, _ := verifier.Process(&testSendBlock)
+	p, _ := verifier.Process(&testMintageSendBlock)
 	if p != process.Progress {
 		t.Fatal("process send block error")
 	}
-	p, _ = verifier.Process(&testReceiveBlock)
+	p, _ = verifier.Process(&testMintageReceiveBlock)
 	if p != process.Progress {
 		t.Fatal("process receive block error")
 	}
@@ -96,7 +93,7 @@ func startService_Mintage(t *testing.T) (func(t *testing.T), *rpc.Client, *servi
 		if err := walletService.Stop(); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.RemoveAll(config.QlcTestDataDir()); err != nil {
+		if err := os.RemoveAll(dir); err != nil {
 			t.Fatal(err)
 		}
 	}, client, ls
@@ -120,7 +117,7 @@ func TestMintage(t *testing.T) {
 	NEP5tTxId := "asfafjjfwejwjfkagjksgjisogwij134l09afjakjf"
 	mintageParam := api.MintageParams{
 		SelfAddr:    s.Address(),
-		PrevHash:    testReceiveBlock.GetHash(),
+		PrevHash:    testMintageReceiveBlock.GetHash(),
 		TokenName:   "QN",
 		TotalSupply: "1000000",
 		TokenSymbol: "QN",
@@ -227,7 +224,7 @@ func TestMintage(t *testing.T) {
 	//begin test nep5 txid,the nep5 Txid of each coinage contract should be different
 	mintageParamTest := api.MintageParams{
 		SelfAddr:    s.Address(),
-		PrevHash:    testReceiveBlock.GetHash(),
+		PrevHash:    testMintageReceiveBlock.GetHash(),
 		TokenName:   "QA",
 		TotalSupply: "10000000",
 		TokenSymbol: "QA",
@@ -259,7 +256,7 @@ func TestMintage(t *testing.T) {
 	//test
 	mintageParamTestName := api.MintageParams{
 		SelfAddr:    s.Address(),
-		PrevHash:    testReceiveBlock.GetHash(),
+		PrevHash:    testMintageReceiveBlock.GetHash(),
 		TokenName:   "QN",
 		TotalSupply: "10000000",
 		TokenSymbol: "QN",
