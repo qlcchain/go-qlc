@@ -6,6 +6,8 @@ import (
 )
 
 //go:generate msgp
+//msgp:ignore PovTransactions
+//msgp:ignore PovTxByHash
 
 type PovBlockFrom uint16
 
@@ -306,6 +308,23 @@ func (tx *PovTransaction) Deserialize(text []byte) error {
 	}
 	return nil
 }
+
+// PovTransactions is a PovTransaction slice type for basic sorting.
+type PovTransactions []*PovTransaction
+
+// Len returns the length of s.
+func (s PovTransactions) Len() int { return len(s) }
+
+// Swap swaps the i'th and the j'th element in s.
+func (s PovTransactions) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+// PovTxByHash implements the sort interface to allow sorting a list of transactions
+// by their hash.
+type PovTxByHash PovTransactions
+
+func (s PovTxByHash) Len() int           { return len(s) }
+func (s PovTxByHash) Less(i, j int) bool { return s[i].Hash.Cmp(s[j].Hash) < 0 }
+func (s PovTxByHash) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 // TxLookupEntry is a positional metadata to help looking up the data content of
 // a transaction given only its hash.

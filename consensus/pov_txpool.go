@@ -13,6 +13,7 @@ type PovTxPool struct {
 	txMu   sync.RWMutex
 	accountTxs map[types.Address]*list.List
 	allTxs map[types.Hash]*types.StateBlock
+	lastUpdated int64
 }
 
 func NewPovTxPool(povImpl *PoVEngine) *PovTxPool {
@@ -100,6 +101,8 @@ func (tp *PovTxPool) addTx(txHash types.Hash, tx *types.StateBlock) {
 
 	accTxList.PushBack(tx)
 	tp.allTxs[txHash] = tx
+
+	tp.lastUpdated = time.Now().Unix()
 }
 
 func (tp *PovTxPool) delTx(txHash types.Hash) {
@@ -134,13 +137,15 @@ func (tp *PovTxPool) delTx(txHash types.Hash) {
 			delete(tp.accountTxs, tx.Address)
 		}
 	}
+
+	tp.lastUpdated = time.Now().Unix()
 }
 
-func (tp *PovTxPool) SelectPendingTxs(limit int) []*types.Block {
+func (tp *PovTxPool) SelectPendingTxs(limit int) []*types.StateBlock {
 	tp.txMu.RLock()
 	defer tp.txMu.RUnlock()
 
-	var retTxs []*types.Block
+	var retTxs []*types.StateBlock
 
 	if limit <= 0 {
 		return retTxs
@@ -148,7 +153,7 @@ func (tp *PovTxPool) SelectPendingTxs(limit int) []*types.Block {
 
 	for _, accTxList := range tp.accountTxs {
 		for e := accTxList.Front(); e != nil; e = e.Next() {
-			retTxs = append(retTxs, e.Value.(*types.Block))
+			retTxs = append(retTxs, e.Value.(*types.StateBlock))
 			limit--
 			if limit == 0 {
 				break
@@ -161,4 +166,8 @@ func (tp *PovTxPool) SelectPendingTxs(limit int) []*types.Block {
 	}
 
 	return retTxs
+}
+
+func (tp *PovTxPool) LastUpdated() time.Time {
+	return time.Unix(tp.lastUpdated, 0)
 }

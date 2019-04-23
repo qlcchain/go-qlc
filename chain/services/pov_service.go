@@ -10,6 +10,7 @@ package services
 import (
 	"errors"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/log"
@@ -25,8 +26,8 @@ type PoVService struct {
 	logger    *zap.SugaredLogger
 }
 
-func NewPoVService(cfg *config.Config, eb event.EventBus) *PoVService {
-	povEngine, _ := consensus.NewPovEngine(cfg, eb)
+func NewPoVService(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *PoVService {
+	povEngine, _ := consensus.NewPovEngine(cfg, accounts, eb)
 	return &PoVService{
 		povEngine: povEngine,
 		logger:    log.NewLogger("pov_service"),

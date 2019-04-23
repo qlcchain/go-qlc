@@ -16,6 +16,7 @@ type PoVEngine struct {
 	cfg    *config.Config
 	ledger *ledger.Ledger
 	eb     event.EventBus
+	accounts []*types.Account
 
 	bp     *PovBlockProcessor
 	txpool *PovTxPool
@@ -23,13 +24,14 @@ type PoVEngine struct {
 	verifier process.BlockVerifier
 }
 
-func NewPovEngine(cfg *config.Config, eb event.EventBus) (*PoVEngine, error) {
+func NewPovEngine(cfg *config.Config, accounts []*types.Account, eb event.EventBus) (*PoVEngine, error) {
 	ledger := ledger.NewLedger(cfg.LedgerDir(), eb)
 
 	pov := &PoVEngine{
 		logger: log.NewLogger("pov_engine"),
 		cfg:    cfg,
 		eb:     eb,
+		accounts: accounts,
 		ledger: ledger,
 	}
 
@@ -101,6 +103,14 @@ func (pov *PoVEngine) GetTxPool() *PovTxPool {
 
 func (pov *PoVEngine) GetVerifier() process.BlockVerifier {
 	return pov.verifier
+}
+
+func (pov *PoVEngine) GetAccounts() []*types.Account {
+	return pov.accounts
+}
+
+func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
+	return pov.bp.AddBlock(block, types.PovBlockFromLocal)
 }
 
 func (pov *PoVEngine) setEvent() error {
