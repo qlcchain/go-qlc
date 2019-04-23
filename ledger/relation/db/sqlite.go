@@ -2,22 +2,21 @@ package db
 
 import (
 	"fmt"
-	"path"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 type DB interface {
 	Create()
 }
 
-func openSqlite(dir, conn string) (*sqlx.DB, error) {
-	if err := util.CreateDirIfNotExist(dir); err != nil {
+func openSqlite(cfg *config.Config) (*sqlx.DB, error) {
+	if err := util.CreateDirIfNotExist(cfg.SqliteDir()); err != nil {
 		return nil, err
 	}
-	dataSourceName := fmt.Sprintf("file:%s?_auth&_auth_user=%s&_auth_pass=%s", path.Join(dir, "sqlite3.db"), user, password)
-	db, err := sqlx.Connect("sqlite3", dataSourceName)
+	db, err := sqlx.Connect(cfg.DB.Driver, cfg.DB.ConnectionString)
 	if err != nil {
 		fmt.Println("connect sqlite error: ", err)
 		return nil, err

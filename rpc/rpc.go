@@ -51,11 +51,12 @@ func NewRPC(cfg *config.Config) (*RPC, error) {
 	if err != nil {
 		return nil, err
 	}
+	dir := cfg.LedgerDir()
 	r := RPC{
-		ledger:   ledger.NewLedger(cfg.LedgerDir()),
+		ledger:   ledger.NewLedger(dir),
 		wallet:   wallet.NewWalletStore(cfg),
 		relation: rl,
-		eb:       event.GetEventBus(cfg.LedgerDir()),
+		eb:       event.GetEventBus(dir),
 		config:   cfg,
 		logger:   log.NewLogger("rpc"),
 	}

@@ -8,14 +8,14 @@ import (
 	ic "github.com/libp2p/go-libp2p-crypto"
 )
 
-type Config ConfigV2
+type Config ConfigV3
 
 func DefaultConfig(dir string) (*Config, error) {
-	v2, err := DefaultConfigV2(dir)
+	v3, err := DefaultConfigV3(dir)
 	if err != nil {
 		return &Config{}, err
 	}
-	cfg := Config(*v2)
+	cfg := Config(*v3)
 
 	return &cfg, nil
 }
@@ -45,5 +45,5 @@ func (c *Config) WalletDir() string {
 }
 
 func (c *Config) SqliteDir() string {
-	return filepath.Join(c.LedgerDir(), "sqlite")
+	return filepath.Join(c.LedgerDir(), "relation")
 }

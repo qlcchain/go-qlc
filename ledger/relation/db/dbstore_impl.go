@@ -17,12 +17,12 @@ type DBSQL struct {
 	logger *zap.SugaredLogger
 }
 
-func NewSQLDB(config *config.Config) (*DBSQL, error) {
+func NewSQLDB(cfg *config.Config) (*DBSQL, error) {
 	dbsql := new(DBSQL)
-	dbStr := ""
+	dbStr := cfg.DB.Driver
 	switch dbStr {
 	case "sqlite", "sqlite3":
-		db, err := openSqlite(config.SqliteDir(), config.DB.Connection)
+		db, err := openSqlite(cfg)
 		if err != nil {
 			return nil, err
 		}
