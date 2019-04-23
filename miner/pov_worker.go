@@ -205,8 +205,10 @@ func (w *PovWorker) solveBlock(block *types.PovBlock, ticker *time.Ticker, quitC
 }
 
 func (w *PovWorker) submitBlock(block *types.PovBlock) {
+	w.logger.Infof("submit block %d/%s", block.GetHeight(), block.GetHash())
+
 	err := w.miner.GetPovEngine().AddMinedBlock(block)
-	if err == nil {
-		w.logger.Infof("submit block %d/%s", block.GetHeight(), block.GetHash())
+	if err != nil {
+		w.logger.Infof("failed to submit block %d/%s", block.GetHeight(), block.GetHash())
 	}
 }

@@ -110,7 +110,7 @@ func (pov *PoVEngine) GetAccounts() []*types.Account {
 }
 
 func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
-	return pov.bp.AddBlock(block, types.PovBlockFromLocal)
+	return pov.bp.AddMinedBlock(block)
 }
 
 func (pov *PoVEngine) setEvent() error {

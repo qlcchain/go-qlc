@@ -10,9 +10,14 @@ const (
 	blockChanSize = 1024
 )
 
+type PovBlockResult struct {
+	err error
+}
+
 type PovBlockSource struct {
 	block *types.PovBlock
 	from  types.PovBlockFrom
+	replyCh chan PovBlockResult
 }
 
 type PovBlockProcessor struct {
@@ -58,6 +63,14 @@ func (bp *PovBlockProcessor) AddBlock(block *types.PovBlock, from types.PovBlock
 	return nil
 }
 
+func (bp *PovBlockProcessor) AddMinedBlock(block *types.PovBlock) error {
+	replyCh := make(chan PovBlockResult)
+	bp.blockCh <- &PovBlockSource{block: block, from: types.PovBlockFromLocal, replyCh: replyCh}
+	result := <- replyCh
+	close(replyCh)
+	return result.err
+}
+
 func (bp *PovBlockProcessor) loop() {
 	for {
 		select {
@@ -97,6 +110,10 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	}
 
 	err = bp.povEngine.GetChain().InsertBlock(block)
+
+	if blockSrc.replyCh != nil {
+		blockSrc.replyCh <- PovBlockResult{err: err}
+	}
 
 	return err
 }
