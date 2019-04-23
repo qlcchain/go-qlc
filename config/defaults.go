@@ -25,7 +25,6 @@ const (
 	configVersion = 2
 	cfgDir        = "GQlcchain"
 	nixCfgDir     = ".gqlcchain"
-	suffix        = "_test"
 )
 
 // identityConfig initializes a new identity.
@@ -85,9 +84,5 @@ func homeDir() string {
 	if usr, err := user.Current(); err == nil {
 		return usr.HomeDir
 	}
-	return ""
-}
-
-func defaultDbConfig() string {
 	return ""
 }
