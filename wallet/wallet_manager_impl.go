@@ -42,7 +42,7 @@ func NewWalletStore(cfg *config.Config) *WalletStore {
 		}
 
 		cache[dir] = &WalletStore{
-			ledger: ledger.NewLedger(cfg.LedgerDir(), nil),
+			ledger: ledger.NewLedger(cfg.LedgerDir()),
 			logger: logger,
 			Store:  store,
 			dir:    dir,

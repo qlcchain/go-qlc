@@ -10,8 +10,6 @@ package services
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/log"
@@ -27,8 +25,8 @@ type DPosService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewDPosService(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *DPosService {
-	dPoS, _ := consensus.NewDPoS(cfg, accounts, eb)
+func NewDPosService(cfg *config.Config, accounts []*types.Account) *DPosService {
+	dPoS, _ := consensus.NewDPoS(cfg, accounts)
 	return &DPosService{
 		dpos:   dPoS,
 		logger: log.NewLogger("dpos_service"),
@@ -36,7 +34,6 @@ func NewDPosService(cfg *config.Config, accounts []*types.Account, eb event.Even
 }
 
 func (dps *DPosService) DPos() *consensus.DPoS {
-	return dps.dpos
 	return dps.dpos
 }
 

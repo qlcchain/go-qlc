@@ -12,14 +12,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestNewP2PService(t *testing.T) {
-	eventBus := event.New()
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
 		_ = os.RemoveAll(dir)
@@ -28,7 +25,7 @@ func TestNewP2PService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := NewP2PService(cfg, eventBus)
+	p, err := NewP2PService(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

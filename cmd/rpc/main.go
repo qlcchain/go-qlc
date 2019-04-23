@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 
 	"github.com/qlcchain/go-qlc/chain/services"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -39,9 +38,7 @@ func main() {
 		return
 	}
 
-	eb := event.New()
-
-	ss, err := services.NewSqliteService(cfg, eb)
+	ss, err := services.NewSqliteService(cfg)
 	if err != nil {
 		logger.Fatal(err)
 		return
@@ -54,7 +51,7 @@ func main() {
 	}
 	logger.Info("sqlite started")
 
-	l := services.NewLedgerService(cfg, eb)
+	l := services.NewLedgerService(cfg)
 	if err := l.Init(); err != nil {
 		return
 	}
@@ -73,7 +70,7 @@ func main() {
 	}
 	logger.Info("wallet started")
 
-	rs, err := services.NewRPCService(cfg, eb)
+	rs, err := services.NewRPCService(cfg)
 	if err != nil {
 		logger.Fatal(err)
 		return

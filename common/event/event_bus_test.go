@@ -8,6 +8,7 @@
 package event
 
 import (
+	"sync"
 	"testing"
 	"time"
 )
@@ -221,11 +222,54 @@ func TestSubscribeAsync(t *testing.T) {
 	}
 }
 
-func TestGetEventBus(t *testing.T) {
+func TestSimpleEventBus(t *testing.T) {
 	eb1 := SimpleEventBus()
 	eb2 := SimpleEventBus()
 
 	if eb1 != eb2 {
 		t.Fatal("eb1!=eb2")
 	}
+}
+
+func TestGetEventBus(t *testing.T) {
+	eb0 := SimpleEventBus()
+	eb1 := GetEventBus("")
+	if eb0 != eb1 {
+		t.Fatal("invalid default eb")
+	}
+
+	id1 := "111111"
+	eb2 := GetEventBus(id1)
+	eb3 := GetEventBus(id1)
+
+	if eb2 != eb3 {
+		t.Fatal("invalid eb of same id")
+	}
+
+	id2 := "222222"
+	eb4 := GetEventBus(id2)
+	if eb3 == eb4 {
+		t.Fatal("invalid eb of diff ids")
+	}
+}
+
+func TestAsyncGetEvent(t *testing.T) {
+	var eb0 EventBus
+	var eb1 EventBus
+	id1 := "sssdfasdfasd"
+	eb0 = GetEventBus(id1)
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+	go func(id string) {
+		defer wg.Done()
+		eb1 = GetEventBus(id)
+	}(id1)
+
+	wg.Wait()
+
+	if eb0 == nil || eb1 == nil || eb0 != eb1 {
+		t.Fatalf("invalid eb0 %p, eb1 %p", eb0, eb1)
+	}
+
 }

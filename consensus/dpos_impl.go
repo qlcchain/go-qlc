@@ -105,15 +105,15 @@ func (dps *DPoS) Stop() error {
 	return nil
 }
 
-func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) (*DPoS, error) {
+func NewDPoS(cfg *config.Config, accounts []*types.Account) (*DPoS, error) {
 	bp := NewBlockProcessor()
 	acTrx := NewActiveTrx()
-	l := ledger.NewLedger(cfg.LedgerDir(), eb)
+	l := ledger.NewLedger(cfg.LedgerDir())
 
 	dps := &DPoS{
 		ledger:   l,
 		verifier: process.NewLedgerVerifier(l),
-		eb:       eb,
+		eb:       event.GetEventBus(cfg.LedgerDir()),
 		bp:       bp,
 		acTrx:    acTrx,
 		accounts: accounts,

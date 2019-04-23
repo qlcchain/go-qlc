@@ -8,10 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -26,9 +24,8 @@ func Test_MessageService_Stop(t *testing.T) {
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.BootNodes = []string{}
 
-	eventBus := event.New()
 	//start node
-	node, err := NewQlcService(cfgFile1, eventBus)
+	node, err := NewQlcService(cfgFile1)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -255,9 +252,8 @@ func Test_SendMessage(t *testing.T) {
 	cfgFile.P2P.BootNodes = []string{}
 	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
 
-	eventBus := event.New()
 	//start bootNode
-	node, err := NewQlcService(cfgFile, eventBus)
+	node, err := NewQlcService(cfgFile)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -272,7 +268,7 @@ func Test_SendMessage(t *testing.T) {
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
 
 	//start1 node
-	node1, err := NewQlcService(cfgFile1, eventBus)
+	node1, err := NewQlcService(cfgFile1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -287,7 +283,7 @@ func Test_SendMessage(t *testing.T) {
 	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2, eventBus)
+	node2, err := NewQlcService(cfgFile2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -403,9 +399,8 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile.P2P.BootNodes = []string{}
 	b := "/ip4/0.0.0.0/tcp/19743/ipfs/" + cfgFile.P2P.ID.PeerID
 
-	eventBus := event.New()
 	//start bootNode
-	node, err := NewQlcService(cfgFile, eventBus)
+	node, err := NewQlcService(cfgFile)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -420,7 +415,7 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
 
 	//start1 node
-	node1, err := NewQlcService(cfgFile1, eventBus)
+	node1, err := NewQlcService(cfgFile1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -435,7 +430,7 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2, eventBus)
+	node2, err := NewQlcService(cfgFile2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -450,7 +445,7 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile3.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node3, err := NewQlcService(cfgFile3, eventBus)
+	node3, err := NewQlcService(cfgFile3)
 	err = node3.Start()
 	if err != nil {
 		t.Fatal(err)

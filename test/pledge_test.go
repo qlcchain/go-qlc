@@ -3,14 +3,14 @@ package test
 import (
 	"encoding/hex"
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/rpc/api"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/rpc/api"
+
 	"github.com/qlcchain/go-qlc/chain/services"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -19,10 +19,10 @@ import (
 var beneficialPledge = "dd20a386c735a077206619eca312072ad19266a161b8269d2f9b49785a3afde95d56683fb3f03c259dc0a703645ae0fb4f883d492d059665e4dee58c56c4e853"
 
 func startService_Pledge(t *testing.T) (func(t *testing.T), *rpc.Client, *services.LedgerService) {
-	eventBus := event.New()
+
 	dir := filepath.Join(config.DefaultDataDir(), "pledge")
 	cfgFile, _ := config.DefaultConfig(dir)
-	ls := services.NewLedgerService(cfgFile, eventBus)
+	ls := services.NewLedgerService(cfgFile)
 	err := ls.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func startService_Pledge(t *testing.T) (func(t *testing.T), *rpc.Client, *servic
 	if p != process.Progress {
 		t.Fatal("process receive block error")
 	}
-	rPCService, err := services.NewRPCService(cfgFile, eventBus)
+	rPCService, err := services.NewRPCService(cfgFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func startService_Pledge(t *testing.T) (func(t *testing.T), *rpc.Client, *servic
 	if err != nil {
 		t.Fatal(err)
 	}
-	sqliteService, err := services.NewSqliteService(cfgFile, eventBus)
+	sqliteService, err := services.NewSqliteService(cfgFile)
 	if err != nil {
 		t.Fatal(err)
 	}
