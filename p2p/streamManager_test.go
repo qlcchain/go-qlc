@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -35,22 +33,21 @@ func Test_StreamManager(t *testing.T) {
 	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start bootNode
-	eventBus := event.New()
-	node, err := NewQlcService(cfgFile, eventBus)
+	node, err := NewQlcService(cfgFile)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node1
-	node1, err := NewQlcService(cfgFile1, eventBus)
+	node1, err := NewQlcService(cfgFile1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2, eventBus)
+	node2, err := NewQlcService(cfgFile2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)

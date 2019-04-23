@@ -19,7 +19,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -45,10 +44,9 @@ func TestConsensus(t *testing.T) {
 	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
 	fmt.Printf("bootNode peer id is [%s]\n", cfgFile.P2P.ID.PeerID)
 
-	eventBus := event.New()
-	l := services.NewLedgerService(cfgFile, eventBus)
+	l := services.NewLedgerService(cfgFile)
 	//start bootNode
-	node, err := p2p.NewQlcService(cfgFile, eventBus)
+	node, err := p2p.NewQlcService(cfgFile)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -62,25 +60,22 @@ func TestConsensus(t *testing.T) {
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
 	fmt.Printf("Node1 peer id is [%s]\n", cfgFile1.P2P.ID.PeerID)
 
-	eventBus1 := event.New()
 	//new ledger
-	ledger1 := services.NewLedgerService(cfgFile1, eventBus1)
+	ledger1 := services.NewLedgerService(cfgFile1)
 
 	//storage genesisBlock
 	creatGenesisBlock(ledger1.Ledger)
 
 	//start node1
-	node1, err := p2p.NewQlcService(cfgFile1, eventBus1)
+	node1, err := p2p.NewQlcService(cfgFile1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	eventBus2 := event.New()
-
 	var accs []*types.Account
 	accs = append(accs, ac)
-	consensusService1, err := consensus.NewDPoS(cfgFile1, accs, eventBus1)
+	consensusService1, err := consensus.NewDPoS(cfgFile1, accs)
 	//start node1 dpos service
 	err = consensusService1.Init()
 	if err != nil {
@@ -101,17 +96,17 @@ func TestConsensus(t *testing.T) {
 	fmt.Printf("Node2 peer id is [%s]\n", cfgFile2.P2P.ID.PeerID)
 
 	//new ledger
-	ledger2 := services.NewLedgerService(cfgFile2, eventBus2)
+	ledger2 := services.NewLedgerService(cfgFile2)
 	//storage genesisBlock
 	creatGenesisBlock(ledger2.Ledger)
 	//start node2
-	node2, err := p2p.NewQlcService(cfgFile2, eventBus2)
+	node2, err := p2p.NewQlcService(cfgFile2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	consensusService2 := services.NewDPosService(cfgFile2, nil, eventBus2)
+	consensusService2 := services.NewDPosService(cfgFile2, nil)
 	//start node2 dpos service
 	err = consensusService2.Init()
 	if err != nil {

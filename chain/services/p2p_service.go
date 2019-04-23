@@ -12,8 +12,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/p2p"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
@@ -26,8 +24,8 @@ type P2PService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewP2PService(cfg *config.Config, eb event.EventBus) (*P2PService, error) {
-	p, err := p2p.NewQlcService(cfg, eb)
+func NewP2PService(cfg *config.Config) (*P2PService, error) {
+	p, err := p2p.NewQlcService(cfg)
 	if err != nil {
 		return nil, err
 	}

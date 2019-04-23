@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/test/mock"
@@ -23,7 +22,7 @@ func TestRelation_CreateData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := NewRelation(cfg, nil)
+	r, err := NewRelation(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,12 +70,12 @@ func TestNewRelation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eb := event.New()
-	r1, err := NewRelation(cfg, eb)
+
+	r1, err := NewRelation(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r2, err := NewRelation(cfg, eb)
+	r2, err := NewRelation(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

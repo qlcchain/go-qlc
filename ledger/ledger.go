@@ -83,7 +83,7 @@ var (
 
 const version = 4
 
-func NewLedger(dir string, eb event.EventBus) *Ledger {
+func NewLedger(dir string) *Ledger {
 	lock.Lock()
 	defer lock.Unlock()
 	if _, ok := cache[dir]; !ok {
@@ -91,7 +91,7 @@ func NewLedger(dir string, eb event.EventBus) *Ledger {
 		if err != nil {
 			fmt.Println(err.Error())
 		}
-		l := &Ledger{Store: store, dir: dir, eb: eb}
+		l := &Ledger{Store: store, dir: dir, eb: event.GetEventBus(dir)}
 		l.logger = log.NewLogger("ledger")
 
 		if err := l.upgrade(); err != nil {

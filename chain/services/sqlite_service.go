@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
@@ -17,8 +16,8 @@ type SqliteService struct {
 	logger   *zap.SugaredLogger
 }
 
-func NewSqliteService(cfg *config.Config, eb event.EventBus) (*SqliteService, error) {
-	r, err := relation.NewRelation(cfg, eb)
+func NewSqliteService(cfg *config.Config) (*SqliteService, error) {
+	r, err := relation.NewRelation(cfg)
 	if err != nil {
 		return nil, err
 	}

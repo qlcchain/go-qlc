@@ -9,8 +9,8 @@ package services
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -23,13 +23,12 @@ import (
 type LedgerService struct {
 	common.ServiceLifecycle
 	Ledger *ledger.Ledger
-	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
-func NewLedgerService(cfg *config.Config, eb event.EventBus) *LedgerService {
+func NewLedgerService(cfg *config.Config) *LedgerService {
 	return &LedgerService{
-		Ledger: ledger.NewLedger(cfg.LedgerDir(), eb),
+		Ledger: ledger.NewLedger(cfg.LedgerDir()),
 		logger: log.NewLogger("ledger_service"),
 	}
 }
@@ -107,24 +106,6 @@ func (ls *LedgerService) Init() error {
 	}
 
 	return nil
-
-	//return l.BatchUpdate(func(txn db.StoreTxn) error {
-	//	genesis := common.QLCGenesisBlock
-	//	_ = l.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
-	//	verifier := process.NewLedgerVerifier(l)
-	//	if b, err := l.HasStateBlock(common.GenesisMintageHash, txn); !b && err == nil {
-	//		if err := l.AddStateBlock(&common.GenesisMintageBlock, txn); err != nil {
-	//			ls.logger.Error(err)
-	//		}
-	//	}
-	//
-	//	if b, err := l.HasStateBlock(common.QLCGenesisBlockHash, txn); !b && err == nil {
-	//		if err := verifier.BlockProcess(&common.QLCGenesisBlock); err != nil {
-	//			ls.logger.Error(err)
-	//		}
-	//	}
-	//	return nil
-	//})
 }
 
 func (ls *LedgerService) Start() error {
