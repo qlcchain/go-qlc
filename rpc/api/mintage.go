@@ -114,6 +114,9 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 	if len(blocks) > 0 {
 		reward.Timestamp = time.Now().UTC().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
+		if h == nil {
+			return nil, errors.New("trie hash is nil")
+		}
 		reward.Extra = *h
 		return reward, nil
 	}

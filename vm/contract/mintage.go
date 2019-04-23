@@ -154,7 +154,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 		{
 			VMContext: ctx,
 			Block:     block,
-			ToAddress: input.Address,
+			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
 			Amount:    totalSupply,
 			Token:     param.TokenId,
@@ -197,7 +197,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	_ = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, ti)
 
 	now := time.Now().UTC().Unix()
-	if tokenInfo.Owner != input.Address ||
+	if tokenInfo.PledgeAddress != input.Address ||
 		tokenInfo.PledgeAmount.Sign() == 0 ||
 		now < tokenInfo.WithdrawTime {
 		return nil, errors.New("cannot withdraw mintage pledge, status error")
