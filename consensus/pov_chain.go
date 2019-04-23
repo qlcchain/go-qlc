@@ -413,8 +413,9 @@ func (bc *PovBlockChain) FindAncestor(block *types.PovBlock, height uint64) *typ
 		return nil
 	}
 
+	curBlock := block
 	for {
-		prevBlock := bc.GetBlockByHash(block.GetPrevious())
+		prevBlock := bc.GetBlockByHash(curBlock.GetPrevious())
 		if prevBlock == nil {
 			return nil
 		}
@@ -422,6 +423,8 @@ func (bc *PovBlockChain) FindAncestor(block *types.PovBlock, height uint64) *typ
 		if prevBlock.GetHeight() == height {
 			return prevBlock
 		}
+
+		curBlock = prevBlock
 	}
 }
 
@@ -436,8 +439,10 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Si
 
 	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
 
-	firstBlock := bc.RelativeAncestor(block, uint64(bc.getConfig().PoV.TargetCycle - 1))
+	distance := uint64(bc.getConfig().PoV.TargetCycle - 1)
+	firstBlock := bc.RelativeAncestor(block, distance)
 	if firstBlock == nil {
+		bc.logger.Infof("failed to get relative ancestor at height %d distance %d", block.GetHeight(), distance)
 		return types.ZeroSignature, ErrPovUnknownAncestor
 	}
 
