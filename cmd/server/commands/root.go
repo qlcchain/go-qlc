@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc/ledger"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -163,6 +164,7 @@ func start() error {
 		}
 
 		w := ss.NewWalletService(cfg).Wallet
+		ledger.CloseLedger()
 		session := w.NewSession(address)
 		defer func() {
 			err := session.Close()

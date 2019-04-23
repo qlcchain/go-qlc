@@ -1,4 +1,4 @@
-// +build  mainnet
+// +build !testnet
 
 /*
  * Copyright (c) 2018 QLC Chain Team

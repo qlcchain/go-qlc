@@ -9,6 +9,7 @@ package trie
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -76,7 +77,7 @@ func (trie *Trie) saveNodeToDb(txn *db.BadgerStoreTxn, node *TrieNode) error {
 	} else {
 		h := node.Hash()
 		k := trie.encodeKey(h[:])
-		trie.log.Debugf("save %s", node.String())
+		trie.log.Debugf("save %s, %s", hex.EncodeToString(k), node.String())
 		err := txn.Set(k, data)
 		if err != nil {
 			return err
@@ -461,6 +462,6 @@ func (trie *Trie) getLeafNode(node *TrieNode, key []byte) *TrieNode {
 func (trie *Trie) encodeKey(key []byte) []byte {
 	result := make([]byte, len(key)+1)
 	result[0] = idPrefixTrie
-	result = append(result[1:], key...)
+	copy(result[1:], key)
 	return result
 }

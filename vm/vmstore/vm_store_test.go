@@ -61,4 +61,37 @@ func TestLedger_Storage(t *testing.T) {
 		t.Fatal("err store")
 	}
 
+	storageKey := getStorageKey(prefix[:], key)
+	if get, err := context.get(storageKey); get != nil {
+		t.Fatal("invalid storage", err)
+	} else {
+		t.Log(get, err)
+	}
+
+	err = context.SaveStorage()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if get, err := context.get(storageKey); get == nil {
+		t.Fatal("invalid storage", err)
+	} else {
+		if !bytes.EqualFold(get, value) {
+			t.Fatal("invalid val")
+		} else {
+
+			t.Log(get, err)
+		}
+	}
+
+	cacheTrie := context.Cache.Trie()
+	if cacheTrie == nil {
+		t.Fatal("invalid trie")
+	}
+
+	if hash := cacheTrie.Hash(); hash == nil {
+		t.Fatal("invalid hash")
+	} else {
+		t.Log(hash.String())
+	}
 }

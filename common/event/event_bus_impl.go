@@ -38,6 +38,19 @@ func New() EventBus {
 	return EventBus(b)
 }
 
+var (
+	once sync.Once
+	eb   EventBus
+)
+
+func SimpleEventBus() EventBus {
+	once.Do(func() {
+		eb = New()
+	})
+
+	return eb
+}
+
 // doSubscribe handles the subscription logic and is utilized by the public Subscribe functions
 func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}, handler *eventHandler) error {
 	eb.lock.Lock()

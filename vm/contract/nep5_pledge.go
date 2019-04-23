@@ -117,6 +117,14 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		NEP5TxId:      param.NEP5TxId,
 	}
 
+	if _, err := ctx.GetStorage(types.NEP5PledgeAddress[:], []byte(param.NEP5TxId)); err == nil {
+		return nil, fmt.Errorf("invalid nep5 tx id")
+	} else {
+		if err := ctx.SetStorage(types.NEP5PledgeAddress[:], []byte(param.NEP5TxId), nil); err != nil {
+			return nil, err
+		}
+	}
+
 	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, param.NEP5TxId)
 
 	var pledgeData []byte
