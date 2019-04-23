@@ -5,55 +5,35 @@ package common
 import (
 	"encoding/json"
 	"github.com/qlcchain/go-qlc/common/types"
-	"math/big"
 )
 
 var (
-	jsonPovGenesis = `{
-        	"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"merkleRoot": "0000000000000000000000000000000000000000000000000000000000000000",
-        	"nonce": 375666,
-        	"voteSignature": "608a355ef7cdf4a253d5ee31576dc57aca97d8921c3c69d435f1182013a1c1f3f8b6c09ee39b9f07e89ccf90de85546c4303a282d65a4bd03f1d9a8fd3000000",
-        	"height": 0,
-        	"timestamp": 1556582888,
-        	"target": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000",
-        	"coinbase": "qlc_1afnoj8acwikgsazz1ocgakss3hck6htgxcm4wafuit7439izg8kzdu6twou",
-        	"txNum": 0,
-        	"signature": "bce8edf4cf4a03390f903a0937cda43d63d16f7313773326b9086f0182522a6f41c73d140fe24bb9d772ded778c39a70add2ab78afad3b21ca447a4061742803"
-        }`
+	jsonPovGenesis = `
+{
+    "hash":"93adfc01a9c1a3ad08270166741b82dccfa0a9251f9a84dfe6ca16225a113516",
+    "previous":"0000000000000000000000000000000000000000000000000000000000000000",
+    "merkleRoot":"0000000000000000000000000000000000000000000000000000000000000000",
+    "nonce":1481494,
+    "voteSignature":"105a4609daecb5fd63230eff18b57ec200351f9a28d5cd29c9bbca3e405a917760da0f867ba9922f2008ec04a359b52390ca7521650f3e172698e57ec1000000",
+    "height":0,
+    "timestamp":1555891688,
+    "target":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000",
+    "coinbase":"qlc_176f1aj1361y5i4yu8ccyp8xphjcbxmmu4ryh4jecnsncse1eiud7uncz8bj",
+    "txNum":0,
+    "stateHash":"0000000000000000000000000000000000000000000000000000000000000000",
+    "signature":"368e406e9fd1684010814eb3244f7e9bfae45f80ee38ab6914176257093380795a9aaa9b0f1c95109c48e7ffa9b48a47d32dc597148c486a5473dedcb5195108",
+    "transactions":[]
+}
+`
 
-	genesisPovBlockTime   = int64(1556582888)
-	genesisPovBlockTarget *big.Int
-	genesisPovBlock       types.PovBlock
+	genesisPovBlock types.PovBlock
 )
 
 func init() {
-	var err error
-
-	var targetSigBuf [types.SignatureSize]byte
-	var index int
-
-	targetSigBuf[index] = 0x00
-	index++
-	targetSigBuf[index] = 0x00
-	index++
-	targetSigBuf[index] = 0x00
-	index++
-
-	for ; index < types.SignatureSize; index++ {
-		targetSigBuf[index] = 0xFF
-	}
-
-	//test net
-	genesisPovBlockTarget = new(big.Int).SetBytes(targetSigBuf[:])
-	err = json.Unmarshal([]byte(jsonPovGenesis), &genesisPovBlock)
+	err := json.Unmarshal([]byte(jsonPovGenesis), &genesisPovBlock)
 	if err != nil {
 		panic(err)
 	}
-	genesisPovBlock.Timestamp = genesisPovBlockTime
-	genesisPovBlock.Target.FromBigInt(genesisPovBlockTarget)
-	genesisPovBlock.Transactions = []*types.PovTransaction{}
-	genesisPovBlock.Hash = genesisPovBlock.ComputeHash()
 }
 
 func GenesisPovBlock() *types.PovBlock {

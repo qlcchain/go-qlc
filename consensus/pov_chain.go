@@ -72,8 +72,15 @@ func (bc *PovBlockChain) getTxPool() *PovTxPool {
 func (bc *PovBlockChain) Init() error {
 	var err error
 
+	needReset := false
 	genesisBlock, err := bc.getLedger().GetPovBlockByHeight(0)
 	if genesisBlock == nil {
+		needReset = true
+	} else if !bc.IsGenesisBlock(genesisBlock) {
+		needReset = true
+	}
+
+	if needReset {
 		genesisBlock = common.GenesisPovBlock()
 		err := bc.ResetWithGenesisBlock(genesisBlock)
 		if err != nil {
@@ -102,17 +109,17 @@ func (bc *PovBlockChain) Stop() error {
 
 func (bc *PovBlockChain) loadLastState() error {
 	// Make sure the entire head block is available
-	currentBlock, _ := bc.getLedger().GetLatestPovBlock()
-	if currentBlock == nil {
+	latestBlock, _ := bc.getLedger().GetLatestPovBlock()
+	if latestBlock == nil {
 		// Corrupt or empty database, init from scratch
 		bc.logger.Warn("Head block missing, resetting chain")
 		return bc.ResetChainState()
 	}
 
 	// Everything seems to be fine, set as the head block
-	bc.latestBlock.Store(currentBlock)
+	bc.latestBlock.Store(latestBlock)
 
-	bc.logger.Infof("Loaded most recent local full block, number %d hash %s", currentBlock.GetHeight(), currentBlock.GetHash())
+	bc.logger.Infof("Loaded latest block %d/%s", latestBlock.GetHeight(), latestBlock.GetHash())
 
 	return nil
 }
@@ -136,7 +143,7 @@ func (bc *PovBlockChain) ResetWithGenesisBlock(genesis *types.PovBlock) error {
 
 	bc.genesisBlock = genesis
 
-	bc.logger.Infof("Reset with genesis block, height %d hash %s", genesis.Height, genesis.Hash)
+	bc.logger.Infof("Reset with genesis block %d/%s", genesis.Height, genesis.Hash)
 
 	bc.latestBlock.Store(genesis)
 
@@ -219,6 +226,7 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock) err
 
 	err := bc.getLedger().AddPovBlock(block, txn)
 	if err != nil {
+		bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
 		return err
 	}
 
@@ -321,8 +329,8 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 		return ErrPovInvalidHash
 	}
 
-	bc.logger.Infof("find fork block %s/%d, detach %d, attach %d",
-		forkBlock.GetHash(), forkBlock.GetHeight(), len(detachBlocks), len(attachBlocks))
+	bc.logger.Infof("find fork block %d/%s, detach %d, attach %d",
+		forkBlock.GetHeight(), forkBlock.GetHash(), len(detachBlocks), len(attachBlocks))
 
 	for _, detachBlock := range detachBlocks {
 		err := bc.disconnectTransactions(txn, detachBlock)
@@ -347,11 +355,21 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 }
 
 func (bc *PovBlockChain) connectBlock(txn db.StoreTxn, block *types.PovBlock) error {
-	return bc.getLedger().AddPovBestHash(block.GetHeight(), block.GetHash(), txn)
+	err := bc.getLedger().AddPovBestHash(block.GetHeight(), block.GetHash(), txn)
+	if err != nil {
+		bc.logger.Errorf("add pov best hash %d/%s failed, err %s", block.Height, block.Hash, err)
+		return err
+	}
+	return nil
 }
 
 func (bc *PovBlockChain) disconnectBlock(txn db.StoreTxn, block *types.PovBlock) error {
-	return bc.getLedger().DeletePovBestHash(block.GetHeight(), txn)
+	err := bc.getLedger().DeletePovBestHash(block.GetHeight(), txn)
+	if err != nil {
+		bc.logger.Errorf("delete pov best hash %d/%s failed, err %s", block.Height, block.Hash, err)
+		return err
+	}
+	return nil
 }
 
 func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBlock) error {
@@ -420,7 +438,7 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Si
 
 	firstBlock := bc.RelativeAncestor(block, uint64(bc.getConfig().PoV.TargetCycle - 1))
 	if firstBlock == nil {
-		return types.Signature{}, ErrPovUnknownAncestor
+		return types.ZeroSignature, ErrPovUnknownAncestor
 	}
 
 	actualTimespan := block.Timestamp - firstBlock.Timestamp
@@ -434,10 +452,10 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Si
 	var nextTarget types.Signature
 	nextTarget.FromBigInt(nextTargetInt)
 
-	bc.logger.Debugf("Difficulty retarget at block height %d", block.GetHeight()+1)
-	bc.logger.Debugf("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
-	bc.logger.Debugf("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
-	bc.logger.Debugf("Actual timespan %v, target timespan %v",
+	bc.logger.Infof("Difficulty retarget at block height %d", block.GetHeight()+1)
+	bc.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
+	bc.logger.Infof("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
+	bc.logger.Infof("Actual timespan %v, target timespan %v",
 		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
 
 	return nextTarget, nil

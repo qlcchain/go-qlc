@@ -9,6 +9,7 @@ package types
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -26,8 +27,39 @@ const (
 	SignatureSize = ed25519.SignatureSize
 )
 
+var ZeroSignature = Signature{}
+
 // Signature of block
 type Signature [SignatureSize]byte
+
+func NewSignature(hexStr string) (Signature, error) {
+	s := Signature{}
+	err := s.Of(hexStr)
+	if err != nil {
+		return s, err
+	}
+	return s, nil
+}
+
+func BytesToSignature(data []byte) (Signature, error) {
+	if len(data) != SignatureSize {
+		return ZeroSignature, errors.New("invalid Signature size")
+	}
+
+	var signature [SignatureSize]byte
+	copy(signature[:], data)
+	return signature, nil
+}
+
+//IsZero check signature is zero
+func (s *Signature) IsZero() bool {
+	for _, b := range s {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
 
 // String implements the fmt.Stringer interface.
 func (s Signature) String() string {

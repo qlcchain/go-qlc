@@ -3,9 +3,9 @@ package ledger
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
@@ -268,7 +268,8 @@ func (l *Ledger) addPovHeight(hash types.Hash, height uint64, txn db.StoreTxn) e
 		return err
 	}
 
-	blockBytes := util.Uint64ToBytes(height)
+	blockBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(blockBytes, height)
 
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
@@ -315,7 +316,7 @@ func (l *Ledger) GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, err
 
 	var height uint64
 	err = txn.Get(key, func(val []byte, b byte) error {
-		height = binary.BigEndian.Uint64(val)
+		height = binary.LittleEndian.Uint64(val)
 		return nil
 	})
 	if err != nil {
@@ -578,9 +579,12 @@ func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 	}
 
 	var latestHash types.Hash
-	latestHash.UnmarshalBinary(latestVal)
-	if latestHash == types.ZeroHash {
+	err = latestHash.UnmarshalBinary(latestVal)
+	if err != nil {
 		return nil, err
+	}
+	if latestHash.IsZero() {
+		return nil, fmt.Errorf("latest best hash is zero")
 	}
 
 	return l.GetPovBlockByHash(latestHash, txn)

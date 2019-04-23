@@ -1,4 +1,4 @@
-// +build mainnet
+// +build testnet
 
 package common
 
@@ -10,8 +10,8 @@ import (
 )
 
 func TestGenesisPovBlock1(t *testing.T) {
-	expectHash, _ := types.NewHash("4e833e2f18f2da77a488a1be13e9db9131d0a2ca521bf23121204c52b84e9af1")
-	expectSig, _ := types.NewSignature("1f9016e168efa77923ca8571561ca28339a32373f234890db3f4bc09b7f2f1c39bfe6b820d973a6ece25b6cafdaa73fd322c31dda720dbe08ed6e6f268f05909")
+	expectHash, _ := types.NewHash("93adfc01a9c1a3ad08270166741b82dccfa0a9251f9a84dfe6ca16225a113516")
+	expectSig, _ := types.NewSignature("368e406e9fd1684010814eb3244f7e9bfae45f80ee38ab6914176257093380795a9aaa9b0f1c95109c48e7ffa9b48a47d32dc597148c486a5473dedcb5195108")
 
 	checkHash := genesisPovBlock.ComputeHash()
 	if checkHash != expectHash {

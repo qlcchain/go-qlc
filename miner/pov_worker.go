@@ -56,9 +56,13 @@ func (w *PovWorker) Init() error {
 }
 
 func (w *PovWorker) Start() error {
-
 	if w.coinbaseAddress != nil {
-		common.Go(w.loop)
+		cbAccount := w.GetCoinbaseAccount()
+		if cbAccount == nil {
+			w.logger.Errorf("coinbase %s account not exist", w.coinbaseAddress)
+		} else {
+			common.Go(w.loop)
+		}
 	}
 
 	return nil
@@ -108,7 +112,7 @@ func (w *PovWorker) loop() {
 func (w *PovWorker) genNextBlock() {
 	cbAccount := w.GetCoinbaseAccount()
 	if cbAccount == nil {
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Minute)
 		return
 	}
 
@@ -120,9 +124,6 @@ func (w *PovWorker) genNextBlock() {
 	if err != nil {
 		return
 	}
-
-	targetInt := target.ToBigInt()
-	w.logger.Infof("parent %d/%s, target %d/%s", parent.GetHeight(), parent.GetHash(), targetInt.BitLen(), targetInt.Text(16))
 
 	current := &types.PovBlock{
 		Previous:  parent.GetHash(),
@@ -144,7 +145,7 @@ func (w *PovWorker) genNextBlock() {
 	current.TxNum = uint32(len(current.Transactions))
 
 	mklHash := merkle.CalcMerkleTreeRootHash(mklTxHashList)
-	current.MerkleRoot = *mklHash
+	current.MerkleRoot = mklHash
 
 	if w.solveBlock(current, ticker, w.quitCh) {
 		w.submitBlock(current)
@@ -187,27 +188,25 @@ func (w *PovWorker) solveBlock(block *types.PovBlock, ticker *time.Ticker, quitC
 		voteSignature := cbAccount.Sign(voteHash)
 		voteSigInt := voteSignature.ToBigInt()
 		if voteSigInt.Cmp(targetInt) <= 0 {
+			foundNonce = true
+			block.VoteSignature = voteSignature
 			break
 		}
-
-		block.VoteSignature = voteSignature
 	}
 
 	if !foundNonce {
 		return false
 	}
 
-	blkHash := block.ComputeHash()
-	block.Signature = cbAccount.Sign(blkHash)
+	block.Hash = block.ComputeHash()
+	block.Signature = cbAccount.Sign(block.Hash)
 
 	return true
 }
 
 func (w *PovWorker) submitBlock(block *types.PovBlock) {
-	w.logger.Infof("block %+v", block)
-
 	err := w.miner.GetPovEngine().AddMinedBlock(block)
 	if err == nil {
-		w.logger.Infof("submit block, height %d hash %s", block.GetHeight(), block.GetHash())
+		w.logger.Infof("submit block %d/%s", block.GetHeight(), block.GetHash())
 	}
 }

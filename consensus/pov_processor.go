@@ -73,7 +73,7 @@ func (bp *PovBlockProcessor) loop() {
 func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	block := blockSrc.block
 	blockHash := blockSrc.block.GetHash()
-	bp.povEngine.GetLogger().Infof("process block, hash %s, height %d", blockHash, blockSrc.block.GetHeight())
+	bp.povEngine.GetLogger().Infof("process block, %d/%s", blockSrc.block.GetHeight(), blockHash)
 
 	chain := bp.povEngine.GetChain()
 

@@ -74,8 +74,12 @@ func (pv *PovVerifier) verifyHeader(block *types.PovBlock) (ProcessResult, error
 		return BadHash, fmt.Errorf("bad hash, %s != %s", computedHash, block.Hash)
 	}
 
-	if len(block.Signature) == 0 || len(block.Coinbase) == 0 {
-		return BadSignature, errors.New("signature or coinbase is nil")
+	if len(block.Coinbase) == 0 {
+		return BadSignature, errors.New("coinbase is nil")
+	}
+
+	if len(block.Signature) == 0 {
+		return BadSignature, errors.New("signature is nil")
 	}
 
 	isVerified := block.Coinbase.Verify(block.GetHash().Bytes(), block.GetSignature().Bytes())
@@ -100,8 +104,8 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock) (ProcessResult, err
 		return GapPrevious, nil
 	}
 
-	if prevBlock.Timestamp > block.Timestamp {
-		return InvalidTime, errors.New("timestamp must be greater than previous")
+	if block.Timestamp < prevBlock.Timestamp {
+		return InvalidTime, fmt.Errorf("timestamp %d not greater than previous %d", block.Timestamp, prevBlock.Timestamp)
 	}
 
 	return Progress, nil
@@ -112,13 +116,24 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock) (ProcessResult,
 		return InvalidTxNum, nil
 	}
 
-	txHashs := make([]*types.Hash, len(block.Transactions))
-	for _, tx := range block.Transactions {
-		txHashs = append(txHashs, &tx.Hash)
+	if len(block.Transactions) <= 0 {
+		if !block.MerkleRoot.IsZero() {
+			return BadMerkleRoot, fmt.Errorf("bad merkle root not zero when txs empty")
+		}
+		return Progress, nil
 	}
-	merkleRoot := merkle.CalcMerkleTreeRootHash(txHashs)
-	if *merkleRoot != block.MerkleRoot {
-		return BadMerkleRoot, fmt.Errorf("bad merkle root, %s != %s", merkleRoot, block.MerkleRoot)
+
+	var txHashList []*types.Hash
+	for _, tx := range block.Transactions {
+		txHash := tx.Hash
+		txHashList = append(txHashList, &txHash)
+	}
+	merkleRoot := merkle.CalcMerkleTreeRootHash(txHashList)
+	if merkleRoot.IsZero() {
+		return BadMerkleRoot, fmt.Errorf("bad merkle root is zero when txs exist")
+	}
+	if merkleRoot != block.MerkleRoot {
+		return BadMerkleRoot, fmt.Errorf("bad merkle root not same %s != %s", merkleRoot, block.MerkleRoot)
 	}
 
 	for _, tx := range block.Transactions {

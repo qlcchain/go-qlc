@@ -104,12 +104,16 @@ func BuildMerkleTreeStore(txHashs []*types.Hash) []*types.Hash {
 }
 
 // CalcMerkleTreeRootHash calcute the merkle tree root hash for a slice of transactions
-func CalcMerkleTreeRootHash(txHashs []*types.Hash) *types.Hash {
+func CalcMerkleTreeRootHash(txHashs []*types.Hash) types.Hash {
 	if len(txHashs) <= 0 {
-		return &types.ZeroHash
+		return types.ZeroHash
 	}
 
 	merkles := BuildMerkleTreeStore(txHashs)
+	if merkles == nil || len(merkles) <= 0 {
+		return types.ZeroHash
+	}
+
 	calculatedMerkleRoot := merkles[len(merkles)-1]
-	return calculatedMerkleRoot
+	return *calculatedMerkleRoot
 }
