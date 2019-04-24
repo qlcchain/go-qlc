@@ -1,5 +1,3 @@
-// +build !testnet
-
 /*
  * Copyright (c) 2019 QLC Chain Team
  *
@@ -21,25 +19,36 @@ type ConfigV3 struct {
 	DB *DBConfig `json:"db"`
 }
 
+func DefaultConfigV3(dir string) (*ConfigV3, error) {
+	var cfg ConfigV3
+	cfg2, _ := DefaultConfigV2(dir)
+	cfg.ConfigV2 = *cfg2
+	cfg.Version = 3
+	cfg.RPC.HttpVirtualHosts = []string{"*"}
+
+	cfg.DB = defaultDb(dir)
+
+	return &cfg, nil
+}
+
+var (
+	relationDir = "relation"
+	pwLen       = 16
+)
+
 type DBConfig struct {
 	ConnectionString string `json:"connectionString"`
 	Driver           string `json:"driver"`
 }
 
-func DefaultConfigV3(dir string) (*ConfigV3, error) {
-	var cfg ConfigV3
-	cfgv2, _ := DefaultConfigV2(dir)
-	cfg.ConfigV2 = *cfgv2
-	cfg.RPC.HttpVirtualHosts = []string{"*"}
-	pw := util.RandomFixedString(16)
+func defaultDb(dir string) *DBConfig {
+	d := path.Join(dir, "ledger", relationDir, "index.db")
+	pw := util.RandomFixedString(pwLen)
 
 	//"postgres://pqgotest:password@localhost/pqgotest?sslmode=verify-full"
 	//postgres
-	d := path.Join(dir, "ledger", "relation", "index.db")
-	cfg.DB = &DBConfig{
+	return &DBConfig{
 		ConnectionString: fmt.Sprintf("file:%s?_auth&_auth_user=qlcchain&_auth_pass=%s", d, pw),
 		Driver:           "sqlite3",
 	}
-
-	return &cfg, nil
 }

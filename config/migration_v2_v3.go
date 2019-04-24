@@ -33,6 +33,7 @@ func (m *MigrationV2ToV3) Migration(data []byte, version int) ([]byte, int, erro
 		return data, version, err
 	}
 	cfg3.ConfigV2 = cfg2
+	cfg3.Version = 3
 
 	bytes, err := json.Marshal(cfg3)
 	return bytes, m.endVersion, err
