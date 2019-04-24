@@ -61,10 +61,6 @@ type IdentityConfigV2 struct {
 	PrivKey string `json:"privateKey,omitempty"`
 }
 
-type DBConfigV2 struct {
-	Connection string `json:"connection"`
-}
-
 func DefaultConfigV2(dir string) (*ConfigV2, error) {
 	pk, id, err := identityConfig()
 	if err != nil {

@@ -21,8 +21,8 @@ func DefaultConfig(dir string) (*Config, error) {
 }
 
 // DecodePrivateKey is a helper to decode the users PrivateKey
-func (cfg *Config) DecodePrivateKey() (ic.PrivKey, error) {
-	pkb, err := base64.StdEncoding.DecodeString(cfg.P2P.ID.PrivKey)
+func (c *Config) DecodePrivateKey() (ic.PrivKey, error) {
+	pkb, err := base64.StdEncoding.DecodeString(c.P2P.ID.PrivKey)
 	if err != nil {
 		return nil, err
 	}
@@ -45,5 +45,5 @@ func (c *Config) WalletDir() string {
 }
 
 func (c *Config) SqliteDir() string {
-	return filepath.Join(c.LedgerDir(), "relation")
+	return filepath.Join(c.LedgerDir(), relationDir)
 }
