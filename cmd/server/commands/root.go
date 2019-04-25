@@ -19,10 +19,8 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
 	"strings"
 	"time"
 
@@ -345,14 +343,14 @@ func run() {
 
 //Load the config file from --config
 func loadConfig() (*config.Config, error) {
-	bytes, err := ioutil.ReadFile(cfgPathP)
+	content, err := ioutil.ReadFile(cfgPathP)
 	if err != nil {
 		return nil, err
 	}
 
 	// unmarshal config
 	var cfg config.Config
-	err = json.Unmarshal(bytes, &cfg)
+	err = json.Unmarshal(content, &cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -375,37 +373,14 @@ func updateConfig(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+
 	for _, cp := range configParamsP {
 		k := strings.Split(cp, "=")
-		if len(k) != 2 {
-			return err
+		if len(k) != 2 || len(k[0]) == 0 || len(k[1]) == 0 {
+			continue
 		}
-		oldValue := viper.Get(k[0])
-		if oldValue != nil {
-			t := reflect.TypeOf(oldValue)
-			switch t.Name() {
-			case "string":
-				viper.Set(k[0], k[1])
-			case "int":
-				value, err := strconv.Atoi(k[1])
-				if err != nil {
-					return err
-				}
-				viper.Set(k[0], value)
-			case "float64":
-				value, err := strconv.ParseFloat(k[1], 64)
-				if err != nil {
-					return err
-				}
-				viper.Set(k[0], value)
-			case "bool":
-				value, err := strconv.ParseBool(k[1])
-				if err != nil {
-					return err
-				}
-				viper.Set(k[0], value)
-			default:
-			}
+		if oldValue := viper.Get(k[0]); oldValue != nil {
+			viper.Set(k[0], k[1])
 		}
 	}
 	err = viper.Unmarshal(&cfg)
