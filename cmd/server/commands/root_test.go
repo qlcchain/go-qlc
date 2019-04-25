@@ -15,7 +15,6 @@ import (
 )
 
 func Test_updateConfig(t *testing.T) {
-	t.Skip()
 	cfgPathP = config.DefaultDataDir()
 	configParamsP = []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
 	v3, err := config.DefaultConfig(cfgPathP)
