@@ -22,24 +22,24 @@ type ConfigV2 struct {
 }
 
 type P2PConfigV2 struct {
-	BootNodes []string `json:"bootNode"`
+	BootNodes []string `json:"bootNode" mapstructure:"bootNode"`
 	Listen    string   `json:"listen"`
 	//Time in seconds between sync block interval
 	SyncInterval int                `json:"syncInterval"`
 	Discovery    *DiscoveryConfigV2 `json:"discovery"`
-	ID           *IdentityConfigV2  `json:"identity"`
+	ID           *IdentityConfigV2  `json:"identity" mapstructure:"identity"`
 }
 
 type RPCConfigV2 struct {
-	Enable bool `json:"rpcEnabled"`
+	Enable bool `json:"rpcEnabled" mapstructure:"rpcEnabled"`
 	//Listen string `json:"Listen"`
 	HTTPEndpoint     string   `json:"httpEndpoint"`
 	HTTPEnabled      bool     `json:"httpEnabled"`
 	HTTPCors         []string `json:"httpCors"`
 	HttpVirtualHosts []string `json:"httpVirtualHosts"`
 
-	WSEnabled  bool   `json:"webSocketEnabled"`
-	WSEndpoint string `json:"webSocketEndpoint"`
+	WSEnabled  bool   `json:"webSocketEnabled" mapstructure:"webSocketEnabled"`
+	WSEndpoint string `json:"webSocketEndpoint" mapstructure:"webSocketEndpoint"`
 
 	IPCEndpoint   string   `json:"ipcEndpoint"`
 	IPCEnabled    bool     `json:"ipcEnabled"`
@@ -58,7 +58,7 @@ type DiscoveryConfigV2 struct {
 
 type IdentityConfigV2 struct {
 	PeerID  string `json:"peerId"`
-	PrivKey string `json:"privateKey,omitempty"`
+	PrivKey string `json:"privateKey,omitempty" mapstructure:"privateKey"`
 }
 
 func DefaultConfigV2(dir string) (*ConfigV2, error) {
