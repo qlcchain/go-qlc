@@ -64,7 +64,7 @@ func (ss *ServiceSync) Start() {
 			ss.next()
 			bulkPull = bulkPull[:0:0]
 			bulkPush = bulkPush[:0:0]
-			err = ss.netService.node.SendMessageToPeer(common.FrontierRequest, Req, peerID)
+			err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send FrontierRequest", err)
 			}
@@ -92,7 +92,7 @@ func (ss *ServiceSync) onFrontierReq(message *Message) error {
 	var rsp *protos.FrontierResponse
 	for _, f := range fs {
 		rsp = protos.NewFrontierRsp(f, uint32(num))
-		err = ss.netService.SendMessageToPeer(common.FrontierRsp, rsp, message.MessageFrom())
+		err = ss.netService.SendMessageToPeer(FrontierRsp, rsp, message.MessageFrom())
 		if err != nil {
 			ss.logger.Errorf("send FrontierRsp err [%s]", err)
 		}
@@ -209,7 +209,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 							StartHash: value.StartHash,
 							EndHash:   value.EndHash,
 						}
-						err := ss.netService.SendMessageToPeer(common.BulkPullRequest, blkReq, peerID)
+						err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
 						if err != nil {
 							ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 						}
@@ -234,7 +234,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 							}
 							for i := len(bulkBlk) - 1; i >= 0; i-- {
-								err = ss.netService.SendMessageToPeer(common.BulkPushBlock, bulkBlk[i], peerID)
+								err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 								}
@@ -256,7 +256,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 							}
 							for i := len(bulkBlk) - 1; i >= 0; i-- {
-								err = ss.netService.SendMessageToPeer(common.BulkPushBlock, bulkBlk[i], peerID)
+								err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 								}
@@ -306,7 +306,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 		}
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
-			err = ss.netService.SendMessageToPeer(common.BulkPullRsp, bulkBlk[i], message.MessageFrom())
+			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
 			}
@@ -327,7 +327,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 		}
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
-			err = ss.netService.SendMessageToPeer(common.BulkPullRsp, bulkBlk[i], message.MessageFrom())
+			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
 			}

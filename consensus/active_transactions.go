@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 	"time"
 
@@ -144,7 +145,7 @@ func (act *ActiveTrx) announceVotes() {
 				} else {
 					act.dps.logger.Infof("vote:send confirm ack for hash %s,previous hash is %s", hash, block.Parent())
 					//act.dps.ns.Broadcast(p2p.ConfirmAck, va)
-					act.dps.eb.Publish(string(common.EventBroadcast), common.ConfirmAck, va)
+					act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 					value.(*Election).voteAction(va)
 				}
 				return true
@@ -152,7 +153,7 @@ func (act *ActiveTrx) announceVotes() {
 			if count == 0 {
 				act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
 				//act.dps.ns.Broadcast(p2p.ConfirmReq, block)
-				act.dps.eb.Publish(string(common.EventBroadcast), common.ConfirmReq, block)
+				act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
 			}
 			if act.dps.cfg.PerformanceEnabled {
 				if value.(*Election).announcements == 0 {

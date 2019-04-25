@@ -162,7 +162,7 @@ func (dps *DPoS) onReceivePublish(hash types.Hash, bs blockSource, msgFrom strin
 			dps.bp.blockCache.Set(blkHash, "")
 			dps.bp.blocks <- bs
 		}
-		dps.eb.Publish(string(common.EventSendMsgToPeers), common.PublishReq, bs.block, msgFrom)
+		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.block, msgFrom)
 		err := dps.cache.Set(hash, "")
 		if err != nil {
 			dps.logger.Errorf("Set cache error [%s] for block [%s] with publish message", err, bs.block.GetHash())
@@ -207,7 +207,7 @@ func (dps *DPoS) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msgFr
 				dps.bp.blocks <- bs
 				dps.bp.blockCache.Set(blkHash, "")
 			}
-			dps.eb.Publish(string(common.EventSendMsgToPeers), common.ConfirmReq, blk, msgFrom)
+			dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmReq, blk, msgFrom)
 			err := dps.cache.Set(hash, "")
 			if err != nil {
 				dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmReq message", err, blk.GetHash())
@@ -321,7 +321,7 @@ func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash,
 			}
 		}
 		//dps.ns.SendMessageToPeers(p2p.ConfirmAck, ack, msgFrom)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), common.ConfirmAck, ack, msgFrom)
+		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, msgFrom)
 		err := dps.cache.Set(hash, "")
 		if err != nil {
 			dps.logger.Errorf("Set cache error [%s] for block [%s] with confirmAck message", err, ack.Blk.GetHash())
@@ -350,7 +350,7 @@ func (dps *DPoS) sendConfirmAck(block *types.StateBlock, account types.Address, 
 		return err
 	}
 	//dps.ns.Broadcast(p2p.ConfirmAck, va)
-	dps.eb.Publish(string(common.EventBroadcast), common.ConfirmAck, va)
+	dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 	return nil
 }
 
@@ -399,7 +399,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 		return err
 	}
 	//dps.ns.Broadcast(p2p.ConfirmReq, blk)
-	dps.eb.Publish(string(common.EventBroadcast), common.ConfirmReq, blk)
+	dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, blk)
 	return nil
 }
 
@@ -431,7 +431,7 @@ func (dps *DPoS) sendAckIfResultIsOld(block *types.StateBlock, account types.Add
 	if !dps.cache.Has(msgHash) {
 		dps.logger.Infof("send confirm ack for hash %s,previous hash is %s", block.GetHash(), block.Parent())
 		//dps.ns.Broadcast(p2p.ConfirmAck, va)
-		dps.eb.Publish(string(common.EventBroadcast), common.ConfirmAck, va)
+		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 		err := dps.cache.Set(msgHash, "")
 		if err != nil {
 			return err
@@ -446,7 +446,7 @@ func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error
 		return types.ZeroHash, err
 	}
 	version := dps.cfg.Version
-	message := p2p.NewQlcMessage(data, byte(version), common.ConfirmAck)
+	message := p2p.NewQlcMessage(data, byte(version), p2p.ConfirmAck)
 	hash, err := types.HashBytes(message)
 	if err != nil {
 		return types.ZeroHash, err

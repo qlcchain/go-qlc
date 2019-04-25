@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
-
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -145,7 +143,7 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
 		stream.messageChan <- message
-		if messageName == common.PublishReq || messageName == common.ConfirmReq || messageName == common.ConfirmAck {
+		if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
 			sm.searchCache(stream, hash, message, messageName)
 			//exitCache, err := sm.node.netService.msgService.cache.Get(hash)
 			//if err == nil {
@@ -208,7 +206,7 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 		stream := value.(*Stream)
 		if stream.pid.Pretty() != peerID {
 			stream.messageChan <- message
-			if messageName == common.PublishReq || messageName == common.ConfirmReq || messageName == common.ConfirmAck {
+			if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
 				sm.searchCache(stream, hash, message, messageName)
 				//exitCache, err := sm.node.netService.msgService.cache.Get(hash)
 				//if err == nil {
