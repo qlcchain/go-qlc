@@ -385,7 +385,6 @@ func updateConfig(cfg *config.Config) error {
 			t := reflect.TypeOf(oldValue)
 			switch t.Name() {
 			case "string":
-				fmt.Println("string....")
 				viper.Set(k[0], k[1])
 			case "int":
 				value, err := strconv.Atoi(k[1])
