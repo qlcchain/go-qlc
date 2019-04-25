@@ -5,6 +5,7 @@ require (
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db
 	github.com/awnumar/memguard v0.15.0
+	github.com/beevik/ntp v0.2.0
 	github.com/bluele/gcache v0.0.0-20190203144525-2016d595ccb0
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
