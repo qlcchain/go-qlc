@@ -25,6 +25,7 @@ func DefaultConfigV3(dir string) (*ConfigV3, error) {
 	cfg.ConfigV2 = *cfg2
 	cfg.Version = 3
 	cfg.RPC.HttpVirtualHosts = []string{"*"}
+	cfg.RPC.PublicModules = append(cfg.RPC.PublicModules, "pledge")
 
 	cfg.DB = defaultDb(dir)
 
