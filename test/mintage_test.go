@@ -1,3 +1,5 @@
+// +build integrate
+
 package test
 
 import (
