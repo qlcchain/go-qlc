@@ -188,7 +188,7 @@ func TestConsensus(t *testing.T) {
 	}
 	verifier1 := process.NewLedgerVerifier(ledger1.Ledger)
 	/**/ verifier1.Process(send)
-	node1.Broadcast(common.PublishReq, send)
+	node1.Broadcast(p2p.PublishReq, send)
 	time.Sleep(33 * time.Second)
 	c, err := ledger2.Ledger.CountStateBlocks()
 	if err != nil {

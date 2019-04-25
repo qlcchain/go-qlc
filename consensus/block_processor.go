@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/p2p"
 	"time"
 
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -189,7 +190,7 @@ func (bp *BlockProcessor) processFork(block *types.StateBlock) {
 	blk := bp.findAnotherForkedBlock(block)
 	if _, ok := bp.dp.acTrx.roots.Load(blk.Parent()); !ok {
 		bp.dp.acTrx.addToRoots(blk)
-		bp.dp.eb.Publish(string(common.EventBroadcast), common.ConfirmReq, blk)
+		bp.dp.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, blk)
 	}
 }
 
