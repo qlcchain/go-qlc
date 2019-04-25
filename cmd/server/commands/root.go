@@ -8,8 +8,10 @@
 package commands
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,9 +19,14 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/qlcchain/go-qlc/ledger"
 
@@ -42,20 +49,21 @@ var (
 )
 
 var (
-	seedP       string
-	privateKeyP string
-	accountP    string
-	passwordP   string
-	cfgPathP    string
-	isProfileP  bool
+	seedP         string
+	privateKeyP   string
+	accountP      string
+	passwordP     string
+	cfgPathP      string
+	isProfileP    bool
+	configParamsP []string
 
-	privateKey cmdutil.Flag
-	account    cmdutil.Flag
-	password   cmdutil.Flag
-	seed       cmdutil.Flag
-	cfgPath    cmdutil.Flag
-	isProfile  cmdutil.Flag
-
+	privateKey   cmdutil.Flag
+	account      cmdutil.Flag
+	password     cmdutil.Flag
+	seed         cmdutil.Flag
+	cfgPath      cmdutil.Flag
+	isProfile    cmdutil.Flag
+	configParams cmdutil.Flag
 	//ctx            *chain.QlcContext
 	ledgerService  *ss.LedgerService
 	walletService  *ss.WalletService
@@ -106,6 +114,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().StringVar(&seedP, "seed", "", "seed for accounts")
 		rootCmd.PersistentFlags().StringVar(&privateKeyP, "privateKey", "", "seed for accounts")
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
+		rootCmd.PersistentFlags().StringSliceVar(&configParamsP, "configParams", []string{}, "parameter set that needs to be changed")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)
@@ -135,6 +144,13 @@ func start() error {
 		}
 	} else {
 		cfg, err = loadConfig()
+		if err != nil {
+			return err
+		}
+	}
+	if len(configParamsP) > 0 {
+		fmt.Println("need set parameter")
+		err = updateConfig(cfg)
 		if err != nil {
 			return err
 		}
@@ -291,6 +307,13 @@ func run() {
 		Value: false,
 	}
 
+	configParams = cmdutil.Flag{
+		Name:  "configParam",
+		Must:  false,
+		Usage: "parameter set that needs to be changed",
+		Value: []string{},
+	}
+
 	s := &ishell.Cmd{
 		Name: "run",
 		Help: "start qlc server",
@@ -309,6 +332,7 @@ func run() {
 			seedP = cmdutil.StringVar(c.Args, seed)
 			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
+			configParamsP = cmdutil.StringSliceVar(c.Args, configParams)
 
 			err := start()
 			if err != nil {
@@ -333,4 +357,61 @@ func loadConfig() (*config.Config, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+func updateConfig(cfg *config.Config) error {
+	s := strings.Split(config.QlcConfigFile, ".")
+	if len(s) != 2 {
+		return errors.New("split error")
+	}
+	viper.SetConfigName(s[0])
+	viper.AddConfigPath(cfgPathP)
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	r := bytes.NewReader(b)
+	err = viper.ReadConfig(r)
+	if err != nil {
+		return err
+	}
+	for _, cp := range configParamsP {
+		k := strings.Split(cp, "=")
+		if len(k) != 2 {
+			return err
+		}
+		oldValue := viper.Get(k[0])
+		if oldValue != nil {
+			t := reflect.TypeOf(oldValue)
+			switch t.Name() {
+			case "string":
+				fmt.Println("string....")
+				viper.Set(k[0], k[1])
+			case "int":
+				value, err := strconv.Atoi(k[1])
+				if err != nil {
+					return err
+				}
+				viper.Set(k[0], value)
+			case "float64":
+				value, err := strconv.ParseFloat(k[1], 64)
+				if err != nil {
+					return err
+				}
+				viper.Set(k[0], value)
+			case "bool":
+				value, err := strconv.ParseBool(k[1])
+				if err != nil {
+					return err
+				}
+				viper.Set(k[0], value)
+			default:
+			}
+		}
+	}
+	err = viper.Unmarshal(&cfg)
+	if err != nil {
+		return err
+	}
+	return nil
 }
