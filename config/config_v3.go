@@ -15,8 +15,8 @@ import (
 )
 
 type ConfigV3 struct {
-	ConfigV2
-	DB *DBConfig `json:"db"`
+	ConfigV2 `mapstructure:",squash"`
+	DB       *DBConfig `json:"db"`
 }
 
 func DefaultConfigV3(dir string) (*ConfigV3, error) {

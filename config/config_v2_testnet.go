@@ -67,7 +67,7 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 		return nil, err
 	}
 	var cfg ConfigV2
-	modules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms"}
+	modules := []string{"qlcclassic", "ledger", "account", "net", "util", "wallet", "mintage", "pledge", "contract", "sms"}
 	cfg = ConfigV2{
 		Version:             2,
 		DataDir:             dir,
