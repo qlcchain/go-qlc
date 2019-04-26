@@ -2,6 +2,7 @@ package types
 
 import "encoding/json"
 
+//go:generate msgp
 type Benefit struct {
 	Balance Balance `msg:"balance,extension" json:"balance"`
 	Vote    Balance `msg:"vote,extension" json:"vote"`
