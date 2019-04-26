@@ -426,14 +426,29 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, txn db.StoreTxn) error {
 	if block.GetToken() == common.ChainToken() {
 		if tm != nil && !tm.Representative.IsZero() {
-			lv.logger.Debugf("sub rep %s from %s ", am.VoteBalance(), tm.Representative)
-			if err := lv.l.SubRepresentation(tm.Representative, am.VoteBalance(), txn); err != nil {
+			oldBenefit := &types.Benefit{
+				Vote:    am.CoinVote,
+				Network: am.CoinNetwork,
+				Oracle:  am.CoinOracle,
+				Storage: am.CoinStorage,
+				Balance: am.CoinBalance,
+				Total:   am.TotalBalance(),
+			}
+			lv.logger.Debugf("sub rep(%s) from %s ", oldBenefit, tm.Representative)
+			if err := lv.l.SubRepresentation(tm.Representative, oldBenefit, txn); err != nil {
 				return err
 			}
 		}
-		add := block.GetBalance().Add(block.GetVote())
-		lv.logger.Debugf("add rep %s to %s ", add, block.GetRepresentative())
-		if err := lv.l.AddRepresentation(block.GetRepresentative(), add, txn); err != nil {
+		newBenefit := &types.Benefit{
+			Vote:    block.GetVote(),
+			Network: block.GetNetwork(),
+			Oracle:  block.GetOracle(),
+			Storage: block.GetStorage(),
+			Balance: block.GetBalance(),
+			Total:   block.TotalBalance(),
+		}
+		lv.logger.Debugf("add rep(%s) to %s ", newBenefit, block.GetRepresentative())
+		if err := lv.l.AddRepresentation(block.GetRepresentative(), newBenefit, txn); err != nil {
 			return err
 		}
 	}

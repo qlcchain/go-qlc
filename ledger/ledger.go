@@ -938,75 +938,94 @@ func (l *Ledger) getRepresentationKey(address types.Address) []byte {
 	return key[:]
 }
 
-func (l *Ledger) AddRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error {
-	oldAmount, err := l.GetRepresentation(address, txns...)
+func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
+	benefit, err := l.GetRepresentation(address, txns...)
 	if err != nil && err != ErrRepresentationNotFound {
 		return err
 	}
-	amount = oldAmount.Add(amount)
+
+	benefit.Balance = benefit.Balance.Add(diff.Balance)
+	benefit.Vote = benefit.Vote.Add(diff.Vote)
+	benefit.Network = benefit.Network.Add(diff.Network)
+	benefit.Oracle = benefit.Oracle.Add(diff.Oracle)
+	benefit.Storage = benefit.Storage.Add(diff.Storage)
+	benefit.Total = benefit.Total.Add(diff.Total)
+
 	key := l.getRepresentationKey(address)
-	amountBytes, err := amount.MarshalText()
+	val, err := benefit.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	return txn.Set(key, amountBytes)
+	return txn.Set(key, val)
 }
 
-func (l *Ledger) SubRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error {
-	oldAmount, err := l.GetRepresentation(address, txns...)
+func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
+	benefit, err := l.GetRepresentation(address, txns...)
 	if err != nil {
 		return err
 	}
-	amount = oldAmount.Sub(amount)
+	benefit.Balance = benefit.Balance.Sub(diff.Balance)
+	benefit.Vote = benefit.Vote.Sub(diff.Vote)
+	benefit.Network = benefit.Network.Sub(diff.Network)
+	benefit.Oracle = benefit.Oracle.Sub(diff.Oracle)
+	benefit.Storage = benefit.Storage.Sub(diff.Storage)
+	benefit.Total = benefit.Total.Sub(diff.Total)
+
 	key := l.getRepresentationKey(address)
-	amountBytes, err := amount.MarshalText()
+	val, err := benefit.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	return txn.Set(key, amountBytes)
+	return txn.Set(key, val)
 }
 
-func (l *Ledger) GetRepresentation(address types.Address, txns ...db.StoreTxn) (types.Balance, error) {
+func (l *Ledger) GetRepresentation(address types.Address, txns ...db.StoreTxn) (*types.Benefit, error) {
 	key := l.getRepresentationKey(address)
-	var amount types.Balance
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	benefit := new(types.Benefit)
 	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if err = amount.UnmarshalText(val); err != nil {
+		if _, err = benefit.UnmarshalMsg(val); err != nil {
 			return err
 		}
 		return nil
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return types.ZeroBalance, ErrRepresentationNotFound
+			return &types.Benefit{
+				Vote:    types.ZeroBalance,
+				Network: types.ZeroBalance,
+				Storage: types.ZeroBalance,
+				Oracle:  types.ZeroBalance,
+				Balance: types.ZeroBalance,
+				Total:   types.ZeroBalance,
+			}, ErrRepresentationNotFound
 		}
-		return types.ZeroBalance, err
+		return nil, err
 	}
-	return amount, nil
+	return benefit, nil
 }
 
-func (l *Ledger) GetRepresentations(fn func(types.Address, types.Balance) error, txns ...db.StoreTxn) error {
+func (l *Ledger) GetRepresentations(fn func(types.Address, *types.Benefit) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 	err := txn.Iterator(idPrefixRepresentation, func(key []byte, val []byte, b byte) error {
-		var amount types.Balance
-		var address types.Address
+		benefit := new(types.Benefit)
 		address, err := types.BytesToAddress(key[1:])
 		if err != nil {
 			return err
 		}
-		if err := amount.UnmarshalText(val); err != nil {
+		if _, err = benefit.UnmarshalMsg(val); err != nil {
 			return err
 		}
-		if err := fn(address, amount); err != nil {
+		if err := fn(address, benefit); err != nil {
 			return err
 		}
 		return nil
@@ -1469,11 +1488,11 @@ func (l *Ledger) TokenBalance(account types.Address, token types.Hash, txns ...d
 }
 
 func (l *Ledger) Weight(account types.Address, txns ...db.StoreTxn) types.Balance {
-	balance, err := l.GetRepresentation(account, txns...)
+	benefit, err := l.GetRepresentation(account, txns...)
 	if err != nil {
 		return types.ZeroBalance
 	}
-	return balance
+	return benefit.Total
 }
 
 // TODO: implement
@@ -1524,7 +1543,7 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 			if err := l.rollBackFrontier(types.Hash{}, blockCur.GetHash(), txn); err != nil {
 				return fmt.Errorf("rollback frontier fail(%s), open(%s)", err, hashCur)
 			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance(), false, blockCur.GetToken(), txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur, nil, false, blockCur.GetToken(), txn); err != nil {
 				return fmt.Errorf("rollback representative fail(%s), open(%s)", err, hashCur)
 			}
 			if err := l.rollBackPendingAdd(blockCur, blockLink, tm.Balance, blockCur.GetToken(), txn); err != nil {
@@ -1541,13 +1560,13 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block fail(%s), send(%s)", err, hashCur)
 			}
-			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.Representative, blockPre.GetBalance(), txn); err != nil {
+			if err := l.rollBackToken(tm, blockPre, txn); err != nil {
 				return fmt.Errorf("rollback token fail(%s), send(%s)", err, hashCur)
 			}
 			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
 				return fmt.Errorf("rollback frontier fail(%s), send(%s)", err, hashCur)
 			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockPre.GetBalance().Sub(blockCur.GetBalance()), true, blockCur.GetToken(), txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur, blockPre, true, blockCur.GetToken(), txn); err != nil {
 				return fmt.Errorf("rollback representative fail(%s), send(%s)", err, hashCur)
 			}
 			if err := l.rollBackPendingDel(types.Address(blockCur.Link), blockCur.GetHash(), txn); err != nil {
@@ -1570,13 +1589,13 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block fail(%s), receive(%s)", err, hashCur)
 			}
-			if err := l.rollBackToken(tm, blockCur.GetPrevious(), tm.Representative, blockPre.GetBalance(), txn); err != nil {
+			if err := l.rollBackToken(tm, blockPre, txn); err != nil {
 				return fmt.Errorf("rollback token fail(%s), receive(%s)", err, hashCur)
 			}
 			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
 				return fmt.Errorf("rollback frontier fail(%s), receive(%s)", err, hashCur)
 			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur.GetBalance().Sub(blockPre.GetBalance()), false, blockCur.GetToken(), txn); err != nil {
+			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur, blockPre, false, blockCur.GetToken(), txn); err != nil {
 				return fmt.Errorf("rollback representative fail(%s), receive(%s)", err, hashCur)
 			}
 			if err := l.rollBackPendingAdd(blockCur, blockLink, blockCur.GetBalance().Sub(blockPre.GetBalance()), blockCur.GetToken(), txn); err != nil {
@@ -1593,13 +1612,13 @@ func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, i
 			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block fail(%s), change(%s)", err, hashCur)
 			}
-			if err := l.rollBackToken(tm, blockCur.GetPrevious(), blockCur.GetRepresentative(), tm.Balance, txn); err != nil {
+			if err := l.rollBackToken(tm, blockPre, txn); err != nil {
 				return fmt.Errorf("rollback token fail(%s), change(%s)", err, hashCur)
 			}
 			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
 				return fmt.Errorf("rollback frontier fail(%s), change(%s)", err, hashCur)
 			}
-			if err := l.rollBackRepChange(blockPre.GetRepresentative(), blockCur.GetRepresentative(), blockCur.Balance, txn); err != nil {
+			if err := l.rollBackRepChange(blockPre.GetRepresentative(), blockCur.GetRepresentative(), blockCur, txn); err != nil {
 				return fmt.Errorf("rollback representative fail(%s), change(%s)", err, hashCur)
 			}
 		}
@@ -1663,14 +1682,26 @@ func (l *Ledger) rollBackFrontier(pre types.Hash, cur types.Hash, txn db.StoreTx
 	return nil
 }
 
-func (l *Ledger) rollBackToken(tm *types.TokenMeta, header types.Hash, rep types.Address, balance types.Balance, txn db.StoreTxn) error {
-	tm.Balance = balance
-	tm.Header = header
-	tm.Representative = rep
+func (l *Ledger) rollBackToken(token *types.TokenMeta, pre *types.StateBlock, txn db.StoreTxn) error {
+	ac, err := l.GetAccountMeta(token.BelongTo, txn)
+	if err != nil {
+		return err
+	}
+	ac.CoinVote = pre.GetVote()
+	ac.CoinOracle = pre.GetOracle()
+	ac.CoinNetwork = pre.GetNetwork()
+	ac.CoinStorage = pre.GetStorage()
+	if pre.GetToken() == common.ChainToken() {
+		ac.CoinBalance = pre.GetBalance()
+	}
+	tm := ac.Token(pre.GetToken())
+	tm.Balance = pre.GetBalance()
+	tm.Header = pre.GetHash()
+	tm.Representative = pre.GetRepresentative()
 	tm.BlockCount = tm.BlockCount - 1
 	tm.Modified = time.Now().Unix()
 	l.logger.Debug("update token, ", tm.BelongTo, tm.Type)
-	if err := l.UpdateTokenMeta(tm.BelongTo, tm, txn); err != nil {
+	if err := l.UpdateAccountMeta(ac, txn); err != nil {
 		return err
 	}
 	return nil
@@ -1694,16 +1725,44 @@ func (l *Ledger) rollBackTokenDel(tm *types.TokenMeta, txn db.StoreTxn) error {
 	return nil
 }
 
-func (l *Ledger) rollBackRep(address types.Address, balance types.Balance, isSend bool, token types.Hash, txn db.StoreTxn) error {
+func (l *Ledger) rollBackRep(representative types.Address, blockCur, blockPre *types.StateBlock, isSend bool, token types.Hash, txn db.StoreTxn) error {
 	if token == common.ChainToken() {
 		if isSend {
-			l.logger.Debugf("add rep %s to %s", balance, address)
-			if err := l.AddRepresentation(address, balance, txn); err != nil {
+			diff := &types.Benefit{
+				Vote:    blockPre.GetVote().Sub(blockCur.GetVote()),
+				Network: blockPre.GetNetwork().Sub(blockCur.GetNetwork()),
+				Oracle:  blockPre.GetOracle().Sub(blockCur.GetOracle()),
+				Storage: blockPre.GetStorage().Sub(blockCur.GetStorage()),
+				Balance: blockPre.GetBalance().Sub(blockCur.GetBalance()),
+				Total:   blockPre.TotalBalance().Sub(blockCur.TotalBalance()),
+			}
+			l.logger.Debugf("add rep(%s) to %s", diff, representative)
+			if err := l.AddRepresentation(representative, diff, txn); err != nil {
 				return err
 			}
 		} else {
-			l.logger.Debugf("sub rep %s from %s", balance, address)
-			if err := l.SubRepresentation(address, balance, txn); err != nil {
+			diff := new(types.Benefit)
+			if blockPre == nil {
+				diff = &types.Benefit{
+					Vote:    blockCur.GetVote(),
+					Network: blockCur.GetNetwork(),
+					Oracle:  blockCur.GetOracle(),
+					Storage: blockCur.GetStorage(),
+					Balance: blockCur.GetBalance(),
+					Total:   blockCur.TotalBalance(),
+				}
+			} else {
+				diff = &types.Benefit{
+					Vote:    blockCur.GetVote().Sub(blockPre.GetVote()),
+					Network: blockCur.GetNetwork().Sub(blockPre.GetNetwork()),
+					Oracle:  blockCur.GetOracle().Sub(blockPre.GetOracle()),
+					Storage: blockCur.GetStorage().Sub(blockPre.GetStorage()),
+					Balance: blockCur.GetBalance().Sub(blockPre.GetBalance()),
+					Total:   blockCur.TotalBalance().Sub(blockPre.TotalBalance()),
+				}
+			}
+			l.logger.Debugf("sub rep %s from %s", diff, representative)
+			if err := l.SubRepresentation(representative, diff, txn); err != nil {
 				return err
 			}
 		}
@@ -1711,13 +1770,21 @@ func (l *Ledger) rollBackRep(address types.Address, balance types.Balance, isSen
 	return nil
 }
 
-func (l *Ledger) rollBackRepChange(pre types.Address, cur types.Address, balance types.Balance, txn db.StoreTxn) error {
-	l.logger.Debugf("add rep %s to %s", balance, pre)
-	if err := l.AddRepresentation(pre, balance, txn); err != nil {
+func (l *Ledger) rollBackRepChange(preRepresentation types.Address, curRepresentation types.Address, blockCur *types.StateBlock, txn db.StoreTxn) error {
+	diff := &types.Benefit{
+		Vote:    blockCur.GetVote(),
+		Network: blockCur.GetNetwork(),
+		Oracle:  blockCur.GetOracle(),
+		Storage: blockCur.GetStorage(),
+		Balance: blockCur.GetBalance(),
+		Total:   blockCur.TotalBalance(),
+	}
+	l.logger.Debugf("add rep(%s) to %s", diff, preRepresentation)
+	if err := l.AddRepresentation(preRepresentation, diff, txn); err != nil {
 		return err
 	}
-	l.logger.Debugf("sub rep %s from %s", balance, cur)
-	if err := l.SubRepresentation(cur, balance, txn); err != nil {
+	l.logger.Debugf("sub rep(%s) from %s", diff, curRepresentation)
+	if err := l.SubRepresentation(curRepresentation, diff, txn); err != nil {
 		return err
 	}
 	return nil

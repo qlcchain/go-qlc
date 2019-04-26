@@ -53,7 +53,7 @@ func (am *AccountMeta) Token(tt Hash) *TokenMeta {
 	return nil
 }
 
-func (a *AccountMeta) VoteBalance() Balance {
+func (a *AccountMeta) VoteWeight() Balance {
 	return a.CoinBalance.Add(a.CoinVote)
 }
 
