@@ -11,21 +11,18 @@ package contract
 
 import (
 	"math/big"
-	"time"
 
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
 var (
-	minNetworkPledgeTime = 3  // minMintageWithdrawTime 3 months
-	minVotePledgeTime    = 10 // minMintageWithdrawTime 10 days
-	config               = map[cabi.PledgeType]pledgeInfo{
+	config = map[cabi.PledgeType]pledgeInfo{
 		cabi.Network: {
-			pledgeTime:   time.Unix(0, 0).AddDate(0, minNetworkPledgeTime, 0).UTC().Unix(),
+			pledgeTime:   &timeSpan{months: 3}, //3 month
 			pledgeAmount: big.NewInt(2000),
 		},
 		cabi.Vote: {
-			pledgeTime:   time.Unix(0, 0).AddDate(0, 0, minVotePledgeTime).UTC().Unix(),
+			pledgeTime:   &timeSpan{days: 10}, //10 days
 			pledgeAmount: big.NewInt(1),
 		},
 	}

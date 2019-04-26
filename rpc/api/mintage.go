@@ -9,7 +9,6 @@ package api
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 
@@ -93,7 +92,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		Link:           types.Hash(types.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,
-		Timestamp:      time.Now().UTC().Unix(),
+		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 
 	err = m.mintage.DoSend(m.vmContext, send)
@@ -112,7 +111,7 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 		return nil, err
 	}
 	if len(blocks) > 0 {
-		reward.Timestamp = time.Now().UTC().Unix()
+		reward.Timestamp = common.TimeNow().UTC().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		if h == nil {
 			return nil, errors.New("trie hash is nil")
@@ -156,7 +155,7 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		Link:           types.Hash(types.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,
-		Timestamp:      time.Now().UTC().Unix(),
+		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 
 	err = m.withdraw.DoSend(m.vmContext, send)
@@ -176,7 +175,7 @@ func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 	}
 
 	if len(blocks) > 0 {
-		reward.Timestamp = time.Now().UTC().Unix()
+		reward.Timestamp = common.TimeNow().UTC().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		reward.Extra = *h
 		return reward, nil

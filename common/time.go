@@ -8,10 +8,11 @@
 package common
 
 import (
-	"github.com/beevik/ntp"
 	"sort"
 	"sync/atomic"
 	"time"
+
+	"github.com/beevik/ntp"
 )
 
 var (
