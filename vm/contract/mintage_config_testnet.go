@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	MinPledgeAmount      = big.NewInt(1 * 1e11)   // 1K QLC
+	MinPledgeAmount      = big.NewInt(10 * 1e8)   // 10 QLC
 	tokenNameLengthMax   = 40                     // Maximum length of a token name(include)
 	tokenSymbolLengthMax = 10                     // Maximum length of a token symbol(include)
 	minMintageTime       = &timeSpan{minutes: 10} //10 minutes
