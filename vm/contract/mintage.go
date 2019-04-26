@@ -100,7 +100,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 			param.Decimals,
 			param.Beneficial,
 			MinPledgeAmount,
-			time.Unix(input.Timestamp, 0).UTC().Unix()+minMintageWithdrawTime,
+			minMintageTime.Calculate(time.Unix(input.Timestamp, 0)).UTC().Unix(),
 			input.Address,
 			param.NEP5TxId)
 		if err != nil {
@@ -188,7 +188,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	tokenInfo := new(types.TokenInfo)
 	_ = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, ti)
 
-	now := time.Now().UTC().Unix()
+	now := common.TimeNow().UTC().Unix()
 	if tokenInfo.PledgeAddress != input.Address ||
 		tokenInfo.PledgeAmount.Sign() == 0 ||
 		now < tokenInfo.WithdrawTime {

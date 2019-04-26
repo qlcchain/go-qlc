@@ -9,15 +9,20 @@ package commands
 
 import (
 	_ "net/http/pprof"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/config"
 )
 
 func Test_updateConfig(t *testing.T) {
-	cfgPathP = config.DefaultDataDir()
+	cfgPathP = filepath.Join(config.QlcTestDataDir(), "config")
 	configParamsP = []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
 	manager := config.NewCfgManager(cfgPathP)
+	defer func() {
+		_ = os.RemoveAll(cfgPathP)
+	}()
 	cfg, err := manager.Load()
 	if err != nil {
 		t.Fatal(err)
