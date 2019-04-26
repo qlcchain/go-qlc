@@ -262,3 +262,22 @@ func SearchBeneficialPledgeInfo(ctx *vmstore.VMContext, param *WithdrawPledgePar
 
 	return result
 }
+
+func SearchAllPledgeInfos(ctx *vmstore.VMContext) ([]*NEP5PledgeInfo, error) {
+	var result []*NEP5PledgeInfo
+	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+		if len(key) > 2*types.AddressSize && len(value) > 0 {
+			pledgeInfo := new(NEP5PledgeInfo)
+
+			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
+				result = append(result, pledgeInfo)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
