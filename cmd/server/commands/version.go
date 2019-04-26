@@ -10,6 +10,7 @@ package commands
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 
@@ -54,6 +55,9 @@ func version() {
 }
 
 func versionInfo() {
+	if len(BuildTime) == 0 {
+		BuildTime = time.Now().Format("2006-01-02_15-04")
+	}
 	ts := strings.Split(BuildTime, "_")
 	v := fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1])
 	b := fmt.Sprintf("%-15s%s", "version:", Version)

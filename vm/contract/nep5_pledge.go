@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -89,7 +90,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	var withdrawTime int64
 	pt := cabi.PledgeType(param.PType)
 	if info, b := config[pt]; b {
-		withdrawTime = info.pledgeTime.Calculate(common.TimeNow()).UTC().Unix()
+		withdrawTime = info.pledgeTime.Calculate(time.Unix(input.Timestamp, 0)).UTC().Unix()
 	} else {
 		return nil, fmt.Errorf("unsupport type %s", pt.String())
 	}

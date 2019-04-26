@@ -24,17 +24,15 @@ import (
 )
 
 type MintageApi struct {
-	logger    *zap.SugaredLogger
-	ledger    *ledger.Ledger
-	vmContext *vmstore.VMContext
-	mintage   *contract.Mintage
-	withdraw  *contract.WithdrawMintage
+	logger   *zap.SugaredLogger
+	ledger   *ledger.Ledger
+	mintage  *contract.Mintage
+	withdraw *contract.WithdrawMintage
 }
 
 func NewMintageApi(ledger *ledger.Ledger) *MintageApi {
-	return &MintageApi{ledger: ledger, vmContext: vmstore.NewVMContext(ledger),
-		logger: log.NewLogger("api_mintage"), mintage: &contract.Mintage{},
-		withdraw: &contract.WithdrawMintage{}}
+	return &MintageApi{ledger: ledger, logger: log.NewLogger("api_mintage"),
+		mintage: &contract.Mintage{}, withdraw: &contract.WithdrawMintage{}}
 }
 
 type MintageParams struct {
@@ -95,7 +93,8 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 
-	err = m.mintage.DoSend(m.vmContext, send)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	err = m.mintage.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +104,8 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 
 func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	reward := &types.StateBlock{}
-
-	blocks, err := m.mintage.DoReceive(m.vmContext, reward, input)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	blocks, err := m.mintage.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
 	}
@@ -157,8 +156,8 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		Data:           data,
 		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
-
-	err = m.withdraw.DoSend(m.vmContext, send)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	err = m.withdraw.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -168,8 +167,8 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 
 func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	reward := &types.StateBlock{}
-
-	blocks, err := m.withdraw.DoReceive(m.vmContext, reward, input)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	blocks, err := m.withdraw.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
 	}

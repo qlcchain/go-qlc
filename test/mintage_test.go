@@ -101,7 +101,6 @@ func startService_Mintage(t *testing.T) (func(t *testing.T), *rpc.Client, *servi
 }
 
 func TestMintage(t *testing.T) {
-
 	teardownTestCase, client, _ := startService_Mintage(t)
 	defer teardownTestCase(t)
 
