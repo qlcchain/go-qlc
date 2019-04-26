@@ -8,16 +8,14 @@ EXECUTABLES = git go find pwd
 K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
-GO ?= latest
-
 # server
-SERVERVERSION = 1.0.4
+SERVERVERSION ?= 1.0.4
 SERVERBINARY = gqlc
 SERVERTESTBINARY = gqlct
 SERVERMAIN = cmd/server/main.go
 
 # client
-CLIENTVERSION = 1.0.4
+CLIENTVERSION ?= 1.0.4
 CLIENTBINARY = gqlcc
 CLIENTMAIN = cmd/client/main.go
 

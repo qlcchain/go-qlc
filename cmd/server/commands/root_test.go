@@ -15,27 +15,27 @@ import (
 )
 
 func Test_updateConfig(t *testing.T) {
-	t.Skip()
 	cfgPathP = config.DefaultDataDir()
 	configParamsP = []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
-	v3, err := config.DefaultConfig(cfgPathP)
+	manager := config.NewCfgManager(cfgPathP)
+	cfg, err := manager.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = updateConfig(v3)
+	err = updateConfig(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !v3.RPC.Enable {
+	if !cfg.RPC.Enable {
 		t.Fatal("invalid rpc.rpcEnabled")
 	}
 
-	for len(v3.RPC.HTTPCors) != 2 || v3.RPC.HTTPCors[0] != "localhost" || v3.RPC.HTTPCors[1] != "localhost2" {
-		t.Fatal("invalid rpc.httpCors", v3.RPC.HTTPCors)
+	for len(cfg.RPC.HTTPCors) != 2 || cfg.RPC.HTTPCors[0] != "localhost" || cfg.RPC.HTTPCors[1] != "localhost2" {
+		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
 	}
 
-	if v3.P2P.SyncInterval != 200 {
-		t.Fatal("invalid p2p.syncInterval", v3.P2P.SyncInterval)
+	if cfg.P2P.SyncInterval != 200 {
+		t.Fatal("invalid p2p.syncInterval", cfg.P2P.SyncInterval)
 	}
 }

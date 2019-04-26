@@ -2,8 +2,9 @@ package consensus
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/p2p"
 	"time"
+
+	"github.com/qlcchain/go-qlc/p2p"
 
 	"github.com/qlcchain/go-qlc/p2p/protos"
 

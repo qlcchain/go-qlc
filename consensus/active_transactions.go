@@ -1,9 +1,10 @@
 package consensus
 
 import (
-	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/p2p"
 
 	"github.com/qlcchain/go-qlc/common"
 

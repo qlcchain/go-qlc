@@ -1,3 +1,5 @@
+// +build integrate
+
 package test
 
 import (
@@ -19,7 +21,6 @@ import (
 var beneficialPledge = "dd20a386c735a077206619eca312072ad19266a161b8269d2f9b49785a3afde95d56683fb3f03c259dc0a703645ae0fb4f883d492d059665e4dee58c56c4e853"
 
 func startService_Pledge(t *testing.T) (func(t *testing.T), *rpc.Client, *services.LedgerService) {
-
 	dir := filepath.Join(config.DefaultDataDir(), "pledge")
 	cfgFile, _ := config.DefaultConfig(dir)
 	ls := services.NewLedgerService(cfgFile)

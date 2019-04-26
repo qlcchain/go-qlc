@@ -5,7 +5,12 @@ echo "" > coverage.txt
 
 tags=(mainnet testnet)
 
+if [[ -n "$TRAVIS_TAG" ]]; then
+    tags+="integrate"
+fi
+
 for t in "${tags[@]}"; do
+    echo "start test case for $t"
     for d in $(go list ./... | grep -v vendor | grep -v edwards25519); do
     #    go test -race -coverprofile=profile.out -covermode=atomic "$d"
         go test -tags "$t" -coverprofile=profile.out "$d"
