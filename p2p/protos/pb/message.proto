@@ -39,5 +39,24 @@ message ConfirmAck {
     uint32  blocktype = 4;
     bytes   block = 5;
 }
-
-
+message PovStatus {
+    uint64 CurrentHeight = 1;
+    bytes  CurrentHash = 2;
+    bytes  GenesisHash = 3;
+}
+message PovPublishBlock {
+    uint32 blocktype = 1;
+    bytes  block = 2;
+}
+message PovPullBlockReq {
+    uint32 blocktype = 1;
+    bytes  StartHash = 2;
+    uint64 StartHeight = 3;
+    uint32 Count = 4;
+    uint32 Direction = 5;
+}
+message PovPullBlockRsp {
+    uint32 blocktype = 1;
+    uint32 count = 2;
+    bytes  block = 3;
+}

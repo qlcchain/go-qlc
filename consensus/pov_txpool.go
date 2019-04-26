@@ -35,6 +35,10 @@ func (tp *PovTxPool) Init() {
 	err := ledger.GetStateBlocks(func(tx *types.StateBlock) error {
 		totalStateBlockNum++
 
+		if common.IsGenesisBlock(tx) {
+			return nil
+		}
+
 		txHash := tx.GetHash()
 
 		if ledger.HasPovTxLookup(txHash) {

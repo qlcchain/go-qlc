@@ -110,6 +110,11 @@ func (w *PovWorker) loop() {
 }
 
 func (w *PovWorker) genNextBlock() {
+	if w.miner.GetSyncState() != common.Syncdone {
+		time.Sleep(time.Second)
+		return
+	}
+
 	cbAccount := w.GetCoinbaseAccount()
 	if cbAccount == nil {
 		time.Sleep(time.Minute)

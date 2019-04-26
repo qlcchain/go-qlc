@@ -74,7 +74,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	}
 
 	povService = ss.NewPoVService(cfg, accounts, eventBus)
-	minerService = ss.NewMinerService(cfg, povService.GetPoVEngine())
+	minerService = ss.NewMinerService(cfg, eventBus, povService.GetPoVEngine())
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		_ = eventBus.Subscribe(string(common.EventConfirmedBlock), func(blk *types.StateBlock) {

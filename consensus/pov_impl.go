@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -9,36 +10,46 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"time"
+)
+
+const (
+	blkCacheSize = 1024
+	blkCacheExpireTime = 10 * time.Minute
 )
 
 type PoVEngine struct {
-	logger *zap.SugaredLogger
-	cfg    *config.Config
-	ledger *ledger.Ledger
-	eb     event.EventBus
+	logger   *zap.SugaredLogger
+	cfg      *config.Config
+	ledger   *ledger.Ledger
+	eb       event.EventBus
 	accounts []*types.Account
 
-	bp     *PovBlockProcessor
-	txpool *PovTxPool
-	chain  *PovBlockChain
-	verifier process.BlockVerifier
+	blkCache  gcache.Cache
+	bp        *PovBlockProcessor
+	txpool    *PovTxPool
+	chain     *PovBlockChain
+	verifier  process.BlockVerifier
+	syncer    *PovSyncer
 }
 
 func NewPovEngine(cfg *config.Config, accounts []*types.Account, eb event.EventBus) (*PoVEngine, error) {
 	ledger := ledger.NewLedger(cfg.LedgerDir(), eb)
 
 	pov := &PoVEngine{
-		logger: log.NewLogger("pov_engine"),
-		cfg:    cfg,
-		eb:     eb,
+		logger:   log.NewLogger("pov_engine"),
+		cfg:      cfg,
+		eb:       eb,
 		accounts: accounts,
-		ledger: ledger,
+		ledger:   ledger,
 	}
 
+	pov.blkCache = gcache.New(blkCacheSize).LRU().Expiration(blkCacheExpireTime).Build()
 	pov.bp = NewPovBlockProcessor(pov)
 	pov.txpool = NewPovTxPool(pov)
 	pov.chain = NewPovBlockChain(pov)
 	pov.verifier = process.NewPovVerifier(ledger, pov.chain)
+	pov.syncer = NewPovSyncer(pov)
 
 	return pov, nil
 }
@@ -60,6 +71,8 @@ func (pov *PoVEngine) Start() error {
 
 	pov.bp.Start()
 
+	pov.syncer.Start()
+
 	pov.setEvent()
 
 	return nil
@@ -67,6 +80,8 @@ func (pov *PoVEngine) Start() error {
 
 func (pov *PoVEngine) Stop() error {
 	pov.unsetEvent()
+
+	pov.syncer.Stop()
 
 	pov.txpool.Stop()
 
@@ -109,12 +124,26 @@ func (pov *PoVEngine) GetAccounts() []*types.Account {
 	return pov.accounts
 }
 
+func (pov *PoVEngine) GetSyncState() common.SyncState {
+	return pov.syncer.getState()
+}
+
 func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
-	return pov.bp.AddMinedBlock(block)
+	err := pov.bp.AddMinedBlock(block)
+	if err == nil {
+		pov.eb.Publish(string(common.EventBroadcast), common.PovPublishReq, block)
+		pov.blkCache.Set(block.GetHash(), struct{}{})
+	}
+	return err
+}
+
+func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom) error {
+	err := pov.bp.AddBlock(block, from)
+	return err
 }
 
 func (pov *PoVEngine) setEvent() error {
-	err := pov.eb.SubscribeAsync(string(common.EventRecvPovBlock), pov.onRecvPovBlock, false)
+	err := pov.eb.SubscribeAsync(string(common.EventPovRecvBlock), pov.onRecvPovBlock, false)
 	if err != nil {
 		return err
 	}
@@ -122,15 +151,24 @@ func (pov *PoVEngine) setEvent() error {
 }
 
 func (pov *PoVEngine) unsetEvent() error {
-	err := pov.eb.Unsubscribe(string(common.EventRecvPovBlock), pov.onRecvPovBlock)
+	err := pov.eb.Unsubscribe(string(common.EventPovRecvBlock), pov.onRecvPovBlock)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockFrom) error {
-	pov.logger.Infof("receive block [%s] from [%d]", block.GetHash(), from)
-	pov.bp.AddBlock(block, from)
-	return nil
+func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, msgPeer string) error {
+	if pov.blkCache.Has(block.GetHash()) {
+		return nil
+	}
+
+	pov.logger.Infof("receive block [%s] from [%s]", block.GetHash(), msgPeer)
+	err := pov.bp.AddBlock(block, types.PovBlockFromRemoteBroadcast)
+	if err == nil {
+		pov.eb.Publish(string(common.EventSendMsgToPeers), common.PovPublishReq, block, msgPeer)
+		pov.blkCache.Set(block.GetHash(), struct{}{})
+	}
+
+	return err
 }

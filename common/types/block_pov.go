@@ -287,6 +287,20 @@ func (blk *PovBlock) Clone() *PovBlock {
 	return &clone
 }
 
+type PovBlocks []*PovBlock
+
+func (bs *PovBlocks) Serialize() ([]byte, error) {
+	return bs.MarshalMsg(nil)
+}
+
+func (bs *PovBlocks) Deserialize(text []byte) error {
+	_, err := bs.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // PovTransaction represents an state block metadata in the PoV block.
 type PovTransaction struct {
 	Address Address `msg:"address,extension" json:"address"`

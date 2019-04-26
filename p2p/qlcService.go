@@ -80,6 +80,11 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
+	err = ns.msgEvent.SubscribeAsync(string(common.EventSendMsgToPeer), ns.SendMessageToPeer, false)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
 	return nil
 }
 
@@ -90,6 +95,11 @@ func (ns *QlcService) unsubscribeEvent() error {
 		return err
 	}
 	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToPeers), ns.SendMessageToPeers)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToPeer), ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
