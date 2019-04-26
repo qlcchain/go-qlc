@@ -45,10 +45,10 @@ type Store interface {
 	GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error
 	CountSmartContractBlocks(txns ...db.StoreTxn) (uint64, error)
 	// representation CURD
-	AddRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
-	SubRepresentation(address types.Address, amount types.Balance, txns ...db.StoreTxn) error
-	GetRepresentation(address types.Address, txns ...db.StoreTxn) (types.Balance, error)
-	GetRepresentations(fn func(types.Address, types.Balance) error, txns ...db.StoreTxn) error
+	AddRepresentation(address types.Address, benefit *types.Benefit, txns ...db.StoreTxn) error
+	SubRepresentation(address types.Address, benefit *types.Benefit, txns ...db.StoreTxn) error
+	GetRepresentation(address types.Address, txns ...db.StoreTxn) (*types.Benefit, error)
+	GetRepresentations(fn func(types.Address, *types.Benefit) error, txns ...db.StoreTxn) error
 	GetOnlineRepresentations(txns ...db.StoreTxn) ([]types.Address, error)
 	SetOnlineRepresentations(addresses []*types.Address, txns ...db.StoreTxn) error
 	// unchecked CURD

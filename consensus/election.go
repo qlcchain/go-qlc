@@ -116,7 +116,7 @@ func (el *Election) getOnlineRepresentativesBalance() types.Balance {
 	reps := el.dps.GetOnlineRepresentatives()
 	for _, addr := range reps {
 		if b1, err := el.dps.ledger.GetRepresentation(addr); err != nil {
-			b = b.Add(b1)
+			b = b.Add(b1.Total)
 		}
 	}
 	return b
