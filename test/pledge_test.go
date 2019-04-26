@@ -101,7 +101,6 @@ func startService_Pledge(t *testing.T) (func(t *testing.T), *rpc.Client, *servic
 }
 
 func TestPledge(t *testing.T) {
-
 	teardownTestCase, client, ls := startService_Pledge(t)
 	defer teardownTestCase(t)
 	pledgeBytes, err := hex.DecodeString(testPrivateKey)

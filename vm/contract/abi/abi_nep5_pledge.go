@@ -13,8 +13,8 @@ import (
 	"errors"
 	"math/big"
 	"strings"
-	"time"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
@@ -240,7 +240,7 @@ func SearchBeneficialPledgeInfo(ctx *vmstore.VMContext, param *WithdrawPledgePar
 		_ = logger.Sync()
 	}()
 	var result []*PledgeResult
-	now := time.Now().UTC().Unix()
+	now := common.TimeNow().UTC().Unix()
 	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			pledgeInfo := new(NEP5PledgeInfo)
