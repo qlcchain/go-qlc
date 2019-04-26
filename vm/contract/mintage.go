@@ -67,7 +67,7 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 
 func verifyToken(param cabi.ParamMintage) error {
 	if param.TotalSupply.Cmp(util.Tt256m1) > 0 ||
-	//param.TotalSupply.Cmp(new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)) < 0 ||
+		//param.TotalSupply.Cmp(new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)) < 0 ||
 		len(param.TokenName) == 0 || len(param.TokenName) > tokenNameLengthMax ||
 		len(param.TokenSymbol) == 0 || len(param.TokenSymbol) > tokenSymbolLengthMax {
 		return errors.New("invalid token param")
@@ -99,7 +99,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 			param.TotalSupply,
 			param.Decimals,
 			param.Beneficial,
-			MinPledgeAmount,
+			amount.Int,
 			minMintageTime.Calculate(time.Unix(input.Timestamp, 0)).UTC().Unix(),
 			input.Address,
 			param.NEP5TxId)
@@ -227,7 +227,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	block.Token = tm.Type
 	block.Link = input.GetHash()
 	block.Data = newTokenInfo
-	block.Balance = tm.Balance.Add(types.Balance{Int: MinPledgeAmount})
+	block.Balance = tm.Balance.Add(types.Balance{Int: tokenInfo.PledgeAmount})
 	block.Vote = am.CoinVote
 	block.Oracle = am.CoinOracle
 	block.Storage = am.CoinStorage

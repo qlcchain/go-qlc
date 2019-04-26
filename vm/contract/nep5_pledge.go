@@ -270,18 +270,14 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 				oldPledge.NEP5TxId != pledgeInfo.PledgeInfo.NEP5TxId {
 				return nil, errors.New("invalid saved pledge info")
 			}
+
+			// TODO: save data or change pledge info state
+			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key, nil)
+			if err != nil {
+				return nil, err
+			}
 		} else {
-			// save data
-			pledgeData, err = cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, pledgeInfo.PledgeInfo.PType,
-				pledgeInfo.PledgeInfo.Amount, pledgeInfo.PledgeInfo.WithdrawTime, pledgeInfo.PledgeInfo.Beneficial,
-				pledgeInfo.PledgeInfo.PledgeAddress, pledgeInfo.PledgeInfo.NEP5TxId)
-			if err != nil {
-				return nil, err
-			}
-			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key, pledgeData)
-			if err != nil {
-				return nil, err
-			}
+			return nil, errors.New("invalid pledge data")
 		}
 	}
 

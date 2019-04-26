@@ -254,7 +254,7 @@ func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 				p := &NEP5PledgeInfo{
 					PType:         t,
 					Amount:        pledgeInfo.Amount,
-					WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).String(),
+					WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).Format(time.RFC3339),
 					Beneficial:    pledgeInfo.Beneficial,
 					PledgeAddress: pledgeInfo.PledgeAddress,
 					NEP5TxId:      pledgeInfo.NEP5TxId,
@@ -274,7 +274,7 @@ func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
 	var result []*NEP5PledgeInfo
 	err := p.vmContext.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize + 1):], param.Beneficial[:]) && len(value) > 0 {
 			pledgeInfo := new(cabi.NEP5PledgeInfo)
 			var t uint8
 			switch strings.ToLower(param.PType) {
@@ -290,7 +290,7 @@ func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5Ple
 					p := &NEP5PledgeInfo{
 						PType:         param.PType,
 						Amount:        pledgeInfo.Amount,
-						WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).String(),
+						WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).Format(time.RFC3339),
 						Beneficial:    pledgeInfo.Beneficial,
 						PledgeAddress: pledgeInfo.PledgeAddress,
 						NEP5TxId:      pledgeInfo.NEP5TxId,

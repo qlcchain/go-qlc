@@ -77,10 +77,7 @@ func (ls *LedgerService) Init() error {
 		ls.logger.Error(err)
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
-		ls.logger.Error(err)
-	}
+	_ = ctx.SaveStorage()
 
 	gasMintageHash := common.GasMintageHash()
 	if b, err := l.HasStateBlock(gasMintageHash); !b && err == nil {

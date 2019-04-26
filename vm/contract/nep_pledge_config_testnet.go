@@ -19,11 +19,11 @@ var (
 	config = map[cabi.PledgeType]pledgeInfo{
 		cabi.Network: {
 			pledgeTime:   &timeSpan{minutes: 3}, // 3 minutes
-			pledgeAmount: big.NewInt(10),
+			pledgeAmount: big.NewInt(10 * 1e8),
 		},
 		cabi.Vote: {
 			pledgeTime:   &timeSpan{minutes: 10}, //  10 minutes
-			pledgeAmount: big.NewInt(1),
+			pledgeAmount: big.NewInt(1 * 1e8),
 		},
 	}
 )
