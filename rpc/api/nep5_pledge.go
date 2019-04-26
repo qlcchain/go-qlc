@@ -8,7 +8,6 @@
 package api
 
 import (
-	"bytes"
 	"fmt"
 	"math/big"
 	"sort"
@@ -239,73 +238,62 @@ type NEP5PledgeInfo struct {
 
 func (p *NEP5PledgeApi) SearchAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 	var result []*NEP5PledgeInfo
-	err := p.vmContext.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && len(value) > 0 {
-			pledgeInfo := new(cabi.NEP5PledgeInfo)
 
-			if err := cabi.NEP5PledgeABI.UnpackVariable(pledgeInfo, cabi.VariableNEP5PledgeInfo, value); err == nil {
-				var t string
-				switch pledgeInfo.PType {
-				case uint8(0):
-					t = "network"
-				case uint8(1):
-					t = "vote"
-				}
-				p := &NEP5PledgeInfo{
-					PType:         t,
-					Amount:        pledgeInfo.Amount,
-					WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).Format(time.RFC3339),
-					Beneficial:    pledgeInfo.Beneficial,
-					PledgeAddress: pledgeInfo.PledgeAddress,
-					NEP5TxId:      pledgeInfo.NEP5TxId,
-				}
-				result = append(result, p)
-			}
-		}
-		return nil
-	})
-
+	infos, err := cabi.SearchAllPledgeInfos(p.vmContext)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, val := range infos {
+		var t string
+		switch val.PType {
+		case uint8(0):
+			t = "network"
+		case uint8(1):
+			t = "vote"
+		}
+		p := &NEP5PledgeInfo{
+			PType:         t,
+			Amount:        val.Amount,
+			WithdrawTime:  time.Unix(val.WithdrawTime, 0).Format(time.RFC3339),
+			Beneficial:    val.Beneficial,
+			PledgeAddress: val.PledgeAddress,
+			NEP5TxId:      val.NEP5TxId,
+		}
+		result = append(result, p)
 	}
 	return result, nil
 }
 
 func (p *NEP5PledgeApi) SearchPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
 	var result []*NEP5PledgeInfo
-	err := p.vmContext.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize + 1):], param.Beneficial[:]) && len(value) > 0 {
-			pledgeInfo := new(cabi.NEP5PledgeInfo)
-			var t uint8
-			switch strings.ToLower(param.PType) {
-			case "network", "confidant":
-				t = uint8(0)
-			case "vote":
-				t = uint8(1)
-			}
-			if err := cabi.NEP5PledgeABI.UnpackVariable(pledgeInfo, cabi.VariableNEP5PledgeInfo, value); err == nil {
-				if pledgeInfo.PType == t && pledgeInfo.Amount.String() == param.Amount.String() &&
-					pledgeInfo.Beneficial == param.Beneficial {
+	var t uint8
+	switch strings.ToLower(param.PType) {
+	case "network", "confidant":
+		t = uint8(0)
+	case "vote":
+		t = uint8(1)
+	default:
+		return nil, fmt.Errorf("unsupport type: %s", param.PType)
+	}
 
-					p := &NEP5PledgeInfo{
-						PType:         param.PType,
-						Amount:        pledgeInfo.Amount,
-						WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).Format(time.RFC3339),
-						Beneficial:    pledgeInfo.Beneficial,
-						PledgeAddress: pledgeInfo.PledgeAddress,
-						NEP5TxId:      pledgeInfo.NEP5TxId,
-					}
-					result = append(result, p)
-				}
-			} else {
-				return err
-			}
+	pledgeParam := &cabi.WithdrawPledgeParam{
+		Beneficial: param.Beneficial,
+		Amount:     param.Amount.Int, PType: t,
+	}
+	info := cabi.SearchBeneficialPledgeInfo(p.vmContext, pledgeParam)
+
+	for _, val := range info {
+		pledgeInfo := val.PledgeInfo
+		p := &NEP5PledgeInfo{
+			PType:         param.PType,
+			Amount:        pledgeInfo.Amount,
+			WithdrawTime:  time.Unix(pledgeInfo.WithdrawTime, 0).Format(time.RFC3339),
+			Beneficial:    pledgeInfo.Beneficial,
+			PledgeAddress: pledgeInfo.PledgeAddress,
+			NEP5TxId:      pledgeInfo.NEP5TxId,
 		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
+		result = append(result, p)
 	}
 
 	sort.Slice(result, func(i, j int) bool { return result[i].WithdrawTime < result[j].WithdrawTime })
