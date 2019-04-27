@@ -12,7 +12,6 @@ import (
 	"fmt"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/rpc"
@@ -25,8 +24,8 @@ type RPCService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewRPCService(cfg *config.Config, eb event.EventBus) (*RPCService, error) {
-	rpc, err := rpc.NewRPC(cfg, eb)
+func NewRPCService(cfg *config.Config) (*RPCService, error) {
+	rpc, err := rpc.NewRPC(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err

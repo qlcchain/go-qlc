@@ -53,31 +53,31 @@ func stopNode(services []common.Service) {
 }
 
 func initNode(accounts []*types.Account, cfg *config.Config) error {
-	eventBus := event.New()
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
-	ledgerService = ss.NewLedgerService(cfg, eventBus)
+	ledgerService = ss.NewLedgerService(cfg)
 	walletService = ss.NewWalletService(cfg)
-	netService, err := ss.NewP2PService(cfg, eventBus)
+	netService, err := ss.NewP2PService(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 
 	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
-	dPosService = ss.NewDPosService(cfg, accounts, eventBus)
-	if rPCService, err = ss.NewRPCService(cfg, eventBus); err != nil {
+	dPosService = ss.NewDPosService(cfg, accounts)
+	if rPCService, err = ss.NewRPCService(cfg); err != nil {
 		return err
 	}
-	if sqliteService, err = ss.NewSqliteService(cfg, eventBus); err != nil {
+	if sqliteService, err = ss.NewSqliteService(cfg); err != nil {
 		return err
 	}
 
-	povService = ss.NewPoVService(cfg, accounts, eventBus)
-	minerService = ss.NewMinerService(cfg, eventBus, povService.GetPoVEngine())
+	povService = ss.NewPoVService(cfg, accounts)
+	minerService = ss.NewMinerService(cfg, povService.GetPoVEngine())
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
-		_ = eventBus.Subscribe(string(common.EventConfirmedBlock), func(blk *types.StateBlock) {
+		eb := event.GetEventBus(cfg.LedgerDir())
+		_ = eb.Subscribe(string(common.EventConfirmedBlock), func(blk *types.StateBlock) {
 			defer func() {
 				if err := recover(); err != nil {
 					fmt.Println(err)

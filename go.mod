@@ -5,6 +5,7 @@ require (
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db
 	github.com/awnumar/memguard v0.15.0
+	github.com/beevik/ntp v0.2.0
 	github.com/bluele/gcache v0.0.0-20190203144525-2016d595ccb0
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
@@ -43,7 +44,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rs/cors v1.6.0
 	github.com/spf13/cobra v0.0.3
-	github.com/spf13/pflag v1.0.3 // indirect
+	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.3.0
 	github.com/tendermint/tmlibs v0.9.0
 	github.com/tinylib/msgp v1.1.0
@@ -54,8 +55,8 @@ require (
 	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95
 	golang.org/x/sys v0.0.0-20190306071516-a98ae47d97a5 // indirect
 	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2 // indirect
+	google.golang.org/appengine v1.5.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
-	gopkg.in/yaml.v2 v2.2.2 // indirect
 )

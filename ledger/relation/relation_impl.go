@@ -41,12 +41,12 @@ var (
 	relation *Relation
 )
 
-func NewRelation(config *config.Config, eb event.EventBus) (*Relation, error) {
+func NewRelation(cfg *config.Config) (*Relation, error) {
 	var err error
 	once.Do(func() {
 		store := new(db.DBSQL)
-		store, err = db.NewSQLDB(config.SqliteDir())
-		relation = &Relation{store: store, eb: eb, logger: log.NewLogger("relation")}
+		store, err = db.NewSQLDB(cfg)
+		relation = &Relation{store: store, eb: event.GetEventBus(cfg.LedgerDir()), logger: log.NewLogger("relation")}
 	})
 	if err != nil {
 		return nil, err

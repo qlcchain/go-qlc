@@ -19,11 +19,11 @@ type Miner struct {
 	syncState common.SyncState
 }
 
-func NewMiner(cfg *config.Config, eb event.EventBus, povEngine *consensus.PoVEngine) *Miner {
+func NewMiner(cfg *config.Config, povEngine *consensus.PoVEngine) *Miner {
 	miner := &Miner{
 		logger: log.NewLogger("miner"),
 		cfg:    cfg,
-		eb:     eb,
+		eb:     event.GetEventBus(cfg.LedgerDir()),
 		povEngine: povEngine,
 	}
 

@@ -8,21 +8,21 @@ import (
 	ic "github.com/libp2p/go-libp2p-crypto"
 )
 
-type Config ConfigV2
+type Config ConfigV3
 
 func DefaultConfig(dir string) (*Config, error) {
-	v2, err := DefaultConfigV2(dir)
+	v3, err := DefaultConfigV3(dir)
 	if err != nil {
 		return &Config{}, err
 	}
-	cfg := Config(*v2)
+	cfg := Config(*v3)
 
 	return &cfg, nil
 }
 
 // DecodePrivateKey is a helper to decode the users PrivateKey
-func (cfg *Config) DecodePrivateKey() (ic.PrivKey, error) {
-	pkb, err := base64.StdEncoding.DecodeString(cfg.P2P.ID.PrivKey)
+func (c *Config) DecodePrivateKey() (ic.PrivKey, error) {
+	pkb, err := base64.StdEncoding.DecodeString(c.P2P.ID.PrivKey)
 	if err != nil {
 		return nil, err
 	}
@@ -45,5 +45,5 @@ func (c *Config) WalletDir() string {
 }
 
 func (c *Config) SqliteDir() string {
-	return filepath.Join(c.DataDir, "sqlite")
+	return filepath.Join(c.LedgerDir(), relationDir)
 }

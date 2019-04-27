@@ -9,7 +9,6 @@ package services
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/miner"
@@ -25,8 +24,8 @@ type MinerService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewMinerService(cfg *config.Config, eb event.EventBus, povEngine *consensus.PoVEngine) *MinerService {
-	miner := miner.NewMiner(cfg, eb, povEngine)
+func NewMinerService(cfg *config.Config, povEngine *consensus.PoVEngine) *MinerService {
+	miner := miner.NewMiner(cfg, povEngine)
 	return &MinerService{
 		miner:  miner,
 		logger: log.NewLogger("miner_service"),

@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/test/mock"
@@ -25,7 +24,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
 
 	dir := filepath.Join(config.QlcTestDataDir(), "vm", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := ledger.NewLedger(dir, event.New())
+	l := ledger.NewLedger(dir)
 
 	v := NewVMContext(l)
 

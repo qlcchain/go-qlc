@@ -10,6 +10,7 @@ package abi
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"math/big"
 	"strings"
 	"time"
@@ -72,6 +73,33 @@ type NEP5PledgeInfo struct {
 	Beneficial    types.Address
 	PledgeAddress types.Address
 	NEP5TxId      string
+}
+
+// ParsePledgeParam convert data to PledgeParam
+func ParsePledgeParam(data []byte) (*PledgeParam, error) {
+	if len(data) == 0 {
+		return nil, errors.New("pledge param data is nil")
+	}
+	param := new(PledgeParam)
+	if err := NEP5PledgeABI.UnpackMethod(param, MethodNEP5Pledge, data); err == nil {
+		return param, nil
+	} else {
+		return nil, err
+	}
+}
+
+// ParsePledgeInfo convert data to NEP5PledgeInfo
+func ParsePledgeInfo(data []byte) (*NEP5PledgeInfo, error) {
+	if len(data) == 0 {
+		return nil, errors.New("pledge info data is nil")
+	}
+
+	info := new(NEP5PledgeInfo)
+	if err := NEP5PledgeABI.UnpackVariable(info, VariableNEP5PledgeInfo, data); err == nil {
+		return info, nil
+	} else {
+		return nil, err
+	}
 }
 
 func GetPledgeKey(addr types.Address, beneficial types.Address, neoTxId string) []byte {

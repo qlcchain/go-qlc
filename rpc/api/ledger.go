@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/qlcchain/go-qlc/p2p"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -199,7 +201,11 @@ func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, er
 }
 
 func (l *LedgerApi) AccountVotingWeight(addr types.Address) (types.Balance, error) {
-	return l.ledger.GetRepresentation(addr)
+	b, err := l.ledger.GetRepresentation(addr)
+	if err != nil {
+		return types.ZeroBalance, nil
+	}
+	return b.Total, err
 }
 
 func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Address]map[string]map[string]types.Balance, error) {
@@ -457,7 +463,7 @@ func (l *LedgerApi) Delegators(hash types.Address) ([]*APIAccountBalance, error)
 		t := am.Token(common.ChainToken())
 		if t != nil {
 			if t.Representative == hash {
-				ab := &APIAccountBalance{am.Address, am.VoteBalance()}
+				ab := &APIAccountBalance{am.Address, am.VoteWeight()}
 				abs = append(abs, ab)
 			}
 		}
@@ -603,7 +609,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		l.logger.Debug("broadcast block")
 		//TODO: refine
 		//l.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
-		l.eb.Publish(string(common.EventBroadcast), common.PublishReq, block)
+		l.eb.Publish(string(common.EventBroadcast), p2p.PublishReq, block)
 		return block.GetHash(), nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")
@@ -668,8 +674,8 @@ func (r APIAccountBalances) Less(i, j int) bool {
 //Representatives returns a list of pairs of representative and its voting weight
 func (l *LedgerApi) Representatives(sorting *bool) (*APIAccountBalances, error) {
 	rs := make(APIAccountBalances, 0)
-	err := l.ledger.GetRepresentations(func(address types.Address, balance types.Balance) error {
-		r := APIAccountBalance{address, balance}
+	err := l.ledger.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
+		r := APIAccountBalance{address, benefit.Total}
 		rs = append(rs, r)
 		return nil
 	})

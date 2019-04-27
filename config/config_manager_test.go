@@ -148,15 +148,19 @@ func TestCfgManager_Load(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg2, err := manager.Load(NewMigrationV1ToV2())
+	cfg3, err := manager.Load(NewMigrationV1ToV2(), NewMigrationV2ToV3())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg2.P2P.Discovery.MDNSEnabled {
+	if cfg3.P2P.Discovery.MDNSEnabled {
 		t.Fatal("migration p2p error")
 	}
 
-	if cfg2.RPC.PublicModules == nil {
+	if cfg3.RPC.PublicModules == nil {
 		t.Fatal("migration rpc error")
+	}
+
+	if len(cfg3.RPC.HttpVirtualHosts) == 0 {
+		t.Fatal("invalid HttpVirtualHosts")
 	}
 }

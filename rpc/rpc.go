@@ -46,16 +46,17 @@ type RPC struct {
 	logger   *zap.SugaredLogger
 }
 
-func NewRPC(cfg *config.Config, eb event.EventBus) (*RPC, error) {
-	rl, err := relation.NewRelation(cfg, eb)
+func NewRPC(cfg *config.Config) (*RPC, error) {
+	rl, err := relation.NewRelation(cfg)
 	if err != nil {
 		return nil, err
 	}
+	dir := cfg.LedgerDir()
 	r := RPC{
-		ledger:   ledger.NewLedger(cfg.LedgerDir(), eb),
+		ledger:   ledger.NewLedger(dir),
 		wallet:   wallet.NewWalletStore(cfg),
 		relation: rl,
-		eb:       eb,
+		eb:       event.GetEventBus(dir),
 		config:   cfg,
 		logger:   log.NewLogger("rpc"),
 	}

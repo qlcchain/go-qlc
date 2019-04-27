@@ -14,7 +14,11 @@ import (
 
 func TestDBSQL_Create(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "sqlite3", uuid.New().String())
-	d, err := NewSQLDB(dir)
+	cfg, err := config.DefaultConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := NewSQLDB(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

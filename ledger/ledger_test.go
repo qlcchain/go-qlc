@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
@@ -28,7 +27,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := NewLedger(dir, event.New())
+	l := NewLedger(dir)
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()
@@ -48,8 +47,8 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 
 func TestLedger_Instance1(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	l1 := NewLedger(dir, event.New())
-	l2 := NewLedger(dir, event.New())
+	l1 := NewLedger(dir)
+	l2 := NewLedger(dir)
 	t.Logf("l1:%v,l2:%v", l1, l2)
 	defer func() {
 		l1.Close()
@@ -66,8 +65,8 @@ func TestLedger_Instance1(t *testing.T) {
 func TestLedger_Instance2(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	dir2 := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	l1 := NewLedger(dir, event.New())
-	l2 := NewLedger(dir2, event.New())
+	l1 := NewLedger(dir)
+	l2 := NewLedger(dir2)
 	defer func() {
 		l1.Close()
 		l2.Close()
@@ -563,46 +562,80 @@ func TestLedger_HasTokenMeta_True(t *testing.T) {
 	t.Log("has token,", r)
 }
 
-func addRepresentationWeight(t *testing.T, l *Ledger) types.Address {
+func addRepresentationWeight(t *testing.T, l *Ledger) *types.AccountMeta {
 	address := mock.Address()
-	i, _ := random.Intn(math.MaxInt16)
-	amount := types.Balance{Int: big.NewInt(int64(i))}
+	ac := mock.AccountMeta(address)
+	ac.CoinBalance = types.Balance{Int: big.NewInt(int64(1000))}
+	ac.CoinVote = types.Balance{Int: big.NewInt(int64(1000))}
+	benefit := &types.Benefit{
+		Vote:    ac.CoinVote,
+		Storage: ac.CoinStorage,
+		Network: ac.CoinNetwork,
+		Oracle:  ac.CoinOracle,
+		Balance: ac.CoinBalance,
+		Total:   ac.TotalBalance(),
+	}
 
-	err := l.AddRepresentation(address, amount)
+	err := l.AddRepresentation(address, benefit)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return address
+	return ac
 }
 
 func TestLedger_AddRepresentationWeight(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	addRepresentationWeight(t, l)
+	ac := addRepresentationWeight(t, l)
+	diff := &types.Benefit{
+		Vote:    types.Balance{Int: big.NewInt(int64(10))},
+		Storage: types.ZeroBalance,
+		Network: types.ZeroBalance,
+		Oracle:  types.ZeroBalance,
+		Balance: types.Balance{Int: big.NewInt(int64(10))},
+		Total:   types.Balance{Int: big.NewInt(int64(20))},
+	}
+
+	err := l.AddRepresentation(ac.Address, diff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := l.GetRepresentation(ac.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(a)
+	if !a.Total.Equal(ac.TotalBalance().Add(diff.Total)) {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_SubRepresentationWeight(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	address := addRepresentationWeight(t, l)
-	amount := types.Balance{Int: big.NewInt(int64(1000))}
-	err := l.SubRepresentation(address, amount)
+	ac := addRepresentationWeight(t, l)
+	diff := &types.Benefit{
+		Vote:    types.Balance{Int: big.NewInt(int64(10))},
+		Storage: types.ZeroBalance,
+		Network: types.ZeroBalance,
+		Oracle:  types.ZeroBalance,
+		Balance: types.Balance{Int: big.NewInt(int64(10))},
+		Total:   types.Balance{Int: big.NewInt(int64(20))},
+	}
+
+	err := l.SubRepresentation(ac.Address, diff)
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-func TestLedger_GetRepresentation(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	address := addRepresentationWeight(t, l)
-	a, err := l.GetRepresentation(address)
+	a, err := l.GetRepresentation(ac.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("amount,", a)
+	t.Log(a)
+	if !a.Total.Equal(ac.TotalBalance().Sub(diff.Total)) {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetRepresentations(t *testing.T) {
@@ -612,8 +645,8 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	addRepresentationWeight(t, l)
 	addRepresentationWeight(t, l)
 
-	err := l.GetRepresentations(func(address types.Address, balance types.Balance) error {
-		t.Log(address, balance)
+	err := l.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
+		t.Log(address, benefit)
 		return nil
 	})
 	if err != nil {
@@ -783,9 +816,9 @@ func TestLedger_DeleteFrontier(t *testing.T) {
 func TestReleaseLedger(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
 	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
-	eb := event.New()
-	l1 := NewLedger(dir, eb)
-	_ = NewLedger(dir2, eb)
+
+	l1 := NewLedger(dir)
+	_ = NewLedger(dir2)
 	defer func() {
 		//only release ledger1
 		l1.Close()

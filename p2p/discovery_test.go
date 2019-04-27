@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -89,15 +87,15 @@ func TestNodeDiscovery(t *testing.T) {
 	//bootNode config
 	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
-	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19736"
+	cfgFile.P2P.Listen = "/ip4/127.0.0.1/tcp/19736"
 	cfgFile.P2P.Discovery.MDNSEnabled = false
 	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19736/ipfs/" + cfgFile.P2P.ID.PeerID
+	b := "/ip4/127.0.0.1/tcp/19736/ipfs/" + cfgFile.P2P.ID.PeerID
 
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19737"
+	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19737"
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.BootNodes = []string{b}
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
@@ -105,28 +103,27 @@ func TestNodeDiscovery(t *testing.T) {
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19738"
+	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19738"
 	cfgFile2.P2P.Discovery.MDNSEnabled = false
 	cfgFile2.P2P.BootNodes = []string{b}
 	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
-	eventBus := event.New()
 	//start bootNode
-	node, err := NewQlcService(cfgFile, eventBus)
+	node, err := NewQlcService(cfgFile)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node1
-	node1, err := NewQlcService(cfgFile1, eventBus)
+	node1, err := NewQlcService(cfgFile1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2, eventBus)
+	node2, err := NewQlcService(cfgFile2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)

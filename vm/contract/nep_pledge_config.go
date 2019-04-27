@@ -1,0 +1,29 @@
+// +build !testnet
+
+/*
+ * Copyright (c) 2019 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
+package contract
+
+import (
+	"math/big"
+
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+)
+
+var (
+	config = map[cabi.PledgeType]pledgeInfo{
+		cabi.Network: {
+			pledgeTime:   &timeSpan{months: 3}, //3 month
+			pledgeAmount: big.NewInt(2000),
+		},
+		cabi.Vote: {
+			pledgeTime:   &timeSpan{days: 10}, //10 days
+			pledgeAmount: big.NewInt(1),
+		},
+	}
+)

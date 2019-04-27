@@ -9,6 +9,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/p2p"
 	"go.uber.org/zap"
 	"time"
 )
@@ -33,13 +34,13 @@ type PoVEngine struct {
 	syncer    *PovSyncer
 }
 
-func NewPovEngine(cfg *config.Config, accounts []*types.Account, eb event.EventBus) (*PoVEngine, error) {
-	ledger := ledger.NewLedger(cfg.LedgerDir(), eb)
+func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, error) {
+	ledger := ledger.NewLedger(cfg.LedgerDir())
 
 	pov := &PoVEngine{
 		logger:   log.NewLogger("pov_engine"),
 		cfg:      cfg,
-		eb:       eb,
+		eb:       event.GetEventBus(cfg.LedgerDir()),
 		accounts: accounts,
 		ledger:   ledger,
 	}
@@ -131,7 +132,7 @@ func (pov *PoVEngine) GetSyncState() common.SyncState {
 func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
 	err := pov.bp.AddMinedBlock(block)
 	if err == nil {
-		pov.eb.Publish(string(common.EventBroadcast), common.PovPublishReq, block)
+		pov.eb.Publish(string(common.EventBroadcast), p2p.PovPublishReq, block)
 		pov.blkCache.Set(block.GetHash(), struct{}{})
 	}
 	return err
@@ -166,7 +167,7 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, 
 	pov.logger.Infof("receive block [%s] from [%s]", block.GetHash(), msgPeer)
 	err := pov.bp.AddBlock(block, types.PovBlockFromRemoteBroadcast)
 	if err == nil {
-		pov.eb.Publish(string(common.EventSendMsgToPeers), common.PovPublishReq, block, msgPeer)
+		pov.eb.Publish(string(common.EventSendMsgToPeers), p2p.PovPublishReq, block, msgPeer)
 		pov.blkCache.Set(block.GetHash(), struct{}{})
 	}
 

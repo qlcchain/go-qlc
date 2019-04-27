@@ -8,9 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -22,89 +19,88 @@ func Test_MessageService_Stop(t *testing.T) {
 	//node config
 	dir1 := filepath.Join(config.QlcTestDataDir())
 	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19739"
+	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19739"
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.BootNodes = []string{}
 
-	eventBus := event.New()
 	//start node
-	node, err := NewQlcService(cfgFile1, eventBus)
+	node, err := NewQlcService(cfgFile1)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, ok := node.dispatcher.subscribersMap.Load(MessageType(common.PublishReq))
+	_, ok := node.dispatcher.subscribersMap.Load(MessageType(PublishReq))
 	if !ok {
 		t.Fatal("subscription PublishReq messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(common.ConfirmReq))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageType(ConfirmReq))
 	if !ok {
 		t.Fatal("subscription ConfirmReq messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(common.ConfirmAck))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageType(ConfirmAck))
 	if !ok {
 		t.Fatal("subscription ConfirmAck messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(common.FrontierRequest))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageType(FrontierRequest))
 	if !ok {
 		t.Fatal("subscription FrontierRequest messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(common.FrontierRsp))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageType(FrontierRsp))
 	if !ok {
 		t.Fatal("subscription FrontierRsp messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(common.BulkPullRequest))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageType(BulkPullRequest))
 	if !ok {
 		t.Fatal("subscription BulkPullRequest messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(common.BulkPullRsp))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageType(BulkPullRsp))
 	if !ok {
 		t.Fatal("subscription BulkPullRsp messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(common.BulkPushBlock))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageType(BulkPushBlock))
 	if !ok {
 		t.Fatal("subscription BulkPushBlock messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(common.MessageResponse))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageType(MessageResponse))
 	if !ok {
 		t.Fatal("subscription MessageResponse messageType error")
 	}
 
 	node.msgService.Stop()
-	_, ok = node.dispatcher.subscribersMap.Load(common.PublishReq)
+	_, ok = node.dispatcher.subscribersMap.Load(PublishReq)
 	if ok {
 		t.Fatal("subscription PublishReq messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(common.ConfirmReq)
+	_, ok = node.dispatcher.subscribersMap.Load(ConfirmReq)
 	if ok {
 		t.Fatal("subscription ConfirmReq messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(common.ConfirmAck)
+	_, ok = node.dispatcher.subscribersMap.Load(ConfirmAck)
 	if ok {
 		t.Fatal("subscription ConfirmAck messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(common.FrontierRequest)
+	_, ok = node.dispatcher.subscribersMap.Load(FrontierRequest)
 	if ok {
 		t.Fatal("subscription FrontierRequest messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(common.FrontierRsp)
+	_, ok = node.dispatcher.subscribersMap.Load(FrontierRsp)
 	if ok {
 		t.Fatal("subscription FrontierRsp messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(common.BulkPullRequest)
+	_, ok = node.dispatcher.subscribersMap.Load(BulkPullRequest)
 	if ok {
 		t.Fatal("subscription BulkPullRequest messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(common.BulkPullRsp)
+	_, ok = node.dispatcher.subscribersMap.Load(BulkPullRsp)
 	if ok {
 		t.Fatal("subscription BulkPullRsp messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(common.BulkPushBlock)
+	_, ok = node.dispatcher.subscribersMap.Load(BulkPushBlock)
 	if ok {
 		t.Fatal("subscription BulkPushBlock messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(common.MessageResponse)
+	_, ok = node.dispatcher.subscribersMap.Load(MessageResponse)
 	if ok {
 		t.Fatal("subscription MessageResponse messageType error")
 	}
@@ -129,7 +125,7 @@ func Test_MessageService_Stop(t *testing.T) {
 
 func Test_MarshalMessage(t *testing.T) {
 	blk := mock.StateBlock()
-	data1, err := marshalMessage(common.PublishReq, blk)
+	data1, err := marshalMessage(PublishReq, blk)
 	if err != nil {
 		t.Fatal("Marshal PublishReq err1")
 	}
@@ -143,7 +139,7 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data1, data2) != 0 {
 		t.Fatal("Marshal PublishReq err3")
 	}
-	data3, err := marshalMessage(common.ConfirmReq, blk)
+	data3, err := marshalMessage(ConfirmReq, blk)
 	if err != nil {
 		t.Fatal("Marshal ConfirmReq err1")
 	}
@@ -163,7 +159,7 @@ func Test_MarshalMessage(t *testing.T) {
 	va.Blk = blk
 	va.Account = a.Address()
 	va.Signature = a.Sign(blk.GetHash())
-	data5, err := marshalMessage(common.ConfirmAck, &va)
+	data5, err := marshalMessage(ConfirmAck, &va)
 	if err != nil {
 		t.Fatal("Marshal ConfirmAck err1")
 	}
@@ -176,7 +172,7 @@ func Test_MarshalMessage(t *testing.T) {
 	}
 	address := types.Address{}
 	Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
-	data7, err := marshalMessage(common.FrontierRequest, Req)
+	data7, err := marshalMessage(FrontierRequest, Req)
 	if err != nil {
 		t.Fatal("Marshal FrontierRequest err1")
 	}
@@ -189,7 +185,7 @@ func Test_MarshalMessage(t *testing.T) {
 	}
 	zeroFrontier := new(types.Frontier)
 	frontierRspTest := protos.NewFrontierRsp(zeroFrontier, 0)
-	data9, err := marshalMessage(common.FrontierRsp, frontierRspTest)
+	data9, err := marshalMessage(FrontierRsp, frontierRspTest)
 	if err != nil {
 		t.Fatal("Marshal FrontierRsp err1")
 	}
@@ -205,7 +201,7 @@ func Test_MarshalMessage(t *testing.T) {
 		StartHash: types.ZeroHash,
 		EndHash:   types.ZeroHash,
 	}
-	data11, err := marshalMessage(common.BulkPullRequest, b)
+	data11, err := marshalMessage(BulkPullRequest, b)
 	if err != nil {
 		t.Fatal("Marshal BulkPullRequest err1")
 	}
@@ -216,7 +212,7 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data11, data12) != 0 {
 		t.Fatal("Marshal BulkPullRequest err3")
 	}
-	data13, err := marshalMessage(common.BulkPullRsp, blk)
+	data13, err := marshalMessage(BulkPullRsp, blk)
 	if err != nil {
 		t.Fatal("Marshal BulkPullRsp err1")
 	}
@@ -230,7 +226,7 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data13, data14) != 0 {
 		t.Fatal("Marshal BulkPullRsp err3")
 	}
-	data15, err := marshalMessage(common.BulkPushBlock, blk)
+	data15, err := marshalMessage(BulkPushBlock, blk)
 	if err != nil {
 		t.Fatal("Marshal BulkPushBlock err1")
 	}
@@ -250,14 +246,13 @@ func Test_SendMessage(t *testing.T) {
 	//bootNode config
 	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
-	cfgFile.P2P.Listen = "/ip4/0.0.0.0/tcp/19740"
+	cfgFile.P2P.Listen = "/ip4/127.0.0.1/tcp/19740"
 	cfgFile.P2P.Discovery.MDNSEnabled = false
 	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
+	b := "/ip4/127.0.0.1/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
 
-	eventBus := event.New()
 	//start bootNode
-	node, err := NewQlcService(cfgFile, eventBus)
+	node, err := NewQlcService(cfgFile)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -266,13 +261,13 @@ func Test_SendMessage(t *testing.T) {
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19741"
+	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
 	cfgFile1.P2P.BootNodes = []string{b}
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
 
 	//start1 node
-	node1, err := NewQlcService(cfgFile1, eventBus)
+	node1, err := NewQlcService(cfgFile1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -281,13 +276,13 @@ func Test_SendMessage(t *testing.T) {
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19742"
+	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
 	cfgFile2.P2P.BootNodes = []string{b}
 	cfgFile2.P2P.Discovery.MDNSEnabled = false
 	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2, eventBus)
+	node2, err := NewQlcService(cfgFile2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -345,13 +340,13 @@ func Test_SendMessage(t *testing.T) {
 	node2.msgService.Stop()
 	blk := mock.StateBlock()
 	//test send message to peers
-	node1.SendMessageToPeer(common.PublishReq, blk, peerID)
+	node1.SendMessageToPeer(PublishReq, blk, peerID)
 	time.Sleep(1 * time.Second)
 	if len(node2.msgService.publishMessageCh) != 1 {
 		t.Fatal("Send Message To Peer error")
 	}
 	msg := <-node2.msgService.publishMessageCh
-	if msg.MessageType() != MessageType(common.PublishReq) {
+	if msg.MessageType() != MessageType(PublishReq) {
 		t.Fatal("receive message type error")
 	}
 	if msg.MessageFrom() != node1.node.ID.Pretty() {
@@ -366,20 +361,20 @@ func Test_SendMessage(t *testing.T) {
 	}
 
 	//test send message to peers
-	node1.SendMessageToPeers(common.PublishReq, blk, peerID)
+	node1.SendMessageToPeers(PublishReq, blk, peerID)
 	time.Sleep(1 * time.Second)
 	if len(node2.msgService.publishMessageCh) != 0 {
 		t.Fatal("Send Message To Peers error")
 	}
 
 	//test broadcast message
-	node1.Broadcast(common.PublishReq, blk)
+	node1.Broadcast(PublishReq, blk)
 	time.Sleep(1 * time.Second)
 	if len(node2.msgService.publishMessageCh) != 1 {
 		t.Fatal("broadcast error")
 	}
 	msg = <-node2.msgService.publishMessageCh
-	if msg.MessageType() != MessageType(common.PublishReq) {
+	if msg.MessageType() != MessageType(PublishReq) {
 		t.Fatal("receive message type error")
 	}
 	if msg.MessageFrom() != node1.node.ID.Pretty() {
@@ -403,9 +398,8 @@ func Test_MessageCache(t *testing.T) {
 	cfgFile.P2P.BootNodes = []string{}
 	b := "/ip4/0.0.0.0/tcp/19743/ipfs/" + cfgFile.P2P.ID.PeerID
 
-	eventBus := event.New()
 	//start bootNode
-	node, err := NewQlcService(cfgFile, eventBus)
+	node, err := NewQlcService(cfgFile)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -414,13 +408,13 @@ func Test_MessageCache(t *testing.T) {
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/0.0.0.0/tcp/19744"
+	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19744"
 	cfgFile1.P2P.BootNodes = []string{b}
 	cfgFile1.P2P.Discovery.MDNSEnabled = false
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
 
 	//start1 node
-	node1, err := NewQlcService(cfgFile1, eventBus)
+	node1, err := NewQlcService(cfgFile1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -429,13 +423,13 @@ func Test_MessageCache(t *testing.T) {
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/0.0.0.0/tcp/19745"
+	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19745"
 	cfgFile2.P2P.BootNodes = []string{b}
 	cfgFile2.P2P.Discovery.MDNSEnabled = false
 	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2, eventBus)
+	node2, err := NewQlcService(cfgFile2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -444,13 +438,13 @@ func Test_MessageCache(t *testing.T) {
 	//node3 config
 	dir3 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cfgFile3, _ := config.DefaultConfig(dir3)
-	cfgFile3.P2P.Listen = "/ip4/0.0.0.0/tcp/19746"
+	cfgFile3.P2P.Listen = "/ip4/127.0.0.1/tcp/19746"
 	cfgFile3.P2P.BootNodes = []string{b}
 	cfgFile3.P2P.Discovery.MDNSEnabled = false
 	cfgFile3.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node3, err := NewQlcService(cfgFile3, eventBus)
+	node3, err := NewQlcService(cfgFile3)
 	err = node3.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -516,7 +510,7 @@ func Test_MessageCache(t *testing.T) {
 	node3.msgService.Stop()
 	blk := mock.StateBlock()
 	//test send message to peers
-	node1.Broadcast(common.PublishReq, blk)
+	node1.Broadcast(PublishReq, blk)
 	time.Sleep(1 * time.Second)
 
 	msg := <-node2.msgService.publishMessageCh

@@ -19,6 +19,24 @@ const (
 	msgNeedResendInterval  = 10 * time.Second
 )
 
+//  Message Type
+const (
+	PublishReq      = "0" //PublishReq
+	ConfirmReq      = "1" //ConfirmReq
+	ConfirmAck      = "2" //ConfirmAck
+	FrontierRequest = "3" //FrontierReq
+	FrontierRsp     = "4" //FrontierRsp
+	BulkPullRequest = "5" //BulkPullRequest
+	BulkPullRsp     = "6" //BulkPullRsp
+	BulkPushBlock   = "7" //BulkPushBlock
+	MessageResponse = "8" //MessageResponse
+
+	PovStatus      = "20"
+	PovPublishReq  = "21"
+	PovBulkPullReq = "22"
+	PovBulkPullRsp = "23"
+)
+
 type cacheValue struct {
 	peerID      string
 	resendTimes uint32
@@ -63,21 +81,20 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 func (ms *MessageService) Start() {
 	// register the network handler.
 	netService := ms.netService
-	netService.Register(NewSubscriber(ms, ms.publishMessageCh, false, common.PublishReq))
-	netService.Register(NewSubscriber(ms, ms.confirmReqMessageCh, false, common.ConfirmReq))
-	netService.Register(NewSubscriber(ms, ms.confirmAckMessageCh, false, common.ConfirmAck))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.FrontierRequest))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.FrontierRsp))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.BulkPullRequest))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.BulkPullRsp))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, common.BulkPushBlock))
-	netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, common.MessageResponse))
+	netService.Register(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
+	netService.Register(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
+	netService.Register(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
+	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
+	netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
 	// PoV message handlers
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, common.PovStatus))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, common.PovPublishReq))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, common.PovBulkPullReq))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, common.PovBulkPullRsp))
-
+	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovStatus))
+	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovPublishReq))
+	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullReq))
+	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullRsp))
 	// start loop().
 	go ms.startLoop()
 	go ms.syncService.Start()
@@ -98,16 +115,16 @@ func (ms *MessageService) startLoop() {
 			return
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
-			case common.FrontierRequest:
+			case FrontierRequest:
 				ms.syncService.onFrontierReq(message)
-			case common.FrontierRsp:
+			case FrontierRsp:
 				ms.syncService.checkFrontier(message)
 				//ms.syncService.onFrontierRsp(message)
-			case common.BulkPullRequest:
+			case BulkPullRequest:
 				ms.syncService.onBulkPullRequest(message)
-			case common.BulkPullRsp:
+			case BulkPullRsp:
 				ms.syncService.onBulkPullRsp(message)
-			case common.BulkPushBlock:
+			case BulkPushBlock:
 				ms.syncService.onBulkPushBlock(message)
 			default:
 				ms.netService.node.logger.Error("Received unknown message.")
@@ -126,7 +143,7 @@ func (ms *MessageService) messageResponseLoop() {
 			return
 		case message := <-ms.rspMessageCh:
 			switch message.MessageType() {
-			case common.MessageResponse:
+			case MessageResponse:
 				ms.onMessageResponse(message)
 			default:
 				time.Sleep(5 * time.Millisecond)
@@ -144,7 +161,7 @@ func (ms *MessageService) publishReqLoop() {
 			return
 		case message := <-ms.publishMessageCh:
 			switch message.MessageType() {
-			case common.PublishReq:
+			case PublishReq:
 				ms.onPublishReq(message)
 			default:
 				time.Sleep(5 * time.Millisecond)
@@ -162,7 +179,7 @@ func (ms *MessageService) confirmReqLoop() {
 			return
 		case message := <-ms.confirmReqMessageCh:
 			switch message.MessageType() {
-			case common.ConfirmReq:
+			case ConfirmReq:
 				ms.onConfirmReq(message)
 			default:
 				time.Sleep(5 * time.Millisecond)
@@ -180,7 +197,7 @@ func (ms *MessageService) confirmAckLoop() {
 			return
 		case message := <-ms.confirmAckMessageCh:
 			switch message.MessageType() {
-			case common.ConfirmAck:
+			case ConfirmAck:
 				ms.onConfirmAck(message)
 			default:
 				time.Sleep(5 * time.Millisecond)
@@ -258,13 +275,13 @@ func (ms *MessageService) povMessageLoop() {
 			return
 		case message := <-ms.povMessageCh:
 			switch message.MessageType() {
-			case common.PovStatus:
+			case PovStatus:
 				ms.onPovStatus(message)
-			case common.PovPublishReq:
+			case PovPublishReq:
 				ms.onPovPublishReq(message)
-			case common.PovBulkPullReq:
+			case PovBulkPullReq:
 				ms.onPovBulkPullReq(message)
-			case common.PovBulkPullRsp:
+			case PovBulkPullRsp:
 				ms.onPovBulkPullRsp(message)
 			default:
 				ms.netService.node.logger.Warn("Received unknown pov message.")
@@ -326,7 +343,7 @@ func (ms *MessageService) onPublishReq(message *Message) {
 		hash := blk.Blk.GetHash()
 		ms.addPerformanceTime(hash)
 	}
-	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
@@ -353,7 +370,7 @@ func (ms *MessageService) onConfirmReq(message *Message) {
 		hash := blk.Blk.GetHash()
 		ms.addPerformanceTime(hash)
 	}
-	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send ConfirmReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
@@ -379,7 +396,7 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 		}
 		ms.addPerformanceTime(ack.Blk.GetHash())
 	}
-	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send ConfirmAck Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
@@ -398,7 +415,7 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 }
 
 func (ms *MessageService) onPovStatus(message *Message) {
-	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send PoV Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
@@ -419,7 +436,7 @@ func (ms *MessageService) onPovStatus(message *Message) {
 }
 
 func (ms *MessageService) onPovPublishReq(message *Message) {
-	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send PoV Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
@@ -440,7 +457,7 @@ func (ms *MessageService) onPovPublishReq(message *Message) {
 }
 
 func (ms *MessageService) onPovBulkPullReq(message *Message) {
-	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send PovBulkPullReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
@@ -461,7 +478,7 @@ func (ms *MessageService) onPovBulkPullReq(message *Message) {
 }
 
 func (ms *MessageService) onPovBulkPullRsp(message *Message) {
-	err := ms.netService.SendMessageToPeer(common.MessageResponse, message.Hash(), message.MessageFrom())
+	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
 		ms.netService.node.logger.Errorf("send PovBulkPullRsp Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
@@ -488,24 +505,24 @@ func (ms *MessageService) Stop() {
 		ms.quitCh <- true
 	}
 	ms.syncService.quitCh <- true
-	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, common.PublishReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, common.ConfirmReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.confirmAckMessageCh, false, common.ConfirmAck))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.FrontierRequest))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.FrontierRsp))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.BulkPullRequest))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.BulkPullRsp))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, common.BulkPushBlock))
-	ms.netService.Deregister(NewSubscriber(ms, ms.rspMessageCh, false, common.MessageResponse))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, common.PovStatus))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, common.PovPublishReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, common.PovBulkPullReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, common.PovBulkPullRsp))
+	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
+	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
+	ms.netService.Deregister(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
+	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
+	ms.netService.Deregister(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
+	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovStatus))
+	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovPublishReq))
+	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullReq))
+	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullRsp))
 }
 
 func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 	switch messageName {
-	case common.PublishReq:
+	case PublishReq:
 		packet := protos.PublishBlock{
 			Blk: value.(*types.StateBlock),
 		}
@@ -514,7 +531,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
-	case common.ConfirmReq:
+	case ConfirmReq:
 		packet := &protos.ConfirmReqBlock{
 			Blk: value.(*types.StateBlock),
 		}
@@ -523,32 +540,32 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
-	case common.ConfirmAck:
+	case ConfirmAck:
 		data, err := protos.ConfirmAckBlockToProto(value.(*protos.ConfirmAckBlock))
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case common.FrontierRequest:
+	case FrontierRequest:
 		data, err := protos.FrontierReqToProto(value.(*protos.FrontierReq))
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case common.FrontierRsp:
+	case FrontierRsp:
 		packet := value.(*protos.FrontierResponse)
 		data, err := protos.FrontierResponseToProto(packet)
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case common.BulkPullRequest:
+	case BulkPullRequest:
 		data, err := protos.BulkPullReqPacketToProto(value.(*protos.BulkPullReqPacket))
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case common.BulkPullRsp:
+	case BulkPullRsp:
 		PullRsp := &protos.BulkPullRspPacket{
 			Blk: value.(*types.StateBlock),
 		}
@@ -557,7 +574,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, err
-	case common.BulkPushBlock:
+	case BulkPushBlock:
 		push := &protos.BulkPush{
 			Blk: value.(*types.StateBlock),
 		}
@@ -566,18 +583,18 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
-	case common.MessageResponse:
+	case MessageResponse:
 		hash := value.(types.Hash)
 		data, _ := hash.MarshalText()
 		return data, nil
-	case common.PovStatus:
+	case PovStatus:
 		status := value.(*protos.PovStatus)
 		data, err := protos.PovStatusToProto(status)
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case common.PovPublishReq:
+	case PovPublishReq:
 		packet := protos.PovPublishBlock{
 			Blk: value.(*types.PovBlock),
 		}
@@ -586,14 +603,14 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
-	case common.PovBulkPullReq:
+	case PovBulkPullReq:
 		req := value.(*protos.PovBulkPullReq)
 		data, err := protos.PovBulkPullReqToProto(req)
 		if err != nil {
 			return nil, err
 		}
 		return data, nil
-	case common.PovBulkPullRsp:
+	case PovBulkPullRsp:
 		rsp := value.(*protos.PovBulkPullRsp)
 		data, err := protos.PovBulkPullRspToProto(rsp)
 		if err != nil {

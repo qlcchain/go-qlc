@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
-	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -21,23 +20,8 @@ import (
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
-var (
-	minNetworkPledgeTime = 3  // minWithdrawTime 3 months
-	minVotePledgeTime    = 10 // minWithdrawTime 10 days
-	config               = map[cabi.PledgeType]pledgeInfo{
-		cabi.Network: {
-			pledgeTime:   time.Unix(0, 0).AddDate(0, minNetworkPledgeTime, 0).UTC().Unix(),
-			pledgeAmount: big.NewInt(2000),
-		},
-		cabi.Vote: {
-			pledgeTime:   time.Unix(0, 0).AddDate(0, 0, minVotePledgeTime).UTC().Unix(),
-			pledgeAmount: big.NewInt(1),
-		},
-	}
-)
-
 type pledgeInfo struct {
-	pledgeTime   int64
+	pledgeTime   *timeSpan
 	pledgeAmount *big.Int
 }
 
@@ -96,14 +80,16 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 }
 
 func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
-	param := new(cabi.PledgeParam)
-	_ = cabi.NEP5PledgeABI.UnpackMethod(param, cabi.MethodNEP5Pledge, input.Data)
+	param, err := cabi.ParsePledgeParam(input.Data)
+	if err != nil {
+		return nil, err
+	}
 	amount, _ := ctx.CalculateAmount(input)
 
 	var withdrawTime int64
 	pt := cabi.PledgeType(param.PType)
 	if info, b := config[pt]; b {
-		withdrawTime = time.Unix(input.Timestamp, 0).UTC().Unix() + info.pledgeTime
+		withdrawTime = info.pledgeTime.Calculate(common.TimeNow()).UTC().Unix()
 	} else {
 		return nil, fmt.Errorf("unsupport type %s", pt.String())
 	}
@@ -128,14 +114,12 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, param.NEP5TxId)
 
 	var pledgeData []byte
-	var err error
 	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	} else {
 		// already exist,verify data
 		if len(pledgeData) > 0 {
-			oldPledge := new(cabi.NEP5PledgeInfo)
-			err := cabi.NEP5PledgeABI.UnpackVariable(oldPledge, cabi.VariableNEP5PledgeInfo, pledgeData)
+			oldPledge, err := cabi.ParsePledgeInfo(pledgeData)
 			if err != nil {
 				return nil, err
 			}

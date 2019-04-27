@@ -11,7 +11,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math/big"
+	"math/rand"
 	"os"
+	"time"
 
 	"golang.org/x/crypto/blake2b"
 )
@@ -131,6 +133,8 @@ var (
 	Tt255   = BigPow(2, 255)
 	Tt256   = BigPow(2, 256)
 	Tt256m1 = new(big.Int).Sub(Tt256, big.NewInt(1))
+
+	chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 )
 
 // ToWordSize returns the ceiled word size required for memory expansion.
@@ -172,4 +176,18 @@ func JoinBytes(data ...[]byte) []byte {
 		newData = append(newData, d...)
 	}
 	return newData
+}
+
+func RandomFixedString(length int) string {
+	if length == 0 {
+		return ""
+	}
+	rand.Seed(time.Now().UnixNano())
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = chars[rand.Intn(len(chars))]
+	}
+
+	return string(b)
 }

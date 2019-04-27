@@ -18,7 +18,7 @@ type QlcService struct {
 }
 
 // NewQlcService create netService
-func NewQlcService(cfg *config.Config, eb event.EventBus) (*QlcService, error) {
+func NewQlcService(cfg *config.Config) (*QlcService, error) {
 	node, err := NewNode(cfg)
 	if err != nil {
 		return nil, err
@@ -26,10 +26,10 @@ func NewQlcService(cfg *config.Config, eb event.EventBus) (*QlcService, error) {
 	ns := &QlcService{
 		node:       node,
 		dispatcher: NewDispatcher(),
-		msgEvent:   eb,
+		msgEvent:   event.GetEventBus(cfg.LedgerDir()),
 	}
 	node.SetQlcService(ns)
-	l := ledger.NewLedger(cfg.LedgerDir(), eb)
+	l := ledger.NewLedger(cfg.LedgerDir())
 	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
 	return ns, nil

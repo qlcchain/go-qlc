@@ -2,13 +2,12 @@ package db
 
 import (
 	"fmt"
-	"path"
 	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -18,64 +17,19 @@ type DBSQL struct {
 	logger *zap.SugaredLogger
 }
 
-func NewSQLDB(dir string) (*DBSQL, error) {
-	user := "qlc"
-	password := "qlc1234"
-	db, err := createDBBySqlite(dir, user, password)
-	if err != nil {
-		return nil, err
-	}
-	dbsql := DBSQL{db: db, logger: log.NewLogger("relation/dbsql")}
-	if err := dbsql.initDB(); err != nil {
-		return nil, err
-	}
-	return &dbsql, nil
-}
-
-func createDBBySqlite(dir, user, password string) (*sqlx.DB, error) {
-	if err := util.CreateDirIfNotExist(dir); err != nil {
-		return nil, err
-	}
-	dataSourceName := fmt.Sprintf("file:%s?_auth&_auth_user=%s&_auth_pass=%s", path.Join(dir, "sqlite3.db"), user, password)
-	store, err := sqlx.Connect("sqlite3", dataSourceName)
-	if err != nil {
-		fmt.Println("connect sqlite error: ", err)
-		return nil, err
-	}
-	store.SetMaxOpenConns(200)
-	store.SetMaxIdleConns(100)
-	return store, nil
-}
-
-func (s *DBSQL) initDB() error {
-	sqls := []string{
-		`CREATE TABLE IF NOT EXISTS BLOCKHASH
-		(   id integer PRIMARY KEY AUTOINCREMENT,
-			hash char(32),
-			type varchar(10),
-			address char(32),
-			timestamp integer
-		)`,
-		`CREATE TABLE IF NOT EXISTS BLOCKMESSAGE 
-		(	id integer PRIMARY KEY AUTOINCREMENT,
-			hash char(32),
-			sender varchar(15),
-			receiver varchar(15) ,
-			message	char(32),
-			timestamp integer
-		)`,
-		`CREATE INDEX IF NOT EXISTS index_sender   ON BLOCKMESSAGE (sender);  `,
-		`CREATE INDEX IF NOT EXISTS index_receiver ON BLOCKMESSAGE (receiver);`,
-		`CREATE INDEX IF NOT EXISTS index_message  ON BLOCKMESSAGE (message); `,
-	}
-
-	for _, sql := range sqls {
-		if _, err := s.db.Exec(sql); err != nil {
-			s.logger.Errorf("exec error, sql: %s, err: %s", sql, err.Error())
-			return err
+func NewSQLDB(cfg *config.Config) (*DBSQL, error) {
+	dbsql := new(DBSQL)
+	dbStr := cfg.DB.Driver
+	switch dbStr {
+	case "sqlite", "sqlite3":
+		db, err := openSqlite(cfg)
+		if err != nil {
+			return nil, err
 		}
+		dbsql = &DBSQL{db: db, logger: log.NewLogger("relation/dbsql")}
 	}
-	return nil
+	return dbsql, nil
+
 }
 
 func (s *DBSQL) Create(table TableName, condition map[Column]interface{}) error {

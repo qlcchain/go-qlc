@@ -25,7 +25,6 @@ const (
 	configVersion = 2
 	cfgDir        = "GQlcchain"
 	nixCfgDir     = ".gqlcchain"
-	suffix        = "_test"
 )
 
 // identityConfig initializes a new identity.

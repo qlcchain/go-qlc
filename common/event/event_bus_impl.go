@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/common/hashmap"
 )
 
 // DefaultEventBus - box for handlers and callbacks.
@@ -39,9 +41,14 @@ func New() EventBus {
 }
 
 var (
-	once sync.Once
-	eb   EventBus
+	once  sync.Once
+	eb    EventBus
+	cache *hashmap.HashMap
 )
+
+func init() {
+	cache = hashmap.New(50)
+}
 
 func SimpleEventBus() EventBus {
 	once.Do(func() {
@@ -49,6 +56,20 @@ func SimpleEventBus() EventBus {
 	})
 
 	return eb
+}
+
+func GetEventBus(id string) EventBus {
+	if len(id) == 0 {
+		return SimpleEventBus()
+	}
+
+	if v, ok := cache.GetStringKey(id); ok {
+		return v.(EventBus)
+	} else {
+		eb := New()
+		cache.Set(id, eb)
+		return eb
+	}
 }
 
 // doSubscribe handles the subscription logic and is utilized by the public Subscribe functions

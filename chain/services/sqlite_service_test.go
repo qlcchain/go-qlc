@@ -13,12 +13,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestSqliteService(t *testing.T) {
-	eventBus := event.New()
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
 		_ = os.RemoveAll(dir)
@@ -27,7 +25,7 @@ func TestSqliteService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls, err := NewSqliteService(cfg, eventBus)
+	ls, err := NewSqliteService(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

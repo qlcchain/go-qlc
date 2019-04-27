@@ -22,14 +22,6 @@ import (
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
-var (
-	MinPledgeAmount      = big.NewInt(5 * 1e13) // 50K QLC
-	tokenNameLengthMax   = 40                   // Maximum length of a token name(include)
-	tokenSymbolLengthMax = 10                   // Maximum length of a token symbol(include)
-	minWithdrawTime      = 6                    // minWithdrawTime 6 months
-
-)
-
 type Mintage struct{}
 
 func (m *Mintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -108,7 +100,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 			param.Decimals,
 			param.Beneficial,
 			MinPledgeAmount,
-			time.Unix(input.Timestamp, 0).AddDate(0, minWithdrawTime, 0).UTC().Unix(),
+			minMintageTime.Calculate(time.Unix(input.Timestamp, 0)).UTC().Unix(),
 			input.Address,
 			param.NEP5TxId)
 		if err != nil {
@@ -196,7 +188,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	tokenInfo := new(types.TokenInfo)
 	_ = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, ti)
 
-	now := time.Now().UTC().Unix()
+	now := common.TimeNow().UTC().Unix()
 	if tokenInfo.PledgeAddress != input.Address ||
 		tokenInfo.PledgeAmount.Sign() == 0 ||
 		now < tokenInfo.WithdrawTime {

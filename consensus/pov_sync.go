@@ -5,6 +5,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"go.uber.org/zap"
 	"sync"
@@ -263,7 +264,7 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 		rsp.Count++
 	}
 
-	ss.getEventBus().Publish(string(common.EventSendMsgToPeer), common.PovBulkPullRsp, rsp, msg.msgPeer)
+	ss.getEventBus().Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
 }
 
 func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
@@ -298,7 +299,7 @@ func (ss *PovSyncer) checkAllPeers() {
 		GenesisHash:   genesisBlock.GetHash(),
 	}
 	ss.logger.Debugf("broadcast PovStatus to %d peers", peerCount)
-	ss.povEngine.eb.Publish(string(common.EventBroadcast), common.PovStatus, status)
+	ss.povEngine.eb.Publish(string(common.EventBroadcast), p2p.PovStatus, status)
 
 	now := time.Now()
 	ss.allPeers.Range(func(key, value interface{}) bool {
@@ -444,5 +445,5 @@ func (ss *PovSyncer) fetchBlocks() {
 	req.Count = 1
 	req.StartHeight = ss.syncHeight
 
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), common.PovBulkPullReq, req, ss.syncPeerID)
+	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, ss.syncPeerID)
 }
