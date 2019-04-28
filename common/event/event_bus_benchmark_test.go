@@ -8,134 +8,81 @@
 package event
 
 import (
+	"runtime"
 	"testing"
-	"time"
-
-	"github.com/qlcchain/go-qlc/common/types"
 )
 
-func setupTestCase(b *testing.B) (func(b *testing.B), EventBus) {
-	bus := New()
-	return func(tb *testing.B) {
-		bus.WaitAsync()
-	}, bus
-}
-
-type block struct {
-	Hash types.Hash
-}
-
-func BenchmarkPublish(b *testing.B) {
-	teardownTestCase, bus := setupTestCase(b)
-	defer teardownTestCase(b)
-
-	b.ReportAllocs()
-
-	fn := func(blk *block) {
-		//b.Log(blk.Index)
-	}
-	for i := 0; i < 10; i++ {
-		_ = bus.Subscribe("block", fn)
-	}
-	defer teardownTestCase(b)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bus.Publish("block", &block{Hash: types.ZeroHash})
+func run(b *testing.B, bus EventBus, out chan<- int) {
+	for n := 0; n < b.N; n++ {
+		bus.Publish("topic", n, out)
 	}
 }
 
-func BenchmarkPublish2(b *testing.B) {
-	teardownTestCase, bus := setupTestCase(b)
-	defer teardownTestCase(b)
-
-	b.ReportAllocs()
-
-	fn := func(blk block) {
-		//b.Log(blk.Index)
-	}
-	for i := 0; i < 10; i++ {
-		_ = bus.Subscribe("block", fn)
-	}
-	defer teardownTestCase(b)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bus.Publish("block", block{Hash: types.ZeroHash})
-	}
+func runParallel(b *testing.B, bus EventBus, out chan<- int) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			bus.Publish("topic", 1, out)
+		}
+	})
 }
 
-func BenchmarkPublish3(b *testing.B) {
-	teardownTestCase, bus := setupTestCase(b)
-	defer teardownTestCase(b)
+func runBenchmark(b *testing.B, subscribersAmount int, runInParallel bool) {
+	ch := make(chan int, b.N)
+	defer close(ch)
 
-	b.ReportAllocs()
+	bus := NewEventBus(b.N)
 
-	fn := func(i int) {
-		//b.Log(blk.Index)
+	for i := 0; i < subscribersAmount; i++ {
+		bus.Subscribe("topic", func(i int, out chan<- int) { out <- i })
 	}
-	for i := 0; i < 10; i++ {
-		_ = bus.Subscribe("index", fn)
-	}
-	defer teardownTestCase(b)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bus.Publish("index", i)
-	}
-}
 
-func BenchmarkSubscribe_Block(b *testing.B) {
-	teardownTestCase, bus := setupTestCase(b)
-	defer teardownTestCase(b)
-
-	b.ReportAllocs()
-
-	fn := func(blk block) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	for i := 0; i < 10; i++ {
-		_ = bus.Subscribe("block", fn)
-	}
-	defer teardownTestCase(b)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bus.Publish("block", block{Hash: types.ZeroHash})
-	}
-}
-
-func BenchmarkAsync(b *testing.B) {
-	teardownTestCase, bus := setupTestCase(b)
-	defer teardownTestCase(b)
-
-	b.ReportAllocs()
-	fn := func(blk block) {
-		//b.Log(blk.Index)
-	}
-	for i := 0; i < 1000; i++ {
-		_ = bus.SubscribeAsync("block", fn, false)
-	}
-	defer teardownTestCase(b)
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
-		bus.Publish("block", block{Hash: types.ZeroHash})
+	go func() {
+		if runInParallel {
+			runParallel(b, bus, ch)
+		} else {
+			run(b, bus, ch)
+		}
+	}()
+
+	var i = 0
+	for i < (b.N * subscribersAmount) {
+		select {
+		case <-ch:
+			i++
+		}
 	}
 }
 
-func BenchmarkAsync_Block(b *testing.B) {
-	teardownTestCase, bus := setupTestCase(b)
-	defer teardownTestCase(b)
+func BenchmarkBus(b *testing.B) {
+	runBenchmark(b, 1, false)
+}
 
-	b.ReportAllocs()
-	fn := func(blk block) {
-		time.Sleep(10 * time.Millisecond)
-		//b.Log(blk.Index)
-	}
-	for i := 0; i < 1000; i++ {
-		_ = bus.SubscribeAsync("block", fn, true)
-	}
-	defer teardownTestCase(b)
-	b.ResetTimer()
+func BenchmarkBusParallel(b *testing.B) {
+	runBenchmark(b, 1, true)
+}
 
-	for i := 0; i < b.N; i++ {
-		bus.Publish("block", block{Hash: types.ZeroHash})
-	}
+func BenchmarkBus100(b *testing.B) {
+	runBenchmark(b, 100, false)
+}
+
+func BenchmarkBus100Parallel(b *testing.B) {
+	runBenchmark(b, 100, true)
+}
+
+func BenchmarkBus1000(b *testing.B) {
+	runBenchmark(b, 1000, false)
+}
+
+func BenchmarkBus1000Parallel(b *testing.B) {
+	runBenchmark(b, 1000, true)
+}
+
+func BenchmarkBusNumCPU(b *testing.B) {
+	runBenchmark(b, runtime.NumCPU()+1, false)
+}
+
+func BenchmarkBusNumCPUParallel(b *testing.B) {
+	runBenchmark(b, runtime.NumCPU()+1, true)
 }

@@ -8,6 +8,7 @@
 package event
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
@@ -15,27 +16,42 @@ import (
 	hm "github.com/qlcchain/go-qlc/common/sync/hashmap"
 )
 
-// DefaultEventBus - box for handlers and callbacks.
+const DefaultQueueSize = 100
+
+// DefaultEventBus
 type DefaultEventBus struct {
-	handlers map[string][]*eventHandler
-	lock     sync.Mutex
-	wg       sync.WaitGroup
+	handlers  map[string][]*eventHandler
+	queueSize int
+	lock      sync.RWMutex
+}
+
+func (eb *DefaultEventBus) Close() error {
+	for k := range eb.handlers {
+		eb.CloseTopic(k)
+	}
+	return nil
 }
 
 type eventHandler struct {
-	callBack      reflect.Value
-	flagOnce      bool
-	async         bool
-	transactional bool
-	sync.Mutex
+	callBack reflect.Value
+	wg       *sync.WaitGroup
+	cancel   context.CancelFunc
+	queue    chan []reflect.Value
 }
 
 // New returns new DefaultEventBus with empty handlers.
 func New() EventBus {
 	b := &DefaultEventBus{
-		make(map[string][]*eventHandler),
-		sync.Mutex{},
-		sync.WaitGroup{},
+		handlers:  make(map[string][]*eventHandler),
+		queueSize: DefaultQueueSize,
+	}
+	return EventBus(b)
+}
+
+func NewEventBus(queueSize int) EventBus {
+	b := &DefaultEventBus{
+		handlers:  make(map[string][]*eventHandler),
+		queueSize: queueSize,
 	}
 	return EventBus(b)
 }
@@ -73,12 +89,40 @@ func GetEventBus(id string) EventBus {
 }
 
 // doSubscribe handles the subscription logic and is utilized by the public Subscribe functions
-func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}, handler *eventHandler) error {
-	eb.lock.Lock()
-	defer eb.lock.Unlock()
+func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}) error {
 	if !(reflect.TypeOf(fn).Kind() == reflect.Func) {
 		return fmt.Errorf("%s is not of type reflect.Func", reflect.TypeOf(fn).Kind())
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	handler := &eventHandler{
+		callBack: reflect.ValueOf(fn), cancel: cancel,
+		queue: make(chan []reflect.Value, eb.queueSize),
+		wg:    &sync.WaitGroup{},
+	}
+
+	go func(ctx context.Context) {
+		for {
+			select {
+			case args, ok := <-handler.queue:
+				if ok {
+					handler.wg.Add(1)
+					go func() {
+						defer func() {
+							handler.wg.Done()
+						}()
+						handler.callBack.Call(args)
+					}()
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}(ctx)
+	eb.lock.Lock()
+	defer eb.lock.Unlock()
+
 	eb.handlers[topic] = append(eb.handlers[topic], handler)
 	return nil
 }
@@ -86,36 +130,7 @@ func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}, handler *ev
 // Subscribe subscribes to a topic.
 // Returns error if `fn` is not a function.
 func (eb *DefaultEventBus) Subscribe(topic string, fn interface{}) error {
-	return eb.doSubscribe(topic, fn, &eventHandler{
-		reflect.ValueOf(fn), false, false, false, sync.Mutex{},
-	})
-}
-
-// SubscribeAsync subscribes to a topic with an asynchronous callback
-// Transactional determines whether subsequent callbacks for a topic are
-// run serially (true) or concurrently (false)
-// Returns error if `fn` is not a function.
-func (eb *DefaultEventBus) SubscribeAsync(topic string, fn interface{}, transactional bool) error {
-	return eb.doSubscribe(topic, fn, &eventHandler{
-		reflect.ValueOf(fn), false, true, transactional, sync.Mutex{},
-	})
-}
-
-// SubscribeOnce subscribes to a topic once. Handler will be removed after executing.
-// Returns error if `fn` is not a function.
-func (eb *DefaultEventBus) SubscribeOnce(topic string, fn interface{}) error {
-	return eb.doSubscribe(topic, fn, &eventHandler{
-		reflect.ValueOf(fn), true, false, false, sync.Mutex{},
-	})
-}
-
-// SubscribeOnceAsync subscribes to a topic once with an asynchronous callback
-// Handler will be removed after executing.
-// Returns error if `fn` is not a function.
-func (eb *DefaultEventBus) SubscribeOnceAsync(topic string, fn interface{}) error {
-	return eb.doSubscribe(topic, fn, &eventHandler{
-		reflect.ValueOf(fn), true, true, false, sync.Mutex{},
-	})
+	return eb.doSubscribe(topic, fn)
 }
 
 // HasCallback returns true if exists any callback subscribed to the topic.
@@ -129,13 +144,35 @@ func (eb *DefaultEventBus) HasCallback(topic string) bool {
 	return false
 }
 
+// Close unsubscribe all handlers from given topic
+func (eb *DefaultEventBus) CloseTopic(topic string) {
+	eb.lock.Lock()
+	defer eb.lock.Unlock()
+
+	for topicPattern, handlers := range eb.handlers {
+		if len(handlers) > 0 && MatchSimple(topicPattern, topic) {
+			for i := range handlers {
+				eb.removeHandler(topic, i)
+			}
+			delete(eb.handlers, topicPattern)
+		}
+	}
+}
+
 // Unsubscribe removes callback defined for a topic.
 // Returns error if there are no callbacks subscribed to the topic.
 func (eb *DefaultEventBus) Unsubscribe(topic string, handler interface{}) error {
 	eb.lock.Lock()
 	defer eb.lock.Unlock()
-	if _, ok := eb.handlers[topic]; ok && len(eb.handlers[topic]) > 0 {
-		eb.removeHandler(topic, eb.findHandlerIdx(topic, reflect.ValueOf(handler)))
+	counter := 0
+	for topicPattern, handlers := range eb.handlers {
+		if len(handlers) > 0 && MatchSimple(topicPattern, topic) {
+			counter++
+			eb.removeHandler(topicPattern, eb.findHandlerIdx(topicPattern, reflect.ValueOf(handler)))
+		}
+	}
+
+	if counter > 0 {
 		return nil
 	}
 	return fmt.Errorf("topic %s doesn't exist", topic)
@@ -143,43 +180,17 @@ func (eb *DefaultEventBus) Unsubscribe(topic string, handler interface{}) error 
 
 // Publish executes callback defined for a topic. Any additional argument will be transferred to the callback.
 func (eb *DefaultEventBus) Publish(topic string, args ...interface{}) {
-	eb.lock.Lock() // will unlock if handler is not found or always after setUpPublish
-	defer eb.lock.Unlock()
+	rArgs := eb.setUpPublish(topic, args...)
+
+	eb.lock.RLock()
+	defer eb.lock.RUnlock()
 	for topicPattern, handlers := range eb.handlers {
 		if 0 < len(handlers) && MatchSimple(topicPattern, topic) {
-			// Handlers slice may be changed by removeHandler and Unsubscribe during iteration,
-			// so make a copy and iterate the copied slice.
-			copyHandlers := make([]*eventHandler, 0, len(handlers))
-			copyHandlers = append(copyHandlers, handlers...)
-			for i, handler := range copyHandlers {
-				if handler.flagOnce {
-					eb.removeHandler(topic, i)
-				}
-				if !handler.async {
-					eb.doPublish(handler, topic, args...)
-				} else {
-					eb.wg.Add(1)
-					if handler.transactional {
-						handler.Lock()
-					}
-					go eb.doPublishAsync(handler, topic, args...)
-				}
+			for _, handler := range handlers {
+				handler.queue <- rArgs
 			}
 		}
 	}
-}
-
-func (eb *DefaultEventBus) doPublish(handler *eventHandler, topic string, args ...interface{}) {
-	passedArguments := eb.setUpPublish(topic, args...)
-	handler.callBack.Call(passedArguments)
-}
-
-func (eb *DefaultEventBus) doPublishAsync(handler *eventHandler, topic string, args ...interface{}) {
-	defer eb.wg.Done()
-	if handler.transactional {
-		defer handler.Unlock()
-	}
-	eb.doPublish(handler, topic, args...)
 }
 
 func (eb *DefaultEventBus) removeHandler(topic string, idx int) {
@@ -192,9 +203,12 @@ func (eb *DefaultEventBus) removeHandler(topic string, idx int) {
 		return
 	}
 
-	copy(eb.handlers[topic][idx:], eb.handlers[topic][idx+1:])
-	eb.handlers[topic][l-1] = nil // or the zero value of T
-	eb.handlers[topic] = eb.handlers[topic][:l-1]
+	h := eb.handlers[topic][idx]
+	h.wg.Wait()
+	h.cancel()
+	close(h.queue)
+
+	eb.handlers[topic] = append(eb.handlers[topic][:idx], eb.handlers[topic][idx+1:]...)
 }
 
 func (eb *DefaultEventBus) findHandlerIdx(topic string, callback reflect.Value) int {
@@ -214,9 +228,4 @@ func (eb *DefaultEventBus) setUpPublish(topic string, args ...interface{}) []ref
 		passedArguments = append(passedArguments, reflect.ValueOf(arg))
 	}
 	return passedArguments
-}
-
-// WaitAsync waits for all async callbacks to complete
-func (eb *DefaultEventBus) WaitAsync() {
-	eb.wg.Wait()
 }

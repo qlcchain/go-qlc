@@ -127,19 +127,19 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account) (*DPoS, error) {
 }
 
 func (dps *DPoS) setEvent() error {
-	err := dps.eb.SubscribeAsync(string(common.EventPublish), dps.ReceivePublish, false)
+	err := dps.eb.Subscribe(string(common.EventPublish), dps.ReceivePublish)
 	if err != nil {
 		return err
 	}
-	err = dps.eb.SubscribeAsync(string(common.EventConfirmReq), dps.ReceiveConfirmReq, false)
+	err = dps.eb.Subscribe(string(common.EventConfirmReq), dps.ReceiveConfirmReq)
 	if err != nil {
 		return err
 	}
-	err = dps.eb.SubscribeAsync(string(common.EventConfirmAck), dps.ReceiveConfirmAck, false)
+	err = dps.eb.Subscribe(string(common.EventConfirmAck), dps.ReceiveConfirmAck)
 	if err != nil {
 		return err
 	}
-	err = dps.eb.SubscribeAsync(string(common.EventSyncBlock), dps.ReceiveSyncBlock, false)
+	err = dps.eb.Subscribe(string(common.EventSyncBlock), dps.ReceiveSyncBlock)
 	if err != nil {
 		return err
 	}
