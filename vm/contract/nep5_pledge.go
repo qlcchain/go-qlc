@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sort"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -244,18 +243,18 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		return nil, errors.New("pledge is not ready")
 	}
 
-	if len(pledgeResults) > 2 {
-		sort.Slice(pledgeResults, func(i, j int) bool {
-			return pledgeResults[i].PledgeInfo.WithdrawTime > pledgeResults[j].PledgeInfo.WithdrawTime
-		})
-	}
+	//if len(pledgeResults) > 2 {
+	//	sort.Slice(pledgeResults, func(i, j int) bool {
+	//		return pledgeResults[i].PledgeInfo.WithdrawTime > pledgeResults[j].PledgeInfo.WithdrawTime
+	//	})
+	//}
 
 	pledgeInfo := pledgeResults[0]
 
 	amount, _ := ctx.CalculateAmount(input)
 
 	var pledgeData []byte
-	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key); err != nil && err != vmstore.ErrStorageNotFound {
+	if pledgeData, err = ctx.GetStorage(nil, pledgeInfo.Key[1:]); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	} else {
 		// already exist,verify data
@@ -272,7 +271,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 			}
 
 			// TODO: save data or change pledge info state
-			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key, nil)
+			err = ctx.SetStorage(nil, pledgeInfo.Key[1:], nil)
 			if err != nil {
 				return nil, err
 			}
