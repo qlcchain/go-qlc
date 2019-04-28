@@ -102,7 +102,8 @@ func (w *PovWorker) loop() {
 	for {
 		select {
 		case <-w.quitCh:
-			w.logger.Errorf("Exiting PoV miner worker loop")
+			w.logger.Info("Exiting PoV miner worker loop")
+			return
 		default:
 			w.genNextBlock()
 		}

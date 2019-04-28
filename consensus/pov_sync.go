@@ -14,6 +14,8 @@ import (
 
 const (
 	minPovSyncPeerCount = 1
+	checkPeerStatusTime = 30
+	waitEnoughPeerTime = 75
 )
 
 type PovSyncPeer struct {
@@ -38,6 +40,7 @@ type PovSyncer struct {
 	syncPeerID    string
 
 	messageCh     chan *PovSyncMessage
+	eventCh       chan *PovSyncEvent
 	quitCh        chan struct{}
 }
 
@@ -47,12 +50,18 @@ type PovSyncMessage struct {
 	msgPeer string
 }
 
+type PovSyncEvent struct {
+	eventType common.TopicType
+	eventData interface{}
+}
+
 func NewPovSyncer(povEngine *PoVEngine) *PovSyncer {
 	ss := &PovSyncer{
 		povEngine: povEngine,
 		state:     common.SyncNotStart,
 		lastCheckTime: time.Now(),
 		messageCh: make(chan *PovSyncMessage, 100),
+		eventCh:   make(chan *PovSyncEvent, 10),
 		quitCh:    make(chan struct{}),
 		logger:    log.NewLogger("pov_sync"),
 	}
@@ -129,7 +138,7 @@ func (ss *PovSyncer) getState() common.SyncState {
 }
 
 func (ss *PovSyncer) mainLoop() {
-	checkPeerTicker := time.NewTicker(10 * time.Second)
+	checkPeerTicker := time.NewTicker(checkPeerStatusTime * time.Second)
 
 	for {
 		select {
@@ -141,12 +150,15 @@ func (ss *PovSyncer) mainLoop() {
 
 		case msg := <-ss.messageCh:
 			ss.processMessage(msg)
+
+			case event := <-ss.eventCh:
+				ss.processEvent(event)
 		}
 	}
 }
 
 func (ss *PovSyncer) syncLoop() {
-	waitTimer := time.NewTimer(60 * time.Second)
+	waitTimer := time.NewTimer(waitEnoughPeerTime * time.Second)
 
 wait:
 	for {
@@ -204,11 +216,15 @@ func (ss *PovSyncer) onAddP2PStream(peerID string) {
 	}
 
 	ss.allPeers.Store(peerID, peer)
+
+	ss.eventCh <- &PovSyncEvent{eventType:common.EventAddP2PStream, eventData:peerID}
 }
 
 func (ss *PovSyncer) onDeleteP2PStream(peerID string) {
 	ss.logger.Infof("delete peer %s", peerID)
 	ss.allPeers.Delete(peerID)
+
+	ss.eventCh <- &PovSyncEvent{eventType:common.EventDeleteP2PStream, eventData:peerID}
 }
 
 func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, msgPeer string) {
@@ -282,6 +298,32 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 	}
 
 	ss.fetchBlocks()
+}
+
+func (ss *PovSyncer) processEvent(event *PovSyncEvent) {
+	switch event.eventType {
+	case common.EventAddP2PStream:
+		ss.processStreamEvent(event)
+	case common.EventDeleteP2PStream:
+		break
+	default:
+		ss.logger.Infof("unknown event type %T!\n", event.eventType)
+	}
+}
+
+func (ss *PovSyncer) processStreamEvent(event *PovSyncEvent) {
+	peerID := event.eventData.(string)
+
+	genesisBlock := ss.povEngine.chain.GenesisBlock()
+	latestBlock := ss.povEngine.chain.LatestBlock()
+
+	status := &protos.PovStatus{
+		CurrentHeight: latestBlock.GetHeight(),
+		CurrentHash:   latestBlock.GetHash(),
+		GenesisHash:   genesisBlock.GetHash(),
+	}
+	ss.logger.Debugf("send PovStatus to peer %s", peerID)
+	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovStatus, status, peerID)
 }
 
 func (ss *PovSyncer) checkAllPeers() {

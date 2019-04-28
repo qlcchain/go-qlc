@@ -590,6 +590,21 @@ func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 	return l.GetPovBlockByHash(latestHash, txn)
 }
 
+func (l *Ledger) HasPovBlock(height uint64, hash types.Hash, txns ...db.StoreTxn) bool {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	if !l.HasPovHeader(height, hash, txn) {
+		return false
+	}
+
+	if !l.HasPovBody(height, hash, txn) {
+		return false
+	}
+
+	return true
+}
+
 func (l *Ledger) DropAllPovBlocks() error {
 	txn, flag := l.getTxn(true)
 	defer l.releaseTxn(txn, flag)

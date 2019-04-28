@@ -45,6 +45,7 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 
 func stopNode(services []common.Service) {
 	for _, service := range services {
+		fmt.Printf("%s stopping ...\n", reflect.TypeOf(service))
 		err := service.Stop()
 		if err != nil {
 			fmt.Println(err)
@@ -109,7 +110,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		})
 	}
 
-	services = []common.Service{sqliteService, ledgerService, netService, walletService, dPosService, rPCService, povService, minerService}
+	services = []common.Service{netService, walletService, dPosService, rPCService, povService, minerService, sqliteService, ledgerService}
 
 	return nil
 }

@@ -185,6 +185,7 @@ func (bc *PovBlockChain) GetBlockHeight(hash types.Hash) uint64 {
 	block, _ := bc.povEngine.GetLedger().GetPovBlockByHash(hash)
 	if block != nil {
 		bc.heightCache.Set(hash, block.GetHeight())
+		bc.blockCache.Set(block.GetHash(), block)
 		return block.GetHeight()
 	}
 
@@ -206,11 +207,16 @@ func (bc *PovBlockChain) GetBlockByHash(hash types.Hash) *types.PovBlock {
 	return nil
 }
 
-func (bc *PovBlockChain) HasBlock(hash types.Hash, number uint64) bool {
+func (bc *PovBlockChain) HasBlock(hash types.Hash, height uint64) bool {
 	if bc.blockCache.Has(hash) {
 		return true
 	}
-	return bc.getLedger().HasPovBody(number, hash)
+
+	if bc.getLedger().HasPovBlock(height, hash) {
+		return true
+	}
+
+	return false
 }
 
 func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) error {
@@ -218,27 +224,34 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) error {
 		return bc.insertBlock(txn, block)
 	})
 
+	if err != nil {
+		bc.logger.Errorf("insert block to chain, err %s", err)
+	}
+
 	return err
 }
 
 func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock) error {
 	currentBlock := bc.LatestBlock()
 
-	err := bc.getLedger().AddPovBlock(block, txn)
-	if err != nil {
-		bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
-		return err
-	}
-
+	// try to grow best chain
 	if block.GetPrevious() == currentBlock.GetHash() {
 		if block.GetHeight() != currentBlock.GetHeight() + 1 {
 			bc.logger.Errorf("invalid height, currentBlock %s/%d, newBlock %s/%d",
 				currentBlock.GetHash(), currentBlock.GetHeight(), block.GetHash(), block.GetHeight())
 			return ErrPovInvalidHeight
 		}
+
+		err := bc.getLedger().AddPovBlock(block, txn)
+		if err != nil {
+			bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
+			return err
+		}
+
 		return bc.connectBestBlock(txn, block)
 	}
 
+	// check fork
 	if block.GetHeight() >= currentBlock.GetHeight() + uint64(bc.getConfig().PoV.ForkHeight) {
 		return bc.processFork(txn, block)
 	}
@@ -259,24 +272,30 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 
 	bc.latestBlock.Store(block)
 
-	bc.heightCache.Set(block.GetHash(), block)
-	bc.blockCache.Set(block.GetHeight(), block)
+	_ = bc.heightCache.Set(block.GetHeight(), block)
 
 	return nil
 }
 
 func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBlock) error {
-	err := bc.disconnectBlock(txn, block)
+	err := bc.disconnectTransactions(txn, block)
 	if err != nil {
 		return err
 	}
 
-	err = bc.disconnectTransactions(txn, block)
+	err = bc.disconnectBlock(txn, block)
 	if err != nil {
 		return err
 	}
 
-	bc.latestBlock.Store(block)
+	prevBlock := bc.GetBlockByHash(block.GetPrevious())
+	if prevBlock == nil {
+		return ErrPovInvalidPrevious
+	}
+
+	bc.latestBlock.Store(prevBlock)
+
+	bc.heightCache.Remove(block.GetHeight())
 
 	return nil
 }
@@ -333,12 +352,7 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 		forkBlock.GetHeight(), forkBlock.GetHash(), len(detachBlocks), len(attachBlocks))
 
 	for _, detachBlock := range detachBlocks {
-		err := bc.disconnectTransactions(txn, detachBlock)
-		if err != nil {
-			return err
-		}
-
-		err = bc.disconnectBlock(txn, detachBlock)
+		err := bc.disconnectBestBlock(txn, detachBlock)
 		if err != nil {
 			return err
 		}

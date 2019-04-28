@@ -4,10 +4,12 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/process"
+	"time"
 )
 
 const (
 	blockChanSize = 1024
+	maxOrphanBlocks = 1000
 )
 
 type PovBlockResult struct {
@@ -20,11 +22,17 @@ type PovBlockSource struct {
 	replyCh chan PovBlockResult
 }
 
+type PovOrphanBlock struct {
+	blockSrc *PovBlockSource
+	expiration time.Time
+}
+
 type PovBlockProcessor struct {
 	povEngine *PoVEngine
 
-	orphanBlocks  map[types.Hash]*PovBlockSource
-	parentOrphans map[types.Hash][]*PovBlockSource
+	orphanBlocks  map[types.Hash]*PovOrphanBlock
+	parentOrphans map[types.Hash][]*PovOrphanBlock
+	oldestOrphan  *PovOrphanBlock
 
 	blockCh chan *PovBlockSource
 	quitCh  chan struct{}
@@ -35,8 +43,8 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 		povEngine: povEngine,
 	}
 
-	bp.orphanBlocks = make(map[types.Hash]*PovBlockSource)
-	bp.parentOrphans = make(map[types.Hash][]*PovBlockSource)
+	bp.orphanBlocks = make(map[types.Hash]*PovOrphanBlock)
+	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
 
 	bp.blockCh = make(chan *PovBlockSource, blockChanSize)
 	bp.quitCh = make(chan struct{})
@@ -86,26 +94,36 @@ func (bp *PovBlockProcessor) loop() {
 func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	block := blockSrc.block
 	blockHash := blockSrc.block.GetHash()
-	bp.povEngine.GetLogger().Infof("process block, %d/%s", blockSrc.block.GetHeight(), blockHash)
+	bp.povEngine.GetLogger().Debugf("process block, %d/%s", blockSrc.block.GetHeight(), blockHash)
 
 	chain := bp.povEngine.GetChain()
 
 	// duplicate block
+	if bp.orphanBlocks[blockHash] != nil {
+		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in orphans", blockHash)
+		return nil
+	}
 	if chain.HasBlock(blockHash, block.GetHeight()) {
+		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in chain", blockHash)
+		return nil
+	}
+
+	prevBlock := chain.GetBlockByHash(block.GetPrevious())
+	if prevBlock == nil {
+		bp.addOrphanBlock(blockSrc)
 		return nil
 	}
 
 	// check block
 	result, err := bp.povEngine.GetVerifier().BlockCheck(block)
 	if err != nil {
-		bp.povEngine.GetLogger().Errorf("error: [%s] when verify block:[%s]", err, block.GetHash())
+		bp.povEngine.GetLogger().Errorf("failed to verify block %s, err %s", block.GetHash(), err)
 		return err
 	}
 
 	// orphan block
 	if result == process.GapPrevious {
-		bp.orphanBlocks[blockHash] = blockSrc
-		bp.parentOrphans[block.GetPrevious()] = append(bp.parentOrphans[block.GetPrevious()], blockSrc)
+		bp.addOrphanBlock(blockSrc)
 		return nil
 	}
 
@@ -115,5 +133,110 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 		blockSrc.replyCh <- PovBlockResult{err: err}
 	}
 
+	if err != nil {
+		bp.processOrphanBlock(blockSrc)
+	}
+
 	return err
+}
+
+func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
+	blockHash := blockSrc.block.GetHash()
+
+	for _, oBlock := range bp.orphanBlocks {
+		if time.Now().After(oBlock.expiration) {
+			bp.removeOrphanBlock(oBlock)
+			continue
+		}
+
+		if bp.oldestOrphan == nil || oBlock.expiration.Before(bp.oldestOrphan.expiration) {
+			bp.oldestOrphan = oBlock
+		}
+	}
+
+	if len(bp.orphanBlocks)+1 > maxOrphanBlocks {
+		bp.removeOrphanBlock(bp.oldestOrphan)
+		bp.oldestOrphan = nil
+	}
+
+	expiration := time.Now().Add(time.Hour)
+	oBlock := &PovOrphanBlock{
+		blockSrc:      blockSrc,
+		expiration: expiration,
+	}
+	bp.orphanBlocks[blockHash] = oBlock
+
+	prevHash := blockSrc.block.GetPrevious()
+	bp.parentOrphans[prevHash] = append(bp.parentOrphans[prevHash], oBlock)
+
+	bp.povEngine.GetLogger().Debugf("add orphan block %s prev %s", blockHash, prevHash)
+}
+
+func (bp *PovBlockProcessor) removeOrphanBlock(orphanBlock *PovOrphanBlock) {
+	orphanHash := orphanBlock.blockSrc.block.GetHash()
+	delete(bp.orphanBlocks, orphanHash)
+
+	prevHash := orphanBlock.blockSrc.block.GetPrevious()
+	orphans := bp.parentOrphans[prevHash]
+	for i:=0; i<len(orphans); i++ {
+		orphans := bp.parentOrphans[prevHash]
+		for i := 0; i < len(orphans); i++ {
+			hash := orphans[i].blockSrc.block.GetHash()
+			if hash == orphanHash {
+				copy(orphans[i:], orphans[i+1:])
+				orphans[len(orphans)-1] = nil
+				orphans = orphans[:len(orphans)-1]
+				i--
+			}
+		}
+	}
+
+	bp.parentOrphans[prevHash] = orphans
+
+	if len(bp.parentOrphans[prevHash]) == 0 {
+		delete(bp.parentOrphans, prevHash)
+	}
+}
+
+func (bp *PovBlockProcessor) processOrphanBlock(blockSrc *PovBlockSource) error {
+	blockHash := blockSrc.block.GetHash()
+	orphans, ok := bp.parentOrphans[blockHash]
+	if !ok {
+		return nil
+	}
+	if len(orphans) <= 0 {
+		delete(bp.parentOrphans, blockHash)
+		return nil
+	}
+
+	processHashes := make([]*types.Hash, 0, 10)
+	processHashes = append(processHashes, &blockHash)
+	for len(processHashes) > 0 {
+		processHash := processHashes[0]
+		processHashes[0] = nil
+		processHashes = processHashes[1:]
+
+		orphans := bp.parentOrphans[*processHash]
+
+		bp.povEngine.GetLogger().Debugf("parent %s has %d orphan blocks", processHash, len(orphans))
+
+		for i := 0; i < len(orphans); i++ {
+			orphan := orphans[i]
+			if orphan == nil {
+				continue
+			}
+
+			orphanHash := orphan.blockSrc.block.GetHash()
+			bp.removeOrphanBlock(orphan)
+			i--
+
+			for _, orphanBlock := range orphans {
+				bp.blockCh <- orphanBlock.blockSrc
+			}
+
+			processHashes = append(processHashes, &orphanHash)
+		}
+	}
+
+	return nil
 }
