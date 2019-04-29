@@ -1,4 +1,71 @@
 
+<a name="v1.1.0"></a>
+## [v1.1.0](https://github.com/qlcchain/go-qlc/compare/v1.0.4...v1.1.0) (2019-04-29)
+
+### Bug Fixes
+
+* mintage config
+* contract time
+* override config  value
+* rpc publicModules add pledge
+* account mode NPE
+* default build tags
+* dependence and format code
+* genesis token info bug
+* pledge time
+* legder test case
+* ledger process
+* withdraw nep5 pledge
+* pledge contract
+* pledge contract
+* tmp disable replace go mod
+* ci error
+* TestGetTxn test case
+* Query token info
+* wallet test case
+
+### Features
+
+* add --nobootnode to disable all bootstrap nodes
+* modify representative weight ([#300](https://github.com/qlcchain/go-qlc/issues/300))
+* get ntp time
+* add nep5 chain contracts for testnet
+* config parameter supports command line configuration
+* implement config migration from v2 to v3
+* add config for sqlite
+* add search pledge info rpc interface
+* save contract data and hash
+* implement vm log and cache
+* storage nep5 txid
+* add benefit balance to rpc account interface
+* add withdraw mintage cli
+* add withdraw pledge cli
+* modify generate stateblock
+* modify BlockProcess
+* recalculate voting weight
+* pledge cli
+* xgo cross compile
+* use build/test tags split testnet/mainnet
+* add eventbus to sqlite store  ([#271](https://github.com/qlcchain/go-qlc/issues/271))
+* implement timing functions
+* improve p2p performance
+* implement hashmap and trie
+* implement internal event bus
+* implement nep5 pledge contract RPC
+* implement withdraw mintage pledge RPC
+* implement NEP5 pledge chain  contract
+
+### Refactoring
+
+* pledge history
+* default config ([#297](https://github.com/qlcchain/go-qlc/issues/297))
+* optimize db config
+* manage eb instances
+* change the sorting method
+* pledge time and pledge count
+* refine mintage/pledge contract
+
+
 <a name="v1.0.4"></a>
 ## [v1.0.4](https://github.com/qlcchain/go-qlc/compare/v1.0.3...v1.0.4) (2019-04-03)
 
