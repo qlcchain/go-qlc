@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -19,7 +21,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
@@ -39,13 +40,13 @@ func init() {
 type checkBlock func(*LedgerVerifier, *types.StateBlock) (ProcessResult, error)
 
 type LedgerVerifier struct {
-	l         *ledger.Ledger
-	vmContext *vmstore.VMContext
-	logger    *zap.SugaredLogger
+	l *ledger.Ledger
+	//vmContext *vmstore.VMContext
+	logger *zap.SugaredLogger
 }
 
 func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
-	return &LedgerVerifier{l: l, logger: log.NewLogger("ledger_verifier"), vmContext: vmstore.NewVMContext(l)}
+	return &LedgerVerifier{l: l, logger: log.NewLogger("ledger_verifier")}
 }
 
 func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
@@ -269,7 +270,8 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	//verify data
 	if c, ok, _ := contract.GetChainContract(address, block.Data); ok {
 		clone := block.Clone()
-		if err := c.DoSend(lv.vmContext, clone); err == nil {
+		vmCtx := vmstore.NewVMContext(lv.l)
+		if err := c.DoSend(vmCtx, clone); err == nil {
 			if bytes.EqualFold(block.Data, clone.Data) {
 				return Progress, nil
 			} else {
@@ -289,7 +291,6 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	if err != nil || result != Progress {
 		return result, err
 	}
-
 	//check previous
 	//if !block.Previous.IsZero() {
 	//	return Other, fmt.Errorf("open block previous is not zero")
@@ -315,7 +316,8 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
 		clone := block.Clone()
 		//TODO:verify extra hash and commit to db
-		if g, e := c.DoReceive(lv.vmContext, clone, input); e == nil {
+		vmCtx := vmstore.NewVMContext(lv.l)
+		if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
 			if len(g) > 0 {
 				amount, _ := lv.l.CalculateAmount(block)
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&

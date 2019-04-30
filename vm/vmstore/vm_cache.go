@@ -64,3 +64,10 @@ func (cache *VMCache) LogList() types.VmLogs {
 func (cache *VMCache) Storage() map[string][]byte {
 	return cache.storage
 }
+
+func (cache *VMCache) Clear() {
+	//TODO: reset trie
+	cache.logList.Logs = cache.logList.Logs[:0]
+	cache.trieDirty = false
+	cache.storage = make(map[string][]byte)
+}

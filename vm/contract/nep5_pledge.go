@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sort"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -89,7 +89,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	var withdrawTime int64
 	pt := cabi.PledgeType(param.PType)
 	if info, b := config[pt]; b {
-		withdrawTime = info.pledgeTime.Calculate(common.TimeNow()).UTC().Unix()
+		withdrawTime = info.pledgeTime.Calculate(time.Unix(input.Timestamp, 0)).UTC().Unix()
 	} else {
 		return nil, fmt.Errorf("unsupport type %s", pt.String())
 	}
@@ -243,18 +243,18 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		return nil, errors.New("pledge is not ready")
 	}
 
-	if len(pledgeResults) > 2 {
-		sort.Slice(pledgeResults, func(i, j int) bool {
-			return pledgeResults[i].PledgeInfo.WithdrawTime > pledgeResults[j].PledgeInfo.WithdrawTime
-		})
-	}
+	//if len(pledgeResults) > 2 {
+	//	sort.Slice(pledgeResults, func(i, j int) bool {
+	//		return pledgeResults[i].PledgeInfo.WithdrawTime > pledgeResults[j].PledgeInfo.WithdrawTime
+	//	})
+	//}
 
 	pledgeInfo := pledgeResults[0]
 
 	amount, _ := ctx.CalculateAmount(input)
 
 	var pledgeData []byte
-	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key); err != nil && err != vmstore.ErrStorageNotFound {
+	if pledgeData, err = ctx.GetStorage(nil, pledgeInfo.Key[1:]); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	} else {
 		// already exist,verify data
@@ -269,18 +269,14 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 				oldPledge.NEP5TxId != pledgeInfo.PledgeInfo.NEP5TxId {
 				return nil, errors.New("invalid saved pledge info")
 			}
+
+			// TODO: save data or change pledge info state
+			err = ctx.SetStorage(nil, pledgeInfo.Key[1:], nil)
+			if err != nil {
+				return nil, err
+			}
 		} else {
-			// save data
-			pledgeData, err = cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, pledgeInfo.PledgeInfo.PType,
-				pledgeInfo.PledgeInfo.Amount, pledgeInfo.PledgeInfo.WithdrawTime, pledgeInfo.PledgeInfo.Beneficial,
-				pledgeInfo.PledgeInfo.PledgeAddress, pledgeInfo.PledgeInfo.NEP5TxId)
-			if err != nil {
-				return nil, err
-			}
-			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeInfo.Key, pledgeData)
-			if err != nil {
-				return nil, err
-			}
+			return nil, errors.New("invalid pledge data")
 		}
 	}
 

@@ -99,7 +99,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 			param.TotalSupply,
 			param.Decimals,
 			param.Beneficial,
-			MinPledgeAmount,
+			amount.Int,
 			minMintageTime.Calculate(time.Unix(input.Timestamp, 0)).UTC().Unix(),
 			input.Address,
 			param.NEP5TxId)
@@ -111,7 +111,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 	}
 
 	if _, err := ctx.GetStorage(types.MintageAddress[:], []byte(param.NEP5TxId)); err == nil {
-		return nil, fmt.Errorf("invalid nep5 tx id")
+		return nil, fmt.Errorf("invalid nep5 tx id %s", param.NEP5TxId)
 	} else {
 		if err := ctx.SetStorage(types.MintageAddress[:], []byte(param.NEP5TxId), nil); err != nil {
 			return nil, err
@@ -179,14 +179,20 @@ func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock
 
 func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
-	_ = cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
-	ti, err := ctx.GetStorage(types.MintageAddress[:], tokenId[:])
+	err := cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
+	if err != nil {
+		return nil, err
+	}
+	tokenInfoData, err := ctx.GetStorage(types.MintageAddress[:], tokenId[:])
 	if err != nil {
 		return nil, err
 	}
 
 	tokenInfo := new(types.TokenInfo)
-	_ = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, ti)
+	err = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, tokenInfoData)
+	if err != nil {
+		return nil, err
+	}
 
 	now := common.TimeNow().UTC().Unix()
 	if tokenInfo.PledgeAddress != input.Address ||
@@ -195,7 +201,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		return nil, errors.New("cannot withdraw mintage pledge, status error")
 	}
 
-	newTokenInfo, _ := cabi.MintageABI.PackVariable(
+	newTokenInfo, err := cabi.MintageABI.PackVariable(
 		cabi.VariableNameToken,
 		tokenInfo.TokenId,
 		tokenInfo.TokenName,
@@ -204,9 +210,13 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		tokenInfo.Decimals,
 		tokenInfo.Owner,
 		big.NewInt(0),
-		uint64(0),
+		int64(0),
 		tokenInfo.PledgeAddress,
 		tokenInfo.NEP5TxId)
+
+	if err != nil {
+		return nil, err
+	}
 
 	am, _ := ctx.GetAccountMeta(tokenInfo.PledgeAddress)
 	tm := am.Token(common.ChainToken())
@@ -217,7 +227,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	block.Token = tm.Type
 	block.Link = input.GetHash()
 	block.Data = newTokenInfo
-	block.Balance = tm.Balance.Add(types.Balance{Int: MinPledgeAmount})
+	block.Balance = tm.Balance.Add(types.Balance{Int: tokenInfo.PledgeAmount})
 	block.Vote = am.CoinVote
 	block.Oracle = am.CoinOracle
 	block.Storage = am.CoinStorage
@@ -241,10 +251,11 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 				oldPledge.TokenName != tokenInfo.TokenName || oldPledge.PledgeAmount.String() != tokenInfo.PledgeAmount.String() {
 				return nil, errors.New("invalid saved mine info")
 			}
-		} else {
 			if err := ctx.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
 				return nil, err
 			}
+		} else {
+			return nil, errors.New("invalid saved mine data")
 		}
 	}
 

@@ -39,7 +39,7 @@ func TestSortNEP5PledgeInfo(t *testing.T) {
 		},
 	}
 	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].WithdrawTime > infos[j].WithdrawTime
+		return infos[i].WithdrawTime < infos[j].WithdrawTime
 	})
 
 	for _, v := range infos {

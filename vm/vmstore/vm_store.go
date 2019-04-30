@@ -10,7 +10,6 @@ package vmstore
 import (
 	"bytes"
 	"errors"
-
 	"github.com/qlcchain/go-qlc/trie"
 
 	"github.com/dgraph-io/badger"
@@ -173,13 +172,13 @@ func (v *VMContext) set(key []byte, value []byte) error {
 		txn.Commit(nil)
 		txn.Discard()
 	}()
-	err := txn.Get(key, func(bytes []byte, b byte) error {
-		return nil
-	})
-	if err == nil {
-		return ErrStorageExists
-	} else if err != badger.ErrKeyNotFound {
-		return err
-	}
+	//err := txn.Get(key, func(bytes []byte, b byte) error {
+	//	return nil
+	//})
+	//if err == nil {
+	//	return ErrStorageExists
+	//} else if err != badger.ErrKeyNotFound {
+	//	return err
+	//}
 	return txn.Set(key, value)
 }

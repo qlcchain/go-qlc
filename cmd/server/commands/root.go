@@ -53,6 +53,7 @@ var (
 	passwordP     string
 	cfgPathP      string
 	isProfileP    bool
+	noBootstrapP  bool
 	configParamsP []string
 
 	privateKey   cmdutil.Flag
@@ -61,6 +62,7 @@ var (
 	seed         cmdutil.Flag
 	cfgPath      cmdutil.Flag
 	isProfile    cmdutil.Flag
+	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
 	//ctx            *chain.QlcContext
 	ledgerService  *ss.LedgerService
@@ -114,6 +116,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().StringVar(&seedP, "seed", "", "seed for accounts")
 		rootCmd.PersistentFlags().StringVar(&privateKeyP, "privateKey", "", "seed for accounts")
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
+		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringSliceVar(&configParamsP, "configParams", []string{}, "parameter set that needs to be changed")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
@@ -247,6 +250,11 @@ func start() error {
 		}()
 	}
 
+	if noBootstrapP {
+		//remove all p2p bootstrap node
+		cfg.P2P.BootNodes = []string{}
+	}
+
 	err = runNode(accounts, cfg)
 	if err != nil {
 		return err
@@ -307,6 +315,13 @@ func run() {
 		Value: false,
 	}
 
+	noBootstrap = cmdutil.Flag{
+		Name:  "nobootstrap",
+		Must:  false,
+		Usage: "disable p2p bootstrap node",
+		Value: false,
+	}
+
 	configParams = cmdutil.Flag{
 		Name:  "configParam",
 		Must:  false,
@@ -318,7 +333,7 @@ func run() {
 		Name: "run",
 		Help: "start qlc server",
 		Func: func(c *ishell.Context) {
-			args := []cmdutil.Flag{seed, cfgPath, isProfile}
+			args := []cmdutil.Flag{seed, cfgPath, isProfile, noBootstrap}
 			if cmdutil.HelpText(c, args) {
 				return
 			}
@@ -332,6 +347,7 @@ func run() {
 			seedP = cmdutil.StringVar(c.Args, seed)
 			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
+			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
 			configParamsP = cmdutil.StringSliceVar(c.Args, configParams)
 
 			err := start()
