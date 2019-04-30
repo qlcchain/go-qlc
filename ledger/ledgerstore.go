@@ -16,6 +16,7 @@ import (
 type Store interface {
 	Empty(txns ...db.StoreTxn) (bool, error)
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
+	DBStore() db.Store
 
 	// account meta CURD
 	AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error

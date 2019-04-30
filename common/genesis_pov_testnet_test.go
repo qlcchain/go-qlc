@@ -7,11 +7,26 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/trie"
 )
 
 func TestGenesisPovBlock1(t *testing.T) {
-	expectHash, _ := types.NewHash("93adfc01a9c1a3ad08270166741b82dccfa0a9251f9a84dfe6ca16225a113516")
-	expectSig, _ := types.NewSignature("368e406e9fd1684010814eb3244f7e9bfae45f80ee38ab6914176257093380795a9aaa9b0f1c95109c48e7ffa9b48a47d32dc597148c486a5473dedcb5195108")
+	expectHash, _ := types.NewHash("a1c619a4781884413af833aceeed2d2c849dc10788936505daff82d0191eb878")
+	expectSig, _ := types.NewSignature("f98e79158c18ed76c0cea1f7543dbc09af72f24e3460f878c8aee8bcf589352a3373c576748f869d6cc3bab03449f6c6727ccbbb4af1e2d5c48d57366fa42902")
+
+	stateTrie := trie.NewTrie(nil, nil, nil)
+	keys, values := GenesisPovStateKVs()
+	for i := range keys {
+		stateTrie.SetValue(keys[i], values[i])
+	}
+
+	expectStateHash := stateTrie.Hash()
+
+	checkStateHash := genesisPovBlock.StateHash
+	if *expectStateHash != checkStateHash {
+		t.Log(util.ToString(genesisPovBlock))
+		t.Fatal("invalid test net genesis pov state hash", checkStateHash.String(), expectStateHash.String())
+	}
 
 	checkHash := genesisPovBlock.ComputeHash()
 	if checkHash != expectHash {

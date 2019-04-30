@@ -27,12 +27,19 @@ type PovOrphanBlock struct {
 	expiration time.Time
 }
 
+type PovPendingBlock struct {
+	blockSrc *PovBlockSource
+	txResults map[types.Hash]process.ProcessResult
+}
+
 type PovBlockProcessor struct {
 	povEngine *PoVEngine
 
 	orphanBlocks  map[types.Hash]*PovOrphanBlock
 	parentOrphans map[types.Hash][]*PovOrphanBlock
 	oldestOrphan  *PovOrphanBlock
+
+	txPendingBlocks map[types.Hash]*PovPendingBlock
 
 	blockCh chan *PovBlockSource
 	quitCh  chan struct{}
@@ -45,6 +52,7 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 
 	bp.orphanBlocks = make(map[types.Hash]*PovOrphanBlock)
 	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
+	bp.txPendingBlocks = make(map[types.Hash]*PovPendingBlock)
 
 	bp.blockCh = make(chan *PovBlockSource, blockChanSize)
 	bp.quitCh = make(chan struct{})
@@ -53,6 +61,11 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 }
 
 func (bp *PovBlockProcessor) Start() error {
+	eb := bp.povEngine.GetEventBus()
+	if eb != nil {
+		eb.Subscribe(string(common.EventAddRelation), bp.onAddStateBlock)
+	}
+
 	common.Go(bp.loop)
 	return nil
 }
@@ -62,8 +75,29 @@ func (bp *PovBlockProcessor) Init() error {
 }
 
 func (bp *PovBlockProcessor) Stop() error {
+	eb := bp.povEngine.GetEventBus()
+	if eb != nil {
+		eb.Unsubscribe(string(common.EventAddRelation), bp.onAddStateBlock)
+	}
+
 	close(bp.quitCh)
 	return nil
+}
+
+func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
+	txHash := tx.GetHash()
+	pendingBlock := bp.txPendingBlocks[txHash]
+	if pendingBlock == nil {
+		return
+	}
+	if _, ok := pendingBlock.txResults[txHash]; !ok {
+		return
+	}
+	delete(pendingBlock.txResults, txHash)
+
+	if len(pendingBlock.txResults) <= 0 {
+		bp.blockCh <- pendingBlock.blockSrc
+	}
 }
 
 func (bp *PovBlockProcessor) AddBlock(block *types.PovBlock, from types.PovBlockFrom) error {
@@ -82,8 +116,11 @@ func (bp *PovBlockProcessor) AddMinedBlock(block *types.PovBlock) error {
 func (bp *PovBlockProcessor) loop() {
 	for {
 		select {
-		case block := <-bp.blockCh:
-			bp.processBlock(block)
+		case blockSrc := <-bp.blockCh:
+			err := bp.processBlock(blockSrc)
+			if blockSrc.replyCh != nil {
+				blockSrc.replyCh <- PovBlockResult{err: err}
+			}
 		case <-bp.quitCh:
 			bp.povEngine.GetLogger().Info("Exiting process blocks")
 			return
@@ -115,23 +152,25 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	}
 
 	// check block
-	result, err := bp.povEngine.GetVerifier().BlockCheck(block)
-	if err != nil {
-		bp.povEngine.GetLogger().Errorf("failed to verify block %s, err %s", block.GetHash(), err)
-		return err
+	stat := bp.povEngine.GetVerifier().VerifyFull(block)
+	if stat == nil {
+		bp.povEngine.GetLogger().Errorf("failed to verify block %s", block.GetHash())
+		return ErrPovFailedVerify
 	}
 
 	// orphan block
-	if result == process.GapPrevious {
+	if stat.Result == process.GapPrevious {
 		bp.addOrphanBlock(blockSrc)
 		return nil
+	} else if stat.Result == process.GapTransaction {
+		bp.addTxPendingBlock(blockSrc, stat)
+		return nil
+	} else if stat.Result != process.Progress {
+		bp.povEngine.GetLogger().Errorf("failed to verify block %s, result %s, err %s", block.GetHash(), stat.Result, stat.ErrMsg)
+		return ErrPovFailedVerify
 	}
 
-	err = bp.povEngine.GetChain().InsertBlock(block)
-
-	if blockSrc.replyCh != nil {
-		blockSrc.replyCh <- PovBlockResult{err: err}
-	}
+	err := bp.povEngine.GetChain().InsertBlock(block, stat.StateTrie)
 
 	if err != nil {
 		bp.processOrphanBlock(blockSrc)
@@ -239,4 +278,17 @@ func (bp *PovBlockProcessor) processOrphanBlock(blockSrc *PovBlockSource) error 
 	}
 
 	return nil
+}
+
+func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {
+	pendingBlock := &PovPendingBlock{
+		blockSrc: blockSrc,
+		txResults: stat.TxResults,
+	}
+
+	for txHash := range stat.TxResults {
+		bp.txPendingBlocks[txHash] = pendingBlock
+	}
+
+	bp.povEngine.GetLogger().Debugf("add tx pending block %s txs %d", blockSrc.block.GetHash(), len(stat.TxResults))
 }

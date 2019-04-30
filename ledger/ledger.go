@@ -166,6 +166,10 @@ func (l *Ledger) Empty(txns ...db.StoreTxn) (bool, error) {
 	return r, nil
 }
 
+func (l *Ledger) DBStore() db.Store {
+	return l.Store
+}
+
 func getKeyOfHash(hash types.Hash, t byte) []byte {
 	var key [1 + types.HashSize]byte
 	key[0] = t

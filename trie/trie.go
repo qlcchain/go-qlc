@@ -71,13 +71,13 @@ func (trie *Trie) getNodeFromDb(key *types.Hash) *TrieNode {
 	}
 }
 
-func (trie *Trie) saveNodeToDb(txn *db.BadgerStoreTxn, node *TrieNode) error {
+func (trie *Trie) saveNodeToDb(txn db.StoreTxn, node *TrieNode) error {
 	if data, err := node.Serialize(); err != nil {
 		return fmt.Errorf("serialize trie node failed, error is %s", err)
 	} else {
 		h := node.Hash()
 		k := trie.encodeKey(h[:])
-		trie.log.Debugf("save %s, %s", hex.EncodeToString(k), node.String())
+		trie.log.Debugf("save node %s, %s", hex.EncodeToString(k), node.String())
 		err := txn.Set(k, data)
 		if err != nil {
 			return err
@@ -100,9 +100,10 @@ func (trie *Trie) deleteUnSavedRefValueMap(node *TrieNode) {
 	}
 }
 
-func (trie *Trie) saveRefValueMap(txn *db.BadgerStoreTxn) {
+func (trie *Trie) saveRefValueMap(txn db.StoreTxn) {
 	for key, value := range trie.unSavedRefValueMap {
-		err := txn.Set(key[:], value)
+		k := trie.encodeKey(key[:])
+		err := txn.Set(k, value)
 		if err != nil {
 			trie.log.Errorf("save %s, error %s", key.String(), err)
 		}
@@ -128,9 +129,10 @@ func (trie *Trie) getRefValue(key []byte) ([]byte, error) {
 		txn.Discard()
 	}()
 
-	k := trie.encodeKey(key)
+	k := trie.encodeKey(key[:])
 	var result []byte
 	if err = txn.Get(k, func(i []byte, b byte) error {
+		result = make([]byte, len(i))
 		copy(result, i)
 		return nil
 	}); err == nil {
@@ -207,7 +209,7 @@ func (trie *Trie) Clone() *Trie {
 	return newTrie
 }
 
-func (trie *Trie) Save() (func(), error) {
+func (trie *Trie) Save(txns ...db.StoreTxn) (func(), error) {
 	txn := trie.db.NewTransaction(true)
 	defer func() {
 		txn.Commit(nil)
@@ -226,7 +228,20 @@ func (trie *Trie) Save() (func(), error) {
 	}, nil
 }
 
-func (trie *Trie) traverseSave(txn *db.BadgerStoreTxn, node *TrieNode) error {
+func (trie *Trie) SaveInTxn(txn db.StoreTxn) (func(), error) {
+	err := trie.traverseSave(txn, trie.Root)
+	if err != nil {
+		return nil, err
+	}
+
+	trie.saveRefValueMap(txn)
+
+	return func() {
+		trie.unSavedRefValueMap = make(map[types.Hash][]byte)
+	}, nil
+}
+
+func (trie *Trie) traverseSave(txn db.StoreTxn, node *TrieNode) error {
 	if node == nil {
 		return nil
 	}

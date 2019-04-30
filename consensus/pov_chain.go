@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"fmt"
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -9,6 +10,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
 	"math/big"
 	"sync"
@@ -23,6 +25,7 @@ var (
 	ErrPovFutureBlock     = errors.New("pov block in the future")
 	ErrPovInvalidHeight   = errors.New("invalid pov block height")
 	ErrPovInvalidPrevious = errors.New("invalid pov block previous")
+	ErrPovFailedVerify    = errors.New("failed to verify block")
 )
 
 const (
@@ -39,6 +42,7 @@ type PovBlockChain struct {
 
 	blockCache   gcache.Cache // Cache for the most recent entire blocks
 	heightCache  gcache.Cache
+	trieNodePool  *trie.NodePool
 
 	wg sync.WaitGroup
 }
@@ -72,6 +76,8 @@ func (bc *PovBlockChain) getTxPool() *PovTxPool {
 func (bc *PovBlockChain) Init() error {
 	var err error
 
+	bc.trieNodePool = trie.NewSimpleTrieNodePool()
+
 	needReset := false
 	genesisBlock, err := bc.getLedger().GetPovBlockByHeight(0)
 	if genesisBlock == nil {
@@ -81,8 +87,7 @@ func (bc *PovBlockChain) Init() error {
 	}
 
 	if needReset {
-		genesisBlock = common.GenesisPovBlock()
-		err := bc.ResetWithGenesisBlock(genesisBlock)
+		err := bc.ResetChainState()
 		if err != nil {
 			return err
 		}
@@ -104,6 +109,7 @@ func (bc *PovBlockChain) Start() error {
 
 func (bc *PovBlockChain) Stop() error {
 	bc.wg.Wait()
+	bc.trieNodePool.Clear()
 	return nil
 }
 
@@ -127,25 +133,58 @@ func (bc *PovBlockChain) loadLastState() error {
 func (bc *PovBlockChain) ResetChainState() error {
 	_ = bc.getLedger().DropAllPovBlocks()
 
-	return bc.ResetWithGenesisBlock(bc.genesisBlock)
+	genesisBlock := common.GenesisPovBlock()
+
+	return bc.resetWithGenesisBlock(&genesisBlock)
 }
 
-func (bc *PovBlockChain) ResetWithGenesisBlock(genesis *types.PovBlock) error {
-	// Prepare the genesis block and reinitialise the chain
-	err := bc.getLedger().AddPovBlock(genesis)
+func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
+	var saveCallback func()
+
+	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
+		var dbErr error
+
+		dbErr = bc.getLedger().AddPovBlock(genesis)
+		if dbErr != nil {
+			return dbErr
+		}
+		dbErr = bc.getLedger().AddPovBestHash(genesis.GetHeight(), genesis.GetHash())
+		if dbErr != nil {
+			return dbErr
+		}
+
+		stateTrie := trie.NewTrie(bc.getLedger().DBStore(), nil, bc.trieNodePool)
+		stateKeys, stateValues := common.GenesisPovStateKVs()
+		for i := range stateKeys {
+			stateTrie.SetValue(stateKeys[i], stateValues[i])
+		}
+
+		if *stateTrie.Hash() != genesis.GetStateHash() {
+			panic(fmt.Sprintf("genesis block state hash not same %s != %s", *stateTrie.Hash(), genesis.GetStateHash()))
+		}
+
+		saveCallback, dbErr = stateTrie.SaveInTxn(txn)
+		if dbErr != nil {
+			return dbErr
+		}
+		saveCallback()
+
+		return nil
+	})
+
 	if err != nil {
+		bc.logger.Fatalf("failed to reset with genesis block")
 		return err
 	}
-	err = bc.getLedger().AddPovBestHash(genesis.GetHeight(), genesis.GetHash())
-	if err != nil {
-		return err
+
+	if saveCallback != nil {
+		saveCallback()
 	}
 
 	bc.genesisBlock = genesis
-
-	bc.logger.Infof("Reset with genesis block %d/%s", genesis.Height, genesis.Hash)
-
 	bc.latestBlock.Store(genesis)
+
+	bc.logger.Infof("reset with genesis block %d/%s", genesis.Height, genesis.Hash)
 
 	return nil
 }
@@ -219,9 +258,9 @@ func (bc *PovBlockChain) HasBlock(hash types.Hash, height uint64) bool {
 	return false
 }
 
-func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) error {
+func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
-		return bc.insertBlock(txn, block)
+		return bc.insertBlock(txn, block, stateTrie)
 	})
 
 	if err != nil {
@@ -231,7 +270,7 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock) error {
 	return err
 }
 
-func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock) error {
+func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, stateTrie *trie.Trie) error {
 	currentBlock := bc.LatestBlock()
 
 	// try to grow best chain
@@ -246,6 +285,14 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock) err
 		if err != nil {
 			bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
 			return err
+		}
+
+		saveCallback, dbErr := stateTrie.SaveInTxn(txn)
+		if dbErr != nil {
+			return dbErr
+		}
+		if saveCallback != nil {
+			saveCallback()
 		}
 
 		return bc.connectBestBlock(txn, block)

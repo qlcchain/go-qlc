@@ -7,7 +7,13 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
+	"time"
+)
+
+var (
+	minCoinbasePledgeAmount = types.StringToBalance("500000")
 )
 
 type PovVerifier struct {
@@ -16,9 +22,44 @@ type PovVerifier struct {
 	logger *zap.SugaredLogger
 }
 
+type PovVerifyStat struct {
+	Result ProcessResult
+	ErrMsg string
+	TxResults map[types.Hash]ProcessResult
+
+	PrevBlock *types.PovBlock
+	PrevStateTrie *trie.Trie
+	StateTrie *trie.Trie
+	TxBlocks map[types.Hash]*types.StateBlock
+}
+
+func NewPovVerifyStat() *PovVerifyStat {
+	pvs := new(PovVerifyStat)
+	pvs.TxResults = make(map[types.Hash]ProcessResult)
+	pvs.TxBlocks = make(map[types.Hash]*types.StateBlock)
+	return pvs
+}
+
+func (pvs *PovVerifyStat) setResult(result ProcessResult, err error) {
+	pvs.Result = result
+	if err != nil {
+		pvs.ErrMsg = err.Error()
+	}
+}
+
+func (pvs *PovVerifyStat) getPrevBlock(pv *PovVerifier, prevHash types.Hash) *types.PovBlock {
+	if pvs.PrevBlock == nil {
+		pvs.PrevBlock = pv.chain.GetBlockByHash(prevHash)
+	}
+
+	return pvs.PrevBlock
+}
+
 type PovVerifierChainReader interface {
 	GetBlockByHash(hash types.Hash) *types.PovBlock
 	CalcNextRequiredTarget(block *types.PovBlock) (types.Signature, error)
+	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
+	GetStateTrie(stateHash *types.Hash) *trie.Trie
 }
 
 func NewPovVerifier(store ledger.Store, chain PovVerifierChainReader) *PovVerifier {
@@ -26,60 +67,94 @@ func NewPovVerifier(store ledger.Store, chain PovVerifierChainReader) *PovVerifi
 }
 
 func (pv *PovVerifier) Process(block types.Block) (ProcessResult, error) {
-	return Progress, nil
+	return Other, nil
 }
 
 func (pv *PovVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
-	povBlock, ok := block.(*types.PovBlock)
-	if !ok {
-		return Other, errors.New("invalid block")
-	}
-
-	result, err := pv.verifyHeader(povBlock)
-	if err != nil {
-		return result, err
-	}
-
-	result, err = pv.verifyTimestamp(povBlock)
-	if err != nil {
-		return result, err
-	}
-
-	result, err = pv.verifyReferred(povBlock)
-	if err != nil {
-		return result, err
-	}
-
-	result, err = pv.verifyProducer(povBlock)
-	if err != nil {
-		return result, err
-	}
-
-	result, err = pv.verifyTarget(povBlock)
-	if err != nil {
-		return result, err
-	}
-
-	result, err = pv.verifyTransactions(povBlock)
-	if err != nil {
-		return result, err
-	}
-
-	return Progress, nil
+	return Other, nil
 }
 
-func (pv *PovVerifier) verifyHeader(block *types.PovBlock) (ProcessResult, error) {
+func (pv *PovVerifier) VerifyNet(block *types.PovBlock) *PovVerifyStat {
+	stat := NewPovVerifyStat()
+
+	result, err := pv.verifyHeader(block, stat)
+	if err != nil {
+		stat.Result = result
+		stat.ErrMsg = err.Error()
+		return stat
+	}
+
+	result, err = pv.verifyTimestamp(block, stat)
+	if err != nil || result != Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	stat.Result = Progress
+	return stat
+}
+
+func (pv *PovVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
+	stat := NewPovVerifyStat()
+
+	result, err := pv.verifyHeader(block, stat)
+	if err != nil || result != Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	result, err = pv.verifyTimestamp(block, stat)
+	if err != nil || result != Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	result, err = pv.verifyReferred(block, stat)
+	if err != nil || result != Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	result, err = pv.verifyProducer(block, stat)
+	if err != nil || result != Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	result, err = pv.verifyTarget(block, stat)
+	if err != nil || result != Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	result, err = pv.verifyTransactions(block, stat)
+	if err != nil || result != Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	result, err = pv.verifyState(block, stat)
+	if err != nil || result != Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	stat.Result = Progress
+	return stat
+}
+
+func (pv *PovVerifier) verifyHeader(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
 	computedHash := block.ComputeHash()
 	if block.Hash.IsZero() || computedHash != block.Hash {
 		return BadHash, fmt.Errorf("bad hash, %s != %s", computedHash, block.Hash)
 	}
 
-	if len(block.Coinbase) == 0 {
-		return BadSignature, errors.New("coinbase is nil")
+	if block.Coinbase.IsZero() {
+		return BadSignature, errors.New("coinbase is zero")
 	}
 
-	if len(block.Signature) == 0 {
-		return BadSignature, errors.New("signature is nil")
+	if block.Signature.IsZero() {
+		return BadSignature, errors.New("signature is zero")
 	}
 
 	isVerified := block.Coinbase.Verify(block.GetHash().Bytes(), block.GetSignature().Bytes())
@@ -90,15 +165,20 @@ func (pv *PovVerifier) verifyHeader(block *types.PovBlock) (ProcessResult, error
 	return Progress, nil
 }
 
-func (pv *PovVerifier) verifyTimestamp(block *types.PovBlock) (ProcessResult, error) {
+func (pv *PovVerifier) verifyTimestamp(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
 	if block.Timestamp <= 0 {
-		return InvalidTime, errors.New("timestamp is 0")
+		return InvalidTime, errors.New("timestamp is zero")
+	}
+
+	ts := time.Unix(block.Timestamp, 0)
+	if ts.After(time.Now().Add(time.Hour)) {
+		return InvalidTime, errors.New("timestamp too far from future")
 	}
 
 	return Progress, nil
 }
 
-func (pv *PovVerifier) verifyReferred(block *types.PovBlock) (ProcessResult, error) {
+func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
 	prevBlock := pv.chain.GetBlockByHash(block.GetPrevious())
 	if prevBlock == nil {
 		return GapPrevious, nil
@@ -111,7 +191,7 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock) (ProcessResult, err
 	return Progress, nil
 }
 
-func (pv *PovVerifier) verifyTransactions(block *types.PovBlock) (ProcessResult, error) {
+func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
 	if block.TxNum != uint32(len(block.Transactions)) {
 		return InvalidTxNum, nil
 	}
@@ -133,21 +213,49 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock) (ProcessResult,
 		return BadMerkleRoot, fmt.Errorf("bad merkle root is zero when txs exist")
 	}
 	if merkleRoot != block.MerkleRoot {
-		return BadMerkleRoot, fmt.Errorf("bad merkle root not same %s != %s", merkleRoot, block.MerkleRoot)
+		return BadMerkleRoot, fmt.Errorf("bad merkle root not equals %s != %s", merkleRoot, block.MerkleRoot)
 	}
-
 	for _, tx := range block.Transactions {
 		txBlock, _ := pv.store.GetStateBlock(tx.Hash)
 		if txBlock == nil {
-			return GapTransaction, nil
+			stat.TxResults[tx.Hash] = GapTransaction
+		} else {
+			tx.Block = txBlock
+			stat.TxBlocks[tx.Hash] = txBlock
 		}
+	}
+
+	if len(stat.TxResults) > 0 {
+		return GapTransaction, fmt.Errorf("total %d txs in pending", len(stat.TxResults))
 	}
 
 	return Progress, nil
 }
 
-func (pv *PovVerifier) verifyTarget(block *types.PovBlock) (ProcessResult, error) {
-	prevBlock := pv.chain.GetBlockByHash(block.GetPrevious())
+func (pv *PovVerifier) verifyState(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
+	prevBlock := stat.getPrevBlock(pv, block.GetPrevious())
+	if prevBlock == nil {
+		return GapPrevious, fmt.Errorf("prev block %s pending", block.GetPrevious())
+	}
+
+	stateTrie, err := pv.chain.GenStateTrie(prevBlock.StateHash, block.Transactions)
+	if err != nil {
+		return BadStateHash, err
+	}
+	stateHash := types.Hash{}
+	if stateTrie != nil {
+		stateHash = *stateTrie.Hash()
+	}
+	if stateHash != block.StateHash {
+		return BadStateHash, fmt.Errorf("state hash is not equals %s != %s", stateHash, block.StateHash)
+	}
+	stat.StateTrie = stateTrie
+
+	return Progress, nil
+}
+
+func (pv *PovVerifier) verifyTarget(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
+	prevBlock := stat.getPrevBlock(pv, block.GetPrevious())
 	if prevBlock == nil {
 		return GapPrevious, nil
 	}
@@ -180,7 +288,38 @@ func (pv *PovVerifier) verifyTarget(block *types.PovBlock) (ProcessResult, error
 	return Progress, nil
 }
 
-func (pv *PovVerifier) verifyProducer(block *types.PovBlock) (ProcessResult, error) {
-	// TODO: check coinbase is valid producer or not
+func (pv *PovVerifier) verifyProducer(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
+	prevBlock := stat.getPrevBlock(pv, block.GetPrevious())
+	if prevBlock == nil {
+		return GapPrevious, nil
+	}
+	stateHash := prevBlock.GetStateHash()
+
+	prevTrie := pv.chain.GetStateTrie(&stateHash)
+	if prevTrie == nil {
+		return BadStateHash, errors.New("failed to get state tire by prev state hash")
+	}
+	stat.PrevStateTrie = prevTrie
+
+	asBytes := prevTrie.GetValue(block.GetCoinbase().Bytes())
+	if len(asBytes) <= 0 {
+		return BadCoinbase, errors.New("failed to get account state value")
+	}
+
+	as := new(types.PovAccountState)
+	err := as.Deserialize(asBytes)
+	if err != nil {
+		return BadCoinbase, errors.New("failed to deserialize account state value")
+	}
+
+	if as.RepState == nil {
+		return BadCoinbase, errors.New("account rep state is nil")
+	}
+	rs := as.RepState
+
+	if rs.Total.Compare(minCoinbasePledgeAmount) == types.BalanceCompSmaller {
+		return BadCoinbase, errors.New("coinbase pledge amount not enough")
+	}
+
 	return Progress, nil
 }

@@ -183,7 +183,8 @@ func (blk *PovBlock) ComputeHash() Hash {
 		util.Int2Bytes(blk.Timestamp),
 		blk.Target[:],
 		blk.Coinbase[:],
-		util.Uint32ToBytes(blk.TxNum))
+		util.Uint32ToBytes(blk.TxNum),
+		blk.StateHash[:])
 	return hash
 }
 
@@ -303,8 +304,9 @@ func (bs *PovBlocks) Deserialize(text []byte) error {
 
 // PovTransaction represents an state block metadata in the PoV block.
 type PovTransaction struct {
-	Address Address `msg:"address,extension" json:"address"`
-	Hash    Hash    `msg:"hash,extension" json:"hash"`
+	Address Address     `msg:"address,extension" json:"address"`
+	Hash    Hash        `msg:"hash,extension" json:"hash"`
+	Block   *StateBlock `msg:"-" json:"-"`
 }
 
 func (tx *PovTransaction) GetHash() Hash {

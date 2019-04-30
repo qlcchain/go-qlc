@@ -20,6 +20,8 @@ const (
 	BadHash
 	BadMerkleRoot
 	BadTarget
+	BadStateHash
+	BadCoinbase
 	Old
 	Fork
 	GapPrevious
@@ -48,6 +50,10 @@ func (r ProcessResult) String() string {
 		return "BadMerkleRoot"
 	case BadTarget:
 		return "BadTarget"
+	case BadStateHash:
+		return "BadStateHash"
+	case BadCoinbase:
+		return "BadCoinbase"
 	case Old:
 		return "Old"
 	case Fork:

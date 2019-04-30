@@ -110,16 +110,16 @@ func (w *PovWorker) loop() {
 	}
 }
 
-func (w *PovWorker) genNextBlock() {
+func (w *PovWorker) genNextBlock() *types.PovBlock {
 	if w.miner.GetSyncState() != common.Syncdone {
-		time.Sleep(time.Second)
-		return
+		time.Sleep(time.Minute)
+		return nil
 	}
 
 	cbAccount := w.GetCoinbaseAccount()
 	if cbAccount == nil {
 		time.Sleep(time.Minute)
-		return
+		return nil
 	}
 
 	ticker := time.NewTicker(time.Second)
@@ -128,7 +128,7 @@ func (w *PovWorker) genNextBlock() {
 
 	target, err := w.GetChain().CalcNextRequiredTarget(parent)
 	if err != nil {
-		return
+		return nil
 	}
 
 	current := &types.PovBlock{
@@ -144,6 +144,7 @@ func (w *PovWorker) genNextBlock() {
 		txPov := &types.PovTransaction{
 			Address: accBlock.Address,
 			Hash:    accBlock.GetHash(),
+			Block:   accBlock,
 		}
 		mklTxHashList = append(mklTxHashList, &txPov.Hash)
 		current.Transactions = append(current.Transactions, txPov)
@@ -153,8 +154,19 @@ func (w *PovWorker) genNextBlock() {
 	mklHash := merkle.CalcMerkleTreeRootHash(mklTxHashList)
 	current.MerkleRoot = mklHash
 
+	prevStateHash := parent.GetStateHash()
+	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, current.Transactions)
+	if err != nil {
+		w.logger.Errorf("failed to generate state trie, err %s", prevStateHash, err)
+		return nil
+	}
+	current.StateHash = *stateTrie.Hash()
+
 	if w.solveBlock(current, ticker, w.quitCh) {
 		w.submitBlock(current)
+		return current
+	} else {
+		return nil
 	}
 }
 

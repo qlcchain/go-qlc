@@ -30,7 +30,7 @@ type PoVEngine struct {
 	bp        *PovBlockProcessor
 	txpool    *PovTxPool
 	chain     *PovBlockChain
-	verifier  process.BlockVerifier
+	verifier  *process.PovVerifier
 	syncer    *PovSyncer
 }
 
@@ -117,7 +117,7 @@ func (pov *PoVEngine) GetTxPool() *PovTxPool {
 	return pov.txpool
 }
 
-func (pov *PoVEngine) GetVerifier() process.BlockVerifier {
+func (pov *PoVEngine) GetVerifier() *process.PovVerifier {
 	return pov.verifier
 }
 
