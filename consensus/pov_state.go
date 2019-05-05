@@ -186,13 +186,13 @@ func (bc *PovBlockChain) getAccountState(trie *trie.Trie, address types.Address)
 		return nil
 	}
 
-	//bc.logger.Debugf("get account %s state %s", address, as)
+	bc.logger.Debugf("get account %s state %s", address, as)
 
 	return as
 }
 
 func (bc *PovBlockChain) setAccountState(trie *trie.Trie, address types.Address, as *types.PovAccountState) {
-	//bc.logger.Debugf("set account %s state %s", address, as)
+	bc.logger.Debugf("set account %s state %s", address, as)
 
 	newStateBytes, err := as.Serialize()
 	if err != nil {

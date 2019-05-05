@@ -204,7 +204,7 @@ func (trie *Trie) Clone() *Trie {
 		unSavedRefValueMap: make(map[types.Hash][]byte),
 	}
 	if trie.Root != nil {
-		newTrie.Root = trie.Root.Clone()
+		newTrie.Root = trie.Root.Clone(true)
 	}
 	return newTrie
 }
@@ -299,18 +299,37 @@ func (trie *Trie) SetValue(key []byte, value []byte) {
 func (trie *Trie) NewNodeIterator(fn func(*TrieNode) bool) <-chan *TrieNode {
 	ch := make(chan *TrieNode)
 
-	go func(node *TrieNode) {
-		if fn == nil || fn(node) {
+	go func(root *TrieNode) {
+		if root == nil {
+			close(ch)
+			return
+		}
+		var nodes []*TrieNode
+		nodes = append(nodes, root)
+
+		for {
+			if len(nodes) <= 0 {
+				break
+			}
+			node := nodes[0]
+			if fn == nil || fn(node) {
+				ch <- node
+			}
+			nodes[0] = nil
+			nodes = nodes[1:]
+
 			switch node.NodeType() {
 			case FullNode:
-				for _, child := range node.children {
-					ch <- child
+				for _, child := range node.SortedChildren() {
+					nodes = append(nodes, child)
 				}
 				if node.child != nil {
-					ch <- node.child
+					nodes = append(nodes, node.child)
 				}
 			case ShortNode:
-				ch <- node.child
+				if node.child != nil {
+					nodes = append(nodes, node.child)
+				}
 			}
 		}
 		close(ch)
@@ -335,7 +354,7 @@ func (trie *Trie) setValue(node *TrieNode, key []byte, leafNode *TrieNode) *Trie
 	// Normal node
 	switch node.NodeType() {
 	case FullNode:
-		newNode := node.Clone()
+		newNode := node.Clone(false)
 
 		if len(key) > 0 {
 			firstChar := key[0]
@@ -366,12 +385,12 @@ func (trie *Trie) setValue(node *TrieNode, key []byte, leafNode *TrieNode) *Trie
 			if len(key) == index && (node.child.NodeType() == ValueNode || node.child.NodeType() == HashNode) {
 				trie.deleteUnSavedRefValueMap(node.child)
 
-				newNode := node.Clone()
+				newNode := node.Clone(false)
 				newNode.SetChild(leafNode)
 
 				return newNode
 			} else if node.child.NodeType() == FullNode {
-				fullNode = node.child.Clone()
+				fullNode = node.child.Clone(false)
 			}
 		}
 
