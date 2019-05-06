@@ -184,8 +184,12 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat
 		return GapPrevious, nil
 	}
 
-	if block.Timestamp < prevBlock.Timestamp {
-		return InvalidTime, fmt.Errorf("timestamp %d not greater than previous %d", block.Timestamp, prevBlock.Timestamp)
+	if block.GetTimestamp() < prevBlock.GetTimestamp() {
+		return InvalidTime, fmt.Errorf("timestamp %d not greater than previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
+	}
+
+	if block.GetHeight() != prevBlock.GetHeight() + 1 {
+		return InvalidHeight, fmt.Errorf("height %d not continue with previous %d", block.GetHeight(), prevBlock.GetHeight())
 	}
 
 	return Progress, nil

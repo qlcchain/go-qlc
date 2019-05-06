@@ -172,8 +172,8 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 
 	err := bp.povEngine.GetChain().InsertBlock(block, stat.StateTrie)
 
-	if err != nil {
-		bp.processOrphanBlock(blockSrc)
+	if err == nil {
+		_ = bp.processOrphanBlock(blockSrc)
 	}
 
 	return err
@@ -269,9 +269,7 @@ func (bp *PovBlockProcessor) processOrphanBlock(blockSrc *PovBlockSource) error 
 			bp.removeOrphanBlock(orphan)
 			i--
 
-			for _, orphanBlock := range orphans {
-				bp.blockCh <- orphanBlock.blockSrc
-			}
+			bp.blockCh <- orphan.blockSrc
 
 			processHashes = append(processHashes, &orphanHash)
 		}

@@ -33,6 +33,7 @@ const (
 	InvalidData
 	InvalidTime
 	InvalidTxNum
+	InvalidHeight
 	Other
 )
 
@@ -74,6 +75,8 @@ func (r ProcessResult) String() string {
 		return "InvalidData"
 	case InvalidTxNum:
 		return "InvalidTxNum"
+	case InvalidHeight:
+		return "InvalidHeight"
 	default:
 		return "<invalid>"
 	}

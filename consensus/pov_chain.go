@@ -273,34 +273,32 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie
 func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, stateTrie *trie.Trie) error {
 	currentBlock := bc.LatestBlock()
 
+	// save block to db
+	err := bc.getLedger().AddPovBlock(block, txn)
+	if err != nil {
+		bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
+		return err
+	}
+
+	saveCallback, dbErr := stateTrie.SaveInTxn(txn)
+	if dbErr != nil {
+		return dbErr
+	}
+	if saveCallback != nil {
+		saveCallback()
+	}
+
 	// try to grow best chain
 	if block.GetPrevious() == currentBlock.GetHash() {
-		if block.GetHeight() != currentBlock.GetHeight() + 1 {
-			bc.logger.Errorf("invalid height, currentBlock %s/%d, newBlock %s/%d",
-				currentBlock.GetHash(), currentBlock.GetHeight(), block.GetHash(), block.GetHeight())
-			return ErrPovInvalidHeight
-		}
-
-		err := bc.getLedger().AddPovBlock(block, txn)
-		if err != nil {
-			bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
-			return err
-		}
-
-		saveCallback, dbErr := stateTrie.SaveInTxn(txn)
-		if dbErr != nil {
-			return dbErr
-		}
-		if saveCallback != nil {
-			saveCallback()
-		}
-
 		return bc.connectBestBlock(txn, block)
 	}
 
-	// check fork
+	// check fork side chain
 	if block.GetHeight() >= currentBlock.GetHeight() + uint64(bc.getConfig().PoV.ForkHeight) {
 		return bc.processFork(txn, block)
+	} else {
+		bc.logger.Debugf("block %d/%s in side chain, prev %s",
+			block.GetHeight(), block.GetHash(), block.GetPrevious())
 	}
 
 	return nil
