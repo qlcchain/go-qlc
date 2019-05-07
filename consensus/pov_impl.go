@@ -129,6 +129,10 @@ func (pov *PoVEngine) GetSyncState() common.SyncState {
 	return pov.syncer.getState()
 }
 
+func (pov *PoVEngine) GetSyncer() *PovSyncer {
+	return pov.syncer
+}
+
 func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
 	err := pov.bp.AddMinedBlock(block)
 	if err == nil {

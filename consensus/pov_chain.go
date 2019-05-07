@@ -26,6 +26,7 @@ var (
 	ErrPovInvalidHeight   = errors.New("invalid pov block height")
 	ErrPovInvalidPrevious = errors.New("invalid pov block previous")
 	ErrPovFailedVerify    = errors.New("failed to verify block")
+	ErrPovForkHashZero    = errors.New("fork point hash is zero")
 )
 
 const (
@@ -258,6 +259,22 @@ func (bc *PovBlockChain) HasBlock(hash types.Hash, height uint64) bool {
 	return false
 }
 
+func (bc *PovBlockChain) HasBestBlock(hash types.Hash, height uint64) bool {
+	if !bc.HasBlock(hash, height) {
+		return false
+	}
+
+	bestHashInDB, err := bc.getLedger().GetPovBestHash(height)
+	if err != nil {
+		return false
+	}
+	if bestHashInDB != hash {
+		return false
+	}
+
+	return true
+}
+
 func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		return bc.insertBlock(txn, block, stateTrie)
@@ -338,9 +355,11 @@ func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBl
 		return ErrPovInvalidPrevious
 	}
 
+	bc.heightCache.Remove(block.GetHeight())
+
 	bc.latestBlock.Store(prevBlock)
 
-	bc.heightCache.Remove(block.GetHeight())
+	_ = bc.heightCache.Set(prevBlock.GetHeight(), prevBlock)
 
 	return nil
 }
@@ -356,8 +375,10 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 	for height := attachBlock.GetHeight(); height > oldBlock.GetHeight(); height-- {
 		attachBlocks = append(attachBlocks, attachBlock)
 
-		attachBlock = bc.GetBlockByHash(attachBlock.GetPrevious())
+		prevHash := attachBlock.GetPrevious()
+		attachBlock = bc.GetBlockByHash(prevHash)
 		if attachBlock == nil {
+			bc.logger.Errorf("failed to get previous block %s", prevHash)
 			return ErrPovInvalidPrevious
 		}
 	}
@@ -377,19 +398,27 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 			break
 		}
 
-		attachBlock = bc.GetBlockByHash(attachBlock.GetPrevious())
+		prevAttachHash := attachBlock.GetPrevious()
+		attachBlock = bc.GetBlockByHash(prevAttachHash)
 		if attachBlock == nil {
 			break
 		}
 
-		detachBlock = bc.GetBlockByHash(detachBlock.GetPrevious())
+		prevDetachHash := detachBlock.GetPrevious()
+		detachBlock = bc.GetBlockByHash(prevDetachHash)
 		if detachBlock == nil {
 			break
 		}
 	}
 
+	if forkHash.IsZero() {
+		bc.logger.Errorf("fork block hash is zero")
+		return ErrPovForkHashZero
+	}
+
 	forkBlock := bc.GetBlockByHash(forkHash)
 	if forkBlock == nil {
+		bc.logger.Errorf("fork block %s not exist", forkHash)
 		return ErrPovInvalidHash
 	}
 
@@ -443,7 +472,10 @@ func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBl
 			BlockHeight: block.GetHeight(),
 			TxIndex: uint64(txIndex),
 		}
-		ledger.AddPovTxLookup(txPov.Hash, txLookup, txn)
+		err := ledger.AddPovTxLookup(txPov.Hash, txLookup, txn)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -461,7 +493,10 @@ func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.Po
 
 		txpool.addTx(txPov.Hash, txBlock)
 
-		ledger.DeletePovTxLookup(txPov.Hash)
+		err := ledger.DeletePovTxLookup(txPov.Hash)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -506,6 +541,9 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Si
 	}
 
 	actualTimespan := block.Timestamp - firstBlock.Timestamp
+	if actualTimespan <= 0 {
+		actualTimespan = 1
+	}
 	targetTimeSpan := int64(bc.getConfig().PoV.TargetCycle * bc.getConfig().PoV.BlockInterval)
 
 	oldTargetInt := block.Target.ToBigInt()

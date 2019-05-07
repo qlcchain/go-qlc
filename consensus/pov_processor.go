@@ -140,8 +140,8 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in orphans", blockHash)
 		return nil
 	}
-	if chain.HasBlock(blockHash, block.GetHeight()) {
-		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in chain", blockHash)
+	if chain.HasBestBlock(blockHash, block.GetHeight()) {
+		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in best chain", blockHash)
 		return nil
 	}
 
@@ -209,6 +209,9 @@ func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 	bp.parentOrphans[prevHash] = append(bp.parentOrphans[prevHash], oBlock)
 
 	bp.povEngine.GetLogger().Debugf("add orphan block %s prev %s", blockHash, prevHash)
+
+	orphanRoot, gapNum := bp.GetOrphanRoot(prevHash)
+	bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, gapNum)
 }
 
 func (bp *PovBlockProcessor) removeOrphanBlock(orphanBlock *PovOrphanBlock) {
@@ -276,6 +279,24 @@ func (bp *PovBlockProcessor) processOrphanBlock(blockSrc *PovBlockSource) error 
 	}
 
 	return nil
+}
+
+func (bp *PovBlockProcessor) GetOrphanRoot(hash types.Hash) (types.Hash, uint32) {
+	// Keep looping while the parent of each orphaned block is
+	// known and is an orphan itself.
+	orphanRoot := hash
+	prevHash := hash
+	gapNum := uint32(1)
+	for {
+		orphan, exists := bp.orphanBlocks[prevHash]
+		if !exists {
+			break
+		}
+		orphanRoot = prevHash
+		prevHash = orphan.blockSrc.block.GetPrevious()
+		gapNum++
+	}
+	return orphanRoot, gapNum
 }
 
 func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {

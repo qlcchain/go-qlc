@@ -54,9 +54,11 @@ message PovPullBlockReq {
     uint64 StartHeight = 3;
     uint32 Count = 4;
     uint32 Direction = 5;
+    uint32 Reason = 6;
 }
 message PovPullBlockRsp {
     uint32 blocktype = 1;
     uint32 count = 2;
     bytes  block = 3;
+    uint32 Reason = 4;
 }

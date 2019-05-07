@@ -265,20 +265,39 @@ func (ss *PovSyncer) processMessage(msg *PovSyncMessage) {
 func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 	req := msg.msgValue.(*protos.PovBulkPullReq)
 
-	ss.logger.Infof("recv PovBulkPullReq from peer %s, start %d count %d", msg.msgPeer, req.StartHeight, req.Count)
+	if req.StartHash.IsZero() {
+		ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d start %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+	} else {
+		ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d start %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+	}
 
 	rsp := new(protos.PovBulkPullRsp)
+	rsp.Reason = req.Reason
 
-	endHeight := req.StartHeight + uint64(req.Count)
-	for height:=req.StartHeight; height<endHeight; height++ {
+	startHeight := req.StartHeight
+	blockCount := req.Count
+	if !req.StartHash.IsZero() {
+		block := ss.getChain().GetBlockByHash(req.StartHash)
+		if block == nil {
+			ss.logger.Infof("failed to get block %s", req.StartHash)
+			return
+		}
+		rsp.Blocks = append(rsp.Blocks, block)
+		startHeight = block.GetHeight() + 1
+		blockCount = blockCount - 1
+	}
+
+	endHeight := startHeight + uint64(blockCount)
+	for height:=startHeight; height<endHeight; height++ {
 		block, err := ss.getChain().GetBlockByHeight(height)
 		if err != nil {
 			ss.logger.Infof("failed to get block %d, err %s", height, err)
 			break
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
-		rsp.Count++
 	}
+
+	rsp.Count = uint32(len(rsp.Blocks))
 
 	ss.getEventBus().Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
 }
@@ -286,18 +305,26 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 	rsp := msg.msgValue.(*protos.PovBulkPullRsp)
 
-	ss.logger.Infof("recv PovBulkPullRsp from peer %s, count %d", msg.msgPeer, rsp.Count)
+	ss.logger.Debugf("recv PovBulkPullRsp from peer %s, reason %d count %d", msg.msgPeer, rsp.Reason, rsp.Count)
 
 	if rsp.Count == 0 {
 		return
 	}
 
-	for _, block := range rsp.Blocks {
-		ss.povEngine.AddBlock(block, types.PovBlockFromRemoteSync)
-		ss.syncHeight = block.GetHeight() + 1
+	if (rsp.Reason == protos.PovReasonSync) && (ss.getState() != common.Syncing) {
+		return
 	}
 
-	ss.fetchBlocks()
+	lastBlockHeight := uint64(0)
+	for _, block := range rsp.Blocks {
+		ss.povEngine.AddBlock(block, types.PovBlockFromRemoteSync)
+
+		lastBlockHeight = block.GetHeight()
+	}
+
+	if rsp.Reason == protos.PovReasonSync {
+		ss.requestSyncingBlocks(lastBlockHeight)
+	}
 }
 
 func (ss *PovSyncer) processEvent(event *PovSyncEvent) {
@@ -467,25 +494,59 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 	ss.toHeight = peer.currentHeight
 	ss.syncPeerID = peer.peerID
 
-	ss.fetchBlocks()
+	ss.requestSyncingBlocks(ss.currentHeight)
 }
 
-func (ss *PovSyncer) fetchBlocks() {
+func (ss *PovSyncer) requestSyncingBlocks(lastHeight uint64) {
 	if ss.state != common.Syncing {
 		return
 	}
+
+	if lastHeight >= ss.toHeight {
+		return
+	}
+
 	if ss.currentHeight >= ss.toHeight {
 		return
 	}
 
-	if ss.syncHeight == 0 {
-		ss.syncHeight = ss.currentHeight + 1
-	}
+	ss.syncHeight = lastHeight + 1
 
 	req := new(protos.PovBulkPullReq)
 
 	req.Count = 1
 	req.StartHeight = ss.syncHeight
+	req.Reason = protos.PovReasonSync
 
 	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, ss.syncPeerID)
+}
+
+func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
+	peer := ss.BestPeer()
+	if peer == nil {
+		return
+	}
+
+	req := new(protos.PovBulkPullReq)
+
+	req.Count = count
+	req.StartHeight = startHeight
+	req.Reason = protos.PovReasonFetch
+
+	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
+}
+
+func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32) {
+	peer := ss.BestPeer()
+	if peer == nil {
+		return
+	}
+
+	req := new(protos.PovBulkPullReq)
+
+	req.Count = count
+	req.StartHash = startHash
+	req.Reason = protos.PovReasonFetch
+
+	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
 }

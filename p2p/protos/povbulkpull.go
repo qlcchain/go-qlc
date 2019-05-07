@@ -6,15 +6,27 @@ import (
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
 )
 
+const (
+	PovReasonFetch = iota
+	PovReasonSync
+)
+
+const (
+	PovDirForward = iota
+	PovDirBackward
+)
+
 type PovBulkPullReq struct {
 	StartHash   types.Hash
 	StartHeight uint64
 	Count       uint32
 	Direction   uint32
+	Reason      uint32
 }
 
 type PovBulkPullRsp struct {
 	Count  uint32
+	Reason uint32
 	Blocks types.PovBlocks
 }
 
@@ -24,6 +36,7 @@ func PovBulkPullReqToProto(req *PovBulkPullReq) ([]byte, error) {
 		StartHeight: req.StartHeight,
 		Count:       req.Count,
 		Direction:   req.Direction,
+		Reason:      req.Reason,
 	}
 	data, err := proto.Marshal(pbReq)
 	if err != nil {
@@ -42,6 +55,7 @@ func PovBulkPullReqFromProto(data []byte) (*PovBulkPullReq, error) {
 		StartHeight: pbReq.StartHeight,
 		Count:       pbReq.Count,
 		Direction:   pbReq.Direction,
+		Reason:      pbReq.Reason,
 	}
 
 	err := req.StartHash.UnmarshalBinary(pbReq.StartHash)
@@ -62,6 +76,7 @@ func PovBulkPullRspToProto(rsp *PovBulkPullRsp) ([]byte, error) {
 		Blocktype: 0,
 		Count:     rsp.Count,
 		Block:     blockBytes,
+		Reason:    rsp.Reason,
 	}
 
 	data, err := proto.Marshal(pbReq)
@@ -86,6 +101,7 @@ func PovBulkPullRspFromProto(data []byte) (*PovBulkPullRsp, error) {
 	rsp := &PovBulkPullRsp{
 		Count:  pbRsp.Count,
 		Blocks: blocks,
+		Reason: pbRsp.Reason,
 	}
 	return rsp, nil
 }

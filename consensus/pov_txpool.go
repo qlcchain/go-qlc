@@ -73,7 +73,7 @@ func (tp *PovTxPool) Stop() {
 }
 
 func (tp *PovTxPool) onAddStateBlock(tx *types.StateBlock) error {
-	tp.povEngine.GetLogger().Infof("recv event, add state block hash %s", tx.GetHash())
+	tp.povEngine.GetLogger().Debugf("recv event, add state block hash %s", tx.GetHash())
 
 	txHash := tx.GetHash()
 	tp.addTx(txHash, tx)
@@ -81,7 +81,7 @@ func (tp *PovTxPool) onAddStateBlock(tx *types.StateBlock) error {
 }
 
 func (tp *PovTxPool) onDeleteStateBlock(tx *types.StateBlock) error {
-	tp.povEngine.GetLogger().Infof("recv event, delete state block hash %s", tx.GetHash())
+	tp.povEngine.GetLogger().Debugf("recv event, delete state block hash %s", tx.GetHash())
 
 	txHash := tx.GetHash()
 	tp.delTx(txHash)
