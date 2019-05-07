@@ -315,9 +315,14 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 		return
 	}
 
+	fromType := types.PovBlockFromRemoteFetch
+	if rsp.Reason == protos.PovReasonSync {
+		fromType = types.PovBlockFromRemoteFetch
+	}
+
 	lastBlockHeight := uint64(0)
 	for _, block := range rsp.Blocks {
-		ss.povEngine.AddBlock(block, types.PovBlockFromRemoteSync)
+		ss.povEngine.AddBlock(block, fromType)
 
 		lastBlockHeight = block.GetHeight()
 	}

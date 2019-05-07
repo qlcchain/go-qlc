@@ -152,11 +152,20 @@ func (pov *PoVEngine) setEvent() error {
 	if err != nil {
 		return err
 	}
+
+	err = pov.eb.SubscribeAsync(string(common.EventPovSyncState), pov.onRecvPovSyncState, false)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (pov *PoVEngine) unsetEvent() error {
 	err := pov.eb.Unsubscribe(string(common.EventPovRecvBlock), pov.onRecvPovBlock)
+	if err != nil {
+		return err
+	}
+	err = pov.eb.Unsubscribe(string(common.EventPovSyncState), pov.onRecvPovSyncState)
 	if err != nil {
 		return err
 	}
@@ -176,4 +185,10 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, 
 	}
 
 	return err
+}
+
+func (pov *PoVEngine) onRecvPovSyncState(state common.SyncState) {
+	if pov.bp != nil {
+		pov.bp.onRecvPovSyncState(state)
+	}
 }

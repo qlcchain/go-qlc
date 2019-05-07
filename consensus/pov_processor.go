@@ -41,6 +41,7 @@ type PovBlockProcessor struct {
 
 	txPendingBlocks map[types.Hash]*PovPendingBlock
 
+	waitingBlocks []*PovBlockSource
 	blockCh chan *PovBlockSource
 	quitCh  chan struct{}
 }
@@ -54,6 +55,7 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
 	bp.txPendingBlocks = make(map[types.Hash]*PovPendingBlock)
 
+	bp.waitingBlocks = make([]*PovBlockSource, 0, 1000)
 	bp.blockCh = make(chan *PovBlockSource, blockChanSize)
 	bp.quitCh = make(chan struct{})
 
@@ -100,8 +102,34 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 	}
 }
 
+func (bp *PovBlockProcessor) onRecvPovSyncState(state common.SyncState) {
+	if state != common.Syncing && state != common.SyncNotStart {
+		for _, blockSrc := range bp.waitingBlocks {
+			bp.blockCh <- blockSrc
+		}
+		bp.waitingBlocks = nil
+	}
+}
+
 func (bp *PovBlockProcessor) AddBlock(block *types.PovBlock, from types.PovBlockFrom) error {
-	bp.blockCh <- &PovBlockSource{block: block, from: from}
+	blockSrc := &PovBlockSource{block: block, from: from}
+
+	needWait := false
+	if from == types.PovBlockFromRemoteBroadcast {
+		ss := bp.povEngine.GetSyncState()
+		if ss == common.Syncing || ss == common.SyncNotStart {
+			needWait = true
+		}
+	}
+
+	if needWait {
+		if len(bp.waitingBlocks) < cap(bp.waitingBlocks) {
+			bp.waitingBlocks = append(bp.waitingBlocks, blockSrc)
+		}
+	} else {
+		bp.blockCh <- blockSrc
+	}
+
 	return nil
 }
 
@@ -210,7 +238,7 @@ func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 
 	bp.povEngine.GetLogger().Debugf("add orphan block %s prev %s", blockHash, prevHash)
 
-	orphanRoot, gapNum := bp.GetOrphanRoot(prevHash)
+	orphanRoot, gapNum := bp.GetOrphanRoot(blockHash)
 	bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, gapNum)
 }
 
@@ -286,7 +314,7 @@ func (bp *PovBlockProcessor) GetOrphanRoot(hash types.Hash) (types.Hash, uint32)
 	// known and is an orphan itself.
 	orphanRoot := hash
 	prevHash := hash
-	gapNum := uint32(1)
+	gapNum := uint32(0)
 	for {
 		orphan, exists := bp.orphanBlocks[prevHash]
 		if !exists {

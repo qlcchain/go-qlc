@@ -269,7 +269,7 @@ func (l *Ledger) addPovHeight(hash types.Hash, height uint64, txn db.StoreTxn) e
 	}
 
 	blockBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(blockBytes, height)
+	binary.BigEndian.PutUint64(blockBytes, height)
 
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
@@ -316,7 +316,7 @@ func (l *Ledger) GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, err
 
 	var height uint64
 	err = txn.Get(key, func(val []byte, b byte) error {
-		height = binary.LittleEndian.Uint64(val)
+		height = binary.BigEndian.Uint64(val)
 		return nil
 	})
 	if err != nil {

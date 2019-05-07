@@ -190,15 +190,15 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 		var src []byte
 		switch part.(type) {
 		case int:
-			src = util.Uint64ToBytes(uint64(part.(int)))
+			src = util.BE_Uint64ToBytes(uint64(part.(int)))
 		case int32:
-			src = util.Uint64ToBytes(uint64(part.(int32)))
+			src = util.BE_Uint64ToBytes(uint64(part.(int32)))
 		case uint32:
-			src = util.Uint64ToBytes(uint64(part.(uint32)))
+			src = util.BE_Uint64ToBytes(uint64(part.(uint32)))
 		case int64:
-			src = util.Uint64ToBytes(uint64(part.(int64)))
+			src = util.BE_Uint64ToBytes(uint64(part.(int64)))
 		case uint64:
-			src = util.Uint64ToBytes(part.(uint64))
+			src = util.BE_Uint64ToBytes(part.(uint64))
 		case []byte:
 			src = part.([]byte)
 		case types.Hash:

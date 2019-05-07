@@ -172,18 +172,18 @@ func NewPovBlockWithBody(header *PovHeader, body *PovBody) *PovBlock {
 }
 
 func (blk *PovBlock) ComputeVoteHash() Hash {
-	hash, _ := HashBytes(blk.Previous[:], blk.MerkleRoot[:], util.Uint64ToBytes(blk.Nonce))
+	hash, _ := HashBytes(blk.Previous[:], blk.MerkleRoot[:], util.BE_Uint64ToBytes(blk.Nonce))
 	return hash
 }
 
 func (blk *PovBlock) ComputeHash() Hash {
 	hash, _ := HashBytes(
-		blk.Previous[:], blk.MerkleRoot[:], util.Uint64ToBytes(blk.Nonce), blk.VoteSignature[:],
-		util.Uint64ToBytes(blk.Height),
-		util.Int2Bytes(blk.Timestamp),
+		blk.Previous[:], blk.MerkleRoot[:], util.BE_Uint64ToBytes(blk.Nonce), blk.VoteSignature[:],
+		util.BE_Uint64ToBytes(blk.Height),
+		util.BE_Int2Bytes(blk.Timestamp),
 		blk.Target[:],
 		blk.Coinbase[:],
-		util.Uint32ToBytes(blk.TxNum),
+		util.BE_Uint32ToBytes(blk.TxNum),
 		blk.StateHash[:])
 	return hash
 }

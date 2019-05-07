@@ -34,7 +34,7 @@ func (b *StateBlock) GetHash() Hash {
 	t := []byte{byte(b.Type)}
 	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Vote.Bytes(), b.Network.Bytes(),
 		b.Storage.Bytes(), b.Oracle.Bytes(), b.Previous[:], b.Link[:], b.Sender, b.Receiver, b.Message[:], b.Data,
-		util.Int2Bytes(b.Timestamp), util.Uint64ToBytes(b.PoVHeight),
+		util.BE_Int2Bytes(b.Timestamp), util.BE_Uint64ToBytes(b.PoVHeight),
 		b.Extra[:], b.Representative[:])
 	return hash
 }
