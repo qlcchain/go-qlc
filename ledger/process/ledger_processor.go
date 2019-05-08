@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -21,6 +19,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
@@ -433,7 +432,7 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *type
 				Network: am.GetNetwork(),
 				Oracle:  am.GetOracle(),
 				Storage: am.GetStorage(),
-				Balance: am.CoinBalance,
+				Balance: am.GetBalance(),
 				Total:   am.TotalBalance(),
 			}
 			lv.logger.Debugf("sub rep(%s) from %s ", oldBenefit, tm.Representative)

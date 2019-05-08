@@ -54,7 +54,10 @@ func (am *AccountMeta) Token(tt Hash) *TokenMeta {
 }
 
 func (a *AccountMeta) VoteWeight() Balance {
-	balance := a.CoinBalance
+	balance := ZeroBalance
+	if a.CoinBalance.Int != nil {
+		balance = balance.Add(a.CoinBalance)
+	}
 	if a.CoinVote.Int != nil {
 		balance = balance.Add(a.CoinVote)
 	}
@@ -82,6 +85,13 @@ func (a *AccountMeta) GetNetwork() Balance {
 	return a.CoinNetwork
 }
 
+func (a *AccountMeta) GetBalance() Balance {
+	if a.CoinBalance.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinBalance
+}
+
 func (a *AccountMeta) GetStorage() Balance {
 	if a.CoinStorage.Int == nil {
 		return ZeroBalance
@@ -90,7 +100,10 @@ func (a *AccountMeta) GetStorage() Balance {
 }
 
 func (a *AccountMeta) TotalBalance() Balance {
-	balance := a.CoinBalance
+	balance := ZeroBalance
+	if a.CoinBalance.Int != nil {
+		balance = balance.Add(a.CoinBalance)
+	}
 	if a.CoinVote.Int != nil {
 		balance = balance.Add(a.CoinVote)
 	}
