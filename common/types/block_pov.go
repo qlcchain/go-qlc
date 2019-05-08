@@ -166,6 +166,7 @@ func NewPovBlockWithHeader(header *PovHeader) *PovBlock {
 func NewPovBlockWithBody(header *PovHeader, body *PovBody) *PovBlock {
 	blk := NewPovBlockWithHeader(header)
 
+	blk.Transactions = make([]*PovTransaction, len(body.Transactions))
 	copy(blk.Transactions, body.Transactions)
 
 	return blk
@@ -210,9 +211,9 @@ func (blk *PovBlock) GetHeader() *PovHeader {
 }
 
 func (blk *PovBlock) GetBody() *PovBody {
-	body := &PovBody{
-		Transactions: blk.Transactions,
-	}
+	body := &PovBody{}
+	body.Transactions = make([]*PovTransaction, len(blk.Transactions))
+	copy(body.Transactions, blk.Transactions)
 	return body
 }
 

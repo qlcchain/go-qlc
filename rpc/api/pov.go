@@ -22,6 +22,12 @@ type PovApiState struct {
 	*types.PovAccountState
 }
 
+type PovApiTxLookup struct {
+	TxHash types.Hash `json:"txHash"`
+	TxLookup *types.PovTxLookup `json:"txLookup"`
+	Transaction *types.StateBlock `json:"transaction"`
+}
+
 func NewPovApi(ledger *ledger.Ledger) *PovApi {
 	return &PovApi{ledger: ledger, logger: log.NewLogger("rpc/pov")}
 }
@@ -36,11 +42,11 @@ func (api *PovApi) GetBlockByHeight(height uint64) (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
-	return apiBlock, err
+	return apiBlock, nil
 }
 
-func (api *PovApi) GetBlockByHash(hash types.Hash) (*PovApiBlock, error) {
-	block, err := api.ledger.GetPovBlockByHash(hash)
+func (api *PovApi) GetBlockByHash(blockHash types.Hash) (*PovApiBlock, error) {
+	block, err := api.ledger.GetPovBlockByHash(blockHash)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +55,7 @@ func (api *PovApi) GetBlockByHash(hash types.Hash) (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
-	return apiBlock, err
+	return apiBlock, nil
 }
 
 func (api *PovApi) GetLatestBlock() (*PovApiBlock, error) {
@@ -62,7 +68,53 @@ func (api *PovApi) GetLatestBlock() (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
-	return apiBlock, err
+	return apiBlock, nil
+}
+
+func (api *PovApi) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {
+	txl, err := api.ledger.GetPovTxLookup(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	txBlock, err := api.ledger.GetStateBlock(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	apiTxl := &PovApiTxLookup{
+		TxHash: txHash,
+		TxLookup: txl,
+		Transaction: txBlock,
+	}
+
+	return apiTxl, nil
+}
+
+func (api *PovApi) GetTransactionByBlockHashAndIndex(blockHash types.Hash, index uint32) (*PovApiTxLookup, error) {
+	block, err := api.ledger.GetPovBlockByHash(blockHash)
+	if err != nil {
+		return nil, err
+	}
+	if index >= block.TxNum {
+		return nil, errors.New("tx index not exist")
+	}
+	tx := block.Transactions[index]
+
+	return api.GetTransaction(tx.Hash)
+}
+
+func (api *PovApi) GetTransactionByBlockHeightAndIndex(height uint64, index uint32) (*PovApiTxLookup, error) {
+	block, err := api.ledger.GetPovBlockByHeight(height)
+	if err != nil {
+		return nil, err
+	}
+	if index >= block.TxNum {
+		return nil, errors.New("tx index not exist")
+	}
+	tx := block.Transactions[index]
+
+	return api.GetTransaction(tx.Hash)
 }
 
 func (api *PovApi) GetAccountState(stateHash types.Hash, address types.Address) (*PovApiState, error) {
@@ -84,5 +136,23 @@ func (api *PovApi) GetAccountState(stateHash types.Hash, address types.Address) 
 		PovAccountState: as,
 	}
 
-	return apiState, err
+	return apiState, nil
+}
+
+func (api *PovApi) GetAccountStateByBlockHash(blockHash types.Hash, address types.Address) (*PovApiState, error) {
+	block, err := api.ledger.GetPovBlockByHash(blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.GetAccountState(block.StateHash, address)
+}
+
+func (api *PovApi) GetAccountStateByBlockHeight(height uint64, address types.Address) (*PovApiState, error) {
+	block, err := api.ledger.GetPovBlockByHeight(height)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.GetAccountState(block.StateHash, address)
 }
