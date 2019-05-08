@@ -24,11 +24,17 @@ func (m *MigrationV2ToV3) Migration(data []byte, version int) ([]byte, int, erro
 	if err != nil {
 		return data, version, err
 	}
+	if len(cfg2.RPC.HttpVirtualHosts) == 0 {
+		cfg2.RPC.HttpVirtualHosts = []string{"*"}
+	}
 
 	cfg3, err := DefaultConfigV3(cfg2.DataDir)
 	if err != nil {
 		return data, version, err
 	}
+	cfg3.ConfigV2 = cfg2
+	cfg3.Version = 3
+	cfg3.RPC.PublicModules = append(cfg3.RPC.PublicModules, "pledge")
 
 	bytes, err := json.Marshal(cfg3)
 	return bytes, m.endVersion, err

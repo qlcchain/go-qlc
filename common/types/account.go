@@ -61,6 +61,34 @@ func (a *AccountMeta) VoteWeight() Balance {
 	return balance
 }
 
+func (a *AccountMeta) GetVote() Balance {
+	if a.CoinVote.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinVote
+}
+
+func (a *AccountMeta) GetOracle() Balance {
+	if a.CoinOracle.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinOracle
+}
+
+func (a *AccountMeta) GetNetwork() Balance {
+	if a.CoinNetwork.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinNetwork
+}
+
+func (a *AccountMeta) GetStorage() Balance {
+	if a.CoinStorage.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinStorage
+}
+
 func (a *AccountMeta) TotalBalance() Balance {
 	balance := a.CoinBalance
 	if a.CoinVote.Int != nil {

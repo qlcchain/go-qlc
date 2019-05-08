@@ -429,10 +429,10 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *type
 	if block.GetToken() == common.ChainToken() {
 		if tm != nil && !tm.Representative.IsZero() {
 			oldBenefit := &types.Benefit{
-				Vote:    am.CoinVote,
-				Network: am.CoinNetwork,
-				Oracle:  am.CoinOracle,
-				Storage: am.CoinStorage,
+				Vote:    am.GetVote(),
+				Network: am.GetNetwork(),
+				Oracle:  am.GetOracle(),
+				Storage: am.GetStorage(),
 				Balance: am.CoinBalance,
 				Total:   am.TotalBalance(),
 			}
