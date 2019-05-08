@@ -54,11 +54,28 @@ func (am *AccountMeta) Token(tt Hash) *TokenMeta {
 }
 
 func (a *AccountMeta) VoteWeight() Balance {
-	return a.CoinBalance.Add(a.CoinVote)
+	balance := a.CoinBalance
+	if a.CoinVote.Int != nil {
+		balance = balance.Add(a.CoinVote)
+	}
+	return balance
 }
 
 func (a *AccountMeta) TotalBalance() Balance {
-	return a.CoinBalance.Add(a.CoinVote).Add(a.CoinStorage).Add(a.CoinNetwork).Add(a.CoinOracle)
+	balance := a.CoinBalance
+	if a.CoinVote.Int != nil {
+		balance = balance.Add(a.CoinVote)
+	}
+	if a.CoinStorage.Int != nil {
+		balance = balance.Add(a.CoinStorage)
+	}
+	if a.CoinNetwork.Int != nil {
+		balance = balance.Add(a.CoinNetwork)
+	}
+	if a.CoinOracle.Int != nil {
+		balance = balance.Add(a.CoinOracle)
+	}
+	return balance
 }
 
 // NewAccount creates a new account with the given private key.
