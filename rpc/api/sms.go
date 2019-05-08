@@ -57,7 +57,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 	if err != nil {
 		return nil, errors.New("error phone number")
 	}
-	limit := 20
+	limit := 30
 	offset := 0
 	sHash, err := s.relation.PhoneBlocks(p, true, limit, offset)
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {
 }
 
 func (s *SMSApi) MessageBlocks(hash types.Hash) ([]*APIBlock, error) {
-	limit := 20
+	limit := 30
 	offset := 0
 	hashes, err := s.relation.MessageBlocks(hash, limit, offset)
 	if err != nil {
