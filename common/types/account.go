@@ -54,11 +54,69 @@ func (am *AccountMeta) Token(tt Hash) *TokenMeta {
 }
 
 func (a *AccountMeta) VoteWeight() Balance {
-	return a.CoinBalance.Add(a.CoinVote)
+	balance := ZeroBalance
+	if a.CoinBalance.Int != nil {
+		balance = balance.Add(a.CoinBalance)
+	}
+	if a.CoinVote.Int != nil {
+		balance = balance.Add(a.CoinVote)
+	}
+	return balance
+}
+
+func (a *AccountMeta) GetVote() Balance {
+	if a.CoinVote.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinVote
+}
+
+func (a *AccountMeta) GetOracle() Balance {
+	if a.CoinOracle.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinOracle
+}
+
+func (a *AccountMeta) GetNetwork() Balance {
+	if a.CoinNetwork.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinNetwork
+}
+
+func (a *AccountMeta) GetBalance() Balance {
+	if a.CoinBalance.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinBalance
+}
+
+func (a *AccountMeta) GetStorage() Balance {
+	if a.CoinStorage.Int == nil {
+		return ZeroBalance
+	}
+	return a.CoinStorage
 }
 
 func (a *AccountMeta) TotalBalance() Balance {
-	return a.CoinBalance.Add(a.CoinVote).Add(a.CoinStorage).Add(a.CoinNetwork).Add(a.CoinOracle)
+	balance := ZeroBalance
+	if a.CoinBalance.Int != nil {
+		balance = balance.Add(a.CoinBalance)
+	}
+	if a.CoinVote.Int != nil {
+		balance = balance.Add(a.CoinVote)
+	}
+	if a.CoinStorage.Int != nil {
+		balance = balance.Add(a.CoinStorage)
+	}
+	if a.CoinNetwork.Int != nil {
+		balance = balance.Add(a.CoinNetwork)
+	}
+	if a.CoinOracle.Int != nil {
+		balance = balance.Add(a.CoinOracle)
+	}
+	return balance
 }
 
 // NewAccount creates a new account with the given private key.
