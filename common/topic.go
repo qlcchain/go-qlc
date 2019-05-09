@@ -13,4 +13,5 @@ const (
 	EventSendMsgToPeers TopicType = "sendMsgToPeers"
 	EventAddRelation    TopicType = "addRelation"
 	EventDeleteRelation TopicType = "deleteRelation"
+	EventGenerateBlock  TopicType = "generateBlock"
 )

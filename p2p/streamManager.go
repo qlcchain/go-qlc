@@ -255,7 +255,11 @@ func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []
 	var cs []*cacheValue
 	var c *cacheValue
 	if sm.node.netService.msgService.cache.Has(hash) {
-		exitCache, _ := sm.node.netService.msgService.cache.Get(hash)
+		exitCache, e := sm.node.netService.msgService.cache.Get(hash)
+		if e != nil {
+			return
+		}
+
 		cs = exitCache.([]*cacheValue)
 		for k, v := range cs {
 			if v.peerID == stream.pid.Pretty() {

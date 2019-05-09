@@ -64,7 +64,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	}
 
 	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
-	dPosService = ss.NewDPosService(cfg, accounts)
+	consensusService = ss.NewConsensusService(cfg, accounts)
 	if rPCService, err = ss.NewRPCService(cfg); err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		})
 	}
 
-	services = []common.Service{sqliteService, ledgerService, netService, walletService, dPosService, rPCService}
+	services = []common.Service{sqliteService, ledgerService, netService, walletService, consensusService, rPCService}
 
 	return nil
 }

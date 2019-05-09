@@ -65,14 +65,14 @@ var (
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
 	//ctx            *chain.QlcContext
-	ledgerService  *ss.LedgerService
-	walletService  *ss.WalletService
-	netService     *ss.P2PService
-	dPosService    *ss.DPosService
-	rPCService     *ss.RPCService
-	sqliteService  *ss.SqliteService
-	services       []common.Service
-	maxAccountSize = 100
+	ledgerService    *ss.LedgerService
+	walletService    *ss.WalletService
+	netService       *ss.P2PService
+	consensusService *ss.ConsensusService
+	rPCService       *ss.RPCService
+	sqliteService    *ss.SqliteService
+	services         []common.Service
+	maxAccountSize   = 100
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
