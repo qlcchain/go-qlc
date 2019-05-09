@@ -35,10 +35,10 @@ const (
 )
 
 var syncStatus = [...]string{
-	SyncNotStart:   "Sync Not Start",
-	Syncing:        "Synchronising",
-	Syncdone:       "Sync done",
-	Syncerr:        "Sync error",
+	SyncNotStart: "Sync Not Start",
+	Syncing:      "Synchronising",
+	Syncdone:     "Sync done",
+	Syncerr:      "Sync error",
 }
 
 func (s SyncState) String() string {

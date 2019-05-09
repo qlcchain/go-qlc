@@ -9,10 +9,10 @@ import (
 )
 
 type PovTxPool struct {
-	povEngine *PoVEngine
-	txMu   sync.RWMutex
-	accountTxs map[types.Address]*list.List
-	allTxs map[types.Hash]*types.StateBlock
+	povEngine   *PoVEngine
+	txMu        sync.RWMutex
+	accountTxs  map[types.Address]*list.List
+	allTxs      map[types.Hash]*types.StateBlock
 	lastUpdated int64
 }
 

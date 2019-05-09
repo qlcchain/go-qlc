@@ -57,15 +57,15 @@ func GenesisPovStateKVs() (keys [][]byte, values [][]byte) {
 	var miners []*genesisMinerCfg
 	miners = append(miners, &genesisMinerCfg{
 		Coinbase: "qlc_1szuejgo9nxdre1uwpsxni4fg7p8kx7micbsdtpnchmc3cfk4wt1i37uncmy",
-		Vote: "500000",
+		Vote:     "500000",
 	})
 	miners = append(miners, &genesisMinerCfg{
 		Coinbase: "qlc_1h1oyd1h98cigxe9u1xkf7h973cartstf44djpx54ea7ize7bhg5caz6cm7b",
-		Vote: "500000",
+		Vote:     "500000",
 	})
 	miners = append(miners, &genesisMinerCfg{
 		Coinbase: "qlc_1ojc6yxwfbdijokaustj16jyppm4ixtnpkcod6fiskj8zqgtgxph9nnfkthu",
-		Vote: "500000",
+		Vote:     "500000",
 	})
 	for _, miner := range miners {
 		addr, _ := types.HexToAddress(miner.Coinbase)

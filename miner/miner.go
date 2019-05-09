@@ -10,9 +10,9 @@ import (
 )
 
 type Miner struct {
-	logger *zap.SugaredLogger
-	cfg    *config.Config
-	eb     event.EventBus
+	logger    *zap.SugaredLogger
+	cfg       *config.Config
+	eb        event.EventBus
 	povEngine *consensus.PoVEngine
 
 	povWorker *PovWorker
@@ -21,9 +21,9 @@ type Miner struct {
 
 func NewMiner(cfg *config.Config, povEngine *consensus.PoVEngine) *Miner {
 	miner := &Miner{
-		logger: log.NewLogger("miner"),
-		cfg:    cfg,
-		eb:     event.GetEventBus(cfg.LedgerDir()),
+		logger:    log.NewLogger("miner"),
+		cfg:       cfg,
+		eb:        event.GetEventBus(cfg.LedgerDir()),
 		povEngine: povEngine,
 	}
 

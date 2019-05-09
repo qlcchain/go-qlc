@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	blkCacheSize = 1024
+	blkCacheSize       = 1024
 	blkCacheExpireTime = 10 * time.Minute
 )
 
@@ -26,12 +26,12 @@ type PoVEngine struct {
 	eb       event.EventBus
 	accounts []*types.Account
 
-	blkCache  gcache.Cache
-	bp        *PovBlockProcessor
-	txpool    *PovTxPool
-	chain     *PovBlockChain
-	verifier  *process.PovVerifier
-	syncer    *PovSyncer
+	blkCache gcache.Cache
+	bp       *PovBlockProcessor
+	txpool   *PovTxPool
+	chain    *PovBlockChain
+	verifier *process.PovVerifier
+	syncer   *PovSyncer
 }
 
 func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, error) {

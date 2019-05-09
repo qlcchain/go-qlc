@@ -23,9 +23,9 @@ type PovApiState struct {
 }
 
 type PovApiTxLookup struct {
-	TxHash types.Hash `json:"txHash"`
-	TxLookup *types.PovTxLookup `json:"txLookup"`
-	Transaction *types.StateBlock `json:"transaction"`
+	TxHash      types.Hash         `json:"txHash"`
+	TxLookup    *types.PovTxLookup `json:"txLookup"`
+	Transaction *types.StateBlock  `json:"transaction"`
 }
 
 func NewPovApi(ledger *ledger.Ledger) *PovApi {
@@ -83,8 +83,8 @@ func (api *PovApi) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {
 	}
 
 	apiTxl := &PovApiTxLookup{
-		TxHash: txHash,
-		TxLookup: txl,
+		TxHash:      txHash,
+		TxLookup:    txl,
 		Transaction: txBlock,
 	}
 

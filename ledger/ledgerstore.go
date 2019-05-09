@@ -129,10 +129,10 @@ type Store interface {
 	DeletePovHeight(hash types.Hash, txns ...db.StoreTxn) error
 	GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, error)
 	HasPovHeight(hash types.Hash, txns ...db.StoreTxn) bool
-	AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns... db.StoreTxn) error
-	DeletePovTxLookup(txHash types.Hash, txns... db.StoreTxn) error
-	GetPovTxLookup(txHash types.Hash, txns... db.StoreTxn) (*types.PovTxLookup, error)
-	HasPovTxLookup(txHash types.Hash, txns... db.StoreTxn) bool
+	AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns ...db.StoreTxn) error
+	DeletePovTxLookup(txHash types.Hash, txns ...db.StoreTxn) error
+	GetPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) (*types.PovTxLookup, error)
+	HasPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) bool
 
 	// POV best chain CURD
 	AddPovBestHash(height uint64, hash types.Hash, txns ...db.StoreTxn) error

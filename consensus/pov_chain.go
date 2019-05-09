@@ -39,11 +39,11 @@ type PovBlockChain struct {
 	logger    *zap.SugaredLogger
 
 	genesisBlock *types.PovBlock
-	latestBlock atomic.Value // Current head of the best block chain
+	latestBlock  atomic.Value // Current head of the best block chain
 
 	blockCache   gcache.Cache // Cache for the most recent entire blocks
 	heightCache  gcache.Cache
-	trieNodePool  *trie.NodePool
+	trieNodePool *trie.NodePool
 
 	wg sync.WaitGroup
 }
@@ -311,7 +311,7 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 	}
 
 	// check fork side chain
-	if block.GetHeight() >= currentBlock.GetHeight() + uint64(bc.getConfig().PoV.ForkHeight) {
+	if block.GetHeight() >= currentBlock.GetHeight()+uint64(bc.getConfig().PoV.ForkHeight) {
 		return bc.processFork(txn, block)
 	} else {
 		bc.logger.Debugf("block %d/%s in side chain, prev %s",
@@ -468,9 +468,9 @@ func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBl
 		txpool.delTx(txPov.Hash)
 
 		txLookup := &types.PovTxLookup{
-			BlockHash: block.GetHash(),
+			BlockHash:   block.GetHash(),
 			BlockHeight: block.GetHeight(),
-			TxIndex: uint64(txIndex),
+			TxIndex:     uint64(txIndex),
 		}
 		err := ledger.AddPovTxLookup(txPov.Hash, txLookup, txn)
 		if err != nil {
@@ -526,11 +526,11 @@ func (bc *PovBlockChain) FindAncestor(block *types.PovBlock, height uint64) *typ
 }
 
 func (bc *PovBlockChain) RelativeAncestor(block *types.PovBlock, distance uint64) *types.PovBlock {
-	return bc.FindAncestor(block, block.GetHeight() - distance)
+	return bc.FindAncestor(block, block.GetHeight()-distance)
 }
 
 func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Signature, error) {
-	if (block.GetHeight() + 1) % uint64(bc.getConfig().PoV.TargetCycle) != 0 {
+	if (block.GetHeight()+1)%uint64(bc.getConfig().PoV.TargetCycle) != 0 {
 		return block.Target, nil
 	}
 

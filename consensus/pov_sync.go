@@ -15,8 +15,8 @@ import (
 const (
 	minPovSyncPeerCount = 1
 	checkPeerStatusTime = 30
-	waitEnoughPeerTime = 75
-	maxSyncBlockPerReq = 1000
+	waitEnoughPeerTime  = 75
+	maxSyncBlockPerReq  = 1000
 )
 
 type PovSyncPeer struct {
@@ -28,9 +28,9 @@ type PovSyncPeer struct {
 }
 
 type PovSyncer struct {
-	povEngine     *PoVEngine
-	logger        *zap.SugaredLogger
-	allPeers      sync.Map // map[string]*PovSyncPeer
+	povEngine *PoVEngine
+	logger    *zap.SugaredLogger
+	allPeers  sync.Map // map[string]*PovSyncPeer
 
 	state         common.SyncState
 	fromHeight    uint64
@@ -40,15 +40,15 @@ type PovSyncer struct {
 	syncHeight    uint64
 	syncPeerID    string
 
-	messageCh     chan *PovSyncMessage
-	eventCh       chan *PovSyncEvent
-	quitCh        chan struct{}
+	messageCh chan *PovSyncMessage
+	eventCh   chan *PovSyncEvent
+	quitCh    chan struct{}
 }
 
 type PovSyncMessage struct {
 	msgValue interface{}
-	msgHash types.Hash
-	msgPeer string
+	msgHash  types.Hash
+	msgPeer  string
 }
 
 type PovSyncEvent struct {
@@ -58,13 +58,13 @@ type PovSyncEvent struct {
 
 func NewPovSyncer(povEngine *PoVEngine) *PovSyncer {
 	ss := &PovSyncer{
-		povEngine: povEngine,
-		state:     common.SyncNotStart,
+		povEngine:     povEngine,
+		state:         common.SyncNotStart,
 		lastCheckTime: time.Now(),
-		messageCh: make(chan *PovSyncMessage, 100),
-		eventCh:   make(chan *PovSyncEvent, 10),
-		quitCh:    make(chan struct{}),
-		logger:    log.NewLogger("pov_sync"),
+		messageCh:     make(chan *PovSyncMessage, 100),
+		eventCh:       make(chan *PovSyncEvent, 10),
+		quitCh:        make(chan struct{}),
+		logger:        log.NewLogger("pov_sync"),
 	}
 	return ss
 }
@@ -152,8 +152,8 @@ func (ss *PovSyncer) mainLoop() {
 		case msg := <-ss.messageCh:
 			ss.processMessage(msg)
 
-			case event := <-ss.eventCh:
-				ss.processEvent(event)
+		case event := <-ss.eventCh:
+			ss.processEvent(event)
 		}
 	}
 }
@@ -218,14 +218,14 @@ func (ss *PovSyncer) onAddP2PStream(peerID string) {
 
 	ss.allPeers.Store(peerID, peer)
 
-	ss.eventCh <- &PovSyncEvent{eventType:common.EventAddP2PStream, eventData:peerID}
+	ss.eventCh <- &PovSyncEvent{eventType: common.EventAddP2PStream, eventData: peerID}
 }
 
 func (ss *PovSyncer) onDeleteP2PStream(peerID string) {
 	ss.logger.Infof("delete peer %s", peerID)
 	ss.allPeers.Delete(peerID)
 
-	ss.eventCh <- &PovSyncEvent{eventType:common.EventDeleteP2PStream, eventData:peerID}
+	ss.eventCh <- &PovSyncEvent{eventType: common.EventDeleteP2PStream, eventData: peerID}
 }
 
 func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, msgPeer string) {
@@ -245,11 +245,11 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, m
 }
 
 func (ss *PovSyncer) onPovBulkPullReq(req *protos.PovBulkPullReq, msgHash types.Hash, msgPeer string) {
-	ss.messageCh <- &PovSyncMessage{msgValue:req, msgHash:msgHash, msgPeer:msgPeer}
+	ss.messageCh <- &PovSyncMessage{msgValue: req, msgHash: msgHash, msgPeer: msgPeer}
 }
 
 func (ss *PovSyncer) onPovBulkPullRsp(rsp *protos.PovBulkPullRsp, msgHash types.Hash, msgPeer string) {
-	ss.messageCh <- &PovSyncMessage{msgValue:rsp, msgHash:msgHash, msgPeer:msgPeer}
+	ss.messageCh <- &PovSyncMessage{msgValue: rsp, msgHash: msgHash, msgPeer: msgPeer}
 }
 
 func (ss *PovSyncer) processMessage(msg *PovSyncMessage) {
@@ -292,7 +292,7 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 	curBlkMsgSize := 0
 
 	endHeight := startHeight + uint64(blockCount)
-	for height:=startHeight; height<endHeight; height++ {
+	for height := startHeight; height < endHeight; height++ {
 		block, err := ss.getChain().GetBlockByHeight(height)
 		if err != nil {
 			ss.logger.Infof("failed to get block %d, err %s", height, err)

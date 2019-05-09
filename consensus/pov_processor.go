@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	blockChanSize = 1024
+	blockChanSize   = 1024
 	maxOrphanBlocks = 1000
 )
 
@@ -17,18 +17,18 @@ type PovBlockResult struct {
 }
 
 type PovBlockSource struct {
-	block *types.PovBlock
-	from  types.PovBlockFrom
+	block   *types.PovBlock
+	from    types.PovBlockFrom
 	replyCh chan PovBlockResult
 }
 
 type PovOrphanBlock struct {
-	blockSrc *PovBlockSource
+	blockSrc   *PovBlockSource
 	expiration time.Time
 }
 
 type PovPendingBlock struct {
-	blockSrc *PovBlockSource
+	blockSrc  *PovBlockSource
 	txResults map[types.Hash]process.ProcessResult
 }
 
@@ -42,8 +42,8 @@ type PovBlockProcessor struct {
 	txPendingBlocks map[types.Hash]*PovPendingBlock
 
 	waitingBlocks []*PovBlockSource
-	blockCh chan *PovBlockSource
-	quitCh  chan struct{}
+	blockCh       chan *PovBlockSource
+	quitCh        chan struct{}
 }
 
 func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
@@ -136,7 +136,7 @@ func (bp *PovBlockProcessor) AddBlock(block *types.PovBlock, from types.PovBlock
 func (bp *PovBlockProcessor) AddMinedBlock(block *types.PovBlock) error {
 	replyCh := make(chan PovBlockResult)
 	bp.blockCh <- &PovBlockSource{block: block, from: types.PovBlockFromLocal, replyCh: replyCh}
-	result := <- replyCh
+	result := <-replyCh
 	close(replyCh)
 	return result.err
 }
@@ -228,7 +228,7 @@ func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 
 	expiration := time.Now().Add(time.Hour)
 	oBlock := &PovOrphanBlock{
-		blockSrc:      blockSrc,
+		blockSrc:   blockSrc,
 		expiration: expiration,
 	}
 	bp.orphanBlocks[blockHash] = oBlock
@@ -250,7 +250,7 @@ func (bp *PovBlockProcessor) removeOrphanBlock(orphanBlock *PovOrphanBlock) {
 
 	prevHash := orphanBlock.blockSrc.block.GetPrevious()
 	orphans := bp.parentOrphans[prevHash]
-	for i:=0; i<len(orphans); i++ {
+	for i := 0; i < len(orphans); i++ {
 		orphans := bp.parentOrphans[prevHash]
 		for i := 0; i < len(orphans); i++ {
 			hash := orphans[i].blockSrc.block.GetHash()
@@ -331,7 +331,7 @@ func (bp *PovBlockProcessor) GetOrphanRoot(hash types.Hash) (types.Hash, uint32)
 
 func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {
 	pendingBlock := &PovPendingBlock{
-		blockSrc: blockSrc,
+		blockSrc:  blockSrc,
 		txResults: stat.TxResults,
 	}
 

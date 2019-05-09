@@ -16,7 +16,7 @@ import (
 
 type ConfigV3 struct {
 	ConfigV2 `mapstructure:",squash"`
-	DB       *DBConfig `json:"db"`
+	DB       *DBConfig  `json:"db"`
 	PoV      *PoVConfig `json:"pov"`
 }
 
@@ -67,9 +67,9 @@ func defaultDb(dir string) *DBConfig {
 func defaultPoV() *PoVConfig {
 	return &PoVConfig{
 		BlockInterval: 30,
-		BlockSize: 4 * 1024 * 1024,
-		TargetCycle: 20,
-		ForkHeight: 3,
-		Coinbase: "",
+		BlockSize:     4 * 1024 * 1024,
+		TargetCycle:   20,
+		ForkHeight:    3,
+		Coinbase:      "",
 	}
 }

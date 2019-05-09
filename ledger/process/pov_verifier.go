@@ -17,20 +17,20 @@ var (
 )
 
 type PovVerifier struct {
-	store ledger.Store
-	chain PovVerifierChainReader
+	store  ledger.Store
+	chain  PovVerifierChainReader
 	logger *zap.SugaredLogger
 }
 
 type PovVerifyStat struct {
-	Result ProcessResult
-	ErrMsg string
+	Result    ProcessResult
+	ErrMsg    string
 	TxResults map[types.Hash]ProcessResult
 
-	PrevBlock *types.PovBlock
+	PrevBlock     *types.PovBlock
 	PrevStateTrie *trie.Trie
-	StateTrie *trie.Trie
-	TxBlocks map[types.Hash]*types.StateBlock
+	StateTrie     *trie.Trie
+	TxBlocks      map[types.Hash]*types.StateBlock
 }
 
 func NewPovVerifyStat() *PovVerifyStat {
@@ -188,7 +188,7 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat
 		return InvalidTime, fmt.Errorf("timestamp %d not greater than previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
 	}
 
-	if block.GetHeight() != prevBlock.GetHeight() + 1 {
+	if block.GetHeight() != prevBlock.GetHeight()+1 {
 		return InvalidHeight, fmt.Errorf("height %d not continue with previous %d", block.GetHeight(), prevBlock.GetHeight())
 	}
 
