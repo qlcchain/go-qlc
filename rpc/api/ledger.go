@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/qlcchain/go-qlc/p2p"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -15,6 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
@@ -351,6 +350,25 @@ func (l *LedgerApi) BlockHash(block types.StateBlock) types.Hash {
 // BlocksCount returns the number of blocks (include smartcontrant block) in the ctx and unchecked synchronizing blocks
 func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	sbCount, err := l.relation.BlocksCount()
+	if err != nil {
+		return nil, err
+	}
+	scbCount, err := l.ledger.CountSmartContractBlocks()
+	if err != nil {
+		return nil, err
+	}
+	unCount, err := l.ledger.CountUncheckedBlocks()
+	if err != nil {
+		return nil, err
+	}
+	c := make(map[string]uint64)
+	c["count"] = sbCount + scbCount
+	c["unchecked"] = unCount
+	return c, nil
+}
+
+func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
+	sbCount, err := l.ledger.CountStateBlocks()
 	if err != nil {
 		return nil, err
 	}
