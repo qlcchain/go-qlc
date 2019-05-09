@@ -131,6 +131,7 @@ type WithdrawPledgeParam struct {
 	Beneficial types.Address `json:"beneficial"`
 	Amount     types.Balance `json:"amount"`
 	PType      string        `json:"pType"`
+	NEP5TxId   string        `json:"nep5TxId"`
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byte, error) {
@@ -149,11 +150,11 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byt
 		return nil, fmt.Errorf("unsupport pledge type %s", param.PType)
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial, param.Amount.Int, t)
+	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial, param.Amount.Int, t, param.NEP5TxId)
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*types.StateBlock, error) {
-	if param.Beneficial.IsZero() || param.Amount.IsZero() || len(param.PType) == 0 {
+	if param.Beneficial.IsZero() || param.Amount.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
 

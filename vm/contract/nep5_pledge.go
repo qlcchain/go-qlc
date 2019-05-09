@@ -223,7 +223,7 @@ func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBloc
 	}
 
 	if block.Data, err = cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial,
-		param.Amount, param.PType); err != nil {
+		param.Amount, param.PType, param.NEP5TxId); err != nil {
 		return
 	}
 
@@ -237,9 +237,9 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		return nil, err
 	}
 
-	pledgeResults := cabi.SearchBeneficialPledgeInfo(ctx, param)
+	pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(ctx, param)
 
-	if len(pledgeResults) == 0 {
+	if pledgeResult == nil {
 		return nil, errors.New("pledge is not ready")
 	}
 
@@ -249,7 +249,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	//	})
 	//}
 
-	pledgeInfo := pledgeResults[0]
+	pledgeInfo := pledgeResult
 
 	amount, _ := ctx.CalculateAmount(input)
 
