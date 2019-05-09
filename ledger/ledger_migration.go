@@ -130,7 +130,7 @@ func (m MigrationV4ToV5) Migrate(txn db.StoreTxn) error {
 	}
 
 	if b {
-		fmt.Println("migrating ledger v4 to v5 ... ")
+		//fmt.Println("migrating ledger v4 to v5 ... ")
 
 		bas := make(map[types.Address]types.Balance)
 		err = txn.Iterator(idPrefixRepresentation, func(key []byte, val []byte, b byte) error {
@@ -164,6 +164,41 @@ func (m MigrationV4ToV5) Migrate(txn db.StoreTxn) error {
 				return err
 			}
 		}
+
+		ams := make([]*types.AccountMeta, 0)
+		err = txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
+			am := new(types.AccountMeta)
+			_, err := am.UnmarshalMsg(val)
+			if err != nil {
+				return err
+			}
+			ams = append(ams, am)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		for _, am := range ams {
+			tm := am.Token(common.ChainToken())
+			if tm != nil {
+				am.CoinBalance = tm.Balance
+				am.CoinNetwork = types.ZeroBalance
+				am.CoinStorage = types.ZeroBalance
+				am.CoinOracle = types.ZeroBalance
+				am.CoinVote = types.ZeroBalance
+
+				amKey := getAccountMetaKey(am.Address)
+				amBytes, err := am.MarshalMsg(nil)
+				if err != nil {
+					return err
+				}
+				if err := txn.Set(amKey, amBytes); err != nil {
+					return err
+				}
+			}
+		}
+
 		return updateVersion(m, txn)
 	}
 	return nil
@@ -192,6 +227,6 @@ func updateVersion(m db.Migration, txn db.StoreTxn) error {
 	if err := setVersion(int64(m.EndVersion()), txn); err != nil {
 		return err
 	}
-	fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
+	//fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
 	return nil
 }
