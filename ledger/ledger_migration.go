@@ -181,7 +181,7 @@ func (m MigrationV4ToV5) Migrate(txn db.StoreTxn) error {
 
 		for _, am := range ams {
 			tm := am.Token(common.ChainToken())
-			if tm != nil {
+			if tm != nil && am.CoinBalance.Int == nil {
 				am.CoinBalance = tm.Balance
 				am.CoinNetwork = types.ZeroBalance
 				am.CoinStorage = types.ZeroBalance
