@@ -55,14 +55,14 @@ func (bp *BlockProcessor) Start() {
 
 func (bp *BlockProcessor) processBlocks() {
 	timer := time.NewTicker(findOnlineRepresentativesInterval)
-	timer1 := time.NewTicker(searchUncheckedCacheInterval)
+	//timer1 := time.NewTicker(searchUncheckedCacheInterval)
 	for {
 		select {
 		case <-bp.quitCh:
 			bp.dp.logger.Info("Stopped process blocks.")
 			return
-		case <-timer1.C:
-			go bp.searchUncheckedCache()
+		//case <-timer1.C:
+		//	go bp.searchUncheckedCache()
 		case bs := <-bp.blocks:
 			result, err := bp.dp.verifier.Process(bs.block)
 			if err != nil {
@@ -114,7 +114,7 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 		if bs.blockFrom == types.Synchronized {
 			bp.dp.logger.Debugf("Block %s from sync,no need consensus", hash)
 		} else if bs.blockFrom == types.UnSynchronized {
-			bp.dp.logger.Debugf("Block %s basic info is correct,begin add it to roots", hash)
+			bp.dp.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			bp.dp.acTrx.addToRoots(blk)
 		} else {
 			bp.dp.logger.Errorf("Block %s UnKnow from", hash)
@@ -142,43 +142,54 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 		bp.dp.logger.Errorf("Fork for block: %s", hash)
 		bp.processFork(blk)
 	case process.GapPrevious:
+		//bp.dp.logger.Debugf("Gap previous for block: %s", hash)
+		//if !bp.uncheckedCache.Has(blk.Previous) {
+		//	now := time.Now().Add(uncheckedTimeout).UTC().Unix()
+		//	cache := &cacheInfo{
+		//		b:             bs,
+		//		uncheckedKind: types.UncheckedKindPrevious,
+		//		time:          now,
+		//	}
+		//	err := bp.uncheckedCache.Set(blk.Previous, cache)
+		//	if err != nil {
+		//		bp.dp.logger.Error(err)
+		//		err = bp.dp.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.blockFrom)
+		//		if err != nil {
+		//			bp.dp.logger.Errorf("gap previous,add uncheckedBlock error:[%s],block is [%s]", err, hash)
+		//			return err
+		//		}
+		//	}
+		//}
 		bp.dp.logger.Debugf("Gap previous for block: %s", hash)
-		if !bp.uncheckedCache.Has(blk.Previous) {
-			now := time.Now().Add(uncheckedTimeout).UTC().Unix()
-			cache := &cacheInfo{
-				b:             bs,
-				uncheckedKind: types.UncheckedKindPrevious,
-				time:          now,
-			}
-			err := bp.uncheckedCache.Set(blk.Previous, cache)
-			if err != nil {
-				bp.dp.logger.Error(err)
-				err = bp.dp.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.blockFrom)
-				if err != nil {
-					bp.dp.logger.Errorf("gap previous,add uncheckedBlock error:[%s],block is [%s]", err, hash)
-					return err
-				}
-			}
+		err := bp.dp.ledger.AddUncheckedBlock(blk.GetPrevious(), blk, types.UncheckedKindPrevious, bs.blockFrom)
+		if err != nil {
+			return err
 		}
 	case process.GapSource:
+		//bp.dp.logger.Debugf("Gap source for block: %s", hash)
+		//if !bp.uncheckedCache.Has(blk.Link) {
+		//	now := time.Now().Add(uncheckedTimeout).UTC().Unix()
+		//	cache := &cacheInfo{
+		//		b:             bs,
+		//		uncheckedKind: types.UncheckedKindLink,
+		//		time:          now,
+		//	}
+		//	err := bp.uncheckedCache.Set(blk.Link, cache)
+		//	if err != nil {
+		//		bp.dp.logger.Error(err)
+		//		err = bp.dp.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.blockFrom)
+		//		if err != nil {
+		//			bp.dp.logger.Errorf("gap source,add uncheckedBlock error [%s],block is [%s]", err, hash)
+		//			return err
+		//		}
+		//	}
+		//}
 		bp.dp.logger.Debugf("Gap source for block: %s", hash)
-		if !bp.uncheckedCache.Has(blk.Link) {
-			now := time.Now().Add(uncheckedTimeout).UTC().Unix()
-			cache := &cacheInfo{
-				b:             bs,
-				uncheckedKind: types.UncheckedKindLink,
-				time:          now,
-			}
-			err := bp.uncheckedCache.Set(blk.Link, cache)
-			if err != nil {
-				bp.dp.logger.Error(err)
-				err = bp.dp.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.blockFrom)
-				if err != nil {
-					bp.dp.logger.Errorf("gap source,add uncheckedBlock error [%s],block is [%s]", err, hash)
-					return err
-				}
-			}
+		err := bp.dp.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.blockFrom)
+		if err != nil {
+			return err
 		}
+
 	}
 	return nil
 }
@@ -211,27 +222,55 @@ func (bp *BlockProcessor) findAnotherForkedBlock(block *types.StateBlock) *types
 }
 
 func (bp *BlockProcessor) queueUnchecked(hash types.Hash) {
-	ci, e := bp.queueUncheckedFromCache(hash)
-	if e {
-		result, err := bp.dp.verifier.Process(ci.b.block)
-		if err != nil {
-			bp.dp.logger.Errorf("error: [%s] when verify block:[%s]", err, ci.b.block.GetHash())
-			return
+	//ci, e := bp.queueUncheckedFromCache(hash)
+	//if e {
+	//	result, err := bp.dp.verifier.Process(ci.b.block)
+	//	if err != nil {
+	//		bp.dp.logger.Errorf("error: [%s] when verify block:[%s]", err, ci.b.block.GetHash())
+	//		return
+	//	}
+	//
+	//	err = bp.processResult(result, ci.b)
+	//	if err != nil {
+	//		bp.dp.logger.Error(err)
+	//	}
+	//	for _, v := range ci.votes {
+	//		bp.dp.acTrx.vote(v)
+	//	}
+	//	r := bp.uncheckedCache.Remove(hash)
+	//	if !r {
+	//		bp.dp.logger.Error("remove cache for unchecked fail")
+	//	}
+	//} else {
+	//	bp.queueUncheckedFromLedger(hash)
+	//}
+	blkLink, bf, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	if blkLink != nil {
+		//bp.dp.logger.Debugf("Get blkLink for hash: [%s]", blkLink.GetHash())
+		bs := blockSource{
+			block:     blkLink,
+			blockFrom: bf,
 		}
+		bp.blocks <- bs
+		err := bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+		if err != nil {
+			bp.dp.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+		}
+	}
 
-		err = bp.processResult(result, ci.b)
+	blkPre, bf, _ := bp.dp.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+	if blkPre != nil {
+		//bp.dp.logger.Infof("Get blkPre for hash: %s", blkPre.GetHash())
+		bs := blockSource{
+			block:     blkPre,
+			blockFrom: bf,
+		}
+		bp.blocks <- bs
+		err := bp.dp.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
 		if err != nil {
-			bp.dp.logger.Error(err)
+			bp.dp.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+
 		}
-		for _, v := range ci.votes {
-			bp.dp.acTrx.vote(v)
-		}
-		r := bp.uncheckedCache.Remove(hash)
-		if !r {
-			bp.dp.logger.Error("remove cache for unchecked fail")
-		}
-	} else {
-		bp.queueUncheckedFromLedger(hash)
 	}
 }
 
@@ -241,6 +280,7 @@ func (bp *BlockProcessor) queueUncheckedFromCache(hash types.Hash) (*cacheInfo, 
 	} else {
 		m, err := bp.uncheckedCache.Get(hash)
 		if err != nil {
+			bp.dp.logger.Error(err)
 			return nil, false
 		}
 		ci := m.(*cacheInfo)

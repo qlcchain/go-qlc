@@ -23,8 +23,8 @@ const (
 	findOnlineRepresentativesInterval = 2 * time.Minute
 	repTimeout                        = 5 * time.Minute
 	uncheckedTimeout                  = 5 * time.Minute
-	searchUncheckedCacheInterval      = 2 * time.Minute
-	blockCacheExpirationTime          = 10 * time.Minute
+	//searchUncheckedCacheInterval      = 2 * time.Minute
+	blockCacheExpirationTime = 10 * time.Minute
 )
 
 var (
@@ -330,12 +330,12 @@ func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash,
 }
 
 func (dps *DPoS) ReceiveSyncBlock(blk *types.StateBlock) {
-	dps.logger.Info("Sync Event")
+	//	dps.logger.Info("Sync Event")
 	bs := blockSource{
 		block:     blk,
 		blockFrom: types.Synchronized,
 	}
-	//dps.logger.Infof("Sync Event for block:[%s]", bs.block.GetHash())
+	dps.logger.Infof("Sync Event for block:[%s]", bs.block.GetHash())
 	hash := bs.block.GetHash()
 	if !dps.bp.blockCache.Has(hash) {
 		dps.bp.blocks <- bs
