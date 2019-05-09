@@ -28,6 +28,13 @@ type PovApiTxLookup struct {
 	Transaction *types.StateBlock  `json:"transaction"`
 }
 
+type PovLedgerStats struct {
+	PovBlockCount uint64
+	PovTxCount uint64
+	PovBestCount uint64
+	StateBlockCount uint64
+}
+
 func NewPovApi(ledger *ledger.Ledger) *PovApi {
 	return &PovApi{ledger: ledger, logger: log.NewLogger("rpc/pov")}
 }
@@ -155,4 +162,31 @@ func (api *PovApi) GetAccountStateByBlockHeight(height uint64, address types.Add
 	}
 
 	return api.GetAccountState(block.StateHash, address)
+}
+
+func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
+	stats := &PovLedgerStats{}
+
+	var err error
+	stats.PovBlockCount, err = api.ledger.CountPovBlocks()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.PovTxCount, err = api.ledger.CountPovTxs()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.PovBestCount, err = api.ledger.CountPovBestHashs()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.StateBlockCount, err = api.ledger.CountStateBlocks()
+	if err != nil {
+		return nil, err
+	}
+
+	return stats, nil
 }

@@ -531,7 +531,7 @@ func (l *Ledger) GetPovBlockByHash(hash types.Hash, txns ...db.StoreTxn) (*types
 		return nil, err
 	}
 
-	return l.GetPovBlockByHeight(height, txns...)
+	return l.GetPovBlockByHeightAndHash(height, hash, txns...)
 }
 
 func (l *Ledger) GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error {
@@ -625,4 +625,22 @@ func (l *Ledger) DropAllPovBlocks() error {
 	_ = txn.Drop(prefix)
 
 	return nil
+}
+
+func (l *Ledger) CountPovBlocks(txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	return txn.Count([]byte{idPrefixPovHeader})
+}
+
+func (l *Ledger) CountPovTxs(txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	return txn.Count([]byte{idPrefixPovTxLookup})
+}
+
+func (l *Ledger) CountPovBestHashs(txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	return txn.Count([]byte{idPrefixPovBestHash})
 }

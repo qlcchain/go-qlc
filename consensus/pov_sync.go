@@ -8,6 +8,7 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"go.uber.org/zap"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -490,6 +491,29 @@ func (ss *PovSyncer) BestPeer() *PovSyncPeer {
 	return bestPeer
 }
 
+func (ss *PovSyncer) GetRandomPeers() []*PovSyncPeer {
+	var allPeers []*PovSyncPeer
+	var selectPeers []*PovSyncPeer
+
+	ss.allPeers.Range(func(key, value interface{}) bool {
+		peer := value.(*PovSyncPeer)
+		allPeers = append(allPeers, peer)
+		return true
+	})
+
+	if len(allPeers) <= 2 {
+		return allPeers
+	}
+
+	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	idxSeqs := rd.Perm(len(allPeers))
+
+	selectPeers = append(selectPeers, allPeers[idxSeqs[0]])
+	selectPeers = append(selectPeers, allPeers[idxSeqs[1]])
+
+	return selectPeers
+}
+
 func (ss *PovSyncer) PeerCount() int {
 	peerCount := 0
 	ss.allPeers.Range(func(key, value interface{}) bool {
@@ -570,8 +594,8 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32) {
 }
 
 func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, endHash types.Hash) {
-	peer := ss.BestPeer()
-	if peer == nil {
+	peers := ss.GetRandomPeers()
+	if len(peers) <= 0 {
 		return
 	}
 
@@ -580,5 +604,7 @@ func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, endHash types.Hash) 
 	req.StartHash = startHash
 	req.EndHash = endHash
 
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.BulkPullRequest, req, peer.peerID)
+	for _, peer := range peers {
+		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.BulkPullRequest, req, peer.peerID)
+	}
 }

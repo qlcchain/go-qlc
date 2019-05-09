@@ -148,4 +148,7 @@ type Store interface {
 	HasPovBlock(height uint64, hash types.Hash, txns ...db.StoreTxn) bool
 
 	DropAllPovBlocks() error
+	CountPovBlocks(txns ...db.StoreTxn) (uint64, error)
+	CountPovTxs(txns ...db.StoreTxn) (uint64, error)
+	CountPovBestHashs(txns ...db.StoreTxn) (uint64, error)
 }

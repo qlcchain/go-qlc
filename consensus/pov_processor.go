@@ -4,6 +4,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/process"
+	"sync"
 	"time"
 )
 
@@ -40,6 +41,7 @@ type PovBlockProcessor struct {
 	oldestOrphan  *PovOrphanBlock
 
 	txPendingBlocks map[types.Hash]*PovPendingBlock
+	txPendingMux sync.Mutex
 
 	waitingBlocks []*PovBlockSource
 	blockCh       chan *PovBlockSource
@@ -87,17 +89,24 @@ func (bp *PovBlockProcessor) Stop() error {
 }
 
 func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
+	bp.txPendingMux.Lock()
+	defer bp.txPendingMux.Unlock()
+
 	txHash := tx.GetHash()
 	pendingBlock := bp.txPendingBlocks[txHash]
 	if pendingBlock == nil {
 		return
 	}
+	delete(bp.txPendingBlocks, txHash)
+
 	if _, ok := pendingBlock.txResults[txHash]; !ok {
 		return
 	}
 	delete(pendingBlock.txResults, txHash)
 
 	if len(pendingBlock.txResults) <= 0 {
+		bp.povEngine.GetLogger().Debugf("release tx pending block %s", pendingBlock.blockSrc.block.GetHash())
+
 		bp.blockCh <- pendingBlock.blockSrc
 	}
 }
@@ -330,6 +339,9 @@ func (bp *PovBlockProcessor) GetOrphanRoot(hash types.Hash) (types.Hash, uint32)
 }
 
 func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {
+	bp.txPendingMux.Lock()
+	defer bp.txPendingMux.Unlock()
+
 	pendingBlock := &PovPendingBlock{
 		blockSrc:  blockSrc,
 		txResults: stat.TxResults,

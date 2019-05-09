@@ -27,6 +27,7 @@ var (
 	ErrPovInvalidPrevious = errors.New("invalid pov block previous")
 	ErrPovFailedVerify    = errors.New("failed to verify block")
 	ErrPovForkHashZero    = errors.New("fork point hash is zero")
+	ErrPovInvalidHead     = errors.New("invalid pov head block")
 )
 
 const (
@@ -322,6 +323,11 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 }
 
 func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock) error {
+	latestBlock := bc.LatestBlock()
+	if block.GetHeight() != latestBlock.GetHeight()+1 {
+		return ErrPovInvalidHeight
+	}
+
 	err := bc.connectBlock(txn, block)
 	if err != nil {
 		return err
@@ -340,6 +346,11 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 }
 
 func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBlock) error {
+	latestBlock := bc.LatestBlock()
+	if latestBlock.GetHash() != block.GetHash() {
+		return ErrPovInvalidHash
+	}
+
 	err := bc.disconnectTransactions(txn, block)
 	if err != nil {
 		return err
@@ -365,31 +376,39 @@ func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBl
 }
 
 func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) error {
-	oldBlock := bc.LatestBlock()
+	oldHeadBlock := bc.LatestBlock()
+	if oldHeadBlock == nil {
+		return ErrPovInvalidHead
+	}
+
+	bc.logger.Infof("before fork process, head %d/%s", oldHeadBlock.GetHeight(), oldHeadBlock.GetHash())
 
 	var detachBlocks []*types.PovBlock
 	var attachBlocks []*types.PovBlock
 	var forkHash types.Hash
 
+	//old: b1 <- b2 <- b3 <- b4 <- b5 <- b6-1 <- b7-1
+	//new:                            <- b6-2 <- b7-2 <- b8 <- b9 <- b10
+
+	// step1: attach b7-2(exclude) <- b10
 	attachBlock := newBlock
-	for height := attachBlock.GetHeight(); height > oldBlock.GetHeight(); height-- {
+	for height := attachBlock.GetHeight(); height > oldHeadBlock.GetHeight(); height-- {
 		attachBlocks = append(attachBlocks, attachBlock)
 
 		prevHash := attachBlock.GetPrevious()
 		attachBlock = bc.GetBlockByHash(prevHash)
 		if attachBlock == nil {
-			bc.logger.Errorf("failed to get previous block %s", prevHash)
+			bc.logger.Errorf("failed to get previous attach block %s", prevHash)
 			return ErrPovInvalidPrevious
 		}
 	}
 
-	detachBlock := oldBlock
+	detachBlock := oldHeadBlock
 
+	// step2: attach b6-2 <- b7-2(include)
+	//        detach b6-1 <- b7-1(include)
+	//        fork point: b5
 	for {
-		if attachBlock == nil || detachBlock == nil {
-			return ErrPovInvalidPrevious
-		}
-
 		attachBlocks = append(attachBlocks, attachBlock)
 		detachBlocks = append(detachBlocks, detachBlock)
 
@@ -401,13 +420,15 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 		prevAttachHash := attachBlock.GetPrevious()
 		attachBlock = bc.GetBlockByHash(prevAttachHash)
 		if attachBlock == nil {
-			break
+			bc.logger.Errorf("failed to get previous attach block %s", prevAttachHash)
+			return ErrPovInvalidPrevious
 		}
 
 		prevDetachHash := detachBlock.GetPrevious()
 		detachBlock = bc.GetBlockByHash(prevDetachHash)
 		if detachBlock == nil {
-			break
+			bc.logger.Errorf("failed to get previous detach block %s", prevDetachHash)
+			return ErrPovInvalidPrevious
 		}
 	}
 
@@ -425,6 +446,7 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 	bc.logger.Infof("find fork block %d/%s, detach %d, attach %d",
 		forkBlock.GetHeight(), forkBlock.GetHash(), len(detachBlocks), len(attachBlocks))
 
+	// detach from high to low
 	for _, detachBlock := range detachBlocks {
 		err := bc.disconnectBestBlock(txn, detachBlock)
 		if err != nil {
@@ -432,12 +454,25 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 		}
 	}
 
+	tmpHeadBlock := bc.LatestBlock()
+	bc.logger.Infof("after detach process, head %d/%s", tmpHeadBlock.GetHeight(), tmpHeadBlock.GetHash())
+
+	// reverse attach blocks
+	for i := len(attachBlocks)/2-1; i >= 0; i-- {
+		opp := len(attachBlocks)-1-i
+		attachBlocks[i], attachBlocks[opp] = attachBlocks[opp], attachBlocks[i]
+	}
+
+	// attach from low to high
 	for _, attachBlock := range attachBlocks {
 		err := bc.connectBestBlock(txn, attachBlock)
 		if err != nil {
 			return err
 		}
 	}
+
+	newHeadBlock := bc.LatestBlock()
+	bc.logger.Infof("after attach process, head %d/%s", newHeadBlock.GetHeight(), newHeadBlock.GetHash())
 
 	return nil
 }

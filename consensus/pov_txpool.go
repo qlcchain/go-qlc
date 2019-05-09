@@ -103,7 +103,20 @@ func (tp *PovTxPool) addTx(txHash types.Hash, tx *types.StateBlock) {
 		tp.accountTxs[tx.Address] = accTxList
 	}
 
-	accTxList.PushBack(tx)
+	var childE *list.Element
+	for itE:=accTxList.Back(); itE!=nil; itE = itE.Prev() {
+		itTx := itE.Value.(*types.StateBlock)
+		if itTx.GetPrevious() == txHash {
+			childE = itE
+			break
+		}
+	}
+
+	if childE != nil {
+		accTxList.InsertBefore(tx, childE)
+	} else {
+		accTxList.PushBack(tx)
+	}
 	tp.allTxs[txHash] = tx
 
 	tp.lastUpdated = time.Now().Unix()
