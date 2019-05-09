@@ -239,7 +239,9 @@ func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 	bp.povEngine.GetLogger().Debugf("add orphan block %s prev %s", blockHash, prevHash)
 
 	orphanRoot, gapNum := bp.GetOrphanRoot(blockHash)
-	bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, gapNum)
+	if gapNum > 0 {
+		bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, gapNum)
+	}
 }
 
 func (bp *PovBlockProcessor) removeOrphanBlock(orphanBlock *PovOrphanBlock) {
@@ -313,15 +315,15 @@ func (bp *PovBlockProcessor) GetOrphanRoot(hash types.Hash) (types.Hash, uint32)
 	// Keep looping while the parent of each orphaned block is
 	// known and is an orphan itself.
 	orphanRoot := hash
-	prevHash := hash
+	orphanHash := hash
 	gapNum := uint32(0)
 	for {
-		orphan, exists := bp.orphanBlocks[prevHash]
+		orphan, exists := bp.orphanBlocks[orphanHash]
 		if !exists {
 			break
 		}
-		orphanRoot = prevHash
-		prevHash = orphan.blockSrc.block.GetPrevious()
+		orphanRoot = orphan.blockSrc.block.GetPrevious()
+		orphanHash = orphanRoot
 		gapNum++
 	}
 	return orphanRoot, gapNum
@@ -333,9 +335,11 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *p
 		txResults: stat.TxResults,
 	}
 
+	bp.povEngine.GetLogger().Debugf("add tx pending block %s txs %d", blockSrc.block.GetHash(), len(stat.TxResults))
+
 	for txHash := range stat.TxResults {
 		bp.txPendingBlocks[txHash] = pendingBlock
-	}
 
-	bp.povEngine.GetLogger().Debugf("add tx pending block %s txs %d", blockSrc.block.GetHash(), len(stat.TxResults))
+		bp.povEngine.GetSyncer().requestTxsByHash(txHash, txHash)
+	}
 }

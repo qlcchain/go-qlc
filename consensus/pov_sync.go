@@ -16,6 +16,7 @@ const (
 	minPovSyncPeerCount = 1
 	checkPeerStatusTime = 30
 	waitEnoughPeerTime = 75
+	maxSyncBlockPerReq = 1000
 )
 
 type PovSyncPeer struct {
@@ -287,6 +288,9 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 		blockCount = blockCount - 1
 	}
 
+	maxBlockSize := ss.povEngine.GetConfig().PoV.BlockSize
+	curBlkMsgSize := 0
+
 	endHeight := startHeight + uint64(blockCount)
 	for height:=startHeight; height<endHeight; height++ {
 		block, err := ss.getChain().GetBlockByHeight(height)
@@ -295,6 +299,11 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 			break
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
+
+		curBlkMsgSize = curBlkMsgSize + block.Msgsize()
+		if curBlkMsgSize >= maxBlockSize {
+			break
+		}
 	}
 
 	rsp.Count = uint32(len(rsp.Blocks))
@@ -519,7 +528,7 @@ func (ss *PovSyncer) requestSyncingBlocks(lastHeight uint64) {
 
 	req := new(protos.PovBulkPullReq)
 
-	req.Count = 1
+	req.Count = maxSyncBlockPerReq
 	req.StartHeight = ss.syncHeight
 	req.Reason = protos.PovReasonSync
 
@@ -542,6 +551,10 @@ func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
 }
 
 func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32) {
+	if startHash.IsZero() || count <= 0 {
+		return
+	}
+
 	peer := ss.BestPeer()
 	if peer == nil {
 		return
@@ -554,4 +567,18 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32) {
 	req.Reason = protos.PovReasonFetch
 
 	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
+}
+
+func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, endHash types.Hash) {
+	peer := ss.BestPeer()
+	if peer == nil {
+		return
+	}
+
+	req := new(protos.BulkPullReqPacket)
+
+	req.StartHash = startHash
+	req.EndHash = endHash
+
+	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.BulkPullRequest, req, peer.peerID)
 }

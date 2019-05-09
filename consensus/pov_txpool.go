@@ -45,7 +45,7 @@ func (tp *PovTxPool) Init() {
 			return nil
 		}
 
-		logger.Debugf("account block %s not in pov block", txHash)
+		//logger.Debugf("account block %s not in pov block", txHash)
 		unpackStateBlockNum++
 
 		tp.addTx(txHash, tx)

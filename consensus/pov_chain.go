@@ -493,7 +493,7 @@ func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.Po
 
 		txpool.addTx(txPov.Hash, txBlock)
 
-		err := ledger.DeletePovTxLookup(txPov.Hash)
+		err := ledger.DeletePovTxLookup(txPov.Hash, txn)
 		if err != nil {
 			return err
 		}
@@ -517,6 +517,9 @@ func (bc *PovBlockChain) FindAncestor(block *types.PovBlock, height uint64) *typ
 		if prevBlock.GetHeight() == height {
 			return prevBlock
 		}
+		if prevBlock.GetHeight() < height {
+			return nil
+		}
 
 		curBlock = prevBlock
 	}
@@ -536,7 +539,7 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Si
 	distance := uint64(bc.getConfig().PoV.TargetCycle - 1)
 	firstBlock := bc.RelativeAncestor(block, distance)
 	if firstBlock == nil {
-		bc.logger.Infof("failed to get relative ancestor at height %d distance %d", block.GetHeight(), distance)
+		bc.logger.Errorf("failed to get relative ancestor at height %d distance %d", block.GetHeight(), distance)
 		return types.ZeroSignature, ErrPovUnknownAncestor
 	}
 

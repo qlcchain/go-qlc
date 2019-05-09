@@ -54,6 +54,11 @@ func BytesToBalance(b []byte) Balance {
 	return Balance{t}
 }
 
+func NewBalance(x int64) Balance {
+	t := big.NewInt(x)
+	return Balance{t}
+}
+
 // Bytes returns the binary representation of this Balance with the given
 // endianness.
 func (b Balance) Bytes() []byte {
