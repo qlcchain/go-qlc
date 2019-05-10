@@ -60,18 +60,30 @@ func (b *StateBlock) GetBalance() Balance {
 }
 
 func (b *StateBlock) GetVote() Balance {
+	if b.Vote.Int == nil {
+		return ZeroBalance
+	}
 	return b.Vote
 }
 
 func (b *StateBlock) GetOracle() Balance {
+	if b.Oracle.Int == nil {
+		return ZeroBalance
+	}
 	return b.Oracle
 }
 
 func (b *StateBlock) GetNetwork() Balance {
+	if b.Network.Int == nil {
+		return ZeroBalance
+	}
 	return b.Network
 }
 
 func (b *StateBlock) GetStorage() Balance {
+	if b.Storage.Int == nil {
+		return ZeroBalance
+	}
 	return b.Storage
 }
 
@@ -116,7 +128,20 @@ func (b *StateBlock) GetTimestamp() int64 {
 }
 
 func (b *StateBlock) TotalBalance() Balance {
-	return b.Balance.Add(b.Vote).Add(b.Network).Add(b.Oracle).Add(b.Storage)
+	balance := b.Balance
+	if b.Vote.Int != nil {
+		balance = balance.Add(b.Vote)
+	}
+	if b.Network.Int != nil {
+		balance = balance.Add(b.Network)
+	}
+	if b.Oracle.Int != nil {
+		balance = balance.Add(b.Oracle)
+	}
+	if b.Storage.Int != nil {
+		balance = balance.Add(b.Storage)
+	}
+	return balance
 }
 
 func (b *StateBlock) Root() Hash {

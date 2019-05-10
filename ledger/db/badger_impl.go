@@ -5,10 +5,9 @@ import (
 	"log"
 	"sort"
 
-	"github.com/dgraph-io/badger/pb"
-
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
+	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common/util"
 )
 

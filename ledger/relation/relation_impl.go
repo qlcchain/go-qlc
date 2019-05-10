@@ -102,7 +102,7 @@ func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 	return blockHash(h)
 }
 
-func (r *Relation) PhoneBlocks(phone []byte, sender bool) ([]types.Hash, error) {
+func (r *Relation) PhoneBlocks(phone []byte, sender bool, limit int, offset int) ([]types.Hash, error) {
 	condition := make(map[db.Column]interface{})
 	if sender == true {
 		condition[db.ColumnSender] = phoneToString(phone)
@@ -110,18 +110,18 @@ func (r *Relation) PhoneBlocks(phone []byte, sender bool) ([]types.Hash, error) 
 		condition[db.ColumnReceiver] = phoneToString(phone)
 	}
 	var m []blocksMessage
-	err := r.store.Read(db.TableBlockMessage, condition, -1, -1, db.ColumnNoNeed, &m)
+	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, db.ColumnTimestamp, &m)
 	if err != nil {
 		return nil, err
 	}
 	return blockMessage(m)
 }
 
-func (r *Relation) MessageBlocks(hash types.Hash) ([]types.Hash, error) {
+func (r *Relation) MessageBlocks(hash types.Hash, limit int, offset int) ([]types.Hash, error) {
 	condition := make(map[db.Column]interface{})
 	condition[db.ColumnMessage] = hash.String()
 	var m []blocksMessage
-	err := r.store.Read(db.TableBlockMessage, condition, -1, -1, db.ColumnNoNeed, &m)
+	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, db.ColumnTimestamp, &m)
 	if err != nil {
 		return nil, err
 	}

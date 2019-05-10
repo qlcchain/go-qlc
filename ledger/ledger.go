@@ -86,7 +86,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 4
+const version = 5
 
 func NewLedger(dir string) *Ledger {
 	lock.Lock()
@@ -141,7 +141,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3), new(MigrationV3ToV4)}
+		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3), new(MigrationV3ToV4), new(MigrationV4ToV5)}
 		err = txn.Upgrade(ms)
 		if err != nil {
 			l.logger.Error(err)
@@ -733,7 +733,7 @@ func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
 	return count + count2, nil
 }
 
-func (l *Ledger) getAccountMetaKey(address types.Address) []byte {
+func getAccountMetaKey(address types.Address) []byte {
 	var key [1 + types.AddressSize]byte
 	key[0] = idPrefixAccount
 	copy(key[1:], address[:])
@@ -746,7 +746,7 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 		return err
 	}
 
-	key := l.getAccountMetaKey(meta.Address)
+	key := getAccountMetaKey(meta.Address)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -763,7 +763,7 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 }
 
 func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	key := l.getAccountMetaKey(address)
+	key := getAccountMetaKey(address)
 	var meta types.AccountMeta
 
 	txn, flag := l.getTxn(false, txns...)
@@ -818,7 +818,7 @@ func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn)
 	if err != nil {
 		return err
 	}
-	key := l.getAccountMetaKey(meta.Address)
+	key := getAccountMetaKey(meta.Address)
 
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -840,7 +840,7 @@ func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta, txns ...db.Stor
 	if err != nil {
 		return err
 	}
-	key := l.getAccountMetaKey(meta.Address)
+	key := getAccountMetaKey(meta.Address)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -848,7 +848,7 @@ func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta, txns ...db.Stor
 }
 
 func (l *Ledger) DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) error {
-	key := l.getAccountMetaKey(address)
+	key := getAccountMetaKey(address)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -856,7 +856,7 @@ func (l *Ledger) DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) e
 }
 
 func (l *Ledger) HasAccountMeta(address types.Address, txns ...db.StoreTxn) (bool, error) {
-	key := l.getAccountMetaKey(address)
+	key := getAccountMetaKey(address)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -973,7 +973,7 @@ func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns 
 	return false, nil
 }
 
-func (l *Ledger) getRepresentationKey(address types.Address) []byte {
+func getRepresentationKey(address types.Address) []byte {
 	var key [1 + types.AddressSize]byte
 	key[0] = idPrefixRepresentation
 	copy(key[1:], address[:])
@@ -983,6 +983,7 @@ func (l *Ledger) getRepresentationKey(address types.Address) []byte {
 func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
 	benefit, err := l.GetRepresentation(address, txns...)
 	if err != nil && err != ErrRepresentationNotFound {
+		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
 		return err
 	}
 
@@ -993,9 +994,10 @@ func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, t
 	benefit.Storage = benefit.Storage.Add(diff.Storage)
 	benefit.Total = benefit.Total.Add(diff.Total)
 
-	key := l.getRepresentationKey(address)
+	key := getRepresentationKey(address)
 	val, err := benefit.MarshalMsg(nil)
 	if err != nil {
+		l.logger.Errorf("MarshalMsg benefit error: %s ,address: %s, val: %s", err, address, benefit)
 		return err
 	}
 	txn, flag := l.getTxn(true, txns...)
@@ -1007,6 +1009,7 @@ func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, t
 func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
 	benefit, err := l.GetRepresentation(address, txns...)
 	if err != nil {
+		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
 		return err
 	}
 	benefit.Balance = benefit.Balance.Sub(diff.Balance)
@@ -1016,9 +1019,10 @@ func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, t
 	benefit.Storage = benefit.Storage.Sub(diff.Storage)
 	benefit.Total = benefit.Total.Sub(diff.Total)
 
-	key := l.getRepresentationKey(address)
+	key := getRepresentationKey(address)
 	val, err := benefit.MarshalMsg(nil)
 	if err != nil {
+		l.logger.Errorf("MarshalMsg benefit error: %s ,address: %s, val: %s", err, address, benefit)
 		return err
 	}
 	txn, flag := l.getTxn(true, txns...)
@@ -1028,13 +1032,14 @@ func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, t
 }
 
 func (l *Ledger) GetRepresentation(address types.Address, txns ...db.StoreTxn) (*types.Benefit, error) {
-	key := l.getRepresentationKey(address)
+	key := getRepresentationKey(address)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	benefit := new(types.Benefit)
 	err := txn.Get(key, func(val []byte, b byte) (err error) {
 		if _, err = benefit.UnmarshalMsg(val); err != nil {
+			l.logger.Errorf("Unmarshal benefit error: %s ,address: %s, val: %s", err, address, string(val))
 			return err
 		}
 		return nil
@@ -1065,6 +1070,7 @@ func (l *Ledger) GetRepresentations(fn func(types.Address, *types.Benefit) error
 			return err
 		}
 		if _, err = benefit.UnmarshalMsg(val); err != nil {
+			l.logger.Errorf("Unmarshal benefit error: %s ,val: %s", err, string(val))
 			return err
 		}
 		if err := fn(address, benefit); err != nil {

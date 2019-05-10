@@ -120,6 +120,98 @@ func (m MigrationV3ToV4) EndVersion() int {
 	return 4
 }
 
+type MigrationV4ToV5 struct {
+}
+
+func (m MigrationV4ToV5) Migrate(txn db.StoreTxn) error {
+	b, err := checkVersion(m, txn)
+	if err != nil {
+		return err
+	}
+
+	if b {
+		//fmt.Println("migrating ledger v4 to v5 ... ")
+
+		bas := make(map[types.Address]types.Balance)
+		err = txn.Iterator(idPrefixRepresentation, func(key []byte, val []byte, b byte) error {
+			var amount types.Balance
+			if err := amount.UnmarshalText(val); err == nil {
+				address, err := types.BytesToAddress(key[1:])
+				if err != nil {
+					return err
+				}
+				bas[address] = amount
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		for k, v := range bas {
+			key := getRepresentationKey(k)
+			benefit := new(types.Benefit)
+			benefit.Balance = v
+			benefit.Storage = types.ZeroBalance
+			benefit.Vote = types.ZeroBalance
+			benefit.Oracle = types.ZeroBalance
+			benefit.Network = types.ZeroBalance
+			benefit.Total = v
+			val2, err := benefit.MarshalMsg(nil)
+			if err != nil {
+				return err
+			}
+			if err := txn.Set(key, val2); err != nil {
+				return err
+			}
+		}
+
+		ams := make([]*types.AccountMeta, 0)
+		err = txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
+			am := new(types.AccountMeta)
+			_, err := am.UnmarshalMsg(val)
+			if err != nil {
+				return err
+			}
+			ams = append(ams, am)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		for _, am := range ams {
+			tm := am.Token(common.ChainToken())
+			if tm != nil && am.CoinBalance.Int == nil {
+				am.CoinBalance = tm.Balance
+				am.CoinNetwork = types.ZeroBalance
+				am.CoinStorage = types.ZeroBalance
+				am.CoinOracle = types.ZeroBalance
+				am.CoinVote = types.ZeroBalance
+
+				amKey := getAccountMetaKey(am.Address)
+				amBytes, err := am.MarshalMsg(nil)
+				if err != nil {
+					return err
+				}
+				if err := txn.Set(amKey, amBytes); err != nil {
+					return err
+				}
+			}
+		}
+
+		return updateVersion(m, txn)
+	}
+	return nil
+}
+
+func (m MigrationV4ToV5) StartVersion() int {
+	return 4
+}
+
+func (m MigrationV4ToV5) EndVersion() int {
+	return 5
+}
+
 func checkVersion(m db.Migration, txn db.StoreTxn) (bool, error) {
 	v, err := getVersion(txn)
 	if err != nil {
@@ -135,6 +227,6 @@ func updateVersion(m db.Migration, txn db.StoreTxn) error {
 	if err := setVersion(int64(m.EndVersion()), txn); err != nil {
 		return err
 	}
-	fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
+	//fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
 	return nil
 }

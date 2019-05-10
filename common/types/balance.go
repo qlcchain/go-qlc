@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
@@ -155,6 +156,10 @@ func (b Balance) MarshalText() ([]byte, error) {
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (b *Balance) UnmarshalText(text []byte) error {
 	s := util.TrimQuotes(string(text))
+	_, err := strconv.Atoi(s)
+	if err != nil {
+		return err
+	}
 	balance := StringToBalance(s)
 	*b = balance
 	return nil

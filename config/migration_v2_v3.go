@@ -34,6 +34,7 @@ func (m *MigrationV2ToV3) Migration(data []byte, version int) ([]byte, int, erro
 	}
 	cfg3.ConfigV2 = cfg2
 	cfg3.Version = 3
+	cfg3.RPC.PublicModules = append(cfg3.RPC.PublicModules, "pledge")
 
 	bytes, err := json.Marshal(cfg3)
 	return bytes, m.endVersion, err
