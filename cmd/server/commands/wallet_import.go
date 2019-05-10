@@ -10,13 +10,12 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
+	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/spf13/cobra"
 )
 
@@ -71,16 +70,7 @@ func walletimport() {
 }
 
 func importWallet(seedP string) error {
-	var cm *config.CfgManager
-	var err error
-	if cfgPathP == "" {
-		cfgPathP = config.DefaultDataDir()
-		cm = config.NewCfgManager(cfgPathP)
-	} else {
-		cm = config.NewCfgManagerWithPathAndFileName(filepath.Dir(cfgPathP), filepath.Base(cfgPathP))
-
-	}
-	cfg, err := cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3())
+	cfg, err := cmdutil.GetConfig(cfgPathP)
 	if err != nil {
 		return err
 	}

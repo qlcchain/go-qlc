@@ -133,16 +133,7 @@ func addCommand() {
 
 func start() error {
 	var accounts []*types.Account
-	var cm *config.CfgManager
-	var err error
-	if cfgPathP == "" {
-		cfgPathP = config.DefaultDataDir()
-		cm = config.NewCfgManager(cfgPathP)
-	} else {
-		cm = config.NewCfgManagerWithPathAndFileName(filepath.Dir(cfgPathP), filepath.Base(cfgPathP))
-
-	}
-	cfg, err := cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3())
+	cfg, err := cmdutil.GetConfig(cfgPathP)
 	if err != nil {
 		return err
 	}

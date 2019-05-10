@@ -27,7 +27,7 @@ func NewCfgManager(path string) *CfgManager {
 	return cfg
 }
 
-func NewCfgManagerWithPathAndFileName(path string, name string) *CfgManager {
+func NewCfgManagerWithName(path string, name string) *CfgManager {
 	file := filepath.Join(path, name)
 	cfg := &CfgManager{
 		cfgFile: file,
