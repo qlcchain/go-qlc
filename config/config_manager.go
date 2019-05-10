@@ -27,6 +27,15 @@ func NewCfgManager(path string) *CfgManager {
 	return cfg
 }
 
+func NewCfgManagerWithPathAndFileName(path string, name string) *CfgManager {
+	file := filepath.Join(path, name)
+	cfg := &CfgManager{
+		cfgFile: file,
+		cfgPath: path,
+	}
+	return cfg
+}
+
 //Load the config file and will create default if config file no exist
 func (c *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 	_, err := os.Stat(c.cfgFile)

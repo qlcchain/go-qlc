@@ -10,6 +10,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 
@@ -70,23 +71,21 @@ func walletimport() {
 }
 
 func importWallet(seedP string) error {
-	var cfg *config.Config
+	var cm *config.CfgManager
 	var err error
-	if len(seedP) == 0 {
-		return errors.New("invalid seed")
-	}
 	if cfgPathP == "" {
 		cfgPathP = config.DefaultDataDir()
-		cm := config.NewCfgManager(cfgPathP)
-		cfg, err = cm.Load(config.NewMigrationV1ToV2())
-		if err != nil {
-			return err
-		}
+		cm = config.NewCfgManager(cfgPathP)
 	} else {
-		cfg, err = loadConfig()
-		if err != nil {
-			return err
-		}
+		cm = config.NewCfgManagerWithPathAndFileName(filepath.Dir(cfgPathP), filepath.Base(cfgPathP))
+
+	}
+	cfg, err := cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3())
+	if err != nil {
+		return err
+	}
+	if len(seedP) == 0 {
+		return errors.New("invalid seed")
 	}
 	var accounts []*types.Account
 	err = initNode(accounts, cfg)
