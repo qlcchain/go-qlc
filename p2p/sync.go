@@ -121,7 +121,12 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			zeroFrontier := new(types.Frontier)
 			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 			ss.remoteFrontiers = ss.remoteFrontiers[:0:0]
-			go ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+			go func() {
+				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+				if err != nil {
+					ss.logger.Error("process frontiers error")
+				}
+			}()
 		}
 		return
 	}
@@ -201,7 +206,11 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 					ss.next()
 				} else {
 					if len(ss.frontiers) == 0 {
-						getLocalFrontier(ss.qlcLedger)
+						var err error
+						ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
+						if err != nil {
+							ss.logger.Error("get local frontier error")
+						}
 						ss.next()
 					}
 					for _, value := range bulkPull {

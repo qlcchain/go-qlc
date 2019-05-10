@@ -95,8 +95,12 @@ func (node *QlcNode) startHost() error {
 	node.dis = discovery.NewRoutingDiscovery(node.kadDht)
 	node.ping = NewPingService(node.host)
 	node.peerStore = qlcHost.Peerstore()
-	node.peerStore.AddPrivKey(node.ID, node.privateKey)
-	node.peerStore.AddPubKey(node.ID, node.privateKey.GetPublic())
+	if err := node.peerStore.AddPrivKey(node.ID, node.privateKey); err != nil {
+		return err
+	}
+	if err := node.peerStore.AddPubKey(node.ID, node.privateKey.GetPublic()); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -170,14 +174,19 @@ func (node *QlcNode) startPeerDiscovery(pInfoS []pstore.PeerInfo) {
 	ticker := time.NewTicker(time.Duration(node.cfg.P2P.Discovery.DiscoveryInterval) * time.Second)
 	ticker1 := time.NewTicker(15 * time.Second)
 	node.connectBootstrap(pInfoS)
-	node.findPeers()
+	if err := node.findPeers(); err != nil {
+		node.logger.Errorf("find node error[%s]", err)
+	}
 	for {
 		select {
 		case <-node.quitPeerDiscoveryCh:
 			node.logger.Info("Stopped peer discovery Loop.")
 			return
 		case <-ticker.C:
-			node.findPeers()
+			if err := node.findPeers(); err != nil {
+				node.logger.Errorf("find node error[%s]", err)
+				continue
+			}
 		case <-ticker1.C:
 			node.connectBootstrap(pInfoS)
 		default:
@@ -218,13 +227,16 @@ func (node *QlcNode) StreamManager() *StreamManager {
 	return node.streamManager
 }
 
-func (node *QlcNode) stopHost() {
+func (node *QlcNode) stopHost() error {
 
 	if node.host == nil {
-		return
+		return errors.New("host not exit")
 	}
 
-	node.host.Close()
+	if err := node.host.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (node *QlcNode) stopPeerDiscovery() {
@@ -237,10 +249,13 @@ func (node *QlcNode) SetQlcService(ns *QlcService) {
 }
 
 // Stop stop a node.
-func (node *QlcNode) Stop() {
+func (node *QlcNode) Stop() error {
 	node.logger.Info("Stop QlcService Node...")
-	node.stopHost()
 	node.stopPeerDiscovery()
+	if err := node.stopHost(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // BroadcastMessage broadcast message.

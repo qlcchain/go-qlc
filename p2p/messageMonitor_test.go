@@ -340,7 +340,10 @@ func Test_SendMessage(t *testing.T) {
 	node2.msgService.Stop()
 	blk := mock.StateBlock()
 	//test send message to peers
-	node1.SendMessageToPeer(PublishReq, blk, peerID)
+	err = node1.SendMessageToPeer(PublishReq, blk, peerID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	time.Sleep(1 * time.Second)
 	if len(node2.msgService.publishMessageCh) != 1 {
 		t.Fatal("Send Message To Peer error")
