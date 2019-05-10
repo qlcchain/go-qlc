@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -134,20 +133,9 @@ func addCommand() {
 
 func start() error {
 	var accounts []*types.Account
-	var cfg *config.Config
-	var err error
-	if cfgPathP == "" {
-		cfgPathP = config.DefaultDataDir()
-		cm := config.NewCfgManager(cfgPathP)
-		cfg, err = cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3())
-		if err != nil {
-			return err
-		}
-	} else {
-		cfg, err = loadConfig()
-		if err != nil {
-			return err
-		}
+	cfg, err := cmdutil.GetConfig(cfgPathP)
+	if err != nil {
+		return err
 	}
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
@@ -355,22 +343,6 @@ func run() {
 		},
 	}
 	shell.AddCmd(s)
-}
-
-//Load the config file from --config
-func loadConfig() (*config.Config, error) {
-	content, err := ioutil.ReadFile(cfgPathP)
-	if err != nil {
-		return nil, err
-	}
-
-	// unmarshal config
-	var cfg config.Config
-	err = json.Unmarshal(content, &cfg)
-	if err != nil {
-		return nil, err
-	}
-	return &cfg, nil
 }
 
 func updateConfig(cfg *config.Config) error {

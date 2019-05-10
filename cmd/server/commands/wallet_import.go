@@ -14,8 +14,8 @@ import (
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
+	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/spf13/cobra"
 )
 
@@ -70,23 +70,12 @@ func walletimport() {
 }
 
 func importWallet(seedP string) error {
-	var cfg *config.Config
-	var err error
+	cfg, err := cmdutil.GetConfig(cfgPathP)
+	if err != nil {
+		return err
+	}
 	if len(seedP) == 0 {
 		return errors.New("invalid seed")
-	}
-	if cfgPathP == "" {
-		cfgPathP = config.DefaultDataDir()
-		cm := config.NewCfgManager(cfgPathP)
-		cfg, err = cm.Load(config.NewMigrationV1ToV2())
-		if err != nil {
-			return err
-		}
-	} else {
-		cfg, err = loadConfig()
-		if err != nil {
-			return err
-		}
 	}
 	var accounts []*types.Account
 	err = initNode(accounts, cfg)
