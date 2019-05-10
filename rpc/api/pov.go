@@ -29,9 +29,9 @@ type PovApiTxLookup struct {
 }
 
 type PovLedgerStats struct {
-	PovBlockCount uint64
-	PovTxCount uint64
-	PovBestCount uint64
+	PovBlockCount   uint64
+	PovTxCount      uint64
+	PovBestCount    uint64
 	StateBlockCount uint64
 }
 

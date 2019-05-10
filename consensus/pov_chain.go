@@ -458,8 +458,8 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 	bc.logger.Infof("after detach process, head %d/%s", tmpHeadBlock.GetHeight(), tmpHeadBlock.GetHash())
 
 	// reverse attach blocks
-	for i := len(attachBlocks)/2-1; i >= 0; i-- {
-		opp := len(attachBlocks)-1-i
+	for i := len(attachBlocks)/2 - 1; i >= 0; i-- {
+		opp := len(attachBlocks) - 1 - i
 		attachBlocks[i], attachBlocks[opp] = attachBlocks[opp], attachBlocks[i]
 	}
 

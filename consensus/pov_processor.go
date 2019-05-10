@@ -36,12 +36,13 @@ type PovPendingBlock struct {
 type PovBlockProcessor struct {
 	povEngine *PoVEngine
 
-	orphanBlocks  map[types.Hash]*PovOrphanBlock
-	parentOrphans map[types.Hash][]*PovOrphanBlock
+	orphanBlocks  map[types.Hash]*PovOrphanBlock   // blockHash -> block
+	parentOrphans map[types.Hash][]*PovOrphanBlock // blockHash -> child blocks
 	oldestOrphan  *PovOrphanBlock
 
-	txPendingBlocks map[types.Hash]*PovPendingBlock
-	txPendingMux sync.Mutex
+	pendingBlocks   map[types.Hash]int32            // blockHash -> struct{}
+	txPendingBlocks map[types.Hash]*PovPendingBlock // txHash -> block
+	txPendingMux    sync.Mutex
 
 	waitingBlocks []*PovBlockSource
 	blockCh       chan *PovBlockSource
@@ -55,6 +56,7 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 
 	bp.orphanBlocks = make(map[types.Hash]*PovOrphanBlock)
 	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
+	bp.pendingBlocks = make(map[types.Hash]int32)
 	bp.txPendingBlocks = make(map[types.Hash]*PovPendingBlock)
 
 	bp.waitingBlocks = make([]*PovBlockSource, 0, 1000)
@@ -105,8 +107,9 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 	delete(pendingBlock.txResults, txHash)
 
 	if len(pendingBlock.txResults) <= 0 {
-		bp.povEngine.GetLogger().Debugf("release tx pending block %s", pendingBlock.blockSrc.block.GetHash())
-
+		blockHash := pendingBlock.blockSrc.block.GetHash()
+		bp.povEngine.GetLogger().Debugf("release tx pending block %s", blockHash)
+		delete(bp.pendingBlocks, blockHash)
 		bp.blockCh <- pendingBlock.blockSrc
 	}
 }
@@ -175,6 +178,10 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	// duplicate block
 	if bp.orphanBlocks[blockHash] != nil {
 		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in orphans", blockHash)
+		return nil
+	}
+	if bp.pendingBlocks[blockHash] > 0 {
+		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in pendings", blockHash)
 		return nil
 	}
 	if chain.HasBestBlock(blockHash, block.GetHeight()) {
@@ -260,15 +267,12 @@ func (bp *PovBlockProcessor) removeOrphanBlock(orphanBlock *PovOrphanBlock) {
 	prevHash := orphanBlock.blockSrc.block.GetPrevious()
 	orphans := bp.parentOrphans[prevHash]
 	for i := 0; i < len(orphans); i++ {
-		orphans := bp.parentOrphans[prevHash]
-		for i := 0; i < len(orphans); i++ {
-			hash := orphans[i].blockSrc.block.GetHash()
-			if hash == orphanHash {
-				copy(orphans[i:], orphans[i+1:])
-				orphans[len(orphans)-1] = nil
-				orphans = orphans[:len(orphans)-1]
-				i--
-			}
+		hash := orphans[i].blockSrc.block.GetHash()
+		if hash == orphanHash {
+			copy(orphans[i:], orphans[i+1:])
+			orphans[len(orphans)-1] = nil
+			orphans = orphans[:len(orphans)-1]
+			i--
 		}
 	}
 
@@ -342,16 +346,19 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *p
 	bp.txPendingMux.Lock()
 	defer bp.txPendingMux.Unlock()
 
+	blockHash := blockSrc.block.GetHash()
 	pendingBlock := &PovPendingBlock{
 		blockSrc:  blockSrc,
 		txResults: stat.TxResults,
 	}
 
-	bp.povEngine.GetLogger().Debugf("add tx pending block %s txs %d", blockSrc.block.GetHash(), len(stat.TxResults))
+	bp.povEngine.GetLogger().Debugf("add tx pending block %s txs %d", blockHash, len(stat.TxResults))
 
 	for txHash := range stat.TxResults {
 		bp.txPendingBlocks[txHash] = pendingBlock
 
 		bp.povEngine.GetSyncer().requestTxsByHash(txHash, txHash)
 	}
+
+	bp.pendingBlocks[blockHash]++
 }

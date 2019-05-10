@@ -104,7 +104,7 @@ func (tp *PovTxPool) addTx(txHash types.Hash, tx *types.StateBlock) {
 	}
 
 	var childE *list.Element
-	for itE:=accTxList.Back(); itE!=nil; itE = itE.Prev() {
+	for itE := accTxList.Back(); itE != nil; itE = itE.Prev() {
 		itTx := itE.Value.(*types.StateBlock)
 		if itTx.GetPrevious() == txHash {
 			childE = itE
