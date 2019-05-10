@@ -361,7 +361,14 @@ func run() {
 func loadConfig() (*config.Config, error) {
 	content, err := ioutil.ReadFile(cfgPathP)
 	if err != nil {
-		return nil, err
+		err := createAndSave()
+		if err != nil {
+			return nil, err
+		}
+		content, err = ioutil.ReadFile(cfgPathP)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// unmarshal config
@@ -371,6 +378,31 @@ func loadConfig() (*config.Config, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+func createAndSave() error {
+	cfg, err := config.DefaultConfig(filepath.Dir(cfgPathP))
+	if err != nil {
+		return err
+	}
+
+	err = save(cfg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func save(cfg interface{}) error {
+	dir := filepath.Dir(cfgPathP)
+	err := util.CreateDirIfNotExist(dir)
+	if err != nil {
+		return err
+	}
+
+	s := util.ToIndentString(cfg)
+	return ioutil.WriteFile(cfgPathP, []byte(s), 0600)
 }
 
 func updateConfig(cfg *config.Config) error {
