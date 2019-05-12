@@ -153,6 +153,36 @@ func (r *Relation) AddBlock(block *types.StateBlock) error {
 	return nil
 }
 
+func (r *Relation) AddBlocks(blocks []*types.StateBlock) error {
+	blocksVal := make([][]interface{}, 0)
+	messagesVal := make([][]interface{}, 0)
+
+	for _, block := range blocks {
+		blockVal := []interface{}{block.GetHash().String(), block.GetTimestamp(),
+			block.GetType().String(), block.GetAddress().String()}
+		blocksVal = append(blocksVal, blockVal)
+		message := block.GetMessage()
+		if block.GetSender() != nil || block.GetReceiver() != nil || !message.IsZero() {
+			messageVal := []interface{}{block.GetHash().String(), message.String(),
+				phoneToString(block.GetSender()), phoneToString(block.GetReceiver()), block.GetTimestamp()}
+			messagesVal = append(messagesVal, messageVal)
+		}
+	}
+	if len(blocksVal) > 0 {
+		blocksCol := []db.Column{db.ColumnHash, db.ColumnTimestamp, db.ColumnType, db.ColumnAddress}
+		if err := r.store.BatchCreate(db.TableBlockHash, blocksCol, blocksVal); err != nil {
+			return err
+		}
+	}
+	if len(messagesVal) > 0 {
+		messagesCol := []db.Column{db.ColumnHash, db.ColumnMessage, db.ColumnSender, db.ColumnReceiver, db.ColumnTimestamp}
+		if err := r.store.BatchCreate(db.TableBlockMessage, messagesCol, messagesVal); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *Relation) DeleteBlock(hash types.Hash) error {
 	r.logger.Info("delete relation, ", hash.String())
 	condition := make(map[db.Column]interface{})
