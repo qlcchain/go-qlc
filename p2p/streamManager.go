@@ -237,3 +237,13 @@ func (sm *StreamManager) PeerCounts() int {
 
 	return len(allPeers)
 }
+
+func (sm *StreamManager) GetAllConnectPeersInfo(p map[string]string) {
+	sm.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		if stream.IsConnected() {
+			p[value.(*Stream).pid.Pretty()] = value.(*Stream).addr.String()
+		}
+		return true
+	})
+}
