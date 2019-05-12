@@ -42,6 +42,16 @@ func (s *DBSQL) Create(table TableName, condition map[Column]interface{}) error 
 	return nil
 }
 
+func (s *DBSQL) BatchCreate(table TableName, cols []Column, vals [][]interface{}) error {
+	sql := createBatchSql(table, cols, vals)
+	s.logger.Debug(sql)
+	if _, err := s.db.Exec(sql); err != nil {
+		s.logger.Errorf("create error, sql: %s, err: %s", sql, err.Error())
+		return err
+	}
+	return nil
+}
+
 func (s *DBSQL) Read(table TableName, condition map[Column]interface{}, offset int, limit int, order Column, dest interface{}) error {
 	sql := readSql(table, condition, offset, limit, order)
 	s.logger.Debug(sql)
@@ -107,6 +117,44 @@ func createSql(table TableName, condition map[Column]interface{}) string {
 		}
 	}
 	sql := fmt.Sprintf("insert into %s (%s) values (%s)", string(table), strings.Join(key, ","), strings.Join(value, ","))
+	return sql
+}
+
+func createBatchSql(table TableName, cols []Column, vals [][]interface{}) string {
+	var keys []string
+	var values []string
+
+	for _, col := range cols {
+		keys = append(keys, string(col))
+	}
+
+	for _, val := range vals {
+		var t []string
+		for _, v := range val {
+			switch v.(type) {
+			case string:
+				t = append(t, fmt.Sprintf("'%s'", v.(string)))
+			case int64:
+				t = append(t, strconv.FormatInt(v.(int64), 10))
+			}
+		}
+		values = append(values, fmt.Sprintf("(%s)", strings.Join(t, ",")))
+	}
+
+	sql := fmt.Sprintf("insert into %s (%s) values %s", string(table), strings.Join(keys, ","), strings.Join(values, ","))
+
+	//for _, condition := range conditions {
+	//	for k, v := range condition {
+	//		key = append(key, string(k))
+	//		switch v.(type) {
+	//		case string:
+	//			value = append(value, fmt.Sprintf("'%s'", v.(string)))
+	//		case int64:
+	//			value = append(value, strconv.FormatInt(v.(int64), 10))
+	//		}
+	//	}
+	//}
+	//sql := fmt.Sprintf("insert into %s (%s) values (%s)", string(table), strings.Join(key, ","), strings.Join(value, ","))
 	return sql
 }
 
