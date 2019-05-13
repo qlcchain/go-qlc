@@ -124,7 +124,7 @@ func (ss *PovSyncer) Stop() {
 		}
 	}
 
-	ss.quitCh <- struct{}{}
+	close(ss.quitCh)
 }
 
 func (ss *PovSyncer) getChain() *PovBlockChain {

@@ -64,6 +64,8 @@ func (miner *Miner) Start() error {
 }
 
 func (miner *Miner) Stop() error {
+	miner.logger.Info("stop miner service")
+
 	if miner.povWorker != nil {
 		err := miner.povWorker.Stop()
 		if err != nil {

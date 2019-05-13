@@ -80,6 +80,8 @@ func (pov *PoVEngine) Start() error {
 }
 
 func (pov *PoVEngine) Stop() error {
+	pov.logger.Info("stop pov engine service")
+
 	pov.unsetEvent()
 
 	pov.syncer.Stop()

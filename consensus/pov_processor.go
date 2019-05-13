@@ -29,6 +29,7 @@ type PovOrphanBlock struct {
 }
 
 type PovPendingBlock struct {
+	addTime   time.Time
 	blockSrc  *PovBlockSource
 	txResults map[types.Hash]process.ProcessResult
 }
@@ -40,7 +41,7 @@ type PovBlockProcessor struct {
 	parentOrphans map[types.Hash][]*PovOrphanBlock // blockHash -> child blocks
 	oldestOrphan  *PovOrphanBlock
 
-	pendingBlocks   map[types.Hash]int32            // blockHash -> struct{}
+	pendingBlocks   map[types.Hash]*PovPendingBlock // blockHash -> block
 	txPendingBlocks map[types.Hash]*PovPendingBlock // txHash -> block
 	txPendingMux    sync.Mutex
 
@@ -56,7 +57,7 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 
 	bp.orphanBlocks = make(map[types.Hash]*PovOrphanBlock)
 	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
-	bp.pendingBlocks = make(map[types.Hash]int32)
+	bp.pendingBlocks = make(map[types.Hash]*PovPendingBlock)
 	bp.txPendingBlocks = make(map[types.Hash]*PovPendingBlock)
 
 	bp.waitingBlocks = make([]*PovBlockSource, 0, 1000)
@@ -69,7 +70,7 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 func (bp *PovBlockProcessor) Start() error {
 	eb := bp.povEngine.GetEventBus()
 	if eb != nil {
-		eb.Subscribe(string(common.EventAddRelation), bp.onAddStateBlock)
+		eb.SubscribeAsync(string(common.EventAddRelation), bp.onAddStateBlock, false)
 	}
 
 	common.Go(bp.loop)
@@ -95,10 +96,14 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 	defer bp.txPendingMux.Unlock()
 
 	txHash := tx.GetHash()
+
 	pendingBlock := bp.txPendingBlocks[txHash]
 	if pendingBlock == nil {
 		return
 	}
+
+	bp.povEngine.GetLogger().Debugf("recv add state block %s", txHash)
+
 	delete(bp.txPendingBlocks, txHash)
 
 	if _, ok := pendingBlock.txResults[txHash]; !ok {
@@ -107,10 +112,7 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 	delete(pendingBlock.txResults, txHash)
 
 	if len(pendingBlock.txResults) <= 0 {
-		blockHash := pendingBlock.blockSrc.block.GetHash()
-		bp.povEngine.GetLogger().Debugf("release tx pending block %s", blockHash)
-		delete(bp.pendingBlocks, blockHash)
-		bp.blockCh <- pendingBlock.blockSrc
+		bp.releaseTxPendingBlock(pendingBlock)
 	}
 }
 
@@ -154,16 +156,20 @@ func (bp *PovBlockProcessor) AddMinedBlock(block *types.PovBlock) error {
 }
 
 func (bp *PovBlockProcessor) loop() {
+	txPendingTicker := time.NewTicker(5 * time.Second)
+
 	for {
 		select {
+		case <-bp.quitCh:
+			bp.povEngine.GetLogger().Info("Exiting process blocks")
+			return
 		case blockSrc := <-bp.blockCh:
 			err := bp.processBlock(blockSrc)
 			if blockSrc.replyCh != nil {
 				blockSrc.replyCh <- PovBlockResult{err: err}
 			}
-		case <-bp.quitCh:
-			bp.povEngine.GetLogger().Info("Exiting process blocks")
-			return
+		case <- txPendingTicker.C:
+			bp.checkTxPendingBlocks()
 		}
 	}
 }
@@ -180,7 +186,7 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in orphans", blockHash)
 		return nil
 	}
-	if bp.pendingBlocks[blockHash] > 0 {
+	if bp.pendingBlocks[blockHash] != nil {
 		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in pendings", blockHash)
 		return nil
 	}
@@ -254,9 +260,9 @@ func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 
 	bp.povEngine.GetLogger().Debugf("add orphan block %s prev %s", blockHash, prevHash)
 
-	orphanRoot, gapNum := bp.GetOrphanRoot(blockHash)
-	if gapNum > 0 {
-		bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, gapNum)
+	orphanRoot := bp.GetOrphanRoot(blockHash)
+	if bp.pendingBlocks[orphanRoot] == nil {
+		bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, 1)
 	}
 }
 
@@ -324,12 +330,11 @@ func (bp *PovBlockProcessor) processOrphanBlock(blockSrc *PovBlockSource) error 
 	return nil
 }
 
-func (bp *PovBlockProcessor) GetOrphanRoot(hash types.Hash) (types.Hash, uint32) {
+func (bp *PovBlockProcessor) GetOrphanRoot(hash types.Hash) types.Hash {
 	// Keep looping while the parent of each orphaned block is
 	// known and is an orphan itself.
 	orphanRoot := hash
 	orphanHash := hash
-	gapNum := uint32(0)
 	for {
 		orphan, exists := bp.orphanBlocks[orphanHash]
 		if !exists {
@@ -337,9 +342,8 @@ func (bp *PovBlockProcessor) GetOrphanRoot(hash types.Hash) (types.Hash, uint32)
 		}
 		orphanRoot = orphan.blockSrc.block.GetPrevious()
 		orphanHash = orphanRoot
-		gapNum++
 	}
-	return orphanRoot, gapNum
+	return orphanRoot
 }
 
 func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {
@@ -348,17 +352,51 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *p
 
 	blockHash := blockSrc.block.GetHash()
 	pendingBlock := &PovPendingBlock{
+		addTime:   time.Now(),
 		blockSrc:  blockSrc,
 		txResults: stat.TxResults,
 	}
 
 	bp.povEngine.GetLogger().Debugf("add tx pending block %s txs %d", blockHash, len(stat.TxResults))
 
-	for txHash := range stat.TxResults {
-		bp.txPendingBlocks[txHash] = pendingBlock
+	for txHashTmp, result := range stat.TxResults {
+		if result == process.GapTransaction {
+			txHash := txHashTmp
+			bp.txPendingBlocks[txHash] = pendingBlock
 
-		bp.povEngine.GetSyncer().requestTxsByHash(txHash, txHash)
+			bp.povEngine.GetSyncer().requestTxsByHash(txHash, txHash)
+		}
 	}
 
-	bp.pendingBlocks[blockHash]++
+	bp.pendingBlocks[blockHash] = pendingBlock
+}
+
+func (bp *PovBlockProcessor) checkTxPendingBlocks() {
+	bp.txPendingMux.Lock()
+	defer bp.txPendingMux.Unlock()
+
+	now := time.Now()
+	for _, pendingBlock := range bp.pendingBlocks {
+		if len(pendingBlock.txResults) <= 1 {
+			if now.Sub(pendingBlock.addTime) >= 60 * time.Second {
+				bp.releaseTxPendingBlock(pendingBlock)
+			}
+		}
+	}
+}
+
+func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock) {
+	for txHash := range pendingBlock.txResults {
+		delete(bp.txPendingBlocks, txHash)
+	}
+
+	blockHash := pendingBlock.blockSrc.block.GetHash()
+	bp.povEngine.GetLogger().Debugf("release tx pending block %s", blockHash)
+
+	delete(bp.pendingBlocks, blockHash)
+
+	go func() {
+		time.Sleep(time.Second)
+		bp.blockCh <- pendingBlock.blockSrc
+	}()
 }
