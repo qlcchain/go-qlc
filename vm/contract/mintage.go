@@ -222,10 +222,10 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	if am != nil {
 		tm = am.Token(common.ChainToken())
 		if tm == nil {
-			return nil, errors.New("accountMeta not found")
+			return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
 		}
 	} else {
-		return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
+		return nil, errors.New("accountMeta not found")
 	}
 
 	block.Type = types.ContractReward
