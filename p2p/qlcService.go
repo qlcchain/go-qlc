@@ -80,6 +80,11 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
+	err = ns.msgEvent.Subscribe(string(common.EventPeersInfo), ns.node.streamManager.GetAllConnectPeersInfo)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
 	return nil
 }
 

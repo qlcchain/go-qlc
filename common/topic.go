@@ -11,6 +11,7 @@ const (
 	EventConfirmedBlock TopicType = "confirmedBlock"
 	EventBroadcast      TopicType = "broadcast"
 	EventSendMsgToPeers TopicType = "sendMsgToPeers"
+	EventPeersInfo      TopicType = "peersInfo"
 	EventAddRelation    TopicType = "addRelation"
 	EventDeleteRelation TopicType = "deleteRelation"
 )
