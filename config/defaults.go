@@ -1,5 +1,3 @@
-// +build !testnet
-
 /*
  * Copyright (c) 2018 QLC Chain Team
  *
@@ -11,6 +9,7 @@ package config
 
 import (
 	"encoding/base64"
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -18,13 +17,6 @@ import (
 
 	ic "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
-)
-
-const (
-	QlcConfigFile = "qlc.json"
-	configVersion = 2
-	cfgDir        = "GQlcchain"
-	nixCfgDir     = ".gqlcchain"
 )
 
 // identityConfig initializes a new identity.
@@ -66,9 +58,9 @@ func DefaultDataDir() string {
 }
 
 func defaultIPCEndpoint() string {
-	dir := filepath.Join(DefaultDataDir(), "gqlc.ipc")
+	dir := filepath.Join(DefaultDataDir(), ipcName)
 	if runtime.GOOS == "windows" {
-		return `\\.\pipe\gqlc.ipc`
+		return fmt.Sprintf(`\\.\pipe\%s`, ipcName)
 	}
 	return dir
 }
