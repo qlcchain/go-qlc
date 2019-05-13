@@ -45,6 +45,7 @@ type DBConfig struct {
 }
 
 type PoVConfig struct {
+	MinerEnable   bool   `json:"minerEnable"`
 	BlockInterval int    `json:"blockInterval"`
 	BlockSize     int    `json:"blockSize"`
 	TargetCycle   int    `json:"targetCycle"`
@@ -66,6 +67,7 @@ func defaultDb(dir string) *DBConfig {
 
 func defaultPoV() *PoVConfig {
 	return &PoVConfig{
+		MinerEnable:   false,
 		BlockInterval: 30,
 		BlockSize:     4 * 1024 * 1024,
 		TargetCycle:   20,
