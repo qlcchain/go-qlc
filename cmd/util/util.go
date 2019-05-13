@@ -10,6 +10,8 @@ package util
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/config"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -158,6 +160,23 @@ func warnPrefix() {
 func Warn(a ...interface{}) {
 	warnPrefix()
 	fmt.Println(a...)
+}
+
+func GetConfig(pathName string) (*config.Config, error) {
+	var cm *config.CfgManager
+	var err error
+	if pathName == "" {
+		pathName = config.DefaultDataDir()
+		cm = config.NewCfgManager(pathName)
+	} else {
+		cm = config.NewCfgManagerWithName(filepath.Dir(pathName), filepath.Base(pathName))
+
+	}
+	cfg, err := cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3())
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 //

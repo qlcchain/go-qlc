@@ -203,12 +203,23 @@ func initDb() error {
 		return err
 	}
 	if c == 0 {
-		ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
-			if err := relation.AddBlock(block); err != nil {
-				return err
+		blocks := make([]*types.StateBlock, 0)
+		err := ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
+			blocks = append(blocks, block)
+			if len(blocks) == 10000 {
+				if err := relation.AddBlocks(blocks); err != nil {
+					return err
+				}
+				blocks = make([]*types.StateBlock, 0)
 			}
 			return nil
 		})
+		if err != nil {
+			return err
+		}
+		if err := relation.AddBlocks(blocks); err != nil {
+			return err
+		}
 	}
 	return nil
 }

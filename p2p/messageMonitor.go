@@ -116,16 +116,23 @@ func (ms *MessageService) startLoop() {
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
 			case FrontierRequest:
-				ms.syncService.onFrontierReq(message)
+				if err := ms.syncService.onFrontierReq(message); err != nil {
+					ms.netService.node.logger.Error(err)
+				}
 			case FrontierRsp:
 				ms.syncService.checkFrontier(message)
-				//ms.syncService.onFrontierRsp(message)
 			case BulkPullRequest:
-				ms.syncService.onBulkPullRequest(message)
+				if err := ms.syncService.onBulkPullRequest(message); err != nil {
+					ms.netService.node.logger.Error(err)
+				}
 			case BulkPullRsp:
-				ms.syncService.onBulkPullRsp(message)
+				if err := ms.syncService.onBulkPullRsp(message); err != nil {
+					ms.netService.node.logger.Error(err)
+				}
 			case BulkPushBlock:
-				ms.syncService.onBulkPushBlock(message)
+				if err := ms.syncService.onBulkPushBlock(message); err != nil {
+					ms.netService.node.logger.Error(err)
+				}
 			default:
 				ms.netService.node.logger.Error("Received unknown message.")
 				time.Sleep(5 * time.Millisecond)
