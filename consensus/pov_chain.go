@@ -13,6 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
 	"math/big"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -146,7 +147,8 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		var dbErr error
 
-		dbErr = bc.getLedger().AddPovBlock(genesis)
+		td := genesis.Target.ToBigInt()
+		dbErr = bc.getLedger().AddPovBlock(genesis, td)
 		if dbErr != nil {
 			return dbErr
 		}
@@ -291,8 +293,23 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie
 func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, stateTrie *trie.Trie) error {
 	currentBlock := bc.LatestBlock()
 
+	bestTD, err := bc.getLedger().GetPovTD(currentBlock.GetHash(), currentBlock.GetHeight(), txn)
+	if err != nil {
+		bc.logger.Errorf("get pov best td %d/%s failed, err %s", currentBlock.GetHeight(), currentBlock.GetHash(), err)
+		return err
+	}
+
+	prevTD, err := bc.getLedger().GetPovTD(block.GetPrevious(), block.GetHeight()-1, txn)
+	if err != nil {
+		bc.logger.Errorf("get pov previous td %d/%s failed, err %s", block.GetHeight()-1, block.GetPrevious(), err)
+		return err
+	}
+
+	blockTarget := block.GetTarget()
+	blockTD := new(big.Int).Add(blockTarget.ToBigInt(), prevTD)
+
 	// save block to db
-	err := bc.getLedger().AddPovBlock(block, txn)
+	err = bc.getLedger().AddPovBlock(block, blockTD, txn)
 	if err != nil {
 		bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
 		return err
@@ -306,17 +323,34 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 		saveCallback()
 	}
 
-	// try to grow best chain
-	if block.GetPrevious() == currentBlock.GetHash() {
-		return bc.connectBestBlock(txn, block)
+	tdCmpRet := blockTD.Cmp(bestTD)
+	isBest := tdCmpRet > 0
+	if !isBest && tdCmpRet == 0 {
+		if block.GetHeight() < currentBlock.GetHeight() {
+			isBest = true
+		} else if block.GetHeight() == currentBlock.GetHeight() {
+			// If the total difficulty is higher than our known, add it to the canonical chain
+			// Second clause in the if statement reduces the vulnerability to selfish mining.
+			// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
+			if rand.Float64() < 0.5 {
+				isBest = true
+			}
+		}
 	}
 
 	// check fork side chain
-	if block.GetHeight() >= currentBlock.GetHeight()+uint64(bc.getConfig().PoV.ForkHeight) {
+	if isBest {
+		// try to grow best chain
+		if block.GetPrevious() == currentBlock.GetHash() {
+			return bc.connectBestBlock(txn, block)
+		}
+
+		bc.logger.Infof("block %d/%s td %d/%s, need to doing fork, prev %s",
+			block.GetHeight(), block.GetHash(), blockTD.BitLen(), blockTD.Text(16), block.GetPrevious())
 		return bc.processFork(txn, block)
 	} else {
-		bc.logger.Debugf("block %d/%s in side chain, prev %s",
-			block.GetHeight(), block.GetHash(), block.GetPrevious())
+		bc.logger.Debugf("block %d/%s td %d/%s in side chain, prev %s",
+			block.GetHeight(), block.GetHash(), blockTD.BitLen(), blockTD.Text(16), block.GetPrevious())
 	}
 
 	return nil

@@ -7,6 +7,7 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"math/big"
 )
 
 var (
@@ -16,9 +17,10 @@ var (
 	ErrPovHeightNotFound   = errors.New("pov height not found")
 	ErrPovHashNotFound     = errors.New("pov hash not found")
 	ErrPovTxLookupNotFound = errors.New("pov tx lookup not found")
+	ErrPovTDNotFound       = errors.New("pov total difficulty not found")
 )
 
-func (l *Ledger) AddPovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error {
+func (l *Ledger) AddPovBlock(blk *types.PovBlock, td *big.Int, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 
 	if err := l.addPovHeader(blk.GetHeader(), txn); err != nil {
@@ -30,6 +32,10 @@ func (l *Ledger) AddPovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error {
 	}
 
 	if err := l.addPovHeight(blk.GetHash(), blk.GetHeight(), txn); err != nil {
+		return err
+	}
+
+	if err := l.addPovTD(blk.GetHash(), blk.GetHeight(), td, txn); err != nil {
 		return err
 	}
 
@@ -49,6 +55,10 @@ func (l *Ledger) DeletePovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error 
 	}
 
 	if err := l.deletePovHeight(blk.GetHash(), txn); err != nil {
+		return err
+	}
+
+	if err := l.deletePovTD(blk.GetHash(), blk.GetHeight(), txn); err != nil {
 		return err
 	}
 
@@ -347,6 +357,79 @@ func (l *Ledger) HasPovHeight(hash types.Hash, txns ...db.StoreTxn) bool {
 	return true
 }
 
+
+func (l *Ledger) addPovTD(hash types.Hash, height uint64, td *big.Int, txn db.StoreTxn) error {
+	key, err := getKeyOfParts(idPrefixPovTD, height, hash)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Get(key, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrBlockExists
+	} else if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
+
+	if err := txn.Set(key, td.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) AddPovTD(hash types.Hash, height uint64, td *big.Int, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return l.addPovTD(hash, height, td, txn)
+}
+
+func (l *Ledger) deletePovTD(hash types.Hash, height uint64, txn db.StoreTxn) error {
+	key, err := getKeyOfParts(idPrefixPovTD, height, hash)
+	if err != nil {
+		return err
+	}
+
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) DeletePovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return l.deletePovTD(hash, height, txn)
+}
+
+func (l *Ledger) GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (*big.Int, error) {
+	key, err := getKeyOfParts(idPrefixPovTD, height, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	td := new(big.Int)
+	err = txn.Get(key, func(val []byte, b byte) error {
+		td.SetBytes(val)
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrPovTDNotFound
+		}
+		return nil, err
+	}
+	return td, nil
+}
+
 func (l *Ledger) AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns ...db.StoreTxn) error {
 	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
 	if err != nil {
@@ -622,6 +705,9 @@ func (l *Ledger) DropAllPovBlocks() error {
 	_ = txn.Drop(prefix)
 
 	prefix, _ = getKeyOfParts(idPrefixPovBestHash)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovTD)
 	_ = txn.Drop(prefix)
 
 	return nil

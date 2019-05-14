@@ -215,13 +215,14 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, dela
 				if fromAcc == toAcc {
 					continue
 				}
-				fmt.Printf("tx %d: fromAcc:%s, toAcc:%s\n", txCurNum, fromAcc.Address(), toAcc.Address())
+				amount := rand.Intn(10000)
+				fmt.Printf("tx %d: fromAcc:%s, toAcc:%s, amount:%d\n", txCurNum, fromAcc.Address(), toAcc.Address(), amount)
 
 				para := api.APISendBlockPara{
 					From:      fromAcc.Address(),
 					TokenName: "QLC",
 					To:        toAcc.Address(),
-					Amount:    types.NewBalance(1),
+					Amount:    types.NewBalance(int64(amount)),
 				}
 
 				var sendBlock types.StateBlock

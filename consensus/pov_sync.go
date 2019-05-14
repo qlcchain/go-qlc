@@ -234,6 +234,10 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, m
 		peer := v.(*PovSyncPeer)
 
 		ss.logger.Infof("recv PovStatus from peer %s, head %d/%s", msgPeer, status.CurrentHeight, status.CurrentHash)
+		if status.GenesisHash != ss.getChain().GenesisBlock().GetHash() {
+			ss.logger.Warnf("peer %s genesis hash %s is invalid", msgPeer, status.GenesisHash)
+			return
+		}
 
 		peer.currentHeight = status.CurrentHeight
 		peer.lastStatusTime = time.Now()

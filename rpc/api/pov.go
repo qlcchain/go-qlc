@@ -124,7 +124,7 @@ func (api *PovApi) GetTransactionByBlockHeightAndIndex(height uint64, index uint
 	return api.GetTransaction(tx.Hash)
 }
 
-func (api *PovApi) GetAccountState(stateHash types.Hash, address types.Address) (*PovApiState, error) {
+func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) (*PovApiState, error) {
 	db := api.ledger.Store
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
@@ -146,22 +146,22 @@ func (api *PovApi) GetAccountState(stateHash types.Hash, address types.Address) 
 	return apiState, nil
 }
 
-func (api *PovApi) GetAccountStateByBlockHash(blockHash types.Hash, address types.Address) (*PovApiState, error) {
+func (api *PovApi) GetAccountStateByBlockHash(address types.Address, blockHash types.Hash) (*PovApiState, error) {
 	block, err := api.ledger.GetPovBlockByHash(blockHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return api.GetAccountState(block.StateHash, address)
+	return api.GetAccountState(address, block.StateHash)
 }
 
-func (api *PovApi) GetAccountStateByBlockHeight(height uint64, address types.Address) (*PovApiState, error) {
+func (api *PovApi) GetAccountStateByBlockHeight(address types.Address, height uint64) (*PovApiState, error) {
 	block, err := api.ledger.GetPovBlockByHeight(height)
 	if err != nil {
 		return nil, err
 	}
 
-	return api.GetAccountState(block.StateHash, address)
+	return api.GetAccountState(address, block.StateHash)
 }
 
 func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {

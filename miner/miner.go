@@ -27,7 +27,7 @@ func NewMiner(cfg *config.Config, povEngine *consensus.PoVEngine) *Miner {
 		povEngine: povEngine,
 	}
 
-	if cfg.PoV.MinerEnable {
+	if cfg.PoV.MinerEnabled {
 		miner.povWorker = NewPovWorker(miner)
 	}
 

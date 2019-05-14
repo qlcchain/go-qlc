@@ -79,6 +79,7 @@ const (
 	idPrefixPovHeight   // prefix + hash => height (uint64)
 	idPrefixPovTxLookup // prefix + txHash => TxLookup
 	idPrefixPovBestHash // prefix + height => hash
+	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
 )
 
 var (
