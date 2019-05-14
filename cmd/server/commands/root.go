@@ -348,7 +348,7 @@ func updateConfig(cfg *config.Config) error {
 		return errors.New("split error")
 	}
 	viper.SetConfigName(s[0])
-	viper.AddConfigPath(cfgPathP)
+	viper.AddConfigPath(cfg.DataDir)
 	b, err := json.Marshal(cfg)
 	if err != nil {
 		return err
