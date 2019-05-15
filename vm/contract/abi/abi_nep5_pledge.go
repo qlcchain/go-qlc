@@ -294,6 +294,34 @@ func SearchBeneficialPledgeInfo(ctx *vmstore.VMContext, param *WithdrawPledgePar
 	return result
 }
 
+func SearchPledgeInfoWithNEP5TxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
+	logger := log.NewLogger("GetBeneficialPledgeInfos")
+	defer func() {
+		_ = logger.Sync()
+	}()
+	var result *PledgeResult
+	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+			pledgeInfo := new(NEP5PledgeInfo)
+			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
+				if pledgeInfo.PType == param.PType &&
+					pledgeInfo.Amount.String() == param.Amount.String() && pledgeInfo.NEP5TxId == param.NEP5TxId {
+					result = &PledgeResult{Key: key, PledgeInfo: pledgeInfo}
+				}
+			} else {
+				logger.Error(err)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		logger.Error(err)
+	}
+
+	return result
+}
+
 func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
 	logger := log.NewLogger("GetBeneficialPledgeInfos")
 	defer func() {
