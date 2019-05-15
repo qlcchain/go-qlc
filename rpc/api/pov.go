@@ -7,6 +7,7 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
+	"math/big"
 )
 
 type PovApi struct {
@@ -29,10 +30,17 @@ type PovApiTxLookup struct {
 }
 
 type PovLedgerStats struct {
-	PovBlockCount   uint64
-	PovTxCount      uint64
-	PovBestCount    uint64
-	StateBlockCount uint64
+	PovBlockCount   uint64 `json:"povBlockCount"`
+	PovTxCount      uint64 `json:"povTxCount"`
+	PovBestCount    uint64 `json:"povBestCount"`
+	StateBlockCount uint64 `json:"stateBlockCount"`
+}
+
+type PovApiTD struct {
+	Header   *types.PovHeader `json:"header"`
+	TD       *big.Int         `json:"td"`
+	TDHex    string           `json:"tdHex"`
+	TDBitLen int              `json:"tdBitLen"`
 }
 
 func NewPovApi(ledger *ledger.Ledger) *PovApi {
@@ -189,4 +197,29 @@ func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
 	}
 
 	return stats, nil
+}
+
+func (api *PovApi) GetBlockTD(blockHash types.Hash) (*PovApiTD, error) {
+	height, err := api.ledger.GetPovHeight(blockHash)
+	if err != nil {
+		return nil, err
+	}
+	header, err := api.ledger.GetPovHeader(height, blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	td, err := api.ledger.GetPovTD(blockHash, height)
+	if err != nil {
+		return nil, err
+	}
+
+	apiTD := &PovApiTD{
+		Header:   header,
+		TD:       td,
+		TDHex:    td.Text(16),
+		TDBitLen: td.BitLen(),
+	}
+
+	return apiTD, nil
 }
