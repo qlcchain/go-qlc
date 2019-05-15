@@ -1,6 +1,30 @@
 
-<a name="v.1.1.1"></a>
-## [v.1.1.1](https://github.com/qlcchain/go-qlc/compare/v1.1.0...v.1.1.1) (2019-05-13)
+<a name="v1.1.2"></a>
+## [v1.1.2](https://github.com/qlcchain/go-qlc/compare/v1.1.1...v1.1.2) (2019-05-15)
+
+### Bug Fixes
+
+* configuration parameters invalid
+
+### Features
+
+* search pledge info via nep5Id
+* generate test ledger support designated account
+
+### Refactoring
+
+* config structure
+
+### Pull Requests
+
+* Merge pull request [#332](https://github.com/qlcchain/go-qlc/issues/332) from qlcchain/feature/pledgeinfosearch
+* Merge pull request [#331](https://github.com/qlcchain/go-qlc/issues/331) from qlcchain/feature/testledger
+* Merge pull request [#330](https://github.com/qlcchain/go-qlc/issues/330) from qlcchain/hotfix/config
+* Merge pull request [#326](https://github.com/qlcchain/go-qlc/issues/326) from qlcchain/feature/reconfig
+
+
+<a name="v1.1.1"></a>
+## [v1.1.1](https://github.com/qlcchain/go-qlc/compare/v1.1.0...v1.1.1) (2019-05-13)
 
 ### Bug Fixes
 
