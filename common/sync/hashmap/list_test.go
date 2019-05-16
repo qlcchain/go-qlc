@@ -1,6 +1,8 @@
 package hashmap
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestListNew(t *testing.T) {
 	l := NewList()
