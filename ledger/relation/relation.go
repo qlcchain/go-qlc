@@ -12,6 +12,7 @@ type Store interface {
 	PhoneBlocks(phone []byte, sender bool, limit int, offset int) ([]types.Hash, error)
 	MessageBlocks(hash types.Hash, limit int, offset int) ([]types.Hash, error)
 	AddBlock(block *types.StateBlock) error
+	AddBlocks(block []*types.StateBlock) error
 	DeleteBlock(hash types.Hash) error
 	Close() error
 }

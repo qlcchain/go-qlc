@@ -1,4 +1,65 @@
 
+<a name="v1.1.2"></a>
+## [v1.1.2](https://github.com/qlcchain/go-qlc/compare/v1.1.1...v1.1.2) (2019-05-15)
+
+### Bug Fixes
+
+* configuration parameters invalid
+
+### Features
+
+* search pledge info via nep5Id
+* generate test ledger support designated account
+
+### Refactoring
+
+* config structure
+
+### Pull Requests
+
+* Merge pull request [#332](https://github.com/qlcchain/go-qlc/issues/332) from qlcchain/feature/pledgeinfosearch
+* Merge pull request [#331](https://github.com/qlcchain/go-qlc/issues/331) from qlcchain/feature/testledger
+* Merge pull request [#330](https://github.com/qlcchain/go-qlc/issues/330) from qlcchain/hotfix/config
+* Merge pull request [#326](https://github.com/qlcchain/go-qlc/issues/326) from qlcchain/feature/reconfig
+
+
+<a name="v1.1.1"></a>
+## [v1.1.1](https://github.com/qlcchain/go-qlc/compare/v1.1.0...v1.1.1) (2019-05-13)
+
+### Bug Fixes
+
+* contract empty pointer ([#325](https://github.com/qlcchain/go-qlc/issues/325))
+* handle p2p error ([#323](https://github.com/qlcchain/go-qlc/issues/323))
+* modify balance unmarsh
+* modify migrate accountmeta
+* migrate accountmeta
+* total balance calculation ([#316](https://github.com/qlcchain/go-qlc/issues/316))
+
+### Features
+
+* add peersInfo rpc interface
+* batch insert sqlite data
+* cli --config supports non-existent file creation ([#320](https://github.com/qlcchain/go-qlc/issues/320))
+* docker image support account/override params
+* modify default message count
+* add limit to sms api
+* add rpc interface for pledge contract. fix: some bug
+
+### Refactoring
+
+* withdraw pledge need NEP5TxId
+
+### Pull Requests
+
+* Merge pull request [#324](https://github.com/qlcchain/go-qlc/issues/324) from qlcchain/feature/peersInfo-rpc
+* Merge pull request [#319](https://github.com/qlcchain/go-qlc/issues/319) from qlcchain/feature/docker
+* Merge pull request [#322](https://github.com/qlcchain/go-qlc/issues/322) from qlcchain/feature/sqlite1
+* Merge pull request [#315](https://github.com/qlcchain/go-qlc/issues/315) from qlcchain/feature/withdrawpledge-refactor
+* Merge pull request [#318](https://github.com/qlcchain/go-qlc/issues/318) from qlcchain/hotfix/accountmeta
+* Merge pull request [#314](https://github.com/qlcchain/go-qlc/issues/314) from qlcchain/feature/sms
+* Merge pull request [#305](https://github.com/qlcchain/go-qlc/issues/305) from qlcchain/feature/1.0.5
+
+
 <a name="v1.1.0"></a>
 ## [v1.1.0](https://github.com/qlcchain/go-qlc/compare/v1.0.4...v1.1.0) (2019-04-29)
 

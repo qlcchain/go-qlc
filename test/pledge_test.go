@@ -5,12 +5,11 @@ package test
 import (
 	"encoding/hex"
 	"encoding/json"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/rpc/api"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/config"
@@ -163,6 +162,7 @@ func TestPledge(t *testing.T) {
 		Beneficial: b.Address(),
 		Amount:     am,
 		PType:      "vote",
+		NEP5TxId:   NEP5tTxId,
 	}
 
 	send1 := types.StateBlock{}
@@ -182,6 +182,7 @@ func TestPledge(t *testing.T) {
 	if err == nil {
 		t.Fatal("should return error: pledge is not ready")
 	}
+
 	//reward1.Signature = p.Sign(reward1.GetHash())
 	//var w3 types.Work
 	//worker3, _ := types.NewWorker(w3, reward1.Root())
@@ -191,7 +192,7 @@ func TestPledge(t *testing.T) {
 	//if err != nil {
 	//	t.Fatal(err)
 	//}
-	//
+	//fmt.Println(reward1.String())
 	//err = client.Call(nil, "ledger_process", &reward1)
 	//if err != nil {
 	//	t.Fatal(err)

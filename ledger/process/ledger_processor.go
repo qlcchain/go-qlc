@@ -267,7 +267,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	}
 
 	//verify data
-	if c, ok, _ := contract.GetChainContract(address, block.Data); ok {
+	if c, ok, err := contract.GetChainContract(address, block.Data); ok && err == nil {
 		clone := block.Clone()
 		vmCtx := vmstore.NewVMContext(lv.l)
 		if err := c.DoSend(vmCtx, clone); err == nil {

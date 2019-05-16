@@ -691,7 +691,7 @@ func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
 	return count + count2, nil
 }
 
-func (l *Ledger) getAccountMetaKey(address types.Address) []byte {
+func getAccountMetaKey(address types.Address) []byte {
 	var key [1 + types.AddressSize]byte
 	key[0] = idPrefixAccount
 	copy(key[1:], address[:])
@@ -704,7 +704,7 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 		return err
 	}
 
-	key := l.getAccountMetaKey(meta.Address)
+	key := getAccountMetaKey(meta.Address)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -721,7 +721,7 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 }
 
 func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	key := l.getAccountMetaKey(address)
+	key := getAccountMetaKey(address)
 	var meta types.AccountMeta
 
 	txn, flag := l.getTxn(false, txns...)
@@ -776,7 +776,7 @@ func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn)
 	if err != nil {
 		return err
 	}
-	key := l.getAccountMetaKey(meta.Address)
+	key := getAccountMetaKey(meta.Address)
 
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -798,7 +798,7 @@ func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta, txns ...db.Stor
 	if err != nil {
 		return err
 	}
-	key := l.getAccountMetaKey(meta.Address)
+	key := getAccountMetaKey(meta.Address)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -806,7 +806,7 @@ func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta, txns ...db.Stor
 }
 
 func (l *Ledger) DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) error {
-	key := l.getAccountMetaKey(address)
+	key := getAccountMetaKey(address)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -814,7 +814,7 @@ func (l *Ledger) DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) e
 }
 
 func (l *Ledger) HasAccountMeta(address types.Address, txns ...db.StoreTxn) (bool, error) {
-	key := l.getAccountMetaKey(address)
+	key := getAccountMetaKey(address)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
