@@ -12,7 +12,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/common/hashmap"
+	hm "github.com/qlcchain/go-qlc/common/sync/hashmap"
 )
 
 // DefaultEventBus - box for handlers and callbacks.
@@ -43,11 +43,11 @@ func New() EventBus {
 var (
 	once  sync.Once
 	eb    EventBus
-	cache *hashmap.HashMap
+	cache *hm.HashMap
 )
 
 func init() {
-	cache = hashmap.New(50)
+	cache = hm.New(50)
 }
 
 func SimpleEventBus() EventBus {
