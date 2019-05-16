@@ -154,6 +154,11 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 		bs := value.(*consensus.BlockSource)
 		dps.logger.Infof("dequeue gap[%s] block[%s]", hash.String(), bs.Block.GetHash().String())
 
+		if bs.BlockFrom == types.Synchronized {
+			dps.ConfirmBlock(bs.Block)
+			return true
+		}
+
 		result, _ := dps.lv.BlockCheck(bs.Block)
 		dps.ProcessResult(result, bs)
 
@@ -319,9 +324,12 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 			dps.acTrx.vote(ack)
 		}
 	case consensus.MsgSync:
-		//
+		if result == process.Progress {
+			dps.ConfirmBlock(bs.Block)
+		}
 	case consensus.MsgGenerateBlock:
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
+		dps.acTrx.addToRoots(bs.Block)
 
 		localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
@@ -338,6 +346,41 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		})
 	default:
 		//
+	}
+}
+
+func (dps *DPoS) ConfirmBlock(blk *types.StateBlock) {
+	hash := blk.GetHash()
+	vk := getVoteKey(blk)
+
+	if v, ok := dps.acTrx.roots.Load(vk); ok {
+		el := v.(*Election)
+		dps.acTrx.roots.Delete(el.vote.id)
+		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), true)
+
+		if el.status.winner.GetHash().String() != hash.String() {
+			dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash().String())
+			el.status.loser = append(el.status.loser, el.status.winner)
+		}
+
+		el.status.winner = blk
+		el.confirmed = true
+
+		t := el.tally()
+		for _, value := range t {
+			if value.block.GetHash().String() != hash.String() {
+				el.status.loser = append(el.status.loser, value.block)
+			}
+		}
+
+		dps.acTrx.rollBack(el.status.loser)
+		dps.acTrx.addWinner2Ledger(blk)
+		dps.blocksAcked <- blk.GetHash()
+		dps.eb.Publish(string(common.EventConfirmedBlock), blk)
+	} else {
+		dps.acTrx.addWinner2Ledger(blk)
+		dps.blocksAcked <- blk.GetHash()
+		dps.eb.Publish(string(common.EventConfirmedBlock), blk)
 	}
 }
 
@@ -384,15 +427,16 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 	}
 }
 
-func (dps *DPoS) ProcessFork(block *types.StateBlock) {
-	blk := dps.findAnotherForkedBlock(block)
+func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
+	confirmedBlock := dps.findAnotherForkedBlock(newBlock)
 
-	if dps.acTrx.addToRoots(blk) {
+	//revote for both blocks
+	if dps.acTrx.addToRoots(confirmedBlock) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
 			dps.saveOnlineRep(address)
 
-			va, err := dps.voteGenerateFork(block, address, value.(*types.Account))
+			va, err := dps.voteGenerateFork(confirmedBlock, address, value.(*types.Account))
 			if err != nil {
 				return true
 			}
@@ -401,7 +445,24 @@ func (dps *DPoS) ProcessFork(block *types.StateBlock) {
 			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 			return true
 		})
-		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, blk)
+		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
+	}
+
+	if dps.acTrx.addToRoots(newBlock) {
+		localRepAccount.Range(func(key, value interface{}) bool {
+			address := key.(types.Address)
+			dps.saveOnlineRep(address)
+
+			va, err := dps.voteGenerateFork(newBlock, address, value.(*types.Account))
+			if err != nil {
+				return true
+			}
+
+			dps.acTrx.vote(va)
+			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+			return true
+		})
+		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, newBlock)
 	}
 }
 
