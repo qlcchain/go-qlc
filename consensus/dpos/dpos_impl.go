@@ -211,6 +211,8 @@ func (dps *DPoS) ProcessMsgLoop() {
 			return
 		case bs := <-dps.blocks:
 			dps.ProcessMsgDo(bs)
+		case <-time.After(1 * time.Millisecond):
+			//
 		}
 	}
 }
