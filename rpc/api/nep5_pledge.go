@@ -131,6 +131,7 @@ type WithdrawPledgeParam struct {
 	Beneficial types.Address `json:"beneficial"`
 	Amount     types.Balance `json:"amount"`
 	PType      string        `json:"pType"`
+	NEP5TxId   string        `json:"nep5TxId"`
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byte, error) {
@@ -149,11 +150,11 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byt
 		return nil, fmt.Errorf("unsupport pledge type %s", param.PType)
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial, param.Amount.Int, t)
+	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial, param.Amount.Int, t, param.NEP5TxId)
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*types.StateBlock, error) {
-	if param.Beneficial.IsZero() || param.Amount.IsZero() || len(param.PType) == 0 {
+	if param.Beneficial.IsZero() || param.Amount.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
 
@@ -368,6 +369,38 @@ func (p *NEP5PledgeApi) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5Pledge
 	}
 	sort.Slice(pledgeInfo, func(i, j int) bool { return pledgeInfo[i].WithdrawTime < pledgeInfo[j].WithdrawTime })
 	return pledgeInfo, nil
+}
+
+//search pledge info by nep5Txid
+func (p *NEP5PledgeApi) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*NEP5PledgeInfo, error) {
+	var pType uint8
+	switch strings.ToLower(param.PType) {
+	case "network", "confidant":
+		pType = uint8(0)
+	case "vote":
+		pType = uint8(1)
+	default:
+		return nil, fmt.Errorf("unsupport type: %s", param.PType)
+	}
+	pm := &cabi.WithdrawPledgeParam{
+		Beneficial: param.Beneficial,
+		Amount:     param.Amount.Int,
+		PType:      pType,
+		NEP5TxId:   param.NEP5TxId,
+	}
+	pr := cabi.SearchPledgeInfoWithNEP5TxId(p.vmContext, pm)
+	if pr != nil {
+		pledgeInfo := &NEP5PledgeInfo{
+			PType:         cabi.PledgeType(pr.PledgeInfo.PType).String(),
+			Amount:        pr.PledgeInfo.Amount,
+			WithdrawTime:  time.Unix(pr.PledgeInfo.WithdrawTime, 0).Format(time.RFC3339),
+			Beneficial:    pr.PledgeInfo.Beneficial,
+			PledgeAddress: pr.PledgeInfo.PledgeAddress,
+			NEP5TxId:      pr.PledgeInfo.NEP5TxId,
+		}
+		return pledgeInfo, nil
+	}
+	return nil, errors.New("can not find PledgeInfo")
 }
 
 //search pledge info by Beneficial,amount pType

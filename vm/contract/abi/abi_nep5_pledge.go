@@ -26,7 +26,7 @@ const (
 	jsonNEP5Pledge = `
 	[
 		{"type":"function","name":"NEP5Pledge", "inputs":[{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"pType","type":"uint8"},{"name":"NEP5TxId","type":"string"}]},
-		{"type":"function","name":"WithdrawNEP5Pledge","inputs":[{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"pType","type":"uint8"}]},
+		{"type":"function","name":"WithdrawNEP5Pledge","inputs":[{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"pType","type":"uint8"},{"name":"NEP5TxId","type":"string"}]},
 		{"type":"variable","name":"nep5PledgeInfo","inputs":[{"name":"pType","type":"uint8"},{"name":"amount","type":"uint256"},{"name":"withdrawTime","type":"int64"},{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"NEP5TxId","type":"string"}]}
 	]`
 
@@ -64,6 +64,7 @@ type WithdrawPledgeParam struct {
 	Beneficial types.Address `json:"beneficial"`
 	Amount     *big.Int      `json:"amount"`
 	PType      uint8         `json:"pType"`
+	NEP5TxId   string        `json:"nep5TxId"`
 }
 
 type NEP5PledgeInfo struct {
@@ -290,6 +291,62 @@ func SearchBeneficialPledgeInfo(ctx *vmstore.VMContext, param *WithdrawPledgePar
 	}
 
 	sort.Slice(result, func(i, j int) bool { return result[i].PledgeInfo.WithdrawTime < result[j].PledgeInfo.WithdrawTime })
+	return result
+}
+
+func SearchPledgeInfoWithNEP5TxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
+	logger := log.NewLogger("GetBeneficialPledgeInfos")
+	defer func() {
+		_ = logger.Sync()
+	}()
+	var result *PledgeResult
+	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+			pledgeInfo := new(NEP5PledgeInfo)
+			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
+				if pledgeInfo.PType == param.PType &&
+					pledgeInfo.Amount.String() == param.Amount.String() && pledgeInfo.NEP5TxId == param.NEP5TxId {
+					result = &PledgeResult{Key: key, PledgeInfo: pledgeInfo}
+				}
+			} else {
+				logger.Error(err)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		logger.Error(err)
+	}
+
+	return result
+}
+
+func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
+	logger := log.NewLogger("GetBeneficialPledgeInfos")
+	defer func() {
+		_ = logger.Sync()
+	}()
+	var result *PledgeResult
+	now := common.TimeNow().UTC().Unix()
+	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+			pledgeInfo := new(NEP5PledgeInfo)
+			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
+				if pledgeInfo.PType == param.PType && pledgeInfo.Amount.String() == param.Amount.String() &&
+					now >= pledgeInfo.WithdrawTime && pledgeInfo.NEP5TxId == param.NEP5TxId {
+					result = &PledgeResult{Key: key, PledgeInfo: pledgeInfo}
+				}
+			} else {
+				logger.Error(err)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		logger.Error(err)
+	}
 	return result
 }
 

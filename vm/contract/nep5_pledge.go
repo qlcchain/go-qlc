@@ -144,18 +144,22 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	am, _ := ctx.GetAccountMeta(param.Beneficial)
 	if am != nil {
 		tm := am.Token(common.ChainToken())
-		block.Type = types.ContractReward
-		block.Address = param.Beneficial
-		block.Token = input.Token
-		block.Link = input.GetHash()
-		block.Data = pledgeData
-		block.Balance = am.CoinBalance
-		block.Vote = am.CoinVote
-		block.Network = am.CoinNetwork
-		block.Oracle = am.CoinOracle
-		block.Storage = am.CoinStorage
-		block.Previous = tm.Header
-		block.Representative = tm.Representative
+		if tm != nil {
+			block.Type = types.ContractReward
+			block.Address = param.Beneficial
+			block.Token = input.Token
+			block.Link = input.GetHash()
+			block.Data = pledgeData
+			block.Balance = am.CoinBalance
+			block.Vote = am.CoinVote
+			block.Network = am.CoinNetwork
+			block.Oracle = am.CoinOracle
+			block.Storage = am.CoinStorage
+			block.Previous = tm.Header
+			block.Representative = tm.Representative
+		} else {
+			return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
+		}
 	} else {
 		block.Type = types.ContractReward
 		block.Address = param.Beneficial
@@ -223,7 +227,7 @@ func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBloc
 	}
 
 	if block.Data, err = cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial,
-		param.Amount, param.PType); err != nil {
+		param.Amount, param.PType, param.NEP5TxId); err != nil {
 		return
 	}
 
@@ -237,9 +241,9 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		return nil, err
 	}
 
-	pledgeResults := cabi.SearchBeneficialPledgeInfo(ctx, param)
+	pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(ctx, param)
 
-	if len(pledgeResults) == 0 {
+	if pledgeResult == nil {
 		return nil, errors.New("pledge is not ready")
 	}
 
@@ -249,7 +253,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	//	})
 	//}
 
-	pledgeInfo := pledgeResults[0]
+	pledgeInfo := pledgeResult
 
 	amount, _ := ctx.CalculateAmount(input)
 
@@ -285,30 +289,34 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		return nil, fmt.Errorf("%s do not found", pledgeInfo.PledgeInfo.PledgeAddress.String())
 	}
 	tm := am.Token(common.ChainToken())
-	block.Type = types.ContractReward
-	block.Address = pledgeInfo.PledgeInfo.PledgeAddress
-	block.Token = input.Token
-	block.Link = input.GetHash()
-	block.Data = pledgeData
-	block.Vote = am.CoinVote
-	block.Network = am.CoinNetwork
-	block.Oracle = am.CoinOracle
-	block.Storage = am.CoinStorage
-	block.Previous = tm.Header
-	block.Representative = tm.Representative
-	block.Balance = am.CoinBalance.Add(amount)
+	if tm != nil {
+		block.Type = types.ContractReward
+		block.Address = pledgeInfo.PledgeInfo.PledgeAddress
+		block.Token = input.Token
+		block.Link = input.GetHash()
+		block.Data = pledgeData
+		block.Vote = am.CoinVote
+		block.Network = am.CoinNetwork
+		block.Oracle = am.CoinOracle
+		block.Storage = am.CoinStorage
+		block.Previous = tm.Header
+		block.Representative = tm.Representative
+		block.Balance = am.CoinBalance.Add(amount)
 
-	return []*ContractBlock{
-		{
-			VMContext: ctx,
-			Block:     block,
-			ToAddress: pledgeInfo.PledgeInfo.PledgeAddress,
-			BlockType: types.ContractReward,
-			Amount:    amount,
-			Token:     input.Token,
-			Data:      pledgeData,
-		},
-	}, nil
+		return []*ContractBlock{
+			{
+				VMContext: ctx,
+				Block:     block,
+				ToAddress: pledgeInfo.PledgeInfo.PledgeAddress,
+				BlockType: types.ContractReward,
+				Amount:    amount,
+				Token:     input.Token,
+				Data:      pledgeData,
+			},
+		}, nil
+	} else {
+		return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
+	}
 }
 
 func (*WithdrawNep5Pledge) GetRefundData() []byte {

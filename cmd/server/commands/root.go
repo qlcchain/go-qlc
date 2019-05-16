@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -24,20 +23,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
-
-	"github.com/qlcchain/go-qlc/ledger"
-
-	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
 	ss "github.com/qlcchain/go-qlc/chain/services"
+	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -134,20 +130,9 @@ func addCommand() {
 
 func start() error {
 	var accounts []*types.Account
-	var cfg *config.Config
-	var err error
-	if cfgPathP == "" {
-		cfgPathP = config.DefaultDataDir()
-		cm := config.NewCfgManager(cfgPathP)
-		cfg, err = cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3())
-		if err != nil {
-			return err
-		}
-	} else {
-		cfg, err = loadConfig()
-		if err != nil {
-			return err
-		}
+	cfg, err := cmdutil.GetConfig(cfgPathP)
+	if err != nil {
+		return err
 	}
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
@@ -357,29 +342,13 @@ func run() {
 	shell.AddCmd(s)
 }
 
-//Load the config file from --config
-func loadConfig() (*config.Config, error) {
-	content, err := ioutil.ReadFile(cfgPathP)
-	if err != nil {
-		return nil, err
-	}
-
-	// unmarshal config
-	var cfg config.Config
-	err = json.Unmarshal(content, &cfg)
-	if err != nil {
-		return nil, err
-	}
-	return &cfg, nil
-}
-
 func updateConfig(cfg *config.Config) error {
 	s := strings.Split(config.QlcConfigFile, ".")
 	if len(s) != 2 {
 		return errors.New("split error")
 	}
 	viper.SetConfigName(s[0])
-	viper.AddConfigPath(cfgPathP)
+	viper.AddConfigPath(cfg.DataDir)
 	b, err := json.Marshal(cfg)
 	if err != nil {
 		return err

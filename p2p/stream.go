@@ -15,6 +15,7 @@ import (
 var (
 	ErrStreamIsNotConnected = errors.New("stream is not connected")
 	ErrNoStream             = errors.New("no stream")
+	ErrCloseStream          = errors.New("stream close error")
 )
 
 // Stream define the structure of a stream in p2p network
@@ -93,7 +94,10 @@ func (s *Stream) readLoop() {
 	if !s.IsConnected() {
 		if err := s.Connect(); err != nil {
 			s.node.logger.Error(err)
-			s.close()
+			err = s.close()
+			if err != nil {
+				s.node.logger.Error(err)
+			}
 			return
 		}
 
@@ -109,7 +113,9 @@ func (s *Stream) readLoop() {
 		n, err := s.stream.Read(buf)
 		if err != nil {
 			s.node.logger.Debugf("Error occurred when reading data from network connection.")
-			s.close()
+			if err := s.close(); err != nil {
+				s.node.logger.Error(err)
+			}
 			return
 		}
 
@@ -171,7 +177,10 @@ func (s *Stream) writeLoop() {
 			s.node.logger.Debug("Quiting Stream Write Loop.")
 			return
 		case message := <-s.messageChan:
-			s.WriteQlcMessage(message)
+			err := s.WriteQlcMessage(message)
+			if err != nil {
+				s.node.logger.Error(err)
+			}
 		default:
 			time.Sleep(5 * time.Millisecond)
 		}
@@ -180,7 +189,7 @@ func (s *Stream) writeLoop() {
 }
 
 // Close close the stream
-func (s *Stream) close() {
+func (s *Stream) close() error {
 	// Add lock & close flag to prevent multi call.
 	//s.syncMutex.Lock()
 	//defer s.syncMutex.Unlock()
@@ -194,8 +203,11 @@ func (s *Stream) close() {
 
 	// close stream.
 	if s.stream != nil {
-		s.stream.Close()
+		if err := s.stream.Close(); err != nil {
+			return ErrCloseStream
+		}
 	}
+	return nil
 }
 
 // SendMessage send msg to peer
@@ -216,7 +228,10 @@ func (s *Stream) WriteQlcMessage(message []byte) error {
 
 func (s *Stream) Write(data []byte) error {
 	if s.stream == nil {
-		s.close()
+		if err := s.close(); err != nil {
+			return ErrCloseStream
+		}
+
 		return ErrStreamIsNotConnected
 	}
 
