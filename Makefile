@@ -64,16 +64,16 @@ clean:
 	rm -rf $(shell pwd)/$(BUILDDIR)/
 
 gqlc-server:
-	xgo --dest=$(BUILDDIR) -v --tags="sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
-	--targets="windows-6.0/*,darwin-10.10/amd64,linux/amd64,linux/386,linux/arm64,linux/mips64, linux/mips64le" \
+	xgo --dest=$(BUILDDIR) --tags="sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
+	--targets="windows-6.0/*,darwin-10.10/amd64,linux/amd64,linux/arm-7,linux/386,linux/arm64,linux/mips64,linux/mips64le" \
 	--pkg=$(SERVERMAIN) .
 
 gqlc-server-test:
-	xgo --dest=$(BUILDDIR) -v --tags="testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
-	--targets="windows-6.0/amd64,darwin-10.10/amd64,linux/amd64,linux/386,linux/arm64,linux/mips64, linux/mips64le" \
+	xgo --dest=$(BUILDDIR) --tags="testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
+	--targets="windows-6.0/amd64,darwin-10.10/amd64,linux/amd64,linux/arm-7,linux/386,linux/arm64,linux/mips64,linux/mips64le" \
 	--pkg=$(SERVERMAIN) .
 
 gqlc-client:
-	xgo -v --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \
+	xgo --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \
 	--targets="windows-6.0/amd64,darwin-10.10/amd64,linux/amd64" \
 	--pkg=$(CLIENTMAIN) .
