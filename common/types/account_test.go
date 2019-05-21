@@ -44,3 +44,15 @@ func TestAccount_Address(t *testing.T) {
 
 	t.Log(hex.EncodeToString(account.PrivateKey()))
 }
+
+func TestNewAccount(t *testing.T) {
+	if seed, err := NewSeed(); err != nil {
+		t.Fatal(err)
+	} else {
+		if account, err := seed.Account(1); err != nil {
+			t.Fatal(err)
+		} else {
+			t.Log(account.String())
+		}
+	}
+}

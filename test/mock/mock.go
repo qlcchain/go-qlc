@@ -10,16 +10,17 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/crypto/random"
 	"io/ioutil"
 	"math"
 	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 func Hash() types.Hash {

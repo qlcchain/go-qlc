@@ -10,6 +10,7 @@ package process
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"

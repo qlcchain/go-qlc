@@ -56,6 +56,13 @@ var contractCache = map[types.Address]*qlcchainContract{
 		},
 		cabi.NEP5PledgeABI,
 	},
+	types.RewardsAddress: {
+		map[string]ChainContract{
+			cabi.MethodNameAirdropRewards:   &AirdropRewords{},
+			cabi.MethodNameConfidantRewards: &ConfidantRewards{},
+		},
+		cabi.RewardsABI,
+	},
 }
 
 func GetChainContract(addr types.Address, methodSelector []byte) (ChainContract, bool, error) {
