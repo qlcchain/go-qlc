@@ -8,6 +8,7 @@ import (
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
 	"math/big"
+	"time"
 )
 
 type PovApi struct {
@@ -46,6 +47,18 @@ type PovApiTD struct {
 	TD       *big.Int         `json:"td"`
 	TDHex    string           `json:"tdHex"`
 	TDBitLen int              `json:"tdBitLen"`
+}
+
+type PovMinerStatItem struct {
+	MinTime    time.Time `json:"minTime"`
+	MaxTime    time.Time `json:"maxTime"`
+	MinHeight  uint64    `json:"minHeight"`
+	MaxHeight  uint64    `json:"maxHeight"`
+	BlockCount uint64    `json:"blockCount"`
+}
+
+type PovMinerStats struct {
+	Miners map[types.Address]*PovMinerStatItem `json:"miners"`
 }
 
 func NewPovApi(ledger *ledger.Ledger) *PovApi {
@@ -265,4 +278,55 @@ func (api *PovApi) GetBlockTD(blockHash types.Hash) (*PovApiTD, error) {
 	}
 
 	return apiTD, nil
+}
+
+func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) {
+	apiRsp := &PovMinerStats{
+		Miners: make(map[types.Address]*PovMinerStatItem),
+	}
+
+	checkAddrMap := make(map[types.Address]bool)
+	if len(addrs) > 0 {
+		for _, addr := range addrs {
+			checkAddrMap[addr] = true
+		}
+	}
+
+	err := api.ledger.GetAllPovBlocks(func(block *types.PovBlock) error {
+		if len(checkAddrMap) > 0 && checkAddrMap[block.GetCoinbase()] == false {
+			return nil
+		}
+
+		item, ok := apiRsp.Miners[block.GetCoinbase()]
+		if !ok {
+			item = &PovMinerStatItem{}
+			item.MinTime = time.Unix(block.GetTimestamp(), 0)
+			item.MaxTime = time.Unix(block.GetTimestamp(), 0)
+			item.MinHeight = block.GetHeight()
+			item.MaxHeight = block.GetHeight()
+			item.BlockCount = 1
+
+			apiRsp.Miners[block.GetCoinbase()] = item
+		} else {
+			if item.MinTime.Unix() > block.GetTimestamp() {
+				item.MinTime = time.Unix(block.GetTimestamp(), 0)
+			}
+			if item.MaxTime.Unix() < block.GetTimestamp() {
+				item.MaxTime = time.Unix(block.GetTimestamp(), 0)
+			}
+			if item.MinHeight > block.GetHeight() {
+				item.MinHeight = block.GetHeight()
+			}
+			if item.MaxHeight < block.GetHeight() {
+				item.MaxHeight = block.GetHeight()
+			}
+			item.BlockCount += 1
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return apiRsp, nil
 }
