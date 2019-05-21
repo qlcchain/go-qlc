@@ -10,8 +10,6 @@ package process
 import (
 	"bytes"
 	"fmt"
-	"time"
-
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -496,7 +494,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		Balance:        balance,
 		BlockCount:     1,
 		BelongTo:       address,
-		Modified:       time.Now().Unix(),
+		Modified:       common.TimeNow().UTC().Unix(),
 	}
 
 	if am != nil {
@@ -513,7 +511,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			tm.Representative = rep
 			tm.Balance = balance
 			tm.BlockCount = tm.BlockCount + 1
-			tm.Modified = time.Now().Unix()
+			tm.Modified = common.TimeNow().UTC().Unix()
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}

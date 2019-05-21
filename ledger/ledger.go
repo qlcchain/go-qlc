@@ -5,12 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"math/rand"
-	"sort"
-	"sync"
-	"time"
-
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common"
@@ -21,6 +15,10 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"io"
+	"math/rand"
+	"sort"
+	"sync"
 )
 
 type Ledger struct {
@@ -1705,7 +1703,7 @@ func (l *Ledger) rollBackToken(token *types.TokenMeta, pre *types.StateBlock, tx
 	tm.Header = pre.GetHash()
 	tm.Representative = pre.GetRepresentative()
 	tm.BlockCount = tm.BlockCount - 1
-	tm.Modified = time.Now().Unix()
+	tm.Modified = common.TimeNow().UTC().Unix()
 	l.logger.Debug("update token, ", tm.BelongTo, tm.Type)
 	if err := l.UpdateAccountMeta(ac, txn); err != nil {
 		return err
@@ -2065,7 +2063,7 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 		block.Balance = tm.Balance.Sub(amount)
 		block.Previous = tm.Header
 		block.Representative = tm.Representative
-		block.Timestamp = time.Now().Unix()
+		block.Timestamp = common.TimeNow().UTC().Unix()
 		block.Vote = prev.GetVote()
 		block.Network = prev.GetNetwork()
 		block.Oracle = prev.GetOracle()
@@ -2121,7 +2119,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 				Representative: rxTm.Representative,
 				Token:          rxTm.Type,
 				Extra:          types.ZeroHash,
-				Timestamp:      time.Now().Unix(),
+				Timestamp:      common.TimeNow().UTC().Unix(),
 			}
 			sb.Signature = acc.Sign(sb.GetHash())
 			sb.Work = l.generateWork(sb.Root())
@@ -2141,7 +2139,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
 		Token:          sendBlock.GetToken(),
 		Extra:          types.ZeroHash,
-		Timestamp:      time.Now().Unix(),
+		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 	sb.Signature = acc.Sign(sb.GetHash())
 	sb.Work = l.generateWork(sb.Root())
@@ -2179,7 +2177,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Representative: representative,
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,
-		Timestamp:      time.Now().Unix(),
+		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 	acc := types.NewAccount(prk)
 	sb.Signature = acc.Sign(sb.GetHash())
