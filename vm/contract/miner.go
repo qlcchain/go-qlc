@@ -6,6 +6,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"math/big"
 )
 
 type MinerReward struct{}
@@ -42,14 +43,14 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	}
 
 	key := cabi.GetMinerKey(input.Address)
-	minerData, err := ctx.GetStorage(types.MinerAddress.Bytes(), key)
+	oldMinerData, err := ctx.GetStorage(types.MinerAddress.Bytes(), key)
 	if err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	}
 
 	oldMinerInfo := new(cabi.MinerInfo)
-	if len(minerData) > 0 {
-		err = cabi.MinerABI.UnpackVariable(oldMinerInfo, cabi.VariableNameMiner, minerData)
+	if len(oldMinerData) > 0 {
+		err = cabi.MinerABI.UnpackVariable(oldMinerInfo, cabi.VariableNameMiner, oldMinerData)
 		if err != nil {
 			return nil, errors.New("invalid miner variable data")
 		}
@@ -64,14 +65,14 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		return nil, nil
 	}
 
-	minerDataNew, err := cabi.MinerABI.PackVariable(
+	newMinerData, err := cabi.MinerABI.PackVariable(
 		cabi.VariableNameMiner,
 		param.Beneficial,
 		endHeight)
 	if err != nil {
 		return nil, err
 	}
-	err = ctx.SetStorage(types.MinerAddress.Bytes(), key, minerData)
+	err = ctx.SetStorage(types.MinerAddress.Bytes(), key, newMinerData)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +88,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	block.Oracle = am.CoinOracle
 	block.Storage = am.CoinStorage
 	block.Network = am.CoinNetwork
-	block.Data = minerDataNew
+	block.Data = newMinerData
 
 	if tm != nil {
 		block.Representative = tm.Representative
@@ -107,7 +108,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 			BlockType: types.ContractReward,
 			Amount:    rewardAmount,
 			Token:     common.GasToken(),
-			Data:      minerData,
+			Data:      newMinerData,
 		},
 	}, nil
 }
@@ -128,19 +129,23 @@ func (m *MinerReward) calcReward(ctx *vmstore.VMContext, coinbase types.Address,
 		return old.RewardHeight, types.NewBalance(0), nil
 	}
 
-	rewardAmount := types.NewBalance(0)
+	rewardAmountInt := big.NewInt(0)
+	rewardCount := 0
 	for curHeight := startHeight; curHeight <= endHeight; curHeight++ {
-		block, err := ctx.GetPovBlockByHeight(startHeight)
+		block, err := ctx.GetPovBlockByHeight(curHeight)
 		if block == nil {
 			return old.RewardHeight, types.NewBalance(0), err
 		}
 
 		if coinbase == block.GetCoinbase() {
-			rewardAmount.Add(cabi.RewardPerBlockBalance)
+			rewardCount++
+			rewardAmountInt.Add(rewardAmountInt, cabi.RewardPerBlockInt)
 		}
 	}
 
-	return endHeight, types.NewBalance(0), nil
+	rewardAmount := types.Balance{Int: rewardAmountInt}
+
+	return endHeight, rewardAmount, nil
 }
 
 func (m *MinerReward) GetRefundData() []byte {

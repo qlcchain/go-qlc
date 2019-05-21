@@ -43,7 +43,7 @@ var (
 
 	MintageAddress, _    = HexToAddress("qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1")
 	NEP5PledgeAddress, _ = HexToAddress("qlc_3fwi6r1fzjwmiys819pw8jxrcmcottsj4iq56kkgcmzi3b87596jwskwqrr5")
-	MinerAddress, _      = BytesToAddress([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3})
+	MinerAddress, _      = GenerateBuiltinContractAddress(3)
 
 	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, MinerAddress}
 
@@ -122,6 +122,12 @@ func PubToAddress(pub ed25519.PublicKey) Address {
 func GenerateAddress() (Address, ed25519.PrivateKey, error) {
 	pub, pri, err := ed25519.GenerateKey(rand.Reader)
 	return PubToAddress(pub), pri, err
+}
+
+func GenerateBuiltinContractAddress(suffix byte) (Address, error) {
+	buf := make([]byte, AddressSize)
+	buf[AddressSize-1] = suffix
+	return BytesToAddress(buf)
 }
 
 // KeypairFromPrivateKey generate key pair from private key
