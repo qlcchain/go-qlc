@@ -217,9 +217,16 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	if err != nil {
 		return nil, err
 	}
-
+	var tm *types.TokenMeta
 	am, _ := ctx.GetAccountMeta(tokenInfo.PledgeAddress)
-	tm := am.Token(common.ChainToken())
+	if am != nil {
+		tm = am.Token(common.ChainToken())
+		if tm == nil {
+			return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
+		}
+	} else {
+		return nil, errors.New("accountMeta not found")
+	}
 
 	block.Type = types.ContractReward
 	block.Address = tokenInfo.PledgeAddress

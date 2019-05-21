@@ -37,3 +37,12 @@ func TestAesGCMEncrypt_And_Decrypt(t *testing.T) {
 		t.Fatal("Mis content")
 	}
 }
+
+func TestToECDSAErrors(t *testing.T) {
+	if _, err := HexToECDSA("0000000000000000000000000000000000000000000000000000000000000000"); err == nil {
+		t.Fatal("HexToECDSA should've returned error")
+	}
+	if _, err := HexToECDSA("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); err == nil {
+		t.Fatal("HexToECDSA should've returned error")
+	}
+}

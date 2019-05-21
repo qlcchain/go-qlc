@@ -109,8 +109,11 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 			}(accounts)
 		})
 	}
-
-	services = []common.Service{netService, walletService, dPosService, rPCService, povService, minerService, sqliteService, ledgerService}
+	if len(cfg.P2P.BootNodes) == 0 {
+		services = []common.Service{sqliteService, ledgerService, walletService, dPosService, rPCService}
+	} else {
+		services = []common.Service{sqliteService, ledgerService, netService, walletService, dPosService, povService, minerService, rPCService}
+	}
 
 	return nil
 }

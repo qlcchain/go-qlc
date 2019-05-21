@@ -10,10 +10,11 @@ package util
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/config"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/abiosoft/ishell"
 	"github.com/fatih/color"

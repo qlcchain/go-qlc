@@ -5,11 +5,12 @@ package test
 import (
 	"encoding/hex"
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/rpc/api"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/config"
