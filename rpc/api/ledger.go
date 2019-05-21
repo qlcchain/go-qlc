@@ -672,28 +672,29 @@ type APIAccountBalance struct {
 	Balance types.Balance `json:"balance"`
 }
 
-type APIAccountBalances []APIAccountBalance
-
-func (r APIAccountBalances) Swap(i, j int) {
-	r[i], r[j] = r[j], r[i]
-}
-
-func (r APIAccountBalances) Len() int {
-	return len(r)
-}
-
-func (r APIAccountBalances) Less(i, j int) bool {
-	if r[i].Balance.Compare(r[j].Balance) == types.BalanceCompSmaller {
-		return false
-	}
-	return true
+type APIRepresentative struct {
+	Address types.Address `json:"address"`
+	Balance types.Balance `json:"balance"`
+	Vote    types.Balance `json:"vote"`
+	Network types.Balance `json:"network"`
+	Storage types.Balance `json:"storage"`
+	Oracle  types.Balance `json:"oracle"`
+	Total   types.Balance `json:"total"`
 }
 
 //Representatives returns a list of pairs of representative and its voting weight
-func (l *LedgerApi) Representatives(sorting *bool) (*APIAccountBalances, error) {
-	rs := make(APIAccountBalances, 0)
+func (l *LedgerApi) Representatives(sorting *bool) ([]*APIRepresentative, error) {
+	rs := make([]*APIRepresentative, 0)
 	err := l.ledger.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
-		r := APIAccountBalance{address, benefit.Total}
+		r := &APIRepresentative{
+			Address: address,
+			Balance: benefit.Balance,
+			Vote:    benefit.Vote,
+			Network: benefit.Network,
+			Storage: benefit.Storage,
+			Oracle:  benefit.Oracle,
+			Total:   benefit.Total,
+		}
 		rs = append(rs, r)
 		return nil
 	})
@@ -702,9 +703,11 @@ func (l *LedgerApi) Representatives(sorting *bool) (*APIAccountBalances, error) 
 	}
 
 	if sorting != nil && *sorting {
-		sort.Sort(rs)
+		sort.Slice(rs, func(i, j int) bool {
+			return rs[i].Total.Compare(rs[j].Total) == types.BalanceCompBigger
+		})
 	}
-	return &rs, nil
+	return rs, nil
 }
 
 func (l *LedgerApi) Tokens() ([]*types.TokenInfo, error) {
