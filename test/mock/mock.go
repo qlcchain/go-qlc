@@ -10,18 +10,16 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"io/ioutil"
 	"math"
 	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"time"
-
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 func Hash() types.Hash {
@@ -58,7 +56,7 @@ func TokenMeta(addr types.Address) *types.TokenMeta {
 		OpenBlock:      Hash(),
 		Header:         Hash(),
 		Representative: Address(),
-		Modified:       time.Now().Unix(),
+		Modified:       common.TimeNow().UTC().Unix(),
 	}
 
 	return &t
@@ -135,7 +133,7 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Token = common.ChainToken()
 	sb.Previous = Hash()
 	sb.Representative = common.GenesisAddress()
-	sb.Timestamp = time.Now().Unix()
+	sb.Timestamp = common.TimeNow().UTC().Unix()
 	//addr := Address()
 	sb.Link = types.ZeroHash
 	sb.Message = Hash()
@@ -217,7 +215,7 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	blk.Oracle = types.ZeroBalance
 	blk.Network = types.ZeroBalance
 	blk.Storage = types.ZeroBalance
-	blk.Timestamp = time.Now().Unix()
+	blk.Timestamp = common.TimeNow().UTC().Unix()
 	blk.Link = link
 	blk.Representative = rep
 	blk.Message = Hash()
