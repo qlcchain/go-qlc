@@ -215,7 +215,10 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, dela
 				if fromAcc == toAcc {
 					continue
 				}
-				amount := rand.Intn(10000)
+				amount := rand.Intn(100) * 10e11
+				if amount <= 0 {
+					amount = 10e11
+				}
 				fmt.Printf("tx %d: fromAcc:%s, toAcc:%s, amount:%d\n", txCurNum, fromAcc.Address(), toAcc.Address(), amount)
 
 				para := api.APISendBlockPara{
