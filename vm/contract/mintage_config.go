@@ -17,5 +17,5 @@ var (
 	MinPledgeAmount      = big.NewInt(5 * 1e13) // 50K QLC
 	tokenNameLengthMax   = 40                   // Maximum length of a token name(include)
 	tokenSymbolLengthMax = 10                   // Maximum length of a token symbol(include)
-	minMintageTime       = &timeSpan{months: 6} //  6 months
+	minMintageTime       = &timeSpan{days: 180} //  180 days
 )
