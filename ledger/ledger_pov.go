@@ -357,7 +357,6 @@ func (l *Ledger) HasPovHeight(hash types.Hash, txns ...db.StoreTxn) bool {
 	return true
 }
 
-
 func (l *Ledger) addPovTD(hash types.Hash, height uint64, td *big.Int, txn db.StoreTxn) error {
 	key, err := getKeyOfParts(idPrefixPovTD, height, hash)
 	if err != nil {

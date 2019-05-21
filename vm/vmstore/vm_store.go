@@ -182,3 +182,11 @@ func (v *VMContext) set(key []byte, value []byte) error {
 	//}
 	return txn.Set(key, value)
 }
+
+func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) {
+	return v.ledger.GetPovBlockByHeight(height)
+}
+
+func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
+	return v.ledger.GetLatestPovBlock()
+}

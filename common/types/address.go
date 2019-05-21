@@ -43,8 +43,9 @@ var (
 
 	MintageAddress, _    = HexToAddress("qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1")
 	NEP5PledgeAddress, _ = HexToAddress("qlc_3fwi6r1fzjwmiys819pw8jxrcmcottsj4iq56kkgcmzi3b87596jwskwqrr5")
+	MinerAddress, _      = BytesToAddress([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3})
 
-	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress}
+	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, MinerAddress}
 
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
 	// alphabet.

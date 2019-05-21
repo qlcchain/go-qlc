@@ -23,6 +23,11 @@ type PovApiState struct {
 	*types.PovAccountState
 }
 
+type PovApiDumpState struct {
+	StateHash types.Hash                               `json:"stateHash"`
+	Accounts  map[types.Address]*types.PovAccountState `json:"accounts"`
+}
+
 type PovApiTxLookup struct {
 	TxHash      types.Hash         `json:"txHash"`
 	TxLookup    *types.PovTxLookup `json:"txLookup"`
@@ -170,6 +175,44 @@ func (api *PovApi) GetAccountStateByBlockHeight(address types.Address, height ui
 	}
 
 	return api.GetAccountState(address, block.StateHash)
+}
+
+func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error) {
+	block, err := api.ledger.GetPovBlockByHash(blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	stateHash := block.StateHash
+	dump := &PovApiDumpState{
+		StateHash: stateHash,
+		Accounts:  make(map[types.Address]*types.PovAccountState),
+	}
+
+	db := api.ledger.Store
+	stateTrie := trie.NewTrie(db, &stateHash, nil)
+
+	it := stateTrie.NewIterator(nil)
+	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
+		if len(key) != types.AddressSize {
+			continue
+		}
+
+		addr, err := types.BytesToAddress(key)
+		if err != nil {
+			return nil, err
+		}
+
+		as := new(types.PovAccountState)
+		err = as.Deserialize(val)
+		if err != nil {
+			return nil, err
+		}
+
+		dump.Accounts[addr] = as
+	}
+
+	return dump, nil
 }
 
 func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {

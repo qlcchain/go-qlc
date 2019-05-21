@@ -168,7 +168,7 @@ func (bp *PovBlockProcessor) loop() {
 			if blockSrc.replyCh != nil {
 				blockSrc.replyCh <- PovBlockResult{err: err}
 			}
-		case <- txPendingTicker.C:
+		case <-txPendingTicker.C:
 			bp.checkTxPendingBlocks()
 		}
 	}
@@ -378,7 +378,7 @@ func (bp *PovBlockProcessor) checkTxPendingBlocks() {
 	now := time.Now()
 	for _, pendingBlock := range bp.pendingBlocks {
 		if len(pendingBlock.txResults) <= 1 {
-			if now.Sub(pendingBlock.addTime) >= 60 * time.Second {
+			if now.Sub(pendingBlock.addTime) >= 60*time.Second {
 				bp.releaseTxPendingBlock(pendingBlock)
 			}
 		}
