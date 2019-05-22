@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"sync"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -153,36 +154,6 @@ func (r *Relation) AddBlock(block *types.StateBlock) error {
 	return nil
 }
 
-func (r *Relation) AddBlocks(blocks []*types.StateBlock) error {
-	blocksVal := make([][]interface{}, 0)
-	messagesVal := make([][]interface{}, 0)
-
-	for _, block := range blocks {
-		blockVal := []interface{}{block.GetHash().String(), block.GetTimestamp(),
-			block.GetType().String(), block.GetAddress().String()}
-		blocksVal = append(blocksVal, blockVal)
-		message := block.GetMessage()
-		if block.GetSender() != nil || block.GetReceiver() != nil || !message.IsZero() {
-			messageVal := []interface{}{block.GetHash().String(), message.String(),
-				phoneToString(block.GetSender()), phoneToString(block.GetReceiver()), block.GetTimestamp()}
-			messagesVal = append(messagesVal, messageVal)
-		}
-	}
-	if len(blocksVal) > 0 {
-		blocksCol := []db.Column{db.ColumnHash, db.ColumnTimestamp, db.ColumnType, db.ColumnAddress}
-		if err := r.store.BatchCreate(db.TableBlockHash, blocksCol, blocksVal); err != nil {
-			return err
-		}
-	}
-	if len(messagesVal) > 0 {
-		messagesCol := []db.Column{db.ColumnHash, db.ColumnMessage, db.ColumnSender, db.ColumnReceiver, db.ColumnTimestamp}
-		if err := r.store.BatchCreate(db.TableBlockMessage, messagesCol, messagesVal); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (r *Relation) DeleteBlock(hash types.Hash) error {
 	r.logger.Info("delete relation, ", hash.String())
 	condition := make(map[db.Column]interface{})
@@ -192,6 +163,58 @@ func (r *Relation) DeleteBlock(hash types.Hash) error {
 		return err
 	}
 	return r.store.Delete(db.TableBlockMessage, condition)
+}
+
+func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
+	tx := r.store.Store().MustBegin()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
+	blksHashes := make([]*blocksHash, 0)
+	blksMessage := make([]*blocksMessage, 0)
+	r.logger.Info("batch block count: ", len(blocks))
+	for _, block := range blocks {
+		blksHashes = append(blksHashes, &blocksHash{
+			Hash:      block.GetHash().String(),
+			Type:      block.GetType().String(),
+			Address:   block.GetAddress().String(),
+			Timestamp: block.GetTimestamp(),
+		})
+
+		message := block.GetMessage()
+		if block.GetSender() != nil || block.GetReceiver() != nil || !message.IsZero() {
+			blksMessage = append(blksMessage, &blocksMessage{
+				Hash:      block.GetHash().String(),
+				Sender:    phoneToString(block.GetSender()),
+				Receiver:  phoneToString(block.GetReceiver()),
+				Message:   message.String(),
+				Timestamp: block.GetTimestamp(),
+			})
+		}
+	}
+	_, err := txn.NamedExec("INSERT INTO BLOCKHASH(hash, type,address,timestamp) VALUES (:hash,:type,:address,:timestamp)", blksHashes[0])
+	if err != nil {
+		r.logger.Error("add blocks by txn error: ", err)
+		return err
+	}
+	r.logger.Infof("add block to sqlite %d", len(blocks))
+	return nil
+}
+
+func (r *Relation) EmptyStore() error {
+	r.logger.Info("empty store")
+	err := r.store.Delete(db.TableBlockHash, nil)
+	if err != nil {
+		return err
+	}
+	return r.store.Delete(db.TableBlockMessage, nil)
 }
 
 func phoneToString(b []byte) string {
