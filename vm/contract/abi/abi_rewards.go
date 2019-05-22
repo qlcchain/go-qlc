@@ -26,14 +26,18 @@ import (
 
 const (
 	jsonRewards = `[
-		{"type":"function","name":"AirdropRewards","inputs":[{"name":"NEP5TxId","type":"bytes32"},{"name":"sHeader","type":"bytes32"},{"name":"rHeader","type":"bytes32"},{"name":"amount","type":"uint256"},{"name":"sign","type":"bytes64"}]},
-		{"type":"function","name":"ConfidantRewards","inputs":[{"name":"id","type":"byte32"},{"name":"sHeader","type":"bytes32"},{"name":"rHeader","type":"bytes32"},{"name":"amount","type":"uint256"},{"name":"sign","type":"bytes64"}]},
+		{"type":"function","name":"AirdropRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"bytes32"},{"name":"rxHeader","type":"bytes32"},{"name":"amount","type":"uint256"},{"name":"sign","type":"bytes64"}]},
+		{"type":"function","name":"UnsignedAirdropRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"bytes32"},{"name":"rxHeader","type":"bytes32"},{"name":"amount","type":"uint256"}]},
+		{"type":"function","name":"ConfidantRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"bytes32"},{"name":"rxHeader","type":"bytes32"},{"name":"amount","type":"uint256"},{"name":"sign","type":"bytes64"}]},
+		{"type":"function","name":"UnsignedConfidantRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"bytes32"},{"name":"rxHeader","type":"bytes32"},{"name":"amount","type":"uint256"}]},
 		{"type":"variable","name":"rewardsInfo","inputs":[{"name":"type","type":"uint8"},{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"sHeader","type":"bytes32"},{"name":"rHeader","type":"bytes32"},{"name":"amount","type":"uint256"}]}
 	]`
 
-	MethodNameAirdropRewards   = "AirdropRewards"
-	MethodNameConfidantRewards = "ConfidantRewards"
-	VariableNameRewards        = "rewardsInfo"
+	MethodNameUnsignedAirdropRewards   = "UnsignedAirdropRewards"
+	MethodNameAirdropRewards           = "AirdropRewards"
+	MethodNameUnsignedConfidantRewards = "UnsignedConfidantRewards"
+	MethodNameConfidantRewards         = "ConfidantRewards"
+	VariableNameRewards                = "rewardsInfo"
 )
 
 var (
@@ -46,20 +50,21 @@ const (
 )
 
 type RewardsParam struct {
-	Id      []byte
-	SHeader []byte
-	RHeader []byte
-	Amount  *big.Int
-	Sign    []byte
+	Id         []byte
+	Beneficial *types.Address
+	TxHeader   []byte
+	RxHeader   []byte
+	Amount     *big.Int
+	Sign       []byte
 }
 
 func (ap *RewardsParam) Verify(address types.Address) (bool, error) {
-	h1, err := types.BytesToHash(ap.SHeader)
+	h1, err := types.BytesToHash(ap.TxHeader)
 	if err != nil {
 		return false, err
 	}
 
-	_, err = types.BytesToHash(ap.RHeader)
+	_, err = types.BytesToHash(ap.RxHeader)
 	if err != nil {
 		return false, err
 	}
@@ -67,8 +72,8 @@ func (ap *RewardsParam) Verify(address types.Address) (bool, error) {
 	if len(ap.Id) > 0 && !h1.IsZero() && ap.Amount != nil {
 		var data []byte
 		data = append(data, ap.Id...)
-		data = append(data, ap.SHeader...)
-		data = append(data, ap.RHeader...)
+		data = append(data, ap.TxHeader...)
+		data = append(data, ap.RxHeader...)
 		data = append(data, ap.Amount.Bytes()...)
 
 		h := types.HashData(data)
@@ -85,12 +90,12 @@ func (ap *RewardsParam) Verify(address types.Address) (bool, error) {
 }
 
 type RewardsInfo struct {
-	Type    uint8
-	From    *types.Address
-	To      *types.Address
-	SHeader []byte
-	RHeader []byte
-	Amount  *big.Int
+	Type     uint8          `json:"type"`
+	From     *types.Address `json:"from"`
+	To       *types.Address `json:"to"`
+	TxHeader []byte         `json:"txHeader"`
+	RxHeader []byte         `json:"rxHeader"`
+	Amount   *big.Int       `json:"amount"`
 }
 
 func ParseRewardsInfo(data []byte) (*RewardsInfo, error) {
@@ -150,7 +155,7 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 	}
 }
 
-func GetRewards(ctx *vmstore.VMContext, txId string) (*big.Int, error) {
+func GetTotalRewards(ctx *vmstore.VMContext, txId string) (*big.Int, error) {
 	var result uint64
 	if infos, err := GetRewardsDetail(ctx, txId); err == nil {
 		for _, info := range infos {

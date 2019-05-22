@@ -78,6 +78,10 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 	return nil
 }
 
+func (*Nep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return nil, nil, errors.New("not implemented")
+}
+
 func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param, err := cabi.ParsePledgeParam(input.Data)
 	if err != nil {
@@ -231,6 +235,10 @@ func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBloc
 	}
 
 	return nil
+}
+
+func (m *WithdrawNep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return nil, nil, errors.New("not implemented")
 }
 
 func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {

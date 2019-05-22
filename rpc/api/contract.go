@@ -46,6 +46,10 @@ func (c *ContractApi) PackContractData(abiStr string, methodName string, params 
 	return abiContract.PackMethod(methodName, arguments...)
 }
 
+func (c *ContractApi) ContractAddressList() []types.Address {
+	return types.ChainContractAddressList
+}
+
 func convert(params []string, arguments abi.Arguments) ([]interface{}, error) {
 	if len(params) != len(arguments) {
 		return nil, errors.New("argument size not match")
