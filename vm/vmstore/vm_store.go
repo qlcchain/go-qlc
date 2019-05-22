@@ -11,12 +11,11 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/qlcchain/go-qlc/trie"
-
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
 )
 
