@@ -462,3 +462,8 @@ func (p *NEP5PledgeApi) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 	sort.Slice(result, func(i, j int) bool { return result[i].WithdrawTime < result[j].WithdrawTime })
 	return result, nil
 }
+
+// GetTotalPledgeAmount get all pledge amount
+func (p *NEP5PledgeApi) GetTotalPledgeAmount() (*big.Int, error) {
+	return cabi.GetTotalPledgeAmount(vmstore.NewVMContext(p.ledger)), nil
+}
