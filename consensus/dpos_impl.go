@@ -18,13 +18,12 @@ import (
 )
 
 const (
-	msgCacheSize                      = 65536
-	msgCacheExpirationTime            = 10 * time.Minute
+	msgCacheSize                      = 7000 * 5 * 60
+	msgCacheExpirationTime            = 8 * time.Minute
 	findOnlineRepresentativesInterval = 2 * time.Minute
 	repTimeout                        = 5 * time.Minute
-	uncheckedTimeout                  = 5 * time.Minute
-	//searchUncheckedCacheInterval      = 2 * time.Minute
-	blockCacheExpirationTime = 10 * time.Minute
+	blockCacheSize                    = 7000 * 5 * 60
+	blockCacheExpirationTime          = 8 * time.Minute
 )
 
 var (
@@ -147,7 +146,7 @@ func (dps *DPoS) setEvent() error {
 }
 
 func (dps *DPoS) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFrom string) {
-	dps.logger.Infof("receive publish block [%s] from [%s]", blk.GetHash(), msgFrom)
+	dps.logger.Debugf("receive publish block [%s] from [%s]", blk.GetHash(), msgFrom)
 	bs := blockSource{
 		block:     blk,
 		blockFrom: types.UnSynchronized,
@@ -244,66 +243,6 @@ func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash,
 					dps.logger.Error(err)
 				}
 			}
-			if dps.bp.uncheckedCache.Has(bs.block.Previous) {
-				ci, err := dps.bp.uncheckedCache.Get(bs.block.Previous)
-				if err != nil {
-					return false
-				}
-				c := ci.(*cacheInfo)
-				var cs *cacheInfo
-				cv := c.votes
-				if len(cv) == 0 {
-					cv = append(cv, ack)
-					cs = &cacheInfo{
-						b:             c.b,
-						uncheckedKind: c.uncheckedKind,
-						time:          c.time,
-						votes:         cv,
-					}
-					err = dps.bp.uncheckedCache.Set(bs.block.Previous, cs)
-					if err != nil {
-						dps.logger.Errorf("confirmAck set error :[%s]\n", err)
-					}
-				} else {
-					for k, v := range cv {
-						if v.Account.String() == ack.Account.String() {
-							break
-						}
-						if k == (len(cv) - 1) {
-							cv = append(cv, ack)
-							cs = &cacheInfo{
-								b:             c.b,
-								uncheckedKind: c.uncheckedKind,
-								time:          c.time,
-								votes:         cv,
-							}
-							_ = dps.bp.uncheckedCache.Set(bs.block.Previous, cs)
-						}
-					}
-				}
-			} else {
-				if result == process.GapSource || result == process.GapPrevious {
-					now := time.Now().Add(uncheckedTimeout).UTC().Unix()
-					var votes []*protos.ConfirmAckBlock
-					votes = append(votes, ack)
-					var kind types.UncheckedKind
-					if result == process.GapSource {
-						kind = types.UncheckedKindLink
-					} else {
-						kind = types.UncheckedKindPrevious
-					}
-					cache := &cacheInfo{
-						b:             bs,
-						uncheckedKind: kind,
-						time:          now,
-						votes:         votes,
-					}
-					err := dps.bp.uncheckedCache.Set(bs.block.Previous, cache)
-					if err != nil {
-						dps.logger.Error(err)
-					}
-				}
-			}
 			if !dps.bp.blockCache.Has(blkHash) {
 				if result == process.Progress {
 					dps.verifier.BlockProcess(bs.block)
@@ -320,7 +259,6 @@ func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash,
 				dps.bp.blockCache.Set(blkHash, "")
 			}
 		}
-		//dps.ns.SendMessageToPeers(p2p.ConfirmAck, ack, msgFrom)
 		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, msgFrom)
 		err := dps.cache.Set(hash, "")
 		if err != nil {
@@ -335,7 +273,7 @@ func (dps *DPoS) ReceiveSyncBlock(blk *types.StateBlock) {
 		block:     blk,
 		blockFrom: types.Synchronized,
 	}
-	dps.logger.Infof("Sync Event for block:[%s]", bs.block.GetHash())
+	dps.logger.Debugf("Sync Event for block:[%s]", bs.block.GetHash())
 	hash := bs.block.GetHash()
 	if !dps.bp.blockCache.Has(hash) {
 		dps.bp.blocks <- bs

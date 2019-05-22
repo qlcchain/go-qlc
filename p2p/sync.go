@@ -346,7 +346,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 }
 
 func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
-	ss.netService.node.logger.Info("receive BulkPullRsp")
+	ss.netService.node.logger.Debug("receive BulkPullRsp")
 	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err

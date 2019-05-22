@@ -201,7 +201,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	//	return err
 	//}
 	l.releaseTxn(txn, flag)
-	l.logger.Info("publish addRelation,", blk.GetHash())
+	l.logger.Debug("publish addRelation,", blk.GetHash())
 	l.eb.Publish(string(common.EventAddRelation), blk)
 	return nil
 }
