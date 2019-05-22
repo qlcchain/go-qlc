@@ -30,7 +30,7 @@ const (
 
 type DbStore interface {
 	io.Closer
-	Store() *sqlx.DB
+	NewTransaction() *sqlx.Tx
 	Create(table TableName, condition map[Column]interface{}) error
 	BatchCreate(table TableName, cols []Column, vals [][]interface{}) error
 	Read(table TableName, condition map[Column]interface{}, offset int, limit int, order Column, dest interface{}) error

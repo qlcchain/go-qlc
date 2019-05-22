@@ -166,7 +166,7 @@ func (r *Relation) DeleteBlock(hash types.Hash) error {
 }
 
 func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
-	tx := r.store.Store().MustBegin()
+	tx := r.store.NewTransaction()
 	if err := fn(tx); err != nil {
 		return err
 	}
