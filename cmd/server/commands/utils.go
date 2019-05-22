@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	ss "github.com/qlcchain/go-qlc/chain/services"
@@ -206,18 +207,18 @@ func initDb() error {
 	if err != nil {
 		return err
 	}
+
 	if count1 != count2 {
 		if err := relation.EmptyStore(); err != nil {
-			fmt.Println(err)
 			return err
 		}
+		start := time.Now()
 		err = relation.BatchUpdate(func(txn *sqlx.Tx) error {
 			blocks := make([]*types.StateBlock, 0)
 			err := ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
 				blocks = append(blocks, block)
-				if len(blocks) == 10000 {
+				if len(blocks) == 199 {
 					if err := relation.AddBlocks(txn, blocks); err != nil {
-						fmt.Println(err)
 						return err
 					}
 					if err != nil {
@@ -239,6 +240,9 @@ func initDb() error {
 		if err != nil {
 			return err
 		}
+		end := time.Now().Sub(start).Seconds()
+		fmt.Println(end)
 	}
+
 	return nil
 }

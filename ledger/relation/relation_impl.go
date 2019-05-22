@@ -179,7 +179,7 @@ func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
 func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
 	blksHashes := make([]*blocksHash, 0)
 	blksMessage := make([]*blocksMessage, 0)
-	r.logger.Info("batch block count: ", len(blocks))
+	//r.logger.Info("batch block count: ", len(blocks))
 	for _, block := range blocks {
 		blksHashes = append(blksHashes, &blocksHash{
 			Hash:      block.GetHash().String(),
@@ -199,12 +199,18 @@ func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
 			})
 		}
 	}
-	_, err := txn.NamedExec("INSERT INTO BLOCKHASH(hash, type,address,timestamp) VALUES (:hash,:type,:address,:timestamp)", blksHashes[0])
-	if err != nil {
-		r.logger.Error("add blocks by txn error: ", err)
-		return err
+	if len(blksHashes) > 0 {
+		if _, err := txn.NamedExec("INSERT INTO BLOCKHASH(hash, type,address,timestamp) VALUES (:hash,:type,:address,:timestamp) ", blksHashes); err != nil {
+			r.logger.Errorf("insert block hash, ", err)
+			return err
+		}
 	}
-	r.logger.Infof("add block to sqlite %d", len(blocks))
+	if len(blksMessage) > 0 {
+		if _, err := txn.NamedExec("INSERT INTO BLOCKMESSAGE(hash, sender,receiver,message,timestamp) VALUES (:hash,:sender,:receiver,:message,:timestamp)", blksMessage); err != nil {
+			r.logger.Error("insert message, ", err)
+			return err
+		}
+	}
 	return nil
 }
 
