@@ -27,7 +27,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/jackpal/gateway v1.0.5 // indirect
-	github.com/jmoiron/sqlx v1.2.0
+	github.com/jmoiron/sqlx v0.0.0-20190426145356-38398a30ed8516ffda
 	github.com/libp2p/go-libp2p v0.0.3
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-discovery v0.0.1

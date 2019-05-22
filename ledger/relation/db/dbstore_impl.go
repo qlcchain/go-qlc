@@ -32,6 +32,10 @@ func NewSQLDB(cfg *config.Config) (*DBSQL, error) {
 
 }
 
+func (s *DBSQL) NewTransaction() *sqlx.Tx {
+	return s.db.MustBegin()
+}
+
 func (s *DBSQL) Create(table TableName, condition map[Column]interface{}) error {
 	sql := createSql(table, condition)
 	s.logger.Debug(sql)
