@@ -3,6 +3,7 @@ package process
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -10,10 +11,6 @@ import (
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
 	"time"
-)
-
-var (
-	minCoinbasePledgeAmount = types.StringToBalance("500000")
 )
 
 type PovVerifier struct {
@@ -293,6 +290,10 @@ func (pv *PovVerifier) verifyTarget(block *types.PovBlock, stat *PovVerifyStat) 
 }
 
 func (pv *PovVerifier) verifyProducer(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
+	if block.GetHeight() < common.PovMinerVerifyHeightStart {
+		return Progress, nil
+	}
+
 	prevBlock := stat.getPrevBlock(pv, block.GetPrevious())
 	if prevBlock == nil {
 		return GapPrevious, nil
@@ -321,7 +322,7 @@ func (pv *PovVerifier) verifyProducer(block *types.PovBlock, stat *PovVerifyStat
 	}
 	rs := as.RepState
 
-	if rs.Total.Compare(minCoinbasePledgeAmount) == types.BalanceCompSmaller {
+	if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
 		return BadCoinbase, errors.New("coinbase pledge amount not enough")
 	}
 

@@ -11,8 +11,8 @@ import (
 )
 
 func TestGenesisPovBlock1(t *testing.T) {
-	expectHash, _ := types.NewHash("a1c619a4781884413af833aceeed2d2c849dc10788936505daff82d0191eb878")
-	expectSig, _ := types.NewSignature("f98e79158c18ed76c0cea1f7543dbc09af72f24e3460f878c8aee8bcf589352a3373c576748f869d6cc3bab03449f6c6727ccbbb4af1e2d5c48d57366fa42902")
+	expectHash, _ := types.NewHash("70172acee1be7ba2ac3678363a01faeedb18c9dc60306a6085836dc184b42938")
+	expectSig, _ := types.NewSignature("ace0c998b630843d557047af1f2a033cd048a6336a92044550a4de7988fffd534a6376ad3815dde91f446dfa18d393ca74af987044db58848a89c9d967e4ec01")
 
 	stateTrie := trie.NewTrie(nil, nil, nil)
 	keys, values := GenesisPovStateKVs()

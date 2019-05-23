@@ -134,12 +134,6 @@ func (z *PovBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 							return
 						}
 						switch msgp.UnsafeString(field) {
-						case "address":
-							err = dc.ReadExtension(&z.Transactions[za0001].Address)
-							if err != nil {
-								err = msgp.WrapError(err, "Transactions", za0001, "Address")
-								return
-							}
 						case "hash":
 							err = dc.ReadExtension(&z.Transactions[za0001].Hash)
 							if err != nil {
@@ -307,19 +301,9 @@ func (z *PovBlock) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		} else {
-			// map header, size 2
-			// write "address"
-			err = en.Append(0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
-			if err != nil {
-				return
-			}
-			err = en.WriteExtension(&z.Transactions[za0001].Address)
-			if err != nil {
-				err = msgp.WrapError(err, "Transactions", za0001, "Address")
-				return
-			}
+			// map header, size 1
 			// write "hash"
-			err = en.Append(0xa4, 0x68, 0x61, 0x73, 0x68)
+			err = en.Append(0x81, 0xa4, 0x68, 0x61, 0x73, 0x68)
 			if err != nil {
 				return
 			}
@@ -412,16 +396,9 @@ func (z *PovBlock) MarshalMsg(b []byte) (o []byte, err error) {
 		if z.Transactions[za0001] == nil {
 			o = msgp.AppendNil(o)
 		} else {
-			// map header, size 2
-			// string "address"
-			o = append(o, 0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
-			o, err = msgp.AppendExtension(o, &z.Transactions[za0001].Address)
-			if err != nil {
-				err = msgp.WrapError(err, "Transactions", za0001, "Address")
-				return
-			}
+			// map header, size 1
 			// string "hash"
-			o = append(o, 0xa4, 0x68, 0x61, 0x73, 0x68)
+			o = append(o, 0x81, 0xa4, 0x68, 0x61, 0x73, 0x68)
 			o, err = msgp.AppendExtension(o, &z.Transactions[za0001].Hash)
 			if err != nil {
 				err = msgp.WrapError(err, "Transactions", za0001, "Hash")
@@ -559,12 +536,6 @@ func (z *PovBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 							return
 						}
 						switch msgp.UnsafeString(field) {
-						case "address":
-							bts, err = msgp.ReadExtensionBytes(bts, &z.Transactions[za0001].Address)
-							if err != nil {
-								err = msgp.WrapError(err, "Transactions", za0001, "Address")
-								return
-							}
 						case "hash":
 							bts, err = msgp.ReadExtensionBytes(bts, &z.Transactions[za0001].Hash)
 							if err != nil {
@@ -600,7 +571,7 @@ func (z *PovBlock) Msgsize() (s int) {
 		if z.Transactions[za0001] == nil {
 			s += msgp.NilSize
 		} else {
-			s += 1 + 8 + msgp.ExtensionPrefixSize + z.Transactions[za0001].Address.Len() + 5 + msgp.ExtensionPrefixSize + z.Transactions[za0001].Hash.Len()
+			s += 1 + 5 + msgp.ExtensionPrefixSize + z.Transactions[za0001].Hash.Len()
 		}
 	}
 	return
@@ -839,12 +810,6 @@ func (z *PovBody) DecodeMsg(dc *msgp.Reader) (err error) {
 							return
 						}
 						switch msgp.UnsafeString(field) {
-						case "address":
-							err = dc.ReadExtension(&z.Transactions[za0001].Address)
-							if err != nil {
-								err = msgp.WrapError(err, "Transactions", za0001, "Address")
-								return
-							}
 						case "hash":
 							err = dc.ReadExtension(&z.Transactions[za0001].Hash)
 							if err != nil {
@@ -892,19 +857,9 @@ func (z *PovBody) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		} else {
-			// map header, size 2
-			// write "address"
-			err = en.Append(0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
-			if err != nil {
-				return
-			}
-			err = en.WriteExtension(&z.Transactions[za0001].Address)
-			if err != nil {
-				err = msgp.WrapError(err, "Transactions", za0001, "Address")
-				return
-			}
+			// map header, size 1
 			// write "hash"
-			err = en.Append(0xa4, 0x68, 0x61, 0x73, 0x68)
+			err = en.Append(0x81, 0xa4, 0x68, 0x61, 0x73, 0x68)
 			if err != nil {
 				return
 			}
@@ -929,16 +884,9 @@ func (z *PovBody) MarshalMsg(b []byte) (o []byte, err error) {
 		if z.Transactions[za0001] == nil {
 			o = msgp.AppendNil(o)
 		} else {
-			// map header, size 2
-			// string "address"
-			o = append(o, 0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
-			o, err = msgp.AppendExtension(o, &z.Transactions[za0001].Address)
-			if err != nil {
-				err = msgp.WrapError(err, "Transactions", za0001, "Address")
-				return
-			}
+			// map header, size 1
 			// string "hash"
-			o = append(o, 0xa4, 0x68, 0x61, 0x73, 0x68)
+			o = append(o, 0x81, 0xa4, 0x68, 0x61, 0x73, 0x68)
 			o, err = msgp.AppendExtension(o, &z.Transactions[za0001].Hash)
 			if err != nil {
 				err = msgp.WrapError(err, "Transactions", za0001, "Hash")
@@ -1004,12 +952,6 @@ func (z *PovBody) UnmarshalMsg(bts []byte) (o []byte, err error) {
 							return
 						}
 						switch msgp.UnsafeString(field) {
-						case "address":
-							bts, err = msgp.ReadExtensionBytes(bts, &z.Transactions[za0001].Address)
-							if err != nil {
-								err = msgp.WrapError(err, "Transactions", za0001, "Address")
-								return
-							}
 						case "hash":
 							bts, err = msgp.ReadExtensionBytes(bts, &z.Transactions[za0001].Hash)
 							if err != nil {
@@ -1045,7 +987,7 @@ func (z *PovBody) Msgsize() (s int) {
 		if z.Transactions[za0001] == nil {
 			s += msgp.NilSize
 		} else {
-			s += 1 + 8 + msgp.ExtensionPrefixSize + z.Transactions[za0001].Address.Len() + 5 + msgp.ExtensionPrefixSize + z.Transactions[za0001].Hash.Len()
+			s += 1 + 5 + msgp.ExtensionPrefixSize + z.Transactions[za0001].Hash.Len()
 		}
 	}
 	return
@@ -1479,12 +1421,6 @@ func (z *PovTransaction) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "address":
-			err = dc.ReadExtension(&z.Address)
-			if err != nil {
-				err = msgp.WrapError(err, "Address")
-				return
-			}
 		case "hash":
 			err = dc.ReadExtension(&z.Hash)
 			if err != nil {
@@ -1504,19 +1440,9 @@ func (z *PovTransaction) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z PovTransaction) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
-	// write "address"
-	err = en.Append(0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteExtension(&z.Address)
-	if err != nil {
-		err = msgp.WrapError(err, "Address")
-		return
-	}
+	// map header, size 1
 	// write "hash"
-	err = en.Append(0xa4, 0x68, 0x61, 0x73, 0x68)
+	err = en.Append(0x81, 0xa4, 0x68, 0x61, 0x73, 0x68)
 	if err != nil {
 		return
 	}
@@ -1531,16 +1457,9 @@ func (z PovTransaction) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z PovTransaction) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
-	// string "address"
-	o = append(o, 0x82, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
-	o, err = msgp.AppendExtension(o, &z.Address)
-	if err != nil {
-		err = msgp.WrapError(err, "Address")
-		return
-	}
+	// map header, size 1
 	// string "hash"
-	o = append(o, 0xa4, 0x68, 0x61, 0x73, 0x68)
+	o = append(o, 0x81, 0xa4, 0x68, 0x61, 0x73, 0x68)
 	o, err = msgp.AppendExtension(o, &z.Hash)
 	if err != nil {
 		err = msgp.WrapError(err, "Hash")
@@ -1567,12 +1486,6 @@ func (z *PovTransaction) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "address":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
-			if err != nil {
-				err = msgp.WrapError(err, "Address")
-				return
-			}
 		case "hash":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Hash)
 			if err != nil {
@@ -1593,7 +1506,7 @@ func (z *PovTransaction) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z PovTransaction) Msgsize() (s int) {
-	s = 1 + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 5 + msgp.ExtensionPrefixSize + z.Hash.Len()
+	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Hash.Len()
 	return
 }
 

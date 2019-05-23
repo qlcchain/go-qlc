@@ -10,18 +10,18 @@ import (
 var (
 	jsonPovGenesis = `
 {
-    "hash":"a1c619a4781884413af833aceeed2d2c849dc10788936505daff82d0191eb878",
+    "hash":"70172acee1be7ba2ac3678363a01faeedb18c9dc60306a6085836dc184b42938",
     "previous":"0000000000000000000000000000000000000000000000000000000000000000",
     "merkleRoot":"0000000000000000000000000000000000000000000000000000000000000000",
-    "nonce":1481494,
-    "voteSignature":"105a4609daecb5fd63230eff18b57ec200351f9a28d5cd29c9bbca3e405a917760da0f867ba9922f2008ec04a359b52390ca7521650f3e172698e57ec1000000",
+    "nonce":399610,
+    "voteSignature":"d48a500a9de13d47c88377f29dfb24148e1dbabba8e865674280d5f9734af8573498b954e7614d0c7726348ca46f5e62b5419e649343946e3b1c9e175b000000",
     "height":0,
-    "timestamp":1555891688,
+    "timestamp":1558483688,
     "target":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000",
     "coinbase":"qlc_176f1aj1361y5i4yu8ccyp8xphjcbxmmu4ryh4jecnsncse1eiud7uncz8bj",
     "txNum":0,
-    "stateHash":"a50efe4473fcad4c1008e4c567b4ef3dc516818977231f125409dbfa5181e4bb",
-    "signature":"f98e79158c18ed76c0cea1f7543dbc09af72f24e3460f878c8aee8bcf589352a3373c576748f869d6cc3bab03449f6c6727ccbbb4af1e2d5c48d57366fa42902",
+    "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
+    "signature":"ace0c998b630843d557047af1f2a033cd048a6336a92044550a4de7988fffd534a6376ad3815dde91f446dfa18d393ca74af987044db58848a89c9d967e4ec01",
     "transactions":[]
 }
 `
@@ -53,30 +53,6 @@ type genesisMinerCfg struct {
 func GenesisPovStateKVs() (keys [][]byte, values [][]byte) {
 	keys = append(keys, []byte("qlc"))
 	values = append(values, []byte("create something wonderful"))
-
-	var miners []*genesisMinerCfg
-	miners = append(miners, &genesisMinerCfg{
-		Coinbase: "qlc_1szuejgo9nxdre1uwpsxni4fg7p8kx7micbsdtpnchmc3cfk4wt1i37uncmy",
-		Vote:     "500000",
-	})
-	miners = append(miners, &genesisMinerCfg{
-		Coinbase: "qlc_1h1oyd1h98cigxe9u1xkf7h973cartstf44djpx54ea7ize7bhg5caz6cm7b",
-		Vote:     "500000",
-	})
-	miners = append(miners, &genesisMinerCfg{
-		Coinbase: "qlc_1ojc6yxwfbdijokaustj16jyppm4ixtnpkcod6fiskj8zqgtgxph9nnfkthu",
-		Vote:     "500000",
-	})
-	for _, miner := range miners {
-		addr, _ := types.HexToAddress(miner.Coinbase)
-		as := types.NewPovAccountState()
-		as.RepState = types.NewPovRepState()
-		as.RepState.Vote = types.StringToBalance(miner.Vote)
-		as.RepState.Total = as.RepState.CalcTotal()
-		asBytes, _ := as.Serialize()
-		keys = append(keys, addr.Bytes())
-		values = append(values, asBytes)
-	}
 
 	return keys, values
 }

@@ -40,7 +40,7 @@ func (bc *PovBlockChain) GenStateTrie(prevStateHash types.Hash, txs []*types.Pov
 }
 
 func (bc *PovBlockChain) ApplyTransaction(trie *trie.Trie, stateBlock *types.StateBlock) error {
-	oldAs := bc.getAccountState(trie, stateBlock.Address)
+	oldAs := bc.GetAccountState(trie, stateBlock.Address)
 
 	var newAs *types.PovAccountState
 	if oldAs != nil {
@@ -99,7 +99,7 @@ func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateB
 		}
 	}
 
-	bc.setAccountState(trie, block.Address, newAs)
+	bc.SetAccountState(trie, block.Address, newAs)
 }
 
 func (bc *PovBlockChain) updateRepresentativeState(trie *trie.Trie, block *types.StateBlock, oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) {
@@ -121,7 +121,7 @@ func (bc *PovBlockChain) updateRepresentativeState(trie *trie.Trie, block *types
 		var lastRepNewAs *types.PovAccountState
 		var lastRepNewRs *types.PovRepState
 
-		lastRepOldAs = bc.getAccountState(trie, oldBlkTs.Representative)
+		lastRepOldAs = bc.GetAccountState(trie, oldBlkTs.Representative)
 		if lastRepOldAs != nil {
 			lastRepOldRs = lastRepOldAs.RepState
 
@@ -139,7 +139,7 @@ func (bc *PovBlockChain) updateRepresentativeState(trie *trie.Trie, block *types
 			lastRepNewRs.Total = lastRepOldRs.Total.Sub(oldBlkAs.TotalBalance())
 		}
 
-		bc.setAccountState(trie, oldBlkTs.Representative, lastRepNewAs)
+		bc.SetAccountState(trie, oldBlkTs.Representative, lastRepNewAs)
 	}
 
 	newBlkTs := newBlkAs.GetTokenState(block.GetToken())
@@ -149,7 +149,7 @@ func (bc *PovBlockChain) updateRepresentativeState(trie *trie.Trie, block *types
 		var currRepNewAs *types.PovAccountState
 		var currRepNewRs *types.PovRepState
 
-		currRepOldAs = bc.getAccountState(trie, newBlkTs.Representative)
+		currRepOldAs = bc.GetAccountState(trie, newBlkTs.Representative)
 		if currRepOldAs != nil {
 			currRepNewAs = currRepOldAs.Clone()
 		} else {
@@ -169,11 +169,11 @@ func (bc *PovBlockChain) updateRepresentativeState(trie *trie.Trie, block *types
 		currRepNewRs.Storage = currRepNewRs.Storage.Add(block.Storage)
 		currRepNewRs.Total = currRepNewRs.Total.Add(block.TotalBalance())
 
-		bc.setAccountState(trie, newBlkTs.Representative, currRepNewAs)
+		bc.SetAccountState(trie, newBlkTs.Representative, currRepNewAs)
 	}
 }
 
-func (bc *PovBlockChain) getAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState {
+func (bc *PovBlockChain) GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState {
 	stateBytes := trie.GetValue(address.Bytes())
 	if len(stateBytes) <= 0 {
 		return nil
@@ -191,7 +191,7 @@ func (bc *PovBlockChain) getAccountState(trie *trie.Trie, address types.Address)
 	return as
 }
 
-func (bc *PovBlockChain) setAccountState(trie *trie.Trie, address types.Address, as *types.PovAccountState) {
+func (bc *PovBlockChain) SetAccountState(trie *trie.Trie, address types.Address, as *types.PovAccountState) {
 	bc.logger.Debugf("set account %s state %s", address, as)
 
 	newStateBytes, err := as.Serialize()

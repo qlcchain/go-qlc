@@ -124,6 +124,10 @@ func (m *MinerReward) calcReward(ctx *vmstore.VMContext, coinbase types.Address,
 	}
 
 	startHeight := old.RewardHeight + 1
+	if old.RewardHeight < common.PovMinerVerifyHeightStart {
+		startHeight = common.PovMinerVerifyHeightStart
+	}
+
 	endHeight := latestBlock.GetHeight() - cabi.RewardHeightLimit
 	if endHeight < startHeight {
 		return old.RewardHeight, types.NewBalance(0), nil

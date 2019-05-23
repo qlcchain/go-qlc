@@ -105,35 +105,59 @@ func (w *PovWorker) loop() {
 			w.logger.Info("Exiting PoV miner worker loop")
 			return
 		default:
-			w.genNextBlock()
+			if w.checkValidMiner() {
+				w.genNextBlock()
+			} else {
+				time.Sleep(time.Minute)
+			}
 		}
 	}
 }
 
-func (w *PovWorker) genNextBlock() *types.PovBlock {
+func (w *PovWorker) checkValidMiner() bool {
 	if w.miner.GetSyncState() != common.Syncdone {
-		time.Sleep(time.Minute)
-		return nil
+		return false
 	}
 
 	cbAccount := w.GetCoinbaseAccount()
 	if cbAccount == nil {
-		time.Sleep(time.Minute)
+		return false
+	}
+
+	latestBlock := w.GetChain().LatestBlock()
+	if time.Now().Before(time.Unix(latestBlock.GetTimestamp(), 0)) {
+		return false
+	}
+
+	if latestBlock.GetHeight() >= (common.PovMinerVerifyHeightStart - 1) {
+		prevStateHash := latestBlock.GetStateHash()
+		stateTrie := w.GetChain().GetStateTrie(&prevStateHash)
+		as := w.GetChain().GetAccountState(stateTrie, cbAccount.Address())
+		if as == nil || as.RepState == nil {
+			return false
+		}
+		rs := as.RepState
+		if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (w *PovWorker) genNextBlock() *types.PovBlock {
+	latestBlock := w.GetChain().LatestBlock()
+
+	target, err := w.GetChain().CalcNextRequiredTarget(latestBlock)
+	if err != nil {
 		return nil
 	}
 
 	ticker := time.NewTicker(time.Second)
 
-	parent := w.GetChain().LatestBlock()
-
-	target, err := w.GetChain().CalcNextRequiredTarget(parent)
-	if err != nil {
-		return nil
-	}
-
 	current := &types.PovBlock{
-		Previous:  parent.GetHash(),
-		Height:    parent.GetHeight() + 1,
+		Previous:  latestBlock.GetHash(),
+		Height:    latestBlock.GetHeight() + 1,
 		Timestamp: time.Now().Unix(),
 		Target:    target,
 	}
@@ -142,7 +166,6 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 	accBlocks := w.GetTxPool().SelectPendingTxs(w.maxTxPerBlock)
 	for _, accBlock := range accBlocks {
 		txPov := &types.PovTransaction{
-			Address: accBlock.Address,
 			Hash:    accBlock.GetHash(),
 			Block:   accBlock,
 		}
@@ -154,7 +177,7 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 	mklHash := merkle.CalcMerkleTreeRootHash(mklTxHashList)
 	current.MerkleRoot = mklHash
 
-	prevStateHash := parent.GetStateHash()
+	prevStateHash := latestBlock.GetStateHash()
 	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, current.Transactions)
 	if err != nil {
 		w.logger.Errorf("failed to generate state trie, err %s", prevStateHash, err)

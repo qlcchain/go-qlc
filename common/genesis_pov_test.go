@@ -11,29 +11,33 @@ import (
 )
 
 func TestGenesisPovBlock1(t *testing.T) {
-	expectHash, _ := types.NewHash("288a70e4fd0a738f6e963c7dad253e89a1eda85e57b8dd0079ce11f68246cb75")
-	expectSig, _ := types.NewSignature("03fc8dee4ceaca10a6f33ccb5500332482e3a70f51d201f17f9e3fffed2a5fd42e605d3b3ad8ddb81ad1e3e3b86d5d9540fba42fc68fbd71921e739d6815bd05")
+	expectHash, _ := types.NewHash("13825fa8945001434d9c034a31edc130b04c3a154ef147b30b5814cd236a6b40")
+	expectSig, _ := types.NewSignature("9b1bc37bb2e4c94da3479cc3b281222a8666d37962f797f0d43793b1ac7e76e19cb333caf563bb88becd6c9203b28de92f07e8fd922deedd3ce19fb079d32a08")
 
 	stateTrie := trie.NewTrie(nil, nil, nil)
-	stateTrie.SetValue([]byte("qlc"), []byte("qlc is wonderful"))
+	keys, values := GenesisPovStateKVs()
+	for i := range keys {
+		stateTrie.SetValue(keys[i], values[i])
+	}
+
 	expectStateHash := stateTrie.Hash()
 
 	checkStateHash := genesisPovBlock.StateHash
 	if *expectStateHash != checkStateHash {
 		t.Log(util.ToString(genesisPovBlock))
-		t.Fatal("invalid test net genesis pov state hash", checkStateHash.String(), expectStateHash.String())
+		t.Fatal("invalid main net genesis pov state hash", checkStateHash.String(), expectStateHash.String())
 	}
 
 	checkHash := genesisPovBlock.ComputeHash()
 	if checkHash != expectHash {
 		t.Log(util.ToString(genesisPovBlock))
-		t.Fatal("invalid test net genesis pov block hash", checkHash.String(), expectHash.String())
+		t.Fatal("invalid main net genesis pov block hash", checkHash.String(), expectHash.String())
 	}
 
 	checkSig := genesisPovBlock.GetSignature()
 	if checkSig != expectSig {
 		t.Log(util.ToString(genesisPovBlock))
-		t.Fatal("invalid test net genesis pov block signature", checkSig.String(), expectSig.String())
+		t.Fatal("invalid main net genesis pov block signature", checkSig.String(), expectSig.String())
 	}
 
 	voteSigInt := genesisPovBlock.VoteSignature.ToBigInt()

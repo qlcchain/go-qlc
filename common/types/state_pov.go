@@ -20,11 +20,11 @@ type PovAccountState struct {
 
 func NewPovAccountState() *PovAccountState {
 	return &PovAccountState{
-		Balance: StringToBalance("0"),
-		Vote:    StringToBalance("0"),
-		Network: StringToBalance("0"),
-		Storage: StringToBalance("0"),
-		Oracle:  StringToBalance("0"),
+		Balance: NewBalance(0),
+		Vote:    NewBalance(0),
+		Network: NewBalance(0),
+		Storage: NewBalance(0),
+		Oracle:  NewBalance(0),
 	}
 }
 
@@ -101,7 +101,7 @@ type PovTokenState struct {
 
 func NewPovTokenState() *PovTokenState {
 	return &PovTokenState{
-		Balance: StringToBalance("0"),
+		Balance: NewBalance(0),
 	}
 }
 
@@ -138,12 +138,12 @@ type PovRepState struct {
 
 func NewPovRepState() *PovRepState {
 	return &PovRepState{
-		Balance: StringToBalance("0"),
-		Vote:    StringToBalance("0"),
-		Network: StringToBalance("0"),
-		Storage: StringToBalance("0"),
-		Oracle:  StringToBalance("0"),
-		Total:   StringToBalance("0"),
+		Balance: NewBalance(0),
+		Vote:    NewBalance(0),
+		Network: NewBalance(0),
+		Storage: NewBalance(0),
+		Oracle:  NewBalance(0),
+		Total:   NewBalance(0),
 	}
 }
 
