@@ -34,7 +34,7 @@ func NewP2PService(cfg *config.Config) (*P2PService, error) {
 
 func (p *P2PService) Init() error {
 	if !p.PreInit() {
-		return errors.New("pre init fail.")
+		return errors.New("pre init fail")
 	}
 	defer p.PostInit()
 
@@ -43,7 +43,7 @@ func (p *P2PService) Init() error {
 
 func (p *P2PService) Start() error {
 	if !p.PreStart() {
-		return errors.New("pre start fail.")
+		return errors.New("pre start fail")
 	}
 	err := p.p2p.Start()
 	if err != nil {

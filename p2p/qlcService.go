@@ -70,12 +70,12 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-	err := ns.msgEvent.SubscribeAsync(string(common.EventBroadcast), ns.Broadcast, false)
+	err := ns.msgEvent.Subscribe(string(common.EventBroadcast), ns.Broadcast)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeAsync(string(common.EventSendMsgToPeers), ns.SendMessageToPeers, false)
+	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToPeers), ns.SendMessageToPeers)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
