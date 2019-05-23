@@ -14,10 +14,13 @@ import (
 	"go.uber.org/zap"
 )
 
-var zeroHash = types.Hash{}
-var headerBlockHash types.Hash
-var openBlockHash types.Hash
-var bulkPush, bulkPull []*protos.Bulk
+var (
+	headerBlockHash    types.Hash
+	openBlockHash      types.Hash
+	bulkPush, bulkPull []*protos.Bulk
+)
+
+const syncTimeout = 10 * time.Second
 
 // Service manage sync tasks
 type ServiceSync struct {
@@ -27,15 +30,17 @@ type ServiceSync struct {
 	remoteFrontiers []*types.Frontier
 	quitCh          chan bool
 	logger          *zap.SugaredLogger
+	lastSyncTime    int64
 }
 
 // NewService return new Service.
 func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync {
 	ss := &ServiceSync{
-		netService: netService,
-		qlcLedger:  ledger,
-		quitCh:     make(chan bool, 1),
-		logger:     log.NewLogger("sync"),
+		netService:   netService,
+		qlcLedger:    ledger,
+		quitCh:       make(chan bool, 1),
+		logger:       log.NewLogger("sync"),
+		lastSyncTime: 0,
 	}
 	return ss
 }
@@ -51,27 +56,34 @@ func (ss *ServiceSync) Start() {
 			ss.logger.Info("Stopped Sync Loop.")
 			return
 		case <-ticker.C:
-			peerID, err := ss.netService.node.StreamManager().RandomPeer()
-			if err != nil {
-				continue
-			}
-			ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
-			if err != nil {
-				continue
-			}
-			ss.logger.Infof("begin sync block from [%s]", peerID)
-			ss.remoteFrontiers = ss.remoteFrontiers[:0:0]
-			ss.next()
-			bulkPull = bulkPull[:0:0]
-			bulkPush = bulkPush[:0:0]
-			err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
-			if err != nil {
-				ss.logger.Errorf("err [%s] when send FrontierRequest", err)
+			now := time.Now().UTC().Unix()
+			if ss.lastSyncTime < now {
+				peerID, err := ss.netService.node.StreamManager().RandomPeer()
+				if err != nil {
+					continue
+				}
+				ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
+				if err != nil {
+					continue
+				}
+				ss.logger.Infof("begin sync block from [%s]", peerID)
+				ss.remoteFrontiers = ss.remoteFrontiers[:0:0]
+				ss.next()
+				bulkPull = bulkPull[:0:0]
+				bulkPush = bulkPush[:0:0]
+				err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
+				if err != nil {
+					ss.logger.Errorf("err [%s] when send FrontierRequest", err)
+				}
 			}
 		default:
 			time.Sleep(5 * time.Millisecond)
 		}
 	}
+}
+
+func (ss *ServiceSync) LastSyncTime(t time.Time) {
+	ss.lastSyncTime = t.Add(syncTimeout).UTC().Unix()
 }
 
 // Stop sync service
@@ -82,19 +94,22 @@ func (ss *ServiceSync) Stop() {
 }
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
-	ss.netService.node.logger.Info("receive FrontierReq")
-	var fs []*types.Frontier
-	fs, err := ss.qlcLedger.GetFrontiers()
-	if err != nil {
-		return err
-	}
-	num := len(fs)
-	var rsp *protos.FrontierResponse
-	for _, f := range fs {
-		rsp = protos.NewFrontierRsp(f, uint32(num))
-		err = ss.netService.SendMessageToPeer(FrontierRsp, rsp, message.MessageFrom())
+	ss.netService.node.logger.Debug("receive FrontierReq")
+	now := time.Now().UTC().Unix()
+	if ss.lastSyncTime < now {
+		var fs []*types.Frontier
+		fs, err := ss.qlcLedger.GetFrontiers()
 		if err != nil {
-			ss.logger.Errorf("send FrontierRsp err [%s]", err)
+			return err
+		}
+		num := len(fs)
+		var rsp *protos.FrontierResponse
+		for _, f := range fs {
+			rsp = protos.NewFrontierRsp(f, uint32(num))
+			err = ss.netService.SendMessageToPeer(FrontierRsp, rsp, message.MessageFrom())
+			if err != nil {
+				ss.logger.Errorf("send FrontierRsp err [%s]", err)
+			}
 		}
 	}
 	//send frontier finished,last frontier is all zero,tell remote peer send finished
@@ -147,7 +162,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 				if !openBlockHash.IsZero() && (openBlockHash.String() < fsRemotes[i].OpenBlock.String()) {
 					// We have an account but remote peer have not.
 					push := &protos.Bulk{
-						StartHash: zeroHash,
+						StartHash: types.ZeroHash,
 						EndHash:   headerBlockHash,
 					}
 					bulkPush = append(bulkPush, push)
@@ -182,14 +197,14 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 						return nil
 					}
 					pull := &protos.Bulk{
-						StartHash: zeroHash,
+						StartHash: types.ZeroHash,
 						EndHash:   fsRemotes[i].HeaderBlock,
 					}
 					bulkPull = append(bulkPull, pull)
 				}
 			} else {
 				pull := &protos.Bulk{
-					StartHash: zeroHash,
+					StartHash: types.ZeroHash,
 					EndHash:   fsRemotes[i].HeaderBlock,
 				}
 				bulkPull = append(bulkPull, pull)
@@ -199,7 +214,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 				if !openBlockHash.IsZero() {
 					// We have an account but remote peer have not.
 					push := &protos.Bulk{
-						StartHash: zeroHash,
+						StartHash: types.ZeroHash,
 						EndHash:   headerBlockHash,
 					}
 					bulkPush = append(bulkPush, push)
@@ -291,7 +306,7 @@ func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
 }
 
 func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
-	ss.netService.node.logger.Info("receive BulkPullRequest")
+	ss.netService.node.logger.Debug("receive BulkPullRequest")
 	pullRemote, err := protos.BulkPullReqPacketFromProto(message.Data())
 	if err != nil {
 		return err
@@ -362,7 +377,7 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 }
 
 func (ss *ServiceSync) onBulkPushBlock(message *Message) error {
-	ss.netService.node.logger.Info("receive BulkPushBlock")
+	ss.netService.node.logger.Debug("receive BulkPushBlock")
 	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err

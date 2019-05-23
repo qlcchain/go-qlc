@@ -107,6 +107,8 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 	case process.Progress:
 		if bs.blockFrom == types.Synchronized {
 			bp.dp.logger.Debugf("Block %s from sync,no need consensus", hash)
+			now := time.Now()
+			bp.dp.eb.Publish(string(common.EventSyncing), now)
 		} else if bs.blockFrom == types.UnSynchronized {
 			bp.dp.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			bp.dp.acTrx.addToRoots(blk)

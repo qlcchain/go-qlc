@@ -12,6 +12,7 @@ const (
 	EventBroadcast      TopicType = "broadcast"
 	EventSendMsgToPeers TopicType = "sendMsgToPeers"
 	EventPeersInfo      TopicType = "peersInfo"
+	EventSyncing        TopicType = "syncing"
 	EventAddRelation    TopicType = "addRelation"
 	EventDeleteRelation TopicType = "deleteRelation"
 )
