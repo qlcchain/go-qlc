@@ -2070,9 +2070,11 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 		block.Oracle = prev.GetOracle()
 		block.Storage = prev.GetStorage()
 
-		acc := types.NewAccount(prk)
-		block.Signature = acc.Sign(block.GetHash())
-		block.Work = l.generateWork(block.Root())
+		if prk != nil {
+			acc := types.NewAccount(prk)
+			block.Signature = acc.Sign(block.GetHash())
+			block.Work = l.generateWork(block.Root())
+		}
 		return block, nil
 	} else {
 		return nil, fmt.Errorf("not enought balance(%s) of %s", tm.Balance, amount)
@@ -2087,7 +2089,6 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 	if exist, err := l.HasStateBlock(hash); !exist || err != nil {
 		return nil, fmt.Errorf("send block(%s) does not exist", hash.String())
 	}
-	acc := types.NewAccount(prk)
 	rxAccount := types.Address(sendBlock.Link)
 	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
 	if err != nil {
@@ -2122,8 +2123,11 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 				Extra:          types.ZeroHash,
 				Timestamp:      common.TimeNow().UTC().Unix(),
 			}
-			sb.Signature = acc.Sign(sb.GetHash())
-			sb.Work = l.generateWork(sb.Root())
+			if prk != nil {
+				acc := types.NewAccount(prk)
+				sb.Signature = acc.Sign(sb.GetHash())
+				sb.Work = l.generateWork(sb.Root())
+			}
 			return &sb, nil
 		}
 	}
@@ -2142,8 +2146,11 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		Extra:          types.ZeroHash,
 		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
-	sb.Signature = acc.Sign(sb.GetHash())
-	sb.Work = l.generateWork(sb.Root())
+	if prk != nil {
+		acc := types.NewAccount(prk)
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+	}
 	return &sb, nil
 }
 
@@ -2180,9 +2187,11 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Extra:          types.ZeroHash,
 		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
-	acc := types.NewAccount(prk)
-	sb.Signature = acc.Sign(sb.GetHash())
-	sb.Work = l.generateWork(sb.Root())
+	if prk != nil {
+		acc := types.NewAccount(prk)
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+	}
 	return &sb, nil
 }
 
