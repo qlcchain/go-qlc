@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"math/rand"
+	"sort"
+	"sync"
+
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common"
@@ -15,10 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
-	"io"
-	"math/rand"
-	"sort"
-	"sync"
 )
 
 type Ledger struct {

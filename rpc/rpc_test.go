@@ -11,7 +11,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/test/mock"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 var (

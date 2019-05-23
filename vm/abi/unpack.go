@@ -153,6 +153,8 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if t.T == SignatureTy {
+		returnOutput = output[index : index+util.WordSize*2]
 	} else {
 		returnOutput = output[index : index+util.WordSize]
 	}
@@ -169,14 +171,13 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 	case BoolTy:
 		return readBool(returnOutput)
 	case AddressTy:
-		addr, _ := types.BytesToAddress(returnOutput)
-		return addr, nil
+		return types.BytesToAddress(returnOutput)
 	case TokenIdTy:
-		tokenId, _ := types.BytesToHash(returnOutput)
-		return tokenId, nil
+		return types.BytesToHash(returnOutput)
 	case HashTy:
-		hash, _ := types.BytesToHash(returnOutput)
-		return hash, nil
+		return types.BytesToHash(returnOutput)
+	case SignatureTy:
+		return types.BytesToSignature(returnOutput)
 	case BytesTy:
 		return output[begin : begin+end], nil
 	case FixedBytesTy:
