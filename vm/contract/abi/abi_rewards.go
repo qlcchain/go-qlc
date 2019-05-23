@@ -26,12 +26,13 @@ import (
 
 const (
 	jsonRewards = `[
-		{"type":"function","name":"AirdropRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"bytes32"},{"name":"rxHeader","type":"bytes32"},{"name":"amount","type":"uint256"},{"name":"sign","type":"bytes64"}]},
-		{"type":"function","name":"UnsignedAirdropRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"bytes32"},{"name":"rxHeader","type":"bytes32"},{"name":"amount","type":"uint256"}]},
-		{"type":"function","name":"ConfidantRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"bytes32"},{"name":"rxHeader","type":"bytes32"},{"name":"amount","type":"uint256"},{"name":"sign","type":"bytes64"}]},
-		{"type":"function","name":"UnsignedConfidantRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"bytes32"},{"name":"rxHeader","type":"bytes32"},{"name":"amount","type":"uint256"}]},
-		{"type":"variable","name":"rewardsInfo","inputs":[{"name":"type","type":"uint8"},{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"sHeader","type":"bytes32"},{"name":"rHeader","type":"bytes32"},{"name":"amount","type":"uint256"}]}
-	]`
+		{"type":"function","name":"AirdropRewards","inputs":[{"name":"id","type":"hash"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"},{"name":"sign","type":"signature"}]  },
+		{"type":"function","name":"UnsignedAirdropRewards","inputs":[{"name":"id","type":"hash"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"}]  },
+		{"type":"function","name":"ConfidantRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"},{"name":"sign","type":"signature"}]  },
+		{"type":"function","name":"UnsignedConfidantRewards","inputs":[{"name":"id","type":"hash"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"}]  },
+		{"type":"variable","name":"rewardsInfo","inputs":[{"name":"type","type":"uint8"},{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"sHeader","type":"hash"},{"name":"rHeader","type":"hash"},{"name":"amount","type":"uint256"}]  }
+	]
+`
 
 	MethodNameUnsignedAirdropRewards   = "UnsignedAirdropRewards"
 	MethodNameAirdropRewards           = "AirdropRewards"
@@ -50,39 +51,26 @@ const (
 )
 
 type RewardsParam struct {
-	Id         []byte
-	Beneficial *types.Address
-	TxHeader   []byte
-	RxHeader   []byte
+	Id         types.Hash
+	Beneficial types.Address
+	TxHeader   types.Hash
+	RxHeader   types.Hash
 	Amount     *big.Int
-	Sign       []byte
+	Sign       types.Signature
 }
 
-func (ap *RewardsParam) Verify(address types.Address) (bool, error) {
-	h1, err := types.BytesToHash(ap.TxHeader)
-	if err != nil {
-		return false, err
-	}
+func (ap *RewardsParam) Verify(address types.Address, methodName string) (bool, error) {
+	if !ap.Id.IsZero() && !ap.TxHeader.IsZero() && !ap.Beneficial.IsZero() && ap.Amount.Sign() > 0 {
+		if data, err := RewardsABI.PackMethod(methodName, ap.Id, ap.Beneficial, ap.TxHeader, ap.RxHeader, ap.Amount); err == nil {
+			h := types.HashData(data)
 
-	_, err = types.BytesToHash(ap.RxHeader)
-	if err != nil {
-		return false, err
-	}
-
-	if len(ap.Id) > 0 && !h1.IsZero() && ap.Amount != nil {
-		var data []byte
-		data = append(data, ap.Id...)
-		data = append(data, ap.TxHeader...)
-		data = append(data, ap.RxHeader...)
-		data = append(data, ap.Amount.Bytes()...)
-
-		h := types.HashData(data)
-
-		//verify sign
-		if !address.Verify(h[:], ap.Sign) {
-			return false, fmt.Errorf("invalid sign")
+			if address.Verify(h[:], ap.Sign[:]) {
+				return true, nil
+			} else {
+				return false, fmt.Errorf("invalid sign[%s] of hash[%s]", ap.Sign.String(), h.String())
+			}
 		} else {
-			return true, nil
+			return false, err
 		}
 	} else {
 		return false, fmt.Errorf("invalid param")

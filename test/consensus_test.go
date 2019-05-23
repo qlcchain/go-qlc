@@ -26,8 +26,8 @@ import (
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 var (

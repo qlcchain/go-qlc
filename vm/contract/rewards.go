@@ -27,12 +27,12 @@ func (ar *AirdropRewords) GetFee(ctx *vmstore.VMContext, block *types.StateBlock
 
 func (ar *AirdropRewords) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
 	param := new(cabi.RewardsParam)
-	err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameAirdropRewards, block.Data)
+	err := cabi.RewardsABI.UnpackMethod(param, cabi.MethodNameAirdropRewards, block.Data)
 	if err != nil {
 		return err
 	}
 
-	if _, err := param.Verify(block.Address); err != nil {
+	if _, err := param.Verify(block.Address, cabi.MethodNameUnsignedAirdropRewards); err != nil {
 		return err
 	}
 
@@ -40,29 +40,12 @@ func (ar *AirdropRewords) DoSend(ctx *vmstore.VMContext, block *types.StateBlock
 }
 
 func (ar *AirdropRewords) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(cabi.RewardsParam)
-	err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameAirdropRewards, block.Data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if _, err := param.Verify(block.Address); err != nil {
-		return nil, nil, err
-	}
-
-	return &types.PendingKey{
-			Address: *param.Beneficial,
-			Hash:    block.GetHash(),
-		}, &types.PendingInfo{
-			Source: block.Address,
-			Amount: types.Balance{Int: param.Amount},
-			Type:   block.Token,
-		}, nil
+	return doPending(block, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards)
 }
 
 func (ar *AirdropRewords) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return generate(ctx, block, input, func(param *cabi.RewardsParam) []byte {
-		return cabi.GetRewardsKey(param.Id, param.TxHeader, param.RxHeader)
+	return generate(ctx, cabi.MethodNameUnsignedAirdropRewards, cabi.MethodNameUnsignedAirdropRewards, block, input, func(param *cabi.RewardsParam) []byte {
+		return cabi.GetRewardsKey(param.Id[:], param.TxHeader[:], param.RxHeader[:])
 	})
 }
 
@@ -79,12 +62,12 @@ func (*ConfidantRewards) GetFee(ctx *vmstore.VMContext, block *types.StateBlock)
 
 func (*ConfidantRewards) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
 	param := new(cabi.RewardsParam)
-	err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameAirdropRewards, block.Data)
+	err := cabi.RewardsABI.UnpackMethod(param, cabi.MethodNameConfidantRewards, block.Data)
 	if err != nil {
 		return err
 	}
 
-	if _, err := param.Verify(block.Address); err != nil {
+	if _, err := param.Verify(block.Address, cabi.MethodNameUnsignedConfidantRewards); err != nil {
 		return err
 	}
 
@@ -92,18 +75,22 @@ func (*ConfidantRewards) DoSend(ctx *vmstore.VMContext, block *types.StateBlock)
 }
 
 func (ar *ConfidantRewards) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return doPending(block, cabi.MethodNameConfidantRewards, cabi.MethodNameUnsignedConfidantRewards)
+}
+
+func doPending(block *types.StateBlock, signed, unsigned string) (*types.PendingKey, *types.PendingInfo, error) {
 	param := new(cabi.RewardsParam)
-	err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameAirdropRewards, block.Data)
+	err := cabi.RewardsABI.UnpackMethod(param, signed, block.Data)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if _, err := param.Verify(block.Address); err != nil {
+	if _, err := param.Verify(block.Address, unsigned); err != nil {
 		return nil, nil, err
 	}
 
 	return &types.PendingKey{
-			Address: *param.Beneficial,
+			Address: param.Beneficial,
 			Hash:    block.GetHash(),
 		}, &types.PendingInfo{
 			Source: block.Address,
@@ -113,8 +100,8 @@ func (ar *ConfidantRewards) DoPending(block *types.StateBlock) (*types.PendingKe
 }
 
 func (*ConfidantRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return generate(ctx, block, input, func(param *cabi.RewardsParam) []byte {
-		return cabi.GetConfidantKey(*param.Beneficial, param.Id, param.TxHeader, param.RxHeader)
+	return generate(ctx, cabi.MethodNameUnsignedConfidantRewards, cabi.MethodNameUnsignedConfidantRewards, block, input, func(param *cabi.RewardsParam) []byte {
+		return cabi.GetConfidantKey(param.Beneficial, param.Id[:], param.TxHeader[:], param.RxHeader[:])
 	})
 }
 
@@ -122,14 +109,14 @@ func (*ConfidantRewards) GetRefundData() []byte {
 	return []byte{2}
 }
 
-func generate(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock, fn func(param *cabi.RewardsParam) []byte) ([]*ContractBlock, error) {
+func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock, fn func(param *cabi.RewardsParam) []byte) ([]*ContractBlock, error) {
 	param := new(cabi.RewardsParam)
-	err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameAirdropRewards, input.Data)
+	err := cabi.RewardsABI.UnpackMethod(param, signed, input.Data)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := param.Verify(input.Address); err != nil {
+	if _, err := param.Verify(input.Address, unsigned); err != nil {
 		return nil, err
 	}
 
@@ -143,7 +130,7 @@ func generate(ctx *vmstore.VMContext, block *types.StateBlock, input *types.Stat
 			return nil, err
 		}
 		txToken := txMeta.Token(input.Token)
-		rxAddress := *param.Beneficial
+		rxAddress := param.Beneficial
 
 		rxMeta, _ := ctx.GetAccountMeta(rxAddress)
 

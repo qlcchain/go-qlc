@@ -16,6 +16,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -227,4 +228,24 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	worker, _ := types.NewWorker(w, blk.Root())
 	blk.Work = worker.NewWork()
 	return blk
+}
+
+type Mac [6]byte
+
+func (m Mac) String() string {
+	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", m[0], m[1], m[2], m[3], m[4], m[5])
+}
+
+func NewRandomMac() Mac {
+	var m [6]byte
+
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < 6; i++ {
+		mac_byte := rand.Intn(256)
+		m[i] = byte(mac_byte)
+
+		rand.Seed(int64(mac_byte))
+	}
+
+	return Mac(m)
 }

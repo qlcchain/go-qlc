@@ -26,7 +26,7 @@ import (
 	"github.com/qlcchain/go-qlc/crypto"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/test/mock"
+	"github.com/qlcchain/go-qlc/mock"
 	"go.uber.org/zap"
 )
 

@@ -25,8 +25,20 @@ const (
 	SignatureSize = ed25519.SignatureSize
 )
 
+var ZeroSignature = Signature{}
+
 // Signature of block
 type Signature [SignatureSize]byte
+
+func BytesToSignature(b []byte) (Signature, error) {
+	var sign Signature
+	if len(b) != ed25519.SignatureSize {
+		return ZeroSignature, fmt.Errorf("invalid signature size[%d]", len(b))
+	}
+	copy(sign[:], b)
+
+	return sign, nil
+}
 
 // String implements the fmt.Stringer interface.
 func (s Signature) String() string {

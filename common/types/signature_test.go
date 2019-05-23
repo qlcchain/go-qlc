@@ -8,8 +8,10 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -32,4 +34,25 @@ func TestSignature_UnmarshalJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println(sign2)
+}
+
+func TestBytesToSignature(t *testing.T) {
+	s := `5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600`
+	bytes, err := hex.DecodeString(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sign1, err := BytesToSignature(bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sign := new(Signature)
+	err = sign.Of(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(sign[:], sign1[:]) {
+		t.Fatal(sign.String(), sign1.String())
+	}
 }

@@ -9,7 +9,6 @@ package api
 
 import (
 	"encoding/hex"
-	"fmt"
 	"math/big"
 
 	"github.com/pkg/errors"
@@ -43,10 +42,10 @@ func NewRewardsApi(l *ledger.Ledger) *RewardsApi {
 }
 
 type RewardsParam struct {
-	Id     string         `json:"Id"`
-	Amount types.Balance  `json:"amount"`
-	Self   *types.Address `json:"self"`
-	To     *types.Address `json:"to"`
+	Id     string        `json:"Id"`
+	Amount types.Balance `json:"amount"`
+	Self   types.Address `json:"self"`
+	To     types.Address `json:"to"`
 }
 
 func (r *RewardsApi) GetUnsignedRewardData(param *RewardsParam) (types.Hash, error) {
@@ -71,28 +70,30 @@ func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn fun
 	if err != nil {
 		return types.ZeroHash, err
 	}
-	h1 := new(types.Hash)
-	h2 := new(types.Hash)
+	var txHash types.Hash
+	var rxHash types.Hash
 
-	if _, err := r.ledger.HasTokenMeta(*param.Self, common.GasToken()); err != nil {
+	if _, err := r.ledger.HasTokenMeta(param.Self, common.GasToken()); err != nil {
 		return types.ZeroHash, err
 	} else {
-		tm, _ := r.ledger.GetTokenMeta(*param.Self, common.GasToken())
-		h1 = &tm.Header
+		tm, _ := r.ledger.GetTokenMeta(param.Self, common.GasToken())
+		txHash = tm.Header
 	}
 
-	if b, err := r.ledger.HasTokenMeta(*param.To, common.GasToken()); err != nil {
+	if b, err := r.ledger.HasTokenMeta(param.To, common.GasToken()); err != nil {
 		return types.ZeroHash, err
 	} else {
 		if b {
-			tm, _ := r.ledger.GetTokenMeta(*param.Self, common.GasToken())
-			h2 = &tm.Header
+			tm, _ := r.ledger.GetTokenMeta(param.Self, common.GasToken())
+			rxHash = tm.Header
 		} else {
-			h2 = &types.ZeroHash
+			rxHash = types.ZeroHash
 		}
 	}
 
-	if data, err := cabi.RewardsABI.PackMethod(methodName, id, param.To, h1[:], h2[:], param.Amount.Int); err == nil {
+	r.logger.Debugf("%s %s %s %s %s", methodName, param.To.String(), txHash.String(), rxHash.String(), param.Amount.Int)
+
+	if data, err := cabi.RewardsABI.PackMethod(methodName, id, param.To, txHash, rxHash, param.Amount.Int); err == nil {
 		return types.HashData(data), nil
 	} else {
 		return types.ZeroHash, err
@@ -100,9 +101,16 @@ func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn fun
 }
 
 func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signature) (*types.StateBlock, error) {
-	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedAirdropRewards, func(param *RewardsParam) (bytes []byte, e error) {
-		h := types.HashData([]byte(param.Id))
-		return h[:], nil
+	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedAirdropRewards, func(param *RewardsParam) (types.Hash, error) {
+		bytes, err := hex.DecodeString(param.Id)
+		if err != nil {
+			return types.ZeroHash, err
+		}
+		h, err := types.BytesToHash(bytes)
+		if err != nil {
+			return types.ZeroHash, err
+		}
+		return h, nil
 	}); err == nil {
 		return r.generateSend(p, cabi.MethodNameAirdropRewards)
 	} else {
@@ -111,9 +119,9 @@ func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signatu
 }
 
 func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Signature) (*types.StateBlock, error) {
-	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedConfidantRewards, func(param *RewardsParam) (bytes []byte, e error) {
+	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedConfidantRewards, func(param *RewardsParam) (types.Hash, error) {
 		h := types.HashData([]byte(param.Id))
-		return h[:], nil
+		return h, nil
 	}); err == nil {
 		return r.generateSend(p, cabi.MethodNameConfidantRewards)
 	} else {
@@ -121,7 +129,7 @@ func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Sign
 	}
 }
 
-func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, methodName string, fn func(param *RewardsParam) ([]byte, error)) (*sendParam, error) {
+func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, methodName string, fn func(param *RewardsParam) (types.Hash, error)) (*sendParam, error) {
 	if len(param.Id) == 0 || param.Amount.IsZero() || param.Self.IsZero() || param.To.IsZero() {
 		return nil, errors.New("invalid param")
 	}
@@ -131,48 +139,43 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 		return nil, err
 	}
 
-	h1 := new(types.Hash)
-	h2 := new(types.Hash)
-
-	if _, err := r.ledger.HasTokenMeta(*param.Self, common.GasToken()); err != nil {
+	if _, err := r.ledger.HasTokenMeta(param.Self, common.GasToken()); err != nil {
 		return nil, err
 	}
 
-	am, _ := r.ledger.GetAccountMeta(*param.Self)
+	am, _ := r.ledger.GetAccountMeta(param.Self)
 	tm := am.Token(common.GasToken())
-	h1 = &tm.Header
+	txHash := tm.Header
 
-	if b, err := r.ledger.HasTokenMeta(*param.To, common.GasToken()); err != nil {
+	var rxHash types.Hash
+	if b, err := r.ledger.HasTokenMeta(param.To, common.GasToken()); err != nil {
 		return nil, err
 	} else {
 		if b {
-			tm, _ := r.ledger.GetTokenMeta(*param.Self, common.GasToken())
-			h2 = &tm.Header
+			tm, _ := r.ledger.GetTokenMeta(param.Self, common.GasToken())
+			rxHash = tm.Header
 		} else {
-			h2 = &types.ZeroHash
+			rxHash = types.ZeroHash
 		}
 	}
 	p := &sendParam{
 		RewardsParam: &cabi.RewardsParam{
 			Id:         id,
 			Beneficial: param.To,
-			TxHeader:   h1[:],
-			RxHeader:   h2[:],
+			TxHeader:   txHash,
+			RxHeader:   rxHash,
 			Amount:     param.Amount.Int,
-			Sign:       sign[:],
+			Sign:       *sign,
 		},
-		self: param.Self,
+		self: &param.Self,
 		am:   am,
 		tm:   tm,
 	}
 
-	if data, err := cabi.RewardsABI.PackMethod(methodName, id, param.To, h1[:], h2[:], param.Amount.Int); err == nil {
-		h := types.HashData(data)
-		if param.Self.Verify(h[:], sign[:]) {
-			return p, nil
-		} else {
-			return nil, fmt.Errorf("invalid sign[%s] of hash[%s]", sign.String(), h.String())
-		}
+	r.logger.Debugf("verify %s %s %s %s %s", methodName, param.To.String(), txHash.String(), rxHash.String(), param.Amount.Int)
+
+	if b, err := p.RewardsParam.Verify(param.Self, methodName); b && err == nil {
+		return p, nil
 	} else {
 		return nil, err
 	}
