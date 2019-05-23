@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/p2p"
@@ -109,6 +110,7 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 		} else if bs.blockFrom == types.UnSynchronized {
 			bp.dp.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			bp.dp.acTrx.addToRoots(blk)
+			bp.checkVoteCache(blk)
 		} else {
 			bp.dp.logger.Errorf("Block %s UnKnow from", hash)
 			return errors.New("UnKnow block from")
@@ -152,6 +154,19 @@ func (bp *BlockProcessor) processResult(result process.ProcessResult, bs blockSo
 
 func (bp *BlockProcessor) processGapSmartContract(block *types.StateBlock) {
 
+}
+
+func (bp *BlockProcessor) checkVoteCache(block *types.StateBlock) {
+	v, e := bp.dp.voteCache.Get(block.GetHash())
+	if e == nil {
+		vc := v.(*sync.Map)
+		vc.Range(func(key, value interface{}) bool {
+			bp.dp.acTrx.vote(value.(*protos.ConfirmAckBlock))
+			return true
+		})
+
+		bp.dp.voteCache.Remove(block.GetHash())
+	}
 }
 
 func (bp *BlockProcessor) processFork(block *types.StateBlock) {
