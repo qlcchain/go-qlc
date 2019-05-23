@@ -14,6 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestNew(t *testing.T) {
@@ -54,6 +55,32 @@ func TestUnsubscribe(t *testing.T) {
 	}
 }
 
+func TestUnsubscribe2(t *testing.T) {
+	bus := SimpleEventBus()
+
+	handler := func() {}
+
+	_ = bus.Subscribe("test", handler)
+
+	t.Log(bus.(*DefaultEventBus).handlers.Len())
+	if value, ok := bus.(*DefaultEventBus).handlers.GetStringKey("test"); ok {
+		t.Log(value.(*eventHandlers).Size())
+	}
+
+	if err := bus.Unsubscribe("test", handler); err != nil {
+		fmt.Println(err)
+		t.Fail()
+	}
+	t.Log(bus.(*DefaultEventBus).handlers.Len())
+	if value, ok := bus.(*DefaultEventBus).handlers.GetStringKey("test"); ok {
+		t.Log(value.(*eventHandlers).Size())
+	}
+	if err := bus.Unsubscribe("unexisted", func() {}); err == nil {
+		fmt.Println(err)
+		t.Fail()
+	}
+}
+
 func TestClose(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
 
@@ -67,14 +94,14 @@ func TestClose(t *testing.T) {
 		t.Fail()
 	}
 
-	if 0 == len(original.handlers) {
+	if 0 == original.handlers.Len() {
 		fmt.Println("Did not subscribed handler to topic")
 		t.Fail()
 	}
 
 	bus.CloseTopic("test")
 
-	if 0 != len(original.handlers) {
+	if 0 != original.handlers.Len() {
 		fmt.Println("Did not unsubscribed handlers from topic")
 		t.Fail()
 	}
@@ -104,7 +131,7 @@ func TestPublish(t *testing.T) {
 	wg.Wait()
 
 	if first == false || second == false {
-		t.Fail()
+		t.Fatal(first, second)
 	}
 }
 
@@ -170,6 +197,7 @@ func TestEventSubscribe(t *testing.T) {
 	})
 
 	_ = bus.Subscribe(topic, func(i int64) {
+		time.Sleep(time.Second)
 		fmt.Println("sub2", i, atomic.AddInt64(&counter, 1))
 	})
 
