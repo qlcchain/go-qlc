@@ -419,6 +419,24 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
 			return err
 		}
+	case types.ContractSend:
+		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
+			if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
+				lv.logger.Info("contractSend add pending , ", pendingKey)
+				if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+					return err
+				}
+			}
+		}
+	case types.ContractReward:
+		pendingKey := types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		lv.logger.Info("contractReward delete pending, ", pendingKey)
+		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
+			return err
+		}
 	}
 	return nil
 }
