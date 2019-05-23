@@ -130,7 +130,7 @@ func (r *Relation) MessageBlocks(hash types.Hash, limit int, offset int) ([]type
 }
 
 func (r *Relation) AddBlock(block *types.StateBlock) error {
-	r.logger.Info("add relation, ", block.GetHash())
+	r.logger.Debug("add relation, ", block.GetHash())
 	conHash := make(map[db.Column]interface{})
 	conHash[db.ColumnHash] = block.GetHash().String()
 	conHash[db.ColumnTimestamp] = block.GetTimestamp()
