@@ -151,7 +151,7 @@ func (b Balance) MarshalText() ([]byte, error) {
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (b *Balance) UnmarshalText(text []byte) error {
 	s := util.TrimQuotes(string(text))
-	_, err := strconv.Atoi(s)
+	_, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return err
 	}
