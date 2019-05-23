@@ -21,6 +21,7 @@ type MinerApi struct {
 }
 
 type RewardParam struct {
+	Coinbase   types.Address `json:"coinbase"`
 	Beneficial types.Address `json:"beneficial"`
 }
 
@@ -33,17 +34,25 @@ func NewMinerApi(ledger *ledger.Ledger) *MinerApi {
 }
 
 func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
-	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Beneficial)
+	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial)
 }
 
-func (m *MinerApi) GetRewardContractSendBlock(param *RewardParam) (*types.StateBlock, error) {
+func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, error) {
+	if param.Coinbase.IsZero() {
+		return nil, errors.New("invalid reward param coinbase")
+	}
 	if param.Beneficial.IsZero() {
-		return nil, errors.New("invalid reward param")
+		return nil, errors.New("invalid reward param beneficial")
 	}
 
-	am, err := m.ledger.GetAccountMeta(param.Beneficial)
-	if am == nil {
-		return nil, fmt.Errorf("invalid beneficial account:%s, %s", param.Beneficial, err)
+	amCb, err := m.ledger.GetAccountMeta(param.Coinbase)
+	if amCb == nil {
+		return nil, fmt.Errorf("invalid coinbase account, %s", err)
+	}
+
+	amBnf, err := m.ledger.GetAccountMeta(param.Beneficial)
+	if amBnf == nil {
+		return nil, fmt.Errorf("invalid beneficial account, %s", err)
 	}
 
 	data, err := m.GetRewardData(param)
@@ -54,24 +63,27 @@ func (m *MinerApi) GetRewardContractSendBlock(param *RewardParam) (*types.StateB
 	send := &types.StateBlock{
 		Type:      types.ContractSend,
 		Token:     common.GasToken(),
-		Address:   param.Beneficial,
-		Balance:   am.CoinBalance,
-		Vote:      am.CoinVote,
-		Network:   am.CoinNetwork,
-		Oracle:    am.CoinOracle,
-		Storage:   am.CoinStorage,
+		Address:   param.Coinbase,
+
+		Vote:      amCb.CoinVote,
+		Network:   amCb.CoinNetwork,
+		Oracle:    amCb.CoinOracle,
+		Storage:   amCb.CoinStorage,
+
 		Link:      types.Hash(types.MinerAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().UTC().Unix(),
 	}
 
-	tm := am.Token(common.GasToken())
-	if tm != nil {
-		send.Previous = tm.Header
-		send.Representative = tm.Representative
+	tmCb := amCb.Token(common.GasToken())
+	if tmCb != nil {
+		send.Balance = tmCb.Balance
+		send.Previous = tmCb.Header
+		send.Representative = tmCb.Representative
 	} else {
+		send.Balance = types.NewBalance(0)
 		send.Previous = types.ZeroHash
-		send.Representative = send.Address
+		send.Representative = types.ZeroAddress
 	}
 
 	err = m.reward.DoSend(m.vmContext, send)
@@ -82,7 +94,7 @@ func (m *MinerApi) GetRewardContractSendBlock(param *RewardParam) (*types.StateB
 	return send, nil
 }
 
-func (m *MinerApi) GetRewardContractRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	reward := &types.StateBlock{}
 
 	blocks, err := m.reward.DoReceive(m.vmContext, reward, input)
@@ -96,5 +108,5 @@ func (m *MinerApi) GetRewardContractRewardBlock(input *types.StateBlock) (*types
 		return reward, nil
 	}
 
-	return nil, errors.New("can not generate contract reward block")
+	return nil, errors.New("can not generate reward recv block")
 }

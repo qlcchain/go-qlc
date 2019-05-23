@@ -22,12 +22,25 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		return err
 	}
 
-	am, _ := ctx.GetAccountMeta(param.Beneficial)
-	if am == nil {
+	if param.Coinbase != block.Address {
+		return errors.New("account is not coinbase")
+	}
+
+	if block.Token != common.GasToken() {
+		return errors.New("token is not gas token")
+	}
+
+	amCb, _ := ctx.GetAccountMeta(param.Coinbase)
+	if amCb == nil {
+		return errors.New("coinbase account not exist")
+	}
+
+	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
+	if amBnf == nil {
 		return errors.New("beneficial account not exist")
 	}
 
-	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Beneficial)
+	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial)
 	if err != nil {
 		return err
 	}
@@ -40,6 +53,15 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, input.Data)
 	if err != nil {
 		return nil, err
+	}
+
+	if param.Coinbase != input.Address {
+		return nil, errors.New("input account is not coinbase")
+	}
+
+	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
+	if amBnf == nil {
+		return nil, errors.New("beneficial account not exist")
 	}
 
 	key := cabi.GetMinerKey(input.Address)
@@ -77,26 +99,25 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		return nil, err
 	}
 
-	am, _ := ctx.GetAccountMeta(param.Beneficial)
-	tm := am.Token(common.GasToken())
-
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
 	block.Token = common.GasToken()
 	block.Link = input.GetHash()
-	block.Vote = am.CoinVote
-	block.Oracle = am.CoinOracle
-	block.Storage = am.CoinStorage
-	block.Network = am.CoinNetwork
 	block.Data = newMinerData
 
-	if tm != nil {
-		block.Representative = tm.Representative
-		block.Balance = tm.Balance.Add(rewardAmount)
-		block.Previous = tm.Header
+	block.Vote = amBnf.CoinVote
+	block.Oracle = amBnf.CoinOracle
+	block.Storage = amBnf.CoinStorage
+	block.Network = amBnf.CoinNetwork
+
+	tmBnf := amBnf.Token(common.GasToken())
+	if tmBnf != nil {
+		block.Balance = tmBnf.Balance.Add(rewardAmount)
+		block.Representative = tmBnf.Representative
+		block.Previous = tmBnf.Header
 	} else {
-		block.Representative = block.Address
 		block.Balance = rewardAmount
+		block.Representative = types.ZeroAddress
 		block.Previous = types.ZeroHash
 	}
 

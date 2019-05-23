@@ -10,7 +10,7 @@ import (
 const (
 	jsonMiner = `
 	[
-		{"type":"function","name":"MinerReward","inputs":[{"name":"beneficial","type":"address"}]},
+		{"type":"function","name":"MinerReward","inputs":[{"name":"coinbase","type":"address"},{"name":"beneficial","type":"address"}]},
 		{"type":"variable","name":"minerInfo","inputs":[{"name":"beneficial","type":"address"},{"name":"rewardHeight","type":"uint64"}]}
 	]`
 
@@ -30,6 +30,7 @@ var (
 )
 
 type MinerRewardParam struct {
+	Coinbase   types.Address
 	Beneficial types.Address
 }
 
