@@ -252,6 +252,6 @@ func (r *RewardsApi) GetTotalRewards(txId string) (*big.Int, error) {
 	return cabi.GetTotalRewards(vmstore.NewVMContext(r.ledger), txId)
 }
 
-func (r *RewardsApi) GetConfidantRewords(confidant types.Address) (map[string]*big.Int, error) {
+func (r *RewardsApi) GetConfidantRewards(confidant types.Address) (map[string]*big.Int, error) {
 	return cabi.GetConfidantRewords(vmstore.NewVMContext(r.ledger), confidant)
 }

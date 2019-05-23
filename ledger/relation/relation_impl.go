@@ -3,6 +3,7 @@ package relation
 import (
 	"encoding/base64"
 	"sync"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common"
@@ -15,9 +16,10 @@ import (
 )
 
 type Relation struct {
-	store  db.DbStore
-	eb     event.EventBus
-	logger *zap.SugaredLogger
+	store   db.DbStore
+	eb      event.EventBus
+	logger  *zap.SugaredLogger
+	blkChan chan *types.StateBlock
 }
 
 type blocksHash struct {
@@ -47,7 +49,9 @@ func NewRelation(cfg *config.Config) (*Relation, error) {
 	once.Do(func() {
 		store := new(db.DBSQL)
 		store, err = db.NewSQLDB(cfg)
-		relation = &Relation{store: store, eb: event.GetEventBus(cfg.LedgerDir()), logger: log.NewLogger("relation")}
+		relation = &Relation{store: store, eb: event.GetEventBus(cfg.LedgerDir()),
+			blkChan: make(chan *types.StateBlock, 65535), logger: log.NewLogger("relation")}
+		go relation.processBlocks()
 	})
 	if err != nil {
 		return nil, err
@@ -259,8 +263,25 @@ func blockType(bs []blocksType) map[string]uint64 {
 	return t
 }
 
+func (r *Relation) processBlocks() {
+	for {
+		select {
+		case blk := <-r.blkChan:
+			if err := r.AddBlock(blk); err != nil {
+				r.logger.Error(err)
+			}
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+func (r *Relation) waitBlocks(block *types.StateBlock) {
+	r.blkChan <- block
+}
+
 func (r *Relation) SetEvent() error {
-	err := r.eb.Subscribe(string(common.EventAddRelation), r.AddBlock)
+	err := r.eb.Subscribe(string(common.EventAddRelation), r.waitBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
@@ -274,7 +295,7 @@ func (r *Relation) SetEvent() error {
 }
 
 func (r *Relation) UnsubscribeEvent() error {
-	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.AddBlock)
+	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.waitBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
