@@ -17,7 +17,6 @@ import (
 type ConfigV3 struct {
 	ConfigV2 `mapstructure:",squash"`
 	DB       *DBConfig  `json:"db"`
-	PoV      *PoVConfig `json:"pov"`
 }
 
 func DefaultConfigV3(dir string) (*ConfigV3, error) {
@@ -29,7 +28,6 @@ func DefaultConfigV3(dir string) (*ConfigV3, error) {
 	cfg.RPC.PublicModules = append(cfg.RPC.PublicModules, "pledge")
 
 	cfg.DB = defaultDb(dir)
-	cfg.PoV = defaultPoV()
 
 	return &cfg, nil
 }
@@ -44,15 +42,6 @@ type DBConfig struct {
 	Driver           string `json:"driver"`
 }
 
-type PoVConfig struct {
-	MinerEnabled  bool   `json:"minerEnabled"`
-	BlockInterval int    `json:"blockInterval"`
-	BlockSize     int    `json:"blockSize"`
-	TargetCycle   int    `json:"targetCycle"`
-	ForkHeight    int    `json:"forkHeight"`
-	Coinbase      string `json:"coinbase"`
-}
-
 func defaultDb(dir string) *DBConfig {
 	d := path.Join(dir, "ledger", relationDir, "index.db")
 	pw := util.RandomFixedString(pwLen)
@@ -62,16 +51,5 @@ func defaultDb(dir string) *DBConfig {
 	return &DBConfig{
 		ConnectionString: fmt.Sprintf("file:%s?_auth&_auth_user=qlcchain&_auth_pass=%s", d, pw),
 		Driver:           "sqlite3",
-	}
-}
-
-func defaultPoV() *PoVConfig {
-	return &PoVConfig{
-		MinerEnabled:  false,
-		BlockInterval: 30,
-		BlockSize:     4 * 1024 * 1024,
-		TargetCycle:   20,
-		ForkHeight:    3,
-		Coinbase:      "",
 	}
 }
