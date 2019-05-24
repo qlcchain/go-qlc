@@ -436,7 +436,7 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 			address := key.(types.Address)
 			dps.saveOnlineRep(address)
 
-			va, err := dps.voteGenerateFork(confirmedBlock, address, value.(*types.Account))
+			va, err := dps.voteGenerateWithSeq(confirmedBlock, address, value.(*types.Account))
 			if err != nil {
 				return true
 			}
@@ -453,7 +453,7 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 			address := key.(types.Address)
 			dps.saveOnlineRep(address)
 
-			va, err := dps.voteGenerateFork(newBlock, address, value.(*types.Account))
+			va, err := dps.voteGenerateWithSeq(newBlock, address, value.(*types.Account))
 			if err != nil {
 				return true
 			}
@@ -494,7 +494,7 @@ func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, ac
 	return va, nil
 }
 
-func (dps *DPoS) voteGenerateFork(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
+func (dps *DPoS) voteGenerateWithSeq(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
 	va := &protos.ConfirmAckBlock{
 		Sequence:  uint32(time.Now().Unix()),
 		Blk:       block,
@@ -553,21 +553,26 @@ func (dps *DPoS) GetOnlineRepresentatives() []types.Address {
 }
 
 func (dps *DPoS) findOnlineRepresentatives() error {
-	var address types.Address
-
-	localRepAccount.Range(func(key, value interface{}) bool {
-		address = key.(types.Address)
-		dps.saveOnlineRep(address)
-		return true
-	})
-
 	blk, err := dps.ledger.GetRandomStateBlock()
 	if err != nil {
 		return err
 	}
 
-	//dps.ns.Broadcast(p2p.ConfirmReq, blk)
-	dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, blk)
+	localRepAccount.Range(func(key, value interface{}) bool {
+		address := key.(types.Address)
+		dps.saveOnlineRep(address)
+
+		va, err := dps.voteGenerateWithSeq(blk, address, value.(*types.Account))
+		if err != nil {
+			return true
+		}
+
+		dps.acTrx.vote(va)
+		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+
+		return true
+	})
+
 	return nil
 }
 
