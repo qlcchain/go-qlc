@@ -98,9 +98,15 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 		}
 	}
 	if block.GetType() == types.ContractReward {
+		// check previous
+		if !block.IsOpen() {
+			if exit, _ := lv.l.HasStateBlock(block.Previous); !exit {
+				return GapPrevious, nil
+			}
+		}
 		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {
-			return Other, err
+			return GapSource, nil
 		}
 		if linkBlk.GetLink() == types.Hash(types.RewardsAddress) {
 			return Progress, nil
@@ -332,7 +338,10 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 		vmCtx := vmstore.NewVMContext(lv.l)
 		if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
 			if len(g) > 0 {
-				amount, _ := lv.l.CalculateAmount(block)
+				amount, err := lv.l.CalculateAmount(block)
+				if err != nil {
+					lv.logger.Error("calculate amount error:", err)
+				}
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 					g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
 					//save contract data
