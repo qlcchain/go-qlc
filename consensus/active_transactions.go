@@ -19,12 +19,14 @@ const (
 	refreshPriInterval     = 5 * time.Minute
 )
 
+type voteKey [1 + types.HashSize]byte
+
 type ActiveTrx struct {
 	confirmed electionStatus
 	dps       *DPoS
 	roots     *sync.Map
 	quitCh    chan bool
-	inactive  []types.Hash
+	inactive  []voteKey
 }
 
 func NewActiveTrx() *ActiveTrx {
@@ -61,13 +63,14 @@ func (act *ActiveTrx) start() {
 }
 
 func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
-	if _, ok := act.roots.Load(block.Parent()); !ok {
+	vk := getVoteKey(block)
+	if _, ok := act.roots.Load(vk); !ok {
 		ele, err := NewElection(act.dps, block)
 		if err != nil {
 			act.dps.logger.Errorf("block :%s add to roots error", block.GetHash())
 			return false
 		}
-		act.roots.Store(block.Parent(), ele)
+		act.roots.Store(vk, ele)
 		return true
 	} else {
 		act.dps.logger.Infof("block :%s already exit in roots", block.GetHash())
@@ -91,7 +94,7 @@ func (act *ActiveTrx) announceVotes() {
 						T2:   time.Now().UnixNano(),
 						T3:   p.T3,
 					}
-					act.dps.ledger.AddOrUpdatePerformance(t)
+					err = act.dps.ledger.AddOrUpdatePerformance(t)
 					if err != nil {
 						act.dps.logger.Info("AddOrUpdatePerformance error T2")
 					}
@@ -121,7 +124,7 @@ func (act *ActiveTrx) announceVotes() {
 							T3:   p.T3,
 						}
 					}
-					err := act.dps.ledger.AddOrUpdatePerformance(t)
+					err = act.dps.ledger.AddOrUpdatePerformance(t)
 					if err != nil {
 						act.dps.logger.Info("AddOrUpdatePerformance error T1")
 					}
@@ -166,7 +169,7 @@ func (act *ActiveTrx) announceVotes() {
 							T2:   p.T2,
 							T3:   time.Now().UnixNano(),
 						}
-						act.dps.ledger.AddOrUpdatePerformance(t)
+						err = act.dps.ledger.AddOrUpdatePerformance(t)
 						if err != nil {
 							act.dps.logger.Info("AddOrUpdatePerformance error T3")
 						}
@@ -178,7 +181,7 @@ func (act *ActiveTrx) announceVotes() {
 			value.(*Election).announcements++
 		}
 		if value.(*Election).announcements == announcementMax {
-			if _, ok := act.roots.Load(value); !ok {
+			if _, ok := act.roots.Load(value.(*Election).vote.id); ok {
 				act.inactive = append(act.inactive, value.(*Election).vote.id)
 			}
 		}
@@ -226,11 +229,26 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 }
 
 func (act *ActiveTrx) vote(va *protos.ConfirmAckBlock) {
-	if v, ok := act.roots.Load(va.Blk.Parent()); ok {
+	vk := getVoteKey(va.Blk)
+	if v, ok := act.roots.Load(vk); ok {
 		v.(*Election).voteAction(va)
 	}
 }
 
 func (act *ActiveTrx) stop() {
 	act.quitCh <- true
+}
+
+func getVoteKey(block *types.StateBlock) voteKey {
+	var key voteKey
+
+	if block.IsOpen() {
+		key[0] = 1
+		copy(key[1:], block.Link[:])
+	} else {
+		key[0] = 0
+		copy(key[1:], block.Previous[:])
+	}
+
+	return key
 }

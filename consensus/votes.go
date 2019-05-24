@@ -16,13 +16,13 @@ const (
 )
 
 type Votes struct {
-	id       types.Hash //Previous block of fork
-	repVotes *sync.Map  // All votes received by account
+	id       voteKey   //Previous block of fork
+	repVotes *sync.Map // All votes received by account
 }
 
 func NewVotes(blk *types.StateBlock) *Votes {
 	return &Votes{
-		id:       blk.Parent(),
+		id:       getVoteKey(blk),
 		repVotes: new(sync.Map),
 	}
 }
