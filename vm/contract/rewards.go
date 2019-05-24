@@ -8,7 +8,6 @@
 package contract
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -43,10 +42,12 @@ func (ar *AirdropRewords) DoPending(block *types.StateBlock) (*types.PendingKey,
 	return doPending(block, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards)
 }
 
-func (ar *AirdropRewords) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return generate(ctx, cabi.MethodNameUnsignedAirdropRewards, cabi.MethodNameUnsignedAirdropRewards, block, input, func(param *cabi.RewardsParam) []byte {
-		return cabi.GetRewardsKey(param.Id[:], param.TxHeader[:], param.RxHeader[:])
-	})
+func (ar *AirdropRewords) DoReceive(ctx *vmstore.VMContext,
+	block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return generate(ctx, cabi.MethodNameUnsignedAirdropRewards, cabi.MethodNameUnsignedAirdropRewards,
+		block, input, func(param *cabi.RewardsParam) []byte {
+			return cabi.GetRewardsKey(param.Id[:], param.TxHeader[:], param.RxHeader[:])
+		})
 }
 
 func (*AirdropRewords) GetRefundData() []byte {
@@ -99,17 +100,20 @@ func doPending(block *types.StateBlock, signed, unsigned string) (*types.Pending
 		}, nil
 }
 
-func (*ConfidantRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return generate(ctx, cabi.MethodNameUnsignedConfidantRewards, cabi.MethodNameUnsignedConfidantRewards, block, input, func(param *cabi.RewardsParam) []byte {
-		return cabi.GetConfidantKey(param.Beneficial, param.Id[:], param.TxHeader[:], param.RxHeader[:])
-	})
+func (*ConfidantRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
+	input *types.StateBlock) ([]*ContractBlock, error) {
+	return generate(ctx, cabi.MethodNameUnsignedConfidantRewards, cabi.MethodNameUnsignedConfidantRewards,
+		block, input, func(param *cabi.RewardsParam) []byte {
+			return cabi.GetConfidantKey(param.Beneficial, param.Id[:], param.TxHeader[:], param.RxHeader[:])
+		})
 }
 
 func (*ConfidantRewards) GetRefundData() []byte {
 	return []byte{2}
 }
 
-func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock, fn func(param *cabi.RewardsParam) []byte) ([]*ContractBlock, error) {
+func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock,
+	fn func(param *cabi.RewardsParam) []byte) ([]*ContractBlock, error) {
 	param := new(cabi.RewardsParam)
 	err := cabi.RewardsABI.UnpackMethod(param, signed, input.Data)
 	if err != nil {
@@ -170,10 +174,10 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 
 		info := &cabi.RewardsInfo{
 			Type:     uint8(cabi.Confidant),
-			From:     &input.Address,
-			To:       &rxAddress,
-			TxHeader: txToken.Header[:],
-			RxHeader: block.Previous[:],
+			From:     input.Address,
+			To:       rxAddress,
+			TxHeader: txToken.Header,
+			RxHeader: block.Previous,
 			Amount:   amount.Int,
 		}
 
@@ -186,7 +190,7 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 			//already exist
 			if len(data) > 0 {
 				if rewardsInfo, err := cabi.ParseRewardsInfo(data); err == nil {
-					if !bytes.EqualFold(rewardsInfo.TxHeader, info.TxHeader) || !bytes.EqualFold(rewardsInfo.RxHeader, info.RxHeader) ||
+					if rewardsInfo.TxHeader != info.TxHeader || rewardsInfo.RxHeader != info.RxHeader ||
 						rewardsInfo.Amount.Cmp(info.Amount) != 0 || rewardsInfo.Type != info.Type ||
 						rewardsInfo.From != info.From || rewardsInfo.To != info.To {
 						return nil, errors.New("invalid saved confidant data")
@@ -195,7 +199,8 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 					return nil, err
 				}
 			} else {
-				if data, err := cabi.RewardsABI.PackVariable(cabi.VariableNameRewards, info); err == nil {
+				if data, err := cabi.RewardsABI.PackVariable(cabi.VariableNameRewards, info.Type, info.From,
+					info.To, info.TxHeader, info.RxHeader, info.Amount); err == nil {
 					if err := ctx.SetStorage(types.RewardsAddress[:], key, data); err != nil {
 						return nil, err
 					}

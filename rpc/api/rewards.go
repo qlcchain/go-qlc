@@ -9,6 +9,7 @@ package api
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/big"
 
 	"github.com/pkg/errors"
@@ -212,40 +213,34 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 
 	rev := &types.StateBlock{}
 
-	if blocks, err := r.rewards.DoReceive(vmstore.NewVMContext(r.ledger), rev, blk); err == nil {
-		if len(blocks) > 0 {
+	var result []*contract.ContractBlock
+
+	if r.IsAirdropRewards(blk.Data) {
+		result, err = r.rewards.DoReceive(vmstore.NewVMContext(r.ledger), rev, blk)
+	} else {
+		result, err = r.confidantRewards.DoReceive(vmstore.NewVMContext(r.ledger), rev, blk)
+	}
+	if err == nil {
+		if len(result) > 0 {
 			rev.Timestamp = common.TimeNow().UTC().Unix()
-			h := blocks[0].VMContext.Cache.Trie().Hash()
-			rev.Extra = *h
+			h := result[0].VMContext.Cache.Trie().Hash()
+			if h != nil {
+				rev.Extra = *h
+			}
 			return rev, nil
+		} else {
+			return nil, err
 		}
 	} else {
-		return nil, err
+		return nil, fmt.Errorf("can not generate reward block, %s", err)
 	}
-
-	return nil, errors.New("can not generate airdrop reward block")
 }
 
-func (r *RewardsApi) GetReceiveConfidantBlock(send *types.Hash) (*types.StateBlock, error) {
-	blk, err := r.ledger.GetStateBlock(*send)
-	if err != nil {
-		return nil, err
+func (r *RewardsApi) IsAirdropRewards(data []byte) bool {
+	if s, err := checkContractMethod(data); err == nil && s == cabi.MethodNameAirdropRewards {
+		return true
 	}
-
-	rev := &types.StateBlock{}
-
-	if blocks, err := r.confidantRewards.DoReceive(vmstore.NewVMContext(r.ledger), rev, blk); err == nil {
-		if len(blocks) > 0 {
-			rev.Timestamp = common.TimeNow().UTC().Unix()
-			h := blocks[0].VMContext.Cache.Trie().Hash()
-			rev.Extra = *h
-			return rev, nil
-		}
-	} else {
-		return nil, err
-	}
-
-	return nil, errors.New("can not generate confidant reward block")
+	return false
 }
 
 func (r *RewardsApi) GetTotalRewards(txId string) (*big.Int, error) {
@@ -254,4 +249,12 @@ func (r *RewardsApi) GetTotalRewards(txId string) (*big.Int, error) {
 
 func (r *RewardsApi) GetConfidantRewards(confidant types.Address) (map[string]*big.Int, error) {
 	return cabi.GetConfidantRewords(vmstore.NewVMContext(r.ledger), confidant)
+}
+
+func checkContractMethod(data []byte) (string, error) {
+	if name, b, err := contract.GetChainContractName(types.RewardsAddress, data); b {
+		return name, nil
+	} else {
+		return "", err
+	}
 }
