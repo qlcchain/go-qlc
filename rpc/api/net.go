@@ -7,6 +7,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"time"
 )
 
 type NetApi struct {
@@ -35,6 +36,8 @@ type PeersInfo struct {
 func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 	p := make(map[string]string)
 	q.eb.Publish(string(common.EventPeersInfo), p)
+	//TODO:eventbus have no sync mode,so sleep 1 second,when have sync mode,need delete sleep
+	time.Sleep(1 * time.Second)
 	i := &PeersInfo{
 		Count: len(p),
 		Infos: p,

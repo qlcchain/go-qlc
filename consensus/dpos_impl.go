@@ -218,7 +218,7 @@ func (dps *DPoS) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msgFr
 }
 
 func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash, msgFrom string) {
-	//dps.logger.Infof("receive ConfirmAck block [%s] from [%s]", ack.Blk.GetHash(), msgFrom)
+	dps.logger.Infof("receive ConfirmAck block [%s] from [%s]", ack.Blk.GetHash(), msgFrom)
 	var address types.Address
 	var count uint32
 	bs := blockSource{
@@ -232,8 +232,8 @@ func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash,
 	}
 
 	dps.acTrx.vote(ack)
+	dps.saveOnlineRep(ack.Account)
 	if !dps.cache.Has(hash) {
-		dps.saveOnlineRep(ack.Account)
 		result, _ := dps.verifier.BlockCheck(bs.block)
 		//cache the ack messages
 		if result == process.GapPrevious || result == process.GapSource {
@@ -252,7 +252,6 @@ func (dps *DPoS) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash,
 					dps.logger.Error("set vote cache err")
 				}
 			}
-			dps.bp.blocks <- bs
 		}
 		localRepAccount.Range(func(key, value interface{}) bool {
 			count++
@@ -351,14 +350,20 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 	localRepAccount.Range(func(key, value interface{}) bool {
 		address = key.(types.Address)
 		dps.saveOnlineRep(address)
+		blk, err := dps.ledger.GetRandomStateBlock()
+		if err != nil {
+			return true
+		}
+		va, err := dps.voteGenerate(blk, address, value.(*types.Account))
+		if err != nil {
+			return true
+		}
+		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 		return true
 	})
-	blk, err := dps.ledger.GetRandomStateBlock()
-	if err != nil {
-		return err
-	}
 	//dps.ns.Broadcast(p2p.ConfirmReq, blk)
-	dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, blk)
+
+	//dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, blk)
 	return nil
 }
 
