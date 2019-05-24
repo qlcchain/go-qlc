@@ -30,6 +30,8 @@ type ChainContract interface {
 	GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error)
 	// DoSend verify or update StateBlock.Data
 	DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
+	// DoPending generate pending info from send block
+	DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error)
 	// check status, update state
 	DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error)
 	// refund data at receive error
@@ -55,6 +57,13 @@ var contractCache = map[types.Address]*qlcchainContract{
 			cabi.MethodWithdrawNEP5Pledge: &WithdrawNep5Pledge{},
 		},
 		cabi.NEP5PledgeABI,
+	},
+	types.RewardsAddress: {
+		map[string]ChainContract{
+			cabi.MethodNameAirdropRewards:   &AirdropRewords{},
+			cabi.MethodNameConfidantRewards: &ConfidantRewards{},
+		},
+		cabi.RewardsABI,
 	},
 	types.MinerAddress: {
 		map[string]ChainContract{

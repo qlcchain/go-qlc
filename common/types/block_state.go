@@ -144,8 +144,12 @@ func (b *StateBlock) TotalBalance() Balance {
 	return balance
 }
 
+func (b *StateBlock) IsOpen() bool {
+	return b.Previous.IsZero()
+}
+
 func (b *StateBlock) Root() Hash {
-	if b.Type.Equal(Open) {
+	if b.IsOpen() {
 		return b.Address.ToHash()
 	}
 	return b.Previous
@@ -163,7 +167,7 @@ func (b *StateBlock) Size() int {
 }
 
 func (b *StateBlock) IsValid() bool {
-	if b.Type.Equal(Open) {
+	if b.IsOpen() {
 		return b.Work.IsValid(Hash(b.Address))
 	}
 	return b.Work.IsValid(b.Previous)

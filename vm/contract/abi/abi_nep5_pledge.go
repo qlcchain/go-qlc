@@ -110,6 +110,32 @@ func GetPledgeKey(addr types.Address, beneficial types.Address, neoTxId string) 
 	return result
 }
 
+func GetTotalPledgeAmount(ctx *vmstore.VMContext) *big.Int {
+	var result uint64
+	logger := log.NewLogger("GetTotalPledgeAmount")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+		if len(key) > 2*types.AddressSize && len(value) > 0 {
+			pledgeInfo := new(NEP5PledgeInfo)
+			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
+				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
+			} else {
+				logger.Error(err)
+			}
+
+		}
+		return nil
+	})
+	if err != nil {
+		logger.Error(err)
+	}
+
+	return new(big.Int).SetUint64(result)
+}
+
 func GetPledgeBeneficialAmount(ctx *vmstore.VMContext, beneficial types.Address, pType uint8) *big.Int {
 	var result uint64
 	logger := log.NewLogger("GetPledgeBeneficialAmount")
@@ -118,7 +144,7 @@ func GetPledgeBeneficialAmount(ctx *vmstore.VMContext, beneficial types.Address,
 	}()
 
 	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) && len(value) > 0 {
 			pledgeInfo := new(NEP5PledgeInfo)
 			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
 				if pledgeInfo.PType == pType {
@@ -146,7 +172,7 @@ func GetPledgeBeneficialTotalAmount(ctx *vmstore.VMContext, beneficial types.Add
 	}()
 
 	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) {
+		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) && len(value) > 0 {
 			pledgeInfo := new(NEP5PledgeInfo)
 			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
@@ -327,7 +353,7 @@ func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 	defer func() {
 		_ = logger.Sync()
 	}()
-	var result *PledgeResult
+	result := new(PledgeResult)
 	now := common.TimeNow().UTC().Unix()
 	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
@@ -335,7 +361,8 @@ func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
 				if pledgeInfo.PType == param.PType && pledgeInfo.Amount.String() == param.Amount.String() &&
 					now >= pledgeInfo.WithdrawTime && pledgeInfo.NEP5TxId == param.NEP5TxId {
-					result = &PledgeResult{Key: key, PledgeInfo: pledgeInfo}
+					result.Key = append(result.Key, key...)
+					result.PledgeInfo = pledgeInfo
 				}
 			} else {
 				logger.Error(err)

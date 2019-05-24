@@ -70,7 +70,7 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 func (bp *PovBlockProcessor) Start() error {
 	eb := bp.povEngine.GetEventBus()
 	if eb != nil {
-		eb.SubscribeAsync(string(common.EventAddRelation), bp.onAddStateBlock, false)
+		eb.Subscribe(string(common.EventAddRelation), bp.onAddStateBlock)
 	}
 
 	common.Go(bp.loop)

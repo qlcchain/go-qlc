@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/jmoiron/sqlx"
 	ss "github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -201,26 +202,40 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 
 func initDb() error {
 	relation := sqliteService.Relation
-	c, err := relation.BlocksCount()
+	count1, err := relation.BlocksCount()
 	if err != nil {
 		return err
 	}
-	if c == 0 {
-		blocks := make([]*types.StateBlock, 0)
-		err := ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
-			blocks = append(blocks, block)
-			if len(blocks) == 10000 {
-				if err := relation.AddBlocks(blocks); err != nil {
-					return err
+	count2, err := ledgerService.Ledger.CountStateBlocks()
+	if err != nil {
+		return err
+	}
+
+	if count1 != count2 {
+		if err := relation.EmptyStore(); err != nil {
+			return err
+		}
+		err = relation.BatchUpdate(func(txn *sqlx.Tx) error {
+			blocks := make([]*types.StateBlock, 0)
+			err := ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
+				blocks = append(blocks, block)
+				if len(blocks) == 199 {
+					if err := relation.AddBlocks(txn, blocks); err != nil {
+						return err
+					}
+					blocks = blocks[0:0]
 				}
-				blocks = make([]*types.StateBlock, 0)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			if err := relation.AddBlocks(txn, blocks); err != nil {
+				return err
 			}
 			return nil
 		})
 		if err != nil {
-			return err
-		}
-		if err := relation.AddBlocks(blocks); err != nil {
 			return err
 		}
 	}

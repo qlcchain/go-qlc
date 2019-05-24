@@ -70,22 +70,27 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-	err := ns.msgEvent.SubscribeAsync(string(common.EventBroadcast), ns.Broadcast, false)
+	err := ns.msgEvent.Subscribe(string(common.EventBroadcast), ns.Broadcast)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeAsync(string(common.EventSendMsgToPeers), ns.SendMessageToPeers, false)
+	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToPeers), ns.SendMessageToPeers)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeAsync(string(common.EventSendMsgToPeer), ns.SendMessageToPeer, false)
+	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToPeer), ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
 	err = ns.msgEvent.Subscribe(string(common.EventPeersInfo), ns.node.streamManager.GetAllConnectPeersInfo)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Subscribe(string(common.EventSyncing), ns.msgService.syncService.LastSyncTime)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err

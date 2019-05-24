@@ -11,12 +11,11 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/qlcchain/go-qlc/trie"
-
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
 )
 
@@ -28,6 +27,8 @@ type ContractStore interface {
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	IsUserAccount(address types.Address) (bool, error)
 	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
+	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+	HasTokenMeta(address types.Address, token types.Hash) (bool, error)
 	SaveStorage() error
 }
 
@@ -182,6 +183,14 @@ func (v *VMContext) set(key []byte, value []byte) error {
 	//	return err
 	//}
 	return txn.Set(key, value)
+}
+
+func (v *VMContext) HasTokenMeta(address types.Address, token types.Hash) (bool, error) {
+	return v.ledger.HasTokenMeta(address, token)
+}
+
+func (v *VMContext) GetTokenMeta(address types.Address, token types.Hash) (*types.TokenMeta, error) {
+	return v.ledger.GetTokenMeta(address, token)
 }
 
 func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) {

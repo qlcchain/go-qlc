@@ -9,7 +9,6 @@ package types
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -32,6 +31,16 @@ var ZeroSignature = Signature{}
 // Signature of block
 type Signature [SignatureSize]byte
 
+func BytesToSignature(b []byte) (Signature, error) {
+	var sign Signature
+	if len(b) != ed25519.SignatureSize {
+		return ZeroSignature, fmt.Errorf("invalid signature size[%d]", len(b))
+	}
+	copy(sign[:], b)
+
+	return sign, nil
+}
+
 func NewSignature(hexStr string) (Signature, error) {
 	s := Signature{}
 	err := s.Of(hexStr)
@@ -39,16 +48,6 @@ func NewSignature(hexStr string) (Signature, error) {
 		return s, err
 	}
 	return s, nil
-}
-
-func BytesToSignature(data []byte) (Signature, error) {
-	if len(data) != SignatureSize {
-		return ZeroSignature, errors.New("invalid Signature size")
-	}
-
-	var signature [SignatureSize]byte
-	copy(signature[:], data)
-	return signature, nil
 }
 
 //IsZero check signature is zero

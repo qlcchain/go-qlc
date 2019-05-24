@@ -48,6 +48,10 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 	return nil
 }
 
+func (m *MinerReward) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return nil, nil, errors.New("not implemented")
+}
+
 func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.MinerRewardParam)
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, input.Data)

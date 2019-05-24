@@ -150,12 +150,12 @@ func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom) e
 }
 
 func (pov *PoVEngine) setEvent() error {
-	err := pov.eb.SubscribeAsync(string(common.EventPovRecvBlock), pov.onRecvPovBlock, false)
+	err := pov.eb.Subscribe(string(common.EventPovRecvBlock), pov.onRecvPovBlock)
 	if err != nil {
 		return err
 	}
 
-	err = pov.eb.SubscribeAsync(string(common.EventPovSyncState), pov.onRecvPovSyncState, false)
+	err = pov.eb.Subscribe(string(common.EventPovSyncState), pov.onRecvPovSyncState)
 	if err != nil {
 		return err
 	}

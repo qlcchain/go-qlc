@@ -15,6 +15,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
+	github.com/gammazero/workerpool v0.0.0-20190521015540-3b91a70bc0a1
 	github.com/go-interpreter/wagon v0.4.0
 	github.com/go-kit/kit v0.8.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
@@ -27,7 +28,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/jackpal/gateway v1.0.5 // indirect
-	github.com/jmoiron/sqlx v1.2.0
+	github.com/jmoiron/sqlx v0.0.0-20190426145356-38398a30ed8516ffda
 	github.com/libp2p/go-libp2p v0.0.3
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-discovery v0.0.1

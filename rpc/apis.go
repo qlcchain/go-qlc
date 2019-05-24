@@ -76,6 +76,13 @@ func (r *RPC) getApi(apiModule string) API {
 			Service:   api.NewSMSApi(r.ledger, r.relation),
 			Public:    true,
 		}
+	case "rewards":
+		return API{
+			Namespace: "rewards",
+			Version:   "1.0",
+			Service:   api.NewRewardsApi(r.ledger),
+			Public:    true,
+		}
 	case "pov":
 		return API{
 			Namespace: "pov",
@@ -124,7 +131,7 @@ func (r *RPC) GetWSApis() []API {
 }
 
 func (r *RPC) GetPublicApis() []API {
-	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge", "pov", "miner"}
+	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge", "rewards", "pov", "miner"}
 	return r.GetApis(apiModules...)
 }
 
