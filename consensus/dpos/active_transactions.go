@@ -68,7 +68,7 @@ func (act *ActiveTrx) stop() {
 func getVoteKey(block *types.StateBlock) voteKey {
 	var key voteKey
 
-	if block.Type.Equal(types.Open) || block.Type.Equal(types.ContractReward) {
+	if block.IsOpen() {
 		key[0] = 1
 		copy(key[1:], block.Link[:])
 	} else {
