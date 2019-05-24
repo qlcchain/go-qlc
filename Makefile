@@ -9,13 +9,13 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
 # server
-SERVERVERSION ?= 1.1.2
+SERVERVERSION ?= 1.2.0
 SERVERBINARY = gqlc
 SERVERTESTBINARY = gqlct
 SERVERMAIN = cmd/server/main.go
 
 # client
-CLIENTVERSION ?= 1.1.2
+CLIENTVERSION ?= 1.2.0
 CLIENTBINARY = gqlcc
 CLIENTMAIN = cmd/client/main.go
 
