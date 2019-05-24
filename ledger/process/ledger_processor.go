@@ -83,10 +83,6 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 
 	lv.logger.Debug("check block ", hash)
 
-	if !block.IsValid() {
-		return BadWork, nil
-	}
-
 	blockExist, err := lv.l.HasStateBlock(hash)
 	if err != nil {
 		return Other, err
@@ -94,6 +90,25 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 
 	if blockExist {
 		return Old, nil
+	}
+
+	if block.GetType() == types.ContractSend {
+		if block.GetLink() == types.Hash(types.RewardsAddress) {
+			return Progress, nil
+		}
+	}
+	if block.GetType() == types.ContractReward {
+		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
+		if err != nil {
+			return Other, err
+		}
+		if linkBlk.GetLink() == types.Hash(types.RewardsAddress) {
+			return Progress, nil
+		}
+	}
+
+	if !block.IsValid() {
+		return BadWork, nil
 	}
 
 	signature := block.GetSignature()

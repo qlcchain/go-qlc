@@ -16,10 +16,11 @@ import (
 )
 
 type Relation struct {
-	store   db.DbStore
-	eb      event.EventBus
-	logger  *zap.SugaredLogger
-	blkChan chan *types.StateBlock
+	store         db.DbStore
+	eb            event.EventBus
+	logger        *zap.SugaredLogger
+	addBlkChan    chan *types.StateBlock
+	deleteBlkChan chan types.Hash
 }
 
 type blocksHash struct {
@@ -49,8 +50,11 @@ func NewRelation(cfg *config.Config) (*Relation, error) {
 	once.Do(func() {
 		store := new(db.DBSQL)
 		store, err = db.NewSQLDB(cfg)
-		relation = &Relation{store: store, eb: event.GetEventBus(cfg.LedgerDir()),
-			blkChan: make(chan *types.StateBlock, 65535), logger: log.NewLogger("relation")}
+		relation = &Relation{store: store,
+			eb:            event.GetEventBus(cfg.LedgerDir()),
+			addBlkChan:    make(chan *types.StateBlock, 65535),
+			deleteBlkChan: make(chan types.Hash, 65535),
+			logger:        log.NewLogger("relation")}
 		go relation.processBlocks()
 	})
 	if err != nil {
@@ -266,8 +270,12 @@ func blockType(bs []blocksType) map[string]uint64 {
 func (r *Relation) processBlocks() {
 	for {
 		select {
-		case blk := <-r.blkChan:
+		case blk := <-r.addBlkChan:
 			if err := r.AddBlock(blk); err != nil {
+				r.logger.Error(err)
+			}
+		case blk := <-r.deleteBlkChan:
+			if err := r.DeleteBlock(blk); err != nil {
 				r.logger.Error(err)
 			}
 		default:
@@ -276,17 +284,21 @@ func (r *Relation) processBlocks() {
 	}
 }
 
-func (r *Relation) waitBlocks(block *types.StateBlock) {
-	r.blkChan <- block
+func (r *Relation) waitAddBlocks(block *types.StateBlock) {
+	r.addBlkChan <- block
+}
+
+func (r *Relation) waitDeleteBlocks(hash types.Hash) {
+	r.deleteBlkChan <- hash
 }
 
 func (r *Relation) SetEvent() error {
-	err := r.eb.Subscribe(string(common.EventAddRelation), r.waitBlocks)
+	err := r.eb.Subscribe(string(common.EventAddRelation), r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
@@ -295,12 +307,12 @@ func (r *Relation) SetEvent() error {
 }
 
 func (r *Relation) UnsubscribeEvent() error {
-	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.waitBlocks)
+	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
