@@ -21,7 +21,6 @@ import (
 
 type LedgerApi struct {
 	ledger    *ledger.Ledger
-	verifier  *process.LedgerVerifier
 	vmContext *vmstore.VMContext
 	eb        event.EventBus
 	relation  *relation.Relation
@@ -64,7 +63,7 @@ type ApiTokenInfo struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
-	return &LedgerApi{ledger: l, eb: eb, verifier: process.NewLedgerVerifier(l), vmContext: vmstore.NewVMContext(l),
+	return &LedgerApi{ledger: l, eb: eb, vmContext: vmstore.NewVMContext(l),
 		relation: relation, logger: log.NewLogger("api_ledger")}
 }
 
@@ -521,13 +520,16 @@ type APISendBlockPara struct {
 	Message   types.Hash    `json:"message"`
 }
 
-func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr string) (*types.StateBlock, error) {
+func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*types.StateBlock, error) {
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
-	prk, err := hex.DecodeString(prkStr)
-	if err != nil {
-		return nil, err
+	var prk []byte
+	if prkStr != nil {
+		var err error
+		if prk, err = hex.DecodeString(*prkStr); err != nil {
+			return nil, err
+		}
 	}
 	info, err := abi.GetTokenByName(l.vmContext, para.TokenName)
 	if err != nil {
@@ -558,12 +560,14 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr string) (*t
 	return block, nil
 }
 
-func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr string) (*types.StateBlock, error) {
-	prk, err := hex.DecodeString(prkStr)
-	if err != nil {
-		return nil, err
+func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *string) (*types.StateBlock, error) {
+	var prk []byte
+	if prkStr != nil {
+		var err error
+		if prk, err = hex.DecodeString(*prkStr); err != nil {
+			return nil, err
+		}
 	}
-
 	block, err := l.ledger.GenerateReceiveBlock(sendBlock, prk)
 	if err != nil {
 		return nil, err
@@ -572,10 +576,13 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr str
 	return block, nil
 }
 
-func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr string) (*types.StateBlock, error) {
-	prk, err := hex.DecodeString(prkStr)
-	if err != nil {
-		return nil, err
+func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr *string) (*types.StateBlock, error) {
+	var prk []byte
+	if prkStr != nil {
+		var err error
+		if prk, err = hex.DecodeString(*prkStr); err != nil {
+			return nil, err
+		}
 	}
 
 	block, err := l.ledger.GenerateChangeBlock(account, representative, prk)
@@ -615,7 +622,8 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 }
 
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
-	flag, err := l.verifier.Process(block)
+	verifier := process.NewLedgerVerifier(l.ledger)
+	flag, err := verifier.Process(block)
 	if err != nil {
 		l.logger.Error(err)
 		return types.ZeroHash, err
@@ -672,28 +680,29 @@ type APIAccountBalance struct {
 	Balance types.Balance `json:"balance"`
 }
 
-type APIAccountBalances []APIAccountBalance
-
-func (r APIAccountBalances) Swap(i, j int) {
-	r[i], r[j] = r[j], r[i]
-}
-
-func (r APIAccountBalances) Len() int {
-	return len(r)
-}
-
-func (r APIAccountBalances) Less(i, j int) bool {
-	if r[i].Balance.Compare(r[j].Balance) == types.BalanceCompSmaller {
-		return false
-	}
-	return true
+type APIRepresentative struct {
+	Address types.Address `json:"address"`
+	Balance types.Balance `json:"balance"`
+	Vote    types.Balance `json:"vote"`
+	Network types.Balance `json:"network"`
+	Storage types.Balance `json:"storage"`
+	Oracle  types.Balance `json:"oracle"`
+	Total   types.Balance `json:"total"`
 }
 
 //Representatives returns a list of pairs of representative and its voting weight
-func (l *LedgerApi) Representatives(sorting *bool) (*APIAccountBalances, error) {
-	rs := make(APIAccountBalances, 0)
+func (l *LedgerApi) Representatives(sorting *bool) ([]*APIRepresentative, error) {
+	rs := make([]*APIRepresentative, 0)
 	err := l.ledger.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
-		r := APIAccountBalance{address, benefit.Total}
+		r := &APIRepresentative{
+			Address: address,
+			Balance: benefit.Balance,
+			Vote:    benefit.Vote,
+			Network: benefit.Network,
+			Storage: benefit.Storage,
+			Oracle:  benefit.Oracle,
+			Total:   benefit.Total,
+		}
 		rs = append(rs, r)
 		return nil
 	})
@@ -702,9 +711,11 @@ func (l *LedgerApi) Representatives(sorting *bool) (*APIAccountBalances, error) 
 	}
 
 	if sorting != nil && *sorting {
-		sort.Sort(rs)
+		sort.Slice(rs, func(i, j int) bool {
+			return rs[i].Total.Compare(rs[j].Total) == types.BalanceCompBigger
+		})
 	}
-	return &rs, nil
+	return rs, nil
 }
 
 func (l *LedgerApi) Tokens() ([]*types.TokenInfo, error) {

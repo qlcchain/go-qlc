@@ -25,6 +25,7 @@ const (
 	HashTy
 	FunctionTy
 	BalanceTy
+	SignatureTy
 )
 
 // Type is the reflection of the supported argument type
@@ -130,6 +131,16 @@ func NewType(t string) (typ Type, err error) {
 		typ.Type = tokenIdT
 		typ.Size = types.HashSize
 		typ.T = TokenIdTy
+	case "hash":
+		typ.Kind = reflect.Array
+		typ.Type = tokenIdT
+		typ.Size = types.HashSize
+		typ.T = HashTy
+	case "signature":
+		typ.Kind = reflect.Array
+		typ.Type = signatureT
+		typ.Size = types.SignatureSize
+		typ.T = SignatureTy
 	case "balance":
 		typ.Kind = reflect.Array
 		typ.Size = 256

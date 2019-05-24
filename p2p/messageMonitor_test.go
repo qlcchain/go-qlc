@@ -11,8 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"github.com/qlcchain/go-qlc/test/mock"
 )
 
 func Test_MessageService_Stop(t *testing.T) {

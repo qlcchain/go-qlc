@@ -21,7 +21,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/test/mock"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 var logger = log.NewLogger("main")

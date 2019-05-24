@@ -14,10 +14,9 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type pledgeInfo struct {
@@ -77,6 +76,10 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 		return err
 	}
 	return nil
+}
+
+func (*Nep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return nil, nil, errors.New("not implemented")
 }
 
 func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
@@ -232,6 +235,10 @@ func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBloc
 	}
 
 	return nil
+}
+
+func (m *WithdrawNep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return nil, nil, errors.New("not implemented")
 }
 
 func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {

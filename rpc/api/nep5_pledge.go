@@ -26,16 +26,14 @@ import (
 )
 
 type NEP5PledgeApi struct {
-	logger    *zap.SugaredLogger
-	ledger    *ledger.Ledger
-	vmContext *vmstore.VMContext
-	pledge    *contract.Nep5Pledge
-	withdraw  *contract.WithdrawNep5Pledge
+	logger   *zap.SugaredLogger
+	ledger   *ledger.Ledger
+	pledge   *contract.Nep5Pledge
+	withdraw *contract.WithdrawNep5Pledge
 }
 
 func NewNEP5PledgeApi(ledger *ledger.Ledger) *NEP5PledgeApi {
-	return &NEP5PledgeApi{ledger: ledger, vmContext: vmstore.NewVMContext(ledger),
-		logger: log.NewLogger("api_nep5_pledge"), pledge: &contract.Nep5Pledge{},
+	return &NEP5PledgeApi{ledger: ledger, logger: log.NewLogger("api_nep5_pledge"), pledge: &contract.Nep5Pledge{},
 		withdraw: &contract.WithdrawNep5Pledge{}}
 }
 
@@ -102,7 +100,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 
-	err = p.pledge.DoSend(p.vmContext, send)
+	err = p.pledge.DoSend(vmstore.NewVMContext(p.ledger), send)
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +110,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 
 func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	reward := &types.StateBlock{}
-
-	blocks, err := p.pledge.DoReceive(p.vmContext, reward, input)
+	blocks, err := p.pledge.DoReceive(vmstore.NewVMContext(p.ledger), reward, input)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +200,7 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 		return nil, fmt.Errorf("unsupport pledge type %s", param.PType)
 	}
 
-	err = p.withdraw.DoSend(p.vmContext, send)
+	err = p.withdraw.DoSend(vmstore.NewVMContext(p.ledger), send)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +211,7 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	reward := &types.StateBlock{}
 
-	blocks, err := p.withdraw.DoReceive(p.vmContext, reward, input)
+	blocks, err := p.withdraw.DoReceive(vmstore.NewVMContext(p.ledger), reward, input)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +241,7 @@ type PledgeInfos struct {
 
 //get pledge info by pledge address ,return pledgeinfos
 func (p *NEP5PledgeApi) GetPledgeInfosByPledgeAddress(addr types.Address) *PledgeInfos {
-	infos, am := cabi.GetPledgeInfos(p.vmContext, addr)
+	infos, am := cabi.GetPledgeInfos(vmstore.NewVMContext(p.ledger), addr)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
 		npi := &NEP5PledgeInfo{
@@ -266,13 +263,13 @@ func (p *NEP5PledgeApi) GetPledgeInfosByPledgeAddress(addr types.Address) *Pledg
 
 //get pledge total amount by beneficial address ,return total amount
 func (p *NEP5PledgeApi) GetPledgeBeneficialTotalAmount(addr types.Address) (*big.Int, error) {
-	am, err := cabi.GetPledgeBeneficialTotalAmount(p.vmContext, addr)
+	am, err := cabi.GetPledgeBeneficialTotalAmount(vmstore.NewVMContext(p.ledger), addr)
 	return am, err
 }
 
 //get pledge info by beneficial,pType ,return PledgeInfos
 func (p *NEP5PledgeApi) GetBeneficialPledgeInfosByAddress(beneficial types.Address) *PledgeInfos {
-	infos, am := cabi.GetBeneficialInfos(p.vmContext, beneficial)
+	infos, am := cabi.GetBeneficialInfos(vmstore.NewVMContext(p.ledger), beneficial)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
 		npi := &NEP5PledgeInfo{
@@ -303,7 +300,7 @@ func (p *NEP5PledgeApi) GetBeneficialPledgeInfos(beneficial types.Address, pType
 	default:
 		return nil, fmt.Errorf("unsupport type: %s", pType)
 	}
-	infos, am := cabi.GetBeneficialPledgeInfos(p.vmContext, beneficial, pt)
+	infos, am := cabi.GetBeneficialPledgeInfos(vmstore.NewVMContext(p.ledger), beneficial, pt)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
 		npi := &NEP5PledgeInfo{
@@ -334,7 +331,7 @@ func (p *NEP5PledgeApi) GetPledgeBeneficialAmount(beneficial types.Address, pTyp
 	default:
 		return nil, fmt.Errorf("unsupport type: %s", pType)
 	}
-	am := cabi.GetPledgeBeneficialAmount(p.vmContext, beneficial, pt)
+	am := cabi.GetPledgeBeneficialAmount(vmstore.NewVMContext(p.ledger), beneficial, pt)
 	return am, nil
 }
 
@@ -354,7 +351,7 @@ func (p *NEP5PledgeApi) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5Pledge
 		Amount:     param.Amount.Int,
 		PType:      pType,
 	}
-	pr := cabi.SearchBeneficialPledgeInfoIgnoreWithdrawTime(p.vmContext, pm)
+	pr := cabi.SearchBeneficialPledgeInfoIgnoreWithdrawTime(vmstore.NewVMContext(p.ledger), pm)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range pr {
 		npi := &NEP5PledgeInfo{
@@ -388,7 +385,7 @@ func (p *NEP5PledgeApi) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*
 		PType:      pType,
 		NEP5TxId:   param.NEP5TxId,
 	}
-	pr := cabi.SearchPledgeInfoWithNEP5TxId(p.vmContext, pm)
+	pr := cabi.SearchPledgeInfoWithNEP5TxId(vmstore.NewVMContext(p.ledger), pm)
 	if pr != nil {
 		pledgeInfo := &NEP5PledgeInfo{
 			PType:         cabi.PledgeType(pr.PledgeInfo.PType).String(),
@@ -419,7 +416,7 @@ func (p *NEP5PledgeApi) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam)
 		Amount:     param.Amount.Int,
 		PType:      pType,
 	}
-	pr := cabi.SearchBeneficialPledgeInfo(p.vmContext, pm)
+	pr := cabi.SearchBeneficialPledgeInfo(vmstore.NewVMContext(p.ledger), pm)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range pr {
 		npi := &NEP5PledgeInfo{
@@ -439,7 +436,7 @@ func (p *NEP5PledgeApi) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam)
 func (p *NEP5PledgeApi) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 	var result []*NEP5PledgeInfo
 
-	infos, err := cabi.SearchAllPledgeInfos(p.vmContext)
+	infos, err := cabi.SearchAllPledgeInfos(vmstore.NewVMContext(p.ledger))
 	if err != nil {
 		return nil, err
 	}
@@ -464,4 +461,9 @@ func (p *NEP5PledgeApi) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].WithdrawTime < result[j].WithdrawTime })
 	return result, nil
+}
+
+// GetTotalPledgeAmount get all pledge amount
+func (p *NEP5PledgeApi) GetTotalPledgeAmount() (*big.Int, error) {
+	return cabi.GetTotalPledgeAmount(vmstore.NewVMContext(p.ledger)), nil
 }

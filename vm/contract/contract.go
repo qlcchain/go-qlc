@@ -30,6 +30,8 @@ type ChainContract interface {
 	GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error)
 	// DoSend verify or update StateBlock.Data
 	DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
+	// DoPending generate pending info from send block
+	DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error)
 	// check status, update state
 	DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error)
 	// refund data at receive error
@@ -56,6 +58,13 @@ var contractCache = map[types.Address]*qlcchainContract{
 		},
 		cabi.NEP5PledgeABI,
 	},
+	types.RewardsAddress: {
+		map[string]ChainContract{
+			cabi.MethodNameAirdropRewards:   &AirdropRewords{},
+			cabi.MethodNameConfidantRewards: &ConfidantRewards{},
+		},
+		cabi.RewardsABI,
+	},
 }
 
 func GetChainContract(addr types.Address, methodSelector []byte) (ChainContract, bool, error) {
@@ -69,6 +78,19 @@ func GetChainContract(addr types.Address, methodSelector []byte) (ChainContract,
 		}
 	}
 	return nil, ok, nil
+}
+
+func GetChainContractName(addr types.Address, methodSelector []byte) (string, bool, error) {
+	p, ok := contractCache[addr]
+	if ok {
+		if method, err := p.abi.MethodById(methodSelector); err == nil {
+			_, ok := p.m[method.Name]
+			return method.Name, ok, nil
+		} else {
+			return "", ok, errors.New("abi: method not found")
+		}
+	}
+	return "", ok, nil
 }
 
 func IsChainContract(addr types.Address) bool {

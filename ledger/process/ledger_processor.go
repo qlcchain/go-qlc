@@ -10,7 +10,6 @@ package process
 import (
 	"bytes"
 	"fmt"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
@@ -66,7 +65,7 @@ func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
-				lv.logger.Info(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
+				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
 			}
 			return r, err
 		} else {
@@ -84,10 +83,6 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 
 	lv.logger.Debug("check block ", hash)
 
-	if !block.IsValid() {
-		return BadWork, errors.New("bad work")
-	}
-
 	blockExist, err := lv.l.HasStateBlock(hash)
 	if err != nil {
 		return Other, err
@@ -95,6 +90,25 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 
 	if blockExist {
 		return Old, nil
+	}
+
+	if block.GetType() == types.ContractSend {
+		if block.GetLink() == types.Hash(types.RewardsAddress) {
+			return Progress, nil
+		}
+	}
+	if block.GetType() == types.ContractReward {
+		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
+		if err != nil {
+			return Other, err
+		}
+		if linkBlk.GetLink() == types.Hash(types.RewardsAddress) {
+			return Progress, nil
+		}
+	}
+
+	if !block.IsValid() {
+		return BadWork, nil
 	}
 
 	signature := block.GetSignature()
@@ -420,6 +434,24 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
 			return err
 		}
+	case types.ContractSend:
+		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
+			if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
+				lv.logger.Info("contractSend add pending , ", pendingKey)
+				if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+					return err
+				}
+			}
+		}
+	case types.ContractReward:
+		pendingKey := types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		lv.logger.Info("contractReward delete pending, ", pendingKey)
+		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -496,7 +528,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		Balance:        balance,
 		BlockCount:     1,
 		BelongTo:       address,
-		Modified:       time.Now().Unix(),
+		Modified:       common.TimeNow().UTC().Unix(),
 	}
 
 	if am != nil {
@@ -513,7 +545,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			tm.Representative = rep
 			tm.Balance = balance
 			tm.BlockCount = tm.BlockCount + 1
-			tm.Modified = time.Now().Unix()
+			tm.Modified = common.TimeNow().UTC().Unix()
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}

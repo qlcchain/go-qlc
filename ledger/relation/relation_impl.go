@@ -3,7 +3,9 @@ package relation
 import (
 	"encoding/base64"
 	"sync"
+	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -14,9 +16,11 @@ import (
 )
 
 type Relation struct {
-	store  db.DbStore
-	eb     event.EventBus
-	logger *zap.SugaredLogger
+	store         db.DbStore
+	eb            event.EventBus
+	logger        *zap.SugaredLogger
+	addBlkChan    chan *types.StateBlock
+	deleteBlkChan chan types.Hash
 }
 
 type blocksHash struct {
@@ -46,7 +50,12 @@ func NewRelation(cfg *config.Config) (*Relation, error) {
 	once.Do(func() {
 		store := new(db.DBSQL)
 		store, err = db.NewSQLDB(cfg)
-		relation = &Relation{store: store, eb: event.GetEventBus(cfg.LedgerDir()), logger: log.NewLogger("relation")}
+		relation = &Relation{store: store,
+			eb:            event.GetEventBus(cfg.LedgerDir()),
+			addBlkChan:    make(chan *types.StateBlock, 65535),
+			deleteBlkChan: make(chan types.Hash, 65535),
+			logger:        log.NewLogger("relation")}
+		go relation.processBlocks()
 	})
 	if err != nil {
 		return nil, err
@@ -129,7 +138,7 @@ func (r *Relation) MessageBlocks(hash types.Hash, limit int, offset int) ([]type
 }
 
 func (r *Relation) AddBlock(block *types.StateBlock) error {
-	r.logger.Info("add relation, ", block.GetHash())
+	r.logger.Debug("add relation, ", block.GetHash())
 	conHash := make(map[db.Column]interface{})
 	conHash[db.ColumnHash] = block.GetHash().String()
 	conHash[db.ColumnTimestamp] = block.GetTimestamp()
@@ -153,36 +162,6 @@ func (r *Relation) AddBlock(block *types.StateBlock) error {
 	return nil
 }
 
-func (r *Relation) AddBlocks(blocks []*types.StateBlock) error {
-	blocksVal := make([][]interface{}, 0)
-	messagesVal := make([][]interface{}, 0)
-
-	for _, block := range blocks {
-		blockVal := []interface{}{block.GetHash().String(), block.GetTimestamp(),
-			block.GetType().String(), block.GetAddress().String()}
-		blocksVal = append(blocksVal, blockVal)
-		message := block.GetMessage()
-		if block.GetSender() != nil || block.GetReceiver() != nil || !message.IsZero() {
-			messageVal := []interface{}{block.GetHash().String(), message.String(),
-				phoneToString(block.GetSender()), phoneToString(block.GetReceiver()), block.GetTimestamp()}
-			messagesVal = append(messagesVal, messageVal)
-		}
-	}
-	if len(blocksVal) > 0 {
-		blocksCol := []db.Column{db.ColumnHash, db.ColumnTimestamp, db.ColumnType, db.ColumnAddress}
-		if err := r.store.BatchCreate(db.TableBlockHash, blocksCol, blocksVal); err != nil {
-			return err
-		}
-	}
-	if len(messagesVal) > 0 {
-		messagesCol := []db.Column{db.ColumnHash, db.ColumnMessage, db.ColumnSender, db.ColumnReceiver, db.ColumnTimestamp}
-		if err := r.store.BatchCreate(db.TableBlockMessage, messagesCol, messagesVal); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (r *Relation) DeleteBlock(hash types.Hash) error {
 	r.logger.Info("delete relation, ", hash.String())
 	condition := make(map[db.Column]interface{})
@@ -192,6 +171,64 @@ func (r *Relation) DeleteBlock(hash types.Hash) error {
 		return err
 	}
 	return r.store.Delete(db.TableBlockMessage, condition)
+}
+
+func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
+	tx := r.store.NewTransaction()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
+	blksHashes := make([]*blocksHash, 0)
+	blksMessage := make([]*blocksMessage, 0)
+	//r.logger.Info("batch block count: ", len(blocks))
+	for _, block := range blocks {
+		blksHashes = append(blksHashes, &blocksHash{
+			Hash:      block.GetHash().String(),
+			Type:      block.GetType().String(),
+			Address:   block.GetAddress().String(),
+			Timestamp: block.GetTimestamp(),
+		})
+
+		message := block.GetMessage()
+		if block.GetSender() != nil || block.GetReceiver() != nil || !message.IsZero() {
+			blksMessage = append(blksMessage, &blocksMessage{
+				Hash:      block.GetHash().String(),
+				Sender:    phoneToString(block.GetSender()),
+				Receiver:  phoneToString(block.GetReceiver()),
+				Message:   message.String(),
+				Timestamp: block.GetTimestamp(),
+			})
+		}
+	}
+	if len(blksHashes) > 0 {
+		if _, err := txn.NamedExec("INSERT INTO BLOCKHASH(hash, type,address,timestamp) VALUES (:hash,:type,:address,:timestamp) ", blksHashes); err != nil {
+			r.logger.Errorf("insert block hash, ", err)
+			return err
+		}
+	}
+	if len(blksMessage) > 0 {
+		if _, err := txn.NamedExec("INSERT INTO BLOCKMESSAGE(hash, sender,receiver,message,timestamp) VALUES (:hash,:sender,:receiver,:message,:timestamp)", blksMessage); err != nil {
+			r.logger.Error("insert message, ", err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Relation) EmptyStore() error {
+	r.logger.Info("empty store")
+	err := r.store.Delete(db.TableBlockHash, nil)
+	if err != nil {
+		return err
+	}
+	return r.store.Delete(db.TableBlockMessage, nil)
 }
 
 func phoneToString(b []byte) string {
@@ -230,13 +267,38 @@ func blockType(bs []blocksType) map[string]uint64 {
 	return t
 }
 
+func (r *Relation) processBlocks() {
+	for {
+		select {
+		case blk := <-r.addBlkChan:
+			if err := r.AddBlock(blk); err != nil {
+				r.logger.Error(err)
+			}
+		case blk := <-r.deleteBlkChan:
+			if err := r.DeleteBlock(blk); err != nil {
+				r.logger.Error(err)
+			}
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+func (r *Relation) waitAddBlocks(block *types.StateBlock) {
+	r.addBlkChan <- block
+}
+
+func (r *Relation) waitDeleteBlocks(hash types.Hash) {
+	r.deleteBlkChan <- hash
+}
+
 func (r *Relation) SetEvent() error {
-	err := r.eb.Subscribe(string(common.EventAddRelation), r.AddBlock)
+	err := r.eb.Subscribe(string(common.EventAddRelation), r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
@@ -245,12 +307,12 @@ func (r *Relation) SetEvent() error {
 }
 
 func (r *Relation) UnsubscribeEvent() error {
-	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.AddBlock)
+	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.DeleteBlock)
+	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err

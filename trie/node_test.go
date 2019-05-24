@@ -10,7 +10,7 @@ package trie
 import (
 	"testing"
 
-	"github.com/qlcchain/go-qlc/test/mock"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestTrieNode_Deserialize(t *testing.T) {

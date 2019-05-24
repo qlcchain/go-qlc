@@ -58,7 +58,7 @@ func TokenMeta(addr types.Address) *types.TokenMeta {
 		OpenBlock:      Hash(),
 		Header:         Hash(),
 		Representative: Address(),
-		Modified:       time.Now().Unix(),
+		Modified:       common.TimeNow().UTC().Unix(),
 	}
 
 	return &t
@@ -135,7 +135,7 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Token = common.ChainToken()
 	sb.Previous = Hash()
 	sb.Representative = common.GenesisAddress()
-	sb.Timestamp = time.Now().Unix()
+	sb.Timestamp = common.TimeNow().UTC().Unix()
 	//addr := Address()
 	sb.Link = types.ZeroHash
 	sb.Message = Hash()
@@ -217,7 +217,7 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	blk.Oracle = types.ZeroBalance
 	blk.Network = types.ZeroBalance
 	blk.Storage = types.ZeroBalance
-	blk.Timestamp = time.Now().Unix()
+	blk.Timestamp = common.TimeNow().UTC().Unix()
 	blk.Link = link
 	blk.Representative = rep
 	blk.Message = Hash()
@@ -228,4 +228,24 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	worker, _ := types.NewWorker(w, blk.Root())
 	blk.Work = worker.NewWork()
 	return blk
+}
+
+type Mac [6]byte
+
+func (m Mac) String() string {
+	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", m[0], m[1], m[2], m[3], m[4], m[5])
+}
+
+func NewRandomMac() Mac {
+	var m [6]byte
+
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < 6; i++ {
+		mac_byte := rand.Intn(256)
+		m[i] = byte(mac_byte)
+
+		rand.Seed(int64(mac_byte))
+	}
+
+	return Mac(m)
 }

@@ -18,7 +18,7 @@ import (
 var (
 	config = map[cabi.PledgeType]pledgeInfo{
 		cabi.Network: {
-			pledgeTime:   &timeSpan{months: 3}, //3 month
+			pledgeTime:   &timeSpan{days: 90}, //90 days
 			pledgeAmount: big.NewInt(2000 * 1e8),
 		},
 		cabi.Vote: {

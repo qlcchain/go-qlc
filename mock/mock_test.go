@@ -295,3 +295,10 @@ var seedStr = []string{
 	"FBEA7F04DC9AD25E2CBC05FAEF6CEF98DF08CF04582937832F67B3883075244A",
 	"0578B09D725C77432886632364FDE29D3DAFB4A7748B7801FBD6D79BBF013B73",
 }
+
+func TestNewRandomMac(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		mac := NewRandomMac()
+		t.Log(mac.String())
+	}
+}

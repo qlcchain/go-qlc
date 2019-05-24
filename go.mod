@@ -15,19 +15,20 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
+	github.com/gammazero/workerpool v0.0.0-20190521015540-3b91a70bc0a1
 	github.com/go-interpreter/wagon v0.4.0
 	github.com/go-kit/kit v0.8.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.2.1
-	github.com/golang/protobuf v1.3.0
+	github.com/golang/protobuf v1.3.1
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/huin/goupnp v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/jackpal/gateway v1.0.5 // indirect
-	github.com/jmoiron/sqlx v1.2.0
+	github.com/jmoiron/sqlx v0.0.0-20190426145356-38398a30ed8516ffda
 	github.com/libp2p/go-libp2p v0.0.3
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-discovery v0.0.1
@@ -51,10 +52,12 @@ require (
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
-	golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25
-	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95
-	golang.org/x/sys v0.0.0-20190306071516-a98ae47d97a5 // indirect
-	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2 // indirect
+	golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529
+	golang.org/x/net v0.0.0-20190509222800-a4d6f7feada5
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
+	golang.org/x/sys v0.0.0-20190509141414-a5b02f93d862 // indirect
+	golang.org/x/text v0.3.2 // indirect
+	google.golang.org/appengine v1.5.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce

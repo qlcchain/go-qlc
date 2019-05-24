@@ -81,6 +81,10 @@ func verifyToken(param cabi.ParamMintage) error {
 	return nil
 }
 
+func (m *Mintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return nil, nil, errors.New("not implemented")
+}
+
 //TODO: verify input block timestamp
 func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.ParamMintage)
@@ -175,6 +179,10 @@ func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock
 		return errors.New("invalid input data")
 	}
 	return nil
+}
+
+func (m *WithdrawMintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return nil, nil, errors.New("not implemented")
 }
 
 func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
