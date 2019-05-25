@@ -44,7 +44,7 @@ func (ar *AirdropRewords) DoPending(block *types.StateBlock) (*types.PendingKey,
 
 func (ar *AirdropRewords) DoReceive(ctx *vmstore.VMContext,
 	block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return generate(ctx, cabi.MethodNameUnsignedAirdropRewards, cabi.MethodNameUnsignedAirdropRewards,
+	return generate(ctx, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards,
 		block, input, func(param *cabi.RewardsParam) []byte {
 			return cabi.GetRewardsKey(param.Id[:], param.TxHeader[:], param.RxHeader[:])
 		})
@@ -94,7 +94,7 @@ func doPending(block *types.StateBlock, signed, unsigned string) (*types.Pending
 			Address: param.Beneficial,
 			Hash:    block.GetHash(),
 		}, &types.PendingInfo{
-			Source: block.Address,
+			Source: types.Address(block.Link),
 			Amount: types.Balance{Int: param.Amount},
 			Type:   block.Token,
 		}, nil
@@ -102,7 +102,7 @@ func doPending(block *types.StateBlock, signed, unsigned string) (*types.Pending
 
 func (*ConfidantRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 	input *types.StateBlock) ([]*ContractBlock, error) {
-	return generate(ctx, cabi.MethodNameUnsignedConfidantRewards, cabi.MethodNameUnsignedConfidantRewards,
+	return generate(ctx, cabi.MethodNameConfidantRewards, cabi.MethodNameUnsignedConfidantRewards,
 		block, input, func(param *cabi.RewardsParam) []byte {
 			return cabi.GetConfidantKey(param.Beneficial, param.Id[:], param.TxHeader[:], param.RxHeader[:])
 		})
@@ -125,8 +125,11 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 	}
 
 	//verify is QGAS
-	amount, _ := ctx.CalculateAmount(input)
-	if amount.Sign() > 0 && input.Token != common.GasToken() {
+	amount, err := ctx.CalculateAmount(input)
+	if err != nil {
+		return nil, err
+	}
+	if amount.Sign() > 0 && amount.Compare(types.ZeroBalance) == types.BalanceCompBigger && input.Token == common.GasToken() {
 		txHash := input.GetHash()
 		txAddress := input.Address
 		txMeta, err := ctx.GetAccountMeta(txAddress)
@@ -223,6 +226,6 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 		}, nil
 
 	} else {
-		return nil, fmt.Errorf("invalid token hash %s", input.Token.String())
+		return nil, fmt.Errorf("invalid token hash %s or amount %s", input.Token.String(), amount.String())
 	}
 }
