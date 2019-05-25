@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
@@ -109,11 +110,18 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	defer teardownTestCase(t)
 
 	err := l.BatchUpdate(func(txn db.StoreTxn) error {
+		genesis := common.GenesisBlock()
+		if err := l.AddStateBlock(&genesis); err != nil {
+			t.Fatal()
+		}
 		blk := mock.StateBlockWithoutWork()
+		blk.Link = genesis.GetHash()
 		if err := l.AddStateBlock(blk); err != nil {
 			t.Fatal()
 		}
-		if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
+		blk2 := mock.StateBlockWithoutWork()
+		blk2.Link = genesis.GetHash()
+		if err := l.AddStateBlock(blk2); err != nil {
 			t.Fatal()
 		}
 		if ok, err := l.HasStateBlock(blk.GetHash()); err != nil || !ok {
@@ -129,6 +137,11 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 
 func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
 	blk := mock.StateBlockWithoutWork()
+	com := common.GenesisBlock()
+	blk.Link = com.GetHash()
+	if err := l.AddStateBlock(&com); err != nil {
+		t.Fatal(err)
+	}
 	if err := l.AddStateBlock(blk); err != nil {
 		t.Fatal(err)
 	}
@@ -230,8 +243,20 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addStateBlock(t, l)
-	addStateBlock(t, l)
+	genesis := common.GenesisBlock()
+	if err := l.AddStateBlock(&genesis); err != nil {
+		t.Fatal(err)
+	}
+	blk := mock.StateBlockWithoutWork()
+	blk.Link = genesis.GetHash()
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	blk2 := mock.StateBlockWithoutWork()
+	blk2.Link = genesis.GetHash()
+	if err := l.AddStateBlock(blk2); err != nil {
+		t.Fatal(err)
+	}
 	err := l.GetStateBlocks(func(block *types.StateBlock) error {
 		t.Log(block)
 		return nil
@@ -278,7 +303,7 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 
 func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
 	block = mock.StateBlockWithoutWork()
-	hash = block.GetPrevious()
+	hash = block.GetLink()
 	kind = types.UncheckedKindPrevious
 	if err := l.AddUncheckedBlock(hash, block, kind, types.UnSynchronized); err != nil {
 		t.Fatal(err)
@@ -1064,6 +1089,7 @@ func TestLedger_BlockChild(t *testing.T) {
 	addr1 := mock.Address()
 	addr2 := mock.Address()
 	b1 := mock.StateBlockWithoutWork()
+	b1.Link = common.GenesisBlockHash()
 	b1.Address = addr1
 
 	b2 := mock.StateBlockWithoutWork()
@@ -1080,6 +1106,10 @@ func TestLedger_BlockChild(t *testing.T) {
 	b4.Type = types.Send
 	b4.Previous = b1.GetHash()
 
+	gen := common.GenesisBlock()
+	if err := l.AddStateBlock(&gen); err != nil {
+		t.Fatal(err)
+	}
 	if err := l.AddStateBlock(b1); err != nil {
 		t.Fatal(err)
 	}
