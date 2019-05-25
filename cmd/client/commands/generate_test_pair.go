@@ -165,34 +165,40 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 		var sendBlock types.StateBlock
 		err = client.Call(&sendBlock, "ledger_generateSendBlock", para, hex.EncodeToString(from.PrivateKey()))
 		if err != nil {
-			return err
+			fmt.Println(err)
+			continue
 		}
 		var sendHash types.Hash
 		err = client.Call(&sendHash, "ledger_process", &sendBlock)
 		if err != nil {
-			return err
+			fmt.Println(err)
+			continue
 		}
 
 		var receiveBlock types.StateBlock
 		err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
 		if err != nil {
-			return err
+			fmt.Println(err)
+			continue
 		}
 		var recvHash types.Hash
 		err = client.Call(&recvHash, "ledger_process", &receiveBlock)
 		if err != nil {
-			return err
+			fmt.Println(err)
+			continue
 		}
 
 		var changeBlock types.StateBlock
 		err = client.Call(&changeBlock, "ledger_generateChangeBlock", toAcc.Address(), toAcc.Address(), hex.EncodeToString(toAcc.PrivateKey()))
 		if err != nil {
-			return err
+			fmt.Println(err)
+			continue
 		}
 		var chgHash types.Hash
 		err = client.Call(&chgHash, "ledger_process", &changeBlock)
 		if err != nil {
-			return err
+			fmt.Println(err)
+			continue
 		}
 	}
 
@@ -231,23 +237,27 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, dela
 				var sendBlock types.StateBlock
 				err = client.Call(&sendBlock, "ledger_generateSendBlock", para, hex.EncodeToString(fromAcc.PrivateKey()))
 				if err != nil {
-					return err
+					fmt.Println(err)
+					continue
 				}
 				var sendHash types.Hash
 				err = client.Call(&sendHash, "ledger_process", &sendBlock)
 				if err != nil {
-					return err
+					fmt.Println(err)
+					continue
 				}
 
 				var receiveBlock types.StateBlock
 				err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
 				if err != nil {
-					return err
+					fmt.Println(err)
+					continue
 				}
 				var recvHash types.Hash
 				err = client.Call(&recvHash, "ledger_process", &receiveBlock)
 				if err != nil {
-					return err
+					fmt.Println(err)
+					continue
 				}
 
 				txCurNum++
