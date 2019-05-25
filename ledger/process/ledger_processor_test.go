@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -53,11 +54,17 @@ var bc, _ = mock.BlockChain()
 func TestLedger_Rollback(t *testing.T) {
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
+	genesis := common.GenesisBlock()
+	if err := lv.l.AddStateBlock(&genesis); err != nil {
+		t.Fatal(err)
+	}
 	if err := lv.BlockProcess(bc[0]); err != nil {
 		t.Fatal(err)
 	}
+	t.Log("bc hash", bc[0].GetHash())
 	for i, b := range bc[1:] {
 		fmt.Println(i + 1)
+		fmt.Println("bc.previous", b.GetPrevious())
 		if p, err := lv.Process(b); err != nil || p != Progress {
 			t.Fatal(p, err)
 		}
@@ -75,8 +82,11 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	fmt.Println("----blocks----")
 	err := l.GetStateBlocks(func(block *types.StateBlock) error {
 		fmt.Println(block)
-		if _, ok := addrs[block.GetAddress()]; !ok {
-			addrs[block.GetAddress()] = 0
+		if block.GetHash() != common.GenesisBlockHash() {
+			if _, ok := addrs[block.GetAddress()]; !ok {
+				addrs[block.GetAddress()] = 0
+			}
+			return nil
 		}
 		return nil
 	})
@@ -93,7 +103,10 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 
 	fmt.Println("----account----")
 	for k, _ := range addrs {
-		ac, _ := l.GetAccountMeta(k)
+		ac, err := l.GetAccountMeta(k)
+		if err != nil {
+			t.Fatal(err, k)
+		}
 		fmt.Println("   account", ac.Address)
 		for _, token := range ac.Tokens {
 			fmt.Println("      token, ", token)
