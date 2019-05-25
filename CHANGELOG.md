@@ -1,9 +1,22 @@
 
+<a name="v1.2.1"></a>
+## [v1.2.1](https://github.com/qlcchain/go-qlc/compare/v1.2.0...v1.2.1) (2019-05-25)
+
+### Bug Fixes
+
+* generate reward block pending
+
+### Pull Requests
+
+* Merge pull request [#368](https://github.com/qlcchain/go-qlc/issues/368) from qlcchain/hotfix/generate-rewards
+
+
 <a name="v1.2.0"></a>
 ## [v1.2.0](https://github.com/qlcchain/go-qlc/compare/v1.1.2...v1.2.0) (2019-05-25)
 
 ### Bug Fixes
 
+* integrate test case error
 * contract reward block check error
 * find online representative bug
 * openblock judgment logic need to send a confirmation notice if block from sync
@@ -46,6 +59,7 @@
 
 ### Pull Requests
 
+* Merge pull request [#367](https://github.com/qlcchain/go-qlc/issues/367) from qlcchain/hotfix/integrate
 * Merge pull request [#366](https://github.com/qlcchain/go-qlc/issues/366) from qlcchain/feature/parent
 * Merge pull request [#365](https://github.com/qlcchain/go-qlc/issues/365) from qlcchain/feature/eb-sync-sub
 * Merge pull request [#364](https://github.com/qlcchain/go-qlc/issues/364) from qlcchain/hotfix/rewardblock
