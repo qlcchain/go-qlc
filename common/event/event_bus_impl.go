@@ -35,8 +35,13 @@ func (eb *DefaultEventBus) Close() error {
 	return nil
 }
 
+type handlerOption struct {
+	isSync bool
+}
+
 type eventHandler struct {
 	callBack reflect.Value
+	option   *handlerOption
 	pool     *workerpool.WorkerPool
 }
 
@@ -90,7 +95,7 @@ func GetEventBus(id string) EventBus {
 }
 
 // doSubscribe handles the subscription logic and is utilized by the public Subscribe functions
-func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}) error {
+func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}, option *handlerOption) error {
 	kind := reflect.TypeOf(fn).Kind()
 	if kind != reflect.Func {
 		return fmt.Errorf("%s is not of type reflect.Func", kind)
@@ -98,6 +103,7 @@ func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}) error {
 
 	handler := &eventHandler{
 		callBack: reflect.ValueOf(fn),
+		option:   option,
 		pool:     workerpool.New(eb.queueSize),
 	}
 
@@ -115,7 +121,11 @@ func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}) error {
 // Subscribe subscribes to a topic.
 // Returns error if `fn` is not a function.
 func (eb *DefaultEventBus) Subscribe(topic string, fn interface{}) error {
-	return eb.doSubscribe(topic, fn)
+	return eb.doSubscribe(topic, fn, &handlerOption{isSync: false})
+}
+
+func (eb *DefaultEventBus) SubscribeSync(topic string, fn interface{}) error {
+	return eb.doSubscribe(topic, fn, &handlerOption{isSync: true})
 }
 
 // HasCallback returns true if exists any callback subscribed to the topic.
@@ -164,10 +174,15 @@ func (eb *DefaultEventBus) Publish(topic string, args ...interface{}) {
 			all := handlers.All()
 			for _, handler := range all {
 				h := handler
-				//fmt.Printf("%p,%v,%v\n", handler, handler.callBack, handler.pool)
-				h.pool.Submit(func() {
-					h.callBack.Call(rArgs)
-				})
+				if h.option.isSync {
+					h.pool.SubmitWait(func() {
+						h.callBack.Call(rArgs)
+					})
+				} else {
+					h.pool.Submit(func() {
+						h.callBack.Call(rArgs)
+					})
+				}
 			}
 		}
 	}
