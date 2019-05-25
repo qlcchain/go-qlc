@@ -210,7 +210,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 	pHash := cBlock.Parent()
 	cHash := cBlock.GetHash()
-	if !common.IsGenesisBlock(cBlock) {
+	if !common.IsGenesisBlock(cBlock) && pHash != types.ZeroHash {
 		// is parent block existed
 		pBlock := new(types.StateBlock)
 		err := txn.Get(getKeyOfHash(pHash, idPrefixBlock), func(val []byte, b byte) error {
