@@ -213,7 +213,7 @@ func creatGenesisBlock(l *ledger.Ledger) {
 	sByte, _ := hex.DecodeString(seed)
 	seed, _ := types.BytesToSeed(sByte)
 	ac, _ = seed.Account(0)
-	genesisBlock = createBlock(*ac, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(60000000000000000))}, types.Hash(ac.Address()), ac.Address())
+	genesisBlock = createBlock(*ac, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(60000000000000000))}, types.ZeroHash, ac.Address())
 	verifier := process.NewLedgerVerifier(l)
 	verifier.BlockProcess(genesisBlock)
 }
