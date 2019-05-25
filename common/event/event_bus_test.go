@@ -37,6 +37,32 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 
+func TestSubscribeSync(t *testing.T) {
+	bus := NewEventBus(runtime.NumCPU())
+
+	counter := int64(0)
+	topic := "test"
+	if bus.SubscribeSync(topic, func() {
+		atomic.AddInt64(&counter, 1)
+		t.Log("sub1")
+	}) != nil {
+		t.Fail()
+	}
+	if bus.Subscribe(topic, func() {
+		t.Log("sub2")
+	}) != nil {
+		t.Fail()
+	}
+
+	bus.Publish(topic)
+
+	if counter != int64(1) {
+		t.Fatal("invalid ", counter)
+	}
+
+	_ = bus.Close()
+}
+
 func TestUnsubscribe(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
 
