@@ -171,8 +171,13 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 			block.Representative = input.Representative
 		}
 
+		t := uint8(cabi.Rewards)
+		if signed == cabi.MethodNameConfidantRewards {
+			t = uint8(cabi.Confidant)
+		}
+
 		info := &cabi.RewardsInfo{
-			Type:     uint8(cabi.Confidant),
+			Type:     t,
 			From:     input.Address,
 			To:       rxAddress,
 			TxHeader: txToken.Header,
