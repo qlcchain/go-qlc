@@ -294,6 +294,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 			if bytes.EqualFold(block.Data, clone.Data) {
 				return Progress, nil
 			} else {
+				lv.logger.Errorf("data not equal: %s, %s", block.Data, clone.Data)
 				return InvalidData, nil
 			}
 		} else {
@@ -349,21 +350,26 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 					if ctx != nil {
 						err := ctx.SaveStorage()
 						if err != nil {
+							lv.logger.Error("save storage error: ", err)
 							return InvalidData, nil
 						}
 						err = ctx.SaveTrie()
 						if err != nil {
+							lv.logger.Error("save trie error: ", err)
 							return InvalidData, nil
 						}
 					}
 					return Progress, nil
 				} else {
+					lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
+						g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
 					return InvalidData, nil
 				}
 			} else {
 				return Other, fmt.Errorf("can not generate receive block")
 			}
 		} else {
+			lv.logger.Error("DoReceive error", e)
 			return Other, e
 		}
 	} else {
