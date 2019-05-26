@@ -26,8 +26,8 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		return errors.New("account is not coinbase")
 	}
 
-	if block.Token != common.GasToken() {
-		return errors.New("token is not gas token")
+	if block.Token != common.ChainToken() {
+		return errors.New("token is not chain token")
 	}
 
 	amCb, _ := ctx.GetAccountMeta(param.Coinbase)

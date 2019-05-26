@@ -47,7 +47,12 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 
 	amCb, err := m.ledger.GetAccountMeta(param.Coinbase)
 	if amCb == nil {
-		return nil, fmt.Errorf("invalid coinbase account, %s", err)
+		return nil, fmt.Errorf("coinbase account not exist, %s", err)
+	}
+
+	tmCb := amCb.Token(common.ChainToken())
+	if tmCb == nil {
+		return nil, fmt.Errorf("coinbase account does not have chain token, %s", err)
 	}
 
 	amBnf, err := m.ledger.GetAccountMeta(param.Beneficial)
@@ -62,8 +67,12 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 
 	send := &types.StateBlock{
 		Type:      types.ContractSend,
-		Token:     common.GasToken(),
+		Token:     common.ChainToken(),
 		Address:   param.Coinbase,
+
+		Balance:        tmCb.Balance,
+		Previous:       tmCb.Header,
+		Representative: tmCb.Representative,
 
 		Vote:      amCb.CoinVote,
 		Network:   amCb.CoinNetwork,
@@ -73,17 +82,6 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		Link:      types.Hash(types.MinerAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().UTC().Unix(),
-	}
-
-	tmCb := amCb.Token(common.GasToken())
-	if tmCb != nil {
-		send.Balance = tmCb.Balance
-		send.Previous = tmCb.Header
-		send.Representative = tmCb.Representative
-	} else {
-		send.Balance = types.NewBalance(0)
-		send.Previous = types.ZeroHash
-		send.Representative = types.ZeroAddress
 	}
 
 	err = m.reward.DoSend(m.vmContext, send)
