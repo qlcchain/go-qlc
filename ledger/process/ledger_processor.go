@@ -98,12 +98,6 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 		}
 	}
 	if block.GetType() == types.ContractReward {
-		// check previous
-		if !block.IsOpen() {
-			if exit, _ := lv.l.HasStateBlock(block.Previous); !exit {
-				return GapPrevious, nil
-			}
-		}
 		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {
 			return GapSource, nil
@@ -267,16 +261,14 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 }
 
 func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkSendBlock(lv, block)
-	if err != nil || result != Progress {
-		return result, err
-	}
-
 	//ignore chain genesis block
 	if common.IsGenesisBlock(block) {
 		return Progress, nil
 	}
-
+	result, err := checkSendBlock(lv, block)
+	if err != nil || result != Progress {
+		return result, err
+	}
 	//check smart c exist
 	address := types.Address(block.GetLink())
 
@@ -308,32 +300,39 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 }
 
 func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkStateBlock(lv, block)
-	if err != nil || result != Progress {
-		return result, err
-	}
-	//check previous
-	//if !block.Previous.IsZero() {
-	//	return Other, fmt.Errorf("open block previous is not zero")
-	//}
-
 	//ignore chain genesis block
 	if common.IsGenesisBlock(block) {
 		return Progress, nil
 	}
 
+	result, err := checkStateBlock(lv, block)
+	if err != nil || result != Progress {
+		return result, err
+	}
+	// check previous
+	if !block.IsOpen() {
+		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
+			return GapPrevious, nil
+		} else {
+			//check fork
+			if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+				return Fork, nil
+			}
+		}
+	} else {
+		//check fork
+		if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
+			return Fork, nil
+		}
+	}
+
 	//check smart c exist
-	send, err := lv.l.GetStateBlock(block.GetLink())
+	input, err := lv.l.GetStateBlock(block.GetLink())
 	if err != nil {
 		return GapSource, nil
 	}
-	address := types.Address(send.GetLink())
+	address := types.Address(input.GetLink())
 
-	//verify data
-	input, err := lv.l.GetStateBlock(block.Link)
-	if err != nil {
-		return Other, err
-	}
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
 		clone := block.Clone()
 		//TODO:verify extra hash and commit to db

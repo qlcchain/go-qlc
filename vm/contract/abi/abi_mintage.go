@@ -112,6 +112,8 @@ func ListTokens(ctx *vmstore.VMContext) ([]*types.TokenInfo, error) {
 				}
 			} else {
 				if info, err := ParseTokenInfo(value); err == nil {
+					exp := new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(info.Decimals)), nil)
+					info.TotalSupply = info.TotalSupply.Mul(info.TotalSupply, exp)
 					infos = append(infos, info)
 				} else {
 					logger.Error(err)
