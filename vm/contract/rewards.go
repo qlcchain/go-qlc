@@ -146,14 +146,14 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 		block.Link = txHash
 		block.Token = input.Token
 		block.Extra = types.ZeroHash
+		block.Vote = types.ZeroBalance
+		block.Network = types.ZeroBalance
+		block.Oracle = types.ZeroBalance
+		block.Storage = types.ZeroBalance
 		//block.Timestamp = common.TimeNow().UTC().Unix()
 
 		// already have account
 		if rxMeta != nil && len(rxMeta.Tokens) > 0 {
-			block.Vote = rxMeta.CoinVote
-			block.Oracle = rxMeta.CoinOracle
-			block.Network = rxMeta.CoinNetwork
-			block.Storage = rxMeta.CoinStorage
 			if rxToken := rxMeta.Token(input.Token); rxToken != nil {
 				//already have token
 				block.Balance = rxToken.Balance.Add(amount)
@@ -167,10 +167,6 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 			}
 		} else {
 			block.Balance = amount
-			block.Vote = types.ZeroBalance
-			block.Network = types.ZeroBalance
-			block.Oracle = types.ZeroBalance
-			block.Storage = types.ZeroBalance
 			block.Previous = types.ZeroHash
 			block.Representative = input.Representative
 		}
