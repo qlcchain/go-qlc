@@ -144,31 +144,23 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 			}
 		}
 	}
+
 	am, _ := ctx.GetAccountMeta(param.Beneficial)
 	if am != nil {
 		tm := am.Token(common.ChainToken())
+		block.Balance = am.CoinBalance
+		block.Vote = am.CoinVote
+		block.Network = am.CoinNetwork
+		block.Oracle = am.CoinOracle
+		block.Storage = am.CoinStorage
 		if tm != nil {
-			block.Type = types.ContractReward
-			block.Address = param.Beneficial
-			block.Token = input.Token
-			block.Link = input.GetHash()
-			block.Data = pledgeData
-			block.Balance = am.CoinBalance
-			block.Vote = am.CoinVote
-			block.Network = am.CoinNetwork
-			block.Oracle = am.CoinOracle
-			block.Storage = am.CoinStorage
 			block.Previous = tm.Header
 			block.Representative = tm.Representative
 		} else {
-			return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
+			block.Previous = types.ZeroHash
+			block.Representative = input.Representative
 		}
 	} else {
-		block.Type = types.ContractReward
-		block.Address = param.Beneficial
-		block.Token = input.Token
-		block.Link = input.GetHash()
-		block.Data = pledgeData
 		block.Vote = types.ZeroBalance
 		block.Network = types.ZeroBalance
 		block.Oracle = types.ZeroBalance
@@ -176,6 +168,12 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		block.Previous = types.ZeroHash
 		block.Representative = input.Representative
 	}
+
+	block.Type = types.ContractReward
+	block.Address = param.Beneficial
+	block.Token = input.Token
+	block.Link = input.GetHash()
+	block.Data = pledgeData
 
 	//TODO: query snapshot balance
 	switch cabi.PledgeType(param.PType) {
