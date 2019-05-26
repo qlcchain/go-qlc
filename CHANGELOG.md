@@ -1,13 +1,27 @@
 
 <a name="v1.2.1"></a>
-## [v1.2.1](https://github.com/qlcchain/go-qlc/compare/v1.2.0...v1.2.1) (2019-05-25)
+## [v1.2.1](https://github.com/qlcchain/go-qlc/compare/v1.2.0...v1.2.1) (2019-05-26)
 
 ### Bug Fixes
 
+* process fork for cotractreward block fix totalsupply bug
+* pledge DoReceive bug
+* QGAS rewards balance
 * generate reward block pending
+
+### Features
+
+* implement query rewards details RPC
+* add log to ledger
+* add log to ledger
 
 ### Pull Requests
 
+* Merge pull request [#373](https://github.com/qlcchain/go-qlc/issues/373) from qlcchain/hotfix/fork
+* Merge pull request [#372](https://github.com/qlcchain/go-qlc/issues/372) from qlcchain/feature/reward-details-rpc
+* Merge pull request [#371](https://github.com/qlcchain/go-qlc/issues/371) from qlcchain/hotfix/doreceive
+* Merge pull request [#370](https://github.com/qlcchain/go-qlc/issues/370) from qlcchain/feature/log
+* Merge pull request [#369](https://github.com/qlcchain/go-qlc/issues/369) from qlcchain/hotfix/rewards-balance
 * Merge pull request [#368](https://github.com/qlcchain/go-qlc/issues/368) from qlcchain/hotfix/generate-rewards
 
 
