@@ -247,8 +247,16 @@ func (r *RewardsApi) GetTotalRewards(txId string) (*big.Int, error) {
 	return cabi.GetTotalRewards(vmstore.NewVMContext(r.ledger), txId)
 }
 
+func (r *RewardsApi) GetRewardsDetail(txId string) ([]*cabi.RewardsInfo, error) {
+	return cabi.GetRewardsDetail(vmstore.NewVMContext(r.ledger), txId)
+}
+
 func (r *RewardsApi) GetConfidantRewards(confidant types.Address) (map[string]*big.Int, error) {
 	return cabi.GetConfidantRewords(vmstore.NewVMContext(r.ledger), confidant)
+}
+
+func (r *RewardsApi) GetConfidantRewordsDetail(confidant types.Address) (map[string][]*cabi.RewardsInfo, error) {
+	return cabi.GetConfidantRewordsDetail(vmstore.NewVMContext(r.ledger), confidant)
 }
 
 func checkContractMethod(data []byte) (string, error) {
