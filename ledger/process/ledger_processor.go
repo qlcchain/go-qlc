@@ -298,6 +298,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 				return InvalidData, nil
 			}
 		} else {
+			lv.logger.Error("DoSend error")
 			return Other, err
 		}
 	} else {

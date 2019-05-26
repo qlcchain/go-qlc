@@ -118,8 +118,12 @@ func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) er
 }
 
 func (v *VMContext) CalculateAmount(block *types.StateBlock) (types.Balance, error) {
-	return v.ledger.CalculateAmount(block)
-
+	b, err := v.ledger.CalculateAmount(block)
+	if err != nil {
+		v.logger.Error("calculate amount error: ", err)
+		return types.ZeroBalance, err
+	}
+	return b, nil
 }
 
 func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, error) {
