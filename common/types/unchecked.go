@@ -34,4 +34,4 @@ const (
 	UnSynchronized
 )
 
-type UncheckedBlockWalkFunc func(block Block, kind UncheckedKind) error
+type UncheckedBlockWalkFunc func(block Block, link Hash, unCheckType UncheckedKind, sync SynchronizedKind) error

@@ -190,13 +190,13 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 
 	blockBytes, err := blk.Serialize()
 	if err != nil {
-		return err
+		return fmt.Errorf("serialize block error: %s", err)
 	}
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
 	}
 	if err := addChild(blk, txn); err != nil {
-		return err
+		return fmt.Errorf("add block child error: %s", err)
 	}
 	//if err := addToken(blk, txn); err != nil {
 	//	return err
@@ -311,7 +311,7 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
-			return err
+			return fmt.Errorf("deserialize block error: %s", err)
 		}
 		if err := fn(blk); err != nil {
 			return err
@@ -344,7 +344,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 		return err
 	}
 	if err := deleteChild(blk, txn); err != nil {
-		return err
+		return fmt.Errorf("delete child error: %s", err)
 	}
 	//if err := deleteToken(blk, txn); err != nil {
 	//	return err
@@ -651,9 +651,13 @@ func (l *Ledger) walkUncheckedBlocks(kind types.UncheckedKind, visit types.Unche
 	err := txn.Iterator(prefix, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
-			return err
+			return fmt.Errorf("deserialize blk error: %s", err)
 		}
-		if err := visit(blk, kind); err != nil {
+		h, err := types.BytesToHash(key[1:])
+		if err != nil {
+			return fmt.Errorf("BytesToHash error: %s", err)
+		}
+		if err := visit(blk, h, kind, types.SynchronizedKind(b)); err != nil {
 			return err
 		}
 		return nil
