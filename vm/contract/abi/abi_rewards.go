@@ -30,7 +30,7 @@ const (
 		{"type":"function","name":"UnsignedAirdropRewards","inputs":[{"name":"id","type":"hash"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"}]  },
 		{"type":"function","name":"ConfidantRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"},{"name":"sign","type":"signature"}]  },
 		{"type":"function","name":"UnsignedConfidantRewards","inputs":[{"name":"id","type":"hash"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"}]  },
-		{"type":"variable","name":"rewardsInfo","inputs":[{"name":"type","type":"uint8"},{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"sHeader","type":"hash"},{"name":"rHeader","type":"hash"},{"name":"amount","type":"uint256"}]  }
+		{"type":"variable","name":"rewardsInfo","inputs":[{"name":"type","type":"uint8"},{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"}]  }
 	]
 `
 
@@ -51,12 +51,12 @@ const (
 )
 
 type RewardsParam struct {
-	Id         types.Hash
-	Beneficial types.Address
-	TxHeader   types.Hash
-	RxHeader   types.Hash
-	Amount     *big.Int
-	Sign       types.Signature
+	Id         types.Hash      `json:"id"`
+	Beneficial types.Address   `json:"beneficial"`
+	TxHeader   types.Hash      `json:"txHeader"`
+	RxHeader   types.Hash      `json:"rxHeader"`
+	Amount     *big.Int        `json:"amount"`
+	Sign       types.Signature `json:"signature"`
 }
 
 func (ap *RewardsParam) Verify(address types.Address, methodName string) (bool, error) {
@@ -73,17 +73,17 @@ func (ap *RewardsParam) Verify(address types.Address, methodName string) (bool, 
 			return false, err
 		}
 	} else {
-		return false, fmt.Errorf("invalid param")
+		return false, fmt.Errorf("invalid Param")
 	}
 }
 
 type RewardsInfo struct {
-	Type     uint8          `json:"type"`
-	From     *types.Address `json:"from"`
-	To       *types.Address `json:"to"`
-	TxHeader []byte         `json:"txHeader"`
-	RxHeader []byte         `json:"rxHeader"`
-	Amount   *big.Int       `json:"amount"`
+	Type     uint8         `json:"type"`
+	From     types.Address `json:"from"`
+	To       types.Address `json:"to"`
+	TxHeader types.Hash    `json:"txHeader"`
+	RxHeader types.Hash    `json:"rxHeader"`
+	Amount   *big.Int      `json:"amount"`
 }
 
 func ParseRewardsInfo(data []byte) (*RewardsInfo, error) {
@@ -99,24 +99,24 @@ func ParseRewardsInfo(data []byte) (*RewardsInfo, error) {
 	}
 }
 
-func GetRewardsKey(txId, sHeader, rHeader []byte) []byte {
+func GetRewardsKey(txId, txHeader, rxHeader []byte) []byte {
 	result := []byte(txId)
-	result = append(result, sHeader...)
-	result = append(result, rHeader...)
+	result = append(result, txHeader...)
+	result = append(result, rxHeader...)
 	return result
 }
 
-func GetConfidantKey(address types.Address, txId, sHeader, rHeader []byte) []byte {
+func GetConfidantKey(address types.Address, txId, txHeader, rxHeader []byte) []byte {
 	result := []byte(address[:])
 	result = append(result, txId[:]...)
-	result = append(result, sHeader...)
-	result = append(result, rHeader...)
+	result = append(result, txHeader...)
+	result = append(result, rxHeader...)
 
 	return result
 }
 
 func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, error) {
-	logger := log.NewLogger("GetPledgeBeneficialAmount")
+	logger := log.NewLogger("GetRewardsDetail")
 	defer func() {
 		_ = logger.Sync()
 	}()
@@ -127,9 +127,9 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 	}
 	var result []*RewardsInfo
 	if err := ctx.Iterator(types.RewardsAddress[:], func(key []byte, value []byte) error {
-		if bytes.HasPrefix(key[1:], id) {
+		if bytes.HasPrefix(key[types.AddressSize+1:], id) && len(value) > 0 {
 			info := new(RewardsInfo)
-			if err := NEP5PledgeABI.UnpackVariable(info, VariableNameRewards, value); err == nil && info.Type == uint8(Rewards) {
+			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil && info.Type == uint8(Rewards) {
 				result = append(result, info)
 			} else {
 				logger.Error(err)
@@ -157,7 +157,7 @@ func GetTotalRewards(ctx *vmstore.VMContext, txId string) (*big.Int, error) {
 }
 
 func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) (map[string][]*RewardsInfo, error) {
-	logger := log.NewLogger("GetPledgeBeneficialAmount")
+	logger := log.NewLogger("GetConfidantRewordsDetail")
 	defer func() {
 		_ = logger.Sync()
 	}()
@@ -165,16 +165,17 @@ func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) 
 	result := make(map[string][]*RewardsInfo)
 
 	if err := ctx.Iterator(types.RewardsAddress[:], func(key []byte, value []byte) error {
-		if bytes.HasPrefix(key[1:], confidant[:]) {
+		k := key[types.AddressSize+1:]
+		if bytes.HasPrefix(k, confidant[:]) && len(value) > 0 {
 			info := new(RewardsInfo)
-			if err := NEP5PledgeABI.UnpackVariable(info, VariableNameRewards, value); err == nil && info.Type == uint8(Confidant) {
-				s := hex.EncodeToString(key[types.AddressSize+1 : types.AddressSize+types.HashSize])
+			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil && info.Type == uint8(Confidant) {
+				s := hex.EncodeToString(k[types.AddressSize : types.AddressSize+types.HashSize])
 				if infos, ok := result[s]; ok {
 					result[s] = append(infos, info)
 				} else {
 					result[s] = []*RewardsInfo{info}
 				}
-			} else {
+			} else if err != nil {
 				logger.Error(err)
 			}
 		}
@@ -187,7 +188,7 @@ func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) 
 }
 
 func GetConfidantRewords(ctx *vmstore.VMContext, confidant types.Address) (map[string]*big.Int, error) {
-	if infos, err := GetConfidantRewordsDetail(ctx, confidant); err == nil {
+	if infos, err := GetConfidantRewordsDetail(ctx, confidant); err != nil {
 		return nil, err
 	} else {
 		result := make(map[string]*big.Int)

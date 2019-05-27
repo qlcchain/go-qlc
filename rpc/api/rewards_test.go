@@ -102,6 +102,10 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 	t.Log(util.ToIndentString(param))
 	t.Log(sign.String())
 
+	if isAirdropRewards := api.IsAirdropRewards(blk.Data); !isAirdropRewards {
+		t.Fatal("invalid data type")
+	}
+
 	vmContext := vmstore.NewVMContext(l)
 	err = api.rewards.DoSend(vmContext, blk)
 	if err != nil {
@@ -180,6 +184,10 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		t.Log(util.ToIndentString(blk))
+	}
+
+	if isAirdrop := api.IsAirdropRewards(blk.Data); isAirdrop {
+		t.Fatal("invalid block data")
 	}
 
 	vmContext := vmstore.NewVMContext(l)

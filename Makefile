@@ -9,19 +9,20 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
 # server
-SERVERVERSION ?= 1.1.2
+SERVERVERSION ?= 1.2.1
 SERVERBINARY = gqlc
 SERVERTESTBINARY = gqlct
 SERVERMAIN = cmd/server/main.go
 
 # client
-CLIENTVERSION ?= 1.1.2
+CLIENTVERSION ?= 1.2.1
 CLIENTBINARY = gqlcc
 CLIENTMAIN = cmd/client/main.go
 
 BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%Y-%m-%d_%T')
+TARGET=windows-6.0/*,darwin-10.10/amd64,linux/amd64,linux/arm-7
 
 MAINLDFLAGS="-X github.com/qlcchain/go-qlc/cmd/server/commands.Version=${SERVERVERSION} \
 	-X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev=${GITREV} \
@@ -65,13 +66,11 @@ clean:
 
 gqlc-server:
 	xgo --dest=$(BUILDDIR) --tags="sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
-	--targets="windows-6.0/*,darwin-10.10/amd64,linux/amd64,linux/arm-7,linux/386,linux/arm64,linux/mips64,linux/mips64le" \
-	--pkg=$(SERVERMAIN) .
+	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
 
 gqlc-server-test:
 	xgo --dest=$(BUILDDIR) --tags="testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
-	--targets="windows-6.0/amd64,darwin-10.10/amd64,linux/amd64,linux/arm-7,linux/386,linux/arm64,linux/mips64,linux/mips64le" \
-	--pkg=$(SERVERMAIN) .
+	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
 
 gqlc-client:
 	xgo --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \

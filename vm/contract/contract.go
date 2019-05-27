@@ -86,6 +86,19 @@ func GetChainContract(addr types.Address, methodSelector []byte) (ChainContract,
 	return nil, ok, nil
 }
 
+func GetChainContractName(addr types.Address, methodSelector []byte) (string, bool, error) {
+	p, ok := contractCache[addr]
+	if ok {
+		if method, err := p.abi.MethodById(methodSelector); err == nil {
+			_, ok := p.m[method.Name]
+			return method.Name, ok, nil
+		} else {
+			return "", ok, errors.New("abi: method not found")
+		}
+	}
+	return "", ok, nil
+}
+
 func IsChainContract(addr types.Address) bool {
 	if _, ok := contractCache[addr]; ok {
 		return true

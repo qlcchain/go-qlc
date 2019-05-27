@@ -8,7 +8,6 @@
 package contract
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -43,10 +42,12 @@ func (ar *AirdropRewords) DoPending(block *types.StateBlock) (*types.PendingKey,
 	return doPending(block, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards)
 }
 
-func (ar *AirdropRewords) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return generate(ctx, cabi.MethodNameUnsignedAirdropRewards, cabi.MethodNameUnsignedAirdropRewards, block, input, func(param *cabi.RewardsParam) []byte {
-		return cabi.GetRewardsKey(param.Id[:], param.TxHeader[:], param.RxHeader[:])
-	})
+func (ar *AirdropRewords) DoReceive(ctx *vmstore.VMContext,
+	block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return generate(ctx, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards,
+		block, input, func(param *cabi.RewardsParam) []byte {
+			return cabi.GetRewardsKey(param.Id[:], param.TxHeader[:], param.RxHeader[:])
+		})
 }
 
 func (*AirdropRewords) GetRefundData() []byte {
@@ -93,23 +94,26 @@ func doPending(block *types.StateBlock, signed, unsigned string) (*types.Pending
 			Address: param.Beneficial,
 			Hash:    block.GetHash(),
 		}, &types.PendingInfo{
-			Source: block.Address,
+			Source: types.Address(block.Link),
 			Amount: types.Balance{Int: param.Amount},
 			Type:   block.Token,
 		}, nil
 }
 
-func (*ConfidantRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return generate(ctx, cabi.MethodNameUnsignedConfidantRewards, cabi.MethodNameUnsignedConfidantRewards, block, input, func(param *cabi.RewardsParam) []byte {
-		return cabi.GetConfidantKey(param.Beneficial, param.Id[:], param.TxHeader[:], param.RxHeader[:])
-	})
+func (*ConfidantRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
+	input *types.StateBlock) ([]*ContractBlock, error) {
+	return generate(ctx, cabi.MethodNameConfidantRewards, cabi.MethodNameUnsignedConfidantRewards,
+		block, input, func(param *cabi.RewardsParam) []byte {
+			return cabi.GetConfidantKey(param.Beneficial, param.Id[:], param.TxHeader[:], param.RxHeader[:])
+		})
 }
 
 func (*ConfidantRewards) GetRefundData() []byte {
 	return []byte{2}
 }
 
-func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock, fn func(param *cabi.RewardsParam) []byte) ([]*ContractBlock, error) {
+func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock,
+	fn func(param *cabi.RewardsParam) []byte) ([]*ContractBlock, error) {
 	param := new(cabi.RewardsParam)
 	err := cabi.RewardsABI.UnpackMethod(param, signed, input.Data)
 	if err != nil {
@@ -121,8 +125,11 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 	}
 
 	//verify is QGAS
-	amount, _ := ctx.CalculateAmount(input)
-	if amount.Sign() > 0 && input.Token != common.GasToken() {
+	amount, err := ctx.CalculateAmount(input)
+	if err != nil {
+		return nil, err
+	}
+	if amount.Sign() > 0 && amount.Compare(types.ZeroBalance) == types.BalanceCompBigger && input.Token == common.GasToken() {
 		txHash := input.GetHash()
 		txAddress := input.Address
 		txMeta, err := ctx.GetAccountMeta(txAddress)
@@ -139,14 +146,14 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 		block.Link = txHash
 		block.Token = input.Token
 		block.Extra = types.ZeroHash
+		block.Vote = types.ZeroBalance
+		block.Network = types.ZeroBalance
+		block.Oracle = types.ZeroBalance
+		block.Storage = types.ZeroBalance
 		//block.Timestamp = common.TimeNow().UTC().Unix()
 
 		// already have account
 		if rxMeta != nil && len(rxMeta.Tokens) > 0 {
-			block.Vote = rxMeta.CoinVote
-			block.Oracle = rxMeta.CoinOracle
-			block.Network = rxMeta.CoinNetwork
-			block.Storage = rxMeta.CoinStorage
 			if rxToken := rxMeta.Token(input.Token); rxToken != nil {
 				//already have token
 				block.Balance = rxToken.Balance.Add(amount)
@@ -160,20 +167,21 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 			}
 		} else {
 			block.Balance = amount
-			block.Vote = types.ZeroBalance
-			block.Network = types.ZeroBalance
-			block.Oracle = types.ZeroBalance
-			block.Storage = types.ZeroBalance
 			block.Previous = types.ZeroHash
 			block.Representative = input.Representative
 		}
 
+		t := uint8(cabi.Rewards)
+		if signed == cabi.MethodNameConfidantRewards {
+			t = uint8(cabi.Confidant)
+		}
+
 		info := &cabi.RewardsInfo{
-			Type:     uint8(cabi.Confidant),
-			From:     &input.Address,
-			To:       &rxAddress,
-			TxHeader: txToken.Header[:],
-			RxHeader: block.Previous[:],
+			Type:     t,
+			From:     input.Address,
+			To:       rxAddress,
+			TxHeader: txToken.Header,
+			RxHeader: block.Previous,
 			Amount:   amount.Int,
 		}
 
@@ -186,7 +194,7 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 			//already exist
 			if len(data) > 0 {
 				if rewardsInfo, err := cabi.ParseRewardsInfo(data); err == nil {
-					if !bytes.EqualFold(rewardsInfo.TxHeader, info.TxHeader) || !bytes.EqualFold(rewardsInfo.RxHeader, info.RxHeader) ||
+					if rewardsInfo.TxHeader != info.TxHeader || rewardsInfo.RxHeader != info.RxHeader ||
 						rewardsInfo.Amount.Cmp(info.Amount) != 0 || rewardsInfo.Type != info.Type ||
 						rewardsInfo.From != info.From || rewardsInfo.To != info.To {
 						return nil, errors.New("invalid saved confidant data")
@@ -195,7 +203,8 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 					return nil, err
 				}
 			} else {
-				if data, err := cabi.RewardsABI.PackVariable(cabi.VariableNameRewards, info); err == nil {
+				if data, err := cabi.RewardsABI.PackVariable(cabi.VariableNameRewards, info.Type, info.From,
+					info.To, info.TxHeader, info.RxHeader, info.Amount); err == nil {
 					if err := ctx.SetStorage(types.RewardsAddress[:], key, data); err != nil {
 						return nil, err
 					}
@@ -218,6 +227,6 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 		}, nil
 
 	} else {
-		return nil, fmt.Errorf("invalid token hash %s", input.Token.String())
+		return nil, fmt.Errorf("invalid token hash %s or amount %s", input.Token.String(), amount.String())
 	}
 }

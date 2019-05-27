@@ -73,15 +73,15 @@ func NewPovSyncer(povEngine *PoVEngine) *PovSyncer {
 func (ss *PovSyncer) Start() {
 	eb := ss.povEngine.GetEventBus()
 	if eb != nil {
-		err := eb.Subscribe(string(common.EventAddP2PStream), ss.onAddP2PStream)
+		err := eb.SubscribeSync(string(common.EventAddP2PStream), ss.onAddP2PStream)
 		if err != nil {
 			return
 		}
-		err = eb.Subscribe(string(common.EventDeleteP2PStream), ss.onDeleteP2PStream)
+		err = eb.SubscribeSync(string(common.EventDeleteP2PStream), ss.onDeleteP2PStream)
 		if err != nil {
 			return
 		}
-		err = eb.Subscribe(string(common.EventPovPeerStatus), ss.onPovStatus)
+		err = eb.SubscribeSync(string(common.EventPovPeerStatus), ss.onPovStatus)
 		if err != nil {
 			return
 		}

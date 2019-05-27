@@ -12,6 +12,7 @@ import "io"
 //subscriber defines subscription-related bus behavior
 type subscriber interface {
 	Subscribe(topic string, fn interface{}) error
+	SubscribeSync(topic string, fn interface{}) error
 	Unsubscribe(topic string, handler interface{}) error
 }
 

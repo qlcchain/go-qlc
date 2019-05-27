@@ -374,6 +374,9 @@ func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 	if err != nil {
 		logger.Error(err)
 	}
+	if result.Key == nil {
+		return nil
+	}
 	return result
 }
 

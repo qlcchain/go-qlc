@@ -100,7 +100,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 	if block.GetType() == types.ContractReward {
 		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {
-			return Other, err
+			return GapSource, nil
 		}
 		if linkBlk.GetLink() == types.Hash(types.RewardsAddress) {
 			return Progress, nil
@@ -261,16 +261,14 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 }
 
 func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkSendBlock(lv, block)
-	if err != nil || result != Progress {
-		return result, err
-	}
-
 	//ignore chain genesis block
 	if common.IsGenesisBlock(block) {
 		return Progress, nil
 	}
-
+	result, err := checkSendBlock(lv, block)
+	if err != nil || result != Progress {
+		return result, err
+	}
 	//check smart c exist
 	address := types.Address(block.GetLink())
 
@@ -288,9 +286,11 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 			if bytes.EqualFold(block.Data, clone.Data) {
 				return Progress, nil
 			} else {
+				lv.logger.Errorf("data not equal: %s, %s", block.Data, clone.Data)
 				return InvalidData, nil
 			}
 		} else {
+			lv.logger.Error("DoSend error")
 			return Other, err
 		}
 	} else {
@@ -300,39 +300,49 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 }
 
 func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkStateBlock(lv, block)
-	if err != nil || result != Progress {
-		return result, err
-	}
-	//check previous
-	//if !block.Previous.IsZero() {
-	//	return Other, fmt.Errorf("open block previous is not zero")
-	//}
-
 	//ignore chain genesis block
 	if common.IsGenesisBlock(block) {
 		return Progress, nil
 	}
 
+	result, err := checkStateBlock(lv, block)
+	if err != nil || result != Progress {
+		return result, err
+	}
+	// check previous
+	if !block.IsOpen() {
+		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
+			return GapPrevious, nil
+		} else {
+			//check fork
+			if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+				return Fork, nil
+			}
+		}
+	} else {
+		//check fork
+		if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
+			return Fork, nil
+		}
+	}
+
 	//check smart c exist
-	send, err := lv.l.GetStateBlock(block.GetLink())
+	input, err := lv.l.GetStateBlock(block.GetLink())
 	if err != nil {
 		return GapSource, nil
 	}
-	address := types.Address(send.GetLink())
+	address := types.Address(input.GetLink())
 
-	//verify data
-	input, err := lv.l.GetStateBlock(block.Link)
-	if err != nil {
-		return Other, err
-	}
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
 		clone := block.Clone()
 		//TODO:verify extra hash and commit to db
 		vmCtx := vmstore.NewVMContext(lv.l)
 		if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
 			if len(g) > 0 {
-				amount, _ := lv.l.CalculateAmount(block)
+				amount, err := lv.l.CalculateAmount(block)
+				if err != nil {
+					lv.logger.Error("calculate amount error:", err)
+				}
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 					g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
 					//save contract data
@@ -340,21 +350,26 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 					if ctx != nil {
 						err := ctx.SaveStorage()
 						if err != nil {
+							lv.logger.Error("save storage error: ", err)
 							return InvalidData, nil
 						}
 						err = ctx.SaveTrie()
 						if err != nil {
+							lv.logger.Error("save trie error: ", err)
 							return InvalidData, nil
 						}
 					}
 					return Progress, nil
 				} else {
+					lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
+						g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
 					return InvalidData, nil
 				}
 			} else {
 				return Other, fmt.Errorf("can not generate receive block")
 			}
 		} else {
+			lv.logger.Error("DoReceive error", e)
 			return Other, e
 		}
 	} else {

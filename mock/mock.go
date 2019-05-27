@@ -133,11 +133,11 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
 	sb.Address = a.Address()
 	sb.Token = common.ChainToken()
-	sb.Previous = Hash()
+	sb.Previous = types.ZeroHash
 	sb.Representative = common.GenesisAddress()
 	sb.Timestamp = common.TimeNow().UTC().Unix()
 	//addr := Address()
-	sb.Link = types.ZeroHash
+	sb.Link = Hash()
 	sb.Message = Hash()
 	return sb
 }
@@ -164,7 +164,7 @@ func BlockChain() ([]*types.StateBlock, error) {
 
 	token := common.ChainToken()
 
-	b0 := createBlock(types.Open, *ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, types.ZeroHash, ac1.Address()) //a1 open
+	b0 := createBlock(types.Open, *ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, common.GenesisBlockHash(), ac1.Address()) //a1 open
 	blocks = append(blocks, b0)
 
 	b1 := createBlock(types.Send, *ac1, b0.GetHash(), token, types.Balance{Int: big.NewInt(int64(40000000000))}, types.Hash(ac2.Address()), ac1.Address()) //a1 send

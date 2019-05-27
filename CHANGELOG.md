@@ -1,4 +1,103 @@
 
+<a name="v1.2.1"></a>
+## [v1.2.1](https://github.com/qlcchain/go-qlc/compare/v1.2.0...v1.2.1) (2019-05-26)
+
+### Bug Fixes
+
+* process fork for cotractreward block fix totalsupply bug
+* pledge DoReceive bug
+* QGAS rewards balance
+* generate reward block pending
+
+### Features
+
+* implement query rewards details RPC
+* add log to ledger
+* add log to ledger
+
+### Pull Requests
+
+* Merge pull request [#373](https://github.com/qlcchain/go-qlc/issues/373) from qlcchain/hotfix/fork
+* Merge pull request [#372](https://github.com/qlcchain/go-qlc/issues/372) from qlcchain/feature/reward-details-rpc
+* Merge pull request [#371](https://github.com/qlcchain/go-qlc/issues/371) from qlcchain/hotfix/doreceive
+* Merge pull request [#370](https://github.com/qlcchain/go-qlc/issues/370) from qlcchain/feature/log
+* Merge pull request [#369](https://github.com/qlcchain/go-qlc/issues/369) from qlcchain/hotfix/rewards-balance
+* Merge pull request [#368](https://github.com/qlcchain/go-qlc/issues/368) from qlcchain/hotfix/generate-rewards
+
+
+<a name="v1.2.0"></a>
+## [v1.2.0](https://github.com/qlcchain/go-qlc/compare/v1.1.2...v1.2.0) (2019-05-25)
+
+### Bug Fixes
+
+* integrate test case error
+* contract reward block check error
+* find online representative bug
+* openblock judgment logic need to send a confirmation notice if block from sync
+* parseInt on 32bit OS
+* sync bug
+* --nobootnode bug
+
+### Features
+
+* fix ledger testcase
+* eventbus support sync subscribe
+* modify stateblock parent
+* remove work/sign check for Rewards contractblock
+* add chan to sqlite
+* set generate block interface privatekey optional
+* update pending for contract block
+* event bus support buff
+* if the node is synchronizing, the synchronization will not be repeated
+* add vote cache
+* implement airdrop/confidant rewards RPC interface
+* remove print
+* modify sqlx version
+* implement GetTotalPledgeAmount
+* implement confidant/airdrop rewards
+* add rewards contract
+* remove vm field of pledge rpc module
+* add block batch
+* use ntp time when generate block
+* modify Representatives interface return
+* support build linux/arm-7
+* implement spinlock
+* implement ecies
+
+### Refactoring
+
+* merge generate confidant/airdrop receive block into one
+* implement handler list
+* rewards rpc interface
+* mintage and pledge withdraw time
+
+### Pull Requests
+
+* Merge pull request [#367](https://github.com/qlcchain/go-qlc/issues/367) from qlcchain/hotfix/integrate
+* Merge pull request [#366](https://github.com/qlcchain/go-qlc/issues/366) from qlcchain/feature/parent
+* Merge pull request [#365](https://github.com/qlcchain/go-qlc/issues/365) from qlcchain/feature/eb-sync-sub
+* Merge pull request [#364](https://github.com/qlcchain/go-qlc/issues/364) from qlcchain/hotfix/rewardblock
+* Merge pull request [#363](https://github.com/qlcchain/go-qlc/issues/363) from qlcchain/hotfix/findonlinerep
+* Merge pull request [#362](https://github.com/qlcchain/go-qlc/issues/362) from qlcchain/feature/rewards-testcase
+* Merge pull request [#361](https://github.com/qlcchain/go-qlc/issues/361) from qlcchain/feature/rewardblock
+* Merge pull request [#360](https://github.com/qlcchain/go-qlc/issues/360) from qlcchain/feature/sqlite
+* Merge pull request [#313](https://github.com/qlcchain/go-qlc/issues/313) from qlcchain/feature/eb-buffer
+* Merge pull request [#357](https://github.com/qlcchain/go-qlc/issues/357) from qlcchain/intergrate-test
+* Merge pull request [#359](https://github.com/qlcchain/go-qlc/issues/359) from qlcchain/feature/generateblocks
+* Merge pull request [#358](https://github.com/qlcchain/go-qlc/issues/358) from qlcchain/feature/pending
+* Merge pull request [#356](https://github.com/qlcchain/go-qlc/issues/356) from qlcchain/hotfix/unmarshal_balance
+* Merge pull request [#355](https://github.com/qlcchain/go-qlc/issues/355) from qlcchain/feature/rewards
+* Merge pull request [#354](https://github.com/qlcchain/go-qlc/issues/354) from qlcchain/feature/sqlitebatch
+* Merge pull request [#351](https://github.com/qlcchain/go-qlc/issues/351) from qlcchain/feature/pledgemodule
+* Merge pull request [#350](https://github.com/qlcchain/go-qlc/issues/350) from qlcchain/feature/blocktime
+* Merge pull request [#349](https://github.com/qlcchain/go-qlc/issues/349) from qlcchain/feature/refactor-pledgetime
+* Merge pull request [#347](https://github.com/qlcchain/go-qlc/issues/347) from qlcchain/feature/arm-7
+* Merge pull request [#348](https://github.com/qlcchain/go-qlc/issues/348) from qlcchain/feature/representatives
+* Merge pull request [#321](https://github.com/qlcchain/go-qlc/issues/321) from qlcchain/feature/ecies
+* Merge pull request [#335](https://github.com/qlcchain/go-qlc/issues/335) from qlcchain/feature/nobootnode
+* Merge pull request [#334](https://github.com/qlcchain/go-qlc/issues/334) from qlcchain/feature/spinlock
+
+
 <a name="v1.1.2"></a>
 ## [v1.1.2](https://github.com/qlcchain/go-qlc/compare/v1.1.1...v1.1.2) (2019-05-15)
 
