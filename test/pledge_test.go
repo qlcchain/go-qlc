@@ -32,8 +32,8 @@ func startService_Pledge(t *testing.T) (func(t *testing.T), *rpc.Client, *servic
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = json.Unmarshal([]byte(jsonTestSend), &testPledgeSendBlock)
-	_ = json.Unmarshal([]byte(jsonTestReceive), &testPledgeReceiveBlock)
+	_ = json.Unmarshal([]byte(JsonTestSend), &testPledgeSendBlock)
+	_ = json.Unmarshal([]byte(JsonTestReceive), &testPledgeReceiveBlock)
 	l := ls.Ledger
 	verifier := process.NewLedgerVerifier(l)
 	p, _ := verifier.Process(&testPledgeSendBlock)
@@ -103,7 +103,7 @@ func startService_Pledge(t *testing.T) (func(t *testing.T), *rpc.Client, *servic
 func TestPledge(t *testing.T) {
 	teardownTestCase, client, ls := startService_Pledge(t)
 	defer teardownTestCase(t)
-	pledgeBytes, err := hex.DecodeString(testPrivateKey)
+	pledgeBytes, err := hex.DecodeString(TestPrivateKey)
 	if err != nil {
 		t.Fatal(err)
 	}

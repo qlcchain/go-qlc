@@ -12,8 +12,8 @@ package test
 import "github.com/qlcchain/go-qlc/common/types"
 
 var (
-	testPrivateKey          = "194908c480fddb6e66b56c08f0d55d935681da0b3c9c33077010bf12a91414576c0b2cdd533ee3a21668f199e111f6c8614040e60e70a73ab6c8da036f2a7ad7"
-	testAddress             = "qlc_1u1d7mgo8hq5nad8jwesw6azfk53a31ge5minwxdfk8t1fqknypqgk8mi3z7"
+	TestPrivateKey          = "194908c480fddb6e66b56c08f0d55d935681da0b3c9c33077010bf12a91414576c0b2cdd533ee3a21668f199e111f6c8614040e60e70a73ab6c8da036f2a7ad7"
+	TestAddress             = "qlc_1u1d7mgo8hq5nad8jwesw6azfk53a31ge5minwxdfk8t1fqknypqgk8mi3z7"
 	testPledgeSendBlock     types.StateBlock
 	testPledgeReceiveBlock  types.StateBlock
 	testMintageSendBlock    types.StateBlock
@@ -21,7 +21,7 @@ var (
 )
 
 var (
-	jsonTestSend = `{
+	JsonTestSend = `{
         	  "type": "Send",
               "token": "45dd217cd9ff89f7b64ceda4886cc68dde9dfa47a8a422d165e2ce6f9a834fad",
               "address": "qlc_1t1uynkmrs597z4ns6ymppwt65baksgdjy1dnw483ubzm97oayyo38ertg44",
@@ -42,7 +42,7 @@ var (
               "work": "0000000000041639",
               "signature": "614b357c1bb5f9ce920f9cad48b07fb641d233d5da039a17165c3ef7c4409898d17b6d186034fe7aa69c7484081c2ec06db35af2b9f93e0928730f67572de800"
         }`
-	jsonTestReceive = `{
+	JsonTestReceive = `{
         	  "type": "Open",
     		  "token": "45dd217cd9ff89f7b64ceda4886cc68dde9dfa47a8a422d165e2ce6f9a834fad",
               "address": "qlc_1u1d7mgo8hq5nad8jwesw6azfk53a31ge5minwxdfk8t1fqknypqgk8mi3z7",
