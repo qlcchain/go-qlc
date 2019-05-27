@@ -34,7 +34,7 @@ type sendParam struct {
 	*cabi.RewardsParam
 	self *types.Address
 	//am   *types.AccountMeta
-	tm   *types.TokenMeta
+	tm *types.TokenMeta
 }
 
 func NewRewardsApi(l *ledger.Ledger) *RewardsApi {
@@ -170,7 +170,7 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 		},
 		self: &param.Self,
 		//am:   am,
-		tm:   tm,
+		tm: tm,
 	}
 
 	r.logger.Debugf("verify %s %s %s %s %s", methodName, param.To.String(), txHash.String(), rxHash.String(), param.Amount.Int)

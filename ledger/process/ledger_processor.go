@@ -134,10 +134,25 @@ func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 			return Fork, nil
 		}
 
-		//check balance
-		//if previous.Balance.Compare(block.Balance) == types.BalanceCompSmaller {
-		//	return BalanceMismatch, nil
-		//}
+		if block.GetType() == types.Send {
+			//check balance
+			if !(previous.Balance.Compare(block.Balance) == types.BalanceCompBigger) {
+				return BalanceMismatch, nil
+			}
+			//check vote,network,storage,oracle
+			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
+				return BalanceMismatch, nil
+			}
+		}
+		if block.GetType() == types.ContractSend {
+			//check totalBalance
+			if previous.TotalBalance().Compare(block.TotalBalance()) == types.BalanceCompSmaller {
+				return BalanceMismatch, nil
+			}
+		}
 	}
 
 	return Progress, nil
@@ -172,6 +187,13 @@ func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResu
 			if tm, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
 				transferAmount := block.GetBalance().Sub(tm.Balance)
 				if !pending.Amount.Equal(transferAmount) || pending.Type != block.Token {
+					return BalanceMismatch, nil
+				}
+				//check vote,network,storage,oracle
+				if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+					previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+					previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+					previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
 					return BalanceMismatch, nil
 				}
 			} else {
@@ -215,6 +237,13 @@ func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResul
 			if block.Balance.Compare(tm.Balance) != types.BalanceCompEqual {
 				return BalanceMismatch, nil
 			}
+			//check vote,network,storage,oracle
+			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
+				return BalanceMismatch, nil
+			}
 		}
 	}
 
@@ -248,6 +277,15 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 		//check pending
 		if pending, err := lv.l.GetPending(pendingKey); err == nil {
 			if !pending.Amount.Equal(block.Balance) || pending.Type != block.Token {
+				return BalanceMismatch, nil
+			}
+			//check vote,network,storage,oracle
+			vote := block.GetVote()
+			network := block.GetNetwork()
+			storage := block.GetStorage()
+			oracle := block.GetOracle()
+			if !vote.IsZero() || !network.IsZero() ||
+				!storage.IsZero() || !oracle.IsZero() {
 				return BalanceMismatch, nil
 			}
 		} else if err == ledger.ErrPendingNotFound {
@@ -452,7 +490,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	case types.ContractSend:
 		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
 			if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
-				lv.logger.Info("contractSend add pending , ", pendingKey)
+				lv.logger.Debug("contractSend add pending , ", pendingKey)
 				if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
 					return err
 				}
@@ -463,7 +501,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Address: block.GetAddress(),
 			Hash:    block.GetLink(),
 		}
-		lv.logger.Info("contractReward delete pending, ", pendingKey)
+		lv.logger.Debug("contractReward delete pending, ", pendingKey)
 		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
 			return err
 		}
