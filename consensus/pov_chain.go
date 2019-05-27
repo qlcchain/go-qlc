@@ -309,10 +309,12 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 	blockTD := new(big.Int).Add(blockTarget.ToBigInt(), prevTD)
 
 	// save block to db
-	err = bc.getLedger().AddPovBlock(block, blockTD, txn)
-	if err != nil {
-		bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
-		return err
+	if bc.getLedger().HasPovBlock(block.GetHeight(), block.GetHash(), txn) == false {
+		err = bc.getLedger().AddPovBlock(block, blockTD, txn)
+		if err != nil && err != ledger.ErrBlockExists {
+			bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
+			return err
+		}
 	}
 
 	saveCallback, dbErr := stateTrie.SaveInTxn(txn)
