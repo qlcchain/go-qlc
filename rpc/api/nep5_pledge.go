@@ -75,8 +75,11 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 	}
 
 	tm := am.Token(common.ChainToken())
-	if tm == nil || tm.Balance.IsZero() {
-		return nil, fmt.Errorf("%s do not hava any chain token", param.PledgeAddress.String())
+	if tm == nil {
+		return nil, fmt.Errorf("%s do not have any chain token", param.PledgeAddress.String())
+	}
+	if tm.Balance.Compare(param.Amount) == types.BalanceCompSmaller {
+		return nil, fmt.Errorf("%s have no enough balance, want pledge %s, but only %s", param.PledgeAddress.String(), param.Amount.String(), tm.Balance.String())
 	}
 
 	data, err := p.GetPledgeData(param)
