@@ -32,8 +32,7 @@ var (
 )
 
 const (
-	blockCacheLimit  = 512
-	numberCacheLimit = 2048
+	blockCacheLimit  = 1024
 )
 
 type PovBlockChain struct {
@@ -45,6 +44,7 @@ type PovBlockChain struct {
 
 	blockCache   gcache.Cache // Cache for the most recent entire blocks
 	heightCache  gcache.Cache
+	tdCache      gcache.Cache
 	trieNodePool *trie.NodePool
 
 	wg sync.WaitGroup
@@ -52,7 +52,8 @@ type PovBlockChain struct {
 
 func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
 	blockCache := gcache.New(blockCacheLimit).Build()
-	heightCache := gcache.New(numberCacheLimit).Build()
+	heightCache := gcache.New(blockCacheLimit).Build()
+	tdCache := gcache.New(blockCacheLimit).Build()
 
 	chain := &PovBlockChain{
 		povEngine: povEngine,
@@ -60,6 +61,7 @@ func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
 
 		blockCache:  blockCache,
 		heightCache: heightCache,
+		tdCache:     tdCache,
 	}
 	return chain
 }
@@ -278,6 +280,30 @@ func (bc *PovBlockChain) HasBestBlock(hash types.Hash, height uint64) bool {
 	return true
 }
 
+func (bc *PovBlockChain) GetBlockTDByHash(hash types.Hash) *big.Int {
+	blk := bc.GetBlockByHash(hash)
+	if blk == nil {
+		return nil
+	}
+
+	return bc.GetBlockTDByHashAndHeight(blk.GetHash(), blk.GetHeight())
+}
+
+func (bc *PovBlockChain) GetBlockTDByHashAndHeight(hash types.Hash, height uint64) *big.Int {
+	v, _ := bc.tdCache.Get(hash)
+	if v != nil {
+		return v.(*big.Int)
+	}
+
+	td, err := bc.getLedger().GetPovTD(hash, height)
+	if err != nil {
+		return nil
+	}
+
+	bc.tdCache.Set(hash, td)
+	return td
+}
+
 func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		return bc.insertBlock(txn, block, stateTrie)
@@ -324,6 +350,8 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 	if saveCallback != nil {
 		saveCallback()
 	}
+
+	bc.tdCache.Set(block.GetHash(), blockTD)
 
 	tdCmpRet := blockTD.Cmp(bestTD)
 	isBest := tdCmpRet > 0

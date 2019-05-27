@@ -8,6 +8,7 @@ import (
 
 type PovStatus struct {
 	CurrentHeight uint64
+	CurrentTD     []byte
 	CurrentHash   types.Hash
 	GenesisHash   types.Hash
 }
@@ -15,6 +16,7 @@ type PovStatus struct {
 func PovStatusToProto(status *PovStatus) ([]byte, error) {
 	pbStatus := &pb.PovStatus{
 		CurrentHeight: status.CurrentHeight,
+		CurrentTD:     status.CurrentTD,
 		CurrentHash:   status.CurrentHash.Bytes(),
 		GenesisHash:   status.GenesisHash.Bytes(),
 	}
@@ -32,6 +34,7 @@ func PovStatusFromProto(data []byte) (*PovStatus, error) {
 	}
 	status := new(PovStatus)
 	status.CurrentHeight = pbStatus.CurrentHeight
+	status.CurrentTD = pbStatus.CurrentTD
 	err := status.CurrentHash.UnmarshalBinary(pbStatus.CurrentHash)
 	if err != nil {
 		return nil, err

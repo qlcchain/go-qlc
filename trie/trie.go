@@ -9,7 +9,6 @@ package trie
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -77,7 +76,7 @@ func (trie *Trie) saveNodeToDb(txn db.StoreTxn, node *TrieNode) error {
 	} else {
 		h := node.Hash()
 		k := trie.encodeKey(h[:])
-		trie.log.Debugf("save node %s, %s", hex.EncodeToString(k), node.String())
+		//trie.log.Debugf("save node %s, %s", hex.EncodeToString(k), node.String())
 		err := txn.Set(k, data)
 		if err != nil {
 			return err
@@ -151,7 +150,7 @@ func (trie *Trie) getNode(key *types.Hash) *TrieNode {
 
 	node := trie.getNodeFromDb(key)
 	if node != nil && trie.cache != nil {
-		trie.log.Debug("load from db ", node)
+		//trie.log.Debug("load from db ", node)
 		trie.cache.Set(key, node)
 	}
 	return node

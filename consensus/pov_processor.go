@@ -258,7 +258,7 @@ func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 	prevHash := blockSrc.block.GetPrevious()
 	bp.parentOrphans[prevHash] = append(bp.parentOrphans[prevHash], oBlock)
 
-	bp.povEngine.GetLogger().Debugf("add orphan block %s prev %s", blockHash, prevHash)
+	bp.povEngine.GetLogger().Infof("add orphan block %s prev %s", blockHash, prevHash)
 
 	orphanRoot := bp.GetOrphanRoot(blockHash)
 	if bp.pendingBlocks[orphanRoot] == nil {
@@ -309,7 +309,7 @@ func (bp *PovBlockProcessor) processOrphanBlock(blockSrc *PovBlockSource) error 
 
 		orphans := bp.parentOrphans[*processHash]
 
-		bp.povEngine.GetLogger().Debugf("parent %s has %d orphan blocks", processHash, len(orphans))
+		bp.povEngine.GetLogger().Infof("parent %s has %d orphan blocks", processHash, len(orphans))
 
 		for i := 0; i < len(orphans); i++ {
 			orphan := orphans[i]
@@ -357,7 +357,7 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *p
 		txResults: stat.TxResults,
 	}
 
-	bp.povEngine.GetLogger().Debugf("add tx pending block %s txs %d", blockHash, len(stat.TxResults))
+	bp.povEngine.GetLogger().Infof("add tx pending block %s txs %d", blockHash, len(stat.TxResults))
 
 	for txHashTmp, result := range stat.TxResults {
 		if result == process.GapTransaction {
@@ -391,7 +391,7 @@ func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock
 	}
 
 	blockHash := pendingBlock.blockSrc.block.GetHash()
-	bp.povEngine.GetLogger().Debugf("release tx pending block %s", blockHash)
+	bp.povEngine.GetLogger().Infof("release tx pending block %s", blockHash)
 
 	delete(bp.pendingBlocks, blockHash)
 

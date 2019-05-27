@@ -8,6 +8,7 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"go.uber.org/zap"
+	"math/big"
 	"math/rand"
 	"sync"
 	"time"
@@ -22,9 +23,8 @@ const (
 
 type PovSyncPeer struct {
 	peerID          string
-	firstRecvHeight uint64
 	currentHeight   uint64
-	recvStatusCnt   int
+	currentTD       *big.Int
 	lastStatusTime  time.Time
 }
 
@@ -214,6 +214,7 @@ func (ss *PovSyncer) onAddP2PStream(peerID string) {
 	peer := &PovSyncPeer{
 		peerID:         peerID,
 		currentHeight:  0,
+		currentTD:      big.NewInt(0),
 		lastStatusTime: time.Now(),
 	}
 
@@ -233,19 +234,17 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, m
 	if v, ok := ss.allPeers.Load(msgPeer); ok {
 		peer := v.(*PovSyncPeer)
 
-		ss.logger.Infof("recv PovStatus from peer %s, head %d/%s", msgPeer, status.CurrentHeight, status.CurrentHash)
+		td := new(big.Int).SetBytes(status.CurrentTD)
+		ss.logger.Infof("recv PovStatus from peer %s, head %d/%s, td %d/%s",
+			msgPeer, status.CurrentHeight, status.CurrentHash, td.BitLen(), td.Text(16))
 		if status.GenesisHash != ss.getChain().GenesisBlock().GetHash() {
 			ss.logger.Warnf("peer %s genesis hash %s is invalid", msgPeer, status.GenesisHash)
 			return
 		}
 
 		peer.currentHeight = status.CurrentHeight
+		peer.currentTD = td
 		peer.lastStatusTime = time.Now()
-
-		peer.recvStatusCnt++
-		if peer.recvStatusCnt == 1 {
-			peer.firstRecvHeight = status.CurrentHeight
-		}
 	}
 }
 
@@ -362,9 +361,11 @@ func (ss *PovSyncer) processStreamEvent(event *PovSyncEvent) {
 
 	genesisBlock := ss.povEngine.chain.GenesisBlock()
 	latestBlock := ss.povEngine.chain.LatestBlock()
+	latestTD := ss.povEngine.chain.GetBlockTDByHash(latestBlock.GetHash())
 
 	status := &protos.PovStatus{
 		CurrentHeight: latestBlock.GetHeight(),
+		CurrentTD:     latestTD.Bytes(),
 		CurrentHash:   latestBlock.GetHash(),
 		GenesisHash:   genesisBlock.GetHash(),
 	}
@@ -380,9 +381,11 @@ func (ss *PovSyncer) checkAllPeers() {
 
 	genesisBlock := ss.povEngine.chain.GenesisBlock()
 	latestBlock := ss.povEngine.chain.LatestBlock()
+	latestTD := ss.povEngine.chain.GetBlockTDByHash(latestBlock.GetHash())
 
 	status := &protos.PovStatus{
 		CurrentHeight: latestBlock.GetHeight(),
+		CurrentTD:     latestTD.Bytes(),
 		CurrentHash:   latestBlock.GetHash(),
 		GenesisHash:   genesisBlock.GetHash(),
 	}
@@ -413,20 +416,8 @@ func (ss *PovSyncer) checkSyncPeer() {
 
 	bestPeer := ss.BestPeer()
 	if bestPeer == nil {
-		ss.logger.Infof("sync err because no peers, current height: %d", ss.currentHeight)
+		ss.logger.Infof("sync err, because no peers, current height: %d", ss.currentHeight)
 		ss.setState(common.Syncerr)
-		return
-	}
-
-	if bestPeer.peerID == ss.syncPeerID {
-		return
-	}
-
-	// new peer is same with old
-	if bestPeer.currentHeight <= ss.toHeight {
-		// no need sync
-		ss.logger.Infof("no need sync to bestPeer %s at %d, our height: %d", bestPeer.peerID, bestPeer.currentHeight, ss.currentHeight)
-		ss.setState(common.Syncdone)
 		return
 	}
 
@@ -442,7 +433,7 @@ func (ss *PovSyncer) checkChain() {
 
 	latestBlock := ss.getChain().LatestBlock()
 	if latestBlock == nil {
-		ss.logger.Infof("sync err because current block is nil")
+		ss.logger.Infof("sync err, because current block is nil")
 		ss.setState(common.Syncerr)
 		return
 	}
@@ -455,8 +446,8 @@ func (ss *PovSyncer) checkChain() {
 
 	ss.logger.Infof("sync current: %d, chain speed %d", latestBlock.Height, latestBlock.Height-ss.currentHeight)
 
-	if latestBlock.Height == ss.currentHeight && now.Sub(ss.lastCheckTime) > 10*time.Minute {
-		ss.logger.Infof("sync err because progress hang, current height: %d", ss.currentHeight)
+	if latestBlock.Height == ss.currentHeight && now.Sub(ss.lastCheckTime) > 30*time.Minute {
+		ss.logger.Infof("sync err, because progress hang, current height: %d", ss.currentHeight)
 		ss.setState(common.Syncerr)
 	} else if ss.state == common.Syncing {
 		ss.currentHeight = latestBlock.Height
@@ -479,14 +470,14 @@ func (ss *PovSyncer) isFinished() bool {
 
 func (ss *PovSyncer) BestPeer() *PovSyncPeer {
 	var bestPeer *PovSyncPeer
-	maxHeight := uint64(0)
+	var maxTD *big.Int
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
 		if bestPeer == nil {
+			maxTD = peer.currentTD
 			bestPeer = peer
-		}
-		if peer.currentHeight > maxHeight {
-			maxHeight = peer.currentHeight
+		} else if peer.currentTD.Cmp(maxTD) > 0 {
+			maxTD = peer.currentTD
 			bestPeer = peer
 		}
 		return true
@@ -532,6 +523,8 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 	if ss.syncPeerID == peer.peerID {
 		return
 	}
+
+	ss.logger.Infof("sync with peer %s at height %d", peer.peerID, peer.currentHeight)
 
 	ss.toHeight = peer.currentHeight
 	ss.syncPeerID = peer.peerID

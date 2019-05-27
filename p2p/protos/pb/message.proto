@@ -43,6 +43,7 @@ message PovStatus {
     uint64 CurrentHeight = 1;
     bytes  CurrentHash = 2;
     bytes  GenesisHash = 3;
+    bytes  CurrentTD = 4;
 }
 message PovPublishBlock {
     uint32 blocktype = 1;
