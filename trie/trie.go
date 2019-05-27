@@ -58,7 +58,7 @@ func (trie *Trie) getNodeFromDb(key *types.Hash) *TrieNode {
 	}()
 
 	trieNode := new(TrieNode)
-	k := trie.encodeKey(key[:])
+	k := encodeKey(key[:])
 	if err := txn.Get(k, func(val []byte, b byte) error {
 		if len(val) > 0 {
 			return trieNode.Deserialize(val)
@@ -76,7 +76,7 @@ func (trie *Trie) saveNodeToDb(txn *db.BadgerStoreTxn, node *TrieNode) error {
 		return fmt.Errorf("serialize trie node failed, error is %s", err)
 	} else {
 		h := node.Hash()
-		k := trie.encodeKey(h[:])
+		k := encodeKey(h[:])
 		trie.log.Debugf("save %s, %s", hex.EncodeToString(k), node.String())
 		err := txn.Set(k, data)
 		if err != nil {
@@ -102,7 +102,8 @@ func (trie *Trie) deleteUnSavedRefValueMap(node *TrieNode) {
 
 func (trie *Trie) saveRefValueMap(txn *db.BadgerStoreTxn) {
 	for key, value := range trie.unSavedRefValueMap {
-		err := txn.Set(key[:], value)
+		encodeKey := encodeKey(key[:])
+		err := txn.Set(encodeKey[:], value)
 		if err != nil {
 			trie.log.Errorf("save %s, error %s", key.String(), err)
 		}
@@ -128,7 +129,7 @@ func (trie *Trie) getRefValue(key []byte) ([]byte, error) {
 		txn.Discard()
 	}()
 
-	k := trie.encodeKey(key)
+	k := encodeKey(key)
 	var result []byte
 	if err = txn.Get(k, func(i []byte, b byte) error {
 		copy(result, i)
@@ -459,7 +460,7 @@ func (trie *Trie) getLeafNode(node *TrieNode, key []byte) *TrieNode {
 	}
 }
 
-func (trie *Trie) encodeKey(key []byte) []byte {
+func encodeKey(key []byte) []byte {
 	result := make([]byte, len(key)+1)
 	result[0] = idPrefixTrie
 	copy(result[1:], key)

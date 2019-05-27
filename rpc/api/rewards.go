@@ -215,10 +215,11 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 
 	var result []*contract.ContractBlock
 
+	vmContext := vmstore.NewVMContext(r.ledger)
 	if r.IsAirdropRewards(blk.Data) {
-		result, err = r.rewards.DoReceive(vmstore.NewVMContext(r.ledger), rev, blk)
+		result, err = r.rewards.DoReceive(vmContext, rev, blk)
 	} else {
-		result, err = r.confidantRewards.DoReceive(vmstore.NewVMContext(r.ledger), rev, blk)
+		result, err = r.confidantRewards.DoReceive(vmContext, rev, blk)
 	}
 	if err == nil {
 		if len(result) > 0 {
