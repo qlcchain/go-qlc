@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/mock"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -689,4 +691,22 @@ func TestTrieConcurrence(t *testing.T) {
 	fmt.Printf("%s\n", trie2.GetValue([]byte("tes")))
 	fmt.Printf("%s\n", trie2.GetValue([]byte("tesab")))
 	fmt.Println(trie2.Hash())
+}
+
+func TestEncodeKey(t *testing.T) {
+	h := mock.Hash()
+	key := encodeKey(h[:])
+	if len(key) != types.HashSize+1 {
+		t.Fatal("invalid size")
+	}
+	if key[0] != idPrefixTrie {
+		t.Fatal("invalid prefix")
+	}
+
+	if !bytes.HasSuffix(key, h[:]) {
+		t.Fatal("invalid suffix")
+	}
+
+	t.Log(h[:])
+	t.Log(key)
 }

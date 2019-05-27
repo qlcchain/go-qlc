@@ -20,11 +20,11 @@ import (
 )
 
 type LedgerApi struct {
-	ledger    *ledger.Ledger
-	vmContext *vmstore.VMContext
-	eb        event.EventBus
-	relation  *relation.Relation
-	logger    *zap.SugaredLogger
+	ledger *ledger.Ledger
+	//vmContext *vmstore.VMContext
+	eb       event.EventBus
+	relation *relation.Relation
+	logger   *zap.SugaredLogger
 }
 
 type APIBlock struct {
@@ -63,8 +63,7 @@ type ApiTokenInfo struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
-	return &LedgerApi{ledger: l, eb: eb, vmContext: vmstore.NewVMContext(l),
-		relation: relation, logger: log.NewLogger("api_ledger")}
+	return &LedgerApi{ledger: l, eb: eb, relation: relation, logger: log.NewLogger("api_ledger")}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -131,9 +130,11 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 		return nil, err
 	}
 	bs := make([]*APIBlock, 0)
+	vmContext := vmstore.NewVMContext(l.ledger)
+
 	for _, h := range hashes {
 		block, _ := l.ledger.GetStateBlock(h)
-		b, err := generateAPIBlock(l.vmContext, block)
+		b, err := generateAPIBlock(vmContext, block)
 		if err != nil {
 			return nil, err
 		}
@@ -148,6 +149,7 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 	if err != nil {
 		return nil, err
 	}
+	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, t := range am.Tokens {
 		if t.Type == common.ChainToken() {
 			aa.CoinBalance = &t.Balance
@@ -157,7 +159,7 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 			aa.CoinOracle = &am.CoinOracle
 			aa.CoinStorage = &am.CoinStorage
 		}
-		info, err := abi.GetTokenById(l.vmContext, t.Type)
+		info, err := abi.GetTokenById(vmContext, t.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +210,7 @@ func (l *LedgerApi) AccountVotingWeight(addr types.Address) (types.Balance, erro
 
 func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Address]map[string]map[string]types.Balance, error) {
 	as := make(map[types.Address]map[string]map[string]types.Balance)
-
+	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
 		ac, err := l.ledger.GetAccountMeta(addr)
 		if err != nil {
@@ -219,7 +221,7 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 		}
 		ts := make(map[string]map[string]types.Balance)
 		for _, t := range ac.Tokens {
-			info, err := abi.GetTokenById(l.vmContext, t.Type)
+			info, err := abi.GetTokenById(vmContext, t.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -251,6 +253,7 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 
 func (l *LedgerApi) AccountsFrontiers(addresses []types.Address) (map[types.Address]map[string]types.Hash, error) {
 	r := make(map[types.Address]map[string]types.Hash)
+	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
 		ac, err := l.ledger.GetAccountMeta(addr)
 		if err != nil {
@@ -261,7 +264,7 @@ func (l *LedgerApi) AccountsFrontiers(addresses []types.Address) (map[types.Addr
 		}
 		t := make(map[string]types.Hash)
 		for _, token := range ac.Tokens {
-			info, err := abi.GetTokenById(l.vmContext, token.Type)
+			info, err := abi.GetTokenById(vmContext, token.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -274,10 +277,12 @@ func (l *LedgerApi) AccountsFrontiers(addresses []types.Address) (map[types.Addr
 
 func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types.Address][]*APIPending, error) {
 	apMap := make(map[types.Address][]*APIPending)
+	vmContext := vmstore.NewVMContext(l.ledger)
+
 	for _, addr := range addresses {
 		ps := make([]*APIPending, 0)
 		err := l.ledger.SearchPending(addr, func(key *types.PendingKey, info *types.PendingInfo) error {
-			token, err := abi.GetTokenById(l.vmContext, info.Type)
+			token, err := abi.GetTokenById(vmContext, info.Type)
 			if err != nil {
 				return err
 			}
@@ -407,6 +412,8 @@ func (l *LedgerApi) BlocksCountByType() (map[string]uint64, error) {
 
 func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	bs := make([]*APIBlock, 0)
+	vmContext := vmstore.NewVMContext(l.ledger)
+
 	for _, h := range hash {
 		block, err := l.ledger.GetStateBlock(h)
 		if err != nil {
@@ -415,7 +422,7 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b, err := generateAPIBlock(l.vmContext, block)
+		b, err := generateAPIBlock(vmContext, block)
 		if err != nil {
 			return nil, err
 		}
@@ -434,13 +441,15 @@ func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
 		return nil, err
 	}
 	bs := make([]*APIBlock, 0)
+	vmContext := vmstore.NewVMContext(l.ledger)
+
 	for _, h := range hashes {
 		block, err := l.ledger.GetStateBlock(h)
 		if err != nil && err != ledger.ErrBlockNotFound {
 			return nil, err
 		}
 		if block != nil {
-			b, err := generateAPIBlock(l.vmContext, block)
+			b, err := generateAPIBlock(vmContext, block)
 			if err != nil {
 				return nil, err
 			}
@@ -531,7 +540,8 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 			return nil, err
 		}
 	}
-	info, err := abi.GetTokenByName(l.vmContext, para.TokenName)
+	vmContext := vmstore.NewVMContext(l.ledger)
+	info, err := abi.GetTokenByName(vmContext, para.TokenName)
 	if err != nil {
 		return nil, err
 	}
@@ -596,8 +606,9 @@ func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative ty
 
 func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 	aps := make([]*APIPending, 0)
+	vmContext := vmstore.NewVMContext(l.ledger)
 	err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
-		token, err := abi.GetTokenById(l.vmContext, pendingInfo.Type)
+		token, err := abi.GetTokenById(vmContext, pendingInfo.Type)
 		if err != nil {
 			return err
 		}
@@ -719,7 +730,8 @@ func (l *LedgerApi) Representatives(sorting *bool) ([]*APIRepresentative, error)
 }
 
 func (l *LedgerApi) Tokens() ([]*types.TokenInfo, error) {
-	return abi.ListTokens(l.vmContext)
+	vmContext := vmstore.NewVMContext(l.ledger)
+	return abi.ListTokens(vmContext)
 }
 
 // BlocksCount returns the number of blocks (not include smartcontrant block) in the ctx and unchecked synchronizing blocks
@@ -739,7 +751,8 @@ func (l *LedgerApi) TransactionsCount() (map[string]uint64, error) {
 }
 
 func (l *LedgerApi) TokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
-	token, err := abi.GetTokenById(l.vmContext, tokenId)
+	vmContext := vmstore.NewVMContext(l.ledger)
+	token, err := abi.GetTokenById(vmContext, tokenId)
 	if err != nil {
 		return nil, err
 	}
@@ -747,7 +760,8 @@ func (l *LedgerApi) TokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
 }
 
 func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
-	token, err := abi.GetTokenByName(l.vmContext, tokenName)
+	vmContext := vmstore.NewVMContext(l.ledger)
+	token, err := abi.GetTokenByName(vmContext, tokenName)
 	if err != nil {
 		return nil, err
 	}
