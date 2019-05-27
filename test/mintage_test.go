@@ -32,8 +32,8 @@ func startService_Mintage(t *testing.T) (func(t *testing.T), *rpc.Client, *servi
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = json.Unmarshal([]byte(jsonTestSend), &testMintageSendBlock)
-	_ = json.Unmarshal([]byte(jsonTestReceive), &testMintageReceiveBlock)
+	_ = json.Unmarshal([]byte(JsonTestSend), &testMintageSendBlock)
+	_ = json.Unmarshal([]byte(JsonTestReceive), &testMintageReceiveBlock)
 	l := ls.Ledger
 	verifier := process.NewLedgerVerifier(l)
 	p, _ := verifier.Process(&testMintageSendBlock)
@@ -104,7 +104,7 @@ func TestMintage(t *testing.T) {
 	teardownTestCase, client, _ := startService_Mintage(t)
 	defer teardownTestCase(t)
 
-	selfBytes, err := hex.DecodeString(testPrivateKey)
+	selfBytes, err := hex.DecodeString(TestPrivateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestMintage(t *testing.T) {
 	}
 
 	tokenId := reward.Token
-	addr, err := types.HexToAddress(testAddress)
+	addr, err := types.HexToAddress(TestAddress)
 	if err != nil {
 		t.Fatal(err)
 	}
