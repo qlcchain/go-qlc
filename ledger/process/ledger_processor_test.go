@@ -11,12 +11,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/test"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/test"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
