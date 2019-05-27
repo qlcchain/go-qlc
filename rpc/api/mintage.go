@@ -10,8 +10,6 @@ package api
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -20,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
@@ -79,7 +78,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	minPledgeAmount := types.Balance{Int: contract.MinPledgeAmount}
 
 	if tm.Balance.Compare(minPledgeAmount) == types.BalanceCompSmaller {
-		return nil, fmt.Errorf("not enough balance %s, expect %s", tm.Balance, minPledgeAmount)
+		return nil, fmt.Errorf("%s have no enough balance %s, expect %s", param.SelfAddr.String(), tm.Balance.String(), minPledgeAmount.String())
 	}
 	send := &types.StateBlock{
 		Type:           types.ContractSend,
