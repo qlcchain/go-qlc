@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -93,4 +94,32 @@ func TestLedger_Storage(t *testing.T) {
 	} else {
 		t.Log(hash.String())
 	}
+}
+
+func TestGetStorageKey(t *testing.T) {
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			prefix := make([]byte, 10)
+			key := make([]byte, 5)
+			storageKey := getStorageKey(prefix, key)
+			if storageKey[0] != idPrefixStorage {
+				t.Errorf("invalid prefix 0x%x", storageKey[:1])
+			}
+			if !bytes.HasPrefix(storageKey[1:], prefix) {
+				t.Error("invalid prefix data")
+			}
+
+			if !bytes.HasSuffix(storageKey, key) {
+				t.Error("invalid key data")
+			}
+
+		}()
+	}
+
+	wg.Wait()
+
 }
