@@ -8,6 +8,7 @@
 package abi
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -192,24 +193,51 @@ func mockRewards(count int, t uint8) []*mockData {
 	return result
 }
 
-func TestParseRewardsInfo(t *testing.T) {
-	tx, _ := hex.DecodeString("0d8e899aee3fd8acf707841e04463cf3d8f151cbe8870495febc5f47cfadfe1a")
-	rx, _ := hex.DecodeString("52112688922647245083902739812993217025393153372347545601073710280271530289093")
-	h1, _ := types.BytesToAddress(tx)
-	h2, _ := types.BytesToHash(rx)
-	a1, _ := types.HexToAddress("qlc_1kk5xst583y8hpn9c48ruizs5cxprdeptw6s5wm6ezz6i1h5srpz3mnjgxao")
-	a2, _ := types.HexToAddress("qlc_3pj83yuemoegkn6ejskd8bustgunmfqpbhu3pnpa6jsdjf9isybzffwq7s4p")
-	bytes, e := RewardsABI.PackVariable(VariableNameRewards, uint8(1), a1, a2, h1, h2, big.NewInt(83020000000))
-	if e != nil {
-		t.Fatal(e)
-	} else {
-		fmt.Println(bytes)
+func TestGetRewardsKey(t *testing.T) {
+	id := mock.Hash()
+	txHeader := mock.Hash()
+	rxHeader := mock.Hash()
+	key := GetRewardsKey(id[:], txHeader[:], rxHeader[:])
+
+	//t.Logf("id: %v\ntxHeader:%v\nrxHeader:%v\nkey:%v", id[:], txHeader[:], rxHeader[:], key)
+	len1 := len(key)
+	len2 := len(id) + len(txHeader) + len(rxHeader)
+	if len1 != len2 {
+		t.Fatal("invalid len", len1, len2)
 	}
 
-	info, e := ParseRewardsInfo(bytes)
-	if e != nil {
-		t.Fatal(e)
-	} else {
-		t.Log(util.ToIndentString(info))
+	if !bytes.HasPrefix(key, id[:]) {
+		t.Fatal("invalid key prefix")
+	}
+
+	if !bytes.HasSuffix(key, rxHeader[:]) {
+		t.Fatal("invalid key suffix")
+	}
+}
+
+func TestGetConfidantKey(t *testing.T) {
+	addr := mock.Address()
+	id := mock.Hash()
+	txHeader := mock.Hash()
+	rxHeader := mock.Hash()
+	key := GetConfidantKey(addr, id[:], txHeader[:], rxHeader[:])
+
+	//t.Logf("id: %v\ntxHeader:%v\nrxHeader:%v\nkey:%v", id[:], txHeader[:], rxHeader[:], key)
+	len1 := len(key)
+	len2 := len(id) + len(txHeader) + len(rxHeader) + types.AddressSize
+	if len1 != len2 {
+		t.Fatal("invalid len", len1, len2)
+	}
+
+	if !bytes.HasPrefix(key, addr[:]) {
+		t.Fatal("invalid key addr")
+	}
+
+	if !bytes.EqualFold(key[types.AddressSize:types.AddressSize+types.HashSize], id[:]) {
+		t.Fatal("invalid hash")
+	}
+
+	if !bytes.HasSuffix(key, rxHeader[:]) {
+		t.Fatal("invalid key suffix")
 	}
 }
