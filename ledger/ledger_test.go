@@ -215,7 +215,7 @@ func TestLedger_HasSmartContrantBlock(t *testing.T) {
 	}
 }
 
-func TestLedger_GetSmartContrantBlocks(t *testing.T) {
+func TestLedger_GetSmartContractBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
@@ -234,6 +234,7 @@ func TestLedger_GetSmartContrantBlocks(t *testing.T) {
 		fmt.Println(block)
 		return nil
 	})
+	fmt.Println(err)
 	if err != nil {
 		t.Fatal(err)
 	}

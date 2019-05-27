@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/dgraph-io/badger"
@@ -308,19 +309,26 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
-			return fmt.Errorf("deserialize block error: %s", err)
+			l.logger.Errorf("deserialize block error: %s", err)
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		if err := fn(blk); err != nil {
-			return err
+			l.logger.Errorf("process block error: %s", err)
+			errStr = append(errStr, err.Error())
 		}
 		return nil
 	})
 
 	if err != nil {
 		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
@@ -512,19 +520,24 @@ func (l *Ledger) GetSmartContractBlocks(fn func(block *types.SmartContractBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
 		blk := new(types.SmartContractBlock)
 		if err := blk.Deserialize(val); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		if err := fn(blk); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
 		}
 		return nil
 	})
 
 	if err != nil {
 		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
@@ -647,23 +660,30 @@ func (l *Ledger) walkUncheckedBlocks(kind types.UncheckedKind, visit types.Unche
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	errStr := make([]string, 0)
 	prefix := l.uncheckedKindToPrefix(kind)
 	err := txn.Iterator(prefix, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
-			return fmt.Errorf("deserialize blk error: %s", err)
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		h, err := types.BytesToHash(key[1:])
 		if err != nil {
-			return fmt.Errorf("BytesToHash error: %s", err)
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		if err := visit(blk, h, kind, types.SynchronizedKind(b)); err != nil {
-			return err
+			l.logger.Error("visit error %s", err)
+			errStr = append(errStr, err.Error())
 		}
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
@@ -1105,22 +1125,29 @@ func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
 		pendingKey := new(types.PendingKey)
 		if _, err := pendingKey.UnmarshalMsg(key[1:]); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		pendingInfo := new(types.PendingInfo)
 		if _, err := pendingInfo.UnmarshalMsg(val); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		if err := fn(pendingKey, pendingInfo); err != nil {
-			return err
+			l.logger.Error("process pending error %s", err)
+			errStr = append(errStr, err.Error())
 		}
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
