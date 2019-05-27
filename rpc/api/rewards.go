@@ -33,7 +33,7 @@ type RewardsApi struct {
 type sendParam struct {
 	*cabi.RewardsParam
 	self *types.Address
-	am   *types.AccountMeta
+	//am   *types.AccountMeta
 	tm   *types.TokenMeta
 }
 
@@ -169,7 +169,7 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 			Sign:       *sign,
 		},
 		self: &param.Self,
-		am:   am,
+		//am:   am,
 		tm:   tm,
 	}
 
@@ -189,10 +189,10 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 			Token:          param.tm.Type,
 			Address:        *param.self,
 			Balance:        param.tm.Balance.Sub(types.Balance{Int: param.Amount}),
-			Vote:           param.am.CoinVote,
-			Network:        param.am.CoinNetwork,
-			Oracle:         param.am.CoinOracle,
-			Storage:        param.am.CoinStorage,
+			Vote:           types.ZeroBalance,
+			Network:        types.ZeroBalance,
+			Oracle:         types.ZeroBalance,
+			Storage:        types.ZeroBalance,
 			Previous:       param.tm.Header,
 			Link:           types.Hash(types.RewardsAddress),
 			Representative: param.tm.Representative,
