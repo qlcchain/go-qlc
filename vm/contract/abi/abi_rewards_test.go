@@ -8,6 +8,7 @@
 package abi
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -190,6 +191,55 @@ func mockRewards(count int, t uint8) []*mockData {
 		})
 	}
 	return result
+}
+
+func TestGetRewardsKey(t *testing.T) {
+	id := mock.Hash()
+	txHeader := mock.Hash()
+	rxHeader := mock.Hash()
+	key := GetRewardsKey(id[:], txHeader[:], rxHeader[:])
+
+	//t.Logf("id: %v\ntxHeader:%v\nrxHeader:%v\nkey:%v", id[:], txHeader[:], rxHeader[:], key)
+	len1 := len(key)
+	len2 := len(id) + len(txHeader) + len(rxHeader)
+	if len1 != len2 {
+		t.Fatal("invalid len", len1, len2)
+	}
+
+	if !bytes.HasPrefix(key, id[:]) {
+		t.Fatal("invalid key prefix")
+	}
+
+	if !bytes.HasSuffix(key, rxHeader[:]) {
+		t.Fatal("invalid key suffix")
+	}
+}
+
+func TestGetConfidantKey(t *testing.T) {
+	addr := mock.Address()
+	id := mock.Hash()
+	txHeader := mock.Hash()
+	rxHeader := mock.Hash()
+	key := GetConfidantKey(addr, id[:], txHeader[:], rxHeader[:])
+
+	//t.Logf("id: %v\ntxHeader:%v\nrxHeader:%v\nkey:%v", id[:], txHeader[:], rxHeader[:], key)
+	len1 := len(key)
+	len2 := len(id) + len(txHeader) + len(rxHeader) + types.AddressSize
+	if len1 != len2 {
+		t.Fatal("invalid len", len1, len2)
+	}
+
+	if !bytes.HasPrefix(key, addr[:]) {
+		t.Fatal("invalid key addr")
+	}
+
+	if !bytes.EqualFold(key[types.AddressSize:types.AddressSize+types.HashSize], id[:]) {
+		t.Fatal("invalid hash")
+	}
+
+	if !bytes.HasSuffix(key, rxHeader[:]) {
+		t.Fatal("invalid key suffix")
+	}
 }
 
 func TestParseRewardsInfo(t *testing.T) {

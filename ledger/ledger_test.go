@@ -215,7 +215,7 @@ func TestLedger_HasSmartContrantBlock(t *testing.T) {
 	}
 }
 
-func TestLedger_GetSmartContrantBlocks(t *testing.T) {
+func TestLedger_GetSmartContractBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
@@ -234,6 +234,7 @@ func TestLedger_GetSmartContrantBlocks(t *testing.T) {
 		fmt.Println(block)
 		return nil
 	})
+	fmt.Println(err)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +305,8 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
 	block = mock.StateBlockWithoutWork()
 	hash = block.GetLink()
-	kind = types.UncheckedKindPrevious
+	kind = types.UncheckedKindLink
+	fmt.Println(hash)
 	if err := l.AddUncheckedBlock(hash, block, kind, types.UnSynchronized); err != nil {
 		t.Fatal(err)
 	}
@@ -363,8 +365,10 @@ func TestLedger_GetUncheckedBlocks(t *testing.T) {
 	addUncheckedBlock(t, l)
 	addUncheckedBlock(t, l)
 
-	err := l.WalkUncheckedBlocks(func(block types.Block, kind types.UncheckedKind) error {
-		t.Log(kind, block)
+	err := l.WalkUncheckedBlocks(func(block types.Block, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		t.Log(block)
+		t.Log(link, unCheckType, sync)
+
 		return nil
 	})
 	if err != nil {
