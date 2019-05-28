@@ -3,21 +3,22 @@
 set -e
 echo "" > coverage.txt
 
-tags=(mainnet testnet)
-integrate=""
+for d in $(go list ./... | grep -v vendor | grep -v edwards25519); do
+#    go test -race -coverprofile=profile.out -covermode=atomic "$d"
+    go test -coverprofile=profile.out "$d"
+    if [[ -f profile.out ]]; then
+        cat profile.out >> coverage.txt
+        rm profile.out
+    fi
+done
 
 if [[ -n "$TRAVIS_TAG" ]]; then
-    integrate="integrate"
-fi
-
-for t in "${tags[@]}"; do
-    echo "start test case for $t"
+    echo 'build tag for release, run all test cases'
     for d in $(go list ./... | grep -v vendor | grep -v edwards25519); do
-    #    go test -race -coverprofile=profile.out -covermode=atomic "$d"
-        go test -tags "$t $integrate" -coverprofile=profile.out "$d"
+        go test -tags "testnet integrate" -coverprofile=profile.out "$d"
         if [[ -f profile.out ]]; then
             cat profile.out >> coverage.txt
             rm profile.out
         fi
     done
-done
+fi

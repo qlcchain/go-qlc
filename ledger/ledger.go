@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/dgraph-io/badger"
@@ -233,13 +234,13 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 
 	blockBytes, err := blk.Serialize()
 	if err != nil {
-		return err
+		return fmt.Errorf("serialize block error: %s", err)
 	}
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
 	}
 	if err := addChild(blk, txn); err != nil {
-		return err
+		return fmt.Errorf("add block child error: %s", err)
 	}
 	//if err := addToken(blk, txn); err != nil {
 	//	return err
@@ -351,19 +352,26 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
-			return err
+			l.logger.Errorf("deserialize block error: %s", err)
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		if err := fn(blk); err != nil {
-			return err
+			l.logger.Errorf("process block error: %s", err)
+			errStr = append(errStr, err.Error())
 		}
 		return nil
 	})
 
 	if err != nil {
 		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
@@ -387,7 +395,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 		return err
 	}
 	if err := deleteChild(blk, txn); err != nil {
-		return err
+		return fmt.Errorf("delete child error: %s", err)
 	}
 	//if err := deleteToken(blk, txn); err != nil {
 	//	return err
@@ -555,19 +563,24 @@ func (l *Ledger) GetSmartContractBlocks(fn func(block *types.SmartContractBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixSmartContractBlock, func(key []byte, val []byte, b byte) error {
 		blk := new(types.SmartContractBlock)
 		if err := blk.Deserialize(val); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		if err := fn(blk); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
 		}
 		return nil
 	})
 
 	if err != nil {
 		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
@@ -690,19 +703,30 @@ func (l *Ledger) walkUncheckedBlocks(kind types.UncheckedKind, visit types.Unche
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	errStr := make([]string, 0)
 	prefix := l.uncheckedKindToPrefix(kind)
 	err := txn.Iterator(prefix, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
+			return nil
 		}
-		if err := visit(blk, kind); err != nil {
-			return err
+		h, err := types.BytesToHash(key[1:])
+		if err != nil {
+			errStr = append(errStr, err.Error())
+			return nil
+		}
+		if err := visit(blk, h, kind, types.SynchronizedKind(b)); err != nil {
+			l.logger.Error("visit error %s", err)
+			errStr = append(errStr, err.Error())
 		}
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
@@ -1144,22 +1168,29 @@ func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
 		pendingKey := new(types.PendingKey)
 		if _, err := pendingKey.UnmarshalMsg(key[1:]); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		pendingInfo := new(types.PendingInfo)
 		if _, err := pendingInfo.UnmarshalMsg(val); err != nil {
-			return err
+			errStr = append(errStr, err.Error())
+			return nil
 		}
 		if err := fn(pendingKey, pendingInfo); err != nil {
-			return err
+			l.logger.Error("process pending error %s", err)
+			errStr = append(errStr, err.Error())
 		}
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
@@ -2115,6 +2146,10 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 
 		if prk != nil {
 			acc := types.NewAccount(prk)
+			addr := acc.Address()
+			if addr.String() != block.Address.String() {
+				return nil, fmt.Errorf("send address (%s) is mismatch privateKey (%s)", block.Address.String(), acc.Address().String())
+			}
 			block.Signature = acc.Sign(block.GetHash())
 			block.Work = l.generateWork(block.Root())
 		}
@@ -2126,11 +2161,20 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 
 func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error) {
 	hash := sendBlock.GetHash()
+	var sb types.StateBlock
+	var acc *types.Account
 	if !sendBlock.GetType().Equal(types.Send) {
 		return nil, fmt.Errorf("(%s) is not send block", hash.String())
 	}
 	if exist, err := l.HasStateBlock(hash); !exist || err != nil {
 		return nil, fmt.Errorf("send block(%s) does not exist", hash.String())
+	}
+	if prk != nil {
+		acc = types.NewAccount(prk)
+		addr := acc.Address()
+		if addr.ToHash().String() != sendBlock.Link.String() {
+			return nil, fmt.Errorf("receive address (%s) is mismatch privateKey (%s)", types.Address(sendBlock.Link).String(), acc.Address().String())
+		}
 	}
 	rxAccount := types.Address(sendBlock.Link)
 	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
@@ -2151,7 +2195,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 			return nil, err
 		}
 		if rxTm != nil {
-			sb := types.StateBlock{
+			sb = types.StateBlock{
 				Type:           types.Receive,
 				Address:        rxAccount,
 				Balance:        rxTm.Balance.Add(info.Amount),
@@ -2166,31 +2210,26 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 				Extra:          types.ZeroHash,
 				Timestamp:      common.TimeNow().UTC().Unix(),
 			}
-			if prk != nil {
-				acc := types.NewAccount(prk)
-				sb.Signature = acc.Sign(sb.GetHash())
-				sb.Work = l.generateWork(sb.Root())
-			}
-			return &sb, nil
+		}
+	} else {
+		sb = types.StateBlock{
+			Type:           types.Open,
+			Address:        rxAccount,
+			Balance:        info.Amount,
+			Vote:           types.ZeroBalance,
+			Oracle:         types.ZeroBalance,
+			Network:        types.ZeroBalance,
+			Storage:        types.ZeroBalance,
+			Previous:       types.ZeroHash,
+			Link:           hash,
+			Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
+			Token:          sendBlock.GetToken(),
+			Extra:          types.ZeroHash,
+			Timestamp:      common.TimeNow().UTC().Unix(),
 		}
 	}
-	sb := types.StateBlock{
-		Type:           types.Open,
-		Address:        rxAccount,
-		Balance:        info.Amount,
-		Vote:           types.ZeroBalance,
-		Oracle:         types.ZeroBalance,
-		Network:        types.ZeroBalance,
-		Storage:        types.ZeroBalance,
-		Previous:       types.ZeroHash,
-		Link:           hash,
-		Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
-		Token:          sendBlock.GetToken(),
-		Extra:          types.ZeroHash,
-		Timestamp:      common.TimeNow().UTC().Unix(),
-	}
+
 	if prk != nil {
-		acc := types.NewAccount(prk)
 		sb.Signature = acc.Sign(sb.GetHash())
 		sb.Work = l.generateWork(sb.Root())
 	}
@@ -2232,6 +2271,10 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	}
 	if prk != nil {
 		acc := types.NewAccount(prk)
+		addr := acc.Address()
+		if addr.String() != account.String() {
+			return nil, fmt.Errorf("change address (%s) is mismatch privateKey (%s)", account.String(), acc.Address().String())
+		}
 		sb.Signature = acc.Sign(sb.GetHash())
 		sb.Work = l.generateWork(sb.Root())
 	}

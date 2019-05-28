@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/hex"
+	"fmt"
+	"github.com/pkg/errors"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
@@ -57,6 +59,45 @@ func (a *AccountApi) NewSeed() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(seed[:]), nil
+}
+
+type Accounts struct {
+	Seed       string `json:"seed"`
+	PrivateKey string `json:"privateKey"`
+	PublicKey  string `json:"publicKey"`
+	Address    string `json:"address"`
+}
+
+func (a *AccountApi) NewAccounts(count *uint32) ([]*Accounts, error) {
+	var count1 uint32
+	var acs []*Accounts
+	if count == nil {
+		count1 = 10
+	} else {
+		count1 = *count
+	}
+	for i := 0; uint32(i) < count1; i++ {
+		seed, err := types.NewSeed()
+		if err == nil {
+			if a, err := seed.Account(0); err == nil {
+				fmt.Println("Seed:", seed.String())
+				fmt.Println("Address:", a.Address())
+				fmt.Println("Private:", hex.EncodeToString(a.PrivateKey()))
+				s := &Accounts{
+					Seed:       seed.String(),
+					PrivateKey: hex.EncodeToString(a.PrivateKey()),
+					PublicKey:  hex.EncodeToString(a.Address().Bytes()),
+					Address:    a.Address().String(),
+				}
+				acs = append(acs, s)
+			} else {
+				return nil, errors.New("new account error")
+			}
+		} else {
+			return nil, errors.New("new seed error")
+		}
+	}
+	return acs, nil
 }
 
 func (a *AccountApi) PublicKey(addr types.Address) string {

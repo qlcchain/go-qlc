@@ -33,8 +33,8 @@ type RewardsApi struct {
 type sendParam struct {
 	*cabi.RewardsParam
 	self *types.Address
-	am   *types.AccountMeta
-	tm   *types.TokenMeta
+	//am   *types.AccountMeta
+	tm *types.TokenMeta
 }
 
 func NewRewardsApi(l *ledger.Ledger) *RewardsApi {
@@ -169,8 +169,8 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 			Sign:       *sign,
 		},
 		self: &param.Self,
-		am:   am,
-		tm:   tm,
+		//am:   am,
+		tm: tm,
 	}
 
 	r.logger.Debugf("verify %s %s %s %s %s", methodName, param.To.String(), txHash.String(), rxHash.String(), param.Amount.Int)
@@ -189,10 +189,10 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 			Token:          param.tm.Type,
 			Address:        *param.self,
 			Balance:        param.tm.Balance.Sub(types.Balance{Int: param.Amount}),
-			Vote:           param.am.CoinVote,
-			Network:        param.am.CoinNetwork,
-			Oracle:         param.am.CoinOracle,
-			Storage:        param.am.CoinStorage,
+			Vote:           types.ZeroBalance,
+			Network:        types.ZeroBalance,
+			Oracle:         types.ZeroBalance,
+			Storage:        types.ZeroBalance,
 			Previous:       param.tm.Header,
 			Link:           types.Hash(types.RewardsAddress),
 			Representative: param.tm.Representative,
@@ -215,10 +215,11 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 
 	var result []*contract.ContractBlock
 
+	vmContext := vmstore.NewVMContext(r.ledger)
 	if r.IsAirdropRewards(blk.Data) {
-		result, err = r.rewards.DoReceive(vmstore.NewVMContext(r.ledger), rev, blk)
+		result, err = r.rewards.DoReceive(vmContext, rev, blk)
 	} else {
-		result, err = r.confidantRewards.DoReceive(vmstore.NewVMContext(r.ledger), rev, blk)
+		result, err = r.confidantRewards.DoReceive(vmContext, rev, blk)
 	}
 	if err == nil {
 		if len(result) > 0 {

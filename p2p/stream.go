@@ -93,7 +93,7 @@ func (s *Stream) readLoop() {
 
 	if !s.IsConnected() {
 		if err := s.Connect(); err != nil {
-			s.node.logger.Error(err)
+			//			s.node.logger.Error(err)
 			err = s.close()
 			if err != nil {
 				s.node.logger.Error(err)

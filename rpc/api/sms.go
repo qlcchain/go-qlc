@@ -3,26 +3,26 @@ package api
 import (
 	"encoding/json"
 
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
 type SMSApi struct {
-	ledger    *ledger.Ledger
-	vmContext *vmstore.VMContext
-	relation  *relation.Relation
-	logger    *zap.SugaredLogger
+	ledger *ledger.Ledger
+	//vmContext *vmstore.VMContext
+	relation *relation.Relation
+	logger   *zap.SugaredLogger
 }
 
 func NewSMSApi(ledger *ledger.Ledger, relation *relation.Relation) *SMSApi {
-	return &SMSApi{ledger: ledger, vmContext: vmstore.NewVMContext(ledger),
-		relation: relation, logger: log.NewLogger("api_sms")}
+	return &SMSApi{ledger: ledger, relation: relation, logger: log.NewLogger("api_sms")}
 }
 
 func phoneNumberSeri(number string) ([]byte, error) {
@@ -35,13 +35,14 @@ func phoneNumberSeri(number string) ([]byte, error) {
 
 func (s *SMSApi) getApiBlocksByHash(hashes []types.Hash) ([]*APIBlock, error) {
 	ab := make([]*APIBlock, 0)
+	vmContext := vmstore.NewVMContext(s.ledger)
 	for _, h := range hashes {
 		block, err := s.ledger.GetStateBlock(h)
 		if err != nil && err != ledger.ErrBlockNotFound {
 			return nil, err
 		}
 		if block != nil {
-			b, err := generateAPIBlock(s.vmContext, block)
+			b, err := generateAPIBlock(vmContext, block)
 			if err != nil {
 				return nil, err
 			}
