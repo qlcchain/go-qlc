@@ -26,7 +26,7 @@ import (
 func generateTestPair() {
 	var fromAccountP string
 	var toAccountsP []string
-	var delayP int
+	var tpsP int
 	var txCountP int
 
 	if interactive {
@@ -42,10 +42,10 @@ func generateTestPair() {
 			Usage: "to account private key",
 			Value: "",
 		}
-		delay := util.Flag{
-			Name:  "delay",
+		tps := util.Flag{
+			Name:  "tps",
 			Must:  true,
-			Usage: "max random delay time",
+			Usage: "tx per sec",
 			Value: 0,
 		}
 		txCount := util.Flag{
@@ -58,7 +58,7 @@ func generateTestPair() {
 			Name: "generateTestPair",
 			Help: "generate test pair send txs",
 			Func: func(c *ishell.Context) {
-				args := []util.Flag{from, toAccounts, delay, txCount}
+				args := []util.Flag{from, toAccounts, tps, txCount}
 				if util.HelpText(c, args) {
 					return
 				}
@@ -68,9 +68,9 @@ func generateTestPair() {
 				}
 				fromAccountP = util.StringVar(c.Args, from)
 				toAccountsP = util.StringSliceVar(c.Args, toAccounts)
-				delayP, _ = util.IntVar(c.Args, delay)
+				tpsP, _ = util.IntVar(c.Args, tps)
 				txCountP, _ = util.IntVar(c.Args, txCount)
-				err := randSendTxs(fromAccountP, toAccountsP, delayP, txCountP)
+				err := randSendTxs(fromAccountP, toAccountsP, tpsP, txCountP)
 				if err != nil {
 					util.Info(err)
 					return
@@ -84,7 +84,7 @@ func generateTestPair() {
 			Use:   "generateTestPair",
 			Short: "generate test pair send txs",
 			Run: func(cmd *cobra.Command, args []string) {
-				err := randSendTxs(fromAccountP, toAccountsP, delayP, txCountP)
+				err := randSendTxs(fromAccountP, toAccountsP, tpsP, txCountP)
 				if err != nil {
 					cmd.Println(err)
 					return
@@ -94,13 +94,13 @@ func generateTestPair() {
 		}
 		randSendCmd.Flags().StringVar(&fromAccountP, "from", "", "send account private key")
 		randSendCmd.Flags().StringSliceVar(&toAccountsP, "toAccounts", nil, "to account private key")
-		randSendCmd.Flags().IntVar(&delayP, "delay", 0, "max random delay time")
+		randSendCmd.Flags().IntVar(&tpsP, "tps", 0, "tx per sec")
 		randSendCmd.Flags().IntVar(&txCountP, "txCount", 1, "tx count")
 		rootCmd.AddCommand(randSendCmd)
 	}
 }
 
-func randSendTxs(fromAccountP string, toAccountsP []string, delayP int, txCountP int) error {
+func randSendTxs(fromAccountP string, toAccountsP []string, tpsP int, txCountP int) error {
 	bytes, err := hex.DecodeString(fromAccountP)
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func randSendTxs(fromAccountP string, toAccountsP []string, delayP int, txCountP
 		return err
 	}
 
-	err = generateTxToAccounts(fromAccount, toAccounts, delayP, txCountP)
+	err = generateTxToAccounts(fromAccount, toAccounts, tpsP, txCountP)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 	return nil
 }
 
-func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, delayP int, txCountP int) error {
+func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP int, txCountP int) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -221,6 +221,12 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, dela
 				if fromAcc == toAcc {
 					continue
 				}
+
+				if err != nil {
+					time.Sleep(time.Second)
+					err = nil
+				}
+
 				amount := rand.Intn(1000) * 10e8
 				if amount <= 0 {
 					amount = 10e8
@@ -261,14 +267,10 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, dela
 				}
 
 				txCurNum++
-			}
 
-			if delayP > 0 {
-				delaySec := rand.Intn(delayP + 1)
-				if delaySec <= 0 {
-					delaySec = 1
+				if txCurNum % tpsP == 0 {
+					time.Sleep(time.Second)
 				}
-				time.Sleep(time.Duration(delaySec) * time.Second)
 			}
 		}
 	}

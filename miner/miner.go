@@ -58,6 +58,8 @@ func (miner *Miner) Start() error {
 		if err != nil {
 			return err
 		}
+	} else {
+		miner.logger.Info("pov worker disabled")
 	}
 
 	return nil

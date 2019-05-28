@@ -179,7 +179,7 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, 
 		return nil
 	}
 
-	pov.logger.Infof("receive block [%s] from [%s]", block.GetHash(), msgPeer)
+	pov.logger.Infof("receive block [%d/%s] from [%s]", block.GetHeight(), block.GetHash(), msgPeer)
 	err := pov.bp.AddBlock(block, types.PovBlockFromRemoteBroadcast)
 	if err == nil {
 		pov.eb.Publish(string(common.EventSendMsgToPeers), p2p.PovPublishReq, block, msgPeer)

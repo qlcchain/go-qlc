@@ -117,7 +117,7 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 }
 
 func (bp *PovBlockProcessor) onRecvPovSyncState(state common.SyncState) {
-	if state != common.Syncing && state != common.SyncNotStart {
+	if state.IsSyncExited() {
 		for _, blockSrc := range bp.waitingBlocks {
 			bp.blockCh <- blockSrc
 		}
@@ -131,7 +131,7 @@ func (bp *PovBlockProcessor) AddBlock(block *types.PovBlock, from types.PovBlock
 	needWait := false
 	if from == types.PovBlockFromRemoteBroadcast {
 		ss := bp.povEngine.GetSyncState()
-		if ss == common.Syncing || ss == common.SyncNotStart {
+		if !ss.IsSyncExited() {
 			needWait = true
 		}
 	}

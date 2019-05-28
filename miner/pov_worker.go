@@ -116,16 +116,19 @@ func (w *PovWorker) loop() {
 
 func (w *PovWorker) checkValidMiner() bool {
 	if w.miner.GetSyncState() != common.Syncdone {
+		w.logger.Debugf("miner pausing for sync state %s", w.miner.GetSyncState())
 		return false
 	}
 
 	cbAccount := w.GetCoinbaseAccount()
 	if cbAccount == nil {
+		w.logger.Debugf("miner pausing for coinbase account not exist")
 		return false
 	}
 
 	latestBlock := w.GetChain().LatestBlock()
 	if time.Now().Before(time.Unix(latestBlock.GetTimestamp(), 0)) {
+		w.logger.Debugf("miner pausing for time now before latest block")
 		return false
 	}
 
@@ -134,10 +137,12 @@ func (w *PovWorker) checkValidMiner() bool {
 		stateTrie := w.GetChain().GetStateTrie(&prevStateHash)
 		as := w.GetChain().GetAccountState(stateTrie, cbAccount.Address())
 		if as == nil || as.RepState == nil {
+			w.logger.Debugf("miner pausing for account state not exist")
 			return false
 		}
 		rs := as.RepState
 		if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
+			w.logger.Debugf("miner pausing for vote not enough")
 			return false
 		}
 	}

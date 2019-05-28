@@ -49,3 +49,11 @@ func (s SyncState) String() string {
 	}
 	return syncStatus[s]
 }
+
+func (s SyncState) IsSyncExited() bool {
+	if s == Syncdone || s == Syncerr {
+		return true
+	}
+
+	return false
+}

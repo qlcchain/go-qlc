@@ -524,7 +524,7 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 		return
 	}
 
-	ss.logger.Infof("sync with peer %s at height %d", peer.peerID, peer.currentHeight)
+	ss.logger.Infof("sync with peer %s to height %d", peer.peerID, peer.currentHeight)
 
 	ss.toHeight = peer.currentHeight
 	ss.syncPeerID = peer.peerID

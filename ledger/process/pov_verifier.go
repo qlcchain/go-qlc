@@ -181,9 +181,15 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat
 		return GapPrevious, nil
 	}
 
-	if block.GetTimestamp() < prevBlock.GetTimestamp() {
-		return InvalidTime, fmt.Errorf("timestamp %d not greater than previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
+	if block.GetTimestamp() <= prevBlock.GetTimestamp() {
+		return InvalidTime, fmt.Errorf("timestamp %d before than previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
 	}
+
+	/*
+	if block.GetTimestamp() > (prevBlock.GetTimestamp() + int64(common.PovMaxTimeOffsetPrevSec)) {
+		return InvalidTime, fmt.Errorf("timestamp %d too far from previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
+	}
+	 */
 
 	if block.GetHeight() != prevBlock.GetHeight()+1 {
 		return InvalidHeight, fmt.Errorf("height %d not continue with previous %d", block.GetHeight(), prevBlock.GetHeight())
@@ -266,7 +272,7 @@ func (pv *PovVerifier) verifyTarget(block *types.PovBlock, stat *PovVerifyStat) 
 		return BadTarget, err
 	}
 	if expectedTarget != block.Target {
-		return BadTarget, err
+		return BadTarget, errors.New("target not equal next required target")
 	}
 
 	voteHash := block.ComputeVoteHash()
@@ -282,8 +288,15 @@ func (pv *PovVerifier) verifyTarget(block *types.PovBlock, stat *PovVerifyStat) 
 	targetSig := block.GetTarget()
 	targetInt := targetSig.ToBigInt()
 
+	if targetInt.Cmp(common.PovMinimumTargetInt) < 0 {
+		return BadTarget, errors.New("target lesser than minimum")
+	}
+	if targetInt.Cmp(common.PovMaximumTargetInt) > 0 {
+		return BadTarget, errors.New("target greater than maximum")
+	}
+
 	if voteSigInt.Cmp(targetInt) > 0 {
-		return BadTarget, errors.New("bad target")
+		return BadTarget, errors.New("target greater than vote signature")
 	}
 
 	return Progress, nil

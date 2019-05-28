@@ -31,6 +31,16 @@ var (
 	ErrPovInvalidHead     = errors.New("invalid pov head block")
 )
 
+var (
+	// bigOne is 1 represented as a big.Int.  It is defined here to avoid
+	// the overhead of creating it multiple times.
+	bigOne = big.NewInt(1)
+
+	// oneLsh512 is 1 shifted left 512 bits.  It is defined here to avoid
+	// the overhead of creating it multiple times.
+	oneLsh512 = new(big.Int).Lsh(bigOne, 512)
+)
+
 const (
 	blockCacheLimit  = 1024
 )
@@ -149,7 +159,7 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		var dbErr error
 
-		td := genesis.Target.ToBigInt()
+		td := bc.CalcTotalDifficulty(genesis.Target)
 		dbErr = bc.getLedger().AddPovBlock(genesis, td)
 		if dbErr != nil {
 			return dbErr
@@ -642,19 +652,34 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Si
 		return types.ZeroSignature, ErrPovUnknownAncestor
 	}
 
-	actualTimespan := block.Timestamp - firstBlock.Timestamp
-	if actualTimespan <= 0 {
-		actualTimespan = 1
-	}
 	targetTimeSpan := int64(bc.getConfig().PoV.TargetCycle * bc.getConfig().PoV.BlockInterval)
+	minRetargetTimespan := targetTimeSpan / 4
+	maxRetargetTimespan := targetTimeSpan * 4
+
+	actualTimespan := block.Timestamp - firstBlock.Timestamp
+	if actualTimespan < minRetargetTimespan {
+		actualTimespan = minRetargetTimespan
+	} else if actualTimespan > maxRetargetTimespan {
+		actualTimespan = maxRetargetTimespan
+	}
 
 	oldTargetInt := block.Target.ToBigInt()
 	nextTargetInt := new(big.Int).Set(oldTargetInt)
 	nextTargetInt.Mul(oldTargetInt, big.NewInt(actualTimespan))
 	nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
 
+	if nextTargetInt.Cmp(common.PovMinimumTargetInt) < 0 {
+		nextTargetInt.SetBytes(common.PovMinimumTargetInt.Bytes())
+	}
+	if nextTargetInt.Cmp(common.PovMaximumTargetInt) > 0 {
+		nextTargetInt.SetBytes(common.PovMaximumTargetInt.Bytes())
+	}
+
 	var nextTarget types.Signature
-	nextTarget.FromBigInt(nextTargetInt)
+	err := nextTarget.FromBigInt(nextTargetInt)
+	if err != nil {
+		return types.ZeroSignature, err
+	}
 
 	bc.logger.Infof("Difficulty retarget at block height %d", block.GetHeight()+1)
 	bc.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
@@ -663,4 +688,27 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Si
 		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
 
 	return nextTarget, nil
+}
+
+// CalcTotalDifficulty calculates a total difficulty from target. PoV increases
+// the difficulty for generating a block by decreasing the value which the
+// generated vote signature must be less than. This difficulty target is stored in each
+// block header as signature.  The main chain is selected by choosing the chain that has
+// the most proof of work (highest difficulty).  Since a lower target difficulty
+// value equates to higher actual difficulty, the work value which will be
+// accumulated must be the inverse of the difficulty.  Also, in order to avoid
+// potential division by zero and really small floating point numbers, the
+// result adds 1 to the denominator and multiplies the numerator by 2^512.
+func (bc *PovBlockChain) CalcTotalDifficulty(target types.Signature) *big.Int {
+	// Return a work value of zero if the passed difficulty bits represent
+	// a negative number. Note this should not happen in practice with valid
+	// blocks, but an invalid block could trigger it.
+	difficultyNum := target.ToBigInt()
+	if difficultyNum.Sign() <= 0 {
+		return big.NewInt(0)
+	}
+
+	// (1 << 512) / (difficultyNum + 1)
+	denominator := new(big.Int).Add(difficultyNum, bigOne)
+	return new(big.Int).Div(oneLsh512, denominator)
 }
