@@ -452,7 +452,7 @@ func (l *Ledger) GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, er
 				if err = b.Deserialize(val); err != nil {
 					return err
 				}
-				if b.GetType() != types.ContractSend && b.GetType() != types.ContractReward {
+				if !common.IsGenesisBlock(b) {
 					blk = b
 					return errFound
 				}
