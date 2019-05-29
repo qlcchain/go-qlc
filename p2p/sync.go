@@ -3,6 +3,7 @@ package p2p
 import (
 	"math"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -57,7 +58,8 @@ func (ss *ServiceSync) Start() {
 			return
 		case <-ticker.C:
 			now := time.Now().UTC().Unix()
-			if ss.lastSyncTime < now {
+			v := atomic.LoadInt64(&ss.lastSyncTime)
+			if v < now {
 				peerID, err := ss.netService.node.StreamManager().RandomPeer()
 				if err != nil {
 					continue
@@ -83,7 +85,7 @@ func (ss *ServiceSync) Start() {
 }
 
 func (ss *ServiceSync) LastSyncTime(t time.Time) {
-	ss.lastSyncTime = t.Add(syncTimeout).UTC().Unix()
+	atomic.StoreInt64(&ss.lastSyncTime, t.Add(syncTimeout).UTC().Unix())
 }
 
 // Stop sync service
@@ -96,7 +98,8 @@ func (ss *ServiceSync) Stop() {
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
 	ss.netService.node.logger.Debug("receive FrontierReq")
 	now := time.Now().UTC().Unix()
-	if ss.lastSyncTime < now {
+	v := atomic.LoadInt64(&ss.lastSyncTime)
+	if v < now {
 		var fs []*types.Frontier
 		fs, err := ss.qlcLedger.GetFrontiers()
 		if err != nil {
