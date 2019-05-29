@@ -7,12 +7,16 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
 
 const syncTimeout = 10 * time.Second
 
-var lastSyncTime int64
+var (
+	lastSyncTime int64
+	mu           sync.Mutex
+)
 
 type NetApi struct {
 	ledger *ledger.Ledger
@@ -21,6 +25,8 @@ type NetApi struct {
 }
 
 func syncingTime(t time.Time) {
+	mu.Lock()
+	defer mu.Unlock()
 	lastSyncTime = t.Add(syncTimeout).UTC().Unix()
 }
 func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {

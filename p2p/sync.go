@@ -3,6 +3,7 @@ package p2p
 import (
 	"math"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -31,6 +32,7 @@ type ServiceSync struct {
 	quitCh          chan bool
 	logger          *zap.SugaredLogger
 	lastSyncTime    int64
+	mu              sync.Mutex
 }
 
 // NewService return new Service.
@@ -83,6 +85,8 @@ func (ss *ServiceSync) Start() {
 }
 
 func (ss *ServiceSync) LastSyncTime(t time.Time) {
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
 	ss.lastSyncTime = t.Add(syncTimeout).UTC().Unix()
 }
 
