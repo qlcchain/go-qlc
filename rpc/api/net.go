@@ -7,16 +7,13 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
 const syncTimeout = 10 * time.Second
 
-var (
-	lastSyncTime int64
-	mu           sync.Mutex
-)
+var lastSyncTime int64
 
 type NetApi struct {
 	ledger *ledger.Ledger
@@ -25,9 +22,7 @@ type NetApi struct {
 }
 
 func syncingTime(t time.Time) {
-	mu.Lock()
-	defer mu.Unlock()
-	lastSyncTime = t.Add(syncTimeout).UTC().Unix()
+	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).UTC().Unix())
 }
 func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
 	_ = eb.Subscribe(string(common.EventSyncing), syncingTime)
@@ -58,7 +53,8 @@ func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 }
 func (q *NetApi) Syncing() bool {
 	now := time.Now().UTC().Unix()
-	if lastSyncTime < now {
+	v := atomic.LoadInt64(&lastSyncTime)
+	if v < now {
 		return false
 	}
 	return true
