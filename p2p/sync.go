@@ -3,7 +3,6 @@ package p2p
 import (
 	"math"
 	"sort"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -33,7 +32,6 @@ type ServiceSync struct {
 	quitCh          chan bool
 	logger          *zap.SugaredLogger
 	lastSyncTime    int64
-	mu              sync.Mutex
 }
 
 // NewService return new Service.
