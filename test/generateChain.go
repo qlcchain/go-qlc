@@ -3,13 +3,14 @@ package test
 import (
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/rpc"
-	"os"
-	"path/filepath"
 )
 
 func generateChain() (func() error, *rpc.Client, *services.LedgerService, error) {

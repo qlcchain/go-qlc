@@ -5,14 +5,15 @@ package test
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/rpc/api"
-	"math/big"
-	"testing"
-	"time"
 )
 
 const (

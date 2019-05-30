@@ -1,14 +1,15 @@
 package api
 
 import (
+	"sync/atomic"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
-	"sync/atomic"
-	"time"
 )
 
 const syncTimeout = 10 * time.Second
