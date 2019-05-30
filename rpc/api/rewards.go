@@ -152,12 +152,13 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 		return nil, err
 	} else {
 		if b {
-			tm, _ := r.ledger.GetTokenMeta(param.Self, common.GasToken())
+			tm, _ := r.ledger.GetTokenMeta(param.To, common.GasToken())
 			rxHash = tm.Header
 		} else {
 			rxHash = types.ZeroHash
 		}
 	}
+
 	p := &sendParam{
 		RewardsParam: &cabi.RewardsParam{
 			Id:         id,
