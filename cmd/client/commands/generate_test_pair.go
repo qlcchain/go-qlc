@@ -9,6 +9,7 @@ package commands
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -46,13 +47,13 @@ func generateTestPair() {
 			Name:  "tps",
 			Must:  true,
 			Usage: "tx per sec",
-			Value: 0,
+			Value: 1,
 		}
 		txCount := util.Flag{
 			Name:  "txCount",
 			Must:  true,
 			Usage: "tx count",
-			Value: "",
+			Value: 1,
 		}
 		c := &ishell.Cmd{
 			Name: "generateTestPair",
@@ -94,13 +95,20 @@ func generateTestPair() {
 		}
 		randSendCmd.Flags().StringVar(&fromAccountP, "from", "", "send account private key")
 		randSendCmd.Flags().StringSliceVar(&toAccountsP, "toAccounts", nil, "to account private key")
-		randSendCmd.Flags().IntVar(&tpsP, "tps", 0, "tx per sec")
+		randSendCmd.Flags().IntVar(&tpsP, "tps", 1, "tx per sec")
 		randSendCmd.Flags().IntVar(&txCountP, "txCount", 1, "tx count")
 		rootCmd.AddCommand(randSendCmd)
 	}
 }
 
 func randSendTxs(fromAccountP string, toAccountsP []string, tpsP int, txCountP int) error {
+	if fromAccountP == "" {
+		return errors.New("invalid from account value")
+	}
+	if len(toAccountsP) <= 0 {
+		return errors.New("invalid to account value")
+	}
+
 	bytes, err := hex.DecodeString(fromAccountP)
 	if err != nil {
 		return err
