@@ -305,8 +305,8 @@ func (bs *PovBlocks) Deserialize(text []byte) error {
 
 // PovTransaction represents an state block metadata in the PoV block.
 type PovTransaction struct {
-	Hash    Hash        `msg:"hash,extension" json:"hash"`
-	Block   *StateBlock `msg:"-" json:"-"`
+	Hash  Hash        `msg:"hash,extension" json:"hash"`
+	Block *StateBlock `msg:"-" json:"-"`
 }
 
 func (tx *PovTransaction) GetHash() Hash {

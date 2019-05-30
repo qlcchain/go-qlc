@@ -186,10 +186,10 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat
 	}
 
 	/*
-	if block.GetTimestamp() > (prevBlock.GetTimestamp() + int64(common.PovMaxTimeOffsetPrevSec)) {
-		return InvalidTime, fmt.Errorf("timestamp %d too far from previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
-	}
-	 */
+		if block.GetTimestamp() > (prevBlock.GetTimestamp() + int64(common.PovMaxTimeOffsetPrevSec)) {
+			return InvalidTime, fmt.Errorf("timestamp %d too far from previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
+		}
+	*/
 
 	if block.GetHeight() != prevBlock.GetHeight()+1 {
 		return InvalidHeight, fmt.Errorf("height %d not continue with previous %d", block.GetHeight(), prevBlock.GetHeight())

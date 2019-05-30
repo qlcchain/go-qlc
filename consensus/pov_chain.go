@@ -19,6 +19,10 @@ import (
 	"time"
 )
 
+const (
+	blockCacheLimit = 1024
+)
+
 var (
 	ErrPovInvalidHash     = errors.New("invalid pov block hash")
 	ErrPovNoGenesis       = errors.New("pov genesis block not found in chain")
@@ -41,9 +45,24 @@ var (
 	oneLsh512 = new(big.Int).Lsh(bigOne, 512)
 )
 
-const (
-	blockCacheLimit  = 1024
-)
+// log2FloorMasks defines the masks to use when quickly calculating
+// floor(log2(x)) in a constant log2(32) = 5 steps, where x is a uint32, using
+// shifts.  They are derived from (2^(2^x) - 1) * (2^(2^x)), for x in 4..0.
+var log2FloorMasks = []uint32{0xffff0000, 0xff00, 0xf0, 0xc, 0x2}
+
+// fastLog2Floor calculates and returns floor(log2(x)) in a constant 5 steps.
+func fastLog2Floor(n uint32) uint8 {
+	rv := uint8(0)
+	exponent := uint8(16)
+	for i := 0; i < 5; i++ {
+		if n&log2FloorMasks[i] != 0 {
+			rv += exponent
+			n >>= exponent
+		}
+		exponent >>= 1
+	}
+	return rv
+}
 
 type PovBlockChain struct {
 	povEngine *PoVEngine
@@ -274,6 +293,23 @@ func (bc *PovBlockChain) HasBlock(hash types.Hash, height uint64) bool {
 	return false
 }
 
+func (bc *PovBlockChain) GetBestBlockByHash(hash types.Hash) *types.PovBlock {
+	block := bc.GetBlockByHash(hash)
+	if block == nil {
+		return nil
+	}
+
+	bestHashInDB, err := bc.getLedger().GetPovBestHash(block.GetHeight())
+	if err != nil {
+		return nil
+	}
+	if bestHashInDB != hash {
+		return nil
+	}
+
+	return block
+}
+
 func (bc *PovBlockChain) HasBestBlock(hash types.Hash, height uint64) bool {
 	if !bc.HasBlock(hash, height) {
 		return false
@@ -312,6 +348,75 @@ func (bc *PovBlockChain) GetBlockTDByHashAndHeight(hash types.Hash, height uint6
 
 	bc.tdCache.Set(hash, td)
 	return td
+}
+
+func (bc *PovBlockChain) GetBlockLocator(hash types.Hash) []types.Hash {
+	var block *types.PovBlock
+
+	if hash.IsZero() {
+		hash = bc.LatestBlock().GetHash()
+		block = bc.LatestBlock()
+	} else {
+		block = bc.GetBlockByHash(hash)
+	}
+	if block == nil {
+		return nil
+	}
+
+	// Calculate the max number of entries that will ultimately be in the
+	// block locator.  See the description of the algorithm for how these
+	// numbers are derived.
+	var maxEntries uint8
+	if block.GetHeight() <= 12 {
+		maxEntries = uint8(block.GetHeight()) + 1
+	} else {
+		// Requested hash itself + previous 10 entries + genesis block.
+		// Then floor(log2(height-10)) entries for the skip portion.
+		adjustedHeight := uint32(block.GetHeight()) - 10
+		maxEntries = 12 + fastLog2Floor(adjustedHeight)
+	}
+	locator := make([]types.Hash, 0, maxEntries)
+
+	step := uint64(1)
+	for block != nil {
+		locator = append(locator, block.GetHash())
+
+		// Nothing more to add once the genesis block has been added.
+		if block.GetHeight() == 0 {
+			break
+		}
+
+		// Calculate height of previous node to include ensuring the
+		// final node is the genesis block.
+		height := block.GetHeight() - step
+		if height < 0 {
+			height = 0
+		}
+
+		block = bc.FindAncestor(block, height)
+
+		// Once 11 entries have been included, start doubling the
+		// distance between included hashes.
+		if len(locator) > 10 {
+			step *= 2
+		}
+	}
+
+	return locator
+}
+
+func (bc *PovBlockChain) LocateBestBlock(locator []types.Hash) *types.PovBlock {
+	startBlock := bc.GenesisBlock()
+
+	for _, locHash := range locator {
+		block := bc.GetBestBlockByHash(locHash)
+		if block != nil {
+			startBlock = block
+			break
+		}
+	}
+
+	return startBlock
 }
 
 func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {

@@ -56,6 +56,7 @@ message PovPullBlockReq {
     uint32 Count = 4;
     uint32 Direction = 5;
     uint32 Reason = 6;
+    bytes  Locators = 7;
 }
 message PovPullBlockRsp {
     uint32 blocktype = 1;

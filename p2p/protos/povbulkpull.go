@@ -1,6 +1,7 @@
 package protos
 
 import (
+	"fmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
@@ -22,6 +23,7 @@ type PovBulkPullReq struct {
 	Count       uint32
 	Direction   uint32
 	Reason      uint32
+	Locators    []types.Hash
 }
 
 type PovBulkPullRsp struct {
@@ -31,12 +33,17 @@ type PovBulkPullRsp struct {
 }
 
 func PovBulkPullReqToProto(req *PovBulkPullReq) ([]byte, error) {
+	locBytes := make([]byte, 0)
+	for _, locItem := range req.Locators {
+		locBytes = append(locBytes, locItem.Bytes()...)
+	}
 	pbReq := &pb.PovPullBlockReq{
 		StartHash:   req.StartHash[:],
 		StartHeight: req.StartHeight,
 		Count:       req.Count,
 		Direction:   req.Direction,
 		Reason:      req.Reason,
+		Locators:    locBytes,
 	}
 	data, err := proto.Marshal(pbReq)
 	if err != nil {
@@ -51,11 +58,24 @@ func PovBulkPullReqFromProto(data []byte) (*PovBulkPullReq, error) {
 		return nil, err
 	}
 
+	if len(pbReq.Locators)%types.HashSize != 0 {
+		return nil, fmt.Errorf("invalid locators field length %d", len(pbReq.Locators))
+	}
+	locators := make([]types.Hash, 0)
+	for locIdx := 0; locIdx < len(pbReq.Locators); locIdx += types.HashSize {
+		locHash, err := types.BytesToHash(pbReq.Locators[locIdx : locIdx+types.HashSize])
+		if err != nil {
+			return nil, err
+		}
+		locators = append(locators, locHash)
+	}
+
 	req := &PovBulkPullReq{
 		StartHeight: pbReq.StartHeight,
 		Count:       pbReq.Count,
 		Direction:   pbReq.Direction,
 		Reason:      pbReq.Reason,
+		Locators:    locators,
 	}
 
 	err := req.StartHash.UnmarshalBinary(pbReq.StartHash)

@@ -66,18 +66,18 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	}
 
 	send := &types.StateBlock{
-		Type:      types.ContractSend,
-		Token:     common.ChainToken(),
-		Address:   param.Coinbase,
+		Type:    types.ContractSend,
+		Token:   common.ChainToken(),
+		Address: param.Coinbase,
 
 		Balance:        tmCb.Balance,
 		Previous:       tmCb.Header,
 		Representative: tmCb.Representative,
 
-		Vote:      amCb.CoinVote,
-		Network:   amCb.CoinNetwork,
-		Oracle:    amCb.CoinOracle,
-		Storage:   amCb.CoinStorage,
+		Vote:    amCb.CoinVote,
+		Network: amCb.CoinNetwork,
+		Oracle:  amCb.CoinOracle,
+		Storage: amCb.CoinStorage,
 
 		Link:      types.Hash(types.MinerAddress),
 		Data:      data,

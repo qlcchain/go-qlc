@@ -171,8 +171,8 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 	accBlocks := w.GetTxPool().SelectPendingTxs(w.maxTxPerBlock)
 	for _, accBlock := range accBlocks {
 		txPov := &types.PovTransaction{
-			Hash:    accBlock.GetHash(),
-			Block:   accBlock,
+			Hash:  accBlock.GetHash(),
+			Block: accBlock,
 		}
 		mklTxHashList = append(mklTxHashList, &txPov.Hash)
 		current.Transactions = append(current.Transactions, txPov)

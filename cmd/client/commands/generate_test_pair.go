@@ -276,7 +276,7 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 
 				txCurNum++
 
-				if txCurNum % tpsP == 0 {
+				if txCurNum%tpsP == 0 {
 					time.Sleep(time.Second)
 				}
 			}

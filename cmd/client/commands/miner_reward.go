@@ -105,7 +105,7 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	defer client.Close()
 
 	rewardParam := api.RewardParam{
-		Coinbase: coinbaseAcc.Address(),
+		Coinbase:   coinbaseAcc.Address(),
 		Beneficial: beneficialAcc.Address(),
 	}
 
