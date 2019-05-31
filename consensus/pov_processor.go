@@ -262,7 +262,7 @@ func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 
 	orphanRoot := bp.GetOrphanRoot(blockHash)
 	if bp.pendingBlocks[orphanRoot] == nil {
-		bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, 1)
+		bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, 1, false)
 	}
 }
 

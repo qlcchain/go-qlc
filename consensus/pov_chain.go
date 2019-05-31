@@ -33,6 +33,7 @@ var (
 	ErrPovFailedVerify    = errors.New("failed to verify block")
 	ErrPovForkHashZero    = errors.New("fork point hash is zero")
 	ErrPovInvalidHead     = errors.New("invalid pov head block")
+	ErrPovInvalidFork     = errors.New("invalid pov fork point")
 )
 
 var (
@@ -566,32 +567,68 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 	var attachBlocks []*types.PovBlock
 	var forkHash types.Hash
 
-	//old: b1 <- b2 <- b3 <- b4 <- b5 <- b6-1 <- b7-1
-	//new:                            <- b6-2 <- b7-2 <- b8 <- b9 <- b10
-
-	// step1: attach b7-2(exclude) <- b10
 	attachBlock := newBlock
-	for height := attachBlock.GetHeight(); height > oldHeadBlock.GetHeight(); height-- {
-		attachBlocks = append(attachBlocks, attachBlock)
+	if newBlock.GetHeight() > oldHeadBlock.GetHeight() {
+		//old: b1 <- b2 <- b3 <- b4 <- b5 <- b6-1 <- b7-1
+		//new:                            <- b6-2 <- b7-2 <- b8 <- b9 <- b10
 
-		prevHash := attachBlock.GetPrevious()
-		attachBlock = bc.GetBlockByHash(prevHash)
-		if attachBlock == nil {
-			bc.logger.Errorf("failed to get previous attach block %s", prevHash)
-			return ErrPovInvalidPrevious
+		// step1: attach b7-2(exclude) <- b10
+		for height := attachBlock.GetHeight(); height > oldHeadBlock.GetHeight(); height-- {
+			attachBlocks = append(attachBlocks, attachBlock)
+
+			prevHash := attachBlock.GetPrevious()
+			if prevHash.IsZero() {
+				break
+			}
+
+			attachBlock = bc.GetBlockByHash(prevHash)
+			if attachBlock == nil {
+				bc.logger.Errorf("failed to get previous attach block %s", prevHash)
+				return ErrPovInvalidPrevious
+			}
 		}
 	}
 
 	detachBlock := oldHeadBlock
+	if oldHeadBlock.GetHeight() > newBlock.GetHeight()  {
+		//old: b1 <- b2 <- b3 <- b4 <- b5 <- b6-1 <- b7-1 <- b8 <- b9 <- b10
+		//new:                            <- b6-2 <- b7-2
+
+		// step1: detach b7-1(exclude) <- b10
+		for height := detachBlock.GetHeight(); height > newBlock.GetHeight(); height-- {
+			detachBlocks = append(detachBlocks, detachBlock)
+
+			prevHash := detachBlock.GetPrevious()
+			if prevHash.IsZero() {
+				break
+			}
+
+			detachBlock = bc.GetBlockByHash(prevHash)
+			if detachBlock == nil {
+				bc.logger.Errorf("failed to get previous detach block %s", prevHash)
+				return ErrPovInvalidPrevious
+			}
+		}
+	}
+
+	//old: b1 <- b2 <- b3 <- b4 <- b5 <- b6-1 <- b7-1
+	//new:                            <- b6-2 <- b7-2
+
+	if attachBlock.GetHeight() != detachBlock.GetHeight() {
+		bc.logger.Errorf("height not equal, attach %d detach %d", attachBlock.GetHeight(), detachBlock.GetHeight())
+		return ErrPovInvalidHeight
+	}
 
 	// step2: attach b6-2 <- b7-2(include)
 	//        detach b6-1 <- b7-1(include)
 	//        fork point: b5
+	foundForkPoint := false
 	for {
 		attachBlocks = append(attachBlocks, attachBlock)
 		detachBlocks = append(detachBlocks, detachBlock)
 
 		if attachBlock.GetPrevious() == detachBlock.GetPrevious() {
+			foundForkPoint = true
 			forkHash = attachBlock.GetPrevious()
 			break
 		}
@@ -611,12 +648,17 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 		}
 	}
 
-	if forkHash.IsZero() {
-		bc.logger.Errorf("fork block hash is zero")
-		return ErrPovForkHashZero
+	if !foundForkPoint {
+		bc.logger.Errorf("failed to find fork point")
+		return ErrPovInvalidFork
 	}
 
-	forkBlock := bc.GetBlockByHash(forkHash)
+	var forkBlock *types.PovBlock
+	if forkHash.IsZero() {
+		forkBlock = bc.GenesisBlock()
+	} else {
+		forkBlock = bc.GetBlockByHash(forkHash)
+	}
 	if forkBlock == nil {
 		bc.logger.Errorf("fork block %s not exist", forkHash)
 		return ErrPovInvalidHash

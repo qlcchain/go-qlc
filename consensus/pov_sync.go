@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"math/big"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 )
@@ -27,6 +28,18 @@ type PovSyncPeer struct {
 	currentTD      *big.Int
 	lastStatusTime time.Time
 }
+
+type PovSyncPeerSetByTD []*PovSyncPeer
+
+func (s PovSyncPeerSetByTD) Len() int           { return len(s) }
+func (s PovSyncPeerSetByTD) Less(i, j int) bool { return s[i].currentTD.Cmp(s[j].currentTD) < 0 }
+func (s PovSyncPeerSetByTD) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+type PovSyncPeerSetByHeight []*PovSyncPeer
+
+func (s PovSyncPeerSetByHeight) Len() int           { return len(s) }
+func (s PovSyncPeerSetByHeight) Less(i, j int) bool { return s[i].currentHeight < s[j].currentHeight }
+func (s PovSyncPeerSetByHeight) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 type PovSyncer struct {
 	povEngine *PoVEngine
@@ -497,7 +510,24 @@ func (ss *PovSyncer) BestPeer() *PovSyncPeer {
 	return bestPeer
 }
 
-func (ss *PovSyncer) GetRandomPeers() []*PovSyncPeer {
+func (ss *PovSyncer) GetBestPeers(limit int) []*PovSyncPeer {
+	var allPeers PovSyncPeerSetByTD
+
+	ss.allPeers.Range(func(key, value interface{}) bool {
+		peer := value.(*PovSyncPeer)
+		allPeers = append(allPeers, peer)
+		return true
+	})
+	sort.Sort(allPeers)
+
+	if len(allPeers) <= limit {
+		return allPeers
+	}
+
+	return allPeers[:limit]
+}
+
+func (ss *PovSyncer) GetRandomPeers(limit int) []*PovSyncPeer {
 	var allPeers []*PovSyncPeer
 	var selectPeers []*PovSyncPeer
 
@@ -507,16 +537,38 @@ func (ss *PovSyncer) GetRandomPeers() []*PovSyncPeer {
 		return true
 	})
 
-	if len(allPeers) <= 2 {
+	if len(allPeers) <= limit {
 		return allPeers
 	}
 
 	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	idxSeqs := rd.Perm(len(allPeers))
 
-	selectPeers = append(selectPeers, allPeers[idxSeqs[0]])
-	selectPeers = append(selectPeers, allPeers[idxSeqs[1]])
+	for i:=0; i<limit; i++ {
+		selectPeers = append(selectPeers, allPeers[idxSeqs[i]])
+	}
 
+	return selectPeers
+}
+
+func (ss *PovSyncer) GetPeerLocators() []*PovSyncPeer {
+	var allPeers PovSyncPeerSetByTD
+
+	ss.allPeers.Range(func(key, value interface{}) bool {
+		peer := value.(*PovSyncPeer)
+		allPeers = append(allPeers, peer)
+		return true
+	})
+	sort.Sort(allPeers)
+
+	if len(allPeers) <= 3 {
+		return allPeers
+	}
+
+	var selectPeers []*PovSyncPeer
+	selectPeers = append(selectPeers, allPeers[0])
+	selectPeers = append(selectPeers, allPeers[len(allPeers)/2])
+	selectPeers = append(selectPeers, allPeers[len(allPeers)-1])
 	return selectPeers
 }
 
@@ -585,14 +637,22 @@ func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
 	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
 }
 
-func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32) {
+func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, useBest bool) {
 	if startHash.IsZero() || count <= 0 {
 		return
 	}
 
-	peer := ss.BestPeer()
-	if peer == nil {
-		return
+	var peers []*PovSyncPeer
+	if useBest {
+		peers := ss.GetBestPeers(2)
+		if peers == nil {
+			return
+		}
+	} else {
+		peers = ss.GetPeerLocators()
+		if len(peers) <= 0 {
+			return
+		}
 	}
 
 	req := new(protos.PovBulkPullReq)
@@ -601,11 +661,13 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32) {
 	req.StartHash = startHash
 	req.Reason = protos.PovReasonFetch
 
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
+	for _, peer := range peers {
+		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
+	}
 }
 
 func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, endHash types.Hash) {
-	peers := ss.GetRandomPeers()
+	peers := ss.GetRandomPeers(2)
 	if len(peers) <= 0 {
 		return
 	}
