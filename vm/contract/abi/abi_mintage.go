@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 
 	"github.com/qlcchain/go-qlc/common"
 
@@ -41,6 +42,7 @@ const (
 
 var (
 	MintageABI, _ = abi.JSONToABIContract(strings.NewReader(jsonMintage))
+	tokenCache    = &sync.Map{}
 )
 
 type ParamMintage struct {
@@ -129,29 +131,39 @@ func ListTokens(ctx *vmstore.VMContext) ([]*types.TokenInfo, error) {
 }
 
 func GetTokenById(ctx *vmstore.VMContext, tokenId types.Hash) (*types.TokenInfo, error) {
-	if infos, err := ListTokens(ctx); err == nil {
-		for _, v := range infos {
-			if v.TokenId == tokenId {
-				return v, nil
-			}
+	if _, ok := tokenCache.Load(tokenId); !ok {
+		if err := saveCache(ctx); err != nil {
+			return nil, err
 		}
-	} else {
-		return nil, err
+	}
+	if ti, ok := tokenCache.Load(tokenId); ok {
+		return ti.(*types.TokenInfo), nil
 	}
 
 	return nil, fmt.Errorf("can not find token %s", tokenId.String())
 }
 
 func GetTokenByName(ctx *vmstore.VMContext, tokenName string) (*types.TokenInfo, error) {
-	if infos, err := ListTokens(ctx); err == nil {
-		for _, v := range infos {
-			if v.TokenName == tokenName {
-				return v, nil
-			}
+	if _, ok := tokenCache.Load(tokenName); !ok {
+		if err := saveCache(ctx); err != nil {
+			return nil, err
 		}
-	} else {
-		return nil, err
+	}
+	if ti, ok := tokenCache.Load(tokenName); ok {
+		return ti.(*types.TokenInfo), nil
 	}
 
 	return nil, fmt.Errorf("can not find token %s", tokenName)
+}
+
+func saveCache(ctx *vmstore.VMContext) error {
+	if infos, err := ListTokens(ctx); err == nil {
+		for _, v := range infos {
+			tokenCache.Store(v.TokenId, v)
+			tokenCache.Store(v.TokenName, v)
+		}
+		return nil
+	} else {
+		return err
+	}
 }
