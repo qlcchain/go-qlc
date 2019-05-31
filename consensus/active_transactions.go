@@ -234,14 +234,14 @@ func (act *ActiveTrx) deleteUncheckedDependFork(hash types.Hash) {
 		return
 	}
 	if blkLink != nil {
-		err := act.dps.ledger.DeleteUncheckedBlock(blkLink.GetHash(), types.UncheckedKindLink)
+		err := act.dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
 		if err != nil {
 			act.dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 		}
 		act.deleteUncheckedDependFork(blkLink.GetHash())
 	}
 	if blkPrevious != nil {
-		err := act.dps.ledger.DeleteUncheckedBlock(blkPrevious.GetHash(), types.UncheckedKindPrevious)
+		err := act.dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
 		if err != nil {
 			act.dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
 		}
