@@ -129,8 +129,12 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 	if err := ctx.Iterator(types.RewardsAddress[:], func(key []byte, value []byte) error {
 		if bytes.HasPrefix(key[types.AddressSize+1:], id) && len(value) > 0 {
 			info := new(RewardsInfo)
-			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil && info.Type == uint8(Rewards) {
-				result = append(result, info)
+			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil {
+				if info.Type == uint8(Rewards) {
+					result = append(result, info)
+				} else {
+					logger.Warnf("invalid reward type, %s==>%s", txId, util.ToString(info))
+				}
 			} else {
 				logger.Error(err)
 			}
@@ -168,14 +172,18 @@ func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) 
 		k := key[types.AddressSize+1:]
 		if bytes.HasPrefix(k, confidant[:]) && len(value) > 0 {
 			info := new(RewardsInfo)
-			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil && info.Type == uint8(Confidant) {
-				s := hex.EncodeToString(k[types.AddressSize : types.AddressSize+types.HashSize])
-				if infos, ok := result[s]; ok {
-					result[s] = append(infos, info)
+			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil {
+				if info.Type == uint8(Confidant) {
+					s := hex.EncodeToString(k[types.AddressSize : types.AddressSize+types.HashSize])
+					if infos, ok := result[s]; ok {
+						result[s] = append(infos, info)
+					} else {
+						result[s] = []*RewardsInfo{info}
+					}
 				} else {
-					result[s] = []*RewardsInfo{info}
+					logger.Warnf("invalid confidant type, %s==>%s", confidant.String(), util.ToString(info))
 				}
-			} else if err != nil {
+			} else {
 				logger.Error(err)
 			}
 		}
