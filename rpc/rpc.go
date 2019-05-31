@@ -242,7 +242,7 @@ func (r *RPC) StartRPC() error {
 
 	if r.config.RPC.Enable && r.config.RPC.WSEnabled {
 		apis := r.GetWSApis()
-		if err := r.startWS(r.config.RPC.WSEndpoint, apis, nil, r.config.RPC.HttpVirtualHosts, false); err != nil {
+		if err := r.startWS(r.config.RPC.WSEndpoint, apis, nil, r.config.RPC.HTTPCors, false); err != nil {
 			r.logger.Info(err)
 			r.stopInProcess()
 			r.stopIPC()
