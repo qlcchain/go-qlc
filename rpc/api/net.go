@@ -1,6 +1,9 @@
 package api
 
 import (
+	"sync/atomic"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -9,13 +12,21 @@ import (
 	"go.uber.org/zap"
 )
 
+const syncTimeout = 10 * time.Second
+
+var lastSyncTime int64
+
 type NetApi struct {
 	ledger *ledger.Ledger
 	eb     event.EventBus
 	logger *zap.SugaredLogger
 }
 
+func syncingTime(t time.Time) {
+	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).UTC().Unix())
+}
 func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
+	_ = eb.Subscribe(string(common.EventSyncing), syncingTime)
 	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net")}
 }
 
@@ -40,4 +51,12 @@ func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 		Infos: p,
 	}
 	return i
+}
+func (q *NetApi) Syncing() bool {
+	now := time.Now().UTC().Unix()
+	v := atomic.LoadInt64(&lastSyncTime)
+	if v < now {
+		return false
+	}
+	return true
 }

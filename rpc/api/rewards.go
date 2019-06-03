@@ -74,18 +74,17 @@ func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn fun
 	var txHash types.Hash
 	var rxHash types.Hash
 
-	if _, err := r.ledger.HasTokenMeta(param.Self, common.GasToken()); err != nil {
-		return types.ZeroHash, err
-	} else {
-		tm, _ := r.ledger.GetTokenMeta(param.Self, common.GasToken())
+	if tm, err := r.ledger.GetTokenMeta(param.Self, common.GasToken()); tm != nil && err == nil {
 		txHash = tm.Header
+	} else {
+		return types.ZeroHash, err
 	}
 
 	if b, err := r.ledger.HasTokenMeta(param.To, common.GasToken()); err != nil {
 		return types.ZeroHash, err
 	} else {
 		if b {
-			tm, _ := r.ledger.GetTokenMeta(param.Self, common.GasToken())
+			tm, _ := r.ledger.GetTokenMeta(param.To, common.GasToken())
 			rxHash = tm.Header
 		} else {
 			rxHash = types.ZeroHash
@@ -153,12 +152,13 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 		return nil, err
 	} else {
 		if b {
-			tm, _ := r.ledger.GetTokenMeta(param.Self, common.GasToken())
+			tm, _ := r.ledger.GetTokenMeta(param.To, common.GasToken())
 			rxHash = tm.Header
 		} else {
 			rxHash = types.ZeroHash
 		}
 	}
+
 	p := &sendParam{
 		RewardsParam: &cabi.RewardsParam{
 			Id:         id,

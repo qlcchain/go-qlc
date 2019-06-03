@@ -91,7 +91,7 @@ func (act *ActiveTrx) announceVotes() {
 						T2:   time.Now().UnixNano(),
 						T3:   p.T3,
 					}
-					act.dps.ledger.AddOrUpdatePerformance(t)
+					err = act.dps.ledger.AddOrUpdatePerformance(t)
 					if err != nil {
 						act.dps.logger.Info("AddOrUpdatePerformance error T2")
 					}
@@ -166,7 +166,7 @@ func (act *ActiveTrx) announceVotes() {
 							T2:   p.T2,
 							T3:   time.Now().UnixNano(),
 						}
-						act.dps.ledger.AddOrUpdatePerformance(t)
+						err = act.dps.ledger.AddOrUpdatePerformance(t)
 						if err != nil {
 							act.dps.logger.Info("AddOrUpdatePerformance error T3")
 						}
@@ -222,6 +222,30 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 				act.dps.logger.Errorf("error [%s] when rollback hash [%s]", err, hash.String())
 			}
 		}
+		act.deleteUncheckedDependFork(hash)
+	}
+}
+
+func (act *ActiveTrx) deleteUncheckedDependFork(hash types.Hash) {
+	blkLink, _, _ := act.dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	blkPrevious, _, _ := act.dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+
+	if blkLink == nil && blkPrevious == nil {
+		return
+	}
+	if blkLink != nil {
+		err := act.dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+		if err != nil {
+			act.dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+		}
+		act.deleteUncheckedDependFork(blkLink.GetHash())
+	}
+	if blkPrevious != nil {
+		err := act.dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+		if err != nil {
+			act.dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
+		}
+		act.deleteUncheckedDependFork(blkPrevious.GetHash())
 	}
 }
 

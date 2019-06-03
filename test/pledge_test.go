@@ -4,106 +4,25 @@ package test
 
 import (
 	"encoding/hex"
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc/api"
-
-	"github.com/qlcchain/go-qlc/chain/services"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/rpc"
 )
 
 var beneficialPledge = "dd20a386c735a077206619eca312072ad19266a161b8269d2f9b49785a3afde95d56683fb3f03c259dc0a703645ae0fb4f883d492d059665e4dee58c56c4e853"
 
-func startService_Pledge(t *testing.T) (func(t *testing.T), *rpc.Client, *services.LedgerService) {
-	dir := filepath.Join(config.DefaultDataDir(), "pledge")
-	cfgFile, _ := config.DefaultConfig(dir)
-	ls := services.NewLedgerService(cfgFile)
-	err := ls.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ls.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = json.Unmarshal([]byte(JsonTestSend), &testPledgeSendBlock)
-	_ = json.Unmarshal([]byte(JsonTestReceive), &testPledgeReceiveBlock)
-	l := ls.Ledger
-	verifier := process.NewLedgerVerifier(l)
-	p, _ := verifier.Process(&testPledgeSendBlock)
-	if p != process.Progress {
-		t.Fatal("process send block error")
-	}
-	p, _ = verifier.Process(&testPledgeReceiveBlock)
-	if p != process.Progress {
-		t.Fatal("process receive block error")
-	}
-	rPCService, err := services.NewRPCService(cfgFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = rPCService.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = rPCService.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := rPCService.RPC().Attach()
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqliteService, err := services.NewSqliteService(cfgFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = sqliteService.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = sqliteService.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	walletService := services.NewWalletService(cfgFile)
-	err = walletService.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = walletService.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return func(t *testing.T) {
-		if client != nil {
-			client.Close()
-		}
-		if err := ls.Stop(); err != nil {
-			t.Fatal(err)
-		}
-		if err := sqliteService.Stop(); err != nil {
-			t.Fatal(err)
-		}
-		if err := walletService.Stop(); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.RemoveAll(dir); err != nil {
-			t.Fatal(err)
-		}
-	}, client, ls
-}
-
 func TestPledge(t *testing.T) {
-	teardownTestCase, client, ls := startService_Pledge(t)
-	defer teardownTestCase(t)
-	pledgeBytes, err := hex.DecodeString(TestPrivateKey)
+	teardownTestCase, client, ls, err := generateChain()
+	defer func() {
+		if err := teardownTestCase(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pledgeBytes, err := hex.DecodeString(testPrivateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
