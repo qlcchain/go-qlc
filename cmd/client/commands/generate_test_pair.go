@@ -108,6 +108,12 @@ func randSendTxs(fromAccountP string, toAccountsP []string, tpsP int, txCountP i
 	if len(toAccountsP) <= 0 {
 		return errors.New("invalid to account value")
 	}
+	if tpsP < 0 {
+		return errors.New("invalid to tps value")
+	}
+	if txCountP < 0 {
+		return errors.New("invalid to txCount value")
+	}
 
 	bytes, err := hex.DecodeString(fromAccountP)
 	if err != nil {
@@ -223,62 +229,64 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 	rand.Seed(time.Now().Unix())
 
 	txCurNum := 0
-	for txCurNum < txCountP {
-		for _, fromAcc := range toAccounts {
-			for _, toAcc := range toAccounts {
-				if fromAcc == toAcc {
-					continue
-				}
 
-				if err != nil {
-					time.Sleep(time.Second)
-					err = nil
-				}
+	for _, fromAcc := range toAccounts {
+		for _, toAcc := range toAccounts {
+			if fromAcc == toAcc {
+				continue
+			}
 
-				amount := rand.Intn(1000) * 10e8
-				if amount <= 0 {
-					amount = 10e8
-				}
-				fmt.Printf("tx %d: fromAcc:%s, toAcc:%s, amount:%d\n", txCurNum, fromAcc.Address(), toAcc.Address(), amount)
+			if err != nil {
+				time.Sleep(time.Second)
+				err = nil
+			}
 
-				para := api.APISendBlockPara{
-					From:      fromAcc.Address(),
-					TokenName: "QLC",
-					To:        toAcc.Address(),
-					Amount:    types.NewBalance(int64(amount)),
-				}
+			amount := rand.Intn(1000) * 10e8
+			if amount <= 0 {
+				amount = 10e8
+			}
+			fmt.Printf("tx %d: fromAcc:%s, toAcc:%s, amount:%d\n", txCurNum, fromAcc.Address(), toAcc.Address(), amount)
 
-				var sendBlock types.StateBlock
-				err = client.Call(&sendBlock, "ledger_generateSendBlock", para, hex.EncodeToString(fromAcc.PrivateKey()))
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-				var sendHash types.Hash
-				err = client.Call(&sendHash, "ledger_process", &sendBlock)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
+			para := api.APISendBlockPara{
+				From:      fromAcc.Address(),
+				TokenName: "QLC",
+				To:        toAcc.Address(),
+				Amount:    types.NewBalance(int64(amount)),
+			}
 
-				var receiveBlock types.StateBlock
-				err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-				var recvHash types.Hash
-				err = client.Call(&recvHash, "ledger_process", &receiveBlock)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
+			var sendBlock types.StateBlock
+			err = client.Call(&sendBlock, "ledger_generateSendBlock", para, hex.EncodeToString(fromAcc.PrivateKey()))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			var sendHash types.Hash
+			err = client.Call(&sendHash, "ledger_process", &sendBlock)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
 
-				txCurNum++
+			var receiveBlock types.StateBlock
+			err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			var recvHash types.Hash
+			err = client.Call(&recvHash, "ledger_process", &receiveBlock)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
 
-				if txCurNum%tpsP == 0 {
-					time.Sleep(time.Second)
-				}
+			txCurNum++
+			if txCurNum >= txCountP {
+				return nil
+			}
+
+			if txCurNum%tpsP == 0 {
+				time.Sleep(time.Second)
 			}
 		}
 	}
