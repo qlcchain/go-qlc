@@ -45,26 +45,9 @@ func IsGenesisPovBlock(block *types.PovBlock) bool {
 	return h == genesisPovBlock.GetHash()
 }
 
-type genesisMinerCfg struct {
-	Coinbase string
-	Vote     string
-}
-
 func GenesisPovStateKVs() (keys [][]byte, values [][]byte) {
 	keys = append(keys, []byte("qlc"))
 	values = append(values, []byte("create something wonderful"))
-
-	var miners []*genesisMinerCfg
-	for _, miner := range miners {
-		addr, _ := types.HexToAddress(miner.Coinbase)
-		as := types.NewPovAccountState()
-		as.RepState = types.NewPovRepState()
-		as.RepState.Vote = types.StringToBalance(miner.Vote)
-		as.RepState.Total = as.RepState.CalcTotal()
-		asBytes, _ := as.Serialize()
-		keys = append(keys, addr.Bytes())
-		values = append(values, asBytes)
-	}
 
 	return keys, values
 }

@@ -1402,6 +1402,21 @@ func (l *Ledger) BatchUpdate(fn func(txn db.StoreTxn) error) error {
 	return txn.Commit(nil)
 }
 
+// BatchView MUST pass the same txn
+func (l *Ledger) BatchView(fn func(txn db.StoreTxn) error) error {
+	txn := l.Store.NewTransaction(false)
+	//logger.Debugf("BatchView NewTransaction %p", txn)
+	defer func() {
+		//logger.Debugf("BatchView Discard %p", txn)
+		txn.Discard()
+	}()
+
+	if err := fn(txn); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
+}
+
 func (l *Ledger) Latest(account types.Address, token types.Hash, txns ...db.StoreTxn) types.Hash {
 	zero := types.Hash{}
 	am, err := l.GetAccountMeta(account, txns...)

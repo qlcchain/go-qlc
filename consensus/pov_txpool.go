@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/db"
 	"sync"
 	"time"
 )
@@ -32,31 +33,37 @@ func (tp *PovTxPool) Init() {
 	startTime := time.Now()
 	totalStateBlockNum := 0
 	unpackStateBlockNum := 0
-	err := ledger.GetStateBlocks(func(tx *types.StateBlock) error {
-		totalStateBlockNum++
 
-		if common.IsGenesisBlock(tx) {
+	err := ledger.BatchView(func(txn db.StoreTxn) error {
+		err := ledger.GetStateBlocks(func(block *types.StateBlock) error {
+			totalStateBlockNum++
+
+			txHash := block.GetHash()
+			if ledger.HasPovTxLookup(txHash, txn) {
+				return nil
+			}
+
+			unpackStateBlockNum++
+			tp.addTx(txHash, block)
 			return nil
+		}, txn)
+
+		if err != nil {
+			logger.Errorf("failed to get state blocks, err %s", err)
+			return err
 		}
 
-		txHash := tx.GetHash()
-
-		if ledger.HasPovTxLookup(txHash) {
-			return nil
-		}
-
-		//logger.Debugf("account block %s not in pov block", txHash)
-		unpackStateBlockNum++
-
-		tp.addTx(txHash, tx)
 		return nil
 	})
-	usedTime := time.Since(startTime)
-	logger.Infof("scan all account blocks used time %s, %d, %d", usedTime.String(), totalStateBlockNum, unpackStateBlockNum)
 
 	if err != nil {
-		logger.Errorf("scan all account blocks failed")
+		logger.Errorf("scan all account state blocks failed")
 	}
+
+	usedTime := time.Since(startTime)
+
+	logger.Infof("scan all account blocks used time %s", usedTime.String())
+	logger.Infof("blocks %d, unpacked %d", totalStateBlockNum, unpackStateBlockNum)
 }
 
 func (tp *PovTxPool) Start() {
