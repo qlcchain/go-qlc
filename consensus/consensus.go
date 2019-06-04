@@ -6,6 +6,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +24,8 @@ type Consensus struct {
 	ledger   *ledger.Ledger
 	verifier *process.LedgerVerifier
 }
+
+var GlobalUncheckedBlockNum atomic.Uint64
 
 func NewConsensus(ca ConsensusAlgorithm, cfg *config.Config, eb event.EventBus) *Consensus {
 	l := ledger.NewLedger(cfg.LedgerDir())

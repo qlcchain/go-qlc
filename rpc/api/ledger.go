@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/consensus"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -381,13 +382,14 @@ func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	unCount, err := l.ledger.CountUncheckedBlocks()
-	if err != nil {
-		return nil, err
-	}
+	//unCount, err := l.ledger.CountUncheckedBlocks()
+	//if err != nil {
+	//	return nil, err
+	//}
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
-	c["unchecked"] = unCount
+	//c["unchecked"] = unCount
+	c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
 	return c, nil
 }
 
