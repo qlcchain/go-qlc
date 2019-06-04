@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 
@@ -47,7 +46,6 @@ func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *st
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(balance)
 		if token.TokenId != common.ChainToken() {
 			b := new(big.Float).SetInt(big.NewInt(balance.Int64()))
 			d := new(big.Float).SetFloat64(math.Pow10(int(token.Decimals)))
