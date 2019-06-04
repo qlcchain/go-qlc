@@ -1,7 +1,9 @@
 package api
 
 import (
+	"fmt"
 	"math"
+	"math/big"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
@@ -39,29 +41,25 @@ func decimal(d uint8) int64 {
 	return m
 }
 
-func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
+func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *string) (*APIBalance, error) {
 	if tokenName != nil {
 		token, err := abi.GetTokenByName(u.ctx, *tokenName)
 		if err != nil {
-			return types.ZeroBalance, err
+			return nil, err
 		}
+		fmt.Println(balance)
 		if token.TokenId != common.ChainToken() {
-			d := decimal(token.Decimals)
-			if d == 0 {
-				return types.ZeroBalance, errors.New("error decimals")
-			}
-			b, err := balance.Div(d)
-			if err != nil {
-				return types.ZeroBalance, nil
-			}
-			return b, nil
+			b := new(big.Float).SetInt(big.NewInt(balance.Int64()))
+			d := new(big.Float).SetFloat64(math.Pow10(int(token.Decimals)))
+			r := new(big.Float).Quo(b, d)
+			return &APIBalance{r}, nil
 		}
 	}
-	b, err := common.RawToBalance(balance, unit)
+	b, err := common.RawToBalanceFloat(balance, unit)
 	if err != nil {
-		return types.ZeroBalance, err
+		return nil, err
 	}
-	return b, nil
+	return &APIBalance{b}, nil
 }
 
 func (u *UtilApi) BalanceToRaw(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
@@ -83,4 +81,16 @@ func (u *UtilApi) BalanceToRaw(balance types.Balance, unit string, tokenName *st
 		return types.ZeroBalance, err
 	}
 	return b, nil
+}
+
+type APIBalance struct {
+	*big.Float
+}
+
+func (b *APIBalance) MarshalText() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+
+func (b *APIBalance) String() string {
+	return b.Text('f', -1)
 }
