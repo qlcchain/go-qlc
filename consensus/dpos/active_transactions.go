@@ -1,19 +1,18 @@
 package dpos
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 	"time"
-
-	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 const (
-	announcementMax  = 20
-	announceInterval = 60
+	announcementMax  = 40
+	announceInterval = 16
 )
 
 type voteKey [1 + types.HashSize]byte
@@ -22,7 +21,6 @@ type ActiveTrx struct {
 	confirmed electionStatus
 	dps       *DPoS
 	roots     *sync.Map
-	inactive  []voteKey
 	quitCh    chan bool
 	perfCh    chan *PerformanceTime
 }
@@ -160,25 +158,16 @@ func (act *ActiveTrx) announceVotes() {
 
 		if !el.confirmed {
 			act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
-			act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
 			el.announcements++
-		}
-
-		if el.announcements == announcementMax {
-			if _, ok := act.roots.Load(el.vote.id); !ok {
-				act.inactive = append(act.inactive, el.vote.id)
+			if el.announcements == announcementMax {
+				act.roots.Delete(el.vote.id)
+			} else {
+				act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
 			}
 		}
 
 		return true
 	})
-
-	for _, value := range act.inactive {
-		if _, ok := act.roots.Load(value); ok {
-			act.roots.Delete(value)
-		}
-	}
-	act.inactive = act.inactive[:0:0]
 }
 
 func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {

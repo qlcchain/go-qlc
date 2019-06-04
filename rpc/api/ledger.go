@@ -361,13 +361,14 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	unCount, err := l.ledger.CountUncheckedBlocks()
-	if err != nil {
-		return nil, err
-	}
+	//unCount, err := l.ledger.CountUncheckedBlocks()
+	//if err != nil {
+	//	return nil, err
+	//}
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
-	c["unchecked"] = unCount
+	//c["unchecked"] = unCount
+	c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
 	return c, nil
 }
 

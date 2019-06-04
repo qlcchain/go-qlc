@@ -88,6 +88,7 @@ func (dps *DPoS) Start() {
 
 	timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
+	timerUpdateUncheckedNum := time.NewTicker(time.Minute)
 
 	for {
 		select {
@@ -97,6 +98,8 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
+		case <-timerUpdateUncheckedNum.C: //calibration
+			consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len()))
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {
@@ -119,6 +122,7 @@ func (dps *DPoS) Stop() {
 
 func (dps *DPoS) enqueueUnchecked(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
 	if !dps.uncheckedCache.Has(depHash) {
+		consensus.GlobalUncheckedBlockNum.Inc()
 		blocks := new(sync.Map)
 		blocks.Store(hash, bs)
 
@@ -154,15 +158,15 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 		bs := value.(*consensus.BlockSource)
 		dps.logger.Infof("dequeue gap[%s] block[%s]", hash.String(), bs.Block.GetHash().String())
 
-		if bs.BlockFrom == types.Synchronized {
-			dps.ConfirmBlock(bs.Block)
-			return true
-		}
-
 		result, _ := dps.lv.BlockCheck(bs.Block)
 		dps.ProcessResult(result, bs)
 
 		if result == process.Progress || result == process.Old {
+			if bs.BlockFrom == types.Synchronized {
+				dps.ConfirmBlock(bs.Block)
+				return true
+			}
+
 			v, e := dps.voteCache.Get(bs.Block.GetHash())
 			if e == nil {
 				vc := v.(*sync.Map)
@@ -197,6 +201,34 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 	if !r {
 		dps.logger.Error("remove cache for unchecked fail")
 	}
+	consensus.GlobalUncheckedBlockNum.Dec()
+}
+
+func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
+	if !dps.uncheckedCache.Has(hash) {
+		return
+	}
+
+	m, err := dps.uncheckedCache.Get(hash)
+	if err != nil {
+		dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
+		return
+	}
+
+	cm := m.(*sync.Map)
+	cm.Range(func(key, value interface{}) bool {
+		bs := value.(*consensus.BlockSource)
+		dps.rollbackUnchecked(bs.Block.GetHash())
+		return true
+	})
+
+	r := dps.uncheckedCache.Remove(hash)
+	if !r {
+		dps.logger.Error("remove cache for unchecked fail")
+	}
+
+	dps.voteCache.Remove(hash)
+	consensus.GlobalUncheckedBlockNum.Dec()
 }
 
 func (dps *DPoS) ProcessMsgLoop() {
@@ -216,18 +248,14 @@ func (dps *DPoS) ProcessMsgLoop() {
 			return
 		case bs := <-dps.blocks:
 			dps.ProcessMsgDo(bs)
-		case <-time.After(1 * time.Millisecond):
+		case <-time.After(1 * time.Nanosecond):
 			//
 		}
 	}
 }
 
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
-	if len(dps.blocks) < maxBlocks {
-		dps.blocks <- bs
-	} else {
-		dps.logger.Error("blocks chan is full, drop this msg")
-	}
+	dps.blocks <- bs
 }
 
 func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
@@ -392,6 +420,8 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 	case process.Progress:
 		if bs.BlockFrom == types.Synchronized {
 			dps.logger.Infof("Block %s from sync,no need consensus", hash)
+			now := time.Now()
+			dps.eb.Publish(string(common.EventSyncing), now)
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			dps.acTrx.addToRoots(blk)
