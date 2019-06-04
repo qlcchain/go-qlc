@@ -87,10 +87,10 @@ func (tp *PovTxPool) onAddStateBlock(tx *types.StateBlock) error {
 	return nil
 }
 
-func (tp *PovTxPool) onDeleteStateBlock(tx *types.StateBlock) error {
-	tp.povEngine.GetLogger().Debugf("recv event, delete state block hash %s", tx.GetHash())
+func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
+	tp.povEngine.GetLogger().Debugf("recv event, delete state block hash %s", hash)
 
-	txHash := tx.GetHash()
+	txHash := hash
 	tp.delTx(txHash)
 	return nil
 }

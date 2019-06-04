@@ -667,7 +667,7 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 }
 
 func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, endHash types.Hash) {
-	peers := ss.GetRandomPeers(2)
+	peers := ss.GetBestPeers(3)
 	if len(peers) <= 0 {
 		return
 	}
@@ -678,6 +678,7 @@ func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, endHash types.Hash) 
 	req.EndHash = endHash
 
 	for _, peer := range peers {
+		ss.logger.Debugf("request tx start %s end %s from peer %s", startHash, endHash, peer.peerID)
 		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.BulkPullRequest, req, peer.peerID)
 	}
 }

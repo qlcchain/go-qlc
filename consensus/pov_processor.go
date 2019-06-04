@@ -11,6 +11,7 @@ import (
 const (
 	blockChanSize   = 1024
 	maxOrphanBlocks = 1000
+	checkTxPendingTickerSec = 5
 )
 
 type PovBlockResult struct {
@@ -30,6 +31,7 @@ type PovOrphanBlock struct {
 
 type PovPendingBlock struct {
 	addTime   time.Time
+	checkCnt  int
 	blockSrc  *PovBlockSource
 	txResults map[types.Hash]process.ProcessResult
 }
@@ -74,6 +76,7 @@ func (bp *PovBlockProcessor) Start() error {
 	}
 
 	common.Go(bp.loop)
+	common.Go(bp.loopCheckTxPending)
 	return nil
 }
 
@@ -156,8 +159,6 @@ func (bp *PovBlockProcessor) AddMinedBlock(block *types.PovBlock) error {
 }
 
 func (bp *PovBlockProcessor) loop() {
-	txPendingTicker := time.NewTicker(5 * time.Second)
-
 	for {
 		select {
 		case <-bp.quitCh:
@@ -168,6 +169,17 @@ func (bp *PovBlockProcessor) loop() {
 			if blockSrc.replyCh != nil {
 				blockSrc.replyCh <- PovBlockResult{err: err}
 			}
+		}
+	}
+}
+
+func (bp *PovBlockProcessor) loopCheckTxPending() {
+	txPendingTicker := time.NewTicker(checkTxPendingTickerSec * time.Second)
+
+	for {
+		select {
+		case <-bp.quitCh:
+			return
 		case <-txPendingTicker.C:
 			bp.checkTxPendingBlocks()
 		}
@@ -371,28 +383,57 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *p
 	bp.pendingBlocks[blockHash] = pendingBlock
 }
 
+func (bp *PovBlockProcessor) removeTxPendingBlockNoLock(pendingBlock *PovPendingBlock) {
+	blockHash := pendingBlock.blockSrc.block.GetHash()
+	bp.povEngine.GetLogger().Infof("remove tx pending block %s txs %d", blockHash, len(pendingBlock.txResults))
+
+	for txHash := range pendingBlock.txResults {
+		delete(bp.txPendingBlocks, txHash)
+	}
+	delete(bp.pendingBlocks, blockHash)
+}
+
 func (bp *PovBlockProcessor) checkTxPendingBlocks() {
 	bp.txPendingMux.Lock()
 	defer bp.txPendingMux.Unlock()
 
-	now := time.Now()
+	txPendingNum := len(bp.txPendingBlocks)
+	blockPendingNum := len(bp.pendingBlocks)
+	if txPendingNum + blockPendingNum > 0 {
+		bp.povEngine.GetLogger().Infof("check tx pending, txs %d blocks %d", txPendingNum, blockPendingNum)
+	}
+
+	for txHash, pendingBlock := range bp.txPendingBlocks {
+		txBlock, _ := bp.povEngine.GetLedger().GetStateBlock(txHash)
+		if txBlock != nil {
+			delete(pendingBlock.txResults, txHash)
+			delete(bp.txPendingBlocks, txHash)
+		}
+	}
+
 	for _, pendingBlock := range bp.pendingBlocks {
-		if len(pendingBlock.txResults) <= 1 {
-			if now.Sub(pendingBlock.addTime) >= 60*time.Second {
-				bp.releaseTxPendingBlock(pendingBlock)
+		if len(pendingBlock.txResults) <= 0 {
+			bp.releaseTxPendingBlock(pendingBlock)
+		} else {
+			pendingBlock.checkCnt++
+			if pendingBlock.checkCnt > 60 {
+				bp.removeTxPendingBlockNoLock(pendingBlock)
+			} else if pendingBlock.checkCnt / 3 == 0 {
+				for txHash := range pendingBlock.txResults {
+					bp.povEngine.GetSyncer().requestTxsByHash(txHash, txHash)
+				}
 			}
 		}
 	}
 }
 
 func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock) {
-	for txHash := range pendingBlock.txResults {
-		delete(bp.txPendingBlocks, txHash)
-	}
-
 	blockHash := pendingBlock.blockSrc.block.GetHash()
 	bp.povEngine.GetLogger().Infof("release tx pending block %s", blockHash)
 
+	for txHash := range pendingBlock.txResults {
+		delete(bp.txPendingBlocks, txHash)
+	}
 	delete(bp.pendingBlocks, blockHash)
 
 	go func() {

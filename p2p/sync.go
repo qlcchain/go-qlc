@@ -309,11 +309,11 @@ func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
 }
 
 func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
-	ss.netService.node.logger.Debug("receive BulkPullRequest")
 	pullRemote, err := protos.BulkPullReqPacketFromProto(message.Data())
 	if err != nil {
 		return err
 	}
+	ss.netService.node.logger.Debugf("receive BulkPullRequest, start %s end %s", pullRemote.StartHash, pullRemote.EndHash)
 
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
@@ -348,10 +348,10 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				return err
 			}
 			bulkBlk = append(bulkBlk, blk)
-			endHash = blk.GetPrevious()
 			if endHash == startHash {
 				break
 			}
+			endHash = blk.GetPrevious()
 		}
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
 			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
@@ -364,13 +364,18 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 }
 
 func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
-	ss.netService.node.logger.Debug("receive BulkPullRsp")
 	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err
 	}
 
 	block := blkPacket.Blk
+	if block == nil {
+		return nil
+	}
+
+	ss.netService.node.logger.Debugf("receive BulkPullRsp, hash %s", block.GetHash())
+
 	if ss.netService.node.cfg.PerformanceEnabled {
 		hash := block.GetHash()
 		ss.netService.msgService.addPerformanceTime(hash)
