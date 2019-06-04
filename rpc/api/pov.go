@@ -55,10 +55,12 @@ type PovMinerStatItem struct {
 	MinHeight  uint64    `json:"minHeight"`
 	MaxHeight  uint64    `json:"maxHeight"`
 	BlockCount uint64    `json:"blockCount"`
+	BestCount  uint64    `json:"bestCount"`
 }
 
 type PovMinerStats struct {
-	Miners map[types.Address]*PovMinerStatItem `json:"miners"`
+	MinerCount int                                 `json:"minerCount"`
+	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
 }
 
 func NewPovApi(ledger *ledger.Ledger) *PovApi {
@@ -282,7 +284,7 @@ func (api *PovApi) GetBlockTD(blockHash types.Hash) (*PovApiTD, error) {
 
 func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) {
 	apiRsp := &PovMinerStats{
-		Miners: make(map[types.Address]*PovMinerStatItem),
+		MinerStats: make(map[types.Address]*PovMinerStatItem),
 	}
 
 	checkAddrMap := make(map[types.Address]bool)
@@ -292,12 +294,18 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		}
 	}
 
-	err := api.ledger.GetAllPovBlocks(func(block *types.PovBlock) error {
+	bestBlockHashMap := make(map[types.Hash]struct{})
+	err := api.ledger.GetAllPovBestHashes(func(height uint64, hash types.Hash) error {
+		bestBlockHashMap[hash] = struct{}{}
+		return nil
+	})
+
+	err = api.ledger.GetAllPovBlocks(func(block *types.PovBlock) error {
 		if len(checkAddrMap) > 0 && checkAddrMap[block.GetCoinbase()] == false {
 			return nil
 		}
 
-		item, ok := apiRsp.Miners[block.GetCoinbase()]
+		item, ok := apiRsp.MinerStats[block.GetCoinbase()]
 		if !ok {
 			item = &PovMinerStatItem{}
 			item.MinTime = time.Unix(block.GetTimestamp(), 0)
@@ -306,7 +314,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			item.MaxHeight = block.GetHeight()
 			item.BlockCount = 1
 
-			apiRsp.Miners[block.GetCoinbase()] = item
+			apiRsp.MinerStats[block.GetCoinbase()] = item
 		} else {
 			if item.MinTime.Unix() > block.GetTimestamp() {
 				item.MinTime = time.Unix(block.GetTimestamp(), 0)
@@ -322,11 +330,16 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			}
 			item.BlockCount += 1
 		}
+		if _, ok := bestBlockHashMap[block.GetHash()]; ok {
+			item.BestCount += 1
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	apiRsp.MinerCount = len(apiRsp.MinerStats)
 
 	return apiRsp, nil
 }

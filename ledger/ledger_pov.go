@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"math/big"
 )
@@ -574,6 +575,31 @@ func (l *Ledger) GetPovBestHash(height uint64, txns ...db.StoreTxn) (types.Hash,
 	return hash, nil
 }
 
+func (l *Ledger) GetAllPovBestHashes(fn func(height uint64, hash types.Hash) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixPovBestHash, func(key []byte, val []byte, b byte) error {
+		var height uint64
+		height = util.BE_BytesToUint64(key[1:])
+
+		var hash types.Hash
+		if err := hash.UnmarshalBinary(val); err != nil {
+			return err
+		}
+
+		if err := fn(height, hash); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (l *Ledger) GetPovBlockByHeightAndHash(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -637,6 +663,29 @@ func (l *Ledger) GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.Stor
 		}
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) GetAllPovBestBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := l.GetAllPovBestHashes(func(height uint64, hash types.Hash) error {
+		block, err := l.GetPovBlockByHeightAndHash(height, hash)
+		if err != nil {
+			return err
+		}
+
+		if err := fn(block); err != nil {
+			return err
+		}
+
+		return nil
+	}, txn)
 
 	if err != nil {
 		return err
