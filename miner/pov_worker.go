@@ -167,8 +167,18 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 		Target:    target,
 	}
 
+	prevStateHash := latestBlock.GetStateHash()
+	prevStateTrie := w.GetChain().GetStateTrie(&prevStateHash)
+	if prevStateTrie == nil {
+		w.logger.Errorf("failed to get prev state trie, err %s", prevStateHash, err)
+		return nil
+	}
+
 	var mklTxHashList []*types.Hash
-	accBlocks := w.GetTxPool().SelectPendingTxs(w.maxTxPerBlock)
+	accBlocks := w.GetTxPool().SelectPendingTxs(prevStateTrie, w.maxTxPerBlock)
+
+	//w.logger.Debugf("current block %d select pending txs %d", len(accBlocks))
+
 	for _, accBlock := range accBlocks {
 		txPov := &types.PovTransaction{
 			Hash:  accBlock.GetHash(),
@@ -182,7 +192,6 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 	mklHash := merkle.CalcMerkleTreeRootHash(mklTxHashList)
 	current.MerkleRoot = mklHash
 
-	prevStateHash := latestBlock.GetStateHash()
 	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, current.Transactions)
 	if err != nil {
 		w.logger.Errorf("failed to generate state trie, err %s", prevStateHash, err)

@@ -5,6 +5,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/trie"
 	"sync"
 	"time"
 )
@@ -111,15 +112,33 @@ func (tp *PovTxPool) addTx(txHash types.Hash, tx *types.StateBlock) {
 	}
 
 	var childE *list.Element
-	for itE := accTxList.Back(); itE != nil; itE = itE.Prev() {
-		itTx := itE.Value.(*types.StateBlock)
-		if itTx.GetPrevious() == txHash {
-			childE = itE
-			break
+	var parentE *list.Element
+
+	prevHash := tx.GetPrevious()
+	if prevHash.IsZero() {
+		// contract address's blocks are all independent, no previous
+		if types.IsContractAddress(tx.GetAddress()) {
+		} else {
+			// open block should be first
+			childE = accTxList.Front()
+		}
+	} else {
+		for itE := accTxList.Front(); itE != nil; itE = itE.Next() {
+			itTx := itE.Value.(*types.StateBlock)
+			if itTx.GetHash() == prevHash {
+				parentE = itE
+				break
+			}
+			if itTx.GetPrevious() == txHash {
+				childE = itE
+				break
+			}
 		}
 	}
 
-	if childE != nil {
+	if parentE != nil {
+		accTxList.InsertAfter(tx, parentE)
+	} else if childE != nil {
 		accTxList.InsertBefore(tx, childE)
 	} else {
 		accTxList.PushBack(tx)
@@ -165,7 +184,7 @@ func (tp *PovTxPool) delTx(txHash types.Hash) {
 	tp.lastUpdated = time.Now().Unix()
 }
 
-func (tp *PovTxPool) SelectPendingTxs(limit int) []*types.StateBlock {
+func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.StateBlock {
 	tp.txMu.RLock()
 	defer tp.txMu.RUnlock()
 
@@ -175,10 +194,57 @@ func (tp *PovTxPool) SelectPendingTxs(limit int) []*types.StateBlock {
 		return retTxs
 	}
 
-	for _, accTxList := range tp.accountTxs {
-		for e := accTxList.Front(); e != nil; e = e.Next() {
-			retTxs = append(retTxs, e.Value.(*types.StateBlock))
-			limit--
+	addressPrevHashes := make(map[types.Address]types.Hash)
+	for address, accTxList := range tp.accountTxs {
+		isCA := types.IsContractAddress(address)
+		// contract address's blocks are all independent, no previous
+		if isCA {
+			addressPrevHashes[address] = types.ZeroHash
+		} else {
+			as := tp.povEngine.chain.GetAccountState(stateTrie, address)
+			if as != nil {
+				addressPrevHashes[address] = as.Hash
+			} else {
+				addressPrevHashes[address] = types.ZeroHash
+			}
+		}
+
+		selectedTxHashes := make(map[types.Hash]struct{})
+		for ; accTxList.Len() > len(selectedTxHashes); {
+			notInOrderTxNum := 0
+			inOrderTxNum := 0
+			for e := accTxList.Front(); e != nil; e = e.Next() {
+				tx := e.Value.(*types.StateBlock)
+				txHash := tx.GetHash()
+				if _, ok := selectedTxHashes[txHash]; ok {
+					continue
+				}
+				//tp.povEngine.GetLogger().Debugf("addressPrevHash %s", addressPrevHashes[address])
+				//tp.povEngine.GetLogger().Debugf("address %s block %s previous %s", address, txHash, tx.GetPrevious())
+				if tx.GetPrevious() == addressPrevHashes[address] {
+					retTxs = append(retTxs, tx)
+
+					selectedTxHashes[txHash] = struct{}{}
+					// contract address's blocks are all independent, no previous
+					if !isCA {
+						addressPrevHashes[address] = txHash
+					}
+					inOrderTxNum++
+
+					limit--
+					if limit == 0 {
+						break
+					}
+				} else {
+					notInOrderTxNum++
+				}
+			}
+			if inOrderTxNum == 0 {
+				if notInOrderTxNum > 0 {
+					tp.povEngine.GetLogger().Debugf("address %s has txs %d not in order", address, notInOrderTxNum)
+				}
+				break
+			}
 			if limit == 0 {
 				break
 			}

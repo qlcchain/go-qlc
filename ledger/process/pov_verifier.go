@@ -52,11 +52,24 @@ func (pvs *PovVerifyStat) getPrevBlock(pv *PovVerifier, prevHash types.Hash) *ty
 	return pvs.PrevBlock
 }
 
+func (pvs *PovVerifyStat) getPrevStateTrie(pv *PovVerifier, prevHash types.Hash) *trie.Trie {
+	if pvs.PrevStateTrie == nil {
+		prevBlock := pvs.getPrevBlock(pv, prevHash)
+		if prevBlock != nil {
+			prevStateHash := prevBlock.GetStateHash()
+			pvs.PrevStateTrie = pv.chain.GetStateTrie(&prevStateHash)
+		}
+	}
+
+	return pvs.PrevStateTrie
+}
+
 type PovVerifierChainReader interface {
 	GetBlockByHash(hash types.Hash) *types.PovBlock
 	CalcNextRequiredTarget(block *types.PovBlock) (types.Signature, error)
 	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
+	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
 }
 
 func NewPovVerifier(store ledger.Store, chain PovVerifierChainReader) *PovVerifier {
@@ -236,6 +249,42 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 		return GapTransaction, fmt.Errorf("total %d txs in pending", len(stat.TxResults))
 	}
 
+	prevTrie := stat.getPrevStateTrie(pv, block.GetPrevious())
+	if prevTrie == nil {
+		return BadStateHash, errors.New("failed to get prev state tire")
+	}
+	addressPrevHashes := make(map[types.Address]types.Hash)
+	for txIdx:=0; txIdx < len(block.Transactions); txIdx++ {
+		tx := block.Transactions[txIdx]
+		isCA := types.IsContractAddress(tx.Block.GetAddress())
+
+		prevHashWant, ok := addressPrevHashes[tx.Block.GetAddress()]
+		if !ok {
+			// contract address's blocks are all independent, no previous
+			if isCA {
+				prevHashWant = types.ZeroHash
+			} else {
+				as := pv.chain.GetAccountState(prevTrie, tx.Block.GetAddress())
+				if as != nil {
+					prevHashWant = as.Hash
+				} else {
+					prevHashWant = types.ZeroHash
+				}
+			}
+		}
+
+		//pv.logger.Debugf("address %s block %s prevHashWant %s txPrevHash %s", tx.Block.GetAddress(), tx.GetHash(), prevHashWant, tx.Block.GetPrevious())
+
+		if prevHashWant != tx.Block.GetPrevious() {
+			return InvalidTxOrder, errors.New("tx is not in order")
+		}
+
+		// contract address's blocks are all independent, no previous
+		if !isCA {
+			addressPrevHashes[tx.Block.GetAddress()] = tx.Block.GetHash()
+		}
+	}
+
 	return Progress, nil
 }
 
@@ -311,13 +360,11 @@ func (pv *PovVerifier) verifyProducer(block *types.PovBlock, stat *PovVerifyStat
 	if prevBlock == nil {
 		return GapPrevious, nil
 	}
-	stateHash := prevBlock.GetStateHash()
 
-	prevTrie := pv.chain.GetStateTrie(&stateHash)
+	prevTrie := stat.getPrevStateTrie(pv, block.GetPrevious())
 	if prevTrie == nil {
-		return BadStateHash, errors.New("failed to get state tire by prev state hash")
+		return BadStateHash, errors.New("failed to get previous state tire")
 	}
-	stat.PrevStateTrie = prevTrie
 
 	asBytes := prevTrie.GetValue(block.GetCoinbase().Bytes())
 	if len(asBytes) <= 0 {

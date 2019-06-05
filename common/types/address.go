@@ -131,6 +131,24 @@ func GenerateBuiltinContractAddress(suffix byte) (Address, error) {
 	return BytesToAddress(buf)
 }
 
+func IsChainContractAddress(address Address) bool {
+	for _, itAddr := range ChainContractAddressList {
+		if itAddr == address {
+			return true
+		}
+	}
+
+	return false
+}
+
+func IsContractAddress(address Address) bool {
+	if IsChainContractAddress(address) {
+		return true
+	}
+
+	return false
+}
+
 // KeypairFromPrivateKey generate key pair from private key
 func KeypairFromPrivateKey(privateKey string) (ed25519.PublicKey, ed25519.PrivateKey) {
 	privateBytes, _ := hex.DecodeString(privateKey)

@@ -27,6 +27,7 @@ type PovSyncPeer struct {
 	currentHeight  uint64
 	currentTD      *big.Int
 	lastStatusTime time.Time
+	inBadStatus    bool
 }
 
 type PovSyncPeerSetByTD []*PovSyncPeer
@@ -419,8 +420,13 @@ func (ss *PovSyncer) checkAllPeers() {
 	now := time.Now()
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
-		if now.Sub(peer.lastStatusTime) > 10*time.Minute {
-			ss.logger.Infof("peer %s may be dead", peer.peerID)
+		if now.Sub(peer.lastStatusTime) >= 10*time.Minute {
+			if peer.inBadStatus == false {
+				ss.logger.Infof("peer %s may be dead", peer.peerID)
+				peer.inBadStatus = true
+			}
+		} else {
+			peer.inBadStatus = false
 		}
 		return true
 	})
@@ -515,6 +521,9 @@ func (ss *PovSyncer) GetBestPeers(limit int) []*PovSyncPeer {
 
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
+		if peer.inBadStatus {
+			return true
+		}
 		allPeers = append(allPeers, peer)
 		return true
 	})
@@ -533,6 +542,9 @@ func (ss *PovSyncer) GetRandomPeers(limit int) []*PovSyncPeer {
 
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
+		if peer.inBadStatus {
+			return true
+		}
 		allPeers = append(allPeers, peer)
 		return true
 	})
@@ -556,6 +568,9 @@ func (ss *PovSyncer) GetPeerLocators() []*PovSyncPeer {
 
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
+		if peer.inBadStatus {
+			return true
+		}
 		allPeers = append(allPeers, peer)
 		return true
 	})
@@ -662,6 +677,7 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 	req.Reason = protos.PovReasonFetch
 
 	for _, peer := range peers {
+		ss.logger.Debugf("request block start %s count %d from peer %s", startHash, count, peer.peerID)
 		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
 	}
 }

@@ -193,13 +193,13 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 
 	chain := bp.povEngine.GetChain()
 
-	// duplicate block
-	if bp.orphanBlocks[blockHash] != nil {
-		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in orphans", blockHash)
+	// check duplicate block
+	if bp.HasOrphanBlock(blockHash) {
+		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in orphan", blockHash)
 		return nil
 	}
-	if bp.pendingBlocks[blockHash] != nil {
-		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in pendings", blockHash)
+	if bp.HasPendingBlock(blockHash) {
+		bp.povEngine.GetLogger().Debugf("duplicate block %s exist in pending", blockHash)
 		return nil
 	}
 	if chain.HasBestBlock(blockHash, block.GetHeight()) {
@@ -273,7 +273,7 @@ func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 	bp.povEngine.GetLogger().Infof("add orphan block %s prev %s", blockHash, prevHash)
 
 	orphanRoot := bp.GetOrphanRoot(blockHash)
-	if bp.pendingBlocks[orphanRoot] == nil {
+	if bp.HasPendingBlock(orphanRoot) == false {
 		bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, 1, false)
 	}
 }
@@ -299,6 +299,13 @@ func (bp *PovBlockProcessor) removeOrphanBlock(orphanBlock *PovOrphanBlock) {
 	if len(bp.parentOrphans[prevHash]) == 0 {
 		delete(bp.parentOrphans, prevHash)
 	}
+}
+
+func (bp *PovBlockProcessor) HasOrphanBlock(blockHash types.Hash) bool {
+	if bp.orphanBlocks[blockHash] != nil {
+		return true
+	}
+	return false
 }
 
 func (bp *PovBlockProcessor) processOrphanBlock(blockSrc *PovBlockSource) error {
@@ -391,6 +398,16 @@ func (bp *PovBlockProcessor) removeTxPendingBlockNoLock(pendingBlock *PovPending
 		delete(bp.txPendingBlocks, txHash)
 	}
 	delete(bp.pendingBlocks, blockHash)
+}
+
+func (bp *PovBlockProcessor) HasPendingBlock(blockHash types.Hash) bool {
+	bp.txPendingMux.Lock()
+	defer bp.txPendingMux.Unlock()
+
+	if bp.pendingBlocks[blockHash] != nil {
+		return true
+	}
+	return false
 }
 
 func (bp *PovBlockProcessor) checkTxPendingBlocks() {
