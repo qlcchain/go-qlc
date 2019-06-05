@@ -210,3 +210,13 @@ func (act *ActiveTrx) vote(va *protos.ConfirmAckBlock) {
 		v.(*Election).voteAction(va)
 	}
 }
+
+func (act *ActiveTrx) isVoting(block *types.StateBlock) bool {
+	vk := getVoteKey(block)
+
+	if _, ok := act.roots.Load(vk); ok {
+		return true
+	}
+
+	return false
+}

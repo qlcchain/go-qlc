@@ -259,13 +259,22 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 }
 
 func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
-	result, err := dps.lv.BlockCheck(bs.Block)
-	if err != nil {
-		dps.logger.Infof("block[%s] check err[%s]", bs.Block.GetHash().String(), err.Error())
-		return
+	var result process.ProcessResult
+	var err error
+
+	//block has been checked
+	if !dps.acTrx.isVoting(bs.Block) {
+		result, err = dps.lv.BlockCheck(bs.Block)
+		if err != nil {
+			dps.logger.Infof("block[%s] check err[%s]", bs.Block.GetHash().String(), err.Error())
+			return
+		}
+
+		dps.ProcessResult(result, bs)
+	} else {
+		result = process.Progress
 	}
 
-	dps.ProcessResult(result, bs)
 	hash := bs.Block.GetHash()
 
 	switch bs.Type {
