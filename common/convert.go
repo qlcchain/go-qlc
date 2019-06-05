@@ -38,3 +38,13 @@ func RawToBalance(b types.Balance, unit string) (types.Balance, error) {
 	}
 	return b, fmt.Errorf("invalid unit %s", unit)
 }
+
+func RawToBalanceFloat(b types.Balance, unit string) (*big.Float, error) {
+	if v, ok := units[unit]; ok {
+		b := new(big.Float).SetInt(big.NewInt(b.Int64()))
+		d := new(big.Float).SetInt(v)
+		r := new(big.Float).Quo(b, d)
+		return r, nil
+	}
+	return nil, fmt.Errorf("invalid unit %s", unit)
+}
