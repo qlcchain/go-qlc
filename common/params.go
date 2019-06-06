@@ -9,8 +9,8 @@ var (
 	PovMinerPledgeAmountMin   = types.NewBalance(50000000000000)
 	PovMinerVerifyHeightStart = uint64(3600 * 24 * 30 / 30)
 
-	PovGenesisTargetHex = "000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-	PovMinimumTargetHex = "0000003fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	PovGenesisTargetHex = "0000007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	PovMinimumTargetHex = "0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	PovMaximumTargetHex = "000003ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
 	PovGenesisTargetInt, _ = new(big.Int).SetString(PovGenesisTargetHex, 16)
