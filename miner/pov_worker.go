@@ -159,11 +159,11 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 	}
 
 	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
 	current := &types.PovBlock{
 		Previous:  latestBlock.GetHash(),
 		Height:    latestBlock.GetHeight() + 1,
-		Timestamp: time.Now().Unix(),
 		Target:    target,
 	}
 
@@ -229,7 +229,7 @@ func (w *PovWorker) solveBlock(block *types.PovBlock, ticker *time.Ticker, quitC
 			}
 
 			lastTxUpdateNow := w.GetTxPool().LastUpdated()
-			if lastTxUpdateBegin != lastTxUpdateNow && time.Now().After(loopBeginTime) {
+			if lastTxUpdateBegin != lastTxUpdateNow && time.Now().After(loopBeginTime.Add(10 * time.Second)) {
 				return false
 			}
 
@@ -253,6 +253,7 @@ func (w *PovWorker) solveBlock(block *types.PovBlock, ticker *time.Ticker, quitC
 		return false
 	}
 
+	block.Timestamp = time.Now().Unix()
 	block.Hash = block.ComputeHash()
 	block.Signature = cbAccount.Sign(block.Hash)
 
