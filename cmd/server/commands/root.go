@@ -136,7 +136,7 @@ func start() error {
 	}
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
-		err = updateConfig(cfg)
+		err = updateConfig(cfg, cfgPathP)
 		if err != nil {
 			return err
 		}
@@ -342,8 +342,8 @@ func run() {
 	shell.AddCmd(s)
 }
 
-func updateConfig(cfg *config.Config) error {
-	s := strings.Split(config.QlcConfigFile, ".")
+func updateConfig(cfg *config.Config, cfgPathP string) error {
+	s := strings.Split(filepath.Base(cfgPathP), ".")
 	if len(s) != 2 {
 		return errors.New("split error")
 	}
