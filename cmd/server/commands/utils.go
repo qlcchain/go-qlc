@@ -66,7 +66,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	}
 
 	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
-	dPosService = ss.NewDPosService(cfg, accounts)
+	consensusService = ss.NewConsensusService(cfg, accounts)
 	if rPCService, err = ss.NewRPCService(cfg); err != nil {
 		return err
 	}
@@ -110,10 +110,11 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 			}(accounts)
 		})
 	}
+
 	if len(cfg.P2P.BootNodes) == 0 {
-		services = []common.Service{sqliteService, ledgerService, walletService, dPosService, dPosService, povService, rPCService}
+		services = []common.Service{sqliteService, ledgerService, walletService, consensusService, povService, minerService, rPCService}
 	} else {
-		services = []common.Service{sqliteService, ledgerService, netService, walletService, dPosService, povService, minerService, rPCService}
+		services = []common.Service{sqliteService, ledgerService, netService, walletService, consensusService, povService, minerService, rPCService}
 	}
 
 	return nil

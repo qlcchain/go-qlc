@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/consensus"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -368,13 +369,14 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	unCount, err := l.ledger.CountUncheckedBlocks()
-	if err != nil {
-		return nil, err
-	}
+	//unCount, err := l.ledger.CountUncheckedBlocks()
+	//if err != nil {
+	//	return nil, err
+	//}
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
-	c["unchecked"] = unCount
+	//c["unchecked"] = unCount
+	c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
 	return c, nil
 }
 
@@ -387,13 +389,14 @@ func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	unCount, err := l.ledger.CountUncheckedBlocks()
-	if err != nil {
-		return nil, err
-	}
+	//unCount, err := l.ledger.CountUncheckedBlocks()
+	//if err != nil {
+	//	return nil, err
+	//}
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
-	c["unchecked"] = unCount
+	//c["unchecked"] = unCount
+	c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
 	return c, nil
 }
 
@@ -652,8 +655,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	case process.Progress:
 		l.logger.Debug("broadcast block")
 		//TODO: refine
-		//l.dpos.GetP2PService().Broadcast(p2p.PublishReq, block)
 		l.eb.Publish(string(common.EventBroadcast), p2p.PublishReq, block)
+		l.eb.Publish(string(common.EventGenerateBlock), flag, block)
 		return block.GetHash(), nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")

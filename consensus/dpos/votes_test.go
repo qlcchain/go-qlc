@@ -1,4 +1,4 @@
-package consensus
+package dpos
 
 import (
 	"encoding/hex"

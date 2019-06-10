@@ -15,6 +15,7 @@ const (
 	EventSyncing        TopicType = "syncing"
 	EventAddRelation    TopicType = "addRelation"
 	EventDeleteRelation TopicType = "deleteRelation"
+	EventGenerateBlock  TopicType = "generateBlock"
 
 	EventSendMsgToPeer   TopicType = "sendMsgToPeer"
 	EventAddP2PStream    TopicType = "addP2PStream"

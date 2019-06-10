@@ -62,16 +62,16 @@ var (
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
 	//ctx            *chain.QlcContext
-	ledgerService  *ss.LedgerService
-	walletService  *ss.WalletService
-	netService     *ss.P2PService
-	dPosService    *ss.DPosService
-	rPCService     *ss.RPCService
-	sqliteService  *ss.SqliteService
+	ledgerService    *ss.LedgerService
+	walletService    *ss.WalletService
+	netService       *ss.P2PService
+	consensusService *ss.ConsensusService
+	rPCService       *ss.RPCService
+	sqliteService    *ss.SqliteService
 	povService     *ss.PoVService
 	minerService   *ss.MinerService
-	services       []common.Service
-	maxAccountSize = 100
+	services         []common.Service
+	maxAccountSize   = 100
 	logger         = qlclog.NewLogger("config_detail")
 )
 
