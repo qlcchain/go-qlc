@@ -29,6 +29,7 @@ func generateTestPair() {
 	var toAccountsP []string
 	var tpsP int
 	var txCountP int
+	var txTypeP string
 
 	if interactive {
 		from := util.Flag{
@@ -55,11 +56,17 @@ func generateTestPair() {
 			Usage: "tx count",
 			Value: 1,
 		}
+		txType := util.Flag{
+			Name:  "txType",
+			Must:  true,
+			Usage: "tx type, both/send",
+			Value: "both",
+		}
 		c := &ishell.Cmd{
 			Name: "generateTestPair",
 			Help: "generate test pair send txs",
 			Func: func(c *ishell.Context) {
-				args := []util.Flag{from, toAccounts, tps, txCount}
+				args := []util.Flag{from, toAccounts, tps, txCount, txType}
 				if util.HelpText(c, args) {
 					return
 				}
@@ -71,7 +78,8 @@ func generateTestPair() {
 				toAccountsP = util.StringSliceVar(c.Args, toAccounts)
 				tpsP, _ = util.IntVar(c.Args, tps)
 				txCountP, _ = util.IntVar(c.Args, txCount)
-				err := randSendTxs(fromAccountP, toAccountsP, tpsP, txCountP)
+				txTypeP = util.StringVar(c.Args, txType)
+				err := randSendTxs(fromAccountP, toAccountsP, tpsP, txCountP, txTypeP)
 				if err != nil {
 					util.Info(err)
 					return
@@ -85,7 +93,7 @@ func generateTestPair() {
 			Use:   "generateTestPair",
 			Short: "generate test pair send txs",
 			Run: func(cmd *cobra.Command, args []string) {
-				err := randSendTxs(fromAccountP, toAccountsP, tpsP, txCountP)
+				err := randSendTxs(fromAccountP, toAccountsP, tpsP, txCountP, txTypeP)
 				if err != nil {
 					cmd.Println(err)
 					return
@@ -97,11 +105,12 @@ func generateTestPair() {
 		randSendCmd.Flags().StringSliceVar(&toAccountsP, "toAccounts", nil, "to account private key")
 		randSendCmd.Flags().IntVar(&tpsP, "tps", 1, "tx per sec")
 		randSendCmd.Flags().IntVar(&txCountP, "txCount", 1, "tx count")
+		randSendCmd.Flags().StringVar(&txTypeP, "txType", "both", "tx type, both/send")
 		rootCmd.AddCommand(randSendCmd)
 	}
 }
 
-func randSendTxs(fromAccountP string, toAccountsP []string, tpsP int, txCountP int) error {
+func randSendTxs(fromAccountP string, toAccountsP []string, tpsP int, txCountP int, txTypeP string) error {
 	if fromAccountP == "" {
 		return errors.New("invalid from account value")
 	}
@@ -135,7 +144,7 @@ func randSendTxs(fromAccountP string, toAccountsP []string, tpsP int, txCountP i
 		return err
 	}
 
-	err = generateTxToAccounts(fromAccount, toAccounts, tpsP, txCountP)
+	err = generateTxToAccounts(fromAccount, toAccounts, tpsP, txCountP, txTypeP)
 	if err != nil {
 		return err
 	}
@@ -219,7 +228,7 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 	return nil
 }
 
-func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP int, txCountP int) error {
+func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP int, txCountP int, txTypeP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -242,12 +251,12 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 					err = nil
 				}
 
-				amount := rand.Intn(1000) * 10e8
+				amount := rand.Intn(10) * 10e8
 				if amount <= 0 {
 					amount = 10e8
 				}
 				fmt.Printf("tx %d: fromAcc:%s, toAcc:%s, amount:%d\n", txCurNum, fromAcc.Address(), toAcc.Address(), amount)
-
+				
 				para := api.APISendBlockPara{
 					From:      fromAcc.Address(),
 					TokenName: "QLC",
@@ -268,17 +277,19 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 					continue
 				}
 
-				var receiveBlock types.StateBlock
-				err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-				var recvHash types.Hash
-				err = client.Call(&recvHash, "ledger_process", &receiveBlock)
-				if err != nil {
-					fmt.Println(err)
-					continue
+				if txTypeP == "both" {
+					var receiveBlock types.StateBlock
+					err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
+					var recvHash types.Hash
+					err = client.Call(&recvHash, "ledger_process", &receiveBlock)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
 				}
 
 				txCurNum++
