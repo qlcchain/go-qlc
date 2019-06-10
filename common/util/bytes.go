@@ -141,24 +141,56 @@ func BytesEqual(a, b []byte) bool {
 	return true
 }
 
-func Uint64ToBytes(i uint64) []byte {
+func BE_Uint32ToBytes(i uint32) []byte {
+	tmp := make([]byte, 4)
+	binary.BigEndian.PutUint32(tmp, i)
+	return tmp
+}
+
+func BE_BytesToUint32(buf []byte) uint32 {
+	return binary.BigEndian.Uint32(buf)
+}
+
+func BE_Uint64ToBytes(i uint64) []byte {
+	tmp := make([]byte, 8)
+	binary.BigEndian.PutUint64(tmp, i)
+	return tmp
+}
+
+func BE_BytesToUint64(buf []byte) uint64 {
+	return binary.BigEndian.Uint64(buf)
+}
+
+func LE_Uint64ToBytes(i uint64) []byte {
 	tmp := make([]byte, 8)
 	binary.LittleEndian.PutUint64(tmp, i)
 	return tmp
 }
 
-func Int64ToBytes(i int64) []byte {
-	return Uint64ToBytes(uint64(i))
+func LE_BytesToUint64(buf []byte) uint64 {
+	return binary.LittleEndian.Uint64(buf)
+}
+
+func LE_Int64ToBytes(i int64) []byte {
+	return LE_Uint64ToBytes(uint64(i))
+}
+
+func LE_BytesToInt64(buf []byte) int64 {
+	return int64(LE_BytesToUint64(buf))
 }
 
 func String2Bytes(s string) []byte {
 	return []byte(s)
 }
 
-func Int2Bytes(i int64) []byte {
+func BE_Int2Bytes(i int64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, uint64(i))
 	return b
+}
+
+func BE_Bytes2Int(buf []byte) int64 {
+	return int64(binary.BigEndian.Uint64(buf))
 }
 
 func Bool2Bytes(b bool) []byte {

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"math/rand"
 	"sync"
 	"time"
@@ -60,6 +61,8 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 
 	sm.allStreams.Store(stream.pid.Pretty(), stream)
 	stream.StartLoop()
+
+	stream.node.netService.MessageEvent().Publish(string(common.EventAddP2PStream), stream.pid.Pretty())
 }
 
 // RemoveStream from the stream manager
@@ -71,6 +74,8 @@ func (sm *StreamManager) RemoveStream(s *Stream) {
 		}
 		sm.node.logger.Debugf("Removing a stream:[%s]", s.pid.Pretty())
 		sm.allStreams.Delete(s.pid.Pretty())
+
+		s.node.netService.MessageEvent().Publish(string(common.EventDeleteP2PStream), s.pid.Pretty())
 	}
 }
 

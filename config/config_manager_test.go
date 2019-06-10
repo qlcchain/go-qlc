@@ -148,7 +148,7 @@ func TestCfgManager_Load(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg3, err := manager.Load(NewMigrationV1ToV2(), NewMigrationV2ToV3())
+	cfg3, err := manager.Load(NewMigrationV1ToV2(), NewMigrationV2ToV3(), NewMigrationV3ToV4())
 	if err != nil {
 		t.Fatal(err)
 	}

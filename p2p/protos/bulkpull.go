@@ -11,8 +11,6 @@ type BulkPullReqPacket struct {
 	EndHash   types.Hash
 }
 
-//var logger = log.NewLogger("p2p/pb")
-
 func NewBulkPullReqPacket(start, end types.Hash) (packet *BulkPullReqPacket) {
 	return &BulkPullReqPacket{
 		StartHash: start,

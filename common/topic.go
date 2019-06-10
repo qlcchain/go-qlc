@@ -15,4 +15,45 @@ const (
 	EventSyncing        TopicType = "syncing"
 	EventAddRelation    TopicType = "addRelation"
 	EventDeleteRelation TopicType = "deleteRelation"
+
+	EventSendMsgToPeer   TopicType = "sendMsgToPeer"
+	EventAddP2PStream    TopicType = "addP2PStream"
+	EventDeleteP2PStream TopicType = "deleteP2PStream"
+	EventPovPeerStatus   TopicType = "povPeerStatus"
+	EventPovRecvBlock    TopicType = "povRecvBlock"
+	EventPovBulkPullReq  TopicType = "povBulkPullReq"
+	EventPovBulkPullRsp  TopicType = "povBulkPullRsp"
+	EventPovSyncState    TopicType = "povSyncState"
 )
+
+// Sync state
+type SyncState uint
+
+const (
+	SyncNotStart SyncState = iota
+	Syncing
+	Syncdone
+	Syncerr
+)
+
+var syncStatus = [...]string{
+	SyncNotStart: "Sync Not Start",
+	Syncing:      "Synchronising",
+	Syncdone:     "Sync done",
+	Syncerr:      "Sync error",
+}
+
+func (s SyncState) String() string {
+	if s > Syncerr {
+		return "unknown sync state"
+	}
+	return syncStatus[s]
+}
+
+func (s SyncState) IsSyncExited() bool {
+	if s == Syncdone || s == Syncerr {
+		return true
+	}
+
+	return false
+}
