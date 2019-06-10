@@ -556,7 +556,7 @@ func (ss *PovSyncer) GetRandomPeers(limit int) []*PovSyncPeer {
 	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	idxSeqs := rd.Perm(len(allPeers))
 
-	for i:=0; i<limit; i++ {
+	for i := 0; i < limit; i++ {
 		selectPeers = append(selectPeers, allPeers[idxSeqs[i]])
 	}
 

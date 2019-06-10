@@ -230,7 +230,7 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 
 	txCurNum := 0
 
-	for ; txCurNum < txCountP; {
+	for txCurNum < txCountP {
 		for _, fromAcc := range toAccounts {
 			for _, toAcc := range toAccounts {
 				if fromAcc == toAcc {

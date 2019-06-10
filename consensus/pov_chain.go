@@ -590,7 +590,7 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 	}
 
 	detachBlock := oldHeadBlock
-	if oldHeadBlock.GetHeight() > newBlock.GetHeight()  {
+	if oldHeadBlock.GetHeight() > newBlock.GetHeight() {
 		//old: b1 <- b2 <- b3 <- b4 <- b5 <- b6-1 <- b7-1 <- b8 <- b9 <- b10
 		//new:                            <- b6-2 <- b7-2
 

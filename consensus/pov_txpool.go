@@ -11,9 +11,9 @@ import (
 )
 
 type PovTxEvent struct {
-	txHash types.Hash
+	txHash  types.Hash
 	txBlock *types.StateBlock
-	event common.TopicType
+	event   common.TopicType
 }
 
 type PovTxPool struct {
@@ -60,13 +60,13 @@ func (tp *PovTxPool) Stop() {
 func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) error {
 	txHash := block.GetHash()
 	//tp.povEngine.GetLogger().Debugf("recv event, add state block hash %s", txHash)
-	tp.txEventCh <- &PovTxEvent{event:common.EventAddRelation, txHash:txHash, txBlock:block}
+	tp.txEventCh <- &PovTxEvent{event: common.EventAddRelation, txHash: txHash, txBlock: block}
 	return nil
 }
 
 func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
 	//tp.povEngine.GetLogger().Debugf("recv event, delete state block hash %s", hash)
-	tp.txEventCh <- &PovTxEvent{event:common.EventDeleteRelation, txHash:hash}
+	tp.txEventCh <- &PovTxEvent{event: common.EventDeleteRelation, txHash: hash}
 	return nil
 }
 
@@ -251,7 +251,7 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 		}
 
 		selectedTxHashes := make(map[types.Hash]struct{})
-		for ; accTxList.Len() > len(selectedTxHashes); {
+		for accTxList.Len() > len(selectedTxHashes) {
 			notInOrderTxNum := 0
 			inOrderTxNum := 0
 			for e := accTxList.Front(); e != nil; e = e.Next() {

@@ -254,7 +254,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 		return BadStateHash, errors.New("failed to get prev state tire")
 	}
 	addressPrevHashes := make(map[types.Address]types.Hash)
-	for txIdx:=0; txIdx < len(block.Transactions); txIdx++ {
+	for txIdx := 0; txIdx < len(block.Transactions); txIdx++ {
 		tx := block.Transactions[txIdx]
 		isCA := types.IsContractAddress(tx.Block.GetAddress())
 

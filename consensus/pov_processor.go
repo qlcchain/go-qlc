@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	blockChanSize   = 1024
-	maxOrphanBlocks = 1000
+	blockChanSize           = 1024
+	maxOrphanBlocks         = 1000
 	checkTxPendingTickerSec = 5
 )
 
@@ -416,7 +416,7 @@ func (bp *PovBlockProcessor) checkTxPendingBlocks() {
 
 	txPendingNum := len(bp.txPendingBlocks)
 	blockPendingNum := len(bp.pendingBlocks)
-	if txPendingNum + blockPendingNum > 0 {
+	if txPendingNum+blockPendingNum > 0 {
 		bp.povEngine.GetLogger().Infof("check tx pending, txs %d blocks %d", txPendingNum, blockPendingNum)
 	}
 
@@ -435,7 +435,7 @@ func (bp *PovBlockProcessor) checkTxPendingBlocks() {
 			pendingBlock.checkCnt++
 			if pendingBlock.checkCnt > 60 {
 				bp.removeTxPendingBlockNoLock(pendingBlock)
-			} else if pendingBlock.checkCnt / 3 == 0 {
+			} else if pendingBlock.checkCnt/3 == 0 {
 				for txHash := range pendingBlock.txResults {
 					bp.povEngine.GetSyncer().requestTxsByHash(txHash, txHash)
 				}

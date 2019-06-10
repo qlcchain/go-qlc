@@ -162,9 +162,9 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 	defer ticker.Stop()
 
 	current := &types.PovBlock{
-		Previous:  latestBlock.GetHash(),
-		Height:    latestBlock.GetHeight() + 1,
-		Target:    target,
+		Previous: latestBlock.GetHash(),
+		Height:   latestBlock.GetHeight() + 1,
+		Target:   target,
 	}
 
 	prevStateHash := latestBlock.GetStateHash()
@@ -229,7 +229,7 @@ func (w *PovWorker) solveBlock(block *types.PovBlock, ticker *time.Ticker, quitC
 			}
 
 			lastTxUpdateNow := w.GetTxPool().LastUpdated()
-			if lastTxUpdateBegin != lastTxUpdateNow && time.Now().After(loopBeginTime.Add(10 * time.Second)) {
+			if lastTxUpdateBegin != lastTxUpdateNow && time.Now().After(loopBeginTime.Add(10*time.Second)) {
 				return false
 			}
 
