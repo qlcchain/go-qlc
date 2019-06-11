@@ -127,8 +127,9 @@ func (w *PovWorker) checkValidMiner() bool {
 	}
 
 	latestBlock := w.GetChain().LatestBlock()
-	if time.Now().Before(time.Unix(latestBlock.GetTimestamp(), 0)) {
-		w.logger.Debugf("miner pausing for time now before latest block")
+
+	if time.Now().Add(time.Hour).Unix() < latestBlock.GetTimestamp() {
+		w.logger.Debugf("miner pausing for time now is too lesser than latest block")
 		return false
 	}
 
@@ -162,9 +163,10 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 	defer ticker.Stop()
 
 	current := &types.PovBlock{
-		Previous: latestBlock.GetHash(),
-		Height:   latestBlock.GetHeight() + 1,
-		Target:   target,
+		Previous:  latestBlock.GetHash(),
+		Height:    latestBlock.GetHeight() + 1,
+		Target:    target,
+		Timestamp: time.Now().Unix(),
 	}
 
 	prevStateHash := latestBlock.GetStateHash()

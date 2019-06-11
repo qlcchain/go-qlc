@@ -180,9 +180,8 @@ func (pv *PovVerifier) verifyTimestamp(block *types.PovBlock, stat *PovVerifySta
 		return InvalidTime, errors.New("timestamp is zero")
 	}
 
-	ts := time.Unix(block.Timestamp, 0)
-	if ts.After(time.Now().Add(time.Hour)) {
-		return InvalidTime, errors.New("timestamp too far from future")
+	if block.GetTimestamp() > (time.Now().Unix() + int64(common.PovMaxAllowedFutureTimeSec)) {
+		return InvalidTime, fmt.Errorf("timestamp %d too far from future", block.GetTimestamp())
 	}
 
 	return Progress, nil
@@ -197,12 +196,6 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat
 	if block.GetTimestamp() <= prevBlock.GetTimestamp() {
 		return InvalidTime, fmt.Errorf("timestamp %d before than previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
 	}
-
-	/*
-		if block.GetTimestamp() > (prevBlock.GetTimestamp() + int64(common.PovMaxTimeOffsetPrevSec)) {
-			return InvalidTime, fmt.Errorf("timestamp %d too far from previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
-		}
-	*/
 
 	if block.GetHeight() != prevBlock.GetHeight()+1 {
 		return InvalidHeight, fmt.Errorf("height %d not continue with previous %d", block.GetHeight(), prevBlock.GetHeight())
