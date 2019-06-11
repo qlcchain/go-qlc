@@ -17,6 +17,6 @@ var (
 	PovMinimumTargetInt, _ = new(big.Int).SetString(PovMinimumTargetHex, 16)
 	PovMaximumTargetInt, _ = new(big.Int).SetString(PovMaximumTargetHex, 16)
 
-	// maximum number of seconds a block time is allowed to be ahead of the previous time.
-	PovMaxTimeOffsetPrevSec = 10 * 60
+	// maximum number of seconds a block time is allowed to be ahead of the now time.
+	PovMaxAllowedFutureTimeSec =  15
 )
