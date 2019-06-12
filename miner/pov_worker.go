@@ -8,6 +8,7 @@ import (
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"runtime"
 	"time"
 )
 
@@ -99,6 +100,9 @@ func (w *PovWorker) GetCoinbaseAccount() *types.Account {
 }
 
 func (w *PovWorker) loop() {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	for {
 		select {
 		case <-w.quitCh:

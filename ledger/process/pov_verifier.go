@@ -67,6 +67,7 @@ func (pvs *PovVerifyStat) getPrevStateTrie(pv *PovVerifier, prevHash types.Hash)
 type PovVerifierChainReader interface {
 	GetBlockByHash(hash types.Hash) *types.PovBlock
 	CalcNextRequiredTarget(block *types.PovBlock) (types.Signature, error)
+	CalcPastMedianTime(prevBlock *types.PovBlock) int64
 	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
@@ -193,12 +194,14 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat
 		return GapPrevious, nil
 	}
 
-	if block.GetTimestamp() <= prevBlock.GetTimestamp() {
-		return InvalidTime, fmt.Errorf("timestamp %d before than previous %d", block.GetTimestamp(), prevBlock.GetTimestamp())
-	}
-
 	if block.GetHeight() != prevBlock.GetHeight()+1 {
 		return InvalidHeight, fmt.Errorf("height %d not continue with previous %d", block.GetHeight(), prevBlock.GetHeight())
+	}
+
+	medianTime := pv.chain.CalcPastMedianTime(prevBlock)
+
+	if block.GetTimestamp() < medianTime {
+		return InvalidTime, fmt.Errorf("timestamp %d not greater than median time %d", block.GetTimestamp(), medianTime)
 	}
 
 	return Progress, nil

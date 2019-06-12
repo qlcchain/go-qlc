@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 	"math/big"
 	"math/rand"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,6 +22,7 @@ import (
 
 const (
 	blockCacheLimit = 1024
+	medianTimeBlocks = 11
 )
 
 var (
@@ -268,6 +270,10 @@ func (bc *PovBlockChain) GetBlockHeight(hash types.Hash) uint64 {
 }
 
 func (bc *PovBlockChain) GetBlockByHash(hash types.Hash) *types.PovBlock {
+	if hash.IsZero() {
+		return nil
+	}
+
 	v, _ := bc.blockCache.Get(hash)
 	if v != nil {
 		return v.(*types.PovBlock)
@@ -426,7 +432,9 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie
 	})
 
 	if err != nil {
-		bc.logger.Errorf("insert block to chain, err %s", err)
+		bc.logger.Errorf("failed to insert block %d/%s to chain", block.GetHeight(), block.GetHash())
+	} else {
+		bc.logger.Infof("success to insert block %d/%s to chain", block.GetHeight(), block.GetHash())
 	}
 
 	return err
@@ -858,4 +866,23 @@ func (bc *PovBlockChain) CalcTotalDifficulty(target types.Signature) *big.Int {
 	// (1 << 512) / (difficultyNum + 1)
 	denominator := new(big.Int).Add(difficultyNum, bigOne)
 	return new(big.Int).Div(oneLsh512, denominator)
+}
+
+func (bc *PovBlockChain) CalcPastMedianTime(prevBlock *types.PovBlock) int64 {
+	timestamps := make([]int64, medianTimeBlocks)
+	numBlocks := 0
+	iterBlock := prevBlock
+	for i := 0; i < medianTimeBlocks && iterBlock != nil; i++ {
+		timestamps[i] = iterBlock.GetTimestamp()
+		numBlocks++
+
+		iterBlock = bc.GetBlockByHash(iterBlock.GetPrevious())
+	}
+
+	timestamps = timestamps[:numBlocks]
+	sort.Sort(types.TimeSorter(timestamps))
+
+	medianTimestamp := timestamps[numBlocks/2]
+
+	return medianTimestamp
 }
