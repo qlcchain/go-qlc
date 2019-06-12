@@ -74,6 +74,8 @@ func (r ProcessResult) String() string {
 		return "UnReceivable"
 	case InvalidData:
 		return "InvalidData"
+	case InvalidTime:
+		return "InvalidTime"
 	case InvalidTxNum:
 		return "InvalidTxNum"
 	case InvalidHeight:
