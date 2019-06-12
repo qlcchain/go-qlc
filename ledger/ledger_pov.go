@@ -693,7 +693,7 @@ func (l *Ledger) GetAllPovBestBlocks(fn func(*types.PovBlock) error, txns ...db.
 	return nil
 }
 
-func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error) {
+func (l *Ledger) GetLatestPovBestHash(txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -703,19 +703,31 @@ func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return types.ZeroHash, err
 	}
 	if latestVal == nil {
-		return nil, err
+		return types.ZeroHash, err
 	}
 
 	var latestHash types.Hash
 	err = latestHash.UnmarshalBinary(latestVal)
 	if err != nil {
-		return nil, err
+		return types.ZeroHash, err
 	}
 	if latestHash.IsZero() {
-		return nil, fmt.Errorf("latest best hash is zero")
+		return types.ZeroHash, fmt.Errorf("latest best hash is zero")
+	}
+
+	return latestHash, nil
+}
+
+func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	latestHash, err := l.GetLatestPovBestHash(txn)
+	if err != nil {
+		return nil, err
 	}
 
 	return l.GetPovBlockByHash(latestHash, txn)
