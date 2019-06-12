@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -138,6 +139,9 @@ func start() error {
 	if err != nil {
 		return err
 	}
+
+	debug.SetGCPercent(10)
+
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
 		err = updateConfig(cfg, cfgPathP)
