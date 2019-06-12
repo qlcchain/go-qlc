@@ -202,7 +202,10 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 	if !r {
 		dps.logger.Error("remove cache for unchecked fail")
 	}
-	consensus.GlobalUncheckedBlockNum.Dec()
+
+	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
+		consensus.GlobalUncheckedBlockNum.Dec()
+	}
 }
 
 func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
@@ -229,7 +232,10 @@ func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
 	}
 
 	dps.voteCache.Remove(hash)
-	consensus.GlobalUncheckedBlockNum.Dec()
+
+	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
+		consensus.GlobalUncheckedBlockNum.Dec()
+	}
 }
 
 func (dps *DPoS) ProcessMsgLoop() {
@@ -249,7 +255,7 @@ func (dps *DPoS) ProcessMsgLoop() {
 			return
 		case bs := <-dps.blocks:
 			dps.ProcessMsgDo(bs)
-		case <-time.After(1 * time.Nanosecond):
+		case <-time.After(1 * time.Millisecond):
 			//
 		}
 	}
