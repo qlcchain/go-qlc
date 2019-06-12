@@ -19,10 +19,11 @@ import (
 )
 
 const (
+	targetTps             = 100
 	repTimeout            = 5 * time.Minute
-	uncheckedCacheSize    = 7000 * 5 * 60
+	uncheckedCacheSize    = targetTps * 5 * 60
 	uncheckedTimeout      = 5 * time.Minute
-	voteCacheSize         = 7000 * 5 * 60
+	voteCacheSize         = targetTps * 5 * 60
 	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
@@ -201,7 +202,10 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 	if !r {
 		dps.logger.Error("remove cache for unchecked fail")
 	}
-	consensus.GlobalUncheckedBlockNum.Dec()
+
+	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
+		consensus.GlobalUncheckedBlockNum.Dec()
+	}
 }
 
 func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
@@ -228,7 +232,10 @@ func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
 	}
 
 	dps.voteCache.Remove(hash)
-	consensus.GlobalUncheckedBlockNum.Dec()
+
+	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
+		consensus.GlobalUncheckedBlockNum.Dec()
+	}
 }
 
 func (dps *DPoS) ProcessMsgLoop() {
