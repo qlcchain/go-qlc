@@ -110,17 +110,24 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("scan all account state blocks failed")
+		logger.Errorf("scan all state blocks failed")
 	}
 
 	usedTime := time.Since(startTime)
 	unconfirmedStateBlockNum := len(unpackStateBlocks)
 
-	logger.Infof("finished to scan all account blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedStateBlockNum)
+	logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedStateBlockNum)
 
+	txAddNum := 0
 	for txHash, block := range unpackStateBlocks {
 		tp.addTx(txHash, block)
+		txAddNum++
+		if txAddNum % 5000 == 0 {
+			logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
+		}
 	}
+
+	logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
 }
 
 func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {

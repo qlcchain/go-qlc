@@ -16,6 +16,10 @@ type PovApi struct {
 	logger *zap.SugaredLogger
 }
 
+type PovApiHeader struct {
+	*types.PovHeader
+}
+
 type PovApiBlock struct {
 	*types.PovBlock
 }
@@ -65,6 +69,65 @@ type PovMinerStats struct {
 
 func NewPovApi(ledger *ledger.Ledger) *PovApi {
 	return &PovApi{ledger: ledger, logger: log.NewLogger("rpc/pov")}
+}
+
+func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
+	blockHash, err := api.ledger.GetPovBestHash(height)
+	if err != nil {
+		return nil, err
+	}
+
+	header, err := api.ledger.GetPovHeader(height, blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	apiHeader := &PovApiHeader{
+		PovHeader: header,
+	}
+
+	return apiHeader, nil
+}
+
+func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) {
+	height, err := api.ledger.GetPovHeight(blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	header, err := api.ledger.GetPovHeader(height, blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	apiHeader := &PovApiHeader{
+		PovHeader: header,
+	}
+
+	return apiHeader, nil
+}
+
+func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
+	blockHash, err := api.ledger.GetLatestPovBestHash()
+	if err != nil {
+		return nil, err
+	}
+
+	height, err := api.ledger.GetPovHeight(blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	header, err := api.ledger.GetPovHeader(height, blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	apiHeader := &PovApiHeader{
+		PovHeader: header,
+	}
+
+	return apiHeader, nil
 }
 
 func (api *PovApi) GetBlockByHeight(height uint64) (*PovApiBlock, error) {

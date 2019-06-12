@@ -231,7 +231,7 @@ func (w *PovWorker) solveBlock(block *types.PovBlock, ticker *time.Ticker, quitC
 			}
 
 			lastTxUpdateNow := w.GetTxPool().LastUpdated()
-			if lastTxUpdateBegin != lastTxUpdateNow && time.Now().After(loopBeginTime.Add(10*time.Second)) {
+			if lastTxUpdateBegin != lastTxUpdateNow && time.Now().After(loopBeginTime.Add(time.Minute)) {
 				return false
 			}
 
