@@ -28,7 +28,8 @@ const (
 	WorkSize = 8
 )
 
-var WorkThreshold = uint64(0xfffffe0000000000)
+//var WorkThreshold = uint64(0xfffffe0000000000)
+var WorkThreshold = uint64(0)
 
 // Work PoW work
 type Work uint64

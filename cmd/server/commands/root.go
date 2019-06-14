@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -239,7 +240,7 @@ func start() error {
 	}
 
 	configDetails := util.ToIndentString(cfg)
-	logger.Debugf("%s", configDetails)
+	log.Printf("%s\n", configDetails)
 	
 	go func() {
 		cleanMem := time.NewTicker(30 * time.Second)
@@ -250,8 +251,7 @@ func start() error {
 			}
 		}
 	}()
-	
-	
+
 	err = runNode(accounts, cfg)
 	if err != nil {
 		return err

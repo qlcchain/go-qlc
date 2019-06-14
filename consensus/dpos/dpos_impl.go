@@ -91,7 +91,7 @@ func (dps *DPoS) Start() {
 
 	timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
-	timerUpdateUncheckedNum := time.NewTicker(time.Minute)
+	//timerUpdateUncheckedNum := time.NewTicker(time.Minute)
 
 	for {
 		select {
@@ -101,8 +101,8 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		case <-timerUpdateUncheckedNum.C: //calibration
-			consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len()))
+		//case <-timerUpdateUncheckedNum.C: //calibration
+		//	consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len()))
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {
@@ -315,7 +315,7 @@ func (dps *DPoS) rollbackUncheckedFromMem(hash types.Hash) {
 	cm := m.(*sync.Map)
 	cm.Range(func(key, value interface{}) bool {
 		bs := value.(*consensus.BlockSource)
-		dps.rollbackUnchecked(bs.Block.GetHash())
+		dps.rollbackUncheckedFromMem(bs.Block.GetHash())
 		return true
 	})
 
