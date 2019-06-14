@@ -200,7 +200,11 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 
 	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, current.Transactions)
 	if err != nil {
-		w.logger.Errorf("failed to generate state trie, err %s", prevStateHash, err)
+		w.logger.Errorf("failed to generate state trie, err %s", err)
+		return nil
+	}
+	if stateTrie == nil {
+		w.logger.Errorf("failed to generate state trie, err nil")
 		return nil
 	}
 	current.StateHash = *stateTrie.Hash()

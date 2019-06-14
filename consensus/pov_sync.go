@@ -20,6 +20,10 @@ const (
 	checkPeerStatusTime = 30
 	waitEnoughPeerTime  = 75
 	maxSyncBlockPerReq  = 1000
+
+	peerStatusInit = 0
+	peerStatusGood = 1
+	peerStatusBad  = 2
 )
 
 type PovSyncPeer struct {
@@ -27,7 +31,7 @@ type PovSyncPeer struct {
 	currentHeight  uint64
 	currentTD      *big.Int
 	lastStatusTime time.Time
-	inBadStatus    bool
+	status         int
 }
 
 type PovSyncPeerSetByTD []*PovSyncPeer
@@ -52,8 +56,12 @@ type PovSyncer struct {
 	toHeight      uint64
 	currentHeight uint64
 	lastCheckTime time.Time
-	syncHeight    uint64
-	syncPeerID    string
+
+	syncHeight uint64
+	syncPeerID string
+
+	syncPeerLostTime    time.Time
+	lastSyncRequestTime time.Time
 
 	messageCh chan *PovSyncMessage
 	eventCh   chan *PovSyncEvent
@@ -229,7 +237,8 @@ func (ss *PovSyncer) onAddP2PStream(peerID string) {
 		peerID:         peerID,
 		currentHeight:  0,
 		currentTD:      big.NewInt(0),
-		lastStatusTime: time.Now(),
+		lastStatusTime: time.Time{},
+		status:         peerStatusInit,
 	}
 
 	ss.allPeers.Store(peerID, peer)
@@ -259,6 +268,7 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, m
 		peer.currentHeight = status.CurrentHeight
 		peer.currentTD = td
 		peer.lastStatusTime = time.Now()
+		peer.status = peerStatusGood
 	}
 }
 
@@ -421,12 +431,10 @@ func (ss *PovSyncer) checkAllPeers() {
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
 		if now.Sub(peer.lastStatusTime) >= 10*time.Minute {
-			if peer.inBadStatus == false {
+			if peer.status != peerStatusBad {
 				ss.logger.Infof("peer %s may be dead", peer.peerID)
-				peer.inBadStatus = true
+				peer.status = peerStatusBad
 			}
-		} else {
-			peer.inBadStatus = false
 		}
 		return true
 	})
@@ -446,10 +454,19 @@ func (ss *PovSyncer) checkSyncPeer() {
 
 	bestPeer := ss.BestPeer()
 	if bestPeer == nil {
-		ss.logger.Infof("sync err, because no peers, current height: %d", ss.currentHeight)
-		ss.setState(common.Syncerr)
-		return
+		if ss.syncPeerLostTime.Unix() > 0 {
+			if time.Now().Unix() >= ss.syncPeerLostTime.Add(10*time.Minute).Unix() {
+				ss.logger.Errorf("sync err, because no peers in 10 minutes")
+				ss.setState(common.Syncerr)
+			}
+			return
+		} else {
+			ss.logger.Warnf("there is no best peer for sync, last peer %s", ss.syncPeerID)
+			ss.syncPeerLostTime = time.Now()
+			return
+		}
 	}
+	ss.syncPeerLostTime = time.Time{}
 
 	ss.syncWithPeer(bestPeer)
 }
@@ -503,6 +520,9 @@ func (ss *PovSyncer) BestPeer() *PovSyncPeer {
 	var maxTD *big.Int
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
+		if peer.status != peerStatusGood {
+			return true
+		}
 		if bestPeer == nil {
 			maxTD = peer.currentTD
 			bestPeer = peer
@@ -521,7 +541,7 @@ func (ss *PovSyncer) GetBestPeers(limit int) []*PovSyncPeer {
 
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
-		if peer.inBadStatus {
+		if peer.status != peerStatusGood {
 			return true
 		}
 		allPeers = append(allPeers, peer)
@@ -542,7 +562,7 @@ func (ss *PovSyncer) GetRandomPeers(limit int) []*PovSyncPeer {
 
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
-		if peer.inBadStatus {
+		if peer.status != peerStatusGood {
 			return true
 		}
 		allPeers = append(allPeers, peer)
@@ -568,7 +588,7 @@ func (ss *PovSyncer) GetPeerLocators() []*PovSyncPeer {
 
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
-		if peer.inBadStatus {
+		if peer.status != peerStatusGood {
 			return true
 		}
 		allPeers = append(allPeers, peer)
@@ -599,7 +619,9 @@ func (ss *PovSyncer) PeerCount() int {
 
 func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 	if ss.syncPeerID == peer.peerID {
-		return
+		if time.Now().Unix() < ss.lastSyncRequestTime.Add(15*time.Second).Unix() {
+			return
+		}
 	}
 
 	ss.logger.Infof("sync with peer %s to height %d", peer.peerID, peer.currentHeight)
@@ -622,6 +644,8 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 	if ss.currentHeight >= ss.toHeight {
 		return
 	}
+
+	ss.lastSyncRequestTime = time.Now()
 
 	ss.syncHeight = lastHeight + 1
 
