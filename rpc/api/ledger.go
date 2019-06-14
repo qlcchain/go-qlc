@@ -541,16 +541,18 @@ type APISendBlockPara struct {
 }
 
 func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*types.StateBlock, error) {
-	if para == nil || prkStr == nil {
+	if para == nil {
 		return nil, ErrParameterNil
 	}
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
 	var prk []byte
-	var err error
-	if prk, err = hex.DecodeString(*prkStr); err != nil {
-		return nil, err
+	if prkStr != nil {
+		var err error
+		if prk, err = hex.DecodeString(*prkStr); err != nil {
+			return nil, err
+		}
 	}
 	vmContext := vmstore.NewVMContext(l.ledger)
 	info, err := abi.GetTokenByName(vmContext, para.TokenName)
@@ -583,13 +585,15 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 }
 
 func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *string) (*types.StateBlock, error) {
-	if sendBlock == nil || prkStr == nil {
+	if sendBlock == nil {
 		return nil, ErrParameterNil
 	}
 	var prk []byte
-	var err error
-	if prk, err = hex.DecodeString(*prkStr); err != nil {
-		return nil, err
+	if prkStr != nil {
+		var err error
+		if prk, err = hex.DecodeString(*prkStr); err != nil {
+			return nil, err
+		}
 	}
 	block, err := l.ledger.GenerateReceiveBlock(sendBlock, prk)
 	if err != nil {
@@ -600,13 +604,12 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 }
 
 func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr *string) (*types.StateBlock, error) {
-	if prkStr == nil {
-		return nil, ErrParameterNil
-	}
 	var prk []byte
-	var err error
-	if prk, err = hex.DecodeString(*prkStr); err != nil {
-		return nil, err
+	if prkStr != nil {
+		var err error
+		if prk, err = hex.DecodeString(*prkStr); err != nil {
+			return nil, err
+		}
 	}
 
 	block, err := l.ledger.GenerateChangeBlock(account, representative, prk)
