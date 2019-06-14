@@ -289,38 +289,16 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		dps.logger.Infof("dps recv publishReq block[%s]", hash)
 		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
 
-		localRepAccount.Range(func(key, value interface{}) bool {
-			address := key.(types.Address)
-			dps.saveOnlineRep(address)
-
-			va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
-			if err != nil {
-				return true
-			}
-
-			dps.acTrx.vote(va)
-			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
-
-			return true
-		})
+		if result == process.Progress || result == process.Old {
+			dps.localRepVote(bs)
+		}
 	case consensus.MsgConfirmReq:
 		dps.logger.Infof("dps recv confirmReq block[%s]", hash)
 		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmReq, bs.Block, bs.MsgFrom)
 
-		localRepAccount.Range(func(key, value interface{}) bool {
-			address := key.(types.Address)
-			dps.saveOnlineRep(address)
-
-			va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
-			if err != nil {
-				return true
-			}
-
-			dps.acTrx.vote(va)
-			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
-
-			return true
-		})
+		if result == process.Progress || result == process.Old {
+			dps.localRepVote(bs)
+		}
 	case consensus.MsgConfirmAck:
 		dps.logger.Infof("dps recv confirmAck block[%s]", hash)
 		ack := bs.Para.(*protos.ConfirmAckBlock)
@@ -349,21 +327,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 			}
 		} else if result == process.Progress {
 			dps.acTrx.vote(ack)
-
-			localRepAccount.Range(func(key, value interface{}) bool {
-				address := key.(types.Address)
-				dps.saveOnlineRep(address)
-
-				va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
-				if err != nil {
-					return true
-				}
-
-				dps.acTrx.vote(va)
-				dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
-
-				return true
-			})
+			dps.localRepVote(bs)
 		} else if result == process.Old {
 			dps.acTrx.vote(ack)
 		}
@@ -375,22 +339,28 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
 		dps.acTrx.addToRoots(bs.Block)
 
-		localRepAccount.Range(func(key, value interface{}) bool {
-			address := key.(types.Address)
-			dps.saveOnlineRep(address)
-
-			va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
-			if err != nil {
-				return true
-			}
-
-			dps.acTrx.vote(va)
-			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
-			return true
-		})
+		if result == process.Progress {
+			dps.localRepVote(bs)
+		}
 	default:
 		//
 	}
+}
+
+func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
+	localRepAccount.Range(func(key, value interface{}) bool {
+		address := key.(types.Address)
+		dps.saveOnlineRep(address)
+
+		va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
+		if err != nil {
+			return true
+		}
+
+		dps.acTrx.vote(va)
+		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+		return true
+	})
 }
 
 func (dps *DPoS) ConfirmBlock(blk *types.StateBlock) {
@@ -494,9 +464,10 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
 	}
 
-	if dps.acTrx.addToRoots(newBlock) {
-		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, newBlock)
-	}
+	//need to revote the new block (sync condition)
+	//if dps.acTrx.addToRoots(newBlock) {
+	//	dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, newBlock)
+	//}
 }
 
 func (dps *DPoS) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlock {
