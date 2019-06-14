@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	msgCacheSize           = 7000 * 2 * 60
-	msgCacheExpirationTime = 10 * time.Minute
+	msgCacheSize           = 1000 * 2 * 60
+	msgCacheExpirationTime = 1 * time.Minute
 )
 
 type Receiver struct {

@@ -495,19 +495,6 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 	}
 
 	if dps.acTrx.addToRoots(newBlock) {
-		localRepAccount.Range(func(key, value interface{}) bool {
-			address := key.(types.Address)
-			dps.saveOnlineRep(address)
-
-			va, err := dps.voteGenerateWithSeq(newBlock, address, value.(*types.Account))
-			if err != nil {
-				return true
-			}
-
-			dps.acTrx.vote(va)
-			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
-			return true
-		})
 		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, newBlock)
 	}
 }
