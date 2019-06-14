@@ -19,6 +19,10 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	ErrParameterNil = errors.New("parameter is nil")
+)
+
 type LedgerApi struct {
 	ledger *ledger.Ledger
 	//vmContext *vmstore.VMContext
@@ -537,15 +541,16 @@ type APISendBlockPara struct {
 }
 
 func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*types.StateBlock, error) {
+	if para == nil || prkStr == nil {
+		return nil, ErrParameterNil
+	}
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
 	var prk []byte
-	if prkStr != nil {
-		var err error
-		if prk, err = hex.DecodeString(*prkStr); err != nil {
-			return nil, err
-		}
+	var err error
+	if prk, err = hex.DecodeString(*prkStr); err != nil {
+		return nil, err
 	}
 	vmContext := vmstore.NewVMContext(l.ledger)
 	info, err := abi.GetTokenByName(vmContext, para.TokenName)
@@ -578,12 +583,13 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 }
 
 func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *string) (*types.StateBlock, error) {
+	if sendBlock == nil || prkStr == nil {
+		return nil, ErrParameterNil
+	}
 	var prk []byte
-	if prkStr != nil {
-		var err error
-		if prk, err = hex.DecodeString(*prkStr); err != nil {
-			return nil, err
-		}
+	var err error
+	if prk, err = hex.DecodeString(*prkStr); err != nil {
+		return nil, err
 	}
 	block, err := l.ledger.GenerateReceiveBlock(sendBlock, prk)
 	if err != nil {
@@ -594,12 +600,13 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 }
 
 func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr *string) (*types.StateBlock, error) {
+	if prkStr == nil {
+		return nil, ErrParameterNil
+	}
 	var prk []byte
-	if prkStr != nil {
-		var err error
-		if prk, err = hex.DecodeString(*prkStr); err != nil {
-			return nil, err
-		}
+	var err error
+	if prk, err = hex.DecodeString(*prkStr); err != nil {
+		return nil, err
 	}
 
 	block, err := l.ledger.GenerateChangeBlock(account, representative, prk)
@@ -640,6 +647,9 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 }
 
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
+	if block == nil {
+		return types.ZeroHash, ErrParameterNil
+	}
 	verifier := process.NewLedgerVerifier(l.ledger)
 	flag, err := verifier.Process(block)
 	if err != nil {

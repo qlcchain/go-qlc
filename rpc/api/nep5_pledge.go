@@ -46,6 +46,9 @@ type PledgeParam struct {
 }
 
 func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	var t uint8
 	switch strings.ToLower(param.PType) {
 	case "network", "confidant":
@@ -65,6 +68,9 @@ func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
 }
 
 func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
@@ -112,6 +118,9 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 }
 
 func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if input == nil {
+		return nil, ErrParameterNil
+	}
 	reward := &types.StateBlock{}
 	blocks, err := p.pledge.DoReceive(vmstore.NewVMContext(p.ledger), reward, input)
 	if err != nil {
@@ -135,6 +144,9 @@ type WithdrawPledgeParam struct {
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byte, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	var t uint8
 	switch strings.ToLower(param.PType) {
 	case "network", "confidant":
@@ -154,6 +166,9 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byt
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*types.StateBlock, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	if param.Beneficial.IsZero() || param.Amount.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
@@ -212,6 +227,9 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 }
 
 func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if input == nil {
+		return nil, ErrParameterNil
+	}
 	reward := &types.StateBlock{}
 
 	blocks, err := p.withdraw.DoReceive(vmstore.NewVMContext(p.ledger), reward, input)
@@ -340,6 +358,9 @@ func (p *NEP5PledgeApi) GetPledgeBeneficialAmount(beneficial types.Address, pTyp
 
 //search pledge info by Beneficial,amount pType
 func (p *NEP5PledgeApi) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	var pType uint8
 	switch strings.ToLower(param.PType) {
 	case "network", "confidant":
@@ -373,6 +394,9 @@ func (p *NEP5PledgeApi) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5Pledge
 
 //search pledge info by nep5Txid
 func (p *NEP5PledgeApi) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*NEP5PledgeInfo, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	var pType uint8
 	switch strings.ToLower(param.PType) {
 	case "network", "confidant":
@@ -405,6 +429,9 @@ func (p *NEP5PledgeApi) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*
 
 //search pledge info by Beneficial,amount pType
 func (p *NEP5PledgeApi) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	var pType uint8
 	switch strings.ToLower(param.PType) {
 	case "network", "confidant":
