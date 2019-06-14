@@ -142,7 +142,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			go func() {
 				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
 				if err != nil {
-					ss.logger.Error("process frontiers error")
+					ss.logger.Errorf("process frontiers error:[%s]", err)
 				}
 			}()
 		}
@@ -261,6 +261,9 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 							}
 							for i := len(bulkBlk) - 1; i >= 0; i-- {
+								if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+									break
+								}
 								err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
@@ -283,6 +286,9 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 							}
 							for i := len(bulkBlk) - 1; i >= 0; i-- {
+								if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+									break
+								}
 								err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
@@ -333,6 +339,9 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 		}
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
+			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+				break
+			}
 			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
@@ -354,6 +363,9 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 		}
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
+			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+				break
+			}
 			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
