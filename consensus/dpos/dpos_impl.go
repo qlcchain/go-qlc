@@ -446,7 +446,6 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 	confirmedBlock := dps.findAnotherForkedBlock(newBlock)
 
-	//revote for both blocks
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
@@ -463,11 +462,6 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 		})
 		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
 	}
-
-	//need to revote the new block (sync condition)
-	//if dps.acTrx.addToRoots(newBlock) {
-	//	dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, newBlock)
-	//}
 }
 
 func (dps *DPoS) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlock {
