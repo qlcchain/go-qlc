@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	targetTps             = 100
+	targetTps             = 10
 	repTimeout            = 5 * time.Minute
 	uncheckedCacheSize    = targetTps * 5 * 60
 	uncheckedTimeout      = 5 * time.Minute
@@ -27,7 +27,7 @@ const (
 	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
-	maxBlocks             = 1024000
+	maxBlocks             = 10
 )
 
 var (

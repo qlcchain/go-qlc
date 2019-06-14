@@ -26,6 +26,7 @@ type BadgerStoreTxn struct {
 // NewBadgerStore initializes/opens a badger database in the given directory.
 func NewBadgerStore(dir string) (Store, error) {
 	opts := badger.DefaultOptions
+	opts.MaxTableSize = 16 << 20
 	opts.Dir = dir
 	opts.ValueDir = dir
 	opts.Logger = nil

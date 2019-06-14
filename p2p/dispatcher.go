@@ -25,12 +25,12 @@ func NewDispatcher() *Dispatcher {
 	dp := &Dispatcher{
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
-		receivedMessageCh: make(chan *Message, 655350),
+		receivedMessageCh: make(chan *Message, 100),
 		filters:           make(map[MessageType]bool),
 		logger:            log.NewLogger("dispatcher"),
 	}
 
-	dp.dispatchedMessages, _ = lru.New(51200)
+	dp.dispatchedMessages, _ = lru.New(1000)
 
 	return dp
 }

@@ -43,6 +43,16 @@ deps:
 	go get -u github.com/gythialy/xgo
 	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 
+arm:
+	CGO_ENABLED=1 CC=/home/lichao/ppr_cross/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
+	GO111MODULE=on go build -tags "testnet sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	@echo "Build $(SERVERBINARY) done."
+	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
+	CGO_ENABLED=1 CC=/home/lichao/ppr_cross/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
+	GO111MODULE=on go build -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
+	@echo "Build $(CLIENTBINARY) done."
+	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
+
 build:
 	GO111MODULE=on go build -tags "sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build $(SERVERBINARY) done."

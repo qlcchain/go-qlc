@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"errors"
+	"go.uber.org/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	msgCacheSize           = 65535
+	msgCacheSize           = 1
 	checkCacheTimeInterval = 30 * time.Second
 	msgResendMaxTimes      = 10
 	msgNeedResendInterval  = 10 * time.Second
@@ -57,7 +58,7 @@ type MessageService struct {
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
 		quitCh:              make(chan bool, 6),
-		messageCh:           make(chan *Message, 65535),
+		messageCh:           make(chan *Message, 100),
 		publishMessageCh:    make(chan *Message, 65535),
 		confirmReqMessageCh: make(chan *Message, 65535),
 		confirmAckMessageCh: make(chan *Message, 65535),
@@ -95,12 +96,30 @@ func (ms *MessageService) Start() {
 
 func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
+	perSecondToken := atomic.NewUint64(100)
+
+	go func() {
+		resetTokenTimer := time.NewTicker(time.Second)
+		for {
+			select {
+			case <-resetTokenTimer.C:
+				perSecondToken.Store(100)
+			}
+		}
+	}()
+
 	for {
+		if perSecondToken.Load() == 0 {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+
 		select {
 		case <-ms.quitCh:
 			ms.netService.node.logger.Info("Stopped Message Service.")
 			return
 		case message := <-ms.messageCh:
+			perSecondToken.Dec()
 			switch message.MessageType() {
 			case FrontierRequest:
 				if err := ms.syncService.onFrontierReq(message); err != nil {

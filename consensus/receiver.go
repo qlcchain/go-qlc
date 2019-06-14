@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	msgCacheSize           = 7000 * 2 * 60
+	msgCacheSize           = 10 * 2 * 60
 	msgCacheExpirationTime = 10 * time.Minute
 )
 

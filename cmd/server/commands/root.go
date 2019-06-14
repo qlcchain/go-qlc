@@ -229,7 +229,7 @@ func start() error {
 
 		go func() {
 			//view result in http://localhost:6060/debug/pprof/
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			log.Println(http.ListenAndServe(":6060", nil))
 		}()
 	}
 
@@ -238,6 +238,20 @@ func start() error {
 		cfg.P2P.BootNodes = []string{}
 	}
 
+	configDetails := util.ToIndentString(cfg)
+	logger.Debugf("%s", configDetails)
+	
+	go func() {
+		cleanMem := time.NewTicker(30 * time.Second)
+		for {
+			select {
+			case <-cleanMem.C:
+				debug.FreeOSMemory()
+			}
+		}
+	}()
+	
+	
 	err = runNode(accounts, cfg)
 	if err != nil {
 		return err
