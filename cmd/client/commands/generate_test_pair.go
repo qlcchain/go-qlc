@@ -256,7 +256,7 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 					amount = 10e8
 				}
 				fmt.Printf("tx %d: fromAcc:%s, toAcc:%s, amount:%d\n", txCurNum, fromAcc.Address(), toAcc.Address(), amount)
-				
+
 				para := api.APISendBlockPara{
 					From:      fromAcc.Address(),
 					TokenName: "QLC",

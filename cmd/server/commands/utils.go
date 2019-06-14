@@ -120,12 +120,17 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 }
 
 func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service, error) {
+	// step1: init phase
 	for _, service := range services {
 		err := service.Init()
 		if err != nil {
 			return nil, err
 		}
-		err = service.Start()
+		fmt.Printf("%s init successfully.\n", reflect.TypeOf(service))
+	}
+	// step2: start phase
+	for _, service := range services {
+		err := service.Start()
 		if err != nil {
 			return nil, err
 		}
