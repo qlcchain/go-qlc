@@ -27,7 +27,7 @@ const (
 	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
-	maxBlocks             = 10
+	maxBlocks             = 100
 )
 
 var (
@@ -45,6 +45,7 @@ type DPoS struct {
 	lv             *process.LedgerVerifier
 	uncheckedCache gcache.Cache //gap blocks
 	voteCache      gcache.Cache //vote blocks
+	voteCacheEn    bool
 	quitCh         chan bool
 	quitChProcess  chan bool
 	blocks         chan *consensus.BlockSource
@@ -56,19 +57,20 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 	l := ledger.NewLedger(cfg.LedgerDir())
 
 	dps := &DPoS{
-		ledger:         l,
-		acTrx:          acTrx,
-		accounts:       accounts,
-		logger:         log.NewLogger("dpos"),
-		cfg:            cfg,
-		eb:             eb,
-		lv:             process.NewLedgerVerifier(l),
-		uncheckedCache: gcache.New(uncheckedCacheSize).LRU().Expiration(uncheckedTimeout).Build(),
-		voteCache:      gcache.New(voteCacheSize).LRU().Expiration(voteCacheTimeout).Build(),
-		quitCh:         make(chan bool, 1),
-		quitChProcess:  make(chan bool, 1),
-		blocks:         make(chan *consensus.BlockSource, maxBlocks),
-		blocksAcked:    make(chan types.Hash, maxBlocks),
+		ledger:   l,
+		acTrx:    acTrx,
+		accounts: accounts,
+		logger:   log.NewLogger("dpos"),
+		cfg:      cfg,
+		eb:       eb,
+		lv:       process.NewLedgerVerifier(l),
+		//uncheckedCache: gcache.New(uncheckedCacheSize).LRU().Expiration(uncheckedTimeout).Build(),
+		//voteCache:      gcache.New(voteCacheSize).LRU().Expiration(voteCacheTimeout).Build(),
+		voteCacheEn:	false,
+		quitCh:        make(chan bool, 1),
+		quitChProcess: make(chan bool, 1),
+		blocks:        make(chan *consensus.BlockSource, maxBlocks),
+		blocksAcked:   make(chan types.Hash, maxBlocks),
 	}
 
 	dps.acTrx.SetDposService(dps)
@@ -142,7 +144,70 @@ func (dps *DPoS) enqueueUnchecked(hash types.Hash, depHash types.Hash, bs *conse
 	}
 }
 
+func (dps *DPoS) processUncheckedBlock(bs *consensus.BlockSource) {
+	result, _ := dps.lv.BlockCheck(bs.Block)
+	dps.ProcessResult(result, bs)
+
+	if result == process.Progress || result == process.Old {
+		if bs.BlockFrom == types.Synchronized {
+			dps.ConfirmBlock(bs.Block)
+		}
+	}
+
+	localRepAccount.Range(func(key, value interface{}) bool {
+		address := key.(types.Address)
+		dps.saveOnlineRep(address)
+
+		va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
+		if err != nil {
+			return true
+		}
+
+		dps.acTrx.vote(va)
+		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+
+		return true
+	})
+}
+
 func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
+	//dps.dequeueUncheckedFromMem(hash)
+	dps.dequeueUncheckedFromDb(hash)
+}
+
+func (dps *DPoS) dequeueUncheckedFromDb(hash types.Hash) {
+	blkLink, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	if blkLink != nil {
+		bs := &consensus.BlockSource{
+			Block:     blkLink,
+			BlockFrom: bf,
+		}
+
+		dps.processUncheckedBlock(bs)
+
+		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+		if err != nil {
+			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+		}
+	}
+
+	blkPre, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+	if blkPre != nil {
+		bs := &consensus.BlockSource{
+			Block:     blkPre,
+			BlockFrom: bf,
+		}
+
+		dps.processUncheckedBlock(bs)
+
+		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+		if err != nil {
+			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+		}
+	}
+}
+
+func (dps *DPoS) dequeueUncheckedFromMem(hash types.Hash) {
 	dps.logger.Infof("dequeue gap[%s]", hash.String())
 	if !dps.uncheckedCache.Has(hash) {
 		return
@@ -209,6 +274,34 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 }
 
 func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
+	//dps.rollbackUncheckedFromMem(hash)
+	dps.rollbackUncheckedFromDb(hash)
+}
+
+func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
+	blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+
+	if blkLink == nil && blkPrevious == nil {
+		return
+	}
+	if blkLink != nil {
+		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+		if err != nil {
+			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+		}
+		dps.rollbackUncheckedFromDb(blkLink.GetHash())
+	}
+	if blkPrevious != nil {
+		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+		if err != nil {
+			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
+		}
+		dps.rollbackUncheckedFromDb(blkPrevious.GetHash())
+	}
+}
+
+func (dps *DPoS) rollbackUncheckedFromMem(hash types.Hash) {
 	if !dps.uncheckedCache.Has(hash) {
 		return
 	}
@@ -328,7 +421,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		dps.saveOnlineRep(ack.Account)
 
 		//cache the ack messages
-		if result == process.GapPrevious || result == process.GapSource {
+		if dps.voteCacheEn && (result == process.GapPrevious || result == process.GapSource) {
 			if dps.voteCache.Has(hash) {
 				v, err := dps.voteCache.Get(hash)
 				if err != nil {
@@ -466,10 +559,12 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 		dps.ProcessFork(blk)
 	case process.GapPrevious:
 		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous.String())
-		dps.enqueueUnchecked(hash, blk.Previous, bs)
+		//dps.enqueueUnchecked(hash, blk.Previous, bs)
+		dps.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.BlockFrom)
 	case process.GapSource:
 		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link.String())
-		dps.enqueueUnchecked(hash, blk.Link, bs)
+		//dps.enqueueUnchecked(hash, blk.Link, bs)
+		dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)
 	}
 }
 

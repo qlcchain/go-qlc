@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	msgCacheSize           = 1
+	msgCacheSize           = 1000
 	checkCacheTimeInterval = 30 * time.Second
 	msgResendMaxTimes      = 10
 	msgNeedResendInterval  = 10 * time.Second
@@ -58,7 +58,7 @@ type MessageService struct {
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
 		quitCh:              make(chan bool, 6),
-		messageCh:           make(chan *Message, 100),
+		messageCh:           make(chan *Message, 1000),
 		publishMessageCh:    make(chan *Message, 65535),
 		confirmReqMessageCh: make(chan *Message, 65535),
 		confirmAckMessageCh: make(chan *Message, 65535),
@@ -96,14 +96,15 @@ func (ms *MessageService) Start() {
 
 func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
-	perSecondToken := atomic.NewUint64(100)
+	perSecondTokenNum := uint64(200)
+	perSecondToken := atomic.NewUint64(perSecondTokenNum)
 
 	go func() {
 		resetTokenTimer := time.NewTicker(time.Second)
 		for {
 			select {
 			case <-resetTokenTimer.C:
-				perSecondToken.Store(100)
+				perSecondToken.Store(perSecondTokenNum)
 			}
 		}
 	}()
