@@ -159,7 +159,6 @@ func (m *MinerReward) calcReward(ctx *vmstore.VMContext, coinbase types.Address,
 	}
 
 	rewardAmountInt := big.NewInt(0)
-	rewardCount := 0
 	for curHeight := startHeight; curHeight <= endHeight; curHeight++ {
 		block, err := ctx.GetPovBlockByHeight(curHeight)
 		if block == nil {
@@ -167,7 +166,6 @@ func (m *MinerReward) calcReward(ctx *vmstore.VMContext, coinbase types.Address,
 		}
 
 		if coinbase == block.GetCoinbase() {
-			rewardCount++
 			rewardAmountInt.Add(rewardAmountInt, cabi.RewardPerBlockInt)
 		}
 	}

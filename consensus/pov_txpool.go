@@ -138,11 +138,12 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 		return
 	}
 
+	txStepNum := len(unpackStateBlocks) / 100
 	txAddNum := 0
 	for txHash, block := range unpackStateBlocks {
 		tp.addTx(txHash, block)
 		txAddNum++
-		if txAddNum%5000 == 0 {
+		if txAddNum%txStepNum == 0 {
 			logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
 		}
 	}

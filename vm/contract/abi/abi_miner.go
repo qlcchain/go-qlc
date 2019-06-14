@@ -26,6 +26,7 @@ var (
 	RewardPerBlockInt     = big.NewInt(95129375)
 	RewardPerBlockBalance = types.NewBalance(95129375)
 
+	RewardTimeLimit   = int64(3600 * 24)
 	RewardHeightLimit = uint64(3600 * 24 / 30)
 )
 

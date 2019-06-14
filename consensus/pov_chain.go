@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	blockCacheLimit = 1024
+	blockCacheLimit  = 1024
 	medianTimeBlocks = 11
 )
 
