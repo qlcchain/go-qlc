@@ -50,12 +50,18 @@ type RewardsParam struct {
 }
 
 func (r *RewardsApi) GetUnsignedRewardData(param *RewardsParam) (types.Hash, error) {
+	if param == nil {
+		return types.ZeroHash, ErrParameterNil
+	}
 	return r.generateHash(param, cabi.MethodNameUnsignedAirdropRewards, func(param *RewardsParam) (bytes []byte, e error) {
 		return hex.DecodeString(param.Id)
 	})
 }
 
 func (r *RewardsApi) GetUnsignedConfidantData(param *RewardsParam) (types.Hash, error) {
+	if param == nil {
+		return types.ZeroHash, ErrParameterNil
+	}
 	return r.generateHash(param, cabi.MethodNameUnsignedConfidantRewards, func(param *RewardsParam) (bytes []byte, e error) {
 		h := types.HashData([]byte(param.Id))
 		return h[:], nil
@@ -63,6 +69,9 @@ func (r *RewardsApi) GetUnsignedConfidantData(param *RewardsParam) (types.Hash, 
 }
 
 func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn func(param *RewardsParam) ([]byte, error)) (types.Hash, error) {
+	if param == nil {
+		return types.ZeroHash, ErrParameterNil
+	}
 	if len(param.Id) == 0 || param.Amount.IsZero() || param.Self.IsZero() || param.To.IsZero() {
 		return types.ZeroHash, errors.New("invalid param")
 	}
@@ -101,6 +110,9 @@ func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn fun
 }
 
 func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signature) (*types.StateBlock, error) {
+	if param == nil || sign == nil {
+		return nil, ErrParameterNil
+	}
 	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedAirdropRewards, func(param *RewardsParam) (types.Hash, error) {
 		bytes, err := hex.DecodeString(param.Id)
 		if err != nil {
@@ -119,6 +131,9 @@ func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signatu
 }
 
 func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Signature) (*types.StateBlock, error) {
+	if param == nil || sign == nil {
+		return nil, ErrParameterNil
+	}
 	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedConfidantRewards, func(param *RewardsParam) (types.Hash, error) {
 		h := types.HashData([]byte(param.Id))
 		return h, nil
@@ -130,6 +145,9 @@ func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Sign
 }
 
 func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, methodName string, fn func(param *RewardsParam) (types.Hash, error)) (*sendParam, error) {
+	if param == nil || sign == nil {
+		return nil, ErrParameterNil
+	}
 	if len(param.Id) == 0 || param.Amount.IsZero() || param.Self.IsZero() || param.To.IsZero() {
 		return nil, errors.New("invalid param")
 	}
@@ -183,6 +201,9 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 }
 
 func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.StateBlock, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	if singedData, err := cabi.RewardsABI.PackMethod(methodName, param.Id, param.Beneficial, param.TxHeader, param.RxHeader, param.Amount, param.Sign); err == nil {
 		return &types.StateBlock{
 			Type:           types.ContractSend,
@@ -206,6 +227,9 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 }
 
 func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock, error) {
+	if send == nil {
+		return nil, ErrParameterNil
+	}
 	blk, err := r.ledger.GetStateBlock(*send)
 	if err != nil {
 		return nil, err

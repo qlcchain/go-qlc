@@ -46,6 +46,9 @@ type MintageParams struct {
 }
 
 func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	tokenId := cabi.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
 	totalSupply, err := util.StringToBigInt(&param.TotalSupply)
 	if err != nil {
@@ -55,6 +58,9 @@ func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
 }
 
 func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	tokenId := cabi.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
 	totalSupply, err := util.StringToBigInt(&param.TotalSupply)
 	if err != nil {
@@ -102,6 +108,9 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 }
 
 func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if input == nil {
+		return nil, ErrParameterNil
+	}
 	reward := &types.StateBlock{}
 	vmContext := vmstore.NewVMContext(m.ledger)
 	blocks, err := m.mintage.DoReceive(vmContext, reward, input)
@@ -131,6 +140,9 @@ type WithdrawParams struct {
 }
 
 func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.StateBlock, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
 	tm, _ := m.ledger.GetTokenMeta(param.SelfAddr, common.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not hava any chain token", param.SelfAddr.String())
@@ -165,6 +177,9 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 }
 
 func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if input == nil {
+		return nil, ErrParameterNil
+	}
 	reward := &types.StateBlock{}
 	vmContext := vmstore.NewVMContext(m.ledger)
 	blocks, err := m.withdraw.DoReceive(vmContext, reward, input)
