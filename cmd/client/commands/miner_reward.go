@@ -94,7 +94,7 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 		return err
 	}
 	beneficialAcc := types.NewAccount(benBytes)
-	if coinbaseAcc == nil {
+	if beneficialAcc == nil {
 		return errors.New("can not new beneficial account")
 	}
 
@@ -121,12 +121,7 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	worker, _ := types.NewWorker(w, send.Root())
 	send.Work = worker.NewWork()
 
-	fmt.Println("sendHash", sendHash)
-
-	err = client.Call(nil, "ledger_process", &send)
-	if err != nil {
-		return err
-	}
+	fmt.Println("address", send.Address, "sendHash", sendHash)
 
 	reward := types.StateBlock{}
 	err = client.Call(&reward, "miner_getRewardRecvBlock", &send)
@@ -140,12 +135,19 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
 
-	fmt.Println("rewardHash", rewardHash)
+	fmt.Println("address", reward.Address, "rewardHash", rewardHash)
+
+	err = client.Call(nil, "ledger_process", &send)
+	if err != nil {
+		return err
+	}
 
 	err = client.Call(nil, "ledger_process", &reward)
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("success to get miner reward, please check account balance")
 
 	return nil
 }

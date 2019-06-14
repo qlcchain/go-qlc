@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
@@ -23,11 +24,16 @@ func (bc *PovBlockChain) NewStateTrie() *trie.Trie {
 }
 
 func (bc *PovBlockChain) GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
+	var currentTrie *trie.Trie
 	prevTrie := bc.GetStateTrie(&prevStateHash)
-	if prevTrie == nil {
-		prevTrie = bc.NewStateTrie()
+	if prevTrie != nil {
+		currentTrie = prevTrie.Clone()
+	} else {
+		currentTrie = bc.NewStateTrie()
 	}
-	currentTrie := prevTrie.Clone()
+	if currentTrie == nil {
+		return nil, errors.New("failed to make current trie")
+	}
 
 	for _, tx := range txs {
 		err := bc.ApplyTransaction(currentTrie, tx.Block)

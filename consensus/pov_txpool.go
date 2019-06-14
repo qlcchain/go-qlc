@@ -139,6 +139,9 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 	}
 
 	txStepNum := len(unpackStateBlocks) / 100
+	if txStepNum < 5000 {
+		txStepNum = 5000
+	}
 	txAddNum := 0
 	for txHash, block := range unpackStateBlocks {
 		tp.addTx(txHash, block)
