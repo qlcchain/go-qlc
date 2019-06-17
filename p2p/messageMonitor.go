@@ -352,7 +352,7 @@ func (ms *MessageService) onPublishReq(message *Message) {
 	}
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
-		ms.netService.node.logger.Errorf("send Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
+		ms.netService.node.logger.Debugf("send Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
 	hash, err := types.HashBytes(message.Content())
 	if err != nil {
@@ -379,7 +379,7 @@ func (ms *MessageService) onConfirmReq(message *Message) {
 	}
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
-		ms.netService.node.logger.Errorf("send ConfirmReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
+		ms.netService.node.logger.Debugf("send ConfirmReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
 	hash, err := types.HashBytes(message.Content())
 	if err != nil {
@@ -405,7 +405,7 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 	}
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
-		ms.netService.node.logger.Errorf("send ConfirmAck Response err:[%s] for message hash:[%s]", err, message.Hash().String())
+		ms.netService.node.logger.Debugf("send ConfirmAck Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
 
 	hash, err := types.HashBytes(message.Content())

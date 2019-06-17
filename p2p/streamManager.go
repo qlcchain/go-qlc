@@ -252,3 +252,11 @@ func (sm *StreamManager) GetAllConnectPeersInfo(p map[string]string) {
 		return true
 	})
 }
+
+func (sm *StreamManager) IsConnectWithPeerId(peerID string) bool {
+	s := sm.FindByPeerID(peerID)
+	if s == nil {
+		return false
+	}
+	return s.IsConnected()
+}
