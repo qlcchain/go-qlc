@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -62,15 +63,17 @@ var (
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
 	//ctx            *chain.QlcContext
-	ledgerService  *ss.LedgerService
-	walletService  *ss.WalletService
-	netService     *ss.P2PService
-	dPosService    *ss.DPosService
-	rPCService     *ss.RPCService
-	sqliteService  *ss.SqliteService
-	services       []common.Service
-	maxAccountSize = 100
-	logger         = qlclog.NewLogger("config_detail")
+	ledgerService    *ss.LedgerService
+	walletService    *ss.WalletService
+	netService       *ss.P2PService
+	consensusService *ss.ConsensusService
+	rPCService       *ss.RPCService
+	sqliteService    *ss.SqliteService
+	povService       *ss.PoVService
+	minerService     *ss.MinerService
+	services         []common.Service
+	maxAccountSize   = 100
+	logger           = qlclog.NewLogger("config_detail")
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -136,6 +139,9 @@ func start() error {
 	if err != nil {
 		return err
 	}
+
+	debug.SetGCPercent(10)
+
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
 		err = updateConfig(cfg, cfgPathP)

@@ -46,6 +46,7 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 
 func stopNode(services []common.Service) {
 	for _, service := range services {
+		fmt.Printf("%s stopping ...\n", reflect.TypeOf(service))
 		err := service.Stop()
 		if err != nil {
 			fmt.Println(err)
@@ -65,13 +66,16 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	}
 
 	//ctx.DPosService = ss.NewDPosService(cfg, ctx.NetService, account, password)
-	dPosService = ss.NewDPosService(cfg, accounts)
+	consensusService = ss.NewConsensusService(cfg, accounts)
 	if rPCService, err = ss.NewRPCService(cfg); err != nil {
 		return err
 	}
 	if sqliteService, err = ss.NewSqliteService(cfg); err != nil {
 		return err
 	}
+
+	povService = ss.NewPoVService(cfg, accounts)
+	minerService = ss.NewMinerService(cfg, povService.GetPoVEngine())
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		eb := event.GetEventBus(cfg.LedgerDir())
@@ -106,22 +110,28 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 			}(accounts)
 		})
 	}
+
 	if len(cfg.P2P.BootNodes) == 0 {
-		services = []common.Service{sqliteService, ledgerService, walletService, dPosService, rPCService}
+		services = []common.Service{sqliteService, ledgerService, walletService, consensusService, povService, minerService, rPCService}
 	} else {
-		services = []common.Service{sqliteService, ledgerService, netService, walletService, dPosService, rPCService}
+		services = []common.Service{sqliteService, ledgerService, netService, walletService, consensusService, povService, minerService, rPCService}
 	}
 
 	return nil
 }
 
 func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service, error) {
+	// step1: init phase
 	for _, service := range services {
 		err := service.Init()
 		if err != nil {
 			return nil, err
 		}
-		err = service.Start()
+		fmt.Printf("%s init successfully.\n", reflect.TypeOf(service))
+	}
+	// step2: start phase
+	for _, service := range services {
+		err := service.Start()
 		if err != nil {
 			return nil, err
 		}

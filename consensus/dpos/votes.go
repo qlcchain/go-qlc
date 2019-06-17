@@ -1,4 +1,4 @@
-package consensus
+package dpos
 
 import (
 	"sync"
@@ -16,13 +16,13 @@ const (
 )
 
 type Votes struct {
-	id       types.Hash //Previous block of fork
-	repVotes *sync.Map  // All votes received by account
+	id       voteKey   //Previous block of fork
+	repVotes *sync.Map // All votes received by account
 }
 
 func NewVotes(blk *types.StateBlock) *Votes {
 	return &Votes{
-		id:       blk.Parent(),
+		id:       getVoteKey(blk),
 		repVotes: new(sync.Map),
 	}
 }
@@ -37,6 +37,7 @@ func (vs *Votes) voteExit(address types.Address) (bool, *protos.ConfirmAckBlock)
 
 func (vs *Votes) voteStatus(va *protos.ConfirmAckBlock) tallyResult {
 	var result tallyResult
+
 	if v, ok := vs.repVotes.Load(va.Account); !ok {
 		result = vote
 		vs.repVotes.Store(va.Account, va)
@@ -51,5 +52,6 @@ func (vs *Votes) voteStatus(va *protos.ConfirmAckBlock) tallyResult {
 			result = confirm
 		}
 	}
+
 	return result
 }

@@ -187,3 +187,7 @@ func IsGenesisBlock(block *types.StateBlock) bool {
 func IsGenesisToken(hash types.Hash) bool {
 	return hash == chainToken || hash == gasToken
 }
+
+func AllGenesisBlocks() []types.StateBlock {
+	return []types.StateBlock{genesisMintageBlock, genesisBlock, gasMintageBlock, gasBlock}
+}

@@ -196,3 +196,11 @@ func (v *VMContext) HasTokenMeta(address types.Address, token types.Hash) (bool,
 func (v *VMContext) GetTokenMeta(address types.Address, token types.Hash) (*types.TokenMeta, error) {
 	return v.ledger.GetTokenMeta(address, token)
 }
+
+func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) {
+	return v.ledger.GetPovBlockByHeight(height)
+}
+
+func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
+	return v.ledger.GetLatestPovBlock()
+}
