@@ -23,7 +23,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
@@ -49,6 +48,9 @@ func TestConsensus(t *testing.T) {
 	l := services.NewLedgerService(cfgFile)
 	//start bootNode
 	node, err := p2p.NewQlcService(cfgFile)
+	if node == nil {
+		t.Fatal(err)
+	}
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -70,6 +72,9 @@ func TestConsensus(t *testing.T) {
 
 	//start node1
 	node1, err := p2p.NewQlcService(cfgFile1)
+	if node1 == nil {
+		t.Fatal(err)
+	}
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +82,7 @@ func TestConsensus(t *testing.T) {
 
 	var accs []*types.Account
 	accs = append(accs, ac)
-	consensusService1, err := consensus.NewDPoS(cfgFile1, accs)
+	consensusService1 := services.NewConsensusService(cfgFile1, accs)
 	//start node1 dpos service
 	err = consensusService1.Init()
 	if err != nil {
@@ -103,12 +108,15 @@ func TestConsensus(t *testing.T) {
 	creatGenesisBlock(ledger2.Ledger)
 	//start node2
 	node2, err := p2p.NewQlcService(cfgFile2)
+	if node2 == nil {
+		t.Fatal(err)
+	}
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	consensusService2 := services.NewDPosService(cfgFile2, nil)
+	consensusService2 := services.NewConsensusService(cfgFile2, nil)
 	//start node2 dpos service
 	err = consensusService2.Init()
 	if err != nil {
@@ -191,7 +199,7 @@ func TestConsensus(t *testing.T) {
 	verifier1 := process.NewLedgerVerifier(ledger1.Ledger)
 	/**/ verifier1.Process(send)
 	node1.Broadcast(p2p.PublishReq, send)
-	time.Sleep(33 * time.Second)
+	time.Sleep(10 * time.Second)
 	c, err := ledger2.Ledger.CountStateBlocks()
 	if err != nil {
 		t.Fatal(err)
@@ -204,7 +212,7 @@ func TestConsensus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.T0 == 0 || p.T1 == 0 || p.T2 == 0 || p.T3 == 0 {
+	if p.T0 == 0 || p.T1 == 0 {
 		t.Fatal("send block confirmed error")
 	}
 }

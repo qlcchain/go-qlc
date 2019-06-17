@@ -710,7 +710,7 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 	}
 }
 
-func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, endHash types.Hash) {
+func (ss *PovSyncer) requestTxsByHash(endHash types.Hash, count uint32) {
 	peers := ss.GetBestPeers(3)
 	if len(peers) <= 0 {
 		return
@@ -718,11 +718,13 @@ func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, endHash types.Hash) 
 
 	req := new(protos.BulkPullReqPacket)
 
-	req.StartHash = startHash
+	req.StartHash = types.ZeroHash
 	req.EndHash = endHash
+	req.PullType = protos.PullTypeCount
+	req.Count = count
 
 	for _, peer := range peers {
-		ss.logger.Debugf("request tx start %s end %s from peer %s", startHash, endHash, peer.peerID)
+		ss.logger.Debugf("request tx hash %s count %d from peer %s", endHash, count, peer.peerID)
 		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.BulkPullRequest, req, peer.peerID)
 	}
 }

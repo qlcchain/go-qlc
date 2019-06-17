@@ -383,7 +383,7 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *p
 			txHash := txHashTmp
 			bp.txPendingBlocks[txHash] = pendingBlock
 
-			bp.povEngine.GetSyncer().requestTxsByHash(txHash, txHash)
+			bp.povEngine.GetSyncer().requestTxsByHash(txHash, 1)
 		}
 	}
 
@@ -437,7 +437,7 @@ func (bp *PovBlockProcessor) checkTxPendingBlocks() {
 				bp.removeTxPendingBlockNoLock(pendingBlock)
 			} else if pendingBlock.checkCnt/3 == 0 {
 				for txHash := range pendingBlock.txResults {
-					bp.povEngine.GetSyncer().requestTxsByHash(txHash, txHash)
+					bp.povEngine.GetSyncer().requestTxsByHash(txHash, 1)
 				}
 			}
 		}
