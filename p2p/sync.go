@@ -357,10 +357,10 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				return err
 			}
 			bulkBlk = append(bulkBlk, blk)
+			endHash = blk.GetPrevious()
 			if endHash == startHash {
 				break
 			}
-			endHash = blk.GetPrevious()
 		}
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
 			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
