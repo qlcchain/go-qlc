@@ -69,11 +69,11 @@ var (
 	consensusService *ss.ConsensusService
 	rPCService       *ss.RPCService
 	sqliteService    *ss.SqliteService
-	povService     *ss.PoVService
-	minerService   *ss.MinerService
+	povService       *ss.PoVService
+	minerService     *ss.MinerService
 	services         []common.Service
 	maxAccountSize   = 100
-	logger         = qlclog.NewLogger("config_detail")
+	logger           = qlclog.NewLogger("config_detail")
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.

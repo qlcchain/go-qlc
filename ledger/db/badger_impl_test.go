@@ -144,7 +144,7 @@ func TestBadgerStoreTxn_KeyIterator(t *testing.T) {
 
 	expectKeyCnt := 0
 	err = db.ViewInTx(func(txn StoreTxn) error {
-		err := txn.KeyIterator(byte(1), func(key []byte) error {
+		err := txn.KeyIterator([]byte{1}, func(key []byte) error {
 			t.Log(key)
 			expectKeyCnt++
 			return nil

@@ -120,5 +120,5 @@ func (e *ExecuteEngine) call(action string, args []byte) (result []byte, err err
 		panic(err)
 	}
 
-	return util.Int64ToBytes(ret), nil
+	return util.LE_Int64ToBytes(ret), nil
 }
