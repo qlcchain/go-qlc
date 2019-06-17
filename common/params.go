@@ -7,7 +7,7 @@ import (
 
 var (
 	PovMinerPledgeAmountMin   = types.NewBalance(50000000000000)
-	PovMinerVerifyHeightStart = uint64(3600 * 24 * 7 / 30)
+	PovMinerVerifyHeightStart = uint64(3600 * 24 * 1 / 30)
 
 	PovGenesisTargetHex = "0000007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	PovMinimumTargetHex = "0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
