@@ -18,7 +18,7 @@ import (
 const (
 	minPovSyncPeerCount = 1
 	checkPeerStatusTime = 30
-	waitEnoughPeerTime  = 75
+	waitEnoughPeerTime  = 120
 	maxSyncBlockPerReq  = 1000
 
 	peerStatusInit = 0
@@ -473,6 +473,9 @@ func (ss *PovSyncer) checkSyncPeer() {
 
 func (ss *PovSyncer) checkChain() {
 	if ss.state != common.Syncing {
+		return
+	}
+	if ss.syncPeerID == "" {
 		return
 	}
 
