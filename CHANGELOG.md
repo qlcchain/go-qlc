@@ -1,6 +1,81 @@
 
+<a name="v1.3.0"></a>
+## [v1.3.0](https://github.com/qlcchain/go-qlc/compare/v1.2.2...v1.3.0) (2019-06-17)
+
+### Bug Fixes
+
+* remove comment
+* fork process bug
+* process fork bug and reduce msg cache time
+* rollback unchecked block when rollback stateBlock
+* rpc interface NPE ([#405](https://github.com/qlcchain/go-qlc/issues/405))
+* reduce cache size
+* mod proccess msg sleep interval
+* reduce cache size and set gc percent
+* configParams bug when use default config name
+* updateConfig testcase
+* configParms bug
+* execute contract more than one time bug
+* compile error
+* consensus sync bug and merge master
+* websocket CORS ([#386](https://github.com/qlcchain/go-qlc/issues/386))
+* cpu high loading when query token info
+* verify rewards sign
+* random block bug
+* possible NPE
+* test cases
+* encode trie
+* balance check when process block bug. fix generate block rpc interface bug.
+* generate send balance
+* process fork for cotractreward block fix totalsupply bug
+* pledge DoReceive bug
+* QGAS rewards balance
+* generate reward block pending
+* change the method of judging open block
+* find online representation bug
+* fix ci error
+* process blocks synchronized from other nodes
+* fix process msg loop bug
+* pov tx pending bug
+* target should be current block, not for next block; modify int64 to uint64;
+
+### Features
+
+* add peer connect status judge when syncing
+* print config details
+* remove print
+* modify RawToBalance interface
+* add sync status rpc interface ([#377](https://github.com/qlcchain/go-qlc/issues/377))
+* add newaccounts rpc interface
+* modify ledger iterator error log
+* add ledger_process test case
+* modify get all uncheckblock
+* judge pledge amount
+* implement query rewards details RPC
+* add log to ledger
+* add log to ledger
+* modify account balance return struct
+* Implement POV chain - consensus
+* add pov ledger functions
+* add pov ledger functions
+
+### Refactoring
+
+* make rewards exception log clearer
+* refactor consensus module([#275](https://github.com/qlcchain/go-qlc/issues/275) [#276](https://github.com/qlcchain/go-qlc/issues/276))
+
+### Pull Requests
+
+* Merge pull request [#411](https://github.com/qlcchain/go-qlc/issues/411) from qlcchain/feature/conspov
+* Merge pull request [#406](https://github.com/qlcchain/go-qlc/issues/406) from qlcchain/feature/sync
+* Merge pull request [#404](https://github.com/qlcchain/go-qlc/issues/404) from qlcchain/hotfix/configbug
+* Merge pull request [#397](https://github.com/qlcchain/go-qlc/issues/397) from qlcchain/hotfix/config
+* Merge pull request [#378](https://github.com/qlcchain/go-qlc/issues/378) from qlcchain/feature/accountbalance
+* Merge pull request [#395](https://github.com/qlcchain/go-qlc/issues/395) from qlcchain/feature/rawTobalance
+
+
 <a name="v1.2.2"></a>
-## [v1.2.2](https://github.com/qlcchain/go-qlc/compare/backup/hotfix/v1.2-issues-20-41-20...v1.2.2) (2019-06-03)
+## [v1.2.2](https://github.com/qlcchain/go-qlc/compare/v1.2.1...v1.2.2) (2019-06-03)
 
 ### Bug Fixes
 
@@ -10,6 +85,10 @@
 * verify rewards sign
 * random block bug
 * possible NPE
+* test cases
+* encode trie
+* balance check when process block bug. fix generate block rpc interface bug.
+* generate send balance
 
 ### Features
 
@@ -18,6 +97,9 @@
 * add sync status rpc interface ([#377](https://github.com/qlcchain/go-qlc/issues/377))
 * add newaccounts rpc interface
 * modify ledger iterator error log
+* add ledger_process test case
+* modify get all uncheckblock
+* judge pledge amount
 
 ### Refactoring
 
@@ -35,28 +117,6 @@
 * Merge pull request [#380](https://github.com/qlcchain/go-qlc/issues/380) from qlcchain/hotfix/generate-reward-hash
 * Merge pull request [#379](https://github.com/qlcchain/go-qlc/issues/379) from qlcchain/test/ccontractblocktestcase
 * Merge pull request [#375](https://github.com/qlcchain/go-qlc/issues/375) from qlcchain/hotfix/v1.2-issues
-
-
-<a name="backup/hotfix/v1.2-issues-20-41-20"></a>
-## [backup/hotfix/v1.2-issues-20-41-20](https://github.com/qlcchain/go-qlc/compare/v1.2.1...backup/hotfix/v1.2-issues-20-41-20) (2019-05-27)
-
-### Bug Fixes
-
-* test cases
-* encode trie
-* balance check when process block bug. fix generate block rpc interface bug.
-* generate send balance
-
-### Features
-
-* fix ledger ci
-* modify ledger iterator error log
-* add ledger_process test case
-* modify get all uncheckblock
-* judge pledge amount
-
-### Pull Requests
-
 * Merge pull request [#374](https://github.com/qlcchain/go-qlc/issues/374) from qlcchain/feature/parse-rewards-testcase
 
 
