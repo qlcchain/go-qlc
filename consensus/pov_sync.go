@@ -34,10 +34,11 @@ type PovSyncPeer struct {
 	status         int
 }
 
+// PeerSetByTD is in descend order
 type PovSyncPeerSetByTD []*PovSyncPeer
 
 func (s PovSyncPeerSetByTD) Len() int           { return len(s) }
-func (s PovSyncPeerSetByTD) Less(i, j int) bool { return s[i].currentTD.Cmp(s[j].currentTD) < 0 }
+func (s PovSyncPeerSetByTD) Less(i, j int) bool { return s[i].currentTD.Cmp(s[j].currentTD) > 0 }
 func (s PovSyncPeerSetByTD) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 type PovSyncPeerSetByHeight []*PovSyncPeer
