@@ -17,11 +17,13 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/abiosoft/ishell"
@@ -29,6 +31,7 @@ import (
 	ss "github.com/qlcchain/go-qlc/chain/services"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
@@ -251,7 +254,25 @@ func start() error {
 	if err != nil {
 		return err
 	}
+	trapSignal(cfg)
 	return nil
+}
+
+func trapSignal(cfg *config.Config) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
+	<-c
+
+	sers := make([]common.Service, 0)
+	for i := len(services) - 1; i >= 0; i-- {
+		sers = append(sers, services[i])
+	}
+	stopNode(sers)
+
+	bus := event.GetEventBus(cfg.LedgerDir())
+	if err := bus.Close(); err != nil {
+		fmt.Println(err)
+	}
 }
 
 func seedToAccounts(data []byte) ([]*types.Account, error) {
