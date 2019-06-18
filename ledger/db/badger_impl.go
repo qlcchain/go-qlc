@@ -1,7 +1,9 @@
 package db
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"log"
 	"sort"
 
@@ -163,6 +165,37 @@ func (t *BadgerStoreTxn) KeyIterator(prefix []byte, fn func([]byte) error) error
 		item := it.Item()
 		key := item.Key()
 		err := fn(key)
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RangeIterator scan keys between [startKey, endKey)
+func (t *BadgerStoreTxn) RangeIterator(startKey []byte, endKey []byte, fn func([]byte, []byte, byte) error) error {
+	if len(startKey) <= 0 {
+		return errors.New("invalid startKey")
+	}
+	if len(endKey) <= 0 {
+		return errors.New("invalid endKey")
+	}
+
+	it := t.txn.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	for it.Seek(startKey); it.Valid(); it.Next() {
+		item := it.Item()
+		key := item.Key()
+
+		if bytes.Compare(key, endKey) >= 0 {
+			break
+		}
+
+		err := item.Value(func(val []byte) error {
+			return fn(key, val, item.UserMeta())
+		})
 
 		if err != nil {
 			return err

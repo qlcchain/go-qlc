@@ -26,6 +26,11 @@ type PovApiHeader struct {
 	*types.PovHeader
 }
 
+type PovApiBatchHeader struct {
+	Count   int                `json:"count"`
+	Headers []*types.PovHeader `json:"headers"`
+}
+
 type PovApiBlock struct {
 	*types.PovBlock
 }
@@ -163,6 +168,26 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 
 	apiHeader := &PovApiHeader{
 		PovHeader: header,
+	}
+
+	return apiHeader, nil
+}
+
+func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool) (*PovApiBatchHeader, error) {
+	var headers []*types.PovHeader
+	var err error
+	if asc {
+		headers, err = api.ledger.BatchGetPovHeadersByHeightAsc(height, count)
+	} else {
+		headers, err = api.ledger.BatchGetPovHeadersByHeightDesc(height, count)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	apiHeader := &PovApiBatchHeader{
+		Count:   len(headers),
+		Headers: headers,
 	}
 
 	return apiHeader, nil
