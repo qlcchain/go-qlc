@@ -536,7 +536,7 @@ func (dps *DPoS) refreshAccount() {
 		return true
 	})
 
-	dps.logger.Infof("there is %d reps", count)
+	dps.logger.Infof("there is %d local reps", count)
 	if count > 1 {
 		dps.logger.Error("it is very dangerous to run two or more representatives on one node")
 	}
