@@ -22,9 +22,9 @@ var (
 	MinerABI, _ = abi.JSONToABIContract(strings.NewReader(jsonMiner))
 
 	// Reward per block, rewardPerBlock * blockNumPerYear / gasTotalSupply = 3%
-	// 100000000 * 10e8 * 0.03 / (3600 * 24 * 30 * 365 / 30)
-	RewardPerBlockInt     = big.NewInt(95129375)
-	RewardPerBlockBalance = types.NewBalance(95129375)
+	// 10000000000000000 * 0.03 / (3600 * 24 * 365 / 30)
+	RewardPerBlockInt     = big.NewInt(285388127)
+	RewardPerBlockBalance = types.NewBalance(285388127)
 
 	RewardTimeLimit   = int64(3600 * 24)
 	RewardHeightLimit = uint64(3600 * 24 / 30)
