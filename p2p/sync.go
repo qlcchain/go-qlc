@@ -319,11 +319,39 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	if err != nil {
 		return err
 	}
-	ss.netService.node.logger.Debugf("receive BulkPullRequest, start %s end %s", pullRemote.StartHash, pullRemote.EndHash)
+	ss.netService.node.logger.Debugf("receive BulkPullRequest, type %d start %s end %s count %d",
+		pullRemote.PullType, pullRemote.StartHash, pullRemote.EndHash, pullRemote.Count)
 
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
-	if startHash.IsZero() {
+	pullType := pullRemote.PullType
+	if pullType == protos.PullTypeCount {
+		var blk *types.StateBlock
+		var bulkBlk []*types.StateBlock
+		blkCnt := pullRemote.Count
+		//ss.logger.Debugf("need to send %d blocks of this account", blkCnt)
+		for {
+			blk, err = ss.qlcLedger.GetStateBlock(endHash)
+			if err != nil {
+				break
+			}
+			bulkBlk = append(bulkBlk, blk)
+			blkCnt--
+			if blkCnt <= 0 {
+				break
+			}
+			endHash = blk.GetPrevious()
+		}
+		for i := len(bulkBlk) - 1; i >= 0; i-- {
+			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+				break
+			}
+			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
+			if err != nil {
+				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
+			}
+		}
+	} else if startHash.IsZero() {
 		var blk *types.StateBlock
 		var bulkBlk []*types.StateBlock
 		//ss.logger.Info("need to send all the blocks of this account")

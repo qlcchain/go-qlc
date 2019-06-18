@@ -6,9 +6,16 @@ import (
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
 )
 
+const (
+	PullTypeHash = iota
+	PullTypeCount
+)
+
 type BulkPullReqPacket struct {
 	StartHash types.Hash
 	EndHash   types.Hash
+	PullType  uint32
+	Count     uint32
 }
 
 func NewBulkPullReqPacket(start, end types.Hash) (packet *BulkPullReqPacket) {
@@ -24,6 +31,8 @@ func BulkPullReqPacketToProto(bp *BulkPullReqPacket) ([]byte, error) {
 	bpPb := &pb.BulkPullReq{
 		StartHash: bp.StartHash[:],
 		EndHash:   bp.EndHash[:],
+		PullType:  bp.PullType,
+		Count:     bp.Count,
 	}
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
@@ -50,6 +59,8 @@ func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
 	bpRp := &BulkPullReqPacket{
 		StartHash: start,
 		EndHash:   end,
+		PullType:  bp.PullType,
+		Count:     bp.Count,
 	}
 	return bpRp, nil
 }
