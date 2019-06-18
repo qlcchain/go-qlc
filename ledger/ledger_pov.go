@@ -642,6 +642,30 @@ func (l *Ledger) GetPovBlockByHash(hash types.Hash, txns ...db.StoreTxn) (*types
 	return l.GetPovBlockByHeightAndHash(height, hash, txns...)
 }
 
+func (l *Ledger) GetPovHeaderByHeight(height uint64, txns ...db.StoreTxn) (*types.PovHeader, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	hash, err := l.GetPovBestHash(height, txns...)
+	if err != nil {
+		return nil, err
+	}
+
+	return l.GetPovHeader(height, hash, txn)
+}
+
+func (l *Ledger) GetPovHeaderByHash(hash types.Hash, txns ...db.StoreTxn) (*types.PovHeader, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	height, err := l.GetPovHeight(hash, txns...)
+	if err != nil {
+		return nil, err
+	}
+
+	return l.GetPovHeader(height, hash, txns...)
+}
+
 func (l *Ledger) GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)

@@ -2,18 +2,24 @@ package api
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
 	"math/big"
+	"sync/atomic"
 	"time"
 )
 
 type PovApi struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
+	eb     event.EventBus
+
+	syncState atomic.Value
 }
 
 type PovApiHeader struct {
@@ -67,8 +73,20 @@ type PovMinerStats struct {
 	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
 }
 
-func NewPovApi(ledger *ledger.Ledger) *PovApi {
-	return &PovApi{ledger: ledger, logger: log.NewLogger("rpc/pov")}
+func NewPovApi(ledger *ledger.Ledger, eb event.EventBus) *PovApi {
+	api := &PovApi{
+		ledger:    ledger,
+		eb:        eb,
+		logger:    log.NewLogger("rpc/pov"),
+	}
+	api.syncState.Store(common.SyncNotStart)
+	_ = eb.SubscribeSync(string(common.EventPovSyncState), api.OnPovSyncState)
+	return api
+}
+
+func (api *PovApi) OnPovSyncState(state common.SyncState) {
+	api.logger.Infof("receive pov sync state [%s]", state)
+	api.syncState.Store(state)
 }
 
 func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
@@ -111,6 +129,36 @@ func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 	header, err := api.ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
+	}
+
+	apiHeader := &PovApiHeader{
+		PovHeader: header,
+	}
+
+	return apiHeader, nil
+}
+
+func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
+	ss := api.syncState.Load().(common.SyncState)
+	if ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
+	var header *types.PovHeader
+
+	latestHeader, err := api.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	if gap > 0 && latestHeader.GetHeight() > gap {
+		height := latestHeader.GetHeight() - gap
+		header, err = api.ledger.GetPovHeaderByHeight(height)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		header = latestHeader
 	}
 
 	apiHeader := &PovApiHeader{
