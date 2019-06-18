@@ -24,12 +24,6 @@ func (z *PovAccountState) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "hash":
-			err = dc.ReadExtension(&z.Hash)
-			if err != nil {
-				err = msgp.WrapError(err, "Hash")
-				return
-			}
 		case "balance":
 			err = dc.ReadExtension(&z.Balance)
 			if err != nil {
@@ -84,45 +78,10 @@ func (z *PovAccountState) DecodeMsg(dc *msgp.Reader) (err error) {
 					if z.TokenStates[za0001] == nil {
 						z.TokenStates[za0001] = new(PovTokenState)
 					}
-					var zb0003 uint32
-					zb0003, err = dc.ReadMapHeader()
+					err = z.TokenStates[za0001].DecodeMsg(dc)
 					if err != nil {
 						err = msgp.WrapError(err, "TokenStates", za0001)
 						return
-					}
-					for zb0003 > 0 {
-						zb0003--
-						field, err = dc.ReadMapKeyPtr()
-						if err != nil {
-							err = msgp.WrapError(err, "TokenStates", za0001)
-							return
-						}
-						switch msgp.UnsafeString(field) {
-						case "type":
-							err = dc.ReadExtension(&z.TokenStates[za0001].Type)
-							if err != nil {
-								err = msgp.WrapError(err, "TokenStates", za0001, "Type")
-								return
-							}
-						case "rep":
-							err = dc.ReadExtension(&z.TokenStates[za0001].Representative)
-							if err != nil {
-								err = msgp.WrapError(err, "TokenStates", za0001, "Representative")
-								return
-							}
-						case "balance":
-							err = dc.ReadExtension(&z.TokenStates[za0001].Balance)
-							if err != nil {
-								err = msgp.WrapError(err, "TokenStates", za0001, "Balance")
-								return
-							}
-						default:
-							err = dc.Skip()
-							if err != nil {
-								err = msgp.WrapError(err, "TokenStates", za0001)
-								return
-							}
-						}
 					}
 				}
 			}
@@ -157,19 +116,9 @@ func (z *PovAccountState) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *PovAccountState) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 8
-	// write "hash"
-	err = en.Append(0x88, 0xa4, 0x68, 0x61, 0x73, 0x68)
-	if err != nil {
-		return
-	}
-	err = en.WriteExtension(&z.Hash)
-	if err != nil {
-		err = msgp.WrapError(err, "Hash")
-		return
-	}
+	// map header, size 7
 	// write "balance"
-	err = en.Append(0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
+	err = en.Append(0x87, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
 	if err != nil {
 		return
 	}
@@ -235,35 +184,9 @@ func (z *PovAccountState) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		} else {
-			// map header, size 3
-			// write "type"
-			err = en.Append(0x83, 0xa4, 0x74, 0x79, 0x70, 0x65)
+			err = z.TokenStates[za0001].EncodeMsg(en)
 			if err != nil {
-				return
-			}
-			err = en.WriteExtension(&z.TokenStates[za0001].Type)
-			if err != nil {
-				err = msgp.WrapError(err, "TokenStates", za0001, "Type")
-				return
-			}
-			// write "rep"
-			err = en.Append(0xa3, 0x72, 0x65, 0x70)
-			if err != nil {
-				return
-			}
-			err = en.WriteExtension(&z.TokenStates[za0001].Representative)
-			if err != nil {
-				err = msgp.WrapError(err, "TokenStates", za0001, "Representative")
-				return
-			}
-			// write "balance"
-			err = en.Append(0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
-			if err != nil {
-				return
-			}
-			err = en.WriteExtension(&z.TokenStates[za0001].Balance)
-			if err != nil {
-				err = msgp.WrapError(err, "TokenStates", za0001, "Balance")
+				err = msgp.WrapError(err, "TokenStates", za0001)
 				return
 			}
 		}
@@ -291,16 +214,9 @@ func (z *PovAccountState) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *PovAccountState) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 8
-	// string "hash"
-	o = append(o, 0x88, 0xa4, 0x68, 0x61, 0x73, 0x68)
-	o, err = msgp.AppendExtension(o, &z.Hash)
-	if err != nil {
-		err = msgp.WrapError(err, "Hash")
-		return
-	}
+	// map header, size 7
 	// string "balance"
-	o = append(o, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
+	o = append(o, 0x87, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Balance)
 	if err != nil {
 		err = msgp.WrapError(err, "Balance")
@@ -341,26 +257,9 @@ func (z *PovAccountState) MarshalMsg(b []byte) (o []byte, err error) {
 		if z.TokenStates[za0001] == nil {
 			o = msgp.AppendNil(o)
 		} else {
-			// map header, size 3
-			// string "type"
-			o = append(o, 0x83, 0xa4, 0x74, 0x79, 0x70, 0x65)
-			o, err = msgp.AppendExtension(o, &z.TokenStates[za0001].Type)
+			o, err = z.TokenStates[za0001].MarshalMsg(o)
 			if err != nil {
-				err = msgp.WrapError(err, "TokenStates", za0001, "Type")
-				return
-			}
-			// string "rep"
-			o = append(o, 0xa3, 0x72, 0x65, 0x70)
-			o, err = msgp.AppendExtension(o, &z.TokenStates[za0001].Representative)
-			if err != nil {
-				err = msgp.WrapError(err, "TokenStates", za0001, "Representative")
-				return
-			}
-			// string "balance"
-			o = append(o, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
-			o, err = msgp.AppendExtension(o, &z.TokenStates[za0001].Balance)
-			if err != nil {
-				err = msgp.WrapError(err, "TokenStates", za0001, "Balance")
+				err = msgp.WrapError(err, "TokenStates", za0001)
 				return
 			}
 		}
@@ -397,12 +296,6 @@ func (z *PovAccountState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "hash":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Hash)
-			if err != nil {
-				err = msgp.WrapError(err, "Hash")
-				return
-			}
 		case "balance":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Balance)
 			if err != nil {
@@ -456,45 +349,10 @@ func (z *PovAccountState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					if z.TokenStates[za0001] == nil {
 						z.TokenStates[za0001] = new(PovTokenState)
 					}
-					var zb0003 uint32
-					zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+					bts, err = z.TokenStates[za0001].UnmarshalMsg(bts)
 					if err != nil {
 						err = msgp.WrapError(err, "TokenStates", za0001)
 						return
-					}
-					for zb0003 > 0 {
-						zb0003--
-						field, bts, err = msgp.ReadMapKeyZC(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "TokenStates", za0001)
-							return
-						}
-						switch msgp.UnsafeString(field) {
-						case "type":
-							bts, err = msgp.ReadExtensionBytes(bts, &z.TokenStates[za0001].Type)
-							if err != nil {
-								err = msgp.WrapError(err, "TokenStates", za0001, "Type")
-								return
-							}
-						case "rep":
-							bts, err = msgp.ReadExtensionBytes(bts, &z.TokenStates[za0001].Representative)
-							if err != nil {
-								err = msgp.WrapError(err, "TokenStates", za0001, "Representative")
-								return
-							}
-						case "balance":
-							bts, err = msgp.ReadExtensionBytes(bts, &z.TokenStates[za0001].Balance)
-							if err != nil {
-								err = msgp.WrapError(err, "TokenStates", za0001, "Balance")
-								return
-							}
-						default:
-							bts, err = msgp.Skip(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "TokenStates", za0001)
-								return
-							}
-						}
 					}
 				}
 			}
@@ -529,12 +387,12 @@ func (z *PovAccountState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PovAccountState) Msgsize() (s int) {
-	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Hash.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Vote.Len() + 8 + msgp.ExtensionPrefixSize + z.Network.Len() + 8 + msgp.ExtensionPrefixSize + z.Storage.Len() + 7 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 12 + msgp.ArrayHeaderSize
+	s = 1 + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Vote.Len() + 8 + msgp.ExtensionPrefixSize + z.Network.Len() + 8 + msgp.ExtensionPrefixSize + z.Storage.Len() + 7 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 12 + msgp.ArrayHeaderSize
 	for za0001 := range z.TokenStates {
 		if z.TokenStates[za0001] == nil {
 			s += msgp.NilSize
 		} else {
-			s += 1 + 5 + msgp.ExtensionPrefixSize + z.TokenStates[za0001].Type.Len() + 4 + msgp.ExtensionPrefixSize + z.TokenStates[za0001].Representative.Len() + 8 + msgp.ExtensionPrefixSize + z.TokenStates[za0001].Balance.Len()
+			s += z.TokenStates[za0001].Msgsize()
 		}
 	}
 	s += 9
@@ -822,6 +680,12 @@ func (z *PovTokenState) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Type")
 				return
 			}
+		case "hash":
+			err = dc.ReadExtension(&z.Hash)
+			if err != nil {
+				err = msgp.WrapError(err, "Hash")
+				return
+			}
 		case "rep":
 			err = dc.ReadExtension(&z.Representative)
 			if err != nil {
@@ -846,16 +710,26 @@ func (z *PovTokenState) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z PovTokenState) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 3
+func (z *PovTokenState) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 4
 	// write "type"
-	err = en.Append(0x83, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	err = en.Append(0x84, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	if err != nil {
 		return
 	}
 	err = en.WriteExtension(&z.Type)
 	if err != nil {
 		err = msgp.WrapError(err, "Type")
+		return
+	}
+	// write "hash"
+	err = en.Append(0xa4, 0x68, 0x61, 0x73, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Hash)
+	if err != nil {
+		err = msgp.WrapError(err, "Hash")
 		return
 	}
 	// write "rep"
@@ -882,14 +756,21 @@ func (z PovTokenState) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z PovTokenState) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *PovTokenState) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 3
+	// map header, size 4
 	// string "type"
-	o = append(o, 0x83, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	o = append(o, 0x84, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Type)
 	if err != nil {
 		err = msgp.WrapError(err, "Type")
+		return
+	}
+	// string "hash"
+	o = append(o, 0xa4, 0x68, 0x61, 0x73, 0x68)
+	o, err = msgp.AppendExtension(o, &z.Hash)
+	if err != nil {
+		err = msgp.WrapError(err, "Hash")
 		return
 	}
 	// string "rep"
@@ -933,6 +814,12 @@ func (z *PovTokenState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Type")
 				return
 			}
+		case "hash":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Hash)
+			if err != nil {
+				err = msgp.WrapError(err, "Hash")
+				return
+			}
 		case "rep":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Representative)
 			if err != nil {
@@ -958,7 +845,7 @@ func (z *PovTokenState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z PovTokenState) Msgsize() (s int) {
-	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 4 + msgp.ExtensionPrefixSize + z.Representative.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len()
+func (z *PovTokenState) Msgsize() (s int) {
+	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 5 + msgp.ExtensionPrefixSize + z.Hash.Len() + 4 + msgp.ExtensionPrefixSize + z.Representative.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len()
 	return
 }
