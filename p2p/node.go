@@ -81,6 +81,7 @@ func (node *QlcNode) startHost() error {
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(node.privateKey),
 		libp2p.NATPortMap(),
+		libp2p.DefaultMuxers,
 	)
 	if err != nil {
 		return err
