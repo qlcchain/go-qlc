@@ -162,7 +162,7 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 		result, _ := dps.lv.BlockCheck(bs.Block)
 		dps.ProcessResult(result, bs)
 
-		if result == process.Progress || result == process.Old {
+		if dps.isResultValid(result) {
 			if bs.BlockFrom == types.Synchronized {
 				dps.ConfirmBlock(bs.Block)
 				return true
@@ -261,6 +261,22 @@ func (dps *DPoS) ProcessMsgLoop() {
 	}
 }
 
+func (dps *DPoS) isResultValid(result process.ProcessResult) bool {
+	if result == process.Progress || result == process.Old {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (dps *DPoS) isResultGap(result process.ProcessResult) bool {
+	if result == process.GapPrevious || result == process.GapSource {
+		return true
+	} else {
+		return false
+	}
+}
+
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 	dps.blocks <- bs
 }
@@ -289,14 +305,14 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		dps.logger.Infof("dps recv publishReq block[%s]", hash)
 		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
 
-		if result == process.Progress || result == process.Old {
+		if dps.isResultValid(result) {
 			dps.localRepVote(bs)
 		}
 	case consensus.MsgConfirmReq:
 		dps.logger.Infof("dps recv confirmReq block[%s]", hash)
 		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmReq, bs.Block, bs.MsgFrom)
 
-		if result == process.Progress || result == process.Old {
+		if dps.isResultValid(result) {
 			dps.localRepVote(bs)
 		}
 	case consensus.MsgConfirmAck:
@@ -306,7 +322,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		dps.saveOnlineRep(ack.Account)
 
 		//cache the ack messages
-		if result == process.GapPrevious || result == process.GapSource {
+		if dps.isResultGap(result) {
 			if dps.voteCache.Has(hash) {
 				v, err := dps.voteCache.Get(hash)
 				if err != nil {
@@ -339,7 +355,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
 		dps.acTrx.addToRoots(bs.Block)
 
-		if result == process.Progress {
+		if dps.isResultValid(result) {
 			dps.localRepVote(bs)
 		}
 	default:
