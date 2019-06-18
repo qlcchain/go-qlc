@@ -70,13 +70,12 @@ func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateB
 
 	tsNew := &types.PovTokenState{
 		Type:           token,
+		Hash:           hash,
 		Representative: rep,
 		Balance:        balance,
 	}
 
 	if oldAs != nil {
-		newAs.Hash = hash
-
 		if block.GetToken() == common.ChainToken() {
 			newAs.Balance = balance
 			newAs.Oracle = block.GetOracle()
@@ -89,11 +88,11 @@ func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateB
 		if tsNewExist != nil {
 			tsNewExist.Representative = rep
 			tsNewExist.Balance = balance
+			tsNewExist.Hash = hash
 		} else {
 			newAs.TokenStates = append(newAs.TokenStates, tsNew)
 		}
 	} else {
-		newAs.Hash = hash
 		newAs.TokenStates = []*types.PovTokenState{tsNew}
 
 		if block.GetToken() == common.ChainToken() {

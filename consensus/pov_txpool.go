@@ -26,7 +26,7 @@ type PovTxPool struct {
 	txMu        sync.RWMutex
 	txEventCh   chan *PovTxEvent
 	quitCh      chan struct{}
-	accountTxs  map[types.Address]*list.List
+	accountTxs  map[types.AddressToken]*list.List
 	allTxs      map[types.Hash]*PovTxEntry
 	lastUpdated int64
 }
@@ -37,7 +37,7 @@ func NewPovTxPool(povImpl *PoVEngine) *PovTxPool {
 	}
 	txPool.txEventCh = make(chan *PovTxEvent, 5000)
 	txPool.quitCh = make(chan struct{})
-	txPool.accountTxs = make(map[types.Address]*list.List)
+	txPool.accountTxs = make(map[types.AddressToken]*list.List)
 	txPool.allTxs = make(map[types.Hash]*PovTxEntry)
 	return txPool
 }
@@ -173,10 +173,11 @@ func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
 
 	tp.povEngine.GetLogger().Debugf("add tx %s", txHash)
 
-	accTxList, ok := tp.accountTxs[txBlock.GetAddress()]
+	addrToken := types.AddressToken{Address: txBlock.GetAddress(), Token: txBlock.GetToken()}
+	accTxList, ok := tp.accountTxs[addrToken]
 	if !ok {
 		accTxList = list.New()
-		tp.accountTxs[txBlock.GetAddress()] = accTxList
+		tp.accountTxs[addrToken] = accTxList
 	}
 
 	txEntry := &PovTxEntry{txHash: txHash, txBlock: txBlock}
@@ -236,7 +237,8 @@ func (tp *PovTxPool) delTx(txHash types.Hash) {
 	}
 	txBlock := txEntry.txBlock
 
-	accTxList, ok := tp.accountTxs[txBlock.GetAddress()]
+	addrToken := types.AddressToken{Address: txBlock.GetAddress(), Token: txBlock.GetToken()}
+	accTxList, ok := tp.accountTxs[addrToken]
 	if ok {
 		var foundEle *list.Element
 		for e := accTxList.Front(); e != nil; e = e.Next() {
@@ -250,7 +252,7 @@ func (tp *PovTxPool) delTx(txHash types.Hash) {
 		}
 
 		if accTxList.Len() <= 0 {
-			delete(tp.accountTxs, txBlock.GetAddress())
+			delete(tp.accountTxs, addrToken)
 		}
 	}
 
@@ -269,20 +271,9 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 
 	//tp.povEngine.GetLogger().Debugf("select pending txs in pool, txs %d", len(tp.allTxs))
 
-	addressPrevHashes := make(map[types.Address]types.Hash)
-	for address, accTxList := range tp.accountTxs {
-		isCA := types.IsContractAddress(address)
-		// contract address's blocks are all independent, no previous
-		if isCA {
-			addressPrevHashes[address] = types.ZeroHash
-		} else {
-			as := tp.povEngine.chain.GetAccountState(stateTrie, address)
-			if as != nil {
-				addressPrevHashes[address] = as.Hash
-			} else {
-				addressPrevHashes[address] = types.ZeroHash
-			}
-		}
+	addrTokenPrevHashes := make(map[types.AddressToken]types.Hash)
+	for addrToken, accTxList := range tp.accountTxs {
+		isCA := types.IsContractAddress(addrToken.Address)
 
 		selectedTxHashes := make(map[types.Hash]struct{})
 		for accTxList.Len() > len(selectedTxHashes) {
@@ -295,15 +286,34 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 				if _, ok := selectedTxHashes[txHash]; ok {
 					continue
 				}
-				//tp.povEngine.GetLogger().Debugf("addressPrevHash %s", addressPrevHashes[address])
-				//tp.povEngine.GetLogger().Debugf("address %s block %s previous %s", address, txHash, tx.GetPrevious())
-				if txBlock.GetPrevious() == addressPrevHashes[address] {
+				token := addrToken.Token
+
+				// contract address's blocks are all independent, no previous
+				if isCA {
+					addrTokenPrevHashes[addrToken] = types.ZeroHash
+				} else {
+					as := tp.povEngine.chain.GetAccountState(stateTrie, addrToken.Address)
+					if as != nil {
+						rs := as.GetTokenState(token)
+						if rs != nil {
+							addrTokenPrevHashes[addrToken] = rs.Hash
+						} else {
+							addrTokenPrevHashes[addrToken] = types.ZeroHash
+						}
+					} else {
+						addrTokenPrevHashes[addrToken] = types.ZeroHash
+					}
+				}
+
+				//tp.povEngine.GetLogger().Debugf("address %s token %s block %s", addrToken.Address, token, txHash)
+				//tp.povEngine.GetLogger().Debugf("tokenPrevHash %s txPrevious %s", addrTokenPrevHashes[addrToken], txBlock.GetPrevious())
+				if txBlock.GetPrevious() == addrTokenPrevHashes[addrToken] {
 					retTxs = append(retTxs, txBlock)
 
 					selectedTxHashes[txHash] = struct{}{}
 					// contract address's blocks are all independent, no previous
 					if !isCA {
-						addressPrevHashes[address] = txHash
+						addrTokenPrevHashes[addrToken] = txHash
 					}
 					inOrderTxNum++
 
@@ -317,7 +327,7 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 			}
 			if inOrderTxNum == 0 {
 				if notInOrderTxNum > 0 {
-					tp.povEngine.GetLogger().Debugf("address %s has txs %d not in order", address, notInOrderTxNum)
+					tp.povEngine.GetLogger().Debugf("address %s has txs %d not in order", addrToken.Address, notInOrderTxNum)
 				}
 				break
 			}

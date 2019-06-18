@@ -249,12 +249,13 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 	if prevTrie == nil {
 		return BadStateHash, errors.New("failed to get prev state tire")
 	}
-	addressPrevHashes := make(map[types.Address]types.Hash)
+	addrTokenPrevHashes := make(map[types.AddressToken]types.Hash)
 	for txIdx := 0; txIdx < len(block.Transactions); txIdx++ {
 		tx := block.Transactions[txIdx]
 		isCA := types.IsContractAddress(tx.Block.GetAddress())
+		addrToken := types.AddressToken{Address: tx.Block.GetAddress(), Token: tx.Block.GetToken()}
 
-		prevHashWant, ok := addressPrevHashes[tx.Block.GetAddress()]
+		prevHashWant, ok := addrTokenPrevHashes[addrToken]
 		if !ok {
 			// contract address's blocks are all independent, no previous
 			if isCA {
@@ -262,14 +263,20 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 			} else {
 				as := pv.chain.GetAccountState(prevTrie, tx.Block.GetAddress())
 				if as != nil {
-					prevHashWant = as.Hash
+					ts := as.GetTokenState(tx.Block.GetToken())
+					if ts != nil {
+						prevHashWant = ts.Hash
+					} else {
+						prevHashWant = types.ZeroHash
+					}
 				} else {
 					prevHashWant = types.ZeroHash
 				}
 			}
 		}
 
-		//pv.logger.Debugf("address %s block %s prevHashWant %s txPrevHash %s", tx.Block.GetAddress(), tx.GetHash(), prevHashWant, tx.Block.GetPrevious())
+		//pv.logger.Debugf("address %s token %s block %s", tx.Block.GetAddress(), tx.Block.GetToken(), tx.GetHash())
+		//pv.logger.Debugf("prevHashWant %s txPrevHash %s", prevHashWant, tx.Block.GetPrevious())
 
 		if prevHashWant != tx.Block.GetPrevious() {
 			return InvalidTxOrder, errors.New("tx is not in order")
@@ -277,7 +284,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 
 		// contract address's blocks are all independent, no previous
 		if !isCA {
-			addressPrevHashes[tx.Block.GetAddress()] = tx.Block.GetHash()
+			addrTokenPrevHashes[addrToken] = tx.Block.GetHash()
 		}
 	}
 
