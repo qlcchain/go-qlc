@@ -227,9 +227,13 @@ func (ws *WalletStore) RemoveWallet(id types.Address) error {
 func (ws *WalletStore) Close() error {
 	lock.Lock()
 	defer lock.Unlock()
-	err := ws.Store.Close()
-	delete(cache, ws.dir)
-	return err
+	if _, ok := cache[ws.dir]; ok {
+		err := ws.Store.Close()
+		delete(cache, ws.dir)
+		ws.logger.Info("wallet closed , ", ws.dir)
+		return err
+	}
+	return nil
 }
 
 func (ws *WalletStore) setCurrentId(txn db.StoreTxn, walletId []byte) error {

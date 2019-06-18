@@ -179,7 +179,7 @@ func start() error {
 		ledger.CloseLedger()
 		session := w.NewSession(address)
 		defer func() {
-			err := session.Close()
+			err := w.Close()
 			if err != nil {
 				fmt.Println(err)
 			}
