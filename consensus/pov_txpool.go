@@ -289,25 +289,28 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 				token := addrToken.Token
 
 				// contract address's blocks are all independent, no previous
-				if isCA {
-					addrTokenPrevHashes[addrToken] = types.ZeroHash
-				} else {
-					as := tp.povEngine.chain.GetAccountState(stateTrie, addrToken.Address)
-					if as != nil {
-						rs := as.GetTokenState(token)
-						if rs != nil {
-							addrTokenPrevHashes[addrToken] = rs.Hash
-						} else {
-							addrTokenPrevHashes[addrToken] = types.ZeroHash
-						}
+				prevHashWant, ok := addrTokenPrevHashes[addrToken]
+				if !ok {
+					if isCA {
+						prevHashWant = types.ZeroHash
 					} else {
-						addrTokenPrevHashes[addrToken] = types.ZeroHash
+						as := tp.povEngine.chain.GetAccountState(stateTrie, addrToken.Address)
+						if as != nil {
+							rs := as.GetTokenState(token)
+							if rs != nil {
+								prevHashWant = rs.Hash
+							} else {
+								prevHashWant = types.ZeroHash
+							}
+						} else {
+							prevHashWant = types.ZeroHash
+						}
 					}
 				}
 
 				//tp.povEngine.GetLogger().Debugf("address %s token %s block %s", addrToken.Address, token, txHash)
 				//tp.povEngine.GetLogger().Debugf("tokenPrevHash %s txPrevious %s", addrTokenPrevHashes[addrToken], txBlock.GetPrevious())
-				if txBlock.GetPrevious() == addrTokenPrevHashes[addrToken] {
+				if txBlock.GetPrevious() == prevHashWant {
 					retTxs = append(retTxs, txBlock)
 
 					selectedTxHashes[txHash] = struct{}{}
