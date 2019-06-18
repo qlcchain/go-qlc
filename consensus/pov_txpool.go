@@ -97,7 +97,7 @@ func (tp *PovTxPool) loop() {
 	}
 }
 
-func (tp *PovTxPool) recoverUnconfirmedTxs() {
+func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxEntry, int) {
 	ledger := tp.povEngine.GetLedger()
 	logger := tp.povEngine.GetLogger()
 
@@ -106,15 +106,113 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 
 	logger.Infof("begin to scan all state blocks, block %d, unchecked %d", stateBlockNum, uncheckedStateBlockNum)
 
+	var accountTxs map[types.AddressToken][]*PovTxEntry
+	unconfirmedTxNum := 0
+
 	startTime := time.Now()
-	unpackStateBlocks := make(map[types.Hash]*types.StateBlock)
+
+	err := ledger.BatchView(func(txn db.StoreTxn) error {
+		// scan all account metas
+		var allAms []*types.AccountMeta
+		err := ledger.GetAccountMetas(func(am *types.AccountMeta) error {
+			allAms = append(allAms, am)
+			return nil
+		}, txn)
+		if err != nil {
+			logger.Errorf("failed to get account metas, err %s", err)
+			return err
+		}
+
+		logger.Infof("total %d account metas", len(allAms))
+
+		accountTxs = make(map[types.AddressToken][]*PovTxEntry, len(allAms))
+
+		// scan all blocks under user accounts
+		for _, am := range allAms {
+			for _, tm := range am.Tokens {
+				prevHash := tm.Header
+				for prevHash.IsZero() == false {
+					block, err := ledger.GetStateBlock(prevHash, txn)
+					if err != nil {
+						break
+					}
+
+					txHash := prevHash // no need calc hash from block
+					prevHash = block.GetPrevious()
+
+					if ledger.HasPovTxLookup(txHash, txn) {
+						break // all previous tx had been packed into pov
+					}
+
+					addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
+					accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: block})
+					unconfirmedTxNum++
+				}
+			}
+		}
+
+		// reversing txs, open <- send/recv <- header
+		for _, tokenTxs := range accountTxs {
+			for i := len(tokenTxs)/2 - 1; i >= 0; i-- {
+				opp := len(tokenTxs) - 1 - i
+				tokenTxs[i], tokenTxs[opp] = tokenTxs[opp], tokenTxs[i]
+			}
+		}
+
+		// scan all genesis blocks under contract accounts
+		allGenesisBlocks := common.AllGenesisBlocks()
+		for _, block := range allGenesisBlocks {
+			if types.IsContractAddress(block.GetAddress()) != true {
+				continue
+			}
+
+			txHash := block.GetHash()
+			if ledger.HasPovTxLookup(txHash, txn) {
+				continue
+			}
+
+			addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
+			accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: &block})
+			unconfirmedTxNum++
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Errorf("scan all state blocks failed")
+	}
+
+	usedTime := time.Since(startTime)
+
+	logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedTxNum)
+
+	return accountTxs, unconfirmedTxNum
+}
+
+func (tp *PovTxPool) getUnconfirmedTxsBySlow() (map[types.AddressToken][]*PovTxEntry, int) {
+	ledger := tp.povEngine.GetLedger()
+	logger := tp.povEngine.GetLogger()
+
+	stateBlockNum, _ := ledger.CountStateBlocks()
+	uncheckedStateBlockNum, _ := ledger.CountUncheckedBlocks()
+
+	logger.Infof("begin to scan all state blocks, block %d, unchecked %d", stateBlockNum, uncheckedStateBlockNum)
+
+	accountTxs := make(map[types.AddressToken][]*PovTxEntry, 1000)
+	unconfirmedTxNum := 0
+
+	startTime := time.Now()
+
 	err := ledger.BatchView(func(txn db.StoreTxn) error {
 		err := ledger.GetStateBlocks(func(block *types.StateBlock) error {
 			txHash := block.GetHash()
 			if ledger.HasPovTxLookup(txHash, txn) {
 				return nil
 			}
-			unpackStateBlocks[txHash] = block
+
+			addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
+			accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: block})
+			unconfirmedTxNum++
 			return nil
 		}, txn)
 
@@ -130,24 +228,29 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 	}
 
 	usedTime := time.Since(startTime)
-	unconfirmedStateBlockNum := len(unpackStateBlocks)
 
-	logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedStateBlockNum)
+	logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedTxNum)
 
-	if len(unpackStateBlocks) <= 0 {
+	return accountTxs, unconfirmedTxNum
+}
+
+func (tp *PovTxPool) recoverUnconfirmedTxs() {
+	logger := tp.povEngine.GetLogger()
+
+	unpackAccountTxs, unconfirmedTxNum := tp.getUnconfirmedTxsByFast()
+	if unconfirmedTxNum <= 0 {
 		return
 	}
 
-	txStepNum := len(unpackStateBlocks) / 100
-	if txStepNum < 5000 {
-		txStepNum = 5000
-	}
+	txStepNum := 5000
 	txAddNum := 0
-	for txHash, block := range unpackStateBlocks {
-		tp.addTx(txHash, block)
-		txAddNum++
-		if txAddNum%txStepNum == 0 {
-			logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
+	for _, accountTxs := range unpackAccountTxs {
+		for _, txEntry := range accountTxs {
+			tp.addTx(txEntry.txHash, txEntry.txBlock)
+			txAddNum++
+			if txAddNum%txStepNum == 0 {
+				logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
+			}
 		}
 	}
 
