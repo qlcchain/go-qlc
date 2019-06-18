@@ -75,9 +75,9 @@ type PovMinerStats struct {
 
 func NewPovApi(ledger *ledger.Ledger, eb event.EventBus) *PovApi {
 	api := &PovApi{
-		ledger:    ledger,
-		eb:        eb,
-		logger:    log.NewLogger("rpc/pov"),
+		ledger: ledger,
+		eb:     eb,
+		logger: log.NewLogger("rpc/pov"),
 	}
 	api.syncState.Store(common.SyncNotStart)
 	_ = eb.SubscribeSync(string(common.EventPovSyncState), api.OnPovSyncState)
