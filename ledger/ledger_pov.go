@@ -721,6 +721,23 @@ func (l *Ledger) GetLatestPovBestHash(txns ...db.StoreTxn) (types.Hash, error) {
 	return latestHash, nil
 }
 
+func (l *Ledger) GetLatestPovHeader(txns ...db.StoreTxn) (*types.PovHeader, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	latestHash, err := l.GetLatestPovBestHash(txn)
+	if err != nil {
+		return nil, err
+	}
+
+	height, err := l.GetPovHeight(latestHash, txns...)
+	if err != nil {
+		return nil, err
+	}
+
+	return l.GetPovHeader(height, latestHash, txn)
+}
+
 func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)

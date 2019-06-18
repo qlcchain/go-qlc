@@ -108,17 +108,7 @@ func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) 
 }
 
 func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
-	blockHash, err := api.ledger.GetLatestPovBestHash()
-	if err != nil {
-		return nil, err
-	}
-
-	height, err := api.ledger.GetPovHeight(blockHash)
-	if err != nil {
-		return nil, err
-	}
-
-	header, err := api.ledger.GetPovHeader(height, blockHash)
+	header, err := api.ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
