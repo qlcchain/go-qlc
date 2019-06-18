@@ -17,11 +17,13 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/abiosoft/ishell"
@@ -176,7 +178,7 @@ func start() error {
 		ledger.CloseLedger()
 		session := w.NewSession(address)
 		defer func() {
-			err := session.Close()
+			err := w.Close()
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -251,7 +253,26 @@ func start() error {
 	if err != nil {
 		return err
 	}
+	trapSignal()
 	return nil
+}
+
+func trapSignal() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
+	<-c
+
+	sers := make([]common.Service, 0)
+	for i := len(services) - 1; i >= 0; i-- {
+		sers = append(sers, services[i])
+	}
+	stopNode(sers)
+	fmt.Println("qlc node closed successfully")
+
+	//bus := event.GetEventBus(cfg.LedgerDir())
+	//if err := bus.Close(); err != nil {
+	//	fmt.Println(err)
+	//}
 }
 
 func seedToAccounts(data []byte) ([]*types.Account, error) {

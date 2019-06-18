@@ -14,12 +14,8 @@ require (
 	github.com/dgraph-io/badger v2.0.0-rc.2+incompatible
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
-	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/gammazero/workerpool v0.0.0-20190521015540-3b91a70bc0a1
 	github.com/go-interpreter/wagon v0.4.0
-	github.com/go-kit/kit v0.8.0 // indirect
-	github.com/go-logfmt/logfmt v0.4.0 // indirect
-	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.3.1
 	github.com/google/uuid v1.1.1
@@ -47,7 +43,6 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.3.0
-	github.com/tendermint/tmlibs v0.9.0
 	github.com/tinylib/msgp v1.1.0
 	go.uber.org/atomic v1.3.2
 	go.uber.org/multierr v1.1.0 // indirect
