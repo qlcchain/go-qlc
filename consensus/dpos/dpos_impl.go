@@ -29,7 +29,7 @@ const (
 	findOnlineRepInterval = 2 * time.Minute
 	maxBlocks             = 10240
 	maxCacheBlocks        = 102400
-	povBlockNumDay        = 100
+	povBlockNumDay        = 2880
 )
 
 var (
