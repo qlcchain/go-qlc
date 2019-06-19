@@ -2,7 +2,6 @@ package types
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"strconv"
 
@@ -150,6 +149,9 @@ func (b *Balance) UnmarshalBinary(text []byte) error {
 
 // MarshalText implements the encoding.TextMarshaler interface.
 func (b Balance) MarshalText() ([]byte, error) {
+	if b.Int == nil {
+		return []byte(ZeroBalance.String()), nil
+	}
 	return []byte(b.String()), nil
 }
 
@@ -165,14 +167,16 @@ func (b *Balance) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaler interface.
+//MarshalJSON implements the json.Marshaler interface.
 func (b *Balance) MarshalJSON() ([]byte, error) {
 	s := ""
 
-	if b.Int == nil {
-		s = fmt.Sprintf("\"%s\"", ZeroBalance)
+	if b == nil || b.Int == nil {
+		s = ZeroBalance.String()
+		//s = fmt.Sprintf("\"%s\"", ZeroBalance)
 	} else {
-		s = fmt.Sprintf("\"%s\"", b.String())
+		//s = fmt.Sprintf("\"%s\"", b.String())
+		s = b.String()
 	}
 	return []byte(s), nil
 }
