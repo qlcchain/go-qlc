@@ -40,7 +40,7 @@ func generateTestLedger() {
 		}
 		to := util.Flag{
 			Name:  "to",
-			Must:  true,
+			Must:  false,
 			Usage: "receive accounts",
 			Value: []string{},
 		}
