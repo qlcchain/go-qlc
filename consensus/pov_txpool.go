@@ -145,11 +145,14 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 					}
 
 					addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
+					//logger.Debugf("AddrToken %s block %s", addrToken, txHash)
 					accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: block})
 					unconfirmedTxNum++
 				}
 			}
 		}
+
+		logger.Infof("total %d unconfirmed blocks by scan %d account metas", unconfirmedTxNum, len(allAms))
 
 		// reversing txs, open <- send/recv <- header
 		for _, tokenTxs := range accountTxs {
@@ -172,7 +175,9 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 			}
 
 			addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
-			accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: &block})
+			//logger.Debugf("AddrToken %s block %s", addrToken, txHash)
+			blockCopy := block
+			accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: &blockCopy})
 			unconfirmedTxNum++
 		}
 
@@ -274,9 +279,10 @@ func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
 		return
 	}
 
-	tp.povEngine.GetLogger().Debugf("add tx %s", txHash)
-
 	addrToken := types.AddressToken{Address: txBlock.GetAddress(), Token: txBlock.GetToken()}
+
+	tp.povEngine.GetLogger().Debugf("add AddrToken %s tx %s", addrToken, txHash)
+
 	accTxList, ok := tp.accountTxs[addrToken]
 	if !ok {
 		accTxList = list.New()
@@ -411,8 +417,8 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 					}
 				}
 
-				//tp.povEngine.GetLogger().Debugf("address %s token %s block %s", addrToken.Address, token, txHash)
-				//tp.povEngine.GetLogger().Debugf("tokenPrevHash %s txPrevious %s", addrTokenPrevHashes[addrToken], txBlock.GetPrevious())
+				//tp.povEngine.GetLogger().Debugf("AddrToken %s block %s", addrToken, txHash)
+				//tp.povEngine.GetLogger().Debugf("prevHashWant %s txPrevious %s", prevHashWant, txBlock.GetPrevious())
 				if txBlock.GetPrevious() == prevHashWant {
 					retTxs = append(retTxs, txBlock)
 
@@ -433,7 +439,7 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 			}
 			if inOrderTxNum == 0 {
 				if notInOrderTxNum > 0 {
-					tp.povEngine.GetLogger().Debugf("address %s has txs %d not in order", addrToken.Address, notInOrderTxNum)
+					tp.povEngine.GetLogger().Debugf("AddrToken %s has txs %d not in order", addrToken, notInOrderTxNum)
 				}
 				break
 			}
