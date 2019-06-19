@@ -134,18 +134,17 @@ func (b *Balance) Len() int { return len(b.Bytes()) }
 
 //ExtensionType implements Extension.UnmarshalBinary interface
 func (b *Balance) MarshalBinaryTo(text []byte) error {
-	if b.Int == nil {
-		b.Int = new(big.Int).SetBytes(text)
-	} else {
-		b.Int.SetBytes(text)
-	}
+	copy(text, b.Bytes())
 	return nil
 }
 
 //ExtensionType implements Extension.UnmarshalBinary interface
 func (b *Balance) UnmarshalBinary(text []byte) error {
-	b.Int = new(big.Int).SetBytes(text)
-
+	if b.Int == nil {
+		b.Int = new(big.Int).SetBytes(text)
+	} else {
+		b.Int.SetBytes(text)
+	}
 	return nil
 }
 
