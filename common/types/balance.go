@@ -2,7 +2,6 @@ package types
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"strconv"
 
@@ -43,9 +42,9 @@ type Balance struct {
 
 //StringToBalance create balance from string
 func StringToBalance(b string) Balance {
-	t := new(big.Int)
-	t.SetString(b, 10)
-	return Balance{t}
+	v := &Balance{}
+	_ = v.UnmarshalJSON([]byte(b))
+	return *v
 }
 
 // BytesToBalance create balance from byte slice
@@ -135,17 +134,26 @@ func (b *Balance) Len() int { return len(b.Bytes()) }
 
 //ExtensionType implements Extension.UnmarshalBinary interface
 func (b *Balance) MarshalBinaryTo(text []byte) error {
-	copy(text, b.Bytes())
+	if b.Int == nil {
+		b.Int = new(big.Int).SetBytes(text)
+	} else {
+		b.Int.SetBytes(text)
+	}
 	return nil
 }
 
 //ExtensionType implements Extension.UnmarshalBinary interface
 func (b *Balance) UnmarshalBinary(text []byte) error {
-	i := new(big.Int)
-	i.SetBytes(text)
-	*b = Balance{i}
+	b.Int = new(big.Int).SetBytes(text)
 
 	return nil
+}
+
+func (b Balance) String() string {
+	if b.Int == nil {
+		return big.NewInt(0).String()
+	}
+	return b.Int.String()
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.
@@ -156,25 +164,22 @@ func (b Balance) MarshalText() ([]byte, error) {
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (b *Balance) UnmarshalText(text []byte) error {
 	s := util.TrimQuotes(string(text))
-	_, err := strconv.ParseInt(s, 10, 64)
+	v, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return err
 	}
-	balance := StringToBalance(s)
-	*b = balance
+	if b.Int != nil {
+		b.Int.SetInt64(v)
+	} else {
+		b.Int = new(big.Int).SetInt64(v)
+	}
+
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaler interface.
-func (b *Balance) MarshalJSON() ([]byte, error) {
-	s := ""
-
-	if b.Int == nil {
-		s = fmt.Sprintf("\"%s\"", ZeroBalance)
-	} else {
-		s = fmt.Sprintf("\"%s\"", b.String())
-	}
-	return []byte(s), nil
+//MarshalJSON implements the json.Marshaler interface.
+func (b Balance) MarshalJSON() ([]byte, error) {
+	return b.MarshalText()
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.

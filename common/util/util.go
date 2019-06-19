@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/blake2b"
@@ -65,10 +66,11 @@ func Hash(size int, data ...[]byte) []byte {
 
 // TrimQuotes trim quotes of string if quotes exist
 func TrimQuotes(s string) string {
-	if len(s) >= 2 {
-		if s[0] == '"' && s[len(s)-1] == '"' {
-			return s[1 : len(s)-1]
-		}
+	l := len(s)
+	if l >= 2 && s[0] == '"' && s[l-1] == '"' {
+		var b strings.Builder
+		b.WriteString(s[1 : l-1])
+		return b.String()
 	}
 	return s
 }
