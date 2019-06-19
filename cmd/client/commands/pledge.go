@@ -10,13 +10,12 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
+	commonutil "github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/spf13/cobra"
@@ -116,8 +115,7 @@ func pledgeAction(beneficialAccount, pledgeAccount, amount, pType string) error 
 	defer client.Close()
 
 	am := types.StringToBalance(amount)
-	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	NEP5tTxId := fmt.Sprintf("%d", rd.Int63())
+	NEP5tTxId := commonutil.RandomFixedString(64)
 	pledgeParam := api.PledgeParam{
 		Beneficial: b.Address(), PledgeAddress: p.Address(), Amount: am,
 		PType: pType, NEP5TxId: NEP5tTxId,
