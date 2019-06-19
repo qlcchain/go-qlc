@@ -123,6 +123,6 @@ func TestStateBlock_Clone(t *testing.T) {
 		t.Fatal("invalid clone")
 	}
 	if b.String() != b1.String() {
-		t.Fatal("invalid clone ")
+		t.Fatal("invalid clone ", b.String(), b1.String())
 	}
 }
