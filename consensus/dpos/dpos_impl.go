@@ -27,11 +27,14 @@ const (
 	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
-	maxBlocks             = 1024000
+	maxBlocks             = 10240
+	maxCacheBlocks        = 102400
+	povBlockNumDay        = 100
 )
 
 var (
 	localRepAccount sync.Map
+	povSyncState    common.SyncState
 )
 
 type DPoS struct {
@@ -48,7 +51,9 @@ type DPoS struct {
 	quitCh         chan bool
 	quitChProcess  chan bool
 	blocks         chan *consensus.BlockSource
+	cacheBlocks    chan *consensus.BlockSource
 	blocksAcked    chan types.Hash
+	povReady       chan bool
 }
 
 func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *DPoS {
@@ -68,7 +73,9 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 		quitCh:         make(chan bool, 1),
 		quitChProcess:  make(chan bool, 1),
 		blocks:         make(chan *consensus.BlockSource, maxBlocks),
+		cacheBlocks:    make(chan *consensus.BlockSource, maxCacheBlocks),
 		blocksAcked:    make(chan types.Hash, maxBlocks),
+		povReady:       make(chan bool, 1),
 	}
 
 	dps.acTrx.SetDposService(dps)
@@ -76,6 +83,13 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 }
 
 func (dps *DPoS) Init() {
+	povSyncState = common.SyncNotStart
+
+	err := dps.eb.SubscribeSync(string(common.EventPovSyncState), dps.onPovSyncState)
+	if err != nil {
+		dps.logger.Errorf("subscribe pov sync state event err")
+	}
+
 	if len(dps.accounts) != 0 {
 		dps.refreshAccount()
 	}
@@ -119,6 +133,16 @@ func (dps *DPoS) Stop() {
 	dps.quitCh <- true
 	dps.quitChProcess <- true
 	dps.acTrx.stop()
+}
+
+func (dps *DPoS) onPovSyncState(state common.SyncState) {
+	povSyncState = state
+	dps.logger.Infof("pov sync state to [%s]", state)
+
+	if povSyncState == common.Syncdone {
+		dps.povReady <- true
+		close(dps.cacheBlocks)
+	}
 }
 
 func (dps *DPoS) enqueueUnchecked(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
@@ -181,7 +205,6 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 
 			localRepAccount.Range(func(key, value interface{}) bool {
 				address := key.(types.Address)
-				dps.saveOnlineRep(address)
 
 				va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
 				if err != nil {
@@ -243,6 +266,16 @@ func (dps *DPoS) ProcessMsgLoop() {
 	DequeueOut:
 		for {
 			select {
+			case <-dps.povReady:
+				err := dps.eb.Unsubscribe(string(common.EventPovSyncState), dps.onPovSyncState)
+				if err != nil {
+					dps.logger.Errorf("unsubscribe pov sync state err %s", err)
+				}
+
+				for bs := range dps.cacheBlocks {
+					dps.logger.Infof("process cache block %s", bs.Block.GetHash())
+					dps.ProcessMsgDo(bs)
+				}
 			case hash := <-dps.blocksAcked:
 				dps.dequeueUnchecked(hash)
 			default:
@@ -278,7 +311,11 @@ func (dps *DPoS) isResultGap(result process.ProcessResult) bool {
 }
 
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
-	dps.blocks <- bs
+	if povSyncState == common.Syncdone || bs.BlockFrom == types.Synchronized {
+		dps.blocks <- bs
+	} else {
+		dps.cacheBlocks <- bs
+	}
 }
 
 func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
@@ -366,7 +403,6 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
 	localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
-		dps.saveOnlineRep(address)
 
 		va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
 		if err != nil {
@@ -499,6 +535,16 @@ func (dps *DPoS) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlo
 }
 
 func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
+	povHeader, err := dps.ledger.GetLatestPovHeader()
+	if err != nil {
+		//return nil, errors.New("get pov header err")
+	}
+
+	if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
+		//dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
+		//return nil, errors.New("pov height invalid")
+	}
+
 	va := &protos.ConfirmAckBlock{
 		Sequence:  0,
 		Blk:       block,
@@ -527,6 +573,7 @@ func (dps *DPoS) refreshAccount() {
 		b = dps.isRepresentation(addr)
 		if b {
 			localRepAccount.Store(addr, v)
+			dps.saveOnlineRep(addr)
 		}
 	}
 
@@ -574,7 +621,6 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 
 	localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
-		dps.saveOnlineRep(address)
 
 		va, err := dps.voteGenerateWithSeq(blk, address, value.(*types.Account))
 		if err != nil {
