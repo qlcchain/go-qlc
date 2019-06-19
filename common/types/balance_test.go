@@ -143,7 +143,7 @@ func TestBalance_IsZero(t *testing.T) {
 				Int: tt.fields.Int,
 			}
 			if got := b.IsZero(); got != tt.want {
-				t.Errorf("Balance.IsZero() = %v, want %v", got, tt.want)
+				t.Errorf("Balance.IsZero() = %v, %s, want %v", got, b, tt.want)
 			}
 		})
 	}
