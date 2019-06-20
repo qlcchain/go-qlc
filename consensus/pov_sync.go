@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -20,6 +21,8 @@ const (
 	checkPeerStatusTime = 30
 	waitEnoughPeerTime  = 120
 	maxSyncBlockPerReq  = 1000
+	reqBlockCacheSize   = 1000
+	reqTxCacheSize      = 1000
 
 	peerStatusInit = 0
 	peerStatusGood = 1
@@ -67,6 +70,9 @@ type PovSyncer struct {
 	messageCh chan *PovSyncMessage
 	eventCh   chan *PovSyncEvent
 	quitCh    chan struct{}
+
+	reqBlkCache gcache.Cache
+	reqTxCache  gcache.Cache
 }
 
 type PovSyncMessage struct {
@@ -85,11 +91,13 @@ func NewPovSyncer(povEngine *PoVEngine) *PovSyncer {
 		povEngine:     povEngine,
 		state:         common.SyncNotStart,
 		lastCheckTime: time.Now(),
-		messageCh:     make(chan *PovSyncMessage, 100),
-		eventCh:       make(chan *PovSyncEvent, 10),
+		messageCh:     make(chan *PovSyncMessage, 1000),
+		eventCh:       make(chan *PovSyncEvent, 200),
 		quitCh:        make(chan struct{}),
 		logger:        log.NewLogger("pov_sync"),
 	}
+	ss.reqBlkCache = gcache.New(reqBlockCacheSize).LRU().Expiration(5 * time.Second).Build()
+	ss.reqTxCache = gcache.New(reqTxCacheSize).LRU().Expiration(5 * time.Second).Build()
 	return ss
 }
 
@@ -146,6 +154,9 @@ func (ss *PovSyncer) Stop() {
 			return
 		}
 	}
+
+	ss.reqBlkCache.Purge()
+	ss.reqTxCache.Purge()
 
 	close(ss.quitCh)
 }
@@ -204,7 +215,8 @@ wait:
 	waitTimer.Stop()
 
 	checkSyncTicker := time.NewTicker(10 * time.Second)
-	checkChainTicker := time.NewTicker(1 * time.Second)
+	checkChainTicker := time.NewTicker(5 * time.Second)
+	ss.lastCheckTime = time.Now()
 
 loop:
 	for {
@@ -226,7 +238,9 @@ loop:
 		}
 	}
 
-	ss.logger.Infof("exit sync loop")
+	ss.logger.Infof("exit pov sync loop")
+	ss.reqBlkCache.Purge()
+	ss.reqTxCache.Purge()
 	checkSyncTicker.Stop()
 	checkChainTicker.Stop()
 }
@@ -453,7 +467,7 @@ func (ss *PovSyncer) checkSyncPeer() {
 		return
 	}
 
-	bestPeer := ss.BestPeer()
+	bestPeer := ss.GetBestPeer(ss.syncPeerID)
 	if bestPeer == nil {
 		if ss.syncPeerLostTime.Unix() > 0 {
 			if time.Now().Unix() >= ss.syncPeerLostTime.Add(10*time.Minute).Unix() {
@@ -473,14 +487,15 @@ func (ss *PovSyncer) checkSyncPeer() {
 }
 
 func (ss *PovSyncer) checkChain() {
+	timeNow := time.Now()
+
 	if ss.state != common.Syncing {
+		ss.lastCheckTime = timeNow
 		return
 	}
 	if ss.syncPeerID == "" {
 		return
 	}
-
-	now := time.Now()
 
 	latestBlock := ss.getChain().LatestBlock()
 	if latestBlock == nil {
@@ -495,14 +510,18 @@ func (ss *PovSyncer) checkChain() {
 		return
 	}
 
-	ss.logger.Infof("sync current: %d, chain speed %d", latestBlock.Height, latestBlock.Height-ss.currentHeight)
-
-	if latestBlock.Height == ss.currentHeight && now.Sub(ss.lastCheckTime) > 30*time.Minute {
+	if latestBlock.Height == ss.currentHeight && timeNow.Sub(ss.lastCheckTime) >= 30*time.Minute {
 		ss.logger.Infof("sync err, because progress hang, current height: %d", ss.currentHeight)
 		ss.setState(common.Syncerr)
 	} else if ss.state == common.Syncing {
+		diffTimeSec := timeNow.Unix() - ss.lastCheckTime.Unix()
+		if diffTimeSec >= 1 {
+			speed := (latestBlock.Height - ss.currentHeight) / uint64(diffTimeSec)
+			ss.logger.Infof("sync current: %d, speed: %d", latestBlock.Height, speed)
+		}
+
 		ss.currentHeight = latestBlock.Height
-		ss.lastCheckTime = now
+		ss.lastCheckTime = timeNow
 	}
 }
 
@@ -519,19 +538,41 @@ func (ss *PovSyncer) isFinished() bool {
 	return true
 }
 
-func (ss *PovSyncer) BestPeer() *PovSyncPeer {
-	var bestPeer *PovSyncPeer
-	var maxTD *big.Int
+func (ss *PovSyncer) FindPeer(peerID string) *PovSyncPeer {
+	if peerID == "" {
+		return nil
+	}
+
+	if v, ok := ss.allPeers.Load(peerID); ok {
+		peer := v.(*PovSyncPeer)
+		return peer
+	}
+
+	return nil
+}
+
+func (ss *PovSyncer) FindPeerWithStatus(peerID string, status int) *PovSyncPeer {
+	peer := ss.FindPeer(peerID)
+	if peer != nil {
+		if peer.status == status {
+			return peer
+		}
+	}
+
+	return nil
+}
+
+func (ss *PovSyncer) GetBestPeer(lastPeerID string) *PovSyncPeer {
+	bestPeer := ss.FindPeerWithStatus(lastPeerID, peerStatusGood)
+
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
 		if peer.status != peerStatusGood {
 			return true
 		}
 		if bestPeer == nil {
-			maxTD = peer.currentTD
 			bestPeer = peer
-		} else if peer.currentTD.Cmp(maxTD) > 0 {
-			maxTD = peer.currentTD
+		} else if peer.currentTD.Cmp(bestPeer.currentTD) > 0 {
 			bestPeer = peer
 		}
 		return true
@@ -656,7 +697,7 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 	req := new(protos.PovBulkPullReq)
 
 	req.Count = maxSyncBlockPerReq
-	req.StartHeight = lastHeight
+	req.StartHeight = lastHeight + 1
 	if useLocator {
 		req.Locators = ss.getChain().GetBlockLocator(types.ZeroHash)
 	}
@@ -666,7 +707,7 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 }
 
 func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
-	peer := ss.BestPeer()
+	peer := ss.GetBestPeer("")
 	if peer == nil {
 		return
 	}
@@ -684,6 +725,12 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 	if startHash.IsZero() || count <= 0 {
 		return
 	}
+
+	v, err := ss.reqBlkCache.Get(startHash)
+	if err == nil && v != nil {
+		return
+	}
+	_ = ss.reqBlkCache.Set(startHash, struct{}{})
 
 	var peers []*PovSyncPeer
 	if useBest {
@@ -711,6 +758,12 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 }
 
 func (ss *PovSyncer) requestTxsByHash(endHash types.Hash, count uint32) {
+	v, err := ss.reqTxCache.Get(endHash)
+	if err == nil && v != nil {
+		return
+	}
+	_ = ss.reqTxCache.Set(endHash, struct{}{})
+
 	peers := ss.GetBestPeers(3)
 	if len(peers) <= 0 {
 		return

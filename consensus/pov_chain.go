@@ -569,6 +569,17 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 		return ErrPovInvalidHead
 	}
 
+	diffHeight := uint64(0)
+	if newBlock.GetHeight() > oldHeadBlock.GetHeight() {
+		diffHeight = newBlock.GetHeight() - oldHeadBlock.GetHeight()
+	} else {
+		diffHeight = oldHeadBlock.GetHeight() - newBlock.GetHeight()
+	}
+	if diffHeight >= common.PoVMaxForkHeight {
+		bc.logger.Errorf("fork diff height %d exceed max limit %d", diffHeight, common.PoVMaxForkHeight)
+		return ErrPovInvalidFork
+	}
+
 	bc.logger.Infof("before fork process, head %d/%s", oldHeadBlock.GetHeight(), oldHeadBlock.GetHash())
 
 	var detachBlocks []*types.PovBlock
