@@ -281,7 +281,7 @@ func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
 
 	addrToken := types.AddressToken{Address: txBlock.GetAddress(), Token: txBlock.GetToken()}
 
-	tp.povEngine.GetLogger().Debugf("add AddrToken %s tx %s", addrToken, txHash)
+	tp.povEngine.GetLogger().Debugf("add tx %s", txHash)
 
 	accTxList, ok := tp.accountTxs[addrToken]
 	if !ok {
