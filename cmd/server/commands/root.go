@@ -31,7 +31,6 @@ import (
 	ss "github.com/qlcchain/go-qlc/chain/services"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
@@ -254,11 +253,11 @@ func start() error {
 	if err != nil {
 		return err
 	}
-	trapSignal(cfg)
+	trapSignal()
 	return nil
 }
 
-func trapSignal(cfg *config.Config) {
+func trapSignal() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	<-c
@@ -268,11 +267,12 @@ func trapSignal(cfg *config.Config) {
 		sers = append(sers, services[i])
 	}
 	stopNode(sers)
+	fmt.Println("qlc node closed successfully")
 
-	bus := event.GetEventBus(cfg.LedgerDir())
-	if err := bus.Close(); err != nil {
-		fmt.Println(err)
-	}
+	//bus := event.GetEventBus(cfg.LedgerDir())
+	//if err := bus.Close(); err != nil {
+	//	fmt.Println(err)
+	//}
 }
 
 func seedToAccounts(data []byte) ([]*types.Account, error) {
