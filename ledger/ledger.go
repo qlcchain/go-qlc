@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dgraph-io/badger"
-	"github.com/dgraph-io/badger/pb"
+	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"

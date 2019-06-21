@@ -7,9 +7,9 @@ import (
 	"log"
 	"sort"
 
-	"github.com/dgraph-io/badger"
-	badgerOpts "github.com/dgraph-io/badger/options"
-	"github.com/dgraph-io/badger/pb"
+	"github.com/dgraph-io/badger/v2"
+	badgerOpts "github.com/dgraph-io/badger/v2/options"
+	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
@@ -95,7 +95,10 @@ func (t *BadgerStoreTxn) Set(key []byte, val []byte) error {
 }
 
 func (t *BadgerStoreTxn) SetWithMeta(key, val []byte, meta byte) error {
-	if err := t.txn.SetWithMeta(key[:], val, meta); err != nil {
+	//if err := t.txn.SetWithMeta(key[:], val, meta); err != nil {
+	//	return err
+	//}
+	if err := t.txn.SetEntry(badger.NewEntry(key, val).WithMeta(meta)); err != nil {
 		return err
 	}
 	return nil
