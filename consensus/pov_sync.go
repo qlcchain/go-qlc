@@ -93,7 +93,7 @@ func NewPovSyncer(povEngine *PoVEngine) *PovSyncer {
 		povEngine:     povEngine,
 		state:         common.SyncNotStart,
 		lastCheckTime: time.Now(),
-		messageCh:     make(chan *PovSyncMessage, 1000),
+		messageCh:     make(chan *PovSyncMessage, 2000),
 		eventCh:       make(chan *PovSyncEvent, 200),
 		quitCh:        make(chan struct{}),
 		logger:        log.NewLogger("pov_sync"),
