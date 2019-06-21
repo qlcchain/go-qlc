@@ -56,6 +56,8 @@ type PovSyncer struct {
 	allPeers  sync.Map // map[string]*PovSyncPeer
 
 	state         common.SyncState
+	syncStartTime time.Time
+	syncEndTime   time.Time
 	fromHeight    uint64
 	toHeight      uint64
 	currentHeight uint64
@@ -527,6 +529,13 @@ func (ss *PovSyncer) checkChain() {
 
 func (ss *PovSyncer) setState(st common.SyncState) {
 	ss.state = st
+	if st == common.Syncing {
+		ss.syncStartTime = time.Now()
+	} else if st == common.Syncdone || st == common.Syncerr {
+		ss.syncEndTime = time.Now()
+		usedTime := ss.syncEndTime.Sub(ss.syncStartTime)
+		ss.logger.Infof("pov sync used time: %s", usedTime)
+	}
 	ss.povEngine.GetEventBus().Publish(string(common.EventPovSyncState), ss.state)
 }
 
@@ -757,12 +766,12 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 	}
 }
 
-func (ss *PovSyncer) requestTxsByHash(endHash types.Hash, count uint32) {
-	v, err := ss.reqTxCache.Get(endHash)
+func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, count uint32) {
+	v, err := ss.reqTxCache.Get(startHash)
 	if err == nil && v != nil {
 		return
 	}
-	_ = ss.reqTxCache.Set(endHash, struct{}{})
+	_ = ss.reqTxCache.Set(startHash, struct{}{})
 
 	peers := ss.GetBestPeers(3)
 	if len(peers) <= 0 {
@@ -771,13 +780,13 @@ func (ss *PovSyncer) requestTxsByHash(endHash types.Hash, count uint32) {
 
 	req := new(protos.BulkPullReqPacket)
 
-	req.StartHash = types.ZeroHash
-	req.EndHash = endHash
-	req.PullType = protos.PullTypeCount
-	req.Count = count
+	req.StartHash = startHash
+	req.EndHash = types.ZeroHash
+	req.PullType = protos.PullTypeForward
+	req.Count = 1000
 
 	for _, peer := range peers {
-		ss.logger.Debugf("request tx hash %s count %d from peer %s", endHash, count, peer.peerID)
+		ss.logger.Debugf("request tx hash %s count %d from peer %s", startHash, count, peer.peerID)
 		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.BulkPullRequest, req, peer.peerID)
 	}
 }

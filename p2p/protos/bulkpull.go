@@ -8,7 +8,8 @@ import (
 
 const (
 	PullTypeHash = iota
-	PullTypeCount
+	PullTypeBackward
+	PullTypeForward
 )
 
 type BulkPullReqPacket struct {
