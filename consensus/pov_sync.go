@@ -21,8 +21,8 @@ const (
 	checkPeerStatusTime = 30
 	waitEnoughPeerTime  = 120
 	maxSyncBlockPerReq  = 1000
-	reqBlockCacheSize   = 1000
-	reqTxCacheSize      = 1000
+	reqBlockCacheSize   = 1024
+	reqTxCacheSize      = 8192
 
 	peerStatusInit = 0
 	peerStatusGood = 1
@@ -98,8 +98,8 @@ func NewPovSyncer(povEngine *PoVEngine) *PovSyncer {
 		quitCh:        make(chan struct{}),
 		logger:        log.NewLogger("pov_sync"),
 	}
-	ss.reqBlkCache = gcache.New(reqBlockCacheSize).LRU().Expiration(5 * time.Second).Build()
-	ss.reqTxCache = gcache.New(reqTxCacheSize).LRU().Expiration(5 * time.Second).Build()
+	ss.reqBlkCache = gcache.New(reqBlockCacheSize).Simple().Expiration(15 * time.Second).Build()
+	ss.reqTxCache = gcache.New(reqTxCacheSize).Simple().Expiration(15 * time.Second).Build()
 	return ss
 }
 
@@ -735,11 +735,9 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 		return
 	}
 
-	v, err := ss.reqBlkCache.Get(startHash)
-	if err == nil && v != nil {
+	if ss.reqBlkCache.Has(startHash) {
 		return
 	}
-	_ = ss.reqBlkCache.Set(startHash, struct{}{})
 
 	var peers []*PovSyncPeer
 	if useBest {
@@ -764,16 +762,16 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 		ss.logger.Debugf("request block start %s count %d from peer %s", startHash, count, peer.peerID)
 		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
 	}
+
+	_ = ss.reqBlkCache.Set(startHash, struct{}{})
 }
 
-func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, count uint32) {
-	v, err := ss.reqTxCache.Get(startHash)
-	if err == nil && v != nil {
+func (ss *PovSyncer) requestTxsByHash(startHash types.Hash) {
+	if ss.reqTxCache.Has(startHash) {
 		return
 	}
-	_ = ss.reqTxCache.Set(startHash, struct{}{})
 
-	peers := ss.GetBestPeers(3)
+	peers := ss.GetBestPeers(2)
 	if len(peers) <= 0 {
 		return
 	}
@@ -783,10 +781,12 @@ func (ss *PovSyncer) requestTxsByHash(startHash types.Hash, count uint32) {
 	req.StartHash = startHash
 	req.EndHash = types.ZeroHash
 	req.PullType = protos.PullTypeForward
-	req.Count = 1000
+	req.Count = 100
 
 	for _, peer := range peers {
-		ss.logger.Debugf("request tx hash %s count %d from peer %s", startHash, count, peer.peerID)
+		ss.logger.Debugf("request tx hash %s from peer %s", startHash, peer.peerID)
 		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.BulkPullRequest, req, peer.peerID)
 	}
+
+	_ = ss.reqTxCache.Set(startHash, struct{}{})
 }
