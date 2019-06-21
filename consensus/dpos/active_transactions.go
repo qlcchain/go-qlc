@@ -12,7 +12,7 @@ import (
 
 const (
 	announcementMax  = 40
-	announceInterval = 16
+	announceInterval = 60
 )
 
 type voteKey [1 + types.HashSize]byte

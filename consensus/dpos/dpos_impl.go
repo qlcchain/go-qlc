@@ -1,10 +1,12 @@
 package dpos
 
 import (
+	"errors"
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -34,7 +36,8 @@ const (
 
 var (
 	localRepAccount sync.Map
-	povSyncState    common.SyncState
+	povSyncState    atomic.Value
+	minWeight		types.Balance
 )
 
 type DPoS struct {
@@ -83,7 +86,9 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 }
 
 func (dps *DPoS) Init() {
-	povSyncState = common.SyncNotStart
+	povSyncState.Store(common.SyncNotStart)
+	supply := common.GenesisBlock().Balance
+	minWeight, _ = supply.Div(200)
 
 	err := dps.eb.SubscribeSync(string(common.EventPovSyncState), dps.onPovSyncState)
 	if err != nil {
@@ -135,11 +140,16 @@ func (dps *DPoS) Stop() {
 	dps.acTrx.stop()
 }
 
+func (dps *DPoS) getPovSyncState() common.SyncState {
+	state := povSyncState.Load()
+	return state.(common.SyncState)
+}
+
 func (dps *DPoS) onPovSyncState(state common.SyncState) {
-	povSyncState = state
+	povSyncState.Store(state)
 	dps.logger.Infof("pov sync state to [%s]", state)
 
-	if povSyncState == common.Syncdone {
+	if dps.getPovSyncState() == common.Syncdone {
 		dps.povReady <- true
 		close(dps.cacheBlocks)
 	}
@@ -311,10 +321,14 @@ func (dps *DPoS) isResultGap(result process.ProcessResult) bool {
 }
 
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
-	if povSyncState == common.Syncdone || bs.BlockFrom == types.Synchronized {
+	if dps.getPovSyncState() == common.Syncdone || bs.BlockFrom == types.Synchronized {
 		dps.blocks <- bs
 	} else {
-		dps.cacheBlocks <- bs
+		if len(dps.cacheBlocks) < maxCacheBlocks {
+			dps.cacheBlocks <- bs
+		} else {
+			dps.logger.Errorf("pov not ready! cache block too much, drop it!")
+		}
 	}
 }
 
@@ -389,6 +403,11 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 			dps.ConfirmBlock(bs.Block)
 		}
 	case consensus.MsgGenerateBlock:
+		if dps.getPovSyncState() != common.Syncdone {
+			dps.logger.Errorf("pov is syncing, can not send tx!")
+			return
+		}
+
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
 		dps.acTrx.addToRoots(bs.Block)
 
@@ -501,7 +520,11 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
-			dps.saveOnlineRep(address)
+
+			weight := dps.ledger.Weight(address)
+			if weight.Compare(minWeight) == types.BalanceCompSmaller {
+				return true
+			}
 
 			va, err := dps.voteGenerateWithSeq(confirmedBlock, address, value.(*types.Account))
 			if err != nil {
@@ -543,6 +566,11 @@ func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, ac
 	if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
 		//dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
 		//return nil, errors.New("pov height invalid")
+	}
+
+	weight := dps.ledger.Weight(account)
+	if weight.Compare(minWeight) == types.BalanceCompSmaller {
+		return nil, errors.New("too small weight")
 	}
 
 	va := &protos.ConfirmAckBlock{
