@@ -21,4 +21,7 @@ var (
 
 	// maximum number of seconds a block time is allowed to be ahead of the now time.
 	PovMaxAllowedFutureTimeSec = 15
+
+	//vote right divisor
+	VoteDivisor = int64(200)
 )
