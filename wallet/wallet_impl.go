@@ -14,9 +14,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/dgraph-io/badger/v2"
 	"github.com/qlcchain/go-qlc/common"
-
-	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto"
