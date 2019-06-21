@@ -37,7 +37,7 @@ const (
 var (
 	localRepAccount sync.Map
 	povSyncState    atomic.Value
-	minWeight		types.Balance
+	minWeight       types.Balance
 )
 
 type DPoS struct {
