@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -22,6 +23,17 @@ type NetApi struct {
 	logger *zap.SugaredLogger
 }
 
+type OnlineRepTotal struct {
+	Reps              []*OnlineRepInfo
+	ValidVotes        types.Balance
+	ValidVotesPercent string
+}
+
+type OnlineRepInfo struct {
+	Account types.Address
+	Vote    types.Balance
+}
+
 func syncingTime(t time.Time) {
 	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).UTC().Unix())
 }
@@ -36,6 +48,38 @@ func (q *NetApi) OnlineRepresentatives() []types.Address {
 		return make([]types.Address, 0)
 	}
 	return as
+}
+
+func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
+	as, _ := q.ledger.GetOnlineRepresentations()
+	if as == nil {
+		return &OnlineRepTotal{}
+	}
+
+	ot := &OnlineRepTotal{
+		Reps:       make([]*OnlineRepInfo, 0),
+		ValidVotes: types.ZeroBalance,
+	}
+
+	supply := common.GenesisBlock().Balance
+	minWeight, _ := supply.Div(common.VoteDivisor)
+
+	for _, account := range as {
+		weight := q.ledger.Weight(account)
+		oi := &OnlineRepInfo{
+			Account: account,
+			Vote:    weight,
+		}
+		ot.Reps = append(ot.Reps, oi)
+
+		if weight.Compare(minWeight) == types.BalanceCompBigger {
+			ot.ValidVotes = ot.ValidVotes.Add(weight)
+		}
+	}
+
+	ot.ValidVotesPercent = fmt.Sprintf("%.2f%%", float64(ot.ValidVotes.Uint64()*100)/float64(supply.Uint64()))
+
+	return ot
 }
 
 type PeersInfo struct {
