@@ -124,6 +124,7 @@ func (bc *PovBlockChain) Init() error {
 	}
 
 	if needReset {
+		bc.logger.Warn("Genesis block incorrect, resetting chain")
 		err := bc.ResetChainState()
 		if err != nil {
 			return err
@@ -456,7 +457,8 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 	}
 
 	blockTarget := block.GetTarget()
-	blockTD := new(big.Int).Add(blockTarget.ToBigInt(), prevTD)
+	targetTD := bc.CalcTotalDifficulty(blockTarget)
+	blockTD := new(big.Int).Add(targetTD, prevTD)
 
 	// save block to db
 	if bc.getLedger().HasPovBlock(block.GetHeight(), block.GetHash(), txn) == false {
