@@ -26,7 +26,8 @@ const (
 
 	peerStatusInit = 0
 	peerStatusGood = 1
-	peerStatusBad  = 2
+	peerStatusDead = 2
+	peerStatusSlow = 3
 )
 
 type PovSyncPeer struct {
@@ -36,6 +37,8 @@ type PovSyncPeer struct {
 	timestamp      int64
 	lastStatusTime time.Time
 	status         int
+
+	lastSyncRspTime time.Time
 }
 
 // PeerSetByTD is in descend order
@@ -65,8 +68,7 @@ type PovSyncer struct {
 	syncToHeight  uint64
 	syncPeerID    string
 
-	syncPeerLostTime    time.Time
-	lastSyncRequestTime time.Time
+	syncPeerLostTime time.Time
 
 	messageCh chan *PovSyncMessage
 	eventCh   chan *PovSyncEvent
@@ -285,7 +287,9 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, m
 		peer.currentTD = td
 		peer.timestamp = status.Timestamp
 		peer.lastStatusTime = time.Now()
-		peer.status = peerStatusGood
+		if peer.status != peerStatusSlow {
+			peer.status = peerStatusGood
+		}
 	}
 }
 
@@ -390,8 +394,24 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 		return
 	}
 
-	if (rsp.Reason == protos.PovReasonSync) && (ss.getState() != common.Syncing) {
-		return
+	if rsp.Reason == protos.PovReasonSync {
+		if ss.getState() != common.Syncing {
+			ss.logger.Infof("recv PovBulkPullRsp but state not in syncing")
+			return
+		}
+
+		if ss.syncPeerID != msg.msgPeer {
+			ss.logger.Infof("recv PovBulkPullRsp from peer %s is not sync peer", msg.msgPeer)
+			return
+		}
+
+		syncPeer := ss.FindPeerWithStatus(msg.msgPeer, peerStatusGood)
+		if syncPeer == nil {
+			ss.logger.Infof("recv PovBulkPullRsp from peer %s is not exist", msg.msgPeer)
+			return
+		}
+
+		syncPeer.lastSyncRspTime = time.Now()
 	}
 
 	fromType := types.PovBlockFromRemoteFetch
@@ -464,9 +484,9 @@ func (ss *PovSyncer) checkAllPeers() {
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
 		if now.Sub(peer.lastStatusTime) >= 10*time.Minute {
-			if peer.status != peerStatusBad {
+			if peer.status != peerStatusDead {
 				ss.logger.Infof("peer %s may be dead", peer.peerID)
-				peer.status = peerStatusBad
+				peer.status = peerStatusDead
 			}
 		}
 		return true
@@ -705,8 +725,16 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 		if ss.syncCurHeight >= ss.syncToHeight {
 			return
 		}
+
 		// check sync pull blocks message may be lost
-		if time.Now().Unix() < ss.lastSyncRequestTime.Add(60*time.Second).Unix() {
+		if time.Now().Unix() < peer.lastSyncRspTime.Add(60*time.Second).Unix() {
+			return
+		}
+
+		// check sync pull blocks too slow
+		if time.Now().Unix() >= peer.lastSyncRspTime.Add(10*time.Minute).Unix() {
+			ss.logger.Infof("sync peer %s may be too slow", peer.peerID)
+			peer.status = peerStatusSlow
 			return
 		}
 
@@ -730,8 +758,6 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 		ss.logger.Warnf("request syncing blocks but peer %s is gone", ss.syncPeerID)
 		return
 	}
-
-	ss.lastSyncRequestTime = time.Now()
 
 	ss.syncCurHeight = lastHeight + 1
 	if ss.syncCurHeight >= ss.syncToHeight {
