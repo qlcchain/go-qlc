@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	blkCacheSize       = 1024
-	blkCacheExpireTime = 15 * time.Second
+	blkCacheSize       = 10240
+	blkCacheExpireTime = 1 * time.Minute
 )
 
 type PoVEngine struct {
@@ -148,10 +148,6 @@ func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
 
 func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom) error {
 	blockHash := block.GetHash()
-	if pov.blkRecvCache.Has(blockHash) {
-		return fmt.Errorf("block %s already exist in cache", blockHash)
-	}
-	_ = pov.blkRecvCache.Set(block.GetHash(), struct{}{})
 
 	stat := pov.verifier.VerifyNet(block)
 	if stat.Result != process.Progress {
@@ -182,11 +178,13 @@ func (pov *PoVEngine) unsetEvent() error {
 }
 
 func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, msgPeer string) error {
-	if pov.blkRecvCache.Has(block.GetHash()) {
+	blockHash := block.GetHash()
+	if pov.blkRecvCache.Has(blockHash) {
 		return nil
 	}
+	_ = pov.blkRecvCache.Set(blockHash, struct{}{})
 
-	pov.logger.Infof("receive block %d/%s from %s", block.GetHeight(), block.GetHash(), msgPeer)
+	pov.logger.Infof("receive block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
 
 	err := pov.AddBlock(block, types.PovBlockFromRemoteBroadcast)
 	if err == nil {
