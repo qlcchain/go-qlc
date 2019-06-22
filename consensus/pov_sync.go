@@ -739,6 +739,8 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 		}
 
 		lastHeight = ss.syncCurHeight - 1
+	} else {
+		peer.lastSyncRspTime = time.Now()
 	}
 
 	ss.logger.Infof("sync with peer %s to height %d", peer.peerID, peer.currentHeight)
