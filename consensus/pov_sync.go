@@ -21,7 +21,7 @@ const (
 	checkPeerStatusTime = 30
 	waitEnoughPeerTime  = 120
 	maxSyncBlockPerReq  = 1000
-	reqBlockCacheSize   = 1024
+	reqBlockCacheSize   = 4024
 	reqTxCacheSize      = 8192
 
 	peerStatusInit = 0
@@ -33,6 +33,7 @@ type PovSyncPeer struct {
 	peerID         string
 	currentHeight  uint64
 	currentTD      *big.Int
+	timestamp      int64
 	lastStatusTime time.Time
 	status         int
 }
@@ -58,13 +59,11 @@ type PovSyncer struct {
 	state         common.SyncState
 	syncStartTime time.Time
 	syncEndTime   time.Time
-	fromHeight    uint64
-	toHeight      uint64
-	currentHeight uint64
 	lastCheckTime time.Time
 
-	syncHeight uint64
-	syncPeerID string
+	syncCurHeight uint64
+	syncToHeight  uint64
+	syncPeerID    string
 
 	syncPeerLostTime    time.Time
 	lastSyncRequestTime time.Time
@@ -216,8 +215,8 @@ wait:
 
 	waitTimer.Stop()
 
-	checkSyncTicker := time.NewTicker(10 * time.Second)
-	checkChainTicker := time.NewTicker(5 * time.Second)
+	checkSyncTicker := time.NewTicker(30 * time.Second)
+	checkChainTicker := time.NewTicker(10 * time.Second)
 	ss.lastCheckTime = time.Now()
 
 loop:
@@ -284,6 +283,7 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, m
 
 		peer.currentHeight = status.CurrentHeight
 		peer.currentTD = td
+		peer.timestamp = status.Timestamp
 		peer.lastStatusTime = time.Now()
 		peer.status = peerStatusGood
 	}
@@ -311,12 +311,22 @@ func (ss *PovSyncer) processMessage(msg *PovSyncMessage) {
 func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 	req := msg.msgValue.(*protos.PovBulkPullReq)
 
-	if len(req.Locators) > 0 {
-		ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
-	} else if !req.StartHash.IsZero() {
-		ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+	if req.Reason == protos.PovReasonSync {
+		if len(req.Locators) > 0 {
+			ss.logger.Infof("recv PovBulkPullReq from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
+		} else if !req.StartHash.IsZero() {
+			ss.logger.Infof("recv PovBulkPullReq from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+		} else {
+			ss.logger.Infof("recv PovBulkPullReq from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+		}
 	} else {
-		ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+		if len(req.Locators) > 0 {
+			ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
+		} else if !req.StartHash.IsZero() {
+			ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+		} else {
+			ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+		}
 	}
 
 	rsp := new(protos.PovBulkPullRsp)
@@ -327,7 +337,7 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 	if len(req.Locators) > 0 {
 		block := ss.getChain().LocateBestBlock(req.Locators)
 		if block == nil {
-			ss.logger.Infof("failed to locate best block %s", req.Locators[0])
+			ss.logger.Debugf("failed to locate best block %s", req.Locators[0])
 			return
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
@@ -336,7 +346,7 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 	} else if !req.StartHash.IsZero() {
 		block := ss.getChain().GetBlockByHash(req.StartHash)
 		if block == nil {
-			ss.logger.Infof("failed to get block %s", req.StartHash)
+			ss.logger.Debugf("failed to get block by hash %s", req.StartHash)
 			return
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
@@ -351,7 +361,7 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 	for height := startHeight; height < endHeight; height++ {
 		block, err := ss.getChain().GetBlockByHeight(height)
 		if err != nil {
-			ss.logger.Infof("failed to get block %d, err %s", height, err)
+			ss.logger.Debugf("failed to get block by height %d, err %s", height, err)
 			break
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
@@ -364,13 +374,17 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 
 	rsp.Count = uint32(len(rsp.Blocks))
 
-	ss.getEventBus().Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+	ss.getEventBus().Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
 }
 
 func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 	rsp := msg.msgValue.(*protos.PovBulkPullRsp)
 
-	ss.logger.Debugf("recv PovBulkPullRsp from peer %s, reason %d count %d", msg.msgPeer, rsp.Reason, rsp.Count)
+	if rsp.Reason == protos.PovReasonSync {
+		ss.logger.Infof("recv PovBulkPullRsp from peer %s, reason %d count %d", msg.msgPeer, rsp.Reason, rsp.Count)
+	} else {
+		ss.logger.Debugf("recv PovBulkPullRsp from peer %s, reason %d count %d", msg.msgPeer, rsp.Reason, rsp.Count)
+	}
 
 	if rsp.Count == 0 {
 		return
@@ -420,9 +434,10 @@ func (ss *PovSyncer) processStreamEvent(event *PovSyncEvent) {
 		CurrentTD:     latestTD.Bytes(),
 		CurrentHash:   latestBlock.GetHash(),
 		GenesisHash:   genesisBlock.GetHash(),
+		Timestamp:     time.Now().Unix(),
 	}
 	ss.logger.Debugf("send PovStatus to peer %s", peerID)
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovStatus, status, peerID)
+	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovStatus, status, peerID)
 }
 
 func (ss *PovSyncer) checkAllPeers() {
@@ -440,8 +455,9 @@ func (ss *PovSyncer) checkAllPeers() {
 		CurrentTD:     latestTD.Bytes(),
 		CurrentHash:   latestBlock.GetHash(),
 		GenesisHash:   genesisBlock.GetHash(),
+		Timestamp:     time.Now().Unix(),
 	}
-	ss.logger.Debugf("broadcast PovStatus to %d peers", peerCount)
+	ss.logger.Infof("broadcast PovStatus to %d peers", peerCount)
 	ss.povEngine.eb.Publish(string(common.EventBroadcast), p2p.PovStatus, status)
 
 	now := time.Now()
@@ -458,15 +474,16 @@ func (ss *PovSyncer) checkAllPeers() {
 }
 
 func (ss *PovSyncer) checkSyncPeer() {
-	latestBlock := ss.getChain().LatestBlock()
-
 	if ss.state == common.SyncNotStart {
-		ss.currentHeight = latestBlock.GetHeight()
-		ss.fromHeight = ss.currentHeight + 1
-
 		ss.setState(common.Syncing)
 	} else if ss.state != common.Syncing {
 		return
+	}
+
+	topPeers := ss.GetBestPeers(10)
+	ss.logger.Infof("topPeers: %d", len(topPeers))
+	for _, peer := range topPeers {
+		ss.logger.Infof("%s-%d-%s", peer.peerID, peer.currentHeight, peer.currentTD)
 	}
 
 	bestPeer := ss.GetBestPeer(ss.syncPeerID)
@@ -482,8 +499,18 @@ func (ss *PovSyncer) checkSyncPeer() {
 			ss.syncPeerLostTime = time.Now()
 			return
 		}
+	} else {
+		ss.syncPeerLostTime = time.Time{}
+
+		lastSyncPeer := ss.FindPeerWithStatus(ss.syncPeerID, peerStatusGood)
+		if lastSyncPeer != nil && lastSyncPeer.peerID != bestPeer.peerID {
+			if bestPeer.currentHeight < (lastSyncPeer.currentHeight + 20) {
+				ss.logger.Infof("no need switch sync peer, best %s height %d, last %s height %d",
+					bestPeer.peerID, bestPeer.currentHeight, lastSyncPeer.peerID, lastSyncPeer.currentHeight)
+				return
+			}
+		}
 	}
-	ss.syncPeerLostTime = time.Time{}
 
 	ss.syncWithPeer(bestPeer)
 }
@@ -495,36 +522,33 @@ func (ss *PovSyncer) checkChain() {
 		ss.lastCheckTime = timeNow
 		return
 	}
-	if ss.syncPeerID == "" {
+	syncPeer := ss.FindPeer(ss.syncPeerID)
+	if syncPeer == nil {
+		ss.logger.Warnf("sync peer %s is gone", ss.syncPeerID)
 		return
 	}
 
 	latestBlock := ss.getChain().LatestBlock()
 	if latestBlock == nil {
-		ss.logger.Infof("sync err, because current block is nil")
-		ss.setState(common.Syncerr)
+		ss.logger.Errorf("failed to get latest block")
+		return
+	}
+	latestTD := ss.getChain().GetBlockTDByHash(latestBlock.GetHash())
+	if latestTD == nil {
+		ss.logger.Errorf("failed to latest block td")
 		return
 	}
 
-	if latestBlock.Height >= ss.toHeight {
+	if latestTD.Cmp(syncPeer.currentTD) >= 0 {
 		ss.logger.Infof("sync done, current height: %d", latestBlock.Height)
 		ss.setState(common.Syncdone)
 		return
 	}
 
-	if latestBlock.Height == ss.currentHeight && timeNow.Sub(ss.lastCheckTime) >= 30*time.Minute {
-		ss.logger.Infof("sync err, because progress hang, current height: %d", ss.currentHeight)
-		ss.setState(common.Syncerr)
-	} else if ss.state == common.Syncing {
-		diffTimeSec := timeNow.Unix() - ss.lastCheckTime.Unix()
-		if diffTimeSec >= 1 {
-			speed := (latestBlock.Height - ss.currentHeight) / uint64(diffTimeSec)
-			ss.logger.Infof("sync current: %d, speed: %d", latestBlock.Height, speed)
-		}
+	ss.logger.Infof("syncCurHeight: %d, syncToHeight: %d, chainHeight: %d",
+		ss.syncCurHeight, ss.syncToHeight, latestBlock.Height)
 
-		ss.currentHeight = latestBlock.Height
-		ss.lastCheckTime = timeNow
-	}
+	ss.lastCheckTime = timeNow
 }
 
 func (ss *PovSyncer) setState(st common.SyncState) {
@@ -672,18 +696,28 @@ func (ss *PovSyncer) PeerCount() int {
 }
 
 func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
+	ss.syncToHeight = peer.currentHeight
+
+	lastHeight := uint64(0)
+
 	if ss.syncPeerID == peer.peerID {
-		if time.Now().Unix() < ss.lastSyncRequestTime.Add(15*time.Second).Unix() {
+		// check sync pull blocks action may be finished
+		if ss.syncCurHeight >= ss.syncToHeight {
 			return
 		}
+		// check sync pull blocks message may be lost
+		if time.Now().Unix() < ss.lastSyncRequestTime.Add(60*time.Second).Unix() {
+			return
+		}
+
+		lastHeight = ss.syncCurHeight - 1
 	}
 
 	ss.logger.Infof("sync with peer %s to height %d", peer.peerID, peer.currentHeight)
 
-	ss.toHeight = peer.currentHeight
 	ss.syncPeerID = peer.peerID
 
-	ss.requestSyncingBlocks(true, ss.currentHeight)
+	ss.requestSyncingBlocks(true, lastHeight)
 }
 
 func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
@@ -691,17 +725,18 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 		return
 	}
 
-	if lastHeight >= ss.toHeight {
-		return
-	}
-
-	if ss.currentHeight >= ss.toHeight {
+	syncPeer := ss.FindPeerWithStatus(ss.syncPeerID, peerStatusGood)
+	if syncPeer == nil {
+		ss.logger.Warnf("request syncing blocks but peer %s is gone", ss.syncPeerID)
 		return
 	}
 
 	ss.lastSyncRequestTime = time.Now()
 
-	ss.syncHeight = lastHeight + 1
+	ss.syncCurHeight = lastHeight + 1
+	if ss.syncCurHeight >= ss.syncToHeight {
+		return
+	}
 
 	req := new(protos.PovBulkPullReq)
 
@@ -712,7 +747,13 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 	}
 	req.Reason = protos.PovReasonSync
 
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, ss.syncPeerID)
+	if useLocator {
+		ss.logger.Infof("request syncing blocks use locators %d with peer %s", len(req.Locators), ss.syncPeerID)
+	} else {
+		ss.logger.Infof("request syncing blocks use height %d with peer %s", lastHeight, ss.syncPeerID)
+	}
+
+	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, ss.syncPeerID)
 }
 
 func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
@@ -727,7 +768,7 @@ func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
 	req.StartHeight = startHeight
 	req.Reason = protos.PovReasonFetch
 
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
+	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
 }
 
 func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, useBest bool) {
@@ -746,7 +787,7 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 			return
 		}
 	} else {
-		peers = ss.GetPeerLocators()
+		peers = ss.GetRandomPeers(2)
 		if len(peers) <= 0 {
 			return
 		}
@@ -760,7 +801,7 @@ func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, use
 
 	for _, peer := range peers {
 		ss.logger.Debugf("request block start %s count %d from peer %s", startHash, count, peer.peerID)
-		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.PovBulkPullReq, req, peer.peerID)
+		ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
 	}
 
 	_ = ss.reqBlkCache.Set(startHash, struct{}{})
@@ -779,13 +820,13 @@ func (ss *PovSyncer) requestTxsByHash(startHash types.Hash) {
 	req := new(protos.BulkPullReqPacket)
 
 	req.StartHash = startHash
-	req.EndHash = types.ZeroHash
-	req.PullType = protos.PullTypeForward
-	req.Count = 100
+	req.EndHash = startHash
+	req.PullType = protos.PullTypeBackward
+	req.Count = 1
 
 	for _, peer := range peers {
 		ss.logger.Debugf("request tx hash %s from peer %s", startHash, peer.peerID)
-		ss.povEngine.eb.Publish(string(common.EventSendMsgToPeer), p2p.BulkPullRequest, req, peer.peerID)
+		ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.BulkPullRequest, req, peer.peerID)
 	}
 
 	_ = ss.reqTxCache.Set(startHash, struct{}{})

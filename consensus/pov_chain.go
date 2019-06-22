@@ -25,6 +25,27 @@ const (
 	medianTimeBlocks = 11
 )
 
+type ChainState uint
+
+const (
+	ChainStateNone ChainState = iota
+	ChainStateMain
+	ChainStateSide
+)
+
+var chainStateInfo = [...]string{
+	ChainStateNone: "none",
+	ChainStateMain: "main",
+	ChainStateSide: "side",
+}
+
+func (s ChainState) String() string {
+	if s > ChainStateSide {
+		return "unknown"
+	}
+	return chainStateInfo[s]
+}
+
 var (
 	ErrPovInvalidHash     = errors.New("invalid pov block hash")
 	ErrPovNoGenesis       = errors.New("pov genesis block not found in chain")
@@ -428,32 +449,36 @@ func (bc *PovBlockChain) LocateBestBlock(locator []types.Hash) *types.PovBlock {
 }
 
 func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
+	chainState := ChainStateNone
+
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
-		return bc.insertBlock(txn, block, stateTrie)
+		var dbErr error
+		chainState, dbErr = bc.insertBlock(txn, block, stateTrie)
+		return dbErr
 	})
 
 	if err != nil {
 		bc.logger.Errorf("failed to insert block %d/%s to chain", block.GetHeight(), block.GetHash())
 	} else {
-		bc.logger.Infof("success to insert block %d/%s to chain", block.GetHeight(), block.GetHash())
+		bc.logger.Infof("success to insert block %d/%s to %s chain", block.GetHeight(), block.GetHash(), chainState)
 	}
 
 	return err
 }
 
-func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, stateTrie *trie.Trie) error {
+func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, stateTrie *trie.Trie) (ChainState, error) {
 	currentBlock := bc.LatestBlock()
 
 	bestTD, err := bc.getLedger().GetPovTD(currentBlock.GetHash(), currentBlock.GetHeight(), txn)
 	if err != nil {
 		bc.logger.Errorf("get pov best td %d/%s failed, err %s", currentBlock.GetHeight(), currentBlock.GetHash(), err)
-		return err
+		return ChainStateNone, err
 	}
 
 	prevTD, err := bc.getLedger().GetPovTD(block.GetPrevious(), block.GetHeight()-1, txn)
 	if err != nil {
 		bc.logger.Errorf("get pov previous td %d/%s failed, err %s", block.GetHeight()-1, block.GetPrevious(), err)
-		return err
+		return ChainStateNone, err
 	}
 
 	blockTarget := block.GetTarget()
@@ -465,13 +490,13 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 		err = bc.getLedger().AddPovBlock(block, blockTD, txn)
 		if err != nil && err != ledger.ErrBlockExists {
 			bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
-			return err
+			return ChainStateNone, err
 		}
 	}
 
 	saveCallback, dbErr := stateTrie.SaveInTxn(txn)
 	if dbErr != nil {
-		return dbErr
+		return ChainStateNone, dbErr
 	}
 	if saveCallback != nil {
 		saveCallback()
@@ -498,18 +523,20 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 	if isBest {
 		// try to grow best chain
 		if block.GetPrevious() == currentBlock.GetHash() {
-			return bc.connectBestBlock(txn, block)
+			err := bc.connectBestBlock(txn, block)
+			return ChainStateMain, err
 		}
 
 		bc.logger.Infof("block %d/%s td %d/%s, need to doing fork, prev %s",
 			block.GetHeight(), block.GetHash(), blockTD.BitLen(), blockTD.Text(16), block.GetPrevious())
-		return bc.processFork(txn, block)
+		err := bc.processFork(txn, block)
+		return ChainStateMain, err
 	} else {
 		bc.logger.Debugf("block %d/%s td %d/%s in side chain, prev %s",
 			block.GetHeight(), block.GetHash(), blockTD.BitLen(), blockTD.Text(16), block.GetPrevious())
 	}
 
-	return nil
+	return ChainStateSide, nil
 }
 
 func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock) error {

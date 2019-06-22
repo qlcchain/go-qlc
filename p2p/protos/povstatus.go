@@ -11,6 +11,7 @@ type PovStatus struct {
 	CurrentTD     []byte
 	CurrentHash   types.Hash
 	GenesisHash   types.Hash
+	Timestamp     int64
 }
 
 func PovStatusToProto(status *PovStatus) ([]byte, error) {
@@ -19,6 +20,7 @@ func PovStatusToProto(status *PovStatus) ([]byte, error) {
 		CurrentTD:     status.CurrentTD,
 		CurrentHash:   status.CurrentHash.Bytes(),
 		GenesisHash:   status.GenesisHash.Bytes(),
+		Timestamp:     status.Timestamp,
 	}
 	data, err := proto.Marshal(pbStatus)
 	if err != nil {
@@ -33,6 +35,7 @@ func PovStatusFromProto(data []byte) (*PovStatus, error) {
 		return nil, err
 	}
 	status := new(PovStatus)
+	status.Timestamp = pbStatus.Timestamp
 	status.CurrentHeight = pbStatus.CurrentHeight
 	status.CurrentTD = pbStatus.CurrentTD
 	err := status.CurrentHash.UnmarshalBinary(pbStatus.CurrentHash)

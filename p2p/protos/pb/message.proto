@@ -46,6 +46,7 @@ message PovStatus {
     bytes  CurrentHash = 2;
     bytes  GenesisHash = 3;
     bytes  CurrentTD = 4;
+    int64  Timestamp = 5;
 }
 message PovPublishBlock {
     uint32 blocktype = 1;

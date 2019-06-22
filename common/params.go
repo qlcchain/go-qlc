@@ -9,7 +9,7 @@ var (
 	PovMinerPledgeAmountMin   = types.NewBalance(100000000000000)
 	PovMinerVerifyHeightStart = uint64(3600 * 24 * 1 / 30)
 
-	PoVMaxForkHeight = uint64(1440)
+	PoVMaxForkHeight = uint64(3600 * 24 * 7 / 30)
 
 	PovGenesisTargetHex = "0000007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	PovMinimumTargetHex = "0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
