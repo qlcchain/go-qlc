@@ -17,10 +17,12 @@ message BulkPullReq {
     bytes EndHash = 2;
     uint32 PullType = 3;
     uint32 Count = 4;
+    bytes  Hashes = 5;
 }
 message BulkPullRsp {
     uint32  blocktype = 1;
     bytes   block = 2;
+    bytes   blocks = 3;
 }
 message BulkPushBlock {
     uint32  blocktype = 1;
@@ -57,7 +59,7 @@ message PovPullBlockReq {
     bytes  StartHash = 2;
     uint64 StartHeight = 3;
     uint32 Count = 4;
-    uint32 Direction = 5;
+    uint32 PullType = 5;
     uint32 Reason = 6;
     bytes  Locators = 7;
 }

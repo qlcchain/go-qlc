@@ -154,6 +154,8 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 		stream.messageChan <- message
 		if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
 			sm.searchCache(stream, hash, message, messageName)
+		} else if messageName == PovPublishReq {
+			sm.searchCache(stream, hash, message, messageName)
 		}
 		return true
 	})
@@ -177,6 +179,8 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 		if stream.pid.Pretty() != peerID {
 			stream.messageChan <- message
 			if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
+				sm.searchCache(stream, hash, message, messageName)
+			} else if messageName == PovPublishReq {
 				sm.searchCache(stream, hash, message, messageName)
 			}
 		}

@@ -9,9 +9,14 @@ import (
 )
 
 const (
-	blockChanSize           = 8192
-	maxOrphanBlocks         = 4096
-	checkTxPendingTickerSec = 5
+	blockChanSize = 8192
+
+	checkTxPendingTickerSec   = 3
+	checkOrphanBlockTickerSec = 3
+	checkReqOrphanTickerSec   = 1
+
+	minPullTxIntervalSec    = 5
+	minPullBlockIntervalSec = 5
 )
 
 type PovBlockResult struct {
@@ -25,15 +30,20 @@ type PovBlockSource struct {
 }
 
 type PovOrphanBlock struct {
-	blockSrc   *PovBlockSource
-	expiration time.Time
+	blockSrc     *PovBlockSource
+	addTime      time.Time
+	lastPullTime time.Time
 }
 
 type PovPendingBlock struct {
 	addTime   time.Time
-	checkCnt  int
 	blockSrc  *PovBlockSource
 	txResults map[types.Hash]process.ProcessResult
+}
+
+type PovTxPendingEntry struct {
+	pendingBlocks []*PovPendingBlock
+	lastPullTime  time.Time
 }
 
 type PovBlockProcessor struct {
@@ -41,15 +51,16 @@ type PovBlockProcessor struct {
 
 	orphanBlocks  map[types.Hash]*PovOrphanBlock   // blockHash -> block
 	parentOrphans map[types.Hash][]*PovOrphanBlock // blockHash -> child blocks
-	oldestOrphan  *PovOrphanBlock
 
 	pendingBlocks   map[types.Hash]*PovPendingBlock   // blockHash -> block
-	txPendingBlocks map[types.Hash][]*PovPendingBlock // txHash -> block list, multi side chains
+	txPendingBlocks map[types.Hash]*PovTxPendingEntry // txHash -> block list, multi side chains
 	txPendingMux    sync.Mutex
 
-	deOrphanBlocks []*PovBlockSource
-	blockCh        chan *PovBlockSource
-	quitCh         chan struct{}
+	deOrphanBlocks  []*PovBlockSource
+	reqOrphanBlocks map[types.Hash]*PovOrphanBlock
+
+	blockCh chan *PovBlockSource
+	quitCh  chan struct{}
 }
 
 func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
@@ -60,9 +71,11 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 	bp.orphanBlocks = make(map[types.Hash]*PovOrphanBlock)
 	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
 	bp.pendingBlocks = make(map[types.Hash]*PovPendingBlock)
-	bp.txPendingBlocks = make(map[types.Hash][]*PovPendingBlock)
+	bp.txPendingBlocks = make(map[types.Hash]*PovTxPendingEntry)
 
 	bp.deOrphanBlocks = make([]*PovBlockSource, 0)
+	bp.reqOrphanBlocks = make(map[types.Hash]*PovOrphanBlock)
+
 	bp.blockCh = make(chan *PovBlockSource, blockChanSize)
 	bp.quitCh = make(chan struct{})
 
@@ -100,8 +113,8 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 
 	txHash := tx.GetHash()
 
-	pendingBlockList := bp.txPendingBlocks[txHash]
-	if len(pendingBlockList) <= 0 {
+	txPendEntry, ok := bp.txPendingBlocks[txHash]
+	if !ok {
 		return
 	}
 
@@ -109,9 +122,9 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 
 	delete(bp.txPendingBlocks, txHash)
 
-	for _, pendingBlock := range pendingBlockList {
+	for _, pendingBlock := range txPendEntry.pendingBlocks {
 		if _, ok := pendingBlock.txResults[txHash]; !ok {
-			return
+			continue
 		}
 		delete(pendingBlock.txResults, txHash)
 
@@ -138,8 +151,11 @@ func (bp *PovBlockProcessor) AddMinedBlock(block *types.PovBlock) error {
 }
 
 func (bp *PovBlockProcessor) loop() {
-	checkOrphanTicker := time.NewTicker(5 * time.Second)
+	checkOrphanTicker := time.NewTicker(checkOrphanBlockTickerSec * time.Second)
 	defer checkOrphanTicker.Stop()
+
+	requestOrphanTicker := time.NewTicker(checkReqOrphanTickerSec * time.Second)
+	defer requestOrphanTicker.Stop()
 
 	for {
 		select {
@@ -166,7 +182,10 @@ func (bp *PovBlockProcessor) loop() {
 				}
 			}
 		case <-checkOrphanTicker.C:
-			bp.checkOrphanBlocks()
+			bp.onCheckOrphanBlocksTimer()
+
+		case <-requestOrphanTicker.C:
+			bp.onRequestOrphanBlocksTimer()
 		}
 	}
 }
@@ -179,7 +198,7 @@ func (bp *PovBlockProcessor) loopCheckTxPending() {
 		case <-bp.quitCh:
 			return
 		case <-txPendingTicker.C:
-			bp.checkTxPendingBlocks()
+			bp.onCheckTxPendingBlocksTimer()
 		}
 	}
 }
@@ -242,26 +261,19 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 func (bp *PovBlockProcessor) addOrphanBlock(blockSrc *PovBlockSource) {
 	blockHash := blockSrc.block.GetHash()
 
+	nowTime := time.Now()
+
 	for _, oBlock := range bp.orphanBlocks {
-		if time.Now().After(oBlock.expiration) {
+		if nowTime.After(oBlock.addTime.Add(time.Hour)) {
 			bp.removeOrphanBlock(oBlock)
 			continue
 		}
-
-		if bp.oldestOrphan == nil || oBlock.expiration.Before(bp.oldestOrphan.expiration) {
-			bp.oldestOrphan = oBlock
-		}
 	}
 
-	if len(bp.orphanBlocks)+1 > maxOrphanBlocks {
-		bp.removeOrphanBlock(bp.oldestOrphan)
-		bp.oldestOrphan = nil
-	}
-
-	expiration := time.Now().Add(time.Hour)
 	oBlock := &PovOrphanBlock{
-		blockSrc:   blockSrc,
-		expiration: expiration,
+		blockSrc:     blockSrc,
+		addTime:      nowTime,
+		lastPullTime: nowTime,
 	}
 	bp.orphanBlocks[blockHash] = oBlock
 
@@ -350,29 +362,59 @@ func (bp *PovBlockProcessor) GetOrphanRoot(oHash types.Hash) types.Hash {
 func (bp *PovBlockProcessor) requestOrphanBlock(oBlock *PovOrphanBlock) {
 	blockHash := oBlock.blockSrc.block.GetHash()
 
-	orphanRoot := bp.GetOrphanRoot(blockHash)
+	bp.reqOrphanBlocks[blockHash] = oBlock
+}
 
-	if bp.HasPendingBlock(orphanRoot) {
+func (bp *PovBlockProcessor) onRequestOrphanBlocksTimer() {
+	if len(bp.reqOrphanBlocks) <= 0 {
 		return
 	}
 
-	/*
-		ss := bp.povEngine.GetSyncState()
-		if !ss.IsSyncExited() {
-			return
-		}
-	*/
+	// find orphan roots that are previous blocks
+	orphanRoots := make(map[types.Hash]struct{})
+	for _, oBlock := range bp.reqOrphanBlocks {
+		blockHash := oBlock.blockSrc.block.GetHash()
+		oRoot := bp.GetOrphanRoot(blockHash)
+		orphanRoots[oRoot] = struct{}{}
+	}
 
-	bp.povEngine.GetSyncer().requestBlocksByHash(orphanRoot, 1, false)
+	// check orphan roots are waiting txs or not
+	var reqOrphanRoots []*types.Hash
+	for oRoot := range orphanRoots {
+		if bp.HasPendingBlock(oRoot) {
+			continue
+		}
+
+		oRootCopy := oRoot
+		reqOrphanRoots = append(reqOrphanRoots, &oRootCopy)
+	}
+
+	// just request once by fast timer, retry many times by slow timer
+	bp.reqOrphanBlocks = make(map[types.Hash]*PovOrphanBlock)
+
+	bp.povEngine.GetSyncer().requestBlocksByHashes(reqOrphanRoots, false)
 }
 
-func (bp *PovBlockProcessor) checkOrphanBlocks() {
+func (bp *PovBlockProcessor) onCheckOrphanBlocksTimer() {
 	if len(bp.orphanBlocks) <= 0 {
 		return
 	}
 
+	nowTime := time.Now()
+
 	orphanRoots := make(map[types.Hash]struct{})
 	for _, oBlock := range bp.orphanBlocks {
+		// too old orphan block should be remove it
+		if nowTime.After(oBlock.addTime.Add(time.Hour)) {
+			continue
+		}
+
+		// too new orphan block should be ignore it
+		if nowTime.Before(oBlock.lastPullTime.Add(minPullBlockIntervalSec * time.Second)) {
+			continue
+		}
+		oBlock.lastPullTime = nowTime
+
 		blockHash := oBlock.blockSrc.block.GetHash()
 		oRoot := bp.GetOrphanRoot(blockHash)
 		orphanRoots[oRoot] = struct{}{}
@@ -380,13 +422,17 @@ func (bp *PovBlockProcessor) checkOrphanBlocks() {
 
 	bp.povEngine.GetLogger().Infof("check orphan blocks %d, orphan roots %d", len(bp.orphanBlocks), len(orphanRoots))
 
+	var reqOrphanRoots []*types.Hash
 	for oRoot := range orphanRoots {
 		if bp.HasPendingBlock(oRoot) {
 			continue
 		}
 
-		bp.povEngine.GetSyncer().requestBlocksByHash(oRoot, 1, false)
+		oRootCopy := oRoot
+		reqOrphanRoots = append(reqOrphanRoots, &oRootCopy)
 	}
+
+	bp.povEngine.GetSyncer().requestBlocksByHashes(reqOrphanRoots, false)
 }
 
 func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {
@@ -402,16 +448,27 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *p
 
 	bp.povEngine.GetLogger().Infof("add tx pending block %s txs %d", blockHash, len(stat.TxResults))
 
+	var reqTxHashes []*types.Hash
+
 	for txHashTmp, result := range stat.TxResults {
 		if result == process.GapTransaction {
 			txHash := txHashTmp
-			bp.txPendingBlocks[txHash] = append(bp.txPendingBlocks[txHash], pendingBlock)
+			txPendEntry, ok := bp.txPendingBlocks[txHash]
+			if !ok {
+				txPendEntry = &PovTxPendingEntry{
+					lastPullTime: time.Now(),
+				}
+				bp.txPendingBlocks[txHash] = txPendEntry
+			}
+			txPendEntry.pendingBlocks = append(txPendEntry.pendingBlocks, pendingBlock)
 
-			bp.povEngine.GetSyncer().requestTxsByHash(txHash)
+			reqTxHashes = append(reqTxHashes, &txHash)
 		}
 	}
 
 	bp.pendingBlocks[blockHash] = pendingBlock
+
+	bp.povEngine.GetSyncer().requestTxsByHashes(reqTxHashes)
 }
 
 func (bp *PovBlockProcessor) removeTxPendingBlockNoLock(pendingBlock *PovPendingBlock) {
@@ -434,9 +491,11 @@ func (bp *PovBlockProcessor) HasPendingBlock(blockHash types.Hash) bool {
 	return false
 }
 
-func (bp *PovBlockProcessor) checkTxPendingBlocks() {
+func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 	bp.txPendingMux.Lock()
 	defer bp.txPendingMux.Unlock()
+
+	nowTime := time.Now()
 
 	txPendingNum := len(bp.txPendingBlocks)
 	blockPendingNum := len(bp.pendingBlocks)
@@ -444,13 +503,27 @@ func (bp *PovBlockProcessor) checkTxPendingBlocks() {
 		bp.povEngine.GetLogger().Infof("check tx pending, txs %d blocks %d", txPendingNum, blockPendingNum)
 	}
 
-	for txHash, pendingBlockList := range bp.txPendingBlocks {
-		txBlock, _ := bp.povEngine.GetLedger().GetStateBlock(txHash)
-		if txBlock == nil {
+	var reqTxHashes []*types.Hash
+
+	for txHash, txPendEntry := range bp.txPendingBlocks {
+		if len(txPendEntry.pendingBlocks) <= 0 {
+			delete(bp.txPendingBlocks, txHash)
 			continue
 		}
 
-		for _, pendingBlock := range pendingBlockList {
+		txBlock, _ := bp.povEngine.GetLedger().GetStateBlock(txHash)
+		// tx is not exist to pull from some peer
+		if txBlock == nil {
+			if nowTime.After(txPendEntry.lastPullTime.Add(minPullTxIntervalSec * time.Second)) {
+				txHashCopy := txHash
+				reqTxHashes = append(reqTxHashes, &txHashCopy)
+				txPendEntry.lastPullTime = nowTime
+			}
+			continue
+		}
+
+		// tx is exist to release pending blocks
+		for _, pendingBlock := range txPendEntry.pendingBlocks {
 			delete(pendingBlock.txResults, txHash)
 		}
 
@@ -460,15 +533,10 @@ func (bp *PovBlockProcessor) checkTxPendingBlocks() {
 	for _, pendingBlock := range bp.pendingBlocks {
 		if len(pendingBlock.txResults) <= 0 {
 			bp.releaseTxPendingBlock(pendingBlock)
-		} else {
-			pendingBlock.checkCnt++
-			if pendingBlock.checkCnt/3 == 0 {
-				for txHash := range pendingBlock.txResults {
-					bp.povEngine.GetSyncer().requestTxsByHash(txHash)
-				}
-			}
 		}
 	}
+
+	bp.povEngine.GetSyncer().requestTxsByHashes(reqTxHashes)
 }
 
 func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock) {
