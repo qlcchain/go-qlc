@@ -209,6 +209,20 @@ func (b *StateBlock) Clone() *StateBlock {
 	return &clone
 }
 
+type StateBlockList []*StateBlock
+
+func (bs *StateBlockList) Serialize() ([]byte, error) {
+	return bs.MarshalMsg(nil)
+}
+
+func (bs *StateBlockList) Deserialize(text []byte) error {
+	_, err := bs.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 //
 ////go:generate msgp
 //type BlockExtra struct {

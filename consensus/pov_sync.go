@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -20,9 +19,10 @@ const (
 	minPovSyncPeerCount = 1
 	checkPeerStatusTime = 30
 	waitEnoughPeerTime  = 120
-	maxSyncBlockPerReq  = 1000
-	reqBlockCacheSize   = 4024
-	reqTxCacheSize      = 8192
+
+	maxSyncBlockPerReq = 100
+	maxPullBlockPerReq = 100
+	maxPullTxPerReq    = 100
 
 	peerStatusInit = 0
 	peerStatusGood = 1
@@ -73,9 +73,6 @@ type PovSyncer struct {
 	messageCh chan *PovSyncMessage
 	eventCh   chan *PovSyncEvent
 	quitCh    chan struct{}
-
-	reqBlkCache gcache.Cache
-	reqTxCache  gcache.Cache
 }
 
 type PovSyncMessage struct {
@@ -99,8 +96,6 @@ func NewPovSyncer(povEngine *PoVEngine) *PovSyncer {
 		quitCh:        make(chan struct{}),
 		logger:        log.NewLogger("pov_sync"),
 	}
-	ss.reqBlkCache = gcache.New(reqBlockCacheSize).Simple().Expiration(15 * time.Second).Build()
-	ss.reqTxCache = gcache.New(reqTxCacheSize).Simple().Expiration(15 * time.Second).Build()
 	return ss
 }
 
@@ -157,9 +152,6 @@ func (ss *PovSyncer) Stop() {
 			return
 		}
 	}
-
-	ss.reqBlkCache.Purge()
-	ss.reqTxCache.Purge()
 
 	close(ss.quitCh)
 }
@@ -242,8 +234,7 @@ loop:
 	}
 
 	ss.logger.Infof("exit pov sync loop")
-	ss.reqBlkCache.Purge()
-	ss.reqTxCache.Purge()
+
 	checkSyncTicker.Stop()
 	checkChainTicker.Stop()
 }
@@ -255,7 +246,7 @@ func (ss *PovSyncer) onAddP2PStream(peerID string) {
 		peerID:         peerID,
 		currentHeight:  0,
 		currentTD:      big.NewInt(0),
-		lastStatusTime: time.Time{},
+		lastStatusTime: time.Now(),
 		status:         peerStatusInit,
 	}
 
@@ -315,21 +306,38 @@ func (ss *PovSyncer) processMessage(msg *PovSyncMessage) {
 func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 	req := msg.msgValue.(*protos.PovBulkPullReq)
 
+	if req.PullType == protos.PovPullTypeForward {
+		ss.processPovBulkPullReqByForward(msg)
+		return
+	} else if req.PullType == protos.PovPullTypeBackward {
+		ss.processPovBulkPullReqByBackward(msg)
+		return
+	} else if req.PullType == protos.PovPullTypeBatch {
+		ss.processPovBulkPullReqByBatch(msg)
+		return
+	} else {
+		ss.logger.Infof("recv PovBulkPullReq by unknown type %d", req.PullType)
+	}
+}
+
+func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
+	req := msg.msgValue.(*protos.PovBulkPullReq)
+
 	if req.Reason == protos.PovReasonSync {
 		if len(req.Locators) > 0 {
-			ss.logger.Infof("recv PovBulkPullReq from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
+			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
 		} else if !req.StartHash.IsZero() {
-			ss.logger.Infof("recv PovBulkPullReq from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
 		} else {
-			ss.logger.Infof("recv PovBulkPullReq from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
 		}
 	} else {
 		if len(req.Locators) > 0 {
-			ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
+			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
 		} else if !req.StartHash.IsZero() {
-			ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
 		} else {
-			ss.logger.Debugf("recv PovBulkPullReq from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
 		}
 	}
 
@@ -338,6 +346,9 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 
 	startHeight := req.StartHeight
 	blockCount := req.Count
+	if blockCount == 0 {
+		blockCount = maxSyncBlockPerReq
+	}
 	if len(req.Locators) > 0 {
 		block := ss.getChain().LocateBestBlock(req.Locators)
 		if block == nil {
@@ -368,6 +379,119 @@ func (ss *PovSyncer) processPovBulkPullReq(msg *PovSyncMessage) {
 			ss.logger.Debugf("failed to get block by height %d, err %s", height, err)
 			break
 		}
+		rsp.Blocks = append(rsp.Blocks, block)
+
+		curBlkMsgSize = curBlkMsgSize + block.Msgsize()
+		if curBlkMsgSize >= maxBlockSize {
+			break
+		}
+	}
+
+	rsp.Count = uint32(len(rsp.Blocks))
+
+	ss.getEventBus().Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+}
+
+func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
+	req := msg.msgValue.(*protos.PovBulkPullReq)
+
+	if len(req.Locators) > 0 {
+		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
+	} else if !req.StartHash.IsZero() {
+		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+	} else {
+		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+	}
+
+	rsp := new(protos.PovBulkPullRsp)
+	rsp.Reason = req.Reason
+
+	startHeight := req.StartHeight
+	blockCount := req.Count
+	if blockCount == 0 {
+		blockCount = maxSyncBlockPerReq
+	}
+	if len(req.Locators) > 0 {
+		block := ss.getChain().LocateBestBlock(req.Locators)
+		if block == nil {
+			ss.logger.Debugf("failed to locate best block %s", req.Locators[0])
+			return
+		}
+		rsp.Blocks = append(rsp.Blocks, block)
+
+		if block.GetHeight() > 1 {
+			startHeight = block.GetHeight() - 1
+		} else {
+			startHeight = 0
+		}
+
+		blockCount = blockCount - 1
+	} else if !req.StartHash.IsZero() {
+		block := ss.getChain().GetBlockByHash(req.StartHash)
+		if block == nil {
+			ss.logger.Debugf("failed to get block by hash %s", req.StartHash)
+			return
+		}
+		rsp.Blocks = append(rsp.Blocks, block)
+
+		if block.GetHeight() > 1 {
+			startHeight = block.GetHeight() - 1
+		} else {
+			startHeight = 0
+		}
+
+		blockCount = blockCount - 1
+	}
+
+	maxBlockSize := ss.povEngine.GetConfig().PoV.BlockSize
+	curBlkMsgSize := 0
+
+	endHeight := uint64(0)
+	if startHeight > uint64(blockCount) {
+		endHeight = startHeight - uint64(blockCount)
+	}
+	for height := startHeight; height > endHeight; height-- {
+		block, err := ss.getChain().GetBlockByHeight(height)
+		if err != nil {
+			ss.logger.Debugf("failed to get block by height %d, err %s", height, err)
+			break
+		}
+		rsp.Blocks = append(rsp.Blocks, block)
+
+		curBlkMsgSize = curBlkMsgSize + block.Msgsize()
+		if curBlkMsgSize >= maxBlockSize {
+			break
+		}
+	}
+
+	rsp.Count = uint32(len(rsp.Blocks))
+
+	ss.getEventBus().Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+}
+
+func (ss *PovSyncer) processPovBulkPullReqByBatch(msg *PovSyncMessage) {
+	req := msg.msgValue.(*protos.PovBulkPullReq)
+
+	ss.logger.Debugf("recv PovBulkPullReq by batch from peer %s, locators %d", msg.msgPeer, len(req.Locators))
+
+	rsp := new(protos.PovBulkPullRsp)
+	rsp.Reason = req.Reason
+
+	maxBlockSize := ss.povEngine.GetConfig().PoV.BlockSize
+	curBlkMsgSize := 0
+
+	for _, locHash := range req.Locators {
+		if locHash == nil {
+			continue
+		}
+
+		blockHash := *locHash
+		block := ss.getChain().GetBlockByHash(blockHash)
+		if block == nil {
+			ss.logger.Debugf("failed to get block by hash %s", blockHash)
+			continue
+		}
+
 		rsp.Blocks = append(rsp.Blocks, block)
 
 		curBlkMsgSize = curBlkMsgSize + block.Msgsize()
@@ -799,63 +923,79 @@ func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
 	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
 }
 
-func (ss *PovSyncer) requestBlocksByHash(startHash types.Hash, count uint32, useBest bool) {
-	if startHash.IsZero() || count <= 0 {
-		return
-	}
-
-	if ss.reqBlkCache.Has(startHash) {
+func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, useBest bool) {
+	if len(reqBlkHashes) <= 0 {
 		return
 	}
 
 	var peers []*PovSyncPeer
 	if useBest {
-		peers := ss.GetBestPeers(2)
+		peers := ss.GetBestPeers(1)
 		if peers == nil {
 			return
 		}
 	} else {
-		peers = ss.GetRandomPeers(2)
+		peers = ss.GetRandomPeers(1)
 		if len(peers) <= 0 {
 			return
 		}
 	}
 
-	req := new(protos.PovBulkPullReq)
+	for len(reqBlkHashes) > 0 {
+		sendHashNum := 0
+		if len(reqBlkHashes) > maxPullBlockPerReq {
+			sendHashNum = maxPullBlockPerReq
+		} else {
+			sendHashNum = len(reqBlkHashes)
+		}
 
-	req.Count = count
-	req.StartHash = startHash
-	req.Reason = protos.PovReasonFetch
+		for _, peer := range peers {
+			sendBlkHashes := reqBlkHashes[0:sendHashNum]
 
-	for _, peer := range peers {
-		ss.logger.Debugf("request block start %s count %d from peer %s", startHash, count, peer.peerID)
-		ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
+			req := new(protos.PovBulkPullReq)
+			req.PullType = protos.PovPullTypeBatch
+			req.Locators = sendBlkHashes
+			req.Count = uint32(len(sendBlkHashes))
+			req.Reason = protos.PovReasonFetch
+
+			ss.logger.Debugf("request blocks %d from peer %s", len(sendBlkHashes), peer.peerID)
+			ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
+		}
+
+		reqBlkHashes = reqBlkHashes[sendHashNum:]
 	}
-
-	_ = ss.reqBlkCache.Set(startHash, struct{}{})
 }
 
-func (ss *PovSyncer) requestTxsByHash(startHash types.Hash) {
-	if ss.reqTxCache.Has(startHash) {
+func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash) {
+	if len(reqTxHashes) <= 0 {
 		return
 	}
 
-	peers := ss.GetBestPeers(2)
+	peers := ss.GetRandomPeers(1)
 	if len(peers) <= 0 {
 		return
 	}
 
-	req := new(protos.BulkPullReqPacket)
+	for len(reqTxHashes) > 0 {
+		sendHashNum := 0
+		if len(reqTxHashes) > maxPullTxPerReq {
+			sendHashNum = maxPullTxPerReq
+		} else {
+			sendHashNum = len(reqTxHashes)
+		}
 
-	req.StartHash = startHash
-	req.EndHash = startHash
-	req.PullType = protos.PullTypeBackward
-	req.Count = 1
+		for _, peer := range peers {
+			sendTxHashes := reqTxHashes[0:sendHashNum]
 
-	for _, peer := range peers {
-		ss.logger.Debugf("request tx hash %s from peer %s", startHash, peer.peerID)
-		ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.BulkPullRequest, req, peer.peerID)
+			req := new(protos.BulkPullReqPacket)
+			req.PullType = protos.PullTypeBatch
+			req.Hashes = sendTxHashes
+			req.Count = uint32(len(sendTxHashes))
+
+			ss.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peer.peerID)
+			ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.BulkPullRequest, req, peer.peerID)
+		}
+
+		reqTxHashes = reqTxHashes[sendHashNum:]
 	}
-
-	_ = ss.reqTxCache.Set(startHash, struct{}{})
 }

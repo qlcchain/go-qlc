@@ -422,11 +422,6 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 }
 
 func (ms *MessageService) onPovStatus(message *Message) {
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Errorf("send PoV Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-
 	status, err := protos.PovStatusFromProto(message.data)
 	if err != nil {
 		ms.netService.node.logger.Errorf("failed to decode PovStatus from peer %s", message.from)
@@ -464,11 +459,6 @@ func (ms *MessageService) onPovPublishReq(message *Message) {
 }
 
 func (ms *MessageService) onPovBulkPullReq(message *Message) {
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Errorf("send PovBulkPullReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-
 	hash, err := types.HashBytes(message.Content())
 	if err != nil {
 		ms.netService.node.logger.Error(err)
@@ -485,11 +475,6 @@ func (ms *MessageService) onPovBulkPullReq(message *Message) {
 }
 
 func (ms *MessageService) onPovBulkPullRsp(message *Message) {
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Errorf("send PovBulkPullRsp Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-
 	hash, err := types.HashBytes(message.Content())
 	if err != nil {
 		ms.netService.node.logger.Error(err)

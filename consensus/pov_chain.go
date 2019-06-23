@@ -379,7 +379,7 @@ func (bc *PovBlockChain) GetBlockTDByHashAndHeight(hash types.Hash, height uint6
 	return td
 }
 
-func (bc *PovBlockChain) GetBlockLocator(hash types.Hash) []types.Hash {
+func (bc *PovBlockChain) GetBlockLocator(hash types.Hash) []*types.Hash {
 	var block *types.PovBlock
 
 	if hash.IsZero() {
@@ -404,11 +404,12 @@ func (bc *PovBlockChain) GetBlockLocator(hash types.Hash) []types.Hash {
 		adjustedHeight := uint32(block.GetHeight()) - 10
 		maxEntries = 12 + fastLog2Floor(adjustedHeight)
 	}
-	locator := make([]types.Hash, 0, maxEntries)
+	locator := make([]*types.Hash, 0, maxEntries)
 
 	step := uint64(1)
 	for block != nil {
-		locator = append(locator, block.GetHash())
+		locHash := block.GetHash()
+		locator = append(locator, &locHash)
 
 		// Nothing more to add once the genesis block has been added.
 		if block.GetHeight() == 0 {
@@ -434,11 +435,14 @@ func (bc *PovBlockChain) GetBlockLocator(hash types.Hash) []types.Hash {
 	return locator
 }
 
-func (bc *PovBlockChain) LocateBestBlock(locator []types.Hash) *types.PovBlock {
+func (bc *PovBlockChain) LocateBestBlock(locator []*types.Hash) *types.PovBlock {
 	startBlock := bc.GenesisBlock()
 
 	for _, locHash := range locator {
-		block := bc.GetBestBlockByHash(locHash)
+		if locHash == nil {
+			continue
+		}
+		block := bc.GetBestBlockByHash(*locHash)
 		if block != nil {
 			startBlock = block
 			break

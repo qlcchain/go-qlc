@@ -325,80 +325,12 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
 	pullType := pullRemote.PullType
-	if pullType == protos.PullTypeBackward {
-		var blk *types.StateBlock
-		var bulkBlk []*types.StateBlock
-		blkCnt := pullRemote.Count
-		//ss.logger.Debugf("need to send %d blocks of this account", blkCnt)
-		for {
-			blk, err = ss.qlcLedger.GetStateBlock(endHash)
-			if err != nil {
-				break
-			}
-			bulkBlk = append(bulkBlk, blk)
-			blkCnt--
-			if blkCnt <= 0 {
-				break
-			}
-			endHash = blk.GetPrevious()
-		}
-		for i := len(bulkBlk) - 1; i >= 0; i-- {
-			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-				break
-			}
-			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
-			if err != nil {
-				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
-			}
-		}
-	} else if pullType == protos.PullTypeForward {
-		var blk *types.StateBlock
-		var bulkBlk []*types.StateBlock
-		blkCnt := pullRemote.Count
-		if blkCnt == 0 {
-			blkCnt = 1000
-		}
-		//ss.logger.Debugf("need to send %d blocks of this account", blkCnt)
 
-		blk, err = ss.qlcLedger.GetStateBlock(startHash)
-		if err != nil {
-			return err
-		}
-		tm, err := ss.qlcLedger.GetTokenMeta(blk.GetAddress(), blk.GetToken())
-		if err != nil {
-			return err
-		}
-		scanHash := tm.Header
-		for {
-			if scanHash.IsZero() {
-				break
-			}
+	if pullType != protos.PullTypeSegment {
+		return ss.onBulkPullRequestExt(message, pullRemote)
+	}
 
-			blk, err = ss.qlcLedger.GetStateBlock(scanHash)
-			if err != nil {
-				break
-			}
-
-			bulkBlk = append(bulkBlk, blk)
-			if startHash == scanHash {
-				break
-			}
-			scanHash = blk.GetPrevious()
-		}
-		for i := len(bulkBlk) - 1; i >= 0; i-- {
-			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-				break
-			}
-			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
-			if err != nil {
-				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
-			}
-			blkCnt--
-			if blkCnt <= 0 {
-				break
-			}
-		}
-	} else if startHash.IsZero() {
+	if startHash.IsZero() {
 		var blk *types.StateBlock
 		var bulkBlk []*types.StateBlock
 		//ss.logger.Info("need to send all the blocks of this account")
@@ -447,6 +379,103 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 		}
 	}
+	return nil
+}
+
+func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos.BulkPullReqPacket) error {
+	var err error
+	var blk *types.StateBlock
+	var bulkBlk []*types.StateBlock
+
+	pullType := pullRemote.PullType
+	blkCnt := pullRemote.Count
+
+	if pullType == protos.PullTypeBackward {
+		scanHash := pullRemote.EndHash
+
+		ss.logger.Debugf("need to send %d blocks by backward", blkCnt)
+
+		for {
+			blk, err = ss.qlcLedger.GetStateBlock(scanHash)
+			if err != nil {
+				break
+			}
+
+			bulkBlk = append(bulkBlk, blk)
+			blkCnt--
+			if blkCnt <= 0 {
+				break
+			}
+
+			scanHash = blk.GetPrevious()
+		}
+	} else if pullType == protos.PullTypeForward {
+		startHash := pullRemote.StartHash
+		if blkCnt == 0 {
+			blkCnt = 1000
+		}
+
+		ss.logger.Debugf("need to send %d blocks by forward", blkCnt)
+
+		blk, err = ss.qlcLedger.GetStateBlock(startHash)
+		if err != nil {
+			return err
+		}
+		tm, err := ss.qlcLedger.GetTokenMeta(blk.GetAddress(), blk.GetToken())
+		if err != nil {
+			return err
+		}
+
+		scanHash := tm.Header
+		for {
+			if scanHash.IsZero() {
+				break
+			}
+
+			blk, err = ss.qlcLedger.GetStateBlock(scanHash)
+			if err != nil {
+				break
+			}
+
+			bulkBlk = append(bulkBlk, blk)
+			if startHash == scanHash {
+				break
+			}
+
+			scanHash = blk.GetPrevious()
+		}
+
+		if uint32(len(bulkBlk)) > blkCnt {
+			bulkBlk = bulkBlk[:blkCnt]
+		}
+	} else if pullType == protos.PullTypeBatch {
+		ss.logger.Debugf("need to send %d blocks by batch", blkCnt)
+
+		for _, scanHash := range pullRemote.Hashes {
+			if scanHash == nil {
+				continue
+			}
+
+			blk, err = ss.qlcLedger.GetStateBlock(*scanHash)
+			if err != nil {
+				continue
+			}
+
+			bulkBlk = append(bulkBlk, blk)
+		}
+	}
+
+	for i := len(bulkBlk) - 1; i >= 0; i-- {
+		if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+			break
+		}
+
+		err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
+		if err != nil {
+			ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
+		}
+	}
+
 	return nil
 }
 
