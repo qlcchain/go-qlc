@@ -54,8 +54,8 @@ var (
 	cfgPathP      string
 	isProfileP    bool
 	noBootstrapP  bool
-	configParamsP []string
-	RunModeP	string
+	configParamsP string
+	RunModeP      string
 
 	privateKey   cmdutil.Flag
 	account      cmdutil.Flag
@@ -65,7 +65,7 @@ var (
 	isProfile    cmdutil.Flag
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
-	RunMode	cmdutil.Flag
+	RunMode      cmdutil.Flag
 
 	//ctx            *chain.QlcContext
 	ledgerService    *ss.LedgerService
@@ -120,7 +120,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().StringVar(&privateKeyP, "privateKey", "", "seed for accounts")
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
-		rootCmd.PersistentFlags().StringSliceVar(&configParamsP, "configParams", []string{}, "parameter set that needs to be changed")
+		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
 		rootCmd.PersistentFlags().StringVar(&RunModeP, "mode", common.RunModeNormalStr, "running mode")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
@@ -368,7 +368,7 @@ func run() {
 		Name:  "configParam",
 		Must:  false,
 		Usage: "parameter set that needs to be changed",
-		Value: []string{},
+		Value: "",
 	}
 
 	RunMode = cmdutil.Flag{
@@ -397,7 +397,7 @@ func run() {
 			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
 			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
-			configParamsP = cmdutil.StringSliceVar(c.Args, configParams)
+			configParamsP = cmdutil.StringVar(c.Args, configParams)
 			RunModeP = cmdutil.StringVar(c.Args, RunMode)
 
 			err := start()
@@ -410,6 +410,7 @@ func run() {
 }
 
 func updateConfig(cfg *config.Config, cfgPathP string) error {
+	paramSlice := strings.Split(configParamsP, ":")
 	var s []string
 	if cfgPathP == "" {
 		s = strings.Split(config.QlcConfigFile, ".")
@@ -431,7 +432,7 @@ func updateConfig(cfg *config.Config, cfgPathP string) error {
 		return err
 	}
 
-	for _, cp := range configParamsP {
+	for _, cp := range paramSlice {
 		k := strings.Split(cp, "=")
 		if len(k) != 2 || len(k[0]) == 0 || len(k[1]) == 0 {
 			continue
