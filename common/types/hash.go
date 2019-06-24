@@ -121,6 +121,25 @@ func (h Hash) MarshalText() (text []byte, err error) {
 	return []byte(h.String()), nil
 }
 
+func (h Hash) Bytes() []byte {
+	return h[:]
+}
+
+func (h Hash) Cmp(h2 Hash) int {
+	lhs := h[:]
+	rhs := h2[:]
+
+	for i := 0; i < HashSize; i++ {
+		if lhs[i] > rhs[i] {
+			return 1
+		} else if lhs[i] < rhs[i] {
+			return -1
+		}
+	}
+
+	return 0
+}
+
 func HashData(data []byte) Hash {
 	h, _ := HashBytes(data)
 	return h

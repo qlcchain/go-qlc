@@ -8,6 +8,12 @@ import (
 	"testing"
 )
 
+func Benchmark(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_ = StringToBalance("123456789")
+	}
+}
+
 func TestBalance_MarshalJSON(t *testing.T) {
 	b1 := StringToBalance("123456789")
 
@@ -137,7 +143,7 @@ func TestBalance_IsZero(t *testing.T) {
 				Int: tt.fields.Int,
 			}
 			if got := b.IsZero(); got != tt.want {
-				t.Errorf("Balance.IsZero() = %v, want %v", got, tt.want)
+				t.Errorf("Balance.IsZero() = %v, %s, want %v", got, b, tt.want)
 			}
 		})
 	}

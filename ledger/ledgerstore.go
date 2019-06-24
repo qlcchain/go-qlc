@@ -11,11 +11,14 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"math/big"
 )
 
 type Store interface {
 	Empty(txns ...db.StoreTxn) (bool, error)
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
+	BatchView(fn func(txn db.StoreTxn) error) error
+	DBStore() db.Store
 
 	// account meta CURD
 	AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error
@@ -112,4 +115,49 @@ type Store interface {
 	CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (types.Balance, error)
 	AddMessageInfo(mHash types.Hash, message []byte, txns ...db.StoreTxn) error
 	GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, error)
+
+	//POV blocks base CRUD
+	AddPovBlock(blk *types.PovBlock, td *big.Int, txns ...db.StoreTxn) error
+	DeletePovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error
+	AddPovHeader(header *types.PovHeader, txns ...db.StoreTxn) error
+	DeletePovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) error
+	GetPovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovHeader, error)
+	HasPovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) bool
+	AddPovBody(height uint64, hash types.Hash, body *types.PovBody, txns ...db.StoreTxn) error
+	DeletePovBody(height uint64, hash types.Hash, txns ...db.StoreTxn) error
+	GetPovBody(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBody, error)
+	HasPovBody(height uint64, hash types.Hash, txns ...db.StoreTxn) bool
+	AddPovHeight(hash types.Hash, height uint64, txns ...db.StoreTxn) error
+	DeletePovHeight(hash types.Hash, txns ...db.StoreTxn) error
+	GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, error)
+	HasPovHeight(hash types.Hash, txns ...db.StoreTxn) bool
+	AddPovTD(hash types.Hash, height uint64, td *big.Int, txns ...db.StoreTxn) error
+	DeletePovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) error
+	GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (*big.Int, error)
+	AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns ...db.StoreTxn) error
+	DeletePovTxLookup(txHash types.Hash, txns ...db.StoreTxn) error
+	GetPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) (*types.PovTxLookup, error)
+	HasPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) bool
+
+	// POV best chain CURD
+	AddPovBestHash(height uint64, hash types.Hash, txns ...db.StoreTxn) error
+	DeletePovBestHash(height uint64, txns ...db.StoreTxn) error
+	GetPovBestHash(height uint64, txns ...db.StoreTxn) (types.Hash, error)
+
+	// POV blocks complex queries
+	GetPovBlockByHeightAndHash(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error)
+	GetPovBlockByHeight(height uint64, txns ...db.StoreTxn) (*types.PovBlock, error)
+	GetPovBlockByHash(hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error)
+	BatchGetPovHeadersByHeightAsc(height uint64, count uint64, txns ...db.StoreTxn) ([]*types.PovHeader, error)
+	BatchGetPovHeadersByHeightDesc(height uint64, count uint64, txns ...db.StoreTxn) ([]*types.PovHeader, error)
+	GetPovHeaderByHash(hash types.Hash, txns ...db.StoreTxn) (*types.PovHeader, error)
+	GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error
+	GetLatestPovHeader(txns ...db.StoreTxn) (*types.PovHeader, error)
+	GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error)
+	HasPovBlock(height uint64, hash types.Hash, txns ...db.StoreTxn) bool
+
+	DropAllPovBlocks() error
+	CountPovBlocks(txns ...db.StoreTxn) (uint64, error)
+	CountPovTxs(txns ...db.StoreTxn) (uint64, error)
+	CountPovBestHashs(txns ...db.StoreTxn) (uint64, error)
 }

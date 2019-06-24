@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -195,4 +195,12 @@ func (v *VMContext) HasTokenMeta(address types.Address, token types.Hash) (bool,
 
 func (v *VMContext) GetTokenMeta(address types.Address, token types.Hash) (*types.TokenMeta, error) {
 	return v.ledger.GetTokenMeta(address, token)
+}
+
+func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) {
+	return v.ledger.GetPovBlockByHeight(height)
+}
+
+func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
+	return v.ledger.GetLatestPovBlock()
 }

@@ -22,29 +22,28 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	checkBlockFns = make(map[types.BlockType]checkBlock)
-)
+type checkBlock func(*LedgerVerifier, *types.StateBlock) (ProcessResult, error)
 
-func init() {
+type LedgerVerifier struct {
+	l             *ledger.Ledger
+	checkBlockFns map[types.BlockType]checkBlock
+	logger        *zap.SugaredLogger
+}
+
+func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
+	checkBlockFns := make(map[types.BlockType]checkBlock)
 	checkBlockFns[types.Send] = checkSendBlock
 	checkBlockFns[types.Receive] = checkReceiveBlock
 	checkBlockFns[types.Change] = checkChangeBlock
 	checkBlockFns[types.Open] = checkOpenBlock
 	checkBlockFns[types.ContractSend] = checkContractSendBlock
 	checkBlockFns[types.ContractReward] = checkContractReceiveBlock
-}
 
-type checkBlock func(*LedgerVerifier, *types.StateBlock) (ProcessResult, error)
-
-type LedgerVerifier struct {
-	l *ledger.Ledger
-	//vmContext *vmstore.VMContext
-	logger *zap.SugaredLogger
-}
-
-func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
-	return &LedgerVerifier{l: l, logger: log.NewLogger("ledger_verifier")}
+	return &LedgerVerifier{
+		l:             l,
+		checkBlockFns: checkBlockFns,
+		logger:        log.NewLogger("ledger_verifier"),
+	}
 }
 
 func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
@@ -59,7 +58,7 @@ func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
 
 func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
-		if fn, ok := checkBlockFns[b.Type]; ok {
+		if fn, ok := lv.checkBlockFns[b.Type]; ok {
 			r, err := fn(lv, b)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))

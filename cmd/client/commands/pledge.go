@@ -15,6 +15,7 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
+	commonutil "github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/spf13/cobra"
@@ -114,11 +115,12 @@ func pledgeAction(beneficialAccount, pledgeAccount, amount, pType string) error 
 	defer client.Close()
 
 	am := types.StringToBalance(amount)
-	NEP5tTxId := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	NEP5tTxId := commonutil.RandomFixedString(64)
 	pledgeParam := api.PledgeParam{
 		Beneficial: b.Address(), PledgeAddress: p.Address(), Amount: am,
 		PType: pType, NEP5TxId: NEP5tTxId,
 	}
+	fmt.Printf("\nPledgeAddress:%s, Beneficial:%s, NEP5tTxId:%s\n", pledgeParam.PledgeAddress, pledgeParam.Beneficial, NEP5tTxId)
 
 	send := types.StateBlock{}
 	err = client.Call(&send, "pledge_getPledgeBlock", &pledgeParam)
@@ -137,10 +139,13 @@ func pledgeAction(beneficialAccount, pledgeAccount, amount, pType string) error 
 	if err != nil {
 		return err
 	}
-	reward.Signature = b.Sign(reward.GetHash())
+	rewardHash := reward.GetHash()
+	reward.Signature = b.Sign(rewardHash)
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
+
+	fmt.Printf("sendHash:%s, rewardHash:%s\n", sendHash, rewardHash)
 
 	//TODO: batch process send/reward
 	err = client.Call(nil, "ledger_process", &send)

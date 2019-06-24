@@ -8,10 +8,10 @@
 package trie
 
 import (
+	"encoding/hex"
+	"github.com/qlcchain/go-qlc/common/util"
 	"sort"
 	"sync"
-
-	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -107,7 +107,7 @@ func (t *TrieNode) LeafCallback(completeFunc func()) {
 	}
 }
 
-func (t *TrieNode) Clone() *TrieNode {
+func (t *TrieNode) Clone(copyHash bool) *TrieNode {
 	t.lock.RLock()
 	defer t.lock.RUnlock()
 
@@ -129,6 +129,11 @@ func (t *TrieNode) Clone() *TrieNode {
 
 	newNode.value = make([]byte, len(t.value))
 	copy(newNode.value, t.value)
+
+	if copyHash && t.hash != nil {
+		newHash := *(t.hash)
+		newNode.hash = &newHash
+	}
 
 	return newNode
 }
@@ -182,6 +187,15 @@ func (t *TrieNode) Children() map[byte]*TrieNode {
 	return t.children
 }
 
+func (t *TrieNode) SortedChildren() []*TrieNode {
+	scKV := sortChildren(t.children)
+	var scRet []*TrieNode
+	for _, sc := range scKV {
+		scRet = append(scRet, sc.Value)
+	}
+	return scRet
+}
+
 func (t *TrieNode) String() string {
 	tn := &types.TrieNode{
 		Type: t.NodeType(),
@@ -212,7 +226,8 @@ func (t *TrieNode) serializeChildren(children map[byte]*TrieNode) map[string][]b
 
 	var parsedChildren = make(map[string][]byte, len(children))
 	for key, child := range children {
-		parsedChildren[string(key)] = child.Hash()[:]
+		ks := hex.EncodeToString([]byte{key})
+		parsedChildren[ks] = child.Hash()[:]
 	}
 	return parsedChildren
 }
@@ -247,7 +262,10 @@ func (t *TrieNode) parseChildren(children map[string][]byte) (map[byte]*TrieNode
 		if err != nil {
 			return nil, err
 		}
-		tmp := []byte(key)
+		tmp, err := hex.DecodeString(key)
+		if err != nil {
+			return nil, err
+		}
 		result[tmp[0]] = &TrieNode{
 			hash: &childHash,
 		}

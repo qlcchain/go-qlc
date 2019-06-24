@@ -142,7 +142,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			go func() {
 				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
 				if err != nil {
-					ss.logger.Error("process frontiers error")
+					ss.logger.Errorf("process frontiers error:[%s]", err)
 				}
 			}()
 		}
@@ -261,6 +261,9 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 							}
 							for i := len(bulkBlk) - 1; i >= 0; i-- {
+								if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+									break
+								}
 								err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
@@ -283,6 +286,9 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 							}
 							for i := len(bulkBlk) - 1; i >= 0; i-- {
+								if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+									break
+								}
 								err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
@@ -309,14 +315,21 @@ func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
 }
 
 func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
-	ss.netService.node.logger.Debug("receive BulkPullRequest")
 	pullRemote, err := protos.BulkPullReqPacketFromProto(message.Data())
 	if err != nil {
 		return err
 	}
+	ss.netService.node.logger.Debugf("receive BulkPullRequest, type %d start %s end %s count %d",
+		pullRemote.PullType, pullRemote.StartHash, pullRemote.EndHash, pullRemote.Count)
 
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
+	pullType := pullRemote.PullType
+
+	if pullType != protos.PullTypeSegment {
+		return ss.onBulkPullRequestExt(message, pullRemote)
+	}
+
 	if startHash.IsZero() {
 		var blk *types.StateBlock
 		var bulkBlk []*types.StateBlock
@@ -333,6 +346,9 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 		}
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
+			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+				break
+			}
 			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
@@ -354,6 +370,9 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 		}
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
+			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+				break
+			}
 			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
@@ -363,14 +382,116 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	return nil
 }
 
+func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos.BulkPullReqPacket) error {
+	var err error
+	var blk *types.StateBlock
+	var bulkBlk []*types.StateBlock
+
+	pullType := pullRemote.PullType
+	blkCnt := pullRemote.Count
+
+	if pullType == protos.PullTypeBackward {
+		scanHash := pullRemote.EndHash
+
+		ss.logger.Debugf("need to send %d blocks by backward", blkCnt)
+
+		for {
+			blk, err = ss.qlcLedger.GetStateBlock(scanHash)
+			if err != nil {
+				break
+			}
+
+			bulkBlk = append(bulkBlk, blk)
+			blkCnt--
+			if blkCnt <= 0 {
+				break
+			}
+
+			scanHash = blk.GetPrevious()
+		}
+	} else if pullType == protos.PullTypeForward {
+		startHash := pullRemote.StartHash
+		if blkCnt == 0 {
+			blkCnt = 1000
+		}
+
+		ss.logger.Debugf("need to send %d blocks by forward", blkCnt)
+
+		blk, err = ss.qlcLedger.GetStateBlock(startHash)
+		if err != nil {
+			return err
+		}
+		tm, err := ss.qlcLedger.GetTokenMeta(blk.GetAddress(), blk.GetToken())
+		if err != nil {
+			return err
+		}
+
+		scanHash := tm.Header
+		for {
+			if scanHash.IsZero() {
+				break
+			}
+
+			blk, err = ss.qlcLedger.GetStateBlock(scanHash)
+			if err != nil {
+				break
+			}
+
+			bulkBlk = append(bulkBlk, blk)
+			if startHash == scanHash {
+				break
+			}
+
+			scanHash = blk.GetPrevious()
+		}
+
+		if uint32(len(bulkBlk)) > blkCnt {
+			bulkBlk = bulkBlk[:blkCnt]
+		}
+	} else if pullType == protos.PullTypeBatch {
+		ss.logger.Debugf("need to send %d blocks by batch", blkCnt)
+
+		for _, scanHash := range pullRemote.Hashes {
+			if scanHash == nil {
+				continue
+			}
+
+			blk, err = ss.qlcLedger.GetStateBlock(*scanHash)
+			if err != nil {
+				continue
+			}
+
+			bulkBlk = append(bulkBlk, blk)
+		}
+	}
+
+	for i := len(bulkBlk) - 1; i >= 0; i-- {
+		if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+			break
+		}
+
+		err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
+		if err != nil {
+			ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
+		}
+	}
+
+	return nil
+}
+
 func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
-	ss.netService.node.logger.Debug("receive BulkPullRsp")
 	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
 	if err != nil {
 		return err
 	}
 
 	block := blkPacket.Blk
+	if block == nil {
+		return nil
+	}
+
+	ss.netService.node.logger.Debugf("receive BulkPullRsp, hash %s", block.GetHash())
+
 	if ss.netService.node.cfg.PerformanceEnabled {
 		hash := block.GetHash()
 		ss.netService.msgService.addPerformanceTime(hash)

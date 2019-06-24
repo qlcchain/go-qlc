@@ -40,7 +40,7 @@ func generateTestLedger() {
 		}
 		to := util.Flag{
 			Name:  "to",
-			Must:  true,
+			Must:  false,
 			Usage: "receive accounts",
 			Value: []string{},
 		}
@@ -165,7 +165,7 @@ func sendReceiveAndChangeAction(repCountsP int, from *types.Account, toAccountsP
 				}
 			}
 			var sendBlock types.StateBlock
-			err = client.Call(&sendBlock, "ledger_generateSendBlock", para, hex.EncodeToString(from.PrivateKey()))
+			err = client.Call(&sendBlock, "ledger_generateSendBlock", &para, hex.EncodeToString(from.PrivateKey()))
 			if err != nil {
 				return err
 			}

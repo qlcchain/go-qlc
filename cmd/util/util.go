@@ -173,7 +173,7 @@ func GetConfig(pathName string) (*config.Config, error) {
 		cm = config.NewCfgManagerWithName(filepath.Dir(pathName), filepath.Base(pathName))
 
 	}
-	cfg, err := cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3())
+	cfg, err := cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4())
 	if err != nil {
 		return nil, err
 	}

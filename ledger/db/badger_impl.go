@@ -1,13 +1,15 @@
 package db
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"log"
 	"sort"
 
-	"github.com/dgraph-io/badger"
-	badgerOpts "github.com/dgraph-io/badger/options"
-	"github.com/dgraph-io/badger/pb"
+	"github.com/dgraph-io/badger/v2"
+	badgerOpts "github.com/dgraph-io/badger/v2/options"
+	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
@@ -94,7 +96,10 @@ func (t *BadgerStoreTxn) Set(key []byte, val []byte) error {
 }
 
 func (t *BadgerStoreTxn) SetWithMeta(key, val []byte, meta byte) error {
-	if err := t.txn.SetWithMeta(key[:], val, meta); err != nil {
+	//if err := t.txn.SetWithMeta(key[:], val, meta); err != nil {
+	//	return err
+	//}
+	if err := t.txn.SetEntry(badger.NewEntry(key, val).WithMeta(meta)); err != nil {
 		return err
 	}
 	return nil
@@ -127,6 +132,71 @@ func (t *BadgerStoreTxn) Iterator(pre byte, fn func([]byte, []byte, byte) error)
 	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
 		item := it.Item()
 		key := item.Key()
+		err := item.Value(func(val []byte) error {
+			return fn(key, val, item.UserMeta())
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *BadgerStoreTxn) PrefixIterator(prefix []byte, fn func([]byte, []byte, byte) error) error {
+	it := t.txn.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	for it.Seek(prefix[:]); it.ValidForPrefix(prefix[:]); it.Next() {
+		item := it.Item()
+		key := item.Key()
+		err := item.Value(func(val []byte) error {
+			return fn(key, val, item.UserMeta())
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *BadgerStoreTxn) KeyIterator(prefix []byte, fn func([]byte) error) error {
+	it := t.txn.NewKeyIterator(prefix, badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	for it.Rewind(); it.Valid(); it.Next() {
+		item := it.Item()
+		key := item.Key()
+		err := fn(key)
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RangeIterator scan keys between [startKey, endKey)
+func (t *BadgerStoreTxn) RangeIterator(startKey []byte, endKey []byte, fn func([]byte, []byte, byte) error) error {
+	if len(startKey) <= 0 {
+		return errors.New("invalid startKey")
+	}
+	if len(endKey) <= 0 {
+		return errors.New("invalid endKey")
+	}
+
+	it := t.txn.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
+
+	for it.Seek(startKey); it.Valid(); it.Next() {
+		item := it.Item()
+		key := item.Key()
+
+		if bytes.Compare(key, endKey) >= 0 {
+			break
+		}
+
 		err := item.Value(func(val []byte) error {
 			return fn(key, val, item.UserMeta())
 		})

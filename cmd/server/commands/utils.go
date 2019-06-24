@@ -21,7 +21,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func runNode(accounts []*types.Account, cfg *config.Config) error {
@@ -30,7 +29,7 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 		fmt.Println(err)
 		return err
 	}
-	services, err := startNode(accounts, cfg)
+	err = startNode(accounts, cfg)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -38,14 +37,12 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 		fmt.Println(err)
 		return err
 	}
-	cmn.TrapSignal(func() {
-		stopNode(services)
-	})
 	return nil
 }
 
 func stopNode(services []common.Service) {
 	for _, service := range services {
+		fmt.Printf("%s stopping ...\n", reflect.TypeOf(service))
 		err := service.Stop()
 		if err != nil {
 			fmt.Println(err)
@@ -72,6 +69,9 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	if sqliteService, err = ss.NewSqliteService(cfg); err != nil {
 		return err
 	}
+
+	povService = ss.NewPoVService(cfg, accounts)
+	minerService = ss.NewMinerService(cfg, povService.GetPoVEngine())
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		eb := event.GetEventBus(cfg.LedgerDir())
@@ -108,23 +108,28 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	}
 
 	if len(cfg.P2P.BootNodes) == 0 {
-		services = []common.Service{sqliteService, ledgerService, walletService, consensusService, rPCService}
+		services = []common.Service{sqliteService, ledgerService, walletService, consensusService, povService, minerService, rPCService}
 	} else {
-		services = []common.Service{sqliteService, ledgerService, netService, walletService, consensusService, rPCService}
+		services = []common.Service{sqliteService, ledgerService, netService, walletService, consensusService, povService, minerService, rPCService}
 	}
 
 	return nil
 }
 
-func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service, error) {
+func startNode(accounts []*types.Account, cfg *config.Config) error {
+	// step1: init phase
 	for _, service := range services {
 		err := service.Init()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		err = service.Start()
+		fmt.Printf("%s init successfully.\n", reflect.TypeOf(service))
+	}
+	// step2: start phase
+	for _, service := range services {
+		err := service.Start()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		fmt.Printf("%s start successfully.\n", reflect.TypeOf(service))
 	}
@@ -160,7 +165,7 @@ func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service,
 		}(ledgerService.Ledger, accounts)
 	}
 
-	return services, nil
+	return nil
 }
 
 func receive(sendBlock *types.StateBlock, account *types.Account) error {

@@ -19,6 +19,10 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	ErrParameterNil = errors.New("parameter is nil")
+)
+
 type LedgerApi struct {
 	ledger *ledger.Ledger
 	//vmContext *vmstore.VMContext
@@ -43,6 +47,15 @@ type APIAccount struct {
 	CoinOracle     *types.Balance  `json:"oracle,omitempty"`
 	Representative *types.Address  `json:"representative,omitempty"`
 	Tokens         []*APITokenMeta `json:"tokens"`
+}
+
+type APIAccountsBalance struct {
+	Balance types.Balance  `json:"balance"`
+	Vote    *types.Balance `json:"vote,omitempty"`
+	Network *types.Balance `json:"network,omitempty"`
+	Storage *types.Balance `json:"storage,omitempty"`
+	Oracle  *types.Balance `json:"oracle,omitempty"`
+	Pending types.Balance  `json:"pending"`
 }
 
 type APITokenMeta struct {
@@ -208,8 +221,8 @@ func (l *LedgerApi) AccountVotingWeight(addr types.Address) (types.Balance, erro
 	return b.Total, err
 }
 
-func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Address]map[string]map[string]types.Balance, error) {
-	as := make(map[types.Address]map[string]map[string]types.Balance)
+func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Address]map[string]*APIAccountsBalance, error) {
+	as := make(map[types.Address]map[string]*APIAccountsBalance)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
 		ac, err := l.ledger.GetAccountMeta(addr)
@@ -219,13 +232,13 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 			}
 			return nil, err
 		}
-		ts := make(map[string]map[string]types.Balance)
+		ts := make(map[string]*APIAccountsBalance)
 		for _, t := range ac.Tokens {
 			info, err := abi.GetTokenById(vmContext, t.Type)
 			if err != nil {
 				return nil, err
 			}
-			b := make(map[string]types.Balance)
+			b := new(APIAccountsBalance)
 			pendings, err := l.ledger.TokenPendingInfo(addr, t.Type)
 			if err != nil {
 				return nil, err
@@ -234,15 +247,13 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 			for _, pending := range pendings {
 				amount = amount.Add(pending.Amount)
 			}
-			b["balance"] = t.Balance
-			b["pending"] = amount
+			b.Balance = t.Balance
+			b.Pending = amount
 			if info.TokenId == common.ChainToken() {
-				if !ac.CoinVote.IsZero() || !ac.CoinStorage.IsZero() || !ac.CoinOracle.IsZero() || !ac.CoinNetwork.IsZero() {
-					b["vote"] = ac.CoinVote
-					b["network"] = ac.CoinNetwork
-					b["oracle"] = ac.CoinOracle
-					b["storage"] = ac.CoinStorage
-				}
+				b.Vote = &ac.CoinVote
+				b.Network = &ac.CoinNetwork
+				b.Oracle = &ac.CoinOracle
+				b.Storage = &ac.CoinStorage
 			}
 			ts[info.TokenName] = b
 		}
@@ -532,6 +543,9 @@ type APISendBlockPara struct {
 }
 
 func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*types.StateBlock, error) {
+	if para == nil {
+		return nil, ErrParameterNil
+	}
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
@@ -573,6 +587,9 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 }
 
 func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *string) (*types.StateBlock, error) {
+	if sendBlock == nil {
+		return nil, ErrParameterNil
+	}
 	var prk []byte
 	if prkStr != nil {
 		var err error
@@ -635,6 +652,9 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 }
 
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
+	if block == nil {
+		return types.ZeroHash, ErrParameterNil
+	}
 	verifier := process.NewLedgerVerifier(l.ledger)
 	flag, err := verifier.Process(block)
 	if err != nil {

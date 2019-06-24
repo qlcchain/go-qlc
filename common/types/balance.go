@@ -55,6 +55,11 @@ func BytesToBalance(b []byte) Balance {
 	return Balance{t}
 }
 
+func NewBalance(x int64) Balance {
+	t := big.NewInt(x)
+	return Balance{t}
+}
+
 // Bytes returns the binary representation of this Balance with the given
 // endianness.
 func (b Balance) Bytes() []byte {
@@ -136,38 +141,52 @@ func (b *Balance) MarshalBinaryTo(text []byte) error {
 
 //ExtensionType implements Extension.UnmarshalBinary interface
 func (b *Balance) UnmarshalBinary(text []byte) error {
-	i := new(big.Int)
-	i.SetBytes(text)
-	*b = Balance{i}
-
+	if b.Int != nil {
+		b.Int = nil
+	}
+	b.Int = new(big.Int).SetBytes(text)
 	return nil
+}
+
+func (b Balance) String() string {
+	if b.Int == nil {
+		return big.NewInt(0).String()
+	} else {
+		return b.Int.String()
+	}
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.
 func (b Balance) MarshalText() ([]byte, error) {
-	return []byte(b.String()), nil
+	s := fmt.Sprintf(`"%s"`, b.String())
+	return []byte(s), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (b *Balance) UnmarshalText(text []byte) error {
 	s := util.TrimQuotes(string(text))
-	_, err := strconv.ParseInt(s, 10, 64)
+	v, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return err
 	}
-	balance := StringToBalance(s)
-	*b = balance
+	if b.Int != nil {
+		b.Int = nil
+	}
+	b.Int = new(big.Int).SetInt64(v)
+
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaler interface.
+//MarshalJSON implements the json.Marshaler interface.
 func (b *Balance) MarshalJSON() ([]byte, error) {
 	s := ""
 
-	if b.Int == nil {
-		s = fmt.Sprintf("\"%s\"", ZeroBalance)
+	if b == nil || b.Int == nil {
+		s = ZeroBalance.String()
+		//s = fmt.Sprintf("\"%s\"", ZeroBalance)
 	} else {
-		s = fmt.Sprintf("\"%s\"", b.String())
+		//s = fmt.Sprintf("\"%s\"", b.String())
+		s = b.String()
 	}
 	return []byte(s), nil
 }
@@ -178,6 +197,6 @@ func (b *Balance) UnmarshalJSON(text []byte) error {
 }
 
 // IsZero check balance is zero
-func (b *Balance) IsZero() bool {
+func (b Balance) IsZero() bool {
 	return b.Equal(ZeroBalance)
 }

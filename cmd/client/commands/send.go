@@ -136,7 +136,7 @@ func sendTx(account *types.Account, to types.Address, token string, amount types
 		Amount:    amount,
 	}
 	var sendBlock types.StateBlock
-	err = client.Call(&sendBlock, "ledger_generateSendBlock", para, hex.EncodeToString(account.PrivateKey()))
+	err = client.Call(&sendBlock, "ledger_generateSendBlock", &para, hex.EncodeToString(account.PrivateKey()))
 	if err != nil {
 		return err
 	}

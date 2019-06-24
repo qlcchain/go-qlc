@@ -44,8 +44,9 @@ var (
 	MintageAddress, _    = HexToAddress("qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1")
 	NEP5PledgeAddress, _ = HexToAddress("qlc_3fwi6r1fzjwmiys819pw8jxrcmcottsj4iq56kkgcmzi3b87596jwskwqrr5")
 	RewardsAddress, _    = HexToAddress("qlc_3oinqggowa7f1rsjfmib476ggz6s4fp8578odjzerzztkrifqkqdz5zjztb3")
+	MinerAddress, _      = GenerateBuiltinContractAddress(3)
 
-	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress}
+	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress}
 
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
 	// alphabet.
@@ -122,6 +123,30 @@ func PubToAddress(pub ed25519.PublicKey) Address {
 func GenerateAddress() (Address, ed25519.PrivateKey, error) {
 	pub, pri, err := ed25519.GenerateKey(rand.Reader)
 	return PubToAddress(pub), pri, err
+}
+
+func GenerateBuiltinContractAddress(suffix byte) (Address, error) {
+	buf := make([]byte, AddressSize)
+	buf[AddressSize-1] = suffix
+	return BytesToAddress(buf)
+}
+
+func IsChainContractAddress(address Address) bool {
+	for _, itAddr := range ChainContractAddressList {
+		if itAddr == address {
+			return true
+		}
+	}
+
+	return false
+}
+
+func IsContractAddress(address Address) bool {
+	if IsChainContractAddress(address) {
+		return true
+	}
+
+	return false
 }
 
 // KeypairFromPrivateKey generate key pair from private key

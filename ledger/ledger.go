@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dgraph-io/badger"
-	"github.com/dgraph-io/badger/pb"
+	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -74,6 +74,12 @@ const (
 	idPrefixMessage  //discard
 	idPrefixMessageInfo
 	idPrefixOnlineReps
+	idPrefixPovHeader   // prefix + height + hash => header
+	idPrefixPovBody     // prefix + height + hash => body
+	idPrefixPovHeight   // prefix + hash => height (uint64)
+	idPrefixPovTxLookup // prefix + txHash => TxLookup
+	idPrefixPovBestHash // prefix + height => hash
+	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
 )
 
 var (
@@ -117,11 +123,15 @@ func CloseLedger() {
 }
 
 func (l *Ledger) Close() error {
-	err := l.Store.Close()
 	lock.Lock()
-	delete(cache, l.dir)
-	lock.Unlock()
-	return err
+	defer lock.Unlock()
+	if _, ok := cache[l.dir]; ok {
+		err := l.Store.Close()
+		l.logger.Info("badger closed")
+		delete(cache, l.dir)
+		return err
+	}
+	return nil
 }
 
 func (l *Ledger) upgrade() error {
@@ -161,6 +171,10 @@ func (l *Ledger) Empty(txns ...db.StoreTxn) (bool, error) {
 	return r, nil
 }
 
+func (l *Ledger) DBStore() db.Store {
+	return l.Store
+}
+
 func getKeyOfHash(hash types.Hash, t byte) []byte {
 	var key [1 + types.HashSize]byte
 	key[0] = t
@@ -173,6 +187,39 @@ func getKeyOfBytes(bytes []byte, t byte) []byte {
 	key = append(key, t)
 	key = append(key, bytes...)
 	return key
+}
+
+func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
+	var buffer = []byte{t}
+	for _, part := range partList {
+		var src []byte
+		switch part.(type) {
+		case int:
+			src = util.BE_Uint64ToBytes(uint64(part.(int)))
+		case int32:
+			src = util.BE_Uint64ToBytes(uint64(part.(int32)))
+		case uint32:
+			src = util.BE_Uint64ToBytes(uint64(part.(uint32)))
+		case int64:
+			src = util.BE_Uint64ToBytes(uint64(part.(int64)))
+		case uint64:
+			src = util.BE_Uint64ToBytes(part.(uint64))
+		case []byte:
+			src = part.([]byte)
+		case types.Hash:
+			hash := part.(types.Hash)
+			src = hash[:]
+		case *types.Hash:
+			hash := part.(*types.Hash)
+			src = hash[:]
+		default:
+			return nil, errors.New("Key contains of invalid part.")
+		}
+
+		buffer = append(buffer, src...)
+	}
+
+	return buffer, nil
 }
 
 func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error {
@@ -1350,6 +1397,21 @@ func (l *Ledger) BatchUpdate(fn func(txn db.StoreTxn) error) error {
 	//logger.Debugf("BatchUpdate NewTransaction %p", txn)
 	defer func() {
 		//logger.Debugf("BatchUpdate Discard %p", txn)
+		txn.Discard()
+	}()
+
+	if err := fn(txn); err != nil {
+		return err
+	}
+	return txn.Commit(nil)
+}
+
+// BatchView MUST pass the same txn
+func (l *Ledger) BatchView(fn func(txn db.StoreTxn) error) error {
+	txn := l.Store.NewTransaction(false)
+	//logger.Debugf("BatchView NewTransaction %p", txn)
+	defer func() {
+		//logger.Debugf("BatchView Discard %p", txn)
 		txn.Discard()
 	}()
 

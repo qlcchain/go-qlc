@@ -27,8 +27,8 @@ func Test_updateConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	err = updateConfig(cfg)
+	cfgPathN := filepath.Join(cfgPathP, config.QlcConfigFile)
+	err = updateConfig(cfg, cfgPathN)
 	if err != nil {
 		t.Fatal(err)
 	}

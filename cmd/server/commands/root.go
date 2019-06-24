@@ -17,11 +17,14 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"runtime/debug"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/abiosoft/ishell"
@@ -33,6 +36,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	qlclog "github.com/qlcchain/go-qlc/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -68,8 +72,11 @@ var (
 	consensusService *ss.ConsensusService
 	rPCService       *ss.RPCService
 	sqliteService    *ss.SqliteService
+	povService       *ss.PoVService
+	minerService     *ss.MinerService
 	services         []common.Service
 	maxAccountSize   = 100
+	logger           = qlclog.NewLogger("config_detail")
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -135,9 +142,12 @@ func start() error {
 	if err != nil {
 		return err
 	}
+
+	debug.SetGCPercent(10)
+
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
-		err = updateConfig(cfg)
+		err = updateConfig(cfg, cfgPathP)
 		if err != nil {
 			return err
 		}
@@ -169,7 +179,7 @@ func start() error {
 		ledger.CloseLedger()
 		session := w.NewSession(address)
 		defer func() {
-			err := session.Close()
+			err := w.Close()
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -252,11 +262,31 @@ func start() error {
 		}
 	}()
 
+	
 	err = runNode(accounts, cfg)
 	if err != nil {
 		return err
 	}
+	trapSignal()
 	return nil
+}
+
+func trapSignal() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
+	<-c
+
+	sers := make([]common.Service, 0)
+	for i := len(services) - 1; i >= 0; i-- {
+		sers = append(sers, services[i])
+	}
+	stopNode(sers)
+	fmt.Println("qlc node closed successfully")
+
+	//bus := event.GetEventBus(cfg.LedgerDir())
+	//if err := bus.Close(); err != nil {
+	//	fmt.Println(err)
+	//}
 }
 
 func seedToAccounts(data []byte) ([]*types.Account, error) {
@@ -356,8 +386,13 @@ func run() {
 	shell.AddCmd(s)
 }
 
-func updateConfig(cfg *config.Config) error {
-	s := strings.Split(config.QlcConfigFile, ".")
+func updateConfig(cfg *config.Config, cfgPathP string) error {
+	var s []string
+	if cfgPathP == "" {
+		s = strings.Split(config.QlcConfigFile, ".")
+	} else {
+		s = strings.Split(filepath.Base(cfgPathP), ".")
+	}
 	if len(s) != 2 {
 		return errors.New("split error")
 	}
