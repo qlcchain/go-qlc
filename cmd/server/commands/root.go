@@ -54,7 +54,7 @@ var (
 	cfgPathP      string
 	isProfileP    bool
 	noBootstrapP  bool
-	configParamsP []string
+	configParamsP string
 
 	privateKey   cmdutil.Flag
 	account      cmdutil.Flag
@@ -118,7 +118,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().StringVar(&privateKeyP, "privateKey", "", "seed for accounts")
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
-		rootCmd.PersistentFlags().StringSliceVar(&configParamsP, "configParams", []string{}, "parameter set that needs to be changed")
+		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)
@@ -339,7 +339,7 @@ func run() {
 		Name:  "configParam",
 		Must:  false,
 		Usage: "parameter set that needs to be changed",
-		Value: []string{},
+		Value: "",
 	}
 
 	s := &ishell.Cmd{
@@ -361,7 +361,7 @@ func run() {
 			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
 			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
-			configParamsP = cmdutil.StringSliceVar(c.Args, configParams)
+			configParamsP = cmdutil.StringVar(c.Args, configParams)
 
 			err := start()
 			if err != nil {
@@ -373,6 +373,7 @@ func run() {
 }
 
 func updateConfig(cfg *config.Config, cfgPathP string) error {
+	paramSlice := strings.Split(configParamsP, ":")
 	var s []string
 	if cfgPathP == "" {
 		s = strings.Split(config.QlcConfigFile, ".")
@@ -394,7 +395,7 @@ func updateConfig(cfg *config.Config, cfgPathP string) error {
 		return err
 	}
 
-	for _, cp := range configParamsP {
+	for _, cp := range paramSlice {
 		k := strings.Split(cp, "=")
 		if len(k) != 2 || len(k[0]) == 0 || len(k[1]) == 0 {
 			continue
