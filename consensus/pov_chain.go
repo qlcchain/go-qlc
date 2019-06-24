@@ -838,20 +838,20 @@ func (bc *PovBlockChain) RelativeAncestor(block *types.PovBlock, distance uint64
 }
 
 func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Signature, error) {
-	if (block.GetHeight()+1)%uint64(bc.getConfig().PoV.TargetCycle) != 0 {
+	if (block.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
 		return block.Target, nil
 	}
 
 	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
 
-	distance := uint64(bc.getConfig().PoV.TargetCycle - 1)
+	distance := uint64(common.PovChainTargetCycle - 1)
 	firstBlock := bc.RelativeAncestor(block, distance)
 	if firstBlock == nil {
 		bc.logger.Errorf("failed to get relative ancestor at height %d distance %d", block.GetHeight(), distance)
 		return types.ZeroSignature, ErrPovUnknownAncestor
 	}
 
-	targetTimeSpan := int64(bc.getConfig().PoV.TargetCycle * bc.getConfig().PoV.BlockInterval)
+	targetTimeSpan := int64(common.PovChainTargetCycle * common.PovChainBlockInterval)
 	minRetargetTimespan := targetTimeSpan / 4
 	maxRetargetTimespan := targetTimeSpan * 4
 

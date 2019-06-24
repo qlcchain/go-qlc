@@ -369,7 +369,7 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 		blockCount = blockCount - 1
 	}
 
-	maxBlockSize := ss.povEngine.GetConfig().PoV.BlockSize
+	maxBlockSize := common.PovChainBlockSize
 	curBlkMsgSize := 0
 
 	endHeight := startHeight + uint64(blockCount)
@@ -443,7 +443,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 		blockCount = blockCount - 1
 	}
 
-	maxBlockSize := ss.povEngine.GetConfig().PoV.BlockSize
+	maxBlockSize := common.PovChainBlockSize
 	curBlkMsgSize := 0
 
 	endHeight := uint64(0)
@@ -477,7 +477,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBatch(msg *PovSyncMessage) {
 	rsp := new(protos.PovBulkPullRsp)
 	rsp.Reason = req.Reason
 
-	maxBlockSize := ss.povEngine.GetConfig().PoV.BlockSize
+	maxBlockSize := common.PovChainBlockSize
 	curBlkMsgSize := 0
 
 	for _, locHash := range req.Locators {
