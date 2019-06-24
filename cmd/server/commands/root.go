@@ -22,7 +22,6 @@ import (
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
-	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -56,6 +55,7 @@ var (
 	isProfileP    bool
 	noBootstrapP  bool
 	configParamsP []string
+	RunModeP	string
 
 	privateKey   cmdutil.Flag
 	account      cmdutil.Flag
@@ -65,6 +65,8 @@ var (
 	isProfile    cmdutil.Flag
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
+	RunMode	cmdutil.Flag
+
 	//ctx            *chain.QlcContext
 	ledgerService    *ss.LedgerService
 	walletService    *ss.WalletService
@@ -109,7 +111,6 @@ func Execute(osArgs []string) {
 				if err != nil {
 					cmd.Println(err)
 				}
-
 			},
 		}
 		rootCmd.PersistentFlags().StringVar(&cfgPathP, "config", "", "config file")
@@ -120,6 +121,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringSliceVar(&configParamsP, "configParams", []string{}, "parameter set that needs to be changed")
+		rootCmd.PersistentFlags().StringVar(&RunModeP, "mode", common.RunModeNormalStr, "running mode")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)
@@ -251,18 +253,31 @@ func start() error {
 
 	configDetails := util.ToIndentString(cfg)
 	log.Printf("%s\n", configDetails)
-	
-	go func() {
-		cleanMem := time.NewTicker(30 * time.Second)
-		for {
-			select {
-			case <-cleanMem.C:
-				debug.FreeOSMemory()
-			}
-		}
-	}()
 
-	
+	if RunModeP != common.RunModeNormalStr && RunModeP != common.RunModeSimpleStr {
+		log.Fatalf("invalid running node(%s), should be normal/simple", common.RunMode)
+	} else {
+		switch RunModeP {
+		case common.RunModeNormalStr:
+			common.RunMode = common.RunModeNormal
+		case common.RunModeSimpleStr:
+			common.RunMode = common.RunModeSimple
+		}
+		log.Printf("running node as %s mode", RunModeP)
+	}
+
+	if common.RunMode == common.RunModeSimple {
+		go func() {
+			cleanMem := time.NewTicker(30 * time.Second)
+			for {
+				select {
+				case <-cleanMem.C:
+					debug.FreeOSMemory()
+				}
+			}
+		}()
+	}
+
 	err = runNode(accounts, cfg)
 	if err != nil {
 		return err
@@ -356,6 +371,13 @@ func run() {
 		Value: []string{},
 	}
 
+	RunMode = cmdutil.Flag{
+		Name:  "mode",
+		Must:  false,
+		Usage: "running mode(normal/simple)",
+		Value: common.RunModeNormal,
+	}
+
 	s := &ishell.Cmd{
 		Name: "run",
 		Help: "start qlc server",
@@ -376,6 +398,7 @@ func run() {
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
 			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
 			configParamsP = cmdutil.StringSliceVar(c.Args, configParams)
+			RunModeP = cmdutil.StringVar(c.Args, RunMode)
 
 			err := start()
 			if err != nil {

@@ -29,8 +29,6 @@ const (
 	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
-	maxBlocks             = 100
-	maxCacheBlocks        = 102400
 	povBlockNumDay        = 2880
 )
 
@@ -64,23 +62,36 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 	acTrx := NewActiveTrx()
 	l := ledger.NewLedger(cfg.LedgerDir())
 
+	maxBlocks := 10240
+	maxCacheBlocks := 102400
+	voteCacheEn := true
+
+	if common.RunMode == common.RunModeSimple {
+		maxBlocks = 1024
+		maxCacheBlocks = 1024
+		voteCacheEn = false
+	}
+
 	dps := &DPoS{
-		ledger:         l,
-		acTrx:          acTrx,
-		accounts:       accounts,
-		logger:         log.NewLogger("dpos"),
-		cfg:            cfg,
-		eb:             eb,
-		lv:             process.NewLedgerVerifier(l),
-		//uncheckedCache: gcache.New(uncheckedCacheSize).LRU().Expiration(uncheckedTimeout).Build(),
-		//voteCache:      gcache.New(voteCacheSize).LRU().Expiration(voteCacheTimeout).Build(),
-		voteCacheEn:    false,
-		quitCh:         make(chan bool, 1),
-		quitChProcess:  make(chan bool, 1),
-		blocks:         make(chan *consensus.BlockSource, maxBlocks),
-		cacheBlocks:    make(chan *consensus.BlockSource, maxCacheBlocks),
-		blocksAcked:    make(chan types.Hash, maxBlocks),
-		povReady:       make(chan bool, 1),
+		ledger:        l,
+		acTrx:         acTrx,
+		accounts:      accounts,
+		logger:        log.NewLogger("dpos"),
+		cfg:           cfg,
+		eb:            eb,
+		lv:            process.NewLedgerVerifier(l),
+		voteCacheEn:   voteCacheEn,
+		quitCh:        make(chan bool, 1),
+		quitChProcess: make(chan bool, 1),
+		blocks:        make(chan *consensus.BlockSource, maxBlocks),
+		cacheBlocks:   make(chan *consensus.BlockSource, maxCacheBlocks),
+		blocksAcked:   make(chan types.Hash, maxBlocks),
+		povReady:      make(chan bool, 1),
+	}
+
+	if common.RunMode == common.RunModeNormal {
+		dps.uncheckedCache = gcache.New(uncheckedCacheSize).LRU().Expiration(uncheckedTimeout).Build()
+		dps.voteCache = gcache.New(voteCacheSize).LRU().Expiration(voteCacheTimeout).Build()
 	}
 
 	dps.acTrx.SetDposService(dps)
@@ -110,7 +121,7 @@ func (dps *DPoS) Start() {
 
 	timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
-	//timerUpdateUncheckedNum := time.NewTicker(time.Minute)
+	timerUpdateUncheckedNum := time.NewTicker(time.Minute)
 
 	for {
 		select {
@@ -120,8 +131,12 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		//case <-timerUpdateUncheckedNum.C: //calibration
-		//	consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len()))
+		case <-timerUpdateUncheckedNum.C: //calibration
+			if common.RunMode == common.RunModeNormal {
+				consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len()))
+			} else {
+				timerUpdateUncheckedNum.Stop()
+			}
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {
@@ -182,9 +197,10 @@ func (dps *DPoS) processUncheckedBlock(bs *consensus.BlockSource) {
 	result, _ := dps.lv.BlockCheck(bs.Block)
 	dps.ProcessResult(result, bs)
 
-	if result == process.Progress || result == process.Old {
+	if dps.isResultValid(result) {
 		if bs.BlockFrom == types.Synchronized {
 			dps.ConfirmBlock(bs.Block)
+			return
 		}
 	}
 
@@ -205,8 +221,11 @@ func (dps *DPoS) processUncheckedBlock(bs *consensus.BlockSource) {
 }
 
 func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
-	//dps.dequeueUncheckedFromMem(hash)
-	dps.dequeueUncheckedFromDb(hash)
+	if common.RunMode == common.RunModeNormal {
+		dps.dequeueUncheckedFromMem(hash)
+	} else {
+		dps.dequeueUncheckedFromDb(hash)
+	}
 }
 
 func (dps *DPoS) dequeueUncheckedFromDb(hash types.Hash) {
@@ -307,8 +326,11 @@ func (dps *DPoS) dequeueUncheckedFromMem(hash types.Hash) {
 }
 
 func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
-	//dps.rollbackUncheckedFromMem(hash)
-	dps.rollbackUncheckedFromDb(hash)
+	if common.RunMode == common.RunModeNormal {
+		dps.rollbackUncheckedFromMem(hash)
+	} else {
+		dps.rollbackUncheckedFromDb(hash)
+	}
 }
 
 func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
@@ -417,7 +439,7 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 	if dps.getPovSyncState() == common.Syncdone || bs.BlockFrom == types.Synchronized {
 		dps.blocks <- bs
 	} else {
-		if len(dps.cacheBlocks) < maxCacheBlocks {
+		if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
 			dps.cacheBlocks <- bs
 		} else {
 			dps.logger.Errorf("pov not ready! cache block too much, drop it!")
@@ -562,6 +584,30 @@ func (dps *DPoS) ConfirmBlock(blk *types.StateBlock) {
 	}
 }
 
+func (dps *DPoS) cacheGapBlock(result process.ProcessResult, hash types.Hash, bs *consensus.BlockSource) {
+	blk := bs.Block
+
+	if result == process.GapPrevious {
+		if common.RunMode == common.RunModeNormal {
+			dps.enqueueUnchecked(hash, blk.Previous, bs)
+		} else {
+			err := dps.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.BlockFrom)
+			if err != nil {
+				dps.logger.Errorf("add unchecked block to ledger err %s", err)
+			}
+		}
+	} else {
+		if common.RunMode == common.RunModeNormal {
+			dps.enqueueUnchecked(hash, blk.Link, bs)
+		} else {
+			err := dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)
+			if err != nil {
+				dps.logger.Errorf("add unchecked block to ledger err %s", err)
+			}
+		}
+	}
+}
+
 func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.BlockSource) {
 	blk := bs.Block
 	hash := blk.GetHash()
@@ -600,12 +646,10 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 		dps.ProcessFork(blk)
 	case process.GapPrevious:
 		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous.String())
-		//dps.enqueueUnchecked(hash, blk.Previous, bs)
-		dps.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.BlockFrom)
+		dps.cacheGapBlock(result, hash, bs)
 	case process.GapSource:
 		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link.String())
-		//dps.enqueueUnchecked(hash, blk.Link, bs)
-		dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)
+		dps.cacheGapBlock(result, hash, bs)
 	}
 }
 

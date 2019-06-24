@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"errors"
-	"go.uber.org/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -14,10 +13,13 @@ import (
 )
 
 const (
-	msgCacheSize           = 1000
 	checkCacheTimeInterval = 30 * time.Second
 	msgResendMaxTimes      = 10
 	msgNeedResendInterval  = 10 * time.Second
+)
+
+var (
+	msgCacheSize = 65535
 )
 
 //  Message Type
@@ -62,14 +64,20 @@ type MessageService struct {
 
 // NewService return new Service.
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
+	chanSize := 65535
+	if common.RunMode == common.RunModeSimple {
+		chanSize = 1024
+		msgCacheSize = 1024
+	}
+
 	ms := &MessageService{
 		quitCh:              make(chan bool, 6),
-		messageCh:           make(chan *Message, 1000),
-		publishMessageCh:    make(chan *Message, 65535),
-		confirmReqMessageCh: make(chan *Message, 65535),
-		confirmAckMessageCh: make(chan *Message, 65535),
-		rspMessageCh:        make(chan *Message, 65535),
-		povMessageCh:        make(chan *Message, 65535),
+		messageCh:           make(chan *Message, chanSize),
+		publishMessageCh:    make(chan *Message, chanSize),
+		confirmReqMessageCh: make(chan *Message, chanSize),
+		confirmAckMessageCh: make(chan *Message, chanSize),
+		rspMessageCh:        make(chan *Message, chanSize),
+		povMessageCh:        make(chan *Message, chanSize),
 		ledger:              ledger,
 		netService:          netService,
 		cache:               gcache.New(msgCacheSize).LRU().Build(),
@@ -109,31 +117,13 @@ func (ms *MessageService) Start() {
 
 func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
-	perSecondTokenNum := uint64(200)
-	perSecondToken := atomic.NewUint64(perSecondTokenNum)
-
-	go func() {
-		resetTokenTimer := time.NewTicker(time.Second)
-		for {
-			select {
-			case <-resetTokenTimer.C:
-				perSecondToken.Store(perSecondTokenNum)
-			}
-		}
-	}()
 
 	for {
-		if perSecondToken.Load() == 0 {
-			time.Sleep(10 * time.Millisecond)
-			continue
-		}
-
 		select {
 		case <-ms.quitCh:
 			ms.netService.node.logger.Info("Stopped Message Service.")
 			return
 		case message := <-ms.messageCh:
-			perSecondToken.Dec()
 			switch message.MessageType() {
 			case FrontierRequest:
 				if err := ms.syncService.onFrontierReq(message); err != nil {

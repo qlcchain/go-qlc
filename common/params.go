@@ -5,6 +5,13 @@ import (
 	"math/big"
 )
 
+const (
+	RunModeNormalStr = "normal"
+	RunModeSimpleStr = "simple"
+	RunModeNormal = 1
+	RunModeSimple = 2
+)
+
 var (
 	PovMinerPledgeAmountMin   = types.NewBalance(100000000000000)
 	PovMinerVerifyHeightStart = uint64(3600 * 24 * 1 / 30)
@@ -24,4 +31,7 @@ var (
 
 	//vote right divisor
 	VoteDivisor = int64(200)
+
+	//node running mode
+	RunMode = RunModeNormal
 )

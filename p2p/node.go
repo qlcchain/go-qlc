@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"errors"
+	"github.com/qlcchain/go-qlc/common"
 	"time"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -76,16 +77,21 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 func (node *QlcNode) startHost() error {
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
-	qlcHost, err := libp2p.New(
-		node.ctx,
+
+	opts := []libp2p.Option{
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(node.privateKey),
-		libp2p.NATPortMap(),
-		libp2p.DefaultMuxers,
-	)
+		libp2p.NATPortMap()}
+
+	if common.RunMode == common.RunModeSimple {
+		opts = append(opts, libp2p.DefaultMuxers)
+	}
+
+	qlcHost, err := libp2p.New(node.ctx, opts...)
 	if err != nil {
 		return err
 	}
+
 	qlcHost.SetStreamHandler(QlcProtocolID, node.handleStream)
 	node.host = qlcHost
 	kadDht, err := dht.New(node.ctx, node.host)
