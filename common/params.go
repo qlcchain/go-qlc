@@ -6,10 +6,14 @@ import (
 )
 
 var (
-	PovMinerPledgeAmountMin   = types.NewBalance(100000000000000)
-	PovMinerVerifyHeightStart = uint64(3600 * 24 * 1 / 30)
+	PovChainBlockInterval = 30
+	PovChainTargetCycle   = 20
+	PovChainBlockSize     = 4 * 1024 * 1024
 
-	PoVMaxForkHeight = uint64(3600 * 24 * 7 / 30)
+	PovMinerPledgeAmountMin   = types.NewBalance(100000000000000)
+	PovMinerVerifyHeightStart = uint64(3600 * 24 * 1 / PovChainBlockInterval)
+
+	PoVMaxForkHeight = uint64(3600 * 24 * 7 / PovChainBlockInterval)
 
 	PovGenesisTargetHex = "0000007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	PovMinimumTargetHex = "0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"

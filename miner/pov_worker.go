@@ -42,7 +42,7 @@ func (w *PovWorker) Init() error {
 
 	blkHeader := &types.PovHeader{}
 	tx := &types.PovTransaction{}
-	w.maxTxPerBlock = (w.GetConfig().PoV.BlockSize - blkHeader.Msgsize()) / tx.Msgsize()
+	w.maxTxPerBlock = (common.PovChainBlockSize - blkHeader.Msgsize()) / tx.Msgsize()
 
 	cbAddress, err := types.HexToAddress(w.GetConfig().PoV.Coinbase)
 	if err != nil {
