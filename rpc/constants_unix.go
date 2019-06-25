@@ -1,4 +1,4 @@
-// Copyright 2016 The go-ethereum Authors
+// Copyright 2019 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,30 +14,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// +build darwin dragonfly freebsd linux nacl netbsd openbsd solaris
+
 package rpc
 
-import (
-	"strings"
-	"testing"
-)
+/*
+#include <sys/un.h>
 
-func TestNewID(t *testing.T) {
-	hexchars := "0123456789ABCDEFabcdef"
-	for i := 0; i < 100; i++ {
-		id := string(NewID())
-		if !strings.HasPrefix(id, "0x") {
-			t.Fatalf("invalid ID prefix, want '0x...', got %s", id)
-		}
-
-		id = id[2:]
-		if len(id) == 0 || len(id) > 32 {
-			t.Fatalf("invalid ID length, want len(id) > 0 && len(id) <= 32), got %d", len(id))
-		}
-
-		for i := 0; i < len(id); i++ {
-			if strings.IndexByte(hexchars, id[i]) == -1 {
-				t.Fatalf("unexpected byte, want any valid hex char, got %c", id[i])
-			}
-		}
-	}
+int max_socket_path_size() {
+struct sockaddr_un s;
+return sizeof(s.sun_path);
 }
+*/
+import "C"
+
+var (
+	max_path_size = C.max_socket_path_size()
+)

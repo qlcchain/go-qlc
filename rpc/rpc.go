@@ -17,8 +17,6 @@ import (
 )
 
 type RPC struct {
-	//p2pServer *p2p.Server
-
 	rpcAPIs          []API
 	inProcessHandler *Server
 
@@ -32,7 +30,6 @@ type RPC struct {
 	wsListener net.Listener
 	wsHandler  *Server
 
-	wsCli              *WebSocketCli
 	config             *config.Config
 	DashboardTargetURL string
 	NetID              uint `json:"NetID"`
@@ -93,12 +90,12 @@ func (r *RPC) stopIPC() {
 }
 
 // startHTTP initializes and starts the HTTP RPC endpoint.
-func (r *RPC) startHTTP(endpoint string, apis []API, modules []string, cors []string, vhosts []string, timeouts HTTPTimeouts, exposeAll bool) error {
+func (r *RPC) startHTTP(endpoint string, apis []API, modules []string, cors []string, vhosts []string, timeouts HTTPTimeouts) error {
 	// Short circuit if the HTTP endpoint isn't being exposed
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts, exposeAll)
+	listener, handler, err := StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
 	if err != nil {
 		return err
 	}
@@ -154,9 +151,6 @@ func (r *RPC) stopWS() {
 	if r.wsHandler != nil {
 		r.wsHandler.Stop()
 		r.wsHandler = nil
-	}
-	if r.wsCli != nil {
-		r.wsCli.Close()
 	}
 }
 
@@ -232,7 +226,7 @@ func (r *RPC) StartRPC() error {
 
 	if r.config.RPC.Enable && r.config.RPC.HTTPEnabled {
 		apis := r.GetHttpApis()
-		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, HTTPTimeouts{}, false); err != nil {
+		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, HTTPTimeouts{}); err != nil {
 			r.logger.Info(err)
 			r.stopInProcess()
 			r.stopIPC()
@@ -250,31 +244,6 @@ func (r *RPC) StartRPC() error {
 			return err
 		}
 	}
-	//if len(r.config.DashboardTargetURL) > 0 {
-	//	apis := api.GetPublicApis()
-	//	if len(r.config.PublicModules) != 0 {
-	//		apis = api.GetApis(r.config.PublicModules...)
-	//	}
-	//
-	//	targetUrl := r.config.DashboardTargetURL + "/ws/gvite/" + strconv.FormatUint(uint64(r.config.NetID), 10) + "@" + hex.EncodeToString(node.p2pServer.PrivateKey.PubByte())
-	//
-	//	u, e := url.Parse(targetUrl)
-	//	if e != nil {
-	//		return e
-	//	}
-	//	if u.Scheme != "ws" && u.Scheme != "wss" {
-	//		return errors.New("DashboardTargetURL need match WebSocket Protocol.")
-	//	}
-	//
-	//	cli, server, e := StartWSCliEndpoint(u, apis, nil, r.config.WSExposeAll)
-	//	if e != nil {
-	//		cli.Close()
-	//		server.Stop()
-	//		return e
-	//	} else {
-	//		r.wsCli = cli
-	//	}
-	//}
 
 	return nil
 }

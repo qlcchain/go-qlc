@@ -16,7 +16,12 @@ import (
 
 var (
 	logger, _ = zap.NewDevelopment()
+	Root      *zap.SugaredLogger
 )
+
+func init() {
+	Root = logger.Sugar()
+}
 
 func InitLog(config *config.Config) error {
 	//logFolder := config.LogDir()

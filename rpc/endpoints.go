@@ -18,14 +18,12 @@ package rpc
 
 import (
 	"net"
-	"net/url"
-	"os"
-	"os/signal"
-	"syscall"
+
+	"github.com/qlcchain/go-qlc/log"
 )
 
 // StartHTTPEndpoint starts the HTTP RPC endpoint, configured with cors/vhosts/modules
-func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []string, vhosts []string, timeouts HTTPTimeouts, exposeAll bool) (net.Listener, *Server, error) {
+func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []string, vhosts []string, timeouts HTTPTimeouts) (net.Listener, *Server, error) {
 	// Generate the whitelist based on the allowed modules
 	whitelist := make(map[string]bool)
 	for _, module := range modules {
@@ -34,12 +32,11 @@ func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []str
 	// Register all the APIs exposed by the services
 	handler := NewServer()
 	for _, api := range apis {
-		if exposeAll || whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
+		if whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
-				//logger.Info("RegisterName")
 				return nil, nil, err
 			}
-			//logger.Debug("HTTP registered ", "namespace ", api.Namespace)
+			log.Root.Debug("HTTP registered ", "namespace ", api.Namespace)
 		}
 	}
 	// All APIs registered, start the HTTP listener
@@ -52,12 +49,10 @@ func StartHTTPEndpoint(endpoint string, apis []API, modules []string, cors []str
 		return nil, nil, err
 	}
 	if listener, err = net.Listen(network, address); err != nil {
-		//logger.Info(err)
 		return nil, nil, err
 	}
 
 	go NewHTTPServer(cors, vhosts, timeouts, handler).Serve(listener)
-
 	return listener, handler, err
 }
 
@@ -76,7 +71,7 @@ func StartWSEndpoint(endpoint string, apis []API, modules []string, wsOrigins []
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 				return nil, nil, err
 			}
-			//logger.Debug("WebSocket registered ", " service ", api.Service, " namespace ", api.Namespace)
+			log.Root.Debug("WebSocket registered ", " service ", api.Service, " namespace ", api.Namespace)
 		}
 	}
 	// All APIs registered, start the HTTP listener
@@ -88,12 +83,12 @@ func StartWSEndpoint(endpoint string, apis []API, modules []string, wsOrigins []
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if listener, err = net.Listen(network, address); err != nil {
 		return nil, nil, err
 	}
 
 	go NewWSServer(wsOrigins, handler).Serve(listener)
-
 	return listener, handler, err
 
 }
@@ -110,54 +105,9 @@ func StartIPCEndpoint(ipcEndpoint string, apis []API) (net.Listener, *Server, er
 	}
 	// All APIs registered, start the IPC listener.
 	listener, err := ipcListen(ipcEndpoint)
-
-	exitSig := make(chan os.Signal, 1)
-	signal.Notify(exitSig, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-exitSig
-		//logger.Info("receiver term sig")
-		if listener != nil {
-			listener.Close()
-		}
-	}()
-
 	if err != nil {
 		return nil, nil, err
 	}
-
 	go handler.ServeListener(listener)
-
 	return listener, handler, nil
-}
-
-// StartWSEndpoint starts a websocket endpoint
-func StartWSCliEndpoint(u *url.URL, apis []API, modules []string, exposeAll bool) (*WebSocketCli, *Server, error) {
-
-	// Generate the whitelist based on the allowed modules
-	whitelist := make(map[string]bool)
-	for _, module := range modules {
-		whitelist[module] = true
-	}
-	// Register all the APIs exposed by the services
-	handler := NewServer()
-	for _, api := range apis {
-		if exposeAll || whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
-			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
-				return nil, nil, err
-			}
-			//logger.Debug("WebSocket registered", "service", api.Service, "namespace", api.Namespace)
-		}
-	}
-	// All APIs registered, start the HTTP listener
-	var (
-		ws  *WebSocketCli
-		err error
-	)
-
-	ws = NewWSCli(u, handler)
-
-	go ws.Handle()
-
-	return ws, handler, err
-
 }
