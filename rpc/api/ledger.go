@@ -4,8 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/consensus"
 	"sort"
+
+	"github.com/qlcchain/go-qlc/consensus"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"

@@ -14,20 +14,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package rpc
+package netutil
 
-import (
-	"context"
-	"net"
-)
-
-// DialInProc attaches an in-process connection to the given RPC server.
-func DialInProc(handler *Server) *Client {
-	initctx := context.Background()
-	c, _ := newClient(initctx, func(context.Context) (ServerCodec, error) {
-		p1, p2 := net.Pipe()
-		go handler.ServeCodec(NewJSONCodec(p1), OptionMethodInvocation|OptionSubscriptions)
-		return NewJSONCodec(p2), nil
+// IsTemporaryError checks whether the given error should be considered temporary.
+func IsTemporaryError(err error) bool {
+	tempErr, ok := err.(interface {
+		Temporary() bool
 	})
-	return c
+	return ok && tempErr.Temporary() || isPacketTooBig(err)
 }

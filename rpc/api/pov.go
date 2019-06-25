@@ -2,6 +2,10 @@ package api
 
 import (
 	"errors"
+	"math/big"
+	"sync/atomic"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -9,9 +13,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
-	"math/big"
-	"sync/atomic"
-	"time"
 )
 
 type PovApi struct {

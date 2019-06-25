@@ -1,4 +1,4 @@
-// Copyright 2019 The go-ethereum Authors
+// Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,38 +14,24 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// +build darwin dragonfly freebsd linux nacl netbsd openbsd solaris
+// +build js
 
 package rpc
 
 import (
 	"context"
+	"errors"
 	"net"
-	"os"
-	"path/filepath"
 )
 
-// ipcListen will create a Unix socket on the given endpoint.
-func ipcListen(endpoint string) (net.Listener, error) {
-	if len(endpoint) > int(max_path_size) {
-		//log.Warn(fmt.Sprintf("The ipc endpoint is longer than %d characters. ", max_path_size),
-		//	"endpoint", endpoint)
-	}
+var errNotSupported = errors.New("rpc: not supported")
 
-	// Ensure the IPC path exists and remove any previous leftover
-	if err := os.MkdirAll(filepath.Dir(endpoint), 0751); err != nil {
-		return nil, err
-	}
-	os.Remove(endpoint)
-	l, err := net.Listen("unix", endpoint)
-	if err != nil {
-		return nil, err
-	}
-	os.Chmod(endpoint, 0600)
-	return l, nil
+// ipcListen will create a named pipe on the given endpoint.
+func ipcListen(endpoint string) (net.Listener, error) {
+	return nil, errNotSupported
 }
 
-// newIPCConnection will connect to a Unix socket on the given endpoint.
+// newIPCConnection will connect to a named pipe with the given endpoint as name.
 func newIPCConnection(ctx context.Context, endpoint string) (net.Conn, error) {
-	return dialContext(ctx, "unix", endpoint)
+	return nil, errNotSupported
 }

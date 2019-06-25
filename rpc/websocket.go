@@ -20,7 +20,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -28,6 +30,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	mapset "github.com/deckarep/golang-set"
 	"golang.org/x/net/websocket"
@@ -54,23 +58,37 @@ var websocketJSONCodec = websocket.Codec{
 //
 // allowedOrigins should be a comma-separated list of allowed origin URLs.
 // To allow connections with any origin, pass "*".
-func (srv *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
+func (s *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 	return websocket.Server{
 		Handshake: wsHandshakeValidator(allowedOrigins),
 		Handler: func(conn *websocket.Conn) {
-			//logger.Info("websocket request")
-			// Create a custom encode/decode pair to enforce payload size and number encoding
-			conn.MaxPayloadBytes = maxRequestContentLength
-
-			encoder := func(v interface{}) error {
-				return websocketJSONCodec.Send(conn, v)
-			}
-			decoder := func(v interface{}) error {
-				return websocketJSONCodec.Receive(conn, v)
-			}
-			srv.ServeCodec(NewCodec(conn, encoder, decoder), OptionMethodInvocation|OptionSubscriptions)
+			codec := newWebsocketCodec(conn)
+			s.ServeCodec(codec, OptionMethodInvocation|OptionSubscriptions)
 		},
 	}
+}
+
+func newWebsocketCodec(conn *websocket.Conn) ServerCodec {
+	// Create a custom encode/decode pair to enforce payload size and number encoding
+	conn.MaxPayloadBytes = maxRequestContentLength
+	encoder := func(v interface{}) error {
+		return websocketJSONCodec.Send(conn, v)
+	}
+	decoder := func(v interface{}) error {
+		return websocketJSONCodec.Receive(conn, v)
+	}
+	rpcconn := Conn(conn)
+	if conn.IsServerConn() {
+		// Override remote address with the actual socket address because
+		// package websocket crashes if there is no request origin.
+		addr := conn.Request().RemoteAddr
+		if wsaddr := conn.RemoteAddr().(*websocket.Addr); wsaddr.URL != nil {
+			// Add origin if present.
+			addr += "(" + wsaddr.URL.String() + ")"
+		}
+		rpcconn = connWithRemoteAddr{conn, addr}
+	}
+	return NewCodec(rpcconn, encoder, decoder)
 }
 
 // NewWSServer creates a new websocket RPC server around an API provider.
@@ -78,12 +96,6 @@ func (srv *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 // Deprecated: use Server.WebsocketHandler
 func NewWSServer(allowedOrigins []string, srv *Server) *http.Server {
 	return &http.Server{Handler: srv.WebsocketHandler(allowedOrigins)}
-}
-
-// NewWSCli creates a new websocket RPC connect around an API provider.
-//
-func NewWSCli(url *url.URL, srv *Server) *WebSocketCli {
-	return &WebSocketCli{u: url, srv: srv}
 }
 
 // wsHandshakeValidator returns a handler that verifies the origin during the
@@ -110,26 +122,29 @@ func wsHandshakeValidator(allowedOrigins []string) func(*websocket.Config, *http
 		}
 	}
 
-	//logger.Debug(fmt.Sprintf("Allowed origin(s) for WS RPC interface %v\n", origins.ToSlice()))
+	log.Root.Debug(fmt.Sprintf("Allowed origin(s) for WS RPC interface %v", origins.ToSlice()))
 
 	f := func(cfg *websocket.Config, req *http.Request) error {
+		// Skip origin verification if no Origin header is present. The origin check
+		// is supposed to protect against browser based attacks. Browsers always set
+		// Origin. Non-browser software can put anything in origin and checking it doesn't
+		// provide additional security.
+		if _, ok := req.Header["Origin"]; !ok {
+			return nil
+		}
+		// Verify origin against whitelist.
 		origin := strings.ToLower(req.Header.Get("Origin"))
 		if allowAllOrigins || origins.Contains(origin) {
 			return nil
 		}
-		//logger.Warn(fmt.Sprintf("origin '%s' not allowed on WS-RPC interface\n", origin))
-		return fmt.Errorf("origin %s not allowed", origin)
+		log.Root.Warn("Rejected WebSocket connection", "origin", origin)
+		return errors.New("origin not allowed")
 	}
 
 	return f
 }
 
-// DialWebsocket creates a new RPC client that communicates with a JSON-RPC server
-// that is listening on the given endpoint.
-//
-// The context is used for the initial connection establishment. It does not
-// affect subsequent interactions with the client.
-func DialWebsocket(ctx context.Context, endpoint, origin string) (*Client, error) {
+func wsGetConfig(endpoint, origin string) (*websocket.Config, error) {
 	if origin == "" {
 		var err error
 		if origin, err = os.Hostname(); err != nil {
@@ -146,8 +161,31 @@ func DialWebsocket(ctx context.Context, endpoint, origin string) (*Client, error
 		return nil, err
 	}
 
-	return newClient(ctx, func(ctx context.Context) (net.Conn, error) {
-		return wsDialContext(ctx, config)
+	if config.Location.User != nil {
+		b64auth := base64.StdEncoding.EncodeToString([]byte(config.Location.User.String()))
+		config.Header.Add("Authorization", "Basic "+b64auth)
+		config.Location.User = nil
+	}
+	return config, nil
+}
+
+// DialWebsocket creates a new RPC client that communicates with a JSON-RPC server
+// that is listening on the given endpoint.
+//
+// The context is used for the initial connection establishment. It does not
+// affect subsequent interactions with the client.
+func DialWebsocket(ctx context.Context, endpoint, origin string) (*Client, error) {
+	config, err := wsGetConfig(endpoint, origin)
+	if err != nil {
+		return nil, err
+	}
+
+	return newClient(ctx, func(ctx context.Context) (ServerCodec, error) {
+		conn, err := wsDialContext(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+		return newWebsocketCodec(conn), nil
 	})
 }
 
@@ -198,67 +236,4 @@ func contextDialer(ctx context.Context) *net.Dialer {
 		dialer.Deadline = time.Now().Add(defaultDialTimeout)
 	}
 	return dialer
-}
-
-type WebSocketCli struct {
-	u            *url.URL
-	c            *websocket.Conn
-	srv          *Server
-	closed       chan struct{}
-	nextConnTime time.Time
-}
-
-func (self *WebSocketCli) Srv(c *websocket.Conn) error {
-	defer c.Close()
-	// Create a custom encode/decode pair to enforce payload size and number encoding
-	c.MaxPayloadBytes = maxRequestContentLength
-
-	encoder := func(v interface{}) error {
-		return websocketJSONCodec.Send(c, v)
-	}
-	decoder := func(v interface{}) error {
-		return websocketJSONCodec.Receive(c, v)
-	}
-	return self.srv.ServeCodec(NewCodec(c, encoder, decoder), OptionMethodInvocation|OptionSubscriptions)
-}
-
-func (self *WebSocketCli) Close() {
-	if self.closed != nil {
-		close(self.closed)
-		conn := self.c
-		if conn != nil {
-			conn.Close()
-		}
-	}
-}
-func (self *WebSocketCli) Handle() {
-	if self.u == nil {
-		//logger.Warn("websocket url is nil.")
-		return
-	}
-	for {
-		select {
-		case <-self.closed:
-			return
-		default:
-		}
-		//logger.Info("connecting to " + self.u.String() + ".")
-		c, err := websocket.Dial(self.u.String(), "", "*")
-		if err == nil {
-			//logger.Info("connect to " + self.u.String() + " success.")
-			self.c = c
-		} else {
-			//logger.Warn("can't connect to "+self.u.String()+" by websocket.", "err", err)
-		}
-		if c != nil {
-			err = self.Srv(c)
-			if err != nil {
-				//logger.Warn("deal message error", err)
-			}
-			self.c = nil
-		}
-		if c == nil {
-			time.Sleep(time.Second * 20)
-		}
-	}
 }
