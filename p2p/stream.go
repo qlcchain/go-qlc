@@ -46,7 +46,7 @@ func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream libnet.Stream, nod
 		stream:      stream,
 		node:        node,
 		quitWriteCh: make(chan bool, 1),
-		messageChan: make(chan []byte, 2*1024),
+		messageChan: make(chan []byte, 40*1024),
 	}
 }
 
