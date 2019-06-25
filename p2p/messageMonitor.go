@@ -62,7 +62,7 @@ type MessageService struct {
 // NewService return new Service.
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
-		quitCh:              make(chan bool, 6),
+		quitCh:              make(chan bool, 7),
 		messageCh:           make(chan *Message, 65535),
 		publishMessageCh:    make(chan *Message, 65535),
 		confirmReqMessageCh: make(chan *Message, 65535),
@@ -493,7 +493,7 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 7; i++ {
 		ms.quitCh <- true
 	}
 	ms.syncService.quitCh <- true
