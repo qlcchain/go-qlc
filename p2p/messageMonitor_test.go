@@ -517,6 +517,7 @@ func Test_MessageCache(t *testing.T) {
 	node3.msgService.Stop()
 	blk := mock.StateBlockWithoutWork()
 	//test send message to peers
+	time.Sleep(100 * time.Millisecond)
 	node1.Broadcast(PublishReq, blk)
 	time.Sleep(500 * time.Millisecond)
 	if len(node2.msgService.publishMessageCh) != 1 {
