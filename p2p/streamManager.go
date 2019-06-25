@@ -151,7 +151,11 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 	}
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
-		stream.messageChan <- message
+		select {
+		case stream.messageChan <- message:
+		default:
+			sm.node.logger.Errorf("send message to [%s] timeout in func BroadcastMessage", stream.pid.Pretty())
+		}
 		if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
 			sm.searchCache(stream, hash, message, messageName)
 		} else if messageName == PovPublishReq {
@@ -177,6 +181,11 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
 		if stream.pid.Pretty() != peerID {
+			select {
+			case stream.messageChan <- message:
+			default:
+				sm.node.logger.Errorf("send message to [%s] timeout in func SendMessageToPeers", stream.pid.Pretty())
+			}
 			stream.messageChan <- message
 			if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
 				sm.searchCache(stream, hash, message, messageName)
