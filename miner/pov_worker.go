@@ -42,7 +42,7 @@ func (w *PovWorker) Init() error {
 
 	blkHeader := &types.PovHeader{}
 	tx := &types.PovTransaction{}
-	w.maxTxPerBlock = (w.GetConfig().PoV.BlockSize - blkHeader.Msgsize()) / tx.Msgsize()
+	w.maxTxPerBlock = (common.PovChainBlockSize - blkHeader.Msgsize()) / tx.Msgsize()
 
 	cbAddress, err := types.HexToAddress(w.GetConfig().PoV.Coinbase)
 	if err != nil {
@@ -120,20 +120,21 @@ func (w *PovWorker) loop() {
 
 func (w *PovWorker) checkValidMiner() bool {
 	if w.miner.GetSyncState() != common.Syncdone {
-		w.logger.Debugf("miner pausing for sync state %s", w.miner.GetSyncState())
+		w.logger.Infof("miner pausing for sync state %s", w.miner.GetSyncState())
 		return false
 	}
 
 	cbAccount := w.GetCoinbaseAccount()
 	if cbAccount == nil {
-		w.logger.Debugf("miner pausing for coinbase account not exist")
+		w.logger.Warnf("miner pausing for coinbase account not exist")
 		return false
 	}
 
 	latestBlock := w.GetChain().LatestBlock()
 
-	if time.Now().Add(time.Hour).Unix() < latestBlock.GetTimestamp() {
-		w.logger.Debugf("miner pausing for time now is too lesser than latest block")
+	tmNow := time.Now()
+	if tmNow.Add(time.Hour).Unix() < latestBlock.GetTimestamp() {
+		w.logger.Warnf("miner pausing for time now %d is older than latest block %d", tmNow.Unix(), latestBlock.GetTimestamp())
 		return false
 	}
 
@@ -142,12 +143,12 @@ func (w *PovWorker) checkValidMiner() bool {
 		stateTrie := w.GetChain().GetStateTrie(&prevStateHash)
 		as := w.GetChain().GetAccountState(stateTrie, cbAccount.Address())
 		if as == nil || as.RepState == nil {
-			w.logger.Debugf("miner pausing for account state not exist")
+			w.logger.Warnf("miner pausing for account state not exist")
 			return false
 		}
 		rs := as.RepState
 		if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
-			w.logger.Debugf("miner pausing for vote not enough")
+			w.logger.Warnf("miner pausing for vote pledge not enough")
 			return false
 		}
 	}

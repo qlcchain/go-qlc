@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -155,6 +155,46 @@ func TestBadgerStoreTxn_KeyIterator(t *testing.T) {
 		return nil
 	})
 	if expectKeyCnt != 2 {
+		t.Fatal(err)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBadgerStoreTxn_RangeIterator(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	keys := [][]byte{{1, 25}, {1, 27}, {1, 26}, {1, 28}, {1, 30}, {1, 29}}
+	vals := keys
+	err := db.UpdateInTx(func(txn StoreTxn) error {
+		for i, key := range keys {
+			if err := txn.SetWithMeta(key, vals[i], 0); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	startKey := []byte{1, 26}
+	endKey := []byte{1, 29}
+	expectKeyCnt := 0
+	err = db.ViewInTx(func(txn StoreTxn) error {
+		err := txn.RangeIterator(startKey, endKey, func(key []byte, val []byte, meta byte) error {
+			t.Log(key)
+			expectKeyCnt++
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+	if expectKeyCnt != 3 {
 		t.Fatal(err)
 	}
 	if err != nil {

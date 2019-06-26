@@ -8,7 +8,6 @@ import (
 //go:generate msgp
 
 type PovAccountState struct {
-	Hash        Hash             `msg:"hash,extension" json:"hash"`
 	Balance     Balance          `msg:"balance,extension" json:"balance"`
 	Vote        Balance          `msg:"vote,extension" json:"vote"`
 	Network     Balance          `msg:"network,extension" json:"network"`
@@ -73,8 +72,8 @@ func (as *PovAccountState) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("{")
 
-	asInfo := fmt.Sprintf("Hash:%s, Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s",
-		as.Hash, as.Balance, as.Vote, as.Network, as.Storage, as.Oracle)
+	asInfo := fmt.Sprintf("Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s",
+		as.Balance, as.Vote, as.Network, as.Storage, as.Oracle)
 	sb.WriteString(asInfo)
 
 	sb.WriteString(", TokenState:[")
@@ -95,6 +94,7 @@ func (as *PovAccountState) String() string {
 
 type PovTokenState struct {
 	Type           Hash    `msg:"type,extension" json:"type"`
+	Hash           Hash    `msg:"hash,extension" json:"hash"`
 	Representative Address `msg:"rep,extension" json:"representative"`
 	Balance        Balance `msg:"balance,extension" json:"balance"`
 }
@@ -123,8 +123,8 @@ func (ts *PovTokenState) Clone() *PovTokenState {
 }
 
 func (ts *PovTokenState) String() string {
-	return fmt.Sprintf("{Type:%s, Rep:%s, Balance:%s}",
-		ts.Type, ts.Representative, ts.Balance)
+	return fmt.Sprintf("{Type:%s, Hash:%s, Rep:%s, Balance:%s}",
+		ts.Type, ts.Hash, ts.Representative, ts.Balance)
 }
 
 type PovRepState struct {

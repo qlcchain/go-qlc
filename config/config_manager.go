@@ -52,12 +52,13 @@ func (c *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 
 	version, err := c.parseVersion(bytes)
 	if err != nil {
-		fmt.Println(err)
-		version = configVersion
-		err := c.createAndSave()
-		if err != nil {
-			return nil, err
-		}
+		//fmt.Println(err)
+		//version = configVersion
+		//err := c.createAndSave()
+		//if err != nil {
+		//	return nil, err
+		//}
+		return nil, fmt.Errorf("parse config Version error : %s", err)
 	}
 
 	flag := false

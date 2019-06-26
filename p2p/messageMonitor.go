@@ -62,7 +62,7 @@ type MessageService struct {
 // NewService return new Service.
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
-		quitCh:              make(chan bool, 6),
+		quitCh:              make(chan bool, 7),
 		messageCh:           make(chan *Message, 65535),
 		publishMessageCh:    make(chan *Message, 65535),
 		confirmReqMessageCh: make(chan *Message, 65535),
@@ -233,7 +233,7 @@ func (ms *MessageService) checkMessageCache() {
 	var cs []*cacheValue
 	var csTemp []*cacheValue
 	var hash types.Hash
-	m := ms.cache.GetALL()
+	m := ms.cache.GetALL(false)
 	for k, v := range m {
 		hash = k.(types.Hash)
 		cs = v.([]*cacheValue)
@@ -422,11 +422,6 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 }
 
 func (ms *MessageService) onPovStatus(message *Message) {
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Errorf("send PoV Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-
 	status, err := protos.PovStatusFromProto(message.data)
 	if err != nil {
 		ms.netService.node.logger.Errorf("failed to decode PovStatus from peer %s", message.from)
@@ -464,11 +459,6 @@ func (ms *MessageService) onPovPublishReq(message *Message) {
 }
 
 func (ms *MessageService) onPovBulkPullReq(message *Message) {
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Errorf("send PovBulkPullReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-
 	hash, err := types.HashBytes(message.Content())
 	if err != nil {
 		ms.netService.node.logger.Error(err)
@@ -485,11 +475,6 @@ func (ms *MessageService) onPovBulkPullReq(message *Message) {
 }
 
 func (ms *MessageService) onPovBulkPullRsp(message *Message) {
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Errorf("send PovBulkPullRsp Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-
 	hash, err := types.HashBytes(message.Content())
 	if err != nil {
 		ms.netService.node.logger.Error(err)
@@ -508,7 +493,7 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 7; i++ {
 		ms.quitCh <- true
 	}
 	ms.syncService.quitCh <- true

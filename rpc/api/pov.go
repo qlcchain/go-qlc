@@ -2,22 +2,34 @@ package api
 
 import (
 	"errors"
+	"math/big"
+	"sync/atomic"
+	"time"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
-	"math/big"
-	"time"
 )
 
 type PovApi struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
+	eb     event.EventBus
+
+	syncState atomic.Value
 }
 
 type PovApiHeader struct {
 	*types.PovHeader
+}
+
+type PovApiBatchHeader struct {
+	Count   int                `json:"count"`
+	Headers []*types.PovHeader `json:"headers"`
 }
 
 type PovApiBlock struct {
@@ -67,8 +79,20 @@ type PovMinerStats struct {
 	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
 }
 
-func NewPovApi(ledger *ledger.Ledger) *PovApi {
-	return &PovApi{ledger: ledger, logger: log.NewLogger("rpc/pov")}
+func NewPovApi(ledger *ledger.Ledger, eb event.EventBus) *PovApi {
+	api := &PovApi{
+		ledger: ledger,
+		eb:     eb,
+		logger: log.NewLogger("rpc/pov"),
+	}
+	api.syncState.Store(common.SyncNotStart)
+	_ = eb.SubscribeSync(string(common.EventPovSyncState), api.OnPovSyncState)
+	return api
+}
+
+func (api *PovApi) OnPovSyncState(state common.SyncState) {
+	api.logger.Infof("receive pov sync state [%s]", state)
+	api.syncState.Store(state)
 }
 
 func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
@@ -108,17 +132,7 @@ func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) 
 }
 
 func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
-	blockHash, err := api.ledger.GetLatestPovBestHash()
-	if err != nil {
-		return nil, err
-	}
-
-	height, err := api.ledger.GetPovHeight(blockHash)
-	if err != nil {
-		return nil, err
-	}
-
-	header, err := api.ledger.GetPovHeader(height, blockHash)
+	header, err := api.ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +144,57 @@ func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 	return apiHeader, nil
 }
 
-func (api *PovApi) GetBlockByHeight(height uint64) (*PovApiBlock, error) {
+func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
+	ss := api.syncState.Load().(common.SyncState)
+	if ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
+	var header *types.PovHeader
+
+	latestHeader, err := api.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	if gap > 0 && latestHeader.GetHeight() > gap {
+		height := latestHeader.GetHeight() - gap
+		header, err = api.ledger.GetPovHeaderByHeight(height)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		header = latestHeader
+	}
+
+	apiHeader := &PovApiHeader{
+		PovHeader: header,
+	}
+
+	return apiHeader, nil
+}
+
+func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool) (*PovApiBatchHeader, error) {
+	var headers []*types.PovHeader
+	var err error
+	if asc {
+		headers, err = api.ledger.BatchGetPovHeadersByHeightAsc(height, count)
+	} else {
+		headers, err = api.ledger.BatchGetPovHeadersByHeightDesc(height, count)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	apiHeader := &PovApiBatchHeader{
+		Count:   len(headers),
+		Headers: headers,
+	}
+
+	return apiHeader, nil
+}
+
+func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.ledger.GetPovBlockByHeight(height)
 	if err != nil {
 		return nil, err
@@ -140,10 +204,12 @@ func (api *PovApi) GetBlockByHeight(height uint64) (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
+	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+
 	return apiBlock, nil
 }
 
-func (api *PovApi) GetBlockByHash(blockHash types.Hash) (*PovApiBlock, error) {
+func (api *PovApi) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.ledger.GetPovBlockByHash(blockHash)
 	if err != nil {
 		return nil, err
@@ -153,10 +219,12 @@ func (api *PovApi) GetBlockByHash(blockHash types.Hash) (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
+	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+
 	return apiBlock, nil
 }
 
-func (api *PovApi) GetLatestBlock() (*PovApiBlock, error) {
+func (api *PovApi) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.ledger.GetLatestPovBlock()
 	if err != nil {
 		return nil, err
@@ -166,7 +234,25 @@ func (api *PovApi) GetLatestBlock() (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
+	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+
 	return apiBlock, nil
+}
+
+func (api *PovApi) pagingTxs(txs []*types.PovTransaction, txOffset uint32, txLimit uint32) []*types.PovTransaction {
+	txNum := uint32(len(txs))
+
+	if txOffset >= txNum {
+		txOffset = txNum
+	}
+	if txLimit == 0 {
+		txLimit = 100
+	}
+	if (txOffset + txLimit) > txNum {
+		txLimit = txNum - txOffset
+	}
+
+	return txs[txOffset : txOffset+txLimit]
 }
 
 func (api *PovApi) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {

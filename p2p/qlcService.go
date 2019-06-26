@@ -80,7 +80,7 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToPeer), ns.SendMessageToPeer)
+	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToSingle), ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
@@ -109,7 +109,7 @@ func (ns *QlcService) unsubscribeEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToPeer), ns.SendMessageToPeer)
+	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToSingle), ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err

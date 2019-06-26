@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"errors"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"net"
 	"net/url"
 	"strings"
@@ -17,22 +18,19 @@ import (
 )
 
 type RPC struct {
-	//p2pServer *p2p.Server
-
-	rpcAPIs          []API
-	inProcessHandler *Server
+	rpcAPIs          []rpc.API
+	inProcessHandler *rpc.Server
 
 	ipcListener net.Listener
-	ipcHandler  *Server
+	ipcHandler  *rpc.Server
 
 	httpWhitelist []string
 	httpListener  net.Listener
-	httpHandler   *Server
+	httpHandler   *rpc.Server
 
 	wsListener net.Listener
-	wsHandler  *Server
+	wsHandler  *rpc.Server
 
-	wsCli              *WebSocketCli
 	config             *config.Config
 	DashboardTargetURL string
 	NetID              uint `json:"NetID"`
@@ -64,11 +62,11 @@ func NewRPC(cfg *config.Config) (*RPC, error) {
 }
 
 // startIPC initializes and starts the IPC RPC endpoint.
-func (r *RPC) startIPC(apis []API) error {
+func (r *RPC) startIPC(apis []rpc.API) error {
 	if r.config.RPC.IPCEndpoint == "" {
 		return nil // IPC disabled.
 	}
-	listener, handler, err := StartIPCEndpoint(r.config.RPC.IPCEndpoint, apis)
+	listener, handler, err := rpc.StartIPCEndpoint(r.config.RPC.IPCEndpoint, apis)
 	if err != nil {
 		return err
 	}
@@ -93,12 +91,12 @@ func (r *RPC) stopIPC() {
 }
 
 // startHTTP initializes and starts the HTTP RPC endpoint.
-func (r *RPC) startHTTP(endpoint string, apis []API, modules []string, cors []string, vhosts []string, timeouts HTTPTimeouts, exposeAll bool) error {
+func (r *RPC) startHTTP(endpoint string, apis []rpc.API, modules []string, cors []string, vhosts []string, timeouts rpc.HTTPTimeouts) error {
 	// Short circuit if the HTTP endpoint isn't being exposed
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts, exposeAll)
+	listener, handler, err := rpc.StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
 	if err != nil {
 		return err
 	}
@@ -126,12 +124,12 @@ func (r *RPC) stopHTTP() {
 }
 
 // startWS initializes and starts the websocket RPC endpoint.
-func (r *RPC) startWS(endpoint string, apis []API, modules []string, wsOrigins []string, exposeAll bool) error {
+func (r *RPC) startWS(endpoint string, apis []rpc.API, modules []string, wsOrigins []string, exposeAll bool) error {
 	// Short circuit if the WS endpoint isn't being exposed
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
+	listener, handler, err := rpc.StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
 	if err != nil {
 		return err
 	}
@@ -155,12 +153,9 @@ func (r *RPC) stopWS() {
 		r.wsHandler.Stop()
 		r.wsHandler = nil
 	}
-	if r.wsCli != nil {
-		r.wsCli.Close()
-	}
 }
 
-func (r *RPC) Attach() (*Client, error) {
+func (r *RPC) Attach() (*rpc.Client, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
@@ -171,13 +166,13 @@ func (r *RPC) Attach() (*Client, error) {
 	if r.inProcessHandler == nil {
 		return nil, errors.New("server not started")
 	}
-	return DialInProc(r.inProcessHandler), nil
+	return rpc.DialInProc(r.inProcessHandler), nil
 }
 
 // startInProc initializes an in-process RPC endpoint.
-func (r *RPC) startInProcess(apis []API) error {
+func (r *RPC) startInProcess(apis []rpc.API) error {
 	// Register all the APIs exposed by the services
-	handler := NewServer()
+	handler := rpc.NewServer()
 	for _, api := range apis {
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 			r.logger.Info(err)
@@ -232,7 +227,7 @@ func (r *RPC) StartRPC() error {
 
 	if r.config.RPC.Enable && r.config.RPC.HTTPEnabled {
 		apis := r.GetHttpApis()
-		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, HTTPTimeouts{}, false); err != nil {
+		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, rpc.HTTPTimeouts{}); err != nil {
 			r.logger.Info(err)
 			r.stopInProcess()
 			r.stopIPC()
@@ -250,31 +245,6 @@ func (r *RPC) StartRPC() error {
 			return err
 		}
 	}
-	//if len(r.config.DashboardTargetURL) > 0 {
-	//	apis := api.GetPublicApis()
-	//	if len(r.config.PublicModules) != 0 {
-	//		apis = api.GetApis(r.config.PublicModules...)
-	//	}
-	//
-	//	targetUrl := r.config.DashboardTargetURL + "/ws/gvite/" + strconv.FormatUint(uint64(r.config.NetID), 10) + "@" + hex.EncodeToString(node.p2pServer.PrivateKey.PubByte())
-	//
-	//	u, e := url.Parse(targetUrl)
-	//	if e != nil {
-	//		return e
-	//	}
-	//	if u.Scheme != "ws" && u.Scheme != "wss" {
-	//		return errors.New("DashboardTargetURL need match WebSocket Protocol.")
-	//	}
-	//
-	//	cli, server, e := StartWSCliEndpoint(u, apis, nil, r.config.WSExposeAll)
-	//	if e != nil {
-	//		cli.Close()
-	//		server.Stop()
-	//		return e
-	//	} else {
-	//		r.wsCli = cli
-	//	}
-	//}
 
 	return nil
 }

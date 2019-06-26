@@ -4,11 +4,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger"
+	"math/big"
+
+	"github.com/dgraph-io/badger/v2"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"math/big"
 )
 
 var (
@@ -642,6 +643,103 @@ func (l *Ledger) GetPovBlockByHash(hash types.Hash, txns ...db.StoreTxn) (*types
 	return l.GetPovBlockByHeightAndHash(height, hash, txns...)
 }
 
+func (l *Ledger) GetPovHeaderByHeight(height uint64, txns ...db.StoreTxn) (*types.PovHeader, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	hash, err := l.GetPovBestHash(height, txns...)
+	if err != nil {
+		return nil, err
+	}
+
+	return l.GetPovHeader(height, hash, txn)
+}
+
+func (l *Ledger) BatchGetPovHeadersByHeightAsc(height uint64, count uint64, txns ...db.StoreTxn) ([]*types.PovHeader, error) {
+	startKey, err := getKeyOfParts(idPrefixPovBestHash, height)
+	if err != nil {
+		return nil, err
+	}
+	endKey, err := getKeyOfParts(idPrefixPovBestHash, uint64(height+count))
+	if err != nil {
+		return nil, err
+	}
+
+	return l.batchGetPovHeadersByHeight(startKey, endKey, txns...)
+}
+
+func (l *Ledger) BatchGetPovHeadersByHeightDesc(height uint64, count uint64, txns ...db.StoreTxn) ([]*types.PovHeader, error) {
+	if height < count {
+		return nil, errors.New("height should greater than count")
+	}
+
+	startKey, err := getKeyOfParts(idPrefixPovBestHash, uint64(height-count+1))
+	if err != nil {
+		return nil, err
+	}
+	endKey, err := getKeyOfParts(idPrefixPovBestHash, height+1)
+	if err != nil {
+		return nil, err
+	}
+
+	headers, err := l.batchGetPovHeadersByHeight(startKey, endKey, txns...)
+	if err != nil {
+		return nil, err
+	}
+
+	// reversing
+	for i := len(headers)/2 - 1; i >= 0; i-- {
+		opp := len(headers) - 1 - i
+		headers[i], headers[opp] = headers[opp], headers[i]
+	}
+
+	return headers, nil
+}
+
+func (l *Ledger) batchGetPovHeadersByHeight(startKey []byte, endKey []byte, txns ...db.StoreTxn) ([]*types.PovHeader, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	var headers []*types.PovHeader
+
+	err := txn.RangeIterator(startKey, endKey, func(key []byte, val []byte, meta byte) error {
+		var height uint64
+		height = util.BE_BytesToUint64(key[1:])
+
+		var hash types.Hash
+		err := hash.UnmarshalBinary(val)
+		if err != nil {
+			return err
+		}
+
+		header, err := l.GetPovHeader(height, hash)
+		if err != nil {
+			return err
+		}
+
+		headers = append(headers, header)
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return headers, nil
+}
+
+func (l *Ledger) GetPovHeaderByHash(hash types.Hash, txns ...db.StoreTxn) (*types.PovHeader, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	height, err := l.GetPovHeight(hash, txns...)
+	if err != nil {
+		return nil, err
+	}
+
+	return l.GetPovHeader(height, hash, txns...)
+}
+
 func (l *Ledger) GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -719,6 +817,23 @@ func (l *Ledger) GetLatestPovBestHash(txns ...db.StoreTxn) (types.Hash, error) {
 	}
 
 	return latestHash, nil
+}
+
+func (l *Ledger) GetLatestPovHeader(txns ...db.StoreTxn) (*types.PovHeader, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	latestHash, err := l.GetLatestPovBestHash(txn)
+	if err != nil {
+		return nil, err
+	}
+
+	height, err := l.GetPovHeight(latestHash, txns...)
+	if err != nil {
+		return nil, err
+	}
+
+	return l.GetPovHeader(height, latestHash, txn)
 }
 
 func (l *Ledger) GetLatestPovBlock(txns ...db.StoreTxn) (*types.PovBlock, error) {

@@ -10,10 +10,11 @@ package commands
 import (
 	"fmt"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
-	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/spf13/cobra"
 )
 

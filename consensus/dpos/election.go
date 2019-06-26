@@ -1,11 +1,12 @@
 package dpos
 
 import (
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"time"
 )
 
 type BlockReceivedVotes struct {
@@ -131,6 +132,7 @@ func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 
 		weight := el.dps.ledger.Weight(key.(types.Address))
 		totals[hash].balance = totals[hash].balance.Add(weight)
+		el.dps.logger.Infof("rep[%s] ack block[%s] weight[%s]", key.(types.Address), hash, weight)
 		return true
 	})
 

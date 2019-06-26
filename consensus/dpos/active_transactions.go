@@ -1,10 +1,11 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/p2p"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -12,7 +13,7 @@ import (
 
 const (
 	announcementMax  = 40
-	announceInterval = 16
+	announceInterval = 60
 )
 
 type voteKey [1 + types.HashSize]byte

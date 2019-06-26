@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dgraph-io/badger"
-	"github.com/dgraph-io/badger/pb"
+	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -123,11 +123,15 @@ func CloseLedger() {
 }
 
 func (l *Ledger) Close() error {
-	err := l.Store.Close()
 	lock.Lock()
-	delete(cache, l.dir)
-	lock.Unlock()
-	return err
+	defer lock.Unlock()
+	if _, ok := cache[l.dir]; ok {
+		err := l.Store.Close()
+		l.logger.Info("badger closed")
+		delete(cache, l.dir)
+		return err
+	}
+	return nil
 }
 
 func (l *Ledger) upgrade() error {

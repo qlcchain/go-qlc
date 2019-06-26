@@ -1,14 +1,25 @@
 package protos
 
 import (
+	"fmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos/pb"
 )
 
+const (
+	PullTypeSegment = iota
+	PullTypeBackward
+	PullTypeForward
+	PullTypeBatch
+)
+
 type BulkPullReqPacket struct {
 	StartHash types.Hash
 	EndHash   types.Hash
+	PullType  uint32
+	Count     uint32
+	Hashes    []*types.Hash
 }
 
 func NewBulkPullReqPacket(start, end types.Hash) (packet *BulkPullReqPacket) {
@@ -20,10 +31,17 @@ func NewBulkPullReqPacket(start, end types.Hash) (packet *BulkPullReqPacket) {
 
 // ToProto converts domain BulkPull into proto BulkPull
 func BulkPullReqPacketToProto(bp *BulkPullReqPacket) ([]byte, error) {
+	hashBytes := make([]byte, 0)
+	for _, locItem := range bp.Hashes {
+		hashBytes = append(hashBytes, locItem.Bytes()...)
+	}
 
 	bpPb := &pb.BulkPullReq{
 		StartHash: bp.StartHash[:],
 		EndHash:   bp.EndHash[:],
+		PullType:  bp.PullType,
+		Count:     bp.Count,
+		Hashes:    hashBytes,
 	}
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
@@ -47,28 +65,59 @@ func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	hashes := make([]*types.Hash, 0)
+	if len(bp.Hashes) > 0 {
+		if len(bp.Hashes)%types.HashSize != 0 {
+			return nil, fmt.Errorf("invalid hashes field length %d", len(bp.Hashes))
+		}
+		for hashIdx := 0; hashIdx < len(bp.Hashes); hashIdx += types.HashSize {
+			hash, err := types.BytesToHash(bp.Hashes[hashIdx : hashIdx+types.HashSize])
+			if err != nil {
+				return nil, err
+			}
+			hashes = append(hashes, &hash)
+		}
+	}
+
 	bpRp := &BulkPullReqPacket{
 		StartHash: start,
 		EndHash:   end,
+		PullType:  bp.PullType,
+		Count:     bp.Count,
+		Hashes:    hashes,
 	}
 	return bpRp, nil
 }
 
 type BulkPullRspPacket struct {
-	Blk *types.StateBlock
+	Blk    *types.StateBlock
+	Blocks types.StateBlockList
 }
 
 // ToProto converts domain BulkPull into proto BulkPull
 func BulkPullRspPacketToProto(bp *BulkPullRspPacket) ([]byte, error) {
-	blkData, err := bp.Blk.Serialize()
-	if err != nil {
-		return nil, err
+	bpPb := &pb.BulkPullRsp{}
+
+	if len(bp.Blocks) > 0 {
+		blockBytes, err := bp.Blocks.Serialize()
+		if err != nil {
+			return nil, err
+		}
+
+		blockType := bp.Blocks[0].GetType()
+		bpPb.Blocktype = uint32(blockType)
+		bpPb.Blocks = blockBytes
+	} else if bp.Blk != nil {
+		blkData, err := bp.Blk.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		blockType := bp.Blk.GetType()
+		bpPb.Blocktype = uint32(blockType)
+		bpPb.Block = blkData
 	}
-	blockType := bp.Blk.GetType()
-	bpPb := &pb.BulkPullRsp{
-		Blocktype: uint32(blockType),
-		Block:     blkData,
-	}
+
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
@@ -82,12 +131,22 @@ func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 	if err := proto.Unmarshal(data, bp); err != nil {
 		return nil, err
 	}
-	blk := new(types.StateBlock)
-	if err := blk.Deserialize(bp.Block); err != nil {
-		return nil, err
+
+	bpRp := &BulkPullRspPacket{}
+
+	if len(bp.Blocks) > 0 {
+		blocks := make(types.StateBlockList, 0)
+		err := blocks.Deserialize(bp.Blocks)
+		if err != nil {
+			return nil, err
+		}
+	} else if len(bp.Block) > 0 {
+		blk := new(types.StateBlock)
+		if err := blk.Deserialize(bp.Block); err != nil {
+			return nil, err
+		}
+		bpRp.Blk = blk
 	}
-	bpRp := &BulkPullRspPacket{
-		Blk: blk,
-	}
+
 	return bpRp, nil
 }

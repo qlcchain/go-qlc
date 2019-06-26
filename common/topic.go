@@ -17,7 +17,7 @@ const (
 	EventDeleteRelation TopicType = "deleteRelation"
 	EventGenerateBlock  TopicType = "generateBlock"
 
-	EventSendMsgToPeer   TopicType = "sendMsgToPeer"
+	EventSendMsgToSingle TopicType = "sendMsgToSingle"
 	EventAddP2PStream    TopicType = "addP2PStream"
 	EventDeleteP2PStream TopicType = "deleteP2PStream"
 	EventPovPeerStatus   TopicType = "povPeerStatus"

@@ -21,7 +21,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func runNode(accounts []*types.Account, cfg *config.Config) error {
@@ -30,7 +29,7 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 		fmt.Println(err)
 		return err
 	}
-	services, err := startNode(accounts, cfg)
+	err = startNode(accounts, cfg)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -38,9 +37,6 @@ func runNode(accounts []*types.Account, cfg *config.Config) error {
 		fmt.Println(err)
 		return err
 	}
-	cmn.TrapSignal(func() {
-		stopNode(services)
-	})
 	return nil
 }
 
@@ -120,12 +116,12 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	return nil
 }
 
-func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service, error) {
+func startNode(accounts []*types.Account, cfg *config.Config) error {
 	// step1: init phase
 	for _, service := range services {
 		err := service.Init()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		fmt.Printf("%s init successfully.\n", reflect.TypeOf(service))
 	}
@@ -133,7 +129,7 @@ func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service,
 	for _, service := range services {
 		err := service.Start()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		fmt.Printf("%s start successfully.\n", reflect.TypeOf(service))
 	}
@@ -169,7 +165,7 @@ func startNode(accounts []*types.Account, cfg *config.Config) ([]common.Service,
 		}(ledgerService.Ledger, accounts)
 	}
 
-	return services, nil
+	return nil
 }
 
 func receive(sendBlock *types.StateBlock, account *types.Account) error {

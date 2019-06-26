@@ -11,11 +11,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/rpc"
+	commonutil "github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/spf13/cobra"
 )
@@ -133,7 +135,7 @@ func mintageAction(account, preHash, tokenName, tokenSymbol, totalSupply string,
 	}
 
 	d := uint8(decimals)
-	NEP5tTxId := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	NEP5tTxId := commonutil.RandomFixedString(64)
 	mintageParam := api.MintageParams{
 		SelfAddr: a.Address(), PrevHash: previous, TokenName: tokenName,
 		TotalSupply: totalSupply, TokenSymbol: tokenSymbol, Decimals: d, Beneficial: a.Address(),

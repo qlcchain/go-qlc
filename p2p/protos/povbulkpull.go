@@ -13,17 +13,18 @@ const (
 )
 
 const (
-	PovDirForward = iota
-	PovDirBackward
+	PovPullTypeForward = iota
+	PovPullTypeBackward
+	PovPullTypeBatch
 )
 
 type PovBulkPullReq struct {
 	StartHash   types.Hash
 	StartHeight uint64
 	Count       uint32
-	Direction   uint32
+	PullType    uint32
 	Reason      uint32
-	Locators    []types.Hash
+	Locators    []*types.Hash
 }
 
 type PovBulkPullRsp struct {
@@ -41,7 +42,7 @@ func PovBulkPullReqToProto(req *PovBulkPullReq) ([]byte, error) {
 		StartHash:   req.StartHash[:],
 		StartHeight: req.StartHeight,
 		Count:       req.Count,
-		Direction:   req.Direction,
+		PullType:    req.PullType,
 		Reason:      req.Reason,
 		Locators:    locBytes,
 	}
@@ -61,19 +62,19 @@ func PovBulkPullReqFromProto(data []byte) (*PovBulkPullReq, error) {
 	if len(pbReq.Locators)%types.HashSize != 0 {
 		return nil, fmt.Errorf("invalid locators field length %d", len(pbReq.Locators))
 	}
-	locators := make([]types.Hash, 0)
+	locators := make([]*types.Hash, 0)
 	for locIdx := 0; locIdx < len(pbReq.Locators); locIdx += types.HashSize {
 		locHash, err := types.BytesToHash(pbReq.Locators[locIdx : locIdx+types.HashSize])
 		if err != nil {
 			return nil, err
 		}
-		locators = append(locators, locHash)
+		locators = append(locators, &locHash)
 	}
 
 	req := &PovBulkPullReq{
 		StartHeight: pbReq.StartHeight,
 		Count:       pbReq.Count,
-		Direction:   pbReq.Direction,
+		PullType:    pbReq.PullType,
 		Reason:      pbReq.Reason,
 		Locators:    locators,
 	}

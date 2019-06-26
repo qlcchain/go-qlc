@@ -12,11 +12,12 @@ import (
 	"errors"
 	"fmt"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/spf13/cobra"
 )
@@ -136,7 +137,7 @@ func sendTx(account *types.Account, to types.Address, token string, amount types
 		Amount:    amount,
 	}
 	var sendBlock types.StateBlock
-	err = client.Call(&sendBlock, "ledger_generateSendBlock", para, hex.EncodeToString(account.PrivateKey()))
+	err = client.Call(&sendBlock, "ledger_generateSendBlock", &para, hex.EncodeToString(account.PrivateKey()))
 	if err != nil {
 		return err
 	}

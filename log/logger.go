@@ -32,7 +32,13 @@ var (
 	once      sync.Once
 	lumlog    lumberjack.Logger
 	logger, _ = zap.NewDevelopment()
+	Root      *zap.SugaredLogger
 )
+
+func init() {
+	production, _ := zap.NewProduction()
+	Root = production.Sugar()
+}
 
 func InitLog(config *config.Config) error {
 	var initErr error

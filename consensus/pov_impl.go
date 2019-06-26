@@ -1,6 +1,9 @@
 package consensus
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -11,12 +14,11 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"go.uber.org/zap"
-	"time"
 )
 
 const (
-	blkCacheSize       = 1024
-	blkCacheExpireTime = 10 * time.Minute
+	blkCacheSize       = 10240
+	blkCacheExpireTime = 1 * time.Minute
 )
 
 type PoVEngine struct {
@@ -26,7 +28,8 @@ type PoVEngine struct {
 	eb       event.EventBus
 	accounts []*types.Account
 
-	blkCache gcache.Cache
+	blkRecvCache gcache.Cache
+
 	bp       *PovBlockProcessor
 	txpool   *PovTxPool
 	chain    *PovBlockChain
@@ -45,7 +48,7 @@ func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, er
 		ledger:   ledger,
 	}
 
-	pov.blkCache = gcache.New(blkCacheSize).LRU().Expiration(blkCacheExpireTime).Build()
+	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()
 	pov.bp = NewPovBlockProcessor(pov)
 	pov.txpool = NewPovTxPool(pov)
 	pov.chain = NewPovBlockChain(pov)
@@ -136,15 +139,23 @@ func (pov *PoVEngine) GetSyncer() *PovSyncer {
 }
 
 func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
+	_ = pov.blkRecvCache.Set(block.GetHash(), struct{}{})
 	err := pov.bp.AddMinedBlock(block)
 	if err == nil {
 		pov.eb.Publish(string(common.EventBroadcast), p2p.PovPublishReq, block)
-		pov.blkCache.Set(block.GetHash(), struct{}{})
 	}
 	return err
 }
 
 func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom) error {
+	blockHash := block.GetHash()
+
+	stat := pov.verifier.VerifyNet(block)
+	if stat.Result != process.Progress {
+		pov.logger.Infof("block %s verify net err %s", blockHash, stat.ErrMsg)
+		return fmt.Errorf("block %s verify net err %s", blockHash, stat.ErrMsg)
+	}
+
 	err := pov.bp.AddBlock(block, from)
 	return err
 }
@@ -155,10 +166,6 @@ func (pov *PoVEngine) setEvent() error {
 		return err
 	}
 
-	err = pov.eb.Subscribe(string(common.EventPovSyncState), pov.onRecvPovSyncState)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -167,30 +174,23 @@ func (pov *PoVEngine) unsetEvent() error {
 	if err != nil {
 		return err
 	}
-	err = pov.eb.Unsubscribe(string(common.EventPovSyncState), pov.onRecvPovSyncState)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
 func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, msgPeer string) error {
-	if pov.blkCache.Has(block.GetHash()) {
+	blockHash := block.GetHash()
+	if pov.blkRecvCache.Has(blockHash) {
 		return nil
 	}
+	_ = pov.blkRecvCache.Set(blockHash, struct{}{})
 
-	pov.logger.Infof("receive block [%d/%s] from [%s]", block.GetHeight(), block.GetHash(), msgPeer)
-	err := pov.bp.AddBlock(block, types.PovBlockFromRemoteBroadcast)
+	pov.logger.Infof("receive block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
+
+	err := pov.AddBlock(block, types.PovBlockFromRemoteBroadcast)
 	if err == nil {
 		pov.eb.Publish(string(common.EventSendMsgToPeers), p2p.PovPublishReq, block, msgPeer)
-		pov.blkCache.Set(block.GetHash(), struct{}{})
 	}
 
 	return err
-}
-
-func (pov *PoVEngine) onRecvPovSyncState(state common.SyncState) {
-	if pov.bp != nil {
-		pov.bp.onRecvPovSyncState(state)
-	}
 }
