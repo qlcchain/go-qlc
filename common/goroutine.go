@@ -2,8 +2,9 @@ package common
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"log"
+
+	"github.com/pkg/errors"
 )
 
 func Go(fn func()) {

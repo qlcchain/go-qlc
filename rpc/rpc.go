@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"errors"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"net"
 	"net/url"
 	"strings"
@@ -17,18 +18,18 @@ import (
 )
 
 type RPC struct {
-	rpcAPIs          []API
-	inProcessHandler *Server
+	rpcAPIs          []rpc.API
+	inProcessHandler *rpc.Server
 
 	ipcListener net.Listener
-	ipcHandler  *Server
+	ipcHandler  *rpc.Server
 
 	httpWhitelist []string
 	httpListener  net.Listener
-	httpHandler   *Server
+	httpHandler   *rpc.Server
 
 	wsListener net.Listener
-	wsHandler  *Server
+	wsHandler  *rpc.Server
 
 	config             *config.Config
 	DashboardTargetURL string
@@ -61,11 +62,11 @@ func NewRPC(cfg *config.Config) (*RPC, error) {
 }
 
 // startIPC initializes and starts the IPC RPC endpoint.
-func (r *RPC) startIPC(apis []API) error {
+func (r *RPC) startIPC(apis []rpc.API) error {
 	if r.config.RPC.IPCEndpoint == "" {
 		return nil // IPC disabled.
 	}
-	listener, handler, err := StartIPCEndpoint(r.config.RPC.IPCEndpoint, apis)
+	listener, handler, err := rpc.StartIPCEndpoint(r.config.RPC.IPCEndpoint, apis)
 	if err != nil {
 		return err
 	}
@@ -90,12 +91,12 @@ func (r *RPC) stopIPC() {
 }
 
 // startHTTP initializes and starts the HTTP RPC endpoint.
-func (r *RPC) startHTTP(endpoint string, apis []API, modules []string, cors []string, vhosts []string, timeouts HTTPTimeouts) error {
+func (r *RPC) startHTTP(endpoint string, apis []rpc.API, modules []string, cors []string, vhosts []string, timeouts rpc.HTTPTimeouts) error {
 	// Short circuit if the HTTP endpoint isn't being exposed
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
+	listener, handler, err := rpc.StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
 	if err != nil {
 		return err
 	}
@@ -123,12 +124,12 @@ func (r *RPC) stopHTTP() {
 }
 
 // startWS initializes and starts the websocket RPC endpoint.
-func (r *RPC) startWS(endpoint string, apis []API, modules []string, wsOrigins []string, exposeAll bool) error {
+func (r *RPC) startWS(endpoint string, apis []rpc.API, modules []string, wsOrigins []string, exposeAll bool) error {
 	// Short circuit if the WS endpoint isn't being exposed
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
+	listener, handler, err := rpc.StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
 	if err != nil {
 		return err
 	}
@@ -154,7 +155,7 @@ func (r *RPC) stopWS() {
 	}
 }
 
-func (r *RPC) Attach() (*Client, error) {
+func (r *RPC) Attach() (*rpc.Client, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
@@ -165,13 +166,13 @@ func (r *RPC) Attach() (*Client, error) {
 	if r.inProcessHandler == nil {
 		return nil, errors.New("server not started")
 	}
-	return DialInProc(r.inProcessHandler), nil
+	return rpc.DialInProc(r.inProcessHandler), nil
 }
 
 // startInProc initializes an in-process RPC endpoint.
-func (r *RPC) startInProcess(apis []API) error {
+func (r *RPC) startInProcess(apis []rpc.API) error {
 	// Register all the APIs exposed by the services
-	handler := NewServer()
+	handler := rpc.NewServer()
 	for _, api := range apis {
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 			r.logger.Info(err)
@@ -226,7 +227,7 @@ func (r *RPC) StartRPC() error {
 
 	if r.config.RPC.Enable && r.config.RPC.HTTPEnabled {
 		apis := r.GetHttpApis()
-		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, HTTPTimeouts{}); err != nil {
+		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, rpc.HTTPTimeouts{}); err != nil {
 			r.logger.Info(err)
 			r.stopInProcess()
 			r.stopIPC()

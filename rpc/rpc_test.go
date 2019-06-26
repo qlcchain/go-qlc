@@ -1,9 +1,9 @@
 package rpc
 
-var (
-	rpc   *RPC
-	count int
-)
+//var (
+//	rpc   *rpc.RPC
+//	count int
+//)
 
 //func setupTestCase(t *testing.T) func(t *testing.T) {
 //	rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc")

@@ -14,10 +14,11 @@ import (
 	"math/rand"
 	"time"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/rpc"
 	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/abiosoft/ishell"
