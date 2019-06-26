@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
-	badgerOpts "github.com/dgraph-io/badger/v2/options"
+	"github.com/dgraph-io/badger"
+	badgerOpts "github.com/dgraph-io/badger/options"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
@@ -38,9 +38,7 @@ func generateBlock() *types.StateBlock {
 }
 
 func NewBadger() (*badger.DB, error) {
-	opts := badger.DefaultOptions
-	opts.Dir = dir_testdb
-	opts.ValueDir = dir_testdb
+	opts := badger.DefaultOptions(dir_testdb)
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
 
 	_ = util.CreateDirIfNotExist(dir_testdb)
