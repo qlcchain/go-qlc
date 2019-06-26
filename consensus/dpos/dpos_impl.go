@@ -272,6 +272,8 @@ func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
 }
 
 func (dps *DPoS) ProcessMsgLoop() {
+	getTimeout := time.NewTimer(1 * time.Millisecond)
+
 	for {
 	DequeueOut:
 		for {
@@ -293,12 +295,13 @@ func (dps *DPoS) ProcessMsgLoop() {
 			}
 		}
 
+		getTimeout.Reset(1 * time.Millisecond)
 		select {
 		case <-dps.quitChProcess:
 			return
 		case bs := <-dps.blocks:
 			dps.ProcessMsgDo(bs)
-		case <-time.After(1 * time.Millisecond):
+		case <-getTimeout.C:
 			//
 		}
 	}
