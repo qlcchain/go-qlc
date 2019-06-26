@@ -2,6 +2,8 @@ package consensus
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -12,7 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"go.uber.org/zap"
-	"time"
 )
 
 const (

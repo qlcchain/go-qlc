@@ -1,8 +1,9 @@
 package common
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"math/big"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 var (

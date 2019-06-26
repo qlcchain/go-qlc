@@ -1,8 +1,9 @@
 package merkle
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"math"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 // nextPowerOfTwo returns the next highest power of two from a given number if

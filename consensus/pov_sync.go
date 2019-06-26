@@ -1,6 +1,12 @@
 package consensus
 
 import (
+	"math/big"
+	"math/rand"
+	"sort"
+	"sync"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -8,11 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"go.uber.org/zap"
-	"math/big"
-	"math/rand"
-	"sort"
-	"sync"
-	"time"
 )
 
 const (

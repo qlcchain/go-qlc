@@ -1,11 +1,12 @@
 package dpos
 
 import (
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"time"
 )
 
 type BlockReceivedVotes struct {
