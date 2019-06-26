@@ -93,7 +93,7 @@ func (r *Receiver) stop() error {
 }
 
 func (r *Receiver) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFrom string) {
-	r.c.logger.Infof("receive publish block [%s] from [%s]", blk.GetHash(), msgFrom)
+	r.c.logger.Debugf("receive publish block [%s] from [%s]", blk.GetHash(), msgFrom)
 	if !r.processed(hash) {
 		r.processedUpdate(hash)
 
@@ -108,7 +108,7 @@ func (r *Receiver) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFro
 }
 
 func (r *Receiver) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msgFrom string) {
-	r.c.logger.Infof("receive ConfirmReq block [%s] from [%s]", blk.GetHash(), msgFrom)
+	r.c.logger.Debugf("receive ConfirmReq block [%s] from [%s]", blk.GetHash(), msgFrom)
 	if !r.processed(hash) {
 		r.processedUpdate(hash)
 
@@ -123,7 +123,7 @@ func (r *Receiver) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msg
 }
 
 func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash, msgFrom string) {
-	r.c.logger.Infof("receive ConfirmAck block [%s] from [%s]", ack.Blk.GetHash(), msgFrom)
+	r.c.logger.Debugf("receive ConfirmAck block [%s] from [%s]", ack.Blk.GetHash(), msgFrom)
 	if !r.processed(hash) {
 		r.processedUpdate(hash)
 
@@ -144,7 +144,7 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Has
 }
 
 func (r *Receiver) ReceiveSyncBlock(blk *types.StateBlock) {
-	r.c.logger.Infof("Sync Event for block:[%s]", blk.GetHash())
+	r.c.logger.Debugf("Sync Event for block:[%s]", blk.GetHash())
 	bs := &BlockSource{
 		Block:     blk,
 		BlockFrom: types.Synchronized,
@@ -154,7 +154,7 @@ func (r *Receiver) ReceiveSyncBlock(blk *types.StateBlock) {
 }
 
 func (r *Receiver) ReceiveGenerateBlock(result process.ProcessResult, blk *types.StateBlock) {
-	r.c.logger.Infof("GenerateBlock Event for block:[%s]", blk.GetHash())
+	r.c.logger.Debugf("GenerateBlock Event for block:[%s]", blk.GetHash())
 	bs := &BlockSource{
 		Block:     blk,
 		BlockFrom: types.UnSynchronized,
