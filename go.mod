@@ -11,7 +11,7 @@ require (
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/dchest/siphash v1.2.1
-	github.com/dgraph-io/badger/v2 v2.0.0-rc1
+	github.com/dgraph-io/badger v2.0.0-rc2+incompatible
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
