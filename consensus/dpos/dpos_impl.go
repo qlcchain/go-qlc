@@ -221,6 +221,7 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 					return true
 				}
 
+				dps.logger.Infof("rep [%s] vote for block [%s]", address, bs.Block.GetHash())
 				dps.acTrx.vote(va)
 				dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 
