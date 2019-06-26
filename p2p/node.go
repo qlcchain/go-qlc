@@ -4,22 +4,26 @@ import (
 	"context"
 	"errors"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/whyrusleeping/go-smux-yamux"
+	"github.com/whyrusleeping/yamux"
+	"io/ioutil"
 	"time"
 
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 
 	"github.com/libp2p/go-libp2p"
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	discovery "github.com/libp2p/go-libp2p-discovery"
-	host "github.com/libp2p/go-libp2p-host"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-discovery"
+	"github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-kad-dht"
 	inet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/qlcchain/go-qlc/config"
+	mplex "github.com/whyrusleeping/go-smux-multiplex"
 )
 
 // Error types
@@ -84,7 +88,21 @@ func (node *QlcNode) startHost() error {
 		libp2p.NATPortMap()}
 
 	if common.RunMode == common.RunModeSimple {
-		opts = append(opts, libp2p.DefaultMuxers)
+		simpleNodeTransport := (*sm_yamux.Transport)(&yamux.Config{
+			AcceptBacklog:          256,
+			EnableKeepAlive:        true,
+			KeepAliveInterval:      30 * time.Second,
+			ConnectionWriteTimeout: 10 * time.Second,
+			MaxStreamWindowSize:    uint32(256 * 1024),
+			LogOutput:              ioutil.Discard,
+		})
+
+		simpleNodeMuxers := libp2p.ChainOptions(
+			libp2p.Muxer("/yamux/1.0.0", simpleNodeTransport),
+			libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
+		)
+
+		opts = append(opts, simpleNodeMuxers)
 	}
 
 	qlcHost, err := libp2p.New(node.ctx, opts...)

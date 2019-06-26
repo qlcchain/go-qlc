@@ -9,10 +9,10 @@ package event
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"reflect"
 	"sync"
-
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 
 	"github.com/gammazero/workerpool"
 )
@@ -63,13 +63,18 @@ func NewEventBus(queueSize int) EventBus {
 }
 
 var (
-	once  sync.Once
-	eb    EventBus
-	cache *hashmap.HashMap
+	once             sync.Once
+	eb               EventBus
+	cache            *hashmap.HashMap
+	waitingQueueSize = 102400
 )
 
 func init() {
 	cache = hashmap.New(50)
+
+	if common.RunMode == common.RunModeSimple {
+		waitingQueueSize = 1024
+	}
 }
 
 func SimpleEventBus() EventBus {
@@ -174,6 +179,11 @@ func (eb *DefaultEventBus) Publish(topic string, args ...interface{}) {
 			all := handlers.All()
 			for _, handler := range all {
 				h := handler
+
+				if h.pool.WaitingQueueSize() >= waitingQueueSize {
+					continue
+				}
+
 				if h.option.isSync {
 					h.pool.SubmitWait(func() {
 						h.callBack.Call(rArgs)

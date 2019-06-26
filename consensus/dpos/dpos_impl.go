@@ -99,7 +99,8 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 }
 
 func (dps *DPoS) Init() {
-	povSyncState.Store(common.SyncNotStart)
+	//povSyncState.Store(common.SyncNotStart)
+	povSyncState.Store(common.Syncdone)
 	supply := common.GenesisBlock().Balance
 	minWeight, _ = supply.Div(common.VoteDivisor)
 
@@ -387,6 +388,8 @@ func (dps *DPoS) rollbackUncheckedFromMem(hash types.Hash) {
 }
 
 func (dps *DPoS) ProcessMsgLoop() {
+	getTimeout := time.NewTimer(1 * time.Millisecond)
+
 	for {
 	DequeueOut:
 		for {
@@ -408,12 +411,13 @@ func (dps *DPoS) ProcessMsgLoop() {
 			}
 		}
 
+		getTimeout.Reset(1 * time.Millisecond)
 		select {
 		case <-dps.quitChProcess:
 			return
 		case bs := <-dps.blocks:
 			dps.ProcessMsgDo(bs)
-		case <-time.After(1 * time.Millisecond):
+		case <-getTimeout.C:
 			//
 		}
 	}
