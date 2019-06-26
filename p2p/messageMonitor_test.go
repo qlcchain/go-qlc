@@ -525,7 +525,7 @@ func Test_MessageCache(t *testing.T) {
 	msg := <-node2.msgService.publishMessageCh
 
 	//test message cache
-	if node1.msgService.cache.Len() != 1 {
+	if node1.msgService.cache.Len(false) != 1 {
 		t.Fatal("message cache error")
 	}
 
