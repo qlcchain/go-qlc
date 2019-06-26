@@ -13,6 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/gammazero/workerpool"
 )
@@ -180,8 +181,19 @@ func (eb *DefaultEventBus) Publish(topic string, args ...interface{}) {
 			for _, handler := range all {
 				h := handler
 
+				//waiting until the queue is ready
 				if h.pool.WaitingQueueSize() >= waitingQueueSize {
-					continue
+					checkInterval := time.NewTicker(10 * time.Millisecond)
+
+					checkWaitingQueueOut:
+					for {
+						select {
+						case <-checkInterval.C:
+							if h.pool.WaitingQueueSize() < waitingQueueSize {
+								break checkWaitingQueueOut
+							}
+ 						}
+					}
 				}
 
 				if h.option.isSync {

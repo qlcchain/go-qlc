@@ -99,8 +99,7 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 }
 
 func (dps *DPoS) Init() {
-	//povSyncState.Store(common.SyncNotStart)
-	povSyncState.Store(common.Syncdone)
+	povSyncState.Store(common.SyncNotStart)
 	supply := common.GenesisBlock().Balance
 	minWeight, _ = supply.Div(common.VoteDivisor)
 
