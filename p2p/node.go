@@ -85,7 +85,8 @@ func (node *QlcNode) startHost() error {
 	opts := []libp2p.Option{
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(node.privateKey),
-		libp2p.NATPortMap()}
+		libp2p.NATPortMap(),
+	}
 
 	if common.RunMode == common.RunModeSimple {
 		simpleNodeTransport := (*sm_yamux.Transport)(&yamux.Config{

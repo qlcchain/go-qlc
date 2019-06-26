@@ -107,11 +107,11 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		})
 	}
 
-	services = []common.Service{sqliteService, ledgerService, walletService, consensusService, rPCService}
-	if common.RunMode == common.RunModeNormal {
-		services = append(services, povService, minerService)
-	}
-
+	//services = []common.Service{sqliteService, ledgerService, walletService, consensusService, rPCService}
+	//if common.RunMode == common.RunModeNormal {
+	//	services = append(services, povService, minerService)
+	//}
+	services = []common.Service{sqliteService, ledgerService, walletService, consensusService, rPCService, povService, minerService}
 	if len(cfg.P2P.BootNodes) > 0 {
 		services = append(services, netService)
 	}

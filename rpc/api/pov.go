@@ -193,7 +193,7 @@ func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool
 	return apiHeader, nil
 }
 
-func (api *PovApi) GetBlockByHeight(height uint64) (*PovApiBlock, error) {
+func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.ledger.GetPovBlockByHeight(height)
 	if err != nil {
 		return nil, err
@@ -203,10 +203,12 @@ func (api *PovApi) GetBlockByHeight(height uint64) (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
+	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+
 	return apiBlock, nil
 }
 
-func (api *PovApi) GetBlockByHash(blockHash types.Hash) (*PovApiBlock, error) {
+func (api *PovApi) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.ledger.GetPovBlockByHash(blockHash)
 	if err != nil {
 		return nil, err
@@ -216,10 +218,12 @@ func (api *PovApi) GetBlockByHash(blockHash types.Hash) (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
+	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+
 	return apiBlock, nil
 }
 
-func (api *PovApi) GetLatestBlock() (*PovApiBlock, error) {
+func (api *PovApi) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.ledger.GetLatestPovBlock()
 	if err != nil {
 		return nil, err
@@ -229,7 +233,25 @@ func (api *PovApi) GetLatestBlock() (*PovApiBlock, error) {
 		PovBlock: block,
 	}
 
+	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+
 	return apiBlock, nil
+}
+
+func (api *PovApi) pagingTxs(txs []*types.PovTransaction, txOffset uint32, txLimit uint32) []*types.PovTransaction {
+	txNum := uint32(len(txs))
+
+	if txOffset >= txNum {
+		txOffset = txNum
+	}
+	if txLimit == 0 {
+		txLimit = 100
+	}
+	if (txOffset + txLimit) > txNum {
+		txLimit = txNum - txOffset
+	}
+
+	return txs[txOffset : txOffset+txLimit]
 }
 
 func (api *PovApi) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {

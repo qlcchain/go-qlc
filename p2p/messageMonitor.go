@@ -71,7 +71,7 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 	}
 
 	ms := &MessageService{
-		quitCh:              make(chan bool, 6),
+		quitCh:              make(chan bool, 7),
 		messageCh:           make(chan *Message, chanSize),
 		publishMessageCh:    make(chan *Message, chanSize),
 		confirmReqMessageCh: make(chan *Message, chanSize),
@@ -503,7 +503,7 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 7; i++ {
 		ms.quitCh <- true
 	}
 	ms.syncService.quitCh <- true
