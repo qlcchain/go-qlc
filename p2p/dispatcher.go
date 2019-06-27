@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"sync"
 	"time"
 
@@ -22,15 +23,23 @@ type Dispatcher struct {
 
 // NewDispatcher create Dispatcher instance.
 func NewDispatcher() *Dispatcher {
+	msgChanSize := 655350
+	cacheSize := 51200
+
+	if common.RunMode == common.RunModeSimple {
+		msgChanSize = 1024
+		cacheSize = 1024
+	}
+
 	dp := &Dispatcher{
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
-		receivedMessageCh: make(chan *Message, 100),
+		receivedMessageCh: make(chan *Message, msgChanSize),
 		filters:           make(map[MessageType]bool),
 		logger:            log.NewLogger("dispatcher"),
 	}
 
-	dp.dispatchedMessages, _ = lru.New(1000)
+	dp.dispatchedMessages, _ = lru.New(cacheSize)
 
 	return dp
 }

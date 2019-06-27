@@ -178,7 +178,6 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 		stream := value.(*Stream)
 		if stream.pid.Pretty() != peerID {
 			stream.SendMessageToChan(message)
-
 			if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
 				sm.searchCache(stream, hash, message, messageName)
 			} else if messageName == PovPublishReq {

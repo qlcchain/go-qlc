@@ -2,12 +2,13 @@ package dpos
 
 import (
 	"errors"
-	"github.com/bluele/gcache"
-	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/bluele/gcache"
+	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -21,7 +22,7 @@ import (
 )
 
 const (
-	targetTps             = 10
+	targetTps             = 100
 	repTimeout            = 5 * time.Minute
 	uncheckedCacheSize    = targetTps * 5 * 60
 	uncheckedTimeout      = 5 * time.Minute

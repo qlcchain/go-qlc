@@ -117,7 +117,6 @@ func (ms *MessageService) Start() {
 
 func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
-
 	for {
 		select {
 		case <-ms.quitCh:

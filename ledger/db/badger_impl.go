@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/qlcchain/go-qlc/common"
 	"log"
 	"sort"
 
-	"github.com/dgraph-io/badger/v2"
-	badgerOpts "github.com/dgraph-io/badger/v2/options"
-	"github.com/dgraph-io/badger/v2/pb"
+	"github.com/dgraph-io/badger"
+	badgerOpts "github.com/dgraph-io/badger/options"
+	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
@@ -28,14 +27,12 @@ type BadgerStoreTxn struct {
 
 // NewBadgerStore initializes/opens a badger database in the given directory.
 func NewBadgerStore(dir string) (Store, error) {
-	opts := badger.DefaultOptions
+	opts := badger.DefaultOptions(dir)
 
 	if common.RunMode == common.RunModeSimple {
 		opts.MaxTableSize = 16 << 20
 	}
 
-	opts.Dir = dir
-	opts.ValueDir = dir
 	opts.Logger = nil
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
 	_ = util.CreateDirIfNotExist(dir)
