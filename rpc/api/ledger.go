@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/qlcchain/go-qlc/consensus"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/ledger/relation"
@@ -791,7 +790,6 @@ func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 	}
 	return &ApiTokenInfo{*token}, nil
 }
-
 
 type APIUncheckBlock struct {
 	Block       *APIBlock              `json:"block"`

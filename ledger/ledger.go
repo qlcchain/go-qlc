@@ -398,7 +398,6 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 		return fmt.Errorf("delete link error: %s", err)
 	}
 
-
 	l.releaseTxn(txn, flag)
 	l.logger.Info("publish deleteRelation,", hash.String())
 	l.eb.Publish(string(common.EventDeleteRelation), hash)
@@ -438,7 +437,6 @@ func (l *Ledger) deleteLink(blk *types.StateBlock, txn db.StoreTxn) error {
 	}
 	return nil
 }
-
 
 func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
 	key := getKeyOfHash(hash, idPrefixBlock)
