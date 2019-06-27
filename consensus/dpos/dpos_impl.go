@@ -135,7 +135,7 @@ func (dps *DPoS) Start() {
 			go dps.refreshAccount()
 		case <-timerUpdateUncheckedNum.C: //calibration
 			if common.RunMode == common.RunModeNormal {
-				consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len()))
+				consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(false)))
 			} else {
 				timerUpdateUncheckedNum.Stop()
 			}
