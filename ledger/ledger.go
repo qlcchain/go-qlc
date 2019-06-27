@@ -1832,6 +1832,10 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 	if err != nil {
 		return nil, err
 	}
+	povHeader, err := l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		block.Type = types.Send
 		block.Balance = tm.Balance.Sub(amount)
@@ -1842,6 +1846,7 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 		block.Network = prev.GetNetwork()
 		block.Oracle = prev.GetOracle()
 		block.Storage = prev.GetStorage()
+		block.PoVHeight = povHeader.Height
 
 		if prk != nil {
 			acc := types.NewAccount(prk)
@@ -1927,7 +1932,11 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 			Timestamp:      common.TimeNow().UTC().Unix(),
 		}
 	}
-
+	povHeader, err := l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
+	sb.PoVHeight = povHeader.Height
 	if prk != nil {
 		sb.Signature = acc.Sign(sb.GetHash())
 		sb.Work = l.generateWork(sb.Root())
@@ -1952,7 +1961,10 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	if err != nil {
 		return nil, fmt.Errorf("token header block not found")
 	}
-
+	povHeader, err := l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	sb := types.StateBlock{
 		Type:           types.Change,
 		Address:        account,
@@ -1966,6 +1978,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Representative: representative,
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,
+		PoVHeight:      povHeader.Height,
 		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 	if prk != nil {

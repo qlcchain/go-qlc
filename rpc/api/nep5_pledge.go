@@ -12,10 +12,12 @@ import (
 	"math/big"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -26,15 +28,24 @@ import (
 )
 
 type NEP5PledgeApi struct {
-	logger   *zap.SugaredLogger
-	ledger   *ledger.Ledger
-	pledge   *contract.Nep5Pledge
-	withdraw *contract.WithdrawNep5Pledge
+	logger    *zap.SugaredLogger
+	ledger    *ledger.Ledger
+	pledge    *contract.Nep5Pledge
+	withdraw  *contract.WithdrawNep5Pledge
+	syncState atomic.Value
 }
 
-func NewNEP5PledgeApi(ledger *ledger.Ledger) *NEP5PledgeApi {
-	return &NEP5PledgeApi{ledger: ledger, logger: log.NewLogger("api_nep5_pledge"), pledge: &contract.Nep5Pledge{},
-		withdraw: &contract.WithdrawNep5Pledge{}}
+func NewNEP5PledgeApi(ledger *ledger.Ledger, eb event.EventBus) *NEP5PledgeApi {
+
+	pledge := &NEP5PledgeApi{
+		ledger:   ledger,
+		logger:   log.NewLogger("api_nep5_pledge"),
+		pledge:   &contract.Nep5Pledge{},
+		withdraw: &contract.WithdrawNep5Pledge{},
+	}
+	pledge.syncState.Store(common.SyncNotStart)
+	_ = eb.SubscribeSync(string(common.EventPovSyncState), pledge.OnPovSyncState)
+	return pledge
 }
 
 type PledgeParam struct {
@@ -43,6 +54,11 @@ type PledgeParam struct {
 	Amount        types.Balance
 	PType         string
 	NEP5TxId      string
+}
+
+func (p *NEP5PledgeApi) OnPovSyncState(state common.SyncState) {
+	p.logger.Infof("NEP5Pledge receive pov sync state [%s]", state)
+	p.syncState.Store(state)
 }
 
 func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
@@ -74,6 +90,9 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
+	if ss := p.syncState.Load().(common.SyncState); ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 
 	am, err := p.ledger.GetAccountMeta(param.PledgeAddress)
 	if am == nil {
@@ -92,7 +111,10 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 	if err != nil {
 		return nil, err
 	}
-
+	povHeader, err := p.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	send := &types.StateBlock{
 		Type:           types.ContractSend,
 		Token:          tm.Type,
@@ -106,6 +128,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		Link:           types.Hash(types.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
+		PoVHeight:      povHeader.Height,
 		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 
@@ -121,12 +144,20 @@ func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 	if input == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := p.syncState.Load().(common.SyncState); ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	reward := &types.StateBlock{}
 	blocks, err := p.pledge.DoReceive(vmstore.NewVMContext(p.ledger), reward, input)
 	if err != nil {
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		povHeader, err := p.ledger.GetLatestPovHeader()
+		if err != nil {
+			return nil, fmt.Errorf("get pov header error: %s", err)
+		}
+		reward.PoVHeight = povHeader.Height
 		reward.Timestamp = common.TimeNow().UTC().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		reward.Extra = *h
@@ -172,6 +203,9 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 	if param.Beneficial.IsZero() || param.Amount.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
+	if ss := p.syncState.Load().(common.SyncState); ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 
 	am, err := p.ledger.GetAccountMeta(param.Beneficial)
 	if am == nil {
@@ -187,7 +221,10 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 	if err != nil {
 		return nil, err
 	}
-
+	povHeader, err := p.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	send := &types.StateBlock{
 		Type:           types.ContractSend,
 		Token:          tm.Type,
@@ -201,6 +238,7 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 		Link:           types.Hash(types.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
+		PoVHeight:      povHeader.Height,
 		Timestamp:      common.TimeNow().UTC().Unix(),
 	}
 
@@ -230,6 +268,9 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 	if input == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := p.syncState.Load().(common.SyncState); ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	reward := &types.StateBlock{}
 
 	blocks, err := p.withdraw.DoReceive(vmstore.NewVMContext(p.ledger), reward, input)
@@ -237,6 +278,11 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		povHeader, err := p.ledger.GetLatestPovHeader()
+		if err != nil {
+			return nil, fmt.Errorf("get pov header error: %s", err)
+		}
+		reward.PoVHeight = povHeader.Height
 		reward.Timestamp = common.TimeNow().UTC().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		reward.Extra = *h

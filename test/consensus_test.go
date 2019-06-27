@@ -104,6 +104,9 @@ func TestConsensus(t *testing.T) {
 
 	//new ledger
 	ledger2 := services.NewLedgerService(cfgFile2)
+	setPovHeader(cfgFile1.LedgerDir(), ledger1.Ledger)
+	setPovHeader(cfgFile2.LedgerDir(), ledger2.Ledger)
+
 	//storage genesisBlock
 	creatGenesisBlock(ledger2.Ledger)
 	//start node2

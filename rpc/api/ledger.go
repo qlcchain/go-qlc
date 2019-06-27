@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync/atomic"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -27,9 +28,10 @@ var (
 type LedgerApi struct {
 	ledger *ledger.Ledger
 	//vmContext *vmstore.VMContext
-	eb       event.EventBus
-	relation *relation.Relation
-	logger   *zap.SugaredLogger
+	eb        event.EventBus
+	relation  *relation.Relation
+	syncState atomic.Value
+	logger    *zap.SugaredLogger
 }
 
 type APIBlock struct {
@@ -77,13 +79,26 @@ type ApiTokenInfo struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
-	return &LedgerApi{ledger: l, eb: eb, relation: relation, logger: log.NewLogger("api_ledger")}
+	ledger := &LedgerApi{
+		ledger:   l,
+		eb:       eb,
+		relation: relation,
+		logger:   log.NewLogger("api_ledger"),
+	}
+	ledger.syncState.Store(common.SyncNotStart)
+	_ = eb.SubscribeSync(string(common.EventPovSyncState), ledger.OnPovSyncState)
+	return ledger
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
 	b.StateBlock = block
 	b.Hash = block.GetHash()
 	return b
+}
+
+func (l *LedgerApi) OnPovSyncState(state common.SyncState) {
+	l.logger.Infof("ledger receive pov sync state [%s]", state)
+	l.syncState.Store(state)
 }
 
 func (l *LedgerApi) AccountBlocksCount(addr types.Address) (int64, error) {
@@ -547,6 +562,9 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 	if para == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := l.syncState.Load().(common.SyncState); ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
@@ -591,6 +609,9 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 	if sendBlock == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := l.syncState.Load().(common.SyncState); ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	var prk []byte
 	if prkStr != nil {
 		var err error
@@ -607,6 +628,9 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 }
 
 func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr *string) (*types.StateBlock, error) {
+	if ss := l.syncState.Load().(common.SyncState); ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	var prk []byte
 	if prkStr != nil {
 		var err error
@@ -653,6 +677,10 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 }
 
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
+	if ss := l.syncState.Load().(common.SyncState); ss != common.Syncdone {
+		return types.Hash{}, errors.New("pov sync is not finished, please check it")
+	}
+
 	if block == nil {
 		return types.ZeroHash, ErrParameterNil
 	}

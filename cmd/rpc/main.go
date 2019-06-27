@@ -20,6 +20,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -108,6 +109,12 @@ func main() {
 		logger.Fatal(err)
 	}
 	logger.Info("rpc started")
+	bus := event.GetEventBus(cfg.LedgerDir())
+	bus.Publish(string(common.EventPovSyncState), common.Syncdone)
+	header := mock.PovHeader()
+	l.Ledger.AddPovHeader(header)
+	l.Ledger.AddPovHeight(header.Hash, header.Height)
+	l.Ledger.AddPovBestHash(header.Height, header.Hash)
 	rollback()
 	defer func() {
 		l.Stop()
@@ -263,6 +270,7 @@ func rollback() {
 		fmt.Println(err)
 		return
 	}
+	time.Sleep(2 * time.Second)
 	fmt.Println("----done----")
 }
 

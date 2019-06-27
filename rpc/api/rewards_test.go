@@ -14,15 +14,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/google/uuid"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
@@ -31,6 +31,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	dir := filepath.Join(cfg.QlcTestDataDir(), "rewards", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	l := ledger.NewLedger(dir)
+	addPovHeader(l)
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()
@@ -46,10 +47,20 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	}, l
 }
 
+func addPovHeader(l *ledger.Ledger) {
+	header := mock.PovHeader()
+	l.AddPovHeader(header)
+	l.AddPovHeight(header.Hash, header.Height)
+	l.AddPovBestHash(header.Height, header.Hash)
+}
+
 func TestRewardsApi_GetRewardData(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	api := NewRewardsApi(l)
+
+	bus := event.GetEventBus(uuid.New().String())
+	api := NewRewardsApi(l, bus)
+	bus.Publish(string(common.EventPovSyncState), common.Syncdone)
 
 	tx := mock.Account()
 	rx := mock.Account()
@@ -137,7 +148,9 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	api := NewRewardsApi(l)
+	bus := event.GetEventBus(uuid.New().String())
+	api := NewRewardsApi(l, bus)
+	bus.Publish(string(common.EventPovSyncState), common.Syncdone)
 
 	tx := mock.Account()
 	rx := mock.Account()

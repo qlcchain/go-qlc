@@ -3,14 +3,18 @@ package test
 import (
 	"encoding/json"
 	"errors"
-	rpc "github.com/qlcchain/jsonrpc2"
 	"os"
 	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/services"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/mock"
+	rpc "github.com/qlcchain/jsonrpc2"
 )
 
 func generateChain() (func() error, *rpc.Client, *services.LedgerService, error) {
@@ -85,6 +89,8 @@ func generateChain() (func() error, *rpc.Client, *services.LedgerService, error)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	setPovHeader(cfgFile.LedgerDir(), l)
+
 	return func() error {
 		if client != nil {
 			client.Close()
@@ -103,4 +109,13 @@ func generateChain() (func() error, *rpc.Client, *services.LedgerService, error)
 		}
 		return nil
 	}, client, ls, nil
+}
+
+func setPovHeader(id string, l *ledger.Ledger) {
+	bus := event.GetEventBus(id)
+	bus.Publish(string(common.EventPovSyncState), common.Syncdone)
+	header := mock.PovHeader()
+	l.AddPovHeader(header)
+	l.AddPovHeight(header.Hash, header.Height)
+	l.AddPovBestHash(header.Height, header.Hash)
 }

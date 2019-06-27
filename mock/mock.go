@@ -142,6 +142,18 @@ func StateBlockWithoutWork() *types.StateBlock {
 	return sb
 }
 
+func PovHeader() *types.PovHeader {
+	i, _ := random.Intn(math.MaxInt16)
+	return &types.PovHeader{
+		Hash:       Hash(),
+		Previous:   Hash(),
+		MerkleRoot: Hash(),
+		Height:     uint64(i),
+		Coinbase:   Address(),
+		StateHash:  Hash(),
+	}
+}
+
 func BlockChain() ([]*types.StateBlock, error) {
 	dir := filepath.Join(config.QlcTestDataDir(), "blocks.json")
 	_, err := os.Stat(dir)
