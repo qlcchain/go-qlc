@@ -27,6 +27,7 @@ type PovBlockResult struct {
 type PovBlockSource struct {
 	block   *types.PovBlock
 	from    types.PovBlockFrom
+	peerID  string
 	replyCh chan PovBlockResult
 }
 
@@ -135,8 +136,8 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 	}
 }
 
-func (bp *PovBlockProcessor) AddBlock(block *types.PovBlock, from types.PovBlockFrom) error {
-	blockSrc := &PovBlockSource{block: block, from: from}
+func (bp *PovBlockProcessor) AddBlock(block *types.PovBlock, from types.PovBlockFrom, peerID string) error {
+	blockSrc := &PovBlockSource{block: block, from: from, peerID: peerID}
 
 	bp.blockCh <- blockSrc
 
@@ -372,28 +373,36 @@ func (bp *PovBlockProcessor) onRequestOrphanBlocksTimer() {
 	}
 
 	// find orphan roots that are previous blocks
-	orphanRoots := make(map[types.Hash]struct{})
+	peerOrphanRoots := make(map[string]map[types.Hash]struct{})
 	for _, oBlock := range bp.reqOrphanBlocks {
 		blockHash := oBlock.blockSrc.block.GetHash()
 		oRoot := bp.GetOrphanRoot(blockHash)
-		orphanRoots[oRoot] = struct{}{}
-	}
 
-	// check orphan roots are waiting txs or not
-	var reqOrphanRoots []*types.Hash
-	for oRoot := range orphanRoots {
-		if bp.HasPendingBlock(oRoot) {
-			continue
+		orphanRoots := peerOrphanRoots[oBlock.blockSrc.peerID]
+		if orphanRoots == nil {
+			orphanRoots = make(map[types.Hash]struct{})
+			peerOrphanRoots[oBlock.blockSrc.peerID] = orphanRoots
 		}
-
-		oRootCopy := oRoot
-		reqOrphanRoots = append(reqOrphanRoots, &oRootCopy)
+		orphanRoots[oRoot] = struct{}{}
 	}
 
 	// just request once by fast timer, retry many times by slow timer
 	bp.reqOrphanBlocks = make(map[types.Hash]*PovOrphanBlock)
 
-	bp.povEngine.GetSyncer().requestBlocksByHashes(reqOrphanRoots, false)
+	for peerID, orphanRoots := range peerOrphanRoots {
+		// check orphan roots are waiting txs or not
+		var reqOrphanRoots []*types.Hash
+		for oRoot := range orphanRoots {
+			if bp.HasPendingBlock(oRoot) {
+				continue
+			}
+
+			oRootCopy := oRoot
+			reqOrphanRoots = append(reqOrphanRoots, &oRootCopy)
+		}
+
+		bp.povEngine.GetSyncer().requestBlocksByHashes(reqOrphanRoots, peerID)
+	}
 }
 
 func (bp *PovBlockProcessor) onCheckOrphanBlocksTimer() {
@@ -433,7 +442,7 @@ func (bp *PovBlockProcessor) onCheckOrphanBlocksTimer() {
 		reqOrphanRoots = append(reqOrphanRoots, &oRootCopy)
 	}
 
-	bp.povEngine.GetSyncer().requestBlocksByHashes(reqOrphanRoots, false)
+	bp.povEngine.GetSyncer().requestBlocksByHashes(reqOrphanRoots, "")
 }
 
 func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {
@@ -469,7 +478,7 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *p
 
 	bp.pendingBlocks[blockHash] = pendingBlock
 
-	bp.povEngine.GetSyncer().requestTxsByHashes(reqTxHashes)
+	bp.povEngine.GetSyncer().requestTxsByHashes(reqTxHashes, blockSrc.peerID)
 }
 
 func (bp *PovBlockProcessor) removeTxPendingBlockNoLock(pendingBlock *PovPendingBlock) {
@@ -537,7 +546,7 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 		}
 	}
 
-	bp.povEngine.GetSyncer().requestTxsByHashes(reqTxHashes)
+	bp.povEngine.GetSyncer().requestTxsByHashes(reqTxHashes, "")
 }
 
 func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock) {
