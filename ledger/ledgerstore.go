@@ -80,6 +80,8 @@ type Store interface {
 	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
 	GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error)
 	IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error)
+	GetChildren(hash types.Hash, txns ...db.StoreTxn) (map[types.Hash]int, error)
+	GetLinkBlock(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
 
 	//Latest block hash by account and token type, if not exist, return zero hash
 	Latest(account types.Address, token types.Hash, txns ...db.StoreTxn) types.Hash
@@ -97,8 +99,6 @@ type Store interface {
 	TokenBalance(account types.Address, token types.Hash, txns ...db.StoreTxn) (types.Balance, error)
 	//Weight get vote weight for PoS
 	Weight(account types.Address, txns ...db.StoreTxn) types.Balance
-	//Rollback blocks until `hash' doesn't exist
-	Rollback(hash types.Hash) error
 
 	//GenerateBlock
 	GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)

@@ -69,8 +69,10 @@ func TestLedger_Rollback(t *testing.T) {
 		}
 	}
 
-	h := bc[5].GetHash()
-	if err := l.Rollback(h); err != nil {
+	rb := bc[4]
+	fmt.Println("rollback")
+	fmt.Println("rollback hash: ", rb.GetHash(), rb.GetType(), rb.GetPrevious().String())
+	if err := lv.Rollback(rb.GetHash()); err != nil {
 		t.Fatal(err)
 	}
 	checkInfo(t, l)
@@ -122,4 +124,37 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 			fmt.Println(k, b)
 		}
 	}
+
+	fmt.Println("----pending----")
+	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		fmt.Println("      key:", pendingKey)
+		fmt.Println("      info:", pendingInfo)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_Rollback_ContractData(t *testing.T) {
+	t.Skip()
+	dir := filepath.Join(config.DefaultDataDir(), "ledger")
+	t.Log(dir)
+	l := ledger.NewLedger(dir)
+	lv := NewLedgerVerifier(l)
+
+	defer func() {
+		err := l.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	hash := new(types.Hash)
+	hash.Of("06910e3bfea136a891709f2bace609f12135d8766325fca328fc519e9f638157")
+	block, err := lv.l.GetStateBlock(*hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(block)
 }

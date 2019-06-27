@@ -8,29 +8,54 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"math/big"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 
 	"github.com/qlcchain/go-qlc/chain/services"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
-var logger = log.NewLogger("main")
+var (
+	logger     = log.NewLogger("main")
+	l          *services.LedgerService
+	rs         *services.RPCService
+	qlcAccount *types.Account
+	gasAccount *types.Account
+	verifier   *process.LedgerVerifier
+)
 
 func main() {
+	qlcPri := flag.String("qlcAccount", "", "")
+	gasPri := flag.String("gasAccount", "", "")
+	testnet := flag.Bool("testnet", false, "")
+
+	flag.Parse()
+	prk, err := hex.DecodeString(*qlcPri)
+	qlcAccount = types.NewAccount(prk)
+	prk2, err := hex.DecodeString(*gasPri)
+	gasAccount = types.NewAccount(prk2)
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
 	dir := filepath.Join(config.QlcTestDataDir(), "cmd")
+	if *testnet {
+		dir = filepath.Join(config.DefaultDataDir())
+	}
 	cm := config.NewCfgManager(dir)
 	cfg, err := cm.Load()
 	cfg.RPC.Enable = true
@@ -51,7 +76,7 @@ func main() {
 	}
 	logger.Info("sqlite started")
 
-	l := services.NewLedgerService(cfg)
+	l = services.NewLedgerService(cfg)
 	if err := l.Init(); err != nil {
 		return
 	}
@@ -59,7 +84,8 @@ func main() {
 		logger.Fatal(err)
 	}
 	logger.Info("ledger started")
-	initData(l.Ledger)
+	verifier = process.NewLedgerVerifier(l.Ledger)
+	//initData(l.Ledger)
 
 	w := services.NewWalletService(cfg)
 	if err := w.Init(); err != nil {
@@ -70,7 +96,7 @@ func main() {
 	}
 	logger.Info("wallet started")
 
-	rs, err := services.NewRPCService(cfg)
+	rs, err = services.NewRPCService(cfg)
 	if err != nil {
 		logger.Fatal(err)
 		return
@@ -82,23 +108,178 @@ func main() {
 		logger.Fatal(err)
 	}
 	logger.Info("rpc started")
-
+	rollback()
 	defer func() {
 		l.Stop()
 		w.Stop()
 		rs.Stop()
 		ss.Stop()
-		os.RemoveAll(dir)
+		if *testnet {
+			fmt.Println()
+		} else {
+			os.RemoveAll(dir)
+			fmt.Println("delete ", dir)
+		}
 	}()
 	s := <-c
 	fmt.Println("Got signal: ", s)
 }
 
+func rollback() {
+	accInfo, _ := l.Ledger.GetAccountMeta(qlcAccount.Address())
+	fmt.Println(accInfo)
+	tokenInfo, _ := l.Ledger.GetTokenMeta(qlcAccount.Address(), common.ChainToken())
+	fmt.Println(tokenInfo)
+
+	client, err := rs.RPC().Attach()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	acc := mock.Account()
+	nep5Id := "5594c690c3618a170a77d2696688f908efec4da2b94363fcb96749516307031d"
+
+	fmt.Println("----pledge----")
+	para := api.PledgeParam{
+		Beneficial:    acc.Address(),
+		PledgeAddress: qlcAccount.Address(),
+		Amount:        types.Balance{Int: big.NewInt(240000000)},
+		PType:         "vote",
+		NEP5TxId:      nep5Id,
+	}
+	sendSb := new(types.StateBlock)
+	err = client.Call(sendSb, "pledge_getPledgeBlock", para)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	signAndWork(sendSb, qlcAccount)
+	var hash types.Hash
+	err = client.Call(&hash, "ledger_process", sendSb)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	receSb := new(types.StateBlock)
+	err = client.Call(receSb, "pledge_getPledgeRewardBlock", sendSb)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	signAndWork(receSb, acc)
+	err = client.Call(&hash, "ledger_process", receSb)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("----send----")
+	sPara := api.APISendBlockPara{
+		From:      gasAccount.Address(),
+		TokenName: "QGAS",
+		To:        acc.Address(),
+		Amount:    types.Balance{Int: big.NewInt(50)},
+	}
+	sendBlk := new(types.StateBlock)
+	err = client.Call(&sendBlk, "ledger_generateSendBlock", sPara, hex.EncodeToString(gasAccount.PrivateKey()))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = client.Call(&hash, "ledger_process", sendBlk)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	rBlk := new(types.StateBlock)
+	err = client.Call(&rBlk, "ledger_generateReceiveBlock", sendBlk, hex.EncodeToString(acc.PrivateKey()))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = client.Call(&hash, "ledger_process", rBlk)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("----reward----")
+	param := &api.RewardsParam{
+		Id:     nep5Id,
+		Amount: types.Balance{Int: big.NewInt(100)},
+		Self:   gasAccount.Address(),
+		To:     acc.Address(),
+	}
+
+	err = client.Call(&hash, "rewards_getUnsignedRewardData", param)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	sign := gasAccount.Sign(hash)
+	rewardSendBlk := new(types.StateBlock)
+	err = client.Call(&rewardSendBlk, "rewards_getSendRewardBlock", param, sign)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = client.Call(&hash, "ledger_process", rewardSendBlk)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	rewardReceBlk1 := new(types.StateBlock)
+	err = client.Call(&rewardReceBlk1, "rewards_getReceiveRewardBlock", rewardSendBlk.GetHash())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	time.Sleep(1 * time.Second)
+	rewardReceBlk2 := new(types.StateBlock)
+	err = client.Call(&rewardReceBlk2, "rewards_getReceiveRewardBlock", rewardSendBlk.GetHash())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = client.Call(&hash, "ledger_process", rewardReceBlk1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = client.Call(&hash, "ledger_process", rewardReceBlk2)
+	if err != nil {
+		fmt.Println(err)
+		//return
+	}
+
+	time.Sleep(2 * time.Second)
+	err = verifier.Rollback(rewardReceBlk1.GetHash())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = client.Call(&hash, "ledger_process", rewardReceBlk2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("----done----")
+}
+
+func signAndWork(block *types.StateBlock, account *types.Account) error {
+	var w types.Work
+	worker, err := types.NewWorker(w, block.Root())
+	if err != nil {
+		return err
+	}
+	block.Work = worker.NewWork()
+	block.Signature = account.Sign(block.GetHash())
+
+	return nil
+}
+
 func initData(ledger *ledger.Ledger) {
-	verifier := process.NewLedgerVerifier(ledger)
-
 	blocks, _ := mock.BlockChain()
-
 	if err := verifier.BlockProcess(blocks[0]); err != nil {
 		fmt.Println(err)
 		return
