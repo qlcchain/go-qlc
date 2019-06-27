@@ -361,7 +361,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		dps.logger.Infof("dps recv publishReq block[%s]", hash)
 		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
 
-		if dps.isResultValid(result) {
+		if result != process.Old {
 			dps.localRepVote(bs)
 		}
 	case consensus.MsgConfirmReq:
@@ -397,10 +397,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 					return
 				}
 			}
-		} else if result == process.Progress {
-			dps.acTrx.vote(ack)
-			dps.localRepVote(bs)
-		} else if result == process.Old {
+		} else if dps.isResultValid(result) {
 			dps.acTrx.vote(ack)
 		}
 	case consensus.MsgSync:
