@@ -8,9 +8,9 @@ os:
 
 dist: xenial
 
-cache:
-  directories:
-    - $HOME/gopath/pkg/mod
+# cache:
+#   directories:
+#     - $HOME/gopath/pkg/mod
 
 services:
   - docker
