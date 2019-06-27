@@ -5,8 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"

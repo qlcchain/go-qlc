@@ -130,10 +130,12 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 		if bytes.HasPrefix(key[types.AddressSize+1:], id) && len(value) > 0 {
 			info := new(RewardsInfo)
 			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil {
-				if info.Type == uint8(Rewards) {
-					result = append(result, info)
-				} else {
-					logger.Warnf("invalid reward type, %s==>%s", txId, util.ToString(info))
+				if isValidContract(ctx, info) {
+					if info.Type == uint8(Rewards) {
+						result = append(result, info)
+					} else {
+						logger.Warnf("invalid reward type, %s==>%s", txId, util.ToString(info))
+					}
 				}
 			} else {
 				logger.Error(err)
@@ -145,6 +147,24 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 	} else {
 		return nil, err
 	}
+}
+
+func isValidContract(ctx *vmstore.VMContext, reward *RewardsInfo) bool {
+	//txHeader := key[0:types.HashSize]
+	//rxHeader := key[types.HashSize : types.HashSize+types.HashSize]
+	//txHash, err := types.BytesToHash(txHeader)
+	//if err != nil {
+	//	return false
+	//}
+	_, err := ctx.GetStateBlock(reward.RxHeader)
+	if err != nil {
+		return false
+	}
+	_, err = ctx.GetStateBlock(reward.TxHeader)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func GetTotalRewards(ctx *vmstore.VMContext, txId string) (*big.Int, error) {
@@ -173,15 +193,17 @@ func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) 
 		if bytes.HasPrefix(k, confidant[:]) && len(value) > 0 {
 			info := new(RewardsInfo)
 			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil {
-				if info.Type == uint8(Confidant) {
-					s := hex.EncodeToString(k[types.AddressSize : types.AddressSize+types.HashSize])
-					if infos, ok := result[s]; ok {
-						result[s] = append(infos, info)
+				if isValidContract(ctx, info) {
+					if info.Type == uint8(Confidant) {
+						s := hex.EncodeToString(k[types.AddressSize : types.AddressSize+types.HashSize])
+						if infos, ok := result[s]; ok {
+							result[s] = append(infos, info)
+						} else {
+							result[s] = []*RewardsInfo{info}
+						}
 					} else {
-						result[s] = []*RewardsInfo{info}
+						logger.Warnf("invalid confidant type, %s==>%s", confidant.String(), util.ToString(info))
 					}
-				} else {
-					logger.Warnf("invalid confidant type, %s==>%s", confidant.String(), util.ToString(info))
 				}
 			} else {
 				logger.Error(err)

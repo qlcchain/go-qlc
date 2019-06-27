@@ -2,11 +2,12 @@ package p2p
 
 import (
 	"context"
+	corediscovery "github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"time"
 
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	host "github.com/libp2p/go-libp2p-host"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -17,9 +18,9 @@ const (
 	discoveryConnTimeout = time.Second * 30
 )
 
-func (node *QlcNode) dhtFoundPeers() ([]pstore.PeerInfo, error) {
+func (node *QlcNode) dhtFoundPeers() ([]peer.AddrInfo, error) {
 	//discovery peers
-	peers, err := discovery.FindPeers(node.ctx, node.dis, QlcProtocolFOUND, node.cfg.P2P.Discovery.Limit)
+	peers, err := discovery.FindPeers(node.ctx, node.dis, QlcProtocolFOUND, corediscovery.Limit(node.cfg.P2P.Discovery.Limit))
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +32,7 @@ func (node *QlcNode) dhtFoundPeers() ([]pstore.PeerInfo, error) {
 }
 
 // HandlePeerFound attempts to connect to peer from `PeerInfo`.
-func (node *QlcNode) HandlePeerFound(p pstore.PeerInfo) {
+func (node *QlcNode) HandlePeerFound(p peer.AddrInfo) {
 	ctx, cancel := context.WithTimeout(node.ctx, discoveryConnTimeout)
 	defer cancel()
 	if err := node.host.Connect(ctx, p); err != nil {

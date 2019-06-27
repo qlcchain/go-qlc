@@ -3,6 +3,7 @@ package test
 import (
 	"encoding/json"
 	"errors"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"os"
 	"path/filepath"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/rpc"
 )
 
 func generateChain() (func() error, *rpc.Client, *services.LedgerService, error) {

@@ -17,10 +17,7 @@ type SecureString struct {
 //NewSecureString from string
 func NewSecureString(passphrase string) (*SecureString, error) {
 	bytes := []byte(passphrase)
-	buffer, err := memguard.NewImmutableFromBytes(bytes)
-	if err != nil {
-		return nil, err
-	}
+	buffer := memguard.NewBufferFromBytes(bytes)
 	return &SecureString{
 		buff: buffer,
 		size: len(bytes),
@@ -29,7 +26,7 @@ func NewSecureString(passphrase string) (*SecureString, error) {
 
 //Bytes get bytes from string
 func (ss *SecureString) Bytes() []byte {
-	return ss.buff.Buffer()
+	return ss.buff.Bytes()
 }
 
 //Destroy string buffer

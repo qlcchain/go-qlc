@@ -29,6 +29,8 @@ const (
 	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
+	maxBlocks             = 10240
+	maxCacheBlocks        = 102400
 	povBlockNumDay        = 2880
 )
 
@@ -137,6 +139,7 @@ func (dps *DPoS) Start() {
 			} else {
 				timerUpdateUncheckedNum.Stop()
 			}
+
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {

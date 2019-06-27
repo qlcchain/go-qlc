@@ -2,12 +2,13 @@ package consensus
 
 import (
 	"container/list"
+	"sync"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/trie"
-	"sync"
-	"time"
 )
 
 type PovTxEvent struct {

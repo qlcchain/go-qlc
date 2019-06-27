@@ -122,6 +122,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
 		rootCmd.PersistentFlags().StringVar(&RunModeP, "mode", common.RunModeNormalStr, "running mode")
+
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)

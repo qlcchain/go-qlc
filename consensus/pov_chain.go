@@ -3,6 +3,13 @@ package consensus
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"math/rand"
+	"sort"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -12,12 +19,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
-	"math/big"
-	"math/rand"
-	"sort"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (

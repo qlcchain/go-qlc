@@ -243,7 +243,7 @@ func (ms *MessageService) checkMessageCache() {
 	var cs []*cacheValue
 	var csTemp []*cacheValue
 	var hash types.Hash
-	m := ms.cache.GetALL()
+	m := ms.cache.GetALL(false)
 	for k, v := range m {
 		hash = k.(types.Hash)
 		cs = v.([]*cacheValue)

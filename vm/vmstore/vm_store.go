@@ -28,6 +28,7 @@ type ContractStore interface {
 	IsUserAccount(address types.Address) (bool, error)
 	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+	GetStateBlock(hash types.Hash) (*types.StateBlock, error)
 	HasTokenMeta(address types.Address, token types.Hash) (bool, error)
 	SaveStorage() error
 }
@@ -195,6 +196,10 @@ func (v *VMContext) HasTokenMeta(address types.Address, token types.Hash) (bool,
 
 func (v *VMContext) GetTokenMeta(address types.Address, token types.Hash) (*types.TokenMeta, error) {
 	return v.ledger.GetTokenMeta(address, token)
+}
+
+func (v *VMContext) GetStateBlock(hash types.Hash) (*types.StateBlock, error) {
+	return v.ledger.GetStateBlock(hash)
 }
 
 func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) {

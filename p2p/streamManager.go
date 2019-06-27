@@ -186,7 +186,7 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 			default:
 				sm.node.logger.Errorf("send message to [%s] timeout in func SendMessageToPeers", stream.pid.Pretty())
 			}
-			stream.messageChan <- message
+
 			if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
 				sm.searchCache(stream, hash, message, messageName)
 			} else if messageName == PovPublishReq {

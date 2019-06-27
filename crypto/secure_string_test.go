@@ -8,18 +8,15 @@
 package crypto
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/awnumar/memguard"
 )
 
 func TestNewSecureString(t *testing.T) {
-	memguard.CatchInterrupt(func() {
-		fmt.Println("Interrupt signal received. Exiting...")
-	})
+	memguard.CatchInterrupt()
 
-	defer memguard.DestroyAll()
+	defer memguard.Purge()
 	p := "2Q9ZranUQbvM9JWwUBKN"
 	ss, err := NewSecureString(p)
 	if err != nil {
@@ -29,10 +26,10 @@ func TestNewSecureString(t *testing.T) {
 		t.Fatal("decode error")
 	}
 
-	ss.Destroy()
-
 	b2 := ss.Bytes()
 	t.Log("b2: [", string(b2), "] len:", len(b2))
+
+	ss.Destroy()
 
 	p2 := "mQuj2fdGCys3snvhS6AS"
 	ss, _ = NewSecureString(p2)
