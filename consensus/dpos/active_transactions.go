@@ -1,6 +1,7 @@
 package dpos
 
 import (
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"sync"
 	"time"
 
@@ -196,7 +197,8 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 			continue
 		}
 		if h {
-			err = act.dps.ledger.Rollback(hash)
+			verfier := process.NewLedgerVerifier(act.dps.ledger)
+			err = verfier.Rollback(hash)
 			if err != nil {
 				act.dps.logger.Errorf("error [%s] when rollback hash [%s]", err, hash.String())
 			}

@@ -791,3 +791,74 @@ func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 	}
 	return &ApiTokenInfo{*token}, nil
 }
+
+
+type APIUncheckBlock struct {
+	Block       *APIBlock              `json:"block"`
+	Link        types.Hash             `json:"link"`
+	UnCheckType string                 `json:"uncheckType"`
+	SyncType    types.SynchronizedKind `json:"syncType"`
+}
+
+func (l *LedgerApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
+	unchecks := make([]*APIUncheckBlock, 0)
+	vmContext := vmstore.NewVMContext(l.ledger)
+	err := l.ledger.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		uncheck := new(APIUncheckBlock)
+		b, err := generateAPIBlock(vmContext, block)
+		if err != nil {
+			return err
+		}
+		uncheck.Block = b
+		uncheck.Link = link
+		if unCheckType == 0 {
+			uncheck.UnCheckType = "GapPrevious"
+		}
+		if unCheckType == 1 {
+			uncheck.UnCheckType = "GapLink"
+		}
+		uncheck.SyncType = sync
+		unchecks = append(unchecks, uncheck)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return unchecks, nil
+}
+
+func (l *LedgerApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
+	blk, err := l.ledger.GetStateBlock(hash)
+	if err != nil {
+		return nil, fmt.Errorf("get block err: %s", hash.String())
+	}
+	r := make(map[string]types.Hash)
+	children, _ := l.ledger.GetChildren(hash)
+	for key, val := range children {
+		if val == 0 {
+			cblk, err := l.ledger.GetStateBlock(key)
+			if err != nil {
+				return nil, fmt.Errorf("get child1 err: %s", key.String())
+			}
+			if cblk.GetAddress() != blk.GetAddress() {
+				return nil, fmt.Errorf("address not equal, %s, %s", blk.GetHash(), cblk.GetHash())
+			}
+			r["child1"] = key
+		}
+		if val == 1 {
+			cblk, err := l.ledger.GetStateBlock(key)
+			if err != nil {
+				return nil, fmt.Errorf("get child2 err: %s", key.String())
+			}
+			if cblk.GetAddress() == blk.GetAddress() {
+				return nil, fmt.Errorf("address equal, %s, %s", blk.GetHash(), cblk.GetHash())
+			}
+			r["child2"] = key
+		}
+	}
+	link, _ := l.ledger.GetLinkBlock(hash)
+	if !link.IsZero() {
+		r["receiver"] = link
+	}
+	return r, nil
+}

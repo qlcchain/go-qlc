@@ -52,6 +52,7 @@ var (
 	//ErrChildExists            = errors.New("child already exists")
 	//ErrChildNotFound          = errors.New("child not found")
 	ErrVersionNotFound = errors.New("version not found")
+	ErrLinkNotFound    = errors.New("link not found")
 )
 
 const (
@@ -80,6 +81,7 @@ const (
 	idPrefixPovTxLookup // prefix + txHash => TxLookup
 	idPrefixPovBestHash // prefix + height => hash
 	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
+	idPrefixLink
 )
 
 var (
@@ -246,9 +248,9 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	if err := addChild(blk, txn); err != nil {
 		return fmt.Errorf("add block child error: %s", err)
 	}
-	//if err := addToken(blk, txn); err != nil {
-	//	return err
-	//}
+	if err := addLink(blk, txn); err != nil {
+		return fmt.Errorf("add block link error: %s", err)
+	}
 	l.releaseTxn(txn, flag)
 	l.logger.Debug("publish addRelation,", blk.GetHash())
 	l.eb.Publish(string(common.EventAddRelation), blk)
@@ -308,29 +310,20 @@ func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 	return nil
 }
 
-//func addToken(blk *types.StateBlock, txn db.StoreTxn) error {
-//	if blk.GetType() == types.ContractReward {
-//		token, err := cabi.ParseTokenInfo(blk.GetData())
-//		if err != nil {
-//			return err
-//		}
-//		tokenKey := getKeyOfHash(token.TokenId, idPrefixToken)
-//		err = txn.Get(tokenKey, func(bytes []byte, b byte) error {
-//			return nil
-//		})
-//		if err == nil {
-//			return ErrTokenInfoExists
-//		} else if err != nil && err != badger.ErrKeyNotFound {
-//			return err
-//		}
-//		val, err := json.Marshal(token)
-//		if err != nil {
-//			return err
-//		}
-//		return txn.Set(tokenKey, val)
-//	}
-//	return nil
-//}
+func addLink(block *types.StateBlock, txn db.StoreTxn) error {
+	if block.GetType() == types.Open || block.GetType() == types.Receive || block.GetType() == types.ContractReward {
+		key := getKeyOfHash(block.GetLink(), idPrefixLink)
+		h := block.GetHash()
+		val, err := h.MarshalMsg(nil)
+		if err != nil {
+			return err
+		}
+		if err := txn.Set(key, val); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
 	key := getKeyOfHash(hash, idPrefixBlock)
@@ -398,12 +391,13 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	if err := txn.Delete(key); err != nil {
 		return err
 	}
-	if err := deleteChild(blk, txn); err != nil {
+	if err := l.deleteChild(blk, txn); err != nil {
 		return fmt.Errorf("delete child error: %s", err)
 	}
-	//if err := deleteToken(blk, txn); err != nil {
-	//	return err
-	//}
+	if err := l.deleteLink(blk, txn); err != nil {
+		return fmt.Errorf("delete link error: %s", err)
+	}
+
 
 	l.releaseTxn(txn, flag)
 	l.logger.Info("publish deleteRelation,", hash.String())
@@ -411,10 +405,10 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	return nil
 }
 
-func deleteChild(blk *types.StateBlock, txn db.StoreTxn) error {
+func (l *Ledger) deleteChild(blk *types.StateBlock, txn db.StoreTxn) error {
 	pHash := blk.Parent()
 	if !pHash.IsZero() {
-		children, err := getChildren(pHash, txn)
+		children, err := l.GetChildren(pHash, txn)
 		if err != nil {
 			return fmt.Errorf("%s can not find child", pHash.String())
 		}
@@ -437,19 +431,14 @@ func deleteChild(blk *types.StateBlock, txn db.StoreTxn) error {
 	return nil
 }
 
-//func deleteToken(blk *types.StateBlock, txn db.StoreTxn) error {
-//	if blk.GetType() == types.ContractReward {
-//		token, err := cabi.ParseTokenInfo(blk.GetData())
-//		if err != nil {
-//			return err
-//		}
-//		tokenKey := getKeyOfHash(token.TokenId, idPrefixToken)
-//		if err := txn.Delete(tokenKey); err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
+func (l *Ledger) deleteLink(blk *types.StateBlock, txn db.StoreTxn) error {
+	pKey := getKeyOfHash(blk.GetLink(), idPrefixLink)
+	if err := txn.Delete(pKey); err != nil {
+		return err
+	}
+	return nil
+}
+
 
 func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
 	key := getKeyOfHash(hash, idPrefixBlock)
@@ -1312,7 +1301,7 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 func (l *Ledger) GetChild(hash types.Hash, address types.Address, txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
-	children, err := getChildren(hash, txn)
+	children, err := l.GetChildren(hash, txn)
 	l.logger.Debug(children)
 	if err != nil {
 		return types.ZeroHash, err
@@ -1329,7 +1318,10 @@ func (l *Ledger) GetChild(hash types.Hash, address types.Address, txns ...db.Sto
 	return types.ZeroHash, fmt.Errorf("%s can not find child for address %s", hash.String(), address.String())
 }
 
-func getChildren(hash types.Hash, txn db.StoreTxn) (map[types.Hash]int, error) {
+func (l *Ledger) GetChildren(hash types.Hash, txns ...db.StoreTxn) (map[types.Hash]int, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key := getKeyOfHash(hash, idPrefixChild)
 	children := make(map[types.Hash]int)
 	err := txn.Get(key, func(val []byte, b byte) error {
@@ -1339,6 +1331,27 @@ func getChildren(hash types.Hash, txn db.StoreTxn) (map[types.Hash]int, error) {
 		return nil, err
 	}
 	return children, nil
+}
+
+func (l *Ledger) GetLinkBlock(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key := getKeyOfHash(hash, idPrefixLink)
+	h := new(types.Hash)
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
+		if _, err := h.UnmarshalMsg(val); err != nil {
+			return errors.New("unmarshal hash error")
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return types.ZeroHash, ErrLinkNotFound
+		}
+		return types.ZeroHash, fmt.Errorf("get link error: %s", err)
+	}
+	return *h, nil
 }
 
 func getVersionKey() []byte {
@@ -1591,337 +1604,6 @@ func (l *Ledger) Weight(account types.Address, txns ...db.StoreTxn) types.Balanc
 		return types.ZeroBalance
 	}
 	return benefit.Total
-}
-
-// TODO: implement
-func (l *Ledger) Rollback(hash types.Hash) error {
-	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		err := l.processRollback(hash, nil, true, txn)
-		if err != nil {
-			l.logger.Error(err)
-		}
-		return err
-	})
-}
-
-func (l *Ledger) processRollback(hash types.Hash, blockLink *types.StateBlock, isRoot bool, txn db.StoreTxn) error {
-	tm, err := l.Token(hash, txn)
-	if err != nil {
-		return fmt.Errorf("get block(%s) token err : %s", hash.String(), err)
-	}
-
-	blockHead, err := l.GetStateBlock(tm.Header, txn)
-	if err != nil {
-		return fmt.Errorf("get header block %s : %s", tm.Header.String(), err)
-	}
-
-	blockCur := blockHead
-	for {
-		hashCur := blockCur.GetHash()
-		//blockType, err := l.JudgeBlockKind(hashCur, txn)
-		blockType := blockCur.GetType()
-
-		blockPre := new(types.StateBlock)
-		if blockType != types.Open {
-			blockPre, err = l.GetStateBlock(blockCur.Previous, txn)
-			if err != nil {
-				return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
-			}
-		}
-
-		switch blockType {
-		case types.Open:
-			l.logger.Debug("---delete open block, ", hashCur)
-			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
-				return fmt.Errorf("delete state block fail(%s), open(%s)", err, hashCur)
-			}
-			if err := l.rollBackTokenDel(tm, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), open(%s)", err, hashCur)
-			}
-			if err := l.rollBackFrontier(types.Hash{}, blockCur.GetHash(), txn); err != nil {
-				return fmt.Errorf("rollback frontier fail(%s), open(%s)", err, hashCur)
-			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur, nil, false, blockCur.GetToken(), txn); err != nil {
-				return fmt.Errorf("rollback representative fail(%s), open(%s)", err, hashCur)
-			}
-			if err := l.rollBackPendingAdd(blockCur, blockLink, tm.Balance, blockCur.GetToken(), txn); err != nil {
-				return fmt.Errorf("rollback pending fail(%s), open(%s)", err, hashCur)
-			}
-
-			if hashCur != hash {
-				if err := l.processRollback(blockCur.GetLink(), blockCur, false, txn); err != nil {
-					return err
-				}
-			}
-		case types.Send:
-			l.logger.Debug("---delete send block, ", hashCur)
-			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
-				return fmt.Errorf("delete state block fail(%s), send(%s)", err, hashCur)
-			}
-			if err := l.rollBackToken(tm, blockPre, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), send(%s)", err, hashCur)
-			}
-			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-				return fmt.Errorf("rollback frontier fail(%s), send(%s)", err, hashCur)
-			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur, blockPre, true, blockCur.GetToken(), txn); err != nil {
-				return fmt.Errorf("rollback representative fail(%s), send(%s)", err, hashCur)
-			}
-			if err := l.rollBackPendingDel(types.Address(blockCur.Link), blockCur.GetHash(), txn); err != nil {
-				return fmt.Errorf("rollback pending fail(%s), send(%s)", err, hashCur)
-			}
-
-			if hashCur != hash || isRoot {
-				linkblock, err := l.getLinkBlock(blockCur, txn)
-				if err != nil {
-					return fmt.Errorf("get block(%s)'s link : %s", blockCur.GetHash().String(), err)
-				}
-				if linkblock != nil {
-					if err := l.processRollback(linkblock.GetHash(), blockCur, false, txn); err != nil {
-						return err
-					}
-				}
-			}
-		case types.Receive:
-			l.logger.Debug("---delete receive block, ", hashCur)
-			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
-				return fmt.Errorf("delete state block fail(%s), receive(%s)", err, hashCur)
-			}
-			if err := l.rollBackToken(tm, blockPre, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), receive(%s)", err, hashCur)
-			}
-			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-				return fmt.Errorf("rollback frontier fail(%s), receive(%s)", err, hashCur)
-			}
-			if err := l.rollBackRep(blockCur.GetRepresentative(), blockCur, blockPre, false, blockCur.GetToken(), txn); err != nil {
-				return fmt.Errorf("rollback representative fail(%s), receive(%s)", err, hashCur)
-			}
-			if err := l.rollBackPendingAdd(blockCur, blockLink, blockCur.GetBalance().Sub(blockPre.GetBalance()), blockCur.GetToken(), txn); err != nil {
-				return fmt.Errorf("rollback pending fail(%s), receive(%s)", err, hashCur)
-			}
-
-			if hashCur != hash {
-				if err := l.processRollback(blockCur.GetLink(), blockCur, false, txn); err != nil {
-					return err
-				}
-			}
-		case types.Change:
-			l.logger.Debug("---delete change block, ", hashCur)
-			if err := l.DeleteStateBlock(hashCur, txn); err != nil {
-				return fmt.Errorf("delete state block fail(%s), change(%s)", err, hashCur)
-			}
-			if err := l.rollBackToken(tm, blockPre, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), change(%s)", err, hashCur)
-			}
-			if err := l.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-				return fmt.Errorf("rollback frontier fail(%s), change(%s)", err, hashCur)
-			}
-			if err := l.rollBackRepChange(blockPre.GetRepresentative(), blockCur.GetRepresentative(), blockCur, txn); err != nil {
-				return fmt.Errorf("rollback representative fail(%s), change(%s)", err, hashCur)
-			}
-		}
-
-		if hashCur == hash {
-			break
-		}
-
-		blockCur, err = l.GetStateBlock(blockCur.GetPrevious(), txn)
-		if err != nil {
-			return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
-		}
-	}
-	return nil
-}
-
-func (l *Ledger) getLinkBlock(block *types.StateBlock, txn db.StoreTxn) (*types.StateBlock, error) {
-	tm, err := l.GetTokenMeta(types.Address(block.GetLink()), block.GetToken(), txn)
-	if err != nil {
-		if err == ErrAccountNotFound || err == ErrTokenNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-	blockLink, err := l.GetStateBlock(tm.Header, txn)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		if blockLink.GetLink() == block.GetHash() {
-			break
-		}
-		blockLink, err = l.GetStateBlock(blockLink.GetPrevious(), txn)
-		if err != nil {
-			return nil, err
-		}
-		p := blockLink.GetPrevious()
-		if p.IsZero() {
-			return nil, nil
-		}
-	}
-	return blockLink, nil
-}
-
-func (l *Ledger) rollBackFrontier(pre types.Hash, cur types.Hash, txn db.StoreTxn) error {
-	frontier, err := l.GetFrontier(cur, txn)
-	if err != nil {
-		return err
-	}
-	l.logger.Debug("delete frontier, ", frontier)
-	if err := l.DeleteFrontier(cur, txn); err != nil {
-		return err
-	}
-	if !pre.IsZero() {
-		frontier.HeaderBlock = pre
-		l.logger.Debug("add frontier, ", frontier)
-		if err := l.AddFrontier(frontier, txn); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (l *Ledger) rollBackToken(token *types.TokenMeta, pre *types.StateBlock, txn db.StoreTxn) error {
-	ac, err := l.GetAccountMeta(token.BelongTo, txn)
-	if err != nil {
-		return err
-	}
-	ac.CoinVote = pre.GetVote()
-	ac.CoinOracle = pre.GetOracle()
-	ac.CoinNetwork = pre.GetNetwork()
-	ac.CoinStorage = pre.GetStorage()
-	if pre.GetToken() == common.ChainToken() {
-		ac.CoinBalance = pre.GetBalance()
-	}
-	tm := ac.Token(pre.GetToken())
-	tm.Balance = pre.GetBalance()
-	tm.Header = pre.GetHash()
-	tm.Representative = pre.GetRepresentative()
-	tm.BlockCount = tm.BlockCount - 1
-	tm.Modified = common.TimeNow().UTC().Unix()
-	l.logger.Debug("update token, ", tm.BelongTo, tm.Type)
-	if err := l.UpdateAccountMeta(ac, txn); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *Ledger) rollBackTokenDel(tm *types.TokenMeta, txn db.StoreTxn) error {
-	address := tm.BelongTo
-	l.logger.Debug("delete token, ", address, tm.Type)
-	if err := l.DeleteTokenMeta(address, tm.Type, txn); err != nil {
-		return err
-	}
-	ac, err := l.GetAccountMeta(address, txn)
-	if err != nil {
-		return err
-	}
-	if len(ac.Tokens) == 0 {
-		if err := l.DeleteAccountMeta(address, txn); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (l *Ledger) rollBackRep(representative types.Address, blockCur, blockPre *types.StateBlock, isSend bool, token types.Hash, txn db.StoreTxn) error {
-	if token == common.ChainToken() {
-		if isSend {
-			diff := &types.Benefit{
-				Vote:    blockPre.GetVote().Sub(blockCur.GetVote()),
-				Network: blockPre.GetNetwork().Sub(blockCur.GetNetwork()),
-				Oracle:  blockPre.GetOracle().Sub(blockCur.GetOracle()),
-				Storage: blockPre.GetStorage().Sub(blockCur.GetStorage()),
-				Balance: blockPre.GetBalance().Sub(blockCur.GetBalance()),
-				Total:   blockPre.TotalBalance().Sub(blockCur.TotalBalance()),
-			}
-			l.logger.Debugf("add rep(%s) to %s", diff, representative)
-			if err := l.AddRepresentation(representative, diff, txn); err != nil {
-				return err
-			}
-		} else {
-			diff := new(types.Benefit)
-			if blockPre == nil {
-				diff = &types.Benefit{
-					Vote:    blockCur.GetVote(),
-					Network: blockCur.GetNetwork(),
-					Oracle:  blockCur.GetOracle(),
-					Storage: blockCur.GetStorage(),
-					Balance: blockCur.GetBalance(),
-					Total:   blockCur.TotalBalance(),
-				}
-			} else {
-				diff = &types.Benefit{
-					Vote:    blockCur.GetVote().Sub(blockPre.GetVote()),
-					Network: blockCur.GetNetwork().Sub(blockPre.GetNetwork()),
-					Oracle:  blockCur.GetOracle().Sub(blockPre.GetOracle()),
-					Storage: blockCur.GetStorage().Sub(blockPre.GetStorage()),
-					Balance: blockCur.GetBalance().Sub(blockPre.GetBalance()),
-					Total:   blockCur.TotalBalance().Sub(blockPre.TotalBalance()),
-				}
-			}
-			l.logger.Debugf("sub rep %s from %s", diff, representative)
-			if err := l.SubRepresentation(representative, diff, txn); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (l *Ledger) rollBackRepChange(preRepresentation types.Address, curRepresentation types.Address, blockCur *types.StateBlock, txn db.StoreTxn) error {
-	diff := &types.Benefit{
-		Vote:    blockCur.GetVote(),
-		Network: blockCur.GetNetwork(),
-		Oracle:  blockCur.GetOracle(),
-		Storage: blockCur.GetStorage(),
-		Balance: blockCur.GetBalance(),
-		Total:   blockCur.TotalBalance(),
-	}
-	l.logger.Debugf("add rep(%s) to %s", diff, preRepresentation)
-	if err := l.AddRepresentation(preRepresentation, diff, txn); err != nil {
-		return err
-	}
-	l.logger.Debugf("sub rep(%s) from %s", diff, curRepresentation)
-	if err := l.SubRepresentation(curRepresentation, diff, txn); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *Ledger) rollBackPendingAdd(blockCur *types.StateBlock, blockLink *types.StateBlock, amount types.Balance, token types.Hash, txn db.StoreTxn) error {
-	if blockLink == nil {
-		link, err := l.GetStateBlock(blockCur.GetLink(), txn)
-		if err != nil {
-			return err
-		}
-		blockLink = link
-	}
-	pendingkey := types.PendingKey{
-		Address: blockCur.GetAddress(),
-		Hash:    blockLink.GetHash(),
-	}
-	pendinginfo := types.PendingInfo{
-		Source: blockLink.GetAddress(),
-		Amount: amount,
-		Type:   token,
-	}
-	l.logger.Debug("add pending, ", pendingkey, pendinginfo)
-	if err := l.AddPending(&pendingkey, &pendinginfo, txn); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *Ledger) rollBackPendingDel(address types.Address, hash types.Hash, txn db.StoreTxn) error {
-	pendingkey := types.PendingKey{
-		Address: address,
-		Hash:    hash,
-	}
-	l.logger.Debug("delete pending ,", pendingkey)
-	if err := l.DeletePending(&pendingkey, txn); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error {

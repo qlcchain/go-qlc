@@ -92,4 +92,6 @@ type BlockVerifier interface {
 	BlockCheck(block types.Block) (ProcessResult, error)
 	//Process check block and process block to badger
 	Process(block types.Block) (ProcessResult, error)
+	//Rollback blocks until `hash' doesn't exist
+	Rollback(hash types.Hash) error
 }

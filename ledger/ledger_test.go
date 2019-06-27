@@ -365,7 +365,7 @@ func TestLedger_GetUncheckedBlocks(t *testing.T) {
 	addUncheckedBlock(t, l)
 	addUncheckedBlock(t, l)
 
-	err := l.WalkUncheckedBlocks(func(block types.Block, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+	err := l.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
 		t.Log(block)
 		t.Log(link, unCheckType, sync)
 
