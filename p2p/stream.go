@@ -214,7 +214,7 @@ func (s *Stream) close() error {
 func (s *Stream) SendMessageToPeer(messageType string, data []byte) error {
 	version := p2pVersion
 	message := NewQlcMessage(data, byte(version), messageType)
-	s.messageChan <- message
+	s.SendMessageToChan(message)
 	return nil
 }
 
@@ -252,4 +252,12 @@ func (s *Stream) handleMessage(message *QlcMessage) {
 	}
 	m := NewMessage(message.MessageType(), s.pid.Pretty(), message.MessageData(), message.content)
 	s.node.netService.PutMessage(m)
+}
+
+func (s *Stream) SendMessageToChan(message []byte) {
+	select {
+	case s.messageChan <- message:
+	default:
+		s.node.logger.Errorf("send message to [%s] timeout", s.pid.Pretty())
+	}
 }
