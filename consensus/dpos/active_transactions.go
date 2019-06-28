@@ -5,9 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/p2p"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
@@ -15,6 +12,7 @@ import (
 const (
 	announcementMax  = 40
 	announceInterval = 60
+	confirmTimeout   = 1800
 )
 
 type voteKey [1 + types.HashSize]byte
@@ -46,7 +44,7 @@ func (act *ActiveTrx) SetDposService(dps *DPoS) {
 }
 
 func (act *ActiveTrx) start() {
-	//timerAnnounce := time.NewTicker(1 * time.Second)
+	timerAnnounce := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
@@ -55,8 +53,8 @@ func (act *ActiveTrx) start() {
 			return
 		case perf := <-act.perfCh:
 			act.updatePerformanceTime(perf.hash, perf.curTime, perf.confirmed)
-			//case <-timerAnnounce.C:
-			//	act.announceVotes()
+		case <-timerAnnounce.C:
+			act.announceVotes()
 		}
 	}
 }
@@ -149,24 +147,24 @@ func (act *ActiveTrx) announceVotes() {
 
 	act.roots.Range(func(key, value interface{}) bool {
 		el := value.(*Election)
-		if nowTime-el.lastTime < announceInterval {
+		if nowTime-el.lastTime < confirmTimeout {
 			return true
 		} else {
-			el.lastTime = nowTime
+			act.roots.Delete(el.vote.id)
 		}
 
-		block := el.status.winner
-		hash := block.GetHash()
-
-		if !el.confirmed {
-			act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
-			el.announcements++
-			if el.announcements == announcementMax {
-				act.roots.Delete(el.vote.id)
-			} else {
-				act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
-			}
-		}
+		//block := el.status.winner
+		//hash := block.GetHash()
+		//
+		//if !el.confirmed {
+		//	act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
+		//	el.announcements++
+		//	if el.announcements == announcementMax {
+		//		act.roots.Delete(el.vote.id)
+		//	} else {
+		//		act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
+		//	}
+		//}
 
 		return true
 	})

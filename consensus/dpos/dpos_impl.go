@@ -375,7 +375,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		ack := bs.Para.(*protos.ConfirmAckBlock)
 		dps.saveOnlineRep(ack.Account)
 
-		//retransmit if the block has not reached a consensus
+		//retransmit if the block has not reached a consensus or seq is not 0(for finding reps)
 		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
 
 		//cache the ack messages
