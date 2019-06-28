@@ -816,9 +816,10 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 			break
 		}
 
-		blockCur, err = lv.l.GetStateBlock(blockCur.GetPrevious(), txn)
+		preHash := blockCur.GetPrevious()
+		blockCur, err = lv.l.GetStateBlock(preHash, txn)
 		if err != nil {
-			return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
+			return fmt.Errorf("get previous block %s : %s", preHash.String(), err)
 		}
 	}
 	return nil
