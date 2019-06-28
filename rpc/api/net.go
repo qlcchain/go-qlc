@@ -62,7 +62,7 @@ func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
 	}
 
 	supply := common.GenesisBlock().Balance
-	minWeight, _ := supply.Div(common.VoteDivisor)
+	minWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	for _, account := range as {
 		weight := q.ledger.Weight(account)
