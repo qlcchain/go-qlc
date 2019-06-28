@@ -359,16 +359,23 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 	switch bs.Type {
 	case consensus.MsgPublishReq:
 		dps.logger.Infof("dps recv publishReq block[%s]", hash)
-		if result != process.Old {
-			dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
-			dps.localRepVote(bs)
+		if result != process.Old && result != process.Fork {
+			if dps.hasLocalValidRep() {
+				dps.localRepVote(bs)
+			} else {
+				dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
+			}
 		}
 	case consensus.MsgConfirmReq:
 		dps.logger.Infof("dps recv confirmReq block[%s]", hash)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmReq, bs.Block, bs.MsgFrom)
+		if result != process.Fork {
+			if !dps.hasLocalValidRep() {
+				dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmReq, bs.Block, bs.MsgFrom)
+			}
 
-		if dps.isResultValid(result) {
-			dps.localRepVote(bs)
+			if dps.isResultValid(result) {
+				dps.localRepVote(bs)
+			}
 		}
 	case consensus.MsgConfirmAck:
 		dps.logger.Infof("dps recv confirmAck block[%s]", hash)
@@ -436,6 +443,19 @@ func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
 		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 		return true
 	})
+}
+
+func (dps *DPoS) hasLocalValidRep() bool {
+	has := false
+	localRepAccount.Range(func(key, value interface{}) bool {
+		address := key.(types.Address)
+		weight := dps.ledger.Weight(address)
+		if weight.Compare(minWeight) != types.BalanceCompSmaller {
+			has = true
+		}
+		return true
+	})
+	return has
 }
 
 func (dps *DPoS) ConfirmBlock(blk *types.StateBlock) {
@@ -520,10 +540,12 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 
 func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 	confirmedBlock := dps.findAnotherForkedBlock(newBlock)
+	isRep := false
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
+			isRep = true
 
 			weight := dps.ledger.Weight(address)
 			if weight.Compare(minWeight) == types.BalanceCompSmaller {
@@ -539,7 +561,10 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 			return true
 		})
-		//dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
+
+		if isRep == false {
+			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
+		}
 	}
 }
 

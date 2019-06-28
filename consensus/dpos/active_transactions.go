@@ -10,8 +10,6 @@ import (
 )
 
 const (
-	announcementMax  = 40
-	announceInterval = 60
 	confirmTimeout   = 1800
 )
 
@@ -44,7 +42,7 @@ func (act *ActiveTrx) SetDposService(dps *DPoS) {
 }
 
 func (act *ActiveTrx) start() {
-	timerAnnounce := time.NewTicker(1 * time.Second)
+	timerClean := time.NewTicker(confirmTimeout * time.Second)
 
 	for {
 		select {
@@ -53,8 +51,8 @@ func (act *ActiveTrx) start() {
 			return
 		case perf := <-act.perfCh:
 			act.updatePerformanceTime(perf.hash, perf.curTime, perf.confirmed)
-		case <-timerAnnounce.C:
-			act.announceVotes()
+		case <-timerClean.C:
+			act.cleanVotes()
 		}
 	}
 }
@@ -142,7 +140,7 @@ func (act *ActiveTrx) updatePerformanceTime(hash types.Hash, curTime int64, conf
 	}
 }
 
-func (act *ActiveTrx) announceVotes() {
+func (act *ActiveTrx) cleanVotes() {
 	nowTime := time.Now().Unix()
 
 	act.roots.Range(func(key, value interface{}) bool {
