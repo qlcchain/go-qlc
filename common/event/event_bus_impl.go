@@ -64,18 +64,13 @@ func NewEventBus(queueSize int) EventBus {
 }
 
 var (
-	once             sync.Once
-	eb               EventBus
-	cache            *hashmap.HashMap
-	waitingQueueSize = 102400
+	once  sync.Once
+	eb    EventBus
+	cache *hashmap.HashMap
 )
 
 func init() {
 	cache = hashmap.New(50)
-
-	if common.RunMode == common.RunModeSimple {
-		waitingQueueSize = 1024
-	}
 }
 
 func SimpleEventBus() EventBus {
@@ -182,17 +177,17 @@ func (eb *DefaultEventBus) Publish(topic string, args ...interface{}) {
 				h := handler
 
 				//waiting until the queue is ready
-				if h.pool.WaitingQueueSize() >= waitingQueueSize {
+				if h.pool.WaitingQueueSize() >= common.EventBusWaitingQueueSize {
 					checkInterval := time.NewTicker(10 * time.Millisecond)
 
-					checkWaitingQueueOut:
+				checkWaitingQueueOut:
 					for {
 						select {
 						case <-checkInterval.C:
-							if h.pool.WaitingQueueSize() < waitingQueueSize {
+							if h.pool.WaitingQueueSize() < common.EventBusWaitingQueueSize {
 								break checkWaitingQueueOut
 							}
- 						}
+						}
 					}
 				}
 

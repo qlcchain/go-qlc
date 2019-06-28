@@ -18,10 +18,6 @@ const (
 	msgNeedResendInterval  = 10 * time.Second
 )
 
-var (
-	msgCacheSize = 65535
-)
-
 //  Message Type
 const (
 	PublishReq      = "0" //PublishReq
@@ -64,23 +60,17 @@ type MessageService struct {
 
 // NewService return new Service.
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
-	chanSize := 65535
-	if common.RunMode == common.RunModeSimple {
-		chanSize = 1024
-		msgCacheSize = 1024
-	}
-
 	ms := &MessageService{
 		quitCh:              make(chan bool, 7),
-		messageCh:           make(chan *Message, chanSize),
-		publishMessageCh:    make(chan *Message, chanSize),
-		confirmReqMessageCh: make(chan *Message, chanSize),
-		confirmAckMessageCh: make(chan *Message, chanSize),
-		rspMessageCh:        make(chan *Message, chanSize),
-		povMessageCh:        make(chan *Message, chanSize),
+		messageCh:           make(chan *Message, common.P2PMonitorMsgChanSize),
+		publishMessageCh:    make(chan *Message, common.P2PMonitorMsgChanSize),
+		confirmReqMessageCh: make(chan *Message, common.P2PMonitorMsgChanSize),
+		confirmAckMessageCh: make(chan *Message, common.P2PMonitorMsgChanSize),
+		rspMessageCh:        make(chan *Message, common.P2PMonitorMsgChanSize),
+		povMessageCh:        make(chan *Message, common.P2PMonitorMsgChanSize),
 		ledger:              ledger,
 		netService:          netService,
-		cache:               gcache.New(msgCacheSize).LRU().Build(),
+		cache:               gcache.New(common.P2PMonitorMsgCacheSize).LRU().Build(),
 	}
 	ms.syncService = NewSyncService(netService, ledger)
 	return ms

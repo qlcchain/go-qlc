@@ -3,8 +3,8 @@ package p2p
 import (
 	"context"
 	"errors"
+	"github.com/libp2p/go-libp2p-yamux"
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/whyrusleeping/go-smux-yamux"
 	"github.com/whyrusleeping/yamux"
 	"io/ioutil"
 	"time"
@@ -88,7 +88,7 @@ func (node *QlcNode) startHost() error {
 		libp2p.NATPortMap(),
 	}
 
-	if common.RunMode == common.RunModeSimple {
+	if common.IsConfidantNode() {
 		simpleNodeTransport := (*sm_yamux.Transport)(&yamux.Config{
 			AcceptBacklog:          256,
 			EnableKeepAlive:        true,

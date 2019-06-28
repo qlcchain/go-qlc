@@ -63,16 +63,6 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 	acTrx := NewActiveTrx()
 	l := ledger.NewLedger(cfg.LedgerDir())
 
-	maxBlocks := 10240
-	maxCacheBlocks := 102400
-	voteCacheEn := true
-
-	if common.RunMode == common.RunModeSimple {
-		maxBlocks = 1024
-		maxCacheBlocks = 1024
-		voteCacheEn = false
-	}
-
 	dps := &DPoS{
 		ledger:        l,
 		acTrx:         acTrx,
@@ -81,16 +71,16 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 		cfg:           cfg,
 		eb:            eb,
 		lv:            process.NewLedgerVerifier(l),
-		voteCacheEn:   voteCacheEn,
+		voteCacheEn:   common.DPoSVoteCacheEn,
 		quitCh:        make(chan bool, 1),
 		quitChProcess: make(chan bool, 1),
-		blocks:        make(chan *consensus.BlockSource, maxBlocks),
-		cacheBlocks:   make(chan *consensus.BlockSource, maxCacheBlocks),
-		blocksAcked:   make(chan types.Hash, maxBlocks),
+		blocks:        make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+		cacheBlocks:   make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
+		blocksAcked:   make(chan types.Hash, common.DPoSMaxBlocks),
 		povReady:      make(chan bool, 1),
 	}
 
-	if common.RunMode == common.RunModeNormal {
+	if common.IsNormalNode() {
 		dps.uncheckedCache = gcache.New(uncheckedCacheSize).LRU().Expiration(uncheckedTimeout).Build()
 		dps.voteCache = gcache.New(voteCacheSize).LRU().Expiration(voteCacheTimeout).Build()
 	}
@@ -102,7 +92,7 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 func (dps *DPoS) Init() {
 	povSyncState.Store(common.SyncNotStart)
 	supply := common.GenesisBlock().Balance
-	minWeight, _ = supply.Div(common.VoteDivisor)
+	minWeight, _ = supply.Div(common.DposVoteDivisor)
 
 	err := dps.eb.SubscribeSync(string(common.EventPovSyncState), dps.onPovSyncState)
 	if err != nil {
@@ -133,12 +123,11 @@ func (dps *DPoS) Start() {
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
 		case <-timerUpdateUncheckedNum.C: //calibration
-			if common.RunMode == common.RunModeNormal {
+			if common.IsNormalNode() {
 				consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(false)))
 			} else {
 				timerUpdateUncheckedNum.Stop()
 			}
-
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {
@@ -223,7 +212,7 @@ func (dps *DPoS) processUncheckedBlock(bs *consensus.BlockSource) {
 }
 
 func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
-	if common.RunMode == common.RunModeNormal {
+	if common.IsNormalNode() {
 		dps.dequeueUncheckedFromMem(hash)
 	} else {
 		dps.dequeueUncheckedFromDb(hash)
@@ -329,7 +318,7 @@ func (dps *DPoS) dequeueUncheckedFromMem(hash types.Hash) {
 }
 
 func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
-	if common.RunMode == common.RunModeNormal {
+	if common.IsNormalNode() {
 		dps.rollbackUncheckedFromMem(hash)
 	} else {
 		dps.rollbackUncheckedFromDb(hash)
@@ -613,7 +602,7 @@ func (dps *DPoS) cacheGapBlock(result process.ProcessResult, hash types.Hash, bs
 	blk := bs.Block
 
 	if result == process.GapPrevious {
-		if common.RunMode == common.RunModeNormal {
+		if common.IsNormalNode() {
 			dps.enqueueUnchecked(hash, blk.Previous, bs)
 		} else {
 			err := dps.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.BlockFrom)
@@ -622,7 +611,7 @@ func (dps *DPoS) cacheGapBlock(result process.ProcessResult, hash types.Hash, bs
 			}
 		}
 	} else {
-		if common.RunMode == common.RunModeNormal {
+		if common.IsNormalNode() {
 			dps.enqueueUnchecked(hash, blk.Link, bs)
 		} else {
 			err := dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)

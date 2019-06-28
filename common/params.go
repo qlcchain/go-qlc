@@ -6,13 +6,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-const (
-	RunModeNormalStr = "normal"
-	RunModeSimpleStr = "simple"
-	RunModeNormal = 1
-	RunModeSimple = 2
-)
-
 var (
 	PovChainBlockInterval = 30
 	PovChainTargetCycle   = 20
@@ -35,8 +28,26 @@ var (
 	PovMaxAllowedFutureTimeSec = 15
 
 	//vote right divisor
-	VoteDivisor = int64(200)
-
-	//node running mode
-	RunMode = RunModeNormal
+	DposVoteDivisor = int64(200)
 )
+
+type nodeType uint
+
+const (
+	nodeTypeNormal nodeType = iota
+	nodeTypeConfidant
+)
+
+func IsConfidantNode() bool {
+	if NodeType == nodeTypeConfidant {
+		return true
+	}
+	return false
+}
+
+func IsNormalNode() bool {
+	if NodeType == nodeTypeNormal {
+		return true
+	}
+	return false
+}

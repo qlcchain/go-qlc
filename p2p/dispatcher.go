@@ -23,23 +23,15 @@ type Dispatcher struct {
 
 // NewDispatcher create Dispatcher instance.
 func NewDispatcher() *Dispatcher {
-	msgChanSize := 655350
-	cacheSize := 51200
-
-	if common.RunMode == common.RunModeSimple {
-		msgChanSize = 1024
-		cacheSize = 1024
-	}
-
 	dp := &Dispatcher{
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
-		receivedMessageCh: make(chan *Message, msgChanSize),
+		receivedMessageCh: make(chan *Message, common.P2PMsgChanSize),
 		filters:           make(map[MessageType]bool),
 		logger:            log.NewLogger("dispatcher"),
 	}
 
-	dp.dispatchedMessages, _ = lru.New(cacheSize)
+	dp.dispatchedMessages, _ = lru.New(common.P2PMsgCacheSize)
 
 	return dp
 }

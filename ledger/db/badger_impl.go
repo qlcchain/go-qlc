@@ -30,10 +30,7 @@ type BadgerStoreTxn struct {
 func NewBadgerStore(dir string) (Store, error) {
 	opts := badger.DefaultOptions(dir)
 
-	if common.RunMode == common.RunModeSimple {
-		opts.MaxTableSize = 16 << 20
-	}
-
+	opts.MaxTableSize = common.BadgerMaxTableSize
 	opts.Logger = nil
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
 	_ = util.CreateDirIfNotExist(dir)

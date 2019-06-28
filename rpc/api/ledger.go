@@ -377,7 +377,7 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
 
-	if common.RunMode == common.RunModeNormal {
+	if common.IsNormalNode() {
 		c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
 	} else {
 		unCount, err := l.ledger.CountUncheckedBlocks()
@@ -403,7 +403,7 @@ func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
 
-	if common.RunMode == common.RunModeNormal {
+	if common.IsNormalNode() {
 		c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
 	} else {
 		unCount, err := l.ledger.CountUncheckedBlocks()

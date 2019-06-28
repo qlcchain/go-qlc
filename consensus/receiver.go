@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	msgCacheSize           = 65535
 	msgCacheExpirationTime = 2 * time.Minute
 )
 
@@ -23,13 +22,9 @@ type Receiver struct {
 }
 
 func NewReceiver(eb event.EventBus) *Receiver {
-	if common.RunMode == common.RunModeSimple {
-		msgCacheSize = 1024
-	}
-
 	r := &Receiver{
 		eb:    eb,
-		cache: gcache.New(msgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
+		cache: gcache.New(common.ConsensusMsgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
 	}
 
 	return r
