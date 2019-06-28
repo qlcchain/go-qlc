@@ -22,12 +22,10 @@ import (
 )
 
 const (
-	targetTps             = 100
+	targetTps             = 500
 	repTimeout            = 5 * time.Minute
 	uncheckedCacheSize    = targetTps * 5 * 60
-	uncheckedTimeout      = 5 * time.Minute
 	voteCacheSize         = targetTps * 5 * 60
-	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
 	maxBlocks             = 10240
@@ -72,8 +70,8 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 		cfg:            cfg,
 		eb:             eb,
 		lv:             process.NewLedgerVerifier(l),
-		uncheckedCache: gcache.New(uncheckedCacheSize).LRU().Expiration(uncheckedTimeout).Build(),
-		voteCache:      gcache.New(voteCacheSize).LRU().Expiration(voteCacheTimeout).Build(),
+		uncheckedCache: gcache.New(uncheckedCacheSize).LRU().Build(),
+		voteCache:      gcache.New(voteCacheSize).LRU().Build(),
 		quitCh:         make(chan bool, 1),
 		quitChProcess:  make(chan bool, 1),
 		blocks:         make(chan *consensus.BlockSource, maxBlocks),
@@ -120,7 +118,7 @@ func (dps *DPoS) Start() {
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
 		case <-timerUpdateUncheckedNum.C: //calibration
-			consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(false)))
+			consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(true)))
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {
