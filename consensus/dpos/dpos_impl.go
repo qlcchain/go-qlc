@@ -118,7 +118,7 @@ func (dps *DPoS) Start() {
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
 		case <-timerUpdateUncheckedNum.C: //calibration
-			consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(true)))
+			consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(false)))
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {
