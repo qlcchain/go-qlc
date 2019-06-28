@@ -398,7 +398,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 					return
 				}
 			}
-		} else if dps.isResultValid(result) {	//local send will be old
+		} else if dps.isResultValid(result) { //local send will be old
 			dps.acTrx.vote(ack)
 		}
 	case consensus.MsgSync:
