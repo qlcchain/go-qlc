@@ -22,7 +22,7 @@ var (
 
 	//P2P params
 	P2PMsgChanSize         = 1024
-	P2PCacheSize           = 1024
+	P2PMsgCacheSize        = 1024
 	P2PMonitorMsgChanSize  = 1024
 	P2PMonitorMsgCacheSize = 1024
 )
