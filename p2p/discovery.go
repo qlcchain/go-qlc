@@ -8,7 +8,7 @@ import (
 	"time"
 
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
+	mdns "github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/qlcchain/go-qlc/config"
 )
 
@@ -44,14 +44,14 @@ func (node *QlcNode) HandlePeerFound(p peer.AddrInfo) {
 
 func setupDiscoveryOption(cfg *config.Config) DiscoveryOption {
 	if cfg.P2P.Discovery.MDNSEnabled {
-		return func(ctx context.Context, h host.Host) (localdiscovery.Service, error) {
+		return func(ctx context.Context, h host.Host) (mdns.Service, error) {
 			if cfg.P2P.Discovery.MDNSInterval == 0 {
 				cfg.P2P.Discovery.MDNSInterval = 5
 			}
-			return localdiscovery.NewMdnsService(ctx, h, time.Duration(cfg.P2P.Discovery.MDNSInterval)*time.Second, QlcProtocolID)
+			return mdns.NewMdnsService(ctx, h, time.Duration(cfg.P2P.Discovery.MDNSInterval)*time.Second, QlcProtocolID)
 		}
 	}
 	return nil
 }
 
-type DiscoveryOption func(context.Context, host.Host) (localdiscovery.Service, error)
+type DiscoveryOption func(context.Context, host.Host) (mdns.Service, error)

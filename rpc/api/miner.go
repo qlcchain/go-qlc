@@ -22,8 +22,19 @@ type MinerApi struct {
 }
 
 type RewardParam struct {
-	Coinbase   types.Address `json:"coinbase"`
-	Beneficial types.Address `json:"beneficial"`
+	Coinbase     types.Address `json:"coinbase"`
+	Beneficial   types.Address `json:"beneficial"`
+	RewardHeight uint64        `json:"rewardHeight"`
+}
+
+type MinerRewardInfo struct {
+	LastRewardHeight uint64 `json:"lastRewardHeight"`
+	LastRewardBlocks uint64 `json:"lastRewardBlocks"`
+	LastBeneficial   string `json:"lastBeneficial"`
+
+	NodeRewardHeight  uint64 `json:"nodeRewardHeight"`
+	AvailRewardHeight uint64 `json:"availRewardHeight"`
+	AvailRewardBlocks uint64 `json:"availRewardBlocks"`
 }
 
 func NewMinerApi(ledger *ledger.Ledger) *MinerApi {
@@ -35,7 +46,34 @@ func NewMinerApi(ledger *ledger.Ledger) *MinerApi {
 }
 
 func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
-	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial)
+	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.RewardHeight)
+}
+
+func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, error) {
+	rsp := new(MinerRewardInfo)
+
+	oldMinerInfo, err := m.reward.GetRewardInfo(m.vmContext, coinbase)
+	if err != nil {
+		return nil, err
+	}
+
+	rsp.LastRewardHeight = oldMinerInfo.RewardHeight
+	rsp.LastRewardBlocks = oldMinerInfo.RewardBlocks
+	if !oldMinerInfo.Beneficial.IsZero() {
+		rsp.LastBeneficial = oldMinerInfo.Beneficial.String()
+	}
+
+	rsp.NodeRewardHeight, err = m.reward.GetNodeRewardHeight(m.vmContext)
+	if err != nil {
+		return nil, err
+	}
+
+	rsp.AvailRewardHeight, rsp.AvailRewardBlocks, err = m.reward.GetAvailRewardBlocks(m.vmContext, coinbase)
+	if err != nil {
+		return nil, err
+	}
+
+	return rsp, nil
 }
 
 func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, error) {

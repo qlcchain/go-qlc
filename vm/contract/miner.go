@@ -2,14 +2,63 @@ package contract
 
 import (
 	"errors"
+	"fmt"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"math/big"
 )
 
 type MinerReward struct{}
+
+func (m *MinerReward) GetRewardInfo(ctx *vmstore.VMContext, coinbase types.Address) (*cabi.MinerInfo, error) {
+	oldMinerInfo, err := cabi.GetMinerInfoByCoinbase(ctx, coinbase)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return nil, errors.New("failed to get storage for miner")
+	}
+	if oldMinerInfo == nil {
+		oldMinerInfo = new(cabi.MinerInfo)
+	}
+
+	return oldMinerInfo, nil
+}
+
+func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
+	latestBlock, err := ctx.GetLatestPovBlock()
+	if err != nil || latestBlock == nil {
+		return 0, errors.New("failed to get latest block")
+	}
+
+	if latestBlock.GetHeight() < cabi.RewardHeightGapToLatest {
+		return 0, nil
+	}
+	endHeight := latestBlock.GetHeight() - cabi.RewardHeightGapToLatest
+	endHeight = cabi.MinerRoundPovHeightByDay(endHeight)
+
+	return endHeight, nil
+}
+
+func (m *MinerReward) GetAvailRewardBlocks(ctx *vmstore.VMContext, coinbase types.Address) (uint64, uint64, error) {
+	oldMinerInfo, _ := cabi.GetMinerInfoByCoinbase(ctx, coinbase)
+
+	startHeight := uint64(0)
+	if oldMinerInfo != nil {
+		startHeight = oldMinerInfo.RewardHeight + 1
+	}
+	if startHeight < common.PovMinerRewardHeightStart {
+		startHeight = common.PovMinerRewardHeightStart
+	}
+
+	nodeHeight, err := m.GetNodeRewardHeight(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	availHeight := cabi.MinerCalcRewardEndHeight(startHeight, nodeHeight)
+
+	availBlocks, err := m.calcRewardBlocks(ctx, coinbase, startHeight, availHeight)
+
+	return availHeight, availBlocks, err
+}
 
 func (m *MinerReward) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
 	return types.ZeroBalance, nil
@@ -35,12 +84,48 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		return errors.New("coinbase account not exist")
 	}
 
+	// only miner with enough pledge can call this reward contract
+	if amCb.GetVote().Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
+		return errors.New("coinbase account has not enough pledge amount")
+	}
+
 	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
 	if amBnf == nil {
 		return errors.New("beneficial account not exist")
 	}
 
-	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial)
+	// check reward height
+	err = cabi.MinerCheckRewardHeight(param.RewardHeight)
+	if err != nil {
+		return err
+	}
+
+	nodeRewardHeight, err := m.GetNodeRewardHeight(ctx)
+	if err != nil {
+		return err
+	}
+	if param.RewardHeight > nodeRewardHeight {
+		return fmt.Errorf("reward height %d should lesser than node height %d", param.RewardHeight, nodeRewardHeight)
+	}
+
+	oldMinerInfo, err := cabi.GetMinerInfoByCoinbase(ctx, param.Coinbase)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return errors.New("failed to get storage for miner")
+	}
+	if oldMinerInfo == nil {
+		oldMinerInfo = new(cabi.MinerInfo)
+	}
+	if param.RewardHeight <= oldMinerInfo.RewardHeight {
+		return fmt.Errorf("reward height %d should greath than last height %d", param.RewardHeight, oldMinerInfo.RewardHeight)
+	}
+
+	startHeight := oldMinerInfo.RewardHeight + 1
+	maxEndHeight := cabi.MinerCalcRewardEndHeight(startHeight, param.RewardHeight)
+	if maxEndHeight != param.RewardHeight {
+		return fmt.Errorf("reward height %d should lesser than max height %d", param.RewardHeight, maxEndHeight)
+	}
+
+	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.RewardHeight)
 	if err != nil {
 		return err
 	}
@@ -68,37 +153,31 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		return nil, errors.New("beneficial account not exist")
 	}
 
-	key := cabi.GetMinerKey(input.Address)
-	oldMinerData, err := ctx.GetStorage(types.MinerAddress.Bytes(), key)
+	oldMinerInfo, err := cabi.GetMinerInfoByCoinbase(ctx, param.Coinbase)
 	if err != nil && err != vmstore.ErrStorageNotFound {
-		return nil, err
+		return nil, errors.New("failed to get storage for miner")
+	}
+	if oldMinerInfo == nil {
+		oldMinerInfo = new(cabi.MinerInfo)
 	}
 
-	oldMinerInfo := new(cabi.MinerInfo)
-	if len(oldMinerData) > 0 {
-		err = cabi.MinerABI.UnpackVariable(oldMinerInfo, cabi.VariableNameMiner, oldMinerData)
-		if err != nil {
-			return nil, errors.New("invalid miner variable data")
-		}
-	}
-
-	endHeight, rewardAmount, err := m.calcReward(ctx, input.Address, oldMinerInfo)
+	rewardBlocks, err := m.calcRewardBlocks(ctx, input.Address, oldMinerInfo.RewardHeight+1, param.RewardHeight)
 	if err != nil {
-		return nil, errors.New("failed to calculate reward")
+		return nil, errors.New("failed to calculate reward blocks")
 	}
 
-	if endHeight <= oldMinerInfo.RewardHeight {
-		return nil, nil
-	}
+	rewardAmount := cabi.RewardPerBlockBalance.Mul(int64(rewardBlocks))
 
 	newMinerData, err := cabi.MinerABI.PackVariable(
 		cabi.VariableNameMiner,
 		param.Beneficial,
-		endHeight)
+		param.RewardHeight,
+		oldMinerInfo.RewardBlocks+rewardBlocks)
 	if err != nil {
 		return nil, err
 	}
-	err = ctx.SetStorage(types.MinerAddress.Bytes(), key, newMinerData)
+	minerKey := cabi.GetMinerKey(param.Coinbase)
+	err = ctx.SetStorage(types.MinerAddress.Bytes(), minerKey, newMinerData)
 	if err != nil {
 		return nil, err
 	}
@@ -109,10 +188,11 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	block.Link = input.GetHash()
 	block.Data = newMinerData
 
-	block.Vote = amBnf.CoinVote
-	block.Oracle = amBnf.CoinOracle
-	block.Storage = amBnf.CoinStorage
-	block.Network = amBnf.CoinNetwork
+	// pledge fields only for QLC token
+	block.Vote = types.ZeroBalance
+	block.Oracle = types.ZeroBalance
+	block.Storage = types.ZeroBalance
+	block.Network = types.ZeroBalance
 
 	tmBnf := amBnf.Token(common.GasToken())
 	if tmBnf != nil {
@@ -121,7 +201,11 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		block.Previous = tmBnf.Header
 	} else {
 		block.Balance = rewardAmount
-		block.Representative = types.ZeroAddress
+		if len(amBnf.Tokens) > 0 {
+			block.Representative = amBnf.Tokens[0].Representative
+		} else {
+			block.Representative = input.Representative
+		}
 		block.Previous = types.ZeroHash
 	}
 
@@ -138,41 +222,24 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	}, nil
 }
 
-func (m *MinerReward) calcReward(ctx *vmstore.VMContext, coinbase types.Address, old *cabi.MinerInfo) (uint64, types.Balance, error) {
-	latestBlock, err := ctx.GetLatestPovBlock()
-	if err != nil || latestBlock == nil {
-		return old.RewardHeight, types.NewBalance(0), err
+func (m *MinerReward) calcRewardBlocks(ctx *vmstore.VMContext, coinbase types.Address, startHeight, endHeight uint64) (uint64, error) {
+	if startHeight < common.PovMinerRewardHeightStart {
+		startHeight = common.PovMinerRewardHeightStart
 	}
 
-	if latestBlock.GetHeight() <= cabi.RewardHeightLimit {
-		return old.RewardHeight, types.NewBalance(0), nil
-	}
-
-	startHeight := old.RewardHeight + 1
-	if old.RewardHeight < common.PovMinerVerifyHeightStart {
-		startHeight = common.PovMinerVerifyHeightStart
-	}
-
-	endHeight := latestBlock.GetHeight() - cabi.RewardHeightLimit
-	if endHeight < startHeight {
-		return old.RewardHeight, types.NewBalance(0), nil
-	}
-
-	rewardAmountInt := big.NewInt(0)
+	rewardBlocks := uint64(0)
 	for curHeight := startHeight; curHeight <= endHeight; curHeight++ {
 		block, err := ctx.GetPovBlockByHeight(curHeight)
 		if block == nil {
-			return old.RewardHeight, types.NewBalance(0), err
+			return 0, err
 		}
 
 		if coinbase == block.GetCoinbase() {
-			rewardAmountInt.Add(rewardAmountInt, cabi.RewardPerBlockInt)
+			rewardBlocks++
 		}
 	}
 
-	rewardAmount := types.Balance{Int: rewardAmountInt}
-
-	return endHeight, rewardAmount, nil
+	return rewardBlocks, nil
 }
 
 func (m *MinerReward) GetRefundData() []byte {

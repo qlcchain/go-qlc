@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	minPovSyncPeerCount = 1
-	checkPeerStatusTime = 30
-	waitEnoughPeerTime  = 120
+	minForcePovSyncPeerCount  = 1
+	minEnoughPovSyncPeerCount = 3
+	checkPeerStatusTime       = 30
+	waitEnoughPeerTime        = 60
 
 	maxSyncBlockPerReq = 100
 	maxPullBlockPerReq = 100
@@ -198,9 +199,18 @@ wait:
 		case <-ss.quitCh:
 			return
 		case <-waitTimer.C:
-			break wait
+			peerCnt := ss.PeerCountWithStatus(peerStatusGood)
+			if peerCnt >= minForcePovSyncPeerCount {
+				ss.logger.Infof("prepare sync after timeout with peers %d", peerCnt)
+				break wait
+			} else {
+				ss.logger.Warnf("can not sync after timeout with peers %d", peerCnt)
+				waitTimer.Reset(waitEnoughPeerTime * time.Second)
+			}
 		default:
-			if ss.PeerCount() >= minPovSyncPeerCount {
+			peerCnt := ss.PeerCountWithStatus(peerStatusGood)
+			if peerCnt >= minEnoughPovSyncPeerCount {
+				ss.logger.Infof("prepare sync after got enough peers %d", peerCnt)
 				break wait
 			} else {
 				time.Sleep(1 * time.Second)
@@ -546,7 +556,7 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 
 	lastBlockHeight := uint64(0)
 	for _, block := range rsp.Blocks {
-		ss.povEngine.AddBlock(block, fromType)
+		ss.povEngine.AddBlock(block, fromType, msg.msgPeer)
 
 		lastBlockHeight = block.GetHeight()
 	}
@@ -779,6 +789,27 @@ func (ss *PovSyncer) GetBestPeers(limit int) []*PovSyncPeer {
 	return allPeers[:limit]
 }
 
+// GetRandomTopPeer select one peer from top peers
+func (ss *PovSyncer) GetRandomTopPeer(top int) *PovSyncPeer {
+	peers := ss.GetBestPeers(top)
+	if len(peers) <= 0 {
+		return nil
+	}
+	if len(peers) == 1 {
+		return peers[0]
+	}
+
+	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	idx := rd.Intn(len(peers))
+	if idx >= len(peers) {
+		idx = idx - 1
+	}
+	if idx < 0 {
+		idx = 0
+	}
+	return peers[idx]
+}
+
 func (ss *PovSyncer) GetRandomPeers(limit int) []*PovSyncPeer {
 	var allPeers []*PovSyncPeer
 	var selectPeers []*PovSyncPeer
@@ -834,6 +865,19 @@ func (ss *PovSyncer) PeerCount() int {
 	peerCount := 0
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peerCount++
+		return true
+	})
+
+	return peerCount
+}
+
+func (ss *PovSyncer) PeerCountWithStatus(status int) int {
+	peerCount := 0
+	ss.allPeers.Range(func(key, value interface{}) bool {
+		peer := value.(*PovSyncPeer)
+		if peer.status == status {
+			peerCount++
+		}
 		return true
 	})
 
@@ -903,7 +947,7 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 	if useLocator {
 		ss.logger.Infof("request syncing blocks use locators %d with peer %s", len(req.Locators), ss.syncPeerID)
 	} else {
-		ss.logger.Infof("request syncing blocks use height %d with peer %s", lastHeight, ss.syncPeerID)
+		ss.logger.Infof("request syncing blocks use height %d with peer %s", req.StartHeight, ss.syncPeerID)
 	}
 
 	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, ss.syncPeerID)
@@ -924,22 +968,20 @@ func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
 	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
 }
 
-func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, useBest bool) {
+func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID string) {
 	if len(reqBlkHashes) <= 0 {
 		return
 	}
 
-	var peers []*PovSyncPeer
-	if useBest {
-		peers := ss.GetBestPeers(1)
-		if peers == nil {
-			return
-		}
-	} else {
-		peers = ss.GetRandomPeers(1)
-		if len(peers) <= 0 {
-			return
-		}
+	var peer *PovSyncPeer
+	if peerID != "" {
+		peer = ss.FindPeerWithStatus(peerID, peerStatusGood)
+	}
+	if peer == nil {
+		peer = ss.GetRandomTopPeer(3)
+	}
+	if peer == nil {
+		return
 	}
 
 	for len(reqBlkHashes) > 0 {
@@ -950,30 +992,34 @@ func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, useBest b
 			sendHashNum = len(reqBlkHashes)
 		}
 
-		for _, peer := range peers {
-			sendBlkHashes := reqBlkHashes[0:sendHashNum]
+		sendBlkHashes := reqBlkHashes[0:sendHashNum]
 
-			req := new(protos.PovBulkPullReq)
-			req.PullType = protos.PovPullTypeBatch
-			req.Locators = sendBlkHashes
-			req.Count = uint32(len(sendBlkHashes))
-			req.Reason = protos.PovReasonFetch
+		req := new(protos.PovBulkPullReq)
+		req.PullType = protos.PovPullTypeBatch
+		req.Locators = sendBlkHashes
+		req.Count = uint32(len(sendBlkHashes))
+		req.Reason = protos.PovReasonFetch
 
-			ss.logger.Debugf("request blocks %d from peer %s", len(sendBlkHashes), peer.peerID)
-			ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
-		}
+		ss.logger.Debugf("request blocks %d from peer %s", len(sendBlkHashes), peer.peerID)
+		ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
 
 		reqBlkHashes = reqBlkHashes[sendHashNum:]
 	}
 }
 
-func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash) {
+func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string) {
 	if len(reqTxHashes) <= 0 {
 		return
 	}
 
-	peers := ss.GetRandomPeers(1)
-	if len(peers) <= 0 {
+	var peer *PovSyncPeer
+	if peerID != "" {
+		peer = ss.FindPeerWithStatus(peerID, peerStatusGood)
+	}
+	if peer == nil {
+		peer = ss.GetRandomTopPeer(3)
+	}
+	if peer == nil {
 		return
 	}
 
@@ -985,17 +1031,15 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash) {
 			sendHashNum = len(reqTxHashes)
 		}
 
-		for _, peer := range peers {
-			sendTxHashes := reqTxHashes[0:sendHashNum]
+		sendTxHashes := reqTxHashes[0:sendHashNum]
 
-			req := new(protos.BulkPullReqPacket)
-			req.PullType = protos.PullTypeBatch
-			req.Hashes = sendTxHashes
-			req.Count = uint32(len(sendTxHashes))
+		req := new(protos.BulkPullReqPacket)
+		req.PullType = protos.PullTypeBatch
+		req.Hashes = sendTxHashes
+		req.Count = uint32(len(sendTxHashes))
 
-			ss.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peer.peerID)
-			ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.BulkPullRequest, req, peer.peerID)
-		}
+		ss.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peer.peerID)
+		ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.BulkPullRequest, req, peer.peerID)
 
 		reqTxHashes = reqTxHashes[sendHashNum:]
 	}

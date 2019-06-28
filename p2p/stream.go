@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	libnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -23,14 +23,15 @@ type Stream struct {
 	syncMutex   sync.Mutex
 	pid         peer.ID
 	addr        ma.Multiaddr
-	stream      libnet.Stream
+	stream      network.Stream
 	node        *QlcNode
 	quitWriteCh chan bool
 	messageChan chan []byte
+	ctrlMsgChan chan []byte
 }
 
 // NewStream return a new Stream
-func NewStream(stream libnet.Stream, node *QlcNode) *Stream {
+func NewStream(stream network.Stream, node *QlcNode) *Stream {
 	return newStreamInstance(stream.Conn().RemotePeer(), stream.Conn().RemoteMultiaddr(), stream, node)
 }
 
@@ -39,7 +40,7 @@ func NewStreamFromPID(pid peer.ID, node *QlcNode) *Stream {
 	return newStreamInstance(pid, nil, nil, node)
 }
 
-func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream libnet.Stream, node *QlcNode) *Stream {
+func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream network.Stream, node *QlcNode) *Stream {
 	return &Stream{
 		pid:         pid,
 		addr:        addr,
@@ -47,6 +48,7 @@ func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream libnet.Stream, nod
 		node:        node,
 		quitWriteCh: make(chan bool, 1),
 		messageChan: make(chan []byte, 40*1024),
+		ctrlMsgChan: make(chan []byte, 10*1024),
 	}
 }
 
@@ -176,6 +178,11 @@ func (s *Stream) writeLoop() {
 		case <-s.quitWriteCh:
 			s.node.logger.Debug("Quiting Stream Write Loop.")
 			return
+		case message := <-s.ctrlMsgChan:
+			err := s.WriteQlcMessage(message)
+			if err != nil {
+				s.node.logger.Debug(err)
+			}
 		case message := <-s.messageChan:
 			err := s.WriteQlcMessage(message)
 			if err != nil {
@@ -214,7 +221,11 @@ func (s *Stream) close() error {
 func (s *Stream) SendMessageToPeer(messageType string, data []byte) error {
 	version := p2pVersion
 	message := NewQlcMessage(data, byte(version), messageType)
-	s.SendMessageToChan(message)
+	if MessageResponse == messageType {
+		s.SendMessageToCtrlChan(message)
+	} else {
+		s.SendMessageToChan(message)
+	}
 	return nil
 }
 
@@ -259,5 +270,13 @@ func (s *Stream) SendMessageToChan(message []byte) {
 	case s.messageChan <- message:
 	default:
 		s.node.logger.Errorf("send message to [%s] timeout", s.pid.Pretty())
+	}
+}
+
+func (s *Stream) SendMessageToCtrlChan(message []byte) {
+	select {
+	case s.ctrlMsgChan <- message:
+	default:
+		s.node.logger.Errorf("send ctrl message to [%s] timeout", s.pid.Pretty())
 	}
 }

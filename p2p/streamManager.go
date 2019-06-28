@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	libnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -31,7 +31,7 @@ func (sm *StreamManager) SetQlcNode(node *QlcNode) {
 }
 
 // Add a new stream into the stream manager
-func (sm *StreamManager) Add(s libnet.Stream) {
+func (sm *StreamManager) Add(s network.Stream) {
 	stream := NewStream(s, sm.node)
 	sm.AddStream(stream)
 }
@@ -149,12 +149,22 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 		sm.node.logger.Error(err)
 		return
 	}
+
+	msgNeedCache := false
+	if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
+		messageName == PovPublishReq {
+		msgNeedCache = true
+	}
+
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
+		if msgNeedCache {
+			if sm.hasMsgInCache(stream, hash) {
+				return true
+			}
+		}
 		stream.SendMessageToChan(message)
-		if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
-			sm.searchCache(stream, hash, message, messageName)
-		} else if messageName == PovPublishReq {
+		if msgNeedCache {
 			sm.searchCache(stream, hash, message, messageName)
 		}
 		return true
@@ -174,13 +184,23 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 		sm.node.logger.Error(err)
 		return
 	}
+
+	msgNeedCache := false
+	if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
+		messageName == PovPublishReq {
+		msgNeedCache = true
+	}
+
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
 		if stream.pid.Pretty() != peerID {
+			if msgNeedCache {
+				if sm.hasMsgInCache(stream, hash) {
+					return true
+				}
+			}
 			stream.SendMessageToChan(message)
-			if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck {
-				sm.searchCache(stream, hash, message, messageName)
-			} else if messageName == PovPublishReq {
+			if msgNeedCache {
 				sm.searchCache(stream, hash, message, messageName)
 			}
 		}
@@ -231,6 +251,20 @@ func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []
 			sm.node.logger.Error(err)
 		}
 	}
+}
+
+func (sm *StreamManager) hasMsgInCache(stream *Stream, hash types.Hash) bool {
+	exitCache, e := sm.node.netService.msgService.cache.Get(hash)
+	if e == nil && exitCache != nil {
+		cs := exitCache.([]*cacheValue)
+		for _, v := range cs {
+			if v.peerID == stream.pid.Pretty() {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (sm *StreamManager) PeerCounts() int {

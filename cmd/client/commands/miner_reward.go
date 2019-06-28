@@ -18,6 +18,7 @@ import (
 func minerReward() {
 	var coinbaseP string
 	var beneficialP string
+	var heightP int
 
 	if interactive {
 		coinbase := util.Flag{
@@ -29,6 +30,11 @@ func minerReward() {
 			Name:  "beneficial",
 			Must:  true,
 			Usage: "beneficial coinbase private hex string",
+		}
+		height := util.Flag{
+			Name:  "height",
+			Must:  true,
+			Usage: "reward height",
 		}
 
 		cmd := &ishell.Cmd{
@@ -47,8 +53,9 @@ func minerReward() {
 
 				coinbaseP = util.StringVar(c.Args, coinbase)
 				beneficialP = util.StringVar(c.Args, beneficial)
+				heightP, _ = util.IntVar(c.Args, height)
 
-				if err := minerRewardAction(coinbaseP, beneficialP); err != nil {
+				if err := minerRewardAction(coinbaseP, beneficialP, heightP); err != nil {
 					util.Warn(err)
 					return
 				}
@@ -60,7 +67,7 @@ func minerReward() {
 			Use:   "minerreward",
 			Short: "miner get reward (gas token)",
 			Run: func(cmd *cobra.Command, args []string) {
-				err := minerRewardAction(coinbaseP, beneficialP)
+				err := minerRewardAction(coinbaseP, beneficialP, heightP)
 				if err != nil {
 					cmd.Println(err)
 				}
@@ -68,17 +75,22 @@ func minerReward() {
 		}
 		cmd.Flags().StringVar(&coinbaseP, "coinbase", "", "coinbase account private hex string")
 		cmd.Flags().StringVar(&beneficialP, "beneficial", "", "beneficial account private hex string")
+		cmd.Flags().IntVar(&heightP, "height", 0, "reward height")
 		rootCmd.AddCommand(cmd)
 	}
 }
 
-func minerRewardAction(coinbaseP, beneficialP string) error {
+func minerRewardAction(coinbaseP, beneficialP string, heightP int) error {
 	if coinbaseP == "" {
 		return errors.New("invalid coinbase value")
 	}
 
 	if beneficialP == "" {
 		return errors.New("invalid beneficial value")
+	}
+
+	if heightP <= 0 {
+		return errors.New("invalid height value")
 	}
 
 	cbBytes, err := hex.DecodeString(coinbaseP)
@@ -106,8 +118,9 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	defer client.Close()
 
 	rewardParam := api.RewardParam{
-		Coinbase:   coinbaseAcc.Address(),
-		Beneficial: beneficialAcc.Address(),
+		Coinbase:     coinbaseAcc.Address(),
+		Beneficial:   beneficialAcc.Address(),
+		RewardHeight: uint64(heightP),
 	}
 
 	send := types.StateBlock{}

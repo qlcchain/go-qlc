@@ -70,8 +70,10 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		return err
 	}
 
-	povService = ss.NewPoVService(cfg, accounts)
-	minerService = ss.NewMinerService(cfg, povService.GetPoVEngine())
+	if cfg.PoV.PovEnabled {
+		povService = ss.NewPoVService(cfg, accounts)
+		minerService = ss.NewMinerService(cfg, povService.GetPoVEngine())
+	}
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		eb := event.GetEventBus(cfg.LedgerDir())
@@ -107,11 +109,18 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 		})
 	}
 
-	if len(cfg.P2P.BootNodes) == 0 {
-		services = []common.Service{sqliteService, ledgerService, walletService, consensusService, povService, minerService, rPCService}
-	} else {
-		services = []common.Service{sqliteService, ledgerService, netService, walletService, consensusService, povService, minerService, rPCService}
+	services = append(services, sqliteService)
+	services = append(services, ledgerService)
+	if len(cfg.P2P.BootNodes) > 0 {
+		services = append(services, netService)
 	}
+	services = append(services, walletService)
+	services = append(services, consensusService)
+	if cfg.PoV.PovEnabled {
+		services = append(services, povService)
+		services = append(services, minerService)
+	}
+	services = append(services, rPCService)
 
 	return nil
 }

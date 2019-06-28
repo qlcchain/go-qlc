@@ -7,14 +7,21 @@ import (
 )
 
 var (
+	// PoV Block Chain Params
 	PovChainBlockInterval = 30
 	PovChainTargetCycle   = 20
 	PovChainBlockSize     = 4 * 1024 * 1024
 
-	PovMinerPledgeAmountMin   = types.NewBalance(100000000000000)
-	PovMinerVerifyHeightStart = uint64(3600 * 24 * 1 / PovChainBlockInterval)
+	PovChainRetargetTimespan = PovChainBlockInterval * PovChainTargetCycle
 
-	PoVMaxForkHeight = uint64(3600 * 24 * 7 / PovChainBlockInterval)
+	POVChainBlocksPerHour = 3600 / PovChainBlockInterval
+	POVChainBlocksPerDay  = POVChainBlocksPerHour * 24
+
+	PovMinerPledgeAmountMin   = types.NewBalance(100000000000000)
+	PovMinerVerifyHeightStart = uint64(POVChainBlocksPerDay * 1)
+	PovMinerRewardHeightStart = uint64(POVChainBlocksPerDay * 30)
+
+	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 12)
 
 	PovGenesisTargetHex = "0000007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	PovMinimumTargetHex = "0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"

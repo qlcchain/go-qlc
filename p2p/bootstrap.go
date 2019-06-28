@@ -6,26 +6,27 @@ import (
 	"fmt"
 	"sync"
 
-	host "github.com/libp2p/go-libp2p-host"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-func convertPeers(peers []string) ([]pstore.PeerInfo, error) {
-	pInfoS := make([]pstore.PeerInfo, len(peers))
-	for i, peer := range peers {
-		mAddr := ma.StringCast(peer)
-		p, err := pstore.InfoFromP2pAddr(mAddr)
+func convertPeers(peers []string) ([]peer.AddrInfo, error) {
+	pInfoS := make([]peer.AddrInfo, len(peers))
+	for i, p := range peers {
+		mAddr := ma.StringCast(p)
+		pr, err := peer.AddrInfoFromP2pAddr(mAddr)
 		if err != nil {
 			return nil, err
 		}
-		pInfoS[i] = *p
+		pInfoS[i] = *pr
 	}
 	return pInfoS, nil
 }
 
 // This code is borrowed from the go-ipfs bootstrap process
-func bootstrapConnect(ctx context.Context, ph host.Host, peers []pstore.PeerInfo) error {
+func bootstrapConnect(ctx context.Context, ph host.Host, peers []peer.AddrInfo) error {
 	if len(peers) < 1 {
 		return errors.New("not enough bootstrap peers")
 	}
@@ -40,12 +41,12 @@ func bootstrapConnect(ctx context.Context, ph host.Host, peers []pstore.PeerInfo
 		// Also, performed asynchronously for dial speed.
 
 		wg.Add(1)
-		go func(p pstore.PeerInfo) {
+		go func(p peer.AddrInfo) {
 			defer wg.Done()
 			//defer logger.Debug(ctx, "bootstrapDial", ph.ID(), p.ID)
 			//logger.Debugf("%s bootstrapping to %s", ph.ID(), p.ID)
 
-			ph.Peerstore().AddAddrs(p.ID, p.Addrs, pstore.PermanentAddrTTL)
+			ph.Peerstore().AddAddrs(p.ID, p.Addrs, peerstore.PermanentAddrTTL)
 			if err := ph.Connect(ctx, p); err != nil {
 				//logger.Errorf("Failed to bootstrap with %v: %s", p.ID, err)
 				errs <- err
