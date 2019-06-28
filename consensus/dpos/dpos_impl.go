@@ -22,12 +22,10 @@ import (
 )
 
 const (
-	targetTps             = 100
+	targetTps             = 500
 	repTimeout            = 5 * time.Minute
 	uncheckedCacheSize    = targetTps * 5 * 60
-	uncheckedTimeout      = 5 * time.Minute
 	voteCacheSize         = targetTps * 5 * 60
-	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
 	povBlockNumDay        = 2880
@@ -81,8 +79,8 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 	}
 
 	if common.IsNormalNode() {
-		dps.uncheckedCache = gcache.New(uncheckedCacheSize).LRU().Expiration(uncheckedTimeout).Build()
-		dps.voteCache = gcache.New(voteCacheSize).LRU().Expiration(voteCacheTimeout).Build()
+		dps.uncheckedCache = gcache.New(uncheckedCacheSize).LRU().Build()
+		dps.voteCache = gcache.New(voteCacheSize).LRU().Build()
 	}
 
 	dps.acTrx.SetDposService(dps)
