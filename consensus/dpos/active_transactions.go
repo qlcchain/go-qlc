@@ -46,7 +46,7 @@ func (act *ActiveTrx) SetDposService(dps *DPoS) {
 }
 
 func (act *ActiveTrx) start() {
-	timerAnnounce := time.NewTicker(1 * time.Second)
+	//timerAnnounce := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
@@ -55,8 +55,8 @@ func (act *ActiveTrx) start() {
 			return
 		case perf := <-act.perfCh:
 			act.updatePerformanceTime(perf.hash, perf.curTime, perf.confirmed)
-		case <-timerAnnounce.C:
-			act.announceVotes()
+		//case <-timerAnnounce.C:
+		//	act.announceVotes()
 		}
 	}
 }

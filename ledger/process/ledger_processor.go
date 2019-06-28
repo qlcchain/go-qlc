@@ -107,7 +107,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 	}
 
 	if !block.IsValid() {
-		return BadWork, nil
+		return BadWork, errors.New("bad work")
 	}
 
 	signature := block.GetSignature()
