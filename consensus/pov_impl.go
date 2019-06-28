@@ -18,7 +18,7 @@ import (
 
 const (
 	blkCacheSize       = 10240
-	blkCacheExpireTime = 1 * time.Minute
+	blkCacheExpireTime = 3 * time.Minute
 )
 
 type PoVEngine struct {

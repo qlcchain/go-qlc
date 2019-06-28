@@ -45,10 +45,10 @@ func (r *Receiver) start() error {
 		return err
 	}
 
-	err = r.eb.Subscribe(string(common.EventConfirmReq), r.ReceiveConfirmReq)
-	if err != nil {
-		return err
-	}
+	//err = r.eb.Subscribe(string(common.EventConfirmReq), r.ReceiveConfirmReq)
+	//if err != nil {
+	//	return err
+	//}
 
 	err = r.eb.Subscribe(string(common.EventConfirmAck), r.ReceiveConfirmAck)
 	if err != nil {
@@ -74,10 +74,10 @@ func (r *Receiver) stop() error {
 		return err
 	}
 
-	err = r.eb.Unsubscribe(string(common.EventConfirmReq), r.ReceiveConfirmReq)
-	if err != nil {
-		return err
-	}
+	//err = r.eb.Unsubscribe(string(common.EventConfirmReq), r.ReceiveConfirmReq)
+	//if err != nil {
+	//	return err
+	//}
 
 	err = r.eb.Unsubscribe(string(common.EventConfirmAck), r.ReceiveConfirmAck)
 	if err != nil {

@@ -475,9 +475,8 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 	switch bs.Type {
 	case consensus.MsgPublishReq:
 		dps.logger.Infof("dps recv publishReq block[%s]", hash)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
-
 		if result != process.Old {
+			dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
 			dps.localRepVote(bs)
 		}
 	case consensus.MsgConfirmReq:
@@ -490,8 +489,10 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 	case consensus.MsgConfirmAck:
 		dps.logger.Infof("dps recv confirmAck block[%s]", hash)
 		ack := bs.Para.(*protos.ConfirmAckBlock)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
 		dps.saveOnlineRep(ack.Account)
+
+		//retransmit if the block has not reached a consensus
+		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
 
 		//cache the ack messages
 		if dps.voteCacheEn && dps.isResultGap(result) {
@@ -513,7 +514,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 					return
 				}
 			}
-		} else if dps.isResultValid(result) {
+		} else if dps.isResultValid(result) { //local send will be old
 			dps.acTrx.vote(ack)
 		}
 	case consensus.MsgSync:
@@ -678,7 +679,7 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 			return true
 		})
-		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
+		//dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
 	}
 }
 

@@ -12,12 +12,12 @@ import (
 const (
 	blockChanSize = 8192
 
-	checkTxPendingTickerSec   = 3
-	checkOrphanBlockTickerSec = 3
+	checkTxPendingTickerSec   = 5
+	checkOrphanBlockTickerSec = 5
 	checkReqOrphanTickerSec   = 1
 
-	minPullTxIntervalSec    = 5
-	minPullBlockIntervalSec = 5
+	minPullTxIntervalSec    = 10
+	minPullBlockIntervalSec = 15
 )
 
 type PovBlockResult struct {
