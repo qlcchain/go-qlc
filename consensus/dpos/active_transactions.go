@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	confirmTimeout   = 1800
+	confirmTimeout = 1800
 )
 
 type voteKey [1 + types.HashSize]byte
