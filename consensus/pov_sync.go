@@ -924,7 +924,7 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 	if useLocator {
 		ss.logger.Infof("request syncing blocks use locators %d with peer %s", len(req.Locators), ss.syncPeerID)
 	} else {
-		ss.logger.Infof("request syncing blocks use height %d with peer %s", lastHeight, ss.syncPeerID)
+		ss.logger.Infof("request syncing blocks use height %d with peer %s", req.StartHeight, ss.syncPeerID)
 	}
 
 	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, ss.syncPeerID)
