@@ -499,8 +499,6 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 	case process.Progress:
 		if bs.BlockFrom == types.Synchronized {
 			dps.logger.Infof("Block %s from sync,no need consensus", hash)
-			now := time.Now()
-			dps.eb.Publish(string(common.EventSyncing), now)
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			dps.acTrx.addToRoots(blk)
