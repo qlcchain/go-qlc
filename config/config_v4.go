@@ -6,6 +6,7 @@ type ConfigV4 struct {
 }
 
 type PoVConfig struct {
+	PovEnabled   bool   `json:"povEnabled"`
 	MinerEnabled bool   `json:"minerEnabled"`
 	Coinbase     string `json:"coinbase"`
 }
@@ -25,6 +26,7 @@ func DefaultConfigV4(dir string) (*ConfigV4, error) {
 
 func defaultPoV() *PoVConfig {
 	return &PoVConfig{
+		PovEnabled:   false,
 		MinerEnabled: false,
 		Coinbase:     "",
 	}
