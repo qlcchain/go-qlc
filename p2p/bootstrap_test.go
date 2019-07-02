@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 	swarmt "github.com/libp2p/go-libp2p-swarm/testing"
 	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 )
@@ -15,7 +15,7 @@ func TestBootstrap(t *testing.T) {
 	h1 := bhost.New(swarmt.GenSwarm(t, ctx))
 	h2 := bhost.New(swarmt.GenSwarm(t, ctx))
 
-	pInfoS := make([]pstore.PeerInfo, 1)
+	pInfoS := make([]peer.AddrInfo, 1)
 	pInfoS[0].ID = h2.ID()
 	pInfoS[0].Addrs = h2.Addrs()
 

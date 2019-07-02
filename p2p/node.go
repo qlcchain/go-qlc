@@ -9,13 +9,13 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/libp2p/go-libp2p"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	host "github.com/libp2p/go-libp2p-host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	inet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/qlcchain/go-qlc/config"
@@ -38,7 +38,7 @@ type QlcNode struct {
 	ctx                 context.Context
 	localDiscovery      localdiscovery.Service
 	host                host.Host
-	peerStore           pstore.Peerstore
+	peerStore           peerstore.Peerstore
 	boostrapAddrs       []string
 	streamManager       *StreamManager
 	ping                *PingService
@@ -157,7 +157,7 @@ func (node *QlcNode) StartServices() error {
 	return nil
 }
 
-func (node *QlcNode) connectBootstrap(pInfoS []pstore.PeerInfo) {
+func (node *QlcNode) connectBootstrap(pInfoS []peer.AddrInfo) {
 
 	err := bootstrapConnect(node.ctx, node.host, pInfoS)
 	if err != nil {
@@ -171,7 +171,7 @@ func (node *QlcNode) connectBootstrap(pInfoS []pstore.PeerInfo) {
 	}
 }
 
-func (node *QlcNode) startPeerDiscovery(pInfoS []pstore.PeerInfo) {
+func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 	ticker := time.NewTicker(time.Duration(node.cfg.P2P.Discovery.DiscoveryInterval) * time.Second)
 	ticker1 := time.NewTicker(15 * time.Second)
 	node.connectBootstrap(pInfoS)
@@ -213,7 +213,7 @@ func (node *QlcNode) findPeers() error {
 	return nil
 }
 
-func (node *QlcNode) handleStream(s inet.Stream) {
+func (node *QlcNode) handleStream(s network.Stream) {
 	node.logger.Infof("Got a new stream from %s!", s.Conn().RemotePeer().Pretty())
 	node.streamManager.Add(s)
 }

@@ -34,7 +34,7 @@ require (
 	github.com/libp2p/go-libp2p-net v0.1.0
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.1.1
-	github.com/libp2p/go-libp2p-swarm v0.1.0
+	github.com/libp2p/go-libp2p-swarm v0.1.1
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0
