@@ -18,7 +18,7 @@ import (
 
 const (
 	blkCacheSize       = 10240
-	blkCacheExpireTime = 1 * time.Minute
+	blkCacheExpireTime = 3 * time.Minute
 )
 
 type PoVEngine struct {
@@ -147,7 +147,7 @@ func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
 	return err
 }
 
-func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom) error {
+func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom, peerID string) error {
 	blockHash := block.GetHash()
 
 	stat := pov.verifier.VerifyNet(block)
@@ -156,7 +156,7 @@ func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom) e
 		return fmt.Errorf("block %s verify net err %s", blockHash, stat.ErrMsg)
 	}
 
-	err := pov.bp.AddBlock(block, from)
+	err := pov.bp.AddBlock(block, from, peerID)
 	return err
 }
 
@@ -187,7 +187,7 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, 
 
 	pov.logger.Infof("receive block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
 
-	err := pov.AddBlock(block, types.PovBlockFromRemoteBroadcast)
+	err := pov.AddBlock(block, types.PovBlockFromRemoteBroadcast, msgPeer)
 	if err == nil {
 		pov.eb.Publish(string(common.EventSendMsgToPeers), p2p.PovPublishReq, block, msgPeer)
 	}

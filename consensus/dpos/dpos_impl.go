@@ -22,12 +22,10 @@ import (
 )
 
 const (
-	targetTps             = 100
+	targetTps             = 500
 	repTimeout            = 5 * time.Minute
 	uncheckedCacheSize    = targetTps * 5 * 60
-	uncheckedTimeout      = 5 * time.Minute
 	voteCacheSize         = targetTps * 5 * 60
-	voteCacheTimeout      = 5 * time.Minute
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
 	maxBlocks             = 10240
@@ -65,21 +63,21 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 	l := ledger.NewLedger(cfg.LedgerDir())
 
 	dps := &DPoS{
-		ledger:         l,
-		acTrx:          acTrx,
-		accounts:       accounts,
-		logger:         log.NewLogger("dpos"),
-		cfg:            cfg,
-		eb:             eb,
-		lv:             process.NewLedgerVerifier(l),
-		uncheckedCache: gcache.New(uncheckedCacheSize).LRU().Expiration(uncheckedTimeout).Build(),
-		voteCache:      gcache.New(voteCacheSize).LRU().Expiration(voteCacheTimeout).Build(),
-		quitCh:         make(chan bool, 1),
-		quitChProcess:  make(chan bool, 1),
-		blocks:         make(chan *consensus.BlockSource, maxBlocks),
-		cacheBlocks:    make(chan *consensus.BlockSource, maxCacheBlocks),
-		blocksAcked:    make(chan types.Hash, maxBlocks),
-		povReady:       make(chan bool, 1),
+		ledger:   l,
+		acTrx:    acTrx,
+		accounts: accounts,
+		logger:   log.NewLogger("dpos"),
+		cfg:      cfg,
+		eb:       eb,
+		lv:       process.NewLedgerVerifier(l),
+		//uncheckedCache: gcache.New(uncheckedCacheSize).LRU().Build(),
+		voteCache:     gcache.New(voteCacheSize).LRU().Build(),
+		quitCh:        make(chan bool, 1),
+		quitChProcess: make(chan bool, 1),
+		blocks:        make(chan *consensus.BlockSource, maxBlocks),
+		cacheBlocks:   make(chan *consensus.BlockSource, maxCacheBlocks),
+		blocksAcked:   make(chan types.Hash, maxBlocks),
+		povReady:      make(chan bool, 1),
 	}
 
 	dps.acTrx.SetDposService(dps)
@@ -109,7 +107,7 @@ func (dps *DPoS) Start() {
 
 	timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
-	timerUpdateUncheckedNum := time.NewTicker(time.Minute)
+	//timerUpdateUncheckedNum := time.NewTicker(time.Minute)
 
 	for {
 		select {
@@ -119,8 +117,8 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		case <-timerUpdateUncheckedNum.C: //calibration
-			consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(false)))
+		//case <-timerUpdateUncheckedNum.C: //calibration
+		//	consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(false)))
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {
@@ -156,6 +154,32 @@ func (dps *DPoS) onPovSyncState(state common.SyncState) {
 	}
 }
 
+func (dps *DPoS) processUncheckedBlock(bs *consensus.BlockSource) {
+	result, _ := dps.lv.BlockCheck(bs.Block)
+	dps.ProcessResult(result, bs)
+
+	if dps.isResultValid(result) {
+		if bs.BlockFrom == types.Synchronized {
+			dps.ConfirmBlock(bs.Block)
+			return
+		}
+	}
+
+	localRepAccount.Range(func(key, value interface{}) bool {
+		address := key.(types.Address)
+
+		va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
+		if err != nil {
+			return true
+		}
+
+		dps.acTrx.vote(va)
+		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+
+		return true
+	})
+}
+
 func (dps *DPoS) enqueueUnchecked(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
 	if !dps.uncheckedCache.Has(depHash) {
 		consensus.GlobalUncheckedBlockNum.Inc()
@@ -174,6 +198,38 @@ func (dps *DPoS) enqueueUnchecked(hash types.Hash, depHash types.Hash, bs *conse
 
 		blocks := c.(*sync.Map)
 		blocks.Store(hash, bs)
+	}
+}
+
+func (dps *DPoS) dequeueUncheckedFromDb(hash types.Hash) {
+	blkLink, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	if blkLink != nil {
+		bs := &consensus.BlockSource{
+			Block:     blkLink,
+			BlockFrom: bf,
+		}
+
+		dps.processUncheckedBlock(bs)
+
+		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+		if err != nil {
+			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+		}
+	}
+
+	blkPre, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+	if blkPre != nil {
+		bs := &consensus.BlockSource{
+			Block:     blkPre,
+			BlockFrom: bf,
+		}
+
+		dps.processUncheckedBlock(bs)
+
+		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+		if err != nil {
+			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+		}
 	}
 }
 
@@ -273,6 +329,29 @@ func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
 	}
 }
 
+func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
+	blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+
+	if blkLink == nil && blkPrevious == nil {
+		return
+	}
+	if blkLink != nil {
+		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+		if err != nil {
+			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+		}
+		dps.rollbackUncheckedFromDb(blkLink.GetHash())
+	}
+	if blkPrevious != nil {
+		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+		if err != nil {
+			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
+		}
+		dps.rollbackUncheckedFromDb(blkPrevious.GetHash())
+	}
+}
+
 func (dps *DPoS) ProcessMsgLoop() {
 	getTimeout := time.NewTimer(1 * time.Millisecond)
 
@@ -291,7 +370,8 @@ func (dps *DPoS) ProcessMsgLoop() {
 					dps.ProcessMsgDo(bs)
 				}
 			case hash := <-dps.blocksAcked:
-				dps.dequeueUnchecked(hash)
+				//dps.dequeueUnchecked(hash)
+				dps.dequeueUncheckedFromDb(hash)
 			default:
 				break DequeueOut
 			}
@@ -359,23 +439,31 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 	switch bs.Type {
 	case consensus.MsgPublishReq:
 		dps.logger.Infof("dps recv publishReq block[%s]", hash)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
-
-		if dps.isResultValid(result) {
-			dps.localRepVote(bs)
+		if result != process.Old && result != process.Fork {
+			if dps.hasLocalValidRep() {
+				dps.localRepVote(bs)
+			} else {
+				dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
+			}
 		}
 	case consensus.MsgConfirmReq:
 		dps.logger.Infof("dps recv confirmReq block[%s]", hash)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmReq, bs.Block, bs.MsgFrom)
+		if result != process.Fork {
+			if !dps.hasLocalValidRep() {
+				dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmReq, bs.Block, bs.MsgFrom)
+			}
 
-		if dps.isResultValid(result) {
-			dps.localRepVote(bs)
+			if dps.isResultValid(result) {
+				dps.localRepVote(bs)
+			}
 		}
 	case consensus.MsgConfirmAck:
 		dps.logger.Infof("dps recv confirmAck block[%s]", hash)
 		ack := bs.Para.(*protos.ConfirmAckBlock)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
 		dps.saveOnlineRep(ack.Account)
+
+		//retransmit if the block has not reached a consensus or seq is not 0(for finding reps)
+		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
 
 		//cache the ack messages
 		if dps.isResultGap(result) {
@@ -397,10 +485,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 					return
 				}
 			}
-		} else if result == process.Progress {
-			dps.acTrx.vote(ack)
-			dps.localRepVote(bs)
-		} else if result == process.Old {
+		} else if dps.isResultValid(result) { //local send will be old
 			dps.acTrx.vote(ack)
 		}
 	case consensus.MsgSync:
@@ -440,6 +525,19 @@ func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
 	})
 }
 
+func (dps *DPoS) hasLocalValidRep() bool {
+	has := false
+	localRepAccount.Range(func(key, value interface{}) bool {
+		address := key.(types.Address)
+		weight := dps.ledger.Weight(address)
+		if weight.Compare(minWeight) != types.BalanceCompSmaller {
+			has = true
+		}
+		return true
+	})
+	return has
+}
+
 func (dps *DPoS) ConfirmBlock(blk *types.StateBlock) {
 	hash := blk.GetHash()
 	vk := getVoteKey(blk)
@@ -475,6 +573,22 @@ func (dps *DPoS) ConfirmBlock(blk *types.StateBlock) {
 	}
 }
 
+func (dps *DPoS) cacheGapBlock(result process.ProcessResult, bs *consensus.BlockSource) {
+	blk := bs.Block
+
+	if result == process.GapPrevious {
+		err := dps.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.BlockFrom)
+		if err != nil && err != ledger.ErrUncheckedBlockExists {
+			dps.logger.Errorf("add unchecked block to ledger err %s", err)
+		}
+	} else {
+		err := dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)
+		if err != nil && err != ledger.ErrUncheckedBlockExists {
+			dps.logger.Errorf("add unchecked block to ledger err %s", err)
+		}
+	}
+}
+
 func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.BlockSource) {
 	blk := bs.Block
 	hash := blk.GetHash()
@@ -483,8 +597,6 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 	case process.Progress:
 		if bs.BlockFrom == types.Synchronized {
 			dps.logger.Infof("Block %s from sync,no need consensus", hash)
-			now := time.Now()
-			dps.eb.Publish(string(common.EventSyncing), now)
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			dps.acTrx.addToRoots(blk)
@@ -513,19 +625,23 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 		dps.ProcessFork(blk)
 	case process.GapPrevious:
 		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous.String())
-		dps.enqueueUnchecked(hash, blk.Previous, bs)
+		//dps.enqueueUnchecked(hash, blk.Previous, bs)
+		dps.cacheGapBlock(result, bs)
 	case process.GapSource:
 		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link.String())
-		dps.enqueueUnchecked(hash, blk.Link, bs)
+		//dps.enqueueUnchecked(hash, blk.Link, bs)
+		dps.cacheGapBlock(result, bs)
 	}
 }
 
 func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 	confirmedBlock := dps.findAnotherForkedBlock(newBlock)
+	isRep := false
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
+			isRep = true
 
 			weight := dps.ledger.Weight(address)
 			if weight.Compare(minWeight) == types.BalanceCompSmaller {
@@ -541,7 +657,10 @@ func (dps *DPoS) ProcessFork(newBlock *types.StateBlock) {
 			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
 			return true
 		})
-		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
+
+		if isRep == false {
+			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
+		}
 	}
 }
 
