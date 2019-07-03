@@ -1227,3 +1227,89 @@ func TestLedger_CountBlockCache(t *testing.T) {
 		t.Fatal("CountBlockCache error,should be 0")
 	}
 }
+
+func TestLedger_GetBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	blk := addBlockCache(t, l)
+	hash := blk.GetHash()
+	blk1, err := l.GetBlockCache(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash1 := blk1.GetHash()
+	if hash != hash1 {
+		t.Fatal("hash not match")
+	}
+}
+
+func addAccountMetaWithBlockCache(t *testing.T, l *Ledger) *types.AccountMeta {
+	ac := mock.Account()
+	am := mock.AccountMeta(ac.Address())
+	if err := l.AddAccountMetaWithBlockCache(am); err != nil {
+		t.Fatal()
+	}
+	return am
+}
+
+func TestLedger_AddAccountMetaWithBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addAccountMetaWithBlockCache(t, l)
+}
+
+func TestLedger_GetAccountMetaWithBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	am := addAccountMetaWithBlockCache(t, l)
+	a, err := l.GetAccountMetaWithBlockCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("account,", a)
+	for _, token := range a.Tokens {
+		t.Log("token,", token)
+	}
+}
+
+func TestLedger_HasAccountMetaWithBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaWithBlockCache(t, l)
+	r, err := l.HasAccountMetaWithBlockCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r == false {
+		t.Fatal("should have accountMeta from block cache")
+	}
+	t.Log("has account,", r)
+}
+
+func TestLedger_DeleteAccountMetaWithBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaWithBlockCache(t, l)
+	err := l.DeleteAccountMetaWithBlockCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_UpdateAccountMetaWithBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaWithBlockCache(t, l)
+	token := mock.TokenMeta(am.Address)
+	am.Tokens = append(am.Tokens, token)
+
+	err := l.UpdateAccountMetaWithBlockCache(am)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.AddOrUpdateAccountMetaWithBlockCache(am)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
