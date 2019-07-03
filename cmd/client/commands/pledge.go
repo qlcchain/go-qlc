@@ -10,6 +10,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/crypto/random"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 
@@ -17,7 +18,6 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
-	commonutil "github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/spf13/cobra"
 )
@@ -116,7 +116,7 @@ func pledgeAction(beneficialAccount, pledgeAccount, amount, pType string) error 
 	defer client.Close()
 
 	am := types.StringToBalance(amount)
-	NEP5tTxId := commonutil.RandomFixedString(64)
+	NEP5tTxId := random.RandomHexString(32)
 	pledgeParam := api.PledgeParam{
 		Beneficial: b.Address(), PledgeAddress: p.Address(), Amount: am,
 		PType: pType, NEP5TxId: NEP5tTxId,

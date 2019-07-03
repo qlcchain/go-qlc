@@ -57,3 +57,15 @@ func TestPerm(t *testing.T) {
 		t.Log(index, "->", val)
 	}
 }
+
+func TestRandomHexString(t *testing.T) {
+	a := RandomHexString(0)
+	if len(a) != 0 {
+		t.Fatal("wrong return for length 0")
+	}
+	b := RandomHexString(32)
+	if len(b) != 64 {
+		t.Fatal("wrong length")
+	}
+	t.Log(b)
+}
