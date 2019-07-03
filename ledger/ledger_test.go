@@ -1178,3 +1178,52 @@ func TestLedger_MessageInfo(t *testing.T) {
 		t.Fatal("wrong result")
 	}
 }
+
+func addBlockCache(t *testing.T, l *Ledger) *types.StateBlock {
+	blk := mock.StateBlockWithoutWork()
+	if err := l.AddBlockCache(blk); err != nil {
+		t.Fatal(err)
+	}
+	return blk
+}
+
+func TestLedger_AddBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addBlockCache(t, l)
+}
+
+func TestLedger_HasBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := addBlockCache(t, l)
+	b, err := l.HasBlockCache(blk.GetHash())
+	if err != nil || !b {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_DeleteBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	blk := addBlockCache(t, l)
+	if err := l.DeleteBlockCache(blk.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_CountBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	blk := addBlockCache(t, l)
+	if c, err := l.CountBlockCache(); err != nil || c != 1 {
+		t.Fatal("CountBlockCache error,should be 1")
+	}
+	if err := l.DeleteBlockCache(blk.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	if c, err := l.CountBlockCache(); err != nil || c != 0 {
+		t.Fatal("CountBlockCache error,should be 0")
+	}
+}

@@ -82,6 +82,7 @@ const (
 	idPrefixPovBestHash // prefix + height => hash
 	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
 	idPrefixLink
+	idPrefixBlockCache = 30 //block store this table before consensus complete
 )
 
 var (
@@ -2033,4 +2034,59 @@ func (l *Ledger) GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, 
 		return nil, err
 	}
 	return m, nil
+}
+
+func (l *Ledger) AddBlockCache(blk *types.StateBlock, txns ...db.StoreTxn) error {
+	key := getKeyOfHash(blk.GetHash(), idPrefixBlockCache)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	//never overwrite implicitly
+	err := txn.Get(key, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrBlockExists
+	} else if err != badger.ErrKeyNotFound {
+		return err
+	}
+
+	blockBytes, err := blk.Serialize()
+	if err != nil {
+		return err
+	}
+	return txn.Set(key, blockBytes)
+}
+
+func (l *Ledger) HasBlockCache(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	key := getKeyOfHash(hash, idPrefixBlockCache)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (l *Ledger) DeleteBlockCache(hash types.Hash, txns ...db.StoreTxn) error {
+	key := getKeyOfHash(hash, idPrefixBlockCache)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Delete(key)
+}
+
+func (l *Ledger) CountBlockCache(txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Count([]byte{idPrefixBlockCache})
 }

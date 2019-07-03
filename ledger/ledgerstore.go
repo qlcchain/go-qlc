@@ -160,4 +160,10 @@ type Store interface {
 	CountPovBlocks(txns ...db.StoreTxn) (uint64, error)
 	CountPovTxs(txns ...db.StoreTxn) (uint64, error)
 	CountPovBestHashs(txns ...db.StoreTxn) (uint64, error)
+
+	//block cache ---Store the block before consensus is completed
+	AddBlockCache(block *types.StateBlock, txns ...db.StoreTxn) error
+	HasBlockCache(hash types.Hash, txns ...db.StoreTxn) (bool, error)
+	DeleteBlockCache(hash types.Hash, txns ...db.StoreTxn) error
+	CountBlockCache(txns ...db.StoreTxn) (uint64, error)
 }
