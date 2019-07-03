@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	minPovSyncPeerCount = 1
-	checkPeerStatusTime = 30
-	waitEnoughPeerTime  = 120
+	minForcePovSyncPeerCount  = 1
+	minEnoughPovSyncPeerCount = 3
+	checkPeerStatusTime       = 30
+	waitEnoughPeerTime        = 60
 
 	maxSyncBlockPerReq = 100
 	maxPullBlockPerReq = 100
@@ -198,9 +199,18 @@ wait:
 		case <-ss.quitCh:
 			return
 		case <-waitTimer.C:
-			break wait
+			peerCnt := ss.PeerCountWithStatus(peerStatusGood)
+			if peerCnt >= minForcePovSyncPeerCount {
+				ss.logger.Infof("prepare sync after timeout with peers %d", peerCnt)
+				break wait
+			} else {
+				ss.logger.Warnf("can not sync after timeout with peers %d", peerCnt)
+				waitTimer.Reset(waitEnoughPeerTime * time.Second)
+			}
 		default:
-			if ss.PeerCount() >= minPovSyncPeerCount {
+			peerCnt := ss.PeerCountWithStatus(peerStatusGood)
+			if peerCnt >= minEnoughPovSyncPeerCount {
+				ss.logger.Infof("prepare sync after got enough peers %d", peerCnt)
 				break wait
 			} else {
 				time.Sleep(1 * time.Second)
@@ -855,6 +865,19 @@ func (ss *PovSyncer) PeerCount() int {
 	peerCount := 0
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peerCount++
+		return true
+	})
+
+	return peerCount
+}
+
+func (ss *PovSyncer) PeerCountWithStatus(status int) int {
+	peerCount := 0
+	ss.allPeers.Range(func(key, value interface{}) bool {
+		peer := value.(*PovSyncPeer)
+		if peer.status == status {
+			peerCount++
+		}
 		return true
 	})
 
