@@ -78,8 +78,6 @@ func (ss *ServiceSync) Start() {
 					ss.logger.Errorf("err [%s] when send FrontierRequest", err)
 				}
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }

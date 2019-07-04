@@ -190,8 +190,6 @@ func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 			}
 		case <-ticker1.C:
 			node.connectBootstrap(pInfoS)
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
