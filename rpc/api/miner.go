@@ -28,13 +28,17 @@ type RewardParam struct {
 }
 
 type MinerRewardInfo struct {
+	PledgeVoteAmount types.Balance `json:"pledgeVoteAmount"`
+
 	LastRewardHeight uint64 `json:"lastRewardHeight"`
 	LastRewardBlocks uint64 `json:"lastRewardBlocks"`
 	LastBeneficial   string `json:"lastBeneficial"`
 
+	LatestBlockHeight uint64 `json:"latestBlockHeight"`
 	NodeRewardHeight  uint64 `json:"nodeRewardHeight"`
 	AvailRewardHeight uint64 `json:"availRewardHeight"`
 	AvailRewardBlocks uint64 `json:"availRewardBlocks"`
+	NeedCallReward    bool   `json:"needCallReward"`
 }
 
 func NewMinerApi(ledger *ledger.Ledger) *MinerApi {
@@ -52,6 +56,23 @@ func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
 func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, error) {
 	rsp := new(MinerRewardInfo)
 
+	latestPovHeader, err := m.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
+
+	repCb, err := m.ledger.GetRepresentation(coinbase)
+	if err == nil && repCb != nil {
+		rsp.PledgeVoteAmount = repCb.Vote
+	} else {
+		rsp.PledgeVoteAmount = types.ZeroBalance
+	}
+	hasEnoughVote := true
+	if rsp.PledgeVoteAmount.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
+		hasEnoughVote = false
+	}
+
 	oldMinerInfo, err := m.reward.GetRewardInfo(m.vmContext, coinbase)
 	if err != nil {
 		return nil, err
@@ -68,9 +89,19 @@ func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, erro
 		return nil, err
 	}
 
-	rsp.AvailRewardHeight, rsp.AvailRewardBlocks, err = m.reward.GetAvailRewardBlocks(m.vmContext, coinbase)
-	if err != nil {
-		return nil, err
+	if hasEnoughVote {
+		rsp.AvailRewardHeight, rsp.AvailRewardBlocks, err = m.reward.GetAvailRewardBlocks(m.vmContext, coinbase)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rsp.AvailRewardHeight = rsp.LastRewardHeight
+	}
+
+	if hasEnoughVote &&
+		rsp.AvailRewardHeight > rsp.LastRewardHeight &&
+		rsp.AvailRewardHeight <= rsp.NodeRewardHeight {
+		rsp.NeedCallReward = true
 	}
 
 	return rsp, nil
@@ -104,6 +135,11 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		return nil, err
 	}
 
+	latestPovHeader, err := m.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
 	send := &types.StateBlock{
 		Type:    types.ContractSend,
 		Token:   common.ChainToken(),
@@ -121,6 +157,8 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		Link:      types.Hash(types.MinerAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().UTC().Unix(),
+
+		PoVHeight: latestPovHeader.GetHeight(),
 	}
 
 	err = m.reward.DoSend(m.vmContext, send)

@@ -29,10 +29,10 @@ func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error
 		return 0, errors.New("failed to get latest block")
 	}
 
-	if latestBlock.GetHeight() < cabi.RewardHeightGapToLatest {
+	if latestBlock.GetHeight() < common.PovMinerRewardHeightGapToLatest {
 		return 0, nil
 	}
-	endHeight := latestBlock.GetHeight() - cabi.RewardHeightGapToLatest
+	endHeight := latestBlock.GetHeight() - common.PovMinerRewardHeightGapToLatest
 	endHeight = cabi.MinerRoundPovHeightByDay(endHeight)
 
 	return endHeight, nil
@@ -79,19 +79,23 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		return errors.New("token is not chain token")
 	}
 
+	// check account exist
 	amCb, _ := ctx.GetAccountMeta(param.Coinbase)
 	if amCb == nil {
 		return errors.New("coinbase account not exist")
 	}
-
-	// only miner with enough pledge can call this reward contract
-	if amCb.GetVote().Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
-		return errors.New("coinbase account has not enough pledge amount")
-	}
-
 	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
 	if amBnf == nil {
 		return errors.New("beneficial account not exist")
+	}
+
+	// check miner as representation has enough pledge vote
+	repCb, _ := ctx.GetRepresentation(param.Coinbase)
+	if repCb == nil {
+		return errors.New("coinbase as representation not exist")
+	}
+	if repCb.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
+		return errors.New("coinbase as representation has not enough pledge vote amount")
 	}
 
 	// check reward height
@@ -116,13 +120,17 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		oldMinerInfo = new(cabi.MinerInfo)
 	}
 	if param.RewardHeight <= oldMinerInfo.RewardHeight {
-		return fmt.Errorf("reward height %d should greath than last height %d", param.RewardHeight, oldMinerInfo.RewardHeight)
+		return fmt.Errorf("reward height %d should greater than last height %d", param.RewardHeight, oldMinerInfo.RewardHeight)
 	}
 
 	startHeight := oldMinerInfo.RewardHeight + 1
+	if startHeight < common.PovMinerRewardHeightStart {
+		startHeight = common.PovMinerRewardHeightStart
+	}
+
 	maxEndHeight := cabi.MinerCalcRewardEndHeight(startHeight, param.RewardHeight)
 	if maxEndHeight != param.RewardHeight {
-		return fmt.Errorf("reward height %d should lesser than max height %d", param.RewardHeight, maxEndHeight)
+		return fmt.Errorf("reward height %d exceed max height %d", param.RewardHeight, maxEndHeight)
 	}
 
 	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.RewardHeight)
@@ -166,7 +174,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		return nil, errors.New("failed to calculate reward blocks")
 	}
 
-	rewardAmount := cabi.RewardPerBlockBalance.Mul(int64(rewardBlocks))
+	rewardAmount := common.PovMinerRewardPerBlockBalance.Mul(int64(rewardBlocks))
 
 	newMinerData, err := cabi.MinerABI.PackVariable(
 		cabi.VariableNameMiner,
@@ -208,6 +216,8 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		}
 		block.Previous = types.ZeroHash
 	}
+
+	block.PoVHeight = input.PoVHeight
 
 	return []*ContractBlock{
 		{

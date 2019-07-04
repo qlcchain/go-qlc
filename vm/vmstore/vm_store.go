@@ -198,6 +198,10 @@ func (v *VMContext) GetTokenMeta(address types.Address, token types.Hash) (*type
 	return v.ledger.GetTokenMeta(address, token)
 }
 
+func (v *VMContext) GetRepresentation(address types.Address) (*types.Benefit, error) {
+	return v.ledger.GetRepresentation(address)
+}
+
 func (v *VMContext) GetStateBlock(hash types.Hash) (*types.StateBlock, error) {
 	return v.ledger.GetStateBlock(hash)
 }

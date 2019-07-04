@@ -117,6 +117,18 @@ func minerRewardAction(coinbaseP, beneficialP string, heightP int) error {
 	}
 	defer client.Close()
 
+	rspRewardInfo := new(api.MinerRewardInfo)
+	err = client.Call(rspRewardInfo, "miner_getRewardInfo", coinbaseAcc.Address())
+	if err != nil {
+		return err
+	}
+	fmt.Println("lastRewardHeight", rspRewardInfo.LastRewardHeight, "lastRewardBlocks", rspRewardInfo.LastRewardBlocks)
+	fmt.Println("availRewardHeight", rspRewardInfo.AvailRewardHeight, "availRewardBlocks", rspRewardInfo.AvailRewardBlocks)
+
+	if !rspRewardInfo.NeedCallReward {
+		return errors.New("can not call reward contract because no available reward height")
+	}
+
 	rewardParam := api.RewardParam{
 		Coinbase:     coinbaseAcc.Address(),
 		Beneficial:   beneficialAcc.Address(),

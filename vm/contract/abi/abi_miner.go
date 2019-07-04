@@ -7,7 +7,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"math/big"
 	"strings"
 )
 
@@ -24,14 +23,6 @@ const (
 
 var (
 	MinerABI, _ = abi.JSONToABIContract(strings.NewReader(jsonMiner))
-
-	// Reward per block, rewardPerBlock * blockNumPerYear / gasTotalSupply = 3%
-	// 10000000000000000 * 0.03 / (3600 * 24 * 365 / 30)
-	RewardPerBlockInt     = big.NewInt(285388127)
-	RewardPerBlockBalance = types.NewBalance(285388127)
-
-	RewardHeightGapToLatest = uint64(common.POVChainBlocksPerDay * 1)
-	MaxRewardHeightPerCall  = uint64(common.POVChainBlocksPerDay * 90)
 )
 
 type MinerRewardParam struct {
@@ -87,7 +78,11 @@ func MinerCalcRewardEndHeight(startHeight uint64, maxEndHeight uint64) uint64 {
 	if startHeight < common.PovMinerRewardHeightStart {
 		startHeight = common.PovMinerRewardHeightStart
 	}
-	endHeight := startHeight + MaxRewardHeightPerCall - 1
+	if maxEndHeight < common.PovMinerRewardHeightStart {
+		maxEndHeight = common.PovMinerRewardHeightStart
+	}
+
+	endHeight := startHeight + common.PovMinerMaxRewardHeightPerCall - 1
 	if endHeight > maxEndHeight {
 		endHeight = maxEndHeight
 	}
