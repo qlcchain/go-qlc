@@ -85,7 +85,12 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 }
 
 func (dps *DPoS) Init() {
-	povSyncState.Store(common.SyncNotStart)
+	if dps.cfg.PoV.PovEnabled {
+		povSyncState.Store(common.SyncNotStart)
+	} else {
+		povSyncState.Store(common.Syncdone)
+	}
+
 	supply := common.GenesisBlock().Balance
 	minWeight, _ = supply.Div(common.VoteDivisor)
 
@@ -421,7 +426,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 	var result process.ProcessResult
 	var err error
 
-	//block has been checked
+	//block has been checked. If fork there will be problem
 	if !dps.acTrx.isVoting(bs.Block) {
 		result, err = dps.lv.BlockCheck(bs.Block)
 		if err != nil {
@@ -499,7 +504,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 		}
 
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
-		dps.acTrx.addToRoots(bs.Block)
+		//dps.acTrx.addToRoots(bs.Block)
 
 		if dps.isResultValid(result) {
 			dps.localRepVote(bs)
@@ -683,14 +688,16 @@ func (dps *DPoS) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlo
 }
 
 func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
-	povHeader, err := dps.ledger.GetLatestPovHeader()
-	if err != nil {
-		//return nil, errors.New("get pov header err")
-	}
+	if dps.cfg.PoV.PovEnabled {
+		povHeader, err := dps.ledger.GetLatestPovHeader()
+		if err != nil {
+			//return nil, errors.New("get pov header err")
+		}
 
-	if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
-		//dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
-		//return nil, errors.New("pov height invalid")
+		if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
+			//dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
+			//return nil, errors.New("pov height invalid")
+		}
 	}
 
 	weight := dps.ledger.Weight(account)
