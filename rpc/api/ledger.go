@@ -656,7 +656,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		return types.ZeroHash, ErrParameterNil
 	}
 	verifier := process.NewLedgerVerifier(l.ledger)
-	flag, err := verifier.Process(block)
+	flag, err := verifier.BlockCheck(block)
 	if err != nil {
 		l.logger.Error(err)
 		return types.ZeroHash, err
@@ -665,6 +665,12 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	l.logger.Debug("process result, ", flag)
 	switch flag {
 	case process.Progress:
+		err := verifier.BlockCacheProcess(block)
+		if err != nil {
+			l.logger.Errorf("Block %s add to blockCache error[%d]", block.GetHash(), err)
+			return types.ZeroHash, err
+		}
+
 		l.logger.Debug("broadcast block")
 		//TODO: refine
 		l.eb.Publish(string(common.EventBroadcast), p2p.PublishReq, block)

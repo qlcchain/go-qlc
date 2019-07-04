@@ -357,6 +357,27 @@ func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
 	}
 }
 
+func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
+	hash := block.GetHash()
+	address := block.Address
+	if exist, _ := dps.ledger.HasBlockCache(hash); exist {
+		err := dps.ledger.DeleteBlockCache(hash)
+		if err != nil {
+			dps.logger.Error(err)
+		} else {
+			dps.logger.Debugf("delete block cache [%s] error", hash.String())
+		}
+		if exist, _ := dps.ledger.HasAccountMetaWithBlockCache(address); exist {
+			err := dps.ledger.DeleteAccountMetaWithBlockCache(address)
+			if err != nil {
+				dps.logger.Error(err)
+			} else {
+				dps.logger.Debugf("delete block cache accountMeta[%s] error", address.String())
+			}
+		}
+	}
+}
+
 func (dps *DPoS) ProcessMsgLoop() {
 	getTimeout := time.NewTimer(1 * time.Millisecond)
 
@@ -498,6 +519,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 			dps.ConfirmBlock(bs.Block)
 		}
 	case consensus.MsgGenerateBlock:
+		dps.logger.Infof("dps recv MsgGenerateBlock block[%s]", hash)
 		if dps.getPovSyncState() != common.Syncdone {
 			dps.logger.Errorf("pov is syncing, can not send tx!")
 			return

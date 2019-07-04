@@ -10,6 +10,7 @@ package process
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
@@ -126,7 +127,9 @@ func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 
 	// check previous
 	if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-		return GapPrevious, nil
+		if exit, err := lv.l.HasBlockCache(block.Previous); !exit && err != nil {
+			return GapPrevious, nil
+		}
 	} else {
 		//check fork
 		if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
@@ -165,7 +168,9 @@ func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResu
 
 	// check previous
 	if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-		return GapPrevious, nil
+		if exit, err := lv.l.HasBlockCache(block.Previous); !exit && err != nil {
+			return GapPrevious, nil
+		}
 	} else {
 		//check fork
 		if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
@@ -178,7 +183,9 @@ func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResu
 
 		//check receive link
 		if b, err := lv.l.HasStateBlock(block.Link); !b && err == nil {
-			return GapSource, nil
+			if exit, err := lv.l.HasBlockCache(block.Link); !exit && err != nil {
+				return GapSource, nil
+			}
 		}
 
 		//check pending
@@ -226,7 +233,9 @@ func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResul
 
 	// check previous
 	if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-		return GapPrevious, nil
+		if exit, err := lv.l.HasBlockCache(block.Previous); !exit && err != nil {
+			return GapPrevious, nil
+		}
 	} else {
 		//check fork
 		if tm, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil && previous.GetHash() != tm.Header {
@@ -262,7 +271,9 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 
 	//check link
 	if b, _ := lv.l.HasStateBlock(block.Link); !b {
-		return GapSource, nil
+		if exit, err := lv.l.HasBlockCache(block.Link); !exit && err != nil {
+			return GapSource, nil
+		}
 	} else {
 		//check fork
 		if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
@@ -366,7 +377,9 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	//check smart c exist
 	input, err := lv.l.GetStateBlock(block.GetLink())
 	if err != nil {
-		return GapSource, nil
+		if exit, err := lv.l.HasBlockCache(block.Link); !exit && err != nil {
+			return GapSource, nil
+		}
 	}
 	address := types.Address(input.GetLink())
 
@@ -429,6 +442,38 @@ func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 		}
 		return errors.New("invalid block")
 	})
+}
+
+func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
+	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
+		if state, ok := block.(*types.StateBlock); ok {
+			err := lv.addBlockInfoToBlockCache(state, txn)
+			if err != nil {
+				lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
+				return err
+			}
+			return nil
+		} else if _, ok := block.(*types.SmartContractBlock); ok {
+			return errors.New("smart contract block")
+		}
+		return errors.New("invalid block")
+	})
+}
+
+func (lv *LedgerVerifier) addBlockInfoToBlockCache(block *types.StateBlock, txn db.StoreTxn) error {
+	lv.logger.Debug("process block cache, ", block.GetHash())
+	if err := lv.l.AddBlockCache(block, txn); err != nil {
+		return err
+	}
+
+	am, err := lv.l.GetAccountMetaWithBlockCache(block.GetAddress(), txn)
+	if err != nil && err != ledger.ErrAccountNotFound {
+		return fmt.Errorf("get account meta error: %s", err)
+	}
+	if err := lv.updateAccountMetaWithBlockCache(block, am, txn); err != nil {
+		return fmt.Errorf("update account meta error: %s", err)
+	}
+	return nil
 }
 
 func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
@@ -624,6 +669,65 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 	return nil
 }
 
+func (lv *LedgerVerifier) updateAccountMetaWithBlockCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+	hash := block.GetHash()
+	rep := block.GetRepresentative()
+	address := block.GetAddress()
+	token := block.GetToken()
+	balance := block.GetBalance()
+
+	tmNew := &types.TokenMeta{
+		Type:           token,
+		Header:         hash,
+		Representative: rep,
+		OpenBlock:      hash,
+		Balance:        balance,
+		BlockCount:     1,
+		BelongTo:       address,
+		Modified:       time.Now().Unix(),
+	}
+
+	if am != nil {
+		tm := am.Token(block.GetToken())
+		if block.GetToken() == common.ChainToken() {
+			am.CoinBalance = balance
+			am.CoinOracle = block.GetOracle()
+			am.CoinNetwork = block.GetNetwork()
+			am.CoinVote = block.GetVote()
+			am.CoinStorage = block.GetStorage()
+		}
+		if tm != nil {
+			tm.Header = hash
+			tm.Representative = rep
+			tm.Balance = balance
+			tm.BlockCount = tm.BlockCount + 1
+			tm.Modified = time.Now().Unix()
+		} else {
+			am.Tokens = append(am.Tokens, tmNew)
+		}
+		if err := lv.l.UpdateAccountMetaWithBlockCache(am, txn); err != nil {
+			return err
+		}
+	} else {
+		account := types.AccountMeta{
+			Address: address,
+			Tokens:  []*types.TokenMeta{tmNew},
+		}
+
+		if block.GetToken() == common.ChainToken() {
+			account.CoinBalance = balance
+			account.CoinOracle = block.GetOracle()
+			account.CoinNetwork = block.GetNetwork()
+			account.CoinVote = block.GetVote()
+			account.CoinStorage = block.GetStorage()
+		}
+		if err := lv.l.AddAccountMetaWithBlockCache(&account, txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // TODO: implement
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
@@ -659,7 +763,12 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 				return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
 			}
 		}
-
+		if err := lv.l.DeleteBlockCache(hashCur, txn); err != nil {
+			return fmt.Errorf("delete block cache fail(%s), hash(%s)", err, hashCur)
+		}
+		if err := lv.l.DeleteAccountMetaWithBlockCache(blockCur.Address, txn); err != nil {
+			return fmt.Errorf("delete block cache accountMeta fail(%s), hash(%s)", err, hashCur)
+		}
 		switch blockType {
 		case types.Open:
 			lv.logger.Debug("---delete open block, ", hashCur)

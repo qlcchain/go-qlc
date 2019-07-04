@@ -158,7 +158,7 @@ func (r *Receiver) ReceiveSyncBlock(blk *types.StateBlock) {
 }
 
 func (r *Receiver) ReceiveGenerateBlock(result process.ProcessResult, blk *types.StateBlock) {
-	r.c.logger.Debugf("GenerateBlock Event for block:[%s]", blk.GetHash())
+	r.c.logger.Infof("GenerateBlock Event for block:[%s]", blk.GetHash())
 	bs := &BlockSource{
 		Block:     blk,
 		BlockFrom: types.UnSynchronized,

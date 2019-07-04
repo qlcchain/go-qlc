@@ -149,6 +149,7 @@ func (act *ActiveTrx) cleanVotes() {
 			return true
 		} else {
 			act.roots.Delete(el.vote.id)
+			act.dps.deleteBlockCache(el.status.winner)
 		}
 
 		//block := el.status.winner
@@ -181,6 +182,7 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	} else {
 		act.dps.logger.Debugf("%s, %v", hash.String(), err)
 	}
+	act.dps.deleteBlockCache(block)
 }
 
 func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
