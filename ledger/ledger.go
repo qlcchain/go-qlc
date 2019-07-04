@@ -1826,13 +1826,27 @@ func (l *Ledger) generateWork(hash types.Hash) types.Work {
 }
 
 func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error) {
-	tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken())
+	am, err := l.GetAccountMetaWithBlockCache(block.GetAddress())
 	if err != nil {
+		am, err = l.GetAccountMeta(block.Address)
+		if err != nil {
+			return nil, errors.New("account not found")
+		}
+	}
+	tm := am.Token(block.GetToken())
+	if tm == nil {
 		return nil, errors.New("token not found")
 	}
+	//tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken())
+	//if err != nil {
+	//	return nil, errors.New("token not found")
+	//}
 	prev, err := l.GetStateBlock(tm.Header)
 	if err != nil {
-		return nil, err
+		prev, err = l.GetBlockCache(tm.Header)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		block.Type = types.Send
@@ -1882,18 +1896,35 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 	if err != nil {
 		return nil, err
 	}
-	has, err := l.HasTokenMeta(rxAccount, sendBlock.Token)
+	var has bool
+	var rxTm *types.TokenMeta
+	am, err := l.GetAccountMetaWithBlockCache(rxAccount)
 	if err != nil {
-		return nil, err
-	}
-	if has {
-		rxTm, err := l.GetTokenMeta(rxAccount, sendBlock.GetToken())
+		has, err = l.HasTokenMeta(rxAccount, sendBlock.Token)
 		if err != nil {
 			return nil, err
 		}
+		if has {
+			rxTm, err = l.GetTokenMeta(rxAccount, sendBlock.GetToken())
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		rxTm = am.Token(sendBlock.GetToken())
+		if rxTm == nil {
+			has = false
+		} else {
+			has = true
+		}
+	}
+	if has {
 		prev, err := l.GetStateBlock(rxTm.Header)
 		if err != nil {
-			return nil, err
+			prev, err = l.GetBlockCache(rxTm.Header)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if rxTm != nil {
 			sb = types.StateBlock{
@@ -1942,9 +1973,12 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		return nil, fmt.Errorf("invalid representative[%s]", representative.String())
 	}
 
-	am, err := l.GetAccountMeta(account)
+	am, err := l.GetAccountMetaWithBlockCache(account)
 	if err != nil {
-		return nil, fmt.Errorf("account[%s] is not exist", account.String())
+		am, err = l.GetAccountMeta(account)
+		if err != nil {
+			return nil, fmt.Errorf("account[%s] is not exist", account.String())
+		}
 	}
 	tm := am.Token(common.ChainToken())
 	if tm == nil {
