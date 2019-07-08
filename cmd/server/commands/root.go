@@ -388,7 +388,7 @@ func run() {
 }
 
 func updateConfig(cfg *config.Config, cfgPathP string) error {
-	paramSlice := strings.Split(configParamsP, ":")
+	paramSlice := strings.Split(configParamsP, ";")
 	var s []string
 	if cfgPathP == "" {
 		s = strings.Split(config.QlcConfigFile, ".")

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	libnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -23,7 +23,7 @@ type Stream struct {
 	syncMutex   sync.Mutex
 	pid         peer.ID
 	addr        ma.Multiaddr
-	stream      libnet.Stream
+	stream      network.Stream
 	node        *QlcNode
 	quitWriteCh chan bool
 	messageChan chan []byte
@@ -31,7 +31,7 @@ type Stream struct {
 }
 
 // NewStream return a new Stream
-func NewStream(stream libnet.Stream, node *QlcNode) *Stream {
+func NewStream(stream network.Stream, node *QlcNode) *Stream {
 	return newStreamInstance(stream.Conn().RemotePeer(), stream.Conn().RemoteMultiaddr(), stream, node)
 }
 
@@ -40,7 +40,7 @@ func NewStreamFromPID(pid peer.ID, node *QlcNode) *Stream {
 	return newStreamInstance(pid, nil, nil, node)
 }
 
-func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream libnet.Stream, node *QlcNode) *Stream {
+func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream network.Stream, node *QlcNode) *Stream {
 	return &Stream{
 		pid:         pid,
 		addr:        addr,

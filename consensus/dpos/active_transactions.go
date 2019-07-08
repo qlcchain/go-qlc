@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	confirmTimeout   = 1800
+	confirmTimeout = 1800
 )
 
 type voteKey [1 + types.HashSize]byte
@@ -198,7 +198,7 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 			if err != nil {
 				act.dps.logger.Errorf("error [%s] when rollback hash [%s]", err, hash.String())
 			}
-			act.dps.rollbackUnchecked(hash)
+			act.dps.rollbackUncheckedFromDb(hash)
 		}
 	}
 }

@@ -13,6 +13,7 @@ var (
 
 	PovMinerPledgeAmountMin   = types.NewBalance(100000000000000)
 	PovMinerVerifyHeightStart = uint64(3600 * 24 * 1 / PovChainBlockInterval)
+	PovMinerRewardHeightStart = uint64(3600 * 24 * 30 / PovChainBlockInterval)
 
 	PoVMaxForkHeight = uint64(3600 * 24 * 7 / PovChainBlockInterval)
 

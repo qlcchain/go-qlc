@@ -145,6 +145,9 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Has
 
 func (r *Receiver) ReceiveSyncBlock(blk *types.StateBlock) {
 	r.c.logger.Debugf("Sync Event for block:[%s]", blk.GetHash())
+	now := time.Now()
+	r.eb.Publish(string(common.EventSyncing), now)
+
 	bs := &BlockSource{
 		Block:     blk,
 		BlockFrom: types.Synchronized,

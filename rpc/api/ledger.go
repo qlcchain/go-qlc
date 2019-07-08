@@ -9,7 +9,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/ledger/relation"
@@ -377,15 +376,11 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
 
-	if common.IsNormalNode() {
-		c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
-	} else {
-		unCount, err := l.ledger.CountUncheckedBlocks()
-		if err != nil {
-			return nil, err
-		}
-		c["unchecked"] = unCount
+	unCount, err := l.ledger.CountUncheckedBlocks()
+	if err != nil {
+		return nil, err
 	}
+	c["unchecked"] = unCount
 
 	return c, nil
 }
@@ -400,18 +395,13 @@ func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
 		return nil, err
 	}
 
+	unCount, err := l.ledger.CountUncheckedBlocks()
+	if err != nil {
+		return nil, err
+	}
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
-
-	if common.IsNormalNode() {
-		c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
-	} else {
-		unCount, err := l.ledger.CountUncheckedBlocks()
-		if err != nil {
-			return nil, err
-		}
-		c["unchecked"] = unCount
-	}
+	c["unchecked"] = unCount
 
 	return c, nil
 }

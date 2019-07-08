@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	libnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -31,7 +31,7 @@ func (sm *StreamManager) SetQlcNode(node *QlcNode) {
 }
 
 // Add a new stream into the stream manager
-func (sm *StreamManager) Add(s libnet.Stream) {
+func (sm *StreamManager) Add(s network.Stream) {
 	stream := NewStream(s, sm.node)
 	sm.AddStream(stream)
 }

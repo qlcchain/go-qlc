@@ -10,6 +10,7 @@ package random
 import (
 	cryptoRand "crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	mathRand "math/rand"
 )
 
@@ -34,6 +35,16 @@ func (s *cryptoRandSource) Seed(seed int64) {
 func Bytes(data []byte) error {
 	_, err := cryptoRand.Read(data)
 	return err
+}
+
+func RandomHexString(length int) string {
+	if length == 0 {
+		return ""
+	}
+	b := make([]byte, length)
+	_ = Bytes(b)
+	s := hex.EncodeToString(b)
+	return s
 }
 
 // Perm returns a random permutation of the integers [0,n).

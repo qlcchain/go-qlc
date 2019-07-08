@@ -59,8 +59,6 @@ func (tp *PovTxPool) Start() {
 
 func (tp *PovTxPool) Stop() {
 	close(tp.quitCh)
-	tp.allTxs = nil
-	tp.accountTxs = nil
 }
 
 func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) error {

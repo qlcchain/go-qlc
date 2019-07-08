@@ -18,7 +18,7 @@ import (
 
 func Test_updateConfig(t *testing.T) {
 	cfgPathP = filepath.Join(config.QlcTestDataDir(), "config")
-	configParamsP = "rpc.rpcEnabled=true:rpc.httpCors=localhost,localhost2:p2p.syncInterval=200:rpc.rpcEnabled="
+	configParamsP = "rpc.rpcEnabled=true;rpc.httpCors=localhost,localhost2;p2p.syncInterval=200;rpc.rpcEnabled="
 	manager := config.NewCfgManager(cfgPathP)
 	defer func() {
 		_ = os.RemoveAll(cfgPathP)
