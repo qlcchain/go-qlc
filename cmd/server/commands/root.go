@@ -64,7 +64,6 @@ var (
 	isProfile    cmdutil.Flag
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
-
 	//ctx            *chain.QlcContext
 	ledgerService    *ss.LedgerService
 	walletService    *ss.WalletService
@@ -109,6 +108,7 @@ func Execute(osArgs []string) {
 				if err != nil {
 					cmd.Println(err)
 				}
+
 			},
 		}
 		rootCmd.PersistentFlags().StringVar(&cfgPathP, "config", "", "config file")
@@ -119,7 +119,6 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
-
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)
@@ -240,7 +239,7 @@ func start() error {
 
 		go func() {
 			//view result in http://localhost:6060/debug/pprof/
-			log.Println(http.ListenAndServe(":6060", nil))
+			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 	}
 
@@ -248,9 +247,8 @@ func start() error {
 		//remove all p2p bootstrap node
 		cfg.P2P.BootNodes = []string{}
 	}
-
 	configDetails := util.ToIndentString(cfg)
-	log.Printf("%s\n", configDetails)
+	logger.Debugf("%s", configDetails)
 
 	if common.IsConfidantNode() {
 		go func() {

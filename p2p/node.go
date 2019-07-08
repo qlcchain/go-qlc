@@ -3,10 +3,6 @@ package p2p
 import (
 	"context"
 	"errors"
-	"github.com/libp2p/go-libp2p-yamux"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/whyrusleeping/yamux"
-	"io/ioutil"
 	"time"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -23,7 +19,6 @@ import (
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/qlcchain/go-qlc/config"
-	mplex "github.com/whyrusleeping/go-smux-multiplex"
 )
 
 // Error types
@@ -81,36 +76,16 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 func (node *QlcNode) startHost() error {
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
-
-	opts := []libp2p.Option{
+	qlcHost, err := libp2p.New(
+		node.ctx,
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(node.privateKey),
 		libp2p.NATPortMap(),
-	}
-
-	if common.IsConfidantNode() {
-		simpleNodeTransport := (*sm_yamux.Transport)(&yamux.Config{
-			AcceptBacklog:          256,
-			EnableKeepAlive:        true,
-			KeepAliveInterval:      30 * time.Second,
-			ConnectionWriteTimeout: 10 * time.Second,
-			MaxStreamWindowSize:    uint32(256 * 1024),
-			LogOutput:              ioutil.Discard,
-		})
-
-		simpleNodeMuxers := libp2p.ChainOptions(
-			libp2p.Muxer("/yamux/1.0.0", simpleNodeTransport),
-			libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
-		)
-
-		opts = append(opts, simpleNodeMuxers)
-	}
-
-	qlcHost, err := libp2p.New(node.ctx, opts...)
+		libp2p.DefaultMuxers,
+	)
 	if err != nil {
 		return err
 	}
-
 	qlcHost.SetStreamHandler(QlcProtocolID, node.handleStream)
 	node.host = qlcHost
 	kadDht, err := dht.New(node.ctx, node.host)
