@@ -12,7 +12,6 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -209,11 +208,16 @@ func (trie *Trie) Clone() *Trie {
 }
 
 func (trie *Trie) Save(txns ...db.StoreTxn) (func(), error) {
-	txn := trie.db.NewTransaction(true)
-	defer func() {
-		txn.Commit(nil)
-		txn.Discard()
-	}()
+	var txn db.StoreTxn
+	if len(txns) > 0 {
+		txn = txns[0]
+	} else {
+		txn = trie.db.NewTransaction(true)
+		defer func() {
+			txn.Commit(nil)
+			txn.Discard()
+		}()
+	}
 
 	err := trie.traverseSave(txn, trie.Root)
 	if err != nil {
