@@ -185,6 +185,7 @@ func (eb *DefaultEventBus) Publish(topic string, args ...interface{}) {
 						select {
 						case <-checkInterval.C:
 							if h.pool.WaitingQueueSize() < common.EventBusWaitingQueueSize {
+								checkInterval.Stop()
 								break checkWaitingQueueOut
 							}
 						}
