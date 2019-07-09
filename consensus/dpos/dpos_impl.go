@@ -24,7 +24,6 @@ import (
 const (
 	targetTps             = 500
 	repTimeout            = 5 * time.Minute
-	uncheckedCacheSize    = targetTps * 5 * 60
 	voteCacheSize         = targetTps * 5 * 60
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
@@ -112,7 +111,6 @@ func (dps *DPoS) Start() {
 
 	timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
-	//timerUpdateUncheckedNum := time.NewTicker(time.Minute)
 
 	for {
 		select {
@@ -122,8 +120,6 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		//case <-timerUpdateUncheckedNum.C: //calibration
-		//	consensus.GlobalUncheckedBlockNum.Store(uint64(dps.uncheckedCache.Len(false)))
 		case <-timerFindOnlineRep.C:
 			dps.logger.Info("begin Find Online Representatives.")
 			go func() {
@@ -185,7 +181,27 @@ func (dps *DPoS) processUncheckedBlock(bs *consensus.BlockSource) {
 	})
 }
 
-func (dps *DPoS) enqueueUnchecked(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
+func (dps *DPoS) enqueueUnchecked(result process.ProcessResult, bs *consensus.BlockSource) {
+	dps.enqueueUncheckedToDb(result, bs)
+}
+
+func (dps *DPoS) enqueueUncheckedToDb(result process.ProcessResult, bs *consensus.BlockSource) {
+	blk := bs.Block
+
+	if result == process.GapPrevious {
+		err := dps.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.BlockFrom)
+		if err != nil && err != ledger.ErrUncheckedBlockExists {
+			dps.logger.Errorf("add unchecked block to ledger err %s", err)
+		}
+	} else {
+		err := dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)
+		if err != nil && err != ledger.ErrUncheckedBlockExists {
+			dps.logger.Errorf("add unchecked block to ledger err %s", err)
+		}
+	}
+}
+
+func (dps *DPoS) enqueueUncheckedToMem(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
 	if !dps.uncheckedCache.Has(depHash) {
 		consensus.GlobalUncheckedBlockNum.Inc()
 		blocks := new(sync.Map)
@@ -204,6 +220,10 @@ func (dps *DPoS) enqueueUnchecked(hash types.Hash, depHash types.Hash, bs *conse
 		blocks := c.(*sync.Map)
 		blocks.Store(hash, bs)
 	}
+}
+
+func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
+	dps.dequeueUncheckedFromDb(hash)
 }
 
 func (dps *DPoS) dequeueUncheckedFromDb(hash types.Hash) {
@@ -238,7 +258,7 @@ func (dps *DPoS) dequeueUncheckedFromDb(hash types.Hash) {
 	}
 }
 
-func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
+func (dps *DPoS) dequeueUncheckedFromMem(hash types.Hash) {
 	dps.logger.Infof("dequeue gap[%s]", hash.String())
 	if !dps.uncheckedCache.Has(hash) {
 		return
@@ -305,6 +325,10 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 }
 
 func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
+	dps.rollbackUncheckedFromDb(hash)
+}
+
+func (dps *DPoS) rollbackUncheckedFromMem(hash types.Hash) {
 	if !dps.uncheckedCache.Has(hash) {
 		return
 	}
@@ -318,7 +342,7 @@ func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
 	cm := m.(*sync.Map)
 	cm.Range(func(key, value interface{}) bool {
 		bs := value.(*consensus.BlockSource)
-		dps.rollbackUnchecked(bs.Block.GetHash())
+		dps.rollbackUncheckedFromMem(bs.Block.GetHash())
 		return true
 	})
 
@@ -375,8 +399,7 @@ func (dps *DPoS) ProcessMsgLoop() {
 					dps.ProcessMsgDo(bs)
 				}
 			case hash := <-dps.blocksAcked:
-				//dps.dequeueUnchecked(hash)
-				dps.dequeueUncheckedFromDb(hash)
+				dps.dequeueUnchecked(hash)
 			default:
 				break DequeueOut
 			}
@@ -426,19 +449,13 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 	var result process.ProcessResult
 	var err error
 
-	//block has been checked. If fork there will be problem
-	if !dps.acTrx.isVoting(bs.Block) {
-		result, err = dps.lv.BlockCheck(bs.Block)
-		if err != nil {
-			dps.logger.Infof("block[%s] check err[%s]", bs.Block.GetHash().String(), err.Error())
-			return
-		}
-
-		dps.ProcessResult(result, bs)
-	} else {
-		result = process.Progress
+	result, err = dps.lv.BlockCheck(bs.Block)
+	if err != nil {
+		dps.logger.Infof("block[%s] check err[%s]", bs.Block.GetHash().String(), err.Error())
+		return
 	}
 
+	dps.ProcessResult(result, bs)
 	hash := bs.Block.GetHash()
 
 	switch bs.Type {
@@ -578,22 +595,6 @@ func (dps *DPoS) ConfirmBlock(blk *types.StateBlock) {
 	}
 }
 
-func (dps *DPoS) cacheGapBlock(result process.ProcessResult, bs *consensus.BlockSource) {
-	blk := bs.Block
-
-	if result == process.GapPrevious {
-		err := dps.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.BlockFrom)
-		if err != nil && err != ledger.ErrUncheckedBlockExists {
-			dps.logger.Errorf("add unchecked block to ledger err %s", err)
-		}
-	} else {
-		err := dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)
-		if err != nil && err != ledger.ErrUncheckedBlockExists {
-			dps.logger.Errorf("add unchecked block to ledger err %s", err)
-		}
-	}
-}
-
 func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.BlockSource) {
 	blk := bs.Block
 	hash := blk.GetHash()
@@ -630,12 +631,10 @@ func (dps *DPoS) ProcessResult(result process.ProcessResult, bs *consensus.Block
 		dps.ProcessFork(blk)
 	case process.GapPrevious:
 		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous.String())
-		//dps.enqueueUnchecked(hash, blk.Previous, bs)
-		dps.cacheGapBlock(result, bs)
+		dps.enqueueUnchecked(result, bs)
 	case process.GapSource:
 		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link.String())
-		//dps.enqueueUnchecked(hash, blk.Link, bs)
-		dps.cacheGapBlock(result, bs)
+		dps.enqueueUnchecked(result, bs)
 	}
 }
 
