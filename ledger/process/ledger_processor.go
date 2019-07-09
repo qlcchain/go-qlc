@@ -382,20 +382,6 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 				}
 				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 					g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
-					//save contract data
-					ctx := g[0].VMContext
-					if ctx != nil {
-						err := ctx.SaveStorage()
-						if err != nil {
-							lv.logger.Error("save storage error: ", err)
-							return InvalidData, nil
-						}
-						err = ctx.SaveTrie()
-						if err != nil {
-							lv.logger.Error("save trie error: ", err)
-							return InvalidData, nil
-						}
-					}
 					return Progress, nil
 				} else {
 					lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
@@ -456,6 +442,9 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 	}
 	if err := lv.updateAccountMeta(block, am, txn); err != nil {
 		return fmt.Errorf("update account meta error: %s", err)
+	}
+	if err := lv.updateContractData(block, txn); err != nil {
+		return fmt.Errorf("update contract data error: %s", err)
 	}
 	return nil
 }
@@ -620,6 +609,44 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		if err := lv.l.AddAccountMeta(&account, txn); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.StoreTxn) error {
+	if !common.IsGenesisBlock(block) && block.GetType() == types.ContractReward {
+		input, err := lv.l.GetStateBlock(block.GetLink())
+		if err != nil {
+			return nil
+		}
+		address := types.Address(input.GetLink())
+		c, ok, err := contract.GetChainContract(address, input.Data)
+		if !ok || err != nil {
+			return fmt.Errorf("invaild contract %s", err)
+		}
+		clone := block.Clone()
+		vmCtx := vmstore.NewVMContext(lv.l)
+		g, err := c.DoReceive(vmCtx, clone, input)
+		if err != nil {
+			return err
+		}
+		if len(g) > 0 {
+			ctx := g[0].VMContext
+			if ctx != nil {
+				err := ctx.SaveStorage(txn)
+				if err != nil {
+					lv.logger.Error("save storage error: ", err)
+					return err
+				}
+				err = ctx.SaveTrie(txn)
+				if err != nil {
+					lv.logger.Error("save trie error: ", err)
+					return err
+				}
+				return nil
+			}
+		}
+		return errors.New("invaild contract data")
 	}
 	return nil
 }
