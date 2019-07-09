@@ -62,7 +62,17 @@ func (c *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 	}
 
 	flag := false
-	sort.Sort(CfgMigrations(migrations))
+	sort.Slice(migrations, func(i, j int) bool {
+		if migrations[i].StartVersion() < migrations[j].StartVersion() {
+			return true
+		}
+
+		if migrations[i].StartVersion() > migrations[j].StartVersion() {
+			return false
+		}
+
+		return migrations[i].EndVersion() < migrations[j].EndVersion()
+	})
 	for _, m := range migrations {
 		var err error
 		if version == m.StartVersion() {
