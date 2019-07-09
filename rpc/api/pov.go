@@ -66,12 +66,12 @@ type PovApiTD struct {
 }
 
 type PovMinerStatItem struct {
-	MinTime    time.Time `json:"minTime"`
-	MaxTime    time.Time `json:"maxTime"`
-	MinHeight  uint64    `json:"minHeight"`
-	MaxHeight  uint64    `json:"maxHeight"`
-	BlockCount uint64    `json:"blockCount"`
-	BestCount  uint64    `json:"bestCount"`
+	FirstBlockTime   time.Time `json:"firstBlockTime"`
+	LastBlockTime    time.Time `json:"lastBlockTime"`
+	FirstBlockHeight uint64    `json:"firstBlockHeight"`
+	LastBlockHeight  uint64    `json:"lastBlockHeight"`
+	AllBlockCount    uint64    `json:"allBlockCount"`
+	AllBestCount     uint64    `json:"allBestCount"`
 }
 
 type PovMinerStats struct {
@@ -323,22 +323,31 @@ func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) 
 	return apiState, nil
 }
 
-func (api *PovApi) GetAccountStateByBlockHash(address types.Address, blockHash types.Hash) (*PovApiState, error) {
-	block, err := api.ledger.GetPovBlockByHash(blockHash)
+func (api *PovApi) GetLatestAccountState(address types.Address) (*PovApiState, error) {
+	header, err := api.ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
 
-	return api.GetAccountState(address, block.StateHash)
+	return api.GetAccountState(address, header.StateHash)
+}
+
+func (api *PovApi) GetAccountStateByBlockHash(address types.Address, blockHash types.Hash) (*PovApiState, error) {
+	header, err := api.ledger.GetPovHeaderByHash(blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.GetAccountState(address, header.StateHash)
 }
 
 func (api *PovApi) GetAccountStateByBlockHeight(address types.Address, height uint64) (*PovApiState, error) {
-	block, err := api.ledger.GetPovBlockByHeight(height)
+	header, err := api.ledger.GetPovHeaderByHeight(height)
 	if err != nil {
 		return nil, err
 	}
 
-	return api.GetAccountState(address, block.StateHash)
+	return api.GetAccountState(address, header.StateHash)
 }
 
 func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error) {
@@ -449,38 +458,34 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		return nil
 	})
 
-	err = api.ledger.GetAllPovBlocks(func(block *types.PovBlock) error {
-		if len(checkAddrMap) > 0 && checkAddrMap[block.GetCoinbase()] == false {
+	err = api.ledger.GetAllPovHeaders(func(header *types.PovHeader) error {
+		if len(checkAddrMap) > 0 && checkAddrMap[header.GetCoinbase()] == false {
 			return nil
 		}
 
-		item, ok := apiRsp.MinerStats[block.GetCoinbase()]
+		item, ok := apiRsp.MinerStats[header.GetCoinbase()]
 		if !ok {
 			item = &PovMinerStatItem{}
-			item.MinTime = time.Unix(block.GetTimestamp(), 0)
-			item.MaxTime = time.Unix(block.GetTimestamp(), 0)
-			item.MinHeight = block.GetHeight()
-			item.MaxHeight = block.GetHeight()
-			item.BlockCount = 1
+			item.FirstBlockTime = time.Unix(header.GetTimestamp(), 0)
+			item.LastBlockTime = time.Unix(header.GetTimestamp(), 0)
+			item.FirstBlockHeight = header.GetHeight()
+			item.LastBlockHeight = header.GetHeight()
+			item.AllBlockCount = 1
 
-			apiRsp.MinerStats[block.GetCoinbase()] = item
+			apiRsp.MinerStats[header.GetCoinbase()] = item
 		} else {
-			if item.MinTime.Unix() > block.GetTimestamp() {
-				item.MinTime = time.Unix(block.GetTimestamp(), 0)
+			if item.FirstBlockTime.Unix() > header.GetTimestamp() {
+				item.FirstBlockTime = time.Unix(header.GetTimestamp(), 0)
+				item.FirstBlockHeight = header.GetHeight()
 			}
-			if item.MaxTime.Unix() < block.GetTimestamp() {
-				item.MaxTime = time.Unix(block.GetTimestamp(), 0)
+			if item.LastBlockTime.Unix() < header.GetTimestamp() {
+				item.LastBlockTime = time.Unix(header.GetTimestamp(), 0)
+				item.LastBlockHeight = header.GetHeight()
 			}
-			if item.MinHeight > block.GetHeight() {
-				item.MinHeight = block.GetHeight()
-			}
-			if item.MaxHeight < block.GetHeight() {
-				item.MaxHeight = block.GetHeight()
-			}
-			item.BlockCount += 1
+			item.AllBlockCount += 1
 		}
-		if _, ok := bestBlockHashMap[block.GetHash()]; ok {
-			item.BestCount += 1
+		if _, ok := bestBlockHashMap[header.GetHash()]; ok {
+			item.AllBestCount += 1
 		}
 		return nil
 	})
