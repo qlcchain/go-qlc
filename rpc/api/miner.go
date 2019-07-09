@@ -24,6 +24,7 @@ type MinerApi struct {
 type RewardParam struct {
 	Coinbase     types.Address `json:"coinbase"`
 	Beneficial   types.Address `json:"beneficial"`
+	RewardBlocks uint64        `json:"rewardBlocks"`
 	RewardHeight uint64        `json:"rewardHeight"`
 }
 
@@ -50,7 +51,7 @@ func NewMinerApi(ledger *ledger.Ledger) *MinerApi {
 }
 
 func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
-	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.RewardHeight)
+	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.RewardBlocks, param.RewardHeight)
 }
 
 func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, error) {
@@ -170,6 +171,13 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 }
 
 func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if input.GetType() != types.ContractSend {
+		return nil, errors.New("input block type is not contract send")
+	}
+	if input.GetLink() != types.MinerAddress.ToHash() {
+		return nil, errors.New("input address is not contract miner")
+	}
+
 	reward := &types.StateBlock{}
 
 	blocks, err := m.reward.DoReceive(m.vmContext, reward, input)
@@ -184,4 +192,13 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 	}
 
 	return nil, errors.New("can not generate reward recv block")
+}
+
+func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+	input, err := m.ledger.GetStateBlock(sendHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.GetRewardRecvBlock(input)
 }

@@ -13,7 +13,7 @@ import (
 const (
 	jsonMiner = `
 	[
-		{"type":"function","name":"MinerReward","inputs":[{"name":"coinbase","type":"address"},{"name":"beneficial","type":"address"},{"name":"rewardHeight","type":"uint64"}]},
+		{"type":"function","name":"MinerReward","inputs":[{"name":"coinbase","type":"address"},{"name":"beneficial","type":"address"},{"name":"rewardBlocks","type":"uint64"},{"name":"rewardHeight","type":"uint64"}]},
 		{"type":"variable","name":"minerInfo","inputs":[{"name":"beneficial","type":"address"},{"name":"rewardHeight","type":"uint64"},{"name":"rewardBlocks","type":"uint64"}]}
 	]`
 
@@ -26,15 +26,37 @@ var (
 )
 
 type MinerRewardParam struct {
-	Coinbase     types.Address
-	Beneficial   types.Address
-	RewardHeight uint64
+	Coinbase     types.Address `json:"coinbase"`
+	Beneficial   types.Address `json:"beneficial"`
+	RewardBlocks uint64        `json:"rewardBlocks"`
+	RewardHeight uint64        `json:"rewardHeight"`
+	//Signature    types.Signature `json:"signature"`
+}
+
+func (p *MinerRewardParam) Verify(address types.Address) (bool, error) {
+	if !p.Coinbase.IsZero() && !p.Beneficial.IsZero() {
+		return true, nil
+		/*
+			if data, err := MinerABI.PackMethod(MethodNameMinerReward, p.Coinbase, p.Beneficial, p.RewardBlocks, p.RewardHeight); err == nil {
+				h := types.HashData(data)
+				if address.Verify(h[:], p.Signature[:]) {
+					return true, nil
+				} else {
+					return false, fmt.Errorf("invalid signature[%s] of hash[%s]", p.Signature.String(), h.String())
+				}
+			} else {
+				return false, err
+			}
+		*/
+	} else {
+		return false, fmt.Errorf("invalid reward param")
+	}
 }
 
 type MinerInfo struct {
-	Beneficial   types.Address
-	RewardBlocks uint64
-	RewardHeight uint64
+	Beneficial   types.Address `json:"beneficial"`
+	RewardBlocks uint64        `json:"rewardBlocks"`
+	RewardHeight uint64        `json:"rewardHeight"`
 }
 
 func GetMinerKey(addr types.Address) []byte {

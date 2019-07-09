@@ -206,6 +206,10 @@ func (v *VMContext) GetStateBlock(hash types.Hash) (*types.StateBlock, error) {
 	return v.ledger.GetStateBlock(hash)
 }
 
+func (v *VMContext) GetPovHeaderByHeight(height uint64) (*types.PovHeader, error) {
+	return v.ledger.GetPovHeaderByHeight(height)
+}
+
 func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) {
 	return v.ledger.GetPovBlockByHeight(height)
 }
