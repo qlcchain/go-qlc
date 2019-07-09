@@ -8,7 +8,7 @@ type ConfigV4 struct {
 type PoVConfig struct {
 	PovEnabled   bool   `json:"povEnabled"`
 	MinerEnabled bool   `json:"minerEnabled"`
-	Coinbase     string `json:"coinbase"`
+	Coinbase     string `json:"coinbase" validate:"nonzero,address"`
 }
 
 func DefaultConfigV4(dir string) (*ConfigV4, error) {

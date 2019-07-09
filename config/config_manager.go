@@ -3,6 +3,8 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/spf13/viper"
+	"gopkg.in/validator.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -34,6 +36,65 @@ func NewCfgManagerWithName(path string, name string) *CfgManager {
 		cfgPath: path,
 	}
 	return cfg
+}
+
+func (cm *CfgManager) Verify() error {
+	cfg, err := cm.Config()
+	if err != nil {
+		return err
+	}
+	return validator.Validate(cfg)
+}
+
+func (cm *CfgManager) UpdateParams(params []string) (*Config, error) {
+	s := strings.Split(filepath.Base(cm.cfgFile), ".")
+	if len(s) != 2 {
+		return nil, errors.New("get config path error")
+	}
+
+	cfg, err := cm.Load()
+	if err != nil {
+		return nil, err
+	}
+	viper.SetConfigName(s[0])
+	viper.AddConfigPath(cfg.DataDir)
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, err
+	}
+	r := bytes.NewReader(b)
+	err = viper.ReadConfig(r)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, param := range params {
+		k := strings.Split(param, "=")
+		if len(k) != 2 || len(k[0]) == 0 || len(k[1]) == 0 {
+			continue
+		}
+		if oldValue := viper.Get(k[0]); oldValue != nil {
+			viper.Set(k[0], k[1])
+		}
+	}
+	err = viper.Unmarshal(&cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cm.Verify()
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func (cm *CfgManager) Config() (*Config, error) {
+	if cm.cfg != nil {
+		return cm.cfg, nil
+	} else {
+		return cm.Load()
+	}
 }
 
 //Load the config file and will create default if config file no exist

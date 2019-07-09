@@ -57,4 +57,5 @@ require (
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	gopkg.in/validator.v2 v2.0.0-20180514200540-135c24b11c19
 )
