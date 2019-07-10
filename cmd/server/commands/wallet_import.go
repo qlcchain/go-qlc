@@ -70,7 +70,7 @@ func walletimport() {
 }
 
 func importWallet(seedP string) error {
-	cfg, err := cmdutil.GetConfig(cfgPathP)
+	cm, err := cmdutil.LoadConfig(cfgPathP)
 	if err != nil {
 		return err
 	}
@@ -78,6 +78,10 @@ func importWallet(seedP string) error {
 		return errors.New("invalid seed")
 	}
 	var accounts []*types.Account
+	cfg, err := cm.Config()
+	if err != nil {
+		return err
+	}
 	err = initNode(accounts, cfg)
 	if err != nil {
 		return err

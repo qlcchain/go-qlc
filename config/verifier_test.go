@@ -28,7 +28,7 @@ func TestValidateStructure(t *testing.T) {
 			PovEnabled:   false,
 			MinerEnabled: false,
 			Coinbase:     "",
-		}, wantErr: true}, {name: "invalid PovCfg config", args: PoVConfig{
+		}, wantErr: false}, {name: "invalid PovCfg config", args: PoVConfig{
 			PovEnabled:   false,
 			MinerEnabled: false,
 			Coinbase:     "123",
@@ -60,7 +60,7 @@ func TestValidateConfig(t *testing.T) {
 				Coinbase:     "",
 			},
 			Padding: "111",
-		}, wantErr: true},
+		}, wantErr: false},
 		{name: "invalid PovCfg config  inside cfg", args: config{
 			PovCfg: &PoVConfig{
 				PovEnabled:   false,

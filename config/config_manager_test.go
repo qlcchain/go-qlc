@@ -55,7 +55,7 @@ func TestConfigManager_Load(t *testing.T) {
 
 func TestConfigManager_parseVersion(t *testing.T) {
 	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfigV1(manager.cfgPath)
+	cfg, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestConfigManager_parseVersion(t *testing.T) {
 
 func TestDefaultConfigV2(t *testing.T) {
 	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfigV2(manager.cfgPath)
+	cfg, err := DefaultConfigV2(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestDefaultConfigV2(t *testing.T) {
 
 func TestMigrationV1ToV2_Migration(t *testing.T) {
 	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfigV1(manager.cfgPath)
+	cfg, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestMigrationV1ToV2_Migration(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfig(manager.cfgPath)
+	cfg, err := DefaultConfig(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,12 +139,12 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestCfgManager_Load(t *testing.T) {
 	manager := NewCfgManager(cfgFile)
-	cfg1, err := DefaultConfigV1(manager.cfgPath)
+	cfg1, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = manager.save(cfg1)
+	err = manager.Save(cfg1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,5 +162,31 @@ func TestCfgManager_Load(t *testing.T) {
 
 	if len(cfg3.RPC.HttpVirtualHosts) == 0 {
 		t.Fatal("invalid HttpVirtualHosts")
+	}
+}
+
+func Test_updateConfig(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	manager := NewCfgManager(cfgFile)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err = manager.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	for len(cfg.RPC.HTTPCors) != 2 || cfg.RPC.HTTPCors[0] != "localhost" || cfg.RPC.HTTPCors[1] != "localhost2" {
+		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
+	}
+
+	if cfg.P2P.SyncInterval != 200 {
+		t.Fatal("invalid p2p.syncInterval", cfg.P2P.SyncInterval)
 	}
 }
