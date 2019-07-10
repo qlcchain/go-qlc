@@ -170,7 +170,7 @@ func (act *ActiveTrx) cleanVotes() {
 
 func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	hash := block.GetHash()
-	act.dps.logger.Infof("block [%s] acked", hash)
+	act.dps.logger.Debugf("block [%s] acked", hash)
 
 	if exist, err := act.dps.ledger.HasStateBlock(hash); !exist && err == nil {
 		err := act.dps.lv.BlockProcess(block)
