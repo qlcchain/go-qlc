@@ -14,6 +14,7 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
@@ -30,7 +31,7 @@ type ContractStore interface {
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	GetStateBlock(hash types.Hash) (*types.StateBlock, error)
 	HasTokenMeta(address types.Address, token types.Hash) (bool, error)
-	SaveStorage() error
+	SaveStorage(txns ...db.StoreTxn) error
 }
 
 const (
@@ -131,10 +132,10 @@ func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, e
 	return v.ledger.GetAccountMeta(address)
 }
 
-func (v *VMContext) SaveStorage() error {
+func (v *VMContext) SaveStorage(txns ...db.StoreTxn) error {
 	storage := v.Cache.storage
 	for k, val := range storage {
-		err := v.set([]byte(k), val)
+		err := v.set([]byte(k), val, txns...)
 		if err != nil {
 			v.logger.Error(err)
 			return err
@@ -143,8 +144,8 @@ func (v *VMContext) SaveStorage() error {
 	return nil
 }
 
-func (v *VMContext) SaveTrie() error {
-	fn, err := v.Cache.Trie().Save()
+func (v *VMContext) SaveTrie(txns ...db.StoreTxn) error {
+	fn, err := v.Cache.Trie().Save(txns...)
 	if err != nil {
 		return err
 	}
@@ -173,12 +174,18 @@ func (v *VMContext) get(key []byte) ([]byte, error) {
 	return storage, nil
 }
 
-func (v *VMContext) set(key []byte, value []byte) error {
-	txn := v.ledger.Store.NewTransaction(true)
-	defer func() {
-		txn.Commit(nil)
-		txn.Discard()
-	}()
+func (v *VMContext) set(key []byte, value []byte, txns ...db.StoreTxn) error {
+	var txn db.StoreTxn
+	if len(txns) > 0 {
+		txn = txns[0]
+	} else {
+		txn = v.ledger.Store.NewTransaction(true)
+		defer func() {
+			txn.Commit(nil)
+			txn.Discard()
+		}()
+	}
+
 	//err := txn.Get(key, func(bytes []byte, b byte) error {
 	//	return nil
 	//})
