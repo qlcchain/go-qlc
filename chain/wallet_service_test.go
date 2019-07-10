@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"os"
@@ -16,7 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestNewLedgerService(t *testing.T) {
+func TestWalletService_Init(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
 		_ = os.RemoveAll(dir)
@@ -25,21 +25,21 @@ func TestNewLedgerService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls := NewLedgerService(cfg)
-	err = ls.Init()
+	s := NewWalletService(cfg)
+	err = s.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ls.State() != 2 {
-		t.Fatal("ledger init failed")
+	if s.State() != 2 {
+		t.Fatal("wallet init failed")
 	}
-	_ = ls.Start()
-	err = ls.Stop()
+	_ = s.Start()
+	err = s.Stop()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if ls.Status() != 6 {
+	if s.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
 }

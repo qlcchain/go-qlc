@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"os"
@@ -16,7 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestWalletService_Init(t *testing.T) {
+func TestNewRPCService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
 		_ = os.RemoveAll(dir)
@@ -25,21 +25,30 @@ func TestWalletService_Init(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := NewWalletService(cfg)
-	err = s.Init()
+	ls, err := NewRPCService(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.State() != 2 {
-		t.Fatal("wallet init failed")
+	err = ls.Init()
+	if err != nil {
+		t.Fatal(err)
 	}
-	_ = s.Start()
-	err = s.Stop()
+	if ls.State() != 2 {
+		t.Fatal("rpc init failed")
+	}
+	err = ls.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ls.State() != 4 {
+		t.Fatal("rpc start failed")
+	}
+	err = ls.Stop()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if s.Status() != 6 {
+	if ls.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
 }

@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"github.com/qlcchain/go-qlc/consensus/dpos"

@@ -11,14 +11,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-var cfgFile = filepath.Join(QlcTestDataDir(), "config")
+var configDir = filepath.Join(QlcTestDataDir(), "config")
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Log("setup test case")
 
 	return func(t *testing.T) {
 		t.Log("teardown test case")
-		err := os.RemoveAll(cfgFile)
+		err := os.RemoveAll(configDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -29,7 +29,7 @@ func TestConfigManager_Load(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	manager := NewCfgManager(cfgFile)
+	manager := NewCfgManager(configDir)
 	cfg, err := manager.Load()
 	if err != nil {
 		t.Fatal(err)
@@ -49,12 +49,11 @@ func TestConfigManager_Load(t *testing.T) {
 	if ID.Pretty() != cfg.P2P.ID.PeerID {
 		t.Fatal("peer id error")
 	}
-	bytes, err := json.Marshal(cfg)
-	t.Log(string(bytes))
+	t.Log(util.ToIndentString(cfg))
 }
 
 func TestConfigManager_parseVersion(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
+	manager := NewCfgManager(configDir)
 	cfg, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
@@ -72,9 +71,24 @@ func TestConfigManager_parseVersion(t *testing.T) {
 	}
 }
 
+func TestNewCfgManagerWithFile(t *testing.T) {
+	cfgFile := filepath.Join(configDir, "test.json")
+	defer func() {
+		_ = os.Remove(cfgFile)
+	}()
+	cm := NewCfgManagerWithFile(cfgFile)
+	_, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		_ = cm.Save()
+	}
+}
+
 func TestDefaultConfigV2(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfigV2(manager.ConfigDir())
+	cm := NewCfgManager(configDir)
+	_ = cm.createAndSave()
+	cfg, err := DefaultConfigV2(cm.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,17 +98,25 @@ func TestDefaultConfigV2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if version, err := manager.parseVersion(bytes); err != nil {
+	if version, err := cm.parseVersion(bytes); err != nil {
 		t.Fatal(err)
 	} else {
 		if version != 2 {
 			t.Fatal("invalid version", version)
 		}
 	}
+
+	if dir, err := cm.ParseDataDir(); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(dir) == 0 {
+			t.Fatal("invalid data dir")
+		}
+	}
 }
 
 func TestMigrationV1ToV2_Migration(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
+	manager := NewCfgManager(configDir)
 	cfg, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +151,7 @@ func TestMigrationV1ToV2_Migration(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
+	manager := NewCfgManager(configDir)
 	cfg, err := DefaultConfig(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
@@ -138,7 +160,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestCfgManager_Load(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
+	manager := NewCfgManager(configDir)
 	cfg1, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
@@ -169,7 +191,7 @@ func Test_updateConfig(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
-	manager := NewCfgManager(cfgFile)
+	manager := NewCfgManager(configDir)
 	cfg, err := manager.Load()
 	if err != nil {
 		t.Fatal(err)

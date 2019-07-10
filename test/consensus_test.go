@@ -12,6 +12,7 @@ package test
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/chain"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -19,7 +20,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -45,7 +45,7 @@ func TestConsensus(t *testing.T) {
 	b := "/ip4/0.0.0.0/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
 	fmt.Printf("bootNode peer id is [%s]\n", cfgFile.P2P.ID.PeerID)
 
-	l := services.NewLedgerService(cfgFile)
+	l := chain.NewLedgerService(cfgFile)
 	//start bootNode
 	node, err := p2p.NewQlcService(cfgFile)
 	if node == nil {
@@ -65,7 +65,7 @@ func TestConsensus(t *testing.T) {
 	fmt.Printf("Node1 peer id is [%s]\n", cfgFile1.P2P.ID.PeerID)
 
 	//new ledger
-	ledger1 := services.NewLedgerService(cfgFile1)
+	ledger1 := chain.NewLedgerService(cfgFile1)
 
 	//storage genesisBlock
 	creatGenesisBlock(ledger1.Ledger)
@@ -82,7 +82,7 @@ func TestConsensus(t *testing.T) {
 
 	var accs []*types.Account
 	accs = append(accs, ac)
-	consensusService1 := services.NewConsensusService(cfgFile1, accs)
+	consensusService1 := chain.NewConsensusService(cfgFile1, accs)
 	//start node1 dpos service
 	err = consensusService1.Init()
 	if err != nil {
@@ -103,7 +103,7 @@ func TestConsensus(t *testing.T) {
 	fmt.Printf("Node2 peer id is [%s]\n", cfgFile2.P2P.ID.PeerID)
 
 	//new ledger
-	ledger2 := services.NewLedgerService(cfgFile2)
+	ledger2 := chain.NewLedgerService(cfgFile2)
 	//storage genesisBlock
 	creatGenesisBlock(ledger2.Ledger)
 	//start node2
@@ -116,7 +116,7 @@ func TestConsensus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	consensusService2 := services.NewConsensusService(cfgFile2, nil)
+	consensusService2 := chain.NewConsensusService(cfgFile2, nil)
 	//start node2 dpos service
 	err = consensusService2.Init()
 	if err != nil {

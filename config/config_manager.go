@@ -27,6 +27,10 @@ func NewCfgManager(path string) *CfgManager {
 	return NewCfgManagerWithName(path, QlcConfigFile)
 }
 
+func NewCfgManagerWithFile(cfgFile string) *CfgManager {
+	return NewCfgManagerWithName(filepath.Dir(cfgFile), filepath.Base(cfgFile))
+}
+
 func NewCfgManagerWithName(path string, name string) *CfgManager {
 	file := filepath.Join(path, name)
 	cfg := &CfgManager{
@@ -78,6 +82,35 @@ func (cm *CfgManager) Config() (*Config, error) {
 		return cm.cfg, nil
 	} else {
 		return cm.Load()
+	}
+}
+
+//ParseDataDir parse dataDir from config file
+func (cm *CfgManager) ParseDataDir() (string, error) {
+	_, err := os.Stat(cm.cfgFile)
+	if err != nil {
+		return "", err
+	}
+	content, err := ioutil.ReadFile(cm.cfgFile)
+	if err != nil {
+		return "", err
+	}
+
+	var objMap map[string]*json.RawMessage
+	err = json.Unmarshal(content, &objMap)
+	if err != nil {
+		return "", err
+	}
+
+	if v, ok := objMap["dataDir"]; ok {
+		var dataDir string
+		if err := json.Unmarshal([]byte(*v), &dataDir); err == nil {
+			return dataDir, nil
+		} else {
+			return "", err
+		}
+	} else {
+		return "", errors.New("can not parse dataDir")
 	}
 }
 

@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"os"
@@ -16,7 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestNewRPCService(t *testing.T) {
+func TestSqliteService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
 		_ = os.RemoveAll(dir)
@@ -25,7 +25,7 @@ func TestNewRPCService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls, err := NewRPCService(cfg)
+	ls, err := NewSqliteService(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,14 +34,14 @@ func TestNewRPCService(t *testing.T) {
 		t.Fatal(err)
 	}
 	if ls.State() != 2 {
-		t.Fatal("rpc init failed")
+		t.Fatal("service init failed")
 	}
 	err = ls.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ls.State() != 4 {
-		t.Fatal("rpc start failed")
+		t.Fatal("service start failed")
 	}
 	err = ls.Stop()
 	if err != nil {

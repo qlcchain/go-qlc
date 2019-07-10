@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"os"
@@ -16,7 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestNewP2PService(t *testing.T) {
+func TestNewLedgerService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
 		_ = os.RemoveAll(dir)
@@ -25,30 +25,21 @@ func TestNewP2PService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := NewP2PService(cfg)
+	ls := NewLedgerService(cfg)
+	err = ls.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = p.Init()
-	if err != nil {
-		t.Fatal(err)
+	if ls.State() != 2 {
+		t.Fatal("ledger init failed")
 	}
-	if p.State() != 2 {
-		t.Fatal("p2p init failed")
-	}
-	err = p.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if p.State() != 4 {
-		t.Fatal("p2p start failed")
-	}
-	err = p.Stop()
+	_ = ls.Start()
+	err = ls.Stop()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if p.Status() != 6 {
+	if ls.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
 }

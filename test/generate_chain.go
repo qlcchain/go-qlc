@@ -3,20 +3,20 @@ package test
 import (
 	"encoding/json"
 	"errors"
+	"github.com/qlcchain/go-qlc/chain"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"os"
 	"path/filepath"
 
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
 )
 
-func generateChain() (func() error, *rpc.Client, *services.LedgerService, error) {
+func generateChain() (func() error, *rpc.Client, *chain.LedgerService, error) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	cfgFile, _ := config.DefaultConfig(dir)
-	ls := services.NewLedgerService(cfgFile)
+	ls := chain.NewLedgerService(cfgFile)
 	err := ls.Init()
 	if err != nil {
 		return nil, nil, nil, err
@@ -48,7 +48,7 @@ func generateChain() (func() error, *rpc.Client, *services.LedgerService, error)
 	if p != process.Progress {
 		return nil, nil, nil, errors.New("process receive gas block error")
 	}
-	rPCService, err := services.NewRPCService(cfgFile)
+	rPCService, err := chain.NewRPCService(cfgFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -64,7 +64,7 @@ func generateChain() (func() error, *rpc.Client, *services.LedgerService, error)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	sqliteService, err := services.NewSqliteService(cfgFile)
+	sqliteService, err := chain.NewSqliteService(cfgFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -76,7 +76,7 @@ func generateChain() (func() error, *rpc.Client, *services.LedgerService, error)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	walletService := services.NewWalletService(cfgFile)
+	walletService := chain.NewWalletService(cfgFile)
 	err = walletService.Init()
 	if err != nil {
 		return nil, nil, nil, err
