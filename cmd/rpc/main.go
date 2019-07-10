@@ -12,13 +12,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/qlcchain/go-qlc/chain"
 	"math/big"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"time"
 
-	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -31,8 +31,8 @@ import (
 
 var (
 	logger     = log.NewLogger("main")
-	l          *services.LedgerService
-	rs         *services.RPCService
+	l          *chain.LedgerService
+	rs         *chain.RPCService
 	qlcAccount *types.Account
 	gasAccount *types.Account
 	verifier   *process.LedgerVerifier
@@ -63,7 +63,7 @@ func main() {
 		return
 	}
 
-	ss, err := services.NewSqliteService(cfg)
+	ss, err := chain.NewSqliteService(cfg)
 	if err != nil {
 		logger.Fatal(err)
 		return
@@ -76,7 +76,7 @@ func main() {
 	}
 	logger.Info("sqlite started")
 
-	l = services.NewLedgerService(cfg)
+	l = chain.NewLedgerService(cfg)
 	if err := l.Init(); err != nil {
 		return
 	}
@@ -87,7 +87,7 @@ func main() {
 	verifier = process.NewLedgerVerifier(l.Ledger)
 	//initData(l.Ledger)
 
-	w := services.NewWalletService(cfg)
+	w := chain.NewWalletService(cfg)
 	if err := w.Init(); err != nil {
 		return
 	}
@@ -96,7 +96,7 @@ func main() {
 	}
 	logger.Info("wallet started")
 
-	rs, err = services.NewRPCService(cfg)
+	rs, err = chain.NewRPCService(cfg)
 	if err != nil {
 		logger.Fatal(err)
 		return

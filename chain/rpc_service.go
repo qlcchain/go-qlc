@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"errors"
@@ -35,7 +35,7 @@ func NewRPCService(cfg *config.Config) (*RPCService, error) {
 
 func (rs *RPCService) Init() error {
 	if !rs.PreInit() {
-		return errors.New("pre init fail.")
+		return errors.New("pre init fail")
 	}
 	defer rs.PostInit()
 
@@ -44,7 +44,7 @@ func (rs *RPCService) Init() error {
 
 func (rs *RPCService) Start() error {
 	if !rs.PreStart() {
-		return errors.New("pre start fail.")
+		return errors.New("pre start fail")
 	}
 	err := rs.rpc.StartRPC()
 	if err != nil {

@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"os"
@@ -16,7 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestSqliteService(t *testing.T) {
+func TestNewP2PService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	defer func() {
 		_ = os.RemoveAll(dir)
@@ -25,30 +25,30 @@ func TestSqliteService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls, err := NewSqliteService(cfg)
+	p, err := NewP2PService(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ls.Init()
+	err = p.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ls.State() != 2 {
-		t.Fatal("service init failed")
+	if p.State() != 2 {
+		t.Fatal("p2p init failed")
 	}
-	err = ls.Start()
+	err = p.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ls.State() != 4 {
-		t.Fatal("service start failed")
+	if p.State() != 4 {
+		t.Fatal("p2p start failed")
 	}
-	err = ls.Stop()
+	err = p.Stop()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if ls.Status() != 6 {
+	if p.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
 }

@@ -10,6 +10,9 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/wallet"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -17,7 +20,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"syscall"
@@ -25,12 +27,9 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
-	ss "github.com/qlcchain/go-qlc/chain/services"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/ledger"
 	qlclog "github.com/qlcchain/go-qlc/log"
 	"github.com/spf13/cobra"
 )
@@ -51,28 +50,17 @@ var (
 	noBootstrapP  bool
 	configParamsP string
 
-	privateKey   cmdutil.Flag
-	account      cmdutil.Flag
-	password     cmdutil.Flag
-	seed         cmdutil.Flag
-	cfgPath      cmdutil.Flag
-	isProfile    cmdutil.Flag
-	noBootstrap  cmdutil.Flag
-	configParams cmdutil.Flag
-	//ctx            *chain.QlcContext
-	ledgerService    *ss.LedgerService
-	walletService    *ss.WalletService
-	netService       *ss.P2PService
-	consensusService *ss.ConsensusService
-	rPCService       *ss.RPCService
-	sqliteService    *ss.SqliteService
-	povService       *ss.PoVService
-	minerService     *ss.MinerService
-	services         []common.Service
-	maxAccountSize   = 100
-	logger           = qlclog.NewLogger("config_detail")
-	blocksChan       = make(chan *types.StateBlock, common.DPoSMaxBlocks)
-	exitChan         = make(chan bool, 1)
+	privateKey     cmdutil.Flag
+	account        cmdutil.Flag
+	password       cmdutil.Flag
+	seed           cmdutil.Flag
+	cfgPath        cmdutil.Flag
+	isProfile      cmdutil.Flag
+	noBootstrap    cmdutil.Flag
+	configParams   cmdutil.Flag
+	chainContext   *context.ChainContext
+	maxAccountSize = 100
+	logger         = qlclog.NewLogger("config_detail")
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -135,13 +123,17 @@ func addCommand() {
 
 func start() error {
 	var accounts []*types.Account
-	cm, err := cmdutil.LoadConfig(cfgPathP)
+	chainContext = context.NewChainContext(cfgPathP)
+	fmt.Println("Run node id: ", chainContext.Id())
+	cm, err := chainContext.ConfigManager()
+	if err != nil {
+		return err
+	}
+	cfg, err := cm.Config()
 	if err != nil {
 		return err
 	}
 
-	debug.SetGCPercent(10)
-	cfg, err := cm.Config()
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
 		params := strings.Split(configParamsP, ";")
@@ -175,8 +167,14 @@ func start() error {
 			return err
 		}
 
-		w := ss.NewWalletService(cfg).Wallet
-		ledger.CloseLedger()
+		w := wallet.NewWalletStore(cfg)
+		defer func() {
+			if w != nil {
+				_ = w.Close()
+			}
+			ledger.CloseLedger()
+		}()
+
 		session := w.NewSession(address)
 		defer func() {
 			err := w.Close()
@@ -250,8 +248,8 @@ func start() error {
 	}
 	configDetails := util.ToIndentString(cfg)
 	logger.Debugf("%s", configDetails)
-
-	err = runNode(accounts, cfg)
+	chainContext.SetAccounts(accounts)
+	err = runNode()
 	if err != nil {
 		return err
 	}
@@ -264,18 +262,13 @@ func trapSignal() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	<-c
 
-	sers := make([]common.Service, 0)
-	for i := len(services) - 1; i >= 0; i-- {
-		sers = append(sers, services[i])
+	err := chainContext.Stop()
+	if err != nil {
+		fmt.Println(err)
 	}
 	exitChan <- true
 	stopNode(sers)
 	fmt.Println("qlc node closed successfully")
-
-	//bus := event.GetEventBus(cfg.LedgerDir())
-	//if err := bus.Close(); err != nil {
-	//	fmt.Println(err)
-	//}
 }
 
 func seedToAccounts(data []byte) ([]*types.Account, error) {

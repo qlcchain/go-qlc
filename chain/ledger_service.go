@@ -5,10 +5,12 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"errors"
+	"fmt"
+	"github.com/qlcchain/go-qlc/chain/context"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -27,6 +29,11 @@ type LedgerService struct {
 }
 
 func NewLedgerService(cfg *config.Config) *LedgerService {
+	d := cfg.DataDir
+	cc := context.NewChainContext(d)
+	cm, _ := cc.ConfigManager()
+	c, _ := cm.Config()
+	fmt.Println(c)
 	return &LedgerService{
 		Ledger: ledger.NewLedger(cfg.LedgerDir()),
 		logger: log.NewLogger("ledger_service"),
