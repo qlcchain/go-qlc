@@ -8,7 +8,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/util"
 
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 var cfgFile = filepath.Join(QlcTestDataDir(), "config")
