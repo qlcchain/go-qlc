@@ -8,10 +8,7 @@
 package commands
 
 import (
-	"bytes"
 	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -33,11 +30,9 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	qlclog "github.com/qlcchain/go-qlc/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -140,18 +135,21 @@ func addCommand() {
 
 func start() error {
 	var accounts []*types.Account
-	cfg, err := cmdutil.GetConfig(cfgPathP)
+	cm, err := cmdutil.LoadConfig(cfgPathP)
 	if err != nil {
 		return err
 	}
 
 	debug.SetGCPercent(10)
-
+	cfg, err := cm.Config()
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
-		err = updateConfig(cfg, cfgPathP)
-		if err != nil {
-			return err
+		params := strings.Split(configParamsP, ";")
+		if len(params) > 0 {
+			cfg, err = cm.UpdateParams(params)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if len(seedP) > 0 {
@@ -375,43 +373,4 @@ func run() {
 		},
 	}
 	shell.AddCmd(s)
-}
-
-func updateConfig(cfg *config.Config, cfgPathP string) error {
-	paramSlice := strings.Split(configParamsP, ";")
-	var s []string
-	if cfgPathP == "" {
-		s = strings.Split(config.QlcConfigFile, ".")
-	} else {
-		s = strings.Split(filepath.Base(cfgPathP), ".")
-	}
-	if len(s) != 2 {
-		return errors.New("split error")
-	}
-	viper.SetConfigName(s[0])
-	viper.AddConfigPath(cfg.DataDir)
-	b, err := json.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-	r := bytes.NewReader(b)
-	err = viper.ReadConfig(r)
-	if err != nil {
-		return err
-	}
-
-	for _, cp := range paramSlice {
-		k := strings.Split(cp, "=")
-		if len(k) != 2 || len(k[0]) == 0 || len(k[1]) == 0 {
-			continue
-		}
-		if oldValue := viper.Get(k[0]); oldValue != nil {
-			viper.Set(k[0], k[1])
-		}
-	}
-	err = viper.Unmarshal(&cfg)
-	if err != nil {
-		return err
-	}
-	return nil
 }

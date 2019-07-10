@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"path/filepath"
 	"time"
 
@@ -18,6 +19,19 @@ func DefaultConfig(dir string) (*Config, error) {
 	cfg := Config(*v4)
 
 	return &cfg, nil
+}
+
+func (c Config) Clone() (*Config, error) {
+	data, err := json.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+	result := new(Config)
+	err = json.Unmarshal(data, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // DecodePrivateKey is a helper to decode the users PrivateKey

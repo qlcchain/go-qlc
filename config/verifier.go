@@ -22,8 +22,9 @@ func address(v interface{}, param string) error {
 	if st.Kind() != reflect.String {
 		return errors.New("QLCAddress only validates string")
 	}
-	if !types.IsValidHexAddress(st.String()) {
-		return fmt.Errorf("invalid qlc address %s", st.String())
+	s := st.String()
+	if len(s) > 0 && !types.IsValidHexAddress(s) {
+		return fmt.Errorf("invalid qlc address %s", s)
 	}
 	return nil
 }

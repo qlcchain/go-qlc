@@ -163,7 +163,7 @@ func Warn(a ...interface{}) {
 	fmt.Println(a...)
 }
 
-func GetConfig(pathName string) (*config.Config, error) {
+func LoadConfig(pathName string) (*config.CfgManager, error) {
 	var cm *config.CfgManager
 	var err error
 	if pathName == "" {
@@ -173,19 +173,9 @@ func GetConfig(pathName string) (*config.Config, error) {
 		cm = config.NewCfgManagerWithName(filepath.Dir(pathName), filepath.Base(pathName))
 
 	}
-	cfg, err := cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4())
+	_, err = cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4())
 	if err != nil {
 		return nil, err
 	}
-	return cfg, nil
+	return cm, nil
 }
-
-//
-//func blackPrefix() {
-//	shell.Printf("    ")
-//}
-//
-//func black(a ...interface{}) {
-//	blackPrefix()
-//	shell.Println(a...)
-//}
