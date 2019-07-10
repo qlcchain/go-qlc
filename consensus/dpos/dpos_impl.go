@@ -164,21 +164,32 @@ func (dps *DPoS) processUncheckedBlock(bs *consensus.BlockSource) {
 			dps.ConfirmBlock(bs.Block)
 			return
 		}
-	}
 
-	localRepAccount.Range(func(key, value interface{}) bool {
-		address := key.(types.Address)
+		v, e := dps.voteCache.Get(bs.Block.GetHash())
+		if e == nil {
+			vc := v.(*sync.Map)
+			vc.Range(func(key, value interface{}) bool {
+				dps.acTrx.vote(value.(*protos.ConfirmAckBlock))
+				return true
+			})
 
-		va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
-		if err != nil {
-			return true
+			dps.voteCache.Remove(bs.Block.GetHash())
 		}
 
-		dps.acTrx.vote(va)
-		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+		localRepAccount.Range(func(key, value interface{}) bool {
+			address := key.(types.Address)
 
-		return true
-	})
+			va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
+			if err != nil {
+				return true
+			}
+
+			dps.acTrx.vote(va)
+			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+
+			return true
+		})
+	}
 }
 
 func (dps *DPoS) enqueueUnchecked(result process.ProcessResult, bs *consensus.BlockSource) {
@@ -229,6 +240,7 @@ func (dps *DPoS) dequeueUnchecked(hash types.Hash) {
 func (dps *DPoS) dequeueUncheckedFromDb(hash types.Hash) {
 	blkLink, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
 	if blkLink != nil {
+		dps.logger.Infof("dequeue gap link[%s] block[%s]", hash, blkLink.GetHash())
 		bs := &consensus.BlockSource{
 			Block:     blkLink,
 			BlockFrom: bf,
@@ -244,6 +256,7 @@ func (dps *DPoS) dequeueUncheckedFromDb(hash types.Hash) {
 
 	blkPre, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
 	if blkPre != nil {
+		dps.logger.Infof("dequeue gap previous[%s] block[%s]", hash, blkPre.GetHash())
 		bs := &consensus.BlockSource{
 			Block:     blkPre,
 			BlockFrom: bf,

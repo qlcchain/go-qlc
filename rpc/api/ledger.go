@@ -118,11 +118,11 @@ func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock) (*APIBloc
 	ab := new(APIBlock)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
-	if amount, err := ctx.CalculateAmount(block); err != nil {
-		return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
-	} else {
-		ab.Amount = amount
-	}
+	//if amount, err := ctx.CalculateAmount(block); err != nil {
+	//	return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
+	//} else {
+	//	ab.Amount = amount
+	//}
 	token, err := abi.GetTokenById(ctx, block.GetToken())
 	if err != nil {
 		return nil, err
