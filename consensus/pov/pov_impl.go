@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qlcchain/go-qlc/chain/context"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -38,15 +40,17 @@ type PoVEngine struct {
 	syncer   *PovSyncer
 }
 
-func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, error) {
-	ledger := ledger.NewLedger(cfg.LedgerDir())
+func NewPovEngine(cfgFile string) (*PoVEngine, error) {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+	l := ledger.NewLedger(cfg.DataDir)
 
 	pov := &PoVEngine{
 		logger:   log.NewLogger("pov_engine"),
 		cfg:      cfg,
-		eb:       event.GetEventBus(cfg.LedgerDir()),
-		accounts: accounts,
-		ledger:   ledger,
+		eb:       cc.EventBus(),
+		accounts: cc.Accounts(),
+		ledger:   l,
 	}
 
 	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()

@@ -3,10 +3,11 @@ package test
 import (
 	"encoding/json"
 	"errors"
-	"github.com/qlcchain/go-qlc/chain"
-	rpc "github.com/qlcchain/jsonrpc2"
 	"os"
 	"path/filepath"
+
+	"github.com/qlcchain/go-qlc/chain"
+	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/config"
@@ -15,7 +16,8 @@ import (
 
 func generateChain() (func() error, *rpc.Client, *chain.LedgerService, error) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	cfgFile, _ := config.DefaultConfig(dir)
+	cm := config.NewCfgManager(dir)
+	cfgFile := cm.ConfigFile
 	ls := chain.NewLedgerService(cfgFile)
 	err := ls.Init()
 	if err != nil {

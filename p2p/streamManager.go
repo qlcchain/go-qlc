@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/qlcchain/go-qlc/common/types"

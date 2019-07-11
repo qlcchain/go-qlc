@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/spf13/viper"
-	"gopkg.in/validator.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,13 +11,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/spf13/viper"
+	"gopkg.in/validator.v2"
+
 	"github.com/pkg/errors"
 )
 
 type CfgManager struct {
-	cfgFile string
-	v       *viper.Viper
-	cfg     *Config
+	ConfigFile string
+	v          *viper.Viper
+	cfg        *Config
 }
 
 func NewCfgManager(path string) *CfgManager {
@@ -34,14 +35,14 @@ func NewCfgManagerWithFile(cfgFile string) *CfgManager {
 func NewCfgManagerWithName(path string, name string) *CfgManager {
 	file := filepath.Join(path, name)
 	cfg := &CfgManager{
-		cfgFile: file,
-		v:       viper.New(),
+		ConfigFile: file,
+		v:          viper.New(),
 	}
 	return cfg
 }
 
 func (cm *CfgManager) ConfigDir() string {
-	return filepath.Dir(cm.cfgFile)
+	return filepath.Dir(cm.ConfigFile)
 }
 
 func (cm *CfgManager) verify(data interface{}) error {
@@ -87,11 +88,11 @@ func (cm *CfgManager) Config() (*Config, error) {
 
 //ParseDataDir parse dataDir from config file
 func (cm *CfgManager) ParseDataDir() (string, error) {
-	_, err := os.Stat(cm.cfgFile)
+	_, err := os.Stat(cm.ConfigFile)
 	if err != nil {
 		return "", err
 	}
-	content, err := ioutil.ReadFile(cm.cfgFile)
+	content, err := ioutil.ReadFile(cm.ConfigFile)
 	if err != nil {
 		return "", err
 	}
@@ -116,14 +117,14 @@ func (cm *CfgManager) ParseDataDir() (string, error) {
 
 //Load the config file and will create default if config file no exist
 func (cm *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
-	_, err := os.Stat(cm.cfgFile)
+	_, err := os.Stat(cm.ConfigFile)
 	if err != nil {
 		err := cm.createAndSave()
 		if err != nil {
 			return nil, err
 		}
 	}
-	content, err := ioutil.ReadFile(cm.cfgFile)
+	content, err := ioutil.ReadFile(cm.ConfigFile)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +194,7 @@ func (cm *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 
 func (cm *CfgManager) viper() error {
 	// prepare viper
-	s := strings.Split(filepath.Base(cm.cfgFile), ".")
+	s := strings.Split(filepath.Base(cm.ConfigFile), ".")
 	if len(s) != 2 {
 		return errors.New("get config path error")
 	}
@@ -213,13 +214,13 @@ func (cm *CfgManager) viper() error {
 }
 
 func (cm *CfgManager) backUp(content []byte) {
-	backup := filepath.Join(filepath.Dir(cm.cfgFile),
+	backup := filepath.Join(filepath.Dir(cm.ConfigFile),
 		fmt.Sprintf("qlc_back_%s.json", time.Now().Format("2006-01-02T15-04")))
 	_ = ioutil.WriteFile(backup, content, 0600)
 }
 
 func (cm *CfgManager) createAndSave() error {
-	cfg, err := DefaultConfig(filepath.Dir(cm.cfgFile))
+	cfg, err := DefaultConfig(filepath.Dir(cm.ConfigFile))
 	if err != nil {
 		return err
 	}
@@ -235,7 +236,7 @@ func (cm *CfgManager) createAndSave() error {
 
 // Save write config to file
 func (cm *CfgManager) Save(data ...interface{}) error {
-	dir := filepath.Dir(cm.cfgFile)
+	dir := filepath.Dir(cm.ConfigFile)
 	err := util.CreateDirIfNotExist(dir)
 	if err != nil {
 		return err
@@ -246,11 +247,11 @@ func (cm *CfgManager) Save(data ...interface{}) error {
 			return err
 		}
 		s := util.ToIndentString(cfg)
-		return ioutil.WriteFile(cm.cfgFile, []byte(s), 0600)
+		return ioutil.WriteFile(cm.ConfigFile, []byte(s), 0600)
 	}
 
 	s := util.ToIndentString(data[0])
-	return ioutil.WriteFile(cm.cfgFile, []byte(s), 0600)
+	return ioutil.WriteFile(cm.ConfigFile, []byte(s), 0600)
 }
 
 func (cm *CfgManager) parseVersion(data []byte) (int, error) {

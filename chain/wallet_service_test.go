@@ -18,14 +18,16 @@ import (
 
 func TestWalletService_Init(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	defer func() {
-		_ = os.RemoveAll(dir)
-	}()
-	cfg, err := config.DefaultConfig(dir)
+	cm := config.NewCfgManager(dir)
+	_, err := cm.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := NewWalletService(cfg)
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
+
+	s := NewWalletService(cm.ConfigFile)
 	err = s.Init()
 	if err != nil {
 		t.Fatal(err)

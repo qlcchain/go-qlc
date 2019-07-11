@@ -9,12 +9,14 @@ package chain
 
 import (
 	"github.com/pkg/errors"
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
-func NewWalletService(cfg *config.Config) *WalletService {
+func NewWalletService(cfgFile string) *WalletService {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
 	return &WalletService{
 		Wallet: wallet.NewWalletStore(cfg),
 	}

@@ -18,14 +18,15 @@ import (
 
 func TestSqliteService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	defer func() {
-		_ = os.RemoveAll(dir)
-	}()
-	cfg, err := config.DefaultConfig(dir)
+	cm := config.NewCfgManager(dir)
+	_, err := cm.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls, err := NewSqliteService(cfg)
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
+	ls, err := NewSqliteService(cm.ConfigFile)
 	if err != nil {
 		t.Fatal(err)
 	}

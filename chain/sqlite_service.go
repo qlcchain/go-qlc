@@ -9,12 +9,12 @@ package chain
 
 import (
 	"errors"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -27,12 +27,12 @@ type SqliteService struct {
 	id       string
 }
 
-func NewSqliteService(cfg *config.Config) (*SqliteService, error) {
-	r, err := relation.NewRelation(cfg)
+func NewSqliteService(cfgFile string) (*SqliteService, error) {
+	r, err := relation.NewRelation(cfgFile)
 	if err != nil {
 		return nil, err
 	}
-	return &SqliteService{Relation: r, logger: log.NewLogger("sqlite_service"), id: cfg.DataDir}, nil
+	return &SqliteService{Relation: r, logger: log.NewLogger("sqlite_service"), id: cfgFile}, nil
 }
 
 func (r *SqliteService) Init() error {
