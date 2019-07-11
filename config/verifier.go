@@ -10,10 +10,11 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
-	"gopkg.in/validator.v2"
 	"reflect"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"gopkg.in/validator.v2"
 )
 
 // qlc address validator

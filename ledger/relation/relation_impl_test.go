@@ -12,17 +12,30 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 )
 
+func setupTestCase(t *testing.T) (func(t *testing.T), string) {
+	t.Log("setup test case")
+	configDir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
+
+	return func(t *testing.T) {
+		t.Log("teardown test case")
+		err := os.RemoveAll(configDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}, configDir
+}
+
 func TestRelation_CreateData(t *testing.T) {
+	teardownTestCase, dir := setupTestCase(t)
+	defer teardownTestCase(t)
+
 	blk := mock.StateBlockWithoutWork()
 	blk.Type = types.Send
 	blk.Sender = []byte("1580000")
 	blk.Receiver = []byte("1851111")
-	dir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
-	cfg, err := config.DefaultConfig(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	r, err := NewRelation(cfg)
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+	r, err := NewRelation(cm.ConfigFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,17 +78,16 @@ func TestRelation_CreateData(t *testing.T) {
 }
 
 func TestNewRelation(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
-	cfg, err := config.DefaultConfig(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	teardownTestCase, dir := setupTestCase(t)
+	defer teardownTestCase(t)
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
 
-	r1, err := NewRelation(cfg)
+	r1, err := NewRelation(cm.ConfigFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r2, err := NewRelation(cfg)
+	r2, err := NewRelation(cm.ConfigFile)
 	if err != nil {
 		t.Fatal(err)
 	}

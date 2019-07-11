@@ -17,7 +17,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 )
 
 type MinerService struct {
@@ -26,10 +25,10 @@ type MinerService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewMinerService(cfg *config.Config, povEngine *pov.PoVEngine) *MinerService {
-	miner := miner.NewMiner(cfg, povEngine)
+func NewMinerService(cfgFile string, povEngine *consensus.PoVEngine) *MinerService {
+	m := miner.NewMiner(cfgFile, povEngine)
 	return &MinerService{
-		miner:  miner,
+		miner:  m,
 		logger: log.NewLogger("miner_service"),
 	}
 }

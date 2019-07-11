@@ -9,6 +9,7 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -103,16 +104,16 @@ func registerServices() error {
 
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
-	ledgerService := chain.NewLedgerService(cfg)
+	ledgerService := chain.NewLedgerService(cfgPathP)
 	_ = chainContext.Register(context.LedgerService, ledgerService)
 
 	if !chainContext.HasService(context.WalletService) {
-		walletService := chain.NewWalletService(cfg)
+		walletService := chain.NewWalletService(cfgPathP)
 		_ = chainContext.Register(context.WalletService, walletService)
 	}
 
 	if len(cfg.P2P.BootNodes) > 0 {
-		netService, err := chain.NewP2PService(cfg)
+		netService, err := chain.NewP2PService(cfgPathP)
 		if err != nil {
 			fmt.Println(err)
 			return err
@@ -121,22 +122,22 @@ func registerServices() error {
 	}
 	consensusService := chain.NewConsensusService(cfg, accounts)
 	_ = chainContext.Register(context.ConsensusService, consensusService)
-	if rpcService, err := chain.NewRPCService(cfg); err != nil {
+	if rpcService, err := chain.NewRPCService(cfgPathP); err != nil {
 		return err
 	} else {
 		_ = chainContext.Register(context.RPCService, rpcService)
 	}
-	if sqliteService, err := chain.NewSqliteService(cfg); err != nil {
+	if sqliteService, err := chain.NewSqliteService(cfgPathP); err != nil {
 		return err
 	} else {
 		_ = chainContext.Register(context.IndexService, sqliteService)
 	}
 
 	if cfg.PoV.PovEnabled {
-		povService := chain.NewPoVService(cfg, accounts)
+		povService := chain.NewPoVService(cfgPathP)
 		_ = chainContext.Register(context.PovService, povService)
 		if len(cfg.PoV.Coinbase) > 0 {
-			minerService := chain.NewMinerService(cfg, povService.GetPoVEngine())
+			minerService := chain.NewMinerService(cfgPathP, povService.GetPoVEngine())
 			_ = chainContext.Register(context.MinerService, minerService)
 		}
 	}

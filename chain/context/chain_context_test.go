@@ -8,10 +8,11 @@
 package context
 
 import (
-	"github.com/qlcchain/go-qlc/config"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/qlcchain/go-qlc/common"
 )

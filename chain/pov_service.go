@@ -18,7 +18,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 )
 
 type PoVService struct {

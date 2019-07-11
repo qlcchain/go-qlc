@@ -12,12 +12,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/qlcchain/go-qlc/chain"
 	"math/big"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"time"
+
+	"github.com/qlcchain/go-qlc/chain"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -62,8 +63,9 @@ func main() {
 	if cfg.RPC.Enable == false {
 		return
 	}
+	_ = cm.Save()
 
-	ss, err := chain.NewSqliteService(cfg)
+	ss, err := chain.NewSqliteService(cm.ConfigFile)
 	if err != nil {
 		logger.Fatal(err)
 		return
@@ -76,7 +78,7 @@ func main() {
 	}
 	logger.Info("sqlite started")
 
-	l = chain.NewLedgerService(cfg)
+	l = chain.NewLedgerService(cm.ConfigFile)
 	if err := l.Init(); err != nil {
 		return
 	}
@@ -87,7 +89,7 @@ func main() {
 	verifier = process.NewLedgerVerifier(l.Ledger)
 	//initData(l.Ledger)
 
-	w := chain.NewWalletService(cfg)
+	w := chain.NewWalletService(cm.ConfigFile)
 	if err := w.Init(); err != nil {
 		return
 	}
@@ -96,7 +98,7 @@ func main() {
 	}
 	logger.Info("wallet started")
 
-	rs, err = chain.NewRPCService(cfg)
+	rs, err = chain.NewRPCService(cm.ConfigFile)
 	if err != nil {
 		logger.Fatal(err)
 		return

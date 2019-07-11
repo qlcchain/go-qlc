@@ -9,8 +9,9 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/validator.v2"
 	"testing"
+
+	"gopkg.in/validator.v2"
 )
 
 type config struct {

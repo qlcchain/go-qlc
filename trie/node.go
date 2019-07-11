@@ -9,9 +9,10 @@ package trie
 
 import (
 	"encoding/hex"
-	"github.com/qlcchain/go-qlc/common/util"
 	"sort"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/common/types"
 )

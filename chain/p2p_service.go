@@ -10,10 +10,11 @@ package chain
 import (
 	"errors"
 
+	"github.com/qlcchain/go-qlc/chain/context"
+
 	"github.com/qlcchain/go-qlc/p2p"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -24,7 +25,12 @@ type P2PService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewP2PService(cfg *config.Config) (*P2PService, error) {
+func NewP2PService(cfgFile string) (*P2PService, error) {
+	cc := context.NewChainContext(cfgFile)
+	cfg, err := cc.Config()
+	if err != nil {
+		return nil, err
+	}
 	p, err := p2p.NewQlcService(cfg)
 	if err != nil {
 		return nil, err
