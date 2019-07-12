@@ -391,7 +391,7 @@ func addAccountMeta(t *testing.T, l *Ledger) *types.AccountMeta {
 
 	ac := mock.Account()
 	am := mock.AccountMeta(ac.Address())
-	if err := l.AddAccountMeta(am); err != nil {
+	if err := l.AddAccountMeta(am, am.Tokens[0].Type); err != nil {
 		t.Fatal()
 	}
 	return am
@@ -457,7 +457,7 @@ func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
-	err := l.AddOrUpdateAccountMeta(am)
+	err := l.AddOrUpdateAccountMeta(am, token.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,7 +471,7 @@ func TestLedger_UpdateAccountMeta(t *testing.T) {
 	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
-	err := l.AddOrUpdateAccountMeta(am)
+	err := l.AddOrUpdateAccountMeta(am, token.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,7 +605,7 @@ func addRepresentationWeight(t *testing.T, l *Ledger) *types.AccountMeta {
 		Total:   ac.TotalBalance(),
 	}
 
-	err := l.AddRepresentation(address, benefit)
+	err := l.AddRepresentation(address, benefit, mock.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -625,7 +625,7 @@ func TestLedger_AddRepresentationWeight(t *testing.T) {
 		Total:   types.Balance{Int: big.NewInt(int64(20))},
 	}
 
-	err := l.AddRepresentation(ac.Address, diff)
+	err := l.AddRepresentation(ac.Address, diff, mock.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -653,7 +653,7 @@ func TestLedger_SubRepresentationWeight(t *testing.T) {
 		Total:   types.Balance{Int: big.NewInt(int64(20))},
 	}
 
-	err := l.SubRepresentation(ac.Address, diff)
+	err := l.SubRepresentation(ac.Address, diff, mock.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -866,7 +866,7 @@ func TestLedgerSession_Latest(t *testing.T) {
 	token.Header = block.GetHash()
 	token.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
-	if err := l.AddAccountMeta(&ac); err != nil {
+	if err := l.AddAccountMeta(&ac, token.Type); err != nil {
 		t.Fatal()
 	}
 
@@ -887,7 +887,7 @@ func TestLedgerSession_Account(t *testing.T) {
 	token2 := mock.TokenMeta(block.GetAddress())
 	token2.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token, token2}}
-	if err := l.AddAccountMeta(&ac); err != nil {
+	if err := l.AddAccountMeta(&ac, token.Type); err != nil {
 		t.Fatal()
 	}
 
@@ -906,7 +906,7 @@ func TestLedgerSession_Token(t *testing.T) {
 	token := mock.TokenMeta(block.GetAddress())
 	token.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
-	if err := l.AddAccountMeta(&ac); err != nil {
+	if err := l.AddAccountMeta(&ac, token.Type); err != nil {
 		t.Fatal()
 	}
 

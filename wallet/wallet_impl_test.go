@@ -18,10 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/util"
-
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -160,7 +159,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 	am := mock.AccountMeta(addr)
 	l := session.ledger
 
-	err = l.AddAccountMeta(am)
+	err = l.AddAccountMeta(am, am.Tokens[0].Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +394,7 @@ func TestSession_GetAccounts(t *testing.T) {
 			account, _ := ss.Account(uint32(i))
 			addr := account.Address()
 			am := mock.AccountMeta(addr)
-			err = s.AddAccountMeta(am, txn)
+			err = s.AddAccountMeta(am, am.Tokens[0].Type, txn)
 			if err != nil {
 				t.Fatal(err)
 			}

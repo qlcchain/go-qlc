@@ -300,7 +300,7 @@ func initData(ledger *ledger.Ledger) {
 		return
 	}
 	ac.CoinVote = types.Balance{big.NewInt(123)}
-	err = ledger.UpdateAccountMeta(ac)
+	err = ledger.UpdateAccountMeta(ac, ac.Token(blocks[0].Token).Type)
 	if err != nil {
 		return
 	}

@@ -14,15 +14,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/google/uuid"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
@@ -56,7 +55,7 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 
 	//mock tx data
 	am := mock.AccountMeta(tx.Address())
-	if err := l.AddAccountMeta(am); err == nil {
+	if err := l.AddAccountMeta(am, am.Tokens[0].Type); err == nil {
 		token := mock.TokenMeta(tx.Address())
 		token.Type = common.GasToken()
 		if err := l.AddTokenMeta(token.BelongTo, token); err == nil {
@@ -70,7 +69,7 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 
 	//mock rx data
 	rxAm := mock.AccountMeta(rx.Address())
-	if err := l.AddAccountMeta(rxAm); err == nil {
+	if err := l.AddAccountMeta(rxAm, rxAm.Tokens[0].Type); err == nil {
 
 	} else {
 		t.Error(err)
@@ -144,7 +143,7 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 
 	//mock tx data
 	am := mock.AccountMeta(tx.Address())
-	if err := l.AddAccountMeta(am); err == nil {
+	if err := l.AddAccountMeta(am, am.Tokens[0].Type); err == nil {
 		token := mock.TokenMeta(tx.Address())
 		token.Type = common.GasToken()
 		if err := l.AddTokenMeta(token.BelongTo, token); err == nil {
@@ -158,7 +157,7 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 
 	//mock rx data
 	rxAm := mock.AccountMeta(rx.Address())
-	if err := l.AddAccountMeta(rxAm); err == nil {
+	if err := l.AddAccountMeta(rxAm, rxAm.Tokens[0].Type); err == nil {
 
 	} else {
 		t.Error(err)
