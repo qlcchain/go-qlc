@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/util"
-
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 var configDir = filepath.Join(QlcTestDataDir(), "config")
@@ -210,5 +209,50 @@ func Test_updateConfig(t *testing.T) {
 
 	if cfg.P2P.SyncInterval != 200 {
 		t.Fatal("invalid p2p.syncInterval", cfg.P2P.SyncInterval)
+	}
+}
+
+func TestCfgManager_DiffOther(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	cm := NewCfgManager(configDir)
+	cfg, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg1, _ := cfg.Clone()
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	cfg, err = cm.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	diff, err := cm.DiffOther(cfg1)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(diff)
+	}
+}
+
+func TestCfgManager_Diff(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	cm := NewCfgManager(configDir)
+	_, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	_, err = cm.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	diff, err := cm.Diff()
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(diff)
 	}
 }

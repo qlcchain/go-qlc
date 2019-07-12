@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/spf13/viper"
 	"gopkg.in/validator.v2"
@@ -211,6 +213,34 @@ func (cm *CfgManager) viper() error {
 		return err
 	}
 	return nil
+}
+
+// DiffOther diff runtime cfg with other `cfg`
+func (cm *CfgManager) DiffOther(cfg *Config) (string, error) {
+	changed, err := cm.Config()
+	if err != nil {
+		return "", err
+	}
+	diff := cmp.Diff(cfg, changed)
+
+	return diff, nil
+}
+
+// Diff the changed config
+func (cm *CfgManager) Diff() (string, error) {
+	content, err := ioutil.ReadFile(cm.ConfigFile)
+	if err != nil {
+		return "", err
+	}
+	cfg := new(Config)
+	err = json.Unmarshal(content, cfg)
+	changed, err := cm.Config()
+	if err != nil {
+		return "", err
+	}
+	diff := cmp.Diff(cfg, changed)
+
+	return diff, nil
 }
 
 func (cm *CfgManager) backUp(content []byte) {
