@@ -10,12 +10,15 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/pb"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/sync/hashmap"
+	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
@@ -31,6 +34,9 @@ type Ledger struct {
 	eb             event.EventBus
 	accountMeta    *hashmap.HashMap
 	representation *hashmap.HashMap
+	representLock  *hashmap.HashMap
+	cacheRound     *int64
+	cacheOrder     *int64
 	logger         *zap.SugaredLogger
 }
 
@@ -110,6 +116,7 @@ func NewLedger(dir string) *Ledger {
 			eb:             event.GetEventBus(dir),
 			accountMeta:    &hashmap.HashMap{},
 			representation: &hashmap.HashMap{},
+			representLock:  &hashmap.HashMap{},
 		}
 		l.logger = log.NewLogger("ledger")
 
@@ -172,77 +179,165 @@ func (l *Ledger) upgrade() error {
 }
 
 func (l *Ledger) init() error {
+	err := l.setCacheToDB(nil)
+	if err != nil {
+		l.logger.Error(err)
+		return err
+	}
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		for {
+			<-ticker.C
+			l.processCache()
+		}
+	}()
+	l.cacheRound = new(int64)
+	l.cacheOrder = new(int64)
+	return nil
+}
+
+func (l *Ledger) processCache() {
+	cacheRound := atomic.LoadInt64(l.cacheRound)
+	atomic.StoreInt64(l.cacheOrder, 0)
+	atomic.AddInt64(l.cacheRound, 1)
+	l.setCacheToDB(&cacheRound)
+}
+
+func (l *Ledger) setCacheToDB(cacheRound *int64) error {
 	txn := l.Store.NewTransaction(true)
 	defer txn.Commit(nil)
 
+	var roundTemp int64
 	amCacheArray := make(map[types.Address]*types.AccountMeta)
-	amModifyArray := make(map[types.Address]int64)
+	amOrderArray := make(map[types.Address]int64)
 	err := txn.Iterator(idPrefixAccountCache, func(cacheKey []byte, cacheVal []byte, b byte) error {
 		addrCache, err := types.BytesToAddress(cacheKey[1 : 1+types.AddressSize])
 		if err != nil {
+			l.logger.Error(err)
 			return err
 		}
 		var amCache types.AccountMeta
 		if _, err := amCache.UnmarshalMsg(cacheVal); err != nil {
+			l.logger.Error(err)
 			return err
 		}
-		modify := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize+types.HashSize:]))
-		if _, ok := amCacheArray[addrCache]; ok {
-			if modify > amModifyArray[addrCache] {
-				amModifyArray[addrCache] = modify
+		round := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize : 1+types.AddressSize+8]))
+		order := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize+8:]))
+		if cacheRound == nil {
+			if round > roundTemp {
+				roundTemp = round
+				amOrderArray[addrCache] = order
 				amCacheArray[addrCache] = &amCache
+			} else {
+				if _, ok := amCacheArray[addrCache]; ok {
+					if order > amOrderArray[addrCache] {
+						amOrderArray[addrCache] = order
+						amCacheArray[addrCache] = &amCache
+					}
+				} else {
+					amOrderArray[addrCache] = order
+					amCacheArray[addrCache] = &amCache
+				}
 			}
 		} else {
-			amModifyArray[addrCache] = modify
-			amCacheArray[addrCache] = &amCache
+			if round == *cacheRound {
+				if _, ok := amCacheArray[addrCache]; ok {
+					if order > amOrderArray[addrCache] {
+						amOrderArray[addrCache] = order
+						amCacheArray[addrCache] = &amCache
+					}
+				} else {
+					amOrderArray[addrCache] = order
+					amCacheArray[addrCache] = &amCache
+				}
+				if err := txn.Delete(cacheKey); err != nil {
+					l.logger.Error(err)
+					return err
+				}
+			}
 		}
 		return nil
 	})
 	if err != nil {
+		l.logger.Error(err)
 		return err
 	}
 	for _, val := range amCacheArray {
 		if err := l.updateAccountMeta(val, txn); err != nil {
+			l.logger.Error(err)
 			return err
 		}
 	}
 
 	beCacheArray := make(map[types.Address]*types.Benefit)
-	beModifyArray := make(map[types.Address]int64)
+	beOrderArray := make(map[types.Address]int64)
 	err = txn.Iterator(idPrefixRepresentationCache, func(cacheKey []byte, cacheVal []byte, b byte) error {
 		addrCache, err := types.BytesToAddress(cacheKey[1 : 1+types.AddressSize])
 		if err != nil {
+			l.logger.Error(err)
 			return err
 		}
 		var beCache types.Benefit
 		if _, err := beCache.UnmarshalMsg(cacheVal); err != nil {
+			l.logger.Error(err)
 			return err
 		}
-		modify := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize+types.HashSize:]))
-		if _, ok := beCacheArray[addrCache]; ok {
-			if modify > beModifyArray[addrCache] {
-				beModifyArray[addrCache] = modify
+		round := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize : 1+types.AddressSize+8]))
+		order := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize+8:]))
+
+		if cacheRound == nil {
+			if round > roundTemp {
+				roundTemp = round
+				beOrderArray[addrCache] = order
 				beCacheArray[addrCache] = &beCache
+			} else {
+				if _, ok := beCacheArray[addrCache]; ok {
+					if order > beOrderArray[addrCache] {
+						beOrderArray[addrCache] = order
+						beCacheArray[addrCache] = &beCache
+					}
+				} else {
+					beOrderArray[addrCache] = order
+					beCacheArray[addrCache] = &beCache
+				}
 			}
 		} else {
-			beModifyArray[addrCache] = modify
-			beCacheArray[addrCache] = &beCache
+			if round == *cacheRound {
+				if _, ok := beCacheArray[addrCache]; ok {
+					if order > beOrderArray[addrCache] {
+						beOrderArray[addrCache] = order
+						beCacheArray[addrCache] = &beCache
+					}
+				} else {
+					beOrderArray[addrCache] = order
+					beCacheArray[addrCache] = &beCache
+				}
+				if err := txn.Delete(cacheKey); err != nil {
+					l.logger.Error(err)
+					return err
+				}
+			}
 		}
 		return nil
 	})
 	if err != nil {
+		l.logger.Error(err)
 		return err
 	}
 	for key, val := range beCacheArray {
 		if err := l.updateRepresentation(key, val, txn); err != nil {
+			l.logger.Error(err)
 			return err
 		}
 	}
-	if err := txn.Drop([]byte{idPrefixAccountCache}); err != nil {
-		return err
-	}
-	if err := txn.Drop([]byte{idPrefixRepresentationCache}); err != nil {
-		return err
+
+	if cacheRound == nil {
+		if err := txn.Drop([]byte{idPrefixAccountCache}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixRepresentationCache}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -883,7 +978,7 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, token types.Hash, txns 
 		return err
 	}
 
-	return l.updateAccountMetaCache(meta, token, txns...)
+	return l.updateAccountMetaCache(meta, txns...)
 }
 
 func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, token types.Hash, txns ...db.StoreTxn) error {
@@ -894,27 +989,21 @@ func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, token types.Hash, tx
 		}
 		return err
 	}
-	return l.updateAccountMetaCache(meta, token, txns...)
+	return l.updateAccountMetaCache(meta, txns...)
 }
 
 func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta, token types.Hash, txns ...db.StoreTxn) error {
-	return l.updateAccountMetaCache(meta, token, txns...)
+	return l.updateAccountMetaCache(meta, txns...)
 }
 
-func (l *Ledger) updateAccountMetaCache(meta *types.AccountMeta, token types.Hash, txns ...db.StoreTxn) error {
+func (l *Ledger) updateAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
 	l.accountMeta.Set(meta.Address.String(), meta)
 
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	tm := meta.Token(token)
-	var key []byte
-	var err error
-	if tm == nil {
-		key, err = getKeyOfParts(idPrefixAccountCache, meta.Address, types.ZeroHash, common.TimeNow().UTC().UnixNano())
-	} else {
-		key, err = getKeyOfParts(idPrefixAccountCache, meta.Address, tm.Header, common.TimeNow().UTC().UnixNano())
-	}
+	key, err := getKeyOfParts(idPrefixAccountCache, meta.Address, *l.cacheRound, atomic.AddInt64(l.cacheOrder, 1))
+
 	if err != nil {
 		return err
 	}
@@ -1182,6 +1271,11 @@ func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns 
 }
 
 func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, hash types.Hash, txns ...db.StoreTxn) error {
+	i, _ := l.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
+	spin, _ := i.(*spinlock.SpinLock)
+	spin.Lock()
+	defer spin.Unlock()
+
 	benefit, err := l.GetRepresentation(address, txns...)
 	if err != nil && err != ErrRepresentationNotFound {
 		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
@@ -1195,10 +1289,15 @@ func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, h
 	benefit.Storage = benefit.Storage.Add(diff.Storage)
 	benefit.Total = benefit.Total.Add(diff.Total)
 
-	return l.updateRepresentationCache(address, benefit, hash, txns...)
+	return l.updateRepresentationCache(address, benefit, txns...)
 }
 
 func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, hash types.Hash, txns ...db.StoreTxn) error {
+	i, _ := l.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
+	spin, _ := i.(*spinlock.SpinLock)
+	spin.Lock()
+	defer spin.Unlock()
+
 	benefit, err := l.GetRepresentation(address, txns...)
 	if err != nil {
 		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
@@ -1211,7 +1310,7 @@ func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, h
 	benefit.Storage = benefit.Storage.Sub(diff.Storage)
 	benefit.Total = benefit.Total.Sub(diff.Total)
 
-	return l.updateRepresentationCache(address, benefit, hash, txns...)
+	return l.updateRepresentationCache(address, benefit, txns...)
 }
 
 func (l *Ledger) updateRepresentation(address types.Address, benefit *types.Benefit, txns ...db.StoreTxn) error {
@@ -1262,12 +1361,12 @@ func (l *Ledger) getRepresentation(address types.Address, txns ...db.StoreTxn) (
 	return benefit, nil
 }
 
-func (l *Ledger) updateRepresentationCache(address types.Address, benefit *types.Benefit, hash types.Hash, txns ...db.StoreTxn) error {
+func (l *Ledger) updateRepresentationCache(address types.Address, benefit *types.Benefit, txns ...db.StoreTxn) error {
 	l.representation.Set(address.String(), benefit)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key, err := getKeyOfParts(idPrefixRepresentationCache, address, hash, common.TimeNow().UTC().UnixNano())
+	key, err := getKeyOfParts(idPrefixRepresentationCache, address, *l.cacheRound, atomic.AddInt64(l.cacheOrder, 1))
 	if err != nil {
 		return err
 	}
@@ -1278,6 +1377,7 @@ func (l *Ledger) updateRepresentationCache(address types.Address, benefit *types
 	}
 
 	if err := txn.Set(key, val); err != nil {
+		l.logger.Error(err)
 		return err
 	}
 	return nil

@@ -666,6 +666,7 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 }
 
 func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) error {
+	lv.logger.Info("roll back block ", hash.String())
 	tm, err := lv.l.Token(hash, txn)
 	if err != nil {
 		return fmt.Errorf("get block(%s) token err : %s", hash.String(), err)
