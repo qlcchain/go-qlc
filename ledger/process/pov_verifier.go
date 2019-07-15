@@ -24,7 +24,7 @@ type PovVerifyStat struct {
 	ErrMsg    string
 	TxResults map[types.Hash]ProcessResult
 
-	PrevBlock     *types.PovBlock
+	PrevHeader    *types.PovHeader
 	PrevStateTrie *trie.Trie
 	StateTrie     *trie.Trie
 	TxBlocks      map[types.Hash]*types.StateBlock
@@ -44,19 +44,19 @@ func (pvs *PovVerifyStat) setResult(result ProcessResult, err error) {
 	}
 }
 
-func (pvs *PovVerifyStat) getPrevBlock(pv *PovVerifier, prevHash types.Hash) *types.PovBlock {
-	if pvs.PrevBlock == nil {
-		pvs.PrevBlock = pv.chain.GetBlockByHash(prevHash)
+func (pvs *PovVerifyStat) getPrevHeader(pv *PovVerifier, prevHash types.Hash) *types.PovHeader {
+	if pvs.PrevHeader == nil {
+		pvs.PrevHeader = pv.chain.GetHeaderByHash(prevHash)
 	}
 
-	return pvs.PrevBlock
+	return pvs.PrevHeader
 }
 
 func (pvs *PovVerifyStat) getPrevStateTrie(pv *PovVerifier, prevHash types.Hash) *trie.Trie {
 	if pvs.PrevStateTrie == nil {
-		prevBlock := pvs.getPrevBlock(pv, prevHash)
-		if prevBlock != nil {
-			prevStateHash := prevBlock.GetStateHash()
+		prevHeader := pvs.getPrevHeader(pv, prevHash)
+		if prevHeader != nil {
+			prevStateHash := prevHeader.GetStateHash()
 			pvs.PrevStateTrie = pv.chain.GetStateTrie(&prevStateHash)
 		}
 	}
@@ -65,9 +65,9 @@ func (pvs *PovVerifyStat) getPrevStateTrie(pv *PovVerifier, prevHash types.Hash)
 }
 
 type PovVerifierChainReader interface {
-	GetBlockByHash(hash types.Hash) *types.PovBlock
-	CalcNextRequiredTarget(block *types.PovBlock) (types.Signature, error)
-	CalcPastMedianTime(prevBlock *types.PovBlock) int64
+	GetHeaderByHash(hash types.Hash) *types.PovHeader
+	CalcNextRequiredTarget(header *types.PovHeader) (types.Signature, error)
+	CalcPastMedianTime(prevHeader *types.PovHeader) int64
 	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
@@ -189,16 +189,16 @@ func (pv *PovVerifier) verifyTimestamp(block *types.PovBlock, stat *PovVerifySta
 }
 
 func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
-	prevBlock := pv.chain.GetBlockByHash(block.GetPrevious())
-	if prevBlock == nil {
+	prevHeader := pv.chain.GetHeaderByHash(block.GetPrevious())
+	if prevHeader == nil {
 		return GapPrevious, nil
 	}
 
-	if block.GetHeight() != prevBlock.GetHeight()+1 {
-		return InvalidHeight, fmt.Errorf("height %d not continue with previous %d", block.GetHeight(), prevBlock.GetHeight())
+	if block.GetHeight() != prevHeader.GetHeight()+1 {
+		return InvalidHeight, fmt.Errorf("height %d not continue with previous %d", block.GetHeight(), prevHeader.GetHeight())
 	}
 
-	medianTime := pv.chain.CalcPastMedianTime(prevBlock)
+	medianTime := pv.chain.CalcPastMedianTime(prevHeader)
 
 	if block.GetTimestamp() < medianTime {
 		return InvalidTime, fmt.Errorf("timestamp %d not greater than median time %d", block.GetTimestamp(), medianTime)
@@ -292,12 +292,12 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 }
 
 func (pv *PovVerifier) verifyState(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
-	prevBlock := stat.getPrevBlock(pv, block.GetPrevious())
-	if prevBlock == nil {
+	prevHeader := stat.getPrevHeader(pv, block.GetPrevious())
+	if prevHeader == nil {
 		return GapPrevious, fmt.Errorf("prev block %s pending", block.GetPrevious())
 	}
 
-	stateTrie, err := pv.chain.GenStateTrie(prevBlock.StateHash, block.Transactions)
+	stateTrie, err := pv.chain.GenStateTrie(prevHeader.StateHash, block.Transactions)
 	if err != nil {
 		return BadStateHash, err
 	}
@@ -314,12 +314,12 @@ func (pv *PovVerifier) verifyState(block *types.PovBlock, stat *PovVerifyStat) (
 }
 
 func (pv *PovVerifier) verifyTarget(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
-	prevBlock := stat.getPrevBlock(pv, block.GetPrevious())
-	if prevBlock == nil {
+	prevHeader := stat.getPrevHeader(pv, block.GetPrevious())
+	if prevHeader == nil {
 		return GapPrevious, nil
 	}
 
-	expectedTarget, err := pv.chain.CalcNextRequiredTarget(prevBlock)
+	expectedTarget, err := pv.chain.CalcNextRequiredTarget(prevHeader)
 	if err != nil {
 		return BadTarget, err
 	}
@@ -359,8 +359,8 @@ func (pv *PovVerifier) verifyProducer(block *types.PovBlock, stat *PovVerifyStat
 		return Progress, nil
 	}
 
-	prevBlock := stat.getPrevBlock(pv, block.GetPrevious())
-	if prevBlock == nil {
+	prevHeader := stat.getPrevHeader(pv, block.GetPrevious())
+	if prevHeader == nil {
 		return GapPrevious, nil
 	}
 

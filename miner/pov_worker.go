@@ -157,9 +157,9 @@ func (w *PovWorker) checkValidMiner() bool {
 }
 
 func (w *PovWorker) genNextBlock() *types.PovBlock {
-	latestBlock := w.GetChain().LatestBlock()
+	latestHeader := w.GetChain().LatestHeader()
 
-	target, err := w.GetChain().CalcNextRequiredTarget(latestBlock)
+	target, err := w.GetChain().CalcNextRequiredTarget(latestHeader)
 	if err != nil {
 		return nil
 	}
@@ -168,13 +168,13 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 	defer ticker.Stop()
 
 	current := &types.PovBlock{
-		Previous:  latestBlock.GetHash(),
-		Height:    latestBlock.GetHeight() + 1,
+		Previous:  latestHeader.GetHash(),
+		Height:    latestHeader.GetHeight() + 1,
 		Target:    target,
 		Timestamp: time.Now().Unix(),
 	}
 
-	prevStateHash := latestBlock.GetStateHash()
+	prevStateHash := latestHeader.GetStateHash()
 	prevStateTrie := w.GetChain().GetStateTrie(&prevStateHash)
 	if prevStateTrie == nil {
 		w.logger.Errorf("failed to get prev state trie, err %s", prevStateHash, err)
