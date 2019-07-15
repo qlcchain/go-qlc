@@ -161,7 +161,7 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		Network:        types.ZeroBalance,
 		Storage:        types.ZeroBalance,
 		Oracle:         types.ZeroBalance,
-		Previous:       tm.Header,
+		Previous:       tm.CacheHeader,
 		Link:           types.Hash(types.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,

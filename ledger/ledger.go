@@ -82,8 +82,7 @@ const (
 	idPrefixPovBestHash // prefix + height => hash
 	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
 	idPrefixLink
-	idPrefixBlockCache        //block store this table before consensus complete
-	idPrefixBlockCacheAccount //account header from block cache
+	idPrefixBlockCache //block store this table before consensus complete
 )
 
 var (
@@ -780,8 +779,8 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 }
 
 func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	key := getAccountMetaKey(address)
 	var meta types.AccountMeta
+	key := getAccountMetaKey(address)
 
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -1826,24 +1825,13 @@ func (l *Ledger) generateWork(hash types.Hash) types.Work {
 }
 
 func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error) {
-	am, err := l.GetAccountMetaWithBlockCache(block.GetAddress())
+	tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken())
 	if err != nil {
-		am, err = l.GetAccountMeta(block.Address)
-		if err != nil {
-			return nil, errors.New("account not found")
-		}
-	}
-	tm := am.Token(block.GetToken())
-	if tm == nil {
 		return nil, errors.New("token not found")
 	}
-	//tm, err := l.GetTokenMeta(block.GetAddress(), block.GetToken())
-	//if err != nil {
-	//	return nil, errors.New("token not found")
-	//}
-	prev, err := l.GetStateBlock(tm.Header)
+	prev, err := l.GetStateBlock(tm.CacheHeader)
 	if err != nil {
-		prev, err = l.GetBlockCache(tm.Header)
+		prev, err = l.GetBlockCache(tm.CacheHeader)
 		if err != nil {
 			return nil, err
 		}
@@ -1851,7 +1839,7 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		block.Type = types.Send
 		block.Balance = tm.Balance.Sub(amount)
-		block.Previous = tm.Header
+		block.Previous = tm.CacheHeader
 		block.Representative = tm.Representative
 		block.Timestamp = common.TimeNow().UTC().Unix()
 		block.Vote = prev.GetVote()
@@ -1896,32 +1884,18 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 	if err != nil {
 		return nil, err
 	}
-	var has bool
-	var rxTm *types.TokenMeta
-	am, err := l.GetAccountMetaWithBlockCache(rxAccount)
+	has, err := l.HasTokenMeta(rxAccount, sendBlock.Token)
 	if err != nil {
-		has, err = l.HasTokenMeta(rxAccount, sendBlock.Token)
+		return nil, err
+	}
+	if has {
+		rxTm, err := l.GetTokenMeta(rxAccount, sendBlock.GetToken())
 		if err != nil {
 			return nil, err
 		}
-		if has {
-			rxTm, err = l.GetTokenMeta(rxAccount, sendBlock.GetToken())
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		rxTm = am.Token(sendBlock.GetToken())
-		if rxTm == nil {
-			has = false
-		} else {
-			has = true
-		}
-	}
-	if has {
-		prev, err := l.GetStateBlock(rxTm.Header)
+		prev, err := l.GetStateBlock(rxTm.CacheHeader)
 		if err != nil {
-			prev, err = l.GetBlockCache(rxTm.Header)
+			prev, err = l.GetBlockCache(rxTm.CacheHeader)
 			if err != nil {
 				return nil, err
 			}
@@ -1935,7 +1909,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 				Oracle:         prev.GetOracle(),
 				Network:        prev.GetNetwork(),
 				Storage:        prev.GetStorage(),
-				Previous:       rxTm.Header,
+				Previous:       rxTm.CacheHeader,
 				Link:           hash,
 				Representative: rxTm.Representative,
 				Token:          rxTm.Type,
@@ -1973,20 +1947,20 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		return nil, fmt.Errorf("invalid representative[%s]", representative.String())
 	}
 
-	am, err := l.GetAccountMetaWithBlockCache(account)
+	am, err := l.GetAccountMeta(account)
 	if err != nil {
-		am, err = l.GetAccountMeta(account)
-		if err != nil {
-			return nil, fmt.Errorf("account[%s] is not exist", account.String())
-		}
+		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
 	tm := am.Token(common.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
 	}
-	prev, err := l.GetStateBlock(tm.Header)
+	prev, err := l.GetStateBlock(tm.CacheHeader)
 	if err != nil {
-		return nil, fmt.Errorf("token header block not found")
+		prev, err = l.GetBlockCache(tm.CacheHeader)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sb := types.StateBlock{
@@ -1997,7 +1971,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Oracle:         prev.GetOracle(),
 		Network:        prev.GetNetwork(),
 		Storage:        prev.GetStorage(),
-		Previous:       tm.Header,
+		Previous:       tm.CacheHeader,
 		Link:           types.ZeroHash,
 		Representative: representative,
 		Token:          tm.Type,
@@ -2145,116 +2119,4 @@ func (l *Ledger) CountBlockCache(txns ...db.StoreTxn) (uint64, error) {
 	defer l.releaseTxn(txn, flag)
 
 	return txn.Count([]byte{idPrefixBlockCache})
-}
-
-func (l *Ledger) getAccountMetaWithBlockCacheKey(address types.Address) []byte {
-	var key [1 + types.AddressSize]byte
-	key[0] = idPrefixBlockCacheAccount
-	copy(key[1:], address[:])
-	return key[:]
-}
-
-func (l *Ledger) AddAccountMetaWithBlockCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
-	metaBytes, err := meta.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-
-	key := l.getAccountMetaWithBlockCacheKey(meta.Address)
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	// never overwrite implicitly
-	err = txn.Get(key, func(vals []byte, b byte) error {
-		return nil
-	})
-	if err == nil {
-		return ErrAccountExists
-	} else if err != badger.ErrKeyNotFound {
-		return err
-	}
-	return txn.Set(key, metaBytes)
-}
-
-func (l *Ledger) GetAccountMetaWithBlockCache(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	key := l.getAccountMetaWithBlockCacheKey(address)
-	var meta types.AccountMeta
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if _, err = meta.UnmarshalMsg(val); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, ErrAccountNotFound
-		}
-		return nil, err
-	}
-	return &meta, nil
-}
-
-func (l *Ledger) AddOrUpdateAccountMetaWithBlockCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
-	metaBytes, err := meta.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-	key := l.getAccountMetaWithBlockCacheKey(meta.Address)
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	return txn.Set(key, metaBytes)
-}
-
-func (l *Ledger) UpdateAccountMetaWithBlockCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
-	metaBytes, err := meta.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-	key := l.getAccountMetaWithBlockCacheKey(meta.Address)
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err = txn.Get(key, func(vals []byte, b byte) error {
-		return nil
-	})
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return ErrAccountNotFound
-		}
-		return err
-	}
-	return txn.Set(key, metaBytes)
-}
-
-func (l *Ledger) DeleteAccountMetaWithBlockCache(address types.Address, txns ...db.StoreTxn) error {
-	key := l.getAccountMetaWithBlockCacheKey(address)
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	return txn.Delete(key)
-}
-
-func (l *Ledger) HasAccountMetaWithBlockCache(address types.Address, txns ...db.StoreTxn) (bool, error) {
-	key := l.getAccountMetaWithBlockCacheKey(address)
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Get(key, func(val []byte, b byte) error {
-		return nil
-	})
-
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
 }

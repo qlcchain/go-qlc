@@ -665,9 +665,13 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	l.logger.Debug("process result, ", flag)
 	switch flag {
 	case process.Progress:
-		err := verifier.BlockCacheProcess(block)
+		hash := block.GetHash()
+		if b, err := l.ledger.HasBlockCache(hash); b == true && err == nil {
+			return types.ZeroHash, errors.New("old block")
+		}
+		err = verifier.BlockCacheProcess(block)
 		if err != nil {
-			l.logger.Errorf("Block %s add to blockCache error[%d]", block.GetHash(), err)
+			l.logger.Errorf("Block %s add to blockCache error[%d]", hash, err)
 			return types.ZeroHash, err
 		}
 
@@ -675,7 +679,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		//TODO: refine
 		l.eb.Publish(string(common.EventBroadcast), p2p.PublishReq, block)
 		l.eb.Publish(string(common.EventGenerateBlock), flag, block)
-		return block.GetHash(), nil
+		return hash, nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")
 	case process.BadSignature:

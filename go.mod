@@ -52,6 +52,7 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
+	github.com/ttacon/chalk v0.0.0-20160626202418-22c06c80ed31 // indirect
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/atomic v1.4.0
 	go.uber.org/zap v1.10.0

@@ -167,10 +167,4 @@ type Store interface {
 	HasBlockCache(hash types.Hash, txns ...db.StoreTxn) (bool, error)
 	DeleteBlockCache(hash types.Hash, txns ...db.StoreTxn) error
 	CountBlockCache(txns ...db.StoreTxn) (uint64, error)
-
-	AddAccountMetaWithBlockCache(meta *types.AccountMeta, txns ...db.StoreTxn) error
-	GetAccountMetaWithBlockCache(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error)
-	UpdateAccountMetaWithBlockCache(meta *types.AccountMeta, txns ...db.StoreTxn) error
-	DeleteAccountMetaWithBlockCache(address types.Address, txns ...db.StoreTxn) error
-	HasAccountMetaWithBlockCache(address types.Address, txns ...db.StoreTxn) (bool, error)
 }

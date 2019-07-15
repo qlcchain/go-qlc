@@ -359,21 +359,12 @@ func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
 
 func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
 	hash := block.GetHash()
-	address := block.Address
 	if exist, _ := dps.ledger.HasBlockCache(hash); exist {
 		err := dps.ledger.DeleteBlockCache(hash)
 		if err != nil {
 			dps.logger.Error(err)
 		} else {
 			dps.logger.Debugf("delete block cache [%s] error", hash.String())
-		}
-		if exist, _ := dps.ledger.HasAccountMetaWithBlockCache(address); exist {
-			err := dps.ledger.DeleteAccountMetaWithBlockCache(address)
-			if err != nil {
-				dps.logger.Error(err)
-			} else {
-				dps.logger.Debugf("delete block cache accountMeta[%s] error", address.String())
-			}
 		}
 	}
 }
@@ -454,7 +445,6 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 			dps.logger.Infof("block[%s] check err[%s]", bs.Block.GetHash().String(), err.Error())
 			return
 		}
-
 		dps.ProcessResult(result, bs)
 	} else {
 		result = process.Progress
