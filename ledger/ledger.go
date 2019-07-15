@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/pb"
@@ -912,9 +911,9 @@ func (l *Ledger) updateAccountMetaCache(meta *types.AccountMeta, token types.Has
 	var key []byte
 	var err error
 	if tm == nil {
-		key, err = getKeyOfParts(idPrefixAccountCache, meta.Address, types.ZeroHash, time.Now().UnixNano())
+		key, err = getKeyOfParts(idPrefixAccountCache, meta.Address, types.ZeroHash, common.TimeNow().UTC().UnixNano())
 	} else {
-		key, err = getKeyOfParts(idPrefixAccountCache, meta.Address, tm.Header, time.Now().UnixNano())
+		key, err = getKeyOfParts(idPrefixAccountCache, meta.Address, tm.Header, common.TimeNow().UTC().UnixNano())
 	}
 	if err != nil {
 		return err
@@ -1268,7 +1267,7 @@ func (l *Ledger) updateRepresentationCache(address types.Address, benefit *types
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key, err := getKeyOfParts(idPrefixRepresentationCache, address, hash, time.Now().UnixNano())
+	key, err := getKeyOfParts(idPrefixRepresentationCache, address, hash, common.TimeNow().UTC().UnixNano())
 	if err != nil {
 		return err
 	}

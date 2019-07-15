@@ -10,7 +10,6 @@ type Benefit struct {
 	Storage Balance `msg:"storage,extension" json:"storage"`
 	Oracle  Balance `msg:"oracle,extension" json:"oracle"`
 	Total   Balance `msg:"total,extension" json:"total"`
-	Hash    Balance `msg:"hash,extension" json:"hash"`
 }
 
 func (b *Benefit) String() string {

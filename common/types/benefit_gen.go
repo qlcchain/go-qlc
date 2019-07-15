@@ -52,11 +52,6 @@ func (z *Benefit) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
-		case "hash":
-			err = dc.ReadExtension(&z.Hash)
-			if err != nil {
-				return
-			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -69,9 +64,9 @@ func (z *Benefit) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *Benefit) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
+	// map header, size 6
 	// write "balance"
-	err = en.Append(0x87, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
+	err = en.Append(0x86, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
 	if err != nil {
 		return
 	}
@@ -124,24 +119,15 @@ func (z *Benefit) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	// write "hash"
-	err = en.Append(0xa4, 0x68, 0x61, 0x73, 0x68)
-	if err != nil {
-		return
-	}
-	err = en.WriteExtension(&z.Hash)
-	if err != nil {
-		return
-	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *Benefit) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
+	// map header, size 6
 	// string "balance"
-	o = append(o, 0x87, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
+	o = append(o, 0x86, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Balance)
 	if err != nil {
 		return
@@ -173,12 +159,6 @@ func (z *Benefit) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "total"
 	o = append(o, 0xa5, 0x74, 0x6f, 0x74, 0x61, 0x6c)
 	o, err = msgp.AppendExtension(o, &z.Total)
-	if err != nil {
-		return
-	}
-	// string "hash"
-	o = append(o, 0xa4, 0x68, 0x61, 0x73, 0x68)
-	o, err = msgp.AppendExtension(o, &z.Hash)
 	if err != nil {
 		return
 	}
@@ -231,11 +211,6 @@ func (z *Benefit) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "hash":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Hash)
-			if err != nil {
-				return
-			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -249,6 +224,6 @@ func (z *Benefit) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *Benefit) Msgsize() (s int) {
-	s = 1 + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Vote.Len() + 8 + msgp.ExtensionPrefixSize + z.Network.Len() + 8 + msgp.ExtensionPrefixSize + z.Storage.Len() + 7 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 6 + msgp.ExtensionPrefixSize + z.Total.Len() + 5 + msgp.ExtensionPrefixSize + z.Hash.Len()
+	s = 1 + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Vote.Len() + 8 + msgp.ExtensionPrefixSize + z.Network.Len() + 8 + msgp.ExtensionPrefixSize + z.Storage.Len() + 7 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 6 + msgp.ExtensionPrefixSize + z.Total.Len()
 	return
 }
