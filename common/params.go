@@ -41,6 +41,8 @@ var (
 	// maximum number of seconds a block time is allowed to be ahead of the now time.
 	PovMaxAllowedFutureTimeSec = 15
 
+	PovMaxNonce = ^uint64(0) // 2^64 - 1
+
 	//vote right divisor
 	VoteDivisor = int64(200)
 )

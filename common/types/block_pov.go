@@ -92,6 +92,23 @@ func (header *PovHeader) Copy() *PovHeader {
 	return &newHeader
 }
 
+func (header *PovHeader) ComputeVoteHash() Hash {
+	hash, _ := HashBytes(header.Previous[:], header.MerkleRoot[:], util.BE_Uint64ToBytes(header.Nonce))
+	return hash
+}
+
+func (header *PovHeader) ComputeHash() Hash {
+	hash, _ := HashBytes(
+		header.Previous[:], header.MerkleRoot[:], util.BE_Uint64ToBytes(header.Nonce), header.VoteSignature[:],
+		util.BE_Uint64ToBytes(header.Height),
+		util.BE_Int2Bytes(header.Timestamp),
+		header.Target[:],
+		header.Coinbase[:],
+		util.BE_Uint32ToBytes(header.TxNum),
+		header.StateHash[:])
+	return hash
+}
+
 func (header *PovHeader) Serialize() ([]byte, error) {
 	return header.MarshalMsg(nil)
 }

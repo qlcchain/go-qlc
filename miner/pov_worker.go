@@ -5,7 +5,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/consensus/pov"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 	"runtime"
@@ -81,11 +81,11 @@ func (w *PovWorker) GetConfig() *config.Config {
 	return w.miner.GetConfig()
 }
 
-func (w *PovWorker) GetTxPool() *consensus.PovTxPool {
+func (w *PovWorker) GetTxPool() *pov.PovTxPool {
 	return w.miner.GetPovEngine().GetTxPool()
 }
 
-func (w *PovWorker) GetChain() *consensus.PovBlockChain {
+func (w *PovWorker) GetChain() *pov.PovBlockChain {
 	return w.miner.GetPovEngine().GetChain()
 }
 

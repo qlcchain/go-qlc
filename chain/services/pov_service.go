@@ -9,10 +9,10 @@ package services
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/consensus/pov"
 
 	"github.com/qlcchain/go-qlc/common/types"
 
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 
@@ -22,19 +22,19 @@ import (
 
 type PoVService struct {
 	common.ServiceLifecycle
-	povEngine *consensus.PoVEngine
+	povEngine *pov.PoVEngine
 	logger    *zap.SugaredLogger
 }
 
 func NewPoVService(cfg *config.Config, accounts []*types.Account) *PoVService {
-	povEngine, _ := consensus.NewPovEngine(cfg, accounts)
+	povEngine, _ := pov.NewPovEngine(cfg, accounts)
 	return &PoVService{
 		povEngine: povEngine,
 		logger:    log.NewLogger("pov_service"),
 	}
 }
 
-func (pov *PoVService) GetPoVEngine() *consensus.PoVEngine {
+func (pov *PoVService) GetPoVEngine() *pov.PoVEngine {
 	return pov.povEngine
 }
 
