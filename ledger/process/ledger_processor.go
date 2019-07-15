@@ -130,9 +130,8 @@ func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 		}
 	} else {
 		//check fork
-		fmt.Println(previous.GetHash().String())
+
 		if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-			fmt.Println(tm.Header.String())
 			return Fork, nil
 		}
 
@@ -623,6 +622,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 	tmNew := &types.TokenMeta{
 		Type:           token,
 		Header:         hash,
+		CacheHeader:    hash,
 		Representative: rep,
 		OpenBlock:      hash,
 		Balance:        balance,
