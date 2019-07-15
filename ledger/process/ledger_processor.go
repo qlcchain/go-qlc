@@ -124,35 +124,35 @@ func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 	}
 
 	// check previous
-	if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
+	var previous *types.StateBlock
+	if previous, err = lv.l.GetStateBlock(block.Previous); err != nil {
 		if previous, err = lv.l.GetBlockCache(block.Previous); err != nil {
 			return GapPrevious, nil
 		}
-	} else {
-		//check fork
+	}
 
-		if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-			return Fork, nil
-		}
+	//check fork
+	if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.CacheHeader {
+		return Fork, nil
+	}
 
-		if block.GetType() == types.Send {
-			//check balance
-			if !(previous.Balance.Compare(block.Balance) == types.BalanceCompBigger) {
-				return BalanceMismatch, nil
-			}
-			//check vote,network,storage,oracle
-			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
-				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
-				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
-				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
-			}
+	if block.GetType() == types.Send {
+		//check balance
+		if !(previous.Balance.Compare(block.Balance) == types.BalanceCompBigger) {
+			return BalanceMismatch, nil
 		}
-		if block.GetType() == types.ContractSend {
-			//check totalBalance
-			if previous.TotalBalance().Compare(block.TotalBalance()) == types.BalanceCompSmaller {
-				return BalanceMismatch, nil
-			}
+		//check vote,network,storage,oracle
+		if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+			previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+			previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+			previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
+			return BalanceMismatch, nil
+		}
+	}
+	if block.GetType() == types.ContractSend {
+		//check totalBalance
+		if previous.TotalBalance().Compare(block.TotalBalance()) == types.BalanceCompSmaller {
+			return BalanceMismatch, nil
 		}
 	}
 
@@ -516,6 +516,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Type:   block.GetToken(),
 			Amount: tm.Balance.Sub(block.GetBalance()),
 		}
+		fmt.Println("xxxxxxxxxxxxxxxxx:", pending.Amount.String())
 		pendingKey := types.PendingKey{
 			Address: types.Address(block.GetLink()),
 			Hash:    hash,
@@ -640,7 +641,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			am.CoinVote = block.GetVote()
 			am.CoinStorage = block.GetStorage()
 		}
-		if tm != nil {
+		if tm != nil && tm.Header != types.ZeroHash {
 			tm.Header = hash
 			tm.Representative = rep
 			tm.Balance = balance
@@ -674,38 +675,19 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 
 func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
 	hash := block.GetHash()
-	rep := block.GetRepresentative()
 	address := block.GetAddress()
 	token := block.GetToken()
-	balance := block.GetBalance()
 
 	tmNew := &types.TokenMeta{
-		Type:           token,
-		CacheHeader:    hash,
-		Header:         types.ZeroHash,
-		Representative: rep,
-		OpenBlock:      hash,
-		Balance:        balance,
-		BlockCount:     1,
-		BelongTo:       address,
-		Modified:       common.TimeNow().UTC().Unix(),
+		Type:        token,
+		CacheHeader: hash,
+		Header:      types.ZeroHash,
 	}
 
 	if am != nil {
 		tm := am.Token(block.GetToken())
-		if block.GetToken() == common.ChainToken() {
-			am.CoinBalance = balance
-			am.CoinOracle = block.GetOracle()
-			am.CoinNetwork = block.GetNetwork()
-			am.CoinVote = block.GetVote()
-			am.CoinStorage = block.GetStorage()
-		}
 		if tm != nil {
 			tm.CacheHeader = hash
-			tm.Representative = rep
-			tm.Balance = balance
-			tm.BlockCount = tm.BlockCount + 1
-			tm.Modified = common.TimeNow().UTC().Unix()
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
@@ -716,14 +698,6 @@ func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, 
 		account := types.AccountMeta{
 			Address: address,
 			Tokens:  []*types.TokenMeta{tmNew},
-		}
-
-		if block.GetToken() == common.ChainToken() {
-			account.CoinBalance = balance
-			account.CoinOracle = block.GetOracle()
-			account.CoinNetwork = block.GetNetwork()
-			account.CoinVote = block.GetVote()
-			account.CoinStorage = block.GetStorage()
 		}
 		if err := lv.l.AddAccountMeta(&account, txn); err != nil {
 			return err

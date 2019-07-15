@@ -440,10 +440,12 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 
 	//block has been checked. If fork there will be problem
 	if !dps.acTrx.isVoting(bs.Block) {
-		result, err = dps.lv.BlockCheck(bs.Block)
-		if err != nil {
-			dps.logger.Infof("block[%s] check err[%s]", bs.Block.GetHash().String(), err.Error())
-			return
+		if bs.Type != consensus.MsgGenerateBlock {
+			result, err = dps.lv.BlockCheck(bs.Block)
+			if err != nil {
+				dps.logger.Infof("block[%s] check err[%s]", bs.Block.GetHash().String(), err.Error())
+				return
+			}
 		}
 		dps.ProcessResult(result, bs)
 	} else {
