@@ -25,7 +25,7 @@ const (
 	targetTps             = 500
 	repTimeout            = 5 * time.Minute
 	voteCacheSize         = targetTps * 5 * 60
-	resultCacheSize		= 102400
+	resultCacheSize       = 102400
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
 	maxBlocks             = 10240
@@ -36,7 +36,7 @@ const (
 var (
 	localRepAccount sync.Map
 	povSyncState    atomic.Value
-	minVoteWeight       types.Balance
+	minVoteWeight   types.Balance
 )
 
 type DPoS struct {
@@ -56,7 +56,7 @@ type DPoS struct {
 	cacheBlocks    chan *consensus.BlockSource
 	blocksAcked    chan types.Hash
 	povReady       chan bool
-	resultCache		gcache.Cache	//block check result cache
+	resultCache    gcache.Cache //block check result cache
 }
 
 func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *DPoS {
@@ -79,7 +79,7 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 		cacheBlocks:   make(chan *consensus.BlockSource, maxCacheBlocks),
 		blocksAcked:   make(chan types.Hash, maxBlocks),
 		povReady:      make(chan bool, 1),
-		resultCache:	gcache.New(resultCacheSize).LRU().Build(),
+		resultCache:   gcache.New(resultCacheSize).LRU().Build(),
 	}
 
 	dps.acTrx.SetDposService(dps)
@@ -491,7 +491,7 @@ func (dps *DPoS) ProcessMsgDo(bs *consensus.BlockSource) {
 
 	result, err = dps.BlockCheckWithCache(hash, bs.Block)
 	if err != nil {
-		dps.logger.Errorf("block[%s] check err[%s]", bs.Block.GetHash().String(), err.Error())
+		dps.logger.Errorf("block[%s] check err[%s]", bs.Block.GetHash(), err.Error())
 		return
 	}
 	dps.ProcessResult(result, bs)
