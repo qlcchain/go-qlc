@@ -358,6 +358,14 @@ func (l *LedgerApi) BlockAccount(hash types.Hash) (types.Address, error) {
 	return sb.GetAddress(), nil
 }
 
+func (l *LedgerApi) BlockConfirmed(hash types.Hash) (bool, error) {
+	b, err := l.ledger.HasStateBlock(hash)
+	if err != nil {
+		return false, err
+	}
+	return b, nil
+}
+
 func (l *LedgerApi) BlockHash(block types.StateBlock) types.Hash {
 	return block.GetHash()
 }
