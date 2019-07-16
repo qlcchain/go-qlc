@@ -258,7 +258,7 @@ func (m MigrationV5ToV6) Migrate(txn db.StoreTxn) error {
 		for _, am := range ams {
 			for _, tm := range am.Tokens {
 				if tm != nil {
-					tm.CacheHeader = tm.Header
+					tm.ConfirmHeader = tm.Header
 				}
 			}
 			amKey := getAccountMetaKey(am.Address)

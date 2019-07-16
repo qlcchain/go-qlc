@@ -477,10 +477,10 @@ func (z *TokenMeta) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Header")
 				return
 			}
-		case "cacheHeader":
-			err = dc.ReadExtension(&z.CacheHeader)
+		case "confirmHeader":
+			err = dc.ReadExtension(&z.ConfirmHeader)
 			if err != nil {
-				err = msgp.WrapError(err, "CacheHeader")
+				err = msgp.WrapError(err, "ConfirmHeader")
 				return
 			}
 		case "rep":
@@ -553,14 +553,14 @@ func (z *TokenMeta) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Header")
 		return
 	}
-	// write "cacheHeader"
-	err = en.Append(0xab, 0x63, 0x61, 0x63, 0x68, 0x65, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
+	// write "confirmHeader"
+	err = en.Append(0xad, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x72, 0x6d, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.CacheHeader)
+	err = en.WriteExtension(&z.ConfirmHeader)
 	if err != nil {
-		err = msgp.WrapError(err, "CacheHeader")
+		err = msgp.WrapError(err, "ConfirmHeader")
 		return
 	}
 	// write "rep"
@@ -644,11 +644,11 @@ func (z *TokenMeta) MarshalMsg(b []byte) (o []byte, err error) {
 		err = msgp.WrapError(err, "Header")
 		return
 	}
-	// string "cacheHeader"
-	o = append(o, 0xab, 0x63, 0x61, 0x63, 0x68, 0x65, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
-	o, err = msgp.AppendExtension(o, &z.CacheHeader)
+	// string "confirmHeader"
+	o = append(o, 0xad, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x72, 0x6d, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
+	o, err = msgp.AppendExtension(o, &z.ConfirmHeader)
 	if err != nil {
-		err = msgp.WrapError(err, "CacheHeader")
+		err = msgp.WrapError(err, "ConfirmHeader")
 		return
 	}
 	// string "rep"
@@ -718,10 +718,10 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Header")
 				return
 			}
-		case "cacheHeader":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.CacheHeader)
+		case "confirmHeader":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.ConfirmHeader)
 			if err != nil {
-				err = msgp.WrapError(err, "CacheHeader")
+				err = msgp.WrapError(err, "ConfirmHeader")
 				return
 			}
 		case "rep":
@@ -774,6 +774,6 @@ func (z *TokenMeta) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TokenMeta) Msgsize() (s int) {
-	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 7 + msgp.ExtensionPrefixSize + z.Header.Len() + 12 + msgp.ExtensionPrefixSize + z.CacheHeader.Len() + 4 + msgp.ExtensionPrefixSize + z.Representative.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 8 + msgp.ExtensionPrefixSize + z.BelongTo.Len() + 9 + msgp.Int64Size + 11 + msgp.Int64Size
+	s = 1 + 5 + msgp.ExtensionPrefixSize + z.Type.Len() + 7 + msgp.ExtensionPrefixSize + z.Header.Len() + 14 + msgp.ExtensionPrefixSize + z.ConfirmHeader.Len() + 4 + msgp.ExtensionPrefixSize + z.Representative.Len() + 5 + msgp.ExtensionPrefixSize + z.OpenBlock.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 8 + msgp.ExtensionPrefixSize + z.BelongTo.Len() + 9 + msgp.Int64Size + 11 + msgp.Int64Size
 	return
 }

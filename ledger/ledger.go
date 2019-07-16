@@ -327,6 +327,9 @@ func addLink(block *types.StateBlock, txn db.StoreTxn) error {
 }
 
 func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	if blkCache, err := l.GetBlockCache(hash); err == nil {
+		return blkCache, nil
+	}
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -1829,17 +1832,14 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 	if err != nil {
 		return nil, errors.New("token not found")
 	}
-	prev, err := l.GetStateBlock(tm.CacheHeader)
+	prev, err := l.GetStateBlock(tm.Header)
 	if err != nil {
-		prev, err = l.GetBlockCache(tm.CacheHeader)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		block.Type = types.Send
 		block.Balance = tm.Balance.Sub(amount)
-		block.Previous = tm.CacheHeader
+		block.Previous = tm.Header
 		block.Representative = tm.Representative
 		block.Timestamp = common.TimeNow().UTC().Unix()
 		block.Vote = prev.GetVote()
@@ -1893,12 +1893,9 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		if err != nil {
 			return nil, err
 		}
-		prev, err := l.GetStateBlock(rxTm.CacheHeader)
+		prev, err := l.GetStateBlock(rxTm.Header)
 		if err != nil {
-			prev, err = l.GetBlockCache(rxTm.CacheHeader)
-			if err != nil {
-				return nil, err
-			}
+			return nil, err
 		}
 		if rxTm != nil {
 			sb = types.StateBlock{
@@ -1909,7 +1906,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 				Oracle:         prev.GetOracle(),
 				Network:        prev.GetNetwork(),
 				Storage:        prev.GetStorage(),
-				Previous:       rxTm.CacheHeader,
+				Previous:       rxTm.Header,
 				Link:           hash,
 				Representative: rxTm.Representative,
 				Token:          rxTm.Type,
@@ -1955,12 +1952,9 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	if tm == nil {
 		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
 	}
-	prev, err := l.GetStateBlock(tm.CacheHeader)
+	prev, err := l.GetStateBlock(tm.Header)
 	if err != nil {
-		prev, err = l.GetBlockCache(tm.CacheHeader)
-		if err != nil {
-			return nil, err
-		}
+		return nil, fmt.Errorf("token header block not found")
 	}
 
 	sb := types.StateBlock{
@@ -1971,7 +1965,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Oracle:         prev.GetOracle(),
 		Network:        prev.GetNetwork(),
 		Storage:        prev.GetStorage(),
-		Previous:       tm.CacheHeader,
+		Previous:       tm.Header,
 		Link:           types.ZeroHash,
 		Representative: representative,
 		Token:          tm.Type,

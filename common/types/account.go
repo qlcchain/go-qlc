@@ -24,7 +24,7 @@ type TokenMeta struct {
 	//TokenAccount Address `msg:"tokenAccount,extension" json:"token_account"`
 	Type           Hash    `msg:"type,extension" json:"type"`
 	Header         Hash    `msg:"header,extension" json:"header"`
-	CacheHeader    Hash    `msg:"cacheHeader,extension" json:"cacheHeader"`
+	ConfirmHeader  Hash    `msg:"confirmHeader,extension" json:"confirmHeader"`
 	Representative Address `msg:"rep,extension" json:"representative"`
 	OpenBlock      Hash    `msg:"open,extension" json:"open"`
 	Balance        Balance `msg:"balance,extension" json:"balance"`
