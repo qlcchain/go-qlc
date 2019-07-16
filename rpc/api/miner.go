@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -15,6 +16,7 @@ import (
 )
 
 type MinerApi struct {
+	cfg       *config.Config
 	logger    *zap.SugaredLogger
 	ledger    *ledger.Ledger
 	vmContext *vmstore.VMContext
@@ -42,8 +44,9 @@ type MinerRewardInfo struct {
 	NeedCallReward    bool   `json:"needCallReward"`
 }
 
-func NewMinerApi(ledger *ledger.Ledger) *MinerApi {
+func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
 	return &MinerApi{
+		cfg:       cfg,
 		logger:    log.NewLogger("api_miner"),
 		ledger:    ledger,
 		vmContext: vmstore.NewVMContext(ledger),
@@ -55,6 +58,10 @@ func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
 }
 
 func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
 	rsp := new(MinerRewardInfo)
 
 	latestPovHeader, err := m.ledger.GetLatestPovHeader()
@@ -109,6 +116,10 @@ func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, erro
 }
 
 func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
 	if param.Coinbase.IsZero() {
 		return nil, errors.New("invalid reward param coinbase")
 	}
@@ -171,6 +182,10 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 }
 
 func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
 	if input.GetType() != types.ContractSend {
 		return nil, errors.New("input block type is not contract send")
 	}
@@ -195,6 +210,10 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 }
 
 func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
 	input, err := m.ledger.GetStateBlock(sendHash)
 	if err != nil {
 		return nil, err
