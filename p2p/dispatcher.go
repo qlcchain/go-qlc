@@ -91,8 +91,6 @@ func (dp *Dispatcher) loop() {
 				}
 				return true
 			})
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }

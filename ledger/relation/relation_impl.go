@@ -2,9 +2,6 @@ package relation
 
 import (
 	"encoding/base64"
-	"sync"
-	"time"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -13,6 +10,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"sync"
 )
 
 type Relation struct {
@@ -278,8 +276,6 @@ func (r *Relation) processBlocks() {
 			if err := r.DeleteBlock(blk); err != nil {
 				r.logger.Error(err)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }

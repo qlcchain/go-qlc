@@ -135,10 +135,7 @@ func (ms *MessageService) startLoop() {
 				}
 			default:
 				ms.netService.node.logger.Error("Received unknown message.")
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -152,11 +149,7 @@ func (ms *MessageService) messageResponseLoop() {
 			switch message.MessageType() {
 			case MessageResponse:
 				ms.onMessageResponse(message)
-			default:
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -170,11 +163,7 @@ func (ms *MessageService) publishReqLoop() {
 			switch message.MessageType() {
 			case PublishReq:
 				ms.onPublishReq(message)
-			default:
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -188,11 +177,7 @@ func (ms *MessageService) confirmReqLoop() {
 			switch message.MessageType() {
 			case ConfirmReq:
 				ms.onConfirmReq(message)
-			default:
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -206,11 +191,7 @@ func (ms *MessageService) confirmAckLoop() {
 			switch message.MessageType() {
 			case ConfirmAck:
 				ms.onConfirmAck(message)
-			default:
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -223,8 +204,6 @@ func (ms *MessageService) checkMessageCacheLoop() {
 			return
 		case <-ticker.C:
 			ms.checkMessageCache()
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -292,10 +271,7 @@ func (ms *MessageService) povMessageLoop() {
 				ms.onPovBulkPullRsp(message)
 			default:
 				ms.netService.node.logger.Warn("Received unknown pov message.")
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
