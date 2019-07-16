@@ -16,11 +16,10 @@ import (
 )
 
 type MinerApi struct {
-	cfg       *config.Config
-	logger    *zap.SugaredLogger
-	ledger    *ledger.Ledger
-	vmContext *vmstore.VMContext
-	reward    *contract.MinerReward
+	cfg    *config.Config
+	logger *zap.SugaredLogger
+	ledger *ledger.Ledger
+	reward *contract.MinerReward
 }
 
 type RewardParam struct {
@@ -46,11 +45,10 @@ type MinerRewardInfo struct {
 
 func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
 	return &MinerApi{
-		cfg:       cfg,
-		logger:    log.NewLogger("api_miner"),
-		ledger:    ledger,
-		vmContext: vmstore.NewVMContext(ledger),
-		reward:    &contract.MinerReward{}}
+		cfg:    cfg,
+		logger: log.NewLogger("api_miner"),
+		ledger: ledger,
+		reward: &contract.MinerReward{}}
 }
 
 func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
@@ -81,7 +79,8 @@ func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, erro
 		hasEnoughVote = false
 	}
 
-	oldMinerInfo, err := m.reward.GetRewardInfo(m.vmContext, coinbase)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	oldMinerInfo, err := m.reward.GetRewardInfo(vmContext, coinbase)
 	if err != nil {
 		return nil, err
 	}
@@ -92,13 +91,13 @@ func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, erro
 		rsp.LastBeneficial = oldMinerInfo.Beneficial.String()
 	}
 
-	rsp.NodeRewardHeight, err = m.reward.GetNodeRewardHeight(m.vmContext)
+	rsp.NodeRewardHeight, err = m.reward.GetNodeRewardHeight(vmContext)
 	if err != nil {
 		return nil, err
 	}
 
 	if hasEnoughVote {
-		rsp.AvailRewardHeight, rsp.AvailRewardBlocks, err = m.reward.GetAvailRewardBlocks(m.vmContext, coinbase)
+		rsp.AvailRewardHeight, rsp.AvailRewardBlocks, err = m.reward.GetAvailRewardBlocks(vmContext, coinbase)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +172,8 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		PoVHeight: latestPovHeader.GetHeight(),
 	}
 
-	err = m.reward.DoSend(m.vmContext, send)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	err = m.reward.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,8 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 
 	reward := &types.StateBlock{}
 
-	blocks, err := m.reward.DoReceive(m.vmContext, reward, input)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	blocks, err := m.reward.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
 	}
