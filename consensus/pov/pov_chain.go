@@ -902,8 +902,8 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(header *types.PovHeader) (types.
 	}
 
 	targetTimeSpan := int64(common.PovChainRetargetTimespan)
-	minRetargetTimespan := targetTimeSpan / 4
-	maxRetargetTimespan := targetTimeSpan * 4
+	minRetargetTimespan := int64(common.PovChainMinRetargetTimespan)
+	maxRetargetTimespan := int64(common.PovChainMaxRetargetTimespan)
 
 	actualTimespan := header.Timestamp - firstBlock.Timestamp
 	if actualTimespan < minRetargetTimespan {
@@ -916,13 +916,6 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(header *types.PovHeader) (types.
 	nextTargetInt := new(big.Int).Set(oldTargetInt)
 	nextTargetInt.Mul(oldTargetInt, big.NewInt(actualTimespan))
 	nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
-
-	if nextTargetInt.Cmp(common.PovMinimumTargetInt) < 0 {
-		nextTargetInt.SetBytes(common.PovMinimumTargetInt.Bytes())
-	}
-	if nextTargetInt.Cmp(common.PovMaximumTargetInt) > 0 {
-		nextTargetInt.SetBytes(common.PovMaximumTargetInt.Bytes())
-	}
 
 	var nextTarget types.Signature
 	err := nextTarget.FromBigInt(nextTargetInt)

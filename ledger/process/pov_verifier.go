@@ -346,13 +346,6 @@ func (pv *PovVerifier) verifyTarget(block *types.PovBlock, stat *PovVerifyStat) 
 	targetSig := block.GetTarget()
 	targetInt := targetSig.ToBigInt()
 
-	if targetInt.Cmp(common.PovMinimumTargetInt) < 0 {
-		return BadTarget, errors.New("target lesser than minimum")
-	}
-	if targetInt.Cmp(common.PovMaximumTargetInt) > 0 {
-		return BadTarget, errors.New("target greater than maximum")
-	}
-
 	if voteSigInt.Cmp(targetInt) > 0 {
 		return BadTarget, errors.New("target greater than vote signature")
 	}
