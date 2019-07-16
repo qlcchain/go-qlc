@@ -29,7 +29,7 @@ type PerformanceTime struct {
 	confirmed bool
 }
 
-func NewActiveTrx() *ActiveTrx {
+func newActiveTrx() *ActiveTrx {
 	return &ActiveTrx{
 		roots:  new(sync.Map),
 		quitCh: make(chan bool, 1),
@@ -37,7 +37,7 @@ func NewActiveTrx() *ActiveTrx {
 	}
 }
 
-func (act *ActiveTrx) SetDposService(dps *DPoS) {
+func (act *ActiveTrx) setDposService(dps *DPoS) {
 	act.dps = dps
 }
 
@@ -79,7 +79,7 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 	vk := getVoteKey(block)
 
 	if _, ok := act.roots.Load(vk); !ok {
-		ele, err := NewElection(act.dps, block)
+		ele, err := newElection(act.dps, block)
 		if err != nil {
 			act.dps.logger.Errorf("block :%s add to roots error", block.GetHash())
 			return false

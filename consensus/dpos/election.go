@@ -29,8 +29,8 @@ type Election struct {
 	lastTime      int64
 }
 
-func NewElection(dps *DPoS, block *types.StateBlock) (*Election, error) {
-	vt := NewVotes(block)
+func newElection(dps *DPoS, block *types.StateBlock) (*Election, error) {
+	vt := newVotes(block)
 	status := electionStatus{block, types.ZeroBalance, nil}
 
 	return &Election{
@@ -109,7 +109,7 @@ func (el *Election) haveQuorum() {
 
 		el.dps.acTrx.rollBack(el.status.loser)
 		el.dps.acTrx.addWinner2Ledger(blk)
-		el.dps.blocksAcked <- blk.GetHash()
+		el.dps.dispatchAckedBlock(blk, confirmedHash, true)
 		el.dps.eb.Publish(string(common.EventConfirmedBlock), blk)
 	} else {
 		el.dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance.String())
@@ -141,7 +141,7 @@ func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 
 func (el *Election) getOnlineRepresentativesBalance() types.Balance {
 	b := types.ZeroBalance
-	reps := el.dps.GetOnlineRepresentatives()
+	reps := el.dps.getOnlineRepresentatives()
 
 	for _, addr := range reps {
 		if b1, err := el.dps.ledger.GetRepresentation(addr); err != nil {
