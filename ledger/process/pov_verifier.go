@@ -155,6 +155,12 @@ func (pv *PovVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
 }
 
 func (pv *PovVerifier) verifyHeader(block *types.PovBlock, stat *PovVerifyStat) (ProcessResult, error) {
+	if common.PovChainGenesisBlockHeight == block.GetHeight() {
+		if !common.IsGenesisPovBlock(block) {
+			return BadHash, fmt.Errorf("bad genesis block hash %s", block.Hash)
+		}
+	}
+
 	computedHash := block.ComputeHash()
 	if block.Hash.IsZero() || computedHash != block.Hash {
 		return BadHash, fmt.Errorf("bad hash, %s != %s", computedHash, block.Hash)

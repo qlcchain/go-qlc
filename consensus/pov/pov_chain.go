@@ -151,7 +151,7 @@ func (bc *PovBlockChain) Init() error {
 	}
 
 	if needReset {
-		bc.logger.Warn("Genesis block incorrect, resetting chain")
+		bc.logger.Warn("pov genesis block incorrect, resetting chain")
 		err := bc.ResetChainState()
 		if err != nil {
 			return err
@@ -183,14 +183,14 @@ func (bc *PovBlockChain) loadLastState() error {
 	latestBlock, _ := bc.getLedger().GetLatestPovBlock()
 	if latestBlock == nil {
 		// Corrupt or empty database, init from scratch
-		bc.logger.Warn("Head block missing, resetting chain")
+		bc.logger.Warn("head block missing, resetting chain")
 		return bc.ResetChainState()
 	}
 
 	// Everything seems to be fine, set as the head block
 	bc.StoreLatestBlock(latestBlock)
 
-	bc.logger.Infof("Loaded latest block %d/%s", latestBlock.GetHeight(), latestBlock.GetHash())
+	bc.logger.Infof("loaded latest block %d/%s", latestBlock.GetHeight(), latestBlock.GetHash())
 
 	return nil
 }
