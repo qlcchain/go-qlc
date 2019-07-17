@@ -118,11 +118,11 @@ func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock) (*APIBloc
 	ab := new(APIBlock)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
-	//if amount, err := ctx.CalculateAmount(block); err != nil {
-	//	return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
-	//} else {
-	//	ab.Amount = amount
-	//}
+	if amount, err := ctx.CalculateAmount(block); err != nil {
+		return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
+	} else {
+		ab.Amount = amount
+	}
 	token, err := abi.GetTokenById(ctx, block.GetToken())
 	if err != nil {
 		return nil, err
@@ -790,4 +790,74 @@ func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 		return nil, err
 	}
 	return &ApiTokenInfo{*token}, nil
+}
+
+type APIUncheckBlock struct {
+	Block       *types.StateBlock      `json:"block"`
+	Link        types.Hash             `json:"link"`
+	UnCheckType string                 `json:"uncheckType"`
+	SyncType    types.SynchronizedKind `json:"syncType"`
+}
+
+func (l *LedgerApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
+	unchecks := make([]*APIUncheckBlock, 0)
+	err := l.ledger.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		uncheck := new(APIUncheckBlock)
+		uncheck.Block = block
+		uncheck.Link = link
+		if unCheckType == 0 {
+			uncheck.UnCheckType = "GapPrevious"
+		}
+		if unCheckType == 1 {
+			uncheck.UnCheckType = "GapLink"
+		}
+		uncheck.SyncType = sync
+		unchecks = append(unchecks, uncheck)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return unchecks, nil
+}
+
+func (l *LedgerApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
+	r := make(map[string]types.Hash)
+	child, err := l.ledger.GetChild(hash)
+	if err == nil {
+		r["child"] = child
+	}
+	link, _ := l.ledger.GetLinkBlock(hash)
+	if !link.IsZero() {
+		r["receiver"] = link
+	}
+	return r, nil
+}
+
+func (l *LedgerApi) GetRepresentationsCache(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
+	r := make(map[types.Address]map[string]*types.Benefit)
+	if address == nil {
+		err := l.ledger.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
+			beInfo := make(map[string]*types.Benefit)
+			beInfo["db"] = be
+			beInfo["cache"] = beCache
+			r[address] = beInfo
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := l.ledger.GetRepresentationsCache(*address, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
+			beInfo := make(map[string]*types.Benefit)
+			beInfo["db"] = be
+			beInfo["cache"] = beCache
+			r[address] = beInfo
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return r, nil
 }

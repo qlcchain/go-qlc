@@ -91,13 +91,6 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewMinerApi(r.ledger),
 			Public:    true,
 		}
-	case "debug":
-		return rpc.API{
-			Namespace: "debug",
-			Version:   "1.0",
-			Service:   api.NewDebugApi(r.ledger),
-			Public:    true,
-		}
 	default:
 		return rpc.API{}
 	}
@@ -132,6 +125,6 @@ func (r *RPC) GetWSApis() []rpc.API {
 }
 
 func (r *RPC) GetPublicApis() []rpc.API {
-	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge", "rewards", "pov", "miner", "debug"}
+	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge", "rewards", "pov", "miner"}
 	return r.GetApis(apiModules...)
 }
