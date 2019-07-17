@@ -89,8 +89,8 @@ func MinerCheckRewardHeight(rewardHeight uint64) error {
 		return fmt.Errorf("reward height %d should greater than or equal %d", rewardHeight, common.PovMinerRewardHeightStart)
 	}
 
-	if MinerRoundPovHeightByDay(rewardHeight) != rewardHeight {
-		return fmt.Errorf("reward height plus one %d should be integral multiple of %d", rewardHeight+1, common.POVChainBlocksPerDay)
+	if MinerRoundPovHeight(rewardHeight, uint64(common.PovMinerRewardHeightRound)) != rewardHeight {
+		return fmt.Errorf("reward height plus one %d should be integral multiple of %d", rewardHeight+1, common.PovMinerRewardHeightRound)
 	}
 
 	return nil
@@ -108,7 +108,7 @@ func MinerCalcRewardEndHeight(startHeight uint64, maxEndHeight uint64) uint64 {
 	if endHeight > maxEndHeight {
 		endHeight = maxEndHeight
 	}
-	return MinerRoundPovHeightByDay(endHeight)
+	return MinerRoundPovHeight(endHeight, uint64(common.PovMinerRewardHeightRound))
 }
 
 // height begin from 0, so height + 1 == blocks count
@@ -116,8 +116,8 @@ func MinerPovHeightToCount(height uint64) uint64 {
 	return height + 1
 }
 
-func MinerRoundPovHeightByDay(height uint64) uint64 {
-	roundCount := (MinerPovHeightToCount(height) / uint64(common.POVChainBlocksPerDay)) * uint64(common.POVChainBlocksPerDay)
+func MinerRoundPovHeight(height uint64, round uint64) uint64 {
+	roundCount := (MinerPovHeightToCount(height) / round) * round
 	if roundCount == 0 {
 		return roundCount
 	}

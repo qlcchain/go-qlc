@@ -11,6 +11,7 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
+	cutil "github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,7 @@ func minerReward() {
 			Name: "minerreward",
 			Help: "miner get reward (gas token)",
 			Func: func(c *ishell.Context) {
-				args := []util.Flag{coinbase}
+				args := []util.Flag{coinbase, beneficial}
 				if util.HelpText(c, args) {
 					return
 				}
@@ -110,8 +111,7 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("lastRewardHeight", rspRewardInfo.LastRewardHeight, "lastRewardBlocks", rspRewardInfo.LastRewardBlocks)
-	fmt.Println("availRewardHeight", rspRewardInfo.AvailRewardHeight, "availRewardBlocks", rspRewardInfo.AvailRewardBlocks)
+	fmt.Printf("RewardInfo:\n%s\n", cutil.ToIndentString(rspRewardInfo))
 
 	if !rspRewardInfo.NeedCallReward {
 		return errors.New("can not call reward contract because no available reward height")
@@ -130,12 +130,14 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 		return err
 	}
 
-	sendHash := send.GetHash()
-	send.Signature = coinbaseAcc.Sign(sendHash)
 	var w types.Work
 	worker, _ := types.NewWorker(w, send.Root())
 	send.Work = worker.NewWork()
 
+	sendHash := send.GetHash()
+	send.Signature = coinbaseAcc.Sign(sendHash)
+
+	fmt.Printf("SendBlock:\n%s\n", cutil.ToIndentString(send))
 	fmt.Println("address", send.Address, "sendHash", sendHash)
 
 	reward := types.StateBlock{}
@@ -144,12 +146,14 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 		return err
 	}
 
-	rewardHash := reward.GetHash()
-	reward.Signature = beneficialAcc.Sign(rewardHash)
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
 
+	rewardHash := reward.GetHash()
+	reward.Signature = beneficialAcc.Sign(rewardHash)
+
+	fmt.Printf("RewardBlock:\n%s\n", cutil.ToIndentString(reward))
 	fmt.Println("address", reward.Address, "rewardHash", rewardHash)
 
 	err = client.Call(nil, "ledger_process", &send)

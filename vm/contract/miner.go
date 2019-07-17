@@ -33,7 +33,7 @@ func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error
 		return 0, nil
 	}
 	endHeight := latestBlock.GetHeight() - common.PovMinerRewardHeightGapToLatest
-	endHeight = cabi.MinerRoundPovHeightByDay(endHeight)
+	endHeight = cabi.MinerRoundPovHeight(endHeight, common.PovMinerRewardHeightRound)
 
 	return endHeight, nil
 }
@@ -54,6 +54,9 @@ func (m *MinerReward) GetAvailRewardBlocks(ctx *vmstore.VMContext, coinbase type
 		return 0, 0, err
 	}
 	availHeight := cabi.MinerCalcRewardEndHeight(startHeight, nodeHeight)
+	if availHeight > nodeHeight {
+		return 0, 0, nil
+	}
 
 	availBlocks, err := m.calcRewardBlocks(ctx, coinbase, startHeight, availHeight)
 
@@ -123,6 +126,7 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 	if oldMinerInfo == nil {
 		oldMinerInfo = new(cabi.MinerInfo)
 	}
+	// check will fail if coinbase account doing duplicate send
 	if param.RewardHeight <= oldMinerInfo.RewardHeight {
 		return fmt.Errorf("reward height %d should greater than last height %d", param.RewardHeight, oldMinerInfo.RewardHeight)
 	}
@@ -203,6 +207,10 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	if oldMinerInfo == nil {
 		oldMinerInfo = new(cabi.MinerInfo)
 	}
+	// check will fail if beneficial account doing duplicate recv
+	if param.RewardHeight <= oldMinerInfo.RewardHeight {
+		return nil, fmt.Errorf("reward height %d should greater than last height %d", param.RewardHeight, oldMinerInfo.RewardHeight)
+	}
 	startHeight := oldMinerInfo.RewardHeight + 1
 	if startHeight < common.PovMinerRewardHeightStart {
 		startHeight = common.PovMinerRewardHeightStart
@@ -236,7 +244,6 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	block.Address = param.Beneficial
 	block.Token = common.GasToken()
 	block.Link = input.GetHash()
-	block.Data = newMinerData
 
 	// pledge fields only for QLC token
 	block.Vote = types.ZeroBalance
@@ -269,7 +276,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 			BlockType: types.ContractReward,
 			Amount:    rewardAmount,
 			Token:     common.GasToken(),
-			Data:      newMinerData,
+			Data:      []byte{},
 		},
 	}, nil
 }
