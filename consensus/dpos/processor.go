@@ -15,6 +15,7 @@ import (
 )
 
 type Processor struct {
+	index          int
 	dps            *DPoS
 	uncheckedCache gcache.Cache //gap blocks
 	voteCache      gcache.Cache //vote blocks
@@ -28,6 +29,7 @@ func newProcessors(num int) []*Processor {
 
 	for i := 0; i < num; i++ {
 		p := &Processor{
+			index:       i,
 			voteCache:   gcache.New(voteCacheSize).LRU().Build(),
 			quitCh:      make(chan bool, 1),
 			blocks:      make(chan *consensus.BlockSource, maxBlocks),
@@ -398,35 +400,37 @@ func (p *Processor) dequeueUnchecked(hash types.Hash) {
 func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 	dps := p.dps
 
-	blkLink, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
-	if blkLink != nil {
-		dps.logger.Debugf("dequeue gap link[%s] block[%s]", hash, blkLink.GetHash())
-		bs := &consensus.BlockSource{
-			Block:     blkLink,
-			BlockFrom: bf,
-		}
+	if blkLink, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
+		if dps.getProcessorIndex(blkLink.Address) == p.index {
+			dps.logger.Debugf("dequeue gap link[%s] block[%s]", hash, blkLink.GetHash())
+			bs := &consensus.BlockSource{
+				Block:     blkLink,
+				BlockFrom: bf,
+			}
 
-		p.processUncheckedBlock(bs)
+			p.processUncheckedBlock(bs)
 
-		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-		if err != nil {
-			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+			}
 		}
 	}
 
-	blkPre, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
-	if blkPre != nil {
-		dps.logger.Debugf("dequeue gap previous[%s] block[%s]", hash, blkPre.GetHash())
-		bs := &consensus.BlockSource{
-			Block:     blkPre,
-			BlockFrom: bf,
-		}
+	if blkPre, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious); blkPre != nil {
+		if dps.getProcessorIndex(blkPre.Address) == p.index {
+			dps.logger.Debugf("dequeue gap previous[%s] block[%s]", hash, blkPre.GetHash())
+			bs := &consensus.BlockSource{
+				Block:     blkPre,
+				BlockFrom: bf,
+			}
 
-		p.processUncheckedBlock(bs)
+			p.processUncheckedBlock(bs)
 
-		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-		if err != nil {
-			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+			}
 		}
 	}
 }

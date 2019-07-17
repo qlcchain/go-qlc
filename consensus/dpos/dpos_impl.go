@@ -181,20 +181,17 @@ func (dps *DPoS) getProcessorIndex(address types.Address) int {
 
 func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 	index := dps.getProcessorIndex(bs.Block.Address)
-	dps.logger.Debugf("processor index:%d", index)
 	dps.processors[index].blocks <- bs
 }
 
 func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, local bool) {
 	if local {
 		index := dps.getProcessorIndex(blk.Address)
-		dps.logger.Debugf("processor index:%d", index)
 		dps.processors[index].blocksAcked <- hash
 	}
 
 	if blk.IsSendBlock() {
 		index := dps.getProcessorIndex(types.Address(blk.Link))
-		dps.logger.Debugf("processor index:%d", index)
 		dps.processors[index].blocksAcked <- hash
 	}
 }
