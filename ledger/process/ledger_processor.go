@@ -81,7 +81,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 
 	lv.logger.Debug("check block ", hash)
 
-	blockExist, err := lv.l.HasStateBlock(hash)
+	blockExist, err := lv.l.HasStateBlockConfirmed(hash)
 	if err != nil {
 		return Other, err
 	}
@@ -775,9 +775,6 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 			if err != nil {
 				return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
 			}
-		}
-		if err := lv.l.DeleteBlockCache(hashCur, txn); err != nil {
-			return fmt.Errorf("delete block cache fail(%s), hash(%s)", err, hashCur)
 		}
 		switch blockType {
 		case types.Open:

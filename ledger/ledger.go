@@ -378,6 +378,9 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 }
 
 func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
+	if err := l.DeleteBlockCache(hash); err != nil {
+		return fmt.Errorf("delete block cache fail(%s), hash(%s)", err, hash)
+	}
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 
@@ -443,6 +446,27 @@ func (l *Ledger) deleteLink(blk *types.StateBlock, txn db.StoreTxn) error {
 }
 
 func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	if exit, err := l.HasBlockCache(hash); err == nil && exit {
+		return exit, nil
+	}
+	key := getKeyOfHash(hash, idPrefixBlock)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (l *Ledger) HasStateBlockConfirmed(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
