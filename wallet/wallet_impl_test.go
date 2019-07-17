@@ -159,7 +159,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 	am := mock.AccountMeta(addr)
 	l := session.ledger
 
-	err = l.AddAccountMeta(am, am.Tokens[0].Type)
+	err = l.AddAccountMeta(am)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestSession_GetAccounts(t *testing.T) {
 			account, _ := ss.Account(uint32(i))
 			addr := account.Address()
 			am := mock.AccountMeta(addr)
-			err = s.AddAccountMeta(am, am.Tokens[0].Type, txn)
+			err = s.AddAccountMeta(am, txn)
 			if err != nil {
 				t.Fatal(err)
 			}

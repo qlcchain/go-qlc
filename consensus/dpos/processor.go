@@ -1,6 +1,9 @@
 package dpos
 
 import (
+	"sync"
+	"time"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -9,8 +12,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"sync"
-	"time"
 )
 
 type Processor struct {
@@ -282,15 +283,25 @@ func (p *Processor) processFork(newBlock *types.StateBlock) {
 }
 
 func (p *Processor) findAnotherForkedBlock(block *types.StateBlock) *types.StateBlock {
-	hash := block.Parent()
 	dps := p.dps
 
-	forkedHash, err := dps.ledger.GetChild(hash, block.Address)
-	if err != nil {
-		dps.logger.Error(err)
-		return block
+	var forkedHash types.Hash
+	if block.IsOpen() {
+		tm, err := dps.ledger.GetTokenMeta(block.GetAddress(), block.GetToken())
+		if err != nil {
+			dps.logger.Error(err)
+			return block
+		}
+		forkedHash = tm.OpenBlock
+	} else {
+		hash := block.Parent()
+		var err error
+		forkedHash, err = dps.ledger.GetChild(hash)
+		if err != nil {
+			dps.logger.Error(err)
+			return block
+		}
 	}
-
 	forkedBlock, err := dps.ledger.GetStateBlock(forkedHash)
 	if err != nil {
 		dps.logger.Error(err)

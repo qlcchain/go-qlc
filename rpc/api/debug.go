@@ -1,8 +1,6 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -48,65 +46,14 @@ func (d *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 }
 
 func (d *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
-	blk, err := d.ledger.GetStateBlock(hash)
-	if err != nil {
-		return nil, fmt.Errorf("get block err: %s", hash.String())
-	}
 	r := make(map[string]types.Hash)
-	children, _ := d.ledger.GetChildren(hash)
-	for key, val := range children {
-		if val == 0 {
-			cblk, err := d.ledger.GetStateBlock(key)
-			if err != nil {
-				return nil, fmt.Errorf("get child1 err: %s", key.String())
-			}
-			if cblk.GetAddress() != blk.GetAddress() {
-				return nil, fmt.Errorf("address not equal, %s, %s", blk.GetHash(), cblk.GetHash())
-			}
-			r["child1"] = key
-		}
-		if val == 1 {
-			cblk, err := d.ledger.GetStateBlock(key)
-			if err != nil {
-				return nil, fmt.Errorf("get child2 err: %s", key.String())
-			}
-			if cblk.GetAddress() == blk.GetAddress() {
-				return nil, fmt.Errorf("address equal, %s, %s", blk.GetHash(), cblk.GetHash())
-			}
-			r["child2"] = key
-		}
+	child, err := d.ledger.GetChild(hash)
+	if err == nil {
+		r["child"] = child
 	}
 	link, _ := d.ledger.GetLinkBlock(hash)
 	if !link.IsZero() {
 		r["receiver"] = link
-	}
-	return r, nil
-}
-
-func (d *DebugApi) GetAccountMetasCache(address *types.Address) (map[types.Address]map[string]*types.AccountMeta, error) {
-	r := make(map[types.Address]map[string]*types.AccountMeta)
-	if address == nil {
-		err := d.ledger.GetAccountMetasCache(types.ZeroAddress, func(address types.Address, am *types.AccountMeta, amCache *types.AccountMeta) error {
-			amInfo := make(map[string]*types.AccountMeta)
-			amInfo["db"] = am
-			amInfo["cache"] = amCache
-			r[address] = amInfo
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err := d.ledger.GetAccountMetasCache(*address, func(address types.Address, am *types.AccountMeta, amCache *types.AccountMeta) error {
-			amInfo := make(map[string]*types.AccountMeta)
-			amInfo["db"] = am
-			amInfo["cache"] = amCache
-			r[address] = amInfo
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
 	}
 	return r, nil
 }

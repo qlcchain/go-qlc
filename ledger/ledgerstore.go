@@ -22,11 +22,11 @@ type Store interface {
 	DBStore() db.Store
 
 	// account meta CURD
-	AddAccountMeta(meta *types.AccountMeta, token types.Hash, txns ...db.StoreTxn) error
+	AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error
 	GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error)
 	GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...db.StoreTxn) error
 	CountAccountMetas(txns ...db.StoreTxn) (uint64, error)
-	UpdateAccountMeta(meta *types.AccountMeta, token types.Hash, txns ...db.StoreTxn) error
+	UpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error
 	DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) error
 	HasAccountMeta(address types.Address, txns ...db.StoreTxn) (bool, error)
 	// token meta CURD
@@ -49,8 +49,8 @@ type Store interface {
 	GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error, txns ...db.StoreTxn) error
 	CountSmartContractBlocks(txns ...db.StoreTxn) (uint64, error)
 	// representation CURD
-	AddRepresentation(address types.Address, benefit *types.Benefit, hash types.Hash, txns ...db.StoreTxn) error
-	SubRepresentation(address types.Address, benefit *types.Benefit, hash types.Hash, txns ...db.StoreTxn) error
+	AddRepresentation(address types.Address, benefit *types.Benefit, txns ...db.StoreTxn) error
+	SubRepresentation(address types.Address, benefit *types.Benefit, txns ...db.StoreTxn) error
 	GetRepresentation(address types.Address, txns ...db.StoreTxn) (*types.Benefit, error)
 	GetRepresentations(fn func(types.Address, *types.Benefit) error, txns ...db.StoreTxn) error
 	GetOnlineRepresentations(txns ...db.StoreTxn) ([]types.Address, error)
@@ -75,13 +75,12 @@ type Store interface {
 	DeleteFrontier(hash types.Hash, txns ...db.StoreTxn) error
 	CountFrontiers(txns ...db.StoreTxn) (uint64, error)
 	// posterior
-	GetChild(hash types.Hash, address types.Address, txns ...db.StoreTxn) (types.Hash, error)
+	GetChild(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
 	// performance
 	AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error
 	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
 	GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error)
 	IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error)
-	GetChildren(hash types.Hash, txns ...db.StoreTxn) (map[types.Hash]int, error)
 	GetLinkBlock(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
 
 	//Latest block hash by account and token type, if not exist, return zero hash

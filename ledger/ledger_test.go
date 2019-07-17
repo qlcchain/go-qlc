@@ -391,7 +391,7 @@ func addAccountMeta(t *testing.T, l *Ledger) *types.AccountMeta {
 
 	ac := mock.Account()
 	am := mock.AccountMeta(ac.Address())
-	if err := l.AddAccountMeta(am, am.Tokens[0].Type); err != nil {
+	if err := l.AddAccountMeta(am); err != nil {
 		t.Fatal()
 	}
 	return am
@@ -457,7 +457,7 @@ func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
-	err := l.AddOrUpdateAccountMeta(am, token.Type)
+	err := l.AddOrUpdateAccountMeta(am)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,7 +471,7 @@ func TestLedger_UpdateAccountMeta(t *testing.T) {
 	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
-	err := l.AddOrUpdateAccountMeta(am, token.Type)
+	err := l.AddOrUpdateAccountMeta(am)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,7 +605,7 @@ func addRepresentationWeight(t *testing.T, l *Ledger) *types.AccountMeta {
 		Total:   ac.TotalBalance(),
 	}
 
-	err := l.AddRepresentation(address, benefit, mock.Hash())
+	err := l.AddRepresentation(address, benefit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -625,7 +625,7 @@ func TestLedger_AddRepresentationWeight(t *testing.T) {
 		Total:   types.Balance{Int: big.NewInt(int64(20))},
 	}
 
-	err := l.AddRepresentation(ac.Address, diff, mock.Hash())
+	err := l.AddRepresentation(ac.Address, diff)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -653,7 +653,7 @@ func TestLedger_SubRepresentationWeight(t *testing.T) {
 		Total:   types.Balance{Int: big.NewInt(int64(20))},
 	}
 
-	err := l.SubRepresentation(ac.Address, diff, mock.Hash())
+	err := l.SubRepresentation(ac.Address, diff)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -866,7 +866,7 @@ func TestLedgerSession_Latest(t *testing.T) {
 	token.Header = block.GetHash()
 	token.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
-	if err := l.AddAccountMeta(&ac, token.Type); err != nil {
+	if err := l.AddAccountMeta(&ac); err != nil {
 		t.Fatal()
 	}
 
@@ -887,7 +887,7 @@ func TestLedgerSession_Account(t *testing.T) {
 	token2 := mock.TokenMeta(block.GetAddress())
 	token2.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token, token2}}
-	if err := l.AddAccountMeta(&ac, token.Type); err != nil {
+	if err := l.AddAccountMeta(&ac); err != nil {
 		t.Fatal()
 	}
 
@@ -906,7 +906,7 @@ func TestLedgerSession_Token(t *testing.T) {
 	token := mock.TokenMeta(block.GetAddress())
 	token.Type = block.GetToken()
 	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
-	if err := l.AddAccountMeta(&ac, token.Type); err != nil {
+	if err := l.AddAccountMeta(&ac); err != nil {
 		t.Fatal()
 	}
 
@@ -1091,36 +1091,24 @@ func TestLedger_BlockChild(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	addr1 := mock.Address()
-	addr2 := mock.Address()
 	b1 := mock.StateBlockWithoutWork()
-	b1.Link = common.GenesisBlockHash()
 	b1.Address = addr1
 
 	b2 := mock.StateBlockWithoutWork()
-	b2.Address = addr1
 	b2.Type = types.Send
 	b2.Previous = b1.GetHash()
 
 	b3 := mock.StateBlockWithoutWork()
-	b3.Address = addr2
-	b3.Link = b1.GetHash()
+	b3.Type = types.Send
+	b3.Previous = b1.GetHash()
 
-	b4 := mock.StateBlockWithoutWork()
-	b4.Address = addr1
-	b4.Type = types.Send
-	b4.Previous = b1.GetHash()
-
-	gen := common.GenesisBlock()
-	if err := l.AddStateBlock(&gen); err != nil {
-		t.Fatal(err)
-	}
 	if err := l.AddStateBlock(b1); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.AddStateBlock(b2); err != nil {
 		t.Fatal(err)
 	}
-	h, err := l.GetChild(b1.GetHash(), b2.GetAddress())
+	h, err := l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1128,18 +1116,10 @@ func TestLedger_BlockChild(t *testing.T) {
 		t.Fatal()
 	}
 
-	if err := l.AddStateBlock(b3); err != nil {
-		t.Fatal(err)
-	}
-	h, err = l.GetChild(b1.GetHash(), b3.GetAddress())
+	err = l.AddStateBlock(b3)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if h != b3.GetHash() {
-		t.Fatal()
-	}
-
-	if err := l.AddStateBlock(b4); err == nil {
+		t.Log(err)
+	} else {
 		t.Fatal()
 	}
 
@@ -1147,19 +1127,25 @@ func TestLedger_BlockChild(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err = l.GetChild(b1.GetHash(), b2.GetAddress())
+	h, err = l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Log(err)
+	} else {
+		t.Fatal()
 	}
 
-	if err := l.AddStateBlock(b4); err != nil {
+	if err := l.AddStateBlock(b3); err != nil {
 		t.Fatal(err)
 	}
 
-	h, err = l.GetChild(b1.GetHash(), b4.GetAddress())
+	h, err = l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
+	if h != b3.GetHash() {
+		t.Fatal()
+	}
+
 }
 
 func TestLedger_MessageInfo(t *testing.T) {

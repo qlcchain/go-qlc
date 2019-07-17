@@ -32,7 +32,6 @@ type Ledger struct {
 	Store          db.Store
 	dir            string
 	eb             event.EventBus
-	accountMeta    *hashmap.HashMap
 	representation *hashmap.HashMap
 	representLock  *hashmap.HashMap
 	cacheRound     *int64
@@ -91,8 +90,10 @@ const (
 	idPrefixPovBestHash // prefix + height => hash
 	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
 	idPrefixLink
-	idPrefixAccountCache
-	idPrefixRepresentationCache
+)
+
+const (
+	idPrefixRepresentationCache = 150
 )
 
 var (
@@ -114,7 +115,6 @@ func NewLedger(dir string) *Ledger {
 			Store:          store,
 			dir:            dir,
 			eb:             event.GetEventBus(dir),
-			accountMeta:    &hashmap.HashMap{},
 			representation: &hashmap.HashMap{},
 			representLock:  &hashmap.HashMap{},
 		}
@@ -208,70 +208,9 @@ func (l *Ledger) setCacheToDB(cacheRound *int64) error {
 	defer txn.Commit(nil)
 
 	var roundTemp int64
-	amCacheArray := make(map[types.Address]*types.AccountMeta)
-	amOrderArray := make(map[types.Address]int64)
-	err := txn.Iterator(idPrefixAccountCache, func(cacheKey []byte, cacheVal []byte, b byte) error {
-		addrCache, err := types.BytesToAddress(cacheKey[1 : 1+types.AddressSize])
-		if err != nil {
-			l.logger.Error(err)
-			return err
-		}
-		var amCache types.AccountMeta
-		if _, err := amCache.UnmarshalMsg(cacheVal); err != nil {
-			l.logger.Error(err)
-			return err
-		}
-		round := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize : 1+types.AddressSize+8]))
-		order := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize+8:]))
-		if cacheRound == nil {
-			if round > roundTemp {
-				roundTemp = round
-				amOrderArray[addrCache] = order
-				amCacheArray[addrCache] = &amCache
-			} else {
-				if _, ok := amCacheArray[addrCache]; ok {
-					if order > amOrderArray[addrCache] {
-						amOrderArray[addrCache] = order
-						amCacheArray[addrCache] = &amCache
-					}
-				} else {
-					amOrderArray[addrCache] = order
-					amCacheArray[addrCache] = &amCache
-				}
-			}
-		} else {
-			if round == *cacheRound {
-				if _, ok := amCacheArray[addrCache]; ok {
-					if order > amOrderArray[addrCache] {
-						amOrderArray[addrCache] = order
-						amCacheArray[addrCache] = &amCache
-					}
-				} else {
-					amOrderArray[addrCache] = order
-					amCacheArray[addrCache] = &amCache
-				}
-				if err := txn.Delete(cacheKey); err != nil {
-					l.logger.Error(err)
-					return err
-				}
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		l.logger.Error(err)
-		return err
-	}
-	for _, val := range amCacheArray {
-		if err := l.updateAccountMeta(val, txn); err != nil {
-			l.logger.Error(err)
-			return err
-		}
-	}
-
 	beCacheArray := make(map[types.Address]*types.Benefit)
 	beOrderArray := make(map[types.Address]int64)
-	err = txn.Iterator(idPrefixRepresentationCache, func(cacheKey []byte, cacheVal []byte, b byte) error {
+	err := txn.Iterator(idPrefixRepresentationCache, func(cacheKey []byte, cacheVal []byte, b byte) error {
 		addrCache, err := types.BytesToAddress(cacheKey[1 : 1+types.AddressSize])
 		if err != nil {
 			l.logger.Error(err)
@@ -332,9 +271,6 @@ func (l *Ledger) setCacheToDB(cacheRound *int64) error {
 	}
 
 	if cacheRound == nil {
-		if err := txn.Drop([]byte{idPrefixAccountCache}); err != nil {
-			return err
-		}
 		if err := txn.Drop([]byte{idPrefixRepresentationCache}); err != nil {
 			return err
 		}
@@ -441,13 +377,9 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 	pHash := cBlock.Parent()
 	cHash := cBlock.GetHash()
-	if !common.IsGenesisBlock(cBlock) && pHash != types.ZeroHash {
+	if !common.IsGenesisBlock(cBlock) && pHash != types.ZeroHash && !cBlock.IsOpen() {
 		// is parent block existed
-		pBlock := new(types.StateBlock)
 		err := txn.Get(getKeyOfHash(pHash, idPrefixBlock), func(val []byte, b byte) error {
-			if err := pBlock.Deserialize(val); err != nil {
-				return err
-			}
 			return nil
 		})
 		if err != nil {
@@ -456,31 +388,15 @@ func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 
 		// is parent have used
 		pKey := getKeyOfHash(pHash, idPrefixChild)
-		children := make(map[types.Hash]int)
 		err = txn.Get(pKey, func(val []byte, b byte) error {
-			return json.Unmarshal(val, &children)
+			return nil
 		})
-		if err != nil && err != badger.ErrKeyNotFound {
-			return err
-		}
-		if len(children) >= 2 {
-			return fmt.Errorf("%s already have two children %v", pHash.String(), children)
+		if err == nil {
+			return fmt.Errorf("%s already have child ", pHash.String())
 		}
 
 		// add new relationship
-		if pBlock.GetAddress() == cBlock.GetAddress() {
-			if _, ok := children[cHash]; ok {
-				return fmt.Errorf("%s already have child %s", pHash.String(), cHash.String())
-			}
-			children[cHash] = 0
-		}
-		if pBlock.GetAddress() != cBlock.GetAddress() {
-			if _, ok := children[cHash]; ok {
-				return fmt.Errorf("%s already have child %s", pHash.String(), cHash.String())
-			}
-			children[cHash] = 1
-		}
-		val, err := json.Marshal(children)
+		val, err := cHash.MarshalMsg(nil)
 		if err != nil {
 			return err
 		}
@@ -588,24 +504,9 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 func (l *Ledger) deleteChild(blk *types.StateBlock, txn db.StoreTxn) error {
 	pHash := blk.Parent()
 	if !pHash.IsZero() {
-		children, err := l.GetChildren(pHash, txn)
-		if err != nil {
-			return fmt.Errorf("%s can not find child", pHash.String())
-		}
 		pKey := getKeyOfHash(pHash, idPrefixChild)
-		if len(children) == 1 {
-			if err := txn.Delete(pKey); err != nil {
-				return err
-			}
-		} else {
-			delete(children, blk.GetHash())
-			val, err := json.Marshal(children)
-			if err != nil {
-				return err
-			}
-			if err := txn.Set(pKey, val); err != nil {
-				return err
-			}
+		if err := txn.Delete(pKey); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -929,108 +830,43 @@ func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
 	return count + count2, nil
 }
 
-func (l *Ledger) updateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error {
-	key, err := getKeyOfParts(idPrefixAccount, meta.Address)
-	if err != nil {
-		return err
-	}
+func getAccountMetaKey(address types.Address) []byte {
+	var key [1 + types.AddressSize]byte
+	key[0] = idPrefixAccount
+	copy(key[1:], address[:])
+	return key[:]
+}
+
+func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error {
 	metaBytes, err := meta.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
 
+	key := getAccountMetaKey(meta.Address)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
+
+	// never overwrite implicitly
+	err = txn.Get(key, func(vals []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrAccountExists
+	} else if err != nil && err != badger.ErrKeyNotFound {
+		return err
+	}
 	return txn.Set(key, metaBytes)
 }
 
-func (l *Ledger) getAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	key, err := getKeyOfParts(idPrefixAccount, address)
-	if err != nil {
-		return nil, err
-	}
-	var meta types.AccountMeta
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err = txn.Get(key, func(val []byte, b byte) (err error) {
-		if _, err = meta.UnmarshalMsg(val); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, ErrAccountNotFound
-		}
-		return nil, err
-	}
-	return &meta, nil
-}
-
-func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, token types.Hash, txns ...db.StoreTxn) error {
-	_, err := l.GetAccountMeta(meta.Address)
-	if err == nil {
-		return ErrAccountExists
-	} else if err != nil && err != ErrAccountNotFound {
-		return err
-	}
-
-	return l.updateAccountMetaCache(meta, txns...)
-}
-
-func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, token types.Hash, txns ...db.StoreTxn) error {
-	_, err := l.GetAccountMeta(meta.Address)
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return ErrAccountNotFound
-		}
-		return err
-	}
-	return l.updateAccountMetaCache(meta, txns...)
-}
-
-func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta, token types.Hash, txns ...db.StoreTxn) error {
-	return l.updateAccountMetaCache(meta, txns...)
-}
-
-func (l *Ledger) updateAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
-	l.accountMeta.Set(meta.Address.String(), meta)
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	key, err := getKeyOfParts(idPrefixAccountCache, meta.Address, *l.cacheRound, atomic.AddInt64(l.cacheOrder, 1))
-
-	if err != nil {
-		return err
-	}
-	metaBytes, err := meta.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-	if err := txn.Set(key, metaBytes); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	if lr, ok := l.accountMeta.Get(address.String()); ok {
-		return lr.(*types.AccountMeta), nil
-	}
+	key := getAccountMetaKey(address)
+	var meta types.AccountMeta
 
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key, err := getKeyOfParts(idPrefixAccount, address)
-	if err != nil {
-		return nil, err
-	}
-	var meta types.AccountMeta
-	err = txn.Get(key, func(val []byte, b byte) (err error) {
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
 		if _, err = meta.UnmarshalMsg(val); err != nil {
 			return err
 		}
@@ -1047,73 +883,17 @@ func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*ty
 }
 
 func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...db.StoreTxn) error {
-	for kv := range l.accountMeta.Iter() {
-		am := kv.Value.(*types.AccountMeta)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
+		am := new(types.AccountMeta)
+		_, err := am.UnmarshalMsg(val)
+		if err != nil {
+			return err
+		}
 		if err := fn(am); err != nil {
 			return err
-		}
-	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
-		am := new(types.AccountMeta)
-		_, err := am.UnmarshalMsg(val)
-		if err != nil {
-			return err
-		}
-		if _, ok := l.accountMeta.Get(am.Address.String()); !ok {
-			if err := fn(am); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *Ledger) GetAccountMetasCache(address types.Address, fn func(address types.Address, am *types.AccountMeta, amCache *types.AccountMeta) error, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	if !address.IsZero() {
-		am, _ := l.getAccountMeta(address)
-		if v, ok := l.accountMeta.Get(address.String()); ok {
-			amCache := v.(*types.AccountMeta)
-			if err := fn(address, am, amCache); err != nil {
-				return err
-			}
-		} else {
-			if err := fn(address, am, nil); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	for kv := range l.accountMeta.Iter() {
-		amCache := kv.Value.(*types.AccountMeta)
-		am, _ := l.getAccountMeta(amCache.Address)
-		if err := fn(amCache.Address, am, amCache); err != nil {
-			return err
-		}
-	}
-
-	err := txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
-		am := new(types.AccountMeta)
-		_, err := am.UnmarshalMsg(val)
-		if err != nil {
-			return err
-		}
-		if _, ok := l.accountMeta.Get(am.Address.String()); !ok {
-			if err := fn(am.Address, am, nil); err != nil {
-				return err
-			}
 		}
 		return nil
 	})
@@ -1125,39 +905,59 @@ func (l *Ledger) GetAccountMetasCache(address types.Address, fn func(address typ
 }
 
 func (l *Ledger) CountAccountMetas(txns ...db.StoreTxn) (uint64, error) {
-	var num uint64
-	err := l.GetAccountMetas(func(am *types.AccountMeta) error {
-		num = num + 1
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-	return num, nil
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	return txn.Count([]byte{idPrefixAccount})
 }
 
-func (l *Ledger) DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) error {
-	l.accountMeta.Del(address.String())
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-	key, err := getKeyOfParts(idPrefixAccount, address)
+func (l *Ledger) UpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error {
+	metaBytes, err := meta.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
+	key := getAccountMetaKey(meta.Address)
+
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err = txn.Get(key, func(vals []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return ErrAccountNotFound
+		}
+		return err
+	}
+	return txn.Set(key, metaBytes)
+}
+
+func (l *Ledger) AddOrUpdateAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error {
+	metaBytes, err := meta.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	key := getAccountMetaKey(meta.Address)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Set(key, metaBytes)
+}
+
+func (l *Ledger) DeleteAccountMeta(address types.Address, txns ...db.StoreTxn) error {
+	key := getAccountMetaKey(address)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	return txn.Delete(key)
 }
 
 func (l *Ledger) HasAccountMeta(address types.Address, txns ...db.StoreTxn) (bool, error) {
-	if _, ok := l.accountMeta.Get(address.String()); ok {
-		return true, nil
-	}
+	key := getAccountMetaKey(address)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
-	key, err := getKeyOfParts(idPrefixAccount, address)
-	if err != nil {
-		return false, err
-	}
-	err = txn.Get(key, func(val []byte, b byte) error {
+
+	err := txn.Get(key, func(val []byte, b byte) error {
 		return nil
 	})
 
@@ -1181,7 +981,7 @@ func (l *Ledger) AddTokenMeta(address types.Address, meta *types.TokenMeta, txns
 	}
 
 	am.Tokens = append(am.Tokens, meta)
-	return l.UpdateAccountMeta(am, meta.Type, txns...)
+	return l.UpdateAccountMeta(am, txns...)
 }
 
 func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
@@ -1216,7 +1016,7 @@ func (l *Ledger) UpdateTokenMeta(address types.Address, meta *types.TokenMeta, t
 			//am.Tokens = append(tokens[:index], tokens[index+1:]...)
 			//am.Tokens = append(am.Tokens, meta)
 			am.Tokens[index] = meta
-			return l.UpdateAccountMeta(am, meta.Type, txns...)
+			return l.UpdateAccountMeta(am, txns...)
 		}
 	}
 	return ErrTokenNotFound
@@ -1232,12 +1032,12 @@ func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMe
 		if token.Type == meta.Type {
 			am.Tokens = append(tokens[:index], tokens[index+1:]...)
 			am.Tokens = append(am.Tokens, meta)
-			return l.UpdateAccountMeta(am, meta.Type, txns...)
+			return l.UpdateAccountMeta(am)
 		}
 	}
 
 	am.Tokens = append(am.Tokens, meta)
-	return l.UpdateAccountMeta(am, meta.Type, txns...)
+	return l.UpdateAccountMeta(am, txns...)
 }
 
 func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error {
@@ -1251,7 +1051,7 @@ func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, tx
 			am.Tokens = append(tokens[:index], tokens[index+1:]...)
 		}
 	}
-	return l.UpdateAccountMeta(am, tokenType, txns...)
+	return l.UpdateAccountMeta(am, txns...)
 }
 
 func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (bool, error) {
@@ -1270,7 +1070,7 @@ func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns 
 	return false, nil
 }
 
-func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, hash types.Hash, txns ...db.StoreTxn) error {
+func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
 	i, _ := l.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
 	spin, _ := i.(*spinlock.SpinLock)
 	spin.Lock()
@@ -1292,7 +1092,7 @@ func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, h
 	return l.updateRepresentationCache(address, benefit, txns...)
 }
 
-func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, hash types.Hash, txns ...db.StoreTxn) error {
+func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
 	i, _ := l.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
 	spin, _ := i.(*spinlock.SpinLock)
 	spin.Lock()
@@ -1710,39 +1510,22 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 	return txn.Count([]byte{idPrefixFrontier})
 }
 
-func (l *Ledger) GetChild(hash types.Hash, address types.Address, txns ...db.StoreTxn) (types.Hash, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-	children, err := l.GetChildren(hash, txn)
-	l.logger.Debug(children)
-	if err != nil {
-		return types.ZeroHash, err
-	}
-	for k, _ := range children {
-		b, err := l.GetStateBlock(k)
-		if err != nil {
-			return types.ZeroHash, fmt.Errorf("%s can not find child block %s", hash.String(), k.String())
-		}
-		if address == b.GetAddress() {
-			return b.GetHash(), nil
-		}
-	}
-	return types.ZeroHash, fmt.Errorf("%s can not find child for address %s", hash.String(), address.String())
-}
-
-func (l *Ledger) GetChildren(hash types.Hash, txns ...db.StoreTxn) (map[types.Hash]int, error) {
+func (l *Ledger) GetChild(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	key := getKeyOfHash(hash, idPrefixChild)
-	children := make(map[types.Hash]int)
+	var h types.Hash
 	err := txn.Get(key, func(val []byte, b byte) error {
-		return json.Unmarshal(val, &children)
+		if _, err := h.UnmarshalMsg(val); err != nil {
+			return err
+		}
+		return nil
 	})
 	if err != nil {
-		return nil, err
+		return types.ZeroHash, err
 	}
-	return children, nil
+	return h, nil
 }
 
 func (l *Ledger) GetLinkBlock(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {

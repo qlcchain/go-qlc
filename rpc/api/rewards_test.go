@@ -55,7 +55,7 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 
 	//mock tx data
 	am := mock.AccountMeta(tx.Address())
-	if err := l.AddAccountMeta(am, am.Tokens[0].Type); err == nil {
+	if err := l.AddAccountMeta(am); err == nil {
 		token := mock.TokenMeta(tx.Address())
 		token.Type = common.GasToken()
 		if err := l.AddTokenMeta(token.BelongTo, token); err == nil {
@@ -69,7 +69,7 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 
 	//mock rx data
 	rxAm := mock.AccountMeta(rx.Address())
-	if err := l.AddAccountMeta(rxAm, rxAm.Tokens[0].Type); err == nil {
+	if err := l.AddAccountMeta(rxAm); err == nil {
 
 	} else {
 		t.Error(err)
@@ -143,7 +143,7 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 
 	//mock tx data
 	am := mock.AccountMeta(tx.Address())
-	if err := l.AddAccountMeta(am, am.Tokens[0].Type); err == nil {
+	if err := l.AddAccountMeta(am); err == nil {
 		token := mock.TokenMeta(tx.Address())
 		token.Type = common.GasToken()
 		if err := l.AddTokenMeta(token.BelongTo, token); err == nil {
@@ -157,7 +157,7 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 
 	//mock rx data
 	rxAm := mock.AccountMeta(rx.Address())
-	if err := l.AddAccountMeta(rxAm, rxAm.Tokens[0].Type); err == nil {
+	if err := l.AddAccountMeta(rxAm); err == nil {
 
 	} else {
 		t.Error(err)

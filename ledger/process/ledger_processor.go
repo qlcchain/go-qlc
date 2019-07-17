@@ -509,7 +509,7 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *type
 				Total:   am.TotalBalance(),
 			}
 			lv.logger.Debugf("sub rep(%s) from %s ", oldBenefit, tm.Representative)
-			if err := lv.l.SubRepresentation(tm.Representative, oldBenefit, block.GetHash(), txn); err != nil {
+			if err := lv.l.SubRepresentation(tm.Representative, oldBenefit, txn); err != nil {
 				return err
 			}
 		}
@@ -522,7 +522,7 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *type
 			Total:   block.TotalBalance(),
 		}
 		lv.logger.Debugf("add rep(%s) to %s ", newBenefit, block.GetRepresentative())
-		if err := lv.l.AddRepresentation(block.GetRepresentative(), newBenefit, block.GetHash(), txn); err != nil {
+		if err := lv.l.AddRepresentation(block.GetRepresentative(), newBenefit, txn); err != nil {
 			return err
 		}
 	}
@@ -587,14 +587,11 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			tm.Balance = balance
 			tm.BlockCount = tm.BlockCount + 1
 			tm.Modified = common.TimeNow().UTC().Unix()
-			if err := lv.l.UpdateAccountMeta(am, tm.Type, txn); err != nil {
-				return err
-			}
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
-			if err := lv.l.UpdateAccountMeta(am, tmNew.Type, txn); err != nil {
-				return err
-			}
+		}
+		if err := lv.l.UpdateAccountMeta(am, txn); err != nil {
+			return err
 		}
 	} else {
 		account := types.AccountMeta{
@@ -609,7 +606,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
 		}
-		if err := lv.l.AddAccountMeta(&account, tmNew.Type, txn); err != nil {
+		if err := lv.l.AddAccountMeta(&account, txn); err != nil {
 			return err
 		}
 	}
@@ -666,7 +663,6 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 }
 
 func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) error {
-	lv.logger.Info("roll back block ", hash.String())
 	tm, err := lv.l.Token(hash, txn)
 	if err != nil {
 		return fmt.Errorf("get block(%s) token err : %s", hash.String(), err)
@@ -897,7 +893,7 @@ func (lv *LedgerVerifier) rollBackToken(token *types.TokenMeta, pre *types.State
 	tm.BlockCount = tm.BlockCount - 1
 	tm.Modified = common.TimeNow().UTC().Unix()
 	lv.logger.Debug("update token, ", tm.BelongTo, tm.Type)
-	if err := lv.l.UpdateAccountMeta(ac, tm.Type, txn); err != nil {
+	if err := lv.l.UpdateAccountMeta(ac, txn); err != nil {
 		return err
 	}
 	return nil
@@ -933,7 +929,7 @@ func (lv *LedgerVerifier) rollBackRep(representative types.Address, blockCur, bl
 				Total:   blockPre.TotalBalance().Sub(blockCur.TotalBalance()),
 			}
 			lv.logger.Debugf("add rep(%s) to %s", diff, representative)
-			if err := lv.l.AddRepresentation(representative, diff, blockCur.GetHash(), txn); err != nil {
+			if err := lv.l.AddRepresentation(representative, diff, txn); err != nil {
 				return err
 			}
 		} else {
@@ -958,7 +954,7 @@ func (lv *LedgerVerifier) rollBackRep(representative types.Address, blockCur, bl
 				}
 			}
 			lv.logger.Debugf("sub rep %s from %s", diff, representative)
-			if err := lv.l.SubRepresentation(representative, diff, blockCur.GetHash(), txn); err != nil {
+			if err := lv.l.SubRepresentation(representative, diff, txn); err != nil {
 				return err
 			}
 		}
@@ -976,11 +972,11 @@ func (lv *LedgerVerifier) rollBackRepChange(preRepresentation types.Address, cur
 		Total:   blockCur.TotalBalance(),
 	}
 	lv.logger.Debugf("add rep(%s) to %s", diff, preRepresentation)
-	if err := lv.l.AddRepresentation(preRepresentation, diff, blockCur.GetHash(), txn); err != nil {
+	if err := lv.l.AddRepresentation(preRepresentation, diff, txn); err != nil {
 		return err
 	}
 	lv.logger.Debugf("sub rep(%s) from %s", diff, curRepresentation)
-	if err := lv.l.SubRepresentation(curRepresentation, diff, blockCur.GetHash(), txn); err != nil {
+	if err := lv.l.SubRepresentation(curRepresentation, diff, txn); err != nil {
 		return err
 	}
 	return nil
