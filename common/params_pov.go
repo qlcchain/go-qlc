@@ -27,7 +27,8 @@ var (
 	PovMinerVerifyHeightStart       = uint64(POVChainBlocksPerDay * 1)
 	PovMinerRewardHeightStart       = uint64(POVChainBlocksPerDay * 30)
 	PovMinerRewardHeightGapToLatest = uint64(POVChainBlocksPerDay * 1)
-	PovMinerMaxRewardHeightPerCall  = uint64(POVChainBlocksPerDay * 7)
+	PovMinerMaxRewardBlocksPerCall  = uint64(POVChainBlocksPerDay * 7)
+	PovMinerRewardHeightRound       = uint64(POVChainBlocksPerDay * 1)
 
 	// Reward per block, rewardPerBlock * blockNumPerYear / gasTotalSupply = 3%
 	// 10000000000000000 * 0.03 / (3600 * 24 * 365 / 30)

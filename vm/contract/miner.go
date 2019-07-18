@@ -11,16 +11,27 @@ import (
 
 type MinerReward struct{}
 
-func (m *MinerReward) GetRewardInfo(ctx *vmstore.VMContext, coinbase types.Address) (*cabi.MinerInfo, error) {
-	oldMinerInfo, err := cabi.GetMinerInfoByCoinbase(ctx, coinbase)
+func (m *MinerReward) GetMaxRewardInfo(ctx *vmstore.VMContext, coinbase types.Address) (*cabi.MinerRewardInfo, error) {
+	rewardInfos, err := cabi.GetMinerRewardInfosByCoinbase(ctx, coinbase)
 	if err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, errors.New("failed to get storage for miner")
 	}
-	if oldMinerInfo == nil {
-		oldMinerInfo = new(cabi.MinerInfo)
+
+	maxInfo := cabi.CalcMaxMinerRewardInfo(rewardInfos)
+	if maxInfo == nil {
+		maxInfo = new(cabi.MinerRewardInfo)
 	}
 
-	return oldMinerInfo, nil
+	return maxInfo, nil
+}
+
+func (m *MinerReward) GetAllRewardInfos(ctx *vmstore.VMContext, coinbase types.Address) ([]*cabi.MinerRewardInfo, error) {
+	rewardInfos, err := cabi.GetMinerRewardInfosByCoinbase(ctx, coinbase)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return nil, errors.New("failed to get storage for miner")
+	}
+
+	return rewardInfos, nil
 }
 
 func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
@@ -29,35 +40,61 @@ func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error
 		return 0, errors.New("failed to get latest block")
 	}
 
-	if latestBlock.GetHeight() < common.PovMinerRewardHeightGapToLatest {
+	nodeHeight := latestBlock.GetHeight()
+	if nodeHeight < common.PovMinerRewardHeightStart {
 		return 0, nil
 	}
-	endHeight := latestBlock.GetHeight() - common.PovMinerRewardHeightGapToLatest
-	endHeight = cabi.MinerRoundPovHeightByDay(endHeight)
+	if nodeHeight < common.PovMinerRewardHeightGapToLatest {
+		return 0, nil
+	}
+	nodeHeight = nodeHeight - common.PovMinerRewardHeightGapToLatest
 
-	return endHeight, nil
+	nodeHeight = cabi.MinerRoundPovHeight(nodeHeight, common.PovMinerRewardHeightRound)
+	if nodeHeight < common.PovMinerRewardHeightStart {
+		return 0, nil
+	}
+
+	return nodeHeight, nil
 }
 
-func (m *MinerReward) GetAvailRewardBlocks(ctx *vmstore.VMContext, coinbase types.Address) (uint64, uint64, error) {
-	oldMinerInfo, _ := cabi.GetMinerInfoByCoinbase(ctx, coinbase)
+func (m *MinerReward) GetAvailRewardInfo(ctx *vmstore.VMContext, coinbase types.Address) (*cabi.MinerRewardInfo, error) {
+	availInfo := new(cabi.MinerRewardInfo)
+
+	nodeHeight, err := m.GetNodeRewardHeight(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if nodeHeight < common.PovMinerRewardHeightStart {
+		return availInfo, nil
+	}
+
+	maxInfo, err := m.GetMaxRewardInfo(ctx, coinbase)
+	if err != nil {
+		return nil, err
+	}
 
 	startHeight := uint64(0)
-	if oldMinerInfo != nil {
-		startHeight = oldMinerInfo.RewardHeight + 1
+	if maxInfo != nil {
+		startHeight = maxInfo.EndHeight + 1
 	}
 	if startHeight < common.PovMinerRewardHeightStart {
 		startHeight = common.PovMinerRewardHeightStart
 	}
 
-	nodeHeight, err := m.GetNodeRewardHeight(ctx)
-	if err != nil {
-		return 0, 0, err
+	endHeight := cabi.MinerCalcRewardEndHeight(startHeight, nodeHeight)
+	if endHeight < common.PovMinerRewardHeightStart {
+		return availInfo, nil
 	}
-	availHeight := cabi.MinerCalcRewardEndHeight(startHeight, nodeHeight)
 
-	availBlocks, err := m.calcRewardBlocks(ctx, coinbase, startHeight, availHeight)
+	availBlocks, err := m.calcRewardBlocks(ctx, coinbase, startHeight, endHeight)
+	if err != nil {
+		return nil, err
+	}
 
-	return availHeight, availBlocks, err
+	availInfo.StartHeight = startHeight
+	availInfo.EndHeight = endHeight
+	availInfo.RewardBlocks = availBlocks
+	return availInfo, nil
 }
 
 func (m *MinerReward) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -71,7 +108,7 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		return err
 	}
 
-	if _, err := param.Verify(block.Address); err != nil {
+	if _, err := param.Verify(); err != nil {
 		return err
 	}
 
@@ -93,59 +130,29 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		return errors.New("beneficial account not exist")
 	}
 
-	// check miner as representation has enough pledge vote
-	repCb, _ := ctx.GetRepresentation(param.Coinbase)
-	if repCb == nil {
-		return errors.New("coinbase as representation not exist")
-	}
-	if repCb.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
-		return errors.New("coinbase as representation has not enough pledge vote amount")
-	}
-
-	// check reward height
-	err = cabi.MinerCheckRewardHeight(param.RewardHeight)
-	if err != nil {
-		return err
-	}
-
 	nodeRewardHeight, err := m.GetNodeRewardHeight(ctx)
 	if err != nil {
 		return err
 	}
-	if param.RewardHeight > nodeRewardHeight {
-		return fmt.Errorf("reward height %d should lesser than node height %d", param.RewardHeight, nodeRewardHeight)
+	if param.EndHeight > nodeRewardHeight {
+		return fmt.Errorf("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
 	}
 
-	oldMinerInfo, err := cabi.GetMinerInfoByCoinbase(ctx, param.Coinbase)
-	if err != nil && err != vmstore.ErrStorageNotFound {
-		return errors.New("failed to get storage for miner")
-	}
-	if oldMinerInfo == nil {
-		oldMinerInfo = new(cabi.MinerInfo)
-	}
-	if param.RewardHeight <= oldMinerInfo.RewardHeight {
-		return fmt.Errorf("reward height %d should greater than last height %d", param.RewardHeight, oldMinerInfo.RewardHeight)
+	// check same start & end height exist in old reward infos
+	err = m.checkParamExistInOldRewardInfos(ctx, param)
+	if err != nil {
+		return err
 	}
 
-	startHeight := oldMinerInfo.RewardHeight + 1
-	if startHeight < common.PovMinerRewardHeightStart {
-		startHeight = common.PovMinerRewardHeightStart
-	}
-
-	maxEndHeight := cabi.MinerCalcRewardEndHeight(startHeight, param.RewardHeight)
-	if maxEndHeight != param.RewardHeight {
-		return fmt.Errorf("reward height %d exceed max height %d", param.RewardHeight, maxEndHeight)
-	}
-
-	calcRewardBlocks, err := m.calcRewardBlocks(ctx, param.Coinbase, startHeight, param.RewardHeight)
+	calcRewardBlocks, err := m.calcRewardBlocks(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
 	if err != nil {
 		return err
 	}
 	if calcRewardBlocks != param.RewardBlocks {
-		return fmt.Errorf("calc reward blocks %d not equal param reward blocks %d", calcRewardBlocks, param.RewardBlocks)
+		return fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
 	}
 
-	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.RewardBlocks, param.RewardHeight)
+	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks)
 	if err != nil {
 		return err
 	}
@@ -160,7 +167,7 @@ func (m *MinerReward) DoPending(block *types.StateBlock) (*types.PendingKey, *ty
 		return nil, nil, err
 	}
 
-	if _, err := param.Verify(block.Address); err != nil {
+	if _, err := param.Verify(); err != nil {
 		return nil, nil, err
 	}
 
@@ -183,7 +190,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		return nil, err
 	}
 
-	if _, err := param.Verify(input.Address); err != nil {
+	if _, err := param.Verify(); err != nil {
 		return nil, err
 	}
 
@@ -196,47 +203,43 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		return nil, errors.New("beneficial account not exist")
 	}
 
-	oldMinerInfo, err := cabi.GetMinerInfoByCoinbase(ctx, param.Coinbase)
-	if err != nil && err != vmstore.ErrStorageNotFound {
-		return nil, errors.New("failed to get storage for miner")
-	}
-	if oldMinerInfo == nil {
-		oldMinerInfo = new(cabi.MinerInfo)
-	}
-	startHeight := oldMinerInfo.RewardHeight + 1
-	if startHeight < common.PovMinerRewardHeightStart {
-		startHeight = common.PovMinerRewardHeightStart
+	// check same start & end height exist in old reward infos
+	err = m.checkParamExistInOldRewardInfos(ctx, param)
+	if err != nil {
+		return nil, err
 	}
 
-	calcRewardBlocks, err := m.calcRewardBlocks(ctx, param.Coinbase, startHeight, param.RewardHeight)
+	calcRewardBlocks, err := m.calcRewardBlocks(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
 	if err != nil {
 		return nil, err
 	}
 	if calcRewardBlocks != param.RewardBlocks {
-		return nil, fmt.Errorf("calc reward blocks %d not equal param reward blocks %d", calcRewardBlocks, param.RewardBlocks)
+		return nil, fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
 	}
 
 	rewardAmount := common.PovMinerRewardPerBlockBalance.Mul(int64(calcRewardBlocks))
 
+	// save contract data to storage
 	newMinerData, err := cabi.MinerABI.PackVariable(
-		cabi.VariableNameMiner,
+		cabi.VariableNameMinerRewardInfo,
 		param.Beneficial,
-		param.RewardHeight,
-		oldMinerInfo.RewardBlocks+param.RewardBlocks)
+		param.StartHeight,
+		param.EndHeight,
+		param.RewardBlocks)
 	if err != nil {
 		return nil, err
 	}
-	minerKey := cabi.GetMinerKey(param.Coinbase)
+	minerKey := cabi.GetMinerRewardKey(param.Coinbase, param.StartHeight)
 	err = ctx.SetStorage(types.MinerAddress.Bytes(), minerKey, newMinerData)
 	if err != nil {
 		return nil, err
 	}
 
+	// generate contract reward block
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
 	block.Token = common.GasToken()
 	block.Link = input.GetHash()
-	block.Data = newMinerData
 
 	// pledge fields only for QLC token
 	block.Vote = types.ZeroBalance
@@ -269,9 +272,26 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 			BlockType: types.ContractReward,
 			Amount:    rewardAmount,
 			Token:     common.GasToken(),
-			Data:      newMinerData,
+			Data:      []byte{},
 		},
 	}, nil
+}
+
+func (m *MinerReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, param *cabi.MinerRewardParam) error {
+	oldRewardInfos, err := cabi.GetMinerRewardInfosByCoinbase(ctx, param.Coinbase)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return errors.New("failed to get storage for miner")
+	}
+	for _, oldRewardInfo := range oldRewardInfos {
+		if param.StartHeight >= oldRewardInfo.StartHeight && param.StartHeight <= oldRewardInfo.EndHeight {
+			return fmt.Errorf("start height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
+		}
+		if param.EndHeight >= oldRewardInfo.StartHeight && param.EndHeight <= oldRewardInfo.EndHeight {
+			return fmt.Errorf("end height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
+		}
+	}
+
+	return nil
 }
 
 func (m *MinerReward) calcRewardBlocks(ctx *vmstore.VMContext, coinbase types.Address, startHeight, endHeight uint64) (uint64, error) {

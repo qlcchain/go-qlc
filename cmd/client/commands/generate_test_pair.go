@@ -168,12 +168,22 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 		return nil
 	}
 
-	var totalBalance *types.Balance
-	totalBalance = accountInfo.CoinBalance
+	var accountBalance *types.Balance
+	accountBalance = accountInfo.CoinBalance
+	fmt.Printf("accountBalance is [%s]\n", accountBalance)
+
+	lockBalance := types.NewBalance(int64(50000000 * 1e8))
+	if accountBalance.Compare(lockBalance) != types.BalanceCompBigger {
+		fmt.Printf("no need transfer balance to accounts\n")
+		return nil
+	}
+	totalBalance := *accountBalance
+	freeBalance := totalBalance.Sub(lockBalance)
+
 	toCount := int64(len(toAccounts))
-	amount, _ := totalBalance.Div(toCount)
-	fmt.Printf("totalBalance is [%s], amount is [%s]\n", totalBalance, amount)
-	if totalBalance.Compare(types.NewBalance(0)) != types.BalanceCompBigger {
+	amount, _ := freeBalance.Div(toCount)
+	fmt.Printf("freeBalance is [%s], amount is [%s]\n", freeBalance, amount)
+	if amount.Compare(types.NewBalance(0)) != types.BalanceCompBigger {
 		fmt.Printf("no need transfer balance to accounts\n")
 		return nil
 	}
@@ -252,9 +262,9 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 					err = nil
 				}
 
-				amount := rand.Intn(10) * 10e8
+				amount := rand.Intn(1000) * 1e8
 				if amount <= 0 {
-					amount = 10e8
+					amount = 1e8
 				}
 				fmt.Printf("tx %d: fromAcc:%s, toAcc:%s, amount:%d\n", txCurNum, fromAcc.Address(), toAcc.Address(), amount)
 

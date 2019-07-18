@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/config"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -16,11 +17,17 @@ import (
 )
 
 type PovApi struct {
+	cfg    *config.Config
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 	eb     event.EventBus
 
 	syncState atomic.Value
+}
+
+type PovStatus struct {
+	PovEnabled bool `json:"povEnabled"`
+	SyncState  int  `json:"syncState"`
 }
 
 type PovApiHeader struct {
@@ -81,8 +88,9 @@ type PovMinerStats struct {
 	MinerStats  map[types.Address]*PovMinerStatItem `json:"minerStats"`
 }
 
-func NewPovApi(ledger *ledger.Ledger, eb event.EventBus) *PovApi {
+func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *PovApi {
 	api := &PovApi{
+		cfg:    cfg,
 		ledger: ledger,
 		eb:     eb,
 		logger: log.NewLogger("rpc/pov"),
@@ -95,6 +103,13 @@ func NewPovApi(ledger *ledger.Ledger, eb event.EventBus) *PovApi {
 func (api *PovApi) OnPovSyncState(state common.SyncState) {
 	api.logger.Infof("receive pov sync state [%s]", state)
 	api.syncState.Store(state)
+}
+
+func (api *PovApi) GetPovStatus() (*PovStatus, error) {
+	apiRsp := new(PovStatus)
+	apiRsp.PovEnabled = api.cfg.PoV.PovEnabled
+	apiRsp.SyncState = int(api.syncState.Load().(common.SyncState))
+	return apiRsp, nil
 }
 
 func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
@@ -147,6 +162,10 @@ func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 }
 
 func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
+	if !api.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
 	ss := api.syncState.Load().(common.SyncState)
 	if ss != common.Syncdone {
 		return nil, errors.New("pov sync is not finished, please check it")

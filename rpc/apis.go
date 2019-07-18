@@ -81,14 +81,14 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "pov",
 			Version:   "1.0",
-			Service:   api.NewPovApi(r.ledger, r.eb),
+			Service:   api.NewPovApi(r.config, r.ledger, r.eb),
 			Public:    true,
 		}
 	case "miner":
 		return rpc.API{
 			Namespace: "miner",
 			Version:   "1.0",
-			Service:   api.NewMinerApi(r.ledger),
+			Service:   api.NewMinerApi(r.config, r.ledger),
 			Public:    true,
 		}
 	default:
