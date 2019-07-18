@@ -2138,3 +2138,31 @@ func (l *Ledger) CountBlockCache(txns ...db.StoreTxn) (uint64, error) {
 
 	return txn.Count([]byte{idPrefixBlockCache})
 }
+
+func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	errStr := make([]string, 0)
+	err := txn.Iterator(idPrefixBlockCache, func(key []byte, val []byte, b byte) error {
+		blk := new(types.StateBlock)
+		if err := blk.Deserialize(val); err != nil {
+			l.logger.Errorf("deserialize block error: %s", err)
+			errStr = append(errStr, err.Error())
+			return nil
+		}
+		if err := fn(blk); err != nil {
+			l.logger.Errorf("process block error: %s", err)
+			errStr = append(errStr, err.Error())
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
+	}
+	return nil
+}

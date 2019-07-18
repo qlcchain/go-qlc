@@ -32,6 +32,7 @@ type ServiceSync struct {
 	quitCh          chan bool
 	logger          *zap.SugaredLogger
 	lastSyncTime    int64
+	syncCount       uint32
 }
 
 // NewService return new Service.
@@ -42,6 +43,7 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		quitCh:       make(chan bool, 1),
 		logger:       log.NewLogger("sync"),
 		lastSyncTime: 0,
+		syncCount:    0,
 	}
 	return ss
 }
@@ -77,6 +79,7 @@ func (ss *ServiceSync) Start() {
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send FrontierRequest", err)
 				}
+				ss.syncCount++
 			}
 		default:
 			time.Sleep(5 * time.Millisecond)
@@ -179,7 +182,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 					if headerBlockHash == fsRemotes[i].HeaderBlock {
 						//ss.logger.Infof("this token %s have the same block", openBlockHash)
 					} else {
-						exit, _ := ss.qlcLedger.HasStateBlock(fsRemotes[i].HeaderBlock)
+						exit, _ := ss.qlcLedger.HasStateBlockConfirmed(fsRemotes[i].HeaderBlock)
 						if exit == true {
 							push := &protos.Bulk{
 								StartHash: fsRemotes[i].HeaderBlock,
