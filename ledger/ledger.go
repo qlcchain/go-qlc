@@ -91,10 +91,7 @@ const (
 	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
 	idPrefixLink
 	idPrefixBlockCache //block store this table before consensus complete
-)
-
-const (
-	idPrefixRepresentationCache = 150
+	idPrefixRepresentationCache
 )
 
 var (
