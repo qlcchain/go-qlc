@@ -25,22 +25,27 @@ type MinerApi struct {
 type RewardParam struct {
 	Coinbase     types.Address `json:"coinbase"`
 	Beneficial   types.Address `json:"beneficial"`
+	StartHeight  uint64        `json:"startHeight"`
+	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
-	RewardHeight uint64        `json:"rewardHeight"`
 }
 
-type MinerRewardInfo struct {
-	PledgeVoteAmount types.Balance `json:"pledgeVoteAmount"`
-
-	LastRewardHeight uint64 `json:"lastRewardHeight"`
-	LastRewardBlocks uint64 `json:"lastRewardBlocks"`
+type MinerAvailRewardInfo struct {
 	LastBeneficial   string `json:"lastBeneficial"`
+	LastStartHeight  uint64 `json:"lastStartHeight"`
+	LastEndHeight    uint64 `json:"lastEndHeight"`
+	LastRewardBlocks uint64 `json:"lastRewardBlocks"`
 
 	LatestBlockHeight uint64 `json:"latestBlockHeight"`
 	NodeRewardHeight  uint64 `json:"nodeRewardHeight"`
-	AvailRewardHeight uint64 `json:"availRewardHeight"`
+	AvailStartHeight  uint64 `json:"availStartHeight"`
+	AvailEndHeight    uint64 `json:"availEndHeight"`
 	AvailRewardBlocks uint64 `json:"availRewardBlocks"`
 	NeedCallReward    bool   `json:"needCallReward"`
+}
+
+type MinerHistoryRewardInfo struct {
+	RewardInfos []*cabi.MinerRewardInfo `json:"rewardInfos"`
 }
 
 func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
@@ -52,15 +57,31 @@ func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
 }
 
 func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
-	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.RewardBlocks, param.RewardHeight)
+	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks)
 }
 
-func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, error) {
+func (m *MinerApi) GetHistoryRewardInfos(coinbase types.Address) (*MinerHistoryRewardInfo, error) {
 	if !m.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
 
-	rsp := new(MinerRewardInfo)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	rewardInfos, err := m.reward.GetAllRewardInfos(vmContext, coinbase)
+	if err != nil {
+		return nil, err
+	}
+
+	apiRsp := new(MinerHistoryRewardInfo)
+	apiRsp.RewardInfos = rewardInfos
+	return apiRsp, nil
+}
+
+func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailRewardInfo, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
+	rsp := new(MinerAvailRewardInfo)
 
 	latestPovHeader, err := m.ledger.GetLatestPovHeader()
 	if err != nil {
@@ -68,27 +89,17 @@ func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, erro
 	}
 	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
 
-	repCb, err := m.ledger.GetRepresentation(coinbase)
-	if err == nil && repCb != nil {
-		rsp.PledgeVoteAmount = repCb.Vote
-	} else {
-		rsp.PledgeVoteAmount = types.ZeroBalance
-	}
-	hasEnoughVote := true
-	if rsp.PledgeVoteAmount.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
-		hasEnoughVote = false
-	}
-
 	vmContext := vmstore.NewVMContext(m.ledger)
-	oldMinerInfo, err := m.reward.GetRewardInfo(vmContext, coinbase)
+	lastRewardInfo, err := m.reward.GetMaxRewardInfo(vmContext, coinbase)
 	if err != nil {
 		return nil, err
 	}
 
-	rsp.LastRewardHeight = oldMinerInfo.RewardHeight
-	rsp.LastRewardBlocks = oldMinerInfo.RewardBlocks
-	if !oldMinerInfo.Beneficial.IsZero() {
-		rsp.LastBeneficial = oldMinerInfo.Beneficial.String()
+	rsp.LastStartHeight = lastRewardInfo.StartHeight
+	rsp.LastEndHeight = lastRewardInfo.EndHeight
+	rsp.LastRewardBlocks = lastRewardInfo.RewardBlocks
+	if !lastRewardInfo.Beneficial.IsZero() {
+		rsp.LastBeneficial = lastRewardInfo.Beneficial.String()
 	}
 
 	rsp.NodeRewardHeight, err = m.reward.GetNodeRewardHeight(vmContext)
@@ -96,18 +107,15 @@ func (m *MinerApi) GetRewardInfo(coinbase types.Address) (*MinerRewardInfo, erro
 		return nil, err
 	}
 
-	if hasEnoughVote {
-		rsp.AvailRewardHeight, rsp.AvailRewardBlocks, err = m.reward.GetAvailRewardBlocks(vmContext, coinbase)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		rsp.AvailRewardHeight = rsp.LastRewardHeight
+	availInfo, err := m.reward.GetAvailRewardInfo(vmContext, coinbase)
+	if err != nil {
+		return nil, err
 	}
+	rsp.AvailStartHeight = availInfo.StartHeight
+	rsp.AvailEndHeight = availInfo.EndHeight
+	rsp.AvailRewardBlocks = availInfo.RewardBlocks
 
-	if hasEnoughVote &&
-		rsp.AvailRewardHeight > rsp.LastRewardHeight &&
-		rsp.AvailRewardHeight <= rsp.NodeRewardHeight {
+	if rsp.AvailStartHeight > rsp.LastEndHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight {
 		rsp.NeedCallReward = true
 	}
 

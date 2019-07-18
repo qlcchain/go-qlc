@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 
@@ -24,12 +25,12 @@ func minerReward() {
 		coinbase := util.Flag{
 			Name:  "coinbase",
 			Must:  true,
-			Usage: "coinbase coinbase private hex string",
+			Usage: "coinbase account private hex string",
 		}
 		beneficial := util.Flag{
 			Name:  "beneficial",
-			Must:  true,
-			Usage: "beneficial coinbase private hex string",
+			Must:  false,
+			Usage: "beneficial account private hex string",
 		}
 
 		cmd := &ishell.Cmd{
@@ -106,12 +107,12 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	}
 	defer client.Close()
 
-	rspRewardInfo := new(api.MinerRewardInfo)
-	err = client.Call(rspRewardInfo, "miner_getRewardInfo", coinbaseAcc.Address())
+	rspRewardInfo := new(api.MinerAvailRewardInfo)
+	err = client.Call(rspRewardInfo, "miner_getAvailRewardInfo", coinbaseAcc.Address())
 	if err != nil {
 		return err
 	}
-	fmt.Printf("RewardInfo:\n%s\n", cutil.ToIndentString(rspRewardInfo))
+	fmt.Printf("AvailRewardInfo:\n%s\n", cutil.ToIndentString(rspRewardInfo))
 
 	if !rspRewardInfo.NeedCallReward {
 		return errors.New("can not call reward contract because no available reward height")
@@ -120,9 +121,12 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	rewardParam := api.RewardParam{
 		Coinbase:     coinbaseAcc.Address(),
 		Beneficial:   beneficialAcc.Address(),
+		StartHeight:  rspRewardInfo.AvailStartHeight,
+		EndHeight:    rspRewardInfo.AvailEndHeight,
 		RewardBlocks: rspRewardInfo.AvailRewardBlocks,
-		RewardHeight: rspRewardInfo.AvailRewardHeight,
 	}
+
+	rewardAmount := common.PovMinerRewardPerBlockBalance.Mul(int64(rewardParam.RewardBlocks))
 
 	send := types.StateBlock{}
 	err = client.Call(&send, "miner_getRewardSendBlock", &rewardParam)
@@ -166,7 +170,7 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 		return err
 	}
 
-	fmt.Println("success to get miner reward, please check account balance")
+	fmt.Printf("success to reward balance %s with blocks %d\n", rewardAmount, rewardParam.RewardBlocks)
 
 	return nil
 }

@@ -1,10 +1,10 @@
 package abi
 
 import (
-	"errors"
 	"fmt"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"strings"
@@ -13,12 +13,13 @@ import (
 const (
 	jsonMiner = `
 	[
-		{"type":"function","name":"MinerReward","inputs":[{"name":"coinbase","type":"address"},{"name":"beneficial","type":"address"},{"name":"rewardBlocks","type":"uint64"},{"name":"rewardHeight","type":"uint64"}]},
-		{"type":"variable","name":"minerInfo","inputs":[{"name":"beneficial","type":"address"},{"name":"rewardHeight","type":"uint64"},{"name":"rewardBlocks","type":"uint64"}]}
+		{"type":"function","name":"MinerReward","inputs":[{"name":"coinbase","type":"address"},{"name":"beneficial","type":"address"},{"name":"startHeight","type":"uint64"},{"name":"endHeight","type":"uint64"},{"name":"rewardBlocks","type":"uint64"}]},
+		{"type":"variable","name":"MinerRewardInfo","inputs":[{"name":"beneficial","type":"address"},{"name":"startHeight","type":"uint64"},{"name":"endHeight","type":"uint64"},{"name":"rewardBlocks","type":"uint64"}]}
 	]`
 
 	MethodNameMinerReward = "MinerReward"
-	VariableNameMiner     = "minerInfo"
+
+	VariableNameMinerRewardInfo = "MinerRewardInfo"
 )
 
 var (
@@ -28,87 +29,105 @@ var (
 type MinerRewardParam struct {
 	Coinbase     types.Address `json:"coinbase"`
 	Beneficial   types.Address `json:"beneficial"`
+	StartHeight  uint64        `json:"startHeight"`
+	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
-	RewardHeight uint64        `json:"rewardHeight"`
-	//Signature    types.Signature `json:"signature"`
 }
 
-func (p *MinerRewardParam) Verify(address types.Address) (bool, error) {
-	if !p.Coinbase.IsZero() && !p.Beneficial.IsZero() {
-		return true, nil
-		/*
-			if data, err := MinerABI.PackMethod(MethodNameMinerReward, p.Coinbase, p.Beneficial, p.RewardBlocks, p.RewardHeight); err == nil {
-				h := types.HashData(data)
-				if address.Verify(h[:], p.Signature[:]) {
-					return true, nil
-				} else {
-					return false, fmt.Errorf("invalid signature[%s] of hash[%s]", p.Signature.String(), h.String())
-				}
-			} else {
-				return false, err
-			}
-		*/
-	} else {
-		return false, fmt.Errorf("invalid reward param")
+func (p *MinerRewardParam) Verify() (bool, error) {
+	if p.Coinbase.IsZero() {
+		return false, fmt.Errorf("coinbase is zero")
 	}
+	if p.Beneficial.IsZero() {
+		return false, fmt.Errorf("beneficial is zero")
+	}
+
+	if p.StartHeight < common.PovMinerRewardHeightStart {
+		return false, fmt.Errorf("startHeight %d less than %d", p.StartHeight, common.PovMinerRewardHeightStart)
+	}
+	if p.StartHeight > p.EndHeight {
+		return false, fmt.Errorf("startHeight %d greater than endHeight %d", p.StartHeight, p.EndHeight)
+	}
+
+	gapCount := p.EndHeight - p.StartHeight + 1
+	if gapCount > common.PovMinerMaxRewardBlocksPerCall {
+		return false, fmt.Errorf("gap count %d exceed max blocks %d", p.StartHeight, common.PovMinerMaxRewardBlocksPerCall)
+	}
+
+	return true, nil
 }
 
-type MinerInfo struct {
+type MinerRewardInfo struct {
 	Beneficial   types.Address `json:"beneficial"`
+	StartHeight  uint64        `json:"startHeight"`
+	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
-	RewardHeight uint64        `json:"rewardHeight"`
 }
 
-func GetMinerKey(addr types.Address) []byte {
+func GetMinerRewardKey(addr types.Address, height uint64) []byte {
 	result := []byte(nil)
 	result = append(result, addr[:]...)
+	hb := util.BE_Uint64ToBytes(height)
+	result = append(result, hb...)
 	return result
 }
 
-func GetMinerInfoByCoinbase(ctx *vmstore.VMContext, coinbase types.Address) (*MinerInfo, error) {
-	key := GetMinerKey(coinbase)
-	oldMinerData, err := ctx.GetStorage(types.MinerAddress.Bytes(), key)
-	if err != nil {
+func GetMinerRewardInfosByCoinbase(ctx *vmstore.VMContext, coinbase types.Address) ([]*MinerRewardInfo, error) {
+	var rewardInfos []*MinerRewardInfo
+
+	keyPrefix := []byte(nil)
+	keyPrefix = append(keyPrefix, types.MinerAddress[:]...)
+	keyPrefix = append(keyPrefix, coinbase[:]...)
+
+	err := ctx.Iterator(keyPrefix, func(key []byte, value []byte) error {
+		//ctx.GetLogger().Infof("key: %v, value: %v", key, value)
+		if len(value) > 0 {
+			info := new(MinerRewardInfo)
+			err := MinerABI.UnpackVariable(info, VariableNameMinerRewardInfo, value)
+			if err == nil {
+				rewardInfos = append(rewardInfos, info)
+			} else {
+				ctx.GetLogger().Error(err)
+			}
+		}
+		return nil
+	})
+	if err == nil {
+		return rewardInfos, nil
+	} else {
 		return nil, err
 	}
-	if len(oldMinerData) <= 0 {
-		return nil, errors.New("miner data length is zero")
-	}
-
-	oldMinerInfo := new(MinerInfo)
-	err = MinerABI.UnpackVariable(oldMinerInfo, VariableNameMiner, oldMinerData)
-	if err != nil {
-		return nil, errors.New("failed to unpack variable for miner")
-	}
-
-	return oldMinerInfo, nil
 }
 
-func MinerCheckRewardHeight(rewardHeight uint64) error {
-	if rewardHeight < common.PovMinerRewardHeightStart {
-		return fmt.Errorf("reward height %d should greater than or equal %d", rewardHeight, common.PovMinerRewardHeightStart)
+func CalcMaxMinerRewardInfo(rewardInfos []*MinerRewardInfo) *MinerRewardInfo {
+	var maxInfo *MinerRewardInfo
+	for _, rewardInfo := range rewardInfos {
+		if maxInfo == nil {
+			maxInfo = rewardInfo
+		} else if rewardInfo.EndHeight > maxInfo.EndHeight {
+			maxInfo = rewardInfo
+		}
 	}
-
-	if MinerRoundPovHeight(rewardHeight, uint64(common.PovMinerRewardHeightRound)) != rewardHeight {
-		return fmt.Errorf("reward height plus one %d should be integral multiple of %d", rewardHeight+1, common.PovMinerRewardHeightRound)
-	}
-
-	return nil
+	return maxInfo
 }
 
 func MinerCalcRewardEndHeight(startHeight uint64, maxEndHeight uint64) uint64 {
+	if maxEndHeight < common.PovMinerRewardHeightStart {
+		return 0
+	}
 	if startHeight < common.PovMinerRewardHeightStart {
 		startHeight = common.PovMinerRewardHeightStart
 	}
-	if maxEndHeight < common.PovMinerRewardHeightStart {
-		maxEndHeight = common.PovMinerRewardHeightStart
-	}
 
-	endHeight := startHeight + common.PovMinerMaxRewardHeightPerCall - 1
+	endHeight := startHeight + common.PovMinerMaxRewardBlocksPerCall - 1
 	if endHeight > maxEndHeight {
 		endHeight = maxEndHeight
 	}
-	return MinerRoundPovHeight(endHeight, uint64(common.PovMinerRewardHeightRound))
+	endHeight = MinerRoundPovHeight(endHeight, uint64(common.PovMinerRewardHeightRound))
+	if endHeight < common.PovMinerRewardHeightStart {
+		return 0
+	}
+	return endHeight
 }
 
 // height begin from 0, so height + 1 == blocks count
@@ -119,7 +138,7 @@ func MinerPovHeightToCount(height uint64) uint64 {
 func MinerRoundPovHeight(height uint64, round uint64) uint64 {
 	roundCount := (MinerPovHeightToCount(height) / round) * round
 	if roundCount == 0 {
-		return roundCount
+		return 0
 	}
 	return roundCount - 1
 }

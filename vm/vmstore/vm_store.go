@@ -59,6 +59,10 @@ func NewVMContext(l *ledger.Ledger) *VMContext {
 	}
 }
 
+func (v *VMContext) GetLogger() *zap.SugaredLogger {
+	return v.logger
+}
+
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
 	if _, err := v.ledger.HasAccountMeta(address); err == nil {
 		return true, nil
