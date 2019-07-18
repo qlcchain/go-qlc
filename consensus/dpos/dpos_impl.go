@@ -184,15 +184,24 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 	dps.processors[index].blocks <- bs
 }
 
-func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, local bool) {
-	if local {
-		index := dps.getProcessorIndex(blk.Address)
-		dps.processors[index].blocksAcked <- hash
+func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, localIndex int) {
+	if localIndex == -1 {
+		localIndex = dps.getProcessorIndex(blk.Address)
+		dps.processors[localIndex].blocksAcked <- hash
 	}
 
-	if blk.IsSendBlock() {
+	switch blk.Type {
+	case types.Send:
 		index := dps.getProcessorIndex(types.Address(blk.Link))
-		dps.processors[index].blocksAcked <- hash
+		if localIndex != index {
+			dps.processors[index].blocksAcked <- hash
+		}
+	case types.ContractSend:
+		for i, p := range dps.processors {
+			if i != localIndex {
+				p.blocksAcked <- hash
+			}
+		}
 	}
 }
 

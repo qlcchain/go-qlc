@@ -242,12 +242,12 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 		dps.acTrx.rollBack(el.status.loser)
 		dps.acTrx.addWinner2Ledger(blk)
 		p.blocksAcked <- hash
-		dps.dispatchAckedBlock(blk, hash, false)
+		dps.dispatchAckedBlock(blk, hash, p.index)
 		dps.eb.Publish(string(common.EventConfirmedBlock), blk)
 	} else {
 		dps.acTrx.addWinner2Ledger(blk)
 		p.blocksAcked <- hash
-		dps.dispatchAckedBlock(blk, hash, false)
+		dps.dispatchAckedBlock(blk, hash, p.index)
 		dps.eb.Publish(string(common.EventConfirmedBlock), blk)
 	}
 }

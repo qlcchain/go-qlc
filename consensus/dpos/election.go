@@ -109,7 +109,7 @@ func (el *Election) haveQuorum() {
 
 		el.dps.acTrx.rollBack(el.status.loser)
 		el.dps.acTrx.addWinner2Ledger(blk)
-		el.dps.dispatchAckedBlock(blk, confirmedHash, true)
+		el.dps.dispatchAckedBlock(blk, confirmedHash, -1)
 		el.dps.eb.Publish(string(common.EventConfirmedBlock), blk)
 	} else {
 		el.dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance.String())
