@@ -85,12 +85,15 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	hash := bs.Block.GetHash()
 	dps := p.dps
 
-	result, err = dps.lv.BlockCheck(bs.Block)
-	if err != nil {
-		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
-		return
+	//local send do not need to check
+	if bs.Type != consensus.MsgGenerateBlock {
+		result, err = dps.lv.BlockCheck(bs.Block)
+		if err != nil {
+			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
+			return
+		}
+		p.processResult(result, bs)
 	}
-	p.processResult(result, bs)
 
 	switch bs.Type {
 	case consensus.MsgPublishReq:
@@ -120,7 +123,14 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		dps.saveOnlineRep(ack.Account)
 
 		//retransmit if the block has not reached a consensus or seq is not 0(for finding reps)
-		dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
+		if result == process.Old {
+			if ack.Sequence != 0 {
+				dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
+			}
+			return
+		} else {
+			dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
+		}
 
 		//cache the ack messages
 		if p.isResultGap(result) {
@@ -142,12 +152,9 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 					return
 				}
 			}
-		} else if p.isResultValid(result) { //local send will be old
+		} else if result == process.Progress {
 			dps.acTrx.vote(ack)
-
-			if result == process.Progress {
-				dps.localRepVote(bs)
-			}
+			dps.localRepVote(bs)
 		}
 	case consensus.MsgSync:
 		if result == process.Progress {
@@ -160,11 +167,8 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		}
 
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
-		//dps.acTrx.addToRoots(bs.Block)
-
-		if p.isResultValid(result) {
-			dps.localRepVote(bs)
-		}
+		dps.acTrx.addToRoots(bs.Block)
+		dps.localRepVote(bs)
 	default:
 		//
 	}
