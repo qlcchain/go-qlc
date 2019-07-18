@@ -202,6 +202,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				p.blocksAcked <- hash
 			}
 		}
+	}
 }
 
 func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
