@@ -45,7 +45,11 @@ type MinerAvailRewardInfo struct {
 }
 
 type MinerHistoryRewardInfo struct {
-	RewardInfos []*cabi.MinerRewardInfo `json:"rewardInfos"`
+	RewardInfos       []*cabi.MinerRewardInfo `json:"rewardInfos"`
+	FirstRewardHeight uint64                  `json:"firstRewardHeight"`
+	LastRewardHeight  uint64                  `json:"lastRewardHeight"`
+	AllRewardBlocks   uint64                  `json:"allRewardBlocks"`
+	AllRewardAmount   types.Balance           `json:"allRewardAmount"`
 }
 
 func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
@@ -73,6 +77,17 @@ func (m *MinerApi) GetHistoryRewardInfos(coinbase types.Address) (*MinerHistoryR
 
 	apiRsp := new(MinerHistoryRewardInfo)
 	apiRsp.RewardInfos = rewardInfos
+
+	if len(rewardInfos) > 0 {
+		apiRsp.FirstRewardHeight = rewardInfos[0].StartHeight
+		apiRsp.LastRewardHeight = rewardInfos[len(rewardInfos)-1].EndHeight
+
+		for _, rewardInfo := range rewardInfos {
+			apiRsp.AllRewardBlocks += rewardInfo.RewardBlocks
+		}
+		apiRsp.AllRewardAmount = common.PovMinerRewardPerBlockBalance.Mul(int64(apiRsp.AllRewardBlocks))
+	}
+
 	return apiRsp, nil
 }
 

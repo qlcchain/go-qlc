@@ -18,26 +18,32 @@ import (
 )
 
 func minerReward() {
-	var coinbaseP string
-	var beneficialP string
+	var cbPriKeyP string
+	var bnfPriKeyP string
+	var bnfAddrP string
 
 	if interactive {
-		coinbase := util.Flag{
-			Name:  "coinbase",
+		cbPriKey := util.Flag{
+			Name:  "cbprikey",
 			Must:  true,
 			Usage: "coinbase account private hex string",
 		}
-		beneficial := util.Flag{
-			Name:  "beneficial",
+		bnfPriKey := util.Flag{
+			Name:  "bnfprikey",
 			Must:  false,
 			Usage: "beneficial account private hex string",
+		}
+		bnfAddr := util.Flag{
+			Name:  "bnfaddr",
+			Must:  false,
+			Usage: "beneficial account address hex string",
 		}
 
 		cmd := &ishell.Cmd{
 			Name: "minerreward",
 			Help: "miner get reward (gas token)",
 			Func: func(c *ishell.Context) {
-				args := []util.Flag{coinbase, beneficial}
+				args := []util.Flag{cbPriKey, bnfPriKey, bnfAddr}
 				if util.HelpText(c, args) {
 					return
 				}
@@ -47,10 +53,11 @@ func minerReward() {
 					return
 				}
 
-				coinbaseP = util.StringVar(c.Args, coinbase)
-				beneficialP = util.StringVar(c.Args, beneficial)
+				cbPriKeyP = util.StringVar(c.Args, cbPriKey)
+				bnfPriKeyP = util.StringVar(c.Args, bnfPriKey)
+				bnfAddrP = util.StringVar(c.Args, bnfAddr)
 
-				if err := minerRewardAction(coinbaseP, beneficialP); err != nil {
+				if err := minerRewardAction(cbPriKeyP, bnfPriKeyP, bnfAddrP); err != nil {
 					util.Warn(err)
 					return
 				}
@@ -62,43 +69,53 @@ func minerReward() {
 			Use:   "minerreward",
 			Short: "miner get reward (gas token)",
 			Run: func(cmd *cobra.Command, args []string) {
-				err := minerRewardAction(coinbaseP, beneficialP)
+				err := minerRewardAction(cbPriKeyP, bnfPriKeyP, bnfAddrP)
 				if err != nil {
 					cmd.Println(err)
 				}
 			},
 		}
-		cmd.Flags().StringVar(&coinbaseP, "coinbase", "", "coinbase account private hex string")
-		cmd.Flags().StringVar(&beneficialP, "beneficial", "", "beneficial account private hex string")
+		cmd.Flags().StringVar(&cbPriKeyP, "cbprikey", "", "coinbase account private hex string")
+		cmd.Flags().StringVar(&bnfPriKeyP, "bnfprikey", "", "beneficial account private hex string")
+		cmd.Flags().StringVar(&bnfAddrP, "bnfaddr", "", "beneficial account address hex string")
 		rootCmd.AddCommand(cmd)
 	}
 }
 
-func minerRewardAction(coinbaseP, beneficialP string) error {
-	if coinbaseP == "" {
+func minerRewardAction(cbPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) error {
+	if cbPriKeyP == "" {
 		return errors.New("invalid coinbase value")
 	}
-
-	if beneficialP == "" {
-		return errors.New("invalid beneficial value")
+	if bnfPriKeyP == "" && bnfAddrHexP == "" {
+		return errors.New("invalid beneficial value, private key or address must have one")
 	}
 
-	cbBytes, err := hex.DecodeString(coinbaseP)
+	cbBytes, err := hex.DecodeString(cbPriKeyP)
 	if err != nil {
 		return err
 	}
-	coinbaseAcc := types.NewAccount(cbBytes)
-	if coinbaseAcc == nil {
+	cbAcc := types.NewAccount(cbBytes)
+	if cbAcc == nil {
 		return errors.New("can not new coinbase account")
 	}
 
-	benBytes, err := hex.DecodeString(beneficialP)
-	if err != nil {
-		return err
-	}
-	beneficialAcc := types.NewAccount(benBytes)
-	if beneficialAcc == nil {
-		return errors.New("can not new beneficial account")
+	var bnfAcc *types.Account
+	var bnfAddr types.Address
+	if bnfPriKeyP != "" {
+		bnfBytes, err := hex.DecodeString(bnfPriKeyP)
+		if err != nil {
+			return err
+		}
+		bnfAcc = types.NewAccount(bnfBytes)
+		if bnfAcc == nil {
+			return errors.New("can not new beneficial account")
+		}
+		bnfAddr = bnfAcc.Address()
+	} else {
+		bnfAddr, err = types.HexToAddress(bnfAddrHexP)
+		if err != nil {
+			return err
+		}
 	}
 
 	client, err := rpc.Dial(endpointP)
@@ -107,8 +124,9 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	}
 	defer client.Close()
 
+	// calc avail reward info
 	rspRewardInfo := new(api.MinerAvailRewardInfo)
-	err = client.Call(rspRewardInfo, "miner_getAvailRewardInfo", coinbaseAcc.Address())
+	err = client.Call(rspRewardInfo, "miner_getAvailRewardInfo", cbAcc.Address())
 	if err != nil {
 		return err
 	}
@@ -119,8 +137,8 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 	}
 
 	rewardParam := api.RewardParam{
-		Coinbase:     coinbaseAcc.Address(),
-		Beneficial:   beneficialAcc.Address(),
+		Coinbase:     cbAcc.Address(),
+		Beneficial:   bnfAddr,
 		StartHeight:  rspRewardInfo.AvailStartHeight,
 		EndHeight:    rspRewardInfo.AvailEndHeight,
 		RewardBlocks: rspRewardInfo.AvailRewardBlocks,
@@ -128,49 +146,58 @@ func minerRewardAction(coinbaseP, beneficialP string) error {
 
 	rewardAmount := common.PovMinerRewardPerBlockBalance.Mul(int64(rewardParam.RewardBlocks))
 
-	send := types.StateBlock{}
-	err = client.Call(&send, "miner_getRewardSendBlock", &rewardParam)
+	// generate contract send block
+	sendBlock := types.StateBlock{}
+	err = client.Call(&sendBlock, "miner_getRewardSendBlock", &rewardParam)
 	if err != nil {
 		return err
 	}
 
 	var w types.Work
-	worker, _ := types.NewWorker(w, send.Root())
-	send.Work = worker.NewWork()
+	worker, _ := types.NewWorker(w, sendBlock.Root())
+	sendBlock.Work = worker.NewWork()
 
-	sendHash := send.GetHash()
-	send.Signature = coinbaseAcc.Sign(sendHash)
+	sendHash := sendBlock.GetHash()
+	sendBlock.Signature = cbAcc.Sign(sendHash)
 
-	fmt.Printf("SendBlock:\n%s\n", cutil.ToIndentString(send))
-	fmt.Println("address", send.Address, "sendHash", sendHash)
+	fmt.Printf("SendBlock:\n%s\n", cutil.ToIndentString(sendBlock))
+	fmt.Println("address", sendBlock.Address, "sendHash", sendHash)
 
-	reward := types.StateBlock{}
-	err = client.Call(&reward, "miner_getRewardRecvBlock", &send)
+	// generate contract recv block if we have beneficial prikey
+	rewardBlock := types.StateBlock{}
+	if bnfAcc != nil {
+		err = client.Call(&rewardBlock, "miner_getRewardRecvBlock", &sendBlock)
+		if err != nil {
+			return err
+		}
+
+		var w2 types.Work
+		worker2, _ := types.NewWorker(w2, rewardBlock.Root())
+		rewardBlock.Work = worker2.NewWork()
+
+		rewardHash := rewardBlock.GetHash()
+		rewardBlock.Signature = bnfAcc.Sign(rewardHash)
+
+		fmt.Printf("RewardBlock:\n%s\n", cutil.ToIndentString(rewardBlock))
+		fmt.Println("address", rewardBlock.Address, "rewardHash", rewardHash)
+	}
+
+	// publish all blocks to node
+	err = client.Call(nil, "ledger_process", &sendBlock)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("success to send reward, balance %s blocks %d\n", rewardAmount, rewardParam.RewardBlocks)
 
-	var w2 types.Work
-	worker2, _ := types.NewWorker(w2, reward.Root())
-	reward.Work = worker2.NewWork()
-
-	rewardHash := reward.GetHash()
-	reward.Signature = beneficialAcc.Sign(rewardHash)
-
-	fmt.Printf("RewardBlock:\n%s\n", cutil.ToIndentString(reward))
-	fmt.Println("address", reward.Address, "rewardHash", rewardHash)
-
-	err = client.Call(nil, "ledger_process", &send)
-	if err != nil {
-		return err
+	if bnfAcc != nil {
+		err = client.Call(nil, "ledger_process", &rewardBlock)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("success to recv reward\n")
+	} else {
+		fmt.Printf("please to recv reward\n")
 	}
-
-	err = client.Call(nil, "ledger_process", &reward)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("success to reward balance %s with blocks %d\n", rewardAmount, rewardParam.RewardBlocks)
 
 	return nil
 }
