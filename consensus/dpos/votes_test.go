@@ -45,7 +45,7 @@ func TestVotes(t *testing.T) {
 	if err := json.Unmarshal([]byte(testVotesBlk1), &blk1); err != nil {
 		t.Fatal("Unmarshal block error")
 	}
-	vts := NewVotes(blk)
+	vts := newVotes(blk)
 	exit, _ := vts.voteExit(blk.GetAddress())
 	if exit != false {
 		t.Fatal("vote exit func error")

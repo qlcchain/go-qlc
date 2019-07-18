@@ -29,7 +29,7 @@ type PerformanceTime struct {
 	confirmed bool
 }
 
-func NewActiveTrx() *ActiveTrx {
+func newActiveTrx() *ActiveTrx {
 	return &ActiveTrx{
 		roots:  new(sync.Map),
 		quitCh: make(chan bool, 1),
@@ -37,7 +37,7 @@ func NewActiveTrx() *ActiveTrx {
 	}
 }
 
-func (act *ActiveTrx) SetDposService(dps *DPoS) {
+func (act *ActiveTrx) setDposService(dps *DPoS) {
 	act.dps = dps
 }
 
@@ -79,7 +79,7 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 	vk := getVoteKey(block)
 
 	if _, ok := act.roots.Load(vk); !ok {
-		ele, err := NewElection(act.dps, block)
+		ele, err := newElection(act.dps, block)
 		if err != nil {
 			act.dps.logger.Errorf("block :%s add to roots error", block.GetHash())
 			return false
@@ -171,6 +171,7 @@ func (act *ActiveTrx) cleanVotes() {
 
 func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	hash := block.GetHash()
+	act.dps.logger.Debugf("block [%s] acked", hash)
 
 	if exist, err := act.dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
 		err := act.dps.lv.BlockProcess(block)
@@ -200,7 +201,7 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 			if err != nil {
 				act.dps.logger.Errorf("error [%s] when rollback hash [%s]", err, hash.String())
 			}
-			act.dps.rollbackUncheckedFromDb(hash)
+			act.dps.rollbackUnchecked(hash)
 		}
 	}
 }

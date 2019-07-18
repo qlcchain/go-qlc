@@ -148,7 +148,10 @@ func (m MigrationV4ToV5) Migrate(txn db.StoreTxn) error {
 			return err
 		}
 		for k, v := range bas {
-			key := getRepresentationKey(k)
+			key, err := getKeyOfParts(idPrefixRepresentation, k)
+			if err != nil {
+				return err
+			}
 			benefit := new(types.Benefit)
 			benefit.Balance = v
 			benefit.Storage = types.ZeroBalance
@@ -187,8 +190,10 @@ func (m MigrationV4ToV5) Migrate(txn db.StoreTxn) error {
 				am.CoinStorage = types.ZeroBalance
 				am.CoinOracle = types.ZeroBalance
 				am.CoinVote = types.ZeroBalance
-
-				amKey := getAccountMetaKey(am.Address)
+				amKey, err := getKeyOfParts(idPrefixAccount, am.Address)
+				if err != nil {
+					return err
+				}
 				amBytes, err := am.MarshalMsg(nil)
 				if err != nil {
 					return err

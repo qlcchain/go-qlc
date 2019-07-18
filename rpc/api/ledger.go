@@ -380,6 +380,7 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	unCount, err := l.ledger.CountUncheckedBlocks()
 	if err != nil {
 		return nil, err
@@ -387,7 +388,7 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
 	c["unchecked"] = unCount
-	//c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
+
 	return c, nil
 }
 
@@ -400,6 +401,7 @@ func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	unCount, err := l.ledger.CountUncheckedBlocks()
 	if err != nil {
 		return nil, err
@@ -407,7 +409,7 @@ func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
 	c := make(map[string]uint64)
 	c["count"] = sbCount + scbCount
 	c["unchecked"] = unCount
-	//c["unchecked"] = consensus.GlobalUncheckedBlockNum.Load()
+
 	return c, nil
 }
 
@@ -809,7 +811,7 @@ func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 }
 
 type APIUncheckBlock struct {
-	Block       *APIBlock              `json:"block"`
+	Block       *types.StateBlock      `json:"block"`
 	Link        types.Hash             `json:"link"`
 	UnCheckType string                 `json:"uncheckType"`
 	SyncType    types.SynchronizedKind `json:"syncType"`
@@ -817,14 +819,9 @@ type APIUncheckBlock struct {
 
 func (l *LedgerApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	unchecks := make([]*APIUncheckBlock, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
 	err := l.ledger.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
 		uncheck := new(APIUncheckBlock)
-		b, err := generateAPIBlock(vmContext, block)
-		if err != nil {
-			return err
-		}
-		uncheck.Block = b
+		uncheck.Block = block
 		uncheck.Link = link
 		if unCheckType == 0 {
 			uncheck.UnCheckType = "GapPrevious"
@@ -843,37 +840,42 @@ func (l *LedgerApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 }
 
 func (l *LedgerApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
-	blk, err := l.ledger.GetStateBlock(hash)
-	if err != nil {
-		return nil, fmt.Errorf("get block err: %s", hash.String())
-	}
 	r := make(map[string]types.Hash)
-	children, _ := l.ledger.GetChildren(hash)
-	for key, val := range children {
-		if val == 0 {
-			cblk, err := l.ledger.GetStateBlock(key)
-			if err != nil {
-				return nil, fmt.Errorf("get child1 err: %s", key.String())
-			}
-			if cblk.GetAddress() != blk.GetAddress() {
-				return nil, fmt.Errorf("address not equal, %s, %s", blk.GetHash(), cblk.GetHash())
-			}
-			r["child1"] = key
-		}
-		if val == 1 {
-			cblk, err := l.ledger.GetStateBlock(key)
-			if err != nil {
-				return nil, fmt.Errorf("get child2 err: %s", key.String())
-			}
-			if cblk.GetAddress() == blk.GetAddress() {
-				return nil, fmt.Errorf("address equal, %s, %s", blk.GetHash(), cblk.GetHash())
-			}
-			r["child2"] = key
-		}
+	child, err := l.ledger.GetChild(hash)
+	if err == nil {
+		r["child"] = child
 	}
 	link, _ := l.ledger.GetLinkBlock(hash)
 	if !link.IsZero() {
 		r["receiver"] = link
+	}
+	return r, nil
+}
+
+func (l *LedgerApi) GetRepresentationsCache(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
+	r := make(map[types.Address]map[string]*types.Benefit)
+	if address == nil {
+		err := l.ledger.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
+			beInfo := make(map[string]*types.Benefit)
+			beInfo["db"] = be
+			beInfo["cache"] = beCache
+			r[address] = beInfo
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := l.ledger.GetRepresentationsCache(*address, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
+			beInfo := make(map[string]*types.Benefit)
+			beInfo["db"] = be
+			beInfo["cache"] = beCache
+			r[address] = beInfo
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 	return r, nil
 }

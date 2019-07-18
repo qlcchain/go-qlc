@@ -1091,36 +1091,24 @@ func TestLedger_BlockChild(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	addr1 := mock.Address()
-	addr2 := mock.Address()
 	b1 := mock.StateBlockWithoutWork()
-	b1.Link = common.GenesisBlockHash()
 	b1.Address = addr1
 
 	b2 := mock.StateBlockWithoutWork()
-	b2.Address = addr1
 	b2.Type = types.Send
 	b2.Previous = b1.GetHash()
 
 	b3 := mock.StateBlockWithoutWork()
-	b3.Address = addr2
-	b3.Link = b1.GetHash()
+	b3.Type = types.Send
+	b3.Previous = b1.GetHash()
 
-	b4 := mock.StateBlockWithoutWork()
-	b4.Address = addr1
-	b4.Type = types.Send
-	b4.Previous = b1.GetHash()
-
-	gen := common.GenesisBlock()
-	if err := l.AddStateBlock(&gen); err != nil {
-		t.Fatal(err)
-	}
 	if err := l.AddStateBlock(b1); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.AddStateBlock(b2); err != nil {
 		t.Fatal(err)
 	}
-	h, err := l.GetChild(b1.GetHash(), b2.GetAddress())
+	h, err := l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1128,18 +1116,10 @@ func TestLedger_BlockChild(t *testing.T) {
 		t.Fatal()
 	}
 
-	if err := l.AddStateBlock(b3); err != nil {
-		t.Fatal(err)
-	}
-	h, err = l.GetChild(b1.GetHash(), b3.GetAddress())
+	err = l.AddStateBlock(b3)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if h != b3.GetHash() {
-		t.Fatal()
-	}
-
-	if err := l.AddStateBlock(b4); err == nil {
+		t.Log(err)
+	} else {
 		t.Fatal()
 	}
 
@@ -1147,19 +1127,25 @@ func TestLedger_BlockChild(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err = l.GetChild(b1.GetHash(), b2.GetAddress())
+	h, err = l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Log(err)
+	} else {
+		t.Fatal()
 	}
 
-	if err := l.AddStateBlock(b4); err != nil {
+	if err := l.AddStateBlock(b3); err != nil {
 		t.Fatal(err)
 	}
 
-	h, err = l.GetChild(b1.GetHash(), b4.GetAddress())
+	h, err = l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
+	if h != b3.GetHash() {
+		t.Fatal()
+	}
+
 }
 
 func TestLedger_MessageInfo(t *testing.T) {
