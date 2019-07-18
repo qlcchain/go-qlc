@@ -149,6 +149,7 @@ func (act *ActiveTrx) cleanVotes() {
 			return true
 		} else {
 			act.roots.Delete(el.vote.id)
+			act.dps.deleteBlockCache(el.status.winner)
 		}
 
 		//block := el.status.winner
@@ -172,7 +173,7 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	hash := block.GetHash()
 	act.dps.logger.Debugf("block [%s] acked", hash)
 
-	if exist, err := act.dps.ledger.HasStateBlock(hash); !exist && err == nil {
+	if exist, err := act.dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
 		err := act.dps.lv.BlockProcess(block)
 		if err != nil {
 			act.dps.logger.Error(err)
@@ -182,6 +183,7 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	} else {
 		act.dps.logger.Debugf("%s, %v", hash.String(), err)
 	}
+	act.dps.deleteBlockCache(block)
 }
 
 func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {

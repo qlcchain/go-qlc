@@ -202,6 +202,17 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				p.blocksAcked <- hash
 			}
 		}
+}
+
+func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
+	hash := block.GetHash()
+	if exist, _ := dps.ledger.HasBlockCache(hash); exist {
+		err := dps.ledger.DeleteBlockCache(hash)
+		if err != nil {
+			dps.logger.Error(err)
+		} else {
+			dps.logger.Debugf("delete block cache [%s] error", hash.String())
+		}
 	}
 }
 

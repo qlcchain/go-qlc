@@ -52,12 +52,13 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
+	github.com/ttacon/chalk v0.0.0-20160626202418-22c06c80ed31 // indirect
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/atomic v1.4.0
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20190621222207-cc06ce4a13d4
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/sys v0.0.0-20190624142023-c5567b49c5d0 // indirect
-	google.golang.org/appengine v1.6.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )

@@ -90,6 +90,7 @@ const (
 	idPrefixPovBestHash // prefix + height => hash
 	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
 	idPrefixLink
+	idPrefixBlockCache //block store this table before consensus complete
 )
 
 const (
@@ -101,7 +102,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 5
+const version = 6
 
 func NewLedger(dir string) *Ledger {
 	lock.Lock()
@@ -169,7 +170,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3), new(MigrationV3ToV4), new(MigrationV4ToV5)}
+		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3), new(MigrationV3ToV4), new(MigrationV4ToV5), new(MigrationV5ToV6)}
 		err = txn.Upgrade(ms)
 		if err != nil {
 			l.logger.Error(err)
@@ -423,6 +424,9 @@ func addLink(block *types.StateBlock, txn db.StoreTxn) error {
 }
 
 func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	if blkCache, err := l.GetBlockCache(hash); err == nil {
+		return blkCache, nil
+	}
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -471,6 +475,9 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 }
 
 func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
+	if err := l.DeleteBlockCache(hash); err != nil {
+		return fmt.Errorf("delete block cache fail(%s), hash(%s)", err, hash)
+	}
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 
@@ -521,6 +528,27 @@ func (l *Ledger) deleteLink(blk *types.StateBlock, txn db.StoreTxn) error {
 }
 
 func (l *Ledger) HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	if exit, err := l.HasBlockCache(hash); err == nil && exit {
+		return exit, nil
+	}
+	key := getKeyOfHash(hash, idPrefixBlock)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (l *Ledger) HasStateBlockConfirmed(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -860,8 +888,8 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 }
 
 func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	key := getAccountMetaKey(address)
 	var meta types.AccountMeta
+	key := getAccountMetaKey(address)
 
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -2230,4 +2258,108 @@ func (l *Ledger) GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, 
 		return nil, err
 	}
 	return m, nil
+}
+
+func (l *Ledger) AddBlockCache(blk *types.StateBlock, txns ...db.StoreTxn) error {
+	key := getKeyOfHash(blk.GetHash(), idPrefixBlockCache)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	//never overwrite implicitly
+	err := txn.Get(key, func(bytes []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrBlockExists
+	} else if err != badger.ErrKeyNotFound {
+		return err
+	}
+
+	blockBytes, err := blk.Serialize()
+	if err != nil {
+		return err
+	}
+	return txn.Set(key, blockBytes)
+}
+
+func (l *Ledger) GetBlockCache(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	key := getKeyOfHash(hash, idPrefixBlockCache)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	blk := new(types.StateBlock)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		if err := blk.Deserialize(val); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, err
+	}
+	return blk, nil
+}
+
+func (l *Ledger) HasBlockCache(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	key := getKeyOfHash(hash, idPrefixBlockCache)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (l *Ledger) DeleteBlockCache(hash types.Hash, txns ...db.StoreTxn) error {
+	key := getKeyOfHash(hash, idPrefixBlockCache)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Delete(key)
+}
+
+func (l *Ledger) CountBlockCache(txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Count([]byte{idPrefixBlockCache})
+}
+
+func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	errStr := make([]string, 0)
+	err := txn.Iterator(idPrefixBlockCache, func(key []byte, val []byte, b byte) error {
+		blk := new(types.StateBlock)
+		if err := blk.Deserialize(val); err != nil {
+			l.logger.Errorf("deserialize block error: %s", err)
+			errStr = append(errStr, err.Error())
+			return nil
+		}
+		if err := fn(blk); err != nil {
+			l.logger.Errorf("process block error: %s", err)
+			errStr = append(errStr, err.Error())
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
+	}
+	return nil
 }

@@ -10,7 +10,6 @@ package process
 import (
 	"bytes"
 	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -82,7 +81,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 
 	lv.logger.Debug("check block ", hash)
 
-	blockExist, err := lv.l.HasStateBlock(hash)
+	blockExist, err := lv.l.HasStateBlockConfirmed(hash)
 	if err != nil {
 		return Other, err
 	}
@@ -348,8 +347,11 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	}
 	// check previous
 	if !block.IsOpen() {
+		// check previous
 		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-			return GapPrevious, nil
+			if previous, err = lv.l.GetBlockCache(block.Previous); err != nil {
+				return GapPrevious, nil
+			}
 		} else {
 			//check fork
 			if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
@@ -366,7 +368,9 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	//check smart c exist
 	input, err := lv.l.GetStateBlock(block.GetLink())
 	if err != nil {
-		return GapSource, nil
+		if input, err = lv.l.GetBlockCache(block.Link); err != nil {
+			return GapSource, nil
+		}
 	}
 	address := types.Address(input.GetLink())
 
@@ -417,6 +421,38 @@ func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 	})
 }
 
+func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
+	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
+		if state, ok := block.(*types.StateBlock); ok {
+			err := lv.addBlockCache(state, txn)
+			if err != nil {
+				lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
+				return err
+			}
+			return nil
+		} else if _, ok := block.(*types.SmartContractBlock); ok {
+			return errors.New("smart contract block")
+		}
+		return errors.New("invalid block")
+	})
+}
+
+func (lv *LedgerVerifier) addBlockCache(block *types.StateBlock, txn db.StoreTxn) error {
+	lv.logger.Debug("process block cache, ", block.GetHash())
+	if err := lv.l.AddBlockCache(block, txn); err != nil {
+		return err
+	}
+
+	am, err := lv.l.GetAccountMeta(block.GetAddress(), txn)
+	if err != nil && err != ledger.ErrAccountNotFound {
+		return fmt.Errorf("get account meta error: %s", err)
+	}
+	if err := lv.updateAccountMetaCacheHeader(block, am, txn); err != nil {
+		return fmt.Errorf("update account meta cache header error: %s", err)
+	}
+	return nil
+}
+
 func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
 	lv.logger.Debug("process block, ", block.GetHash())
 	if err := lv.l.AddStateBlock(block, txn); err != nil {
@@ -453,10 +489,14 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	hash := block.GetHash()
 	switch block.Type {
 	case types.Send:
+		preBlk, err := lv.l.GetStateBlock(block.Previous)
+		if err != nil {
+			return errors.New("previous block not found")
+		}
 		pending := types.PendingInfo{
 			Source: block.GetAddress(),
 			Type:   block.GetToken(),
-			Amount: tm.Balance.Sub(block.GetBalance()),
+			Amount: preBlk.Balance.Sub(block.GetBalance()),
 		}
 		pendingKey := types.PendingKey{
 			Address: types.Address(block.GetLink()),
@@ -499,17 +539,21 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, txn db.StoreTxn) error {
 	if block.GetToken() == common.ChainToken() {
-		if tm != nil && !tm.Representative.IsZero() {
-			oldBenefit := &types.Benefit{
-				Vote:    am.GetVote(),
-				Network: am.GetNetwork(),
-				Oracle:  am.GetOracle(),
-				Storage: am.GetStorage(),
-				Balance: am.GetBalance(),
-				Total:   am.TotalBalance(),
+		if tm != nil && !tm.Representative.IsZero() && tm.ConfirmHeader != types.ZeroHash {
+			preBlk, err := lv.l.GetStateBlock(block.Previous)
+			if err != nil {
+				return err
 			}
-			lv.logger.Debugf("sub rep(%s) from %s ", oldBenefit, tm.Representative)
-			if err := lv.l.SubRepresentation(tm.Representative, oldBenefit, txn); err != nil {
+			oldBenefit := &types.Benefit{
+				Vote:    preBlk.GetVote(),
+				Network: preBlk.GetNetwork(),
+				Oracle:  preBlk.GetOracle(),
+				Storage: preBlk.GetStorage(),
+				Balance: preBlk.GetBalance(),
+				Total:   preBlk.TotalBalance(),
+			}
+			lv.logger.Debugf("sub rep(%s) from %s ", oldBenefit, preBlk.Representative)
+			if err := lv.l.SubRepresentation(preBlk.Representative, oldBenefit, txn); err != nil {
 				return err
 			}
 		}
@@ -534,8 +578,8 @@ func (lv *LedgerVerifier) updateFrontier(block *types.StateBlock, tm *types.Toke
 	frontier := &types.Frontier{
 		HeaderBlock: hash,
 	}
-	if tm != nil {
-		if frontier, err := lv.l.GetFrontier(tm.Header, txn); err == nil {
+	if tm != nil && tm.ConfirmHeader != types.ZeroHash {
+		if frontier, err := lv.l.GetFrontier(tm.ConfirmHeader, txn); err == nil {
 			lv.logger.Debug("delete frontier, ", *frontier)
 			if err := lv.l.DeleteFrontier(frontier.HeaderBlock, txn); err != nil {
 				return err
@@ -564,6 +608,80 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 	tmNew := &types.TokenMeta{
 		Type:           token,
 		Header:         hash,
+		ConfirmHeader:  hash,
+		Representative: rep,
+		OpenBlock:      hash,
+		Balance:        balance,
+		BlockCount:     1,
+		BelongTo:       address,
+		Modified:       common.TimeNow().UTC().Unix(),
+	}
+
+	if am != nil {
+		tm := am.Token(block.GetToken())
+		if block.GetToken() == common.ChainToken() {
+			am.CoinBalance = balance
+			am.CoinOracle = block.GetOracle()
+			am.CoinNetwork = block.GetNetwork()
+			am.CoinVote = block.GetVote()
+			am.CoinStorage = block.GetStorage()
+		}
+		if tm != nil {
+			if tm.ConfirmHeader != types.ZeroHash {
+				tm.Header = hash
+				tm.ConfirmHeader = hash
+				tm.Representative = rep
+				tm.Balance = balance
+				tm.BlockCount = tm.BlockCount + 1
+				tm.Modified = common.TimeNow().UTC().Unix()
+			} else {
+				tm.Type = token
+				tm.Header = hash
+				tm.ConfirmHeader = hash
+				tm.Representative = rep
+				tm.OpenBlock = hash
+				tm.Balance = balance
+				tm.BlockCount = 1
+				tm.BelongTo = address
+				tm.Modified = common.TimeNow().UTC().Unix()
+			}
+		} else {
+			am.Tokens = append(am.Tokens, tmNew)
+		}
+		if err := lv.l.UpdateAccountMeta(am, txn); err != nil {
+			return err
+		}
+	} else {
+		account := types.AccountMeta{
+			Address: address,
+			Tokens:  []*types.TokenMeta{tmNew},
+		}
+
+		if block.GetToken() == common.ChainToken() {
+			account.CoinBalance = balance
+			account.CoinOracle = block.GetOracle()
+			account.CoinNetwork = block.GetNetwork()
+			account.CoinVote = block.GetVote()
+			account.CoinStorage = block.GetStorage()
+		}
+		if err := lv.l.AddAccountMeta(&account, txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+	hash := block.GetHash()
+	rep := block.GetRepresentative()
+	address := block.GetAddress()
+	token := block.GetToken()
+	balance := block.GetBalance()
+
+	tmNew := &types.TokenMeta{
+		Type:           token,
+		Header:         hash,
+		ConfirmHeader:  types.ZeroHash,
 		Representative: rep,
 		OpenBlock:      hash,
 		Balance:        balance,
@@ -585,7 +703,6 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			tm.Header = hash
 			tm.Representative = rep
 			tm.Balance = balance
-			tm.BlockCount = tm.BlockCount + 1
 			tm.Modified = common.TimeNow().UTC().Unix()
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
@@ -686,7 +803,6 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 				return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
 			}
 		}
-
 		switch blockType {
 		case types.Open:
 			lv.logger.Debug("---delete open block, ", hashCur)
