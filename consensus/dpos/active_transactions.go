@@ -1,7 +1,9 @@
 package dpos
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 	"time"
 
@@ -10,7 +12,8 @@ import (
 )
 
 const (
-	confirmTimeout = 1800
+	confirmReqMaxTimes = 30
+	confirmReqInterval = 60
 )
 
 type voteKey [1 + types.HashSize]byte
@@ -42,7 +45,7 @@ func (act *ActiveTrx) setDposService(dps *DPoS) {
 }
 
 func (act *ActiveTrx) start() {
-	timerClean := time.NewTicker(confirmTimeout * time.Second)
+	timerCheckVotes := time.NewTicker(time.Second)
 
 	for {
 		select {
@@ -51,8 +54,8 @@ func (act *ActiveTrx) start() {
 			return
 		case perf := <-act.perfCh:
 			act.updatePerformanceTime(perf.hash, perf.curTime, perf.confirmed)
-		case <-timerClean.C:
-			act.cleanVotes()
+		case <-timerCheckVotes.C:
+			act.checkVotes()
 		}
 	}
 }
@@ -140,30 +143,30 @@ func (act *ActiveTrx) updatePerformanceTime(hash types.Hash, curTime int64, conf
 	}
 }
 
-func (act *ActiveTrx) cleanVotes() {
+func (act *ActiveTrx) checkVotes() {
 	nowTime := time.Now().Unix()
 
 	act.roots.Range(func(key, value interface{}) bool {
 		el := value.(*Election)
-		if nowTime-el.lastTime < confirmTimeout {
+		if nowTime-el.lastTime < confirmReqInterval {
 			return true
 		} else {
-			act.roots.Delete(el.vote.id)
-			act.dps.deleteBlockCache(el.status.winner)
+			el.lastTime = nowTime
 		}
 
-		//block := el.status.winner
-		//hash := block.GetHash()
-		//
-		//if !el.confirmed {
-		//	act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
-		//	el.announcements++
-		//	if el.announcements == announcementMax {
-		//		act.roots.Delete(el.vote.id)
-		//	} else {
-		//		act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
-		//	}
-		//}
+		block := el.status.winner
+		hash := block.GetHash()
+
+		if !el.confirmed {
+			act.dps.logger.Infof("vote:resend confirmReq for block [%s]", hash)
+			el.announcements++
+			if el.announcements == confirmReqMaxTimes {
+				act.roots.Delete(el.vote.id)
+				act.dps.deleteBlockCache(el.status.winner)
+			} else {
+				act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
+			}
+		}
 
 		return true
 	})
