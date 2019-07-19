@@ -154,7 +154,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 					return
 				}
 			}
-		} else if result == process.Progress {
+		} else {
 			dps.acTrx.vote(ack)
 			dps.localRepVote(bs)
 		}

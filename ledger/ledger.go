@@ -361,11 +361,13 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
 	}
-	if err := addChild(blk, txn); err != nil {
-		return fmt.Errorf("add block child error: %s", err)
-	}
-	if err := addLink(blk, txn); err != nil {
-		return fmt.Errorf("add block link error: %s", err)
+	if b, err := l.HasBlockCache(blk.GetHash()); !b && err == nil {
+		if err := addChild(blk, txn); err != nil {
+			return fmt.Errorf("add block child error: %s", err)
+		}
+		if err := addLink(blk, txn); err != nil {
+			return fmt.Errorf("add block link error: %s", err)
+		}
 	}
 	l.releaseTxn(txn, flag)
 	l.logger.Debug("publish addRelation,", blk.GetHash())
@@ -378,11 +380,16 @@ func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 	cHash := cBlock.GetHash()
 	if !common.IsGenesisBlock(cBlock) && pHash != types.ZeroHash && !cBlock.IsOpen() {
 		// is parent block existed
-		err := txn.Get(getKeyOfHash(pHash, idPrefixBlock), func(val []byte, b byte) error {
+		err := txn.Get(getKeyOfHash(pHash, idPrefixBlockCache), func(val []byte, b byte) error {
 			return nil
 		})
 		if err != nil {
-			return fmt.Errorf("%s can not find parent %s", cHash.String(), pHash.String())
+			err := txn.Get(getKeyOfHash(pHash, idPrefixBlock), func(val []byte, b byte) error {
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("%s can not find parent %s", cHash.String(), pHash.String())
+			}
 		}
 
 		// is parent have used
@@ -473,9 +480,13 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 }
 
 func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
-	if err := l.DeleteBlockCache(hash); err != nil {
-		return fmt.Errorf("delete block cache fail(%s), hash(%s)", err, hash)
+	if b, err := l.HasBlockCache(hash); b && err == nil {
+		if err = l.DeleteBlockCache(hash); err != nil {
+			return fmt.Errorf("delete block cache fail(%s), hash(%s)", err, hash)
+		}
+		return nil
 	}
+
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 
@@ -2277,9 +2288,19 @@ func (l *Ledger) AddBlockCache(blk *types.StateBlock, txns ...db.StoreTxn) error
 
 	blockBytes, err := blk.Serialize()
 	if err != nil {
+		return fmt.Errorf("serialize block error: %s", err)
+	}
+	if err := txn.Set(key, blockBytes); err != nil {
 		return err
 	}
-	return txn.Set(key, blockBytes)
+	if err := addChild(blk, txn); err != nil {
+		return fmt.Errorf("add block child error: %s", err)
+	}
+	if err := addLink(blk, txn); err != nil {
+		return fmt.Errorf("add block link error: %s", err)
+	}
+	l.releaseTxn(txn, flag)
+	return nil
 }
 
 func (l *Ledger) GetBlockCache(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
@@ -2324,9 +2345,29 @@ func (l *Ledger) HasBlockCache(hash types.Hash, txns ...db.StoreTxn) (bool, erro
 func (l *Ledger) DeleteBlockCache(hash types.Hash, txns ...db.StoreTxn) error {
 	key := getKeyOfHash(hash, idPrefixBlockCache)
 	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
-	return txn.Delete(key)
+	blk := new(types.StateBlock)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		if err := blk.Deserialize(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil && err != ErrBlockNotFound {
+		return err
+	}
+
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+	if err := l.deleteChild(blk, txn); err != nil {
+		return fmt.Errorf("delete child error: %s", err)
+	}
+	if err := l.deleteLink(blk, txn); err != nil {
+		return fmt.Errorf("delete link error: %s", err)
+	}
+	l.releaseTxn(txn, flag)
+	return nil
 }
 
 func (l *Ledger) CountBlockCache(txns ...db.StoreTxn) (uint64, error) {
