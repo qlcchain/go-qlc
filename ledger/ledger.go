@@ -2274,7 +2274,6 @@ func (l *Ledger) GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, 
 func (l *Ledger) AddBlockCache(blk *types.StateBlock, txns ...db.StoreTxn) error {
 	key := getKeyOfHash(blk.GetHash(), idPrefixBlockCache)
 	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	//never overwrite implicitly
 	err := txn.Get(key, func(bytes []byte, b byte) error {
