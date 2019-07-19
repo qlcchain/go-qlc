@@ -10,6 +10,7 @@ package process
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -396,8 +397,12 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 				return Other, fmt.Errorf("can not generate receive block")
 			}
 		} else {
-			lv.logger.Error("DoReceive error", e)
-			return Other, e
+			if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
+				return GapTokenInfo, nil
+			} else {
+				lv.logger.Error("DoReceive error ", e)
+				return Other, e
+			}
 		}
 	} else {
 		//call vm.Run();

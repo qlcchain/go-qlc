@@ -92,6 +92,7 @@ const (
 	idPrefixLink
 	idPrefixBlockCache //block store this table before consensus complete
 	idPrefixRepresentationCache
+	idPrefixUncheckedTokenInfo
 )
 
 var (
@@ -713,6 +714,8 @@ func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
 		return idPrefixUncheckedBlockPrevious
 	case types.UncheckedKindLink:
 		return idPrefixUncheckedBlockLink
+	case types.UncheckedKindTokenInfo:
+		return idPrefixUncheckedTokenInfo
 	default:
 		panic("bad unchecked block kind")
 	}
@@ -1057,7 +1060,7 @@ func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMe
 		if token.Type == meta.Type {
 			am.Tokens = append(tokens[:index], tokens[index+1:]...)
 			am.Tokens = append(am.Tokens, meta)
-			return l.UpdateAccountMeta(am)
+			return l.UpdateAccountMeta(am, txns...)
 		}
 	}
 

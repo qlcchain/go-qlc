@@ -28,6 +28,7 @@ const (
 	GapSource
 	GapSmartContract
 	GapTransaction
+	GapTokenInfo
 	BalanceMismatch
 	UnReceivable
 	InvalidData
@@ -68,6 +69,8 @@ func (r ProcessResult) String() string {
 		return "GapSmartContract"
 	case GapTransaction:
 		return "GapTransaction"
+	case GapTokenInfo:
+		return "GapTokenInfo"
 	case BalanceMismatch:
 		return "BalanceMismatch"
 	case UnReceivable:

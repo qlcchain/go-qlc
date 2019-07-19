@@ -12,6 +12,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
 type Processor struct {
@@ -216,6 +217,9 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 	case process.GapSource:
 		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link.String())
 		p.enqueueUnchecked(result, bs)
+	case process.GapTokenInfo:
+		dps.logger.Infof("block:[%s] Gap tokenInfo", hash)
+		p.enqueueUnchecked(result, bs)
 	}
 }
 
@@ -369,8 +373,23 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 		if err != nil && err != ledger.ErrUncheckedBlockExists {
 			dps.logger.Errorf("add unchecked block to ledger err %s", err)
 		}
-	} else {
+	} else if result == process.GapSource {
 		err := dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)
+		if err != nil && err != ledger.ErrUncheckedBlockExists {
+			dps.logger.Errorf("add unchecked block to ledger err %s", err)
+		}
+	} else {
+		input, err := dps.ledger.GetStateBlock(bs.Block.GetLink())
+		if err != nil {
+			dps.logger.Errorf("get contract send block err %s", err)
+
+		}
+		tokenId := new(types.Hash)
+		err = cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.GetData())
+		if err != nil {
+			dps.logger.Errorf("get token info err %s", err)
+		}
+		err = dps.ledger.AddUncheckedBlock(*tokenId, blk, types.UncheckedKindTokenInfo, bs.BlockFrom)
 		if err != nil && err != ledger.ErrUncheckedBlockExists {
 			dps.logger.Errorf("add unchecked block to ledger err %s", err)
 		}
@@ -435,6 +454,34 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
 			if err != nil {
 				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+			}
+		}
+	}
+
+	blk, err := dps.ledger.GetStateBlock(hash)
+	if err != nil {
+		dps.logger.Errorf("dequeue get block error [%s]", hash)
+	}
+	if blk.GetType() == types.ContractReward {
+		address := types.Address(blk.GetLink())
+		if address == types.MintageAddress {
+			param := new(cabi.ParamMintage)
+			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, blk.GetData()); err == nil {
+				if blkToken, bf, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
+					if dps.getProcessorIndex(blkToken.Address) == p.index {
+						dps.logger.Debugf("dequeue gap token info[%s] block[%s]", param.TokenId, blkToken.GetHash())
+						bs := &consensus.BlockSource{
+							Block:     blkToken,
+							BlockFrom: bf,
+						}
+
+						p.processUncheckedBlock(bs)
+						err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
+						if err != nil {
+							dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+						}
+					}
+				}
 			}
 		}
 	}

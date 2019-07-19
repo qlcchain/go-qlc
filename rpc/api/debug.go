@@ -68,7 +68,7 @@ func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
 	return r, nil
 }
 
-func (l *DebugApi) GetRepresentationsCache(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
+func (l *DebugApi) GetRepresentations(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
 	r := make(map[types.Address]map[string]*types.Benefit)
 	if address == nil {
 		err := l.ledger.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
