@@ -14,7 +14,7 @@ var (
 
 	PovChainBlockInterval = 60
 	PovChainTargetCycle   = 20
-	PovChainBlockSize     = 1 * 1024 * 1024
+	PovChainBlockSize     = 2 * 1024 * 1024
 
 	PovChainRetargetTimespan    = PovChainBlockInterval * PovChainTargetCycle
 	PovChainMinRetargetTimespan = PovChainRetargetTimespan / 4
