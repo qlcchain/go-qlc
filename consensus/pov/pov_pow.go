@@ -6,7 +6,9 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"math/big"
 	"sync"
+	"time"
 )
 
 type ConsensusPow struct {
@@ -39,6 +41,19 @@ func (c *ConsensusPow) Start() error {
 }
 
 func (c *ConsensusPow) Stop() error {
+	return nil
+}
+
+func (c *ConsensusPow) PrepareHeader(header *types.PovHeader) error {
+	target, err := c.calcNextRequiredTarget(header)
+	if err != nil {
+		return err
+	}
+	header.Target = target
+	return nil
+}
+
+func (c *ConsensusPow) FinalizeHeader(header *types.PovHeader) error {
 	return nil
 }
 
@@ -103,7 +118,7 @@ func (c *ConsensusPow) verifyTarget(header *types.PovHeader) error {
 		return errors.New("failed to get previous header")
 	}
 
-	expectedTarget, err := c.chainR.CalcNextRequiredTarget(prevHeader)
+	expectedTarget, err := c.calcNextRequiredTarget(prevHeader)
 	if err != nil {
 		return err
 	}
@@ -198,4 +213,49 @@ func (c *ConsensusPow) mineWorker(id int, gap uint64, header *types.PovHeader, c
 
 	c.logger.Debugf("mine worker %d exhaust nonce", id)
 	localCh <- nil
+}
+
+func (c *ConsensusPow) calcNextRequiredTarget(header *types.PovHeader) (types.Signature, error) {
+	if (header.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
+		return header.Target, nil
+	}
+
+	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
+
+	distance := uint64(common.PovChainTargetCycle - 1)
+	firstHeader := c.chainR.RelativeAncestor(header, distance)
+	if firstHeader == nil {
+		c.logger.Errorf("failed to get relative ancestor at height %d distance %d", header.GetHeight(), distance)
+		return types.ZeroSignature, ErrPovUnknownAncestor
+	}
+
+	targetTimeSpan := int64(common.PovChainRetargetTimespan)
+	minRetargetTimespan := int64(common.PovChainMinRetargetTimespan)
+	maxRetargetTimespan := int64(common.PovChainMaxRetargetTimespan)
+
+	actualTimespan := header.Timestamp - firstHeader.Timestamp
+	if actualTimespan < minRetargetTimespan {
+		actualTimespan = minRetargetTimespan
+	} else if actualTimespan > maxRetargetTimespan {
+		actualTimespan = maxRetargetTimespan
+	}
+
+	oldTargetInt := header.Target.ToBigInt()
+	nextTargetInt := new(big.Int).Set(oldTargetInt)
+	nextTargetInt.Mul(oldTargetInt, big.NewInt(actualTimespan))
+	nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
+
+	var nextTarget types.Signature
+	err := nextTarget.FromBigInt(nextTargetInt)
+	if err != nil {
+		return types.ZeroSignature, err
+	}
+
+	c.logger.Infof("Difficulty retarget at block height %d", header.GetHeight()+1)
+	c.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
+	c.logger.Infof("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
+	c.logger.Infof("Actual timespan %v, target timespan %v",
+		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
+
+	return nextTarget, nil
 }

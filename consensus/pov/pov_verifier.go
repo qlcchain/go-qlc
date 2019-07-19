@@ -77,7 +77,6 @@ func (pvs *PovVerifyStat) getPrevStateTrie(pv *PovVerifier, prevHash types.Hash)
 
 type PovVerifierChainReader interface {
 	GetHeaderByHash(hash types.Hash) *types.PovHeader
-	CalcNextRequiredTarget(header *types.PovHeader) (types.Signature, error)
 	CalcPastMedianTime(prevHeader *types.PovHeader) int64
 	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie

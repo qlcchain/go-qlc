@@ -3,13 +3,6 @@ package pov
 import (
 	"errors"
 	"fmt"
-	"math/big"
-	"math/rand"
-	"sort"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -19,6 +12,11 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
+	"math/big"
+	"math/rand"
+	"sort"
+	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -888,51 +886,6 @@ func (bc *PovBlockChain) FindAncestor(header *types.PovHeader, height uint64) *t
 
 func (bc *PovBlockChain) RelativeAncestor(header *types.PovHeader, distance uint64) *types.PovHeader {
 	return bc.FindAncestor(header, header.GetHeight()-distance)
-}
-
-func (bc *PovBlockChain) CalcNextRequiredTarget(header *types.PovHeader) (types.Signature, error) {
-	if (header.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
-		return header.Target, nil
-	}
-
-	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
-
-	distance := uint64(common.PovChainTargetCycle - 1)
-	firstBlock := bc.RelativeAncestor(header, distance)
-	if firstBlock == nil {
-		bc.logger.Errorf("failed to get relative ancestor at height %d distance %d", header.GetHeight(), distance)
-		return types.ZeroSignature, ErrPovUnknownAncestor
-	}
-
-	targetTimeSpan := int64(common.PovChainRetargetTimespan)
-	minRetargetTimespan := int64(common.PovChainMinRetargetTimespan)
-	maxRetargetTimespan := int64(common.PovChainMaxRetargetTimespan)
-
-	actualTimespan := header.Timestamp - firstBlock.Timestamp
-	if actualTimespan < minRetargetTimespan {
-		actualTimespan = minRetargetTimespan
-	} else if actualTimespan > maxRetargetTimespan {
-		actualTimespan = maxRetargetTimespan
-	}
-
-	oldTargetInt := header.Target.ToBigInt()
-	nextTargetInt := new(big.Int).Set(oldTargetInt)
-	nextTargetInt.Mul(oldTargetInt, big.NewInt(actualTimespan))
-	nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
-
-	var nextTarget types.Signature
-	err := nextTarget.FromBigInt(nextTargetInt)
-	if err != nil {
-		return types.ZeroSignature, err
-	}
-
-	bc.logger.Infof("Difficulty retarget at block height %d", header.GetHeight()+1)
-	bc.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
-	bc.logger.Infof("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
-	bc.logger.Infof("Actual timespan %v, target timespan %v",
-		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
-
-	return nextTarget, nil
 }
 
 // CalcTotalDifficulty calculates a total difficulty from target. PoV increases

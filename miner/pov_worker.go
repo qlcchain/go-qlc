@@ -165,25 +165,21 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 
 	w.logger.Debugf("try to generate block after latest %d/%s", latestHeader.GetHeight(), latestHeader.GetPrevious())
 
-	target, err := w.GetChain().CalcNextRequiredTarget(latestHeader)
-	if err != nil {
-		return nil
-	}
-
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
 	current := &types.PovBlock{
 		Previous:  latestHeader.GetHash(),
 		Height:    latestHeader.GetHeight() + 1,
-		Target:    target,
 		Timestamp: time.Now().Unix(),
 	}
 
 	prevStateHash := latestHeader.GetStateHash()
 	prevStateTrie := w.GetChain().GetStateTrie(&prevStateHash)
 	if prevStateTrie == nil {
-		w.logger.Errorf("failed to get prev state trie, err %s", prevStateHash, err)
+		w.logger.Errorf("failed to get prev state trie", prevStateHash)
+		return nil
+	}
+
+	err := w.GetPovConsensus().PrepareHeader(latestHeader)
+	if err != nil {
 		return nil
 	}
 
@@ -215,6 +211,9 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 		return nil
 	}
 	current.StateHash = *stateTrie.Hash()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
 	if w.solveBlock(current, ticker, w.quitCh) {
 		w.submitBlock(current)

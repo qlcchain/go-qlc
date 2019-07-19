@@ -12,7 +12,7 @@ const (
 
 type PovConsensusChainReader interface {
 	GetHeaderByHash(hash types.Hash) *types.PovHeader
-	CalcNextRequiredTarget(header *types.PovHeader) (types.Signature, error)
+	RelativeAncestor(header *types.PovHeader, distance uint64) *types.PovHeader
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
 }
@@ -22,6 +22,8 @@ type ConsensusPov interface {
 	Start() error
 	Stop() error
 
+	PrepareHeader(header *types.PovHeader) error
+	FinalizeHeader(header *types.PovHeader) error
 	VerifyHeader(header *types.PovHeader) error
 	SealHeader(header *types.PovHeader, cbAccount *types.Account, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error
 }
