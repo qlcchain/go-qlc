@@ -170,6 +170,7 @@ func (act *ActiveTrx) cleanVotes() {
 
 func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	hash := block.GetHash()
+	act.dps.logger.Debugf("block [%s] acked", hash)
 
 	if exist, err := act.dps.ledger.HasStateBlock(hash); !exist && err == nil {
 		err := act.dps.lv.BlockProcess(block)
@@ -198,7 +199,7 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 			if err != nil {
 				act.dps.logger.Errorf("error [%s] when rollback hash [%s]", err, hash.String())
 			}
-			act.dps.rollbackUncheckedFromDb(hash)
+			act.dps.rollbackUnchecked(hash)
 		}
 	}
 }
