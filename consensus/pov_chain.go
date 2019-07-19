@@ -852,7 +852,7 @@ func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Si
 		return types.ZeroSignature, ErrPovUnknownAncestor
 	}
 
-	targetTimeSpan := int64(common.PovChainTargetCycle * common.PovChainBlockInterval)
+	targetTimeSpan := int64(common.PovChainRetargetTimespan)
 	minRetargetTimespan := targetTimeSpan / 4
 	maxRetargetTimespan := targetTimeSpan * 4
 

@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -15,30 +16,132 @@ import (
 )
 
 type MinerApi struct {
-	logger    *zap.SugaredLogger
-	ledger    *ledger.Ledger
-	vmContext *vmstore.VMContext
-	reward    *contract.MinerReward
+	cfg    *config.Config
+	logger *zap.SugaredLogger
+	ledger *ledger.Ledger
+	reward *contract.MinerReward
 }
 
 type RewardParam struct {
-	Coinbase   types.Address `json:"coinbase"`
-	Beneficial types.Address `json:"beneficial"`
+	Coinbase     types.Address `json:"coinbase"`
+	Beneficial   types.Address `json:"beneficial"`
+	StartHeight  uint64        `json:"startHeight"`
+	EndHeight    uint64        `json:"endHeight"`
+	RewardBlocks uint64        `json:"rewardBlocks"`
 }
 
-func NewMinerApi(ledger *ledger.Ledger) *MinerApi {
+type MinerAvailRewardInfo struct {
+	LastBeneficial   string `json:"lastBeneficial"`
+	LastStartHeight  uint64 `json:"lastStartHeight"`
+	LastEndHeight    uint64 `json:"lastEndHeight"`
+	LastRewardBlocks uint64 `json:"lastRewardBlocks"`
+
+	LatestBlockHeight uint64 `json:"latestBlockHeight"`
+	NodeRewardHeight  uint64 `json:"nodeRewardHeight"`
+	AvailStartHeight  uint64 `json:"availStartHeight"`
+	AvailEndHeight    uint64 `json:"availEndHeight"`
+	AvailRewardBlocks uint64 `json:"availRewardBlocks"`
+	NeedCallReward    bool   `json:"needCallReward"`
+}
+
+type MinerHistoryRewardInfo struct {
+	RewardInfos       []*cabi.MinerRewardInfo `json:"rewardInfos"`
+	FirstRewardHeight uint64                  `json:"firstRewardHeight"`
+	LastRewardHeight  uint64                  `json:"lastRewardHeight"`
+	AllRewardBlocks   uint64                  `json:"allRewardBlocks"`
+	AllRewardAmount   types.Balance           `json:"allRewardAmount"`
+}
+
+func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
 	return &MinerApi{
-		logger:    log.NewLogger("api_miner"),
-		ledger:    ledger,
-		vmContext: vmstore.NewVMContext(ledger),
-		reward:    &contract.MinerReward{}}
+		cfg:    cfg,
+		logger: log.NewLogger("api_miner"),
+		ledger: ledger,
+		reward: &contract.MinerReward{}}
 }
 
 func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
-	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial)
+	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks)
+}
+
+func (m *MinerApi) GetHistoryRewardInfos(coinbase types.Address) (*MinerHistoryRewardInfo, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
+	vmContext := vmstore.NewVMContext(m.ledger)
+	rewardInfos, err := m.reward.GetAllRewardInfos(vmContext, coinbase)
+	if err != nil {
+		return nil, err
+	}
+
+	apiRsp := new(MinerHistoryRewardInfo)
+	apiRsp.RewardInfos = rewardInfos
+
+	if len(rewardInfos) > 0 {
+		apiRsp.FirstRewardHeight = rewardInfos[0].StartHeight
+		apiRsp.LastRewardHeight = rewardInfos[len(rewardInfos)-1].EndHeight
+
+		for _, rewardInfo := range rewardInfos {
+			apiRsp.AllRewardBlocks += rewardInfo.RewardBlocks
+		}
+		apiRsp.AllRewardAmount = common.PovMinerRewardPerBlockBalance.Mul(int64(apiRsp.AllRewardBlocks))
+	}
+
+	return apiRsp, nil
+}
+
+func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailRewardInfo, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
+	rsp := new(MinerAvailRewardInfo)
+
+	latestPovHeader, err := m.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
+
+	vmContext := vmstore.NewVMContext(m.ledger)
+	lastRewardInfo, err := m.reward.GetMaxRewardInfo(vmContext, coinbase)
+	if err != nil {
+		return nil, err
+	}
+
+	rsp.LastStartHeight = lastRewardInfo.StartHeight
+	rsp.LastEndHeight = lastRewardInfo.EndHeight
+	rsp.LastRewardBlocks = lastRewardInfo.RewardBlocks
+	if !lastRewardInfo.Beneficial.IsZero() {
+		rsp.LastBeneficial = lastRewardInfo.Beneficial.String()
+	}
+
+	rsp.NodeRewardHeight, err = m.reward.GetNodeRewardHeight(vmContext)
+	if err != nil {
+		return nil, err
+	}
+
+	availInfo, err := m.reward.GetAvailRewardInfo(vmContext, coinbase)
+	if err != nil {
+		return nil, err
+	}
+	rsp.AvailStartHeight = availInfo.StartHeight
+	rsp.AvailEndHeight = availInfo.EndHeight
+	rsp.AvailRewardBlocks = availInfo.RewardBlocks
+
+	if rsp.AvailStartHeight > rsp.LastEndHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight {
+		rsp.NeedCallReward = true
+	}
+
+	return rsp, nil
 }
 
 func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
 	if param.Coinbase.IsZero() {
 		return nil, errors.New("invalid reward param coinbase")
 	}
@@ -66,6 +169,11 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		return nil, err
 	}
 
+	latestPovHeader, err := m.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
 	send := &types.StateBlock{
 		Type:    types.ContractSend,
 		Token:   common.ChainToken(),
@@ -83,9 +191,12 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		Link:      types.Hash(types.MinerAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().UTC().Unix(),
+
+		PoVHeight: latestPovHeader.GetHeight(),
 	}
 
-	err = m.reward.DoSend(m.vmContext, send)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	err = m.reward.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +205,21 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 }
 
 func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
+	if input.GetType() != types.ContractSend {
+		return nil, errors.New("input block type is not contract send")
+	}
+	if input.GetLink() != types.MinerAddress.ToHash() {
+		return nil, errors.New("input address is not contract miner")
+	}
+
 	reward := &types.StateBlock{}
 
-	blocks, err := m.reward.DoReceive(m.vmContext, reward, input)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	blocks, err := m.reward.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
 	}
@@ -108,4 +231,17 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 	}
 
 	return nil, errors.New("can not generate reward recv block")
+}
+
+func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+	if !m.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
+	input, err := m.ledger.GetStateBlock(sendHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.GetRewardRecvBlock(input)
 }

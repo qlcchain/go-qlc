@@ -119,5 +119,6 @@ func addcommands() {
 	withdrawMintage()
 	generateTestPair()
 	minerReward()
+	minerRecvPend()
 	change()
 }

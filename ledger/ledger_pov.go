@@ -740,6 +740,28 @@ func (l *Ledger) GetPovHeaderByHash(hash types.Hash, txns ...db.StoreTxn) (*type
 	return l.GetPovHeader(height, hash, txns...)
 }
 
+func (l *Ledger) GetAllPovHeaders(fn func(header *types.PovHeader) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixPovHeader, func(key []byte, val []byte, b byte) error {
+		header := new(types.PovHeader)
+		if err := header.Deserialize(val); err != nil {
+			return err
+		}
+		if err := fn(header); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (l *Ledger) GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -761,6 +783,29 @@ func (l *Ledger) GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.Stor
 		}
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) GetAllPovBestHeaders(fn func(header *types.PovHeader) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := l.GetAllPovBestHashes(func(height uint64, hash types.Hash) error {
+		header, err := l.GetPovHeader(height, hash)
+		if err != nil {
+			return err
+		}
+
+		if err := fn(header); err != nil {
+			return err
+		}
+
+		return nil
+	}, txn)
 
 	if err != nil {
 		return err

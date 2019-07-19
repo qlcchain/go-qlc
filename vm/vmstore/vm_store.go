@@ -59,6 +59,10 @@ func NewVMContext(l *ledger.Ledger) *VMContext {
 	}
 }
 
+func (v *VMContext) GetLogger() *zap.SugaredLogger {
+	return v.logger
+}
+
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
 	if _, err := v.ledger.HasAccountMeta(address); err == nil {
 		return true, nil
@@ -205,8 +209,16 @@ func (v *VMContext) GetTokenMeta(address types.Address, token types.Hash) (*type
 	return v.ledger.GetTokenMeta(address, token)
 }
 
+func (v *VMContext) GetRepresentation(address types.Address) (*types.Benefit, error) {
+	return v.ledger.GetRepresentation(address)
+}
+
 func (v *VMContext) GetStateBlock(hash types.Hash) (*types.StateBlock, error) {
 	return v.ledger.GetStateBlock(hash)
+}
+
+func (v *VMContext) GetPovHeaderByHeight(height uint64) (*types.PovHeader, error) {
+	return v.ledger.GetPovHeaderByHeight(height)
 }
 
 func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) {
