@@ -117,7 +117,7 @@ func minerRecvPendAction(accountP, sendHashP string) error {
 		return err
 	}
 
-	fmt.Println("success to recv miner reward, please check account balance")
+	fmt.Printf("success to recv reward, account balance %s\n", reward.Balance)
 
 	return nil
 }
