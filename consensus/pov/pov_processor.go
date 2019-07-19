@@ -511,7 +511,7 @@ func (bp *PovBlockProcessor) onCheckOrphanBlocksTimer() {
 	bp.povEngine.GetSyncer().requestBlocksByHashes(reqOrphanRoots, "")
 }
 
-func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {
+func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *PovVerifyStat) {
 	bp.txPendingMux.Lock()
 	defer bp.txPendingMux.Unlock()
 

@@ -104,6 +104,7 @@ type PovBlockChain struct {
 	hashHeaderCache   gcache.Cache // hash => header
 	heightHeaderCache gcache.Cache // height => best header
 
+	trieCache    gcache.Cache // stateHash => trie
 	trieNodePool *trie.NodePool
 
 	wg sync.WaitGroup
@@ -115,12 +116,14 @@ func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
 		logger:    log.NewLogger("pov_chain"),
 	}
 
-	chain.hashBlockCache = gcache.New(blockCacheLimit).Build()
-	chain.heightBlockCache = gcache.New(blockCacheLimit).Build()
-	chain.hashTdCache = gcache.New(blockCacheLimit).Build()
+	chain.hashBlockCache = gcache.New(blockCacheLimit).LRU().Build()
+	chain.heightBlockCache = gcache.New(blockCacheLimit).LRU().Build()
+	chain.hashTdCache = gcache.New(blockCacheLimit).LRU().Build()
 
-	chain.hashHeaderCache = gcache.New(headerCacheLimit).Build()
-	chain.heightHeaderCache = gcache.New(headerCacheLimit).Build()
+	chain.hashHeaderCache = gcache.New(headerCacheLimit).LRU().Build()
+	chain.heightHeaderCache = gcache.New(headerCacheLimit).LRU().Build()
+
+	chain.trieCache = gcache.New(128).LRU().Build()
 
 	return chain
 }

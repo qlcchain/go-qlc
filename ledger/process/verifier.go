@@ -35,6 +35,7 @@ const (
 	InvalidTxNum
 	InvalidHeight
 	InvalidTxOrder
+	BadConsensus
 	Other
 )
 
@@ -82,6 +83,8 @@ func (r ProcessResult) String() string {
 		return "InvalidHeight"
 	case InvalidTxOrder:
 		return "InvalidTxOrder"
+	case BadConsensus:
+		return "BadConsensus"
 	default:
 		return "<invalid>"
 	}

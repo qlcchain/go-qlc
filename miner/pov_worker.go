@@ -89,6 +89,10 @@ func (w *PovWorker) GetChain() *pov.PovBlockChain {
 	return w.miner.GetPovEngine().GetChain()
 }
 
+func (w *PovWorker) GetPovConsensus() pov.ConsensusPov {
+	return w.miner.GetPovEngine().GetConsensus()
+}
+
 func (w *PovWorker) GetCoinbaseAccount() *types.Account {
 	accounts := w.miner.GetPovEngine().GetAccounts()
 	for _, account := range accounts {
@@ -159,6 +163,8 @@ func (w *PovWorker) checkValidMiner() bool {
 func (w *PovWorker) genNextBlock() *types.PovBlock {
 	latestHeader := w.GetChain().LatestHeader()
 
+	w.logger.Debugf("try to generate block after latest %d/%s", latestHeader.GetHeight(), latestHeader.GetPrevious())
+
 	target, err := w.GetChain().CalcNextRequiredTarget(latestHeader)
 	if err != nil {
 		return nil
@@ -220,45 +226,51 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 
 func (w *PovWorker) solveBlock(block *types.PovBlock, ticker *time.Ticker, quitCh chan struct{}) bool {
 	cbAccount := w.GetCoinbaseAccount()
-	targetInt := block.Target.ToBigInt()
 
 	block.Coinbase = cbAccount.Address()
 
 	loopBeginTime := time.Now()
 	lastTxUpdateBegin := w.GetTxPool().LastUpdated()
 
+	header := block.GetHeader()
+
+	sealResultCh := make(chan *types.PovHeader)
+	sealQuitCh := make(chan struct{})
+
+	err := w.GetPovConsensus().SealHeader(header, cbAccount, sealQuitCh, sealResultCh)
+	if err != nil {
+		return false
+	}
+
 	foundNonce := false
-	for nonce := uint64(0); nonce < maxNonce; nonce++ {
+Loop:
+	for {
 		select {
 		case <-w.quitCh:
-			return false
+			break Loop
+
+		case resultHeader := <-sealResultCh:
+			if resultHeader != nil {
+				foundNonce = true
+				block.Nonce = resultHeader.Nonce
+				block.VoteSignature = resultHeader.VoteSignature
+			}
+			break Loop
 
 		case <-ticker.C:
 			latestBlock := w.GetChain().LatestBlock()
 			if latestBlock.Hash != block.GetPrevious() {
-				return false
+				break Loop
 			}
 
 			lastTxUpdateNow := w.GetTxPool().LastUpdated()
 			if lastTxUpdateBegin != lastTxUpdateNow && time.Now().After(loopBeginTime.Add(time.Minute)) {
-				return false
+				break Loop
 			}
-
-		default:
-			//Non-blocking select to fall through
-		}
-
-		block.Nonce = nonce
-
-		voteHash := block.ComputeVoteHash()
-		voteSignature := cbAccount.Sign(voteHash)
-		voteSigInt := voteSignature.ToBigInt()
-		if voteSigInt.Cmp(targetInt) <= 0 {
-			foundNonce = true
-			block.VoteSignature = voteSignature
-			break
 		}
 	}
+
+	close(sealQuitCh)
 
 	if !foundNonce {
 		return false

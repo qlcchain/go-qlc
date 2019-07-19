@@ -9,15 +9,22 @@ import (
 	"github.com/qlcchain/go-qlc/trie"
 )
 
-type PovState struct {
-}
-
 func (bc *PovBlockChain) TrieDb() db.Store {
 	return bc.getLedger().DBStore()
 }
 
 func (bc *PovBlockChain) GetStateTrie(stateHash *types.Hash) *trie.Trie {
-	return trie.NewTrie(bc.TrieDb(), stateHash, bc.trieNodePool)
+	if stateHash != nil {
+		v, _ := bc.trieCache.Get(*stateHash)
+		if v != nil {
+			return v.(*trie.Trie)
+		}
+	}
+	t := trie.NewTrie(bc.TrieDb(), stateHash, bc.trieNodePool)
+	if stateHash != nil {
+		_ = bc.trieCache.Set(*stateHash, t)
+	}
+	return t
 }
 
 func (bc *PovBlockChain) NewStateTrie() *trie.Trie {
