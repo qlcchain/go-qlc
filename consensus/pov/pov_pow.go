@@ -2,6 +2,7 @@ package pov
 
 import (
 	"errors"
+	"fmt"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
@@ -45,10 +46,16 @@ func (c *ConsensusPow) Stop() error {
 }
 
 func (c *ConsensusPow) PrepareHeader(header *types.PovHeader) error {
-	target, err := c.calcNextRequiredTarget(header)
+	prevHeader := c.chainR.GetHeaderByHash(header.GetPrevious())
+	if prevHeader == nil {
+		return fmt.Errorf("failed to get previous header %s", header.GetPrevious())
+	}
+
+	target, err := c.calcNextRequiredTarget(prevHeader)
 	if err != nil {
 		return err
 	}
+
 	header.Target = target
 	return nil
 }
@@ -215,17 +222,17 @@ func (c *ConsensusPow) mineWorker(id int, gap uint64, header *types.PovHeader, c
 	localCh <- nil
 }
 
-func (c *ConsensusPow) calcNextRequiredTarget(header *types.PovHeader) (types.Signature, error) {
-	if (header.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
-		return header.Target, nil
+func (c *ConsensusPow) calcNextRequiredTarget(prevHeader *types.PovHeader) (types.Signature, error) {
+	if (prevHeader.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
+		return prevHeader.Target, nil
 	}
 
 	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
 
 	distance := uint64(common.PovChainTargetCycle - 1)
-	firstHeader := c.chainR.RelativeAncestor(header, distance)
+	firstHeader := c.chainR.RelativeAncestor(prevHeader, distance)
 	if firstHeader == nil {
-		c.logger.Errorf("failed to get relative ancestor at height %d distance %d", header.GetHeight(), distance)
+		c.logger.Errorf("failed to get relative ancestor at height %d distance %d", prevHeader.GetHeight(), distance)
 		return types.ZeroSignature, ErrPovUnknownAncestor
 	}
 
@@ -233,14 +240,14 @@ func (c *ConsensusPow) calcNextRequiredTarget(header *types.PovHeader) (types.Si
 	minRetargetTimespan := int64(common.PovChainMinRetargetTimespan)
 	maxRetargetTimespan := int64(common.PovChainMaxRetargetTimespan)
 
-	actualTimespan := header.Timestamp - firstHeader.Timestamp
+	actualTimespan := prevHeader.Timestamp - firstHeader.Timestamp
 	if actualTimespan < minRetargetTimespan {
 		actualTimespan = minRetargetTimespan
 	} else if actualTimespan > maxRetargetTimespan {
 		actualTimespan = maxRetargetTimespan
 	}
 
-	oldTargetInt := header.Target.ToBigInt()
+	oldTargetInt := prevHeader.Target.ToBigInt()
 	nextTargetInt := new(big.Int).Set(oldTargetInt)
 	nextTargetInt.Mul(oldTargetInt, big.NewInt(actualTimespan))
 	nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
@@ -251,7 +258,7 @@ func (c *ConsensusPow) calcNextRequiredTarget(header *types.PovHeader) (types.Si
 		return types.ZeroSignature, err
 	}
 
-	c.logger.Infof("Difficulty retarget at block height %d", header.GetHeight()+1)
+	c.logger.Infof("Difficulty retarget at block height %d", prevHeader.GetHeight()+1)
 	c.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
 	c.logger.Infof("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
 	c.logger.Infof("Actual timespan %v, target timespan %v",

@@ -26,6 +26,12 @@ type PovWorker struct {
 	quitCh chan struct{}
 }
 
+type PovMineBlock struct {
+	Header *types.PovHeader
+	Body   *types.PovBody
+	Block  *types.PovBlock
+}
+
 func NewPovWorker(miner *Miner) *PovWorker {
 	worker := &PovWorker{
 		miner:  miner,
@@ -160,26 +166,23 @@ func (w *PovWorker) checkValidMiner() bool {
 	return true
 }
 
-func (w *PovWorker) genNextBlock() *types.PovBlock {
+func (w *PovWorker) genNextBlock() *PovMineBlock {
 	latestHeader := w.GetChain().LatestHeader()
 
 	w.logger.Debugf("try to generate block after latest %d/%s", latestHeader.GetHeight(), latestHeader.GetPrevious())
 
-	current := &types.PovBlock{
+	mineBlock := &PovMineBlock{}
+	mineBlock.Header = &types.PovHeader{
 		Previous:  latestHeader.GetHash(),
 		Height:    latestHeader.GetHeight() + 1,
 		Timestamp: time.Now().Unix(),
 	}
+	mineBlock.Body = &types.PovBody{}
 
 	prevStateHash := latestHeader.GetStateHash()
 	prevStateTrie := w.GetChain().GetStateTrie(&prevStateHash)
 	if prevStateTrie == nil {
 		w.logger.Errorf("failed to get prev state trie", prevStateHash)
-		return nil
-	}
-
-	err := w.GetPovConsensus().PrepareHeader(latestHeader)
-	if err != nil {
 		return nil
 	}
 
@@ -194,14 +197,20 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 			Block: accBlock,
 		}
 		mklTxHashList = append(mklTxHashList, &txPov.Hash)
-		current.Transactions = append(current.Transactions, txPov)
+		mineBlock.Body.Transactions = append(mineBlock.Body.Transactions, txPov)
 	}
-	current.TxNum = uint32(len(current.Transactions))
+	mineBlock.Header.TxNum = uint32(len(mineBlock.Body.Transactions))
 
 	mklHash := merkle.CalcMerkleTreeRootHash(mklTxHashList)
-	current.MerkleRoot = mklHash
+	mineBlock.Header.MerkleRoot = mklHash
 
-	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, current.Transactions)
+	err := w.GetPovConsensus().PrepareHeader(mineBlock.Header)
+	if err != nil {
+		w.logger.Errorf("failed to prepare header, err %s", err)
+		return nil
+	}
+
+	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, mineBlock.Body.Transactions)
 	if err != nil {
 		w.logger.Errorf("failed to generate state trie, err %s", err)
 		return nil
@@ -210,34 +219,35 @@ func (w *PovWorker) genNextBlock() *types.PovBlock {
 		w.logger.Errorf("failed to generate state trie, err nil")
 		return nil
 	}
-	current.StateHash = *stateTrie.Hash()
+	mineBlock.Header.StateHash = *stateTrie.Hash()
 
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	if w.solveBlock(current, ticker, w.quitCh) {
-		w.submitBlock(current)
-		return current
+	if w.solveBlock(mineBlock, ticker, w.quitCh) {
+		w.submitBlock(mineBlock)
+		return mineBlock
 	} else {
 		return nil
 	}
 }
 
-func (w *PovWorker) solveBlock(block *types.PovBlock, ticker *time.Ticker, quitCh chan struct{}) bool {
+func (w *PovWorker) solveBlock(mineBlock *PovMineBlock, ticker *time.Ticker, quitCh chan struct{}) bool {
 	cbAccount := w.GetCoinbaseAccount()
 
-	block.Coinbase = cbAccount.Address()
+	mineBlock.Header.Coinbase = cbAccount.Address()
 
 	loopBeginTime := time.Now()
 	lastTxUpdateBegin := w.GetTxPool().LastUpdated()
 
-	header := block.GetHeader()
-
 	sealResultCh := make(chan *types.PovHeader)
 	sealQuitCh := make(chan struct{})
 
-	err := w.GetPovConsensus().SealHeader(header, cbAccount, sealQuitCh, sealResultCh)
+	//w.logger.Debugf("before seal header %+v", genBlock.Header)
+
+	err := w.GetPovConsensus().SealHeader(mineBlock.Header, cbAccount, sealQuitCh, sealResultCh)
 	if err != nil {
+		w.logger.Errorf("failed to seal header, err %s", err)
 		return false
 	}
 
@@ -251,23 +261,33 @@ Loop:
 		case resultHeader := <-sealResultCh:
 			if resultHeader != nil {
 				foundNonce = true
-				block.Nonce = resultHeader.Nonce
-				block.VoteSignature = resultHeader.VoteSignature
+				mineBlock.Header.Nonce = resultHeader.Nonce
+				mineBlock.Header.VoteSignature = resultHeader.VoteSignature
 			}
 			break Loop
 
 		case <-ticker.C:
+			tmNow := time.Now()
 			latestBlock := w.GetChain().LatestBlock()
-			if latestBlock.Hash != block.GetPrevious() {
+			if latestBlock.Hash != mineBlock.Header.GetPrevious() {
+				w.logger.Debugf("abort generate block because latest block changed")
 				break Loop
 			}
 
 			lastTxUpdateNow := w.GetTxPool().LastUpdated()
-			if lastTxUpdateBegin != lastTxUpdateNow && time.Now().After(loopBeginTime.Add(time.Minute)) {
+			if lastTxUpdateBegin != lastTxUpdateNow && tmNow.After(loopBeginTime.Add(time.Minute)) {
+				w.logger.Debugf("abort generate block because tx pool changed")
+				break Loop
+			}
+
+			if tmNow.After(loopBeginTime.Add(time.Duration(common.PovMinerMaxFindNonceTimeSec) * time.Second)) {
+				w.logger.Debugf("abort generate block because exceed max timeout")
 				break Loop
 			}
 		}
 	}
+
+	//w.logger.Debugf("after seal header %+v", genBlock.Header)
 
 	close(sealQuitCh)
 
@@ -275,18 +295,20 @@ Loop:
 		return false
 	}
 
-	block.Timestamp = time.Now().Unix()
-	block.Hash = block.ComputeHash()
-	block.Signature = cbAccount.Sign(block.Hash)
+	mineBlock.Header.Timestamp = time.Now().Unix()
+	mineBlock.Header.Hash = mineBlock.Header.ComputeHash()
+	mineBlock.Header.Signature = cbAccount.Sign(mineBlock.Header.Hash)
 
 	return true
 }
 
-func (w *PovWorker) submitBlock(block *types.PovBlock) {
-	w.logger.Infof("submit block %d/%s", block.GetHeight(), block.GetHash())
+func (w *PovWorker) submitBlock(genBlock *PovMineBlock) {
+	genBlock.Block = types.NewPovBlockWithBody(genBlock.Header, genBlock.Body)
 
-	err := w.miner.GetPovEngine().AddMinedBlock(block)
+	w.logger.Infof("submit block %d/%s", genBlock.Block.GetHeight(), genBlock.Block.GetHash())
+
+	err := w.miner.GetPovEngine().AddMinedBlock(genBlock.Block)
 	if err != nil {
-		w.logger.Infof("failed to submit block %d/%s", block.GetHeight(), block.GetHash())
+		w.logger.Infof("failed to submit block %d/%s", genBlock.Block.GetHeight(), genBlock.Block.GetHash())
 	}
 }
