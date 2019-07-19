@@ -1,13 +1,13 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
@@ -69,7 +69,9 @@ func getVoteKey(block *types.StateBlock) voteKey {
 
 	if block.IsOpen() {
 		key[0] = 1
-		copy(key[1:], block.Link[:])
+		//copy(key[1:], block.Link[:])
+		hash, _ := types.HashBytes(block.Address[:], block.Token[:])
+		copy(key[1:], hash[:])
 	} else {
 		key[0] = 0
 		copy(key[1:], block.Previous[:])
