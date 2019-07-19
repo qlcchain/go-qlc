@@ -81,16 +81,17 @@ func (p *Processor) processMsg() {
 
 func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	var result process.ProcessResult
-	var err error
 	hash := bs.Block.GetHash()
 	dps := p.dps
 
 	//local send do not need to check
 	if bs.Type != consensus.MsgGenerateBlock {
-		result, err = dps.lv.BlockCheck(bs.Block)
-		if err != nil {
-			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
-			return
+		if b, err := p.dps.ledger.HasStateBlock(hash); !b && err == nil {
+			result, err = dps.lv.BlockCheck(bs.Block)
+			if err != nil {
+				dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
+				return
+			}
 		}
 		p.processResult(result, bs)
 	}
