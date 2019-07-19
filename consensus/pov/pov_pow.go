@@ -30,6 +30,7 @@ func (c *ConsensusPow) Init() error {
 			c.mineWorkerNum = 1
 		}
 	*/
+	c.mineWorkerNum = 1
 	return nil
 }
 
