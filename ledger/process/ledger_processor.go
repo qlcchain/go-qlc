@@ -965,10 +965,10 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 			if err := lv.rollBackContractData(blockCur, txn); err != nil {
 				return fmt.Errorf("rollback contract data fail(%s), ContractSend(%s)", err, blockCur.String())
 			}
-		}
-		lv.logger.Debug("---delete ContractSend block, ", hashCur)
-		if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
-			return fmt.Errorf("delete state block fail(%s), ContractSend(%s)", err, hashCur)
+			lv.logger.Debug("---delete ContractSend block, ", hashCur)
+			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
+				return fmt.Errorf("delete state block fail(%s), ContractSend(%s)", err, hashCur)
+			}
 		}
 
 		if hashCur == hash {
