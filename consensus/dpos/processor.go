@@ -463,10 +463,14 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 		dps.logger.Errorf("dequeue get block error [%s]", hash)
 	}
 	if blk.GetType() == types.ContractReward {
-		address := types.Address(blk.GetLink())
+		input, err := dps.ledger.GetStateBlock(blk.GetLink())
+		if err != nil {
+			dps.logger.Errorf("dequeue get block link error [%s]", hash)
+		}
+		address := types.Address(input.GetLink())
 		if address == types.MintageAddress {
 			param := new(cabi.ParamMintage)
-			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, blk.GetData()); err == nil {
+			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
 				if blkToken, bf, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
 					if dps.getProcessorIndex(blkToken.Address) == p.index {
 						dps.logger.Debugf("dequeue gap token info[%s] block[%s]", param.TokenId, blkToken.GetHash())
