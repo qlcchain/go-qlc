@@ -9,6 +9,7 @@ package event
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"reflect"
 	"sync"
 
@@ -30,7 +31,7 @@ type DefaultEventBus struct {
 
 func (eb *DefaultEventBus) Close() error {
 	for k := range eb.handlers.Iter() {
-		eb.CloseTopic(k.Key.(string))
+		eb.CloseTopic(k.Key.(common.TopicType))
 	}
 	return nil
 }
@@ -95,7 +96,7 @@ func GetEventBus(id string) EventBus {
 }
 
 // doSubscribe handles the subscription logic and is utilized by the public Subscribe functions
-func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}, option *handlerOption) error {
+func (eb *DefaultEventBus) doSubscribe(topic common.TopicType, fn interface{}, option *handlerOption) error {
 	kind := reflect.TypeOf(fn).Kind()
 	if kind != reflect.Func {
 		return fmt.Errorf("%s is not of type reflect.Func", kind)
@@ -107,7 +108,7 @@ func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}, option *han
 		pool:     workerpool.New(eb.queueSize),
 	}
 
-	if value, ok := eb.handlers.GetStringKey(topic); ok {
+	if value, ok := eb.handlers.GetStringKey(string(topic)); ok {
 		list := value.(*eventHandlers)
 		list.Add(handler)
 	} else {
@@ -120,17 +121,17 @@ func (eb *DefaultEventBus) doSubscribe(topic string, fn interface{}, option *han
 
 // Subscribe subscribes to a topic.
 // Returns error if `fn` is not a function.
-func (eb *DefaultEventBus) Subscribe(topic string, fn interface{}) error {
+func (eb *DefaultEventBus) Subscribe(topic common.TopicType, fn interface{}) error {
 	return eb.doSubscribe(topic, fn, &handlerOption{isSync: false})
 }
 
-func (eb *DefaultEventBus) SubscribeSync(topic string, fn interface{}) error {
+func (eb *DefaultEventBus) SubscribeSync(topic common.TopicType, fn interface{}) error {
 	return eb.doSubscribe(topic, fn, &handlerOption{isSync: true})
 }
 
 // HasCallback returns true if exists any callback subscribed to the topic.
-func (eb *DefaultEventBus) HasCallback(topic string) bool {
-	if v, ok := eb.handlers.GetStringKey(topic); ok {
+func (eb *DefaultEventBus) HasCallback(topic common.TopicType) bool {
+	if v, ok := eb.handlers.GetStringKey(string(topic)); ok {
 		handlers := v.(*eventHandlers)
 		return handlers.Size() > 0
 	}
@@ -138,8 +139,8 @@ func (eb *DefaultEventBus) HasCallback(topic string) bool {
 }
 
 // Close unsubscribe all handlers from given topic
-func (eb *DefaultEventBus) CloseTopic(topic string) {
-	if value, ok := eb.handlers.GetStringKey(topic); ok {
+func (eb *DefaultEventBus) CloseTopic(topic common.TopicType) {
+	if value, ok := eb.handlers.GetStringKey(string(topic)); ok {
 		value.(*eventHandlers).Clear()
 		eb.handlers.Del(topic)
 	}
@@ -148,13 +149,13 @@ func (eb *DefaultEventBus) CloseTopic(topic string) {
 // Unsubscribe removes callback defined for a topic.
 // Returns error if there are no callbacks subscribed to the topic.
 //TODO: fix unsubscribe failed
-func (eb *DefaultEventBus) Unsubscribe(topic string, handler interface{}) error {
+func (eb *DefaultEventBus) Unsubscribe(topic common.TopicType, handler interface{}) error {
 	kind := reflect.TypeOf(handler).Kind()
 	if kind != reflect.Func {
 		return fmt.Errorf("%s is not of type reflect.Func", kind)
 	}
 
-	if value, ok := eb.handlers.GetStringKey(topic); ok {
+	if value, ok := eb.handlers.GetStringKey(string(topic)); ok {
 		if flag := value.(*eventHandlers).RemoveCallback(reflect.ValueOf(handler)); flag {
 			//return nil
 		}
@@ -165,12 +166,12 @@ func (eb *DefaultEventBus) Unsubscribe(topic string, handler interface{}) error 
 }
 
 // Publish executes callback defined for a topic. Any additional argument will be transferred to the callback.
-func (eb *DefaultEventBus) Publish(topic string, args ...interface{}) {
+func (eb *DefaultEventBus) Publish(topic common.TopicType, args ...interface{}) {
 	rArgs := eb.setUpPublish(topic, args...)
 	for kv := range eb.handlers.Iter() {
 		topicPattern := kv.Key.(string)
 		handlers := kv.Value.(*eventHandlers)
-		if handlers.Size() > 0 && MatchSimple(topicPattern, topic) {
+		if handlers.Size() > 0 && MatchSimple(topicPattern, string(topic)) {
 			all := handlers.All()
 			for _, handler := range all {
 				h := handler
@@ -188,7 +189,7 @@ func (eb *DefaultEventBus) Publish(topic string, args ...interface{}) {
 	}
 }
 
-func (eb *DefaultEventBus) setUpPublish(topic string, args ...interface{}) []reflect.Value {
+func (eb *DefaultEventBus) setUpPublish(topic common.TopicType, args ...interface{}) []reflect.Value {
 	passedArguments := make([]reflect.Value, 0)
 	for _, arg := range args {
 		passedArguments = append(passedArguments, reflect.ValueOf(arg))

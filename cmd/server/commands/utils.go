@@ -77,7 +77,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		eb := event.GetEventBus(cfg.LedgerDir())
-		_ = eb.Subscribe(string(common.EventConfirmedBlock), func(blk *types.StateBlock) {
+		_ = eb.Subscribe(common.EventConfirmedBlock, func(blk *types.StateBlock) {
 			defer func() {
 				if err := recover(); err != nil {
 					fmt.Println(err)

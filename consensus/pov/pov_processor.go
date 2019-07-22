@@ -1,4 +1,4 @@
-package consensus
+package pov
 
 import (
 	"sync"
@@ -99,9 +99,9 @@ func NewPovBlockProcessor(povEngine *PoVEngine) *PovBlockProcessor {
 func (bp *PovBlockProcessor) Start() error {
 	eb := bp.povEngine.GetEventBus()
 	if eb != nil {
-		eb.Subscribe(string(common.EventAddRelation), bp.onAddStateBlock)
+		eb.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
 
-		eb.Subscribe(string(common.EventPovSyncState), bp.onPovSyncState)
+		eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState)
 	}
 
 	common.Go(bp.loop)
@@ -116,9 +116,9 @@ func (bp *PovBlockProcessor) Init() error {
 func (bp *PovBlockProcessor) Stop() error {
 	eb := bp.povEngine.GetEventBus()
 	if eb != nil {
-		eb.Unsubscribe(string(common.EventAddRelation), bp.onAddStateBlock)
+		eb.Unsubscribe(common.EventAddRelation, bp.onAddStateBlock)
 
-		eb.Unsubscribe(string(common.EventPovSyncState), bp.onPovSyncState)
+		eb.Unsubscribe(common.EventPovSyncState, bp.onPovSyncState)
 	}
 
 	close(bp.quitCh)
@@ -511,7 +511,7 @@ func (bp *PovBlockProcessor) onCheckOrphanBlocksTimer() {
 	bp.povEngine.GetSyncer().requestBlocksByHashes(reqOrphanRoots, "")
 }
 
-func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *process.PovVerifyStat) {
+func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *PovVerifyStat) {
 	bp.txPendingMux.Lock()
 	defer bp.txPendingMux.Unlock()
 

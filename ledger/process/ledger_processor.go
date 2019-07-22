@@ -10,7 +10,6 @@ package process
 import (
 	"bytes"
 	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -785,6 +784,8 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 }
 
 func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.StoreTxn) error {
+	lv.l.EB.Publish(common.EventRollbackUnchecked, hash)
+
 	tm, err := lv.l.Token(hash, txn)
 	if err != nil {
 		return fmt.Errorf("get block(%s) token err : %s", hash.String(), err)

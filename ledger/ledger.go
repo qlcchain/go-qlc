@@ -31,7 +31,7 @@ type Ledger struct {
 	io.Closer
 	Store          db.Store
 	dir            string
-	eb             event.EventBus
+	EB             event.EventBus
 	representation *hashmap.HashMap
 	representLock  *hashmap.HashMap
 	cacheRound     *int64
@@ -113,7 +113,7 @@ func NewLedger(dir string) *Ledger {
 		l := &Ledger{
 			Store:          store,
 			dir:            dir,
-			eb:             event.GetEventBus(dir),
+			EB:             event.GetEventBus(dir),
 			representation: &hashmap.HashMap{},
 			representLock:  &hashmap.HashMap{},
 		}
@@ -371,7 +371,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	}
 	l.releaseTxn(txn, flag)
 	l.logger.Debug("publish addRelation,", blk.GetHash())
-	l.eb.Publish(string(common.EventAddRelation), blk)
+	l.EB.Publish(common.EventAddRelation, blk)
 	return nil
 }
 
@@ -513,7 +513,7 @@ func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
 
 	l.releaseTxn(txn, flag)
 	l.logger.Info("publish deleteRelation,", hash.String())
-	l.eb.Publish(string(common.EventDeleteRelation), hash)
+	l.EB.Publish(common.EventDeleteRelation, hash)
 	return nil
 }
 

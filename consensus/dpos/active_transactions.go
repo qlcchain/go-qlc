@@ -16,7 +16,7 @@ const (
 	confirmReqInterval = 60
 )
 
-type voteKey [1 + types.HashSize]byte
+type voteKey [types.HashSize]byte
 
 type ActiveTrx struct {
 	confirmed electionStatus
@@ -68,13 +68,10 @@ func getVoteKey(block *types.StateBlock) voteKey {
 	var key voteKey
 
 	if block.IsOpen() {
-		key[0] = 1
-		//copy(key[1:], block.Link[:])
 		hash, _ := types.HashBytes(block.Address[:], block.Token[:])
-		copy(key[1:], hash[:])
+		copy(key[:], hash[:])
 	} else {
-		key[0] = 0
-		copy(key[1:], block.Previous[:])
+		copy(key[:], block.Previous[:])
 	}
 
 	return key
@@ -166,7 +163,7 @@ func (act *ActiveTrx) checkVotes() {
 				act.roots.Delete(el.vote.id)
 				act.dps.deleteBlockCache(el.status.winner)
 			} else {
-				act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
+				act.dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, block)
 			}
 		}
 
@@ -206,7 +203,6 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 			if err != nil {
 				act.dps.logger.Errorf("error [%s] when rollback hash [%s]", err, hash.String())
 			}
-			act.dps.rollbackUnchecked(hash)
 		}
 	}
 }

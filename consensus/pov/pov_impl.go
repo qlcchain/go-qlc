@@ -1,4 +1,4 @@
-package consensus
+package pov
 
 import (
 	"fmt"
@@ -33,7 +33,8 @@ type PoVEngine struct {
 	bp       *PovBlockProcessor
 	txpool   *PovTxPool
 	chain    *PovBlockChain
-	verifier *process.PovVerifier
+	cs       ConsensusPov
+	verifier *PovVerifier
 	syncer   *PovSyncer
 }
 
@@ -49,10 +50,12 @@ func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, er
 	}
 
 	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()
+
 	pov.bp = NewPovBlockProcessor(pov)
 	pov.txpool = NewPovTxPool(pov)
 	pov.chain = NewPovBlockChain(pov)
-	pov.verifier = process.NewPovVerifier(ledger, pov.chain)
+	pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
+	pov.verifier = NewPovVerifier(ledger, pov.chain, pov.cs)
 	pov.syncer = NewPovSyncer(pov)
 
 	return pov, nil
@@ -61,6 +64,7 @@ func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, er
 func (pov *PoVEngine) Init() error {
 	pov.bp.Init()
 	pov.chain.Init()
+	pov.cs.Init()
 	pov.txpool.Init()
 
 	return nil
@@ -72,6 +76,8 @@ func (pov *PoVEngine) Start() error {
 	pov.txpool.Start()
 
 	pov.chain.Start()
+
+	pov.cs.Start()
 
 	pov.bp.Start()
 
@@ -90,6 +96,8 @@ func (pov *PoVEngine) Stop() error {
 	pov.syncer.Stop()
 
 	pov.txpool.Stop()
+
+	pov.cs.Stop()
 
 	pov.chain.Stop()
 
@@ -118,11 +126,15 @@ func (pov *PoVEngine) GetChain() *PovBlockChain {
 	return pov.chain
 }
 
+func (pov *PoVEngine) GetConsensus() ConsensusPov {
+	return pov.cs
+}
+
 func (pov *PoVEngine) GetTxPool() *PovTxPool {
 	return pov.txpool
 }
 
-func (pov *PoVEngine) GetVerifier() *process.PovVerifier {
+func (pov *PoVEngine) GetVerifier() *PovVerifier {
 	return pov.verifier
 }
 
@@ -142,7 +154,7 @@ func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
 	_ = pov.blkRecvCache.Set(block.GetHash(), struct{}{})
 	err := pov.bp.AddMinedBlock(block)
 	if err == nil {
-		pov.eb.Publish(string(common.EventBroadcast), p2p.PovPublishReq, block)
+		pov.eb.Publish(common.EventBroadcast, p2p.PovPublishReq, block)
 	}
 	return err
 }
@@ -161,7 +173,7 @@ func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom, p
 }
 
 func (pov *PoVEngine) setEvent() error {
-	err := pov.eb.Subscribe(string(common.EventPovRecvBlock), pov.onRecvPovBlock)
+	err := pov.eb.Subscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
 	if err != nil {
 		return err
 	}
@@ -170,7 +182,7 @@ func (pov *PoVEngine) setEvent() error {
 }
 
 func (pov *PoVEngine) unsetEvent() error {
-	err := pov.eb.Unsubscribe(string(common.EventPovRecvBlock), pov.onRecvPovBlock)
+	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
 	if err != nil {
 		return err
 	}
@@ -189,7 +201,7 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, 
 
 	err := pov.AddBlock(block, types.PovBlockFromRemoteBroadcast, msgPeer)
 	if err == nil {
-		pov.eb.Publish(string(common.EventSendMsgToPeers), p2p.PovPublishReq, block, msgPeer)
+		pov.eb.Publish(common.EventSendMsgToPeers, p2p.PovPublishReq, block, msgPeer)
 	}
 
 	return err

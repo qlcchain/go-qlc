@@ -81,8 +81,6 @@ func (ss *ServiceSync) Start() {
 				}
 				ss.syncCount++
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -499,7 +497,7 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 		hash := block.GetHash()
 		ss.netService.msgService.addPerformanceTime(hash)
 	}
-	ss.netService.msgEvent.Publish(string(common.EventSyncBlock), block)
+	ss.netService.msgEvent.Publish(common.EventSyncBlock, block)
 	return nil
 }
 
@@ -515,7 +513,7 @@ func (ss *ServiceSync) onBulkPushBlock(message *Message) error {
 		hash := block.GetHash()
 		ss.netService.msgService.addPerformanceTime(hash)
 	}
-	ss.netService.msgEvent.Publish(string(common.EventSyncBlock), block)
+	ss.netService.msgEvent.Publish(common.EventSyncBlock, block)
 	return nil
 }
 

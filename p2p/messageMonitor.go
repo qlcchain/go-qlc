@@ -126,8 +126,8 @@ func (ms *MessageService) processBlockCacheLoop() {
 				if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
 					_ = ms.ledger.DeleteBlockCache(blk.GetHash())
 				} else {
-					ms.netService.msgEvent.Publish(string(common.EventBroadcast), PublishReq, blk)
-					ms.netService.msgEvent.Publish(string(common.EventGenerateBlock), process.Progress, blk)
+					ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
+					ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
 				}
 			}
 			break
@@ -165,10 +165,7 @@ func (ms *MessageService) startLoop() {
 				}
 			default:
 				ms.netService.node.logger.Error("Received unknown message.")
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -182,11 +179,7 @@ func (ms *MessageService) messageResponseLoop() {
 			switch message.MessageType() {
 			case MessageResponse:
 				ms.onMessageResponse(message)
-			default:
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -200,11 +193,7 @@ func (ms *MessageService) publishReqLoop() {
 			switch message.MessageType() {
 			case PublishReq:
 				ms.onPublishReq(message)
-			default:
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -218,11 +207,7 @@ func (ms *MessageService) confirmReqLoop() {
 			switch message.MessageType() {
 			case ConfirmReq:
 				ms.onConfirmReq(message)
-			default:
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -236,11 +221,7 @@ func (ms *MessageService) confirmAckLoop() {
 			switch message.MessageType() {
 			case ConfirmAck:
 				ms.onConfirmAck(message)
-			default:
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -253,8 +234,6 @@ func (ms *MessageService) checkMessageCacheLoop() {
 			return
 		case <-ticker.C:
 			ms.checkMessageCache()
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -322,10 +301,7 @@ func (ms *MessageService) povMessageLoop() {
 				ms.onPovBulkPullRsp(message)
 			default:
 				ms.netService.node.logger.Warn("Received unknown pov message.")
-				time.Sleep(5 * time.Millisecond)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -394,7 +370,7 @@ func (ms *MessageService) onPublishReq(message *Message) {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(string(common.EventPublish), p.Blk, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPublish, p.Blk, hash, message.MessageFrom())
 }
 
 func (ms *MessageService) onConfirmReq(message *Message) {
@@ -421,7 +397,7 @@ func (ms *MessageService) onConfirmReq(message *Message) {
 		ms.netService.node.logger.Error(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(string(common.EventConfirmReq), r.Blk, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventConfirmReq, r.Blk, hash, message.MessageFrom())
 }
 
 func (ms *MessageService) onConfirmAck(message *Message) {
@@ -448,7 +424,7 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(string(common.EventConfirmAck), ack, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventConfirmAck, ack, hash, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovStatus(message *Message) {
@@ -464,7 +440,7 @@ func (ms *MessageService) onPovStatus(message *Message) {
 		return
 	}
 
-	ms.netService.msgEvent.Publish(string(common.EventPovPeerStatus), status, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovPeerStatus, status, hash, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovPublishReq(message *Message) {
@@ -485,7 +461,7 @@ func (ms *MessageService) onPovPublishReq(message *Message) {
 		return
 	}
 
-	ms.netService.msgEvent.Publish(string(common.EventPovRecvBlock), p.Blk, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovRecvBlock, p.Blk, hash, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovBulkPullReq(message *Message) {
@@ -501,7 +477,7 @@ func (ms *MessageService) onPovBulkPullReq(message *Message) {
 		return
 	}
 
-	ms.netService.msgEvent.Publish(string(common.EventPovBulkPullReq), req, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovBulkPullReq, req, hash, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovBulkPullRsp(message *Message) {
@@ -517,7 +493,7 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 		return
 	}
 
-	ms.netService.msgEvent.Publish(string(common.EventPovBulkPullRsp), rsp, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovBulkPullRsp, rsp, hash, message.MessageFrom())
 }
 
 func (ms *MessageService) Stop() {

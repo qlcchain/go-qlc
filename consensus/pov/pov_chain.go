@@ -1,15 +1,8 @@
-package consensus
+package pov
 
 import (
 	"errors"
 	"fmt"
-	"math/big"
-	"math/rand"
-	"sort"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -19,10 +12,16 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
+	"math/big"
+	"math/rand"
+	"sort"
+	"sync"
+	"sync/atomic"
 )
 
 const (
 	blockCacheLimit  = 1024
+	headerCacheLimit = 4096
 	medianTimeBlocks = 11
 )
 
@@ -95,28 +94,35 @@ type PovBlockChain struct {
 
 	genesisBlock *types.PovBlock
 	latestBlock  atomic.Value // Current head of the best block chain
+	latestHeader atomic.Value
 
-	blockCache   gcache.Cache // Cache for the most recent entire blocks
-	heightCache  gcache.Cache
-	tdCache      gcache.Cache
+	hashBlockCache    gcache.Cache // hash => block
+	heightBlockCache  gcache.Cache // height => best block
+	hashTdCache       gcache.Cache // hash => td
+	hashHeaderCache   gcache.Cache // hash => header
+	heightHeaderCache gcache.Cache // height => best header
+
+	trieCache    gcache.Cache // stateHash => trie
 	trieNodePool *trie.NodePool
 
 	wg sync.WaitGroup
 }
 
 func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
-	blockCache := gcache.New(blockCacheLimit).Build()
-	heightCache := gcache.New(blockCacheLimit).Build()
-	tdCache := gcache.New(blockCacheLimit).Build()
-
 	chain := &PovBlockChain{
 		povEngine: povEngine,
 		logger:    log.NewLogger("pov_chain"),
-
-		blockCache:  blockCache,
-		heightCache: heightCache,
-		tdCache:     tdCache,
 	}
+
+	chain.hashBlockCache = gcache.New(blockCacheLimit).LRU().Build()
+	chain.heightBlockCache = gcache.New(blockCacheLimit).LRU().Build()
+	chain.hashTdCache = gcache.New(blockCacheLimit).LRU().Build()
+
+	chain.hashHeaderCache = gcache.New(headerCacheLimit).LRU().Build()
+	chain.heightHeaderCache = gcache.New(headerCacheLimit).LRU().Build()
+
+	chain.trieCache = gcache.New(128).LRU().Build()
+
 	return chain
 }
 
@@ -146,7 +152,7 @@ func (bc *PovBlockChain) Init() error {
 	}
 
 	if needReset {
-		bc.logger.Warn("Genesis block incorrect, resetting chain")
+		bc.logger.Warn("pov genesis block incorrect, resetting chain")
 		err := bc.ResetChainState()
 		if err != nil {
 			return err
@@ -178,14 +184,14 @@ func (bc *PovBlockChain) loadLastState() error {
 	latestBlock, _ := bc.getLedger().GetLatestPovBlock()
 	if latestBlock == nil {
 		// Corrupt or empty database, init from scratch
-		bc.logger.Warn("Head block missing, resetting chain")
+		bc.logger.Warn("head block missing, resetting chain")
 		return bc.ResetChainState()
 	}
 
 	// Everything seems to be fine, set as the head block
-	bc.latestBlock.Store(latestBlock)
+	bc.StoreLatestBlock(latestBlock)
 
-	bc.logger.Infof("Loaded latest block %d/%s", latestBlock.GetHeight(), latestBlock.GetHash())
+	bc.logger.Infof("loaded latest block %d/%s", latestBlock.GetHeight(), latestBlock.GetHash())
 
 	return nil
 }
@@ -243,7 +249,7 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	}
 
 	bc.genesisBlock = genesis
-	bc.latestBlock.Store(genesis)
+	bc.StoreLatestBlock(genesis)
 
 	bc.logger.Infof("reset with genesis block %d/%s", genesis.Height, genesis.Hash)
 
@@ -258,38 +264,33 @@ func (bc *PovBlockChain) LatestBlock() *types.PovBlock {
 	return bc.latestBlock.Load().(*types.PovBlock)
 }
 
+func (bc *PovBlockChain) StoreLatestBlock(block *types.PovBlock) {
+	header := block.GetHeader()
+
+	bc.latestBlock.Store(block)
+	bc.latestHeader.Store(header)
+
+	// set best block in cache
+	_ = bc.heightBlockCache.Set(block.GetHeight(), block)
+	_ = bc.heightHeaderCache.Set(block.GetHeight(), header)
+}
+
 func (bc *PovBlockChain) IsGenesisBlock(block *types.PovBlock) bool {
 	return common.IsGenesisPovBlock(block)
 }
 
 func (bc *PovBlockChain) GetBlockByHeight(height uint64) (*types.PovBlock, error) {
-	v, _ := bc.heightCache.Get(height)
+	v, _ := bc.heightBlockCache.Get(height)
 	if v != nil {
 		return v.(*types.PovBlock), nil
 	}
 
 	block, err := bc.povEngine.GetLedger().GetPovBlockByHeight(height)
 	if block != nil {
-		bc.heightCache.Set(height, block)
-		bc.blockCache.Set(block.GetHash(), block)
+		_ = bc.heightBlockCache.Set(height, block)
+		_ = bc.hashBlockCache.Set(block.GetHash(), block)
 	}
 	return block, err
-}
-
-func (bc *PovBlockChain) GetBlockHeight(hash types.Hash) uint64 {
-	v, _ := bc.heightCache.Get(hash)
-	if v != nil {
-		return v.(uint64)
-	}
-
-	block, _ := bc.povEngine.GetLedger().GetPovBlockByHash(hash)
-	if block != nil {
-		bc.heightCache.Set(hash, block.GetHeight())
-		bc.blockCache.Set(block.GetHash(), block)
-		return block.GetHeight()
-	}
-
-	return 0
 }
 
 func (bc *PovBlockChain) GetBlockByHash(hash types.Hash) *types.PovBlock {
@@ -297,22 +298,22 @@ func (bc *PovBlockChain) GetBlockByHash(hash types.Hash) *types.PovBlock {
 		return nil
 	}
 
-	v, _ := bc.blockCache.Get(hash)
+	v, _ := bc.hashBlockCache.Get(hash)
 	if v != nil {
 		return v.(*types.PovBlock)
 	}
 
 	block, _ := bc.povEngine.GetLedger().GetPovBlockByHash(hash)
 	if block != nil {
-		bc.blockCache.Set(hash, block)
+		_ = bc.hashBlockCache.Set(hash, block)
 		return block
 	}
 
 	return nil
 }
 
-func (bc *PovBlockChain) HasBlock(hash types.Hash, height uint64) bool {
-	if bc.blockCache.Has(hash) {
+func (bc *PovBlockChain) HasFullBlock(hash types.Hash, height uint64) bool {
+	if bc.hashBlockCache.Has(hash) {
 		return true
 	}
 
@@ -323,8 +324,12 @@ func (bc *PovBlockChain) HasBlock(hash types.Hash, height uint64) bool {
 	return false
 }
 
+func (bc *PovBlockChain) LatestHeader() *types.PovHeader {
+	return bc.latestHeader.Load().(*types.PovHeader)
+}
+
 func (bc *PovBlockChain) GetBestBlockByHash(hash types.Hash) *types.PovBlock {
-	block := bc.GetBlockByHash(hash)
+	block, _ := bc.getLedger().GetPovBlockByHash(hash)
 	if block == nil {
 		return nil
 	}
@@ -341,7 +346,7 @@ func (bc *PovBlockChain) GetBestBlockByHash(hash types.Hash) *types.PovBlock {
 }
 
 func (bc *PovBlockChain) HasBestBlock(hash types.Hash, height uint64) bool {
-	if !bc.HasBlock(hash, height) {
+	if !bc.HasFullBlock(hash, height) {
 		return false
 	}
 
@@ -357,16 +362,16 @@ func (bc *PovBlockChain) HasBestBlock(hash types.Hash, height uint64) bool {
 }
 
 func (bc *PovBlockChain) GetBlockTDByHash(hash types.Hash) *big.Int {
-	blk := bc.GetBlockByHash(hash)
-	if blk == nil {
+	hdr := bc.GetHeaderByHash(hash)
+	if hdr == nil {
 		return nil
 	}
 
-	return bc.GetBlockTDByHashAndHeight(blk.GetHash(), blk.GetHeight())
+	return bc.GetBlockTDByHashAndHeight(hdr.GetHash(), hdr.GetHeight())
 }
 
 func (bc *PovBlockChain) GetBlockTDByHashAndHeight(hash types.Hash, height uint64) *big.Int {
-	v, _ := bc.tdCache.Get(hash)
+	v, _ := bc.hashTdCache.Get(hash)
 	if v != nil {
 		return v.(*big.Int)
 	}
@@ -376,20 +381,67 @@ func (bc *PovBlockChain) GetBlockTDByHashAndHeight(hash types.Hash, height uint6
 		return nil
 	}
 
-	bc.tdCache.Set(hash, td)
+	_ = bc.hashTdCache.Set(hash, td)
 	return td
 }
 
+func (bc *PovBlockChain) GetHeaderByHash(hash types.Hash) *types.PovHeader {
+	if hash.IsZero() {
+		return nil
+	}
+
+	v, _ := bc.hashHeaderCache.Get(hash)
+	if v != nil {
+		return v.(*types.PovHeader)
+	}
+
+	header, _ := bc.povEngine.GetLedger().GetPovHeaderByHash(hash)
+	if header != nil {
+		_ = bc.hashHeaderCache.Set(hash, header)
+		return header
+	}
+
+	return nil
+}
+
+func (bc *PovBlockChain) GetHeaderByHeight(height uint64) *types.PovHeader {
+	v, _ := bc.heightHeaderCache.Get(height)
+	if v != nil {
+		return v.(*types.PovHeader)
+	}
+
+	header, _ := bc.povEngine.GetLedger().GetPovHeaderByHeight(height)
+	if header != nil {
+		_ = bc.heightHeaderCache.Set(height, header)
+		_ = bc.hashHeaderCache.Set(header.GetHash(), header)
+		return header
+	}
+
+	return nil
+}
+
+func (bc *PovBlockChain) HasHeader(hash types.Hash, height uint64) bool {
+	if bc.hashHeaderCache.Has(hash) {
+		return true
+	}
+
+	if bc.getLedger().HasPovHeader(height, hash) {
+		return true
+	}
+
+	return false
+}
+
 func (bc *PovBlockChain) GetBlockLocator(hash types.Hash) []*types.Hash {
-	var block *types.PovBlock
+	var header *types.PovHeader
 
 	if hash.IsZero() {
-		hash = bc.LatestBlock().GetHash()
-		block = bc.LatestBlock()
+		header = bc.LatestHeader()
+		hash = header.GetHash()
 	} else {
-		block = bc.GetBlockByHash(hash)
+		header = bc.GetHeaderByHash(hash)
 	}
-	if block == nil {
+	if header == nil {
 		return nil
 	}
 
@@ -397,34 +449,34 @@ func (bc *PovBlockChain) GetBlockLocator(hash types.Hash) []*types.Hash {
 	// block locator.  See the description of the algorithm for how these
 	// numbers are derived.
 	var maxEntries uint8
-	if block.GetHeight() <= 12 {
-		maxEntries = uint8(block.GetHeight()) + 1
+	if header.GetHeight() <= 12 {
+		maxEntries = uint8(header.GetHeight()) + 1
 	} else {
 		// Requested hash itself + previous 10 entries + genesis block.
 		// Then floor(log2(height-10)) entries for the skip portion.
-		adjustedHeight := uint32(block.GetHeight()) - 10
+		adjustedHeight := uint32(header.GetHeight()) - 10
 		maxEntries = 12 + fastLog2Floor(adjustedHeight)
 	}
 	locator := make([]*types.Hash, 0, maxEntries)
 
 	step := uint64(1)
-	for block != nil {
-		locHash := block.GetHash()
+	for header != nil {
+		locHash := header.GetHash()
 		locator = append(locator, &locHash)
 
 		// Nothing more to add once the genesis block has been added.
-		if block.GetHeight() == 0 {
+		if header.GetHeight() == 0 {
 			break
 		}
 
 		// Calculate height of previous node to include ensuring the
 		// final node is the genesis block.
-		height := block.GetHeight() - step
+		height := header.GetHeight() - step
 		if height < 0 {
 			height = 0
 		}
 
-		block = bc.FindAncestor(block, height)
+		header = bc.FindAncestor(header, height)
 
 		// Once 11 entries have been included, start doubling the
 		// distance between included hashes.
@@ -507,7 +559,7 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 		saveCallback()
 	}
 
-	bc.tdCache.Set(block.GetHash(), blockTD)
+	bc.hashTdCache.Set(block.GetHash(), blockTD)
 
 	tdCmpRet := blockTD.Cmp(bestTD)
 	isBest := tdCmpRet > 0
@@ -560,9 +612,7 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 		return err
 	}
 
-	bc.latestBlock.Store(block)
-
-	_ = bc.heightCache.Set(block.GetHeight(), block)
+	bc.StoreLatestBlock(block)
 
 	return nil
 }
@@ -588,11 +638,11 @@ func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBl
 		return ErrPovInvalidPrevious
 	}
 
-	bc.heightCache.Remove(block.GetHeight())
+	// remove old best block in cache
+	bc.heightBlockCache.Remove(block.GetHeight())
+	bc.heightHeaderCache.Remove(block.GetHeight())
 
-	bc.latestBlock.Store(prevBlock)
-
-	_ = bc.heightCache.Set(prevBlock.GetHeight(), prevBlock)
+	bc.StoreLatestBlock(prevBlock)
 
 	return nil
 }
@@ -811,83 +861,31 @@ func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.Po
 	return nil
 }
 
-func (bc *PovBlockChain) FindAncestor(block *types.PovBlock, height uint64) *types.PovBlock {
-	if height < 0 || height > block.GetHeight() {
+func (bc *PovBlockChain) FindAncestor(header *types.PovHeader, height uint64) *types.PovHeader {
+	if height < 0 || height > header.GetHeight() {
 		return nil
 	}
 
-	curBlock := block
+	curHeader := header
 	for {
-		prevBlock := bc.GetBlockByHash(curBlock.GetPrevious())
-		if prevBlock == nil {
+		prevHeader := bc.GetHeaderByHash(curHeader.GetPrevious())
+		if prevHeader == nil {
 			return nil
 		}
 
-		if prevBlock.GetHeight() == height {
-			return prevBlock
+		if prevHeader.GetHeight() == height {
+			return prevHeader
 		}
-		if prevBlock.GetHeight() < height {
+		if prevHeader.GetHeight() < height {
 			return nil
 		}
 
-		curBlock = prevBlock
+		curHeader = prevHeader
 	}
 }
 
-func (bc *PovBlockChain) RelativeAncestor(block *types.PovBlock, distance uint64) *types.PovBlock {
-	return bc.FindAncestor(block, block.GetHeight()-distance)
-}
-
-func (bc *PovBlockChain) CalcNextRequiredTarget(block *types.PovBlock) (types.Signature, error) {
-	if (block.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
-		return block.Target, nil
-	}
-
-	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
-
-	distance := uint64(common.PovChainTargetCycle - 1)
-	firstBlock := bc.RelativeAncestor(block, distance)
-	if firstBlock == nil {
-		bc.logger.Errorf("failed to get relative ancestor at height %d distance %d", block.GetHeight(), distance)
-		return types.ZeroSignature, ErrPovUnknownAncestor
-	}
-
-	targetTimeSpan := int64(common.PovChainTargetCycle * common.PovChainBlockInterval)
-	minRetargetTimespan := targetTimeSpan / 4
-	maxRetargetTimespan := targetTimeSpan * 4
-
-	actualTimespan := block.Timestamp - firstBlock.Timestamp
-	if actualTimespan < minRetargetTimespan {
-		actualTimespan = minRetargetTimespan
-	} else if actualTimespan > maxRetargetTimespan {
-		actualTimespan = maxRetargetTimespan
-	}
-
-	oldTargetInt := block.Target.ToBigInt()
-	nextTargetInt := new(big.Int).Set(oldTargetInt)
-	nextTargetInt.Mul(oldTargetInt, big.NewInt(actualTimespan))
-	nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
-
-	if nextTargetInt.Cmp(common.PovMinimumTargetInt) < 0 {
-		nextTargetInt.SetBytes(common.PovMinimumTargetInt.Bytes())
-	}
-	if nextTargetInt.Cmp(common.PovMaximumTargetInt) > 0 {
-		nextTargetInt.SetBytes(common.PovMaximumTargetInt.Bytes())
-	}
-
-	var nextTarget types.Signature
-	err := nextTarget.FromBigInt(nextTargetInt)
-	if err != nil {
-		return types.ZeroSignature, err
-	}
-
-	bc.logger.Infof("Difficulty retarget at block height %d", block.GetHeight()+1)
-	bc.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
-	bc.logger.Infof("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
-	bc.logger.Infof("Actual timespan %v, target timespan %v",
-		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
-
-	return nextTarget, nil
+func (bc *PovBlockChain) RelativeAncestor(header *types.PovHeader, distance uint64) *types.PovHeader {
+	return bc.FindAncestor(header, header.GetHeight()-distance)
 }
 
 // CalcTotalDifficulty calculates a total difficulty from target. PoV increases
@@ -913,21 +911,21 @@ func (bc *PovBlockChain) CalcTotalDifficulty(target types.Signature) *big.Int {
 	return new(big.Int).Div(oneLsh512, denominator)
 }
 
-func (bc *PovBlockChain) CalcPastMedianTime(prevBlock *types.PovBlock) int64 {
+func (bc *PovBlockChain) CalcPastMedianTime(prevHeader *types.PovHeader) int64 {
 	timestamps := make([]int64, medianTimeBlocks)
-	numBlocks := 0
-	iterBlock := prevBlock
-	for i := 0; i < medianTimeBlocks && iterBlock != nil; i++ {
-		timestamps[i] = iterBlock.GetTimestamp()
-		numBlocks++
+	numHeaders := 0
+	iterHeader := prevHeader
+	for i := 0; i < medianTimeBlocks && iterHeader != nil; i++ {
+		timestamps[i] = iterHeader.GetTimestamp()
+		numHeaders++
 
-		iterBlock = bc.GetBlockByHash(iterBlock.GetPrevious())
+		iterHeader = bc.GetHeaderByHash(iterHeader.GetPrevious())
 	}
 
-	timestamps = timestamps[:numBlocks]
+	timestamps = timestamps[:numHeaders]
 	sort.Sort(types.TimeSorter(timestamps))
 
-	medianTimestamp := timestamps[numBlocks/2]
+	medianTimestamp := timestamps[numHeaders/2]
 
 	return medianTimestamp
 }

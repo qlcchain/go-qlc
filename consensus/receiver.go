@@ -36,27 +36,27 @@ func (r *Receiver) init(c *Consensus) {
 }
 
 func (r *Receiver) start() error {
-	err := r.eb.Subscribe(string(common.EventPublish), r.ReceivePublish)
+	err := r.eb.Subscribe(common.EventPublish, r.ReceivePublish)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Subscribe(string(common.EventConfirmReq), r.ReceiveConfirmReq)
+	err = r.eb.Subscribe(common.EventConfirmReq, r.ReceiveConfirmReq)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Subscribe(string(common.EventConfirmAck), r.ReceiveConfirmAck)
+	err = r.eb.Subscribe(common.EventConfirmAck, r.ReceiveConfirmAck)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Subscribe(string(common.EventSyncBlock), r.ReceiveSyncBlock)
+	err = r.eb.Subscribe(common.EventSyncBlock, r.ReceiveSyncBlock)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Subscribe(string(common.EventGenerateBlock), r.ReceiveGenerateBlock)
+	err = r.eb.Subscribe(common.EventGenerateBlock, r.ReceiveGenerateBlock)
 	if err != nil {
 		return err
 	}
@@ -65,27 +65,27 @@ func (r *Receiver) start() error {
 }
 
 func (r *Receiver) stop() error {
-	err := r.eb.Unsubscribe(string(common.EventPublish), r.ReceivePublish)
+	err := r.eb.Unsubscribe(common.EventPublish, r.ReceivePublish)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Unsubscribe(string(common.EventConfirmReq), r.ReceiveConfirmReq)
+	err = r.eb.Unsubscribe(common.EventConfirmReq, r.ReceiveConfirmReq)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Unsubscribe(string(common.EventConfirmAck), r.ReceiveConfirmAck)
+	err = r.eb.Unsubscribe(common.EventConfirmAck, r.ReceiveConfirmAck)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Unsubscribe(string(common.EventSyncBlock), r.ReceiveSyncBlock)
+	err = r.eb.Unsubscribe(common.EventSyncBlock, r.ReceiveSyncBlock)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Unsubscribe(string(common.EventGenerateBlock), r.ReceiveGenerateBlock)
+	err = r.eb.Unsubscribe(common.EventGenerateBlock, r.ReceiveGenerateBlock)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Has
 func (r *Receiver) ReceiveSyncBlock(blk *types.StateBlock) {
 	r.c.logger.Debugf("Sync Event for block:[%s]", blk.GetHash())
 	now := time.Now()
-	r.eb.Publish(string(common.EventSyncing), now)
+	r.eb.Publish(common.EventSyncing, now)
 
 	bs := &BlockSource{
 		Block:     blk,

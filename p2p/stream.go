@@ -3,12 +3,10 @@ package p2p
 import (
 	"errors"
 	"fmt"
-	"sync"
-	"time"
-
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"sync"
 )
 
 // Stream Errors
@@ -188,8 +186,6 @@ func (s *Stream) writeLoop() {
 			if err != nil {
 				s.node.logger.Debug(err)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 

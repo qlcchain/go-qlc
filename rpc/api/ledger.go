@@ -118,11 +118,11 @@ func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock) (*APIBloc
 	ab := new(APIBlock)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
-	if amount, err := ctx.CalculateAmount(block); err != nil {
-		return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
-	} else {
-		ab.Amount = amount
-	}
+	//if amount, err := ctx.CalculateAmount(block); err != nil {
+	//	return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
+	//} else {
+	//	ab.Amount = amount
+	//}
 	token, err := abi.GetTokenById(ctx, block.GetToken())
 	if err != nil {
 		return nil, err
@@ -687,8 +687,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 
 		l.logger.Debug("broadcast block")
 		//TODO: refine
-		l.eb.Publish(string(common.EventBroadcast), p2p.PublishReq, block)
-		l.eb.Publish(string(common.EventGenerateBlock), flag, block)
+		l.eb.Publish(common.EventBroadcast, p2p.PublishReq, block)
+		l.eb.Publish(common.EventGenerateBlock, flag, block)
 		return hash, nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")

@@ -2,9 +2,6 @@ package relation
 
 import (
 	"encoding/base64"
-	"sync"
-	"time"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -13,6 +10,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+	"sync"
 )
 
 type Relation struct {
@@ -278,8 +276,6 @@ func (r *Relation) processBlocks() {
 			if err := r.DeleteBlock(blk); err != nil {
 				r.logger.Error(err)
 			}
-		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -293,12 +289,12 @@ func (r *Relation) waitDeleteBlocks(hash types.Hash) {
 }
 
 func (r *Relation) SetEvent() error {
-	err := r.eb.Subscribe(string(common.EventAddRelation), r.waitAddBlocks)
+	err := r.eb.Subscribe(common.EventAddRelation, r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
+	err = r.eb.Subscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
@@ -307,12 +303,12 @@ func (r *Relation) SetEvent() error {
 }
 
 func (r *Relation) UnsubscribeEvent() error {
-	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.waitAddBlocks)
+	err := r.eb.Unsubscribe(common.EventAddRelation, r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
+	err = r.eb.Unsubscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err

@@ -87,7 +87,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 
 	//local send do not need to check
 	if bs.Type != consensus.MsgGenerateBlock {
-		if b, err := p.dps.ledger.HasStateBlock(hash); !b && err == nil {
+		if b, err := dps.ledger.HasStateBlock(hash); !b && err == nil {
 			result, err = dps.lv.BlockCheck(bs.Block)
 			if err != nil {
 				dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
@@ -100,39 +100,20 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	switch bs.Type {
 	case consensus.MsgPublishReq:
 		dps.logger.Infof("dps recv publishReq block[%s]", hash)
-		if result != process.Old && result != process.Fork {
-			//if send ack, there's no need to send publish
-			if dps.hasLocalValidRep() {
-				dps.localRepVote(bs)
-			} else {
-				dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.PublishReq, bs.Block, bs.MsgFrom)
-			}
-		}
+		dps.eb.Publish(common.EventSendMsgToPeers, p2p.PublishReq, bs.Block, bs.MsgFrom)
 	case consensus.MsgConfirmReq:
 		dps.logger.Infof("dps recv confirmReq block[%s]", hash)
-		if result != process.Fork {
-			if !dps.hasLocalValidRep() {
-				dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmReq, bs.Block, bs.MsgFrom)
-			}
+		dps.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmReq, bs.Block, bs.MsgFrom)
 
-			if p.isResultValid(result) {
-				dps.localRepVote(bs)
-			}
+		//vote if the result is old or progress
+		if result == process.Old {
+			dps.localRepVote(bs)
 		}
 	case consensus.MsgConfirmAck:
 		dps.logger.Infof("dps recv confirmAck block[%s]", hash)
 		ack := bs.Para.(*protos.ConfirmAckBlock)
 		dps.saveOnlineRep(ack.Account)
-
-		//retransmit if the block has not reached a consensus or seq is not 0(for finding reps)
-		if result == process.Old {
-			if ack.Sequence != 0 {
-				dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
-			}
-			return
-		} else {
-			dps.eb.Publish(string(common.EventSendMsgToPeers), p2p.ConfirmAck, ack, bs.MsgFrom)
-		}
+		dps.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmAck, ack, bs.MsgFrom)
 
 		//cache the ack messages
 		if p.isResultGap(result) {
@@ -156,7 +137,6 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 			}
 		} else {
 			dps.acTrx.vote(ack)
-			dps.localRepVote(bs)
 		}
 	case consensus.MsgSync:
 		if result == process.Progress {
@@ -169,8 +149,9 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		}
 
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
-		dps.acTrx.addToRoots(bs.Block)
-		dps.localRepVote(bs)
+		if dps.acTrx.addToRoots(bs.Block) {
+			dps.localRepVote(bs)
+		}
 	default:
 		//
 	}
@@ -187,7 +168,10 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 			dps.logger.Infof("Block %s from sync,no need consensus", hash)
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
-			dps.acTrx.addToRoots(blk)
+			//make sure we only vote one of the forked blocks
+			if dps.acTrx.addToRoots(blk) {
+				dps.localRepVote(bs)
+			}
 		} else {
 			dps.logger.Errorf("Block %s UnKnow from", hash)
 		}
@@ -252,25 +236,23 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 		dps.acTrx.addWinner2Ledger(blk)
 		p.blocksAcked <- hash
 		dps.dispatchAckedBlock(blk, hash, p.index)
-		dps.eb.Publish(string(common.EventConfirmedBlock), blk)
+		dps.eb.Publish(common.EventConfirmedBlock, blk)
 	} else {
 		dps.acTrx.addWinner2Ledger(blk)
 		p.blocksAcked <- hash
 		dps.dispatchAckedBlock(blk, hash, p.index)
-		dps.eb.Publish(string(common.EventConfirmedBlock), blk)
+		dps.eb.Publish(common.EventConfirmedBlock, blk)
 	}
 }
 
 func (p *Processor) processFork(newBlock *types.StateBlock) {
 	confirmedBlock := p.findAnotherForkedBlock(newBlock)
-	isRep := false
 	dps := p.dps
 	dps.logger.Errorf("fork:%s--%s", newBlock.GetHash(), confirmedBlock.GetHash())
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
-			isRep = true
 
 			weight := dps.ledger.Weight(address)
 			if weight.Compare(minVoteWeight) == types.BalanceCompSmaller {
@@ -283,13 +265,10 @@ func (p *Processor) processFork(newBlock *types.StateBlock) {
 			}
 
 			dps.acTrx.vote(va)
-			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
+			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmedBlock)
 			return true
 		})
-
-		if isRep == false {
-			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, confirmedBlock)
-		}
 	}
 }
 
@@ -343,20 +322,6 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 
 			p.voteCache.Remove(bs.Block.GetHash())
 		}
-
-		localRepAccount.Range(func(key, value interface{}) bool {
-			address := key.(types.Address)
-
-			va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
-			if err != nil {
-				return true
-			}
-
-			dps.acTrx.vote(va)
-			dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
-
-			return true
-		})
 	}
 }
 
@@ -368,26 +333,29 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 	blk := bs.Block
 	dps := p.dps
 
-	if result == process.GapPrevious {
+	switch result {
+	case process.GapPrevious:
 		err := dps.ledger.AddUncheckedBlock(blk.Previous, blk, types.UncheckedKindPrevious, bs.BlockFrom)
 		if err != nil && err != ledger.ErrUncheckedBlockExists {
 			dps.logger.Errorf("add unchecked block to ledger err %s", err)
 		}
-	} else if result == process.GapSource {
+	case process.GapSource:
 		err := dps.ledger.AddUncheckedBlock(blk.Link, blk, types.UncheckedKindLink, bs.BlockFrom)
 		if err != nil && err != ledger.ErrUncheckedBlockExists {
 			dps.logger.Errorf("add unchecked block to ledger err %s", err)
 		}
-	} else {
+	case process.GapTokenInfo:
 		input, err := dps.ledger.GetStateBlock(bs.Block.GetLink())
 		if err != nil {
 			dps.logger.Errorf("get contract send block err %s", err)
-
+			return
 		}
+
 		tokenId := new(types.Hash)
 		err = cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.GetData())
 		if err != nil {
 			dps.logger.Errorf("get token info err %s", err)
+			return
 		}
 		err = dps.ledger.AddUncheckedBlock(*tokenId, blk, types.UncheckedKindTokenInfo, bs.BlockFrom)
 		if err != nil && err != ledger.ErrUncheckedBlockExists {
@@ -461,12 +429,16 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 	blk, err := dps.ledger.GetStateBlock(hash)
 	if err != nil {
 		dps.logger.Errorf("dequeue get block error [%s]", hash)
+		return
 	}
+
 	if blk.GetType() == types.ContractReward {
 		input, err := dps.ledger.GetStateBlock(blk.GetLink())
 		if err != nil {
 			dps.logger.Errorf("dequeue get block link error [%s]", hash)
+			return
 		}
+
 		address := types.Address(input.GetLink())
 		if address == types.MintageAddress {
 			param := new(cabi.ParamMintage)
@@ -540,7 +512,7 @@ func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
 
 				dps.logger.Debugf("rep [%s] vote for block [%s]", address, bs.Block.GetHash())
 				dps.acTrx.vote(va)
-				dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+				dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 
 				return true
 			})
@@ -564,18 +536,11 @@ func (p *Processor) rollbackUncheckedFromMem(hash types.Hash) {
 		return
 	}
 
-	m, err := p.uncheckedCache.Get(hash)
+	_, err := p.uncheckedCache.Get(hash)
 	if err != nil {
 		p.dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
 		return
 	}
-
-	cm := m.(*sync.Map)
-	cm.Range(func(key, value interface{}) bool {
-		bs := value.(*consensus.BlockSource)
-		p.rollbackUncheckedFromMem(bs.Block.GetHash())
-		return true
-	})
 
 	r := p.uncheckedCache.Remove(hash)
 	if !r {
@@ -598,7 +563,7 @@ func (p *Processor) isResultValid(result process.ProcessResult) bool {
 }
 
 func (p *Processor) isResultGap(result process.ProcessResult) bool {
-	if result == process.GapPrevious || result == process.GapSource {
+	if result == process.GapPrevious || result == process.GapSource || result == process.GapTokenInfo {
 		return true
 	} else {
 		return false

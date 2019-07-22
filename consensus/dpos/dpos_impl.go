@@ -18,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"go.uber.org/zap"
 )
 
@@ -91,9 +92,14 @@ func (dps *DPoS) Init() {
 	supply := common.GenesisBlock().Balance
 	minVoteWeight, _ = supply.Div(common.VoteDivisor)
 
-	err := dps.eb.SubscribeSync(string(common.EventPovSyncState), dps.onPovSyncState)
+	err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState)
 	if err != nil {
 		dps.logger.Errorf("subscribe pov sync state event err")
+	}
+
+	err = dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
+	if err != nil {
+		dps.logger.Errorf("subscribe rollback unchecked block event err")
 	}
 
 	if len(dps.accounts) != 0 {
@@ -128,7 +134,7 @@ func (dps *DPoS) Start() {
 				dps.cleanOnlineReps()
 			}()
 		case <-dps.povReady:
-			err := dps.eb.Unsubscribe(string(common.EventPovSyncState), dps.onPovSyncState)
+			err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.onPovSyncState)
 			if err != nil {
 				dps.logger.Errorf("unsubscribe pov sync state err %s", err)
 			}
@@ -196,10 +202,24 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		if localIndex != index {
 			dps.processors[index].blocksAcked <- hash
 		}
-	case types.ContractSend:
+	case types.ContractSend: //beneficial maybe another account
 		for i, p := range dps.processors {
 			if i != localIndex {
 				p.blocksAcked <- hash
+			}
+		}
+	case types.ContractReward: //deal gap tokenInfo
+		input, err := dps.ledger.GetStateBlock(blk.GetLink())
+		if err != nil {
+			dps.logger.Errorf("get block link error [%s]", hash)
+			return
+		}
+
+		if types.Address(input.GetLink()) == types.MintageAddress {
+			for i, p := range dps.processors {
+				if i != localIndex {
+					p.blocksAcked <- hash
+				}
 			}
 		}
 	}
@@ -240,7 +260,7 @@ func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
 
 		dps.logger.Debugf("rep [%s] vote for block [%s]", address, bs.Block.GetHash())
 		dps.acTrx.vote(va)
-		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 		return true
 	})
 }
@@ -357,7 +377,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 		if err != nil {
 			return true
 		}
-		dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmAck, va)
+		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 
 		return true
 	})
@@ -399,29 +419,50 @@ func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error
 	return hash, nil
 }
 
-func (dps *DPoS) rollbackUnchecked(hash types.Hash) {
+func (dps *DPoS) onRollbackUnchecked(hash types.Hash) {
 	dps.rollbackUncheckedFromDb(hash)
 }
 
 func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
-	blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink)
-	blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
-
-	if blkLink == nil && blkPrevious == nil {
-		return
-	}
-	if blkLink != nil {
+	if blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
 		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
 		if err != nil {
 			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 		}
-		dps.rollbackUncheckedFromDb(blkLink.GetHash())
 	}
-	if blkPrevious != nil {
+
+	if blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious); blkPrevious != nil {
 		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
 		if err != nil {
 			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
 		}
-		dps.rollbackUncheckedFromDb(blkPrevious.GetHash())
+	}
+
+	//gap token
+	blk, err := dps.ledger.GetStateBlock(hash)
+	if err != nil {
+		dps.logger.Errorf("get block error [%s]", hash)
+		return
+	}
+
+	if blk.GetType() == types.ContractReward {
+		input, err := dps.ledger.GetStateBlock(blk.GetLink())
+		if err != nil {
+			dps.logger.Errorf("dequeue get block link error [%s]", hash)
+			return
+		}
+
+		address := types.Address(input.GetLink())
+		if address == types.MintageAddress {
+			var param = new(cabi.ParamMintage)
+			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+				if blkToken, _, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
+					err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
+					if err != nil {
+						dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+					}
+				}
+			}
+		}
 	}
 }

@@ -38,7 +38,7 @@ func syncingTime(t time.Time) {
 	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).UTC().Unix())
 }
 func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
-	_ = eb.Subscribe(string(common.EventSyncing), syncingTime)
+	_ = eb.Subscribe(common.EventSyncing, syncingTime)
 	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net")}
 }
 
@@ -89,7 +89,7 @@ type PeersInfo struct {
 
 func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 	p := make(map[string]string)
-	q.eb.Publish(string(common.EventPeersInfo), p)
+	q.eb.Publish(common.EventPeersInfo, p)
 	i := &PeersInfo{
 		Count: len(p),
 		Infos: p,

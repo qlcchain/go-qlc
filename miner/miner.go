@@ -4,7 +4,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/consensus/pov"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -13,13 +13,13 @@ type Miner struct {
 	logger    *zap.SugaredLogger
 	cfg       *config.Config
 	eb        event.EventBus
-	povEngine *consensus.PoVEngine
+	povEngine *pov.PoVEngine
 
 	povWorker *PovWorker
 	syncState common.SyncState
 }
 
-func NewMiner(cfg *config.Config, povEngine *consensus.PoVEngine) *Miner {
+func NewMiner(cfg *config.Config, povEngine *pov.PoVEngine) *Miner {
 	miner := &Miner{
 		logger:    log.NewLogger("miner"),
 		cfg:       cfg,
@@ -48,7 +48,7 @@ func (miner *Miner) Init() error {
 func (miner *Miner) Start() error {
 	miner.logger.Info("start miner service")
 
-	err := miner.eb.SubscribeSync(string(common.EventPovSyncState), miner.onRecvPovSyncState)
+	err := miner.eb.SubscribeSync(common.EventPovSyncState, miner.onRecvPovSyncState)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (miner *Miner) GetLogger() *zap.SugaredLogger {
 	return miner.logger
 }
 
-func (miner *Miner) GetPovEngine() *consensus.PoVEngine {
+func (miner *Miner) GetPovEngine() *pov.PoVEngine {
 	return miner.povEngine
 }
 
