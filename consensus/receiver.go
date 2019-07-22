@@ -17,16 +17,21 @@ const (
 )
 
 type Receiver struct {
-	eb    event.EventBus
-	c     *Consensus
-	cache gcache.Cache
+	eb           event.EventBus
+	c            *Consensus
+	cache        gcache.Cache
+	lastSyncTime time.Time
+	quitchClean  chan bool
 }
 
 func NewReceiver(eb event.EventBus) *Receiver {
 	r := &Receiver{
-		eb:    eb,
-		cache: gcache.New(msgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
+		eb:           eb,
+		lastSyncTime: time.Now(),
+		quitchClean:  make(chan bool, 1),
 	}
+
+	r.cache = gcache.New(msgCacheSize).LRU().Expiration(msgCacheExpirationTime).PurgeVisitorFunc(r.cleanCache).Build()
 
 	return r
 }
@@ -36,6 +41,8 @@ func (r *Receiver) init(c *Consensus) {
 }
 
 func (r *Receiver) start() error {
+	go r.cleanCacheStart()
+
 	err := r.eb.Subscribe(common.EventPublish, r.ReceivePublish)
 	if err != nil {
 		return err
@@ -65,6 +72,8 @@ func (r *Receiver) start() error {
 }
 
 func (r *Receiver) stop() error {
+	r.cleanCacheStop()
+
 	err := r.eb.Unsubscribe(common.EventPublish, r.ReceivePublish)
 	if err != nil {
 		return err
@@ -91,6 +100,27 @@ func (r *Receiver) stop() error {
 	}
 
 	return nil
+}
+
+func (r *Receiver) cleanCacheStart() {
+	timerClean := time.NewTicker(msgCacheExpirationTime)
+
+	for {
+		select {
+		case <-r.quitchClean:
+			return
+		case <-timerClean.C:
+			r.cache.Purge()
+		}
+	}
+}
+
+func (r *Receiver) cleanCacheStop() {
+	r.quitchClean <- true
+}
+
+func (r *Receiver) cleanCache(key, val interface{}) {
+	r.cache.Get(key)
 }
 
 func (r *Receiver) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFrom string) {
@@ -147,7 +177,9 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Has
 func (r *Receiver) ReceiveSyncBlock(blk *types.StateBlock) {
 	r.c.logger.Debugf("Sync Event for block:[%s]", blk.GetHash())
 	now := time.Now()
-	r.eb.Publish(common.EventSyncing, now)
+	if now.Sub(r.lastSyncTime) > time.Second {
+		r.eb.Publish(common.EventSyncing, now)
+	}
 
 	bs := &BlockSource{
 		Block:     blk,

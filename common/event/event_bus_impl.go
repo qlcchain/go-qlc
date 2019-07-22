@@ -31,7 +31,7 @@ type DefaultEventBus struct {
 
 func (eb *DefaultEventBus) Close() error {
 	for k := range eb.handlers.Iter() {
-		eb.CloseTopic(k.Key.(common.TopicType))
+		eb.CloseTopic(common.TopicType(k.Key.(string)))
 	}
 	return nil
 }

@@ -89,7 +89,7 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 		act.roots.Store(vk, ele)
 		return true
 	} else {
-		act.dps.logger.Infof("block :%s already exit in roots", block.GetHash())
+		act.dps.logger.Infof("block :%s already exist in roots", block.GetHash())
 		return false
 	}
 }
