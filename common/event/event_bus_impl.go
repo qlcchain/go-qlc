@@ -114,7 +114,7 @@ func (eb *DefaultEventBus) doSubscribe(topic common.TopicType, fn interface{}, o
 	} else {
 		handlers := newEventHandler()
 		handlers.Add(handler)
-		eb.handlers.Set(topic, handlers)
+		eb.handlers.Set(string(topic), handlers)
 	}
 	return nil
 }
@@ -142,7 +142,7 @@ func (eb *DefaultEventBus) HasCallback(topic common.TopicType) bool {
 func (eb *DefaultEventBus) CloseTopic(topic common.TopicType) {
 	if value, ok := eb.handlers.GetStringKey(string(topic)); ok {
 		value.(*eventHandlers).Clear()
-		eb.handlers.Del(topic)
+		eb.handlers.Del(string(topic))
 	}
 }
 
