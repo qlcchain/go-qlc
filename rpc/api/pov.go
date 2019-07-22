@@ -79,11 +79,13 @@ type PovMinerStatItem struct {
 	LastBlockHeight  uint64    `json:"lastBlockHeight"`
 	AllBlockCount    uint64    `json:"allBlockCount"`
 	AllBestCount     uint64    `json:"allBestCount"`
+	IsOnline         bool      `json:"isOnline"`
 }
 
 type PovMinerStats struct {
-	MinerCount int                                 `json:"minerCount"`
-	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
+	MinerCount  int                                 `json:"minerCount"`
+	OnlineCount int                                 `json:"onlineCount"`
+	MinerStats  map[types.Address]*PovMinerStatItem `json:"minerStats"`
 }
 
 func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *PovApi {
@@ -464,6 +466,8 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		MinerStats: make(map[types.Address]*PovMinerStatItem),
 	}
 
+	tmNow := time.Now()
+
 	checkAddrMap := make(map[types.Address]bool)
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
@@ -478,6 +482,10 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	})
 
 	err = api.ledger.GetAllPovHeaders(func(header *types.PovHeader) error {
+		if header.GetHeight() == common.PovChainGenesisBlockHeight {
+			return nil
+		}
+
 		if len(checkAddrMap) > 0 && checkAddrMap[header.GetCoinbase()] == false {
 			return nil
 		}
@@ -513,6 +521,14 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	}
 
 	apiRsp.MinerCount = len(apiRsp.MinerStats)
+
+	// miner is online if it generate blocks in last hour
+	for _, item := range apiRsp.MinerStats {
+		if item.LastBlockTime.Add(time.Hour).After(tmNow) {
+			item.IsOnline = true
+			apiRsp.OnlineCount++
+		}
+	}
 
 	return apiRsp, nil
 }

@@ -187,16 +187,16 @@ func minerRewardAction(cbPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) 
 	if err != nil {
 		return err
 	}
-	fmt.Printf("success to send reward, balance %s blocks %d\n", rewardAmount, rewardParam.RewardBlocks)
+	fmt.Printf("success to send reward, delta balance %s blocks %d\n", rewardAmount, rewardParam.RewardBlocks)
 
 	if bnfAcc != nil {
 		err = client.Call(nil, "ledger_process", &rewardBlock)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("success to recv reward\n")
+		fmt.Printf("success to recv reward, account balance %s\n", rewardBlock.Balance)
 	} else {
-		fmt.Printf("please to recv reward\n")
+		fmt.Printf("please to recv reward, send hash %s\n", sendHash)
 	}
 
 	return nil

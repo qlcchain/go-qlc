@@ -120,5 +120,6 @@ func addcommands() {
 	generateTestPair()
 	minerReward()
 	minerRecvPend()
+	minerHistory()
 	change()
 }

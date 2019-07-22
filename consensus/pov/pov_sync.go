@@ -1,6 +1,7 @@
-package consensus
+package pov
 
 import (
+	"github.com/qlcchain/go-qlc/ledger"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -160,6 +161,10 @@ func (ss *PovSyncer) Stop() {
 
 func (ss *PovSyncer) getChain() *PovBlockChain {
 	return ss.povEngine.GetChain()
+}
+
+func (ss *PovSyncer) getLedger() ledger.Store {
+	return ss.povEngine.GetLedger()
 }
 
 func (ss *PovSyncer) getEventBus() event.EventBus {
@@ -370,7 +375,7 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 		startHeight = block.GetHeight() + 1
 		blockCount = blockCount - 1
 	} else if !req.StartHash.IsZero() {
-		block := ss.getChain().GetBlockByHash(req.StartHash)
+		block, _ := ss.getLedger().GetPovBlockByHash(req.StartHash)
 		if block == nil {
 			ss.logger.Debugf("failed to get block by hash %s", req.StartHash)
 			return
@@ -385,9 +390,9 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 
 	endHeight := startHeight + uint64(blockCount)
 	for height := startHeight; height < endHeight; height++ {
-		block, err := ss.getChain().GetBlockByHeight(height)
-		if err != nil {
-			ss.logger.Debugf("failed to get block by height %d, err %s", height, err)
+		block, _ := ss.getLedger().GetPovBlockByHeight(height)
+		if block == nil {
+			ss.logger.Debugf("failed to get block by height %d", height)
 			break
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
@@ -438,7 +443,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 
 		blockCount = blockCount - 1
 	} else if !req.StartHash.IsZero() {
-		block := ss.getChain().GetBlockByHash(req.StartHash)
+		block, _ := ss.getLedger().GetPovBlockByHash(req.StartHash)
 		if block == nil {
 			ss.logger.Debugf("failed to get block by hash %s", req.StartHash)
 			return
@@ -462,7 +467,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 		endHeight = startHeight - uint64(blockCount)
 	}
 	for height := startHeight; height > endHeight; height-- {
-		block, err := ss.getChain().GetBlockByHeight(height)
+		block, err := ss.getLedger().GetPovBlockByHeight(height)
 		if err != nil {
 			ss.logger.Debugf("failed to get block by height %d, err %s", height, err)
 			break
@@ -497,7 +502,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBatch(msg *PovSyncMessage) {
 		}
 
 		blockHash := *locHash
-		block := ss.getChain().GetBlockByHash(blockHash)
+		block, _ := ss.getLedger().GetPovBlockByHash(blockHash)
 		if block == nil {
 			ss.logger.Debugf("failed to get block by hash %s", blockHash)
 			continue
@@ -556,7 +561,7 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 
 	lastBlockHeight := uint64(0)
 	for _, block := range rsp.Blocks {
-		ss.povEngine.AddBlock(block, fromType, msg.msgPeer)
+		_ = ss.povEngine.AddBlock(block, fromType, msg.msgPeer)
 
 		lastBlockHeight = block.GetHeight()
 	}

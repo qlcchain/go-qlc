@@ -151,6 +151,7 @@ type Store interface {
 	BatchGetPovHeadersByHeightAsc(height uint64, count uint64, txns ...db.StoreTxn) ([]*types.PovHeader, error)
 	BatchGetPovHeadersByHeightDesc(height uint64, count uint64, txns ...db.StoreTxn) ([]*types.PovHeader, error)
 	GetPovHeaderByHash(hash types.Hash, txns ...db.StoreTxn) (*types.PovHeader, error)
+	GetPovHeaderByHeight(height uint64, txns ...db.StoreTxn) (*types.PovHeader, error)
 	GetAllPovHeaders(fn func(header *types.PovHeader) error, txns ...db.StoreTxn) error
 	GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.StoreTxn) error
 	GetAllPovBestHeaders(fn func(header *types.PovHeader) error, txns ...db.StoreTxn) error
