@@ -47,15 +47,15 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/qlcchain/jsonrpc2 v0.0.1
-	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962 // indirect
-	github.com/shirou/gopsutil v2.18.12+incompatible // indirect
+	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
+	github.com/shirou/gopsutil v2.18.12+incompatible
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
-	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c // indirect
+	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/atomic v1.4.0
 	go.uber.org/zap v1.10.0

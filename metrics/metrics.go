@@ -7,11 +7,17 @@
 
 package metrics
 
-import "github.com/rcrowley/go-metrics"
+import (
+	"github.com/rcrowley/go-metrics"
+)
 
 var (
-	systemRegistry = metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "/system")
-	cpuRegistry    = metrics.NewPrefixedChildRegistry(systemRegistry, "/cpu")
-	memoryRegistry = metrics.NewPrefixedChildRegistry(systemRegistry, "/memory")
-	diskRegistry   = metrics.NewPrefixedChildRegistry(systemRegistry, "/disk")
+	SystemRegistry = metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "/system/")
 )
+
+func init() {
+	metrics.RegisterRuntimeMemStats(SystemRegistry)
+	metrics.RegisterDebugGCStats(SystemRegistry)
+	RegisterRuntimeCpuStats(SystemRegistry)
+	RegisterDiskStats(SystemRegistry)
+}
