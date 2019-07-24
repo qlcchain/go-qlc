@@ -250,18 +250,6 @@ func start() error {
 	configDetails := util.ToIndentString(cfg)
 	logger.Debugf("%s", configDetails)
 
-	if common.IsConfidantNode() {
-		go func() {
-			cleanMem := time.NewTicker(30 * time.Second)
-			for {
-				select {
-				case <-cleanMem.C:
-					debug.FreeOSMemory()
-				}
-			}
-		}()
-	}
-
 	err = runNode(accounts, cfg)
 	if err != nil {
 		return err
