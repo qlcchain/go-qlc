@@ -7,7 +7,7 @@ var (
 	NodeType = nodeTypeNormal
 
 	//DPOS params
-	DPoSMaxBlocks      = 10240
+	DPoSMaxBlocks      = 102400
 	DPoSMaxCacheBlocks = 102400
 	DPoSVoteCacheEn    = true
 

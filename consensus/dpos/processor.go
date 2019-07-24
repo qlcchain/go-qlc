@@ -31,10 +31,13 @@ func newProcessors(num int) []*Processor {
 	for i := 0; i < num; i++ {
 		p := &Processor{
 			index:       i,
-			voteCache:   gcache.New(voteCacheSize).LRU().Build(),
 			quitCh:      make(chan bool, 1),
-			blocks:      make(chan *consensus.BlockSource, maxBlocks),
-			blocksAcked: make(chan types.Hash, maxBlocks),
+			blocks:      make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+			blocksAcked: make(chan types.Hash, common.DPoSMaxBlocks),
+		}
+
+		if common.DPoSVoteCacheEn {
+			p.voteCache = gcache.New(voteCacheSize).LRU().Build()
 		}
 
 		processors = append(processors, p)
@@ -117,7 +120,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		dps.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmAck, ack, bs.MsgFrom)
 
 		//cache the ack messages
-		if p.isResultGap(result) {
+		if common.DPoSVoteCacheEn && p.isResultGap(result) {
 			if p.voteCache.Has(hash) {
 				v, err := p.voteCache.Get(hash)
 				if err != nil {
@@ -313,15 +316,17 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 			return
 		}
 
-		v, e := p.voteCache.Get(bs.Block.GetHash())
-		if e == nil {
-			vc := v.(*sync.Map)
-			vc.Range(func(key, value interface{}) bool {
-				dps.acTrx.vote(value.(*protos.ConfirmAckBlock))
-				return true
-			})
+		if common.DPoSVoteCacheEn {
+			v, e := p.voteCache.Get(bs.Block.GetHash())
+			if e == nil {
+				vc := v.(*sync.Map)
+				vc.Range(func(key, value interface{}) bool {
+					dps.acTrx.vote(value.(*protos.ConfirmAckBlock))
+					return true
+				})
 
-			p.voteCache.Remove(bs.Block.GetHash())
+				p.voteCache.Remove(bs.Block.GetHash())
+			}
 		}
 	}
 }
