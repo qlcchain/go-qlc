@@ -133,6 +133,7 @@ func addCommand() {
 	}
 	walletimport()
 	version()
+	removeDB()
 }
 
 func start() error {
