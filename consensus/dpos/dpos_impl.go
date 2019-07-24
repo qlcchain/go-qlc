@@ -25,12 +25,9 @@ import (
 
 const (
 	repTimeout            = 5 * time.Minute
-	uncheckedCacheSize    = 10240
-	voteCacheSize         = 10240
+	voteCacheSize         = 102400
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
-	maxBlocks             = 10240
-	maxCacheBlocks        = 102400
 	povBlockNumDay        = 2880
 )
 
@@ -69,7 +66,7 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 		cfg:          cfg,
 		eb:           eb,
 		lv:           process.NewLedgerVerifier(l),
-		cacheBlocks:  make(chan *consensus.BlockSource, maxCacheBlocks),
+		cacheBlocks:  make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
 		povReady:     make(chan bool, 1),
 		processorNum: processorNum,
 		processors:   newProcessors(processorNum),
@@ -80,6 +77,7 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 	for _, p := range dps.processors {
 		p.setDposService(dps)
 	}
+
 	return dps
 }
 
@@ -96,7 +94,7 @@ func (dps *DPoS) Init() {
 	}
 
 	supply := common.GenesisBlock().Balance
-	minVoteWeight, _ = supply.Div(common.VoteDivisor)
+	minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 
 	err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
 	if err != nil {
@@ -313,7 +311,7 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 	if dps.getPovSyncState() == common.Syncdone || bs.BlockFrom == types.Synchronized {
 		dps.dispatchMsg(bs)
 	} else {
-		if len(dps.cacheBlocks) < maxCacheBlocks {
+		if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
 			dps.cacheBlocks <- bs
 		} else {
 			dps.logger.Errorf("pov not ready! cache block too much, drop it!")

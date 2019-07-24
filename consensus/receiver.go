@@ -11,8 +11,7 @@ import (
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
-const (
-	msgCacheSize           = 1000 * 2 * 60
+var (
 	msgCacheExpirationTime = 2 * time.Minute
 )
 
@@ -27,7 +26,7 @@ type Receiver struct {
 func NewReceiver(eb event.EventBus) *Receiver {
 	r := &Receiver{
 		eb:           eb,
-		cache:        gcache.New(msgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
+		cache:        gcache.New(common.ConsensusMsgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
 		lastSyncTime: time.Now(),
 		quitchClean:  make(chan bool, 1),
 	}

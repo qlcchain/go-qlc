@@ -10,10 +10,10 @@ package event
 import (
 	"fmt"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"reflect"
 	"sync"
-
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
+	"time"
 
 	"github.com/gammazero/workerpool"
 )
@@ -175,6 +175,23 @@ func (eb *DefaultEventBus) Publish(topic common.TopicType, args ...interface{}) 
 			all := handlers.All()
 			for _, handler := range all {
 				h := handler
+
+				//waiting until the queue is ready
+				if h.pool.WaitingQueueSize() >= common.EventBusWaitingQueueSize {
+					checkInterval := time.NewTicker(10 * time.Millisecond)
+
+				checkWaitingQueueOut:
+					for {
+						select {
+						case <-checkInterval.C:
+							if h.pool.WaitingQueueSize() < common.EventBusWaitingQueueSize {
+								checkInterval.Stop()
+								break checkWaitingQueueOut
+							}
+						}
+					}
+				}
+
 				if h.option.isSync {
 					h.pool.SubmitWait(func() {
 						h.callBack.Call(rArgs)

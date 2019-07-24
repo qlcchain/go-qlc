@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/qlcchain/go-qlc/common"
 	"log"
 	"sort"
 
@@ -28,6 +29,8 @@ type BadgerStoreTxn struct {
 // NewBadgerStore initializes/opens a badger database in the given directory.
 func NewBadgerStore(dir string) (Store, error) {
 	opts := badger.DefaultOptions(dir)
+
+	opts.MaxTableSize = common.BadgerMaxTableSize
 	opts.Logger = nil
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
 	_ = util.CreateDirIfNotExist(dir)

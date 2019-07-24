@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	msgCacheSize           = 65535
 	checkCacheTimeInterval = 30 * time.Second
 	msgResendMaxTimes      = 10
 	msgNeedResendInterval  = 10 * time.Second
@@ -65,15 +64,15 @@ type MessageService struct {
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
 	ms := &MessageService{
 		quitCh:              make(chan bool, 7),
-		messageCh:           make(chan *Message, 65535),
-		publishMessageCh:    make(chan *Message, 65535),
-		confirmReqMessageCh: make(chan *Message, 65535),
-		confirmAckMessageCh: make(chan *Message, 65535),
-		rspMessageCh:        make(chan *Message, 65535),
-		povMessageCh:        make(chan *Message, 65535),
+		messageCh:           make(chan *Message, common.P2PMonitorMsgChanSize),
+		publishMessageCh:    make(chan *Message, common.P2PMonitorMsgChanSize),
+		confirmReqMessageCh: make(chan *Message, common.P2PMonitorMsgChanSize),
+		confirmAckMessageCh: make(chan *Message, common.P2PMonitorMsgChanSize),
+		rspMessageCh:        make(chan *Message, common.P2PMonitorMsgChanSize),
+		povMessageCh:        make(chan *Message, common.P2PMonitorMsgChanSize),
 		ledger:              ledger,
 		netService:          netService,
-		cache:               gcache.New(msgCacheSize).LRU().Build(),
+		cache:               gcache.New(common.P2PMonitorMsgCacheSize).LRU().Build(),
 	}
 	ms.syncService = NewSyncService(netService, ledger)
 	return ms
