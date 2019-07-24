@@ -81,20 +81,21 @@ func (p *Processor) processMsg() {
 }
 
 func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
-	var result process.ProcessResult
+	result := process.Progress
 	hash := bs.Block.GetHash()
 	dps := p.dps
+	var err error
 
 	//local send do not need to check
 	if bs.Type != consensus.MsgGenerateBlock {
-		if b, err := dps.ledger.HasStateBlock(hash); !b && err == nil {
+		if b, _ := dps.ledger.HasBlockCache(hash); !b {
 			result, err = dps.lv.BlockCheck(bs.Block)
 			if err != nil {
 				dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
 				return
 			}
+			p.processResult(result, bs)
 		}
-		p.processResult(result, bs)
 	}
 
 	switch bs.Type {
@@ -392,6 +393,24 @@ func (p *Processor) dequeueUnchecked(hash types.Hash) {
 func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 	dps := p.dps
 
+	//hash is token id
+	if blkToken, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindTokenInfo); blkToken != nil {
+		if dps.getProcessorIndex(blkToken.Address) == p.index {
+			dps.logger.Debugf("dequeue gap token info[%s] block[%s]", hash, blkToken.GetHash())
+			bs := &consensus.BlockSource{
+				Block:     blkToken,
+				BlockFrom: bf,
+			}
+
+			p.processUncheckedBlock(bs)
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindTokenInfo)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+			}
+		}
+		return
+	}
+
 	if blkLink, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
 		if dps.getProcessorIndex(blkLink.Address) == p.index {
 			dps.logger.Debugf("dequeue gap link[%s] block[%s]", hash, blkLink.GetHash())
@@ -422,42 +441,6 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
 			if err != nil {
 				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
-			}
-		}
-	}
-
-	blk, err := dps.ledger.GetStateBlock(hash)
-	if err != nil {
-		dps.logger.Errorf("dequeue get block error [%s]", hash)
-		return
-	}
-
-	if blk.GetType() == types.ContractReward {
-		input, err := dps.ledger.GetStateBlock(blk.GetLink())
-		if err != nil {
-			dps.logger.Errorf("dequeue get block link error [%s]", hash)
-			return
-		}
-
-		address := types.Address(input.GetLink())
-		if address == types.MintageAddress {
-			param := new(cabi.ParamMintage)
-			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
-				if blkToken, bf, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
-					if dps.getProcessorIndex(blkToken.Address) == p.index {
-						dps.logger.Debugf("dequeue gap token info[%s] block[%s]", param.TokenId, blkToken.GetHash())
-						bs := &consensus.BlockSource{
-							Block:     blkToken,
-							BlockFrom: bf,
-						}
-
-						p.processUncheckedBlock(bs)
-						err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
-						if err != nil {
-							dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
-						}
-					}
-				}
 			}
 		}
 	}

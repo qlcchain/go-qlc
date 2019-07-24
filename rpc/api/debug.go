@@ -39,12 +39,16 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 		uncheck := new(APIUncheckBlock)
 		uncheck.Block = block
 		uncheck.Link = link
-		if unCheckType == 0 {
+
+		switch unCheckType {
+		case types.UncheckedKindPrevious:
 			uncheck.UnCheckType = "GapPrevious"
-		}
-		if unCheckType == 1 {
+		case types.UncheckedKindLink:
 			uncheck.UnCheckType = "GapLink"
+		case types.UncheckedKindTokenInfo:
+			uncheck.UnCheckType = "GapTokenInfo"
 		}
+
 		uncheck.SyncType = sync
 		unchecks = append(unchecks, uncheck)
 		return nil

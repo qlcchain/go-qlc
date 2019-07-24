@@ -848,7 +848,11 @@ func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ..
 		return err
 	}
 
-	return l.walkUncheckedBlocks(types.UncheckedKindLink, visit, txns...)
+	if err := l.walkUncheckedBlocks(types.UncheckedKindLink, visit, txns...); err != nil {
+		return err
+	}
+
+	return l.walkUncheckedBlocks(types.UncheckedKindTokenInfo, visit, txns...)
 }
 
 func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {

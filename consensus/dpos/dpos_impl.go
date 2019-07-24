@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -85,6 +86,11 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 func (dps *DPoS) Init() {
 	if dps.cfg.PoV.PovEnabled {
 		povSyncState.Store(common.SyncNotStart)
+
+		err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState)
+		if err != nil {
+			dps.logger.Errorf("subscribe pov sync state event err")
+		}
 	} else {
 		povSyncState.Store(common.Syncdone)
 	}
@@ -92,12 +98,7 @@ func (dps *DPoS) Init() {
 	supply := common.GenesisBlock().Balance
 	minVoteWeight, _ = supply.Div(common.VoteDivisor)
 
-	err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState)
-	if err != nil {
-		dps.logger.Errorf("subscribe pov sync state event err")
-	}
-
-	err = dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
+	err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
 	if err != nil {
 		dps.logger.Errorf("subscribe rollback unchecked block event err")
 	}
@@ -203,9 +204,78 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			dps.processors[index].blocksAcked <- hash
 		}
 	case types.ContractSend: //beneficial maybe another account
-		for i, p := range dps.processors {
-			if i != localIndex {
-				p.blocksAcked <- hash
+		dstAddr := types.ZeroAddress
+
+		switch types.Address(blk.GetLink()) {
+		case types.MintageAddress:
+			data := blk.GetData()
+			if method, err := cabi.MintageABI.MethodById(data[0:4]); err == nil {
+				if method.Name == cabi.MethodNameMintage {
+					param := new(cabi.ParamMintage)
+					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+						dstAddr = param.Beneficial
+					}
+				} else if method.Name == cabi.MethodNameMintageWithdraw {
+					tokenId := new(types.Hash)
+					if err = method.Inputs.Unpack(tokenId, data[4:]); err == nil {
+						ctx := vmstore.NewVMContext(dps.ledger)
+						tokenInfoData, err := ctx.GetStorage(types.MintageAddress[:], tokenId[:])
+						if err != nil {
+							return
+						}
+
+						tokenInfo := new(types.TokenInfo)
+						err = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, tokenInfoData)
+						if err == nil {
+							dstAddr = tokenInfo.PledgeAddress
+						}
+					}
+				}
+			}
+		case types.NEP5PledgeAddress:
+			data := blk.GetData()
+			if method, err := cabi.NEP5PledgeABI.MethodById(data[0:4]); err == nil {
+				if method.Name == cabi.MethodNEP5Pledge {
+					param := new(cabi.PledgeParam)
+					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+						dstAddr = param.Beneficial
+					}
+				} else if method.Name == cabi.MethodWithdrawNEP5Pledge {
+					param := new(cabi.WithdrawPledgeParam)
+					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+						pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(vmstore.NewVMContext(dps.ledger), param)
+						if pledgeResult != nil {
+							dstAddr = pledgeResult.PledgeInfo.PledgeAddress
+						}
+					}
+				}
+			}
+		case types.MinerAddress:
+			param := new(cabi.MinerRewardParam)
+			if err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, blk.GetData()); err == nil {
+				dstAddr = param.Beneficial
+			}
+		case types.RewardsAddress:
+			param := new(cabi.RewardsParam)
+			data := blk.GetData()
+			if method, err := cabi.RewardsABI.MethodById(data[0:4]); err == nil {
+				if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+					dstAddr = param.Beneficial
+				}
+			}
+		default:
+			for _, p := range dps.processors {
+				if localIndex != p.index {
+					p.blocksAcked <- hash
+				}
+			}
+			return
+		}
+
+		if dstAddr != types.ZeroAddress {
+			index := dps.getProcessorIndex(dstAddr)
+			if localIndex != index {
+				dps.processors[index].blocksAcked <- hash
 			}
 		}
 	case types.ContractReward: //deal gap tokenInfo
@@ -216,9 +286,11 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		}
 
 		if types.Address(input.GetLink()) == types.MintageAddress {
-			for i, p := range dps.processors {
-				if i != localIndex {
-					p.blocksAcked <- hash
+			param := new(cabi.ParamMintage)
+			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+				index := dps.getProcessorIndex(input.Address)
+				if localIndex != index {
+					dps.processors[index].blocksAcked <- param.TokenId
 				}
 			}
 		}
