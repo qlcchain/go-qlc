@@ -532,3 +532,12 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 
 	return apiRsp, nil
 }
+
+func (api *PovApi) GetMinerDayStats(dayIndex uint32) (*types.PovMinerDayStat, error) {
+	dayStat, err := api.ledger.GetPovMinerStat(dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	return dayStat, nil
+}

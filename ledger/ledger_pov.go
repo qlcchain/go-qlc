@@ -601,6 +601,113 @@ func (l *Ledger) GetAllPovBestHashes(fn func(height uint64, hash types.Hash) err
 	return nil
 }
 
+func (l *Ledger) AddPovMinerStat(dayStat *types.PovMinerDayStat, txns ...db.StoreTxn) error {
+	key, err := getKeyOfParts(idPrefixPovMinerStat, dayStat.DayIndex)
+	if err != nil {
+		return err
+	}
+
+	txn, flag := l.getTxn(true, txns...)
+	l.releaseTxn(txn, flag)
+
+	valBytes, err := dayStat.Serialize()
+	if err != nil {
+		return err
+	}
+
+	if err := txn.Set(key, valBytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) DeletePovMinerStat(dayIndex uint32, txns ...db.StoreTxn) error {
+	key, err := getKeyOfParts(idPrefixPovMinerStat, dayIndex)
+	if err != nil {
+		return err
+	}
+
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) GetPovMinerStat(dayIndex uint32, txns ...db.StoreTxn) (*types.PovMinerDayStat, error) {
+	key, err := getKeyOfParts(idPrefixPovMinerStat, dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	dayStat := new(types.PovMinerDayStat)
+	err = txn.Get(key, func(val []byte, b byte) error {
+		err := dayStat.Deserialize(val)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrPovKeyNotFound
+		}
+		return nil, err
+	}
+	return dayStat, nil
+}
+
+func (l *Ledger) GetLatestPovMinerStat(txns ...db.StoreTxn) (*types.PovMinerDayStat, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	var latestVal []byte
+	err := txn.Iterator(idPrefixPovMinerStat, func(key []byte, val []byte, meta byte) error {
+		latestVal = val
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if latestVal == nil {
+		return nil, err
+	}
+
+	dayStat := new(types.PovMinerDayStat)
+	err = dayStat.Deserialize(latestVal)
+	if err != nil {
+		return nil, err
+	}
+
+	return dayStat, nil
+}
+
+func (l *Ledger) GetAllPovMinerStats(fn func(*types.PovMinerDayStat) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixPovMinerStat, func(key []byte, val []byte, meta byte) error {
+		dayStat := new(types.PovMinerDayStat)
+		err := dayStat.Deserialize(val)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (l *Ledger) GetPovBlockByHeightAndHash(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -928,6 +1035,9 @@ func (l *Ledger) DropAllPovBlocks() error {
 	_ = txn.Drop(prefix)
 
 	prefix, _ = getKeyOfParts(idPrefixPovTD)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovMinerStat)
 	_ = txn.Drop(prefix)
 
 	return nil

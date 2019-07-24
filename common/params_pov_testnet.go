@@ -24,11 +24,11 @@ var (
 	POVChainBlocksPerDay  = POVChainBlocksPerHour * 24
 
 	PovMinerPledgeAmountMin         = types.NewBalance(100000000000000)
-	PovMinerVerifyHeightStart       = uint64(POVChainBlocksPerHour * 1)
-	PovMinerRewardHeightStart       = uint64(POVChainBlocksPerHour * 1)
-	PovMinerRewardHeightGapToLatest = uint64(POVChainBlocksPerHour * 1)
-	PovMinerMaxRewardBlocksPerCall  = uint64(POVChainBlocksPerHour * 1)
-	PovMinerRewardHeightRound       = uint64(POVChainBlocksPerHour * 1)
+	PovMinerVerifyHeightStart       = uint64(POVChainBlocksPerDay * 1)
+	PovMinerRewardHeightStart       = uint64(POVChainBlocksPerDay * 1)
+	PovMinerRewardHeightGapToLatest = uint64(POVChainBlocksPerDay * 1)
+	PovMinerMaxRewardBlocksPerCall  = uint64(POVChainBlocksPerDay * 1)
+	PovMinerRewardHeightRound       = uint64(POVChainBlocksPerDay * 1)
 	PovMinerMaxFindNonceTimeSec     = PovChainBlockInterval * PovChainTargetCycle
 
 	// Reward per block, rewardPerBlock * blockNumPerYear / gasTotalSupply = 3%

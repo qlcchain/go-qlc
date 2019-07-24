@@ -82,6 +82,7 @@ const (
 	idPrefixPovBestHash // prefix + height => hash
 	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
 	idPrefixLink
+	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
 )
 
 var (
