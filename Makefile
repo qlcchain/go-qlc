@@ -1,4 +1,4 @@
-.PHONY: all clean build
+.PHONY: all clean build build-test confidant confidant-test
 .PHONY: gqlc-server gqlc-server-test
 .PHONY: gqlc-client
 .PHONY: deps
@@ -45,7 +45,7 @@ deps:
 	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 
 confidant:
-	CGO_ENABLED=1 CC=/home/lichao/ppr_cross/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
+	CGO_ENABLED=1 CC=/opt/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
 	GO111MODULE=on go build -tags "confidant sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build $(SERVERBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
@@ -55,7 +55,7 @@ confidant:
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
 confidant-test:
-	CGO_ENABLED=1 CC=/home/lichao/ppr_cross/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
+	CGO_ENABLED=1 CC=/opt/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
 	GO111MODULE=on go build -tags "confidant testnet sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build $(SERVERBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
@@ -87,15 +87,15 @@ clean:
 
 gqlc-server:
 	xgo --dest=$(BUILDDIR) --tags="sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
-	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
+    --targets=$(TARGET) --pkg=$(SERVERMAIN) .
 	xgo --dest=$(BUILDDIR) --tags="confidant sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
-    --targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
+	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
 
 gqlc-server-test:
 	xgo --dest=$(BUILDDIR) --tags="testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
 	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
 	xgo --dest=$(BUILDDIR) --tags="confidant testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
-    --targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
+	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
 
 gqlc-client:
 	xgo --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \
