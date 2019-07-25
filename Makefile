@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: all clean build
 .PHONY: gqlc-server gqlc-server-test
 .PHONY: gqlc-client
 .PHONY: deps
@@ -9,13 +9,13 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
 # server
-SERVERVERSION ?= 1.3.0
+SERVERVERSION ?= 1.2.3
 SERVERBINARY = gqlc
 SERVERTESTBINARY = gqlct
 SERVERMAIN = cmd/server/main.go
 
 # client
-CLIENTVERSION ?= 1.3.0
+CLIENTVERSION ?= 1.2.3
 CLIENTBINARY = gqlcc
 CLIENTMAIN = cmd/client/main.go
 
@@ -64,7 +64,7 @@ confidant-test:
 	@echo "Build $(CLIENTBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
-build-main:
+build:
 	GO111MODULE=on go build -tags "sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build $(SERVERBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
