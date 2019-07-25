@@ -196,10 +196,14 @@ func (l *Ledger) init() error {
 }
 
 func (l *Ledger) processCache() {
-	cacheRound := atomic.LoadInt64(l.cacheRound)
-	atomic.StoreInt64(l.cacheOrder, 0)
-	atomic.AddInt64(l.cacheRound, 1)
-	l.setCacheToDB(&cacheRound)
+	lock.Lock()
+	defer lock.Unlock()
+	if _, ok := cache[l.dir]; ok {
+		cacheRound := atomic.LoadInt64(l.cacheRound)
+		atomic.StoreInt64(l.cacheOrder, 0)
+		atomic.AddInt64(l.cacheRound, 1)
+		l.setCacheToDB(&cacheRound)
+	}
 }
 
 func (l *Ledger) setCacheToDB(cacheRound *int64) error {
