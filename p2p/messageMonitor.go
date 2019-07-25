@@ -110,7 +110,7 @@ func (ms *MessageService) Start() {
 
 func (ms *MessageService) processBlockCacheLoop() {
 	for {
-		now := time.Now().UTC().Unix()
+		now := time.Now().Unix()
 		v := atomic.LoadInt64(&ms.syncService.lastSyncTime)
 		if ms.syncService.syncCount == 1 && v < now {
 			blocks := make([]*types.StateBlock, 0)

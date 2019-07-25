@@ -46,9 +46,36 @@ func Test_timeSpan_Calculate(t *testing.T) {
 				minutes: tt.fields.minutes,
 				seconds: tt.fields.seconds,
 			}
-			if got := ts.Calculate(tt.args.t); got.UTC().Unix() != tt.want.UTC().Unix() {
+			if got := ts.Calculate(tt.args.t); got.Unix() != tt.want.Unix() {
 				t.Errorf("timeSpan.Calculate() input=%v, got=%v, want %v", tt.args.t, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestTimeSpan_Calculate_WithLocation(t *testing.T) {
+	ms := int64(1556247209)
+	t1 := time.Unix(ms, 0)
+	t.Log(t1.String(), t1.UTC().String())
+	ts := timeSpan{days: 180}
+	t2 := ts.Calculate(t1)
+	unix1 := t2.Unix()
+	loc, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(loc)
+	}
+
+	t3 := t1.In(loc)
+	t4 := ts.Calculate(t3)
+	unix2 := t4.Unix()
+	if unix1 != unix2 {
+		t.Fatal("invalid unix timestamp", unix1, unix2)
+	} else {
+		t.Log("t1", t1.String(), t1.UTC().String())
+		t.Log("t2", t2.String(), t2.UTC().String())
+		t.Log("t3", t3.String(), t3.UTC().String())
+		t.Log("t4", t4.String(), t4.UTC().String())
 	}
 }

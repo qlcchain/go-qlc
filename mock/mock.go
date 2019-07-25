@@ -58,7 +58,7 @@ func TokenMeta(addr types.Address) *types.TokenMeta {
 		OpenBlock:      Hash(),
 		Header:         Hash(),
 		Representative: Address(),
-		Modified:       common.TimeNow().UTC().Unix(),
+		Modified:       common.TimeNow().Unix(),
 	}
 
 	return &t
@@ -135,7 +135,7 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Token = common.ChainToken()
 	sb.Previous = types.ZeroHash
 	sb.Representative = common.GenesisAddress()
-	sb.Timestamp = common.TimeNow().UTC().Unix()
+	sb.Timestamp = common.TimeNow().Unix()
 	//addr := Address()
 	sb.Link = Hash()
 	sb.Message = Hash()
@@ -217,7 +217,7 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	blk.Oracle = types.ZeroBalance
 	blk.Network = types.ZeroBalance
 	blk.Storage = types.ZeroBalance
-	blk.Timestamp = common.TimeNow().UTC().Unix()
+	blk.Timestamp = common.TimeNow().Unix()
 	blk.Link = link
 	blk.Representative = rep
 	blk.Message = Hash()

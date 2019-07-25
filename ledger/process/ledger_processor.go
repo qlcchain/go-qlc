@@ -618,7 +618,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		Balance:        balance,
 		BlockCount:     1,
 		BelongTo:       address,
-		Modified:       common.TimeNow().UTC().Unix(),
+		Modified:       common.TimeNow().Unix(),
 	}
 
 	if am != nil {
@@ -637,7 +637,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 				tm.Representative = rep
 				tm.Balance = balance
 				tm.BlockCount = tm.BlockCount + 1
-				tm.Modified = common.TimeNow().UTC().Unix()
+				tm.Modified = common.TimeNow().Unix()
 			} else {
 				tm.Type = token
 				tm.Header = hash
@@ -647,7 +647,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 				tm.Balance = balance
 				tm.BlockCount = 1
 				tm.BelongTo = address
-				tm.Modified = common.TimeNow().UTC().Unix()
+				tm.Modified = common.TimeNow().Unix()
 			}
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
@@ -691,7 +691,7 @@ func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, 
 		Balance:        balance,
 		BlockCount:     1,
 		BelongTo:       address,
-		Modified:       common.TimeNow().UTC().Unix(),
+		Modified:       common.TimeNow().Unix(),
 	}
 
 	if am != nil {
@@ -707,7 +707,7 @@ func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, 
 			tm.Header = hash
 			tm.Representative = rep
 			tm.Balance = balance
-			tm.Modified = common.TimeNow().UTC().Unix()
+			tm.Modified = common.TimeNow().Unix()
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
@@ -1024,7 +1024,7 @@ func (lv *LedgerVerifier) rollBackToken(token *types.TokenMeta, pre *types.State
 	tm.Header = pre.GetHash()
 	tm.Representative = pre.GetRepresentative()
 	tm.BlockCount = tm.BlockCount - 1
-	tm.Modified = common.TimeNow().UTC().Unix()
+	tm.Modified = common.TimeNow().Unix()
 	lv.logger.Debug("update token, ", tm.BelongTo, tm.Type)
 	if err := lv.l.UpdateAccountMeta(ac, txn); err != nil {
 		return err

@@ -35,8 +35,9 @@ type OnlineRepInfo struct {
 }
 
 func syncingTime(t time.Time) {
-	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).UTC().Unix())
+	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).Unix())
 }
+
 func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
 	_ = eb.Subscribe(common.EventSyncing, syncingTime)
 	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net")}
@@ -97,7 +98,7 @@ func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 	return i
 }
 func (q *NetApi) Syncing() bool {
-	now := time.Now().UTC().Unix()
+	now := time.Now().Unix()
 	v := atomic.LoadInt64(&lastSyncTime)
 	if v < now {
 		return false

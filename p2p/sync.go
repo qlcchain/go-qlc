@@ -59,7 +59,7 @@ func (ss *ServiceSync) Start() {
 			ss.logger.Info("Stopped Sync Loop.")
 			return
 		case <-ticker.C:
-			now := time.Now().UTC().Unix()
+			now := time.Now().Unix()
 			v := atomic.LoadInt64(&ss.lastSyncTime)
 			if v < now {
 				peerID, err := ss.netService.node.StreamManager().RandomPeer()
@@ -86,7 +86,7 @@ func (ss *ServiceSync) Start() {
 }
 
 func (ss *ServiceSync) LastSyncTime(t time.Time) {
-	atomic.StoreInt64(&ss.lastSyncTime, t.Add(syncTimeout).UTC().Unix())
+	atomic.StoreInt64(&ss.lastSyncTime, t.Add(syncTimeout).Unix())
 }
 
 // Stop sync service
@@ -98,7 +98,7 @@ func (ss *ServiceSync) Stop() {
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
 	ss.netService.node.logger.Debug("receive FrontierReq")
-	now := time.Now().UTC().Unix()
+	now := time.Now().Unix()
 	v := atomic.LoadInt64(&ss.lastSyncTime)
 	if v < now {
 		var fs []*types.Frontier

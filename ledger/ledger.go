@@ -2077,7 +2077,7 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 		block.Balance = tm.Balance.Sub(amount)
 		block.Previous = tm.Header
 		block.Representative = tm.Representative
-		block.Timestamp = common.TimeNow().UTC().Unix()
+		block.Timestamp = common.TimeNow().Unix()
 		block.Vote = prev.GetVote()
 		block.Network = prev.GetNetwork()
 		block.Oracle = prev.GetOracle()
@@ -2147,7 +2147,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 				Representative: rxTm.Representative,
 				Token:          rxTm.Type,
 				Extra:          types.ZeroHash,
-				Timestamp:      common.TimeNow().UTC().Unix(),
+				Timestamp:      common.TimeNow().Unix(),
 			}
 		}
 	} else {
@@ -2164,7 +2164,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 			Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
 			Token:          sendBlock.GetToken(),
 			Extra:          types.ZeroHash,
-			Timestamp:      common.TimeNow().UTC().Unix(),
+			Timestamp:      common.TimeNow().Unix(),
 		}
 	}
 
@@ -2206,7 +2206,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Representative: representative,
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,
-		Timestamp:      common.TimeNow().UTC().Unix(),
+		Timestamp:      common.TimeNow().Unix(),
 	}
 	if prk != nil {
 		acc := types.NewAccount(prk)
