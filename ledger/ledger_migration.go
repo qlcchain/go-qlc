@@ -232,58 +232,6 @@ func updateVersion(m db.Migration, txn db.StoreTxn) error {
 	if err := setVersion(int64(m.EndVersion()), txn); err != nil {
 		return err
 	}
-	fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
+	//fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
 	return nil
-}
-
-type MigrationV5ToV6 struct {
-}
-
-func (m MigrationV5ToV6) Migrate(txn db.StoreTxn) error {
-	b, err := checkVersion(m, txn)
-	if err != nil {
-		return err
-	}
-
-	if b {
-		ams := make([]*types.AccountMeta, 0)
-		err = txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
-			am := new(types.AccountMeta)
-			_, err := am.UnmarshalMsg(val)
-			if err != nil {
-				return err
-			}
-			ams = append(ams, am)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		for _, am := range ams {
-			for _, tm := range am.Tokens {
-				if tm != nil {
-					tm.ConfirmHeader = tm.Header
-				}
-			}
-			amKey := getAccountMetaKey(am.Address)
-			amBytes, err := am.MarshalMsg(nil)
-			if err != nil {
-				return err
-			}
-			if err := txn.Set(amKey, amBytes); err != nil {
-				return err
-			}
-		}
-		return updateVersion(m, txn)
-	}
-	return nil
-}
-
-func (m MigrationV5ToV6) StartVersion() int {
-	return 5
-}
-
-func (m MigrationV5ToV6) EndVersion() int {
-	return 6
 }

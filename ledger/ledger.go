@@ -93,6 +93,7 @@ const (
 	idPrefixBlockCache //block store this table before consensus complete
 	idPrefixRepresentationCache
 	idPrefixUncheckedTokenInfo
+	idPrefixBlockCacheAccount
 )
 
 var (
@@ -100,7 +101,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 6
+const version = 5
 
 func NewLedger(dir string) *Ledger {
 	lock.Lock()
@@ -168,7 +169,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3), new(MigrationV3ToV4), new(MigrationV4ToV5), new(MigrationV5ToV6)}
+		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3), new(MigrationV3ToV4), new(MigrationV4ToV5)}
 		err = txn.Upgrade(ms)
 		if err != nil {
 			l.logger.Error(err)
@@ -365,13 +366,16 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
 	}
-	if b, err := l.HasBlockCache(blk.GetHash()); !b && err == nil {
-		if err := addChild(blk, txn); err != nil {
-			return fmt.Errorf("add block child error: %s", err)
+	if b, err := l.HasBlockCache(blk.GetHash()); b && err == nil {
+		if err := l.DeleteBlockCache(blk.GetHash(), txn); err != nil {
+			return fmt.Errorf("delete block cache error: %s", err)
 		}
-		if err := addLink(blk, txn); err != nil {
-			return fmt.Errorf("add block link error: %s", err)
-		}
+	}
+	if err := addChild(blk, txn); err != nil {
+		return fmt.Errorf("add block child error: %s", err)
+	}
+	if err := addLink(blk, txn); err != nil {
+		return fmt.Errorf("add block link error: %s", err)
 	}
 	l.releaseTxn(txn, flag)
 	l.logger.Debug("publish addRelation,", blk.GetHash())
@@ -436,6 +440,26 @@ func (l *Ledger) GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.Sta
 	if blkCache, err := l.GetBlockCache(hash); err == nil {
 		return blkCache, nil
 	}
+	key := getKeyOfHash(hash, idPrefixBlock)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+	blk := new(types.StateBlock)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		if err := blk.Deserialize(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, err
+	}
+	return blk, nil
+}
+
+func (l *Ledger) GetStateBlockConfirmed(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
@@ -907,6 +931,33 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 }
 
 func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
+	am, err := l.GetAccountMetaCache(address)
+	if am != nil && err == nil {
+		return am, nil
+	}
+	var meta types.AccountMeta
+	key := getAccountMetaKey(address)
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err = txn.Get(key, func(val []byte, b byte) (err error) {
+		if _, err = meta.UnmarshalMsg(val); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrAccountNotFound
+		}
+		return nil, err
+	}
+	return &meta, nil
+}
+
+func (l *Ledger) GetAccountMetaConfirmed(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
 	var meta types.AccountMeta
 	key := getAccountMetaKey(address)
 
@@ -1033,6 +1084,20 @@ func (l *Ledger) AddTokenMeta(address types.Address, meta *types.TokenMeta, txns
 
 func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
 	am, err := l.GetAccountMeta(address, txns...)
+	if err != nil {
+		return nil, err
+	}
+
+	tm := am.Token(tokenType)
+	if tm == nil {
+		return nil, ErrTokenNotFound
+	}
+
+	return tm, nil
+}
+
+func (l *Ledger) GetTokenMetaConfirmed(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
+	am, err := l.GetAccountMetaConfirmed(address, txns...)
 	if err != nil {
 		return nil, err
 	}
@@ -2410,4 +2475,116 @@ func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error, txns ...db.Sto
 		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
+}
+
+func (l *Ledger) getAccountMetaCacheKey(address types.Address) []byte {
+	var key [1 + types.AddressSize]byte
+	key[0] = idPrefixBlockCacheAccount
+	copy(key[1:], address[:])
+	return key[:]
+}
+
+func (l *Ledger) AddAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
+	metaBytes, err := meta.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	key := l.getAccountMetaCacheKey(meta.Address)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	// never overwrite implicitly
+	err = txn.Get(key, func(vals []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrAccountExists
+	} else if err != badger.ErrKeyNotFound {
+		return err
+	}
+	return txn.Set(key, metaBytes)
+}
+
+func (l *Ledger) GetAccountMetaCache(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
+	key := l.getAccountMetaCacheKey(address)
+	var meta types.AccountMeta
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
+		if _, err = meta.UnmarshalMsg(val); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrAccountNotFound
+		}
+		return nil, err
+	}
+	return &meta, nil
+}
+
+func (l *Ledger) AddOrUpdateAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
+	metaBytes, err := meta.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	key := l.getAccountMetaCacheKey(meta.Address)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Set(key, metaBytes)
+}
+
+func (l *Ledger) UpdateAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
+	metaBytes, err := meta.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	key := l.getAccountMetaCacheKey(meta.Address)
+
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err = txn.Get(key, func(vals []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return ErrAccountNotFound
+		}
+		return err
+	}
+	return txn.Set(key, metaBytes)
+}
+
+func (l *Ledger) DeleteAccountMetaCache(address types.Address, txns ...db.StoreTxn) error {
+	key := l.getAccountMetaCacheKey(address)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Delete(key)
+}
+
+func (l *Ledger) HasAccountMetaCache(address types.Address, txns ...db.StoreTxn) (bool, error) {
+	key := l.getAccountMetaCacheKey(address)
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

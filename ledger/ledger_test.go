@@ -1228,3 +1228,74 @@ func TestLedger_GetBlockCache(t *testing.T) {
 		t.Fatal("hash not match")
 	}
 }
+
+func addAccountMetaCache(t *testing.T, l *Ledger) *types.AccountMeta {
+	ac := mock.Account()
+	am := mock.AccountMeta(ac.Address())
+	if err := l.AddAccountMetaCache(am); err != nil {
+		t.Fatal()
+	}
+	return am
+}
+
+func TestLedger_AddAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addAccountMetaCache(t, l)
+}
+
+func TestLedger_GetAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	am := addAccountMetaCache(t, l)
+	a, err := l.GetAccountMetaCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("account,", a)
+	for _, token := range a.Tokens {
+		t.Log("token,", token)
+	}
+}
+
+func TestLedger_HasAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaCache(t, l)
+	r, err := l.HasAccountMetaCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r == false {
+		t.Fatal("should have accountMeta from block cache")
+	}
+	t.Log("has account,", r)
+}
+
+func TestLedger_DeleteAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaCache(t, l)
+	err := l.DeleteAccountMetaCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_UpdateAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaCache(t, l)
+	token := mock.TokenMeta(am.Address)
+	am.Tokens = append(am.Tokens, token)
+
+	err := l.UpdateAccountMetaCache(am)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.AddOrUpdateAccountMetaCache(am)
+	if err != nil {
+		t.Fatal(err)
+	}
+}

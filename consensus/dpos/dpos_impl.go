@@ -304,6 +304,14 @@ func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
 		} else {
 			dps.logger.Debugf("delete block cache [%s] error", hash.String())
 		}
+		if exit, _ := dps.ledger.HasAccountMetaCache(block.Address); exit {
+			err := dps.ledger.DeleteAccountMetaCache(block.Address)
+			if err != nil {
+				dps.logger.Error(err)
+			} else {
+				dps.logger.Debugf("delete block account meta cache [%s] error", hash.String())
+			}
+		}
 	}
 }
 

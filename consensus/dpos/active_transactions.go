@@ -161,7 +161,8 @@ func (act *ActiveTrx) checkVotes() {
 			el.announcements++
 			if el.announcements == confirmReqMaxTimes {
 				act.roots.Delete(el.vote.id)
-				act.dps.deleteBlockCache(el.status.winner)
+				act.dps.deleteBlockCache(block)
+				act.dps.rollbackUncheckedFromDb(hash)
 			} else {
 				act.dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, block)
 			}
@@ -185,7 +186,6 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	} else {
 		act.dps.logger.Debugf("%s, %v", hash.String(), err)
 	}
-	act.dps.deleteBlockCache(block)
 }
 
 func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {

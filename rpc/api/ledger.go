@@ -666,7 +666,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		return types.ZeroHash, ErrParameterNil
 	}
 	verifier := process.NewLedgerVerifier(l.ledger)
-	flag, err := verifier.BlockCheck(block)
+	flag, err := verifier.BlockCheckCache(block)
 	if err != nil {
 		l.logger.Error(err)
 		return types.ZeroHash, err
@@ -679,7 +679,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		if b, err := l.ledger.HasBlockCache(hash); b == true && err == nil {
 			return types.ZeroHash, errors.New("old block")
 		}
-		err = verifier.BlockCacheProcess(block)
+		err := verifier.BlockCacheProcess(block)
 		if err != nil {
 			l.logger.Errorf("Block %s add to blockCache error[%d]", hash, err)
 			return types.ZeroHash, err

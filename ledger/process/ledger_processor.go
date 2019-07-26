@@ -21,13 +21,18 @@ import (
 	"go.uber.org/zap"
 )
 
-type checkBlock func(*LedgerVerifier, *types.StateBlock) (ProcessResult, error)
+type checkBlock func(*LedgerVerifier, *types.StateBlock, byte) (ProcessResult, error)
 
 type LedgerVerifier struct {
 	l             *ledger.Ledger
 	checkBlockFns map[types.BlockType]checkBlock
 	logger        *zap.SugaredLogger
 }
+
+const (
+	blockCheck byte = iota
+	blockCheckCache
+)
 
 func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 	checkBlockFns := make(map[types.BlockType]checkBlock)
@@ -58,7 +63,7 @@ func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
 func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
 		if fn, ok := lv.checkBlockFns[b.Type]; ok {
-			r, err := fn(lv, b)
+			r, err := fn(lv, b, blockCheck)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
@@ -75,19 +80,51 @@ func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 	return Other, errors.New("invalid block")
 }
 
-func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+func (lv *LedgerVerifier) BlockCheckCache(block types.Block) (ProcessResult, error) {
+	if b, ok := block.(*types.StateBlock); ok {
+		if fn, ok := lv.checkBlockFns[b.Type]; ok {
+			r, err := fn(lv, b, blockCheckCache)
+			if err != nil {
+				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
+			}
+			if r != Progress {
+				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
+			}
+			return r, err
+		} else {
+			return Other, fmt.Errorf("unsupport block type %s", b.Type.String())
+		}
+	} else if _, ok := block.(*types.SmartContractBlock); ok {
+		return Other, errors.New("smart contract block")
+	}
+	return Other, errors.New("invalid block")
+}
+
+func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte) (ProcessResult, error) {
 	hash := block.GetHash()
 	address := block.GetAddress()
 
 	lv.logger.Debug("check block ", hash)
 
-	blockExist, err := lv.l.HasStateBlockConfirmed(hash)
-	if err != nil {
-		return Other, err
-	}
+	if checkType == blockCheck {
+		blockExist, err := lv.l.HasStateBlockConfirmed(hash)
+		if err != nil {
+			return Other, err
+		}
 
-	if blockExist {
-		return Old, nil
+		if blockExist {
+			return Old, nil
+		}
+	}
+	if checkType == blockCheckCache {
+		blockExist, err := lv.l.HasStateBlock(hash)
+		if err != nil {
+			return Other, err
+		}
+
+		if blockExist {
+			return Old, nil
+		}
 	}
 
 	if block.GetType() == types.ContractSend {
@@ -96,9 +133,19 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 		}
 	}
 	if block.GetType() == types.ContractReward {
-		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
-		if err != nil {
-			return GapSource, nil
+		var linkBlk *types.StateBlock
+		var err error
+		if checkType == blockCheck {
+			linkBlk, err = lv.l.GetStateBlockConfirmed(block.GetLink())
+			if err != nil {
+				return GapSource, nil
+			}
+		}
+		if checkType == blockCheckCache {
+			linkBlk, err = lv.l.GetStateBlock(block.GetLink())
+			if err != nil {
+				return GapSource, nil
+			}
 		}
 		if linkBlk.GetLink() == types.Hash(types.RewardsAddress) {
 			return Progress, nil
@@ -117,74 +164,25 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 	return Progress, nil
 }
 
-func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkStateBlock(lv, block)
+func checkSendBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte) (ProcessResult, error) {
+	result, err := checkStateBlock(lv, block, checkType)
 	if err != nil || result != Progress {
 		return result, err
 	}
 
 	// check previous
-	if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-		return GapPrevious, nil
-	} else {
-		//check fork
-		if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-			return Fork, nil
-		}
-
-		if block.GetType() == types.Send {
-			//check balance
-			if !(previous.Balance.Compare(block.Balance) == types.BalanceCompBigger) {
-				return BalanceMismatch, nil
+	if checkType == blockCheck {
+		if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
+			return GapPrevious, nil
+		} else {
+			//check fork
+			if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+				return Fork, nil
 			}
-			//check vote,network,storage,oracle
-			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
-				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
-				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
-				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
-			}
-		}
-		if block.GetType() == types.ContractSend {
-			//check totalBalance
-			if previous.TotalBalance().Compare(block.TotalBalance()) == types.BalanceCompSmaller {
-				return BalanceMismatch, nil
-			}
-		}
-	}
 
-	return Progress, nil
-}
-
-func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkStateBlock(lv, block)
-	if err != nil || result != Progress {
-		return result, err
-	}
-
-	// check previous
-	if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-		return GapPrevious, nil
-	} else {
-		//check fork
-		if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-			return Fork, nil
-		}
-		pendingKey := types.PendingKey{
-			Address: block.Address,
-			Hash:    block.Link,
-		}
-
-		//check receive link
-		if b, err := lv.l.HasStateBlock(block.Link); !b && err == nil {
-			return GapSource, nil
-		}
-
-		//check pending
-		if pending, err := lv.l.GetPending(pendingKey); err == nil {
-			if tm, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
-				transferAmount := block.GetBalance().Sub(tm.Balance)
-				if !pending.Amount.Equal(transferAmount) || pending.Type != block.Token {
+			if block.GetType() == types.Send {
+				//check balance
+				if !(previous.Balance.Compare(block.Balance) == types.BalanceCompBigger) {
 					return BalanceMismatch, nil
 				}
 				//check vote,network,storage,oracle
@@ -194,21 +192,147 @@ func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResu
 					previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
 					return BalanceMismatch, nil
 				}
-			} else {
-				return Other, err
 			}
-		} else if err == ledger.ErrPendingNotFound {
-			return UnReceivable, nil
+			if block.GetType() == types.ContractSend {
+				//check totalBalance
+				if previous.TotalBalance().Compare(block.TotalBalance()) == types.BalanceCompSmaller {
+					return BalanceMismatch, nil
+				}
+			}
+		}
+	}
+	// check previous
+	if checkType == blockCheckCache {
+		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
+			return GapPrevious, nil
 		} else {
-			return Other, err
+			//check fork
+			if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+				return Fork, nil
+			}
+
+			if block.GetType() == types.Send {
+				//check balance
+				if !(previous.Balance.Compare(block.Balance) == types.BalanceCompBigger) {
+					return BalanceMismatch, nil
+				}
+				//check vote,network,storage,oracle
+				if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+					previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+					previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+					previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
+					return BalanceMismatch, nil
+				}
+			}
+			if block.GetType() == types.ContractSend {
+				//check totalBalance
+				if previous.TotalBalance().Compare(block.TotalBalance()) == types.BalanceCompSmaller {
+					return BalanceMismatch, nil
+				}
+			}
 		}
 	}
 
 	return Progress, nil
 }
 
-func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkStateBlock(lv, block)
+func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte) (ProcessResult, error) {
+	result, err := checkStateBlock(lv, block, checkType)
+	if err != nil || result != Progress {
+		return result, err
+	}
+
+	// check previous
+	if checkType == blockCheck {
+		if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
+			return GapPrevious, nil
+		} else {
+			//check fork
+			if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+				return Fork, nil
+			}
+			pendingKey := types.PendingKey{
+				Address: block.Address,
+				Hash:    block.Link,
+			}
+
+			//check receive link
+			if b, err := lv.l.HasStateBlockConfirmed(block.Link); !b && err == nil {
+				return GapSource, nil
+			}
+
+			//check pending
+			if pending, err := lv.l.GetPending(pendingKey); err == nil {
+				if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.Token); err == nil {
+					transferAmount := block.GetBalance().Sub(tm.Balance)
+					if !pending.Amount.Equal(transferAmount) || pending.Type != block.Token {
+						return BalanceMismatch, nil
+					}
+					//check vote,network,storage,oracle
+					if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+						previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+						previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+						previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
+						return BalanceMismatch, nil
+					}
+				} else {
+					return Other, err
+				}
+			} else if err == ledger.ErrPendingNotFound {
+				return UnReceivable, nil
+			} else {
+				return Other, err
+			}
+		}
+	}
+	if checkType == blockCheckCache {
+		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
+			return GapPrevious, nil
+		} else {
+			//check fork
+			if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+				return Fork, nil
+			}
+			pendingKey := types.PendingKey{
+				Address: block.Address,
+				Hash:    block.Link,
+			}
+
+			//check receive link
+			if b, err := lv.l.HasStateBlock(block.Link); !b && err == nil {
+				return GapSource, nil
+			}
+
+			//check pending
+			if pending, err := lv.l.GetPending(pendingKey); err == nil {
+				if tm, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
+					transferAmount := block.GetBalance().Sub(tm.Balance)
+					if !pending.Amount.Equal(transferAmount) || pending.Type != block.Token {
+						return BalanceMismatch, nil
+					}
+					//check vote,network,storage,oracle
+					if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+						previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+						previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+						previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
+						return BalanceMismatch, nil
+					}
+				} else {
+					return Other, err
+				}
+			} else if err == ledger.ErrPendingNotFound {
+				return UnReceivable, nil
+			} else {
+				return Other, err
+			}
+		}
+	}
+
+	return Progress, nil
+}
+
+func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte) (ProcessResult, error) {
+	result, err := checkStateBlock(lv, block, checkType)
 	if err != nil || result != Progress {
 		return result, err
 	}
@@ -224,23 +348,48 @@ func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResul
 	}
 
 	// check previous
-	if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-		return GapPrevious, nil
-	} else {
-		//check fork
-		if tm, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil && previous.GetHash() != tm.Header {
-			return Fork, nil
+	if checkType == blockCheck {
+		if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
+			return GapPrevious, nil
 		} else {
-			//check balance
-			if block.Balance.Compare(tm.Balance) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
+			//check fork
+			if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.Token); err == nil && previous.GetHash() != tm.Header {
+				return Fork, nil
+			} else {
+				//check balance
+				if block.Balance.Compare(tm.Balance) != types.BalanceCompEqual {
+					return BalanceMismatch, nil
+				}
+				//check vote,network,storage,oracle
+				if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+					previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+					previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+					previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
+					return BalanceMismatch, nil
+				}
 			}
-			//check vote,network,storage,oracle
-			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
-				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
-				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
-				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
+		}
+	}
+	// check previous
+	if checkType == blockCheckCache {
+		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
+			return GapPrevious, nil
+		} else {
+			//check fork
+			if tm, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil && previous.GetHash() != tm.Header {
+				return Fork, nil
+			} else {
+				//check balance
+				if block.Balance.Compare(tm.Balance) != types.BalanceCompEqual {
+					return BalanceMismatch, nil
+				}
+				//check vote,network,storage,oracle
+				if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
+					previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
+					previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
+					previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
+					return BalanceMismatch, nil
+				}
 			}
 		}
 	}
@@ -248,8 +397,8 @@ func checkChangeBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResul
 	return Progress, nil
 }
 
-func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkStateBlock(lv, block)
+func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte) (ProcessResult, error) {
+	result, err := checkStateBlock(lv, block, checkType)
 	if err != nil || result != Progress {
 		return result, err
 	}
@@ -260,48 +409,85 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult,
 	}
 
 	//check link
-	if b, _ := lv.l.HasStateBlock(block.Link); !b {
-		return GapSource, nil
-	} else {
-		//check fork
-		if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
-			return Fork, nil
-		}
-
-		pendingKey := types.PendingKey{
-			Address: block.Address,
-			Hash:    block.Link,
-		}
-		//check pending
-		if pending, err := lv.l.GetPending(pendingKey); err == nil {
-			if !pending.Amount.Equal(block.Balance) || pending.Type != block.Token {
-				return BalanceMismatch, nil
-			}
-			//check vote,network,storage,oracle
-			vote := block.GetVote()
-			network := block.GetNetwork()
-			storage := block.GetStorage()
-			oracle := block.GetOracle()
-			if !vote.IsZero() || !network.IsZero() ||
-				!storage.IsZero() || !oracle.IsZero() {
-				return BalanceMismatch, nil
-			}
-		} else if err == ledger.ErrPendingNotFound {
-			return UnReceivable, nil
+	if checkType == blockCheck {
+		if b, _ := lv.l.HasStateBlockConfirmed(block.Link); !b {
+			return GapSource, nil
 		} else {
-			return Other, err
+			//check fork
+			if _, err := lv.l.GetTokenMetaConfirmed(block.Address, block.Token); err == nil {
+				return Fork, nil
+			}
+
+			pendingKey := types.PendingKey{
+				Address: block.Address,
+				Hash:    block.Link,
+			}
+			//check pending
+			if pending, err := lv.l.GetPending(pendingKey); err == nil {
+				if !pending.Amount.Equal(block.Balance) || pending.Type != block.Token {
+					return BalanceMismatch, nil
+				}
+				//check vote,network,storage,oracle
+				vote := block.GetVote()
+				network := block.GetNetwork()
+				storage := block.GetStorage()
+				oracle := block.GetOracle()
+				if !vote.IsZero() || !network.IsZero() ||
+					!storage.IsZero() || !oracle.IsZero() {
+					return BalanceMismatch, nil
+				}
+			} else if err == ledger.ErrPendingNotFound {
+				return UnReceivable, nil
+			} else {
+				return Other, err
+			}
+		}
+	}
+	//check link
+	if checkType == blockCheckCache {
+		if b, _ := lv.l.HasStateBlock(block.Link); !b {
+			return GapSource, nil
+		} else {
+			//check fork
+			if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
+				return Fork, nil
+			}
+
+			pendingKey := types.PendingKey{
+				Address: block.Address,
+				Hash:    block.Link,
+			}
+			//check pending
+			if pending, err := lv.l.GetPending(pendingKey); err == nil {
+				if !pending.Amount.Equal(block.Balance) || pending.Type != block.Token {
+					return BalanceMismatch, nil
+				}
+				//check vote,network,storage,oracle
+				vote := block.GetVote()
+				network := block.GetNetwork()
+				storage := block.GetStorage()
+				oracle := block.GetOracle()
+				if !vote.IsZero() || !network.IsZero() ||
+					!storage.IsZero() || !oracle.IsZero() {
+					return BalanceMismatch, nil
+				}
+			} else if err == ledger.ErrPendingNotFound {
+				return UnReceivable, nil
+			} else {
+				return Other, err
+			}
 		}
 	}
 
 	return Progress, nil
 }
 
-func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte) (ProcessResult, error) {
 	//ignore chain genesis block
 	if common.IsGenesisBlock(block) {
 		return Progress, nil
 	}
-	result, err := checkSendBlock(lv, block)
+	result, err := checkSendBlock(lv, block, checkType)
 	if err != nil || result != Progress {
 		return result, err
 	}
@@ -335,43 +521,66 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	}
 }
 
-func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte) (ProcessResult, error) {
 	//ignore chain genesis block
 	if common.IsGenesisBlock(block) {
 		return Progress, nil
 	}
 
-	result, err := checkStateBlock(lv, block)
+	result, err := checkStateBlock(lv, block, checkType)
 	if err != nil || result != Progress {
 		return result, err
 	}
+	var input *types.StateBlock
 	// check previous
-	if !block.IsOpen() {
-		// check previous
-		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-			if previous, err = lv.l.GetBlockCache(block.Previous); err != nil {
+	if checkType == blockCheck {
+		if !block.IsOpen() {
+			// check previous
+			if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
 				return GapPrevious, nil
+			} else {
+				//check fork
+				if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+					return Fork, nil
+				}
 			}
 		} else {
 			//check fork
-			if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+			if _, err := lv.l.GetTokenMetaConfirmed(block.Address, block.Token); err == nil {
 				return Fork, nil
 			}
 		}
-	} else {
-		//check fork
-		if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
-			return Fork, nil
-		}
-	}
-
-	//check smart c exist
-	input, err := lv.l.GetStateBlock(block.GetLink())
-	if err != nil {
-		if input, err = lv.l.GetBlockCache(block.Link); err != nil {
+		//check smart c exist
+		input, err = lv.l.GetStateBlockConfirmed(block.GetLink())
+		if err != nil {
 			return GapSource, nil
 		}
 	}
+	// check previous
+	if checkType == blockCheckCache {
+		if !block.IsOpen() {
+			// check previous
+			if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
+				return GapPrevious, nil
+			} else {
+				//check fork
+				if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
+					return Fork, nil
+				}
+			}
+		} else {
+			//check fork
+			if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
+				return Fork, nil
+			}
+		}
+		//check smart c exist
+		input, err = lv.l.GetStateBlock(block.GetLink())
+		if err != nil {
+			return GapSource, nil
+		}
+	}
+
 	address := types.Address(input.GetLink())
 
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
@@ -447,12 +656,12 @@ func (lv *LedgerVerifier) addBlockCache(block *types.StateBlock, txn db.StoreTxn
 		return err
 	}
 
-	am, err := lv.l.GetAccountMeta(block.GetAddress(), txn)
+	am, err := lv.l.GetAccountMetaCache(block.GetAddress(), txn)
 	if err != nil && err != ledger.ErrAccountNotFound {
-		return fmt.Errorf("get account meta error: %s", err)
+		return fmt.Errorf("get account meta cache error: %s", err)
 	}
-	if err := lv.updateAccountMetaCacheHeader(block, am, txn); err != nil {
-		return fmt.Errorf("update account meta cache header error: %s", err)
+	if err := lv.updateAccountMetaCache(block, am, txn); err != nil {
+		return fmt.Errorf("update account meta cache error: %s", err)
 	}
 	return nil
 }
@@ -463,11 +672,11 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 		return err
 	}
 
-	am, err := lv.l.GetAccountMeta(block.GetAddress(), txn)
+	am, err := lv.l.GetAccountMetaConfirmed(block.GetAddress(), txn)
 	if err != nil && err != ledger.ErrAccountNotFound {
 		return fmt.Errorf("get account meta error: %s", err)
 	}
-	tm, err := lv.l.GetTokenMeta(block.GetAddress(), block.GetToken(), txn)
+	tm, err := lv.l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken(), txn)
 	if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
 		return fmt.Errorf("get token meta error: %s", err)
 	}
@@ -543,21 +752,17 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, txn db.StoreTxn) error {
 	if block.GetToken() == common.ChainToken() {
-		if tm != nil && !tm.Representative.IsZero() && tm.ConfirmHeader != types.ZeroHash {
-			preBlk, err := lv.l.GetStateBlock(block.Previous)
-			if err != nil {
-				return err
-			}
+		if tm != nil && !tm.Representative.IsZero() {
 			oldBenefit := &types.Benefit{
-				Vote:    preBlk.GetVote(),
-				Network: preBlk.GetNetwork(),
-				Oracle:  preBlk.GetOracle(),
-				Storage: preBlk.GetStorage(),
-				Balance: preBlk.GetBalance(),
-				Total:   preBlk.TotalBalance(),
+				Vote:    am.GetVote(),
+				Network: am.GetNetwork(),
+				Oracle:  am.GetOracle(),
+				Storage: am.GetStorage(),
+				Balance: am.GetBalance(),
+				Total:   am.TotalBalance(),
 			}
-			lv.logger.Debugf("sub rep(%s) from %s ", oldBenefit, preBlk.Representative)
-			if err := lv.l.SubRepresentation(preBlk.Representative, oldBenefit, txn); err != nil {
+			lv.logger.Debugf("sub rep(%s) from %s ", oldBenefit, tm.Representative)
+			if err := lv.l.SubRepresentation(tm.Representative, oldBenefit, txn); err != nil {
 				return err
 			}
 		}
@@ -582,8 +787,8 @@ func (lv *LedgerVerifier) updateFrontier(block *types.StateBlock, tm *types.Toke
 	frontier := &types.Frontier{
 		HeaderBlock: hash,
 	}
-	if tm != nil && tm.ConfirmHeader != types.ZeroHash {
-		if frontier, err := lv.l.GetFrontier(tm.ConfirmHeader, txn); err == nil {
+	if tm != nil {
+		if frontier, err := lv.l.GetFrontier(tm.Header, txn); err == nil {
 			lv.logger.Debug("delete frontier, ", *frontier)
 			if err := lv.l.DeleteFrontier(frontier.HeaderBlock, txn); err != nil {
 				return err
@@ -612,13 +817,12 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 	tmNew := &types.TokenMeta{
 		Type:           token,
 		Header:         hash,
-		ConfirmHeader:  hash,
 		Representative: rep,
 		OpenBlock:      hash,
 		Balance:        balance,
 		BlockCount:     1,
 		BelongTo:       address,
-		Modified:       common.TimeNow().Unix(),
+		Modified:       common.TimeNow().UTC().Unix(),
 	}
 
 	if am != nil {
@@ -631,24 +835,11 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			am.CoinStorage = block.GetStorage()
 		}
 		if tm != nil {
-			if tm.ConfirmHeader != types.ZeroHash {
-				tm.Header = hash
-				tm.ConfirmHeader = hash
-				tm.Representative = rep
-				tm.Balance = balance
-				tm.BlockCount = tm.BlockCount + 1
-				tm.Modified = common.TimeNow().Unix()
-			} else {
-				tm.Type = token
-				tm.Header = hash
-				tm.ConfirmHeader = hash
-				tm.Representative = rep
-				tm.OpenBlock = hash
-				tm.Balance = balance
-				tm.BlockCount = 1
-				tm.BelongTo = address
-				tm.Modified = common.TimeNow().Unix()
-			}
+			tm.Header = hash
+			tm.Representative = rep
+			tm.Balance = balance
+			tm.BlockCount = tm.BlockCount + 1
+			tm.Modified = common.TimeNow().UTC().Unix()
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
@@ -675,7 +866,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 	return nil
 }
 
-func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
 	address := block.GetAddress()
@@ -685,13 +876,12 @@ func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, 
 	tmNew := &types.TokenMeta{
 		Type:           token,
 		Header:         hash,
-		ConfirmHeader:  types.ZeroHash,
 		Representative: rep,
 		OpenBlock:      hash,
 		Balance:        balance,
 		BlockCount:     1,
 		BelongTo:       address,
-		Modified:       common.TimeNow().Unix(),
+		Modified:       common.TimeNow().UTC().Unix(),
 	}
 
 	if am != nil {
@@ -707,11 +897,12 @@ func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, 
 			tm.Header = hash
 			tm.Representative = rep
 			tm.Balance = balance
-			tm.Modified = common.TimeNow().Unix()
+			tm.BlockCount = tm.BlockCount + 1
+			tm.Modified = common.TimeNow().UTC().Unix()
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
-		if err := lv.l.UpdateAccountMeta(am, txn); err != nil {
+		if err := lv.l.UpdateAccountMetaCache(am, txn); err != nil {
 			return err
 		}
 	} else {
@@ -727,7 +918,7 @@ func (lv *LedgerVerifier) updateAccountMetaCacheHeader(block *types.StateBlock, 
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
 		}
-		if err := lv.l.AddAccountMeta(&account, txn); err != nil {
+		if err := lv.l.AddAccountMetaCache(&account, txn); err != nil {
 			return err
 		}
 	}
@@ -809,27 +1000,26 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 				return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
 			}
 		}
+
 		switch blockType {
 		case types.Open:
-
-			if err := lv.rollBackTokenDel(tm, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), open(%s)", err, hashCur)
-			}
-			if b, err := lv.l.HasBlockCache(blockCur.GetHash()); !b && err == nil {
-				if err := lv.rollBackFrontier(types.Hash{}, blockCur.GetHash(), txn); err != nil {
-					return fmt.Errorf("rollback frontier fail(%s), open(%s)", err, hashCur)
-				}
-				if err := lv.rollBackRep(blockCur.GetRepresentative(), blockCur, nil, false, blockCur.GetToken(), txn); err != nil {
-					return fmt.Errorf("rollback representative fail(%s), open(%s)", err, hashCur)
-				}
-				if err := lv.rollBackPendingAdd(blockCur, tm.Balance, blockCur.GetToken(), txn); err != nil {
-					return fmt.Errorf("rollback pending fail(%s), open(%s)", err, hashCur)
-				}
-			}
 			lv.logger.Debug("---delete open block, ", hashCur)
 			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block fail(%s), open(%s)", err, hashCur)
 			}
+			if err := lv.rollBackTokenDel(tm, txn); err != nil {
+				return fmt.Errorf("rollback token fail(%s), open(%s)", err, hashCur)
+			}
+			if err := lv.rollBackFrontier(types.Hash{}, blockCur.GetHash(), txn); err != nil {
+				return fmt.Errorf("rollback frontier fail(%s), open(%s)", err, hashCur)
+			}
+			if err := lv.rollBackRep(blockCur.GetRepresentative(), blockCur, nil, false, blockCur.GetToken(), txn); err != nil {
+				return fmt.Errorf("rollback representative fail(%s), open(%s)", err, hashCur)
+			}
+			if err := lv.rollBackPendingAdd(blockCur, tm.Balance, blockCur.GetToken(), txn); err != nil {
+				return fmt.Errorf("rollback pending fail(%s), open(%s)", err, hashCur)
+			}
+
 			if hashCur != hash {
 				if err := lv.processRollback(blockCur.GetLink(), false, txn); err != nil {
 					return err
@@ -848,66 +1038,65 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 					}
 				}
 			}
-			if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), send(%s)", err, hashCur)
-			}
-			if b, err := lv.l.HasBlockCache(blockCur.GetHash()); !b && err == nil {
-				if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-					return fmt.Errorf("rollback frontier fail(%s), send(%s)", err, hashCur)
-				}
-				if err := lv.rollBackRep(blockCur.GetRepresentative(), blockCur, blockPre, true, blockCur.GetToken(), txn); err != nil {
-					return fmt.Errorf("rollback representative fail(%s), send(%s)", err, hashCur)
-				}
-				if err := lv.rollBackPendingDel(blockCur, txn); err != nil {
-					return fmt.Errorf("rollback pending fail(%s), send(%s)", err, hashCur)
-				}
-			}
 			lv.logger.Debug("---delete send block, ", hashCur)
 			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block fail(%s), send(%s)", err, hashCur)
 			}
+			if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
+				return fmt.Errorf("rollback token fail(%s), send(%s)", err, hashCur)
+			}
+			if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
+				return fmt.Errorf("rollback frontier fail(%s), send(%s)", err, hashCur)
+			}
+			if err := lv.rollBackRep(blockCur.GetRepresentative(), blockCur, blockPre, true, blockCur.GetToken(), txn); err != nil {
+				return fmt.Errorf("rollback representative fail(%s), send(%s)", err, hashCur)
+			}
+			if err := lv.rollBackPendingDel(blockCur, txn); err != nil {
+				return fmt.Errorf("rollback pending fail(%s), send(%s)", err, hashCur)
+			}
 
 		case types.Receive:
-			if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), receive(%s)", err, hashCur)
-			}
-			if b, err := lv.l.HasBlockCache(blockCur.GetHash()); !b && err == nil {
-				if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-					return fmt.Errorf("rollback frontier fail(%s), receive(%s)", err, hashCur)
-				}
-				if err := lv.rollBackRep(blockCur.GetRepresentative(), blockCur, blockPre, false, blockCur.GetToken(), txn); err != nil {
-					return fmt.Errorf("rollback representative fail(%s), receive(%s)", err, hashCur)
-				}
-				if err := lv.rollBackPendingAdd(blockCur, blockCur.GetBalance().Sub(blockPre.GetBalance()), blockCur.GetToken(), txn); err != nil {
-					return fmt.Errorf("rollback pending fail(%s), receive(%s)", err, hashCur)
-				}
-			}
 			lv.logger.Debug("---delete receive block, ", hashCur)
 			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block fail(%s), receive(%s)", err, hashCur)
 			}
+			if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
+				return fmt.Errorf("rollback token fail(%s), receive(%s)", err, hashCur)
+			}
+			if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
+				return fmt.Errorf("rollback frontier fail(%s), receive(%s)", err, hashCur)
+			}
+			if err := lv.rollBackRep(blockCur.GetRepresentative(), blockCur, blockPre, false, blockCur.GetToken(), txn); err != nil {
+				return fmt.Errorf("rollback representative fail(%s), receive(%s)", err, hashCur)
+			}
+			if err := lv.rollBackPendingAdd(blockCur, blockCur.GetBalance().Sub(blockPre.GetBalance()), blockCur.GetToken(), txn); err != nil {
+				return fmt.Errorf("rollback pending fail(%s), receive(%s)", err, hashCur)
+			}
+
 			if hashCur != hash {
 				if err := lv.processRollback(blockCur.GetLink(), false, txn); err != nil {
 					return err
 				}
 			}
 		case types.Change:
-			if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), change(%s)", err, hashCur)
-			}
-			if b, err := lv.l.HasBlockCache(blockCur.GetHash()); !b && err == nil {
-				if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-					return fmt.Errorf("rollback frontier fail(%s), change(%s)", err, hashCur)
-				}
-				if err := lv.rollBackRepChange(blockPre.GetRepresentative(), blockCur.GetRepresentative(), blockCur, txn); err != nil {
-					return fmt.Errorf("rollback representative fail(%s), change(%s)", err, hashCur)
-				}
-			}
 			lv.logger.Debug("---delete change block, ", hashCur)
 			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block fail(%s), change(%s)", err, hashCur)
 			}
+			if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
+				return fmt.Errorf("rollback token fail(%s), change(%s)", err, hashCur)
+			}
+			if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
+				return fmt.Errorf("rollback frontier fail(%s), change(%s)", err, hashCur)
+			}
+			if err := lv.rollBackRepChange(blockPre.GetRepresentative(), blockCur.GetRepresentative(), blockCur, txn); err != nil {
+				return fmt.Errorf("rollback representative fail(%s), change(%s)", err, hashCur)
+			}
 		case types.ContractReward:
+			lv.logger.Debug("---delete ContractReward block, ", hashCur)
+			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
+				return fmt.Errorf("delete state block fail(%s), ContractReward(%s)", err, hashCur)
+			}
 			previousHash := blockCur.GetPrevious()
 			if previousHash.IsZero() {
 				if err := lv.rollBackTokenDel(tm, txn); err != nil {
@@ -918,22 +1107,16 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 					return fmt.Errorf("rollback token fail(%s), ContractReward(%s)", err, hashCur)
 				}
 			}
-			if b, err := lv.l.HasBlockCache(blockCur.GetHash()); !b && err == nil {
-				if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-					return fmt.Errorf("rollback frontier fail(%s), ContractReward(%s)", err, hashCur)
-				}
-				if err := lv.rollBackPendingAdd(blockCur, types.ZeroBalance, types.ZeroHash, txn); err != nil {
-					return fmt.Errorf("rollback pending fail(%s), ContractReward(%s)", err, hashCur)
-				}
+			if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
+				return fmt.Errorf("rollback frontier fail(%s), ContractReward(%s)", err, hashCur)
+			}
+			if err := lv.rollBackPendingAdd(blockCur, types.ZeroBalance, types.ZeroHash, txn); err != nil {
+				return fmt.Errorf("rollback pending fail(%s), ContractReward(%s)", err, hashCur)
 			}
 			if err := lv.rollBackContractData(blockCur, txn); err != nil {
 				return fmt.Errorf("rollback contract data fail(%s), ContractReward(%s)", err, blockCur.String())
 			}
 
-			lv.logger.Debug("---delete ContractReward block, ", hashCur)
-			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
-				return fmt.Errorf("delete state block fail(%s), ContractReward(%s)", err, hashCur)
-			}
 			if hashCur != hash {
 				if err := lv.processRollback(blockCur.GetLink(), false, txn); err != nil {
 					return err
@@ -952,23 +1135,21 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 				}
 			}
 
-			if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
-				return fmt.Errorf("rollback token fail(%s), ContractSend(%s)", err, hashCur)
-			}
-			if b, err := lv.l.HasBlockCache(blockCur.GetHash()); !b && err == nil {
-				if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-					return fmt.Errorf("rollback frontier fail(%s), ContractSend(%s)", err, hashCur)
-				}
-				if err := lv.rollBackPendingDel(blockCur, txn); err != nil {
-					return fmt.Errorf("rollback pending fail(%s), ContractSend(%s)", err, hashCur)
-				}
-			}
-			if err := lv.rollBackContractData(blockCur, txn); err != nil {
-				return fmt.Errorf("rollback contract data fail(%s), ContractSend(%s)", err, blockCur.String())
-			}
 			lv.logger.Debug("---delete ContractSend block, ", hashCur)
 			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block fail(%s), ContractSend(%s)", err, hashCur)
+			}
+			if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
+				return fmt.Errorf("rollback token fail(%s), ContractSend(%s)", err, hashCur)
+			}
+			if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
+				return fmt.Errorf("rollback frontier fail(%s), ContractSend(%s)", err, hashCur)
+			}
+			if err := lv.rollBackPendingDel(blockCur, txn); err != nil {
+				return fmt.Errorf("rollback pending fail(%s), ContractSend(%s)", err, hashCur)
+			}
+			if err := lv.rollBackContractData(blockCur, txn); err != nil {
+				return fmt.Errorf("rollback contract data fail(%s), ContractSend(%s)", err, blockCur.String())
 			}
 		}
 
