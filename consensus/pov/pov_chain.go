@@ -186,7 +186,7 @@ func (bc *PovBlockChain) Stop() error {
 }
 
 func (bc *PovBlockChain) statLoop() {
-	checkTicker := time.NewTimer(5 * time.Minute)
+	checkTicker := time.NewTicker(5 * time.Minute)
 
 	for {
 		select {

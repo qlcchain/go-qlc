@@ -438,7 +438,7 @@ func (l *Ledger) AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, 
 	}
 
 	txn, flag := l.getTxn(true, txns...)
-	l.releaseTxn(txn, flag)
+	defer l.releaseTxn(txn, flag)
 
 	dataTypes, err := txLookup.Serialize()
 	if err != nil {
@@ -608,7 +608,7 @@ func (l *Ledger) AddPovMinerStat(dayStat *types.PovMinerDayStat, txns ...db.Stor
 	}
 
 	txn, flag := l.getTxn(true, txns...)
-	l.releaseTxn(txn, flag)
+	defer l.releaseTxn(txn, flag)
 
 	valBytes, err := dayStat.Serialize()
 	if err != nil {
