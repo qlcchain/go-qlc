@@ -200,6 +200,50 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 	return aa, nil
 }
 
+func (l *LedgerApi) AccountConfirmedInfo(address types.Address) (*APIAccount, error) {
+	aa := new(APIAccount)
+	am, err := l.ledger.GetAccountMetaConfirmed(address)
+	if err != nil {
+		return nil, err
+	}
+	vmContext := vmstore.NewVMContext(l.ledger)
+	for _, t := range am.Tokens {
+		if t.Type == common.ChainToken() {
+			aa.CoinBalance = &t.Balance
+			aa.Representative = &t.Representative
+			aa.CoinVote = &am.CoinVote
+			aa.CoinNetwork = &am.CoinNetwork
+			aa.CoinOracle = &am.CoinOracle
+			aa.CoinStorage = &am.CoinStorage
+		}
+		info, err := abi.GetTokenById(vmContext, t.Type)
+		if err != nil {
+			return nil, err
+		}
+		pendingKeys, err := l.ledger.TokenPending(address, t.Type)
+		if err != nil {
+			return nil, err
+		}
+		pendingAmount := types.ZeroBalance
+		for _, key := range pendingKeys {
+			pendinginfo, err := l.ledger.GetPending(*key)
+			if err != nil {
+				return nil, err
+			}
+			pendingAmount = pendingAmount.Add(pendinginfo.Amount)
+		}
+		tm := APITokenMeta{
+			TokenMeta: t,
+			TokenName: info.TokenName,
+			Pending:   pendingAmount,
+		}
+		aa.Tokens = append(aa.Tokens, &tm)
+
+	}
+	aa.Address = address
+	return aa, nil
+}
+
 func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, error) {
 	am, err := l.ledger.GetAccountMeta(addr)
 	if err != nil {
@@ -676,9 +720,6 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	switch flag {
 	case process.Progress:
 		hash := block.GetHash()
-		if b, err := l.ledger.HasBlockCache(hash); b == true && err == nil {
-			return types.ZeroHash, errors.New("old block")
-		}
 		err := verifier.BlockCacheProcess(block)
 		if err != nil {
 			l.logger.Errorf("Block %s add to blockCache error[%d]", hash, err)
