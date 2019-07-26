@@ -2365,12 +2365,12 @@ func (l *Ledger) AddBlockCache(blk *types.StateBlock, txns ...db.StoreTxn) error
 	if err := txn.Set(key, blockBytes); err != nil {
 		return err
 	}
-	if err := addChild(blk, txn); err != nil {
-		return fmt.Errorf("add block child error: %s", err)
-	}
-	if err := addLink(blk, txn); err != nil {
-		return fmt.Errorf("add block link error: %s", err)
-	}
+	//if err := addChild(blk, txn); err != nil {
+	//	return fmt.Errorf("add block child error: %s", err)
+	//}
+	//if err := addLink(blk, txn); err != nil {
+	//	return fmt.Errorf("add block link error: %s", err)
+	//}
 	l.releaseTxn(txn, flag)
 	return nil
 }
@@ -2432,12 +2432,12 @@ func (l *Ledger) DeleteBlockCache(hash types.Hash, txns ...db.StoreTxn) error {
 	if err := txn.Delete(key); err != nil {
 		return err
 	}
-	if err := l.deleteChild(blk, txn); err != nil {
-		return fmt.Errorf("delete child error: %s", err)
-	}
-	if err := l.deleteLink(blk, txn); err != nil {
-		return fmt.Errorf("delete link error: %s", err)
-	}
+	//if err := l.deleteChild(blk, txn); err != nil {
+	//	return fmt.Errorf("delete child error: %s", err)
+	//}
+	//if err := l.deleteLink(blk, txn); err != nil {
+	//	return fmt.Errorf("delete link error: %s", err)
+	//}
 	l.releaseTxn(txn, flag)
 	return nil
 }
