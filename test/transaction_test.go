@@ -32,8 +32,11 @@ import (
 )
 
 var (
-	services1 = new(Service)
-	services2 = new(Service)
+	node1        = new(Service)
+	node2        = new(Service)
+	testBytes, _ = hex.DecodeString(testPrivateKey)
+	testAccount  = types.NewAccount(testBytes)
+	//testAddress = testAccount.Address()
 )
 
 type Service struct {
@@ -41,15 +44,16 @@ type Service struct {
 	netService       *ss.P2PService
 	consensusService *ss.ConsensusService
 	rPCService       *ss.RPCService
-	sqliteService    *ss.SqliteService
 	dir              string
 }
 
 func TestTransaction(t *testing.T) {
-	configNode(t)
+	fmt.Println("transaction start ")
+	nodeConfig(t)
 	defer func() {
-		closeServer(services1, t)
-		closeServer(services2, t)
+		fmt.Println(" close servers")
+		closeServer(node1, t)
+		closeServer(node2, t)
 	}()
 
 	// qlc_3n4i9jscmhcfy8ueph5eb15cc3fey55bn9jgh67pwrdqbpkwcsbu4iot7f7s
@@ -57,40 +61,34 @@ func TestTransaction(t *testing.T) {
 	tBytes, _ := hex.DecodeString(tPrivateKey)
 	tAccount := types.NewAccount(tBytes)
 
-	client1, err := services1.rPCService.RPC().Attach()
+	client1, err := node1.rPCService.RPC().Attach()
 	if err != nil {
 		t.Fatal(err)
 	}
 	// prepare two account to send transaction
 	sAmount := types.Balance{Int: big.NewInt(10000000000000)}
-	sendBlock := sendTransaction(client1, *testaccount, *tAccount, sAmount, t)
+	sendBlock := sendTransaction(client1, *testAccount, *tAccount, sAmount, t)
+
 	b := false
 	start := time.Now()
 	for !b {
-		b, err = services1.ledgerService.Ledger.HasStateBlockConfirmed(sendBlock.GetHash())
+		b, err = node1.ledgerService.Ledger.HasStateBlockConfirmed(sendBlock.GetHash())
 		if b == true {
 			b = true
 		}
 		time.Sleep(1 * time.Second)
 	}
-	fmt.Println("------confirmed use ", time.Now().Sub(start))
+	fmt.Println("confirmed use ", time.Now().Sub(start))
+	receiveTransaction(client1, *tAccount, sendBlock, t)
 
-	var receiverBlock types.StateBlock
-	if err := client1.Call(&receiverBlock, "ledger_generateReceiveBlock", &sendBlock, tPrivateKey); err != nil {
-		t.Fatal(err)
-	}
-	var h types.Hash
-	if err := client1.Call(&h, "ledger_process", &receiverBlock); err != nil {
-		t.Fatal(err)
-	}
 	// transaction
 	// qlc_3hpt4k5hst4i1gdsn5o366owyndxdcoq3wtnrbsm8gw5edb4gatqjzbmwsc9
 	cPrivateKey := "6ff74e6b363c87bfef33288ede0a1984126a4d771483d66ad9be24ff1ce6cd8bbeda1486fce85003979a0ea1212bcf517d5aab70f354c273333b8362d2272357"
 	cBytes, _ := hex.DecodeString(cPrivateKey)
 	cAccount := types.NewAccount(cBytes)
 
-	m1 := 1000
-	m2 := 1000
+	m1 := 5000
+	m2 := 5000
 	amount1 := 10
 	amount2 := 20
 	var headerBlock1 types.StateBlock
@@ -98,7 +96,7 @@ func TestTransaction(t *testing.T) {
 	go func() {
 		for i := 0; i < m1; i++ {
 			wg1.Add(1)
-			headerBlock1 = sendTransaction(client1, *testaccount, *cAccount, types.Balance{Int: big.NewInt(int64(amount1))}, t)
+			headerBlock1 = sendTransaction(client1, *testAccount, *cAccount, types.Balance{Int: big.NewInt(int64(amount1))}, t)
 			wg1.Done()
 		}
 	}()
@@ -118,19 +116,19 @@ func TestTransaction(t *testing.T) {
 	fmt.Println("transaction finish ")
 	b = false
 	for !b {
-		b1, err := services1.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock1.GetHash())
+		b1, err := node1.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock1.GetHash())
 		if err != nil {
 			t.Fatal(err)
 		}
-		b2, err := services1.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock2.GetHash())
+		b2, err := node1.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock2.GetHash())
 		if err != nil {
 			t.Fatal(err)
 		}
-		b3, err := services2.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock1.GetHash())
+		b3, err := node2.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock1.GetHash())
 		if err != nil {
 			t.Fatal(err)
 		}
-		b4, err := services2.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock2.GetHash())
+		b4, err := node2.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock2.GetHash())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -142,23 +140,23 @@ func TestTransaction(t *testing.T) {
 	fmt.Println("consensus finish ")
 	// check result
 	fmt.Println("check node1")
-	checkBlock(services1, 9+m1+m2, t)
-	checkAccount(services1, testaccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
+	checkBlock(node1, 9+m1+m2, t)
+	checkAccount(node1, testAccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
 		headerBlock1.GetHash(), t)
-	checkAccount(services1, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
+	checkAccount(node1, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
 		headerBlock2.GetHash(), t)
-	checkRepresentation(services1, testaccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
+	checkRepresentation(node1, testAccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
 
 	// check node2
 	fmt.Println("check node2")
-	checkBlock(services2, 9+m1+m2, t)
-	checkAccount(services2, testaccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
+	checkBlock(node2, 9+m1+m2, t)
+	checkAccount(node2, testAccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
 		headerBlock1.GetHash(), t)
-	checkAccount(services2, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
+	checkAccount(node2, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
 		headerBlock2.GetHash(), t)
-	checkRepresentation(services2, testaccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
+	checkRepresentation(node2, testAccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
 
-	fmt.Println("check finish ")
+	fmt.Println("transaction successfully ")
 }
 
 func checkBlock(service *Service, blockCount int, t *testing.T) {
@@ -212,10 +210,21 @@ func sendTransaction(client *rpc.Client, from, to types.Account, amount types.Ba
 	return sendBlock
 }
 
-func configNode(t *testing.T) {
+func receiveTransaction(client *rpc.Client, acc types.Account, sendBlock types.StateBlock, t *testing.T) types.StateBlock {
+	var receiverBlock types.StateBlock
+	if err := client.Call(&receiverBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(acc.PrivateKey())); err != nil {
+		t.Fatal(err)
+	}
+	var h types.Hash
+	if err := client.Call(&h, "ledger_process", &receiverBlock); err != nil {
+		t.Fatal(err)
+	}
+	return receiverBlock
+}
+
+func nodeConfig(t *testing.T) {
 	//node1
 	dir1 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	fmt.Println(dir1)
 	cfgFile1, _ := config.DefaultConfig(dir1)
 	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
@@ -223,8 +232,6 @@ func configNode(t *testing.T) {
 	cfgFile1.LogLevel = "error"
 	cfgFile1.RPC.Enable = true
 	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfgFile1.P2P.ID.PeerID
-	cfgFile1Byte, _ := json.Marshal(cfgFile1)
-	fmt.Println("node1 config \n", string(cfgFile1Byte))
 
 	// node1
 	dir2 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
@@ -241,19 +248,21 @@ func configNode(t *testing.T) {
 	cfgFile1.P2P.BootNodes = []string{b2}
 	cfgFile2.P2P.BootNodes = []string{b1}
 
-	cfgFile2Byte, _ := json.Marshal(cfgFile1)
+	cfgFile1Byte, _ := json.Marshal(cfgFile1)
+	fmt.Println("node1 config \n", string(cfgFile1Byte))
+	cfgFile2Byte, _ := json.Marshal(cfgFile2)
 	fmt.Println("node2 config \n", string(cfgFile2Byte))
 
 	fmt.Println(" start node1....")
-	services1.dir = dir1
-	initNode(services1, cfgFile1, []*types.Account{testaccount}, t)
+	node1.dir = dir1
+	initNode(node1, cfgFile1, []*types.Account{testAccount}, t)
 
 	fmt.Println(" start node2....")
-	services1.dir = dir2
-	initNode(services2, cfgFile2, nil, t)
+	node2.dir = dir2
+	initNode(node2, cfgFile2, nil, t)
 	time.Sleep(10 * time.Second)
 
-	//err := services1.ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
+	//err := node1.ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
 	//	fmt.Println(block)
 	//	return nil
 	//})
@@ -272,16 +281,8 @@ func initNode(service *Service, cfg *config.Config, accounts []*types.Account, t
 	if err != nil {
 		t.Fatal(err)
 	}
-	service.sqliteService, err = ss.NewSqliteService(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
 	service.netService, err = ss.NewP2PService(cfg)
 	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := service.sqliteService.Init(); err != nil {
 		t.Fatal(err)
 	}
 	if err := service.ledgerService.Init(); err != nil {
@@ -312,9 +313,6 @@ func initNode(service *Service, cfg *config.Config, accounts []*types.Account, t
 	if err := service.rPCService.Init(); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.sqliteService.Start(); err != nil {
-		t.Fatal(err)
-	}
 	if err := service.ledgerService.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -342,17 +340,7 @@ func closeServer(service *Service, t *testing.T) {
 	if err := service.ledgerService.Stop(); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.sqliteService.Stop(); err != nil {
-		t.Fatal(err)
-	}
 	if err := os.RemoveAll(service.dir); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func TestLedger_HashConvertToAddress(t *testing.T) {
-	s := "6c0b2cdd533ee3a21668f199e111f6c8614040e60e70a73ab6c8da036f2a7ad7"
-	h := new(types.Hash)
-	h.Of(s)
-	fmt.Println(types.Address(*h))
 }
