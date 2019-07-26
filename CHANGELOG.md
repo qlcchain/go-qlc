@@ -1,9 +1,82 @@
 
-<a name="v1.3.0"></a>
-## [v1.3.0](https://github.com/qlcchain/go-qlc/compare/v1.2.2...v1.3.0) (2019-06-17)
+<a name="v1.2.3"></a>
+## [v1.2.3](https://github.com/qlcchain/go-qlc/compare/v1.2.2...v1.2.3) (2019-07-26)
 
 ### Bug Fixes
 
+* modify pov miner generate block
+* merge master to branch feature/pov-consensus-refactor
+* modify mine worker num to 1
+* modify pov block size to 2MB
+* change miner contract address to 21
+* modify miner reward cmd & rpc
+* add start & end height to miner reward param
+* miner reward shoud check duplicate send & recv
+* remove MinerApi vmContext field to local var
+* remove useless time sleep to reduce cpu usage
+* restore miner contract address to 3
+* restore miner contract address to 3
+* change consensus debug level and cache block check result
+* optimize block check
+* merge master to branch feature/refactor-miner-contract
+* optimize cons
+* optimize consensus
+* reward contract should check miner pledge vote
+* do not check pov sync state if pov service is not enabled
+* remove useless time sleep to reduce cpu usage
+* nep5txid encoding/hex error
+* add PovMinerRewardHeightStart param
+* change min enough pov sync peer count
+* reduce duplicate block message in pov sync phase
+* save unchecked block to ledger
+* sync bug
+* rollback error may cause nil pointer painc
+* use ; split instead of : split for --configParams
+* change dpos get cache len
+* change dpos cache
+* optimize dpos msg
+* remove active tx after 30mins
+* optimize dpos msg
+* using bigger retry time interval to reduce messages
+* consensus testcase
+* optimze dpos vote msg
+* channel blocked in sendMessageToPeer func
+* write twice to messagechan
+* badger go mod dep
+* badger version
+* change receive mag cache time
+* add rep vote debug
+* change debug level
+* read chan timeout
+*  pov_getBlockByHeight may return too large size of data
+* stream.messageChan <- message may blocked all the time fix [#420](https://github.com/qlcchain/go-qlc/issues/420)
+* messageService loop can not exit
+* `configparams` can not override string array
+* pov sync slow peer init time
+* check pov sync peer is too slow
+* pov sync not working
+* check pov sync rx & block request cache
+* badger dependence
+* pov block td calc is incorrect
+* generate_test_ledger cliâ
+* bigger pov sync msg channel size
+* pull more state blocks in pov sync
+* reduce duplicate message in pov syncing phase
+* send cli bug
+* pov txtool not pack mintage genesis contract send blocks
+* update pov block num per day
+* generate_test_ledger cli no need designated account. peldge and mintage cli should use random nep5Txid for test
+* cmd pledge should using random nep5 txid just for testing
+* `StringToBalance` memory leak
+* consensus check pov height
+* optimize pov txpool recoverUnconfirmedTxs
+* pov txpool SelectPendingTxs
+* move hash in AccountState to TokenState
+* update debug print info
+* representative node send tx bug
+* adjust order to close the modules
+* change pov miner RewardPerBlock
+* change PovMinerPledgeAmountMin from 50w to 100w
 * remove comment
 * fork process bug
 * process fork bug and reduce msg cache time
@@ -41,6 +114,37 @@
 
 ### Features
 
+* complete the functions of the v1.2.3 plan ([#474](https://github.com/qlcchain/go-qlc/issues/474))
+* add pov fake consesus
+* refactor miner contract ([#455](https://github.com/qlcchain/go-qlc/issues/455))
+* add miner history cmd
+* add pov pow consensus
+* merge feature/refactor-miner-contract
+* pov_getMinerStats rpc add online count
+* pov rpcs should check cfg enabled or not
+* modify pov target timespan params
+* change pov genesis block and split pov params
+* using PovHeader not PovBlock to reduce cache memory usaging
+* move pov files to sub folder
+* update libp2p package
+* add rewardBlocks to MinerReward contract param
+* add pov rpc getLatestAccountState
+* don't save contract data when block check
+* refactoring pov miner contract
+* disable pov service by default in config v4
+* check msg in p2p cache before send
+* add ctrl channel for reponse message
+* send PovBulkPullReq to block source peer
+* rollback contract block  ([#428](https://github.com/qlcchain/go-qlc/issues/428))
+* move pov block parameter from config file to common const
+* optimize pov sync using batch request blocks & txs
+* add rpc interface OnlineRepsInfo
+* need to have three million QLC to vote
+* add change representative cmd
+* add pov_batchGetHeadersByHeight rpc
+* rpc add pov_getFittestHeader
+* add ledger GetLatestPovHeader
+* add yamux option for p2p network
 * add peer connect status judge when syncing
 * print config details
 * remove print
@@ -61,11 +165,29 @@
 
 ### Refactoring
 
+* remove qlcclassic api
+* split json RPC lib as a standalone project
+* sync RPC lib upstream
+* if the configuration file is modified incorrectly, keep the original content and prompt the error
 * make rewards exception log clearer
 * refactor consensus module([#275](https://github.com/qlcchain/go-qlc/issues/275) [#276](https://github.com/qlcchain/go-qlc/issues/276))
 
 ### Pull Requests
 
+* Merge pull request [#467](https://github.com/qlcchain/go-qlc/issues/467) from qlcchain/feature/pov-consensus-refactor
+* Merge pull request [#465](https://github.com/qlcchain/go-qlc/issues/465) from qlcchain/feature/remove-time-sleep
+* Merge pull request [#463](https://github.com/qlcchain/go-qlc/issues/463) from qlcchain/feature/cons-optimize
+* Merge pull request [#454](https://github.com/qlcchain/go-qlc/issues/454) from qlcchain/feature/libp2pUpdate
+* Merge pull request [#450](https://github.com/qlcchain/go-qlc/issues/450) from qlcchain/feature/save-contractdata
+* Merge pull request [#441](https://github.com/qlcchain/go-qlc/issues/441) from qlcchain/hotfix/cons-check-pov
+* Merge pull request [#440](https://github.com/qlcchain/go-qlc/issues/440) from qlcchain/hotfix/randomnep5id
+* Merge pull request [#439](https://github.com/qlcchain/go-qlc/issues/439) from qlcchain/feature/pov-optimize
+* Merge pull request [#438](https://github.com/qlcchain/go-qlc/issues/438) from qlcchain/feature/libp2pDep
+* Merge pull request [#430](https://github.com/qlcchain/go-qlc/issues/430) from qlcchain/hotfix/consensus_testcase
+* Merge pull request [#429](https://github.com/qlcchain/go-qlc/issues/429) from qlcchain/hotfix/sendmessagetopeer
+* Merge pull request [#427](https://github.com/qlcchain/go-qlc/issues/427) from qlcchain/hotfix/messagechan
+* Merge pull request [#426](https://github.com/qlcchain/go-qlc/issues/426) from qlcchain/hotfix/badger
+* Merge pull request [#425](https://github.com/qlcchain/go-qlc/issues/425) from qlcchain/feature/pov-integrating
 * Merge pull request [#411](https://github.com/qlcchain/go-qlc/issues/411) from qlcchain/feature/conspov
 * Merge pull request [#406](https://github.com/qlcchain/go-qlc/issues/406) from qlcchain/feature/sync
 * Merge pull request [#404](https://github.com/qlcchain/go-qlc/issues/404) from qlcchain/hotfix/configbug
