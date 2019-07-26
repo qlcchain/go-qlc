@@ -73,19 +73,22 @@ type PovApiTD struct {
 }
 
 type PovMinerStatItem struct {
+	MainBlockNum     uint32    `json:"mainBlockNum"`
 	FirstBlockTime   time.Time `json:"firstBlockTime"`
 	LastBlockTime    time.Time `json:"lastBlockTime"`
 	FirstBlockHeight uint64    `json:"firstBlockHeight"`
 	LastBlockHeight  uint64    `json:"lastBlockHeight"`
-	AllBlockCount    uint64    `json:"allBlockCount"`
-	AllBestCount     uint64    `json:"allBestCount"`
 	IsOnline         bool      `json:"isOnline"`
 }
 
 type PovMinerStats struct {
-	MinerCount  int                                 `json:"minerCount"`
-	OnlineCount int                                 `json:"onlineCount"`
-	MinerStats  map[types.Address]*PovMinerStatItem `json:"minerStats"`
+	MinerCount  int `json:"minerCount"`
+	OnlineCount int `json:"onlineCount"`
+
+	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
+
+	TotalBlockNum     uint32 `json:"totalBlockNum"`
+	LatestBlockHeight uint64 `json:"latestBlockHeight"`
 }
 
 func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *PovApi {
@@ -475,52 +478,98 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		}
 	}
 
-	bestBlockHashMap := make(map[types.Hash]struct{})
-	err := api.ledger.GetAllPovBestHashes(func(height uint64, hash types.Hash) error {
-		bestBlockHashMap[hash] = struct{}{}
-		return nil
-	})
+	totalBlockNum := uint32(0)
 
-	err = api.ledger.GetAllPovHeaders(func(header *types.PovHeader) error {
-		if header.GetHeight() == common.PovChainGenesisBlockHeight {
-			return nil
+	// scan miner stats per day
+	lastDayIndex := uint32(0)
+	err := api.ledger.GetAllPovMinerStats(func(stat *types.PovMinerDayStat) error {
+		if stat.DayIndex > lastDayIndex {
+			lastDayIndex = stat.DayIndex
 		}
+		for addrHex, minerStat := range stat.MinerStats {
+			minerAddr, _ := types.HexToAddress(addrHex)
 
-		if len(checkAddrMap) > 0 && checkAddrMap[header.GetCoinbase()] == false {
-			return nil
-		}
-
-		item, ok := apiRsp.MinerStats[header.GetCoinbase()]
-		if !ok {
-			item = &PovMinerStatItem{}
-			item.FirstBlockTime = time.Unix(header.GetTimestamp(), 0)
-			item.LastBlockTime = time.Unix(header.GetTimestamp(), 0)
-			item.FirstBlockHeight = header.GetHeight()
-			item.LastBlockHeight = header.GetHeight()
-			item.AllBlockCount = 1
-
-			apiRsp.MinerStats[header.GetCoinbase()] = item
-		} else {
-			if item.FirstBlockTime.Unix() > header.GetTimestamp() {
-				item.FirstBlockTime = time.Unix(header.GetTimestamp(), 0)
-				item.FirstBlockHeight = header.GetHeight()
+			if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
+				return nil
 			}
-			if item.LastBlockTime.Unix() < header.GetTimestamp() {
-				item.LastBlockTime = time.Unix(header.GetTimestamp(), 0)
-				item.LastBlockHeight = header.GetHeight()
+
+			item, ok := apiRsp.MinerStats[minerAddr]
+			if !ok {
+				item = &PovMinerStatItem{}
+				item.FirstBlockHeight = minerStat.FirstHeight
+				item.LastBlockHeight = minerStat.LastHeight
+
+				apiRsp.MinerStats[minerAddr] = item
+			} else {
+				if item.FirstBlockHeight > minerStat.FirstHeight {
+					item.FirstBlockHeight = minerStat.FirstHeight
+				}
+				if item.LastBlockHeight < minerStat.LastHeight {
+					item.LastBlockHeight = minerStat.LastHeight
+				}
 			}
-			item.AllBlockCount += 1
+			item.MainBlockNum += minerStat.BlockNum
+			totalBlockNum += minerStat.BlockNum
 		}
-		if _, ok := bestBlockHashMap[header.GetHash()]; ok {
-			item.AllBestCount += 1
-		}
+
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	// scan best block not in miner stats per day
+	latestHeader, _ := api.ledger.GetLatestPovHeader()
+
+	notStatHeightStart := uint64(lastDayIndex) * uint64(common.POVChainBlocksPerDay)
+	notStatHeightEnd := latestHeader.GetHeight()
+
+	for height := notStatHeightStart; height <= notStatHeightEnd; height++ {
+		header, _ := api.ledger.GetPovHeaderByHeight(height)
+		if header == nil {
+			break
+		}
+
+		minerAddr := header.GetCoinbase()
+		if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
+			continue
+		}
+
+		item, ok := apiRsp.MinerStats[minerAddr]
+		if !ok {
+			item = &PovMinerStatItem{}
+			item.FirstBlockHeight = header.GetHeight()
+			item.LastBlockHeight = header.GetHeight()
+
+			apiRsp.MinerStats[minerAddr] = item
+		} else {
+			if item.FirstBlockHeight > header.GetHeight() {
+				item.FirstBlockHeight = header.GetHeight()
+			}
+			if item.LastBlockHeight < header.GetHeight() {
+				item.LastBlockHeight = header.GetHeight()
+			}
+		}
+		item.MainBlockNum += 1
+		totalBlockNum += 1
+	}
+
+	// fill time
+	for _, minerItem := range apiRsp.MinerStats {
+		firstBlock, _ := api.ledger.GetPovHeaderByHeight(minerItem.FirstBlockHeight)
+		if firstBlock != nil {
+			minerItem.FirstBlockTime = time.Unix(firstBlock.GetTimestamp(), 0)
+		}
+		lastBlock, _ := api.ledger.GetPovHeaderByHeight(minerItem.LastBlockHeight)
+		if lastBlock != nil {
+			minerItem.LastBlockTime = time.Unix(lastBlock.GetTimestamp(), 0)
+		}
+	}
+
 	apiRsp.MinerCount = len(apiRsp.MinerStats)
+
+	apiRsp.TotalBlockNum = totalBlockNum
+	apiRsp.LatestBlockHeight = latestHeader.GetHeight()
 
 	// miner is online if it generate blocks in last hour
 	for _, item := range apiRsp.MinerStats {
