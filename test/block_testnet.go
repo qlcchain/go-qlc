@@ -17,10 +17,11 @@ const (
 )
 
 var (
-	testSendBlock       types.StateBlock
-	testReceiveBlock    types.StateBlock
-	testSendGasBlock    types.StateBlock
-	testReceiveGasBlock types.StateBlock
+	testSendBlock            types.StateBlock
+	testReceiveBlock         types.StateBlock
+	testSendGasBlock         types.StateBlock
+	testReceiveGasBlock      types.StateBlock
+	testChangeRepresentative types.StateBlock
 )
 
 var (
@@ -102,4 +103,24 @@ var (
               "work": "00000000006a915e",
               "signature": "81dba2c7fd77493181184b0584bd667807321d733b9643a26b17cc3e77b43321590894ce859b5c9e3567cb3e8d38ca456ab32e9adb27e7f564bf7434a8e11108"
         }`
+
+	jsonTestChangeRepresentative = `{
+			"type": "Change",
+			"token": "a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582",
+			"address": "qlc_1u1d7mgo8hq5nad8jwesw6azfk53a31ge5minwxdfk8t1fqknypqgk8mi3z7",
+			"balance": "60000000000000000",
+			"vote": "0",
+			"network": "0",
+			"storage": "0",
+			"oracle": "0",
+			"previous": "b82a5151d42af6ff1399f2039baf46b8812d28085c4fb5bedadfabea661c242a",
+			"link": "0000000000000000000000000000000000000000000000000000000000000000",
+			"message": "0000000000000000000000000000000000000000000000000000000000000000",
+			"povHeight": 0,
+			"timestamp": 1564062913,
+			"extra": "0000000000000000000000000000000000000000000000000000000000000000",
+			"representative": "qlc_1u1d7mgo8hq5nad8jwesw6azfk53a31ge5minwxdfk8t1fqknypqgk8mi3z7",
+			"work": "0000000000000000",
+			"signature": "a9df7a6bb119914f0d22a90b507d5726f9cdf520cd0d82da3c13632b145fe3f3c5e47fe6c8e8124030726d47517ba736b237903d77699a9439dfcf079734c700"
+		}`
 )

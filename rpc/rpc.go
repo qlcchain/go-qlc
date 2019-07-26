@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"errors"
-	rpc "github.com/qlcchain/jsonrpc2"
 	"net"
 	"net/url"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 )
 
@@ -180,6 +180,7 @@ func (r *RPC) startInProcess(apis []rpc.API) error {
 		}
 		//r.logger.Debug("InProc registered ", "service ", api.Service, " namespace ", api.Namespace)
 	}
+	r.logger.Info("InProc start successfully")
 	r.inProcessHandler = handler
 	return nil
 }
