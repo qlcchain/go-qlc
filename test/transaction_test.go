@@ -24,7 +24,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
@@ -42,6 +41,54 @@ type Service struct {
 }
 
 func TestTransaction(t *testing.T) {
+	configNode(t)
+
+	tPrivateKey := "012308c480fddb6e66b56c08f0d55d935681da0b3c9c33077010bf12a91414576c0b2cdd533ee3a21668f199e111f6c8614040e60e70a73ab6c8da036f2a7ad7"
+	tBytes, _ := hex.DecodeString(tPrivateKey)
+	tAccount := types.NewAccount(tBytes)
+
+	client1, err := services1.rPCService.RPC().Attach()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// prepare two account to send transaction
+	var sendBlock types.StateBlock
+	para := api.APISendBlockPara{
+		From:      testaccount.Address(),
+		To:        tAccount.Address(),
+		Amount:    types.Balance{Int: big.NewInt(10000000000000)},
+		TokenName: "QLC",
+	}
+	if err := client1.Call(&sendBlock, "ledger_generateSendBlock", &para, testPrivateKey); err != nil {
+		t.Fatal(err)
+	}
+	var h types.Hash
+	if err := client1.Call(&h, "ledger_process", &sendBlock); err != nil {
+		t.Fatal(err)
+	}
+	b := false
+	start := time.Now()
+	for !b {
+		b, err = services1.ledgerService.Ledger.HasStateBlockConfirmed(sendBlock.GetHash())
+		if b == true {
+			b = true
+		}
+		time.Sleep(1 * time.Second)
+	}
+	fmt.Println("------confirmed use ", time.Now().Sub(start))
+
+	var receiverBlock types.StateBlock
+	if err := client1.Call(&receiverBlock, "ledger_generateReceiveBlock", &sendBlock, tPrivateKey); err != nil {
+		t.Fatal(err)
+	}
+	if err := client1.Call(&h, "ledger_process", &receiverBlock); err != nil {
+		t.Fatal(err)
+	}
+
+	select {}
+}
+
+func configNode(t *testing.T) {
 	//node1
 	dir1 := filepath.Join(config.QlcTestDataDir(), "consensus", uuid.New().String())
 	fmt.Println(dir1)
@@ -74,43 +121,22 @@ func TestTransaction(t *testing.T) {
 	fmt.Println("node2 config \n", string(cfgFile2Byte))
 
 	fmt.Println(" start node1....")
-	bytes, _ := hex.DecodeString(testPrivateKey)
-	account := types.NewAccount(bytes)
-	initNode(services1, cfgFile1, []*types.Account{account}, t)
+	initNode(services1, cfgFile1, []*types.Account{testaccount}, t)
 
 	fmt.Println(" start node2....")
 	initNode(services2, cfgFile2, nil, t)
-
 	time.Sleep(10 * time.Second)
 
-	err := services1.ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		fmt.Println(block)
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client, err := services1.rPCService.RPC().Attach()
-
-	var sendBlock types.StateBlock
-	para := api.APISendBlockPara{
-		From:      account.Address(),
-		To:        mock.Address(),
-		Amount:    types.Balance{Int: big.NewInt(100)},
-		TokenName: "QLC",
-	}
-	if err := client.Call(&sendBlock, "ledger_generateSendBlock", &para, testPrivateKey); err != nil {
-		t.Fatal(err)
-	}
-	var h types.Hash
-	if err := client.Call(&h, "ledger_process", &sendBlock); err != nil {
-		t.Fatal(err)
-	}
-	//select {}
+	//err := services1.ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
+	//	fmt.Println(block)
+	//	return nil
+	//})
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
 }
 
-func initNode(service *Service, cfg *config.Config, accounts []*types.Account, t *testing.T) {
+func initNode(service *Service, cfg *config.Config, accounts []*types.Account, t *testing.T) func() {
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
 	var err error
@@ -173,6 +199,9 @@ func initNode(service *Service, cfg *config.Config, accounts []*types.Account, t
 	}
 	if err := verfiyfy.BlockProcess(&testChangeRepresentative); err != nil {
 		t.Fatal(err)
+	}
+	return func() {
+
 	}
 }
 

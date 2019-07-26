@@ -9,11 +9,18 @@
 
 package test
 
-import "github.com/qlcchain/go-qlc/common/types"
+import (
+	"encoding/hex"
 
-const (
+	"github.com/qlcchain/go-qlc/common/types"
+)
+
+var (
 	testPrivateKey = "194908c480fddb6e66b56c08f0d55d935681da0b3c9c33077010bf12a91414576c0b2cdd533ee3a21668f199e111f6c8614040e60e70a73ab6c8da036f2a7ad7"
 	testAddress    = "qlc_1u1d7mgo8hq5nad8jwesw6azfk53a31ge5minwxdfk8t1fqknypqgk8mi3z7"
+	testBytes, _   = hex.DecodeString(testPrivateKey)
+	testaccount    = types.NewAccount(testBytes)
+	//testAddress = testaccount.Address()
 )
 
 var (
