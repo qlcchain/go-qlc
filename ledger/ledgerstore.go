@@ -8,10 +8,11 @@
 package ledger
 
 import (
+	"math/big"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"math/big"
 )
 
 type Store interface {
@@ -74,13 +75,12 @@ type Store interface {
 	DeleteFrontier(hash types.Hash, txns ...db.StoreTxn) error
 	CountFrontiers(txns ...db.StoreTxn) (uint64, error)
 	// posterior
-	GetChild(hash types.Hash, address types.Address, txns ...db.StoreTxn) (types.Hash, error)
+	GetChild(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
 	// performance
 	AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error
 	PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error
 	GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error)
 	IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error)
-	GetChildren(hash types.Hash, txns ...db.StoreTxn) (map[types.Hash]int, error)
 	GetLinkBlock(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error)
 
 	//Latest block hash by account and token type, if not exist, return zero hash

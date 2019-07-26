@@ -105,23 +105,23 @@ func NewPovSyncer(povEngine *PoVEngine) *PovSyncer {
 func (ss *PovSyncer) Start() {
 	eb := ss.povEngine.GetEventBus()
 	if eb != nil {
-		err := eb.SubscribeSync(string(common.EventAddP2PStream), ss.onAddP2PStream)
+		err := eb.SubscribeSync(common.EventAddP2PStream, ss.onAddP2PStream)
 		if err != nil {
 			return
 		}
-		err = eb.SubscribeSync(string(common.EventDeleteP2PStream), ss.onDeleteP2PStream)
+		err = eb.SubscribeSync(common.EventDeleteP2PStream, ss.onDeleteP2PStream)
 		if err != nil {
 			return
 		}
-		err = eb.SubscribeSync(string(common.EventPovPeerStatus), ss.onPovStatus)
+		err = eb.SubscribeSync(common.EventPovPeerStatus, ss.onPovStatus)
 		if err != nil {
 			return
 		}
-		err = eb.Subscribe(string(common.EventPovBulkPullReq), ss.onPovBulkPullReq)
+		err = eb.Subscribe(common.EventPovBulkPullReq, ss.onPovBulkPullReq)
 		if err != nil {
 			return
 		}
-		err = eb.Subscribe(string(common.EventPovBulkPullRsp), ss.onPovBulkPullRsp)
+		err = eb.Subscribe(common.EventPovBulkPullRsp, ss.onPovBulkPullRsp)
 		if err != nil {
 			return
 		}
@@ -134,23 +134,23 @@ func (ss *PovSyncer) Start() {
 func (ss *PovSyncer) Stop() {
 	eb := ss.povEngine.GetEventBus()
 	if eb != nil {
-		err := eb.Unsubscribe(string(common.EventAddP2PStream), ss.onAddP2PStream)
+		err := eb.Unsubscribe(common.EventAddP2PStream, ss.onAddP2PStream)
 		if err != nil {
 			return
 		}
-		err = eb.Unsubscribe(string(common.EventDeleteP2PStream), ss.onDeleteP2PStream)
+		err = eb.Unsubscribe(common.EventDeleteP2PStream, ss.onDeleteP2PStream)
 		if err != nil {
 			return
 		}
-		err = eb.Unsubscribe(string(common.EventPovPeerStatus), ss.onPovStatus)
+		err = eb.Unsubscribe(common.EventPovPeerStatus, ss.onPovStatus)
 		if err != nil {
 			return
 		}
-		err = eb.Unsubscribe(string(common.EventPovBulkPullReq), ss.onPovBulkPullReq)
+		err = eb.Unsubscribe(common.EventPovBulkPullReq, ss.onPovBulkPullReq)
 		if err != nil {
 			return
 		}
-		err = eb.Unsubscribe(string(common.EventPovBulkPullRsp), ss.onPovBulkPullRsp)
+		err = eb.Unsubscribe(common.EventPovBulkPullRsp, ss.onPovBulkPullRsp)
 		if err != nil {
 			return
 		}
@@ -405,7 +405,7 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 
 	rsp.Count = uint32(len(rsp.Blocks))
 
-	ss.getEventBus().Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+	ss.getEventBus().Publish(common.EventSendMsgToSingle, p2p.PovBulkPullRsp, rsp, msg.msgPeer)
 }
 
 func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
@@ -482,7 +482,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 
 	rsp.Count = uint32(len(rsp.Blocks))
 
-	ss.getEventBus().Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+	ss.getEventBus().Publish(common.EventSendMsgToSingle, p2p.PovBulkPullRsp, rsp, msg.msgPeer)
 }
 
 func (ss *PovSyncer) processPovBulkPullReqByBatch(msg *PovSyncMessage) {
@@ -518,7 +518,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBatch(msg *PovSyncMessage) {
 
 	rsp.Count = uint32(len(rsp.Blocks))
 
-	ss.getEventBus().Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+	ss.getEventBus().Publish(common.EventSendMsgToSingle, p2p.PovBulkPullRsp, rsp, msg.msgPeer)
 }
 
 func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
@@ -597,7 +597,7 @@ func (ss *PovSyncer) processStreamEvent(event *PovSyncEvent) {
 		Timestamp:     time.Now().Unix(),
 	}
 	ss.logger.Debugf("send PovStatus to peer %s", peerID)
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovStatus, status, peerID)
+	ss.povEngine.eb.Publish(common.EventSendMsgToSingle, p2p.PovStatus, status, peerID)
 }
 
 func (ss *PovSyncer) checkAllPeers() {
@@ -618,7 +618,7 @@ func (ss *PovSyncer) checkAllPeers() {
 		Timestamp:     time.Now().Unix(),
 	}
 	ss.logger.Infof("broadcast PovStatus to %d peers", peerCount)
-	ss.povEngine.eb.Publish(string(common.EventBroadcast), p2p.PovStatus, status)
+	ss.povEngine.eb.Publish(common.EventBroadcast, p2p.PovStatus, status)
 
 	now := time.Now()
 	ss.allPeers.Range(func(key, value interface{}) bool {
@@ -720,7 +720,7 @@ func (ss *PovSyncer) setState(st common.SyncState) {
 		usedTime := ss.syncEndTime.Sub(ss.syncStartTime)
 		ss.logger.Infof("pov sync used time: %s", usedTime)
 	}
-	ss.povEngine.GetEventBus().Publish(string(common.EventPovSyncState), ss.state)
+	ss.povEngine.GetEventBus().Publish(common.EventPovSyncState, ss.state)
 }
 
 func (ss *PovSyncer) isFinished() bool {
@@ -955,7 +955,7 @@ func (ss *PovSyncer) requestSyncingBlocks(useLocator bool, lastHeight uint64) {
 		ss.logger.Infof("request syncing blocks use height %d with peer %s", req.StartHeight, ss.syncPeerID)
 	}
 
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, ss.syncPeerID)
+	ss.povEngine.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullReq, req, ss.syncPeerID)
 }
 
 func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
@@ -970,7 +970,7 @@ func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
 	req.StartHeight = startHeight
 	req.Reason = protos.PovReasonFetch
 
-	ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
+	ss.povEngine.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullReq, req, peer.peerID)
 }
 
 func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID string) {
@@ -1006,7 +1006,7 @@ func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID st
 		req.Reason = protos.PovReasonFetch
 
 		ss.logger.Debugf("request blocks %d from peer %s", len(sendBlkHashes), peer.peerID)
-		ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.PovBulkPullReq, req, peer.peerID)
+		ss.povEngine.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullReq, req, peer.peerID)
 
 		reqBlkHashes = reqBlkHashes[sendHashNum:]
 	}
@@ -1044,7 +1044,7 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		req.Count = uint32(len(sendTxHashes))
 
 		ss.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peer.peerID)
-		ss.povEngine.eb.Publish(string(common.EventSendMsgToSingle), p2p.BulkPullRequest, req, peer.peerID)
+		ss.povEngine.eb.Publish(common.EventSendMsgToSingle, p2p.BulkPullRequest, req, peer.peerID)
 
 		reqTxHashes = reqTxHashes[sendHashNum:]
 	}

@@ -32,6 +32,7 @@ type ServiceSync struct {
 	quitCh          chan bool
 	logger          *zap.SugaredLogger
 	lastSyncTime    int64
+	syncCount       uint32
 }
 
 // NewService return new Service.
@@ -42,6 +43,7 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		quitCh:       make(chan bool, 1),
 		logger:       log.NewLogger("sync"),
 		lastSyncTime: 0,
+		syncCount:    0,
 	}
 	return ss
 }
@@ -57,7 +59,7 @@ func (ss *ServiceSync) Start() {
 			ss.logger.Info("Stopped Sync Loop.")
 			return
 		case <-ticker.C:
-			now := time.Now().UTC().Unix()
+			now := time.Now().Unix()
 			v := atomic.LoadInt64(&ss.lastSyncTime)
 			if v < now {
 				peerID, err := ss.netService.node.StreamManager().RandomPeer()
@@ -77,13 +79,14 @@ func (ss *ServiceSync) Start() {
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send FrontierRequest", err)
 				}
+				ss.syncCount++
 			}
 		}
 	}
 }
 
 func (ss *ServiceSync) LastSyncTime(t time.Time) {
-	atomic.StoreInt64(&ss.lastSyncTime, t.Add(syncTimeout).UTC().Unix())
+	atomic.StoreInt64(&ss.lastSyncTime, t.Add(syncTimeout).Unix())
 }
 
 // Stop sync service
@@ -95,7 +98,7 @@ func (ss *ServiceSync) Stop() {
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
 	ss.netService.node.logger.Debug("receive FrontierReq")
-	now := time.Now().UTC().Unix()
+	now := time.Now().Unix()
 	v := atomic.LoadInt64(&ss.lastSyncTime)
 	if v < now {
 		var fs []*types.Frontier
@@ -177,7 +180,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 					if headerBlockHash == fsRemotes[i].HeaderBlock {
 						//ss.logger.Infof("this token %s have the same block", openBlockHash)
 					} else {
-						exit, _ := ss.qlcLedger.HasStateBlock(fsRemotes[i].HeaderBlock)
+						exit, _ := ss.qlcLedger.HasStateBlockConfirmed(fsRemotes[i].HeaderBlock)
 						if exit == true {
 							push := &protos.Bulk{
 								StartHash: fsRemotes[i].HeaderBlock,
@@ -494,7 +497,7 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 		hash := block.GetHash()
 		ss.netService.msgService.addPerformanceTime(hash)
 	}
-	ss.netService.msgEvent.Publish(string(common.EventSyncBlock), block)
+	ss.netService.msgEvent.Publish(common.EventSyncBlock, block)
 	return nil
 }
 
@@ -510,7 +513,7 @@ func (ss *ServiceSync) onBulkPushBlock(message *Message) error {
 		hash := block.GetHash()
 		ss.netService.msgService.addPerformanceTime(hash)
 	}
-	ss.netService.msgEvent.Publish(string(common.EventSyncBlock), block)
+	ss.netService.msgEvent.Publish(common.EventSyncBlock, block)
 	return nil
 }
 

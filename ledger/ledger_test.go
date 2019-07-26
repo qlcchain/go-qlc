@@ -1091,36 +1091,24 @@ func TestLedger_BlockChild(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	addr1 := mock.Address()
-	addr2 := mock.Address()
 	b1 := mock.StateBlockWithoutWork()
-	b1.Link = common.GenesisBlockHash()
 	b1.Address = addr1
 
 	b2 := mock.StateBlockWithoutWork()
-	b2.Address = addr1
 	b2.Type = types.Send
 	b2.Previous = b1.GetHash()
 
 	b3 := mock.StateBlockWithoutWork()
-	b3.Address = addr2
-	b3.Link = b1.GetHash()
+	b3.Type = types.Send
+	b3.Previous = b1.GetHash()
 
-	b4 := mock.StateBlockWithoutWork()
-	b4.Address = addr1
-	b4.Type = types.Send
-	b4.Previous = b1.GetHash()
-
-	gen := common.GenesisBlock()
-	if err := l.AddStateBlock(&gen); err != nil {
-		t.Fatal(err)
-	}
 	if err := l.AddStateBlock(b1); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.AddStateBlock(b2); err != nil {
 		t.Fatal(err)
 	}
-	h, err := l.GetChild(b1.GetHash(), b2.GetAddress())
+	h, err := l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1128,18 +1116,10 @@ func TestLedger_BlockChild(t *testing.T) {
 		t.Fatal()
 	}
 
-	if err := l.AddStateBlock(b3); err != nil {
-		t.Fatal(err)
-	}
-	h, err = l.GetChild(b1.GetHash(), b3.GetAddress())
+	err = l.AddStateBlock(b3)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if h != b3.GetHash() {
-		t.Fatal()
-	}
-
-	if err := l.AddStateBlock(b4); err == nil {
+		t.Log(err)
+	} else {
 		t.Fatal()
 	}
 
@@ -1147,19 +1127,25 @@ func TestLedger_BlockChild(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err = l.GetChild(b1.GetHash(), b2.GetAddress())
+	h, err = l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Log(err)
+	} else {
+		t.Fatal()
 	}
 
-	if err := l.AddStateBlock(b4); err != nil {
+	if err := l.AddStateBlock(b3); err != nil {
 		t.Fatal(err)
 	}
 
-	h, err = l.GetChild(b1.GetHash(), b4.GetAddress())
+	h, err = l.GetChild(b1.GetHash())
 	if err != nil {
 		t.Fatal(err)
 	}
+	if h != b3.GetHash() {
+		t.Fatal()
+	}
+
 }
 
 func TestLedger_MessageInfo(t *testing.T) {
@@ -1176,5 +1162,140 @@ func TestLedger_MessageInfo(t *testing.T) {
 	}
 	if !bytes.Equal(m, m2) {
 		t.Fatal("wrong result")
+	}
+}
+
+func addBlockCache(t *testing.T, l *Ledger) *types.StateBlock {
+	blk := mock.StateBlockWithoutWork()
+	if err := l.AddBlockCache(blk); err != nil {
+		t.Fatal(err)
+	}
+	return blk
+}
+
+func TestLedger_AddBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addBlockCache(t, l)
+}
+
+func TestLedger_HasBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := addBlockCache(t, l)
+	b, err := l.HasBlockCache(blk.GetHash())
+	if err != nil || !b {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_DeleteBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	blk := addBlockCache(t, l)
+	if err := l.DeleteBlockCache(blk.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_CountBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	blk := addBlockCache(t, l)
+	if c, err := l.CountBlockCache(); err != nil || c != 1 {
+		t.Fatal("CountBlockCache error,should be 1")
+	}
+	if err := l.DeleteBlockCache(blk.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	if c, err := l.CountBlockCache(); err != nil || c != 0 {
+		t.Fatal("CountBlockCache error,should be 0")
+	}
+}
+
+func TestLedger_GetBlockCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	blk := addBlockCache(t, l)
+	hash := blk.GetHash()
+	blk1, err := l.GetBlockCache(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash1 := blk1.GetHash()
+	if hash != hash1 {
+		t.Fatal("hash not match")
+	}
+}
+
+func addAccountMetaCache(t *testing.T, l *Ledger) *types.AccountMeta {
+	ac := mock.Account()
+	am := mock.AccountMeta(ac.Address())
+	if err := l.AddAccountMetaCache(am); err != nil {
+		t.Fatal()
+	}
+	return am
+}
+
+func TestLedger_AddAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addAccountMetaCache(t, l)
+}
+
+func TestLedger_GetAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	am := addAccountMetaCache(t, l)
+	a, err := l.GetAccountMetaCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("account,", a)
+	for _, token := range a.Tokens {
+		t.Log("token,", token)
+	}
+}
+
+func TestLedger_HasAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaCache(t, l)
+	r, err := l.HasAccountMetaCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r == false {
+		t.Fatal("should have accountMeta from block cache")
+	}
+	t.Log("has account,", r)
+}
+
+func TestLedger_DeleteAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaCache(t, l)
+	err := l.DeleteAccountMetaCache(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_UpdateAccountMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaCache(t, l)
+	token := mock.TokenMeta(am.Address)
+	am.Tokens = append(am.Tokens, token)
+
+	err := l.UpdateAccountMetaCache(am)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.AddOrUpdateAccountMetaCache(am)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

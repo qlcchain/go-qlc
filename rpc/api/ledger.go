@@ -200,6 +200,50 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 	return aa, nil
 }
 
+func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, error) {
+	aa := new(APIAccount)
+	am, err := l.ledger.GetAccountMetaConfirmed(address)
+	if err != nil {
+		return nil, err
+	}
+	vmContext := vmstore.NewVMContext(l.ledger)
+	for _, t := range am.Tokens {
+		if t.Type == common.ChainToken() {
+			aa.CoinBalance = &t.Balance
+			aa.Representative = &t.Representative
+			aa.CoinVote = &am.CoinVote
+			aa.CoinNetwork = &am.CoinNetwork
+			aa.CoinOracle = &am.CoinOracle
+			aa.CoinStorage = &am.CoinStorage
+		}
+		info, err := abi.GetTokenById(vmContext, t.Type)
+		if err != nil {
+			return nil, err
+		}
+		pendingKeys, err := l.ledger.TokenPending(address, t.Type)
+		if err != nil {
+			return nil, err
+		}
+		pendingAmount := types.ZeroBalance
+		for _, key := range pendingKeys {
+			pendinginfo, err := l.ledger.GetPending(*key)
+			if err != nil {
+				return nil, err
+			}
+			pendingAmount = pendingAmount.Add(pendinginfo.Amount)
+		}
+		tm := APITokenMeta{
+			TokenMeta: t,
+			TokenName: info.TokenName,
+			Pending:   pendingAmount,
+		}
+		aa.Tokens = append(aa.Tokens, &tm)
+
+	}
+	aa.Address = address
+	return aa, nil
+}
+
 func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, error) {
 	am, err := l.ledger.GetAccountMeta(addr)
 	if err != nil {
@@ -356,6 +400,14 @@ func (l *LedgerApi) BlockAccount(hash types.Hash) (types.Address, error) {
 		return types.ZeroAddress, err
 	}
 	return sb.GetAddress(), nil
+}
+
+func (l *LedgerApi) BlockConfirmedStatus(hash types.Hash) (bool, error) {
+	b, err := l.ledger.HasStateBlockConfirmed(hash)
+	if err != nil {
+		return false, err
+	}
+	return b, nil
 }
 
 func (l *LedgerApi) BlockHash(block types.StateBlock) types.Hash {
@@ -658,7 +710,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		return types.ZeroHash, ErrParameterNil
 	}
 	verifier := process.NewLedgerVerifier(l.ledger)
-	flag, err := verifier.Process(block)
+	flag, err := verifier.BlockCheckCache(block)
 	if err != nil {
 		l.logger.Error(err)
 		return types.ZeroHash, err
@@ -667,11 +719,18 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	l.logger.Debug("process result, ", flag)
 	switch flag {
 	case process.Progress:
+		hash := block.GetHash()
+		err := verifier.BlockCacheProcess(block)
+		if err != nil {
+			l.logger.Errorf("Block %s add to blockCache error[%d]", hash, err)
+			return types.ZeroHash, err
+		}
+
 		l.logger.Debug("broadcast block")
 		//TODO: refine
-		l.eb.Publish(string(common.EventBroadcast), p2p.PublishReq, block)
-		l.eb.Publish(string(common.EventGenerateBlock), flag, block)
-		return block.GetHash(), nil
+		l.eb.Publish(common.EventBroadcast, p2p.PublishReq, block)
+		l.eb.Publish(common.EventGenerateBlock, flag, block)
+		return hash, nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")
 	case process.BadSignature:
@@ -790,74 +849,4 @@ func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 		return nil, err
 	}
 	return &ApiTokenInfo{*token}, nil
-}
-
-type APIUncheckBlock struct {
-	Block       *APIBlock              `json:"block"`
-	Link        types.Hash             `json:"link"`
-	UnCheckType string                 `json:"uncheckType"`
-	SyncType    types.SynchronizedKind `json:"syncType"`
-}
-
-func (l *LedgerApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
-	unchecks := make([]*APIUncheckBlock, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
-	err := l.ledger.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
-		uncheck := new(APIUncheckBlock)
-		b, err := generateAPIBlock(vmContext, block)
-		if err != nil {
-			return err
-		}
-		uncheck.Block = b
-		uncheck.Link = link
-		if unCheckType == 0 {
-			uncheck.UnCheckType = "GapPrevious"
-		}
-		if unCheckType == 1 {
-			uncheck.UnCheckType = "GapLink"
-		}
-		uncheck.SyncType = sync
-		unchecks = append(unchecks, uncheck)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return unchecks, nil
-}
-
-func (l *LedgerApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
-	blk, err := l.ledger.GetStateBlock(hash)
-	if err != nil {
-		return nil, fmt.Errorf("get block err: %s", hash.String())
-	}
-	r := make(map[string]types.Hash)
-	children, _ := l.ledger.GetChildren(hash)
-	for key, val := range children {
-		if val == 0 {
-			cblk, err := l.ledger.GetStateBlock(key)
-			if err != nil {
-				return nil, fmt.Errorf("get child1 err: %s", key.String())
-			}
-			if cblk.GetAddress() != blk.GetAddress() {
-				return nil, fmt.Errorf("address not equal, %s, %s", blk.GetHash(), cblk.GetHash())
-			}
-			r["child1"] = key
-		}
-		if val == 1 {
-			cblk, err := l.ledger.GetStateBlock(key)
-			if err != nil {
-				return nil, fmt.Errorf("get child2 err: %s", key.String())
-			}
-			if cblk.GetAddress() == blk.GetAddress() {
-				return nil, fmt.Errorf("address equal, %s, %s", blk.GetHash(), cblk.GetHash())
-			}
-			r["child2"] = key
-		}
-	}
-	link, _ := l.ledger.GetLinkBlock(hash)
-	if !link.IsZero() {
-		r["receiver"] = link
-	}
-	return r, nil
 }

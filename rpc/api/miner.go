@@ -190,7 +190,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 
 		Link:      types.Hash(types.MinerAddress),
 		Data:      data,
-		Timestamp: common.TimeNow().UTC().Unix(),
+		Timestamp: common.TimeNow().Unix(),
 
 		PoVHeight: latestPovHeader.GetHeight(),
 	}
@@ -224,7 +224,7 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 		return nil, err
 	}
 	if len(blocks) > 0 {
-		reward.Timestamp = common.TimeNow().UTC().Unix()
+		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		reward.Extra = *h
 		return reward, nil

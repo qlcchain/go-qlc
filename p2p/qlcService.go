@@ -70,27 +70,27 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-	err := ns.msgEvent.Subscribe(string(common.EventBroadcast), ns.Broadcast)
+	err := ns.msgEvent.Subscribe(common.EventBroadcast, ns.Broadcast)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToPeers), ns.SendMessageToPeers)
+	err = ns.msgEvent.Subscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToSingle), ns.SendMessageToPeer)
+	err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeSync(string(common.EventPeersInfo), ns.node.streamManager.GetAllConnectPeersInfo)
+	err = ns.msgEvent.SubscribeSync(common.EventPeersInfo, ns.node.streamManager.GetAllConnectPeersInfo)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(string(common.EventSyncing), ns.msgService.syncService.LastSyncTime)
+	err = ns.msgEvent.Subscribe(common.EventSyncing, ns.msgService.syncService.LastSyncTime)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
@@ -99,17 +99,17 @@ func (ns *QlcService) setEvent() error {
 }
 
 func (ns *QlcService) unsubscribeEvent() error {
-	err := ns.msgEvent.Unsubscribe(string(common.EventBroadcast), ns.Broadcast)
+	err := ns.msgEvent.Unsubscribe(common.EventBroadcast, ns.Broadcast)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToPeers), ns.SendMessageToPeers)
+	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToSingle), ns.SendMessageToPeer)
+	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err

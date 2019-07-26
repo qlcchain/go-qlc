@@ -50,8 +50,8 @@ func (tp *PovTxPool) Init() {
 func (tp *PovTxPool) Start() {
 	eb := tp.povEngine.GetEventBus()
 	if eb != nil {
-		eb.SubscribeSync(string(common.EventAddRelation), tp.onAddStateBlock)
-		eb.SubscribeSync(string(common.EventDeleteRelation), tp.onDeleteStateBlock)
+		eb.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
+		eb.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
 	}
 
 	common.Go(tp.loop)
