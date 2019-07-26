@@ -200,7 +200,7 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 	return aa, nil
 }
 
-func (l *LedgerApi) AccountConfirmedInfo(address types.Address) (*APIAccount, error) {
+func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, error) {
 	aa := new(APIAccount)
 	am, err := l.ledger.GetAccountMetaConfirmed(address)
 	if err != nil {
@@ -402,7 +402,7 @@ func (l *LedgerApi) BlockAccount(hash types.Hash) (types.Address, error) {
 	return sb.GetAddress(), nil
 }
 
-func (l *LedgerApi) BlockConfirmed(hash types.Hash) (bool, error) {
+func (l *LedgerApi) BlockConfirmedStatus(hash types.Hash) (bool, error) {
 	b, err := l.ledger.HasStateBlockConfirmed(hash)
 	if err != nil {
 		return false, err
