@@ -90,15 +90,13 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	var err error
 
 	//local send do not need to check
-	if bs.Type != consensus.MsgGenerateBlock {
-		if b, _ := dps.ledger.HasBlockCache(hash); !b {
-			result, err = dps.lv.BlockCheck(bs.Block)
-			if err != nil {
-				dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
-				return
-			}
-			p.processResult(result, bs)
+	if !dps.acTrx.isVoting(bs.Block) {
+		result, err = dps.lv.BlockCheck(bs.Block)
+		if err != nil {
+			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
+			return
 		}
+		p.processResult(result, bs)
 	}
 
 	switch bs.Type {
@@ -153,8 +151,10 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		}
 
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
-		if dps.acTrx.addToRoots(bs.Block) {
-			dps.localRepVote(bs)
+		if !dps.acTrx.isVoting(bs.Block) {
+			if dps.acTrx.addToRoots(bs.Block) {
+				dps.localRepVote(bs)
+			}
 		}
 	default:
 		//
@@ -173,8 +173,10 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			//make sure we only vote one of the forked blocks
-			if dps.acTrx.addToRoots(blk) {
-				dps.localRepVote(bs)
+			if !dps.acTrx.isVoting(bs.Block) {
+				if dps.acTrx.addToRoots(blk) {
+					dps.localRepVote(bs)
+				}
 			}
 		} else {
 			dps.logger.Errorf("Block %s UnKnow from", hash)
