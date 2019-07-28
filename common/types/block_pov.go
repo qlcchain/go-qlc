@@ -381,9 +381,9 @@ func (txl *PovTxLookup) Deserialize(text []byte) error {
 }
 
 type PovMinerStatItem struct {
-	FirstHeight uint64
-	LastHeight  uint64
-	BlockNum    uint32
+	FirstHeight uint64 `msg:"firstHeight" json:"firstHeight"`
+	LastHeight  uint64 `msg:"lastHeight" json:"lastHeight"`
+	BlockNum    uint32 `msg:"blockNum" json:"blockNum"`
 }
 
 func (msi *PovMinerStatItem) Serialize() ([]byte, error) {
@@ -399,9 +399,10 @@ func (msi *PovMinerStatItem) Deserialize(text []byte) error {
 }
 
 type PovMinerDayStat struct {
-	DayIndex   uint32
-	MinerNum   uint32
-	MinerStats map[string]*PovMinerStatItem
+	DayIndex uint32 `msg:"dayIndex" json:"dayIndex"`
+	MinerNum uint32 `msg:"minerNum" json:"minerNum"`
+
+	MinerStats map[string]*PovMinerStatItem `msg:"minerStats" json:"minerStats"`
 }
 
 func (mds *PovMinerDayStat) Serialize() ([]byte, error) {

@@ -228,3 +228,7 @@ func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) 
 func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
 	return v.ledger.GetLatestPovBlock()
 }
+
+func (v *VMContext) GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error) {
+	return v.ledger.GetPovMinerStat(dayIndex)
+}

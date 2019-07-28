@@ -158,22 +158,6 @@ func (t *BadgerStoreTxn) PrefixIterator(prefix []byte, fn func([]byte, []byte, b
 	return nil
 }
 
-func (t *BadgerStoreTxn) KeyIterator(prefix []byte, fn func([]byte) error) error {
-	it := t.txn.NewKeyIterator(prefix, badger.DefaultIteratorOptions)
-	defer it.Close()
-
-	for it.Rewind(); it.Valid(); it.Next() {
-		item := it.Item()
-		key := item.Key()
-		err := fn(key)
-
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // RangeIterator scan keys between [startKey, endKey)
 func (t *BadgerStoreTxn) RangeIterator(startKey []byte, endKey []byte, fn func([]byte, []byte, byte) error) error {
 	if len(startKey) <= 0 {

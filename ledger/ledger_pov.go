@@ -559,8 +559,12 @@ func (l *Ledger) GetPovBestHash(height uint64, txns ...db.StoreTxn) (types.Hash,
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	return l.getPovBestHash(key, txn)
+}
+
+func (l *Ledger) getPovBestHash(key []byte, txn db.StoreTxn) (types.Hash, error) {
 	var hash types.Hash
-	err = txn.Get(key, func(val []byte, b byte) error {
+	err := txn.Get(key, func(val []byte, b byte) error {
 		err := hash.UnmarshalBinary(val)
 		if err != nil {
 			return err
@@ -638,17 +642,9 @@ func (l *Ledger) DeletePovMinerStat(dayIndex uint32, txns ...db.StoreTxn) error 
 	return nil
 }
 
-func (l *Ledger) GetPovMinerStat(dayIndex uint32, txns ...db.StoreTxn) (*types.PovMinerDayStat, error) {
-	key, err := getKeyOfParts(idPrefixPovMinerStat, dayIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
+func (l *Ledger) getPovMinerStat(key []byte, txn db.StoreTxn) (*types.PovMinerDayStat, error) {
 	dayStat := new(types.PovMinerDayStat)
-	err = txn.Get(key, func(val []byte, b byte) error {
+	err := txn.Get(key, func(val []byte, b byte) error {
 		err := dayStat.Deserialize(val)
 		if err != nil {
 			return err
@@ -664,29 +660,36 @@ func (l *Ledger) GetPovMinerStat(dayIndex uint32, txns ...db.StoreTxn) (*types.P
 	return dayStat, nil
 }
 
+func (l *Ledger) GetPovMinerStat(dayIndex uint32, txns ...db.StoreTxn) (*types.PovMinerDayStat, error) {
+	key, err := getKeyOfParts(idPrefixPovMinerStat, dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return l.getPovMinerStat(key, txn)
+}
+
 func (l *Ledger) GetLatestPovMinerStat(txns ...db.StoreTxn) (*types.PovMinerDayStat, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	var latestVal []byte
+	var latestKey []byte
 	err := txn.Iterator(idPrefixPovMinerStat, func(key []byte, val []byte, meta byte) error {
-		latestVal = val
+		// just safe copy, iterator will reuse item(key, value)
+		latestKey = append(latestKey[:0], key...)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	if latestVal == nil {
+	if len(latestKey) <= 0 {
 		return nil, err
 	}
 
-	dayStat := new(types.PovMinerDayStat)
-	err = dayStat.Deserialize(latestVal)
-	if err != nil {
-		return nil, err
-	}
-
-	return dayStat, nil
+	return l.getPovMinerStat(latestKey, txn)
 }
 
 func (l *Ledger) GetAllPovMinerStats(fn func(*types.PovMinerDayStat) error, txns ...db.StoreTxn) error {
@@ -947,25 +950,25 @@ func (l *Ledger) GetLatestPovBestHash(txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	var latestVal []byte
+	var latestKey []byte
 	err := txn.Iterator(idPrefixPovBestHash, func(key []byte, val []byte, meta byte) error {
-		latestVal = val
+		// just safe copy, iterator will reuse item(key, value)
+		latestKey = append(latestKey[:0], key...)
 		return nil
 	})
 	if err != nil {
 		return types.ZeroHash, err
 	}
-	if latestVal == nil {
-		return types.ZeroHash, err
+	if len(latestKey) <= 0 {
+		return types.ZeroHash, fmt.Errorf("latest best hash key is zero")
 	}
 
-	var latestHash types.Hash
-	err = latestHash.UnmarshalBinary(latestVal)
+	latestHash, err := l.getPovBestHash(latestKey, txn)
 	if err != nil {
 		return types.ZeroHash, err
 	}
 	if latestHash.IsZero() {
-		return types.ZeroHash, fmt.Errorf("latest best hash is zero")
+		return types.ZeroHash, fmt.Errorf("latest best hash value is zero")
 	}
 
 	return latestHash, nil

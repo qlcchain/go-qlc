@@ -86,7 +86,7 @@ func (m *MinerReward) GetAvailRewardInfo(ctx *vmstore.VMContext, coinbase types.
 		return availInfo, nil
 	}
 
-	availBlocks, err := m.calcRewardBlocks(ctx, coinbase, startHeight, endHeight)
+	availBlocks, err := m.calcRewardBlocksByDayStats(ctx, coinbase, startHeight, endHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		return err
 	}
 
-	calcRewardBlocks, err := m.calcRewardBlocks(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
+	calcRewardBlocks, err := m.calcRewardBlocksByDayStats(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		return nil, err
 	}
 
-	calcRewardBlocks, err := m.calcRewardBlocks(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
+	calcRewardBlocks, err := m.calcRewardBlocksByDayStats(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func (m *MinerReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, pa
 	return nil
 }
 
-func (m *MinerReward) calcRewardBlocks(ctx *vmstore.VMContext, coinbase types.Address, startHeight, endHeight uint64) (uint64, error) {
+func (m *MinerReward) calcRewardBlocksByHeight(ctx *vmstore.VMContext, coinbase types.Address, startHeight, endHeight uint64) (uint64, error) {
 	if startHeight < common.PovMinerRewardHeightStart {
 		startHeight = common.PovMinerRewardHeightStart
 	}
@@ -309,6 +309,40 @@ func (m *MinerReward) calcRewardBlocks(ctx *vmstore.VMContext, coinbase types.Ad
 		if coinbase == block.GetCoinbase() {
 			rewardBlocks++
 		}
+	}
+
+	return rewardBlocks, nil
+}
+
+func (m *MinerReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, coinbase types.Address, startHeight, endHeight uint64) (uint64, error) {
+	if startHeight < common.PovMinerRewardHeightStart {
+		startHeight = common.PovMinerRewardHeightStart
+	}
+
+	if startHeight%uint64(common.POVChainBlocksPerDay) != 0 {
+		return 0, errors.New("start height is not integral multiple of blocks per day")
+	}
+	if (endHeight+1)%uint64(common.POVChainBlocksPerDay) != 0 {
+		return 0, errors.New("end height is not integral multiple of blocks per day")
+	}
+
+	cbAddrHex := coinbase.String()
+	rewardBlocks := uint64(0)
+	startDayIndex := uint32(startHeight / uint64(common.POVChainBlocksPerDay))
+	endDayIndex := uint32(endHeight / uint64(common.POVChainBlocksPerDay))
+
+	for dayIndex := startDayIndex; dayIndex <= endDayIndex; dayIndex++ {
+		dayStat, err := ctx.GetPovMinerStat(dayIndex)
+		if err != nil {
+			return 0, err
+		}
+
+		minerStat := dayStat.MinerStats[cbAddrHex]
+		if minerStat == nil {
+			continue
+		}
+
+		rewardBlocks += uint64(minerStat.BlockNum)
 	}
 
 	return rewardBlocks, nil
