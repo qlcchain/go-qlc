@@ -36,6 +36,7 @@ type Ledger struct {
 	representLock  *hashmap.HashMap
 	cacheRound     *int64
 	cacheOrder     *int64
+	closed         chan bool
 	logger         *zap.SugaredLogger
 }
 
@@ -118,6 +119,7 @@ func NewLedger(dir string) *Ledger {
 			EB:             event.GetEventBus(dir),
 			representation: &hashmap.HashMap{},
 			representLock:  &hashmap.HashMap{},
+			closed:         make(chan bool, 1),
 		}
 		l.logger = log.NewLogger("ledger")
 
@@ -151,6 +153,7 @@ func (l *Ledger) Close() error {
 	defer lock.Unlock()
 	if _, ok := cache[l.dir]; ok {
 		err := l.Store.Close()
+		l.closed <- true
 		l.logger.Info("badger closed")
 		delete(cache, l.dir)
 		return err
@@ -188,8 +191,12 @@ func (l *Ledger) init() error {
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
 		for {
-			<-ticker.C
-			l.processCache()
+			select {
+			case <-l.closed:
+				return
+			case <-ticker.C:
+				l.processCache()
+			}
 		}
 	}()
 	l.cacheRound = new(int64)
