@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -354,7 +353,7 @@ func closeServer(service *Service, t *testing.T) {
 	if err := service.ledgerService.Stop(); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.RemoveAll(service.dir); err != nil {
-		t.Fatal(err)
-	}
+	//if err := os.RemoveAll(service.dir); err != nil {
+	//	t.Fatal(err)
+	//}
 }
