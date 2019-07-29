@@ -656,15 +656,9 @@ func (lv *LedgerVerifier) addBlockCache(block *types.StateBlock, txn db.StoreTxn
 		return err
 	}
 
-	am, err := lv.l.GetAccountMetaCache(block.GetAddress(), txn)
+	am, err := lv.l.GetAccountMeta(block.GetAddress(), txn)
 	if err != nil && err != ledger.ErrAccountNotFound {
 		return fmt.Errorf("get account meta cache error: %s", err)
-	}
-	if am == nil && err == ledger.ErrAccountNotFound {
-		am, err = lv.l.GetAccountMeta(block.GetAddress(), txn)
-		if err != nil && err != ledger.ErrAccountNotFound {
-			return fmt.Errorf("get account meta  error: %s", err)
-		}
 	}
 	if err := lv.updateAccountMetaCache(block, am, txn); err != nil {
 		return fmt.Errorf("update account meta cache error: %s", err)
