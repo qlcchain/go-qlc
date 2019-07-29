@@ -289,12 +289,12 @@ func (r *Relation) waitDeleteBlocks(hash types.Hash) {
 }
 
 func (r *Relation) SetEvent() error {
-	err := r.eb.Subscribe(string(common.EventAddRelation), r.waitAddBlocks)
+	err := r.eb.Subscribe(common.EventAddRelation, r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
+	err = r.eb.Subscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
@@ -303,12 +303,12 @@ func (r *Relation) SetEvent() error {
 }
 
 func (r *Relation) UnsubscribeEvent() error {
-	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.waitAddBlocks)
+	err := r.eb.Unsubscribe(common.EventAddRelation, r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
+	err = r.eb.Unsubscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err

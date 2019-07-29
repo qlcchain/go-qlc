@@ -14,12 +14,11 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type Mintage struct{}
@@ -104,7 +103,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 			param.Decimals,
 			param.Beneficial,
 			amount.Int,
-			minMintageTime.Calculate(time.Unix(input.Timestamp, 0)).UTC().Unix(),
+			minMintageTime.Calculate(time.Unix(input.Timestamp, 0)).Unix(),
 			input.Address,
 			param.NEP5TxId)
 		if err != nil {
@@ -202,7 +201,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		return nil, err
 	}
 
-	now := common.TimeNow().UTC().Unix()
+	now := common.TimeNow().Unix()
 	if tokenInfo.PledgeAddress != input.Address ||
 		tokenInfo.PledgeAmount.Sign() == 0 ||
 		now < tokenInfo.WithdrawTime {

@@ -10,6 +10,7 @@ package event
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -41,7 +42,7 @@ func TestSubscribeSync(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
 
 	counter := int64(0)
-	topic := "test"
+	topic := common.TopicType("test")
 	if bus.SubscribeSync(topic, func() {
 		atomic.AddInt64(&counter, 1)
 		t.Log("sub1")
@@ -215,7 +216,7 @@ func TestGetEventBus(t *testing.T) {
 
 func TestEventSubscribe(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
-	topic := "test"
+	topic := common.TopicType("test")
 
 	counter := int64(0)
 	_ = bus.Subscribe(topic, func(i int64) {

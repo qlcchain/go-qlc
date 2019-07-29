@@ -154,7 +154,7 @@ func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
 	_ = pov.blkRecvCache.Set(block.GetHash(), struct{}{})
 	err := pov.bp.AddMinedBlock(block)
 	if err == nil {
-		pov.eb.Publish(string(common.EventBroadcast), p2p.PovPublishReq, block)
+		pov.eb.Publish(common.EventBroadcast, p2p.PovPublishReq, block)
 	}
 	return err
 }
@@ -173,7 +173,7 @@ func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom, p
 }
 
 func (pov *PoVEngine) setEvent() error {
-	err := pov.eb.Subscribe(string(common.EventPovRecvBlock), pov.onRecvPovBlock)
+	err := pov.eb.Subscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (pov *PoVEngine) setEvent() error {
 }
 
 func (pov *PoVEngine) unsetEvent() error {
-	err := pov.eb.Unsubscribe(string(common.EventPovRecvBlock), pov.onRecvPovBlock)
+	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, 
 
 	err := pov.AddBlock(block, types.PovBlockFromRemoteBroadcast, msgPeer)
 	if err == nil {
-		pov.eb.Publish(string(common.EventSendMsgToPeers), p2p.PovPublishReq, block, msgPeer)
+		pov.eb.Publish(common.EventSendMsgToPeers, p2p.PovPublishReq, block, msgPeer)
 	}
 
 	return err

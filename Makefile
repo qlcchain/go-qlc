@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: all clean build build-test confidant confidant-test
 .PHONY: gqlc-server gqlc-server-test
 .PHONY: gqlc-client
 .PHONY: deps
@@ -9,20 +9,21 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
 # server
-SERVERVERSION ?= 1.3.0
+SERVERVERSION ?= 1.2.3
 SERVERBINARY = gqlc
 SERVERTESTBINARY = gqlct
 SERVERMAIN = cmd/server/main.go
 
 # client
-CLIENTVERSION ?= 1.3.0
+CLIENTVERSION ?= 1.2.3
 CLIENTBINARY = gqlcc
 CLIENTMAIN = cmd/client/main.go
 
 BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%Y-%m-%d_%T')
-TARGET=windows-6.0/*,darwin-10.10/amd64,linux/amd64,linux/arm-7
+TARGET=windows-6.0/*,darwin-10.10/amd64,linux/amd64
+TARGET_CONFIDANT=linux/arm-7
 
 MAINLDFLAGS="-X github.com/qlcchain/go-qlc/cmd/server/commands.Version=${SERVERVERSION} \
 	-X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev=${GITREV} \
@@ -42,6 +43,26 @@ deps:
 	go get -u golang.org/x/lint/golint
 	go get -u github.com/gythialy/xgo
 	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+
+confidant:
+	CGO_ENABLED=1 CC=/opt/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
+	GO111MODULE=on go build -tags "confidant sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	@echo "Build $(SERVERBINARY) done."
+	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
+	CGO_ENABLED=1 CC=/home/lichao/ppr_cross/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
+	GO111MODULE=on go build -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
+	@echo "Build $(CLIENTBINARY) done."
+	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
+
+confidant-test:
+	CGO_ENABLED=1 CC=/opt/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
+	GO111MODULE=on go build -tags "confidant testnet sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	@echo "Build $(SERVERBINARY) done."
+	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
+	CGO_ENABLED=1 CC=/home/lichao/ppr_cross/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
+	GO111MODULE=on go build -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
+	@echo "Build $(CLIENTBINARY) done."
+	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
 build:
 	GO111MODULE=on go build -tags "sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
@@ -66,11 +87,15 @@ clean:
 
 gqlc-server:
 	xgo --dest=$(BUILDDIR) --tags="sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
-	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
+    --targets=$(TARGET) --pkg=$(SERVERMAIN) .
+	xgo --dest=$(BUILDDIR) --tags="confidant sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
+	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
 
 gqlc-server-test:
 	xgo --dest=$(BUILDDIR) --tags="testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
 	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
+	xgo --dest=$(BUILDDIR) --tags="confidant testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
+	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
 
 gqlc-client:
 	xgo --dest=$(BUILDDIR) --ldflags=$(CLIENTLDFLAGS) --out=$(CLIENTBINARY)-v$(CLIENTVERSION)-$(GITREV) \

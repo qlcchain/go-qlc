@@ -95,7 +95,7 @@ func EncryptBytes(raw []byte, passphrase []byte) ([]byte, error) {
 
 	encryptedJSON := cryptoSeedJSON{
 		Crypto:    cryptoJSON,
-		Timestamp: time.Now().UTC().Unix(),
+		Timestamp: time.Now().Unix(),
 	}
 
 	return json.Marshal(encryptedJSON)

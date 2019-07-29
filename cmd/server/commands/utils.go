@@ -77,7 +77,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		eb := event.GetEventBus(cfg.LedgerDir())
-		_ = eb.Subscribe(string(common.EventConfirmedBlock), func(blk *types.StateBlock) {
+		_ = eb.Subscribe(common.EventConfirmedBlock, func(blk *types.StateBlock) {
 			defer func() {
 				if err := recover(); err != nil {
 					fmt.Println(err)
@@ -87,7 +87,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 			go func(accounts []*types.Account) {
 				for _, value := range accounts {
 					addr := value.Address()
-					if blk.Type == types.Send {
+					if blk.Type == types.Send || blk.Type == types.ContractSend {
 						address := types.Address(blk.Link)
 						if addr.String() == address.String() {
 							var balance types.Balance
@@ -158,9 +158,11 @@ func startNode(accounts []*types.Account, cfg *config.Config) error {
 					if send, err := l.GetStateBlock(key.Hash); err != nil {
 						fmt.Println(err)
 					} else {
-						err = receive(send, account)
-						if err != nil {
-							fmt.Printf("err[%s] when generate receive block.\n", err)
+						if send.Type == types.Send || send.Type == types.ContractSend {
+							err = receive(send, account)
+							if err != nil {
+								fmt.Printf("err[%s] when generate receive block.\n", err)
+							}
 						}
 					}
 					return nil
@@ -183,12 +185,8 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 	}
 	l := ledgerService.Ledger
 
-	receiveBlock, err := l.GenerateReceiveBlock(sendBlock, account.PrivateKey())
-	if err != nil {
-		return err
-	}
-	fmt.Println(util.ToIndentString(&receiveBlock))
-
+	var receiveBlock *types.StateBlock
+	var err error
 	client, err := rPCService.RPC().Attach()
 	if err != nil {
 		fmt.Println("create rpc client error:", err)
@@ -199,6 +197,21 @@ func receive(sendBlock *types.StateBlock, account *types.Account) error {
 			client.Close()
 		}
 	}()
+	if sendBlock.Type == types.Send {
+		receiveBlock, err = l.GenerateReceiveBlock(sendBlock, account.PrivateKey())
+		if err != nil {
+			return err
+		}
+	}
+
+	if sendBlock.Type == types.ContractSend && sendBlock.Link == types.Hash(types.RewardsAddress) {
+		sendHash := sendBlock.GetHash()
+		err = client.Call(&receiveBlock, "rewards_getReceiveRewardBlock", &sendHash)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Println(util.ToIndentString(&receiveBlock))
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &receiveBlock)

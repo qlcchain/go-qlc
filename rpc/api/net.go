@@ -35,10 +35,11 @@ type OnlineRepInfo struct {
 }
 
 func syncingTime(t time.Time) {
-	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).UTC().Unix())
+	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).Unix())
 }
+
 func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
-	_ = eb.Subscribe(string(common.EventSyncing), syncingTime)
+	_ = eb.Subscribe(common.EventSyncing, syncingTime)
 	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net")}
 }
 
@@ -62,7 +63,7 @@ func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
 	}
 
 	supply := common.GenesisBlock().Balance
-	minWeight, _ := supply.Div(common.VoteDivisor)
+	minWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	for _, account := range as {
 		weight := q.ledger.Weight(account)
@@ -89,7 +90,7 @@ type PeersInfo struct {
 
 func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 	p := make(map[string]string)
-	q.eb.Publish(string(common.EventPeersInfo), p)
+	q.eb.Publish(common.EventPeersInfo, p)
 	i := &PeersInfo{
 		Count: len(p),
 		Infos: p,
@@ -97,7 +98,7 @@ func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 	return i
 }
 func (q *NetApi) Syncing() bool {
-	now := time.Now().UTC().Unix()
+	now := time.Now().Unix()
 	v := atomic.LoadInt64(&lastSyncTime)
 	if v < now {
 		return false

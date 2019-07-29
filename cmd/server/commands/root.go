@@ -250,6 +250,7 @@ func start() error {
 	}
 	configDetails := util.ToIndentString(cfg)
 	logger.Debugf("%s", configDetails)
+
 	err = runNode(accounts, cfg)
 	if err != nil {
 		return err

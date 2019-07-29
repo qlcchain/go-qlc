@@ -23,9 +23,9 @@ type timeSpan struct {
 
 func (ts *timeSpan) Calculate(t time.Time) time.Time {
 	if duration, e := time.ParseDuration(fmt.Sprintf("%dh%dm%ds", ts.hours, ts.minutes, ts.seconds)); e == nil {
-		return t.AddDate(ts.years, ts.months, ts.days).Add(duration)
+		return t.UTC().AddDate(ts.years, ts.months, ts.days).Add(duration)
 	} else {
 		//fmt.Println(e)
 	}
-	return t.AddDate(ts.years, ts.months, ts.days)
+	return t.UTC().AddDate(ts.years, ts.months, ts.days)
 }

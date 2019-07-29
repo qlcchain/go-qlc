@@ -20,7 +20,7 @@ type Votes struct {
 	repVotes *sync.Map // All votes received by account
 }
 
-func NewVotes(blk *types.StateBlock) *Votes {
+func newVotes(blk *types.StateBlock) *Votes {
 	return &Votes{
 		id:       getVoteKey(blk),
 		repVotes: new(sync.Map),

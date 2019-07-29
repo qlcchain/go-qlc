@@ -48,7 +48,7 @@ func (miner *Miner) Init() error {
 func (miner *Miner) Start() error {
 	miner.logger.Info("start miner service")
 
-	err := miner.eb.SubscribeSync(string(common.EventPovSyncState), miner.onRecvPovSyncState)
+	err := miner.eb.SubscribeSync(common.EventPovSyncState, miner.onRecvPovSyncState)
 	if err != nil {
 		return err
 	}

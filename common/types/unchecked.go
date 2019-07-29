@@ -25,6 +25,7 @@ type UncheckedKind byte
 const (
 	UncheckedKindPrevious UncheckedKind = iota
 	UncheckedKindLink
+	UncheckedKindTokenInfo
 )
 
 type SynchronizedKind byte

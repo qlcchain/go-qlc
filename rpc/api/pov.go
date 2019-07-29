@@ -99,7 +99,7 @@ func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *Po
 		logger: log.NewLogger("rpc/pov"),
 	}
 	api.syncState.Store(common.SyncNotStart)
-	_ = eb.SubscribeSync(string(common.EventPovSyncState), api.OnPovSyncState)
+	_ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
 	return api
 }
 
