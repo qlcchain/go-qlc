@@ -24,7 +24,6 @@ type StoreTxn interface {
 	Delete(key []byte) error
 	Iterator(pre byte, fn func([]byte, []byte, byte) error) error
 	PrefixIterator(prefix []byte, fn func([]byte, []byte, byte) error) error
-	KeyIterator(prefix []byte, fn func([]byte) error) error
 	RangeIterator(startKey []byte, endKey []byte, fn func([]byte, []byte, byte) error) error
 	Commit(callback func(error)) error
 	Discard()

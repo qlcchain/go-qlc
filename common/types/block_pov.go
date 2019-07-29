@@ -379,3 +379,46 @@ func (txl *PovTxLookup) Deserialize(text []byte) error {
 	}
 	return nil
 }
+
+type PovMinerStatItem struct {
+	FirstHeight uint64 `msg:"firstHeight" json:"firstHeight"`
+	LastHeight  uint64 `msg:"lastHeight" json:"lastHeight"`
+	BlockNum    uint32 `msg:"blockNum" json:"blockNum"`
+}
+
+func (msi *PovMinerStatItem) Serialize() ([]byte, error) {
+	return msi.MarshalMsg(nil)
+}
+
+func (msi *PovMinerStatItem) Deserialize(text []byte) error {
+	_, err := msi.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type PovMinerDayStat struct {
+	DayIndex uint32 `msg:"dayIndex" json:"dayIndex"`
+	MinerNum uint32 `msg:"minerNum" json:"minerNum"`
+
+	MinerStats map[string]*PovMinerStatItem `msg:"minerStats" json:"minerStats"`
+}
+
+func (mds *PovMinerDayStat) Serialize() ([]byte, error) {
+	return mds.MarshalMsg(nil)
+}
+
+func (mds *PovMinerDayStat) Deserialize(text []byte) error {
+	_, err := mds.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func NewPovMinerDayStat() *PovMinerDayStat {
+	ds := new(PovMinerDayStat)
+	ds.MinerStats = make(map[string]*PovMinerStatItem)
+	return ds
+}

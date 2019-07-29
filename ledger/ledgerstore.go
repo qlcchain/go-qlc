@@ -144,6 +144,11 @@ type Store interface {
 	DeletePovBestHash(height uint64, txns ...db.StoreTxn) error
 	GetPovBestHash(height uint64, txns ...db.StoreTxn) (types.Hash, error)
 
+	AddPovMinerStat(dayStat *types.PovMinerDayStat, txns ...db.StoreTxn) error
+	DeletePovMinerStat(dayIndex uint32, txns ...db.StoreTxn) error
+	GetPovMinerStat(dayIndex uint32, txns ...db.StoreTxn) (*types.PovMinerDayStat, error)
+	GetLatestPovMinerStat(txns ...db.StoreTxn) (*types.PovMinerDayStat, error)
+
 	// POV blocks complex queries
 	GetPovBlockByHeightAndHash(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error)
 	GetPovBlockByHeight(height uint64, txns ...db.StoreTxn) (*types.PovBlock, error)

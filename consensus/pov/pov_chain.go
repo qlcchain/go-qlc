@@ -17,6 +17,7 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -105,7 +106,8 @@ type PovBlockChain struct {
 	trieCache    gcache.Cache // stateHash => trie
 	trieNodePool *trie.NodePool
 
-	wg sync.WaitGroup
+	quitCh chan struct{}
+	wg     sync.WaitGroup
 }
 
 func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
@@ -122,6 +124,8 @@ func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
 	chain.heightHeaderCache = gcache.New(headerCacheLimit).LRU().Build()
 
 	chain.trieCache = gcache.New(128).LRU().Build()
+
+	chain.quitCh = make(chan struct{})
 
 	return chain
 }
@@ -170,18 +174,95 @@ func (bc *PovBlockChain) Init() error {
 }
 
 func (bc *PovBlockChain) Start() error {
+	common.Go(bc.statLoop)
 	return nil
 }
 
 func (bc *PovBlockChain) Stop() error {
+	close(bc.quitCh)
 	bc.wg.Wait()
 	bc.trieNodePool.Clear()
 	return nil
 }
 
+func (bc *PovBlockChain) statLoop() {
+	checkTicker := time.NewTicker(1 * time.Minute)
+
+	for {
+		select {
+		case <-bc.quitCh:
+			return
+
+		case <-checkTicker.C:
+			bc.onMinerDayStatTimer()
+		}
+	}
+}
+
+func (bc *PovBlockChain) onMinerDayStatTimer() {
+	latestBlock := bc.LatestBlock()
+
+	curDayIndex := uint32(0)
+	latestDayStat, err := bc.getLedger().GetLatestPovMinerStat()
+	if err != nil {
+		bc.logger.Errorf("failed to get latest pov miner stat, err %s", err)
+		return
+	}
+	if latestDayStat != nil {
+		curDayIndex = latestDayStat.DayIndex + 1
+	}
+
+	for {
+		bc.logger.Debugf("curDayIndex: %d, latestBlock: %d", curDayIndex, latestBlock.GetHeight())
+
+		dayStartHeight := uint64(uint64(curDayIndex) * uint64(common.POVChainBlocksPerDay))
+		dayEndHeight := dayStartHeight + uint64(common.POVChainBlocksPerDay) - 1
+
+		if dayEndHeight+uint64(common.PovMinerRewardHeightGapToLatest) > latestBlock.GetHeight() {
+			break
+		}
+
+		dayStat := types.NewPovMinerDayStat()
+		dayStat.DayIndex = curDayIndex
+
+		for height := dayStartHeight; height <= dayEndHeight; height++ {
+			header, err := bc.getLedger().GetPovHeaderByHeight(height)
+			if err != nil {
+				bc.logger.Warnf("failed to get pov header %d, err %s", height, err)
+				return
+			}
+			cbAddrStr := header.GetCoinbase().String()
+			minerStat := dayStat.MinerStats[cbAddrStr]
+			if minerStat == nil {
+				minerStat = new(types.PovMinerStatItem)
+				dayStat.MinerStats[cbAddrStr] = minerStat
+
+				minerStat.FirstHeight = header.GetHeight()
+			} else {
+				minerStat.LastHeight = header.GetHeight()
+			}
+			minerStat.BlockNum++
+		}
+
+		dayStat.MinerNum = uint32(len(dayStat.MinerStats))
+
+		err = bc.getLedger().AddPovMinerStat(dayStat)
+		if err != nil {
+			bc.logger.Errorf("failed to add pov miner stat, day %d, err %s", dayStat.DayIndex, err)
+			return
+		}
+
+		bc.logger.Infof("add pov miner stat, %d-%d-%d", curDayIndex, dayStartHeight, dayEndHeight)
+		curDayIndex++
+	}
+}
+
 func (bc *PovBlockChain) loadLastState() error {
 	// Make sure the entire head block is available
-	latestBlock, _ := bc.getLedger().GetLatestPovBlock()
+	latestBlock, err := bc.getLedger().GetLatestPovBlock()
+	if err != nil {
+		bc.logger.Errorf("failed to get latest block, err %s", err)
+	}
 	if latestBlock == nil {
 		// Corrupt or empty database, init from scratch
 		bc.logger.Warn("head block missing, resetting chain")

@@ -142,3 +142,18 @@ func MinerRoundPovHeight(height uint64, round uint64) uint64 {
 	}
 	return roundCount - 1
 }
+
+func MinerPovHeightToDayIndex(height uint64) uint32 {
+	if height <= uint64(common.POVChainBlocksPerDay) {
+		return 0
+	}
+
+	dayIndex := uint32(height / uint64(common.POVChainBlocksPerDay))
+
+	remain := uint32(height % uint64(common.POVChainBlocksPerDay))
+	if remain > 0 {
+		dayIndex += 1
+	}
+
+	return dayIndex
+}
