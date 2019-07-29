@@ -94,7 +94,7 @@ const (
 	idPrefixRepresentationCache
 	idPrefixUncheckedTokenInfo
 	idPrefixBlockCacheAccount
-  idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
+	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
 )
 
 var (
