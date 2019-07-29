@@ -79,7 +79,7 @@ func TestTransaction(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 	fmt.Println("confirmed use ", time.Now().Sub(start))
-	receiveTransaction(client1, *tAccount, sendBlock, t)
+	tAccountOpenBlock := receiveTransaction(client1, *tAccount, sendBlock, t)
 
 	// transaction
 	// qlc_3hpt4k5hst4i1gdsn5o366owyndxdcoq3wtnrbsm8gw5edb4gatqjzbmwsc9
@@ -142,18 +142,18 @@ func TestTransaction(t *testing.T) {
 	fmt.Println("check node1")
 	checkBlock(node1, 9+m1+m2, t)
 	checkAccount(node1, testAccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
-		headerBlock1.GetHash(), t)
+		m1+3, headerBlock1.GetHash(), testReceiveBlock.GetHash(), t)
 	checkAccount(node1, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
-		headerBlock2.GetHash(), t)
+		m2+1, headerBlock2.GetHash(), tAccountOpenBlock.GetHash(), t)
 	checkRepresentation(node1, testAccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
 
 	// check node2
 	fmt.Println("check node2")
 	checkBlock(node2, 9+m1+m2, t)
 	checkAccount(node2, testAccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
-		headerBlock1.GetHash(), t)
+		m1+3, headerBlock1.GetHash(), testReceiveBlock.GetHash(), t)
 	checkAccount(node2, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
-		headerBlock2.GetHash(), t)
+		m2+1, headerBlock2.GetHash(), tAccountOpenBlock.GetHash(), t)
 	checkRepresentation(node2, testAccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
 
 	fmt.Println("transaction successfully ")
@@ -169,7 +169,7 @@ func checkBlock(service *Service, blockCount int, t *testing.T) {
 	}
 }
 
-func checkAccount(service *Service, address types.Address, amount types.Balance, header types.Hash, t *testing.T) {
+func checkAccount(service *Service, address types.Address, amount types.Balance, blockCount int, header types.Hash, open types.Hash, t *testing.T) {
 	tm, err := service.ledgerService.Ledger.GetTokenMeta(address, common.ChainToken())
 	if err != nil {
 		t.Fatal(err)
@@ -180,6 +180,10 @@ func checkAccount(service *Service, address types.Address, amount types.Balance,
 	if tm.Header != header {
 		t.Fatal("header block error", address.String(), tm.Header, header)
 	}
+	if tm.BlockCount != int64(blockCount) {
+		t.Fatal("block count error,", address.String(), tm.BlockCount, blockCount)
+	}
+
 }
 
 func checkRepresentation(service *Service, address types.Address, amount types.Balance, t *testing.T) {
