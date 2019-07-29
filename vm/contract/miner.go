@@ -86,6 +86,10 @@ func (m *MinerReward) GetAvailRewardInfo(ctx *vmstore.VMContext, coinbase types.
 		return availInfo, nil
 	}
 
+	if endHeight < startHeight {
+		return availInfo, nil
+	}
+
 	availBlocks, err := m.calcRewardBlocksByDayStats(ctx, coinbase, startHeight, endHeight)
 	if err != nil {
 		return nil, err

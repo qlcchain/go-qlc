@@ -20,6 +20,8 @@ var (
 	ErrPovHashNotFound     = errors.New("pov hash not found")
 	ErrPovTxLookupNotFound = errors.New("pov tx lookup not found")
 	ErrPovTDNotFound       = errors.New("pov total difficulty not found")
+
+	ErrPovMinerStatNotFound = errors.New("pov miner state not found")
 )
 
 func (l *Ledger) AddPovBlock(blk *types.PovBlock, td *big.Int, txns ...db.StoreTxn) error {
@@ -653,7 +655,7 @@ func (l *Ledger) getPovMinerStat(key []byte, txn db.StoreTxn) (*types.PovMinerDa
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return nil, ErrPovKeyNotFound
+			return nil, ErrPovMinerStatNotFound
 		}
 		return nil, err
 	}
