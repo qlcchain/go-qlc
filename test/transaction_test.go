@@ -72,14 +72,21 @@ func TestTransaction(t *testing.T) {
 	b := false
 	start := time.Now()
 	for !b {
-		b, err = node1.ledgerService.Ledger.HasStateBlockConfirmed(sendBlock.GetHash())
-		if b == true {
+		if checkConfirmed(sendBlock.GetHash(), t) {
 			b = true
 		}
 		time.Sleep(1 * time.Second)
 	}
 	fmt.Println("confirmed use ", time.Now().Sub(start))
+
 	tAccountOpenBlock := receiveTransaction(client1, *tAccount, sendBlock, t)
+	b = false
+	for !b {
+		if checkConfirmed(tAccountOpenBlock.GetHash(), t) {
+			b = true
+		}
+		time.Sleep(1 * time.Second)
+	}
 
 	// transaction
 	// qlc_3hpt4k5hst4i1gdsn5o366owyndxdcoq3wtnrbsm8gw5edb4gatqjzbmwsc9
@@ -116,23 +123,9 @@ func TestTransaction(t *testing.T) {
 	fmt.Println("transaction finish ")
 	b = false
 	for !b {
-		b1, err := node1.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock1.GetHash())
-		if err != nil {
-			t.Fatal(err)
-		}
-		b2, err := node1.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock2.GetHash())
-		if err != nil {
-			t.Fatal(err)
-		}
-		b3, err := node2.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock1.GetHash())
-		if err != nil {
-			t.Fatal(err)
-		}
-		b4, err := node2.ledgerService.Ledger.HasStateBlockConfirmed(headerBlock2.GetHash())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if b1 && b2 && b3 && b4 {
+		b1 := checkConfirmed(headerBlock1.GetHash(), t)
+		b2 := checkConfirmed(headerBlock2.GetHash(), t)
+		if b1 && b2 {
 			b = true
 		}
 		time.Sleep(1 * time.Second)
@@ -159,13 +152,30 @@ func TestTransaction(t *testing.T) {
 	fmt.Println("transaction successfully ")
 }
 
+func checkConfirmed(hash types.Hash, t *testing.T) bool {
+	b1, err := node1.ledgerService.Ledger.HasStateBlockConfirmed(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b2, err := node2.ledgerService.Ledger.HasStateBlockConfirmed(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if b1 && b2 {
+		return true
+	} else {
+		return false
+	}
+}
+
 func checkBlock(service *Service, blockCount int, t *testing.T) {
 	bc, err := service.ledgerService.Ledger.CountStateBlocks()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if bc != uint64(blockCount) {
-		t.Fatal("block count error")
+		t.Fatal("block count error", bc, blockCount)
 	}
 }
 
