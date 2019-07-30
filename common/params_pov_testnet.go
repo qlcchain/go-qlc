@@ -47,7 +47,7 @@ var (
 	//PovMaximumTargetInt, _ = new(big.Int).SetString(PovMaximumTargetHex, 16)
 
 	// maximum number of seconds a block time is allowed to be ahead of the now time.
-	PovMaxAllowedFutureTimeSec = 15
+	PovMaxAllowedFutureTimeSec = 300
 
 	PovMaxNonce = ^uint64(0) // 2^64 - 1
 )
