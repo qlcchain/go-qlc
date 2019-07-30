@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -47,7 +48,8 @@ type cacheValue struct {
 
 type MessageService struct {
 	netService          *QlcService
-	quitCh              chan bool
+	ctx                 context.Context
+	cancel              context.CancelFunc
 	messageCh           chan *Message
 	publishMessageCh    chan *Message
 	confirmReqMessageCh chan *Message
@@ -61,8 +63,10 @@ type MessageService struct {
 
 // NewService return new Service.
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
+	ctx, cancel := context.WithCancel(context.Background())
 	ms := &MessageService{
-		quitCh:              make(chan bool, 7),
+		ctx:                 ctx,
+		cancel:              cancel,
 		messageCh:           make(chan *Message, common.P2PMonitorMsgChanSize),
 		publishMessageCh:    make(chan *Message, common.P2PMonitorMsgChanSize),
 		confirmReqMessageCh: make(chan *Message, common.P2PMonitorMsgChanSize),
@@ -112,7 +116,7 @@ func (ms *MessageService) processBlockCacheLoop() {
 	ticker := time.NewTicker(checkBlockCacheInterval)
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case <-ticker.C:
 			ms.cacheBlockCache()
@@ -142,8 +146,7 @@ func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
 	for {
 		select {
-		case <-ms.quitCh:
-			ms.netService.node.logger.Info("Stopped Message Service.")
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
@@ -175,7 +178,7 @@ func (ms *MessageService) startLoop() {
 func (ms *MessageService) messageResponseLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.rspMessageCh:
 			switch message.MessageType() {
@@ -189,7 +192,7 @@ func (ms *MessageService) messageResponseLoop() {
 func (ms *MessageService) publishReqLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.publishMessageCh:
 			switch message.MessageType() {
@@ -203,7 +206,7 @@ func (ms *MessageService) publishReqLoop() {
 func (ms *MessageService) confirmReqLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.confirmReqMessageCh:
 			switch message.MessageType() {
@@ -217,7 +220,7 @@ func (ms *MessageService) confirmReqLoop() {
 func (ms *MessageService) confirmAckLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.confirmAckMessageCh:
 			switch message.MessageType() {
@@ -232,7 +235,7 @@ func (ms *MessageService) checkMessageCacheLoop() {
 	ticker := time.NewTicker(checkCacheTimeInterval)
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case <-ticker.C:
 			ms.checkMessageCache()
@@ -289,7 +292,7 @@ func (ms *MessageService) checkMessageCache() {
 func (ms *MessageService) povMessageLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.povMessageCh:
 			switch message.MessageType() {
@@ -501,9 +504,7 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
-	for i := 0; i < 8; i++ {
-		ms.quitCh <- true
-	}
+	ms.cancel()
 	ms.syncService.quitCh <- true
 	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
 	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
