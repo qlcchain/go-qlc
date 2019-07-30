@@ -25,7 +25,7 @@ func TestOpenFork(t *testing.T) {
 	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
 	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
 	cfgFile1.P2P.SyncInterval = 30
-	cfgFile1.LogLevel = "info"
+	cfgFile1.LogLevel = "error"
 	cfgFile1.RPC.Enable = true
 	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfgFile1.P2P.ID.PeerID
 
@@ -34,7 +34,7 @@ func TestOpenFork(t *testing.T) {
 	cfgFile2, _ := config.DefaultConfig(dir2)
 	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
 	cfgFile2.P2P.SyncInterval = 30
-	cfgFile2.LogLevel = "info"
+	cfgFile2.LogLevel = "error"
 	cfgFile2.RPC.Enable = true
 	cfgFile2.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
 	cfgFile2.RPC.WSEnabled = false
