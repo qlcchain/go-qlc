@@ -2,8 +2,6 @@ package p2p
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/ledger/process"
-	"sync/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -110,28 +108,22 @@ func (ms *MessageService) Start() {
 
 func (ms *MessageService) processBlockCacheLoop() {
 	for {
-		now := time.Now().Unix()
-		v := atomic.LoadInt64(&ms.syncService.lastSyncTime)
-		if ms.syncService.syncCount == 1 && v < now {
-			blocks := make([]*types.StateBlock, 0)
-			err := ms.ledger.GetBlockCaches(func(block *types.StateBlock) error {
-				blocks = append(blocks, block)
-				return nil
-			})
-			if err != nil {
-				ms.netService.node.logger.Error("get block cache error")
-			}
-			for _, blk := range blocks {
-				if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
-					_ = ms.ledger.DeleteBlockCache(blk.GetHash())
-				} else {
-					ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
-					ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
-				}
-			}
-			break
+		blocks := make([]*types.StateBlock, 0)
+		err := ms.ledger.GetBlockCaches(func(block *types.StateBlock) error {
+			blocks = append(blocks, block)
+			return nil
+		})
+		if err != nil {
+			ms.netService.node.logger.Error("get block cache error")
 		}
-		time.Sleep(10 * time.Second)
+		for _, blk := range blocks {
+			if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
+				_ = ms.ledger.DeleteBlockCache(blk.GetHash())
+			} else {
+				ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
+			}
+		}
+		time.Sleep(60 * time.Second)
 	}
 }
 
