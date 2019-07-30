@@ -89,7 +89,6 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	dps := p.dps
 	var err error
 
-	//local send do not need to check
 	result, err = dps.lv.BlockCheck(bs.Block)
 	if err != nil {
 		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
@@ -147,11 +146,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 			dps.logger.Errorf("pov is syncing, can not send tx!")
 			return
 		}
-
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
-		if dps.acTrx.addToRoots(bs.Block) {
-			dps.localRepVote(bs)
-		}
 	default:
 		//
 	}
@@ -251,11 +246,11 @@ func (p *Processor) processFork(newBlock *types.StateBlock) {
 	dps.logger.Errorf("fork:%s--%s", newBlock.GetHash(), confirmedBlock.GetHash())
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
-		localRepAccount.Range(func(key, value interface{}) bool {
+		dps.localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
 
 			weight := dps.ledger.Weight(address)
-			if weight.Compare(minVoteWeight) == types.BalanceCompSmaller {
+			if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 				return true
 			}
 
@@ -486,7 +481,7 @@ func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
 				p.voteCache.Remove(bs.Block.GetHash())
 			}
 
-			localRepAccount.Range(func(key, value interface{}) bool {
+			dps.localRepAccount.Range(func(key, value interface{}) bool {
 				address := key.(types.Address)
 
 				va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
