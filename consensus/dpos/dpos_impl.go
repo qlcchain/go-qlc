@@ -31,26 +31,23 @@ const (
 	povBlockNumDay        = 2880
 )
 
-var (
+type DPoS struct {
+	ledger          *ledger.Ledger
+	acTrx           *ActiveTrx
+	accounts        []*types.Account
+	onlineReps      sync.Map
+	logger          *zap.SugaredLogger
+	cfg             *config.Config
+	eb              event.EventBus
+	lv              *process.LedgerVerifier
+	cacheBlocks     chan *consensus.BlockSource
+	povReady        chan bool
+	processors      []*Processor
+	processorNum    int
+	quitCh          chan bool
 	localRepAccount sync.Map
 	povSyncState    atomic.Value
 	minVoteWeight   types.Balance
-)
-
-type DPoS struct {
-	ledger       *ledger.Ledger
-	acTrx        *ActiveTrx
-	accounts     []*types.Account
-	onlineReps   sync.Map
-	logger       *zap.SugaredLogger
-	cfg          *config.Config
-	eb           event.EventBus
-	lv           *process.LedgerVerifier
-	cacheBlocks  chan *consensus.BlockSource
-	povReady     chan bool
-	processors   []*Processor
-	processorNum int
-	quitCh       chan bool
 }
 
 func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *DPoS {
@@ -83,18 +80,18 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 
 func (dps *DPoS) Init() {
 	if dps.cfg.PoV.PovEnabled {
-		povSyncState.Store(common.SyncNotStart)
+		dps.povSyncState.Store(common.SyncNotStart)
 
 		err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState)
 		if err != nil {
 			dps.logger.Errorf("subscribe pov sync state event err")
 		}
 	} else {
-		povSyncState.Store(common.Syncdone)
+		dps.povSyncState.Store(common.Syncdone)
 	}
 
 	supply := common.GenesisBlock().Balance
-	minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
+	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 
 	err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
 	if err != nil {
@@ -166,12 +163,12 @@ func (dps *DPoS) processorStop() {
 }
 
 func (dps *DPoS) getPovSyncState() common.SyncState {
-	state := povSyncState.Load()
+	state := dps.povSyncState.Load()
 	return state.(common.SyncState)
 }
 
 func (dps *DPoS) onPovSyncState(state common.SyncState) {
-	povSyncState.Store(state)
+	dps.povSyncState.Store(state)
 	dps.logger.Infof("pov sync state to [%s]", state)
 
 	if dps.getPovSyncState() == common.Syncdone {
@@ -328,7 +325,7 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 }
 
 func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
-	localRepAccount.Range(func(key, value interface{}) bool {
+	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 
 		va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
@@ -345,10 +342,10 @@ func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
 
 func (dps *DPoS) hasLocalValidRep() bool {
 	has := false
-	localRepAccount.Range(func(key, value interface{}) bool {
+	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 		weight := dps.ledger.Weight(address)
-		if weight.Compare(minVoteWeight) != types.BalanceCompSmaller {
+		if weight.Compare(dps.minVoteWeight) != types.BalanceCompSmaller {
 			has = true
 		}
 		return true
@@ -370,7 +367,7 @@ func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, ac
 	}
 
 	weight := dps.ledger.Weight(account)
-	if weight.Compare(minVoteWeight) == types.BalanceCompSmaller {
+	if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 		return nil, errors.New("too small weight")
 	}
 
@@ -401,13 +398,13 @@ func (dps *DPoS) refreshAccount() {
 		addr = v.Address()
 		b = dps.isRepresentation(addr)
 		if b {
-			localRepAccount.Store(addr, v)
+			dps.localRepAccount.Store(addr, v)
 			dps.saveOnlineRep(addr)
 		}
 	}
 
 	var count uint32
-	localRepAccount.Range(func(key, value interface{}) bool {
+	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		count++
 		return true
 	})
@@ -448,7 +445,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 		return err
 	}
 
-	localRepAccount.Range(func(key, value interface{}) bool {
+	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 
 		va, err := dps.voteGenerateWithSeq(blk, address, value.(*types.Account))

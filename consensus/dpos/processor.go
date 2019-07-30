@@ -89,15 +89,12 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	dps := p.dps
 	var err error
 
-	//local send do not need to check
-	if !dps.acTrx.isVoting(bs.Block) {
-		result, err = dps.lv.BlockCheck(bs.Block)
-		if err != nil {
-			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
-			return
-		}
-		p.processResult(result, bs)
+	result, err = dps.lv.BlockCheck(bs.Block)
+	if err != nil {
+		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
+		return
 	}
+	p.processResult(result, bs)
 
 	switch bs.Type {
 	case consensus.MsgPublishReq:
@@ -149,13 +146,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 			dps.logger.Errorf("pov is syncing, can not send tx!")
 			return
 		}
-
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
-		if !dps.acTrx.isVoting(bs.Block) {
-			if dps.acTrx.addToRoots(bs.Block) {
-				dps.localRepVote(bs)
-			}
-		}
 	default:
 		//
 	}
@@ -173,10 +164,8 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			//make sure we only vote one of the forked blocks
-			if !dps.acTrx.isVoting(bs.Block) {
-				if dps.acTrx.addToRoots(blk) {
-					dps.localRepVote(bs)
-				}
+			if dps.acTrx.addToRoots(blk) {
+				dps.localRepVote(bs)
 			}
 		} else {
 			dps.logger.Errorf("Block %s UnKnow from", hash)
@@ -257,11 +246,11 @@ func (p *Processor) processFork(newBlock *types.StateBlock) {
 	dps.logger.Errorf("fork:%s--%s", newBlock.GetHash(), confirmedBlock.GetHash())
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
-		localRepAccount.Range(func(key, value interface{}) bool {
+		dps.localRepAccount.Range(func(key, value interface{}) bool {
 			address := key.(types.Address)
 
 			weight := dps.ledger.Weight(address)
-			if weight.Compare(minVoteWeight) == types.BalanceCompSmaller {
+			if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 				return true
 			}
 
@@ -492,7 +481,7 @@ func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
 				p.voteCache.Remove(bs.Block.GetHash())
 			}
 
-			localRepAccount.Range(func(key, value interface{}) bool {
+			dps.localRepAccount.Range(func(key, value interface{}) bool {
 				address := key.(types.Address)
 
 				va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
