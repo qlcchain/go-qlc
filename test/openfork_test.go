@@ -124,8 +124,8 @@ func TestOpenFork(t *testing.T) {
 	}
 	fmt.Println(tm1)
 	fmt.Println(tm2)
-	if tm1.Header != tm1.Header || tm1.OpenBlock != tm1.OpenBlock || tm1.BlockCount != tm2.BlockCount ||
-		tm1.Balance != tm2.Balance {
+	if tm1.Header != tm2.Header || tm1.OpenBlock != tm2.OpenBlock || tm1.BlockCount != tm2.BlockCount ||
+		!tm1.Balance.Equal(tm2.Balance) {
 		t.Fatal("account error")
 	}
 }
