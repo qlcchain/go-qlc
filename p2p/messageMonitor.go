@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	checkCacheTimeInterval = 30 * time.Second
-	msgResendMaxTimes      = 10
-	msgNeedResendInterval  = 10 * time.Second
+	checkCacheTimeInterval  = 30 * time.Second
+	checkBlockCacheInterval = 60 * time.Second
+	msgResendMaxTimes       = 10
+	msgNeedResendInterval   = 10 * time.Second
 )
 
 //  Message Type
@@ -107,23 +108,33 @@ func (ms *MessageService) Start() {
 }
 
 func (ms *MessageService) processBlockCacheLoop() {
+	ms.netService.node.logger.Info("Started process blockCache loop.")
+	ticker := time.NewTicker(checkBlockCacheInterval)
 	for {
-		blocks := make([]*types.StateBlock, 0)
-		err := ms.ledger.GetBlockCaches(func(block *types.StateBlock) error {
-			blocks = append(blocks, block)
-			return nil
-		})
-		if err != nil {
-			ms.netService.node.logger.Error("get block cache error")
+		select {
+		case <-ms.quitCh:
+			return
+		case <-ticker.C:
+			ms.cacheBlockCache()
 		}
-		for _, blk := range blocks {
-			if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
-				_ = ms.ledger.DeleteBlockCache(blk.GetHash())
-			} else {
-				ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
-			}
+	}
+}
+
+func (ms *MessageService) cacheBlockCache() {
+	blocks := make([]*types.StateBlock, 0)
+	err := ms.ledger.GetBlockCaches(func(block *types.StateBlock) error {
+		blocks = append(blocks, block)
+		return nil
+	})
+	if err != nil {
+		ms.netService.node.logger.Error("get block cache error")
+	}
+	for _, blk := range blocks {
+		if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
+			_ = ms.ledger.DeleteBlockCache(blk.GetHash())
+		} else {
+			ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
 		}
-		time.Sleep(60 * time.Second)
 	}
 }
 
@@ -490,7 +501,7 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
-	for i := 0; i < 7; i++ {
+	for i := 0; i < 8; i++ {
 		ms.quitCh <- true
 	}
 	ms.syncService.quitCh <- true
