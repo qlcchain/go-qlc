@@ -49,6 +49,11 @@ func TestOpenFork(t *testing.T) {
 	cfgFile2Byte, _ := json.Marshal(cfgFile2)
 	fmt.Println("node2 config \n", string(cfgFile2Byte))
 
+	defer func() {
+		fmt.Println(" close servers")
+		closeServer(node1, t)
+		closeServer(node2, t)
+	}()
 	fmt.Println(" start node1....")
 	node1.dir = dir1
 
