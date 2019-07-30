@@ -1,9 +1,12 @@
 
 <a name="v1.2.3"></a>
-## [v1.2.3](https://github.com/qlcchain/go-qlc/compare/v1.2.2...v1.2.3) (2019-07-26)
+## [v1.2.3](https://github.com/qlcchain/go-qlc/compare/v1.2.2...v1.2.3) (2019-07-30)
 
 ### Bug Fixes
 
+* The transaction cannot be confirmed when the representative re online
+* start node with wallet call ledger init twice
+* badger transaction conflict. fix rollback block bug.
 * modify pov miner generate block
 * merge master to branch feature/pov-consensus-refactor
 * modify mine worker num to 1
@@ -114,6 +117,8 @@
 
 ### Features
 
+* pov ledger miner stats ([#479](https://github.com/qlcchain/go-qlc/issues/479))
+* modify test case
 * complete the functions of the v1.2.3 plan ([#474](https://github.com/qlcchain/go-qlc/issues/474))
 * add pov fake consesus
 * refactor miner contract ([#455](https://github.com/qlcchain/go-qlc/issues/455))
@@ -174,6 +179,10 @@
 
 ### Pull Requests
 
+* Merge pull request [#485](https://github.com/qlcchain/go-qlc/issues/485) from qlcchain/hotfix/trxConfirmed
+* Merge pull request [#483](https://github.com/qlcchain/go-qlc/issues/483) from qlcchain/hotfix/ledgerinit
+* Merge pull request [#476](https://github.com/qlcchain/go-qlc/issues/476) from qlcchain/hotfix/v1.2.3
+* Merge pull request [#475](https://github.com/qlcchain/go-qlc/issues/475) from qlcchain/feature/testcase
 * Merge pull request [#467](https://github.com/qlcchain/go-qlc/issues/467) from qlcchain/feature/pov-consensus-refactor
 * Merge pull request [#465](https://github.com/qlcchain/go-qlc/issues/465) from qlcchain/feature/remove-time-sleep
 * Merge pull request [#463](https://github.com/qlcchain/go-qlc/issues/463) from qlcchain/feature/cons-optimize
