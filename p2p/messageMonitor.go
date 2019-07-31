@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -13,9 +14,10 @@ import (
 )
 
 const (
-	checkCacheTimeInterval = 30 * time.Second
-	msgResendMaxTimes      = 10
-	msgNeedResendInterval  = 10 * time.Second
+	checkCacheTimeInterval  = 30 * time.Second
+	checkBlockCacheInterval = 60 * time.Second
+	msgResendMaxTimes       = 10
+	msgNeedResendInterval   = 10 * time.Second
 )
 
 //  Message Type
@@ -46,7 +48,8 @@ type cacheValue struct {
 
 type MessageService struct {
 	netService          *QlcService
-	quitCh              chan bool
+	ctx                 context.Context
+	cancel              context.CancelFunc
 	messageCh           chan *Message
 	publishMessageCh    chan *Message
 	confirmReqMessageCh chan *Message
@@ -60,8 +63,10 @@ type MessageService struct {
 
 // NewService return new Service.
 func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
+	ctx, cancel := context.WithCancel(context.Background())
 	ms := &MessageService{
-		quitCh:              make(chan bool, 7),
+		ctx:                 ctx,
+		cancel:              cancel,
 		messageCh:           make(chan *Message, common.P2PMonitorMsgChanSize),
 		publishMessageCh:    make(chan *Message, common.P2PMonitorMsgChanSize),
 		confirmReqMessageCh: make(chan *Message, common.P2PMonitorMsgChanSize),
@@ -107,23 +112,33 @@ func (ms *MessageService) Start() {
 }
 
 func (ms *MessageService) processBlockCacheLoop() {
+	ms.netService.node.logger.Info("Started process blockCache loop.")
+	ticker := time.NewTicker(checkBlockCacheInterval)
 	for {
-		blocks := make([]*types.StateBlock, 0)
-		err := ms.ledger.GetBlockCaches(func(block *types.StateBlock) error {
-			blocks = append(blocks, block)
-			return nil
-		})
-		if err != nil {
-			ms.netService.node.logger.Error("get block cache error")
+		select {
+		case <-ms.ctx.Done():
+			return
+		case <-ticker.C:
+			ms.cacheBlockCache()
 		}
-		for _, blk := range blocks {
-			if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
-				_ = ms.ledger.DeleteBlockCache(blk.GetHash())
-			} else {
-				ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
-			}
+	}
+}
+
+func (ms *MessageService) cacheBlockCache() {
+	blocks := make([]*types.StateBlock, 0)
+	err := ms.ledger.GetBlockCaches(func(block *types.StateBlock) error {
+		blocks = append(blocks, block)
+		return nil
+	})
+	if err != nil {
+		ms.netService.node.logger.Error("get block cache error")
+	}
+	for _, blk := range blocks {
+		if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
+			_ = ms.ledger.DeleteBlockCache(blk.GetHash())
+		} else {
+			ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
 		}
-		time.Sleep(60 * time.Second)
 	}
 }
 
@@ -131,8 +146,7 @@ func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
 	for {
 		select {
-		case <-ms.quitCh:
-			ms.netService.node.logger.Info("Stopped Message Service.")
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
@@ -164,7 +178,7 @@ func (ms *MessageService) startLoop() {
 func (ms *MessageService) messageResponseLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.rspMessageCh:
 			switch message.MessageType() {
@@ -178,7 +192,7 @@ func (ms *MessageService) messageResponseLoop() {
 func (ms *MessageService) publishReqLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.publishMessageCh:
 			switch message.MessageType() {
@@ -192,7 +206,7 @@ func (ms *MessageService) publishReqLoop() {
 func (ms *MessageService) confirmReqLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.confirmReqMessageCh:
 			switch message.MessageType() {
@@ -206,7 +220,7 @@ func (ms *MessageService) confirmReqLoop() {
 func (ms *MessageService) confirmAckLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.confirmAckMessageCh:
 			switch message.MessageType() {
@@ -221,7 +235,7 @@ func (ms *MessageService) checkMessageCacheLoop() {
 	ticker := time.NewTicker(checkCacheTimeInterval)
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case <-ticker.C:
 			ms.checkMessageCache()
@@ -278,7 +292,7 @@ func (ms *MessageService) checkMessageCache() {
 func (ms *MessageService) povMessageLoop() {
 	for {
 		select {
-		case <-ms.quitCh:
+		case <-ms.ctx.Done():
 			return
 		case message := <-ms.povMessageCh:
 			switch message.MessageType() {
@@ -490,9 +504,7 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.Info("stopped message monitor")
 	// quit.
-	for i := 0; i < 7; i++ {
-		ms.quitCh <- true
-	}
+	ms.cancel()
 	ms.syncService.quitCh <- true
 	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
 	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
