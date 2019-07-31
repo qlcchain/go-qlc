@@ -1,4 +1,4 @@
-// +build testnet
+// +build integrate
 
 package test
 
