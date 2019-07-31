@@ -1,9 +1,13 @@
 
 <a name="v1.2.3"></a>
-## [v1.2.3](https://github.com/qlcchain/go-qlc/compare/v1.2.2...v1.2.3) (2019-07-30)
+## [v1.2.3](https://github.com/qlcchain/go-qlc/compare/v1.2.2...v1.2.3) (2019-07-31)
 
 ### Bug Fixes
 
+* accountMetaCache may be not the newest ([#491](https://github.com/qlcchain/go-qlc/issues/491))
+* optimize the voting process
+* add block child error
+* confirmReq may not get confirmAck
 * The transaction cannot be confirmed when the representative re online
 * start node with wallet call ledger init twice
 * badger transaction conflict. fix rollback block bug.
@@ -170,6 +174,7 @@
 
 ### Refactoring
 
+* use context exit goroutine ([#487](https://github.com/qlcchain/go-qlc/issues/487))
 * remove qlcclassic api
 * split json RPC lib as a standalone project
 * sync RPC lib upstream
@@ -179,6 +184,9 @@
 
 ### Pull Requests
 
+* Merge pull request [#490](https://github.com/qlcchain/go-qlc/issues/490) from qlcchain/hotfix/vote-optimize
+* Merge pull request [#488](https://github.com/qlcchain/go-qlc/issues/488) from qlcchain/hotfix/childerror
+* Merge pull request [#486](https://github.com/qlcchain/go-qlc/issues/486) from qlcchain/hotfix/confirmReq
 * Merge pull request [#485](https://github.com/qlcchain/go-qlc/issues/485) from qlcchain/hotfix/trxConfirmed
 * Merge pull request [#483](https://github.com/qlcchain/go-qlc/issues/483) from qlcchain/hotfix/ledgerinit
 * Merge pull request [#476](https://github.com/qlcchain/go-qlc/issues/476) from qlcchain/hotfix/v1.2.3
