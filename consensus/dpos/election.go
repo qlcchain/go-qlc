@@ -27,6 +27,7 @@ type Election struct {
 	dps           *DPoS
 	announcements uint
 	lastTime      int64
+	voteHash      types.Hash //vote for this hash
 }
 
 func newElection(dps *DPoS, block *types.StateBlock) (*Election, error) {
@@ -40,6 +41,7 @@ func newElection(dps *DPoS, block *types.StateBlock) (*Election, error) {
 		dps:           dps,
 		announcements: 0,
 		lastTime:      time.Now().Unix(),
+		voteHash:      types.ZeroHash,
 	}, nil
 }
 

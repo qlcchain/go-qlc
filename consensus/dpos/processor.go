@@ -104,8 +104,16 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		dps.logger.Infof("dps recv confirmReq block[%s]", hash)
 		dps.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmReq, bs.Block, bs.MsgFrom)
 
-		//vote if the result is not fork
-		if result != process.Fork {
+		//vote if the result is progress and old
+		if result == process.Progress {
+			if el := dps.acTrx.getVoteInfo(bs.Block); el != nil {
+				if el.voteHash == types.ZeroHash {
+					dps.localRepVote(bs)
+				} else if hash == el.voteHash {
+					dps.localRepVote(bs)
+				}
+			}
+		} else if result == process.Old {
 			dps.localRepVote(bs)
 		}
 	case consensus.MsgConfirmAck:
@@ -164,7 +172,7 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			//make sure we only vote one of the forked blocks
-			if dps.acTrx.addToRoots(blk) && bs.Type != consensus.MsgPublishReq {
+			if dps.acTrx.addToRoots(blk) && bs.Type != consensus.MsgConfirmReq {
 				dps.localRepVote(bs)
 			}
 		} else {
@@ -259,6 +267,7 @@ func (p *Processor) processFork(newBlock *types.StateBlock) {
 				return true
 			}
 
+			dps.acTrx.setVoteHash(confirmedBlock)
 			dps.acTrx.vote(va)
 			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmedBlock)
@@ -490,6 +499,7 @@ func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
 				}
 
 				dps.logger.Debugf("rep [%s] vote for block [%s]", address, bs.Block.GetHash())
+				dps.acTrx.setVoteHash(bs.Block)
 				dps.acTrx.vote(va)
 				dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 

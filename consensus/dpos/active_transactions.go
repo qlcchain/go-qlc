@@ -224,3 +224,21 @@ func (act *ActiveTrx) isVoting(block *types.StateBlock) bool {
 
 	return false
 }
+
+func (act *ActiveTrx) getVoteInfo(block *types.StateBlock) *Election {
+	vk := getVoteKey(block)
+
+	if v, ok := act.roots.Load(vk); ok {
+		return v.(*Election)
+	}
+
+	return nil
+}
+
+func (act *ActiveTrx) setVoteHash(block *types.StateBlock) {
+	vk := getVoteKey(block)
+
+	if v, ok := act.roots.Load(vk); ok {
+		v.(*Election).voteHash = block.GetHash()
+	}
+}
