@@ -1,4 +1,4 @@
-// +build integrate
+// +build testnet
 
 package test
 
@@ -89,14 +89,14 @@ func TestProcess_Open(t *testing.T) {
 
 	temp := r.Clone()
 	r.Vote = types.Balance{Int: big.NewInt(int64(1))}
-	r.Work = 0
-
-	// test BadWork
-	p, err = lv.BlockCheck(r)
-	if p != process.BadWork {
-		t.Fatal("result should BadWork")
-	}
-	r.Work = temp.Work
+	//r.Work = 0
+	//
+	//// test BadWork
+	//p, err = lv.BlockCheck(r)
+	//if p != process.BadWork {
+	//	t.Fatal("result should BadWork")
+	//}
+	//r.Work = temp.Work
 
 	// test BadSignature
 	p, err = lv.BlockCheck(r)
