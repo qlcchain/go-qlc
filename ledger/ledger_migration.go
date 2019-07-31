@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/dgraph-io/badger"
@@ -215,6 +216,76 @@ func (m MigrationV4ToV5) StartVersion() int {
 
 func (m MigrationV4ToV5) EndVersion() int {
 	return 5
+}
+
+type MigrationV5ToV6 struct {
+}
+
+func (m MigrationV5ToV6) Migrate(txn db.StoreTxn) error {
+	b, err := checkVersion(m, txn)
+	if err != nil {
+		return err
+	}
+	if b {
+		fmt.Println("migrate ledger v5 to v6")
+		newChild := make(map[types.Hash]types.Hash)
+		err = txn.Iterator(idPrefixChild, func(key []byte, val []byte, b byte) error {
+			children := make(map[types.Hash]int)
+			if err := json.Unmarshal(val, &children); err == nil {
+				keyHash, err := types.BytesToHash(key[1:])
+				if err != nil {
+					return err
+				}
+				if len(children) == 1 {
+					for k, v := range children {
+						if v == 0 {
+							newChild[keyHash] = k
+						} else {
+							newChild[keyHash] = types.ZeroHash
+						}
+					}
+				} else {
+					for k, v := range children {
+						if v == 0 {
+							newChild[keyHash] = k
+						}
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		for k, v := range newChild {
+			pKey := getKeyOfHash(k, idPrefixChild)
+			if v == types.ZeroHash {
+				if err := txn.Delete(pKey); err != nil {
+					return err
+				}
+			} else {
+				val, err := v.MarshalMsg(nil)
+				if err != nil {
+					return err
+				}
+				if err := txn.Set(pKey, val); err != nil {
+					return err
+				}
+			}
+		}
+
+		return updateVersion(m, txn)
+	}
+	return nil
+}
+
+func (m MigrationV5ToV6) StartVersion() int {
+	return 5
+}
+
+func (m MigrationV5ToV6) EndVersion() int {
+	return 6
 }
 
 func checkVersion(m db.Migration, txn db.StoreTxn) (bool, error) {
