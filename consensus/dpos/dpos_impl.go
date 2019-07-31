@@ -334,6 +334,7 @@ func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
 		}
 
 		dps.logger.Debugf("rep [%s] vote for block [%s]", address, bs.Block.GetHash())
+		dps.acTrx.setVoteHash(bs.Block)
 		dps.acTrx.vote(va)
 		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 		return true
