@@ -51,11 +51,12 @@ func stopNode(services []common.Service) {
 }
 
 func initNode(accounts []*types.Account, cfg *config.Config) error {
+	var err error
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
 	ledgerService = ss.NewLedgerService(cfg)
 	walletService = ss.NewWalletService(cfg)
-	netService, err := ss.NewP2PService(cfg)
+	netService, err = ss.NewP2PService(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -76,37 +77,9 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	}
 
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
+		go generateReceiveBlockLoop(accounts)
 		eb := event.GetEventBus(cfg.LedgerDir())
-		_ = eb.Subscribe(common.EventConfirmedBlock, func(blk *types.StateBlock) {
-			defer func() {
-				if err := recover(); err != nil {
-					fmt.Println(err)
-				}
-			}()
-
-			go func(accounts []*types.Account) {
-				for _, value := range accounts {
-					addr := value.Address()
-					if blk.Type == types.Send || blk.Type == types.ContractSend {
-						address := types.Address(blk.Link)
-						if addr.String() == address.String() {
-							var balance types.Balance
-							if blk.Token == common.ChainToken() {
-								balance, _ = common.RawToBalance(blk.Balance, "QLC")
-								fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", blk.Address.String(), address.String(), balance)
-							} else {
-								fmt.Printf("receive block from [%s] to[%s] balance[%s]", blk.Address.String(), address.String(), blk.Balance.String())
-							}
-							err = receive(blk, value)
-							if err != nil {
-								fmt.Printf("err[%s] when generate receive block.\n", err)
-							}
-							break
-						}
-					}
-				}
-			}(accounts)
-		})
+		_ = eb.Subscribe(common.EventConfirmedBlock, addBlockToChan)
 	}
 
 	services = append(services, sqliteService)
@@ -264,4 +237,39 @@ func initDb() error {
 		}
 	}
 	return nil
+}
+
+func addBlockToChan(blk *types.StateBlock) {
+	blocksChan <- blk
+}
+
+func generateReceiveBlockLoop(accounts []*types.Account) {
+	for {
+		select {
+		case <-exitChan:
+			fmt.Println("exit generateReceiveBlock Loop...")
+			return
+		case blk := <-blocksChan:
+			for _, value := range accounts {
+				addr := value.Address()
+				if blk.Type == types.Send || blk.Type == types.ContractSend {
+					address := types.Address(blk.Link)
+					if addr.String() == address.String() {
+						var balance types.Balance
+						if blk.Token == common.ChainToken() {
+							balance, _ = common.RawToBalance(blk.Balance, "QLC")
+							fmt.Printf("receive block from [%s] to[%s] balance[%s]\n", blk.Address.String(), address.String(), balance)
+						} else {
+							fmt.Printf("receive block from [%s] to[%s] balance[%s]", blk.Address.String(), address.String(), blk.Balance.String())
+						}
+						err := receive(blk, value)
+						if err != nil {
+							fmt.Printf("err[%s] when generate receive block.\n", err)
+						}
+						break
+					}
+				}
+			}
+		}
+	}
 }

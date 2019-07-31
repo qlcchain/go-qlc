@@ -76,6 +76,8 @@ var (
 	services         []common.Service
 	maxAccountSize   = 100
 	logger           = qlclog.NewLogger("config_detail")
+	blocksChan       = make(chan *types.StateBlock, common.DPoSMaxBlocks)
+	exitChan         = make(chan bool, 1)
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -268,6 +270,7 @@ func trapSignal() {
 	for i := len(services) - 1; i >= 0; i-- {
 		sers = append(sers, services[i])
 	}
+	exitChan <- true
 	stopNode(sers)
 	fmt.Println("qlc node closed successfully")
 
