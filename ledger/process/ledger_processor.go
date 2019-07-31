@@ -671,7 +671,6 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 	if err := lv.l.AddStateBlock(block, txn); err != nil {
 		return err
 	}
-
 	am, err := lv.l.GetAccountMetaConfirmed(block.GetAddress(), txn)
 	if err != nil && err != ledger.ErrAccountNotFound {
 		return fmt.Errorf("get account meta error: %s", err)
@@ -691,6 +690,21 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 	}
 	if err := lv.updateAccountMeta(block, am, txn); err != nil {
 		return fmt.Errorf("update account meta error: %s", err)
+	}
+	amCache, err := lv.l.GetAccountMetaCache(block.GetAddress(), txn)
+	if err != nil && err != ledger.ErrAccountNotFound {
+		return fmt.Errorf("get account meta cache error: %s", err)
+	}
+	if amCache != nil {
+		tmCache := amCache.Token(block.GetToken())
+		if tmCache != nil && tm != nil {
+			if tmCache.Header == tm.Header {
+				err = lv.updateAccountMetaCache(block, amCache, txn)
+				if err != nil {
+					return fmt.Errorf("update AccountMeta Cache error: %s", err)
+				}
+			}
+		}
 	}
 	if err := lv.updateContractData(block, txn); err != nil {
 		return fmt.Errorf("update contract data error: %s", err)
