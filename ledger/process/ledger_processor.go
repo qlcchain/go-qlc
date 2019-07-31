@@ -693,7 +693,7 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 	}
 	amCache, err := lv.l.GetAccountMetaCache(block.GetAddress(), txn)
 	if err != nil && err != ledger.ErrAccountNotFound {
-		return fmt.Errorf("get account meta error: %s", err)
+		return fmt.Errorf("get account meta cache error: %s", err)
 	}
 	if amCache != nil {
 		tmCache := amCache.Token(block.GetToken())
