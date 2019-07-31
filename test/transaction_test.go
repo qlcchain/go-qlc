@@ -1,4 +1,4 @@
-// +build  testnet
+// +build  integrate
 
 /*
  * Copyright (c) 2019 QLC Chain Team
