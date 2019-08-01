@@ -2247,7 +2247,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		}
 	}
 
-	if prk != nil {
+	if prk != nil && acc != nil {
 		sb.Signature = acc.Sign(sb.GetHash())
 		sb.Work = l.generateWork(sb.Root())
 	}
