@@ -10,7 +10,6 @@ package contract
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -194,10 +193,17 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 			//already exist
 			if len(data) > 0 {
 				if rewardsInfo, err := cabi.ParseRewardsInfo(data); err == nil {
-					if rewardsInfo.TxHeader != info.TxHeader || rewardsInfo.RxHeader != info.RxHeader ||
-						rewardsInfo.Amount.Cmp(info.Amount) != 0 || rewardsInfo.Type != info.Type ||
+					if rewardsInfo.Amount.Cmp(info.Amount) != 0 || rewardsInfo.Type != info.Type ||
+						//rewardsInfo.TxHeader != info.TxHeader || rewardsInfo.RxHeader != info.RxHeader ||
 						rewardsInfo.From != info.From || rewardsInfo.To != info.To {
-						return nil, errors.New("invalid saved confidant data")
+						return nil, fmt.Errorf("invalid saved confidant data: txHeader(%s,%s,%t);"+
+							" rxHeader(%s,%s,%t); amount(%s,%s,%t); type(%d,%d,%t); from(%s,%s,%t); to(%s,%s,%t)",
+							rewardsInfo.TxHeader, info.TxHeader, rewardsInfo.TxHeader == info.TxHeader,
+							rewardsInfo.RxHeader, info.RxHeader, rewardsInfo.RxHeader == info.RxHeader,
+							rewardsInfo.Amount, info.Amount, rewardsInfo.Amount.Cmp(info.Amount) == 0,
+							rewardsInfo.Type, info.Type, rewardsInfo.Type == info.Type,
+							rewardsInfo.From, info.From, rewardsInfo.From == info.From,
+							rewardsInfo.To, info.To, rewardsInfo.To == info.To)
 					}
 				} else {
 					return nil, err
