@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"errors"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -119,12 +120,12 @@ func (ms *MessageService) processBlockCacheLoop() {
 		case <-ms.ctx.Done():
 			return
 		case <-ticker.C:
-			ms.cacheBlockCache()
+			ms.processBlockCache()
 		}
 	}
 }
 
-func (ms *MessageService) cacheBlockCache() {
+func (ms *MessageService) processBlockCache() {
 	blocks := make([]*types.StateBlock, 0)
 	err := ms.ledger.GetBlockCaches(func(block *types.StateBlock) error {
 		blocks = append(blocks, block)
@@ -138,6 +139,7 @@ func (ms *MessageService) cacheBlockCache() {
 			_ = ms.ledger.DeleteBlockCache(blk.GetHash())
 		} else {
 			ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
+			ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
 		}
 	}
 }

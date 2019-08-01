@@ -716,7 +716,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	hash := block.GetHash()
 	switch block.Type {
 	case types.Send:
-		preBlk, err := lv.l.GetStateBlock(block.Previous)
+		preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous)
 		if err != nil {
 			return errors.New("previous block not found")
 		}
