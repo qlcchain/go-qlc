@@ -86,7 +86,7 @@ func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
 }
 
 func (l *LedgerApi) AccountBlocksCount(addr types.Address) (int64, error) {
-	am, err := l.ledger.GetAccountMeta(addr)
+	am, err := l.ledger.GetAccountMetaConfirmed(addr)
 	if err != nil {
 		if err == ledger.ErrAccountNotFound {
 			return 0, nil
@@ -146,7 +146,7 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 	vmContext := vmstore.NewVMContext(l.ledger)
 
 	for _, h := range hashes {
-		block, _ := l.ledger.GetStateBlock(h)
+		block, _ := l.ledger.GetStateBlockConfirmed(h)
 		b, err := generateAPIBlock(vmContext, block)
 		if err != nil {
 			return nil, err
@@ -245,7 +245,7 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 }
 
 func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, error) {
-	am, err := l.ledger.GetAccountMeta(addr)
+	am, err := l.ledger.GetAccountMetaConfirmed(addr)
 	if err != nil {
 		return types.ZeroAddress, err
 	}
@@ -269,7 +269,7 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 	as := make(map[types.Address]map[string]*APIAccountsBalance)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
-		ac, err := l.ledger.GetAccountMeta(addr)
+		ac, err := l.ledger.GetAccountMetaConfirmed(addr)
 		if err != nil {
 			if err == ledger.ErrAccountNotFound {
 				continue
@@ -310,7 +310,7 @@ func (l *LedgerApi) AccountsFrontiers(addresses []types.Address) (map[types.Addr
 	r := make(map[types.Address]map[string]types.Hash)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
-		ac, err := l.ledger.GetAccountMeta(addr)
+		ac, err := l.ledger.GetAccountMetaConfirmed(addr)
 		if err != nil {
 			if err == ledger.ErrAccountNotFound {
 				continue
@@ -342,7 +342,7 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 				return err
 			}
 			tokenName := token.TokenName
-			blk, err := l.ledger.GetStateBlock(key.Hash)
+			blk, err := l.ledger.GetStateBlockConfirmed(key.Hash)
 			if err != nil {
 				return err
 			}
@@ -395,7 +395,7 @@ func (l *LedgerApi) Accounts(count int, offset *int) ([]*types.Address, error) {
 }
 
 func (l *LedgerApi) BlockAccount(hash types.Hash) (types.Address, error) {
-	sb, err := l.ledger.GetStateBlock(hash)
+	sb, err := l.ledger.GetStateBlockConfirmed(hash)
 	if err != nil {
 		return types.ZeroAddress, err
 	}
@@ -534,7 +534,7 @@ func (l *LedgerApi) Chain(hash types.Hash, n int) ([]types.Hash, error) {
 	r := make([]types.Hash, 0)
 	count := 0
 	for (n != -1 && count < n) || n == -1 {
-		blk, err := l.ledger.GetStateBlock(hash)
+		blk, err := l.ledger.GetStateBlockConfirmed(hash)
 		if err != nil {
 			return nil, err
 		}
@@ -686,7 +686,7 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 			return err
 		}
 		tokenName := token.TokenName
-		blk, err := l.ledger.GetStateBlock(pendingKey.Hash)
+		blk, err := l.ledger.GetStateBlockConfirmed(pendingKey.Hash)
 		if err != nil {
 			return err
 		}
