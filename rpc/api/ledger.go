@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -688,15 +689,17 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 		tokenName := token.TokenName
 		blk, err := l.ledger.GetStateBlock(pendingKey.Hash)
 		if err != nil {
-			return err
+			l.logger.Errorf("can not fetch block from %s, %s", util.ToString(pendingKey), util.ToString(pendingInfo))
+		} else {
+			ap := APIPending{
+				PendingKey:  pendingKey,
+				PendingInfo: pendingInfo,
+				TokenName:   tokenName,
+				Timestamp:   blk.Timestamp,
+			}
+			aps = append(aps, &ap)
 		}
-		ap := APIPending{
-			PendingKey:  pendingKey,
-			PendingInfo: pendingInfo,
-			TokenName:   tokenName,
-			Timestamp:   blk.Timestamp,
-		}
-		aps = append(aps, &ap)
+
 		return nil
 	})
 	if err != nil {
