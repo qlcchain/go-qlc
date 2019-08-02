@@ -1004,6 +1004,10 @@ func (lv *LedgerVerifier) rollbackBlockCache(hash types.Hash, txn db.StoreTxn) e
 			return fmt.Errorf("get tokenMetaCache(%s) token err", hash.String())
 		}
 		header := tm.Header
+		sb, err = lv.l.GetBlockCache(header, txn)
+		if err != nil {
+			return fmt.Errorf("get header block (%s) err", header.String())
+		}
 		for {
 			lv.logger.Debug("---delete block cache, ", header)
 			if err := lv.l.DeleteBlockCache(header, txn); err != nil {
@@ -1013,7 +1017,7 @@ func (lv *LedgerVerifier) rollbackBlockCache(hash types.Hash, txn db.StoreTxn) e
 				break
 			}
 			header = sb.Previous
-			if sb, err = lv.l.GetBlockCache(header, txn); sb == nil && err != nil {
+			if sb, err = lv.l.GetBlockCache(header, txn); err != nil {
 				return fmt.Errorf("get previous blockCache %s : %s", header.String(), err)
 			}
 		}
