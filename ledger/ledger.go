@@ -518,13 +518,6 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 }
 
 func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
-	if b, err := l.HasBlockCache(hash); b && err == nil {
-		if err = l.DeleteBlockCache(hash); err != nil {
-			return fmt.Errorf("delete block cache fail(%s), hash(%s)", err, hash)
-		}
-		return nil
-	}
-
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 
@@ -1163,7 +1156,7 @@ func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMe
 }
 
 func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error {
-	am, err := l.GetAccountMeta(address, txns...)
+	am, err := l.GetAccountMetaConfirmed(address, txns...)
 	if err != nil {
 		return err
 	}

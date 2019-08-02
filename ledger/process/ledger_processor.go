@@ -1043,7 +1043,7 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 			return fmt.Errorf("get block(%s) token err : %s", hash.String(), err)
 		}
 
-		blockHead, err := lv.l.GetStateBlock(tm.Header, txn)
+		blockHead, err := lv.l.GetStateBlockConfirmed(tm.Header, txn)
 		if err != nil {
 			return fmt.Errorf("get header block %s : %s", tm.Header.String(), err)
 		}
@@ -1056,7 +1056,7 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 
 			blockPre := new(types.StateBlock)
 			if !blockCur.IsOpen() {
-				blockPre, err = lv.l.GetStateBlock(blockCur.Previous, txn)
+				blockPre, err = lv.l.GetStateBlockConfirmed(blockCur.Previous, txn)
 				if err != nil {
 					return fmt.Errorf("get previous block %s : %s", blockCur.Previous.String(), err)
 				}
@@ -1217,9 +1217,14 @@ func (lv *LedgerVerifier) processRollback(hash types.Hash, isRoot bool, txn db.S
 			if hashCur == hash {
 				break
 			}
-
+			if mc, err := lv.l.GetAccountMetaCache(blockCur.Address, txn); mc != nil && err == nil {
+				tc := mc.Token(blockCur.Token)
+				if tc != nil {
+					_ = lv.rollBackTokenCacheDel(tc, txn)
+				}
+			}
 			preHash := blockCur.GetPrevious()
-			blockCur, err = lv.l.GetStateBlock(preHash, txn)
+			blockCur, err = lv.l.GetStateBlockConfirmed(preHash, txn)
 			if err != nil {
 				return fmt.Errorf("get previous block %s : %s", preHash.String(), err)
 			}
@@ -1248,7 +1253,7 @@ func (lv *LedgerVerifier) rollBackFrontier(pre types.Hash, cur types.Hash, txn d
 }
 
 func (lv *LedgerVerifier) rollBackToken(token *types.TokenMeta, pre *types.StateBlock, txn db.StoreTxn) error {
-	ac, err := lv.l.GetAccountMeta(token.BelongTo, txn)
+	ac, err := lv.l.GetAccountMetaConfirmed(token.BelongTo, txn)
 	if err != nil {
 		return err
 	}
@@ -1281,7 +1286,7 @@ func (lv *LedgerVerifier) rollBackTokenDel(tm *types.TokenMeta, txn db.StoreTxn)
 	if err := lv.l.DeleteTokenMeta(address, tm.Type, txn); err != nil {
 		return err
 	}
-	ac, err := lv.l.GetAccountMeta(address, txn)
+	ac, err := lv.l.GetAccountMetaConfirmed(address, txn)
 	if err != nil {
 		return err
 	}
@@ -1377,7 +1382,7 @@ func (lv *LedgerVerifier) rollBackRepChange(preRepresentation types.Address, cur
 }
 
 func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount types.Balance, token types.Hash, txn db.StoreTxn) error {
-	blockLink, err := lv.l.GetStateBlock(blockCur.GetLink(), txn)
+	blockLink, err := lv.l.GetStateBlockConfirmed(blockCur.GetLink(), txn)
 	if err != nil {
 		return err
 	}
