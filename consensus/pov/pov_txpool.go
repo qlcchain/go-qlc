@@ -2,6 +2,10 @@ package pov
 
 import (
 	"container/list"
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 
@@ -23,7 +27,10 @@ type PovTxEntry struct {
 }
 
 type PovTxPool struct {
-	povEngine   *PoVEngine
+	logger      *zap.SugaredLogger
+	eb          event.EventBus
+	ledger      ledger.Store
+	chain       PovTxChainReader
 	txMu        sync.RWMutex
 	txEventCh   chan *PovTxEvent
 	quitCh      chan struct{}
@@ -32,9 +39,16 @@ type PovTxPool struct {
 	lastUpdated int64
 }
 
-func NewPovTxPool(povImpl *PoVEngine) *PovTxPool {
+type PovTxChainReader interface {
+	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
+}
+
+func NewPovTxPool(eb event.EventBus, ledger ledger.Store, chain PovTxChainReader) *PovTxPool {
 	txPool := &PovTxPool{
-		povEngine: povImpl,
+		logger: log.NewLogger("pov_txpool"),
+		eb:     eb,
+		ledger: ledger,
+		chain:  chain,
 	}
 	txPool.txEventCh = make(chan *PovTxEvent, 5000)
 	txPool.quitCh = make(chan struct{})
@@ -48,10 +62,9 @@ func (tp *PovTxPool) Init() {
 }
 
 func (tp *PovTxPool) Start() {
-	eb := tp.povEngine.GetEventBus()
-	if eb != nil {
-		eb.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
-		eb.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
+	if tp.eb != nil {
+		tp.eb.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
+		tp.eb.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
 	}
 
 	common.Go(tp.loop)
@@ -63,13 +76,13 @@ func (tp *PovTxPool) Stop() {
 
 func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) error {
 	txHash := block.GetHash()
-	//tp.povEngine.GetLogger().Debugf("recv event, add state block hash %s", txHash)
+	//tp.logger.Debugf("recv event, add state block hash %s", txHash)
 	tp.txEventCh <- &PovTxEvent{event: common.EventAddRelation, txHash: txHash, txBlock: block}
 	return nil
 }
 
 func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
-	//tp.povEngine.GetLogger().Debugf("recv event, delete state block hash %s", hash)
+	//tp.logger.Debugf("recv event, delete state block hash %s", hash)
 	tp.txEventCh <- &PovTxEvent{event: common.EventDeleteRelation, txHash: hash}
 	return nil
 }
@@ -97,32 +110,29 @@ func (tp *PovTxPool) loop() {
 }
 
 func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxEntry, int) {
-	ledger := tp.povEngine.GetLedger()
-	logger := tp.povEngine.GetLogger()
+	stateBlockNum, _ := tp.ledger.CountStateBlocks()
+	uncheckedStateBlockNum, _ := tp.ledger.CountUncheckedBlocks()
 
-	stateBlockNum, _ := ledger.CountStateBlocks()
-	uncheckedStateBlockNum, _ := ledger.CountUncheckedBlocks()
-
-	logger.Infof("begin to scan all state blocks, block %d, unchecked %d", stateBlockNum, uncheckedStateBlockNum)
+	tp.logger.Infof("begin to scan all state blocks, block %d, unchecked %d", stateBlockNum, uncheckedStateBlockNum)
 
 	var accountTxs map[types.AddressToken][]*PovTxEntry
 	unconfirmedTxNum := 0
 
 	startTime := time.Now()
 
-	err := ledger.BatchView(func(txn db.StoreTxn) error {
+	err := tp.ledger.BatchView(func(txn db.StoreTxn) error {
 		// scan all account metas
 		var allAms []*types.AccountMeta
-		err := ledger.GetAccountMetas(func(am *types.AccountMeta) error {
+		err := tp.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
 			allAms = append(allAms, am)
 			return nil
 		}, txn)
 		if err != nil {
-			logger.Errorf("failed to get account metas, err %s", err)
+			tp.logger.Errorf("failed to get account metas, err %s", err)
 			return err
 		}
 
-		logger.Infof("total %d account metas", len(allAms))
+		tp.logger.Infof("total %d account metas", len(allAms))
 
 		accountTxs = make(map[types.AddressToken][]*PovTxEntry, len(allAms))
 
@@ -131,7 +141,7 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 			for _, tm := range am.Tokens {
 				prevHash := tm.Header
 				for prevHash.IsZero() == false {
-					block, err := ledger.GetStateBlock(prevHash, txn)
+					block, err := tp.ledger.GetStateBlock(prevHash, txn)
 					if err != nil {
 						break
 					}
@@ -139,7 +149,7 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 					txHash := prevHash // no need calc hash from block
 					prevHash = block.GetPrevious()
 
-					if ledger.HasPovTxLookup(txHash, txn) {
+					if tp.ledger.HasPovTxLookup(txHash, txn) {
 						break // all previous tx had been packed into pov
 					}
 
@@ -151,7 +161,7 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 			}
 		}
 
-		logger.Infof("total %d unconfirmed blocks by scan %d account metas", unconfirmedTxNum, len(allAms))
+		tp.logger.Infof("total %d unconfirmed blocks by scan %d account metas", unconfirmedTxNum, len(allAms))
 
 		// reversing txs, open <- send/recv <- header
 		for _, tokenTxs := range accountTxs {
@@ -169,7 +179,7 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 			}
 
 			txHash := block.GetHash()
-			if ledger.HasPovTxLookup(txHash, txn) {
+			if tp.ledger.HasPovTxLookup(txHash, txn) {
 				continue
 			}
 
@@ -183,34 +193,31 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("scan all state blocks failed")
+		tp.logger.Errorf("scan all state blocks failed")
 	}
 
 	usedTime := time.Since(startTime)
 
-	logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedTxNum)
+	tp.logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedTxNum)
 
 	return accountTxs, unconfirmedTxNum
 }
 
 func (tp *PovTxPool) getUnconfirmedTxsBySlow() (map[types.AddressToken][]*PovTxEntry, int) {
-	ledger := tp.povEngine.GetLedger()
-	logger := tp.povEngine.GetLogger()
+	stateBlockNum, _ := tp.ledger.CountStateBlocks()
+	uncheckedStateBlockNum, _ := tp.ledger.CountUncheckedBlocks()
 
-	stateBlockNum, _ := ledger.CountStateBlocks()
-	uncheckedStateBlockNum, _ := ledger.CountUncheckedBlocks()
-
-	logger.Infof("begin to scan all state blocks, block %d, unchecked %d", stateBlockNum, uncheckedStateBlockNum)
+	tp.logger.Infof("begin to scan all state blocks, block %d, unchecked %d", stateBlockNum, uncheckedStateBlockNum)
 
 	accountTxs := make(map[types.AddressToken][]*PovTxEntry, 1000)
 	unconfirmedTxNum := 0
 
 	startTime := time.Now()
 
-	err := ledger.BatchView(func(txn db.StoreTxn) error {
-		err := ledger.GetStateBlocks(func(block *types.StateBlock) error {
+	err := tp.ledger.BatchView(func(txn db.StoreTxn) error {
+		err := tp.ledger.GetStateBlocks(func(block *types.StateBlock) error {
 			txHash := block.GetHash()
-			if ledger.HasPovTxLookup(txHash, txn) {
+			if tp.ledger.HasPovTxLookup(txHash, txn) {
 				return nil
 			}
 
@@ -221,26 +228,24 @@ func (tp *PovTxPool) getUnconfirmedTxsBySlow() (map[types.AddressToken][]*PovTxE
 		}, txn)
 
 		if err != nil {
-			logger.Errorf("failed to get state blocks, err %s", err)
+			tp.logger.Errorf("failed to get state blocks, err %s", err)
 			return err
 		}
 
 		return nil
 	})
 	if err != nil {
-		logger.Errorf("scan all state blocks failed")
+		tp.logger.Errorf("scan all state blocks failed")
 	}
 
 	usedTime := time.Since(startTime)
 
-	logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedTxNum)
+	tp.logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedTxNum)
 
 	return accountTxs, unconfirmedTxNum
 }
 
 func (tp *PovTxPool) recoverUnconfirmedTxs() {
-	logger := tp.povEngine.GetLogger()
-
 	unpackAccountTxs, unconfirmedTxNum := tp.getUnconfirmedTxsByFast()
 	if unconfirmedTxNum <= 0 {
 		return
@@ -253,12 +258,12 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 			tp.addTx(txEntry.txHash, txEntry.txBlock)
 			txAddNum++
 			if txAddNum%txStepNum == 0 {
-				logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
+				tp.logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
 			}
 		}
 	}
 
-	logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
+	tp.logger.Infof("total %d unconfirmed state blocks have been added to tx pool", txAddNum)
 }
 
 func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
@@ -280,7 +285,7 @@ func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
 
 	addrToken := types.AddressToken{Address: txBlock.GetAddress(), Token: txBlock.GetToken()}
 
-	tp.povEngine.GetLogger().Debugf("add tx %s", txHash)
+	tp.logger.Debugf("add tx %s", txHash)
 
 	accTxList, ok := tp.accountTxs[addrToken]
 	if !ok {
@@ -336,7 +341,7 @@ func (tp *PovTxPool) delTx(txHash types.Hash) {
 		return
 	}
 
-	tp.povEngine.GetLogger().Debugf("delete tx %s", txHash)
+	tp.logger.Debugf("delete tx %s", txHash)
 
 	delete(tp.allTxs, txHash)
 
@@ -365,6 +370,18 @@ func (tp *PovTxPool) delTx(txHash types.Hash) {
 	}
 
 	tp.lastUpdated = time.Now().Unix()
+}
+
+func (tp *PovTxPool) getTx(txHash types.Hash) *types.StateBlock {
+	tp.txMu.Lock()
+	defer tp.txMu.Unlock()
+
+	txEntry, ok := tp.allTxs[txHash]
+	if !ok {
+		return nil
+	}
+
+	return txEntry.txBlock
 }
 
 func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.StateBlock {
@@ -402,7 +419,7 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 					if isCA {
 						prevHashWant = types.ZeroHash
 					} else {
-						as := tp.povEngine.chain.GetAccountState(stateTrie, addrToken.Address)
+						as := tp.chain.GetAccountState(stateTrie, addrToken.Address)
 						if as != nil {
 							rs := as.GetTokenState(token)
 							if rs != nil {
@@ -438,7 +455,7 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 			}
 			if inOrderTxNum == 0 {
 				if notInOrderTxNum > 0 {
-					tp.povEngine.GetLogger().Debugf("AddrToken %s has txs %d not in order", addrToken, notInOrderTxNum)
+					tp.logger.Debugf("AddrToken %s has txs %d not in order", addrToken, notInOrderTxNum)
 				}
 				break
 			}

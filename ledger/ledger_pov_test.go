@@ -2,9 +2,9 @@ package ledger
 
 import (
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/mock"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -33,21 +33,7 @@ func setupPovTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 }
 
 func generatePovBlock(prevBlock *types.PovBlock) (*types.PovBlock, *big.Int) {
-	if prevBlock == nil {
-		genesis := common.GenesisPovBlock()
-		prevBlock = &genesis
-	}
-
-	prevTD := prevBlock.Target.ToBigInt()
-
-	block := prevBlock.Clone()
-	block.Previous = prevBlock.GetHash()
-	block.Height = prevBlock.GetHeight()
-	block.Hash = block.ComputeHash()
-
-	nextTD := new(big.Int).Add(prevTD, prevTD)
-
-	return block, nextTD
+	return mock.GeneratePovBlock(prevBlock)
 }
 
 func TestLedger_AddPovBlock(t *testing.T) {
@@ -207,21 +193,21 @@ func TestLedger_PovTxLookup(t *testing.T) {
 	block, _ := generatePovBlock(nil)
 
 	txH0, _ := types.NewHash("0000000000000000000000000000000000000000000000000000000000000001")
-	txL0 := &types.PovTxLookup{BlockHash:block.GetHash(), BlockHeight:block.GetHeight(), TxIndex:0}
+	txL0 := &types.PovTxLookup{BlockHash: block.GetHash(), BlockHeight: block.GetHeight(), TxIndex: 0}
 	err := l.AddPovTxLookup(txH0, txL0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	txH1, _ := types.NewHash("0000000000000000000000000000000000000000000000000000000000000002")
-	txL1 := &types.PovTxLookup{BlockHash:block.GetHash(), BlockHeight:block.GetHeight(), TxIndex:1}
+	txL1 := &types.PovTxLookup{BlockHash: block.GetHash(), BlockHeight: block.GetHeight(), TxIndex: 1}
 	err = l.AddPovTxLookup(txH1, txL1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	txH2, _ := types.NewHash("0000000000000000000000000000000000000000000000000000000000000003")
-	txL2 := &types.PovTxLookup{BlockHash:block.GetHash(), BlockHeight:block.GetHeight(), TxIndex:2}
+	txL2 := &types.PovTxLookup{BlockHash: block.GetHash(), BlockHeight: block.GetHeight(), TxIndex: 2}
 	err = l.AddPovTxLookup(txH2, txL2)
 	if err != nil {
 		t.Fatal(err)
@@ -264,7 +250,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat0 := types.NewPovMinerDayStat()
 	dayStat0.DayIndex = 0
-	dayStat0.MinerStats["miner0"] = &types.PovMinerStatItem{FirstHeight:0, LastHeight:99, BlockNum:0}
+	dayStat0.MinerStats["miner0"] = &types.PovMinerStatItem{FirstHeight: 0, LastHeight: 99, BlockNum: 0}
 	dayStat0.MinerNum = uint32(len(dayStat0.MinerStats))
 	err := l.AddPovMinerStat(dayStat0)
 	if err != nil {
@@ -273,7 +259,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat2 := types.NewPovMinerDayStat()
 	dayStat2.DayIndex = 1
-	dayStat2.MinerStats["miner2"] = &types.PovMinerStatItem{FirstHeight:200, LastHeight:299, BlockNum:20}
+	dayStat2.MinerStats["miner2"] = &types.PovMinerStatItem{FirstHeight: 200, LastHeight: 299, BlockNum: 20}
 	dayStat2.MinerNum = uint32(len(dayStat0.MinerStats))
 	err = l.AddPovMinerStat(dayStat2)
 	if err != nil {
@@ -282,7 +268,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat1 := types.NewPovMinerDayStat()
 	dayStat1.DayIndex = 1
-	dayStat1.MinerStats["miner1"] = &types.PovMinerStatItem{FirstHeight:100, LastHeight:199, BlockNum:10}
+	dayStat1.MinerStats["miner1"] = &types.PovMinerStatItem{FirstHeight: 100, LastHeight: 199, BlockNum: 10}
 	dayStat1.MinerNum = uint32(len(dayStat0.MinerStats))
 	err = l.AddPovMinerStat(dayStat1)
 	if err != nil {
