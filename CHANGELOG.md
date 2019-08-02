@@ -1,4 +1,26 @@
 
+<a name="v1.2.3.1"></a>
+## [v1.2.3.1](https://github.com/qlcchain/go-qlc/compare/v1.2.3...v1.2.3.1) (2019-08-02)
+
+### Bug Fixes
+
+* rollback block cache ([#497](https://github.com/qlcchain/go-qlc/issues/497))
+* verify exist data when generate rewards data
+* some rpc interface return incorrect info
+* possible NPE
+* return all valid pending infos even exception occurs
+* getBlockInfo amount param miss
+* auto generate receive block may not be correct
+
+### Pull Requests
+
+* Merge pull request [#496](https://github.com/qlcchain/go-qlc/issues/496) from qlcchain/hotfix/verify-rewards-block
+* Merge pull request [#494](https://github.com/qlcchain/go-qlc/issues/494) from qlcchain/hotfix/all-pendings
+* Merge pull request [#495](https://github.com/qlcchain/go-qlc/issues/495) from qlcchain/hotfix/rpc
+* Merge pull request [#493](https://github.com/qlcchain/go-qlc/issues/493) from qlcchain/hotfix/amount-zero
+* Merge pull request [#492](https://github.com/qlcchain/go-qlc/issues/492) from qlcchain/feature/autoGenerateReceiveBlock
+
+
 <a name="v1.2.3"></a>
 ## [v1.2.3](https://github.com/qlcchain/go-qlc/compare/v1.2.2...v1.2.3) (2019-07-31)
 
