@@ -518,13 +518,6 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 }
 
 func (l *Ledger) DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error {
-	if b, err := l.HasBlockCache(hash); b && err == nil {
-		if err = l.DeleteBlockCache(hash); err != nil {
-			return fmt.Errorf("delete block cache fail(%s), hash(%s)", err, hash)
-		}
-		return nil
-	}
-
 	key := getKeyOfHash(hash, idPrefixBlock)
 	txn, flag := l.getTxn(true, txns...)
 
@@ -1163,7 +1156,7 @@ func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMe
 }
 
 func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error {
-	am, err := l.GetAccountMeta(address, txns...)
+	am, err := l.GetAccountMetaConfirmed(address, txns...)
 	if err != nil {
 		return err
 	}
@@ -1174,6 +1167,20 @@ func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, tx
 		}
 	}
 	return l.UpdateAccountMeta(am, txns...)
+}
+
+func (l *Ledger) DeleteTokenMetaCache(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error {
+	am, err := l.GetAccountMetaCache(address, txns...)
+	if err != nil {
+		return err
+	}
+	tokens := am.Tokens
+	for index, token := range tokens {
+		if token.Type == tokenType {
+			am.Tokens = append(tokens[:index], tokens[index+1:]...)
+		}
+	}
+	return l.UpdateAccountMetaCache(am, txns...)
 }
 
 func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (bool, error) {
@@ -1779,13 +1786,13 @@ func (l *Ledger) Account(hash types.Hash, txns ...db.StoreTxn) (*types.AccountMe
 }
 
 func (l *Ledger) Token(hash types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
-	block, err := l.GetStateBlock(hash, txns...)
+	block, err := l.GetStateBlockConfirmed(hash, txns...)
 	if err != nil {
 		return nil, err
 	}
 	token := block.GetToken()
 	addr := block.GetAddress()
-	am, err := l.GetAccountMeta(addr, txns...)
+	am, err := l.GetAccountMetaConfirmed(addr, txns...)
 	if err != nil {
 		return nil, err
 	}
