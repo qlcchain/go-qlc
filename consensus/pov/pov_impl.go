@@ -51,12 +51,13 @@ func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, er
 
 	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()
 
-	pov.bp = NewPovBlockProcessor(pov)
 	pov.chain = NewPovBlockChain(cfg, pov.ledger)
 	pov.txpool = NewPovTxPool(pov.eb, pov.ledger, pov.chain)
 	pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
 	pov.verifier = NewPovVerifier(ledger, pov.chain, pov.cs)
 	pov.syncer = NewPovSyncer(pov)
+
+	pov.bp = NewPovBlockProcessor(pov.eb, pov.ledger, pov.chain, pov.verifier, pov.syncer)
 
 	return pov, nil
 }
