@@ -1176,6 +1176,20 @@ func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, tx
 	return l.UpdateAccountMeta(am, txns...)
 }
 
+func (l *Ledger) DeleteTokenMetaCache(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error {
+	am, err := l.GetAccountMetaCache(address, txns...)
+	if err != nil {
+		return err
+	}
+	tokens := am.Tokens
+	for index, token := range tokens {
+		if token.Type == tokenType {
+			am.Tokens = append(tokens[:index], tokens[index+1:]...)
+		}
+	}
+	return l.UpdateAccountMetaCache(am, txns...)
+}
+
 func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (bool, error) {
 	am, err := l.GetAccountMeta(address, txns...)
 	if err != nil {
@@ -1779,13 +1793,13 @@ func (l *Ledger) Account(hash types.Hash, txns ...db.StoreTxn) (*types.AccountMe
 }
 
 func (l *Ledger) Token(hash types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
-	block, err := l.GetStateBlock(hash, txns...)
+	block, err := l.GetStateBlockConfirmed(hash, txns...)
 	if err != nil {
 		return nil, err
 	}
 	token := block.GetToken()
 	addr := block.GetAddress()
-	am, err := l.GetAccountMeta(addr, txns...)
+	am, err := l.GetAccountMetaConfirmed(addr, txns...)
 	if err != nil {
 		return nil, err
 	}
