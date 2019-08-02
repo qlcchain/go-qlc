@@ -33,7 +33,7 @@ func setupPovTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 }
 
 func generatePovBlock(prevBlock *types.PovBlock) (*types.PovBlock, *big.Int) {
-	return mock.GeneratePovBlock(prevBlock)
+	return mock.GeneratePovBlock(prevBlock, 0)
 }
 
 func TestLedger_AddPovBlock(t *testing.T) {

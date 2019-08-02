@@ -40,6 +40,8 @@ type PovTxPool struct {
 }
 
 type PovTxChainReader interface {
+	RegisterListener(listener EventListener)
+	UnRegisterListener(listener EventListener)
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
 }
 
@@ -67,10 +69,14 @@ func (tp *PovTxPool) Start() {
 		tp.eb.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
 	}
 
+	tp.chain.RegisterListener(tp)
+
 	common.Go(tp.loop)
 }
 
 func (tp *PovTxPool) Stop() {
+	tp.chain.UnRegisterListener(tp)
+
 	close(tp.quitCh)
 }
 
@@ -85,6 +91,22 @@ func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
 	//tp.logger.Debugf("recv event, delete state block hash %s", hash)
 	tp.txEventCh <- &PovTxEvent{event: common.EventDeleteRelation, txHash: hash}
 	return nil
+}
+
+func (tp *PovTxPool) OnPovBlockEvent(event byte, block *types.PovBlock) {
+	if len(block.Transactions) <= 0 {
+		return
+	}
+
+	if event == EventConnectPovBlock {
+		for _, tx := range block.Transactions {
+			tp.delTx(tx.Hash)
+		}
+	} else if event == EventDisconnectPovBlock {
+		for _, tx := range block.Transactions {
+			tp.addTx(tx.Hash, tx.Block)
+		}
+	}
 }
 
 func (tp *PovTxPool) loop() {

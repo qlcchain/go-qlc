@@ -26,6 +26,10 @@ func (mc *povTxChainReaderMockChain) GetAccountState(trie *trie.Trie, address ty
 	return nil
 }
 
+func (mc *povTxChainReaderMockChain) RegisterListener(listener EventListener) {}
+
+func (mc *povTxChainReaderMockChain) UnRegisterListener(listener EventListener) {}
+
 func setupPovTxPoolTestCase(t *testing.T) (func(t *testing.T), *povTxPoolMockData) {
 	t.Parallel()
 
