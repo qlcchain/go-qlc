@@ -2,11 +2,12 @@ package dpos
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger/process"

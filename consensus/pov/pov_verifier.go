@@ -3,6 +3,8 @@ package pov
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -11,7 +13,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/zap"
-	"time"
 )
 
 type PovVerifier struct {

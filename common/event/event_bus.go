@@ -8,8 +8,9 @@
 package event
 
 import (
-	"github.com/qlcchain/go-qlc/common"
 	"io"
+
+	"github.com/qlcchain/go-qlc/common"
 )
 
 //subscriber defines subscription-related bus behavior
