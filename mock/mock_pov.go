@@ -6,7 +6,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"math/big"
 	"sync"
-	"time"
 )
 
 var povCoinbaseOnce sync.Once
@@ -28,12 +27,10 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 		prevBlock = &genesis
 	}
 
-	tmNow := time.Now()
-
 	prevTD := prevBlock.Target.ToBigInt()
 
 	block := prevBlock.Clone()
-	block.Timestamp = tmNow.Unix()
+	block.Timestamp = prevBlock.Timestamp + 1
 	block.Previous = prevBlock.GetHash()
 	block.Height = prevBlock.GetHeight() + 1
 
@@ -52,7 +49,6 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 
 	cb := GeneratePovCoinbase()
 	block.Coinbase = cb.Address()
-	block.Nonce = block.Height
 	block.VoteSignature = cb.Sign(block.ComputeVoteHash())
 
 	block.Hash = block.ComputeHash()
