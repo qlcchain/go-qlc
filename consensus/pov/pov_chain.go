@@ -90,8 +90,10 @@ func fastLog2Floor(n uint32) uint8 {
 }
 
 type PovBlockChain struct {
-	povEngine *PoVEngine
-	logger    *zap.SugaredLogger
+	config *config.Config
+	ledger ledger.Store
+	logger *zap.SugaredLogger
+	em     *eventManager
 
 	genesisBlock *types.PovBlock
 	latestBlock  atomic.Value // Current head of the best block chain
@@ -110,11 +112,13 @@ type PovBlockChain struct {
 	wg     sync.WaitGroup
 }
 
-func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
+func NewPovBlockChain(cfg *config.Config, ledger ledger.Store) *PovBlockChain {
 	chain := &PovBlockChain{
-		povEngine: povEngine,
-		logger:    log.NewLogger("pov_chain"),
+		config: cfg,
+		ledger: ledger,
+		logger: log.NewLogger("pov_chain"),
 	}
+	chain.em = newEventManager()
 
 	chain.hashBlockCache = gcache.New(blockCacheLimit).LRU().Build()
 	chain.heightBlockCache = gcache.New(blockCacheLimit).LRU().Build()
@@ -131,15 +135,11 @@ func NewPovBlockChain(povEngine *PoVEngine) *PovBlockChain {
 }
 
 func (bc *PovBlockChain) getLedger() ledger.Store {
-	return bc.povEngine.GetLedger()
+	return bc.ledger
 }
 
 func (bc *PovBlockChain) getConfig() *config.Config {
-	return bc.povEngine.GetConfig()
-}
-
-func (bc *PovBlockChain) getTxPool() *PovTxPool {
-	return bc.povEngine.GetTxPool()
+	return bc.config
 }
 
 func (bc *PovBlockChain) Init() error {
@@ -366,7 +366,7 @@ func (bc *PovBlockChain) GetBlockByHeight(height uint64) (*types.PovBlock, error
 		return v.(*types.PovBlock), nil
 	}
 
-	block, err := bc.povEngine.GetLedger().GetPovBlockByHeight(height)
+	block, err := bc.getLedger().GetPovBlockByHeight(height)
 	if block != nil {
 		_ = bc.heightBlockCache.Set(height, block)
 		_ = bc.hashBlockCache.Set(block.GetHash(), block)
@@ -384,7 +384,7 @@ func (bc *PovBlockChain) GetBlockByHash(hash types.Hash) *types.PovBlock {
 		return v.(*types.PovBlock)
 	}
 
-	block, _ := bc.povEngine.GetLedger().GetPovBlockByHash(hash)
+	block, _ := bc.getLedger().GetPovBlockByHash(hash)
 	if block != nil {
 		_ = bc.hashBlockCache.Set(hash, block)
 		return block
@@ -476,7 +476,7 @@ func (bc *PovBlockChain) GetHeaderByHash(hash types.Hash) *types.PovHeader {
 		return v.(*types.PovHeader)
 	}
 
-	header, _ := bc.povEngine.GetLedger().GetPovHeaderByHash(hash)
+	header, _ := bc.getLedger().GetPovHeaderByHash(hash)
 	if header != nil {
 		_ = bc.hashHeaderCache.Set(hash, header)
 		return header
@@ -491,7 +491,7 @@ func (bc *PovBlockChain) GetHeaderByHeight(height uint64) *types.PovHeader {
 		return v.(*types.PovHeader)
 	}
 
-	header, _ := bc.povEngine.GetLedger().GetPovHeaderByHeight(height)
+	header, _ := bc.getLedger().GetPovHeaderByHeight(height)
 	if header != nil {
 		_ = bc.heightHeaderCache.Set(height, header)
 		_ = bc.hashHeaderCache.Set(header.GetHash(), header)
@@ -901,43 +901,37 @@ func (bc *PovBlockChain) disconnectBlock(txn db.StoreTxn, block *types.PovBlock)
 }
 
 func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBlock) error {
-	txpool := bc.getTxPool()
-	ledger := bc.getLedger()
-
 	for txIndex, txPov := range block.Transactions {
-		txpool.delTx(txPov.Hash)
-
 		txLookup := &types.PovTxLookup{
 			BlockHash:   block.GetHash(),
 			BlockHeight: block.GetHeight(),
 			TxIndex:     uint64(txIndex),
 		}
-		err := ledger.AddPovTxLookup(txPov.Hash, txLookup, txn)
+		err := bc.getLedger().AddPovTxLookup(txPov.Hash, txLookup, txn)
 		if err != nil {
 			return err
 		}
 	}
+
+	bc.em.TriggerBlockEvent(EventConnectPovBlock, block)
 
 	return nil
 }
 
 func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.PovBlock) error {
-	txpool := bc.getTxPool()
-	ledger := bc.getLedger()
-
 	for _, txPov := range block.Transactions {
-		txBlock, _ := ledger.GetStateBlock(txPov.Hash, txn)
+		txBlock, _ := bc.getLedger().GetStateBlock(txPov.Hash, txn)
 		if txBlock == nil {
 			continue
 		}
 
-		txpool.addTx(txPov.Hash, txBlock)
-
-		err := ledger.DeletePovTxLookup(txPov.Hash, txn)
+		err := bc.getLedger().DeletePovTxLookup(txPov.Hash, txn)
 		if err != nil {
 			return err
 		}
 	}
+
+	bc.em.TriggerBlockEvent(EventDisconnectPovBlock, block)
 
 	return nil
 }
