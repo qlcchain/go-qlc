@@ -253,7 +253,8 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 							for {
 								blk, err = ss.qlcLedger.GetStateBlock(endHash)
 								if err != nil {
-									return err
+									ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+									break
 								}
 								bulkBlk = append(bulkBlk, blk)
 								endHash = blk.GetPrevious()
@@ -277,7 +278,8 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 							for {
 								blk, err = ss.qlcLedger.GetStateBlock(endHash)
 								if err != nil {
-									return err
+									ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+									break
 								}
 								bulkBlk = append(bulkBlk, blk)
 
@@ -338,7 +340,8 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
-				return err
+				ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+				break
 			}
 			bulkBlk = append(bulkBlk, blk)
 			endHash = blk.GetPrevious()
@@ -362,7 +365,8 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
-				return err
+				ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+				break
 			}
 			bulkBlk = append(bulkBlk, blk)
 			endHash = blk.GetPrevious()
