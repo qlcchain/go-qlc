@@ -55,7 +55,7 @@ func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, er
 	pov.txpool = NewPovTxPool(pov.eb, pov.ledger, pov.chain)
 	pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
 	pov.verifier = NewPovVerifier(ledger, pov.chain, pov.cs)
-	pov.syncer = NewPovSyncer(pov)
+	pov.syncer = NewPovSyncer(pov.eb, pov.ledger, pov.chain)
 
 	pov.bp = NewPovBlockProcessor(pov.eb, pov.ledger, pov.chain, pov.verifier, pov.syncer)
 
@@ -179,11 +179,21 @@ func (pov *PoVEngine) setEvent() error {
 		return err
 	}
 
+	err = pov.eb.Subscribe(common.EventPovSyncBlock, pov.onSyncPovBlock)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (pov *PoVEngine) unsetEvent() error {
 	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
+	if err != nil {
+		return err
+	}
+
+	err = pov.eb.Unsubscribe(common.EventPovSyncBlock, pov.onSyncPovBlock)
 	if err != nil {
 		return err
 	}
@@ -206,4 +216,8 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, 
 	}
 
 	return err
+}
+
+func (pov *PoVEngine) onSyncPovBlock(block *types.PovBlock, from types.PovBlockFrom, peerID string) error {
+	return pov.AddBlock(block, from, peerID)
 }

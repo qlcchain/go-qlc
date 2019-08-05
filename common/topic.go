@@ -23,6 +23,7 @@ const (
 	EventDeleteP2PStream TopicType = "deleteP2PStream"
 	EventPovPeerStatus   TopicType = "povPeerStatus"
 	EventPovRecvBlock    TopicType = "povRecvBlock"
+	EventPovSyncBlock    TopicType = "povSyncBlock"
 	EventPovBulkPullReq  TopicType = "povBulkPullReq"
 	EventPovBulkPullRsp  TopicType = "povBulkPullRsp"
 	EventPovSyncState    TopicType = "povSyncState"
