@@ -2,10 +2,8 @@ package relation
 
 import (
 	"encoding/base64"
-	"sync"
-	"time"
-
 	"github.com/qlcchain/go-qlc/chain/context"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common"
@@ -14,7 +12,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
-	"sync"
 )
 
 type Relation struct {

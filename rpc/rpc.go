@@ -16,7 +16,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
-	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 )
 

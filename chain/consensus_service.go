@@ -10,35 +10,27 @@ package chain
 import (
 	"github.com/qlcchain/go-qlc/consensus/dpos"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
 )
 
 type ConsensusService struct {
 	common.ServiceLifecycle
-	cfg      *config.Config
-	accounts []*types.Account
-	eb       event.EventBus
-	c        *consensus.Consensus
+	cfgFile string
+	c       *consensus.Consensus
 }
 
-func NewConsensusService(cfg *config.Config, accounts []*types.Account) *ConsensusService {
+func NewConsensusService(cfgFile string) *ConsensusService {
 	return &ConsensusService{
-		cfg:      cfg,
-		accounts: accounts,
-		eb:       event.GetEventBus(cfg.LedgerDir()),
+		cfgFile: cfgFile,
 	}
 }
 
 func (cs *ConsensusService) Init() error {
-	dPoS := dpos.NewDPoS(cs.cfg, cs.accounts, cs.eb)
+	dPoS := dpos.NewDPoS(cs.cfgFile)
 
 	cs.PreInit()
-	cs.c = consensus.NewConsensus(dPoS, cs.cfg, cs.eb)
+	cs.c = consensus.NewConsensus(dPoS, cs.cfgFile)
 	cs.c.Init()
 	cs.PostInit()
 

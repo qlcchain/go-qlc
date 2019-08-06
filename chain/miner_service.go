@@ -25,7 +25,7 @@ type MinerService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewMinerService(cfgFile string, povEngine *consensus.PoVEngine) *MinerService {
+func NewMinerService(cfgFile string, povEngine *pov.PoVEngine) *MinerService {
 	m := miner.NewMiner(cfgFile, povEngine)
 	return &MinerService{
 		miner:  m,

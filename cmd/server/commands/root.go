@@ -62,6 +62,8 @@ var (
 	chainContext   *context.ChainContext
 	maxAccountSize = 100
 	logger         = qlclog.NewLogger("config_detail")
+	blocksChan     = make(chan *types.StateBlock, 100)
+	exitChan       = make(chan bool)
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -262,13 +264,12 @@ func trapSignal() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	<-c
-
+	exitChan <- true
 	err := chainContext.Stop()
 	if err != nil {
 		fmt.Println(err)
 	}
-	exitChan <- true
-	stopNode(sers)
+
 	fmt.Println("qlc node closed successfully")
 }
 
