@@ -30,7 +30,7 @@ func NewLedgerService(cfgFile string) *LedgerService {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 	return &LedgerService{
-		Ledger: ledger.NewLedger(cfg.DataDir),
+		Ledger: ledger.NewLedger(cfg.LedgerDir()),
 		logger: log.NewLogger("ledger_service"),
 	}
 }

@@ -43,7 +43,7 @@ type PoVEngine struct {
 func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
-	l := ledger.NewLedger(cfg.DataDir)
+	l := ledger.NewLedger(cfg.LedgerDir())
 
 	pov := &PoVEngine{
 		logger:   log.NewLogger("pov_engine"),

@@ -22,6 +22,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/qlcchain/go-qlc/chain"
+
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/wallet"
@@ -62,8 +64,6 @@ var (
 	chainContext   *context.ChainContext
 	maxAccountSize = 100
 	logger         = qlclog.NewLogger("config_detail")
-	blocksChan     = make(chan *types.StateBlock, 100)
-	exitChan       = make(chan bool)
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -251,8 +251,19 @@ func start() error {
 	}
 	configDetails := util.ToIndentString(cfg)
 	logger.Debugf("%s", configDetails)
+
+	// save accounts to context
 	chainContext.SetAccounts(accounts)
-	err = runNode()
+
+	// start all services by chain context
+	err = chainContext.Init(func() error {
+		return chain.RegisterServices(chainContext)
+	})
+	if err != nil {
+		return err
+	}
+	err = chainContext.Start()
+
 	if err != nil {
 		return err
 	}
@@ -264,7 +275,6 @@ func trapSignal() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	<-c
-	exitChan <- true
 	err := chainContext.Stop()
 	if err != nil {
 		fmt.Println(err)

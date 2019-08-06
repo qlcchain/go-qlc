@@ -23,14 +23,15 @@ import (
 var cache = hashmap.New(10)
 
 const (
-	LedgerService    = "ledgerService"
-	WalletService    = "walletService"
-	P2PService       = "P2PService"
-	ConsensusService = "consensusService"
-	RPCService       = "rpcService"
-	IndexService     = "IndexService"
-	PovService       = "povService"
-	MinerService     = "minerService"
+	LedgerService      = "ledgerService"
+	WalletService      = "walletService"
+	P2PService         = "P2PService"
+	ConsensusService   = "consensusService"
+	RPCService         = "rpcService"
+	IndexService       = "IndexService"
+	PovService         = "povService"
+	MinerService       = "minerService"
+	AutoReceiveService = "autoReceiveService"
 )
 
 type serviceManager interface {
@@ -87,12 +88,22 @@ func (cc *ChainContext) EventBus() event.EventBus {
 	return event.GetEventBus(cc.Id())
 }
 
-func (cc *ChainContext) Init() error {
+func (cc *ChainContext) ConfigFile() string {
+	return cc.cfgFile
+}
+
+func (cc *ChainContext) Init(fn func() error) error {
 	if !cc.PreInit() {
 		return errors.New("pre init fail")
 	}
 	defer cc.PostInit()
 
+	if fn != nil {
+		err := fn()
+		if err != nil {
+			return err
+		}
+	}
 	cc.services.Iter(func(name string, service common.Service) error {
 		err := service.Init()
 		if err != nil {

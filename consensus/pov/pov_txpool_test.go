@@ -1,6 +1,10 @@
 package pov
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -8,9 +12,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/trie"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 type povTxPoolMockData struct {
