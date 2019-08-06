@@ -56,7 +56,7 @@ func NewRPC(cfgFile string) (*RPC, error) {
 	}
 
 	r := RPC{
-		ledger:   ledger.NewLedger(cfg.DataDir),
+		ledger:   ledger.NewLedger(cfg.LedgerDir()),
 		wallet:   wallet.NewWalletStore(cfg),
 		relation: rl,
 		eb:       cc.EventBus(),

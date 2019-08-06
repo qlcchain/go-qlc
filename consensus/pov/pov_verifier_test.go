@@ -1,6 +1,10 @@
 package pov
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -9,9 +13,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/trie"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 type povVerifierMockData struct {
