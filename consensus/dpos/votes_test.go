@@ -65,7 +65,7 @@ func TestVotes(t *testing.T) {
 	}
 	var va protos.ConfirmAckBlock
 	va.Sequence = 0
-	va.Blk = blk
+	va.Hash = blk.GetHash()
 	va.Account = ac.Address()
 	va.Signature = ac.Sign(blk.GetHash())
 	status := vts.voteStatus(&va)
@@ -78,7 +78,7 @@ func TestVotes(t *testing.T) {
 	}
 	var vb protos.ConfirmAckBlock
 	vb.Sequence = 0
-	vb.Blk = blk1
+	vb.Hash = blk1.GetHash()
 	vb.Account = ac.Address()
 	vb.Signature = ac.Sign(blk1.GetHash())
 	status = vts.voteStatus(&vb)

@@ -43,7 +43,7 @@ func TestConfirmAckBlockPacket(t *testing.T) {
 		Account:   address,
 		Signature: sign,
 		Sequence:  0,
-		Blk:       blk,
+		Hash:       blk.GetHash(),
 	}
 	bytes, err := ConfirmAckBlockToProto(&rsp)
 	if err != nil {
@@ -53,13 +53,7 @@ func TestConfirmAckBlockPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if blk.GetType() != ack.Blk.GetType() {
-		t.Fatal("type error")
-	}
-	if blk.GetPrevious() != ack.Blk.GetPrevious() {
-		t.Fatal("PreviousHash error")
-	}
-	if blk.GetHash() != ack.Blk.GetHash() {
+	if blk.GetHash() != ack.Hash {
 		t.Fatal("hash error")
 	}
 	if sign != ack.Signature {

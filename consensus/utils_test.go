@@ -44,7 +44,7 @@ func TestIsAckSignValidate(t *testing.T) {
 	}
 	var va protos.ConfirmAckBlock
 	va.Sequence = 0
-	va.Blk = blk
+	va.Hash = blk.GetHash()
 	va.Account = ac.Address()
 	va.Signature = ac.Sign(blk.GetHash())
 	verify := IsAckSignValidate(&va)

@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"errors"
+	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"runtime"
 	"sync"
@@ -29,7 +30,26 @@ const (
 	refreshPriInterval    = 1 * time.Minute
 	findOnlineRepInterval = 2 * time.Minute
 	povBlockNumDay        = 2880
+	subAckMaxSize         = 102400
 )
+
+type subMsgKind byte
+
+const (
+	subMsgKindSub subMsgKind = iota
+	subMsgKindUnsub
+)
+
+const (
+	ackTypeCommon uint32 = iota
+	ackTypeFindRep
+)
+
+type subMsg struct {
+	index int
+	kind  subMsgKind
+	hash  types.Hash
+}
 
 type DPoS struct {
 	ledger          *ledger.Ledger
@@ -48,6 +68,13 @@ type DPoS struct {
 	localRepAccount sync.Map
 	povSyncState    atomic.Value
 	minVoteWeight   types.Balance
+	voteThreshold   types.Balance
+	subAck          gcache.Cache
+	subMsg          chan *subMsg
+	subMsgQuit      chan bool
+	voteCache       gcache.Cache //vote blocks
+	ackSeq          uint32
+	hash2el         *sync.Map
 }
 
 func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *DPoS {
@@ -68,6 +95,14 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 		processorNum: processorNum,
 		processors:   newProcessors(processorNum),
 		quitCh:       make(chan bool, 1),
+		subMsg:       make(chan *subMsg, 10240),
+		subMsgQuit:   make(chan bool, 1),
+		subAck:       gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
+		hash2el:      new(sync.Map),
+	}
+
+	if common.DPoSVoteCacheEn {
+		dps.voteCache = gcache.New(voteCacheSize).LRU().Build()
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -92,6 +127,7 @@ func (dps *DPoS) Init() {
 
 	supply := common.GenesisBlock().Balance
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
+	dps.voteThreshold, _ = supply.Div(2)
 
 	err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
 	if err != nil {
@@ -107,10 +143,12 @@ func (dps *DPoS) Start() {
 	dps.logger.Info("DPOS service started!")
 
 	go dps.acTrx.start()
+	go dps.processSubMsg()
 	dps.processorStart()
 
 	timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
+	timerDebug := time.NewTicker(time.Minute)
 
 	for {
 		select {
@@ -136,9 +174,16 @@ func (dps *DPoS) Start() {
 			}
 
 			for bs := range dps.cacheBlocks {
-				dps.logger.Infof("process cache block %s", bs.Block.GetHash())
+				dps.logger.Infof("process cache block[%s]", bs.Block.GetHash())
 				dps.dispatchMsg(bs)
 			}
+		case <-timerDebug.C:
+			num := 0
+			dps.hash2el.Range(func(key, value interface{}) bool {
+				num++
+				return true
+			})
+			dps.logger.Debugf("hash2el len:%d", num)
 		}
 	}
 }
@@ -146,6 +191,7 @@ func (dps *DPoS) Start() {
 func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
 	dps.quitCh <- true
+	dps.subMsgQuit <- true
 	dps.processorStop()
 	dps.acTrx.stop()
 }
@@ -177,13 +223,103 @@ func (dps *DPoS) onPovSyncState(state common.SyncState) {
 	}
 }
 
+func (dps *DPoS) cacheAck(ack *protos.ConfirmAckBlock) {
+	if dps.voteCache.Has(ack.Hash) {
+		v, err := dps.voteCache.Get(ack.Hash)
+		if err != nil {
+			dps.logger.Error("get vote cache err")
+			return
+		}
+
+		vc := v.(*sync.Map)
+		vc.Store(ack.Account, ack)
+	} else {
+		vc := new(sync.Map)
+		vc.Store(ack.Account, ack)
+		err := dps.voteCache.Set(ack.Hash, vc)
+		if err != nil {
+			dps.logger.Error("set vote cache err")
+			return
+		}
+	}
+}
+
+func (dps *DPoS) pubAck(index int, ack *protos.ConfirmAckBlock) {
+	dps.processors[index].acks <- ack
+}
+
+func (dps *DPoS) processSubMsg() {
+	for {
+		select {
+		case <-dps.subMsgQuit:
+			return
+		case msg := <-dps.subMsg:
+			switch msg.kind {
+			case subMsgKindSub:
+				_ = dps.subAck.Set(msg.hash, msg.index)
+
+				if common.DPoSVoteCacheEn {
+					vote, err := dps.voteCache.Get(msg.hash)
+					if err == nil {
+						vc := vote.(*sync.Map)
+						vc.Range(func(key, value interface{}) bool {
+							dps.pubAck(msg.index, value.(*protos.ConfirmAckBlock))
+							return true
+						})
+						dps.voteCache.Remove(msg.hash)
+					}
+				}
+			case subMsgKindUnsub:
+				dps.subAck.Remove(msg.hash)
+
+				if common.DPoSVoteCacheEn {
+					dps.voteCache.Remove(msg.hash)
+				}
+			}
+		}
+	}
+}
+
 func (dps *DPoS) getProcessorIndex(address types.Address) int {
 	return int(address[len(address)-1]) % dps.processorNum
 }
 
 func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
-	index := dps.getProcessorIndex(bs.Block.Address)
-	dps.processors[index].blocks <- bs
+	if bs.Type == consensus.MsgConfirmAck {
+		ack := bs.Para.(*protos.ConfirmAckBlock)
+		dps.saveOnlineRep(ack.Account)
+		dps.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmAck, ack, bs.MsgFrom)
+		dps.logger.Infof("dps recv confirmAck block[%s]", ack.Hash)
+
+		if dps.getAckType(ack.Sequence) != ackTypeFindRep {
+			val, err := dps.subAck.Get(ack.Hash)
+			if err == nil {
+				dps.pubAck(val.(int), ack)
+			} else {
+				dps.cacheAck(ack)
+			}
+		}
+	} else {
+		index := dps.getProcessorIndex(bs.Block.Address)
+		dps.processors[index].blocks <- bs
+	}
+}
+
+func (dps *DPoS) subAckDo(index int, hash types.Hash) {
+	msg := &subMsg{
+		index: index,
+		kind:  subMsgKindSub,
+		hash:  hash,
+	}
+	dps.subMsg <- msg
+}
+
+func (dps *DPoS) unsubAckDo(hash types.Hash) {
+	msg := &subMsg{
+		kind: subMsgKindUnsub,
+		hash: hash,
+	}
+	dps.subMsg <- msg
 }
 
 func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, localIndex int) {
@@ -324,17 +460,17 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 	}
 }
 
-func (dps *DPoS) localRepVote(bs *consensus.BlockSource) {
+func (dps *DPoS) localRepVote(block *types.StateBlock) {
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 
-		va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
+		va, err := dps.voteGenerateWithSeq(block, address, value.(*types.Account), ackTypeCommon)
 		if err != nil {
 			return true
 		}
 
-		dps.logger.Debugf("rep [%s] vote for block [%s]", address, bs.Block.GetHash())
-		dps.acTrx.setVoteHash(bs.Block)
+		dps.logger.Debugf("rep [%s] vote for block[%s]", address, block.GetHash())
+		dps.acTrx.setVoteHash(block)
 		dps.acTrx.vote(va)
 		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 		return true
@@ -356,15 +492,16 @@ func (dps *DPoS) hasLocalValidRep() bool {
 
 func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
 	if dps.cfg.PoV.PovEnabled {
-		povHeader, err := dps.ledger.GetLatestPovHeader()
-		if err != nil {
-			//return nil, errors.New("get pov header err")
-		}
-
-		if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
-			//dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
-			//return nil, errors.New("pov height invalid")
-		}
+		//povHeader, err := dps.ledger.GetLatestPovHeader()
+		//if povHeader == nil {
+		//	dps.logger.Errorf("get pov header err %s", err)
+		//	return nil, errors.New("get pov header err")
+		//}
+		//
+		//if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
+		//	dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
+		//	return nil, errors.New("pov height invalid")
+		//}
 	}
 
 	weight := dps.ledger.Weight(account)
@@ -372,21 +509,41 @@ func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, ac
 		return nil, errors.New("too small weight")
 	}
 
+	hash := block.GetHash()
 	va := &protos.ConfirmAckBlock{
 		Sequence:  0,
-		Blk:       block,
+		Hash:      hash,
 		Account:   account,
-		Signature: acc.Sign(block.GetHash()),
+		Signature: acc.Sign(hash),
 	}
 	return va, nil
 }
 
-func (dps *DPoS) voteGenerateWithSeq(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
+func (dps *DPoS) voteGenerateWithSeq(block *types.StateBlock, account types.Address, acc *types.Account, kind uint32) (*protos.ConfirmAckBlock, error) {
+	if dps.cfg.PoV.PovEnabled {
+		//povHeader, err := dps.ledger.GetLatestPovHeader()
+		//if povHeader == nil {
+		//	dps.logger.Errorf("get pov header err %s", err)
+		//	return nil, errors.New("get pov header err")
+		//}
+		//
+		//if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
+		//	dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
+		//	return nil, errors.New("pov height invalid")
+		//}
+	}
+
+	weight := dps.ledger.Weight(account)
+	if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
+		return nil, errors.New("too small weight")
+	}
+
+	hash := block.GetHash()
 	va := &protos.ConfirmAckBlock{
-		Sequence:  uint32(time.Now().Unix()),
-		Blk:       block,
+		Sequence:  dps.getSeq(kind),
+		Hash:      hash,
 		Account:   account,
-		Signature: acc.Sign(block.GetHash()),
+		Signature: acc.Sign(hash),
 	}
 	return va, nil
 }
@@ -449,7 +606,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 
-		va, err := dps.voteGenerateWithSeq(blk, address, value.(*types.Account))
+		va, err := dps.voteGenerateWithSeq(blk, address, value.(*types.Account), ackTypeFindRep)
 		if err != nil {
 			return true
 		}
@@ -541,4 +698,17 @@ func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
 			}
 		}
 	}
+}
+
+func (dps *DPoS) getSeq(kind uint32) uint32 {
+	var seq, ackSeq uint32
+
+	seq = atomic.AddUint32(&dps.ackSeq, 1)
+	ackSeq = (kind << 28) | ((seq - 1) & 0xFFFFFFF)
+
+	return ackSeq
+}
+
+func (dps *DPoS) getAckType(seq uint32) uint32 {
+	return seq >> 28
 }

@@ -42,7 +42,7 @@ func (vs *Votes) voteStatus(va *protos.ConfirmAckBlock) tallyResult {
 		result = vote
 		vs.repVotes.Store(va.Account, va)
 	} else {
-		if v.(*protos.ConfirmAckBlock).Blk.GetHash() != va.Blk.GetHash() {
+		if v.(*protos.ConfirmAckBlock).Hash != va.Hash {
 			//Rep changed their vote
 			result = changed
 			vs.repVotes.Delete(va.Account)

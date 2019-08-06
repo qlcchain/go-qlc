@@ -10,21 +10,16 @@ type ConfirmAckBlock struct {
 	Account   types.Address
 	Signature types.Signature
 	Sequence  uint32
-	Blk       *types.StateBlock
+	Hash      types.Hash
 }
 
 // ToProto converts domain ConfirmAckBlock into proto ConfirmAckBlock
 func ConfirmAckBlockToProto(confirmAck *ConfirmAckBlock) ([]byte, error) {
-	blkData, err := confirmAck.Blk.Serialize()
-	if err != nil {
-		return nil, err
-	}
 	bpPb := &pb.ConfirmAck{
 		Account:   confirmAck.Account.Bytes(),
 		Signature: confirmAck.Signature[:],
 		Sequence:  confirmAck.Sequence,
-		Blocktype: uint32(confirmAck.Blk.GetType()),
-		Block:     blkData,
+		Hash:      confirmAck.Hash[:],
 	}
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
@@ -39,10 +34,6 @@ func ConfirmAckBlockFromProto(data []byte) (*ConfirmAckBlock, error) {
 	if err := proto.Unmarshal(data, ca); err != nil {
 		return nil, err
 	}
-	blk := new(types.StateBlock)
-	if err := blk.Deserialize(ca.Block); err != nil {
-		return nil, err
-	}
 	account, err := types.BytesToAddress(ca.Account)
 	if err != nil {
 		return nil, err
@@ -52,11 +43,15 @@ func ConfirmAckBlockFromProto(data []byte) (*ConfirmAckBlock, error) {
 	if err != nil {
 		return nil, err
 	}
+	hash, err := types.BytesToHash(ca.Hash)
+	if err != nil {
+		return nil, err
+	}
 	ack := &ConfirmAckBlock{
 		Account:   account,
 		Signature: sign,
 		Sequence:  ca.Sequence,
-		Blk:       blk,
+		Hash:      hash,
 	}
 	return ack, nil
 }

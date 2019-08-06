@@ -414,7 +414,7 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 			ms.netService.node.logger.Error(err)
 			return
 		}
-		ms.addPerformanceTime(ack.Blk.GetHash())
+		ms.addPerformanceTime(ack.Hash)
 	}
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
