@@ -9,6 +9,7 @@ package log
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/chain/context"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
@@ -19,7 +20,9 @@ type LogService struct {
 	config *config.Config
 }
 
-func NewLogService(cfg *config.Config) *LogService {
+func NewLogService(cfgFile string) *LogService {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
 	return &LogService{config: cfg}
 }
 

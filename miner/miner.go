@@ -20,7 +20,7 @@ type Miner struct {
 	syncState common.SyncState
 }
 
-func NewMiner(cfgFile string, povEngine *consensus.PoVEngine) *Miner {
+func NewMiner(cfgFile string, povEngine *pov.PoVEngine) *Miner {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 	miner := &Miner{

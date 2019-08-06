@@ -77,7 +77,10 @@ type DPoS struct {
 	cancel          context.CancelFunc
 }
 
-func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *DPoS {
+func NewDPoS(cfgFile string) *DPoS {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+
 	acTrx := newActiveTrx()
 	l := ledger.NewLedger(cfg.LedgerDir())
 	processorNum := runtime.NumCPU()
@@ -87,10 +90,10 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 	dps := &DPoS{
 		ledger:       l,
 		acTrx:        acTrx,
-		accounts:     accounts,
+		accounts:     cc.Accounts(),
 		logger:       log.NewLogger("dpos"),
 		cfg:          cfg,
-		eb:           eb,
+		eb:           cc.EventBus(),
 		lv:           process.NewLedgerVerifier(l),
 		cacheBlocks:  make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
 		povReady:     make(chan bool, 1),
