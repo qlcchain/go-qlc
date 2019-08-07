@@ -99,21 +99,21 @@ func TestTransaction(t *testing.T) {
 	amount2 := 20
 	var headerBlock1 types.StateBlock
 	wg1 := sync.WaitGroup{}
+	wg1.Add(1)
 	go func() {
+		defer wg1.Done()
 		for i := 0; i < m1; i++ {
-			wg1.Add(1)
 			headerBlock1 = sendTransaction(client1, *testAccount, *cAccount, types.Balance{Int: big.NewInt(int64(amount1))}, t)
-			wg1.Done()
 		}
 	}()
 
 	var headerBlock2 types.StateBlock
 	wg2 := sync.WaitGroup{}
+	wg2.Add(1)
 	go func() {
+		defer wg2.Done()
 		for j := 0; j < m2; j++ {
-			wg2.Add(1)
 			headerBlock2 = sendTransaction(client1, *tAccount, *cAccount, types.Balance{Int: big.NewInt(int64(amount2))}, t)
-			wg2.Done()
 		}
 	}()
 	wg2.Wait()
