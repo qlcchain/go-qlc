@@ -3,13 +3,14 @@ package pov
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"sync"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
-	"math/big"
-	"sync"
-	"time"
 )
 
 type ConsensusPow struct {

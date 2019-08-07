@@ -1,12 +1,13 @@
 package pov
 
 import (
-	"github.com/qlcchain/go-qlc/ledger"
 	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/ledger"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
