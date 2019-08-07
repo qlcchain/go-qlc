@@ -935,10 +935,11 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 
 func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
 	am, err := l.GetAccountMetaCache(address)
-	if am != nil && err == nil {
-		return am, nil
+	if err != nil {
+		am = nil
 	}
-	var meta types.AccountMeta
+	//	var meta *types.AccountMeta
+	meta := new(types.AccountMeta)
 	key := getAccountMetaKey(address)
 
 	txn, flag := l.getTxn(false, txns...)
@@ -952,12 +953,35 @@ func (l *Ledger) GetAccountMeta(address types.Address, txns ...db.StoreTxn) (*ty
 	})
 
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, ErrAccountNotFound
-		}
-		return nil, err
+		meta = nil
 	}
-	return &meta, nil
+	if am != nil && meta == nil {
+		return am, nil
+	}
+	if am == nil && meta != nil {
+		return meta, nil
+	}
+	if am != nil && meta != nil {
+		for _, v := range meta.Tokens {
+			temp := am.Token(v.Type)
+			if temp != nil {
+				if temp.BlockCount < v.BlockCount {
+					temp.BlockCount = v.BlockCount
+					temp.Type = v.Type
+					temp.BelongTo = v.BelongTo
+					temp.Header = v.Header
+					temp.Balance = v.Balance
+					temp.Modified = v.Modified
+					temp.OpenBlock = v.OpenBlock
+					temp.Representative = v.Representative
+				}
+			} else {
+				am.Tokens = append(am.Tokens, v)
+			}
+		}
+		return am, nil
+	}
+	return nil, ErrAccountNotFound
 }
 
 func (l *Ledger) GetAccountMetaConfirmed(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
