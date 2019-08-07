@@ -1366,11 +1366,11 @@ func (lv *LedgerVerifier) rollBackToken(token *types.TokenMeta, pre *types.State
 	if err != nil {
 		return err
 	}
-	ac.CoinVote = pre.GetVote()
-	ac.CoinOracle = pre.GetOracle()
-	ac.CoinNetwork = pre.GetNetwork()
-	ac.CoinStorage = pre.GetStorage()
 	if pre.GetToken() == common.ChainToken() {
+		ac.CoinVote = pre.GetVote()
+		ac.CoinOracle = pre.GetOracle()
+		ac.CoinNetwork = pre.GetNetwork()
+		ac.CoinStorage = pre.GetStorage()
 		ac.CoinBalance = pre.GetBalance()
 	}
 	tm := ac.Token(pre.GetToken())
