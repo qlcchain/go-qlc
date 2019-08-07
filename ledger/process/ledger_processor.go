@@ -1009,8 +1009,10 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 			}
 			lv.logger.Debugf("get block from  queue %s (%s) ,%s  ", oldestBlock.GetHash().String(), oldestBlock.GetType().String(), oldestBlock.Address.String())
 
+			// put oldest block to rollbackMap
 			if rBlock, ok := rollbackMap[oldestBlock.GetAddress()]; ok {
-				if t, err := lv.blockOrderCompare(oldestBlock, rBlock); t && err != nil {
+				lv.logger.Debugf("get %s from rollback of %s ", rBlock.GetHash().String(), oldestBlock.GetAddress().String())
+				if t, err := lv.blockOrderCompare(oldestBlock, rBlock); t && err == nil {
 					lv.logger.Debugf("put block to rollback %s (%s), %s ", oldestBlock.GetHash().String(), oldestBlock.GetType().String(), oldestBlock.Address.String())
 					rollbackMap[oldestBlock.GetAddress()] = oldestBlock
 				} else if err != nil {
@@ -1033,6 +1035,7 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 			}
 
 			curBlock := headerBlock
+			// put link block to rollbackMap
 			for {
 				//if curBlock.IsOpen() {
 				//	break
@@ -1050,7 +1053,8 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 							return fmt.Errorf("can not get link block %s", linkHash.String())
 						}
 						if rBlock, ok := rollbackMap[linkBlock.GetAddress()]; ok {
-							if t, err := lv.blockOrderCompare(linkBlock, rBlock); t && err != nil {
+							lv.logger.Debugf("get link %s from rollback of %s ", rBlock.GetHash().String(), linkBlock.GetAddress().String())
+							if t, err := lv.blockOrderCompare(linkBlock, rBlock); t && err == nil {
 								lv.logger.Debugf("put block to queue %s (%s) ,%s ", linkBlock.GetHash().String(), linkBlock.GetType().String(), linkBlock.Address.String())
 								relatedBlocks.Put(linkBlock.GetHash())
 							} else if err != nil {
