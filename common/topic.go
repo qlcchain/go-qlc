@@ -23,7 +23,6 @@ const (
 	EventDeleteP2PStream TopicType = "deleteP2PStream"
 	EventPovPeerStatus   TopicType = "povPeerStatus"
 	EventPovRecvBlock    TopicType = "povRecvBlock"
-	EventPovSyncBlock    TopicType = "povSyncBlock"
 	EventPovBulkPullReq  TopicType = "povBulkPullReq"
 	EventPovBulkPullRsp  TopicType = "povBulkPullRsp"
 	EventPovSyncState    TopicType = "povSyncState"
@@ -36,25 +35,23 @@ const (
 	SyncNotStart SyncState = iota
 	Syncing
 	Syncdone
-	Syncerr
 )
 
 var syncStatus = [...]string{
-	SyncNotStart: "Sync Not Start",
+	SyncNotStart: "SyncNotStart",
 	Syncing:      "Synchronising",
-	Syncdone:     "Sync done",
-	Syncerr:      "Sync error",
+	Syncdone:     "Syncdone",
 }
 
 func (s SyncState) String() string {
-	if s > Syncerr {
+	if s > Syncdone {
 		return "unknown sync state"
 	}
 	return syncStatus[s]
 }
 
 func (s SyncState) IsSyncExited() bool {
-	if s == Syncdone || s == Syncerr {
+	if s == Syncdone {
 		return true
 	}
 

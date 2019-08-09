@@ -143,14 +143,6 @@ func (pov *PoVEngine) GetAccounts() []*types.Account {
 	return pov.accounts
 }
 
-func (pov *PoVEngine) GetSyncState() common.SyncState {
-	return pov.syncer.getState()
-}
-
-func (pov *PoVEngine) GetSyncer() *PovSyncer {
-	return pov.syncer
-}
-
 func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
 	_ = pov.blkRecvCache.Set(block.GetHash(), struct{}{})
 	err := pov.bp.AddMinedBlock(block)
@@ -179,11 +171,6 @@ func (pov *PoVEngine) setEvent() error {
 		return err
 	}
 
-	err = pov.eb.Subscribe(common.EventPovSyncBlock, pov.onSyncPovBlock)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -193,31 +180,26 @@ func (pov *PoVEngine) unsetEvent() error {
 		return err
 	}
 
-	err = pov.eb.Unsubscribe(common.EventPovSyncBlock, pov.onSyncPovBlock)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, msgHash types.Hash, msgPeer string) error {
-	blockHash := block.GetHash()
-	if pov.blkRecvCache.Has(blockHash) {
-		return nil
+func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockFrom, msgPeer string) error {
+	if from == types.PovBlockFromRemoteBroadcast {
+		blockHash := block.GetHash()
+		if pov.blkRecvCache.Has(blockHash) {
+			return nil
+		}
+		_ = pov.blkRecvCache.Set(blockHash, struct{}{})
+
+		pov.logger.Infof("receive broadcast block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
 	}
-	_ = pov.blkRecvCache.Set(blockHash, struct{}{})
 
-	pov.logger.Infof("receive block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
-
-	err := pov.AddBlock(block, types.PovBlockFromRemoteBroadcast, msgPeer)
+	err := pov.AddBlock(block, from, msgPeer)
 	if err == nil {
-		pov.eb.Publish(common.EventSendMsgToPeers, p2p.PovPublishReq, block, msgPeer)
+		if from == types.PovBlockFromRemoteBroadcast {
+			pov.eb.Publish(common.EventSendMsgToPeers, p2p.PovPublishReq, block, msgPeer)
+		}
 	}
 
 	return err
-}
-
-func (pov *PoVEngine) onSyncPovBlock(block *types.PovBlock, from types.PovBlockFrom, peerID string) error {
-	return pov.AddBlock(block, from, peerID)
 }

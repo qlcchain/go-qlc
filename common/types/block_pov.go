@@ -13,7 +13,7 @@ import (
 type PovBlockFrom uint16
 
 const (
-	Unkonwn PovBlockFrom = iota
+	PovBlockFromUnkonwn PovBlockFrom = iota
 	PovBlockFromLocal
 	PovBlockFromRemoteBroadcast
 	PovBlockFromRemoteFetch
