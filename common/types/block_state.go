@@ -191,11 +191,11 @@ func (b *StateBlock) String() string {
 }
 
 func (b *StateBlock) IsReceiveBlock() bool {
-	return b.Type == Receive || b.Type == Open
+	return b.Type == Receive || b.Type == Open || b.Type == ContractReward
 }
 
 func (b *StateBlock) IsSendBlock() bool {
-	return b.Type == Send || b.Type == ContractReward || b.Type == ContractSend || b.Type == ContractRefund
+	return b.Type == Send || b.Type == ContractSend
 }
 
 func (b *StateBlock) IsContractBlock() bool {

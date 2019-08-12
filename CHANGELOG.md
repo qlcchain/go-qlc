@@ -1,4 +1,28 @@
 
+<a name="v1.2.4"></a>
+## [v1.2.4](https://github.com/qlcchain/go-qlc/compare/v1.2.3.1...v1.2.4) (2019-08-07)
+
+### Bug Fixes
+
+* transaction conflict may happen in ledger process
+* sync bug
+
+### Features
+
+* upgrade ledger to v7
+
+### Refactoring
+
+* block rollback ([#508](https://github.com/qlcchain/go-qlc/issues/508))
+
+### Pull Requests
+
+* Merge pull request [#498](https://github.com/qlcchain/go-qlc/issues/498) from qlcchain/hotfix/upgrade-ledger-v7
+* Merge pull request [#509](https://github.com/qlcchain/go-qlc/issues/509) from qlcchain/hotfix/trxconflict
+* Merge pull request [#500](https://github.com/qlcchain/go-qlc/issues/500) from qlcchain/feature/pov-unit-testcase
+* Merge pull request [#499](https://github.com/qlcchain/go-qlc/issues/499) from qlcchain/hotfix/sync
+
+
 <a name="v1.2.3.1"></a>
 ## [v1.2.3.1](https://github.com/qlcchain/go-qlc/compare/v1.2.3...v1.2.3.1) (2019-08-02)
 

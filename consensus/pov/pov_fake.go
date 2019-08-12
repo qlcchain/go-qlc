@@ -2,9 +2,10 @@ package pov
 
 import (
 	"errors"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"time"
 )
 
 type ConsensusFake struct {

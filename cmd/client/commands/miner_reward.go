@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common"
 
 	rpc "github.com/qlcchain/jsonrpc2"
