@@ -27,7 +27,8 @@ import (
 
 func generateTestPair() {
 	var fromAccountP string
-	var toAccountsP []string
+	var txAccountsP []string
+	var onlyTxP bool
 	var tpsP int
 	var txCountP int
 	var txTypeP string
@@ -39,10 +40,10 @@ func generateTestPair() {
 			Usage: "send account private key",
 			Value: "",
 		}
-		toAccounts := util.Flag{
-			Name:  "toAccounts",
+		txAccounts := util.Flag{
+			Name:  "txAccounts",
 			Must:  true,
-			Usage: "to account private key",
+			Usage: "tx account private key",
 			Value: "",
 		}
 		tps := util.Flag{
@@ -50,6 +51,12 @@ func generateTestPair() {
 			Must:  true,
 			Usage: "tx per sec",
 			Value: 1,
+		}
+		onlyTx := util.Flag{
+			Name:  "onlyTx",
+			Must:  true,
+			Usage: "only generate txs",
+			Value: true,
 		}
 		txCount := util.Flag{
 			Name:  "txCount",
@@ -67,7 +74,7 @@ func generateTestPair() {
 			Name: "generateTestPair",
 			Help: "generate test pair send txs",
 			Func: func(c *ishell.Context) {
-				args := []util.Flag{from, toAccounts, tps, txCount, txType}
+				args := []util.Flag{from, txAccounts, onlyTx, tps, txCount, txType}
 				if util.HelpText(c, args) {
 					return
 				}
@@ -76,11 +83,12 @@ func generateTestPair() {
 					return
 				}
 				fromAccountP = util.StringVar(c.Args, from)
-				toAccountsP = util.StringSliceVar(c.Args, toAccounts)
+				txAccountsP = util.StringSliceVar(c.Args, txAccounts)
+				onlyTxP = util.BoolVar(c.Args, onlyTx)
 				tpsP, _ = util.IntVar(c.Args, tps)
 				txCountP, _ = util.IntVar(c.Args, txCount)
 				txTypeP = util.StringVar(c.Args, txType)
-				err := randSendTxs(fromAccountP, toAccountsP, tpsP, txCountP, txTypeP)
+				err := randSendTxs(fromAccountP, txAccountsP, onlyTxP, tpsP, txCountP, txTypeP)
 				if err != nil {
 					util.Info(err)
 					return
@@ -94,7 +102,7 @@ func generateTestPair() {
 			Use:   "generateTestPair",
 			Short: "generate test pair send txs",
 			Run: func(cmd *cobra.Command, args []string) {
-				err := randSendTxs(fromAccountP, toAccountsP, tpsP, txCountP, txTypeP)
+				err := randSendTxs(fromAccountP, txAccountsP, onlyTxP, tpsP, txCountP, txTypeP)
 				if err != nil {
 					cmd.Println(err)
 					return
@@ -103,7 +111,8 @@ func generateTestPair() {
 			},
 		}
 		randSendCmd.Flags().StringVar(&fromAccountP, "from", "", "send account private key")
-		randSendCmd.Flags().StringSliceVar(&toAccountsP, "toAccounts", nil, "to account private key")
+		randSendCmd.Flags().StringSliceVar(&txAccountsP, "txAccounts", nil, "tx account private key")
+		randSendCmd.Flags().BoolVar(&onlyTxP, "onlyTx", true, "only generate txs")
 		randSendCmd.Flags().IntVar(&tpsP, "tps", 1, "tx per sec")
 		randSendCmd.Flags().IntVar(&txCountP, "txCount", 1, "tx count")
 		randSendCmd.Flags().StringVar(&txTypeP, "txType", "both", "tx type, both/send")
@@ -111,28 +120,25 @@ func generateTestPair() {
 	}
 }
 
-func randSendTxs(fromAccountP string, toAccountsP []string, tpsP int, txCountP int, txTypeP string) error {
-	if fromAccountP == "" {
-		return errors.New("invalid from account value")
+func randSendTxs(fromAccountP string, txAccountsP []string, onlyTxP bool, tpsP int, txCountP int, txTypeP string) error {
+	if !onlyTxP {
+		if fromAccountP == "" {
+			return errors.New("invalid from account value")
+		}
 	}
-	if len(toAccountsP) <= 0 {
-		return errors.New("invalid to account value")
+
+	if len(txAccountsP) <= 0 {
+		return errors.New("invalid tx account value")
 	}
 	if tpsP < 0 {
-		return errors.New("invalid to tps value")
+		return errors.New("invalid tps value")
 	}
 	if txCountP < 0 {
-		return errors.New("invalid to txCount value")
+		return errors.New("invalid txCount value")
 	}
-
-	bytes, err := hex.DecodeString(fromAccountP)
-	if err != nil {
-		return err
-	}
-	fromAccount := types.NewAccount(bytes)
 
 	var toAccounts []*types.Account
-	for _, toAccountP := range toAccountsP {
+	for _, toAccountP := range txAccountsP {
 		bytes, err := hex.DecodeString(toAccountP)
 		if err != nil {
 			return err
@@ -140,12 +146,20 @@ func randSendTxs(fromAccountP string, toAccountsP []string, tpsP int, txCountP i
 		toAccounts = append(toAccounts, types.NewAccount(bytes))
 	}
 
-	err = transferBalanceToAccounts(fromAccount, toAccounts)
-	if err != nil {
-		return err
+	if !onlyTxP {
+		bytes, err := hex.DecodeString(fromAccountP)
+		if err != nil {
+			return err
+		}
+		fromAccount := types.NewAccount(bytes)
+
+		err = transferBalanceToAccounts(fromAccount, toAccounts)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = generateTxToAccounts(fromAccount, toAccounts, tpsP, txCountP, txTypeP)
+	err := generatePairTxs(toAccounts, tpsP, txCountP, txTypeP)
 	if err != nil {
 		return err
 	}
@@ -209,6 +223,8 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 			continue
 		}
 
+		time.Sleep(time.Second)
+
 		var receiveBlock types.StateBlock
 		err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
 		if err != nil {
@@ -222,6 +238,8 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 			continue
 		}
 
+		time.Sleep(time.Second)
+
 		var changeBlock types.StateBlock
 		err = client.Call(&changeBlock, "ledger_generateChangeBlock", toAcc.Address(), toAcc.Address(), hex.EncodeToString(toAcc.PrivateKey()))
 		if err != nil {
@@ -234,12 +252,14 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 			fmt.Println(err)
 			continue
 		}
+
+		time.Sleep(time.Second)
 	}
 
 	return nil
 }
 
-func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP int, txCountP int, txTypeP string) error {
+func generatePairTxs(txAccountsP []*types.Account, tpsP int, txCountP int, txTypeP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -251,8 +271,8 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 	txCurNum := 0
 
 	for txCurNum < txCountP {
-		for _, fromAcc := range toAccounts {
-			for _, toAcc := range toAccounts {
+		for _, fromAcc := range txAccountsP {
+			for _, toAcc := range txAccountsP {
 				if fromAcc == toAcc {
 					continue
 				}
@@ -289,6 +309,8 @@ func generateTxToAccounts(from *types.Account, toAccounts []*types.Account, tpsP
 				}
 
 				if txTypeP == "both" {
+					time.Sleep(time.Second)
+
 					var receiveBlock types.StateBlock
 					err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
 					if err != nil {

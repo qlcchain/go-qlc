@@ -456,19 +456,13 @@ func (ms *MessageService) onPovPublishReq(message *Message) {
 		ms.netService.node.logger.Errorf("send PoV Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
 	}
 
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
-
 	p, err := protos.PovPublishBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
 
-	ms.netService.msgEvent.Publish(common.EventPovRecvBlock, p.Blk, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovRecvBlock, p.Blk, types.PovBlockFromRemoteBroadcast, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovBulkPullReq(message *Message) {
