@@ -20,4 +20,5 @@ func init() {
 	metrics.RegisterDebugGCStats(SystemRegistry)
 	RegisterRuntimeCpuStats(SystemRegistry)
 	RegisterDiskStats(SystemRegistry)
+	RegisterRuntimeNetworkStats(SystemRegistry)
 }
