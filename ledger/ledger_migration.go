@@ -306,3 +306,27 @@ func updateVersion(m db.Migration, txn db.StoreTxn) error {
 	//fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
 	return nil
 }
+
+type MigrationV6ToV7 struct {
+}
+
+func (m MigrationV6ToV7) Migrate(txn db.StoreTxn) error {
+	if b, err := checkVersion(m, txn); err == nil && b {
+		fmt.Println("migrate ledger v6 to v7")
+		if err := txn.Drop(nil); err == nil {
+			return updateVersion(m, txn)
+		} else {
+			return err
+		}
+	} else {
+		return err
+	}
+}
+
+func (m MigrationV6ToV7) StartVersion() int {
+	return 6
+}
+
+func (m MigrationV6ToV7) EndVersion() int {
+	return 7
+}

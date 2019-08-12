@@ -3,25 +3,23 @@ package dpos
 import (
 	"errors"
 	"github.com/bluele/gcache"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"runtime"
-	"sync"
-	"sync/atomic"
-	"time"
-
-	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/ledger/process"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 const (

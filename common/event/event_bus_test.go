@@ -10,12 +10,13 @@ package event
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common"
 )
 
 func TestNew(t *testing.T) {

@@ -9,11 +9,12 @@ package event
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 
 	"github.com/gammazero/workerpool"
 )
