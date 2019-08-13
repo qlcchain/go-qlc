@@ -11,7 +11,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/p2p/protos"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
@@ -19,10 +18,10 @@ type Processor struct {
 	index          int
 	dps            *DPoS
 	uncheckedCache gcache.Cache //gap blocks
-	voteCache      gcache.Cache //vote blocks
 	quitCh         chan bool
 	blocks         chan *consensus.BlockSource
 	blocksAcked    chan types.Hash
+	acks           chan *voteInfo
 }
 
 func newProcessors(num int) []*Processor {
@@ -34,12 +33,8 @@ func newProcessors(num int) []*Processor {
 			quitCh:      make(chan bool, 1),
 			blocks:      make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
 			blocksAcked: make(chan types.Hash, common.DPoSMaxBlocks),
+			acks:        make(chan *voteInfo, 10240),
 		}
-
-		if common.DPoSVoteCacheEn {
-			p.voteCache = gcache.New(voteCacheSize).LRU().Build()
-		}
-
 		processors = append(processors, p)
 	}
 
@@ -67,6 +62,8 @@ func (p *Processor) processMsg() {
 			select {
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
+			case ack := <-p.acks:
+				p.processAck(ack)
 			default:
 				break DequeueOut
 			}
@@ -83,13 +80,17 @@ func (p *Processor) processMsg() {
 	}
 }
 
-func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
-	result := process.Progress
-	hash := bs.Block.GetHash()
+func (p *Processor) processAck(vi *voteInfo) {
 	dps := p.dps
-	var err error
+	dps.logger.Infof("processor recv confirmAck block[%s]", vi.hash)
+	dps.acTrx.vote(vi)
+}
 
-	result, err = dps.lv.BlockCheck(bs.Block)
+func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
+	dps := p.dps
+	hash := bs.Block.GetHash()
+
+	result, err := dps.lv.BlockCheck(bs.Block)
 	if err != nil {
 		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
 		return
@@ -108,42 +109,13 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		if result == process.Progress {
 			if el := dps.acTrx.getVoteInfo(bs.Block); el != nil {
 				if el.voteHash == types.ZeroHash {
-					dps.localRepVote(bs)
+					dps.localRepVote(bs.Block)
 				} else if hash == el.voteHash {
-					dps.localRepVote(bs)
+					dps.localRepVote(bs.Block)
 				}
 			}
 		} else if result == process.Old {
-			dps.localRepVote(bs)
-		}
-	case consensus.MsgConfirmAck:
-		dps.logger.Infof("dps recv confirmAck block[%s]", hash)
-		ack := bs.Para.(*protos.ConfirmAckBlock)
-		dps.saveOnlineRep(ack.Account)
-		dps.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmAck, ack, bs.MsgFrom)
-
-		//cache the ack messages
-		if common.DPoSVoteCacheEn && p.isResultGap(result) {
-			if p.voteCache.Has(hash) {
-				v, err := p.voteCache.Get(hash)
-				if err != nil {
-					dps.logger.Error("get vote cache err")
-					return
-				}
-
-				vc := v.(*sync.Map)
-				vc.Store(ack.Account, ack)
-			} else {
-				vc := new(sync.Map)
-				vc.Store(ack.Account, ack)
-				err := p.voteCache.Set(hash, vc)
-				if err != nil {
-					dps.logger.Error("set vote cache err")
-					return
-				}
-			}
-		} else {
-			dps.acTrx.vote(ack)
+			dps.localRepVote(bs.Block)
 		}
 	case consensus.MsgSync:
 		if result == process.Progress {
@@ -173,8 +145,9 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 			dps.logger.Infof("Block %s basic info is correct,begin add it to roots", hash)
 			//make sure we only vote one of the forked blocks
 			if dps.acTrx.addToRoots(blk) && bs.Type != consensus.MsgConfirmReq {
-				dps.localRepVote(bs)
+				dps.localRepVote(bs.Block)
 			}
+			dps.subAckDo(p.index, hash)
 		} else {
 			dps.logger.Errorf("Block %s UnKnow from", hash)
 		}
@@ -217,24 +190,28 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 
 	if v, ok := dps.acTrx.roots.Load(vk); ok {
 		el := v.(*Election)
+
+		if !el.ifValidAndSetInvalid() {
+			return
+		}
+
 		dps.acTrx.roots.Delete(el.vote.id)
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), true)
 
-		if el.status.winner.GetHash().String() != hash.String() {
-			dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash().String())
+		if el.status.winner.GetHash() != hash {
+			dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash())
 			el.status.loser = append(el.status.loser, el.status.winner)
 		}
 
-		el.status.winner = blk
-		el.confirmed = true
-
 		t := el.tally()
 		for _, value := range t {
-			if value.block.GetHash().String() != hash.String() {
+			thash := value.block.GetHash()
+			if thash != hash {
 				el.status.loser = append(el.status.loser, value.block)
 			}
 		}
 
+		el.cleanBlockInfo()
 		dps.acTrx.rollBack(el.status.loser)
 		dps.acTrx.addWinner2Ledger(blk)
 		p.blocksAcked <- hash
@@ -249,30 +226,29 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 }
 
 func (p *Processor) processFork(newBlock *types.StateBlock) {
-	confirmedBlock := p.findAnotherForkedBlock(newBlock)
 	dps := p.dps
+	confirmedBlock := p.findAnotherForkedBlock(newBlock)
 	dps.logger.Errorf("fork:%s--%s", newBlock.GetHash(), confirmedBlock.GetHash())
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
-		dps.localRepAccount.Range(func(key, value interface{}) bool {
-			address := key.(types.Address)
+		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmedBlock)
+		dps.subAckDo(p.index, confirmedBlock.GetHash())
 
-			weight := dps.ledger.Weight(address)
-			if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
-				return true
-			}
+		nhash := newBlock.GetHash()
+		dps.subAckDo(p.index, nhash)
+		if el := dps.acTrx.getVoteInfo(confirmedBlock); el != nil {
+			el.blocks.Store(nhash, newBlock)
+			dps.hash2el.Store(nhash, el)
+		}
 
-			va, err := dps.voteGenerateWithSeq(confirmedBlock, address, value.(*types.Account))
-			if err != nil {
-				return true
-			}
-
-			dps.acTrx.setVoteHash(confirmedBlock)
-			dps.acTrx.vote(va)
-			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
-			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmedBlock)
-			return true
-		})
+		dps.localRepVote(confirmedBlock)
+	} else {
+		nhash := newBlock.GetHash()
+		dps.subAckDo(p.index, nhash)
+		if el := dps.acTrx.getVoteInfo(confirmedBlock); el != nil {
+			el.blocks.Store(nhash, newBlock)
+			dps.hash2el.Store(nhash, el)
+		}
 	}
 }
 
@@ -310,24 +286,8 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 	result, _ := dps.lv.BlockCheck(bs.Block)
 	p.processResult(result, bs)
 
-	if p.isResultValid(result) {
-		if bs.BlockFrom == types.Synchronized {
-			p.confirmBlock(bs.Block)
-			return
-		}
-
-		if common.DPoSVoteCacheEn {
-			v, e := p.voteCache.Get(bs.Block.GetHash())
-			if e == nil {
-				vc := v.(*sync.Map)
-				vc.Range(func(key, value interface{}) bool {
-					dps.acTrx.vote(value.(*protos.ConfirmAckBlock))
-					return true
-				})
-
-				p.voteCache.Remove(bs.Block.GetHash())
-			}
-		}
+	if p.isResultValid(result) && bs.BlockFrom == types.Synchronized {
+		p.confirmBlock(bs.Block)
 	}
 }
 
@@ -479,32 +439,7 @@ func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
 				return true
 			}
 
-			v, e := p.voteCache.Get(bs.Block.GetHash())
-			if e == nil {
-				vc := v.(*sync.Map)
-				vc.Range(func(key, value interface{}) bool {
-					dps.acTrx.vote(value.(*protos.ConfirmAckBlock))
-					return true
-				})
-
-				p.voteCache.Remove(bs.Block.GetHash())
-			}
-
-			dps.localRepAccount.Range(func(key, value interface{}) bool {
-				address := key.(types.Address)
-
-				va, err := dps.voteGenerate(bs.Block, address, value.(*types.Account))
-				if err != nil {
-					return true
-				}
-
-				dps.logger.Debugf("rep [%s] vote for block [%s]", address, bs.Block.GetHash())
-				dps.acTrx.setVoteHash(bs.Block)
-				dps.acTrx.vote(va)
-				dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
-
-				return true
-			})
+			dps.localRepVote(bs.Block)
 		}
 
 		return true
@@ -535,8 +470,6 @@ func (p *Processor) rollbackUncheckedFromMem(hash types.Hash) {
 	if !r {
 		p.dps.logger.Error("remove cache for unchecked fail")
 	}
-
-	p.voteCache.Remove(hash)
 
 	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
 		consensus.GlobalUncheckedBlockNum.Dec()

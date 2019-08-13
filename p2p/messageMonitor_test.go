@@ -159,7 +159,7 @@ func Test_MarshalMessage(t *testing.T) {
 	var va protos.ConfirmAckBlock
 	a := mock.Account()
 	va.Sequence = 0
-	va.Blk = blk
+	va.Hash = append(va.Hash, blk.GetHash())
 	va.Account = a.Address()
 	va.Signature = a.Sign(blk.GetHash())
 	data5, err := marshalMessage(ConfirmAck, &va)
