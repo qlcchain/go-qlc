@@ -10,8 +10,6 @@ package chain
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/chain/context"
-
 	"github.com/qlcchain/go-qlc/p2p"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -26,12 +24,7 @@ type P2PService struct {
 }
 
 func NewP2PService(cfgFile string) (*P2PService, error) {
-	cc := context.NewChainContext(cfgFile)
-	cfg, err := cc.Config()
-	if err != nil {
-		return nil, err
-	}
-	p, err := p2p.NewQlcService(cfg)
+	p, err := p2p.NewQlcService(cfgFile)
 	if err != nil {
 		return nil, err
 	}

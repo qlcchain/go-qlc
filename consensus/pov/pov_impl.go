@@ -58,7 +58,7 @@ func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 	pov.chain = NewPovBlockChain(cfg, pov.ledger)
 	pov.txpool = NewPovTxPool(pov.eb, pov.ledger, pov.chain)
 	pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
-	pov.verifier = NewPovVerifier(ledger, pov.chain, pov.cs)
+	pov.verifier = NewPovVerifier(l, pov.chain, pov.cs)
 	pov.syncer = NewPovSyncer(pov.eb, pov.ledger, pov.chain)
 
 	pov.bp = NewPovBlockProcessor(pov.eb, pov.ledger, pov.chain, pov.verifier, pov.syncer)
