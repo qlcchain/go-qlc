@@ -36,11 +36,12 @@ func NewCfgManagerWithFile(cfgFile string) *CfgManager {
 
 func NewCfgManagerWithName(path string, name string) *CfgManager {
 	file := filepath.Join(path, name)
-	cfg := &CfgManager{
+	cm := &CfgManager{
 		ConfigFile: file,
 		v:          viper.New(),
 	}
-	return cfg
+	_, _ = cm.Load()
+	return cm
 }
 
 func (cm *CfgManager) ConfigDir() string {
@@ -84,7 +85,7 @@ func (cm *CfgManager) Config() (*Config, error) {
 	if cm.cfg != nil {
 		return cm.cfg, nil
 	} else {
-		return cm.Load()
+		return nil, fmt.Errorf("invalid cfg ,cfg path is [%s]", cm.ConfigDir())
 	}
 }
 

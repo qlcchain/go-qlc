@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"github.com/qlcchain/go-qlc/chain/context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -84,45 +85,48 @@ import (
 
 func TestNodeDiscovery(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile, _ := config.DefaultConfig(dir)
-	cfgFile.P2P.Listen = "/ip4/127.0.0.1/tcp/19736"
-	cfgFile.P2P.Discovery.MDNSEnabled = false
-	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/127.0.0.1/tcp/19736/ipfs/" + cfgFile.P2P.ID.PeerID
+	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc := context.NewChainContext(dir)
+	cfg, _ := cc.Config()
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19736"
+	cfg.P2P.Discovery.MDNSEnabled = false
+	cfg.P2P.BootNodes = []string{}
+	b := "/ip4/127.0.0.1/tcp/19736/ipfs/" + cfg.P2P.ID.PeerID
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19737"
-	cfgFile1.P2P.Discovery.MDNSEnabled = false
-	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
+	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc1 := context.NewChainContext(dir1)
+	cfg1, _ := cc1.Config()
+	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19737"
+	cfg1.P2P.Discovery.MDNSEnabled = false
+	cfg1.P2P.BootNodes = []string{b}
+	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19738"
-	cfgFile2.P2P.Discovery.MDNSEnabled = false
-	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
+	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc2 := context.NewChainContext(dir2)
+	cfg2, _ := cc2.Config()
+	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19738"
+	cfg2.P2P.Discovery.MDNSEnabled = false
+	cfg2.P2P.BootNodes = []string{b}
+	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start bootNode
-	node, err := NewQlcService(cfgFile)
+	node, err := NewQlcService(dir)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node1
-	node1, err := NewQlcService(cfgFile1)
+	node1, err := NewQlcService(dir1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2)
+	node2, err := NewQlcService(dir2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)

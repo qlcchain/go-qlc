@@ -203,7 +203,7 @@ func Test_updateConfig(t *testing.T) {
 		t.Fatal("invalid rpc.rpcEnabled")
 	}
 
-	for len(cfg.RPC.HTTPCors) != 2 || cfg.RPC.HTTPCors[0] != "localhost" || cfg.RPC.HTTPCors[1] != "localhost2" {
+	if len(cfg.RPC.HTTPCors) != 2 || cfg.RPC.HTTPCors[0] != "localhost" || cfg.RPC.HTTPCors[1] != "localhost2" {
 		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
 	}
 
