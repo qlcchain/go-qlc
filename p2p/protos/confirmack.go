@@ -10,7 +10,7 @@ type ConfirmAckBlock struct {
 	Account   types.Address
 	Signature types.Signature
 	Sequence  uint32
-	Hash      types.Hash
+	Hash      []types.Hash
 }
 
 // ToProto converts domain ConfirmAckBlock into proto ConfirmAckBlock
@@ -19,8 +19,12 @@ func ConfirmAckBlockToProto(confirmAck *ConfirmAckBlock) ([]byte, error) {
 		Account:   confirmAck.Account.Bytes(),
 		Signature: confirmAck.Signature[:],
 		Sequence:  confirmAck.Sequence,
-		Hash:      confirmAck.Hash[:],
 	}
+
+	for i, _ := range confirmAck.Hash {
+		bpPb.Hash = append(bpPb.Hash, confirmAck.Hash[i][:])
+	}
+
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
@@ -43,10 +47,16 @@ func ConfirmAckBlockFromProto(data []byte) (*ConfirmAckBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	hash, err := types.BytesToHash(ca.Hash)
-	if err != nil {
-		return nil, err
+
+	hash := make([]types.Hash, 0)
+	for _, h := range ca.Hash {
+		ha, err := types.BytesToHash(h)
+		if err != nil {
+			return nil, err
+		}
+		hash = append(hash, ha)
 	}
+
 	ack := &ConfirmAckBlock{
 		Account:   account,
 		Signature: sign,

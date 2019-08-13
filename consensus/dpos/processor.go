@@ -11,7 +11,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/p2p/protos"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
@@ -22,7 +21,7 @@ type Processor struct {
 	quitCh         chan bool
 	blocks         chan *consensus.BlockSource
 	blocksAcked    chan types.Hash
-	acks           chan *protos.ConfirmAckBlock
+	acks           chan *voteInfo
 }
 
 func newProcessors(num int) []*Processor {
@@ -34,7 +33,7 @@ func newProcessors(num int) []*Processor {
 			quitCh:      make(chan bool, 1),
 			blocks:      make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
 			blocksAcked: make(chan types.Hash, common.DPoSMaxBlocks),
-			acks:        make(chan *protos.ConfirmAckBlock, 10240),
+			acks:        make(chan *voteInfo, 10240),
 		}
 		processors = append(processors, p)
 	}
@@ -81,10 +80,10 @@ func (p *Processor) processMsg() {
 	}
 }
 
-func (p *Processor) processAck(ack *protos.ConfirmAckBlock) {
+func (p *Processor) processAck(vi *voteInfo) {
 	dps := p.dps
-	dps.logger.Infof("processor recv confirmAck block[%s]", ack.Hash)
-	dps.acTrx.vote(ack)
+	dps.logger.Infof("processor recv confirmAck block[%s]", vi.hash)
+	dps.acTrx.vote(vi)
 }
 
 func (p *Processor) processMsgDo(bs *consensus.BlockSource) {

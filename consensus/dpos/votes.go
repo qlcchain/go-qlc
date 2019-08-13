@@ -15,6 +15,11 @@ const (
 	confirm
 )
 
+type voteInfo struct {
+	account types.Address
+	hash    types.Hash
+}
+
 type Votes struct {
 	id       voteKey   //Previous block of fork
 	repVotes *sync.Map // All votes received by account
@@ -35,18 +40,18 @@ func (vs *Votes) voteExit(address types.Address) (bool, *protos.ConfirmAckBlock)
 	}
 }
 
-func (vs *Votes) voteStatus(va *protos.ConfirmAckBlock) tallyResult {
+func (vs *Votes) voteStatus(vi *voteInfo) tallyResult {
 	var result tallyResult
 
-	if v, ok := vs.repVotes.Load(va.Account); !ok {
+	if v, ok := vs.repVotes.Load(vi.account); !ok {
 		result = vote
-		vs.repVotes.Store(va.Account, va)
+		vs.repVotes.Store(vi.account, vi)
 	} else {
-		if v.(*protos.ConfirmAckBlock).Hash != va.Hash {
+		if v.(*voteInfo).hash != vi.hash {
 			//Rep changed their vote
 			result = changed
-			vs.repVotes.Delete(va.Account)
-			vs.repVotes.Store(va.Account, va)
+			vs.repVotes.Delete(vi.account)
+			vs.repVotes.Store(vi.account, vi)
 		} else {
 			// Rep vote remained the same
 			result = confirm

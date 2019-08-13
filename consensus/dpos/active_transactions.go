@@ -7,7 +7,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 const (
@@ -210,10 +209,10 @@ func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
 	}
 }
 
-func (act *ActiveTrx) vote(va *protos.ConfirmAckBlock) {
-	if v, ok := act.dps.hash2el.Load(va.Hash); ok {
+func (act *ActiveTrx) vote(vi *voteInfo) {
+	if v, ok := act.dps.hash2el.Load(vi.hash); ok {
 		el := v.(*Election)
-		el.voteAction(va)
+		el.voteAction(vi)
 	}
 }
 

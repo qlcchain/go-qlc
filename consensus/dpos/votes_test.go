@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 var (
@@ -63,25 +62,28 @@ func TestVotes(t *testing.T) {
 	if err != nil {
 		t.Fatal("seed to account error")
 	}
-	var va protos.ConfirmAckBlock
-	va.Sequence = 0
-	va.Hash = blk.GetHash()
-	va.Account = ac.Address()
-	va.Signature = ac.Sign(blk.GetHash())
-	status := vts.voteStatus(&va)
+
+	via := &voteInfo{
+		hash:    blk.GetHash(),
+		account: ac.Address(),
+	}
+
+	status := vts.voteStatus(via)
 	if status != vote {
 		t.Fatal("vote status error: vote")
 	}
-	status = vts.voteStatus(&va)
+
+	status = vts.voteStatus(via)
 	if status != confirm {
 		t.Fatal("vote status error: confirm")
 	}
-	var vb protos.ConfirmAckBlock
-	vb.Sequence = 0
-	vb.Hash = blk1.GetHash()
-	vb.Account = ac.Address()
-	vb.Signature = ac.Sign(blk1.GetHash())
-	status = vts.voteStatus(&vb)
+
+	vib := &voteInfo{
+		hash:    blk1.GetHash(),
+		account: ac.Address(),
+	}
+
+	status = vts.voteStatus(vib)
 	if status != changed {
 		t.Fatal("vote status error: changed")
 	}

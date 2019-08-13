@@ -40,7 +40,7 @@ message ConfirmAck {
     bytes   Account = 1;
     bytes   Signature = 2;
     uint32  Sequence = 3;
-    bytes   Hash = 4;
+    repeated bytes  Hash = 4;
 }
 message PovStatus {
     uint64 CurrentHeight = 1;

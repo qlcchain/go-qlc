@@ -6,7 +6,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 type BlockReceivedVotes struct {
@@ -55,14 +54,14 @@ func newElection(dps *DPoS, block *types.StateBlock) *Election {
 	return el
 }
 
-func (el *Election) voteAction(va *protos.ConfirmAckBlock) {
+func (el *Election) voteAction(vi *voteInfo) {
 	if !el.isValid() {
 		return
 	}
 
-	result := el.vote.voteStatus(va)
+	result := el.vote.voteStatus(vi)
 	if result == confirm {
-		el.dps.logger.Infof("recv same ack %s", va.Account.String())
+		el.dps.logger.Infof("recv same ack %s", vi.account)
 		return
 	}
 
@@ -123,7 +122,7 @@ func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 	var hash types.Hash
 
 	el.vote.repVotes.Range(func(key, value interface{}) bool {
-		hash = value.(*protos.ConfirmAckBlock).Hash
+		hash = value.(*voteInfo).hash
 
 		if _, ok := totals[hash]; !ok {
 			if block, ok := el.blocks.Load(hash); ok {

@@ -152,12 +152,13 @@ func (r *Receiver) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msg
 }
 
 func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash, msgFrom string) {
-	r.c.logger.Debugf("receive ConfirmAck block [%s] from [%s]", ack.Hash, msgFrom)
+	r.c.logger.Debugf("receive ConfirmAck for %d blocks [%s] from [%s]", len(ack.Hash), ack.Hash, msgFrom)
 	if !r.processed(hash) {
 		r.processedUpdate(hash)
 
 		valid := IsAckSignValidate(ack)
 		if !valid {
+			r.c.logger.Error("ack sign err")
 			return
 		}
 
