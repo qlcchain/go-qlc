@@ -540,26 +540,7 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		return
 	}
 
-	for len(reqTxHashes) > 0 {
-		sendHashNum := 0
-		if len(reqTxHashes) > maxPullTxPerReq {
-			sendHashNum = maxPullTxPerReq
-		} else {
-			sendHashNum = len(reqTxHashes)
-		}
-
-		sendTxHashes := reqTxHashes[0:sendHashNum]
-
-		req := new(protos.BulkPullReqPacket)
-		req.PullType = protos.PullTypeBatch
-		req.Hashes = sendTxHashes
-		req.Count = uint32(len(sendTxHashes))
-
-		ss.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peer.peerID)
-		ss.eb.Publish(common.EventSendMsgToSingle, p2p.BulkPullRequest, req, peer.peerID)
-
-		reqTxHashes = reqTxHashes[sendHashNum:]
-	}
+	ss.eb.Publish(common.EventPullBlocksReq, reqTxHashes, peer.peerID)
 }
 
 func (ss *PovSyncer) absDiffHeight(lhs uint64, rhs uint64) uint64 {
