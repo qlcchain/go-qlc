@@ -19,6 +19,7 @@ const (
 	checkBlockCacheInterval = 60 * time.Second
 	msgResendMaxTimes       = 10
 	msgNeedResendInterval   = 10 * time.Second
+	maxPullTxPerReq         = 100
 )
 
 //  Message Type
@@ -640,6 +641,36 @@ func (ms *MessageService) addPerformanceTime(hash types.Hash) {
 				ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onConfirmAck func")
 			}
 		}
+	}
+}
+
+func (ms *MessageService) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string) {
+	if len(reqTxHashes) <= 0 {
+		return
+	}
+
+	for len(reqTxHashes) > 0 {
+		sendHashNum := 0
+		if len(reqTxHashes) > maxPullTxPerReq {
+			sendHashNum = maxPullTxPerReq
+		} else {
+			sendHashNum = len(reqTxHashes)
+		}
+
+		sendTxHashes := reqTxHashes[0:sendHashNum]
+
+		req := new(protos.BulkPullReqPacket)
+		req.PullType = protos.PullTypeBatch
+		req.Hashes = sendTxHashes
+		req.Count = uint32(len(sendTxHashes))
+
+		ms.netService.node.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peerID)
+		if !ms.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+			break
+		}
+		ms.netService.msgEvent.Publish(common.EventSendMsgToSingle, BulkPullRequest, req, peerID)
+
+		reqTxHashes = reqTxHashes[sendHashNum:]
 	}
 }
 

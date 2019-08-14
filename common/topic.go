@@ -26,6 +26,8 @@ const (
 	EventPovBulkPullReq  TopicType = "povBulkPullReq"
 	EventPovBulkPullRsp  TopicType = "povBulkPullRsp"
 	EventPovSyncState    TopicType = "povSyncState"
+
+	EventPullBlocksReq TopicType = "pullBlocksReq"
 )
 
 // Sync state
