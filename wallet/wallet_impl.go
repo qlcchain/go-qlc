@@ -11,8 +11,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/monitor"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
@@ -148,6 +150,8 @@ func (s *Session) SetRepresentative(address types.Address) error {
 }
 
 func (s *Session) GetSeed() ([]byte, error) {
+	defer monitor.Duration(time.Now(), "wallet.getseed")
+
 	var seed []byte
 	pw := s.getPassword()
 	tmp := make([]byte, len(pw))
