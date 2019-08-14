@@ -295,7 +295,6 @@ Loop:
 		return false
 	}
 
-	mineBlock.Header.Timestamp = time.Now().Unix()
 	mineBlock.Header.Hash = mineBlock.Header.ComputeHash()
 	mineBlock.Header.Signature = cbAccount.Sign(mineBlock.Header.Hash)
 
