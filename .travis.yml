@@ -35,6 +35,7 @@ script:
   - ./ci/travis.gofmt.sh
   - ./ci/travis.govet.sh
   - ./ci/travis.codecov.sh
+  # - ./ci/travis.golint.sh
   - make clean build
 
 after_success:
@@ -62,7 +63,7 @@ deploy:
     script: ci/deploy-docker.sh
     skip_cleanup: true
     on:
-      tags: true
+      all_branches: true
 
 notifications:
   email: false
