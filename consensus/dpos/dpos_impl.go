@@ -2,7 +2,13 @@ package dpos
 
 import (
 	"context"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/bluele/gcache"
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -16,10 +22,6 @@ import (
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
-	"runtime"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -77,7 +79,10 @@ type DPoS struct {
 	cancel          context.CancelFunc
 }
 
-func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *DPoS {
+func NewDPoS(cfgFile string) *DPoS {
+	cc := chainctx.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+
 	acTrx := newActiveTrx()
 	l := ledger.NewLedger(cfg.LedgerDir())
 	processorNum := runtime.NumCPU()
@@ -87,10 +92,10 @@ func NewDPoS(cfg *config.Config, accounts []*types.Account, eb event.EventBus) *
 	dps := &DPoS{
 		ledger:       l,
 		acTrx:        acTrx,
-		accounts:     accounts,
+		accounts:     cc.Accounts(),
 		logger:       log.NewLogger("dpos"),
 		cfg:          cfg,
-		eb:           eb,
+		eb:           cc.EventBus(),
 		lv:           process.NewLedgerVerifier(l),
 		cacheBlocks:  make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
 		povReady:     make(chan bool, 1),

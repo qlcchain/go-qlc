@@ -7,13 +7,15 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/qlcchain/go-qlc/chain/context"
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
-	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 )
 
@@ -44,17 +46,20 @@ type RPC struct {
 	logger   *zap.SugaredLogger
 }
 
-func NewRPC(cfg *config.Config) (*RPC, error) {
-	rl, err := relation.NewRelation(cfg)
+func NewRPC(cfgFile string) (*RPC, error) {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+
+	rl, err := relation.NewRelation(cfgFile)
 	if err != nil {
 		return nil, err
 	}
-	dir := cfg.LedgerDir()
+
 	r := RPC{
-		ledger:   ledger.NewLedger(dir),
+		ledger:   ledger.NewLedger(cfg.LedgerDir()),
 		wallet:   wallet.NewWalletStore(cfg),
 		relation: rl,
-		eb:       event.GetEventBus(dir),
+		eb:       cc.EventBus(),
 		config:   cfg,
 		logger:   log.NewLogger("rpc"),
 	}

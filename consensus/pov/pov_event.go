@@ -1,8 +1,9 @@
 package pov
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 type EventListener interface {

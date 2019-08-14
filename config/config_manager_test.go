@@ -6,19 +6,18 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/util"
-
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
-var cfgFile = filepath.Join(QlcTestDataDir(), "config")
+var configDir = filepath.Join(QlcTestDataDir(), "config")
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Log("setup test case")
 
 	return func(t *testing.T) {
 		t.Log("teardown test case")
-		err := os.RemoveAll(cfgFile)
+		err := os.RemoveAll(configDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -29,7 +28,7 @@ func TestConfigManager_Load(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	manager := NewCfgManager(cfgFile)
+	manager := NewCfgManager(configDir)
 	cfg, err := manager.Load()
 	if err != nil {
 		t.Fatal(err)
@@ -49,13 +48,12 @@ func TestConfigManager_Load(t *testing.T) {
 	if ID.Pretty() != cfg.P2P.ID.PeerID {
 		t.Fatal("peer id error")
 	}
-	bytes, err := json.Marshal(cfg)
-	t.Log(string(bytes))
+	t.Log(util.ToIndentString(cfg))
 }
 
 func TestConfigManager_parseVersion(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfigV1(manager.cfgPath)
+	manager := NewCfgManager(configDir)
+	cfg, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,9 +70,24 @@ func TestConfigManager_parseVersion(t *testing.T) {
 	}
 }
 
+func TestNewCfgManagerWithFile(t *testing.T) {
+	cfgFile := filepath.Join(configDir, "test.json")
+	defer func() {
+		_ = os.Remove(cfgFile)
+	}()
+	cm := NewCfgManagerWithFile(cfgFile)
+	_, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		_ = cm.Save()
+	}
+}
+
 func TestDefaultConfigV2(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfigV2(manager.cfgPath)
+	cm := NewCfgManager(configDir)
+	_ = cm.createAndSave()
+	cfg, err := DefaultConfigV2(cm.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,18 +97,26 @@ func TestDefaultConfigV2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if version, err := manager.parseVersion(bytes); err != nil {
+	if version, err := cm.parseVersion(bytes); err != nil {
 		t.Fatal(err)
 	} else {
 		if version != 2 {
 			t.Fatal("invalid version", version)
 		}
 	}
+
+	if dir, err := cm.ParseDataDir(); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(dir) == 0 {
+			t.Fatal("invalid data dir")
+		}
+	}
 }
 
 func TestMigrationV1ToV2_Migration(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfigV1(manager.cfgPath)
+	manager := NewCfgManager(configDir)
+	cfg, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,8 +150,8 @@ func TestMigrationV1ToV2_Migration(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
-	cfg, err := DefaultConfig(manager.cfgPath)
+	manager := NewCfgManager(configDir)
+	cfg, err := DefaultConfig(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,13 +159,13 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestCfgManager_Load(t *testing.T) {
-	manager := NewCfgManager(cfgFile)
-	cfg1, err := DefaultConfigV1(manager.cfgPath)
+	manager := NewCfgManager(configDir)
+	cfg1, err := DefaultConfigV1(manager.ConfigDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = manager.save(cfg1)
+	err = manager.Save(cfg1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,5 +183,76 @@ func TestCfgManager_Load(t *testing.T) {
 
 	if len(cfg3.RPC.HttpVirtualHosts) == 0 {
 		t.Fatal("invalid HttpVirtualHosts")
+	}
+}
+
+func Test_updateConfig(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	manager := NewCfgManager(configDir)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err = manager.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(cfg.RPC.HTTPCors) != 2 || cfg.RPC.HTTPCors[0] != "localhost" || cfg.RPC.HTTPCors[1] != "localhost2" {
+		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
+	}
+
+	if cfg.P2P.SyncInterval != 200 {
+		t.Fatal("invalid p2p.syncInterval", cfg.P2P.SyncInterval)
+	}
+}
+
+func TestCfgManager_DiffOther(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	cm := NewCfgManager(configDir)
+	cfg, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg1, _ := cfg.Clone()
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	cfg, err = cm.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	diff, err := cm.DiffOther(cfg1)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(diff)
+	}
+}
+
+func TestCfgManager_Diff(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	cm := NewCfgManager(configDir)
+	_, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	_, err = cm.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	diff, err := cm.Diff()
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(diff)
 	}
 }

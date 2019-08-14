@@ -1,11 +1,11 @@
 package p2p
 
 import (
+	"github.com/qlcchain/go-qlc/chain/context"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 )
 
@@ -18,7 +18,9 @@ type QlcService struct {
 }
 
 // NewQlcService create netService
-func NewQlcService(cfg *config.Config) (*QlcService, error) {
+func NewQlcService(cfgFile string) (*QlcService, error) {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
 	node, err := NewNode(cfg)
 	if err != nil {
 		return nil, err
@@ -26,7 +28,7 @@ func NewQlcService(cfg *config.Config) (*QlcService, error) {
 	ns := &QlcService{
 		node:       node,
 		dispatcher: NewDispatcher(),
-		msgEvent:   event.GetEventBus(cfg.LedgerDir()),
+		msgEvent:   cc.EventBus(),
 	}
 	node.SetQlcService(ns)
 	l := ledger.NewLedger(cfg.LedgerDir())

@@ -1,17 +1,18 @@
 package dpos
 
 import (
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/config"
 	"path/filepath"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestGetSeq(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cfgFile, _ := config.DefaultConfig(dir)
+	cm := config.NewCfgManager(dir)
 
-	dps := NewDPoS(cfgFile, nil, nil)
+	dps := NewDPoS(cm.ConfigFile)
 	seq1 := dps.getSeq(ackTypeCommon)
 	if seq1 != 0 {
 		t.Errorf("expect:0   get:%d", seq1)
@@ -39,9 +40,9 @@ func TestGetSeq(t *testing.T) {
 
 func TestGetAckType(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cfgFile, _ := config.DefaultConfig(dir)
+	cm := config.NewCfgManager(dir)
 
-	dps := NewDPoS(cfgFile, nil, nil)
+	dps := NewDPoS(cm.ConfigFile)
 	type1 := dps.getAckType(0x10000003)
 	if type1 != ackTypeFindRep {
 		t.Errorf("expect:%d   get:%d", ackTypeFindRep, type1)

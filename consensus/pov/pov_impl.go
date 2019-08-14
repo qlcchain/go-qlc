@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qlcchain/go-qlc/chain/context"
+
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -38,15 +40,17 @@ type PoVEngine struct {
 	syncer   *PovSyncer
 }
 
-func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, error) {
-	ledger := ledger.NewLedger(cfg.LedgerDir())
+func NewPovEngine(cfgFile string) (*PoVEngine, error) {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+	l := ledger.NewLedger(cfg.LedgerDir())
 
 	pov := &PoVEngine{
 		logger:   log.NewLogger("pov_engine"),
 		cfg:      cfg,
-		eb:       event.GetEventBus(cfg.LedgerDir()),
-		accounts: accounts,
-		ledger:   ledger,
+		eb:       cc.EventBus(),
+		accounts: cc.Accounts(),
+		ledger:   l,
 	}
 
 	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()
@@ -54,7 +58,7 @@ func NewPovEngine(cfg *config.Config, accounts []*types.Account) (*PoVEngine, er
 	pov.chain = NewPovBlockChain(cfg, pov.ledger)
 	pov.txpool = NewPovTxPool(pov.eb, pov.ledger, pov.chain)
 	pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
-	pov.verifier = NewPovVerifier(ledger, pov.chain, pov.cs)
+	pov.verifier = NewPovVerifier(l, pov.chain, pov.cs)
 	pov.syncer = NewPovSyncer(pov.eb, pov.ledger, pov.chain)
 
 	pov.bp = NewPovBlockProcessor(pov.eb, pov.ledger, pov.chain, pov.verifier, pov.syncer)

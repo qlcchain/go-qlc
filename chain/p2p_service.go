@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"errors"
@@ -13,7 +13,6 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -24,8 +23,8 @@ type P2PService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewP2PService(cfg *config.Config) (*P2PService, error) {
-	p, err := p2p.NewQlcService(cfg)
+func NewP2PService(cfgFile string) (*P2PService, error) {
+	p, err := p2p.NewQlcService(cfgFile)
 	if err != nil {
 		return nil, err
 	}

@@ -1,14 +1,15 @@
 package pov
 
 import (
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/p2p"
-	"github.com/qlcchain/go-qlc/p2p/protos"
 	"math/big"
 	"math/rand"
 	"sort"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/p2p"
+	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 const (

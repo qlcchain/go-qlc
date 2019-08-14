@@ -1,14 +1,15 @@
 package pov
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/trie"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 type povChainMockData struct {

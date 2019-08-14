@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"os"
@@ -16,39 +16,40 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestNewP2PService(t *testing.T) {
+func TestNewRPCService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	cm := config.NewCfgManager(dir)
+	_, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		_ = os.RemoveAll(dir)
 	}()
-	cfg, err := config.DefaultConfig(dir)
+	ls, err := NewRPCService(cm.ConfigFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := NewP2PService(cfg)
+	err = ls.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = p.Init()
+	if ls.State() != 2 {
+		t.Fatal("rpc init failed")
+	}
+	err = ls.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.State() != 2 {
-		t.Fatal("p2p init failed")
+	if ls.State() != 4 {
+		t.Fatal("rpc start failed")
 	}
-	err = p.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if p.State() != 4 {
-		t.Fatal("p2p start failed")
-	}
-	err = p.Stop()
+	err = ls.Stop()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if p.Status() != 6 {
+	if ls.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
 }

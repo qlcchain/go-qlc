@@ -8,8 +8,8 @@
 package commands
 
 import (
+	"github.com/qlcchain/go-qlc/chain"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 
 	"github.com/abiosoft/ishell"
@@ -46,35 +46,17 @@ func removeDB() {
 }
 
 func removeDBAction() {
-	cfg, err := cmdutil.GetConfig(cfgPathP)
-	if err != nil {
-		cmdutil.Warn(err)
-		return
-	}
-
-	var accounts []*types.Account
-	err = initNode(accounts, cfg)
-	if err != nil {
-		cmdutil.Warn(err)
-		return
-	}
-
-	if ledgerService == nil || ledgerService.Ledger == nil {
-		cmdutil.Warn("ledger service is nil")
-		return
-	}
-
 	cmdutil.Info("starting to remove database, please wait...")
-
+	ledgerService := chain.NewLedgerService(cfgPathP)
 	cmdutil.Info("drop all data in ledger ...")
-	err = ledgerService.Ledger.BatchUpdate(func(txn db.StoreTxn) error {
+	err := ledgerService.Ledger.BatchUpdate(func(txn db.StoreTxn) error {
 		return txn.Drop(nil)
 	})
 	if err != nil {
 		cmdutil.Warn(err)
 		return
 	}
-
+	sqliteService, err := chain.NewSqliteService(cfgPathP)
 	if sqliteService != nil {
 		cmdutil.Info("drop all data in relation ...")
 		err = sqliteService.Relation.EmptyStore()
