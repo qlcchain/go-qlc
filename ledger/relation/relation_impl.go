@@ -2,15 +2,16 @@ package relation
 
 import (
 	"encoding/base64"
+	"github.com/qlcchain/go-qlc/chain/context"
+	"sync"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
-	"sync"
 )
 
 type Relation struct {
@@ -43,13 +44,15 @@ var (
 	relation *Relation
 )
 
-func NewRelation(cfg *config.Config) (*Relation, error) {
+func NewRelation(cfgFile string) (*Relation, error) {
 	var err error
 	once.Do(func() {
 		store := new(db.DBSQL)
+		cc := context.NewChainContext(cfgFile)
+		cfg, _ := cc.Config()
 		store, err = db.NewSQLDB(cfg)
 		relation = &Relation{store: store,
-			eb:            event.GetEventBus(cfg.LedgerDir()),
+			eb:            cc.EventBus(),
 			addBlkChan:    make(chan *types.StateBlock, 65535),
 			deleteBlkChan: make(chan types.Hash, 65535),
 			logger:        log.NewLogger("relation")}
@@ -289,12 +292,12 @@ func (r *Relation) waitDeleteBlocks(hash types.Hash) {
 }
 
 func (r *Relation) SetEvent() error {
-	err := r.eb.Subscribe(string(common.EventAddRelation), r.waitAddBlocks)
+	err := r.eb.Subscribe(common.EventAddRelation, r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Subscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
+	err = r.eb.Subscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
@@ -303,12 +306,12 @@ func (r *Relation) SetEvent() error {
 }
 
 func (r *Relation) UnsubscribeEvent() error {
-	err := r.eb.Unsubscribe(string(common.EventAddRelation), r.waitAddBlocks)
+	err := r.eb.Unsubscribe(common.EventAddRelation, r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Unsubscribe(string(common.EventDeleteRelation), r.waitDeleteBlocks)
+	err = r.eb.Unsubscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err

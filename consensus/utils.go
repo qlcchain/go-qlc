@@ -24,7 +24,12 @@ type BlockSource struct {
 }
 
 func IsAckSignValidate(va *protos.ConfirmAckBlock) bool {
-	hash := va.Blk.GetHash()
-	verify := va.Account.Verify(hash[:], va.Signature[:])
+	hashBytes := make([]byte, 0)
+	for _, h := range va.Hash {
+		hashBytes = append(hashBytes, h[:]...)
+	}
+	signHash, _ := types.HashBytes(hashBytes)
+
+	verify := va.Account.Verify(signHash[:], va.Signature[:])
 	return verify
 }

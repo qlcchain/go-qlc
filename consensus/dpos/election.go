@@ -1,12 +1,11 @@
 package dpos
 
 import (
+	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 type BlockReceivedVotes struct {
@@ -23,36 +22,46 @@ type electionStatus struct {
 type Election struct {
 	vote          *Votes
 	status        electionStatus
-	confirmed     bool
 	dps           *DPoS
 	announcements uint
 	lastTime      int64
+	voteHash      types.Hash //vote for this hash
+	blocks        *sync.Map
+	lock          *sync.Mutex
+	valid         bool
 }
 
-func NewElection(dps *DPoS, block *types.StateBlock) (*Election, error) {
-	vt := NewVotes(block)
+func newElection(dps *DPoS, block *types.StateBlock) *Election {
+	vt := newVotes(block)
+	hash := block.GetHash()
 	status := electionStatus{block, types.ZeroBalance, nil}
 
-	return &Election{
+	el := &Election{
 		vote:          vt,
 		status:        status,
-		confirmed:     false,
 		dps:           dps,
 		announcements: 0,
 		lastTime:      time.Now().Unix(),
-	}, nil
+		voteHash:      types.ZeroHash,
+		blocks:        new(sync.Map),
+		lock:          new(sync.Mutex),
+		valid:         true,
+	}
+
+	el.blocks.Store(hash, block)
+	dps.hash2el.Store(hash, el)
+
+	return el
 }
 
-func (el *Election) voteAction(va *protos.ConfirmAckBlock) {
-	valid := consensus.IsAckSignValidate(va)
-	if !valid {
-		el.dps.logger.Errorf("ack sign err %s", va.Blk.GetHash())
+func (el *Election) voteAction(vi *voteInfo) {
+	if !el.isValid() {
 		return
 	}
 
-	result := el.vote.voteStatus(va)
+	result := el.vote.voteStatus(vi)
 	if result == confirm {
-		el.dps.logger.Infof("recv same ack %s", va.Account.String())
+		el.dps.logger.Infof("recv same ack %s", vi.account)
 		return
 	}
 
@@ -60,6 +69,8 @@ func (el *Election) voteAction(va *protos.ConfirmAckBlock) {
 }
 
 func (el *Election) haveQuorum() {
+	dps := el.dps
+
 	t := el.tally()
 	if !(len(t) > 0) {
 		return
@@ -74,45 +85,35 @@ func (el *Election) haveQuorum() {
 		}
 	}
 
-	//supply := el.getOnlineRepresentativesBalance()
-	supply := common.GenesisBlock().Balance
-	//supply, err := el.getGenesisBalance()
-	//if err != nil {
-	//	return
-	//}
-	b, err := supply.Div(2)
-	if err != nil {
-		return
-	}
-
 	confirmedHash := blk.GetHash()
-	if balance.Compare(b) == types.BalanceCompBigger {
-		el.dps.logger.Infof("hash:%s block has confirmed,total vote is [%s]", confirmedHash, balance.String())
+	if balance.Compare(el.dps.voteThreshold) == types.BalanceCompBigger {
+		if !el.ifValidAndSetInvalid() {
+			return
+		}
 
-		el.dps.acTrx.roots.Delete(el.vote.id)
-		el.dps.acTrx.updatePerfTime(blk.GetHash(), time.Now().UnixNano(), true)
+		dps.acTrx.roots.Delete(el.vote.id)
+		el.dps.logger.Infof("hash:%s block has confirmed,total vote is [%s]", confirmedHash, balance)
+		dps.acTrx.updatePerfTime(blk.GetHash(), time.Now().UnixNano(), true)
 
-		if el.status.winner.GetHash().String() != confirmedHash.String() {
-			el.dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash().String())
+		if el.status.winner.GetHash() != confirmedHash {
+			dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash().String())
 			el.status.loser = append(el.status.loser, el.status.winner)
 		}
 
-		el.status.winner = blk
-		el.confirmed = true
-		el.status.tally = balance
-
 		for _, value := range t {
-			if value.block.GetHash().String() != confirmedHash.String() {
+			thash := value.block.GetHash()
+			if thash != confirmedHash {
 				el.status.loser = append(el.status.loser, value.block)
 			}
 		}
 
-		el.dps.acTrx.rollBack(el.status.loser)
-		el.dps.acTrx.addWinner2Ledger(blk)
-		el.dps.blocksAcked <- blk.GetHash()
-		el.dps.eb.Publish(string(common.EventConfirmedBlock), blk)
+		el.cleanBlockInfo()
+		dps.acTrx.rollBack(el.status.loser)
+		dps.acTrx.addWinner2Ledger(blk)
+		dps.dispatchAckedBlock(blk, confirmedHash, -1)
+		dps.eb.Publish(common.EventConfirmedBlock, blk)
 	} else {
-		el.dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance.String())
+		dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance)
 	}
 }
 
@@ -121,12 +122,16 @@ func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 	var hash types.Hash
 
 	el.vote.repVotes.Range(func(key, value interface{}) bool {
-		hash = value.(*protos.ConfirmAckBlock).Blk.GetHash()
+		hash = value.(*voteInfo).hash
 
 		if _, ok := totals[hash]; !ok {
-			totals[hash] = &BlockReceivedVotes{
-				block:   value.(*protos.ConfirmAckBlock).Blk,
-				balance: types.ZeroBalance,
+			if block, ok := el.blocks.Load(hash); ok {
+				totals[hash] = &BlockReceivedVotes{
+					block:   block.(*types.StateBlock),
+					balance: types.ZeroBalance,
+				}
+			} else {
+				return true
 			}
 		}
 
@@ -141,10 +146,10 @@ func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 
 func (el *Election) getOnlineRepresentativesBalance() types.Balance {
 	b := types.ZeroBalance
-	reps := el.dps.GetOnlineRepresentatives()
+	reps := el.dps.getOnlineRepresentatives()
 
 	for _, addr := range reps {
-		if b1, err := el.dps.ledger.GetRepresentation(addr); err != nil {
+		if b1, _ := el.dps.ledger.GetRepresentation(addr); b1 != nil {
 			b = b.Add(b1.Total)
 		}
 	}
@@ -155,4 +160,27 @@ func (el *Election) getOnlineRepresentativesBalance() types.Balance {
 func (el *Election) getGenesisBalance() (types.Balance, error) {
 	genesis := common.GenesisBlock()
 	return genesis.Balance, nil
+}
+
+func (el *Election) ifValidAndSetInvalid() bool {
+	el.lock.Lock()
+	defer el.lock.Unlock()
+	valid := el.valid
+	el.valid = false
+	return valid
+}
+
+func (el *Election) isValid() bool {
+	el.lock.Lock()
+	defer el.lock.Unlock()
+	return el.valid
+}
+
+func (el *Election) cleanBlockInfo() {
+	el.blocks.Range(func(key, value interface{}) bool {
+		h := key.(types.Hash)
+		el.dps.hash2el.Delete(h)
+		el.dps.unsubAckDo(h)
+		return true
+	})
 }

@@ -106,7 +106,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		Link:           types.Hash(types.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
-		Timestamp:      common.TimeNow().UTC().Unix(),
+		Timestamp:      common.TimeNow().Unix(),
 	}
 
 	err = p.pledge.DoSend(vmstore.NewVMContext(p.ledger), send)
@@ -127,7 +127,7 @@ func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 		return nil, err
 	}
 	if len(blocks) > 0 {
-		reward.Timestamp = common.TimeNow().UTC().Unix()
+		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		reward.Extra = *h
 		return reward, nil
@@ -201,7 +201,7 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 		Link:           types.Hash(types.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
-		Timestamp:      common.TimeNow().UTC().Unix(),
+		Timestamp:      common.TimeNow().Unix(),
 	}
 
 	switch strings.ToLower(param.PType) {
@@ -237,7 +237,7 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 		return nil, err
 	}
 	if len(blocks) > 0 {
-		reward.Timestamp = common.TimeNow().UTC().Unix()
+		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		reward.Extra = *h
 		return reward, nil

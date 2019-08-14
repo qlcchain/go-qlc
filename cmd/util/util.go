@@ -10,11 +10,8 @@ package util
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/abiosoft/ishell"
 	"github.com/fatih/color"
@@ -162,30 +159,3 @@ func Warn(a ...interface{}) {
 	warnPrefix()
 	fmt.Println(a...)
 }
-
-func GetConfig(pathName string) (*config.Config, error) {
-	var cm *config.CfgManager
-	var err error
-	if pathName == "" {
-		pathName = config.DefaultDataDir()
-		cm = config.NewCfgManager(pathName)
-	} else {
-		cm = config.NewCfgManagerWithName(filepath.Dir(pathName), filepath.Base(pathName))
-
-	}
-	cfg, err := cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4())
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
-}
-
-//
-//func blackPrefix() {
-//	shell.Printf("    ")
-//}
-//
-//func black(a ...interface{}) {
-//	blackPrefix()
-//	shell.Println(a...)
-//}

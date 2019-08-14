@@ -4,18 +4,19 @@ type TopicType string
 
 //Topic type
 const (
-	EventPublish        TopicType = "publish"
-	EventConfirmReq     TopicType = "confirmReq"
-	EventConfirmAck     TopicType = "confirmAck"
-	EventSyncBlock      TopicType = "syncBlock"
-	EventConfirmedBlock TopicType = "confirmedBlock"
-	EventBroadcast      TopicType = "broadcast"
-	EventSendMsgToPeers TopicType = "sendMsgToPeers"
-	EventPeersInfo      TopicType = "peersInfo"
-	EventSyncing        TopicType = "syncing"
-	EventAddRelation    TopicType = "addRelation"
-	EventDeleteRelation TopicType = "deleteRelation"
-	EventGenerateBlock  TopicType = "generateBlock"
+	EventPublish           TopicType = "publish"
+	EventConfirmReq        TopicType = "confirmReq"
+	EventConfirmAck        TopicType = "confirmAck"
+	EventSyncBlock         TopicType = "syncBlock"
+	EventConfirmedBlock    TopicType = "confirmedBlock"
+	EventBroadcast         TopicType = "broadcast"
+	EventSendMsgToPeers    TopicType = "sendMsgToPeers"
+	EventPeersInfo         TopicType = "peersInfo"
+	EventSyncing           TopicType = "syncing"
+	EventAddRelation       TopicType = "addRelation"
+	EventDeleteRelation    TopicType = "deleteRelation"
+	EventGenerateBlock     TopicType = "generateBlock"
+	EventRollbackUnchecked TopicType = "rollbackUnchecked"
 
 	EventSendMsgToSingle TopicType = "sendMsgToSingle"
 	EventAddP2PStream    TopicType = "addP2PStream"
@@ -34,25 +35,23 @@ const (
 	SyncNotStart SyncState = iota
 	Syncing
 	Syncdone
-	Syncerr
 )
 
 var syncStatus = [...]string{
-	SyncNotStart: "Sync Not Start",
+	SyncNotStart: "SyncNotStart",
 	Syncing:      "Synchronising",
-	Syncdone:     "Sync done",
-	Syncerr:      "Sync error",
+	Syncdone:     "Syncdone",
 }
 
 func (s SyncState) String() string {
-	if s > Syncerr {
+	if s > Syncdone {
 		return "unknown sync state"
 	}
 	return syncStatus[s]
 }
 
 func (s SyncState) IsSyncExited() bool {
-	if s == Syncdone || s == Syncerr {
+	if s == Syncdone {
 		return true
 	}
 

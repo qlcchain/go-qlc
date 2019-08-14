@@ -4,6 +4,7 @@ package test
 
 import (
 	"encoding/hex"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -13,7 +14,7 @@ import (
 var beneficial = "dd20a386c735a077206619eca312072ad19266a161b8269d2f9b49785a3afde95d56683fb3f03c259dc0a703645ae0fb4f883d492d059665e4dee58c56c4e853"
 
 func TestMintage(t *testing.T) {
-	teardownTestCase, client, _, err := generateChain()
+	teardownTestCase, client, ls, err := generateChain()
 	defer func() {
 		if err := teardownTestCase(); err != nil {
 			t.Fatal(err)
@@ -54,9 +55,16 @@ func TestMintage(t *testing.T) {
 	var w types.Work
 	worker, _ := types.NewWorker(w, send.Root())
 	send.Work = worker.NewWork()
-	err = client.Call(nil, "ledger_process", &send)
-	if err != nil {
-		t.Fatal(err)
+	//err = client.Call(nil, "ledger_process", &send)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//t.Log(send.GetHash().String())
+	//t.Log(send.String())
+	lv := process.NewLedgerVerifier(ls.Ledger)
+	result, err := lv.Process(&send)
+	if result != process.Progress {
+		t.Fatal("block check error for send")
 	}
 	reward := types.StateBlock{}
 	err = client.Call(&reward, "mintage_getRewardBlock", &send)
@@ -64,14 +72,14 @@ func TestMintage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	reward.Signature = b.Sign(reward.GetHash())
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
-	err = client.Call(nil, "ledger_process", &reward)
-	if err != nil {
-		t.Fatal(err)
+
+	result, err = lv.Process(&reward)
+	if result != process.Progress {
+		t.Fatal("block check error for reward")
 	}
 	var ts []*types.TokenInfo
 	err = client.Call(&ts, "ledger_tokens")

@@ -218,7 +218,7 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 			Link:           types.Hash(types.RewardsAddress),
 			Representative: param.tm.Representative,
 			Data:           singedData,
-			Timestamp:      common.TimeNow().UTC().Unix(),
+			Timestamp:      common.TimeNow().Unix(),
 		}, nil
 	} else {
 		return nil, err
@@ -247,7 +247,7 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 	}
 	if err == nil {
 		if len(result) > 0 {
-			rev.Timestamp = common.TimeNow().UTC().Unix()
+			rev.Timestamp = common.TimeNow().Unix()
 			h := result[0].VMContext.Cache.Trie().Hash()
 			if h != nil {
 				rev.Extra = *h

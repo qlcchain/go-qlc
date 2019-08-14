@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/dgraph-io/badger"
@@ -148,7 +149,10 @@ func (m MigrationV4ToV5) Migrate(txn db.StoreTxn) error {
 			return err
 		}
 		for k, v := range bas {
-			key := getRepresentationKey(k)
+			key, err := getKeyOfParts(idPrefixRepresentation, k)
+			if err != nil {
+				return err
+			}
 			benefit := new(types.Benefit)
 			benefit.Balance = v
 			benefit.Storage = types.ZeroBalance
@@ -187,8 +191,10 @@ func (m MigrationV4ToV5) Migrate(txn db.StoreTxn) error {
 				am.CoinStorage = types.ZeroBalance
 				am.CoinOracle = types.ZeroBalance
 				am.CoinVote = types.ZeroBalance
-
-				amKey := getAccountMetaKey(am.Address)
+				amKey, err := getKeyOfParts(idPrefixAccount, am.Address)
+				if err != nil {
+					return err
+				}
 				amBytes, err := am.MarshalMsg(nil)
 				if err != nil {
 					return err
@@ -212,6 +218,76 @@ func (m MigrationV4ToV5) EndVersion() int {
 	return 5
 }
 
+type MigrationV5ToV6 struct {
+}
+
+func (m MigrationV5ToV6) Migrate(txn db.StoreTxn) error {
+	b, err := checkVersion(m, txn)
+	if err != nil {
+		return err
+	}
+	if b {
+		fmt.Println("migrate ledger v5 to v6")
+		newChild := make(map[types.Hash]types.Hash)
+		err = txn.Iterator(idPrefixChild, func(key []byte, val []byte, b byte) error {
+			children := make(map[types.Hash]int)
+			if err := json.Unmarshal(val, &children); err == nil {
+				keyHash, err := types.BytesToHash(key[1:])
+				if err != nil {
+					return err
+				}
+				if len(children) == 1 {
+					for k, v := range children {
+						if v == 0 {
+							newChild[keyHash] = k
+						} else {
+							newChild[keyHash] = types.ZeroHash
+						}
+					}
+				} else {
+					for k, v := range children {
+						if v == 0 {
+							newChild[keyHash] = k
+						}
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		for k, v := range newChild {
+			pKey := getKeyOfHash(k, idPrefixChild)
+			if v == types.ZeroHash {
+				if err := txn.Delete(pKey); err != nil {
+					return err
+				}
+			} else {
+				val, err := v.MarshalMsg(nil)
+				if err != nil {
+					return err
+				}
+				if err := txn.Set(pKey, val); err != nil {
+					return err
+				}
+			}
+		}
+
+		return updateVersion(m, txn)
+	}
+	return nil
+}
+
+func (m MigrationV5ToV6) StartVersion() int {
+	return 5
+}
+
+func (m MigrationV5ToV6) EndVersion() int {
+	return 6
+}
+
 func checkVersion(m db.Migration, txn db.StoreTxn) (bool, error) {
 	v, err := getVersion(txn)
 	if err != nil {
@@ -229,4 +305,28 @@ func updateVersion(m db.Migration, txn db.StoreTxn) error {
 	}
 	//fmt.Printf("update ledger version %d to %d successfully\n ", m.StartVersion(), m.EndVersion())
 	return nil
+}
+
+type MigrationV6ToV7 struct {
+}
+
+func (m MigrationV6ToV7) Migrate(txn db.StoreTxn) error {
+	if b, err := checkVersion(m, txn); err == nil && b {
+		fmt.Println("migrate ledger v6 to v7")
+		if err := txn.Drop(nil); err == nil {
+			return updateVersion(m, txn)
+		} else {
+			return err
+		}
+	} else {
+		return err
+	}
+}
+
+func (m MigrationV6ToV7) StartVersion() int {
+	return 6
+}
+
+func (m MigrationV6ToV7) EndVersion() int {
+	return 7
 }

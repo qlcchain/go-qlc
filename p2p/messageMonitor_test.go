@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"github.com/qlcchain/go-qlc/chain/context"
 	"math"
 	"os"
 	"path/filepath"
@@ -17,14 +18,15 @@ import (
 
 func Test_MessageService_Stop(t *testing.T) {
 	//node config
-	dir1 := filepath.Join(config.QlcTestDataDir())
-	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19739"
-	cfgFile1.P2P.Discovery.MDNSEnabled = false
-	cfgFile1.P2P.BootNodes = []string{}
+	dir1 := filepath.Join(config.QlcTestDataDir(), config.QlcConfigFile)
+	cc1 := context.NewChainContext(dir1)
+	cfg, _ := cc1.Config()
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19739"
+	cfg.P2P.Discovery.MDNSEnabled = false
+	cfg.P2P.BootNodes = []string{}
 
 	//start node
-	node, err := NewQlcService(cfgFile1)
+	node, err := NewQlcService(dir1)
 	if node == nil {
 		t.Fatal(err)
 	}
@@ -159,7 +161,7 @@ func Test_MarshalMessage(t *testing.T) {
 	var va protos.ConfirmAckBlock
 	a := mock.Account()
 	va.Sequence = 0
-	va.Blk = blk
+	va.Hash = append(va.Hash, blk.GetHash())
 	va.Account = a.Address()
 	va.Signature = a.Sign(blk.GetHash())
 	data5, err := marshalMessage(ConfirmAck, &va)
@@ -247,45 +249,48 @@ func Test_MarshalMessage(t *testing.T) {
 
 func Test_SendMessage(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile, _ := config.DefaultConfig(dir)
-	cfgFile.P2P.Listen = "/ip4/127.0.0.1/tcp/19740"
-	cfgFile.P2P.Discovery.MDNSEnabled = false
-	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/127.0.0.1/tcp/19740/ipfs/" + cfgFile.P2P.ID.PeerID
+	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc := context.NewChainContext(dir)
+	cfg, _ := cc.Config()
+	b := "/ip4/127.0.0.1/tcp/19740/ipfs/" + cfg.P2P.ID.PeerID
+	cfg.P2P.BootNodes = []string{}
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19740"
+	cfg.P2P.Discovery.MDNSEnabled = false
 
 	//start bootNode
-	node, err := NewQlcService(cfgFile)
+	node, err := NewQlcService(dir)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
-	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.P2P.Discovery.MDNSEnabled = false
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
+	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc1 := context.NewChainContext(dir1)
+	cfg1, _ := cc1.Config()
+	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
+	cfg1.P2P.BootNodes = []string{b}
+	cfg1.P2P.Discovery.MDNSEnabled = false
+	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//start1 node
-	node1, err := NewQlcService(cfgFile1)
+	node1, err := NewQlcService(dir1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
-	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.P2P.Discovery.MDNSEnabled = false
-	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
+	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc2 := context.NewChainContext(dir2)
+	cfg2, _ := cc2.Config()
+	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
+	cfg2.P2P.BootNodes = []string{b}
+	cfg2.P2P.Discovery.MDNSEnabled = false
+	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2)
+	node2, err := NewQlcService(dir2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -342,7 +347,7 @@ func Test_SendMessage(t *testing.T) {
 	node2.msgService.Stop()
 	blk := mock.StateBlockWithoutWork()
 	//test send message to peers
-	peerID := cfgFile2.P2P.ID.PeerID
+	peerID := cfg2.P2P.ID.PeerID
 	err = node1.SendMessageToPeer(PublishReq, blk, peerID)
 	if err != nil {
 		t.Fatal(err)
@@ -398,59 +403,63 @@ func Test_SendMessage(t *testing.T) {
 
 func Test_MessageCache(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile, _ := config.DefaultConfig(dir)
-	cfgFile.P2P.Listen = "/ip4/127.0.0.1/tcp/19743"
-	cfgFile.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19743/ipfs/" + cfgFile.P2P.ID.PeerID
+	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc := context.NewChainContext(dir)
+	cfg, _ := cc.Config()
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19743"
+	cfg.P2P.BootNodes = []string{}
+	b := "/ip4/0.0.0.0/tcp/19743/ipfs/" + cfg.P2P.ID.PeerID
 
 	//start bootNode
-	node, err := NewQlcService(cfgFile)
+	node, err := NewQlcService(dir)
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19744"
-	cfgFile1.P2P.BootNodes = []string{b}
-	cfgFile1.P2P.Discovery.MDNSEnabled = false
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 1
+	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc1 := context.NewChainContext(dir1)
+	cfg1, _ := cc1.Config()
+	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19744"
+	cfg1.P2P.BootNodes = []string{b}
+	cfg1.P2P.Discovery.MDNSEnabled = false
+	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//start1 node
-	node1, err := NewQlcService(cfgFile1)
+	node1, err := NewQlcService(dir1)
 	err = node1.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19745"
-	cfgFile2.P2P.BootNodes = []string{b}
-	cfgFile2.P2P.Discovery.MDNSEnabled = false
-	cfgFile2.P2P.Discovery.DiscoveryInterval = 1
+	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc2 := context.NewChainContext(dir2)
+	cfg2, _ := cc2.Config()
+	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19745"
+	cfg2.P2P.BootNodes = []string{b}
+	cfg2.P2P.Discovery.MDNSEnabled = false
+	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node2, err := NewQlcService(cfgFile2)
+	node2, err := NewQlcService(dir2)
 	err = node2.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//node3 config
-	dir3 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
-	cfgFile3, _ := config.DefaultConfig(dir3)
-	cfgFile3.P2P.Listen = "/ip4/127.0.0.1/tcp/19746"
-	cfgFile3.P2P.BootNodes = []string{b}
-	cfgFile3.P2P.Discovery.MDNSEnabled = false
-	cfgFile3.P2P.Discovery.DiscoveryInterval = 1
+	dir3 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc3 := context.NewChainContext(dir3)
+	cfg3, _ := cc3.Config()
+	cfg3.P2P.Listen = "/ip4/127.0.0.1/tcp/19746"
+	cfg3.P2P.BootNodes = []string{b}
+	cfg3.P2P.Discovery.MDNSEnabled = false
+	cfg3.P2P.Discovery.DiscoveryInterval = 1
 
 	//start node2
-	node3, err := NewQlcService(cfgFile3)
+	node3, err := NewQlcService(dir3)
 	err = node3.Start()
 	if err != nil {
 		t.Fatal(err)

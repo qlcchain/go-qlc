@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/qlcchain/go-qlc/common"
 	"log"
 	"sort"
 
@@ -28,6 +29,8 @@ type BadgerStoreTxn struct {
 // NewBadgerStore initializes/opens a badger database in the given directory.
 func NewBadgerStore(dir string) (Store, error) {
 	opts := badger.DefaultOptions(dir)
+
+	opts.MaxTableSize = common.BadgerMaxTableSize
 	opts.Logger = nil
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
 	_ = util.CreateDirIfNotExist(dir)
@@ -150,22 +153,6 @@ func (t *BadgerStoreTxn) PrefixIterator(prefix []byte, fn func([]byte, []byte, b
 		err := item.Value(func(val []byte) error {
 			return fn(key, val, item.UserMeta())
 		})
-
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *BadgerStoreTxn) KeyIterator(prefix []byte, fn func([]byte) error) error {
-	it := t.txn.NewKeyIterator(prefix, badger.DefaultIteratorOptions)
-	defer it.Close()
-
-	for it.Rewind(); it.Valid(); it.Next() {
-		item := it.Item()
-		key := item.Key()
-		err := fn(key)
 
 		if err != nil {
 			return err

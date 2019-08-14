@@ -11,11 +11,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/wallet"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
-	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/spf13/cobra"
 )
 
@@ -70,19 +73,31 @@ func walletimport() {
 }
 
 func importWallet(seedP string) error {
-	cfg, err := cmdutil.GetConfig(cfgPathP)
+	chain := context.NewChainContext(cfgPathP)
+	defer func() {
+		if chain != nil {
+			_ = chain.Destroy()
+			ledger.CloseLedger()
+		}
+	}()
+	cm, err := chain.ConfigManager()
 	if err != nil {
 		return err
 	}
-	if len(seedP) == 0 {
+	if len(seedP) != types.SeedSize {
 		return errors.New("invalid seed")
 	}
-	var accounts []*types.Account
-	err = initNode(accounts, cfg)
+	cfg, err := cm.Config()
 	if err != nil {
 		return err
 	}
-	w := walletService.Wallet
+	w := wallet.NewWalletStore(cfg)
+	defer func() {
+		if w != nil {
+			_ = w.Close()
+		}
+	}()
+
 	addr, err := w.NewWalletBySeed(seedP, passwordP)
 	if err != nil {
 		return err

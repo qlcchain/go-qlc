@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"os"
@@ -16,24 +16,34 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestNewLedgerService(t *testing.T) {
+func TestSqliteService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	defer func() {
-		_ = os.RemoveAll(dir)
-	}()
-	cfg, err := config.DefaultConfig(dir)
+	cm := config.NewCfgManager(dir)
+	_, err := cm.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	ls := NewLedgerService(cfg)
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
+	ls, err := NewSqliteService(cm.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = ls.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ls.State() != 2 {
-		t.Fatal("ledger init failed")
+		t.Fatal("service init failed")
 	}
-	_ = ls.Start()
+	err = ls.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ls.State() != 4 {
+		t.Fatal("service start failed")
+	}
 	err = ls.Stop()
 	if err != nil {
 		t.Fatal(err)

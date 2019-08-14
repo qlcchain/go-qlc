@@ -4,6 +4,7 @@ package test
 
 import (
 	"encoding/hex"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -63,16 +64,24 @@ func TestPledge(t *testing.T) {
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
-
-	err = client.Call(nil, "ledger_process", &send)
-	if err != nil {
-		t.Fatal(err)
+	lv := process.NewLedgerVerifier(ls.Ledger)
+	r, _ := lv.Process(&send)
+	if r != process.Progress {
+		t.Fatal("process send block error")
 	}
-
-	err = client.Call(nil, "ledger_process", &reward)
-	if err != nil {
-		t.Fatal(err)
+	r, _ = lv.Process(&reward)
+	if r != process.Progress {
+		t.Fatal("process reward block error")
 	}
+	//err = client.Call(nil, "ledger_process", &send)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//
+	//err = client.Call(nil, "ledger_process", &reward)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
 	tm, err := ls.Ledger.GetAccountMeta(b.Address())
 	if !tm.CoinVote.Equal(am) {
 		t.Fatal("get voting fail")

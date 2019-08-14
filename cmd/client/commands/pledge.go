@@ -10,6 +10,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/crypto/random"
 
 	rpc "github.com/qlcchain/jsonrpc2"

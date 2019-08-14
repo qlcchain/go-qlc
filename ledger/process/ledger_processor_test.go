@@ -27,6 +27,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	l := ledger.NewLedger(dir)
+	fmt.Println(dir)
 
 	return func(t *testing.T) {
 		//err := l.db.Erase()
@@ -52,11 +53,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 func TestLedger_Rollback(t *testing.T) {
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
-	genesis := common.GenesisBlock()
 	var bc, _ = mock.BlockChain()
-	if err := lv.l.AddStateBlock(&genesis); err != nil {
-		t.Fatal(err)
-	}
 	if err := lv.BlockProcess(bc[0]); err != nil {
 		t.Fatal(err)
 	}

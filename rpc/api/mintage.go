@@ -95,7 +95,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		Link:           types.Hash(types.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,
-		Timestamp:      common.TimeNow().UTC().Unix(),
+		Timestamp:      common.TimeNow().Unix(),
 	}
 
 	vmContext := vmstore.NewVMContext(m.ledger)
@@ -118,7 +118,7 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 		return nil, err
 	}
 	if len(blocks) > 0 {
-		reward.Timestamp = common.TimeNow().UTC().Unix()
+		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		if h == nil {
 			return nil, errors.New("trie hash is nil")
@@ -165,7 +165,7 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		Link:           types.Hash(types.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,
-		Timestamp:      common.TimeNow().UTC().Unix(),
+		Timestamp:      common.TimeNow().Unix(),
 	}
 	vmContext := vmstore.NewVMContext(m.ledger)
 	err = m.withdraw.DoSend(vmContext, send)
@@ -188,7 +188,7 @@ func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 	}
 
 	if len(blocks) > 0 {
-		reward.Timestamp = common.TimeNow().UTC().Unix()
+		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		reward.Extra = *h
 		return reward, nil

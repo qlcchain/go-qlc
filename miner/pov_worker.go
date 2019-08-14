@@ -1,6 +1,9 @@
 package miner
 
 import (
+	"runtime"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -8,8 +11,6 @@ import (
 	"github.com/qlcchain/go-qlc/consensus/pov"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
-	"runtime"
-	"time"
 )
 
 const (

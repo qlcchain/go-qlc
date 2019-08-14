@@ -5,19 +5,17 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/consensus/pov"
 
-	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/consensus/pov"
 
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 )
 
 type PoVService struct {
@@ -26,8 +24,8 @@ type PoVService struct {
 	logger    *zap.SugaredLogger
 }
 
-func NewPoVService(cfg *config.Config, accounts []*types.Account) *PoVService {
-	povEngine, _ := pov.NewPovEngine(cfg, accounts)
+func NewPoVService(cfgFile string) *PoVService {
+	povEngine, _ := pov.NewPovEngine(cfgFile)
 	return &PoVService{
 		povEngine: povEngine,
 		logger:    log.NewLogger("pov_service"),

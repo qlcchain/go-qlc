@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
@@ -19,11 +20,13 @@ type Miner struct {
 	syncState common.SyncState
 }
 
-func NewMiner(cfg *config.Config, povEngine *pov.PoVEngine) *Miner {
+func NewMiner(cfgFile string, povEngine *pov.PoVEngine) *Miner {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
 	miner := &Miner{
 		logger:    log.NewLogger("miner"),
 		cfg:       cfg,
-		eb:        event.GetEventBus(cfg.LedgerDir()),
+		eb:        cc.EventBus(),
 		povEngine: povEngine,
 	}
 
@@ -48,7 +51,7 @@ func (miner *Miner) Init() error {
 func (miner *Miner) Start() error {
 	miner.logger.Info("start miner service")
 
-	err := miner.eb.SubscribeSync(string(common.EventPovSyncState), miner.onRecvPovSyncState)
+	err := miner.eb.SubscribeSync(common.EventPovSyncState, miner.onRecvPovSyncState)
 	if err != nil {
 		return err
 	}

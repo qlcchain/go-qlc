@@ -14,15 +14,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/google/uuid"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {

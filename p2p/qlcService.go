@@ -1,11 +1,11 @@
 package p2p
 
 import (
+	"github.com/qlcchain/go-qlc/chain/context"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 )
 
@@ -18,7 +18,9 @@ type QlcService struct {
 }
 
 // NewQlcService create netService
-func NewQlcService(cfg *config.Config) (*QlcService, error) {
+func NewQlcService(cfgFile string) (*QlcService, error) {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
 	node, err := NewNode(cfg)
 	if err != nil {
 		return nil, err
@@ -26,7 +28,7 @@ func NewQlcService(cfg *config.Config) (*QlcService, error) {
 	ns := &QlcService{
 		node:       node,
 		dispatcher: NewDispatcher(),
-		msgEvent:   event.GetEventBus(cfg.LedgerDir()),
+		msgEvent:   cc.EventBus(),
 	}
 	node.SetQlcService(ns)
 	l := ledger.NewLedger(cfg.LedgerDir())
@@ -70,27 +72,27 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-	err := ns.msgEvent.Subscribe(string(common.EventBroadcast), ns.Broadcast)
+	err := ns.msgEvent.Subscribe(common.EventBroadcast, ns.Broadcast)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToPeers), ns.SendMessageToPeers)
+	err = ns.msgEvent.Subscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(string(common.EventSendMsgToSingle), ns.SendMessageToPeer)
+	err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeSync(string(common.EventPeersInfo), ns.node.streamManager.GetAllConnectPeersInfo)
+	err = ns.msgEvent.SubscribeSync(common.EventPeersInfo, ns.node.streamManager.GetAllConnectPeersInfo)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(string(common.EventSyncing), ns.msgService.syncService.LastSyncTime)
+	err = ns.msgEvent.Subscribe(common.EventSyncing, ns.msgService.syncService.LastSyncTime)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
@@ -99,17 +101,17 @@ func (ns *QlcService) setEvent() error {
 }
 
 func (ns *QlcService) unsubscribeEvent() error {
-	err := ns.msgEvent.Unsubscribe(string(common.EventBroadcast), ns.Broadcast)
+	err := ns.msgEvent.Unsubscribe(common.EventBroadcast, ns.Broadcast)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToPeers), ns.SendMessageToPeers)
+	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(string(common.EventSendMsgToSingle), ns.SendMessageToPeer)
+	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err

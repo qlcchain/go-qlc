@@ -6,6 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/qlcchain/go-qlc/common"
 	"sync"
 )
 
@@ -66,6 +67,7 @@ func (s *Stream) Connect() error {
 	//s.node.logger.Info("connect success to :", s.pid.Pretty())
 	s.stream = stream
 	s.addr = stream.Conn().RemoteMultiaddr()
+
 	return nil
 }
 
@@ -103,6 +105,9 @@ func (s *Stream) readLoop() {
 
 	}
 	s.node.logger.Info("connect ", s.pid.Pretty(), " success")
+
+	s.node.netService.MessageEvent().Publish(common.EventAddP2PStream, s.pid.Pretty())
+
 	// loop.
 	buf := make([]byte, 1024*4)
 	messageBuffer := make([]byte, 0)
@@ -197,6 +202,10 @@ func (s *Stream) close() error {
 	//s.syncMutex.Lock()
 	//defer s.syncMutex.Unlock()
 	//s.node.logger.Info("Closing stream.")
+
+	if s.stream != nil {
+		s.node.netService.MessageEvent().Publish(common.EventDeleteP2PStream, s.pid.Pretty())
+	}
 
 	// cleanup.
 	s.node.streamManager.RemoveStream(s)

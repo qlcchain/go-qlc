@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"github.com/qlcchain/go-qlc/common"
 	"sync"
 	"time"
 
@@ -25,12 +26,12 @@ func NewDispatcher() *Dispatcher {
 	dp := &Dispatcher{
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
-		receivedMessageCh: make(chan *Message, 655350),
+		receivedMessageCh: make(chan *Message, common.P2PMsgChanSize),
 		filters:           make(map[MessageType]bool),
 		logger:            log.NewLogger("dispatcher"),
 	}
 
-	dp.dispatchedMessages, _ = lru.New(51200)
+	dp.dispatchedMessages, _ = lru.New(common.P2PMsgCacheSize)
 
 	return dp
 }

@@ -1,8 +1,7 @@
 package consensus
 
 import (
-	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
@@ -27,12 +26,15 @@ type Consensus struct {
 
 var GlobalUncheckedBlockNum atomic.Uint64
 
-func NewConsensus(ca ConsensusAlgorithm, cfg *config.Config, eb event.EventBus) *Consensus {
+func NewConsensus(ca ConsensusAlgorithm, cfgFile string) *Consensus {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+
 	l := ledger.NewLedger(cfg.LedgerDir())
 
 	return &Consensus{
 		ca:       ca,
-		recv:     NewReceiver(eb),
+		recv:     NewReceiver(cc.EventBus()),
 		logger:   log.NewLogger("consensus"),
 		ledger:   l,
 		verifier: process.NewLedgerVerifier(l),

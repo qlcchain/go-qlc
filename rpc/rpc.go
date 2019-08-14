@@ -2,11 +2,13 @@ package rpc
 
 import (
 	"errors"
-	rpc "github.com/qlcchain/jsonrpc2"
 	"net"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/chain/context"
+	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
@@ -44,17 +46,20 @@ type RPC struct {
 	logger   *zap.SugaredLogger
 }
 
-func NewRPC(cfg *config.Config) (*RPC, error) {
-	rl, err := relation.NewRelation(cfg)
+func NewRPC(cfgFile string) (*RPC, error) {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+
+	rl, err := relation.NewRelation(cfgFile)
 	if err != nil {
 		return nil, err
 	}
-	dir := cfg.LedgerDir()
+
 	r := RPC{
-		ledger:   ledger.NewLedger(dir),
+		ledger:   ledger.NewLedger(cfg.LedgerDir()),
 		wallet:   wallet.NewWalletStore(cfg),
 		relation: rl,
-		eb:       event.GetEventBus(dir),
+		eb:       cc.EventBus(),
 		config:   cfg,
 		logger:   log.NewLogger("rpc"),
 	}
@@ -180,6 +185,7 @@ func (r *RPC) startInProcess(apis []rpc.API) error {
 		}
 		//r.logger.Debug("InProc registered ", "service ", api.Service, " namespace ", api.Namespace)
 	}
+	r.logger.Info("InProc start successfully")
 	r.inProcessHandler = handler
 	return nil
 }

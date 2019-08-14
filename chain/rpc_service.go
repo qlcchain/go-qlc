@@ -5,14 +5,13 @@
  * https://opensource.org/licenses/MIT
  */
 
-package services
+package chain
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/rpc"
 	"go.uber.org/zap"
@@ -24,8 +23,8 @@ type RPCService struct {
 	logger *zap.SugaredLogger
 }
 
-func NewRPCService(cfg *config.Config) (*RPCService, error) {
-	rpc, err := rpc.NewRPC(cfg)
+func NewRPCService(cfgFile string) (*RPCService, error) {
+	rpc, err := rpc.NewRPC(cfgFile)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -35,7 +34,7 @@ func NewRPCService(cfg *config.Config) (*RPCService, error) {
 
 func (rs *RPCService) Init() error {
 	if !rs.PreInit() {
-		return errors.New("pre init fail.")
+		return errors.New("pre init fail")
 	}
 	defer rs.PostInit()
 
@@ -44,7 +43,7 @@ func (rs *RPCService) Init() error {
 
 func (rs *RPCService) Start() error {
 	if !rs.PreStart() {
-		return errors.New("pre start fail.")
+		return errors.New("pre start fail")
 	}
 	err := rs.rpc.StartRPC()
 	if err != nil {

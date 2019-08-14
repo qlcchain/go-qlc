@@ -1,26 +1,26 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/p2p/protos"
+	"github.com/qlcchain/go-qlc/p2p"
 )
 
 const (
-	confirmTimeout = 1800
+	confirmReqMaxTimes = 30
+	confirmReqInterval = 60
 )
 
-type voteKey [1 + types.HashSize]byte
+type voteKey [types.HashSize]byte
 
 type ActiveTrx struct {
-	confirmed electionStatus
-	dps       *DPoS
-	roots     *sync.Map
-	quitCh    chan bool
-	perfCh    chan *PerformanceTime
+	dps    *DPoS
+	roots  *sync.Map
+	quitCh chan bool
+	perfCh chan *PerformanceTime
 }
 
 type PerformanceTime struct {
@@ -29,7 +29,7 @@ type PerformanceTime struct {
 	confirmed bool
 }
 
-func NewActiveTrx() *ActiveTrx {
+func newActiveTrx() *ActiveTrx {
 	return &ActiveTrx{
 		roots:  new(sync.Map),
 		quitCh: make(chan bool, 1),
@@ -37,12 +37,12 @@ func NewActiveTrx() *ActiveTrx {
 	}
 }
 
-func (act *ActiveTrx) SetDposService(dps *DPoS) {
+func (act *ActiveTrx) setDposService(dps *DPoS) {
 	act.dps = dps
 }
 
 func (act *ActiveTrx) start() {
-	timerClean := time.NewTicker(confirmTimeout * time.Second)
+	timerCheckVotes := time.NewTicker(time.Second)
 
 	for {
 		select {
@@ -51,8 +51,8 @@ func (act *ActiveTrx) start() {
 			return
 		case perf := <-act.perfCh:
 			act.updatePerformanceTime(perf.hash, perf.curTime, perf.confirmed)
-		case <-timerClean.C:
-			act.cleanVotes()
+		case <-timerCheckVotes.C:
+			act.checkVotes()
 		}
 	}
 }
@@ -65,11 +65,10 @@ func getVoteKey(block *types.StateBlock) voteKey {
 	var key voteKey
 
 	if block.IsOpen() {
-		key[0] = 1
-		copy(key[1:], block.Link[:])
+		hash, _ := types.HashBytes(block.Address[:], block.Token[:])
+		copy(key[:], hash[:])
 	} else {
-		key[0] = 0
-		copy(key[1:], block.Previous[:])
+		copy(key[:], block.Previous[:])
 	}
 
 	return key
@@ -79,15 +78,11 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 	vk := getVoteKey(block)
 
 	if _, ok := act.roots.Load(vk); !ok {
-		ele, err := NewElection(act.dps, block)
-		if err != nil {
-			act.dps.logger.Errorf("block :%s add to roots error", block.GetHash())
-			return false
-		}
-		act.roots.Store(vk, ele)
+		el := newElection(act.dps, block)
+		act.roots.Store(vk, el)
 		return true
 	} else {
-		act.dps.logger.Infof("block :%s already exit in roots", block.GetHash())
+		act.dps.logger.Debugf("block :%s already exist in roots", block.GetHash())
 		return false
 	}
 }
@@ -140,29 +135,36 @@ func (act *ActiveTrx) updatePerformanceTime(hash types.Hash, curTime int64, conf
 	}
 }
 
-func (act *ActiveTrx) cleanVotes() {
+func (act *ActiveTrx) checkVotes() {
 	nowTime := time.Now().Unix()
+	dps := act.dps
 
 	act.roots.Range(func(key, value interface{}) bool {
 		el := value.(*Election)
-		if nowTime-el.lastTime < confirmTimeout {
+		if nowTime-el.lastTime < confirmReqInterval {
 			return true
 		} else {
-			act.roots.Delete(el.vote.id)
+			el.lastTime = nowTime
 		}
 
-		//block := el.status.winner
-		//hash := block.GetHash()
-		//
-		//if !el.confirmed {
-		//	act.dps.logger.Infof("vote:send confirmReq for block [%s]", hash)
-		//	el.announcements++
-		//	if el.announcements == announcementMax {
-		//		act.roots.Delete(el.vote.id)
-		//	} else {
-		//		act.dps.eb.Publish(string(common.EventBroadcast), p2p.ConfirmReq, block)
-		//	}
-		//}
+		block := el.status.winner
+		hash := block.GetHash()
+
+		el.announcements++
+		if el.announcements == confirmReqMaxTimes {
+			if !el.ifValidAndSetInvalid() {
+				return true
+			}
+
+			dps.logger.Infof("block[%s] was not confirmed after 30 times resend", hash)
+			act.roots.Delete(el.vote.id)
+			dps.deleteBlockCache(block)
+			dps.rollbackUncheckedFromDb(hash)
+			el.cleanBlockInfo()
+		} else {
+			dps.logger.Infof("resend confirmReq for block[%s]", hash)
+			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, block)
+		}
 
 		return true
 	})
@@ -170,45 +172,47 @@ func (act *ActiveTrx) cleanVotes() {
 
 func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	hash := block.GetHash()
-	act.dps.logger.Debugf("block [%s] acked", hash)
+	dps := act.dps
+	dps.logger.Debugf("block[%s] confirmed", hash)
 
-	if exist, err := act.dps.ledger.HasStateBlock(hash); !exist && err == nil {
-		err := act.dps.lv.BlockProcess(block)
+	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
+		err := dps.lv.BlockProcess(block)
 		if err != nil {
-			act.dps.logger.Error(err)
+			dps.logger.Error(err)
 		} else {
-			act.dps.logger.Debugf("save block[%s]", hash.String())
+			dps.logger.Debugf("save block[%s]", hash)
 		}
 	} else {
-		act.dps.logger.Debugf("%s, %v", hash.String(), err)
+		dps.logger.Debugf("%s, %v", hash, err)
 	}
 }
 
 func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
+	dps := act.dps
+
 	for _, v := range blocks {
 		hash := v.GetHash()
-		act.dps.logger.Info("loser hash is :", hash.String())
-		h, err := act.dps.ledger.HasStateBlock(hash)
+		dps.logger.Info("loser hash is:", hash)
+
+		has, err := dps.ledger.HasStateBlock(hash)
 		if err != nil {
-			act.dps.logger.Errorf("error [%s] when run HasStateBlock func ", err)
+			dps.logger.Errorf("error [%s] when run HasStateBlock func ", err)
 			continue
 		}
-		if h {
-			verfier := process.NewLedgerVerifier(act.dps.ledger)
-			err = verfier.Rollback(hash)
+
+		if has {
+			err = dps.lv.Rollback(hash)
 			if err != nil {
-				act.dps.logger.Errorf("error [%s] when rollback hash [%s]", err, hash.String())
+				dps.logger.Errorf("error [%s] when rollback hash [%s]", err, hash)
 			}
-			act.dps.rollbackUnchecked(hash)
 		}
 	}
 }
 
-func (act *ActiveTrx) vote(va *protos.ConfirmAckBlock) {
-	vk := getVoteKey(va.Blk)
-
-	if v, ok := act.roots.Load(vk); ok {
-		v.(*Election).voteAction(va)
+func (act *ActiveTrx) vote(vi *voteInfo) {
+	if v, ok := act.dps.hash2el.Load(vi.hash); ok {
+		el := v.(*Election)
+		el.voteAction(vi)
 	}
 }
 
@@ -220,4 +224,22 @@ func (act *ActiveTrx) isVoting(block *types.StateBlock) bool {
 	}
 
 	return false
+}
+
+func (act *ActiveTrx) getVoteInfo(block *types.StateBlock) *Election {
+	vk := getVoteKey(block)
+
+	if v, ok := act.roots.Load(vk); ok {
+		return v.(*Election)
+	}
+
+	return nil
+}
+
+func (act *ActiveTrx) setVoteHash(block *types.StateBlock) {
+	vk := getVoteKey(block)
+
+	if v, ok := act.roots.Load(vk); ok {
+		v.(*Election).voteHash = block.GetHash()
+	}
 }
