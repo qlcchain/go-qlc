@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/qlcchain/go-qlc/p2p"
 	"time"
 
 	"github.com/bluele/gcache"
@@ -125,29 +126,32 @@ func (r *Receiver) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFro
 	r.c.logger.Debugf("receive publish block [%s] from [%s]", blk.GetHash(), msgFrom)
 	if !r.processed(hash) {
 		r.processedUpdate(hash)
+		r.eb.Publish(common.EventSendMsgToPeers, p2p.PublishReq, blk, msgFrom)
 
 		bs := &BlockSource{
 			Block:     blk,
 			BlockFrom: types.UnSynchronized,
 			Type:      MsgPublishReq,
-			MsgFrom:   msgFrom,
 		}
 		r.c.ca.ProcessMsg(bs)
 	}
 }
 
-func (r *Receiver) ReceiveConfirmReq(blk *types.StateBlock, hash types.Hash, msgFrom string) {
-	r.c.logger.Debugf("receive ConfirmReq block [%s] from [%s]", blk.GetHash(), msgFrom)
+func (r *Receiver) ReceiveConfirmReq(blk []*types.StateBlock, hash types.Hash, msgFrom string) {
 	if !r.processed(hash) {
 		r.processedUpdate(hash)
+		r.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmReq, blk, msgFrom)
 
-		bs := &BlockSource{
-			Block:     blk,
-			BlockFrom: types.UnSynchronized,
-			Type:      MsgConfirmReq,
-			MsgFrom:   msgFrom,
+		for _, b := range blk {
+			r.c.logger.Debugf("receive ConfirmReq block [%s] from [%s]", b.GetHash(), msgFrom)
+
+			bs := &BlockSource{
+				Block:     b,
+				BlockFrom: types.UnSynchronized,
+				Type:      MsgConfirmReq,
+			}
+			r.c.ca.ProcessMsg(bs)
 		}
-		r.c.ca.ProcessMsg(bs)
 	}
 }
 
@@ -155,6 +159,7 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Has
 	r.c.logger.Debugf("receive ConfirmAck for %d blocks [%s] from [%s]", len(ack.Hash), ack.Hash, msgFrom)
 	if !r.processed(hash) {
 		r.processedUpdate(hash)
+		r.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmAck, ack, msgFrom)
 
 		valid := IsAckSignValidate(ack)
 		if !valid {
@@ -163,9 +168,8 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Has
 		}
 
 		bs := &BlockSource{
-			Type:    MsgConfirmAck,
-			Para:    ack,
-			MsgFrom: msgFrom,
+			Type: MsgConfirmAck,
+			Para: ack,
 		}
 		r.c.ca.ProcessMsg(bs)
 	}

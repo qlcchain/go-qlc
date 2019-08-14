@@ -20,7 +20,6 @@ type BlockSource struct {
 	BlockFrom types.SynchronizedKind
 	Type      MsgType
 	Para      interface{}
-	MsgFrom   string
 }
 
 func IsAckSignValidate(va *protos.ConfirmAckBlock) bool {

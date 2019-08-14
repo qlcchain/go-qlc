@@ -7,20 +7,25 @@ import (
 )
 
 type ConfirmReqBlock struct {
-	Blk *types.StateBlock
+	Blk []*types.StateBlock
 }
 
 // ToProto converts domain ConfirmReqBlock into proto ConfirmReqBlock
 func ConfirmReqBlockToProto(confirmReq *ConfirmReqBlock) ([]byte, error) {
-	blkData, err := confirmReq.Blk.Serialize()
-	if err != nil {
-		return nil, err
+	blkData := make([][]byte, 0)
+
+	for _, blk := range confirmReq.Blk {
+		data, err := blk.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		blkData = append(blkData, data)
 	}
-	blockType := confirmReq.Blk.GetType()
-	bpPb := &pb.PublishBlock{
-		Blocktype: uint32(blockType),
+
+	bpPb := &pb.ConfirmReq{
 		Block:     blkData,
 	}
+
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
@@ -34,12 +39,18 @@ func ConfirmReqBlockFromProto(data []byte) (*ConfirmReqBlock, error) {
 	if err := proto.Unmarshal(data, bp); err != nil {
 		return nil, err
 	}
-	blk := new(types.StateBlock)
-	if err := blk.Deserialize(bp.Block); err != nil {
-		return nil, err
+
+	confirmReqBlock := &ConfirmReqBlock{}
+
+	for _, b := range bp.Block {
+		blk := &types.StateBlock{}
+
+		if err := blk.Deserialize(b); err != nil {
+			return nil, err
+		}
+
+		confirmReqBlock.Blk = append(confirmReqBlock.Blk, blk)
 	}
-	confirmReqBlock := &ConfirmReqBlock{
-		Blk: blk,
-	}
+
 	return confirmReqBlock, nil
 }

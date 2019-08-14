@@ -211,6 +211,15 @@ func (dps *DPoS) processorStop() {
 	}
 }
 
+func (dps *DPoS) onGetFrontier(blocks []*types.StateBlock) {
+	dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, blocks)
+
+	for _, block := range blocks {
+		index := dps.getProcessorIndex(block.Address)
+		dps.processors[index].frontiers <- block
+	}
+}
+
 func (dps *DPoS) getPovSyncState() common.SyncState {
 	state := dps.povSyncState.Load()
 	return state.(common.SyncState)
@@ -308,7 +317,6 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 	if bs.Type == consensus.MsgConfirmAck {
 		ack := bs.Para.(*protos.ConfirmAckBlock)
 		dps.saveOnlineRep(ack.Account)
-		dps.eb.Publish(common.EventSendMsgToPeers, p2p.ConfirmAck, ack, bs.MsgFrom)
 
 		if dps.getAckType(ack.Sequence) != ackTypeFindRep {
 			for _, h := range ack.Hash {
@@ -329,7 +337,12 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 		}
 	} else {
 		index := dps.getProcessorIndex(bs.Block.Address)
-		dps.processors[index].blocks <- bs
+
+		if bs.Type == consensus.MsgSync {
+			dps.processors[index].syncBlock <- bs.Block
+		} else {
+			dps.processors[index].blocks <- bs
+		}
 	}
 }
 

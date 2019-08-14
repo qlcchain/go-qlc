@@ -387,8 +387,11 @@ func (ms *MessageService) onConfirmReq(message *Message) {
 			ms.netService.node.logger.Error(err)
 			return
 		}
-		hash := blk.Blk.GetHash()
-		ms.addPerformanceTime(hash)
+
+		for _, b := range blk.Blk {
+			hash := b.GetHash()
+			ms.addPerformanceTime(hash)
+		}
 	}
 	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 	if err != nil {
@@ -533,7 +536,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, nil
 	case ConfirmReq:
 		packet := &protos.ConfirmReqBlock{
-			Blk: value.(*types.StateBlock),
+			Blk: value.([]*types.StateBlock),
 		}
 		data, err := protos.ConfirmReqBlockToProto(packet)
 		if err != nil {

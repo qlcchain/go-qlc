@@ -163,7 +163,9 @@ func (act *ActiveTrx) checkVotes() {
 			el.cleanBlockInfo()
 		} else {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)
-			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, block)
+			confirmReqBlocks := make([]*types.StateBlock, 0)
+			confirmReqBlocks = append(confirmReqBlocks, block)
+			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmReqBlocks)
 		}
 
 		return true
@@ -214,6 +216,14 @@ func (act *ActiveTrx) vote(vi *voteInfo) {
 		el := v.(*Election)
 		el.voteAction(vi)
 	}
+}
+
+func (act *ActiveTrx) voteFrontier(vi *voteInfo) (confirmed bool) {
+	if v, ok := act.dps.hash2el.Load(vi.hash); ok {
+		el := v.(*Election)
+		return el.voteFrontier(vi)
+	}
+	return false
 }
 
 func (act *ActiveTrx) isVoting(block *types.StateBlock) bool {

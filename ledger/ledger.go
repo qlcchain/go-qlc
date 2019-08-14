@@ -96,6 +96,8 @@ const (
 	idPrefixUncheckedTokenInfo
 	idPrefixBlockCacheAccount
 	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
+	idPrefixUnconfirmedSync
+	idPrefixUncheckedSync
 )
 
 var (
@@ -346,7 +348,7 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 			hash := part.(types.Address)
 			src = hash[:]
 		default:
-			return nil, errors.New("Key contains of invalid part.")
+			return nil, errors.New("key contains of invalid part")
 		}
 
 		buffer = append(buffer, src...)
@@ -365,7 +367,7 @@ func (l *Ledger) AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	})
 	if err == nil {
 		return ErrBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 
@@ -668,7 +670,7 @@ func (l *Ledger) AddSmartContractBlock(blk *types.SmartContractBlock, txns ...db
 	})
 	if err == nil {
 		return ErrBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 
@@ -750,6 +752,125 @@ func (l *Ledger) CountSmartContractBlocks(txns ...db.StoreTxn) (uint64, error) {
 	return txn.Count([]byte{idPrefixSmartContractBlock})
 }
 
+func (l *Ledger) getUncheckedSyncBlockKey(hash types.Hash) []byte {
+	var key [1 + types.HashSize]byte
+	key[0] = idPrefixUncheckedSync
+	copy(key[1:], hash[:])
+	return key[:]
+}
+
+func (l *Ledger) AddUncheckedSyncBlock(previous types.Hash, blk *types.StateBlock, txns ...db.StoreTxn) error {
+	blockBytes, err := blk.Serialize()
+	if err != nil {
+		return err
+	}
+
+	key := l.getUncheckedSyncBlockKey(previous)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Set(key, blockBytes)
+}
+
+func (l *Ledger) GetUncheckedSyncBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	key := l.getUncheckedSyncBlockKey(hash)
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	blk := new(types.StateBlock)
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
+		if err = blk.Deserialize(val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, err
+	}
+
+	return blk, nil
+}
+
+func (l *Ledger) DeleteUncheckedSyncBlock(hash types.Hash, txns ...db.StoreTxn) error {
+	key := l.getUncheckedSyncBlockKey(hash)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Delete(key)
+}
+
+func (l *Ledger) getUnconfirmedSyncBlockKey(hash types.Hash) []byte {
+	var key [1 + types.HashSize]byte
+	key[0] = idPrefixUnconfirmedSync
+	copy(key[1:], hash[:])
+	return key[:]
+}
+
+func (l *Ledger) AddUnconfirmedSyncBlock(hash types.Hash, blk *types.StateBlock, txns ...db.StoreTxn) error {
+	blockBytes, err := blk.Serialize()
+	if err != nil {
+		return err
+	}
+
+	key := l.getUnconfirmedSyncBlockKey(hash)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Set(key, blockBytes)
+}
+
+func (l *Ledger) GetUnconfirmedSyncBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	key := l.getUnconfirmedSyncBlockKey(hash)
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	blk := new(types.StateBlock)
+	err := txn.Get(key, func(val []byte, b byte) (err error) {
+		if err = blk.Deserialize(val); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, err
+	}
+	return blk, nil
+}
+
+func (l *Ledger) HasUnconfirmedSyncBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	key := l.getUnconfirmedSyncBlockKey(hash)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (l *Ledger) DeleteUnconfirmedSyncBlock(hash types.Hash, txns ...db.StoreTxn) error {
+	key := l.getUnconfirmedSyncBlockKey(hash)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Delete(key)
+}
+
 func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
 	switch kind {
 	case types.UncheckedKindPrevious:
@@ -786,7 +907,7 @@ func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk *types.StateBlock,
 	})
 	if err == nil {
 		return ErrUncheckedBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 
@@ -927,7 +1048,7 @@ func (l *Ledger) AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) er
 	})
 	if err == nil {
 		return ErrAccountExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 	return txn.Set(key, metaBytes)
@@ -1230,7 +1351,7 @@ func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, t
 	defer spin.Unlock()
 
 	benefit, err := l.GetRepresentation(address, txns...)
-	if err != nil && err != ErrRepresentationNotFound {
+	if benefit == nil || (err != nil && err != ErrRepresentationNotFound) {
 		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
 		return err
 	}
@@ -1494,7 +1615,7 @@ func (l *Ledger) AddPending(pendingKey *types.PendingKey, pending *types.Pending
 	})
 	if err == nil {
 		return ErrPendingExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 	return txn.Set(key, pendingBytes)
@@ -1604,7 +1725,7 @@ func (l *Ledger) AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) erro
 	})
 	if err == nil {
 		return ErrFrontierExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 	return txn.Set(key, frontier.OpenBlock[:])

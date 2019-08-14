@@ -33,8 +33,7 @@ message PublishBlock {
     bytes   block = 2;
 }
 message ConfirmReq {
-    uint32  blocktype = 1;
-    bytes   block = 2;
+     repeated bytes block = 1;
 }
 message ConfirmAck {
     bytes   Account = 1;

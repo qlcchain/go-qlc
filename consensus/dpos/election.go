@@ -68,6 +68,42 @@ func (el *Election) voteAction(vi *voteInfo) {
 	el.haveQuorum()
 }
 
+func (el *Election) voteFrontier(vi *voteInfo) bool {
+	if !el.isValid() {
+		return false
+	}
+
+	result := el.vote.voteStatus(vi)
+	if result == confirm {
+		el.dps.logger.Infof("recv same ack %s", vi.account)
+		return false
+	}
+
+	t := el.tally()
+	if !(len(t) > 0) {
+		return false
+	}
+
+	var balance = types.ZeroBalance
+	for _, value := range t {
+		if balance.Compare(value.balance) == types.BalanceCompSmaller {
+			balance = value.balance
+		}
+	}
+
+	if balance.Compare(el.dps.voteThreshold) == types.BalanceCompBigger {
+		if !el.ifValidAndSetInvalid() {
+			return true
+		}
+
+		el.dps.acTrx.roots.Delete(el.vote.id)
+		el.cleanBlockInfo()
+		return true
+	}
+
+	return false
+}
+
 func (el *Election) haveQuorum() {
 	dps := el.dps
 

@@ -142,12 +142,14 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data1, data2) != 0 {
 		t.Fatal("Marshal PublishReq err3")
 	}
-	data3, err := marshalMessage(ConfirmReq, blk)
+	ConfirmReqBlocks := make([]*types.StateBlock, 0)
+	ConfirmReqBlocks = append(ConfirmReqBlocks, blk)
+	data3, err := marshalMessage(ConfirmReq, ConfirmReqBlocks)
 	if err != nil {
 		t.Fatal("Marshal ConfirmReq err1")
 	}
 	packet := &protos.ConfirmReqBlock{
-		Blk: blk,
+		Blk: ConfirmReqBlocks,
 	}
 	data4, err := protos.ConfirmReqBlockToProto(packet)
 	if err != nil {
