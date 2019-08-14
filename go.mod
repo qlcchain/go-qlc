@@ -24,6 +24,7 @@ require (
 	github.com/golang/protobuf v1.3.1
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.1
+	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e // indirect
 	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/jmoiron/sqlx v0.0.0-20190426145356-38398a30ed8516ffda
 	github.com/lib/pq v1.1.1 // indirect
@@ -56,6 +57,7 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
+	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c // indirect
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/atomic v1.4.0
 	go.uber.org/zap v1.10.0

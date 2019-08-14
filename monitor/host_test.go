@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package metrics
+package monitor
 
 import (
 	"github.com/qlcchain/go-qlc/common/util"
