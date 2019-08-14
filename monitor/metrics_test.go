@@ -8,17 +8,22 @@
 package monitor
 
 import (
+	"context"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/monitor/influxdb"
+
 	"github.com/rcrowley/go-metrics"
-	influxdb "github.com/vrischmann/go-metrics-influxdb"
 )
 
 func TestMetrics(t *testing.T) {
 	t.Skip()
+	ctx, _ := context.WithCancel(context.Background())
+
 	go influxdb.InfluxDB(
+		ctx,
 		metrics.DefaultRegistry, // metrics registry
 		time.Second*10,          // interval
 		"http://localhost:8086", // the InfluxDB url

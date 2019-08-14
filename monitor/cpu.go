@@ -8,6 +8,7 @@
 package monitor
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -99,9 +100,14 @@ func CaptureRuntimeCpuStatsOnce(r metrics.Registry) {
 	}
 }
 
-func CaptureRuntimeCpuStats(r metrics.Registry, d time.Duration) {
+func CaptureRuntimeCpuStats(ctx context.Context, d time.Duration) {
 	for range time.Tick(d) {
-		CaptureRuntimeCpuStatsOnce(r)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			CaptureRuntimeCpuStatsOnce(SystemRegistry)
+		}
 	}
 }
 
