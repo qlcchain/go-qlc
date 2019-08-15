@@ -1,4 +1,13 @@
 
+<a name="v1.2.5"></a>
+## [v1.2.5](https://github.com/qlcchain/go-qlc/compare/v1.2.4...v1.2.5) (2019-08-15)
+
+### Features
+
+* migrate ledger to v7
+* remove build tag sqlite_userauth
+
+
 <a name="v1.2.4"></a>
 ## [v1.2.4](https://github.com/qlcchain/go-qlc/compare/v1.2.3.1...v1.2.4) (2019-08-07)
 
