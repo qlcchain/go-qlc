@@ -173,8 +173,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV2), new(MigrationV2ToV3), new(MigrationV3ToV4),
-			new(MigrationV4ToV5), new(MigrationV5ToV6), new(MigrationV6ToV7)}
+		ms := []db.Migration{new(MigrationV1ToV7)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {

@@ -11,7 +11,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/monitor"
 	"io"
 	"sync"
 	"time"
@@ -24,6 +23,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/monitor"
 	"go.uber.org/zap"
 )
 
