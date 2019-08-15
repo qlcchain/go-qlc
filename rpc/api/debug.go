@@ -78,7 +78,7 @@ func (l *DebugApi) GetRepresentations(address *types.Address) (map[types.Address
 		err := l.ledger.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
 			beInfo := make(map[string]*types.Benefit)
 			beInfo["db"] = be
-			beInfo["cache"] = beCache
+			beInfo["memory"] = beCache
 			r[address] = beInfo
 			return nil
 		})
@@ -89,7 +89,7 @@ func (l *DebugApi) GetRepresentations(address *types.Address) (map[types.Address
 		err := l.ledger.GetRepresentationsCache(*address, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
 			beInfo := make(map[string]*types.Benefit)
 			beInfo["db"] = be
-			beInfo["cache"] = beCache
+			beInfo["memory"] = beCache
 			r[address] = beInfo
 			return nil
 		})
