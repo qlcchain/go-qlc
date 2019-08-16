@@ -23,7 +23,7 @@ func ConfirmReqBlockToProto(confirmReq *ConfirmReqBlock) ([]byte, error) {
 	}
 
 	bpPb := &pb.ConfirmReq{
-		Block:     blkData,
+		Block: blkData,
 	}
 
 	data, err := proto.Marshal(bpPb)
