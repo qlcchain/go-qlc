@@ -21,7 +21,7 @@ var (
 	ErrGenericTypeNotFound = errors.New("GenericType not found")
 )
 
-func (l *Ledger) AddGenericType(key types.GenericKey, val *types.GenericType, txns ...db.StoreTxn) error {
+func (l *Ledger) AddGenericType(key types.GenericKey, value *types.GenericType, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -29,7 +29,7 @@ func (l *Ledger) AddGenericType(key types.GenericKey, val *types.GenericType, tx
 	if err != nil {
 		return nil
 	}
-	v, err := val.Serialize()
+	v, err := value.Serialize()
 	if err != nil {
 		return err
 	}
@@ -54,9 +54,9 @@ func (l *Ledger) GetGenericType(key types.GenericKey, txns ...db.StoreTxn) (*typ
 		return nil, err
 	}
 
-	val := new(types.GenericType)
+	value := new(types.GenericType)
 	err = txn.Get(k, func(v []byte, b byte) error {
-		if err := val.Deserialize(v); err != nil {
+		if err := value.Deserialize(v); err != nil {
 			return err
 		}
 		return nil
@@ -67,7 +67,7 @@ func (l *Ledger) GetGenericType(key types.GenericKey, txns ...db.StoreTxn) (*typ
 		}
 		return nil, err
 	}
-	return val, nil
+	return value, nil
 }
 
 func (l *Ledger) DeleteGenericType(key types.GenericKey, txns ...db.StoreTxn) error {
@@ -82,17 +82,14 @@ func (l *Ledger) DeleteGenericType(key types.GenericKey, txns ...db.StoreTxn) er
 	err = txn.Get(k, func(v []byte, b byte) error {
 		return nil
 	})
-	if err != nil && err != ErrGenericTypeNotFound {
+	if err != nil {
 		return err
 	}
 
-	if err := txn.Delete(k); err != nil {
-		return err
-	}
-	return nil
+	return txn.Delete(k)
 }
 
-func (l *Ledger) UpdateGenericType(key types.GenericKey, val *types.GenericType, txns ...db.StoreTxn) error {
+func (l *Ledger) UpdateGenericType(key types.GenericKey, value *types.GenericType, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -100,7 +97,7 @@ func (l *Ledger) UpdateGenericType(key types.GenericKey, val *types.GenericType,
 	if err != nil {
 		return nil
 	}
-	v, err := val.Serialize()
+	v, err := value.Serialize()
 	if err != nil {
 		return err
 	}
@@ -117,7 +114,7 @@ func (l *Ledger) UpdateGenericType(key types.GenericKey, val *types.GenericType,
 	return txn.Set(k, v)
 }
 
-func (l *Ledger) AddOrUpdateGenericType(key types.GenericKey, val *types.GenericType, txns ...db.StoreTxn) error {
+func (l *Ledger) AddOrUpdateGenericType(key types.GenericKey, value *types.GenericType, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -125,14 +122,14 @@ func (l *Ledger) AddOrUpdateGenericType(key types.GenericKey, val *types.Generic
 	if err != nil {
 		return nil
 	}
-	v, err := val.Serialize()
+	v, err := value.Serialize()
 	if err != nil {
 		return err
 	}
 	return txn.Set(k, v)
 }
 
-func (l *Ledger) GetGenericTypes(fn func(key types.GenericKey, val *types.GenericType) error, txns ...db.StoreTxn) error {
+func (l *Ledger) GetGenericTypes(fn func(key types.GenericKey, value *types.GenericType) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -141,11 +138,11 @@ func (l *Ledger) GetGenericTypes(fn func(key types.GenericKey, val *types.Generi
 		if err := key.Deserialize(k); err != nil {
 			return err
 		}
-		val := new(types.GenericType)
-		if err := val.Deserialize(v); err != nil {
+		value := new(types.GenericType)
+		if err := value.Deserialize(v); err != nil {
 			return err
 		}
-		if err := fn(*key, val); err != nil {
+		if err := fn(*key, value); err != nil {
 			return err
 		}
 		return nil

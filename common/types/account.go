@@ -119,6 +119,18 @@ func (a *AccountMeta) TotalBalance() Balance {
 	return balance
 }
 
+func (a *AccountMeta) Serialize() ([]byte, error) {
+	return a.MarshalMsg(nil)
+}
+
+func (a *AccountMeta) Deserialize(text []byte) error {
+	_, err := a.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // NewAccount creates a new account with the given private key.
 func NewAccount(key ed25519.PrivateKey) *Account {
 	return &Account{
