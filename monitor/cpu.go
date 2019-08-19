@@ -9,10 +9,11 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/rcrowley/go-metrics"
-	"github.com/shirou/gopsutil/cpu"
 	"sync"
 	"time"
+
+	"github.com/rcrowley/go-metrics"
+	"github.com/shirou/gopsutil/cpu"
 )
 
 var (

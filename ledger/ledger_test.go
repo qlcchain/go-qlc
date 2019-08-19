@@ -806,6 +806,8 @@ func TestLedger_SearchPending(t *testing.T) {
 	defer teardownTestCase(t)
 
 	address := mock.Address()
+
+	pendingkeys := make([]*types.PendingKey, 0)
 	for idx := 0; idx < 10; idx++ {
 		hash := mock.Hash()
 		i, _ := random.Intn(math.MaxUint32)
@@ -820,6 +822,7 @@ func TestLedger_SearchPending(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		pendingkeys = append(pendingkeys, k)
 		//t.Log(idx, util.ToString(k), util.ToString(v))
 	}
 	//t.Log("build cache done")
@@ -837,6 +840,39 @@ func TestLedger_SearchPending(t *testing.T) {
 
 	if counter != 10 {
 		t.Fatal("invalid", counter)
+	}
+	count1 := 0
+	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		count1++
+		return nil
+	})
+	if count1 != 10 {
+		t.Fatal("invalid", count1)
+	}
+
+	if err := l.UpdatePending(pendingkeys[0], types.PendingUsed); err != nil {
+		t.Fatal(err)
+	}
+
+	count2 := 0
+	err = l.SearchPending(address, func(key *types.PendingKey, value *types.PendingInfo) error {
+		t.Log(count2, util.ToString(key), util.ToString(value))
+		count2++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count2 != 9 {
+		t.Fatal("invalid", count2)
+	}
+	count3 := 0
+	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		count3++
+		return nil
+	})
+	if count3 != 9 {
+		t.Fatal("invalid", count3)
 	}
 }
 

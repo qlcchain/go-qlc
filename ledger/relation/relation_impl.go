@@ -2,8 +2,9 @@ package relation
 
 import (
 	"encoding/base64"
-	"github.com/qlcchain/go-qlc/chain/context"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/chain/context"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common"

@@ -8,9 +8,10 @@
 package monitor
 
 import (
-	"github.com/rcrowley/go-metrics"
 	"strings"
 	"testing"
+
+	"github.com/rcrowley/go-metrics"
 )
 
 func TestDiskInfo(t *testing.T) {
