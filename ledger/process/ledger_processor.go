@@ -982,7 +982,6 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 // TODO: implement
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 	lv.logger.Errorf("process rollback block: %s", hash.String())
-	lv.l.EB.Publish(common.EventRollbackUnchecked, hash)
 	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
 		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 			err = lv.rollbackBlockCache(hash, txn)
@@ -1216,15 +1215,11 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block error: %s, %s", err, hashCur)
 			}
+			lv.l.EB.Publish(common.EventRollbackUnchecked, hashCur)
 
-			if blockCur.IsSendBlock() {
-				linkCache := blockCur.GetLink()
-				if b, err := lv.l.HasBlockCache(linkCache); b && err == nil {
-					err = lv.rollbackBlockCache(linkCache, txn)
-					if err != nil {
-						return err
-					}
-				}
+			if err := lv.checkBlockCache(blockCur, txn); err != nil {
+				lv.logger.Errorf("roll back block cache error : %s", err)
+				return err
 			}
 
 			if hashCur == oldestBlock.GetHash() {
@@ -1235,6 +1230,49 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 			blockCur, err = lv.l.GetStateBlockConfirmed(hashCur, txn)
 			if err != nil {
 				return fmt.Errorf("get previous block error %s, %s ", err, hashCur.String())
+			}
+		}
+	}
+	return nil
+}
+
+func (lv *LedgerVerifier) checkBlockCache(block *types.StateBlock, txn db.StoreTxn) error {
+	amc, _ := lv.l.GetAccountMetaCache(block.GetAddress())
+	if amc != nil {
+		tmc := amc.Token(block.GetToken())
+		if tmc != nil {
+			if b, err := lv.l.HasBlockCache(tmc.Header); b && err == nil {
+				err = lv.rollbackBlockCache(tmc.Header, txn)
+				if err != nil {
+					lv.logger.Error(err)
+					return err
+				}
+			}
+		}
+	}
+
+	if block.IsSendBlock() {
+		amc, _ := lv.l.GetAccountMetaCache(types.Address(block.GetLink()))
+		if amc != nil {
+			tmc := amc.Token(block.GetToken())
+			bHash := tmc.Header
+			for {
+				bc, err := lv.l.GetBlockCache(bHash)
+				if err != nil {
+					lv.logger.Error(err)
+					return err
+				}
+				if bc.GetLink() == block.GetHash() {
+					err = lv.rollbackBlockCache(bc.GetHash(), txn)
+					if err != nil {
+						lv.logger.Error(err)
+						return err
+					}
+				}
+				if bc.Previous.IsZero() {
+					break
+				}
+				bHash = bc.Previous
 			}
 		}
 	}
