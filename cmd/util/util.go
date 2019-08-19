@@ -84,16 +84,16 @@ func CheckArgs(c *ishell.Context, args []Flag) error {
 		argsMap[prefix+a.Name] = a.Value
 		i := sliceIndex(rawArgs, prefix+a.Name)
 		if i < 0 && a.Must {
-			return errors.New(fmt.Sprintf("lack parameter: %s", a.Name))
+			return fmt.Errorf("lack parameter: %s", a.Name)
 		}
 		if i >= 0 {
 			if a.Value == true || a.Value == false {
 				if len(rawArgs) <= i {
-					return errors.New(fmt.Sprintf("lack value for parameter: %s", a.Name))
+					return fmt.Errorf("lack value for parameter: %s", a.Name)
 				}
 			} else {
 				if len(rawArgs) <= i+1 {
-					return errors.New(fmt.Sprintf("lack value for parameter: %s", a.Name))
+					return fmt.Errorf("lack value for parameter: %s", a.Name)
 				}
 			}
 		}

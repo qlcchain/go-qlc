@@ -8,8 +8,9 @@
 package monitor
 
 import (
-	"github.com/rcrowley/go-metrics"
 	"time"
+
+	"github.com/rcrowley/go-metrics"
 )
 
 var (

@@ -8,8 +8,9 @@
 package monitor
 
 import (
-	"github.com/rcrowley/go-metrics"
 	"testing"
+
+	"github.com/rcrowley/go-metrics"
 )
 
 func TestCpuInfo(t *testing.T) {

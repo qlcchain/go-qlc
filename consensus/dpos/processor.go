@@ -126,6 +126,16 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 			dps.logger.Errorf("pov is syncing, can not send tx!")
 			return
 		}
+
+		//cache fork
+		if result == process.Progress {
+			el := dps.acTrx.getVoteInfo(bs.Block)
+			if el != nil && el.status.winner.GetHash() != hash {
+				_ = dps.lv.Rollback(hash)
+				return
+			}
+		}
+
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
 	default:
 		//
@@ -170,7 +180,7 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		dps.logger.Errorf("UnKnow process result for block: %s", hash)
 	case process.Fork:
 		dps.logger.Errorf("Fork for block: %s", hash)
-		p.processFork(blk)
+		p.processFork(bs)
 	case process.GapPrevious:
 		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous.String())
 		p.enqueueUnchecked(result, bs)
@@ -225,10 +235,16 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 	}
 }
 
-func (p *Processor) processFork(newBlock *types.StateBlock) {
+func (p *Processor) processFork(bs *consensus.BlockSource) {
 	dps := p.dps
+	newBlock := bs.Block
 	confirmedBlock := p.findAnotherForkedBlock(newBlock)
 	dps.logger.Errorf("fork:%s--%s", newBlock.GetHash(), confirmedBlock.GetHash())
+
+	if bs.Type == consensus.MsgGenerateBlock {
+		_ = dps.lv.Rollback(bs.Block.GetHash())
+		return
+	}
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmedBlock)

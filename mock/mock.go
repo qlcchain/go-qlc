@@ -142,6 +142,23 @@ func StateBlockWithoutWork() *types.StateBlock {
 	return sb
 }
 
+func StateBlockWithAddress(addr types.Address) *types.StateBlock {
+	sb := new(types.StateBlock)
+	//	a := mock.Account()
+	i, _ := random.Intn(math.MaxInt16)
+	sb.Type = types.Open
+	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
+	sb.Address = addr
+	sb.Token = common.ChainToken()
+	sb.Previous = types.ZeroHash
+	sb.Representative = common.GenesisAddress()
+	sb.Timestamp = common.TimeNow().Unix()
+	//addr := Address()
+	sb.Link = Hash()
+	sb.Message = Hash()
+	return sb
+}
+
 func BlockChain() ([]*types.StateBlock, error) {
 	dir := filepath.Join(config.QlcTestDataDir(), "blocks.json")
 	_, err := os.Stat(dir)

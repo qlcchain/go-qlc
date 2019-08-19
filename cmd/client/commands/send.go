@@ -65,10 +65,10 @@ func send() {
 					util.Warn(err)
 					return
 				}
-				fromP := util.StringVar(c.Args, from)
-				toP := util.StringVar(c.Args, to)
-				tokenP := util.StringVar(c.Args, token)
-				amountP := util.StringVar(c.Args, amount)
+				fromP = util.StringVar(c.Args, from)
+				toP = util.StringVar(c.Args, to)
+				tokenP = util.StringVar(c.Args, token)
+				amountP = util.StringVar(c.Args, amount)
 				err := sendAction(fromP, toP, tokenP, amountP)
 				if err != nil {
 					util.Warn(err)

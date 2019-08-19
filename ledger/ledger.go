@@ -29,6 +29,7 @@ type Ledger struct {
 	io.Closer
 	Store          db.Store
 	dir            string
+	RollbackChan   chan types.Hash
 	EB             event.EventBus
 	representCache *RepresentationCache
 	ctx            context.Context
@@ -99,7 +100,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 7
+const version = 8
 
 func NewLedger(dir string) *Ledger {
 	lock.Lock()
@@ -113,6 +114,7 @@ func NewLedger(dir string) *Ledger {
 		l := &Ledger{
 			Store:          store,
 			dir:            dir,
+			RollbackChan:   make(chan types.Hash, 65535),
 			EB:             event.GetEventBus(dir),
 			ctx:            ctx,
 			cancel:         cancel,
@@ -170,7 +172,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7)}
+		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
@@ -654,7 +656,7 @@ func (l *Ledger) AddSmartContractBlock(value *types.SmartContractBlock, txns ...
 	})
 	if err == nil {
 		return ErrBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 	return txn.Set(k, v)
@@ -1461,7 +1463,39 @@ func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, txn
 	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(k, v)
+
+	return txn.SetWithMeta(k, v, byte(types.PendingNotUsed))
+	//return txn.Set(key, pendingBytes)
+}
+
+func (l *Ledger) UpdatePending(key *types.PendingKey, kind types.PendingKind, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixPending, key)
+	if err != nil {
+		return err
+	}
+	var pending types.PendingInfo
+	err = txn.Get(k[:], func(v []byte, b byte) (err error) {
+		if err := pending.Deserialize(v); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil
+		}
+		return err
+	}
+
+	v, err := pending.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	return txn.SetWithMeta(k, v, byte(kind))
 }
 
 func (l *Ledger) GetPending(key *types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error) {
@@ -1505,9 +1539,12 @@ func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *
 			errStr = append(errStr, err.Error())
 			return nil
 		}
-		if err := fn(pendingKey, pendingInfo); err != nil {
-			l.logger.Error("process pending error %s", err)
-			errStr = append(errStr, err.Error())
+		used := types.PendingKind(b)
+		if used == types.PendingNotUsed {
+			if err := fn(pendingKey, pendingInfo); err != nil {
+				l.logger.Error("process pending error %s", err)
+				errStr = append(errStr, err.Error())
+			}
 		}
 		return nil
 	})
@@ -1537,15 +1574,19 @@ func (l *Ledger) SearchPending(address types.Address, fn func(key *types.Pending
 		for _, v := range list.Kv {
 			pk := &types.PendingKey{}
 			pi := &types.PendingInfo{}
-			if err := pk.Deserialize(v.Key[1:]); err != nil {
-				continue
-			}
-			if err := pi.Deserialize(v.Value); err != nil {
-				continue
-			}
-			err := fn(pk, pi)
-			if err != nil {
-				l.logger.Error(err)
+			used := types.PendingKind(v.UserMeta[0])
+
+			if used == types.PendingNotUsed {
+				if err := pk.Deserialize(v.Key[1:]); err != nil {
+					continue
+				}
+				if err := pi.Deserialize(v.Value); err != nil {
+					continue
+				}
+				err := fn(pk, pi)
+				if err != nil {
+					l.logger.Error(err)
+				}
 			}
 		}
 		return nil
@@ -2419,26 +2460,21 @@ func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error, txns ...db.Sto
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixBlockCache, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
 			l.logger.Errorf("deserialize block error: %s", err)
-			errStr = append(errStr, err.Error())
 			return nil
 		}
 		if err := fn(blk); err != nil {
 			l.logger.Errorf("process block error: %s", err)
-			errStr = append(errStr, err.Error())
+			return nil
 		}
 		return nil
 	})
 
 	if err != nil {
 		return err
-	}
-	if len(errStr) != 0 {
-		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
@@ -2562,4 +2598,111 @@ func (l *Ledger) HasAccountMetaCache(key types.Address, txns ...db.StoreTxn) (bo
 		return false, err
 	}
 	return true, nil
+}
+
+func (l *Ledger) BlockCacheProcess(block types.Block) error {
+	blk := block.(*types.StateBlock)
+	am, err := l.GetAccountMeta(blk.GetAddress())
+	if err != nil && err != ErrAccountNotFound {
+		return fmt.Errorf("get account meta cache error: %s", err)
+	}
+	return l.BatchUpdate(func(txn db.StoreTxn) error {
+		if state, ok := block.(*types.StateBlock); ok {
+			err := l.addBlockCache(state, am, txn)
+			if err != nil {
+				l.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
+				return err
+			}
+			return nil
+		} else if _, ok := block.(*types.SmartContractBlock); ok {
+			return errors.New("smart contract block")
+		}
+		return errors.New("invalid block")
+	})
+}
+
+func (l *Ledger) addBlockCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+	l.logger.Debug("process block cache, ", block.GetHash())
+	if err := l.AddBlockCache(block, txn); err != nil {
+		return err
+	}
+	if err := l.updateAccountMetaCache(block, am, txn); err != nil {
+		return fmt.Errorf("update account meta cache error: %s", err)
+	}
+	if err := l.updatePendingKind(block, txn); err != nil {
+		return fmt.Errorf("update pending kind error: %s", err)
+	}
+	return nil
+}
+
+func (l *Ledger) updateAccountMetaCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+	hash := block.GetHash()
+	rep := block.GetRepresentative()
+	address := block.GetAddress()
+	token := block.GetToken()
+	balance := block.GetBalance()
+
+	tmNew := &types.TokenMeta{
+		Type:           token,
+		Header:         hash,
+		Representative: rep,
+		OpenBlock:      hash,
+		Balance:        balance,
+		BlockCount:     1,
+		BelongTo:       address,
+		Modified:       common.TimeNow().UTC().Unix(),
+	}
+
+	if am != nil {
+		tm := am.Token(block.GetToken())
+		if block.GetToken() == common.ChainToken() {
+			am.CoinBalance = balance
+			am.CoinOracle = block.GetOracle()
+			am.CoinNetwork = block.GetNetwork()
+			am.CoinVote = block.GetVote()
+			am.CoinStorage = block.GetStorage()
+		}
+		if tm != nil {
+			tm.Header = hash
+			tm.Representative = rep
+			tm.Balance = balance
+			tm.BlockCount = tm.BlockCount + 1
+			tm.Modified = common.TimeNow().UTC().Unix()
+		} else {
+			am.Tokens = append(am.Tokens, tmNew)
+		}
+		if err := l.AddOrUpdateAccountMetaCache(am, txn); err != nil {
+			return err
+		}
+	} else {
+		account := types.AccountMeta{
+			Address: address,
+			Tokens:  []*types.TokenMeta{tmNew},
+		}
+
+		if block.GetToken() == common.ChainToken() {
+			account.CoinBalance = balance
+			account.CoinOracle = block.GetOracle()
+			account.CoinNetwork = block.GetNetwork()
+			account.CoinVote = block.GetVote()
+			account.CoinStorage = block.GetStorage()
+		}
+		if err := l.AddAccountMetaCache(&account, txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Ledger) updatePendingKind(block *types.StateBlock, txn db.StoreTxn) error {
+	if block.IsReceiveBlock() {
+		pendingKey := &types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		if err := l.UpdatePending(pendingKey, types.PendingUsed, txn); err != nil {
+			return err
+		}
+	}
+	return nil
 }

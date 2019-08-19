@@ -82,7 +82,7 @@ func (l *Ledger) addPovHeader(header *types.PovHeader, txn db.StoreTxn) error {
 	})
 	if err == nil {
 		return ErrBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 
@@ -180,7 +180,7 @@ func (l *Ledger) addPovBody(height uint64, hash types.Hash, body *types.PovBody,
 	})
 	if err == nil {
 		return ErrBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 
@@ -278,7 +278,7 @@ func (l *Ledger) addPovHeight(hash types.Hash, height uint64, txn db.StoreTxn) e
 	})
 	if err == nil {
 		return ErrBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 
@@ -372,7 +372,7 @@ func (l *Ledger) addPovTD(hash types.Hash, height uint64, td *big.Int, txn db.St
 	})
 	if err == nil {
 		return ErrBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 

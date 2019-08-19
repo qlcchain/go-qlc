@@ -44,6 +44,13 @@ func (pi *PendingInfo) Deserialize(text []byte) error {
 	return nil
 }
 
+type PendingKind byte
+
+const (
+	PendingNotUsed PendingKind = iota
+	PendingUsed
+)
+
 type UncheckedKind byte
 
 const (

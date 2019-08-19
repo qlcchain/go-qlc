@@ -8,11 +8,12 @@
 package monitor
 
 import (
-	"github.com/rcrowley/go-metrics"
-	influxdb "github.com/vrischmann/go-metrics-influxdb"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/rcrowley/go-metrics"
+	influxdb "github.com/vrischmann/go-metrics-influxdb"
 )
 
 func TestMetrics(t *testing.T) {
