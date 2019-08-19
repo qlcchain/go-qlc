@@ -262,15 +262,36 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 									break
 								}
 							}
+							reverseBlocks := make(types.StateBlockList, 0)
 							for i := len(bulkBlk) - 1; i >= 0; i-- {
+								reverseBlocks = append(reverseBlocks, bulkBlk[i])
+							}
+							for len(reverseBlocks) > 0 {
+								sendBlockNum := 0
+								if len(reverseBlocks) > maxPushTxPerTime {
+									sendBlockNum = maxPushTxPerTime
+								} else {
+									sendBlockNum = len(reverseBlocks)
+								}
+								sendTxBlocks := reverseBlocks[0:sendBlockNum]
 								if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
 									break
 								}
-								err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
+								err = ss.netService.SendMessageToPeer(BulkPushBlock, sendTxBlocks, peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 								}
+								reverseBlocks = reverseBlocks[sendBlockNum:]
 							}
+							//for i := len(bulkBlk) - 1; i >= 0; i-- {
+							//	if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+							//		break
+							//	}
+							//	err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
+							//	if err != nil {
+							//		ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
+							//	}
+							//}
 						} else {
 							//ss.logger.Info("need to send some blocks of this account")
 							var blk *types.StateBlock
@@ -288,15 +309,36 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 									break
 								}
 							}
+							reverseBlocks := make(types.StateBlockList, 0)
 							for i := len(bulkBlk) - 1; i >= 0; i-- {
+								reverseBlocks = append(reverseBlocks, bulkBlk[i])
+							}
+							for len(reverseBlocks) > 0 {
+								sendBlockNum := 0
+								if len(reverseBlocks) > maxPushTxPerTime {
+									sendBlockNum = maxPushTxPerTime
+								} else {
+									sendBlockNum = len(reverseBlocks)
+								}
+								sendTxBlocks := reverseBlocks[0:sendBlockNum]
 								if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
 									break
 								}
-								err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
+								err = ss.netService.SendMessageToPeer(BulkPushBlock, sendTxBlocks, peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 								}
+								reverseBlocks = reverseBlocks[sendBlockNum:]
 							}
+							//for i := len(bulkBlk) - 1; i >= 0; i-- {
+							//	if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+							//		break
+							//	}
+							//	err = ss.netService.SendMessageToPeer(BulkPushBlock, bulkBlk[i], peerID)
+							//	if err != nil {
+							//		ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
+							//	}
+							//}
 						}
 					}
 					break
@@ -349,15 +391,36 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				break
 			}
 		}
+		reverseBlocks := make(types.StateBlockList, 0)
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
+			reverseBlocks = append(reverseBlocks, bulkBlk[i])
+		}
+		for len(reverseBlocks) > 0 {
+			sendBlockNum := 0
+			if len(reverseBlocks) > maxPushTxPerTime {
+				sendBlockNum = maxPushTxPerTime
+			} else {
+				sendBlockNum = len(reverseBlocks)
+			}
+			sendTxBlocks := reverseBlocks[0:sendBlockNum]
 			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 				break
 			}
-			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
+			err = ss.netService.SendMessageToPeer(BulkPullRsp, sendTxBlocks, message.MessageFrom())
 			if err != nil {
-				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
+				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 			}
+			reverseBlocks = reverseBlocks[sendBlockNum:]
 		}
+		//for i := len(bulkBlk) - 1; i >= 0; i-- {
+		//	if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+		//		break
+		//	}
+		//	err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
+		//	if err != nil {
+		//		ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
+		//	}
+		//}
 	} else {
 		var blk *types.StateBlock
 		var bulkBlk []*types.StateBlock
@@ -469,17 +532,37 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 			bulkBlk = append(bulkBlk, blk)
 		}
 	}
-
+	reverseBlocks := make(types.StateBlockList, 0)
 	for i := len(bulkBlk) - 1; i >= 0; i-- {
+		reverseBlocks = append(reverseBlocks, bulkBlk[i])
+	}
+	for len(reverseBlocks) > 0 {
+		sendBlockNum := 0
+		if len(reverseBlocks) > maxPushTxPerTime {
+			sendBlockNum = maxPushTxPerTime
+		} else {
+			sendBlockNum = len(reverseBlocks)
+		}
+		sendTxBlocks := reverseBlocks[0:sendBlockNum]
 		if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 			break
 		}
-
-		err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
+		err = ss.netService.SendMessageToPeer(BulkPullRsp, sendTxBlocks, message.MessageFrom())
 		if err != nil {
-			ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
+			ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 		}
+		reverseBlocks = reverseBlocks[sendBlockNum:]
 	}
+	//for i := len(bulkBlk) - 1; i >= 0; i-- {
+	//	if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+	//		break
+	//	}
+	//
+	//	err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
+	//	if err != nil {
+	//		ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
+	//	}
+	//}
 
 	return nil
 }
@@ -490,18 +573,18 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 		return err
 	}
 
-	block := blkPacket.Blk
-	if block == nil {
+	blocks := blkPacket.Blocks
+	if len(blocks) == 0 {
 		return nil
 	}
 
-	ss.netService.node.logger.Debugf("receive BulkPullRsp, hash %s", block.GetHash())
-
 	if ss.netService.node.cfg.PerformanceEnabled {
-		hash := block.GetHash()
-		ss.netService.msgService.addPerformanceTime(hash)
+		for _, b := range blocks {
+			hash := b.GetHash()
+			ss.netService.msgService.addPerformanceTime(hash)
+		}
 	}
-	ss.netService.msgEvent.Publish(common.EventSyncBlock, block)
+	ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
 	return nil
 }
 
@@ -511,13 +594,15 @@ func (ss *ServiceSync) onBulkPushBlock(message *Message) error {
 	if err != nil {
 		return err
 	}
-	block := blkPacket.Blk
+	blocks := blkPacket.Blocks
 
 	if ss.netService.node.cfg.PerformanceEnabled {
-		hash := block.GetHash()
-		ss.netService.msgService.addPerformanceTime(hash)
+		for _, b := range blocks {
+			hash := b.GetHash()
+			ss.netService.msgService.addPerformanceTime(hash)
+		}
 	}
-	ss.netService.msgEvent.Publish(common.EventSyncBlock, block)
+	ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
 	return nil
 }
 

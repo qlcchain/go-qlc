@@ -274,7 +274,7 @@ func (s *Stream) SendMessageToChan(message []byte) {
 	select {
 	case s.messageChan <- message:
 	default:
-		s.node.logger.Errorf("send message to [%s] timeout", s.pid.Pretty())
+		s.node.logger.Debugf("send message to [%s] timeout", s.pid.Pretty())
 	}
 }
 
@@ -282,6 +282,6 @@ func (s *Stream) SendMessageToCtrlChan(message []byte) {
 	select {
 	case s.ctrlMsgChan <- message:
 	default:
-		s.node.logger.Errorf("send ctrl message to [%s] timeout", s.pid.Pretty())
+		s.node.logger.Debugf("send ctrl message to [%s] timeout", s.pid.Pretty())
 	}
 }

@@ -20,13 +20,10 @@ message BulkPullReq {
     bytes  Hashes = 5;
 }
 message BulkPullRsp {
-    uint32  blocktype = 1;
-    bytes   block = 2;
-    bytes   blocks = 3;
+    bytes   blocks = 1;
 }
 message BulkPushBlock {
-    uint32  blocktype = 1;
-    bytes   block = 2;
+    bytes blocks = 1;
 }
 message PublishBlock {
     uint32  blocktype = 1;

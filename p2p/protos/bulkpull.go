@@ -92,7 +92,6 @@ func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
 }
 
 type BulkPullRspPacket struct {
-	Blk    *types.StateBlock
 	Blocks types.StateBlockList
 }
 
@@ -105,18 +104,7 @@ func BulkPullRspPacketToProto(bp *BulkPullRspPacket) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		blockType := bp.Blocks[0].GetType()
-		bpPb.Blocktype = uint32(blockType)
 		bpPb.Blocks = blockBytes
-	} else if bp.Blk != nil {
-		blkData, err := bp.Blk.Serialize()
-		if err != nil {
-			return nil, err
-		}
-		blockType := bp.Blk.GetType()
-		bpPb.Blocktype = uint32(blockType)
-		bpPb.Block = blkData
 	}
 
 	data, err := proto.Marshal(bpPb)
@@ -141,13 +129,7 @@ func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if len(bp.Block) > 0 {
-		blk := new(types.StateBlock)
-		if err := blk.Deserialize(bp.Block); err != nil {
-			return nil, err
-		}
-		bpRp.Blk = blk
+		bpRp.Blocks = blocks
 	}
-
 	return bpRp, nil
 }

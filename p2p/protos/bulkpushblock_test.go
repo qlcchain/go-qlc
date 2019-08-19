@@ -28,10 +28,10 @@ func TestBulkPushPacket(t *testing.T) {
 	if err := json.Unmarshal([]byte(testBulkPushBlock), &blk); err != nil {
 		t.Fatal(err)
 	}
-	rsp := BulkPush{
-		Blk: blk,
-	}
-	bytes, err := BulkPushBlockToProto(&rsp)
+
+	rsp := &BulkPush{}
+	rsp.Blocks = append(rsp.Blocks, blk)
+	bytes, err := BulkPushBlockToProto(rsp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,13 +39,10 @@ func TestBulkPushPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if blk.GetType() != block.Blk.GetType() {
-		t.Fatal("type error")
-	}
-	if blk.GetPrevious() != block.Blk.GetPrevious() {
+	if blk.GetPrevious() != block.Blocks[0].GetPrevious() {
 		t.Fatal("PreviousHash error")
 	}
-	if blk.GetHash() != block.Blk.GetHash() {
+	if blk.GetHash() != block.Blocks[0].GetHash() {
 		t.Fatal("hash error")
 	}
 }

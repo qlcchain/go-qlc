@@ -20,6 +20,7 @@ const (
 	msgResendMaxTimes       = 10
 	msgNeedResendInterval   = 10 * time.Second
 	maxPullTxPerReq         = 100
+	maxPushTxPerTime        = 100
 )
 
 //  Message Type
@@ -571,7 +572,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, nil
 	case BulkPullRsp:
 		PullRsp := &protos.BulkPullRspPacket{
-			Blk: value.(*types.StateBlock),
+			Blocks: value.(types.StateBlockList),
 		}
 		data, err := protos.BulkPullRspPacketToProto(PullRsp)
 		if err != nil {
@@ -580,7 +581,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, err
 	case BulkPushBlock:
 		push := &protos.BulkPush{
-			Blk: value.(*types.StateBlock),
+			Blocks: value.(types.StateBlockList),
 		}
 		data, err := protos.BulkPushBlockToProto(push)
 		if err != nil {
