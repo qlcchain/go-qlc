@@ -288,6 +288,10 @@ func TestLedger_HasBlock(t *testing.T) {
 	}
 	t.Log("hasblock,", r)
 
+	r, err = l.HasStateBlockConfirmed(block.GetHash())
+	if err != nil || !r {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetRandomBlock_Empty(t *testing.T) {
@@ -298,6 +302,26 @@ func TestLedger_GetRandomBlock_Empty(t *testing.T) {
 
 	if err != ErrStoreEmpty {
 		t.Fatal(err)
+	}
+	t.Log("block ,", b)
+}
+
+func TestLedger_GetRandomBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := mock.StateBlockWithoutWork()
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	b, err := l.GetRandomStateBlock()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if blk.GetHash() != b.GetHash() {
+		t.Fatal("block not equal")
 	}
 	t.Log("block ,", b)
 }
@@ -502,6 +526,10 @@ func TestLedger_GetTokenMeta(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("token,", token)
+	_, err = l.GetTokenMetaConfirmed(token.BelongTo, token.Type)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
@@ -522,6 +550,11 @@ func TestLedger_UpdateTokenMeta(t *testing.T) {
 	token := addTokenMeta(t, l)
 	token2 := mock.TokenMeta(token.BelongTo)
 	err := l.AddOrUpdateTokenMeta(token.BelongTo, token2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token2.Header = mock.Hash()
+	err = l.UpdateTokenMeta(token.BelongTo, token2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -683,6 +716,22 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	}
 }
 
+func TestLedger_GetRepresentationsCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addRepresentationWeight(t, l)
+	addRepresentationWeight(t, l)
+
+	err := l.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, am *types.Benefit, amCache *types.Benefit) error {
+		t.Log(address, am, amCache)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendinginfo types.PendingInfo) {
 	address := mock.Address()
 	hash := mock.Hash()
@@ -716,11 +765,24 @@ func TestLedger_GetPending(t *testing.T) {
 
 	addPending(t, l)
 	pendingkey, _ := addPending(t, l)
-	p, err := l.GetPending(pendingkey)
+	p, err := l.GetPending(&pendingkey)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("pending,", p)
+
+	count := 0
+	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		t.Log(pendingKey, pendingInfo)
+		count = count + 1
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Fatal("pending count error")
+	}
 }
 
 func TestLedger_DeletePending(t *testing.T) {
@@ -733,7 +795,7 @@ func TestLedger_DeletePending(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := l.GetPending(pendingkey); err != nil && err != ErrPendingNotFound {
+	if _, err := l.GetPending(&pendingkey); err != nil && err != ErrPendingNotFound {
 		t.Fatal(err)
 	}
 	t.Log("delete pending success")
@@ -1226,6 +1288,14 @@ func TestLedger_GetBlockCache(t *testing.T) {
 	hash1 := blk1.GetHash()
 	if hash != hash1 {
 		t.Fatal("hash not match")
+	}
+
+	err = l.GetBlockCaches(func(block *types.StateBlock) error {
+		fmt.Println(block)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -306,7 +306,7 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, erro
 	if err != nil {
 		return nil, err
 	}
-	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
+	info, err := l.GetPending(&types.PendingKey{Address: rxAccount, Hash: hash})
 	if err != nil {
 		return nil, err
 	}

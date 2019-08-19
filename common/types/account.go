@@ -119,12 +119,12 @@ func (a *AccountMeta) TotalBalance() Balance {
 	return balance
 }
 
-func (a *AccountMeta) Serialize() ([]byte, error) {
-	return a.MarshalMsg(nil)
+func (am *AccountMeta) Serialize() ([]byte, error) {
+	return am.MarshalMsg(nil)
 }
 
-func (a *AccountMeta) Deserialize(text []byte) error {
-	_, err := a.UnmarshalMsg(text)
+func (am *AccountMeta) Deserialize(text []byte) error {
+	_, err := am.UnmarshalMsg(text)
 	if err != nil {
 		return err
 	}

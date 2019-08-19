@@ -56,8 +56,11 @@ func (m MigrationV2ToV3) Migrate(txn db.StoreTxn) error {
 	}
 	if b {
 		fmt.Println("migrate ledger v2 to v3 ")
-		key := getKeyOfHash(common.GenesisBlockHash(), idPrefixBlock)
-		err := txn.Get(key, func(bytes []byte, b byte) error {
+		k, err := getKeyOfParts(idPrefixBlock, common.GenesisBlockHash())
+		if err != nil {
+			return err
+		}
+		err = txn.Get(k, func(bytes []byte, b byte) error {
 			return nil
 		})
 		if err != nil && err != badger.ErrKeyNotFound {
@@ -259,7 +262,10 @@ func (m MigrationV5ToV6) Migrate(txn db.StoreTxn) error {
 		}
 
 		for k, v := range newChild {
-			pKey := getKeyOfHash(k, idPrefixChild)
+			pKey, err := getKeyOfParts(idPrefixChild, k)
+			if err != nil {
+				return err
+			}
 			if v == types.ZeroHash {
 				if err := txn.Delete(pKey); err != nil {
 					return err

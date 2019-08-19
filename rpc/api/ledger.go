@@ -4,12 +4,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/ledger/relation"
@@ -183,7 +183,7 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		}
 		pendingAmount := types.ZeroBalance
 		for _, key := range pendingKeys {
-			pendinginfo, err := l.ledger.GetPending(*key)
+			pendinginfo, err := l.ledger.GetPending(key)
 			if err != nil {
 				return nil, err
 			}
@@ -227,7 +227,7 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 		}
 		pendingAmount := types.ZeroBalance
 		for _, key := range pendingKeys {
-			pendinginfo, err := l.ledger.GetPending(*key)
+			pendinginfo, err := l.ledger.GetPending(key)
 			if err != nil {
 				return nil, err
 			}

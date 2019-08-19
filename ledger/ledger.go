@@ -269,6 +269,13 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 		case types.Address:
 			hash := part.(types.Address)
 			src = hash[:]
+		case *types.PendingKey:
+			pk := part.(*types.PendingKey)
+			var err error
+			src, err = pk.Serialize()
+			if err != nil {
+				return nil, fmt.Errorf("pending key serialize: %s", err)
+			}
 		default:
 			return nil, errors.New("Key contains of invalid part.")
 		}
@@ -281,11 +288,10 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 
 func (l *Ledger) AddStateBlock(value *types.StateBlock, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	k, err := getKeyOfParts(idPrefixBlock, value.GetHash())
 	if err != nil {
-		return nil
+		return err
 	}
 	v, err := value.Serialize()
 	if err != nil {
@@ -297,7 +303,7 @@ func (l *Ledger) AddStateBlock(value *types.StateBlock, txns ...db.StoreTxn) err
 	})
 	if err == nil {
 		return ErrBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 	if err := txn.Set(k, v); err != nil {
@@ -330,7 +336,7 @@ func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 		if err != nil {
 			return err
 		}
-		err = txn.Get(kCache, func(val []byte, b byte) error {
+		err = txn.Get(kCache, func(v []byte, b byte) error {
 			return nil
 		})
 		if err != nil {
@@ -338,7 +344,7 @@ func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 			if err != nil {
 				return err
 			}
-			err = txn.Get(kConfirmed, func(val []byte, b byte) error {
+			err = txn.Get(kConfirmed, func(v []byte, b byte) error {
 				return nil
 			})
 			if err != nil {
@@ -347,7 +353,10 @@ func addChild(cBlock *types.StateBlock, txn db.StoreTxn) error {
 		}
 
 		// is parent have used
-		k, _ := getKeyOfParts(idPrefixChild, pHash)
+		k, err := getKeyOfParts(idPrefixChild, pHash)
+		if err != nil {
+			return err
+		}
 
 		err = txn.Get(k, func(val []byte, b byte) error {
 			return nil
@@ -375,11 +384,11 @@ func addLink(block *types.StateBlock, txn db.StoreTxn) error {
 			return err
 		}
 		h := block.GetHash()
-		val, err := h.MarshalMsg(nil)
+		v, err := h.MarshalMsg(nil)
 		if err != nil {
 			return err
 		}
-		if err := txn.Set(k, val); err != nil {
+		if err := txn.Set(k, v); err != nil {
 			return err
 		}
 	}
@@ -470,7 +479,6 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 
 func (l *Ledger) DeleteStateBlock(key types.Hash, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	k, err := getKeyOfParts(idPrefixBlock, key)
 	if err != nil {
@@ -580,6 +588,7 @@ func (l *Ledger) HasStateBlockConfirmed(key types.Hash, txns ...db.StoreTxn) (bo
 func (l *Ledger) CountStateBlocks(txns ...db.StoreTxn) (uint64, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
+
 	return txn.Count([]byte{idPrefixBlock})
 }
 
@@ -633,7 +642,7 @@ func (l *Ledger) AddSmartContractBlock(value *types.SmartContractBlock, txns ...
 
 	k, err := getKeyOfParts(idPrefixSmartContractBlock, value.GetHash())
 	if err != nil {
-		return nil
+		return err
 	}
 	v, err := value.Serialize()
 	if err != nil {
@@ -742,46 +751,43 @@ func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
 	}
 }
 
-func (l *Ledger) getUncheckedBlockKey(hash types.Hash, kind types.UncheckedKind) []byte {
-	var key [1 + types.HashSize]byte
-	key[0] = l.uncheckedKindToPrefix(kind)
-	copy(key[1:], hash[:])
-	return key[:]
-}
+func (l *Ledger) AddUncheckedBlock(key types.Hash, value *types.StateBlock, kind types.UncheckedKind, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
 
-func (l *Ledger) AddUncheckedBlock(parentHash types.Hash, blk *types.StateBlock, kind types.UncheckedKind, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
-	blockBytes, err := blk.Serialize()
+	k, err := getKeyOfParts(l.uncheckedKindToPrefix(kind), key)
+	if err != nil {
+		return err
+	}
+	v, err := value.Serialize()
 	if err != nil {
 		return err
 	}
 
-	key := l.getUncheckedBlockKey(parentHash, kind)
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	//never overwrite implicitly
-	err = txn.Get(key, func(bytes []byte, b byte) error {
+	err = txn.Get(k, func(v []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
 		return ErrUncheckedBlockExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-
-	return txn.SetWithMeta(key, blockBytes, byte(sync))
+	return txn.SetWithMeta(k, v, byte(sync))
 }
 
-func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (*types.StateBlock, types.SynchronizedKind, error) {
-	key := l.getUncheckedBlockKey(parentHash, kind)
-
+func (l *Ledger) GetUncheckedBlock(key types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (*types.StateBlock, types.SynchronizedKind, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	blk := new(types.StateBlock)
+	k, err := getKeyOfParts(l.uncheckedKindToPrefix(kind), key)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	value := new(types.StateBlock)
 	var sync types.SynchronizedKind
-	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if err = blk.Deserialize(val); err != nil {
+	err = txn.Get(k, func(val []byte, b byte) (err error) {
+		if err = value.Deserialize(val); err != nil {
 			return err
 		}
 		sync = types.SynchronizedKind(b)
@@ -793,25 +799,32 @@ func (l *Ledger) GetUncheckedBlock(parentHash types.Hash, kind types.UncheckedKi
 		}
 		return nil, 0, err
 	}
-	return blk, sync, nil
+	return value, sync, nil
 }
 
-func (l *Ledger) DeleteUncheckedBlock(parentHash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) error {
-	key := l.getUncheckedBlockKey(parentHash, kind)
+func (l *Ledger) DeleteUncheckedBlock(key types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	return txn.Delete(key)
+	k, err := getKeyOfParts(l.uncheckedKindToPrefix(kind), key)
+	if err != nil {
+		return err
+	}
+	return txn.Delete(k)
 }
 
-func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (bool, error) {
-	key := l.getUncheckedBlockKey(hash, kind)
-	txn, flag := l.getTxn(true, txns...)
+func (l *Ledger) HasUncheckedBlock(key types.Hash, kind types.UncheckedKind, txns ...db.StoreTxn) (bool, error) {
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Get(key, func(val []byte, b byte) error {
+	k, err := getKeyOfParts(l.uncheckedKindToPrefix(kind), key)
+	if err != nil {
+		return false, err
+	}
+	err = txn.Get(k, func(v []byte, b byte) error {
 		return nil
 	})
+
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
 			return false, nil
@@ -866,10 +879,10 @@ func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ..
 }
 
 func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
-	var count uint64
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	var count uint64
 	count, err := txn.Count([]byte{idPrefixUncheckedBlockLink})
 	if err != nil {
 		return 0, err
@@ -889,7 +902,7 @@ func (l *Ledger) AddAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn) e
 
 	k, err := getKeyOfParts(idPrefixAccount, value.Address)
 	if err != nil {
-		return nil
+		return err
 	}
 	v, err := value.Serialize()
 	if err != nil {
@@ -901,7 +914,7 @@ func (l *Ledger) AddAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn) e
 	})
 	if err == nil {
 		return ErrAccountExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 	return txn.Set(k, v)
@@ -991,8 +1004,7 @@ func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...d
 
 	err := txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
 		am := new(types.AccountMeta)
-		_, err := am.UnmarshalMsg(val)
-		if err != nil {
+		if err := am.Deserialize(val); err != nil {
 			return err
 		}
 		if err := fn(am); err != nil {
@@ -1010,6 +1022,7 @@ func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...d
 func (l *Ledger) CountAccountMetas(txns ...db.StoreTxn) (uint64, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
+
 	return txn.Count([]byte{idPrefixAccount})
 }
 
@@ -1019,7 +1032,7 @@ func (l *Ledger) UpdateAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn
 
 	k, err := getKeyOfParts(idPrefixAccount, value.Address)
 	if err != nil {
-		return nil
+		return err
 	}
 	v, err := value.Serialize()
 	if err != nil {
@@ -1044,7 +1057,7 @@ func (l *Ledger) AddOrUpdateAccountMeta(value *types.AccountMeta, txns ...db.Sto
 
 	k, err := getKeyOfParts(idPrefixAccount, value.Address)
 	if err != nil {
-		return nil
+		return err
 	}
 	v, err := value.Serialize()
 	if err != nil {
@@ -1058,13 +1071,6 @@ func (l *Ledger) DeleteAccountMeta(key types.Address, txns ...db.StoreTxn) error
 	defer l.releaseTxn(txn, flag)
 
 	k, err := getKeyOfParts(idPrefixAccount, key)
-	if err != nil {
-		return err
-	}
-
-	err = txn.Get(k, func(v []byte, b byte) error {
-		return nil
-	})
 	if err != nil {
 		return err
 	}
@@ -1221,63 +1227,64 @@ func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns 
 	return false, nil
 }
 
-func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
-	spin := l.representCache.getLock(address.String())
+func (l *Ledger) AddRepresentation(key types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
+	spin := l.representCache.getLock(key.String())
 	spin.Lock()
 	defer spin.Unlock()
 
-	benefit, err := l.GetRepresentation(address, txns...)
+	value, err := l.GetRepresentation(key, txns...)
 	if err != nil && err != ErrRepresentationNotFound {
-		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
+		l.logger.Errorf("getRepresentation error: %s ,address: %s", err, key)
 		return err
 	}
 
-	benefit.Balance = benefit.Balance.Add(diff.Balance)
-	benefit.Vote = benefit.Vote.Add(diff.Vote)
-	benefit.Network = benefit.Network.Add(diff.Network)
-	benefit.Oracle = benefit.Oracle.Add(diff.Oracle)
-	benefit.Storage = benefit.Storage.Add(diff.Storage)
-	benefit.Total = benefit.Total.Add(diff.Total)
+	value.Balance = value.Balance.Add(diff.Balance)
+	value.Vote = value.Vote.Add(diff.Vote)
+	value.Network = value.Network.Add(diff.Network)
+	value.Oracle = value.Oracle.Add(diff.Oracle)
+	value.Storage = value.Storage.Add(diff.Storage)
+	value.Total = value.Total.Add(diff.Total)
 
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
-	return l.representCache.updateMemory(address, benefit, txn)
+	return l.representCache.updateMemory(key, value, txn)
 }
 
-func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
-	spin := l.representCache.getLock(address.String())
+func (l *Ledger) SubRepresentation(key types.Address, diff *types.Benefit, txns ...db.StoreTxn) error {
+	spin := l.representCache.getLock(key.String())
 	spin.Lock()
 	defer spin.Unlock()
 
-	benefit, err := l.GetRepresentation(address, txns...)
+	value, err := l.GetRepresentation(key, txns...)
 	if err != nil {
-		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
+		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, key)
 		return err
 	}
-	benefit.Balance = benefit.Balance.Sub(diff.Balance)
-	benefit.Vote = benefit.Vote.Sub(diff.Vote)
-	benefit.Network = benefit.Network.Sub(diff.Network)
-	benefit.Oracle = benefit.Oracle.Sub(diff.Oracle)
-	benefit.Storage = benefit.Storage.Sub(diff.Storage)
-	benefit.Total = benefit.Total.Sub(diff.Total)
+	value.Balance = value.Balance.Sub(diff.Balance)
+	value.Vote = value.Vote.Sub(diff.Vote)
+	value.Network = value.Network.Sub(diff.Network)
+	value.Oracle = value.Oracle.Sub(diff.Oracle)
+	value.Storage = value.Storage.Sub(diff.Storage)
+	value.Total = value.Total.Sub(diff.Total)
 
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
-	return l.representCache.updateMemory(address, benefit, txn)
+	return l.representCache.updateMemory(key, value, txn)
 }
 
-func (l *Ledger) getRepresentation(address types.Address, txns ...db.StoreTxn) (*types.Benefit, error) {
+func (l *Ledger) getRepresentation(key types.Address, txns ...db.StoreTxn) (*types.Benefit, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key, err := getKeyOfParts(idPrefixRepresentation, address)
+	k, err := getKeyOfParts(idPrefixRepresentation, key)
 	if err != nil {
 		return nil, err
 	}
-	benefit := new(types.Benefit)
-	err = txn.Get(key, func(val []byte, b byte) (err error) {
-		if _, err = benefit.UnmarshalMsg(val); err != nil {
-			l.logger.Errorf("Unmarshal benefit error: %s ,address: %s, val: %s", err, address, string(val))
+
+	value := new(types.Benefit)
+	err = txn.Get(k, func(v []byte, b byte) error {
+		if err := value.Deserialize(v); err != nil {
+			l.logger.Errorf("Unmarshal benefit error: %s ,address: %s, val: %s", err, key, string(v))
 			return err
 		}
 		return nil
@@ -1288,24 +1295,24 @@ func (l *Ledger) getRepresentation(address types.Address, txns ...db.StoreTxn) (
 		}
 		return nil, err
 	}
-	return benefit, nil
+	return value, nil
 }
 
-func (l *Ledger) GetRepresentation(address types.Address, txns ...db.StoreTxn) (*types.Benefit, error) {
-	if lr, ok := l.representCache.getFromMemory(address.String()); ok {
+func (l *Ledger) GetRepresentation(key types.Address, txns ...db.StoreTxn) (*types.Benefit, error) {
+	if lr, ok := l.representCache.getFromMemory(key.String()); ok {
 		return lr.(*types.Benefit), nil
 	}
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key, err := getKeyOfParts(idPrefixRepresentation, address)
+	k, err := getKeyOfParts(idPrefixRepresentation, key)
 	if err != nil {
 		return nil, err
 	}
-	benefit := new(types.Benefit)
-	err = txn.Get(key, func(val []byte, b byte) (err error) {
-		if _, err = benefit.UnmarshalMsg(val); err != nil {
-			l.logger.Errorf("Unmarshal benefit error: %s ,address: %s, val: %s", err, address, string(val))
+
+	value := new(types.Benefit)
+	err = txn.Get(k, func(v []byte, b byte) (err error) {
+		if err := value.Deserialize(v); err != nil {
 			return err
 		}
 		return nil
@@ -1323,7 +1330,7 @@ func (l *Ledger) GetRepresentation(address types.Address, txns ...db.StoreTxn) (
 		}
 		return nil, err
 	}
-	return benefit, nil
+	return value, nil
 }
 
 func (l *Ledger) GetRepresentations(fn func(types.Address, *types.Benefit) error, txns ...db.StoreTxn) error {
@@ -1351,7 +1358,7 @@ func (l *Ledger) GetRepresentations(fn func(types.Address, *types.Benefit) error
 		}
 		if _, ok := l.representCache.getFromMemory(address.String()); !ok {
 			benefit := new(types.Benefit)
-			if _, err = benefit.UnmarshalMsg(val); err != nil {
+			if err = benefit.Deserialize(val); err != nil {
 				l.logger.Errorf("Unmarshal benefit error: %s ,val: %s", err, string(val))
 				return err
 			}
@@ -1433,48 +1440,42 @@ func (l *Ledger) GetRepresentationsCache(address types.Address, fn func(address 
 	}
 }
 
-func (l *Ledger) getPendingKey(pendingKey types.PendingKey) []byte {
-	//key := []byte{idPrefixPending}
-	//_, _ = pendingKey.MarshalMsg(key[1:])
-	//return key[:]
-
-	msg, _ := pendingKey.MarshalMsg(nil)
-	key := make([]byte, 1+len(msg))
-	key[0] = idPrefixPending
-	copy(key[1:], msg)
-	return key[:]
-
-}
-
-func (l *Ledger) AddPending(pendingKey *types.PendingKey, pending *types.PendingInfo, txns ...db.StoreTxn) error {
-	pendingBytes, err := pending.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-	key := l.getPendingKey(*pendingKey)
+func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	//never overwrite implicitly
-	err = txn.Get(key, func(bytes []byte, b byte) error {
+	k, err := getKeyOfParts(idPrefixPending, key)
+	if err != nil {
+		return err
+	}
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+
+	err = txn.Get(k, func(v []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
 		return ErrPendingExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(key, pendingBytes)
+	return txn.Set(k, v)
 }
 
-func (l *Ledger) GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error) {
-	key := l.getPendingKey(pendingKey)
-	var pending types.PendingInfo
-	txn, flag := l.getTxn(true, txns...)
+func (l *Ledger) GetPending(key *types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error) {
+	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Get(key[:], func(val []byte, b byte) (err error) {
-		if _, err = pending.UnmarshalMsg(val); err != nil {
+	k, err := getKeyOfParts(idPrefixPending, key)
+	if err != nil {
+		return nil, err
+	}
+
+	value := new(types.PendingInfo)
+	err = txn.Get(k, func(v []byte, b byte) error {
+		if err := value.Deserialize(v); err != nil {
 			return err
 		}
 		return nil
@@ -1485,8 +1486,7 @@ func (l *Ledger) GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*
 		}
 		return nil, err
 	}
-	return &pending, nil
-
+	return value, nil
 }
 
 func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error, txns ...db.StoreTxn) error {
@@ -1496,12 +1496,12 @@ func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *
 	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
 		pendingKey := new(types.PendingKey)
-		if _, err := pendingKey.UnmarshalMsg(key[1:]); err != nil {
+		if err := pendingKey.Deserialize(key[1:]); err != nil {
 			errStr = append(errStr, err.Error())
 			return nil
 		}
 		pendingInfo := new(types.PendingInfo)
-		if _, err := pendingInfo.UnmarshalMsg(val); err != nil {
+		if err := pendingInfo.Deserialize(val); err != nil {
 			errStr = append(errStr, err.Error())
 			return nil
 		}
@@ -1526,21 +1526,21 @@ func (l *Ledger) SearchPending(address types.Address, fn func(key *types.Pending
 
 	return txn.Stream([]byte{idPrefixPending}, func(item *badger.Item) bool {
 		key := &types.PendingKey{}
-		if _, err := key.UnmarshalMsg(item.Key()[1:]); err == nil {
+		if err := key.Deserialize(item.Key()[1:]); err == nil {
 			return key.Address == address
 		} else {
 			l.logger.Error(util.ToString(key), err)
 		}
+
 		return false
 	}, func(list *pb.KVList) error {
 		for _, v := range list.Kv {
 			pk := &types.PendingKey{}
 			pi := &types.PendingInfo{}
-
-			if _, err := pk.UnmarshalMsg(v.Key[1:]); err != nil {
+			if err := pk.Deserialize(v.Key[1:]); err != nil {
 				continue
 			}
-			if _, err := pi.UnmarshalMsg(v.Value); err != nil {
+			if err := pi.Deserialize(v.Value); err != nil {
 				continue
 			}
 			err := fn(pk, pi)
@@ -1552,39 +1552,50 @@ func (l *Ledger) SearchPending(address types.Address, fn func(key *types.Pending
 	})
 }
 
-func (l *Ledger) DeletePending(pendingKey *types.PendingKey, txns ...db.StoreTxn) error {
-	key := l.getPendingKey(*pendingKey)
+func (l *Ledger) DeletePending(key *types.PendingKey, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	return txn.Delete(key)
+	k, err := getKeyOfParts(idPrefixPending, key)
+	if err != nil {
+		return err
+	}
+	return txn.Delete(k)
 }
 
 func (l *Ledger) AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) error {
-	key := getKeyOfHash(frontier.HeaderBlock, idPrefixFrontier)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	// never overwrite implicitly
-	err := txn.Get(key, func(bytes []byte, b byte) error {
+	k, err := getKeyOfParts(idPrefixFrontier, frontier.HeaderBlock)
+	if err != nil {
+		return err
+	}
+	v := frontier.OpenBlock[:]
+
+	err = txn.Get(k, func(v []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
 		return ErrFrontierExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(key, frontier.OpenBlock[:])
+	return txn.Set(k, v)
 }
 
-func (l *Ledger) GetFrontier(hash types.Hash, txns ...db.StoreTxn) (*types.Frontier, error) {
-	key := getKeyOfHash(hash, idPrefixFrontier)
-	frontier := types.Frontier{HeaderBlock: hash}
+func (l *Ledger) GetFrontier(key types.Hash, txns ...db.StoreTxn) (*types.Frontier, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		copy(frontier.OpenBlock[:], val)
+	k, err := getKeyOfParts(idPrefixFrontier, key)
+	if err != nil {
+		return nil, err
+	}
+
+	frontier := types.Frontier{HeaderBlock: key}
+	err = txn.Get(k, func(v []byte, b byte) (err error) {
+		copy(frontier.OpenBlock[:], v)
 		return nil
 	})
 	if err != nil {
@@ -1615,12 +1626,15 @@ func (l *Ledger) GetFrontiers(txns ...db.StoreTxn) ([]*types.Frontier, error) {
 	return frontiers, nil
 }
 
-func (l *Ledger) DeleteFrontier(hash types.Hash, txns ...db.StoreTxn) error {
-	key := getKeyOfHash(hash, idPrefixFrontier)
+func (l *Ledger) DeleteFrontier(key types.Hash, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	return txn.Delete(key)
+	k, err := getKeyOfParts(idPrefixFrontier, key)
+	if err != nil {
+		return err
+	}
+	return txn.Delete(k)
 }
 
 func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
@@ -1630,14 +1644,18 @@ func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
 	return txn.Count([]byte{idPrefixFrontier})
 }
 
-func (l *Ledger) GetChild(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
+func (l *Ledger) GetChild(key types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key := getKeyOfHash(hash, idPrefixChild)
-	var h types.Hash
-	err := txn.Get(key, func(val []byte, b byte) error {
-		if _, err := h.UnmarshalMsg(val); err != nil {
+	k, err := getKeyOfParts(idPrefixChild, key)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+
+	value := new(types.Hash)
+	err = txn.Get(k, func(val []byte, b byte) error {
+		if _, err := value.UnmarshalMsg(val); err != nil {
 			return err
 		}
 		return nil
@@ -1645,17 +1663,20 @@ func (l *Ledger) GetChild(hash types.Hash, txns ...db.StoreTxn) (types.Hash, err
 	if err != nil {
 		return types.ZeroHash, err
 	}
-	return h, nil
+	return *value, nil
 }
 
-func (l *Ledger) GetLinkBlock(hash types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
+func (l *Ledger) GetLinkBlock(key types.Hash, txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key := getKeyOfHash(hash, idPrefixLink)
-	h := new(types.Hash)
-	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if _, err := h.UnmarshalMsg(val); err != nil {
+	k, err := getKeyOfParts(idPrefixLink, key)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	value := new(types.Hash)
+	err = txn.Get(k, func(val []byte, b byte) (err error) {
+		if _, err := value.UnmarshalMsg(val); err != nil {
 			return errors.New("unmarshal hash error")
 		}
 		return nil
@@ -1666,7 +1687,7 @@ func (l *Ledger) GetLinkBlock(hash types.Hash, txns ...db.StoreTxn) (types.Hash,
 		}
 		return types.ZeroHash, fmt.Errorf("get link error: %s", err)
 	}
-	return *h, nil
+	return *value, nil
 }
 
 func getVersionKey() []byte {
@@ -1798,10 +1819,10 @@ func (l *Ledger) Token(hash types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, 
 }
 
 func (l *Ledger) Pending(account types.Address, txns ...db.StoreTxn) ([]*types.PendingKey, error) {
-	var cache []*types.PendingKey
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
+	var cache []*types.PendingKey
 	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
 		pendingKey := types.PendingKey{}
 		_, err := pendingKey.UnmarshalMsg(key[1:])
@@ -1921,16 +1942,20 @@ func (l *Ledger) Weight(account types.Address, txns ...db.StoreTxn) types.Balanc
 	return benefit.Total
 }
 
-func (l *Ledger) AddOrUpdatePerformance(p *types.PerformanceTime, txns ...db.StoreTxn) error {
-	key := l.getPerformanceKey(p.Hash)
-	bytes, err := json.Marshal(p)
-	if err != nil {
-		return err
-	}
+func (l *Ledger) AddOrUpdatePerformance(value *types.PerformanceTime, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	return txn.Set(key, bytes)
+	k, err := getKeyOfParts(idPrefixPerformance, value.Hash)
+	if err != nil {
+		return err
+	}
+	v, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	return txn.Set(k, v)
 }
 
 func (l *Ledger) PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error {
@@ -1953,14 +1978,18 @@ func (l *Ledger) PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.St
 	return nil
 }
 
-func (l *Ledger) GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error) {
+func (l *Ledger) GetPerformanceTime(key types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key := l.getPerformanceKey(hash)
-	pt := types.NewPerformanceTime()
-	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		return json.Unmarshal(val, &pt)
+	k, err := getKeyOfParts(idPrefixPerformance, key)
+	if err != nil {
+		return nil, err
+	}
+
+	value := types.NewPerformanceTime()
+	err = txn.Get(k, func(val []byte, b byte) (err error) {
+		return json.Unmarshal(val, &value)
 	})
 
 	if err != nil {
@@ -1969,21 +1998,14 @@ func (l *Ledger) GetPerformanceTime(hash types.Hash, txns ...db.StoreTxn) (*type
 		}
 		return nil, err
 	}
-	return pt, nil
+	return value, nil
 }
 
-func (l *Ledger) getPerformanceKey(hash types.Hash) []byte {
-	var key []byte
-	key = append(key, idPrefixPerformance)
-	key = append(key, hash[:]...)
-	return key
-}
-
-func (l *Ledger) IsPerformanceTimeExist(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+func (l *Ledger) IsPerformanceTimeExist(key types.Hash, txns ...db.StoreTxn) (bool, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	if _, err := l.GetPerformanceTime(hash); err == nil {
+	if _, err := l.GetPerformanceTime(key); err == nil {
 		return true, nil
 	} else {
 		if err == ErrPerformanceNotFound {
@@ -2038,71 +2060,6 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 		return types.ZeroBalance, errors.New("invalid block type")
 	}
 }
-
-//func (l *Ledger) ListTokens(txns ...db.StoreTxn) ([]*types.TokenInfo, error) {
-//	txn, flag := l.getTxn(false, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	var tokens []*types.TokenInfo
-//	err := txn.Iterator(idPrefixToken, func(key []byte, val []byte, b byte) error {
-//		token := new(types.TokenInfo)
-//		if err := json.Unmarshal(val, token); err != nil {
-//			fmt.Println(err)
-//			return err
-//		}
-//		tokens = append(tokens, token)
-//		return nil
-//	})
-//	if err != nil {
-//		return nil, err
-//	}
-//	return tokens, nil
-//}
-//
-//func (l *Ledger) GetTokenById(tokenId types.Hash, txns ...db.StoreTxn) (*types.TokenInfo, error) {
-//	txn, flag := l.getTxn(false, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	key := getKeyOfHash(tokenId, idPrefixToken)
-//	token := new(types.TokenInfo)
-//	err := txn.Get(key, func(val []byte, b byte) (err error) {
-//		if err := json.Unmarshal(val, token); err != nil {
-//			return err
-//		}
-//		return nil
-//	})
-//	if err != nil {
-//		if err == badger.ErrKeyNotFound {
-//			return nil, ErrTokenInfoNotFound
-//		}
-//		return nil, err
-//	}
-//	return token, nil
-//}
-//
-//func (l *Ledger) GetTokenByName(tokenName string, txns ...db.StoreTxn) (*types.TokenInfo, error) {
-//	txn, flag := l.getTxn(false, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	var token *types.TokenInfo
-//	err := txn.Iterator(idPrefixToken, func(key []byte, val []byte, b byte) error {
-//		t := new(types.TokenInfo)
-//		if err := json.Unmarshal(val, t); err != nil {
-//			return err
-//		}
-//		if t.TokenName == tokenName {
-//			token = t
-//		}
-//		return nil
-//	})
-//	if err != nil {
-//		return nil, err
-//	}
-//	if token == nil {
-//		return nil, ErrTokenInfoNotFound
-//	}
-//	return token, nil
-//}
 
 func (l *Ledger) GetGenesis(txns ...db.StoreTxn) ([]*types.StateBlock, error) {
 	txn, flag := l.getTxn(false, txns...)
@@ -2193,7 +2150,7 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 		}
 	}
 	rxAccount := types.Address(sendBlock.Link)
-	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
+	info, err := l.GetPending(&types.PendingKey{Address: rxAccount, Hash: hash})
 	if err != nil {
 		return nil, err
 	}
@@ -2325,39 +2282,53 @@ func (l *Ledger) SetOnlineRepresentations(addresses []*types.Address, txns ...db
 	return txn.Set(key, bytes)
 }
 
-func (l *Ledger) AddMessageInfo(mHash types.Hash, message []byte, txns ...db.StoreTxn) error {
+func (l *Ledger) AddMessageInfo(key types.Hash, value []byte, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key := getKeyOfHash(mHash, idPrefixMessageInfo)
-	if err := txn.Set(key, message); err != nil {
+	k, err := getKeyOfParts(idPrefixMessageInfo, key)
+	if err != nil {
+		return err
+	}
+	if err := txn.Set(k, value); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *Ledger) GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, error) {
+func (l *Ledger) GetMessageInfo(key types.Hash, txns ...db.StoreTxn) ([]byte, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	key := getKeyOfHash(mHash, idPrefixMessageInfo)
-	var m []byte
-	err := txn.Get(key, func(val []byte, b byte) error {
-		m = val
+	k, err := getKeyOfParts(idPrefixMessageInfo, key)
+	if err != nil {
+		return nil, err
+	}
+	var value []byte
+	err = txn.Get(k, func(v []byte, b byte) error {
+		value = v
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return m, nil
+	return value, nil
 }
 
-func (l *Ledger) AddBlockCache(blk *types.StateBlock, txns ...db.StoreTxn) error {
-	key := getKeyOfHash(blk.GetHash(), idPrefixBlockCache)
+func (l *Ledger) AddBlockCache(value *types.StateBlock, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
 
-	//never overwrite implicitly
-	err := txn.Get(key, func(bytes []byte, b byte) error {
+	k, err := getKeyOfParts(idPrefixBlockCache, value.GetHash())
+	if err != nil {
+		return err
+	}
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+
+	err = txn.Get(k, func(v []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -2365,43 +2336,32 @@ func (l *Ledger) AddBlockCache(blk *types.StateBlock, txns ...db.StoreTxn) error
 	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-
-	blockBytes, err := blk.Serialize()
-	if err != nil {
-		return fmt.Errorf("serialize block error: %s", err)
-	}
-	if err := txn.Set(key, blockBytes); err != nil {
-		return err
-	}
-	//if err := addChild(blk, txn); err != nil {
-	//	return fmt.Errorf("add block child error: %s", err)
-	//}
-	//if err := addLink(blk, txn); err != nil {
-	//	return fmt.Errorf("add block link error: %s", err)
-	//}
-	l.releaseTxn(txn, flag)
-	return nil
+	return txn.Set(k, v)
 }
 
-func (l *Ledger) GetBlockCache(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
-	key := getKeyOfHash(hash, idPrefixBlockCache)
+func (l *Ledger) GetBlockCache(key types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
-	blk := new(types.StateBlock)
-	err := txn.Get(key, func(val []byte, b byte) error {
-		if err := blk.Deserialize(val); err != nil {
+
+	k, err := getKeyOfParts(idPrefixBlockCache, key)
+	if err != nil {
+		return nil, err
+	}
+
+	value := new(types.StateBlock)
+	err = txn.Get(k, func(v []byte, b byte) error {
+		if err := value.Deserialize(v); err != nil {
 			return err
 		}
 		return nil
 	})
-
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
 			return nil, ErrBlockNotFound
 		}
 		return nil, err
 	}
-	return blk, nil
+	return value, nil
 }
 
 func (l *Ledger) HasBlockCache(key types.Hash, txns ...db.StoreTxn) (bool, error) {
@@ -2483,25 +2443,20 @@ func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error, txns ...db.Sto
 	return nil
 }
 
-func (l *Ledger) getAccountMetaCacheKey(address types.Address) []byte {
-	var key [1 + types.AddressSize]byte
-	key[0] = idPrefixBlockCacheAccount
-	copy(key[1:], address[:])
-	return key[:]
-}
+func (l *Ledger) AddAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
 
-func (l *Ledger) AddAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
-	metaBytes, err := meta.MarshalMsg(nil)
+	k, err := getKeyOfParts(idPrefixBlockCacheAccount, value.Address)
+	if err != nil {
+		return err
+	}
+	v, err := value.Serialize()
 	if err != nil {
 		return err
 	}
 
-	key := l.getAccountMetaCacheKey(meta.Address)
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	// never overwrite implicitly
-	err = txn.Get(key, func(vals []byte, b byte) error {
+	err = txn.Get(k, func(v []byte, b byte) error {
 		return nil
 	})
 	if err == nil {
@@ -2509,55 +2464,62 @@ func (l *Ledger) AddAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTx
 	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(key, metaBytes)
+	return txn.Set(k, v)
 }
 
-func (l *Ledger) GetAccountMetaCache(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	key := l.getAccountMetaCacheKey(address)
-	var meta types.AccountMeta
-
+func (l *Ledger) GetAccountMetaCache(key types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		if _, err = meta.UnmarshalMsg(val); err != nil {
+	k, err := getKeyOfParts(idPrefixBlockCacheAccount, key)
+	if err != nil {
+		return nil, err
+	}
+	value := new(types.AccountMeta)
+	err = txn.Get(k, func(v []byte, b byte) (err error) {
+		if err := value.Deserialize(v); err != nil {
 			return err
 		}
 		return nil
 	})
-
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
 			return nil, ErrAccountNotFound
 		}
 		return nil, err
 	}
-	return &meta, nil
+	return value, nil
 }
 
-func (l *Ledger) AddOrUpdateAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
-	metaBytes, err := meta.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-	key := l.getAccountMetaCacheKey(meta.Address)
+func (l *Ledger) AddOrUpdateAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	return txn.Set(key, metaBytes)
-}
-
-func (l *Ledger) UpdateAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTxn) error {
-	metaBytes, err := meta.MarshalMsg(nil)
+	k, err := getKeyOfParts(idPrefixBlockCacheAccount, value.Address)
 	if err != nil {
 		return err
 	}
-	key := l.getAccountMetaCacheKey(meta.Address)
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+	return txn.Set(k, v)
+}
 
+func (l *Ledger) UpdateAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err = txn.Get(key, func(vals []byte, b byte) error {
+	k, err := getKeyOfParts(idPrefixBlockCacheAccount, value.Address)
+	if err != nil {
+		return err
+	}
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+
+	err = txn.Get(k, func(vals []byte, b byte) error {
 		return nil
 	})
 	if err != nil {
@@ -2566,23 +2528,30 @@ func (l *Ledger) UpdateAccountMetaCache(meta *types.AccountMeta, txns ...db.Stor
 		}
 		return err
 	}
-	return txn.Set(key, metaBytes)
+	return txn.Set(k, v)
 }
 
-func (l *Ledger) DeleteAccountMetaCache(address types.Address, txns ...db.StoreTxn) error {
-	key := l.getAccountMetaCacheKey(address)
+func (l *Ledger) DeleteAccountMetaCache(key types.Address, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	return txn.Delete(key)
+	k, err := getKeyOfParts(idPrefixBlockCacheAccount, key)
+	if err != nil {
+		return err
+	}
+
+	return txn.Delete(k)
 }
 
-func (l *Ledger) HasAccountMetaCache(address types.Address, txns ...db.StoreTxn) (bool, error) {
-	key := l.getAccountMetaCacheKey(address)
+func (l *Ledger) HasAccountMetaCache(key types.Address, txns ...db.StoreTxn) (bool, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Get(key, func(val []byte, b byte) error {
+	k, err := getKeyOfParts(idPrefixBlockCacheAccount, key)
+	if err != nil {
+		return false, err
+	}
+	err = txn.Get(k, func(val []byte, b byte) error {
 		return nil
 	})
 

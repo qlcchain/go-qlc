@@ -57,7 +57,7 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
-	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c // indirect
+	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/atomic v1.4.0

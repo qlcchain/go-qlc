@@ -39,7 +39,7 @@ func (l *Ledger) AddGenericType(key types.GenericKey, value *types.GenericType, 
 	})
 	if err == nil {
 		return ErrGenericTypeExists
-	} else if err != nil && err != badger.ErrKeyNotFound {
+	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
 	return txn.Set(k, v)
