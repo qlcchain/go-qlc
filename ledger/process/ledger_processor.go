@@ -264,7 +264,7 @@ func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, checkType by
 			}
 
 			//check pending
-			if pending, err := lv.l.GetPending(pendingKey); err == nil {
+			if pending, err := lv.l.GetPending(&pendingKey); err == nil {
 				if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.Token); err == nil {
 					transferAmount := block.GetBalance().Sub(tm.Balance)
 					if !pending.Amount.Equal(transferAmount) || pending.Type != block.Token {
@@ -306,7 +306,7 @@ func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, checkType by
 			}
 
 			//check pending
-			if pending, err := lv.l.GetPending(pendingKey); err == nil {
+			if pending, err := lv.l.GetPending(&pendingKey); err == nil {
 				if tm, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
 					transferAmount := block.GetBalance().Sub(tm.Balance)
 					if !pending.Amount.Equal(transferAmount) || pending.Type != block.Token {
@@ -425,7 +425,7 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte)
 				Hash:    block.Link,
 			}
 			//check pending
-			if pending, err := lv.l.GetPending(pendingKey); err == nil {
+			if pending, err := lv.l.GetPending(&pendingKey); err == nil {
 				if !pending.Amount.Equal(block.Balance) || pending.Type != block.Token {
 					return BalanceMismatch, nil
 				}
@@ -460,7 +460,7 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte)
 				Hash:    block.Link,
 			}
 			//check pending
-			if pending, err := lv.l.GetPending(pendingKey); err == nil {
+			if pending, err := lv.l.GetPending(&pendingKey); err == nil {
 				if !pending.Amount.Equal(block.Balance) || pending.Type != block.Token {
 					return BalanceMismatch, nil
 				}

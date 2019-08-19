@@ -20,6 +20,30 @@ type PendingInfo struct {
 	Type   Hash    `msg:"type,extension" json:"type"`
 }
 
+func (pk *PendingKey) Serialize() ([]byte, error) {
+	return pk.MarshalMsg(nil)
+}
+
+func (pk *PendingKey) Deserialize(text []byte) error {
+	_, err := pk.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pi *PendingInfo) Serialize() ([]byte, error) {
+	return pi.MarshalMsg(nil)
+}
+
+func (pi *PendingInfo) Deserialize(text []byte) error {
+	_, err := pi.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 type UncheckedKind byte
 
 const (

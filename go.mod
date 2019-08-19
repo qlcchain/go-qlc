@@ -8,6 +8,7 @@ require (
 	github.com/beevik/ntp v0.2.0
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
 	github.com/btcsuite/btcd v0.0.0-20190614013741-962a206e94e9 // indirect
+	github.com/cheekybits/genny v1.0.0
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/dchest/siphash v1.2.1
@@ -56,7 +57,7 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
-	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c // indirect
+	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/atomic v1.4.0

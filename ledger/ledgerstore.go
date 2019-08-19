@@ -64,7 +64,7 @@ type Store interface {
 	CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error)
 	// pending CURD
 	AddPending(pendingKey *types.PendingKey, pending *types.PendingInfo, txns ...db.StoreTxn) error
-	GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error)
+	GetPending(pendingKey *types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error)
 	GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error, txns ...db.StoreTxn) error
 	DeletePending(pendingKey *types.PendingKey, txns ...db.StoreTxn) error
 	SearchPending(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error, txns ...db.StoreTxn) error

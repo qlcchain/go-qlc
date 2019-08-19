@@ -126,13 +126,13 @@ func (l *Ledger) DeletePovHeader(height uint64, hash types.Hash, txns ...db.Stor
 }
 
 func (l *Ledger) GetPovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovHeader, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovHeader, height, hash)
 	if err != nil {
 		return nil, err
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	hdr := new(types.PovHeader)
 	err = txn.Get(key, func(val []byte, b byte) error {
@@ -151,13 +151,13 @@ func (l *Ledger) GetPovHeader(height uint64, hash types.Hash, txns ...db.StoreTx
 }
 
 func (l *Ledger) HasPovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) bool {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovHeader, height, hash)
 	if err != nil {
 		return false
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	err = txn.Get(key, func(val []byte, b byte) error {
 		return nil
@@ -224,13 +224,13 @@ func (l *Ledger) DeletePovBody(height uint64, hash types.Hash, txns ...db.StoreT
 }
 
 func (l *Ledger) GetPovBody(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBody, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovBody, height, hash)
 	if err != nil {
 		return nil, err
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	body := new(types.PovBody)
 	err = txn.Get(key, func(val []byte, b byte) error {
@@ -249,13 +249,13 @@ func (l *Ledger) GetPovBody(height uint64, hash types.Hash, txns ...db.StoreTxn)
 }
 
 func (l *Ledger) HasPovBody(height uint64, hash types.Hash, txns ...db.StoreTxn) bool {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovBody, height, hash)
 	if err != nil {
 		return false
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	err = txn.Get(key, func(val []byte, b byte) error {
 		return nil
@@ -320,13 +320,13 @@ func (l *Ledger) DeletePovHeight(hash types.Hash, txns ...db.StoreTxn) error {
 }
 
 func (l *Ledger) GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovHeight, hash)
 	if err != nil {
 		return 0, err
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	var height uint64
 	err = txn.Get(key, func(val []byte, b byte) error {
@@ -343,13 +343,13 @@ func (l *Ledger) GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, err
 }
 
 func (l *Ledger) HasPovHeight(hash types.Hash, txns ...db.StoreTxn) bool {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovHeight, hash)
 	if err != nil {
 		return false
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	err = txn.Get(key, func(val []byte, b byte) error {
 		return nil
@@ -411,13 +411,13 @@ func (l *Ledger) DeletePovTD(hash types.Hash, height uint64, txns ...db.StoreTxn
 }
 
 func (l *Ledger) GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (*big.Int, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovTD, height, hash)
 	if err != nil {
 		return nil, err
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	td := new(big.Int)
 	err = txn.Get(key, func(val []byte, b byte) error {
@@ -434,13 +434,13 @@ func (l *Ledger) GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (
 }
 
 func (l *Ledger) AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
 	if err != nil {
 		return err
 	}
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	dataTypes, err := txLookup.Serialize()
 	if err != nil {
@@ -455,13 +455,13 @@ func (l *Ledger) AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, 
 }
 
 func (l *Ledger) DeletePovTxLookup(txHash types.Hash, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
 	if err != nil {
 		return err
 	}
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	if err := txn.Delete(key); err != nil {
 		return err
@@ -471,13 +471,13 @@ func (l *Ledger) DeletePovTxLookup(txHash types.Hash, txns ...db.StoreTxn) error
 }
 
 func (l *Ledger) GetPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) (*types.PovTxLookup, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
 	if err != nil {
 		return nil, err
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	txLookup := new(types.PovTxLookup)
 	err = txn.Get(key, func(val []byte, b byte) error {
@@ -496,13 +496,13 @@ func (l *Ledger) GetPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) (*types.
 }
 
 func (l *Ledger) HasPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) bool {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
 	if err != nil {
 		return false
 	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	err = txn.Get(key, func(val []byte, b byte) error {
 		return nil
@@ -515,13 +515,13 @@ func (l *Ledger) HasPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) bool {
 }
 
 func (l *Ledger) AddPovBestHash(height uint64, hash types.Hash, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovBestHash, height)
 	if err != nil {
 		return err
 	}
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	valBytes := make([]byte, hash.Len())
 	err = hash.MarshalBinaryTo(valBytes)
@@ -537,13 +537,13 @@ func (l *Ledger) AddPovBestHash(height uint64, hash types.Hash, txns ...db.Store
 }
 
 func (l *Ledger) DeletePovBestHash(height uint64, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovBestHash, height)
 	if err != nil {
 		return err
 	}
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	if err := txn.Delete(key); err != nil {
 		return err
@@ -608,13 +608,13 @@ func (l *Ledger) GetAllPovBestHashes(fn func(height uint64, hash types.Hash) err
 }
 
 func (l *Ledger) AddPovMinerStat(dayStat *types.PovMinerDayStat, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovMinerStat, dayStat.DayIndex)
 	if err != nil {
 		return err
 	}
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	valBytes, err := dayStat.Serialize()
 	if err != nil {
@@ -629,13 +629,13 @@ func (l *Ledger) AddPovMinerStat(dayStat *types.PovMinerDayStat, txns ...db.Stor
 }
 
 func (l *Ledger) DeletePovMinerStat(dayIndex uint32, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
 	key, err := getKeyOfParts(idPrefixPovMinerStat, dayIndex)
 	if err != nil {
 		return err
 	}
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
 
 	if err := txn.Delete(key); err != nil {
 		return err
