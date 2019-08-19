@@ -25,14 +25,13 @@ const syncTimeout = 10 * time.Second
 
 // Service manage sync tasks
 type ServiceSync struct {
-	netService      *QlcService
-	qlcLedger       *ledger.Ledger
-	frontiers       []*types.Frontier
-	remoteFrontiers []*types.Frontier
-	quitCh          chan bool
-	logger          *zap.SugaredLogger
-	lastSyncTime    int64
-	syncCount       uint32
+	netService   *QlcService
+	qlcLedger    *ledger.Ledger
+	frontiers    []*types.Frontier
+	quitCh       chan bool
+	logger       *zap.SugaredLogger
+	lastSyncTime int64
+	syncCount    uint32
 }
 
 // NewService return new Service.
@@ -71,7 +70,6 @@ func (ss *ServiceSync) Start() {
 					continue
 				}
 				ss.logger.Infof("begin sync block from [%s]", peerID)
-				ss.remoteFrontiers = ss.remoteFrontiers[:0:0]
 				ss.next()
 				bulkPull = bulkPull[:0:0]
 				bulkPush = bulkPush[:0:0]
@@ -106,22 +104,27 @@ func (ss *ServiceSync) onFrontierReq(message *Message) error {
 		if err != nil {
 			return err
 		}
-		num := len(fs)
-		var rsp *protos.FrontierResponse
+		frs := make([]*types.FrontierBlock, 0)
 		for _, f := range fs {
-			rsp = protos.NewFrontierRsp(f, uint32(num))
-			err = ss.netService.SendMessageToPeer(FrontierRsp, rsp, message.MessageFrom())
+			b, err := ss.qlcLedger.GetStateBlockConfirmed(f.HeaderBlock)
 			if err != nil {
-				ss.logger.Errorf("send FrontierRsp err [%s]", err)
+				ss.logger.Error(err)
+				continue
 			}
+			fb := &types.FrontierBlock{
+				Fr:        f,
+				HeaderBlk: b,
+			}
+			frs = append(frs, fb)
+		}
+		rsp := &protos.FrontierResponse{
+			Fs: frs,
+		}
+		err = ss.netService.SendMessageToPeer(FrontierRsp, rsp, message.MessageFrom())
+		if err != nil {
+			ss.logger.Errorf("send FrontierRsp err [%s]", err)
 		}
 	}
-	//send frontier finished,last frontier is all zero,tell remote peer send finished
-	//zeroFrontier := new(types.Frontier)
-	//err = ss.netService.SendMessageToPeer(FrontierRsp, zeroFrontier, message.MessageFrom())
-	//if err != nil {
-	//	ss.logger.Errorf("send FrontierRsp err [%s] for zeroFrontier", err)
-	//}
 	return nil
 }
 
@@ -131,35 +134,25 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		ss.logger.Error(err)
 		return
 	}
-	if uint32(len(ss.remoteFrontiers)) < rsp.TotalFrontierNum {
-		ss.remoteFrontiers = append(ss.remoteFrontiers, rsp.Frontier)
-		if uint32(len(ss.remoteFrontiers)) == rsp.TotalFrontierNum {
-			var remoteFrontiers []*types.Frontier
-			remoteFrontiers = append(remoteFrontiers, ss.remoteFrontiers...)
-			sort.Sort(types.Frontiers(remoteFrontiers))
-			zeroFrontier := new(types.Frontier)
-			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
-			ss.remoteFrontiers = ss.remoteFrontiers[:0:0]
-			go func() {
-				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-				if err != nil {
-					ss.logger.Errorf("process frontiers error:[%s]", err)
-				}
-			}()
-		}
-		return
+	var remoteFrontiers []*types.Frontier
+	var blks types.StateBlockList
+	for _, f := range rsp.Fs {
+		remoteFrontiers = append(remoteFrontiers, f.Fr)
+		blks = append(blks, f.HeaderBlk)
 	}
-
+	ss.netService.msgEvent.Publish(common.EventFrontierConsensus, blks)
+	sort.Sort(types.Frontiers(remoteFrontiers))
+	zeroFrontier := new(types.Frontier)
+	remoteFrontiers = append(remoteFrontiers, zeroFrontier)
+	go func() {
+		err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+		if err != nil {
+			ss.logger.Errorf("process frontiers error:[%s]", err)
+		}
+	}()
 }
 
 func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID string) error {
-	//ss.netService.node.logger.Info("receive FrontierRsp")
-	//fsRemote, err := protos.FrontierResponseFromProto(message.Data())
-	//if err != nil {
-	//	return err
-	//}
-	//fr := fsRemote.Frontier
-	//ss.logger.Info(fr.HeaderBlock, fr.OpenBlock)
 	for i := 0; i < len(fsRemotes); i++ {
 		if !fsRemotes[i].OpenBlock.IsZero() {
 			for {

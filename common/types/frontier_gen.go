@@ -143,6 +143,305 @@ func (z Frontier) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *FrontierBlock) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Fr":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Fr")
+					return
+				}
+				z.Fr = nil
+			} else {
+				if z.Fr == nil {
+					z.Fr = new(Frontier)
+				}
+				var zb0002 uint32
+				zb0002, err = dc.ReadMapHeader()
+				if err != nil {
+					err = msgp.WrapError(err, "Fr")
+					return
+				}
+				for zb0002 > 0 {
+					zb0002--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						err = msgp.WrapError(err, "Fr")
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "headerblock":
+						err = dc.ReadExtension(&z.Fr.HeaderBlock)
+						if err != nil {
+							err = msgp.WrapError(err, "Fr", "HeaderBlock")
+							return
+						}
+					case "openblock":
+						err = dc.ReadExtension(&z.Fr.OpenBlock)
+						if err != nil {
+							err = msgp.WrapError(err, "Fr", "OpenBlock")
+							return
+						}
+					default:
+						err = dc.Skip()
+						if err != nil {
+							err = msgp.WrapError(err, "Fr")
+							return
+						}
+					}
+				}
+			}
+		case "HeaderBlk":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "HeaderBlk")
+					return
+				}
+				z.HeaderBlk = nil
+			} else {
+				if z.HeaderBlk == nil {
+					z.HeaderBlk = new(StateBlock)
+				}
+				err = z.HeaderBlk.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "HeaderBlk")
+					return
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *FrontierBlock) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "Fr"
+	err = en.Append(0x82, 0xa2, 0x46, 0x72)
+	if err != nil {
+		return
+	}
+	if z.Fr == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		// map header, size 2
+		// write "headerblock"
+		err = en.Append(0x82, 0xab, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
+		if err != nil {
+			return
+		}
+		err = en.WriteExtension(&z.Fr.HeaderBlock)
+		if err != nil {
+			err = msgp.WrapError(err, "Fr", "HeaderBlock")
+			return
+		}
+		// write "openblock"
+		err = en.Append(0xa9, 0x6f, 0x70, 0x65, 0x6e, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
+		if err != nil {
+			return
+		}
+		err = en.WriteExtension(&z.Fr.OpenBlock)
+		if err != nil {
+			err = msgp.WrapError(err, "Fr", "OpenBlock")
+			return
+		}
+	}
+	// write "HeaderBlk"
+	err = en.Append(0xa9, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x42, 0x6c, 0x6b)
+	if err != nil {
+		return
+	}
+	if z.HeaderBlk == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.HeaderBlk.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "HeaderBlk")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *FrontierBlock) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "Fr"
+	o = append(o, 0x82, 0xa2, 0x46, 0x72)
+	if z.Fr == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		// map header, size 2
+		// string "headerblock"
+		o = append(o, 0x82, 0xab, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
+		o, err = msgp.AppendExtension(o, &z.Fr.HeaderBlock)
+		if err != nil {
+			err = msgp.WrapError(err, "Fr", "HeaderBlock")
+			return
+		}
+		// string "openblock"
+		o = append(o, 0xa9, 0x6f, 0x70, 0x65, 0x6e, 0x62, 0x6c, 0x6f, 0x63, 0x6b)
+		o, err = msgp.AppendExtension(o, &z.Fr.OpenBlock)
+		if err != nil {
+			err = msgp.WrapError(err, "Fr", "OpenBlock")
+			return
+		}
+	}
+	// string "HeaderBlk"
+	o = append(o, 0xa9, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x42, 0x6c, 0x6b)
+	if z.HeaderBlk == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.HeaderBlk.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "HeaderBlk")
+			return
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *FrontierBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Fr":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Fr = nil
+			} else {
+				if z.Fr == nil {
+					z.Fr = new(Frontier)
+				}
+				var zb0002 uint32
+				zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Fr")
+					return
+				}
+				for zb0002 > 0 {
+					zb0002--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Fr")
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "headerblock":
+						bts, err = msgp.ReadExtensionBytes(bts, &z.Fr.HeaderBlock)
+						if err != nil {
+							err = msgp.WrapError(err, "Fr", "HeaderBlock")
+							return
+						}
+					case "openblock":
+						bts, err = msgp.ReadExtensionBytes(bts, &z.Fr.OpenBlock)
+						if err != nil {
+							err = msgp.WrapError(err, "Fr", "OpenBlock")
+							return
+						}
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Fr")
+							return
+						}
+					}
+				}
+			}
+		case "HeaderBlk":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.HeaderBlk = nil
+			} else {
+				if z.HeaderBlk == nil {
+					z.HeaderBlk = new(StateBlock)
+				}
+				bts, err = z.HeaderBlk.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "HeaderBlk")
+					return
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *FrontierBlock) Msgsize() (s int) {
+	s = 1 + 3
+	if z.Fr == nil {
+		s += msgp.NilSize
+	} else {
+		s += 1 + 12 + msgp.ExtensionPrefixSize + z.Fr.HeaderBlock.Len() + 10 + msgp.ExtensionPrefixSize + z.Fr.OpenBlock.Len()
+	}
+	s += 10
+	if z.HeaderBlk == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.HeaderBlk.Msgsize()
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *Frontiers) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0002 uint32
 	zb0002, err = dc.ReadArrayHeader()

@@ -8,9 +8,7 @@ message FrontierReq {
     uint32 Count = 3;
 }
 message FrontierRsp {
-    uint32 TotalFrontierNum = 1;
-    bytes HeaderBlock = 2;
-    bytes OpenBlock = 3;
+    repeated bytes Frontiers = 1;
 }
 message BulkPullReq {
     bytes StartHash = 1;
@@ -20,7 +18,7 @@ message BulkPullReq {
     bytes  Hashes = 5;
 }
 message BulkPullRsp {
-    bytes   blocks = 1;
+    bytes blocks = 1;
 }
 message BulkPushBlock {
     bytes blocks = 1;
