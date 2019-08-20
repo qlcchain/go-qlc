@@ -37,6 +37,7 @@ const (
 	InvalidHeight
 	InvalidTxOrder
 	BadConsensus
+	ReceiveRepeated
 	Other
 )
 
@@ -88,6 +89,8 @@ func (r ProcessResult) String() string {
 		return "InvalidTxOrder"
 	case BadConsensus:
 		return "BadConsensus"
+	case ReceiveRepeated:
+		return "ReceiveRepeated"
 	default:
 		return "<invalid>"
 	}
