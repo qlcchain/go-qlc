@@ -141,15 +141,16 @@ func (ms *MessageService) processBlockCache() {
 			b, _ := ms.ledger.HasStateBlock(blk.GetHash())
 			if b {
 				verifier := process.NewLedgerVerifier(ms.ledger)
-				flag, err := verifier.BlockCheck(blk)
+				flag, err := verifier.BlockCheckCache(blk)
 				if err != nil {
-					ms.netService.node.logger.Error(err)
-					return
+					//ms.netService.node.logger.Error(err)
+					//return
+					continue
 				}
-				if flag == process.Fork {
+				if flag == process.Fork || flag == process.ReceiveRepeated {
 					err = verifier.Rollback(blk.GetHash())
 					if err != nil {
-						ms.netService.node.logger.Error(err)
+						//	ms.netService.node.logger.Error(err)
 						continue
 					}
 				} else {
