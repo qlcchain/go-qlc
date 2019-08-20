@@ -1496,7 +1496,37 @@ func (l *Ledger) AddPending(pendingKey *types.PendingKey, pending *types.Pending
 	} else if err != nil && err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(key, pendingBytes)
+
+	return txn.SetWithMeta(key, pendingBytes, byte(types.PendingNotUsed))
+	//return txn.Set(key, pendingBytes)
+}
+
+func (l *Ledger) UpdatePending(key *types.PendingKey, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k := l.getPendingKey(*key)
+
+	var pending types.PendingInfo
+	err := txn.Get(k[:], func(v []byte, b byte) (err error) {
+		if _, err = pending.UnmarshalMsg(v); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return ErrPendingNotFound
+		}
+		return err
+	}
+
+	v, err := pending.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	return txn.SetWithMeta(k, v, byte(types.PendingUsed))
 }
 
 func (l *Ledger) GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error) {
@@ -1537,9 +1567,12 @@ func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *
 			errStr = append(errStr, err.Error())
 			return nil
 		}
-		if err := fn(pendingKey, pendingInfo); err != nil {
-			l.logger.Error("process pending error %s", err)
-			errStr = append(errStr, err.Error())
+		used := types.PendingKind(b)
+		if used == types.PendingNotUsed {
+			if err := fn(pendingKey, pendingInfo); err != nil {
+				l.logger.Error("process pending error %s", err)
+				errStr = append(errStr, err.Error())
+			}
 		}
 		return nil
 	})
@@ -1568,16 +1601,19 @@ func (l *Ledger) SearchPending(address types.Address, fn func(key *types.Pending
 		for _, v := range list.Kv {
 			pk := &types.PendingKey{}
 			pi := &types.PendingInfo{}
+			used := types.PendingKind(v.UserMeta[0])
 
-			if _, err := pk.UnmarshalMsg(v.Key[1:]); err != nil {
-				continue
-			}
-			if _, err := pi.UnmarshalMsg(v.Value); err != nil {
-				continue
-			}
-			err := fn(pk, pi)
-			if err != nil {
-				l.logger.Error(err)
+			if used == types.PendingNotUsed {
+				if _, err := pk.UnmarshalMsg(v.Key[1:]); err != nil {
+					continue
+				}
+				if _, err := pi.UnmarshalMsg(v.Value); err != nil {
+					continue
+				}
+				err := fn(pk, pi)
+				if err != nil {
+					l.logger.Error(err)
+				}
 			}
 		}
 		return nil

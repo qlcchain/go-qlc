@@ -693,6 +693,21 @@ func (lv *LedgerVerifier) addBlockCache(block *types.StateBlock, txn db.StoreTxn
 	if err := lv.updateAccountMetaCache(block, am, txn); err != nil {
 		return fmt.Errorf("update account meta cache error: %s", err)
 	}
+	if err := lv.updatePendingKind(block, txn); err != nil {
+		return fmt.Errorf("update pending kind error: %s", err)
+	}
+
+	return nil
+}
+
+func (lv *LedgerVerifier) updatePendingKind(block *types.StateBlock, txn db.StoreTxn) error {
+	pendingKey := &types.PendingKey{
+		Address: types.Address(block.GetLink()),
+		Hash:    block.GetHash(),
+	}
+	if err := lv.l.UpdatePending(pendingKey); err != nil {
+		return err
+	}
 	return nil
 }
 
