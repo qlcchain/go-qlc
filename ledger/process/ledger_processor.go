@@ -701,12 +701,14 @@ func (lv *LedgerVerifier) addBlockCache(block *types.StateBlock, txn db.StoreTxn
 }
 
 func (lv *LedgerVerifier) updatePendingKind(block *types.StateBlock, txn db.StoreTxn) error {
-	pendingKey := &types.PendingKey{
-		Address: types.Address(block.GetLink()),
-		Hash:    block.GetHash(),
-	}
-	if err := lv.l.UpdatePending(pendingKey); err != nil {
-		return err
+	if block.IsReceiveBlock() {
+		pendingKey := &types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		if err := lv.l.UpdatePending(pendingKey, types.PendingUsed, txn); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1343,6 +1345,10 @@ func (lv *LedgerVerifier) rollbackBlockCache(hash types.Hash, txn db.StoreTxn) e
 			return fmt.Errorf("get header block (%s) err", header.String())
 		}
 		for {
+			if err := lv.rollBackPendingKind(sb, txn); err != nil {
+				return fmt.Errorf("roll back pending kind (%s) err, %s", header.String(), err)
+			}
+
 			lv.logger.Errorf("rollback delete block cache: %s(%s) , %s  ", sb.GetHash().String(), sb.GetType(), sb.GetAddress().String())
 			if err := lv.l.DeleteBlockCache(header, txn); err != nil {
 				return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, header)
@@ -1351,6 +1357,7 @@ func (lv *LedgerVerifier) rollbackBlockCache(hash types.Hash, txn db.StoreTxn) e
 			if header == hash {
 				break
 			}
+
 			header = sb.Previous
 			if sb, err = lv.l.GetBlockCache(header, txn); err != nil {
 				return fmt.Errorf("get previous blockCache %s : %s", header.String(), err)
@@ -1361,6 +1368,19 @@ func (lv *LedgerVerifier) rollbackBlockCache(hash types.Hash, txn db.StoreTxn) e
 		}
 	} else {
 		return fmt.Errorf("get accountMetaCache(%s) token err : %s", hash.String(), err)
+	}
+	return nil
+}
+
+func (lv *LedgerVerifier) rollBackPendingKind(block *types.StateBlock, txn db.StoreTxn) error {
+	if block.IsReceiveBlock() {
+		pendingKey := &types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		if err := lv.l.UpdatePending(pendingKey, types.PendingNotUsed, txn); err != nil {
+			return err
+		}
 	}
 	return nil
 }

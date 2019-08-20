@@ -1501,7 +1501,7 @@ func (l *Ledger) AddPending(pendingKey *types.PendingKey, pending *types.Pending
 	//return txn.Set(key, pendingBytes)
 }
 
-func (l *Ledger) UpdatePending(key *types.PendingKey, txns ...db.StoreTxn) error {
+func (l *Ledger) UpdatePending(key *types.PendingKey, kind types.PendingKind, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -1526,7 +1526,7 @@ func (l *Ledger) UpdatePending(key *types.PendingKey, txns ...db.StoreTxn) error
 		return err
 	}
 
-	return txn.SetWithMeta(k, v, byte(types.PendingUsed))
+	return txn.SetWithMeta(k, v, byte(kind))
 }
 
 func (l *Ledger) GetPending(pendingKey types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error) {
