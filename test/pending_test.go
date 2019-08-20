@@ -1,3 +1,5 @@
+// +build integrate
+
 package test
 
 import (
@@ -45,7 +47,11 @@ func TestPending(t *testing.T) {
 	cfgFile1Byte, _ := json.Marshal(cfgFile1)
 	fmt.Println("node1 config \n", string(cfgFile1Byte))
 	node := new(Services)
-	initNode(node, cfgFile1, nil, t)
+	initQLCNode(node, cfgFile1, nil, t)
+	defer func() {
+		fmt.Println(" close servers")
+		closeQLCServer(node, t)
+	}()
 	client, err := node.rPCService.RPC().Attach()
 	if err != nil {
 		t.Fatal(err)
@@ -105,7 +111,7 @@ func TestPending(t *testing.T) {
 	// -------- check receive block cache rollback ------------
 
 	var receiverBlock2 types.StateBlock
-	if err := client.Call(&receiverBlock2, "ledger_generateReceiveBlock", &sendBlock); err != nil {
+	if err := client.Call(&receiverBlock2, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(tAccount.PrivateKey())); err != nil {
 		t.Fatal(err)
 	}
 
@@ -150,9 +156,10 @@ func TestPending(t *testing.T) {
 	if err != nil || count4 != 1 {
 		t.Fatal("error pending")
 	}
+	t.Log("done")
 }
 
-func initNode(service *Services, cfg *config.Config, accounts []*types.Account, t *testing.T) {
+func initQLCNode(service *Services, cfg *config.Config, accounts []*types.Account, t *testing.T) {
 	logService := log.NewLogService(cfg)
 	_ = logService.Init()
 	var err error
@@ -207,7 +214,7 @@ func initNode(service *Services, cfg *config.Config, accounts []*types.Account, 
 	}
 }
 
-func closeServer(service *Services, t *testing.T) {
+func closeQLCServer(service *Services, t *testing.T) {
 	if err := service.rPCService.Stop(); err != nil {
 		t.Fatal(err)
 	}
@@ -223,16 +230,4 @@ func closeServer(service *Services, t *testing.T) {
 	//if err := os.RemoveAll(service.dir); err != nil {
 	//	t.Fatal(err)
 	//}
-}
-
-func signAndWork(block *types.StateBlock, account *types.Account) error {
-	var w types.Work
-	worker, err := types.NewWorker(w, block.Root())
-	if err != nil {
-		return err
-	}
-	block.Work = worker.NewWork()
-	block.Signature = account.Sign(block.GetHash())
-
-	return nil
 }
