@@ -1359,6 +1359,10 @@ func (lv *LedgerVerifier) rollbackBlockCache(hash types.Hash, txn db.StoreTxn) e
 			}
 
 			header = sb.Previous
+			if header.IsZero() {
+				break
+			}
+
 			if sb, err = lv.l.GetBlockCache(header, txn); err != nil {
 				return fmt.Errorf("get previous blockCache %s : %s", header.String(), err)
 			}

@@ -3,14 +3,13 @@ package p2p
 import (
 	"context"
 	"errors"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
-
 	"github.com/bluele/gcache"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
@@ -150,7 +149,7 @@ func (ms *MessageService) processBlockCache() {
 				if flag == process.Fork || flag == process.ReceiveRepeated {
 					err = verifier.Rollback(blk.GetHash())
 					if err != nil {
-						//	ms.netService.node.logger.Error(err)
+						ms.netService.node.logger.Error(err)
 						continue
 					}
 				} else {

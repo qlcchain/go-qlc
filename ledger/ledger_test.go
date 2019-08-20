@@ -788,7 +788,7 @@ func TestLedger_SearchPending(t *testing.T) {
 		t.Fatal("invalid", count1)
 	}
 
-	if err := l.UpdatePending(pendingkeys[0]); err != nil {
+	if err := l.UpdatePending(pendingkeys[0], types.PendingUsed); err != nil {
 		t.Fatal(err)
 	}
 
