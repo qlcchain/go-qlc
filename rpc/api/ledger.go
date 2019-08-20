@@ -358,13 +358,17 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 		})
 
 		if err != nil {
-			fmt.Println(err)
+			l.logger.Error(err)
 		}
 		if len(ps) > 0 {
 			pt := ps
 			if n > -1 && len(ps) > n {
 				pt = ps[:n]
 			}
+
+			sort.Slice(pt, func(i, j int) bool {
+				return pt[i].Timestamp < pt[j].Timestamp
+			})
 			apMap[addr] = pt
 		}
 	}
@@ -705,6 +709,12 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(aps) > 0 {
+		sort.Slice(aps, func(i, j int) bool {
+			return aps[i].Timestamp < aps[j].Timestamp
+		})
+	}
+
 	return aps, nil
 }
 
