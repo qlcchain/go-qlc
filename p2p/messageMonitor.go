@@ -138,21 +138,24 @@ func (ms *MessageService) processBlockCache() {
 		if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
 			_ = ms.ledger.DeleteBlockCache(blk.GetHash())
 		} else {
-			verifier := process.NewLedgerVerifier(ms.ledger)
-			flag, err := verifier.BlockCheck(blk)
-			if err != nil {
-				ms.netService.node.logger.Error(err)
-				return
-			}
-			if flag == process.Fork {
-				err = verifier.Rollback(blk.GetHash())
+			b, _ := ms.ledger.HasStateBlock(blk.GetHash())
+			if b {
+				verifier := process.NewLedgerVerifier(ms.ledger)
+				flag, err := verifier.BlockCheck(blk)
 				if err != nil {
 					ms.netService.node.logger.Error(err)
-					continue
+					return
 				}
-			} else {
-				ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
-				ms.netService.msgEvent.Publish(common.EventGenerateBlock, flag, blk)
+				if flag == process.Fork {
+					err = verifier.Rollback(blk.GetHash())
+					if err != nil {
+						ms.netService.node.logger.Error(err)
+						continue
+					}
+				} else {
+					ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
+					ms.netService.msgEvent.Publish(common.EventGenerateBlock, flag, blk)
+				}
 			}
 		}
 	}
