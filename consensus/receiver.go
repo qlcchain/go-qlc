@@ -161,6 +161,10 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Has
 			return
 		}
 
+		if _, err := r.c.ledger.GetRepresentation(ack.Account); err != nil {
+			return
+		}
+
 		bs := &BlockSource{
 			Block:     ack.Blk,
 			BlockFrom: types.UnSynchronized,
