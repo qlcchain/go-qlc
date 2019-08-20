@@ -119,6 +119,9 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte
 		}
 	}
 	if checkType == blockCheckCache {
+		if err := checkReceiveBlockRepeat(lv, block); err != Progress {
+			return err, nil
+		}
 		blockExist, err := lv.l.HasStateBlock(hash)
 		if err != nil {
 			return Other, err
@@ -288,6 +291,9 @@ func checkReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, checkType by
 		}
 	}
 	if checkType == blockCheckCache {
+		//if err := checkReceiveBlockRepeat(lv, block); err != Progress {
+		//	return err, nil
+		//}
 		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
 			return GapPrevious, nil
 		} else {
@@ -447,6 +453,9 @@ func checkOpenBlock(lv *LedgerVerifier, block *types.StateBlock, checkType byte)
 	}
 	//check link
 	if checkType == blockCheckCache {
+		//if err := checkReceiveBlockRepeat(lv, block); err != Progress {
+		//	return err, nil
+		//}
 		if b, _ := lv.l.HasStateBlock(block.Link); !b {
 			return GapSource, nil
 		} else {
@@ -560,6 +569,9 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, chec
 	}
 	// check previous
 	if checkType == blockCheckCache {
+		//if err := checkReceiveBlockRepeat(lv, block); err != Progress {
+		//	return err, nil
+		//}
 		if !block.IsOpen() {
 			// check previous
 			if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
@@ -618,6 +630,22 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, chec
 		//call vm.Run();
 		return Other, fmt.Errorf("can not find chain contract %s", address.String())
 	}
+}
+
+func checkReceiveBlockRepeat(lv *LedgerVerifier, block *types.StateBlock) ProcessResult {
+	r := Progress
+	var repeatedFound error
+	err := lv.l.GetBlockCaches(func(b *types.StateBlock) error {
+		if block.GetLink() == b.GetLink() && block.GetHash() != b.GetHash() {
+			r = ReceiveRepeated
+			return repeatedFound
+		}
+		return nil
+	})
+	if err != nil && err != repeatedFound {
+		return Other
+	}
+	return r
 }
 
 func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
@@ -1304,6 +1332,7 @@ func (lv *LedgerVerifier) rollbackBlockCache(hash types.Hash, txn db.StoreTxn) e
 			if err := lv.l.DeleteBlockCache(header, txn); err != nil {
 				return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, header)
 			}
+			lv.l.EB.Publish(common.EventRollbackUnchecked, header)
 			if header == hash {
 				break
 			}

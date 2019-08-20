@@ -4,12 +4,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/ledger/relation"
@@ -756,6 +756,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		return types.ZeroHash, errors.New("gap SmartContract")
 	case process.InvalidData:
 		return types.ZeroHash, errors.New("invalid data")
+	case process.ReceiveRepeated:
+		return types.ZeroHash, errors.New("generate receive block repeatedly ")
 	default:
 		return types.ZeroHash, errors.New("error processing block")
 	}
