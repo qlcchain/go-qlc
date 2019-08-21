@@ -20,6 +20,13 @@ type PendingInfo struct {
 	Type   Hash    `msg:"type,extension" json:"type"`
 }
 
+type PendingKind byte
+
+const (
+	PendingNotUsed PendingKind = iota
+	PendingUsed
+)
+
 type UncheckedKind byte
 
 const (

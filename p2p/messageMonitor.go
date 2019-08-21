@@ -3,14 +3,13 @@ package p2p
 import (
 	"context"
 	"errors"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
-
 	"github.com/bluele/gcache"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
@@ -141,21 +140,27 @@ func (ms *MessageService) processBlockCache() {
 			b, _ := ms.ledger.HasStateBlock(blk.GetHash())
 			if b {
 				verifier := process.NewLedgerVerifier(ms.ledger)
-				flag, err := verifier.BlockCheckCache(blk)
+				flag1, err := verifier.BlockCheck(blk)
 				if err != nil {
 					//ms.netService.node.logger.Error(err)
 					//return
 					continue
 				}
-				if flag == process.Fork || flag == process.ReceiveRepeated {
+				flag2, err := verifier.BlockCheckCache(blk)
+				if err != nil {
+					//ms.netService.node.logger.Error(err)
+					//return
+					continue
+				}
+				if flag1 == process.Fork || flag2 == process.ReceiveRepeated {
 					err = verifier.Rollback(blk.GetHash())
 					if err != nil {
-						//	ms.netService.node.logger.Error(err)
+						ms.netService.node.logger.Error(err)
 						continue
 					}
 				} else {
 					ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
-					ms.netService.msgEvent.Publish(common.EventGenerateBlock, flag, blk)
+					ms.netService.msgEvent.Publish(common.EventGenerateBlock, flag1, blk)
 				}
 			}
 		}
