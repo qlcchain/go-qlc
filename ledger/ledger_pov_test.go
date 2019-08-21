@@ -69,8 +69,8 @@ func TestLedger_AddPovBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(retBody.Transactions) != len(block.Transactions) {
-		t.Fatalf("body txs not equal, %d != %d", len(retBody.Transactions), len(block.Transactions))
+	if len(retBody.Txs) != len(block.GetAllTxs()) {
+		t.Fatalf("body txs not equal, %d != %d", len(retBody.Txs), len(block.GetAllTxs()))
 	}
 
 	retTD, err := l.GetPovTD(block.GetHash(), block.GetHeight())

@@ -61,16 +61,6 @@ var (
 	ErrPovInvalidFork     = errors.New("invalid pov fork point")
 )
 
-var (
-	// bigOne is 1 represented as a big.Int.  It is defined here to avoid
-	// the overhead of creating it multiple times.
-	bigOne = big.NewInt(1)
-
-	// oneLsh512 is 1 shifted left 512 bits.  It is defined here to avoid
-	// the overhead of creating it multiple times.
-	oneLsh512 = new(big.Int).Lsh(bigOne, 512)
-)
-
 // log2FloorMasks defines the masks to use when quickly calculating
 // floor(log2(x)) in a constant log2(32) = 5 steps, where x is a uint32, using
 // shifts.  They are derived from (2^(2^x) - 1) * (2^(2^x)), for x in 4..0.
@@ -232,7 +222,7 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 				bc.logger.Warnf("failed to get pov header %d, err %s", height, err)
 				return
 			}
-			cbAddrStr := header.GetCoinbase().String()
+			cbAddrStr := header.GetCoinBase().String()
 			minerStat := dayStat.MinerStats[cbAddrStr]
 			if minerStat == nil {
 				minerStat = new(types.PovMinerStatItem)
@@ -292,7 +282,7 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		var dbErr error
 
-		td := bc.CalcTotalDifficulty(genesis.Target)
+		td := bc.CalcTotalDifficulty(genesis.GetBits())
 		dbErr = bc.getLedger().AddPovBlock(genesis, td)
 		if dbErr != nil {
 			return dbErr
@@ -333,7 +323,7 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	bc.genesisBlock = genesis
 	bc.StoreLatestBlock(genesis)
 
-	bc.logger.Infof("reset with genesis block %d/%s", genesis.Height, genesis.Hash)
+	bc.logger.Infof("reset with genesis block %d/%s", genesis.GetHeight(), genesis.GetHash())
 
 	return nil
 }
@@ -620,15 +610,14 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 		return ChainStateNone, err
 	}
 
-	blockTarget := block.GetTarget()
-	targetTD := bc.CalcTotalDifficulty(blockTarget)
+	targetTD := bc.CalcTotalDifficulty(block.GetBits())
 	blockTD := new(big.Int).Add(targetTD, prevTD)
 
 	// save block to db
 	if bc.getLedger().HasPovBlock(block.GetHeight(), block.GetHash(), txn) == false {
 		err = bc.getLedger().AddPovBlock(block, blockTD, txn)
 		if err != nil && err != ledger.ErrBlockExists {
-			bc.logger.Errorf("add pov block %d/%s failed, err %s", block.Height, block.Hash, err)
+			bc.logger.Errorf("add pov block %d/%s failed, err %s", block.GetHeight(), block.GetHash(), err)
 			return ChainStateNone, err
 		}
 	}
@@ -886,7 +875,7 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 func (bc *PovBlockChain) connectBlock(txn db.StoreTxn, block *types.PovBlock) error {
 	err := bc.getLedger().AddPovBestHash(block.GetHeight(), block.GetHash(), txn)
 	if err != nil {
-		bc.logger.Errorf("add pov best hash %d/%s failed, err %s", block.Height, block.Hash, err)
+		bc.logger.Errorf("add pov best hash %d/%s failed, err %s", block.GetHeight(), block.GetHash(), err)
 		return err
 	}
 	return nil
@@ -895,14 +884,15 @@ func (bc *PovBlockChain) connectBlock(txn db.StoreTxn, block *types.PovBlock) er
 func (bc *PovBlockChain) disconnectBlock(txn db.StoreTxn, block *types.PovBlock) error {
 	err := bc.getLedger().DeletePovBestHash(block.GetHeight(), txn)
 	if err != nil {
-		bc.logger.Errorf("delete pov best hash %d/%s failed, err %s", block.Height, block.Hash, err)
+		bc.logger.Errorf("delete pov best hash %d/%s failed, err %s", block.GetHeight(), block.GetHash(), err)
 		return err
 	}
 	return nil
 }
 
 func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBlock) error {
-	for txIndex, txPov := range block.Transactions {
+	txs := block.GetAllTxs()
+	for txIndex, txPov := range txs {
 		txLookup := &types.PovTxLookup{
 			BlockHash:   block.GetHash(),
 			BlockHeight: block.GetHeight(),
@@ -920,7 +910,8 @@ func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBl
 }
 
 func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.PovBlock) error {
-	for _, txPov := range block.Transactions {
+	txs := block.GetAllTxs()
+	for _, txPov := range txs {
 		txBlock, _ := bc.getLedger().GetStateBlock(txPov.Hash, txn)
 		if txBlock == nil {
 			continue
@@ -964,31 +955,12 @@ func (bc *PovBlockChain) RelativeAncestor(header *types.PovHeader, distance uint
 	return bc.FindAncestor(header, header.GetHeight()-distance)
 }
 
-// CalcTotalDifficulty calculates a total difficulty from target. PoV increases
-// the difficulty for generating a block by decreasing the value which the
-// generated vote signature must be less than. This difficulty target is stored in each
-// block header as signature.  The main chain is selected by choosing the chain that has
-// the most proof of work (highest difficulty).  Since a lower target difficulty
-// value equates to higher actual difficulty, the work value which will be
-// accumulated must be the inverse of the difficulty.  Also, in order to avoid
-// potential division by zero and really small floating point numbers, the
-// result adds 1 to the denominator and multiplies the numerator by 2^512.
-func (bc *PovBlockChain) CalcTotalDifficulty(target types.Signature) *big.Int {
-	// Return a work value of zero if the passed difficulty bits represent
-	// a negative number. Note this should not happen in practice with valid
-	// blocks, but an invalid block could trigger it.
-	difficultyNum := target.ToBigInt()
-	if difficultyNum.Sign() <= 0 {
-		return big.NewInt(0)
-	}
-
-	// (1 << 512) / (difficultyNum + 1)
-	denominator := new(big.Int).Add(difficultyNum, bigOne)
-	return new(big.Int).Div(oneLsh512, denominator)
+func (bc *PovBlockChain) CalcTotalDifficulty(bits uint32) *big.Int {
+	return types.CalcWork(bits)
 }
 
-func (bc *PovBlockChain) CalcPastMedianTime(prevHeader *types.PovHeader) int64 {
-	timestamps := make([]int64, medianTimeBlocks)
+func (bc *PovBlockChain) CalcPastMedianTime(prevHeader *types.PovHeader) uint32 {
+	timestamps := make([]uint32, medianTimeBlocks)
 	numHeaders := 0
 	iterHeader := prevHeader
 	for i := 0; i < medianTimeBlocks && iterHeader != nil; i++ {

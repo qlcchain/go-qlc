@@ -228,7 +228,7 @@ func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint
 		PovBlock: block,
 	}
 
-	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
 	return apiBlock, nil
 }
@@ -243,7 +243,7 @@ func (api *PovApi) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit
 		PovBlock: block,
 	}
 
-	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
 	return apiBlock, nil
 }
@@ -258,7 +258,7 @@ func (api *PovApi) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock
 		PovBlock: block,
 	}
 
-	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
 	return apiBlock, nil
 }
@@ -304,10 +304,10 @@ func (api *PovApi) GetTransactionByBlockHashAndIndex(blockHash types.Hash, index
 	if err != nil {
 		return nil, err
 	}
-	if index >= block.TxNum {
+	if index >= block.GetTxNum() {
 		return nil, errors.New("tx index not exist")
 	}
-	tx := block.Transactions[index]
+	tx := block.Body.Txs[index]
 
 	return api.GetTransaction(tx.Hash)
 }
@@ -317,10 +317,10 @@ func (api *PovApi) GetTransactionByBlockHeightAndIndex(height uint64, index uint
 	if err != nil {
 		return nil, err
 	}
-	if index >= block.TxNum {
+	if index >= block.GetTxNum() {
 		return nil, errors.New("tx index not exist")
 	}
-	tx := block.Transactions[index]
+	tx := block.Body.Txs[index]
 
 	return api.GetTransaction(tx.Hash)
 }
@@ -353,7 +353,7 @@ func (api *PovApi) GetLatestAccountState(address types.Address) (*PovApiState, e
 		return nil, err
 	}
 
-	return api.GetAccountState(address, header.StateHash)
+	return api.GetAccountState(address, header.GetStateHash())
 }
 
 func (api *PovApi) GetAccountStateByBlockHash(address types.Address, blockHash types.Hash) (*PovApiState, error) {
@@ -362,7 +362,7 @@ func (api *PovApi) GetAccountStateByBlockHash(address types.Address, blockHash t
 		return nil, err
 	}
 
-	return api.GetAccountState(address, header.StateHash)
+	return api.GetAccountState(address, header.GetStateHash())
 }
 
 func (api *PovApi) GetAccountStateByBlockHeight(address types.Address, height uint64) (*PovApiState, error) {
@@ -371,7 +371,7 @@ func (api *PovApi) GetAccountStateByBlockHeight(address types.Address, height ui
 		return nil, err
 	}
 
-	return api.GetAccountState(address, header.StateHash)
+	return api.GetAccountState(address, header.GetStateHash())
 }
 
 func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error) {
@@ -380,7 +380,7 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 		return nil, err
 	}
 
-	stateHash := block.StateHash
+	stateHash := block.GetStateHash()
 	dump := &PovApiDumpState{
 		StateHash: stateHash,
 		Accounts:  make(map[types.Address]*types.PovAccountState),
@@ -530,7 +530,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			break
 		}
 
-		minerAddr := header.GetCoinbase()
+		minerAddr := header.GetCoinBase()
 		if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
 			continue
 		}
@@ -558,11 +558,11 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	for _, minerItem := range apiRsp.MinerStats {
 		firstBlock, _ := api.ledger.GetPovHeaderByHeight(minerItem.FirstBlockHeight)
 		if firstBlock != nil {
-			minerItem.FirstBlockTime = time.Unix(firstBlock.GetTimestamp(), 0)
+			minerItem.FirstBlockTime = time.Unix(int64(firstBlock.GetTimestamp()), 0)
 		}
 		lastBlock, _ := api.ledger.GetPovHeaderByHeight(minerItem.LastBlockHeight)
 		if lastBlock != nil {
-			minerItem.LastBlockTime = time.Unix(lastBlock.GetTimestamp(), 0)
+			minerItem.LastBlockTime = time.Unix(int64(lastBlock.GetTimestamp()), 0)
 		}
 	}
 

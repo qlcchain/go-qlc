@@ -10,12 +10,12 @@ import (
 )
 
 func TestGenesisPovBlock1(t *testing.T) {
-	expectHash, _ := types.NewHash("a70c5e5d46e350480ece7b4f651fa98a33c0198de0ef17c05546bf8351f9b032")
-	expectSig, _ := types.NewSignature("58bf9c2622c1be3d1de69fbc4f7764186d8cd15083474aa361addacf203f03be18a783709452607a9ef330e879e7a2f31a65c47efc0484e2a78b989c3810ab04")
+	expectHash, _ := types.NewHash("778dd8f1bdedc851e8c4177474aaa9e4fbf138a9be8611cd00cc50e80d0c0000")
+	expectSig, _ := types.NewSignature("ddb47aa6bcc8bdb71e04434f96fa29a8ae5e307970185391df78e203d884d17565028a25222a64b4425f7ea53d9aa418e73d599b0f1cbcc4b1837300fb2a1809")
 
 	expectStateHash, _ := types.NewHash("1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49")
 
-	checkStateHash := genesisPovBlock.StateHash
+	checkStateHash := genesisPovBlock.GetStateHash()
 	if expectStateHash != checkStateHash {
 		t.Log(util.ToString(genesisPovBlock))
 		t.Fatal("invalid main net genesis pov state hash", checkStateHash.String(), expectStateHash.String())
@@ -31,11 +31,5 @@ func TestGenesisPovBlock1(t *testing.T) {
 	if checkSig != expectSig {
 		t.Log(util.ToString(genesisPovBlock))
 		t.Fatal("invalid main net genesis pov block signature", checkSig.String(), expectSig.String())
-	}
-
-	voteSigInt := genesisPovBlock.VoteSignature.ToBigInt()
-	targetInt := genesisPovBlock.Target.ToBigInt()
-	if voteSigInt.Cmp(targetInt) > 0 {
-		t.Fatal("invalid main net genesis pov block target", voteSigInt, targetInt)
 	}
 }

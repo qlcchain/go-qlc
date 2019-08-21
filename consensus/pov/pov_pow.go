@@ -57,7 +57,7 @@ func (c *ConsensusPow) PrepareHeader(header *types.PovHeader) error {
 		return err
 	}
 
-	header.Target = target
+	header.BasHdr.Bits = target
 	return nil
 }
 
@@ -97,7 +97,7 @@ func (c *ConsensusPow) verifyProducer(header *types.PovHeader) error {
 		return errors.New("failed to get previous state tire")
 	}
 
-	asBytes := prevTrie.GetValue(header.GetCoinbase().Bytes())
+	asBytes := prevTrie.GetValue(prevHeader.GetCoinBase().Bytes())
 	if len(asBytes) <= 0 {
 		return errors.New("failed to get account state value")
 	}
@@ -130,24 +130,16 @@ func (c *ConsensusPow) verifyTarget(header *types.PovHeader) error {
 	if err != nil {
 		return err
 	}
-	if expectedTarget != header.GetTarget() {
+	if expectedTarget != header.GetBits() {
 		return errors.New("target not equal next required target")
 	}
 
-	voteHash := header.ComputeVoteHash()
-	voteSig := header.GetVoteSignature()
+	powHash := header.ComputePowHash()
+	powInt := powHash.ToBigInt()
 
-	isVerified := header.GetCoinbase().Verify(voteHash.Bytes(), voteSig.Bytes())
-	if !isVerified {
-		return errors.New("bad vote signature")
-	}
+	targetInt := header.GetTargetInt()
 
-	voteSigInt := voteSig.ToBigInt()
-
-	targetSig := header.GetTarget()
-	targetInt := targetSig.ToBigInt()
-
-	if voteSigInt.Cmp(targetInt) > 0 {
+	if powInt.Cmp(targetInt) > 0 {
 		return errors.New("target greater than vote signature")
 	}
 
@@ -162,10 +154,10 @@ func (c *ConsensusPow) SealHeader(header *types.PovHeader, cbAccount *types.Acco
 
 	for id := 1; id <= c.mineWorkerNum; id++ {
 		wgMine.Add(1)
-		go func(id int, gap uint64) {
+		go func(id int, gap int) {
 			defer wgMine.Done()
 			c.mineWorker(id, gap, header, cbAccount, abortCh, localCh)
-		}(id, uint64(c.mineWorkerNum))
+		}(id, int(c.mineWorkerNum))
 	}
 
 	go func() {
@@ -187,12 +179,12 @@ func (c *ConsensusPow) SealHeader(header *types.PovHeader, cbAccount *types.Acco
 	return nil
 }
 
-func (c *ConsensusPow) mineWorker(id int, gap uint64, header *types.PovHeader, cbAccount *types.Account, abortCh chan struct{}, localCh chan *types.PovHeader) {
+func (c *ConsensusPow) mineWorker(id int, gap int, header *types.PovHeader, cbAccount *types.Account, abortCh chan struct{}, localCh chan *types.PovHeader) {
 	copyHdr := header.Copy()
-	targetInt := copyHdr.Target.ToBigInt()
+	targetInt := copyHdr.GetTargetInt()
 
 	tryCnt := 0
-	for nonce := gap; nonce < common.PovMaxNonce; nonce += gap {
+	for nonce := uint32(gap); nonce < common.PovMaxNonce; nonce += uint32(gap) {
 		tryCnt++
 		if tryCnt >= 100 {
 			tryCnt = 0
@@ -206,14 +198,12 @@ func (c *ConsensusPow) mineWorker(id int, gap uint64, header *types.PovHeader, c
 			}
 		}
 
-		copyHdr.Nonce = nonce
+		copyHdr.BasHdr.Nonce = nonce
 
-		voteHash := copyHdr.ComputeVoteHash()
-		voteSignature := cbAccount.Sign(voteHash)
-		voteSigInt := voteSignature.ToBigInt()
-		if voteSigInt.Cmp(targetInt) <= 0 {
+		powHash := copyHdr.ComputePowHash()
+		powInt := powHash.ToBigInt()
+		if powInt.Cmp(targetInt) <= 0 {
 			c.logger.Debugf("mine worker %d found nonce %d", id, nonce)
-			copyHdr.VoteSignature = voteSignature
 			localCh <- copyHdr
 			return
 		}
@@ -223,9 +213,9 @@ func (c *ConsensusPow) mineWorker(id int, gap uint64, header *types.PovHeader, c
 	localCh <- nil
 }
 
-func (c *ConsensusPow) calcNextRequiredTarget(prevHeader *types.PovHeader) (types.Signature, error) {
+func (c *ConsensusPow) calcNextRequiredTarget(prevHeader *types.PovHeader) (uint32, error) {
 	if (prevHeader.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
-		return prevHeader.Target, nil
+		return prevHeader.GetBits(), nil
 	}
 
 	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
@@ -234,30 +224,26 @@ func (c *ConsensusPow) calcNextRequiredTarget(prevHeader *types.PovHeader) (type
 	firstHeader := c.chainR.RelativeAncestor(prevHeader, distance)
 	if firstHeader == nil {
 		c.logger.Errorf("failed to get relative ancestor at height %d distance %d", prevHeader.GetHeight(), distance)
-		return types.ZeroSignature, ErrPovUnknownAncestor
+		return 0, ErrPovUnknownAncestor
 	}
 
-	targetTimeSpan := int64(common.PovChainRetargetTimespan)
-	minRetargetTimespan := int64(common.PovChainMinRetargetTimespan)
-	maxRetargetTimespan := int64(common.PovChainMaxRetargetTimespan)
+	targetTimeSpan := uint32(common.PovChainRetargetTimespan)
+	minRetargetTimespan := uint32(common.PovChainMinRetargetTimespan)
+	maxRetargetTimespan := uint32(common.PovChainMaxRetargetTimespan)
 
-	actualTimespan := prevHeader.Timestamp - firstHeader.Timestamp
+	actualTimespan := prevHeader.GetTimestamp() - firstHeader.GetTimestamp()
 	if actualTimespan < minRetargetTimespan {
 		actualTimespan = minRetargetTimespan
 	} else if actualTimespan > maxRetargetTimespan {
 		actualTimespan = maxRetargetTimespan
 	}
 
-	oldTargetInt := prevHeader.Target.ToBigInt()
+	oldTargetInt := prevHeader.GetTargetInt()
 	nextTargetInt := new(big.Int).Set(oldTargetInt)
-	nextTargetInt.Mul(oldTargetInt, big.NewInt(actualTimespan))
-	nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
+	nextTargetInt.Mul(oldTargetInt, big.NewInt(int64(actualTimespan)))
+	nextTargetInt.Div(nextTargetInt, big.NewInt(int64(targetTimeSpan)))
 
-	var nextTarget types.Signature
-	err := nextTarget.FromBigInt(nextTargetInt)
-	if err != nil {
-		return types.ZeroSignature, err
-	}
+	nextTargetBits := types.BigToCompact(nextTargetInt)
 
 	c.logger.Infof("Difficulty retarget at block height %d", prevHeader.GetHeight()+1)
 	c.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
@@ -265,5 +251,5 @@ func (c *ConsensusPow) calcNextRequiredTarget(prevHeader *types.PovHeader) (type
 	c.logger.Infof("Actual timespan %v, target timespan %v",
 		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
 
-	return nextTarget, nil
+	return nextTargetBits, nil
 }

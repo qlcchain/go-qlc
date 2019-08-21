@@ -95,16 +95,17 @@ func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
 }
 
 func (tp *PovTxPool) OnPovBlockEvent(event byte, block *types.PovBlock) {
-	if len(block.Transactions) <= 0 {
+	txs := block.GetAllTxs()
+	if len(txs) <= 0 {
 		return
 	}
 
 	if event == EventConnectPovBlock {
-		for _, tx := range block.Transactions {
+		for _, tx := range txs {
 			tp.delTx(tx.Hash)
 		}
 	} else if event == EventDisconnectPovBlock {
-		for _, tx := range block.Transactions {
+		for _, tx := range txs {
 			tp.addTx(tx.Hash, tx.Block)
 		}
 	}

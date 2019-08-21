@@ -11,19 +11,35 @@ import (
 var (
 	jsonPovGenesis = `
 {
-    "hash":"1880ebca99b90039f714ae67cdffd6fa1a945e06ef6e713b7b9b93a46f0d8326",
-    "previous":"0000000000000000000000000000000000000000000000000000000000000000",
-    "merkleRoot":"0000000000000000000000000000000000000000000000000000000000000000",
-    "nonce":399610,
-    "voteSignature":"d48a500a9de13d47c88377f29dfb24148e1dbabba8e865674280d5f9734af8573498b954e7614d0c7726348ca46f5e62b5419e649343946e3b1c9e175b000000",
-    "height":0,
-    "timestamp":1563235200,
-    "target":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f000000",
-    "coinbase":"qlc_176f1aj1361y5i4yu8ccyp8xphjcbxmmu4ryh4jecnsncse1eiud7uncz8bj",
-    "txNum":0,
-    "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
-    "signature":"9b9cbe509c8d4a4694be62ea518064771fba10e7571b36c54194290a33824692b19b9f11203601807625ac3bab43483212ebd289fe1ae94d7f49e8b5779f3706",
-    "transactions":[]
+    "header":{
+        "basHdr":{
+            "version":0,
+            "previous":"0000000000000000000000000000000000000000000000000000000000000000",
+            "merkleRoot":"be2bc3eec8cdc75a53dee7992501d7bb97cbd8894f8071dbc897161b4b867190",
+            "timestamp":1566345600,
+            "bits":504365040,
+            "nonce":92723,
+            "hash":"acf6860543409cbbf09dbf0aa3c9b1100ab7aa35f66b648501c734abe4080000",
+            "height":0
+        },
+        "auxHdr":null,
+        "cbtx":{
+            "txNum":1,
+            "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
+            "reward":"285388127",
+            "coinBase":"qlc_176f1aj1361y5i4yu8ccyp8xphjcbxmmu4ryh4jecnsncse1eiud7uncz8bj",
+            "extra":null,
+            "signature":"1ea87b68ebf2bc596a8b8f19df000ac9850f9a7bb6ff5f37ee3944988c60e8cc0b058d0b2eac0839f11e4e1aeee26474ee23fcc1376b359a8bef88def002000d",
+            "hash":"be2bc3eec8cdc75a53dee7992501d7bb97cbd8894f8071dbc897161b4b867190"
+        }
+    },
+    "body":{
+        "txs":[
+            {
+                "hash":"be2bc3eec8cdc75a53dee7992501d7bb97cbd8894f8071dbc897161b4b867190"
+            }
+        ]
+    }
 }
 `
 

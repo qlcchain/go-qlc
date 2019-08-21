@@ -310,7 +310,7 @@ func (m *MinerReward) calcRewardBlocksByHeight(ctx *vmstore.VMContext, coinbase 
 			return 0, err
 		}
 
-		if coinbase == block.GetCoinbase() {
+		if coinbase == block.GetCoinBase() {
 			rewardBlocks++
 		}
 	}

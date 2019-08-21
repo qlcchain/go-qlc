@@ -29,7 +29,7 @@ func HashMerkleBranches(left *types.Hash, right *types.Hash) *types.Hash {
 	copy(hash[:types.HashSize], left[:])
 	copy(hash[types.HashSize:], right[:])
 
-	newHash, _ := types.HashBytes(hash[:])
+	newHash := types.Sha256D_HashData(hash[:])
 	return &newHash
 }
 

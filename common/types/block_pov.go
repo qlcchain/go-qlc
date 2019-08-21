@@ -1,9 +1,10 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
-
 	"github.com/qlcchain/go-qlc/common/util"
+	"math/big"
 )
 
 //go:generate msgp
@@ -20,267 +21,347 @@ const (
 	PovBlockFromRemoteSync
 )
 
-// PovHeader represents a block header in the PoV blockchain.
+const (
+	ALGO_VERSION_MASK = 255 << 8
+	ALGO_SHA256D      = 0 << 8
+	ALGO_SCRYPT       = 1 << 8
+	ALGO_NIST5        = 2 << 8
+	ALGO_LYRA2Z       = 3 << 8
+	ALGO_X11          = 4 << 8
+	ALGO_X16R         = 5 << 8
+)
+
+type PovBaseHeader struct {
+	Version    uint32 `msg:"v" json:"version"`
+	Previous   Hash   `msg:"p,extension" json:"previous"`
+	MerkleRoot Hash   `msg:"mr,extension" json:"merkleRoot"`
+	Timestamp  uint32 `msg:"ts" json:"timestamp"`
+	Bits       uint32 `msg:"b" json:"bits"`
+	Nonce      uint32 `msg:"n" json:"nonce"`
+
+	// just for internal use
+	Hash   Hash   `msg:"ha,extension" json:"hash"`
+	Height uint64 `msg:"he" json:"height"`
+}
+
+func (bh *PovBaseHeader) Serialize() ([]byte, error) {
+	return bh.MarshalMsg(nil)
+}
+
+func (bh *PovBaseHeader) Deserialize(text []byte) error {
+	_, err := bh.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type PovAuxHeader struct {
+	AuxMerkleBranch   []Hash       `msg:"amb" json:"auxMerkleBranch"`
+	AuxMerkleIndex    int          `msg:"ami" json:"auxMerkleIndex"`
+	ParCoinBaseTx     PovBtcTx     `msg:"pcbtx" json:"parCoinBaseTx"`
+	ParCoinBaseMerkle []Hash       `msg:"pcbm,extension" json:"parCoinBaseMerkle"`
+	ParMerkleIndex    int          `msg:"pmi" json:"parMerkleIndex"`
+	ParBlockHeader    PovBtcHeader `msg:"pbh" json:"parBlockHeader"`
+	ParentHash        Hash         `msg:"ph,extension" json:"parentHash"`
+}
+
+func (ah *PovAuxHeader) Serialize() ([]byte, error) {
+	return ah.MarshalMsg(nil)
+}
+
+func (ah *PovAuxHeader) Deserialize(text []byte) error {
+	_, err := ah.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type PovCoinBaseTx struct {
+	TxNum     uint32  `msg:"tn" json:"txNum"`
+	StateHash Hash    `msg:"sh,extension" json:"stateHash"`
+	Reward    Balance `msg:"r,extension" json:"reward"`
+	CoinBase  Address `msg:"cb,extension" json:"coinBase"`
+	Extra     []byte  `msg:"e" json:"extra"`
+
+	// !!! NOT IN HASH !!!
+	Signature Signature `msg:"sig,extension" json:"signature"`
+
+	// just for internal use
+	Hash Hash `msg:"h,extension" json:"hash"`
+}
+
+func (cbtx *PovCoinBaseTx) Serialize() ([]byte, error) {
+	return cbtx.MarshalMsg(nil)
+}
+
+func (cbtx *PovCoinBaseTx) Deserialize(text []byte) error {
+	_, err := cbtx.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cbtx *PovCoinBaseTx) ComputeHash() Hash {
+	buf := new(bytes.Buffer)
+
+	buf.Write(util.LE_Uint32ToBytes(cbtx.TxNum))
+	buf.Write(cbtx.StateHash.Bytes())
+	buf.Write(cbtx.Reward.Bytes())
+	buf.Write(cbtx.CoinBase.Bytes())
+	buf.Write(cbtx.Extra)
+
+	txHash := Sha256D_HashData(buf.Bytes())
+	return txHash
+}
+
+func (cbtx *PovCoinBaseTx) GetHash() Hash {
+	if cbtx.Hash.IsZero() {
+		cbtx.Hash = cbtx.ComputeHash()
+	}
+
+	return cbtx.Hash
+}
+
+func (cbtx *PovCoinBaseTx) GetCoinbase() Address {
+	return cbtx.CoinBase
+}
+
 type PovHeader struct {
-	Hash Hash `msg:"hash,extension" json:"hash"`
-
-	Previous      Hash      `msg:"previous,extension" json:"previous"`
-	MerkleRoot    Hash      `msg:"merkleRoot,extension" json:"merkleRoot"`
-	Nonce         uint64    `msg:"nonce" json:"nonce"`
-	VoteSignature Signature `msg:"voteSignature,extension" json:"voteSignature"`
-
-	Height    uint64    `msg:"height" json:"height"`
-	Timestamp int64     `msg:"timestamp" json:"timestamp"`
-	Target    Signature `msg:"target,extension" json:"target"`
-	Coinbase  Address   `msg:"coinbase,extension" json:"coinbase"`
-	TxNum     uint32    `msg:"txNum" json:"txNum"`
-	StateHash Hash      `msg:"stateHash,extension" json:"stateHash"`
-
-	Signature Signature `msg:"signature,extension" json:"signature"`
+	BasHdr PovBaseHeader `msg:"basHdr" json:"basHdr"`
+	AuxHdr *PovAuxHeader `msg:"auxHdr" json:"auxHdr"`
+	CbTx   PovCoinBaseTx `msg:"cbtx" json:"cbtx"`
 }
 
-func (header *PovHeader) GetHash() Hash {
-	return header.Hash
+func (h *PovHeader) GetHash() Hash {
+	return h.BasHdr.Hash
 }
 
-func (header *PovHeader) GetPrevious() Hash {
-	return header.Previous
+func (h *PovHeader) GetHeight() uint64 {
+	return h.BasHdr.Height
 }
 
-func (header *PovHeader) GetMerkleRoot() Hash {
-	return header.MerkleRoot
+func (h *PovHeader) GetPrevious() Hash {
+	return h.BasHdr.Previous
 }
 
-func (header *PovHeader) GetNonce() uint64 {
-	return header.Nonce
+func (h *PovHeader) GetTimestamp() uint32 {
+	return h.BasHdr.Timestamp
 }
 
-func (header *PovHeader) GetVoteSignature() Signature {
-	return header.VoteSignature
+func (h *PovHeader) GetBits() uint32 {
+	return h.BasHdr.Bits
 }
 
-func (header *PovHeader) GetHeight() uint64 {
-	return header.Height
+func (h *PovHeader) GetTargetInt() *big.Int {
+	return CompactToBig(h.BasHdr.Bits)
 }
 
-func (header *PovHeader) GetTimestamp() int64 {
-	return header.Timestamp
+func (h *PovHeader) GetNonce() uint32 {
+	return h.BasHdr.Nonce
 }
 
-func (header *PovHeader) GetTarget() Signature {
-	return header.Target
+func (h *PovHeader) GetStateHash() Hash {
+	return h.CbTx.StateHash
 }
 
-func (header *PovHeader) GetCoinbase() Address {
-	return header.Coinbase
+func (h *PovHeader) GetCoinBase() Address {
+	return h.CbTx.CoinBase
 }
 
-func (header *PovHeader) GetTxNum() uint32 {
-	return header.TxNum
+func (h *PovHeader) Serialize() ([]byte, error) {
+	return h.MarshalMsg(nil)
 }
 
-func (header *PovHeader) GetStateHash() Hash {
-	return header.StateHash
+func (h *PovHeader) Deserialize(text []byte) error {
+	_, err := h.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (header *PovHeader) GetSignature() Signature {
-	return header.Signature
-}
-
-func (header *PovHeader) Copy() *PovHeader {
-	newHeader := *header
+func (h *PovHeader) Copy() *PovHeader {
+	newHeader := *h
 	return &newHeader
 }
 
-func (header *PovHeader) ComputeVoteHash() Hash {
-	hash, _ := HashBytes(header.Previous[:], header.MerkleRoot[:], util.BE_Uint64ToBytes(header.Nonce))
-	return hash
-}
-
-func (header *PovHeader) ComputeHash() Hash {
-	hash, _ := HashBytes(
-		header.Previous[:], header.MerkleRoot[:], util.BE_Uint64ToBytes(header.Nonce), header.VoteSignature[:],
-		util.BE_Uint64ToBytes(header.Height),
-		util.BE_Int2Bytes(header.Timestamp),
-		header.Target[:],
-		header.Coinbase[:],
-		util.BE_Uint32ToBytes(header.TxNum),
-		header.StateHash[:])
-	return hash
-}
-
-func (header *PovHeader) Serialize() ([]byte, error) {
-	return header.MarshalMsg(nil)
-}
-
-func (header *PovHeader) Deserialize(text []byte) error {
-	_, err := header.UnmarshalMsg(text)
-	if err != nil {
-		return err
+func (h *PovHeader) GetAlgoEfficiency() uint {
+	switch h.BasHdr.Version & ALGO_VERSION_MASK {
+	case ALGO_SHA256D:
+		return 1
+	case ALGO_SCRYPT:
+		return 12984
+	case ALGO_NIST5:
+		return 513
+	case ALGO_LYRA2Z:
+		return 1973648
+	case ALGO_X11:
+		return 513
+	case ALGO_X16R:
+		return 257849
+	default:
+		return 1 // TODO: we should not be here
 	}
-	return nil
+
+	return 1 // TODO: we should not be here
 }
 
-// PovBody is a simple (mutable, non-safe) data container for storing and moving
-// a block's data contents (transactions) together.
+func (h *PovHeader) BuildHashData() []byte {
+	buf := new(bytes.Buffer)
+
+	buf.Write(util.LE_Uint32ToBytes(h.BasHdr.Version))
+	buf.Write(h.BasHdr.Previous.Bytes())
+	buf.Write(h.BasHdr.MerkleRoot.Bytes())
+	buf.Write(util.LE_Uint32ToBytes(h.BasHdr.Timestamp))
+	buf.Write(util.LE_Uint32ToBytes(h.BasHdr.Bits))
+	buf.Write(util.LE_Uint32ToBytes(h.BasHdr.Nonce))
+
+	return buf.Bytes()
+}
+
+func (h *PovHeader) ComputePowHash() Hash {
+	d := h.BuildHashData()
+
+	switch h.BasHdr.Version & ALGO_VERSION_MASK {
+	case ALGO_SHA256D:
+		powHash := Sha256D_HashData(d)
+		return powHash
+	case ALGO_SCRYPT:
+		powHash := Scrypt_HashData(d)
+		return powHash
+	}
+
+	return FFFFHash
+}
+
+func (h *PovHeader) ComputeHash() Hash {
+	hash, _ := Sha256D_HashBytes(h.BuildHashData())
+	return hash
+}
+
 type PovBody struct {
-	Transactions []*PovTransaction `msg:"transactions" json:"transactions"`
+	Txs []*PovTransaction `msg:"txs" json:"txs"`
 }
 
-func (body *PovBody) Serialize() ([]byte, error) {
-	return body.MarshalMsg(nil)
+func (b *PovBody) Serialize() ([]byte, error) {
+	return b.MarshalMsg(nil)
 }
 
-func (body *PovBody) Deserialize(text []byte) error {
-	_, err := body.UnmarshalMsg(text)
+func (b *PovBody) Deserialize(text []byte) error {
+	_, err := b.UnmarshalMsg(text)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// PovBlock represents an entire block in the PoV blockchain.
-type PovBlock struct {
-	Hash Hash `msg:"hash,extension" json:"hash"`
-
-	Previous      Hash      `msg:"previous,extension" json:"previous"`
-	MerkleRoot    Hash      `msg:"merkleRoot,extension" json:"merkleRoot"`
-	Nonce         uint64    `msg:"nonce" json:"nonce"`
-	VoteSignature Signature `msg:"voteSignature,extension" json:"voteSignature"`
-
-	Height    uint64    `msg:"height" json:"height"`
-	Timestamp int64     `msg:"timestamp" json:"timestamp"`
-	Target    Signature `msg:"target,extension" json:"target"`
-	Coinbase  Address   `msg:"coinbase,extension" json:"coinbase"`
-	TxNum     uint32    `msg:"txNum" json:"txNum"`
-	StateHash Hash      `msg:"stateHash,extension" json:"stateHash"`
-
-	Signature Signature `msg:"signature,extension" json:"signature"`
-
-	Transactions []*PovTransaction `msg:"transactions" json:"transactions"`
+func (b *PovBody) Copy() *PovBody {
+	copyBd := *b
+	return &copyBd
 }
 
-func NewPovBlockWithHeader(header *PovHeader) *PovBlock {
-	blk := &PovBlock{
-		Hash: header.Hash,
+type PovStoreBody struct {
+	Txs []*PovTransaction `msg:"txs" json:"txs"`
+}
 
-		Previous:      header.Previous,
-		MerkleRoot:    header.MerkleRoot,
-		Nonce:         header.Nonce,
-		VoteSignature: header.VoteSignature,
+func (b *PovStoreBody) Serialize() ([]byte, error) {
+	return b.MarshalMsg(nil)
+}
 
-		Height:    header.Height,
-		Timestamp: header.Timestamp,
-		Target:    header.Target,
-		Coinbase:  header.Coinbase,
-		TxNum:     header.TxNum,
-		StateHash: header.StateHash,
-
-		Signature: header.Signature,
+func (b *PovStoreBody) Deserialize(text []byte) error {
+	_, err := b.UnmarshalMsg(text)
+	if err != nil {
+		return err
 	}
-	return blk
+	return nil
+}
+
+type PovBlock struct {
+	Header PovHeader `msg:"h" json:"header"`
+	Body   PovBody   `msg:"b" json:"body"`
 }
 
 func NewPovBlockWithBody(header *PovHeader, body *PovBody) *PovBlock {
-	blk := NewPovBlockWithHeader(header)
+	copyHdr := header.Copy()
+	copyBd := body.Copy()
 
-	blk.Transactions = make([]*PovTransaction, len(body.Transactions))
-	copy(blk.Transactions, body.Transactions)
+	blk := &PovBlock{
+		Header: *copyHdr,
+		Body:   *copyBd,
+	}
 
 	return blk
 }
 
-func (blk *PovBlock) ComputeVoteHash() Hash {
-	hash, _ := HashBytes(blk.Previous[:], blk.MerkleRoot[:], util.BE_Uint64ToBytes(blk.Nonce))
-	return hash
-}
-
-func (blk *PovBlock) ComputeHash() Hash {
-	hash, _ := HashBytes(
-		blk.Previous[:], blk.MerkleRoot[:], util.BE_Uint64ToBytes(blk.Nonce), blk.VoteSignature[:],
-		util.BE_Uint64ToBytes(blk.Height),
-		util.BE_Int2Bytes(blk.Timestamp),
-		blk.Target[:],
-		blk.Coinbase[:],
-		util.BE_Uint32ToBytes(blk.TxNum),
-		blk.StateHash[:])
-	return hash
-}
-
 func (blk *PovBlock) GetHeader() *PovHeader {
-	header := &PovHeader{
-		Hash: blk.Hash,
-
-		Previous:      blk.Previous,
-		MerkleRoot:    blk.MerkleRoot,
-		Nonce:         blk.Nonce,
-		VoteSignature: blk.VoteSignature,
-
-		Height:    blk.Height,
-		Timestamp: blk.Timestamp,
-		Target:    blk.Target,
-		Coinbase:  blk.Coinbase,
-		TxNum:     blk.TxNum,
-		StateHash: blk.StateHash,
-
-		Signature: blk.Signature,
-	}
-	return header
+	return &blk.Header
 }
 
 func (blk *PovBlock) GetBody() *PovBody {
-	body := &PovBody{}
-	body.Transactions = make([]*PovTransaction, len(blk.Transactions))
-	copy(body.Transactions, blk.Transactions)
-	return body
+	return &blk.Body
 }
 
 func (blk *PovBlock) GetHash() Hash {
-	return blk.Hash
-}
-
-func (blk *PovBlock) GetPrevious() Hash {
-	return blk.Previous
-}
-
-func (blk *PovBlock) GetMerkleRoot() Hash {
-	return blk.MerkleRoot
-}
-
-func (blk *PovBlock) GetNonce() uint64 {
-	return blk.Nonce
-}
-
-func (blk *PovBlock) GetVoteSignature() Signature {
-	return blk.VoteSignature
+	return blk.Header.BasHdr.Hash
 }
 
 func (blk *PovBlock) GetHeight() uint64 {
-	return blk.Height
+	return blk.Header.BasHdr.Height
 }
 
-func (blk *PovBlock) GetTimestamp() int64 {
-	return blk.Timestamp
+func (blk *PovBlock) GetPrevious() Hash {
+	return blk.Header.BasHdr.Previous
 }
 
-func (blk *PovBlock) GetTarget() Signature {
-	return blk.Target
+func (blk *PovBlock) GetMerkleRoot() Hash {
+	return blk.Header.BasHdr.MerkleRoot
 }
 
-func (blk *PovBlock) GetCoinbase() Address {
-	return blk.Coinbase
+func (blk *PovBlock) GetTimestamp() uint32 {
+	return blk.Header.BasHdr.Timestamp
 }
 
-func (blk *PovBlock) GetTxNum() uint32 {
-	return blk.TxNum
+func (blk *PovBlock) GetTargetInt() *big.Int {
+	return blk.Header.GetTargetInt()
 }
 
 func (blk *PovBlock) GetStateHash() Hash {
-	return blk.StateHash
+	return blk.Header.CbTx.StateHash
+}
+
+func (blk *PovBlock) GetCoinBase() Address {
+	return blk.Header.CbTx.CoinBase
 }
 
 func (blk *PovBlock) GetSignature() Signature {
-	return blk.Signature
+	return blk.Header.CbTx.Signature
+}
+
+func (blk *PovBlock) GetTxNum() uint32 {
+	return blk.Header.CbTx.TxNum
+}
+
+func (blk *PovBlock) GetAllTxs() []*PovTransaction {
+	return blk.Body.Txs
+}
+
+func (blk *PovBlock) GetCoinBaseTx() *PovTransaction {
+	return blk.Body.Txs[0]
+}
+
+func (blk *PovBlock) GetAccountTxs() []*PovTransaction {
+	return blk.Body.Txs[1:]
+}
+
+func (blk *PovBlock) GetBits() uint32 {
+	return blk.Header.BasHdr.Bits
+}
+
+func (blk *PovBlock) ComputeHash() Hash {
+	return blk.Header.ComputeHash()
 }
 
 func (blk *PovBlock) Serialize() ([]byte, error) {
@@ -323,12 +404,20 @@ func (bs *PovBlocks) Deserialize(text []byte) error {
 
 // PovTransaction represents an state block metadata in the PoV block.
 type PovTransaction struct {
-	Hash  Hash        `msg:"hash,extension" json:"hash"`
-	Block *StateBlock `msg:"-" json:"-"`
+	Hash  Hash           `msg:"h,extension" json:"hash"`
+	CbTx  *PovCoinBaseTx `msg:"-" json:"-"`
+	Block *StateBlock    `msg:"-" json:"-"`
 }
 
 func (tx *PovTransaction) GetHash() Hash {
 	return tx.Hash
+}
+
+func (tx *PovTransaction) IsCbTx() bool {
+	if tx.CbTx != nil {
+		return true
+	}
+	return false
 }
 
 func (tx *PovTransaction) Serialize() ([]byte, error) {
@@ -363,9 +452,9 @@ func (s PovTxByHash) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 // TxLookupEntry is a positional metadata to help looking up the data content of
 // a transaction given only its hash.
 type PovTxLookup struct {
-	BlockHash   Hash   `msg:"blockHash,extension" json:"blockHash"`
-	BlockHeight uint64 `msg:"blockHeight" json:"blockHeight"`
-	TxIndex     uint64 `msg:"txIndex" json:"txIndex"`
+	BlockHash   Hash   `msg:"bha,extension" json:"blockHash"`
+	BlockHeight uint64 `msg:"bhe" json:"blockHeight"`
+	TxIndex     uint64 `msg:"ti" json:"txIndex"`
 }
 
 func (txl *PovTxLookup) Serialize() ([]byte, error) {
@@ -381,9 +470,9 @@ func (txl *PovTxLookup) Deserialize(text []byte) error {
 }
 
 type PovMinerStatItem struct {
-	FirstHeight uint64 `msg:"firstHeight" json:"firstHeight"`
-	LastHeight  uint64 `msg:"lastHeight" json:"lastHeight"`
-	BlockNum    uint32 `msg:"blockNum" json:"blockNum"`
+	FirstHeight uint64 `msg:"fh" json:"firstHeight"`
+	LastHeight  uint64 `msg:"lh" json:"lastHeight"`
+	BlockNum    uint32 `msg:"bn" json:"blockNum"`
 }
 
 func (msi *PovMinerStatItem) Serialize() ([]byte, error) {
@@ -399,10 +488,10 @@ func (msi *PovMinerStatItem) Deserialize(text []byte) error {
 }
 
 type PovMinerDayStat struct {
-	DayIndex uint32 `msg:"dayIndex" json:"dayIndex"`
-	MinerNum uint32 `msg:"minerNum" json:"minerNum"`
+	DayIndex uint32 `msg:"di" json:"dayIndex"`
+	MinerNum uint32 `msg:"mn" json:"minerNum"`
 
-	MinerStats map[string]*PovMinerStatItem `msg:"minerStats" json:"minerStats"`
+	MinerStats map[string]*PovMinerStatItem `msg:"mss" json:"minerStats"`
 }
 
 func (mds *PovMinerDayStat) Serialize() ([]byte, error) {

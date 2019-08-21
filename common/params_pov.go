@@ -38,16 +38,18 @@ var (
 
 	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 12)
 
-	PovGenesisTargetHex = "0000007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-	//PovMinimumTargetHex = "0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-	//PovMaximumTargetHex = "000003ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	PovGenesisPowHex    = "00000ffff0000000000000000000000000000000000000000000000000000000"
+	PovGenesisPowInt, _ = new(big.Int).SetString(PovGenesisPowHex, 16)
+	PovGenesisPowBits   = types.BigToCompact(PovGenesisPowInt)
 
-	PovGenesisTargetInt, _ = new(big.Int).SetString(PovGenesisTargetHex, 16)
-	//PovMinimumTargetInt, _ = new(big.Int).SetString(PovMinimumTargetHex, 16)
-	//PovMaximumTargetInt, _ = new(big.Int).SetString(PovMaximumTargetHex, 16)
+	// PowLimit is the highest proof of work value a Bitcoin block
+	// can have for the test network.
+	PovPowLimitHex    = "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	PovPowLimitInt, _ = new(big.Int).SetString(PovPowLimitHex, 16)
+	PovPowLimitBits   = types.BigToCompact(PovPowLimitInt)
 
 	// maximum number of seconds a block time is allowed to be ahead of the now time.
 	PovMaxAllowedFutureTimeSec = 300
 
-	PovMaxNonce = ^uint64(0) // 2^64 - 1
+	PovMaxNonce = ^uint32(0) // 2^32 - 1
 )

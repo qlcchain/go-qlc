@@ -72,7 +72,7 @@ func (l *Ledger) DeletePovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error 
 }
 
 func (l *Ledger) addPovHeader(header *types.PovHeader, txn db.StoreTxn) error {
-	key, err := getKeyOfParts(idPrefixPovHeader, header.Height, header.Hash)
+	key, err := getKeyOfParts(idPrefixPovHeader, header.GetHeight(), header.GetHash())
 	if err != nil {
 		return err
 	}
@@ -884,7 +884,7 @@ func (l *Ledger) GetAllPovBlocks(fn func(*types.PovBlock) error, txns ...db.Stor
 			return err
 		}
 
-		body, err := l.GetPovBody(header.Height, header.GetHash(), txns...)
+		body, err := l.GetPovBody(header.GetHeight(), header.GetHash(), txns...)
 		if err != nil {
 			return err
 		}

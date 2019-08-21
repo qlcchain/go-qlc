@@ -34,7 +34,7 @@ func (c *ConsensusFake) PrepareHeader(header *types.PovHeader) error {
 	if err != nil {
 		return err
 	}
-	header.Target = target
+	header.BasHdr.Bits = target
 	return nil
 }
 
@@ -43,7 +43,7 @@ func (c *ConsensusFake) FinalizeHeader(header *types.PovHeader) error {
 }
 
 func (c *ConsensusFake) VerifyHeader(header *types.PovHeader) error {
-	if header.GetNonce() != header.GetHeight() {
+	if header.BasHdr.Nonce != header.BasHdr.Timestamp {
 		return errors.New("bad nonce")
 	}
 	return nil
@@ -56,9 +56,7 @@ func (c *ConsensusFake) SealHeader(header *types.PovHeader, cbAccount *types.Acc
 		select {
 		case <-quitCh:
 		case <-time.After(time.Second):
-			copyHdr.Nonce = copyHdr.GetHeight()
-			voteHash := copyHdr.ComputeVoteHash()
-			copyHdr.VoteSignature = cbAccount.Sign(voteHash)
+			copyHdr.BasHdr.Nonce = copyHdr.GetTimestamp()
 			select {
 			case resultCh <- copyHdr:
 			default:
@@ -68,12 +66,6 @@ func (c *ConsensusFake) SealHeader(header *types.PovHeader, cbAccount *types.Acc
 	return nil
 }
 
-func (c *ConsensusFake) calcNextRequiredTarget(header *types.PovHeader) (types.Signature, error) {
-	var targetSig types.Signature
-	err := targetSig.FromBigInt(common.PovGenesisTargetInt)
-	if err != nil {
-		return types.ZeroSignature, err
-	}
-
-	return targetSig, nil
+func (c *ConsensusFake) calcNextRequiredTarget(header *types.PovHeader) (uint32, error) {
+	return common.PovGenesisPowBits, nil
 }
