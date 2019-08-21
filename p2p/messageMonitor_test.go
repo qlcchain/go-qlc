@@ -191,13 +191,18 @@ func Test_MarshalMessage(t *testing.T) {
 		t.Fatal("Marshal FrontierRequest err3")
 	}
 	zeroFrontier := new(types.Frontier)
-	frontierRspTest := protos.NewFrontierRsp(zeroFrontier, 0)
-	data9, err := marshalMessage(FrontierRsp, frontierRspTest)
+	frb := &types.FrontierBlock{
+		Fr:        zeroFrontier,
+		HeaderBlk: blk,
+	}
+	frs := &protos.FrontierResponse{}
+
+	frs.Fs = append(frs.Fs, frb)
+	data9, err := marshalMessage(FrontierRsp, frs)
 	if err != nil {
 		t.Fatal("Marshal FrontierRsp err1")
 	}
-	f := protos.NewFrontierRsp(zeroFrontier, 0)
-	data10, err := protos.FrontierResponseToProto(f)
+	data10, err := protos.FrontierResponseToProto(frs)
 	if err != nil {
 		t.Fatal("Marshal FrontierRsp err2")
 	}
@@ -219,12 +224,16 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data11, data12) != 0 {
 		t.Fatal("Marshal BulkPullRequest err3")
 	}
-	data13, err := marshalMessage(BulkPullRsp, blk)
+	blks := make(types.StateBlockList, 0)
+	blks = append(blks, blk)
+	data13, err := marshalMessage(BulkPullRsp, blks)
 	if err != nil {
 		t.Fatal("Marshal BulkPullRsp err1")
 	}
+	//blks := make(types.StateBlockList, 0)
+	//blks = append(blks, blk)
 	r := &protos.BulkPullRspPacket{
-		Blk: blk,
+		Blocks: blks,
 	}
 	data14, err := protos.BulkPullRspPacketToProto(r)
 	if err != nil {
@@ -233,12 +242,12 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data13, data14) != 0 {
 		t.Fatal("Marshal BulkPullRsp err3")
 	}
-	data15, err := marshalMessage(BulkPushBlock, blk)
+	data15, err := marshalMessage(BulkPushBlock, blks)
 	if err != nil {
 		t.Fatal("Marshal BulkPushBlock err1")
 	}
 	push := &protos.BulkPush{
-		Blk: blk,
+		Blocks: blks,
 	}
 	data16, err := protos.BulkPushBlockToProto(push)
 	if err != nil {
