@@ -302,13 +302,17 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
 	var reqTxHashes []*types.Hash
 	txs := syncBlk.Block.GetAllTxs()
-	for _, tx := range txs {
+	for txIdx, tx := range txs {
 		txHash := tx.GetHash()
-		ok, _ := ss.ledger.HasStateBlock(txHash)
-		if ok {
+		if txIdx == 0 {
 			syncBlk.TxExists[txHash] = struct{}{}
 		} else {
-			reqTxHashes = append(reqTxHashes, &txHash)
+			ok, _ := ss.ledger.HasStateBlock(txHash)
+			if ok {
+				syncBlk.TxExists[txHash] = struct{}{}
+			} else {
+				reqTxHashes = append(reqTxHashes, &txHash)
+			}
 		}
 	}
 

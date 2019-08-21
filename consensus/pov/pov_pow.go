@@ -52,7 +52,7 @@ func (c *ConsensusPow) PrepareHeader(header *types.PovHeader) error {
 		return fmt.Errorf("failed to get previous header %s", header.GetPrevious())
 	}
 
-	target, err := c.calcNextRequiredTarget(prevHeader)
+	target, err := c.calcNextRequiredTarget(prevHeader, header)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (c *ConsensusPow) verifyTarget(header *types.PovHeader) error {
 		return errors.New("failed to get previous header")
 	}
 
-	expectedTarget, err := c.calcNextRequiredTarget(prevHeader)
+	expectedTarget, err := c.calcNextRequiredTarget(prevHeader, header)
 	if err != nil {
 		return err
 	}
@@ -213,17 +213,21 @@ func (c *ConsensusPow) mineWorker(id int, gap int, header *types.PovHeader, cbAc
 	localCh <- nil
 }
 
-func (c *ConsensusPow) calcNextRequiredTarget(prevHeader *types.PovHeader) (uint32, error) {
-	if (prevHeader.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
-		return prevHeader.GetBits(), nil
+func (c *ConsensusPow) calcNextRequiredTarget(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
+	return c.calcNextRequiredTargetByDGW(lastHeader, curHeader)
+}
+
+func (c *ConsensusPow) calcNextRequiredTargetByBTC(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
+	if (lastHeader.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
+		return lastHeader.GetBits(), nil
 	}
 
 	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
 
 	distance := uint64(common.PovChainTargetCycle - 1)
-	firstHeader := c.chainR.RelativeAncestor(prevHeader, distance)
+	firstHeader := c.chainR.RelativeAncestor(lastHeader, distance)
 	if firstHeader == nil {
-		c.logger.Errorf("failed to get relative ancestor at height %d distance %d", prevHeader.GetHeight(), distance)
+		c.logger.Errorf("failed to get relative ancestor at height %d distance %d", lastHeader.GetHeight(), distance)
 		return 0, ErrPovUnknownAncestor
 	}
 
@@ -231,25 +235,103 @@ func (c *ConsensusPow) calcNextRequiredTarget(prevHeader *types.PovHeader) (uint
 	minRetargetTimespan := uint32(common.PovChainMinRetargetTimespan)
 	maxRetargetTimespan := uint32(common.PovChainMaxRetargetTimespan)
 
-	actualTimespan := prevHeader.GetTimestamp() - firstHeader.GetTimestamp()
+	actualTimespan := uint32(1)
+	if lastHeader.GetTimestamp() > firstHeader.GetTimestamp() {
+		actualTimespan = lastHeader.GetTimestamp() - firstHeader.GetTimestamp()
+	}
 	if actualTimespan < minRetargetTimespan {
 		actualTimespan = minRetargetTimespan
 	} else if actualTimespan > maxRetargetTimespan {
 		actualTimespan = maxRetargetTimespan
 	}
 
-	oldTargetInt := prevHeader.GetTargetInt()
+	oldTargetInt := lastHeader.GetTargetInt()
 	nextTargetInt := new(big.Int).Set(oldTargetInt)
 	nextTargetInt.Mul(oldTargetInt, big.NewInt(int64(actualTimespan)))
 	nextTargetInt.Div(nextTargetInt, big.NewInt(int64(targetTimeSpan)))
 
 	nextTargetBits := types.BigToCompact(nextTargetInt)
 
-	c.logger.Infof("Difficulty retarget at block height %d", prevHeader.GetHeight()+1)
+	c.logger.Infof("Difficulty target at block height %d", lastHeader.GetHeight()+1)
 	c.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
 	c.logger.Infof("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
 	c.logger.Infof("Actual timespan %v, target timespan %v",
 		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
+
+	return nextTargetBits, nil
+}
+
+func (c *ConsensusPow) calcNextRequiredTargetByDGW(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
+	var nextTargetInt *big.Int
+
+	oldTargetInt := lastHeader.GetTargetInt()
+	pastBlockCount := common.PovChainTargetCycle
+	targetTimeSpan := int64(common.PovChainBlockInterval * pastBlockCount)
+	actualTimespan := curHeader.GetTimestamp() - lastHeader.GetTimestamp()
+
+	// Tesetnet ???
+	/*
+		 else if curHeader.GetTimestamp() > prevHeader.GetTimestamp()+2*60*60 {
+			nextTargetInt = common.PovGenesisTargetInt
+			c.logger.Debugf("recent block is more than 2 hours old")
+		} else if curHeader.GetTimestamp() > prevHeader.GetTimestamp()+10*60 {
+			nextTargetInt = common.PovGenesisTargetInt
+			c.logger.Debugf("recent block is more than 10 minutes old")
+		}
+	*/
+
+	if lastHeader.GetHeight() < uint64(pastBlockCount) {
+		nextTargetInt = common.PovGenesisPowInt
+	} else {
+		// nextTarget = prevAvgTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (pastBlockCount * blockInterval)
+
+		pastSumTargetInt := big.NewInt(0)
+		firstHeader := lastHeader
+		for blockCount := 0; blockCount < pastBlockCount; blockCount++ {
+			scanTargetInt := firstHeader.GetTargetInt()
+
+			pastSumTargetInt = new(big.Int).Add(pastSumTargetInt, scanTargetInt)
+
+			firstHeader = c.chainR.GetHeaderByHash(firstHeader.GetPrevious())
+			if firstHeader == nil {
+				c.logger.Errorf("failed to get previous %s", lastHeader.GetPrevious())
+				return 0, ErrPovInvalidPrevious
+			}
+		}
+
+		pastAvgTargetInt := new(big.Int).Div(pastSumTargetInt, big.NewInt(int64(pastBlockCount)))
+
+		minRetargetTimespan := uint32(targetTimeSpan / 2)
+		maxRetargetTimespan := uint32(targetTimeSpan * 2)
+
+		if lastHeader.GetTimestamp() > firstHeader.GetTimestamp() {
+			actualTimespan = lastHeader.GetTimestamp() - firstHeader.GetTimestamp()
+		} else {
+			actualTimespan = 1
+		}
+		if actualTimespan < minRetargetTimespan {
+			actualTimespan = minRetargetTimespan
+		} else if actualTimespan > maxRetargetTimespan {
+			actualTimespan = maxRetargetTimespan
+		}
+
+		nextTargetInt = new(big.Int).Set(pastAvgTargetInt)
+		nextTargetInt.Mul(nextTargetInt, big.NewInt(int64(actualTimespan)))
+		nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
+	}
+
+	if nextTargetInt.Cmp(common.PovPowLimitInt) > 0 {
+		nextTargetInt = common.PovPowLimitInt
+	}
+	nextTargetBits := types.BigToCompact(nextTargetInt)
+
+	if (curHeader.GetHeight()+1)%uint64(pastBlockCount) == 0 {
+		c.logger.Infof("Difficulty target at block height %d", lastHeader.GetHeight()+1)
+		c.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
+		c.logger.Infof("New target %d (%s)", nextTargetInt.BitLen(), nextTargetInt.Text(16))
+		c.logger.Infof("actual timespan %s, target timespan %s",
+			time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
+	}
 
 	return nextTargetBits, nil
 }

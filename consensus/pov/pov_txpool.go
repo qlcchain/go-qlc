@@ -95,7 +95,7 @@ func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
 }
 
 func (tp *PovTxPool) OnPovBlockEvent(event byte, block *types.PovBlock) {
-	txs := block.GetAllTxs()
+	txs := block.GetAccountTxs()
 	if len(txs) <= 0 {
 		return
 	}
