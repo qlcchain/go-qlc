@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -27,8 +28,7 @@ type Election struct {
 	lastTime      int64
 	voteHash      types.Hash //vote for this hash
 	blocks        *sync.Map
-	lock          *sync.Mutex
-	valid         bool
+	valid         int32
 }
 
 func newElection(dps *DPoS, block *types.StateBlock) *Election {
@@ -44,8 +44,7 @@ func newElection(dps *DPoS, block *types.StateBlock) *Election {
 		lastTime:      time.Now().Unix(),
 		voteHash:      types.ZeroHash,
 		blocks:        new(sync.Map),
-		lock:          new(sync.Mutex),
-		valid:         true,
+		valid:         1,
 	}
 
 	el.blocks.Store(hash, block)
@@ -199,17 +198,11 @@ func (el *Election) getGenesisBalance() (types.Balance, error) {
 }
 
 func (el *Election) ifValidAndSetInvalid() bool {
-	el.lock.Lock()
-	defer el.lock.Unlock()
-	valid := el.valid
-	el.valid = false
-	return valid
+	return atomic.CompareAndSwapInt32(&el.valid, 1, 0)
 }
 
 func (el *Election) isValid() bool {
-	el.lock.Lock()
-	defer el.lock.Unlock()
-	return el.valid
+	return atomic.LoadInt32(&el.valid) == 1
 }
 
 func (el *Election) cleanBlockInfo() {
