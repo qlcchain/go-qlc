@@ -634,16 +634,18 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, chec
 
 func checkReceiveBlockRepeat(lv *LedgerVerifier, block *types.StateBlock) ProcessResult {
 	r := Progress
-	var repeatedFound error
-	err := lv.l.GetBlockCaches(func(b *types.StateBlock) error {
-		if block.GetLink() == b.GetLink() && block.GetHash() != b.GetHash() {
-			r = ReceiveRepeated
-			return repeatedFound
+	if block.IsReceiveBlock() {
+		var repeatedFound error
+		err := lv.l.GetBlockCaches(func(b *types.StateBlock) error {
+			if block.GetLink() == b.GetLink() && block.GetHash() != b.GetHash() {
+				r = ReceiveRepeated
+				return repeatedFound
+			}
+			return nil
+		})
+		if err != nil && err != repeatedFound {
+			return Other
 		}
-		return nil
-	})
-	if err != nil && err != repeatedFound {
-		return Other
 	}
 	return r
 }
