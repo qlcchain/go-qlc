@@ -79,7 +79,7 @@ func (ss *PovSyncer) onPeriodicSyncTimer() {
 	}
 
 	syncOver := false
-	if latestTD.Cmp(bestPeer.currentTD) >= 0 {
+	if latestTD.Chain.CmpBigInt(bestPeer.currentTD) >= 0 {
 		syncOver = true
 	} else if ss.absDiffHeight(latestBlock.GetHeight(), bestPeer.currentHeight) <= 3 {
 		syncOver = true

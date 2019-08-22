@@ -23,6 +23,7 @@ type PovWorker struct {
 
 	maxTxPerBlock   int
 	coinbaseAddress *types.Address
+	algo            types.PovAlgoType
 
 	quitCh chan struct{}
 }
@@ -75,6 +76,8 @@ func (w *PovWorker) Start() error {
 		}
 	}
 
+	w.algo = w.GetAlgo()
+
 	return nil
 }
 
@@ -110,6 +113,14 @@ func (w *PovWorker) GetCoinbaseAccount() *types.Account {
 		}
 	}
 	return nil
+}
+
+func (w *PovWorker) GetAlgo() types.PovAlgoType {
+	algo := types.NewPoVHashAlgoFromStr(w.miner.cfg.PoV.MinerAlgo)
+	if algo != types.ALGO_UNKNOWN {
+		return algo
+	}
+	return types.ALGO_SHA256D
 }
 
 func (w *PovWorker) loop() {
@@ -177,6 +188,7 @@ func (w *PovWorker) genNextBlock() *PovMineBlock {
 	mineBlock := &PovMineBlock{}
 
 	mineBlock.Header = &types.PovHeader{}
+	mineBlock.Header.BasHdr.Version = 0 | uint32(w.algo)
 	mineBlock.Header.BasHdr.Previous = latestHeader.GetHash()
 	mineBlock.Header.BasHdr.Height = latestHeader.GetHeight() + 1
 	mineBlock.Header.BasHdr.Timestamp = uint32(time.Now().Unix())

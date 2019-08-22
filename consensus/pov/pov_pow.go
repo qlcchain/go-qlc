@@ -131,16 +131,17 @@ func (c *ConsensusPow) verifyTarget(header *types.PovHeader) error {
 		return err
 	}
 	if expectedTarget != header.GetBits() {
-		return errors.New("target not equal next required target")
+		return fmt.Errorf("target 0x%x not equal next required target 0x%x", header.GetBits(), expectedTarget)
 	}
 
 	powHash := header.ComputePowHash()
 	powInt := powHash.ToBigInt()
+	powBits := types.BigToCompact(powInt)
 
 	targetInt := header.GetTargetInt()
 
 	if powInt.Cmp(targetInt) > 0 {
-		return errors.New("target greater than vote signature")
+		return fmt.Errorf("pow hash 0x%x greater than target 0x%x", powBits, header.GetBits())
 	}
 
 	return nil
@@ -214,7 +215,9 @@ func (c *ConsensusPow) mineWorker(id int, gap int, header *types.PovHeader, cbAc
 }
 
 func (c *ConsensusPow) calcNextRequiredTarget(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
-	return c.calcNextRequiredTargetByDGW(lastHeader, curHeader)
+	//return c.calcNextRequiredTargetByBTC(lastHeader, curHeader)
+	//return c.calcNextRequiredTargetByDGW(lastHeader, curHeader)
+	return c.calcNextRequiredTargetByAlgo(lastHeader, curHeader)
 }
 
 func (c *ConsensusPow) calcNextRequiredTargetByBTC(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
@@ -246,9 +249,9 @@ func (c *ConsensusPow) calcNextRequiredTargetByBTC(lastHeader *types.PovHeader, 
 	}
 
 	oldTargetInt := lastHeader.GetTargetInt()
-	nextTargetInt := new(big.Int).Set(oldTargetInt)
-	nextTargetInt.Mul(oldTargetInt, big.NewInt(int64(actualTimespan)))
-	nextTargetInt.Div(nextTargetInt, big.NewInt(int64(targetTimeSpan)))
+	// nextTargetInt = oldTargetInt * actualTimespan / targetTimeSpan
+	nextTargetInt := new(big.Int).Mul(oldTargetInt, big.NewInt(int64(actualTimespan)))
+	nextTargetInt = new(big.Int).Div(nextTargetInt, big.NewInt(int64(targetTimeSpan)))
 
 	nextTargetBits := types.BigToCompact(nextTargetInt)
 
@@ -272,16 +275,16 @@ func (c *ConsensusPow) calcNextRequiredTargetByDGW(lastHeader *types.PovHeader, 
 	// Tesetnet ???
 	/*
 		 else if curHeader.GetTimestamp() > prevHeader.GetTimestamp()+2*60*60 {
-			nextTargetInt = common.PovGenesisTargetInt
+			nextTargetInt = common.PovPowLimitInt
 			c.logger.Debugf("recent block is more than 2 hours old")
 		} else if curHeader.GetTimestamp() > prevHeader.GetTimestamp()+10*60 {
-			nextTargetInt = common.PovGenesisTargetInt
+			nextTargetInt = common.PovPowLimitInt
 			c.logger.Debugf("recent block is more than 10 minutes old")
 		}
 	*/
 
 	if lastHeader.GetHeight() < uint64(pastBlockCount) {
-		nextTargetInt = common.PovGenesisPowInt
+		nextTargetInt = common.PovPowLimitInt
 	} else {
 		// nextTarget = prevAvgTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (pastBlockCount * blockInterval)
 
@@ -315,9 +318,9 @@ func (c *ConsensusPow) calcNextRequiredTargetByDGW(lastHeader *types.PovHeader, 
 			actualTimespan = maxRetargetTimespan
 		}
 
-		nextTargetInt = new(big.Int).Set(pastAvgTargetInt)
-		nextTargetInt.Mul(nextTargetInt, big.NewInt(int64(actualTimespan)))
-		nextTargetInt.Div(nextTargetInt, big.NewInt(targetTimeSpan))
+		// nextTargetInt = pastAvgTargetInt * actualTimespan / targetTimeSpan
+		nextTargetInt = new(big.Int).Mul(pastAvgTargetInt, big.NewInt(int64(actualTimespan)))
+		nextTargetInt = new(big.Int).Div(nextTargetInt, big.NewInt(targetTimeSpan))
 	}
 
 	if nextTargetInt.Cmp(common.PovPowLimitInt) > 0 {
@@ -334,4 +337,173 @@ func (c *ConsensusPow) calcNextRequiredTargetByDGW(lastHeader *types.PovHeader, 
 	}
 
 	return nextTargetBits, nil
+}
+
+func (c *ConsensusPow) calcNextRequiredTargetByAlgo(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
+	ALGO_ACTIVE_COUNT := uint64(5)
+	nPastAlgoFastBlocks := uint64(5)
+	nPastAlgoBlocks := nPastAlgoFastBlocks * ALGO_ACTIVE_COUNT
+
+	nPastFastBlocks := nPastAlgoFastBlocks * 2
+	nPastBlocks := nPastFastBlocks * ALGO_ACTIVE_COUNT
+
+	// stabilizing block spacing
+	nPastBlocks = nPastBlocks * 100
+
+	// make sure we have at least ALGO_ACTIVE_COUNT blocks, otherwise just return powLimit
+	if lastHeader.GetHeight() < nPastBlocks {
+		if lastHeader.GetHeight() < nPastAlgoBlocks {
+			return common.PovPowLimitBits, nil
+		} else {
+			nPastBlocks = lastHeader.GetHeight()
+		}
+	}
+
+	pindexLast := lastHeader
+	pindex := pindexLast
+	pindexFast := pindexLast
+	bnPastTargetAvg := big.NewInt(0)
+	bnPastTargetAvgFast := big.NewInt(0)
+
+	var pindexAlgo *types.PovHeader
+	var pindexAlgoFast *types.PovHeader
+	var pindexAlgoLast *types.PovHeader
+	bnPastAlgoTargetAvg := big.NewInt(0)
+	bnPastAlgoTargetAvgFast := big.NewInt(0)
+
+	// count blocks mined by actual algo for secondary average
+	curAlgo := curHeader.BasHdr.Version & uint32(types.ALGO_VERSION_MASK)
+
+	nCountBlocks := uint64(0)
+	nCountFastBlocks := uint64(0)
+	nCountAlgoBlocks := uint64(0)
+	nCountAlgoFastBlocks := uint64(0)
+
+	for nCountBlocks < nPastBlocks && nCountAlgoBlocks < nPastAlgoBlocks {
+		bnTarget := pindex.GetTargetInt()
+		bnTarget = new(big.Int).Div(bnTarget, big.NewInt(int64(pindex.GetAlgoEfficiency()))) // convert to normalized target by algo efficiency
+
+		// calculate algo average
+		if curAlgo == (pindex.BasHdr.Version & uint32(types.ALGO_VERSION_MASK)) {
+			nCountAlgoBlocks++
+
+			pindexAlgo = pindex
+			if pindexAlgoLast == nil {
+				pindexAlgoLast = pindex
+			}
+
+			// algo average
+			// bnPastAlgoTargetAvg = (bnPastAlgoTargetAvg * (nCountAlgoBlocks - 1) + bnTarget) / nCountAlgoBlocks
+			bnPastAlgoTargetAvg = new(big.Int).Mul(bnPastAlgoTargetAvg, big.NewInt(int64(nCountAlgoBlocks-1)))
+			bnPastAlgoTargetAvg = new(big.Int).Add(bnPastAlgoTargetAvg, bnTarget)
+			bnPastAlgoTargetAvg = new(big.Int).Div(bnPastAlgoTargetAvg, big.NewInt(int64(nCountAlgoBlocks)))
+
+			// fast algo average
+			if nCountAlgoBlocks <= nPastAlgoFastBlocks {
+				nCountAlgoFastBlocks++
+				pindexAlgoFast = pindex
+				bnPastAlgoTargetAvgFast = bnPastAlgoTargetAvg
+			}
+		}
+
+		nCountBlocks++
+
+		// average
+		// bnPastTargetAvg = (bnPastTargetAvg * (nCountBlocks - 1) + bnTarget) / nCountBlocks
+		bnPastTargetAvg = new(big.Int).Mul(bnPastTargetAvg, big.NewInt(int64(nCountBlocks-1)))
+		bnPastTargetAvg = new(big.Int).Add(bnPastTargetAvg, bnTarget)
+		bnPastTargetAvg = new(big.Int).Div(bnPastTargetAvg, big.NewInt(int64(nCountBlocks)))
+		// fast average
+		if nCountBlocks <= nPastFastBlocks {
+			nCountFastBlocks++
+			pindexFast = pindex
+			bnPastTargetAvgFast = bnPastTargetAvg
+		}
+
+		// next block
+		if nCountBlocks != nPastBlocks {
+			pindex = c.chainR.GetHeaderByHash(pindex.GetPrevious())
+			if pindex == nil { // should never fail
+				c.logger.Errorf("failed to get previous %s", lastHeader.GetPrevious())
+				return 0, ErrPovInvalidPrevious
+			}
+		}
+	}
+
+	// instamine protection for blockchain
+	if (pindexLast.GetTimestamp() - pindexFast.GetTimestamp()) < uint32(common.PovChainBlockInterval/2) {
+		nCountBlocks = nCountFastBlocks
+		pindex = pindexFast
+		bnPastTargetAvg = bnPastTargetAvgFast
+	}
+
+	bnNew := bnPastTargetAvg
+
+	if pindexAlgo != nil && pindexAlgoLast != nil && nCountAlgoBlocks > 1 {
+		// instamine protection for algo
+		if (pindexLast.GetTimestamp() - pindexAlgoFast.GetTimestamp()) < uint32(uint64(common.PovChainBlockInterval)*ALGO_ACTIVE_COUNT/2) {
+			nCountAlgoBlocks = nCountAlgoFastBlocks
+			pindexAlgo = pindexAlgoFast
+			bnPastAlgoTargetAvg = bnPastAlgoTargetAvgFast
+		}
+
+		bnNew = bnPastAlgoTargetAvg
+
+		// pindexLast instead of pindexAlgoLst on purpose
+		nActualTimespan := uint64(pindexLast.GetTimestamp() - pindexAlgo.GetTimestamp())
+		nTargetTimespan := nCountAlgoBlocks * uint64(common.PovChainBlockInterval) * ALGO_ACTIVE_COUNT
+
+		// higher algo diff faster
+		if nActualTimespan < 1 {
+			nActualTimespan = 1
+		}
+		// lower algo diff slower
+		if nActualTimespan > nTargetTimespan*2 {
+			nActualTimespan = nTargetTimespan * 2
+		}
+
+		// Retarget algo, bnNew = bnNew * nActualTimespan / nTargetTimespan
+		bnNew = new(big.Int).Mul(bnNew, big.NewInt(int64(nActualTimespan)))
+		bnNew = new(big.Int).Div(bnNew, big.NewInt(int64(nTargetTimespan)))
+	} else {
+		bnNew = common.PovPowLimitInt
+	}
+
+	//c.logger.Infof("Algo New target %d (%s)", bnNew.BitLen(), bnNew.Text(16))
+
+	nActualTimespan := uint64(pindexLast.GetTimestamp() - pindex.GetTimestamp())
+	nTargetTimespan := nCountBlocks * uint64(common.PovChainBlockInterval)
+
+	// higher diff faster
+	if nActualTimespan < 1 {
+		nActualTimespan = 1
+	}
+	// lower diff slower
+	if nActualTimespan > nTargetTimespan*2 {
+		nActualTimespan = nTargetTimespan * 2
+	}
+
+	// Retarget, bnNew = bnNew * nActualTimespan / nTargetTimespan
+	bnNew = new(big.Int).Mul(bnNew, big.NewInt(int64(nActualTimespan)))
+	bnNew = new(big.Int).Div(bnNew, big.NewInt(int64(nTargetTimespan)))
+
+	//c.logger.Infof("Chain New target %d (%s)", bnNew.BitLen(), bnNew.Text(16))
+
+	// at least PoW limit
+	bnNew = new(big.Int).Mul(bnNew, big.NewInt(int64(curHeader.GetAlgoEfficiency()))) // convert normalized target to actual algo target
+	if bnNew.Cmp(common.PovPowLimitInt) > 0 {
+		bnNew = common.PovPowLimitInt
+	}
+	bnNewBits := types.BigToCompact(bnNew)
+
+	if (curHeader.GetHeight()+1)%uint64(10) == 0 {
+		bnOld := lastHeader.GetTargetInt()
+		c.logger.Infof("Difficulty target at block height %d", lastHeader.GetHeight()+1)
+		c.logger.Infof("Old target %d (%s)", bnOld.BitLen(), bnOld.Text(16))
+		c.logger.Infof("New target %d (%s)", bnNew.BitLen(), bnNew.Text(16))
+		c.logger.Infof("actual timespan %s, target timespan %s",
+			time.Duration(nActualTimespan)*time.Second, time.Duration(nTargetTimespan)*time.Second)
+	}
+
+	return bnNewBits, nil
 }

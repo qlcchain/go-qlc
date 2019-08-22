@@ -2552,6 +2552,200 @@ func (z *PovStoreBody) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *PovTD) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "c":
+			err = dc.ReadExtension(&z.Chain)
+			if err != nil {
+				err = msgp.WrapError(err, "Chain")
+				return
+			}
+		case "sha":
+			err = dc.ReadExtension(&z.Sha256d)
+			if err != nil {
+				err = msgp.WrapError(err, "Sha256d")
+				return
+			}
+		case "scr":
+			err = dc.ReadExtension(&z.Scrypt)
+			if err != nil {
+				err = msgp.WrapError(err, "Scrypt")
+				return
+			}
+		case "x11":
+			err = dc.ReadExtension(&z.X11)
+			if err != nil {
+				err = msgp.WrapError(err, "X11")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *PovTD) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 4
+	// write "c"
+	err = en.Append(0x84, 0xa1, 0x63)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Chain)
+	if err != nil {
+		err = msgp.WrapError(err, "Chain")
+		return
+	}
+	// write "sha"
+	err = en.Append(0xa3, 0x73, 0x68, 0x61)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Sha256d)
+	if err != nil {
+		err = msgp.WrapError(err, "Sha256d")
+		return
+	}
+	// write "scr"
+	err = en.Append(0xa3, 0x73, 0x63, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Scrypt)
+	if err != nil {
+		err = msgp.WrapError(err, "Scrypt")
+		return
+	}
+	// write "x11"
+	err = en.Append(0xa3, 0x78, 0x31, 0x31)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.X11)
+	if err != nil {
+		err = msgp.WrapError(err, "X11")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *PovTD) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 4
+	// string "c"
+	o = append(o, 0x84, 0xa1, 0x63)
+	o, err = msgp.AppendExtension(o, &z.Chain)
+	if err != nil {
+		err = msgp.WrapError(err, "Chain")
+		return
+	}
+	// string "sha"
+	o = append(o, 0xa3, 0x73, 0x68, 0x61)
+	o, err = msgp.AppendExtension(o, &z.Sha256d)
+	if err != nil {
+		err = msgp.WrapError(err, "Sha256d")
+		return
+	}
+	// string "scr"
+	o = append(o, 0xa3, 0x73, 0x63, 0x72)
+	o, err = msgp.AppendExtension(o, &z.Scrypt)
+	if err != nil {
+		err = msgp.WrapError(err, "Scrypt")
+		return
+	}
+	// string "x11"
+	o = append(o, 0xa3, 0x78, 0x31, 0x31)
+	o, err = msgp.AppendExtension(o, &z.X11)
+	if err != nil {
+		err = msgp.WrapError(err, "X11")
+		return
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *PovTD) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "c":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Chain)
+			if err != nil {
+				err = msgp.WrapError(err, "Chain")
+				return
+			}
+		case "sha":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Sha256d)
+			if err != nil {
+				err = msgp.WrapError(err, "Sha256d")
+				return
+			}
+		case "scr":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Scrypt)
+			if err != nil {
+				err = msgp.WrapError(err, "Scrypt")
+				return
+			}
+		case "x11":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.X11)
+			if err != nil {
+				err = msgp.WrapError(err, "X11")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *PovTD) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Chain.Len() + 4 + msgp.ExtensionPrefixSize + z.Sha256d.Len() + 4 + msgp.ExtensionPrefixSize + z.Scrypt.Len() + 4 + msgp.ExtensionPrefixSize + z.X11.Len()
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *PovTransaction) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field

@@ -4,7 +4,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
-	"math/big"
 	"sync"
 )
 
@@ -21,7 +20,7 @@ func GeneratePovCoinbase() *types.Account {
 	return povCoinbaseAcc
 }
 
-func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock, *big.Int) {
+func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock, *types.PovTD) {
 	if prevBlock == nil {
 		genesis := common.GenesisPovBlock()
 		prevBlock = &genesis
@@ -62,7 +61,8 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 	block.Header.BasHdr.MerkleRoot = merkle.CalcMerkleTreeRootHash(txHashes)
 	block.Header.BasHdr.Hash = block.ComputeHash()
 
-	nextTD := new(big.Int).Add(prevTD, prevTD)
+	nextTD := types.NewPovTD()
+	nextTD.Chain.AddBigInt(prevTD, prevTD)
 
 	return block, nextTD
 }

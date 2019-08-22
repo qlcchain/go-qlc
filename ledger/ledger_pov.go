@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math/big"
-
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -24,7 +22,7 @@ var (
 	ErrPovMinerStatNotFound = errors.New("pov miner state not found")
 )
 
-func (l *Ledger) AddPovBlock(blk *types.PovBlock, td *big.Int, txns ...db.StoreTxn) error {
+func (l *Ledger) AddPovBlock(blk *types.PovBlock, td *types.PovTD, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 
 	if err := l.addPovHeader(blk.GetHeader(), txn); err != nil {
@@ -361,7 +359,7 @@ func (l *Ledger) HasPovHeight(hash types.Hash, txns ...db.StoreTxn) bool {
 	return true
 }
 
-func (l *Ledger) addPovTD(hash types.Hash, height uint64, td *big.Int, txn db.StoreTxn) error {
+func (l *Ledger) addPovTD(hash types.Hash, height uint64, td *types.PovTD, txn db.StoreTxn) error {
 	key, err := getKeyOfParts(idPrefixPovTD, height, hash)
 	if err != nil {
 		return err
@@ -376,14 +374,19 @@ func (l *Ledger) addPovTD(hash types.Hash, height uint64, td *big.Int, txn db.St
 		return err
 	}
 
-	if err := txn.Set(key, td.Bytes()); err != nil {
+	val, err := td.Serialize()
+	if err != nil {
+		return err
+	}
+
+	if err := txn.Set(key, val); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (l *Ledger) AddPovTD(hash types.Hash, height uint64, td *big.Int, txns ...db.StoreTxn) error {
+func (l *Ledger) AddPovTD(hash types.Hash, height uint64, td *types.PovTD, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -410,7 +413,7 @@ func (l *Ledger) DeletePovTD(hash types.Hash, height uint64, txns ...db.StoreTxn
 	return l.deletePovTD(hash, height, txn)
 }
 
-func (l *Ledger) GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (*big.Int, error) {
+func (l *Ledger) GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (*types.PovTD, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -419,9 +422,9 @@ func (l *Ledger) GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (
 		return nil, err
 	}
 
-	td := new(big.Int)
+	td := new(types.PovTD)
 	err = txn.Get(key, func(val []byte, b byte) error {
-		td.SetBytes(val)
+		td.Deserialize(val)
 		return nil
 	})
 	if err != nil {

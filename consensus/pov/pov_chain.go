@@ -3,7 +3,6 @@ package pov
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
@@ -282,7 +281,7 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		var dbErr error
 
-		td := bc.CalcTotalDifficulty(genesis.GetBits())
+		td := bc.CalcTotalDifficulty(types.NewPovTD(), &genesis.Header)
 		dbErr = bc.getLedger().AddPovBlock(genesis, td)
 		if dbErr != nil {
 			return dbErr
@@ -433,7 +432,7 @@ func (bc *PovBlockChain) HasBestBlock(hash types.Hash, height uint64) bool {
 	return true
 }
 
-func (bc *PovBlockChain) GetBlockTDByHash(hash types.Hash) *big.Int {
+func (bc *PovBlockChain) GetBlockTDByHash(hash types.Hash) *types.PovTD {
 	hdr := bc.GetHeaderByHash(hash)
 	if hdr == nil {
 		return nil
@@ -442,10 +441,10 @@ func (bc *PovBlockChain) GetBlockTDByHash(hash types.Hash) *big.Int {
 	return bc.GetBlockTDByHashAndHeight(hdr.GetHash(), hdr.GetHeight())
 }
 
-func (bc *PovBlockChain) GetBlockTDByHashAndHeight(hash types.Hash, height uint64) *big.Int {
+func (bc *PovBlockChain) GetBlockTDByHashAndHeight(hash types.Hash, height uint64) *types.PovTD {
 	v, _ := bc.hashTdCache.Get(hash)
 	if v != nil {
-		return v.(*big.Int)
+		return v.(*types.PovTD)
 	}
 
 	td, err := bc.getLedger().GetPovTD(hash, height)
@@ -610,8 +609,7 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 		return ChainStateNone, err
 	}
 
-	targetTD := bc.CalcTotalDifficulty(block.GetBits())
-	blockTD := new(big.Int).Add(targetTD, prevTD)
+	blockTD := bc.CalcTotalDifficulty(prevTD, block.GetHeader())
 
 	// save block to db
 	if bc.getLedger().HasPovBlock(block.GetHeight(), block.GetHash(), txn) == false {
@@ -632,7 +630,7 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 
 	bc.hashTdCache.Set(block.GetHash(), blockTD)
 
-	tdCmpRet := blockTD.Cmp(bestTD)
+	tdCmpRet := blockTD.Chain.Cmp(&bestTD.Chain)
 	isBest := tdCmpRet > 0
 	if !isBest && tdCmpRet == 0 {
 		if block.GetHeight() < currentBlock.GetHeight() {
@@ -656,12 +654,12 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 		}
 
 		bc.logger.Infof("block %d/%s td %d/%s, need to doing fork, prev %s",
-			block.GetHeight(), block.GetHash(), blockTD.BitLen(), blockTD.Text(16), block.GetPrevious())
+			block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 		err := bc.processFork(txn, block)
 		return ChainStateMain, err
 	} else {
 		bc.logger.Debugf("block %d/%s td %d/%s in side chain, prev %s",
-			block.GetHeight(), block.GetHash(), blockTD.BitLen(), blockTD.Text(16), block.GetPrevious())
+			block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 	}
 
 	return ChainStateSide, nil
@@ -955,8 +953,23 @@ func (bc *PovBlockChain) RelativeAncestor(header *types.PovHeader, distance uint
 	return bc.FindAncestor(header, header.GetHeight()-distance)
 }
 
-func (bc *PovBlockChain) CalcTotalDifficulty(bits uint32) *big.Int {
-	return types.CalcWork(bits)
+func (bc *PovBlockChain) CalcTotalDifficulty(prevTD *types.PovTD, header *types.PovHeader) *types.PovTD {
+	curTD := prevTD.Copy()
+
+	curWork := types.CalcWorkToBigNum(header.GetBits())
+
+	curTD.Chain.Add(&prevTD.Chain, curWork)
+
+	switch header.BasHdr.Version & uint32(types.ALGO_VERSION_MASK) {
+	case uint32(types.ALGO_SHA256D):
+		curTD.Sha256d.Add(&prevTD.Sha256d, curWork)
+	case uint32(types.ALGO_SCRYPT):
+		curTD.Scrypt.Add(&prevTD.Scrypt, curWork)
+	case uint32(types.ALGO_X11):
+		curTD.X11.Add(&prevTD.X11, curWork)
+	}
+
+	return curTD
 }
 
 func (bc *PovBlockChain) CalcPastMedianTime(prevHeader *types.PovHeader) uint32 {

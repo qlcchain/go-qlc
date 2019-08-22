@@ -154,7 +154,7 @@ func BigToCompact(n *big.Int) uint32 {
 // accumulated must be the inverse of the difficulty.  Also, in order to avoid
 // potential division by zero and really small floating point numbers, the
 // result adds 1 to the denominator and multiplies the numerator by 2^256.
-func CalcWork(bits uint32) *big.Int {
+func CalcWorkToBigInt(bits uint32) *big.Int {
 	// Return a work value of zero if the passed difficulty bits represent
 	// a negative number. Note this should not happen in practice with valid
 	// blocks, but an invalid block could trigger it.
@@ -166,4 +166,9 @@ func CalcWork(bits uint32) *big.Int {
 	// (1 << 256) / (difficultyNum + 1)
 	denominator := new(big.Int).Add(difficultyNum, bigOne)
 	return new(big.Int).Div(oneLsh256, denominator)
+}
+
+func CalcWorkToBigNum(bits uint32) *BigNum {
+	workInt := CalcWorkToBigInt(bits)
+	return NewBigNumFromBigInt(workInt)
 }

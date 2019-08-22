@@ -15,4 +15,5 @@ const (
 	SignatureExtensionType = 103
 	WorkExtensionType      = 104
 	AbiExtensionType       = 105
+	BigNumExtensionType    = 106
 )

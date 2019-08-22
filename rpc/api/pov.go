@@ -66,10 +66,8 @@ type PovLedgerStats struct {
 }
 
 type PovApiTD struct {
-	Header   *types.PovHeader `json:"header"`
-	TD       *big.Int         `json:"td"`
-	TDHex    string           `json:"tdHex"`
-	TDBitLen int              `json:"tdBitLen"`
+	Header *types.PovHeader `json:"header"`
+	TD     *types.PovTD     `json:"td"`
 }
 
 type PovMinerStatItem struct {
@@ -439,7 +437,7 @@ func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
 	return stats, nil
 }
 
-func (api *PovApi) GetBlockTD(blockHash types.Hash) (*PovApiTD, error) {
+func (api *PovApi) GetBlockTDByHash(blockHash types.Hash) (*PovApiTD, error) {
 	height, err := api.ledger.GetPovHeight(blockHash)
 	if err != nil {
 		return nil, err
@@ -455,10 +453,31 @@ func (api *PovApi) GetBlockTD(blockHash types.Hash) (*PovApiTD, error) {
 	}
 
 	apiTD := &PovApiTD{
-		Header:   header,
-		TD:       td,
-		TDHex:    td.Text(16),
-		TDBitLen: td.BitLen(),
+		Header: header,
+		TD:     td,
+	}
+
+	return apiTD, nil
+}
+
+func (api *PovApi) GetBlockTDByHeight(height uint64) (*PovApiTD, error) {
+	blockHash, err := api.ledger.GetPovBestHash(height)
+	if err != nil {
+		return nil, err
+	}
+	header, err := api.ledger.GetPovHeader(height, blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	td, err := api.ledger.GetPovTD(blockHash, height)
+	if err != nil {
+		return nil, err
+	}
+
+	apiTD := &PovApiTD{
+		Header: header,
+		TD:     td,
 	}
 
 	return apiTD, nil
@@ -589,4 +608,105 @@ func (api *PovApi) GetMinerDayStats(dayIndex uint32) (*types.PovMinerDayStat, er
 	}
 
 	return dayStat, nil
+}
+
+type PovApiHashStat struct {
+	ChainHashPS   float64 `json:"chainHashPS"`
+	Sha256dHashPS float64 `json:"sha256dHashPS"`
+	ScryptHashPS  float64 `json:"scryptHashPS"`
+	X11HashPS     float64 `json:"x11HashPS"`
+}
+
+func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, error) {
+	latestHdr, err := api.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	lastHdr := latestHdr
+	if height > 0 && height < latestHdr.GetHeight() {
+		lastHdr, err = api.ledger.GetPovHeaderByHeight(height)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if lastHdr == nil || lastHdr.GetHeight() == 0 {
+		return nil, errors.New("failed to get block")
+	}
+
+	if lookup <= 0 {
+		lookup = 120
+	}
+	if lookup > lastHdr.GetHeight() {
+		lookup = lastHdr.GetHeight() + 1
+	}
+
+	firstHdr := lastHdr
+
+	minTime := firstHdr.GetTimestamp()
+	maxTime := firstHdr.GetTimestamp()
+	for i := uint64(1); i < lookup; i++ {
+		firstHdr, err = api.ledger.GetPovHeaderByHeight(firstHdr.GetHeight() - 1)
+		if err != nil {
+			return nil, err
+		}
+		if firstHdr.GetTimestamp() < minTime {
+			minTime = firstHdr.GetTimestamp()
+		}
+		if firstHdr.GetTimestamp() > maxTime {
+			maxTime = firstHdr.GetTimestamp()
+		}
+	}
+
+	apiRsp := new(PovApiHashStat)
+
+	// In case there's a situation where minTime == maxTime, we don't want a divide by zero exception.
+	if minTime == maxTime {
+		return apiRsp, nil
+	}
+	timeDiffInt := big.NewInt(int64(maxTime - minTime))
+	timeDiffFlt := new(big.Float).SetInt(timeDiffInt)
+
+	api.logger.Debugf("minTime:%d, maxTime:%d, timeDiff:%s", minTime, maxTime, timeDiffInt.String())
+
+	lastTD, err := api.ledger.GetPovTD(lastHdr.GetHash(), lastHdr.GetHeight())
+	if err != nil {
+		return nil, err
+	}
+
+	firstTD, err := api.ledger.GetPovTD(firstHdr.GetHash(), firstHdr.GetHeight())
+	if err != nil {
+		return nil, err
+	}
+
+	// chian
+	{
+		chainWorkDiffInt := new(big.Int).Sub(lastTD.Chain.ToBigInt(), firstTD.Chain.ToBigInt())
+		chainWorkDiffFlt := new(big.Float).SetInt(chainWorkDiffInt)
+		apiRsp.ChainHashPS, _ = new(big.Float).Quo(chainWorkDiffFlt, timeDiffFlt).Float64()
+	}
+
+	// sha256d
+	{
+		shaWorkDiffInt := new(big.Int).Sub(lastTD.Sha256d.ToBigInt(), firstTD.Sha256d.ToBigInt())
+		shaWorkDiffFlt := new(big.Float).SetInt(shaWorkDiffInt)
+		apiRsp.Sha256dHashPS, _ = new(big.Float).Quo(shaWorkDiffFlt, timeDiffFlt).Float64()
+	}
+
+	// scrypt
+	{
+		scrWorkDiffInt := new(big.Int).Sub(lastTD.Scrypt.ToBigInt(), firstTD.Scrypt.ToBigInt())
+		scrWorkDiffFlt := new(big.Float).SetInt(scrWorkDiffInt)
+		apiRsp.ScryptHashPS, _ = new(big.Float).Quo(scrWorkDiffFlt, timeDiffFlt).Float64()
+	}
+
+	// x11
+	{
+		x11WorkDiffInt := new(big.Int).Sub(lastTD.Scrypt.ToBigInt(), firstTD.Scrypt.ToBigInt())
+		x11WorkDiffFlt := new(big.Float).SetInt(x11WorkDiffInt)
+		apiRsp.ScryptHashPS, _ = new(big.Float).Quo(x11WorkDiffFlt, timeDiffFlt).Float64()
+	}
+
+	return apiRsp, nil
 }

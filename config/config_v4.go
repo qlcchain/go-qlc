@@ -8,6 +8,7 @@ type ConfigV4 struct {
 type PoVConfig struct {
 	PovEnabled   bool   `json:"povEnabled"`
 	MinerEnabled bool   `json:"minerEnabled"`
+	MinerAlgo    string `json:"minerAlgo"`
 	Coinbase     string `json:"coinbase" validate:"address"`
 }
 
@@ -28,6 +29,7 @@ func defaultPoV() *PoVConfig {
 	return &PoVConfig{
 		PovEnabled:   false,
 		MinerEnabled: false,
+		MinerAlgo:    "",
 		Coinbase:     "",
 	}
 }

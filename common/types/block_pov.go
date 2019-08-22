@@ -21,16 +21,6 @@ const (
 	PovBlockFromRemoteSync
 )
 
-const (
-	ALGO_VERSION_MASK = 255 << 8
-	ALGO_SHA256D      = 0 << 8
-	ALGO_SCRYPT       = 1 << 8
-	ALGO_NIST5        = 2 << 8
-	ALGO_LYRA2Z       = 3 << 8
-	ALGO_X11          = 4 << 8
-	ALGO_X16R         = 5 << 8
-)
-
 type PovBaseHeader struct {
 	Version    uint32 `msg:"v" json:"version"`
 	Previous   Hash   `msg:"p,extension" json:"previous"`
@@ -189,7 +179,8 @@ func (h *PovHeader) Copy() *PovHeader {
 }
 
 func (h *PovHeader) GetAlgoEfficiency() uint {
-	switch h.BasHdr.Version & ALGO_VERSION_MASK {
+	algo := PovAlgoType(h.BasHdr.Version & uint32(ALGO_VERSION_MASK))
+	switch algo {
 	case ALGO_SHA256D:
 		return 1
 	case ALGO_SCRYPT:
@@ -225,7 +216,8 @@ func (h *PovHeader) BuildHashData() []byte {
 func (h *PovHeader) ComputePowHash() Hash {
 	d := h.BuildHashData()
 
-	switch h.BasHdr.Version & ALGO_VERSION_MASK {
+	algo := PovAlgoType(h.BasHdr.Version & uint32(ALGO_VERSION_MASK))
+	switch algo {
 	case ALGO_SHA256D:
 		powHash := Sha256D_HashData(d)
 		return powHash
@@ -510,4 +502,37 @@ func NewPovMinerDayStat() *PovMinerDayStat {
 	ds := new(PovMinerDayStat)
 	ds.MinerStats = make(map[string]*PovMinerStatItem)
 	return ds
+}
+
+type PovTD struct {
+	Chain   BigNum `msg:"c,extension" json:"chain"`
+	Sha256d BigNum `msg:"sha,extension" json:"sha256d"`
+	Scrypt  BigNum `msg:"scr,extension" json:"scrypt"`
+	X11     BigNum `msg:"x11,extension" json:"x11"`
+}
+
+func (td *PovTD) Serialize() ([]byte, error) {
+	return td.MarshalMsg(nil)
+}
+
+func (td *PovTD) Deserialize(text []byte) error {
+	_, err := td.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (td *PovTD) Copy() *PovTD {
+	copyTD := new(PovTD)
+	copyTD.Chain = *td.Chain.Copy()
+	copyTD.Sha256d = *td.Sha256d.Copy()
+	copyTD.Scrypt = *td.Scrypt.Copy()
+	copyTD.X11 = *td.X11.Copy()
+	return copyTD
+}
+
+func NewPovTD() *PovTD {
+	td := new(PovTD)
+	return td
 }

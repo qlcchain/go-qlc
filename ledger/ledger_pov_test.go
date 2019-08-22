@@ -5,7 +5,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
-	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func setupPovTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	}, l
 }
 
-func generatePovBlock(prevBlock *types.PovBlock) (*types.PovBlock, *big.Int) {
+func generatePovBlock(prevBlock *types.PovBlock) (*types.PovBlock, *types.PovTD) {
 	return mock.GeneratePovBlock(prevBlock, 0)
 }
 
@@ -78,8 +77,8 @@ func TestLedger_AddPovBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if retTD.Cmp(td) != 0 {
-		t.Fatalf("td not equal, %s != %s", retTD, td)
+	if retTD.Chain.Cmp(&td.Chain) != 0 {
+		t.Fatalf("td not equal, %s != %s", retTD.Chain.String(), td.Chain.String())
 	}
 }
 
