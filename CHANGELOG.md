@@ -1,4 +1,21 @@
 
+<a name="v1.2.6.4"></a>
+## [v1.2.6.4](https://github.com/qlcchain/go-qlc/compare/v1.2.5...v1.2.6.4) (2019-08-23)
+
+### Bug Fixes
+
+* send block should not check Repeated
+* enlarge confidant cache size
+* invalid ack
+* need rollback when blockcache fork
+* rollback block cache
+
+### Features
+
+* sort query pending by timestamp
+* check generate receive block repeatedly
+
+
 <a name="v1.2.5"></a>
 ## [v1.2.5](https://github.com/qlcchain/go-qlc/compare/v1.2.4...v1.2.5) (2019-08-15)
 
@@ -457,7 +474,6 @@
 * docker image support account/override params
 * modify default message count
 * add limit to sms api
-* add rpc interface for pledge contract. fix: some bug
 
 ### Refactoring
 
@@ -471,7 +487,6 @@
 * Merge pull request [#315](https://github.com/qlcchain/go-qlc/issues/315) from qlcchain/feature/withdrawpledge-refactor
 * Merge pull request [#318](https://github.com/qlcchain/go-qlc/issues/318) from qlcchain/hotfix/accountmeta
 * Merge pull request [#314](https://github.com/qlcchain/go-qlc/issues/314) from qlcchain/feature/sms
-* Merge pull request [#305](https://github.com/qlcchain/go-qlc/issues/305) from qlcchain/feature/1.0.5
 
 
 <a name="v1.1.0"></a>
@@ -501,6 +516,7 @@
 
 ### Features
 
+* add rpc interface for pledge contract. fix: some bug
 * add --nobootnode to disable all bootstrap nodes
 * modify representative weight ([#300](https://github.com/qlcchain/go-qlc/issues/300))
 * get ntp time
@@ -539,6 +555,10 @@
 * change the sorting method
 * pledge time and pledge count
 * refine mintage/pledge contract
+
+### Pull Requests
+
+* Merge pull request [#305](https://github.com/qlcchain/go-qlc/issues/305) from qlcchain/feature/1.0.5
 
 
 <a name="v1.0.4"></a>
