@@ -82,6 +82,7 @@ type PovVerifierChainReader interface {
 	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
+	CalcBlockReward(header *types.PovHeader) types.Balance
 }
 
 func NewPovVerifier(store ledger.Store, chain PovVerifierChainReader, cs ConsensusPov) *PovVerifier {
@@ -233,7 +234,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 	cbTx := &block.Header.CbTx
 	cbTx.Hash = cbTx.ComputeHash()
 
-	result, err := pv.verifyCoinBaseTx(cbTx)
+	result, err := pv.verifyCoinBaseTx(cbTx, stat)
 	if err != nil {
 		return result, err
 	}
@@ -308,7 +309,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 	return process.Progress, nil
 }
 
-func (pv *PovVerifier) verifyCoinBaseTx(cbTx *types.PovCoinBaseTx) (process.ProcessResult, error) {
+func (pv *PovVerifier) verifyCoinBaseTx(cbTx *types.PovCoinBaseTx, stat *PovVerifyStat) (process.ProcessResult, error) {
 	if cbTx.CoinBase.IsZero() {
 		return process.BadCoinbase, errors.New("coinbase is zero")
 	}
@@ -320,6 +321,11 @@ func (pv *PovVerifier) verifyCoinBaseTx(cbTx *types.PovCoinBaseTx) (process.Proc
 	isVerified := cbTx.CoinBase.Verify(cbTx.GetHash().Bytes(), cbTx.Signature.Bytes())
 	if !isVerified {
 		return process.BadSignature, errors.New("bad signature")
+	}
+
+	expectReward := pv.chain.CalcBlockReward(stat.CurHeader)
+	if cbTx.Reward.Compare(expectReward) == types.BalanceCompBigger {
+		return process.BadCoinbase, errors.New("bad reward")
 	}
 
 	return process.Progress, nil

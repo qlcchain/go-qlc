@@ -710,3 +710,26 @@ func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, 
 
 	return apiRsp, nil
 }
+
+type PovApiGetWork struct {
+	WorkID string `json:"workID"`
+
+	Version  uint32     `json:"version"`
+	Previous types.Hash `json:"previous"`
+	Bits     uint32     `json:"bits"`
+	Height   uint64     `json:"height"`
+
+	MinTime        uint32       `json:"minTime"`
+	MerkleBranch   []types.Hash `json:"merkleBranch"`
+	CoinBaseTxData []byte       `json:"coinbaseTxData"`
+}
+
+type PovApiSubmitWork struct {
+	WorkID          string          `json:"workID"`
+	BlockHash       types.Hash      `json:"blockHash"`
+	CoinBaseTxHash  types.Hash      `json:"coinbaseTxHash"`
+	CoinBaseTxSig   types.Signature `json:"coinbaseTxSig"`
+	CoinBaseTxExtra []byte          `json:"coinbaseTxExtra"`
+	Timestamp       uint32          `json:"timestamp"`
+	Nonce           uint32          `json:"nonce"`
+}

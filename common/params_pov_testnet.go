@@ -33,8 +33,10 @@ var (
 
 	// Reward per block, rewardPerBlock * blockNumPerYear / gasTotalSupply = 3%
 	// 10000000000000000 * 0.03 / (3600 * 24 * 365 / 30)
-	PovMinerRewardPerBlockInt     = big.NewInt(285388127)
-	PovMinerRewardPerBlockBalance = types.NewBalance(285388127)
+	PovMinerRewardPerBlock        = 285388127
+	PovMinerRewardPerBlockInt     = big.NewInt(int64(PovMinerRewardPerBlock))
+	PovMinerRewardPerBlockBalance = types.NewBalance(int64(PovMinerRewardPerBlock))
+	PovMinerMinRewardPerBlock     = 285388 // 0.001 * 285388127
 
 	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 12)
 

@@ -240,7 +240,7 @@ func (w *PovWorker) genNextBlock() *PovMineBlock {
 	// build coinbase tx
 	cbtx.StateHash = *stateTrie.Hash()
 	cbtx.TxNum = uint32(len(accTxs) + 1)
-	cbtx.Reward = types.ZeroBalance // TODO: calc block reward
+	cbtx.Reward = w.GetChain().CalcBlockReward(mineBlock.Header)
 	cbtx.CoinBase = w.GetCoinbaseAccount().Address()
 	cbtxHash := cbtx.ComputeHash()
 
