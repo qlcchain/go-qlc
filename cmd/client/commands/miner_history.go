@@ -88,9 +88,9 @@ func minerHistoryAction(coinbaseP string) error {
 
 	fmt.Printf("AllRewardBlocks: %d\n", rspHistoryInfo.AllRewardBlocks)
 	fmt.Printf("AllRewardAmount: %d (%f)\n", rspHistoryInfo.AllRewardAmount, gasAmountF)
-	fmt.Printf("%-10s %-10s %-10s %-64s\n", "Start", "End", "Blocks", "Beneficial")
+	fmt.Printf("%-10s %-10s %-10s %-18s %-64s\n", "Start", "End", "Blocks", "Reward", "Beneficial")
 	for _, info := range rspHistoryInfo.RewardInfos {
-		fmt.Printf("%-10d %-10d %-10d %-64s\n", info.StartHeight, info.EndHeight, info.RewardBlocks, info.Beneficial)
+		fmt.Printf("%-10d %-10d %-10d %-18s %-64s\n", info.StartHeight, info.EndHeight, info.RewardBlocks, info.RewardAmount.String(), info.Beneficial)
 	}
 
 	return nil

@@ -71,12 +71,13 @@ type PovApiTD struct {
 }
 
 type PovMinerStatItem struct {
-	MainBlockNum     uint32    `json:"mainBlockNum"`
-	FirstBlockTime   time.Time `json:"firstBlockTime"`
-	LastBlockTime    time.Time `json:"lastBlockTime"`
-	FirstBlockHeight uint64    `json:"firstBlockHeight"`
-	LastBlockHeight  uint64    `json:"lastBlockHeight"`
-	IsOnline         bool      `json:"isOnline"`
+	MainBlockNum     uint32        `json:"mainBlockNum"`
+	MainRewardAmount types.Balance `json:"mainRewardAmount"`
+	FirstBlockTime   time.Time     `json:"firstBlockTime"`
+	LastBlockTime    time.Time     `json:"lastBlockTime"`
+	FirstBlockHeight uint64        `json:"firstBlockHeight"`
+	LastBlockHeight  uint64        `json:"lastBlockHeight"`
+	IsOnline         bool          `json:"isOnline"`
 }
 
 type PovMinerStats struct {
@@ -515,6 +516,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			item, ok := apiRsp.MinerStats[minerAddr]
 			if !ok {
 				item = &PovMinerStatItem{}
+				item.MainRewardAmount = types.ZeroBalance
 				item.FirstBlockHeight = minerStat.FirstHeight
 				item.LastBlockHeight = minerStat.LastHeight
 
@@ -527,6 +529,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 					item.LastBlockHeight = minerStat.LastHeight
 				}
 			}
+			item.MainRewardAmount = item.MainRewardAmount.Add(minerStat.RewardAmount)
 			item.MainBlockNum += minerStat.BlockNum
 			totalBlockNum += minerStat.BlockNum
 		}
@@ -557,6 +560,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		item, ok := apiRsp.MinerStats[minerAddr]
 		if !ok {
 			item = &PovMinerStatItem{}
+			item.MainRewardAmount = types.ZeroBalance
 			item.FirstBlockHeight = header.GetHeight()
 			item.LastBlockHeight = header.GetHeight()
 
@@ -569,6 +573,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 				item.LastBlockHeight = header.GetHeight()
 			}
 		}
+		item.MainRewardAmount = item.MainRewardAmount.Add(header.GetReward())
 		item.MainBlockNum += 1
 		totalBlockNum += 1
 	}

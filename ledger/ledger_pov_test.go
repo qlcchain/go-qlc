@@ -249,7 +249,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat0 := types.NewPovMinerDayStat()
 	dayStat0.DayIndex = 0
-	dayStat0.MinerStats["miner0"] = &types.PovMinerStatItem{FirstHeight: 0, LastHeight: 99, BlockNum: 0}
+	dayStat0.MinerStats["miner0"] = &types.PovMinerStatItem{FirstHeight: 0, LastHeight: 99, BlockNum: 0, RewardAmount: types.ZeroBalance}
 	dayStat0.MinerNum = uint32(len(dayStat0.MinerStats))
 	err := l.AddPovMinerStat(dayStat0)
 	if err != nil {
@@ -258,7 +258,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat2 := types.NewPovMinerDayStat()
 	dayStat2.DayIndex = 1
-	dayStat2.MinerStats["miner2"] = &types.PovMinerStatItem{FirstHeight: 200, LastHeight: 299, BlockNum: 20}
+	dayStat2.MinerStats["miner2"] = &types.PovMinerStatItem{FirstHeight: 200, LastHeight: 299, BlockNum: 20, RewardAmount: types.NewBalance(20)}
 	dayStat2.MinerNum = uint32(len(dayStat0.MinerStats))
 	err = l.AddPovMinerStat(dayStat2)
 	if err != nil {
@@ -267,7 +267,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat1 := types.NewPovMinerDayStat()
 	dayStat1.DayIndex = 1
-	dayStat1.MinerStats["miner1"] = &types.PovMinerStatItem{FirstHeight: 100, LastHeight: 199, BlockNum: 10}
+	dayStat1.MinerStats["miner1"] = &types.PovMinerStatItem{FirstHeight: 100, LastHeight: 199, BlockNum: 10, RewardAmount: types.NewBalance(10)}
 	dayStat1.MinerNum = uint32(len(dayStat0.MinerStats))
 	err = l.AddPovMinerStat(dayStat1)
 	if err != nil {

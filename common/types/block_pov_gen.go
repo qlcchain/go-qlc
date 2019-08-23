@@ -1856,45 +1856,10 @@ func (z *PovMinerDayStat) DecodeMsg(dc *msgp.Reader) (err error) {
 					if za0002 == nil {
 						za0002 = new(PovMinerStatItem)
 					}
-					var zb0003 uint32
-					zb0003, err = dc.ReadMapHeader()
+					err = za0002.DecodeMsg(dc)
 					if err != nil {
 						err = msgp.WrapError(err, "MinerStats", za0001)
 						return
-					}
-					for zb0003 > 0 {
-						zb0003--
-						field, err = dc.ReadMapKeyPtr()
-						if err != nil {
-							err = msgp.WrapError(err, "MinerStats", za0001)
-							return
-						}
-						switch msgp.UnsafeString(field) {
-						case "fh":
-							za0002.FirstHeight, err = dc.ReadUint64()
-							if err != nil {
-								err = msgp.WrapError(err, "MinerStats", za0001, "FirstHeight")
-								return
-							}
-						case "lh":
-							za0002.LastHeight, err = dc.ReadUint64()
-							if err != nil {
-								err = msgp.WrapError(err, "MinerStats", za0001, "LastHeight")
-								return
-							}
-						case "bn":
-							za0002.BlockNum, err = dc.ReadUint32()
-							if err != nil {
-								err = msgp.WrapError(err, "MinerStats", za0001, "BlockNum")
-								return
-							}
-						default:
-							err = dc.Skip()
-							if err != nil {
-								err = msgp.WrapError(err, "MinerStats", za0001)
-								return
-							}
-						}
 					}
 				}
 				z.MinerStats[za0001] = za0002
@@ -1955,35 +1920,9 @@ func (z *PovMinerDayStat) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		} else {
-			// map header, size 3
-			// write "fh"
-			err = en.Append(0x83, 0xa2, 0x66, 0x68)
+			err = za0002.EncodeMsg(en)
 			if err != nil {
-				return
-			}
-			err = en.WriteUint64(za0002.FirstHeight)
-			if err != nil {
-				err = msgp.WrapError(err, "MinerStats", za0001, "FirstHeight")
-				return
-			}
-			// write "lh"
-			err = en.Append(0xa2, 0x6c, 0x68)
-			if err != nil {
-				return
-			}
-			err = en.WriteUint64(za0002.LastHeight)
-			if err != nil {
-				err = msgp.WrapError(err, "MinerStats", za0001, "LastHeight")
-				return
-			}
-			// write "bn"
-			err = en.Append(0xa2, 0x62, 0x6e)
-			if err != nil {
-				return
-			}
-			err = en.WriteUint32(za0002.BlockNum)
-			if err != nil {
-				err = msgp.WrapError(err, "MinerStats", za0001, "BlockNum")
+				err = msgp.WrapError(err, "MinerStats", za0001)
 				return
 			}
 		}
@@ -2009,16 +1948,11 @@ func (z *PovMinerDayStat) MarshalMsg(b []byte) (o []byte, err error) {
 		if za0002 == nil {
 			o = msgp.AppendNil(o)
 		} else {
-			// map header, size 3
-			// string "fh"
-			o = append(o, 0x83, 0xa2, 0x66, 0x68)
-			o = msgp.AppendUint64(o, za0002.FirstHeight)
-			// string "lh"
-			o = append(o, 0xa2, 0x6c, 0x68)
-			o = msgp.AppendUint64(o, za0002.LastHeight)
-			// string "bn"
-			o = append(o, 0xa2, 0x62, 0x6e)
-			o = msgp.AppendUint32(o, za0002.BlockNum)
+			o, err = za0002.MarshalMsg(o)
+			if err != nil {
+				err = msgp.WrapError(err, "MinerStats", za0001)
+				return
+			}
 		}
 	}
 	return
@@ -2087,45 +2021,10 @@ func (z *PovMinerDayStat) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					if za0002 == nil {
 						za0002 = new(PovMinerStatItem)
 					}
-					var zb0003 uint32
-					zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+					bts, err = za0002.UnmarshalMsg(bts)
 					if err != nil {
 						err = msgp.WrapError(err, "MinerStats", za0001)
 						return
-					}
-					for zb0003 > 0 {
-						zb0003--
-						field, bts, err = msgp.ReadMapKeyZC(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "MinerStats", za0001)
-							return
-						}
-						switch msgp.UnsafeString(field) {
-						case "fh":
-							za0002.FirstHeight, bts, err = msgp.ReadUint64Bytes(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "MinerStats", za0001, "FirstHeight")
-								return
-							}
-						case "lh":
-							za0002.LastHeight, bts, err = msgp.ReadUint64Bytes(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "MinerStats", za0001, "LastHeight")
-								return
-							}
-						case "bn":
-							za0002.BlockNum, bts, err = msgp.ReadUint32Bytes(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "MinerStats", za0001, "BlockNum")
-								return
-							}
-						default:
-							bts, err = msgp.Skip(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "MinerStats", za0001)
-								return
-							}
-						}
 					}
 				}
 				z.MinerStats[za0001] = za0002
@@ -2152,7 +2051,7 @@ func (z *PovMinerDayStat) Msgsize() (s int) {
 			if za0002 == nil {
 				s += msgp.NilSize
 			} else {
-				s += 1 + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint32Size
+				s += za0002.Msgsize()
 			}
 		}
 	}
@@ -2195,6 +2094,12 @@ func (z *PovMinerStatItem) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "BlockNum")
 				return
 			}
+		case "ra":
+			err = dc.ReadExtension(&z.RewardAmount)
+			if err != nil {
+				err = msgp.WrapError(err, "RewardAmount")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2207,10 +2112,10 @@ func (z *PovMinerStatItem) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z PovMinerStatItem) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 3
+func (z *PovMinerStatItem) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 4
 	// write "fh"
-	err = en.Append(0x83, 0xa2, 0x66, 0x68)
+	err = en.Append(0x84, 0xa2, 0x66, 0x68)
 	if err != nil {
 		return
 	}
@@ -2239,15 +2144,25 @@ func (z PovMinerStatItem) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "BlockNum")
 		return
 	}
+	// write "ra"
+	err = en.Append(0xa2, 0x72, 0x61)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.RewardAmount)
+	if err != nil {
+		err = msgp.WrapError(err, "RewardAmount")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z PovMinerStatItem) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *PovMinerStatItem) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 3
+	// map header, size 4
 	// string "fh"
-	o = append(o, 0x83, 0xa2, 0x66, 0x68)
+	o = append(o, 0x84, 0xa2, 0x66, 0x68)
 	o = msgp.AppendUint64(o, z.FirstHeight)
 	// string "lh"
 	o = append(o, 0xa2, 0x6c, 0x68)
@@ -2255,6 +2170,13 @@ func (z PovMinerStatItem) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "bn"
 	o = append(o, 0xa2, 0x62, 0x6e)
 	o = msgp.AppendUint32(o, z.BlockNum)
+	// string "ra"
+	o = append(o, 0xa2, 0x72, 0x61)
+	o, err = msgp.AppendExtension(o, &z.RewardAmount)
+	if err != nil {
+		err = msgp.WrapError(err, "RewardAmount")
+		return
+	}
 	return
 }
 
@@ -2294,6 +2216,12 @@ func (z *PovMinerStatItem) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "BlockNum")
 				return
 			}
+		case "ra":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.RewardAmount)
+			if err != nil {
+				err = msgp.WrapError(err, "RewardAmount")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2307,8 +2235,8 @@ func (z *PovMinerStatItem) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z PovMinerStatItem) Msgsize() (s int) {
-	s = 1 + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint32Size
+func (z *PovMinerStatItem) Msgsize() (s int) {
+	s = 1 + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint32Size + 3 + msgp.ExtensionPrefixSize + z.RewardAmount.Len()
 	return
 }
 

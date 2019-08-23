@@ -233,6 +233,7 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 				minerStat.LastHeight = header.GetHeight()
 			}
 			minerStat.BlockNum++
+			minerStat.RewardAmount = minerStat.RewardAmount.Add(header.GetReward())
 		}
 
 		dayStat.MinerNum = uint32(len(dayStat.MinerStats))

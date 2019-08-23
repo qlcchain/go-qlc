@@ -161,6 +161,10 @@ func (h *PovHeader) GetCoinBase() Address {
 	return h.CbTx.CoinBase
 }
 
+func (h *PovHeader) GetReward() Balance {
+	return h.CbTx.Reward
+}
+
 func (h *PovHeader) Serialize() ([]byte, error) {
 	return h.MarshalMsg(nil)
 }
@@ -462,9 +466,10 @@ func (txl *PovTxLookup) Deserialize(text []byte) error {
 }
 
 type PovMinerStatItem struct {
-	FirstHeight uint64 `msg:"fh" json:"firstHeight"`
-	LastHeight  uint64 `msg:"lh" json:"lastHeight"`
-	BlockNum    uint32 `msg:"bn" json:"blockNum"`
+	FirstHeight  uint64  `msg:"fh" json:"firstHeight"`
+	LastHeight   uint64  `msg:"lh" json:"lastHeight"`
+	BlockNum     uint32  `msg:"bn" json:"blockNum"`
+	RewardAmount Balance `msg:"ra,extension" json:"rewardAmount"`
 }
 
 func (msi *PovMinerStatItem) Serialize() ([]byte, error) {

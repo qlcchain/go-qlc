@@ -55,6 +55,10 @@ func (c *mockPovVerifierChainReader) GetAccountState(trie *trie.Trie, address ty
 	return nil
 }
 
+func (c *mockPovVerifierChainReader) CalcBlockReward(header *types.PovHeader) types.Balance {
+	return types.ZeroBalance
+}
+
 type mockPovConsensusChainReader struct{}
 
 func (c *mockPovConsensusChainReader) GetHeaderByHash(hash types.Hash) *types.PovHeader {

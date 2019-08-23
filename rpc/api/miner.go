@@ -28,20 +28,23 @@ type RewardParam struct {
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
+	RewardAmount types.Balance `json:"rewardAmount"`
 }
 
 type MinerAvailRewardInfo struct {
-	LastBeneficial   string `json:"lastBeneficial"`
-	LastStartHeight  uint64 `json:"lastStartHeight"`
-	LastEndHeight    uint64 `json:"lastEndHeight"`
-	LastRewardBlocks uint64 `json:"lastRewardBlocks"`
+	LastBeneficial   string        `json:"lastBeneficial"`
+	LastStartHeight  uint64        `json:"lastStartHeight"`
+	LastEndHeight    uint64        `json:"lastEndHeight"`
+	LastRewardBlocks uint64        `json:"lastRewardBlocks"`
+	LastRewardAmount types.Balance `json:"lastRewardAmount"`
 
-	LatestBlockHeight uint64 `json:"latestBlockHeight"`
-	NodeRewardHeight  uint64 `json:"nodeRewardHeight"`
-	AvailStartHeight  uint64 `json:"availStartHeight"`
-	AvailEndHeight    uint64 `json:"availEndHeight"`
-	AvailRewardBlocks uint64 `json:"availRewardBlocks"`
-	NeedCallReward    bool   `json:"needCallReward"`
+	LatestBlockHeight uint64        `json:"latestBlockHeight"`
+	NodeRewardHeight  uint64        `json:"nodeRewardHeight"`
+	AvailStartHeight  uint64        `json:"availStartHeight"`
+	AvailEndHeight    uint64        `json:"availEndHeight"`
+	AvailRewardBlocks uint64        `json:"availRewardBlocks"`
+	AvailRewardAmount types.Balance `json:"availRewardAmount"`
+	NeedCallReward    bool          `json:"needCallReward"`
 }
 
 type MinerHistoryRewardInfo struct {
@@ -84,8 +87,8 @@ func (m *MinerApi) GetHistoryRewardInfos(coinbase types.Address) (*MinerHistoryR
 
 		for _, rewardInfo := range rewardInfos {
 			apiRsp.AllRewardBlocks += rewardInfo.RewardBlocks
+			apiRsp.AllRewardAmount = apiRsp.AllRewardAmount.Add(rewardInfo.RewardAmount)
 		}
-		apiRsp.AllRewardAmount = common.PovMinerRewardPerBlockBalance.Mul(int64(apiRsp.AllRewardBlocks))
 	}
 
 	return apiRsp, nil
@@ -113,6 +116,7 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 	rsp.LastStartHeight = lastRewardInfo.StartHeight
 	rsp.LastEndHeight = lastRewardInfo.EndHeight
 	rsp.LastRewardBlocks = lastRewardInfo.RewardBlocks
+	rsp.LastRewardAmount = lastRewardInfo.RewardAmount
 	if !lastRewardInfo.Beneficial.IsZero() {
 		rsp.LastBeneficial = lastRewardInfo.Beneficial.String()
 	}
@@ -129,6 +133,7 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 	rsp.AvailStartHeight = availInfo.StartHeight
 	rsp.AvailEndHeight = availInfo.EndHeight
 	rsp.AvailRewardBlocks = availInfo.RewardBlocks
+	rsp.AvailRewardAmount = availInfo.RewardAmount
 
 	if rsp.AvailStartHeight > rsp.LastEndHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight {
 		rsp.NeedCallReward = true
