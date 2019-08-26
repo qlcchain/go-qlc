@@ -708,9 +708,9 @@ func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, 
 
 	// x11
 	{
-		x11WorkDiffInt := new(big.Int).Sub(lastTD.Scrypt.ToBigInt(), firstTD.Scrypt.ToBigInt())
+		x11WorkDiffInt := new(big.Int).Sub(lastTD.X11.ToBigInt(), firstTD.X11.ToBigInt())
 		x11WorkDiffFlt := new(big.Float).SetInt(x11WorkDiffInt)
-		apiRsp.ScryptHashPS, _ = new(big.Float).Quo(x11WorkDiffFlt, timeDiffFlt).Float64()
+		apiRsp.X11HashPS, _ = new(big.Float).Quo(x11WorkDiffFlt, timeDiffFlt).Float64()
 	}
 
 	return apiRsp, nil
@@ -737,4 +737,31 @@ type PovApiSubmitWork struct {
 	CoinBaseTxExtra []byte          `json:"coinbaseTxExtra"`
 	Timestamp       uint32          `json:"timestamp"`
 	Nonce           uint32          `json:"nonce"`
+}
+
+func (api *PovApi) GetWork() (*PovApiGetWork, error) {
+	if !api.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
+	ss := api.syncState.Load().(common.SyncState)
+	if ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
+	apiRsp := new(PovApiGetWork)
+	return apiRsp, nil
+}
+
+func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
+	if !api.cfg.PoV.PovEnabled {
+		return errors.New("pov service is disabled")
+	}
+
+	ss := api.syncState.Load().(common.SyncState)
+	if ss != common.Syncdone {
+		return errors.New("pov sync is not finished, please check it")
+	}
+
+	return nil
 }

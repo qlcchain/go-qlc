@@ -228,6 +228,9 @@ func (h *PovHeader) ComputePowHash() Hash {
 	case ALGO_SCRYPT:
 		powHash := Scrypt_HashData(d)
 		return powHash
+	case ALGO_X11:
+		powHash := X11_HashData(d)
+		return powHash
 	}
 
 	return FFFFHash

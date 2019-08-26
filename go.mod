@@ -59,6 +59,7 @@ require (
 	github.com/tinylib/msgp v1.1.0
 	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
+	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/atomic v1.4.0
 	go.uber.org/zap v1.10.0

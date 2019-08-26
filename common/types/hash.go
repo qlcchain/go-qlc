@@ -13,6 +13,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"gitlab.com/samli88/go-x11-hash"
 	"golang.org/x/crypto/scrypt"
 	"math/big"
 
@@ -229,4 +230,14 @@ func Scrypt_HashBytes(inputs ...[]byte) (Hash, error) {
 	var result Hash
 	copy(result[:], scryptHash)
 	return result, nil
+}
+
+func X11_HashData(data []byte) Hash {
+	out := make([]byte, 32)
+	hs := x11.New()
+	hs.Hash(data, out)
+
+	var result Hash
+	copy(result[:], out)
+	return result
 }
