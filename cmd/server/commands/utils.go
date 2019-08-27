@@ -70,6 +70,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 	if sqliteService, err = ss.NewSqliteService(cfg); err != nil {
 		return err
 	}
+	rollbackService = ss.NewRollbackService(cfg)
 
 	if cfg.PoV.PovEnabled {
 		povService = ss.NewPoVService(cfg, accounts)
@@ -84,6 +85,7 @@ func initNode(accounts []*types.Account, cfg *config.Config) error {
 
 	services = append(services, sqliteService)
 	services = append(services, ledgerService)
+	services = append(services, rollbackService)
 	if len(cfg.P2P.BootNodes) > 0 {
 		services = append(services, netService)
 	}

@@ -73,6 +73,7 @@ var (
 	sqliteService    *ss.SqliteService
 	povService       *ss.PoVService
 	minerService     *ss.MinerService
+	rollbackService  *ss.Rollback
 	services         []common.Service
 	maxAccountSize   = 100
 	logger           = qlclog.NewLogger("config_detail")
