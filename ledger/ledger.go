@@ -31,6 +31,7 @@ type Ledger struct {
 	io.Closer
 	Store          db.Store
 	dir            string
+	RollbackChan   chan types.Hash
 	EB             event.EventBus
 	representation *hashmap.HashMap
 	representLock  *hashmap.HashMap
@@ -116,6 +117,7 @@ func NewLedger(dir string) *Ledger {
 		l := &Ledger{
 			Store:          store,
 			dir:            dir,
+			RollbackChan:   make(chan types.Hash, 65535),
 			EB:             event.GetEventBus(dir),
 			representation: &hashmap.HashMap{},
 			representLock:  &hashmap.HashMap{},
@@ -1516,7 +1518,7 @@ func (l *Ledger) UpdatePending(key *types.PendingKey, kind types.PendingKind, tx
 	})
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return ErrPendingNotFound
+			return nil
 		}
 		return err
 	}
@@ -2529,26 +2531,21 @@ func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error, txns ...db.Sto
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixBlockCache, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
 			l.logger.Errorf("deserialize block error: %s", err)
-			errStr = append(errStr, err.Error())
 			return nil
 		}
 		if err := fn(blk); err != nil {
 			l.logger.Errorf("process block error: %s", err)
-			errStr = append(errStr, err.Error())
+			return nil
 		}
 		return nil
 	})
 
 	if err != nil {
 		return err
-	}
-	if len(errStr) != 0 {
-		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
 }
