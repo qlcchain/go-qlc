@@ -667,55 +667,6 @@ func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 	})
 }
 
-func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
-	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
-		if state, ok := block.(*types.StateBlock); ok {
-			err := lv.addBlockCache(state, txn)
-			if err != nil {
-				lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
-				return err
-			}
-			return nil
-		} else if _, ok := block.(*types.SmartContractBlock); ok {
-			return errors.New("smart contract block")
-		}
-		return errors.New("invalid block")
-	})
-}
-
-func (lv *LedgerVerifier) addBlockCache(block *types.StateBlock, txn db.StoreTxn) error {
-	lv.logger.Debug("process block cache, ", block.GetHash())
-	if err := lv.l.AddBlockCache(block, txn); err != nil {
-		return err
-	}
-
-	am, err := lv.l.GetAccountMeta(block.GetAddress())
-	if err != nil && err != ledger.ErrAccountNotFound {
-		return fmt.Errorf("get account meta cache error: %s", err)
-	}
-	if err := lv.updateAccountMetaCache(block, am, txn); err != nil {
-		return fmt.Errorf("update account meta cache error: %s", err)
-	}
-	if err := lv.updatePendingKind(block, txn); err != nil {
-		return fmt.Errorf("update pending kind error: %s", err)
-	}
-
-	return nil
-}
-
-func (lv *LedgerVerifier) updatePendingKind(block *types.StateBlock, txn db.StoreTxn) error {
-	if block.IsReceiveBlock() {
-		pendingKey := &types.PendingKey{
-			Address: block.GetAddress(),
-			Hash:    block.GetLink(),
-		}
-		if err := lv.l.UpdatePending(pendingKey, types.PendingUsed, txn); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
 	lv.logger.Debug("process block, ", block.GetHash())
 	if err := lv.l.AddStateBlock(block, txn); err != nil {

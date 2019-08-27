@@ -733,7 +733,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	switch flag {
 	case process.Progress:
 		hash := block.GetHash()
-		err := verifier.BlockCacheProcess(block)
+		err := l.ledger.BlockCacheProcess(block)
 		if err != nil {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)
 			return types.ZeroHash, err
