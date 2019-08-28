@@ -15,28 +15,40 @@ var (
         "basHdr":{
             "version":0,
             "previous":"0000000000000000000000000000000000000000000000000000000000000000",
-            "merkleRoot":"4cfbbb9e2ba385de65389588f9801d8e5a3ea29ee41ea0291fd30376c4eec98a",
+            "merkleRoot":"d3462e06cd044a474de6300d019fc100fd8f11ba2d3ea80d1800f4f28f9edb72",
             "timestamp":1569024000,
             "bits":504365040,
-            "nonce":479752,
-            "hash":"778dd8f1bdedc851e8c4177474aaa9e4fbf138a9be8611cd00cc50e80d0c0000",
+            "nonce":173744,
+            "hash":"e0405fe21c8e9c0d60515e6bd3e265d740500d1e7243fc98c2d61feaca020000",
             "height":0
         },
         "auxHdr":null,
         "cbtx":{
-            "txNum":1,
-            "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
-            "reward":"285388127",
-            "coinBase":"qlc_1afnoj8acwikgsazz1ocgakss3hck6htgxcm4wafuit7439izg8kzdu6twou",
-            "extra":null,
-            "signature":"ddb47aa6bcc8bdb71e04434f96fa29a8ae5e307970185391df78e203d884d17565028a25222a64b4425f7ea53d9aa418e73d599b0f1cbcc4b1837300fb2a1809",
-            "Hash":"4cfbbb9e2ba385de65389588f9801d8e5a3ea29ee41ea0291fd30376c4eec98a"
+            "txIns":[
+                {
+                    "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
+                    "txNum":1,
+                    "extraData":null
+                }
+            ],
+            "txOuts":[
+                {
+                    "address":"qlc_1afnoj8acwikgsazz1ocgakss3hck6htgxcm4wafuit7439izg8kzdu6twou",
+                    "value":"228310501"
+                },
+                {
+                    "address":"qlc_111111111111111111111111111111111111111111111111111ommygmckp",
+                    "value":"57077625"
+                }
+            ],
+            "signature":"1915ad7da3f452db2b570785f05652426e302f393da9b44b317a3ca74158fe3b18d97eb5a236fd429988e861b4a894564451638223cb124ea06e4dbb3a95f707",
+            "hash":"d3462e06cd044a474de6300d019fc100fd8f11ba2d3ea80d1800f4f28f9edb72"
         }
     },
     "body":{
         "txs":[
             {
-                "hash":"4cfbbb9e2ba385de65389588f9801d8e5a3ea29ee41ea0291fd30376c4eec98a"
+                "hash":"d3462e06cd044a474de6300d019fc100fd8f11ba2d3ea80d1800f4f28f9edb72"
             }
         ]
     }

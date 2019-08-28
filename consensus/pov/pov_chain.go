@@ -222,7 +222,7 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 				bc.logger.Warnf("failed to get pov header %d, err %s", height, err)
 				return
 			}
-			cbAddrStr := header.GetCoinBase().String()
+			cbAddrStr := header.GetMinerAddr().String()
 			minerStat := dayStat.MinerStats[cbAddrStr]
 			if minerStat == nil {
 				minerStat = new(types.PovMinerStatItem)
@@ -233,7 +233,7 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 				minerStat.LastHeight = header.GetHeight()
 			}
 			minerStat.BlockNum++
-			minerStat.RewardAmount = minerStat.RewardAmount.Add(header.GetReward())
+			minerStat.RewardAmount = minerStat.RewardAmount.Add(header.GetMinerReward())
 		}
 
 		dayStat.MinerNum = uint32(len(dayStat.MinerStats))
@@ -958,17 +958,17 @@ func (bc *PovBlockChain) RelativeAncestor(header *types.PovHeader, distance uint
 func (bc *PovBlockChain) CalcTotalDifficulty(prevTD *types.PovTD, header *types.PovHeader) *types.PovTD {
 	curTD := prevTD.Copy()
 
-	curWork := types.CalcWorkToBigNum(header.GetBits())
+	curWorkAlgo := types.CalcWorkIntToBigNum(header.GetTargetIntByAlgo())
 
-	curTD.Chain.Add(&prevTD.Chain, curWork)
+	curTD.Chain.Add(&prevTD.Chain, curWorkAlgo)
 
 	switch header.BasHdr.Version & uint32(types.ALGO_VERSION_MASK) {
 	case uint32(types.ALGO_SHA256D):
-		curTD.Sha256d.Add(&prevTD.Sha256d, curWork)
+		curTD.Sha256d.Add(&prevTD.Sha256d, curWorkAlgo)
 	case uint32(types.ALGO_SCRYPT):
-		curTD.Scrypt.Add(&prevTD.Scrypt, curWork)
+		curTD.Scrypt.Add(&prevTD.Scrypt, curWorkAlgo)
 	case uint32(types.ALGO_X11):
-		curTD.X11.Add(&prevTD.X11, curWork)
+		curTD.X11.Add(&prevTD.X11, curWorkAlgo)
 	}
 
 	return curTD
@@ -993,7 +993,21 @@ func (bc *PovBlockChain) CalcPastMedianTime(prevHeader *types.PovHeader) uint32 
 	return medianTimestamp
 }
 
-func (bc *PovBlockChain) CalcBlockReward(header *types.PovHeader) types.Balance {
+func (bc *PovBlockChain) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance) {
+	return bc.CalcBlockRewardByQLC(header)
+}
+
+func (bc *PovBlockChain) CalcBlockRewardByQLC(header *types.PovHeader) (types.Balance, types.Balance) {
+	miner1 := new(big.Int).Mul(common.PovMinerRewardPerBlockInt, big.NewInt(80))
+	miner2 := new(big.Int).Div(miner1, big.NewInt(100))
+
+	rep1 := new(big.Int).Mul(common.PovMinerRewardPerBlockInt, big.NewInt(20))
+	rep2 := new(big.Int).Div(rep1, big.NewInt(100))
+
+	return types.NewBalanceFromBigInt(miner2), types.NewBalanceFromBigInt(rep2)
+}
+
+func (bc *PovBlockChain) CalcBlockRewardByFXTC(header *types.PovHeader) types.Balance {
 	// dynamic block reward by algo efficiency
 	// ConvertBitsToDouble(nBits) * COIN / (49500000 / GetAlgoEfficiency(nHeight))
 

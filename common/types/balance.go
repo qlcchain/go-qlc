@@ -196,3 +196,7 @@ func (b *Balance) UnmarshalJSON(text []byte) error {
 func (b Balance) IsZero() bool {
 	return b.Equal(ZeroBalance)
 }
+
+func (b Balance) Copy() Balance {
+	return NewBalanceFromBigInt(b.Int)
+}

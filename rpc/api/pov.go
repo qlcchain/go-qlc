@@ -32,15 +32,19 @@ type PovStatus struct {
 
 type PovApiHeader struct {
 	*types.PovHeader
+	AlgoName       string `json:"algoName"`
+	AlgoEfficiency uint   `json:"algoEfficiency"`
 }
 
 type PovApiBatchHeader struct {
-	Count   int                `json:"count"`
-	Headers []*types.PovHeader `json:"headers"`
+	Count   int             `json:"count"`
+	Headers []*PovApiHeader `json:"headers"`
 }
 
 type PovApiBlock struct {
 	*types.PovBlock
+	AlgoName       string `json:"algoName"`
+	AlgoEfficiency uint   `json:"algoEfficiency"`
 }
 
 type PovApiState struct {
@@ -133,7 +137,9 @@ func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader: header,
+		PovHeader:      header,
+		AlgoEfficiency: header.GetAlgoEfficiency(),
+		AlgoName:       header.GetAlgoType().String(),
 	}
 
 	return apiHeader, nil
@@ -151,7 +157,9 @@ func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) 
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader: header,
+		PovHeader:      header,
+		AlgoEfficiency: header.GetAlgoEfficiency(),
+		AlgoName:       header.GetAlgoType().String(),
 	}
 
 	return apiHeader, nil
@@ -164,7 +172,8 @@ func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader: header,
+		PovHeader:      header,
+		AlgoEfficiency: header.GetAlgoEfficiency(),
 	}
 
 	return apiHeader, nil
@@ -198,27 +207,39 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader: header,
+		PovHeader:      header,
+		AlgoEfficiency: header.GetAlgoEfficiency(),
+		AlgoName:       header.GetAlgoType().String(),
 	}
 
 	return apiHeader, nil
 }
 
 func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool) (*PovApiBatchHeader, error) {
-	var headers []*types.PovHeader
+	var dbHeaders []*types.PovHeader
 	var err error
 	if asc {
-		headers, err = api.ledger.BatchGetPovHeadersByHeightAsc(height, count)
+		dbHeaders, err = api.ledger.BatchGetPovHeadersByHeightAsc(height, count)
 	} else {
-		headers, err = api.ledger.BatchGetPovHeadersByHeightDesc(height, count)
+		dbHeaders, err = api.ledger.BatchGetPovHeadersByHeightDesc(height, count)
 	}
 	if err != nil {
 		return nil, err
 	}
 
+	var apiHeaders []*PovApiHeader
+	for _, dbHdr := range dbHeaders {
+		apiHdr := &PovApiHeader{
+			PovHeader:      dbHdr,
+			AlgoEfficiency: dbHdr.GetAlgoEfficiency(),
+			AlgoName:       dbHdr.GetAlgoType().String(),
+		}
+		apiHeaders = append(apiHeaders, apiHdr)
+	}
+
 	apiHeader := &PovApiBatchHeader{
-		Count:   len(headers),
-		Headers: headers,
+		Count:   len(apiHeaders),
+		Headers: apiHeaders,
 	}
 
 	return apiHeader, nil
@@ -231,7 +252,9 @@ func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock: block,
+		PovBlock:       block,
+		AlgoEfficiency: block.GetAlgoEfficiency(),
+		AlgoName:       block.GetAlgoType().String(),
 	}
 
 	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
@@ -246,7 +269,9 @@ func (api *PovApi) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock: block,
+		PovBlock:       block,
+		AlgoEfficiency: block.GetAlgoEfficiency(),
+		AlgoName:       block.GetAlgoType().String(),
 	}
 
 	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
@@ -261,7 +286,9 @@ func (api *PovApi) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock: block,
+		PovBlock:       block,
+		AlgoEfficiency: block.GetAlgoEfficiency(),
+		AlgoName:       block.GetAlgoType().String(),
 	}
 
 	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
@@ -633,7 +660,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			break
 		}
 
-		minerAddr := header.GetCoinBase()
+		minerAddr := header.GetMinerAddr()
 		if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
 			continue
 		}
@@ -654,7 +681,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 				item.LastBlockHeight = header.GetHeight()
 			}
 		}
-		item.MainRewardAmount = item.MainRewardAmount.Add(header.GetReward())
+		item.MainRewardAmount = item.MainRewardAmount.Add(header.GetMinerReward())
 		item.MainBlockNum += 1
 		totalBlockNum += 1
 	}

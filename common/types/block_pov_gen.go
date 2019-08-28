@@ -1332,35 +1332,131 @@ func (z *PovCoinBaseTx) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "tn":
-			z.TxNum, err = dc.ReadUint32()
+		case "tis":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
 			if err != nil {
-				err = msgp.WrapError(err, "TxNum")
+				err = msgp.WrapError(err, "TxIns")
 				return
 			}
-		case "sh":
-			err = dc.ReadExtension(&z.StateHash)
+			if cap(z.TxIns) >= int(zb0002) {
+				z.TxIns = (z.TxIns)[:zb0002]
+			} else {
+				z.TxIns = make([]*PovCoinBaseTxIn, zb0002)
+			}
+			for za0001 := range z.TxIns {
+				if dc.IsNil() {
+					err = dc.ReadNil()
+					if err != nil {
+						err = msgp.WrapError(err, "TxIns", za0001)
+						return
+					}
+					z.TxIns[za0001] = nil
+				} else {
+					if z.TxIns[za0001] == nil {
+						z.TxIns[za0001] = new(PovCoinBaseTxIn)
+					}
+					var zb0003 uint32
+					zb0003, err = dc.ReadMapHeader()
+					if err != nil {
+						err = msgp.WrapError(err, "TxIns", za0001)
+						return
+					}
+					for zb0003 > 0 {
+						zb0003--
+						field, err = dc.ReadMapKeyPtr()
+						if err != nil {
+							err = msgp.WrapError(err, "TxIns", za0001)
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "sh":
+							err = dc.ReadExtension(&z.TxIns[za0001].StateHash)
+							if err != nil {
+								err = msgp.WrapError(err, "TxIns", za0001, "StateHash")
+								return
+							}
+						case "tn":
+							z.TxIns[za0001].TxNum, err = dc.ReadUint32()
+							if err != nil {
+								err = msgp.WrapError(err, "TxIns", za0001, "TxNum")
+								return
+							}
+						case "ext":
+							z.TxIns[za0001].Extra, err = dc.ReadBytes(z.TxIns[za0001].Extra)
+							if err != nil {
+								err = msgp.WrapError(err, "TxIns", za0001, "Extra")
+								return
+							}
+						default:
+							err = dc.Skip()
+							if err != nil {
+								err = msgp.WrapError(err, "TxIns", za0001)
+								return
+							}
+						}
+					}
+				}
+			}
+		case "tos":
+			var zb0004 uint32
+			zb0004, err = dc.ReadArrayHeader()
 			if err != nil {
-				err = msgp.WrapError(err, "StateHash")
+				err = msgp.WrapError(err, "TxOuts")
 				return
 			}
-		case "r":
-			err = dc.ReadExtension(&z.Reward)
-			if err != nil {
-				err = msgp.WrapError(err, "Reward")
-				return
+			if cap(z.TxOuts) >= int(zb0004) {
+				z.TxOuts = (z.TxOuts)[:zb0004]
+			} else {
+				z.TxOuts = make([]*PovCoinBaseTxOut, zb0004)
 			}
-		case "cb":
-			err = dc.ReadExtension(&z.CoinBase)
-			if err != nil {
-				err = msgp.WrapError(err, "CoinBase")
-				return
-			}
-		case "e":
-			z.Extra, err = dc.ReadBytes(z.Extra)
-			if err != nil {
-				err = msgp.WrapError(err, "Extra")
-				return
+			for za0002 := range z.TxOuts {
+				if dc.IsNil() {
+					err = dc.ReadNil()
+					if err != nil {
+						err = msgp.WrapError(err, "TxOuts", za0002)
+						return
+					}
+					z.TxOuts[za0002] = nil
+				} else {
+					if z.TxOuts[za0002] == nil {
+						z.TxOuts[za0002] = new(PovCoinBaseTxOut)
+					}
+					var zb0005 uint32
+					zb0005, err = dc.ReadMapHeader()
+					if err != nil {
+						err = msgp.WrapError(err, "TxOuts", za0002)
+						return
+					}
+					for zb0005 > 0 {
+						zb0005--
+						field, err = dc.ReadMapKeyPtr()
+						if err != nil {
+							err = msgp.WrapError(err, "TxOuts", za0002)
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "a":
+							err = dc.ReadExtension(&z.TxOuts[za0002].Address)
+							if err != nil {
+								err = msgp.WrapError(err, "TxOuts", za0002, "Address")
+								return
+							}
+						case "v":
+							err = dc.ReadExtension(&z.TxOuts[za0002].Value)
+							if err != nil {
+								err = msgp.WrapError(err, "TxOuts", za0002, "Value")
+								return
+							}
+						default:
+							err = dc.Skip()
+							if err != nil {
+								err = msgp.WrapError(err, "TxOuts", za0002)
+								return
+							}
+						}
+					}
+				}
 			}
 		case "sig":
 			err = dc.ReadExtension(&z.Signature)
@@ -1387,56 +1483,96 @@ func (z *PovCoinBaseTx) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *PovCoinBaseTx) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
-	// write "tn"
-	err = en.Append(0x87, 0xa2, 0x74, 0x6e)
+	// map header, size 4
+	// write "tis"
+	err = en.Append(0x84, 0xa3, 0x74, 0x69, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteUint32(z.TxNum)
+	err = en.WriteArrayHeader(uint32(len(z.TxIns)))
 	if err != nil {
-		err = msgp.WrapError(err, "TxNum")
+		err = msgp.WrapError(err, "TxIns")
 		return
 	}
-	// write "sh"
-	err = en.Append(0xa2, 0x73, 0x68)
+	for za0001 := range z.TxIns {
+		if z.TxIns[za0001] == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			// map header, size 3
+			// write "sh"
+			err = en.Append(0x83, 0xa2, 0x73, 0x68)
+			if err != nil {
+				return
+			}
+			err = en.WriteExtension(&z.TxIns[za0001].StateHash)
+			if err != nil {
+				err = msgp.WrapError(err, "TxIns", za0001, "StateHash")
+				return
+			}
+			// write "tn"
+			err = en.Append(0xa2, 0x74, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint32(z.TxIns[za0001].TxNum)
+			if err != nil {
+				err = msgp.WrapError(err, "TxIns", za0001, "TxNum")
+				return
+			}
+			// write "ext"
+			err = en.Append(0xa3, 0x65, 0x78, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteBytes(z.TxIns[za0001].Extra)
+			if err != nil {
+				err = msgp.WrapError(err, "TxIns", za0001, "Extra")
+				return
+			}
+		}
+	}
+	// write "tos"
+	err = en.Append(0xa3, 0x74, 0x6f, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.StateHash)
+	err = en.WriteArrayHeader(uint32(len(z.TxOuts)))
 	if err != nil {
-		err = msgp.WrapError(err, "StateHash")
+		err = msgp.WrapError(err, "TxOuts")
 		return
 	}
-	// write "r"
-	err = en.Append(0xa1, 0x72)
-	if err != nil {
-		return
-	}
-	err = en.WriteExtension(&z.Reward)
-	if err != nil {
-		err = msgp.WrapError(err, "Reward")
-		return
-	}
-	// write "cb"
-	err = en.Append(0xa2, 0x63, 0x62)
-	if err != nil {
-		return
-	}
-	err = en.WriteExtension(&z.CoinBase)
-	if err != nil {
-		err = msgp.WrapError(err, "CoinBase")
-		return
-	}
-	// write "e"
-	err = en.Append(0xa1, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteBytes(z.Extra)
-	if err != nil {
-		err = msgp.WrapError(err, "Extra")
-		return
+	for za0002 := range z.TxOuts {
+		if z.TxOuts[za0002] == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			// map header, size 2
+			// write "a"
+			err = en.Append(0x82, 0xa1, 0x61)
+			if err != nil {
+				return
+			}
+			err = en.WriteExtension(&z.TxOuts[za0002].Address)
+			if err != nil {
+				err = msgp.WrapError(err, "TxOuts", za0002, "Address")
+				return
+			}
+			// write "v"
+			err = en.Append(0xa1, 0x76)
+			if err != nil {
+				return
+			}
+			err = en.WriteExtension(&z.TxOuts[za0002].Value)
+			if err != nil {
+				err = msgp.WrapError(err, "TxOuts", za0002, "Value")
+				return
+			}
+		}
 	}
 	// write "sig"
 	err = en.Append(0xa3, 0x73, 0x69, 0x67)
@@ -1464,34 +1600,54 @@ func (z *PovCoinBaseTx) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *PovCoinBaseTx) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
-	// string "tn"
-	o = append(o, 0x87, 0xa2, 0x74, 0x6e)
-	o = msgp.AppendUint32(o, z.TxNum)
-	// string "sh"
-	o = append(o, 0xa2, 0x73, 0x68)
-	o, err = msgp.AppendExtension(o, &z.StateHash)
-	if err != nil {
-		err = msgp.WrapError(err, "StateHash")
-		return
+	// map header, size 4
+	// string "tis"
+	o = append(o, 0x84, 0xa3, 0x74, 0x69, 0x73)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.TxIns)))
+	for za0001 := range z.TxIns {
+		if z.TxIns[za0001] == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			// map header, size 3
+			// string "sh"
+			o = append(o, 0x83, 0xa2, 0x73, 0x68)
+			o, err = msgp.AppendExtension(o, &z.TxIns[za0001].StateHash)
+			if err != nil {
+				err = msgp.WrapError(err, "TxIns", za0001, "StateHash")
+				return
+			}
+			// string "tn"
+			o = append(o, 0xa2, 0x74, 0x6e)
+			o = msgp.AppendUint32(o, z.TxIns[za0001].TxNum)
+			// string "ext"
+			o = append(o, 0xa3, 0x65, 0x78, 0x74)
+			o = msgp.AppendBytes(o, z.TxIns[za0001].Extra)
+		}
 	}
-	// string "r"
-	o = append(o, 0xa1, 0x72)
-	o, err = msgp.AppendExtension(o, &z.Reward)
-	if err != nil {
-		err = msgp.WrapError(err, "Reward")
-		return
+	// string "tos"
+	o = append(o, 0xa3, 0x74, 0x6f, 0x73)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.TxOuts)))
+	for za0002 := range z.TxOuts {
+		if z.TxOuts[za0002] == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			// map header, size 2
+			// string "a"
+			o = append(o, 0x82, 0xa1, 0x61)
+			o, err = msgp.AppendExtension(o, &z.TxOuts[za0002].Address)
+			if err != nil {
+				err = msgp.WrapError(err, "TxOuts", za0002, "Address")
+				return
+			}
+			// string "v"
+			o = append(o, 0xa1, 0x76)
+			o, err = msgp.AppendExtension(o, &z.TxOuts[za0002].Value)
+			if err != nil {
+				err = msgp.WrapError(err, "TxOuts", za0002, "Value")
+				return
+			}
+		}
 	}
-	// string "cb"
-	o = append(o, 0xa2, 0x63, 0x62)
-	o, err = msgp.AppendExtension(o, &z.CoinBase)
-	if err != nil {
-		err = msgp.WrapError(err, "CoinBase")
-		return
-	}
-	// string "e"
-	o = append(o, 0xa1, 0x65)
-	o = msgp.AppendBytes(o, z.Extra)
 	// string "sig"
 	o = append(o, 0xa3, 0x73, 0x69, 0x67)
 	o, err = msgp.AppendExtension(o, &z.Signature)
@@ -1527,35 +1683,129 @@ func (z *PovCoinBaseTx) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "tn":
-			z.TxNum, bts, err = msgp.ReadUint32Bytes(bts)
+		case "tis":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "TxNum")
+				err = msgp.WrapError(err, "TxIns")
 				return
 			}
-		case "sh":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.StateHash)
+			if cap(z.TxIns) >= int(zb0002) {
+				z.TxIns = (z.TxIns)[:zb0002]
+			} else {
+				z.TxIns = make([]*PovCoinBaseTxIn, zb0002)
+			}
+			for za0001 := range z.TxIns {
+				if msgp.IsNil(bts) {
+					bts, err = msgp.ReadNilBytes(bts)
+					if err != nil {
+						return
+					}
+					z.TxIns[za0001] = nil
+				} else {
+					if z.TxIns[za0001] == nil {
+						z.TxIns[za0001] = new(PovCoinBaseTxIn)
+					}
+					var zb0003 uint32
+					zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "TxIns", za0001)
+						return
+					}
+					for zb0003 > 0 {
+						zb0003--
+						field, bts, err = msgp.ReadMapKeyZC(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "TxIns", za0001)
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "sh":
+							bts, err = msgp.ReadExtensionBytes(bts, &z.TxIns[za0001].StateHash)
+							if err != nil {
+								err = msgp.WrapError(err, "TxIns", za0001, "StateHash")
+								return
+							}
+						case "tn":
+							z.TxIns[za0001].TxNum, bts, err = msgp.ReadUint32Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "TxIns", za0001, "TxNum")
+								return
+							}
+						case "ext":
+							z.TxIns[za0001].Extra, bts, err = msgp.ReadBytesBytes(bts, z.TxIns[za0001].Extra)
+							if err != nil {
+								err = msgp.WrapError(err, "TxIns", za0001, "Extra")
+								return
+							}
+						default:
+							bts, err = msgp.Skip(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "TxIns", za0001)
+								return
+							}
+						}
+					}
+				}
+			}
+		case "tos":
+			var zb0004 uint32
+			zb0004, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "StateHash")
+				err = msgp.WrapError(err, "TxOuts")
 				return
 			}
-		case "r":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Reward)
-			if err != nil {
-				err = msgp.WrapError(err, "Reward")
-				return
+			if cap(z.TxOuts) >= int(zb0004) {
+				z.TxOuts = (z.TxOuts)[:zb0004]
+			} else {
+				z.TxOuts = make([]*PovCoinBaseTxOut, zb0004)
 			}
-		case "cb":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.CoinBase)
-			if err != nil {
-				err = msgp.WrapError(err, "CoinBase")
-				return
-			}
-		case "e":
-			z.Extra, bts, err = msgp.ReadBytesBytes(bts, z.Extra)
-			if err != nil {
-				err = msgp.WrapError(err, "Extra")
-				return
+			for za0002 := range z.TxOuts {
+				if msgp.IsNil(bts) {
+					bts, err = msgp.ReadNilBytes(bts)
+					if err != nil {
+						return
+					}
+					z.TxOuts[za0002] = nil
+				} else {
+					if z.TxOuts[za0002] == nil {
+						z.TxOuts[za0002] = new(PovCoinBaseTxOut)
+					}
+					var zb0005 uint32
+					zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "TxOuts", za0002)
+						return
+					}
+					for zb0005 > 0 {
+						zb0005--
+						field, bts, err = msgp.ReadMapKeyZC(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "TxOuts", za0002)
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "a":
+							bts, err = msgp.ReadExtensionBytes(bts, &z.TxOuts[za0002].Address)
+							if err != nil {
+								err = msgp.WrapError(err, "TxOuts", za0002, "Address")
+								return
+							}
+						case "v":
+							bts, err = msgp.ReadExtensionBytes(bts, &z.TxOuts[za0002].Value)
+							if err != nil {
+								err = msgp.WrapError(err, "TxOuts", za0002, "Value")
+								return
+							}
+						default:
+							bts, err = msgp.Skip(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "TxOuts", za0002)
+								return
+							}
+						}
+					}
+				}
 			}
 		case "sig":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Signature)
@@ -1583,7 +1833,316 @@ func (z *PovCoinBaseTx) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PovCoinBaseTx) Msgsize() (s int) {
-	s = 1 + 3 + msgp.Uint32Size + 3 + msgp.ExtensionPrefixSize + z.StateHash.Len() + 2 + msgp.ExtensionPrefixSize + z.Reward.Len() + 3 + msgp.ExtensionPrefixSize + z.CoinBase.Len() + 2 + msgp.BytesPrefixSize + len(z.Extra) + 4 + msgp.ExtensionPrefixSize + z.Signature.Len() + 2 + msgp.ExtensionPrefixSize + z.Hash.Len()
+	s = 1 + 4 + msgp.ArrayHeaderSize
+	for za0001 := range z.TxIns {
+		if z.TxIns[za0001] == nil {
+			s += msgp.NilSize
+		} else {
+			s += 1 + 3 + msgp.ExtensionPrefixSize + z.TxIns[za0001].StateHash.Len() + 3 + msgp.Uint32Size + 4 + msgp.BytesPrefixSize + len(z.TxIns[za0001].Extra)
+		}
+	}
+	s += 4 + msgp.ArrayHeaderSize
+	for za0002 := range z.TxOuts {
+		if z.TxOuts[za0002] == nil {
+			s += msgp.NilSize
+		} else {
+			s += 1 + 2 + msgp.ExtensionPrefixSize + z.TxOuts[za0002].Address.Len() + 2 + msgp.ExtensionPrefixSize + z.TxOuts[za0002].Value.Len()
+		}
+	}
+	s += 4 + msgp.ExtensionPrefixSize + z.Signature.Len() + 2 + msgp.ExtensionPrefixSize + z.Hash.Len()
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *PovCoinBaseTxIn) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "sh":
+			err = dc.ReadExtension(&z.StateHash)
+			if err != nil {
+				err = msgp.WrapError(err, "StateHash")
+				return
+			}
+		case "tn":
+			z.TxNum, err = dc.ReadUint32()
+			if err != nil {
+				err = msgp.WrapError(err, "TxNum")
+				return
+			}
+		case "ext":
+			z.Extra, err = dc.ReadBytes(z.Extra)
+			if err != nil {
+				err = msgp.WrapError(err, "Extra")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *PovCoinBaseTxIn) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "sh"
+	err = en.Append(0x83, 0xa2, 0x73, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.StateHash)
+	if err != nil {
+		err = msgp.WrapError(err, "StateHash")
+		return
+	}
+	// write "tn"
+	err = en.Append(0xa2, 0x74, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint32(z.TxNum)
+	if err != nil {
+		err = msgp.WrapError(err, "TxNum")
+		return
+	}
+	// write "ext"
+	err = en.Append(0xa3, 0x65, 0x78, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteBytes(z.Extra)
+	if err != nil {
+		err = msgp.WrapError(err, "Extra")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *PovCoinBaseTxIn) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "sh"
+	o = append(o, 0x83, 0xa2, 0x73, 0x68)
+	o, err = msgp.AppendExtension(o, &z.StateHash)
+	if err != nil {
+		err = msgp.WrapError(err, "StateHash")
+		return
+	}
+	// string "tn"
+	o = append(o, 0xa2, 0x74, 0x6e)
+	o = msgp.AppendUint32(o, z.TxNum)
+	// string "ext"
+	o = append(o, 0xa3, 0x65, 0x78, 0x74)
+	o = msgp.AppendBytes(o, z.Extra)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *PovCoinBaseTxIn) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "sh":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.StateHash)
+			if err != nil {
+				err = msgp.WrapError(err, "StateHash")
+				return
+			}
+		case "tn":
+			z.TxNum, bts, err = msgp.ReadUint32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TxNum")
+				return
+			}
+		case "ext":
+			z.Extra, bts, err = msgp.ReadBytesBytes(bts, z.Extra)
+			if err != nil {
+				err = msgp.WrapError(err, "Extra")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *PovCoinBaseTxIn) Msgsize() (s int) {
+	s = 1 + 3 + msgp.ExtensionPrefixSize + z.StateHash.Len() + 3 + msgp.Uint32Size + 4 + msgp.BytesPrefixSize + len(z.Extra)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *PovCoinBaseTxOut) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "a":
+			err = dc.ReadExtension(&z.Address)
+			if err != nil {
+				err = msgp.WrapError(err, "Address")
+				return
+			}
+		case "v":
+			err = dc.ReadExtension(&z.Value)
+			if err != nil {
+				err = msgp.WrapError(err, "Value")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z PovCoinBaseTxOut) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "a"
+	err = en.Append(0x82, 0xa1, 0x61)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Address)
+	if err != nil {
+		err = msgp.WrapError(err, "Address")
+		return
+	}
+	// write "v"
+	err = en.Append(0xa1, 0x76)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Value)
+	if err != nil {
+		err = msgp.WrapError(err, "Value")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z PovCoinBaseTxOut) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "a"
+	o = append(o, 0x82, 0xa1, 0x61)
+	o, err = msgp.AppendExtension(o, &z.Address)
+	if err != nil {
+		err = msgp.WrapError(err, "Address")
+		return
+	}
+	// string "v"
+	o = append(o, 0xa1, 0x76)
+	o, err = msgp.AppendExtension(o, &z.Value)
+	if err != nil {
+		err = msgp.WrapError(err, "Value")
+		return
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *PovCoinBaseTxOut) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "a":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
+			if err != nil {
+				err = msgp.WrapError(err, "Address")
+				return
+			}
+		case "v":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Value)
+			if err != nil {
+				err = msgp.WrapError(err, "Value")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z PovCoinBaseTxOut) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Address.Len() + 2 + msgp.ExtensionPrefixSize + z.Value.Len()
 	return
 }
 
@@ -1630,10 +2189,22 @@ func (z *PovHeader) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 		case "cbtx":
-			err = z.CbTx.DecodeMsg(dc)
-			if err != nil {
-				err = msgp.WrapError(err, "CbTx")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "CbTx")
+					return
+				}
+				z.CbTx = nil
+			} else {
+				if z.CbTx == nil {
+					z.CbTx = new(PovCoinBaseTx)
+				}
+				err = z.CbTx.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "CbTx")
+					return
+				}
 			}
 		default:
 			err = dc.Skip()
@@ -1681,10 +2252,17 @@ func (z *PovHeader) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = z.CbTx.EncodeMsg(en)
-	if err != nil {
-		err = msgp.WrapError(err, "CbTx")
-		return
+	if z.CbTx == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.CbTx.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "CbTx")
+			return
+		}
 	}
 	return
 }
@@ -1713,10 +2291,14 @@ func (z *PovHeader) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// string "cbtx"
 	o = append(o, 0xa4, 0x63, 0x62, 0x74, 0x78)
-	o, err = z.CbTx.MarshalMsg(o)
-	if err != nil {
-		err = msgp.WrapError(err, "CbTx")
-		return
+	if z.CbTx == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.CbTx.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "CbTx")
+			return
+		}
 	}
 	return
 }
@@ -1763,10 +2345,21 @@ func (z *PovHeader) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 		case "cbtx":
-			bts, err = z.CbTx.UnmarshalMsg(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "CbTx")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.CbTx = nil
+			} else {
+				if z.CbTx == nil {
+					z.CbTx = new(PovCoinBaseTx)
+				}
+				bts, err = z.CbTx.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "CbTx")
+					return
+				}
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -1788,7 +2381,12 @@ func (z *PovHeader) Msgsize() (s int) {
 	} else {
 		s += z.AuxHdr.Msgsize()
 	}
-	s += 5 + z.CbTx.Msgsize()
+	s += 5
+	if z.CbTx == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.CbTx.Msgsize()
+	}
 	return
 }
 
@@ -2237,245 +2835,6 @@ func (z *PovMinerStatItem) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PovMinerStatItem) Msgsize() (s int) {
 	s = 1 + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint32Size + 3 + msgp.ExtensionPrefixSize + z.RewardAmount.Len()
-	return
-}
-
-// DecodeMsg implements msgp.Decodable
-func (z *PovStoreBody) DecodeMsg(dc *msgp.Reader) (err error) {
-	var field []byte
-	_ = field
-	var zb0001 uint32
-	zb0001, err = dc.ReadMapHeader()
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	for zb0001 > 0 {
-		zb0001--
-		field, err = dc.ReadMapKeyPtr()
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		switch msgp.UnsafeString(field) {
-		case "txs":
-			var zb0002 uint32
-			zb0002, err = dc.ReadArrayHeader()
-			if err != nil {
-				err = msgp.WrapError(err, "Txs")
-				return
-			}
-			if cap(z.Txs) >= int(zb0002) {
-				z.Txs = (z.Txs)[:zb0002]
-			} else {
-				z.Txs = make([]*PovTransaction, zb0002)
-			}
-			for za0001 := range z.Txs {
-				if dc.IsNil() {
-					err = dc.ReadNil()
-					if err != nil {
-						err = msgp.WrapError(err, "Txs", za0001)
-						return
-					}
-					z.Txs[za0001] = nil
-				} else {
-					if z.Txs[za0001] == nil {
-						z.Txs[za0001] = new(PovTransaction)
-					}
-					var zb0003 uint32
-					zb0003, err = dc.ReadMapHeader()
-					if err != nil {
-						err = msgp.WrapError(err, "Txs", za0001)
-						return
-					}
-					for zb0003 > 0 {
-						zb0003--
-						field, err = dc.ReadMapKeyPtr()
-						if err != nil {
-							err = msgp.WrapError(err, "Txs", za0001)
-							return
-						}
-						switch msgp.UnsafeString(field) {
-						case "h":
-							err = dc.ReadExtension(&z.Txs[za0001].Hash)
-							if err != nil {
-								err = msgp.WrapError(err, "Txs", za0001, "Hash")
-								return
-							}
-						default:
-							err = dc.Skip()
-							if err != nil {
-								err = msgp.WrapError(err, "Txs", za0001)
-								return
-							}
-						}
-					}
-				}
-			}
-		default:
-			err = dc.Skip()
-			if err != nil {
-				err = msgp.WrapError(err)
-				return
-			}
-		}
-	}
-	return
-}
-
-// EncodeMsg implements msgp.Encodable
-func (z *PovStoreBody) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
-	// write "txs"
-	err = en.Append(0x81, 0xa3, 0x74, 0x78, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteArrayHeader(uint32(len(z.Txs)))
-	if err != nil {
-		err = msgp.WrapError(err, "Txs")
-		return
-	}
-	for za0001 := range z.Txs {
-		if z.Txs[za0001] == nil {
-			err = en.WriteNil()
-			if err != nil {
-				return
-			}
-		} else {
-			// map header, size 1
-			// write "h"
-			err = en.Append(0x81, 0xa1, 0x68)
-			if err != nil {
-				return
-			}
-			err = en.WriteExtension(&z.Txs[za0001].Hash)
-			if err != nil {
-				err = msgp.WrapError(err, "Txs", za0001, "Hash")
-				return
-			}
-		}
-	}
-	return
-}
-
-// MarshalMsg implements msgp.Marshaler
-func (z *PovStoreBody) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
-	// string "txs"
-	o = append(o, 0x81, 0xa3, 0x74, 0x78, 0x73)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Txs)))
-	for za0001 := range z.Txs {
-		if z.Txs[za0001] == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			// map header, size 1
-			// string "h"
-			o = append(o, 0x81, 0xa1, 0x68)
-			o, err = msgp.AppendExtension(o, &z.Txs[za0001].Hash)
-			if err != nil {
-				err = msgp.WrapError(err, "Txs", za0001, "Hash")
-				return
-			}
-		}
-	}
-	return
-}
-
-// UnmarshalMsg implements msgp.Unmarshaler
-func (z *PovStoreBody) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	var field []byte
-	_ = field
-	var zb0001 uint32
-	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	for zb0001 > 0 {
-		zb0001--
-		field, bts, err = msgp.ReadMapKeyZC(bts)
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		switch msgp.UnsafeString(field) {
-		case "txs":
-			var zb0002 uint32
-			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Txs")
-				return
-			}
-			if cap(z.Txs) >= int(zb0002) {
-				z.Txs = (z.Txs)[:zb0002]
-			} else {
-				z.Txs = make([]*PovTransaction, zb0002)
-			}
-			for za0001 := range z.Txs {
-				if msgp.IsNil(bts) {
-					bts, err = msgp.ReadNilBytes(bts)
-					if err != nil {
-						return
-					}
-					z.Txs[za0001] = nil
-				} else {
-					if z.Txs[za0001] == nil {
-						z.Txs[za0001] = new(PovTransaction)
-					}
-					var zb0003 uint32
-					zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Txs", za0001)
-						return
-					}
-					for zb0003 > 0 {
-						zb0003--
-						field, bts, err = msgp.ReadMapKeyZC(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "Txs", za0001)
-							return
-						}
-						switch msgp.UnsafeString(field) {
-						case "h":
-							bts, err = msgp.ReadExtensionBytes(bts, &z.Txs[za0001].Hash)
-							if err != nil {
-								err = msgp.WrapError(err, "Txs", za0001, "Hash")
-								return
-							}
-						default:
-							bts, err = msgp.Skip(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "Txs", za0001)
-								return
-							}
-						}
-					}
-				}
-			}
-		default:
-			bts, err = msgp.Skip(bts)
-			if err != nil {
-				err = msgp.WrapError(err)
-				return
-			}
-		}
-	}
-	o = bts
-	return
-}
-
-// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *PovStoreBody) Msgsize() (s int) {
-	s = 1 + 4 + msgp.ArrayHeaderSize
-	for za0001 := range z.Txs {
-		if z.Txs[za0001] == nil {
-			s += msgp.NilSize
-		} else {
-			s += 1 + 2 + msgp.ExtensionPrefixSize + z.Txs[za0001].Hash.Len()
-		}
-	}
 	return
 }
 

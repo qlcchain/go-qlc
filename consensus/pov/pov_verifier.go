@@ -82,7 +82,7 @@ type PovVerifierChainReader interface {
 	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
-	CalcBlockReward(header *types.PovHeader) types.Balance
+	CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance)
 }
 
 func NewPovVerifier(store ledger.Store, chain PovVerifierChainReader, cs ConsensusPov) *PovVerifier {
@@ -211,7 +211,7 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat
 func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
 	allTxs := block.GetAllTxs()
 	if block.GetTxNum() != uint32(len(allTxs)) {
-		return process.InvalidTxNum, nil
+		return process.InvalidTxNum, fmt.Errorf("txNum %d != txs %d", block.GetTxNum(), len(allTxs))
 	}
 
 	if len(allTxs) < 1 {
@@ -231,7 +231,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 		return process.BadMerkleRoot, fmt.Errorf("bad merkle root not equals %s != %s", merkleRoot, block.GetMerkleRoot())
 	}
 
-	cbTx := &block.Header.CbTx
+	cbTx := block.Header.CbTx
 	cbTx.Hash = cbTx.ComputeHash()
 
 	result, err := pv.verifyCoinBaseTx(cbTx, stat)
@@ -310,22 +310,35 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 }
 
 func (pv *PovVerifier) verifyCoinBaseTx(cbTx *types.PovCoinBaseTx, stat *PovVerifyStat) (process.ProcessResult, error) {
-	if cbTx.CoinBase.IsZero() {
-		return process.BadCoinbase, errors.New("coinbase is zero")
+	minerTxOut := cbTx.GetMinerTxOut()
+	if minerTxOut == nil || minerTxOut.Address.IsZero() {
+		return process.BadCoinbase, errors.New("miner address is zero")
+	}
+
+	repTxOut := cbTx.GetRepTxOut()
+	if repTxOut == nil || repTxOut.Address.IsZero() {
+		return process.BadCoinbase, errors.New("rep address is zero")
 	}
 
 	if cbTx.Signature.IsZero() {
-		return process.BadSignature, errors.New("signature is zero")
+		return process.BadSignature, errors.New("miner signature is zero")
 	}
 
-	isVerified := cbTx.CoinBase.Verify(cbTx.GetHash().Bytes(), cbTx.Signature.Bytes())
+	isVerified := minerTxOut.Address.Verify(cbTx.GetHash().Bytes(), cbTx.Signature.Bytes())
 	if !isVerified {
-		return process.BadSignature, errors.New("bad signature")
+		return process.BadSignature, errors.New("miner got bad signature")
 	}
 
-	expectReward := pv.chain.CalcBlockReward(stat.CurHeader)
-	if cbTx.Reward.Compare(expectReward) == types.BalanceCompBigger {
-		return process.BadCoinbase, errors.New("bad reward")
+	calcMinerRwd, calcRepRwd := pv.chain.CalcBlockReward(stat.CurHeader)
+
+	minerReward := minerTxOut.Value
+	if minerReward.Compare(calcMinerRwd) == types.BalanceCompBigger {
+		return process.BadCoinbase, fmt.Errorf("miner got bad reward, %v > %v", minerReward, calcMinerRwd)
+	}
+
+	repReward := repTxOut.Value
+	if repReward.Compare(calcRepRwd) == types.BalanceCompBigger {
+		return process.BadCoinbase, fmt.Errorf("rep got bad reward, %v > %v", repReward, calcRepRwd)
 	}
 
 	return process.Progress, nil

@@ -395,6 +395,12 @@ func (z *PovRepState) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Status")
 				return
 			}
+		case "ph":
+			z.PovHeight, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "PovHeight")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -408,9 +414,9 @@ func (z *PovRepState) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *PovRepState) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
+	// map header, size 8
 	// write "b"
-	err = en.Append(0x87, 0xa1, 0x62)
+	err = en.Append(0x88, 0xa1, 0x62)
 	if err != nil {
 		return
 	}
@@ -479,15 +485,25 @@ func (z *PovRepState) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Status")
 		return
 	}
+	// write "ph"
+	err = en.Append(0xa2, 0x70, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.PovHeight)
+	if err != nil {
+		err = msgp.WrapError(err, "PovHeight")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *PovRepState) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
+	// map header, size 8
 	// string "b"
-	o = append(o, 0x87, 0xa1, 0x62)
+	o = append(o, 0x88, 0xa1, 0x62)
 	o, err = msgp.AppendExtension(o, &z.Balance)
 	if err != nil {
 		err = msgp.WrapError(err, "Balance")
@@ -531,6 +547,9 @@ func (z *PovRepState) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "st"
 	o = append(o, 0xa2, 0x73, 0x74)
 	o = msgp.AppendUint32(o, z.Status)
+	// string "ph"
+	o = append(o, 0xa2, 0x70, 0x68)
+	o = msgp.AppendUint64(o, z.PovHeight)
 	return
 }
 
@@ -594,6 +613,12 @@ func (z *PovRepState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Status")
 				return
 			}
+		case "ph":
+			z.PovHeight, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PovHeight")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -608,7 +633,7 @@ func (z *PovRepState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PovRepState) Msgsize() (s int) {
-	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Balance.Len() + 2 + msgp.ExtensionPrefixSize + z.Vote.Len() + 2 + msgp.ExtensionPrefixSize + z.Network.Len() + 2 + msgp.ExtensionPrefixSize + z.Storage.Len() + 2 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 2 + msgp.ExtensionPrefixSize + z.Total.Len() + 3 + msgp.Uint32Size
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Balance.Len() + 2 + msgp.ExtensionPrefixSize + z.Vote.Len() + 2 + msgp.ExtensionPrefixSize + z.Network.Len() + 2 + msgp.ExtensionPrefixSize + z.Storage.Len() + 2 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 2 + msgp.ExtensionPrefixSize + z.Total.Len() + 3 + msgp.Uint32Size + 3 + msgp.Uint64Size
 	return
 }
 

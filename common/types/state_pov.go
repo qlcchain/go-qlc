@@ -143,7 +143,9 @@ type PovRepState struct {
 	Storage Balance `msg:"s,extension" json:"storage"`
 	Oracle  Balance `msg:"o,extension" json:"oracle"`
 	Total   Balance `msg:"t,extension" json:"total"`
-	Status  uint32  `msg:"st" json:"status"`
+
+	Status    uint32 `msg:"st" json:"status"`
+	PovHeight uint64 `msg:"ph" json:"povHeight"`
 }
 
 func NewPovRepState() *PovRepState {

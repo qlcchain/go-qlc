@@ -26,7 +26,7 @@ type PovBaseHeader struct {
 	Previous   Hash   `msg:"p,extension" json:"previous"`
 	MerkleRoot Hash   `msg:"mr,extension" json:"merkleRoot"`
 	Timestamp  uint32 `msg:"ts" json:"timestamp"`
-	Bits       uint32 `msg:"b" json:"bits"`
+	Bits       uint32 `msg:"b" json:"bits"` //normalized target
 	Nonce      uint32 `msg:"n" json:"nonce"`
 
 	// just for internal use
@@ -68,18 +68,101 @@ func (ah *PovAuxHeader) Deserialize(text []byte) error {
 	return nil
 }
 
+type PovCoinBaseTxIn struct {
+	StateHash Hash   `msg:"sh,extension" json:"stateHash"`
+	TxNum     uint32 `msg:"tn" json:"txNum"`
+	Extra     []byte `msg:"ext" json:"extra"`
+}
+
+func (cbti *PovCoinBaseTxIn) Copy() *PovCoinBaseTxIn {
+	ti2 := *cbti
+	ti2.Extra = make([]byte, len(cbti.Extra))
+	copy(ti2.Extra, cbti.Extra)
+	return &ti2
+}
+
+func (cbti *PovCoinBaseTxIn) Serialize() ([]byte, error) {
+	return cbti.MarshalMsg(nil)
+}
+
+func (cbti *PovCoinBaseTxIn) Deserialize(text []byte) error {
+	_, err := cbti.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type PovCoinBaseTxOut struct {
+	Address Address `msg:"a,extension" json:"address"`
+	Value   Balance `msg:"v,extension" json:"value"`
+}
+
+func (cbto *PovCoinBaseTxOut) Copy() *PovCoinBaseTxOut {
+	to2 := *cbto
+	to2.Value = cbto.Value.Copy()
+	return &to2
+}
+
+func (cbto *PovCoinBaseTxOut) Serialize() ([]byte, error) {
+	return cbto.MarshalMsg(nil)
+}
+
+func (cbto *PovCoinBaseTxOut) Deserialize(text []byte) error {
+	_, err := cbto.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 type PovCoinBaseTx struct {
-	TxNum     uint32  `msg:"tn" json:"txNum"`
-	StateHash Hash    `msg:"sh,extension" json:"stateHash"`
-	Reward    Balance `msg:"r,extension" json:"reward"`
-	CoinBase  Address `msg:"cb,extension" json:"coinBase"`
-	Extra     []byte  `msg:"e" json:"extra"`
+	TxIns  []*PovCoinBaseTxIn  `msg:"tis" json:"txIns"`
+	TxOuts []*PovCoinBaseTxOut `msg:"tos" json:"txOuts"`
 
 	// !!! NOT IN HASH !!!
 	Signature Signature `msg:"sig,extension" json:"signature"`
 
 	// just for internal use
 	Hash Hash `msg:"h,extension" json:"hash"`
+}
+
+func NewPovCoinBaseTx(txInNum int, txOutNum int) *PovCoinBaseTx {
+	tx := new(PovCoinBaseTx)
+	for i := 0; i < txInNum; i++ {
+		tx.TxIns = append(tx.TxIns, new(PovCoinBaseTxIn))
+	}
+	for i := 0; i < txOutNum; i++ {
+		tx.TxOuts = append(tx.TxOuts, new(PovCoinBaseTxOut))
+	}
+	return tx
+}
+
+func (cbtx *PovCoinBaseTx) Copy() *PovCoinBaseTx {
+	tx2 := *cbtx
+
+	tx2.TxIns = nil
+	for _, ti := range cbtx.TxIns {
+		tx2.TxIns = append(tx2.TxIns, ti.Copy())
+	}
+
+	tx2.TxOuts = nil
+	for _, to := range cbtx.TxOuts {
+		tx2.TxOuts = append(tx2.TxOuts, to.Copy())
+	}
+	return &tx2
+}
+
+func (cbtx *PovCoinBaseTx) GetTxIn() *PovCoinBaseTxIn {
+	return cbtx.TxIns[0]
+}
+
+func (cbtx *PovCoinBaseTx) GetMinerTxOut() *PovCoinBaseTxOut {
+	return cbtx.TxOuts[0]
+}
+
+func (cbtx *PovCoinBaseTx) GetRepTxOut() *PovCoinBaseTxOut {
+	return cbtx.TxOuts[1]
 }
 
 func (cbtx *PovCoinBaseTx) Serialize() ([]byte, error) {
@@ -97,11 +180,16 @@ func (cbtx *PovCoinBaseTx) Deserialize(text []byte) error {
 func (cbtx *PovCoinBaseTx) ComputeHash() Hash {
 	buf := new(bytes.Buffer)
 
-	buf.Write(util.LE_Uint32ToBytes(cbtx.TxNum))
-	buf.Write(cbtx.StateHash.Bytes())
-	buf.Write(cbtx.Reward.Bytes())
-	buf.Write(cbtx.CoinBase.Bytes())
-	buf.Write(cbtx.Extra)
+	for _, cbti := range cbtx.TxIns {
+		buf.Write(util.LE_Uint32ToBytes(cbti.TxNum))
+		buf.Write(cbti.StateHash.Bytes())
+		buf.Write(cbti.Extra)
+	}
+
+	for _, cbto := range cbtx.TxOuts {
+		buf.Write(cbto.Address.Bytes())
+		buf.Write(cbto.Value.Bytes())
+	}
 
 	txHash := Sha256D_HashData(buf.Bytes())
 	return txHash
@@ -115,14 +203,16 @@ func (cbtx *PovCoinBaseTx) GetHash() Hash {
 	return cbtx.Hash
 }
 
-func (cbtx *PovCoinBaseTx) GetCoinbase() Address {
-	return cbtx.CoinBase
+type PovHeader struct {
+	BasHdr PovBaseHeader  `msg:"basHdr" json:"basHdr"`
+	AuxHdr *PovAuxHeader  `msg:"auxHdr" json:"auxHdr"`
+	CbTx   *PovCoinBaseTx `msg:"cbtx" json:"cbtx"`
 }
 
-type PovHeader struct {
-	BasHdr PovBaseHeader `msg:"basHdr" json:"basHdr"`
-	AuxHdr *PovAuxHeader `msg:"auxHdr" json:"auxHdr"`
-	CbTx   PovCoinBaseTx `msg:"cbtx" json:"cbtx"`
+func NewPovHeader() *PovHeader {
+	h := new(PovHeader)
+	h.CbTx = NewPovCoinBaseTx(1, 2)
+	return h
 }
 
 func (h *PovHeader) GetHash() Hash {
@@ -149,20 +239,40 @@ func (h *PovHeader) GetTargetInt() *big.Int {
 	return CompactToBig(h.BasHdr.Bits)
 }
 
+func (h *PovHeader) GetTargetIntByAlgo() *big.Int {
+	nt := CompactToBig(h.BasHdr.Bits)
+	at := new(big.Int).Mul(nt, big.NewInt(int64(h.GetAlgoEfficiency())))
+	return at
+}
+
 func (h *PovHeader) GetNonce() uint32 {
 	return h.BasHdr.Nonce
 }
 
 func (h *PovHeader) GetStateHash() Hash {
-	return h.CbTx.StateHash
+	return h.CbTx.TxIns[0].StateHash
 }
 
-func (h *PovHeader) GetCoinBase() Address {
-	return h.CbTx.CoinBase
+func (h *PovHeader) GetMinerAddr() Address {
+	return h.CbTx.TxOuts[0].Address
 }
 
-func (h *PovHeader) GetReward() Balance {
-	return h.CbTx.Reward
+func (h *PovHeader) GetMinerReward() Balance {
+	return h.CbTx.TxOuts[0].Value
+}
+
+func (h *PovHeader) GetRepAddr() Address {
+	if len(h.CbTx.TxOuts) < 2 {
+		return ZeroAddress
+	}
+	return h.CbTx.TxOuts[1].Address
+}
+
+func (h *PovHeader) GetRepReward() Balance {
+	if len(h.CbTx.TxOuts) < 2 {
+		return ZeroBalance
+	}
+	return h.CbTx.TxOuts[1].Value
 }
 
 func (h *PovHeader) Serialize() ([]byte, error) {
@@ -178,8 +288,13 @@ func (h *PovHeader) Deserialize(text []byte) error {
 }
 
 func (h *PovHeader) Copy() *PovHeader {
-	newHeader := *h
-	return &newHeader
+	h2 := *h
+	h2.CbTx = h.CbTx.Copy()
+	return &h2
+}
+
+func (h *PovHeader) GetAlgoType() PovAlgoType {
+	return PovAlgoType(h.BasHdr.Version & uint32(ALGO_VERSION_MASK))
 }
 
 func (h *PovHeader) GetAlgoEfficiency() uint {
@@ -245,6 +360,10 @@ type PovBody struct {
 	Txs []*PovTransaction `msg:"txs" json:"txs"`
 }
 
+func NewPovBody() *PovBody {
+	return new(PovBody)
+}
+
 func (b *PovBody) Serialize() ([]byte, error) {
 	return b.MarshalMsg(nil)
 }
@@ -259,28 +378,22 @@ func (b *PovBody) Deserialize(text []byte) error {
 
 func (b *PovBody) Copy() *PovBody {
 	copyBd := *b
-	return &copyBd
-}
-
-type PovStoreBody struct {
-	Txs []*PovTransaction `msg:"txs" json:"txs"`
-}
-
-func (b *PovStoreBody) Serialize() ([]byte, error) {
-	return b.MarshalMsg(nil)
-}
-
-func (b *PovStoreBody) Deserialize(text []byte) error {
-	_, err := b.UnmarshalMsg(text)
-	if err != nil {
-		return err
+	copyBd.Txs = nil
+	for _, tx := range b.Txs {
+		copyBd.Txs = append(copyBd.Txs, tx.Copy())
 	}
-	return nil
+	return &copyBd
 }
 
 type PovBlock struct {
 	Header PovHeader `msg:"h" json:"header"`
 	Body   PovBody   `msg:"b" json:"body"`
+}
+
+func NewPovBlock() *PovBlock {
+	b := new(PovBlock)
+	b.Header.CbTx = NewPovCoinBaseTx(1, 2)
+	return b
 }
 
 func NewPovBlockWithBody(header *PovHeader, body *PovBody) *PovBlock {
@@ -328,11 +441,11 @@ func (blk *PovBlock) GetTargetInt() *big.Int {
 }
 
 func (blk *PovBlock) GetStateHash() Hash {
-	return blk.Header.CbTx.StateHash
+	return blk.Header.CbTx.TxIns[0].StateHash
 }
 
-func (blk *PovBlock) GetCoinBase() Address {
-	return blk.Header.CbTx.CoinBase
+func (blk *PovBlock) GetMinerAddr() Address {
+	return blk.Header.GetMinerAddr()
 }
 
 func (blk *PovBlock) GetSignature() Signature {
@@ -340,7 +453,7 @@ func (blk *PovBlock) GetSignature() Signature {
 }
 
 func (blk *PovBlock) GetTxNum() uint32 {
-	return blk.Header.CbTx.TxNum
+	return blk.Header.CbTx.TxIns[0].TxNum
 }
 
 func (blk *PovBlock) GetAllTxs() []*PovTransaction {
@@ -361,6 +474,14 @@ func (blk *PovBlock) GetBits() uint32 {
 
 func (blk *PovBlock) ComputeHash() Hash {
 	return blk.Header.ComputeHash()
+}
+
+func (blk *PovBlock) GetAlgoEfficiency() uint {
+	return blk.Header.GetAlgoEfficiency()
+}
+
+func (blk *PovBlock) GetAlgoType() PovAlgoType {
+	return blk.Header.GetAlgoType()
 }
 
 func (blk *PovBlock) Serialize() ([]byte, error) {
@@ -417,6 +538,11 @@ func (tx *PovTransaction) IsCbTx() bool {
 		return true
 	}
 	return false
+}
+
+func (tx *PovTransaction) Copy() *PovTransaction {
+	tx2 := *tx
+	return &tx2
 }
 
 func (tx *PovTransaction) Serialize() ([]byte, error) {

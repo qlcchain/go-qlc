@@ -186,13 +186,13 @@ func (w *PovWorker) genNextBlock() *PovMineBlock {
 
 	mineBlock := &PovMineBlock{}
 
-	mineBlock.Header = &types.PovHeader{}
+	mineBlock.Header = types.NewPovHeader()
 	mineBlock.Header.BasHdr.Version = 0 | uint32(w.algo)
 	mineBlock.Header.BasHdr.Previous = latestHeader.GetHash()
 	mineBlock.Header.BasHdr.Height = latestHeader.GetHeight() + 1
 	mineBlock.Header.BasHdr.Timestamp = uint32(time.Now().Unix())
 
-	mineBlock.Body = &types.PovBody{}
+	mineBlock.Body = types.NewPovBody()
 
 	prevStateHash := latestHeader.GetStateHash()
 	prevStateTrie := w.GetChain().GetStateTrie(&prevStateHash)
@@ -202,7 +202,7 @@ func (w *PovWorker) genNextBlock() *PovMineBlock {
 	}
 
 	// coinbase tx
-	cbtx := &(mineBlock.Header.CbTx)
+	cbtx := mineBlock.Header.CbTx
 
 	// pack account block txs
 	accBlocks := w.GetTxPool().SelectPendingTxs(prevStateTrie, w.maxTxPerBlock)
@@ -237,10 +237,20 @@ func (w *PovWorker) genNextBlock() *PovMineBlock {
 	}
 
 	// build coinbase tx
-	cbtx.StateHash = *stateTrie.Hash()
-	cbtx.TxNum = uint32(len(accTxs) + 1)
-	cbtx.Reward = w.GetChain().CalcBlockReward(mineBlock.Header)
-	cbtx.CoinBase = w.GetCoinbaseAccount().Address()
+	cbTxIn := cbtx.GetTxIn()
+	cbTxIn.StateHash = *stateTrie.Hash()
+	cbTxIn.TxNum = uint32(len(accTxs) + 1)
+
+	minerRwd, repRwd := w.GetChain().CalcBlockReward(mineBlock.Header)
+
+	minerTxOut := cbtx.GetMinerTxOut()
+	minerTxOut.Address = w.GetCoinbaseAccount().Address()
+	minerTxOut.Value = minerRwd
+
+	repTxOut := cbtx.GetRepTxOut()
+	repTxOut.Address = types.MinerAddress
+	repTxOut.Value = repRwd
+
 	cbtxHash := cbtx.ComputeHash()
 
 	// append all txs to body
@@ -294,7 +304,8 @@ Loop:
 				foundNonce = true
 
 				// fill coinbase tx
-				mineBlock.Header.CbTx.Extra = resultHeader.CbTx.Extra
+				mineBlock.Header.CbTx.TxIns[0].Extra = make([]byte, len(resultHeader.CbTx.TxIns[0].Extra))
+				copy(mineBlock.Header.CbTx.TxIns[0].Extra, resultHeader.CbTx.TxIns[0].Extra)
 				mineBlock.Header.CbTx.Hash = mineBlock.Header.CbTx.ComputeHash()
 				mineBlock.Header.CbTx.Signature = cbAccount.Sign(mineBlock.Header.CbTx.Hash)
 

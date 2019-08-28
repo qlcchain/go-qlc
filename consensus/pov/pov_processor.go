@@ -294,6 +294,7 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	block := blockSrc.block
 	blockHash := blockSrc.block.GetHash()
 	bp.logger.Debugf("process block, %d/%s", blockSrc.block.GetHeight(), blockHash)
+	//bp.logger.Debugf("block: %+v", blockSrc.block)
 
 	// check duplicate block
 	if bp.HasOrphanBlock(blockHash) {
