@@ -42,6 +42,18 @@ type Ledger struct {
 	blockCacheLock *hashmap.HashMap
 }
 
+type lockStatus uint8
+
+const (
+	using lockStatus = iota
+	idle
+)
+
+type lockValue struct {
+	lockStatus atomic.Value
+	rw         *sync.RWMutex
+}
+
 var (
 	ErrStoreEmpty             = errors.New("the store is empty")
 	ErrBlockExists            = errors.New("block already exists")
@@ -212,23 +224,25 @@ func (l *Ledger) init() error {
 	return nil
 }
 
-func (l *Ledger) getBlockCacheLock(key string) *sync.RWMutex {
+func (l *Ledger) getBlockCacheLock(key string) *lockValue {
 	v, b := l.blockCacheLock.Get(key)
 	if b {
-		return v.(*sync.RWMutex)
+		v.(*lockValue).lockStatus.Store(using)
+		return v.(*lockValue)
 	} else {
-		rw, _ := l.blockCacheLock.GetOrInsert(key, &sync.RWMutex{})
+		lv := &lockValue{}
+		lv.lockStatus.Store(using)
+		lv.rw = &sync.RWMutex{}
+		l.blockCacheLock.Set(key, lv)
 		if l.blockCacheLock.Len() >= defaultLockSize {
-			i := 0
 			for key := range l.blockCacheLock.Iter() {
-				l.blockCacheLock.Del(key.Key)
-				i++
-				if i >= defaultLockSize/10 {
-					break
+				s := (key.Value).(*lockValue).lockStatus.Load()
+				if s.(lockStatus) == idle {
+					l.blockCacheLock.Del(key.Key)
 				}
 			}
 		}
-		return rw.(*sync.RWMutex)
+		return lv
 	}
 }
 
@@ -2605,9 +2619,12 @@ func (l *Ledger) AddAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTx
 }
 
 func (l *Ledger) GetAccountMetaCache(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	rw := l.getBlockCacheLock(address.String())
-	rw.RLock()
-	defer rw.RUnlock()
+	lv := l.getBlockCacheLock(address.String())
+	lv.rw.RLock()
+	defer func() {
+		lv.rw.RUnlock()
+		lv.lockStatus.Store(idle)
+	}()
 	key := l.getAccountMetaCacheKey(address)
 	var meta types.AccountMeta
 
@@ -2696,9 +2713,12 @@ func (l *Ledger) BlockCacheProcess(block types.Block) error {
 	if err != nil && err != ErrAccountNotFound {
 		return fmt.Errorf("get account meta cache error: %s", err)
 	}
-	rw := l.getBlockCacheLock(blk.Address.String())
-	rw.Lock()
-	defer rw.Unlock()
+	lv := l.getBlockCacheLock(blk.Address.String())
+	lv.rw.Lock()
+	defer func() {
+		lv.rw.Unlock()
+		lv.lockStatus.Store(idle)
+	}()
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
 			err := l.addBlockCache(state, am, txn)
