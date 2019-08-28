@@ -1335,3 +1335,42 @@ func TestLedger_UpdateAccountMetaCache(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLedger_GetBlockCacheLock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addr, _ := types.HexToAddress("qlc_361j3uiqdkjrzirttrpu9pn7eeussymty4rz4gifs9ijdx1p46xnpu3je7sy")
+	_ = l.getBlockCacheLock(addr.String())
+	if l.blockCacheLock.Len() != 1 {
+		t.Fatal("lock len error for addr")
+	}
+	_ = l.getBlockCacheLock(addr.String())
+	if l.blockCacheLock.Len() != 1 {
+		t.Fatal("get lock error for exit addr")
+	}
+
+	seed := "6735367439b0a1596814b58599d29270d81db6475f91a0f729b8eb91fca965d5"
+	var i uint32
+	for i = 0; i < 999; i++ {
+		pub, _, _ := types.KeypairFromSeed(seed, i)
+		a := types.PubToAddress(pub)
+		l.getBlockCacheLock(a.String())
+	}
+	if l.blockCacheLock.Len() != 1000 {
+		t.Fatal("lock len error for 1000 addresses")
+	}
+	j := 0
+	for key := range l.blockCacheLock.Iter() {
+		j++
+		addr1, _ := types.HexToAddress(key.Key.(string))
+		_, _ = l.GetAccountMetaCache(addr1)
+		if j == 999 {
+			break
+		}
+	}
+	addr2, _ := types.HexToAddress("qlc_1gnggt8b6cwro3b4z9gootipykqd6x5gucfd7exsi4xqkryiijciegfhon4u")
+	_ = l.getBlockCacheLock(addr2.String())
+	if l.blockCacheLock.Len() != 2 {
+		t.Fatal("get error when delete idle lock")
+	}
+}

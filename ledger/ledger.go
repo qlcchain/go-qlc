@@ -39,6 +39,19 @@ type Ledger struct {
 	cacheOrder     *int64
 	closed         chan bool
 	logger         *zap.SugaredLogger
+	blockCacheLock *hashmap.HashMap
+}
+
+type lockStatus uint8
+
+const (
+	using lockStatus = iota
+	idle
+)
+
+type lockValue struct {
+	lockStatus atomic.Value
+	rw         *sync.RWMutex
 }
 
 var (
@@ -104,7 +117,10 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 7
+const (
+	version         = 7
+	defaultLockSize = 1000
+)
 
 func NewLedger(dir string) *Ledger {
 	lock.Lock()
@@ -121,6 +137,7 @@ func NewLedger(dir string) *Ledger {
 			EB:             event.GetEventBus(dir),
 			representation: &hashmap.HashMap{},
 			representLock:  &hashmap.HashMap{},
+			blockCacheLock: hashmap.New(defaultLockSize),
 			closed:         make(chan bool, 1),
 		}
 		l.logger = log.NewLogger("ledger")
@@ -205,6 +222,28 @@ func (l *Ledger) init() error {
 	l.cacheRound = new(int64)
 	l.cacheOrder = new(int64)
 	return nil
+}
+
+func (l *Ledger) getBlockCacheLock(key string) *lockValue {
+	v, b := l.blockCacheLock.Get(key)
+	if b {
+		v.(*lockValue).lockStatus.Store(using)
+		return v.(*lockValue)
+	} else {
+		lv := &lockValue{}
+		lv.lockStatus.Store(using)
+		lv.rw = &sync.RWMutex{}
+		l.blockCacheLock.Set(key, lv)
+		if l.blockCacheLock.Len() >= defaultLockSize {
+			for key := range l.blockCacheLock.Iter() {
+				s := (key.Value).(*lockValue).lockStatus.Load()
+				if s.(lockStatus) == idle {
+					l.blockCacheLock.Del(key.Key)
+				}
+			}
+		}
+		return lv
+	}
 }
 
 func (l *Ledger) processCache() {
@@ -2580,6 +2619,12 @@ func (l *Ledger) AddAccountMetaCache(meta *types.AccountMeta, txns ...db.StoreTx
 }
 
 func (l *Ledger) GetAccountMetaCache(address types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
+	lv := l.getBlockCacheLock(address.String())
+	lv.rw.RLock()
+	defer func() {
+		lv.rw.RUnlock()
+		lv.lockStatus.Store(idle)
+	}()
 	key := l.getAccountMetaCacheKey(address)
 	var meta types.AccountMeta
 
@@ -2660,4 +2705,117 @@ func (l *Ledger) HasAccountMetaCache(address types.Address, txns ...db.StoreTxn)
 		return false, err
 	}
 	return true, nil
+}
+
+func (l *Ledger) BlockCacheProcess(block types.Block) error {
+	blk := block.(*types.StateBlock)
+	am, err := l.GetAccountMeta(blk.GetAddress())
+	if err != nil && err != ErrAccountNotFound {
+		return fmt.Errorf("get account meta cache error: %s", err)
+	}
+	lv := l.getBlockCacheLock(blk.Address.String())
+	lv.rw.Lock()
+	defer func() {
+		lv.rw.Unlock()
+		lv.lockStatus.Store(idle)
+	}()
+	return l.BatchUpdate(func(txn db.StoreTxn) error {
+		if state, ok := block.(*types.StateBlock); ok {
+			err := l.addBlockCache(state, am, txn)
+			if err != nil {
+				l.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
+				return err
+			}
+			return nil
+		} else if _, ok := block.(*types.SmartContractBlock); ok {
+			return errors.New("smart contract block")
+		}
+		return errors.New("invalid block")
+	})
+}
+
+func (l *Ledger) addBlockCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+	l.logger.Debug("process block cache, ", block.GetHash())
+	if err := l.AddBlockCache(block, txn); err != nil {
+		return err
+	}
+	if err := l.updateAccountMetaCache(block, am, txn); err != nil {
+		return fmt.Errorf("update account meta cache error: %s", err)
+	}
+	if err := l.updatePendingKind(block, txn); err != nil {
+		return fmt.Errorf("update pending kind error: %s", err)
+	}
+	return nil
+}
+
+func (l *Ledger) updateAccountMetaCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+	hash := block.GetHash()
+	rep := block.GetRepresentative()
+	address := block.GetAddress()
+	token := block.GetToken()
+	balance := block.GetBalance()
+
+	tmNew := &types.TokenMeta{
+		Type:           token,
+		Header:         hash,
+		Representative: rep,
+		OpenBlock:      hash,
+		Balance:        balance,
+		BlockCount:     1,
+		BelongTo:       address,
+		Modified:       common.TimeNow().UTC().Unix(),
+	}
+
+	if am != nil {
+		tm := am.Token(block.GetToken())
+		if block.GetToken() == common.ChainToken() {
+			am.CoinBalance = balance
+			am.CoinOracle = block.GetOracle()
+			am.CoinNetwork = block.GetNetwork()
+			am.CoinVote = block.GetVote()
+			am.CoinStorage = block.GetStorage()
+		}
+		if tm != nil {
+			tm.Header = hash
+			tm.Representative = rep
+			tm.Balance = balance
+			tm.BlockCount = tm.BlockCount + 1
+			tm.Modified = common.TimeNow().UTC().Unix()
+		} else {
+			am.Tokens = append(am.Tokens, tmNew)
+		}
+		if err := l.AddOrUpdateAccountMetaCache(am, txn); err != nil {
+			return err
+		}
+	} else {
+		account := types.AccountMeta{
+			Address: address,
+			Tokens:  []*types.TokenMeta{tmNew},
+		}
+
+		if block.GetToken() == common.ChainToken() {
+			account.CoinBalance = balance
+			account.CoinOracle = block.GetOracle()
+			account.CoinNetwork = block.GetNetwork()
+			account.CoinVote = block.GetVote()
+			account.CoinStorage = block.GetStorage()
+		}
+		if err := l.AddAccountMetaCache(&account, txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Ledger) updatePendingKind(block *types.StateBlock, txn db.StoreTxn) error {
+	if block.IsReceiveBlock() {
+		pendingKey := &types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		if err := l.UpdatePending(pendingKey, types.PendingUsed, txn); err != nil {
+			return err
+		}
+	}
+	return nil
 }
