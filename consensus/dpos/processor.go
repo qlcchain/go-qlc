@@ -154,6 +154,14 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 			dps.logger.Errorf("pov is syncing, can not send tx!")
 			return
 		}
+
+		//cache fork
+		el := dps.acTrx.getVoteInfo(bs.Block)
+		if el.status.winner.GetHash() != hash {
+			_ = dps.lv.Rollback(hash)
+			return
+		}
+
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
 	default:
 		//
