@@ -156,10 +156,12 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		}
 
 		//cache fork
-		el := dps.acTrx.getVoteInfo(bs.Block)
-		if el.status.winner.GetHash() != hash {
-			_ = dps.lv.Rollback(hash)
-			return
+		if result == process.Progress {
+			el := dps.acTrx.getVoteInfo(bs.Block)
+			if el == nil || el.status.winner.GetHash() != hash {
+				_ = dps.lv.Rollback(hash)
+				return
+			}
 		}
 
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
