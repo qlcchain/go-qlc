@@ -15,9 +15,9 @@ var (
 
 func init() {
 	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cfg, _ := config.DefaultConfig(dir)
+	cm := config.NewCfgManager(dir)
 
-	dps := NewDPoS(cfg, nil, nil)
+	dps := NewDPoS(cm.ConfigFile)
 	blk := mock.StateBlock()
 	el = newElection(dps, blk)
 }

@@ -32,6 +32,7 @@ type ServiceSync struct {
 	logger       *zap.SugaredLogger
 	lastSyncTime int64
 	syncCount    uint32
+	syncState    common.SyncState
 }
 
 // NewService return new Service.
@@ -43,6 +44,7 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		logger:       log.NewLogger("sync"),
 		lastSyncTime: 0,
 		syncCount:    0,
+		syncState:    common.SyncNotStart,
 	}
 	return ss
 }
@@ -60,7 +62,7 @@ func (ss *ServiceSync) Start() {
 		case <-ticker.C:
 			now := time.Now().Unix()
 			v := atomic.LoadInt64(&ss.lastSyncTime)
-			if v < now {
+			if ss.syncState != common.Syncing && v < now {
 				peerID, err := ss.netService.node.StreamManager().RandomPeer()
 				if err != nil {
 					continue
@@ -134,20 +136,53 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		ss.logger.Error(err)
 		return
 	}
-	var remoteFrontiers []*types.Frontier
-	var blks types.StateBlockList
-	for _, f := range rsp.Fs {
-		remoteFrontiers = append(remoteFrontiers, f.Fr)
-		blks = append(blks, f.HeaderBlk)
-	}
-	ss.netService.msgEvent.Publish(common.EventFrontierConsensus, blks)
-	sort.Sort(types.Frontiers(remoteFrontiers))
-	zeroFrontier := new(types.Frontier)
-	remoteFrontiers = append(remoteFrontiers, zeroFrontier)
+
 	go func() {
-		err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-		if err != nil {
-			ss.logger.Errorf("process frontiers error:[%s]", err)
+		var remoteFrontiers []*types.Frontier
+		var blks types.StateBlockList
+		var confirmed bool
+		ss.syncState = common.Syncing
+		ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncing)
+
+		for {
+			remoteFrontiers = remoteFrontiers[0:0]
+			blks = blks[0:0]
+
+			for _, f := range rsp.Fs {
+				ss.netService.msgEvent.Publish(common.EventFrontierConfirmed, f.HeaderBlk.GetHash(), &confirmed)
+				if confirmed {
+					continue
+				}
+
+				remoteFrontiers = append(remoteFrontiers, f.Fr)
+				blks = append(blks, f.HeaderBlk)
+			}
+
+			remoteFrontiersLen := len(remoteFrontiers)
+			ss.logger.Infof("req %d frontiers", remoteFrontiersLen)
+
+			if remoteFrontiersLen > 0 {
+				ss.netService.msgEvent.Publish(common.EventFrontierConsensus, blks)
+				sort.Sort(types.Frontiers(remoteFrontiers))
+				zeroFrontier := new(types.Frontier)
+				remoteFrontiers = append(remoteFrontiers, zeroFrontier)
+				//go func() {
+				//	err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+				//	if err != nil {
+				//		ss.logger.Errorf("process frontiers error:[%s]", err)
+				//	}
+				//}()
+				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+				if err != nil {
+					ss.logger.Errorf("process frontiers error:[%s]", err)
+				}
+
+				time.Sleep(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
+			} else {
+				ss.syncState = common.Syncdone
+				ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncdone)
+				break
+			}
 		}
 	}()
 }
@@ -388,6 +423,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		for i := len(bulkBlk) - 1; i >= 0; i-- {
 			reverseBlocks = append(reverseBlocks, bulkBlk[i])
 		}
+		var shardingBlocks types.StateBlockList
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
 			if len(reverseBlocks) > maxPushTxPerTime {
@@ -395,11 +431,11 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			} else {
 				sendBlockNum = len(reverseBlocks)
 			}
-			sendTxBlocks := reverseBlocks[0:sendBlockNum]
+			shardingBlocks = reverseBlocks[0:sendBlockNum]
 			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 				break
 			}
-			err = ss.netService.SendMessageToPeer(BulkPullRsp, sendTxBlocks, message.MessageFrom())
+			err = ss.netService.SendMessageToPeer(BulkPullRsp, shardingBlocks, message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 			}
@@ -416,7 +452,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		//}
 	} else {
 		var blk *types.StateBlock
-		var bulkBlk []*types.StateBlock
+		var bulkBlk types.StateBlockList
 		//ss.logger.Info("need to send some blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
@@ -430,14 +466,12 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				break
 			}
 		}
-		for i := len(bulkBlk) - 1; i >= 0; i-- {
-			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-				break
-			}
-			err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk[i], message.MessageFrom())
-			if err != nil {
-				ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
-			}
+		if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+			return nil
+		}
+		err = ss.netService.SendMessageToPeer(BulkPullRsp, bulkBlk, message.MessageFrom())
+		if err != nil {
+			ss.logger.Errorf("err [%s] when send BulkPullRsp", err)
 		}
 	}
 	return nil
@@ -529,6 +563,7 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 	for i := len(bulkBlk) - 1; i >= 0; i-- {
 		reverseBlocks = append(reverseBlocks, bulkBlk[i])
 	}
+	var shardingBlocks types.StateBlockList
 	for len(reverseBlocks) > 0 {
 		sendBlockNum := 0
 		if len(reverseBlocks) > maxPushTxPerTime {
@@ -536,11 +571,11 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 		} else {
 			sendBlockNum = len(reverseBlocks)
 		}
-		sendTxBlocks := reverseBlocks[0:sendBlockNum]
+		shardingBlocks = reverseBlocks[0:sendBlockNum]
 		if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 			break
 		}
-		err = ss.netService.SendMessageToPeer(BulkPullRsp, sendTxBlocks, message.MessageFrom())
+		err = ss.netService.SendMessageToPeer(BulkPullRsp, shardingBlocks, message.MessageFrom())
 		if err != nil {
 			ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 		}

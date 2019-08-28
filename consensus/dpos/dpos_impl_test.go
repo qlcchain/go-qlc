@@ -1,6 +1,7 @@
 package dpos
 
 import (
+	"github.com/qlcchain/go-qlc/mock"
 	"path/filepath"
 	"testing"
 
@@ -8,11 +9,16 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestGetSeq(t *testing.T) {
+var dps *DPoS
+
+func init() {
 	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
 	cm := config.NewCfgManager(dir)
 
-	dps := NewDPoS(cm.ConfigFile)
+	dps = NewDPoS(cm.ConfigFile)
+}
+
+func TestGetSeq(t *testing.T) {
 	seq1 := dps.getSeq(ackTypeCommon)
 	if seq1 != 0 {
 		t.Errorf("expect:0   get:%d", seq1)
@@ -39,10 +45,6 @@ func TestGetSeq(t *testing.T) {
 }
 
 func TestGetAckType(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cm := config.NewCfgManager(dir)
-
-	dps := NewDPoS(cm.ConfigFile)
 	type1 := dps.getAckType(0x10000003)
 	if type1 != ackTypeFindRep {
 		t.Errorf("expect:%d   get:%d", ackTypeFindRep, type1)
@@ -53,5 +55,18 @@ func TestGetAckType(t *testing.T) {
 	if type2 != ackTypeCommon {
 		t.Errorf("expect:%d   get:%d", ackTypeCommon, type2)
 		t.Fail()
+	}
+}
+
+func TestOnFrontierConfirmed(t *testing.T) {
+	block := mock.StateBlock()
+	hash := block.GetHash()
+	dps.frontiersStatus.Store(hash, frontierChainConfirmed)
+
+	var confirmed bool
+	dps.onFrontierConfirmed(hash, &confirmed)
+
+	if !confirmed {
+		t.Fatal()
 	}
 }

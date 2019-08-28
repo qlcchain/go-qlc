@@ -29,6 +29,8 @@ const (
 
 	EventPullBlocksReq     TopicType = "pullBlocksReq"
 	EventFrontierConsensus TopicType = "frontierConsensus"
+	EventFrontierConfirmed TopicType = "frontierConfirmed"
+	EventSyncStateChange   TopicType = "syncStateChange"
 )
 
 // Sync state

@@ -99,3 +99,21 @@ func (l *DebugApi) GetRepresentations(address *types.Address) (map[types.Address
 	}
 	return r, nil
 }
+
+func (l *DebugApi) GetSyncBlockNum() (map[string]uint64, error) {
+	data := make(map[string]uint64)
+
+	uncheckedSyncNum, err := l.ledger.CountUncheckedSyncBlocks()
+	if err != nil {
+		return nil, err
+	}
+
+	unconfirmedSyncNum, err := l.ledger.CountUnconfirmedSyncBlocks()
+	if err != nil {
+		return nil, err
+	}
+
+	data["uncheckedSync"] = uncheckedSyncNum
+	data["unconfirmedSync"] = unconfirmedSyncNum
+	return data, nil
+}

@@ -795,6 +795,36 @@ func (l *Ledger) GetUncheckedSyncBlock(hash types.Hash, txns ...db.StoreTxn) (*t
 	return blk, nil
 }
 
+func (l *Ledger) HasUncheckedSyncBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error) {
+	key := l.getUncheckedSyncBlockKey(hash)
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (l *Ledger) CountUncheckedSyncBlocks(txns ...db.StoreTxn) (uint64, error) {
+	var count uint64
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	count, err := txn.Count([]byte{idPrefixUncheckedSync})
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (l *Ledger) DeleteUncheckedSyncBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	key := l.getUncheckedSyncBlockKey(hash)
 	txn, flag := l.getTxn(true, txns...)
@@ -863,12 +893,40 @@ func (l *Ledger) HasUnconfirmedSyncBlock(hash types.Hash, txns ...db.StoreTxn) (
 	return true, nil
 }
 
+func (l *Ledger) CountUnconfirmedSyncBlocks(txns ...db.StoreTxn) (uint64, error) {
+	var count uint64
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	count, err := txn.Count([]byte{idPrefixUnconfirmedSync})
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (l *Ledger) DeleteUnconfirmedSyncBlock(hash types.Hash, txns ...db.StoreTxn) error {
 	key := l.getUnconfirmedSyncBlockKey(hash)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
 	return txn.Delete(key)
+}
+
+func (l *Ledger) WalkSyncCache(visit common.SyncCacheWalkFunc, txns ...db.StoreTxn) {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	_ = txn.Iterator(idPrefixUnconfirmedSync, func(key []byte, val []byte, b byte) error {
+		visit(common.SyncCacheUnconfirmed, key)
+		return nil
+	})
+
+	_ = txn.Iterator(idPrefixUncheckedSync, func(key []byte, val []byte, b byte) error {
+		visit(common.SyncCacheUnchecked, key)
+		return nil
+	})
 }
 
 func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {

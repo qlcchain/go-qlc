@@ -161,6 +161,8 @@ func (act *ActiveTrx) checkVotes() {
 			dps.deleteBlockCache(block)
 			dps.rollbackUncheckedFromDb(hash)
 			el.cleanBlockInfo()
+			dps.frontiersStatus.Delete(hash)
+			dps.syncBlockRollback(hash)
 		} else {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)
 			confirmReqBlocks := make([]*types.StateBlock, 0)
@@ -176,6 +178,8 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	hash := block.GetHash()
 	dps := act.dps
 	dps.logger.Debugf("block[%s] confirmed", hash)
+
+	dps.frontiersStatus.Delete(hash)
 
 	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
 		err := dps.lv.BlockProcess(block)

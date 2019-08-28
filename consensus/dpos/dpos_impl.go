@@ -31,7 +31,8 @@ const (
 	findOnlineRepInterval = 2 * time.Minute
 	povBlockNumDay        = 2880
 	subAckMaxSize         = 102400
-	hashNumPerAck         = 1000
+	hashNumPerAck         = 1024
+	blockNumPerReq        = 128
 )
 
 type subMsgKind byte
@@ -52,31 +53,41 @@ type subMsg struct {
 	hash  types.Hash
 }
 
+type frontierStatus byte
+
+const (
+	frontierWaitingForVote frontierStatus = iota
+	frontierConfirmed
+	frontierChainConfirmed
+)
+
 type DPoS struct {
-	ledger          *ledger.Ledger
-	acTrx           *ActiveTrx
-	accounts        []*types.Account
-	onlineReps      sync.Map
-	logger          *zap.SugaredLogger
-	cfg             *config.Config
-	eb              event.EventBus
-	lv              *process.LedgerVerifier
-	cacheBlocks     chan *consensus.BlockSource
-	povReady        chan bool
-	processors      []*Processor
-	processorNum    int
-	localRepAccount sync.Map
-	povSyncState    atomic.Value
-	minVoteWeight   types.Balance
-	voteThreshold   types.Balance
-	subAck          gcache.Cache
-	subMsg          chan *subMsg
-	voteCache       gcache.Cache //vote blocks
-	ackSeq          uint32
-	hash2el         *sync.Map
-	batchVote       chan types.Hash
-	ctx             context.Context
-	cancel          context.CancelFunc
+	ledger              *ledger.Ledger
+	acTrx               *ActiveTrx
+	accounts            []*types.Account
+	onlineReps          sync.Map
+	logger              *zap.SugaredLogger
+	cfg                 *config.Config
+	eb                  event.EventBus
+	lv                  *process.LedgerVerifier
+	cacheBlocks         chan *consensus.BlockSource
+	povReady            chan bool
+	processors          []*Processor
+	processorNum        int
+	localRepAccount     sync.Map
+	povSyncState        atomic.Value
+	minVoteWeight       types.Balance
+	voteThreshold       types.Balance
+	subAck              gcache.Cache
+	subMsg              chan *subMsg
+	voteCache           gcache.Cache //vote blocks
+	ackSeq              uint32
+	hash2el             *sync.Map
+	batchVote           chan types.Hash
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	frontiersStatus     *sync.Map
+	syncStateNotifyWait *sync.WaitGroup
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -90,23 +101,25 @@ func NewDPoS(cfgFile string) *DPoS {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	dps := &DPoS{
-		ledger:       l,
-		acTrx:        acTrx,
-		accounts:     cc.Accounts(),
-		logger:       log.NewLogger("dpos"),
-		cfg:          cfg,
-		eb:           cc.EventBus(),
-		lv:           process.NewLedgerVerifier(l),
-		cacheBlocks:  make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
-		povReady:     make(chan bool, 1),
-		processorNum: processorNum,
-		processors:   newProcessors(processorNum),
-		subMsg:       make(chan *subMsg, 10240),
-		subAck:       gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
-		hash2el:      new(sync.Map),
-		batchVote:    make(chan types.Hash, 102400),
-		ctx:          ctx,
-		cancel:       cancel,
+		ledger:              l,
+		acTrx:               acTrx,
+		accounts:            cc.Accounts(),
+		logger:              log.NewLogger("dpos"),
+		cfg:                 cfg,
+		eb:                  cc.EventBus(),
+		lv:                  process.NewLedgerVerifier(l),
+		cacheBlocks:         make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
+		povReady:            make(chan bool, 1),
+		processorNum:        processorNum,
+		processors:          newProcessors(processorNum),
+		subMsg:              make(chan *subMsg, 10240),
+		subAck:              gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
+		hash2el:             new(sync.Map),
+		batchVote:           make(chan types.Hash, 102400),
+		ctx:                 ctx,
+		cancel:              cancel,
+		frontiersStatus:     new(sync.Map),
+		syncStateNotifyWait: new(sync.WaitGroup),
 	}
 
 	if common.DPoSVoteCacheEn {
@@ -140,6 +153,21 @@ func (dps *DPoS) Init() {
 	err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
 	if err != nil {
 		dps.logger.Errorf("subscribe rollback unchecked block event err")
+	}
+
+	err = dps.eb.SubscribeSync(common.EventFrontierConsensus, dps.onGetFrontier)
+	if err != nil {
+		dps.logger.Errorf("subscribe frontier block event err")
+	}
+
+	err = dps.eb.SubscribeSync(common.EventFrontierConfirmed, dps.onFrontierConfirmed)
+	if err != nil {
+		dps.logger.Errorf("subscribe frontier confirmed event err")
+	}
+
+	err = dps.eb.SubscribeSync(common.EventSyncStateChange, dps.onSyncStateChange)
+	if err != nil {
+		dps.logger.Errorf("subscribe frontier confirmed event err")
 	}
 
 	if len(dps.accounts) != 0 {
@@ -216,12 +244,41 @@ func (dps *DPoS) processorStop() {
 	}
 }
 
-func (dps *DPoS) onGetFrontier(blocks []*types.StateBlock) {
-	dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, blocks)
+func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
+	var unconfirmed []*types.StateBlock
 
 	for _, block := range blocks {
-		index := dps.getProcessorIndex(block.Address)
-		dps.processors[index].frontiers <- block
+		hash := block.GetHash()
+
+		if dps.isReceivedFrontier(hash) {
+			continue
+		}
+
+		has, _ := dps.ledger.HasStateBlockConfirmed(hash)
+		if !has {
+			dps.logger.Infof("get frontier %s need ack", hash)
+			unconfirmed = append(unconfirmed, block)
+			index := dps.getProcessorIndex(block.Address)
+			dps.processors[index].frontiers <- block
+		}
+	}
+
+	unconfirmedLen := len(unconfirmed)
+	sendStart := 0
+	sendEnd := 0
+	sendLen := unconfirmedLen
+
+	for sendLen > 0 {
+		if sendLen >= blockNumPerReq {
+			sendEnd = sendStart + blockNumPerReq
+			sendLen -= blockNumPerReq
+		} else {
+			sendEnd = sendStart + sendLen
+			sendLen = 0
+		}
+
+		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, unconfirmed[sendStart:sendEnd])
+		sendStart = sendEnd
 	}
 }
 
@@ -804,4 +861,85 @@ func (dps *DPoS) getSeq(kind uint32) uint32 {
 
 func (dps *DPoS) getAckType(seq uint32) uint32 {
 	return seq >> 28
+}
+
+func (dps *DPoS) isWaitingFrontier(hash types.Hash) bool {
+	if status, ok := dps.frontiersStatus.Load(hash); ok && status.(frontierStatus) == frontierWaitingForVote {
+		return true
+	}
+	return false
+}
+
+func (dps *DPoS) isConfirmedFrontier(hash types.Hash) bool {
+	if status, ok := dps.frontiersStatus.Load(hash); ok && status.(frontierStatus) == frontierConfirmed {
+		return true
+	}
+
+	if has, _ := dps.ledger.HasStateBlockConfirmed(hash); has {
+		return true
+	}
+
+	return false
+}
+
+func (dps *DPoS) isChainConfirmed(hash types.Hash) bool {
+	if status, ok := dps.frontiersStatus.Load(hash); ok && status.(frontierStatus) == frontierChainConfirmed {
+		return true
+	}
+	return false
+}
+
+func (dps *DPoS) isReceivedFrontier(hash types.Hash) bool {
+	if _, ok := dps.frontiersStatus.Load(hash); ok {
+		return true
+	}
+	return false
+}
+
+func (dps *DPoS) syncBlockRollback(hash types.Hash) {
+	block, err := dps.ledger.GetUnconfirmedSyncBlock(hash)
+	if err != nil {
+		return
+	}
+
+	_ = dps.ledger.DeleteUnconfirmedSyncBlock(hash)
+	dps.syncBlockRollback(block.Previous)
+}
+
+func (dps *DPoS) onFrontierConfirmed(hash types.Hash, result *bool) {
+	if dps.isChainConfirmed(hash) {
+		*result = true
+	} else {
+		if has, _ := dps.ledger.HasStateBlockConfirmed(hash); has {
+			*result = true
+		} else {
+			*result = false
+		}
+	}
+}
+
+func (dps *DPoS) CleanSyncCache() {
+	dps.ledger.WalkSyncCache(func(kind byte, key []byte) {
+		hash, _ := types.BytesToHash(key[1:])
+		if block, err := dps.ledger.GetStateBlockConfirmed(hash); err == nil {
+			index := dps.getProcessorIndex(block.Address)
+			sc := &syncCacheInfo{
+				kind: kind,
+				hash: hash,
+			}
+			dps.processors[index].syncCache <- sc
+		}
+	})
+}
+
+func (dps *DPoS) onSyncStateChange(state common.SyncState) {
+	if state == common.Syncdone {
+		go dps.CleanSyncCache()
+	}
+
+	dps.syncStateNotifyWait.Add(dps.processorNum)
+	for _, p := range dps.processors {
+		p.syncStateChange <- state
+	}
+	dps.syncStateNotifyWait.Wait()
 }

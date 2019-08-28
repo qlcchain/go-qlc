@@ -175,20 +175,22 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Has
 	}
 }
 
-func (r *Receiver) ReceiveSyncBlock(blk *types.StateBlock) {
-	r.c.logger.Debugf("Sync Event for block:[%s]", blk.GetHash())
-	now := time.Now()
-	if now.Sub(r.lastSyncTime) > time.Second {
-		r.eb.Publish(common.EventSyncing, now)
-		r.lastSyncTime = now
-	}
+func (r *Receiver) ReceiveSyncBlock(blocks types.StateBlockList) {
+	for _, blk := range blocks {
+		r.c.logger.Debugf("Sync Event for block:[%s]", blk.GetHash())
+		now := time.Now()
+		if now.Sub(r.lastSyncTime) > time.Second {
+			r.eb.Publish(common.EventSyncing, now)
+			r.lastSyncTime = now
+		}
 
-	bs := &BlockSource{
-		Block:     blk,
-		BlockFrom: types.Synchronized,
-		Type:      MsgSync,
+		bs := &BlockSource{
+			Block:     blk,
+			BlockFrom: types.Synchronized,
+			Type:      MsgSync,
+		}
+		r.c.ca.ProcessMsg(bs)
 	}
-	r.c.ca.ProcessMsg(bs)
 }
 
 func (r *Receiver) ReceiveGenerateBlock(result process.ProcessResult, blk *types.StateBlock) {
@@ -211,3 +213,4 @@ func (r *Receiver) processedUpdate(hash types.Hash) {
 		r.c.logger.Errorf("Set cache error [%s] for block [%s] with publish message", err, hash)
 	}
 }
+
