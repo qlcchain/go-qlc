@@ -44,12 +44,19 @@ type PovApiBlock struct {
 }
 
 type PovApiState struct {
-	*types.PovAccountState
+	AccountState *types.PovAccountState `json:"accountState"`
+	RepState     *types.PovRepState     `json:"repState"`
 }
 
 type PovApiDumpState struct {
 	StateHash types.Hash                               `json:"stateHash"`
 	Accounts  map[types.Address]*types.PovAccountState `json:"accounts"`
+	Reps      map[types.Address]*types.PovRepState     `json:"reps"`
+}
+
+type PovApiRepState struct {
+	StateHash types.Hash                           `json:"stateHash"`
+	Reps      map[types.Address]*types.PovRepState `json:"reps"`
 }
 
 type PovApiTxLookup struct {
@@ -328,19 +335,33 @@ func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) 
 	db := api.ledger.Store
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
-	asBytes := stateTrie.GetValue(address.Bytes())
-	if len(asBytes) <= 0 {
-		return nil, errors.New("account value not exist")
+	asKey := types.PovCreateAccountStateKey(address)
+	asVal := stateTrie.GetValue(asKey)
+	if len(asVal) <= 0 {
+		return nil, errors.New("account state value not exist")
 	}
 
 	as := new(types.PovAccountState)
-	err := as.Deserialize(asBytes)
+	err := as.Deserialize(asVal)
+	if err != nil {
+		return nil, err
+	}
+
+	rsKey := types.PovCreateRepStateKey(address)
+	rsVal := stateTrie.GetValue(rsKey)
+	if len(rsVal) <= 0 {
+		return nil, errors.New("rep state value not exist")
+	}
+
+	rs := new(types.PovRepState)
+	err = rs.Deserialize(rsVal)
 	if err != nil {
 		return nil, err
 	}
 
 	apiState := &PovApiState{
-		PovAccountState: as,
+		AccountState: as,
+		RepState:     rs,
 	}
 
 	return apiState, nil
@@ -383,6 +404,7 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 	dump := &PovApiDumpState{
 		StateHash: stateHash,
 		Accounts:  make(map[types.Address]*types.PovAccountState),
+		Reps:      make(map[types.Address]*types.PovRepState),
 	}
 
 	db := api.ledger.Store
@@ -390,25 +412,84 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 
 	it := stateTrie.NewIterator(nil)
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
-		if len(key) != types.AddressSize {
-			continue
+		if key[0] == types.PovStatePrefixAcc {
+			addr, err := types.BytesToAddress(key[1:])
+			if err != nil {
+				return nil, err
+			}
+
+			as := new(types.PovAccountState)
+			err = as.Deserialize(val)
+			if err != nil {
+				return nil, err
+			}
+
+			dump.Accounts[addr] = as
 		}
 
-		addr, err := types.BytesToAddress(key)
-		if err != nil {
-			return nil, err
-		}
+		if key[0] == types.PovStatePrefixRep {
+			addr, err := types.BytesToAddress(key[1:])
+			if err != nil {
+				return nil, err
+			}
 
-		as := new(types.PovAccountState)
-		err = as.Deserialize(val)
-		if err != nil {
-			return nil, err
-		}
+			rs := new(types.PovRepState)
+			err = rs.Deserialize(val)
+			if err != nil {
+				return nil, err
+			}
 
-		dump.Accounts[addr] = as
+			dump.Reps[addr] = rs
+		}
 	}
 
 	return dump, nil
+}
+
+func (api *PovApi) GetAllRepStatsByStateHash(stateHash types.Hash) (*PovApiRepState, error) {
+	apiRsp := new(PovApiRepState)
+
+	apiRsp.StateHash = stateHash
+	apiRsp.Reps = make(map[types.Address]*types.PovRepState)
+
+	db := api.ledger.Store
+	stateTrie := trie.NewTrie(db, &stateHash, nil)
+
+	it := stateTrie.NewIterator([]byte{types.PovStatePrefixRep})
+	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
+		addr, err := types.BytesToAddress(key[1:])
+		if err != nil {
+			return nil, err
+		}
+
+		rs := new(types.PovRepState)
+		err = rs.Deserialize(val)
+		if err != nil {
+			return nil, err
+		}
+
+		apiRsp.Reps[addr] = rs
+	}
+
+	return apiRsp, nil
+}
+
+func (api *PovApi) GetAllRepStatsByBlockHash(blockHash types.Hash) (*PovApiRepState, error) {
+	header, err := api.ledger.GetPovHeaderByHash(blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.GetAllRepStatsByStateHash(header.GetStateHash())
+}
+
+func (api *PovApi) GetAllRepStatsByBlockHeight(blockHeight uint64) (*PovApiRepState, error) {
+	header, err := api.ledger.GetPovHeaderByHeight(blockHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.GetAllRepStatsByStateHash(header.GetStateHash())
 }
 
 func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {

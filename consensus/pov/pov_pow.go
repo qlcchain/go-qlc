@@ -97,24 +97,20 @@ func (c *ConsensusPow) verifyProducer(header *types.PovHeader) error {
 		return errors.New("failed to get previous state tire")
 	}
 
-	asBytes := prevTrie.GetValue(prevHeader.GetCoinBase().Bytes())
-	if len(asBytes) <= 0 {
-		return errors.New("failed to get account state value")
+	rsKey := types.PovCreateRepStateKey(prevHeader.GetCoinBase())
+	rsVal := prevTrie.GetValue(rsKey)
+	if len(rsVal) <= 0 {
+		return errors.New("failed to get rep state value")
 	}
 
-	as := new(types.PovAccountState)
-	err := as.Deserialize(asBytes)
+	rs := new(types.PovRepState)
+	err := rs.Deserialize(rsVal)
 	if err != nil {
-		return errors.New("failed to deserialize account state value")
+		return errors.New("failed to deserialize rep state value")
 	}
-
-	if as.RepState == nil {
-		return errors.New("account rep state is nil")
-	}
-	rs := as.RepState
 
 	if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
-		return errors.New("coinbase pledge amount not enough")
+		return errors.New("pledge amount not enough")
 	}
 
 	return nil

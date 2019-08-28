@@ -165,12 +165,11 @@ func (w *PovWorker) checkValidMiner() bool {
 	if latestBlock.GetHeight() >= (common.PovMinerVerifyHeightStart - 1) {
 		prevStateHash := latestBlock.GetStateHash()
 		stateTrie := w.GetChain().GetStateTrie(&prevStateHash)
-		as := w.GetChain().GetAccountState(stateTrie, cbAccount.Address())
-		if as == nil || as.RepState == nil {
+		rs := w.GetChain().GetRepState(stateTrie, cbAccount.Address())
+		if rs == nil {
 			w.logger.Warnf("miner pausing for account state not exist")
 			return false
 		}
-		rs := as.RepState
 		if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
 			w.logger.Warnf("miner pausing for vote pledge not enough")
 			return false
