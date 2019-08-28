@@ -131,9 +131,11 @@ func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
 }
 
 func (bp *PovBlockProcessor) Start() error {
+	if bp.ledger != nil {
+		ebL := bp.ledger.EventBus()
+		ebL.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
+	}
 	if bp.eb != nil {
-		bp.eb.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
-
 		bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState)
 	}
 
@@ -147,9 +149,11 @@ func (bp *PovBlockProcessor) Init() error {
 }
 
 func (bp *PovBlockProcessor) Stop() error {
+	if bp.ledger != nil {
+		ebL := bp.ledger.EventBus()
+		ebL.Unsubscribe(common.EventAddRelation, bp.onAddStateBlock)
+	}
 	if bp.eb != nil {
-		bp.eb.Unsubscribe(common.EventAddRelation, bp.onAddStateBlock)
-
 		bp.eb.Unsubscribe(common.EventPovSyncState, bp.onPovSyncState)
 	}
 

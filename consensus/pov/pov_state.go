@@ -46,6 +46,7 @@ func (bc *PovBlockChain) GenStateTrie(prevStateHash types.Hash, txs []*types.Pov
 	for _, tx := range txs {
 		err := bc.ApplyTransaction(currentTrie, tx.Block)
 		if err != nil {
+			bc.logger.Errorf("failed to apply tx %s", tx.Hash)
 			return nil, err
 		}
 	}
@@ -54,6 +55,8 @@ func (bc *PovBlockChain) GenStateTrie(prevStateHash types.Hash, txs []*types.Pov
 }
 
 func (bc *PovBlockChain) ApplyTransaction(trie *trie.Trie, stateBlock *types.StateBlock) error {
+	var err error
+
 	oldAs := bc.GetAccountState(trie, stateBlock.Address)
 	var newAs *types.PovAccountState
 	if oldAs != nil {
@@ -62,14 +65,20 @@ func (bc *PovBlockChain) ApplyTransaction(trie *trie.Trie, stateBlock *types.Sta
 		newAs = types.NewPovAccountState()
 	}
 
-	bc.updateAccountState(trie, stateBlock, oldAs, newAs)
+	err = bc.updateAccountState(trie, stateBlock, oldAs, newAs)
+	if err != nil {
+		return err
+	}
 
-	bc.updateRepState(trie, stateBlock, oldAs, newAs)
+	err = bc.updateRepState(trie, stateBlock, oldAs, newAs)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateBlock, oldAs *types.PovAccountState, newAs *types.PovAccountState) {
+func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateBlock, oldAs *types.PovAccountState, newAs *types.PovAccountState) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
 	token := block.GetToken()
@@ -111,16 +120,22 @@ func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateB
 		}
 	}
 
-	bc.SetAccountState(trie, block.Address, newAs)
+	err := bc.SetAccountState(trie, block.Address, newAs)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock, oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) {
+func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock, oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	if block.GetToken() != common.ChainToken() {
-		return
+		return nil
 	}
 
 	// change balance should modify one account's repState
 	// change representative should modify two account's repState
+	var err error
 
 	var oldBlkTs *types.PovTokenState
 	var newBlkTs *types.PovTokenState
@@ -151,9 +166,12 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 			lastRepNewRs.Oracle = lastRepOldRs.Oracle.Sub(oldBlkAs.Oracle)
 			lastRepNewRs.Storage = lastRepOldRs.Storage.Sub(oldBlkAs.Storage)
 			lastRepNewRs.Total = lastRepOldRs.Total.Sub(oldBlkAs.TotalBalance())
-		}
 
-		bc.SetRepState(trie, oldBlkTs.Representative, lastRepNewRs)
+			err = bc.SetRepState(trie, oldBlkTs.Representative, lastRepNewRs)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	if newBlkTs != nil && !newBlkTs.Representative.IsZero() {
@@ -175,8 +193,13 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 		currRepNewRs.Storage = currRepNewRs.Storage.Add(block.Storage)
 		currRepNewRs.Total = currRepNewRs.Total.Add(block.TotalBalance())
 
-		bc.SetRepState(trie, newBlkTs.Representative, currRepNewRs)
+		err = bc.SetRepState(trie, newBlkTs.Representative, currRepNewRs)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (bc *PovBlockChain) GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState {
@@ -198,18 +221,21 @@ func (bc *PovBlockChain) GetAccountState(trie *trie.Trie, address types.Address)
 	return as
 }
 
-func (bc *PovBlockChain) SetAccountState(trie *trie.Trie, address types.Address, as *types.PovAccountState) {
+func (bc *PovBlockChain) SetAccountState(trie *trie.Trie, address types.Address, as *types.PovAccountState) error {
 	//bc.logger.Debugf("set account %s state %s", address, as)
 
 	valBytes, err := as.Serialize()
 	if err != nil {
 		bc.logger.Errorf("serialize new account state err %s", err)
-		return
+		return err
+	}
+	if len(valBytes) <= 0 {
+		return errors.New("serialize new account state got empty value")
 	}
 
 	keyBytes := types.PovCreateAccountStateKey(address)
 	trie.SetValue(keyBytes, valBytes)
-	return
+	return nil
 }
 
 func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState {
@@ -231,18 +257,21 @@ func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *ty
 	return rs
 }
 
-func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs *types.PovRepState) {
-	//bc.logger.Debugf("set rep %s state %s", address, as)
+func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs *types.PovRepState) error {
+	//bc.logger.Debugf("set rep %s state %s", address, rs)
 
 	valBytes, err := rs.Serialize()
 	if err != nil {
 		bc.logger.Errorf("serialize new rep state err %s", err)
-		return
+		return err
+	}
+	if len(valBytes) <= 0 {
+		return errors.New("serialize new rep state got empty value")
 	}
 
 	keyBytes := types.PovCreateRepStateKey(address)
 	trie.SetValue(keyBytes, valBytes)
-	return
+	return nil
 }
 
 func (bc *PovBlockChain) GetAllRepStates(trie *trie.Trie) []*types.PovRepState {

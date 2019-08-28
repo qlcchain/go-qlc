@@ -8,6 +8,7 @@
 package ledger
 
 import (
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
@@ -18,6 +19,7 @@ type Store interface {
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
 	BatchView(fn func(txn db.StoreTxn) error) error
 	DBStore() db.Store
+	EventBus() event.EventBus
 
 	// account meta CURD
 	AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error

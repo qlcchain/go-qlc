@@ -65,9 +65,10 @@ func (tp *PovTxPool) Init() {
 }
 
 func (tp *PovTxPool) Start() {
-	if tp.eb != nil {
-		tp.eb.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
-		tp.eb.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
+	if tp.ledger != nil {
+		ebL := tp.ledger.EventBus()
+		ebL.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
+		ebL.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
 	}
 
 	tp.chain.RegisterListener(tp)
@@ -77,6 +78,12 @@ func (tp *PovTxPool) Start() {
 
 func (tp *PovTxPool) Stop() {
 	tp.chain.UnRegisterListener(tp)
+
+	if tp.ledger != nil {
+		ebL := tp.ledger.EventBus()
+		ebL.Unsubscribe(common.EventAddRelation, tp.onAddStateBlock)
+		ebL.Unsubscribe(common.EventDeleteRelation, tp.onDeleteStateBlock)
+	}
 
 	close(tp.quitCh)
 }
@@ -299,6 +306,11 @@ func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
 }
 
 func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
+	if txBlock == nil {
+		tp.logger.Errorf("add tx %s but block is nil", txHash)
+		return
+	}
+
 	tp.txMu.Lock()
 	defer tp.txMu.Unlock()
 

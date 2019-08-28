@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/hex"
 	"errors"
 	"github.com/qlcchain/go-qlc/config"
 	"math/big"
@@ -174,6 +175,7 @@ func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 	apiHeader := &PovApiHeader{
 		PovHeader:      header,
 		AlgoEfficiency: header.GetAlgoEfficiency(),
+		AlgoName:       header.GetAlgoType().String(),
 	}
 
 	return apiHeader, nil
@@ -359,6 +361,8 @@ func (api *PovApi) GetTransactionByBlockHeightAndIndex(height uint64, index uint
 }
 
 func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) (*PovApiState, error) {
+	apiState := &PovApiState{}
+
 	db := api.ledger.Store
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
@@ -374,21 +378,17 @@ func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) 
 		return nil, err
 	}
 
+	apiState.AccountState = as
+
 	rsKey := types.PovCreateRepStateKey(address)
 	rsVal := stateTrie.GetValue(rsKey)
-	if len(rsVal) <= 0 {
-		return nil, errors.New("rep state value not exist")
-	}
-
-	rs := new(types.PovRepState)
-	err = rs.Deserialize(rsVal)
-	if err != nil {
-		return nil, err
-	}
-
-	apiState := &PovApiState{
-		AccountState: as,
-		RepState:     rs,
+	if len(rsVal) > 0 {
+		rs := new(types.PovRepState)
+		err = rs.Deserialize(rsVal)
+		if err != nil {
+			return nil, err
+		}
+		apiState.RepState = rs
 	}
 
 	return apiState, nil
@@ -439,6 +439,11 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 
 	it := stateTrie.NewIterator(nil)
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
+		if len(val) <= 0 {
+			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
+			continue
+		}
+
 		if key[0] == types.PovStatePrefixAcc {
 			addr, err := types.BytesToAddress(key[1:])
 			if err != nil {
@@ -484,6 +489,11 @@ func (api *PovApi) GetAllRepStatsByStateHash(stateHash types.Hash) (*PovApiRepSt
 
 	it := stateTrie.NewIterator([]byte{types.PovStatePrefixRep})
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
+		if len(val) <= 0 {
+			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
+			continue
+		}
+
 		addr, err := types.BytesToAddress(key[1:])
 		if err != nil {
 			return nil, err
