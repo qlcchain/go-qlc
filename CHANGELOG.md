@@ -1,4 +1,22 @@
 
+<a name="v1.2.6.5"></a>
+## [v1.2.6.5](https://github.com/qlcchain/go-qlc/compare/v1.2.6.4...v1.2.6.5) (2019-08-29)
+
+### Bug Fixes
+
+* rollback cache if forked
+* ensure blockcache thread safe ([#564](https://github.com/qlcchain/go-qlc/issues/564))
+
+### Features
+
+* migrate ledger v7 to v8
+* support pending meta ([#557](https://github.com/qlcchain/go-qlc/issues/557))
+
+### Refactoring
+
+* cache block rollback
+
+
 <a name="v1.2.6.4"></a>
 ## [v1.2.6.4](https://github.com/qlcchain/go-qlc/compare/v1.2.5...v1.2.6.4) (2019-08-23)
 
