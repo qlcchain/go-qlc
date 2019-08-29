@@ -118,7 +118,7 @@ var (
 )
 
 const (
-	version         = 7
+	version         = 8
 	defaultLockSize = 1000
 )
 
@@ -192,7 +192,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7)}
+		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
