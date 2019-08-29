@@ -4,7 +4,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"sort"
+	"sync"
+	"sync/atomic"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -24,12 +27,27 @@ var (
 	ErrParameterNil = errors.New("parameter is nil")
 )
 
+type lockStatus uint8
+
+const (
+	using lockStatus = iota
+	idle
+)
+
+const defaultLockSize = 1000
+
+type lockValue struct {
+	lockStatus atomic.Value
+	mutex      *sync.Mutex
+}
+
 type LedgerApi struct {
 	ledger *ledger.Ledger
 	//vmContext *vmstore.VMContext
-	eb       event.EventBus
-	relation *relation.Relation
-	logger   *zap.SugaredLogger
+	eb          event.EventBus
+	relation    *relation.Relation
+	logger      *zap.SugaredLogger
+	processLock *hashmap.HashMap
 }
 
 type APIBlock struct {
@@ -77,7 +95,7 @@ type ApiTokenInfo struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
-	return &LedgerApi{ledger: l, eb: eb, relation: relation, logger: log.NewLogger("api_ledger")}
+	return &LedgerApi{ledger: l, eb: eb, relation: relation, logger: log.NewLogger("api_ledger"), processLock: hashmap.New(defaultLockSize)}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -718,10 +736,46 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 	return aps, nil
 }
 
+func (l *LedgerApi) getLockKey(addr types.Address, token types.Hash) []byte {
+	key := make([]byte, 0)
+	key = append(key, addr.Bytes()...)
+	key = append(key, token.Bytes()...)
+	return key
+}
+
+func (l *LedgerApi) getProcessLock(addr types.Address, token types.Hash) *lockValue {
+	key := l.getLockKey(addr, token)
+	v, b := l.processLock.Get(key)
+	if b {
+		v.(*lockValue).lockStatus.Store(using)
+		return v.(*lockValue)
+	} else {
+		lv := &lockValue{}
+		lv.lockStatus.Store(using)
+		lv.mutex = &sync.Mutex{}
+		l.processLock.Set(key, lv)
+		if l.processLock.Len() >= defaultLockSize {
+			for key := range l.processLock.Iter() {
+				s := (key.Value).(*lockValue).lockStatus.Load()
+				if s.(lockStatus) == idle {
+					l.processLock.Del(key.Key)
+				}
+			}
+		}
+		return lv
+	}
+}
+
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	if block == nil {
 		return types.ZeroHash, ErrParameterNil
 	}
+	lv := l.getProcessLock(block.Address, block.Token)
+	lv.mutex.Lock()
+	defer func() {
+		lv.mutex.Unlock()
+		lv.lockStatus.Store(idle)
+	}()
 	verifier := process.NewLedgerVerifier(l.ledger)
 	flag, err := verifier.BlockCheckCache(block)
 	if err != nil {
