@@ -344,6 +344,9 @@ func (m MigrationV7ToV8) Migrate(txn db.StoreTxn) error {
 		if err := txn.Drop([]byte{idPrefixBlockCache}); err != nil {
 			return err
 		}
+		if err := txn.Drop([]byte{idPrefixBlockCacheAccount}); err != nil {
+			return err
+		}
 		if err := txn.Drop([]byte{idPrefixUncheckedBlockPrevious}); err != nil {
 			return err
 		}
