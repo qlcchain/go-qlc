@@ -68,31 +68,6 @@ func (ah *PovAuxHeader) Deserialize(text []byte) error {
 	return nil
 }
 
-type PovCoinBaseTxIn struct {
-	StateHash Hash   `msg:"sh,extension" json:"stateHash"`
-	TxNum     uint32 `msg:"tn" json:"txNum"`
-	Extra     []byte `msg:"ext" json:"extra"`
-}
-
-func (cbti *PovCoinBaseTxIn) Copy() *PovCoinBaseTxIn {
-	ti2 := *cbti
-	ti2.Extra = make([]byte, len(cbti.Extra))
-	copy(ti2.Extra, cbti.Extra)
-	return &ti2
-}
-
-func (cbti *PovCoinBaseTxIn) Serialize() ([]byte, error) {
-	return cbti.MarshalMsg(nil)
-}
-
-func (cbti *PovCoinBaseTxIn) Deserialize(text []byte) error {
-	_, err := cbti.UnmarshalMsg(text)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 type PovCoinBaseTxOut struct {
 	Address Address `msg:"a,extension" json:"address"`
 	Value   Balance `msg:"v,extension" json:"value"`
@@ -117,8 +92,12 @@ func (cbto *PovCoinBaseTxOut) Deserialize(text []byte) error {
 }
 
 type PovCoinBaseTx struct {
-	TxIns  []*PovCoinBaseTxIn  `msg:"tis" json:"txIns"`
-	TxOuts []*PovCoinBaseTxOut `msg:"tos" json:"txOuts"`
+	StateHash Hash                `msg:"sh,extension" json:"stateHash"`
+	TxNum     uint32              `msg:"tn" json:"txNum"`
+	TxOuts    []*PovCoinBaseTxOut `msg:"tos" json:"txOuts"`
+
+	// only used by miner, 0 ~ 100
+	Extra []byte `msg:"ext" json:"extra"`
 
 	// !!! NOT IN HASH !!!
 	Signature Signature `msg:"sig,extension" json:"signature"`
@@ -129,9 +108,6 @@ type PovCoinBaseTx struct {
 
 func NewPovCoinBaseTx(txInNum int, txOutNum int) *PovCoinBaseTx {
 	tx := new(PovCoinBaseTx)
-	for i := 0; i < txInNum; i++ {
-		tx.TxIns = append(tx.TxIns, new(PovCoinBaseTxIn))
-	}
 	for i := 0; i < txOutNum; i++ {
 		tx.TxOuts = append(tx.TxOuts, new(PovCoinBaseTxOut))
 	}
@@ -141,20 +117,15 @@ func NewPovCoinBaseTx(txInNum int, txOutNum int) *PovCoinBaseTx {
 func (cbtx *PovCoinBaseTx) Copy() *PovCoinBaseTx {
 	tx2 := *cbtx
 
-	tx2.TxIns = nil
-	for _, ti := range cbtx.TxIns {
-		tx2.TxIns = append(tx2.TxIns, ti.Copy())
-	}
-
 	tx2.TxOuts = nil
 	for _, to := range cbtx.TxOuts {
 		tx2.TxOuts = append(tx2.TxOuts, to.Copy())
 	}
-	return &tx2
-}
 
-func (cbtx *PovCoinBaseTx) GetTxIn() *PovCoinBaseTxIn {
-	return cbtx.TxIns[0]
+	tx2.Extra = make([]byte, len(cbtx.Extra))
+	copy(tx2.Extra, cbtx.Extra)
+
+	return &tx2
 }
 
 func (cbtx *PovCoinBaseTx) GetMinerTxOut() *PovCoinBaseTxOut {
@@ -177,21 +148,35 @@ func (cbtx *PovCoinBaseTx) Deserialize(text []byte) error {
 	return nil
 }
 
-func (cbtx *PovCoinBaseTx) ComputeHash() Hash {
+func (cbtx *PovCoinBaseTx) GetCoinBaseData() []byte {
 	buf := new(bytes.Buffer)
 
-	for _, cbti := range cbtx.TxIns {
-		buf.Write(util.LE_Uint32ToBytes(cbti.TxNum))
-		buf.Write(cbti.StateHash.Bytes())
-		buf.Write(cbti.Extra)
-	}
+	buf.Write(cbtx.StateHash.Bytes())
+	buf.Write(util.LE_Uint32ToBytes(cbtx.TxNum))
 
 	for _, cbto := range cbtx.TxOuts {
 		buf.Write(cbto.Address.Bytes())
 		buf.Write(cbto.Value.Bytes())
 	}
 
-	txHash := Sha256D_HashData(buf.Bytes())
+	return buf.Bytes()
+}
+
+func (cbtx *PovCoinBaseTx) BuildHashData() []byte {
+	buf := new(bytes.Buffer)
+
+	buf.Write(cbtx.GetCoinBaseData())
+
+	if len(cbtx.Extra) > 0 {
+		buf.Write(cbtx.Extra)
+	}
+
+	return buf.Bytes()
+}
+
+func (cbtx *PovCoinBaseTx) ComputeHash() Hash {
+	data := cbtx.BuildHashData()
+	txHash := Sha256D_HashData(data)
 	return txHash
 }
 
@@ -250,7 +235,7 @@ func (h *PovHeader) GetNonce() uint32 {
 }
 
 func (h *PovHeader) GetStateHash() Hash {
-	return h.CbTx.TxIns[0].StateHash
+	return h.CbTx.StateHash
 }
 
 func (h *PovHeader) GetMinerAddr() Address {
@@ -420,6 +405,10 @@ func (blk *PovBlock) GetHash() Hash {
 	return blk.Header.BasHdr.Hash
 }
 
+func (blk *PovBlock) GetVersion() uint32 {
+	return blk.Header.BasHdr.Version
+}
+
 func (blk *PovBlock) GetHeight() uint64 {
 	return blk.Header.BasHdr.Height
 }
@@ -441,7 +430,7 @@ func (blk *PovBlock) GetTargetInt() *big.Int {
 }
 
 func (blk *PovBlock) GetStateHash() Hash {
-	return blk.Header.CbTx.TxIns[0].StateHash
+	return blk.Header.CbTx.StateHash
 }
 
 func (blk *PovBlock) GetMinerAddr() Address {
@@ -453,7 +442,7 @@ func (blk *PovBlock) GetSignature() Signature {
 }
 
 func (blk *PovBlock) GetTxNum() uint32 {
-	return blk.Header.CbTx.TxIns[0].TxNum
+	return blk.Header.CbTx.TxNum
 }
 
 func (blk *PovBlock) GetAllTxs() []*PovTransaction {

@@ -237,9 +237,8 @@ func (w *PovWorker) genNextBlock() *PovMineBlock {
 	}
 
 	// build coinbase tx
-	cbTxIn := cbtx.GetTxIn()
-	cbTxIn.StateHash = *stateTrie.Hash()
-	cbTxIn.TxNum = uint32(len(accTxs) + 1)
+	cbtx.StateHash = *stateTrie.Hash()
+	cbtx.TxNum = uint32(len(accTxs) + 1)
 
 	minerRwd, repRwd := w.GetChain().CalcBlockReward(mineBlock.Header)
 
@@ -304,8 +303,8 @@ Loop:
 				foundNonce = true
 
 				// fill coinbase tx
-				mineBlock.Header.CbTx.TxIns[0].Extra = make([]byte, len(resultHeader.CbTx.TxIns[0].Extra))
-				copy(mineBlock.Header.CbTx.TxIns[0].Extra, resultHeader.CbTx.TxIns[0].Extra)
+				mineBlock.Header.CbTx.Extra = make([]byte, len(resultHeader.CbTx.Extra))
+				copy(mineBlock.Header.CbTx.Extra, resultHeader.CbTx.Extra)
 				mineBlock.Header.CbTx.Hash = mineBlock.Header.CbTx.ComputeHash()
 				mineBlock.Header.CbTx.Signature = cbAccount.Sign(mineBlock.Header.CbTx.Hash)
 

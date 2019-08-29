@@ -15,22 +15,17 @@ var (
         "basHdr":{
             "version":0,
             "previous":"0000000000000000000000000000000000000000000000000000000000000000",
-            "merkleRoot":"d3462e06cd044a474de6300d019fc100fd8f11ba2d3ea80d1800f4f28f9edb72",
+            "merkleRoot":"4debe8c3411023be01b86b2a70fa99110a37390695fac1e37bc1b059a2b6c637",
             "timestamp":1569024000,
             "bits":504365040,
-            "nonce":173744,
-            "hash":"e0405fe21c8e9c0d60515e6bd3e265d740500d1e7243fc98c2d61feaca020000",
+            "nonce":653691,
+            "hash":"b3459203c8e69d2125932163496de55661a24611b85e2f14a800cd548c040000",
             "height":0
         },
         "auxHdr":null,
         "cbtx":{
-            "txIns":[
-                {
-                    "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
-                    "txNum":1,
-                    "extraData":null
-                }
-            ],
+            "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
+            "txNum":1,
             "txOuts":[
                 {
                     "address":"qlc_1afnoj8acwikgsazz1ocgakss3hck6htgxcm4wafuit7439izg8kzdu6twou",
@@ -41,14 +36,15 @@ var (
                     "value":"57077625"
                 }
             ],
-            "signature":"1915ad7da3f452db2b570785f05652426e302f393da9b44b317a3ca74158fe3b18d97eb5a236fd429988e861b4a894564451638223cb124ea06e4dbb3a95f707",
-            "hash":"d3462e06cd044a474de6300d019fc100fd8f11ba2d3ea80d1800f4f28f9edb72"
+            "extra":null,
+            "signature":"d2e273d62d7d04f2407af95f5444f25afbd840b9514f9d034c5fff41d7d0daf2fc9ae388349b16c16d0e769975179ef20a938891517e2cbffe98bc1f921e5e02",
+            "hash":"4debe8c3411023be01b86b2a70fa99110a37390695fac1e37bc1b059a2b6c637"
         }
     },
     "body":{
         "txs":[
             {
-                "hash":"d3462e06cd044a474de6300d019fc100fd8f11ba2d3ea80d1800f4f28f9edb72"
+                "hash":"4debe8c3411023be01b86b2a70fa99110a37390695fac1e37bc1b059a2b6c637"
             }
         ]
     }

@@ -842,22 +842,24 @@ type PovApiGetWork struct {
 	Bits     uint32     `json:"bits"`
 	Height   uint64     `json:"height"`
 
-	MinTime        uint32       `json:"minTime"`
-	MerkleBranch   []types.Hash `json:"merkleBranch"`
-	CoinBaseTxData []byte       `json:"coinbaseTxData"`
+	MinTime      uint32       `json:"minTime"`
+	MerkleBranch []types.Hash `json:"merkleBranch"`
+	CoinBaseData []byte       `json:"coinbaseData"`
 }
 
 type PovApiSubmitWork struct {
-	WorkID          string          `json:"workID"`
-	BlockHash       types.Hash      `json:"blockHash"`
-	CoinBaseTxHash  types.Hash      `json:"coinbaseTxHash"`
-	CoinBaseTxSig   types.Signature `json:"coinbaseTxSig"`
-	CoinBaseTxExtra []byte          `json:"coinbaseTxExtra"`
-	Timestamp       uint32          `json:"timestamp"`
-	Nonce           uint32          `json:"nonce"`
+	WorkID    string     `json:"workID"`
+	BlockHash types.Hash `json:"blockHash"`
+
+	CoinBaseHash  types.Hash      `json:"coinbaseHash"`
+	CoinBaseSig   types.Signature `json:"coinbaseSig"`
+	CoinBaseExtra []byte          `json:"coinbaseExtra"`
+
+	Timestamp uint32 `json:"timestamp"`
+	Nonce     uint32 `json:"nonce"`
 }
 
-func (api *PovApi) GetWork() (*PovApiGetWork, error) {
+func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGetWork, error) {
 	if !api.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
@@ -867,7 +869,18 @@ func (api *PovApi) GetWork() (*PovApiGetWork, error) {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
+	newBlock := types.NewPovBlock()
+
 	apiRsp := new(PovApiGetWork)
+
+	apiRsp.Version = newBlock.GetVersion()
+	apiRsp.Previous = newBlock.GetPrevious()
+	apiRsp.Bits = newBlock.GetBits()
+	apiRsp.Height = newBlock.GetHeight()
+
+	apiRsp.MinTime = newBlock.GetTimestamp()
+	apiRsp.CoinBaseData = newBlock.Header.CbTx.GetCoinBaseData()
+
 	return apiRsp, nil
 }
 

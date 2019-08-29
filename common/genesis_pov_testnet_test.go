@@ -10,8 +10,8 @@ import (
 )
 
 func TestGenesisPovBlock1(t *testing.T) {
-	expectHash, _ := types.NewHash("7be84840ec28602b4602d242b4e034c641ab09e2b4ccf05707034722bc0c0000")
-	expectSig, _ := types.NewSignature("c438e7ce2735f5bbdbe18af6c44f96c4cd8eb0c9b45b12d72d95e390b2ceaea67c21a52ec48b33d355c8ec524f6d746c959fc8f83b9cc518ac2a406bf1073f08")
+	expectHash, _ := types.NewHash("a01179dc04100cb497859a5c5f3c2399ff0a9d0cbfb2a073084b7f19af0d0000")
+	expectSig, _ := types.NewSignature("cd158adccc61b28a1e59ab234a3b370a676f7d5f9f642357aaf020cfd3a254075fd6aa35c536963724a66a2ec7d13703a9736024816fabd98dd4b9d077579706")
 
 	expectStateHash, _ := types.NewHash("1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49")
 
