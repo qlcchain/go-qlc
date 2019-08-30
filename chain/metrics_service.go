@@ -18,7 +18,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/monitor"
-	"github.com/rcrowley/go-metrics"
 )
 
 func NewMetricsService(cfgFile string) *MetricsService {
@@ -64,7 +63,7 @@ func (m *MetricsService) Start() error {
 	influx := m.cfg.Metrics.Influx
 	if influx != nil && influx.Enable && len(influx.Url) > 0 && len(influx.Database) > 0 {
 		go influxdb.InfluxDB(m.ctx,
-			metrics.DefaultRegistry,                    // metrics registry
+			monitor.SystemRegistry,                     // metrics registry
 			time.Second*time.Duration(influx.Interval), // interval
 			influx.Url,      // the InfluxDB url
 			influx.Database, // your InfluxDB database

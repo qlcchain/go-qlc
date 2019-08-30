@@ -8,10 +8,11 @@
 package chain
 
 import (
-	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/config"
 	"path/filepath"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestRegisterServices(t *testing.T) {
