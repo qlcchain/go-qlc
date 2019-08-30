@@ -69,6 +69,11 @@ func RegisterServices(cc *context.ChainContext) error {
 		_ = cc.Register(context.AutoReceiveService, autoReceiveService)
 	}
 
+	if cfg.Metrics.Enable {
+		metricsService := NewMetricsService(cfgFile)
+		_ = cc.Register(context.MetricsService, metricsService)
+	}
+
 	return nil
 }
 

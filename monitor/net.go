@@ -8,6 +8,7 @@
 package monitor
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -86,9 +87,16 @@ func CaptureRuntimeNetStatsOnce(r metrics.Registry) {
 	}
 }
 
-func CaptureRuntimeNetStats(r metrics.Registry, d time.Duration) {
-	for range time.Tick(d) {
-		CaptureRuntimeNetStatsOnce(r)
+func CaptureRuntimeNetStats(ctx context.Context, d time.Duration) {
+	ticker := time.NewTicker(d)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			CaptureRuntimeNetStatsOnce(SystemRegistry)
+		}
 	}
 }
 

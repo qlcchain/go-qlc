@@ -8,6 +8,7 @@
 package monitor
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -90,9 +91,16 @@ func CaptureRuntimeDiskStatsOnce(r metrics.Registry) {
 	}
 }
 
-func CaptureRuntimeDiskStats(r metrics.Registry, d time.Duration) {
-	for range time.Tick(d) {
-		CaptureRuntimeDiskStatsOnce(r)
+func CaptureRuntimeDiskStats(ctx context.Context, d time.Duration) {
+	ticker := time.NewTicker(d)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			CaptureRuntimeDiskStatsOnce(SystemRegistry)
+		}
 	}
 }
 

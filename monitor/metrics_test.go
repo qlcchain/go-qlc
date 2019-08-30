@@ -8,17 +8,22 @@
 package monitor
 
 import (
+	"context"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/monitor/influxdb"
+
 	"github.com/rcrowley/go-metrics"
-	influxdb "github.com/vrischmann/go-metrics-influxdb"
 )
 
 func TestMetrics(t *testing.T) {
 	t.Skip()
+	ctx, cancel := context.WithCancel(context.Background())
+
 	go influxdb.InfluxDB(
+		ctx,
 		metrics.DefaultRegistry, // metrics registry
 		time.Second*10,          // interval
 		"http://localhost:8086", // the InfluxDB url
@@ -26,6 +31,9 @@ func TestMetrics(t *testing.T) {
 		"myuser",                // your InfluxDB user
 		"mypassword",            // your InfluxDB password
 	)
+
+	time.Sleep(2 * time.Second)
+	cancel()
 }
 
 func TestDuration(t *testing.T) {
