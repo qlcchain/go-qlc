@@ -32,6 +32,7 @@ const (
 	PovService         = "povService"
 	MinerService       = "minerService"
 	AutoReceiveService = "autoReceiveService"
+	MetricsService     = "metricsService"
 )
 
 type serviceManager interface {
