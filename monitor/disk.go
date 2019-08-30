@@ -92,11 +92,13 @@ func CaptureRuntimeDiskStatsOnce(r metrics.Registry) {
 }
 
 func CaptureRuntimeDiskStats(ctx context.Context, d time.Duration) {
-	for range time.Tick(d) {
+	ticker := time.NewTicker(d)
+	defer ticker.Stop()
+	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-ticker.C:
 			CaptureRuntimeDiskStatsOnce(SystemRegistry)
 		}
 	}

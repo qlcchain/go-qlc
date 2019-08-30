@@ -28,11 +28,13 @@ type reporter struct {
 
 // InfluxDB starts a InfluxDB reporter which will post the metrics from the given registry at each d interval.
 func InfluxDB(ctx context.Context, r metrics.Registry, d time.Duration, url, database, username, password string) {
-	InfluxDBWithTags(ctx, r, d, url, database, username, password, nil)
+	WithTags(ctx, r, d, url, database, username, password, nil)
 }
 
-// InfluxDBWithTags starts a InfluxDB reporter which will post the metrics from the given registry at each d interval with the specified tags
-func InfluxDBWithTags(ctx context.Context, r metrics.Registry, d time.Duration, url, database, username, password string, tags map[string]string) {
+// WithTags starts a InfluxDB reporter which will post the metrics
+// from the given registry at each d interval with the specified tags
+func WithTags(ctx context.Context, r metrics.Registry, d time.Duration, url, database, username, password string,
+	tags map[string]string) {
 	u, err := uurl.Parse(url)
 	if err != nil {
 		log.Printf("unable to parse InfluxDB url %s. err=%v", url, err)
@@ -67,18 +69,23 @@ func (r *reporter) makeClient() (err error) {
 }
 
 func (r *reporter) run(ctx context.Context) {
-	intervalTicker := time.Tick(r.interval)
-	pingTicker := time.Tick(time.Second * 5)
+	intervalTicker := time.NewTicker(r.interval)
+	pingTicker := time.NewTicker(time.Second * 5)
+
+	defer func() {
+		intervalTicker.Stop()
+		pingTicker.Stop()
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-intervalTicker:
+		case <-intervalTicker.C:
 			if err := r.send(); err != nil {
 				log.Printf("unable to send metrics to InfluxDB. err=%v", err)
 			}
-		case <-pingTicker:
+		case <-pingTicker.C:
 			_, _, err := r.client.Ping()
 			if err != nil {
 				log.Printf("got error while sending a ping to InfluxDB, trying to recreate client. err=%v", err)

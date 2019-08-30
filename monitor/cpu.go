@@ -76,7 +76,7 @@ func RegisterRuntimeCpuStats(r metrics.Registry) {
 	})
 }
 
-func CaptureRuntimeCpuStatsOnce(r metrics.Registry) {
+func CaptureRuntimeCPUStatsOnce(r metrics.Registry) {
 	stats, err := cpu.Times(true)
 	if err == nil {
 		t := time.Now()
@@ -100,13 +100,15 @@ func CaptureRuntimeCpuStatsOnce(r metrics.Registry) {
 	}
 }
 
-func CaptureRuntimeCpuStats(ctx context.Context, d time.Duration) {
-	for range time.Tick(d) {
+func CaptureRuntimeCPUStats(ctx context.Context, d time.Duration) {
+	ticker := time.NewTicker(d)
+	defer ticker.Stop()
+	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			CaptureRuntimeCpuStatsOnce(SystemRegistry)
+		case <-ticker.C:
+			CaptureRuntimeCPUStatsOnce(SystemRegistry)
 		}
 	}
 }

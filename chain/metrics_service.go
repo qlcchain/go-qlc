@@ -55,17 +55,17 @@ func (m *MetricsService) Start() error {
 
 	if m.cfg.Metrics.Enable {
 		d := time.Second * time.Duration(m.cfg.Metrics.SampleInterval)
-		go monitor.CaptureRuntimeCpuStats(m.ctx, d)
+		go monitor.CaptureRuntimeCPUStats(m.ctx, d)
 		go monitor.CaptureRuntimeDiskStats(m.ctx, d)
 		go monitor.CaptureRuntimeNetStats(m.ctx, d)
 	}
 
 	influx := m.cfg.Metrics.Influx
-	if influx != nil && influx.Enable && len(influx.Url) > 0 && len(influx.Database) > 0 {
+	if influx != nil && influx.Enable && len(influx.URL) > 0 && len(influx.Database) > 0 {
 		go influxdb.InfluxDB(m.ctx,
 			monitor.SystemRegistry,                     // metrics registry
 			time.Second*time.Duration(influx.Interval), // interval
-			influx.Url,      // the InfluxDB url
+			influx.URL,      // the InfluxDB url
 			influx.Database, // your InfluxDB database
 			influx.User,     // your InfluxDB user
 			influx.Password, // your InfluxDB password

@@ -20,7 +20,7 @@ type MetricsConfig struct {
 
 type Influx struct {
 	Enable   bool   `json:"enable"`
-	Url      string `json:"url" validate:"nonzero"`
+	URL      string `json:"url" validate:"nonzero"`
 	Database string `json:"database" validate:"nonzero"`
 	User     string `json:"user" validate:"nonzero"`
 	Password string `json:"password"`
@@ -43,7 +43,7 @@ func defaultMetrics() *MetricsConfig {
 		SampleInterval: 1,
 		Influx: &Influx{
 			Enable:   false,
-			Url:      "http://localhost:8086",
+			URL:      "http://localhost:8086",
 			Database: "qlcchain",
 			User:     "qlcchain",
 			Password: "",

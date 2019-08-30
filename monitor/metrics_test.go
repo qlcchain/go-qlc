@@ -20,7 +20,7 @@ import (
 
 func TestMetrics(t *testing.T) {
 	t.Skip()
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 
 	go influxdb.InfluxDB(
 		ctx,
@@ -31,6 +31,9 @@ func TestMetrics(t *testing.T) {
 		"myuser",                // your InfluxDB user
 		"mypassword",            // your InfluxDB password
 	)
+
+	time.Sleep(2 * time.Second)
+	cancel()
 }
 
 func TestDuration(t *testing.T) {
