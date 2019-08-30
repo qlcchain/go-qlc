@@ -104,7 +104,7 @@ func BuildMerkleTreeStore(txHashs []*types.Hash) []*types.Hash {
 	return merkles
 }
 
-// CalcMerkleTreeRootHash calcute the merkle tree root hash for a slice of transactions
+// CalcMerkleTreeRootHash calculate the merkle tree root hash for a slice of transactions
 func CalcMerkleTreeRootHash(txHashs []*types.Hash) types.Hash {
 	if len(txHashs) <= 0 {
 		return types.ZeroHash
@@ -117,4 +117,48 @@ func CalcMerkleTreeRootHash(txHashs []*types.Hash) types.Hash {
 
 	calculatedMerkleRoot := merkles[len(merkles)-1]
 	return *calculatedMerkleRoot
+}
+
+// BuildCoinbaseMerkleBranch calculate the merkel tree branch for a slice of transactions without coinbase tx
+func BuildCoinbaseMerkleBranch(txHashes []*types.Hash) []*types.Hash {
+	retBranches := make([]*types.Hash, 0)
+
+	if len(txHashes) <= 0 {
+		return retBranches
+	}
+
+	merkles := make([]*types.Hash, len(txHashes))
+	copy(merkles, txHashes)
+
+	for len(merkles) > 1 {
+		// put first element
+		retBranches = append(retBranches, merkles[0])
+
+		if len(merkles)%2 == 0 {
+			// if even, push_back the end one, size should be an odd number.
+			// because we ignore the coinbase tx when make merkle branch.
+			merkles = append(merkles, merkles[len(merkles)-1])
+		}
+
+		// ignore the first one than merge two
+		mklLen := (len(merkles) - 1) / 2
+		for i := 0; i < mklLen; i++ {
+			// Hash = Double SHA256
+			merkles[i] = HashMerkleBranches(merkles[i*2+1], merkles[i*2+2])
+		}
+		merkles = merkles[0:mklLen]
+	}
+	if len(merkles) != 1 {
+		return retBranches
+	}
+	retBranches = append(retBranches, merkles[0]) // put the last one
+	return retBranches
+}
+
+func CalcCoinbaseMerkleRoot(coinbaseHash *types.Hash, merkleBranch []*types.Hash) types.Hash {
+	hashMerkleRoot := coinbaseHash
+	for _, branchHash := range merkleBranch {
+		hashMerkleRoot = HashMerkleBranches(hashMerkleRoot, branchHash)
+	}
+	return *hashMerkleRoot
 }

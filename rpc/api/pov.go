@@ -835,28 +835,26 @@ func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, 
 }
 
 type PovApiGetWork struct {
-	WorkID string `json:"workID"`
-
-	Version  uint32     `json:"version"`
-	Previous types.Hash `json:"previous"`
-	Bits     uint32     `json:"bits"`
-	Height   uint64     `json:"height"`
-
-	MinTime      uint32       `json:"minTime"`
-	MerkleBranch []types.Hash `json:"merkleBranch"`
-	CoinBaseData []byte       `json:"coinbaseData"`
+	WorkHash     types.Hash    `json:"workHash"`
+	Version      uint32        `json:"version"`
+	Previous     types.Hash    `json:"previous"`
+	Bits         uint32        `json:"bits"`
+	AlgoBits     uint32        `json:"algoBits"`
+	Height       uint64        `json:"height"`
+	MinTime      uint32        `json:"minTime"`
+	MerkleBranch []*types.Hash `json:"merkleBranch"`
+	CoinBaseData []byte        `json:"coinbaseData"`
 }
 
 type PovApiSubmitWork struct {
-	WorkID    string     `json:"workID"`
-	BlockHash types.Hash `json:"blockHash"`
-
-	CoinBaseHash  types.Hash      `json:"coinbaseHash"`
-	CoinBaseSig   types.Signature `json:"coinbaseSig"`
-	CoinBaseExtra []byte          `json:"coinbaseExtra"`
-
-	Timestamp uint32 `json:"timestamp"`
-	Nonce     uint32 `json:"nonce"`
+	WorkHash      types.Hash      `json:"workHash"`
+	BlockHash     types.Hash      `json:"blockHash"`
+	MerkleRoot    types.Hash      `json:"merkleRoot"`
+	Timestamp     uint32          `json:"timestamp"`
+	Nonce         uint32          `json:"nonce"`
+	CoinbaseExtra []byte          `json:"coinbaseExtra"`
+	CoinbaseHash  types.Hash      `json:"coinbaseHash"`
+	CoinbaseSig   types.Signature `json:"coinbaseSig"`
 }
 
 func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGetWork, error) {
@@ -869,17 +867,30 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
-	newBlock := types.NewPovBlock()
+	inArgs := make(map[interface{}]interface{})
+	inArgs["minerAddr"] = minerAddr
+	inArgs["algoName"] = algoName
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.GetWork", inArgs, outArgs)
+
+	if outArgs["err"] != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+	mineBlock := outArgs["mineBlock"].(*types.PovMineBlock)
 
 	apiRsp := new(PovApiGetWork)
+	apiRsp.WorkHash = mineBlock.WorkHash
 
-	apiRsp.Version = newBlock.GetVersion()
-	apiRsp.Previous = newBlock.GetPrevious()
-	apiRsp.Bits = newBlock.GetBits()
-	apiRsp.Height = newBlock.GetHeight()
+	apiRsp.Version = mineBlock.Header.GetVersion()
+	apiRsp.Previous = mineBlock.Header.GetPrevious()
+	apiRsp.Bits = mineBlock.Header.GetBits()
+	apiRsp.AlgoBits = types.BigToCompact(mineBlock.Header.GetTargetIntByAlgo())
+	apiRsp.Height = mineBlock.Header.GetHeight()
 
-	apiRsp.MinTime = newBlock.GetTimestamp()
-	apiRsp.CoinBaseData = newBlock.Header.CbTx.GetCoinBaseData()
+	apiRsp.MinTime = mineBlock.Header.GetTimestamp()
+	apiRsp.CoinBaseData = mineBlock.Header.CbTx.GetCoinBaseData()
+	apiRsp.MerkleBranch = mineBlock.CoinbaseBranch
 
 	return apiRsp, nil
 }
@@ -892,6 +903,27 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	ss := api.syncState.Load().(common.SyncState)
 	if ss != common.Syncdone {
 		return errors.New("pov sync is not finished, please check it")
+	}
+
+	mineResult := types.NewPovMineResult()
+	mineResult.WorkHash = work.WorkHash
+	mineResult.BlockHash = work.BlockHash
+	mineResult.MerkleRoot = work.MerkleRoot
+	mineResult.Timestamp = work.Timestamp
+	mineResult.Nonce = work.Nonce
+	mineResult.CoinbaseExtra = work.CoinbaseExtra
+	mineResult.CoinbaseHash = work.CoinbaseHash
+	mineResult.CoinbaseSig = work.CoinbaseSig
+
+	inArgs := make(map[interface{}]interface{})
+	inArgs["mineResult"] = mineResult
+
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.SubmitWork", inArgs, outArgs)
+
+	if outArgs["err"] != nil {
+		err := outArgs["err"].(error)
+		return err
 	}
 
 	return nil

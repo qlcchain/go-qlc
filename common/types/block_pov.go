@@ -56,6 +56,11 @@ type PovAuxHeader struct {
 	ParentHash        Hash         `msg:"ph,extension" json:"parentHash"`
 }
 
+func NewPovAuxHeader() *PovAuxHeader {
+	aux := new(PovAuxHeader)
+	return aux
+}
+
 func (ah *PovAuxHeader) Serialize() ([]byte, error) {
 	return ah.MarshalMsg(nil)
 }
@@ -206,6 +211,10 @@ func (h *PovHeader) GetHash() Hash {
 
 func (h *PovHeader) GetHeight() uint64 {
 	return h.BasHdr.Height
+}
+
+func (h *PovHeader) GetVersion() uint32 {
+	return h.BasHdr.Version
 }
 
 func (h *PovHeader) GetPrevious() Hash {

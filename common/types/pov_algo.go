@@ -1,5 +1,7 @@
 package types
 
+import "strings"
+
 type PovAlgoType uint32
 
 const (
@@ -34,7 +36,8 @@ func (a PovAlgoType) String() string {
 }
 
 func NewPoVHashAlgoFromStr(name string) PovAlgoType {
-	switch name {
+	upName := strings.ToUpper(name)
+	switch upName {
 	case "SHA256D":
 		return ALGO_SHA256D
 	case "SCRYPT":

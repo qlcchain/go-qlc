@@ -1,7 +1,10 @@
 package miner
 
 import (
+	"errors"
+	"fmt"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -13,10 +16,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	maxNonce = ^uint64(0) // 2^64 - 1
-)
-
 type PovWorker struct {
 	miner  *Miner
 	logger *zap.SugaredLogger
@@ -25,13 +24,13 @@ type PovWorker struct {
 	coinbaseAddress *types.Address
 	algo            types.PovAlgoType
 
-	quitCh chan struct{}
-}
+	mineBlockPool map[types.Hash]*types.PovMineBlock
+	curMineBlock  *types.PovMineBlock
+	preMineHeight uint64
+	preMineTime   time.Time
+	muxMineBlock  sync.Mutex
 
-type PovMineBlock struct {
-	Header *types.PovHeader
-	Body   *types.PovBody
-	Block  *types.PovBlock
+	quitCh chan struct{}
 }
 
 func NewPovWorker(miner *Miner) *PovWorker {
@@ -41,6 +40,7 @@ func NewPovWorker(miner *Miner) *PovWorker {
 
 		quitCh: make(chan struct{}),
 	}
+	worker.mineBlockPool = make(map[types.Hash]*types.PovMineBlock)
 
 	return worker
 }
@@ -48,11 +48,20 @@ func NewPovWorker(miner *Miner) *PovWorker {
 func (w *PovWorker) Init() error {
 	var err error
 
-	blkHeader := &types.PovHeader{}
-	cbtx := &types.PovCoinBaseTx{}
+	blkHeader := &types.PovHeader{
+		AuxHdr: types.NewPovAuxHeader(),
+		CbTx:   types.NewPovCoinBaseTx(1, 2),
+	}
+	blkHdrSize := blkHeader.Msgsize()
+	blkHdrSize += 100 // cbtx extra
+
+	hash := &types.Hash{}
+	blkHdrSize += hash.Msgsize() * 32 * 2 // aux merkle branch + coinbase branch
 
 	tx := &types.PovTransaction{}
-	w.maxTxPerBlock = (common.PovChainBlockSize - blkHeader.Msgsize() - cbtx.Msgsize()) / tx.Msgsize()
+	w.maxTxPerBlock = (common.PovChainBlockSize - blkHdrSize) / tx.Msgsize()
+	w.logger.Infof("MaxBlockSize:%d, MaxHeaderSize:%d, MaxTxSize:%d, MaxTxNum:%d",
+		common.PovChainBlockSize, blkHdrSize, tx.Msgsize(), w.maxTxPerBlock)
 
 	cbAddress, err := types.HexToAddress(w.GetConfig().PoV.Coinbase)
 	if err != nil {
@@ -67,21 +76,30 @@ func (w *PovWorker) Init() error {
 }
 
 func (w *PovWorker) Start() error {
+	w.algo = w.GetAlgo()
+
+	w.miner.eb.SubscribeSync(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
+
+	hasCpuMining := false
 	if w.coinbaseAddress != nil {
 		cbAccount := w.GetCoinbaseAccount()
 		if cbAccount == nil {
 			w.logger.Errorf("coinbase %s account not exist", w.coinbaseAddress)
 		} else {
-			common.Go(w.loop)
+			hasCpuMining = true
 		}
 	}
 
-	w.algo = w.GetAlgo()
+	if hasCpuMining {
+		common.Go(w.cpuMiningLoop)
+	}
 
 	return nil
 }
 
 func (w *PovWorker) Stop() error {
+	w.miner.eb.Unsubscribe(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
+
 	if w.quitCh != nil {
 		close(w.quitCh)
 	}
@@ -123,7 +141,233 @@ func (w *PovWorker) GetAlgo() types.PovAlgoType {
 	return types.ALGO_SHA256D
 }
 
-func (w *PovWorker) loop() {
+func (w *PovWorker) OnEventRpcSyncCall(name string, in interface{}, out interface{}) {
+	switch name {
+	case "Miner.GetWork":
+		w.GetWork(in, out)
+	case "Miner.SubmitWork":
+		w.SubmitWork(in, out)
+	}
+}
+
+func (w *PovWorker) GetWork(in interface{}, out interface{}) {
+	inArgs := in.(map[interface{}]interface{})
+	outArgs := out.(map[interface{}]interface{})
+
+	minerAddr := inArgs["minerAddr"].(types.Address)
+	algoName := inArgs["algoName"].(string)
+	algoType := types.NewPoVHashAlgoFromStr(algoName)
+
+	err := w.checkMinerPledge(minerAddr)
+	if err != nil {
+		outArgs["err"] = err
+		return
+	}
+
+	mineBlock := w.generateBlock(minerAddr, algoType)
+	outArgs["err"] = nil
+	outArgs["mineBlock"] = mineBlock
+}
+
+func (w *PovWorker) SubmitWork(in interface{}, out interface{}) {
+	inArgs := in.(map[interface{}]interface{})
+	outArgs := out.(map[interface{}]interface{})
+
+	result := inArgs["mineResult"].(*types.PovMineResult)
+
+	mineBlock := w.mineBlockPool[result.WorkHash]
+	if mineBlock == nil {
+		outArgs["err"] = errors.New("failed to find block by workHash")
+		return
+	}
+
+	err := w.checkAndFillBlockByResult(mineBlock, result)
+	if err != nil {
+		outArgs["err"] = err
+		return
+	}
+
+	w.submitBlock(mineBlock)
+
+	outArgs["err"] = nil
+}
+
+func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.PovAlgoType) *types.PovMineBlock {
+	latestHeader := w.GetChain().LatestHeader()
+
+	mineBlock := types.NewPovMineBlock()
+
+	// fill base header
+	header := mineBlock.Header
+	header.BasHdr.Version = 0 | uint32(algoType)
+	header.BasHdr.Previous = latestHeader.GetHash()
+	header.BasHdr.Height = latestHeader.GetHeight() + 1
+	header.BasHdr.Timestamp = uint32(time.Now().Unix())
+
+	prevStateHash := latestHeader.GetStateHash()
+	prevStateTrie := w.GetChain().GetStateTrie(&prevStateHash)
+	if prevStateTrie == nil {
+		w.logger.Errorf("failed to get prev state trie", prevStateHash)
+		return nil
+	}
+
+	// coinbase tx
+	cbtx := header.CbTx
+
+	// pack account block txs
+	accBlocks := w.GetTxPool().SelectPendingTxs(prevStateTrie, w.maxTxPerBlock)
+
+	//w.logger.Debugf("current block %d select pending txs %d", len(accBlocks))
+
+	var accTxHashes []*types.Hash
+	var accTxs []*types.PovTransaction
+	for _, accBlock := range accBlocks {
+		accTx := &types.PovTransaction{
+			Hash:  accBlock.GetHash(),
+			Block: accBlock,
+		}
+		accTxHashes = append(accTxHashes, &accTx.Hash)
+		accTxs = append(accTxs, accTx)
+	}
+
+	err := w.GetPovConsensus().PrepareHeader(header)
+	if err != nil {
+		w.logger.Errorf("failed to prepare header, err %s", err)
+		return nil
+	}
+
+	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, accTxs)
+	if err != nil {
+		w.logger.Errorf("failed to generate state trie, err %s", err)
+		return nil
+	}
+	if stateTrie == nil {
+		w.logger.Errorf("failed to generate state trie, err nil")
+		return nil
+	}
+
+	// build coinbase tx
+	cbtx.StateHash = *stateTrie.Hash()
+	cbtx.TxNum = uint32(len(accTxs) + 1)
+
+	minerRwd, repRwd := w.GetChain().CalcBlockReward(header)
+
+	minerTxOut := cbtx.GetMinerTxOut()
+	minerTxOut.Address = minerAddr
+	minerTxOut.Value = minerRwd
+
+	repTxOut := cbtx.GetRepTxOut()
+	repTxOut.Address = types.MinerAddress
+	repTxOut.Value = repRwd
+
+	cbTxHash := cbtx.ComputeHash()
+
+	// append all txs to body
+	body := mineBlock.Body
+	cbTxPov := &types.PovTransaction{Hash: cbTxHash, CbTx: cbtx}
+	body.Txs = append(body.Txs, cbTxPov)
+	body.Txs = append(body.Txs, accTxs...)
+
+	// calc merkle root
+	var mklTxHashList []*types.Hash
+	mklTxHashList = append(mklTxHashList, &cbTxPov.Hash)
+	mklTxHashList = append(mklTxHashList, accTxHashes...)
+	mklHash := merkle.CalcMerkleTreeRootHash(mklTxHashList)
+	header.BasHdr.MerkleRoot = mklHash
+
+	mineBlock.AllTxHashes = mklTxHashList
+
+	// calc merkle branch without coinbase tx
+	mineBlock.CoinbaseBranch = merkle.BuildCoinbaseMerkleBranch(accTxHashes)
+
+	mineBlock.WorkHash = mineBlock.Block.ComputeHash()
+	return mineBlock
+}
+
+func (w *PovWorker) generateBlock(minerAddr types.Address, algoType types.PovAlgoType) *types.PovMineBlock {
+	w.muxMineBlock.Lock()
+	defer w.muxMineBlock.Unlock()
+
+	latestHeader := w.GetChain().LatestHeader()
+	if latestHeader.GetHeight() == 0 ||
+		w.preMineHeight != latestHeader.GetHeight() ||
+		time.Now().After(w.preMineTime.Add(30*time.Second)) {
+
+		if w.preMineHeight != latestHeader.GetHeight() {
+			w.curMineBlock = nil
+			w.mineBlockPool = nil
+		}
+
+		w.curMineBlock = w.newBlockTemplate(minerAddr, algoType)
+
+		if w.mineBlockPool == nil {
+			w.mineBlockPool = make(map[types.Hash]*types.PovMineBlock)
+		}
+		w.mineBlockPool[w.curMineBlock.WorkHash] = w.curMineBlock
+
+		w.preMineHeight = latestHeader.GetHeight()
+		w.preMineTime = time.Now()
+	}
+
+	return w.curMineBlock
+}
+
+func (w *PovWorker) checkAndFillBlockByResult(mineBlock *types.PovMineBlock, result *types.PovMineResult) error {
+	mineBlock.Header.CbTx.Extra = result.CoinbaseExtra
+	cbTxHash := mineBlock.Header.CbTx.ComputeHash()
+	if cbTxHash.Cmp(result.CoinbaseHash) != 0 {
+		return fmt.Errorf("coinbase hash not equal, %s != %s", cbTxHash, result.CoinbaseHash)
+	}
+
+	mineBlock.Header.CbTx.Hash = result.CoinbaseHash
+	mineBlock.Header.CbTx.Signature = result.CoinbaseSig
+	minerAddr := mineBlock.Header.GetMinerAddr()
+	verifyRes := minerAddr.Verify(result.CoinbaseHash.Bytes(), result.CoinbaseSig.Bytes())
+	if !verifyRes {
+		return fmt.Errorf("coinbase signature verify failed")
+	}
+
+	cbTxPov := mineBlock.Body.Txs[0]
+	cbTxPov.Hash = result.CoinbaseHash
+	mineBlock.AllTxHashes[0] = &cbTxPov.Hash
+
+	calcMklRoot := merkle.CalcMerkleTreeRootHash(mineBlock.AllTxHashes)
+	if calcMklRoot.Cmp(result.MerkleRoot) != 0 {
+		return fmt.Errorf("merkle root not equal, %s != %s", cbTxHash, result.MerkleRoot)
+	}
+	mineBlock.Header.BasHdr.MerkleRoot = result.MerkleRoot
+
+	mineBlock.Header.BasHdr.Timestamp = result.Timestamp
+	mineBlock.Header.BasHdr.Nonce = result.Nonce
+
+	calcBlkHash := mineBlock.Header.ComputeHash()
+	if calcBlkHash.Cmp(result.BlockHash) != 0 {
+		return fmt.Errorf("block hash not equal, %s != %s", cbTxHash, result.CoinbaseHash)
+	}
+	mineBlock.Header.BasHdr.Hash = result.BlockHash
+
+	return nil
+}
+
+func (w *PovWorker) checkMinerPledge(minerAddr types.Address) error {
+	latestBlock := w.GetChain().LatestBlock()
+
+	if latestBlock.GetHeight() >= (common.PovMinerVerifyHeightStart - 1) {
+		prevStateHash := latestBlock.GetStateHash()
+		stateTrie := w.GetChain().GetStateTrie(&prevStateHash)
+		rs := w.GetChain().GetRepState(stateTrie, minerAddr)
+		if rs == nil {
+			return errors.New("miner pausing for account state not exist")
+		}
+		if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
+			return errors.New("miner pausing for vote pledge not enough")
+		}
+	}
+
+	return nil
+}
+
+func (w *PovWorker) cpuMiningLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -134,7 +378,7 @@ func (w *PovWorker) loop() {
 			return
 		default:
 			if w.checkValidMiner() {
-				w.genNextBlock()
+				w.mineNextBlock()
 			} else {
 				time.Sleep(time.Minute)
 			}
@@ -162,119 +406,35 @@ func (w *PovWorker) checkValidMiner() bool {
 		return false
 	}
 
-	if latestBlock.GetHeight() >= (common.PovMinerVerifyHeightStart - 1) {
-		prevStateHash := latestBlock.GetStateHash()
-		stateTrie := w.GetChain().GetStateTrie(&prevStateHash)
-		rs := w.GetChain().GetRepState(stateTrie, cbAccount.Address())
-		if rs == nil {
-			w.logger.Warnf("miner pausing for account state not exist")
-			return false
-		}
-		if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
-			w.logger.Warnf("miner pausing for vote pledge not enough")
-			return false
-		}
+	err := w.checkMinerPledge(cbAccount.Address())
+	if err != nil {
+		w.logger.Warn(err)
+		return false
 	}
 
 	return true
 }
 
-func (w *PovWorker) genNextBlock() *PovMineBlock {
+func (w *PovWorker) mineNextBlock() *types.PovMineBlock {
 	latestHeader := w.GetChain().LatestHeader()
 
 	w.logger.Debugf("try to generate block after latest %d/%s", latestHeader.GetHeight(), latestHeader.GetPrevious())
 
-	mineBlock := &PovMineBlock{}
-
-	mineBlock.Header = types.NewPovHeader()
-	mineBlock.Header.BasHdr.Version = 0 | uint32(w.algo)
-	mineBlock.Header.BasHdr.Previous = latestHeader.GetHash()
-	mineBlock.Header.BasHdr.Height = latestHeader.GetHeight() + 1
-	mineBlock.Header.BasHdr.Timestamp = uint32(time.Now().Unix())
-
-	mineBlock.Body = types.NewPovBody()
-
-	prevStateHash := latestHeader.GetStateHash()
-	prevStateTrie := w.GetChain().GetStateTrie(&prevStateHash)
-	if prevStateTrie == nil {
-		w.logger.Errorf("failed to get prev state trie", prevStateHash)
-		return nil
-	}
-
-	// coinbase tx
-	cbtx := mineBlock.Header.CbTx
-
-	// pack account block txs
-	accBlocks := w.GetTxPool().SelectPendingTxs(prevStateTrie, w.maxTxPerBlock)
-
-	//w.logger.Debugf("current block %d select pending txs %d", len(accBlocks))
-
-	var accTxHashes []*types.Hash
-	var accTxs []*types.PovTransaction
-	for _, accBlock := range accBlocks {
-		accTx := &types.PovTransaction{
-			Hash:  accBlock.GetHash(),
-			Block: accBlock,
-		}
-		accTxHashes = append(accTxHashes, &accTx.Hash)
-		accTxs = append(accTxs, accTx)
-	}
-
-	err := w.GetPovConsensus().PrepareHeader(mineBlock.Header)
-	if err != nil {
-		w.logger.Errorf("failed to prepare header, err %s", err)
-		return nil
-	}
-
-	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, accTxs)
-	if err != nil {
-		w.logger.Errorf("failed to generate state trie, err %s", err)
-		return nil
-	}
-	if stateTrie == nil {
-		w.logger.Errorf("failed to generate state trie, err nil")
-		return nil
-	}
-
-	// build coinbase tx
-	cbtx.StateHash = *stateTrie.Hash()
-	cbtx.TxNum = uint32(len(accTxs) + 1)
-
-	minerRwd, repRwd := w.GetChain().CalcBlockReward(mineBlock.Header)
-
-	minerTxOut := cbtx.GetMinerTxOut()
-	minerTxOut.Address = w.GetCoinbaseAccount().Address()
-	minerTxOut.Value = minerRwd
-
-	repTxOut := cbtx.GetRepTxOut()
-	repTxOut.Address = types.MinerAddress
-	repTxOut.Value = repRwd
-
-	cbtxHash := cbtx.ComputeHash()
-
-	// append all txs to body
-	mineBlock.Body.Txs = append(mineBlock.Body.Txs, []*types.PovTransaction{{Hash: cbtxHash, CbTx: cbtx}}...)
-	mineBlock.Body.Txs = append(mineBlock.Body.Txs, accTxs...)
-
-	// calc merkle root
-	var mklTxHashList []*types.Hash
-	mklTxHashList = append(mklTxHashList, []*types.Hash{&cbtxHash}...)
-	mklTxHashList = append(mklTxHashList, accTxHashes...)
-	mklHash := merkle.CalcMerkleTreeRootHash(mklTxHashList)
-	mineBlock.Header.BasHdr.MerkleRoot = mklHash
+	mineBlock := w.newBlockTemplate(w.GetCoinbaseAccount().Address(), w.algo)
 
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	if w.solveBlock(mineBlock, ticker, w.quitCh) {
-		w.submitBlock(mineBlock)
-		return mineBlock
-	} else {
+	solveOK := w.solveBlock(mineBlock, ticker, w.quitCh)
+	if !solveOK {
 		return nil
 	}
+
+	w.submitBlock(mineBlock)
+	return mineBlock
 }
 
-func (w *PovWorker) solveBlock(mineBlock *PovMineBlock, ticker *time.Ticker, quitCh chan struct{}) bool {
+func (w *PovWorker) solveBlock(mineBlock *types.PovMineBlock, ticker *time.Ticker, quitCh chan struct{}) bool {
 	cbAccount := w.GetCoinbaseAccount()
 
 	loopBeginTime := time.Now()
@@ -350,9 +510,7 @@ Loop:
 	return true
 }
 
-func (w *PovWorker) submitBlock(genBlock *PovMineBlock) {
-	genBlock.Block = types.NewPovBlockWithBody(genBlock.Header, genBlock.Body)
-
+func (w *PovWorker) submitBlock(genBlock *types.PovMineBlock) {
 	w.logger.Infof("submit block %d/%s", genBlock.Block.GetHeight(), genBlock.Block.GetHash())
 
 	err := w.miner.GetPovEngine().AddMinedBlock(genBlock.Block)
