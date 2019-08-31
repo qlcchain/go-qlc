@@ -330,6 +330,10 @@ func (w *PovWorker) generateBlock(minerAddr types.Address, algoType types.PovAlg
 }
 
 func (w *PovWorker) checkAndFillBlockByResult(mineBlock *types.PovMineBlock, result *types.PovMineResult) error {
+	if len(result.CoinbaseExtra) > common.PovMaxCoinbaseExtraSize {
+		return fmt.Errorf("coinbase extra size too big, max size is %d", common.PovMaxCoinbaseExtraSize)
+	}
+
 	mineBlock.Header.CbTx.Extra = result.CoinbaseExtra
 	cbTxHash := mineBlock.Header.CbTx.ComputeHash()
 	if cbTxHash.Cmp(result.CoinbaseHash) != 0 {

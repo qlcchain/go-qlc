@@ -54,4 +54,6 @@ var (
 	PovMaxAllowedFutureTimeSec = 300
 
 	PovMaxNonce = ^uint32(0) // 2^32 - 1
+
+	PovMaxCoinbaseExtraSize = 100
 )
