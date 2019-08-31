@@ -2,6 +2,7 @@ package types
 
 import (
 	"math/big"
+	"strconv"
 )
 
 var (
@@ -180,4 +181,23 @@ func CalcWorkBitsToBigNum(bits uint32) *BigNum {
 func CalcWorkIntToBigNum(diffNum *big.Int) *BigNum {
 	workInt := CalcWorkIntToBigInt(diffNum)
 	return NewBigNumFromBigInt(workInt)
+}
+
+// CalcDifficultyRatio returns the proof-of-work difficulty as a multiple of the
+// minimum difficulty using the passed bits field from the header of a block.
+func CalcDifficultyRatio(bits uint32, powLimitBits uint32) float64 {
+	// The minimum difficulty is the max possible proof-of-work limit bits
+	// converted back to a number.  Note this is not the same as the proof of
+	// work limit directly because the block difficulty is encoded in a block
+	// with the compact form which loses precision.
+	max := CompactToBig(powLimitBits)
+	target := CompactToBig(bits)
+
+	difficulty := new(big.Rat).SetFrac(max, target)
+	outString := difficulty.FloatString(8)
+	diff, err := strconv.ParseFloat(outString, 64)
+	if err != nil {
+		return 0
+	}
+	return diff
 }

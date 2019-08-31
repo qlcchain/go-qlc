@@ -511,3 +511,10 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 func (tp *PovTxPool) LastUpdated() time.Time {
 	return time.Unix(tp.lastUpdated, 0)
 }
+
+func (tp *PovTxPool) GetPendingTxNum() uint32 {
+	tp.txMu.RLock()
+	defer tp.txMu.RUnlock()
+
+	return uint32(len(tp.allTxs))
+}

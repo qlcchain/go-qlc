@@ -22,7 +22,9 @@ type PovWorker struct {
 
 	maxTxPerBlock int
 	minerAddr     types.Address
-	algo          types.PovAlgoType
+	minerAccount  *types.Account
+	algoType      types.PovAlgoType
+	cpuMining     bool
 
 	mineBlockPool map[types.Hash]*types.PovMineBlock
 	curMineBlock  *types.PovMineBlock
@@ -72,38 +74,39 @@ func (w *PovWorker) Init() error {
 		w.minerAddr = cbAddress
 	}
 
+	w.algoType = types.ALGO_UNKNOWN
+	w.GetAlgoType()
+
 	return nil
 }
 
 func (w *PovWorker) Start() error {
-	w.algo = w.GetAlgo()
+	err := w.miner.eb.SubscribeSync(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
+	if err != nil {
+		return err
+	}
 
-	w.miner.eb.SubscribeSync(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
-
-	hasCpuMining := false
-	cbAccount := w.GetMinerAccount()
-	if cbAccount == nil {
+	w.GetMinerAccount()
+	if w.minerAccount == nil {
 		w.logger.Errorf("miner account %s not exist", w.minerAddr)
-	} else {
-		hasCpuMining = true
 	}
 
 	cfgPov := w.GetConfig().PoV
-	if !cfgPov.MinerEnabled {
-		hasCpuMining = false
+	if cfgPov.MinerEnabled && w.minerAccount != nil {
+		w.cpuMining = true
 	}
 
-	if hasCpuMining {
+	if w.cpuMining {
 		common.Go(w.cpuMiningLoop)
 	} else {
-		w.logger.Infof("pov cpu miner disabled")
+		w.logger.Infof("cpu mining disabled")
 	}
 
 	return nil
 }
 
 func (w *PovWorker) Stop() error {
-	w.miner.eb.Unsubscribe(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
+	_ = w.miner.eb.Unsubscribe(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
 
 	if w.quitCh != nil {
 		close(w.quitCh)
@@ -129,21 +132,30 @@ func (w *PovWorker) GetPovConsensus() pov.ConsensusPov {
 }
 
 func (w *PovWorker) GetMinerAccount() *types.Account {
+	if w.minerAccount != nil {
+		return w.minerAccount
+	}
+
+	if w.minerAddr.IsZero() {
+		return nil
+	}
+
 	accounts := w.miner.GetPovEngine().GetAccounts()
 	for _, account := range accounts {
 		if account.Address() == w.minerAddr {
-			return account
+			w.minerAccount = account
+			return w.minerAccount
 		}
 	}
+
 	return nil
 }
 
-func (w *PovWorker) GetAlgo() types.PovAlgoType {
-	algo := types.NewPoVHashAlgoFromStr(w.miner.cfg.PoV.MinerAlgo)
-	if algo != types.ALGO_UNKNOWN {
-		return algo
+func (w *PovWorker) GetAlgoType() types.PovAlgoType {
+	if w.algoType == types.ALGO_UNKNOWN {
+		w.algoType = types.NewPoVHashAlgoFromStr(w.miner.cfg.PoV.MinerAlgo)
 	}
-	return types.ALGO_SHA256D
+	return w.algoType
 }
 
 func (w *PovWorker) OnEventRpcSyncCall(name string, in interface{}, out interface{}) {
@@ -152,6 +164,12 @@ func (w *PovWorker) OnEventRpcSyncCall(name string, in interface{}, out interfac
 		w.GetWork(in, out)
 	case "Miner.SubmitWork":
 		w.SubmitWork(in, out)
+	case "Miner.StartMining":
+		w.StartMining(in, out)
+	case "Miner.StopMining":
+		w.StopMining(in, out)
+	case "Miner.GetMiningInfo":
+		w.GetMiningInfo(in, out)
 	}
 }
 
@@ -203,6 +221,51 @@ func (w *PovWorker) SubmitWork(in interface{}, out interface{}) {
 	}
 
 	w.submitBlock(mineBlock)
+
+	outArgs["err"] = nil
+}
+
+func (w *PovWorker) StartMining(in interface{}, out interface{}) {
+	//inArgs := in.(map[interface{}]interface{})
+	outArgs := out.(map[interface{}]interface{})
+
+	if w.cpuMining {
+		outArgs["err"] = errors.New("cpu mining has been enabled already")
+		return
+	}
+
+	w.cpuMining = true
+	common.Go(w.cpuMiningLoop)
+
+	outArgs["err"] = nil
+}
+
+func (w *PovWorker) StopMining(in interface{}, out interface{}) {
+	//inArgs := in.(map[interface{}]interface{})
+	outArgs := out.(map[interface{}]interface{})
+
+	if !w.cpuMining {
+		outArgs["err"] = errors.New("cpu mining has been disabled already")
+		return
+	}
+
+	w.cpuMining = false
+
+	outArgs["err"] = nil
+}
+
+func (w *PovWorker) GetMiningInfo(in interface{}, out interface{}) {
+	//inArgs := in.(map[interface{}]interface{})
+	outArgs := out.(map[interface{}]interface{})
+
+	latestBlock := w.GetChain().LatestBlock()
+
+	outArgs["latestBlock"] = latestBlock
+	outArgs["pooledTx"] = w.GetTxPool().GetPendingTxNum()
+
+	outArgs["coinbase"] = w.minerAddr
+	outArgs["minerAlgo"] = w.algoType
+	outArgs["cpuMining"] = w.cpuMining
 
 	outArgs["err"] = nil
 }
@@ -392,12 +455,19 @@ func (w *PovWorker) cpuMiningLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
+	w.logger.Info("running cpu mining loop")
+
 	for {
 		select {
 		case <-w.quitCh:
-			w.logger.Info("Exiting PoV miner worker loop")
+			w.logger.Info("exiting cpu mining loop")
 			return
 		default:
+			if !w.cpuMining {
+				w.logger.Info("stopping cpu mining loop")
+				return
+			}
+
 			if w.checkValidMiner() {
 				w.mineNextBlock()
 			} else {
@@ -441,7 +511,7 @@ func (w *PovWorker) mineNextBlock() *types.PovMineBlock {
 
 	w.logger.Debugf("try to generate block after latest %d/%s", latestHeader.GetHeight(), latestHeader.GetPrevious())
 
-	mineBlock, err := w.newBlockTemplate(w.GetMinerAccount().Address(), w.algo)
+	mineBlock, err := w.newBlockTemplate(w.GetMinerAccount().Address(), w.algoType)
 	if err != nil {
 		w.logger.Warnf("failed to generate block, err %s", err)
 	}

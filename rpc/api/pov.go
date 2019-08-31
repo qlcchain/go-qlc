@@ -734,10 +734,10 @@ func (api *PovApi) GetMinerDayStats(dayIndex uint32) (*types.PovMinerDayStat, er
 }
 
 type PovApiHashStat struct {
-	ChainHashPS   float64 `json:"chainHashPS"`
-	Sha256dHashPS float64 `json:"sha256dHashPS"`
-	ScryptHashPS  float64 `json:"scryptHashPS"`
-	X11HashPS     float64 `json:"x11HashPS"`
+	ChainHashPS   uint64 `json:"chainHashPS"`
+	Sha256dHashPS uint64 `json:"sha256dHashPS"`
+	ScryptHashPS  uint64 `json:"scryptHashPS"`
+	X11HashPS     uint64 `json:"x11HashPS"`
 }
 
 func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, error) {
@@ -789,7 +789,6 @@ func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, 
 		return apiRsp, nil
 	}
 	timeDiffInt := big.NewInt(int64(maxTime - minTime))
-	timeDiffFlt := new(big.Float).SetInt(timeDiffInt)
 
 	api.logger.Debugf("minTime:%d, maxTime:%d, timeDiff:%s", minTime, maxTime, timeDiffInt.String())
 
@@ -806,29 +805,25 @@ func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, 
 	// chian
 	{
 		chainWorkDiffInt := new(big.Int).Sub(lastTD.Chain.ToBigInt(), firstTD.Chain.ToBigInt())
-		chainWorkDiffFlt := new(big.Float).SetInt(chainWorkDiffInt)
-		apiRsp.ChainHashPS, _ = new(big.Float).Quo(chainWorkDiffFlt, timeDiffFlt).Float64()
+		apiRsp.ChainHashPS = new(big.Int).Div(chainWorkDiffInt, timeDiffInt).Uint64()
 	}
 
 	// sha256d
 	{
 		shaWorkDiffInt := new(big.Int).Sub(lastTD.Sha256d.ToBigInt(), firstTD.Sha256d.ToBigInt())
-		shaWorkDiffFlt := new(big.Float).SetInt(shaWorkDiffInt)
-		apiRsp.Sha256dHashPS, _ = new(big.Float).Quo(shaWorkDiffFlt, timeDiffFlt).Float64()
+		apiRsp.Sha256dHashPS = new(big.Int).Div(shaWorkDiffInt, timeDiffInt).Uint64()
 	}
 
 	// scrypt
 	{
 		scrWorkDiffInt := new(big.Int).Sub(lastTD.Scrypt.ToBigInt(), firstTD.Scrypt.ToBigInt())
-		scrWorkDiffFlt := new(big.Float).SetInt(scrWorkDiffInt)
-		apiRsp.ScryptHashPS, _ = new(big.Float).Quo(scrWorkDiffFlt, timeDiffFlt).Float64()
+		apiRsp.ScryptHashPS = new(big.Int).Div(scrWorkDiffInt, timeDiffInt).Uint64()
 	}
 
 	// x11
 	{
 		x11WorkDiffInt := new(big.Int).Sub(lastTD.X11.ToBigInt(), firstTD.X11.ToBigInt())
-		x11WorkDiffFlt := new(big.Float).SetInt(x11WorkDiffInt)
-		apiRsp.X11HashPS, _ = new(big.Float).Quo(x11WorkDiffFlt, timeDiffFlt).Float64()
+		apiRsp.X11HashPS = new(big.Int).Div(x11WorkDiffInt, timeDiffInt).Uint64()
 	}
 
 	return apiRsp, nil
@@ -857,6 +852,103 @@ type PovApiSubmitWork struct {
 	CoinbaseSig   types.Signature `json:"coinbaseSig"`
 }
 
+func (api *PovApi) StartMining() error {
+	if !api.cfg.PoV.PovEnabled {
+		return errors.New("pov service is disabled")
+	}
+
+	inArgs := make(map[interface{}]interface{})
+
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.StartMining", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return err
+	}
+
+	return nil
+}
+
+func (api *PovApi) StopMining() error {
+	if !api.cfg.PoV.PovEnabled {
+		return errors.New("pov service is disabled")
+	}
+
+	inArgs := make(map[interface{}]interface{})
+
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.StopMining", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return err
+	}
+
+	return nil
+}
+
+type PovApiGetMiningInfo struct {
+	Coinbase         types.Address   `json:"coinbase"`
+	AlgoName         string          `json:"algoName"`
+	AlgoEfficiency   uint            `json:"algoEfficiency"`
+	CpuMining        bool            `json:"cpuMining"`
+	CurrentBlockSize uint32          `json:"currentBlockSize"`
+	CurrentBlockTx   uint32          `json:"currentBlockTx"`
+	PooledTx         uint32          `json:"pooledTx"`
+	BlockNum         uint64          `json:"blockNum"`
+	DifficultyRatio  float64         `json:"difficultyRatio"`
+	HashStat         *PovApiHashStat `json:"hashStat"`
+}
+
+func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
+	inArgs := make(map[interface{}]interface{})
+
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.GetMiningInfo", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+
+	hashStat, err := api.GetHashStats(0, 0)
+	if err != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+
+	latestBlock := outArgs["latestBlock"].(*types.PovBlock)
+
+	apiRsp := new(PovApiGetMiningInfo)
+	apiRsp.Coinbase = outArgs["coinbase"].(types.Address)
+	apiRsp.AlgoName = outArgs["minerAlgo"].(types.PovAlgoType).String()
+	apiRsp.AlgoEfficiency = latestBlock.GetAlgoEfficiency()
+	apiRsp.CpuMining = outArgs["cpuMining"].(bool)
+
+	apiRsp.CurrentBlockSize = uint32(latestBlock.Msgsize())
+	apiRsp.CurrentBlockTx = latestBlock.GetTxNum()
+	apiRsp.PooledTx = outArgs["pooledTx"].(uint32)
+
+	apiRsp.BlockNum = latestBlock.GetHeight()
+	apiRsp.DifficultyRatio = types.CalcDifficultyRatio(latestBlock.GetBits(), common.PovPowLimitBits)
+	apiRsp.HashStat = hashStat
+
+	return apiRsp, nil
+}
+
 func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGetWork, error) {
 	if !api.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
@@ -875,7 +967,7 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 
 	err, ok := outArgs["err"]
 	if !ok {
-		return nil, errors.New("getWork not support")
+		return nil, errors.New("api not support")
 	}
 	if err != nil {
 		err := outArgs["err"].(error)
@@ -928,7 +1020,7 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 
 	err, ok := outArgs["err"]
 	if !ok {
-		return errors.New("submitWork not support")
+		return errors.New("api not support")
 	}
 	if err != nil {
 		err := outArgs["err"].(error)
