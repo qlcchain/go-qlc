@@ -40,6 +40,7 @@ type PovMineBlock struct {
 	AllTxHashes []*Hash
 
 	WorkHash       Hash
+	MinTime        uint32
 	CoinbaseBranch []*Hash
 }
 

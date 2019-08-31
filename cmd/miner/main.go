@@ -111,7 +111,7 @@ func doWork(nodeClient *rpc.Client, minerAccount *types.Account, getWorkRsp *api
 	povHeader := new(types.PovHeader)
 	povHeader.BasHdr.Version = getWorkRsp.Version
 	povHeader.BasHdr.Previous = getWorkRsp.Previous
-	povHeader.BasHdr.Timestamp = getWorkRsp.MinTime
+	povHeader.BasHdr.Timestamp = uint32(time.Now().Unix())
 	povHeader.BasHdr.Bits = getWorkRsp.Bits
 
 	cbTxExtBuf := new(bytes.Buffer)

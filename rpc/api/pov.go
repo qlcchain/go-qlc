@@ -873,10 +873,15 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	outArgs := make(map[interface{}]interface{})
 	api.eb.Publish(common.EventRpcSyncCall, "Miner.GetWork", inArgs, outArgs)
 
-	if outArgs["err"] != nil {
+	err, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("getWork not support")
+	}
+	if err != nil {
 		err := outArgs["err"].(error)
 		return nil, err
 	}
+
 	mineBlock := outArgs["mineBlock"].(*types.PovMineBlock)
 
 	apiRsp := new(PovApiGetWork)
@@ -888,7 +893,7 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	apiRsp.AlgoBits = types.BigToCompact(mineBlock.Header.GetTargetIntByAlgo())
 	apiRsp.Height = mineBlock.Header.GetHeight()
 
-	apiRsp.MinTime = mineBlock.Header.GetTimestamp()
+	apiRsp.MinTime = mineBlock.MinTime
 	apiRsp.CoinBaseData = mineBlock.Header.CbTx.GetCoinBaseData()
 	apiRsp.MerkleBranch = mineBlock.CoinbaseBranch
 
@@ -921,7 +926,11 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	outArgs := make(map[interface{}]interface{})
 	api.eb.Publish(common.EventRpcSyncCall, "Miner.SubmitWork", inArgs, outArgs)
 
-	if outArgs["err"] != nil {
+	err, ok := outArgs["err"]
+	if !ok {
+		return errors.New("submitWork not support")
+	}
+	if err != nil {
 		err := outArgs["err"].(error)
 		return err
 	}
