@@ -26,7 +26,7 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 		prevBlock = &genesis
 	}
 
-	prevTD := prevBlock.Header.GetTargetInt()
+	prevTD := prevBlock.Header.GetAlgoTargetInt()
 
 	block := prevBlock.Clone()
 	block.Header.BasHdr.Timestamp = prevBlock.GetTimestamp() + 1
@@ -39,7 +39,6 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 	block.Header.CbTx.TxOuts[0].Address = cb.Address()
 	block.Header.CbTx.TxOuts[0].Value = common.PovMinerRewardPerBlockBalance
 	block.Header.CbTx.Hash = block.Header.CbTx.ComputeHash()
-	block.Header.CbTx.Signature = cb.Sign(block.Header.CbTx.Hash)
 
 	txHashes := make([]*types.Hash, 0, txNum)
 

@@ -48,8 +48,6 @@ func NewPovWorker(miner *Miner) *PovWorker {
 }
 
 func (w *PovWorker) Init() error {
-	var err error
-
 	blkHeader := &types.PovHeader{
 		AuxHdr: types.NewPovAuxHeader(),
 		CbTx:   types.NewPovCoinBaseTx(1, 2),
@@ -65,17 +63,7 @@ func (w *PovWorker) Init() error {
 	w.logger.Infof("MaxBlockSize:%d, MaxHeaderSize:%d, MaxTxSize:%d, MaxTxNum:%d",
 		common.PovChainBlockSize, blkHdrSize, tx.Msgsize(), w.maxTxPerBlock)
 
-	cbAddress, err := types.HexToAddress(w.GetConfig().PoV.Coinbase)
-	if err != nil {
-		w.logger.Errorf("invalid coinbase address %s", w.GetConfig().PoV.Coinbase)
-	} else if cbAddress.IsZero() {
-		w.logger.Errorf("coinbase address is zero")
-	} else {
-		w.minerAddr = cbAddress
-	}
-
 	w.algoType = types.ALGO_UNKNOWN
-	w.GetAlgoType()
 
 	return nil
 }
@@ -84,22 +72,6 @@ func (w *PovWorker) Start() error {
 	err := w.miner.eb.SubscribeSync(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
 	if err != nil {
 		return err
-	}
-
-	w.GetMinerAccount()
-	if w.minerAccount == nil {
-		w.logger.Errorf("miner account %s not exist", w.minerAddr)
-	}
-
-	cfgPov := w.GetConfig().PoV
-	if cfgPov.MinerEnabled && w.minerAccount != nil {
-		w.cpuMining = true
-	}
-
-	if w.cpuMining {
-		common.Go(w.cpuMiningLoop)
-	} else {
-		w.logger.Infof("cpu mining disabled")
 	}
 
 	return nil
@@ -151,10 +123,11 @@ func (w *PovWorker) GetMinerAccount() *types.Account {
 	return nil
 }
 
+func (w *PovWorker) GetMinerAddress() types.Address {
+	return w.minerAddr
+}
+
 func (w *PovWorker) GetAlgoType() types.PovAlgoType {
-	if w.algoType == types.ALGO_UNKNOWN {
-		w.algoType = types.NewPoVHashAlgoFromStr(w.miner.cfg.PoV.MinerAlgo)
-	}
 	return w.algoType
 }
 
@@ -226,13 +199,31 @@ func (w *PovWorker) SubmitWork(in interface{}, out interface{}) {
 }
 
 func (w *PovWorker) StartMining(in interface{}, out interface{}) {
-	//inArgs := in.(map[interface{}]interface{})
+	inArgs := in.(map[interface{}]interface{})
 	outArgs := out.(map[interface{}]interface{})
 
 	if w.cpuMining {
 		outArgs["err"] = errors.New("cpu mining has been enabled already")
 		return
 	}
+
+	minerAddr := inArgs["minerAddr"].(types.Address)
+	algoName := inArgs["algoName"].(string)
+	algoType := types.NewPoVHashAlgoFromStr(algoName)
+
+	if algoType == types.ALGO_UNKNOWN {
+		outArgs["err"] = errors.New("invalid algo name")
+		return
+	}
+
+	err := w.checkMinerPledge(minerAddr)
+	if err != nil {
+		outArgs["err"] = err
+		return
+	}
+
+	w.minerAddr = minerAddr
+	w.algoType = algoType
 
 	w.cpuMining = true
 	common.Go(w.cpuMiningLoop)
@@ -263,7 +254,7 @@ func (w *PovWorker) GetMiningInfo(in interface{}, out interface{}) {
 	outArgs["latestBlock"] = latestBlock
 	outArgs["pooledTx"] = w.GetTxPool().GetPendingTxNum()
 
-	outArgs["coinbase"] = w.minerAddr
+	outArgs["minerAddr"] = w.minerAddr
 	outArgs["minerAlgo"] = w.algoType
 	outArgs["cpuMining"] = w.cpuMining
 
@@ -404,12 +395,6 @@ func (w *PovWorker) checkAndFillBlockByResult(mineBlock *types.PovMineBlock, res
 	}
 
 	mineBlock.Header.CbTx.Hash = result.CoinbaseHash
-	mineBlock.Header.CbTx.Signature = result.CoinbaseSig
-	minerAddr := mineBlock.Header.GetMinerAddr()
-	verifyRes := minerAddr.Verify(result.CoinbaseHash.Bytes(), result.CoinbaseSig.Bytes())
-	if !verifyRes {
-		return fmt.Errorf("coinbase signature verify failed")
-	}
 
 	cbTxPov := mineBlock.Body.Txs[0]
 	cbTxPov.Hash = result.CoinbaseHash
@@ -455,7 +440,7 @@ func (w *PovWorker) cpuMiningLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	w.logger.Info("running cpu mining loop")
+	w.logger.Infof("running cpu mining loop, miner:%s, algo:%s", w.GetMinerAddress(), w.GetAlgoType())
 
 	for {
 		select {
@@ -483,9 +468,9 @@ func (w *PovWorker) checkValidMiner() bool {
 		return false
 	}
 
-	cbAccount := w.GetMinerAccount()
-	if cbAccount == nil {
-		w.logger.Warnf("miner pausing for coinbase account not exist")
+	minerAddr := w.GetMinerAddress()
+	if minerAddr.IsZero() {
+		w.logger.Warnf("miner pausing for miner account not exist")
 		return false
 	}
 
@@ -497,7 +482,7 @@ func (w *PovWorker) checkValidMiner() bool {
 		return false
 	}
 
-	err := w.checkMinerPledge(cbAccount.Address())
+	err := w.checkMinerPledge(minerAddr)
 	if err != nil {
 		w.logger.Warn(err)
 		return false
@@ -511,7 +496,7 @@ func (w *PovWorker) mineNextBlock() *types.PovMineBlock {
 
 	w.logger.Debugf("try to generate block after latest %d/%s", latestHeader.GetHeight(), latestHeader.GetPrevious())
 
-	mineBlock, err := w.newBlockTemplate(w.GetMinerAccount().Address(), w.algoType)
+	mineBlock, err := w.newBlockTemplate(w.GetMinerAddress(), w.GetAlgoType())
 	if err != nil {
 		w.logger.Warnf("failed to generate block, err %s", err)
 	}
@@ -529,8 +514,6 @@ func (w *PovWorker) mineNextBlock() *types.PovMineBlock {
 }
 
 func (w *PovWorker) solveBlock(mineBlock *types.PovMineBlock, ticker *time.Ticker, quitCh chan struct{}) bool {
-	cbAccount := w.GetMinerAccount()
-
 	loopBeginTime := time.Now()
 	lastTxUpdateBegin := w.GetTxPool().LastUpdated()
 
@@ -539,7 +522,7 @@ func (w *PovWorker) solveBlock(mineBlock *types.PovMineBlock, ticker *time.Ticke
 
 	//w.logger.Debugf("before seal header %+v", genBlock.Header)
 
-	err := w.GetPovConsensus().SealHeader(mineBlock.Header, cbAccount, sealQuitCh, sealResultCh)
+	err := w.GetPovConsensus().SealHeader(mineBlock.Header, sealQuitCh, sealResultCh)
 	if err != nil {
 		w.logger.Errorf("failed to seal header, err %s", err)
 		return false
@@ -560,7 +543,6 @@ Loop:
 				mineBlock.Header.CbTx.Extra = make([]byte, len(resultHeader.CbTx.Extra))
 				copy(mineBlock.Header.CbTx.Extra, resultHeader.CbTx.Extra)
 				mineBlock.Header.CbTx.Hash = mineBlock.Header.CbTx.ComputeHash()
-				mineBlock.Header.CbTx.Signature = cbAccount.Sign(mineBlock.Header.CbTx.Hash)
 
 				mineBlock.Body.Txs[0].Hash = mineBlock.Header.CbTx.Hash
 

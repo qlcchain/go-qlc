@@ -72,6 +72,13 @@ func (h Hash) String() string {
 	return hex.EncodeToString(h[:])
 }
 
+func (h Hash) ReverseString() string {
+	for i := 0; i < HashSize/2; i++ {
+		h[i], h[HashSize-1-i] = h[HashSize-1-i], h[i]
+	}
+	return hex.EncodeToString(h[:])
+}
+
 //Of convert hex string to Hash
 func (h *Hash) Of(hexString string) error {
 	s := util.TrimQuotes(hexString)

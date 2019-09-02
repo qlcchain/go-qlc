@@ -8,7 +8,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"log"
@@ -16,59 +15,18 @@ import (
 )
 
 var flagNodeUrl string
-var flagPriKey string
-var flagSeed string
+var flagMiner string
 var flagAlgo string
 
 func main() {
 	flag.StringVar(&flagNodeUrl, "nodeurl", "http://127.0.0.1:9735", "RPC URL of node")
-	flag.StringVar(&flagPriKey, "privatekey", "", "private key of miner account")
-	flag.StringVar(&flagSeed, "seed", "", "seed of miner account")
+	flag.StringVar(&flagMiner, "miner", "", "address of miner account")
 	flag.StringVar(&flagAlgo, "algo", "SHA256D", "algo name, such as SHA256D/X11/SCRYPT")
 	flag.Parse()
 
-	var minerAccount *types.Account
-
-	if len(flagPriKey) > 0 {
-		pkBytes, err := hex.DecodeString(flagPriKey)
-		if err != nil {
-			log.Printf("decode private key, err %s", err)
-			return
-		}
-		if len(pkBytes) != ed25519.PrivateKeySize {
-			log.Printf("invalid private key size %d", len(pkBytes))
-			return
-		}
-
-		minerAccount = types.NewAccount(pkBytes)
-		if minerAccount == nil {
-			log.Println("failed to new account")
-			return
-		}
-	}
-
-	if len(flagSeed) > 0 {
-		seedBytes, err := hex.DecodeString(flagSeed)
-		if err != nil {
-			log.Printf("decode seed, err %s", err)
-			return
-		}
-
-		minerSeed, err := types.BytesToSeed(seedBytes)
-		if err != nil {
-			log.Printf("failed to new seed, err %s", err)
-			return
-		}
-
-		minerAccount, err = minerSeed.Account(0)
-		if minerAccount == nil {
-			log.Println("failed to new account")
-			return
-		}
-	}
-
-	if minerAccount == nil {
-		log.Printf("miner account not exist")
+	minerAddr, err := types.HexToAddress(flagMiner)
+	if err != nil {
+		log.Printf("invalid miner address")
 		return
 	}
 
@@ -79,11 +37,11 @@ func main() {
 	}
 	defer nodeClient.Close()
 
-	log.Printf("running miner, account:%s, algo:%s", minerAccount.Address(), flagAlgo)
+	log.Printf("running miner, account:%s, algo:%s", minerAddr, flagAlgo)
 
 	for {
 		getWorkRsp := new(api.PovApiGetWork)
-		err = nodeClient.Call(&getWorkRsp, "pov_getWork", minerAccount.Address(), flagAlgo)
+		err = nodeClient.Call(&getWorkRsp, "pov_getWork", minerAddr, flagAlgo)
 		if err != nil {
 			log.Println(err)
 			time.Sleep(10 * time.Second)
@@ -91,7 +49,7 @@ func main() {
 		}
 		log.Printf("getWork response: %s", util.ToString(getWorkRsp))
 
-		submitWorkReq := doWork(nodeClient, minerAccount, getWorkRsp)
+		submitWorkReq := doWork(nodeClient, minerAddr, getWorkRsp)
 		if submitWorkReq == nil {
 			time.Sleep(1 * time.Second)
 			continue
@@ -107,7 +65,7 @@ func main() {
 	}
 }
 
-func doWork(nodeClient *rpc.Client, minerAccount *types.Account, getWorkRsp *api.PovApiGetWork) *api.PovApiSubmitWork {
+func doWork(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *api.PovApiGetWork) *api.PovApiSubmitWork {
 	povHeader := new(types.PovHeader)
 	povHeader.BasHdr.Version = getWorkRsp.Version
 	povHeader.BasHdr.Previous = getWorkRsp.Previous
@@ -117,15 +75,23 @@ func doWork(nodeClient *rpc.Client, minerAccount *types.Account, getWorkRsp *api
 	cbTxExtBuf := new(bytes.Buffer)
 	cbTxExtBuf.Write(util.LE_Uint64ToBytes(getWorkRsp.Height))
 	cbTxExtBuf.WriteString("QLC CPU Miner")
+	cbTxExtData := cbTxExtBuf.Bytes()
 
+	// hash data = coinbase1 + extra data + coinbase2
+	// extra data = minerinfo + extranonce1 + extranonce2
 	cbTxDataBuf := new(bytes.Buffer)
-	cbTxDataBuf.Write(getWorkRsp.CoinBaseData)
-	cbTxDataBuf.Write(cbTxExtBuf.Bytes())
+	cbData1, _ := hex.DecodeString(getWorkRsp.CoinBaseData1)
+	cbTxDataBuf.Write(cbData1)
+	if len(cbTxExtData) > 0 {
+		cbTxDataBuf.Write(cbTxExtData)
+	}
+	cbData2, _ := hex.DecodeString(getWorkRsp.CoinBaseData2)
+	cbTxDataBuf.Write(cbData2)
 	cbTxHash := types.Sha256D_HashData(cbTxDataBuf.Bytes())
 
 	povHeader.BasHdr.MerkleRoot = merkle.CalcCoinbaseMerkleRoot(&cbTxHash, getWorkRsp.MerkleBranch)
 
-	targetIntAlgo := types.CompactToBig(getWorkRsp.AlgoBits)
+	targetIntAlgo := types.CompactToBig(getWorkRsp.Bits)
 
 	lastCheckTm := time.Now()
 
@@ -139,9 +105,8 @@ func doWork(nodeClient *rpc.Client, minerAccount *types.Account, getWorkRsp *api
 			submitWorkReq := new(api.PovApiSubmitWork)
 			submitWorkReq.WorkHash = getWorkRsp.WorkHash
 
-			submitWorkReq.CoinbaseExtra = cbTxExtBuf.Bytes()
+			submitWorkReq.CoinbaseExtra = hex.EncodeToString(cbTxExtBuf.Bytes())
 			submitWorkReq.CoinbaseHash = cbTxHash
-			submitWorkReq.CoinbaseSig = minerAccount.Sign(cbTxHash)
 
 			submitWorkReq.MerkleRoot = povHeader.BasHdr.MerkleRoot
 			submitWorkReq.Timestamp = povHeader.BasHdr.Timestamp

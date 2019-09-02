@@ -134,7 +134,7 @@ func (c *ConsensusPow) verifyTarget(header *types.PovHeader) error {
 	powInt := powHash.ToBigInt()
 	powBits := types.BigToCompact(powInt)
 
-	targetIntAlgo := header.GetTargetIntByAlgo()
+	targetIntAlgo := header.GetAlgoTargetInt()
 
 	if powInt.Cmp(targetIntAlgo) > 0 {
 		algoBits := types.BigToCompact(targetIntAlgo)
@@ -144,7 +144,7 @@ func (c *ConsensusPow) verifyTarget(header *types.PovHeader) error {
 	return nil
 }
 
-func (c *ConsensusPow) SealHeader(header *types.PovHeader, cbAccount *types.Account, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error {
+func (c *ConsensusPow) SealHeader(header *types.PovHeader, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error {
 	var wgMine sync.WaitGroup
 
 	abortCh := make(chan struct{})
@@ -154,8 +154,8 @@ func (c *ConsensusPow) SealHeader(header *types.PovHeader, cbAccount *types.Acco
 		wgMine.Add(1)
 		go func(id int, gap int) {
 			defer wgMine.Done()
-			c.mineWorker(id, gap, header, cbAccount, abortCh, localCh)
-		}(id, int(c.mineWorkerNum))
+			c.mineWorker(id, gap, header, abortCh, localCh)
+		}(id, c.mineWorkerNum)
 	}
 
 	go func() {
@@ -177,9 +177,9 @@ func (c *ConsensusPow) SealHeader(header *types.PovHeader, cbAccount *types.Acco
 	return nil
 }
 
-func (c *ConsensusPow) mineWorker(id int, gap int, header *types.PovHeader, cbAccount *types.Account, abortCh chan struct{}, localCh chan *types.PovHeader) {
+func (c *ConsensusPow) mineWorker(id int, gap int, header *types.PovHeader, abortCh chan struct{}, localCh chan *types.PovHeader) {
 	copyHdr := header.Copy()
-	targetIntAlgo := copyHdr.GetTargetIntByAlgo()
+	targetIntAlgo := copyHdr.GetAlgoTargetInt()
 
 	tryCnt := 0
 	for nonce := uint32(gap); nonce < common.PovMaxNonce; nonce += uint32(gap) {
@@ -219,7 +219,10 @@ func (c *ConsensusPow) calcNextRequiredTarget(lastHeader *types.PovHeader, curHe
 
 func (c *ConsensusPow) calcNextRequiredTargetByQLC(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
 	if (lastHeader.GetHeight()+1)%uint64(common.PovChainTargetCycle) != 0 {
-		return lastHeader.GetBits(), nil
+		nextTargetInt := lastHeader.GetNormTargetInt()
+		nextTargetIntAlgo := new(big.Int).Mul(nextTargetInt, big.NewInt(int64(curHeader.GetAlgoEfficiency())))
+		nextTargetIntBitsAlgo := types.BigToCompact(nextTargetIntAlgo)
+		return nextTargetIntBitsAlgo, nil
 	}
 
 	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
@@ -245,18 +248,22 @@ func (c *ConsensusPow) calcNextRequiredTargetByQLC(lastHeader *types.PovHeader, 
 		actualTimespan = maxRetargetTimespan
 	}
 
-	oldTargetInt := lastHeader.GetTargetInt()
+	// convert to normalized target by algo efficiency
+	oldTargetInt := lastHeader.GetNormTargetInt()
 
 	// nextTargetInt = oldTargetInt * actualTimespan / targetTimeSpan
 	nextTargetInt := new(big.Int).Mul(oldTargetInt, big.NewInt(int64(actualTimespan)))
 	nextTargetInt = new(big.Int).Div(nextTargetInt, big.NewInt(int64(targetTimeSpan)))
 
+	// convert to algo target
+	nextTargetIntAlgo := new(big.Int).Mul(nextTargetInt, big.NewInt(int64(curHeader.GetAlgoEfficiency())))
+
 	// at least pow limit
-	if nextTargetInt.Cmp(common.PovPowLimitInt) > 0 {
-		nextTargetInt = common.PovPowLimitInt
+	if nextTargetIntAlgo.Cmp(common.PovPowLimitInt) > 0 {
+		nextTargetIntAlgo = common.PovPowLimitInt
 	}
 
-	nextTargetBits := types.BigToCompact(nextTargetInt)
+	nextTargetBitsAlgo := types.BigToCompact(nextTargetIntAlgo)
 
 	c.logger.Infof("Difficulty target at block height %d", lastHeader.GetHeight()+1)
 	c.logger.Infof("Old target %d (%s)", oldTargetInt.BitLen(), oldTargetInt.Text(16))
@@ -264,13 +271,13 @@ func (c *ConsensusPow) calcNextRequiredTargetByQLC(lastHeader *types.PovHeader, 
 	c.logger.Infof("Actual timespan %v, target timespan %v",
 		time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
 
-	return nextTargetBits, nil
+	return nextTargetBitsAlgo, nil
 }
 
 func (c *ConsensusPow) calcNextRequiredTargetByDGW(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
 	var nextTargetInt *big.Int
 
-	oldTargetInt := lastHeader.GetTargetInt()
+	oldTargetInt := lastHeader.GetNormTargetInt()
 	pastBlockCount := common.PovChainTargetCycle
 	targetTimeSpan := int64(common.PovChainBlockInterval * pastBlockCount)
 	actualTimespan := curHeader.GetTimestamp() - lastHeader.GetTimestamp()
@@ -294,7 +301,8 @@ func (c *ConsensusPow) calcNextRequiredTargetByDGW(lastHeader *types.PovHeader, 
 		pastSumTargetInt := big.NewInt(0)
 		firstHeader := lastHeader
 		for blockCount := 0; blockCount < pastBlockCount; blockCount++ {
-			scanTargetInt := firstHeader.GetTargetInt()
+			// convert to normalized target by algo efficiency
+			scanTargetInt := firstHeader.GetNormTargetInt()
 
 			pastSumTargetInt = new(big.Int).Add(pastSumTargetInt, scanTargetInt)
 
@@ -326,11 +334,14 @@ func (c *ConsensusPow) calcNextRequiredTargetByDGW(lastHeader *types.PovHeader, 
 		nextTargetInt = new(big.Int).Div(nextTargetInt, big.NewInt(targetTimeSpan))
 	}
 
+	// convert to algo target
+	nextTargetIntAlgo := new(big.Int).Mul(nextTargetInt, big.NewInt(int64(curHeader.GetAlgoEfficiency())))
+
 	// at least pow limit
-	if nextTargetInt.Cmp(common.PovPowLimitInt) > 0 {
-		nextTargetInt = common.PovPowLimitInt
+	if nextTargetIntAlgo.Cmp(common.PovPowLimitInt) > 0 {
+		nextTargetIntAlgo = common.PovPowLimitInt
 	}
-	nextTargetBits := types.BigToCompact(nextTargetInt)
+	nextTargetBitsAlgo := types.BigToCompact(nextTargetIntAlgo)
 
 	if (curHeader.GetHeight()+1)%uint64(pastBlockCount) == 0 {
 		c.logger.Infof("Difficulty target at block height %d", lastHeader.GetHeight()+1)
@@ -340,7 +351,7 @@ func (c *ConsensusPow) calcNextRequiredTargetByDGW(lastHeader *types.PovHeader, 
 			time.Duration(actualTimespan)*time.Second, time.Duration(targetTimeSpan)*time.Second)
 	}
 
-	return nextTargetBits, nil
+	return nextTargetBitsAlgo, nil
 }
 
 func (c *ConsensusPow) calcNextRequiredTargetByAlgo(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
@@ -384,7 +395,8 @@ func (c *ConsensusPow) calcNextRequiredTargetByAlgo(lastHeader *types.PovHeader,
 	nCountAlgoFastBlocks := uint64(0)
 
 	for nCountBlocks < nPastBlocks && nCountAlgoBlocks < nPastAlgoBlocks {
-		bnTarget := pindex.GetTargetInt()
+		// convert to normalized target by algo efficiency
+		bnTarget := pindex.GetNormTargetInt()
 
 		// calculate algo average
 		if curAlgo == (pindex.BasHdr.Version & uint32(types.ALGO_VERSION_MASK)) {
@@ -492,14 +504,17 @@ func (c *ConsensusPow) calcNextRequiredTargetByAlgo(lastHeader *types.PovHeader,
 
 	//c.logger.Infof("Chain New target %d (%s)", bnNew.BitLen(), bnNew.Text(16))
 
+	// convert to algo target
+	bnNewAlgo := new(big.Int).Mul(bnNew, big.NewInt(int64(curHeader.GetAlgoEfficiency())))
+
 	// at least PoW limit
-	if bnNew.Cmp(common.PovPowLimitInt) > 0 {
-		bnNew = common.PovPowLimitInt
+	if bnNewAlgo.Cmp(common.PovPowLimitInt) > 0 {
+		bnNewAlgo = common.PovPowLimitInt
 	}
-	bnNewBits := types.BigToCompact(bnNew)
+	bnNewBitsAlgo := types.BigToCompact(bnNewAlgo)
 
 	if (curHeader.GetHeight()+1)%uint64(10) == 0 {
-		bnOld := lastHeader.GetTargetInt()
+		bnOld := lastHeader.GetNormTargetInt()
 		c.logger.Infof("Difficulty target at block height %d", lastHeader.GetHeight()+1)
 		c.logger.Infof("Old target %d (%s)", bnOld.BitLen(), bnOld.Text(16))
 		c.logger.Infof("New target %d (%s)", bnNew.BitLen(), bnNew.Text(16))
@@ -507,5 +522,5 @@ func (c *ConsensusPow) calcNextRequiredTargetByAlgo(lastHeader *types.PovHeader,
 			time.Duration(nActualTimespan)*time.Second, time.Duration(nTargetTimespan)*time.Second)
 	}
 
-	return bnNewBits, nil
+	return bnNewBitsAlgo, nil
 }

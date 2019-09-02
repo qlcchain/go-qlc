@@ -26,12 +26,17 @@ type PovBaseHeader struct {
 	Previous   Hash   `msg:"p,extension" json:"previous"`
 	MerkleRoot Hash   `msg:"mr,extension" json:"merkleRoot"`
 	Timestamp  uint32 `msg:"ts" json:"timestamp"`
-	Bits       uint32 `msg:"b" json:"bits"` //normalized target
+	Bits       uint32 `msg:"b" json:"bits"` // algo bits
 	Nonce      uint32 `msg:"n" json:"nonce"`
 
 	// just for internal use
 	Hash   Hash   `msg:"ha,extension" json:"hash"`
 	Height uint64 `msg:"he" json:"height"`
+
+	// just for cache use
+	NormBits      uint32   `msg:"-" json:"-"` // normalized bits
+	NormTargetInt *big.Int `msg:"-" json:"-"` // normalized target big int
+	AlgoTargetInt *big.Int `msg:"-" json:"-"` //
 }
 
 func (bh *PovBaseHeader) Serialize() ([]byte, error) {
@@ -97,15 +102,14 @@ func (cbto *PovCoinBaseTxOut) Deserialize(text []byte) error {
 }
 
 type PovCoinBaseTx struct {
-	StateHash Hash                `msg:"sh,extension" json:"stateHash"`
-	TxNum     uint32              `msg:"tn" json:"txNum"`
-	TxOuts    []*PovCoinBaseTxOut `msg:"tos" json:"txOuts"`
+	// TxIn like BTC's PreviousOutPoint
+	StateHash Hash   `msg:"sh,extension" json:"stateHash"`
+	TxNum     uint32 `msg:"tn" json:"txNum"`
+	Extra     []byte `msg:"ext" json:"extra"` // filled by miner, 0 ~ 100
+	Reserved1 uint32 `msg:"resv1" json:"reserved1"`
 
-	// only used by miner, 0 ~ 100
-	Extra []byte `msg:"ext" json:"extra"`
-
-	// !!! NOT IN HASH !!!
-	Signature Signature `msg:"sig,extension" json:"signature"`
+	// TxOut like BTC
+	TxOuts []*PovCoinBaseTxOut `msg:"tos" json:"txOuts"`
 
 	// just for internal use
 	Hash Hash `msg:"h,extension" json:"hash"`
@@ -153,12 +157,23 @@ func (cbtx *PovCoinBaseTx) Deserialize(text []byte) error {
 	return nil
 }
 
-func (cbtx *PovCoinBaseTx) GetCoinBaseData() []byte {
+func (cbtx *PovCoinBaseTx) GetCoinBaseData1() []byte {
 	buf := new(bytes.Buffer)
 
+	// TxIn like BTC's PreviousOutPoint, size = 32 + 4
 	buf.Write(cbtx.StateHash.Bytes())
 	buf.Write(util.LE_Uint32ToBytes(cbtx.TxNum))
 
+	return buf.Bytes()
+}
+
+func (cbtx *PovCoinBaseTx) GetCoinBaseData2() []byte {
+	buf := new(bytes.Buffer)
+
+	// TxIn Sequence like BTC
+	buf.Write(util.LE_Uint32ToBytes(cbtx.Reserved1))
+
+	// TxOut like BTC
 	for _, cbto := range cbtx.TxOuts {
 		buf.Write(cbto.Address.Bytes())
 		buf.Write(cbto.Value.Bytes())
@@ -170,11 +185,13 @@ func (cbtx *PovCoinBaseTx) GetCoinBaseData() []byte {
 func (cbtx *PovCoinBaseTx) BuildHashData() []byte {
 	buf := new(bytes.Buffer)
 
-	buf.Write(cbtx.GetCoinBaseData())
-
+	// hash data = coinbase1 + extra + coinbase2
+	// extra = minerinfo + extranonce1 + extranonce2
+	buf.Write(cbtx.GetCoinBaseData1())
 	if len(cbtx.Extra) > 0 {
 		buf.Write(cbtx.Extra)
 	}
+	buf.Write(cbtx.GetCoinBaseData2())
 
 	return buf.Bytes()
 }
@@ -229,14 +246,27 @@ func (h *PovHeader) GetBits() uint32 {
 	return h.BasHdr.Bits
 }
 
-func (h *PovHeader) GetTargetInt() *big.Int {
-	return CompactToBig(h.BasHdr.Bits)
+func (h *PovHeader) GetAlgoTargetInt() *big.Int {
+	if h.BasHdr.AlgoTargetInt == nil {
+		h.BasHdr.AlgoTargetInt = CompactToBig(h.BasHdr.Bits)
+	}
+	return h.BasHdr.AlgoTargetInt
 }
 
-func (h *PovHeader) GetTargetIntByAlgo() *big.Int {
-	nt := CompactToBig(h.BasHdr.Bits)
-	at := new(big.Int).Mul(nt, big.NewInt(int64(h.GetAlgoEfficiency())))
-	return at
+func (h *PovHeader) GetNormBits() uint32 {
+	if h.BasHdr.NormBits == 0 {
+		h.GetNormTargetInt()
+	}
+	return h.BasHdr.NormBits
+}
+
+func (h *PovHeader) GetNormTargetInt() *big.Int {
+	if h.BasHdr.NormTargetInt == nil {
+		nt := h.GetAlgoTargetInt()
+		h.BasHdr.NormTargetInt = new(big.Int).Div(nt, big.NewInt(int64(h.GetAlgoEfficiency())))
+		h.BasHdr.NormBits = BigToCompact(h.BasHdr.NormTargetInt)
+	}
+	return h.BasHdr.NormTargetInt
 }
 
 func (h *PovHeader) GetNonce() uint32 {
@@ -434,20 +464,12 @@ func (blk *PovBlock) GetTimestamp() uint32 {
 	return blk.Header.BasHdr.Timestamp
 }
 
-func (blk *PovBlock) GetTargetInt() *big.Int {
-	return blk.Header.GetTargetInt()
-}
-
 func (blk *PovBlock) GetStateHash() Hash {
 	return blk.Header.CbTx.StateHash
 }
 
 func (blk *PovBlock) GetMinerAddr() Address {
 	return blk.Header.GetMinerAddr()
-}
-
-func (blk *PovBlock) GetSignature() Signature {
-	return blk.Header.CbTx.Signature
 }
 
 func (blk *PovBlock) GetTxNum() uint32 {

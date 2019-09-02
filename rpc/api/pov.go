@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/qlcchain/go-qlc/config"
 	"math/big"
 	"sync/atomic"
@@ -733,14 +734,14 @@ func (api *PovApi) GetMinerDayStats(dayIndex uint32) (*types.PovMinerDayStat, er
 	return dayStat, nil
 }
 
-type PovApiHashStat struct {
+type PovApiHashInfo struct {
 	ChainHashPS   uint64 `json:"chainHashPS"`
 	Sha256dHashPS uint64 `json:"sha256dHashPS"`
 	ScryptHashPS  uint64 `json:"scryptHashPS"`
 	X11HashPS     uint64 `json:"x11HashPS"`
 }
 
-func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, error) {
+func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, error) {
 	latestHdr, err := api.ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
@@ -782,7 +783,7 @@ func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, 
 		}
 	}
 
-	apiRsp := new(PovApiHashStat)
+	apiRsp := new(PovApiHashInfo)
 
 	// In case there's a situation where minTime == maxTime, we don't want a divide by zero exception.
 	if minTime == maxTime {
@@ -790,7 +791,7 @@ func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, 
 	}
 	timeDiffInt := big.NewInt(int64(maxTime - minTime))
 
-	api.logger.Debugf("minTime:%d, maxTime:%d, timeDiff:%s", minTime, maxTime, timeDiffInt.String())
+	//api.logger.Debugf("minTime:%d, maxTime:%d, timeDiff:%s", minTime, maxTime, timeDiffInt.String())
 
 	lastTD, err := api.ledger.GetPovTD(lastHdr.GetHash(), lastHdr.GetHeight())
 	if err != nil {
@@ -830,34 +831,35 @@ func (api *PovApi) GetHashStats(height uint64, lookup uint64) (*PovApiHashStat, 
 }
 
 type PovApiGetWork struct {
-	WorkHash     types.Hash    `json:"workHash"`
-	Version      uint32        `json:"version"`
-	Previous     types.Hash    `json:"previous"`
-	Bits         uint32        `json:"bits"`
-	AlgoBits     uint32        `json:"algoBits"`
-	Height       uint64        `json:"height"`
-	MinTime      uint32        `json:"minTime"`
-	MerkleBranch []*types.Hash `json:"merkleBranch"`
-	CoinBaseData []byte        `json:"coinbaseData"`
+	WorkHash      types.Hash    `json:"workHash"`
+	Version       uint32        `json:"version"`
+	Previous      types.Hash    `json:"previous"`
+	Bits          uint32        `json:"bits"`
+	Height        uint64        `json:"height"`
+	MinTime       uint32        `json:"minTime"`
+	MerkleBranch  []*types.Hash `json:"merkleBranch"`
+	CoinBaseData1 string        `json:"coinbaseData1"`
+	CoinBaseData2 string        `json:"coinbaseData2"`
 }
 
 type PovApiSubmitWork struct {
-	WorkHash      types.Hash      `json:"workHash"`
-	BlockHash     types.Hash      `json:"blockHash"`
-	MerkleRoot    types.Hash      `json:"merkleRoot"`
-	Timestamp     uint32          `json:"timestamp"`
-	Nonce         uint32          `json:"nonce"`
-	CoinbaseExtra []byte          `json:"coinbaseExtra"`
-	CoinbaseHash  types.Hash      `json:"coinbaseHash"`
-	CoinbaseSig   types.Signature `json:"coinbaseSig"`
+	WorkHash      types.Hash `json:"workHash"`
+	BlockHash     types.Hash `json:"blockHash"`
+	MerkleRoot    types.Hash `json:"merkleRoot"`
+	Timestamp     uint32     `json:"timestamp"`
+	Nonce         uint32     `json:"nonce"`
+	CoinbaseExtra string     `json:"coinbaseExtra"`
+	CoinbaseHash  types.Hash `json:"coinbaseHash"`
 }
 
-func (api *PovApi) StartMining() error {
+func (api *PovApi) StartMining(minerAddr types.Address, algoName string) error {
 	if !api.cfg.PoV.PovEnabled {
 		return errors.New("pov service is disabled")
 	}
 
 	inArgs := make(map[interface{}]interface{})
+	inArgs["minerAddr"] = minerAddr
+	inArgs["algoName"] = algoName
 
 	outArgs := make(map[interface{}]interface{})
 	api.eb.Publish(common.EventRpcSyncCall, "Miner.StartMining", inArgs, outArgs)
@@ -897,7 +899,7 @@ func (api *PovApi) StopMining() error {
 }
 
 type PovApiGetMiningInfo struct {
-	Coinbase         types.Address   `json:"coinbase"`
+	MinerAddr        string          `json:"minerAddr"`
 	AlgoName         string          `json:"algoName"`
 	AlgoEfficiency   uint            `json:"algoEfficiency"`
 	CpuMining        bool            `json:"cpuMining"`
@@ -906,7 +908,7 @@ type PovApiGetMiningInfo struct {
 	PooledTx         uint32          `json:"pooledTx"`
 	BlockNum         uint64          `json:"blockNum"`
 	DifficultyRatio  float64         `json:"difficultyRatio"`
-	HashStat         *PovApiHashStat `json:"hashStat"`
+	HashInfo         *PovApiHashInfo `json:"hashInfo"`
 }
 
 func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
@@ -924,17 +926,23 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 		return nil, err
 	}
 
-	hashStat, err := api.GetHashStats(0, 0)
+	hashInfo, err := api.GetHashInfo(0, 0)
 	if err != nil {
 		err := outArgs["err"].(error)
 		return nil, err
 	}
 
 	latestBlock := outArgs["latestBlock"].(*types.PovBlock)
+	minerAddr := outArgs["minerAddr"].(types.Address)
+	algoType := outArgs["minerAlgo"].(types.PovAlgoType)
 
 	apiRsp := new(PovApiGetMiningInfo)
-	apiRsp.Coinbase = outArgs["coinbase"].(types.Address)
-	apiRsp.AlgoName = outArgs["minerAlgo"].(types.PovAlgoType).String()
+	if !minerAddr.IsZero() {
+		apiRsp.MinerAddr = minerAddr.String()
+	}
+	if algoType != types.ALGO_UNKNOWN {
+		apiRsp.AlgoName = algoType.String()
+	}
 	apiRsp.AlgoEfficiency = latestBlock.GetAlgoEfficiency()
 	apiRsp.CpuMining = outArgs["cpuMining"].(bool)
 
@@ -943,8 +951,8 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	apiRsp.PooledTx = outArgs["pooledTx"].(uint32)
 
 	apiRsp.BlockNum = latestBlock.GetHeight()
-	apiRsp.DifficultyRatio = types.CalcDifficultyRatio(latestBlock.GetBits(), common.PovPowLimitBits)
-	apiRsp.HashStat = hashStat
+	apiRsp.DifficultyRatio = types.CalcDifficultyRatio(latestBlock.Header.GetNormBits(), common.PovPowLimitBits)
+	apiRsp.HashInfo = hashInfo
 
 	return apiRsp, nil
 }
@@ -982,12 +990,13 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	apiRsp.Version = mineBlock.Header.GetVersion()
 	apiRsp.Previous = mineBlock.Header.GetPrevious()
 	apiRsp.Bits = mineBlock.Header.GetBits()
-	apiRsp.AlgoBits = types.BigToCompact(mineBlock.Header.GetTargetIntByAlgo())
 	apiRsp.Height = mineBlock.Header.GetHeight()
 
 	apiRsp.MinTime = mineBlock.MinTime
-	apiRsp.CoinBaseData = mineBlock.Header.CbTx.GetCoinBaseData()
 	apiRsp.MerkleBranch = mineBlock.CoinbaseBranch
+
+	apiRsp.CoinBaseData1 = hex.EncodeToString(mineBlock.Header.CbTx.GetCoinBaseData1())
+	apiRsp.CoinBaseData2 = hex.EncodeToString(mineBlock.Header.CbTx.GetCoinBaseData2())
 
 	return apiRsp, nil
 }
@@ -1002,15 +1011,23 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 		return errors.New("pov sync is not finished, please check it")
 	}
 
+	var cbExtraBytes []byte
+	if len(work.CoinbaseExtra) > 0 {
+		var err error
+		cbExtraBytes, err = hex.DecodeString(work.CoinbaseExtra)
+		if err != nil {
+			return fmt.Errorf("decode CoinbaseExtra err %s", err)
+		}
+	}
+
 	mineResult := types.NewPovMineResult()
 	mineResult.WorkHash = work.WorkHash
 	mineResult.BlockHash = work.BlockHash
 	mineResult.MerkleRoot = work.MerkleRoot
 	mineResult.Timestamp = work.Timestamp
 	mineResult.Nonce = work.Nonce
-	mineResult.CoinbaseExtra = work.CoinbaseExtra
+	mineResult.CoinbaseExtra = cbExtraBytes
 	mineResult.CoinbaseHash = work.CoinbaseHash
-	mineResult.CoinbaseSig = work.CoinbaseSig
 
 	inArgs := make(map[interface{}]interface{})
 	inArgs["mineResult"] = mineResult

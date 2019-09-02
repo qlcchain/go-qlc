@@ -958,7 +958,7 @@ func (bc *PovBlockChain) RelativeAncestor(header *types.PovHeader, distance uint
 func (bc *PovBlockChain) CalcTotalDifficulty(prevTD *types.PovTD, header *types.PovHeader) *types.PovTD {
 	curTD := prevTD.Copy()
 
-	curWorkAlgo := types.CalcWorkIntToBigNum(header.GetTargetIntByAlgo())
+	curWorkAlgo := types.CalcWorkIntToBigNum(header.GetAlgoTargetInt())
 
 	curTD.Chain.Add(&prevTD.Chain, curWorkAlgo)
 

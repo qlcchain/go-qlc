@@ -49,7 +49,7 @@ func (c *ConsensusFake) VerifyHeader(header *types.PovHeader) error {
 	return nil
 }
 
-func (c *ConsensusFake) SealHeader(header *types.PovHeader, cbAccount *types.Account, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error {
+func (c *ConsensusFake) SealHeader(header *types.PovHeader, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error {
 	go func() {
 		copyHdr := header.Copy()
 

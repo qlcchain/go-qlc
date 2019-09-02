@@ -320,15 +320,6 @@ func (pv *PovVerifier) verifyCoinBaseTx(cbTx *types.PovCoinBaseTx, stat *PovVeri
 		return process.BadCoinbase, errors.New("rep address is zero")
 	}
 
-	if cbTx.Signature.IsZero() {
-		return process.BadSignature, errors.New("miner signature is zero")
-	}
-
-	isVerified := minerTxOut.Address.Verify(cbTx.GetHash().Bytes(), cbTx.Signature.Bytes())
-	if !isVerified {
-		return process.BadSignature, errors.New("miner got bad signature")
-	}
-
 	calcMinerRwd, calcRepRwd := pv.chain.CalcBlockReward(stat.CurHeader)
 
 	minerReward := minerTxOut.Value

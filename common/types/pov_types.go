@@ -24,7 +24,6 @@ type PovMineResult struct {
 	Nonce         uint32
 	CoinbaseExtra []byte
 	CoinbaseHash  Hash
-	CoinbaseSig   Signature
 }
 
 func NewPovMineResult() *PovMineResult {

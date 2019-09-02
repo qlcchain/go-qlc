@@ -26,6 +26,8 @@ var (
         "cbtx":{
             "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
             "txNum":1,
+            "extra":null,
+            "reserved1":0,
             "txOuts":[
                 {
                     "address":"qlc_176f1aj1361y5i4yu8ccyp8xphjcbxmmu4ryh4jecnsncse1eiud7uncz8bj",
@@ -36,8 +38,6 @@ var (
                     "value":"57077625"
                 }
             ],
-            "extra":null,
-            "signature":"cd158adccc61b28a1e59ab234a3b370a676f7d5f9f642357aaf020cfd3a254075fd6aa35c536963724a66a2ec7d13703a9736024816fabd98dd4b9d077579706",
             "hash":"4f428e57588be436f16fd7249f255cc64bf50036fb08be3e9729ad16db75c4b8"
         }
     },
