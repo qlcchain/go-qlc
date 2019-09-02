@@ -130,7 +130,7 @@ func (w *PovWorker) loop() {
 }
 
 func (w *PovWorker) checkValidMiner() bool {
-	if w.miner.GetSyncState() != common.Syncdone {
+	if w.miner.GetSyncState() != common.SyncDone {
 		w.logger.Infof("miner pausing for sync state %s", w.miner.GetSyncState())
 		return false
 	}

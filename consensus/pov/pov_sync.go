@@ -453,7 +453,7 @@ func (ss *PovSyncer) setInitState(st common.SyncState) {
 	ss.initSyncState = st
 	if st == common.Syncing {
 		ss.syncStartTime = time.Now()
-	} else if st == common.Syncdone {
+	} else if st == common.SyncDone {
 		ss.syncEndTime = time.Now()
 		usedTime := ss.syncEndTime.Sub(ss.syncStartTime)
 		ss.logger.Infof("pov init sync used time: %s", usedTime)

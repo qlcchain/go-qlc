@@ -54,6 +54,12 @@ func (ss *ServiceSync) Start() {
 	address := types.Address{}
 	Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
 	ticker := time.NewTicker(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
+
+	err := ss.netService.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ss.onConsensusSyncFinished)
+	if err != nil {
+		ss.logger.Errorf("subscribe consensus sync finished event err")
+	}
+
 	for {
 		select {
 		case <-ss.quitCh:
@@ -62,7 +68,7 @@ func (ss *ServiceSync) Start() {
 		case <-ticker.C:
 			now := time.Now().Unix()
 			v := atomic.LoadInt64(&ss.lastSyncTime)
-			if ss.syncState != common.Syncing && v < now {
+			if ss.syncState == common.SyncFinish || ss.syncState == common.SyncNotStart && v < now {
 				peerID, err := ss.netService.node.StreamManager().RandomPeer()
 				if err != nil {
 					continue
@@ -94,6 +100,10 @@ func (ss *ServiceSync) Stop() {
 	//ss.logger.Info("Stop Qlc sync...")
 
 	ss.quitCh <- true
+}
+
+func (ss *ServiceSync) onConsensusSyncFinished() {
+	ss.syncState = common.SyncFinish
 }
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
@@ -143,6 +153,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		var confirmed bool
 		ss.syncState = common.Syncing
 		ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncing)
+		ss.logger.Info("sync start")
 
 		for {
 			remoteFrontiers = remoteFrontiers[0:0]
@@ -179,8 +190,9 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 
 				time.Sleep(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
 			} else {
-				ss.syncState = common.Syncdone
-				ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncdone)
+				ss.syncState = common.SyncDone
+				ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncDone)
+				ss.logger.Infof("sync pull all blocks done")
 				break
 			}
 		}

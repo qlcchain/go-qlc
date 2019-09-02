@@ -155,7 +155,7 @@ func TestPovProcessor_OrphanBlock(t *testing.T) {
 	processor.Init()
 	processor.Start()
 
-	processor.onPovSyncState(common.Syncdone)
+	processor.onPovSyncState(common.SyncDone)
 
 	genesisBlk := common.GenesisPovBlock()
 

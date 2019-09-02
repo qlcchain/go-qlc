@@ -27,10 +27,11 @@ const (
 	EventPovBulkPullRsp  TopicType = "povBulkPullRsp"
 	EventPovSyncState    TopicType = "povSyncState"
 
-	EventPullBlocksReq     TopicType = "pullBlocksReq"
-	EventFrontierConsensus TopicType = "frontierConsensus"
-	EventFrontierConfirmed TopicType = "frontierConfirmed"
-	EventSyncStateChange   TopicType = "syncStateChange"
+	EventPullBlocksReq         TopicType = "pullBlocksReq"
+	EventFrontierConsensus     TopicType = "frontierConsensus"
+	EventFrontierConfirmed     TopicType = "frontierConfirmed"
+	EventSyncStateChange       TopicType = "syncStateChange"
+	EventConsensusSyncFinished TopicType = "consensusSyncFinished"
 )
 
 // Sync state
@@ -39,24 +40,25 @@ type SyncState uint
 const (
 	SyncNotStart SyncState = iota
 	Syncing
-	Syncdone
+	SyncDone
+	SyncFinish
 )
 
 var syncStatus = [...]string{
 	SyncNotStart: "SyncNotStart",
 	Syncing:      "Synchronising",
-	Syncdone:     "Syncdone",
+	SyncDone:     "SyncDone",
 }
 
 func (s SyncState) String() string {
-	if s > Syncdone {
+	if s > SyncDone {
 		return "unknown sync state"
 	}
 	return syncStatus[s]
 }
 
 func (s SyncState) IsSyncExited() bool {
-	if s == Syncdone {
+	if s == SyncDone {
 		return true
 	}
 

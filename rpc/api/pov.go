@@ -170,7 +170,7 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 	}
 
 	ss := api.syncState.Load().(common.SyncState)
-	if ss != common.Syncdone {
+	if ss != common.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 

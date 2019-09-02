@@ -179,7 +179,7 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	dps := act.dps
 	dps.logger.Debugf("block[%s] confirmed", hash)
 
-	dps.frontiersStatus.Delete(hash)
+	dps.chainFinished(hash)
 
 	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
 		err := dps.lv.BlockProcess(block)

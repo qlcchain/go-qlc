@@ -59,6 +59,7 @@ const (
 	frontierWaitingForVote frontierStatus = iota
 	frontierConfirmed
 	frontierChainConfirmed
+	frontierChainFinished
 )
 
 type DPoS struct {
@@ -143,7 +144,7 @@ func (dps *DPoS) Init() {
 			dps.logger.Errorf("subscribe pov sync state event err")
 		}
 	} else {
-		dps.povSyncState.Store(common.Syncdone)
+		dps.povSyncState.Store(common.SyncDone)
 	}
 
 	supply := common.GenesisBlock().Balance
@@ -291,7 +292,7 @@ func (dps *DPoS) onPovSyncState(state common.SyncState) {
 	dps.povSyncState.Store(state)
 	dps.logger.Infof("pov sync state to [%s]", state)
 
-	if dps.getPovSyncState() == common.Syncdone {
+	if dps.getPovSyncState() == common.SyncDone {
 		dps.povReady <- true
 		close(dps.cacheBlocks)
 	}
@@ -552,7 +553,7 @@ func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
 }
 
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
-	if dps.getPovSyncState() == common.Syncdone || bs.BlockFrom == types.Synchronized {
+	if dps.getPovSyncState() == common.SyncDone || bs.BlockFrom == types.Synchronized {
 		dps.dispatchMsg(bs)
 	} else {
 		if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
@@ -864,26 +865,14 @@ func (dps *DPoS) getAckType(seq uint32) uint32 {
 }
 
 func (dps *DPoS) isWaitingFrontier(hash types.Hash) bool {
-	if status, ok := dps.frontiersStatus.Load(hash); ok && status.(frontierStatus) == frontierWaitingForVote {
+	if status, ok := dps.frontiersStatus.Load(hash); ok && status == frontierWaitingForVote {
 		return true
 	}
 	return false
 }
 
 func (dps *DPoS) isConfirmedFrontier(hash types.Hash) bool {
-	if status, ok := dps.frontiersStatus.Load(hash); ok && status.(frontierStatus) == frontierConfirmed {
-		return true
-	}
-
-	if has, _ := dps.ledger.HasStateBlockConfirmed(hash); has {
-		return true
-	}
-
-	return false
-}
-
-func (dps *DPoS) isChainConfirmed(hash types.Hash) bool {
-	if status, ok := dps.frontiersStatus.Load(hash); ok && status.(frontierStatus) == frontierChainConfirmed {
+	if status, ok := dps.frontiersStatus.Load(hash); ok && status == frontierConfirmed {
 		return true
 	}
 	return false
@@ -894,6 +883,33 @@ func (dps *DPoS) isReceivedFrontier(hash types.Hash) bool {
 		return true
 	}
 	return false
+}
+
+func (dps *DPoS) chainFinished(hash types.Hash) {
+	if _, ok := dps.frontiersStatus.Load(hash); ok {
+		dps.frontiersStatus.Store(hash, frontierChainFinished)
+	}
+
+	dps.checkSyncFinished()
+}
+
+func (dps *DPoS) checkSyncFinished() {
+	allFinished := true
+	dps.frontiersStatus.Range(func(k, v interface{}) bool {
+		status := v.(frontierStatus)
+		if status != frontierChainFinished {
+			allFinished = false
+			return false
+		}
+		return true
+	})
+
+	if allFinished {
+		dps.eb.Publish(common.EventConsensusSyncFinished)
+		dps.frontiersStatus = new(sync.Map)
+		dps.CleanSyncCache()
+		dps.logger.Infof("sync finished")
+	}
 }
 
 func (dps *DPoS) syncBlockRollback(hash types.Hash) {
@@ -907,9 +923,14 @@ func (dps *DPoS) syncBlockRollback(hash types.Hash) {
 }
 
 func (dps *DPoS) onFrontierConfirmed(hash types.Hash, result *bool) {
-	if dps.isChainConfirmed(hash) {
-		*result = true
+	if status, ok := dps.frontiersStatus.Load(hash); ok {
+		if status == frontierChainConfirmed || status == frontierChainFinished {
+			*result = true
+		} else {
+			*result = false
+		}
 	} else {
+		//filter confirmed blocks
 		if has, _ := dps.ledger.HasStateBlockConfirmed(hash); has {
 			*result = true
 		} else {
@@ -933,13 +954,17 @@ func (dps *DPoS) CleanSyncCache() {
 }
 
 func (dps *DPoS) onSyncStateChange(state common.SyncState) {
-	if state == common.Syncdone {
-		go dps.CleanSyncCache()
-	}
-
+	//notify processors
 	dps.syncStateNotifyWait.Add(dps.processorNum)
 	for _, p := range dps.processors {
 		p.syncStateChange <- state
 	}
 	dps.syncStateNotifyWait.Wait()
+
+	//clean last state
+	if state == common.Syncing {
+		dps.frontiersStatus = new(sync.Map)
+	} else if state == common.SyncDone {
+		dps.checkSyncFinished()
+	}
 }
