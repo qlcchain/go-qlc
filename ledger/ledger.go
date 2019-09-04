@@ -88,6 +88,7 @@ const (
 	idPrefixUncheckedTokenInfo
 	idPrefixBlockCacheAccount
 	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
+	idPrefixSyncBlock
 )
 
 var (
@@ -537,9 +538,9 @@ func (l *Ledger) BlockCacheProcess(block types.Block) error {
 	}
 	return l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
-			err := l.addBlockCache(state, am, txn)
+			err := l.processCacheBlock(state, am, txn)
 			if err != nil {
-				l.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
+				l.logger.Error(fmt.Sprintf("%s, cache block:%s", err.Error(), state.GetHash().String()))
 				return err
 			}
 			return nil
@@ -550,7 +551,7 @@ func (l *Ledger) BlockCacheProcess(block types.Block) error {
 	})
 }
 
-func (l *Ledger) addBlockCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+func (l *Ledger) processCacheBlock(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
 	l.logger.Debug("process block cache, ", block.GetHash())
 	if err := l.AddBlockCache(block, txn); err != nil {
 		return err

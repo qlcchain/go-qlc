@@ -4,6 +4,8 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 )
 
@@ -98,4 +100,46 @@ func (l *DebugApi) GetRepresentations(address *types.Address) (map[types.Address
 		}
 	}
 	return r, nil
+}
+
+func (l *DebugApi) PendingsAmount() (map[types.Address]map[string]types.Balance, error) {
+	abs := make(map[types.Address]map[string]types.Balance, 0)
+	vmContext := vmstore.NewVMContext(l.ledger)
+	err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		token, err := abi.GetTokenById(vmContext, pendingInfo.Type)
+		if err != nil {
+			return err
+		}
+		tokenName := token.TokenName
+		address := pendingKey.Address
+		amount := pendingInfo.Amount
+		if ab, ok := abs[address]; ok {
+			if m, ok := ab[tokenName]; ok {
+				abs[address][tokenName] = m.Add(amount)
+			} else {
+				abs[address][tokenName] = amount
+			}
+		} else {
+			abs[address] = make(map[string]types.Balance)
+			abs[address][tokenName] = amount
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return abs, nil
+}
+
+func (l *DebugApi) SyncBlocks() ([]types.Hash, error) {
+	blocks := make([]types.Hash, 0)
+	err := l.ledger.GetSyncBlocks(func(block *types.StateBlock) error {
+		blocks = append(blocks, block.GetHash())
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
 }

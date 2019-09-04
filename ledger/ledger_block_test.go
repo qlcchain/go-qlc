@@ -351,3 +351,40 @@ func TestLedger_MessageInfo(t *testing.T) {
 		t.Fatal("wrong result")
 	}
 }
+
+func TestLedger_SyncBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	if err := l.AddSyncBlock(mock.StateBlockWithoutWork()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddSyncBlock(mock.StateBlockWithoutWork()); err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	err := l.GetSyncBlocks(func(block *types.StateBlock) error {
+		count++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Fatal("sync count error")
+	}
+	if err := l.DropSyncBlocks(); err != nil {
+		t.Fatal(err)
+	}
+	count2 := 0
+	err = l.GetSyncBlocks(func(block *types.StateBlock) error {
+		count2++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count2 != 0 {
+		t.Fatal("sync count error")
+	}
+
+}

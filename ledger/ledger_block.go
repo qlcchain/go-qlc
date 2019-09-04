@@ -693,3 +693,53 @@ func (l *Ledger) GetMessageInfo(key types.Hash, txns ...db.StoreTxn) ([]byte, er
 	}
 	return value, nil
 }
+
+func (l *Ledger) AddSyncBlock(value *types.StateBlock, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixSyncBlock, value.GetHash())
+	if err != nil {
+		return err
+	}
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+
+	err = txn.Get(k, func(v []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrBlockExists
+	} else if err != badger.ErrKeyNotFound {
+		return err
+	}
+	return txn.Set(k, v)
+}
+
+func (l *Ledger) GetSyncBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixSyncBlock, func(key []byte, val []byte, b byte) error {
+		blk := new(types.StateBlock)
+		if err := blk.Deserialize(val); err != nil {
+			return nil
+		}
+		if err := fn(blk); err != nil {
+			return nil
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) DropSyncBlocks() error {
+	txn := l.Store.NewTransaction(true)
+	return txn.Drop([]byte{idPrefixSyncBlock})
+}
