@@ -41,6 +41,7 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 	checkBlockFns[types.Send] = checkSendBlock
 	checkBlockFns[types.Receive] = checkReceiveBlock
 	checkBlockFns[types.Change] = checkChangeBlock
+	checkBlockFns[types.Online] = checkChangeBlock
 	checkBlockFns[types.Open] = checkOpenBlock
 	checkBlockFns[types.ContractSend] = checkContractSendBlock
 	checkBlockFns[types.ContractReward] = checkContractReceiveBlock
@@ -1164,7 +1165,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 						return fmt.Errorf("rollback pending fail(%s), receive(%s)", err, hashCur)
 					}
 				}
-			case types.Change:
+			case types.Change, types.Online:
 				if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
 					return fmt.Errorf("rollback token fail(%s), change(%s)", err, hashCur)
 				}

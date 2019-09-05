@@ -32,6 +32,11 @@ const (
 	povBlockNumDay        = 2880
 	subAckMaxSize         = 102400
 	hashNumPerAck         = 1000
+	maxStatisticsPeriod   = 3
+	confirmedCacheMaxLen  = 102400
+	confirmedCacheMaxTime = 10 * time.Minute
+	onlinePeriod          = uint64(120)
+	onlineRate            = uint64(60)
 )
 
 type subMsgKind byte
@@ -77,6 +82,10 @@ type DPoS struct {
 	batchVote       chan types.Hash
 	ctx             context.Context
 	cancel          context.CancelFunc
+	online          gcache.Cache
+	confirmedBlocks gcache.Cache
+	lastSendHeight  uint64
+	curPovHeight    uint64
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -90,23 +99,25 @@ func NewDPoS(cfgFile string) *DPoS {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	dps := &DPoS{
-		ledger:       l,
-		acTrx:        acTrx,
-		accounts:     cc.Accounts(),
-		logger:       log.NewLogger("dpos"),
-		cfg:          cfg,
-		eb:           cc.EventBus(),
-		lv:           process.NewLedgerVerifier(l),
-		cacheBlocks:  make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
-		povReady:     make(chan bool, 1),
-		processorNum: processorNum,
-		processors:   newProcessors(processorNum),
-		subMsg:       make(chan *subMsg, 10240),
-		subAck:       gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
-		hash2el:      new(sync.Map),
-		batchVote:    make(chan types.Hash, 102400),
-		ctx:          ctx,
-		cancel:       cancel,
+		ledger:          l,
+		acTrx:           acTrx,
+		accounts:        cc.Accounts(),
+		logger:          log.NewLogger("dpos"),
+		cfg:             cfg,
+		eb:              cc.EventBus(),
+		lv:              process.NewLedgerVerifier(l),
+		cacheBlocks:     make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
+		povReady:        make(chan bool, 1),
+		processorNum:    processorNum,
+		processors:      newProcessors(processorNum),
+		subMsg:          make(chan *subMsg, 10240),
+		subAck:          gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
+		hash2el:         new(sync.Map),
+		batchVote:       make(chan types.Hash, 102400),
+		ctx:             ctx,
+		cancel:          cancel,
+		online:          gcache.New(maxStatisticsPeriod).LRU().Build(),
+		confirmedBlocks: gcache.New(confirmedCacheMaxLen).Expiration(confirmedCacheMaxTime).LRU().Build(),
 	}
 
 	if common.DPoSVoteCacheEn {
@@ -116,6 +127,13 @@ func NewDPoS(cfgFile string) *DPoS {
 	dps.acTrx.setDposService(dps)
 	for _, p := range dps.processors {
 		p.setDposService(dps)
+	}
+
+	pb, err := dps.ledger.GetLatestPovBlock()
+	if err != nil {
+		dps.logger.Error("get latest pov block err", err)
+	} else {
+		dps.curPovHeight = pb.Height
 	}
 
 	return dps
@@ -319,6 +337,11 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 			for _, h := range ack.Hash {
 				dps.logger.Infof("dps recv confirmAck block[%s]", h)
 
+				if has, _ := dps.ledger.HasStateBlockConfirmed(h); has {
+					dps.heartAndVoteInc(h, ack.Account, onlineKindVote)
+					continue
+				}
+
 				vi := &voteInfo{
 					hash:    h,
 					account: ack.Account,
@@ -331,6 +354,8 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 					dps.cacheAck(vi)
 				}
 			}
+		} else {
+			dps.heartAndVoteInc(ack.Hash[0], ack.Account, onlineKindHeart)
 		}
 	} else {
 		index := dps.getProcessorIndex(bs.Block.Address)

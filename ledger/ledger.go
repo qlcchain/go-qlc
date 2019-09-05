@@ -2035,7 +2035,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 			return types.ZeroBalance, err
 		}
 		return block.TotalBalance().Sub(prev.TotalBalance()), nil
-	case types.Change:
+	case types.Change, types.Online:
 		return types.ZeroBalance, nil
 	case types.ContractReward:
 		prevHash := block.GetPrevious()
@@ -2238,6 +2238,47 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Previous:       tm.Header,
 		Link:           types.ZeroHash,
 		Representative: representative,
+		Token:          tm.Type,
+		Extra:          types.ZeroHash,
+		Timestamp:      common.TimeNow().Unix(),
+	}
+	if prk != nil {
+		acc := types.NewAccount(prk)
+		addr := acc.Address()
+		if addr.String() != account.String() {
+			return nil, fmt.Errorf("change address (%s) is mismatch privateKey (%s)", account.String(), acc.Address().String())
+		}
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+	}
+	return &sb, nil
+}
+
+func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error) {
+	am, err := l.GetAccountMeta(account)
+	if err != nil {
+		return nil, fmt.Errorf("account[%s] is not exist", account.String())
+	}
+	tm := am.Token(common.ChainToken())
+	if tm == nil {
+		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
+	}
+	prev, err := l.GetStateBlock(tm.Header)
+	if err != nil {
+		return nil, fmt.Errorf("token header block not found")
+	}
+
+	sb := types.StateBlock{
+		Type:           types.Online,
+		Address:        account,
+		Balance:        tm.Balance,
+		Vote:           prev.GetVote(),
+		Oracle:         prev.GetOracle(),
+		Network:        prev.GetNetwork(),
+		Storage:        prev.GetStorage(),
+		Previous:       tm.Header,
+		Link:           types.ZeroHash,
+		Representative: tm.Representative,
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,
 		Timestamp:      common.TimeNow().Unix(),
