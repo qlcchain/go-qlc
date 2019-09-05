@@ -56,8 +56,11 @@ func (m MigrationV2ToV3) Migrate(txn db.StoreTxn) error {
 	}
 	if b {
 		fmt.Println("migrate ledger v2 to v3 ")
-		key := getKeyOfHash(common.GenesisBlockHash(), idPrefixBlock)
-		err := txn.Get(key, func(bytes []byte, b byte) error {
+		k, err := getKeyOfParts(idPrefixBlock, common.GenesisBlockHash())
+		if err != nil {
+			return err
+		}
+		err = txn.Get(k, func(bytes []byte, b byte) error {
 			return nil
 		})
 		if err != nil && err != badger.ErrKeyNotFound {
@@ -259,7 +262,10 @@ func (m MigrationV5ToV6) Migrate(txn db.StoreTxn) error {
 		}
 
 		for k, v := range newChild {
-			pKey := getKeyOfHash(k, idPrefixChild)
+			pKey, err := getKeyOfParts(idPrefixChild, k)
+			if err != nil {
+				return err
+			}
 			if v == types.ZeroHash {
 				if err := txn.Delete(pKey); err != nil {
 					return err
@@ -307,12 +313,12 @@ func updateVersion(m db.Migration, txn db.StoreTxn) error {
 	return nil
 }
 
-type MigrationV6ToV7 struct {
+type MigrationV1ToV7 struct {
 }
 
-func (m MigrationV6ToV7) Migrate(txn db.StoreTxn) error {
+func (m MigrationV1ToV7) Migrate(txn db.StoreTxn) error {
 	if b, err := checkVersion(m, txn); err == nil && b {
-		fmt.Println("migrate ledger v6 to v7")
+		fmt.Println("migrate ledger to v7")
 		if err := txn.Drop(nil); err == nil {
 			return updateVersion(m, txn)
 		} else {
@@ -323,10 +329,48 @@ func (m MigrationV6ToV7) Migrate(txn db.StoreTxn) error {
 	}
 }
 
-func (m MigrationV6ToV7) StartVersion() int {
-	return 6
+func (m MigrationV1ToV7) StartVersion() int {
+	return 1
 }
 
-func (m MigrationV6ToV7) EndVersion() int {
+func (m MigrationV1ToV7) EndVersion() int {
 	return 7
+}
+
+type MigrationV7ToV8 struct {
+}
+
+func (m MigrationV7ToV8) Migrate(txn db.StoreTxn) error {
+	b, err := checkVersion(m, txn)
+	if err != nil {
+		return err
+	}
+	if b {
+		fmt.Println("migrate ledger v7 to v8 ")
+		if err := txn.Drop([]byte{idPrefixBlockCache}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixBlockCacheAccount}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixUncheckedBlockPrevious}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixUncheckedBlockLink}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixUncheckedTokenInfo}); err != nil {
+			return err
+		}
+		return updateVersion(m, txn)
+	}
+	return nil
+}
+
+func (m MigrationV7ToV8) StartVersion() int {
+	return 7
+}
+
+func (m MigrationV7ToV8) EndVersion() int {
+	return 8
 }

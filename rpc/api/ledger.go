@@ -4,12 +4,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"sort"
+	"sync"
+	"sync/atomic"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/ledger/relation"
@@ -24,12 +27,27 @@ var (
 	ErrParameterNil = errors.New("parameter is nil")
 )
 
+type lockStatus uint8
+
+const (
+	using lockStatus = iota
+	idle
+)
+
+const defaultLockSize = 1000
+
+type lockValue struct {
+	lockStatus atomic.Value
+	mutex      *sync.Mutex
+}
+
 type LedgerApi struct {
 	ledger *ledger.Ledger
 	//vmContext *vmstore.VMContext
-	eb       event.EventBus
-	relation *relation.Relation
-	logger   *zap.SugaredLogger
+	eb          event.EventBus
+	relation    *relation.Relation
+	logger      *zap.SugaredLogger
+	processLock *hashmap.HashMap
 }
 
 type APIBlock struct {
@@ -77,7 +95,7 @@ type ApiTokenInfo struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
-	return &LedgerApi{ledger: l, eb: eb, relation: relation, logger: log.NewLogger("api_ledger")}
+	return &LedgerApi{ledger: l, eb: eb, relation: relation, logger: log.NewLogger("api_ledger"), processLock: hashmap.New(defaultLockSize)}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -183,7 +201,7 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		}
 		pendingAmount := types.ZeroBalance
 		for _, key := range pendingKeys {
-			pendinginfo, err := l.ledger.GetPending(*key)
+			pendinginfo, err := l.ledger.GetPending(key)
 			if err != nil {
 				return nil, err
 			}
@@ -227,7 +245,7 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 		}
 		pendingAmount := types.ZeroBalance
 		for _, key := range pendingKeys {
-			pendinginfo, err := l.ledger.GetPending(*key)
+			pendinginfo, err := l.ledger.GetPending(key)
 			if err != nil {
 				return nil, err
 			}
@@ -358,13 +376,17 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 		})
 
 		if err != nil {
-			fmt.Println(err)
+			l.logger.Error(err)
 		}
 		if len(ps) > 0 {
 			pt := ps
 			if n > -1 && len(ps) > n {
 				pt = ps[:n]
 			}
+
+			sort.Slice(pt, func(i, j int) bool {
+				return pt[i].Timestamp < pt[j].Timestamp
+			})
 			apMap[addr] = pt
 		}
 	}
@@ -705,15 +727,57 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(aps) > 0 {
+		sort.Slice(aps, func(i, j int) bool {
+			return aps[i].Timestamp < aps[j].Timestamp
+		})
+	}
+
 	return aps, nil
+}
+
+func (l *LedgerApi) getLockKey(addr types.Address, token types.Hash) []byte {
+	key := make([]byte, 0)
+	key = append(key, addr.Bytes()...)
+	key = append(key, token.Bytes()...)
+	return key
+}
+
+func (l *LedgerApi) getProcessLock(addr types.Address, token types.Hash) *lockValue {
+	key := l.getLockKey(addr, token)
+	v, b := l.processLock.Get(key)
+	if b {
+		v.(*lockValue).lockStatus.Store(using)
+		return v.(*lockValue)
+	} else {
+		lv := &lockValue{}
+		lv.lockStatus.Store(using)
+		lv.mutex = &sync.Mutex{}
+		l.processLock.Set(key, lv)
+		if l.processLock.Len() >= defaultLockSize {
+			for key := range l.processLock.Iter() {
+				s := (key.Value).(*lockValue).lockStatus.Load()
+				if s.(lockStatus) == idle {
+					l.processLock.Del(key.Key)
+				}
+			}
+		}
+		return lv
+	}
 }
 
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	if block == nil {
 		return types.ZeroHash, ErrParameterNil
 	}
+	lv := l.getProcessLock(block.Address, block.Token)
+	lv.mutex.Lock()
+	defer func() {
+		lv.mutex.Unlock()
+		lv.lockStatus.Store(idle)
+	}()
 	verifier := process.NewLedgerVerifier(l.ledger)
-	flag, err := verifier.BlockCheckCache(block)
+	flag, err := verifier.BlockCacheCheck(block)
 	if err != nil {
 		l.logger.Error(err)
 		return types.ZeroHash, err
@@ -723,7 +787,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	switch flag {
 	case process.Progress:
 		hash := block.GetHash()
-		err := verifier.BlockCacheProcess(block)
+		verify := process.NewLedgerVerifier(l.ledger)
+		err := verify.BlockCacheProcess(block)
 		if err != nil {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)
 			return types.ZeroHash, err
@@ -756,6 +821,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		return types.ZeroHash, errors.New("gap SmartContract")
 	case process.InvalidData:
 		return types.ZeroHash, errors.New("invalid data")
+	case process.ReceiveRepeated:
+		return types.ZeroHash, errors.New("generate receive block repeatedly ")
 	default:
 		return types.ZeroHash, errors.New("error processing block")
 	}

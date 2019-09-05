@@ -58,8 +58,8 @@ func batchSend() {
 				}
 				fromAccountP = util.StringVar(c.Args, from)
 				toAccountsP = util.StringSliceVar(c.Args, to)
-				tokenP := util.StringVar(c.Args, token)
-				amountP := util.StringVar(c.Args, amount)
+				tokenP = util.StringVar(c.Args, token)
+				amountP = util.StringVar(c.Args, amount)
 
 				for _, toAccount := range toAccountsP {
 					if err := sendAction(fromAccountP, toAccount, tokenP, amountP); err != nil {

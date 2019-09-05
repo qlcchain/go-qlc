@@ -1,11 +1,12 @@
 package mock
 
 import (
+	"math/big"
+	"sync"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
-	"math/big"
-	"sync"
 )
 
 var povCoinbaseOnce sync.Once

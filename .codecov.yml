@@ -4,24 +4,12 @@ codecov:
   max_report_age: off
 
 ignore:
-- "**/mocks"
+- "**/mock"
+- "**/edwards25519/*"
 
 #comment: false
 
 coverage:
-  precision: 2
-  round: down
-  status:
-    project:
-      default:
-        threshold: 20%
-        if_not_found: success
-    patch:
-      default:
-        enabled: no
-        threshold: 0%
-        if_not_found: success
-    changes:
-      default:
-        enabled: no
-        if_not_found: success
+  range: 30..70
+  
+

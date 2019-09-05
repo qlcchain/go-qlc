@@ -267,7 +267,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		//cache fork
 		if result == process.Progress {
 			el := dps.acTrx.getVoteInfo(bs.Block)
-			if el == nil || el.status.winner.GetHash() != hash {
+			if el != nil && el.status.winner.GetHash() != hash {
 				_ = dps.lv.Rollback(hash)
 				return
 			}
@@ -393,6 +393,11 @@ func (p *Processor) processFork(bs *consensus.BlockSource) {
 	}
 
 	dps.logger.Errorf("fork:[new:%s]--[local:%s]--pov not packed", newHash, confirmedHash)
+
+	if bs.Type == consensus.MsgGenerateBlock {
+		_ = dps.lv.Rollback(bs.Block.GetHash())
+		return
+	}
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		confirmReqBlocks := make([]*types.StateBlock, 0)

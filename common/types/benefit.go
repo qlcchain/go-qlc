@@ -16,3 +16,15 @@ func (b *Benefit) String() string {
 	bytes, _ := json.Marshal(b)
 	return string(bytes)
 }
+
+func (b *Benefit) Serialize() ([]byte, error) {
+	return b.MarshalMsg(nil)
+}
+
+func (b *Benefit) Deserialize(text []byte) error {
+	_, err := b.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common"
@@ -22,6 +23,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/monitor"
 	"go.uber.org/zap"
 )
 
@@ -148,6 +150,8 @@ func (s *Session) SetRepresentative(address types.Address) error {
 }
 
 func (s *Session) GetSeed() ([]byte, error) {
+	defer monitor.Duration(time.Now(), "wallet.getseed")
+
 	var seed []byte
 	pw := s.getPassword()
 	tmp := make([]byte, len(pw))
@@ -302,7 +306,7 @@ func (s *Session) GenerateReceiveBlock(sendBlock types.Block) (types.Block, erro
 	if err != nil {
 		return nil, err
 	}
-	info, err := l.GetPending(types.PendingKey{Address: rxAccount, Hash: hash})
+	info, err := l.GetPending(&types.PendingKey{Address: rxAccount, Hash: hash})
 	if err != nil {
 		return nil, err
 	}

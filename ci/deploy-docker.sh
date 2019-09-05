@@ -3,28 +3,33 @@ set -e
 
 scripts="$(dirname "$0")"
 
-echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+if [[ -n "$DOCKER_PASSWORD" ]]; then
+    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+fi
 
 tags=()
+deploy_types=()
 if [[ -n "$TRAVIS_TAG" ]]; then
     tags+=("$TRAVIS_TAG" latest)
+    deploy_types+=(mainnet)
 elif [[ -n "$TRAVIS_BRANCH" ]]; then
+    deploy_types+=(test)
     if [[ "$TRAVIS_BRANCH" != "master" ]]; then
         tags+=("$TRAVIS_BRANCH")
     fi
 fi
 
-for network in live test; do
-    if [ "${network}" = 'live' ]; then
-        network_tag_suffix=''
+for version in "${deploy_types[@]}"; do
+    if [ "${version}" == "mainnet" ]; then
+        version_tag_suffix=''
         build_flag='build'
     else
-        network_tag_suffix="-${network}"
+        version_tag_suffix="-${version}"
         build_flag='build-test'
     fi
 
-    docker_image_name="qlcchain/go-qlc${network_tag_suffix}"
-    echo "build ${network} ==> ${network_tag_suffix} ${build_flag}"
+    docker_image_name="qlcchain/go-qlc${version_tag_suffix}"
+    echo "build ${version} ==> ${version_tag_suffix} ${build_flag}"
     "$scripts"/custom-timeout.sh 30 docker build --build-arg BUILD_ACT=${build_flag} -f docker/Dockerfile -t "$docker_image_name" .
     for tag in "${tags[@]}"; do
         # Sanitize docker tag

@@ -9,13 +9,13 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
 # server
-SERVERVERSION ?= 1.2.4
+SERVERVERSION ?= 1.2.6.5
 SERVERBINARY = gqlc
 SERVERTESTBINARY = gqlct
 SERVERMAIN = cmd/server/main.go
 
 # client
-CLIENTVERSION ?= 1.2.4
+CLIENTVERSION ?= 1.2.6.5
 CLIENTBINARY = gqlcc
 CLIENTMAIN = cmd/client/main.go
 
@@ -46,7 +46,7 @@ deps:
 
 confidant:
 	CGO_ENABLED=1 CC=/opt/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
-	GO111MODULE=on go build -tags "confidant sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	GO111MODULE=on go build -tags "confidant" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build $(SERVERBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
 	CGO_ENABLED=1 CC=/home/lichao/ppr_cross/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
@@ -56,7 +56,7 @@ confidant:
 
 confidant-test:
 	CGO_ENABLED=1 CC=/opt/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
-	GO111MODULE=on go build -tags "confidant testnet sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	GO111MODULE=on go build -tags "confidant testnet" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build $(SERVERBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
 	CGO_ENABLED=1 CC=/home/lichao/ppr_cross/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
@@ -65,7 +65,7 @@ confidant-test:
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
 build:
-	GO111MODULE=on go build -tags "sqlite_userauth" -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	GO111MODULE=on go build -ldflags $(MAINLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build $(SERVERBINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
 	GO111MODULE=on go build -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
@@ -73,7 +73,7 @@ build:
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY)\" to start $(CLIENTBINARY)."
 
 build-test:
-	GO111MODULE=on go build -tags "testnet sqlite_userauth" -ldflags $(TESTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
+	GO111MODULE=on go build -tags "testnet" -ldflags $(TESTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(SERVERBINARY) $(shell pwd)/$(SERVERMAIN)
 	@echo "Build test server done."
 	@echo "Run \"$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
 	GO111MODULE=on go build -ldflags $(CLIENTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/$(CLIENTBINARY) $(shell pwd)/$(CLIENTMAIN)
@@ -86,15 +86,15 @@ clean:
 	rm -rf $(shell pwd)/$(BUILDDIR)/
 
 gqlc-server:
-	xgo --dest=$(BUILDDIR) --tags="sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
+	xgo --dest=$(BUILDDIR) --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
     --targets=$(TARGET) --pkg=$(SERVERMAIN) .
-	xgo --dest=$(BUILDDIR) --tags="confidant sqlite_userauth" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
+	xgo --dest=$(BUILDDIR) --tags="confidant" --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
 	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
 
 gqlc-server-test:
-	xgo --dest=$(BUILDDIR) --tags="testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
+	xgo --dest=$(BUILDDIR) --tags="testnet" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-v$(SERVERVERSION)-$(GITREV) \
 	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
-	xgo --dest=$(BUILDDIR) --tags="confidant testnet sqlite_userauth" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
+	xgo --dest=$(BUILDDIR) --tags="confidant testnet" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
 	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
 
 gqlc-client:

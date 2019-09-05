@@ -14,11 +14,8 @@ var dps *DPoS
 func init() {
 	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
 	cm := config.NewCfgManager(dir)
+	dps := NewDPoS(cm.ConfigFile)
 
-	dps = NewDPoS(cm.ConfigFile)
-}
-
-func TestGetSeq(t *testing.T) {
 	seq1 := dps.getSeq(ackTypeCommon)
 	if seq1 != 0 {
 		t.Errorf("expect:0   get:%d", seq1)

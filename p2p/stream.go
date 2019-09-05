@@ -3,11 +3,12 @@ package p2p
 import (
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/qlcchain/go-qlc/common"
-	"sync"
 )
 
 // Stream Errors

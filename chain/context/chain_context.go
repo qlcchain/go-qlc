@@ -28,10 +28,12 @@ const (
 	P2PService         = "P2PService"
 	ConsensusService   = "consensusService"
 	RPCService         = "rpcService"
-	IndexService       = "IndexService"
+	IndexService       = "indexService"
 	PovService         = "povService"
 	MinerService       = "minerService"
 	AutoReceiveService = "autoReceiveService"
+	RollbackService    = "rollbackService"
+	MetricsService     = "metricsService"
 )
 
 type serviceManager interface {
@@ -228,7 +230,8 @@ func (cc *ChainContext) ConfigManager() (*config.CfgManager, error) {
 	defer cc.locker.Unlock()
 	if cc.cm == nil {
 		cc.cm = config.NewCfgManagerWithFile(cc.cfgFile)
-		_, err := cc.cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4())
+		_, err := cc.cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4(),
+			config.NewMigrationV4ToV5())
 		if err != nil {
 			return nil, err
 		}
