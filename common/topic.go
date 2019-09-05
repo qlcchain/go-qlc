@@ -27,6 +27,9 @@ const (
 	EventPovBulkPullRsp  TopicType = "povBulkPullRsp"
 	EventPovSyncState    TopicType = "povSyncState"
 
+	EventPovConnectBestBlock    TopicType = "povConnectBestBlock"
+	EventPovDisconnectBestBlock TopicType = "povDisconnectBestBlock"
+
 	EventRpcSyncCall TopicType = "rpcSyncCall"
 )
 

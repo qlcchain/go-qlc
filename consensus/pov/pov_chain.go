@@ -3,6 +3,7 @@ package pov
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/event"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -85,6 +86,7 @@ type PovBlockChain struct {
 	ledger ledger.Store
 	logger *zap.SugaredLogger
 	em     *eventManager
+	eb     event.EventBus
 
 	genesisBlock *types.PovBlock
 	latestBlock  atomic.Value // Current head of the best block chain
@@ -103,9 +105,10 @@ type PovBlockChain struct {
 	wg     sync.WaitGroup
 }
 
-func NewPovBlockChain(cfg *config.Config, ledger ledger.Store) *PovBlockChain {
+func NewPovBlockChain(cfg *config.Config, eb event.EventBus, ledger ledger.Store) *PovBlockChain {
 	chain := &PovBlockChain{
 		config: cfg,
+		eb:     eb,
 		ledger: ledger,
 		logger: log.NewLogger("pov_chain"),
 	}
@@ -685,6 +688,8 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 
 	bc.StoreLatestBlock(block)
 
+	bc.eb.Publish(common.EventPovConnectBestBlock, block)
+
 	return nil
 }
 
@@ -714,6 +719,8 @@ func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBl
 	bc.heightHeaderCache.Remove(block.GetHeight())
 
 	bc.StoreLatestBlock(prevBlock)
+
+	bc.eb.Publish(common.EventPovDisconnectBestBlock, block)
 
 	return nil
 }

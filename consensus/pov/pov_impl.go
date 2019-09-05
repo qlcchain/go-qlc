@@ -55,7 +55,7 @@ func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 
 	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()
 
-	pov.chain = NewPovBlockChain(cfg, pov.ledger)
+	pov.chain = NewPovBlockChain(cfg, pov.eb, pov.ledger)
 	pov.txpool = NewPovTxPool(pov.eb, pov.ledger, pov.chain)
 	pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
 	pov.verifier = NewPovVerifier(l, pov.chain, pov.cs)
