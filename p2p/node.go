@@ -270,6 +270,9 @@ func (node *QlcNode) SendMessageToPeers(messageName MessageType, value interface
 
 // SendMessageToPeer send message to a peer.
 func (node *QlcNode) SendMessageToPeer(messageName MessageType, value interface{}, peerID string) error {
+	if messageName == BulkPushBlock {
+		return nil
+	}
 	stream := node.streamManager.FindByPeerID(peerID)
 	if stream == nil {
 		node.logger.Debug("Failed to locate peer's stream")

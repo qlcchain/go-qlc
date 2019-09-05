@@ -271,7 +271,7 @@ func (ms *MessageService) checkMessageCache() {
 				value.resendTimes++
 				continue
 			}
-			stream.messageChan <- value.data
+			stream.SendMessageToChan(value.data)
 			value.resendTimes++
 			if value.resendTimes > msgResendMaxTimes {
 				csTemp = append(csTemp, cs[i])

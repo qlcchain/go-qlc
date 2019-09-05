@@ -513,22 +513,22 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				dps.processors[index].blocksAcked <- hash
 			}
 		}
-	//case types.ContractReward: //deal gap tokenInfo
-	//	input, err := dps.ledger.GetStateBlock(blk.GetLink())
-	//	if err != nil {
-	//		dps.logger.Errorf("get block link error [%s]", hash)
-	//		return
-	//	}
-	//
-	//	if types.Address(input.GetLink()) == types.MintageAddress {
-	//		param := new(cabi.ParamMintage)
-	//		if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
-	//			index := dps.getProcessorIndex(input.Address)
-	//			if localIndex != index {
-	//				dps.processors[index].blocksAcked <- param.TokenId
-	//			}
-	//		}
-	//	}
+		//case types.ContractReward: //deal gap tokenInfo
+		//	input, err := dps.ledger.GetStateBlock(blk.GetLink())
+		//	if err != nil {
+		//		dps.logger.Errorf("get block link error [%s]", hash)
+		//		return
+		//	}
+		//
+		//	if types.Address(input.GetLink()) == types.MintageAddress {
+		//		param := new(cabi.ParamMintage)
+		//		if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+		//			index := dps.getProcessorIndex(input.Address)
+		//			if localIndex != index {
+		//				dps.processors[index].blocksAcked <- param.TokenId
+		//			}
+		//		}
+		//	}
 	}
 }
 
