@@ -297,6 +297,7 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 	switch result {
 	case process.Progress:
 		if bs.BlockFrom == types.Synchronized {
+			p.confirmBlock(bs.Block)
 			dps.logger.Infof("Block %s from sync", hash)
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Add block %s to roots", hash)
@@ -462,12 +463,15 @@ func (p *Processor) findAnotherForkedBlock(block *types.StateBlock) *types.State
 
 func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 	dps := p.dps
-	result, _ := dps.lv.BlockCheck(bs.Block)
-	p.processResult(result, bs)
+	var result process.ProcessResult
 
-	if p.isResultValid(result) && bs.BlockFrom == types.Synchronized {
-		p.confirmBlock(bs.Block)
+	if bs.BlockFrom == types.Synchronized {
+		result, _ = dps.lv.BlockSyncCheck(bs.Block)
+	} else {
+		result, _ = dps.lv.BlockCheck(bs.Block)
 	}
+
+	p.processResult(result, bs)
 }
 
 func (p *Processor) enqueueUnchecked(result process.ProcessResult, bs *consensus.BlockSource) {
