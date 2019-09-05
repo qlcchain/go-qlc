@@ -639,65 +639,6 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 	return nil
 }
 
-func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
-	hash := block.GetHash()
-	rep := block.GetRepresentative()
-	address := block.GetAddress()
-	token := block.GetToken()
-	balance := block.GetBalance()
-
-	tmNew := &types.TokenMeta{
-		Type:           token,
-		Header:         hash,
-		Representative: rep,
-		OpenBlock:      hash,
-		Balance:        balance,
-		BlockCount:     1,
-		BelongTo:       address,
-		Modified:       common.TimeNow().UTC().Unix(),
-	}
-
-	if am != nil {
-		tm := am.Token(block.GetToken())
-		if block.GetToken() == common.ChainToken() {
-			am.CoinBalance = balance
-			am.CoinOracle = block.GetOracle()
-			am.CoinNetwork = block.GetNetwork()
-			am.CoinVote = block.GetVote()
-			am.CoinStorage = block.GetStorage()
-		}
-		if tm != nil {
-			tm.Header = hash
-			tm.Representative = rep
-			tm.Balance = balance
-			tm.BlockCount = tm.BlockCount + 1
-			tm.Modified = common.TimeNow().UTC().Unix()
-		} else {
-			am.Tokens = append(am.Tokens, tmNew)
-		}
-		if err := lv.l.AddOrUpdateAccountMetaCache(am, txn); err != nil {
-			return err
-		}
-	} else {
-		account := types.AccountMeta{
-			Address: address,
-			Tokens:  []*types.TokenMeta{tmNew},
-		}
-
-		if block.GetToken() == common.ChainToken() {
-			account.CoinBalance = balance
-			account.CoinOracle = block.GetOracle()
-			account.CoinNetwork = block.GetNetwork()
-			account.CoinVote = block.GetVote()
-			account.CoinStorage = block.GetStorage()
-		}
-		if err := lv.l.AddAccountMetaCache(&account, txn); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.StoreTxn) error {
 	if !common.IsGenesisBlock(block) && block.GetType() == types.ContractReward {
 		input, err := lv.l.GetStateBlock(block.GetLink())

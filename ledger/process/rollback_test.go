@@ -28,7 +28,7 @@ func TestProcess_Rollback(t *testing.T) {
 		}
 	}
 
-	rb := bc[4]
+	rb := bc[2]
 	fmt.Println("rollback")
 	fmt.Println("rollback hash: ", rb.GetHash(), rb.GetType(), rb.GetPrevious().String())
 	if err := lv.Rollback(rb.GetHash()); err != nil {
