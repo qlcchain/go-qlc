@@ -650,7 +650,7 @@ func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error, txns ...db.Sto
 		}
 		if err := fn(blk); err != nil {
 			l.logger.Errorf("process block error: %s", err)
-			return nil
+			return err
 		}
 		return nil
 	})
@@ -728,7 +728,7 @@ func (l *Ledger) GetSyncBlocks(fn func(*types.StateBlock) error, txns ...db.Stor
 			return nil
 		}
 		if err := fn(blk); err != nil {
-			return nil
+			return err
 		}
 		return nil
 	})
@@ -739,7 +739,13 @@ func (l *Ledger) GetSyncBlocks(fn func(*types.StateBlock) error, txns ...db.Stor
 	return nil
 }
 
-func (l *Ledger) DropSyncBlocks() error {
-	txn := l.Store.NewTransaction(true)
-	return txn.Drop([]byte{idPrefixSyncBlock})
+func (l *Ledger) DeleteSyncBlock(key types.Hash, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixSyncBlock, key)
+	if err != nil {
+		return err
+	}
+	return txn.Delete(k)
 }

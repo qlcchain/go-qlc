@@ -3,6 +3,7 @@ package process
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -186,9 +187,22 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 }
 
 func (lv *LedgerVerifier) BlockSyncDown() error {
-	txn := lv.l.Store.NewTransaction(true)
-	count := 0
+	syncBlocks := make([]*types.StateBlock, 0)
 	err := lv.l.GetSyncBlocks(func(block *types.StateBlock) error {
+		syncBlocks = append(syncBlocks, block)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// contract data need sort
+	sort.Slice(syncBlocks, func(i, j int) bool {
+		return syncBlocks[i].Timestamp < syncBlocks[j].Timestamp
+	})
+
+	for _, block := range syncBlocks {
+		txn := lv.l.Store.NewTransaction(true)
 		if block.IsSendBlock() {
 			if _, err := lv.l.GetLinkBlock(block.GetHash()); err != nil {
 				hash := block.GetHash()
@@ -225,24 +239,15 @@ func (lv *LedgerVerifier) BlockSyncDown() error {
 		}
 		if block.GetType() == types.ContractReward {
 			if err := lv.updateContractData(block, txn); err != nil {
-				return fmt.Errorf("update contract data error: %s", err)
+				return fmt.Errorf(" update contract data error(%s): %s", block.GetHash().String(), err)
 			}
 		}
-		count++
-		if count > 2000 {
-			count = 0
-			if err := txn.Commit(nil); err != nil {
-				return fmt.Errorf("commit error, %s ", err)
-			}
-			txn = lv.l.Store.NewTransaction(true)
+		if err := lv.l.DeleteSyncBlock(block.GetHash()); err != nil {
+			return fmt.Errorf("delete sync block error: %s ", err)
 		}
-		return nil
-	})
-	if err != nil {
-		return err
+		if err := txn.Commit(nil); err != nil {
+			return fmt.Errorf("txn commit error: %s", err)
+		}
 	}
-	if err := lv.l.DropSyncBlocks(); err != nil {
-		return fmt.Errorf("sync done error, %s", err)
-	}
-	return txn.Commit(nil)
+	return nil
 }
