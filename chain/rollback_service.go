@@ -11,8 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
@@ -26,7 +26,9 @@ type Rollback struct {
 	logger *zap.SugaredLogger
 }
 
-func NewRollbackService(cfg *config.Config) *Rollback {
+func NewRollbackService(cfgFile string) *Rollback {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
 	return &Rollback{
 		Ledger: ledger.NewLedger(cfg.LedgerDir()),
 		closed: make(chan bool, 1),

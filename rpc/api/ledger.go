@@ -4,13 +4,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"sort"
 	"sync"
 	"sync/atomic"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -777,7 +777,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		lv.lockStatus.Store(idle)
 	}()
 	verifier := process.NewLedgerVerifier(l.ledger)
-	flag, err := verifier.BlockCheckCache(block)
+	flag, err := verifier.BlockCacheCheck(block)
 	if err != nil {
 		l.logger.Error(err)
 		return types.ZeroHash, err
@@ -787,7 +787,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	switch flag {
 	case process.Progress:
 		hash := block.GetHash()
-		err := l.ledger.BlockCacheProcess(block)
+		verify := process.NewLedgerVerifier(l.ledger)
+		err := verify.BlockCacheProcess(block)
 		if err != nil {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)
 			return types.ZeroHash, err

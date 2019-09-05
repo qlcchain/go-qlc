@@ -4,9 +4,8 @@ import (
 	"encoding/base64"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/chain/context"
-
 	"github.com/jmoiron/sqlx"
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -54,7 +53,7 @@ func NewRelation(cfgFile string) (*Relation, error) {
 		store, err = db.NewSQLDB(cfg)
 		relation = &Relation{store: store,
 			eb:            cc.EventBus(),
-			addBlkChan:    make(chan *types.StateBlock, 65535),
+			addBlkChan:    make(chan *types.StateBlock, 102400),
 			deleteBlkChan: make(chan types.Hash, 65535),
 			logger:        log.NewLogger("relation")}
 		go relation.processBlocks()
