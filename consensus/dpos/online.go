@@ -126,35 +126,26 @@ func (dps *DPoS) confirmedBlockInc() {
 	}
 }
 
-func (dps *DPoS) isVoteOnline(addr types.Address) bool {
+func (dps *DPoS) isOnline(addr types.Address) bool {
 	period := (dps.curPovHeight - 1) / onlinePeriod - 1
 
+	//the first period will be ignored
 	if s, err := dps.online.Get(period); err == nil {
 		repPeriod := s.(*repOnlinePeriod)
 		repPeriod.lock.RLock()
 		defer repPeriod.lock.RUnlock()
 
-		if v, ok := repPeriod.statistic[addr]; ok {
-			if v.voteCount * 100 > repPeriod.blockCount * onlineRate {
-				return true
+		if repPeriod.blockCount == 0 {
+			if v, ok := repPeriod.statistic[addr]; ok {
+				if v.heartCount * 100 > heartCountPerPeriod * onlineRate {
+					return true
+				}
 			}
-		}
-	}
-
-	return false
-}
-
-func (dps *DPoS) isHeartOnline(addr types.Address) bool {
-	period := (dps.curPovHeight - 1) / onlinePeriod - 1
-
-	if s, err := dps.online.Get(period); err == nil {
-		repPeriod := s.(*repOnlinePeriod)
-		repPeriod.lock.RLock()
-		defer repPeriod.lock.RUnlock()
-
-		if v, ok := repPeriod.statistic[addr]; ok {
-			if v.heartCount * 100 > heartCountPerPeriod * onlineRate {
-				return true
+		} else {
+			if v, ok := repPeriod.statistic[addr]; ok {
+				if v.voteCount * 100 > repPeriod.blockCount * onlineRate {
+					return true
+				}
 			}
 		}
 	}
@@ -164,6 +155,11 @@ func (dps *DPoS) isHeartOnline(addr types.Address) bool {
 
 func (dps *DPoS) sendOnline() {
 	for _, acc := range dps.accounts {
+		weight := dps.ledger.Weight(acc.Address())
+		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
+			continue
+		}
+
 		blk, err := dps.ledger.GenerateOnlineBlock(acc.Address(), acc.PrivateKey())
 		if err != nil {
 			dps.logger.Error("generate online block err", err)

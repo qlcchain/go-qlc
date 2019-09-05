@@ -118,6 +118,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		cancel:          cancel,
 		online:          gcache.New(maxStatisticsPeriod).LRU().Build(),
 		confirmedBlocks: gcache.New(confirmedCacheMaxLen).Expiration(confirmedCacheMaxTime).LRU().Build(),
+		lastSendHeight:	1,
 	}
 
 	if common.DPoSVoteCacheEn {
@@ -521,6 +522,10 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 func (dps *DPoS) localRepVote(block *types.StateBlock) {
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
+
+		if block.Type == types.Online && !dps.isOnline(block.Address) {
+			return false
+		}
 
 		weight := dps.ledger.Weight(address)
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
