@@ -19,6 +19,16 @@ type syncCacheInfo struct {
 	hash types.Hash
 }
 
+type chainKey struct {
+	addr  types.Address
+	token types.Hash
+}
+
+type chainOrderKey struct {
+	chainKey
+	order uint64
+}
+
 type Processor struct {
 	index           int
 	dps             *DPoS
@@ -34,6 +44,8 @@ type Processor struct {
 	syncStateChange chan common.SyncState
 	syncState       common.SyncState
 	syncCache       chan *syncCacheInfo
+	orderedChain    map[chainOrderKey]types.Hash
+	chainHeight     map[chainKey]uint64
 }
 
 func newProcessors(num int) []*Processor {
@@ -53,6 +65,8 @@ func newProcessors(num int) []*Processor {
 			syncCache:       make(chan *syncCacheInfo, common.DPoSMaxBlocks),
 			syncStateChange: make(chan common.SyncState, 1),
 			syncState:       common.SyncNotStart,
+			orderedChain:    make(map[chainOrderKey]types.Hash),
+			chainHeight:     make(map[chainKey]uint64),
 		}
 		processors = append(processors, p)
 	}
@@ -139,7 +153,7 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 		if err := dps.ledger.AddUnconfirmedSyncBlock(hash, block); err != nil {
 			dps.logger.Errorf("add unconfirmed sync block err", err)
 		}
-		p.syncBlockAcked <- hash
+		p.processConfirmedSync(hash, block)
 	}
 }
 
@@ -172,6 +186,26 @@ func (p *Processor) processMsg() {
 	}
 }
 
+func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBlock) {
+	p.syncBlockAcked <- hash
+
+	ck := chainKey{
+		addr:  block.Address,
+		token: block.Token,
+	}
+	if _, ok := p.chainHeight[ck]; ok {
+		p.chainHeight[ck]++
+	} else {
+		p.chainHeight[ck] = 1
+	}
+
+	cok := chainOrderKey{
+		chainKey: ck,
+		order:    p.chainHeight[ck],
+	}
+	p.orderedChain[cok] = hash
+}
+
 func (p *Processor) processFrontier(block *types.StateBlock) {
 	hash := block.GetHash()
 
@@ -194,19 +228,33 @@ func (p *Processor) confirmChain(hash types.Hash) {
 		dps.logger.Debugf("get unconfirmed sync block err", err)
 		return
 	} else {
-		bs := &consensus.BlockSource{
-			Block:     block,
-			BlockFrom: types.Synchronized,
-			Type:      consensus.MsgSync,
-		}
-		p.blocks <- bs
-
-		if err := dps.ledger.DeleteUnconfirmedSyncBlock(hash); err != nil {
-			dps.logger.Errorf("delete unconfirmed sync block err", err)
+		cok := chainOrderKey{
+			chainKey: chainKey{block.Address, block.Token},
+			order:    1,
 		}
 
-		if !block.IsOpen() {
-			p.confirmChain(block.Previous)
+		for {
+			h, ok := p.orderedChain[cok]
+			if ok {
+				if blk, err := dps.ledger.GetUnconfirmedSyncBlock(h); err != nil {
+					break
+				} else {
+					bs := &consensus.BlockSource{
+						Block:     blk,
+						BlockFrom: types.Synchronized,
+						Type:      consensus.MsgSync,
+					}
+					p.blocks <- bs
+
+					if err := dps.ledger.DeleteUnconfirmedSyncBlock(h); err != nil {
+						dps.logger.Errorf("delete unconfirmed sync block err", err)
+					}
+				}
+			} else {
+				break
+			}
+
+			cok.order++
 		}
 	}
 }
@@ -662,7 +710,7 @@ func (p *Processor) dequeueUncheckedSyncFromDb(hash types.Hash) {
 		if err := dps.ledger.AddUnconfirmedSyncBlock(confirmedHash, block); err != nil {
 			dps.logger.Errorf("add unconfirmed sync block err", err)
 		}
-		p.syncBlockAcked <- confirmedHash
+		p.processConfirmedSync(confirmedHash, block)
 
 		if err := dps.ledger.DeleteUncheckedSyncBlock(hash); err != nil {
 			dps.logger.Errorf("del uncheck sync block err", err)
