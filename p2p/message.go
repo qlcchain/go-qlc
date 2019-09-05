@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"hash/crc32"
@@ -12,14 +11,12 @@ var (
 )
 
 const (
-	QlcMessageHeaderLength         = 22
-	QlcMessageMagicNumberEndIdx    = 3
-	QlcMessageVersionEndIdx        = 4
-	QlcMessageTypeEndIdx           = 6
-	QlcMessageDataLengthEndIdx     = 10
-	QlcMessageReservedEndIdx       = 14
-	QlcMessageHeaderCheckSumEndIdx = 18
-	QlcMessageDataCheckSumEndIdx   = 22
+	QlcMessageHeaderLength       = 13
+	QlcMessageMagicNumberEndIdx  = 3
+	QlcMessageVersionEndIdx      = 4
+	QlcMessageTypeEndIdx         = 5
+	QlcMessageDataLengthEndIdx   = 9
+	QlcMessageDataCheckSumEndIdx = 13
 )
 
 // Error types
@@ -27,7 +24,6 @@ var (
 	ErrInvalidMessageHeaderLength = errors.New("invalid message header length")
 	ErrInvalidMessageDataLength   = errors.New("invalid message data length")
 	ErrInvalidMagicNumber         = errors.New("invalid magic number")
-	ErrInvalidHeaderCheckSum      = errors.New("invalid header checksum")
 	ErrInvalidDataCheckSum        = errors.New("invalid data checksum")
 )
 
@@ -47,16 +43,7 @@ func (message *QlcMessage) Version() byte {
 }
 
 func (message *QlcMessage) MessageType() MessageType {
-	if message.messageType == "" {
-		data := message.content[QlcMessageVersionEndIdx:QlcMessageTypeEndIdx]
-		pos := bytes.IndexByte(data, 0)
-		if pos != -1 {
-			message.messageType = MessageType(data[0:pos])
-		} else {
-			message.messageType = MessageType(data)
-		}
-	}
-	return message.messageType
+	return MessageType(message.content[QlcMessageVersionEndIdx])
 }
 
 func (message *QlcMessage) MessageData() []byte {
@@ -68,49 +55,35 @@ func (message *QlcMessage) DataLength() uint32 {
 	return Uint32(message.content[QlcMessageTypeEndIdx:QlcMessageDataLengthEndIdx])
 }
 
-// Reserved return reserved
-func (message *QlcMessage) Reserved() []byte {
-	return message.content[QlcMessageDataLengthEndIdx:QlcMessageReservedEndIdx]
-}
-
-// HeaderCheckSum return header checkSum
-func (message *QlcMessage) HeaderCheckSum() uint32 {
-	return Uint32(message.content[QlcMessageReservedEndIdx:QlcMessageHeaderCheckSumEndIdx])
-}
-
 // DataCheckSum return data checkSum
 func (message *QlcMessage) DataCheckSum() uint32 {
-	return Uint32(message.content[QlcMessageHeaderCheckSumEndIdx:QlcMessageDataCheckSumEndIdx])
+	return Uint32(message.content[QlcMessageDataLengthEndIdx:QlcMessageDataCheckSumEndIdx])
 }
 
 // HeaderData return HeaderData
 func (message *QlcMessage) HeaderData() []byte {
-	return message.content[:QlcMessageReservedEndIdx]
+	return message.content[:QlcMessageDataLengthEndIdx]
 }
 
 // NewQlcMessage new qlc message
-func NewQlcMessage(data []byte, currentVersion byte, messageType string) []byte {
+func NewQlcMessage(data []byte, currentVersion byte, messageType MessageType) []byte {
 	message := &QlcMessage{
 		content: make([]byte, QlcMessageHeaderLength+len(data)),
 	}
 	// copy header.
 	copy(message.content[0:QlcMessageMagicNumberEndIdx], MagicNumber)
 	message.content[QlcMessageMagicNumberEndIdx] = currentVersion
-	copy(message.content[QlcMessageVersionEndIdx:QlcMessageTypeEndIdx], []byte(messageType))
+	message.content[QlcMessageVersionEndIdx] = byte(messageType)
 
 	//copy datalength
 	copy(message.content[QlcMessageTypeEndIdx:QlcMessageDataLengthEndIdx], FromUint32(uint32(len(data))))
-
-	// header checksum.
-	headerCheckSum := crc32.ChecksumIEEE(message.content[:QlcMessageReservedEndIdx])
-	copy(message.content[QlcMessageReservedEndIdx:QlcMessageHeaderCheckSumEndIdx], FromUint32(uint32(headerCheckSum)))
 
 	// copy data.
 	copy(message.content[QlcMessageDataCheckSumEndIdx:], data)
 
 	// data checksum.
 	dataCheckSum := crc32.ChecksumIEEE(message.content[QlcMessageDataCheckSumEndIdx:])
-	copy(message.content[QlcMessageHeaderCheckSumEndIdx:QlcMessageDataCheckSumEndIdx], FromUint32(uint32(dataCheckSum)))
+	copy(message.content[QlcMessageDataLengthEndIdx:QlcMessageDataCheckSumEndIdx], FromUint32(uint32(dataCheckSum)))
 
 	return message.content
 }
@@ -143,10 +116,6 @@ func (message *QlcMessage) ParseMessageData(data []byte) error {
 func (message *QlcMessage) VerifyHeader() error {
 	if !Equal(MagicNumber, message.MagicNumber()) {
 		return ErrInvalidMagicNumber
-	}
-	headerCheckSum := crc32.ChecksumIEEE(message.HeaderData())
-	if headerCheckSum != message.HeaderCheckSum() {
-		return ErrInvalidHeaderCheckSum
 	}
 	return nil
 }

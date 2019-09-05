@@ -7,7 +7,7 @@ import (
 )
 
 // MessageType a string for message type.
-type MessageType string
+type MessageType byte
 
 //// Message interface for message.
 //type Message interface {
@@ -34,27 +34,16 @@ type PeersSlice []interface{}
 
 // Subscriber subscriber.
 type Subscriber struct {
-	// id usually the owner/creator, used for troubleshooting .
-	id interface{}
-
 	// msgChan chan for subscribed message.
 	msgChan chan *Message
 
 	// msgType message type to subscribe
 	msgType MessageType
-
-	// doFilter dup message
-	doFilter bool
 }
 
 // NewSubscriber return new Subscriber instance.
-func NewSubscriber(id interface{}, msgChan chan *Message, doFilter bool, msgType MessageType) *Subscriber {
-	return &Subscriber{id, msgChan, msgType, doFilter}
-}
-
-// ID return id.
-func (s *Subscriber) ID() interface{} {
-	return s.id
+func NewSubscriber(msgChan chan *Message, msgType MessageType) *Subscriber {
+	return &Subscriber{msgChan, msgType}
 }
 
 // MessageType return msgTypes.
@@ -65,11 +54,6 @@ func (s *Subscriber) MessageType() MessageType {
 // MessageChan return msgChan.
 func (s *Subscriber) MessageChan() chan *Message {
 	return s.msgChan
-}
-
-// DoFilter return doFilter
-func (s *Subscriber) DoFilter() bool {
-	return s.doFilter
 }
 
 // Message struct
@@ -113,7 +97,7 @@ func (msg *Message) Hash() types.Hash {
 
 // String get the message to string
 func (msg *Message) String() string {
-	return fmt.Sprintf("Message {type:%s; data:%s; from:%s}",
+	return fmt.Sprintf("Message {type:%d; data:%s; from:%s}",
 		msg.messageType,
 		msg.data,
 		msg.from,

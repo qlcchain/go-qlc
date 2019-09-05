@@ -1,13 +1,12 @@
 package p2p
 
 import (
-	"sync"
 	"testing"
 )
 
 func TestDispatcher(t *testing.T) {
 	dp := NewDispatcher()
-	sb := NewSubscriber("", make(chan *Message, 128), false, "test")
+	sb := NewSubscriber(make(chan *Message, 128), PublishReq)
 	types := sb.MessageType()
 	dp.Register(sb)
 	mt, _ := dp.subscribersMap.Load(types)
@@ -15,10 +14,9 @@ func TestDispatcher(t *testing.T) {
 		t.Fatal("register fail")
 	}
 	dp.Deregister(sb)
-	mt2, _ := dp.subscribersMap.Load(types)
-	s, _ := mt2.(*sync.Map).Load(sb)
-	if s != nil {
+	_, ok := dp.subscribersMap.Load(types)
+
+	if ok {
 		t.Fatal("deregister fail")
 	}
-
 }

@@ -24,8 +24,7 @@ message BulkPushBlock {
     bytes blocks = 1;
 }
 message PublishBlock {
-    uint32  blocktype = 1;
-    bytes   block = 2;
+    bytes block = 1;
 }
 message ConfirmReq {
      repeated bytes block = 1;
@@ -44,21 +43,18 @@ message PovStatus {
     int64  Timestamp = 5;
 }
 message PovPublishBlock {
-    uint32 blocktype = 1;
-    bytes  block = 2;
+    bytes  block = 1;
 }
 message PovPullBlockReq {
-    uint32 blocktype = 1;
-    bytes  StartHash = 2;
-    uint64 StartHeight = 3;
-    uint32 Count = 4;
-    uint32 PullType = 5;
-    uint32 Reason = 6;
-    bytes  Locators = 7;
+    bytes  StartHash = 1;
+    uint64 StartHeight = 2;
+    uint32 Count = 3;
+    uint32 PullType = 4;
+    uint32 Reason = 5;
+    bytes  Locators = 6;
 }
 message PovPullBlockRsp {
-    uint32 blocktype = 1;
-    uint32 count = 2;
-    bytes  block = 3;
-    uint32 Reason = 4;
+    uint32 count = 1;
+    bytes  block = 2;
+    uint32 Reason = 3;
 }

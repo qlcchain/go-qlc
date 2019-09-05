@@ -8,10 +8,9 @@ import (
 
 func TestQlcMessage(t *testing.T) {
 	data := "testMessage"
-	msgType := "test"
+	msgType := byte(0x01)
 	version := byte(0x01)
-	reserved := []byte{0x00, 0x00, 0x00, 0x00}
-	content := NewQlcMessage([]byte(data), version, msgType)
+	content := NewQlcMessage([]byte(data), version, MessageType(msgType))
 	qlcMsg := &QlcMessage{
 		content:     content,
 		messageType: MessageType(msgType),
@@ -27,12 +26,6 @@ func TestQlcMessage(t *testing.T) {
 	}
 	if qlcMsg.DataLength() != uint32(len(data)) {
 		t.Fatal("DataLength error")
-	}
-	if bytes.Compare(qlcMsg.Reserved(), reserved) != 0 {
-		t.Fatal("reserved error")
-	}
-	if qlcMsg.HeaderCheckSum() != crc32.ChecksumIEEE(qlcMsg.HeaderData()) {
-		t.Fatal("HeaderCheckSum error")
 	}
 	if qlcMsg.DataCheckSum() != crc32.ChecksumIEEE([]byte(data)) {
 		t.Fatal("DataCheckSum error")

@@ -24,20 +24,19 @@ const (
 
 //  Message Type
 const (
-	PublishReq      = "0" //PublishReq
-	ConfirmReq      = "1" //ConfirmReq
-	ConfirmAck      = "2" //ConfirmAck
-	FrontierRequest = "3" //FrontierReq
-	FrontierRsp     = "4" //FrontierRsp
-	BulkPullRequest = "5" //BulkPullRequest
-	BulkPullRsp     = "6" //BulkPullRsp
-	BulkPushBlock   = "7" //BulkPushBlock
-	MessageResponse = "8" //MessageResponse
-
-	PovStatus      = "20"
-	PovPublishReq  = "21"
-	PovBulkPullReq = "22"
-	PovBulkPullRsp = "23"
+	PublishReq      MessageType = iota //PublishReq
+	ConfirmReq                         //ConfirmReq
+	ConfirmAck                         //ConfirmAck
+	FrontierRequest                    //FrontierReq
+	FrontierRsp                        //FrontierRsp
+	BulkPullRequest                    //BulkPullRequest
+	BulkPullRsp                        //BulkPullRsp
+	BulkPushBlock                      //BulkPushBlock
+	MessageResponse                    //MessageResponse
+	PovStatus
+	PovPublishReq
+	PovBulkPullReq
+	PovBulkPullRsp
 )
 
 type cacheValue struct {
@@ -45,7 +44,7 @@ type cacheValue struct {
 	resendTimes uint32
 	startTime   time.Time
 	data        []byte
-	t           string
+	t           MessageType
 }
 
 type MessageService struct {
@@ -87,20 +86,20 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 func (ms *MessageService) Start() {
 	// register the network handler.
 	netService := ms.netService
-	netService.Register(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
-	netService.Register(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
-	netService.Register(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
+	netService.Register(NewSubscriber(ms.publishMessageCh, PublishReq))
+	netService.Register(NewSubscriber(ms.confirmReqMessageCh, ConfirmReq))
+	netService.Register(NewSubscriber(ms.confirmAckMessageCh, ConfirmAck))
+	netService.Register(NewSubscriber(ms.messageCh, FrontierRequest))
+	netService.Register(NewSubscriber(ms.messageCh, FrontierRsp))
+	netService.Register(NewSubscriber(ms.messageCh, BulkPullRequest))
+	netService.Register(NewSubscriber(ms.messageCh, BulkPullRsp))
+	netService.Register(NewSubscriber(ms.messageCh, BulkPushBlock))
+	netService.Register(NewSubscriber(ms.rspMessageCh, MessageResponse))
 	// PoV message handlers
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovStatus))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovPublishReq))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullReq))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullRsp))
+	netService.Register(NewSubscriber(ms.povMessageCh, PovStatus))
+	netService.Register(NewSubscriber(ms.povMessageCh, PovPublishReq))
+	netService.Register(NewSubscriber(ms.povMessageCh, PovBulkPullReq))
+	netService.Register(NewSubscriber(ms.povMessageCh, PovBulkPullRsp))
 	// start loop().
 	go ms.startLoop()
 	go ms.syncService.Start()
@@ -512,22 +511,22 @@ func (ms *MessageService) Stop() {
 	// quit.
 	ms.cancel()
 	ms.syncService.quitCh <- true
-	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	ms.netService.Deregister(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovStatus))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovPublishReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullRsp))
+	ms.netService.Deregister(NewSubscriber(ms.publishMessageCh, PublishReq))
+	ms.netService.Deregister(NewSubscriber(ms.confirmReqMessageCh, ConfirmReq))
+	ms.netService.Deregister(NewSubscriber(ms.confirmAckMessageCh, ConfirmAck))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, FrontierRequest))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, FrontierRsp))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, BulkPullRequest))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, BulkPullRsp))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, BulkPushBlock))
+	ms.netService.Deregister(NewSubscriber(ms.rspMessageCh, MessageResponse))
+	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovStatus))
+	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovPublishReq))
+	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovBulkPullReq))
+	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovBulkPullRsp))
 }
 
-func marshalMessage(messageName string, value interface{}) ([]byte, error) {
+func marshalMessage(messageName MessageType, value interface{}) ([]byte, error) {
 	switch messageName {
 	case PublishReq:
 		packet := protos.PublishBlock{

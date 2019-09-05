@@ -147,8 +147,8 @@ func (ns *QlcService) Register(subscribers ...*Subscriber) {
 }
 
 // Deregister Deregister the subscribers.
-func (ns *QlcService) Deregister(subscribers ...*Subscriber) {
-	ns.dispatcher.Deregister(subscribers...)
+func (ns *QlcService) Deregister(subscribers *Subscriber) {
+	ns.dispatcher.Deregister(subscribers)
 }
 
 // PutMessage put message to dispatcher.
@@ -157,15 +157,15 @@ func (ns *QlcService) PutMessage(msg *Message) {
 }
 
 // Broadcast message.
-func (ns *QlcService) Broadcast(name string, value interface{}) {
+func (ns *QlcService) Broadcast(name MessageType, value interface{}) {
 	ns.node.BroadcastMessage(name, value)
 }
 
-func (ns *QlcService) SendMessageToPeers(messageName string, value interface{}, peerID string) {
+func (ns *QlcService) SendMessageToPeers(messageName MessageType, value interface{}, peerID string) {
 	ns.node.SendMessageToPeers(messageName, value, peerID)
 }
 
 // SendMessageToPeer send message to a peer.
-func (ns *QlcService) SendMessageToPeer(messageName string, value interface{}, peerID string) error {
+func (ns *QlcService) SendMessageToPeer(messageName MessageType, value interface{}, peerID string) error {
 	return ns.node.SendMessageToPeer(messageName, value, peerID)
 }

@@ -18,7 +18,6 @@ type Dispatcher struct {
 	quitCh             chan bool
 	receivedMessageCh  chan *Message
 	dispatchedMessages *lru.Cache
-	filters            map[MessageType]bool
 	logger             *zap.SugaredLogger
 }
 
@@ -28,7 +27,6 @@ func NewDispatcher() *Dispatcher {
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
 		receivedMessageCh: make(chan *Message, common.P2PMsgChanSize),
-		filters:           make(map[MessageType]bool),
 		logger:            log.NewLogger("dispatcher"),
 	}
 
@@ -41,23 +39,15 @@ func NewDispatcher() *Dispatcher {
 func (dp *Dispatcher) Register(subscribers ...*Subscriber) {
 	for _, v := range subscribers {
 		mt := v.MessageType()
-		m, _ := dp.subscribersMap.LoadOrStore(mt, new(sync.Map))
-		m.(*sync.Map).Store(v, true)
-		dp.filters[mt] = v.DoFilter()
+		_, _ = dp.subscribersMap.LoadOrStore(mt, v)
 	}
 }
 
 // Deregister deregister subscribers.
-func (dp *Dispatcher) Deregister(subscribers ...*Subscriber) {
-
-	for _, v := range subscribers {
-		mt := v.MessageType()
-		m, _ := dp.subscribersMap.Load(mt)
-		if m == nil {
-			continue
-		}
-		m.(*sync.Map).Delete(v)
-		delete(dp.filters, mt)
+func (dp *Dispatcher) Deregister(subscribers *Subscriber) {
+	mt := subscribers.MessageType()
+	if _, ok := dp.subscribersMap.Load(mt); ok {
+		dp.subscribersMap.Delete(mt)
 	}
 }
 
@@ -82,17 +72,13 @@ func (dp *Dispatcher) loop() {
 			if v == nil {
 				continue
 			}
-			m, _ := v.(*sync.Map)
 
-			m.Range(func(key, value interface{}) bool {
-				select {
-				case key.(*Subscriber).msgChan <- msg:
-				default:
-					dp.logger.Debug("timeout to dispatch message.")
-					time.Sleep(5 * time.Millisecond)
-				}
-				return true
-			})
+			select {
+			case v.(*Subscriber).msgChan <- msg:
+			default:
+				dp.logger.Debug("timeout to dispatch message.")
+				time.Sleep(5 * time.Millisecond)
+			}
 		}
 	}
 }
@@ -106,11 +92,5 @@ func (dp *Dispatcher) Stop() {
 
 // PutMessage put new message to chan, then subscribers will be notified to process.
 func (dp *Dispatcher) PutMessage(msg *Message) {
-	hash := msg.Hash()
-	if dp.filters[msg.MessageType()] {
-		if exist, _ := dp.dispatchedMessages.ContainsOrAdd(hash, hash); exist == true {
-			return
-		}
-	}
 	dp.receivedMessageCh <- msg
 }

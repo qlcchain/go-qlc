@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	el	*Election
+	el *Election
 )
 
 func init() {

@@ -217,4 +217,3 @@ func (r *Receiver) processedUpdate(hash types.Hash) {
 		r.c.logger.Errorf("Set cache error [%s] for block [%s] with publish message", err, hash)
 	}
 }
-

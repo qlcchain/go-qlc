@@ -224,7 +224,7 @@ func (s *Stream) close() error {
 }
 
 // SendMessage send msg to peer
-func (s *Stream) SendMessageToPeer(messageType string, data []byte) error {
+func (s *Stream) SendMessageToPeer(messageType MessageType, data []byte) error {
 	version := p2pVersion
 	message := NewQlcMessage(data, byte(version), messageType)
 	if MessageResponse == messageType {

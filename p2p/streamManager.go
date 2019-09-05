@@ -131,7 +131,7 @@ func (sm *StreamManager) createStreamWithPeer(pid peer.ID) {
 }
 
 // BroadcastMessage broadcast the message
-func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
+func (sm *StreamManager) BroadcastMessage(messageName MessageType, v interface{}) {
 	messageContent, err := marshalMessage(messageName, v)
 	if err != nil {
 		sm.node.logger.Error(err)
@@ -166,7 +166,7 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 	})
 }
 
-func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, peerID string) {
+func (sm *StreamManager) SendMessageToPeers(messageName MessageType, v interface{}, peerID string) {
 	messageContent, err := marshalMessage(messageName, v)
 	if err != nil {
 		sm.node.logger.Error(err)
@@ -203,7 +203,7 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 	})
 }
 
-func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []byte, messageName string) {
+func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []byte, messageName MessageType) {
 	var cs []*cacheValue
 	var c *cacheValue
 	if sm.node.netService.msgService.cache.Has(hash) {

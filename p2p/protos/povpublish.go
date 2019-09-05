@@ -16,8 +16,7 @@ func PovPublishBlockToProto(publish *PovPublishBlock) ([]byte, error) {
 		return nil, err
 	}
 	bpPb := &pb.PovPublishBlock{
-		Blocktype: 0,
-		Block:     blkData,
+		Block: blkData,
 	}
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
