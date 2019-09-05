@@ -179,10 +179,27 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	dps := act.dps
 	dps.logger.Debugf("block[%s] confirmed", hash)
 
+	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
+		err := dps.lv.BlockProcess(block)
+		if err != nil {
+			dps.logger.Error(err)
+		} else {
+			dps.logger.Debugf("save block[%s]", hash)
+		}
+	} else {
+		dps.logger.Debugf("%s, %v", hash, err)
+	}
+}
+
+func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
+	hash := block.GetHash()
+	dps := act.dps
+	dps.logger.Debugf("sync block[%s] confirmed", hash)
+
 	dps.chainFinished(hash)
 
 	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
-		err := dps.lv.BlockProcess(block)
+		err := dps.lv.BlockSyncProcess(block)
 		if err != nil {
 			dps.logger.Error(err)
 		} else {

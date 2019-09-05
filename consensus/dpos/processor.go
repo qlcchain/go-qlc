@@ -228,11 +228,21 @@ func (p *Processor) processAck(vi *voteInfo) {
 func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	dps := p.dps
 	hash := bs.Block.GetHash()
+	var result process.ProcessResult
+	var err error
 
-	result, err := dps.lv.BlockCheck(bs.Block)
-	if err != nil {
-		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
-		return
+	if bs.BlockFrom == types.Synchronized {
+		result, err = dps.lv.BlockSyncCheck(bs.Block)
+		if err != nil {
+			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
+			return
+		}
+	} else {
+		result, err = dps.lv.BlockCheck(bs.Block)
+		if err != nil {
+			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
+			return
+		}
 	}
 	p.processResult(result, bs)
 
@@ -360,12 +370,12 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 
 		el.cleanBlockInfo()
 		dps.acTrx.rollBack(el.status.loser)
-		dps.acTrx.addWinner2Ledger(blk)
+		dps.acTrx.addSyncBlock2Ledger(blk)
 		p.blocksAcked <- hash
 		dps.dispatchAckedBlock(blk, hash, p.index)
 		dps.eb.Publish(common.EventConfirmedBlock, blk)
 	} else {
-		dps.acTrx.addWinner2Ledger(blk)
+		dps.acTrx.addSyncBlock2Ledger(blk)
 		p.blocksAcked <- hash
 		dps.dispatchAckedBlock(blk, hash, p.index)
 		dps.eb.Publish(common.EventConfirmedBlock, blk)
