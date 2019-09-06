@@ -111,5 +111,9 @@ func (dp *Dispatcher) PutMessage(msg *Message) {
 			return
 		}
 	}
-	dp.receivedMessageCh <- msg
+	select {
+	case dp.receivedMessageCh <- msg:
+	default:
+		dp.logger.Debugf("to many message")
+	}
 }
