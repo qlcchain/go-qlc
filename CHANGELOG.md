@@ -1,4 +1,12 @@
 
+<a name="v1.2.6.6"></a>
+## [v1.2.6.6](https://github.com/qlcchain/go-qlc/compare/v1.2.6.5...v1.2.6.6) (2019-09-06)
+
+### Bug Fixes
+
+* message cache chan blocking
+
+
 <a name="v1.2.6.5"></a>
 ## [v1.2.6.5](https://github.com/qlcchain/go-qlc/compare/v1.2.6.4...v1.2.6.5) (2019-08-29)
 
@@ -18,11 +26,18 @@
 
 
 <a name="v1.2.6.4"></a>
-## [v1.2.6.4](https://github.com/qlcchain/go-qlc/compare/v1.2.5...v1.2.6.4) (2019-08-23)
+## [v1.2.6.4](https://github.com/qlcchain/go-qlc/compare/v1.2.6.2...v1.2.6.4) (2019-08-23)
 
 ### Bug Fixes
 
 * send block should not check Repeated
+
+
+<a name="v1.2.6.2"></a>
+## [v1.2.6.2](https://github.com/qlcchain/go-qlc/compare/v1.2.5...v1.2.6.2) (2019-08-21)
+
+### Bug Fixes
+
 * enlarge confidant cache size
 * invalid ack
 * need rollback when blockcache fork
@@ -30,6 +45,7 @@
 
 ### Features
 
+* support pending meta ([#557](https://github.com/qlcchain/go-qlc/issues/557))
 * sort query pending by timestamp
 * check generate receive block repeatedly
 
