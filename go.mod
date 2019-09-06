@@ -69,3 +69,5 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/validator.v2 v2.0.0-20180514200540-135c24b11c19
 )
+
+go 1.13
