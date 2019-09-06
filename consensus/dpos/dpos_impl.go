@@ -89,6 +89,7 @@ type DPoS struct {
 	cancel              context.CancelFunc
 	frontiersStatus     *sync.Map
 	syncStateNotifyWait *sync.WaitGroup
+	syncFinished		int32
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -888,9 +889,8 @@ func (dps *DPoS) isReceivedFrontier(hash types.Hash) bool {
 func (dps *DPoS) chainFinished(hash types.Hash) {
 	if _, ok := dps.frontiersStatus.Load(hash); ok {
 		dps.frontiersStatus.Store(hash, frontierChainFinished)
+		dps.checkSyncFinished()
 	}
-
-	dps.checkSyncFinished()
 }
 
 func (dps *DPoS) checkSyncFinished() {
@@ -904,7 +904,7 @@ func (dps *DPoS) checkSyncFinished() {
 		return true
 	})
 
-	if allFinished {
+	if allFinished && atomic.CompareAndSwapInt32(&dps.syncFinished, 0, 1) {
 		if err := dps.lv.BlockSyncDown(); err != nil {
 			dps.logger.Error("block sync down err", err)
 		}
@@ -966,6 +966,7 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 
 	//clean last state
 	if state == common.Syncing {
+		atomic.StoreInt32(&dps.syncFinished, 0)
 		dps.frontiersStatus = new(sync.Map)
 	} else if state == common.SyncDone {
 		dps.checkSyncFinished()
