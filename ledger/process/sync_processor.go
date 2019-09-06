@@ -161,11 +161,6 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 	if err := lv.l.AddStateBlock(block, txn); err != nil {
 		return err
 	}
-	if block.IsSendBlock() || block.GetType() == types.ContractReward {
-		if err := lv.l.AddSyncBlock(block); err != nil {
-			return fmt.Errorf("add sync block error: %s", err)
-		}
-	}
 	am, err := lv.l.GetAccountMetaConfirmed(block.GetAddress(), txn)
 	if err != nil && err != ledger.ErrAccountNotFound {
 		return fmt.Errorf("get account meta error: %s", err)
@@ -174,8 +169,14 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 	if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
 		return fmt.Errorf("get token meta error: %s", err)
 	}
+	if err := lv.updateSyncBlocks(block, txn); err != nil {
+		return fmt.Errorf("update sync block error: %s", err)
+	}
 	if err := lv.updateRepresentative(block, am, tm, txn); err != nil {
 		return fmt.Errorf("update representative error: %s", err)
+	}
+	if err := lv.updateSyncPending(block, txn); err != nil {
+		return fmt.Errorf("update sync pending error: %s", err)
 	}
 	if err := lv.updateFrontier(block, tm, txn); err != nil {
 		return fmt.Errorf("update frontier error: %s", err)
@@ -186,7 +187,36 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 	return nil
 }
 
-func (lv *LedgerVerifier) BlockSyncDown() error {
+func (lv *LedgerVerifier) updateSyncBlocks(block *types.StateBlock, txn db.StoreTxn) error {
+	if block.IsSendBlock() {
+		if _, err := lv.l.GetLinkBlock(block.GetHash(), txn); err != nil {
+			if err := lv.l.AddSyncBlock(block, txn); err != nil {
+				return fmt.Errorf("add sync block error: %s", err)
+			}
+		}
+	}
+	if block.GetType() == types.ContractReward {
+		if err := lv.l.AddSyncBlock(block, txn); err != nil {
+			return fmt.Errorf("add sync block error: %s", err)
+		}
+	}
+	return nil
+}
+
+func (lv *LedgerVerifier) updateSyncPending(block *types.StateBlock, txn db.StoreTxn) error {
+	if block.IsReceiveBlock() {
+		pendingKey := types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (lv *LedgerVerifier) BlockSyncDone() error {
 	syncBlocks := make([]*types.StateBlock, 0)
 	err := lv.l.GetSyncBlocks(func(block *types.StateBlock) error {
 		syncBlocks = append(syncBlocks, block)

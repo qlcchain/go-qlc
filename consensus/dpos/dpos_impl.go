@@ -89,7 +89,7 @@ type DPoS struct {
 	cancel              context.CancelFunc
 	frontiersStatus     *sync.Map
 	syncStateNotifyWait *sync.WaitGroup
-	syncFinished		int32
+	syncFinished        int32
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -905,7 +905,7 @@ func (dps *DPoS) checkSyncFinished() {
 	})
 
 	if allFinished && atomic.CompareAndSwapInt32(&dps.syncFinished, 0, 1) {
-		if err := dps.lv.BlockSyncDown(); err != nil {
+		if err := dps.lv.BlockSyncDone(); err != nil {
 			dps.logger.Error("block sync down err", err)
 		}
 		dps.frontiersStatus = new(sync.Map)
