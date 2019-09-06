@@ -523,7 +523,10 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 }
 
 func (p *Processor) enqueueUnchecked(result process.ProcessResult, bs *consensus.BlockSource) {
-	p.enqueueUncheckedToDb(result, bs)
+	//frontier confirmReq may cause problem
+	if bs.Type != consensus.MsgConfirmReq {
+		p.enqueueUncheckedToDb(result, bs)
+	}
 }
 
 func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *consensus.BlockSource) {

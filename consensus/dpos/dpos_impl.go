@@ -905,12 +905,12 @@ func (dps *DPoS) checkSyncFinished() {
 	})
 
 	if allFinished {
-		dps.eb.Publish(common.EventConsensusSyncFinished)
 		if err := dps.lv.BlockSyncDown(); err != nil {
 			dps.logger.Error("block sync down err", err)
 		}
 		dps.frontiersStatus = new(sync.Map)
 		dps.CleanSyncCache()
+		dps.eb.Publish(common.EventConsensusSyncFinished)
 		dps.logger.Infof("sync finished")
 	}
 }
