@@ -1,4 +1,12 @@
 
+<a name="v1.2.6.6"></a>
+## [v1.2.6.6](https://github.com/qlcchain/go-qlc/compare/v1.2.6.5...v1.2.6.6) (2019-09-06)
+
+### Bug Fixes
+
+* message cache chan blocking
+
+
 <a name="v1.2.6.5"></a>
 ## [v1.2.6.5](https://github.com/qlcchain/go-qlc/compare/v1.2.6.4...v1.2.6.5) (2019-08-29)
 
