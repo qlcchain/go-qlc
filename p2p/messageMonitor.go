@@ -271,7 +271,11 @@ func (ms *MessageService) checkMessageCache() {
 				value.resendTimes++
 				continue
 			}
-			stream.SendMessageToChan(value.data)
+			qlcMessage := &QlcMessage{
+				messageType: value.t,
+				content:     value.data,
+			}
+			_ = stream.SendMessageToChan(qlcMessage)
 			value.resendTimes++
 			if value.resendTimes > msgResendMaxTimes {
 				csTemp = append(csTemp, cs[i])

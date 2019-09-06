@@ -139,6 +139,10 @@ func (sm *StreamManager) BroadcastMessage(messageName MessageType, v interface{}
 	}
 	version := p2pVersion
 	message := NewQlcMessage(messageContent, byte(version), messageName)
+	qlcMessage := &QlcMessage{
+		messageType: messageName,
+		content:     message,
+	}
 	hash, err := types.HashBytes(message)
 	if err != nil {
 		sm.node.logger.Error(err)
@@ -158,7 +162,7 @@ func (sm *StreamManager) BroadcastMessage(messageName MessageType, v interface{}
 				return true
 			}
 		}
-		stream.SendMessageToChan(message)
+		_ = stream.SendMessageToChan(qlcMessage)
 		if msgNeedCache {
 			sm.searchCache(stream, hash, message, messageName)
 		}
@@ -174,12 +178,15 @@ func (sm *StreamManager) SendMessageToPeers(messageName MessageType, v interface
 	}
 	version := p2pVersion
 	message := NewQlcMessage(messageContent, byte(version), messageName)
+	qlcMessage := &QlcMessage{
+		messageType: messageName,
+		content:     message,
+	}
 	hash, err := types.HashBytes(message)
 	if err != nil {
 		sm.node.logger.Error(err)
 		return
 	}
-
 	msgNeedCache := false
 	if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
 		messageName == PovPublishReq {
@@ -194,7 +201,7 @@ func (sm *StreamManager) SendMessageToPeers(messageName MessageType, v interface
 					return true
 				}
 			}
-			stream.SendMessageToChan(message)
+			_ = stream.SendMessageToChan(qlcMessage)
 			if msgNeedCache {
 				sm.searchCache(stream, hash, message, messageName)
 			}

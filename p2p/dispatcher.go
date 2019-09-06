@@ -1,10 +1,8 @@
 package p2p
 
 import (
-	"sync"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common"
+	"sync"
 
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -77,7 +75,6 @@ func (dp *Dispatcher) loop() {
 			case v.(*Subscriber).msgChan <- msg:
 			default:
 				dp.logger.Debug("timeout to dispatch message.")
-				time.Sleep(5 * time.Millisecond)
 			}
 		}
 	}
@@ -92,5 +89,9 @@ func (dp *Dispatcher) Stop() {
 
 // PutMessage put new message to chan, then subscribers will be notified to process.
 func (dp *Dispatcher) PutMessage(msg *Message) {
-	dp.receivedMessageCh <- msg
+	select {
+	case dp.receivedMessageCh <- msg:
+	default:
+		dp.logger.Debugf("dispatcher receive message chan expire")
+	}
 }
