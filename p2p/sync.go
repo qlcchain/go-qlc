@@ -33,7 +33,7 @@ type ServiceSync struct {
 	lastSyncTime int64
 	syncCount    uint32
 	syncState    common.SyncState
-	syncTimer	 *time.Timer
+	syncTicker	 *time.Ticker
 }
 
 // NewService return new Service.
@@ -54,7 +54,7 @@ func (ss *ServiceSync) Start() {
 	ss.logger.Info("started sync loop")
 	address := types.Address{}
 	Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
-	ss.syncTimer = time.NewTimer(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
+	ss.syncTicker = time.NewTicker(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
 
 	err := ss.netService.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ss.onConsensusSyncFinished)
 	if err != nil {
@@ -66,24 +66,26 @@ func (ss *ServiceSync) Start() {
 		case <-ss.quitCh:
 			ss.logger.Info("Stopped Sync Loop.")
 			return
-		case <-ss.syncTimer.C:
-			peerID, err := ss.netService.node.StreamManager().RandomPeer()
-			if err != nil {
-				continue
+		case <-ss.syncTicker.C:
+			if ss.syncState == common.SyncFinish || ss.syncState == common.SyncNotStart {
+				peerID, err := ss.netService.node.StreamManager().RandomPeer()
+				if err != nil {
+					continue
+				}
+				ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
+				if err != nil {
+					continue
+				}
+				ss.logger.Infof("begin sync block from [%s]", peerID)
+				ss.next()
+				bulkPull = bulkPull[:0:0]
+				bulkPush = bulkPush[:0:0]
+				err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
+				if err != nil {
+					ss.logger.Errorf("err [%s] when send FrontierRequest", err)
+				}
+				ss.syncCount++
 			}
-			ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
-			if err != nil {
-				continue
-			}
-			ss.logger.Infof("begin sync block from [%s]", peerID)
-			ss.next()
-			bulkPull = bulkPull[:0:0]
-			bulkPush = bulkPush[:0:0]
-			err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
-			if err != nil {
-				ss.logger.Errorf("err [%s] when send FrontierRequest", err)
-			}
-			ss.syncCount++
 		}
 	}
 }
@@ -101,7 +103,7 @@ func (ss *ServiceSync) Stop() {
 
 func (ss *ServiceSync) onConsensusSyncFinished() {
 	ss.syncState = common.SyncFinish
-	ss.syncTimer.Reset(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
+	ss.syncTicker = time.NewTicker(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
 }
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
@@ -150,6 +152,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		var blks types.StateBlockList
 		var confirmed bool
 		ss.syncState = common.Syncing
+		ss.syncTicker.Stop()
 		ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncing)
 		ss.logger.Info("sync start")
 

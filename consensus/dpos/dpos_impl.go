@@ -558,6 +558,7 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 		dps.dispatchMsg(bs)
 	} else {
 		if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
+			dps.logger.Debugf("pov sync state[%s] cache blocks", dps.getPovSyncState())
 			dps.cacheBlocks <- bs
 		} else {
 			dps.logger.Errorf("pov not ready! cache block too much, drop it!")
