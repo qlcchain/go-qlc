@@ -135,18 +135,25 @@ func (dps *DPoS) isOnline(addr types.Address) bool {
 		repPeriod.lock.RLock()
 		defer repPeriod.lock.RUnlock()
 
+		dps.logger.Debugf("period[%d] block[%d]", period, repPeriod.blockCount)
 		if repPeriod.blockCount == 0 {
 			if v, ok := repPeriod.statistic[addr]; ok {
 				if v.heartCount * 100 > heartCountPerPeriod * onlineRate {
+					dps.logger.Debugf("heart online: heart[%d] expect[%d]", v.heartCount, heartCountPerPeriod)
 					return true
 				}
+				dps.logger.Debugf("heart offline: heart[%d] expect[%d]", v.heartCount, heartCountPerPeriod)
 			}
+			dps.logger.Debugf("heart offline: no heart")
 		} else {
 			if v, ok := repPeriod.statistic[addr]; ok {
 				if v.voteCount * 100 > repPeriod.blockCount * onlineRate {
+					dps.logger.Debugf("vote online: vote[%d] expect[%d]", v.voteCount, repPeriod.blockCount)
 					return true
 				}
+				dps.logger.Debugf("vote offline: vote[%d] expect[%d]", v.voteCount, repPeriod.blockCount)
 			}
+			dps.logger.Debugf("vote offline: no vote")
 		}
 	}
 
@@ -177,13 +184,35 @@ func (dps *DPoS) sendOnline() {
 	}
 }
 
+func (dps *DPoS) sendOnlineWithAccount(acc *types.Account) {
+	weight := dps.ledger.Weight(acc.Address())
+	if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
+		return
+	}
+
+	blk, err := dps.ledger.GenerateOnlineBlock(acc.Address(), acc.PrivateKey())
+	if err != nil {
+		dps.logger.Error("generate online block err", err)
+		return
+	}
+
+	dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, blk)
+
+	bs := &consensus.BlockSource{
+		Block:     blk,
+		BlockFrom: types.UnSynchronized,
+		Type:      consensus.MsgGenerateBlock,
+	}
+	dps.ProcessMsg(bs)
+}
+
 func (dps *DPoS) onPovHeightChange(pb *types.PovBlock) {
-	dps.curPovHeight = pb.Height
+	dps.curPovHeight = pb.Header.BasHdr.Height
 
 	if dps.getPovSyncState() == common.Syncdone {
-		if pb.Height - dps.lastSendHeight >= 120 {
+		if pb.Header.BasHdr.Height - dps.lastSendHeight >= 120 {
 			dps.sendOnline()
-			dps.lastSendHeight = pb.Height
+			dps.lastSendHeight = pb.Header.BasHdr.Height
 		}
 	}
 }

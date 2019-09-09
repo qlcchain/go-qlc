@@ -134,7 +134,7 @@ func NewDPoS(cfgFile string) *DPoS {
 	if err != nil {
 		dps.logger.Error("get latest pov block err", err)
 	} else {
-		dps.curPovHeight = pb.Height
+		dps.curPovHeight = pb.Header.BasHdr.Height
 	}
 
 	return dps
@@ -156,7 +156,12 @@ func (dps *DPoS) Init() {
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 	dps.voteThreshold, _ = supply.Div(2)
 
-	err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
+	err := dps.eb.SubscribeSync(common.EventRollback, dps.onRollback)
+	if err != nil {
+		dps.logger.Errorf("subscribe rollback unchecked block event err")
+	}
+
+	err = dps.eb.SubscribeSync(common.EventPovConnectBestBlock, dps.onPovHeightChange)
 	if err != nil {
 		dps.logger.Errorf("subscribe rollback unchecked block event err")
 	}
@@ -533,7 +538,7 @@ func (dps *DPoS) localRepVote(block *types.StateBlock) {
 		}
 
 		hash := block.GetHash()
-		dps.logger.Debugf("rep [%s] vote for block[%s]", address, hash)
+		dps.logger.Debugf("rep [%s] vote for block[%s] type[%s]", address, hash, block.Type)
 
 		vi := &voteInfo{
 			hash:    hash,
@@ -762,8 +767,18 @@ func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error
 	return hash, nil
 }
 
-func (dps *DPoS) onRollbackUnchecked(hash types.Hash) {
+func (dps *DPoS) onRollback(hash types.Hash) {
 	dps.rollbackUncheckedFromDb(hash)
+
+	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
+	if err == nil && blk.Type == types.Online {
+		for _, acc := range dps.accounts {
+			if acc.Address() == blk.Address {
+				dps.sendOnlineWithAccount(acc)
+				break
+			}
+		}
+	}
 }
 
 func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {

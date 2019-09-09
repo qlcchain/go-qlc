@@ -983,7 +983,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 // TODO: implement
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 	lv.logger.Errorf("process rollback block: %s", hash.String())
-	lv.l.EB.Publish(common.EventRollbackUnchecked, hash)
+	lv.l.EB.Publish(common.EventRollback, hash)
 	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
 		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 			err = lv.rollbackBlockCache(hash, txn)
