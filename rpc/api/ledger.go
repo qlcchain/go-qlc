@@ -872,3 +872,20 @@ func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 	}
 	return &ApiTokenInfo{*token}, nil
 }
+
+func (l *LedgerApi) GetAccountOnlineBlock(account types.Address) ([]*types.StateBlock, error) {
+	blocks := make([]*types.StateBlock, 0)
+	hashes, err := l.relation.AccountBlocks(account, 100, 0)
+	if err == nil {
+		for _, hash := range hashes {
+			if blk, err := l.ledger.GetStateBlockConfirmed(hash); err == nil {
+				if blk.Type == types.Online {
+					blocks = append(blocks, blk)
+				}
+			}
+		}
+		return blocks, nil
+	} else {
+		return nil, err
+	}
+}

@@ -95,7 +95,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "debug",
 			Version:   "1.0",
-			Service:   api.NewDebugApi(r.ledger),
+			Service:   api.NewDebugApi(r.ledger, r.eb),
 			Public:    true,
 		}
 	default:

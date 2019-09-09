@@ -35,8 +35,6 @@ const (
 	maxStatisticsPeriod   = 3
 	confirmedCacheMaxLen  = 102400
 	confirmedCacheMaxTime = 10 * time.Minute
-	onlinePeriod          = uint64(120)
-	onlineRate            = uint64(60)
 )
 
 type subMsgKind byte
@@ -164,6 +162,11 @@ func (dps *DPoS) Init() {
 	err = dps.eb.SubscribeSync(common.EventPovConnectBestBlock, dps.onPovHeightChange)
 	if err != nil {
 		dps.logger.Errorf("subscribe rollback unchecked block event err")
+	}
+
+	err = dps.eb.SubscribeSync(common.EventRpcSyncCall, dps.onRpcSyncCall)
+	if err != nil {
+		dps.logger.Errorf("subscribe rpc sync call event err")
 	}
 
 	if len(dps.accounts) != 0 {
@@ -725,6 +728,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 				return true
 			}
 			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
+			dps.heartAndVoteInc(va.Hash[0], va.Account, onlineKindHeart)
 		}
 
 		return true
@@ -836,4 +840,11 @@ func (dps *DPoS) getSeq(kind uint32) uint32 {
 
 func (dps *DPoS) getAckType(seq uint32) uint32 {
 	return seq >> 28
+}
+
+func (dps *DPoS) onRpcSyncCall(name string, in interface{}, out interface{}) {
+	switch name {
+	case "DPoS.Online":
+		dps.onGetOnlineInfo(in, out)
+	}
 }
