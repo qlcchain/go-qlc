@@ -90,7 +90,7 @@ const (
 	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
 	idPrefixUnconfirmedSync
 	idPrefixUncheckedSync
-	idPrefixSyncBlock
+	idPrefixSyncCacheBlock
 )
 
 var (
@@ -194,7 +194,7 @@ func (l *Ledger) initCache() error {
 	}
 
 	go func() {
-		ticker := time.NewTicker(15 * time.Second)
+		ticker := time.NewTicker(5 * time.Minute)
 		for {
 			select {
 			case <-l.ctx.Done():
@@ -217,7 +217,7 @@ func (l *Ledger) processCache() {
 				l.logger.Error(err)
 			}
 		}()
-		if err := l.representCache.cacheToConfirmed(txn); err != nil {
+		if err := l.representCache.memoryToConfirmed(txn); err != nil {
 			l.logger.Errorf("cache to confirmed error : %s", err)
 		}
 	}

@@ -356,11 +356,11 @@ func TestLedger_SyncBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	block := mock.StateBlockWithoutWork()
-	if err := l.AddSyncBlock(block); err != nil {
+	if err := l.AddSyncCacheBlock(block); err != nil {
 		t.Fatal(err)
 	}
 	count := 0
-	err := l.GetSyncBlocks(func(block *types.StateBlock) error {
+	err := l.GetSyncCacheBlocks(func(block *types.StateBlock) error {
 		count++
 		return nil
 	})
@@ -370,11 +370,11 @@ func TestLedger_SyncBlock(t *testing.T) {
 	if count != 1 {
 		t.Fatal("sync count error")
 	}
-	if err := l.DeleteSyncBlock(block.GetHash()); err != nil {
+	if err := l.DeleteSyncCacheBlock(block.GetHash()); err != nil {
 		t.Fatal(err)
 	}
 	count2 := 0
-	err = l.GetSyncBlocks(func(block *types.StateBlock) error {
+	err = l.GetSyncCacheBlocks(func(block *types.StateBlock) error {
 		count2++
 		return nil
 	})

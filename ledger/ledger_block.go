@@ -694,11 +694,11 @@ func (l *Ledger) GetMessageInfo(key types.Hash, txns ...db.StoreTxn) ([]byte, er
 	return value, nil
 }
 
-func (l *Ledger) AddSyncBlock(value *types.StateBlock, txns ...db.StoreTxn) error {
+func (l *Ledger) AddSyncCacheBlock(value *types.StateBlock, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	k, err := getKeyOfParts(idPrefixSyncBlock, value.GetHash())
+	k, err := getKeyOfParts(idPrefixSyncCacheBlock, value.GetHash())
 	if err != nil {
 		return err
 	}
@@ -718,11 +718,11 @@ func (l *Ledger) AddSyncBlock(value *types.StateBlock, txns ...db.StoreTxn) erro
 	return txn.Set(k, v)
 }
 
-func (l *Ledger) GetSyncBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error {
+func (l *Ledger) GetSyncCacheBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	err := txn.Iterator(idPrefixSyncBlock, func(key []byte, val []byte, b byte) error {
+	err := txn.Iterator(idPrefixSyncCacheBlock, func(key []byte, val []byte, b byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
 			return nil
@@ -739,11 +739,11 @@ func (l *Ledger) GetSyncBlocks(fn func(*types.StateBlock) error, txns ...db.Stor
 	return nil
 }
 
-func (l *Ledger) DeleteSyncBlock(key types.Hash, txns ...db.StoreTxn) error {
+func (l *Ledger) DeleteSyncCacheBlock(key types.Hash, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	k, err := getKeyOfParts(idPrefixSyncBlock, key)
+	k, err := getKeyOfParts(idPrefixSyncCacheBlock, key)
 	if err != nil {
 		return err
 	}

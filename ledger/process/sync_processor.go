@@ -190,13 +190,13 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 func (lv *LedgerVerifier) updateSyncBlocks(block *types.StateBlock, txn db.StoreTxn) error {
 	if block.IsSendBlock() {
 		if _, err := lv.l.GetLinkBlock(block.GetHash(), txn); err != nil {
-			if err := lv.l.AddSyncBlock(block, txn); err != nil {
+			if err := lv.l.AddSyncCacheBlock(block, txn); err != nil {
 				return fmt.Errorf("add sync block error: %s", err)
 			}
 		}
 	}
 	if block.GetType() == types.ContractReward {
-		if err := lv.l.AddSyncBlock(block, txn); err != nil {
+		if err := lv.l.AddSyncCacheBlock(block, txn); err != nil {
 			return fmt.Errorf("add sync block error: %s", err)
 		}
 	}
@@ -218,7 +218,7 @@ func (lv *LedgerVerifier) updateSyncPending(block *types.StateBlock, txn db.Stor
 
 func (lv *LedgerVerifier) BlockSyncDone() error {
 	syncBlocks := make([]*types.StateBlock, 0)
-	err := lv.l.GetSyncBlocks(func(block *types.StateBlock) error {
+	err := lv.l.GetSyncCacheBlocks(func(block *types.StateBlock) error {
 		syncBlocks = append(syncBlocks, block)
 		return nil
 	})
@@ -226,57 +226,59 @@ func (lv *LedgerVerifier) BlockSyncDone() error {
 		return err
 	}
 
-	// contract data need sort
-	sort.Slice(syncBlocks, func(i, j int) bool {
-		return syncBlocks[i].Timestamp < syncBlocks[j].Timestamp
-	})
+	if len(syncBlocks) > 0 {
+		// contract data need sort
+		sort.Slice(syncBlocks, func(i, j int) bool {
+			return syncBlocks[i].Timestamp < syncBlocks[j].Timestamp
+		})
 
-	for _, block := range syncBlocks {
-		txn := lv.l.Store.NewTransaction(true)
-		if block.IsSendBlock() {
-			if _, err := lv.l.GetLinkBlock(block.GetHash()); err != nil {
-				hash := block.GetHash()
-				switch block.Type {
-				case types.Send:
-					preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous)
-					if err != nil {
-						return errors.New("previous block not found")
-					}
-					pending := types.PendingInfo{
-						Source: block.GetAddress(),
-						Type:   block.GetToken(),
-						Amount: preBlk.Balance.Sub(block.GetBalance()),
-					}
-					pendingKey := types.PendingKey{
-						Address: types.Address(block.GetLink()),
-						Hash:    hash,
-					}
-					lv.logger.Debug("add pending, ", pendingKey)
-					if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
-						return err
-					}
-				case types.ContractSend:
-					if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
-						if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
-							lv.logger.Debug("contractSend add sync pending , ", pendingKey)
-							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-								return err
+		for _, block := range syncBlocks {
+			txn := lv.l.Store.NewTransaction(true)
+			if block.IsSendBlock() {
+				if _, err := lv.l.GetLinkBlock(block.GetHash()); err != nil {
+					hash := block.GetHash()
+					switch block.Type {
+					case types.Send:
+						preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous)
+						if err != nil {
+							return errors.New("previous block not found")
+						}
+						pending := types.PendingInfo{
+							Source: block.GetAddress(),
+							Type:   block.GetToken(),
+							Amount: preBlk.Balance.Sub(block.GetBalance()),
+						}
+						pendingKey := types.PendingKey{
+							Address: types.Address(block.GetLink()),
+							Hash:    hash,
+						}
+						lv.logger.Debug("add pending, ", pendingKey)
+						if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
+							return err
+						}
+					case types.ContractSend:
+						if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
+							if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
+								lv.logger.Debug("contractSend add sync pending , ", pendingKey)
+								if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+									return err
+								}
 							}
 						}
 					}
 				}
 			}
-		}
-		if block.GetType() == types.ContractReward {
-			if err := lv.updateContractData(block, txn); err != nil {
-				return fmt.Errorf(" update contract data error(%s): %s", block.GetHash().String(), err)
+			if block.GetType() == types.ContractReward {
+				if err := lv.updateContractData(block, txn); err != nil {
+					return fmt.Errorf(" update contract data error(%s): %s", block.GetHash().String(), err)
+				}
 			}
-		}
-		if err := lv.l.DeleteSyncBlock(block.GetHash()); err != nil {
-			return fmt.Errorf("delete sync block error: %s ", err)
-		}
-		if err := txn.Commit(nil); err != nil {
-			return fmt.Errorf("txn commit error: %s", err)
+			if err := lv.l.DeleteSyncCacheBlock(block.GetHash()); err != nil {
+				return fmt.Errorf("delete sync block error: %s ", err)
+			}
+			if err := txn.Commit(nil); err != nil {
+				return fmt.Errorf("txn commit error: %s", err)
+			}
 		}
 	}
 	return nil
