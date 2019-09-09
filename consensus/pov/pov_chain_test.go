@@ -1,6 +1,7 @@
 package pov
 
 import (
+	"github.com/qlcchain/go-qlc/common/event"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,6 +16,7 @@ import (
 type povChainMockData struct {
 	config *config.Config
 	ledger ledger.Store
+	eb     event.EventBus
 }
 
 func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData) {
@@ -29,6 +31,8 @@ func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData)
 	lDir := filepath.Join(rootDir, "ledger")
 	_ = os.RemoveAll(lDir)
 	md.ledger = ledger.NewLedger(lDir)
+
+	md.eb = event.GetEventBus(uid)
 
 	return func(t *testing.T) {
 		err := md.ledger.DBStore().Close()
@@ -47,7 +51,7 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 	teardownTestCase, md := setupPovChainTestCase(t)
 	defer teardownTestCase(t)
 
-	chain := NewPovBlockChain(md.config, md.ledger)
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
 	chain.Init()
 	chain.Start()
@@ -102,7 +106,7 @@ func TestPovChain_ForkChain(t *testing.T) {
 	teardownTestCase, md := setupPovChainTestCase(t)
 	defer teardownTestCase(t)
 
-	chain := NewPovBlockChain(md.config, md.ledger)
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
 	chain.Init()
 	chain.Start()
@@ -158,7 +162,7 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	teardownTestCase, md := setupPovChainTestCase(t)
 	defer teardownTestCase(t)
 
-	chain := NewPovBlockChain(md.config, md.ledger)
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
 	chain.Init()
 	chain.Start()
