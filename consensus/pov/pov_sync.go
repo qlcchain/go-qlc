@@ -1,7 +1,6 @@
 package pov
 
 import (
-	"math/big"
 	"sync"
 	"time"
 
@@ -32,7 +31,7 @@ type PovSyncerChainReader interface {
 	LatestBlock() *types.PovBlock
 	GetBlockLocator(hash types.Hash) []*types.Hash
 	LocateBestBlock(locator []*types.Hash) *types.PovBlock
-	GetBlockTDByHash(hash types.Hash) *big.Int
+	GetBlockTDByHash(hash types.Hash) *types.PovTD
 }
 
 type PovSyncer struct {

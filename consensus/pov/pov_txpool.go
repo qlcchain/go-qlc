@@ -65,9 +65,10 @@ func (tp *PovTxPool) Init() {
 }
 
 func (tp *PovTxPool) Start() {
-	if tp.eb != nil {
-		tp.eb.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
-		tp.eb.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
+	if tp.ledger != nil {
+		ebL := tp.ledger.EventBus()
+		ebL.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
+		ebL.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
 	}
 
 	tp.chain.RegisterListener(tp)
@@ -77,6 +78,12 @@ func (tp *PovTxPool) Start() {
 
 func (tp *PovTxPool) Stop() {
 	tp.chain.UnRegisterListener(tp)
+
+	if tp.ledger != nil {
+		ebL := tp.ledger.EventBus()
+		ebL.Unsubscribe(common.EventAddRelation, tp.onAddStateBlock)
+		ebL.Unsubscribe(common.EventDeleteRelation, tp.onDeleteStateBlock)
+	}
 
 	close(tp.quitCh)
 }
@@ -95,16 +102,17 @@ func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
 }
 
 func (tp *PovTxPool) OnPovBlockEvent(event byte, block *types.PovBlock) {
-	if len(block.Transactions) <= 0 {
+	txs := block.GetAccountTxs()
+	if len(txs) <= 0 {
 		return
 	}
 
 	if event == EventConnectPovBlock {
-		for _, tx := range block.Transactions {
+		for _, tx := range txs {
 			tp.delTx(tx.Hash)
 		}
 	} else if event == EventDisconnectPovBlock {
-		for _, tx := range block.Transactions {
+		for _, tx := range txs {
 			tp.addTx(tx.Hash, tx.Block)
 		}
 	}
@@ -298,6 +306,11 @@ func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
 }
 
 func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
+	if txBlock == nil {
+		tp.logger.Errorf("add tx %s but block is nil", txHash)
+		return
+	}
+
 	tp.txMu.Lock()
 	defer tp.txMu.Unlock()
 
@@ -497,4 +510,11 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 
 func (tp *PovTxPool) LastUpdated() time.Time {
 	return time.Unix(tp.lastUpdated, 0)
+}
+
+func (tp *PovTxPool) GetPendingTxNum() uint32 {
+	tp.txMu.RLock()
+	defer tp.txMu.RUnlock()
+
+	return uint32(len(tp.allTxs))
 }

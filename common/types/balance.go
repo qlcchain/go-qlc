@@ -60,6 +60,11 @@ func NewBalance(x int64) Balance {
 	return Balance{t}
 }
 
+func NewBalanceFromBigInt(num *big.Int) Balance {
+	t := new(big.Int).Set(num)
+	return Balance{t}
+}
+
 // Bytes returns the binary representation of this Balance with the given
 // endianness.
 func (b Balance) Bytes() []byte {
@@ -190,4 +195,8 @@ func (b *Balance) UnmarshalJSON(text []byte) error {
 // IsZero check balance is zero
 func (b Balance) IsZero() bool {
 	return b.Equal(ZeroBalance)
+}
+
+func (b Balance) Copy() Balance {
+	return NewBalanceFromBigInt(b.Int)
 }

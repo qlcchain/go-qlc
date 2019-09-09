@@ -151,6 +151,16 @@ func BE_BytesToUint32(buf []byte) uint32 {
 	return binary.BigEndian.Uint32(buf)
 }
 
+func LE_Uint32ToBytes(i uint32) []byte {
+	tmp := make([]byte, 4)
+	binary.LittleEndian.PutUint32(tmp, i)
+	return tmp
+}
+
+func LE_BytesToUint32(buf []byte) uint32 {
+	return binary.LittleEndian.Uint32(buf)
+}
+
 func BE_Uint64ToBytes(i uint64) []byte {
 	tmp := make([]byte, 8)
 	binary.BigEndian.PutUint64(tmp, i)

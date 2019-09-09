@@ -243,6 +243,10 @@ func (l *Ledger) DBStore() db.Store {
 	return l.Store
 }
 
+func (l *Ledger) EventBus() event.EventBus {
+	return l.EB
+}
+
 func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 	var buffer = []byte{t}
 	for _, part := range partList {

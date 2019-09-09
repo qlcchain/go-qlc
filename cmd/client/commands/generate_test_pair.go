@@ -28,7 +28,7 @@ import (
 func generateTestPair() {
 	var fromAccountP string
 	var txAccountsP []string
-	var onlyTxP bool
+	var txOnlyP int
 	var tpsP int
 	var txCountP int
 	var txTypeP string
@@ -52,11 +52,11 @@ func generateTestPair() {
 			Usage: "tx per sec",
 			Value: 1,
 		}
-		onlyTx := util.Flag{
-			Name:  "onlyTx",
+		txOnly := util.Flag{
+			Name:  "txOnly",
 			Must:  true,
 			Usage: "only generate txs",
-			Value: true,
+			Value: 1,
 		}
 		txCount := util.Flag{
 			Name:  "txCount",
@@ -74,7 +74,7 @@ func generateTestPair() {
 			Name: "generateTestPair",
 			Help: "generate test pair send txs",
 			Func: func(c *ishell.Context) {
-				args := []util.Flag{from, txAccounts, onlyTx, tps, txCount, txType}
+				args := []util.Flag{from, txAccounts, txOnly, tps, txCount, txType}
 				if util.HelpText(c, args) {
 					return
 				}
@@ -84,11 +84,11 @@ func generateTestPair() {
 				}
 				fromAccountP = util.StringVar(c.Args, from)
 				txAccountsP = util.StringSliceVar(c.Args, txAccounts)
-				onlyTxP = util.BoolVar(c.Args, onlyTx)
+				txOnlyP, _ = util.IntVar(c.Args, txOnly)
 				tpsP, _ = util.IntVar(c.Args, tps)
 				txCountP, _ = util.IntVar(c.Args, txCount)
 				txTypeP = util.StringVar(c.Args, txType)
-				err := randSendTxs(fromAccountP, txAccountsP, onlyTxP, tpsP, txCountP, txTypeP)
+				err := randSendTxs(fromAccountP, txAccountsP, txOnlyP, tpsP, txCountP, txTypeP)
 				if err != nil {
 					util.Info(err)
 					return
@@ -102,7 +102,7 @@ func generateTestPair() {
 			Use:   "generateTestPair",
 			Short: "generate test pair send txs",
 			Run: func(cmd *cobra.Command, args []string) {
-				err := randSendTxs(fromAccountP, txAccountsP, onlyTxP, tpsP, txCountP, txTypeP)
+				err := randSendTxs(fromAccountP, txAccountsP, txOnlyP, tpsP, txCountP, txTypeP)
 				if err != nil {
 					cmd.Println(err)
 					return
@@ -112,7 +112,7 @@ func generateTestPair() {
 		}
 		randSendCmd.Flags().StringVar(&fromAccountP, "from", "", "send account private key")
 		randSendCmd.Flags().StringSliceVar(&txAccountsP, "txAccounts", nil, "tx account private key")
-		randSendCmd.Flags().BoolVar(&onlyTxP, "onlyTx", true, "only generate txs")
+		randSendCmd.Flags().IntVar(&txOnlyP, "txOnly", 1, "generate txs only")
 		randSendCmd.Flags().IntVar(&tpsP, "tps", 1, "tx per sec")
 		randSendCmd.Flags().IntVar(&txCountP, "txCount", 1, "tx count")
 		randSendCmd.Flags().StringVar(&txTypeP, "txType", "both", "tx type, both/send")
@@ -120,8 +120,8 @@ func generateTestPair() {
 	}
 }
 
-func randSendTxs(fromAccountP string, txAccountsP []string, onlyTxP bool, tpsP int, txCountP int, txTypeP string) error {
-	if !onlyTxP {
+func randSendTxs(fromAccountP string, txAccountsP []string, txOnlyP int, tpsP int, txCountP int, txTypeP string) error {
+	if txOnlyP == 0 {
 		if fromAccountP == "" {
 			return errors.New("invalid from account value")
 		}
@@ -146,7 +146,7 @@ func randSendTxs(fromAccountP string, txAccountsP []string, onlyTxP bool, tpsP i
 		toAccounts = append(toAccounts, types.NewAccount(bytes))
 	}
 
-	if !onlyTxP {
+	if txOnlyP == 0 {
 		bytes, err := hex.DecodeString(fromAccountP)
 		if err != nil {
 			return err
@@ -186,13 +186,7 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 	accountBalance = accountInfo.CoinBalance
 	fmt.Printf("accountBalance is [%s]\n", accountBalance)
 
-	lockBalance := types.NewBalance(int64(50000000 * 1e8))
-	if accountBalance.Compare(lockBalance) != types.BalanceCompBigger {
-		fmt.Printf("no need transfer balance to accounts\n")
-		return nil
-	}
-	totalBalance := *accountBalance
-	freeBalance := totalBalance.Sub(lockBalance)
+	freeBalance, _ := accountBalance.Mul(40).Div(100)
 
 	toCount := int64(len(toAccounts))
 	amount, _ := freeBalance.Div(toCount)
@@ -203,7 +197,7 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 	}
 
 	for _, toAcc := range toAccounts {
-		fmt.Printf("transfer balance %s to %s\n", amount, toAcc.Address())
+		fmt.Printf("send balance %s to %s\n", amount, toAcc.Address())
 		para := api.APISendBlockPara{
 			From:      from.Address(),
 			TokenName: "QLC",
@@ -223,23 +217,26 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 			continue
 		}
 
-		time.Sleep(time.Second)
+		for try := 0; try < 3; try++ {
+			time.Sleep(3 * time.Second)
+			fmt.Printf("recv balance %s to %s\n", amount, toAcc.Address())
+			var receiveBlock types.StateBlock
+			err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			var recvHash types.Hash
+			err = client.Call(&recvHash, "ledger_process", &receiveBlock)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
 
-		var receiveBlock types.StateBlock
-		err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))
-		if err != nil {
-			fmt.Println(err)
-			continue
+			break
 		}
-		var recvHash types.Hash
-		err = client.Call(&recvHash, "ledger_process", &receiveBlock)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
 
-		time.Sleep(time.Second)
-
+		fmt.Printf("change rep to %s\n", toAcc.Address())
 		var changeBlock types.StateBlock
 		err = client.Call(&changeBlock, "ledger_generateChangeBlock", toAcc.Address(), toAcc.Address(), hex.EncodeToString(toAcc.PrivateKey()))
 		if err != nil {
@@ -253,7 +250,7 @@ func transferBalanceToAccounts(from *types.Account, toAccounts []*types.Account)
 			continue
 		}
 
-		time.Sleep(time.Second)
+		fmt.Println()
 	}
 
 	return nil
@@ -309,7 +306,7 @@ func generatePairTxs(txAccountsP []*types.Account, tpsP int, txCountP int, txTyp
 				}
 
 				if txTypeP == "both" {
-					time.Sleep(time.Second)
+					time.Sleep(3 * time.Second)
 
 					var receiveBlock types.StateBlock
 					err = client.Call(&receiveBlock, "ledger_generateReceiveBlock", &sendBlock, hex.EncodeToString(toAcc.PrivateKey()))

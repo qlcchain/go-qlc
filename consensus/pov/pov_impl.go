@@ -188,6 +188,10 @@ func (pov *PoVEngine) unsetEvent() error {
 }
 
 func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockFrom, msgPeer string) error {
+	if from == types.PovBlockFromLocal {
+		return pov.AddMinedBlock(block)
+	}
+
 	if from == types.PovBlockFromRemoteBroadcast {
 		blockHash := block.GetHash()
 		if pov.blkRecvCache.Has(blockHash) {

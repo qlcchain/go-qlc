@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/common"
-
-	rpc "github.com/qlcchain/jsonrpc2"
+	"github.com/qlcchain/jsonrpc2"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 
@@ -143,9 +141,8 @@ func minerRewardAction(cbPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) 
 		StartHeight:  rspRewardInfo.AvailStartHeight,
 		EndHeight:    rspRewardInfo.AvailEndHeight,
 		RewardBlocks: rspRewardInfo.AvailRewardBlocks,
+		RewardAmount: rspRewardInfo.AvailRewardAmount,
 	}
-
-	rewardAmount := common.PovMinerRewardPerBlockBalance.Mul(int64(rewardParam.RewardBlocks))
 
 	// generate contract send block
 	sendBlock := types.StateBlock{}
@@ -188,7 +185,7 @@ func minerRewardAction(cbPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) 
 	if err != nil {
 		return err
 	}
-	fmt.Printf("success to send reward, delta balance %s blocks %d\n", rewardAmount, rewardParam.RewardBlocks)
+	fmt.Printf("success to send reward, delta balance %s blocks %d\n", rewardParam.RewardAmount.String(), rewardParam.RewardBlocks)
 
 	if bnfAcc != nil {
 		err = client.Call(nil, "ledger_process", &rewardBlock)

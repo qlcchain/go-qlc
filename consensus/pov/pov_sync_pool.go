@@ -79,7 +79,7 @@ func (ss *PovSyncer) onPeriodicSyncTimer() {
 	}
 
 	syncOver := false
-	if latestTD.Cmp(bestPeer.currentTD) >= 0 {
+	if latestTD.Chain.CmpBigInt(bestPeer.currentTD) >= 0 {
 		syncOver = true
 	} else if ss.absDiffHeight(latestBlock.GetHeight(), bestPeer.currentHeight) <= 3 {
 		syncOver = true
@@ -161,14 +161,14 @@ func (ss *PovSyncer) onCheckChainTimer() {
 	}
 
 	if ss.syncCurHeight >= ss.syncToHeight && latestBlock.GetHeight() >= ss.syncToHeight {
-		ss.logger.Infof("sync done, current height:%d", latestBlock.Height)
+		ss.logger.Infof("sync done, current height:%d", latestBlock.GetHeight())
 		ss.inSyncing.Store(false)
 		ss.setInitState(common.Syncdone)
 		return
 	}
 
 	ss.logger.Infof("syncCurHeight:%d, syncRcvHeight:%d, syncToHeight:%d, chainHeight:%d",
-		ss.syncCurHeight, ss.syncRcvHeight, ss.syncToHeight, latestBlock.Height)
+		ss.syncCurHeight, ss.syncRcvHeight, ss.syncToHeight, latestBlock.GetHeight())
 }
 
 func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
@@ -301,13 +301,18 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 
 func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
 	var reqTxHashes []*types.Hash
-	for _, tx := range syncBlk.Block.Transactions {
+	txs := syncBlk.Block.GetAllTxs()
+	for txIdx, tx := range txs {
 		txHash := tx.GetHash()
-		ok, _ := ss.ledger.HasStateBlock(txHash)
-		if ok {
+		if txIdx == 0 {
 			syncBlk.TxExists[txHash] = struct{}{}
 		} else {
-			reqTxHashes = append(reqTxHashes, &txHash)
+			ok, _ := ss.ledger.HasStateBlock(txHash)
+			if ok {
+				syncBlk.TxExists[txHash] = struct{}{}
+			} else {
+				reqTxHashes = append(reqTxHashes, &txHash)
+			}
 		}
 	}
 

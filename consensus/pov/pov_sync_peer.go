@@ -99,7 +99,7 @@ func (ss *PovSyncer) processStreamEvent(event *PovSyncEvent) {
 
 	status := &protos.PovStatus{
 		CurrentHeight: latestBlock.GetHeight(),
-		CurrentTD:     latestTD.Bytes(),
+		CurrentTD:     latestTD.Chain.Bytes(),
 		CurrentHash:   latestBlock.GetHash(),
 		GenesisHash:   genesisBlock.GetHash(),
 		Timestamp:     time.Now().Unix(),
@@ -120,7 +120,7 @@ func (ss *PovSyncer) checkAllPeers() {
 
 	status := &protos.PovStatus{
 		CurrentHeight: latestBlock.GetHeight(),
-		CurrentTD:     latestTD.Bytes(),
+		CurrentTD:     latestTD.Chain.Bytes(),
 		CurrentHash:   latestBlock.GetHash(),
 		GenesisHash:   genesisBlock.GetHash(),
 		Timestamp:     time.Now().Unix(),

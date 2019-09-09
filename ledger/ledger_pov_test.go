@@ -5,7 +5,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
-	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func setupPovTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	}, l
 }
 
-func generatePovBlock(prevBlock *types.PovBlock) (*types.PovBlock, *big.Int) {
+func generatePovBlock(prevBlock *types.PovBlock) (*types.PovBlock, *types.PovTD) {
 	return mock.GeneratePovBlock(prevBlock, 0)
 }
 
@@ -69,8 +68,8 @@ func TestLedger_AddPovBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(retBody.Transactions) != len(block.Transactions) {
-		t.Fatalf("body txs not equal, %d != %d", len(retBody.Transactions), len(block.Transactions))
+	if len(retBody.Txs) != len(block.GetAllTxs()) {
+		t.Fatalf("body txs not equal, %d != %d", len(retBody.Txs), len(block.GetAllTxs()))
 	}
 
 	retTD, err := l.GetPovTD(block.GetHash(), block.GetHeight())
@@ -78,8 +77,8 @@ func TestLedger_AddPovBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if retTD.Cmp(td) != 0 {
-		t.Fatalf("td not equal, %s != %s", retTD, td)
+	if retTD.Chain.Cmp(&td.Chain) != 0 {
+		t.Fatalf("td not equal, %s != %s", retTD.Chain.String(), td.Chain.String())
 	}
 }
 
@@ -250,7 +249,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat0 := types.NewPovMinerDayStat()
 	dayStat0.DayIndex = 0
-	dayStat0.MinerStats["miner0"] = &types.PovMinerStatItem{FirstHeight: 0, LastHeight: 99, BlockNum: 0}
+	dayStat0.MinerStats["miner0"] = &types.PovMinerStatItem{FirstHeight: 0, LastHeight: 99, BlockNum: 0, RewardAmount: types.ZeroBalance}
 	dayStat0.MinerNum = uint32(len(dayStat0.MinerStats))
 	err := l.AddPovMinerStat(dayStat0)
 	if err != nil {
@@ -259,7 +258,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat2 := types.NewPovMinerDayStat()
 	dayStat2.DayIndex = 1
-	dayStat2.MinerStats["miner2"] = &types.PovMinerStatItem{FirstHeight: 200, LastHeight: 299, BlockNum: 20}
+	dayStat2.MinerStats["miner2"] = &types.PovMinerStatItem{FirstHeight: 200, LastHeight: 299, BlockNum: 20, RewardAmount: types.NewBalance(20)}
 	dayStat2.MinerNum = uint32(len(dayStat0.MinerStats))
 	err = l.AddPovMinerStat(dayStat2)
 	if err != nil {
@@ -268,7 +267,7 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	dayStat1 := types.NewPovMinerDayStat()
 	dayStat1.DayIndex = 1
-	dayStat1.MinerStats["miner1"] = &types.PovMinerStatItem{FirstHeight: 100, LastHeight: 199, BlockNum: 10}
+	dayStat1.MinerStats["miner1"] = &types.PovMinerStatItem{FirstHeight: 100, LastHeight: 199, BlockNum: 10, RewardAmount: types.NewBalance(10)}
 	dayStat1.MinerNum = uint32(len(dayStat0.MinerStats))
 	err = l.AddPovMinerStat(dayStat1)
 	if err != nil {

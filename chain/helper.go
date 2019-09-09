@@ -57,10 +57,8 @@ func RegisterServices(cc *context.ChainContext) error {
 	if cfg.PoV.PovEnabled {
 		povService := NewPoVService(cfgFile)
 		_ = cc.Register(context.PovService, povService)
-		if len(cfg.PoV.Coinbase) > 0 {
-			minerService := NewMinerService(cfgFile, povService.GetPoVEngine())
-			_ = cc.Register(context.MinerService, minerService)
-		}
+		minerService := NewMinerService(cfgFile, povService.GetPoVEngine())
+		_ = cc.Register(context.MinerService, minerService)
 	}
 
 	accounts := cc.Accounts()

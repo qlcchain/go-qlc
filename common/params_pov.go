@@ -33,21 +33,27 @@ var (
 
 	// Reward per block, rewardPerBlock * blockNumPerYear / gasTotalSupply = 3%
 	// 10000000000000000 * 0.03 / (3600 * 24 * 365 / 30)
-	PovMinerRewardPerBlockInt     = big.NewInt(285388127)
-	PovMinerRewardPerBlockBalance = types.NewBalance(285388127)
+	PovMinerRewardPerBlock        = 285388127
+	PovMinerRewardPerBlockInt     = big.NewInt(int64(PovMinerRewardPerBlock))
+	PovMinerRewardPerBlockBalance = types.NewBalance(int64(PovMinerRewardPerBlock))
+	PovMinerMinRewardPerBlock     = 285388 // 0.001 * 285388127
 
 	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 12)
 
-	PovGenesisTargetHex = "0000007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-	//PovMinimumTargetHex = "0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-	//PovMaximumTargetHex = "000003ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	PovGenesisPowHex    = "00000ffff0000000000000000000000000000000000000000000000000000000"
+	PovGenesisPowInt, _ = new(big.Int).SetString(PovGenesisPowHex, 16)
+	PovGenesisPowBits   = types.BigToCompact(PovGenesisPowInt) //0x1e0ffff0
 
-	PovGenesisTargetInt, _ = new(big.Int).SetString(PovGenesisTargetHex, 16)
-	//PovMinimumTargetInt, _ = new(big.Int).SetString(PovMinimumTargetHex, 16)
-	//PovMaximumTargetInt, _ = new(big.Int).SetString(PovMaximumTargetHex, 16)
+	// PowLimit is the highest proof of work value a Bitcoin block
+	// can have for the test network.
+	PovPowLimitHex    = "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	PovPowLimitInt, _ = new(big.Int).SetString(PovPowLimitHex, 16)
+	PovPowLimitBits   = types.BigToCompact(PovPowLimitInt) //0x1e0ffff0
 
 	// maximum number of seconds a block time is allowed to be ahead of the now time.
 	PovMaxAllowedFutureTimeSec = 300
 
-	PovMaxNonce = ^uint64(0) // 2^64 - 1
+	PovMaxNonce = ^uint32(0) // 2^32 - 1
+
+	PovMaxCoinbaseExtraSize = 100
 )

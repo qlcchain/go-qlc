@@ -39,7 +39,7 @@ func (c *mockPovProcessorChainReader) HasBestBlock(hash types.Hash, height uint6
 
 func (c *mockPovProcessorChainReader) GetBlockByHash(hash types.Hash) *types.PovBlock {
 	genesisBlk := common.GenesisPovBlock()
-	if hash == genesisBlk.Hash {
+	if hash == genesisBlk.GetHash() {
 		return &genesisBlk
 	}
 	blk := c.blocks[hash]
@@ -51,7 +51,7 @@ func (c *mockPovProcessorChainReader) GetBlockByHash(hash types.Hash) *types.Pov
 }
 
 func (c *mockPovProcessorChainReader) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
-	c.blocks[block.Hash] = block
+	c.blocks[block.GetHash()] = block
 	return nil
 }
 

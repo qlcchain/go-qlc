@@ -5,16 +5,35 @@ import (
 	"strings"
 )
 
+const (
+	PovStatePrefixAcc = byte(1)
+	PovStatePrefixRep = byte(2)
+)
+
+func PovCreateStateKey(prefix byte, rawKey []byte) []byte {
+	key := make([]byte, 1+len(rawKey))
+	key[0] = prefix
+	copy(key[1:], rawKey)
+	return key
+}
+
+func PovCreateAccountStateKey(address Address) []byte {
+	return PovCreateStateKey(PovStatePrefixAcc, address.Bytes())
+}
+
+func PovCreateRepStateKey(address Address) []byte {
+	return PovCreateStateKey(PovStatePrefixRep, address.Bytes())
+}
+
 //go:generate msgp
 
 type PovAccountState struct {
-	Balance     Balance          `msg:"balance,extension" json:"balance"`
-	Vote        Balance          `msg:"vote,extension" json:"vote"`
-	Network     Balance          `msg:"network,extension" json:"network"`
-	Storage     Balance          `msg:"storage,extension" json:"storage"`
-	Oracle      Balance          `msg:"oracle,extension" json:"oracle"`
-	TokenStates []*PovTokenState `msg:"tokenStates" json:"tokenStates"`
-	RepState    *PovRepState     `msg:"repState" json:"repState"`
+	Balance     Balance          `msg:"b,extension" json:"balance"`
+	Vote        Balance          `msg:"v,extension" json:"vote"`
+	Network     Balance          `msg:"n,extension" json:"network"`
+	Storage     Balance          `msg:"s,extension" json:"storage"`
+	Oracle      Balance          `msg:"o,extension" json:"oracle"`
+	TokenStates []*PovTokenState `msg:"ts" json:"tokenStates"`
 }
 
 func NewPovAccountState() *PovAccountState {
@@ -61,10 +80,6 @@ func (as *PovAccountState) Clone() *PovAccountState {
 		newAs.TokenStates = append(newAs.TokenStates, newTs)
 	}
 
-	if as.RepState != nil {
-		newAs.RepState = as.RepState.Clone()
-	}
-
 	return &newAs
 }
 
@@ -82,21 +97,15 @@ func (as *PovAccountState) String() string {
 	}
 	sb.WriteString("]")
 
-	if as.RepState != nil {
-		sb.WriteString(", RepState:{")
-		sb.WriteString(as.RepState.String())
-		sb.WriteString("}")
-	}
-
 	sb.WriteString("}")
 	return sb.String()
 }
 
 type PovTokenState struct {
-	Type           Hash    `msg:"type,extension" json:"type"`
-	Hash           Hash    `msg:"hash,extension" json:"hash"`
-	Representative Address `msg:"rep,extension" json:"representative"`
-	Balance        Balance `msg:"balance,extension" json:"balance"`
+	Type           Hash    `msg:"t,extension" json:"type"`
+	Hash           Hash    `msg:"h,extension" json:"hash"`
+	Representative Address `msg:"r,extension" json:"representative"`
+	Balance        Balance `msg:"b,extension" json:"balance"`
 }
 
 func NewPovTokenState() *PovTokenState {
@@ -128,12 +137,15 @@ func (ts *PovTokenState) String() string {
 }
 
 type PovRepState struct {
-	Balance Balance `msg:"balance,extension" json:"balance"`
-	Vote    Balance `msg:"vote,extension" json:"vote"`
-	Network Balance `msg:"network,extension" json:"network"`
-	Storage Balance `msg:"storage,extension" json:"storage"`
-	Oracle  Balance `msg:"oracle,extension" json:"oracle"`
-	Total   Balance `msg:"total,extension" json:"total"`
+	Balance Balance `msg:"b,extension" json:"balance"`
+	Vote    Balance `msg:"v,extension" json:"vote"`
+	Network Balance `msg:"n,extension" json:"network"`
+	Storage Balance `msg:"s,extension" json:"storage"`
+	Oracle  Balance `msg:"o,extension" json:"oracle"`
+	Total   Balance `msg:"t,extension" json:"total"`
+
+	Status    uint32 `msg:"st" json:"status"`
+	PovHeight uint64 `msg:"ph" json:"povHeight"`
 }
 
 func NewPovRepState() *PovRepState {

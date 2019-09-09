@@ -32,6 +32,7 @@ type MinerRewardParam struct {
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
+	RewardAmount types.Balance `json:"rewardAmount"`
 }
 
 func (p *MinerRewardParam) Verify() (bool, error) {
@@ -62,6 +63,7 @@ type MinerRewardInfo struct {
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
+	RewardAmount types.Balance `json:"rewardAmount"`
 }
 
 func GetMinerRewardKey(addr types.Address, height uint64) []byte {

@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/qlcchain/go-qlc/config"
 	"math/big"
 	"sync/atomic"
@@ -32,24 +34,35 @@ type PovStatus struct {
 
 type PovApiHeader struct {
 	*types.PovHeader
+	AlgoName       string `json:"algoName"`
+	AlgoEfficiency uint   `json:"algoEfficiency"`
 }
 
 type PovApiBatchHeader struct {
-	Count   int                `json:"count"`
-	Headers []*types.PovHeader `json:"headers"`
+	Count   int             `json:"count"`
+	Headers []*PovApiHeader `json:"headers"`
 }
 
 type PovApiBlock struct {
 	*types.PovBlock
+	AlgoName       string `json:"algoName"`
+	AlgoEfficiency uint   `json:"algoEfficiency"`
 }
 
 type PovApiState struct {
-	*types.PovAccountState
+	AccountState *types.PovAccountState `json:"accountState"`
+	RepState     *types.PovRepState     `json:"repState"`
 }
 
 type PovApiDumpState struct {
 	StateHash types.Hash                               `json:"stateHash"`
 	Accounts  map[types.Address]*types.PovAccountState `json:"accounts"`
+	Reps      map[types.Address]*types.PovRepState     `json:"reps"`
+}
+
+type PovApiRepState struct {
+	StateHash types.Hash                           `json:"stateHash"`
+	Reps      map[types.Address]*types.PovRepState `json:"reps"`
 }
 
 type PovApiTxLookup struct {
@@ -66,19 +79,18 @@ type PovLedgerStats struct {
 }
 
 type PovApiTD struct {
-	Header   *types.PovHeader `json:"header"`
-	TD       *big.Int         `json:"td"`
-	TDHex    string           `json:"tdHex"`
-	TDBitLen int              `json:"tdBitLen"`
+	Header *types.PovHeader `json:"header"`
+	TD     *types.PovTD     `json:"td"`
 }
 
 type PovMinerStatItem struct {
-	MainBlockNum     uint32    `json:"mainBlockNum"`
-	FirstBlockTime   time.Time `json:"firstBlockTime"`
-	LastBlockTime    time.Time `json:"lastBlockTime"`
-	FirstBlockHeight uint64    `json:"firstBlockHeight"`
-	LastBlockHeight  uint64    `json:"lastBlockHeight"`
-	IsOnline         bool      `json:"isOnline"`
+	MainBlockNum     uint32        `json:"mainBlockNum"`
+	MainRewardAmount types.Balance `json:"mainRewardAmount"`
+	FirstBlockTime   time.Time     `json:"firstBlockTime"`
+	LastBlockTime    time.Time     `json:"lastBlockTime"`
+	FirstBlockHeight uint64        `json:"firstBlockHeight"`
+	LastBlockHeight  uint64        `json:"lastBlockHeight"`
+	IsOnline         bool          `json:"isOnline"`
 }
 
 type PovMinerStats struct {
@@ -127,7 +139,9 @@ func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader: header,
+		PovHeader:      header,
+		AlgoEfficiency: header.GetAlgoEfficiency(),
+		AlgoName:       header.GetAlgoType().String(),
 	}
 
 	return apiHeader, nil
@@ -145,7 +159,9 @@ func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) 
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader: header,
+		PovHeader:      header,
+		AlgoEfficiency: header.GetAlgoEfficiency(),
+		AlgoName:       header.GetAlgoType().String(),
 	}
 
 	return apiHeader, nil
@@ -158,7 +174,9 @@ func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader: header,
+		PovHeader:      header,
+		AlgoEfficiency: header.GetAlgoEfficiency(),
+		AlgoName:       header.GetAlgoType().String(),
 	}
 
 	return apiHeader, nil
@@ -192,27 +210,39 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader: header,
+		PovHeader:      header,
+		AlgoEfficiency: header.GetAlgoEfficiency(),
+		AlgoName:       header.GetAlgoType().String(),
 	}
 
 	return apiHeader, nil
 }
 
 func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool) (*PovApiBatchHeader, error) {
-	var headers []*types.PovHeader
+	var dbHeaders []*types.PovHeader
 	var err error
 	if asc {
-		headers, err = api.ledger.BatchGetPovHeadersByHeightAsc(height, count)
+		dbHeaders, err = api.ledger.BatchGetPovHeadersByHeightAsc(height, count)
 	} else {
-		headers, err = api.ledger.BatchGetPovHeadersByHeightDesc(height, count)
+		dbHeaders, err = api.ledger.BatchGetPovHeadersByHeightDesc(height, count)
 	}
 	if err != nil {
 		return nil, err
 	}
 
+	var apiHeaders []*PovApiHeader
+	for _, dbHdr := range dbHeaders {
+		apiHdr := &PovApiHeader{
+			PovHeader:      dbHdr,
+			AlgoEfficiency: dbHdr.GetAlgoEfficiency(),
+			AlgoName:       dbHdr.GetAlgoType().String(),
+		}
+		apiHeaders = append(apiHeaders, apiHdr)
+	}
+
 	apiHeader := &PovApiBatchHeader{
-		Count:   len(headers),
-		Headers: headers,
+		Count:   len(apiHeaders),
+		Headers: apiHeaders,
 	}
 
 	return apiHeader, nil
@@ -225,10 +255,12 @@ func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock: block,
+		PovBlock:       block,
+		AlgoEfficiency: block.GetAlgoEfficiency(),
+		AlgoName:       block.GetAlgoType().String(),
 	}
 
-	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
 	return apiBlock, nil
 }
@@ -240,10 +272,12 @@ func (api *PovApi) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock: block,
+		PovBlock:       block,
+		AlgoEfficiency: block.GetAlgoEfficiency(),
+		AlgoName:       block.GetAlgoType().String(),
 	}
 
-	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
 	return apiBlock, nil
 }
@@ -255,10 +289,12 @@ func (api *PovApi) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock: block,
+		PovBlock:       block,
+		AlgoEfficiency: block.GetAlgoEfficiency(),
+		AlgoName:       block.GetAlgoType().String(),
 	}
 
-	apiBlock.PovBlock.Transactions = api.pagingTxs(block.Transactions, txOffset, txLimit)
+	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
 	return apiBlock, nil
 }
@@ -304,10 +340,10 @@ func (api *PovApi) GetTransactionByBlockHashAndIndex(blockHash types.Hash, index
 	if err != nil {
 		return nil, err
 	}
-	if index >= block.TxNum {
+	if index >= block.GetTxNum() {
 		return nil, errors.New("tx index not exist")
 	}
-	tx := block.Transactions[index]
+	tx := block.Body.Txs[index]
 
 	return api.GetTransaction(tx.Hash)
 }
@@ -317,31 +353,43 @@ func (api *PovApi) GetTransactionByBlockHeightAndIndex(height uint64, index uint
 	if err != nil {
 		return nil, err
 	}
-	if index >= block.TxNum {
+	if index >= block.GetTxNum() {
 		return nil, errors.New("tx index not exist")
 	}
-	tx := block.Transactions[index]
+	tx := block.Body.Txs[index]
 
 	return api.GetTransaction(tx.Hash)
 }
 
 func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) (*PovApiState, error) {
+	apiState := &PovApiState{}
+
 	db := api.ledger.Store
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
-	asBytes := stateTrie.GetValue(address.Bytes())
-	if len(asBytes) <= 0 {
-		return nil, errors.New("account value not exist")
+	asKey := types.PovCreateAccountStateKey(address)
+	asVal := stateTrie.GetValue(asKey)
+	if len(asVal) <= 0 {
+		return nil, errors.New("account state value not exist")
 	}
 
 	as := new(types.PovAccountState)
-	err := as.Deserialize(asBytes)
+	err := as.Deserialize(asVal)
 	if err != nil {
 		return nil, err
 	}
 
-	apiState := &PovApiState{
-		PovAccountState: as,
+	apiState.AccountState = as
+
+	rsKey := types.PovCreateRepStateKey(address)
+	rsVal := stateTrie.GetValue(rsKey)
+	if len(rsVal) > 0 {
+		rs := new(types.PovRepState)
+		err = rs.Deserialize(rsVal)
+		if err != nil {
+			return nil, err
+		}
+		apiState.RepState = rs
 	}
 
 	return apiState, nil
@@ -353,7 +401,7 @@ func (api *PovApi) GetLatestAccountState(address types.Address) (*PovApiState, e
 		return nil, err
 	}
 
-	return api.GetAccountState(address, header.StateHash)
+	return api.GetAccountState(address, header.GetStateHash())
 }
 
 func (api *PovApi) GetAccountStateByBlockHash(address types.Address, blockHash types.Hash) (*PovApiState, error) {
@@ -362,7 +410,7 @@ func (api *PovApi) GetAccountStateByBlockHash(address types.Address, blockHash t
 		return nil, err
 	}
 
-	return api.GetAccountState(address, header.StateHash)
+	return api.GetAccountState(address, header.GetStateHash())
 }
 
 func (api *PovApi) GetAccountStateByBlockHeight(address types.Address, height uint64) (*PovApiState, error) {
@@ -371,7 +419,7 @@ func (api *PovApi) GetAccountStateByBlockHeight(address types.Address, height ui
 		return nil, err
 	}
 
-	return api.GetAccountState(address, header.StateHash)
+	return api.GetAccountState(address, header.GetStateHash())
 }
 
 func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error) {
@@ -380,10 +428,11 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 		return nil, err
 	}
 
-	stateHash := block.StateHash
+	stateHash := block.GetStateHash()
 	dump := &PovApiDumpState{
 		StateHash: stateHash,
 		Accounts:  make(map[types.Address]*types.PovAccountState),
+		Reps:      make(map[types.Address]*types.PovRepState),
 	}
 
 	db := api.ledger.Store
@@ -391,25 +440,94 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 
 	it := stateTrie.NewIterator(nil)
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
-		if len(key) != types.AddressSize {
+		if len(val) <= 0 {
+			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
 			continue
 		}
 
-		addr, err := types.BytesToAddress(key)
-		if err != nil {
-			return nil, err
+		if key[0] == types.PovStatePrefixAcc {
+			addr, err := types.BytesToAddress(key[1:])
+			if err != nil {
+				return nil, err
+			}
+
+			as := new(types.PovAccountState)
+			err = as.Deserialize(val)
+			if err != nil {
+				return nil, err
+			}
+
+			dump.Accounts[addr] = as
 		}
 
-		as := new(types.PovAccountState)
-		err = as.Deserialize(val)
-		if err != nil {
-			return nil, err
-		}
+		if key[0] == types.PovStatePrefixRep {
+			addr, err := types.BytesToAddress(key[1:])
+			if err != nil {
+				return nil, err
+			}
 
-		dump.Accounts[addr] = as
+			rs := new(types.PovRepState)
+			err = rs.Deserialize(val)
+			if err != nil {
+				return nil, err
+			}
+
+			dump.Reps[addr] = rs
+		}
 	}
 
 	return dump, nil
+}
+
+func (api *PovApi) GetAllRepStatsByStateHash(stateHash types.Hash) (*PovApiRepState, error) {
+	apiRsp := new(PovApiRepState)
+
+	apiRsp.StateHash = stateHash
+	apiRsp.Reps = make(map[types.Address]*types.PovRepState)
+
+	db := api.ledger.Store
+	stateTrie := trie.NewTrie(db, &stateHash, nil)
+
+	it := stateTrie.NewIterator([]byte{types.PovStatePrefixRep})
+	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
+		if len(val) <= 0 {
+			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
+			continue
+		}
+
+		addr, err := types.BytesToAddress(key[1:])
+		if err != nil {
+			return nil, err
+		}
+
+		rs := new(types.PovRepState)
+		err = rs.Deserialize(val)
+		if err != nil {
+			return nil, err
+		}
+
+		apiRsp.Reps[addr] = rs
+	}
+
+	return apiRsp, nil
+}
+
+func (api *PovApi) GetAllRepStatsByBlockHash(blockHash types.Hash) (*PovApiRepState, error) {
+	header, err := api.ledger.GetPovHeaderByHash(blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.GetAllRepStatsByStateHash(header.GetStateHash())
+}
+
+func (api *PovApi) GetAllRepStatsByBlockHeight(blockHeight uint64) (*PovApiRepState, error) {
+	header, err := api.ledger.GetPovHeaderByHeight(blockHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.GetAllRepStatsByStateHash(header.GetStateHash())
 }
 
 func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
@@ -439,7 +557,7 @@ func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
 	return stats, nil
 }
 
-func (api *PovApi) GetBlockTD(blockHash types.Hash) (*PovApiTD, error) {
+func (api *PovApi) GetBlockTDByHash(blockHash types.Hash) (*PovApiTD, error) {
 	height, err := api.ledger.GetPovHeight(blockHash)
 	if err != nil {
 		return nil, err
@@ -455,10 +573,31 @@ func (api *PovApi) GetBlockTD(blockHash types.Hash) (*PovApiTD, error) {
 	}
 
 	apiTD := &PovApiTD{
-		Header:   header,
-		TD:       td,
-		TDHex:    td.Text(16),
-		TDBitLen: td.BitLen(),
+		Header: header,
+		TD:     td,
+	}
+
+	return apiTD, nil
+}
+
+func (api *PovApi) GetBlockTDByHeight(height uint64) (*PovApiTD, error) {
+	blockHash, err := api.ledger.GetPovBestHash(height)
+	if err != nil {
+		return nil, err
+	}
+	header, err := api.ledger.GetPovHeader(height, blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	td, err := api.ledger.GetPovTD(blockHash, height)
+	if err != nil {
+		return nil, err
+	}
+
+	apiTD := &PovApiTD{
+		Header: header,
+		TD:     td,
 	}
 
 	return apiTD, nil
@@ -496,6 +635,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			item, ok := apiRsp.MinerStats[minerAddr]
 			if !ok {
 				item = &PovMinerStatItem{}
+				item.MainRewardAmount = types.ZeroBalance
 				item.FirstBlockHeight = minerStat.FirstHeight
 				item.LastBlockHeight = minerStat.LastHeight
 
@@ -508,6 +648,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 					item.LastBlockHeight = minerStat.LastHeight
 				}
 			}
+			item.MainRewardAmount = item.MainRewardAmount.Add(minerStat.RewardAmount)
 			item.MainBlockNum += minerStat.BlockNum
 			totalBlockNum += minerStat.BlockNum
 		}
@@ -530,7 +671,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			break
 		}
 
-		minerAddr := header.GetCoinbase()
+		minerAddr := header.GetMinerAddr()
 		if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
 			continue
 		}
@@ -538,6 +679,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		item, ok := apiRsp.MinerStats[minerAddr]
 		if !ok {
 			item = &PovMinerStatItem{}
+			item.MainRewardAmount = types.ZeroBalance
 			item.FirstBlockHeight = header.GetHeight()
 			item.LastBlockHeight = header.GetHeight()
 
@@ -550,6 +692,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 				item.LastBlockHeight = header.GetHeight()
 			}
 		}
+		item.MainRewardAmount = item.MainRewardAmount.Add(header.GetMinerReward())
 		item.MainBlockNum += 1
 		totalBlockNum += 1
 	}
@@ -558,11 +701,11 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	for _, minerItem := range apiRsp.MinerStats {
 		firstBlock, _ := api.ledger.GetPovHeaderByHeight(minerItem.FirstBlockHeight)
 		if firstBlock != nil {
-			minerItem.FirstBlockTime = time.Unix(firstBlock.GetTimestamp(), 0)
+			minerItem.FirstBlockTime = time.Unix(int64(firstBlock.GetTimestamp()), 0)
 		}
 		lastBlock, _ := api.ledger.GetPovHeaderByHeight(minerItem.LastBlockHeight)
 		if lastBlock != nil {
-			minerItem.LastBlockTime = time.Unix(lastBlock.GetTimestamp(), 0)
+			minerItem.LastBlockTime = time.Unix(int64(lastBlock.GetTimestamp()), 0)
 		}
 	}
 
@@ -589,4 +732,317 @@ func (api *PovApi) GetMinerDayStats(dayIndex uint32) (*types.PovMinerDayStat, er
 	}
 
 	return dayStat, nil
+}
+
+type PovApiHashInfo struct {
+	ChainHashPS   uint64 `json:"chainHashPS"`
+	Sha256dHashPS uint64 `json:"sha256dHashPS"`
+	ScryptHashPS  uint64 `json:"scryptHashPS"`
+	X11HashPS     uint64 `json:"x11HashPS"`
+}
+
+func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, error) {
+	latestHdr, err := api.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	lastHdr := latestHdr
+	if height > 0 && height < latestHdr.GetHeight() {
+		lastHdr, err = api.ledger.GetPovHeaderByHeight(height)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if lastHdr == nil || lastHdr.GetHeight() == 0 {
+		return nil, errors.New("failed to get block")
+	}
+
+	if lookup <= 0 {
+		lookup = 120
+	}
+	if lookup > lastHdr.GetHeight() {
+		lookup = lastHdr.GetHeight() + 1
+	}
+
+	firstHdr := lastHdr
+
+	minTime := firstHdr.GetTimestamp()
+	maxTime := firstHdr.GetTimestamp()
+	for i := uint64(1); i < lookup; i++ {
+		firstHdr, err = api.ledger.GetPovHeaderByHeight(firstHdr.GetHeight() - 1)
+		if err != nil {
+			return nil, err
+		}
+		if firstHdr.GetTimestamp() < minTime {
+			minTime = firstHdr.GetTimestamp()
+		}
+		if firstHdr.GetTimestamp() > maxTime {
+			maxTime = firstHdr.GetTimestamp()
+		}
+	}
+
+	apiRsp := new(PovApiHashInfo)
+
+	// In case there's a situation where minTime == maxTime, we don't want a divide by zero exception.
+	if minTime == maxTime {
+		return apiRsp, nil
+	}
+	timeDiffInt := big.NewInt(int64(maxTime - minTime))
+
+	//api.logger.Debugf("minTime:%d, maxTime:%d, timeDiff:%s", minTime, maxTime, timeDiffInt.String())
+
+	lastTD, err := api.ledger.GetPovTD(lastHdr.GetHash(), lastHdr.GetHeight())
+	if err != nil {
+		return nil, err
+	}
+
+	firstTD, err := api.ledger.GetPovTD(firstHdr.GetHash(), firstHdr.GetHeight())
+	if err != nil {
+		return nil, err
+	}
+
+	// chian
+	{
+		chainWorkDiffInt := new(big.Int).Sub(lastTD.Chain.ToBigInt(), firstTD.Chain.ToBigInt())
+		apiRsp.ChainHashPS = new(big.Int).Div(chainWorkDiffInt, timeDiffInt).Uint64()
+	}
+
+	// sha256d
+	{
+		shaWorkDiffInt := new(big.Int).Sub(lastTD.Sha256d.ToBigInt(), firstTD.Sha256d.ToBigInt())
+		apiRsp.Sha256dHashPS = new(big.Int).Div(shaWorkDiffInt, timeDiffInt).Uint64()
+	}
+
+	// scrypt
+	{
+		scrWorkDiffInt := new(big.Int).Sub(lastTD.Scrypt.ToBigInt(), firstTD.Scrypt.ToBigInt())
+		apiRsp.ScryptHashPS = new(big.Int).Div(scrWorkDiffInt, timeDiffInt).Uint64()
+	}
+
+	// x11
+	{
+		x11WorkDiffInt := new(big.Int).Sub(lastTD.X11.ToBigInt(), firstTD.X11.ToBigInt())
+		apiRsp.X11HashPS = new(big.Int).Div(x11WorkDiffInt, timeDiffInt).Uint64()
+	}
+
+	return apiRsp, nil
+}
+
+type PovApiGetWork struct {
+	WorkHash      types.Hash    `json:"workHash"`
+	Version       uint32        `json:"version"`
+	Previous      types.Hash    `json:"previous"`
+	Bits          uint32        `json:"bits"`
+	Height        uint64        `json:"height"`
+	MinTime       uint32        `json:"minTime"`
+	MerkleBranch  []*types.Hash `json:"merkleBranch"`
+	CoinBaseData1 string        `json:"coinbaseData1"`
+	CoinBaseData2 string        `json:"coinbaseData2"`
+}
+
+type PovApiSubmitWork struct {
+	WorkHash      types.Hash `json:"workHash"`
+	BlockHash     types.Hash `json:"blockHash"`
+	MerkleRoot    types.Hash `json:"merkleRoot"`
+	Timestamp     uint32     `json:"timestamp"`
+	Nonce         uint32     `json:"nonce"`
+	CoinbaseExtra string     `json:"coinbaseExtra"`
+	CoinbaseHash  types.Hash `json:"coinbaseHash"`
+}
+
+func (api *PovApi) StartMining(minerAddr types.Address, algoName string) error {
+	if !api.cfg.PoV.PovEnabled {
+		return errors.New("pov service is disabled")
+	}
+
+	inArgs := make(map[interface{}]interface{})
+	inArgs["minerAddr"] = minerAddr
+	inArgs["algoName"] = algoName
+
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.StartMining", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return err
+	}
+
+	return nil
+}
+
+func (api *PovApi) StopMining() error {
+	if !api.cfg.PoV.PovEnabled {
+		return errors.New("pov service is disabled")
+	}
+
+	inArgs := make(map[interface{}]interface{})
+
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.StopMining", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return err
+	}
+
+	return nil
+}
+
+type PovApiGetMiningInfo struct {
+	MinerAddr        string          `json:"minerAddr"`
+	AlgoName         string          `json:"algoName"`
+	AlgoEfficiency   uint            `json:"algoEfficiency"`
+	CpuMining        bool            `json:"cpuMining"`
+	CurrentBlockSize uint32          `json:"currentBlockSize"`
+	CurrentBlockTx   uint32          `json:"currentBlockTx"`
+	PooledTx         uint32          `json:"pooledTx"`
+	BlockNum         uint64          `json:"blockNum"`
+	DifficultyRatio  float64         `json:"difficultyRatio"`
+	HashInfo         *PovApiHashInfo `json:"hashInfo"`
+}
+
+func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
+	inArgs := make(map[interface{}]interface{})
+
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.GetMiningInfo", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+
+	hashInfo, err := api.GetHashInfo(0, 0)
+	if err != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+
+	latestBlock := outArgs["latestBlock"].(*types.PovBlock)
+	minerAddr := outArgs["minerAddr"].(types.Address)
+	algoType := outArgs["minerAlgo"].(types.PovAlgoType)
+
+	apiRsp := new(PovApiGetMiningInfo)
+	if !minerAddr.IsZero() {
+		apiRsp.MinerAddr = minerAddr.String()
+	}
+	if algoType != types.ALGO_UNKNOWN {
+		apiRsp.AlgoName = algoType.String()
+	}
+	apiRsp.AlgoEfficiency = latestBlock.GetAlgoEfficiency()
+	apiRsp.CpuMining = outArgs["cpuMining"].(bool)
+
+	apiRsp.CurrentBlockSize = uint32(latestBlock.Msgsize())
+	apiRsp.CurrentBlockTx = latestBlock.GetTxNum()
+	apiRsp.PooledTx = outArgs["pooledTx"].(uint32)
+
+	apiRsp.BlockNum = latestBlock.GetHeight()
+	apiRsp.DifficultyRatio = types.CalcDifficultyRatio(latestBlock.Header.GetNormBits(), common.PovPowLimitBits)
+	apiRsp.HashInfo = hashInfo
+
+	return apiRsp, nil
+}
+
+func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGetWork, error) {
+	if !api.cfg.PoV.PovEnabled {
+		return nil, errors.New("pov service is disabled")
+	}
+
+	ss := api.syncState.Load().(common.SyncState)
+	if ss != common.Syncdone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
+	inArgs := make(map[interface{}]interface{})
+	inArgs["minerAddr"] = minerAddr
+	inArgs["algoName"] = algoName
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.GetWork", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+
+	mineBlock := outArgs["mineBlock"].(*types.PovMineBlock)
+
+	apiRsp := new(PovApiGetWork)
+	apiRsp.WorkHash = mineBlock.WorkHash
+
+	apiRsp.Version = mineBlock.Header.GetVersion()
+	apiRsp.Previous = mineBlock.Header.GetPrevious()
+	apiRsp.Bits = mineBlock.Header.GetBits()
+	apiRsp.Height = mineBlock.Header.GetHeight()
+
+	apiRsp.MinTime = mineBlock.MinTime
+	apiRsp.MerkleBranch = mineBlock.CoinbaseBranch
+
+	apiRsp.CoinBaseData1 = hex.EncodeToString(mineBlock.Header.CbTx.GetCoinBaseData1())
+	apiRsp.CoinBaseData2 = hex.EncodeToString(mineBlock.Header.CbTx.GetCoinBaseData2())
+
+	return apiRsp, nil
+}
+
+func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
+	if !api.cfg.PoV.PovEnabled {
+		return errors.New("pov service is disabled")
+	}
+
+	ss := api.syncState.Load().(common.SyncState)
+	if ss != common.Syncdone {
+		return errors.New("pov sync is not finished, please check it")
+	}
+
+	var cbExtraBytes []byte
+	if len(work.CoinbaseExtra) > 0 {
+		var err error
+		cbExtraBytes, err = hex.DecodeString(work.CoinbaseExtra)
+		if err != nil {
+			return fmt.Errorf("decode CoinbaseExtra err %s", err)
+		}
+	}
+
+	mineResult := types.NewPovMineResult()
+	mineResult.WorkHash = work.WorkHash
+	mineResult.BlockHash = work.BlockHash
+	mineResult.MerkleRoot = work.MerkleRoot
+	mineResult.Timestamp = work.Timestamp
+	mineResult.Nonce = work.Nonce
+	mineResult.CoinbaseExtra = cbExtraBytes
+	mineResult.CoinbaseHash = work.CoinbaseHash
+
+	inArgs := make(map[interface{}]interface{})
+	inArgs["mineResult"] = mineResult
+
+	outArgs := make(map[interface{}]interface{})
+	api.eb.Publish(common.EventRpcSyncCall, "Miner.SubmitWork", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return err
+	}
+
+	return nil
 }
