@@ -4,55 +4,60 @@ package test
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/chain"
+
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/log"
 )
 
-type Services struct {
-	ledgerService    *services.LedgerService
-	netService       *services.P2PService
-	consensusService *services.ConsensusService
-	rPCService       *services.RPCService
-	dir              string
-}
-
 func TestPending(t *testing.T) {
-
 	testBytes, _ := hex.DecodeString(testPrivateKey)
 	testAccount := types.NewAccount(testBytes)
 
 	//node1
 	dir1 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
-	cfgFile1.P2P.SyncInterval = 30
-	cfgFile1.LogLevel = "info"
-	cfgFile1.RPC.Enable = true
-	cfgFile1.RPC.HTTPEndpoint = "tcp4://0.0.0.0:19735"
-	cfgFile1.P2P.BootNodes = []string{}
+	ctx, err := NewChain(dir1, func(cfg *config.Config) {
+		cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
+		cfg.P2P.Discovery.DiscoveryInterval = 3
+		cfg.P2P.SyncInterval = 30
+		cfg.LogLevel = "info"
+		cfg.RPC.Enable = true
+		cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:19735"
+		cfg.P2P.BootNodes = []string{}
+		cfg.PoV.PovEnabled = false
+	})
 
-	cfgFile1Byte, _ := json.Marshal(cfgFile1)
-	fmt.Println("node1 config \n", string(cfgFile1Byte))
-	node := new(Services)
-	initQLCNode(node, cfgFile1, nil, t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = ctx.Init(func() error {
+		return chain.RegisterServices(ctx)
+	})
+	err = ctx.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		fmt.Println(" close servers")
-		closeQLCServer(node, t)
+		_ = ctx.Stop()
 	}()
-	client, err := node.rPCService.RPC().Attach()
+
+	ctx.WaitForever()
+
+	rpc, err := RPC(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := rpc.Attach()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,12 +75,16 @@ func TestPending(t *testing.T) {
 		Link:    tAddress.ToHash(),
 	}
 
-	sendBlock, err := node.ledgerService.Ledger.GenerateSendBlock(&sb, sAmount, testAccount.PrivateKey())
+	l, err := Ledger(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sendBlock, err := l.GenerateSendBlock(&sb, sAmount, testAccount.PrivateKey())
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println("sendBlock ", sendBlock.GetHash())
-	lv := process.NewLedgerVerifier(node.ledgerService.Ledger)
+	lv := process.NewLedgerVerifier(l)
 	if r, err := lv.BlockCheck(sendBlock); r != process.Progress || err != nil {
 		t.Fatal(err)
 	}
@@ -115,12 +124,12 @@ func TestPending(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := node.ledgerService.Ledger.AddBlockCache(&receiverBlock2); err != nil {
+	if err := l.AddBlockCache(&receiverBlock2); err != nil {
 		t.Fatal(err)
 	}
 
 	count1 := 0
-	err = node.ledgerService.Ledger.SearchPending(receiverBlock2.Address, func(key *types.PendingKey, value *types.PendingInfo) error {
+	err = l.SearchPending(receiverBlock2.Address, func(key *types.PendingKey, value *types.PendingInfo) error {
 		count1++
 		return nil
 	})
@@ -128,7 +137,7 @@ func TestPending(t *testing.T) {
 		t.Fatal("error pending")
 	}
 	count2 := 0
-	err = node.ledgerService.Ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
 		count2++
 		return nil
 	})
@@ -140,7 +149,7 @@ func TestPending(t *testing.T) {
 	time.Sleep(70 * time.Second)
 
 	count3 := 0
-	err = node.ledgerService.Ledger.SearchPending(receiverBlock2.Address, func(key *types.PendingKey, value *types.PendingInfo) error {
+	err = l.SearchPending(receiverBlock2.Address, func(key *types.PendingKey, value *types.PendingInfo) error {
 		count3++
 		return nil
 	})
@@ -149,7 +158,7 @@ func TestPending(t *testing.T) {
 	}
 
 	count4 := 0
-	err = node.ledgerService.Ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
 		count4++
 		return nil
 	})
@@ -157,77 +166,4 @@ func TestPending(t *testing.T) {
 		t.Fatal("error pending")
 	}
 	t.Log("done")
-}
-
-func initQLCNode(service *Services, cfg *config.Config, accounts []*types.Account, t *testing.T) {
-	logService := log.NewLogService(cfg)
-	_ = logService.Init()
-	var err error
-	service.ledgerService = services.NewLedgerService(cfg)
-	service.consensusService = services.NewConsensusService(cfg, accounts)
-	service.rPCService, err = services.NewRPCService(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	service.netService, err = services.NewP2PService(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := service.ledgerService.Init(); err != nil {
-		t.Fatal(err)
-	}
-	_ = json.Unmarshal([]byte(jsonTestSend), &testSendBlock)
-	_ = json.Unmarshal([]byte(jsonTestReceive), &testReceiveBlock)
-	_ = json.Unmarshal([]byte(jsonTestChangeRepresentative), &testChangeRepresentative)
-
-	verfiyfy := process.NewLedgerVerifier(service.ledgerService.Ledger)
-	if err := verfiyfy.BlockProcess(&testSendBlock); err != nil {
-		t.Fatal(err)
-	}
-	if err := verfiyfy.BlockProcess(&testReceiveBlock); err != nil {
-		t.Fatal(err)
-	}
-	if err := verfiyfy.BlockProcess(&testChangeRepresentative); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := service.netService.Init(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.consensusService.Init(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.rPCService.Init(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.ledgerService.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.netService.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.consensusService.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.rPCService.Start(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func closeQLCServer(service *Services, t *testing.T) {
-	if err := service.rPCService.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.consensusService.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.netService.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.ledgerService.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	//if err := os.RemoveAll(service.dir); err != nil {
-	//	t.Fatal(err)
-	//}
 }

@@ -8,9 +8,11 @@
 package context
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/config"
 
@@ -35,6 +37,40 @@ func (*testService) Stop() error {
 
 func (*testService) Status() int32 {
 	panic("implement me")
+}
+
+type waitService struct {
+	common.ServiceLifecycle
+}
+
+func (w *waitService) Init() error {
+	if !w.PreInit() {
+		return errors.New("pre init fail")
+	}
+	defer w.PostInit()
+	return nil
+}
+
+func (w *waitService) Start() error {
+	if !w.PreStart() {
+		return errors.New("pre init fail")
+	}
+	defer w.PostStart()
+
+	time.Sleep(time.Duration(3) * time.Second)
+	return nil
+}
+
+func (w *waitService) Stop() error {
+	if !w.PreStop() {
+		return errors.New("pre init fail")
+	}
+	defer w.PostStop()
+	return nil
+}
+
+func (w *waitService) Status() int32 {
+	return w.State()
 }
 
 func Test_serviceContainer(t *testing.T) {
@@ -154,5 +190,31 @@ func TestNewChainContext(t *testing.T) {
 	if eb1 != eb3 {
 		t.Fatal("eb1 shouldn same as eb3")
 	}
+}
 
+func TestChainContext_WaitForever(t *testing.T) {
+	cfgFile := filepath.Join(config.QlcTestDataDir(), "context", config.QlcConfigFile)
+	defer func() { _ = os.RemoveAll(cfgFile) }()
+
+	ctx := NewChainContext(cfgFile)
+	err := ctx.Init(func() error {
+		return ctx.Register("waitService", &waitService{})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ctx.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx.WaitForever()
+
+	if s, err := ctx.Service("waitService"); err == nil {
+		if s.Status() != int32(common.Started) {
+			t.Fatal("start failed", s.Status())
+		}
+	} else {
+		t.Fatal(err)
+	}
 }

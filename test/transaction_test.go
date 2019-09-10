@@ -11,7 +11,6 @@ package test
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"path/filepath"
@@ -19,51 +18,109 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/chain"
+	"github.com/qlcchain/go-qlc/ledger"
+
 	"github.com/google/uuid"
-	ss "github.com/qlcchain/go-qlc/chain/services"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	rpc "github.com/qlcchain/jsonrpc2"
 )
 
 var (
-	node1        = new(Service)
-	node2        = new(Service)
 	testBytes, _ = hex.DecodeString(testPrivateKey)
 	testAccount  = types.NewAccount(testBytes)
 	//testAddress = testAccount.Address()
 )
 
-type Service struct {
-	ledgerService    *ss.LedgerService
-	netService       *ss.P2PService
-	consensusService *ss.ConsensusService
-	rPCService       *ss.RPCService
-	dir              string
-}
-
 func TestTransaction(t *testing.T) {
 	fmt.Println("transaction start ")
-	nodeConfig(t)
+	//node1
+	dir1 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
+	ctx1, err := NewChain(dir1, func(cfg *config.Config) {
+		cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
+		cfg.P2P.Discovery.DiscoveryInterval = 3
+		cfg.P2P.SyncInterval = 30
+		cfg.LogLevel = "error"
+		cfg.RPC.Enable = true
+		cfg.PoV.PovEnabled = false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg1, err := ctx1.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfg1.P2P.ID.PeerID
+
+	// node2
+	dir2 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
+	ctx2, err := NewChain(dir2, func(cfg *config.Config) {
+		cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
+		cfg.P2P.SyncInterval = 30
+		cfg.LogLevel = "error"
+		cfg.RPC.Enable = true
+		cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
+		cfg.RPC.WSEnabled = false
+		cfg.RPC.IPCEnabled = false
+		cfg.PoV.PovEnabled = false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg2, err := ctx2.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b2 := "/ip4/0.0.0.0/tcp/19742/ipfs/" + cfg2.P2P.ID.PeerID
+
+	cfg1.P2P.BootNodes = []string{b2}
+	cfg2.P2P.BootNodes = []string{b1}
+
+	t.Log(" start node1....")
+	ctx1.SetAccounts([]*types.Account{testAccount})
+	_ = ctx1.Init(func() error {
+		return chain.RegisterServices(ctx1)
+	})
+	err = ctx1.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(" start node2....")
+	_ = ctx2.Init(func() error {
+		return chain.RegisterServices(ctx2)
+	})
+	err = ctx2.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		fmt.Println(" close servers")
-		closeServer(node1, t)
-		closeServer(node2, t)
+		_ = ctx1.Stop()
+		_ = ctx2.Stop()
 	}()
 
+	ctx1.WaitForever()
+	ctx2.WaitForever()
 	// qlc_3n4i9jscmhcfy8ueph5eb15cc3fey55bn9jgh67pwrdqbpkwcsbu4iot7f7s
 	tPrivateKey := "a2bc57c1d9dc433a411d6bfff1a24538a4fbd7026edb13b2909d9a60dff5f3c6d0503c72a9bd4df1b6cb3c6c4806a505acf0c69a1e2e790b6e61774da5c5653b"
 	tBytes, _ := hex.DecodeString(tPrivateKey)
 	tAccount := types.NewAccount(tBytes)
 
-	client1, err := node1.rPCService.RPC().Attach()
+	rpc, _ := RPC(ctx1)
+	client1, err := rpc.Attach()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	l1, _ := Ledger(ctx1)
+	l2, _ := Ledger(ctx2)
+
 	// prepare two account to send transaction
 	sAmount := types.Balance{Int: big.NewInt(10000000000000)}
 	sendBlock := sendTransaction(client1, *testAccount, *tAccount, sAmount, t)
@@ -71,7 +128,7 @@ func TestTransaction(t *testing.T) {
 	b := false
 	start := time.Now()
 	for !b {
-		if checkConfirmed(sendBlock.GetHash(), t) {
+		if checkConfirmed(l1, l2, sendBlock.GetHash(), t) {
 			b = true
 		}
 		time.Sleep(1 * time.Second)
@@ -81,7 +138,7 @@ func TestTransaction(t *testing.T) {
 	tAccountOpenBlock := receiveTransaction(client1, *tAccount, sendBlock, t)
 	b = false
 	for !b {
-		if checkConfirmed(tAccountOpenBlock.GetHash(), t) {
+		if checkConfirmed(l1, l2, tAccountOpenBlock.GetHash(), t) {
 			b = true
 		}
 		time.Sleep(1 * time.Second)
@@ -122,8 +179,8 @@ func TestTransaction(t *testing.T) {
 	fmt.Println("transaction finish ")
 	b = false
 	for !b {
-		b1 := checkConfirmed(headerBlock1.GetHash(), t)
-		b2 := checkConfirmed(headerBlock2.GetHash(), t)
+		b1 := checkConfirmed(l1, l2, headerBlock1.GetHash(), t)
+		b2 := checkConfirmed(l1, l2, headerBlock2.GetHash(), t)
 		if b1 && b2 {
 			b = true
 		}
@@ -132,31 +189,31 @@ func TestTransaction(t *testing.T) {
 	fmt.Println("consensus finish ")
 	// check result
 	fmt.Println("check node1")
-	checkBlock(node1, 9+m1+m2, t)
-	checkAccount(node1, testAccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
+	checkBlock(l1, 9+m1+m2, t)
+	checkAccount(l1, testAccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
 		m1+3, headerBlock1.GetHash(), testReceiveBlock.GetHash(), t)
-	checkAccount(node1, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
+	checkAccount(l1, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
 		m2+1, headerBlock2.GetHash(), tAccountOpenBlock.GetHash(), t)
-	checkRepresentation(node1, testAccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
+	checkRepresentation(l1, testAccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
 
 	// check node2
 	fmt.Println("check node2")
-	checkBlock(node2, 9+m1+m2, t)
-	checkAccount(node2, testAccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
+	checkBlock(l2, 9+m1+m2, t)
+	checkAccount(l2, testAccount.Address(), testReceiveBlock.Balance.Sub(sAmount).Sub(types.Balance{Int: big.NewInt(int64(m1 * amount1))}),
 		m1+3, headerBlock1.GetHash(), testReceiveBlock.GetHash(), t)
-	checkAccount(node2, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
+	checkAccount(l2, tAccount.Address(), sAmount.Sub(types.Balance{Int: big.NewInt(int64(m2 * amount2))}),
 		m2+1, headerBlock2.GetHash(), tAccountOpenBlock.GetHash(), t)
-	checkRepresentation(node2, testAccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
+	checkRepresentation(l2, testAccount.Address(), testReceiveBlock.Balance.Sub(types.Balance{Int: big.NewInt(int64(m1*amount1 + m2*amount2))}), t)
 
 	fmt.Println("transaction successfully ")
 }
 
-func checkConfirmed(hash types.Hash, t *testing.T) bool {
-	b1, err := node1.ledgerService.Ledger.HasStateBlockConfirmed(hash)
+func checkConfirmed(l1, l2 *ledger.Ledger, hash types.Hash, t *testing.T) bool {
+	b1, err := l1.HasStateBlockConfirmed(hash)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b2, err := node2.ledgerService.Ledger.HasStateBlockConfirmed(hash)
+	b2, err := l2.HasStateBlockConfirmed(hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,8 +225,8 @@ func checkConfirmed(hash types.Hash, t *testing.T) bool {
 	}
 }
 
-func checkBlock(service *Service, blockCount int, t *testing.T) {
-	bc, err := service.ledgerService.Ledger.CountStateBlocks()
+func checkBlock(l *ledger.Ledger, blockCount int, t *testing.T) {
+	bc, err := l.CountStateBlocks()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,8 +235,8 @@ func checkBlock(service *Service, blockCount int, t *testing.T) {
 	}
 }
 
-func checkAccount(service *Service, address types.Address, amount types.Balance, blockCount int, header types.Hash, open types.Hash, t *testing.T) {
-	tm, err := service.ledgerService.Ledger.GetTokenMeta(address, common.ChainToken())
+func checkAccount(l *ledger.Ledger, address types.Address, amount types.Balance, blockCount int, header types.Hash, open types.Hash, t *testing.T) {
+	tm, err := l.GetTokenMeta(address, common.ChainToken())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,8 +252,8 @@ func checkAccount(service *Service, address types.Address, amount types.Balance,
 
 }
 
-func checkRepresentation(service *Service, address types.Address, amount types.Balance, t *testing.T) {
-	r, err := service.ledgerService.Ledger.GetRepresentation(address)
+func checkRepresentation(l *ledger.Ledger, address types.Address, amount types.Balance, t *testing.T) {
+	r, err := l.GetRepresentation(address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,127 +290,4 @@ func receiveTransaction(client *rpc.Client, acc types.Account, sendBlock types.S
 		t.Fatal(err)
 	}
 	return receiverBlock
-}
-
-func nodeConfig(t *testing.T) {
-	//node1
-	dir1 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
-	cfgFile1.P2P.SyncInterval = 30
-	cfgFile1.LogLevel = "error"
-	cfgFile1.RPC.Enable = true
-	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfgFile1.P2P.ID.PeerID
-
-	// node1
-	dir2 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
-	cfgFile2.P2P.SyncInterval = 30
-	cfgFile2.LogLevel = "error"
-	cfgFile2.RPC.Enable = true
-	cfgFile2.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
-	cfgFile2.RPC.WSEnabled = false
-	cfgFile2.RPC.IPCEnabled = false
-	b2 := "/ip4/0.0.0.0/tcp/19742/ipfs/" + cfgFile2.P2P.ID.PeerID
-
-	cfgFile1.P2P.BootNodes = []string{b2}
-	cfgFile2.P2P.BootNodes = []string{b1}
-
-	cfgFile1Byte, _ := json.Marshal(cfgFile1)
-	fmt.Println("node1 config \n", string(cfgFile1Byte))
-	cfgFile2Byte, _ := json.Marshal(cfgFile2)
-	fmt.Println("node2 config \n", string(cfgFile2Byte))
-
-	fmt.Println(" start node1....")
-	node1.dir = dir1
-	initNode(node1, cfgFile1, []*types.Account{testAccount}, t)
-
-	fmt.Println(" start node2....")
-	node2.dir = dir2
-	initNode(node2, cfgFile2, nil, t)
-	time.Sleep(10 * time.Second)
-
-	//err := node1.ledgerService.Ledger.GetStateBlocks(func(block *types.StateBlock) error {
-	//	fmt.Println(block)
-	//	return nil
-	//})
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-}
-
-func initNode(service *Service, cfg *config.Config, accounts []*types.Account, t *testing.T) {
-	logService := log.NewLogService(cfg)
-	_ = logService.Init()
-	var err error
-	service.ledgerService = ss.NewLedgerService(cfg)
-	service.consensusService = ss.NewConsensusService(cfg, accounts)
-	service.rPCService, err = ss.NewRPCService(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	service.netService, err = ss.NewP2PService(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := service.ledgerService.Init(); err != nil {
-		t.Fatal(err)
-	}
-
-	_ = json.Unmarshal([]byte(jsonTestSend), &testSendBlock)
-	_ = json.Unmarshal([]byte(jsonTestReceive), &testReceiveBlock)
-	_ = json.Unmarshal([]byte(jsonTestChangeRepresentative), &testChangeRepresentative)
-
-	verfiyfy := process.NewLedgerVerifier(service.ledgerService.Ledger)
-	if err := verfiyfy.BlockProcess(&testSendBlock); err != nil {
-		t.Fatal(err)
-	}
-	if err := verfiyfy.BlockProcess(&testReceiveBlock); err != nil {
-		t.Fatal(err)
-	}
-	if err := verfiyfy.BlockProcess(&testChangeRepresentative); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := service.netService.Init(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.consensusService.Init(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.rPCService.Init(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.ledgerService.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.netService.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.consensusService.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.rPCService.Start(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func closeServer(service *Service, t *testing.T) {
-	if err := service.rPCService.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.consensusService.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.netService.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.ledgerService.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	//if err := os.RemoveAll(service.dir); err != nil {
-	//	t.Fatal(err)
-	//}
 }

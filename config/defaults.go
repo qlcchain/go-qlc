@@ -57,12 +57,12 @@ func DefaultDataDir() string {
 	return ""
 }
 
-func defaultIPCEndpoint() string {
-	dir := filepath.Join(DefaultDataDir(), ipcName)
+func defaultIPCEndpoint(dir string) string {
+	ipc := filepath.Join(dir, ipcName)
 	if runtime.GOOS == "windows" {
 		return fmt.Sprintf(`\\.\pipe\%s`, ipcName)
 	}
-	return dir
+	return ipc
 }
 
 func QlcTestDataDir() string {
