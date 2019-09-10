@@ -7,9 +7,14 @@
 
 package config
 
+import "github.com/qlcchain/go-qlc/common/util"
+
+const tokenLength = 32
+
 type ConfigV5 struct {
 	ConfigV4 `mapstructure:",squash"`
 	Metrics  *MetricsConfig `json:"metrics"`
+	Manager  *Manager       `json:"manager"`
 }
 
 type MetricsConfig struct {
@@ -27,6 +32,10 @@ type Influx struct {
 	Interval int    `json:"interval" validate:"min=1"`
 }
 
+type Manager struct {
+	AdminToken string `json:"adminToken"`
+}
+
 func DefaultConfigV5(dir string) (*ConfigV5, error) {
 	var cfg ConfigV5
 	cfg4, _ := DefaultConfigV4(dir)
@@ -34,6 +43,8 @@ func DefaultConfigV5(dir string) (*ConfigV5, error) {
 	cfg.Version = configVersion
 	cfg.PoV.PovEnabled = true
 	cfg.Metrics = defaultMetrics()
+	cfg.Manager = &Manager{AdminToken: util.RandomFixedString(tokenLength)}
+
 	return &cfg, nil
 }
 
