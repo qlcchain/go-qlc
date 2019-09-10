@@ -182,7 +182,7 @@ func (dps *DPoS) Start() {
 	go dps.processSubMsg()
 	dps.processorStart()
 
-	timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
+	//timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDebug := time.NewTicker(time.Minute)
 
@@ -194,15 +194,15 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		case <-timerFindOnlineRep.C:
-			dps.logger.Info("begin Find Online Representatives.")
-			go func() {
-				err := dps.findOnlineRepresentatives()
-				if err != nil {
-					dps.logger.Error(err)
-				}
-				dps.cleanOnlineReps()
-			}()
+		//case <-timerFindOnlineRep.C:
+		//	dps.logger.Info("begin Find Online Representatives.")
+		//	go func() {
+		//		err := dps.findOnlineRepresentatives()
+		//		if err != nil {
+		//			dps.logger.Error(err)
+		//		}
+		//		dps.cleanOnlineReps()
+		//	}()
 		case <-dps.povReady:
 			err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.onPovSyncState)
 			if err != nil {

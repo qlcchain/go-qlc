@@ -7,7 +7,6 @@ import (
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
-	"time"
 )
 
 type onlineKind byte
@@ -18,15 +17,15 @@ const (
 )
 
 const (
-	onlinePeriod        = uint64(10)
+	onlinePeriod        = uint64(120)
 	onlineRate          = uint64(60)
-	heartCountPerPeriod = 5
+	heartCountPerPeriod = onlinePeriod / 2
 )
 
 type RepAckStatistics struct {
-	HeartCount    uint64    `json:"heartCount"`
-	LastHeartTime time.Time `json:"-"`
-	VoteCount     uint64    `json:"voteCount"`
+	HeartCount      uint64 `json:"heartCount"`
+	LastHeartHeight uint64 `json:"-"`
+	VoteCount       uint64 `json:"voteCount"`
 }
 
 type RepOnlinePeriod struct {
@@ -43,7 +42,6 @@ func (op *RepOnlinePeriod) String() string {
 
 func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlineKind) {
 	period := (dps.curPovHeight - 1) / onlinePeriod
-	now := time.Now()
 	var repPeriod *RepOnlinePeriod
 
 	if s, err := dps.online.Get(period); err == nil {
@@ -66,9 +64,9 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 	defer repPeriod.lock.Unlock()
 
 	if v, ok := repPeriod.Statistic[addr]; ok {
-		if kind == onlineKindHeart && now.Sub(v.LastHeartTime) >= findOnlineRepInterval {
+		if kind == onlineKindHeart && dps.curPovHeight-v.LastHeartHeight >= 2 {
 			v.HeartCount++
-			v.LastHeartTime = now
+			v.LastHeartHeight = dps.curPovHeight
 		} else if kind == onlineKindVote {
 			c, err := dps.confirmedBlocks.Get(hash)
 			if err != nil {
@@ -93,7 +91,7 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 
 		if kind == onlineKindHeart {
 			repPeriod.Statistic[addr].HeartCount++
-			repPeriod.Statistic[addr].LastHeartTime = now
+			repPeriod.Statistic[addr].LastHeartHeight = dps.curPovHeight
 		} else {
 			c, err := dps.confirmedBlocks.Get(hash)
 			if err != nil {
@@ -224,6 +222,16 @@ func (dps *DPoS) onPovHeightChange(pb *types.PovBlock) {
 	dps.curPovHeight = pb.Header.BasHdr.Height
 
 	if dps.getPovSyncState() == common.Syncdone {
+		if dps.curPovHeight%2 == 0 {
+			go func() {
+				err := dps.findOnlineRepresentatives()
+				if err != nil {
+					dps.logger.Error(err)
+				}
+				dps.cleanOnlineReps()
+			}()
+		}
+
 		if dps.curPovHeight-dps.lastSendHeight >= onlinePeriod {
 			dps.sendOnline()
 			dps.lastSendHeight = pb.Header.BasHdr.Height
