@@ -6,10 +6,11 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/crypto/random"
+
 	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
@@ -36,7 +37,7 @@ func TestPledge(t *testing.T) {
 	}
 	b := types.NewAccount(beneficialPledgeBytes)
 	am := types.StringToBalance("1000000000")
-	NEP5tTxId := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	NEP5tTxId := random.RandomHexString(32)
 	pledgeParam := api.PledgeParam{
 		Beneficial:    b.Address(),
 		PledgeAddress: p.Address(),

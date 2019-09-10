@@ -2,12 +2,13 @@ package p2p
 
 import (
 	"bytes"
-	"github.com/qlcchain/go-qlc/chain/context"
 	"math"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/chain/context"
 
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"

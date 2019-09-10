@@ -32,7 +32,7 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 			WSEnabled:        true,
 			WSEndpoint:       "tcp4://0.0.0.0:9736",
 			IPCEnabled:       true,
-			IPCEndpoint:      defaultIPCEndpoint(),
+			IPCEndpoint:      defaultIPCEndpoint(dir),
 			PublicModules:    modules,
 		},
 		P2P: &P2PConfigV2{

@@ -9,7 +9,6 @@ package chain
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/log"
@@ -26,7 +25,6 @@ type RPCService struct {
 func NewRPCService(cfgFile string) (*RPCService, error) {
 	rpc, err := rpc.NewRPC(cfgFile)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	return &RPCService{rpc: rpc, logger: log.NewLogger("rpc_service")}, nil

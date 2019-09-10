@@ -47,7 +47,7 @@ func DefaultConfigV1(dir string) (*ConfigV1, error) {
 			WSEnabled:        true,
 			WSEndpoint:       "tcp4://0.0.0.0:9736",
 			IPCEnabled:       true,
-			IPCEndpoint:      defaultIPCEndpoint(),
+			IPCEndpoint:      defaultIPCEndpoint(dir),
 		},
 		P2P: &P2PConfigV1{
 			BootNodes: []string{
