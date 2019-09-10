@@ -8,6 +8,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -15,7 +16,6 @@ import (
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/spf13/cobra"
 )

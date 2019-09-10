@@ -8,7 +8,8 @@
 package contract
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"

@@ -1,10 +1,9 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"log"
-
-	"github.com/pkg/errors"
 )
 
 func Go(fn func()) {
@@ -21,7 +20,7 @@ func catch() {
 		var e error
 		switch t := err.(type) {
 		case error:
-			e = errors.WithStack(t)
+			e = t
 		case string:
 			e = errors.New(t)
 		default:

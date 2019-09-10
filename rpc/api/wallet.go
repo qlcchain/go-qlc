@@ -2,10 +2,10 @@ package api
 
 import (
 	"encoding/hex"
+	"errors"
 
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"

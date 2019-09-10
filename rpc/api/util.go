@@ -1,10 +1,10 @@
 package api
 
 import (
+	"errors"
 	"math"
 	"math/big"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"

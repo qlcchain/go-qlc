@@ -9,9 +9,9 @@ package trie
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"

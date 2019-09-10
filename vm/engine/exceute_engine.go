@@ -8,9 +8,10 @@
 package engine
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -93,7 +94,7 @@ func (e *ExecuteEngine) call(action string, args []byte) (result []byte, err err
 
 	entryID, ok := e.vm.GetFunctionExport(action)
 	if !ok {
-		return nil, errors.Errorf("Entry function %s not found; starting from 0.\n", action)
+		return nil, fmt.Errorf("Entry function %s not found; starting from 0.\n", action)
 	}
 
 	argIdx, err := e.vm.Memory.SetPointerMemory(args)
