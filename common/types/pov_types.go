@@ -1,5 +1,11 @@
 package types
 
+const (
+	// version bits scheme
+	POV_VBS_TOPBITS = 0x20000000
+	POV_VBS_TOPMASK = 0xe0000000
+)
+
 type PovMineWork struct {
 	WorkHash     Hash    `json:"workHash"`
 	Version      uint32  `json:"version"`

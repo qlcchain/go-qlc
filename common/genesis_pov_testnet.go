@@ -9,25 +9,29 @@ import (
 )
 
 var (
-	jsonPovGenesis = `
-{
+	jsonPovGenesis = `{
     "header":{
         "basHdr":{
             "version":0,
             "previous":"0000000000000000000000000000000000000000000000000000000000000000",
-            "merkleRoot":"4f428e57588be436f16fd7249f255cc64bf50036fb08be3e9729ad16db75c4b8",
+            "merkleRoot":"c7b6e1929787ba843e494b2e3c9c78b5f8f467d01fb64e24470215cafd04f1ba",
             "timestamp":1566345600,
             "bits":504365040,
-            "nonce":742494,
-            "hash":"a01179dc04100cb497859a5c5f3c2399ff0a9d0cbfb2a073084b7f19af0d0000",
+            "nonce":1944040,
+            "hash":"71e5dd2668d7a1e991c8645ffc65d54cc76eaeea8c16c735d111af69360d0000",
             "height":0
         },
         "auxHdr":null,
         "cbtx":{
-            "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
-            "txNum":1,
-            "extra":null,
-            "reserved1":0,
+            "version":0,
+            "txIns":[
+                {
+                    "prevTxHash":"0000000000000000000000000000000000000000000000000000000000000000",
+                    "prevTxIdx":4294967295,
+                    "extra":"Hnjc3b5WmWjnWCUa2mhNMTEEynIoUoXiHMOBdw/T7kk=",
+                    "sequence":4294967295
+                }
+            ],
             "txOuts":[
                 {
                     "address":"qlc_176f1aj1361y5i4yu8ccyp8xphjcbxmmu4ryh4jecnsncse1eiud7uncz8bj",
@@ -38,18 +42,19 @@ var (
                     "value":"57077625"
                 }
             ],
-            "hash":"4f428e57588be436f16fd7249f255cc64bf50036fb08be3e9729ad16db75c4b8"
+            "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
+            "txNum":1,
+            "hash":"c7b6e1929787ba843e494b2e3c9c78b5f8f467d01fb64e24470215cafd04f1ba"
         }
     },
     "body":{
         "txs":[
             {
-                "hash":"4f428e57588be436f16fd7249f255cc64bf50036fb08be3e9729ad16db75c4b8"
+                "hash":"c7b6e1929787ba843e494b2e3c9c78b5f8f467d01fb64e24470215cafd04f1ba"
             }
         ]
     }
-}
-`
+}`
 
 	genesisPovBlock types.PovBlock
 )

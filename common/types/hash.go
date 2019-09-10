@@ -72,11 +72,26 @@ func (h Hash) String() string {
 	return hex.EncodeToString(h[:])
 }
 
-func (h Hash) ReverseString() string {
+func (h Hash) ReverseByte() Hash {
+	var h2 Hash
+	copy(h2[:], h[:])
+
 	for i := 0; i < HashSize/2; i++ {
-		h[i], h[HashSize-1-i] = h[HashSize-1-i], h[i]
+		h2[i], h2[HashSize-1-i] = h2[HashSize-1-i], h2[i]
 	}
-	return hex.EncodeToString(h[:])
+
+	return h2
+}
+
+func (h Hash) ReverseEndian() Hash {
+	var h2 Hash
+
+	for i := 0; i < 32; i += 4 {
+		j := 31 - i
+		h2[i+0], h2[i+1], h2[i+2], h2[i+3] = h[j-3], h[j-2], h[j-1], h[j-0]
+	}
+
+	return h2
 }
 
 //Of convert hex string to Hash

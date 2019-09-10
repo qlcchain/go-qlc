@@ -55,5 +55,6 @@ var (
 
 	PovMaxNonce = ^uint32(0) // 2^32 - 1
 
+	PovMinCoinbaseExtraSize = 2
 	PovMaxCoinbaseExtraSize = 100
 )

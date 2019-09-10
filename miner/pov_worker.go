@@ -181,9 +181,9 @@ func (w *PovWorker) SubmitWork(in interface{}, out interface{}) {
 
 	result := inArgs["mineResult"].(*types.PovMineResult)
 
-	mineBlock := w.mineBlockPool[result.WorkHash]
+	mineBlock := w.findBlockInPool(result.WorkHash)
 	if mineBlock == nil {
-		outArgs["err"] = errors.New("failed to find block by workHash")
+		outArgs["err"] = errors.New("failed to find block by WorkHash")
 		return
 	}
 
@@ -268,7 +268,7 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 
 	// fill base header
 	header := mineBlock.Header
-	header.BasHdr.Version = 0 | uint32(algoType)
+	header.BasHdr.Version = types.POV_VBS_TOPBITS | uint32(algoType)
 	header.BasHdr.Previous = latestHeader.GetHash()
 	header.BasHdr.Height = latestHeader.GetHeight() + 1
 	header.BasHdr.Timestamp = uint32(time.Now().Unix())
@@ -357,7 +357,7 @@ func (w *PovWorker) generateBlock(minerAddr types.Address, algoType types.PovAlg
 	var err error
 
 	latestHeader := w.GetChain().LatestHeader()
-	if latestHeader.GetHeight() == 0 ||
+	if w.curMineBlock == nil ||
 		w.preMineHeight != latestHeader.GetHeight() ||
 		time.Now().After(w.preMineTime.Add(30*time.Second)) {
 
@@ -383,12 +383,23 @@ func (w *PovWorker) generateBlock(minerAddr types.Address, algoType types.PovAlg
 	return w.curMineBlock, nil
 }
 
+func (w *PovWorker) findBlockInPool(workHash types.Hash) *types.PovMineBlock {
+	w.muxMineBlock.Lock()
+	defer w.muxMineBlock.Unlock()
+
+	return w.mineBlockPool[workHash]
+}
+
 func (w *PovWorker) checkAndFillBlockByResult(mineBlock *types.PovMineBlock, result *types.PovMineResult) error {
+	if len(result.CoinbaseExtra) < common.PovMinCoinbaseExtraSize {
+		return fmt.Errorf("coinbase extra size too small, min size is %d", common.PovMinCoinbaseExtraSize)
+	}
+
 	if len(result.CoinbaseExtra) > common.PovMaxCoinbaseExtraSize {
 		return fmt.Errorf("coinbase extra size too big, max size is %d", common.PovMaxCoinbaseExtraSize)
 	}
 
-	mineBlock.Header.CbTx.Extra = result.CoinbaseExtra
+	mineBlock.Header.CbTx.TxIns[0].Extra = result.CoinbaseExtra
 	cbTxHash := mineBlock.Header.CbTx.ComputeHash()
 	if cbTxHash.Cmp(result.CoinbaseHash) != 0 {
 		return fmt.Errorf("coinbase hash not equal, %s != %s", cbTxHash, result.CoinbaseHash)
@@ -540,8 +551,8 @@ Loop:
 				foundNonce = true
 
 				// fill coinbase tx
-				mineBlock.Header.CbTx.Extra = make([]byte, len(resultHeader.CbTx.Extra))
-				copy(mineBlock.Header.CbTx.Extra, resultHeader.CbTx.Extra)
+				mineBlock.Header.CbTx.TxIns[0].Extra = make([]byte, len(resultHeader.CbTx.TxIns[0].Extra))
+				copy(mineBlock.Header.CbTx.TxIns[0].Extra, resultHeader.CbTx.TxIns[0].Extra)
 				mineBlock.Header.CbTx.Hash = mineBlock.Header.CbTx.ComputeHash()
 
 				mineBlock.Body.Txs[0].Hash = mineBlock.Header.CbTx.Hash
@@ -586,11 +597,13 @@ Loop:
 	return true
 }
 
-func (w *PovWorker) submitBlock(genBlock *types.PovMineBlock) {
-	w.logger.Infof("submit block %d/%s", genBlock.Block.GetHeight(), genBlock.Block.GetHash())
+func (w *PovWorker) submitBlock(mineBlock *types.PovMineBlock) {
+	newBlock := mineBlock.Block.Copy()
 
-	err := w.miner.GetPovEngine().AddMinedBlock(genBlock.Block)
+	w.logger.Infof("submit block %d/%s", newBlock.GetHeight(), newBlock.GetHash())
+
+	err := w.miner.GetPovEngine().AddMinedBlock(newBlock)
 	if err != nil {
-		w.logger.Infof("failed to submit block %d/%s", genBlock.Block.GetHeight(), genBlock.Block.GetHash())
+		w.logger.Infof("failed to submit block %d/%s", newBlock.GetHeight(), newBlock.GetHash())
 	}
 }

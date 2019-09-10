@@ -82,11 +82,13 @@ func doWork(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *api.Pov
 	cbTxDataBuf := new(bytes.Buffer)
 	cbData1, _ := hex.DecodeString(getWorkRsp.CoinBaseData1)
 	cbTxDataBuf.Write(cbData1)
-	if len(cbTxExtData) > 0 {
-		cbTxDataBuf.Write(cbTxExtData)
-	}
+
+	cbTxDataBuf.Write(util.LE_EncodeVarInt(uint64(len(cbTxExtData))))
+	cbTxDataBuf.Write(cbTxExtData)
+
 	cbData2, _ := hex.DecodeString(getWorkRsp.CoinBaseData2)
 	cbTxDataBuf.Write(cbData2)
+
 	cbTxHash := types.Sha256D_HashData(cbTxDataBuf.Bytes())
 
 	povHeader.BasHdr.MerkleRoot = merkle.CalcCoinbaseMerkleRoot(&cbTxHash, getWorkRsp.MerkleBranch)

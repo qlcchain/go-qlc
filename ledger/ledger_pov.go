@@ -424,7 +424,9 @@ func (l *Ledger) GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (
 
 	td := new(types.PovTD)
 	err = txn.Get(key, func(val []byte, b byte) error {
-		td.Deserialize(val)
+		if err := td.Deserialize(val); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {

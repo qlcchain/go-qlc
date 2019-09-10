@@ -21,6 +21,12 @@ const (
 	PovBlockFromRemoteSync
 )
 
+const (
+	PovTxVersion                 = 1
+	PovMaxTxInSequenceNum uint32 = 0xffffffff
+	PovMaxPrevOutIndex    uint32 = 0xffffffff
+)
+
 type PovBaseHeader struct {
 	Version    uint32 `msg:"v" json:"version"`
 	Previous   Hash   `msg:"p,extension" json:"previous"`
@@ -78,23 +84,49 @@ func (ah *PovAuxHeader) Deserialize(text []byte) error {
 	return nil
 }
 
+type PovCoinBaseTxIn struct {
+	PrevTxHash Hash   `msg:"pth,extension" json:"prevTxHash"`
+	PrevTxIdx  uint32 `msg:"pti" json:"prevTxIdx"`
+	Extra      []byte `msg:"ext" json:"extra"` // like BTC's script, filled by miner, 0 ~ 100
+	Sequence   uint32 `msg:"seq" json:"sequence"`
+}
+
+func (ti *PovCoinBaseTxIn) Copy() *PovCoinBaseTxIn {
+	ti2 := *ti
+	ti2.Extra = make([]byte, len(ti.Extra))
+	copy(ti2.Extra, ti.Extra)
+	return &ti2
+}
+
+func (ti *PovCoinBaseTxIn) Serialize() ([]byte, error) {
+	return ti.MarshalMsg(nil)
+}
+
+func (ti *PovCoinBaseTxIn) Deserialize(text []byte) error {
+	_, err := ti.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 type PovCoinBaseTxOut struct {
 	Address Address `msg:"a,extension" json:"address"`
 	Value   Balance `msg:"v,extension" json:"value"`
 }
 
-func (cbto *PovCoinBaseTxOut) Copy() *PovCoinBaseTxOut {
-	to2 := *cbto
-	to2.Value = cbto.Value.Copy()
+func (to *PovCoinBaseTxOut) Copy() *PovCoinBaseTxOut {
+	to2 := *to
+	to2.Value = to.Value.Copy()
 	return &to2
 }
 
-func (cbto *PovCoinBaseTxOut) Serialize() ([]byte, error) {
-	return cbto.MarshalMsg(nil)
+func (to *PovCoinBaseTxOut) Serialize() ([]byte, error) {
+	return to.MarshalMsg(nil)
 }
 
-func (cbto *PovCoinBaseTxOut) Deserialize(text []byte) error {
-	_, err := cbto.UnmarshalMsg(text)
+func (to *PovCoinBaseTxOut) Deserialize(text []byte) error {
+	_, err := to.UnmarshalMsg(text)
 	if err != nil {
 		return err
 	}
@@ -102,14 +134,17 @@ func (cbto *PovCoinBaseTxOut) Deserialize(text []byte) error {
 }
 
 type PovCoinBaseTx struct {
+	Version uint32 `msg:"v" json:"version"`
+
 	// TxIn like BTC's PreviousOutPoint
-	StateHash Hash   `msg:"sh,extension" json:"stateHash"`
-	TxNum     uint32 `msg:"tn" json:"txNum"`
-	Extra     []byte `msg:"ext" json:"extra"` // filled by miner, 0 ~ 100
-	Reserved1 uint32 `msg:"resv1" json:"reserved1"`
+	TxIns []*PovCoinBaseTxIn `msg:"tis" json:"txIns"`
 
 	// TxOut like BTC
 	TxOuts []*PovCoinBaseTxOut `msg:"tos" json:"txOuts"`
+	//LockTime uint32 `msg:"lt" json:"lockTime"`
+
+	StateHash Hash   `msg:"sh,extension" json:"stateHash"`
+	TxNum     uint32 `msg:"tn" json:"txNum"`
 
 	// just for internal use
 	Hash Hash `msg:"h,extension" json:"hash"`
@@ -117,8 +152,17 @@ type PovCoinBaseTx struct {
 
 func NewPovCoinBaseTx(txInNum int, txOutNum int) *PovCoinBaseTx {
 	tx := new(PovCoinBaseTx)
+	tx.Version = PovTxVersion
+
+	for i := 0; i < txInNum; i++ {
+		txIn := new(PovCoinBaseTxIn)
+		txIn.PrevTxIdx = PovMaxPrevOutIndex
+		txIn.Sequence = PovMaxTxInSequenceNum
+		tx.TxIns = append(tx.TxIns, txIn)
+	}
 	for i := 0; i < txOutNum; i++ {
-		tx.TxOuts = append(tx.TxOuts, new(PovCoinBaseTxOut))
+		txOut := new(PovCoinBaseTxOut)
+		tx.TxOuts = append(tx.TxOuts, txOut)
 	}
 	return tx
 }
@@ -126,13 +170,15 @@ func NewPovCoinBaseTx(txInNum int, txOutNum int) *PovCoinBaseTx {
 func (cbtx *PovCoinBaseTx) Copy() *PovCoinBaseTx {
 	tx2 := *cbtx
 
+	tx2.TxIns = nil
+	for _, ti := range cbtx.TxIns {
+		tx2.TxIns = append(tx2.TxIns, ti.Copy())
+	}
+
 	tx2.TxOuts = nil
 	for _, to := range cbtx.TxOuts {
 		tx2.TxOuts = append(tx2.TxOuts, to.Copy())
 	}
-
-	tx2.Extra = make([]byte, len(cbtx.Extra))
-	copy(tx2.Extra, cbtx.Extra)
 
 	return &tx2
 }
@@ -160,9 +206,17 @@ func (cbtx *PovCoinBaseTx) Deserialize(text []byte) error {
 func (cbtx *PovCoinBaseTx) GetCoinBaseData1() []byte {
 	buf := new(bytes.Buffer)
 
-	// TxIn like BTC's PreviousOutPoint, size = 32 + 4
-	buf.Write(cbtx.StateHash.Bytes())
-	buf.Write(util.LE_Uint32ToBytes(cbtx.TxNum))
+	// BTC's Tx Header
+	buf.Write(util.LE_Uint32ToBytes(cbtx.Version))
+	buf.Write(util.LE_EncodeVarInt(1))
+
+	// TxIn like BTC
+	ti := cbtx.TxIns[0]
+
+	buf.Write(ti.PrevTxHash.Bytes())
+	buf.Write(util.LE_Uint32ToBytes(ti.PrevTxIdx))
+
+	// TxIn Signature Script will append here
 
 	return buf.Bytes()
 }
@@ -170,14 +224,21 @@ func (cbtx *PovCoinBaseTx) GetCoinBaseData1() []byte {
 func (cbtx *PovCoinBaseTx) GetCoinBaseData2() []byte {
 	buf := new(bytes.Buffer)
 
+	// TxIn Signature Script will prepend here
+
 	// TxIn Sequence like BTC
-	buf.Write(util.LE_Uint32ToBytes(cbtx.Reserved1))
+	ti := cbtx.TxIns[0]
+	buf.Write(util.LE_Uint32ToBytes(ti.Sequence))
 
 	// TxOut like BTC
+	buf.Write(util.LE_EncodeVarInt(uint64(len(cbtx.TxOuts))))
 	for _, cbto := range cbtx.TxOuts {
 		buf.Write(cbto.Address.Bytes())
 		buf.Write(cbto.Value.Bytes())
 	}
+
+	buf.Write(cbtx.StateHash.Bytes())
+	buf.Write(util.LE_Uint32ToBytes(cbtx.TxNum))
 
 	return buf.Bytes()
 }
@@ -186,11 +247,14 @@ func (cbtx *PovCoinBaseTx) BuildHashData() []byte {
 	buf := new(bytes.Buffer)
 
 	// hash data = coinbase1 + extra + coinbase2
-	// extra = minerinfo + extranonce1 + extranonce2
+	// extra = miner info + extra nonce1 + extra nonce2
+
 	buf.Write(cbtx.GetCoinBaseData1())
-	if len(cbtx.Extra) > 0 {
-		buf.Write(cbtx.Extra)
-	}
+
+	ti := cbtx.TxIns[0]
+	buf.Write(util.LE_EncodeVarInt(uint64(len(ti.Extra))))
+	buf.Write(ti.Extra)
+
 	buf.Write(cbtx.GetCoinBaseData2())
 
 	return buf.Bytes()
@@ -519,6 +583,11 @@ func (blk *PovBlock) Deserialize(text []byte) error {
 func (blk *PovBlock) String() string {
 	bytes, _ := json.Marshal(blk)
 	return string(bytes)
+}
+
+func (blk *PovBlock) Copy() *PovBlock {
+	copy := NewPovBlockWithBody(blk.GetHeader(), blk.GetBody())
+	return copy
 }
 
 func (blk *PovBlock) Clone() *PovBlock {

@@ -51,6 +51,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/shirou/gopsutil v2.18.12+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
+	github.com/sirupsen/logrus v1.2.0
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -58,6 +59,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
 	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c
+	github.com/willf/bitset v1.1.10
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
 	go.opencensus.io v0.22.0 // indirect

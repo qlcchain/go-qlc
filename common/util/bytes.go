@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
+	"math"
 )
 
 // ToHex returns the hex representation of b, prefixed with '0x'.
@@ -208,4 +209,29 @@ func Bool2Bytes(b bool) []byte {
 	enc := gob.NewEncoder(&buf)
 	enc.Encode(b)
 	return buf.Bytes()
+}
+
+func LE_EncodeVarInt(val uint64) []byte {
+	buf := make([]byte, 9)
+
+	if val < 0xfd {
+		buf[0] = uint8(val)
+		return buf[0:1]
+	}
+
+	if val <= math.MaxUint16 {
+		buf[0] = uint8(0xfd)
+		binary.LittleEndian.PutUint16(buf[1:3], uint16(val))
+		return buf[0:3]
+	}
+
+	if val <= math.MaxUint32 {
+		buf[0] = uint8(0xfe)
+		binary.LittleEndian.PutUint32(buf[1:5], uint32(val))
+		return buf[0:5]
+	}
+
+	buf[0] = uint8(0xff)
+	binary.LittleEndian.PutUint64(buf[1:9], val)
+	return buf[0:9]
 }
