@@ -25,7 +25,10 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
 
 	dir := filepath.Join(config.QlcTestDataDir(), "vm", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := ledger.NewLedger(dir)
+
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	l := ledger.NewLedger(cm.ConfigFile)
 
 	v := NewVMContext(l)
 

@@ -24,8 +24,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := ledger.NewLedger(dir)
-	fmt.Println(dir)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	l := ledger.NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
 		//err := l.db.Erase()

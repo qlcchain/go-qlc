@@ -34,14 +34,12 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *WalletStore) {
 	start := time.Now()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "wallet", uuid.New().String())
-	cfg, err := config.DefaultConfig(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Log("setup store test case", dir)
 	_ = os.RemoveAll(dir)
 
-	store := NewWalletStore(cfg)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	store := NewWalletStore(cm.ConfigFile)
 	if store == nil {
 		t.Fatal("create store failed")
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -100,9 +101,13 @@ var (
 
 const version = 8
 
-func NewLedger(dir string) *Ledger {
+func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
 	defer lock.Unlock()
+	cc := chainctx.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+	dir := cfg.LedgerDir()
+
 	if _, ok := cache[dir]; !ok {
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
@@ -113,7 +118,7 @@ func NewLedger(dir string) *Ledger {
 			Store:          store,
 			dir:            dir,
 			RollbackChan:   make(chan types.Hash, 65535),
-			EB:             event.GetEventBus(dir),
+			EB:             cc.EventBus(),
 			ctx:            ctx,
 			cancel:         cancel,
 			representCache: NewRepresentationCache(),

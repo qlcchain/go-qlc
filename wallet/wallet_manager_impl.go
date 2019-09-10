@@ -15,8 +15,8 @@ import (
 
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -30,9 +30,11 @@ var (
 	ErrEmptyCurrentId = errors.New("can not find any wallet id")
 )
 
-func NewWalletStore(cfg *config.Config) *WalletStore {
+func NewWalletStore(cfgFile string) *WalletStore {
 	lock.Lock()
 	defer lock.Unlock()
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
 	dir := cfg.WalletDir()
 	logger := log.NewLogger("wallet store")
 	if _, ok := cache[dir]; !ok {
@@ -42,7 +44,7 @@ func NewWalletStore(cfg *config.Config) *WalletStore {
 		}
 
 		cache[dir] = &WalletStore{
-			ledger: ledger.NewLedger(cfg.LedgerDir()),
+			ledger: ledger.NewLedger(cfgFile),
 			logger: logger,
 			Store:  store,
 			dir:    dir,

@@ -95,7 +95,9 @@ func setupPovVerifierTestCase(t *testing.T) (func(t *testing.T), *povVerifierMoc
 
 	lDir := filepath.Join(rootDir, "ledger")
 	_ = os.RemoveAll(lDir)
-	md.ledger = ledger.NewLedger(lDir)
+	cm := config.NewCfgManager(lDir)
+	cm.Load()
+	md.ledger = ledger.NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
 		err := md.ledger.DBStore().Close()

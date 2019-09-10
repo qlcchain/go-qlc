@@ -8,14 +8,13 @@ import (
 	"sync"
 
 	"github.com/qlcchain/go-qlc/chain/context"
-	rpc "github.com/qlcchain/jsonrpc2"
-
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 )
 
@@ -56,8 +55,8 @@ func NewRPC(cfgFile string) (*RPC, error) {
 	}
 
 	r := RPC{
-		ledger:   ledger.NewLedger(cfg.LedgerDir()),
-		wallet:   wallet.NewWalletStore(cfg),
+		ledger:   ledger.NewLedger(cfgFile),
+		wallet:   wallet.NewWalletStore(cfgFile),
 		relation: rl,
 		eb:       cc.EventBus(),
 		config:   cfg,

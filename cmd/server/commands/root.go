@@ -22,18 +22,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/qlcchain/go-qlc/chain"
-
-	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/wallet"
-
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
+	"github.com/qlcchain/go-qlc/chain"
+	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/ledger"
 	qlclog "github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/wallet"
 	"github.com/spf13/cobra"
 )
 
@@ -170,7 +168,7 @@ func start() error {
 			return err
 		}
 
-		w := wallet.NewWalletStore(cfg)
+		w := wallet.NewWalletStore(cm.ConfigFile)
 		defer func() {
 			if w != nil {
 				_ = w.Close()

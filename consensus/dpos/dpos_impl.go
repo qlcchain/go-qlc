@@ -97,7 +97,7 @@ func NewDPoS(cfgFile string) *DPoS {
 	cfg, _ := cc.Config()
 
 	acTrx := newActiveTrx()
-	l := ledger.NewLedger(cfg.LedgerDir())
+	l := ledger.NewLedger(cfgFile)
 	processorNum := runtime.NumCPU()
 
 	ctx, cancel := context.WithCancel(context.Background())

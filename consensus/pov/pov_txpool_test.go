@@ -40,7 +40,9 @@ func setupPovTxPoolTestCase(t *testing.T) (func(t *testing.T), *povTxPoolMockDat
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uid)
 	_ = os.RemoveAll(dir)
-	md.ledger = ledger.NewLedger(dir)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	md.ledger = ledger.NewLedger(cm.ConfigFile)
 
 	md.eb = event.GetEventBus(uid)
 

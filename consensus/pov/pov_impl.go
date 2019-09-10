@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/chain/context"
-
 	"github.com/bluele/gcache"
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -43,7 +42,7 @@ type PoVEngine struct {
 func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
-	l := ledger.NewLedger(cfg.LedgerDir())
+	l := ledger.NewLedger(cfgFile)
 
 	pov := &PoVEngine{
 		logger:   log.NewLogger("pov_engine"),

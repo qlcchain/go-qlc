@@ -11,14 +11,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/wallet"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
-	"github.com/abiosoft/ishell"
 	"github.com/spf13/cobra"
 )
 
@@ -87,11 +85,7 @@ func importWallet(seedP string) error {
 	if len(seedP) != types.SeedSize {
 		return errors.New("invalid seed")
 	}
-	cfg, err := cm.Config()
-	if err != nil {
-		return err
-	}
-	w := wallet.NewWalletStore(cfg)
+	w := wallet.NewWalletStore(cm.ConfigFile)
 	defer func() {
 		if w != nil {
 			_ = w.Close()

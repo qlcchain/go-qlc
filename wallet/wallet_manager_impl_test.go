@@ -20,12 +20,12 @@ import (
 
 func TestNewWalletStore(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "wallet_test")
-	cfg1, _ := config.DefaultConfig(config.DefaultDataDir())
-	cfg1.DataDir = dir
-	cfg2, _ := config.DefaultConfig(config.DefaultDataDir())
-	cfg2.DataDir = dir
-	store1 := NewWalletStore(cfg1)
-	store2 := NewWalletStore(cfg2)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	cm2 := config.NewCfgManager(dir)
+	cm2.Load()
+	store1 := NewWalletStore(cm.ConfigFile)
+	store2 := NewWalletStore(cm2.ConfigFile)
 	if store1 == nil || store2 == nil {
 		t.Fatal("error create store")
 	}
@@ -39,19 +39,19 @@ func TestNewWalletStore(t *testing.T) {
 			t.Fatal(err)
 		}
 		//store2.Close()
-		_ = os.RemoveAll(cfg1.DataDir)
+		_ = os.RemoveAll(dir)
 	}()
 }
 
 func TestNewWalletStore2(t *testing.T) {
 	dir1 := filepath.Join(config.QlcTestDataDir(), "wallet_test1")
 	dir2 := filepath.Join(config.QlcTestDataDir(), "wallet_test2")
-	cfg1, _ := config.DefaultConfig(config.DefaultDataDir())
-	cfg1.DataDir = dir1
-	cfg2, _ := config.DefaultConfig(config.DefaultDataDir())
-	cfg2.DataDir = dir2
-	store1 := NewWalletStore(cfg1)
-	store2 := NewWalletStore(cfg2)
+	cm1 := config.NewCfgManager(dir1)
+	cm1.Load()
+	cm2 := config.NewCfgManager(dir2)
+	cm2.Load()
+	store1 := NewWalletStore(cm1.ConfigFile)
+	store2 := NewWalletStore(cm2.ConfigFile)
 	if store1 == nil || store2 == nil {
 		t.Fatal("error create store")
 	}

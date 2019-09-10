@@ -1,12 +1,13 @@
 package dpos
 
 import (
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/mock"
 	"math/big"
 	"path/filepath"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 var (
