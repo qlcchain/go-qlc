@@ -145,6 +145,10 @@ func start() error {
 			if err != nil {
 				return err
 			}
+			err := cm.Commit()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if len(seedP) > 0 {

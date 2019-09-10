@@ -186,16 +186,56 @@ func TestCfgManager_Load(t *testing.T) {
 	}
 }
 
+func TestCfgManager_UpdateParams(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	cm := NewCfgManager(configDir)
+	cfg, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err = cm.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !cfg.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(cfg.RPC.HTTPCors) != 2 || cfg.RPC.HTTPCors[0] != "localhost" || cfg.RPC.HTTPCors[1] != "localhost2" {
+		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
+	}
+
+	if cfg.P2P.SyncInterval != 200 {
+		t.Fatal("invalid p2p.syncInterval", cfg.P2P.SyncInterval)
+	}
+
+	params = []string{"rpc.rpcEnabled=false", "rpc.httpCors=*"}
+	cfg, err = cm.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(cfg.RPC.HTTPCors) == 0 || cfg.RPC.HTTPCors[0] != "*" {
+		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
+	}
+}
+
 func Test_updateConfig(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
 	defer teardownTestCase(t)
 	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
-	manager := NewCfgManager(configDir)
-	cfg, err := manager.Load()
+	cm := NewCfgManager(configDir)
+	cfg, err := cm.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err = manager.UpdateParams(params)
+	cfg, err = cm.UpdateParams(params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,6 +249,145 @@ func Test_updateConfig(t *testing.T) {
 
 	if cfg.P2P.SyncInterval != 200 {
 		t.Fatal("invalid p2p.syncInterval", cfg.P2P.SyncInterval)
+	}
+
+	used, err := cm.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if used.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(used.RPC.HTTPCors) != 1 || used.RPC.HTTPCors[0] != "*" {
+		t.Fatal("invalid rpc.httpCors", used.RPC.HTTPCors)
+	}
+
+	if used.P2P.SyncInterval != 120 {
+		t.Fatal("invalid p2p.syncInterval", used.P2P.SyncInterval)
+	}
+
+	err = cm.Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	used2, err := cm.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !used2.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(used2.RPC.HTTPCors) != 2 || used2.RPC.HTTPCors[0] != "localhost" || used2.RPC.HTTPCors[1] != "localhost2" {
+		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
+	}
+
+	if used2.P2P.SyncInterval != 200 {
+		t.Fatal("invalid p2p.syncInterval", used2.P2P.SyncInterval)
+	}
+}
+
+func TestCfgManager_Discard(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	cm := NewCfgManager(configDir)
+	cfg, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err = cm.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(cfg.RPC.HTTPCors) != 2 || cfg.RPC.HTTPCors[0] != "localhost" || cfg.RPC.HTTPCors[1] != "localhost2" {
+		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
+	}
+
+	if cfg.P2P.SyncInterval != 200 {
+		t.Fatal("invalid p2p.syncInterval", cfg.P2P.SyncInterval)
+	}
+
+	used, err := cm.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if used.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(used.RPC.HTTPCors) != 1 || used.RPC.HTTPCors[0] != "*" {
+		t.Fatal("invalid rpc.httpCors", used.RPC.HTTPCors)
+	}
+
+	if used.P2P.SyncInterval != 120 {
+		t.Fatal("invalid p2p.syncInterval", used.P2P.SyncInterval)
+	}
+
+	cm.Discard()
+	if cm.isDirty != false {
+		t.Fatal("invalid is dirty")
+	}
+}
+
+func TestCfgManager_CommitAndSave(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	cm := NewCfgManager(configDir)
+	cfg, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err = cm.UpdateParams(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(cfg.RPC.HTTPCors) != 2 || cfg.RPC.HTTPCors[0] != "localhost" || cfg.RPC.HTTPCors[1] != "localhost2" {
+		t.Fatal("invalid rpc.httpCors", cfg.RPC.HTTPCors)
+	}
+
+	if cfg.P2P.SyncInterval != 200 {
+		t.Fatal("invalid p2p.syncInterval", cfg.P2P.SyncInterval)
+	}
+	err = cm.CommitAndSave()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cm2 := NewCfgManager(configDir)
+	cfg2, err := cm2.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !cfg2.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	if len(cfg2.RPC.HTTPCors) != 2 || cfg2.RPC.HTTPCors[0] != "localhost" || cfg2.RPC.HTTPCors[1] != "localhost2" {
+		t.Fatal("invalid rpc.httpCors", cfg2.RPC.HTTPCors)
+	}
+
+	if cfg2.P2P.SyncInterval != 200 {
+		t.Fatal("invalid p2p.syncInterval", cfg2.P2P.SyncInterval)
 	}
 }
 
