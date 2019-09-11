@@ -11,10 +11,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/spf13/cobra"
 )
 
@@ -85,15 +84,8 @@ func Execute(osArgs []string) {
 }
 
 func IsInteractive(osArgs []string) bool {
-	if len(osArgs) == 2 && osArgs[1] == "-i" {
-		return true
-	}
-	if len(osArgs) == 3 && osArgs[1] == "-i" && osArgs[2] == "--testnet" {
-		endpointP = "ws://0.0.0.0:19736"
-		return true
-	}
-	if len(osArgs) == 4 && osArgs[1] == "-i" && osArgs[2] == "--endpoint" {
-		endpointP = osArgs[3]
+	if len(osArgs) == 3 && osArgs[1] == "--endpoint" {
+		endpointP = osArgs[2]
 		return true
 	}
 	return false
@@ -122,4 +114,5 @@ func addcommands() {
 	minerRecvPend()
 	minerHistory()
 	change()
+	dumpledger()
 }

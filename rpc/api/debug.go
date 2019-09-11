@@ -61,6 +61,10 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	return unchecks, nil
 }
 
+func (l *DebugApi) Dump() (string, error) {
+	return l.ledger.Dump()
+}
+
 func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
 	r := make(map[string]types.Hash)
 	child, err := l.ledger.GetChild(hash)
