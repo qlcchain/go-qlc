@@ -17,7 +17,7 @@ const (
 )
 
 const (
-	onlinePeriod        = uint64(120)
+	onlinePeriod        = uint64(60)
 	onlineRate          = uint64(60)
 	heartCountPerPeriod = onlinePeriod / 2
 )
@@ -232,7 +232,7 @@ func (dps *DPoS) onPovHeightChange(pb *types.PovBlock) {
 			}()
 		}
 
-		if dps.curPovHeight-dps.lastSendHeight >= onlinePeriod {
+		if dps.curPovHeight-dps.lastSendHeight >= onlinePeriod && dps.curPovHeight%onlinePeriod >= 30 {
 			dps.sendOnline()
 			dps.lastSendHeight = pb.Header.BasHdr.Height
 		}

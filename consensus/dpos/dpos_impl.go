@@ -116,7 +116,8 @@ func NewDPoS(cfgFile string) *DPoS {
 		cancel:          cancel,
 		online:          gcache.New(maxStatisticsPeriod).LRU().Build(),
 		confirmedBlocks: gcache.New(confirmedCacheMaxLen).Expiration(confirmedCacheMaxTime).LRU().Build(),
-		lastSendHeight:	1,
+		lastSendHeight:  1,
+		curPovHeight:    1,
 	}
 
 	if common.DPoSVoteCacheEn {
@@ -129,9 +130,7 @@ func NewDPoS(cfgFile string) *DPoS {
 	}
 
 	pb, err := dps.ledger.GetLatestPovBlock()
-	if err != nil {
-		dps.logger.Error("get latest pov block err", err)
-	} else {
+	if err == nil {
 		dps.curPovHeight = pb.Header.BasHdr.Height
 	}
 
@@ -382,11 +381,11 @@ func (dps *DPoS) subAckDo(index int, hash types.Hash) {
 }
 
 func (dps *DPoS) unsubAckDo(hash types.Hash) {
-	msg := &subMsg{
-		kind: subMsgKindUnsub,
-		hash: hash,
-	}
-	dps.subMsg <- msg
+	//msg := &subMsg{
+	//	kind: subMsgKindUnsub,
+	//	hash: hash,
+	//}
+	//dps.subMsg <- msg
 }
 
 func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, localIndex int) {
