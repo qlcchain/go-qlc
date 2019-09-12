@@ -41,6 +41,7 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 	checkBlockFns[types.Send] = checkSendBlock
 	checkBlockFns[types.Receive] = checkReceiveBlock
 	checkBlockFns[types.Change] = checkChangeBlock
+	checkBlockFns[types.Online] = checkChangeBlock
 	checkBlockFns[types.Open] = checkOpenBlock
 	checkBlockFns[types.ContractSend] = checkContractSendBlock
 	checkBlockFns[types.ContractReward] = checkContractReceiveBlock
@@ -982,7 +983,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 // TODO: implement
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 	lv.logger.Errorf("process rollback block: %s", hash.String())
-	lv.l.EB.Publish(common.EventRollbackUnchecked, hash)
+	lv.l.EB.Publish(common.EventRollback, hash)
 	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
 		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 			err = lv.rollbackBlockCache(hash, txn)
@@ -1164,7 +1165,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 						return fmt.Errorf("rollback pending fail(%s), receive(%s)", err, hashCur)
 					}
 				}
-			case types.Change:
+			case types.Change, types.Online:
 				if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
 					return fmt.Errorf("rollback token fail(%s), change(%s)", err, hashCur)
 				}

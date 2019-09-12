@@ -32,6 +32,9 @@ const (
 	povBlockNumDay        = 2880
 	subAckMaxSize         = 102400
 	hashNumPerAck         = 1000
+	maxStatisticsPeriod   = 3
+	confirmedCacheMaxLen  = 102400
+	confirmedCacheMaxTime = 10 * time.Minute
 )
 
 type subMsgKind byte
@@ -77,6 +80,10 @@ type DPoS struct {
 	batchVote       chan types.Hash
 	ctx             context.Context
 	cancel          context.CancelFunc
+	online          gcache.Cache
+	confirmedBlocks gcache.Cache
+	lastSendHeight  uint64
+	curPovHeight    uint64
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -90,23 +97,27 @@ func NewDPoS(cfgFile string) *DPoS {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	dps := &DPoS{
-		ledger:       l,
-		acTrx:        acTrx,
-		accounts:     cc.Accounts(),
-		logger:       log.NewLogger("dpos"),
-		cfg:          cfg,
-		eb:           cc.EventBus(),
-		lv:           process.NewLedgerVerifier(l),
-		cacheBlocks:  make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
-		povReady:     make(chan bool, 1),
-		processorNum: processorNum,
-		processors:   newProcessors(processorNum),
-		subMsg:       make(chan *subMsg, 10240),
-		subAck:       gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
-		hash2el:      new(sync.Map),
-		batchVote:    make(chan types.Hash, 102400),
-		ctx:          ctx,
-		cancel:       cancel,
+		ledger:          l,
+		acTrx:           acTrx,
+		accounts:        cc.Accounts(),
+		logger:          log.NewLogger("dpos"),
+		cfg:             cfg,
+		eb:              cc.EventBus(),
+		lv:              process.NewLedgerVerifier(l),
+		cacheBlocks:     make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
+		povReady:        make(chan bool, 1),
+		processorNum:    processorNum,
+		processors:      newProcessors(processorNum),
+		subMsg:          make(chan *subMsg, 10240),
+		subAck:          gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
+		hash2el:         new(sync.Map),
+		batchVote:       make(chan types.Hash, 102400),
+		ctx:             ctx,
+		cancel:          cancel,
+		online:          gcache.New(maxStatisticsPeriod).LRU().Build(),
+		confirmedBlocks: gcache.New(confirmedCacheMaxLen).Expiration(confirmedCacheMaxTime).LRU().Build(),
+		lastSendHeight:  1,
+		curPovHeight:    1,
 	}
 
 	if common.DPoSVoteCacheEn {
@@ -116,6 +127,11 @@ func NewDPoS(cfgFile string) *DPoS {
 	dps.acTrx.setDposService(dps)
 	for _, p := range dps.processors {
 		p.setDposService(dps)
+	}
+
+	pb, err := dps.ledger.GetLatestPovBlock()
+	if err == nil {
+		dps.curPovHeight = pb.Header.BasHdr.Height
 	}
 
 	return dps
@@ -137,9 +153,19 @@ func (dps *DPoS) Init() {
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 	dps.voteThreshold, _ = supply.Div(2)
 
-	err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
+	err := dps.eb.SubscribeSync(common.EventRollback, dps.onRollback)
 	if err != nil {
 		dps.logger.Errorf("subscribe rollback unchecked block event err")
+	}
+
+	err = dps.eb.SubscribeSync(common.EventPovConnectBestBlock, dps.onPovHeightChange)
+	if err != nil {
+		dps.logger.Errorf("subscribe rollback unchecked block event err")
+	}
+
+	err = dps.eb.SubscribeSync(common.EventRpcSyncCall, dps.onRpcSyncCall)
+	if err != nil {
+		dps.logger.Errorf("subscribe rpc sync call event err")
 	}
 
 	if len(dps.accounts) != 0 {
@@ -155,7 +181,7 @@ func (dps *DPoS) Start() {
 	go dps.processSubMsg()
 	dps.processorStart()
 
-	timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
+	//timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDebug := time.NewTicker(time.Minute)
 
@@ -167,15 +193,15 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		case <-timerFindOnlineRep.C:
-			dps.logger.Info("begin Find Online Representatives.")
-			go func() {
-				err := dps.findOnlineRepresentatives()
-				if err != nil {
-					dps.logger.Error(err)
-				}
-				dps.cleanOnlineReps()
-			}()
+		//case <-timerFindOnlineRep.C:
+		//	dps.logger.Info("begin Find Online Representatives.")
+		//	go func() {
+		//		err := dps.findOnlineRepresentatives()
+		//		if err != nil {
+		//			dps.logger.Error(err)
+		//		}
+		//		dps.cleanOnlineReps()
+		//	}()
 		case <-dps.povReady:
 			err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.onPovSyncState)
 			if err != nil {
@@ -319,6 +345,11 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 			for _, h := range ack.Hash {
 				dps.logger.Infof("dps recv confirmAck block[%s]", h)
 
+				if has, _ := dps.ledger.HasStateBlockConfirmed(h); has {
+					dps.heartAndVoteInc(h, ack.Account, onlineKindVote)
+					continue
+				}
+
 				vi := &voteInfo{
 					hash:    h,
 					account: ack.Account,
@@ -331,6 +362,8 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 					dps.cacheAck(vi)
 				}
 			}
+		} else {
+			dps.heartAndVoteInc(ack.Hash[0], ack.Account, onlineKindHeart)
 		}
 	} else {
 		index := dps.getProcessorIndex(bs.Block.Address)
@@ -348,11 +381,11 @@ func (dps *DPoS) subAckDo(index int, hash types.Hash) {
 }
 
 func (dps *DPoS) unsubAckDo(hash types.Hash) {
-	msg := &subMsg{
-		kind: subMsgKindUnsub,
-		hash: hash,
-	}
-	dps.subMsg <- msg
+	//msg := &subMsg{
+	//	kind: subMsgKindUnsub,
+	//	hash: hash,
+	//}
+	//dps.subMsg <- msg
 }
 
 func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, localIndex int) {
@@ -497,13 +530,17 @@ func (dps *DPoS) localRepVote(block *types.StateBlock) {
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 
+		if block.Type == types.Online && !dps.isOnline(block.Address) {
+			return false
+		}
+
 		weight := dps.ledger.Weight(address)
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 			return true
 		}
 
 		hash := block.GetHash()
-		dps.logger.Debugf("rep [%s] vote for block[%s]", address, hash)
+		dps.logger.Debugf("rep [%s] vote for block[%s] type[%s]", address, hash, block.Type)
 
 		vi := &voteInfo{
 			hash:    hash,
@@ -690,6 +727,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 				return true
 			}
 			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
+			dps.heartAndVoteInc(va.Hash[0], va.Account, onlineKindHeart)
 		}
 
 		return true
@@ -732,8 +770,18 @@ func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error
 	return hash, nil
 }
 
-func (dps *DPoS) onRollbackUnchecked(hash types.Hash) {
+func (dps *DPoS) onRollback(hash types.Hash) {
 	dps.rollbackUncheckedFromDb(hash)
+
+	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
+	if err == nil && blk.Type == types.Online {
+		for _, acc := range dps.accounts {
+			if acc.Address() == blk.Address {
+				dps.sendOnlineWithAccount(acc)
+				break
+			}
+		}
+	}
 }
 
 func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
@@ -791,4 +839,11 @@ func (dps *DPoS) getSeq(kind uint32) uint32 {
 
 func (dps *DPoS) getAckType(seq uint32) uint32 {
 	return seq >> 28
+}
+
+func (dps *DPoS) onRpcSyncCall(name string, in interface{}, out interface{}) {
+	switch name {
+	case "DPoS.Online":
+		dps.onGetOnlineInfo(in, out)
+	}
 }
