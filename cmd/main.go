@@ -6,3 +6,19 @@
  */
 
 package main
+
+import (
+	"os"
+
+	client "github.com/qlcchain/go-qlc/cmd/client/commands"
+	server "github.com/qlcchain/go-qlc/cmd/server/commands"
+)
+
+func main() {
+	args := os.Args
+	if len(args) > 2 && args[1] == "--endpoint" {
+		client.Execute(os.Args)
+	} else {
+		server.Execute(os.Args)
+	}
+}

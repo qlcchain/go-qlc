@@ -248,6 +248,16 @@ func TestLedger_GetAccountMetaCache(t *testing.T) {
 	for _, token := range a.Tokens {
 		t.Log("token,", token)
 	}
+
+	var count int
+	err = l.GetAccountMetaCaches(func(am *types.AccountMeta) error {
+		count++
+		return nil
+	})
+	if err != nil || count != 1 {
+		t.Fatal(err)
+	}
+
 }
 
 func TestLedger_HasAccountMetaCache(t *testing.T) {

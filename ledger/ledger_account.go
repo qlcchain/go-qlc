@@ -389,6 +389,27 @@ func (l *Ledger) GetAccountMetaCache(key types.Address, txns ...db.StoreTxn) (*t
 	return value, nil
 }
 
+func (l *Ledger) GetAccountMetaCaches(fn func(am *types.AccountMeta) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixBlockCacheAccount, func(key []byte, val []byte, b byte) error {
+		am := new(types.AccountMeta)
+		if err := am.Deserialize(val); err != nil {
+			return err
+		}
+		if err := fn(am); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (l *Ledger) AddOrUpdateAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
