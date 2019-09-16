@@ -8,6 +8,9 @@ import (
 const (
 	PovStatePrefixAcc = byte(1)
 	PovStatePrefixRep = byte(2)
+
+	PovStatusOffline = 0
+	PovStatusOnline  = 1
 )
 
 func PovCreateStateKey(prefix byte, rawKey []byte) []byte {
@@ -144,8 +147,8 @@ type PovRepState struct {
 	Oracle  Balance `msg:"o,extension" json:"oracle"`
 	Total   Balance `msg:"t,extension" json:"total"`
 
-	Status    uint32 `msg:"st" json:"status"`
-	PovHeight uint64 `msg:"ph" json:"povHeight"`
+	Status uint32 `msg:"st" json:"status"`
+	Height uint64 `msg:"he" json:"height"`
 }
 
 func NewPovRepState() *PovRepState {

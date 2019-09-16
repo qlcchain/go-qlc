@@ -31,7 +31,7 @@ func (bc *PovBlockChain) NewStateTrie() *trie.Trie {
 	return trie.NewTrie(bc.TrieDb(), nil, bc.trieNodePool)
 }
 
-func (bc *PovBlockChain) GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
+func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
 	var currentTrie *trie.Trie
 	prevTrie := bc.GetStateTrie(&prevStateHash)
 	if prevTrie != nil {
@@ -44,7 +44,7 @@ func (bc *PovBlockChain) GenStateTrie(prevStateHash types.Hash, txs []*types.Pov
 	}
 
 	for _, tx := range txs {
-		err := bc.ApplyTransaction(currentTrie, tx.Block)
+		err := bc.ApplyTransaction(height, currentTrie, tx.Block)
 		if err != nil {
 			bc.logger.Errorf("failed to apply tx %s", tx.Hash)
 			return nil, err
@@ -54,10 +54,10 @@ func (bc *PovBlockChain) GenStateTrie(prevStateHash types.Hash, txs []*types.Pov
 	return currentTrie, nil
 }
 
-func (bc *PovBlockChain) ApplyTransaction(trie *trie.Trie, stateBlock *types.StateBlock) error {
+func (bc *PovBlockChain) ApplyTransaction(height uint64, trie *trie.Trie, stateBlock *types.StateBlock) error {
 	var err error
 
-	oldAs := bc.GetAccountState(trie, stateBlock.Address)
+	oldAs := bc.GetAccountState(trie, stateBlock.GetAddress())
 	var newAs *types.PovAccountState
 	if oldAs != nil {
 		newAs = oldAs.Clone()
@@ -70,9 +70,18 @@ func (bc *PovBlockChain) ApplyTransaction(trie *trie.Trie, stateBlock *types.Sta
 		return err
 	}
 
-	err = bc.updateRepState(trie, stateBlock, oldAs, newAs)
-	if err != nil {
-		return err
+	if stateBlock.GetType() != types.Online {
+		err = bc.updateRepState(trie, stateBlock, oldAs, newAs)
+		if err != nil {
+			return err
+		}
+	}
+
+	if stateBlock.GetType() == types.Online {
+		err = bc.updateRepOnline(height, trie, stateBlock, oldAs, newAs)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -120,7 +129,7 @@ func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateB
 		}
 	}
 
-	err := bc.SetAccountState(trie, block.Address, newAs)
+	err := bc.SetAccountState(trie, block.GetAddress(), newAs)
 	if err != nil {
 		return err
 	}
@@ -197,6 +206,27 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (bc *PovBlockChain) updateRepOnline(height uint64, trie *trie.Trie, block *types.StateBlock, oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
+	var newRs *types.PovRepState
+
+	oldRs := bc.GetRepState(trie, block.GetAddress())
+	if oldRs != nil {
+		newRs = oldRs.Clone()
+	} else {
+		newRs = types.NewPovRepState()
+	}
+
+	newRs.Status = types.PovStatusOnline
+	newRs.Height = height
+
+	err := bc.SetRepState(trie, block.GetAddress(), newRs)
+	if err != nil {
+		return err
 	}
 
 	return nil

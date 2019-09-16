@@ -79,7 +79,7 @@ func (pvs *PovVerifyStat) getPrevStateTrie(pv *PovVerifier, prevHash types.Hash)
 type PovVerifierChainReader interface {
 	GetHeaderByHash(hash types.Hash) *types.PovHeader
 	CalcPastMedianTime(prevHeader *types.PovHeader) uint32
-	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
+	GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
 	CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance)
@@ -341,7 +341,7 @@ func (pv *PovVerifier) verifyState(block *types.PovBlock, stat *PovVerifyStat) (
 		return process.GapPrevious, fmt.Errorf("prev block %s pending", block.GetPrevious())
 	}
 
-	stateTrie, err := pv.chain.GenStateTrie(prevHeader.GetStateHash(), block.GetAccountTxs())
+	stateTrie, err := pv.chain.GenStateTrie(block.GetHeight(), prevHeader.GetStateHash(), block.GetAccountTxs())
 	if err != nil {
 		return process.BadStateHash, err
 	}

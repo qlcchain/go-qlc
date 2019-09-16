@@ -2,7 +2,7 @@ package common
 
 var (
 	//vote right divisor
-	DposVoteDivisor  = int64(200)
+	DposVoteDivisor = int64(200)
 )
 
 type nodeType uint

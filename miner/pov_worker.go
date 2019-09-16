@@ -303,7 +303,7 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 		return nil, err
 	}
 
-	stateTrie, err := w.GetChain().GenStateTrie(prevStateHash, accTxs)
+	stateTrie, err := w.GetChain().GenStateTrie(header.GetHeight(), prevStateHash, accTxs)
 	if err != nil {
 		return nil, err
 	}

@@ -395,10 +395,10 @@ func (z *PovRepState) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Status")
 				return
 			}
-		case "ph":
-			z.PovHeight, err = dc.ReadUint64()
+		case "he":
+			z.Height, err = dc.ReadUint64()
 			if err != nil {
-				err = msgp.WrapError(err, "PovHeight")
+				err = msgp.WrapError(err, "Height")
 				return
 			}
 		default:
@@ -485,14 +485,14 @@ func (z *PovRepState) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Status")
 		return
 	}
-	// write "ph"
-	err = en.Append(0xa2, 0x70, 0x68)
+	// write "he"
+	err = en.Append(0xa2, 0x68, 0x65)
 	if err != nil {
 		return
 	}
-	err = en.WriteUint64(z.PovHeight)
+	err = en.WriteUint64(z.Height)
 	if err != nil {
-		err = msgp.WrapError(err, "PovHeight")
+		err = msgp.WrapError(err, "Height")
 		return
 	}
 	return
@@ -547,9 +547,9 @@ func (z *PovRepState) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "st"
 	o = append(o, 0xa2, 0x73, 0x74)
 	o = msgp.AppendUint32(o, z.Status)
-	// string "ph"
-	o = append(o, 0xa2, 0x70, 0x68)
-	o = msgp.AppendUint64(o, z.PovHeight)
+	// string "he"
+	o = append(o, 0xa2, 0x68, 0x65)
+	o = msgp.AppendUint64(o, z.Height)
 	return
 }
 
@@ -613,10 +613,10 @@ func (z *PovRepState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Status")
 				return
 			}
-		case "ph":
-			z.PovHeight, bts, err = msgp.ReadUint64Bytes(bts)
+		case "he":
+			z.Height, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "PovHeight")
+				err = msgp.WrapError(err, "Height")
 				return
 			}
 		default:
