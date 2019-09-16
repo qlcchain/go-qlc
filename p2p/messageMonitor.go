@@ -93,7 +93,7 @@ func (ms *MessageService) Start() {
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
 	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
+
 	// PoV message handlers
 	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovStatus))
 	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovPublishReq))
@@ -102,8 +102,11 @@ func (ms *MessageService) Start() {
 	// start loop().
 	go ms.startLoop()
 	go ms.syncService.Start()
-	go ms.checkMessageCacheLoop()
-	go ms.messageResponseLoop()
+	if common.IsNormalNode() {
+		netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
+		go ms.checkMessageCacheLoop()
+		go ms.messageResponseLoop()
+	}
 	go ms.publishReqLoop()
 	go ms.confirmReqLoop()
 	go ms.confirmAckLoop()

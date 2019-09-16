@@ -151,9 +151,11 @@ func (sm *StreamManager) BroadcastMessage(messageName string, v interface{}) {
 	}
 
 	msgNeedCache := false
-	if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
-		messageName == PovPublishReq {
-		msgNeedCache = true
+	if common.IsNormalNode() {
+		if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
+			messageName == PovPublishReq {
+			msgNeedCache = true
+		}
 	}
 
 	sm.allStreams.Range(func(key, value interface{}) bool {
@@ -186,9 +188,11 @@ func (sm *StreamManager) SendMessageToPeers(messageName string, v interface{}, p
 	}
 
 	msgNeedCache := false
-	if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
-		messageName == PovPublishReq {
-		msgNeedCache = true
+	if common.IsNormalNode() {
+		if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
+			messageName == PovPublishReq {
+			msgNeedCache = true
+		}
 	}
 
 	sm.allStreams.Range(func(key, value interface{}) bool {
