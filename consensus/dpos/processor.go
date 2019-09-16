@@ -268,6 +268,7 @@ func (p *Processor) processAck(vi *voteInfo) {
 	} else {
 		if dps.acTrx.voteFrontier(vi) {
 			p.dps.frontiersStatus.Store(vi.hash, frontierConfirmed)
+			p.syncBlockAcked <- vi.hash
 			dps.logger.Infof("frontier %s confirmed", vi.hash)
 		}
 	}
