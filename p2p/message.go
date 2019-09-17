@@ -100,6 +100,7 @@ func ParseQlcMessage(data []byte) (*QlcMessage, error) {
 	if err := message.VerifyHeader(); err != nil {
 		return nil, err
 	}
+	message.messageType = message.MessageType()
 	return message, nil
 }
 

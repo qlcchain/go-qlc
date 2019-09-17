@@ -22,6 +22,11 @@ const (
 	maxPushTxPerTime        = 100
 )
 
+var (
+	pullRspStartCh = make(chan bool, 1)
+	msgHash        = types.ZeroHash
+)
+
 //  Message Type
 const (
 	PublishReq      MessageType = iota //PublishReq
@@ -37,6 +42,7 @@ const (
 	PovPublishReq
 	PovBulkPullReq
 	PovBulkPullRsp
+	MessageAck
 )
 
 type cacheValue struct {
@@ -95,6 +101,7 @@ func (ms *MessageService) Start() {
 	netService.Register(NewSubscriber(ms.messageCh, BulkPullRsp))
 	netService.Register(NewSubscriber(ms.messageCh, BulkPushBlock))
 	netService.Register(NewSubscriber(ms.rspMessageCh, MessageResponse))
+	netService.Register(NewSubscriber(ms.rspMessageCh, MessageAck))
 	// PoV message handlers
 	netService.Register(NewSubscriber(ms.povMessageCh, PovStatus))
 	netService.Register(NewSubscriber(ms.povMessageCh, PovPublishReq))
@@ -189,6 +196,8 @@ func (ms *MessageService) messageResponseLoop() {
 			switch message.MessageType() {
 			case MessageResponse:
 				ms.onMessageResponse(message)
+			case MessageAck:
+				ms.onMessageAck(message)
 			}
 		}
 	}
@@ -360,6 +369,18 @@ func (ms *MessageService) onMessageResponse(message *Message) {
 	}
 }
 
+func (ms *MessageService) onMessageAck(message *Message) {
+	ma, err := protos.MessageAckFromProto(message.Data())
+	if err != nil {
+		ms.netService.node.logger.Info(err)
+		return
+	}
+	if ma.MessageHash == msgHash {
+		ms.netService.node.logger.Infof("receive message ack for message %s", msgHash.String())
+		pullRspStartCh <- true
+	}
+}
+
 func (ms *MessageService) onPublishReq(message *Message) {
 	if ms.netService.node.cfg.PerformanceEnabled {
 		blk, err := protos.PublishBlockFromProto(message.Data())
@@ -528,6 +549,7 @@ func (ms *MessageService) Stop() {
 	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovPublishReq))
 	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovBulkPullReq))
 	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovBulkPullRsp))
+	ms.netService.Deregister(NewSubscriber(ms.rspMessageCh, MessageAck))
 }
 
 func marshalMessage(messageName MessageType, value interface{}) ([]byte, error) {
@@ -623,6 +645,15 @@ func marshalMessage(messageName MessageType, value interface{}) ([]byte, error) 
 	case PovBulkPullRsp:
 		rsp := value.(*protos.PovBulkPullRsp)
 		data, err := protos.PovBulkPullRspToProto(rsp)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	case MessageAck:
+		rsp := &protos.MessageAckPacket{
+			MessageHash: value.(types.Hash),
+		}
+		data, err := protos.MessageAckToProto(rsp)
 		if err != nil {
 			return nil, err
 		}

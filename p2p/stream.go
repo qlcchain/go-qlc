@@ -309,7 +309,12 @@ func (s *Stream) handleMessage(message *QlcMessage) {
 
 // SendMessage send msg to buffer
 func (s *Stream) SendMessageToChan(message *QlcMessage) error {
-	priority := MessagePriorityHigh
+	var priority uint32
+	if message.messageType == MessageResponse || message.messageType == MessageAck {
+		priority = MessagePriorityHigh
+	} else {
+		priority = MessagePriorityNormal
+	}
 	switch priority {
 	case MessagePriorityHigh:
 		select {

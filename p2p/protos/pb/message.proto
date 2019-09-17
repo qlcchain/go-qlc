@@ -54,7 +54,10 @@ message PovPullBlockReq {
     bytes  Locators = 6;
 }
 message PovPullBlockRsp {
-    uint32 count = 1;
-    bytes  block = 2;
-    uint32 Reason = 3;
-}
+     uint32 count = 1;
+     bytes  block = 2;
+     uint32 Reason = 3;
+ }
+ message MessageAck {
+     bytes messageHash = 1;
+ }
