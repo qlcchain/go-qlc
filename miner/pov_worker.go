@@ -413,7 +413,7 @@ func (w *PovWorker) checkAndFillBlockByResult(mineBlock *types.PovMineBlock, res
 
 	calcMklRoot := merkle.CalcMerkleTreeRootHash(mineBlock.AllTxHashes)
 	if calcMklRoot.Cmp(result.MerkleRoot) != 0 {
-		return fmt.Errorf("merkle root not equal, %s != %s", cbTxHash, result.MerkleRoot)
+		return fmt.Errorf("merkle root not equal, %s != %s", calcMklRoot, result.MerkleRoot)
 	}
 	mineBlock.Header.BasHdr.MerkleRoot = result.MerkleRoot
 
@@ -422,9 +422,17 @@ func (w *PovWorker) checkAndFillBlockByResult(mineBlock *types.PovMineBlock, res
 
 	calcBlkHash := mineBlock.Header.ComputeHash()
 	if calcBlkHash.Cmp(result.BlockHash) != 0 {
-		return fmt.Errorf("block hash not equal, %s != %s", cbTxHash, result.CoinbaseHash)
+		return fmt.Errorf("block hash not equal, %s != %s", calcBlkHash, result.BlockHash)
 	}
 	mineBlock.Header.BasHdr.Hash = result.BlockHash
+
+	if result.AuxPow != nil {
+		calcParHash := result.AuxPow.ParBlockHeader.ComputeHash()
+		if calcParHash != result.AuxPow.ParentHash {
+			return fmt.Errorf("parent block hash not equal, %s != %s", calcParHash, result.AuxPow.ParentHash)
+		}
+		mineBlock.Header.AuxHdr = result.AuxPow
+	}
 
 	return nil
 }

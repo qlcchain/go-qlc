@@ -162,3 +162,32 @@ func CalcCoinbaseMerkleRoot(coinbaseHash *types.Hash, merkleBranch []*types.Hash
 	}
 	return *hashMerkleRoot
 }
+
+func CalcMerkleRootByIndex(hash types.Hash, merkleBranch []*types.Hash, index int) types.Hash {
+	if index == -1 {
+		return types.ZeroHash
+	}
+	var sha [64]byte
+	for _, it := range merkleBranch {
+		if (index & 1) == 1 {
+			copy(sha[:32], it[:])
+			copy(sha[32:], hash[:])
+			hash = types.Sha256D_HashData(sha[:])
+		} else {
+			copy(sha[:32], hash[:])
+			copy(sha[32:], it[:])
+			hash = types.Sha256D_HashData(sha[:])
+		}
+		index >>= 1
+	}
+	return hash
+}
+
+func CalcAuxPowExpectedIndex(nonce uint32, chainID, h int) int {
+	rand := nonce
+	rand = rand*1103515245 + 12345
+	rand += uint32(chainID)
+	rand = rand*1103515245 + 12345
+
+	return int(rand % (1 << uint32(h)))
+}

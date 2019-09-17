@@ -34,13 +34,25 @@ func (z *PovAuxHeader) DecodeMsg(dc *msgp.Reader) (err error) {
 			if cap(z.AuxMerkleBranch) >= int(zb0002) {
 				z.AuxMerkleBranch = (z.AuxMerkleBranch)[:zb0002]
 			} else {
-				z.AuxMerkleBranch = make([]Hash, zb0002)
+				z.AuxMerkleBranch = make([]*Hash, zb0002)
 			}
 			for za0001 := range z.AuxMerkleBranch {
-				err = z.AuxMerkleBranch[za0001].DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
-					return
+				if dc.IsNil() {
+					err = dc.ReadNil()
+					if err != nil {
+						err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
+						return
+					}
+					z.AuxMerkleBranch[za0001] = nil
+				} else {
+					if z.AuxMerkleBranch[za0001] == nil {
+						z.AuxMerkleBranch[za0001] = new(Hash)
+					}
+					err = z.AuxMerkleBranch[za0001].DecodeMsg(dc)
+					if err != nil {
+						err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
+						return
+					}
 				}
 			}
 		case "ami":
@@ -98,10 +110,17 @@ func (z *PovAuxHeader) EncodeMsg(en *msgp.Writer) (err error) {
 		return
 	}
 	for za0001 := range z.AuxMerkleBranch {
-		err = z.AuxMerkleBranch[za0001].EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
-			return
+		if z.AuxMerkleBranch[za0001] == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			err = z.AuxMerkleBranch[za0001].EncodeMsg(en)
+			if err != nil {
+				err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
+				return
+			}
 		}
 	}
 	// write "ami"
@@ -165,10 +184,14 @@ func (z *PovAuxHeader) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0x86, 0xa3, 0x61, 0x6d, 0x62)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.AuxMerkleBranch)))
 	for za0001 := range z.AuxMerkleBranch {
-		o, err = z.AuxMerkleBranch[za0001].MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
-			return
+		if z.AuxMerkleBranch[za0001] == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			o, err = z.AuxMerkleBranch[za0001].MarshalMsg(o)
+			if err != nil {
+				err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
+				return
+			}
 		}
 	}
 	// string "ami"
@@ -229,13 +252,24 @@ func (z *PovAuxHeader) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if cap(z.AuxMerkleBranch) >= int(zb0002) {
 				z.AuxMerkleBranch = (z.AuxMerkleBranch)[:zb0002]
 			} else {
-				z.AuxMerkleBranch = make([]Hash, zb0002)
+				z.AuxMerkleBranch = make([]*Hash, zb0002)
 			}
 			for za0001 := range z.AuxMerkleBranch {
-				bts, err = z.AuxMerkleBranch[za0001].UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
-					return
+				if msgp.IsNil(bts) {
+					bts, err = msgp.ReadNilBytes(bts)
+					if err != nil {
+						return
+					}
+					z.AuxMerkleBranch[za0001] = nil
+				} else {
+					if z.AuxMerkleBranch[za0001] == nil {
+						z.AuxMerkleBranch[za0001] = new(Hash)
+					}
+					bts, err = z.AuxMerkleBranch[za0001].UnmarshalMsg(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "AuxMerkleBranch", za0001)
+						return
+					}
 				}
 			}
 		case "ami":
@@ -284,7 +318,11 @@ func (z *PovAuxHeader) UnmarshalMsg(bts []byte) (o []byte, err error) {
 func (z *PovAuxHeader) Msgsize() (s int) {
 	s = 1 + 4 + msgp.ArrayHeaderSize
 	for za0001 := range z.AuxMerkleBranch {
-		s += z.AuxMerkleBranch[za0001].Msgsize()
+		if z.AuxMerkleBranch[za0001] == nil {
+			s += msgp.NilSize
+		} else {
+			s += z.AuxMerkleBranch[za0001].Msgsize()
+		}
 	}
 	s += 4 + msgp.IntSize + 6 + z.ParCoinBaseTx.Msgsize() + 4 + msgp.IntSize + 4 + z.ParBlockHeader.Msgsize() + 3 + msgp.ExtensionPrefixSize + z.ParentHash.Len()
 	return

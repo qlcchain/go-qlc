@@ -27,6 +27,11 @@ const (
 	PovMaxPrevOutIndex    uint32 = 0xffffffff
 )
 
+var (
+	PovAuxPowChainID     = 1688
+	PovAuxPowHeaderMagic = []byte{0xfa, 0xbe, 'm', 'm'}
+)
+
 type PovBaseHeader struct {
 	Version    uint32 `msg:"v" json:"version"`
 	Previous   Hash   `msg:"p,extension" json:"previous"`
@@ -58,10 +63,10 @@ func (bh *PovBaseHeader) Deserialize(text []byte) error {
 }
 
 type PovAuxHeader struct {
-	AuxMerkleBranch   []Hash       `msg:"amb" json:"auxMerkleBranch"`
+	AuxMerkleBranch   []*Hash      `msg:"amb" json:"auxMerkleBranch"`
 	AuxMerkleIndex    int          `msg:"ami" json:"auxMerkleIndex"`
 	ParCoinBaseTx     PovBtcTx     `msg:"pcbtx" json:"parCoinBaseTx"`
-	ParCoinBaseMerkle []Hash       `msg:"pcbm,extension" json:"parCoinBaseMerkle"`
+	ParCoinBaseMerkle []*Hash      `msg:"pcbm,extension" json:"parCoinBaseMerkle"`
 	ParMerkleIndex    int          `msg:"pmi" json:"parMerkleIndex"`
 	ParBlockHeader    PovBtcHeader `msg:"pbh" json:"parBlockHeader"`
 	ParentHash        Hash         `msg:"ph,extension" json:"parentHash"`
@@ -82,6 +87,10 @@ func (ah *PovAuxHeader) Deserialize(text []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (ah *PovAuxHeader) ComputePowHash(algo PovAlgoType) Hash {
+	return ah.ParBlockHeader.ComputePowHash(algo)
 }
 
 type PovCoinBaseTxIn struct {
@@ -421,9 +430,13 @@ func (h *PovHeader) BuildHashData() []byte {
 }
 
 func (h *PovHeader) ComputePowHash() Hash {
+	if h.AuxHdr != nil {
+		return h.AuxHdr.ComputePowHash(h.GetAlgoType())
+	}
+
 	d := h.BuildHashData()
 
-	algo := PovAlgoType(h.BasHdr.Version & uint32(ALGO_VERSION_MASK))
+	algo := h.GetAlgoType()
 	switch algo {
 	case ALGO_SHA256D:
 		powHash := Sha256D_HashData(d)

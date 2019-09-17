@@ -843,13 +843,16 @@ type PovApiGetWork struct {
 }
 
 type PovApiSubmitWork struct {
-	WorkHash      types.Hash `json:"workHash"`
-	BlockHash     types.Hash `json:"blockHash"`
+	WorkHash  types.Hash `json:"workHash"`
+	BlockHash types.Hash `json:"blockHash"`
+
 	MerkleRoot    types.Hash `json:"merkleRoot"`
 	Timestamp     uint32     `json:"timestamp"`
 	Nonce         uint32     `json:"nonce"`
 	CoinbaseExtra string     `json:"coinbaseExtra"`
 	CoinbaseHash  types.Hash `json:"coinbaseHash"`
+
+	AuxPow *types.PovAuxHeader `json:"auxPow"`
 }
 
 func (api *PovApi) StartMining(minerAddr types.Address, algoName string) error {
@@ -1023,11 +1026,14 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	mineResult := types.NewPovMineResult()
 	mineResult.WorkHash = work.WorkHash
 	mineResult.BlockHash = work.BlockHash
+
 	mineResult.MerkleRoot = work.MerkleRoot
 	mineResult.Timestamp = work.Timestamp
 	mineResult.Nonce = work.Nonce
 	mineResult.CoinbaseExtra = cbExtraBytes
 	mineResult.CoinbaseHash = work.CoinbaseHash
+
+	mineResult.AuxPow = work.AuxPow
 
 	inArgs := make(map[interface{}]interface{})
 	inArgs["mineResult"] = mineResult

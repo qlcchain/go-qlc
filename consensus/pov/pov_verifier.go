@@ -1,8 +1,11 @@
 package pov
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -133,6 +136,12 @@ func (pv *PovVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
 	}
 
 	result, err = pv.verifyReferred(block, stat)
+	if err != nil || result != process.Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
+	result, err = pv.verifyAuxHeader(block, stat)
 	if err != nil || result != process.Progress {
 		stat.setResult(result, err)
 		return stat
@@ -363,6 +372,79 @@ func (pv *PovVerifier) verifyConsensus(block *types.PovBlock, stat *PovVerifySta
 	err := pv.cs.VerifyHeader(header)
 	if err != nil {
 		return process.BadConsensus, err
+	}
+
+	return process.Progress, nil
+}
+
+func (pv *PovVerifier) verifyAuxHeader(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
+	if block.Header.AuxHdr == nil {
+		return process.Progress, nil
+	}
+
+	/*
+		Merged mining coinbase
+
+		Insert exactly one of these headers into the scriptSig of the coinbase transaction in the parent block.
+		Field Size 	Description 	Data type 	Comments
+		4 	magic 	char[4] 	0xfa, 0xbe, 'm', 'm' (only required if over 20 bytes past the start of the script; optional otherwise)
+		32 	block_hash 	char[32] 	Hash of the AuxPOW block header / root of the chain merkle branch
+		4 	merkle_size 	int32_t 	Number of entries in aux work merkle tree. (Must be a power of 2)
+		4 	merkle_nonce 	int32_t 	Nonce used to calculate indexes into aux work merkle tree; you may as well leave this at zero
+
+		That string of 44 bytes being part of the coinbase script means that the miner constructed the AuxPOW Block before creating the coinbase.
+	*/
+
+	ap := block.Header.AuxHdr
+	calcParMR := merkle.CalcMerkleRootByIndex(ap.ParCoinBaseTx.ComputeHash(), ap.ParCoinBaseMerkle, ap.ParMerkleIndex)
+	if calcParMR != ap.ParBlockHeader.MerkleRoot {
+		return process.BadAuxHeader, fmt.Errorf("parent merkle root not equal, %s != %s", calcParMR, ap.ParBlockHeader.MerkleRoot)
+	}
+
+	// reverse the hashAuxBlock
+	hashAuxBlock := block.GetHash().ReverseByte()
+
+	auxRootHash := merkle.CalcMerkleRootByIndex(hashAuxBlock, ap.AuxMerkleBranch, ap.AuxMerkleIndex)
+
+	script := ap.ParCoinBaseTx.TxIn[0].SignatureScript
+	scriptStr := hex.EncodeToString(script)
+
+	// reverse the auxRootHash
+	auxRootHashReverseStr := hex.EncodeToString(auxRootHash.ReverseByte().Bytes())
+	pchMergedMiningHeaderStr := hex.EncodeToString(types.PovAuxPowHeaderMagic)
+
+	headerIndex := strings.Index(scriptStr, pchMergedMiningHeaderStr)
+	rootHashIndex := strings.Index(scriptStr, auxRootHashReverseStr)
+
+	if headerIndex == -1 {
+		return process.BadAuxHeader, errors.New("coinbase aux magic not exist")
+	}
+	if rootHashIndex == -1 {
+		return process.BadAuxHeader, errors.New("coinbase aux root hash not exist")
+	}
+
+	if strings.Index(scriptStr[headerIndex+2:], pchMergedMiningHeaderStr) != -1 {
+		return process.BadAuxHeader, errors.New("coinbase aux magic not exist")
+	}
+
+	if headerIndex+len(pchMergedMiningHeaderStr) != rootHashIndex {
+		return process.BadAuxHeader, errors.New("coinbase aux root hash not exist")
+	}
+
+	rootHashIndex += len(auxRootHashReverseStr)
+	if len(scriptStr)-rootHashIndex < 8 {
+		return process.BadAuxHeader, errors.New("coinbase script size too small")
+	}
+
+	size := binary.LittleEndian.Uint32(script[rootHashIndex/2 : rootHashIndex/2+4])
+	merkleHeight := len(ap.AuxMerkleBranch)
+	if size != uint32(1<<uint32(merkleHeight)) {
+		return process.BadAuxHeader, errors.New("aux merkle branch height not equal")
+	}
+
+	nonce := binary.LittleEndian.Uint32(script[rootHashIndex/2+4 : rootHashIndex/2+8])
+	if ap.AuxMerkleIndex != merkle.CalcAuxPowExpectedIndex(nonce, types.PovAuxPowChainID, merkleHeight) {
+		return process.BadAuxHeader, errors.New("aux merkle index not equal")
 	}
 
 	return process.Progress, nil

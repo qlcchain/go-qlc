@@ -23,13 +23,16 @@ func NewPovMineWork() *PovMineWork {
 }
 
 type PovMineResult struct {
-	WorkHash      Hash
-	BlockHash     Hash
+	WorkHash  Hash
+	BlockHash Hash
+
 	MerkleRoot    Hash
 	Timestamp     uint32
 	Nonce         uint32
 	CoinbaseExtra []byte
 	CoinbaseHash  Hash
+
+	AuxPow *PovAuxHeader
 }
 
 func NewPovMineResult() *PovMineResult {
