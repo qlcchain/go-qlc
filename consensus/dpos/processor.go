@@ -34,7 +34,6 @@ type Processor struct {
 	dps             *DPoS
 	uncheckedCache  gcache.Cache //gap blocks
 	quitCh          chan bool
-	syncQuitCh      chan bool
 	blocks          chan *consensus.BlockSource
 	blocksAcked     chan types.Hash
 	syncBlock       chan *types.StateBlock
@@ -55,7 +54,6 @@ func newProcessors(num int) []*Processor {
 		p := &Processor{
 			index:           i,
 			quitCh:          make(chan bool, 1),
-			syncQuitCh:      make(chan bool, 1),
 			blocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
 			blocksAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
 			syncBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
@@ -80,54 +78,10 @@ func (p *Processor) setDposService(dps *DPoS) {
 
 func (p *Processor) start() {
 	go p.processMsg()
-	go p.processSyncBlock()
 }
 
 func (p *Processor) stop() {
 	p.quitCh <- true
-	p.syncQuitCh <- true
-}
-
-func (p *Processor) processSyncBlock() {
-	getTimeout := time.NewTicker(10 * time.Millisecond)
-
-	for {
-	PriorityOut:
-		for {
-			select {
-			case p.syncState = <-p.syncStateChange:
-				p.dps.syncStateNotifyWait.Done()
-			case cache := <-p.syncCache:
-				if cache.kind == common.SyncCacheUnconfirmed {
-					_ = p.dps.ledger.DeleteUnconfirmedSyncBlock(cache.hash)
-				} else {
-					_ = p.dps.ledger.DeleteUncheckedSyncBlock(cache.hash)
-				}
-			case hash := <-p.syncBlockAcked:
-				if p.dps.isConfirmedFrontier(hash) {
-					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
-					p.confirmChain(hash)
-				}
-
-				if p.syncState == common.Syncing {
-					p.dequeueUncheckedSync(hash)
-				}
-			default:
-				break PriorityOut
-			}
-		}
-
-		select {
-		case <-p.syncQuitCh:
-			return
-		case block := <-p.syncBlock:
-			if p.syncState == common.Syncing {
-				p.syncBlockCheck(block)
-			}
-		case <-getTimeout.C:
-			//
-		}
-	}
 }
 
 func (p *Processor) syncBlockCheck(block *types.StateBlock) {
@@ -164,6 +118,23 @@ func (p *Processor) processMsg() {
 	PriorityOut:
 		for {
 			select {
+			case p.syncState = <-p.syncStateChange:
+				p.dps.syncStateNotifyWait.Done()
+			case cache := <-p.syncCache:
+				if cache.kind == common.SyncCacheUnconfirmed {
+					_ = p.dps.ledger.DeleteUnconfirmedSyncBlock(cache.hash)
+				} else {
+					_ = p.dps.ledger.DeleteUncheckedSyncBlock(cache.hash)
+				}
+			case hash := <-p.syncBlockAcked:
+				if p.dps.isConfirmedFrontier(hash) {
+					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
+					p.confirmChain(hash)
+				}
+
+				if p.syncState == common.Syncing {
+					p.dequeueUncheckedSync(hash)
+				}
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
 			case ack := <-p.acks:
@@ -180,6 +151,10 @@ func (p *Processor) processMsg() {
 			return
 		case bs := <-p.blocks:
 			p.processMsgDo(bs)
+		case block := <-p.syncBlock:
+			if p.syncState == common.Syncing {
+				p.syncBlockCheck(block)
+			}
 		case <-getTimeout.C:
 			//
 		}

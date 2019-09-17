@@ -875,7 +875,9 @@ func (dps *DPoS) isWaitingFrontier(hash types.Hash) bool {
 
 func (dps *DPoS) isConfirmedFrontier(hash types.Hash) bool {
 	if status, ok := dps.frontiersStatus.Load(hash); ok && status == frontierConfirmed {
-		return true
+		if has, _ := dps.ledger.HasUnconfirmedSyncBlock(hash); has {
+			return true
+		}
 	}
 	return false
 }
