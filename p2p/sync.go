@@ -22,7 +22,8 @@ var (
 	pullRequestStartCh = make(chan bool, 1)
 	pullStartHash      types.Hash
 	pullEndHash        types.Hash
-	pullTimer          = time.NewTimer(1 * time.Minute)
+	pullTimer          = time.NewTimer(2 * time.Minute)
+	pullRspTimer       = time.NewTimer(1 * time.Minute)
 )
 
 const syncTimeout = 10 * time.Second
@@ -272,6 +273,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 						ss.next()
 					}
 					var index int
+					pullTimer.Reset(2 * time.Minute)
 					pullRequestStartCh <- true
 					for {
 						select {
@@ -441,7 +443,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		}
 		var shardingBlocks types.StateBlockList
 		pullRspStartCh <- true
-		pullRspTimer := time.NewTimer(30 * time.Second)
+		pullRspTimer.Reset(1 * time.Minute)
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
 			select {
@@ -498,7 +500,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		}
 		var shardingBlocks types.StateBlockList
 		pullRspStartCh <- true
-		pullRspTimer := time.NewTimer(30 * time.Second)
+		pullRspTimer.Reset(1 * time.Minute)
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
 			select {
@@ -624,7 +626,7 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 	}
 	var shardingBlocks types.StateBlockList
 	pullRspStartCh <- true
-	pullRspTimer := time.NewTimer(30 * time.Second)
+	pullRspTimer.Reset(1 * time.Minute)
 	for len(reverseBlocks) > 0 {
 		sendBlockNum := 0
 		select {

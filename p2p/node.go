@@ -32,32 +32,33 @@ var p2pVersion = 5
 //var logger = log.NewLogger("p2p")
 
 type QlcNode struct {
-	ID                  peer.ID
-	privateKey          crypto.PrivKey
-	cfg                 *config.Config
-	ctx                 context.Context
-	localDiscovery      localdiscovery.Service
-	host                host.Host
-	peerStore           peerstore.Peerstore
-	boostrapAddrs       []string
-	streamManager       *StreamManager
-	ping                *PingService
-	dis                 *discovery.RoutingDiscovery
-	kadDht              *dht.IpfsDHT
-	netService          *QlcService
-	logger              *zap.SugaredLogger
-	quitPeerDiscoveryCh chan bool
+	ID             peer.ID
+	privateKey     crypto.PrivKey
+	cfg            *config.Config
+	ctx            context.Context
+	cancel         context.CancelFunc
+	localDiscovery localdiscovery.Service
+	host           host.Host
+	peerStore      peerstore.Peerstore
+	boostrapAddrs  []string
+	streamManager  *StreamManager
+	ping           *Pinger
+	dis            *discovery.RoutingDiscovery
+	kadDht         *dht.IpfsDHT
+	netService     *QlcService
+	logger         *zap.SugaredLogger
 }
 
 // NewNode return new QlcNode according to the config.
 func NewNode(config *config.Config) (*QlcNode, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	node := &QlcNode{
-		cfg:                 config,
-		ctx:                 context.Background(),
-		boostrapAddrs:       config.P2P.BootNodes,
-		streamManager:       NewStreamManager(),
-		logger:              log.NewLogger("p2p"),
-		quitPeerDiscoveryCh: make(chan bool, 1),
+		cfg:           config,
+		ctx:           ctx,
+		cancel:        cancel,
+		boostrapAddrs: config.P2P.BootNodes,
+		streamManager: NewStreamManager(),
+		logger:        log.NewLogger("p2p"),
 	}
 	privateKey, err := config.DecodePrivateKey()
 	if err != nil {
@@ -94,7 +95,7 @@ func (node *QlcNode) startHost() error {
 	}
 	node.kadDht = kadDht
 	node.dis = discovery.NewRoutingDiscovery(node.kadDht)
-	node.ping = NewPingService(node.host)
+	node.ping = NewPinger(node.host)
 	node.peerStore = qlcHost.Peerstore()
 	if err := node.peerStore.AddPrivKey(node.ID, node.privateKey); err != nil {
 		return err
@@ -140,6 +141,12 @@ func (node *QlcNode) StartServices() error {
 		}
 	}
 
+	if node.ping != nil {
+		go func() {
+			node.startPingService()
+		}()
+	}
+
 	if node.dis != nil {
 		go func() {
 			pInfoS, err := convertPeers(node.boostrapAddrs)
@@ -151,10 +158,42 @@ func (node *QlcNode) StartServices() error {
 		}()
 	}
 
-	//if len(node.boostrapAddrs) != 0 {
-	//	go node.connectBootstrap()
-	//}
 	return nil
+}
+
+func (node *QlcNode) startPingService() {
+	node.logger.Info("start pingService Loop.")
+	ticker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-node.ctx.Done():
+			node.logger.Info("Stopped pingService Loop.")
+			return
+		case <-ticker.C:
+			node.streamManager.allStreams.Range(func(key, value interface{}) bool {
+				stream := value.(*Stream)
+				if stream.pid != node.ID && stream.IsConnected() {
+					ts, _ := node.ping.Ping(node.ctx, stream.pid)
+					select {
+					case res := <-ts:
+						if res.Error != nil {
+							node.logger.Errorf("error:[%s] when ping peer id :[%s]", res.Error, stream.pid)
+						}
+						node.logger.Debugf("ping peer %s,took: %f s", stream.pid, res.RTT.Seconds())
+						stream.rtt = res.RTT
+						stream.pingTimeoutCount = 0
+					case <-time.After(time.Second * 4):
+						node.logger.Error("failed to receive ping")
+						stream.pingTimeoutCount++
+						if stream.pingTimeoutCount == MaxPingTimeOutCount {
+							_ = stream.close()
+						}
+					}
+				}
+				return true
+			})
+		}
+	}
 }
 
 func (node *QlcNode) connectBootstrap(pInfoS []peer.AddrInfo) {
@@ -180,7 +219,7 @@ func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 	}
 	for {
 		select {
-		case <-node.quitPeerDiscoveryCh:
+		case <-node.ctx.Done():
 			node.logger.Info("Stopped peer discovery Loop.")
 			return
 		case <-ticker.C:
@@ -238,10 +277,6 @@ func (node *QlcNode) stopHost() error {
 	return nil
 }
 
-func (node *QlcNode) stopPeerDiscovery() {
-	node.quitPeerDiscoveryCh <- true
-}
-
 // SetQlcService set netService
 func (node *QlcNode) SetQlcService(ns *QlcService) {
 	node.netService = ns
@@ -250,7 +285,7 @@ func (node *QlcNode) SetQlcService(ns *QlcService) {
 // Stop stop a node.
 func (node *QlcNode) Stop() error {
 	node.logger.Info("Stop QlcService Node...")
-	node.stopPeerDiscovery()
+	node.cancel()
 	if err := node.stopHost(); err != nil {
 		return err
 	}

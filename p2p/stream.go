@@ -26,20 +26,22 @@ const (
 	MessagePriorityLow
 )
 
+const MaxPingTimeOutCount = 5
+
 // Stream define the structure of a stream in p2p network
 type Stream struct {
-	syncMutex   sync.Mutex
-	pid         peer.ID
-	addr        ma.Multiaddr
-	stream      network.Stream
-	node        *QlcNode
-	quitWriteCh chan bool
-	//	messageChan chan []byte
-	//	ctrlMsgChan chan []byte
+	syncMutex                 sync.Mutex
+	pid                       peer.ID
+	addr                      ma.Multiaddr
+	stream                    network.Stream
+	node                      *QlcNode
+	quitWriteCh               chan bool
 	messageNotifyChan         chan int
 	highPriorityMessageChan   chan *QlcMessage
 	normalPriorityMessageChan chan *QlcMessage
 	lowPriorityMessageChan    chan *QlcMessage
+	rtt                       time.Duration
+	pingTimeoutCount          int
 }
 
 // NewStream return a new Stream
