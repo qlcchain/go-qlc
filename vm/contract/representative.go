@@ -300,13 +300,13 @@ func (m *RepReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, para
 
 func (m *RepReward) calcRewardBlocksByHeight(ctx *vmstore.VMContext, account types.Address, startHeight, endHeight uint64) (uint64, types.Balance, error) {
 	rewardBlocks := uint64(0)
-	rewardAmount := types.Balance{}
+	rewardAmount := &types.Balance{}
 	keyBytes := types.PovCreateRepStateKey(account)
 
 	for curHeight := startHeight + common.DPosOnlinePeriod - 1; curHeight <= endHeight; curHeight += common.DPosOnlinePeriod {
 		block, err := ctx.GetPovHeaderByHeight(curHeight)
 		if block == nil {
-			return rewardBlocks, rewardAmount, err
+			return rewardBlocks, *rewardAmount, err
 		}
 
 		stateHash := block.GetStateHash()
@@ -329,8 +329,8 @@ func (m *RepReward) calcRewardBlocksByHeight(ctx *vmstore.VMContext, account typ
 		}
 	}
 
-	rewardAmount.SetUint64(rewardBlocks * uint64(common.PovMinerRewardPerBlock*common.PovMinerRewardRatioRep/100))
-	return rewardBlocks, rewardAmount, nil
+	rewardAmount.SetUint64(rewardBlocks * uint64(common.PovMinerRewardPerBlock) * uint64(common.PovMinerRewardRatioRep) / 100)
+	return rewardBlocks, *rewardAmount, nil
 }
 
 func (m *RepReward) GetRefundData() []byte {
