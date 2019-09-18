@@ -1005,10 +1005,10 @@ func (bc *PovBlockChain) CalcBlockReward(header *types.PovHeader) (types.Balance
 }
 
 func (bc *PovBlockChain) CalcBlockRewardByQLC(header *types.PovHeader) (types.Balance, types.Balance) {
-	miner1 := new(big.Int).Mul(common.PovMinerRewardPerBlockInt, big.NewInt(80))
+	miner1 := new(big.Int).Mul(common.PovMinerRewardPerBlockInt, big.NewInt(int64(common.PovMinerRewardRatioMiner)))
 	miner2 := new(big.Int).Div(miner1, big.NewInt(100))
 
-	rep1 := new(big.Int).Mul(common.PovMinerRewardPerBlockInt, big.NewInt(20))
+	rep1 := new(big.Int).Mul(common.PovMinerRewardPerBlockInt, big.NewInt(int64(common.PovMinerRewardRatioRep)))
 	rep2 := new(big.Int).Div(rep1, big.NewInt(100))
 
 	return types.NewBalanceFromBigInt(miner2), types.NewBalanceFromBigInt(rep2)

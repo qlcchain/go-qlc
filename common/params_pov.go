@@ -32,11 +32,13 @@ var (
 	PovMinerMaxFindNonceTimeSec     = PovChainBlockInterval * PovChainTargetCycle
 
 	// Reward per block, rewardPerBlock * blockNumPerYear / gasTotalSupply = 3%
-	// 10000000000000000 * 0.03 / (3600 * 24 * 365 / 30)
-	PovMinerRewardPerBlock        = 285388127
+	// 10000000000000000 * 0.03 / (3600 * 24 * 365 / 60)
+	PovMinerRewardPerBlock        = 570776255
 	PovMinerRewardPerBlockInt     = big.NewInt(int64(PovMinerRewardPerBlock))
 	PovMinerRewardPerBlockBalance = types.NewBalance(int64(PovMinerRewardPerBlock))
-	PovMinerMinRewardPerBlock     = 285388 // 0.001 * 285388127
+	PovMinerMinRewardPerBlock     = 570776 // 0.001 * 570776255
+	PovMinerRewardRatioMiner      = 80     // 80%
+	PovMinerRewardRatioRep        = 20     // 20%
 
 	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 12)
 
