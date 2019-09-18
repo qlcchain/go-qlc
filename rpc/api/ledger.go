@@ -679,24 +679,6 @@ func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative ty
 	return block, nil
 }
 
-func (l *LedgerApi) GenerateOnlineBlock(account types.Address, prkStr *string) (*types.StateBlock, error) {
-	var prk []byte
-	if prkStr != nil {
-		var err error
-		if prk, err = hex.DecodeString(*prkStr); err != nil {
-			return nil, err
-		}
-	}
-
-	block, err := l.ledger.GenerateOnlineBlock(account, prk)
-	if err != nil {
-		return nil, err
-	}
-
-	l.logger.Debug(block)
-	return block, nil
-}
-
 func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 	aps := make([]*APIPending, 0)
 	vmContext := vmstore.NewVMContext(l.ledger)
