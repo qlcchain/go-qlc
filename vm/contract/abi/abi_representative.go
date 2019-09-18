@@ -48,8 +48,8 @@ func (p *RepRewardParam) Verify() (bool, error) {
 	}
 
 	gapCount := p.EndHeight - p.StartHeight + 1
-	if gapCount > common.PovMinerMaxRewardBlocksPerCall {
-		return false, fmt.Errorf("gap count %d exceed max blocks %d", p.StartHeight, common.PovMinerMaxRewardBlocksPerCall)
+	if gapCount > common.RepMaxRewardBlocksPerCall {
+		return false, fmt.Errorf("gap count %d exceed max blocks %d", p.StartHeight, common.RepMaxRewardBlocksPerCall)
 	}
 
 	return true, nil
@@ -82,7 +82,7 @@ func GetRepRewardInfosByAccount(ctx *vmstore.VMContext, account types.Address) (
 		//ctx.GetLogger().Infof("key: %v, value: %v", key, value)
 		if len(value) > 0 {
 			info := new(RepRewardInfo)
-			err := MinerABI.UnpackVariable(info, VariableNameRepRewardInfo, value)
+			err := RepABI.UnpackVariable(info, VariableNameRepRewardInfo, value)
 			if err == nil {
 				rewardInfos = append(rewardInfos, info)
 			} else {
@@ -111,16 +111,10 @@ func CalcMaxRepRewardInfo(rewardInfos []*RepRewardInfo) *RepRewardInfo {
 }
 
 func RepCalcRewardEndHeight(startHeight uint64, maxEndHeight uint64) uint64 {
-	endHeight := startHeight + common.PovMinerMaxRewardBlocksPerCall - 1
+	endHeight := startHeight + common.RepMaxRewardBlocksPerCall - 1
 	if endHeight > maxEndHeight {
 		endHeight = maxEndHeight
 	}
-
-	endHeight = RepRoundPovHeight(endHeight, uint64(common.PovMinerRewardHeightRound))
-	if endHeight < common.PovMinerRewardHeightStart {
-		return 0
-	}
-
 	return endHeight
 }
 
@@ -135,19 +129,4 @@ func RepRoundPovHeight(height uint64, round uint64) uint64 {
 		return 0
 	}
 	return roundCount - 1
-}
-
-func RepPovHeightToDayIndex(height uint64) uint32 {
-	if height <= uint64(common.POVChainBlocksPerDay) {
-		return 0
-	}
-
-	dayIndex := uint32(height / uint64(common.POVChainBlocksPerDay))
-
-	remain := uint32(height % uint64(common.POVChainBlocksPerDay))
-	if remain > 0 {
-		dayIndex += 1
-	}
-
-	return dayIndex
 }

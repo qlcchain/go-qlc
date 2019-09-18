@@ -91,6 +91,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewMinerApi(r.config, r.ledger),
 			Public:    true,
 		}
+	case "rep":
+		return rpc.API{
+			Namespace: "representative",
+			Version:   "1.0",
+			Service:   api.NewRepApi(r.config, r.ledger),
+			Public:    true,
+		}
 	case "debug":
 		return rpc.API{
 			Namespace: "debug",

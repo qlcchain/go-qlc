@@ -19,11 +19,11 @@ type RepApi struct {
 	cfg    *config.Config
 	logger *zap.SugaredLogger
 	ledger *ledger.Ledger
-	reward *contract.MinerReward
+	reward *contract.RepReward
 }
 
 type RepRewardParam struct {
-	Account     types.Address `json:"account"`
+	Account      types.Address `json:"account"`
 	Beneficial   types.Address `json:"beneficial"`
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
@@ -49,10 +49,10 @@ type RepAvailRewardInfo struct {
 
 type RepHistoryRewardInfo struct {
 	RewardInfos       []*cabi.RepRewardInfo `json:"rewardInfos"`
-	FirstRewardHeight uint64                  `json:"firstRewardHeight"`
-	LastRewardHeight  uint64                  `json:"lastRewardHeight"`
-	AllRewardBlocks   uint64                  `json:"allRewardBlocks"`
-	AllRewardAmount   types.Balance           `json:"allRewardAmount"`
+	FirstRewardHeight uint64                `json:"firstRewardHeight"`
+	LastRewardHeight  uint64                `json:"lastRewardHeight"`
+	AllRewardBlocks   uint64                `json:"allRewardBlocks"`
+	AllRewardAmount   types.Balance         `json:"allRewardAmount"`
 }
 
 func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
@@ -60,7 +60,8 @@ func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
 		cfg:    cfg,
 		logger: log.NewLogger("api_representative"),
 		ledger: ledger,
-		reward: &contract.MinerReward{}}
+		reward: &contract.RepReward{},
+	}
 }
 
 func (m *RepApi) GetRewardData(param *RepRewardParam) ([]byte, error) {
@@ -94,12 +95,12 @@ func (m *RepApi) GetHistoryRewardInfos(account types.Address) (*RepHistoryReward
 	return apiRsp, nil
 }
 
-func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailRewardInfo, error) {
+func (m *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo, error) {
 	if !m.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
 
-	rsp := new(MinerAvailRewardInfo)
+	rsp := new(RepAvailRewardInfo)
 
 	latestPovHeader, err := m.ledger.GetLatestPovHeader()
 	if err != nil {
@@ -108,7 +109,7 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
 
 	vmContext := vmstore.NewVMContext(m.ledger)
-	lastRewardInfo, err := m.reward.GetMaxRewardInfo(vmContext, coinbase)
+	lastRewardInfo, err := m.reward.GetMaxRewardInfo(vmContext, account)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +127,7 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 		return nil, err
 	}
 
-	availInfo, err := m.reward.GetAvailRewardInfo(vmContext, coinbase)
+	availInfo, err := m.reward.GetAvailRewardInfo(vmContext, account, rsp.NodeRewardHeight, lastRewardInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -142,31 +143,53 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 	return rsp, nil
 }
 
-func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, error) {
+func (m *RepApi) checkParamExistInOldRewardInfos(param *RepRewardParam) error {
+	ctx := vmstore.NewVMContext(m.ledger)
+
+	oldRewardInfos, err := cabi.GetRepRewardInfosByAccount(ctx, param.Account)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return errors.New("failed to get storage for miner")
+	}
+
+	for _, oldRewardInfo := range oldRewardInfos {
+		if param.StartHeight >= oldRewardInfo.StartHeight && param.StartHeight <= oldRewardInfo.EndHeight {
+			return fmt.Errorf("start height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
+		}
+		if param.EndHeight >= oldRewardInfo.StartHeight && param.EndHeight <= oldRewardInfo.EndHeight {
+			return fmt.Errorf("end height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
+		}
+	}
+
+	return nil
+}
+
+func (m *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, error) {
 	if !m.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
 
-	if param.Coinbase.IsZero() {
-		return nil, errors.New("invalid reward param coinbase")
+	if param.Account.IsZero() {
+		return nil, errors.New("invalid reward param account")
 	}
+
 	if param.Beneficial.IsZero() {
 		return nil, errors.New("invalid reward param beneficial")
 	}
 
-	amCb, err := m.ledger.GetAccountMeta(param.Coinbase)
-	if amCb == nil {
-		return nil, fmt.Errorf("coinbase account not exist, %s", err)
+	// check same start & end height exist in old reward infos
+	err := m.checkParamExistInOldRewardInfos(param)
+	if err != nil {
+		return nil, err
 	}
 
-	tmCb := amCb.Token(common.ChainToken())
-	if tmCb == nil {
-		return nil, fmt.Errorf("coinbase account does not have chain token, %s", err)
+	am, err := m.ledger.GetAccountMeta(param.Account)
+	if am == nil {
+		return nil, fmt.Errorf("rep account not exist, %s", err)
 	}
 
-	amBnf, err := m.ledger.GetAccountMeta(param.Beneficial)
-	if amBnf == nil {
-		return nil, fmt.Errorf("invalid beneficial account, %s", err)
+	tm := am.Token(common.ChainToken())
+	if tm == nil {
+		return nil, fmt.Errorf("rep account does not have chain token, %s", err)
 	}
 
 	data, err := m.GetRewardData(param)
@@ -182,18 +205,18 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	send := &types.StateBlock{
 		Type:    types.ContractSend,
 		Token:   common.ChainToken(),
-		Address: param.Coinbase,
+		Address: param.Account,
 
-		Balance:        tmCb.Balance,
-		Previous:       tmCb.Header,
-		Representative: tmCb.Representative,
+		Balance:        tm.Balance,
+		Previous:       tm.Header,
+		Representative: tm.Representative,
 
-		Vote:    amCb.CoinVote,
-		Network: amCb.CoinNetwork,
-		Oracle:  amCb.CoinOracle,
-		Storage: amCb.CoinStorage,
+		Vote:    am.CoinVote,
+		Network: am.CoinNetwork,
+		Oracle:  am.CoinOracle,
+		Storage: am.CoinStorage,
 
-		Link:      types.Hash(types.MinerAddress),
+		Link:      types.Hash(types.RepAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().Unix(),
 
@@ -209,7 +232,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	return send, nil
 }
 
-func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
+func (m *RepApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	if !m.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
@@ -238,7 +261,7 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 	return nil, errors.New("can not generate reward recv block")
 }
 
-func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+func (m *RepApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
 	if !m.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}

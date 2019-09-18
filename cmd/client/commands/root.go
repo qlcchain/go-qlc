@@ -122,4 +122,7 @@ func addcommands() {
 	minerRecvPend()
 	minerHistory()
 	change()
+	repReward()
+	repRewardHistory()
+	repRewardRecvPend()
 }

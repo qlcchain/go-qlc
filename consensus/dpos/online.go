@@ -16,12 +16,6 @@ const (
 	onlineKindVote
 )
 
-const (
-	onlinePeriod        = uint64(120)
-	onlineRate          = uint64(60)
-	heartCountPerPeriod = onlinePeriod / 2
-)
-
 type RepAckStatistics struct {
 	HeartCount      uint64 `json:"heartCount"`
 	LastHeartHeight uint64 `json:"-"`
@@ -41,7 +35,7 @@ func (op *RepOnlinePeriod) String() string {
 }
 
 func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlineKind) {
-	period := (dps.curPovHeight - 1) / onlinePeriod
+	period := (dps.curPovHeight - 1) / common.DPosOnlinePeriod
 	var repPeriod *RepOnlinePeriod
 
 	if s, err := dps.online.Get(period); err == nil {
@@ -113,7 +107,7 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 }
 
 func (dps *DPoS) confirmedBlockInc() {
-	period := (dps.curPovHeight - 1) / onlinePeriod
+	period := (dps.curPovHeight - 1) / common.DPosOnlinePeriod
 
 	if s, err := dps.online.Get(period); err == nil {
 		repPeriod := s.(*RepOnlinePeriod)
@@ -136,7 +130,7 @@ func (dps *DPoS) confirmedBlockInc() {
 }
 
 func (dps *DPoS) isOnline(addr types.Address) bool {
-	period := (dps.curPovHeight-1)/onlinePeriod - 1
+	period := (dps.curPovHeight-1)/common.DPosOnlinePeriod - 1
 
 	//the first period will be ignored
 	if s, err := dps.online.Get(period); err == nil {
@@ -146,16 +140,16 @@ func (dps *DPoS) isOnline(addr types.Address) bool {
 
 		if repPeriod.BlockCount == 0 {
 			if v, ok := repPeriod.Statistic[addr]; ok {
-				if v.HeartCount*100 > heartCountPerPeriod*onlineRate {
-					dps.logger.Debugf("[%s] heart online: heart[%d] expect[%d]", addr, v.HeartCount, heartCountPerPeriod)
+				if v.HeartCount*100 > common.DPosHeartCountPerPeriod*common.DPosOnlineRate {
+					dps.logger.Debugf("[%s] heart online: heart[%d] expect[%d]", addr, v.HeartCount, common.DPosHeartCountPerPeriod)
 					return true
 				}
-				dps.logger.Debugf("[%s] heart offline: heart[%d] expect[%d]", addr, v.HeartCount, heartCountPerPeriod)
+				dps.logger.Debugf("[%s] heart offline: heart[%d] expect[%d]", addr, v.HeartCount, common.DPosHeartCountPerPeriod)
 			}
 			dps.logger.Debugf("[%s] heart offline: no heart", addr)
 		} else {
 			if v, ok := repPeriod.Statistic[addr]; ok {
-				if v.VoteCount*100 > repPeriod.BlockCount*onlineRate {
+				if v.VoteCount*100 > repPeriod.BlockCount*common.DPosOnlineRate {
 					dps.logger.Debugf("[%s] vote online: vote[%d] expect[%d]", addr, v.VoteCount, repPeriod.BlockCount)
 					return true
 				}
@@ -232,7 +226,9 @@ func (dps *DPoS) onPovHeightChange(pb *types.PovBlock) {
 			}()
 		}
 
-		if dps.curPovHeight-dps.lastSendHeight >= onlinePeriod && (dps.curPovHeight%onlinePeriod >= 30 || dps.curPovHeight%onlinePeriod <= 90) {
+		if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
+			(dps.curPovHeight%common.DPosOnlinePeriod >= common.DPosOnlineSectionLeft ||
+				dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight) {
 			dps.sendOnline()
 			dps.lastSendHeight = pb.Header.BasHdr.Height
 		}
