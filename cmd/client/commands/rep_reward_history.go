@@ -35,6 +35,12 @@ func repRewardHistory() {
 					return
 				}
 
+				err := util.CheckArgs(c, args)
+				if err != nil {
+					util.Warn(err)
+					return
+				}
+
 				accountP = util.StringVar(c.Args, account)
 
 				if err := repRewardHistoryAction(accountP); err != nil {

@@ -25,9 +25,9 @@ const (
 	//vote right divisor
 	DposVoteDivisor = int64(200)
 
-	DPosOnlinePeriod        = uint64(20)
+	DPosOnlinePeriod        = uint64(10)
 	DPosOnlineRate          = uint64(60)
 	DPosHeartCountPerPeriod = DPosOnlinePeriod / 2
-	DPosOnlineSectionLeft   = 5
-	DPosOnlineSectionRight  = 15
+	DPosOnlineSectionLeft   = 3
+	DPosOnlineSectionRight  = 8
 )

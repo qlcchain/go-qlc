@@ -2258,7 +2258,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	return &sb, nil
 }
 
-func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error) {
+func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error) {
 	am, err := l.GetAccountMeta(account)
 	if err != nil {
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
@@ -2286,6 +2286,7 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,
 		Timestamp:      common.TimeNow().Unix(),
+		PoVHeight:		povHeight,
 	}
 	if prk != nil {
 		acc := types.NewAccount(prk)

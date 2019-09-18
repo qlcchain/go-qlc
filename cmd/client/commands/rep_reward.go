@@ -44,6 +44,7 @@ func repReward() {
 				if util.HelpText(c, args) {
 					return
 				}
+
 				err := util.CheckArgs(c, args)
 				if err != nil {
 					util.Warn(err)

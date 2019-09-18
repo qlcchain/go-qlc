@@ -164,14 +164,14 @@ func (dps *DPoS) isOnline(addr types.Address) bool {
 	return false
 }
 
-func (dps *DPoS) sendOnline() {
+func (dps *DPoS) sendOnline(povHeight uint64) {
 	for _, acc := range dps.accounts {
 		weight := dps.ledger.Weight(acc.Address())
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 			continue
 		}
 
-		blk, err := dps.ledger.GenerateOnlineBlock(acc.Address(), acc.PrivateKey())
+		blk, err := dps.ledger.GenerateOnlineBlock(acc.Address(), acc.PrivateKey(), povHeight)
 		if err != nil {
 			dps.logger.Error("generate online block err", err)
 			return
@@ -189,13 +189,13 @@ func (dps *DPoS) sendOnline() {
 	}
 }
 
-func (dps *DPoS) sendOnlineWithAccount(acc *types.Account) {
+func (dps *DPoS) sendOnlineWithAccount(acc *types.Account, povHeight uint64) {
 	weight := dps.ledger.Weight(acc.Address())
 	if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 		return
 	}
 
-	blk, err := dps.ledger.GenerateOnlineBlock(acc.Address(), acc.PrivateKey())
+	blk, err := dps.ledger.GenerateOnlineBlock(acc.Address(), acc.PrivateKey(), povHeight)
 	if err != nil {
 		dps.logger.Error("generate online block err", err)
 		return
@@ -229,7 +229,7 @@ func (dps *DPoS) onPovHeightChange(pb *types.PovBlock) {
 		if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
 			(dps.curPovHeight%common.DPosOnlinePeriod >= common.DPosOnlineSectionLeft ||
 				dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight) {
-			dps.sendOnline()
+			dps.sendOnline(dps.curPovHeight)
 			dps.lastSendHeight = pb.Header.BasHdr.Height
 		}
 	}

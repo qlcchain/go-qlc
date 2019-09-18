@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/trie"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -272,4 +273,34 @@ func (m *RepApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.State
 	}
 
 	return m.GetRewardRecvBlock(input)
+}
+
+type RepStateParams struct {
+	Account types.Address
+	Height  uint64
+}
+
+func (m *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepState, error) {
+	ctx := vmstore.NewVMContext(m.ledger)
+	block, err := ctx.GetPovHeaderByHeight(params.Height)
+	if block == nil {
+		return nil, fmt.Errorf("get pov block with height[%d] err", params.Height)
+	}
+
+	stateHash := block.GetStateHash()
+	stateTrie := trie.NewTrie(ctx.GetLedger().Store, &stateHash, nil)
+	keyBytes := types.PovCreateRepStateKey(params.Account)
+
+	valBytes := stateTrie.GetValue(keyBytes)
+	if len(valBytes) <= 0 {
+		return nil, fmt.Errorf("get trie err")
+	}
+
+	rs := new(types.PovRepState)
+	err = rs.Deserialize(valBytes)
+	if err != nil {
+		return nil, fmt.Errorf("deserialize old rep state err %s", err)
+	}
+
+	return rs, nil
 }

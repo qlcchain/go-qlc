@@ -777,7 +777,7 @@ func (dps *DPoS) onRollback(hash types.Hash) {
 	if err == nil && blk.Type == types.Online {
 		for _, acc := range dps.accounts {
 			if acc.Address() == blk.Address {
-				dps.sendOnlineWithAccount(acc)
+				dps.sendOnlineWithAccount(acc, blk.PoVHeight)
 				break
 			}
 		}
