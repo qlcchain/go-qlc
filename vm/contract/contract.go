@@ -71,6 +71,12 @@ var contractCache = map[types.Address]*qlcchainContract{
 		},
 		cabi.MinerABI,
 	},
+	types.RepAddress: {
+		map[string]ChainContract{
+			cabi.MethodNameRepReward: &RepReward{},
+		},
+		cabi.RepABI,
+	},
 }
 
 func GetChainContract(addr types.Address, methodSelector []byte) (ChainContract, bool, error) {

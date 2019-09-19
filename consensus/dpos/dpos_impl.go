@@ -452,6 +452,11 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			if err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, blk.GetData()); err == nil {
 				dstAddr = param.Beneficial
 			}
+		case types.RepAddress:
+			param := new(cabi.RepRewardParam)
+			if err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, blk.GetData()); err == nil {
+				dstAddr = param.Beneficial
+			}
 		case types.RewardsAddress:
 			param := new(cabi.RewardsParam)
 			data := blk.GetData()

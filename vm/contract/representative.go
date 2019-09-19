@@ -132,7 +132,7 @@ func (m *RepReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err
 		return fmt.Errorf("calc reward %d not equal param reward %v", calcRewardAmount, param.RewardAmount)
 	}
 
-	block.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks)
+	block.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 	if err != nil {
 		return err
 	}
@@ -186,17 +186,30 @@ func (m *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 		exist = true
 	}
 
+	// save contract data to storage
+	newRepData, err := cabi.RepABI.PackVariable(
+		cabi.VariableNameRepRewardInfo,
+		param.Beneficial,
+		param.StartHeight,
+		param.EndHeight,
+		param.RewardBlocks,
+		param.RewardAmount)
+	if err != nil {
+		return nil, err
+	}
+
 	// generate contract reward block
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
 	block.Token = common.GasToken()
 	block.Link = input.GetHash()
+	block.Data = newRepData
 
 	// pledge fields only for QLC token
-	block.Vote = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
-	block.Network = types.ZeroBalance
+	block.Vote = types.NewBalance(0)
+	block.Oracle = types.NewBalance(0)
+	block.Storage = types.NewBalance(0)
+	block.Network = types.NewBalance(0)
 	block.PoVHeight = input.PoVHeight
 
 	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
@@ -250,18 +263,6 @@ func (m *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 		}
 	}
 
-	// save contract data to storage
-	newRepData, err := cabi.RepABI.PackVariable(
-		cabi.VariableNameRepRewardInfo,
-		param.Beneficial,
-		param.StartHeight,
-		param.EndHeight,
-		param.RewardBlocks,
-		param.RewardAmount)
-	if err != nil {
-		return nil, err
-	}
-
 	repKey := cabi.GetRepRewardKey(param.Account, param.StartHeight)
 	err = ctx.SetStorage(types.RepAddress.Bytes(), repKey, newRepData)
 	if err != nil {
@@ -301,7 +302,7 @@ func (m *RepReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, para
 
 func (m *RepReward) calcRewardBlocksByHeight(ctx *vmstore.VMContext, account types.Address, startHeight, endHeight uint64) (uint64, types.Balance, error) {
 	rewardBlocks := uint64(0)
-	rewardAmount := types.ZeroBalance
+	rewardAmount := types.NewBalance(0)
 	keyBytes := types.PovCreateRepStateKey(account)
 
 	for curHeight := startHeight + common.DPosOnlinePeriod - 1; curHeight <= endHeight; curHeight += common.DPosOnlinePeriod {

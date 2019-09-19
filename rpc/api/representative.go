@@ -82,6 +82,7 @@ func (m *RepApi) GetHistoryRewardInfos(account types.Address) (*RepHistoryReward
 
 	apiRsp := new(RepHistoryRewardInfo)
 	apiRsp.RewardInfos = rewardInfos
+	apiRsp.AllRewardAmount = types.NewBalance(0)
 
 	if len(rewardInfos) > 0 {
 		apiRsp.FirstRewardHeight = rewardInfos[0].StartHeight
@@ -242,8 +243,8 @@ func (m *RepApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock,
 	if input.GetType() != types.ContractSend {
 		return nil, errors.New("input block type is not contract send")
 	}
-	if input.GetLink() != types.MinerAddress.ToHash() {
-		return nil, errors.New("input address is not contract miner")
+	if input.GetLink() != types.RepAddress.ToHash() {
+		return nil, errors.New("input address is not contract repReward")
 	}
 
 	reward := &types.StateBlock{}
