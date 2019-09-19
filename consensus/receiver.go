@@ -86,7 +86,7 @@ func (r *Receiver) stop() error {
 	return nil
 }
 
-func (r *Receiver) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFrom string) {
+func (r *Receiver) ReceivePublish(blk *types.StateBlock, msgFrom string) {
 	r.c.logger.Debugf("receive publish block [%s] from [%s]", blk.GetHash(), msgFrom)
 
 	bs := &BlockSource{
@@ -98,7 +98,7 @@ func (r *Receiver) ReceivePublish(blk *types.StateBlock, hash types.Hash, msgFro
 	//	}
 }
 
-func (r *Receiver) ReceiveConfirmReq(blk []*types.StateBlock, hash types.Hash, msgFrom string) {
+func (r *Receiver) ReceiveConfirmReq(blk []*types.StateBlock, msgFrom string) {
 
 	for _, b := range blk {
 		r.c.logger.Debugf("receive ConfirmReq block [%s] from [%s]", b.GetHash(), msgFrom)
@@ -112,7 +112,7 @@ func (r *Receiver) ReceiveConfirmReq(blk []*types.StateBlock, hash types.Hash, m
 	}
 }
 
-func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, hash types.Hash, msgFrom string) {
+func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, msgFrom string) {
 	r.c.logger.Debugf("receive ConfirmAck for %d blocks [%s] from [%s]", len(ack.Hash), ack.Hash, msgFrom)
 
 	valid := IsAckSignValidate(ack)

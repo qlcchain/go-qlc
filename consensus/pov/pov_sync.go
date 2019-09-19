@@ -63,7 +63,6 @@ type PovSyncer struct {
 
 type PovSyncMessage struct {
 	msgValue interface{}
-	msgHash  types.Hash
 	msgPeer  string
 }
 
@@ -167,12 +166,12 @@ func (ss *PovSyncer) mainLoop() {
 	}
 }
 
-func (ss *PovSyncer) onPovBulkPullReq(req *protos.PovBulkPullReq, msgHash types.Hash, msgPeer string) {
-	ss.messageCh <- &PovSyncMessage{msgValue: req, msgHash: msgHash, msgPeer: msgPeer}
+func (ss *PovSyncer) onPovBulkPullReq(req *protos.PovBulkPullReq, msgPeer string) {
+	ss.messageCh <- &PovSyncMessage{msgValue: req, msgPeer: msgPeer}
 }
 
-func (ss *PovSyncer) onPovBulkPullRsp(rsp *protos.PovBulkPullRsp, msgHash types.Hash, msgPeer string) {
-	ss.messageCh <- &PovSyncMessage{msgValue: rsp, msgHash: msgHash, msgPeer: msgPeer}
+func (ss *PovSyncer) onPovBulkPullRsp(rsp *protos.PovBulkPullRsp, msgPeer string) {
+	ss.messageCh <- &PovSyncMessage{msgValue: rsp, msgPeer: msgPeer}
 }
 
 func (ss *PovSyncer) processMessage(msg *PovSyncMessage) {

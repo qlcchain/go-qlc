@@ -273,18 +273,12 @@ func (ms *MessageService) onPublishReq(message *Message) {
 		hash := blk.Blk.GetHash()
 		ms.addPerformanceTime(hash)
 	}
-
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
 	p, err := protos.PublishBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventPublish, p.Blk, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPublish, p.Blk, message.MessageFrom())
 }
 
 func (ms *MessageService) onConfirmReq(message *Message) {
@@ -300,17 +294,12 @@ func (ms *MessageService) onConfirmReq(message *Message) {
 			ms.addPerformanceTime(hash)
 		}
 	}
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
 	r, err := protos.ConfirmReqBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Error(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventConfirmReq, r.Blk, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventConfirmReq, r.Blk, message.MessageFrom())
 }
 
 func (ms *MessageService) onConfirmAck(message *Message) {
@@ -325,18 +314,12 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 			ms.addPerformanceTime(h)
 		}
 	}
-
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
 	ack, err := protos.ConfirmAckBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventConfirmAck, ack, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventConfirmAck, ack, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovStatus(message *Message) {
@@ -345,14 +328,7 @@ func (ms *MessageService) onPovStatus(message *Message) {
 		ms.netService.node.logger.Errorf("failed to decode PovStatus from peer %s", message.from)
 		return
 	}
-
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
-
-	ms.netService.msgEvent.Publish(common.EventPovPeerStatus, status, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovPeerStatus, status, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovPublishReq(message *Message) {
@@ -367,35 +343,23 @@ func (ms *MessageService) onPovPublishReq(message *Message) {
 }
 
 func (ms *MessageService) onPovBulkPullReq(message *Message) {
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
-
 	req, err := protos.PovBulkPullReqFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
 
-	ms.netService.msgEvent.Publish(common.EventPovBulkPullReq, req, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovBulkPullReq, req, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovBulkPullRsp(message *Message) {
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
-
 	rsp, err := protos.PovBulkPullRspFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
 
-	ms.netService.msgEvent.Publish(common.EventPovBulkPullRsp, rsp, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovBulkPullRsp, rsp, message.MessageFrom())
 }
 
 func (ms *MessageService) Stop() {

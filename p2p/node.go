@@ -124,12 +124,12 @@ func (node *QlcNode) startHost() error {
 	}
 	node.streamManager.SetQlcNodeAndMaxStreamNum(node)
 	// Set up libp2p pubsub
-	fsub, err := libp2pps.NewGossipSub(node.ctx, node.host)
+	gsub, err := libp2pps.NewGossipSub(node.ctx, node.host)
 	if err != nil {
 		return errors.New("failed to set up pubsub")
 	}
-	node.publisher = pubsub.NewPublisher(fsub)
-	node.subscriber = pubsub.NewSubscriber(fsub)
+	node.publisher = pubsub.NewPublisher(gsub)
+	node.subscriber = pubsub.NewSubscriber(gsub)
 	return nil
 }
 
