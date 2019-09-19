@@ -17,6 +17,7 @@ func init() {
 const (
 	// BalanceMaxPrecision  balance max precision
 	BalanceMaxPrecision = 11
+	BalanceSize         = 64
 )
 
 // BalanceComp compare

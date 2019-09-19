@@ -40,6 +40,12 @@ func packElement(t Type, reflectValue reflect.Value) []byte {
 		}
 
 		return util.LeftPadBytes(reflectValue.Bytes(), util.WordSize*2)
+	case BalanceTy:
+		if reflectValue.Kind() == reflect.Array {
+			reflectValue = mustArrayToByteSlice(reflectValue)
+		}
+
+		return util.LeftPadBytes(reflectValue.Bytes(), util.WordSize*2)
 	case BoolTy:
 		if reflectValue.Bool() {
 			return util.PaddedBigBytes(util.Big1, util.WordSize)

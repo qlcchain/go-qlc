@@ -143,7 +143,7 @@ func NewType(t string) (typ Type, err error) {
 		typ.T = SignatureTy
 	case "balance":
 		typ.Kind = reflect.Array
-		typ.Size = 256
+		typ.Size = types.BalanceSize
 		typ.Type = balanceT
 		typ.T = BalanceTy
 	case "string":
