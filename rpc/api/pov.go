@@ -35,6 +35,7 @@ type PovApiHeader struct {
 	*types.PovHeader
 	AlgoName       string `json:"algoName"`
 	AlgoEfficiency uint   `json:"algoEfficiency"`
+	NormBits       uint32 `json:"normBits"`
 }
 
 type PovApiBatchHeader struct {
@@ -46,6 +47,7 @@ type PovApiBlock struct {
 	*types.PovBlock
 	AlgoName       string `json:"algoName"`
 	AlgoEfficiency uint   `json:"algoEfficiency"`
+	NormBits       uint32 `json:"normBits"`
 }
 
 type PovApiState struct {
@@ -126,6 +128,12 @@ func (api *PovApi) GetPovStatus() (*PovStatus, error) {
 	return apiRsp, nil
 }
 
+func (api *PovApi) fillHeader(header *PovApiHeader) {
+	header.AlgoEfficiency = header.GetAlgoEfficiency()
+	header.AlgoName = header.GetAlgoType().String()
+	header.NormBits = header.GetNormBits()
+}
+
 func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
 	blockHash, err := api.ledger.GetPovBestHash(height)
 	if err != nil {
@@ -138,10 +146,9 @@ func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader:      header,
-		AlgoEfficiency: header.GetAlgoEfficiency(),
-		AlgoName:       header.GetAlgoType().String(),
+		PovHeader: header,
 	}
+	api.fillHeader(apiHeader)
 
 	return apiHeader, nil
 }
@@ -158,10 +165,9 @@ func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) 
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader:      header,
-		AlgoEfficiency: header.GetAlgoEfficiency(),
-		AlgoName:       header.GetAlgoType().String(),
+		PovHeader: header,
 	}
+	api.fillHeader(apiHeader)
 
 	return apiHeader, nil
 }
@@ -173,10 +179,9 @@ func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader:      header,
-		AlgoEfficiency: header.GetAlgoEfficiency(),
-		AlgoName:       header.GetAlgoType().String(),
+		PovHeader: header,
 	}
+	api.fillHeader(apiHeader)
 
 	return apiHeader, nil
 }
@@ -209,10 +214,9 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 	}
 
 	apiHeader := &PovApiHeader{
-		PovHeader:      header,
-		AlgoEfficiency: header.GetAlgoEfficiency(),
-		AlgoName:       header.GetAlgoType().String(),
+		PovHeader: header,
 	}
+	api.fillHeader(apiHeader)
 
 	return apiHeader, nil
 }
@@ -232,10 +236,9 @@ func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool
 	var apiHeaders []*PovApiHeader
 	for _, dbHdr := range dbHeaders {
 		apiHdr := &PovApiHeader{
-			PovHeader:      dbHdr,
-			AlgoEfficiency: dbHdr.GetAlgoEfficiency(),
-			AlgoName:       dbHdr.GetAlgoType().String(),
+			PovHeader: dbHdr,
 		}
+		api.fillHeader(apiHdr)
 		apiHeaders = append(apiHeaders, apiHdr)
 	}
 
@@ -247,6 +250,12 @@ func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool
 	return apiHeader, nil
 }
 
+func (api *PovApi) fillBlock(block *PovApiBlock) {
+	block.AlgoEfficiency = block.GetAlgoEfficiency()
+	block.AlgoName = block.GetAlgoType().String()
+	block.NormBits = block.GetHeader().GetNormBits()
+}
+
 func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.ledger.GetPovBlockByHeight(height)
 	if err != nil {
@@ -254,10 +263,9 @@ func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock:       block,
-		AlgoEfficiency: block.GetAlgoEfficiency(),
-		AlgoName:       block.GetAlgoType().String(),
+		PovBlock: block,
 	}
+	api.fillBlock(apiBlock)
 
 	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
@@ -271,10 +279,9 @@ func (api *PovApi) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock:       block,
-		AlgoEfficiency: block.GetAlgoEfficiency(),
-		AlgoName:       block.GetAlgoType().String(),
+		PovBlock: block,
 	}
+	api.fillBlock(apiBlock)
 
 	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
@@ -288,10 +295,9 @@ func (api *PovApi) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock
 	}
 
 	apiBlock := &PovApiBlock{
-		PovBlock:       block,
-		AlgoEfficiency: block.GetAlgoEfficiency(),
-		AlgoName:       block.GetAlgoType().String(),
+		PovBlock: block,
 	}
+	api.fillBlock(apiBlock)
 
 	apiBlock.PovBlock.Body.Txs = api.pagingTxs(block.Body.Txs, txOffset, txLimit)
 
