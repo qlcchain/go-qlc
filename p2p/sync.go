@@ -681,7 +681,7 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	}
 	ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
 	if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-		err = ss.netService.SendMessageToPeer(MessageAck, message.Hash(), message.MessageFrom())
+		err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 		if err != nil {
 			ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 		}

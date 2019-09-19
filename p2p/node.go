@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"errors"
+	"github.com/qlcchain/go-qlc/p2p/pubsub"
 	"time"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -16,6 +17,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/qlcchain/go-qlc/config"
@@ -36,6 +38,13 @@ const (
 	Intranet
 )
 
+const (
+	// Topic is the network pubsub topic identifier on which new messages are announced.
+	MsgTopic = "/qlc/msgs"
+	// BlockTopic is the pubsub topic identifier on which new blocks are announced.
+	BlockTopic = "/qlc/blocks"
+)
+
 type QlcNode struct {
 	ID                peer.ID
 	privateKey        crypto.PrivKey
@@ -53,6 +62,9 @@ type QlcNode struct {
 	netService        *QlcService
 	logger            *zap.SugaredLogger
 	localNetAttribute netAttribute
+	publisher         *pubsub.Publisher
+	subscriber        *pubsub.Subscriber
+	MessageSub        pubsub.Subscription
 }
 
 // NewNode return new QlcNode according to the config.
@@ -111,6 +123,13 @@ func (node *QlcNode) startHost() error {
 		return err
 	}
 	node.streamManager.SetQlcNodeAndMaxStreamNum(node)
+	// Set up libp2p pubsub
+	fsub, err := libp2pps.NewGossipSub(node.ctx, node.host)
+	if err != nil {
+		return errors.New("failed to set up pubsub")
+	}
+	node.publisher = pubsub.NewPublisher(fsub)
+	node.subscriber = pubsub.NewSubscriber(fsub)
 	return nil
 }
 
@@ -139,6 +158,15 @@ func (node *QlcNode) StartServices() error {
 			return err
 		}
 	}
+
+	// subscribe to message notifications
+	msgSub, err := node.subscriber.Subscribe(MsgTopic)
+	if err != nil {
+		return errors.New("failed to subscribe to message topic")
+	}
+	node.MessageSub = msgSub
+
+	go node.handleSubscription(node.ctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
 	if node.localDiscovery == nil {
 		if node.cfg.P2P.Discovery.MDNSEnabled {
@@ -293,6 +321,10 @@ func (node *QlcNode) SetQlcService(ns *QlcService) {
 // Stop stop a node.
 func (node *QlcNode) Stop() error {
 	node.logger.Info("Stop QlcService Node...")
+	if node.MessageSub != nil {
+		node.MessageSub.Cancel()
+		node.MessageSub = nil
+	}
 	node.cancel()
 	if err := node.stopHost(); err != nil {
 		return err
@@ -304,11 +336,6 @@ func (node *QlcNode) Stop() error {
 func (node *QlcNode) BroadcastMessage(messageName MessageType, value interface{}) {
 
 	node.streamManager.BroadcastMessage(messageName, value)
-}
-
-// BroadcastMessage broadcast message.
-func (node *QlcNode) SendMessageToPeers(messageName MessageType, value interface{}, peerID string) {
-	node.streamManager.SendMessageToPeers(messageName, value, peerID)
 }
 
 // SendMessageToPeer send message to a peer.
@@ -327,3 +354,52 @@ func (node *QlcNode) SendMessageToPeer(messageName MessageType, value interface{
 	}
 	return stream.SendMessageToPeer(messageName, data)
 }
+
+func (node *QlcNode) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s pubsub.Subscription, sname string) {
+	for {
+		pubSubMsg, err := s.Next(ctx)
+		if err != nil {
+			node.logger.Debugf("%s.Next(): %s", sname, err)
+			return
+		}
+
+		if err := f(ctx, pubSubMsg); err != nil {
+			if err != context.Canceled {
+				node.logger.Errorf("%s(): %s", fname, err)
+			}
+		}
+	}
+}
+
+func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Message) error {
+	var message *QlcMessage
+	var err error
+	data := pubSubMsg.GetData()
+	peerID := pubSubMsg.GetFrom().Pretty()
+	if peerID == node.ID.Pretty() {
+		return nil
+	}
+	node.logger.Infof("node [%s] receive topic from [%s]", node.ID.Pretty(), peerID)
+	message, err = ParseQlcMessage(data)
+	if err != nil {
+		return err
+	}
+	node.logger.Info("message Type is :", message.messageType)
+	messageBuffer := data[QlcMessageHeaderLength:]
+	if len(messageBuffer) < int(message.DataLength()) {
+		return errors.New("data length error")
+	}
+	if err := message.ParseMessageData(messageBuffer); err != nil {
+		return err
+	}
+
+	if message.Version() < byte(p2pVersion) {
+		node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
+		return errors.New("P2P protocol version is low")
+	}
+	m := NewMessage(message.MessageType(), peerID, message.MessageData(), message.content)
+	node.netService.PutMessage(m)
+	return nil
+}
+
+type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error

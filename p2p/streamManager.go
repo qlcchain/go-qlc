@@ -7,7 +7,6 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/qlcchain/go-qlc/common/types"
 )
 
 const (
@@ -157,134 +156,11 @@ func (sm *StreamManager) BroadcastMessage(messageName MessageType, v interface{}
 	}
 	version := p2pVersion
 	message := NewQlcMessage(messageContent, byte(version), messageName)
-	qlcMessage := &QlcMessage{
-		messageType: messageName,
-		content:     message,
-	}
-	hash, err := types.HashBytes(message)
+	err = sm.node.publisher.Publish(MsgTopic, message)
 	if err != nil {
 		sm.node.logger.Error(err)
 		return
 	}
-
-	msgNeedCache := false
-	if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
-		messageName == PovPublishReq {
-		msgNeedCache = true
-	}
-
-	sm.allStreams.Range(func(key, value interface{}) bool {
-		stream := value.(*Stream)
-		if msgNeedCache {
-			if sm.hasMsgInCache(stream, hash) {
-				return true
-			}
-		}
-		_ = stream.SendMessageToChan(qlcMessage)
-		if msgNeedCache {
-			sm.searchCache(stream, hash, message, messageName)
-		}
-		return true
-	})
-}
-
-func (sm *StreamManager) SendMessageToPeers(messageName MessageType, v interface{}, peerID string) {
-	messageContent, err := marshalMessage(messageName, v)
-	if err != nil {
-		sm.node.logger.Error(err)
-		return
-	}
-	version := p2pVersion
-	message := NewQlcMessage(messageContent, byte(version), messageName)
-	qlcMessage := &QlcMessage{
-		messageType: messageName,
-		content:     message,
-	}
-	hash, err := types.HashBytes(message)
-	if err != nil {
-		sm.node.logger.Error(err)
-		return
-	}
-	msgNeedCache := false
-	if messageName == PublishReq || messageName == ConfirmReq || messageName == ConfirmAck ||
-		messageName == PovPublishReq {
-		msgNeedCache = true
-	}
-
-	sm.allStreams.Range(func(key, value interface{}) bool {
-		stream := value.(*Stream)
-		if stream.pid.Pretty() != peerID {
-			if msgNeedCache {
-				if sm.hasMsgInCache(stream, hash) {
-					return true
-				}
-			}
-			_ = stream.SendMessageToChan(qlcMessage)
-			if msgNeedCache {
-				sm.searchCache(stream, hash, message, messageName)
-			}
-		}
-		return true
-	})
-}
-
-func (sm *StreamManager) searchCache(stream *Stream, hash types.Hash, message []byte, messageName MessageType) {
-	var cs []*cacheValue
-	var c *cacheValue
-	if sm.node.netService.msgService.cache.Has(hash) {
-		exitCache, e := sm.node.netService.msgService.cache.Get(hash)
-		if e != nil {
-			return
-		}
-		cs = exitCache.([]*cacheValue)
-		for k, v := range cs {
-			if v.peerID == stream.pid.Pretty() {
-				v.resendTimes++
-				break
-			}
-			if k == (len(cs) - 1) {
-				c = &cacheValue{
-					peerID:      stream.pid.Pretty(),
-					resendTimes: 0,
-					startTime:   time.Now(),
-					data:        message,
-					t:           messageName,
-				}
-				cs = append(cs, c)
-				err := sm.node.netService.msgService.cache.Set(hash, cs)
-				if err != nil {
-					sm.node.logger.Error(err)
-				}
-			}
-		}
-	} else {
-		c = &cacheValue{
-			peerID:      stream.pid.Pretty(),
-			resendTimes: 0,
-			startTime:   time.Now(),
-			data:        message,
-			t:           messageName,
-		}
-		cs = append(cs, c)
-		err := sm.node.netService.msgService.cache.Set(hash, cs)
-		if err != nil {
-			sm.node.logger.Error(err)
-		}
-	}
-}
-
-func (sm *StreamManager) hasMsgInCache(stream *Stream, hash types.Hash) bool {
-	exitCache, e := sm.node.netService.msgService.cache.Get(hash)
-	if e == nil && exitCache != nil {
-		cs := exitCache.([]*cacheValue)
-		for _, v := range cs {
-			if v.peerID == stream.pid.Pretty() {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func (sm *StreamManager) PeerCounts() int {

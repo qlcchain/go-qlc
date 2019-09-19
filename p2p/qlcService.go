@@ -77,11 +77,11 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
+	//err = ns.msgEvent.Subscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
+	//if err != nil {
+	//	ns.node.logger.Error(err)
+	//	return err
+	//}
 	err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
@@ -111,11 +111,11 @@ func (ns *QlcService) unsubscribeEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
+	//err = ns.msgEvent.Unsubscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
+	//if err != nil {
+	//	ns.node.logger.Error(err)
+	//	return err
+	//}
 	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
@@ -161,9 +161,9 @@ func (ns *QlcService) Broadcast(name MessageType, value interface{}) {
 	ns.node.BroadcastMessage(name, value)
 }
 
-func (ns *QlcService) SendMessageToPeers(messageName MessageType, value interface{}, peerID string) {
-	ns.node.SendMessageToPeers(messageName, value, peerID)
-}
+//func (ns *QlcService) SendMessageToPeers(messageName MessageType, value interface{}, peerID string) {
+//	ns.node.SendMessageToPeers(messageName, value, peerID)
+//}
 
 // SendMessageToPeer send message to a peer.
 func (ns *QlcService) SendMessageToPeer(messageName MessageType, value interface{}, peerID string) error {

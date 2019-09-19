@@ -296,26 +296,10 @@ func (s *Stream) handleMessage(message *QlcMessage) {
 	s.node.netService.PutMessage(m)
 }
 
-//func (s *Stream) SendMessageToChan(message []byte) {
-//	select {
-//	case s.messageChan <- message:
-//	default:
-//		s.node.logger.Debugf("send message to [%s] timeout", s.pid.Pretty())
-//	}
-//}
-//
-//func (s *Stream) SendMessageToCtrlChan(message []byte) {
-//	select {
-//	case s.ctrlMsgChan <- message:
-//	default:
-//		s.node.logger.Debugf("send ctrl message to [%s] timeout", s.pid.Pretty())
-//	}
-//}
-
 // SendMessage send msg to buffer
 func (s *Stream) SendMessageToChan(message *QlcMessage) error {
 	var priority uint32
-	if message.messageType == MessageResponse || message.messageType == MessageAck {
+	if message.messageType == MessageResponse {
 		priority = MessagePriorityHigh
 	} else {
 		priority = MessagePriorityNormal
