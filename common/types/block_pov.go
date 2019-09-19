@@ -94,10 +94,10 @@ func (ah *PovAuxHeader) ComputePowHash(algo PovAlgoType) Hash {
 }
 
 type PovCoinBaseTxIn struct {
-	PrevTxHash Hash   `msg:"pth,extension" json:"prevTxHash"`
-	PrevTxIdx  uint32 `msg:"pti" json:"prevTxIdx"`
-	Extra      []byte `msg:"ext" json:"extra"` // like BTC's script, filled by miner, 0 ~ 100
-	Sequence   uint32 `msg:"seq" json:"sequence"`
+	PrevTxHash Hash     `msg:"pth,extension" json:"prevTxHash"`
+	PrevTxIdx  uint32   `msg:"pti" json:"prevTxIdx"`
+	Extra      HexBytes `msg:"ext,extension" json:"extra"` // like BTC's script, filled by miner, 0 ~ 100
+	Sequence   uint32   `msg:"seq" json:"sequence"`
 }
 
 func (ti *PovCoinBaseTxIn) Copy() *PovCoinBaseTxIn {

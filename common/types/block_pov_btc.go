@@ -82,7 +82,7 @@ func (p *PovBtcOutPoint) Deserialize(text []byte) error {
 
 type PovBtcTxIn struct {
 	PreviousOutPoint PovBtcOutPoint `msg:"pop" json:"previousOutPoint"`
-	SignatureScript  []byte         `msg:"ss" json:"signatureScript"`
+	SignatureScript  HexBytes       `msg:"ss,extension" json:"signatureScript"`
 	Sequence         uint32         `msg:"s" json:"sequence"`
 }
 
@@ -109,8 +109,8 @@ func (ti *PovBtcTxIn) BuildHashData() []byte {
 }
 
 type PovBtcTxOut struct {
-	Value    int64  `msg:"v" json:"value"`
-	PkScript []byte `msg:"pks" json:"pkScript"`
+	Value    int64    `msg:"v" json:"value"`
+	PkScript HexBytes `msg:"pks,extension" json:"pkScript"`
 }
 
 func (to *PovBtcTxOut) Serialize() ([]byte, error) {

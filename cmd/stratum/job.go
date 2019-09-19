@@ -89,8 +89,8 @@ func (r *JobRepository) consumeApiWork(event Event) {
 	w.Height = apiWork.Height
 	w.MinTime = apiWork.MinTime
 	w.MerkleBranch = apiWork.MerkleBranch
-	w.CoinBaseData1, _ = hex.DecodeString(apiWork.CoinBaseData1)
-	w.CoinBaseData2, _ = hex.DecodeString(apiWork.CoinBaseData2)
+	w.CoinBaseData1 = apiWork.CoinBaseData1
+	w.CoinBaseData2 = apiWork.CoinBaseData2
 
 	w.PoolTime = uint32(time.Now().Unix())
 

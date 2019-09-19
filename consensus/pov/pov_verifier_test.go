@@ -41,7 +41,7 @@ func (c *mockPovVerifierChainReader) CalcPastMedianTime(prevHeader *types.PovHea
 	return prevHeader.GetTimestamp()
 }
 
-func (c *mockPovVerifierChainReader) GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
+func (c *mockPovVerifierChainReader) GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
 	t := trie.NewTrie(c.ledger.DBStore(), nil, trie.NewSimpleTrieNodePool())
 	return t, nil
 }

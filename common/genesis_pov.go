@@ -14,43 +14,43 @@ var (
         "basHdr":{
             "version":0,
             "previous":"0000000000000000000000000000000000000000000000000000000000000000",
-            "merkleRoot":"203fbe89d109278fd220b1022f891067ea6c027297b4022b7893734c3516f070",
+            "merkleRoot":"beaafa1f9789bacde739050287da41450a05c3c7c7b00786e1707aa97cdbafc0",
             "timestamp":1569024000,
             "bits":504365040,
-            "nonce":2729537,
-            "hash":"163448f1f6e63eaa6bf3c2b89fa843bf193fd875ee2c02f17959c46307090000",
+            "nonce":1289884,
+            "hash":"145b6cf60a4b0254f69a245ed89f342966e75acbb6254b5e52567ebbb2040000",
             "height":0
         },
         "auxHdr":null,
         "cbtx":{
-            "version":0,
+            "version":1,
             "txIns":[
                 {
                     "prevTxHash":"0000000000000000000000000000000000000000000000000000000000000000",
                     "prevTxIdx":4294967295,
-                    "extra":"Hnjc3b5WmWjnWCUa2mhNMTEEynIoUoXiHMOBdw/T7kk=",
+                    "extra":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
                     "sequence":4294967295
                 }
             ],
             "txOuts":[
                 {
                     "address":"qlc_1afnoj8acwikgsazz1ocgakss3hck6htgxcm4wafuit7439izg8kzdu6twou",
-                    "value":"228310501"
+                    "value":"456621004"
                 },
                 {
                     "address":"qlc_111111111111111111111111111111111111111111111111111ommygmckp",
-                    "value":"57077625"
+                    "value":"114155251"
                 }
             ],
             "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
             "txNum":1,
-            "hash":"203fbe89d109278fd220b1022f891067ea6c027297b4022b7893734c3516f070"
+            "hash":"beaafa1f9789bacde739050287da41450a05c3c7c7b00786e1707aa97cdbafc0"
         }
     },
     "body":{
         "txs":[
             {
-                "hash":"203fbe89d109278fd220b1022f891067ea6c027297b4022b7893734c3516f070"
+                "hash":"beaafa1f9789bacde739050287da41450a05c3c7c7b00786e1707aa97cdbafc0"
             }
         ]
     }

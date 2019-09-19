@@ -2286,7 +2286,7 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,
 		Timestamp:      common.TimeNow().Unix(),
-		PoVHeight:		povHeight,
+		PoVHeight:      povHeight,
 	}
 	if prk != nil {
 		acc := types.NewAccount(prk)

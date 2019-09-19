@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"github.com/qlcchain/go-qlc/config"
 	"math/big"
 	"sync/atomic"
@@ -831,26 +830,26 @@ func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, e
 }
 
 type PovApiGetWork struct {
-	WorkHash      types.Hash    `json:"workHash"`
-	Version       uint32        `json:"version"`
-	Previous      types.Hash    `json:"previous"`
-	Bits          uint32        `json:"bits"`
-	Height        uint64        `json:"height"`
-	MinTime       uint32        `json:"minTime"`
-	MerkleBranch  []*types.Hash `json:"merkleBranch"`
-	CoinBaseData1 string        `json:"coinbaseData1"`
-	CoinBaseData2 string        `json:"coinbaseData2"`
+	WorkHash      types.Hash     `json:"workHash"`
+	Version       uint32         `json:"version"`
+	Previous      types.Hash     `json:"previous"`
+	Bits          uint32         `json:"bits"`
+	Height        uint64         `json:"height"`
+	MinTime       uint32         `json:"minTime"`
+	MerkleBranch  []*types.Hash  `json:"merkleBranch"`
+	CoinBaseData1 types.HexBytes `json:"coinbaseData1"`
+	CoinBaseData2 types.HexBytes `json:"coinbaseData2"`
 }
 
 type PovApiSubmitWork struct {
 	WorkHash  types.Hash `json:"workHash"`
 	BlockHash types.Hash `json:"blockHash"`
 
-	MerkleRoot    types.Hash `json:"merkleRoot"`
-	Timestamp     uint32     `json:"timestamp"`
-	Nonce         uint32     `json:"nonce"`
-	CoinbaseExtra string     `json:"coinbaseExtra"`
-	CoinbaseHash  types.Hash `json:"coinbaseHash"`
+	MerkleRoot    types.Hash     `json:"merkleRoot"`
+	Timestamp     uint32         `json:"timestamp"`
+	Nonce         uint32         `json:"nonce"`
+	CoinbaseExtra types.HexBytes `json:"coinbaseExtra"`
+	CoinbaseHash  types.Hash     `json:"coinbaseHash"`
 
 	AuxPow *types.PovAuxHeader `json:"auxPow"`
 }
@@ -998,8 +997,8 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	apiRsp.MinTime = mineBlock.MinTime
 	apiRsp.MerkleBranch = mineBlock.CoinbaseBranch
 
-	apiRsp.CoinBaseData1 = hex.EncodeToString(mineBlock.Header.CbTx.GetCoinBaseData1())
-	apiRsp.CoinBaseData2 = hex.EncodeToString(mineBlock.Header.CbTx.GetCoinBaseData2())
+	apiRsp.CoinBaseData1 = mineBlock.Header.CbTx.GetCoinBaseData1()
+	apiRsp.CoinBaseData2 = mineBlock.Header.CbTx.GetCoinBaseData2()
 
 	return apiRsp, nil
 }
@@ -1014,15 +1013,6 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 		return errors.New("pov sync is not finished, please check it")
 	}
 
-	var cbExtraBytes []byte
-	if len(work.CoinbaseExtra) > 0 {
-		var err error
-		cbExtraBytes, err = hex.DecodeString(work.CoinbaseExtra)
-		if err != nil {
-			return fmt.Errorf("decode CoinbaseExtra err %s", err)
-		}
-	}
-
 	mineResult := types.NewPovMineResult()
 	mineResult.WorkHash = work.WorkHash
 	mineResult.BlockHash = work.BlockHash
@@ -1030,7 +1020,7 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	mineResult.MerkleRoot = work.MerkleRoot
 	mineResult.Timestamp = work.Timestamp
 	mineResult.Nonce = work.Nonce
-	mineResult.CoinbaseExtra = cbExtraBytes
+	mineResult.CoinbaseExtra = work.CoinbaseExtra
 	mineResult.CoinbaseHash = work.CoinbaseHash
 
 	mineResult.AuxPow = work.AuxPow

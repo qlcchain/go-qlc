@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"flag"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
@@ -88,14 +87,12 @@ func doWorkBySelf(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *a
 	// hash data = coinbase1 + extra data + coinbase2
 	// extra data = minerinfo + extranonce1 + extranonce2
 	cbTxDataBuf := new(bytes.Buffer)
-	cbData1, _ := hex.DecodeString(getWorkRsp.CoinBaseData1)
-	cbTxDataBuf.Write(cbData1)
+	cbTxDataBuf.Write(getWorkRsp.CoinBaseData1)
 
 	cbTxDataBuf.Write(util.LE_EncodeVarInt(uint64(len(cbTxExtData))))
 	cbTxDataBuf.Write(cbTxExtData)
 
-	cbData2, _ := hex.DecodeString(getWorkRsp.CoinBaseData2)
-	cbTxDataBuf.Write(cbData2)
+	cbTxDataBuf.Write(getWorkRsp.CoinBaseData2)
 
 	cbTxHash := types.Sha256D_HashData(cbTxDataBuf.Bytes())
 
@@ -115,7 +112,7 @@ func doWorkBySelf(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *a
 			submitWorkReq := new(api.PovApiSubmitWork)
 			submitWorkReq.WorkHash = getWorkRsp.WorkHash
 
-			submitWorkReq.CoinbaseExtra = hex.EncodeToString(cbTxExtBuf.Bytes())
+			submitWorkReq.CoinbaseExtra = cbTxExtBuf.Bytes()
 			submitWorkReq.CoinbaseHash = cbTxHash
 
 			submitWorkReq.MerkleRoot = povHeader.BasHdr.MerkleRoot
@@ -155,14 +152,12 @@ func doWorkByAuxPow(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp 
 	// hash data = coinbase1 + extra data + coinbase2
 	// extra data = minerinfo + extranonce1 + extranonce2
 	cbTxDataBuf := new(bytes.Buffer)
-	cbData1, _ := hex.DecodeString(getWorkRsp.CoinBaseData1)
-	cbTxDataBuf.Write(cbData1)
+	cbTxDataBuf.Write(getWorkRsp.CoinBaseData1)
 
 	cbTxDataBuf.Write(util.LE_EncodeVarInt(uint64(len(cbTxExtData))))
 	cbTxDataBuf.Write(cbTxExtData)
 
-	cbData2, _ := hex.DecodeString(getWorkRsp.CoinBaseData2)
-	cbTxDataBuf.Write(cbData2)
+	cbTxDataBuf.Write(getWorkRsp.CoinBaseData2)
 
 	cbTxHash := types.Sha256D_HashData(cbTxDataBuf.Bytes())
 
@@ -185,7 +180,7 @@ func doWorkByAuxPow(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp 
 			submitWorkReq := new(api.PovApiSubmitWork)
 			submitWorkReq.WorkHash = getWorkRsp.WorkHash
 
-			submitWorkReq.CoinbaseExtra = hex.EncodeToString(cbTxExtBuf.Bytes())
+			submitWorkReq.CoinbaseExtra = cbTxExtBuf.Bytes()
 			submitWorkReq.CoinbaseHash = cbTxHash
 
 			submitWorkReq.MerkleRoot = povHeader.BasHdr.MerkleRoot
@@ -244,10 +239,10 @@ func getBtcCoinbase(msgBlockHash types.Hash) *types.PovBtcTx {
 	coinBaseTxin := types.PovBtcTxIn{
 		PreviousOutPoint: types.PovBtcOutPoint{
 			Hash:  types.ZeroHash,
-			Index: uint32(0),
+			Index: types.PovMaxPrevOutIndex,
 		},
 		SignatureScript: scriptSigBuf.Bytes(),
-		Sequence:        uint32(0),
+		Sequence:        types.PovMaxTxInSequenceNum,
 	}
 
 	btcTxin := make([]*types.PovBtcTxIn, 0)

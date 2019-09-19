@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -88,7 +87,7 @@ func (nc *NodeClient) consumeJobSubmit(event Event) {
 	apiSubmit.WorkHash = work.WorkHash
 	apiSubmit.Nonce = js.Nonce
 	apiSubmit.Timestamp = js.NTime
-	apiSubmit.CoinbaseExtra = hex.EncodeToString(work.CoinbaseExtra)
+	apiSubmit.CoinbaseExtra = work.CoinbaseExtra
 	apiSubmit.CoinbaseHash = work.CoinbaseHash
 	apiSubmit.MerkleRoot = work.MerkleRoot
 	apiSubmit.BlockHash = work.BlockHash
