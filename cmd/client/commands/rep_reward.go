@@ -55,7 +55,7 @@ func repReward() {
 				bnfPriKeyP = util.StringVar(c.Args, bnfPriKey)
 				bnfAddrP = util.StringVar(c.Args, bnfAddr)
 
-				if err := minerRewardAction(repPriKeyP, bnfPriKeyP, bnfAddrP); err != nil {
+				if err := repRewardAction(repPriKeyP, bnfPriKeyP, bnfAddrP); err != nil {
 					util.Warn(err)
 					return
 				}
@@ -129,14 +129,15 @@ func repRewardAction(repPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) e
 	if err != nil {
 		return err
 	}
+	fmt.Println("rep address:", repAcc.Address())
 	fmt.Printf("AvailRewardInfo:\n%s\n", cutil.ToIndentString(rspRewardInfo))
 
 	if !rspRewardInfo.NeedCallReward {
 		return errors.New("can not call reward contract because no available reward height")
 	}
 
-	rewardParam := api.RewardParam{
-		Coinbase:     repAcc.Address(),
+	rewardParam := api.RepRewardParam{
+		Account:      repAcc.Address(),
 		Beneficial:   bnfAddr,
 		StartHeight:  rspRewardInfo.AvailStartHeight,
 		EndHeight:    rspRewardInfo.AvailEndHeight,

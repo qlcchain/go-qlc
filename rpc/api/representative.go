@@ -66,7 +66,7 @@ func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
 }
 
 func (m *RepApi) GetRewardData(param *RepRewardParam) ([]byte, error) {
-	return cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks)
+	return cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 }
 
 func (m *RepApi) GetHistoryRewardInfos(account types.Address) (*RepHistoryRewardInfo, error) {
@@ -137,7 +137,8 @@ func (m *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo,
 	rsp.AvailRewardBlocks = availInfo.RewardBlocks
 	rsp.AvailRewardAmount = availInfo.RewardAmount
 
-	if rsp.AvailStartHeight > rsp.LastEndHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight {
+	if (rsp.LastEndHeight > 0 && rsp.AvailStartHeight > rsp.LastEndHeight) ||
+		(rsp.LastEndHeight == 0 && rsp.AvailStartHeight == 0) && rsp.AvailEndHeight <= rsp.NodeRewardHeight {
 		rsp.NeedCallReward = true
 	}
 

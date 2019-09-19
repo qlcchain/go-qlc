@@ -13,8 +13,21 @@ import (
 const (
 	jsonRep = `
 	[
-		{"type":"function","name":"RepReward","inputs":[{"name":"account","type":"address"},{"name":"beneficial","type":"address"},{"name":"startHeight","type":"uint64"},{"name":"endHeight","type":"uint64"},{"name":"rewardBlocks","type":"uint64"}]},
-		{"type":"variable","name":"RepRewardInfo","inputs":[{"name":"beneficial","type":"address"},{"name":"startHeight","type":"uint64"},{"name":"endHeight","type":"uint64"},{"name":"rewardBlocks","type":"uint64"}]}
+		{"type":"function","name":"RepReward","inputs":[
+			{"name":"account","type":"address"},
+			{"name":"beneficial","type":"address"},
+			{"name":"startHeight","type":"uint64"},
+			{"name":"endHeight","type":"uint64"},
+			{"name":"rewardBlocks","type":"uint64"},
+			{"name":"rewardAmount","type":"balance"}
+		]},
+		{"type":"variable","name":"RepRewardInfo","inputs":[
+			{"name":"beneficial","type":"address"},
+			{"name":"startHeight","type":"uint64"},
+			{"name":"endHeight","type":"uint64"},
+			{"name":"rewardBlocks","type":"uint64"},
+			{"name":"rewardAmount","type":"balance"}
+		]}
 	]`
 
 	MethodNameRepReward       = "RepReward"
