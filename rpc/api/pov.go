@@ -907,6 +907,7 @@ func (api *PovApi) StopMining() error {
 }
 
 type PovApiGetMiningInfo struct {
+	SyncState        int             `json:"syncState"`
 	MinerAddr        string          `json:"minerAddr"`
 	AlgoName         string          `json:"algoName"`
 	AlgoEfficiency   uint            `json:"algoEfficiency"`
@@ -945,6 +946,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	algoType := outArgs["minerAlgo"].(types.PovAlgoType)
 
 	apiRsp := new(PovApiGetMiningInfo)
+	apiRsp.SyncState = outArgs["syncState"].(int)
 	if !minerAddr.IsZero() {
 		apiRsp.MinerAddr = minerAddr.String()
 	}

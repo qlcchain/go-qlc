@@ -254,6 +254,8 @@ func (w *PovWorker) GetMiningInfo(in interface{}, out interface{}) {
 	//inArgs := in.(map[interface{}]interface{})
 	outArgs := out.(map[interface{}]interface{})
 
+	outArgs["syncState"] = int(w.miner.GetSyncState())
+
 	latestBlock := w.GetChain().LatestBlock()
 
 	outArgs["latestBlock"] = latestBlock
