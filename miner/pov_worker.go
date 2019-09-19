@@ -26,13 +26,17 @@ type PovWorker struct {
 	algoType      types.PovAlgoType
 	cpuMining     bool
 
-	mineBlockPool map[types.Hash]*types.PovMineBlock
-	curMineBlock  *types.PovMineBlock
-	preMineHeight uint64
-	preMineTime   time.Time
-	muxMineBlock  sync.Mutex
+	mineBlockPool   map[types.Hash]*types.PovMineBlock
+	minerAlgoBlocks map[types.Address]map[types.PovAlgoType]*PovMinerAlgoBlock
+	lastMineHeight  uint64
+	muxMineBlock    sync.Mutex
 
 	quitCh chan struct{}
+}
+
+type PovMinerAlgoBlock struct {
+	curMineBlock *types.PovMineBlock
+	lastMineTime time.Time
 }
 
 func NewPovWorker(miner *Miner) *PovWorker {
@@ -43,6 +47,7 @@ func NewPovWorker(miner *Miner) *PovWorker {
 		quitCh: make(chan struct{}),
 	}
 	worker.mineBlockPool = make(map[types.Hash]*types.PovMineBlock)
+	worker.minerAlgoBlocks = make(map[types.Address]map[types.PovAlgoType]*PovMinerAlgoBlock)
 
 	return worker
 }
@@ -357,30 +362,39 @@ func (w *PovWorker) generateBlock(minerAddr types.Address, algoType types.PovAlg
 	var err error
 
 	latestHeader := w.GetChain().LatestHeader()
-	if w.curMineBlock == nil ||
-		w.preMineHeight != latestHeader.GetHeight() ||
-		time.Now().After(w.preMineTime.Add(30*time.Second)) {
 
-		if w.preMineHeight != latestHeader.GetHeight() {
-			w.curMineBlock = nil
-			w.mineBlockPool = nil
-		}
+	// reset all pending blocks when best chain changed
+	if w.lastMineHeight != latestHeader.GetHeight() {
+		w.mineBlockPool = make(map[types.Hash]*types.PovMineBlock)
+		w.minerAlgoBlocks = make(map[types.Address]map[types.PovAlgoType]*PovMinerAlgoBlock)
 
-		w.curMineBlock, err = w.newBlockTemplate(minerAddr, algoType)
+		w.lastMineHeight = latestHeader.GetHeight()
+	}
+
+	var curMinerAlgoBlk *PovMinerAlgoBlock
+	curMinerAlgos := w.minerAlgoBlocks[minerAddr]
+	if curMinerAlgos == nil {
+		curMinerAlgos = make(map[types.PovAlgoType]*PovMinerAlgoBlock)
+		w.minerAlgoBlocks[minerAddr] = curMinerAlgos
+	}
+	curMinerAlgoBlk = curMinerAlgos[algoType]
+	if curMinerAlgoBlk == nil {
+		curMinerAlgoBlk = new(PovMinerAlgoBlock)
+		curMinerAlgos[algoType] = curMinerAlgoBlk
+	}
+
+	if curMinerAlgoBlk.curMineBlock == nil ||
+		time.Now().After(curMinerAlgoBlk.lastMineTime.Add(30*time.Second)) {
+		curMinerAlgoBlk.curMineBlock, err = w.newBlockTemplate(minerAddr, algoType)
 		if err != nil {
 			return nil, err
 		}
+		curMinerAlgoBlk.lastMineTime = time.Now()
 
-		if w.mineBlockPool == nil {
-			w.mineBlockPool = make(map[types.Hash]*types.PovMineBlock)
-		}
-		w.mineBlockPool[w.curMineBlock.WorkHash] = w.curMineBlock
-
-		w.preMineHeight = latestHeader.GetHeight()
-		w.preMineTime = time.Now()
+		w.mineBlockPool[curMinerAlgoBlk.curMineBlock.WorkHash] = curMinerAlgoBlk.curMineBlock
 	}
 
-	return w.curMineBlock, nil
+	return curMinerAlgoBlk.curMineBlock, nil
 }
 
 func (w *PovWorker) findBlockInPool(workHash types.Hash) *types.PovMineBlock {
