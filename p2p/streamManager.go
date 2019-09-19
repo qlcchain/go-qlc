@@ -10,23 +10,37 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
+const (
+	MaxStreamNumForPublicNet = 50
+	MaxStreamNumForIntranet  = 8
+)
+
 // StreamManager manages all streams
 type StreamManager struct {
-	mu         sync.Mutex
-	allStreams *sync.Map
-	node       *QlcNode
+	mu               sync.Mutex
+	allStreams       *sync.Map
+	activePeersCount int32
+	maxStreamNum     int32
+	node             *QlcNode
 }
 
 // NewStreamManager return a new stream manager
 func NewStreamManager() *StreamManager {
 	return &StreamManager{
-		allStreams: new(sync.Map),
+		allStreams:       new(sync.Map),
+		activePeersCount: 0,
 	}
 }
 
-// SetQlcService set netService
-func (sm *StreamManager) SetQlcNode(node *QlcNode) {
+//SetQlcService set netService
+func (sm *StreamManager) SetQlcNodeAndMaxStreamNum(node *QlcNode) {
 	sm.node = node
+	if node.localNetAttribute == PublicNet {
+		sm.maxStreamNum = MaxStreamNumForPublicNet
+	}
+	if node.localNetAttribute == Intranet {
+		sm.maxStreamNum = MaxStreamNumForIntranet
+	}
 }
 
 // Add a new stream into the stream manager
@@ -38,9 +52,12 @@ func (sm *StreamManager) Add(s network.Stream) {
 // AddStream into the stream manager
 func (sm *StreamManager) AddStream(stream *Stream) {
 
-	//sm.mu.Lock()
-	//defer sm.mu.Unlock()
-
+	if sm.activePeersCount >= sm.maxStreamNum {
+		if stream.stream != nil {
+			_ = stream.stream.Close()
+		}
+		return
+	}
 	// check & close old stream
 	if v, ok := sm.allStreams.Load(stream.pid.Pretty()); ok {
 		old, _ := v.(*Stream)
@@ -48,7 +65,7 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 		sm.node.logger.Info("Removing old stream.")
 
 		sm.allStreams.Delete(old.pid.Pretty())
-
+		sm.activePeersCount--
 		if old.stream != nil {
 			if err := old.stream.Close(); err != nil {
 				sm.node.logger.Error("stream close error")
@@ -57,7 +74,7 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 	}
 
 	sm.node.logger.Infof("Added a new stream:[%s]", stream.pid.Pretty())
-
+	sm.activePeersCount++
 	sm.allStreams.Store(stream.pid.Pretty(), stream)
 	stream.StartLoop()
 }
@@ -71,6 +88,7 @@ func (sm *StreamManager) RemoveStream(s *Stream) {
 		}
 		sm.node.logger.Debugf("Removing a stream:[%s]", s.pid.Pretty())
 		sm.allStreams.Delete(s.pid.Pretty())
+		sm.activePeersCount--
 	}
 }
 

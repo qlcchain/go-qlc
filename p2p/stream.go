@@ -26,7 +26,9 @@ const (
 	MessagePriorityLow
 )
 
-const MaxPingTimeOutCount = 5
+const (
+	MaxPingTimeOutTimes = 5
+)
 
 // Stream define the structure of a stream in p2p network
 type Stream struct {
@@ -42,6 +44,7 @@ type Stream struct {
 	lowPriorityMessageChan    chan *QlcMessage
 	rtt                       time.Duration
 	pingTimeoutCount          int
+	remoteNetAttribute        netAttribute
 }
 
 // NewStream return a new Stream

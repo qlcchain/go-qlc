@@ -29,24 +29,30 @@ var (
 // p2p protocol version
 var p2pVersion = 5
 
-//var logger = log.NewLogger("p2p")
+type netAttribute byte
+
+const (
+	PublicNet netAttribute = iota
+	Intranet
+)
 
 type QlcNode struct {
-	ID             peer.ID
-	privateKey     crypto.PrivKey
-	cfg            *config.Config
-	ctx            context.Context
-	cancel         context.CancelFunc
-	localDiscovery localdiscovery.Service
-	host           host.Host
-	peerStore      peerstore.Peerstore
-	boostrapAddrs  []string
-	streamManager  *StreamManager
-	ping           *Pinger
-	dis            *discovery.RoutingDiscovery
-	kadDht         *dht.IpfsDHT
-	netService     *QlcService
-	logger         *zap.SugaredLogger
+	ID                peer.ID
+	privateKey        crypto.PrivKey
+	cfg               *config.Config
+	ctx               context.Context
+	cancel            context.CancelFunc
+	localDiscovery    localdiscovery.Service
+	host              host.Host
+	peerStore         peerstore.Peerstore
+	boostrapAddrs     []string
+	streamManager     *StreamManager
+	ping              *Pinger
+	dis               *discovery.RoutingDiscovery
+	kadDht            *dht.IpfsDHT
+	netService        *QlcService
+	logger            *zap.SugaredLogger
+	localNetAttribute netAttribute
 }
 
 // NewNode return new QlcNode according to the config.
@@ -66,7 +72,6 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		return nil, err
 	}
 	node.privateKey = privateKey
-	node.streamManager.SetQlcNode(node)
 	node.ID, err = peer.IDFromPrivateKey(privateKey)
 	if err != nil {
 		return nil, err
@@ -81,12 +86,14 @@ func (node *QlcNode) startHost() error {
 		node.ctx,
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(node.privateKey),
-		libp2p.NATPortMap(),
+		//libp2p.NATPortMap(),
 		libp2p.DefaultMuxers,
 	)
 	if err != nil {
 		return err
 	}
+	ms := qlcHost.Addrs()
+	node.localNetAttribute = judgeNetAttribute(ms)
 	qlcHost.SetStreamHandler(QlcProtocolID, node.handleStream)
 	node.host = qlcHost
 	kadDht, err := dht.New(node.ctx, node.host)
@@ -103,6 +110,7 @@ func (node *QlcNode) startHost() error {
 	if err := node.peerStore.AddPubKey(node.ID, node.privateKey.GetPublic()); err != nil {
 		return err
 	}
+	node.streamManager.SetQlcNodeAndMaxStreamNum(node)
 	return nil
 }
 
@@ -185,7 +193,7 @@ func (node *QlcNode) startPingService() {
 					case <-time.After(time.Second * 4):
 						node.logger.Error("failed to receive ping")
 						stream.pingTimeoutCount++
-						if stream.pingTimeoutCount == MaxPingTimeOutCount {
+						if stream.pingTimeoutCount == MaxPingTimeOutTimes {
 							_ = stream.close()
 						}
 					}
