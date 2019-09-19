@@ -46,9 +46,10 @@ var (
 	RewardsAddress, _    = HexToAddress("qlc_3oinqggowa7f1rsjfmib476ggz6s4fp8578odjzerzztkrifqkqdz5zjztb3")
 
 	// Builtin contract addresses without private key hold by anyone
-	MinerAddress, _ = GenerateBuiltinContractAddress(21)
+	MinerAddress, _     = GenerateBuiltinContractAddress(21)
+	BlackHoleAddress, _ = GenerateBuiltinContractAddress(22)
 
-	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress}
+	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress, BlackHoleAddress}
 
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
 	// alphabet.

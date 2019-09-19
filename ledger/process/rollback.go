@@ -2,7 +2,10 @@ package process
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
+
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -635,11 +638,24 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 
 	if blockCur.GetType() == types.ContractReward {
 		if c, ok, err := contract.GetChainContract(types.Address(blockLink.Link), blockLink.Data); ok && err == nil {
-			if pendingKey, pendingInfo, err := c.DoPending(blockLink); err == nil && pendingKey != nil {
-				lv.logger.Debug("add contractreward pending , ", pendingKey)
-				if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-					return err
+			switch v := c.(type) {
+			case contract.ChainContractV1:
+				if pendingKey, pendingInfo, err := v.DoPending(blockLink); err == nil && pendingKey != nil {
+					lv.logger.Debug("add contract reward pending , ", pendingKey)
+					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+						return err
+					}
 				}
+			case contract.ChainContractV2:
+				vmCtx := vmstore.NewVMContext(lv.l)
+				if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, blockLink); err == nil && pendingKey != nil {
+					lv.logger.Debug("contractSend add pending , ", pendingKey)
+					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+						return err
+					}
+				}
+			default:
+				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 			}
 		}
 		return nil
@@ -664,11 +680,24 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, txn db.StoreTxn) error {
 	if blockCur.GetType() == types.ContractSend {
 		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.Data); ok && err == nil {
-			if pendingKey, _, err := c.DoPending(blockCur); err == nil && pendingKey != nil {
-				lv.logger.Debug("delete contractsend pending , ", pendingKey)
-				if err := lv.l.DeletePending(pendingKey, txn); err != nil {
-					return err
+			switch v := c.(type) {
+			case contract.ChainContractV1:
+				if pendingKey, _, err := v.DoPending(blockCur); err == nil && pendingKey != nil {
+					lv.logger.Debug("delete contract send pending , ", pendingKey)
+					if err := lv.l.DeletePending(pendingKey, txn); err != nil {
+						return err
+					}
 				}
+			case contract.ChainContractV2:
+				vmCtx := vmstore.NewVMContext(lv.l)
+				if pendingKey, _, err := v.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
+					lv.logger.Debug("delete contract send pending , ", pendingKey)
+					if err := lv.l.DeletePending(pendingKey, txn); err != nil {
+						return err
+					}
+				}
+			default:
+				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 			}
 		}
 		return nil
