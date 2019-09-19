@@ -245,9 +245,15 @@ func getBtcCoinbase(msgBlockHash types.Hash) *types.PovBtcTx {
 		Sequence:        types.PovMaxTxInSequenceNum,
 	}
 
+	coinBaseTxout := types.PovBtcTxOut{
+		Value:    1,
+		PkScript: []byte{0x51}, //OP_TRUE
+	}
+
 	btcTxin := make([]*types.PovBtcTxIn, 0)
 	btcTxin = append(btcTxin, &coinBaseTxin)
 	btcTxout := make([]*types.PovBtcTxOut, 0)
+	btcTxout = append(btcTxout, &coinBaseTxout)
 
 	coinbase := types.NewPovBtcTx(btcTxin, btcTxout)
 

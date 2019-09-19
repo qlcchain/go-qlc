@@ -228,7 +228,7 @@ func (dps *DPoS) onPovHeightChange(pb *types.PovBlock) {
 
 		if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
 			dps.curPovHeight%common.DPosOnlinePeriod >= common.DPosOnlineSectionLeft &&
-				dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight {
+			dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight {
 			dps.sendOnline(dps.curPovHeight)
 			dps.lastSendHeight = pb.Header.BasHdr.Height
 		}

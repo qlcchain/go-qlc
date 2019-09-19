@@ -120,8 +120,8 @@ func (ti *PovCoinBaseTxIn) Deserialize(text []byte) error {
 }
 
 type PovCoinBaseTxOut struct {
-	Address Address `msg:"a,extension" json:"address"`
 	Value   Balance `msg:"v,extension" json:"value"`
+	Address Address `msg:"a,extension" json:"address"`
 }
 
 func (to *PovCoinBaseTxOut) Copy() *PovCoinBaseTxOut {
