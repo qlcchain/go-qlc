@@ -10,12 +10,14 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 )
 
-var dps *DPoS
-
-func init() {
+func getTestDpos() *DPoS {
 	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
 	cm := config.NewCfgManager(dir)
-	dps = NewDPoS(cm.ConfigFile)
+	return NewDPoS(cm.ConfigFile)
+}
+
+func TestGetSeq(t *testing.T) {
+	dps := getTestDpos()
 
 	seq1 := dps.getSeq(ackTypeCommon)
 	if seq1 != 0 {
@@ -43,6 +45,8 @@ func init() {
 }
 
 func TestGetAckType(t *testing.T) {
+	dps := getTestDpos()
+
 	type1 := dps.getAckType(0x10000003)
 	if type1 != ackTypeFindRep {
 		t.Errorf("expect:%d   get:%d", ackTypeFindRep, type1)
@@ -57,6 +61,7 @@ func TestGetAckType(t *testing.T) {
 }
 
 func TestOnFrontierConfirmed(t *testing.T) {
+	dps := getTestDpos()
 	block := mock.StateBlockWithoutWork()
 	hash := block.GetHash()
 	dps.frontiersStatus.Store(hash, frontierChainConfirmed)
