@@ -35,6 +35,7 @@ const (
 	AutoReceiveService = "autoReceiveService"
 	RollbackService    = "rollbackService"
 	MetricsService     = "metricsService"
+	ChainManageService = "chainManageService"
 )
 
 type serviceManager interface {
@@ -70,6 +71,36 @@ func NewChainContext(cfgFile string) *ChainContext {
 			services: newServiceContainer(),
 			cfgFile:  cfgFile,
 			chainId:  id,
+		}
+		cache.Set(id, sr)
+		return sr
+	}
+}
+
+func NewChainContextWithOriginalContext(cc *ChainContext) *ChainContext {
+	cfgFile := cc.cfgFile
+	var dataDir string
+	if len(cfgFile) == 0 {
+		dataDir = config.DefaultDataDir()
+		cfgFile = path.Join(dataDir, config.QlcConfigFile)
+	} else {
+		cm := config.NewCfgManagerWithFile(cfgFile)
+		dataDir, _ = cm.ParseDataDir()
+	}
+	id := types.HashData([]byte(dataDir)).String()
+	if v, ok := cache.GetStringKey(id); ok {
+		return v.(*ChainContext)
+	} else {
+		c, err := cc.Config()
+		if err != nil {
+
+		}
+		sr := &ChainContext{
+			services: newServiceContainer(),
+			cfgFile:  cfgFile,
+			chainId:  id,
+			cm:       config.NewCfgManagerWithConfig(cfgFile, c),
+			accounts: cc.accounts,
 		}
 		cache.Set(id, sr)
 		return sr

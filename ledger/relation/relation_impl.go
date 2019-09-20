@@ -17,6 +17,7 @@ import (
 type Relation struct {
 	store         db.DbStore
 	eb            event.EventBus
+	dir           string
 	logger        *zap.SugaredLogger
 	addBlkChan    chan *types.StateBlock
 	deleteBlkChan chan types.Hash
@@ -40,33 +41,47 @@ type blocksMessage struct {
 }
 
 var (
-	once     sync.Once
-	relation *Relation
+	cache = make(map[string]*Relation)
+	lock  = sync.RWMutex{}
 )
 
 func NewRelation(cfgFile string) (*Relation, error) {
-	var err error
-	once.Do(func() {
-		store := new(db.DBSQL)
+	lock.Lock()
+	defer lock.Unlock()
+	if _, ok := cache[cfgFile]; !ok {
+		//store := new(db.DBSQL)
 		cc := context.NewChainContext(cfgFile)
 		cfg, _ := cc.Config()
-		store, err = db.NewSQLDB(cfg)
-		relation = &Relation{store: store,
+		store, err := db.NewSQLDB(cfg)
+		if err != nil {
+			return nil, err
+		}
+		relation := &Relation{store: store,
 			eb:            cc.EventBus(),
+			dir:           cfgFile,
 			addBlkChan:    make(chan *types.StateBlock, 102400),
 			deleteBlkChan: make(chan types.Hash, 65535),
 			logger:        log.NewLogger("relation")}
 		go relation.processBlocks()
-	})
-	if err != nil {
-		return nil, err
+		cache[cfgFile] = relation
 	}
-	return relation, nil
+	//cache[dir].logger = log.NewLogger("ledger")
+	return cache[cfgFile], nil
 }
 
 func (r *Relation) Close() error {
-	r.logger.Debugf("close sqlite, %p, ", r.store)
-	return r.store.Close()
+	lock.Lock()
+	defer lock.Unlock()
+	if _, ok := cache[r.dir]; ok {
+		err := r.store.Close()
+		if err != nil {
+			return err
+		}
+		r.logger.Info("sqlite closed")
+		delete(cache, r.dir)
+		return err
+	}
+	return nil
 }
 
 func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) ([]types.Hash, error) {
