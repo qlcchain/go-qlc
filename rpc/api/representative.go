@@ -179,12 +179,6 @@ func (m *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		return nil, errors.New("invalid reward param beneficial")
 	}
 
-	// check same start & end height exist in old reward infos
-	err := m.checkParamExistInOldRewardInfos(param)
-	if err != nil {
-		return nil, err
-	}
-
 	am, err := m.ledger.GetAccountMeta(param.Account)
 	if am == nil {
 		return nil, fmt.Errorf("rep account not exist, %s", err)

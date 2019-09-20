@@ -151,7 +151,7 @@ func (m *MinerReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (e
 		return fmt.Errorf("calc reward %d not equal param reward %v", calcRewardAmount, param.RewardAmount)
 	}
 
-	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks)
+	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 	if err != nil {
 		return err
 	}

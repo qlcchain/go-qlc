@@ -229,6 +229,7 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 			minerStat := dayStat.MinerStats[cbAddrStr]
 			if minerStat == nil {
 				minerStat = new(types.PovMinerStatItem)
+				minerStat.RewardAmount = types.NewBalance(0)
 				dayStat.MinerStats[cbAddrStr] = minerStat
 
 				minerStat.FirstHeight = header.GetHeight()

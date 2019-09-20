@@ -21,8 +21,8 @@ var (
 	PovChainMaxRetargetTimespan = PovChainRetargetTimespan * 4
 
 	POVChainBlocksPerHour = 3600 / PovChainBlockInterval
-	//POVChainBlocksPerDay  = POVChainBlocksPerHour * 24
-	POVChainBlocksPerDay = 20
+	POVChainBlocksPerDay  = POVChainBlocksPerHour * 24
+	//POVChainBlocksPerDay = 20
 
 	PovMinerPledgeAmountMin         = types.NewBalance(100000000000000)
 	PovMinerVerifyHeightStart       = uint64(POVChainBlocksPerDay * 1)

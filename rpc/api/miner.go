@@ -81,6 +81,7 @@ func (m *MinerApi) GetHistoryRewardInfos(coinbase types.Address) (*MinerHistoryR
 
 	apiRsp := new(MinerHistoryRewardInfo)
 	apiRsp.RewardInfos = rewardInfos
+	apiRsp.AllRewardAmount = types.NewBalance(0)
 
 	if len(rewardInfos) > 0 {
 		apiRsp.FirstRewardHeight = rewardInfos[0].StartHeight
