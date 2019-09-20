@@ -65,7 +65,7 @@ func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
 }
 
 func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
-	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks)
+	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 }
 
 func (m *MinerApi) GetHistoryRewardInfos(coinbase types.Address) (*MinerHistoryRewardInfo, error) {
@@ -155,6 +155,12 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		return nil, errors.New("invalid reward param beneficial")
 	}
 
+	// check same start & end height exist in old reward infos
+	err := m.checkParamExistInOldRewardInfos(param)
+	if err != nil {
+		return nil, err
+	}
+
 	amCb, err := m.ledger.GetAccountMeta(param.Coinbase)
 	if amCb == nil {
 		return nil, fmt.Errorf("coinbase account not exist, %s", err)
@@ -163,11 +169,6 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	tmCb := amCb.Token(common.ChainToken())
 	if tmCb == nil {
 		return nil, fmt.Errorf("coinbase account does not have chain token, %s", err)
-	}
-
-	amBnf, err := m.ledger.GetAccountMeta(param.Beneficial)
-	if amBnf == nil {
-		return nil, fmt.Errorf("invalid beneficial account, %s", err)
 	}
 
 	data, err := m.GetRewardData(param)
@@ -250,4 +251,24 @@ func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.Sta
 	}
 
 	return m.GetRewardRecvBlock(input)
+}
+
+func (m *MinerApi) checkParamExistInOldRewardInfos(param *RewardParam) error {
+	ctx := vmstore.NewVMContext(m.ledger)
+
+	oldRewardInfos, err := cabi.GetMinerRewardInfosByCoinbase(ctx, param.Coinbase)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return errors.New("failed to get storage for miner")
+	}
+
+	for _, oldRewardInfo := range oldRewardInfos {
+		if param.StartHeight >= oldRewardInfo.StartHeight && param.StartHeight <= oldRewardInfo.EndHeight {
+			return fmt.Errorf("start height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
+		}
+		if param.EndHeight >= oldRewardInfo.StartHeight && param.EndHeight <= oldRewardInfo.EndHeight {
+			return fmt.Errorf("end height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
+		}
+	}
+
+	return nil
 }

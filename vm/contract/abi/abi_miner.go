@@ -14,8 +14,21 @@ import (
 const (
 	jsonMiner = `
 	[
-		{"type":"function","name":"MinerReward","inputs":[{"name":"coinbase","type":"address"},{"name":"beneficial","type":"address"},{"name":"startHeight","type":"uint64"},{"name":"endHeight","type":"uint64"},{"name":"rewardBlocks","type":"uint64"}]},
-		{"type":"variable","name":"MinerRewardInfo","inputs":[{"name":"beneficial","type":"address"},{"name":"startHeight","type":"uint64"},{"name":"endHeight","type":"uint64"},{"name":"rewardBlocks","type":"uint64"}]}
+		{"type":"function","name":"MinerReward","inputs":[
+			{"name":"coinbase","type":"address"},
+			{"name":"beneficial","type":"address"},
+			{"name":"startHeight","type":"uint64"},
+			{"name":"endHeight","type":"uint64"},
+			{"name":"rewardBlocks","type":"uint64"},
+			{"name":"rewardAmount","type":"balance"}
+		]},
+		{"type":"variable","name":"MinerRewardInfo","inputs":[
+			{"name":"beneficial","type":"address"},
+			{"name":"startHeight","type":"uint64"},
+			{"name":"endHeight","type":"uint64"},
+			{"name":"rewardBlocks","type":"uint64"},
+			{"name":"rewardAmount","type":"balance"}
+		]}
 	]`
 
 	MethodNameMinerReward = "MinerReward"
@@ -126,7 +139,7 @@ func MinerCalcRewardEndHeight(startHeight uint64, maxEndHeight uint64) uint64 {
 	if endHeight > maxEndHeight {
 		endHeight = maxEndHeight
 	}
-	endHeight = MinerRoundPovHeight(endHeight, uint64(common.PovMinerRewardHeightRound))
+	endHeight = MinerRoundPovHeight(endHeight, common.PovMinerRewardHeightRound)
 	if endHeight < common.PovMinerRewardHeightStart {
 		return 0
 	}

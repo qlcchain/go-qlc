@@ -77,7 +77,7 @@ func (m *RepReward) GetAvailRewardInfo(ctx *vmstore.VMContext, account types.Add
 }
 
 func (m *RepReward) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
+	return types.NewBalance(0), nil
 }
 
 func (m *RepReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err error) {
@@ -112,12 +112,6 @@ func (m *RepReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err
 
 	if param.EndHeight > nodeRewardHeight {
 		return fmt.Errorf("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
-	}
-
-	// check same start & end height exist in old reward infos
-	err = m.checkParamExistInOldRewardInfos(ctx, param)
-	if err != nil {
-		return err
 	}
 
 	calcRewardBlocks, calcRewardAmount, err := m.calcRewardBlocksByHeight(ctx, param.Account, param.StartHeight, param.EndHeight)
@@ -164,7 +158,7 @@ func (m *RepReward) DoPending(block *types.StateBlock) (*types.PendingKey, *type
 func (m *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.RepRewardParam)
 	exist := false
-	var calcRewardAmount types.Balance
+	calcRewardAmount := types.NewBalance(0)
 	var calcRewardBlocks uint64
 
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, input.Data)
@@ -204,13 +198,13 @@ func (m *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	block.Token = common.GasToken()
 	block.Link = input.GetHash()
 	block.Data = newRepData
+	block.PoVHeight = input.PoVHeight
 
 	// pledge fields only for QLC token
 	block.Vote = types.NewBalance(0)
 	block.Oracle = types.NewBalance(0)
 	block.Storage = types.NewBalance(0)
 	block.Network = types.NewBalance(0)
-	block.PoVHeight = input.PoVHeight
 
 	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
 

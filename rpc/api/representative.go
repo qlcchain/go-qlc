@@ -151,7 +151,7 @@ func (m *RepApi) checkParamExistInOldRewardInfos(param *RepRewardParam) error {
 
 	oldRewardInfos, err := cabi.GetRepRewardInfosByAccount(ctx, param.Account)
 	if err != nil && err != vmstore.ErrStorageNotFound {
-		return errors.New("failed to get storage for miner")
+		return errors.New("failed to get storage for repReward")
 	}
 
 	for _, oldRewardInfo := range oldRewardInfos {
