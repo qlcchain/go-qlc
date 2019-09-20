@@ -8,8 +8,9 @@
 package monitor
 
 import (
-	"github.com/rcrowley/go-metrics"
 	"testing"
+
+	"github.com/rcrowley/go-metrics"
 )
 
 func TestCpuInfo(t *testing.T) {
@@ -25,7 +26,7 @@ func TestCpuInfo(t *testing.T) {
 
 func TestCaptureRuntimeCpuStatsOnce(t *testing.T) {
 	r := SystemRegistry
-	CaptureRuntimeCpuStatsOnce(r)
+	CaptureRuntimeCPUStatsOnce(r)
 	r.Each(func(s string, i interface{}) {
 		switch v := i.(type) {
 		case metrics.GaugeFloat64:

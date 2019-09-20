@@ -4,8 +4,11 @@ package test
 
 import (
 	"encoding/hex"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/crypto/random"
+
+	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc/api"
@@ -34,7 +37,7 @@ func TestPledge(t *testing.T) {
 	}
 	b := types.NewAccount(beneficialPledgeBytes)
 	am := types.StringToBalance("1000000000")
-	NEP5tTxId := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	NEP5tTxId := random.RandomHexString(32)
 	pledgeParam := api.PledgeParam{
 		Beneficial:    b.Address(),
 		PledgeAddress: p.Address(),
@@ -64,6 +67,17 @@ func TestPledge(t *testing.T) {
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
+
+	err = client.Call(nil, "ledger_process", &send)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = client.Call(nil, "ledger_process", &reward)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	lv := process.NewLedgerVerifier(ls.Ledger)
 	r, _ := lv.Process(&send)
 	if r != process.Progress {
@@ -73,15 +87,7 @@ func TestPledge(t *testing.T) {
 	if r != process.Progress {
 		t.Fatal("process reward block error")
 	}
-	//err = client.Call(nil, "ledger_process", &send)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//
-	//err = client.Call(nil, "ledger_process", &reward)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
+
 	tm, err := ls.Ledger.GetAccountMeta(b.Address())
 	if !tm.CoinVote.Equal(am) {
 		t.Fatal("get voting fail")
@@ -121,11 +127,11 @@ func TestPledge(t *testing.T) {
 	//if err != nil {
 	//	t.Fatal(err)
 	//}
-	//fmt.Println(reward1.String())
 	//err = client.Call(nil, "ledger_process", &reward1)
 	//if err != nil {
 	//	t.Fatal(err)
 	//}
+	//t.Log(reward1.String())
 
 	//begin test nep5 txid,the nep5 Txid of each coinage contract should be different
 	pledgeParamTest := api.PledgeParam{

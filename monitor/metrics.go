@@ -8,17 +8,17 @@
 package monitor
 
 import (
-	"github.com/rcrowley/go-metrics"
 	"time"
+
+	"github.com/rcrowley/go-metrics"
 )
 
 var (
 	SystemRegistry      = metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "/system/")
-	PerformanceRegistry metrics.Registry
+	PerformanceRegistry = metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "/performance/")
 )
 
 func init() {
-	PerformanceRegistry = metrics.NewPrefixedRegistry("/performance/")
 	metrics.RegisterRuntimeMemStats(SystemRegistry)
 	metrics.RegisterDebugGCStats(SystemRegistry)
 	RegisterRuntimeCpuStats(SystemRegistry)

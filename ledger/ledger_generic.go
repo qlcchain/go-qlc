@@ -2,7 +2,8 @@
 // Usage:
 // - install gen, command is  ` go get github.com/cheekybits/genny
 // - create type in /common/types package, example: StateBlock, Hash
-// - generate code, command is ` cat ledger_generic.go | genny gen "GenericType=StateBlock GenericKey=Hash" > ledger_generic_gen.go `
+// - generate code, command is ` cat ledger_generic.go | genny gen "GenericType=StateBlock GenericKey=Hash" > ledger_type.go `
+// - generate testcase code, command is ` cat ledger_generic_test.go | genny gen "GenericType=StateBlock GenericKey=Hash" > ledger_type_test.go `
 
 package ledger
 
@@ -27,7 +28,7 @@ func (l *Ledger) AddGenericType(key types.GenericKey, value *types.GenericType, 
 
 	k, err := getKeyOfParts(idPrefixGenericType, key)
 	if err != nil {
-		return nil
+		return err
 	}
 	v, err := value.Serialize()
 	if err != nil {
@@ -95,7 +96,7 @@ func (l *Ledger) UpdateGenericType(key types.GenericKey, value *types.GenericTyp
 
 	k, err := getKeyOfParts(idPrefixGenericType, key)
 	if err != nil {
-		return nil
+		return err
 	}
 	v, err := value.Serialize()
 	if err != nil {
@@ -120,7 +121,7 @@ func (l *Ledger) AddOrUpdateGenericType(key types.GenericKey, value *types.Gener
 
 	k, err := getKeyOfParts(idPrefixGenericType, key)
 	if err != nil {
-		return nil
+		return err
 	}
 	v, err := value.Serialize()
 	if err != nil {

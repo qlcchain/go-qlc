@@ -4,12 +4,13 @@ package test
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/chain"
 
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
@@ -21,50 +22,85 @@ import (
 func TestOpenFork(t *testing.T) {
 	//node1
 	dir1 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cfgFile1, _ := config.DefaultConfig(dir1)
-	cfgFile1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
-	cfgFile1.P2P.Discovery.DiscoveryInterval = 3
-	cfgFile1.P2P.SyncInterval = 30
-	cfgFile1.LogLevel = "error"
-	cfgFile1.RPC.Enable = true
-	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfgFile1.P2P.ID.PeerID
+	ctx1, err := NewChain(dir1, func(cfg *config.Config) {
+		cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
+		cfg.P2P.Discovery.DiscoveryInterval = 3
+		cfg.P2P.SyncInterval = 30
+		cfg.LogLevel = "error"
+		cfg.RPC.Enable = true
+		cfg.PoV.PovEnabled = false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// node1
+	cfg1, err := ctx1.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfg1.P2P.ID.PeerID
+
+	// node2
 	dir2 := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
-	cfgFile2, _ := config.DefaultConfig(dir2)
-	cfgFile2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
-	cfgFile2.P2P.SyncInterval = 30
-	cfgFile2.LogLevel = "error"
-	cfgFile2.RPC.Enable = true
-	cfgFile2.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
-	cfgFile2.RPC.WSEnabled = false
-	cfgFile2.RPC.IPCEnabled = false
-	b2 := "/ip4/0.0.0.0/tcp/19742/ipfs/" + cfgFile2.P2P.ID.PeerID
+	ctx2, err := NewChain(dir2, func(cfg *config.Config) {
+		cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
+		cfg.P2P.SyncInterval = 30
+		cfg.LogLevel = "error"
+		cfg.RPC.Enable = true
+		cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
+		cfg.RPC.WSEnabled = false
+		cfg.RPC.IPCEnabled = false
+		cfg.PoV.PovEnabled = false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	cfgFile1.P2P.BootNodes = []string{b2}
-	cfgFile2.P2P.BootNodes = []string{b1}
+	cfg2, err := ctx2.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	cfgFile1Byte, _ := json.Marshal(cfgFile1)
-	fmt.Println("node1 config \n", string(cfgFile1Byte))
-	cfgFile2Byte, _ := json.Marshal(cfgFile2)
-	fmt.Println("node2 config \n", string(cfgFile2Byte))
+	b2 := "/ip4/0.0.0.0/tcp/19742/ipfs/" + cfg2.P2P.ID.PeerID
 
+	cfg1.P2P.BootNodes = []string{b2}
+	cfg2.P2P.BootNodes = []string{b1}
+
+	fmt.Println(" start node1....")
+	ctx1.SetAccounts([]*types.Account{testAccount})
+	_ = ctx1.Init(func() error {
+		return chain.RegisterServices(ctx1)
+	})
+	err = ctx1.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(" start node2....")
+	_ = ctx2.Init(func() error {
+		return chain.RegisterServices(ctx2)
+	})
+	err = ctx2.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		fmt.Println(" close servers")
-		closeServer(node1, t)
-		closeServer(node2, t)
+		_ = ctx1.Stop()
+		_ = ctx2.Stop()
 	}()
-	fmt.Println(" start node1....")
-	node1.dir = dir1
 
-	// start node1
-	initNode(node1, cfgFile1, []*types.Account{testAccount}, t)
+	ctx1.WaitForever()
+	ctx2.WaitForever()
+
+	//waiting all service start successful
 
 	// qlc_3n4i9jscmhcfy8ueph5eb15cc3fey55bn9jgh67pwrdqbpkwcsbu4iot7f7s
 	tPrivateKey := "a2bc57c1d9dc433a411d6bfff1a24538a4fbd7026edb13b2909d9a60dff5f3c6d0503c72a9bd4df1b6cb3c6c4806a505acf0c69a1e2e790b6e61774da5c5653b"
 	tBytes, _ := hex.DecodeString(tPrivateKey)
 	tAccount := types.NewAccount(tBytes)
-	client1, err := node1.rPCService.RPC().Attach()
+	rpc1, _ := RPC(ctx1)
+	client1, err := rpc1.Attach()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,8 +119,10 @@ func TestOpenFork(t *testing.T) {
 		t.Fatal(err)
 	}
 	b := false
+
+	l1, _ := Ledger(ctx1)
 	for !b {
-		b1, err := node1.ledgerService.Ledger.HasStateBlockConfirmed(openblock1.GetHash())
+		b1, err := l1.HasStateBlockConfirmed(openblock1.GetHash())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -94,16 +132,13 @@ func TestOpenFork(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
-	fmt.Println(" start node2....")
-	node2.dir = dir2
-
-	// start node2
-	initNode(node2, cfgFile2, nil, t)
-	client2, err := node2.rPCService.RPC().Attach()
+	rpc2, _ := RPC(ctx2)
+	client2, err := rpc2.Attach()
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifier := process.NewLedgerVerifier(node2.ledgerService.Ledger)
+	l2, _ := Ledger(ctx2)
+	verifier := process.NewLedgerVerifier(l2)
 	if err := verifier.BlockProcess(&sendBlock1); err != nil {
 		t.Fatal(err)
 	}
@@ -119,11 +154,11 @@ func TestOpenFork(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(30 * time.Second)
-	tm1, err := node1.ledgerService.Ledger.GetTokenMeta(tAccount.Address(), common.ChainToken())
+	tm1, err := l1.GetTokenMeta(tAccount.Address(), common.ChainToken())
 	if err != nil {
 		t.Fatal(err)
 	}
-	tm2, err := node2.ledgerService.Ledger.GetTokenMeta(tAccount.Address(), common.ChainToken())
+	tm2, err := l2.GetTokenMeta(tAccount.Address(), common.ChainToken())
 	if err != nil {
 		t.Fatal(err)
 	}

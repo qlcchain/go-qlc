@@ -1,9 +1,10 @@
 package p2p
 
 import (
-	"github.com/qlcchain/go-qlc/common"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
@@ -111,5 +112,9 @@ func (dp *Dispatcher) PutMessage(msg *Message) {
 			return
 		}
 	}
-	dp.receivedMessageCh <- msg
+	select {
+	case dp.receivedMessageCh <- msg:
+	default:
+		dp.logger.Debugf("to many message")
+	}
 }

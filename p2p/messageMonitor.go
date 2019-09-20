@@ -3,14 +3,13 @@ package p2p
 import (
 	"context"
 	"errors"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
-
 	"github.com/bluele/gcache"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
@@ -138,8 +137,11 @@ func (ms *MessageService) processBlockCache() {
 		if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
 			_ = ms.ledger.DeleteBlockCache(blk.GetHash())
 		} else {
-			ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
-			ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
+			b, _ := ms.ledger.HasStateBlock(blk.GetHash())
+			if b {
+				ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
+				ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
+			}
 		}
 	}
 }
@@ -268,7 +270,7 @@ func (ms *MessageService) checkMessageCache() {
 				value.resendTimes++
 				continue
 			}
-			stream.messageChan <- value.data
+			stream.SendMessageToChan(value.data)
 			value.resendTimes++
 			if value.resendTimes > msgResendMaxTimes {
 				csTemp = append(csTemp, cs[i])

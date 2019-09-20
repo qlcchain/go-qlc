@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -28,10 +29,12 @@ const (
 	P2PService         = "P2PService"
 	ConsensusService   = "consensusService"
 	RPCService         = "rpcService"
-	IndexService       = "IndexService"
+	IndexService       = "indexService"
 	PovService         = "povService"
 	MinerService       = "minerService"
 	AutoReceiveService = "autoReceiveService"
+	RollbackService    = "rollbackService"
+	MetricsService     = "metricsService"
 )
 
 type serviceManager interface {
@@ -124,7 +127,7 @@ func (cc *ChainContext) Start() error {
 	cc.services.Iter(func(name string, service common.Service) error {
 		err := service.Start()
 		if err != nil {
-			return err
+			return fmt.Errorf("%s, %s", name, err)
 		}
 		fmt.Printf("%s start successfully.\n", name)
 		return nil
@@ -192,6 +195,26 @@ func (cc *ChainContext) AllServices() ([]common.Service, error) {
 	return services, nil
 }
 
+func (cc *ChainContext) WaitForever() {
+	count := len(cc.services.services)
+	for {
+		counter := 0
+		cc.services.Iter(func(name string, service common.Service) error {
+			if service.Status() == int32(common.Started) {
+				counter++
+			} else {
+				fmt.Println(name, service.Status())
+			}
+			// return fmt.Errorf("%s, %d", name, service.Status())
+			return nil
+		})
+		if counter == count {
+			return
+		}
+		time.Sleep(time.Duration(50) * time.Millisecond)
+	}
+}
+
 func (cc *ChainContext) Service(name string) (common.Service, error) {
 	return cc.services.Get(name)
 }
@@ -228,7 +251,8 @@ func (cc *ChainContext) ConfigManager() (*config.CfgManager, error) {
 	defer cc.locker.Unlock()
 	if cc.cm == nil {
 		cc.cm = config.NewCfgManagerWithFile(cc.cfgFile)
-		_, err := cc.cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4())
+		_, err := cc.cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4(),
+			config.NewMigrationV4ToV5())
 		if err != nil {
 			return nil, err
 		}

@@ -336,3 +336,41 @@ func (m MigrationV1ToV7) StartVersion() int {
 func (m MigrationV1ToV7) EndVersion() int {
 	return 7
 }
+
+type MigrationV7ToV8 struct {
+}
+
+func (m MigrationV7ToV8) Migrate(txn db.StoreTxn) error {
+	b, err := checkVersion(m, txn)
+	if err != nil {
+		return err
+	}
+	if b {
+		fmt.Println("migrate ledger v7 to v8 ")
+		if err := txn.Drop([]byte{idPrefixBlockCache}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixBlockCacheAccount}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixUncheckedBlockPrevious}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixUncheckedBlockLink}); err != nil {
+			return err
+		}
+		if err := txn.Drop([]byte{idPrefixUncheckedTokenInfo}); err != nil {
+			return err
+		}
+		return updateVersion(m, txn)
+	}
+	return nil
+}
+
+func (m MigrationV7ToV8) StartVersion() int {
+	return 7
+}
+
+func (m MigrationV7ToV8) EndVersion() int {
+	return 8
+}

@@ -15,7 +15,7 @@ func DefaultConfigV4(dir string) (*ConfigV4, error) {
 	var cfg ConfigV4
 	cfg3, _ := DefaultConfigV3(dir)
 	cfg.ConfigV3 = *cfg3
-	cfg.Version = configVersion
+	cfg.Version = 4
 
 	cfg.RPC.PublicModules = append(cfg.RPC.PublicModules, "pov", "miner")
 

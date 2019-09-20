@@ -24,7 +24,7 @@ require (
 	github.com/google/go-cmp v0.3.0
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.1
-	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e // indirect
+	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
 	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/jmoiron/sqlx v0.0.0-20190426145356-38398a30ed8516ffda
 	github.com/lib/pq v1.1.1 // indirect
@@ -47,7 +47,7 @@ require (
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1
-	github.com/qlcchain/jsonrpc2 v0.0.1
+	github.com/qlcchain/jsonrpc2 v0.0.2
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/shirou/gopsutil v2.18.12+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
@@ -58,7 +58,6 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tinylib/msgp v1.1.0
-	github.com/vrischmann/go-metrics-influxdb v0.0.0-20190121110601-4457d7e0175c
 	github.com/willf/bitset v1.1.10
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
@@ -67,8 +66,11 @@ require (
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
+	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7 // indirect
 	google.golang.org/appengine v1.6.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/validator.v2 v2.0.0-20180514200540-135c24b11c19
 )
+
+go 1.13

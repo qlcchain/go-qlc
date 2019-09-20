@@ -34,6 +34,9 @@ func RegisterServices(cc *context.ChainContext) error {
 		_ = cc.Register(context.WalletService, walletService)
 	}
 
+	rollbackService := NewRollbackService(cfgFile)
+	_ = cc.Register(context.RollbackService, rollbackService)
+
 	if len(cfg.P2P.BootNodes) > 0 {
 		netService, err := NewP2PService(cfgFile)
 		if err != nil {
@@ -65,6 +68,11 @@ func RegisterServices(cc *context.ChainContext) error {
 	if len(accounts) > 0 && cfg.AutoGenerateReceive {
 		autoReceiveService := NewAutoReceiveService(cfgFile)
 		_ = cc.Register(context.AutoReceiveService, autoReceiveService)
+	}
+
+	if cfg.Metrics.Enable {
+		metricsService := NewMetricsService(cfgFile)
+		_ = cc.Register(context.MetricsService, metricsService)
 	}
 
 	return nil

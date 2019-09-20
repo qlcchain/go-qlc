@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -24,6 +25,9 @@ type CfgManager struct {
 	ConfigFile string
 	v          *viper.Viper
 	cfg        *Config
+	cfgB       *Config
+	locker     *sync.Mutex
+	isDirty    bool
 }
 
 func NewCfgManager(path string) *CfgManager {
@@ -38,7 +42,8 @@ func NewCfgManagerWithName(path string, name string) *CfgManager {
 	file := filepath.Join(path, name)
 	cm := &CfgManager{
 		ConfigFile: file,
-		v:          viper.New(),
+		locker:     &sync.Mutex{},
+		isDirty:    false,
 	}
 	_, _ = cm.Load()
 	return cm
@@ -60,27 +65,111 @@ func (cm *CfgManager) verify(data interface{}) error {
 }
 
 func (cm *CfgManager) UpdateParams(params []string) (*Config, error) {
+	cm.locker.Lock()
+	defer cm.locker.Unlock()
+
+	if cm.cfgB == nil {
+		cfg, err := cm.Config()
+		if err != nil {
+			return nil, err
+		}
+		cm.cfgB, err = cfg.Clone()
+		if err != nil {
+			return nil, err
+		}
+		if cm.v == nil {
+			cm.v = viper.New()
+			s := strings.Split(filepath.Base(cm.ConfigFile), ".")
+			if len(s) != 2 {
+				return nil, errors.New("get config path error")
+			}
+			cm.v.SetConfigName(s[0])
+			cm.v.AddConfigPath(cfg.DataDir)
+			cm.v.AddConfigPath(cm.ConfigDir())
+		}
+
+		b, err := json.Marshal(cm.cfgB)
+		if err != nil {
+			return nil, err
+		}
+		r := bytes.NewReader(b)
+		err = cm.v.ReadConfig(r)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for _, param := range params {
 		k := strings.Split(param, "=")
 		if len(k) != 2 || len(k[0]) == 0 || len(k[1]) == 0 {
 			continue
 		}
 		if oldValue := cm.v.Get(k[0]); oldValue != nil {
+			cm.isDirty = true
 			cm.v.Set(k[0], k[1])
 		}
 	}
-	err := cm.v.Unmarshal(cm.cfg)
+	err := cm.v.Unmarshal(cm.cfgB)
 	if err != nil {
 		return nil, err
 	}
 
-	err = cm.verify(cm.cfg)
+	err = cm.verify(cm.cfgB)
 	if err != nil {
 		return nil, err
 	}
-	return cm.cfg, nil
+	return cm.cfgB, nil
 }
 
+func (cm *CfgManager) Discard() {
+	cm.locker.Lock()
+	defer cm.locker.Unlock()
+
+	cm.cfgB = nil
+	cm.v = nil
+	cm.isDirty = false
+}
+
+// Commit changed cfg to runtime
+func (cm *CfgManager) Commit() error {
+	cm.locker.Lock()
+	defer cm.locker.Unlock()
+
+	return cm.commitCfg()
+}
+
+func (cm *CfgManager) commitCfg() error {
+	if cm.isDirty && cm.cfgB != nil {
+		if cfg, err := cm.cfgB.Clone(); err == nil {
+			cm.cfg = cfg
+			// clear buff vars
+			cm.cfgB = nil
+			cm.v = nil
+			cm.isDirty = false
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// CommitAndSave commit changed cfg to runtime and save to config file
+func (cm *CfgManager) CommitAndSave() error {
+	cm.locker.Lock()
+	defer cm.locker.Unlock()
+
+	if err := cm.commitCfg(); err == nil {
+		if err := cm.Save(cm.cfg); err == nil {
+			return nil
+		} else {
+			return err
+		}
+	} else {
+		return err
+	}
+}
+
+// Config get current used config
 func (cm *CfgManager) Config() (*Config, error) {
 	if cm.cfg != nil {
 		return cm.cfg, nil
@@ -89,7 +178,7 @@ func (cm *CfgManager) Config() (*Config, error) {
 	}
 }
 
-//ParseDataDir parse dataDir from config file
+// ParseDataDir parse dataDir from config file
 func (cm *CfgManager) ParseDataDir() (string, error) {
 	_, err := os.Stat(cm.ConfigFile)
 	if err != nil {
@@ -118,7 +207,7 @@ func (cm *CfgManager) ParseDataDir() (string, error) {
 	}
 }
 
-//Load the config file and will create default if config file no exist
+// Load the config file and will create default if config file no exist
 func (cm *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 	_, err := os.Stat(cm.ConfigFile)
 	if err != nil {
@@ -187,61 +276,35 @@ func (cm *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 		_ = cm.Save()
 	}
 
-	err = cm.viper()
-	if err != nil {
-		return nil, err
-	}
-
 	return &cfg, nil
-}
-
-func (cm *CfgManager) viper() error {
-	// prepare viper
-	s := strings.Split(filepath.Base(cm.ConfigFile), ".")
-	if len(s) != 2 {
-		return errors.New("get config path error")
-	}
-	cm.v.SetConfigName(s[0])
-	cm.v.AddConfigPath(cm.cfg.DataDir)
-	cm.v.AddConfigPath(cm.ConfigDir())
-	b, err := json.Marshal(cm.cfg)
-	if err != nil {
-		return err
-	}
-	r := bytes.NewReader(b)
-	err = cm.v.ReadConfig(r)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // DiffOther diff runtime cfg with other `cfg`
 func (cm *CfgManager) DiffOther(cfg *Config) (string, error) {
-	changed, err := cm.Config()
+	used, err := cm.Config()
 	if err != nil {
 		return "", err
 	}
-	diff := cmp.Diff(cfg, changed)
+	diff := cmp.Diff(cfg, used)
 
 	return diff, nil
 }
 
 // Diff the changed config
 func (cm *CfgManager) Diff() (string, error) {
-	content, err := ioutil.ReadFile(cm.ConfigFile)
-	if err != nil {
-		return "", err
-	}
-	cfg := new(Config)
-	err = json.Unmarshal(content, cfg)
-	changed, err := cm.Config()
-	if err != nil {
-		return "", err
-	}
-	diff := cmp.Diff(cfg, changed)
+	cm.locker.Lock()
+	defer cm.locker.Unlock()
 
-	return diff, nil
+	if cm.isDirty && cm.cfgB != nil {
+		cfg, err := cm.Config()
+		if err != nil {
+			return "", err
+		}
+		diff := cmp.Diff(cfg, cm.cfgB)
+		return diff, nil
+	}
+
+	return "", errors.New("cfg not changed")
 }
 
 func (cm *CfgManager) backUp(content []byte) {

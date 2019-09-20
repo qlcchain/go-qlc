@@ -50,8 +50,8 @@ func change() {
 					util.Warn(err)
 					return
 				}
-				accountP := util.StringVar(c.Args, account)
-				repP := util.StringVar(c.Args, rep)
+				accountP = util.StringVar(c.Args, account)
+				repP = util.StringVar(c.Args, rep)
 				err := changeAction(accountP, repP)
 				if err != nil {
 					util.Warn(err)

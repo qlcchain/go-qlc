@@ -72,12 +72,13 @@ func (as *AutoReceiveService) Start() error {
 		l := ledgerService.(*LedgerService).Ledger
 		accounts := cc.Accounts()
 		for _, account := range accounts {
-			err := l.SearchPending(account.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
+			a := account
+			err := l.SearchPending(a.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
 				as.logger.Debugf("%s receive %s[%s] from %s (%s)\n", key.Address, value.Type.String(), value.Source.String(), value.Amount.String(), key.Hash.String())
 				if send, err := l.GetStateBlock(key.Hash); err != nil {
 					as.logger.Error(err)
 				} else {
-					err = ReceiveBlock(send, account, cc)
+					err = ReceiveBlock(send, a, cc)
 					if err != nil {
 						as.logger.Debugf("err[%s] when generate receive block.\n", err)
 					}

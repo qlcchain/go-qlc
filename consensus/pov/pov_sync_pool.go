@@ -53,7 +53,7 @@ func (ss *PovSyncer) syncLoop() {
 		}
 	}
 
-	ss.logger.Infof("exit pov sync loop")
+	//ss.logger.Infof("exit pov sync loop")
 }
 
 func (ss *PovSyncer) onPeriodicSyncTimer() {

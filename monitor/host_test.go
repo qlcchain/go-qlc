@@ -8,8 +8,9 @@
 package monitor
 
 import (
-	"github.com/qlcchain/go-qlc/common/util"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func TestHost(t *testing.T) {

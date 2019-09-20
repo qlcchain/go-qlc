@@ -3,10 +3,11 @@ package api
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/qlcchain/go-qlc/config"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
