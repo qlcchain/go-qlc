@@ -15,7 +15,7 @@ var (
 	EventBusWaitingQueueSize = 102400
 
 	//Consensus params
-	ConsensusMsgCacheSize = 102400
+	ConsensusMsgCacheSize = 409600
 
 	//Badger params
 	BadgerMaxTableSize = int64(64 << 20)

@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	msgCacheExpirationTime = 2 * time.Minute
+	msgCacheExpirationTime = 10 * time.Minute
 )
 
 type Receiver struct {
