@@ -162,8 +162,8 @@ func (ns *QlcService) Deregister(subscribers *Subscriber) {
 }
 
 // PutMessage put message to dispatcher.
-func (ns *QlcService) PutMessage(msg *Message) {
-	ns.dispatcher.PutMessage(msg)
+func (ns *QlcService) PutSyncMessage(msg *Message) {
+	ns.dispatcher.PutSyncMessage(msg)
 }
 
 // Broadcast message.

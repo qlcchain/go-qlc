@@ -15,6 +15,7 @@ type Dispatcher struct {
 	subscribersMap     *sync.Map
 	quitCh             chan bool
 	receivedMessageCh  chan *Message
+	syncMessageCh      chan *Message
 	dispatchedMessages *lru.Cache
 	logger             *zap.SugaredLogger
 }
@@ -25,6 +26,7 @@ func NewDispatcher() *Dispatcher {
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
 		receivedMessageCh: make(chan *Message, common.P2PMsgChanSize),
+		syncMessageCh: make(chan *Message, common.P2PMsgChanSize),
 		logger:            log.NewLogger("dispatcher"),
 	}
 
@@ -76,6 +78,19 @@ func (dp *Dispatcher) loop() {
 			default:
 				dp.logger.Debug("timeout to dispatch message.")
 			}
+		case msg := <-dp.syncMessageCh:
+			msgType := msg.MessageType()
+
+			v, _ := dp.subscribersMap.Load(msgType)
+			if v == nil {
+				continue
+			}
+
+			select {
+			case v.(*Subscriber).msgChan <- msg:
+			default:
+				dp.logger.Debug("timeout to dispatch message.")
+			}
 		}
 	}
 }
@@ -93,5 +108,14 @@ func (dp *Dispatcher) PutMessage(msg *Message) {
 	case dp.receivedMessageCh <- msg:
 	default:
 		dp.logger.Debugf("dispatcher receive message chan expire")
+	}
+}
+
+// PutMessage put new message to chan, then subscribers will be notified to process.
+func (dp *Dispatcher) PutSyncMessage(msg *Message) {
+	select {
+	case dp.syncMessageCh <- msg:
+	default:
+		dp.logger.Debugf("dispatcher sync message chan expire")
 	}
 }
