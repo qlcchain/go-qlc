@@ -25,8 +25,9 @@ type ConfigApi struct {
 }
 
 var (
-	ErrIdentity = errors.New("identity authentication failed")
-	ErrMark     = errors.New("config is being modified by someone else")
+	ErrIdentity  = errors.New("identity authentication failed")
+	ErrMark      = errors.New("config is being modified by someone else")
+	ErrOperation = errors.New("nothing has been modified")
 )
 
 func NewConfigApi(cfgFile string) *ConfigApi {
@@ -73,7 +74,7 @@ func (c *ConfigApi) Difference(token string, mark string) (string, error) {
 		return "", ErrIdentity
 	}
 	if mark != c.mark {
-		return "", ErrMark
+		return "", ErrOperation
 	}
 	return c.cfgManager.Diff()
 }
@@ -83,7 +84,7 @@ func (c *ConfigApi) Commit(token string, mark string) (bool, error) {
 		return false, ErrIdentity
 	}
 	if mark != c.mark {
-		return false, ErrMark
+		return false, ErrOperation
 	}
 	c.eb.Publish(common.EventRestartChain, c.cfgManager.ConfigFile, false)
 	return true, nil
@@ -94,7 +95,7 @@ func (c *ConfigApi) Save(token string, mark string) (bool, error) {
 		return false, ErrIdentity
 	}
 	if mark != c.mark {
-		return false, ErrMark
+		return false, ErrOperation
 	}
 	c.eb.Publish(common.EventRestartChain, c.cfgManager.ConfigFile, true)
 	return true, nil

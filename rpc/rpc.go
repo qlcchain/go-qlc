@@ -1,13 +1,14 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/url"
 	"strings"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/chain/context"
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -36,7 +37,9 @@ type RPC struct {
 	DashboardTargetURL string
 	NetID              uint `json:"NetID"`
 
-	lock sync.RWMutex
+	lock   sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	ledger   *ledger.Ledger
 	wallet   *wallet.WalletStore
@@ -47,13 +50,14 @@ type RPC struct {
 }
 
 func NewRPC(cfgFile string) (*RPC, error) {
-	cc := context.NewChainContext(cfgFile)
+	cc := chainctx.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 
 	rl, err := relation.NewRelation(cfgFile)
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 
 	r := RPC{
 		ledger:   ledger.NewLedger(cfg.LedgerDir()),
@@ -62,6 +66,8 @@ func NewRPC(cfgFile string) (*RPC, error) {
 		eb:       cc.EventBus(),
 		config:   cfg,
 		cfgFile:  cfgFile,
+		ctx:      ctx,
+		cancel:   cancel,
 		logger:   log.NewLogger("rpc"),
 	}
 	return &r, nil
@@ -102,7 +108,7 @@ func (r *RPC) startHTTP(endpoint string, apis []rpc.API, modules []string, cors 
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := rpc.StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
+	listener, handler, err := r.StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
 	if err != nil {
 		return err
 	}
@@ -135,7 +141,7 @@ func (r *RPC) startWS(endpoint string, apis []rpc.API, modules []string, wsOrigi
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := rpc.StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
+	listener, handler, err := r.StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
 	if err != nil {
 		return err
 	}
@@ -200,6 +206,7 @@ func (r *RPC) stopInProcess() {
 }
 
 func (r *RPC) StopRPC() {
+	r.cancel()
 	r.stopInProcess()
 	if r.config.RPC.Enable && r.config.RPC.IPCEnabled {
 		r.stopIPC()

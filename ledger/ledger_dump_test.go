@@ -1,8 +1,10 @@
 package ledger
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
@@ -53,6 +55,10 @@ func TestLedger_dump(t *testing.T) {
 	}
 	if err := l.AddAccountMetaCache(accCache1); err != nil {
 		t.Fatal(err)
+	}
+	if err := l.AddUncheckedBlock(mock.Hash(), mock.StateBlockWithoutWork(), types.UncheckedKindLink, types.UnSynchronized); err != nil {
+		fmt.Println(err)
+		return
 	}
 	if _, err := l.Dump(); err != nil {
 		t.Fatal(err)
