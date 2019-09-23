@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -261,6 +262,95 @@ func (r *RPC) StartRPC() error {
 	}
 
 	return nil
+}
+
+// StartHTTPEndpoint starts the HTTP RPC endpoint, configured with cors/vhosts/modules
+func (r *RPC) StartHTTPEndpoint(endpoint string, apis []rpc.API, modules []string, cors []string, vhosts []string, timeouts rpc.HTTPTimeouts) (net.Listener, *rpc.Server, error) {
+	// Generate the whitelist based on the allowed modules
+	whitelist := make(map[string]bool)
+	for _, module := range modules {
+		whitelist[module] = true
+	}
+	// Register all the APIs exposed by the services
+	handler := rpc.NewServer()
+
+	for _, api := range apis {
+		if whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
+			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
+				return nil, nil, err
+			}
+			r.logger.Debug("HTTP registered ", "namespace ", api.Namespace)
+		}
+	}
+	// All APIs registered, start the HTTP listener
+	var (
+		listener net.Listener
+		err      error
+	)
+	network, address, err := scheme(endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+	if listener, err = net.Listen(network, address); err != nil {
+		return nil, nil, err
+	}
+
+	hServer := new(http.Server)
+	go func(hServer *http.Server) {
+		hServer = rpc.NewHTTPServer(cors, vhosts, timeouts, handler)
+		hServer.Serve(listener)
+		select {
+		case <-r.ctx.Done():
+			hServer.Close()
+		}
+	}(hServer)
+
+	return listener, handler, err
+}
+
+// StartWSEndpoint starts a websocket endpoint
+func (r *RPC) StartWSEndpoint(endpoint string, apis []rpc.API, modules []string, wsOrigins []string, exposeAll bool) (net.Listener, *rpc.Server, error) {
+	// Generate the whitelist based on the allowed modules
+	whitelist := make(map[string]bool)
+	for _, module := range modules {
+		whitelist[module] = true
+	}
+	// Register all the APIs exposed by the services
+	handler := rpc.NewServer()
+	for _, api := range apis {
+		if exposeAll || whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
+			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
+				return nil, nil, err
+			}
+			r.logger.Debug("WebSocket registered ", " service ", api.Service, " namespace ", api.Namespace)
+		}
+	}
+	// All APIs registered, start the HTTP listener
+	var (
+		listener net.Listener
+		err      error
+	)
+	network, address, err := scheme(endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if listener, err = net.Listen(network, address); err != nil {
+		return nil, nil, err
+	}
+
+	//go rpc.NewWSServer(wsOrigins, handler).Serve(listener)
+	hServer := new(http.Server)
+	go func(hServer *http.Server) {
+		hServer = rpc.NewWSServer(wsOrigins, handler)
+		hServer.Serve(listener)
+		select {
+		case <-r.ctx.Done():
+			hServer.Close()
+		}
+	}(hServer)
+
+	return listener, handler, err
 }
 
 func scheme(endpoint string) (string, string, error) {
