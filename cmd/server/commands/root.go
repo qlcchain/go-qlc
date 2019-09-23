@@ -153,8 +153,8 @@ func start() error {
 
 		cfg.P2P.Listen = "/ip4/0.0.0.0/tcp/29734"
 		cfg.P2P.BootNodes = []string{
-			"/ip4/47.103.97.9/tcp/29734/ipfs/QmWQnpt9TiQYXnGAuJ6eNC7AsGi8mU8MssTrqNp47hdo9G",
-			"/ip4/47.103.54.171/tcp/29734/ipfs/QmZLQyszHu7xKeqU5aPgDumrw7eBFpEk371WBcaMpe6sFs",
+			"/ip4/47.103.97.9/tcp/29734/ipfs/QmRkq4NziqFyptEJHVbpYTAFp7xuCP12PSEWuFF4nUsWxs",
+			"/ip4/47.103.54.171/tcp/29734/ipfs/QmewHRxnkZBAKH7QkusnphXKxvYRbozn3xu33V8QBuVNsx",
 		}
 
 		cfg.PoV.PovEnabled = true
