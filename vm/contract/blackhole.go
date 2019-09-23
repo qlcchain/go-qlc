@@ -20,6 +20,7 @@ import (
 type BlackHole struct {
 }
 
+// TODO: save contract data
 func (b *BlackHole) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	param := new(cabi.DestroyParam)
 	err := cabi.RewardsABI.UnpackMethod(param, cabi.MethodNameDestroy, block.Data)
@@ -28,7 +29,22 @@ func (b *BlackHole) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	}
 
 	if err := b.verify(ctx, param, block); err == nil {
-		//TODO: update database...
+		// make sure that the same block only process once
+		if b, err := ctx.GetStorage(block.Address[:], block.Previous[:]); err == nil && len(b) > 0 {
+			return nil, nil, fmt.Errorf("block already processed, %s of %s",
+				block.Previous.String(), block.Address.String())
+		} else if err != vmstore.ErrStorageNotFound {
+			return nil, nil, err
+		}
+
+		if data, err := cabi.RewardsABI.PackVariable(cabi.VariableDestroyInfo, block.Address, block.Previous,
+			block.Token, param.Amount, common.TimeNow()); err == nil {
+			if err := ctx.SetStorage(block.Address[:], block.Previous[:], data); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			return nil, nil, err
+		}
 
 		return &types.PendingKey{
 				Address: param.Owner,
@@ -72,8 +88,45 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 	return nil
 }
 
-func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	panic("implement me")
+func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
+	input *types.StateBlock) ([]*ContractBlock, error) {
+	// verify send block data
+	param := new(cabi.DestroyParam)
+	err := cabi.RewardsABI.UnpackMethod(param, cabi.MethodNameDestroy, input.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	rxMeta, _ := ctx.GetAccountMeta(input.Address)
+	// qgas token should be exist
+	rxToken := rxMeta.Token(input.Token)
+	txHash := input.GetHash()
+
+	block.Type = types.ContractReward
+	block.Address = input.Address
+	block.Link = txHash
+	block.Token = input.Token
+	block.Extra = types.ZeroHash
+	block.Vote = types.ZeroBalance
+	block.Network = types.ZeroBalance
+	block.Oracle = types.ZeroBalance
+	block.Storage = types.ZeroBalance
+
+	block.Balance = rxToken.Balance
+	block.Previous = rxToken.Header
+	block.Representative = input.Representative
+
+	return []*ContractBlock{
+		{
+			VMContext: ctx,
+			Block:     block,
+			ToAddress: input.Address,
+			BlockType: types.ContractReward,
+			Amount:    types.ZeroBalance,
+			Token:     input.Token,
+			Data:      []byte{},
+		},
+	}, nil
 }
 
 func (b *BlackHole) GetRefundData() []byte {
