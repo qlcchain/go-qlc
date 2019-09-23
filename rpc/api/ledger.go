@@ -683,6 +683,28 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 	return block, nil
 }
 
+func (l *LedgerApi) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *string) (*types.StateBlock, error) {
+	var prk []byte
+	if prkStr != nil {
+		var err error
+		if prk, err = hex.DecodeString(*prkStr); err != nil {
+			return nil, err
+		}
+	}
+
+	sendBlock, err := l.ledger.GetStateBlock(sendHash)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := l.ledger.GenerateReceiveBlock(sendBlock, prk)
+	if err != nil {
+		return nil, err
+	}
+	l.logger.Debug(block)
+	return block, nil
+}
+
 func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr *string) (*types.StateBlock, error) {
 	var prk []byte
 	if prkStr != nil {

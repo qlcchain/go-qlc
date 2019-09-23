@@ -98,6 +98,8 @@ func addcommands() {
 	blockCount()
 	performance()
 	send()
+	pending()
+	recv()
 	tokens()
 	version()
 	changePassword()
