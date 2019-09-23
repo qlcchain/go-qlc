@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
+	"github.com/lestrrat-go/file-rotatelogs"
+	"github.com/rifflock/lfshook"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var flagNodeUrl string
@@ -18,6 +20,8 @@ var flagServerID uint
 var flagDebug bool
 
 func main() {
+	initLog()
+
 	var err error
 
 	flag.StringVar(&flagNodeUrl, "nodeurl", "http://127.0.0.1:9735", "RPC URL of node")
@@ -71,4 +75,24 @@ func main() {
 	nc.Stop()
 	jr.Stop()
 	ss.Stop()
+}
+
+func initLog() {
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		dir = "/tmp"
+	}
+
+	fn := dir + "/gqlc-stratum.log"
+
+	lw, err := rotatelogs.New(
+		fn+".%Y%m%d%H%M",
+		rotatelogs.WithLinkName(fn),
+	)
+
+	lh := lfshook.NewHook(
+		lw,
+		&log.JSONFormatter{},
+	)
+	log.AddHook(lh)
 }

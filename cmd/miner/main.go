@@ -4,14 +4,19 @@ import (
 	"bytes"
 	"encoding/binary"
 	"flag"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/lestrrat-go/file-rotatelogs"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	rpc "github.com/qlcchain/jsonrpc2"
-	"log"
-	"time"
+	"github.com/rifflock/lfshook"
+	"github.com/sirupsen/logrus"
 )
 
 var flagNodeUrl string
@@ -20,6 +25,8 @@ var flagAlgo string
 var flagAuxPow bool
 
 func main() {
+	initLog()
+
 	flag.StringVar(&flagNodeUrl, "nodeurl", "http://127.0.0.1:9735", "RPC URL of node")
 	flag.StringVar(&flagMiner, "miner", "", "address of miner account")
 	flag.StringVar(&flagAlgo, "algo", "SHA256D", "algo name, such as SHA256D/X11/SCRYPT")
@@ -28,28 +35,28 @@ func main() {
 
 	minerAddr, err := types.HexToAddress(flagMiner)
 	if err != nil {
-		log.Printf("invalid miner address")
+		logrus.Errorln("invalid miner address")
 		return
 	}
 
 	nodeClient, err := rpc.Dial(flagNodeUrl)
 	if err != nil {
-		log.Println(err)
+		logrus.Errorln(err)
 		return
 	}
 	defer nodeClient.Close()
 
-	log.Printf("running miner, account:%s, algo:%s", minerAddr, flagAlgo)
+	logrus.Infof("running miner, account:%s, algo:%s", minerAddr, flagAlgo)
 
 	for {
 		getWorkRsp := new(api.PovApiGetWork)
 		err = nodeClient.Call(&getWorkRsp, "pov_getWork", minerAddr, flagAlgo)
 		if err != nil {
-			log.Println(err)
+			logrus.Errorln(err)
 			time.Sleep(10 * time.Second)
 			continue
 		}
-		log.Printf("getWork response: %s", util.ToString(getWorkRsp))
+		logrus.Infof("getWork response: %s", util.ToString(getWorkRsp))
 
 		var submitWorkReq *api.PovApiSubmitWork
 		if flagAuxPow {
@@ -62,14 +69,35 @@ func main() {
 			continue
 		}
 
-		log.Printf("submitWork request: %s", util.ToString(submitWorkReq))
+		logrus.Infof("submitWork request: %s", util.ToString(submitWorkReq))
 		err = nodeClient.Call(nil, "pov_submitWork", &submitWorkReq)
 		if err != nil {
-			log.Println(err)
+			logrus.Errorln(err)
 			time.Sleep(10 * time.Second)
 			continue
 		}
 	}
+}
+
+func initLog() {
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		dir = "/tmp"
+	}
+	fn := dir + "/gqlc-miner.log"
+
+	lw, err := rotatelogs.New(
+		fn+".%Y%m%d%H%M",
+		rotatelogs.WithLinkName(fn),
+	)
+
+	lh := lfshook.NewHook(
+		lw,
+		&logrus.JSONFormatter{},
+	)
+	logrus.AddHook(lh)
+
+	logrus.SetLevel(logrus.InfoLevel)
 }
 
 func doWorkBySelf(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *api.PovApiGetWork) *api.PovApiSubmitWork {
@@ -108,7 +136,7 @@ func doWorkBySelf(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *a
 		powHash := povHeader.ComputePowHash()
 		powInt := powHash.ToBigInt()
 		if powInt.Cmp(targetIntAlgo) <= 0 {
-			log.Printf("workHash %s found nonce %d", getWorkRsp.WorkHash, nonce)
+			logrus.Infof("workHash %s found nonce %d", getWorkRsp.WorkHash, nonce)
 			submitWorkReq := new(api.PovApiSubmitWork)
 			submitWorkReq.WorkHash = getWorkRsp.WorkHash
 
@@ -126,14 +154,14 @@ func doWorkBySelf(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *a
 		if time.Now().After(lastCheckTm.Add(10 * time.Second)) {
 			latestHeader := getLatestHeader(nodeClient)
 			if latestHeader != nil && latestHeader.GetHash() != getWorkRsp.Previous {
-				log.Printf("workHash %s abort search nonce because latest block change", getWorkRsp.WorkHash)
+				logrus.Infof("workHash %s abort search nonce because latest block change", getWorkRsp.WorkHash)
 				return nil
 			}
 			lastCheckTm = time.Now()
 		}
 	}
 
-	log.Printf("workHash %s exhaust nonce", getWorkRsp.WorkHash)
+	logrus.Infof("workHash %s exhaust nonce", getWorkRsp.WorkHash)
 	return nil
 }
 
@@ -176,7 +204,7 @@ func doWorkByAuxPow(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp 
 		powHash := auxPow.ComputePowHash(povHeader.GetAlgoType())
 		powInt := powHash.ToBigInt()
 		if powInt.Cmp(targetIntAlgo) <= 0 {
-			log.Printf("workHash %s found nonce %d", getWorkRsp.WorkHash, nonce)
+			logrus.Infof("workHash %s found nonce %d", getWorkRsp.WorkHash, nonce)
 			submitWorkReq := new(api.PovApiSubmitWork)
 			submitWorkReq.WorkHash = getWorkRsp.WorkHash
 
@@ -197,14 +225,14 @@ func doWorkByAuxPow(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp 
 		if time.Now().After(lastCheckTm.Add(10 * time.Second)) {
 			latestHeader := getLatestHeader(nodeClient)
 			if latestHeader != nil && latestHeader.GetHash() != getWorkRsp.Previous {
-				log.Printf("workHash %s abort search nonce because latest block change", getWorkRsp.WorkHash)
+				logrus.Infof("workHash %s abort search nonce because latest block change", getWorkRsp.WorkHash)
 				return nil
 			}
 			lastCheckTm = time.Now()
 		}
 	}
 
-	log.Printf("workHash %s exhaust nonce", getWorkRsp.WorkHash)
+	logrus.Infof("workHash %s exhaust nonce", getWorkRsp.WorkHash)
 	return nil
 }
 
@@ -212,7 +240,7 @@ func getLatestHeader(nodeClient *rpc.Client) *api.PovApiHeader {
 	latestHeaderRsp := new(api.PovApiHeader)
 	err := nodeClient.Call(latestHeaderRsp, "pov_getLatestHeader")
 	if err != nil {
-		log.Println(err)
+		logrus.Errorln(err)
 		return nil
 	}
 	return latestHeaderRsp
