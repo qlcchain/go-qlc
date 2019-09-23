@@ -137,6 +137,34 @@ func start() error {
 		return err
 	}
 
+	testMode := os.Getenv("GQLC_TEST_MODE")
+	if testMode == "POV" {
+		fmt.Println("GQLC_TEST_MODE:", testMode)
+
+		cfg.AutoGenerateReceive = true
+		cfg.LogLevel = "info"
+
+		cfg.RPC.Enable = true
+		cfg.RPC.HTTPEnabled = true
+		cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
+		cfg.RPC.WSEnabled = true
+		cfg.RPC.WSEndpoint = "tcp4://0.0.0.0:29736"
+		cfg.RPC.IPCEnabled = true
+
+		cfg.P2P.Listen = "/ip4/0.0.0.0/tcp/29734"
+		cfg.P2P.BootNodes = []string{
+			"/ip4/47.103.97.9/tcp/29734/ipfs/QmWQnpt9TiQYXnGAuJ6eNC7AsGi8mU8MssTrqNp47hdo9G",
+			"/ip4/47.103.54.171/tcp/29734/ipfs/QmZLQyszHu7xKeqU5aPgDumrw7eBFpEk371WBcaMpe6sFs",
+		}
+
+		cfg.PoV.PovEnabled = true
+
+		err = cm.CommitAndSave()
+		if err != nil {
+			return err
+		}
+	}
+
 	if len(configParamsP) > 0 {
 		fmt.Println("need set parameter")
 		params := strings.Split(configParamsP, ";")
