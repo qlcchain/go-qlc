@@ -79,6 +79,7 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		boostrapAddrs: config.P2P.BootNodes,
 		streamManager: NewStreamManager(),
 		logger:        log.NewLogger("p2p"),
+		isMiner:       config.PoV.PovEnabled,
 	}
 	privateKey, err := config.DecodePrivateKey()
 	if err != nil {

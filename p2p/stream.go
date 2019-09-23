@@ -293,7 +293,7 @@ func (s *Stream) handleMessage(message *QlcMessage) {
 		return
 	}
 	m := NewMessage(message.MessageType(), s.pid.Pretty(), message.MessageData(), message.content)
-	s.node.netService.PutMessage(m)
+	s.node.netService.PutSyncMessage(m)
 }
 
 // SendMessage send msg to buffer

@@ -26,7 +26,7 @@ func NewDispatcher() *Dispatcher {
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 1),
 		receivedMessageCh: make(chan *Message, common.P2PMsgChanSize),
-		syncMessageCh: make(chan *Message, common.P2PMsgChanSize),
+		syncMessageCh:     make(chan *Message, common.P2PMsgChanSize),
 		logger:            log.NewLogger("dispatcher"),
 	}
 
