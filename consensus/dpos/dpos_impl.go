@@ -174,6 +174,8 @@ func (dps *DPoS) Init() {
 
 	if len(dps.accounts) != 0 {
 		dps.refreshAccount()
+	} else {
+		dps.eb.Publish(common.EventRepresentativeNode, false)
 	}
 }
 
@@ -719,6 +721,9 @@ func (dps *DPoS) refreshAccount() {
 	})
 
 	dps.logger.Infof("there is %d local reps", count)
+	if count > 0 {
+		dps.eb.Publish(common.EventRepresentativeNode, true)
+	}
 	if count > 1 {
 		dps.logger.Error("it is very dangerous to run two or more representatives on one node")
 	}

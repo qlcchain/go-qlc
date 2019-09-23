@@ -13,10 +13,7 @@ import (
 )
 
 const (
-	checkCacheTimeInterval  = 30 * time.Second
 	checkBlockCacheInterval = 60 * time.Second
-	msgResendMaxTimes       = 10
-	msgNeedResendInterval   = 10 * time.Second
 	maxPullTxPerReq         = 100
 	maxPushTxPerTime        = 100
 )

@@ -77,11 +77,6 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	//err = ns.msgEvent.Subscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
-	//if err != nil {
-	//	ns.node.logger.Error(err)
-	//	return err
-	//}
 	err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
@@ -102,6 +97,11 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
+	err = ns.msgEvent.Subscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
 	return nil
 }
 
@@ -111,12 +111,22 @@ func (ns *QlcService) unsubscribeEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	//err = ns.msgEvent.Unsubscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
-	//if err != nil {
-	//	ns.node.logger.Error(err)
-	//	return err
-	//}
 	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Unsubscribe(common.EventSyncing, ns.msgService.syncService.LastSyncTime)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Unsubscribe(common.EventPullBlocksReq, ns.msgService.requestTxsByHashes)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Unsubscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err

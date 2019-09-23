@@ -43,7 +43,7 @@ type Stream struct {
 	normalPriorityMessageChan chan *QlcMessage
 	lowPriorityMessageChan    chan *QlcMessage
 	rtt                       time.Duration
-	pingTimeoutCount          int
+	pingTimeoutCount          int32
 	remoteNetAttribute        netAttribute
 }
 

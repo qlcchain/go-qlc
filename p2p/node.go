@@ -65,6 +65,8 @@ type QlcNode struct {
 	publisher         *pubsub.Publisher
 	subscriber        *pubsub.Subscriber
 	MessageSub        pubsub.Subscription
+	isMiner           bool
+	isRepresentative  bool
 }
 
 // NewNode return new QlcNode according to the config.
@@ -91,7 +93,11 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 	return node, nil
 }
 
-func (node *QlcNode) startHost() error {
+func (node *QlcNode) setRepresentativeNode(isRepresentative bool) {
+	node.isRepresentative = isRepresentative
+}
+
+func (node *QlcNode) buildHost() error {
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
 	qlcHost, err := libp2p.New(
@@ -153,7 +159,7 @@ func (node *QlcNode) startLocalDiscovery() error {
 func (node *QlcNode) StartServices() error {
 
 	if node.host == nil {
-		err := node.startHost()
+		err := node.buildHost()
 		if err != nil {
 			return err
 		}
