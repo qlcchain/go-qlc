@@ -7,6 +7,7 @@ require (
 	github.com/awnumar/memguard v0.16.2
 	github.com/beevik/ntp v0.2.0
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/btcsuite/btcd v0.0.0-20190614013741-962a206e94e9 // indirect
 	github.com/cheekybits/genny v1.0.0
 	github.com/chzyer/logex v1.1.10 // indirect
@@ -47,7 +48,8 @@ require (
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1
-	github.com/qlcchain/jsonrpc2 v0.0.2
+	github.com/prometheus/common v0.4.0
+	github.com/qlcchain/jsonrpc2 v0.0.3
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/shirou/gopsutil v2.18.12+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
