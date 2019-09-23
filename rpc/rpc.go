@@ -1,21 +1,22 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/chain/context"
-	rpc "github.com/qlcchain/jsonrpc2"
-
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 )
 
@@ -37,23 +38,27 @@ type RPC struct {
 	DashboardTargetURL string
 	NetID              uint `json:"NetID"`
 
-	lock sync.RWMutex
+	lock   sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	ledger   *ledger.Ledger
 	wallet   *wallet.WalletStore
 	relation *relation.Relation
 	eb       event.EventBus
+	cfgFile  string
 	logger   *zap.SugaredLogger
 }
 
 func NewRPC(cfgFile string) (*RPC, error) {
-	cc := context.NewChainContext(cfgFile)
+	cc := chainctx.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 
 	rl, err := relation.NewRelation(cfgFile)
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 
 	r := RPC{
 		ledger:   ledger.NewLedger(cfg.LedgerDir()),
@@ -61,6 +66,9 @@ func NewRPC(cfgFile string) (*RPC, error) {
 		relation: rl,
 		eb:       cc.EventBus(),
 		config:   cfg,
+		cfgFile:  cfgFile,
+		ctx:      ctx,
+		cancel:   cancel,
 		logger:   log.NewLogger("rpc"),
 	}
 	return &r, nil
@@ -101,7 +109,7 @@ func (r *RPC) startHTTP(endpoint string, apis []rpc.API, modules []string, cors 
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := rpc.StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
+	listener, handler, err := r.StartHTTPEndpoint(endpoint, apis, modules, cors, vhosts, timeouts)
 	if err != nil {
 		return err
 	}
@@ -134,7 +142,7 @@ func (r *RPC) startWS(endpoint string, apis []rpc.API, modules []string, wsOrigi
 	if endpoint == "" {
 		return nil
 	}
-	listener, handler, err := rpc.StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
+	listener, handler, err := r.StartWSEndpoint(endpoint, apis, modules, wsOrigins, exposeAll)
 	if err != nil {
 		return err
 	}
@@ -199,6 +207,7 @@ func (r *RPC) stopInProcess() {
 }
 
 func (r *RPC) StopRPC() {
+	r.cancel()
 	r.stopInProcess()
 	if r.config.RPC.Enable && r.config.RPC.IPCEnabled {
 		r.stopIPC()
@@ -253,6 +262,95 @@ func (r *RPC) StartRPC() error {
 	}
 
 	return nil
+}
+
+// StartHTTPEndpoint starts the HTTP RPC endpoint, configured with cors/vhosts/modules
+func (r *RPC) StartHTTPEndpoint(endpoint string, apis []rpc.API, modules []string, cors []string, vhosts []string, timeouts rpc.HTTPTimeouts) (net.Listener, *rpc.Server, error) {
+	// Generate the whitelist based on the allowed modules
+	whitelist := make(map[string]bool)
+	for _, module := range modules {
+		whitelist[module] = true
+	}
+	// Register all the APIs exposed by the services
+	handler := rpc.NewServer()
+
+	for _, api := range apis {
+		if whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
+			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
+				return nil, nil, err
+			}
+			r.logger.Debug("HTTP registered ", "namespace ", api.Namespace)
+		}
+	}
+	// All APIs registered, start the HTTP listener
+	var (
+		listener net.Listener
+		err      error
+	)
+	network, address, err := scheme(endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+	if listener, err = net.Listen(network, address); err != nil {
+		return nil, nil, err
+	}
+
+	hServer := new(http.Server)
+	go func(hServer *http.Server) {
+		hServer = rpc.NewHTTPServer(cors, vhosts, timeouts, handler)
+		hServer.Serve(listener)
+		select {
+		case <-r.ctx.Done():
+			hServer.Close()
+		}
+	}(hServer)
+
+	return listener, handler, err
+}
+
+// StartWSEndpoint starts a websocket endpoint
+func (r *RPC) StartWSEndpoint(endpoint string, apis []rpc.API, modules []string, wsOrigins []string, exposeAll bool) (net.Listener, *rpc.Server, error) {
+	// Generate the whitelist based on the allowed modules
+	whitelist := make(map[string]bool)
+	for _, module := range modules {
+		whitelist[module] = true
+	}
+	// Register all the APIs exposed by the services
+	handler := rpc.NewServer()
+	for _, api := range apis {
+		if exposeAll || whitelist[api.Namespace] || (len(whitelist) == 0 && api.Public) {
+			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
+				return nil, nil, err
+			}
+			r.logger.Debug("WebSocket registered ", " service ", api.Service, " namespace ", api.Namespace)
+		}
+	}
+	// All APIs registered, start the HTTP listener
+	var (
+		listener net.Listener
+		err      error
+	)
+	network, address, err := scheme(endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if listener, err = net.Listen(network, address); err != nil {
+		return nil, nil, err
+	}
+
+	//go rpc.NewWSServer(wsOrigins, handler).Serve(listener)
+	hServer := new(http.Server)
+	go func(hServer *http.Server) {
+		hServer = rpc.NewWSServer(wsOrigins, handler)
+		hServer.Serve(listener)
+		select {
+		case <-r.ctx.Done():
+			hServer.Close()
+		}
+	}(hServer)
+
+	return listener, handler, err
 }
 
 func scheme(endpoint string) (string, string, error) {

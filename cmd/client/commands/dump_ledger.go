@@ -74,7 +74,7 @@ func dump() error {
 		return err
 	}
 
-	s = fmt.Sprintf("dump successfully, to %s  ", path)
+	s = fmt.Sprintf("dump to %s  ", path)
 	if interactive {
 		util.Info(s)
 	} else {

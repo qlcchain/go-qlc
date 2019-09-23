@@ -40,6 +40,7 @@ type Block struct {
 	Hash           types.Hash      `msg:"hash" json:"hash"`
 	BlockHeight    int64           `msg:"blockHeight" json:"blockHeight"`
 	InChain        int             `msg:"inChain" json:"inChain"`
+	Reason         string          `msg:"reason" json:"reason"`
 }
 
 type Account struct {
@@ -62,29 +63,54 @@ type BlockLink struct {
 }
 
 func (l *Ledger) Dump() (string, error) {
-	dir := path.Join(l.dir, "relation")
-	os.Remove(dir)
-	if err := util.CreateDirIfNotExist(dir); err != nil {
+	p := path.Join(l.dir, "relation")
+	if err := util.CreateDirIfNotExist(p); err != nil {
 		return "", err
 	}
-	dir = path.Join(dir, "dump.db")
+	dir := path.Join(p, "dump.db")
+	dirPro := path.Join(p, "dump.processing")
+	if _, err := os.Stat(dir); err == nil {
+		if err := os.Remove(dir); err != nil {
+			return "", err
+		}
+	}
+	if _, err := os.Stat(dir); err != nil {
+		file, err := os.Create(dirPro)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+	}
+
 	db, err := sqlx.Connect("sqlite3", dir)
 	if err != nil {
 		return "", fmt.Errorf("connect sqlite error: %s", err)
 	}
+	go func() {
+		if err := l.dump(dirPro, db); err != nil {
+			l.logger.Error(err)
+		}
+	}()
+	return dir, nil
+}
+
+func (l *Ledger) dump(dir string, db *sqlx.DB) error {
 	if err := initDumpTables(db); err != nil {
-		return "", fmt.Errorf("init dump tables error: %s", err)
+		return fmt.Errorf("init dump tables error: %s", err)
 	}
 	if err := l.dumpBlock(db); err != nil {
-		return "", fmt.Errorf("dump block error: %s", err)
+		return fmt.Errorf("dump block error: %s", err)
 	}
 	if err := l.dumpBlockCache(db); err != nil {
-		return "", fmt.Errorf("dump block cache error: %s", err)
+		return fmt.Errorf("dump block cache error: %s", err)
 	}
 	if err := l.dumpBlockLink(db); err != nil {
-		return "", fmt.Errorf("dump block link error: %s", err)
+		return fmt.Errorf("dump block link error: %s", err)
 	}
-	return dir, nil
+	if err := l.dumpBlockUnchecked(db); err != nil {
+		return fmt.Errorf("dump block unchecked error: %s", err)
+	}
+	return os.Remove(dir)
 }
 
 func (l *Ledger) dumpBlock(db *sqlx.DB) error {
@@ -152,10 +178,10 @@ func (l *Ledger) dumpBlock(db *sqlx.DB) error {
 			}
 		}
 	}
-	if err := dumpBlocks(inChainBlocksMap, false, db); err != nil {
+	if err := dumpBlocks(inChainBlocksMap, tableBlock, db); err != nil {
 		return err
 	}
-	if err := dumpBlocks(offChainBlocksMap, false, db); err != nil {
+	if err := dumpBlocks(offChainBlocksMap, tableBlock, db); err != nil {
 		return err
 	}
 	if err := l.dumpAccount(offChainBlocksMap, db); err != nil {
@@ -191,10 +217,10 @@ func (l *Ledger) dumpAccount(offChainBlocks map[types.Hash]*Block, db *sqlx.DB) 
 	if err != nil {
 		return err
 	}
-	if err := dumpAccounts(certainAccounts, false, db); err != nil {
+	if err := dumpAccounts(certainAccounts, tableBlock, db); err != nil {
 		return err
 	}
-	if err := dumpAccounts(unCertainAccounts, false, db); err != nil {
+	if err := dumpAccounts(unCertainAccounts, tableBlock, db); err != nil {
 		return err
 	}
 	return nil
@@ -233,7 +259,7 @@ func (l *Ledger) dumpBlockCache(db *sqlx.DB) error {
 				}
 			}
 		}
-		if err := dumpBlocks(blockCacheMap, true, db); err != nil {
+		if err := dumpBlocks(blockCacheMap, tableBlockCache, db); err != nil {
 			return err
 		}
 	}
@@ -295,10 +321,36 @@ func (l *Ledger) dumpAccountCache(blockCacheMap map[types.Hash]*Block, db *sqlx.
 	if err != nil {
 		return err
 	}
-	if err := dumpAccounts(accountDumps, true, db); err != nil {
+	if err := dumpAccounts(accountDumps, tableBlockCache, db); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (l *Ledger) dumpBlockUnchecked(db *sqlx.DB) error {
+	blockUncheckedMap := make(map[types.Hash]*Block)
+	err := l.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		b := convertToDumpBlock(block)
+		reason := ""
+		switch unCheckType {
+		case types.UncheckedKindPrevious:
+			reason = "GapPrevious"
+		case types.UncheckedKindLink:
+			reason = "GapLink"
+		case types.UncheckedKindTokenInfo:
+			reason = "GapTokenInfo"
+		}
+		b.Reason = reason
+		blockUncheckedMap[block.GetHash()] = b
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if err := dumpBlocks(blockUncheckedMap, tableBlockUnchecked, db); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -330,7 +382,13 @@ func (l *Ledger) dumpBlockLink(db *sqlx.DB) error {
 	return nil
 }
 
-func dumpBlocks(blocks map[types.Hash]*Block, cache bool, db *sqlx.DB) error {
+const (
+	tableBlock byte = iota
+	tableBlockCache
+	tableBlockUnchecked
+)
+
+func dumpBlocks(blocks map[types.Hash]*Block, table byte, db *sqlx.DB) error {
 	if len(blocks) == 0 {
 		return nil
 	}
@@ -338,10 +396,13 @@ func dumpBlocks(blocks map[types.Hash]*Block, cache bool, db *sqlx.DB) error {
 	rv := reflect.ValueOf(*block)
 	rt := reflect.TypeOf(*block)
 	var tableName string
-	if cache {
-		tableName = "blockcache"
-	} else {
+	switch table {
+	case tableBlock:
 		tableName = strings.ToLower(rt.Name())
+	case tableBlockCache:
+		tableName = "blockcache"
+	case tableBlockUnchecked:
+		tableName = "blockunchecked"
 	}
 	cols := make([]string, 0)
 	for i := 0; i < rv.NumField(); i++ {
@@ -367,7 +428,7 @@ func dumpBlocks(blocks map[types.Hash]*Block, cache bool, db *sqlx.DB) error {
 	return nil
 }
 
-func dumpAccounts(accounts []*Account, cache bool, db *sqlx.DB) error {
+func dumpAccounts(accounts []*Account, table byte, db *sqlx.DB) error {
 	if len(accounts) == 0 {
 		return nil
 	}
@@ -375,10 +436,11 @@ func dumpAccounts(accounts []*Account, cache bool, db *sqlx.DB) error {
 	rv := reflect.ValueOf(*account)
 	rt := reflect.TypeOf(*account)
 	var tableName string
-	if cache {
-		tableName = "accountcache"
-	} else {
+	switch table {
+	case tableBlock:
 		tableName = strings.ToLower(rt.Name())
+	case tableBlockCache:
+		tableName = "accountcache"
 	}
 	cols := make([]string, 0)
 	for i := 0; i < rv.NumField(); i++ {
@@ -493,6 +555,17 @@ func initDumpTables(db *sqlx.DB) error {
 		return err
 	}
 
+	blockUncheck := new(Block)
+	rv6 := reflect.ValueOf(*blockUncheck)
+	rt6 := reflect.TypeOf(*blockUncheck)
+	fields6 := getTableField(rv6, rt6)
+	tableName6 := "blockunchecked"
+	sql6 := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id integer PRIMARY KEY AUTOINCREMENT,  %s ) ", tableName6, strings.Join(fields6, ","))
+	if _, err := db.Exec(sql6); err != nil {
+		fmt.Printf("exec error, sql: %s, err: %s \n", sql6, err.Error())
+		return err
+	}
+
 	return nil
 }
 
@@ -584,6 +657,8 @@ func convertField(field interface{}) interface{} {
 		return field.(int64)
 	case int:
 		return field.(int)
+	case string:
+		return field.(string)
 	default:
 		return ""
 	}

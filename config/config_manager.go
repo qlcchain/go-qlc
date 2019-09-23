@@ -13,12 +13,10 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-
+	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/spf13/viper"
 	"gopkg.in/validator.v2"
-
-	"github.com/pkg/errors"
 )
 
 type CfgManager struct {
@@ -46,6 +44,16 @@ func NewCfgManagerWithName(path string, name string) *CfgManager {
 		isDirty:    false,
 	}
 	_, _ = cm.Load()
+	return cm
+}
+
+func NewCfgManagerWithConfig(cfgFile string, config *Config) *CfgManager {
+	cm := &CfgManager{
+		ConfigFile: cfgFile,
+		locker:     &sync.Mutex{},
+		isDirty:    false,
+		cfg:        config,
+	}
 	return cm
 }
 

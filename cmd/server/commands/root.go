@@ -22,18 +22,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/qlcchain/go-qlc/chain"
-
-	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/wallet"
-
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
+	"github.com/qlcchain/go-qlc/chain"
+	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/ledger"
 	qlclog "github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/wallet"
 	"github.com/spf13/cobra"
 )
 
@@ -53,15 +51,15 @@ var (
 	noBootstrapP  bool
 	configParamsP string
 
-	privateKey     cmdutil.Flag
-	account        cmdutil.Flag
-	password       cmdutil.Flag
-	seed           cmdutil.Flag
-	cfgPath        cmdutil.Flag
-	isProfile      cmdutil.Flag
-	noBootstrap    cmdutil.Flag
-	configParams   cmdutil.Flag
-	chainContext   *context.ChainContext
+	privateKey   cmdutil.Flag
+	account      cmdutil.Flag
+	password     cmdutil.Flag
+	seed         cmdutil.Flag
+	cfgPath      cmdutil.Flag
+	isProfile    cmdutil.Flag
+	noBootstrap  cmdutil.Flag
+	configParams cmdutil.Flag
+	//chainContext   *context.ChainContext
 	maxAccountSize = 100
 	logger         = qlclog.NewLogger("config_detail")
 )
@@ -126,7 +124,7 @@ func addCommand() {
 
 func start() error {
 	var accounts []*types.Account
-	chainContext = context.NewChainContext(cfgPathP)
+	chainContext := context.NewChainContext(cfgPathP)
 	fmt.Println("Run node id: ", chainContext.Id())
 	cm, err := chainContext.ConfigManager()
 	if err != nil {
@@ -279,6 +277,7 @@ func trapSignal() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	<-c
+	chainContext := context.NewChainContext(cfgPathP)
 	err := chainContext.Stop()
 	if err != nil {
 		fmt.Println(err)

@@ -77,6 +77,9 @@ func RegisterServices(cc *context.ChainContext) error {
 		_ = cc.Register(context.MetricsService, metricsService)
 	}
 
+	chainManageService := NewChainManageService(cfgFile)
+	_ = cc.Register(context.ChainManageService, chainManageService)
+
 	return nil
 }
 

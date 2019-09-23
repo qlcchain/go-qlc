@@ -17,6 +17,7 @@ const (
 	EventDeleteRelation    TopicType = "deleteRelation"
 	EventGenerateBlock     TopicType = "generateBlock"
 	EventRollbackUnchecked TopicType = "rollbackUnchecked"
+	EventRestartChain      TopicType = "restartChain"
 
 	EventSendMsgToSingle TopicType = "sendMsgToSingle"
 	EventAddP2PStream    TopicType = "addP2PStream"
