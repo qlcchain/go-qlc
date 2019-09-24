@@ -701,6 +701,16 @@ type PovMinerStatItem struct {
 	LastHeight   uint64  `msg:"lh" json:"lastHeight"`
 	BlockNum     uint32  `msg:"bn" json:"blockNum"`
 	RewardAmount Balance `msg:"ra,extension" json:"rewardAmount"`
+	RepBlockNum  uint32  `msg:"rn" json:"repBlockNum"`
+	RepReward    Balance `msg:"rr,extension" json:"repReward"`
+	IsMiner      bool    `msg:"im" json:"isMiner"`
+}
+
+func NewPovMinerStatItem() *PovMinerStatItem {
+	return &PovMinerStatItem{
+		RewardAmount: NewBalance(0),
+		RepReward:    NewBalance(0),
+	}
 }
 
 func (msi *PovMinerStatItem) Serialize() ([]byte, error) {

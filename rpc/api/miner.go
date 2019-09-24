@@ -33,12 +33,7 @@ type RewardParam struct {
 }
 
 type MinerAvailRewardInfo struct {
-	LastBeneficial   string        `json:"lastBeneficial"`
-	LastStartHeight  uint64        `json:"lastStartHeight"`
-	LastEndHeight    uint64        `json:"lastEndHeight"`
-	LastRewardBlocks uint64        `json:"lastRewardBlocks"`
-	LastRewardAmount types.Balance `json:"lastRewardAmount"`
-
+	LastEndHeight     uint64        `json:"lastEndHeight"`
 	LatestBlockHeight uint64        `json:"latestBlockHeight"`
 	NodeRewardHeight  uint64        `json:"nodeRewardHeight"`
 	AvailStartHeight  uint64        `json:"availStartHeight"`
@@ -68,34 +63,6 @@ func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
 	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 }
 
-func (m *MinerApi) GetHistoryRewardInfos(coinbase types.Address) (*MinerHistoryRewardInfo, error) {
-	if !m.cfg.PoV.PovEnabled {
-		return nil, errors.New("pov service is disabled")
-	}
-
-	vmContext := vmstore.NewVMContext(m.ledger)
-	rewardInfos, err := m.reward.GetAllRewardInfos(vmContext, coinbase)
-	if err != nil {
-		return nil, err
-	}
-
-	apiRsp := new(MinerHistoryRewardInfo)
-	apiRsp.RewardInfos = rewardInfos
-	apiRsp.AllRewardAmount = types.NewBalance(0)
-
-	if len(rewardInfos) > 0 {
-		apiRsp.FirstRewardHeight = rewardInfos[0].StartHeight
-		apiRsp.LastRewardHeight = rewardInfos[len(rewardInfos)-1].EndHeight
-
-		for _, rewardInfo := range rewardInfos {
-			apiRsp.AllRewardBlocks += rewardInfo.RewardBlocks
-			apiRsp.AllRewardAmount = apiRsp.AllRewardAmount.Add(rewardInfo.RewardAmount)
-		}
-	}
-
-	return apiRsp, nil
-}
-
 func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailRewardInfo, error) {
 	if !m.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
@@ -110,34 +77,47 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
 
 	vmContext := vmstore.NewVMContext(m.ledger)
-	lastRewardInfo, err := m.reward.GetMaxRewardInfo(vmContext, coinbase)
+	lastRewardHeight, err := m.reward.GetLastRewardHeight(vmContext, coinbase)
 	if err != nil {
 		return nil, err
 	}
 
-	rsp.LastStartHeight = lastRewardInfo.StartHeight
-	rsp.LastEndHeight = lastRewardInfo.EndHeight
-	rsp.LastRewardBlocks = lastRewardInfo.RewardBlocks
-	rsp.LastRewardAmount = lastRewardInfo.RewardAmount
-	if !lastRewardInfo.Beneficial.IsZero() {
-		rsp.LastBeneficial = lastRewardInfo.Beneficial.String()
-	}
-
+	rsp.LastEndHeight = lastRewardHeight
 	rsp.NodeRewardHeight, err = m.reward.GetNodeRewardHeight(vmContext)
 	if err != nil {
 		return nil, err
 	}
 
-	availInfo, err := m.reward.GetAvailRewardInfo(vmContext, coinbase)
-	if err != nil {
-		return nil, err
+	lastHeight := uint64(0)
+	if lastRewardHeight == 0 {
+		lastHeight = common.PovMinerRewardHeightStart - 1
+	} else {
+		lastHeight = lastRewardHeight
 	}
+
+	availInfo := new(cabi.MinerRewardInfo)
+	availInfo.RewardAmount = types.NewBalance(0)
+	for {
+		info, err := m.reward.GetAvailRewardInfo(vmContext, coinbase, rsp.NodeRewardHeight, lastHeight)
+		if err != nil {
+			break
+		}
+
+		if info.RewardAmount.Int64() > 0 {
+			availInfo = info
+			break
+		} else {
+			lastHeight += common.PovMinerMaxRewardBlocksPerCall
+		}
+	}
+
 	rsp.AvailStartHeight = availInfo.StartHeight
 	rsp.AvailEndHeight = availInfo.EndHeight
 	rsp.AvailRewardBlocks = availInfo.RewardBlocks
 	rsp.AvailRewardAmount = availInfo.RewardAmount
 
-	if rsp.AvailStartHeight > rsp.LastEndHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight {
+	if rsp.AvailStartHeight > lastRewardHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight &&
+		rsp.AvailRewardAmount.Int64() > 0 {
 		rsp.NeedCallReward = true
 	}
 
@@ -152,14 +132,9 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	if param.Coinbase.IsZero() {
 		return nil, errors.New("invalid reward param coinbase")
 	}
+
 	if param.Beneficial.IsZero() {
 		return nil, errors.New("invalid reward param beneficial")
-	}
-
-	// check same start & end height exist in old reward infos
-	err := m.checkParamExistInOldRewardInfos(param)
-	if err != nil {
-		return nil, err
 	}
 
 	amCb, err := m.ledger.GetAccountMeta(param.Coinbase)
@@ -209,6 +184,9 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		return nil, err
 	}
 
+	h := vmContext.Cache.Trie().Hash()
+	send.Extra = *h
+
 	return send, nil
 }
 
@@ -233,8 +211,6 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 	}
 	if len(blocks) > 0 {
 		reward.Timestamp = common.TimeNow().Unix()
-		h := blocks[0].VMContext.Cache.Trie().Hash()
-		reward.Extra = *h
 		return reward, nil
 	}
 
@@ -252,24 +228,4 @@ func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.Sta
 	}
 
 	return m.GetRewardRecvBlock(input)
-}
-
-func (m *MinerApi) checkParamExistInOldRewardInfos(param *RewardParam) error {
-	ctx := vmstore.NewVMContext(m.ledger)
-
-	oldRewardInfos, err := cabi.GetMinerRewardInfosByCoinbase(ctx, param.Coinbase)
-	if err != nil && err != vmstore.ErrStorageNotFound {
-		return errors.New("failed to get storage for miner")
-	}
-
-	for _, oldRewardInfo := range oldRewardInfos {
-		if param.StartHeight >= oldRewardInfo.StartHeight && param.StartHeight <= oldRewardInfo.EndHeight {
-			return fmt.Errorf("start height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
-		}
-		if param.EndHeight >= oldRewardInfo.StartHeight && param.EndHeight <= oldRewardInfo.EndHeight {
-			return fmt.Errorf("end height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
-		}
-	}
-
-	return nil
 }

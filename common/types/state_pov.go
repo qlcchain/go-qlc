@@ -140,6 +140,7 @@ func (ts *PovTokenState) String() string {
 }
 
 type PovRepState struct {
+	Account Address `msg:"a,extension" json:"account"`
 	Balance Balance `msg:"b,extension" json:"balance"`
 	Vote    Balance `msg:"v,extension" json:"vote"`
 	Network Balance `msg:"n,extension" json:"network"`
@@ -184,6 +185,6 @@ func (rs *PovRepState) CalcTotal() Balance {
 }
 
 func (rs *PovRepState) String() string {
-	return fmt.Sprintf("{Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s, Total:%s}",
-		rs.Balance, rs.Vote, rs.Network, rs.Storage, rs.Oracle, rs.Total)
+	return fmt.Sprintf("{Account:%s, Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s, Total:%s}",
+		rs.Account, rs.Balance, rs.Vote, rs.Network, rs.Storage, rs.Oracle, rs.Total)
 }

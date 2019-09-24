@@ -5,66 +5,49 @@ import (
 	"fmt"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/trie"
+	"github.com/qlcchain/go-qlc/common/util"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type RepReward struct{}
 
-func (m *RepReward) GetMaxRewardInfo(ctx *vmstore.VMContext, account types.Address) (*cabi.RepRewardInfo, error) {
-	rewardInfos, err := cabi.GetRepRewardInfosByAccount(ctx, account)
+func (r *RepReward) GetLastRewardHeight(ctx *vmstore.VMContext, account types.Address) (uint64, error) {
+	height, err := cabi.GetLastRepRewardHeightByAccount(ctx, account)
 	if err != nil && err != vmstore.ErrStorageNotFound {
-		return nil, errors.New("failed to get storage for miner")
+		return 0, errors.New("failed to get storage for repReward")
 	}
 
-	maxInfo := cabi.CalcMaxRepRewardInfo(rewardInfos)
-	if maxInfo == nil {
-		maxInfo = new(cabi.RepRewardInfo)
-	}
-
-	return maxInfo, nil
+	return height, nil
 }
 
-func (m *RepReward) GetAllRewardInfos(ctx *vmstore.VMContext, account types.Address) ([]*cabi.RepRewardInfo, error) {
-	rewardInfos, err := cabi.GetRepRewardInfosByAccount(ctx, account)
-	if err != nil && err != vmstore.ErrStorageNotFound {
-		return nil, errors.New("failed to get storage for miner")
-	}
-
-	return rewardInfos, nil
-}
-
-func (m *RepReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
+func (r *RepReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
 	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return 0, errors.New("failed to get latest block")
 	}
 
 	nodeHeight := latestBlock.GetHeight()
-	if nodeHeight < common.RepRewardHeightGapToLatest {
+	if nodeHeight < common.PovMinerRewardHeightGapToLatest {
 		return 0, nil
 	}
-	nodeHeight = nodeHeight - common.RepRewardHeightGapToLatest
+	nodeHeight = nodeHeight - common.PovMinerRewardHeightGapToLatest
 
-	nodeHeight = cabi.RepRoundPovHeight(nodeHeight, common.DPosOnlinePeriod)
+	nodeHeight = cabi.RepRoundPovHeight(nodeHeight, common.PovMinerRewardHeightRound)
 	return nodeHeight, nil
 }
 
-func (m *RepReward) GetAvailRewardInfo(ctx *vmstore.VMContext, account types.Address, nodeHeight uint64, maxInfo *cabi.RepRewardInfo) (*cabi.RepRewardInfo, error) {
+func (r *RepReward) GetAvailRewardInfo(ctx *vmstore.VMContext, account types.Address, nodeHeight uint64, lastRewardHeight uint64) (*cabi.RepRewardInfo, error) {
 	availInfo := new(cabi.RepRewardInfo)
+	availInfo.RewardAmount = types.NewBalance(0)
 
-	startHeight := uint64(0)
-	if maxInfo != nil && maxInfo.EndHeight > 0 {
-		startHeight = maxInfo.EndHeight + 1
-	}
-
+	startHeight := lastRewardHeight + 1
 	endHeight := cabi.RepCalcRewardEndHeight(startHeight, nodeHeight)
 	if endHeight < startHeight {
-		return availInfo, nil
+		return nil, fmt.Errorf("calc endheight err [%d-%d]", startHeight, endHeight)
 	}
 
-	availBlocks, availReward, err := m.calcRewardBlocksByHeight(ctx, account, startHeight, endHeight)
+	availBlocks, availReward, err := r.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +59,11 @@ func (m *RepReward) GetAvailRewardInfo(ctx *vmstore.VMContext, account types.Add
 	return availInfo, nil
 }
 
-func (m *RepReward) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
+func (r *RepReward) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
 	return types.NewBalance(0), nil
 }
 
-func (m *RepReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err error) {
+func (r *RepReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err error) {
 	param := new(cabi.RepRewardParam)
 	err = cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.Data)
 	if err != nil {
@@ -105,7 +88,7 @@ func (m *RepReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err
 		return errors.New("rep account not exist")
 	}
 
-	nodeRewardHeight, err := m.GetNodeRewardHeight(ctx)
+	nodeRewardHeight, err := r.GetNodeRewardHeight(ctx)
 	if err != nil {
 		return err
 	}
@@ -114,7 +97,13 @@ func (m *RepReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err
 		return fmt.Errorf("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
 	}
 
-	calcRewardBlocks, calcRewardAmount, err := m.calcRewardBlocksByHeight(ctx, param.Account, param.StartHeight, param.EndHeight)
+	// check same start & end height exist in old reward infos
+	err = r.checkParamExistInOldRewardInfos(ctx, param)
+	if err != nil {
+		return errors.New("section exist")
+	}
+
+	calcRewardBlocks, calcRewardAmount, err := r.calcRewardBlocksByDayStats(ctx, param.Account, param.StartHeight, param.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -131,10 +120,15 @@ func (m *RepReward) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err
 		return err
 	}
 
+	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], util.BE_Uint64ToBytes(param.EndHeight))
+	if err != nil {
+		return errors.New("save contract data err")
+	}
+
 	return nil
 }
 
-func (m *RepReward) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+func (r *RepReward) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	param := new(cabi.RepRewardParam)
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.Data)
 	if err != nil {
@@ -155,11 +149,8 @@ func (m *RepReward) DoPending(block *types.StateBlock) (*types.PendingKey, *type
 		}, nil
 }
 
-func (m *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
+func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.RepRewardParam)
-	exist := false
-	calcRewardAmount := types.NewBalance(0)
-	var calcRewardBlocks uint64
 
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, input.Data)
 	if err != nil {
@@ -174,30 +165,11 @@ func (m *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 		return nil, errors.New("input account is not rep")
 	}
 
-	// check same start & end height exist in old reward infos
-	err = m.checkParamExistInOldRewardInfos(ctx, param)
-	if err != nil {
-		exist = true
-	}
-
-	// save contract data to storage
-	newRepData, err := cabi.RepABI.PackVariable(
-		cabi.VariableNameRepRewardInfo,
-		param.Beneficial,
-		param.StartHeight,
-		param.EndHeight,
-		param.RewardBlocks,
-		param.RewardAmount)
-	if err != nil {
-		return nil, err
-	}
-
 	// generate contract reward block
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
 	block.Token = common.GasToken()
 	block.Link = input.GetHash()
-	block.Data = newRepData
 	block.PoVHeight = input.PoVHeight
 
 	// pledge fields only for QLC token
@@ -206,61 +178,38 @@ func (m *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	block.Storage = types.NewBalance(0)
 	block.Network = types.NewBalance(0)
 
-	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
-
-	//the section has been extracted
-	if exist {
-		if amBnf != nil {
-			tmBnf := amBnf.Token(common.GasToken())
-			if tmBnf != nil {
-				block.Balance = tmBnf.Balance
-				block.Representative = tmBnf.Representative
-				block.Previous = tmBnf.Header
-			} else {
-				return nil, fmt.Errorf("reward gas token meta does not exist")
-			}
-		} else {
-			return nil, fmt.Errorf("reward account meta does not exist")
-		}
-	} else {
-		calcRewardBlocks, calcRewardAmount, err = m.calcRewardBlocksByHeight(ctx, param.Account, param.StartHeight, param.EndHeight)
-		if err != nil {
-			return nil, err
-		}
-
-		if calcRewardBlocks != param.RewardBlocks {
-			return nil, fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
-		}
-		if calcRewardAmount.Compare(param.RewardAmount) != types.BalanceCompEqual {
-			return nil, fmt.Errorf("calc reward %v not equal param reward %v", calcRewardAmount, param.RewardAmount)
-		}
-
-		if amBnf != nil {
-			tmBnf := amBnf.Token(common.GasToken())
-			if tmBnf != nil {
-				block.Balance = tmBnf.Balance.Add(calcRewardAmount)
-				block.Representative = tmBnf.Representative
-				block.Previous = tmBnf.Header
-			} else {
-				block.Balance = calcRewardAmount
-				if len(amBnf.Tokens) > 0 {
-					block.Representative = amBnf.Tokens[0].Representative
-				} else {
-					block.Representative = input.Representative
-				}
-				block.Previous = types.ZeroHash
-			}
-		} else {
-			block.Balance = calcRewardAmount
-			block.Representative = input.Representative
-			block.Previous = types.ZeroHash
-		}
-	}
-
-	repKey := cabi.GetRepRewardKey(param.Account, param.StartHeight)
-	err = ctx.SetStorage(types.RepAddress.Bytes(), repKey, newRepData)
+	calcRewardBlocks, calcRewardAmount, err := r.calcRewardBlocksByDayStats(ctx, param.Account, param.StartHeight, param.EndHeight)
 	if err != nil {
 		return nil, err
+	}
+
+	if calcRewardBlocks != param.RewardBlocks {
+		return nil, fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
+	}
+	if calcRewardAmount.Compare(param.RewardAmount) != types.BalanceCompEqual {
+		return nil, fmt.Errorf("calc reward %v not equal param reward %v", calcRewardAmount, param.RewardAmount)
+	}
+
+	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
+	if amBnf != nil {
+		tmBnf := amBnf.Token(common.GasToken())
+		if tmBnf != nil {
+			block.Balance = tmBnf.Balance.Add(calcRewardAmount)
+			block.Representative = tmBnf.Representative
+			block.Previous = tmBnf.Header
+		} else {
+			block.Balance = calcRewardAmount
+			if len(amBnf.Tokens) > 0 {
+				block.Representative = amBnf.Tokens[0].Representative
+			} else {
+				block.Representative = input.Representative
+			}
+			block.Previous = types.ZeroHash
+		}
+	} else {
+		block.Balance = calcRewardAmount
+		block.Representative = input.Representative
+		block.Previous = types.ZeroHash
 	}
 
 	return []*ContractBlock{
@@ -276,59 +225,55 @@ func (m *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	}, nil
 }
 
-func (m *RepReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, param *cabi.RepRewardParam) error {
-	oldRewardInfos, err := cabi.GetRepRewardInfosByAccount(ctx, param.Account)
+func (r *RepReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, param *cabi.RepRewardParam) error {
+	lastRewardHeight, err := cabi.GetLastRepRewardHeightByAccount(ctx, param.Account)
 	if err != nil && err != vmstore.ErrStorageNotFound {
-		return errors.New("failed to get storage for miner")
+		return errors.New("failed to get storage for repReward")
 	}
 
-	for _, oldRewardInfo := range oldRewardInfos {
-		if param.StartHeight >= oldRewardInfo.StartHeight && param.StartHeight <= oldRewardInfo.EndHeight {
-			return fmt.Errorf("start height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
-		}
-		if param.EndHeight >= oldRewardInfo.StartHeight && param.EndHeight <= oldRewardInfo.EndHeight {
-			return fmt.Errorf("end height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
-		}
+	if param.StartHeight <= lastRewardHeight {
+		return fmt.Errorf("start height[%d] err, last height[%d]", param.StartHeight, lastRewardHeight)
 	}
 
 	return nil
 }
 
-func (m *RepReward) calcRewardBlocksByHeight(ctx *vmstore.VMContext, account types.Address, startHeight, endHeight uint64) (uint64, types.Balance, error) {
-	rewardBlocks := uint64(0)
-	rewardAmount := types.NewBalance(0)
-	keyBytes := types.PovCreateRepStateKey(account)
-
-	for curHeight := startHeight + common.DPosOnlinePeriod - 1; curHeight <= endHeight; curHeight += common.DPosOnlinePeriod {
-		block, err := ctx.GetPovHeaderByHeight(curHeight)
-		if block == nil {
-			return rewardBlocks, rewardAmount, err
-		}
-
-		stateHash := block.GetStateHash()
-		stateTrie := trie.NewTrie(ctx.GetLedger().Store, &stateHash, nil)
-
-		valBytes := stateTrie.GetValue(keyBytes)
-		if len(valBytes) <= 0 {
-			continue
-		}
-
-		rs := new(types.PovRepState)
-		err = rs.Deserialize(valBytes)
-		if err != nil {
-			ctx.GetLogger().Errorf("deserialize old rep state err %s", err)
-			continue
-		}
-
-		if rs.Status == types.PovStatusOnline && rs.Height >= curHeight+1-common.DPosOnlinePeriod {
-			rewardBlocks += common.DPosOnlinePeriod
-		}
+func (r *RepReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, account types.Address, startHeight, endHeight uint64) (uint64, types.Balance, error) {
+	if startHeight < common.PovMinerRewardHeightStart {
+		startHeight = common.PovMinerRewardHeightStart
 	}
 
-	rewardAmount.SetUint64(rewardBlocks * uint64(common.PovMinerRewardPerBlock) * uint64(common.PovMinerRewardRatioRep) / 100)
+	if startHeight%uint64(common.POVChainBlocksPerDay) != 0 {
+		return 0, types.NewBalance(0), errors.New("start height is not integral multiple of blocks per day")
+	}
+	if (endHeight+1)%uint64(common.POVChainBlocksPerDay) != 0 {
+		return 0, types.NewBalance(0), errors.New("end height is not integral multiple of blocks per day")
+	}
+
+	repAddrStr := account.String()
+	rewardBlocks := uint64(0)
+	startDayIndex := uint32(startHeight / uint64(common.POVChainBlocksPerDay))
+	endDayIndex := uint32(endHeight / uint64(common.POVChainBlocksPerDay))
+
+	rewardAmount := types.NewBalance(0)
+	for dayIndex := startDayIndex; dayIndex <= endDayIndex; dayIndex++ {
+		dayStat, err := ctx.GetPovMinerStat(dayIndex)
+		if err != nil {
+			return 0, types.NewBalance(0), err
+		}
+
+		minerStat := dayStat.MinerStats[repAddrStr]
+		if minerStat == nil {
+			continue
+		}
+
+		rewardBlocks += uint64(minerStat.RepBlockNum)
+		rewardAmount = rewardAmount.Add(minerStat.RepReward)
+	}
+
 	return rewardBlocks, rewardAmount, nil
 }
 
-func (m *RepReward) GetRefundData() []byte {
+func (r *RepReward) GetRefundData() []byte {
 	return []byte{1}
 }

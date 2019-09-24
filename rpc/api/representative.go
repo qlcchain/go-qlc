@@ -33,12 +33,7 @@ type RepRewardParam struct {
 }
 
 type RepAvailRewardInfo struct {
-	LastBeneficial   string        `json:"lastBeneficial"`
-	LastStartHeight  uint64        `json:"lastStartHeight"`
-	LastEndHeight    uint64        `json:"lastEndHeight"`
-	LastRewardBlocks uint64        `json:"lastRewardBlocks"`
-	LastRewardAmount types.Balance `json:"lastRewardAmount"`
-
+	LastEndHeight     uint64        `json:"lastEndHeight"`
 	LatestBlockHeight uint64        `json:"latestBlockHeight"`
 	NodeRewardHeight  uint64        `json:"nodeRewardHeight"`
 	AvailStartHeight  uint64        `json:"availStartHeight"`
@@ -46,14 +41,6 @@ type RepAvailRewardInfo struct {
 	AvailRewardBlocks uint64        `json:"availRewardBlocks"`
 	AvailRewardAmount types.Balance `json:"availRewardAmount"`
 	NeedCallReward    bool          `json:"needCallReward"`
-}
-
-type RepHistoryRewardInfo struct {
-	RewardInfos       []*cabi.RepRewardInfo `json:"rewardInfos"`
-	FirstRewardHeight uint64                `json:"firstRewardHeight"`
-	LastRewardHeight  uint64                `json:"lastRewardHeight"`
-	AllRewardBlocks   uint64                `json:"allRewardBlocks"`
-	AllRewardAmount   types.Balance         `json:"allRewardAmount"`
 }
 
 func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
@@ -65,109 +52,88 @@ func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
 	}
 }
 
-func (m *RepApi) GetRewardData(param *RepRewardParam) ([]byte, error) {
+func (r *RepApi) GetRewardData(param *RepRewardParam) ([]byte, error) {
 	return cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 }
 
-func (m *RepApi) GetHistoryRewardInfos(account types.Address) (*RepHistoryRewardInfo, error) {
-	if !m.cfg.PoV.PovEnabled {
-		return nil, errors.New("pov service is disabled")
-	}
-
-	vmContext := vmstore.NewVMContext(m.ledger)
-	rewardInfos, err := m.reward.GetAllRewardInfos(vmContext, account)
-	if err != nil {
-		return nil, err
-	}
-
-	apiRsp := new(RepHistoryRewardInfo)
-	apiRsp.RewardInfos = rewardInfos
-	apiRsp.AllRewardAmount = types.NewBalance(0)
-
-	if len(rewardInfos) > 0 {
-		apiRsp.FirstRewardHeight = rewardInfos[0].StartHeight
-		apiRsp.LastRewardHeight = rewardInfos[len(rewardInfos)-1].EndHeight
-
-		for _, rewardInfo := range rewardInfos {
-			apiRsp.AllRewardBlocks += rewardInfo.RewardBlocks
-			apiRsp.AllRewardAmount = apiRsp.AllRewardAmount.Add(rewardInfo.RewardAmount)
-		}
-	}
-
-	return apiRsp, nil
-}
-
-func (m *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo, error) {
-	if !m.cfg.PoV.PovEnabled {
+func (r *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo, error) {
+	if !r.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
 
 	rsp := new(RepAvailRewardInfo)
 
-	latestPovHeader, err := m.ledger.GetLatestPovHeader()
+	latestPovHeader, err := r.ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
 	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
 
-	vmContext := vmstore.NewVMContext(m.ledger)
-	lastRewardInfo, err := m.reward.GetMaxRewardInfo(vmContext, account)
+	vmContext := vmstore.NewVMContext(r.ledger)
+	lastRewardHeight, err := r.reward.GetLastRewardHeight(vmContext, account)
 	if err != nil {
 		return nil, err
 	}
 
-	rsp.LastStartHeight = lastRewardInfo.StartHeight
-	rsp.LastEndHeight = lastRewardInfo.EndHeight
-	rsp.LastRewardBlocks = lastRewardInfo.RewardBlocks
-	rsp.LastRewardAmount = lastRewardInfo.RewardAmount
-	if !lastRewardInfo.Beneficial.IsZero() {
-		rsp.LastBeneficial = lastRewardInfo.Beneficial.String()
-	}
-
-	rsp.NodeRewardHeight, err = m.reward.GetNodeRewardHeight(vmContext)
+	rsp.LastEndHeight = lastRewardHeight
+	rsp.NodeRewardHeight, err = r.reward.GetNodeRewardHeight(vmContext)
 	if err != nil {
 		return nil, err
 	}
 
-	availInfo, err := m.reward.GetAvailRewardInfo(vmContext, account, rsp.NodeRewardHeight, lastRewardInfo)
-	if err != nil {
-		return nil, err
+	lastHeight := uint64(0)
+	if lastRewardHeight == 0 {
+		lastHeight = common.PovMinerRewardHeightStart - 1
+	} else {
+		lastHeight = lastRewardHeight
 	}
+
+	availInfo := new(cabi.RepRewardInfo)
+	availInfo.RewardAmount = types.NewBalance(0)
+	for {
+		info, err := r.reward.GetAvailRewardInfo(vmContext, account, rsp.NodeRewardHeight, lastHeight)
+		if err != nil {
+			break
+		}
+
+		if info.RewardAmount.Int64() > 0 {
+			availInfo = info
+			break
+		} else {
+			lastHeight += common.PovMinerMaxRewardBlocksPerCall
+		}
+	}
+
 	rsp.AvailStartHeight = availInfo.StartHeight
 	rsp.AvailEndHeight = availInfo.EndHeight
 	rsp.AvailRewardBlocks = availInfo.RewardBlocks
 	rsp.AvailRewardAmount = availInfo.RewardAmount
 
-	if (rsp.LastEndHeight > 0 && rsp.AvailStartHeight > rsp.LastEndHeight) ||
-		(rsp.LastEndHeight == 0 && rsp.AvailStartHeight == 0) && rsp.AvailEndHeight <= rsp.NodeRewardHeight {
+	if rsp.AvailStartHeight > lastRewardHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight &&
+		rsp.AvailRewardAmount.Int64() > 0 {
 		rsp.NeedCallReward = true
 	}
 
 	return rsp, nil
 }
 
-func (m *RepApi) checkParamExistInOldRewardInfos(param *RepRewardParam) error {
-	ctx := vmstore.NewVMContext(m.ledger)
+func (r *RepApi) checkParamExistInOldRewardInfos(param *RepRewardParam) error {
+	ctx := vmstore.NewVMContext(r.ledger)
 
-	oldRewardInfos, err := cabi.GetRepRewardInfosByAccount(ctx, param.Account)
+	lastRewardHeight, err := cabi.GetLastRepRewardHeightByAccount(ctx, param.Account)
 	if err != nil && err != vmstore.ErrStorageNotFound {
 		return errors.New("failed to get storage for repReward")
 	}
 
-	for _, oldRewardInfo := range oldRewardInfos {
-		if param.StartHeight >= oldRewardInfo.StartHeight && param.StartHeight <= oldRewardInfo.EndHeight {
-			return fmt.Errorf("start height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
-		}
-		if param.EndHeight >= oldRewardInfo.StartHeight && param.EndHeight <= oldRewardInfo.EndHeight {
-			return fmt.Errorf("end height %d exist in old reward info %d-%d", param.StartHeight, oldRewardInfo.StartHeight, oldRewardInfo.EndHeight)
-		}
+	if param.StartHeight <= lastRewardHeight {
+		return fmt.Errorf("start height[%d] err, last height[%d]", param.StartHeight, lastRewardHeight)
 	}
 
 	return nil
 }
 
-func (m *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, error) {
-	if !m.cfg.PoV.PovEnabled {
+func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, error) {
+	if !r.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
 
@@ -179,7 +145,7 @@ func (m *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		return nil, errors.New("invalid reward param beneficial")
 	}
 
-	am, err := m.ledger.GetAccountMeta(param.Account)
+	am, err := r.ledger.GetAccountMeta(param.Account)
 	if am == nil {
 		return nil, fmt.Errorf("rep account not exist, %s", err)
 	}
@@ -189,12 +155,12 @@ func (m *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		return nil, fmt.Errorf("rep account does not have chain token, %s", err)
 	}
 
-	data, err := m.GetRewardData(param)
+	data, err := r.GetRewardData(param)
 	if err != nil {
 		return nil, err
 	}
 
-	latestPovHeader, err := m.ledger.GetLatestPovHeader()
+	latestPovHeader, err := r.ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -220,17 +186,20 @@ func (m *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		PoVHeight: latestPovHeader.GetHeight(),
 	}
 
-	vmContext := vmstore.NewVMContext(m.ledger)
-	err = m.reward.DoSend(vmContext, send)
+	vmContext := vmstore.NewVMContext(r.ledger)
+	err = r.reward.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
 
+	h := vmContext.Cache.Trie().Hash()
+	send.Extra = *h
+
 	return send, nil
 }
 
-func (m *RepApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
-	if !m.cfg.PoV.PovEnabled {
+func (r *RepApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if !r.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
 
@@ -243,32 +212,30 @@ func (m *RepApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock,
 
 	reward := &types.StateBlock{}
 
-	vmContext := vmstore.NewVMContext(m.ledger)
-	blocks, err := m.reward.DoReceive(vmContext, reward, input)
+	vmContext := vmstore.NewVMContext(r.ledger)
+	blocks, err := r.reward.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
 	}
 	if len(blocks) > 0 {
 		reward.Timestamp = common.TimeNow().Unix()
-		h := blocks[0].VMContext.Cache.Trie().Hash()
-		reward.Extra = *h
 		return reward, nil
 	}
 
 	return nil, errors.New("can not generate reward recv block")
 }
 
-func (m *RepApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
-	if !m.cfg.PoV.PovEnabled {
+func (r *RepApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+	if !r.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
 
-	input, err := m.ledger.GetStateBlock(sendHash)
+	input, err := r.ledger.GetStateBlock(sendHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return m.GetRewardRecvBlock(input)
+	return r.GetRewardRecvBlock(input)
 }
 
 type RepStateParams struct {
@@ -276,8 +243,8 @@ type RepStateParams struct {
 	Height  uint64
 }
 
-func (m *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepState, error) {
-	ctx := vmstore.NewVMContext(m.ledger)
+func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepState, error) {
+	ctx := vmstore.NewVMContext(r.ledger)
 	block, err := ctx.GetPovHeaderByHeight(params.Height)
 	if block == nil {
 		return nil, fmt.Errorf("get pov block with height[%d] err", params.Height)

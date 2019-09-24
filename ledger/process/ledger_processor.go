@@ -641,6 +641,25 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 }
 
 func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.StoreTxn) error {
+	if !common.IsGenesisBlock(block) && block.GetType() == types.ContractSend {
+		address := types.Address(block.GetLink())
+		if address == types.MinerAddress || address == types.RepAddress {
+			c, ok, err := contract.GetChainContract(address, block.Data)
+			if !ok || err != nil {
+				return fmt.Errorf("invaild contract %s", err)
+			}
+
+			vmCtx := vmstore.NewVMContext(lv.l)
+			err = c.DoSend(vmCtx, block)
+			if err != nil {
+				return err
+			}
+
+			vmCtx.SaveStorage(txn)
+			vmCtx.SaveTrie(txn)
+		}
+	}
+
 	if !common.IsGenesisBlock(block) && block.GetType() == types.ContractReward {
 		input, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {

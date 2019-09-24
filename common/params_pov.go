@@ -59,7 +59,4 @@ var (
 
 	PovMinCoinbaseExtraSize = 2
 	PovMaxCoinbaseExtraSize = 100
-
-	RepMaxRewardBlocksPerCall  = PovMinerMaxRewardBlocksPerCall
-	RepRewardHeightGapToLatest = PovMinerRewardHeightGapToLatest
 )

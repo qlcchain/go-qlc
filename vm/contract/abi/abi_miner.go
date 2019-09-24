@@ -21,19 +21,10 @@ const (
 			{"name":"endHeight","type":"uint64"},
 			{"name":"rewardBlocks","type":"uint64"},
 			{"name":"rewardAmount","type":"balance"}
-		]},
-		{"type":"variable","name":"MinerRewardInfo","inputs":[
-			{"name":"beneficial","type":"address"},
-			{"name":"startHeight","type":"uint64"},
-			{"name":"endHeight","type":"uint64"},
-			{"name":"rewardBlocks","type":"uint64"},
-			{"name":"rewardAmount","type":"balance"}
 		]}
 	]`
 
 	MethodNameMinerReward = "MinerReward"
-
-	VariableNameMinerRewardInfo = "MinerRewardInfo"
 )
 
 var (
@@ -80,57 +71,20 @@ type MinerRewardInfo struct {
 	RewardAmount types.Balance `json:"rewardAmount"`
 }
 
-func GetMinerRewardKey(addr types.Address, height uint64) []byte {
-	result := []byte(nil)
-	result = append(result, addr[:]...)
-	hb := util.BE_Uint64ToBytes(height)
-	result = append(result, hb...)
-	return result
-}
-
-func GetMinerRewardInfosByCoinbase(ctx *vmstore.VMContext, coinbase types.Address) ([]*MinerRewardInfo, error) {
-	var rewardInfos []*MinerRewardInfo
-
-	keyPrefix := []byte(nil)
-	keyPrefix = append(keyPrefix, types.MinerAddress[:]...)
-	keyPrefix = append(keyPrefix, coinbase[:]...)
-
-	err := ctx.Iterator(keyPrefix, func(key []byte, value []byte) error {
-		//ctx.GetLogger().Infof("key: %v, value: %v", key, value)
-		if len(value) > 0 {
-			info := new(MinerRewardInfo)
-			err := MinerABI.UnpackVariable(info, VariableNameMinerRewardInfo, value)
-			if err == nil {
-				rewardInfos = append(rewardInfos, info)
-			} else {
-				ctx.GetLogger().Error(err)
-			}
-		}
-		return nil
-	})
+func GetLastMinerRewardHeightByAccount(ctx *vmstore.VMContext, coinbase types.Address) (uint64, error) {
+	data, err := ctx.GetStorage(types.MinerAddress[:], coinbase[:])
 	if err == nil {
-		return rewardInfos, nil
+		return util.BE_BytesToUint64(data), nil
 	} else {
-		return nil, err
+		return 0, err
 	}
-}
-
-func CalcMaxMinerRewardInfo(rewardInfos []*MinerRewardInfo) *MinerRewardInfo {
-	var maxInfo *MinerRewardInfo
-	for _, rewardInfo := range rewardInfos {
-		if maxInfo == nil {
-			maxInfo = rewardInfo
-		} else if rewardInfo.EndHeight > maxInfo.EndHeight {
-			maxInfo = rewardInfo
-		}
-	}
-	return maxInfo
 }
 
 func MinerCalcRewardEndHeight(startHeight uint64, maxEndHeight uint64) uint64 {
 	if maxEndHeight < common.PovMinerRewardHeightStart {
 		return 0
 	}
+
 	if startHeight < common.PovMinerRewardHeightStart {
 		startHeight = common.PovMinerRewardHeightStart
 	}
@@ -139,10 +93,12 @@ func MinerCalcRewardEndHeight(startHeight uint64, maxEndHeight uint64) uint64 {
 	if endHeight > maxEndHeight {
 		endHeight = maxEndHeight
 	}
+
 	endHeight = MinerRoundPovHeight(endHeight, common.PovMinerRewardHeightRound)
 	if endHeight < common.PovMinerRewardHeightStart {
 		return 0
 	}
+
 	return endHeight
 }
 
@@ -157,19 +113,4 @@ func MinerRoundPovHeight(height uint64, round uint64) uint64 {
 		return 0
 	}
 	return roundCount - 1
-}
-
-func MinerPovHeightToDayIndex(height uint64) uint32 {
-	if height <= uint64(common.POVChainBlocksPerDay) {
-		return 0
-	}
-
-	dayIndex := uint32(height / uint64(common.POVChainBlocksPerDay))
-
-	remain := uint32(height % uint64(common.POVChainBlocksPerDay))
-	if remain > 0 {
-		dayIndex += 1
-	}
-
-	return dayIndex
 }

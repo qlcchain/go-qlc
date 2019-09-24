@@ -114,10 +114,8 @@ func addcommands() {
 	generateTestPair()
 	minerReward()
 	minerRecvPend()
-	minerHistory()
 	change()
 	dumpledger()
 	repReward()
-	repRewardHistory()
 	repRewardRecvPend()
 }

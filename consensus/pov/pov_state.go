@@ -304,12 +304,14 @@ func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs 
 	return nil
 }
 
-func (bc *PovBlockChain) GetAllRepStates(trie *trie.Trie) []*types.PovRepState {
+func (bc *PovBlockChain) GetAllValidRepStates(trie *trie.Trie) []*types.PovRepState {
 	var allRss []*types.PovRepState
+	supply := common.GenesisBlock().Balance
+	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	it := trie.NewIterator([]byte{types.PovStatePrefixRep})
 
-	_, valBytes, ok := it.Next()
+	key, valBytes, ok := it.Next()
 	for ok {
 		if len(valBytes) > 0 {
 			rs := new(types.PovRepState)
@@ -319,10 +321,15 @@ func (bc *PovBlockChain) GetAllRepStates(trie *trie.Trie) []*types.PovRepState {
 				return nil
 			}
 
+			if rs.CalcTotal().Compare(minVoteWeight) != types.BalanceCompBigger {
+				continue
+			}
+
+			_ = rs.Account.SetBytes(key[1:])
 			allRss = append(allRss, rs)
 		}
 
-		_, valBytes, ok = it.Next()
+		key, valBytes, ok = it.Next()
 	}
 
 	//bc.logger.Debugf("get all rep state %d", len(allRss))

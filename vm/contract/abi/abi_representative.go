@@ -20,18 +20,10 @@ const (
 			{"name":"endHeight","type":"uint64"},
 			{"name":"rewardBlocks","type":"uint64"},
 			{"name":"rewardAmount","type":"balance"}
-		]},
-		{"type":"variable","name":"RepRewardInfo","inputs":[
-			{"name":"beneficial","type":"address"},
-			{"name":"startHeight","type":"uint64"},
-			{"name":"endHeight","type":"uint64"},
-			{"name":"rewardBlocks","type":"uint64"},
-			{"name":"rewardAmount","type":"balance"}
 		]}
 	]`
 
-	MethodNameRepReward       = "RepReward"
-	VariableNameRepRewardInfo = "RepRewardInfo"
+	MethodNameRepReward = "RepReward"
 )
 
 var (
@@ -56,13 +48,17 @@ func (p *RepRewardParam) Verify() (bool, error) {
 		return false, fmt.Errorf("beneficial is zero")
 	}
 
+	if p.StartHeight < common.PovMinerRewardHeightStart {
+		return false, fmt.Errorf("startHeight %d less than %d", p.StartHeight, common.PovMinerRewardHeightStart)
+	}
+
 	if p.StartHeight > p.EndHeight {
 		return false, fmt.Errorf("startHeight %d greater than endHeight %d", p.StartHeight, p.EndHeight)
 	}
 
 	gapCount := p.EndHeight - p.StartHeight + 1
-	if gapCount > common.RepMaxRewardBlocksPerCall {
-		return false, fmt.Errorf("gap count %d exceed max blocks %d", p.StartHeight, common.RepMaxRewardBlocksPerCall)
+	if gapCount > common.PovMinerMaxRewardBlocksPerCall {
+		return false, fmt.Errorf("gap count %d exceed max blocks %d", p.StartHeight, common.PovMinerMaxRewardBlocksPerCall)
 	}
 
 	return true, nil
@@ -76,58 +72,34 @@ type RepRewardInfo struct {
 	RewardAmount types.Balance `json:"rewardAmount"`
 }
 
-func GetRepRewardKey(addr types.Address, height uint64) []byte {
-	result := []byte(nil)
-	result = append(result, addr[:]...)
-	hb := util.BE_Uint64ToBytes(height)
-	result = append(result, hb...)
-	return result
-}
-
-func GetRepRewardInfosByAccount(ctx *vmstore.VMContext, account types.Address) ([]*RepRewardInfo, error) {
-	var rewardInfos []*RepRewardInfo
-
-	keyPrefix := []byte(nil)
-	keyPrefix = append(keyPrefix, types.RepAddress[:]...)
-	keyPrefix = append(keyPrefix, account[:]...)
-
-	err := ctx.Iterator(keyPrefix, func(key []byte, value []byte) error {
-		//ctx.GetLogger().Infof("key: %v, value: %v", key, value)
-		if len(value) > 0 {
-			info := new(RepRewardInfo)
-			err := RepABI.UnpackVariable(info, VariableNameRepRewardInfo, value)
-			if err == nil {
-				rewardInfos = append(rewardInfos, info)
-			} else {
-				ctx.GetLogger().Error(err)
-			}
-		}
-		return nil
-	})
+func GetLastRepRewardHeightByAccount(ctx *vmstore.VMContext, account types.Address) (uint64, error) {
+	data, err := ctx.GetStorage(types.RepAddress[:], account[:])
 	if err == nil {
-		return rewardInfos, nil
+		return util.BE_BytesToUint64(data), nil
 	} else {
-		return nil, err
+		return 0, err
 	}
-}
-
-func CalcMaxRepRewardInfo(rewardInfos []*RepRewardInfo) *RepRewardInfo {
-	var maxInfo *RepRewardInfo
-	for _, rewardInfo := range rewardInfos {
-		if maxInfo == nil {
-			maxInfo = rewardInfo
-		} else if rewardInfo.EndHeight > maxInfo.EndHeight {
-			maxInfo = rewardInfo
-		}
-	}
-	return maxInfo
 }
 
 func RepCalcRewardEndHeight(startHeight uint64, maxEndHeight uint64) uint64 {
-	endHeight := startHeight + common.RepMaxRewardBlocksPerCall - 1
+	if maxEndHeight < common.PovMinerRewardHeightStart {
+		return 0
+	}
+
+	if startHeight < common.PovMinerRewardHeightStart {
+		startHeight = common.PovMinerRewardHeightStart
+	}
+
+	endHeight := startHeight + common.PovMinerMaxRewardBlocksPerCall - 1
 	if endHeight > maxEndHeight {
 		endHeight = maxEndHeight
 	}
+
+	endHeight = MinerRoundPovHeight(endHeight, common.PovMinerRewardHeightRound)
+	if endHeight < common.PovMinerRewardHeightStart {
+		return 0
+	}
+
 	return endHeight
 }
 

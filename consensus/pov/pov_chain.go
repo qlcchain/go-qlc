@@ -225,22 +225,76 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 				bc.logger.Warnf("failed to get pov header %d, err %s", height, err)
 				return
 			}
+
+			//calc repReward
+			if height%common.DPosOnlinePeriod == common.DPosOnlinePeriod-1 {
+				stateHash := header.GetStateHash()
+				stateTrie := bc.GetStateTrie(&stateHash)
+				repStates := bc.GetAllValidRepStates(stateTrie)
+				total := types.NewBalance(0)
+
+				for _, rep := range repStates {
+					if rep.Status == types.PovStatusOnline && rep.Height <= height && rep.Height >= height+1-common.DPosOnlinePeriod {
+						total = total.Add(rep.CalcTotal())
+					}
+				}
+				totalBig := big.NewInt(total.Int64())
+
+				var i uint64
+				for i = 0; i < common.DPosOnlinePeriod; i++ {
+					povHead, err := bc.getLedger().GetPovHeaderByHeight(height - i)
+					if err != nil {
+						bc.logger.Warnf("failed to get pov header %d, err %s", height-i, err)
+						return
+					}
+
+					repRewardAllInt := povHead.GetRepReward().Int64()
+					for _, rep := range repStates {
+						if rep.Status == types.PovStatusOnline && rep.Height <= height && rep.Height >= height+1-common.DPosOnlinePeriod {
+							repRewardBig := big.NewInt(rep.CalcTotal().Int64())
+							repRewardAllBig := big.NewInt(repRewardAllInt)
+							repRewardBig = repRewardBig.Mul(repRewardBig, repRewardAllBig)
+							amountBig := repRewardBig.Div(repRewardBig, totalBig)
+							amount := types.NewBalance(amountBig.Int64())
+
+							repAddrStr := rep.Account.String()
+							minerStat := dayStat.MinerStats[repAddrStr]
+							if minerStat == nil {
+								minerStat = types.NewPovMinerStatItem()
+								dayStat.MinerStats[repAddrStr] = minerStat
+							}
+							minerStat.RepBlockNum++
+							minerStat.RepReward = minerStat.RepReward.Add(amount)
+						}
+					}
+				}
+			}
+
 			cbAddrStr := header.GetMinerAddr().String()
 			minerStat := dayStat.MinerStats[cbAddrStr]
 			if minerStat == nil {
-				minerStat = new(types.PovMinerStatItem)
-				minerStat.RewardAmount = types.NewBalance(0)
+				minerStat = types.NewPovMinerStatItem()
 				dayStat.MinerStats[cbAddrStr] = minerStat
-
-				minerStat.FirstHeight = header.GetHeight()
-			} else {
-				minerStat.LastHeight = header.GetHeight()
 			}
+
+			if minerStat.IsMiner {
+				minerStat.LastHeight = header.GetHeight()
+			} else {
+				minerStat.FirstHeight = header.GetHeight()
+				minerStat.IsMiner = true
+			}
+
 			minerStat.BlockNum++
 			minerStat.RewardAmount = minerStat.RewardAmount.Add(header.GetMinerReward())
 		}
 
-		dayStat.MinerNum = uint32(len(dayStat.MinerStats))
+		minerNum := uint32(0)
+		for _, stat := range dayStat.MinerStats {
+			if stat.IsMiner {
+				minerNum++
+			}
+		}
+		dayStat.MinerNum = minerNum
 
 		err = bc.getLedger().AddPovMinerStat(dayStat)
 		if err != nil {

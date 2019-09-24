@@ -2710,6 +2710,24 @@ func (z *PovMinerStatItem) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "RewardAmount")
 				return
 			}
+		case "rn":
+			z.RepBlockNum, err = dc.ReadUint32()
+			if err != nil {
+				err = msgp.WrapError(err, "RepBlockNum")
+				return
+			}
+		case "rr":
+			err = dc.ReadExtension(&z.RepReward)
+			if err != nil {
+				err = msgp.WrapError(err, "RepReward")
+				return
+			}
+		case "im":
+			z.IsMiner, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "IsMiner")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2723,9 +2741,9 @@ func (z *PovMinerStatItem) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *PovMinerStatItem) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 7
 	// write "fh"
-	err = en.Append(0x84, 0xa2, 0x66, 0x68)
+	err = en.Append(0x87, 0xa2, 0x66, 0x68)
 	if err != nil {
 		return
 	}
@@ -2764,15 +2782,45 @@ func (z *PovMinerStatItem) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "RewardAmount")
 		return
 	}
+	// write "rn"
+	err = en.Append(0xa2, 0x72, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint32(z.RepBlockNum)
+	if err != nil {
+		err = msgp.WrapError(err, "RepBlockNum")
+		return
+	}
+	// write "rr"
+	err = en.Append(0xa2, 0x72, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.RepReward)
+	if err != nil {
+		err = msgp.WrapError(err, "RepReward")
+		return
+	}
+	// write "im"
+	err = en.Append(0xa2, 0x69, 0x6d)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.IsMiner)
+	if err != nil {
+		err = msgp.WrapError(err, "IsMiner")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *PovMinerStatItem) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 7
 	// string "fh"
-	o = append(o, 0x84, 0xa2, 0x66, 0x68)
+	o = append(o, 0x87, 0xa2, 0x66, 0x68)
 	o = msgp.AppendUint64(o, z.FirstHeight)
 	// string "lh"
 	o = append(o, 0xa2, 0x6c, 0x68)
@@ -2787,6 +2835,19 @@ func (z *PovMinerStatItem) MarshalMsg(b []byte) (o []byte, err error) {
 		err = msgp.WrapError(err, "RewardAmount")
 		return
 	}
+	// string "rn"
+	o = append(o, 0xa2, 0x72, 0x6e)
+	o = msgp.AppendUint32(o, z.RepBlockNum)
+	// string "rr"
+	o = append(o, 0xa2, 0x72, 0x72)
+	o, err = msgp.AppendExtension(o, &z.RepReward)
+	if err != nil {
+		err = msgp.WrapError(err, "RepReward")
+		return
+	}
+	// string "im"
+	o = append(o, 0xa2, 0x69, 0x6d)
+	o = msgp.AppendBool(o, z.IsMiner)
 	return
 }
 
@@ -2832,6 +2893,24 @@ func (z *PovMinerStatItem) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "RewardAmount")
 				return
 			}
+		case "rn":
+			z.RepBlockNum, bts, err = msgp.ReadUint32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RepBlockNum")
+				return
+			}
+		case "rr":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.RepReward)
+			if err != nil {
+				err = msgp.WrapError(err, "RepReward")
+				return
+			}
+		case "im":
+			z.IsMiner, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "IsMiner")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2846,7 +2925,7 @@ func (z *PovMinerStatItem) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PovMinerStatItem) Msgsize() (s int) {
-	s = 1 + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint32Size + 3 + msgp.ExtensionPrefixSize + z.RewardAmount.Len()
+	s = 1 + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint32Size + 3 + msgp.ExtensionPrefixSize + z.RewardAmount.Len() + 3 + msgp.Uint32Size + 3 + msgp.ExtensionPrefixSize + z.RepReward.Len() + 3 + msgp.BoolSize
 	return
 }
 
