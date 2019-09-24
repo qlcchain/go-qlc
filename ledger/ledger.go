@@ -99,7 +99,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 8
+const version = 9
 
 func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
@@ -175,7 +175,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8)}
+		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8), new(MigrationV8ToV9)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
