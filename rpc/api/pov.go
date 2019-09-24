@@ -1052,3 +1052,151 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 
 	return nil
 }
+
+type PovApiGetLastNHourItem struct {
+	Hour uint32
+
+	AllBlockNum    uint32
+	AllTxNum       uint32
+	AllMinerReward types.Balance
+	AllRepReward   types.Balance
+
+	MaxTxPerBlock uint32
+	MinTxPerBlock uint32
+	AvgTxPerBlock uint32
+}
+
+type PovApiGetLastNHourInfo struct {
+	MaxTxPerBlock uint32
+	MinTxPerBlock uint32
+	AvgTxPerBlock uint32
+
+	MaxTxPerHour uint32
+	MinTxPerHour uint32
+	AvgTxPerHour uint32
+
+	MaxBlockPerHour uint32
+	MinBlockPerHour uint32
+	AvgBlockPerHour uint32
+
+	AllBlockNum uint32
+	AllTxNum    uint32
+
+	HourItemList []*PovApiGetLastNHourItem
+}
+
+func (api *PovApi) GetLastNHourInfo(beginTime uint32, endTime uint32) (*PovApiGetLastNHourInfo, error) {
+	endHourTime := uint32(time.Now().Unix())
+	beginHourTime := endHourTime - (3600 * 24)
+
+	if beginTime != 0 || endTime != 0 {
+		if beginTime >= endTime {
+			return nil, errors.New("endTime must be greater than beginTime")
+		}
+		paraDiffTime := endTime - beginTime
+		if paraDiffTime%(2*3600) != 0 {
+			return nil, errors.New("(endTime - beginTime) must be multiplier of 2 hour")
+		}
+		if paraDiffTime < 4*3600 || paraDiffTime > 24*3600 {
+			return nil, errors.New("(endTime - beginTime) must be between 4 and 24 hour")
+		}
+
+		endHourTime = endTime
+		beginHourTime = beginTime
+	}
+
+	minBeginHourTime := beginHourTime - 3600
+
+	latestHeader, err := api.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	apiRsp := new(PovApiGetLastNHourInfo)
+
+	hourItemMap := make(map[uint32]*PovApiGetLastNHourItem)
+	maxDiffHour := uint32(0)
+
+	header := latestHeader
+	for {
+		if header == nil {
+			break
+		}
+		if header.GetTimestamp() < minBeginHourTime {
+			break
+		}
+
+		if header.GetTimestamp() >= beginHourTime && header.GetTimestamp() <= endHourTime {
+			diffTime := endHourTime - header.GetTimestamp()
+			diffHour := diffTime / 3600
+			if diffHour > maxDiffHour {
+				maxDiffHour = diffHour
+			}
+			hourItem := hourItemMap[diffHour]
+			if hourItem == nil {
+				hourItem = new(PovApiGetLastNHourItem)
+				hourItem.Hour = diffHour
+				hourItem.AllMinerReward = types.NewBalance(0)
+				hourItem.AllRepReward = types.NewBalance(0)
+				hourItemMap[diffHour] = hourItem
+			}
+
+			if hourItem.MaxTxPerBlock == 0 || hourItem.MaxTxPerBlock < header.CbTx.TxNum {
+				hourItem.MaxTxPerBlock = header.CbTx.TxNum
+			}
+			if hourItem.MinTxPerBlock == 0 || hourItem.MinTxPerBlock > header.CbTx.TxNum {
+				hourItem.MinTxPerBlock = header.CbTx.TxNum
+			}
+
+			hourItem.AllBlockNum += 1
+			hourItem.AllTxNum += header.CbTx.TxNum
+
+			minerTxOut := header.CbTx.GetMinerTxOut()
+			repTxOut := header.CbTx.GetRepTxOut()
+			if minerTxOut != nil {
+				hourItem.AllMinerReward = hourItem.AllMinerReward.Add(minerTxOut.Value)
+			}
+			if repTxOut != nil {
+				hourItem.AllRepReward = hourItem.AllRepReward.Add(repTxOut.Value)
+			}
+		}
+
+		header, err = api.ledger.GetPovHeaderByHeight(header.GetHeight() - 1)
+	}
+
+	for hourIdx := uint32(0); hourIdx <= maxDiffHour; hourIdx++ {
+		hourItem := hourItemMap[hourIdx]
+		if hourItem == nil {
+			continue
+		}
+		hourItem.AvgTxPerBlock = hourItem.AllTxNum / hourItem.AllBlockNum
+		apiRsp.HourItemList = append(apiRsp.HourItemList, hourItem)
+
+		apiRsp.AllTxNum += hourItem.AllTxNum
+		apiRsp.AllBlockNum += hourItem.AllBlockNum
+
+		if apiRsp.MaxTxPerBlock == 0 || apiRsp.MaxTxPerBlock < hourItem.MaxTxPerBlock {
+			apiRsp.MaxTxPerBlock = hourItem.MaxTxPerBlock
+		}
+		if apiRsp.MinTxPerBlock == 0 || apiRsp.MinTxPerBlock > hourItem.MinTxPerBlock {
+			apiRsp.MinTxPerBlock = hourItem.MinTxPerBlock
+		}
+		if apiRsp.MaxTxPerHour == 0 || apiRsp.MaxTxPerHour < hourItem.AllTxNum {
+			apiRsp.MaxTxPerHour = hourItem.AllTxNum
+		}
+		if apiRsp.MinTxPerHour == 0 || apiRsp.MinTxPerHour > hourItem.AllTxNum {
+			apiRsp.MinTxPerHour = hourItem.AllTxNum
+		}
+		if apiRsp.MaxBlockPerHour == 0 || apiRsp.MaxBlockPerHour < hourItem.AllBlockNum {
+			apiRsp.MaxBlockPerHour = hourItem.AllBlockNum
+		}
+		if apiRsp.MinBlockPerHour == 0 || apiRsp.MinBlockPerHour > hourItem.AllBlockNum {
+			apiRsp.MinBlockPerHour = hourItem.AllBlockNum
+		}
+	}
+	apiRsp.AvgTxPerBlock = apiRsp.AllTxNum / apiRsp.AllBlockNum
+	apiRsp.AvgTxPerHour = apiRsp.AllTxNum / (maxDiffHour + 1)
+	apiRsp.AvgBlockPerHour = apiRsp.AllBlockNum / (maxDiffHour + 1)
+
+	return apiRsp, nil
+}
