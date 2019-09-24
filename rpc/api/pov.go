@@ -34,9 +34,11 @@ type PovStatus struct {
 
 type PovApiHeader struct {
 	*types.PovHeader
-	AlgoName       string `json:"algoName"`
-	AlgoEfficiency uint   `json:"algoEfficiency"`
-	NormBits       uint32 `json:"normBits"`
+	AlgoName       string  `json:"algoName"`
+	AlgoEfficiency uint    `json:"algoEfficiency"`
+	NormBits       uint32  `json:"normBits"`
+	NormDifficulty float64 `json:"normDifficulty"`
+	AlgoDifficulty float64 `json:"algoDifficulty"`
 }
 
 type PovApiBatchHeader struct {
@@ -46,9 +48,11 @@ type PovApiBatchHeader struct {
 
 type PovApiBlock struct {
 	*types.PovBlock
-	AlgoName       string `json:"algoName"`
-	AlgoEfficiency uint   `json:"algoEfficiency"`
-	NormBits       uint32 `json:"normBits"`
+	AlgoName       string  `json:"algoName"`
+	AlgoEfficiency uint    `json:"algoEfficiency"`
+	NormBits       uint32  `json:"normBits"`
+	NormDifficulty float64 `json:"normDifficulty"`
+	AlgoDifficulty float64 `json:"algoDifficulty"`
 }
 
 type PovApiState struct {
@@ -132,6 +136,8 @@ func (api *PovApi) fillHeader(header *PovApiHeader) {
 	header.AlgoEfficiency = header.GetAlgoEfficiency()
 	header.AlgoName = header.GetAlgoType().String()
 	header.NormBits = header.GetNormBits()
+	header.NormDifficulty = types.CalcDifficultyRatio(header.NormBits, common.PovPowLimitBits)
+	header.AlgoDifficulty = types.CalcDifficultyRatio(header.BasHdr.Bits, common.PovPowLimitBits)
 }
 
 func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
@@ -254,6 +260,8 @@ func (api *PovApi) fillBlock(block *PovApiBlock) {
 	block.AlgoEfficiency = block.GetAlgoEfficiency()
 	block.AlgoName = block.GetAlgoType().String()
 	block.NormBits = block.GetHeader().GetNormBits()
+	block.NormDifficulty = types.CalcDifficultyRatio(block.NormBits, common.PovPowLimitBits)
+	block.AlgoDifficulty = types.CalcDifficultyRatio(block.Header.BasHdr.Bits, common.PovPowLimitBits)
 }
 
 func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
@@ -910,7 +918,7 @@ type PovApiGetMiningInfo struct {
 	CurrentBlockTx   uint32          `json:"currentBlockTx"`
 	PooledTx         uint32          `json:"pooledTx"`
 	BlockNum         uint64          `json:"blockNum"`
-	DifficultyRatio  float64         `json:"difficultyRatio"`
+	Difficulty       float64         `json:"difficulty"`
 	HashInfo         *PovApiHashInfo `json:"hashInfo"`
 }
 
@@ -955,7 +963,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	apiRsp.PooledTx = outArgs["pooledTx"].(uint32)
 
 	apiRsp.BlockNum = latestBlock.GetHeight()
-	apiRsp.DifficultyRatio = types.CalcDifficultyRatio(latestBlock.Header.GetNormBits(), common.PovPowLimitBits)
+	apiRsp.Difficulty = types.CalcDifficultyRatio(latestBlock.Header.GetNormBits(), common.PovPowLimitBits)
 	apiRsp.HashInfo = hashInfo
 
 	return apiRsp, nil
