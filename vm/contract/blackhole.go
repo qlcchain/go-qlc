@@ -64,16 +64,12 @@ func (b *BlackHole) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (typ
 }
 
 func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, block *types.StateBlock) error {
-	var data []byte
-
-	data = append(data, param.Owner[:]...)
-	data = append(data, param.Amount.Bytes()...)
-	data = append(data, param.Token[:]...)
-
-	verify := param.Owner.Verify(data, param.Sign[:])
-	if !verify {
+	if verify, err := param.Verify(); err != nil {
+		return err
+	} else if !verify {
 		return errors.New("invalid sign")
 	}
+
 	if block.Token != common.GasToken() {
 		return fmt.Errorf("invalid token: %s", block.Token.String())
 	}

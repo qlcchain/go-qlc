@@ -8,8 +8,15 @@
 package abi
 
 import (
+	"errors"
+	"fmt"
 	"math/big"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/crypto/ed25519"
+	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/abi"
@@ -58,10 +65,117 @@ type DestroyParam struct {
 	Sign     types.Signature `json:"signature"`
 }
 
+func (param *DestroyParam) Signature(acc *types.Account) (types.Signature, error) {
+	if acc.Address() == param.Owner {
+		var data []byte
+
+		data = append(data, param.Owner[:]...)
+		data = append(data, param.Previous[:]...)
+		data = append(data, param.Token[:]...)
+		data = append(data, param.Amount.Bytes()...)
+		var sig types.Signature
+		copy(sig[:], ed25519.Sign(acc.PrivateKey(), data))
+		return sig, nil
+	} else {
+		return types.ZeroSignature, fmt.Errorf("invalid address, exp: %s, act: %s",
+			param.Owner.String(), acc.Address().String())
+	}
+}
+
+// Verify destroy params
+func (param *DestroyParam) Verify() (bool, error) {
+	if param.Owner.IsZero() {
+		return false, errors.New("invalid account")
+	}
+
+	if param.Previous.IsZero() {
+		return false, errors.New("invalid previous")
+	}
+
+	if param.Token != common.GasToken() {
+		return false, errors.New("invalid token to be destroyed")
+	}
+
+	if param.Amount == nil || param.Amount.Sign() <= 0 {
+		return false, errors.New("invalid amount")
+	}
+
+	var data []byte
+
+	data = append(data, param.Owner[:]...)
+	data = append(data, param.Previous[:]...)
+	data = append(data, param.Token[:]...)
+	data = append(data, param.Amount.Bytes()...)
+
+	return param.Owner.Verify(data, param.Sign[:]), nil
+}
+
 type DestroyInfo struct {
 	Owner    types.Address `json:"owner"`
 	Token    types.Hash    `json:"token"`
 	Previous types.Hash    `json:"previous"`
 	Amount   *big.Int      `json:"amount"`
 	Time     int64         `json:"time"`
+}
+
+// ParseDestroyInfo decode data into `DestroyInfo`
+func ParseDestroyInfo(data []byte) (*DestroyInfo, error) {
+	if len(data) == 0 {
+		return nil, errors.New("token info data is nil")
+	}
+	di := new(DestroyInfo)
+
+	if err := BlackHoleABI.UnpackVariable(di, VariableDestroyInfo, data); err == nil {
+		return di, nil
+	} else {
+		return nil, err
+	}
+}
+
+// GetTotalDestroyInfo query all destroyed GQAS by account
+func GetTotalDestroyInfo(ctx *vmstore.VMContext, addr *types.Address) (types.Balance, error) {
+	logger := log.NewLogger("GetRewardsDetail")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	result := types.ZeroBalance
+	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+		if len(key) == types.AddressSize*types.HashSize+1 && len(value) > 0 {
+			if di, err := ParseDestroyInfo(value); err == nil {
+				result = result.Add(types.Balance{Int: di.Amount})
+			} else {
+				logger.Error(err)
+			}
+		}
+		return nil
+	}); err == nil {
+		return result, nil
+	} else {
+		return types.ZeroBalance, err
+	}
+}
+
+// GetDestroyInfoDetail query destroyed GQAS detail by account
+func GetDestroyInfoDetail(ctx *vmstore.VMContext, addr *types.Address) ([]*DestroyInfo, error) {
+	logger := log.NewLogger("GetRewardsDetail")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	var result []*DestroyInfo
+	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+		if len(key) == types.AddressSize*types.HashSize+1 && len(value) > 0 {
+			if di, err := ParseDestroyInfo(value); err == nil {
+				result = append(result, di)
+			} else {
+				logger.Error(err)
+			}
+		}
+		return nil
+	}); err == nil {
+		return result, nil
+	} else {
+		return nil, err
+	}
 }
