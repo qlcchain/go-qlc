@@ -385,7 +385,7 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 			el.status.loser = append(el.status.loser, el.status.winner)
 		}
 
-		t := el.tally()
+		t := el.tally(false)
 		for _, value := range t {
 			thash := value.block.GetHash()
 			if thash != hash {

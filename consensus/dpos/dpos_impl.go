@@ -90,6 +90,7 @@ type DPoS struct {
 	frontiersStatus     *sync.Map
 	syncStateNotifyWait *sync.WaitGroup
 	syncFinished        int32
+	totalVote           map[types.Address]types.Balance
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -250,6 +251,12 @@ func (dps *DPoS) processorStop() {
 
 func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 	var unconfirmed []*types.StateBlock
+
+	for _, block := range blocks {
+		if block.Token == common.ChainToken() {
+			dps.totalVote[block.Address] = block.Balance.Add(block.Vote).Add(block.Oracle).Add(block.Network).Add(block.Storage)
+		}
+	}
 
 	for _, block := range blocks {
 		hash := block.GetHash()
@@ -723,9 +730,12 @@ func (dps *DPoS) refreshAccount() {
 	dps.logger.Infof("there is %d local reps", count)
 	if count > 0 {
 		dps.eb.Publish(common.EventRepresentativeNode, true)
-	}
-	if count > 1 {
-		dps.logger.Error("it is very dangerous to run two or more representatives on one node")
+
+		if count > 1 {
+			dps.logger.Error("it is very dangerous to run two or more representatives on one node")
+		}
+	} else {
+		dps.eb.Publish(common.EventRepresentativeNode, false)
 	}
 }
 
@@ -976,6 +986,7 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 	if state == common.Syncing {
 		atomic.StoreInt32(&dps.syncFinished, 0)
 		dps.frontiersStatus = new(sync.Map)
+		dps.totalVote = make(map[types.Address]types.Balance)
 	} else if state == common.SyncDone {
 		dps.checkSyncFinished()
 	}

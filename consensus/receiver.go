@@ -95,11 +95,9 @@ func (r *Receiver) ReceivePublish(blk *types.StateBlock, msgFrom string) {
 		Type:      MsgPublishReq,
 	}
 	r.c.ca.ProcessMsg(bs)
-	//	}
 }
 
 func (r *Receiver) ReceiveConfirmReq(blk []*types.StateBlock, msgFrom string) {
-
 	for _, b := range blk {
 		r.c.logger.Debugf("receive ConfirmReq block [%s] from [%s]", b.GetHash(), msgFrom)
 
@@ -118,10 +116,6 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, msgFrom string
 	valid := IsAckSignValidate(ack)
 	if !valid {
 		r.c.logger.Error("ack sign err")
-		return
-	}
-
-	if _, err := r.c.ledger.GetRepresentation(ack.Account); err != nil {
 		return
 	}
 

@@ -78,7 +78,7 @@ func (el *Election) voteFrontier(vi *voteInfo) bool {
 		return false
 	}
 
-	t := el.tally()
+	t := el.tally(true)
 	if !(len(t) > 0) {
 		return false
 	}
@@ -106,7 +106,7 @@ func (el *Election) voteFrontier(vi *voteInfo) bool {
 func (el *Election) haveQuorum() {
 	dps := el.dps
 
-	t := el.tally()
+	t := el.tally(false)
 	if !(len(t) > 0) {
 		return
 	}
@@ -152,7 +152,7 @@ func (el *Election) haveQuorum() {
 	}
 }
 
-func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
+func (el *Election) tally(isSync bool) map[types.Hash]*BlockReceivedVotes {
 	totals := make(map[types.Hash]*BlockReceivedVotes)
 	var hash types.Hash
 
@@ -170,9 +170,20 @@ func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 			}
 		}
 
-		weight := el.dps.ledger.Weight(key.(types.Address))
+		var weight types.Balance
+		repAddress := key.(types.Address)
+		if !isSync {
+			weight = el.dps.ledger.Weight(repAddress)
+		} else {
+			if w, ok := el.dps.totalVote[repAddress]; ok {
+				weight = w
+			} else {
+				weight = el.dps.ledger.Weight(repAddress)
+			}
+		}
+
 		totals[hash].balance = totals[hash].balance.Add(weight)
-		el.dps.logger.Infof("rep[%s] ack block[%s] weight[%s]", key.(types.Address), hash, weight)
+		el.dps.logger.Infof("rep[%s] ack block[%s] weight[%s]", repAddress, hash, weight)
 		return true
 	})
 
