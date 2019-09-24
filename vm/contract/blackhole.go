@@ -23,7 +23,7 @@ type BlackHole struct {
 // TODO: save contract data
 func (b *BlackHole) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	param := new(cabi.DestroyParam)
-	err := cabi.RewardsABI.UnpackMethod(param, cabi.MethodNameDestroy, block.Data)
+	err := cabi.BlackHoleABI.UnpackMethod(param, cabi.MethodNameDestroy, block.Data)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -37,8 +37,8 @@ func (b *BlackHole) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 			return nil, nil, err
 		}
 
-		if data, err := cabi.RewardsABI.PackVariable(cabi.VariableDestroyInfo, block.Address, block.Previous,
-			block.Token, param.Amount, common.TimeNow()); err == nil {
+		if data, err := cabi.BlackHoleABI.PackVariable(cabi.VariableDestroyInfo, block.Address, block.Previous,
+			block.Token, param.Amount, common.TimeNow().Unix()); err == nil {
 			if err := ctx.SetStorage(block.Address[:], block.Previous[:], data); err != nil {
 				return nil, nil, err
 			}
@@ -87,10 +87,12 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 	input *types.StateBlock) ([]*ContractBlock, error) {
 	// verify send block data
-	param := new(cabi.DestroyParam)
-	err := cabi.RewardsABI.UnpackMethod(param, cabi.MethodNameDestroy, input.Data)
-	if err != nil {
-		return nil, err
+	if b, err := ctx.GetStorage(input.Address[:], input.Previous[:]); err == nil && len(b) > 0 {
+		if _, err := cabi.ParseDestroyInfo(b); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
 	}
 
 	rxMeta, _ := ctx.GetAccountMeta(input.Address)

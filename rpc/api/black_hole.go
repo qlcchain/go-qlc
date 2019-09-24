@@ -9,7 +9,6 @@ package api
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -33,45 +32,16 @@ func NewBlackHoleApi(l *ledger.Ledger) *BlackHoleApi {
 }
 
 func (b *BlackHoleApi) GetSendBlackHoleBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
-	if param == nil {
-		return nil, ErrParameterNil
-	}
-
-	if isVerified, err := param.Verify(); err != nil {
+	vmContext := vmstore.NewVMContext(b.l)
+	stateBlock, err := cabi.PackSendBlock(vmContext, param)
+	if err != nil {
 		return nil, err
-	} else if !isVerified {
-		return nil, errors.New("invalid sign of param")
 	}
-
-	if tm, err := b.l.GetTokenMeta(param.Owner, param.Token); err != nil {
-		return nil, err
-	} else {
-		if tm.Balance.Compare(types.Balance{Int: param.Amount}) == types.BalanceCompSmaller {
-			return nil, fmt.Errorf("not enough balance, [%s] of [%s]", param.Amount.String(), tm.Balance.String())
-		}
-
-		if singedData, err := cabi.BlackHoleABI.PackMethod(cabi.MethodNameDestroy, param.Owner, param.Previous, param.Token,
-			param.Amount, param.Sign); err == nil {
-
-			return &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        param.Owner,
-				Balance:        tm.Balance.Sub(types.Balance{Int: param.Amount}),
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
-				Previous:       param.Previous,
-				Link:           types.Hash(types.BlackHoleAddress),
-				Representative: tm.Representative,
-				Data:           singedData,
-				Timestamp:      common.TimeNow().Unix(),
-			}, nil
-		} else {
-			return nil, err
-		}
+	h := vmContext.Cache.Trie().Hash()
+	if h != nil {
+		stateBlock.Extra = *h
 	}
+	return stateBlock, nil
 }
 
 func (b *BlackHoleApi) GetReceiveBlackHoleBlock(send *types.Hash) (*types.StateBlock, error) {

@@ -30,9 +30,9 @@ const (
     "inputs": [
       { "name": "owner", "type": "address" },
       { "name": "previous", "type": "hash" },
-      { "name": "tokenId", "type": "tokenId" },
+      { "name": "token", "type": "tokenId" },
       { "name": "amount", "type": "uint256" },
-      { "name": "signature", "type": "signature" }
+      { "name": "sign", "type": "signature" }
     ]
   },
   {
@@ -41,9 +41,9 @@ const (
     "inputs": [
       { "name": "owner", "type": "address" },
       { "name": "previous", "type": "hash" },
-      { "name": "tokenId", "type": "tokenId" },
+      { "name": "token", "type": "tokenId" },
       { "name": "amount", "type": "uint256" },
-      { "name": "time", "type": "int64" }
+      { "name": "timeStamp", "type": "int64" }
     ]
   }
 ]
@@ -51,6 +51,7 @@ const (
 
 	MethodNameDestroy   = "Destroy"
 	VariableDestroyInfo = "destroyInfo"
+	KeySize             = types.AddressSize + types.HashSize + 1
 )
 
 var (
@@ -59,8 +60,8 @@ var (
 
 type DestroyParam struct {
 	Owner    types.Address   `json:"owner"`
-	Token    types.Hash      `json:"token"`
 	Previous types.Hash      `json:"previous"`
+	Token    types.Hash      `json:"token"`
 	Amount   *big.Int        `json:"amount"`
 	Sign     types.Signature `json:"signature"`
 }
@@ -111,11 +112,53 @@ func (param *DestroyParam) Verify() (bool, error) {
 }
 
 type DestroyInfo struct {
-	Owner    types.Address `json:"owner"`
-	Token    types.Hash    `json:"token"`
-	Previous types.Hash    `json:"previous"`
-	Amount   *big.Int      `json:"amount"`
-	Time     int64         `json:"time"`
+	Owner     types.Address `json:"owner"`
+	Previous  types.Hash    `json:"previous"`
+	Token     types.Hash    `json:"token"`
+	Amount    *big.Int      `json:"amount"`
+	TimeStamp int64         `json:"timestamp"`
+}
+
+func PackSendBlock(ctx *vmstore.VMContext, param *DestroyParam) (*types.StateBlock, error) {
+	if param == nil {
+		return nil, errors.New("invalid input param")
+	}
+
+	if isVerified, err := param.Verify(); err != nil {
+		return nil, err
+	} else if !isVerified {
+		return nil, errors.New("invalid sign of param")
+	}
+
+	if tm, err := ctx.GetTokenMeta(param.Owner, param.Token); err != nil {
+		return nil, err
+	} else {
+		if tm.Balance.Compare(types.Balance{Int: param.Amount}) == types.BalanceCompSmaller {
+			return nil, fmt.Errorf("not enough balance, [%s] of [%s]", param.Amount.String(), tm.Balance.String())
+		}
+
+		if singedData, err := BlackHoleABI.PackMethod(MethodNameDestroy, param.Owner, param.Previous, param.Token,
+			param.Amount, param.Sign); err == nil {
+
+			return &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        param.Owner,
+				Balance:        tm.Balance.Sub(types.Balance{Int: param.Amount}),
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       param.Previous,
+				Link:           types.Hash(types.BlackHoleAddress),
+				Representative: tm.Representative,
+				Data:           singedData,
+				Timestamp:      common.TimeNow().Unix(),
+			}, nil
+		} else {
+			return nil, err
+		}
+	}
 }
 
 // ParseDestroyInfo decode data into `DestroyInfo`
@@ -141,7 +184,7 @@ func GetTotalDestroyInfo(ctx *vmstore.VMContext, addr *types.Address) (types.Bal
 
 	result := types.ZeroBalance
 	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
-		if len(key) == types.AddressSize*types.HashSize+1 && len(value) > 0 {
+		if len(key) == KeySize && len(value) > 0 {
 			if di, err := ParseDestroyInfo(value); err == nil {
 				result = result.Add(types.Balance{Int: di.Amount})
 			} else {
@@ -165,12 +208,14 @@ func GetDestroyInfoDetail(ctx *vmstore.VMContext, addr *types.Address) ([]*Destr
 
 	var result []*DestroyInfo
 	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
-		if len(key) == types.AddressSize*types.HashSize+1 && len(value) > 0 {
+		if len(key) == KeySize && len(value) > 0 {
 			if di, err := ParseDestroyInfo(value); err == nil {
 				result = append(result, di)
 			} else {
 				logger.Error(err)
 			}
+		} else {
+			logger.Infof("%d of %d ", len(key), KeySize)
 		}
 		return nil
 	}); err == nil {
