@@ -68,9 +68,8 @@ type PovApiRepState struct {
 }
 
 type PovApiTxLookup struct {
-	TxHash      types.Hash         `json:"txHash"`
-	TxLookup    *types.PovTxLookup `json:"txLookup"`
-	Transaction *types.StateBlock  `json:"transaction"`
+	TxHash   types.Hash         `json:"txHash"`
+	TxLookup *types.PovTxLookup `json:"txLookup"`
 }
 
 type PovLedgerStats struct {
@@ -327,15 +326,9 @@ func (api *PovApi) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {
 		return nil, err
 	}
 
-	txBlock, err := api.ledger.GetStateBlock(txHash)
-	if err != nil {
-		return nil, err
-	}
-
 	apiTxl := &PovApiTxLookup{
-		TxHash:      txHash,
-		TxLookup:    txl,
-		Transaction: txBlock,
+		TxHash:   txHash,
+		TxLookup: txl,
 	}
 
 	return apiTxl, nil
