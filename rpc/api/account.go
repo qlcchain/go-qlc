@@ -2,9 +2,9 @@ package api
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"

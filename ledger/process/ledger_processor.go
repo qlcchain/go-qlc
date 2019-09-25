@@ -9,9 +9,10 @@ package process
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"reflect"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -111,7 +112,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 	}
 
 	if block.GetType() == types.ContractSend {
-		if block.GetLink() == types.Hash(types.RewardsAddress) {
+		if types.IsNoSignContractAddress(types.Address(block.GetLink())) {
 			return Progress, nil
 		}
 	}
@@ -120,7 +121,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 		if err != nil {
 			return GapSource, nil
 		}
-		if linkBlk.GetLink() == types.Hash(types.RewardsAddress) {
+		if types.IsNoSignContractAddress(types.Address(linkBlk.GetLink())) {
 			return Progress, nil
 		}
 	}
@@ -338,16 +339,33 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	if c, ok, err := contract.GetChainContract(address, block.Data); ok && err == nil {
 		clone := block.Clone()
 		vmCtx := vmstore.NewVMContext(lv.l)
-		if err := c.DoSend(vmCtx, clone); err == nil {
-			if bytes.EqualFold(block.Data, clone.Data) {
-				return Progress, nil
+		switch v := c.(type) {
+		case contract.ChainContractV1:
+			if err := v.DoSend(vmCtx, clone); err == nil {
+				if bytes.EqualFold(block.Data, clone.Data) {
+					return Progress, nil
+				} else {
+					lv.logger.Errorf("data not equal: %s, %s", block.Data, clone.Data)
+					return InvalidData, nil
+				}
 			} else {
-				lv.logger.Errorf("data not equal: %s, %s", block.Data, clone.Data)
-				return InvalidData, nil
+				lv.logger.Error("ProcessSend error")
+				return Other, err
 			}
-		} else {
-			lv.logger.Error("DoSend error")
-			return Other, err
+		case contract.ChainContractV2:
+			if _, _, err := v.ProcessSend(vmCtx, clone); err == nil {
+				if bytes.EqualFold(block.Data, clone.Data) {
+					return Progress, nil
+				} else {
+					lv.logger.Errorf("data not equal: %s, %s", block.Data, clone.Data)
+					return InvalidData, nil
+				}
+			} else {
+				lv.logger.Error("ProcessSend error")
+				return Other, err
+			}
+		default:
+			return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 		}
 	} else {
 		//call vm.Run();
@@ -393,30 +411,35 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 		clone := block.Clone()
 		//TODO:verify extra hash and commit to db
 		vmCtx := vmstore.NewVMContext(lv.l)
-		if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
-			if len(g) > 0 {
-				amount, err := lv.l.CalculateAmount(block)
-				if err != nil {
-					lv.logger.Error("calculate amount error:", err)
-				}
-				if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
-					g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
-					return Progress, nil
+		switch v := c.(type) {
+		case contract.InternalContract:
+			if g, e := v.DoReceive(vmCtx, clone, input); e == nil {
+				if len(g) > 0 {
+					amount, err := lv.l.CalculateAmount(block)
+					if err != nil {
+						lv.logger.Error("calculate amount error:", err)
+					}
+					if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
+						g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
+						return Progress, nil
+					} else {
+						lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
+							g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
+						return InvalidData, nil
+					}
 				} else {
-					lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
-						g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
-					return InvalidData, nil
+					return Other, fmt.Errorf("can not generate receive block")
 				}
 			} else {
-				return Other, fmt.Errorf("can not generate receive block")
+				if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
+					return GapTokenInfo, nil
+				} else {
+					lv.logger.Error("DoReceive error ", e)
+					return Other, e
+				}
 			}
-		} else {
-			if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
-				return GapTokenInfo, nil
-			} else {
-				lv.logger.Error("DoReceive error ", e)
-				return Other, e
-			}
+		default:
+			return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 		}
 	} else {
 		//call vm.Run();
@@ -503,11 +526,24 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 		}
 	case types.ContractSend:
 		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
-			if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
-				lv.logger.Debug("contractSend add pending , ", pendingKey)
-				if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-					return err
+			switch v := c.(type) {
+			case contract.ChainContractV1:
+				if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
+					lv.logger.Debug("contractSend add pending , ", pendingKey)
+					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+						return err
+					}
 				}
+			case contract.ChainContractV2:
+				vmCtx := vmstore.NewVMContext(lv.l)
+				if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
+					lv.logger.Debug("contractSend add pending , ", pendingKey)
+					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+						return err
+					}
+				}
+			default:
+				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 			}
 		}
 	case types.ContractReward:
@@ -640,39 +676,65 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 }
 
 func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.StoreTxn) error {
-	if !common.IsGenesisBlock(block) && block.GetType() == types.ContractReward {
-		input, err := lv.l.GetStateBlock(block.GetLink())
-		if err != nil {
-			return nil
-		}
-		address := types.Address(input.GetLink())
-		c, ok, err := contract.GetChainContract(address, input.Data)
-		if !ok || err != nil {
-			return fmt.Errorf("invaild contract %s", err)
-		}
-		clone := block.Clone()
-		vmCtx := vmstore.NewVMContext(lv.l)
-		g, err := c.DoReceive(vmCtx, clone, input)
-		if err != nil {
-			return err
-		}
-		if len(g) > 0 {
-			ctx := g[0].VMContext
-			if ctx != nil {
-				err := ctx.SaveStorage(txn)
-				if err != nil {
-					lv.logger.Error("save storage error: ", err)
-					return err
-				}
-				err = ctx.SaveTrie(txn)
-				if err != nil {
-					lv.logger.Error("save trie error: ", err)
-					return err
-				}
+	if !common.IsGenesisBlock(block) {
+		switch block.GetType() {
+		case types.ContractReward:
+			input, err := lv.l.GetStateBlock(block.GetLink())
+			if err != nil {
 				return nil
 			}
+			address := types.Address(input.GetLink())
+			c, ok, err := contract.GetChainContract(address, input.Data)
+			if !ok || err != nil {
+				return fmt.Errorf("invaild contract %s", err)
+			}
+			clone := block.Clone()
+			vmCtx := vmstore.NewVMContext(lv.l)
+			switch v := c.(type) {
+			case contract.InternalContract:
+				g, err := v.DoReceive(vmCtx, clone, input)
+				if err != nil {
+					return err
+				}
+				if len(g) > 0 {
+					ctx := g[0].VMContext
+					if ctx != nil {
+						err := ctx.SaveStorage(txn)
+						if err != nil {
+							lv.logger.Error("save storage error: ", err)
+							return err
+						}
+						err = ctx.SaveTrie(txn)
+						if err != nil {
+							lv.logger.Error("save trie error: ", err)
+							return err
+						}
+						return nil
+					}
+				}
+				return errors.New("invalid contract data")
+			default:
+				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+			}
+		case types.ContractSend:
+			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data)
+			if ok && err == nil {
+				switch v := c.(type) {
+				case contract.ChainContractV2:
+					vmCtx := vmstore.NewVMContext(lv.l)
+					if _, _, err := v.ProcessSend(vmCtx, block); err == nil {
+						if err := vmCtx.SaveStorage(txn); err != nil {
+							lv.logger.Error("save storage error: ", err)
+							return err
+						}
+						if err = vmCtx.SaveTrie(txn); err != nil {
+							lv.logger.Error("save trie error: ", err)
+							return err
+						}
+					}
+				}
+			}
 		}
-		return errors.New("invaild contract data")
 	}
 	return nil
 }

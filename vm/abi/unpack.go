@@ -2,11 +2,11 @@ package abi
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 )

@@ -3,12 +3,14 @@ package process
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func (lv *LedgerVerifier) BlockSyncCheck(block types.Block) (ProcessResult, error) {
@@ -213,11 +215,24 @@ func (lv *LedgerVerifier) BlockSyncDown() error {
 					}
 				case types.ContractSend:
 					if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
-						if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
-							lv.logger.Debug("contractSend add sync pending , ", pendingKey)
-							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-								return err
+						switch v := c.(type) {
+						case contract.ChainContractV1:
+							if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
+								lv.logger.Debug("contractSend add sync pending , ", pendingKey)
+								if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+									return err
+								}
 							}
+						case contract.ChainContractV2:
+							vmCtx := vmstore.NewVMContext(lv.l)
+							if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
+								lv.logger.Debug("contractSend add sync pending , ", pendingKey)
+								if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+									return err
+								}
+							}
+						default:
+							return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 						}
 					}
 				}

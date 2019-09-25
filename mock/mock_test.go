@@ -277,7 +277,8 @@ func TestAccount(t *testing.T) {
 }
 
 func TestBlockChain(t *testing.T) {
-	blocks, err := BlockChain()
+	//defer func() { os.RemoveAll(filepath.Join(config.QlcTestDataDir(), "blocks.json")) }()
+	blocks, err := BlockChain(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,6 +286,12 @@ func TestBlockChain(t *testing.T) {
 	if len(blocks) == 0 {
 		t.Fatal("create blocks error")
 	}
+	//r, err := json.Marshal(blocks)
+	//if err != nil {
+	//	t.Fatal(err)
+	//} else {
+	//	t.Log(string(r))
+	//}
 }
 
 var seedStr = []string{

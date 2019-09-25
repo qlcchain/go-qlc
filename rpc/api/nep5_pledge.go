@@ -8,13 +8,13 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
