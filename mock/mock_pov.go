@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"math/big"
 	"sync"
 
 	"github.com/qlcchain/go-qlc/common"

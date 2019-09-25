@@ -486,7 +486,7 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 	return dump, nil
 }
 
-func (api *PovApi) GetAllRepStatsByStateHash(stateHash types.Hash) (*PovApiRepState, error) {
+func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepState, error) {
 	apiRsp := new(PovApiRepState)
 
 	apiRsp.StateHash = stateHash
@@ -519,22 +519,22 @@ func (api *PovApi) GetAllRepStatsByStateHash(stateHash types.Hash) (*PovApiRepSt
 	return apiRsp, nil
 }
 
-func (api *PovApi) GetAllRepStatsByBlockHash(blockHash types.Hash) (*PovApiRepState, error) {
+func (api *PovApi) GetAllRepStatesByBlockHash(blockHash types.Hash) (*PovApiRepState, error) {
 	header, err := api.ledger.GetPovHeaderByHash(blockHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return api.GetAllRepStatsByStateHash(header.GetStateHash())
+	return api.GetAllRepStatesByStateHash(header.GetStateHash())
 }
 
-func (api *PovApi) GetAllRepStatsByBlockHeight(blockHeight uint64) (*PovApiRepState, error) {
+func (api *PovApi) GetAllRepStatesByBlockHeight(blockHeight uint64) (*PovApiRepState, error) {
 	header, err := api.ledger.GetPovHeaderByHeight(blockHeight)
 	if err != nil {
 		return nil, err
 	}
 
-	return api.GetAllRepStatsByStateHash(header.GetStateHash())
+	return api.GetAllRepStatesByStateHash(header.GetStateHash())
 }
 
 func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {

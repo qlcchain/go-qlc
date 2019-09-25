@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"math/big"
 	"os"
 	"path/filepath"
 	"testing"

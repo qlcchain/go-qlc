@@ -354,10 +354,11 @@ func (pv *PovVerifier) verifyState(block *types.PovBlock, stat *PovVerifyStat) (
 	if err != nil {
 		return process.BadStateHash, err
 	}
-	stateHash := types.Hash{}
-	if stateTrie != nil {
-		stateHash = *stateTrie.Hash()
+	if stateTrie == nil {
+		return process.BadStateHash, errors.New("failed to gen state trie")
 	}
+
+	stateHash := *stateTrie.Hash()
 	if stateHash != block.GetStateHash() {
 		return process.BadStateHash, fmt.Errorf("state hash is not equals %s != %s", stateHash, block.GetStateHash())
 	}

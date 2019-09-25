@@ -1,7 +1,9 @@
 package pov
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -34,13 +36,12 @@ func (bc *PovBlockChain) NewStateTrie() *trie.Trie {
 func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
 	var currentTrie *trie.Trie
 	prevTrie := bc.GetStateTrie(&prevStateHash)
-	if prevTrie != nil {
-		currentTrie = prevTrie.Clone()
-	} else {
-		currentTrie = bc.NewStateTrie()
+	if prevTrie == nil {
+		return nil, fmt.Errorf("failed to get prev trie %s", prevStateHash)
 	}
+	currentTrie = prevTrie.Clone()
 	if currentTrie == nil {
-		return nil, errors.New("failed to make current trie")
+		return nil, errors.New("failed to make current trie by clone prev trie")
 	}
 
 	for _, tx := range txs {
@@ -62,7 +63,7 @@ func (bc *PovBlockChain) ApplyTransaction(height uint64, trie *trie.Trie, stateB
 	if oldAs != nil {
 		newAs = oldAs.Clone()
 	} else {
-		newAs = types.NewPovAccountState()
+		newAs = types.NewPovAccountState(stateBlock.GetAddress())
 	}
 
 	err = bc.updateAccountState(trie, stateBlock, oldAs, newAs)
@@ -164,7 +165,7 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 		if lastRepOldRs != nil {
 			lastRepNewRs = lastRepOldRs.Clone()
 		} else {
-			lastRepNewRs = types.NewPovRepState()
+			lastRepNewRs = types.NewPovRepState(block.GetAddress())
 		}
 
 		// old(last) representative minus old account balance
@@ -191,7 +192,7 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 		if currRepOldRs != nil {
 			currRepNewRs = currRepOldRs.Clone()
 		} else {
-			currRepNewRs = types.NewPovRepState()
+			currRepNewRs = types.NewPovRepState(block.GetAddress())
 		}
 
 		// new(current) representative plus new account balance
@@ -218,7 +219,7 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, trie *trie.Trie, block *
 	if oldRs != nil {
 		newRs = oldRs.Clone()
 	} else {
-		newRs = types.NewPovRepState()
+		newRs = types.NewPovRepState(block.GetAddress())
 	}
 
 	newRs.Status = types.PovStatusOnline
@@ -282,13 +283,13 @@ func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *ty
 		return nil
 	}
 
-	//bc.logger.Debugf("get rep %s state %s", address, as)
+	bc.logger.Infof("get rep %s state %s", address, rs)
 
 	return rs
 }
 
 func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs *types.PovRepState) error {
-	//bc.logger.Debugf("set rep %s state %s", address, rs)
+	bc.logger.Infof("set rep %s state %s", address, rs)
 
 	valBytes, err := rs.Serialize()
 	if err != nil {
@@ -317,7 +318,7 @@ func (bc *PovBlockChain) GetAllValidRepStates(trie *trie.Trie) []*types.PovRepSt
 			rs := new(types.PovRepState)
 			err := rs.Deserialize(valBytes)
 			if err != nil {
-				bc.logger.Errorf("deserialize old rep state err %s", err)
+				bc.logger.Errorf("deserialize old rep state, key %s err %s", hex.EncodeToString(key), err)
 				return nil
 			}
 
@@ -325,7 +326,6 @@ func (bc *PovBlockChain) GetAllValidRepStates(trie *trie.Trie) []*types.PovRepSt
 				continue
 			}
 
-			_ = rs.Account.SetBytes(key[1:])
 			allRss = append(allRss, rs)
 		}
 

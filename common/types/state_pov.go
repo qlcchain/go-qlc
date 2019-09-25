@@ -31,6 +31,7 @@ func PovCreateRepStateKey(address Address) []byte {
 //go:generate msgp
 
 type PovAccountState struct {
+	Account     Address          `msg:"a,extension" json:"account"`
 	Balance     Balance          `msg:"b,extension" json:"balance"`
 	Vote        Balance          `msg:"v,extension" json:"vote"`
 	Network     Balance          `msg:"n,extension" json:"network"`
@@ -39,8 +40,9 @@ type PovAccountState struct {
 	TokenStates []*PovTokenState `msg:"ts" json:"tokenStates"`
 }
 
-func NewPovAccountState() *PovAccountState {
+func NewPovAccountState(account Address) *PovAccountState {
 	return &PovAccountState{
+		Account: account,
 		Balance: NewBalance(0),
 		Vote:    NewBalance(0),
 		Network: NewBalance(0),
@@ -111,8 +113,9 @@ type PovTokenState struct {
 	Balance        Balance `msg:"b,extension" json:"balance"`
 }
 
-func NewPovTokenState() *PovTokenState {
+func NewPovTokenState(token Hash) *PovTokenState {
 	return &PovTokenState{
+		Type:    token,
 		Balance: NewBalance(0),
 	}
 }
@@ -152,8 +155,9 @@ type PovRepState struct {
 	Height uint64 `msg:"he" json:"height"`
 }
 
-func NewPovRepState() *PovRepState {
+func NewPovRepState(account Address) *PovRepState {
 	return &PovRepState{
+		Account: account,
 		Balance: NewBalance(0),
 		Vote:    NewBalance(0),
 		Network: NewBalance(0),
@@ -185,6 +189,6 @@ func (rs *PovRepState) CalcTotal() Balance {
 }
 
 func (rs *PovRepState) String() string {
-	return fmt.Sprintf("{Account:%s, Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s, Total:%s}",
-		rs.Account, rs.Balance, rs.Vote, rs.Network, rs.Storage, rs.Oracle, rs.Total)
+	return fmt.Sprintf("{Account:%s, Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s, Total:%s, Status:%d, Height:%d}",
+		rs.Account, rs.Balance, rs.Vote, rs.Network, rs.Storage, rs.Oracle, rs.Total, rs.Status, rs.Height)
 }
