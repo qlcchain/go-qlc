@@ -83,7 +83,11 @@ func (p *Processor) processMsg() {
 func (p *Processor) processAck(vi *voteInfo) {
 	dps := p.dps
 	dps.logger.Infof("processor recv confirmAck block[%s]", vi.hash)
-	dps.acTrx.vote(vi)
+	if has, _ := dps.ledger.HasStateBlockConfirmed(vi.hash); !has {
+		dps.acTrx.vote(vi)
+	} else {
+		dps.heartAndVoteInc(vi.hash, vi.account, onlineKindVote)
+	}
 }
 
 func (p *Processor) processMsgDo(bs *consensus.BlockSource) {

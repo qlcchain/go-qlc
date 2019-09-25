@@ -151,15 +151,14 @@ func (act *ActiveTrx) checkVotes() {
 		hash := block.GetHash()
 
 		el.announcements++
-		if el.announcements == confirmReqMaxTimes {
+		if el.announcements == confirmReqMaxTimes || el.status.winner.Type == types.Online {
 			if !el.ifValidAndSetInvalid() {
 				return true
 			}
 
 			dps.logger.Infof("block[%s] was not confirmed after 30 times resend", hash)
 			act.roots.Delete(el.vote.id)
-			dps.deleteBlockCache(block)
-			dps.rollbackUncheckedFromDb(hash)
+			_ = dps.lv.Rollback(hash)
 			el.cleanBlockInfo()
 		} else {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)

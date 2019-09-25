@@ -221,7 +221,7 @@ func (lv *LedgerVerifier) rollbackCacheData(blocks []*types.StateBlock, txn db.S
 		if err := lv.l.DeleteBlockCache(block.GetHash(), txn); err != nil {
 			return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
 		}
-		lv.l.EB.Publish(common.EventRollbackUnchecked, block.GetHash())
+		lv.l.EB.Publish(common.EventRollback, block.GetHash())
 		lv.logger.Errorf("rollback delete cache block %s (previous: %s, type: %s,  address: %s)", block.GetHash().String(), block.GetPrevious().String(), block.GetType(), block.GetAddress().String())
 	}
 
@@ -370,7 +370,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 			if err := lv.l.DeleteStateBlock(hashCur, txn); err != nil {
 				return fmt.Errorf("delete state block error: %s, %s", err, hashCur)
 			}
-			lv.l.EB.Publish(common.EventRollbackUnchecked, hashCur)
+			lv.l.EB.Publish(common.EventRollback, hashCur)
 			lv.logger.Errorf("rollback delete block %s (previous: %s, type: %s,  address: %s) ", hashCur.String(), blockCur.GetPrevious().String(), blockCur.GetType(), blockCur.GetAddress().String())
 
 			if err := lv.checkBlockCache(blockCur, txn); err != nil {

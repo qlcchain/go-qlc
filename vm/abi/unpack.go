@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -153,7 +152,7 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if t.T == SignatureTy {
+	} else if t.T == SignatureTy || t.T == BalanceTy {
 		returnOutput = output[index : index+util.WordSize*2]
 	} else {
 		returnOutput = output[index : index+util.WordSize]
@@ -185,12 +184,7 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 	case FunctionTy:
 		return readFunctionType(t, returnOutput)
 	case BalanceTy:
-		tmp := readInteger(t.Kind, returnOutput)
-		if i, ok := tmp.(*big.Int); ok {
-			return types.Balance{Int: i}, nil
-		} else {
-			return types.ZeroBalance, errors.New("invalid balance")
-		}
+		return types.BytesToBalance(returnOutput), nil
 	default:
 		return nil, fmt.Errorf("abi: unknown type %v", t.T)
 	}

@@ -68,6 +68,23 @@ func (el *Election) voteAction(vi *voteInfo) {
 	el.haveQuorum()
 }
 
+func (el *Election) updateVoteStatistic(confirmedHash types.Hash) {
+	dps := el.dps
+
+	//ignore fork ack
+	if has, _ := dps.ledger.HasStateBlockConfirmed(confirmedHash); !has {
+		dps.confirmedBlockInc()
+
+		el.vote.repVotes.Range(func(key, value interface{}) bool {
+			vi := value.(*voteInfo)
+			if vi.hash == confirmedHash {
+				dps.heartAndVoteInc(confirmedHash, vi.account, onlineKindVote)
+			}
+			return true
+		})
+	}
+}
+
 func (el *Election) haveQuorum() {
 	dps := el.dps
 
@@ -107,6 +124,7 @@ func (el *Election) haveQuorum() {
 			}
 		}
 
+		el.updateVoteStatistic(confirmedHash)
 		el.cleanBlockInfo()
 		dps.acTrx.rollBack(el.status.loser)
 		dps.acTrx.addWinner2Ledger(blk)

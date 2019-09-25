@@ -1,8 +1,11 @@
 package pov
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -78,10 +81,11 @@ func (pvs *PovVerifyStat) getPrevStateTrie(pv *PovVerifier, prevHash types.Hash)
 
 type PovVerifierChainReader interface {
 	GetHeaderByHash(hash types.Hash) *types.PovHeader
-	CalcPastMedianTime(prevHeader *types.PovHeader) int64
-	GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
+	CalcPastMedianTime(prevHeader *types.PovHeader) uint32
+	GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
+	CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance)
 }
 
 func NewPovVerifier(store ledger.Store, chain PovVerifierChainReader, cs ConsensusPov) *PovVerifier {
@@ -137,6 +141,12 @@ func (pv *PovVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
 		return stat
 	}
 
+	result, err = pv.verifyAuxHeader(block, stat)
+	if err != nil || result != process.Progress {
+		stat.setResult(result, err)
+		return stat
+	}
+
 	result, err = pv.verifyConsensus(block, stat)
 	if err != nil || result != process.Progress {
 		stat.setResult(result, err)
@@ -160,39 +170,28 @@ func (pv *PovVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
 }
 
 func (pv *PovVerifier) verifyDataIntegrity(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
+	blkHash := block.GetHash()
+
 	if common.PovChainGenesisBlockHeight == block.GetHeight() {
 		if !common.IsGenesisPovBlock(block) {
-			return process.BadHash, fmt.Errorf("bad genesis block hash %s", block.Hash)
+			return process.BadHash, fmt.Errorf("bad genesis block hash %s", blkHash)
 		}
 	}
 
 	computedHash := block.ComputeHash()
-	if block.Hash.IsZero() || computedHash != block.Hash {
-		return process.BadHash, fmt.Errorf("bad hash, %s != %s", computedHash, block.Hash)
-	}
-
-	if block.Coinbase.IsZero() {
-		return process.BadSignature, errors.New("coinbase is zero")
-	}
-
-	if block.Signature.IsZero() {
-		return process.BadSignature, errors.New("signature is zero")
-	}
-
-	isVerified := block.Coinbase.Verify(block.GetHash().Bytes(), block.GetSignature().Bytes())
-	if !isVerified {
-		return process.BadSignature, errors.New("bad signature")
+	if blkHash.IsZero() || computedHash != blkHash {
+		return process.BadHash, fmt.Errorf("bad hash, %s != %s", computedHash, blkHash)
 	}
 
 	return process.Progress, nil
 }
 
 func (pv *PovVerifier) verifyTimestamp(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
-	if block.Timestamp <= 0 {
+	if block.GetTimestamp() <= 0 {
 		return process.InvalidTime, errors.New("timestamp is zero")
 	}
 
-	if block.GetTimestamp() > (time.Now().Unix() + int64(common.PovMaxAllowedFutureTimeSec)) {
+	if block.GetTimestamp() > uint32(time.Now().Unix()+int64(common.PovMaxAllowedFutureTimeSec)) {
 		return process.InvalidTime, fmt.Errorf("timestamp %d too far from future", block.GetTimestamp())
 	}
 
@@ -219,19 +218,17 @@ func (pv *PovVerifier) verifyReferred(block *types.PovBlock, stat *PovVerifyStat
 }
 
 func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
-	if block.TxNum != uint32(len(block.Transactions)) {
-		return process.InvalidTxNum, nil
+	allTxs := block.GetAllTxs()
+	if block.GetTxNum() != uint32(len(allTxs)) {
+		return process.InvalidTxNum, fmt.Errorf("txNum %d != txs %d", block.GetTxNum(), len(allTxs))
 	}
 
-	if len(block.Transactions) <= 0 {
-		if !block.MerkleRoot.IsZero() {
-			return process.BadMerkleRoot, fmt.Errorf("bad merkle root not zero when txs empty")
-		}
-		return process.Progress, nil
+	if len(allTxs) < 1 {
+		return process.InvalidTxNum, fmt.Errorf("coinbase tx not exist")
 	}
 
 	var txHashList []*types.Hash
-	for _, tx := range block.Transactions {
+	for _, tx := range allTxs {
 		txHash := tx.Hash
 		txHashList = append(txHashList, &txHash)
 	}
@@ -239,16 +236,32 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 	if merkleRoot.IsZero() {
 		return process.BadMerkleRoot, fmt.Errorf("bad merkle root is zero when txs exist")
 	}
-	if merkleRoot != block.MerkleRoot {
-		return process.BadMerkleRoot, fmt.Errorf("bad merkle root not equals %s != %s", merkleRoot, block.MerkleRoot)
+	if merkleRoot != block.GetMerkleRoot() {
+		return process.BadMerkleRoot, fmt.Errorf("bad merkle root not equals %s != %s", merkleRoot, block.GetMerkleRoot())
 	}
-	for _, tx := range block.Transactions {
-		txBlock, _ := pv.store.GetStateBlock(tx.Hash)
-		if txBlock == nil {
-			stat.TxResults[tx.Hash] = process.GapTransaction
+
+	cbTx := block.Header.CbTx
+	cbTx.Hash = cbTx.ComputeHash()
+
+	result, err := pv.verifyCoinBaseTx(cbTx, stat)
+	if err != nil {
+		return result, err
+	}
+
+	for txIdx, tx := range allTxs {
+		if txIdx == 0 {
+			if tx.Hash != cbTx.Hash {
+				return process.BadHash, errors.New("invalid coinbase tx hash")
+			}
+			tx.CbTx = cbTx
 		} else {
-			tx.Block = txBlock
-			stat.TxBlocks[tx.Hash] = txBlock
+			txBlock, _ := pv.store.GetStateBlock(tx.Hash)
+			if txBlock == nil {
+				stat.TxResults[tx.Hash] = process.GapTransaction
+			} else {
+				tx.Block = txBlock
+				stat.TxBlocks[tx.Hash] = txBlock
+			}
 		}
 	}
 
@@ -261,8 +274,11 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 		return process.BadStateHash, errors.New("failed to get prev state tire")
 	}
 	addrTokenPrevHashes := make(map[types.AddressToken]types.Hash)
-	for txIdx := 0; txIdx < len(block.Transactions); txIdx++ {
-		tx := block.Transactions[txIdx]
+
+	accTxs := allTxs[1:]
+
+	for txIdx := 0; txIdx < len(accTxs); txIdx++ {
+		tx := accTxs[txIdx]
 		isCA := types.IsContractAddress(tx.Block.GetAddress())
 		addrToken := types.AddressToken{Address: tx.Block.GetAddress(), Token: tx.Block.GetToken()}
 
@@ -302,22 +318,49 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 	return process.Progress, nil
 }
 
+func (pv *PovVerifier) verifyCoinBaseTx(cbTx *types.PovCoinBaseTx, stat *PovVerifyStat) (process.ProcessResult, error) {
+	minerTxOut := cbTx.GetMinerTxOut()
+	if minerTxOut == nil || minerTxOut.Address.IsZero() {
+		return process.BadCoinbase, errors.New("miner address is zero")
+	}
+
+	repTxOut := cbTx.GetRepTxOut()
+	if repTxOut == nil || repTxOut.Address.IsZero() {
+		return process.BadCoinbase, errors.New("rep address is zero")
+	}
+
+	calcMinerRwd, calcRepRwd := pv.chain.CalcBlockReward(stat.CurHeader)
+
+	minerReward := minerTxOut.Value
+	if minerReward.Compare(calcMinerRwd) == types.BalanceCompBigger {
+		return process.BadCoinbase, fmt.Errorf("miner got bad reward, %v > %v", minerReward, calcMinerRwd)
+	}
+
+	repReward := repTxOut.Value
+	if repReward.Compare(calcRepRwd) == types.BalanceCompBigger {
+		return process.BadCoinbase, fmt.Errorf("rep got bad reward, %v > %v", repReward, calcRepRwd)
+	}
+
+	return process.Progress, nil
+}
+
 func (pv *PovVerifier) verifyState(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
 	prevHeader := stat.getPrevHeader(pv, block.GetPrevious())
 	if prevHeader == nil {
 		return process.GapPrevious, fmt.Errorf("prev block %s pending", block.GetPrevious())
 	}
 
-	stateTrie, err := pv.chain.GenStateTrie(prevHeader.StateHash, block.Transactions)
+	stateTrie, err := pv.chain.GenStateTrie(block.GetHeight(), prevHeader.GetStateHash(), block.GetAccountTxs())
 	if err != nil {
 		return process.BadStateHash, err
 	}
-	stateHash := types.Hash{}
-	if stateTrie != nil {
-		stateHash = *stateTrie.Hash()
+	if stateTrie == nil {
+		return process.BadStateHash, errors.New("failed to gen state trie")
 	}
-	if stateHash != block.StateHash {
-		return process.BadStateHash, fmt.Errorf("state hash is not equals %s != %s", stateHash, block.StateHash)
+
+	stateHash := *stateTrie.Hash()
+	if stateHash != block.GetStateHash() {
+		return process.BadStateHash, fmt.Errorf("state hash is not equals %s != %s", stateHash, block.GetStateHash())
 	}
 	stat.StateTrie = stateTrie
 
@@ -330,6 +373,79 @@ func (pv *PovVerifier) verifyConsensus(block *types.PovBlock, stat *PovVerifySta
 	err := pv.cs.VerifyHeader(header)
 	if err != nil {
 		return process.BadConsensus, err
+	}
+
+	return process.Progress, nil
+}
+
+func (pv *PovVerifier) verifyAuxHeader(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
+	if block.Header.AuxHdr == nil {
+		return process.Progress, nil
+	}
+
+	/*
+		Merged mining coinbase
+
+		Insert exactly one of these headers into the scriptSig of the coinbase transaction in the parent block.
+		Field Size 	Description 	Data type 	Comments
+		4 	magic 	char[4] 	0xfa, 0xbe, 'm', 'm' (only required if over 20 bytes past the start of the script; optional otherwise)
+		32 	block_hash 	char[32] 	Hash of the AuxPOW block header / root of the chain merkle branch
+		4 	merkle_size 	int32_t 	Number of entries in aux work merkle tree. (Must be a power of 2)
+		4 	merkle_nonce 	int32_t 	Nonce used to calculate indexes into aux work merkle tree; you may as well leave this at zero
+
+		That string of 44 bytes being part of the coinbase script means that the miner constructed the AuxPOW Block before creating the coinbase.
+	*/
+
+	ap := block.Header.AuxHdr
+	calcParMR := merkle.CalcMerkleRootByIndex(ap.ParCoinBaseTx.ComputeHash(), ap.ParCoinBaseMerkle, ap.ParMerkleIndex)
+	if calcParMR != ap.ParBlockHeader.MerkleRoot {
+		return process.BadAuxHeader, fmt.Errorf("parent merkle root not equal, %s != %s", calcParMR, ap.ParBlockHeader.MerkleRoot)
+	}
+
+	// reverse the hashAuxBlock
+	hashAuxBlock := block.GetHash().ReverseByte()
+
+	auxRootHash := merkle.CalcMerkleRootByIndex(hashAuxBlock, ap.AuxMerkleBranch, ap.AuxMerkleIndex)
+
+	script := ap.ParCoinBaseTx.TxIn[0].SignatureScript
+	scriptStr := hex.EncodeToString(script)
+
+	// reverse the auxRootHash
+	auxRootHashReverseStr := hex.EncodeToString(auxRootHash.ReverseByte().Bytes())
+	pchMergedMiningHeaderStr := hex.EncodeToString(types.PovAuxPowHeaderMagic)
+
+	headerIndex := strings.Index(scriptStr, pchMergedMiningHeaderStr)
+	rootHashIndex := strings.Index(scriptStr, auxRootHashReverseStr)
+
+	if headerIndex == -1 {
+		return process.BadAuxHeader, errors.New("coinbase aux magic not exist")
+	}
+	if rootHashIndex == -1 {
+		return process.BadAuxHeader, errors.New("coinbase aux root hash not exist")
+	}
+
+	if strings.Index(scriptStr[headerIndex+2:], pchMergedMiningHeaderStr) != -1 {
+		return process.BadAuxHeader, errors.New("coinbase aux magic not exist")
+	}
+
+	if headerIndex+len(pchMergedMiningHeaderStr) != rootHashIndex {
+		return process.BadAuxHeader, errors.New("coinbase aux root hash not exist")
+	}
+
+	rootHashIndex += len(auxRootHashReverseStr)
+	if len(scriptStr)-rootHashIndex < 8 {
+		return process.BadAuxHeader, errors.New("coinbase script size too small")
+	}
+
+	size := binary.LittleEndian.Uint32(script[rootHashIndex/2 : rootHashIndex/2+4])
+	merkleHeight := len(ap.AuxMerkleBranch)
+	if size != uint32(1<<uint32(merkleHeight)) {
+		return process.BadAuxHeader, errors.New("aux merkle branch height not equal")
+	}
+
+	nonce := binary.LittleEndian.Uint32(script[rootHashIndex/2+4 : rootHashIndex/2+8])
+	if ap.AuxMerkleIndex != merkle.CalcAuxPowExpectedIndex(nonce, types.PovAuxPowChainID, merkleHeight) {
+		return process.BadAuxHeader, errors.New("aux merkle index not equal")
 	}
 
 	return process.Progress, nil

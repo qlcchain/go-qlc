@@ -30,19 +30,15 @@ func NewMiner(cfgFile string, povEngine *pov.PoVEngine) *Miner {
 		povEngine: povEngine,
 	}
 
-	if cfg.PoV.MinerEnabled {
-		miner.povWorker = NewPovWorker(miner)
-	}
+	miner.povWorker = NewPovWorker(miner)
 
 	return miner
 }
 
 func (miner *Miner) Init() error {
-	if miner.povWorker != nil {
-		err := miner.povWorker.Init()
-		if err != nil {
-			return err
-		}
+	err := miner.povWorker.Init()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -56,13 +52,9 @@ func (miner *Miner) Start() error {
 		return err
 	}
 
-	if miner.povWorker != nil {
-		err := miner.povWorker.Start()
-		if err != nil {
-			return err
-		}
-	} else {
-		miner.logger.Info("pov worker disabled")
+	err = miner.povWorker.Start()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -71,11 +63,9 @@ func (miner *Miner) Start() error {
 func (miner *Miner) Stop() error {
 	miner.logger.Info("stop miner service")
 
-	if miner.povWorker != nil {
-		err := miner.povWorker.Stop()
-		if err != nil {
-			return err
-		}
+	err := miner.povWorker.Stop()
+	if err != nil {
+		return err
 	}
 
 	return nil

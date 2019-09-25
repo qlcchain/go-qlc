@@ -1,7 +1,10 @@
 package api
 
 import (
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/consensus/dpos"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -12,10 +15,11 @@ import (
 type DebugApi struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
+	eb     event.EventBus
 }
 
-func NewDebugApi(l *ledger.Ledger) *DebugApi {
-	return &DebugApi{ledger: l, logger: log.NewLogger("api_debug")}
+func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
+	return &DebugApi{ledger: l, logger: log.NewLogger("api_debug"), eb: eb}
 }
 
 func (l *DebugApi) BlockCacheCount() (map[string]uint64, error) {
@@ -146,4 +150,10 @@ func (l *DebugApi) SyncBlocks() ([]types.Hash, error) {
 		return nil, err
 	}
 	return blocks, nil
+}
+
+func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
+	repOnline := make(map[uint64]*dpos.RepOnlinePeriod, 0)
+	l.eb.Publish(common.EventRpcSyncCall, "DPoS.Online", "info", repOnline)
+	return repOnline, nil
 }

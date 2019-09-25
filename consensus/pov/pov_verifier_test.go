@@ -31,17 +31,17 @@ type mockPovVerifierChainReader struct {
 
 func (c *mockPovVerifierChainReader) GetHeaderByHash(hash types.Hash) *types.PovHeader {
 	genesisBlk := common.GenesisPovBlock()
-	if hash == genesisBlk.Hash {
+	if hash == genesisBlk.GetHash() {
 		return genesisBlk.GetHeader()
 	}
 	return nil
 }
 
-func (c *mockPovVerifierChainReader) CalcPastMedianTime(prevHeader *types.PovHeader) int64 {
-	return prevHeader.Timestamp
+func (c *mockPovVerifierChainReader) CalcPastMedianTime(prevHeader *types.PovHeader) uint32 {
+	return prevHeader.GetTimestamp()
 }
 
-func (c *mockPovVerifierChainReader) GenStateTrie(prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
+func (c *mockPovVerifierChainReader) GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
 	t := trie.NewTrie(c.ledger.DBStore(), nil, trie.NewSimpleTrieNodePool())
 	return t, nil
 }
@@ -55,11 +55,15 @@ func (c *mockPovVerifierChainReader) GetAccountState(trie *trie.Trie, address ty
 	return nil
 }
 
+func (c *mockPovVerifierChainReader) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance) {
+	return types.ZeroBalance, types.ZeroBalance
+}
+
 type mockPovConsensusChainReader struct{}
 
 func (c *mockPovConsensusChainReader) GetHeaderByHash(hash types.Hash) *types.PovHeader {
 	genesisBlk := common.GenesisPovBlock()
-	if hash == genesisBlk.Hash {
+	if hash == genesisBlk.GetHash() {
 		return genesisBlk.GetHeader()
 	}
 	return nil

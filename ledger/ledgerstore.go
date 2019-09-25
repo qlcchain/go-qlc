@@ -8,8 +8,7 @@
 package ledger
 
 import (
-	"math/big"
-
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
@@ -20,6 +19,7 @@ type Store interface {
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
 	BatchView(fn func(txn db.StoreTxn) error) error
 	DBStore() db.Store
+	EventBus() event.EventBus
 
 	// account meta CURD
 	AddAccountMeta(meta *types.AccountMeta, txns ...db.StoreTxn) error
@@ -117,7 +117,7 @@ type Store interface {
 	GetMessageInfo(mHash types.Hash, txns ...db.StoreTxn) ([]byte, error)
 
 	//POV blocks base CRUD
-	AddPovBlock(blk *types.PovBlock, td *big.Int, txns ...db.StoreTxn) error
+	AddPovBlock(blk *types.PovBlock, td *types.PovTD, txns ...db.StoreTxn) error
 	DeletePovBlock(blk *types.PovBlock, txns ...db.StoreTxn) error
 	AddPovHeader(header *types.PovHeader, txns ...db.StoreTxn) error
 	DeletePovHeader(height uint64, hash types.Hash, txns ...db.StoreTxn) error
@@ -131,9 +131,9 @@ type Store interface {
 	DeletePovHeight(hash types.Hash, txns ...db.StoreTxn) error
 	GetPovHeight(hash types.Hash, txns ...db.StoreTxn) (uint64, error)
 	HasPovHeight(hash types.Hash, txns ...db.StoreTxn) bool
-	AddPovTD(hash types.Hash, height uint64, td *big.Int, txns ...db.StoreTxn) error
+	AddPovTD(hash types.Hash, height uint64, td *types.PovTD, txns ...db.StoreTxn) error
 	DeletePovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) error
-	GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (*big.Int, error)
+	GetPovTD(hash types.Hash, height uint64, txns ...db.StoreTxn) (*types.PovTD, error)
 	AddPovTxLookup(txHash types.Hash, txLookup *types.PovTxLookup, txns ...db.StoreTxn) error
 	DeletePovTxLookup(txHash types.Hash, txns ...db.StoreTxn) error
 	GetPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) (*types.PovTxLookup, error)

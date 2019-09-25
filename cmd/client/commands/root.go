@@ -98,6 +98,8 @@ func addcommands() {
 	blockCount()
 	performance()
 	send()
+	pending()
+	recv()
 	tokens()
 	version()
 	changePassword()
@@ -112,7 +114,8 @@ func addcommands() {
 	generateTestPair()
 	minerReward()
 	minerRecvPend()
-	minerHistory()
 	change()
 	dumpledger()
+	repReward()
+	repRewardRecvPend()
 }

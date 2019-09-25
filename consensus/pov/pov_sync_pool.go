@@ -79,7 +79,7 @@ func (ss *PovSyncer) onPeriodicSyncTimer() {
 	}
 
 	syncOver := false
-	if latestTD.Cmp(bestPeer.currentTD) >= 0 {
+	if latestTD.Chain.CmpBigInt(bestPeer.currentTD) >= 0 {
 		syncOver = true
 	} else if ss.absDiffHeight(latestBlock.GetHeight(), bestPeer.currentHeight) <= 3 {
 		syncOver = true
@@ -113,6 +113,10 @@ func (ss *PovSyncer) onSyncPeerTimer() {
 	syncPeer := ss.FindPeerWithStatus(ss.syncPeerID, peerStatusGood)
 	if syncPeer == nil {
 		ss.logger.Infof("sync peer %s is lost", ss.syncPeerID)
+
+		syncErr = true
+	} else if syncPeer.syncSeqID != ss.syncSeqID.Load() {
+		ss.logger.Infof("sync peer %s sequence id changed, % != %d", ss.syncPeerID, ss.syncSeqID, ss.syncSeqID.Load())
 
 		syncErr = true
 	} else if syncPeer.waitSyncRspMsg {
@@ -161,14 +165,14 @@ func (ss *PovSyncer) onCheckChainTimer() {
 	}
 
 	if ss.syncCurHeight >= ss.syncToHeight && latestBlock.GetHeight() >= ss.syncToHeight {
-		ss.logger.Infof("sync done, current height:%d", latestBlock.Height)
+		ss.logger.Infof("sync done, current height:%d", latestBlock.GetHeight())
 		ss.inSyncing.Store(false)
 		ss.setInitState(common.Syncdone)
 		return
 	}
 
 	ss.logger.Infof("syncCurHeight:%d, syncRcvHeight:%d, syncToHeight:%d, chainHeight:%d",
-		ss.syncCurHeight, ss.syncRcvHeight, ss.syncToHeight, latestBlock.Height)
+		ss.syncCurHeight, ss.syncRcvHeight, ss.syncToHeight, latestBlock.GetHeight())
 }
 
 func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
@@ -181,6 +185,10 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 
 	ss.logger.Infof("sync starting with peer %s height %d", peer.peerID, peer.currentHeight)
 
+	ss.syncSeqID.Inc()
+	peer.syncSeqID = ss.syncSeqID.Load()
+
+	peer.waitLocatorRsp = true
 	ss.requestSyncingBlocks(peer, true)
 }
 
@@ -193,9 +201,9 @@ func (ss *PovSyncer) resetSyncPeer(peer *PovSyncPeer) {
 	ss.syncBlocks = nil
 
 	if peer != nil {
+		peer.waitLocatorRsp = false
 		peer.waitSyncRspMsg = false
 		peer.lastSyncReqTime = time.Now()
-		peer.waitLocatorRsp = false
 	}
 }
 
@@ -238,9 +246,6 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 
 	syncPeer.lastSyncReqTime = time.Now()
 	syncPeer.waitSyncRspMsg = true
-	if useLocator {
-		syncPeer.waitLocatorRsp = true
-	}
 
 	ss.syncReqHeight = req.StartHeight
 }
@@ -288,6 +293,7 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 
 	if peer.waitLocatorRsp {
 		peer.waitLocatorRsp = false
+
 		ss.syncCurHeight = block.GetHeight()
 		ss.syncRcvHeight = block.GetHeight()
 
@@ -301,13 +307,18 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 
 func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
 	var reqTxHashes []*types.Hash
-	for _, tx := range syncBlk.Block.Transactions {
+	txs := syncBlk.Block.GetAllTxs()
+	for txIdx, tx := range txs {
 		txHash := tx.GetHash()
-		ok, _ := ss.ledger.HasStateBlock(txHash)
-		if ok {
+		if txIdx == 0 {
 			syncBlk.TxExists[txHash] = struct{}{}
 		} else {
-			reqTxHashes = append(reqTxHashes, &txHash)
+			ok, _ := ss.ledger.HasStateBlock(txHash)
+			if ok {
+				syncBlk.TxExists[txHash] = struct{}{}
+			} else {
+				reqTxHashes = append(reqTxHashes, &txHash)
+			}
 		}
 	}
 

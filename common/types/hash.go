@@ -8,9 +8,14 @@
 package types
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"gitlab.com/samli88/go-x11-hash"
+	"golang.org/x/crypto/scrypt"
+	"math/big"
 
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
@@ -27,6 +32,7 @@ const (
 )
 
 var ZeroHash = Hash{}
+var FFFFHash, _ = NewHash("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
 //Hash blake2b hash
 //go:generate msgp
@@ -64,6 +70,28 @@ func (h *Hash) IsZero() bool {
 // String implements the fmt.Stringer interface.
 func (h Hash) String() string {
 	return hex.EncodeToString(h[:])
+}
+
+func (h Hash) ReverseByte() Hash {
+	var h2 Hash
+	copy(h2[:], h[:])
+
+	for i := 0; i < HashSize/2; i++ {
+		h2[i], h2[HashSize-1-i] = h2[HashSize-1-i], h2[i]
+	}
+
+	return h2
+}
+
+func (h Hash) ReverseEndian() Hash {
+	var h2 Hash
+
+	for i := 0; i < 32; i += 4 {
+		j := 31 - i
+		h2[i+0], h2[i+1], h2[i+2], h2[i+3] = h[j-3], h[j-2], h[j-1], h[j-0]
+	}
+
+	return h2
 }
 
 //Of convert hex string to Hash
@@ -140,6 +168,19 @@ func (h Hash) Cmp(h2 Hash) int {
 	return 0
 }
 
+func (h *Hash) ToBigInt() *big.Int {
+	return HashToBig(h)
+}
+
+func (h *Hash) FromBigInt(num *big.Int) error {
+	h0 := BigToHash(num)
+	if h0 != nil {
+		*h = *h0
+	}
+
+	return nil
+}
+
 func HashData(data []byte) Hash {
 	h, _ := HashBytes(data)
 	return h
@@ -159,4 +200,66 @@ func HashBytes(inputs ...[]byte) (Hash, error) {
 	var result Hash
 	copy(result[:], hash.Sum(nil))
 	return result, nil
+}
+
+func Sha256D_HashData(data []byte) Hash {
+	h, _ := Sha256D_HashBytes(data)
+	return h
+}
+
+//Sha256D_HashBytes hash data by sha256
+func Sha256D_HashBytes(inputs ...[]byte) (Hash, error) {
+	hash := sha256.New()
+
+	for _, data := range inputs {
+		hash.Write(data)
+	}
+	first := hash.Sum(nil)
+
+	hash.Reset()
+	hash.Write(first[:])
+
+	second := hash.Sum(nil)
+
+	var result Hash
+	copy(result[:], second)
+	return result, nil
+}
+
+func Scrypt_HashData(data []byte) Hash {
+	scryptHash, err := scrypt.Key(data, data, 1024, 1, 1, 32)
+	if err != nil {
+		return ZeroHash
+	}
+
+	var result Hash
+	copy(result[:], scryptHash)
+	return result
+}
+
+func Scrypt_HashBytes(inputs ...[]byte) (Hash, error) {
+	buf := new(bytes.Buffer)
+
+	for _, data := range inputs {
+		buf.Write(data)
+	}
+
+	scryptHash, err := scrypt.Key(buf.Bytes(), buf.Bytes(), 1024, 1, 1, 32)
+	if err != nil {
+		return ZeroHash, err
+	}
+
+	var result Hash
+	copy(result[:], scryptHash)
+	return result, nil
+}
+
+func X11_HashData(data []byte) Hash {
+	out := make([]byte, 32)
+	hs := x11.New()
+	hs.Hash(data, out)
+
+	var result Hash
+	copy(result[:], out)
+	return result
 }

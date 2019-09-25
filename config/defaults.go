@@ -46,6 +46,16 @@ func identityConfig() (string, string, error) {
 func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
+		testMode := os.Getenv("GQLC_TEST_MODE")
+		if testMode == "POV" {
+			if runtime.GOOS == "darwin" {
+				return filepath.Join(home, "Library", "Application Support", cfgDir+"_pov")
+			} else if runtime.GOOS == "windows" {
+				return filepath.Join(home, "AppData", "Roaming", cfgDir+"_pov")
+			} else {
+				return filepath.Join(home, nixCfgDir+"_pov")
+			}
+		}
 		if runtime.GOOS == "darwin" {
 			return filepath.Join(home, "Library", "Application Support", cfgDir)
 		} else if runtime.GOOS == "windows" {

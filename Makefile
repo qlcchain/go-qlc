@@ -56,6 +56,11 @@ build-test:
 	@echo "Build test server done."
 	@echo "Run \"$(BUILDDIR)/$(SERVERBINARY)\" to start $(SERVERBINARY)."
 
+mining:
+	GO111MODULE=on go build -tags "testnet" -ldflags $(TESTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-miner $(shell pwd)/cmd/miner/
+	GO111MODULE=on go build -tags "testnet" -ldflags $(TESTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-stratum $(shell pwd)/cmd/stratum/
+	@echo "Build mining done."
+
 all: gqlc-server gqlc-server-test gqlc-client
 
 clean:
@@ -72,3 +77,9 @@ gqlc-server-test:
 	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
 	xgo --dest=$(BUILDDIR) --tags="confidant testnet" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
 	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
+
+gqlc-mining:
+	xgo --dest=$(BUILDDIR) --ldflags=$(TESTLDFLAGS) --out=gqlc-miner-v$(SERVERVERSION)-$(GITREV) \
+	--targets=$(TARGET) --pkg=cmd/miner/*.go .
+	xgo --dest=$(BUILDDIR) --ldflags=$(TESTLDFLAGS) --out=gqlc-stratum-v$(SERVERVERSION)-$(GITREV) \
+	--targets=$(TARGET) --pkg=cmd/stratum/*.go .

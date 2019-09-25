@@ -17,6 +17,7 @@ func init() {
 const (
 	// BalanceMaxPrecision  balance max precision
 	BalanceMaxPrecision = 11
+	BalanceSize         = 64
 )
 
 // BalanceComp compare
@@ -57,6 +58,11 @@ func BytesToBalance(b []byte) Balance {
 
 func NewBalance(x int64) Balance {
 	t := big.NewInt(x)
+	return Balance{t}
+}
+
+func NewBalanceFromBigInt(num *big.Int) Balance {
+	t := new(big.Int).Set(num)
 	return Balance{t}
 }
 
@@ -190,4 +196,8 @@ func (b *Balance) UnmarshalJSON(text []byte) error {
 // IsZero check balance is zero
 func (b Balance) IsZero() bool {
 	return b.Equal(ZeroBalance)
+}
+
+func (b Balance) Copy() Balance {
+	return NewBalanceFromBigInt(b.Int)
 }

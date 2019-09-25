@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
+	"math"
 )
 
 // ToHex returns the hex representation of b, prefixed with '0x'.
@@ -151,6 +152,16 @@ func BE_BytesToUint32(buf []byte) uint32 {
 	return binary.BigEndian.Uint32(buf)
 }
 
+func LE_Uint32ToBytes(i uint32) []byte {
+	tmp := make([]byte, 4)
+	binary.LittleEndian.PutUint32(tmp, i)
+	return tmp
+}
+
+func LE_BytesToUint32(buf []byte) uint32 {
+	return binary.LittleEndian.Uint32(buf)
+}
+
 func BE_Uint64ToBytes(i uint64) []byte {
 	tmp := make([]byte, 8)
 	binary.BigEndian.PutUint64(tmp, i)
@@ -198,4 +209,29 @@ func Bool2Bytes(b bool) []byte {
 	enc := gob.NewEncoder(&buf)
 	enc.Encode(b)
 	return buf.Bytes()
+}
+
+func LE_EncodeVarInt(val uint64) []byte {
+	buf := make([]byte, 9)
+
+	if val < 0xfd {
+		buf[0] = uint8(val)
+		return buf[0:1]
+	}
+
+	if val <= math.MaxUint16 {
+		buf[0] = uint8(0xfd)
+		binary.LittleEndian.PutUint16(buf[1:3], uint16(val))
+		return buf[0:3]
+	}
+
+	if val <= math.MaxUint32 {
+		buf[0] = uint8(0xfe)
+		binary.LittleEndian.PutUint32(buf[1:5], uint32(val))
+		return buf[0:5]
+	}
+
+	buf[0] = uint8(0xff)
+	binary.LittleEndian.PutUint64(buf[1:9], val)
+	return buf[0:9]
 }

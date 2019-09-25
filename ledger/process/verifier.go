@@ -38,6 +38,7 @@ const (
 	InvalidTxOrder
 	BadConsensus
 	ReceiveRepeated
+	BadAuxHeader
 	Other
 )
 
@@ -91,6 +92,8 @@ func (r ProcessResult) String() string {
 		return "BadConsensus"
 	case ReceiveRepeated:
 		return "ReceiveRepeated"
+	case BadAuxHeader:
+		return "BadAuxHeader"
 	default:
 		return "<invalid>"
 	}

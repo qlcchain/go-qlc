@@ -241,6 +241,10 @@ func (l *Ledger) DBStore() db.Store {
 	return l.Store
 }
 
+func (l *Ledger) EventBus() event.EventBus {
+	return l.EB
+}
+
 // BatchUpdate MUST pass the same txn
 func (l *Ledger) BatchUpdate(fn func(txn db.StoreTxn) error) error {
 	txn := l.Store.NewTransaction(true)
@@ -517,6 +521,48 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,
 		Timestamp:      common.TimeNow().Unix(),
+	}
+	if prk != nil {
+		acc := types.NewAccount(prk)
+		addr := acc.Address()
+		if addr.String() != account.String() {
+			return nil, fmt.Errorf("change address (%s) is mismatch privateKey (%s)", account.String(), acc.Address().String())
+		}
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+	}
+	return &sb, nil
+}
+
+func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error) {
+	am, err := l.GetAccountMeta(account)
+	if err != nil {
+		return nil, fmt.Errorf("account[%s] is not exist", account.String())
+	}
+	tm := am.Token(common.ChainToken())
+	if tm == nil {
+		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
+	}
+	prev, err := l.GetStateBlock(tm.Header)
+	if err != nil {
+		return nil, fmt.Errorf("token header block not found")
+	}
+
+	sb := types.StateBlock{
+		Type:           types.Online,
+		Address:        account,
+		Balance:        tm.Balance,
+		Vote:           prev.GetVote(),
+		Oracle:         prev.GetOracle(),
+		Network:        prev.GetNetwork(),
+		Storage:        prev.GetStorage(),
+		Previous:       tm.Header,
+		Link:           types.ZeroHash,
+		Representative: tm.Representative,
+		Token:          tm.Type,
+		Extra:          types.ZeroHash,
+		Timestamp:      common.TimeNow().Unix(),
+		PoVHeight:      povHeight,
 	}
 	if prk != nil {
 		acc := types.NewAccount(prk)

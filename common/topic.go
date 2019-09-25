@@ -4,20 +4,20 @@ type TopicType string
 
 //Topic type
 const (
-	EventPublish           TopicType = "publish"
-	EventConfirmReq        TopicType = "confirmReq"
-	EventConfirmAck        TopicType = "confirmAck"
-	EventSyncBlock         TopicType = "syncBlock"
-	EventConfirmedBlock    TopicType = "confirmedBlock"
-	EventBroadcast         TopicType = "broadcast"
-	EventSendMsgToPeers    TopicType = "sendMsgToPeers"
-	EventPeersInfo         TopicType = "peersInfo"
-	EventSyncing           TopicType = "syncing"
-	EventAddRelation       TopicType = "addRelation"
-	EventDeleteRelation    TopicType = "deleteRelation"
-	EventGenerateBlock     TopicType = "generateBlock"
-	EventRollbackUnchecked TopicType = "rollbackUnchecked"
-	EventRestartChain      TopicType = "restartChain"
+	EventPublish        TopicType = "publish"
+	EventConfirmReq     TopicType = "confirmReq"
+	EventConfirmAck     TopicType = "confirmAck"
+	EventSyncBlock      TopicType = "syncBlock"
+	EventConfirmedBlock TopicType = "confirmedBlock"
+	EventBroadcast      TopicType = "broadcast"
+	EventSendMsgToPeers TopicType = "sendMsgToPeers"
+	EventPeersInfo      TopicType = "peersInfo"
+	EventSyncing        TopicType = "syncing"
+	EventAddRelation    TopicType = "addRelation"
+	EventDeleteRelation TopicType = "deleteRelation"
+	EventGenerateBlock  TopicType = "generateBlock"
+	EventRollback       TopicType = "rollback"
+	EventRestartChain   TopicType = "restartChain"
 
 	EventSendMsgToSingle TopicType = "sendMsgToSingle"
 	EventAddP2PStream    TopicType = "addP2PStream"
@@ -27,6 +27,11 @@ const (
 	EventPovBulkPullReq  TopicType = "povBulkPullReq"
 	EventPovBulkPullRsp  TopicType = "povBulkPullRsp"
 	EventPovSyncState    TopicType = "povSyncState"
+
+	EventPovConnectBestBlock    TopicType = "povConnectBestBlock"
+	EventPovDisconnectBestBlock TopicType = "povDisconnectBestBlock"
+
+	EventRpcSyncCall TopicType = "rpcSyncCall"
 )
 
 // Sync state
