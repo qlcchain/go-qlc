@@ -289,9 +289,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 			dps.localRepVote(bs.Block)
 		}
 	case consensus.MsgSync:
-		if result == process.Progress {
-			p.confirmBlock(bs.Block)
-		}
+		//do nothing
 	case consensus.MsgGenerateBlock:
 		if dps.getPovSyncState() != common.SyncDone {
 			dps.logger.Errorf("pov is syncing, can not send tx!")

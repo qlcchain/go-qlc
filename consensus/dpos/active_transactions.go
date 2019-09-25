@@ -196,8 +196,6 @@ func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
 	dps := act.dps
 	dps.logger.Debugf("sync block[%s] confirmed", hash)
 
-	dps.chainFinished(hash)
-
 	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
 		err := dps.lv.BlockSyncProcess(block)
 		if err != nil {
@@ -208,6 +206,8 @@ func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
 	} else {
 		dps.logger.Debugf("%s, %v", hash, err)
 	}
+
+	dps.chainFinished(hash)
 }
 
 func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
