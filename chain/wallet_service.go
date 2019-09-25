@@ -8,7 +8,8 @@
 package chain
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/wallet"
 )

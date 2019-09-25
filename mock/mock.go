@@ -159,7 +159,7 @@ func StateBlockWithAddress(addr types.Address) *types.StateBlock {
 	return sb
 }
 
-func BlockChain() ([]*types.StateBlock, error) {
+func BlockChain(isGas bool) ([]*types.StateBlock, error) {
 	dir := filepath.Join(config.QlcTestDataDir(), "blocks.json")
 	_, err := os.Stat(dir)
 	if err == nil {
@@ -177,11 +177,20 @@ func BlockChain() ([]*types.StateBlock, error) {
 	var blocks []*types.StateBlock
 	ac1 := Account()
 	ac2 := Account()
+	fmt.Println(ac1.String())
 	//ac3 := Account()
 
-	token := common.ChainToken()
+	var token types.Hash
+	var genesis types.Hash
+	if isGas {
+		token = common.GasToken()
+		genesis = common.GenesisMintageHash()
+	} else {
+		token = common.ChainToken()
+		genesis = common.GenesisBlockHash()
+	}
 
-	b0 := createBlock(types.Open, *ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, common.GenesisBlockHash(), ac1.Address()) //a1 open
+	b0 := createBlock(types.Open, *ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, genesis, ac1.Address()) //a1 open
 	blocks = append(blocks, b0)
 
 	b1 := createBlock(types.Send, *ac1, b0.GetHash(), token, types.Balance{Int: big.NewInt(int64(40000000000))}, types.Hash(ac2.Address()), ac1.Address()) //a1 send

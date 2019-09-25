@@ -281,7 +281,7 @@ func signAndWork(block *types.StateBlock, account *types.Account) error {
 }
 
 func initData(ledger *ledger.Ledger) {
-	blocks, _ := mock.BlockChain()
+	blocks, _ := mock.BlockChain(false)
 	if err := verifier.BlockProcess(blocks[0]); err != nil {
 		fmt.Println(err)
 		return

@@ -2,6 +2,7 @@ package process
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -9,6 +10,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"github.com/yireyun/go-queue"
 )
 
@@ -226,10 +228,16 @@ func (lv *LedgerVerifier) rollbackCacheData(blocks []*types.StateBlock, txn db.S
 	}
 
 	blk := blocks[0]
-	address := blk.GetAddress()
-	lv.logger.Debug("delete token cache, ", address, blk.GetToken())
-	err := lv.l.DeleteTokenMetaCache(address, blk.GetToken(), txn)
+	if err := lv.rollbackCacheAccount(blk.GetAddress(), blk.GetHash(), txn); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (lv *LedgerVerifier) rollbackCacheAccount(address types.Address, token types.Hash, txn db.StoreTxn) error {
+	err := lv.l.DeleteTokenMetaCache(address, token, txn)
 	if err == nil {
+		lv.logger.Debug("delete token cache, ", address, token)
 		ac, err := lv.l.GetAccountMetaCache(address, txn)
 		if err != nil {
 			return err
@@ -375,6 +383,10 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 
 			if err := lv.checkBlockCache(blockCur, txn); err != nil {
 				lv.logger.Errorf("roll back block cache error : %s", err)
+				return err
+			}
+			if err := lv.rollbackCacheAccount(blockCur.GetAddress(), blockCur.GetToken(), txn); err != nil {
+				lv.logger.Errorf("roll back account cache error : %s", err)
 				return err
 			}
 
@@ -537,9 +549,15 @@ func (lv *LedgerVerifier) rollBackToken(token *types.TokenMeta, pre *types.State
 	tm.Representative = pre.GetRepresentative()
 	tm.BlockCount = tm.BlockCount - 1
 	tm.Modified = common.TimeNow().Unix()
-	lv.logger.Debug("update token, ", tm.BelongTo, tm.Type)
-	if err := lv.l.UpdateAccountMeta(ac, txn); err != nil {
-		return err
+	lv.logger.Debug("update token, ", tm)
+	for index, t := range ac.Tokens {
+		if t.Type == tm.Type {
+			ac.Tokens[index] = tm
+			if err := lv.l.UpdateAccountMeta(ac, txn); err != nil {
+				return err
+			}
+			return nil
+		}
 	}
 	return nil
 }
@@ -635,11 +653,26 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 
 	if blockCur.GetType() == types.ContractReward {
 		if c, ok, err := contract.GetChainContract(types.Address(blockLink.Link), blockLink.Data); ok && err == nil {
-			if pendingKey, pendingInfo, err := c.DoPending(blockLink); err == nil && pendingKey != nil {
-				lv.logger.Debug("add contractreward pending , ", pendingKey)
-				if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-					return err
+			switch v := c.(type) {
+			case contract.ChainContractV1:
+				if pendingKey, pendingInfo, err := v.DoPending(blockLink); err == nil && pendingKey != nil {
+					lv.logger.Debug("add contract reward pending , ", pendingKey)
+					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+						return err
+					}
 				}
+			case contract.ChainContractV2:
+				vmCtx := vmstore.NewVMContext(lv.l)
+				if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, blockLink); err == nil && pendingKey != nil {
+					lv.logger.Debug("contractSend add pending , ", pendingKey)
+					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+						return err
+					}
+				} else {
+					return fmt.Errorf("process send error, %s", err)
+				}
+			default:
+				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 			}
 		}
 		return nil
@@ -664,11 +697,24 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, txn db.StoreTxn) error {
 	if blockCur.GetType() == types.ContractSend {
 		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.Data); ok && err == nil {
-			if pendingKey, _, err := c.DoPending(blockCur); err == nil && pendingKey != nil {
-				lv.logger.Debug("delete contractsend pending , ", pendingKey)
-				if err := lv.l.DeletePending(pendingKey, txn); err != nil {
-					return err
+			switch v := c.(type) {
+			case contract.ChainContractV1:
+				if pendingKey, _, err := v.DoPending(blockCur); err == nil && pendingKey != nil {
+					lv.logger.Debug("delete contract send pending , ", pendingKey)
+					if err := lv.l.DeletePending(pendingKey, txn); err != nil {
+						return err
+					}
 				}
+			case contract.ChainContractV2:
+				vmCtx := vmstore.NewVMContext(lv.l)
+				if pendingKey, _, err := v.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
+					lv.logger.Debug("delete contract send pending , ", pendingKey)
+					if err := lv.l.DeletePending(pendingKey, txn); err != nil {
+						return err
+					}
+				}
+			default:
+				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 			}
 		}
 		return nil

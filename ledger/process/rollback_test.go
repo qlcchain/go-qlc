@@ -15,7 +15,7 @@ import (
 func TestProcess_Rollback(t *testing.T) {
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
-	var bc, _ = mock.BlockChain()
+	var bc, _ = mock.BlockChain(false)
 	if err := lv.BlockProcess(bc[0]); err != nil {
 		t.Fatal(err)
 	}
