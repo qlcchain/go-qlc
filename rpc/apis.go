@@ -106,10 +106,11 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Public:    true,
 		}
 	case "destroy":
-		return rpc.API{Namespace: "debug",
-			Version: "1.0",
-			Service: api.NewBlackHoleApi(r.ledger),
-			Public:  true}
+		return rpc.API{
+			Namespace: "destroy",
+			Version:   "1.0",
+			Service:   api.NewBlackHoleApi(r.ledger),
+			Public:    true}
 	default:
 		return rpc.API{}
 	}

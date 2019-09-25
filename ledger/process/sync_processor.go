@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func (lv *LedgerVerifier) BlockSyncCheck(block types.Block) (ProcessResult, error) {
