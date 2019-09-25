@@ -31,7 +31,7 @@ func NewBlackHoleApi(l *ledger.Ledger) *BlackHoleApi {
 	return &BlackHoleApi{logger: log.NewLogger("rpc/black_hole"), l: l, blackHoleContract: &contract.BlackHole{}}
 }
 
-func (b *BlackHoleApi) GetSendBlackHoleBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
+func (b *BlackHoleApi) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
 	vmContext := vmstore.NewVMContext(b.l)
 	stateBlock, err := cabi.PackSendBlock(vmContext, param)
 	if err != nil {
@@ -44,7 +44,7 @@ func (b *BlackHoleApi) GetSendBlackHoleBlock(param *cabi.DestroyParam) (*types.S
 	return stateBlock, nil
 }
 
-func (b *BlackHoleApi) GetReceiveBlackHoleBlock(send *types.Hash) (*types.StateBlock, error) {
+func (b *BlackHoleApi) GetRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
 	if send == nil {
 		return nil, ErrParameterNil
 	}
