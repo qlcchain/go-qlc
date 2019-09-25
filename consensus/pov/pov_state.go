@@ -283,13 +283,13 @@ func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *ty
 		return nil
 	}
 
-	bc.logger.Infof("get rep %s state %s", address, rs)
+	//bc.logger.Debugf("get rep %s state %s", address, rs)
 
 	return rs
 }
 
 func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs *types.PovRepState) error {
-	bc.logger.Infof("set rep %s state %s", address, rs)
+	//bc.logger.Debugf("set rep %s state %s", address, rs)
 
 	valBytes, err := rs.Serialize()
 	if err != nil {
