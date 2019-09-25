@@ -64,11 +64,18 @@ type StratumSession struct {
 }
 
 func NewStratumServer(config *StratumConfig) *StratumServer {
+	for config.ServerID <= 0 {
+		config.ServerID = uint8(rand.Intn(255))
+	}
+
 	s := &StratumServer{config: config}
 
 	s.sessionIDMng = bitset.New(0x00FFFFFF)
 	s.sessionIDMng.Set(0)
-	s.sessAllocIdx = uint(rand.Intn(100))
+
+	for s.sessAllocIdx <= 0 {
+		s.sessAllocIdx = uint(rand.Intn(255))
+	}
 
 	s.sessions = make(map[uint32]*StratumSession)
 
@@ -78,6 +85,8 @@ func NewStratumServer(config *StratumConfig) *StratumServer {
 }
 
 func (s *StratumServer) Start() error {
+	log.Infof("start stratum, serverID %d sessAllocIdx %d", s.config.ServerID, s.sessAllocIdx)
+
 	GetDefaultEventBus().Subscribe(EventBCastJobWork, s.eventChan)
 	GetDefaultEventBus().Subscribe(EventMinerSendRsp, s.eventChan)
 
