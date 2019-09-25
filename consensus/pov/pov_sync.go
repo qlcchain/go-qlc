@@ -48,6 +48,7 @@ type PovSyncer struct {
 	syncStartTime time.Time
 	syncEndTime   time.Time
 
+	syncSeqID     atomic.Uint32
 	syncPeerID    string
 	syncToHeight  uint64
 	syncCurHeight uint64
@@ -407,13 +408,17 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 		}
 
 		if ss.syncPeerID != msg.msgPeer {
-			ss.logger.Infof("recv PovBulkPullRsp from peer %s is not sync peer", msg.msgPeer)
+			ss.logger.Infof("recv PovBulkPullRsp but peer %s is not sync peer", msg.msgPeer)
 			return
 		}
 
 		syncPeer := ss.FindPeerWithStatus(msg.msgPeer, peerStatusGood)
 		if syncPeer == nil {
-			ss.logger.Infof("recv PovBulkPullRsp from peer %s is not exist", msg.msgPeer)
+			ss.logger.Infof("recv PovBulkPullRsp but peer %s is not exist", msg.msgPeer)
+			return
+		}
+		if syncPeer.syncSeqID != ss.syncSeqID.Load() {
+			ss.logger.Infof("recv PovBulkPullRsp but syncSeqID is not equal, %d, %d", syncPeer.syncSeqID, ss.syncSeqID.Load())
 			return
 		}
 

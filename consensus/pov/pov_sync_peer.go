@@ -27,8 +27,9 @@ type PovSyncPeer struct {
 	lastStatusTime time.Time
 	status         int
 
-	waitSyncRspMsg  bool
+	syncSeqID       uint32
 	waitLocatorRsp  bool
+	waitSyncRspMsg  bool
 	lastSyncReqTime time.Time
 }
 

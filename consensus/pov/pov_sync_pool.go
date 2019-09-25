@@ -115,6 +115,10 @@ func (ss *PovSyncer) onSyncPeerTimer() {
 		ss.logger.Infof("sync peer %s is lost", ss.syncPeerID)
 
 		syncErr = true
+	} else if syncPeer.syncSeqID != ss.syncSeqID.Load() {
+		ss.logger.Infof("sync peer %s sequence id changed, % != %d", ss.syncPeerID, ss.syncSeqID, ss.syncSeqID.Load())
+
+		syncErr = true
 	} else if syncPeer.waitSyncRspMsg {
 		if syncPeer.lastSyncReqTime.Add(time.Minute).Before(time.Now()) {
 			ss.logger.Infof("sync peer %s may be too slow", ss.syncPeerID)
@@ -181,6 +185,10 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 
 	ss.logger.Infof("sync starting with peer %s height %d", peer.peerID, peer.currentHeight)
 
+	ss.syncSeqID.Inc()
+	peer.syncSeqID = ss.syncSeqID.Load()
+
+	peer.waitLocatorRsp = true
 	ss.requestSyncingBlocks(peer, true)
 }
 
@@ -193,9 +201,9 @@ func (ss *PovSyncer) resetSyncPeer(peer *PovSyncPeer) {
 	ss.syncBlocks = nil
 
 	if peer != nil {
+		peer.waitLocatorRsp = false
 		peer.waitSyncRspMsg = false
 		peer.lastSyncReqTime = time.Now()
-		peer.waitLocatorRsp = false
 	}
 }
 
@@ -238,9 +246,6 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 
 	syncPeer.lastSyncReqTime = time.Now()
 	syncPeer.waitSyncRspMsg = true
-	if useLocator {
-		syncPeer.waitLocatorRsp = true
-	}
 
 	ss.syncReqHeight = req.StartHeight
 }
@@ -288,6 +293,7 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 
 	if peer.waitLocatorRsp {
 		peer.waitLocatorRsp = false
+
 		ss.syncCurHeight = block.GetHeight()
 		ss.syncRcvHeight = block.GetHeight()
 
