@@ -49,7 +49,8 @@ var (
 	MinerAddress, _     = GenerateBuiltinContractAddress(21)
 	BlackHoleAddress, _ = GenerateBuiltinContractAddress(22)
 
-	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress, BlackHoleAddress}
+	ChainContractAddressList  = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress, BlackHoleAddress}
+	NoSignContractAddressList = []Address{RewardsAddress, BlackHoleAddress}
 
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
 	// alphabet.
@@ -149,6 +150,15 @@ func IsContractAddress(address Address) bool {
 		return true
 	}
 
+	return false
+}
+
+func IsNoSignContractAddress(address Address) bool {
+	for _, itAddr := range NoSignContractAddressList {
+		if itAddr == address {
+			return true
+		}
+	}
 	return false
 }
 

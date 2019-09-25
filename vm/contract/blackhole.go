@@ -30,11 +30,19 @@ func (b *BlackHole) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 
 	if err := b.verify(ctx, param, block); err == nil {
 		// make sure that the same block only process once
-		if b, err := ctx.GetStorage(block.Address[:], block.Previous[:]); err == nil && len(b) > 0 {
-			return nil, nil, fmt.Errorf("block already processed, %s of %s",
-				block.Previous.String(), block.Address.String())
-		} else if err != vmstore.ErrStorageNotFound {
+		b, err := ctx.GetStorage(block.Address[:], block.Previous[:])
+		if err != nil && err != vmstore.ErrStorageNotFound {
 			return nil, nil, err
+		}
+		if len(b) > 0 {
+			destroyInfo, err := cabi.ParseDestroyInfo(b)
+			if err != nil {
+				return nil, nil, err
+			}
+			if destroyInfo.Token != param.Token || destroyInfo.Amount.Int64() != param.Amount.Int64() || destroyInfo.Owner != param.Owner ||
+				destroyInfo.Previous != param.Previous {
+				return nil, nil, fmt.Errorf("invalid saved pledge info")
+			}
 		}
 
 		if data, err := cabi.BlackHoleABI.PackVariable(cabi.VariableDestroyInfo, block.Address, block.Previous,

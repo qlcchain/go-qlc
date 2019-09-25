@@ -235,9 +235,9 @@ func (lv *LedgerVerifier) rollbackCacheData(blocks []*types.StateBlock, txn db.S
 }
 
 func (lv *LedgerVerifier) rollbackCacheAccount(address types.Address, token types.Hash, txn db.StoreTxn) error {
-	lv.logger.Debug("delete token cache, ", address, token)
 	err := lv.l.DeleteTokenMetaCache(address, token, txn)
 	if err == nil {
+		lv.logger.Debug("delete token cache, ", address, token)
 		ac, err := lv.l.GetAccountMetaCache(address, txn)
 		if err != nil {
 			return err

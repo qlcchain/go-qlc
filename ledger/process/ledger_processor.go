@@ -112,7 +112,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 	}
 
 	if block.GetType() == types.ContractSend {
-		if block.GetLink() == types.Hash(types.RewardsAddress) || block.GetLink() == types.Hash(types.BlackHoleAddress) {
+		if types.IsNoSignContractAddress(types.Address(block.GetLink())) {
 			return Progress, nil
 		}
 	}
@@ -121,7 +121,7 @@ func checkStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult
 		if err != nil {
 			return GapSource, nil
 		}
-		if linkBlk.GetLink() == types.Hash(types.RewardsAddress) || linkBlk.GetLink() == types.Hash(types.BlackHoleAddress) {
+		if types.IsNoSignContractAddress(types.Address(linkBlk.GetLink())) {
 			return Progress, nil
 		}
 	}
