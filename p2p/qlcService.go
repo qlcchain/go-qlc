@@ -161,9 +161,14 @@ func (ns *QlcService) Deregister(subscribers *Subscriber) {
 	ns.dispatcher.Deregister(subscribers)
 }
 
-// PutMessage put message to dispatcher.
+// PutMessage put snyc message to dispatcher.
 func (ns *QlcService) PutSyncMessage(msg *Message) {
 	ns.dispatcher.PutSyncMessage(msg)
+}
+
+// PutMessage put dpos message to dispatcher.
+func (ns *QlcService) PutMessage(msg *Message) {
+	ns.dispatcher.PutMessage(msg)
 }
 
 // Broadcast message.

@@ -405,7 +405,7 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 		return errors.New("P2P protocol version is low")
 	}
 	m := NewMessage(message.MessageType(), peerID, message.MessageData(), message.content)
-	node.netService.PutSyncMessage(m)
+	node.netService.PutMessage(m)
 	return nil
 }
 

@@ -22,11 +22,14 @@ var (
 	pullRequestStartCh = make(chan bool, 1)
 	pullStartHash      types.Hash
 	pullEndHash        types.Hash
-	pullTimer          = time.NewTimer(2 * time.Minute)
-	pullRspTimer       = time.NewTimer(1 * time.Minute)
+	pullTimer          *time.Timer
+	pullRspTimer       *time.Timer
 )
 
-const syncTimeout = 10 * time.Second
+const (
+	syncTimeout   = 10 * time.Second
+	maxResendTime = 5
+)
 
 // Service manage sync tasks
 type ServiceSync struct {
@@ -273,8 +276,12 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 						ss.next()
 					}
 					var index int
-					pullTimer.Reset(2 * time.Minute)
-					pullRequestStartCh <- true
+					pullTimer = time.NewTimer(2 * time.Minute)
+					select {
+					case pullRequestStartCh <- true:
+					default:
+					}
+					var resend int
 					for {
 						select {
 						case <-pullTimer.C:
@@ -285,6 +292,10 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 							err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
 							if err != nil {
 								ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
+							}
+							resend++
+							if resend == maxResendTime {
+								break
 							}
 						case <-pullRequestStartCh:
 							pullStartHash = bulkPull[index].StartHash
@@ -412,7 +423,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	}
 	ss.netService.node.logger.Debugf("receive BulkPullRequest, type %d start %s end %s count %d",
 		pullRemote.PullType, pullRemote.StartHash, pullRemote.EndHash, pullRemote.Count)
-
+	pullRspTimer = time.NewTimer(1 * time.Minute)
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
 	pullType := pullRemote.PullType
@@ -424,7 +435,6 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	if startHash.IsZero() {
 		var blk *types.StateBlock
 		var bulkBlk []*types.StateBlock
-		//ss.logger.Info("need to send all the blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
@@ -442,8 +452,10 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			reverseBlocks = append(reverseBlocks, bulkBlk[i])
 		}
 		var shardingBlocks types.StateBlockList
-		pullRspStartCh <- true
-		pullRspTimer.Reset(1 * time.Minute)
+		select {
+		case pullRspStartCh <- true:
+		default:
+		}
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
 			select {
@@ -461,7 +473,8 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				}
 				data, err := marshalMessage(BulkPullRsp, shardingBlocks)
 				if err != nil {
-					continue
+					ss.logger.Error(err)
+					break
 				}
 				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
 				msgHash, _ = types.HashBytes(qData)
@@ -470,9 +483,6 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 				}
 				reverseBlocks = reverseBlocks[sendBlockNum:]
-				if len(reverseBlocks) == 0 {
-					msgHash = types.ZeroHash
-				}
 				pullRspTimer.Reset(1 * time.Minute)
 			default:
 			}
@@ -499,8 +509,10 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			reverseBlocks = append(reverseBlocks, bulkBlk[i])
 		}
 		var shardingBlocks types.StateBlockList
-		pullRspStartCh <- true
-		pullRspTimer.Reset(1 * time.Minute)
+		select {
+		case pullRspStartCh <- true:
+		default:
+		}
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
 			select {
@@ -625,8 +637,10 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 		reverseBlocks = append(reverseBlocks, bulkBlk[i])
 	}
 	var shardingBlocks types.StateBlockList
-	pullRspStartCh <- true
-	pullRspTimer.Reset(1 * time.Minute)
+	select {
+	case pullRspStartCh <- true:
+	default:
+	}
 	for len(reverseBlocks) > 0 {
 		sendBlockNum := 0
 		select {
@@ -667,12 +681,10 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	if err != nil {
 		return err
 	}
-
 	blocks := blkPacket.Blocks
 	if len(blocks) == 0 {
 		return nil
 	}
-
 	if ss.netService.node.cfg.PerformanceEnabled {
 		for _, b := range blocks {
 			hash := b.GetHash()
@@ -687,9 +699,11 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 		}
 	}
 	if blocks[len(blocks)-1].GetHash().String() == pullEndHash.String() &&
-		(pullStartHash.String() != types.ZeroHash.String()) &&
 		(pullEndHash.String() != types.ZeroHash.String()) {
-		pullRequestStartCh <- true
+		select {
+		case pullRequestStartCh <- true:
+		default:
+		}
 	}
 	return nil
 }

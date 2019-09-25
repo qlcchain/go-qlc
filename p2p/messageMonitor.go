@@ -255,8 +255,10 @@ func (ms *MessageService) onMessageResponse(message *Message) {
 		return
 	}
 	if ma.MessageHash == msgHash {
-		ms.netService.node.logger.Infof("receive message ack for message %s", msgHash.String())
-		pullRspStartCh <- true
+		select {
+		case pullRspStartCh <- true:
+		default:
+		}
 	}
 }
 
