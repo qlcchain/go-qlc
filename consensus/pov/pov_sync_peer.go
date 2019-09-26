@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
@@ -69,7 +68,7 @@ func (ss *PovSyncer) onDeleteP2PStream(peerID string) {
 	ss.eventCh <- &PovSyncEvent{eventType: common.EventDeleteP2PStream, eventData: peerID}
 }
 
-func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgHash types.Hash, msgPeer string) {
+func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgPeer string) {
 	if v, ok := ss.allPeers.Load(msgPeer); ok {
 		peer := v.(*PovSyncPeer)
 
