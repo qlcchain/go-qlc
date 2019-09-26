@@ -18,7 +18,8 @@ message BulkPullReq {
     bytes  Hashes = 5;
 }
 message BulkPullRsp {
-    bytes blocks = 1;
+    uint32 PullType = 1;
+    bytes blocks = 2;
 }
 message BulkPushBlock {
     bytes blocks = 1;

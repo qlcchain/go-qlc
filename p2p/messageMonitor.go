@@ -427,10 +427,7 @@ func marshalMessage(messageName MessageType, value interface{}) ([]byte, error) 
 		}
 		return data, nil
 	case BulkPullRsp:
-		PullRsp := &protos.BulkPullRspPacket{
-			Blocks: value.(types.StateBlockList),
-		}
-		data, err := protos.BulkPullRspPacketToProto(PullRsp)
+		data, err := protos.BulkPullRspPacketToProto(value.(*protos.BulkPullRspPacket))
 		if err != nil {
 			return nil, err
 		}
@@ -503,35 +500,5 @@ func (ms *MessageService) addPerformanceTime(hash types.Hash) {
 				ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onConfirmAck func")
 			}
 		}
-	}
-}
-
-func (ms *MessageService) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string) {
-	if len(reqTxHashes) <= 0 {
-		return
-	}
-
-	for len(reqTxHashes) > 0 {
-		sendHashNum := 0
-		if len(reqTxHashes) > maxPullTxPerReq {
-			sendHashNum = maxPullTxPerReq
-		} else {
-			sendHashNum = len(reqTxHashes)
-		}
-
-		sendTxHashes := reqTxHashes[0:sendHashNum]
-
-		req := new(protos.BulkPullReqPacket)
-		req.PullType = protos.PullTypeBatch
-		req.Hashes = sendTxHashes
-		req.Count = uint32(len(sendTxHashes))
-
-		ms.netService.node.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peerID)
-		if !ms.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
-			break
-		}
-		ms.netService.msgEvent.Publish(common.EventSendMsgToSingle, BulkPullRequest, req, peerID)
-
-		reqTxHashes = reqTxHashes[sendHashNum:]
 	}
 }

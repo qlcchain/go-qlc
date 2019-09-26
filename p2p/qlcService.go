@@ -92,7 +92,7 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(common.EventPullBlocksReq, ns.msgService.requestTxsByHashes)
+	err = ns.msgEvent.Subscribe(common.EventPullBlocksReq, ns.msgService.syncService.requestTxsByHashes)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
@@ -126,7 +126,7 @@ func (ns *QlcService) unsubscribeEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(common.EventPullBlocksReq, ns.msgService.requestTxsByHashes)
+	err = ns.msgEvent.Unsubscribe(common.EventPullBlocksReq, ns.msgService.syncService.requestTxsByHashes)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err

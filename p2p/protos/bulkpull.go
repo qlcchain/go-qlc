@@ -92,7 +92,8 @@ func BulkPullReqPacketFromProto(data []byte) (*BulkPullReqPacket, error) {
 }
 
 type BulkPullRspPacket struct {
-	Blocks types.StateBlockList
+	PullType uint32
+	Blocks   types.StateBlockList
 }
 
 // ToProto converts domain BulkPull into proto BulkPull
@@ -106,7 +107,7 @@ func BulkPullRspPacketToProto(bp *BulkPullRspPacket) ([]byte, error) {
 		}
 		bpPb.Blocks = blockBytes
 	}
-
+	bpPb.PullType = bp.PullType
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
 		return nil, err
@@ -131,5 +132,6 @@ func BulkPullRspPacketFromProto(data []byte) (*BulkPullRspPacket, error) {
 		}
 		bpRp.Blocks = blocks
 	}
+	bpRp.PullType = bp.PullType
 	return bpRp, nil
 }

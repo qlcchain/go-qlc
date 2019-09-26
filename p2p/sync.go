@@ -414,7 +414,6 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	}
 	ss.netService.node.logger.Debugf("receive BulkPullRequest, type %d start %s end %s count %d",
 		pullRemote.PullType, pullRemote.StartHash, pullRemote.EndHash, pullRemote.Count)
-	pullRspTimer = time.NewTimer(1 * time.Minute)
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
 	pullType := pullRemote.PullType
@@ -422,7 +421,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	if pullType != protos.PullTypeSegment {
 		return ss.onBulkPullRequestExt(message, pullRemote)
 	}
-
+	pullRspTimer = time.NewTimer(1 * time.Minute)
 	if startHash.IsZero() {
 		var blk *types.StateBlock
 		var bulkBlk []*types.StateBlock
@@ -462,14 +461,17 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 					break
 				}
-				data, err := marshalMessage(BulkPullRsp, shardingBlocks)
+				req := new(protos.BulkPullRspPacket)
+				req.PullType = protos.PullTypeSegment
+				req.Blocks = shardingBlocks
+				data, err := marshalMessage(BulkPullRsp, req)
 				if err != nil {
 					ss.logger.Error(err)
 					break
 				}
 				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
 				msgHash, _ = types.HashBytes(qData)
-				err = ss.netService.SendMessageToPeer(BulkPullRsp, shardingBlocks, message.MessageFrom())
+				err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 				}
@@ -519,13 +521,16 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 					break
 				}
-				data, err := marshalMessage(BulkPullRsp, shardingBlocks)
+				req := new(protos.BulkPullRspPacket)
+				req.PullType = protos.PullTypeSegment
+				req.Blocks = shardingBlocks
+				data, err := marshalMessage(BulkPullRsp, req)
 				if err != nil {
 					continue
 				}
 				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
 				msgHash, _ = types.HashBytes(qData)
-				err = ss.netService.SendMessageToPeer(BulkPullRsp, shardingBlocks, message.MessageFrom())
+				err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 				}
@@ -628,47 +633,31 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 		reverseBlocks = append(reverseBlocks, bulkBlk[i])
 	}
 	var shardingBlocks types.StateBlockList
-	select {
-	case pullRspStartCh <- true:
-	default:
-	}
 	for len(reverseBlocks) > 0 {
 		sendBlockNum := 0
-		select {
-		case <-pullRspTimer.C:
-			return nil
-		case <-pullRspStartCh:
-			if len(reverseBlocks) > maxPushTxPerTime {
-				sendBlockNum = maxPushTxPerTime
-			} else {
-				sendBlockNum = len(reverseBlocks)
-			}
-			shardingBlocks = reverseBlocks[0:sendBlockNum]
-			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-				break
-			}
-			data, err := marshalMessage(BulkPullRsp, shardingBlocks)
-			if err != nil {
-				continue
-			}
-			qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
-			msgHash, _ = types.HashBytes(qData)
-			err = ss.netService.SendMessageToPeer(BulkPullRsp, shardingBlocks, message.MessageFrom())
-			if err != nil {
-				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
-			}
-			reverseBlocks = reverseBlocks[sendBlockNum:]
-			pullRspTimer.Reset(1 * time.Minute)
-		default:
-
+		if len(reverseBlocks) > maxPushTxPerTime {
+			sendBlockNum = maxPushTxPerTime
+		} else {
+			sendBlockNum = len(reverseBlocks)
 		}
+		shardingBlocks = reverseBlocks[0:sendBlockNum]
+		if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+			break
+		}
+		req := new(protos.BulkPullRspPacket)
+		req.PullType = protos.PullTypeBatch
+		req.Blocks = shardingBlocks
+		err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
+		if err != nil {
+			ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
+		}
+		reverseBlocks = reverseBlocks[sendBlockNum:]
 	}
 	return nil
 }
 
 func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
-	pullTimer.Reset(2 * time.Minute)
-	blkPacket, err := protos.BulkPushBlockFromProto(message.Data())
+	blkPacket, err := protos.BulkPullRspPacketFromProto(message.Data())
 	if err != nil {
 		return err
 	}
@@ -683,17 +672,20 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 		}
 	}
 	ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
-	if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-		err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-		if err != nil {
-			ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
+	if blkPacket.PullType == protos.PullTypeSegment {
+		pullTimer.Reset(2 * time.Minute)
+		if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+			err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
+			if err != nil {
+				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
+			}
 		}
-	}
-	if blocks[len(blocks)-1].GetHash().String() == pullEndHash.String() &&
-		(pullEndHash.String() != types.ZeroHash.String()) {
-		select {
-		case pullRequestStartCh <- true:
-		default:
+		if blocks[len(blocks)-1].GetHash().String() == pullEndHash.String() &&
+			(pullEndHash.String() != types.ZeroHash.String()) {
+			select {
+			case pullRequestStartCh <- true:
+			default:
+			}
 		}
 	}
 	return nil
@@ -722,5 +714,34 @@ func (ss *ServiceSync) next() {
 		openBlockHash = ss.frontiers[0].OpenBlock
 		headerBlockHash = ss.frontiers[0].HeaderBlock
 		ss.frontiers = ss.frontiers[1:]
+	}
+}
+
+func (ss *ServiceSync) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string) {
+	if len(reqTxHashes) <= 0 {
+		return
+	}
+	for len(reqTxHashes) > 0 {
+		sendHashNum := 0
+		if len(reqTxHashes) > maxPullTxPerReq {
+			sendHashNum = maxPullTxPerReq
+		} else {
+			sendHashNum = len(reqTxHashes)
+		}
+
+		sendTxHashes := reqTxHashes[0:sendHashNum]
+
+		req := new(protos.BulkPullReqPacket)
+		req.PullType = protos.PullTypeBatch
+		req.Hashes = sendTxHashes
+		req.Count = uint32(len(sendTxHashes))
+
+		ss.netService.node.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peerID)
+		if !ss.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+			break
+		}
+		ss.netService.msgEvent.Publish(common.EventSendMsgToSingle, BulkPullRequest, req, peerID)
+
+		reqTxHashes = reqTxHashes[sendHashNum:]
 	}
 }

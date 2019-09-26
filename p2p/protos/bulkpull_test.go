@@ -51,12 +51,12 @@ func TestBulkPullReqPacket(t *testing.T) {
 
 func TestBulkPullRspPacket(t *testing.T) {
 	blk := new(types.StateBlock)
-
 	if err := json.Unmarshal([]byte(testBulkPull), &blk); err != nil {
 		t.Fatal(err)
 	}
 	rsp := &BulkPullRspPacket{}
 	rsp.Blocks = append(rsp.Blocks, blk)
+	rsp.PullType = PullTypeSegment
 	bytes, err := BulkPullRspPacketToProto(rsp)
 	if err != nil {
 		t.Fatal(err)
@@ -70,5 +70,8 @@ func TestBulkPullRspPacket(t *testing.T) {
 	}
 	if blk.GetHash() != block.Blocks[0].GetHash() {
 		t.Fatal("hash error")
+	}
+	if block.PullType != PullTypeSegment {
+		t.Fatal("PullType error")
 	}
 }
