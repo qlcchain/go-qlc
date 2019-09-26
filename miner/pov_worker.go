@@ -155,7 +155,7 @@ func (w *PovWorker) GetWork(in interface{}, out interface{}) {
 	inArgs := in.(map[interface{}]interface{})
 	outArgs := out.(map[interface{}]interface{})
 
-	if w.miner.GetSyncState() != common.Syncdone {
+	if w.miner.GetSyncState() != common.SyncDone {
 		outArgs["err"] = fmt.Errorf("miner pausing for sync state %s", w.miner.GetSyncState())
 		return
 	}
@@ -498,7 +498,7 @@ func (w *PovWorker) cpuMiningLoop() {
 }
 
 func (w *PovWorker) checkValidMiner() bool {
-	if w.miner.GetSyncState() != common.Syncdone {
+	if w.miner.GetSyncState() != common.SyncDone {
 		w.logger.Infof("miner pausing for sync state %s", w.miner.GetSyncState())
 		return false
 	}

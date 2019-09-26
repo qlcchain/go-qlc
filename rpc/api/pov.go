@@ -198,7 +198,7 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 	}
 
 	ss := api.syncState.Load().(common.SyncState)
-	if ss != common.Syncdone {
+	if ss != common.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -975,7 +975,7 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	}
 
 	ss := api.syncState.Load().(common.SyncState)
-	if ss != common.Syncdone {
+	if ss != common.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -1019,7 +1019,7 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	}
 
 	ss := api.syncState.Load().(common.SyncState)
-	if ss != common.Syncdone {
+	if ss != common.SyncDone {
 		return errors.New("pov sync is not finished, please check it")
 	}
 

@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -27,8 +28,7 @@ type Election struct {
 	lastTime      int64
 	voteHash      types.Hash //vote for this hash
 	blocks        *sync.Map
-	lock          *sync.Mutex
-	valid         bool
+	valid         int32
 }
 
 func newElection(dps *DPoS, block *types.StateBlock) *Election {
@@ -44,8 +44,7 @@ func newElection(dps *DPoS, block *types.StateBlock) *Election {
 		lastTime:      time.Now().Unix(),
 		voteHash:      types.ZeroHash,
 		blocks:        new(sync.Map),
-		lock:          new(sync.Mutex),
-		valid:         true,
+		valid:         1,
 	}
 
 	el.blocks.Store(hash, block)
@@ -85,10 +84,46 @@ func (el *Election) updateVoteStatistic(confirmedHash types.Hash) {
 	}
 }
 
+func (el *Election) voteFrontier(vi *voteInfo) bool {
+	if !el.isValid() {
+		return false
+	}
+
+	result := el.vote.voteStatus(vi)
+	if result == confirm {
+		el.dps.logger.Infof("recv same ack %s", vi.account)
+		return false
+	}
+
+	t := el.tally(true)
+	if !(len(t) > 0) {
+		return false
+	}
+
+	var balance = types.ZeroBalance
+	for _, value := range t {
+		if balance.Compare(value.balance) == types.BalanceCompSmaller {
+			balance = value.balance
+		}
+	}
+
+	if balance.Compare(el.dps.voteThreshold) == types.BalanceCompBigger {
+		if !el.ifValidAndSetInvalid() {
+			return true
+		}
+
+		el.dps.acTrx.roots.Delete(el.vote.id)
+		el.cleanBlockInfo()
+		return true
+	}
+
+	return false
+}
+
 func (el *Election) haveQuorum() {
 	dps := el.dps
 
-	t := el.tally()
+	t := el.tally(false)
 	if !(len(t) > 0) {
 		return
 	}
@@ -135,7 +170,7 @@ func (el *Election) haveQuorum() {
 	}
 }
 
-func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
+func (el *Election) tally(isSync bool) map[types.Hash]*BlockReceivedVotes {
 	totals := make(map[types.Hash]*BlockReceivedVotes)
 	var hash types.Hash
 
@@ -153,9 +188,20 @@ func (el *Election) tally() map[types.Hash]*BlockReceivedVotes {
 			}
 		}
 
-		weight := el.dps.ledger.Weight(key.(types.Address))
+		var weight types.Balance
+		repAddress := key.(types.Address)
+		if !isSync {
+			weight = el.dps.ledger.Weight(repAddress)
+		} else {
+			if w, ok := el.dps.totalVote[repAddress]; ok {
+				weight = w
+			} else {
+				weight = el.dps.ledger.Weight(repAddress)
+			}
+		}
+
 		totals[hash].balance = totals[hash].balance.Add(weight)
-		el.dps.logger.Infof("rep[%s] ack block[%s] weight[%s]", key.(types.Address), hash, weight)
+		el.dps.logger.Infof("rep[%s] ack block[%s] weight[%s]", repAddress, hash, weight)
 		return true
 	})
 
@@ -181,17 +227,11 @@ func (el *Election) getGenesisBalance() (types.Balance, error) {
 }
 
 func (el *Election) ifValidAndSetInvalid() bool {
-	el.lock.Lock()
-	defer el.lock.Unlock()
-	valid := el.valid
-	el.valid = false
-	return valid
+	return atomic.CompareAndSwapInt32(&el.valid, 1, 0)
 }
 
 func (el *Election) isValid() bool {
-	el.lock.Lock()
-	defer el.lock.Unlock()
-	return el.valid
+	return atomic.LoadInt32(&el.valid) == 1
 }
 
 func (el *Election) cleanBlockInfo() {

@@ -160,9 +160,13 @@ func (act *ActiveTrx) checkVotes() {
 			act.roots.Delete(el.vote.id)
 			_ = dps.lv.Rollback(hash)
 			el.cleanBlockInfo()
+			dps.frontiersStatus.Delete(hash)
+			dps.syncBlockRollback(hash)
 		} else {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)
-			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, block)
+			confirmReqBlocks := make([]*types.StateBlock, 0)
+			confirmReqBlocks = append(confirmReqBlocks, block)
+			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmReqBlocks)
 		}
 
 		return true
@@ -184,6 +188,25 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	} else {
 		dps.logger.Debugf("%s, %v", hash, err)
 	}
+}
+
+func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
+	hash := block.GetHash()
+	dps := act.dps
+	dps.logger.Debugf("sync block[%s] confirmed", hash)
+
+	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
+		err := dps.lv.BlockSyncProcess(block)
+		if err != nil {
+			dps.logger.Error(err)
+		} else {
+			dps.logger.Debugf("save block[%s]", hash)
+		}
+	} else {
+		dps.logger.Debugf("%s, %v", hash, err)
+	}
+
+	dps.chainFinished(hash)
 }
 
 func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
@@ -213,6 +236,14 @@ func (act *ActiveTrx) vote(vi *voteInfo) {
 		el := v.(*Election)
 		el.voteAction(vi)
 	}
+}
+
+func (act *ActiveTrx) voteFrontier(vi *voteInfo) (confirmed bool) {
+	if v, ok := act.dps.hash2el.Load(vi.hash); ok {
+		el := v.(*Election)
+		return el.voteFrontier(vi)
+	}
+	return false
 }
 
 func (act *ActiveTrx) isVoting(block *types.StateBlock) bool {

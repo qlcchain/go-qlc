@@ -125,7 +125,9 @@ func (t *BadgerStoreTxn) Delete(key []byte) error {
 }
 
 func (t *BadgerStoreTxn) Iterator(pre byte, fn func([]byte, []byte, byte) error) error {
-	it := t.txn.NewIterator(badger.DefaultIteratorOptions)
+	options := badger.DefaultIteratorOptions
+	options.PrefetchSize = 10000
+	it := t.txn.NewIterator(options)
 	defer it.Close()
 
 	prefix := [...]byte{pre}

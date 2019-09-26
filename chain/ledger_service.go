@@ -10,7 +10,6 @@ package chain
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -27,10 +26,8 @@ type LedgerService struct {
 }
 
 func NewLedgerService(cfgFile string) *LedgerService {
-	cc := context.NewChainContext(cfgFile)
-	cfg, _ := cc.Config()
 	return &LedgerService{
-		Ledger: ledger.NewLedger(cfg.LedgerDir()),
+		Ledger: ledger.NewLedger(cfgFile),
 		logger: log.NewLogger("ledger_service"),
 	}
 }

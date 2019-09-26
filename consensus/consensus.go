@@ -28,10 +28,7 @@ var GlobalUncheckedBlockNum atomic.Uint64
 
 func NewConsensus(ca ConsensusAlgorithm, cfgFile string) *Consensus {
 	cc := context.NewChainContext(cfgFile)
-	cfg, _ := cc.Config()
-
-	l := ledger.NewLedger(cfg.LedgerDir())
-
+	l := ledger.NewLedger(cfgFile)
 	return &Consensus{
 		ca:       ca,
 		recv:     NewReceiver(cc.EventBus()),

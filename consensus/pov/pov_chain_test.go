@@ -30,7 +30,9 @@ func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData)
 
 	lDir := filepath.Join(rootDir, "ledger")
 	_ = os.RemoveAll(lDir)
-	md.ledger = ledger.NewLedger(lDir)
+	cm := config.NewCfgManager(lDir)
+	cm.Load()
+	md.ledger = ledger.NewLedger(cm.ConfigFile)
 
 	md.eb = event.GetEventBus(uid)
 

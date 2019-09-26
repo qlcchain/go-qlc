@@ -36,39 +36,39 @@ func Test_MessageService_Stop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, ok := node.dispatcher.subscribersMap.Load(MessageType(PublishReq))
+	_, ok := node.dispatcher.subscribersMap.Load(PublishReq)
 	if !ok {
 		t.Fatal("subscription PublishReq messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(ConfirmReq))
+	_, ok = node.dispatcher.subscribersMap.Load(ConfirmReq)
 	if !ok {
 		t.Fatal("subscription ConfirmReq messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(ConfirmAck))
+	_, ok = node.dispatcher.subscribersMap.Load(ConfirmAck)
 	if !ok {
 		t.Fatal("subscription ConfirmAck messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(FrontierRequest))
+	_, ok = node.dispatcher.subscribersMap.Load(FrontierRequest)
 	if !ok {
 		t.Fatal("subscription FrontierRequest messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(FrontierRsp))
+	_, ok = node.dispatcher.subscribersMap.Load(FrontierRsp)
 	if !ok {
 		t.Fatal("subscription FrontierRsp messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(BulkPullRequest))
+	_, ok = node.dispatcher.subscribersMap.Load(BulkPullRequest)
 	if !ok {
 		t.Fatal("subscription BulkPullRequest messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(BulkPullRsp))
+	_, ok = node.dispatcher.subscribersMap.Load(BulkPullRsp)
 	if !ok {
 		t.Fatal("subscription BulkPullRsp messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(BulkPushBlock))
+	_, ok = node.dispatcher.subscribersMap.Load(BulkPushBlock)
 	if !ok {
 		t.Fatal("subscription BulkPushBlock messageType error")
 	}
-	_, ok = node.dispatcher.subscribersMap.Load(MessageType(MessageResponse))
+	_, ok = node.dispatcher.subscribersMap.Load(MessageResponse)
 	if !ok {
 		t.Fatal("subscription MessageResponse messageType error")
 	}
@@ -145,12 +145,14 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data1, data2) != 0 {
 		t.Fatal("Marshal PublishReq err3")
 	}
-	data3, err := marshalMessage(ConfirmReq, blk)
+	ConfirmReqBlocks := make([]*types.StateBlock, 0)
+	ConfirmReqBlocks = append(ConfirmReqBlocks, blk)
+	data3, err := marshalMessage(ConfirmReq, ConfirmReqBlocks)
 	if err != nil {
 		t.Fatal("Marshal ConfirmReq err1")
 	}
 	packet := &protos.ConfirmReqBlock{
-		Blk: blk,
+		Blk: ConfirmReqBlocks,
 	}
 	data4, err := protos.ConfirmReqBlockToProto(packet)
 	if err != nil {
@@ -190,13 +192,18 @@ func Test_MarshalMessage(t *testing.T) {
 		t.Fatal("Marshal FrontierRequest err3")
 	}
 	zeroFrontier := new(types.Frontier)
-	frontierRspTest := protos.NewFrontierRsp(zeroFrontier, 0)
-	data9, err := marshalMessage(FrontierRsp, frontierRspTest)
+	frb := &types.FrontierBlock{
+		Fr:        zeroFrontier,
+		HeaderBlk: blk,
+	}
+	frs := &protos.FrontierResponse{}
+
+	frs.Fs = append(frs.Fs, frb)
+	data9, err := marshalMessage(FrontierRsp, frs)
 	if err != nil {
 		t.Fatal("Marshal FrontierRsp err1")
 	}
-	f := protos.NewFrontierRsp(zeroFrontier, 0)
-	data10, err := protos.FrontierResponseToProto(f)
+	data10, err := protos.FrontierResponseToProto(frs)
 	if err != nil {
 		t.Fatal("Marshal FrontierRsp err2")
 	}
@@ -218,12 +225,16 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data11, data12) != 0 {
 		t.Fatal("Marshal BulkPullRequest err3")
 	}
-	data13, err := marshalMessage(BulkPullRsp, blk)
+	blks := make(types.StateBlockList, 0)
+	blks = append(blks, blk)
+	data13, err := marshalMessage(BulkPullRsp, blks)
 	if err != nil {
 		t.Fatal("Marshal BulkPullRsp err1")
 	}
+	//blks := make(types.StateBlockList, 0)
+	//blks = append(blks, blk)
 	r := &protos.BulkPullRspPacket{
-		Blk: blk,
+		Blocks: blks,
 	}
 	data14, err := protos.BulkPullRspPacketToProto(r)
 	if err != nil {
@@ -232,12 +243,12 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data13, data14) != 0 {
 		t.Fatal("Marshal BulkPullRsp err3")
 	}
-	data15, err := marshalMessage(BulkPushBlock, blk)
+	data15, err := marshalMessage(BulkPushBlock, blks)
 	if err != nil {
 		t.Fatal("Marshal BulkPushBlock err1")
 	}
 	push := &protos.BulkPush{
-		Blk: blk,
+		Blocks: blks,
 	}
 	data16, err := protos.BulkPushBlockToProto(push)
 	if err != nil {
@@ -373,7 +384,7 @@ func Test_SendMessage(t *testing.T) {
 	}
 
 	//test send message to peers
-	node1.SendMessageToPeers(PublishReq, blk, peerID)
+	node1.Broadcast(PublishReq, blk)
 	time.Sleep(500 * time.Millisecond)
 	if len(node2.msgService.publishMessageCh) != 0 {
 		t.Fatal("Send Message To Peers error")
@@ -399,175 +410,4 @@ func Test_SendMessage(t *testing.T) {
 	if blk.GetHash().String() != s.Blk.GetHash().String() {
 		t.Fatal("receive broadcast data error")
 	}
-
-}
-
-func Test_MessageCache(t *testing.T) {
-	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
-	cc := context.NewChainContext(dir)
-	cfg, _ := cc.Config()
-	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19743"
-	cfg.P2P.BootNodes = []string{}
-	b := "/ip4/0.0.0.0/tcp/19743/ipfs/" + cfg.P2P.ID.PeerID
-
-	//start bootNode
-	node, err := NewQlcService(dir)
-	err = node.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
-	cc1 := context.NewChainContext(dir1)
-	cfg1, _ := cc1.Config()
-	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19744"
-	cfg1.P2P.BootNodes = []string{b}
-	cfg1.P2P.Discovery.MDNSEnabled = false
-	cfg1.P2P.Discovery.DiscoveryInterval = 1
-
-	//start1 node
-	node1, err := NewQlcService(dir1)
-	err = node1.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
-	cc2 := context.NewChainContext(dir2)
-	cfg2, _ := cc2.Config()
-	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19745"
-	cfg2.P2P.BootNodes = []string{b}
-	cfg2.P2P.Discovery.MDNSEnabled = false
-	cfg2.P2P.Discovery.DiscoveryInterval = 1
-
-	//start node2
-	node2, err := NewQlcService(dir2)
-	err = node2.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	//node3 config
-	dir3 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
-	cc3 := context.NewChainContext(dir3)
-	cfg3, _ := cc3.Config()
-	cfg3.P2P.Listen = "/ip4/127.0.0.1/tcp/19746"
-	cfg3.P2P.BootNodes = []string{b}
-	cfg3.P2P.Discovery.MDNSEnabled = false
-	cfg3.P2P.Discovery.DiscoveryInterval = 1
-
-	//start node2
-	node3, err := NewQlcService(dir3)
-	err = node3.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	//remove test file
-	defer func() {
-		err := node.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node1.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node2.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node3.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node.Stop()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node1.Stop()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node2.Stop()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node3.Stop()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = os.RemoveAll(config.QlcTestDataDir())
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	ticker1 := time.NewTicker(60 * time.Second)
-	var counts int
-	for {
-
-		select {
-		case <-ticker1.C:
-			t.Fatal("connect peer timeout")
-			return
-		default:
-			time.Sleep(1 * time.Millisecond)
-		}
-		counts = node1.node.streamManager.PeerCounts()
-		if counts < 2 {
-			continue
-		}
-		break
-	}
-	node2.msgService.Stop()
-	node3.msgService.Stop()
-	blk := mock.StateBlockWithoutWork()
-	//test send message to peers
-	time.Sleep(100 * time.Millisecond)
-	node1.Broadcast(PublishReq, blk)
-	time.Sleep(500 * time.Millisecond)
-	if len(node2.msgService.publishMessageCh) != 1 {
-		return
-	}
-	msg := <-node2.msgService.publishMessageCh
-
-	//test message cache
-	if node1.msgService.cache.Len(false) != 1 {
-		t.Fatal("message cache error")
-	}
-
-	if !node1.msgService.cache.Has(msg.Hash()) {
-		t.Fatal("message cache key error")
-	}
-	v, err := node1.msgService.cache.Get(msg.Hash())
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := v.([]*cacheValue)
-
-	if len(c) != 2 {
-		t.Fatal("message cache value lens error:", len(c))
-	}
-
-	if c[0].peerID != node2.node.ID.Pretty() && c[1].peerID != node2.node.ID.Pretty() {
-		t.Fatal("message cache peer ID error")
-	}
-	if c[0].resendTimes != 0 || c[1].resendTimes != 0 {
-		t.Fatal("message cache resendTimes error")
-	}
-	//time.Sleep(10 * time.Second)
-	//node1.msgService.checkMessageCache()
-	//if c[0].resendTimes != 1 || c[1].resendTimes != 1 {
-	//	t.Fatal("message cache resendTimes error")
-	//}
-	//for i := 0; i < 20; i++ {
-	//	node1.msgService.checkMessageCache()
-	//}
-	//if node1.msgService.cache.Has(msg.Hash()) {
-	//	t.Fatal("resendTimes error")
-	//}
 }

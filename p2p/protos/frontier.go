@@ -56,25 +56,25 @@ func FrontierReqFromProto(data []byte) (*FrontierReq, error) {
 }
 
 type FrontierResponse struct {
-	Frontier         *types.Frontier
-	TotalFrontierNum uint32
-}
-
-func NewFrontierRsp(fr *types.Frontier, num uint32) (packet *FrontierResponse) {
-	return &FrontierResponse{
-		Frontier:         fr,
-		TotalFrontierNum: num,
-	}
+	Fs []*types.FrontierBlock
 }
 
 // ToProto converts domain FrontierResponse into proto FrontierResponse
-func FrontierResponseToProto(fr *FrontierResponse) ([]byte, error) {
-	pi := &pb.FrontierRsp{
-		TotalFrontierNum: fr.TotalFrontierNum,
-		HeaderBlock:      fr.Frontier.HeaderBlock[:],
-		OpenBlock:        fr.Frontier.OpenBlock[:],
+func FrontierResponseToProto(frs *FrontierResponse) ([]byte, error) {
+	frData := make([][]byte, 0)
+	for _, f := range frs.Fs {
+		data, err := f.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		frData = append(frData, data)
 	}
-	data, err := proto.Marshal(pi)
+
+	frPb := &pb.FrontierRsp{
+		Frontiers: frData,
+	}
+
+	data, err := proto.Marshal(frPb)
 	if err != nil {
 		return nil, err
 	}
@@ -83,22 +83,21 @@ func FrontierResponseToProto(fr *FrontierResponse) ([]byte, error) {
 
 // FrontierResponseFromProto parse the data into frontier message
 func FrontierResponseFromProto(data []byte) (*FrontierResponse, error) {
-	fr := new(pb.FrontierRsp)
-	frp := new(types.Frontier)
-	if err := proto.Unmarshal(data, fr); err != nil {
+	bp := new(pb.FrontierRsp)
+	if err := proto.Unmarshal(data, bp); err != nil {
 		return nil, err
 	}
-	err := frp.HeaderBlock.UnmarshalBinary(fr.HeaderBlock[:])
-	if err != nil {
-		return nil, err
+
+	frontierResponse := &FrontierResponse{}
+
+	for _, b := range bp.Frontiers {
+		fb := &types.FrontierBlock{}
+
+		if err := fb.Deserialize(b); err != nil {
+			return nil, err
+		}
+
+		frontierResponse.Fs = append(frontierResponse.Fs, fb)
 	}
-	err = frp.OpenBlock.UnmarshalBinary(fr.OpenBlock[:])
-	if err != nil {
-		return nil, err
-	}
-	frPs := &FrontierResponse{
-		TotalFrontierNum: fr.TotalFrontierNum,
-		Frontier:         frp,
-	}
-	return frPs, nil
+	return frontierResponse, nil
 }

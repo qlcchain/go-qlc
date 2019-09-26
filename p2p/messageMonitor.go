@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -14,37 +13,32 @@ import (
 )
 
 const (
-	checkCacheTimeInterval  = 30 * time.Second
 	checkBlockCacheInterval = 60 * time.Second
-	msgResendMaxTimes       = 10
-	msgNeedResendInterval   = 10 * time.Second
+	maxPullTxPerReq         = 100
+	maxPushTxPerTime        = 100
+)
+
+var (
+	pullRspStartCh = make(chan bool, 1)
+	msgHash        = types.ZeroHash
 )
 
 //  Message Type
 const (
-	PublishReq      = "0" //PublishReq
-	ConfirmReq      = "1" //ConfirmReq
-	ConfirmAck      = "2" //ConfirmAck
-	FrontierRequest = "3" //FrontierReq
-	FrontierRsp     = "4" //FrontierRsp
-	BulkPullRequest = "5" //BulkPullRequest
-	BulkPullRsp     = "6" //BulkPullRsp
-	BulkPushBlock   = "7" //BulkPushBlock
-	MessageResponse = "8" //MessageResponse
-
-	PovStatus      = "20"
-	PovPublishReq  = "21"
-	PovBulkPullReq = "22"
-	PovBulkPullRsp = "23"
+	PublishReq      MessageType = iota //PublishReq
+	ConfirmReq                         //ConfirmReq
+	ConfirmAck                         //ConfirmAck
+	FrontierRequest                    //FrontierReq
+	FrontierRsp                        //FrontierRsp
+	BulkPullRequest                    //BulkPullRequest
+	BulkPullRsp                        //BulkPullRsp
+	BulkPushBlock                      //BulkPushBlock
+	MessageResponse                    //MessageResponse
+	PovStatus
+	PovPublishReq
+	PovBulkPullReq
+	PovBulkPullRsp
 )
-
-type cacheValue struct {
-	peerID      string
-	resendTimes uint32
-	startTime   time.Time
-	data        []byte
-	t           string
-}
 
 type MessageService struct {
 	netService          *QlcService
@@ -58,7 +52,6 @@ type MessageService struct {
 	povMessageCh        chan *Message
 	ledger              *ledger.Ledger
 	syncService         *ServiceSync
-	cache               gcache.Cache
 }
 
 // NewService return new Service.
@@ -75,7 +68,6 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 		povMessageCh:        make(chan *Message, common.P2PMonitorMsgChanSize),
 		ledger:              ledger,
 		netService:          netService,
-		cache:               gcache.New(common.P2PMonitorMsgCacheSize).LRU().Build(),
 	}
 	ms.syncService = NewSyncService(netService, ledger)
 	return ms
@@ -85,30 +77,29 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 func (ms *MessageService) Start() {
 	// register the network handler.
 	netService := ms.netService
-	netService.Register(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
-	netService.Register(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
-	netService.Register(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
-	netService.Register(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	netService.Register(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
+	netService.Register(NewSubscriber(ms.publishMessageCh, PublishReq))
+	netService.Register(NewSubscriber(ms.confirmReqMessageCh, ConfirmReq))
+	netService.Register(NewSubscriber(ms.confirmAckMessageCh, ConfirmAck))
+	netService.Register(NewSubscriber(ms.messageCh, FrontierRequest))
+	netService.Register(NewSubscriber(ms.messageCh, FrontierRsp))
+	netService.Register(NewSubscriber(ms.messageCh, BulkPullRequest))
+	netService.Register(NewSubscriber(ms.messageCh, BulkPullRsp))
+	netService.Register(NewSubscriber(ms.messageCh, BulkPushBlock))
+	netService.Register(NewSubscriber(ms.rspMessageCh, MessageResponse))
 	// PoV message handlers
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovStatus))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovPublishReq))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullReq))
-	netService.Register(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullRsp))
+	netService.Register(NewSubscriber(ms.povMessageCh, PovStatus))
+	netService.Register(NewSubscriber(ms.povMessageCh, PovPublishReq))
+	netService.Register(NewSubscriber(ms.povMessageCh, PovBulkPullReq))
+	netService.Register(NewSubscriber(ms.povMessageCh, PovBulkPullRsp))
 	// start loop().
 	go ms.startLoop()
 	go ms.syncService.Start()
-	go ms.checkMessageCacheLoop()
-	go ms.messageResponseLoop()
 	go ms.publishReqLoop()
 	go ms.confirmReqLoop()
 	go ms.confirmAckLoop()
 	go ms.povMessageLoop()
 	go ms.processBlockCacheLoop()
+	go ms.messageResponseLoop()
 }
 
 func (ms *MessageService) processBlockCacheLoop() {
@@ -235,64 +226,6 @@ func (ms *MessageService) confirmAckLoop() {
 	}
 }
 
-func (ms *MessageService) checkMessageCacheLoop() {
-	ticker := time.NewTicker(checkCacheTimeInterval)
-	for {
-		select {
-		case <-ms.ctx.Done():
-			return
-		case <-ticker.C:
-			ms.checkMessageCache()
-		}
-	}
-}
-
-func (ms *MessageService) checkMessageCache() {
-	var cs []*cacheValue
-	var csTemp []*cacheValue
-	var hash types.Hash
-	m := ms.cache.GetALL(false)
-	for k, v := range m {
-		hash = k.(types.Hash)
-		cs = v.([]*cacheValue)
-		for i, value := range cs {
-			if value.resendTimes > msgResendMaxTimes {
-				csTemp = append(csTemp, cs[i])
-				continue
-			}
-			if time.Now().Sub(value.startTime) < msgNeedResendInterval {
-				continue
-			}
-			stream := ms.netService.node.streamManager.FindByPeerID(value.peerID)
-			if stream == nil {
-				ms.netService.node.logger.Debug("Failed to locate peer's stream,maybe lost connect")
-				//csTemp = append(csTemp, cs[i])
-				value.resendTimes++
-				continue
-			}
-			stream.SendMessageToChan(value.data)
-			value.resendTimes++
-			if value.resendTimes > msgResendMaxTimes {
-				csTemp = append(csTemp, cs[i])
-				continue
-			}
-		}
-
-		if len(csTemp) == len(cs) {
-			t := ms.cache.Remove(hash)
-			if t {
-				ms.netService.node.logger.Debugf("remove message:[%s] success", hash.String())
-			}
-		} else {
-			csDiff := sliceDiff(cs, csTemp)
-			err := ms.cache.Set(hash, csDiff)
-			if err != nil {
-				ms.netService.node.logger.Error(err)
-			}
-		}
-	}
-}
-
 func (ms *MessageService) povMessageLoop() {
 	for {
 		select {
@@ -316,41 +249,15 @@ func (ms *MessageService) povMessageLoop() {
 }
 
 func (ms *MessageService) onMessageResponse(message *Message) {
-	//ms.netService.node.logger.Info("receive MessageResponse")
-	var hash types.Hash
-	var cs []*cacheValue
-	var csTemp []*cacheValue
-	err := hash.UnmarshalText(message.Data())
+	ma, err := protos.MessageAckFromProto(message.Data())
 	if err != nil {
-		ms.netService.node.logger.Errorf("onMessageResponse err:[%s]", err)
+		ms.netService.node.logger.Info(err)
 		return
 	}
-	v, err := ms.cache.Get(hash)
-	if err != nil {
-		if err == gcache.KeyNotFoundError {
-			ms.netService.node.logger.Debugf("this hash:[%s] is not in cache", hash)
-		} else {
-			ms.netService.node.logger.Errorf("Get cache err:[%s] for hash:[%s]", err, hash)
-		}
-		return
-	}
-	cs = v.([]*cacheValue)
-	for k, v := range cs {
-		if v.peerID == message.MessageFrom() {
-			csTemp = append(csTemp, cs[k])
-		}
-	}
-
-	if len(csTemp) == len(cs) {
-		t := ms.cache.Remove(hash)
-		if t {
-			ms.netService.node.logger.Debugf("remove message cache for hash:[%s] success", hash)
-		}
-	} else {
-		csDiff := sliceDiff(cs, csTemp)
-		err := ms.cache.Set(hash, csDiff)
-		if err != nil {
-			ms.netService.node.logger.Error(err)
+	if ma.MessageHash == msgHash {
+		select {
+		case pullRspStartCh <- true:
+		default:
 		}
 	}
 }
@@ -365,21 +272,12 @@ func (ms *MessageService) onPublishReq(message *Message) {
 		hash := blk.Blk.GetHash()
 		ms.addPerformanceTime(hash)
 	}
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Debugf("send Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
 	p, err := protos.PublishBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventPublish, p.Blk, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPublish, p.Blk, message.MessageFrom())
 }
 
 func (ms *MessageService) onConfirmReq(message *Message) {
@@ -389,24 +287,18 @@ func (ms *MessageService) onConfirmReq(message *Message) {
 			ms.netService.node.logger.Error(err)
 			return
 		}
-		hash := blk.Blk.GetHash()
-		ms.addPerformanceTime(hash)
-	}
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Debugf("send ConfirmReq Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
+
+		for _, b := range blk.Blk {
+			hash := b.GetHash()
+			ms.addPerformanceTime(hash)
+		}
 	}
 	r, err := protos.ConfirmReqBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Error(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventConfirmReq, r.Blk, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventConfirmReq, r.Blk, message.MessageFrom())
 }
 
 func (ms *MessageService) onConfirmAck(message *Message) {
@@ -421,22 +313,12 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 			ms.addPerformanceTime(h)
 		}
 	}
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Debugf("send ConfirmAck Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
-
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
 	ack, err := protos.ConfirmAckBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventConfirmAck, ack, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventConfirmAck, ack, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovStatus(message *Message) {
@@ -445,21 +327,10 @@ func (ms *MessageService) onPovStatus(message *Message) {
 		ms.netService.node.logger.Errorf("failed to decode PovStatus from peer %s", message.from)
 		return
 	}
-
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
-
-	ms.netService.msgEvent.Publish(common.EventPovPeerStatus, status, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovPeerStatus, status, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovPublishReq(message *Message) {
-	err := ms.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-	if err != nil {
-		ms.netService.node.logger.Errorf("send PoV Publish Response err:[%s] for message hash:[%s]", err, message.Hash().String())
-	}
 
 	p, err := protos.PovPublishBlockFromProto(message.Data())
 	if err != nil {
@@ -471,35 +342,23 @@ func (ms *MessageService) onPovPublishReq(message *Message) {
 }
 
 func (ms *MessageService) onPovBulkPullReq(message *Message) {
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
-
 	req, err := protos.PovBulkPullReqFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
 
-	ms.netService.msgEvent.Publish(common.EventPovBulkPullReq, req, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovBulkPullReq, req, message.MessageFrom())
 }
 
 func (ms *MessageService) onPovBulkPullRsp(message *Message) {
-	hash, err := types.HashBytes(message.Content())
-	if err != nil {
-		ms.netService.node.logger.Error(err)
-		return
-	}
-
 	rsp, err := protos.PovBulkPullRspFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
 		return
 	}
 
-	ms.netService.msgEvent.Publish(common.EventPovBulkPullRsp, rsp, hash, message.MessageFrom())
+	ms.netService.msgEvent.Publish(common.EventPovBulkPullRsp, rsp, message.MessageFrom())
 }
 
 func (ms *MessageService) Stop() {
@@ -507,22 +366,22 @@ func (ms *MessageService) Stop() {
 	// quit.
 	ms.cancel()
 	ms.syncService.quitCh <- true
-	ms.netService.Deregister(NewSubscriber(ms, ms.publishMessageCh, false, PublishReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.confirmReqMessageCh, false, ConfirmReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.confirmAckMessageCh, false, ConfirmAck))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRequest))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, FrontierRsp))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRequest))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPullRsp))
-	ms.netService.Deregister(NewSubscriber(ms, ms.messageCh, false, BulkPushBlock))
-	ms.netService.Deregister(NewSubscriber(ms, ms.rspMessageCh, false, MessageResponse))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovStatus))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovPublishReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullReq))
-	ms.netService.Deregister(NewSubscriber(ms, ms.povMessageCh, false, PovBulkPullRsp))
+	ms.netService.Deregister(NewSubscriber(ms.publishMessageCh, PublishReq))
+	ms.netService.Deregister(NewSubscriber(ms.confirmReqMessageCh, ConfirmReq))
+	ms.netService.Deregister(NewSubscriber(ms.confirmAckMessageCh, ConfirmAck))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, FrontierRequest))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, FrontierRsp))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, BulkPullRequest))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, BulkPullRsp))
+	ms.netService.Deregister(NewSubscriber(ms.messageCh, BulkPushBlock))
+	ms.netService.Deregister(NewSubscriber(ms.rspMessageCh, MessageResponse))
+	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovStatus))
+	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovPublishReq))
+	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovBulkPullReq))
+	ms.netService.Deregister(NewSubscriber(ms.povMessageCh, PovBulkPullRsp))
 }
 
-func marshalMessage(messageName string, value interface{}) ([]byte, error) {
+func marshalMessage(messageName MessageType, value interface{}) ([]byte, error) {
 	switch messageName {
 	case PublishReq:
 		packet := protos.PublishBlock{
@@ -535,7 +394,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, nil
 	case ConfirmReq:
 		packet := &protos.ConfirmReqBlock{
-			Blk: value.(*types.StateBlock),
+			Blk: value.([]*types.StateBlock),
 		}
 		data, err := protos.ConfirmReqBlockToProto(packet)
 		if err != nil {
@@ -569,7 +428,7 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, nil
 	case BulkPullRsp:
 		PullRsp := &protos.BulkPullRspPacket{
-			Blk: value.(*types.StateBlock),
+			Blocks: value.(types.StateBlockList),
 		}
 		data, err := protos.BulkPullRspPacketToProto(PullRsp)
 		if err != nil {
@@ -578,16 +437,12 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 		return data, err
 	case BulkPushBlock:
 		push := &protos.BulkPush{
-			Blk: value.(*types.StateBlock),
+			Blocks: value.(types.StateBlockList),
 		}
 		data, err := protos.BulkPushBlockToProto(push)
 		if err != nil {
 			return nil, err
 		}
-		return data, nil
-	case MessageResponse:
-		hash := value.(types.Hash)
-		data, _ := hash.MarshalText()
 		return data, nil
 	case PovStatus:
 		status := value.(*protos.PovStatus)
@@ -619,6 +474,15 @@ func marshalMessage(messageName string, value interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return data, nil
+	case MessageResponse:
+		rsp := &protos.MessageAckPacket{
+			MessageHash: value.(types.Hash),
+		}
+		data, err := protos.MessageAckToProto(rsp)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
 	default:
 		return nil, errors.New("unKnown Message Type")
 	}
@@ -642,22 +506,32 @@ func (ms *MessageService) addPerformanceTime(hash types.Hash) {
 	}
 }
 
-// InSliceIface checks given interface in interface slice.
-func inSliceIface(v interface{}, sl []*cacheValue) bool {
-	for _, vv := range sl {
-		if vv == v {
-			return true
-		}
+func (ms *MessageService) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string) {
+	if len(reqTxHashes) <= 0 {
+		return
 	}
-	return false
-}
 
-// SliceDiff returns diff slice of slice1 - slice2.
-func sliceDiff(slice1, slice2 []*cacheValue) (diffslice []*cacheValue) {
-	for _, v := range slice1 {
-		if !inSliceIface(v, slice2) {
-			diffslice = append(diffslice, v)
+	for len(reqTxHashes) > 0 {
+		sendHashNum := 0
+		if len(reqTxHashes) > maxPullTxPerReq {
+			sendHashNum = maxPullTxPerReq
+		} else {
+			sendHashNum = len(reqTxHashes)
 		}
+
+		sendTxHashes := reqTxHashes[0:sendHashNum]
+
+		req := new(protos.BulkPullReqPacket)
+		req.PullType = protos.PullTypeBatch
+		req.Hashes = sendTxHashes
+		req.Count = uint32(len(sendTxHashes))
+
+		ms.netService.node.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peerID)
+		if !ms.netService.Node().streamManager.IsConnectWithPeerId(peerID) {
+			break
+		}
+		ms.netService.msgEvent.Publish(common.EventSendMsgToSingle, BulkPullRequest, req, peerID)
+
+		reqTxHashes = reqTxHashes[sendHashNum:]
 	}
-	return
 }

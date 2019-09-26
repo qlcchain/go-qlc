@@ -200,7 +200,7 @@ func start() error {
 			return err
 		}
 
-		w := wallet.NewWalletStore(cfg)
+		w := wallet.NewWalletStore(cm.ConfigFile)
 		defer func() {
 			if w != nil {
 				_ = w.Close()

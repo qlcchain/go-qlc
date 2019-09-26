@@ -215,7 +215,7 @@ func (dps *DPoS) onPovHeightChange(pb *types.PovBlock) {
 	dps.logger.Debugf("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 	dps.curPovHeight = pb.Header.BasHdr.Height
 
-	if dps.getPovSyncState() == common.Syncdone {
+	if dps.getPovSyncState() == common.SyncDone {
 		if dps.curPovHeight%2 == 0 {
 			go func() {
 				err := dps.findOnlineRepresentatives()

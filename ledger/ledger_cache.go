@@ -89,30 +89,6 @@ func (r *RepresentationCache) setToMemory(address string, benefit *types.Benefit
 	r.representation.Set(address, benefit)
 }
 
-//func (r *RepresentationCache) setToCache(key interface{}, value interface{}, txn db.StoreTxn) error {
-//	benefit := value.(*types.Benefit)
-//	address := key.(types.Address)
-//	rKey, err := getKeyOfParts(idPrefixRepresentationCache, address, atomic.AddInt64(r.order, 1))
-//	if err != nil {
-//		return err
-//	}
-//	rVal, err := benefit.MarshalMsg(nil)
-//	if err != nil {
-//		r.logger.Errorf("MarshalMsg benefit error: %s ,address: %s, val: %s", err, address, benefit)
-//		return err
-//	}
-//
-//	if err := txn.Set(rKey, rVal); err != nil {
-//		r.logger.Error(err)
-//		return err
-//	}
-//	return nil
-//}
-//
-//func (r *RepresentationCache) getFromCache(key interface{}, txn db.StoreTxn) (interface{}, error) {
-//	return nil, nil
-//}
-
 type RepresentationCacheType struct {
 	address types.Address
 	benefit *types.Benefit
@@ -121,7 +97,8 @@ type RepresentationCacheType struct {
 
 func (r *RepresentationCache) cacheToConfirmed(txn db.StoreTxn) error {
 	// get all cache
-	rcs := make([]*RepresentationCacheType, 0)
+	rts := make(map[types.Address]*RepresentationCacheType)
+
 	err := txn.Iterator(idPrefixRepresentationCache, func(cacheKey []byte, cacheVal []byte, b byte) error {
 		addrCache, err := types.BytesToAddress(cacheKey[1 : 1+types.AddressSize])
 		if err != nil {
@@ -133,7 +110,7 @@ func (r *RepresentationCache) cacheToConfirmed(txn db.StoreTxn) error {
 			r.logger.Error(err)
 			return err
 		}
-		order := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize:]))
+		order := int64(util.BE_BytesToUint64(cacheKey[1+types.AddressSize : 1+types.AddressSize+8]))
 
 		rc := &RepresentationCacheType{
 			address: addrCache,
@@ -141,7 +118,14 @@ func (r *RepresentationCache) cacheToConfirmed(txn db.StoreTxn) error {
 			order:   order,
 		}
 
-		rcs = append(rcs, rc)
+		// get last cache for each address
+		if lastCache, ok := rts[rc.address]; ok {
+			if rc.order >= lastCache.order {
+				rts[rc.address] = rc
+			}
+		} else {
+			rts[rc.address] = rc
+		}
 		return nil
 	})
 	if err != nil {
@@ -149,21 +133,9 @@ func (r *RepresentationCache) cacheToConfirmed(txn db.StoreTxn) error {
 		return err
 	}
 
-	if len(rcs) > 0 {
-		// get last cache for each address
-		t := make(map[types.Address]*RepresentationCacheType)
-		for _, rc := range rcs {
-			if lastCache, ok := t[rc.address]; ok {
-				if rc.order > lastCache.order {
-					t[rc.address] = rc
-				}
-			} else {
-				t[rc.address] = rc
-			}
-		}
-
+	if len(rts) > 0 {
 		// save last cache to confirmed
-		for address, lastCache := range t {
+		for address, lastCache := range rts {
 			key, err := getKeyOfParts(idPrefixRepresentation, address)
 			if err != nil {
 				return err
@@ -177,18 +149,38 @@ func (r *RepresentationCache) cacheToConfirmed(txn db.StoreTxn) error {
 				return err
 			}
 		}
+	}
 
-		// delete cache
-		for _, v := range rcs {
-			cKey, err := getKeyOfParts(idPrefixRepresentationCache, v.address, v.order)
-			if err != nil {
-				return err
-			}
-			if err := txn.Delete(cKey); err != nil {
-				r.logger.Error(err)
-				return err
-			}
+	// delete cache
+	if err := txn.Drop([]byte{idPrefixRepresentationCache}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RepresentationCache) memoryToConfirmed(txn db.StoreTxn) error {
+	err := r.iterMemory(func(s string, i interface{}) error {
+		address, err := types.HexToAddress(s)
+		if err != nil {
+			return err
 		}
+		benefit := i.(*types.Benefit)
+		key, err := getKeyOfParts(idPrefixRepresentation, address)
+		if err != nil {
+			return err
+		}
+		val, err := benefit.Serialize()
+		if err != nil {
+			r.logger.Errorf("MarshalMsg benefit error: %s ,address: %s, val: %s", err, address, benefit)
+			return err
+		}
+		if err := txn.Set(key, val); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	return nil
 }

@@ -7,14 +7,13 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/mock"
-
-	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerApi) {
@@ -22,14 +21,17 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 
 	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := ledger.NewLedger(dir)
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
+	l := ledger.NewLedger(cm.ConfigFile)
 	rl, err := relation.NewRelation(cm.ConfigFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	eb := event.GetEventBus(dir)
+
+	cc := context.NewChainContext(cm.ConfigFile)
+	eb := cc.EventBus()
+
 	ledgerApi := NewLedgerApi(l, rl, eb)
 
 	return func(t *testing.T) {

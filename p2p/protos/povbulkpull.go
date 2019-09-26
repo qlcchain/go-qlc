@@ -95,10 +95,9 @@ func PovBulkPullRspToProto(rsp *PovBulkPullRsp) ([]byte, error) {
 	}
 
 	pbReq := &pb.PovPullBlockRsp{
-		Blocktype: 0,
-		Count:     rsp.Count,
-		Block:     blockBytes,
-		Reason:    rsp.Reason,
+		Count:  rsp.Count,
+		Block:  blockBytes,
+		Reason: rsp.Reason,
 	}
 
 	data, err := proto.Marshal(pbReq)

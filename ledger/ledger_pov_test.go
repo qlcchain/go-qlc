@@ -16,7 +16,9 @@ func setupPovTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := NewLedger(dir)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	l := NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()

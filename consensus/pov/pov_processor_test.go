@@ -84,7 +84,10 @@ func setupPovProcessorTestCase(t *testing.T) (func(t *testing.T), *povProcessorM
 
 	lDir := filepath.Join(rootDir, "ledger")
 	_ = os.RemoveAll(lDir)
-	md.ledger = ledger.NewLedger(lDir)
+
+	cm := config.NewCfgManager(lDir)
+	cm.Load()
+	md.ledger = ledger.NewLedger(cm.ConfigFile)
 
 	md.eb = event.GetEventBus(lDir)
 
@@ -155,7 +158,7 @@ func TestPovProcessor_OrphanBlock(t *testing.T) {
 	processor.Init()
 	processor.Start()
 
-	processor.onPovSyncState(common.Syncdone)
+	processor.onPovSyncState(common.SyncDone)
 
 	genesisBlk := common.GenesisPovBlock()
 

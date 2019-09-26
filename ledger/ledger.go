@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -88,7 +89,9 @@ const (
 	idPrefixUncheckedTokenInfo
 	idPrefixBlockCacheAccount
 	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
-	idPrefixSyncBlock
+	idPrefixUnconfirmedSync
+	idPrefixUncheckedSync
+	idPrefixSyncCacheBlock
 )
 
 var (
@@ -96,11 +99,15 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 8
+const version = 9
 
-func NewLedger(dir string) *Ledger {
+func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
 	defer lock.Unlock()
+	cc := chainctx.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+	dir := cfg.LedgerDir()
+
 	if _, ok := cache[dir]; !ok {
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
@@ -111,7 +118,7 @@ func NewLedger(dir string) *Ledger {
 			Store:          store,
 			dir:            dir,
 			RollbackChan:   make(chan types.Hash, 65535),
-			EB:             event.GetEventBus(dir),
+			EB:             cc.EventBus(),
 			ctx:            ctx,
 			cancel:         cancel,
 			representCache: NewRepresentationCache(),
@@ -168,7 +175,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8)}
+		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8), new(MigrationV8ToV9)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
@@ -192,7 +199,7 @@ func (l *Ledger) initCache() error {
 	}
 
 	go func() {
-		ticker := time.NewTicker(15 * time.Second)
+		ticker := time.NewTicker(5 * time.Minute)
 		for {
 			select {
 			case <-l.ctx.Done():
@@ -215,7 +222,7 @@ func (l *Ledger) processCache() {
 				l.logger.Error(err)
 			}
 		}()
-		if err := l.representCache.cacheToConfirmed(txn); err != nil {
+		if err := l.representCache.memoryToConfirmed(txn); err != nil {
 			l.logger.Errorf("cache to confirmed error : %s", err)
 		}
 	}
@@ -272,6 +279,7 @@ func (l *Ledger) BatchView(fn func(txn db.StoreTxn) error) error {
 	if err := fn(txn); err != nil {
 		return err
 	}
+
 	return txn.Commit(nil)
 }
 

@@ -86,7 +86,7 @@ func (ss *PovSyncer) onPeriodicSyncTimer() {
 	}
 	if syncOver {
 		ss.setInitState(common.Syncing)
-		ss.setInitState(common.Syncdone)
+		ss.setInitState(common.SyncDone)
 		return
 	}
 
@@ -167,7 +167,7 @@ func (ss *PovSyncer) onCheckChainTimer() {
 	if ss.syncCurHeight >= ss.syncToHeight && latestBlock.GetHeight() >= ss.syncToHeight {
 		ss.logger.Infof("sync done, current height:%d", latestBlock.GetHeight())
 		ss.inSyncing.Store(false)
-		ss.setInitState(common.Syncdone)
+		ss.setInitState(common.SyncDone)
 		return
 	}
 

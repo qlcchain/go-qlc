@@ -155,6 +155,13 @@ func (l *Ledger) GetRepresentations(fn func(types.Address, *types.Benefit) error
 	return nil
 }
 
+func (l *Ledger) CountRepresentations(txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Count([]byte{idPrefixRepresentation})
+}
+
 func (l *Ledger) GetRepresentationsCache(address types.Address, fn func(address types.Address, am *types.Benefit, amCache *types.Benefit) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)

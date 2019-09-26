@@ -63,7 +63,6 @@ type PovSyncer struct {
 
 type PovSyncMessage struct {
 	msgValue interface{}
-	msgHash  types.Hash
 	msgPeer  string
 }
 
@@ -167,12 +166,12 @@ func (ss *PovSyncer) mainLoop() {
 	}
 }
 
-func (ss *PovSyncer) onPovBulkPullReq(req *protos.PovBulkPullReq, msgHash types.Hash, msgPeer string) {
-	ss.messageCh <- &PovSyncMessage{msgValue: req, msgHash: msgHash, msgPeer: msgPeer}
+func (ss *PovSyncer) onPovBulkPullReq(req *protos.PovBulkPullReq, msgPeer string) {
+	ss.messageCh <- &PovSyncMessage{msgValue: req, msgPeer: msgPeer}
 }
 
-func (ss *PovSyncer) onPovBulkPullRsp(rsp *protos.PovBulkPullRsp, msgHash types.Hash, msgPeer string) {
-	ss.messageCh <- &PovSyncMessage{msgValue: rsp, msgHash: msgHash, msgPeer: msgPeer}
+func (ss *PovSyncer) onPovBulkPullRsp(rsp *protos.PovBulkPullRsp, msgPeer string) {
+	ss.messageCh <- &PovSyncMessage{msgValue: rsp, msgPeer: msgPeer}
 }
 
 func (ss *PovSyncer) processMessage(msg *PovSyncMessage) {
@@ -457,7 +456,7 @@ func (ss *PovSyncer) setInitState(st common.SyncState) {
 	ss.initSyncState = st
 	if st == common.Syncing {
 		ss.syncStartTime = time.Now()
-	} else if st == common.Syncdone {
+	} else if st == common.SyncDone {
 		ss.syncEndTime = time.Now()
 		usedTime := ss.syncEndTime.Sub(ss.syncStartTime)
 		ss.logger.Infof("pov init sync used time: %s", usedTime)
@@ -544,26 +543,7 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		return
 	}
 
-	for len(reqTxHashes) > 0 {
-		sendHashNum := 0
-		if len(reqTxHashes) > maxPullTxPerReq {
-			sendHashNum = maxPullTxPerReq
-		} else {
-			sendHashNum = len(reqTxHashes)
-		}
-
-		sendTxHashes := reqTxHashes[0:sendHashNum]
-
-		req := new(protos.BulkPullReqPacket)
-		req.PullType = protos.PullTypeBatch
-		req.Hashes = sendTxHashes
-		req.Count = uint32(len(sendTxHashes))
-
-		ss.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peer.peerID)
-		ss.eb.Publish(common.EventSendMsgToSingle, p2p.BulkPullRequest, req, peer.peerID)
-
-		reqTxHashes = reqTxHashes[sendHashNum:]
-	}
+	ss.eb.Publish(common.EventPullBlocksReq, reqTxHashes, peer.peerID)
 }
 
 func (ss *PovSyncer) absDiffHeight(lhs uint64, rhs uint64) uint64 {

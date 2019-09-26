@@ -3,7 +3,6 @@ package ledger
 import (
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
@@ -64,7 +63,10 @@ func TestRepresentationCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(16 * time.Second)
+	txn := l.Store.NewTransaction(true)
+	l.representCache.cacheToConfirmed(txn)
+	txn.Commit(nil)
+
 	rd, err := l.getRepresentation(address)
 	if err != nil {
 		t.Fatal(err)

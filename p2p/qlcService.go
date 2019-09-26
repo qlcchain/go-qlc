@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/chain/context"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -32,7 +31,7 @@ func NewQlcService(cfgFile string) (*QlcService, error) {
 		msgEvent:   cc.EventBus(),
 	}
 	node.SetQlcService(ns)
-	l := ledger.NewLedger(cfg.LedgerDir())
+	l := ledger.NewLedger(cfgFile)
 	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
 	return ns, nil
@@ -78,11 +77,6 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
 	err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
@@ -98,6 +92,16 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
+	err = ns.msgEvent.Subscribe(common.EventPullBlocksReq, ns.msgService.requestTxsByHashes)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Subscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
 	return nil
 }
 
@@ -107,12 +111,22 @@ func (ns *QlcService) unsubscribeEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers)
+	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
+	err = ns.msgEvent.Unsubscribe(common.EventSyncing, ns.msgService.syncService.LastSyncTime)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Unsubscribe(common.EventPullBlocksReq, ns.msgService.requestTxsByHashes)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	err = ns.msgEvent.Unsubscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
@@ -143,25 +157,30 @@ func (ns *QlcService) Register(subscribers ...*Subscriber) {
 }
 
 // Deregister Deregister the subscribers.
-func (ns *QlcService) Deregister(subscribers ...*Subscriber) {
-	ns.dispatcher.Deregister(subscribers...)
+func (ns *QlcService) Deregister(subscribers *Subscriber) {
+	ns.dispatcher.Deregister(subscribers)
 }
 
-// PutMessage put message to dispatcher.
+// PutMessage put snyc message to dispatcher.
+func (ns *QlcService) PutSyncMessage(msg *Message) {
+	ns.dispatcher.PutSyncMessage(msg)
+}
+
+// PutMessage put dpos message to dispatcher.
 func (ns *QlcService) PutMessage(msg *Message) {
 	ns.dispatcher.PutMessage(msg)
 }
 
 // Broadcast message.
-func (ns *QlcService) Broadcast(name string, value interface{}) {
+func (ns *QlcService) Broadcast(name MessageType, value interface{}) {
 	ns.node.BroadcastMessage(name, value)
 }
 
-func (ns *QlcService) SendMessageToPeers(messageName string, value interface{}, peerID string) {
-	ns.node.SendMessageToPeers(messageName, value, peerID)
-}
+//func (ns *QlcService) SendMessageToPeers(messageName MessageType, value interface{}, peerID string) {
+//	ns.node.SendMessageToPeers(messageName, value, peerID)
+//}
 
 // SendMessageToPeer send message to a peer.
-func (ns *QlcService) SendMessageToPeer(messageName string, value interface{}, peerID string) error {
+func (ns *QlcService) SendMessageToPeer(messageName MessageType, value interface{}, peerID string) error {
 	return ns.node.SendMessageToPeer(messageName, value, peerID)
 }
