@@ -14,6 +14,7 @@ const (
 	EventPeersInfo      TopicType = "peersInfo"
 	EventSyncing        TopicType = "syncing"
 	EventAddRelation    TopicType = "addRelation"
+	EventAddSyncBlocks  TopicType = "addSyncBlocks"
 	EventDeleteRelation TopicType = "deleteRelation"
 	EventGenerateBlock  TopicType = "generateBlock"
 	EventRollback       TopicType = "rollback"

@@ -14,6 +14,24 @@ import (
 )
 
 func (l *Ledger) AddStateBlock(value *types.StateBlock, txns ...db.StoreTxn) error {
+	if err := l.addStateBlock(value, txns...); err != nil {
+		return err
+	}
+	l.logger.Debug("publish addRelation,", value.GetHash())
+	l.EB.Publish(common.EventAddRelation, value)
+	return nil
+}
+
+func (l *Ledger) AddSyncStateBlock(value *types.StateBlock, txns ...db.StoreTxn) error {
+	if err := l.addStateBlock(value, txns...); err != nil {
+		return err
+	}
+	l.logger.Debug("publish sync addRelation,", value.GetHash())
+	l.EB.Publish(common.EventAddSyncBlocks, value, false)
+	return nil
+}
+
+func (l *Ledger) addStateBlock(value *types.StateBlock, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 
 	k, err := getKeyOfParts(idPrefixBlock, value.GetHash())
@@ -49,8 +67,6 @@ func (l *Ledger) AddStateBlock(value *types.StateBlock, txns ...db.StoreTxn) err
 		return fmt.Errorf("add block link error: %s", err)
 	}
 	l.releaseTxn(txn, flag)
-	l.logger.Debug("publish addRelation,", value.GetHash())
-	l.EB.Publish(common.EventAddRelation, value)
 	return nil
 }
 

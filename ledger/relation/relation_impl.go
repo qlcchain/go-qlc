@@ -1,11 +1,12 @@
 package relation
 
 import (
+	"context"
 	"encoding/base64"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/qlcchain/go-qlc/chain/context"
+	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -21,6 +22,11 @@ type Relation struct {
 	logger        *zap.SugaredLogger
 	addBlkChan    chan *types.StateBlock
 	deleteBlkChan chan types.Hash
+	syncBlkChan   chan *types.StateBlock
+	syncBlocks    []*types.StateBlock
+	syncDone      chan bool
+	ctx           context.Context
+	cancel        context.CancelFunc
 }
 
 type blocksHash struct {
@@ -40,6 +46,8 @@ type blocksMessage struct {
 	Timestamp int64
 }
 
+const batchMaxCount = 199
+
 var (
 	cache = make(map[string]*Relation)
 	lock  = sync.RWMutex{}
@@ -50,17 +58,23 @@ func NewRelation(cfgFile string) (*Relation, error) {
 	defer lock.Unlock()
 	if _, ok := cache[cfgFile]; !ok {
 		//store := new(db.DBSQL)
-		cc := context.NewChainContext(cfgFile)
+		cc := chaincontext.NewChainContext(cfgFile)
 		cfg, _ := cc.Config()
 		store, err := db.NewSQLDB(cfg)
 		if err != nil {
 			return nil, err
 		}
+		ctx, cancel := context.WithCancel(context.Background())
 		relation := &Relation{store: store,
 			eb:            cc.EventBus(),
 			dir:           cfgFile,
-			addBlkChan:    make(chan *types.StateBlock, 102400),
+			addBlkChan:    make(chan *types.StateBlock, 1024),
 			deleteBlkChan: make(chan types.Hash, 65535),
+			syncBlkChan:   make(chan *types.StateBlock, 1024),
+			syncBlocks:    make([]*types.StateBlock, 0),
+			syncDone:      make(chan bool),
+			ctx:           ctx,
+			cancel:        cancel,
 			logger:        log.NewLogger("relation")}
 		go relation.processBlocks()
 		cache[cfgFile] = relation
@@ -201,6 +215,9 @@ func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
 }
 
 func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
+	if len(blocks) == 0 {
+		return nil
+	}
 	blksHashes := make([]*blocksHash, 0)
 	blksMessage := make([]*blocksMessage, 0)
 	//r.logger.Info("batch block count: ", len(blocks))
@@ -286,6 +303,8 @@ func blockType(bs []blocksType) map[string]uint64 {
 func (r *Relation) processBlocks() {
 	for {
 		select {
+		case <-r.ctx.Done():
+			break
 		case blk := <-r.addBlkChan:
 			if err := r.AddBlock(blk); err != nil {
 				r.logger.Error(err)
@@ -293,6 +312,17 @@ func (r *Relation) processBlocks() {
 		case blk := <-r.deleteBlkChan:
 			if err := r.DeleteBlock(blk); err != nil {
 				r.logger.Error(err)
+			}
+		case blk := <-r.syncBlkChan:
+			r.syncBlocks = append(r.syncBlocks, blk)
+			if len(r.syncBlocks) == batchMaxCount {
+				r.batchUpdateBlocks()
+				r.syncBlocks = make([]*types.StateBlock, 0)
+			}
+		case <-r.syncDone:
+			if len(r.syncBlocks) > 0 {
+				r.batchUpdateBlocks()
+				r.syncBlocks = make([]*types.StateBlock, 0)
 			}
 		}
 	}
@@ -302,12 +332,37 @@ func (r *Relation) waitAddBlocks(block *types.StateBlock) {
 	r.addBlkChan <- block
 }
 
+func (r *Relation) waitAddSyncBlocks(block *types.StateBlock, done bool) {
+	if done {
+		r.syncDone <- true
+	} else {
+		r.syncBlkChan <- block
+	}
+}
+
+func (r *Relation) batchUpdateBlocks() {
+	err := r.BatchUpdate(func(txn *sqlx.Tx) error {
+		if err := r.AddBlocks(txn, r.syncBlocks); err != nil {
+			r.logger.Errorf("batch add blocks error: %s", err)
+		}
+		return nil
+	})
+	if err != nil {
+		r.logger.Errorf("batch update blocks error: %s", err)
+	}
+}
+
 func (r *Relation) waitDeleteBlocks(hash types.Hash) {
 	r.deleteBlkChan <- hash
 }
 
 func (r *Relation) SetEvent() error {
 	err := r.eb.Subscribe(common.EventAddRelation, r.waitAddBlocks)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	err = r.eb.Subscribe(common.EventAddSyncBlocks, r.waitAddSyncBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
@@ -322,6 +377,11 @@ func (r *Relation) SetEvent() error {
 
 func (r *Relation) UnsubscribeEvent() error {
 	err := r.eb.Unsubscribe(common.EventAddRelation, r.waitAddBlocks)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	err = r.eb.Unsubscribe(common.EventAddRelation, r.waitAddSyncBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err

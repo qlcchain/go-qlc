@@ -158,7 +158,7 @@ func (lv *LedgerVerifier) BlockSyncProcess(block types.Block) error {
 
 func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.StoreTxn) error {
 	lv.logger.Debug("process sync block, ", block.GetHash())
-	if err := lv.l.AddStateBlock(block, txn); err != nil {
+	if err := lv.l.AddSyncStateBlock(block, txn); err != nil {
 		return err
 	}
 	am, err := lv.l.GetAccountMetaConfirmed(block.GetAddress(), txn)
@@ -169,8 +169,8 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 	if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
 		return fmt.Errorf("get token meta error: %s", err)
 	}
-	if err := lv.updateSyncBlocks(block, txn); err != nil {
-		return fmt.Errorf("update sync block error: %s", err)
+	if err := lv.l.AddSyncCacheBlock(block, txn); err != nil {
+		return fmt.Errorf("add sync block error: %s", err)
 	}
 	if err := lv.updateRepresentative(block, am, tm, txn); err != nil {
 		return fmt.Errorf("update representative error: %s", err)
@@ -183,22 +183,6 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 	}
 	if err := lv.updateAccountMeta(block, am, txn); err != nil {
 		return fmt.Errorf("update account meta error: %s", err)
-	}
-	return nil
-}
-
-func (lv *LedgerVerifier) updateSyncBlocks(block *types.StateBlock, txn db.StoreTxn) error {
-	if block.IsSendBlock() {
-		if _, err := lv.l.GetLinkBlock(block.GetHash(), txn); err != nil {
-			if err := lv.l.AddSyncCacheBlock(block, txn); err != nil {
-				return fmt.Errorf("add sync block error: %s", err)
-			}
-		}
-	}
-	if block.GetType() == types.ContractReward {
-		if err := lv.l.AddSyncCacheBlock(block, txn); err != nil {
-			return fmt.Errorf("add sync block error: %s", err)
-		}
 	}
 	return nil
 }
@@ -217,6 +201,8 @@ func (lv *LedgerVerifier) updateSyncPending(block *types.StateBlock, txn db.Stor
 }
 
 func (lv *LedgerVerifier) BlockSyncDone() error {
+	lv.l.EB.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
+
 	syncBlocks := make([]*types.StateBlock, 0)
 	err := lv.l.GetSyncCacheBlocks(func(block *types.StateBlock) error {
 		syncBlocks = append(syncBlocks, block)
@@ -268,7 +254,7 @@ func (lv *LedgerVerifier) BlockSyncDone() error {
 					}
 				}
 			}
-			if block.GetType() == types.ContractReward {
+			if block.IsContractBlock() {
 				if err := lv.updateContractData(block, txn); err != nil {
 					return fmt.Errorf(" update contract data error(%s): %s", block.GetHash().String(), err)
 				}
