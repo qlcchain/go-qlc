@@ -25,11 +25,10 @@ import (
 )
 
 const (
-	repTimeout            = 5 * time.Minute
-	voteCacheSize         = 102400
-	refreshPriInterval    = 1 * time.Minute
-	findOnlineRepInterval = 2 * time.Minute
-	povBlockNumDay        = 2880
+	repTimeout         = 5 * time.Minute
+	voteCacheSize      = 102400
+	refreshPriInterval = 1 * time.Minute
+	//findOnlineRepInterval = 2 * time.Minute
 	subAckMaxSize         = 102400
 	maxStatisticsPeriod   = 3
 	confirmedCacheMaxLen  = 102400
