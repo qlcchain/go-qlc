@@ -131,10 +131,7 @@ func (p *Processor) processMsg() {
 					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
 					p.confirmChain(hash)
 				}
-
-				if p.syncState == common.Syncing {
-					p.dequeueUncheckedSync(hash)
-				}
+				p.dequeueUncheckedSync(hash)
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
 			case ack := <-p.acks:
@@ -152,9 +149,7 @@ func (p *Processor) processMsg() {
 		case bs := <-p.blocks:
 			p.processMsgDo(bs)
 		case block := <-p.syncBlock:
-			if p.syncState == common.Syncing {
-				p.syncBlockCheck(block)
-			}
+			p.syncBlockCheck(block)
 		case <-getTimeout.C:
 			//
 		}
