@@ -985,6 +985,7 @@ func (dps *DPoS) checkSyncFinished() {
 		if err := dps.lv.BlockSyncDone(); err != nil {
 			dps.logger.Error("block sync down err", err)
 		}
+		atomic.StoreInt32(&dps.syncFinished, 0)
 		dps.frontiersStatus = new(sync.Map)
 		dps.CleanSyncCache()
 		dps.eb.Publish(common.EventConsensusSyncFinished)
@@ -1043,7 +1044,6 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 
 	//clean last state
 	if state == common.Syncing {
-		atomic.StoreInt32(&dps.syncFinished, 0)
 		dps.frontiersStatus = new(sync.Map)
 		dps.totalVote = make(map[types.Address]types.Balance)
 	} else if state == common.SyncDone {

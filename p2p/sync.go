@@ -158,47 +158,33 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 	go func() {
 		var remoteFrontiers []*types.Frontier
 		var blks types.StateBlockList
-		var confirmed bool
 		ss.syncState = common.Syncing
 		ss.syncTicker.Stop()
 		ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncing)
 		ss.logger.Info("sync start")
 
-		for {
-			remoteFrontiers = remoteFrontiers[0:0]
-			blks = blks[0:0]
+		for _, f := range rsp.Fs {
+			remoteFrontiers = append(remoteFrontiers, f.Fr)
+			blks = append(blks, f.HeaderBlk)
+		}
 
-			for _, f := range rsp.Fs {
-				ss.netService.msgEvent.Publish(common.EventFrontierConfirmed, f.HeaderBlk.GetHash(), &confirmed)
-				if confirmed {
-					continue
-				}
+		remoteFrontiersLen := len(remoteFrontiers)
+		ss.logger.Infof("req %d frontiers", remoteFrontiersLen)
 
-				remoteFrontiers = append(remoteFrontiers, f.Fr)
-				blks = append(blks, f.HeaderBlk)
-			}
-
-			remoteFrontiersLen := len(remoteFrontiers)
-			ss.logger.Infof("req %d frontiers", remoteFrontiersLen)
-
-			if remoteFrontiersLen > 0 {
-				ss.netService.msgEvent.Publish(common.EventFrontierConsensus, blks)
-				sort.Sort(types.Frontiers(remoteFrontiers))
-				zeroFrontier := new(types.Frontier)
-				remoteFrontiers = append(remoteFrontiers, zeroFrontier)
-				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-				if err != nil {
-					ss.logger.Errorf("process frontiers error:[%s]", err)
-				}
-
-				time.Sleep(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
-			} else {
-				ss.syncState = common.SyncDone
-				ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncDone)
-				ss.logger.Infof("sync pull all blocks done")
-				break
+		if remoteFrontiersLen > 0 {
+			ss.netService.msgEvent.Publish(common.EventFrontierConsensus, blks)
+			sort.Sort(types.Frontiers(remoteFrontiers))
+			zeroFrontier := new(types.Frontier)
+			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
+			err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+			if err != nil {
+				ss.logger.Errorf("process frontiers error:[%s]", err)
 			}
 		}
+
+		ss.syncState = common.SyncDone
+		ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncDone)
+		ss.logger.Infof("sync pull all blocks done")
 	}()
 }
 
@@ -275,48 +261,53 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 						}
 						ss.next()
 					}
-					var index int
-					pullTimer = time.NewTimer(2 * time.Minute)
-					select {
-					case pullRequestStartCh <- true:
-					default:
-					}
-					var resend int
-					for {
+
+					if len(bulkPull) > 0 {
+						var index int
+						var resend int
+						pullTimer = time.NewTimer(2 * time.Minute)
+
 						select {
-						case <-pullTimer.C:
-							blkReq := &protos.BulkPullReqPacket{
-								StartHash: pullStartHash,
-								EndHash:   pullEndHash,
-							}
-							err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
-							if err != nil {
-								ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
-							}
-							resend++
-							if resend == maxResendTime {
-								break
-							}
-						case <-pullRequestStartCh:
-							pullStartHash = bulkPull[index].StartHash
-							pullEndHash = bulkPull[index].EndHash
-							blkReq := &protos.BulkPullReqPacket{
-								StartHash: bulkPull[index].StartHash,
-								EndHash:   bulkPull[index].EndHash,
-							}
-							err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
-							if err != nil {
-								ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
-							}
-							index++
+						case pullRequestStartCh <- true:
 						default:
 						}
-						if index == len(bulkPull) {
-							pullStartHash = types.ZeroHash
-							pullEndHash = types.ZeroHash
-							break
+
+						for {
+							select {
+							case <-pullTimer.C:
+								blkReq := &protos.BulkPullReqPacket{
+									StartHash: pullStartHash,
+									EndHash:   pullEndHash,
+								}
+								err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
+								if err != nil {
+									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
+								}
+								resend++
+								if resend == maxResendTime {
+									break
+								}
+							case <-pullRequestStartCh:
+								pullStartHash = bulkPull[index].StartHash
+								pullEndHash = bulkPull[index].EndHash
+								blkReq := &protos.BulkPullReqPacket{
+									StartHash: bulkPull[index].StartHash,
+									EndHash:   bulkPull[index].EndHash,
+								}
+								err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
+								if err != nil {
+									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
+								}
+								index++
+							}
+							if index == len(bulkPull) {
+								pullStartHash = types.ZeroHash
+								pullEndHash = types.ZeroHash
+								break
+							}
 						}
 					}
+
 					for _, value := range bulkPush {
 						startHash := value.StartHash
 						endHash := value.EndHash
