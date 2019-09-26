@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -97,6 +98,7 @@ func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 	}
 	return i
 }
+
 func (q *NetApi) Syncing() bool {
 	now := time.Now().Unix()
 	v := atomic.LoadInt64(&lastSyncTime)
@@ -104,4 +106,10 @@ func (q *NetApi) Syncing() bool {
 		return false
 	}
 	return true
+}
+
+func (q *NetApi) GetBandwidthStats() *p2pmetrics.Stats {
+	stats := new(p2pmetrics.Stats)
+	q.eb.Publish(common.EventGetBandwidthStats, stats)
+	return stats
 }

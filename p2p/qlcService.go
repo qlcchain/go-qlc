@@ -102,6 +102,11 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
+	err = ns.msgEvent.SubscribeSync(common.EventGetBandwidthStats, ns.node.GetBandwidthStats)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
 	return nil
 }
 

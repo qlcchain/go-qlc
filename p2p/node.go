@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
@@ -67,6 +68,7 @@ type QlcNode struct {
 	MessageSub        pubsub.Subscription
 	isMiner           bool
 	isRepresentative  bool
+	reporter          p2pmetrics.Reporter
 }
 
 // NewNode return new QlcNode according to the config.
@@ -91,6 +93,7 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 	if err != nil {
 		return nil, err
 	}
+	node.reporter = p2pmetrics.NewBandwidthCounter()
 	return node, nil
 }
 
@@ -106,6 +109,7 @@ func (node *QlcNode) buildHost() error {
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(node.privateKey),
 		//libp2p.NATPortMap(),
+		libp2p.BandwidthReporter(node.reporter),
 		libp2p.DefaultMuxers,
 	)
 	if err != nil {
@@ -410,3 +414,7 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 }
 
 type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
+
+func (node *QlcNode) GetBandwidthStats(stats *p2pmetrics.Stats) {
+	*stats = node.reporter.GetBandwidthTotals()
+}
