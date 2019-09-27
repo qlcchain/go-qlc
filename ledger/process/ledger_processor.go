@@ -46,6 +46,7 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 	checkCacheBlockFns[types.Send] = checkCacheSendBlock
 	checkCacheBlockFns[types.Receive] = checkCacheReceiveBlock
 	checkCacheBlockFns[types.Change] = checkCacheChangeBlock
+	checkCacheBlockFns[types.Online] = checkCacheChangeBlock
 	checkCacheBlockFns[types.Open] = checkCacheOpenBlock
 	checkCacheBlockFns[types.ContractSend] = checkCacheContractSendBlock
 	checkCacheBlockFns[types.ContractReward] = checkCacheContractReceiveBlock
@@ -54,6 +55,7 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 	checkSyncBlockFns[types.Send] = checkSendBlock
 	checkSyncBlockFns[types.Receive] = checkSyncReceiveBlock
 	checkSyncBlockFns[types.Change] = checkChangeBlock
+	checkSyncBlockFns[types.Online] = checkChangeBlock
 	checkSyncBlockFns[types.Open] = checkSyncOpenBlock
 	checkSyncBlockFns[types.ContractSend] = checkContractSendBlock
 	checkSyncBlockFns[types.ContractReward] = checkSyncContractReceiveBlock
