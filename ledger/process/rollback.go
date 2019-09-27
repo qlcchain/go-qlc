@@ -319,7 +319,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 						return fmt.Errorf("rollback pending fail(%s), receive(%s)", err, hashCur)
 					}
 				}
-			case types.Change:
+			case types.Change, types.Online:
 				if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
 					return fmt.Errorf("rollback token fail(%s), change(%s)", err, hashCur)
 				}
