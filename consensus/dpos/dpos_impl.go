@@ -3,6 +3,7 @@ package dpos
 import (
 	"context"
 	"runtime"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -91,12 +92,12 @@ type DPoS struct {
 	cancel              context.CancelFunc
 	frontiersStatus     *sync.Map
 	syncStateNotifyWait *sync.WaitGroup
-	syncFinished        int32
 	totalVote           map[types.Address]types.Balance
 	online              gcache.Cache
 	confirmedBlocks     gcache.Cache
 	lastSendHeight      uint64
 	curPovHeight        uint64
+	checkFinish         chan struct{}
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -133,6 +134,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		confirmedBlocks:     gcache.New(confirmedCacheMaxLen).Expiration(confirmedCacheMaxTime).LRU().Build(),
 		lastSendHeight:      1,
 		curPovHeight:        1,
+		checkFinish:         make(chan struct{}, 10240),
 	}
 
 	if common.DPoSVoteCacheEn {
@@ -251,6 +253,8 @@ func (dps *DPoS) Start() {
 				return true
 			})
 			dps.logger.Debugf("hash2el len:%d", num)
+		case <-dps.checkFinish:
+			dps.checkSyncFinished()
 		}
 	}
 }
@@ -600,7 +604,7 @@ func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
 }
 
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
-	if dps.getPovSyncState() == common.SyncDone || bs.BlockFrom == types.Synchronized {
+	if dps.getPovSyncState() == common.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
 		dps.dispatchMsg(bs)
 	} else {
 		if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
@@ -971,8 +975,34 @@ func (dps *DPoS) isReceivedFrontier(hash types.Hash) bool {
 func (dps *DPoS) chainFinished(hash types.Hash) {
 	if _, ok := dps.frontiersStatus.Load(hash); ok {
 		dps.frontiersStatus.Store(hash, frontierChainFinished)
-		dps.checkSyncFinished()
+		dps.checkFinish <- struct{}{}
 	}
+}
+
+func (dps *DPoS) blockSyncDone() error {
+	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
+
+	syncBlocks := make([]*types.StateBlock, 0)
+	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
+		syncBlocks = append(syncBlocks, block)
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if len(syncBlocks) > 0 {
+		// contract data need sort
+		sort.Slice(syncBlocks, func(i, j int) bool {
+			return syncBlocks[i].Timestamp < syncBlocks[j].Timestamp
+		})
+
+		for _, block := range syncBlocks {
+			index := dps.getProcessorIndex(block.Address)
+			dps.processors[index].syncCacheBlock <- block
+		}
+	}
+
+	return nil
 }
 
 func (dps *DPoS) checkSyncFinished() {
@@ -986,15 +1016,65 @@ func (dps *DPoS) checkSyncFinished() {
 		return true
 	})
 
-	if allFinished && atomic.CompareAndSwapInt32(&dps.syncFinished, 0, 1) {
-		if err := dps.lv.BlockSyncDone(); err != nil {
+	if allFinished {
+		checkLedgerTimer := time.NewTicker(1 * time.Second)
+		defer checkLedgerTimer.Stop()
+		checkMaxTimes := 5
+		checkResult := true
+
+	checkOut:
+		for {
+			select {
+			case <-checkLedgerTimer.C:
+				if checkMaxTimes <= 0 {
+					dps.logger.Errorf("check frontier block confirmed err")
+					return
+				}
+				checkMaxTimes--
+
+				dps.frontiersStatus.Range(func(k, v interface{}) bool {
+					hash := k.(types.Hash)
+					if has, _ := dps.ledger.HasStateBlockConfirmed(hash); !has {
+						checkResult = false
+						return false
+					}
+					return true
+				})
+
+				if checkResult {
+					break checkOut
+				}
+			}
+		}
+
+		if err := dps.blockSyncDone(); err != nil {
 			dps.logger.Error("block sync down err", err)
 		}
-		atomic.StoreInt32(&dps.syncFinished, 0)
-		dps.frontiersStatus = new(sync.Map)
-		dps.CleanSyncCache()
-		dps.eb.Publish(common.EventConsensusSyncFinished)
-		dps.logger.Infof("sync finished")
+
+		checkDoneTimer := time.NewTicker(1 * time.Second)
+		defer checkDoneTimer.Stop()
+		finished := true
+
+		for {
+			select {
+			case <-checkDoneTimer.C:
+				//Waiting for the processors to forbid processing the same blocks multiple times
+				for _, p := range dps.processors {
+					if len(p.syncCacheBlock) > 0 {
+						finished = false
+						break
+					}
+				}
+
+				if finished {
+					dps.frontiersStatus = new(sync.Map)
+					dps.CleanSyncCache()
+					dps.eb.Publish(common.EventConsensusSyncFinished)
+					dps.logger.Infof("sync finished")
+					return
+				}
+			}
+		}
 	}
 }
 

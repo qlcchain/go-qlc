@@ -45,6 +45,7 @@ type Processor struct {
 	syncCache       chan *syncCacheInfo
 	orderedChain    map[chainOrderKey]types.Hash
 	chainHeight     map[chainKey]uint64
+	syncCacheBlock  chan *types.StateBlock
 }
 
 func newProcessors(num int) []*Processor {
@@ -65,6 +66,7 @@ func newProcessors(num int) []*Processor {
 			syncState:       common.SyncNotStart,
 			orderedChain:    make(map[chainOrderKey]types.Hash),
 			chainHeight:     make(map[chainKey]uint64),
+			syncCacheBlock:  make(chan *types.StateBlock, common.DPoSMaxBlocks),
 		}
 		processors = append(processors, p)
 	}
@@ -120,12 +122,6 @@ func (p *Processor) processMsg() {
 			select {
 			case p.syncState = <-p.syncStateChange:
 				p.dps.syncStateNotifyWait.Done()
-			case cache := <-p.syncCache:
-				if cache.kind == common.SyncCacheUnconfirmed {
-					_ = p.dps.ledger.DeleteUnconfirmedSyncBlock(cache.hash)
-				} else {
-					_ = p.dps.ledger.DeleteUncheckedSyncBlock(cache.hash)
-				}
 			case hash := <-p.syncBlockAcked:
 				if p.dps.isConfirmedFrontier(hash) {
 					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
@@ -150,6 +146,14 @@ func (p *Processor) processMsg() {
 			p.processMsgDo(bs)
 		case block := <-p.syncBlock:
 			p.syncBlockCheck(block)
+		case cache := <-p.syncCache:
+			if cache.kind == common.SyncCacheUnconfirmed {
+				_ = p.dps.ledger.DeleteUnconfirmedSyncBlock(cache.hash)
+			} else {
+				_ = p.dps.ledger.DeleteUncheckedSyncBlock(cache.hash)
+			}
+		case block := <-p.syncCacheBlock:
+			p.blockSyncDone(block)
 		case <-getTimeout.C:
 			//
 		}
@@ -728,5 +732,12 @@ func (p *Processor) isResultGap(result process.ProcessResult) bool {
 		return true
 	} else {
 		return false
+	}
+}
+
+func (p *Processor) blockSyncDone(block *types.StateBlock) {
+	err := p.dps.lv.BlockSyncDoneProcess(block)
+	if err != nil {
+		p.dps.logger.Errorf("process sync block err when sync is done[%s]", err)
 	}
 }
