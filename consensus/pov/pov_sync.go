@@ -543,7 +543,7 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		return
 	}
 
-	ss.eb.Publish(common.EventPullBlocksReq, reqTxHashes, peer.peerID)
+	ss.eb.Publish(common.EventFrontiersReq, peer.peerID)
 }
 
 func (ss *PovSyncer) absDiffHeight(lhs uint64, rhs uint64) uint64 {

@@ -33,7 +33,7 @@ const (
 	EventPovConnectBestBlock    TopicType = "povConnectBestBlock"
 	EventPovDisconnectBestBlock TopicType = "povDisconnectBestBlock"
 	EventRpcSyncCall            TopicType = "rpcSyncCall"
-	EventPullBlocksReq          TopicType = "pullBlocksReq"
+	EventFrontiersReq           TopicType = "FrontiersReq"
 	EventFrontierConsensus      TopicType = "frontierConsensus"
 	EventFrontierConfirmed      TopicType = "frontierConfirmed"
 	EventSyncStateChange        TopicType = "syncStateChange"
