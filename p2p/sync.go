@@ -19,38 +19,41 @@ var (
 	headerBlockHash    types.Hash
 	openBlockHash      types.Hash
 	bulkPush, bulkPull []*protos.Bulk
-	pullRequestStartCh = make(chan bool, 1)
-	pullStartHash      types.Hash
-	pullEndHash        types.Hash
-	pullTimer          *time.Timer
-	pullRspTimer       *time.Timer
 )
 
 const (
-	syncTimeout   = 10 * time.Second
-	maxResendTime = 5
+	syncTimeout    = 10 * time.Second
+	maxResendTime  = 5
+	pullRspTimeOut = 60 * time.Second
+	pullReqTimeOut = 120 * time.Second
 )
 
 // Service manage sync tasks
 type ServiceSync struct {
-	netService   *QlcService
-	qlcLedger    *ledger.Ledger
-	frontiers    []*types.Frontier
-	quitCh       chan bool
-	logger       *zap.SugaredLogger
-	lastSyncTime int64
-	syncState    atomic.Value
-	syncTicker   *time.Ticker
+	netService         *QlcService
+	qlcLedger          *ledger.Ledger
+	frontiers          []*types.Frontier
+	quitCh             chan bool
+	logger             *zap.SugaredLogger
+	lastSyncTime       int64
+	syncState          atomic.Value
+	syncTicker         *time.Ticker
+	pullTimer          *time.Timer
+	pullRequestStartCh chan bool
+	pullStartHash      types.Hash
+	pullEndHash        types.Hash
 }
 
 // NewService return new Service.
 func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync {
 	ss := &ServiceSync{
-		netService:   netService,
-		qlcLedger:    ledger,
-		quitCh:       make(chan bool, 1),
-		logger:       log.NewLogger("sync"),
-		lastSyncTime: 0,
+		netService:         netService,
+		qlcLedger:          ledger,
+		quitCh:             make(chan bool, 1),
+		logger:             log.NewLogger("sync"),
+		lastSyncTime:       0,
+		pullTimer:          time.NewTimer(pullReqTimeOut),
+		pullRequestStartCh: make(chan bool, 1),
 	}
 	ss.syncState.Store(common.SyncNotStart)
 	return ss
@@ -266,44 +269,51 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 					if len(bulkPull) > 0 {
 						var index int
 						var resend int
-						pullTimer = time.NewTimer(2 * time.Minute)
-
+						if len(ss.pullTimer.C) > 0 {
+							<-ss.pullTimer.C
+						}
+						ss.pullTimer.Reset(pullReqTimeOut)
 						select {
-						case pullRequestStartCh <- true:
+						case ss.pullRequestStartCh <- true:
 						default:
 						}
 
 						for {
 							select {
-							case <-pullTimer.C:
+							case <-ss.pullTimer.C:
 								blkReq := &protos.BulkPullReqPacket{
-									StartHash: pullStartHash,
-									EndHash:   pullEndHash,
+									StartHash: ss.pullStartHash,
+									EndHash:   ss.pullEndHash,
 								}
 								err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 								}
 								resend++
+								ss.logger.Infof("resend pull request startHash is [%s],endHash is [%s]\n", ss.pullStartHash, ss.pullEndHash)
 								if resend == maxResendTime {
+									ss.logger.Infof("resend timeout......")
 									break
 								}
-							case <-pullRequestStartCh:
-								pullStartHash = bulkPull[index].StartHash
-								pullEndHash = bulkPull[index].EndHash
+								ss.pullTimer.Reset(pullReqTimeOut)
+							case <-ss.pullRequestStartCh:
+								ss.pullStartHash = bulkPull[index].StartHash
+								ss.pullEndHash = bulkPull[index].EndHash
 								blkReq := &protos.BulkPullReqPacket{
 									StartHash: bulkPull[index].StartHash,
 									EndHash:   bulkPull[index].EndHash,
 								}
+								ss.logger.Infof("pull request startHash is [%s],endHash is [%s]\n", ss.pullStartHash, ss.pullEndHash)
 								err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 								}
 								index++
+								ss.pullTimer.Reset(pullReqTimeOut)
 							}
 							if index == len(bulkPull) {
-								pullStartHash = types.ZeroHash
-								pullEndHash = types.ZeroHash
+								ss.pullStartHash = types.ZeroHash
+								ss.pullEndHash = types.ZeroHash
 								break
 							}
 						}
@@ -422,7 +432,6 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	if pullType != protos.PullTypeSegment {
 		return ss.onBulkPullRequestExt(message, pullRemote)
 	}
-	pullRspTimer = time.NewTimer(1 * time.Minute)
 	if startHash.IsZero() {
 		var blk *types.StateBlock
 		var bulkBlk []*types.StateBlock
@@ -443,16 +452,33 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			reverseBlocks = append(reverseBlocks, bulkBlk[i])
 		}
 		var shardingBlocks types.StateBlockList
-		select {
-		case pullRspStartCh <- true:
-		default:
+
+		exitPullRsp := &peerPullRsp{}
+		if v, ok := ss.netService.msgService.pullRspMap.Load(message.from); ok {
+			exitPullRsp, _ = v.(*peerPullRsp)
+			if len(exitPullRsp.pullRspTimer.C) > 0 {
+				<-exitPullRsp.pullRspTimer.C
+			}
+			exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
+		} else {
+			exitPullRsp = &peerPullRsp{
+				pullRspStartCh: make(chan bool, 1),
+				pullRspTimer:   time.NewTimer(pullRspTimeOut),
+			}
+			select {
+			case exitPullRsp.pullRspStartCh <- true:
+			default:
+			}
 		}
+		exitPullRsp.pullRspHash = types.ZeroHash
+
+		ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
 			select {
-			case <-pullRspTimer.C:
+			case <-exitPullRsp.pullRspTimer.C:
 				return nil
-			case <-pullRspStartCh:
+			case <-exitPullRsp.pullRspStartCh:
 				if len(reverseBlocks) > maxPushTxPerTime {
 					sendBlockNum = maxPushTxPerTime
 				} else {
@@ -471,13 +497,13 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 					break
 				}
 				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
-				msgHash, _ = types.HashBytes(qData)
+				exitPullRsp.pullRspHash, _ = types.HashBytes(qData)
 				err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 				}
 				reverseBlocks = reverseBlocks[sendBlockNum:]
-				pullRspTimer.Reset(1 * time.Minute)
+				exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
 			default:
 			}
 		}
@@ -503,16 +529,32 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			reverseBlocks = append(reverseBlocks, bulkBlk[i])
 		}
 		var shardingBlocks types.StateBlockList
-		select {
-		case pullRspStartCh <- true:
-		default:
+		exitPullRsp := &peerPullRsp{}
+		if v, ok := ss.netService.msgService.pullRspMap.Load(message.from); ok {
+			exitPullRsp, _ = v.(*peerPullRsp)
+			if len(exitPullRsp.pullRspTimer.C) > 0 {
+				<-exitPullRsp.pullRspTimer.C
+			}
+			exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
+		} else {
+			exitPullRsp = &peerPullRsp{
+				pullRspStartCh: make(chan bool, 1),
+				pullRspTimer:   time.NewTimer(pullRspTimeOut),
+			}
+			select {
+			case exitPullRsp.pullRspStartCh <- true:
+			default:
+			}
 		}
+		exitPullRsp.pullRspHash = types.ZeroHash
+
+		ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
 			select {
-			case <-pullRspTimer.C:
+			case <-exitPullRsp.pullRspTimer.C:
 				return nil
-			case <-pullRspStartCh:
+			case <-exitPullRsp.pullRspStartCh:
 				if len(reverseBlocks) > maxPushTxPerTime {
 					sendBlockNum = maxPushTxPerTime
 				} else {
@@ -530,16 +572,13 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 					continue
 				}
 				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
-				msgHash, _ = types.HashBytes(qData)
+				exitPullRsp.pullRspHash, _ = types.HashBytes(qData)
 				err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 				}
 				reverseBlocks = reverseBlocks[sendBlockNum:]
-				if len(reverseBlocks) == 0 {
-					msgHash = types.ZeroHash
-				}
-				pullRspTimer.Reset(1 * time.Minute)
+				exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
 			default:
 			}
 		}
@@ -674,17 +713,16 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	}
 	ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
 	if blkPacket.PullType == protos.PullTypeSegment {
-		pullTimer.Reset(2 * time.Minute)
 		if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 			err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 			}
 		}
-		if blocks[len(blocks)-1].GetHash().String() == pullEndHash.String() &&
-			(pullEndHash.String() != types.ZeroHash.String()) {
+		if blocks[len(blocks)-1].GetHash().String() == ss.pullEndHash.String() &&
+			(ss.pullEndHash.String() != types.ZeroHash.String()) {
 			select {
-			case pullRequestStartCh <- true:
+			case ss.pullRequestStartCh <- true:
 			default:
 			}
 		}

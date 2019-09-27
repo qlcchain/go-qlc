@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -18,10 +19,11 @@ const (
 	maxPushTxPerTime        = 100
 )
 
-var (
-	pullRspStartCh = make(chan bool, 1)
-	msgHash        = types.ZeroHash
-)
+type peerPullRsp struct {
+	pullRspTimer   *time.Timer
+	pullRspHash    types.Hash
+	pullRspStartCh chan bool
+}
 
 //  Message Type
 const (
@@ -52,6 +54,7 @@ type MessageService struct {
 	povMessageCh        chan *Message
 	ledger              *ledger.Ledger
 	syncService         *ServiceSync
+	pullRspMap          *sync.Map
 }
 
 // NewService return new Service.
@@ -68,6 +71,7 @@ func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageSe
 		povMessageCh:        make(chan *Message, common.P2PMonitorMsgChanSize),
 		ledger:              ledger,
 		netService:          netService,
+		pullRspMap:          new(sync.Map),
 	}
 	ms.syncService = NewSyncService(netService, ledger)
 	return ms
@@ -254,10 +258,13 @@ func (ms *MessageService) onMessageResponse(message *Message) {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	if ma.MessageHash == msgHash {
-		select {
-		case pullRspStartCh <- true:
-		default:
+	if v, ok := ms.pullRspMap.Load(message.from); ok {
+		pr := v.(*peerPullRsp)
+		if ma.MessageHash == pr.pullRspHash {
+			select {
+			case pr.pullRspStartCh <- true:
+			default:
+			}
 		}
 	}
 }
