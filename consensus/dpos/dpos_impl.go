@@ -997,8 +997,10 @@ func (dps *DPoS) blockSyncDone() error {
 		})
 
 		for _, block := range syncBlocks {
-			index := dps.getProcessorIndex(block.Address)
-			dps.processors[index].syncCacheBlock <- block
+			err := dps.lv.BlockSyncDoneProcess(block)
+			if err != nil {
+				dps.logger.Errorf("process sync block err when sync is done[%s]", err)
+			}
 		}
 	}
 
@@ -1051,30 +1053,10 @@ func (dps *DPoS) checkSyncFinished() {
 			dps.logger.Error("block sync down err", err)
 		}
 
-		checkDoneTimer := time.NewTicker(1 * time.Second)
-		defer checkDoneTimer.Stop()
-		finished := true
-
-		for {
-			select {
-			case <-checkDoneTimer.C:
-				//Waiting for the processors to forbid processing the same blocks multiple times
-				for _, p := range dps.processors {
-					if len(p.syncCacheBlock) > 0 {
-						finished = false
-						break
-					}
-				}
-
-				if finished {
-					dps.frontiersStatus = new(sync.Map)
-					dps.CleanSyncCache()
-					dps.eb.Publish(common.EventConsensusSyncFinished)
-					dps.logger.Infof("sync finished")
-					return
-				}
-			}
-		}
+		dps.frontiersStatus = new(sync.Map)
+		dps.CleanSyncCache()
+		dps.eb.Publish(common.EventConsensusSyncFinished)
+		dps.logger.Infof("sync finished")
 	}
 }
 
