@@ -117,7 +117,15 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Namespace: "destroy",
 			Version:   "1.0",
 			Service:   api.NewBlackHoleApi(r.ledger),
-			Public:    true}
+			Public:    true,
+		}
+	case "metrics":
+		return rpc.API{
+			Namespace: "metrics",
+			Version:   "1.0",
+			Service:   api.NewMetricsApi(),
+			Public:    true,
+		}
 	default:
 		return rpc.API{}
 	}
@@ -152,6 +160,7 @@ func (r *RPC) GetWSApis() []rpc.API {
 }
 
 func (r *RPC) GetPublicApis() []rpc.API {
-	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge", "rewards", "pov", "miner", "config", "debug", "destroy"}
+	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge",
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics"}
 	return r.GetApis(apiModules...)
 }

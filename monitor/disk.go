@@ -74,19 +74,21 @@ func RegisterDiskStats(r metrics.Registry) {
 
 func CaptureRuntimeDiskStatsOnce(r metrics.Registry) {
 	stats, err := disk.IOCounters()
-	if err == nil && len(stats) > 0 {
+	if err == nil && len(stats) > 0 && ioCounterStats != nil {
 		for name, status := range stats {
-			ioCounterStats[name].ReadCount.Update(int64(status.ReadCount))
-			ioCounterStats[name].MergedReadCount.Update(int64(status.MergedReadCount))
-			ioCounterStats[name].WriteCount.Update(int64(status.WriteCount))
-			ioCounterStats[name].MergedWriteCount.Update(int64(status.MergedWriteCount))
-			ioCounterStats[name].ReadBytes.Update(int64(status.ReadBytes))
-			ioCounterStats[name].WriteBytes.Update(int64(status.WriteBytes))
-			ioCounterStats[name].ReadTime.Update(int64(status.ReadTime))
-			ioCounterStats[name].WriteTime.Update(int64(status.WriteTime))
-			ioCounterStats[name].IopsInProgress.Update(int64(status.IopsInProgress))
-			ioCounterStats[name].IoTime.Update(int64(status.IoTime))
-			ioCounterStats[name].WeightedIO.Update(int64(status.WeightedIO))
+			if val, ok := ioCounterStats[name]; ok {
+				val.ReadCount.Update(int64(status.ReadCount))
+				val.MergedReadCount.Update(int64(status.MergedReadCount))
+				val.WriteCount.Update(int64(status.WriteCount))
+				val.MergedWriteCount.Update(int64(status.MergedWriteCount))
+				val.ReadBytes.Update(int64(status.ReadBytes))
+				val.WriteBytes.Update(int64(status.WriteBytes))
+				val.ReadTime.Update(int64(status.ReadTime))
+				val.WriteTime.Update(int64(status.WriteTime))
+				val.IopsInProgress.Update(int64(status.IopsInProgress))
+				val.IoTime.Update(int64(status.IoTime))
+				val.WeightedIO.Update(int64(status.WeightedIO))
+			}
 		}
 	}
 }
