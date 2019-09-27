@@ -56,6 +56,8 @@ type PovSyncer struct {
 	syncReqHeight uint64
 	syncBlocks    map[uint64]*PovSyncBlock
 
+	lastReqTxTime atomic.Int64 // time.Time.Unix()
+
 	messageCh chan *PovSyncMessage
 	eventCh   chan *PovSyncEvent
 	quitCh    chan struct{}
@@ -532,6 +534,10 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		return
 	}
 
+	if time.Now().Unix() < ss.lastReqTxTime.Add(15) {
+		return
+	}
+
 	var peer *PovSyncPeer
 	if peerID != "" {
 		peer = ss.FindPeerWithStatus(peerID, peerStatusGood)
@@ -543,7 +549,10 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		return
 	}
 
+	ss.logger.Infof("request txs %d from peer %s", len(reqTxHashes), peer.peerID)
+
 	ss.eb.Publish(common.EventFrontiersReq, peer.peerID)
+	ss.lastReqTxTime.Store(time.Now().Unix())
 }
 
 func (ss *PovSyncer) absDiffHeight(lhs uint64, rhs uint64) uint64 {
