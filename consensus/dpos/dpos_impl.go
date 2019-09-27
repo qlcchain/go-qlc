@@ -992,19 +992,51 @@ func (dps *DPoS) blockSyncDone() error {
 
 	if len(syncBlocks) > 0 {
 		// contract data need sort
-		sort.Slice(syncBlocks, func(i, j int) bool {
-			return syncBlocks[i].Timestamp < syncBlocks[j].Timestamp
-		})
-
+		contractBlocks := make([]*types.StateBlock, 0)
 		for _, block := range syncBlocks {
-			err := dps.lv.BlockSyncDoneProcess(block)
-			if err != nil {
-				dps.logger.Errorf("process sync block err when sync is done[%s]", err)
+			if b, err := dps.isRelatedOrderBlock(block); err != nil {
+				dps.logger.Errorf("block[%s] type check error, %s", block.GetHash(), err)
+			} else {
+				if b {
+					contractBlocks = append(contractBlocks, block)
+				} else {
+					err := dps.lv.BlockSyncDoneProcess(block)
+					if err != nil {
+						dps.logger.Errorf("process sync block[%s] err when sync is done[%s]", block.GetHash(), err)
+					}
+				}
+			}
+		}
+
+		if len(contractBlocks) > 0 {
+			sort.Slice(contractBlocks, func(i, j int) bool {
+				return contractBlocks[i].Timestamp < contractBlocks[j].Timestamp
+			})
+			for _, blk := range contractBlocks {
+				if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
+					dps.logger.Errorf("process sync contract block[%s] err when sync is done[%s]", blk.GetHash(), err)
+				}
 			}
 		}
 	}
-
 	return nil
+}
+
+func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
+	switch block.GetType() {
+	case types.ContractReward:
+		sendblk, err := dps.ledger.GetStateBlockConfirmed(block.GetLink())
+		if err != nil {
+			return false, err
+		}
+		switch types.Address(sendblk.GetLink()) {
+		case types.NEP5PledgeAddress:
+			return true, nil
+		case types.MintageAddress:
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (dps *DPoS) checkSyncFinished() {
