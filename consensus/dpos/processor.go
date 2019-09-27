@@ -178,15 +178,24 @@ func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBloc
 
 func (p *Processor) processFrontier(block *types.StateBlock) {
 	hash := block.GetHash()
+	dps := p.dps
 
-	if has, _ := p.dps.ledger.HasStateBlockConfirmed(hash); has {
+	if has, _ := dps.ledger.HasStateBlockConfirmed(hash); has {
 		return
 	}
 
-	p.dps.acTrx.addToRoots(block)
-	if !p.dps.isReceivedFrontier(hash) {
-		p.dps.subAckDo(p.index, hash)
-		p.dps.frontiersStatus.Store(hash, frontierWaitingForVote)
+	if !dps.isReceivedFrontier(hash) {
+		if !p.dps.acTrx.addToRoots(block) {
+			if el := dps.acTrx.getVoteInfo(block); el != nil {
+				el.blocks.LoadOrStore(hash, block)
+				dps.hash2el.LoadOrStore(hash, el)
+			} else {
+				dps.logger.Errorf("get election err[%s]", hash)
+			}
+		}
+
+		dps.subAckDo(p.index, hash)
+		dps.frontiersStatus.Store(hash, frontierWaitingForVote)
 		p.syncBlock <- block
 	}
 }
@@ -369,6 +378,7 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 
 	if v, ok := dps.acTrx.roots.Load(vk); ok {
 		el := v.(*Election)
+		loser := make([]*types.StateBlock, 0)
 
 		if !el.ifValidAndSetInvalid() {
 			return
@@ -377,21 +387,15 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 		dps.acTrx.roots.Delete(el.vote.id)
 		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), true)
 
-		if el.status.winner.GetHash() != hash {
-			dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash())
-			el.status.loser = append(el.status.loser, el.status.winner)
-		}
-
-		t := el.tally(false)
-		for _, value := range t {
-			thash := value.block.GetHash()
-			if thash != hash {
-				el.status.loser = append(el.status.loser, value.block)
+		el.blocks.Range(func(key, value interface{}) bool {
+			if key.(types.Hash) != hash {
+				loser = append(loser, value.(*types.StateBlock))
 			}
-		}
+			return true
+		})
 
 		el.cleanBlockInfo()
-		dps.acTrx.rollBack(el.status.loser)
+		dps.acTrx.rollBack(loser)
 		dps.acTrx.addSyncBlock2Ledger(blk)
 		p.blocksAcked <- hash
 		dps.dispatchAckedBlock(blk, hash, p.index)

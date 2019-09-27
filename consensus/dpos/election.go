@@ -112,8 +112,17 @@ func (el *Election) voteFrontier(vi *voteInfo) bool {
 			return true
 		}
 
-		el.dps.acTrx.roots.Delete(el.vote.id)
+		loser := make([]*types.StateBlock, 0)
+		el.blocks.Range(func(key, value interface{}) bool {
+			if key.(types.Hash) != vi.hash {
+				loser = append(loser, value.(*types.StateBlock))
+			}
+			return true
+		})
+
 		el.cleanBlockInfo()
+		el.dps.acTrx.rollBack(loser)
+		el.dps.acTrx.roots.Delete(el.vote.id)
 		return true
 	}
 
