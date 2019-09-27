@@ -11,6 +11,8 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/monitor"
 	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
+	"github.com/shirou/gopsutil/net"
 	"go.uber.org/zap"
 )
 
@@ -35,4 +37,14 @@ func (m *MetricsApi) GetAllCPUTimeStats() ([]cpu.TimesStat, error) {
 // GetAllCPUTimeStats get CPU time status per core
 func (m *MetricsApi) GetCPUTimeStats() ([]cpu.TimesStat, error) {
 	return cpu.Times(true)
+}
+
+// DiskInfo get disk info
+func (m *MetricsApi) DiskInfo() (*disk.UsageStat, error) {
+	return monitor.DiskInfo()
+}
+
+// GetNetworkInterfaces get network interface info
+func (m *MetricsApi) GetNetworkInterfaces() ([]net.IOCountersStat, error) {
+	return monitor.Interfaces()
 }
