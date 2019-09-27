@@ -615,17 +615,22 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 func (dps *DPoS) localRepVote(block *types.StateBlock) {
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
-
-		if block.Type == types.Online && !dps.isOnline(block.Address) {
-			return false
-		}
+		hash := block.GetHash()
 
 		weight := dps.ledger.Weight(address)
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 			return true
 		}
 
-		hash := block.GetHash()
+		if block.Type == types.Online {
+			has, _ := dps.ledger.HasStateBlockConfirmed(hash)
+
+			if !has && !dps.isOnline(block.Address) {
+				dps.logger.Debugf("block[%s] is not online", hash)
+				return false
+			}
+		}
+
 		dps.logger.Debugf("rep [%s] vote for block[%s] type[%s]", address, hash, block.Type)
 
 		vi := &voteInfo{
