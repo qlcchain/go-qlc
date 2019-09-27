@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	ic "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -47,7 +48,7 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		testMode := os.Getenv("GQLC_TEST_MODE")
-		if testMode == "POV" {
+		if strings.Contains(testMode, "POV") {
 			if runtime.GOOS == "darwin" {
 				return filepath.Join(home, "Library", "Application Support", cfgDir+"_pov")
 			} else if runtime.GOOS == "windows" {

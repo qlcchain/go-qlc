@@ -136,11 +136,14 @@ func start() error {
 	}
 
 	testMode := os.Getenv("GQLC_TEST_MODE")
-	if testMode == "POV" {
+	if strings.Contains(testMode, "POV") {
 		fmt.Println("GQLC_TEST_MODE:", testMode)
 
 		cfg.AutoGenerateReceive = true
 		cfg.LogLevel = "info"
+		if strings.Contains(testMode, "DEBUG") {
+			cfg.LogLevel = "debug"
+		}
 
 		cfg.RPC.Enable = true
 		cfg.RPC.HTTPEnabled = true
@@ -150,9 +153,12 @@ func start() error {
 		cfg.RPC.IPCEnabled = true
 
 		cfg.P2P.Listen = "/ip4/0.0.0.0/tcp/29734"
-		cfg.P2P.BootNodes = []string{
-			"/ip4/47.103.97.9/tcp/29734/ipfs/QmRULwy6G5VW63tS3LXSy2oPR1qZXMvut6mf2MPKnvpewb",
-			"/ip4/47.103.54.171/tcp/29734/ipfs/QmNUnsefyemyEBzPtNQYM699bDxBBdBcGjMHDNFh4nCqxW",
+		if strings.Contains(testMode, "CFGBOOT") {
+		} else {
+			cfg.P2P.BootNodes = []string{
+				"/ip4/47.103.97.9/tcp/29734/ipfs/QmRULwy6G5VW63tS3LXSy2oPR1qZXMvut6mf2MPKnvpewb",
+				"/ip4/47.103.54.171/tcp/29734/ipfs/QmNUnsefyemyEBzPtNQYM699bDxBBdBcGjMHDNFh4nCqxW",
+			}
 		}
 
 		cfg.PoV.PovEnabled = true

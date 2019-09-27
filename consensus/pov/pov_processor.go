@@ -579,7 +579,9 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *P
 
 	bp.pendingBlocks[blockHash] = pendingBlock
 
-	bp.syncer.requestTxsByHashes(reqTxHashes, blockSrc.peerID)
+	if len(reqTxHashes) > 0 {
+		bp.syncer.requestTxsByHashes(reqTxHashes, blockSrc.peerID)
+	}
 }
 
 func (bp *PovBlockProcessor) removeTxPendingBlockNoLock(pendingBlock *PovPendingBlock) {
@@ -647,7 +649,9 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 		}
 	}
 
-	bp.syncer.requestTxsByHashes(reqTxHashes, "")
+	if len(reqTxHashes) > 0 {
+		bp.syncer.requestTxsByHashes(reqTxHashes, "")
+	}
 }
 
 func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock) {
