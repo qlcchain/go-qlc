@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"flag"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -23,6 +24,9 @@ var flagNodeUrl string
 var flagMiner string
 var flagAlgo string
 var flagAuxPow bool
+
+var extraNonce1 uint32
+var extraNonce2 uint64
 
 func main() {
 	initLog()
@@ -46,7 +50,11 @@ func main() {
 	}
 	defer nodeClient.Close()
 
+	extraNonce1 = uint32(time.Now().Unix())
+	extraNonce2 = uint64(rand.Int63())
+
 	logrus.Infof("running miner, account:%s, algo:%s", minerAddr, flagAlgo)
+	logrus.Infof("extraNonce1:%08x, extraNonce2:%16x", extraNonce1, extraNonce2)
 
 	for {
 		getWorkRsp := new(api.PovApiGetWork)
@@ -110,6 +118,8 @@ func doWorkBySelf(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *a
 	cbTxExtBuf := new(bytes.Buffer)
 	cbTxExtBuf.Write(util.LE_Uint64ToBytes(getWorkRsp.Height))
 	cbTxExtBuf.WriteString("/QLC CPU Miner/")
+	cbTxExtBuf.Write(util.LE_Uint32ToBytes(extraNonce1))
+	cbTxExtBuf.Write(util.LE_Uint64ToBytes(extraNonce2))
 	cbTxExtData := cbTxExtBuf.Bytes()
 
 	// hash data = coinbase1 + extra data + coinbase2
@@ -257,8 +267,10 @@ func getBtcCoinbase(msgBlockHash types.Hash) *types.PovBtcTx {
 	merkleSize = 1
 	merkleNonce = 0
 
-	scriptSig := make([]byte, 0, 44) // 44 byte
+	scriptSig := make([]byte, 0, 4+8+44) // 44 byte
 	scriptSigBuf := bytes.NewBuffer(scriptSig)
+	binary.Write(scriptSigBuf, binary.LittleEndian, extraNonce1)
+	binary.Write(scriptSigBuf, binary.LittleEndian, extraNonce2)
 	binary.Write(scriptSigBuf, binary.LittleEndian, magic)
 	binary.Write(scriptSigBuf, binary.LittleEndian, auxBlockHash)
 	binary.Write(scriptSigBuf, binary.LittleEndian, merkleSize)
