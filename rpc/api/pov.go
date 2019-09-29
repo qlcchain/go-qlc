@@ -95,12 +95,14 @@ type PovMinerStatItem struct {
 	LastBlockTime    time.Time     `json:"lastBlockTime"`
 	FirstBlockHeight uint64        `json:"firstBlockHeight"`
 	LastBlockHeight  uint64        `json:"lastBlockHeight"`
-	IsOnline         bool          `json:"isOnline"`
+	IsHourOnline     bool          `json:"isHourOnline"`
+	IsDayOnline      bool          `json:"isDayOnline"`
 }
 
 type PovMinerStats struct {
-	MinerCount  int `json:"minerCount"`
-	OnlineCount int `json:"onlineCount"`
+	MinerCount      int `json:"minerCount"`
+	HourOnlineCount int `json:"hourOnlineCount"`
+	DayOnlineCount  int `json:"dayOnlineCount"`
 
 	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
 
@@ -721,11 +723,15 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	apiRsp.TotalBlockNum = totalBlockNum
 	apiRsp.LatestBlockHeight = latestHeader.GetHeight()
 
-	// miner is online if it generate blocks in last hour
+	// miner is online if it generate blocks in last N hours
 	for _, item := range apiRsp.MinerStats {
 		if item.LastBlockTime.Add(time.Hour).After(tmNow) {
-			item.IsOnline = true
-			apiRsp.OnlineCount++
+			item.IsHourOnline = true
+			apiRsp.HourOnlineCount++
+		}
+		if item.LastBlockTime.Add(24 * time.Hour).After(tmNow) {
+			item.IsDayOnline = true
+			apiRsp.DayOnlineCount++
 		}
 	}
 
