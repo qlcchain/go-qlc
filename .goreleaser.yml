@@ -1,0 +1,197 @@
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+project_name: go-qlc
+before:
+  hooks:
+    # you may remove this if you don't use vgo
+    - go mod download
+    # you may remove this if you don't need go generate
+    # - go generate ./...
+env:
+  - GO111MODULE=on
+  - BINARY=gqlc
+  - TESTNET_BINARY=gqlct
+  - MAINLDFLAGS=-X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} 
+    -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommt  }} 
+    -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} 
+    -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  - TESTLDFLAGS=-X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} 
+    -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommt  }} 
+    -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} 
+    -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  # - GOPROXY=https://goproxy.cn
+builds:
+# Mainnet
+- id: gqlc-darwin
+  ldflags: {{ EVN.MAINLDFLAGS }}
+  binary: {{ ENV.BINARY }}
+  env:
+    - CGO_ENABLED=1  
+    - CC=o64-clang 
+    - CXX=o64-clang++
+  main: ./cmd/main.go 
+  goos:
+    - darwin
+  goarch:
+    - amd64
+- id: gqlc-linux
+  ldflags: {{ EVN.MAINLDFLAGS }}
+  env:
+    - CGO_ENABLED=1
+  main: ./cmd/main.go
+  goos:
+    - linux
+  goarch:
+    - amd64    
+- id: gqlc-windows
+  ldflags: {{ EVN.MAINLDFLAGS }}
+  binary: {{ ENV.BINARY }}
+  env:
+    - CGO_ENABLED=1
+    - CC=x86_64-w64-mingw32-gcc
+    - CXX=x86_64-w64-mingw32-g++
+  main: ./cmd/main.go
+  goos:
+    - windows
+  goarch:
+    - amd64
+    - 386
+- id: gqlc-confidant
+  flags:
+    - -tags "confidant"
+  ldflags: {{ EVN.MAINLDFLAGS }}
+  binary: {{ ENV.BINARY }}
+  env:
+    - CGO_ENABLED=1
+    - CC=arm-linux-gnueabi-gcc
+    - CXX=arm-linux-gnueabi-g++
+  main: ./cmd/main.go
+  goos:
+    - linux
+  goarch:
+    - arm
+  goarm:
+    - 7
+
+# Test net
+- id: gqlc-darwin-test
+  flags:
+    - -tags "testnet"
+  ldflags: {{ EVN.TESTLDFLAGS }}
+  binary: {{ ENV.TESTNET_BINARY }}
+  env:
+    - CGO_ENABLED=1  
+    - CC=o64-clang 
+    - CXX=o64-clang++
+  main: ./cmd/main.go 
+  goos:
+    - darwin
+  goarch:
+    - amd64
+- id: gqlc-linux-test
+  flags:
+    - -tags "testnet"
+  ldflags: {{ EVN.TESTLDFLAGS }}
+  binary: {{ ENV.TESTNET_BINARY }}
+  env:
+    - CGO_ENABLED=1
+  main: ./cmd/main.go
+  goos:
+    - linux
+  goarch:
+    - amd64    
+- id: gqlc-windows-test
+  flags:
+    - -tags "testnet"
+  ldflags: {{ EVN.TESTLDFLAGS }}
+  binary: {{ ENV.TESTNET_BINARY }}
+  env:
+    - CGO_ENABLED=1
+    - CC=x86_64-w64-mingw32-gcc
+    - CXX=x86_64-w64-mingw32-g++
+  main: ./cmd/main.go
+  goos:
+    - windows
+  goarch:
+    - amd64
+    - 386
+- id: gqlc-confidant-test
+  flags:
+    - -tags "confidant testnet"
+  ldflags: {{ EVN.TESTLDFLAGS }}
+  binary: {{ ENV.TESTNET_BINARY }}
+  env:
+    - CGO_ENABLED=1
+    - CC=arm-linux-gnueabi-gcc
+    - CXX=arm-linux-gnueabi-g++
+  main: ./cmd/main.go
+  goos:
+    - linux
+  goarch:
+    - arm
+  goarm:
+      - 7
+
+archives:
+- format: tar.gz
+  format_overrides:
+    - goos: windows
+      format: zip
+  name_template: "{{ .Binary }}-v{{ .Version }}-{{ .ShortCommit }}-{{ .Os }}-{{ .Arch }}"
+  replacements:
+    amd64: 64bit
+    386: 32bit
+    arm: ARM
+    arm64: ARM64
+    darwin: macOS
+    linux: Linux
+    windows: Windows
+  files:
+  - Readme.MD
+  - LICENSE
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+snapshot:
+  name_template: SNAPSHOT-{{.Commit}}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+    - '^chore:'
+    - Merge pull request
+    - Merge branch
+
+signs:
+  -
+    # name of the signature file.
+    # '${artifact}' is the path to the artifact that should be signed.
+    #
+    # defaults to `${artifact}.sig`
+    signature: "${artifact}_sig"
+
+    # path to the signature command
+    #
+    # defaults to `gpg`
+    cmd: gpg2
+
+    # command line arguments for the command
+    #
+    # to sign with a specific key use
+    # args: ["-u", "<key id, fingerprint, email, ...>", "--output", "${signature}", "--detach-sign", "${artifact}"]
+    #
+    # defaults to `["--output", "${signature}", "--detach-sign", "${artifact}"]`
+    args: ["-u", "yong.gu@qlink.mobi", "--output", "${signature}", "${artifact}"]
+
+    # which artifacts to sign
+    #
+    #   checksum: only checksum file(s)
+    #   all:      all artifacts
+    #   none:     no signing
+    #
+    # defaults to `none`
+    artifacts: all

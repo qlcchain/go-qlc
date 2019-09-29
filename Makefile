@@ -30,9 +30,9 @@ TESTLDFLAGS="-X github.com/qlcchain/go-qlc/cmd/server/commands.Version=${SERVERV
 	-X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet"
 
 deps:
-	go get -u golang.org/x/lint/golint
 	go get -u github.com/gythialy/xgo
-	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+	go get -u github.com/goreleaser/goreleaser
+	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 
 confidant:
 	CGO_ENABLED=1 CC=/opt/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc GOARCH=arm GOARM=7 \
@@ -60,7 +60,6 @@ all: gqlc-server gqlc-server-test gqlc-client
 
 clean:
 	rm -rf $(shell pwd)/$(BUILDDIR)/
-
 gqlc-server:
 	xgo --dest=$(BUILDDIR) --ldflags=$(MAINLDFLAGS) --out=$(SERVERBINARY)-v$(SERVERVERSION)-$(GITREV) \
     --targets=$(TARGET) --pkg=$(SERVERMAIN) .
@@ -72,3 +71,9 @@ gqlc-server-test:
 	--targets=$(TARGET) --pkg=$(SERVERMAIN) .
 	xgo --dest=$(BUILDDIR) --tags="confidant testnet" --ldflags=$(TESTLDFLAGS) --out=$(SERVERTESTBINARY)-confidant-v$(SERVERVERSION)-$(GITREV) \
 	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
+
+snapshot:
+	docker run --rm --privileged -v $(CURDIR):/go/src/github.com/qlcchain/go-qlc -v /var/run/docker.sock:/var/run/docker.sock -w /go/src/github.com/qlcchain/go-qlc qlcchain/golang-cross goreleaser --snapshot --rm-dist
+
+lint: 
+	golangci-lint run --fix
