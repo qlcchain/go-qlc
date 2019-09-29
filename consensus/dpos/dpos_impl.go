@@ -75,11 +75,12 @@ type DPoS struct {
 	eb                  event.EventBus
 	lv                  *process.LedgerVerifier
 	cacheBlocks         chan *consensus.BlockSource
-	povReady            chan bool
+	recvBlocks          chan *consensus.BlockSource
+	povState            chan common.SyncState
 	processors          []*Processor
 	processorNum        int
 	localRepAccount     sync.Map
-	povSyncState        atomic.Value
+	povSyncState        common.SyncState
 	minVoteWeight       types.Balance
 	voteThreshold       types.Balance
 	subAck              gcache.Cache
@@ -119,7 +120,8 @@ func NewDPoS(cfgFile string) *DPoS {
 		eb:                  cc.EventBus(),
 		lv:                  process.NewLedgerVerifier(l),
 		cacheBlocks:         make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
-		povReady:            make(chan bool, 1),
+		recvBlocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+		povState:            make(chan common.SyncState, 1),
 		processorNum:        processorNum,
 		processors:          newProcessors(processorNum),
 		subMsg:              make(chan *subMsg, 10240),
@@ -156,14 +158,14 @@ func NewDPoS(cfgFile string) *DPoS {
 
 func (dps *DPoS) Init() {
 	if dps.cfg.PoV.PovEnabled {
-		dps.povSyncState.Store(common.SyncNotStart)
+		dps.povSyncState = common.SyncNotStart
 
 		err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState)
 		if err != nil {
 			dps.logger.Errorf("subscribe pov sync state event err")
 		}
 	} else {
-		dps.povSyncState.Store(common.SyncDone)
+		dps.povSyncState = common.SyncDone
 	}
 
 	supply := common.GenesisBlock().Balance
@@ -224,6 +226,17 @@ func (dps *DPoS) Start() {
 		case <-dps.ctx.Done():
 			dps.logger.Info("Stopped DPOS.")
 			return
+		case bs := <-dps.recvBlocks:
+			if dps.povSyncState == common.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
+				dps.dispatchMsg(bs)
+			} else {
+				if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
+					dps.logger.Debugf("pov sync state[%s] cache blocks", dps.povSyncState)
+					dps.cacheBlocks <- bs
+				} else {
+					dps.logger.Errorf("pov not ready! cache block too much, drop it!")
+				}
+			}
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
@@ -236,15 +249,20 @@ func (dps *DPoS) Start() {
 		//		}
 		//		dps.cleanOnlineReps()
 		//	}()
-		case <-dps.povReady:
-			err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.onPovSyncState)
-			if err != nil {
-				dps.logger.Errorf("unsubscribe pov sync state err %s", err)
-			}
+		case state := <-dps.povState:
+			dps.povSyncState = state
+			if state == common.SyncDone {
+				close(dps.cacheBlocks)
 
-			for bs := range dps.cacheBlocks {
-				dps.logger.Infof("process cache block[%s]", bs.Block.GetHash())
-				dps.dispatchMsg(bs)
+				err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.onPovSyncState)
+				if err != nil {
+					dps.logger.Errorf("unsubscribe pov sync state err %s", err)
+				}
+
+				for bs := range dps.cacheBlocks {
+					dps.logger.Infof("process cache block[%s]", bs.Block.GetHash())
+					dps.dispatchMsg(bs)
+				}
 			}
 		case <-timerDebug.C:
 			num := 0
@@ -322,19 +340,9 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 	}
 }
 
-func (dps *DPoS) getPovSyncState() common.SyncState {
-	state := dps.povSyncState.Load()
-	return state.(common.SyncState)
-}
-
 func (dps *DPoS) onPovSyncState(state common.SyncState) {
-	dps.povSyncState.Store(state)
+	dps.povState <- state
 	dps.logger.Infof("pov sync state to [%s]", state)
-
-	if dps.getPovSyncState() == common.SyncDone {
-		dps.povReady <- true
-		close(dps.cacheBlocks)
-	}
 }
 
 func (dps *DPoS) batchVoteStart() {
@@ -604,16 +612,7 @@ func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
 }
 
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
-	if dps.getPovSyncState() == common.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
-		dps.dispatchMsg(bs)
-	} else {
-		if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
-			dps.logger.Debugf("pov sync state[%s] cache blocks", dps.getPovSyncState())
-			dps.cacheBlocks <- bs
-		} else {
-			dps.logger.Errorf("pov not ready! cache block too much, drop it!")
-		}
-	}
+	dps.recvBlocks <- bs
 }
 
 func (dps *DPoS) localRepVote(block *types.StateBlock) {
@@ -1084,6 +1083,13 @@ func (dps *DPoS) checkSyncFinished() {
 		if err := dps.blockSyncDone(); err != nil {
 			dps.logger.Error("block sync down err", err)
 		}
+
+		//notify processors
+		dps.syncStateNotifyWait.Add(dps.processorNum)
+		for _, p := range dps.processors {
+			p.syncStateChange <- common.SyncFinish
+		}
+		dps.syncStateNotifyWait.Wait()
 
 		dps.frontiersStatus = new(sync.Map)
 		dps.CleanSyncCache()

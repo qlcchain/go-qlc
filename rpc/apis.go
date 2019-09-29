@@ -161,6 +161,6 @@ func (r *RPC) GetWSApis() []rpc.API {
 
 func (r *RPC) GetPublicApis() []rpc.API {
 	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge",
-		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics"}
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep"}
 	return r.GetApis(apiModules...)
 }

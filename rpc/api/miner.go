@@ -179,13 +179,10 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	}
 
 	vmContext := vmstore.NewVMContext(m.ledger)
-	err = m.reward.DoSend(vmContext, send)
-	if err != nil {
-		return nil, err
-	}
-
 	h := vmContext.Cache.Trie().Hash()
-	send.Extra = *h
+	if h != nil {
+		send.Extra = *h
+	}
 
 	return send, nil
 }
@@ -210,7 +207,6 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 		return nil, err
 	}
 	if len(blocks) > 0 {
-		reward.Timestamp = common.TimeNow().Unix()
 		return reward, nil
 	}
 

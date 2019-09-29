@@ -70,18 +70,6 @@ var contractCacheV1 = map[types.Address]*qlcchainContractV1{
 		},
 		cabi.RewardsABI,
 	},
-	types.MinerAddress: {
-		map[string]ChainContractV1{
-			cabi.MethodNameMinerReward: &MinerReward{},
-		},
-		cabi.MinerABI,
-	},
-	types.RepAddress: {
-		map[string]ChainContractV1{
-			cabi.MethodNameRepReward: &RepReward{},
-		},
-		cabi.RepABI,
-	},
 }
 
 type ChainContractV2 interface {
@@ -101,6 +89,18 @@ var contractCacheV2 = map[types.Address]*qlcchainContractV2{
 			cabi.MethodNameDestroy: &BlackHole{},
 		},
 		abi: cabi.BlackHoleABI,
+	},
+	types.MinerAddress: {
+		map[string]ChainContractV2{
+			cabi.MethodNameMinerReward: &MinerReward{},
+		},
+		cabi.MinerABI,
+	},
+	types.RepAddress: {
+		map[string]ChainContractV2{
+			cabi.MethodNameRepReward: &RepReward{},
+		},
+		cabi.RepABI,
 	},
 }
 

@@ -187,13 +187,10 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 	}
 
 	vmContext := vmstore.NewVMContext(r.ledger)
-	err = r.reward.DoSend(vmContext, send)
-	if err != nil {
-		return nil, err
-	}
-
 	h := vmContext.Cache.Trie().Hash()
-	send.Extra = *h
+	if h != nil {
+		send.Extra = *h
+	}
 
 	return send, nil
 }
@@ -218,7 +215,6 @@ func (r *RepApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock,
 		return nil, err
 	}
 	if len(blocks) > 0 {
-		reward.Timestamp = common.TimeNow().Unix()
 		return reward, nil
 	}
 

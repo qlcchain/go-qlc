@@ -112,7 +112,6 @@ func (ss *ServiceSync) Stop() {
 
 func (ss *ServiceSync) onConsensusSyncFinished() {
 	ss.syncState.Store(common.SyncFinish)
-	ss.syncTicker = time.NewTicker(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
 }
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
@@ -162,7 +161,6 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			var remoteFrontiers []*types.Frontier
 			var blks types.StateBlockList
 			ss.syncState.Store(common.Syncing)
-			ss.syncTicker.Stop()
 			ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncing)
 			ss.logger.Info("sync start")
 

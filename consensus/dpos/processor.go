@@ -120,6 +120,11 @@ func (p *Processor) processMsg() {
 			select {
 			case p.syncState = <-p.syncStateChange:
 				p.dps.syncStateNotifyWait.Done()
+
+				if p.syncState == common.SyncFinish {
+					p.orderedChain = make(map[chainOrderKey]types.Hash)
+					p.chainHeight = make(map[chainKey]uint64)
+				}
 			case hash := <-p.syncBlockAcked:
 				if p.dps.isConfirmedFrontier(hash) {
 					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
@@ -299,7 +304,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	case consensus.MsgSync:
 		//do nothing
 	case consensus.MsgGenerateBlock:
-		if dps.getPovSyncState() != common.SyncDone {
+		if dps.povSyncState != common.SyncDone {
 			dps.logger.Errorf("pov is syncing, can not send tx!")
 			return
 		}
