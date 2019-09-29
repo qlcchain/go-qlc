@@ -293,6 +293,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								ss.logger.Infof("resend pull request startHash is [%s],endHash is [%s]\n", ss.pullStartHash, ss.pullEndHash)
 								if resend == maxResendTime {
 									ss.logger.Infof("resend timeout......")
+									ss.onConsensusSyncFinished()
 									break
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
