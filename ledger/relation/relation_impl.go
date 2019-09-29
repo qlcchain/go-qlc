@@ -304,7 +304,7 @@ func (r *Relation) processBlocks() {
 	for {
 		select {
 		case <-r.ctx.Done():
-			break
+			return
 		case blk := <-r.addBlkChan:
 			if err := r.AddBlock(blk); err != nil {
 				r.logger.Error(err)

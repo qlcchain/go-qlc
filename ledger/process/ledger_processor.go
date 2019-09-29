@@ -467,7 +467,7 @@ func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
-	lv.logger.Debug("process block, ", block.GetHash())
+	lv.logger.Info("process block, ", block.GetHash())
 	if err := lv.l.AddStateBlock(block, txn); err != nil {
 		return err
 	}

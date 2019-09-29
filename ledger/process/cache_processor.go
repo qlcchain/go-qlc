@@ -430,7 +430,7 @@ func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processCacheBlock(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
-	lv.logger.Debug("process block cache, ", block.GetHash())
+	lv.logger.Info("process block cache, ", block.GetHash())
 	if err := lv.l.AddBlockCache(block, txn); err != nil {
 		return err
 	}

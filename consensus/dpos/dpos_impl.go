@@ -979,6 +979,7 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 }
 
 func (dps *DPoS) blockSyncDone() error {
+	dps.logger.Info("block sync done")
 	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
 
 	syncBlocks := make([]*types.StateBlock, 0)

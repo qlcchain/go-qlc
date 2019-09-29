@@ -158,7 +158,7 @@ func (lv *LedgerVerifier) BlockSyncProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.StoreTxn) error {
-	lv.logger.Debug("process sync block, ", block.GetHash())
+	lv.logger.Info("process sync block, ", block.GetHash())
 	if err := lv.l.AddSyncStateBlock(block, txn); err != nil {
 		return err
 	}
@@ -205,6 +205,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 	txn := lv.l.Store.NewTransaction(true)
 	if block.IsSendBlock() {
 		if _, err := lv.l.GetLinkBlock(block.GetHash()); err != nil {
+			lv.logger.Info("sync done process , ", block.GetHash())
 			hash := block.GetHash()
 			switch block.Type {
 			case types.Send:
