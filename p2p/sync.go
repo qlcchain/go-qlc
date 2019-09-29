@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"errors"
 	"math"
 	"sort"
 	"sync/atomic"
@@ -26,6 +27,10 @@ const (
 	maxResendTime  = 5
 	pullRspTimeOut = 60 * time.Second
 	pullReqTimeOut = 120 * time.Second
+)
+
+var (
+	ErrSyncTimeOut = errors.New("sync time out")
 )
 
 // Service manage sync tasks
@@ -178,13 +183,15 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 				zeroFrontier := new(types.Frontier)
 				remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-				if err != nil {
+				if err == ErrSyncTimeOut {
 					ss.logger.Errorf("process frontiers error:[%s]", err)
+					ss.syncState.Store(common.SyncFinish)
+					ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncFinish)
+				} else {
+					ss.syncState.Store(common.SyncDone)
+					ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncDone)
 				}
 			}
-
-			ss.syncState.Store(common.SyncDone)
-			ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncDone)
 			ss.logger.Infof("sync pull all blocks done")
 		}()
 	}
@@ -291,8 +298,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								ss.logger.Infof("resend pull request startHash is [%s],endHash is [%s]\n", ss.pullStartHash, ss.pullEndHash)
 								if resend == maxResendTime {
 									ss.logger.Infof("resend timeout......")
-									ss.onConsensusSyncFinished()
-									break
+									return ErrSyncTimeOut
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
 							case <-ss.pullRequestStartCh:
