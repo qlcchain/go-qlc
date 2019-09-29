@@ -238,7 +238,7 @@ func (lv *LedgerVerifier) rollbackCacheData(blocks []*types.StateBlock, txn db.S
 			if err := lv.l.DeleteAccountMetaCache(address, txn); err != nil {
 				return err
 			}
-			lv.logger.Errorf("rollback delete account %s", address.String())
+			lv.logger.Errorf("rollback delete account cache %s", address.String())
 		}
 	}
 

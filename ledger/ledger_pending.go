@@ -162,6 +162,38 @@ func (l *Ledger) SearchPending(address types.Address, fn func(key *types.Pending
 	})
 }
 
+func (l *Ledger) SearchAllKindPending(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo, kind types.PendingKind) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return txn.Stream([]byte{idPrefixPending}, func(item *badger.Item) bool {
+		key := &types.PendingKey{}
+		if err := key.Deserialize(item.Key()[1:]); err == nil {
+			return key.Address == address
+		} else {
+			l.logger.Error(util.ToString(key), err)
+		}
+		return false
+	}, func(list *pb.KVList) error {
+		for _, v := range list.Kv {
+			pk := &types.PendingKey{}
+			pi := &types.PendingInfo{}
+			used := types.PendingKind(v.UserMeta[0])
+			if err := pk.Deserialize(v.Key[1:]); err != nil {
+				continue
+			}
+			if err := pi.Deserialize(v.Value); err != nil {
+				continue
+			}
+			err := fn(pk, pi, used)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (l *Ledger) DeletePending(key *types.PendingKey, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)

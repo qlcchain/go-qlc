@@ -153,6 +153,19 @@ func TestLedger_SearchPending(t *testing.T) {
 	if count3 != 9 {
 		t.Fatal("invalid", count3)
 	}
+	count4 := 0
+	err = l.SearchAllKindPending(address, func(key *types.PendingKey, value *types.PendingInfo, kind types.PendingKind) error {
+		t.Log(count4, util.ToString(key), util.ToString(value), kind)
+		count4++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count4 != 10 {
+		t.Fatal("invalid", count4)
+	}
+
 }
 
 func TestLedger_Pending(t *testing.T) {

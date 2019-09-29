@@ -169,6 +169,48 @@ func (l *DebugApi) Representations(address *types.Address) (map[types.Address]ma
 	return r, nil
 }
 
+type APIPendingInfo struct {
+	*types.PendingKey
+	*types.PendingInfo
+	TokenName string `json:"tokenName"`
+	Timestamp int64  `json:"timestamp"`
+	Used      bool   `json:"used"`
+}
+
+func (l *DebugApi) AccountPending(address types.Address) (*APIPendingInfo, error) {
+	vmContext := vmstore.NewVMContext(l.ledger)
+	ap := new(APIPendingInfo)
+	err := l.ledger.SearchAllKindPending(address, func(key *types.PendingKey, info *types.PendingInfo, kind types.PendingKind) error {
+		token, err := abi.GetTokenById(vmContext, info.Type)
+		if err != nil {
+			return err
+		}
+		tokenName := token.TokenName
+		blk, err := l.ledger.GetStateBlockConfirmed(key.Hash)
+		if err != nil {
+			return err
+		}
+		var used bool
+		if kind == types.PendingUsed {
+			used = true
+		} else {
+			used = false
+		}
+		ap = &APIPendingInfo{
+			PendingKey:  key,
+			PendingInfo: info,
+			TokenName:   tokenName,
+			Timestamp:   blk.Timestamp,
+			Used:        used,
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ap, nil
+}
+
 func (l *DebugApi) PendingsAmount() (map[types.Address]map[string]types.Balance, error) {
 	abs := make(map[types.Address]map[string]types.Balance, 0)
 	vmContext := vmstore.NewVMContext(l.ledger)
