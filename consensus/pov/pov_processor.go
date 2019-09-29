@@ -134,6 +134,7 @@ func (bp *PovBlockProcessor) Start() error {
 	if bp.ledger != nil {
 		ebL := bp.ledger.EventBus()
 		ebL.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
+		ebL.Subscribe(common.EventAddSyncBlocks, bp.onAddSyncStateBlock)
 	}
 	if bp.eb != nil {
 		bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState)
@@ -152,6 +153,7 @@ func (bp *PovBlockProcessor) Stop() error {
 	if bp.ledger != nil {
 		ebL := bp.ledger.EventBus()
 		ebL.Unsubscribe(common.EventAddRelation, bp.onAddStateBlock)
+		ebL.Unsubscribe(common.EventAddSyncBlocks, bp.onAddSyncStateBlock)
 	}
 	if bp.eb != nil {
 		bp.eb.Unsubscribe(common.EventPovSyncState, bp.onPovSyncState)
@@ -186,6 +188,13 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 			bp.releaseTxPendingBlock(pendingBlock)
 		}
 	}
+}
+
+func (bp *PovBlockProcessor) onAddSyncStateBlock(tx *types.StateBlock, done bool) {
+	if done {
+		return
+	}
+	bp.onAddStateBlock(tx)
 }
 
 func (bp *PovBlockProcessor) onPovSyncState(state common.SyncState) {

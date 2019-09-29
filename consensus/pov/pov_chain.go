@@ -342,13 +342,24 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 		var dbErr error
 
 		td := bc.CalcTotalDifficulty(types.NewPovTD(), &genesis.Header)
-		dbErr = bc.getLedger().AddPovBlock(genesis, td)
+		dbErr = bc.getLedger().AddPovBlock(genesis, td, txn)
 		if dbErr != nil {
 			return dbErr
 		}
-		dbErr = bc.getLedger().AddPovBestHash(genesis.GetHeight(), genesis.GetHash())
+		dbErr = bc.getLedger().AddPovBestHash(genesis.GetHeight(), genesis.GetHash(), txn)
 		if dbErr != nil {
 			return dbErr
+		}
+
+		for txIdx, txPov := range genesis.GetAllTxs() {
+			txl := new(types.PovTxLookup)
+			txl.BlockHash = genesis.GetHash()
+			txl.BlockHeight = genesis.GetHeight()
+			txl.TxIndex = uint64(txIdx)
+			dbErr = bc.getLedger().AddPovTxLookup(txPov.GetHash(), txl, txn)
+			if dbErr != nil {
+				return dbErr
+			}
 		}
 
 		stateTrie := trie.NewTrie(bc.getLedger().DBStore(), nil, bc.trieNodePool)

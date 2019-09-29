@@ -68,6 +68,7 @@ func (tp *PovTxPool) Start() {
 	if tp.ledger != nil {
 		ebL := tp.ledger.EventBus()
 		ebL.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
+		ebL.SubscribeSync(common.EventAddSyncBlocks, tp.onAddSyncStateBlock)
 		ebL.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
 	}
 
@@ -82,6 +83,7 @@ func (tp *PovTxPool) Stop() {
 	if tp.ledger != nil {
 		ebL := tp.ledger.EventBus()
 		ebL.Unsubscribe(common.EventAddRelation, tp.onAddStateBlock)
+		ebL.Unsubscribe(common.EventAddSyncBlocks, tp.onAddSyncStateBlock)
 		ebL.Unsubscribe(common.EventDeleteRelation, tp.onDeleteStateBlock)
 	}
 
@@ -92,6 +94,16 @@ func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) error {
 	txHash := block.GetHash()
 	//tp.logger.Debugf("recv event, add state block hash %s", txHash)
 	tp.txEventCh <- &PovTxEvent{event: common.EventAddRelation, txHash: txHash, txBlock: block}
+	return nil
+}
+
+func (tp *PovTxPool) onAddSyncStateBlock(block *types.StateBlock, done bool) error {
+	if done {
+		return nil
+	}
+	txHash := block.GetHash()
+	//tp.logger.Debugf("recv event, add sync state block hash %s", txHash)
+	tp.txEventCh <- &PovTxEvent{event: common.EventAddSyncBlocks, txHash: txHash, txBlock: block}
 	return nil
 }
 
@@ -298,7 +310,7 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 }
 
 func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
-	if txEvent.event == common.EventAddRelation {
+	if txEvent.event == common.EventAddRelation || txEvent.event == common.EventAddSyncBlocks {
 		tp.addTx(txEvent.txHash, txEvent.txBlock)
 	} else if txEvent.event == common.EventDeleteRelation {
 		tp.delTx(txEvent.txHash)

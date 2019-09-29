@@ -77,10 +77,11 @@ type PovApiTxLookup struct {
 }
 
 type PovLedgerStats struct {
-	PovBlockCount   uint64 `json:"povBlockCount"`
-	PovTxCount      uint64 `json:"povTxCount"`
-	PovBestCount    uint64 `json:"povBestCount"`
-	StateBlockCount uint64 `json:"stateBlockCount"`
+	PovBlockCount    uint64 `json:"povBlockCount"`
+	PovBestCount     uint64 `json:"povBestCount"`
+	PovTxLookupCount uint64 `json:"povTxLookupCount"`
+	PovStateTxCount  uint64 `json:"povStateTxCount"`
+	StateBlockCount  uint64 `json:"stateBlockCount"`
 }
 
 type PovApiTD struct {
@@ -548,14 +549,18 @@ func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
 		return nil, err
 	}
 
-	stats.PovTxCount, err = api.ledger.CountPovTxs()
+	stats.PovBestCount, err = api.ledger.CountPovBestHashs()
 	if err != nil {
 		return nil, err
 	}
 
-	stats.PovBestCount, err = api.ledger.CountPovBestHashs()
+	stats.PovTxLookupCount, err = api.ledger.CountPovTxs()
 	if err != nil {
 		return nil, err
+	}
+
+	if stats.PovTxLookupCount > stats.PovBestCount {
+		stats.PovStateTxCount = stats.PovTxLookupCount - stats.PovBestCount
 	}
 
 	stats.StateBlockCount, err = api.ledger.CountStateBlocks()
@@ -920,6 +925,7 @@ type PovApiGetMiningInfo struct {
 	AlgoName         string          `json:"algoName"`
 	AlgoEfficiency   uint            `json:"algoEfficiency"`
 	CpuMining        bool            `json:"cpuMining"`
+	CurrentBlockHash types.Hash      `json:"currentBlockHash"`
 	CurrentBlockSize uint32          `json:"currentBlockSize"`
 	CurrentBlockTx   uint32          `json:"currentBlockTx"`
 	PooledTx         uint32          `json:"pooledTx"`
@@ -964,11 +970,13 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	apiRsp.AlgoEfficiency = latestBlock.GetAlgoEfficiency()
 	apiRsp.CpuMining = outArgs["cpuMining"].(bool)
 
+	apiRsp.BlockNum = latestBlock.GetHeight()
+	apiRsp.CurrentBlockHash = latestBlock.GetHash()
 	apiRsp.CurrentBlockSize = uint32(latestBlock.Msgsize())
 	apiRsp.CurrentBlockTx = latestBlock.GetTxNum()
+
 	apiRsp.PooledTx = outArgs["pooledTx"].(uint32)
 
-	apiRsp.BlockNum = latestBlock.GetHeight()
 	apiRsp.Difficulty = types.CalcDifficultyRatio(latestBlock.Header.GetNormBits(), common.PovPowLimitBits)
 	apiRsp.HashInfo = hashInfo
 

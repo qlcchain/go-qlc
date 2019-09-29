@@ -534,7 +534,7 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		return
 	}
 
-	if time.Now().Unix() < ss.lastReqTxTime.Add(15) {
+	if time.Now().Unix() < (ss.lastReqTxTime.Load()+15) {
 		return
 	}
 
