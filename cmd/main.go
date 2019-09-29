@@ -16,7 +16,7 @@ import (
 
 func main() {
 	args := os.Args
-	if len(args) > 2 && args[1] == "--endpoint" {
+	if len(args) > 1 && (args[1] == "-i" || args[1] == "--endpoint") {
 		client.Execute(os.Args)
 	} else {
 		server.Execute(os.Args)

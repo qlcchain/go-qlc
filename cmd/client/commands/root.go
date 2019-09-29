@@ -41,7 +41,7 @@ func init() {
 }
 
 func Execute(osArgs []string) {
-	interactive = IsInteractive(osArgs)
+	interactive = isInteractive(osArgs)
 	if interactive {
 		shell = ishell.NewWithConfig(&readline.Config{
 			Prompt:      fmt.Sprintf("%c[1;0;32m%s%c[0m", 0x1B, ">> ", 0x1B),
@@ -83,8 +83,14 @@ func Execute(osArgs []string) {
 	}
 }
 
-func IsInteractive(osArgs []string) bool {
-	if len(osArgs) == 3 && osArgs[1] == "--endpoint" {
+func isInteractive(osArgs []string) bool {
+	if len(osArgs) > 1 && osArgs[1] == "-i" {
+		if len(osArgs) > 3 && osArgs[2] == "--endpoint" {
+			endpointP = osArgs[3]
+		}
+		return true
+	}
+	if len(osArgs) > 2 && osArgs[1] == "--endpoint" {
 		endpointP = osArgs[2]
 		return true
 	}
