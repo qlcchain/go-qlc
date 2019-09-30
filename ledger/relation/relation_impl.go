@@ -92,6 +92,7 @@ func (r *Relation) Close() error {
 			return err
 		}
 		r.logger.Info("sqlite closed")
+		r.cancel()
 		delete(cache, r.dir)
 		return err
 	}
@@ -102,7 +103,10 @@ func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) (
 	condition := make(map[db.Column]interface{})
 	condition[db.ColumnAddress] = address.String()
 	var h []blocksHash
-	err := r.store.Read(db.TableBlockHash, condition, offset, limit, db.ColumnTimestamp, &h)
+	order := make(map[db.Column]bool)
+	order[db.ColumnTimestamp] = false
+	order[db.ColumnType] = false
+	err := r.store.Read(db.TableBlockHash, condition, offset, limit, order, &h)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +138,10 @@ func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
 
 func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 	var h []blocksHash
-	err := r.store.Read(db.TableBlockHash, nil, offset, limit, db.ColumnTimestamp, &h)
+	order := make(map[db.Column]bool)
+	order[db.ColumnTimestamp] = false
+	order[db.ColumnType] = false
+	err := r.store.Read(db.TableBlockHash, nil, offset, limit, order, &h)
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +155,11 @@ func (r *Relation) PhoneBlocks(phone []byte, sender bool, limit int, offset int)
 	} else {
 		condition[db.ColumnReceiver] = phoneToString(phone)
 	}
+	order := make(map[db.Column]bool)
+	order[db.ColumnTimestamp] = false
+	order[db.ColumnType] = false
 	var m []blocksMessage
-	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, db.ColumnTimestamp, &m)
+	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, order, &m)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +170,10 @@ func (r *Relation) MessageBlocks(hash types.Hash, limit int, offset int) ([]type
 	condition := make(map[db.Column]interface{})
 	condition[db.ColumnMessage] = hash.String()
 	var m []blocksMessage
-	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, db.ColumnTimestamp, &m)
+	order := make(map[db.Column]bool)
+	order[db.ColumnTimestamp] = false
+	order[db.ColumnType] = false
+	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, order, &m)
 	if err != nil {
 		return nil, err
 	}

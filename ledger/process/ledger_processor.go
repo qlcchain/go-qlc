@@ -454,6 +454,7 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
+			lv.logger.Info("process block, ", state.GetHash())
 			err := lv.processStateBlock(state, txn)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
@@ -468,7 +469,6 @@ func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
-	lv.logger.Info("process block, ", block.GetHash())
 	if err := lv.l.AddStateBlock(block, txn); err != nil {
 		return err
 	}

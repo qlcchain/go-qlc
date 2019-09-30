@@ -160,7 +160,6 @@ func (lv *LedgerVerifier) BlockSyncProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.StoreTxn) error {
-	lv.logger.Info("process sync block, ", block.GetHash())
 	if err := lv.l.AddSyncStateBlock(block, txn); err != nil {
 		return err
 	}
@@ -217,7 +216,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 					switch v := c.(type) {
 					case contract.ChainContractV1:
 						if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
-							lv.logger.Debug("sync done, contractSend add sync pending , ", pendingKey)
+							lv.logger.Info("sync done, add pending contract1, ", pendingKey)
 							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
 								return err
 							}
@@ -225,7 +224,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 					case contract.ChainContractV2:
 						vmCtx := vmstore.NewVMContext(lv.l)
 						if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
-							lv.logger.Debug("sync done, contractSend add sync pending , ", pendingKey)
+							lv.logger.Info("sync done, add pending contract2, ", pendingKey)
 							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
 								return err
 							}
