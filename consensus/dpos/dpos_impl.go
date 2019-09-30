@@ -59,7 +59,8 @@ type subMsg struct {
 type frontierStatus byte
 
 const (
-	frontierWaitingForVote frontierStatus = iota
+	frontierInvalid frontierStatus = iota
+	frontierWaitingForVote
 	frontierConfirmed
 	frontierChainConfirmed
 	frontierChainFinished
@@ -948,11 +949,11 @@ func (dps *DPoS) onRpcSyncCall(name string, in interface{}, out interface{}) {
 	}
 }
 
-func (dps *DPoS) isWaitingFrontier(hash types.Hash) bool {
-	if status, ok := dps.frontiersStatus.Load(hash); ok && status == frontierWaitingForVote {
-		return true
+func (dps *DPoS) isWaitingFrontier(hash types.Hash) (bool, frontierStatus) {
+	if status, ok := dps.frontiersStatus.Load(hash); ok {
+		return true, status.(frontierStatus)
 	}
-	return false
+	return false, frontierInvalid
 }
 
 func (dps *DPoS) isConfirmedFrontier(hash types.Hash) bool {

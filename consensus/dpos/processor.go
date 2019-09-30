@@ -247,14 +247,14 @@ func (p *Processor) processAck(vi *voteInfo) {
 	dps := p.dps
 	dps.logger.Infof("processor recv confirmAck block[%s]", vi.hash)
 
-	if !p.dps.isWaitingFrontier(vi.hash) {
+	if ok, status := p.dps.isWaitingFrontier(vi.hash); !ok {
 		if has, _ := dps.ledger.HasStateBlockConfirmed(vi.hash); !has {
 			dps.acTrx.vote(vi)
 		} else {
 			dps.heartAndVoteInc(vi.hash, vi.account, onlineKindVote)
 		}
 	} else {
-		if dps.acTrx.voteFrontier(vi) {
+		if status == frontierWaitingForVote && dps.acTrx.voteFrontier(vi) {
 			p.dps.frontiersStatus.Store(vi.hash, frontierConfirmed)
 			p.syncBlockAcked <- vi.hash
 			dps.logger.Infof("frontier %s confirmed", vi.hash)
