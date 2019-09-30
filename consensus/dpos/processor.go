@@ -162,8 +162,6 @@ func (p *Processor) processMsg() {
 }
 
 func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBlock) {
-	p.syncBlockAcked <- hash
-
 	ck := chainKey{
 		addr:  block.Address,
 		token: block.Token,
@@ -179,30 +177,26 @@ func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBloc
 		order:    p.chainHeight[ck],
 	}
 	p.orderedChain[cok] = hash
+	p.syncBlockAcked <- hash
 }
 
 func (p *Processor) processFrontier(block *types.StateBlock) {
 	hash := block.GetHash()
 	dps := p.dps
 
-	if has, _ := dps.ledger.HasStateBlockConfirmed(hash); has {
-		return
-	}
+	dps.subAckDo(p.index, hash)
+	dps.frontiersStatus.Store(hash, frontierWaitingForVote)
 
-	if !dps.isReceivedFrontier(hash) {
-		if !p.dps.acTrx.addToRoots(block) {
-			if el := dps.acTrx.getVoteInfo(block); el != nil {
-				el.blocks.LoadOrStore(hash, block)
-				dps.hash2el.LoadOrStore(hash, el)
-			} else {
-				dps.logger.Errorf("get election err[%s]", hash)
-			}
+	if !p.dps.acTrx.addToRoots(block) {
+		if el := dps.acTrx.getVoteInfo(block); el != nil {
+			el.blocks.LoadOrStore(hash, block)
+			dps.hash2el.LoadOrStore(hash, el)
+		} else {
+			dps.logger.Errorf("get election err[%s]", hash)
 		}
-
-		dps.subAckDo(p.index, hash)
-		dps.frontiersStatus.Store(hash, frontierWaitingForVote)
-		p.syncBlock <- block
 	}
+
+	p.syncBlock <- block
 }
 
 func (p *Processor) confirmChain(hash types.Hash) {
@@ -304,11 +298,6 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	case consensus.MsgSync:
 		//do nothing
 	case consensus.MsgGenerateBlock:
-		if dps.povSyncState != common.SyncDone {
-			dps.logger.Errorf("pov is syncing, can not send tx!")
-			return
-		}
-
 		//cache fork
 		if result == process.Progress {
 			el := dps.acTrx.getVoteInfo(bs.Block)
