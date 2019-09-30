@@ -173,9 +173,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 				remoteFrontiers = append(remoteFrontiers, f.Fr)
 				blks = append(blks, f.HeaderBlk)
 			}
-
 			remoteFrontiersLen := len(remoteFrontiers)
-			ss.logger.Infof("req %d frontiers", remoteFrontiersLen)
 
 			if remoteFrontiersLen > 0 {
 				ss.netService.msgEvent.Publish(common.EventFrontierConsensus, blks)

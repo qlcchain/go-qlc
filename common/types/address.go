@@ -48,7 +48,7 @@ var (
 	// Builtin contract addresses without private key hold by anyone
 	MinerAddress, _     = GenerateBuiltinContractAddress(21)
 	BlackHoleAddress, _ = GenerateBuiltinContractAddress(22)
-	RepAddress, _   = GenerateBuiltinContractAddress(23)
+	RepAddress, _       = GenerateBuiltinContractAddress(23)
 
 	ChainContractAddressList  = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress, BlackHoleAddress, RepAddress}
 	NoSignContractAddressList = []Address{RewardsAddress, BlackHoleAddress}

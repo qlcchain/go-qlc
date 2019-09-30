@@ -1155,6 +1155,6 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 		dps.frontiersStatus = new(sync.Map)
 		dps.totalVote = make(map[types.Address]types.Balance)
 	} else if state == common.SyncDone {
-		dps.checkSyncFinished()
+		//
 	}
 }
