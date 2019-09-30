@@ -22,9 +22,9 @@ type PovSyncBlock struct {
 
 func (ss *PovSyncer) syncLoop() {
 	forceTicker := time.NewTicker(forceSyncTimeInSec * time.Second)
-	checkSyncTicker := time.NewTicker(1 * time.Second)
+	checkSyncTicker := time.NewTicker(500 * time.Millisecond)
 	checkChainTicker := time.NewTicker(10 * time.Second)
-	requestSyncTicker := time.NewTicker(5 * time.Second)
+	requestSyncTicker := time.NewTicker(1 * time.Second)
 	checkSyncPeerTicker := time.NewTicker(10 * time.Second)
 
 	defer forceTicker.Stop()
@@ -213,14 +213,16 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 	}
 
 	if len(ss.syncBlocks) >= maxSyncBlockInQue {
-		ss.logger.Warnf("request syncing blocks but queue %d is full", len(ss.syncBlocks))
+		ss.logger.Infof("request syncing blocks but queue full (%d)", len(ss.syncBlocks))
 		return
 	}
 
 	if syncPeer.waitSyncRspMsg {
-		if syncPeer.lastSyncReqTime.Add(15 * time.Second).After(time.Now()) {
+		reqElapseSec := time.Since(syncPeer.lastSyncReqTime).Seconds()
+		if reqElapseSec > 15 {
 			return
 		}
+		ss.logger.Infof("wait syncing blocks rsp but timeout (%d)", reqElapseSec)
 	}
 
 	req := new(protos.PovBulkPullReq)
@@ -310,6 +312,9 @@ func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
 	txs := syncBlk.Block.GetAllTxs()
 	for txIdx, tx := range txs {
 		txHash := tx.GetHash()
+		if _, exist := syncBlk.TxExists[txHash]; exist {
+			continue
+		}
 		if txIdx == 0 {
 			syncBlk.TxExists[txHash] = struct{}{}
 		} else {

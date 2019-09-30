@@ -126,13 +126,13 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	}
 
 	return &types.PendingKey{
-		Address: param.Beneficial,
-		Hash:    block.GetHash(),
-	}, &types.PendingInfo{
-		Source: types.Address(block.Link),
-		Amount: param.RewardAmount,
-		Type:   common.GasToken(),
-	}, nil
+			Address: param.Beneficial,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: param.RewardAmount,
+			Type:   common.GasToken(),
+		}, nil
 }
 
 func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
