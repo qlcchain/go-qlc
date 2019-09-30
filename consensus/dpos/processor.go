@@ -201,9 +201,10 @@ func (p *Processor) processFrontier(block *types.StateBlock) {
 
 func (p *Processor) confirmChain(hash types.Hash) {
 	dps := p.dps
+	dps.logger.Debugf("confirm chain %s", hash)
 
 	if block, err := dps.ledger.GetUnconfirmedSyncBlock(hash); err != nil {
-		dps.logger.Debugf("get unconfirmed sync block err", err)
+		dps.logger.Errorf("get unconfirmed sync block err", err)
 		return
 	} else {
 		cok := chainOrderKey{
@@ -212,11 +213,11 @@ func (p *Processor) confirmChain(hash types.Hash) {
 		}
 
 		for {
-			h, ok := p.orderedChain[cok]
-			if ok {
+			if h, ok := p.orderedChain[cok]; ok {
 				if blk, err := dps.ledger.GetUnconfirmedSyncBlock(h); err != nil {
-					break
+					dps.logger.Errorf("get unconfirmed block err %s", h)
 				} else {
+					dps.logger.Debugf("confirm chain block %s", h)
 					bs := &consensus.BlockSource{
 						Block:     blk,
 						BlockFrom: types.Synchronized,
@@ -229,6 +230,7 @@ func (p *Processor) confirmChain(hash types.Hash) {
 					}
 				}
 			} else {
+				dps.logger.Debugf("confirm chain len:%d", cok.order)
 				break
 			}
 
