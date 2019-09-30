@@ -2,9 +2,6 @@ package api
 
 import (
 	"fmt"
-	"sync/atomic"
-	"time"
-
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -13,10 +10,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
-
-const syncTimeout = 10 * time.Second
-
-var lastSyncTime int64
 
 type NetApi struct {
 	ledger *ledger.Ledger
@@ -35,12 +28,7 @@ type OnlineRepInfo struct {
 	Vote    types.Balance
 }
 
-func syncingTime(t time.Time) {
-	atomic.StoreInt64(&lastSyncTime, t.Add(syncTimeout).Unix())
-}
-
 func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
-	_ = eb.Subscribe(common.EventSyncing, syncingTime)
 	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net")}
 }
 
@@ -97,15 +85,6 @@ func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 		Infos: p,
 	}
 	return i
-}
-
-func (q *NetApi) Syncing() bool {
-	now := time.Now().Unix()
-	v := atomic.LoadInt64(&lastSyncTime)
-	if v < now {
-		return false
-	}
-	return true
 }
 
 func (q *NetApi) GetBandwidthStats() *p2pmetrics.Stats {

@@ -1,8 +1,6 @@
 package consensus
 
 import (
-	"time"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -11,15 +9,13 @@ import (
 )
 
 type Receiver struct {
-	eb           event.EventBus
-	c            *Consensus
-	lastSyncTime time.Time
+	eb event.EventBus
+	c  *Consensus
 }
 
 func NewReceiver(eb event.EventBus) *Receiver {
 	r := &Receiver{
-		eb:           eb,
-		lastSyncTime: time.Now(),
+		eb: eb,
 	}
 	return r
 }
@@ -129,12 +125,6 @@ func (r *Receiver) ReceiveConfirmAck(ack *protos.ConfirmAckBlock, msgFrom string
 func (r *Receiver) ReceiveSyncBlock(blocks types.StateBlockList) {
 	for _, blk := range blocks {
 		r.c.logger.Debugf("Sync Event for block:[%s]", blk.GetHash())
-		now := time.Now()
-		if now.Sub(r.lastSyncTime) > time.Second {
-			r.eb.Publish(common.EventSyncing, now)
-			r.lastSyncTime = now
-		}
-
 		bs := &BlockSource{
 			Block:     blk,
 			BlockFrom: types.Synchronized,

@@ -23,7 +23,6 @@ var (
 )
 
 const (
-	syncTimeout    = 10 * time.Second
 	maxResendTime  = 5
 	pullRspTimeOut = 60 * time.Second
 	pullReqTimeOut = 120 * time.Second
@@ -40,7 +39,6 @@ type ServiceSync struct {
 	frontiers          []*types.Frontier
 	quitCh             chan bool
 	logger             *zap.SugaredLogger
-	lastSyncTime       int64
 	syncState          atomic.Value
 	syncTicker         *time.Ticker
 	pullTimer          *time.Timer
@@ -56,7 +54,6 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		qlcLedger:          ledger,
 		quitCh:             make(chan bool, 1),
 		logger:             log.NewLogger("sync"),
-		lastSyncTime:       0,
 		pullTimer:          time.NewTimer(pullReqTimeOut),
 		pullRequestStartCh: make(chan bool, 1),
 	}
@@ -104,10 +101,6 @@ func (ss *ServiceSync) Start() {
 	}
 }
 
-func (ss *ServiceSync) LastSyncTime(t time.Time) {
-	atomic.StoreInt64(&ss.lastSyncTime, t.Add(syncTimeout).Unix())
-}
-
 // Stop sync service
 func (ss *ServiceSync) Stop() {
 	//ss.logger.Info("Stop Qlc sync...")
@@ -121,34 +114,30 @@ func (ss *ServiceSync) onConsensusSyncFinished() {
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
 	ss.netService.node.logger.Debug("receive FrontierReq")
-	now := time.Now().Unix()
-	v := atomic.LoadInt64(&ss.lastSyncTime)
-	if v < now {
-		var fs []*types.Frontier
-		fs, err := ss.qlcLedger.GetFrontiers()
+	var fs []*types.Frontier
+	fs, err := ss.qlcLedger.GetFrontiers()
+	if err != nil {
+		return err
+	}
+	frs := make([]*types.FrontierBlock, 0)
+	for _, f := range fs {
+		b, err := ss.qlcLedger.GetStateBlockConfirmed(f.HeaderBlock)
 		if err != nil {
-			return err
+			ss.logger.Error(err)
+			continue
 		}
-		frs := make([]*types.FrontierBlock, 0)
-		for _, f := range fs {
-			b, err := ss.qlcLedger.GetStateBlockConfirmed(f.HeaderBlock)
-			if err != nil {
-				ss.logger.Error(err)
-				continue
-			}
-			fb := &types.FrontierBlock{
-				Fr:        f,
-				HeaderBlk: b,
-			}
-			frs = append(frs, fb)
+		fb := &types.FrontierBlock{
+			Fr:        f,
+			HeaderBlk: b,
 		}
-		rsp := &protos.FrontierResponse{
-			Fs: frs,
-		}
-		err = ss.netService.SendMessageToPeer(FrontierRsp, rsp, message.MessageFrom())
-		if err != nil {
-			ss.logger.Errorf("send FrontierRsp err [%s]", err)
-		}
+		frs = append(frs, fb)
+	}
+	rsp := &protos.FrontierResponse{
+		Fs: frs,
+	}
+	err = ss.netService.SendMessageToPeer(FrontierRsp, rsp, message.MessageFrom())
+	if err != nil {
+		ss.logger.Errorf("send FrontierRsp err [%s]", err)
 	}
 	return nil
 }
@@ -217,7 +206,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 						//ss.logger.Infof("this token %s have the same block", openBlockHash)
 					} else {
 						exit, _ := ss.qlcLedger.HasStateBlockConfirmed(fsRemotes[i].HeaderBlock)
-						if exit == true {
+						if exit {
 							push := &protos.Bulk{
 								StartHash: fsRemotes[i].HeaderBlock,
 								EndHash:   headerBlockHash,
@@ -374,7 +363,6 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 									break
 								}
 								bulkBlk = append(bulkBlk, blk)
-
 								endHash = blk.GetPrevious()
 								if endHash == startHash {
 									break

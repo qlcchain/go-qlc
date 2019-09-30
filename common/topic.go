@@ -13,7 +13,6 @@ const (
 	EventSendMsgToPeers    TopicType = "sendMsgToPeers"
 	EventPeersInfo         TopicType = "peersInfo"
 	EventGetBandwidthStats TopicType = "getBandwidthStats"
-	EventSyncing           TopicType = "syncing"
 	EventAddRelation       TopicType = "addRelation"
 	EventAddSyncBlocks     TopicType = "addSyncBlocks"
 	EventDeleteRelation    TopicType = "deleteRelation"

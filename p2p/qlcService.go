@@ -87,11 +87,6 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(common.EventSyncing, ns.msgService.syncService.LastSyncTime)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
 	err = ns.msgEvent.Subscribe(common.EventFrontiersReq, ns.msgService.syncService.requestFrontiersFromPov)
 	if err != nil {
 		ns.node.logger.Error(err)
@@ -117,11 +112,6 @@ func (ns *QlcService) unsubscribeEvent() error {
 		return err
 	}
 	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	err = ns.msgEvent.Unsubscribe(common.EventSyncing, ns.msgService.syncService.LastSyncTime)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
