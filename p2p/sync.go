@@ -24,8 +24,8 @@ var (
 
 const (
 	maxResendTime  = 5
-	pullRspTimeOut = 60 * time.Second
-	pullReqTimeOut = 120 * time.Second
+	pullRspTimeOut = 30 * time.Second
+	pullReqTimeOut = 60 * time.Second
 )
 
 var (
@@ -284,7 +284,6 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 								}
 								index++
-								ss.pullTimer.Reset(pullReqTimeOut)
 							}
 							if index == len(bulkPull) {
 								ss.pullStartHash = types.ZeroHash
@@ -353,18 +352,18 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				<-exitPullRsp.pullRspTimer.C
 			}
 			exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
+
 		} else {
 			exitPullRsp = &peerPullRsp{
 				pullRspStartCh: make(chan bool, 1),
 				pullRspTimer:   time.NewTimer(pullRspTimeOut),
 			}
-			select {
-			case exitPullRsp.pullRspStartCh <- true:
-			default:
-			}
+		}
+		select {
+		case exitPullRsp.pullRspStartCh <- true:
+		default:
 		}
 		exitPullRsp.pullRspHash = types.ZeroHash
-
 		ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
@@ -434,13 +433,12 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				pullRspStartCh: make(chan bool, 1),
 				pullRspTimer:   time.NewTimer(pullRspTimeOut),
 			}
-			select {
-			case exitPullRsp.pullRspStartCh <- true:
-			default:
-			}
+		}
+		select {
+		case exitPullRsp.pullRspStartCh <- true:
+		default:
 		}
 		exitPullRsp.pullRspHash = types.ZeroHash
-
 		ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
 		for len(reverseBlocks) > 0 {
 			sendBlockNum := 0
@@ -606,6 +604,7 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	}
 	ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
 	if blkPacket.PullType == protos.PullTypeSegment {
+		ss.pullTimer.Reset(pullReqTimeOut)
 		if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 			err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 			if err != nil {

@@ -150,23 +150,31 @@ func (ms *MessageService) startLoop() {
 		case message := <-ms.messageCh:
 			switch message.MessageType() {
 			case FrontierRequest:
-				if err := ms.syncService.onFrontierReq(message); err != nil {
-					ms.netService.node.logger.Error(err)
-				}
+				go func() {
+					if err := ms.syncService.onFrontierReq(message); err != nil {
+						ms.netService.node.logger.Error(err)
+					}
+				}()
 			case FrontierRsp:
-				ms.syncService.checkFrontier(message)
+				go ms.syncService.checkFrontier(message)
 			case BulkPullRequest:
-				if err := ms.syncService.onBulkPullRequest(message); err != nil {
-					ms.netService.node.logger.Error(err)
-				}
+				go func() {
+					if err := ms.syncService.onBulkPullRequest(message); err != nil {
+						ms.netService.node.logger.Error(err)
+					}
+				}()
 			case BulkPullRsp:
-				if err := ms.syncService.onBulkPullRsp(message); err != nil {
-					ms.netService.node.logger.Error(err)
-				}
+				go func() {
+					if err := ms.syncService.onBulkPullRsp(message); err != nil {
+						ms.netService.node.logger.Error(err)
+					}
+				}()
 			case BulkPushBlock:
-				if err := ms.syncService.onBulkPushBlock(message); err != nil {
-					ms.netService.node.logger.Error(err)
-				}
+				go func() {
+					if err := ms.syncService.onBulkPushBlock(message); err != nil {
+						ms.netService.node.logger.Error(err)
+					}
+				}()
 			default:
 				ms.netService.node.logger.Error("Received unknown message.")
 			}
