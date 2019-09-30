@@ -9,10 +9,6 @@ import (
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
-const (
-	maxSyncBlockInQue = 500
-)
-
 type PovSyncBlock struct {
 	PeerID   string
 	Height   uint64
@@ -22,9 +18,9 @@ type PovSyncBlock struct {
 
 func (ss *PovSyncer) syncLoop() {
 	forceTicker := time.NewTicker(forceSyncTimeInSec * time.Second)
-	checkSyncTicker := time.NewTicker(500 * time.Millisecond)
+	checkSyncTicker := time.NewTicker(1 * time.Second)
 	checkChainTicker := time.NewTicker(10 * time.Second)
-	requestSyncTicker := time.NewTicker(1 * time.Second)
+	requestSyncTicker := time.NewTicker(2 * time.Second)
 	checkSyncPeerTicker := time.NewTicker(10 * time.Second)
 
 	defer forceTicker.Stop()
@@ -212,7 +208,7 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 		return
 	}
 
-	if len(ss.syncBlocks) >= maxSyncBlockInQue {
+	if len(ss.syncBlocks) >= maxSyncBlockInQue*80/100 {
 		ss.logger.Infof("request syncing blocks but queue full (%d)", len(ss.syncBlocks))
 		return
 	}

@@ -21,9 +21,10 @@ const (
 	checkPeerStatusTime       = 30
 	forceSyncTimeInSec        = 60
 
-	maxSyncBlockPerReq = 100
-	maxPullBlockPerReq = 100
-	maxPullTxPerReq    = 100
+	maxSyncBlockPerReq = 1000
+	maxPullBlockPerReq = 1000
+	maxPullTxPerReq    = 1000
+	maxSyncBlockInQue  = 3000
 )
 
 type PovSyncerChainReader interface {
