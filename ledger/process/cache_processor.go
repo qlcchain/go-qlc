@@ -16,6 +16,7 @@ import (
 
 func (lv *LedgerVerifier) BlockCacheCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
+		lv.logger.Info("check cache block, ", b.GetHash())
 		if fn, ok := lv.checkCacheBlockFns[b.Type]; ok {
 			r, err := fn(lv, b)
 			if err != nil {
@@ -416,6 +417,7 @@ func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
 	}
 	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
+			lv.logger.Info("process cache block, ", state.GetHash())
 			err := lv.processCacheBlock(state, am, txn)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("%s, cache block:%s", err.Error(), state.GetHash().String()))
@@ -430,7 +432,6 @@ func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processCacheBlock(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
-	lv.logger.Info("process block cache, ", block.GetHash())
 	if err := lv.l.AddBlockCache(block, txn); err != nil {
 		return err
 	}

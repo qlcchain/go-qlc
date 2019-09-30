@@ -15,6 +15,7 @@ import (
 
 func (lv *LedgerVerifier) BlockSyncCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
+		lv.logger.Info("check sync block, ", b.GetHash())
 		if fn, ok := lv.checkSyncBlockFns[b.Type]; ok {
 			r, err := fn(lv, b)
 			if err != nil {
@@ -144,7 +145,7 @@ func checkSyncContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) 
 func (lv *LedgerVerifier) BlockSyncProcess(block types.Block) error {
 	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
-			lv.logger.Info("check sync block, ", state.GetHash())
+			lv.logger.Info("process sync block, ", state.GetHash())
 			err := lv.processSyncBlock(state, txn)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("%s, sync block:%s", err.Error(), state.GetHash().String()))
