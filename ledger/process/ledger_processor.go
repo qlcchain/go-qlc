@@ -82,6 +82,7 @@ func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
 
 func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
+		lv.logger.Info("check block, ", b.GetHash())
 		if fn, ok := lv.checkBlockFns[b.Type]; ok {
 			r, err := fn(lv, b)
 			if err != nil {

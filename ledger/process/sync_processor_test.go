@@ -25,7 +25,7 @@ func TestProcess_SyncBlockProcess(t *testing.T) {
 		if err := lv.BlockSyncProcess(b); err != nil {
 			t.Fatal(Other, err)
 		}
-		if err := lv.BlockSyncDone(); err != nil {
+		if err := lv.BlockSyncDoneProcess(b); err != nil {
 			t.Fatal(err)
 		}
 	}

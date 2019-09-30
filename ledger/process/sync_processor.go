@@ -144,6 +144,7 @@ func checkSyncContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) 
 func (lv *LedgerVerifier) BlockSyncProcess(block types.Block) error {
 	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
+			lv.logger.Info("check sync block, ", state.GetHash())
 			err := lv.processSyncBlock(state, txn)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("%s, sync block:%s", err.Error(), state.GetHash().String()))
@@ -176,9 +177,6 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 	if err := lv.updateRepresentative(block, am, tm, txn); err != nil {
 		return fmt.Errorf("update representative error: %s", err)
 	}
-	if err := lv.updateSyncPending(block, txn); err != nil {
-		return fmt.Errorf("update sync pending error: %s", err)
-	}
 	if err := lv.updateFrontier(block, tm, txn); err != nil {
 		return fmt.Errorf("update frontier error: %s", err)
 	}
@@ -188,24 +186,11 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 	return nil
 }
 
-func (lv *LedgerVerifier) updateSyncPending(block *types.StateBlock, txn db.StoreTxn) error {
-	if block.IsReceiveBlock() {
-		pendingKey := types.PendingKey{
-			Address: block.GetAddress(),
-			Hash:    block.GetLink(),
-		}
-		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 	txn := lv.l.Store.NewTransaction(true)
 	if block.IsSendBlock() {
-		if _, err := lv.l.GetLinkBlock(block.GetHash()); err != nil {
-			lv.logger.Info("sync done process , ", block.GetHash())
+		if _, err := lv.l.GetLinkBlock(block.GetHash()); err == ledger.ErrLinkNotFound {
+			lv.logger.Info("sync done, process send block, ", block.GetHash())
 			hash := block.GetHash()
 			switch block.Type {
 			case types.Send:
@@ -222,7 +207,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 					Address: types.Address(block.GetLink()),
 					Hash:    hash,
 				}
-				lv.logger.Debug("add pending, ", pendingKey)
+				lv.logger.Info("sync done, add pending, ", pendingKey)
 				if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
 					return err
 				}
@@ -231,7 +216,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 					switch v := c.(type) {
 					case contract.ChainContractV1:
 						if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
-							lv.logger.Debug("contractSend add sync pending , ", pendingKey)
+							lv.logger.Debug("sync done, contractSend add sync pending , ", pendingKey)
 							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
 								return err
 							}
@@ -239,7 +224,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 					case contract.ChainContractV2:
 						vmCtx := vmstore.NewVMContext(lv.l)
 						if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
-							lv.logger.Debug("contractSend add sync pending , ", pendingKey)
+							lv.logger.Debug("sync done, contractSend add sync pending , ", pendingKey)
 							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
 								return err
 							}
@@ -249,10 +234,30 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 					}
 				}
 			}
+		} else {
+			if err != nil {
+				lv.logger.Info("sync done, process send block error, ", block.GetHash())
+			}
 		}
 	}
 
+	if block.IsReceiveBlock() {
+		// if send block sync done in last time, it will create pending
+		pendingKey := types.PendingKey{
+			Address: block.GetAddress(),
+			Hash:    block.GetLink(),
+		}
+		if pi, err := lv.l.GetPending(&pendingKey); pi != nil && err == nil {
+			lv.logger.Info("sync done, delete pending, ", pendingKey)
+			if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	if block.IsContractBlock() {
+		lv.logger.Info("sync done, process contract block, ", block.GetHash())
 		if err := lv.updateContractData(block, txn); err != nil {
 			return fmt.Errorf(" update contract data error(%s): %s", block.GetHash().String(), err)
 		}

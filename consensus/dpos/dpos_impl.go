@@ -979,7 +979,7 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 }
 
 func (dps *DPoS) blockSyncDone() error {
-	dps.logger.Info("block sync done")
+	dps.logger.Info("sync done, start process")
 	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
 
 	syncBlocks := make([]*types.StateBlock, 0)
@@ -1008,6 +1008,7 @@ func (dps *DPoS) blockSyncDone() error {
 			}
 		}
 
+		dps.logger.Info("sync done, common block process finished ")
 		if len(contractBlocks) > 0 {
 			sort.Slice(contractBlocks, func(i, j int) bool {
 				return contractBlocks[i].Timestamp < contractBlocks[j].Timestamp
@@ -1019,6 +1020,7 @@ func (dps *DPoS) blockSyncDone() error {
 			}
 		}
 	}
+	dps.logger.Info("sync done, end process")
 	return nil
 }
 
