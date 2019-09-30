@@ -28,7 +28,7 @@ func main() {
 	flag.StringVar(&flagMiner, "miner", "", "address of miner account")
 	flag.StringVar(&flagAlgo, "algo", "SHA256D", "algo name, such as SHA256D/X11/SCRYPT")
 
-	flag.UintVar(&flagServerID, "serverid", 0, "id of server(1~254)")
+	flag.UintVar(&flagServerID, "serverid", 0, "id of server(1~65534)")
 	flag.StringVar(&flagHost, "host", "0.0.0.0", "host of server listen")
 	flag.UintVar(&flagPort, "port", 3333, "port of server listen(1024~65534)")
 
@@ -36,7 +36,7 @@ func main() {
 
 	flag.Parse()
 
-	if flagServerID > 254 {
+	if flagServerID > 65534 {
 		log.Errorf("invalid serverid")
 		return
 	}
@@ -62,7 +62,7 @@ func main() {
 	if err != nil {
 	}
 
-	strCfg := &StratumConfig{ServerID: uint8(flagServerID), Host: flagHost, Port: uint32(flagPort), MaxConn: 10}
+	strCfg := &StratumConfig{ServerID: uint16(flagServerID), Host: flagHost, Port: uint32(flagPort), MaxConn: 10}
 	ss := NewStratumServer(strCfg)
 	err = ss.Start()
 	if err != nil {

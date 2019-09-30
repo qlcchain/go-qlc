@@ -14,6 +14,11 @@ type NodeClient struct {
 	algoName  string
 	lastWork  *api.PovApiGetWork
 
+	getWorkOk     int
+	getWorkErr    int
+	submitWorkOk  int
+	submitWorkErr int
+
 	eventChan chan Event
 	quitCh    chan struct{}
 }
@@ -39,6 +44,7 @@ func NewNodeClient(url string, minerAddr string, algoName string) *NodeClient {
 
 func (nc *NodeClient) Start() error {
 	GetDefaultEventBus().Subscribe(EventJobSubmit, nc.eventChan)
+	GetDefaultEventBus().Subscribe(EventStatisticsTicker, nc.eventChan)
 
 	go nc.loop()
 
@@ -52,7 +58,7 @@ func (nc *NodeClient) Stop() {
 func (nc *NodeClient) loop() {
 	log.Infof("node running loop, miner:%s, algo:%s", nc.minerAddr, nc.algoName)
 
-	workTicker := time.NewTicker(5 * time.Second)
+	workTicker := time.NewTicker(15 * time.Second)
 	defer workTicker.Stop()
 
 	for {
@@ -71,6 +77,8 @@ func (nc *NodeClient) consumeEvent(event Event) {
 	switch event.Topic {
 	case EventJobSubmit:
 		nc.consumeJobSubmit(event)
+	case EventStatisticsTicker:
+		nc.consumeStatisticsTicker(event)
 	}
 }
 
@@ -95,13 +103,20 @@ func (nc *NodeClient) consumeJobSubmit(event Event) {
 	nc.submitWork(apiSubmit)
 }
 
+func (nc *NodeClient) consumeStatisticsTicker(event Event) {
+	log.Infof("node rpcs: getWorkOk:%d, getWorkErr:%d, submitWorkOk:%d, submitWorkErr:%d",
+		nc.getWorkOk, nc.getWorkErr, nc.submitWorkOk, nc.submitWorkErr)
+}
+
 func (nc *NodeClient) getWork() {
 	getWorkRsp := new(api.PovApiGetWork)
 	err := nc.client.Call(&getWorkRsp, "pov_getWork", nc.minerAddr, nc.algoName)
 	if err != nil {
 		log.Errorln(err)
+		nc.getWorkErr++
 		return
 	}
+	nc.getWorkOk++
 
 	if nc.lastWork != nil && nc.lastWork.WorkHash == getWorkRsp.WorkHash {
 		return
@@ -119,8 +134,10 @@ func (nc *NodeClient) submitWork(submitWorkReq *api.PovApiSubmitWork) {
 	err := nc.client.Call(nil, "pov_submitWork", &submitWorkReq)
 	if err != nil {
 		log.Errorln(err)
+		nc.submitWorkErr++
 		return
 	}
+	nc.submitWorkOk++
 }
 
 func (nc *NodeClient) getLatestHeader() *api.PovApiHeader {

@@ -27,7 +27,7 @@ const (
 )
 
 type StratumConfig struct {
-	ServerID uint8
+	ServerID uint16
 	Host     string
 	Port     uint32
 	MaxConn  uint32
@@ -65,12 +65,12 @@ type StratumSession struct {
 
 func NewStratumServer(config *StratumConfig) *StratumServer {
 	for config.ServerID <= 0 {
-		config.ServerID = uint8(rand.Intn(255))
+		config.ServerID = uint16(rand.Intn(0xFFFF))
 	}
 
 	s := &StratumServer{config: config}
 
-	s.sessionIDMng = bitset.New(0x00FFFFFF)
+	s.sessionIDMng = bitset.New(0x0000FFFF)
 	s.sessionIDMng.Set(0)
 
 	for s.sessAllocIdx <= 0 {
@@ -89,6 +89,7 @@ func (s *StratumServer) Start() error {
 
 	GetDefaultEventBus().Subscribe(EventBCastJobWork, s.eventChan)
 	GetDefaultEventBus().Subscribe(EventMinerSendRsp, s.eventChan)
+	GetDefaultEventBus().Subscribe(EventStatisticsTicker, s.eventChan)
 
 	go s.consumeLoop()
 
@@ -104,12 +105,17 @@ func (s *StratumServer) Stop() {
 func (s *StratumServer) consumeLoop() {
 	log.Infoln("stratum running consume loop")
 
+	statsTicker := time.NewTicker(5 * time.Minute)
+	defer statsTicker.Stop()
+
 	for {
 		select {
 		case <-s.quitCh:
 			return
 		case event := <-s.eventChan:
 			s.consumeEvent(event)
+		case <-statsTicker.C:
+			s.onStatisticsTicker()
 		}
 	}
 }
@@ -120,6 +126,8 @@ func (s *StratumServer) consumeEvent(event Event) {
 		s.consumeJobWork(event)
 	case EventMinerSendRsp:
 		s.consumeMinerSendRsp(event)
+	case EventStatisticsTicker:
+		s.consumeStatisticsTicker(event)
 	}
 }
 
@@ -151,6 +159,14 @@ func (s *StratumServer) consumeMinerSendRsp(event Event) {
 	if err != nil {
 		log.Errorf("send miner rsp message err %s", err)
 	}
+}
+
+func (s *StratumServer) consumeStatisticsTicker(event Event) {
+	log.Infof("stratum clients: session:%d", len(s.sessions))
+}
+
+func (s *StratumServer) onStatisticsTicker() {
+	GetDefaultEventBus().Publish(EventStatisticsTicker, time.Now())
 }
 
 func (s *StratumServer) listenLoop() {
@@ -218,7 +234,7 @@ func (s *StratumServer) allocSessionID() uint {
 	}
 	s.sessionIDMng.Set(s.sessAllocIdx)
 
-	id := (uint(s.config.ServerID) << 24) | s.sessAllocIdx
+	id := (uint(s.config.ServerID) << 16) | s.sessAllocIdx
 	return id
 }
 

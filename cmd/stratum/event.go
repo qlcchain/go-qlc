@@ -10,6 +10,7 @@ const (
 	EventMinerSubmit
 	EventJobSubmit
 	EventMinerSendRsp
+	EventStatisticsTicker
 )
 
 const (

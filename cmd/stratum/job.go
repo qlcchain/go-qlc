@@ -12,10 +12,16 @@ import (
 	"time"
 )
 
+const (
+	MaxWorkExpireSec = 10 * 60
+)
+
 type JobRepository struct {
-	prevWorks   map[types.Hash][]*JobWork
-	allWorks    map[types.Hash]*JobWork
-	lastJobWork *JobWork
+	prevWorks      map[types.Hash][]*JobWork
+	allWorks       map[types.Hash]*JobWork
+	lastJobWork    *JobWork
+	acceptedSubmit int
+	rejectedSubmit int
 
 	eventChan chan Event
 	quitCh    chan struct{}
@@ -33,6 +39,7 @@ func NewJobRepository() *JobRepository {
 func (r *JobRepository) Start() error {
 	GetDefaultEventBus().Subscribe(EventUpdateApiWork, r.eventChan)
 	GetDefaultEventBus().Subscribe(EventMinerSubmit, r.eventChan)
+	GetDefaultEventBus().Subscribe(EventStatisticsTicker, r.eventChan)
 
 	go r.consumeLoop()
 
@@ -47,6 +54,8 @@ func (r *JobRepository) consumeLoop() {
 	log.Infof("job running consume loop")
 
 	checkJobTicker := time.NewTicker(10 * time.Second)
+
+	defer checkJobTicker.Stop()
 
 	for {
 		select {
@@ -66,6 +75,8 @@ func (r *JobRepository) consumeEvent(event Event) {
 		r.consumeApiWork(event)
 	case EventMinerSubmit:
 		r.consumeMinerSubmit(event)
+	case EventStatisticsTicker:
+		r.consumeStatisticsTicker(event)
 	}
 }
 
@@ -140,19 +151,13 @@ func (r *JobRepository) consumeMinerSubmit(event Event) {
 	work := r.allWorks[workHash]
 	if work == nil {
 		log.Errorf("work not exist for job %s", submitMsg.JobID)
-
-		minerRsp := new(StratumRsp)
-		minerRsp.SessionID = submitMsg.SessionID
-		minerRsp.MsgID = submitMsg.MsgID
-		minerRsp.ErrCode = 21
-		minerRsp.ErrMsg = "Job not found"
-		GetDefaultEventBus().Publish(EventMinerSendRsp, minerRsp)
-
+		r.rejectMinerSubmit(submitMsg, 21, "Job not found")
 		return
 	}
 
 	if submitMsg.NTime < work.MinTime {
 		log.Errorf("NTime %d less than MinTime %d", submitMsg.NTime, work.MinTime)
+		r.rejectMinerSubmit(submitMsg, 20, "Invalid time")
 		return
 	}
 
@@ -175,12 +180,7 @@ func (r *JobRepository) consumeMinerSubmit(event Event) {
 	}
 	if checkDup {
 		log.Errorf("duplicate submit for work %s", work.WorkHash)
-		minerRsp := new(StratumRsp)
-		minerRsp.SessionID = submitMsg.SessionID
-		minerRsp.MsgID = submitMsg.MsgID
-		minerRsp.ErrCode = 22
-		minerRsp.ErrMsg = "Duplicate share"
-		GetDefaultEventBus().Publish(EventMinerSendRsp, minerRsp)
+		r.rejectMinerSubmit(submitMsg, 22, "Duplicate share")
 		return
 	}
 	work.submits = append(work.submits, js)
@@ -221,14 +221,7 @@ func (r *JobRepository) consumeMinerSubmit(event Event) {
 	targetInt := hdr.GetAlgoTargetInt()
 	if powInt.Cmp(targetInt) > 0 {
 		log.Warnf("PowHash(%064x) greater than Bits(%064x)", powInt, targetInt)
-
-		minerRsp := new(StratumRsp)
-		minerRsp.SessionID = submitMsg.SessionID
-		minerRsp.MsgID = submitMsg.MsgID
-		minerRsp.ErrCode = 23
-		minerRsp.ErrMsg = "Low difficulty share"
-		GetDefaultEventBus().Publish(EventMinerSendRsp, minerRsp)
-
+		r.rejectMinerSubmit(submitMsg, 23, "Low difficulty share")
 		return
 	}
 
@@ -238,18 +231,57 @@ func (r *JobRepository) consumeMinerSubmit(event Event) {
 	minerRsp.Result = true
 	GetDefaultEventBus().Publish(EventMinerSendRsp, minerRsp)
 
+	r.acceptedSubmit++
+
 	GetDefaultEventBus().Publish(EventJobSubmit, work)
 }
 
-func (r *JobRepository) OnCheckJobTicker() {
-	r.checkAndSendMiningNotify()
+func (r *JobRepository) rejectMinerSubmit(submitMsg *StratumSubmit, errCode int, errMsg string) {
+	r.rejectedSubmit++
 
+	minerRsp := new(StratumRsp)
+	minerRsp.SessionID = submitMsg.SessionID
+	minerRsp.MsgID = submitMsg.MsgID
+	minerRsp.ErrCode = errCode
+	minerRsp.ErrMsg = errMsg
+	GetDefaultEventBus().Publish(EventMinerSendRsp, minerRsp)
+}
+
+func (r *JobRepository) consumeStatisticsTicker(event Event) {
+	log.Infof("job submits: accepted:%d, rejected:%d", r.acceptedSubmit, r.rejectedSubmit)
+}
+
+func (r *JobRepository) OnCheckJobTicker() {
 	r.tryCleanExpiredJobs()
+
+	r.checkAndSendMiningNotify()
 }
 
 func (r *JobRepository) checkAndSendMiningNotify() {}
 
-func (r *JobRepository) tryCleanExpiredJobs() {}
+func (r *JobRepository) tryCleanExpiredJobs() {
+	nowSec := uint32(time.Now().Unix())
+
+	for ph, pws := range r.prevWorks {
+		if len(pws) <= 0 {
+			delete(r.prevWorks, ph)
+			continue
+		}
+
+		// check latest pending work is expired or not
+		lw := pws[len(pws)-1]
+		if nowSec < (lw.PoolTime + MaxWorkExpireSec) {
+			continue
+		}
+
+		// clean all expired work for the same previous
+		log.Warnf("clean expired works %d for PrevHash %S", len(pws), ph)
+		for _, w := range pws {
+			delete(r.allWorks, w.JobHash)
+		}
+		delete(r.prevWorks, ph)
+	}
+}
 
 type JobSubmit struct {
 	WorkerName  string
