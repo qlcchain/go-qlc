@@ -230,7 +230,7 @@ func (p *Processor) confirmChain(hash types.Hash) {
 					}
 				}
 			} else {
-				dps.logger.Debugf("confirm chain len:%d", cok.order)
+				dps.logger.Debugf("confirm chain len:%d", cok.order-1)
 				break
 			}
 
