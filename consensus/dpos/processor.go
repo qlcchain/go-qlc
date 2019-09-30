@@ -196,7 +196,7 @@ func (p *Processor) processFrontier(block *types.StateBlock) {
 		}
 	}
 
-	p.syncBlock <- block
+	//p.syncBlock <- block
 }
 
 func (p *Processor) confirmChain(hash types.Hash) {

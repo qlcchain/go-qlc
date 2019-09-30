@@ -100,6 +100,7 @@ type DPoS struct {
 	lastSendHeight      uint64
 	curPovHeight        uint64
 	checkFinish         chan struct{}
+	syncFinish          chan struct{}
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -138,6 +139,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		lastSendHeight:      1,
 		curPovHeight:        1,
 		checkFinish:         make(chan struct{}, 10240),
+		syncFinish:          make(chan struct{}, 1),
 	}
 
 	if common.DPoSVoteCacheEn {
@@ -274,6 +276,14 @@ func (dps *DPoS) Start() {
 			dps.logger.Debugf("hash2el len:%d", num)
 		case <-dps.checkFinish:
 			dps.checkSyncFinished()
+		case <-dps.syncFinish:
+			if err := dps.blockSyncDone(); err != nil {
+				dps.logger.Error("block sync down err", err)
+			}
+
+			dps.frontiersStatus = new(sync.Map)
+			dps.CleanSyncCache()
+			dps.logger.Infof("sync finished because of timeout")
 		}
 	}
 }
@@ -1151,11 +1161,12 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 	}
 	dps.syncStateNotifyWait.Wait()
 
-	//clean last state
-	if state == common.Syncing {
+	switch state {
+	case common.Syncing:
 		dps.frontiersStatus = new(sync.Map)
 		dps.totalVote = make(map[types.Address]types.Balance)
-	} else if state == common.SyncDone {
-		//
+	case common.SyncDone:
+	case common.SyncFinish:
+		dps.syncFinish <- struct{}{}
 	}
 }
