@@ -94,8 +94,20 @@ func (ss *PovSyncer) processStreamEvent(event *PovSyncEvent) {
 	peerID := event.eventData.(string)
 
 	genesisBlock := ss.chain.GenesisBlock()
+	if genesisBlock == nil {
+		ss.logger.Error("failed to get genesis block")
+		return
+	}
 	latestBlock := ss.chain.LatestBlock()
+	if latestBlock == nil {
+		ss.logger.Error("failed to get latest block")
+		return
+	}
 	latestTD := ss.chain.GetBlockTDByHash(latestBlock.GetHash())
+	if latestTD == nil {
+		ss.logger.Error("failed to get latest td")
+		return
+	}
 
 	status := &protos.PovStatus{
 		CurrentHeight: latestBlock.GetHeight(),
@@ -115,8 +127,20 @@ func (ss *PovSyncer) checkAllPeers() {
 	}
 
 	genesisBlock := ss.chain.GenesisBlock()
+	if genesisBlock == nil {
+		ss.logger.Error("failed to get genesis block")
+		return
+	}
 	latestBlock := ss.chain.LatestBlock()
+	if latestBlock == nil {
+		ss.logger.Error("failed to get latest block")
+		return
+	}
 	latestTD := ss.chain.GetBlockTDByHash(latestBlock.GetHash())
+	if latestTD == nil {
+		ss.logger.Error("failed to get latest td")
+		return
+	}
 
 	status := &protos.PovStatus{
 		CurrentHeight: latestBlock.GetHeight(),
