@@ -214,11 +214,11 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 	}
 
 	if syncPeer.waitSyncRspMsg {
-		reqElapseSec := time.Since(syncPeer.lastSyncReqTime).Seconds()
-		if reqElapseSec > 15 {
+		reqElapse := time.Since(syncPeer.lastSyncReqTime)
+		if reqElapse < 15*time.Second {
 			return
 		}
-		ss.logger.Infof("wait syncing blocks rsp but timeout (%d)", reqElapseSec)
+		ss.logger.Infof("wait syncing blocks rsp but timeout (%s)", reqElapse)
 	}
 
 	req := new(protos.PovBulkPullReq)
