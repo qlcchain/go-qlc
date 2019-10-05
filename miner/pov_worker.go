@@ -270,8 +270,17 @@ func (w *PovWorker) GetMiningInfo(in interface{}, out interface{}) {
 
 func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.PovAlgoType) (*types.PovMineBlock, error) {
 	latestHeader := w.GetChain().LatestHeader()
+	if latestHeader == nil {
+		return nil, fmt.Errorf("failed to get latest header")
+	}
 
 	mineBlock := types.NewPovMineBlock()
+	if mineBlock.Header == nil || mineBlock.Block == nil {
+		return nil, fmt.Errorf("failed to new block")
+	}
+	if mineBlock.Header.CbTx == nil {
+		return nil, fmt.Errorf("failed to new coinbase tx")
+	}
 
 	// fill base header
 	header := mineBlock.Header
@@ -292,7 +301,7 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 	// pack account block txs
 	accBlocks := w.GetTxPool().SelectPendingTxs(prevStateTrie, w.maxTxPerBlock)
 
-	//w.logger.Debugf("current block %d select pending txs %d", len(accBlocks))
+	w.logger.Debugf("current block select pending txs %d", len(accBlocks))
 
 	var accTxHashes []*types.Hash
 	var accTxs []*types.PovTransaction
@@ -319,8 +328,9 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 	}
 
 	// build coinbase tx
-	cbtx.StateHash = *stateTrie.Hash()
+	cbtx = mineBlock.Header.CbTx
 	cbtx.TxNum = uint32(len(accTxs) + 1)
+	cbtx.StateHash = *stateTrie.Hash()
 
 	minerRwd, repRwd := w.GetChain().CalcBlockReward(header)
 

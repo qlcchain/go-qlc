@@ -132,9 +132,15 @@ func (r *JobRepository) consumeApiWork(event Event) {
 	r.prevWorks[w.PrevHash] = append(r.prevWorks[w.PrevHash], w)
 
 	// drop works of obsolete blocks
-	for ph := range r.prevWorks {
+	for ph, pws := range r.prevWorks {
 		if ph != w.PrevHash {
 			delete(r.prevWorks, ph)
+			if len(pws) > 0 {
+				log.Infof("clean obsolete works %d for PrevHash %s", len(pws), ph)
+				for _, w := range pws {
+					delete(r.allWorks, w.JobHash)
+				}
+			}
 		}
 	}
 
@@ -248,6 +254,7 @@ func (r *JobRepository) rejectMinerSubmit(submitMsg *StratumSubmit, errCode int,
 }
 
 func (r *JobRepository) consumeStatisticsTicker(event Event) {
+	log.Infof("job works: allWorks:%d, prevWorks:%d", len(r.allWorks), len(r.prevWorks))
 	log.Infof("job submits: accepted:%d, rejected:%d", r.acceptedSubmit, r.rejectedSubmit)
 }
 
@@ -275,9 +282,12 @@ func (r *JobRepository) tryCleanExpiredJobs() {
 		}
 
 		// clean all expired work for the same previous
-		log.Warnf("clean expired works %d for PrevHash %S", len(pws), ph)
+		log.Warnf("clean expired works %d for PrevHash %s", len(pws), ph)
 		for _, w := range pws {
 			delete(r.allWorks, w.JobHash)
+			if w.JobHash == r.lastJobWork.JobHash {
+				r.lastJobWork = nil
+			}
 		}
 		delete(r.prevWorks, ph)
 	}
@@ -333,8 +343,10 @@ func (w *JobWork) BuildBlockHeader(js *JobSubmit) *types.PovHeader {
 	header.BasHdr.Bits = w.Bits
 	header.BasHdr.Nonce = js.Nonce
 
-	data := header.BuildHashData()
-	log.Debugf("HashData:%s", hex.EncodeToString(data))
+	if log.GetLevel() >= log.DebugLevel {
+		data := header.BuildHashData()
+		log.Debugf("HashData:%s", hex.EncodeToString(data))
+	}
 
 	return header
 }
