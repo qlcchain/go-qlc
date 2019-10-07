@@ -1,30 +1,21 @@
 # This is an example goreleaser.yaml file with some sane defaults.
 # Make sure to check the documentation at http://goreleaser.com
 project_name: go-qlc
+env:
+  - GO111MODULE=on
+  # - GOPROXY=https://goproxy.cn
 before:
   hooks:
+    # - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
     # you may remove this if you don't use vgo
     - go mod download
     # you may remove this if you don't need go generate
-    # - go generate ./...
-env:
-  - GO111MODULE=on
-  - BINARY=gqlc
-  - TESTNET_BINARY=gqlct
-  - MAINLDFLAGS=-X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} 
-    -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommt  }} 
-    -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} 
-    -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
-  - TESTLDFLAGS=-X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} 
-    -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommt  }} 
-    -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} 
-    -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
-  # - GOPROXY=https://goproxy.cn
+    # - go generate ./..
 builds:
 # Mainnet
 - id: gqlc-darwin
-  ldflags: {{ EVN.MAINLDFLAGS }}
-  binary: {{ ENV.BINARY }}
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  binary: gqlc
   env:
     - CGO_ENABLED=1  
     - CC=o64-clang 
@@ -35,17 +26,18 @@ builds:
   goarch:
     - amd64
 - id: gqlc-linux
-  ldflags: {{ EVN.MAINLDFLAGS }}
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  binary: gqlc
   env:
     - CGO_ENABLED=1
   main: ./cmd/main.go
   goos:
     - linux
   goarch:
-    - amd64    
-- id: gqlc-windows
-  ldflags: {{ EVN.MAINLDFLAGS }}
-  binary: {{ ENV.BINARY }}
+    - amd64
+- id: gqlc-windows-x64
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  binary: gqlc
   env:
     - CGO_ENABLED=1
     - CC=x86_64-w64-mingw32-gcc
@@ -55,16 +47,27 @@ builds:
     - windows
   goarch:
     - amd64
+- id: gqlc-windows-i386
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  binary: gqlc
+  env:
+    - CGO_ENABLED=1
+    - CC=i686-w64-mingw32-gcc-posix
+    - CXX=i686-w64-mingw32-g++-posix
+  main: ./cmd/main.go
+  goos:
+    - windows
+  goarch:
     - 386
 - id: gqlc-confidant
   flags:
-    - -tags "confidant"
-  ldflags: {{ EVN.MAINLDFLAGS }}
-  binary: {{ ENV.BINARY }}
+    - -tags=confidant
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  binary: gqlc
   env:
     - CGO_ENABLED=1
-    - CC=arm-linux-gnueabi-gcc
-    - CXX=arm-linux-gnueabi-g++
+    - CC=arm-linux-gnueabihf-gcc
+    - CXX=arm-linux-gnueabihf-g++
   main: ./cmd/main.go
   goos:
     - linux
@@ -76,9 +79,9 @@ builds:
 # Test net
 - id: gqlc-darwin-test
   flags:
-    - -tags "testnet"
-  ldflags: {{ EVN.TESTLDFLAGS }}
-  binary: {{ ENV.TESTNET_BINARY }}
+    - -tags=testnet
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  binary: gqlct
   env:
     - CGO_ENABLED=1  
     - CC=o64-clang 
@@ -90,9 +93,9 @@ builds:
     - amd64
 - id: gqlc-linux-test
   flags:
-    - -tags "testnet"
-  ldflags: {{ EVN.TESTLDFLAGS }}
-  binary: {{ ENV.TESTNET_BINARY }}
+    - -tags=testnet
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  binary: gqlct
   env:
     - CGO_ENABLED=1
   main: ./cmd/main.go
@@ -102,9 +105,9 @@ builds:
     - amd64    
 - id: gqlc-windows-test
   flags:
-    - -tags "testnet"
-  ldflags: {{ EVN.TESTLDFLAGS }}
-  binary: {{ ENV.TESTNET_BINARY }}
+    - -tags=testnet
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  binary: gqlct
   env:
     - CGO_ENABLED=1
     - CC=x86_64-w64-mingw32-gcc
@@ -114,16 +117,16 @@ builds:
     - windows
   goarch:
     - amd64
-    - 386
+    # - 386
 - id: gqlc-confidant-test
   flags:
-    - -tags "confidant testnet"
-  ldflags: {{ EVN.TESTLDFLAGS }}
-  binary: {{ ENV.TESTNET_BINARY }}
+    - -tags="confidant testnet"
+  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  binary: gqlct
   env:
     - CGO_ENABLED=1
-    - CC=arm-linux-gnueabi-gcc
-    - CXX=arm-linux-gnueabi-g++
+    - CC=arm-linux-gnueabihf-gcc
+    - CXX=arm-linux-gnueabihf-g++
   main: ./cmd/main.go
   goos:
     - linux
@@ -139,9 +142,9 @@ archives:
       format: zip
   name_template: "{{ .Binary }}-v{{ .Version }}-{{ .ShortCommit }}-{{ .Os }}-{{ .Arch }}"
   replacements:
-    amd64: 64bit
-    386: 32bit
-    arm: ARM
+    amd64: x64
+    386: i386
+    arm: Confidant
     arm64: ARM64
     darwin: macOS
     linux: Linux
@@ -154,7 +157,7 @@ checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
 
 snapshot:
-  name_template: SNAPSHOT-{{.Commit}}
+  name_template: SNAPSHOT-{{.ShortCommit}}
 
 changelog:
   sort: asc
@@ -166,32 +169,27 @@ changelog:
     - Merge pull request
     - Merge branch
 
-signs:
-  -
-    # name of the signature file.
-    # '${artifact}' is the path to the artifact that should be signed.
-    #
-    # defaults to `${artifact}.sig`
-    signature: "${artifact}_sig"
+# signs:
+#   -
+#     # name of the signature file.
+#     # '${artifact}' is the path to the artifact that should be signed.
+#     #
+#     # defaults to `${artifact}.sig`
+#     signature: "${artifact}_sig"
 
-    # path to the signature command
-    #
-    # defaults to `gpg`
-    cmd: gpg2
+#     # command line arguments for the command
+#     #
+#     # to sign with a specific key use
+#     # args: ["-u", "<key id, fingerprint, email, ..>", "--output", "${signature}", "--detach-sign", "${artifact}"]
+#     #
+#     # defaults to `["--output", "${signature}", "--detach-sign", "${artifact}"]`
+#     args: ["-u", "yong.gu@qlink.mobi", "--output", "${signature}", "${artifact}"]
 
-    # command line arguments for the command
-    #
-    # to sign with a specific key use
-    # args: ["-u", "<key id, fingerprint, email, ...>", "--output", "${signature}", "--detach-sign", "${artifact}"]
-    #
-    # defaults to `["--output", "${signature}", "--detach-sign", "${artifact}"]`
-    args: ["-u", "yong.gu@qlink.mobi", "--output", "${signature}", "${artifact}"]
-
-    # which artifacts to sign
-    #
-    #   checksum: only checksum file(s)
-    #   all:      all artifacts
-    #   none:     no signing
-    #
-    # defaults to `none`
-    artifacts: all
+#     # which artifacts to sign
+#     #
+#     #   checksum: only checksum file(s)
+#     #   all:      all artifacts
+#     #   none:     no signing
+#     #
+#     # defaults to `none`
+#     artifacts: all

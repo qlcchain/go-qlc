@@ -16,7 +16,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/gammazero/workerpool v0.0.0-20190608213748-0ed5e40ec55e
-	github.com/go-interpreter/wagon v0.5.0
+	github.com/go-interpreter/wagon v0.6.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/gogo/protobuf v1.2.1
@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
 	github.com/ipfs/go-ipfs-util v0.0.1
-	github.com/jmoiron/sqlx v0.0.0-20190426145356-38398a30ed8516ffda
+	github.com/jmoiron/sqlx v0.0.0-20190426154859-38398a30ed85
 	github.com/lib/pq v1.1.1 // indirect
 	github.com/libp2p/go-libp2p v0.2.0
 	github.com/libp2p/go-libp2p-core v0.0.6
