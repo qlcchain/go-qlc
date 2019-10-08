@@ -313,6 +313,7 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 	for _, block := range blocks {
 		if block.Token == common.ChainToken() {
 			dps.totalVote[block.Address] = block.Balance.Add(block.Vote).Add(block.Oracle).Add(block.Network).Add(block.Storage)
+			dps.logger.Infof("account[%s] vote weight[%s]", block.Address, dps.totalVote[block.Address])
 		}
 	}
 
