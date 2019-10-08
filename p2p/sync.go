@@ -23,7 +23,7 @@ var (
 )
 
 const (
-	maxResendTime  = 5
+	maxResendTime  = 3
 	pullRspTimeOut = 30 * time.Second
 	pullReqTimeOut = 60 * time.Second
 )

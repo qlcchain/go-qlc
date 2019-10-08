@@ -16,7 +16,7 @@ import (
 const (
 	checkBlockCacheInterval = 60 * time.Second
 	maxPullTxPerReq         = 100
-	maxPushTxPerTime        = 100
+	maxPushTxPerTime        = 1000
 )
 
 type peerPullRsp struct {
