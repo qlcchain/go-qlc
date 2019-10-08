@@ -73,7 +73,13 @@ gqlc-server-test:
 	--targets=$(TARGET_CONFIDANT) --pkg=$(SERVERMAIN) .
 
 snapshot:
-	docker run --rm --privileged -v $(CURDIR):/go/src/github.com/qlcchain/go-qlc -v /var/run/docker.sock:/var/run/docker.sock -w /go/src/github.com/qlcchain/go-qlc goreng/golang-cross:v1.13.1 goreleaser --snapshot --rm-dist
+	docker run --rm --privileged \
+    -v $(CURDIR):/go-qlc \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+	-v $(GOPATH)/src:/go/src \
+    -w /go-qlc \
+    goreng/golang-cross:v1.13.1 \
+    goreleaser --snapshot --rm-dist
 
 lint: 
 	golangci-lint run --fix

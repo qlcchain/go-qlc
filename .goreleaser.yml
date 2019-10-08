@@ -150,7 +150,8 @@ archives:
     linux: Linux
     windows: Windows
   files:
-  - Readme.MD
+  - CHANGELOG.md
+  - README.md
   - LICENSE
 
 checksum:
