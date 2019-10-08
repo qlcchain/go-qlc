@@ -18,6 +18,7 @@ import (
 
 	ic "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 // identityConfig initializes a new identity.
@@ -71,7 +72,8 @@ func DefaultDataDir() string {
 func defaultIPCEndpoint(dir string) string {
 	ipc := filepath.Join(dir, ipcName)
 	if runtime.GOOS == "windows" {
-		return fmt.Sprintf(`\\.\pipe\%s`, ipcName)
+		prefix := random.RandomHexString(2)
+		return fmt.Sprintf(`\\.\pipe\%s-%s`, prefix, ipcName)
 	}
 	return ipc
 }
