@@ -9,18 +9,12 @@ package commands
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
 	"github.com/spf13/cobra"
-)
-
-var (
-	Version   = ""
-	GitRev    = ""
-	BuildTime = ""
 )
 
 func version() {
@@ -53,14 +47,10 @@ func version() {
 }
 
 func versionInfo() {
-	ts := strings.Split(BuildTime, "_")
+	v := chain.VersionString()
 	if interactive {
-		util.Info(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
-		util.Info(fmt.Sprintf("%-15s%s", "version:", Version))
-		util.Info(fmt.Sprintf("%-15s%s", "hash:", GitRev))
+		util.Info(v)
 	} else {
-		fmt.Println(fmt.Sprintf("%-15s%s %s", "build time:", ts[0], ts[1]))
-		fmt.Println(fmt.Sprintf("%-15s%s", "version:", Version))
-		fmt.Println(fmt.Sprintf("%-15s%s", "hash:", GitRev))
+		fmt.Println(v)
 	}
 }

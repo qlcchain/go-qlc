@@ -1,0 +1,16 @@
+name: Release docker images
+
+on: 
+  release:
+    types: [published]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-18.04
+ 
+    steps:
+    - uses: actions/checkout@v1
+    - name: Publish GitHub Release
+      run: |
+        docker run --rm --privileged -e GITHUB_TOKEN=${{ secrets.GH_TOKEN }} -v $(CURDIR):/go-qlc -v /var/run/docker.sock:/var/run/docker.sock -v (GOPATH)/src:/go/src -w /go-qlc goreng/golang-cross:v1.13.1 goreleaser --rm-dist
