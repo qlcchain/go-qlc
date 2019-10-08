@@ -375,22 +375,24 @@ func (dps *DPoS) batchVoteStart() {
 }
 
 func (dps *DPoS) cacheAck(vi *voteInfo) {
-	if dps.voteCache.Has(vi.hash) {
-		v, err := dps.voteCache.Get(vi.hash)
-		if err != nil {
-			dps.logger.Error("get vote cache err")
-			return
-		}
+	if common.DPoSVoteCacheEn {
+		if dps.voteCache.Has(vi.hash) {
+			v, err := dps.voteCache.Get(vi.hash)
+			if err != nil {
+				dps.logger.Error("get vote cache err")
+				return
+			}
 
-		vc := v.(*sync.Map)
-		vc.Store(vi.account, vi)
-	} else {
-		vc := new(sync.Map)
-		vc.Store(vi.account, vi)
-		err := dps.voteCache.Set(vi.hash, vc)
-		if err != nil {
-			dps.logger.Error("set vote cache err")
-			return
+			vc := v.(*sync.Map)
+			vc.Store(vi.account, vi)
+		} else {
+			vc := new(sync.Map)
+			vc.Store(vi.account, vi)
+			err := dps.voteCache.Set(vi.hash, vc)
+			if err != nil {
+				dps.logger.Error("set vote cache err")
+				return
+			}
 		}
 	}
 }

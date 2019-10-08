@@ -25,27 +25,27 @@ func (r *Receiver) init(c *Consensus) {
 }
 
 func (r *Receiver) start() error {
-	err := r.eb.Subscribe(common.EventPublish, r.ReceivePublish)
+	err := r.eb.SubscribeSync(common.EventPublish, r.ReceivePublish)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Subscribe(common.EventConfirmReq, r.ReceiveConfirmReq)
+	err = r.eb.SubscribeSync(common.EventConfirmReq, r.ReceiveConfirmReq)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Subscribe(common.EventConfirmAck, r.ReceiveConfirmAck)
+	err = r.eb.SubscribeSync(common.EventConfirmAck, r.ReceiveConfirmAck)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Subscribe(common.EventSyncBlock, r.ReceiveSyncBlock)
+	err = r.eb.SubscribeSync(common.EventSyncBlock, r.ReceiveSyncBlock)
 	if err != nil {
 		return err
 	}
 
-	err = r.eb.Subscribe(common.EventGenerateBlock, r.ReceiveGenerateBlock)
+	err = r.eb.SubscribeSync(common.EventGenerateBlock, r.ReceiveGenerateBlock)
 	if err != nil {
 		return err
 	}

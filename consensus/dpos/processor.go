@@ -128,7 +128,7 @@ func (p *Processor) processMsg() {
 			case hash := <-p.syncBlockAcked:
 				if p.dps.isConfirmedFrontier(hash) {
 					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
-					p.confirmChain(hash)
+					go p.confirmChain(hash)
 				}
 				p.dequeueUncheckedSync(hash)
 			case hash := <-p.blocksAcked:
