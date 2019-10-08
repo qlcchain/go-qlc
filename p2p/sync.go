@@ -651,7 +651,7 @@ func (ss *ServiceSync) next() {
 func (ss *ServiceSync) requestFrontiersFromPov(peerID string) {
 	ss.logger.Info("request frontier from pov")
 	syncState := ss.syncState.Load()
-	if syncState != common.Syncing {
+	if syncState == common.SyncFinish || syncState == common.SyncNotStart {
 		var err error
 		address := types.Address{}
 		Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
