@@ -26,10 +26,6 @@ const (
 	MessagePriorityLow
 )
 
-const (
-	MaxPingTimeOutTimes = 5
-)
-
 // Stream define the structure of a stream in p2p network
 type Stream struct {
 	syncMutex                 sync.Mutex
@@ -43,7 +39,6 @@ type Stream struct {
 	normalPriorityMessageChan chan *QlcMessage
 	lowPriorityMessageChan    chan *QlcMessage
 	rtt                       time.Duration
-	pingTimeoutCount          int32
 	remoteNetAttribute        netAttribute
 }
 
@@ -230,7 +225,6 @@ func (s *Stream) close() error {
 
 	// quit.
 	s.quitWriteCh <- true
-
 	// close stream.
 	if s.stream != nil {
 		if err := s.stream.Close(); err != nil {

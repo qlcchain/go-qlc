@@ -220,22 +220,8 @@ func (node *QlcNode) startPingService() {
 			node.streamManager.allStreams.Range(func(key, value interface{}) bool {
 				stream := value.(*Stream)
 				if stream.pid != node.ID && stream.IsConnected() {
-					ts, _ := node.ping.Ping(node.ctx, stream.pid)
-					select {
-					case res := <-ts:
-						if res.Error != nil {
-							node.logger.Errorf("error:[%s] when ping peer id :[%s]", res.Error, stream.pid)
-						}
-						node.logger.Debugf("ping peer %s,took: %f s", stream.pid, res.RTT.Seconds())
-						stream.rtt = res.RTT
-						stream.pingTimeoutCount = 0
-					case <-time.After(time.Second * 4):
-						node.logger.Error("failed to receive ping")
-						stream.pingTimeoutCount++
-						if stream.pingTimeoutCount == MaxPingTimeOutTimes {
-							_ = stream.close()
-						}
-					}
+					stream.rtt = node.peerStore.LatencyEWMA(stream.pid)
+					node.logger.Debugf("ping peer %s,took: %f s", stream.pid, stream.rtt.Seconds())
 				}
 				return true
 			})
