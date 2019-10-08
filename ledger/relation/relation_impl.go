@@ -68,8 +68,8 @@ func NewRelation(cfgFile string) (*Relation, error) {
 		relation := &Relation{store: store,
 			eb:            cc.EventBus(),
 			dir:           cfgFile,
-			addBlkChan:    make(chan *types.StateBlock, 1024),
-			deleteBlkChan: make(chan types.Hash, 65535),
+			addBlkChan:    make(chan *types.StateBlock, 100),
+			deleteBlkChan: make(chan types.Hash, 100),
 			syncBlkChan:   make(chan *types.StateBlock, 1024),
 			syncBlocks:    make([]*types.StateBlock, 0),
 			syncDone:      make(chan bool),
@@ -330,12 +330,12 @@ func (r *Relation) processBlocks() {
 			r.syncBlocks = append(r.syncBlocks, blk)
 			if len(r.syncBlocks) == batchMaxCount {
 				r.batchUpdateBlocks()
-				r.syncBlocks = make([]*types.StateBlock, 0)
+				r.syncBlocks = r.syncBlocks[:0]
 			}
 		case <-r.syncDone:
 			if len(r.syncBlocks) > 0 {
 				r.batchUpdateBlocks()
-				r.syncBlocks = make([]*types.StateBlock, 0)
+				r.syncBlocks = r.syncBlocks[:0]
 			}
 		}
 	}
