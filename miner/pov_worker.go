@@ -58,13 +58,14 @@ func (w *PovWorker) Init() error {
 		CbTx:   types.NewPovCoinBaseTx(1, 2),
 	}
 	blkHdrSize := blkHeader.Msgsize()
-	blkHdrSize += 100 // cbtx extra
+	blkHdrSize += common.PovMaxCoinbaseExtraSize // cbtx extra
 
 	hash := &types.Hash{}
 	blkHdrSize += hash.Msgsize() * 32 * 2 // aux merkle branch + coinbase branch
 
 	tx := &types.PovTransaction{}
 	w.maxTxPerBlock = (common.PovChainBlockSize - blkHdrSize) / tx.Msgsize()
+	w.maxTxPerBlock = w.maxTxPerBlock - 1 // CoinBase TX
 	w.logger.Infof("MaxBlockSize:%d, MaxHeaderSize:%d, MaxTxSize:%d, MaxTxNum:%d",
 		common.PovChainBlockSize, blkHdrSize, tx.Msgsize(), w.maxTxPerBlock)
 

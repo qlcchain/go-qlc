@@ -255,7 +255,7 @@ func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepSta
 		return nil, fmt.Errorf("get trie err")
 	}
 
-	rs := new(types.PovRepState)
+	rs := types.NewPovRepState()
 	err = rs.Deserialize(valBytes)
 	if err != nil {
 		return nil, fmt.Errorf("deserialize old rep state err %s", err)

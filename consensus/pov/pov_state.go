@@ -63,7 +63,7 @@ func (bc *PovBlockChain) ApplyTransaction(height uint64, trie *trie.Trie, stateB
 	if oldAs != nil {
 		newAs = oldAs.Clone()
 	} else {
-		newAs = types.NewPovAccountState(stateBlock.GetAddress())
+		newAs = types.NewPovAccountState()
 	}
 
 	err = bc.updateAccountState(trie, stateBlock, oldAs, newAs)
@@ -165,7 +165,7 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 		if lastRepOldRs != nil {
 			lastRepNewRs = lastRepOldRs.Clone()
 		} else {
-			lastRepNewRs = types.NewPovRepState(block.GetAddress())
+			lastRepNewRs = types.NewPovRepState()
 		}
 
 		// old(last) representative minus old account balance
@@ -192,7 +192,7 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 		if currRepOldRs != nil {
 			currRepNewRs = currRepOldRs.Clone()
 		} else {
-			currRepNewRs = types.NewPovRepState(block.GetAddress())
+			currRepNewRs = types.NewPovRepState()
 		}
 
 		// new(current) representative plus new account balance
@@ -219,7 +219,7 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, trie *trie.Trie, block *
 	if oldRs != nil {
 		newRs = oldRs.Clone()
 	} else {
-		newRs = types.NewPovRepState(block.GetAddress())
+		newRs = types.NewPovRepState()
 	}
 
 	newRs.Status = types.PovStatusOnline
@@ -240,7 +240,7 @@ func (bc *PovBlockChain) GetAccountState(trie *trie.Trie, address types.Address)
 		return nil
 	}
 
-	as := new(types.PovAccountState)
+	as := types.NewPovAccountState()
 	err := as.Deserialize(valBytes)
 	if err != nil {
 		bc.logger.Errorf("deserialize old account state err %s", err)
@@ -254,6 +254,8 @@ func (bc *PovBlockChain) GetAccountState(trie *trie.Trie, address types.Address)
 
 func (bc *PovBlockChain) SetAccountState(trie *trie.Trie, address types.Address, as *types.PovAccountState) error {
 	//bc.logger.Debugf("set account %s state %s", address, as)
+
+	as.Account = address
 
 	valBytes, err := as.Serialize()
 	if err != nil {
@@ -276,7 +278,7 @@ func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *ty
 		return nil
 	}
 
-	rs := new(types.PovRepState)
+	rs := types.NewPovRepState()
 	err := rs.Deserialize(valBytes)
 	if err != nil {
 		bc.logger.Errorf("deserialize old rep state err %s", err)
@@ -290,6 +292,7 @@ func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *ty
 
 func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs *types.PovRepState) error {
 	//bc.logger.Debugf("set rep %s state %s", address, rs)
+	rs.Account = address
 
 	valBytes, err := rs.Serialize()
 	if err != nil {
@@ -310,12 +313,13 @@ func (bc *PovBlockChain) GetAllValidRepStates(trie *trie.Trie) []*types.PovRepSt
 	supply := common.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
-	it := trie.NewIterator([]byte{types.PovStatePrefixRep})
+	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	it := trie.NewIterator(repPrefix)
 
 	key, valBytes, ok := it.Next()
 	for ok {
 		if len(valBytes) > 0 {
-			rs := new(types.PovRepState)
+			rs := types.NewPovRepState()
 			err := rs.Deserialize(valBytes)
 			if err != nil {
 				bc.logger.Errorf("deserialize old rep state, key %s err %s", hex.EncodeToString(key), err)

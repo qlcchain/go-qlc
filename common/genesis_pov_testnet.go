@@ -17,8 +17,8 @@ var (
             "merkleRoot":"7d3a1a8178b8865a829bd9cbd9b3be378d8127226b102458cadcbb6c5b16cb87",
             "timestamp":1566345600,
             "bits":504365040,
-            "nonce":1232313,
-            "hash":"ceefd0a85f48ded0304781438e1c6cda700798a19659d94caad22f206e0a0000",
+            "nonce":2299442235,
+            "hash":"461b360695d1eb8c468766bbeae6114daed22e7c88cf752bdcdc959e5f0d0000",
             "height":0
         },
         "auxHdr":null,
@@ -34,12 +34,12 @@ var (
             ],
             "txOuts":[
                 {
-                    "address":"qlc_176f1aj1361y5i4yu8ccyp8xphjcbxmmu4ryh4jecnsncse1eiud7uncz8bj",
-                    "value":"456621004"
+                    "value":"456621004",
+                    "address":"qlc_176f1aj1361y5i4yu8ccyp8xphjcbxmmu4ryh4jecnsncse1eiud7uncz8bj"
                 },
                 {
-                    "address":"qlc_111111111111111111111111111111111111111111111111111ommygmckp",
-                    "value":"114155251"
+                    "value":"114155251",
+                    "address":"qlc_111111111111111111111111111111111111111111111111111ommygmckp"
                 }
             ],
             "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",

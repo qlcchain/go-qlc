@@ -383,7 +383,7 @@ func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) 
 		return nil, errors.New("account state value not exist")
 	}
 
-	as := new(types.PovAccountState)
+	as := types.NewPovAccountState()
 	err := as.Deserialize(asVal)
 	if err != nil {
 		return nil, err
@@ -394,7 +394,7 @@ func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) 
 	rsKey := types.PovCreateRepStateKey(address)
 	rsVal := stateTrie.GetValue(rsKey)
 	if len(rsVal) > 0 {
-		rs := new(types.PovRepState)
+		rs := types.NewPovRepState()
 		err = rs.Deserialize(rsVal)
 		if err != nil {
 			return nil, err
@@ -448,20 +448,24 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 	db := api.ledger.Store
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
-	it := stateTrie.NewIterator(nil)
+	it := stateTrie.NewIterator([]byte{types.TriePrefixPovState})
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
 		if len(val) <= 0 {
 			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
 			continue
 		}
 
-		if key[0] == types.PovStatePrefixAcc {
-			addr, err := types.BytesToAddress(key[1:])
+		if key[0] != types.TriePrefixPovState {
+			continue
+		}
+
+		if key[1] == types.PovStatePrefixAcc {
+			addr, err := types.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
 			}
 
-			as := new(types.PovAccountState)
+			as := types.NewPovAccountState()
 			err = as.Deserialize(val)
 			if err != nil {
 				return nil, err
@@ -470,13 +474,13 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 			dump.Accounts[addr] = as
 		}
 
-		if key[0] == types.PovStatePrefixRep {
-			addr, err := types.BytesToAddress(key[1:])
+		if key[1] == types.PovStatePrefixRep {
+			addr, err := types.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
 			}
 
-			rs := new(types.PovRepState)
+			rs := types.NewPovRepState()
 			err = rs.Deserialize(val)
 			if err != nil {
 				return nil, err
@@ -498,19 +502,20 @@ func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepS
 	db := api.ledger.Store
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
-	it := stateTrie.NewIterator([]byte{types.PovStatePrefixRep})
+	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	it := stateTrie.NewIterator(repPrefix)
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
 		if len(val) <= 0 {
 			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
 			continue
 		}
 
-		addr, err := types.BytesToAddress(key[1:])
+		addr, err := types.PovStateKeyToAddress(key)
 		if err != nil {
 			return nil, err
 		}
 
-		rs := new(types.PovRepState)
+		rs := types.NewPovRepState()
 		err = rs.Deserialize(val)
 		if err != nil {
 			return nil, err

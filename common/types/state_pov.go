@@ -13,10 +13,18 @@ const (
 	PovStatusOnline  = 1
 )
 
+func PovCreateStatePrefix(prefix byte) []byte {
+	key := make([]byte, 2)
+	key[0] = TriePrefixPovState
+	key[1] = prefix
+	return key
+}
+
 func PovCreateStateKey(prefix byte, rawKey []byte) []byte {
-	key := make([]byte, 1+len(rawKey))
-	key[0] = prefix
-	copy(key[1:], rawKey)
+	key := make([]byte, 2+len(rawKey))
+	key[0] = TriePrefixPovState
+	key[1] = prefix
+	copy(key[2:], rawKey)
 	return key
 }
 
@@ -26,6 +34,10 @@ func PovCreateAccountStateKey(address Address) []byte {
 
 func PovCreateRepStateKey(address Address) []byte {
 	return PovCreateStateKey(PovStatePrefixRep, address.Bytes())
+}
+
+func PovStateKeyToAddress(key []byte) (Address, error) {
+	return BytesToAddress(key[2:])
 }
 
 //go:generate msgp
@@ -40,9 +52,8 @@ type PovAccountState struct {
 	TokenStates []*PovTokenState `msg:"ts" json:"tokenStates"`
 }
 
-func NewPovAccountState(account Address) *PovAccountState {
+func NewPovAccountState() *PovAccountState {
 	return &PovAccountState{
-		Account: account,
 		Balance: NewBalance(0),
 		Vote:    NewBalance(0),
 		Network: NewBalance(0),
@@ -155,9 +166,8 @@ type PovRepState struct {
 	Height uint64 `msg:"he" json:"height"`
 }
 
-func NewPovRepState(account Address) *PovRepState {
+func NewPovRepState() *PovRepState {
 	return &PovRepState{
-		Account: account,
 		Balance: NewBalance(0),
 		Vote:    NewBalance(0),
 		Network: NewBalance(0),
@@ -181,6 +191,12 @@ func (rs *PovRepState) Deserialize(text []byte) error {
 
 func (rs *PovRepState) Clone() *PovRepState {
 	newRs := *rs
+	newRs.Balance = rs.Balance.Copy()
+	newRs.Vote = rs.Vote.Copy()
+	newRs.Network = rs.Network.Copy()
+	newRs.Storage = rs.Storage.Copy()
+	newRs.Oracle = rs.Oracle.Copy()
+	newRs.Total = rs.Total.Copy()
 	return &newRs
 }
 

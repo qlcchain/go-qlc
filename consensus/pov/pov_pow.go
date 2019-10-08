@@ -103,7 +103,7 @@ func (c *ConsensusPow) verifyProducer(header *types.PovHeader) error {
 		return errors.New("failed to get rep state value")
 	}
 
-	rs := new(types.PovRepState)
+	rs := types.NewPovRepState()
 	err := rs.Deserialize(rsVal)
 	if err != nil {
 		return errors.New("failed to deserialize rep state value")
