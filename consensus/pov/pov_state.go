@@ -322,11 +322,9 @@ func (bc *PovBlockChain) GetAllValidRepStates(trie *trie.Trie) []*types.PovRepSt
 				return nil
 			}
 
-			if rs.CalcTotal().Compare(minVoteWeight) != types.BalanceCompBigger {
-				continue
+			if rs.CalcTotal().Compare(minVoteWeight) == types.BalanceCompBigger {
+				allRss = append(allRss, rs)
 			}
-
-			allRss = append(allRss, rs)
 		}
 
 		key, valBytes, ok = it.Next()
