@@ -214,9 +214,7 @@ func (p *Processor) confirmChain(hash types.Hash) {
 
 		for {
 			if h, ok := p.orderedChain[cok]; ok {
-				if blk, err := dps.ledger.GetUnconfirmedSyncBlock(h); err != nil {
-					dps.logger.Errorf("get unconfirmed block err %s", h)
-				} else {
+				if blk, _ := dps.ledger.GetUnconfirmedSyncBlock(h); blk != nil {
 					dps.logger.Debugf("confirm chain block %s", h)
 					bs := &consensus.BlockSource{
 						Block:     blk,
@@ -230,7 +228,6 @@ func (p *Processor) confirmChain(hash types.Hash) {
 					}
 				}
 			} else {
-				dps.logger.Debugf("confirm chain len:%d", cok.order-1)
 				break
 			}
 
