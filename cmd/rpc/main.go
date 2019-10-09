@@ -301,7 +301,7 @@ func initData(ledger *ledger.Ledger) {
 	if err != nil {
 		return
 	}
-	ac.CoinVote = types.Balance{big.NewInt(123)}
+	ac.CoinVote = types.Balance{Int: big.NewInt(123)}
 	err = ledger.UpdateAccountMeta(ac)
 	if err != nil {
 		return

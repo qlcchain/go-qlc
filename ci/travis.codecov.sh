@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 
 set -e
-echo "" > coverage.txt
 
 tags=(mainnet testnet)
 
 for t in "${tags[@]}"; do
   echo "run test cases by $t"
-  for d in $(go list ./... | grep -v vendor | grep -v edwards25519); do
+  echo "" > "coverage_${t}.txt"
+  for d in $(go list ./... | egrep -v "vendor|edwards25519"); do
 #    go test -race -coverprofile=profile.out -covermode=atomic "$d"
     go test -tags "$t" -coverprofile=profile.out "$d"
     if [[ -f profile.out ]]; then
-      cat profile.out >> coverage.txt
+      cat profile.out >> "coverage_${t}.txt"
       rm profile.out
     fi
   done
 done
+
 
 #if [[ -n "$TRAVIS_TAG" ]]; then
 #    echo 'build tag for release, run all test cases'
