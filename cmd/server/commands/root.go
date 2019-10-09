@@ -50,6 +50,7 @@ var (
 	isProfileP    bool
 	noBootstrapP  bool
 	configParamsP string
+	testModeP     string
 
 	privateKey   cmdutil.Flag
 	account      cmdutil.Flag
@@ -59,6 +60,7 @@ var (
 	isProfile    cmdutil.Flag
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
+	testMode     cmdutil.Flag
 	//chainContext   *context.ChainContext
 	maxAccountSize = 100
 	logger         = qlclog.NewLogger("config_detail")
@@ -105,6 +107,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
+		rootCmd.PersistentFlags().StringVar(&testModeP, "testMode", "", "testing mode")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)
@@ -123,6 +126,10 @@ func addCommand() {
 }
 
 func start() error {
+	if testModeP != "" {
+		_ = os.Setenv("GQLC_TEST_MODE", testModeP)
+	}
+
 	var accounts []*types.Account
 	chainContext := context.NewChainContext(cfgPathP)
 	fmt.Println("Run node id: ", chainContext.Id())
@@ -387,6 +394,13 @@ func run() {
 		Value: "",
 	}
 
+	testMode = cmdutil.Flag{
+		Name:  "testMode",
+		Must:  false,
+		Usage: "testing mode",
+		Value: "",
+	}
+
 	s := &ishell.Cmd{
 		Name: "run",
 		Help: "start qlc server",
@@ -407,6 +421,7 @@ func run() {
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
 			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
 			configParamsP = cmdutil.StringVar(c.Args, configParams)
+			testModeP = cmdutil.StringVar(c.Args, testMode)
 
 			err := start()
 			if err != nil {
