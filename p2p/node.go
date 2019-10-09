@@ -57,7 +57,6 @@ type QlcNode struct {
 	peerStore         peerstore.Peerstore
 	boostrapAddrs     []string
 	streamManager     *StreamManager
-	ping              *Pinger
 	dis               *discovery.RoutingDiscovery
 	kadDht            *dht.IpfsDHT
 	netService        *QlcService
@@ -125,7 +124,6 @@ func (node *QlcNode) buildHost() error {
 	}
 	node.kadDht = kadDht
 	node.dis = discovery.NewRoutingDiscovery(node.kadDht)
-	node.ping = NewPinger(node.host)
 	node.peerStore = qlcHost.Peerstore()
 	if err := node.peerStore.AddPrivKey(node.ID, node.privateKey); err != nil {
 		return err
@@ -188,11 +186,9 @@ func (node *QlcNode) StartServices() error {
 		}
 	}
 
-	if node.ping != nil {
-		go func() {
-			node.startPingService()
-		}()
-	}
+	go func() {
+		node.startPingService()
+	}()
 
 	if node.dis != nil {
 		go func() {
@@ -210,7 +206,7 @@ func (node *QlcNode) StartServices() error {
 
 func (node *QlcNode) startPingService() {
 	node.logger.Info("start pingService Loop.")
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(30 * time.Second)
 	for {
 		select {
 		case <-node.ctx.Done():
@@ -221,7 +217,7 @@ func (node *QlcNode) startPingService() {
 				stream := value.(*Stream)
 				if stream.pid != node.ID && stream.IsConnected() {
 					stream.rtt = node.peerStore.LatencyEWMA(stream.pid)
-					node.logger.Debugf("ping peer %s,took: %f s", stream.pid, stream.rtt.Seconds())
+					node.logger.Infof("ping peer %s,took: %f s", stream.pid, stream.rtt.Seconds())
 				}
 				return true
 			})
