@@ -5,6 +5,7 @@ jobs:
   build:
     name: Check, Build and Publish snapshot artifacts 
     runs-on: ubuntu-18.04
+
     steps:
       - name: Set up Go
         uses: actions/setup-go@v1
@@ -39,7 +40,8 @@ jobs:
         uses: docker://reviewdog/action-golangci-lint:v1.0.4
         with:
           github_token: ${{ secrets.GH_TOKEN }}
-          golangci_lint_flags: "--config=.golangci.yml"
+          golangci_lint_flags: "--config=.golangci.yml -v"
+          level: warning # GitHub Status Check won't become failure with this level.
 
       - name: Build snapshot
         run: |
