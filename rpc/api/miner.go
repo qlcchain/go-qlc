@@ -56,7 +56,8 @@ func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
 		cfg:    cfg,
 		logger: log.NewLogger("api_miner"),
 		ledger: ledger,
-		reward: &contract.MinerReward{}}
+		reward: &contract.MinerReward{},
+	}
 }
 
 func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {

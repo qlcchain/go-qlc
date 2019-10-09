@@ -602,15 +602,19 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 			ss.netService.msgService.addPerformanceTime(hash)
 		}
 	}
-	ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
+
 	if blkPacket.PullType == protos.PullTypeSegment {
 		ss.pullTimer.Reset(pullReqTimeOut)
+		ss.logger.Debugf("start publish sync blocks num[%d] [%d]",len(blocks), time.Now().Unix())
+		ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
+		ss.logger.Debugf("end publish sync blocks [%d]", time.Now().Unix())
 		if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 			err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 			if err != nil {
 				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 			}
 		}
+
 		if blocks[len(blocks)-1].GetHash().String() == ss.pullEndHash.String() &&
 			(ss.pullEndHash.String() != types.ZeroHash.String()) {
 			select {

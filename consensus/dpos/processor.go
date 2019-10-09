@@ -43,7 +43,7 @@ type Processor struct {
 	syncStateChange chan common.SyncState
 	syncState       common.SyncState
 	syncCache       chan *syncCacheInfo
-	orderedChain    map[chainOrderKey]types.Hash
+	orderedChain    *sync.Map
 	chainHeight     map[chainKey]uint64
 }
 
@@ -63,7 +63,7 @@ func newProcessors(num int) []*Processor {
 			syncCache:       make(chan *syncCacheInfo, common.DPoSMaxBlocks),
 			syncStateChange: make(chan common.SyncState, 1),
 			syncState:       common.SyncNotStart,
-			orderedChain:    make(map[chainOrderKey]types.Hash),
+			orderedChain:    new(sync.Map),
 			chainHeight:     make(map[chainKey]uint64),
 		}
 		processors = append(processors, p)
@@ -122,7 +122,7 @@ func (p *Processor) processMsg() {
 				p.dps.syncStateNotifyWait.Done()
 
 				if p.syncState == common.SyncFinish {
-					p.orderedChain = make(map[chainOrderKey]types.Hash)
+					p.orderedChain = new(sync.Map)
 					p.chainHeight = make(map[chainKey]uint64)
 				}
 			case hash := <-p.syncBlockAcked:
@@ -176,7 +176,8 @@ func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBloc
 		chainKey: ck,
 		order:    p.chainHeight[ck],
 	}
-	p.orderedChain[cok] = hash
+
+	p.orderedChain.Store(cok, hash)
 	p.syncBlockAcked <- hash
 }
 
@@ -213,9 +214,10 @@ func (p *Processor) confirmChain(hash types.Hash) {
 		}
 
 		for {
-			if h, ok := p.orderedChain[cok]; ok {
-				if blk, _ := dps.ledger.GetUnconfirmedSyncBlock(h); blk != nil {
-					dps.logger.Debugf("confirm chain block %s", h)
+			if h, ok := p.orderedChain.Load(cok); ok {
+				bHash := h.(types.Hash)
+				if blk, _ := dps.ledger.GetUnconfirmedSyncBlock(bHash); blk != nil {
+					dps.logger.Debugf("confirm chain block %s", bHash)
 					bs := &consensus.BlockSource{
 						Block:     blk,
 						BlockFrom: types.Synchronized,
@@ -223,7 +225,7 @@ func (p *Processor) confirmChain(hash types.Hash) {
 					}
 					p.blocks <- bs
 
-					if err := dps.ledger.DeleteUnconfirmedSyncBlock(h); err != nil {
+					if err := dps.ledger.DeleteUnconfirmedSyncBlock(bHash); err != nil {
 						dps.logger.Errorf("delete unconfirmed sync block err", err)
 					}
 				}
