@@ -67,11 +67,6 @@ func (ss *ServiceSync) Start() {
 	Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
 	ss.syncTicker = time.NewTicker(time.Duration(ss.netService.node.cfg.P2P.SyncInterval) * time.Second)
 
-	err := ss.netService.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ss.onConsensusSyncFinished)
-	if err != nil {
-		ss.logger.Errorf("subscribe consensus sync finished event err")
-	}
-
 	for {
 		select {
 		case <-ss.quitCh:

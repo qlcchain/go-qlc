@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 
@@ -122,6 +123,28 @@ func (sm *StreamManager) RandomPeer() (string, error) {
 		}
 	}
 	return peerID, nil
+}
+
+type peerLatency struct {
+	peerId string
+	rtt    time.Duration
+}
+
+func (sm *StreamManager) lowestLatencyPeer() (string, error) {
+	var allPeers []*peerLatency
+	sm.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		if stream.IsConnected() {
+			p := &peerLatency{
+				peerId: stream.pid.Pretty(),
+				rtt:    stream.rtt,
+			}
+			allPeers = append(allPeers, p)
+		}
+		return true
+	})
+	sort.Slice(allPeers, func(i, j int) bool { return allPeers[i].rtt < allPeers[j].rtt })
+	return allPeers[0].peerId, nil
 }
 
 // CloseStream with the given pid and reason
