@@ -6,7 +6,7 @@ on:
 
 jobs:
 
-  build:
+  release:
     name: Release artifacts and docker images
     runs-on: ubuntu-18.04
  
