@@ -150,7 +150,6 @@ archives:
     linux: Linux
     windows: Windows
   files:
-  - CHANGELOG.md
   - README.md
   - LICENSE
 
