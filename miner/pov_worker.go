@@ -275,6 +275,8 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 		return nil, fmt.Errorf("failed to get latest header")
 	}
 
+	w.logger.Debugf("make block template after latest %d/%s", latestHeader.GetHeight(), latestHeader.GetHash())
+
 	mineBlock := types.NewPovMineBlock()
 	if mineBlock.Header == nil || mineBlock.Block == nil {
 		return nil, fmt.Errorf("failed to new block")
@@ -538,10 +540,6 @@ func (w *PovWorker) checkValidMiner() bool {
 }
 
 func (w *PovWorker) mineNextBlock() *types.PovMineBlock {
-	latestHeader := w.GetChain().LatestHeader()
-
-	w.logger.Debugf("try to generate block after latest %d/%s", latestHeader.GetHeight(), latestHeader.GetPrevious())
-
 	mineBlock, err := w.newBlockTemplate(w.GetMinerAddress(), w.GetAlgoType())
 	if err != nil {
 		w.logger.Warnf("failed to generate block, err %s", err)

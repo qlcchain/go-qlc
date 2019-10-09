@@ -324,18 +324,38 @@ func (bc *PovBlockChain) loadLastState() error {
 
 	bc.logger.Infof("loaded latest block %d/%s", latestBlock.GetHeight(), latestBlock.GetHash())
 
+	latestStateHash := latestBlock.GetStateHash()
+	bc.logger.Infof("loaded latest state hash %s", latestStateHash)
+	latestTrie := bc.GetStateTrie(&latestStateHash)
+	if latestTrie == nil || latestTrie.Root == nil {
+		panic(fmt.Errorf("invalid latest state hash %s", latestStateHash))
+	}
+
 	return nil
 }
 
 func (bc *PovBlockChain) ResetChainState() error {
-	_ = bc.getLedger().DropAllPovBlocks()
+	var err error
 
+	// clear all pov blocks
+	allBlkCnt, _ := bc.getLedger().CountPovBlocks()
+	bc.logger.Infof("drop all pov blocks %d", allBlkCnt)
+	err = bc.getLedger().DropAllPovBlocks()
+	if err != nil {
+		return err
+	}
+
+	err = bc.getLedger().DBStore().Purge()
+
+	// init with genesis block
 	genesisBlock := common.GenesisPovBlock()
 
 	return bc.resetWithGenesisBlock(&genesisBlock)
 }
 
 func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
+	bc.logger.Infof("reset with genesis block %d/%s", genesis.GetHeight(), genesis.GetHash())
+
 	var saveCallback func()
 
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
@@ -376,7 +396,10 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 		if dbErr != nil {
 			return dbErr
 		}
-		saveCallback()
+
+		if saveCallback != nil {
+			saveCallback()
+		}
 
 		return nil
 	})
@@ -386,14 +409,10 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 		return err
 	}
 
-	if saveCallback != nil {
-		saveCallback()
-	}
-
 	bc.genesisBlock = genesis
 	bc.StoreLatestBlock(genesis)
 
-	bc.logger.Infof("reset with genesis block %d/%s", genesis.GetHeight(), genesis.GetHash())
+	err = bc.getLedger().DBStore().Purge()
 
 	return nil
 }
