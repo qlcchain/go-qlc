@@ -24,8 +24,8 @@ var (
 
 const (
 	maxResendTime  = 3
-	pullRspTimeOut = 30 * time.Second
-	pullReqTimeOut = 60 * time.Second
+	pullRspTimeOut = 5 * time.Minute
+	pullReqTimeOut = 15 * time.Second
 )
 
 var (
@@ -604,10 +604,11 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	}
 
 	if blkPacket.PullType == protos.PullTypeSegment {
-		ss.pullTimer.Reset(pullReqTimeOut)
-		ss.logger.Debugf("start publish sync blocks num[%d] [%d]",len(blocks), time.Now().Unix())
+		ss.pullTimer.Stop()
+		ss.logger.Debugf("start publish sync blocks num[%d] [%d]", len(blocks), time.Now().Unix())
 		ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
 		ss.logger.Debugf("end publish sync blocks [%d]", time.Now().Unix())
+		ss.pullTimer.Reset(pullReqTimeOut)
 		if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 			err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 			if err != nil {
