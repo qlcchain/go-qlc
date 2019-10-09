@@ -1,0 +1,65 @@
+name: Main workflow
+on: [push]
+jobs:
+
+  build:
+    name: Check, Build and Publish snapshot artifacts 
+    runs-on: ubuntu-18.04
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13.x
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+
+      - name: Check code style and calculate coverage 
+        env:
+          GO111MODULE: on
+        run: |
+          ./ci/travis.gofmt.sh
+          go vet `go list ./... | egrep -v "platform"`
+          go vet -tags testnet -v `go list ./... | egrep -v "platform"`
+          ./ci/travis.codecov.sh
+          cat coverage_*.txt > coverage.txt
+          make clean build
+
+      - uses: codecov/codecov-action@v1.0.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.txt
+          flags: unittests 
+          name: codecov-umbrella
+        if: success()
+
+      - name: Run golangci-lint with reviewdog
+        # uses: reviewdog/action-golangci-lint@v1.0.4
+        uses: docker://reviewdog/action-golangci-lint:v1.0.4
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          golangci_lint_flags: "--config=.golangci.yml -v"
+          level: warning # GitHub Status Check won't become failure with this level.
+
+      - name: Build snapshot
+        run: |
+          make snapshot
+          mkdir -p artifact; cp dist/*.tar.gz artifact/; cp dist/*.zip artifact/; cp dist/*.txt artifact/
+
+      - name: Upload snapshot artifacts
+        uses: actions/upload-artifact@master
+        with:
+          name: gqlc-artifact
+          path: artifact/
+
+      - name: Build and Publish the Docker image to DockerHub
+        # uses: gythialy/Publish-Docker-Github-Action@2.4
+        uses: docker://goreng/publish-docker-github-action:v2.4
+        with:
+          name: qlcchain/go-qlc-test
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          dockerfile: docker/Dockerfile
+          buildargs: BUILD_ACT=build-test

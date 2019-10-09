@@ -99,7 +99,7 @@ func TestReader(t *testing.T) {
 		if !reflect.DeepEqual(gotM, expM) {
 			t.Errorf("\nGot abi method: \n%v\ndoes not match expected method\n%v", gotM, expM)
 		}
-		gotM.String()
+		t.Log(gotM.String())
 	}
 
 	if len(exp.Events) != len(abi.Events) {
@@ -114,7 +114,7 @@ func TestReader(t *testing.T) {
 		if !reflect.DeepEqual(gotE, expE) {
 			t.Errorf("\nGot abi event: \n%v\ndoes not match expected event\n%v", gotE, expE)
 		}
-		gotE.String()
+		t.Log(gotE.String())
 	}
 
 	if len(exp.Variables) != len(abi.Variables) {
@@ -129,7 +129,7 @@ func TestReader(t *testing.T) {
 		if !reflect.DeepEqual(gotV, expV) {
 			t.Errorf("\nGot abi evevariablent: \n%v\ndoes not match expected variable\n%v", gotV, expV)
 		}
-		gotV.String()
+		t.Log(gotV.String())
 	}
 }
 
@@ -258,7 +258,7 @@ func TestMultiPack(t *testing.T) {
 	}
 }
 
-func ExampleJSON() {
+func TestExampleJSON(t *testing.T) {
 	const definition = `[{"constant":true,"inputs":[{"name":"","type":"address"}],"name":"isBar","type":"function"}]`
 
 	abi, err := JSONToABIContract(strings.NewReader(definition))
