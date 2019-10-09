@@ -1080,6 +1080,10 @@ type PovApiGetLastNHourItem struct {
 	AllMinerReward types.Balance
 	AllRepReward   types.Balance
 
+	Sha256dBlockNum uint32
+	X11BlockNum     uint32
+	ScryptBlockNum  uint32
+
 	MaxTxPerBlock uint32
 	MinTxPerBlock uint32
 	AvgTxPerBlock uint32
@@ -1100,6 +1104,10 @@ type PovApiGetLastNHourInfo struct {
 
 	AllBlockNum uint32
 	AllTxNum    uint32
+
+	Sha256dBlockNum uint32
+	X11BlockNum     uint32
+	ScryptBlockNum  uint32
 
 	HourItemList []*PovApiGetLastNHourItem
 }
@@ -1178,6 +1186,15 @@ func (api *PovApi) GetLastNHourInfo(beginTime uint32, endTime uint32) (*PovApiGe
 			if repTxOut != nil {
 				hourItem.AllRepReward = hourItem.AllRepReward.Add(repTxOut.Value)
 			}
+
+			algoType := header.GetAlgoType()
+			if algoType == types.ALGO_SHA256D {
+				hourItem.Sha256dBlockNum++
+			} else if algoType == types.ALGO_X11 {
+				hourItem.X11BlockNum++
+			} else if algoType == types.ALGO_SCRYPT {
+				hourItem.ScryptBlockNum++
+			}
 		}
 
 		header, err = api.ledger.GetPovHeaderByHeight(header.GetHeight() - 1)
@@ -1212,6 +1229,10 @@ func (api *PovApi) GetLastNHourInfo(beginTime uint32, endTime uint32) (*PovApiGe
 		if apiRsp.MinBlockPerHour == 0 || apiRsp.MinBlockPerHour > hourItem.AllBlockNum {
 			apiRsp.MinBlockPerHour = hourItem.AllBlockNum
 		}
+
+		apiRsp.Sha256dBlockNum += hourItem.Sha256dBlockNum
+		apiRsp.X11BlockNum += hourItem.X11BlockNum
+		apiRsp.ScryptBlockNum += hourItem.ScryptBlockNum
 	}
 	apiRsp.AvgTxPerBlock = apiRsp.AllTxNum / apiRsp.AllBlockNum
 	apiRsp.AvgTxPerHour = apiRsp.AllTxNum / (maxDiffHour + 1)

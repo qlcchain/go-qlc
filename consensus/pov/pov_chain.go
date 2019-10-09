@@ -1049,12 +1049,13 @@ func (bc *PovBlockChain) CalcTotalDifficulty(prevTD *types.PovTD, header *types.
 
 	curTD.Chain.Add(&prevTD.Chain, curWorkAlgo)
 
-	switch header.BasHdr.Version & uint32(types.ALGO_VERSION_MASK) {
-	case uint32(types.ALGO_SHA256D):
+	algoType := header.GetAlgoType()
+	switch algoType {
+	case types.ALGO_SHA256D:
 		curTD.Sha256d.Add(&prevTD.Sha256d, curWorkAlgo)
-	case uint32(types.ALGO_SCRYPT):
+	case types.ALGO_SCRYPT:
 		curTD.Scrypt.Add(&prevTD.Scrypt, curWorkAlgo)
-	case uint32(types.ALGO_X11):
+	case types.ALGO_X11:
 		curTD.X11.Add(&prevTD.X11, curWorkAlgo)
 	}
 
