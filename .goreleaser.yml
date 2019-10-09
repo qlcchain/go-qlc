@@ -193,3 +193,10 @@ changelog:
 #     #
 #     # defaults to `none`
 #     artifacts: all
+
+release:
+  github:
+    owner: qlcchain
+    name: go-qlc
+
+  prerelease: auto
