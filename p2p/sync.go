@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	ErrSyncTimeOut = errors.New("sync time out")
+	SyncFinish = errors.New("sync finish")
 )
 
 // Service manage sync tasks
@@ -164,7 +164,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 				zeroFrontier := new(types.Frontier)
 				remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-				if err == ErrSyncTimeOut {
+				if err == SyncFinish {
 					ss.logger.Errorf("process frontiers error:[%s]", err)
 					ss.syncState.Store(common.SyncFinish)
 					ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncFinish)
@@ -262,8 +262,8 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								resend++
 								ss.logger.Infof("resend pull request startHash is [%s],endHash is [%s]\n", ss.pullStartHash, ss.pullEndHash)
 								if resend == maxResendTime {
-									ss.logger.Infof("resend timeout......")
-									return ErrSyncTimeOut
+									ss.logger.Infof("resend pull request timeout")
+									return SyncFinish
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
 							case <-ss.pullRequestStartCh:
@@ -286,6 +286,8 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								break
 							}
 						}
+					} else {
+						return SyncFinish
 					}
 					break
 				}
