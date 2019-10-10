@@ -283,7 +283,7 @@ func (dps *DPoS) Start() {
 
 			dps.frontiersStatus = new(sync.Map)
 			dps.CleanSyncCache()
-			dps.logger.Infof("sync finished because of timeout")
+			dps.logger.Infof("sync finished abnormally")
 		}
 	}
 }
