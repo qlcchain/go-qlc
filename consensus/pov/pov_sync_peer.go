@@ -190,7 +190,12 @@ func (ss *PovSyncer) FindPeerWithStatus(peerID string, status int) *PovSyncPeer 
 }
 
 func (ss *PovSyncer) GetBestPeer(lastPeerID string) *PovSyncPeer {
+	allBestPeers := make([]*PovSyncPeer, 0)
+
 	bestPeer := ss.FindPeerWithStatus(lastPeerID, peerStatusGood)
+	if bestPeer != nil {
+		allBestPeers = append(allBestPeers, bestPeer)
+	}
 
 	ss.allPeers.Range(func(key, value interface{}) bool {
 		peer := value.(*PovSyncPeer)
@@ -199,13 +204,36 @@ func (ss *PovSyncer) GetBestPeer(lastPeerID string) *PovSyncPeer {
 		}
 		if bestPeer == nil {
 			bestPeer = peer
-		} else if peer.currentTD.Cmp(bestPeer.currentTD) > 0 {
-			bestPeer = peer
+			allBestPeers = append(allBestPeers, peer)
+		} else {
+			cmpRet := peer.currentTD.Cmp(bestPeer.currentTD)
+			if cmpRet > 0 {
+				bestPeer = peer
+				allBestPeers = make([]*PovSyncPeer, 0)
+				allBestPeers = append(allBestPeers, peer)
+			} else if cmpRet == 0 {
+				allBestPeers = append(allBestPeers, peer)
+			}
 		}
 		return true
 	})
 
-	return bestPeer
+	// specified best peer
+	if lastPeerID != "" && bestPeer != nil && bestPeer.peerID == lastPeerID {
+		return bestPeer
+	}
+
+	if len(allBestPeers) <= 0 {
+		return nil
+	}
+	if len(allBestPeers) <= 1 {
+		return allBestPeers[0]
+	}
+
+	// random best peer
+	idx := rand.Intn(len(allBestPeers))
+	ss.logger.Debugf("random choose best peer idx %d all %d", idx, len(allBestPeers))
+	return allBestPeers[idx]
 }
 
 func (ss *PovSyncer) GetBestPeers(limit int) []*PovSyncPeer {
@@ -238,14 +266,7 @@ func (ss *PovSyncer) GetRandomTopPeer(top int) *PovSyncPeer {
 		return peers[0]
 	}
 
-	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	idx := rd.Intn(len(peers))
-	if idx >= len(peers) {
-		idx = idx - 1
-	}
-	if idx < 0 {
-		idx = 0
-	}
+	idx := rand.Intn(len(peers))
 	return peers[idx]
 }
 
@@ -266,8 +287,7 @@ func (ss *PovSyncer) GetRandomPeers(limit int) []*PovSyncPeer {
 		return allPeers
 	}
 
-	rd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	idxSeqs := rd.Perm(len(allPeers))
+	idxSeqs := rand.Perm(len(allPeers))
 
 	for i := 0; i < limit; i++ {
 		selectPeers = append(selectPeers, allPeers[idxSeqs[i]])
