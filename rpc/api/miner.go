@@ -64,6 +64,22 @@ func (m *MinerApi) GetRewardData(param *RewardParam) ([]byte, error) {
 	return cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 }
 
+func (m *MinerApi) UnpackRewardData(data []byte) (*RewardParam, error) {
+	abiParam := new(cabi.MinerRewardParam)
+	err := cabi.MinerABI.UnpackMethod(abiParam, cabi.MethodNameMinerReward, data)
+	if err != nil {
+		return nil, err
+	}
+	apiParam := new(RewardParam)
+	apiParam.Coinbase = abiParam.Coinbase
+	apiParam.Beneficial = abiParam.Beneficial
+	apiParam.StartHeight = abiParam.StartHeight
+	apiParam.EndHeight = abiParam.EndHeight
+	apiParam.RewardBlocks = abiParam.RewardBlocks
+	apiParam.RewardAmount = abiParam.RewardAmount
+	return apiParam, nil
+}
+
 func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailRewardInfo, error) {
 	if !m.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")

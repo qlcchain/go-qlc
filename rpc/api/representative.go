@@ -56,6 +56,22 @@ func (r *RepApi) GetRewardData(param *RepRewardParam) ([]byte, error) {
 	return cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 }
 
+func (r *RepApi) UnpackRewardData(data []byte) (*RepRewardParam, error) {
+	abiParam := new(cabi.RepRewardParam)
+	err := cabi.MinerABI.UnpackMethod(abiParam, cabi.MethodNameRepReward, data)
+	if err != nil {
+		return nil, err
+	}
+	apiParam := new(RepRewardParam)
+	apiParam.Account = abiParam.Account
+	apiParam.Beneficial = abiParam.Beneficial
+	apiParam.StartHeight = abiParam.StartHeight
+	apiParam.EndHeight = abiParam.EndHeight
+	apiParam.RewardBlocks = abiParam.RewardBlocks
+	apiParam.RewardAmount = abiParam.RewardAmount
+	return apiParam, nil
+}
+
 func (r *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo, error) {
 	if !r.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
