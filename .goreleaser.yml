@@ -14,7 +14,7 @@ before:
 builds:
 # Mainnet
 - id: gqlc-darwin
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=MainNet
   binary: gqlc
   env:
     - CGO_ENABLED=1  
@@ -26,7 +26,7 @@ builds:
   goarch:
     - amd64
 - id: gqlc-linux
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=MainNet
   binary: gqlc
   env:
     - CGO_ENABLED=1
@@ -36,7 +36,7 @@ builds:
   goarch:
     - amd64
 - id: gqlc-windows-x64
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=MainNet
   binary: gqlc
   env:
     - CGO_ENABLED=1
@@ -48,7 +48,7 @@ builds:
   goarch:
     - amd64
 - id: gqlc-windows-i386
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=MainNet
   binary: gqlc
   env:
     - CGO_ENABLED=1
@@ -62,7 +62,7 @@ builds:
 - id: gqlc-confidant
   flags:
     - -tags=confidant
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=MainNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=MainNet
   binary: gqlc
   env:
     - CGO_ENABLED=1
@@ -80,7 +80,7 @@ builds:
 - id: gqlc-darwin-test
   flags:
     - -tags=testnet
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=TestNet
   binary: gqlct
   env:
     - CGO_ENABLED=1  
@@ -94,7 +94,7 @@ builds:
 - id: gqlc-linux-test
   flags:
     - -tags=testnet
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=TestNet
   binary: gqlct
   env:
     - CGO_ENABLED=1
@@ -106,7 +106,7 @@ builds:
 - id: gqlc-windows-test
   flags:
     - -tags=testnet
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=TestNet
   binary: gqlct
   env:
     - CGO_ENABLED=1
@@ -121,7 +121,7 @@ builds:
 - id: gqlc-confidant-test
   flags:
     - -tags="confidant testnet"
-  ldflags: -X github.com/qlcchain/go-qlc/cmd/server/commands.Version={{ .Version }} -X github.com/qlcchain/go-qlc/cmd/server/commands.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/cmd/server/commands.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/cmd/server/commands.Mode=TestNet
+  ldflags: -X github.com/qlcchain/go-qlc/chain.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain.Mode=TestNet
   binary: gqlct
   env:
     - CGO_ENABLED=1
