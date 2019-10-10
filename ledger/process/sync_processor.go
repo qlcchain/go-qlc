@@ -189,12 +189,12 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 	txn := lv.l.Store.NewTransaction(true)
 	if block.IsSendBlock() {
-		if _, err := lv.l.GetLinkBlock(block.GetHash()); err == ledger.ErrLinkNotFound {
+		if _, err := lv.l.GetLinkBlock(block.GetHash(), txn); err == ledger.ErrLinkNotFound {
 			lv.logger.Info("sync done, process send block, ", block.GetHash())
 			hash := block.GetHash()
 			switch block.Type {
 			case types.Send:
-				preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous)
+				preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous, txn)
 				if err != nil {
 					return errors.New("previous block not found")
 				}
@@ -247,7 +247,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 			Address: block.GetAddress(),
 			Hash:    block.GetLink(),
 		}
-		if pi, err := lv.l.GetPending(&pendingKey); pi != nil && err == nil {
+		if pi, err := lv.l.GetPending(&pendingKey, txn); pi != nil && err == nil {
 			lv.logger.Info("sync done, delete pending, ", pendingKey)
 			if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
 				return err
@@ -263,7 +263,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 		}
 	}
 
-	if err := lv.l.DeleteSyncCacheBlock(block.GetHash()); err != nil {
+	if err := lv.l.DeleteSyncCacheBlock(block.GetHash(), txn); err != nil {
 		return fmt.Errorf("delete sync cache block error: %s ", err)
 	}
 
