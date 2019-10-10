@@ -232,7 +232,7 @@ func (ss *PovSyncer) GetBestPeer(lastPeerID string) *PovSyncPeer {
 
 	// random best peer
 	idx := rand.Intn(len(allBestPeers))
-	ss.logger.Debugf("random choose best peer idx %d all %d", idx, len(allBestPeers))
+	//ss.logger.Debugf("random choose best peer idx %d all %d", idx, len(allBestPeers))
 	return allBestPeers[idx]
 }
 
