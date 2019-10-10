@@ -72,10 +72,12 @@ func (ss *ServiceSync) Start() {
 			if syncState == common.SyncFinish || syncState == common.SyncNotStart {
 				peerID, err := ss.netService.node.StreamManager().RandomPeer()
 				if err != nil {
+					ss.logger.Error(err)
 					continue
 				}
 				ss.frontiers, err = getLocalFrontier(ss.qlcLedger)
 				if err != nil {
+					ss.logger.Error(err)
 					continue
 				}
 				ss.logger.Infof("begin sync block from [%s]", peerID)
@@ -133,7 +135,7 @@ func (ss *ServiceSync) onFrontierReq(message *Message) error {
 
 func (ss *ServiceSync) checkFrontier(message *Message) {
 	syncState := ss.syncState.Load()
-	if syncState != common.Syncing {
+	if syncState == common.SyncFinish || syncState == common.SyncNotStart {
 		rsp, err := protos.FrontierResponseFromProto(message.Data())
 		if err != nil {
 			ss.logger.Error(err)
@@ -691,5 +693,5 @@ func (ss *ServiceSync) requestTxsByHashes(reqTxHashes []*types.Hash, peerID stri
 
 func (ss *ServiceSync) GetSyncState(s *common.SyncState) {
 	state := ss.syncState.Load().(common.SyncState)
-	s = &state
+	*s = state
 }

@@ -96,7 +96,7 @@ func (q *NetApi) GetBandwidthStats() *p2pmetrics.Stats {
 func (q *NetApi) Syncing() bool {
 	var ss common.SyncState
 	q.eb.Publish(common.EventSyncStatus, &ss)
-	if ss == common.Syncing {
+	if ss == common.Syncing || ss == common.SyncDone {
 		return true
 	}
 	return false

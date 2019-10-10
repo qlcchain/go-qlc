@@ -55,10 +55,11 @@ var syncStatus = [...]string{
 	SyncNotStart: "SyncNotStart",
 	Syncing:      "Synchronising",
 	SyncDone:     "SyncDone",
+	SyncFinish:   "SyncFinish",
 }
 
 func (s SyncState) String() string {
-	if s > SyncDone {
+	if s > SyncFinish {
 		return "unknown sync state"
 	}
 	return syncStatus[s]

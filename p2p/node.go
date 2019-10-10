@@ -372,12 +372,12 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 	if peerID == node.ID.Pretty() {
 		return nil
 	}
-	node.logger.Infof("node [%s] receive topic from [%s]", node.ID.Pretty(), peerID)
+	node.logger.Debugf("node [%s] receive topic from [%s]", node.ID.Pretty(), peerID)
 	message, err = ParseQlcMessage(data)
 	if err != nil {
 		return err
 	}
-	node.logger.Info("message Type is :", message.messageType)
+	node.logger.Debug("message Type is :", message.messageType)
 	messageBuffer := data[QlcMessageHeaderLength:]
 	if len(messageBuffer) < int(message.DataLength()) {
 		return errors.New("data length error")
