@@ -1,5 +1,7 @@
 package common
 
+import "strings"
+
 type nodeType uint
 
 const (
@@ -31,3 +33,17 @@ const (
 	DPosOnlineSectionLeft   = 30
 	DPosOnlineSectionRight  = 90
 )
+
+var testMode string
+
+func SetTestMode(mode string) {
+	testMode = mode
+}
+
+func GetTestMode() string {
+	return testMode
+}
+
+func CheckTestMode(flag string) bool {
+	return strings.Contains(testMode, flag)
+}

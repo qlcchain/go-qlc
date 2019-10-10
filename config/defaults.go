@@ -10,15 +10,14 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
+	ic "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"strings"
-
-	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 // identityConfig initializes a new identity.
@@ -48,8 +47,7 @@ func identityConfig() (string, string, error) {
 func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
-		testMode := os.Getenv("GQLC_TEST_MODE")
-		if strings.Contains(testMode, "POV") {
+		if common.CheckTestMode("POV") {
 			if runtime.GOOS == "darwin" {
 				return filepath.Join(home, "Library", "Application Support", cfgDir+"_pov")
 			} else if runtime.GOOS == "windows" {

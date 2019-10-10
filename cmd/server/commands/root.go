@@ -10,6 +10,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -127,7 +128,8 @@ func addCommand() {
 
 func start() error {
 	if testModeP != "" {
-		_ = os.Setenv("GQLC_TEST_MODE", testModeP)
+		fmt.Println("GQLC_TEST_MODE:", testModeP)
+		common.SetTestMode(testModeP)
 	}
 
 	var accounts []*types.Account
@@ -142,13 +144,10 @@ func start() error {
 		return err
 	}
 
-	testMode := os.Getenv("GQLC_TEST_MODE")
-	if strings.Contains(testMode, "POV") {
-		fmt.Println("GQLC_TEST_MODE:", testMode)
-
+	if common.CheckTestMode("POV") {
 		cfg.AutoGenerateReceive = true
 		cfg.LogLevel = "info"
-		if strings.Contains(testMode, "DEBUG") {
+		if common.CheckTestMode("DEBUG") {
 			cfg.LogLevel = "debug"
 		}
 
@@ -160,7 +159,7 @@ func start() error {
 		cfg.RPC.IPCEnabled = true
 
 		cfg.P2P.Listen = "/ip4/0.0.0.0/tcp/29734"
-		if strings.Contains(testMode, "CFGBOOT") {
+		if common.CheckTestMode("CFGBOOT") {
 		} else {
 			cfg.P2P.BootNodes = []string{
 				"/ip4/47.103.97.9/tcp/29734/ipfs/QmRULwy6G5VW63tS3LXSy2oPR1qZXMvut6mf2MPKnvpewb",
