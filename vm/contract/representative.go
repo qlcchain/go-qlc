@@ -200,6 +200,28 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	}, nil
 }
 
+func (r *RepReward) doGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
+	param := new(cabi.RepRewardParam)
+	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.Data)
+	if err != nil {
+		return 0, err
+	}
+
+	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
+
+	latestBlock, err := ctx.GetLatestPovBlock()
+	if err != nil || latestBlock == nil {
+		return needHeight ,nil
+	}
+
+	nodeHeight := latestBlock.GetHeight()
+	if nodeHeight < needHeight {
+		return needHeight ,nil
+	}
+
+	return 0, nil
+}
+
 func (r *RepReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, param *cabi.RepRewardParam) error {
 	lastRewardHeight, err := cabi.GetLastRepRewardHeightByAccount(ctx, param.Account)
 	if err != nil && err != vmstore.ErrStorageNotFound {

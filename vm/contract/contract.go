@@ -76,6 +76,7 @@ type ChainContractV2 interface {
 	InternalContract
 	// ProcessSend verify or update StateBlock.Data
 	ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error)
+	doGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error)
 }
 
 type qlcchainContractV2 struct {
