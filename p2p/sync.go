@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"errors"
 	"math"
 	"sort"
 	"sync/atomic"
@@ -26,10 +25,6 @@ const (
 	maxResendTime  = 3
 	pullRspTimeOut = 5 * time.Minute
 	pullReqTimeOut = 15 * time.Second
-)
-
-var (
-	SyncFinish = errors.New("sync finish")
 )
 
 // Service manage sync tasks
@@ -163,22 +158,16 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 				sort.Sort(types.Frontiers(remoteFrontiers))
 				zeroFrontier := new(types.Frontier)
 				remoteFrontiers = append(remoteFrontiers, zeroFrontier)
-				err := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-				if err == SyncFinish {
-					ss.logger.Errorf("process frontiers error:[%s]", err)
-					ss.syncState.Store(common.SyncFinish)
-					ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncFinish)
-				} else {
-					ss.syncState.Store(common.SyncDone)
-					ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.SyncDone)
-				}
+				state := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+				ss.syncState.Store(state)
+				ss.netService.msgEvent.Publish(common.EventSyncStateChange, state)
 			}
 			ss.logger.Infof("sync pull all blocks done")
 		}()
 	}
 }
 
-func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID string) error {
+func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID string) common.SyncState {
 	for i := 0; i < len(fsRemotes); i++ {
 		if !fsRemotes[i].OpenBlock.IsZero() {
 			for {
@@ -206,7 +195,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 					ss.next()
 				} else {
 					if fsRemotes[i].OpenBlock.String() > openBlockHash.String() {
-						return nil
+						return common.SyncDone
 					}
 					pull := &protos.Bulk{
 						StartHash: types.ZeroHash,
@@ -263,7 +252,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								ss.logger.Infof("resend pull request startHash is [%s],endHash is [%s]\n", ss.pullStartHash, ss.pullEndHash)
 								if resend == maxResendTime {
 									ss.logger.Infof("resend pull request timeout")
-									return SyncFinish
+									return common.SyncFinish
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
 							case <-ss.pullRequestStartCh:
@@ -287,14 +276,14 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 							}
 						}
 					} else {
-						return SyncFinish
+						return common.SyncFinish
 					}
 					break
 				}
 			}
 		}
 	}
-	return nil
+	return common.SyncDone
 }
 
 func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
@@ -698,4 +687,9 @@ func (ss *ServiceSync) requestTxsByHashes(reqTxHashes []*types.Hash, peerID stri
 
 		reqTxHashes = reqTxHashes[sendHashNum:]
 	}
+}
+
+func (ss *ServiceSync) GetSyncState(s *common.SyncState) {
+	state := ss.syncState.Load().(common.SyncState)
+	s = &state
 }
