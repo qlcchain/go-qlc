@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -765,6 +766,14 @@ type PovApiHashInfo struct {
 }
 
 func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, error) {
+	if lookup > uint64(common.POVChainBlocksPerDay) {
+		return nil, fmt.Errorf("lookup must be 0 ~ %d", common.POVChainBlocksPerDay)
+	}
+
+	if lookup%uint64(common.POVChainBlocksPerHour) != 0 {
+		return nil, fmt.Errorf("lookup must be multiplier of %d", common.POVChainBlocksPerHour)
+	}
+
 	latestHdr, err := api.ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
@@ -778,8 +787,8 @@ func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, e
 		}
 	}
 
-	if lastHdr == nil || lastHdr.GetHeight() == 0 {
-		return nil, errors.New("failed to get block")
+	if lastHdr == nil {
+		return nil, errors.New("failed to get last block")
 	}
 
 	if lookup <= 0 {
@@ -956,8 +965,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 
 	hashInfo, err := api.GetHashInfo(0, 0)
 	if err != nil {
-		err := outArgs["err"].(error)
-		return nil, err
+		return nil, err.(error)
 	}
 
 	latestBlock := outArgs["latestBlock"].(*types.PovBlock)
@@ -1125,7 +1133,7 @@ func (api *PovApi) GetLastNHourInfo(beginTime uint32, endTime uint32) (*PovApiGe
 			return nil, errors.New("(endTime - beginTime) must be multiplier of 2 hour")
 		}
 		if paraDiffTime < 4*3600 || paraDiffTime > 24*3600 {
-			return nil, errors.New("(endTime - beginTime) must be between 4 and 24 hour")
+			return nil, errors.New("(endTime - beginTime) must be 4 ~ 24 hour")
 		}
 
 		endHourTime = endTime
