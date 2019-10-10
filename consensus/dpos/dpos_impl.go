@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
 	"sort"
 	"sync"
@@ -101,6 +102,8 @@ type DPoS struct {
 	curPovHeight        uint64
 	checkFinish         chan struct{}
 	syncFinish          chan struct{}
+	gapPovCh            chan *consensus.BlockSource
+	povChange           chan *types.PovBlock
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -140,6 +143,8 @@ func NewDPoS(cfgFile string) *DPoS {
 		curPovHeight:        1,
 		checkFinish:         make(chan struct{}, 10240),
 		syncFinish:          make(chan struct{}, 1),
+		gapPovCh:            make(chan *consensus.BlockSource, 10240),
+		povChange:           make(chan *types.PovBlock, 10240),
 	}
 
 	if common.DPoSVoteCacheEn {
@@ -284,6 +289,44 @@ func (dps *DPoS) Start() {
 			dps.frontiersStatus = new(sync.Map)
 			dps.CleanSyncCache()
 			dps.logger.Infof("sync finished abnormally")
+		case bs := <-dps.gapPovCh:
+			if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
+				switch cType := c.(type) {
+				case contract.ChainContractV2:
+					vmCtx := vmstore.NewVMContext(dps.ledger)
+					height, _ := cType.DoGapPov(vmCtx, bs.Block)
+					if height > 0 {
+						err := dps.ledger.AddGapPovBlock(height, bs.Block, bs.BlockFrom)
+						if err != nil {
+							dps.logger.Errorf("add gap pov block to ledger err %s", err)
+						}
+					}
+				}
+			}
+		case pb := <-dps.povChange:
+			dps.logger.Debugf("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
+			dps.curPovHeight = pb.Header.BasHdr.Height
+
+			dps.dequeueGapPovBlocksFromDb(dps.curPovHeight)
+
+			if dps.povSyncState == common.SyncDone {
+				if dps.curPovHeight%2 == 0 {
+					go func() {
+						err := dps.findOnlineRepresentatives()
+						if err != nil {
+							dps.logger.Error(err)
+						}
+						dps.cleanOnlineReps()
+					}()
+				}
+
+				if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
+					dps.curPovHeight%common.DPosOnlinePeriod >= common.DPosOnlineSectionLeft &&
+					dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight {
+					dps.sendOnline(dps.curPovHeight)
+					dps.lastSendHeight = pb.Header.BasHdr.Height
+				}
+			}
 		}
 	}
 }
@@ -1171,5 +1214,25 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 	case common.SyncDone:
 	case common.SyncFinish:
 		dps.syncFinish <- struct{}{}
+	}
+}
+
+func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) {
+	if blocks, kind, err := dps.ledger.GetGapPovBlock(height); err != nil {
+		return
+	} else {
+		for i, b := range blocks {
+			bs := &consensus.BlockSource{
+				Block:     b,
+				BlockFrom: kind[i],
+			}
+
+			index := dps.getProcessorIndex(b.GetAddress())
+			dps.processors[index].blocks <- bs
+		}
+
+		if err := dps.ledger.DeleteGapPovBlock(height); err != nil {
+			dps.logger.Errorf("del gap pov block err", err)
+		}
 	}
 }

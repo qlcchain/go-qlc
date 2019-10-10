@@ -212,27 +212,7 @@ func (dps *DPoS) sendOnlineWithAccount(acc *types.Account, povHeight uint64) {
 }
 
 func (dps *DPoS) onPovHeightChange(pb *types.PovBlock) {
-	dps.logger.Debugf("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
-	dps.curPovHeight = pb.Header.BasHdr.Height
-
-	if dps.povSyncState == common.SyncDone {
-		if dps.curPovHeight%2 == 0 {
-			go func() {
-				err := dps.findOnlineRepresentatives()
-				if err != nil {
-					dps.logger.Error(err)
-				}
-				dps.cleanOnlineReps()
-			}()
-		}
-
-		if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
-			dps.curPovHeight%common.DPosOnlinePeriod >= common.DPosOnlineSectionLeft &&
-			dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight {
-			dps.sendOnline(dps.curPovHeight)
-			dps.lastSendHeight = pb.Header.BasHdr.Height
-		}
-	}
+	dps.povChange <- pb
 }
 
 func (dps *DPoS) onGetOnlineInfo(in interface{}, out interface{}) {

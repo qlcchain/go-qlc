@@ -92,6 +92,7 @@ const (
 	idPrefixUnconfirmedSync
 	idPrefixUncheckedSync
 	idPrefixSyncCacheBlock
+	idPrefixUncheckedPovHeight
 )
 
 var (

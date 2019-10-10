@@ -166,3 +166,105 @@ func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
 
 	return count + count2, nil
 }
+
+func (l *Ledger) AddGapPovBlock(height uint64, block *types.StateBlock, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+
+	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(sync.ToString()))
+	if err != nil {
+		return err
+	}
+
+	blocks := types.StateBlockList{}
+	err = txn.Get(k, func(val []byte, b byte) (err error) {
+		if err = blocks.Deserialize(val); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	blocks = append(blocks, block)
+	v, err := blocks.Serialize()
+	if err != nil {
+		return err
+	}
+
+	return txn.Set(k, v)
+}
+
+func (l *Ledger) GetGapPovBlock(height uint64, txns ...db.StoreTxn) (types.StateBlockList, []types.SynchronizedKind, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	kind := make([]types.SynchronizedKind, 1)
+
+	blocks1 := types.StateBlockList{}
+	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.Synchronized.ToString()))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = txn.Get(k, func(val []byte, b byte) (err error) {
+		if err = blocks1.Deserialize(val); err != nil {
+			return err
+		}
+
+		for i := 0; i < len(blocks1); i++ {
+			kind = append(kind, types.Synchronized)
+		}
+
+		return nil
+	})
+
+	blocks2 := types.StateBlockList{}
+	k, err = getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.UnSynchronized.ToString()))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = txn.Get(k, func(val []byte, b byte) (err error) {
+		if err = blocks2.Deserialize(val); err != nil {
+			return err
+		}
+
+		for i := 0; i < len(blocks2); i++ {
+			kind = append(kind, types.UnSynchronized)
+		}
+
+		return nil
+	})
+
+	blocks1 = append(blocks1, blocks2...)
+	return blocks1, kind, nil
+}
+
+func (l *Ledger) DeleteGapPovBlock(height uint64, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.Synchronized.ToString()))
+	if err != nil {
+		return err
+	}
+
+	err1 := txn.Delete(k)
+
+	k, err = getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.UnSynchronized.ToString()))
+	if err != nil {
+		return err
+	}
+
+	err2 := txn.Delete(k)
+
+	if err1 != nil {
+		return err1
+	}
+
+	if err2 != nil {
+		return err2
+	}
+
+	return nil
+}

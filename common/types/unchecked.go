@@ -66,4 +66,15 @@ const (
 	UnSynchronized
 )
 
+func (s SynchronizedKind) ToString() string {
+	switch s {
+	case Synchronized:
+		return "sync"
+	case UnSynchronized:
+		return "unsync"
+	default:
+		return ""
+	}
+}
+
 type UncheckedBlockWalkFunc func(block *StateBlock, link Hash, unCheckType UncheckedKind, sync SynchronizedKind) error

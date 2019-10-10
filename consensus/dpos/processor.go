@@ -363,6 +363,9 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 	case process.GapTokenInfo:
 		dps.logger.Infof("block:[%s] Gap tokenInfo", hash)
 		p.enqueueUnchecked(result, bs)
+	case process.GapPovHeight:
+		dps.logger.Infof("block:[%s] Gap pov height", hash)
+		p.dps.gapPovCh <- bs
 	}
 }
 
