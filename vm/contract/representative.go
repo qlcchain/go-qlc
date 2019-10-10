@@ -3,6 +3,7 @@ package contract
 import (
 	"errors"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -200,7 +201,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	}, nil
 }
 
-func (r *RepReward) doGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
+func (r *RepReward) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
 	param := new(cabi.RepRewardParam)
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.Data)
 	if err != nil {
@@ -211,12 +212,12 @@ func (r *RepReward) doGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (u
 
 	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
-		return needHeight ,nil
+		return needHeight, nil
 	}
 
 	nodeHeight := latestBlock.GetHeight()
 	if nodeHeight < needHeight {
-		return needHeight ,nil
+		return needHeight, nil
 	}
 
 	return 0, nil

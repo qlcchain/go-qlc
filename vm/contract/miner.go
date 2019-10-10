@@ -3,10 +3,10 @@ package contract
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -206,7 +206,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	}, nil
 }
 
-func (m *MinerReward) doGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
+func (m *MinerReward) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
 	param := new(cabi.MinerRewardParam)
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.Data)
 	if err != nil {
@@ -217,12 +217,12 @@ func (m *MinerReward) doGapPov(ctx *vmstore.VMContext, block *types.StateBlock) 
 
 	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
-		return needHeight ,nil
+		return needHeight, nil
 	}
 
 	nodeHeight := latestBlock.GetHeight()
 	if nodeHeight < needHeight {
-		return needHeight ,nil
+		return needHeight, nil
 	}
 
 	return 0, nil

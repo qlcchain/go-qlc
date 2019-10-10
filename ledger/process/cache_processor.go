@@ -290,10 +290,20 @@ func checkCacheContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (P
 					return InvalidData, nil
 				}
 			} else {
-				lv.logger.Error("ProcessSend error")
+				lv.logger.Errorf("v1 ProcessSend error, block: %s, err: ", block.GetHash(), err)
 				return Other, err
 			}
 		case contract.ChainContractV2:
+			if types.IsRewardContractAddress(types.Address(block.GetLink())) {
+				h, err := v.DoGapPov(vmCtx, clone)
+				if err != nil {
+					lv.logger.Errorf("do gapPov error: %s", err)
+					return Other, err
+				}
+				if h != 0 {
+					return GapPovHeight, nil
+				}
+			}
 			if _, _, err := v.ProcessSend(vmCtx, clone); err == nil {
 				if bytes.EqualFold(block.Data, clone.Data) {
 					return Progress, nil
@@ -302,7 +312,7 @@ func checkCacheContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (P
 					return InvalidData, nil
 				}
 			} else {
-				lv.logger.Error("ProcessSend error")
+				lv.logger.Errorf("v2 ProcessSend error, block: %s, err: ", block.GetHash(), err)
 				return Other, err
 			}
 		default:

@@ -139,6 +139,6 @@ func (b *BlackHole) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (b *BlackHole) doGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
+func (b *BlackHole) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
 	return 0, nil
 }
