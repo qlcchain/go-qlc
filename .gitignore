@@ -176,5 +176,6 @@ build/
 coverage*.txt
 **/dist
 *.coverprofile
+CHANGELOG.md
 
 # End of https://www.gitignore.io/api/go,linux,macos,windows,jetbrains+all,visualstudiocode

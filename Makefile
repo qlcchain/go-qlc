@@ -1,4 +1,4 @@
-.PHONY: clean lint snapshot release
+.PHONY: clean lint changelog snapshot release
 .PHONY: build build-test
 .PHONY: deps
 
@@ -19,6 +19,7 @@ GO_BUILDER_VERSION=v1.13.1
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 
 build:
 	go build -ldflags "-X github.com/qlcchain/go-qlc/chain.Version=${VERSION} \
@@ -39,24 +40,27 @@ build-test:
 clean:
 	rm -rf $(shell pwd)/$(BUILDDIR)/
 
+changelog:
+	git-chglog $(VERSION) > CHANGELOG.md
+
 snapshot:
 	docker run --rm --privileged \
-    -v $(CURDIR):/go-qlc \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-	-v $(GOPATH)/src:/go/src \
-    -w /go-qlc \
-    goreng/golang-cross:$(GO_BUILDER_VERSION) \
-    goreleaser --snapshot --rm-dist
+		-v $(CURDIR):/go-qlc \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(GOPATH)/src:/go/src \
+		-w /go-qlc \
+		goreng/golang-cross:$(GO_BUILDER_VERSION) \
+		goreleaser --snapshot --rm-dist
 
-release:
+release: changelog
 	docker run --rm --privileged \
-	-e GITHUB_TOKEN=$(GITHUB_TOKEN) \
-    -v $(CURDIR):/go-qlc \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-	-v $(GOPATH)/src:/go/src \
-    -w /go-qlc \
-    goreng/golang-cross:$(GO_BUILDER_VERSION) \
-    goreleaser --rm-dist
+		-e GITHUB_TOKEN=$(GITHUB_TOKEN) \
+		-v $(CURDIR):/go-qlc \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(GOPATH)/src:/go/src \
+		-w /go-qlc \
+		goreng/golang-cross:$(GO_BUILDER_VERSION) \
+		goreleaser --rm-dist --release-notes=CHANGELOG.md
 
 lint: 
 	golangci-lint run --fix
