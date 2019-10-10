@@ -14,17 +14,17 @@ const (
 )
 
 func PovCreateStatePrefix(prefix byte) []byte {
-	key := make([]byte, 2)
-	key[0] = TriePrefixPovState
-	key[1] = prefix
+	key := make([]byte, 1)
+	//key[0] = TriePrefixPovState
+	key[0] = prefix
 	return key
 }
 
 func PovCreateStateKey(prefix byte, rawKey []byte) []byte {
-	key := make([]byte, 2+len(rawKey))
-	key[0] = TriePrefixPovState
-	key[1] = prefix
-	copy(key[2:], rawKey)
+	key := make([]byte, 1+len(rawKey))
+	//key[0] = TriePrefixPovState
+	key[0] = prefix
+	copy(key[1:], rawKey)
 	return key
 }
 
@@ -37,7 +37,7 @@ func PovCreateRepStateKey(address Address) []byte {
 }
 
 func PovStateKeyToAddress(key []byte) (Address, error) {
-	return BytesToAddress(key[2:])
+	return BytesToAddress(key[1:])
 }
 
 //go:generate msgp

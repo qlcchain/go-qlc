@@ -166,6 +166,7 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 			lastRepNewRs = lastRepOldRs.Clone()
 		} else {
 			lastRepNewRs = types.NewPovRepState()
+			lastRepNewRs.Account = block.GetAddress()
 		}
 
 		// old(last) representative minus old account balance
@@ -193,6 +194,7 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 			currRepNewRs = currRepOldRs.Clone()
 		} else {
 			currRepNewRs = types.NewPovRepState()
+			currRepNewRs.Account = block.GetAddress()
 		}
 
 		// new(current) representative plus new account balance
@@ -220,6 +222,7 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, trie *trie.Trie, block *
 		newRs = oldRs.Clone()
 	} else {
 		newRs = types.NewPovRepState()
+		newRs.Account = block.GetAddress()
 	}
 
 	newRs.Status = types.PovStatusOnline
@@ -292,7 +295,7 @@ func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *ty
 
 func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs *types.PovRepState) error {
 	//bc.logger.Debugf("set rep %s state %s", address, rs)
-	rs.Account = address
+	//rs.Account = address
 
 	valBytes, err := rs.Serialize()
 	if err != nil {
