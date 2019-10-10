@@ -193,7 +193,7 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
 	hash := block.GetHash()
 	dps := act.dps
-	dps.logger.Debugf("sync block[%s] confirmed", hash)
+	dps.logger.Infof("sync block[%s] confirmed", hash)
 
 	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
 		err := dps.lv.BlockSyncProcess(block)

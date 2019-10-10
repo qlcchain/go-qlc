@@ -66,7 +66,7 @@ const (
 	UnSynchronized
 )
 
-func (s SynchronizedKind) ToString() string {
+func (s SynchronizedKind) String() string {
 	switch s {
 	case Synchronized:
 		return "sync"

@@ -296,6 +296,7 @@ func (dps *DPoS) Start() {
 					vmCtx := vmstore.NewVMContext(dps.ledger)
 					height, _ := cType.DoGapPov(vmCtx, bs.Block)
 					if height > 0 {
+						dps.logger.Infof("add gap pov[%s][%d]", bs.Block.GetHash(), height)
 						err := dps.ledger.AddGapPovBlock(height, bs.Block, bs.BlockFrom)
 						if err != nil {
 							dps.logger.Errorf("add gap pov block to ledger err %s", err)
@@ -304,7 +305,7 @@ func (dps *DPoS) Start() {
 				}
 			}
 		case pb := <-dps.povChange:
-			dps.logger.Debugf("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
+			dps.logger.Infof("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 			dps.curPovHeight = pb.Header.BasHdr.Height
 
 			dps.dequeueGapPovBlocksFromDb(dps.curPovHeight)
@@ -1227,6 +1228,7 @@ func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) {
 				BlockFrom: kind[i],
 			}
 
+			dps.logger.Infof("dequeue gap pov[%s][%s]", b.GetHash(), kind[i])
 			index := dps.getProcessorIndex(b.GetAddress())
 			dps.processors[index].blocks <- bs
 		}

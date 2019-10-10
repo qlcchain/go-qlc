@@ -168,7 +168,7 @@ func (bc *PovBlockChain) Init() error {
 }
 
 func (bc *PovBlockChain) Start() error {
-	common.Go(bc.statLoop)
+	//common.Go(bc.statLoop)
 	return nil
 }
 
@@ -207,8 +207,6 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 	}
 
 	for {
-		bc.logger.Debugf("curDayIndex: %d, latestBlock: %d", curDayIndex, latestBlock.GetHeight())
-
 		dayStartHeight := uint64(uint64(curDayIndex) * uint64(common.POVChainBlocksPerDay))
 		dayEndHeight := dayStartHeight + uint64(common.POVChainBlocksPerDay) - 1
 
@@ -216,6 +214,7 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 			break
 		}
 
+		bc.logger.Infof("curDayIndex: %d, latestBlock: %d", curDayIndex, latestBlock.GetHeight())
 		dayStat := types.NewPovMinerDayStat()
 		dayStat.DayIndex = curDayIndex
 
@@ -773,6 +772,7 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 
 	bc.StoreLatestBlock(block)
 
+	bc.onMinerDayStatTimer()
 	bc.eb.Publish(common.EventPovConnectBestBlock, block)
 
 	return nil
