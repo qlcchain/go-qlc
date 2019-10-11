@@ -1038,44 +1038,44 @@ func (dps *DPoS) blockSyncDone() error {
 	dps.logger.Info("sync done, start process")
 	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
 
-	syncBlocks := make([]*types.StateBlock, 0)
+	// contract data need sort
+	contractBlocks := make([]*types.StateBlock, 0)
+
 	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
-		syncBlocks = append(syncBlocks, block)
+		hash := block.GetHash()
+
+		if b, err := dps.isRelatedOrderBlock(block); err != nil {
+			dps.logger.Errorf("block[%s] type check error, %s", hash, err)
+		} else {
+			if b {
+				contractBlocks = append(contractBlocks, block)
+			} else {
+				err := dps.lv.BlockSyncDoneProcess(block)
+				if err != nil {
+					dps.logger.Errorf("process sync block[%s] err when sync is done[%s]", hash, err)
+				}
+			}
+		}
+
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	if len(syncBlocks) > 0 {
-		// contract data need sort
-		contractBlocks := make([]*types.StateBlock, 0)
-		for _, block := range syncBlocks {
-			if b, err := dps.isRelatedOrderBlock(block); err != nil {
-				dps.logger.Errorf("block[%s] type check error, %s", block.GetHash(), err)
-			} else {
-				if b {
-					contractBlocks = append(contractBlocks, block)
-				} else {
-					err := dps.lv.BlockSyncDoneProcess(block)
-					if err != nil {
-						dps.logger.Errorf("process sync block[%s] err when sync is done[%s]", block.GetHash(), err)
-					}
-				}
-			}
-		}
+	dps.logger.Info("sync done, common block process finished")
+	if len(contractBlocks) > 0 {
+		sort.Slice(contractBlocks, func(i, j int) bool {
+			return contractBlocks[i].Timestamp < contractBlocks[j].Timestamp
+		})
 
-		dps.logger.Info("sync done, common block process finished ")
-		if len(contractBlocks) > 0 {
-			sort.Slice(contractBlocks, func(i, j int) bool {
-				return contractBlocks[i].Timestamp < contractBlocks[j].Timestamp
-			})
-			for _, blk := range contractBlocks {
-				if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
-					dps.logger.Errorf("process sync contract block[%s] err when sync is done[%s]", blk.GetHash(), err)
-				}
+		for _, block := range contractBlocks {
+			hash := block.GetHash()
+			if err := dps.lv.BlockSyncDoneProcess(block); err != nil {
+				dps.logger.Errorf("process sync contract block[%s] err when sync is done[%s]", hash, err)
 			}
 		}
 	}
+
 	dps.logger.Info("sync done, end process")
 	return nil
 }
@@ -1152,7 +1152,7 @@ func (dps *DPoS) checkSyncFinished() {
 
 		dps.frontiersStatus = new(sync.Map)
 		dps.CleanSyncCache()
-		dps.eb.Publish(common.EventConsensusSyncFinished)
+		dps.eb.Publish(common.EventConsensusSync, common.SyncFinish)
 		dps.logger.Infof("sync finished")
 	}
 }

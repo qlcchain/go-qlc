@@ -45,6 +45,8 @@ type Processor struct {
 	syncCache       chan *syncCacheInfo
 	orderedChain    *sync.Map
 	chainHeight     map[chainKey]uint64
+	lastSyncHash    types.Hash
+	getFrontier     bool
 }
 
 func newProcessors(num int) []*Processor {
@@ -65,6 +67,8 @@ func newProcessors(num int) []*Processor {
 			syncState:       common.SyncNotStart,
 			orderedChain:    new(sync.Map),
 			chainHeight:     make(map[chainKey]uint64),
+			lastSyncHash:    types.ZeroHash,
+			getFrontier:     false,
 		}
 		processors = append(processors, p)
 	}
@@ -87,28 +91,38 @@ func (p *Processor) stop() {
 func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 	dps := p.dps
 	hash := block.GetHash()
-	checked := false
+	dps.logger.Infof("sync block[%s]", hash)
 
-	if block.IsOpen() {
-		checked = true
-	} else {
-		if has, _ := dps.ledger.HasUnconfirmedSyncBlock(block.Previous); has {
-			checked = true
+	if !block.IsOpen() {
+		if p.lastSyncHash != types.ZeroHash {
+			if p.lastSyncHash != block.Previous {
+				dps.frontiersStatus = new(sync.Map)
+				dps.CleanSyncCache()
+				dps.eb.Publish(common.EventConsensusSync, common.SyncFinish)
+				dps.logger.Errorf("sync block not serialized [%s] prev[%s], restart sync", hash, block.Previous)
+				return
+			}
 		} else {
-			if has, _ := dps.ledger.HasStateBlockConfirmed(block.Previous); has {
-				checked = true
-			} else {
-				p.enqueueUncheckedSync(block)
+			if has, _ := dps.ledger.HasStateBlockConfirmed(block.Previous); !has {
+				dps.frontiersStatus = new(sync.Map)
+				dps.CleanSyncCache()
+				dps.eb.Publish(common.EventConsensusSync, common.SyncFinish)
+				dps.logger.Errorf("sync block not serialized [%s] prev[%s], restart sync", hash, block.Previous)
+				return
 			}
 		}
 	}
 
-	if checked {
-		if err := dps.ledger.AddUnconfirmedSyncBlock(hash, block); err != nil {
-			dps.logger.Errorf("add unconfirmed sync block err", err)
-		}
-		p.processConfirmedSync(hash, block)
+	if dps.isReceivedFrontier(hash) {
+		p.lastSyncHash = types.ZeroHash
+	} else {
+		p.lastSyncHash = hash
 	}
+
+	if err := dps.ledger.AddUnconfirmedSyncBlock(hash, block); err != nil {
+		dps.logger.Errorf("add unconfirmed sync block err", err)
+	}
+	p.processConfirmedSync(hash, block)
 }
 
 func (p *Processor) processMsg() {
@@ -121,7 +135,9 @@ func (p *Processor) processMsg() {
 			case p.syncState = <-p.syncStateChange:
 				p.dps.syncStateNotifyWait.Done()
 
-				if p.syncState == common.SyncFinish {
+				if p.syncState == common.Syncing {
+					p.getFrontier = false
+					p.lastSyncHash = types.ZeroHash
 					p.orderedChain = new(sync.Map)
 					p.chainHeight = make(map[chainKey]uint64)
 				}
@@ -130,15 +146,28 @@ func (p *Processor) processMsg() {
 					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
 					go p.confirmChain(hash)
 				}
-				p.dequeueUncheckedSync(hash)
+				//p.dequeueUncheckedSync(hash)
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
 			case ack := <-p.acks:
 				p.processAck(ack)
 			case frontier := <-p.frontiers:
+				p.getFrontier = true
 				p.processFrontier(frontier)
 			default:
 				break PriorityOut
+			}
+		}
+
+		if p.getFrontier {
+		SyncOut:
+			for {
+				select {
+				case block := <-p.syncBlock:
+					p.syncBlockCheck(block)
+				default:
+					break SyncOut
+				}
 			}
 		}
 
@@ -147,8 +176,6 @@ func (p *Processor) processMsg() {
 			return
 		case bs := <-p.blocks:
 			p.processMsgDo(bs)
-		case block := <-p.syncBlock:
-			p.syncBlockCheck(block)
 		case cache := <-p.syncCache:
 			if cache.kind == common.SyncCacheUnconfirmed {
 				_ = p.dps.ledger.DeleteUnconfirmedSyncBlock(cache.hash)

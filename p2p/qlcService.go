@@ -102,7 +102,7 @@ func (ns *QlcService) setEvent() error {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ns.msgService.syncService.onConsensusSyncFinished)
+	err = ns.msgEvent.SubscribeSync(common.EventConsensusSync, ns.msgService.syncService.onConsensusSyncFinished)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
