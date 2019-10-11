@@ -386,7 +386,9 @@ func (h *PovHeader) Deserialize(text []byte) error {
 
 func (h *PovHeader) Copy() *PovHeader {
 	h2 := *h
-	h2.CbTx = h.CbTx.Copy()
+	if h.CbTx != nil {
+		h2.CbTx = h.CbTx.Copy()
+	}
 	return &h2
 }
 

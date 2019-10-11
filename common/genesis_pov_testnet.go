@@ -17,8 +17,8 @@ var (
             "merkleRoot":"7d3a1a8178b8865a829bd9cbd9b3be378d8127226b102458cadcbb6c5b16cb87",
             "timestamp":1566345600,
             "bits":504365040,
-            "nonce":1232313,
-            "hash":"ceefd0a85f48ded0304781438e1c6cda700798a19659d94caad22f206e0a0000",
+            "nonce":2299442235,
+            "hash":"461b360695d1eb8c468766bbeae6114daed22e7c88cf752bdcdc959e5f0d0000",
             "height":0
         },
         "auxHdr":null,
