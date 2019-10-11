@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/qlcchain/go-qlc/common/event"
+	"go.uber.org/atomic"
 	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/bluele/gcache"
@@ -100,6 +100,8 @@ type PovBlockChain struct {
 
 	trieCache    gcache.Cache // stateHash => trie
 	trieNodePool *trie.NodePool
+
+	doingMinerStat atomic.Bool
 
 	quitCh chan struct{}
 	wg     sync.WaitGroup
@@ -194,6 +196,11 @@ func (bc *PovBlockChain) statLoop() {
 }
 
 func (bc *PovBlockChain) onMinerDayStatTimer() {
+	if !bc.doingMinerStat.CAS(false, true) {
+		return
+	}
+	defer bc.doingMinerStat.CAS(true, false)
+
 	latestBlock := bc.LatestBlock()
 
 	curDayIndex := uint32(0)
@@ -227,18 +234,22 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 
 			//calc repReward
 			if height%common.DPosOnlinePeriod == common.DPosOnlinePeriod-1 {
-				stateHash := header.GetStateHash()
-				stateTrie := bc.GetStateTrie(&stateHash)
-				repStates := bc.GetAllValidRepStates(stateTrie)
-				total := types.NewBalance(0)
-
-				for _, rep := range repStates {
-					if rep.Status == types.PovStatusOnline && rep.Height <= height && rep.Height >= height+1-common.DPosOnlinePeriod {
-						total = total.Add(rep.CalcTotal())
+				repStates := bc.GetAllOnlineRepStates(header)
+				bc.logger.Debugf("get online rep states %d at block height %d", len(repStates), height)
+				/*
+					for idx, rs := range repStates {
+						bc.logger.Debugf("%d-%s-%d", idx, rs.Account, rs.Height)
 					}
-				}
-				totalBig := big.NewInt(total.Int64())
+				*/
 
+				// calc total weight of all reps
+				repWeightTotal := types.NewBalance(0)
+				for _, rep := range repStates {
+					repWeightTotal = repWeightTotal.Add(rep.CalcTotal())
+				}
+				repWeightTotalBig := big.NewInt(repWeightTotal.Int64())
+
+				// calc total reward of all blocks in period
 				var i uint64
 				for i = 0; i < common.DPosOnlinePeriod; i++ {
 					povHead, err := bc.getLedger().GetPovHeaderByHeight(height - i)
@@ -246,25 +257,26 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 						bc.logger.Warnf("failed to get pov header %d, err %s", height-i, err)
 						return
 					}
+					repRewardAllBig := povHead.GetRepReward()
 
-					repRewardAllInt := povHead.GetRepReward().Int64()
+					// divide reward to each rep
 					for _, rep := range repStates {
-						if rep.Status == types.PovStatusOnline && rep.Height <= height && rep.Height >= height+1-common.DPosOnlinePeriod {
-							repRewardBig := big.NewInt(rep.CalcTotal().Int64())
-							repRewardAllBig := big.NewInt(repRewardAllInt)
-							repRewardBig = repRewardBig.Mul(repRewardBig, repRewardAllBig)
-							amountBig := repRewardBig.Div(repRewardBig, totalBig)
-							amount := types.NewBalance(amountBig.Int64())
+						// repReward = totalReward / repWeight * totalWeight
+						repRewardBig := big.NewInt(rep.CalcTotal().Int64())
+						repRewardBig = repRewardBig.Mul(repRewardBig, repRewardAllBig.Int)
+						amountBig := repRewardBig.Div(repRewardBig, repWeightTotalBig)
+						amount := types.NewBalance(amountBig.Int64())
 
-							repAddrStr := rep.Account.String()
-							minerStat := dayStat.MinerStats[repAddrStr]
-							if minerStat == nil {
-								minerStat = types.NewPovMinerStatItem()
-								dayStat.MinerStats[repAddrStr] = minerStat
-							}
-							minerStat.RepBlockNum++
-							minerStat.RepReward = minerStat.RepReward.Add(amount)
+						repAddrStr := rep.Account.String()
+						minerStat := dayStat.MinerStats[repAddrStr]
+						if minerStat == nil {
+							minerStat = types.NewPovMinerStatItem()
+							dayStat.MinerStats[repAddrStr] = minerStat
 						}
+						minerStat.RepBlockNum += 1
+						minerStat.RepReward = minerStat.RepReward.Add(amount)
+
+						//bc.logger.Debugf("repStat: %s-%d-%s", repAddrStr, minerStat.RepBlockNum, minerStat.RepReward)
 					}
 				}
 			}
@@ -680,6 +692,10 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie
 		bc.logger.Infof("success to insert block %d/%s to %s chain", block.GetHeight(), block.GetHash(), chainState)
 	}
 
+	if (block.GetHeight()+1)%uint64(common.POVChainBlocksPerDay) == 0 {
+		bc.onMinerDayStatTimer()
+	}
+
 	return err
 }
 
@@ -771,6 +787,7 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 	}
 
 	bc.StoreLatestBlock(block)
+
 	bc.eb.Publish(common.EventPovConnectBestBlock, block)
 
 	return nil

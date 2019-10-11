@@ -311,34 +311,51 @@ func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs 
 	return nil
 }
 
-func (bc *PovBlockChain) GetAllValidRepStates(trie *trie.Trie) []*types.PovRepState {
+func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
 	var allRss []*types.PovRepState
 	supply := common.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
-	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
-	it := trie.NewIterator(repPrefix)
-
-	key, valBytes, ok := it.Next()
-	for ok {
-		if len(valBytes) > 0 {
-			rs := types.NewPovRepState()
-			err := rs.Deserialize(valBytes)
-			if err != nil {
-				bc.logger.Errorf("deserialize old rep state, key %s err %s", hex.EncodeToString(key), err)
-				return nil
-			}
-
-			if rs.CalcTotal().Compare(minVoteWeight) == types.BalanceCompBigger {
-				rs.Account, _ = types.BytesToAddress(key[1:])
-				allRss = append(allRss, rs)
-			}
-		}
-
-		key, valBytes, ok = it.Next()
+	stateHash := header.GetStateHash()
+	stateTrie := bc.GetStateTrie(&stateHash)
+	if stateTrie == nil {
+		return nil
 	}
 
-	//bc.logger.Debugf("get all rep state %d", len(allRss))
+	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	it := stateTrie.NewIterator(repPrefix)
+	if it == nil {
+		return nil
+	}
+
+	key, valBytes, ok := it.Next()
+	for ; ok; key, valBytes, ok = it.Next() {
+		if len(valBytes) <= 0 {
+			continue
+		}
+
+		rs := types.NewPovRepState()
+		err := rs.Deserialize(valBytes)
+		if err != nil {
+			bc.logger.Errorf("deserialize old rep state, key %s err %s", hex.EncodeToString(key), err)
+			return nil
+		}
+
+		if rs.Status != types.PovStatusOnline {
+			continue
+		}
+
+		if rs.Height > header.GetHeight() || rs.Height < (header.GetHeight()+1-common.DPosOnlinePeriod) {
+			continue
+		}
+
+		if rs.CalcTotal().Compare(minVoteWeight) != types.BalanceCompBigger {
+			continue
+		}
+
+		rs.Account, _ = types.BytesToAddress(key[1:])
+		allRss = append(allRss, rs)
+	}
 
 	return allRss
 }

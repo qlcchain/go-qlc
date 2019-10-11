@@ -173,7 +173,6 @@ func (l *Ledger) AddGapPovBlock(height uint64, block *types.StateBlock, sync typ
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-
 	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(sync.String()))
 	if err != nil {
 		return err
