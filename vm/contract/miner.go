@@ -3,8 +3,6 @@ package contract
 import (
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -261,18 +259,7 @@ func (m *MinerReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, coinbas
 
 	rewardAmount := types.NewBalance(0)
 	for dayIndex := startDayIndex; dayIndex <= endDayIndex; dayIndex++ {
-		var dayStat *types.PovMinerDayStat
-		var err error
-
-		for i := 0; i < 3; i++ {
-			dayStat, err = ctx.GetPovMinerStat(dayIndex)
-			if err != nil {
-				time.Sleep(time.Second)
-				continue
-			}
-			break
-		}
-
+		dayStat, err := ctx.GetPovMinerStat(dayIndex)
 		if err != nil {
 			return 0, types.NewBalance(0), fmt.Errorf("get pov miner state err[%d]", dayIndex)
 		}

@@ -27,10 +27,9 @@ import (
 )
 
 const (
-	repTimeout         = 5 * time.Minute
-	voteCacheSize      = 102400
-	refreshPriInterval = 1 * time.Minute
-	//findOnlineRepInterval = 2 * time.Minute
+	repTimeout            = 5 * time.Minute
+	voteCacheSize         = 102400
+	refreshPriInterval    = 1 * time.Minute
 	subAckMaxSize         = 102400
 	maxStatisticsPeriod   = 3
 	confirmedCacheMaxLen  = 102400
@@ -104,6 +103,7 @@ type DPoS struct {
 	syncFinish          chan struct{}
 	gapPovCh            chan *consensus.BlockSource
 	povChange           chan *types.PovBlock
+	lastGapHeight       uint64
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -225,9 +225,9 @@ func (dps *DPoS) Start() {
 	go dps.processSubMsg()
 	dps.processorStart()
 
-	//timerFindOnlineRep := time.NewTicker(findOnlineRepInterval)
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDebug := time.NewTicker(time.Minute)
+	timerDequeueGap := time.NewTicker(time.Minute)
 
 	for {
 		select {
@@ -248,15 +248,6 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		//case <-timerFindOnlineRep.C:
-		//	dps.logger.Info("begin Find Online Representatives.")
-		//	go func() {
-		//		err := dps.findOnlineRepresentatives()
-		//		if err != nil {
-		//			dps.logger.Error(err)
-		//		}
-		//		dps.cleanOnlineReps()
-		//	}()
 		case state := <-dps.povState:
 			dps.povSyncState = state
 			if state == common.SyncDone {
@@ -282,10 +273,6 @@ func (dps *DPoS) Start() {
 		case <-dps.checkFinish:
 			dps.checkSyncFinished()
 		case <-dps.syncFinish:
-			if err := dps.blockSyncDone(); err != nil {
-				dps.logger.Error("block sync down err", err)
-			}
-
 			dps.frontiersStatus = new(sync.Map)
 			dps.CleanSyncCache()
 			dps.logger.Infof("sync finished abnormally")
@@ -308,8 +295,6 @@ func (dps *DPoS) Start() {
 			dps.logger.Infof("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 			dps.curPovHeight = pb.Header.BasHdr.Height
 
-			dps.dequeueGapPovBlocksFromDb(dps.curPovHeight)
-
 			if dps.povSyncState == common.SyncDone {
 				if dps.curPovHeight%2 == 0 {
 					go func() {
@@ -326,6 +311,19 @@ func (dps *DPoS) Start() {
 					dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight {
 					dps.sendOnline(dps.curPovHeight)
 					dps.lastSendHeight = pb.Header.BasHdr.Height
+				}
+			}
+		case <-timerDequeueGap.C:
+			for {
+				if dps.lastGapHeight <= dps.curPovHeight {
+					if dps.dequeueGapPovBlocksFromDb(dps.lastGapHeight) {
+						dps.lastGapHeight++
+						continue
+					} else {
+						break
+					}
+				} else {
+					break
 				}
 			}
 		}
@@ -1218,10 +1216,16 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 	}
 }
 
-func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) {
+func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
 	if blocks, kind, err := dps.ledger.GetGapPovBlock(height); err != nil {
-		return
+		return true
 	} else {
+		dayIndex := uint32((height - common.PovMinerRewardHeightGapToLatest) / uint64(common.POVChainBlocksPerDay))
+		if !dps.ledger.HasPovMinerStat(dayIndex) {
+			dps.logger.Infof("miner stat [%d] not exist", dayIndex)
+			return false
+		}
+
 		for i, b := range blocks {
 			bs := &consensus.BlockSource{
 				Block:     b,
@@ -1236,5 +1240,7 @@ func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) {
 		if err := dps.ledger.DeleteGapPovBlock(height); err != nil {
 			dps.logger.Errorf("del gap pov block err", err)
 		}
+
+		return true
 	}
 }

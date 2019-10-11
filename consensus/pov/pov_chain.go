@@ -168,7 +168,7 @@ func (bc *PovBlockChain) Init() error {
 }
 
 func (bc *PovBlockChain) Start() error {
-	//common.Go(bc.statLoop)
+	common.Go(bc.statLoop)
 	return nil
 }
 
@@ -771,8 +771,6 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 	}
 
 	bc.StoreLatestBlock(block)
-
-	bc.onMinerDayStatTimer()
 	bc.eb.Publish(common.EventPovConnectBestBlock, block)
 
 	return nil

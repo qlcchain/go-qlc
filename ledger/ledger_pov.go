@@ -679,6 +679,24 @@ func (l *Ledger) GetPovMinerStat(dayIndex uint32, txns ...db.StoreTxn) (*types.P
 	return l.getPovMinerStat(key, txn)
 }
 
+func (l *Ledger) HasPovMinerStat(dayIndex uint32, txns ...db.StoreTxn) bool {
+	key, err := getKeyOfParts(idPrefixPovMinerStat, dayIndex)
+	if err != nil {
+		return false
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	if err := txn.Get(key, func(val []byte, b byte) error {
+		return nil
+	}); err != nil {
+		return false
+	}
+
+	return true
+}
+
 func (l *Ledger) GetLatestPovMinerStat(txns ...db.StoreTxn) (*types.PovMinerDayStat, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)

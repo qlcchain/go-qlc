@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	confirmReqMaxTimes = 30
+	confirmReqMaxTimes = 3
 	confirmReqInterval = 60
 )
 
@@ -156,12 +156,18 @@ func (act *ActiveTrx) checkVotes() {
 				return true
 			}
 
-			dps.logger.Infof("block[%s] was not confirmed after 30 times resend", hash)
+			dps.logger.Infof("block[%s] was not confirmed after %d times resend", hash, confirmReqMaxTimes)
 			act.roots.Delete(el.vote.id)
 			_ = dps.lv.Rollback(hash)
 			el.cleanBlockInfo()
-			dps.frontiersStatus.Delete(hash)
 			dps.syncBlockRollback(hash)
+
+			if dps.isReceivedFrontier(hash) {
+				dps.logger.Infof("sync finish abnormally because of frontier not confirmed")
+				dps.frontiersStatus = new(sync.Map)
+				dps.CleanSyncCache()
+				dps.eb.Publish(common.EventConsensusSyncFinished)
+			}
 		} else {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)
 			confirmReqBlocks := make([]*types.StateBlock, 0)
