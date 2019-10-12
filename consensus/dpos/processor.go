@@ -130,7 +130,7 @@ func (p *Processor) processMsg() {
 					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
 					go p.confirmChain(hash)
 				}
-				p.dequeueUncheckedSync(hash)
+				//p.dequeueUncheckedSync(hash)
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
 			case ack := <-p.acks:

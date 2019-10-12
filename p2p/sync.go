@@ -37,6 +37,7 @@ type ServiceSync struct {
 	headerBlockHash    types.Hash
 	openBlockHash      types.Hash
 	bulkPull           []*protos.Bulk
+	lastSyncHash       types.Hash
 }
 
 // NewService return new Service.
@@ -143,6 +144,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			var remoteFrontiers []*types.Frontier
 			var blks types.StateBlockList
 			ss.syncState.Store(common.Syncing)
+			ss.lastSyncHash = types.ZeroHash
 			ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncing)
 			ss.logger.Info("sync start")
 
@@ -583,10 +585,33 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 
 	if blkPacket.PullType == protos.PullTypeSegment {
 		ss.pullTimer.Stop()
-		ss.logger.Debugf("start publish sync blocks num[%d] [%d]", len(blocks), time.Now().Unix())
+
+		if ss.lastSyncHash == types.ZeroHash {
+			firstBlock := blocks[0]
+			if !firstBlock.IsOpen() {
+				if has, _ := ss.qlcLedger.HasStateBlockConfirmed(firstBlock.Previous); !has {
+					ss.logger.Errorf("get wrong sync block")
+					ss.pullTimer.Reset(time.Second)
+					ss.lastSyncHash = types.ZeroHash
+					return nil
+				}
+				ss.lastSyncHash = firstBlock.Previous
+			}
+		}
+
+		for _, block := range blocks {
+			if block.Previous != ss.lastSyncHash {
+				ss.logger.Errorf("get wrong sync block")
+				ss.pullTimer.Reset(time.Second)
+				ss.lastSyncHash = types.ZeroHash
+				return nil
+			}
+			ss.lastSyncHash = block.GetHash()
+		}
+
 		ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
-		ss.logger.Debugf("end publish sync blocks [%d]", time.Now().Unix())
 		ss.pullTimer.Reset(pullReqTimeOut)
+
 		if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
 			err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
 			if err != nil {
@@ -594,8 +619,9 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 			}
 		}
 
-		if blocks[len(blocks)-1].GetHash().String() == ss.pullEndHash.String() &&
-			(ss.pullEndHash.String() != types.ZeroHash.String()) {
+		if blocks[len(blocks)-1].GetHash() == ss.pullEndHash && ss.pullEndHash != types.ZeroHash {
+			ss.lastSyncHash = types.ZeroHash
+
 			select {
 			case ss.pullRequestStartCh <- true:
 			default:
