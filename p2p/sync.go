@@ -15,15 +15,9 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	headerBlockHash types.Hash
-	openBlockHash   types.Hash
-	bulkPull        []*protos.Bulk
-)
-
 const (
 	maxResendTime  = 3
-	pullRspTimeOut = 5 * time.Minute
+	pullRspTimeOut = 10 * time.Minute
 	pullReqTimeOut = 15 * time.Second
 )
 
@@ -40,6 +34,9 @@ type ServiceSync struct {
 	pullRequestStartCh chan bool
 	pullStartHash      types.Hash
 	pullEndHash        types.Hash
+	headerBlockHash    types.Hash
+	openBlockHash      types.Hash
+	bulkPull           []*protos.Bulk
 }
 
 // NewService return new Service.
@@ -70,7 +67,7 @@ func (ss *ServiceSync) Start() {
 		case <-ss.syncTicker.C:
 			syncState := ss.syncState.Load()
 			if syncState == common.SyncFinish || syncState == common.SyncNotStart {
-				peerID, err := ss.netService.node.StreamManager().RandomPeer()
+				peerID, err := ss.netService.node.StreamManager().lowestLatencyPeer()
 				if err != nil {
 					ss.logger.Error(err)
 					continue
@@ -82,7 +79,7 @@ func (ss *ServiceSync) Start() {
 				}
 				ss.logger.Infof("begin sync block from [%s]", peerID)
 				ss.next()
-				bulkPull = bulkPull[:0:0]
+				ss.bulkPull = ss.bulkPull[:0:0]
 				err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send FrontierRequest", err)
@@ -173,48 +170,48 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 	for i := 0; i < len(fsRemotes); i++ {
 		if !fsRemotes[i].OpenBlock.IsZero() {
 			for {
-				if !openBlockHash.IsZero() && (openBlockHash.String() < fsRemotes[i].OpenBlock.String()) {
+				if !ss.openBlockHash.IsZero() && (ss.openBlockHash.String() < fsRemotes[i].OpenBlock.String()) {
 					// We have an account but remote peer have not.
 					ss.next()
 				} else {
 					break
 				}
 			}
-			if !openBlockHash.IsZero() {
-				if fsRemotes[i].OpenBlock == openBlockHash {
-					if headerBlockHash == fsRemotes[i].HeaderBlock {
+			if !ss.openBlockHash.IsZero() {
+				if fsRemotes[i].OpenBlock == ss.openBlockHash {
+					if ss.headerBlockHash == fsRemotes[i].HeaderBlock {
 						//ss.logger.Infof("this token %s have the same block", openBlockHash)
 					} else {
 						exit, _ := ss.qlcLedger.HasStateBlockConfirmed(fsRemotes[i].HeaderBlock)
 						if !exit {
 							pull := &protos.Bulk{
-								StartHash: headerBlockHash,
+								StartHash: ss.headerBlockHash,
 								EndHash:   fsRemotes[i].HeaderBlock,
 							}
-							bulkPull = append(bulkPull, pull)
+							ss.bulkPull = append(ss.bulkPull, pull)
 						}
 					}
 					ss.next()
 				} else {
-					if fsRemotes[i].OpenBlock.String() > openBlockHash.String() {
+					if fsRemotes[i].OpenBlock.String() > ss.openBlockHash.String() {
 						return common.SyncDone
 					}
 					pull := &protos.Bulk{
 						StartHash: types.ZeroHash,
 						EndHash:   fsRemotes[i].HeaderBlock,
 					}
-					bulkPull = append(bulkPull, pull)
+					ss.bulkPull = append(ss.bulkPull, pull)
 				}
 			} else {
 				pull := &protos.Bulk{
 					StartHash: types.ZeroHash,
 					EndHash:   fsRemotes[i].HeaderBlock,
 				}
-				bulkPull = append(bulkPull, pull)
+				ss.bulkPull = append(ss.bulkPull, pull)
 			}
 		} else {
 			for {
-				if !openBlockHash.IsZero() {
+				if !ss.openBlockHash.IsZero() {
 					// We have an account but remote peer have not.
 					ss.next()
 				} else {
@@ -227,7 +224,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 						ss.next()
 					}
 
-					if len(bulkPull) > 0 {
+					if len(ss.bulkPull) > 0 {
 						var index int
 						var resend int
 						if len(ss.pullTimer.C) > 0 {
@@ -251,27 +248,27 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 								}
 								resend++
-								ss.logger.Infof("resend pull request startHash is [%s],endHash is [%s]\n", ss.pullStartHash, ss.pullEndHash)
+								ss.logger.Infof("resend pull request startHash is [%s],endHash is [%s]", ss.pullStartHash, ss.pullEndHash)
 								if resend == maxResendTime {
 									ss.logger.Infof("resend pull request timeout")
 									return common.SyncFinish
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
 							case <-ss.pullRequestStartCh:
-								ss.pullStartHash = bulkPull[index].StartHash
-								ss.pullEndHash = bulkPull[index].EndHash
+								ss.pullStartHash = ss.bulkPull[index].StartHash
+								ss.pullEndHash = ss.bulkPull[index].EndHash
 								blkReq := &protos.BulkPullReqPacket{
-									StartHash: bulkPull[index].StartHash,
-									EndHash:   bulkPull[index].EndHash,
+									StartHash: ss.bulkPull[index].StartHash,
+									EndHash:   ss.bulkPull[index].EndHash,
 								}
-								ss.logger.Infof("pull request startHash is [%s],endHash is [%s]\n", ss.pullStartHash, ss.pullEndHash)
+								ss.logger.Infof("pull request startHash is [%s],endHash is [%s]", ss.pullStartHash, ss.pullEndHash)
 								err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 								}
 								index++
 							}
-							if index == len(bulkPull) {
+							if index == len(ss.bulkPull) {
 								ss.pullStartHash = types.ZeroHash
 								ss.pullEndHash = types.ZeroHash
 								break
@@ -299,6 +296,8 @@ func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
 }
 
 func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
+	var blk *types.StateBlock
+	var bulkBlk types.StateBlockList
 	pullRemote, err := protos.BulkPullReqPacketFromProto(message.Data())
 	if err != nil {
 		return err
@@ -312,9 +311,27 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	if pullType != protos.PullTypeSegment {
 		return ss.onBulkPullRequestExt(message, pullRemote)
 	}
+	exitPullRsp := &peerPullRsp{}
+	if v, ok := ss.netService.msgService.pullRspMap.Load(message.from); ok {
+		exitPullRsp, _ = v.(*peerPullRsp)
+		if len(exitPullRsp.pullRspTimer.C) > 0 {
+			<-exitPullRsp.pullRspTimer.C
+		}
+		exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
+
+	} else {
+		exitPullRsp = &peerPullRsp{
+			pullRspStartCh: make(chan bool, 1),
+			pullRspTimer:   time.NewTimer(pullRspTimeOut),
+		}
+	}
+	select {
+	case exitPullRsp.pullRspStartCh <- true:
+	default:
+	}
+	exitPullRsp.pullRspHash = types.ZeroHash
+	ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
 	if startHash.IsZero() {
-		var blk *types.StateBlock
-		var bulkBlk []*types.StateBlock
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
@@ -323,58 +340,29 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 			bulkBlk = append(bulkBlk, blk)
 			endHash = blk.GetPrevious()
-			if endHash.IsZero() == true {
+			if endHash.IsZero() == true || len(bulkBlk) == maxPushTxPerTime {
 				break
 			}
 		}
-		reverseBlocks := make(types.StateBlockList, 0)
-		for i := len(bulkBlk) - 1; i >= 0; i-- {
-			reverseBlocks = append(reverseBlocks, bulkBlk[i])
-		}
-		var shardingBlocks types.StateBlockList
-
-		exitPullRsp := &peerPullRsp{}
-		if v, ok := ss.netService.msgService.pullRspMap.Load(message.from); ok {
-			exitPullRsp, _ = v.(*peerPullRsp)
-			if len(exitPullRsp.pullRspTimer.C) > 0 {
-				<-exitPullRsp.pullRspTimer.C
+		for {
+			reverseBlocks := make(types.StateBlockList, 0)
+			for i := len(bulkBlk) - 1; i >= 0; i-- {
+				reverseBlocks = append(reverseBlocks, bulkBlk[i])
 			}
-			exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
-
-		} else {
-			exitPullRsp = &peerPullRsp{
-				pullRspStartCh: make(chan bool, 1),
-				pullRspTimer:   time.NewTimer(pullRspTimeOut),
-			}
-		}
-		select {
-		case exitPullRsp.pullRspStartCh <- true:
-		default:
-		}
-		exitPullRsp.pullRspHash = types.ZeroHash
-		ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
-		for len(reverseBlocks) > 0 {
-			sendBlockNum := 0
 			select {
 			case <-exitPullRsp.pullRspTimer.C:
 				return nil
 			case <-exitPullRsp.pullRspStartCh:
-				if len(reverseBlocks) > maxPushTxPerTime {
-					sendBlockNum = maxPushTxPerTime
-				} else {
-					sendBlockNum = len(reverseBlocks)
-				}
-				shardingBlocks = reverseBlocks[0:sendBlockNum]
 				if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-					break
+					return ErrStreamIsNotConnected
 				}
 				req := new(protos.BulkPullRspPacket)
 				req.PullType = protos.PullTypeSegment
-				req.Blocks = shardingBlocks
+				req.Blocks = reverseBlocks
 				data, err := marshalMessage(BulkPullRsp, req)
 				if err != nil {
 					ss.logger.Error(err)
-					break
+					return err
 				}
 				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
 				exitPullRsp.pullRspHash, _ = types.HashBytes(qData)
@@ -382,16 +370,28 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 				}
-				reverseBlocks = reverseBlocks[sendBlockNum:]
 				exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
+				if endHash.IsZero() == true {
+					return nil
+				} else {
+					bulkBlk = bulkBlk[:0:0]
+					for {
+						blk, err = ss.qlcLedger.GetStateBlock(endHash)
+						if err != nil {
+							ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+							break
+						}
+						bulkBlk = append(bulkBlk, blk)
+						endHash = blk.GetPrevious()
+						if endHash.IsZero() == true || len(bulkBlk) == maxPushTxPerTime {
+							break
+						}
+					}
+				}
 			default:
 			}
 		}
-
 	} else {
-		var blk *types.StateBlock
-		var bulkBlk types.StateBlockList
-		//ss.logger.Info("need to send some blocks of this account")
 		for {
 			blk, err = ss.qlcLedger.GetStateBlock(endHash)
 			if err != nil {
@@ -400,55 +400,29 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 			bulkBlk = append(bulkBlk, blk)
 			endHash = blk.GetPrevious()
-			if endHash == startHash {
+			if endHash == startHash || len(bulkBlk) == maxPushTxPerTime {
 				break
 			}
 		}
-		reverseBlocks := make(types.StateBlockList, 0)
-		for i := len(bulkBlk) - 1; i >= 0; i-- {
-			reverseBlocks = append(reverseBlocks, bulkBlk[i])
-		}
-		var shardingBlocks types.StateBlockList
-		exitPullRsp := &peerPullRsp{}
-		if v, ok := ss.netService.msgService.pullRspMap.Load(message.from); ok {
-			exitPullRsp, _ = v.(*peerPullRsp)
-			if len(exitPullRsp.pullRspTimer.C) > 0 {
-				<-exitPullRsp.pullRspTimer.C
+		for {
+			reverseBlocks := make(types.StateBlockList, 0)
+			for i := len(bulkBlk) - 1; i >= 0; i-- {
+				reverseBlocks = append(reverseBlocks, bulkBlk[i])
 			}
-			exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
-		} else {
-			exitPullRsp = &peerPullRsp{
-				pullRspStartCh: make(chan bool, 1),
-				pullRspTimer:   time.NewTimer(pullRspTimeOut),
-			}
-		}
-		select {
-		case exitPullRsp.pullRspStartCh <- true:
-		default:
-		}
-		exitPullRsp.pullRspHash = types.ZeroHash
-		ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
-		for len(reverseBlocks) > 0 {
-			sendBlockNum := 0
 			select {
 			case <-exitPullRsp.pullRspTimer.C:
 				return nil
 			case <-exitPullRsp.pullRspStartCh:
-				if len(reverseBlocks) > maxPushTxPerTime {
-					sendBlockNum = maxPushTxPerTime
-				} else {
-					sendBlockNum = len(reverseBlocks)
-				}
-				shardingBlocks = reverseBlocks[0:sendBlockNum]
 				if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-					break
+					return ErrStreamIsNotConnected
 				}
 				req := new(protos.BulkPullRspPacket)
 				req.PullType = protos.PullTypeSegment
-				req.Blocks = shardingBlocks
+				req.Blocks = reverseBlocks
 				data, err := marshalMessage(BulkPullRsp, req)
 				if err != nil {
-					continue
+					ss.logger.Error(err)
+					return err
 				}
 				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
 				exitPullRsp.pullRspHash, _ = types.HashBytes(qData)
@@ -456,13 +430,28 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 				}
-				reverseBlocks = reverseBlocks[sendBlockNum:]
 				exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
+				if endHash == startHash {
+					return nil
+				} else {
+					bulkBlk = bulkBlk[:0:0]
+					for {
+						blk, err = ss.qlcLedger.GetStateBlock(endHash)
+						if err != nil {
+							ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+							break
+						}
+						bulkBlk = append(bulkBlk, blk)
+						endHash = blk.GetPrevious()
+						if endHash == startHash || len(bulkBlk) == maxPushTxPerTime {
+							break
+						}
+					}
+				}
 			default:
 			}
 		}
 	}
-	return nil
 }
 
 func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos.BulkPullReqPacket) error {
@@ -603,7 +592,6 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 			}
 		}
-
 		if blocks[len(blocks)-1].GetHash().String() == ss.pullEndHash.String() &&
 			(ss.pullEndHash.String() != types.ZeroHash.String()) {
 			select {
@@ -635,8 +623,8 @@ func (ss *ServiceSync) onBulkPushBlock(message *Message) error {
 
 func (ss *ServiceSync) next() {
 	if len(ss.frontiers) > 0 {
-		openBlockHash = ss.frontiers[0].OpenBlock
-		headerBlockHash = ss.frontiers[0].HeaderBlock
+		ss.openBlockHash = ss.frontiers[0].OpenBlock
+		ss.headerBlockHash = ss.frontiers[0].HeaderBlock
 		ss.frontiers = ss.frontiers[1:]
 	}
 }
@@ -654,7 +642,7 @@ func (ss *ServiceSync) requestFrontiersFromPov(peerID string) {
 		}
 		ss.logger.Infof("begin sync block from [%s]", peerID)
 		ss.next()
-		bulkPull = bulkPull[:0:0]
+		ss.bulkPull = ss.bulkPull[:0:0]
 		err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
 		if err != nil {
 			ss.logger.Errorf("err [%s] when send FrontierRequest", err)
