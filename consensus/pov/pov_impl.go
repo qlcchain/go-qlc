@@ -194,11 +194,13 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockF
 	if from == types.PovBlockFromRemoteBroadcast {
 		blockHash := block.GetHash()
 
-		peer := pov.syncer.FindPeer(msgPeer)
-		if peer == nil || peer.status == peerStatusInit {
-			pov.logger.Infof("discard broadcast block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
-			return nil
-		}
+		/*
+			peer := pov.syncer.FindPeer(msgPeer)
+			if peer == nil || peer.status == peerStatusInit {
+				pov.logger.Infof("discard broadcast block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
+				return nil
+			}
+		*/
 
 		if pov.blkRecvCache.Has(blockHash) {
 			return nil
