@@ -255,8 +255,15 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
 							case <-ss.pullRequestStartCh:
+								if index == len(ss.bulkPull) {
+									ss.pullStartHash = types.ZeroHash
+									ss.pullEndHash = types.ZeroHash
+									return common.SyncDone
+								}
+
 								ss.pullStartHash = ss.bulkPull[index].StartHash
 								ss.pullEndHash = ss.bulkPull[index].EndHash
+
 								blkReq := &protos.BulkPullReqPacket{
 									StartHash: ss.bulkPull[index].StartHash,
 									EndHash:   ss.bulkPull[index].EndHash,
@@ -268,16 +275,10 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 								index++
 							}
-							if index == len(ss.bulkPull) {
-								ss.pullStartHash = types.ZeroHash
-								ss.pullEndHash = types.ZeroHash
-								break
-							}
 						}
 					} else {
 						return common.SyncFinish
 					}
-					break
 				}
 			}
 		}
@@ -592,6 +593,7 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 			}
 		}
+
 		if blocks[len(blocks)-1].GetHash().String() == ss.pullEndHash.String() &&
 			(ss.pullEndHash.String() != types.ZeroHash.String()) {
 			select {

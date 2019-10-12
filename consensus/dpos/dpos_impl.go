@@ -1038,9 +1038,7 @@ func (dps *DPoS) blockSyncDone() error {
 	dps.logger.Info("sync done, start process")
 	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
 
-	// contract data need sort
 	contractBlocks := make([]*types.StateBlock, 0)
-
 	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
 		if b, err := dps.isRelatedOrderBlock(block); err != nil {
 			dps.logger.Errorf("block[%s] type check error, %s", block.GetHash(), err)
@@ -1054,7 +1052,6 @@ func (dps *DPoS) blockSyncDone() error {
 				}
 			}
 		}
-
 		return nil
 	}); err != nil {
 		return err
@@ -1072,7 +1069,6 @@ func (dps *DPoS) blockSyncDone() error {
 			}
 		}
 	}
-
 	dps.logger.Info("sync done, end process")
 	return nil
 }
