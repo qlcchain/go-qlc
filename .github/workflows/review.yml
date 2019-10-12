@@ -1,0 +1,26 @@
+name: Review
+on: [push]
+
+jobs:
+
+  review:
+    name: Auto code review
+    runs-on: ubuntu-18.04
+    if: contains(github.event.head_commit.message, '[skip ci]') == false && contains(github.event.head_commit.message, '[ci skip]') == false
+  
+    steps:
+      - name: Check out code into the Go module directory 
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 10
+      - name: Run golangci-lint with reviewdog
+        # uses: reviewdog/action-golangci-lint@v1.0.4
+        uses: docker://reviewdog/action-golangci-lint:v1.0.4
+        # env: 
+        #   # https://github.com/docker-library/golang/blob/master/1.13/buster/Dockerfile#L32
+        #   GOROOT: /usr/local/go
+        #   GOPATH: /go
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          golangci_lint_flags: "--config=.golangci.yml -v"
+          level: warning # GitHub Status Check won't become failure with this level.
