@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common"
 )
 
@@ -30,11 +32,11 @@ func TestNew(t *testing.T) {
 func TestSubscribe(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
 
-	if bus.Subscribe("test", func() {}) != nil {
+	if _, err := bus.Subscribe("test", func() {}); err != nil {
 		t.Fail()
 	}
 
-	if bus.Subscribe("test", 2) == nil {
+	if _, err := bus.Subscribe("test", 2); err == nil {
 		t.Fail()
 	}
 }
@@ -44,15 +46,15 @@ func TestSubscribeSync(t *testing.T) {
 
 	counter := int64(0)
 	topic := common.TopicType("test")
-	if bus.SubscribeSync(topic, func() {
+	if _, err := bus.SubscribeSync(topic, func() {
 		atomic.AddInt64(&counter, 1)
 		t.Log("sub1")
-	}) != nil {
+	}); err != nil {
 		t.Fail()
 	}
-	if bus.Subscribe(topic, func() {
+	if _, err := bus.Subscribe(topic, func() {
 		t.Log("sub2")
-	}) != nil {
+	}); err != nil {
 		t.Fail()
 	}
 
@@ -70,14 +72,14 @@ func TestUnsubscribe(t *testing.T) {
 
 	handler := func() {}
 
-	_ = bus.Subscribe("test", handler)
+	id, _ := bus.Subscribe("test", handler)
 
-	if err := bus.Unsubscribe("test", handler); err != nil {
+	if err := bus.Unsubscribe("test", id); err != nil {
 		fmt.Println(err)
 		t.Fail()
 	}
 
-	if err := bus.Unsubscribe("unexisted", func() {}); err == nil {
+	if err := bus.Unsubscribe("unexisted", "xxx"); err == nil {
 		fmt.Println(err)
 		t.Fail()
 	}
@@ -88,14 +90,14 @@ func TestUnsubscribe2(t *testing.T) {
 
 	handler := func() {}
 
-	_ = bus.Subscribe("test", handler)
+	id, _ := bus.Subscribe("test", handler)
 
 	t.Log(bus.(*DefaultEventBus).handlers.Len())
 	if value, ok := bus.(*DefaultEventBus).handlers.GetStringKey("test"); ok {
 		t.Log(value.(*eventHandlers).Size())
 	}
 
-	if err := bus.Unsubscribe("test", handler); err != nil {
+	if err := bus.Unsubscribe("test", id); err != nil {
 		fmt.Println(err)
 		t.Fail()
 	}
@@ -103,7 +105,7 @@ func TestUnsubscribe2(t *testing.T) {
 	if value, ok := bus.(*DefaultEventBus).handlers.GetStringKey("test"); ok {
 		t.Log(value.(*eventHandlers).Size())
 	}
-	if err := bus.Unsubscribe("unexisted", func() {}); err == nil {
+	if err := bus.Unsubscribe("unexisted", "xxx"); err == nil {
 		fmt.Println(err)
 		t.Fail()
 	}
@@ -114,7 +116,7 @@ func TestClose(t *testing.T) {
 
 	handler := func() {}
 
-	_ = bus.Subscribe("test", handler)
+	_, _ = bus.Subscribe("test", handler)
 
 	original, ok := bus.(*DefaultEventBus)
 	if !ok {
@@ -144,12 +146,12 @@ func TestPublish(t *testing.T) {
 	first := false
 	second := false
 
-	_ = bus.Subscribe("topic", func(v bool) {
+	_, _ = bus.Subscribe("topic", func(v bool) {
 		defer wg.Done()
 		first = v
 	})
 
-	_ = bus.Subscribe("topic", func(v bool) {
+	_, _ = bus.Subscribe("topic", func(v bool) {
 		defer wg.Done()
 		second = v
 	})
@@ -165,7 +167,7 @@ func TestPublish(t *testing.T) {
 
 func TestHandleError(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
-	_ = bus.Subscribe("topic", func(out chan<- error) {
+	_, _ = bus.Subscribe("topic", func(out chan<- error) {
 		out <- errors.New("I do throw error")
 	})
 
@@ -181,7 +183,7 @@ func TestHandleError(t *testing.T) {
 
 func TestHasCallback(t *testing.T) {
 	bus := New()
-	err := bus.Subscribe("topic", func() {})
+	_, err := bus.Subscribe("topic", func() {})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,11 +222,11 @@ func TestEventSubscribe(t *testing.T) {
 	topic := common.TopicType("test")
 
 	counter := int64(0)
-	_ = bus.Subscribe(topic, func(i int64) {
+	_, _ = bus.Subscribe(topic, func(i int64) {
 		fmt.Println("sub1", i, atomic.AddInt64(&counter, 1))
 	})
 
-	_ = bus.Subscribe(topic, func(i int64) {
+	_, _ = bus.Subscribe(topic, func(i int64) {
 		time.Sleep(time.Second)
 		fmt.Println("sub2", i, atomic.AddInt64(&counter, 1))
 	})
@@ -245,4 +247,44 @@ func TestEventSubscribe(t *testing.T) {
 	//	t.Fatal("invalid sub", atomic.LoadInt64(&counter))
 	//}
 	t.Log("result", atomic.LoadInt64(&counter))
+}
+
+type foo struct {
+	id string
+}
+
+func (f *foo) Test(arg int) {
+	fmt.Printf("foo:%s, args=%d\n", f.id, arg)
+}
+
+func TestFooSubscribe(t *testing.T) {
+	bus := NewEventBus(runtime.NumCPU())
+	topic := common.TopicType("test")
+	foo := &foo{id: uuid.New().String()}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	i := 1
+	go func(i int) {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			bus.Publish(topic, i)
+		}
+	}(i)
+	id, err := bus.Subscribe(topic, foo.Test)
+	t.Log(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wg.Wait()
+	if flag := bus.HasCallback(topic); !flag {
+		t.Fatal()
+	}
+	if err = bus.Unsubscribe(topic, id); err != nil {
+		t.Fatal(err)
+	}
+	if flag := bus.HasCallback(topic); flag {
+		t.Fatal()
+	}
+	_ = bus.Close()
 }

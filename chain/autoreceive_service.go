@@ -22,6 +22,7 @@ import (
 
 type AutoReceiveService struct {
 	common.ServiceLifecycle
+	id         string
 	cfgFile    string
 	blockCache chan *types.StateBlock
 	quit       chan interface{}
@@ -40,7 +41,7 @@ func (as *AutoReceiveService) Init() error {
 	}
 	defer as.PostInit()
 	cc := context.NewChainContext(as.cfgFile)
-	_ = cc.EventBus().Subscribe(common.EventConfirmedBlock, func(blk *types.StateBlock) {
+	as.id, _ = cc.EventBus().Subscribe(common.EventConfirmedBlock, func(blk *types.StateBlock) {
 		if blk != nil {
 			as.blockCache <- blk
 		}
@@ -99,6 +100,10 @@ func (as *AutoReceiveService) Start() error {
 			select {
 			case <-as.quit:
 				atomic.StoreUint32(&as.state, 0)
+				cc := context.NewChainContext(as.cfgFile)
+				if err := cc.EventBus().Unsubscribe(common.EventConfirmedBlock, as.id); err != nil {
+					as.logger.Error(err)
+				}
 				return
 			case blk := <-as.blockCache:
 				// waiting ledger service start and process pending

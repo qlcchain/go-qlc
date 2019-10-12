@@ -24,6 +24,7 @@ const (
 )
 
 type PoVEngine struct {
+	id       string
 	logger   *zap.SugaredLogger
 	cfg      *config.Config
 	ledger   *ledger.Ledger
@@ -170,16 +171,17 @@ func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom, p
 }
 
 func (pov *PoVEngine) setEvent() error {
-	err := pov.eb.Subscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
-	if err != nil {
+	if id, err := pov.eb.Subscribe(common.EventPovRecvBlock, pov.onRecvPovBlock); err != nil {
 		return err
+	} else {
+		pov.id = id
+		return nil
 	}
 
-	return nil
 }
 
 func (pov *PoVEngine) unsetEvent() error {
-	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
+	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.id)
 	if err != nil {
 		return err
 	}
