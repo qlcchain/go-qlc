@@ -143,6 +143,9 @@ func (sm *StreamManager) lowestLatencyPeer() (string, error) {
 		}
 		return true
 	})
+	if (len(allPeers)) == 0 {
+		return "", ErrNoStream
+	}
 	sort.Slice(allPeers, func(i, j int) bool { return allPeers[i].rtt < allPeers[j].rtt })
 	return allPeers[0].peerId, nil
 }
