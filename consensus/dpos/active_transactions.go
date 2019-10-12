@@ -166,7 +166,7 @@ func (act *ActiveTrx) checkVotes() {
 				dps.logger.Infof("sync finish abnormally because of frontier not confirmed")
 				dps.frontiersStatus = new(sync.Map)
 				dps.CleanSyncCache()
-				dps.eb.Publish(common.EventConsensusSync, common.SyncFinish)
+				dps.eb.Publish(common.EventConsensusSyncFinished)
 			}
 		} else {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)

@@ -37,7 +37,7 @@ const (
 	EventFrontierConsensus      TopicType = "frontierConsensus"
 	EventFrontierConfirmed      TopicType = "frontierConfirmed"
 	EventSyncStateChange        TopicType = "syncStateChange"
-	EventConsensusSync  		TopicType = "consensusSync"
+	EventConsensusSyncFinished  TopicType = "consensusSyncFinished"
 	EventRepresentativeNode     TopicType = "representativeNode"
 )
 

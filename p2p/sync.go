@@ -99,8 +99,8 @@ func (ss *ServiceSync) Stop() {
 	ss.quitCh <- true
 }
 
-func (ss *ServiceSync) onConsensusSyncFinished(state common.SyncState) {
-	ss.syncState.Store(state)
+func (ss *ServiceSync) onConsensusSyncFinished() {
+	ss.syncState.Store(common.SyncFinish)
 }
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
@@ -258,12 +258,6 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
 							case <-ss.pullRequestStartCh:
-								if index == len(bulkPull) {
-									ss.pullStartHash = types.ZeroHash
-									ss.pullEndHash = types.ZeroHash
-									return common.SyncDone
-								}
-
 								ss.pullStartHash = bulkPull[index].StartHash
 								ss.pullEndHash = bulkPull[index].EndHash
 								blkReq := &protos.BulkPullReqPacket{
@@ -275,13 +269,18 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 								}
-
 								index++
+							}
+							if index == len(bulkPull) {
+								ss.pullStartHash = types.ZeroHash
+								ss.pullEndHash = types.ZeroHash
+								break
 							}
 						}
 					} else {
 						return common.SyncFinish
 					}
+					break
 				}
 			}
 		}
@@ -594,23 +593,22 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 
 	if blkPacket.PullType == protos.PullTypeSegment {
 		ss.pullTimer.Stop()
+		ss.logger.Debugf("start publish sync blocks num[%d] [%d]", len(blocks), time.Now().Unix())
 		ss.netService.msgEvent.Publish(common.EventSyncBlock, blocks)
+		ss.logger.Debugf("end publish sync blocks [%d]", time.Now().Unix())
 		ss.pullTimer.Reset(pullReqTimeOut)
-
-		if ss.syncState.Load() == common.Syncing {
-			if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-				err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
-				if err != nil {
-					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
-				}
+		if ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+			err = ss.netService.SendMessageToPeer(MessageResponse, message.Hash(), message.MessageFrom())
+			if err != nil {
+				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
 			}
+		}
 
-			if blocks[len(blocks)-1].GetHash().String() == ss.pullEndHash.String() &&
-				(ss.pullEndHash.String() != types.ZeroHash.String()) {
-				select {
-				case ss.pullRequestStartCh <- true:
-				default:
-				}
+		if blocks[len(blocks)-1].GetHash().String() == ss.pullEndHash.String() &&
+			(ss.pullEndHash.String() != types.ZeroHash.String()) {
+			select {
+			case ss.pullRequestStartCh <- true:
+			default:
 			}
 		}
 	}
