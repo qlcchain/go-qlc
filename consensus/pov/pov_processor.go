@@ -70,12 +70,13 @@ type PovTxPendingEntry struct {
 }
 
 type PovBlockProcessor struct {
-	eb       event.EventBus
-	ledger   ledger.Store
-	chain    PovProcessorChainReader
-	verifier PovProcessorVerifier
-	syncer   PovProcessorSyncer
-	logger   *zap.SugaredLogger
+	eb         event.EventBus
+	handlerIds map[common.TopicType]string //topic->handler id
+	ledger     ledger.Store
+	chain      PovProcessorChainReader
+	verifier   PovProcessorVerifier
+	syncer     PovProcessorSyncer
+	logger     *zap.SugaredLogger
 
 	orphanBlocks  map[types.Hash]*PovOrphanBlock   // blockHash -> block
 	parentOrphans map[types.Hash][]*PovOrphanBlock // blockHash -> child blocks
@@ -110,7 +111,7 @@ func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
 		verifier: verifier,
 		syncer:   syncer,
 	}
-
+	bp.handlerIds = make(map[common.TopicType]string)
 	bp.orphanBlocks = make(map[types.Hash]*PovOrphanBlock)
 	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
 	bp.pendingBlocks = make(map[types.Hash]*PovPendingBlock)
@@ -132,9 +133,16 @@ func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
 
 func (bp *PovBlockProcessor) Start() error {
 	if bp.eb != nil {
-		bp.eb.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
-
-		bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState)
+		if id, err := bp.eb.Subscribe(common.EventAddRelation, bp.onAddStateBlock); err == nil {
+			bp.handlerIds[common.EventAddRelation] = id
+		} else {
+			return err
+		}
+		if id, err := bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState); err == nil {
+			bp.handlerIds[common.EventPovSyncState] = id
+		} else {
+			return err
+		}
 	}
 
 	common.Go(bp.loop)
@@ -148,9 +156,11 @@ func (bp *PovBlockProcessor) Init() error {
 
 func (bp *PovBlockProcessor) Stop() error {
 	if bp.eb != nil {
-		bp.eb.Unsubscribe(common.EventAddRelation, bp.onAddStateBlock)
-
-		bp.eb.Unsubscribe(common.EventPovSyncState, bp.onPovSyncState)
+		for k, v := range bp.handlerIds {
+			if err := bp.eb.Unsubscribe(k, v); err != nil {
+				bp.logger.Error(err)
+			}
+		}
 	}
 
 	close(bp.quitCh)

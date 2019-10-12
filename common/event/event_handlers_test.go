@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/gammazero/workerpool"
 )
 
@@ -37,11 +39,14 @@ func TestEventHandler(t *testing.T) {
 	wg := sync.WaitGroup{}
 
 	fn := func() {}
-	fn2 := func() {}
-	handlers.Add(&eventHandler{
+	handler1 := &eventHandler{
 		callBack: reflect.ValueOf(fn),
 		pool:     workerpool.New(2),
-	})
+		id:       uuid.New().String(),
+	}
+	handlers.Add(handler1)
+
+	fnId1 := handler1.id
 
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -52,6 +57,7 @@ func TestEventHandler(t *testing.T) {
 					fmt.Println(i)
 				}),
 				pool: workerpool.New(2),
+				id:   uuid.New().String(),
 			}
 			handlers.Add(handler)
 			fmt.Printf("add %v\n", handler)
@@ -60,15 +66,11 @@ func TestEventHandler(t *testing.T) {
 
 	wg.Wait()
 
-	v := reflect.ValueOf(fn)
-	flag1 := handlers.RemoveCallback(v)
-	if !flag1 {
-		t.Fatal("remove failed")
+	if err := handlers.RemoveCallback(fnId1); err != nil {
+		t.Fatal("remove fn failed")
 	}
 
-	v2 := reflect.ValueOf(fn2)
-	flag2 := handlers.RemoveCallback(v2)
-	if flag2 {
+	if err := handlers.RemoveCallback("v2"); err == nil {
 		t.Fatal("remove failed")
 	}
 

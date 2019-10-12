@@ -15,9 +15,9 @@ import (
 
 //subscriber defines subscription-related bus behavior
 type subscriber interface {
-	Subscribe(topic common.TopicType, fn interface{}) error
-	SubscribeSync(topic common.TopicType, fn interface{}) error
-	Unsubscribe(topic common.TopicType, handler interface{}) error
+	Subscribe(topic common.TopicType, fn interface{}) (string, error)
+	SubscribeSync(topic common.TopicType, fn interface{}) (string, error)
+	Unsubscribe(topic common.TopicType, handlerId string) error
 }
 
 //publisher defines publishing-related bus behavior

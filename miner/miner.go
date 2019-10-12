@@ -14,6 +14,7 @@ type Miner struct {
 	logger    *zap.SugaredLogger
 	cfg       *config.Config
 	eb        event.EventBus
+	id        string
 	povEngine *pov.PoVEngine
 
 	povWorker *PovWorker
@@ -51,9 +52,10 @@ func (miner *Miner) Init() error {
 func (miner *Miner) Start() error {
 	miner.logger.Info("start miner service")
 
-	err := miner.eb.SubscribeSync(common.EventPovSyncState, miner.onRecvPovSyncState)
-	if err != nil {
+	if id, err := miner.eb.SubscribeSync(common.EventPovSyncState, miner.onRecvPovSyncState); err != nil {
 		return err
+	} else {
+		miner.id = id
 	}
 
 	if miner.povWorker != nil {
@@ -74,6 +76,12 @@ func (miner *Miner) Stop() error {
 	if miner.povWorker != nil {
 		err := miner.povWorker.Stop()
 		if err != nil {
+			return err
+		}
+	}
+
+	if len(miner.id) > 0 {
+		if err := miner.eb.Unsubscribe(common.EventPovSyncState, miner.id); err != nil {
 			return err
 		}
 	}

@@ -60,6 +60,7 @@ type DPoS struct {
 	logger          *zap.SugaredLogger
 	cfg             *config.Config
 	eb              event.EventBus
+	handlerIds      map[common.TopicType]string //topic->handler id
 	lv              *process.LedgerVerifier
 	cacheBlocks     chan *consensus.BlockSource
 	povReady        chan bool
@@ -96,6 +97,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		logger:       log.NewLogger("dpos"),
 		cfg:          cfg,
 		eb:           cc.EventBus(),
+		handlerIds:   make(map[common.TopicType]string),
 		lv:           process.NewLedgerVerifier(l),
 		cacheBlocks:  make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
 		povReady:     make(chan bool, 1),
@@ -125,9 +127,10 @@ func (dps *DPoS) Init() {
 	if dps.cfg.PoV.PovEnabled {
 		dps.povSyncState.Store(common.SyncNotStart)
 
-		err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState)
-		if err != nil {
+		if id, err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState); err != nil {
 			dps.logger.Errorf("subscribe pov sync state event err")
+		} else {
+			dps.handlerIds[common.EventPovSyncState] = id
 		}
 	} else {
 		dps.povSyncState.Store(common.Syncdone)
@@ -137,9 +140,10 @@ func (dps *DPoS) Init() {
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 	dps.voteThreshold, _ = supply.Div(2)
 
-	err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked)
-	if err != nil {
+	if id, err := dps.eb.SubscribeSync(common.EventRollbackUnchecked, dps.onRollbackUnchecked); err != nil {
 		dps.logger.Errorf("subscribe rollback unchecked block event err")
+	} else {
+		dps.handlerIds[common.EventRollbackUnchecked] = id
 	}
 
 	if len(dps.accounts) != 0 {
@@ -177,7 +181,7 @@ func (dps *DPoS) Start() {
 				dps.cleanOnlineReps()
 			}()
 		case <-dps.povReady:
-			err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.onPovSyncState)
+			err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.handlerIds[common.EventPovSyncState])
 			if err != nil {
 				dps.logger.Errorf("unsubscribe pov sync state err %s", err)
 			}
@@ -202,6 +206,7 @@ func (dps *DPoS) Stop() {
 	dps.cancel()
 	dps.processorStop()
 	dps.acTrx.stop()
+	// TODO: unsubscribe EventRollbackUnchecked ??
 }
 
 func (dps *DPoS) processorStart() {

@@ -36,9 +36,10 @@ type PovSyncerChainReader interface {
 }
 
 type PovSyncer struct {
-	eb     event.EventBus
-	ledger ledger.Store
-	chain  PovSyncerChainReader
+	eb         event.EventBus
+	handlerIds map[common.TopicType]string //topic->handler id
+	ledger     ledger.Store
+	chain      PovSyncerChainReader
 
 	logger   *zap.SugaredLogger
 	allPeers sync.Map // map[string]*PovSyncPeer
@@ -82,6 +83,7 @@ func NewPovSyncer(eb event.EventBus, ledger ledger.Store, chain PovSyncerChainRe
 		eventCh:       make(chan *PovSyncEvent, 200),
 		quitCh:        make(chan struct{}),
 		logger:        log.NewLogger("pov_sync"),
+		handlerIds:    make(map[common.TopicType]string),
 	}
 	return ss
 }
@@ -89,25 +91,35 @@ func NewPovSyncer(eb event.EventBus, ledger ledger.Store, chain PovSyncerChainRe
 func (ss *PovSyncer) Start() {
 	eb := ss.eb
 	if eb != nil {
-		err := eb.SubscribeSync(common.EventAddP2PStream, ss.onAddP2PStream)
-		if err != nil {
+		if id, err := eb.SubscribeSync(common.EventAddP2PStream, ss.onAddP2PStream); err != nil {
+			ss.logger.Error(err)
 			return
+		} else {
+			ss.handlerIds[common.EventAddP2PStream] = id
 		}
-		err = eb.SubscribeSync(common.EventDeleteP2PStream, ss.onDeleteP2PStream)
-		if err != nil {
+		if id, err := eb.SubscribeSync(common.EventDeleteP2PStream, ss.onDeleteP2PStream); err != nil {
+			ss.logger.Error(err)
 			return
+		} else {
+			ss.handlerIds[common.EventDeleteP2PStream] = id
 		}
-		err = eb.SubscribeSync(common.EventPovPeerStatus, ss.onPovStatus)
-		if err != nil {
+		if id, err := eb.SubscribeSync(common.EventPovPeerStatus, ss.onPovStatus); err != nil {
+			ss.logger.Error(err)
 			return
+		} else {
+			ss.handlerIds[common.EventPovPeerStatus] = id
 		}
-		err = eb.Subscribe(common.EventPovBulkPullReq, ss.onPovBulkPullReq)
-		if err != nil {
+		if id, err := eb.Subscribe(common.EventPovBulkPullReq, ss.onPovBulkPullReq); err != nil {
+			ss.logger.Error(err)
 			return
+		} else {
+			ss.handlerIds[common.EventPovBulkPullReq] = id
 		}
-		err = eb.Subscribe(common.EventPovBulkPullRsp, ss.onPovBulkPullRsp)
-		if err != nil {
+		if id, err := eb.Subscribe(common.EventPovBulkPullRsp, ss.onPovBulkPullRsp); err != nil {
+			ss.logger.Error(err)
 			return
+		} else {
+			ss.handlerIds[common.EventPovBulkPullRsp] = id
 		}
 	}
 
@@ -118,25 +130,10 @@ func (ss *PovSyncer) Start() {
 func (ss *PovSyncer) Stop() {
 	eb := ss.eb
 	if eb != nil {
-		err := eb.Unsubscribe(common.EventAddP2PStream, ss.onAddP2PStream)
-		if err != nil {
-			return
-		}
-		err = eb.Unsubscribe(common.EventDeleteP2PStream, ss.onDeleteP2PStream)
-		if err != nil {
-			return
-		}
-		err = eb.Unsubscribe(common.EventPovPeerStatus, ss.onPovStatus)
-		if err != nil {
-			return
-		}
-		err = eb.Unsubscribe(common.EventPovBulkPullReq, ss.onPovBulkPullReq)
-		if err != nil {
-			return
-		}
-		err = eb.Unsubscribe(common.EventPovBulkPullRsp, ss.onPovBulkPullRsp)
-		if err != nil {
-			return
+		for k, v := range ss.handlerIds {
+			if err := eb.Unsubscribe(k, v); err != nil {
+				ss.logger.Error(err)
+			}
 		}
 	}
 

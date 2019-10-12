@@ -17,6 +17,7 @@ var (
 
 type Receiver struct {
 	eb           event.EventBus
+	handlerIds   map[common.TopicType]string //topic->handler id
 	c            *Consensus
 	cache        gcache.Cache
 	lastSyncTime time.Time
@@ -29,6 +30,7 @@ func NewReceiver(eb event.EventBus) *Receiver {
 		cache:        gcache.New(common.ConsensusMsgCacheSize).LRU().Expiration(msgCacheExpirationTime).Build(),
 		lastSyncTime: time.Now(),
 		quitchClean:  make(chan bool, 1),
+		handlerIds:   make(map[common.TopicType]string),
 	}
 
 	return r
@@ -41,29 +43,34 @@ func (r *Receiver) init(c *Consensus) {
 func (r *Receiver) start() error {
 	//go r.cleanCacheStart()
 
-	err := r.eb.Subscribe(common.EventPublish, r.ReceivePublish)
-	if err != nil {
+	if id, err := r.eb.Subscribe(common.EventPublish, r.ReceivePublish); err != nil {
 		return err
+	} else {
+		r.handlerIds[common.EventPublish] = id
 	}
 
-	err = r.eb.Subscribe(common.EventConfirmReq, r.ReceiveConfirmReq)
-	if err != nil {
+	if id, err := r.eb.Subscribe(common.EventConfirmReq, r.ReceiveConfirmReq); err != nil {
 		return err
+	} else {
+		r.handlerIds[common.EventConfirmReq] = id
 	}
 
-	err = r.eb.Subscribe(common.EventConfirmAck, r.ReceiveConfirmAck)
-	if err != nil {
+	if id, err := r.eb.Subscribe(common.EventConfirmAck, r.ReceiveConfirmAck); err != nil {
 		return err
+	} else {
+		r.handlerIds[common.EventConfirmAck] = id
 	}
 
-	err = r.eb.Subscribe(common.EventSyncBlock, r.ReceiveSyncBlock)
-	if err != nil {
+	if id, err := r.eb.Subscribe(common.EventSyncBlock, r.ReceiveSyncBlock); err != nil {
 		return err
+	} else {
+		r.handlerIds[common.EventSyncBlock] = id
 	}
 
-	err = r.eb.Subscribe(common.EventGenerateBlock, r.ReceiveGenerateBlock)
-	if err != nil {
+	if id, err := r.eb.Subscribe(common.EventGenerateBlock, r.ReceiveGenerateBlock); err != nil {
 		return err
+	} else {
+		r.handlerIds[common.EventGenerateBlock] = id
 	}
 
 	return nil
@@ -71,30 +78,10 @@ func (r *Receiver) start() error {
 
 func (r *Receiver) stop() error {
 	//r.cleanCacheStop()
-
-	err := r.eb.Unsubscribe(common.EventPublish, r.ReceivePublish)
-	if err != nil {
-		return err
-	}
-
-	err = r.eb.Unsubscribe(common.EventConfirmReq, r.ReceiveConfirmReq)
-	if err != nil {
-		return err
-	}
-
-	err = r.eb.Unsubscribe(common.EventConfirmAck, r.ReceiveConfirmAck)
-	if err != nil {
-		return err
-	}
-
-	err = r.eb.Unsubscribe(common.EventSyncBlock, r.ReceiveSyncBlock)
-	if err != nil {
-		return err
-	}
-
-	err = r.eb.Unsubscribe(common.EventGenerateBlock, r.ReceiveGenerateBlock)
-	if err != nil {
-		return err
+	for k, v := range r.handlerIds {
+		if err := r.eb.Unsubscribe(k, v); err != nil {
+			return err
+		}
 	}
 
 	return nil

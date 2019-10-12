@@ -39,7 +39,8 @@ func syncingTime(t time.Time) {
 }
 
 func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
-	_ = eb.Subscribe(common.EventSyncing, syncingTime)
+	// TODO: remove
+	_, _ = eb.Subscribe(common.EventSyncing, syncingTime)
 	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net")}
 }
 

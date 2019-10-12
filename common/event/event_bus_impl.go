@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 
@@ -42,6 +44,7 @@ type handlerOption struct {
 }
 
 type eventHandler struct {
+	id       string
 	callBack reflect.Value
 	option   *handlerOption
 	pool     *workerpool.WorkerPool
@@ -97,13 +100,14 @@ func GetEventBus(id string) EventBus {
 }
 
 // doSubscribe handles the subscription logic and is utilized by the public Subscribe functions
-func (eb *DefaultEventBus) doSubscribe(topic common.TopicType, fn interface{}, option *handlerOption) error {
+func (eb *DefaultEventBus) doSubscribe(topic common.TopicType, fn interface{}, option *handlerOption) (string, error) {
 	kind := reflect.TypeOf(fn).Kind()
 	if kind != reflect.Func {
-		return fmt.Errorf("%s is not of type reflect.Func", kind)
+		return "", fmt.Errorf("%s is not of type reflect.Func", kind)
 	}
 
 	handler := &eventHandler{
+		id:       uuid.New().String(),
 		callBack: reflect.ValueOf(fn),
 		option:   option,
 		pool:     workerpool.New(eb.queueSize),
@@ -117,16 +121,16 @@ func (eb *DefaultEventBus) doSubscribe(topic common.TopicType, fn interface{}, o
 		handlers.Add(handler)
 		eb.handlers.Set(string(topic), handlers)
 	}
-	return nil
+	return handler.id, nil
 }
 
 // Subscribe subscribes to a topic.
 // Returns error if `fn` is not a function.
-func (eb *DefaultEventBus) Subscribe(topic common.TopicType, fn interface{}) error {
+func (eb *DefaultEventBus) Subscribe(topic common.TopicType, fn interface{}) (string, error) {
 	return eb.doSubscribe(topic, fn, &handlerOption{isSync: false})
 }
 
-func (eb *DefaultEventBus) SubscribeSync(topic common.TopicType, fn interface{}) error {
+func (eb *DefaultEventBus) SubscribeSync(topic common.TopicType, fn interface{}) (string, error) {
 	return eb.doSubscribe(topic, fn, &handlerOption{isSync: true})
 }
 
@@ -149,18 +153,13 @@ func (eb *DefaultEventBus) CloseTopic(topic common.TopicType) {
 
 // Unsubscribe removes callback defined for a topic.
 // Returns error if there are no callbacks subscribed to the topic.
-//TODO: fix unsubscribe failed
-func (eb *DefaultEventBus) Unsubscribe(topic common.TopicType, handler interface{}) error {
-	kind := reflect.TypeOf(handler).Kind()
-	if kind != reflect.Func {
-		return fmt.Errorf("%s is not of type reflect.Func", kind)
-	}
-
+func (eb *DefaultEventBus) Unsubscribe(topic common.TopicType, handler string) error {
 	if value, ok := eb.handlers.GetStringKey(string(topic)); ok {
-		if flag := value.(*eventHandlers).RemoveCallback(reflect.ValueOf(handler)); flag {
-			//return nil
+		if err := value.(*eventHandlers).RemoveCallback(handler); err == nil {
+			return nil
+		} else {
+			return err
 		}
-		return nil
 	} else {
 		return fmt.Errorf("topic %s doesn't exist", topic)
 	}
