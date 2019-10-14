@@ -221,14 +221,14 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 								return err
 							}
 						}
-					case contract.ChainContractV2:
-						vmCtx := vmstore.NewVMContext(lv.l)
-						if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
-							lv.logger.Info("sync done, add pending contract2, ", pendingKey)
-							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-								return err
+						case contract.ChainContractV2:
+							vmCtx := vmstore.NewVMContext(lv.l)
+							if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
+								lv.logger.Debug("contractSend add sync pending , ", pendingKey)
+								if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+									return err
+								}
 							}
-						}
 					default:
 						return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 					}

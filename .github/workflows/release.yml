@@ -1,0 +1,36 @@
+name: Release
+
+on: 
+  release:
+    types: [published]
+
+jobs:
+
+  release:
+    name: Release artifacts and docker images
+    runs-on: ubuntu-18.04
+ 
+    steps:
+      - uses: actions/checkout@v1
+      - name: Publish GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          VERSION: ${{ GITHUB_REF/refs\/tags\// }}
+        run:  make release
+      - name: Publish the Docker image to DockerHub
+        uses: docker://goreng/publish-docker-github-action:v2.4
+        with:
+          name: qlcchain/go-qlc
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          dockerfile: docker/Dockerfile
+          buildargs: BUILD_ACT=build
+      - name: Publish the Docker image to GitHub Packages
+        uses: docker://goreng/publish-docker-github-action:v2.4
+        with:
+          name: docker.pkg.github.com/qlcchain/go-qlc/node-cli
+          username: ${{ secrets.DOCKER_GITHUB_USERNAME }}
+          password: ${{ secrets.GH_TOKEN }}
+          registry: docker.pkg.github.com
+          dockerfile: docker/Dockerfile
+          buildargs: BUILD_ACT=build

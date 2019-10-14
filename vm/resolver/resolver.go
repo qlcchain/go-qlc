@@ -314,7 +314,7 @@ func (r *Resolver) ResolveGlobal(module, field string) int64 {
 func (r *Resolver) Stub(name string) func(vm *exec.VirtualMachine) int64 {
 	return func(vm *exec.VirtualMachine) int64 {
 		panic(name)
-		return 0
+		// return 0
 	}
 }
 
