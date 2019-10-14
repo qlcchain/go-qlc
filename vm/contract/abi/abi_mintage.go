@@ -15,18 +15,15 @@ import (
 	"sync"
 
 	"github.com/qlcchain/go-qlc/common"
-
-	"github.com/qlcchain/go-qlc/log"
-
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const (
-	jsonMintage = `
+	JsonMintage = `
 	[
 		{"type":"function","name":"Mintage","inputs":[{"name":"tokenId","type":"tokenId"},{"name":"tokenName","type":"string"},{"name":"tokenSymbol","type":"string"},{"name":"totalSupply","type":"uint256"},{"name":"decimals","type":"uint8"},{"name":"beneficial","type":"address"},{"name":"NEP5TxId","type":"string"}]},
 		{"type":"function","name":"Withdraw","inputs":[{"name":"tokenId","type":"tokenId"}]},
@@ -41,7 +38,7 @@ const (
 )
 
 var (
-	MintageABI, _ = abi.JSONToABIContract(strings.NewReader(jsonMintage))
+	MintageABI, _ = abi.JSONToABIContract(strings.NewReader(JsonMintage))
 	tokenCache    = &sync.Map{}
 )
 

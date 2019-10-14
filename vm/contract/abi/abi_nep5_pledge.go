@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	jsonNEP5Pledge = `
+	JsonNEP5Pledge = `
 	[
 		{"type":"function","name":"NEP5Pledge", "inputs":[{"name":"beneficial","type":"address"},{"name":"pledgeAddress","type":"address"},{"name":"pType","type":"uint8"},{"name":"NEP5TxId","type":"string"}]},
 		{"type":"function","name":"WithdrawNEP5Pledge","inputs":[{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"pType","type":"uint8"},{"name":"NEP5TxId","type":"string"}]},
@@ -36,7 +36,7 @@ const (
 )
 
 var (
-	NEP5PledgeABI, _ = abi.JSONToABIContract(strings.NewReader(jsonNEP5Pledge))
+	NEP5PledgeABI, _ = abi.JSONToABIContract(strings.NewReader(JsonNEP5Pledge))
 )
 
 type PledgeType uint8
