@@ -227,7 +227,10 @@ func Test_MarshalMessage(t *testing.T) {
 	}
 	blks := make(types.StateBlockList, 0)
 	blks = append(blks, blk)
-	data13, err := marshalMessage(BulkPullRsp, blks)
+	pullRspMsg := &protos.BulkPullRspPacket{
+		Blocks: blks,
+	}
+	data13, err := marshalMessage(BulkPullRsp, pullRspMsg)
 	if err != nil {
 		t.Fatal("Marshal BulkPullRsp err1")
 	}

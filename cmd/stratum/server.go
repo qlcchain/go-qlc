@@ -145,7 +145,7 @@ func (s *StratumServer) consumeMinerSendRsp(event Event) {
 
 	cs := s.sessions[msgRsp.SessionID]
 	if cs == nil {
-		log.Errorf("can't find session %s", msgRsp.SessionID)
+		log.Errorf("can't find session %08x", msgRsp.SessionID)
 		return
 	}
 

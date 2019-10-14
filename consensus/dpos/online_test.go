@@ -5,7 +5,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
 	"testing"
-	"time"
 )
 
 func TestOnGetOnlineInfo(t *testing.T) {
@@ -17,9 +16,9 @@ func TestOnGetOnlineInfo(t *testing.T) {
 	}
 
 	ack := &RepAckStatistics{
-		HeartCount:    10,
-		LastHeartTime: time.Time{},
-		VoteCount:     20,
+		HeartCount:      10,
+		LastHeartHeight: 0,
+		VoteCount:       20,
 	}
 	rep.Statistic[mock.Address()] = ack
 

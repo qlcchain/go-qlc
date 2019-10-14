@@ -21,7 +21,7 @@ func BulkPushBlockToProto(bp *BulkPush) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	bpPb := &pb.BulkPullRsp{}
+	bpPb := &pb.BulkPushBlock{}
 	bpPb.Blocks = blockBytes
 	data, err := proto.Marshal(bpPb)
 	if err != nil {
