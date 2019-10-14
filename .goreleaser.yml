@@ -135,6 +135,78 @@ builds:
   goarm:
       - 7
 
+# Miner
+- id: gqlc-miner-darwin
+  ldflags: -X main.Version={{ .Version }} -X main.GitRev={{ .ShortCommit }} -X main.BuildTime={{ .Date }} -X main.Mode=MainNet
+  binary: gqlc-miner
+  env:
+    - CGO_ENABLED=1
+    - CC=o64-clang
+    - CXX=o64-clang++
+  main: ./cmd/miner/
+  goos:
+    - darwin
+  goarch:
+    - amd64
+- id: gqlc-miner-linux
+  ldflags: -X main.Version={{ .Version }} -X main.GitRev={{ .ShortCommit }} -X main.BuildTime={{ .Date }} -X main.Mode=MainNet
+  binary: gqlc-miner
+  env:
+    - CGO_ENABLED=1
+  main: ./cmd/miner/
+  goos:
+    - linux
+  goarch:
+    - amd64
+- id: gqlc-miner-windows-x64
+  ldflags: -X main.Version={{ .Version }} -X main.GitRev={{ .ShortCommit }} -X main.BuildTime={{ .Date }} -X main.Mode=MainNet
+  binary: gqlc-miner
+  env:
+    - CGO_ENABLED=1
+    - CC=x86_64-w64-mingw32-gcc
+    - CXX=x86_64-w64-mingw32-g++
+  main: ./cmd/miner/
+  goos:
+    - windows
+  goarch:
+    - amd64
+
+  # Stratum
+- id: gqlc-stratum-darwin
+  ldflags: -X main.Version={{ .Version }} -X main.GitRev={{ .ShortCommit }} -X main.BuildTime={{ .Date }} -X main.Mode=MainNet
+  binary: gqlc-stratum
+  env:
+    - CGO_ENABLED=1
+    - CC=o64-clang
+    - CXX=o64-clang++
+  main: ./cmd/stratum/
+  goos:
+    - darwin
+  goarch:
+    - amd64
+- id: gqlc-stratum-linux
+  ldflags: -X main.Version={{ .Version }} -X main.GitRev={{ .ShortCommit }} -X main.BuildTime={{ .Date }} -X main.Mode=MainNet
+  binary: gqlc-stratum
+  env:
+    - CGO_ENABLED=1
+  main: ./cmd/stratum/
+  goos:
+    - linux
+  goarch:
+    - amd64
+- id: gqlc-stratum-windows-x64
+  ldflags: -X main.Version={{ .Version }} -X main.GitRev={{ .ShortCommit }} -X main.BuildTime={{ .Date }} -X main.Mode=MainNet
+  binary: gqlc-stratum
+  env:
+    - CGO_ENABLED=1
+    - CC=x86_64-w64-mingw32-gcc
+    - CXX=x86_64-w64-mingw32-g++
+  main: ./cmd/stratum/
+  goos:
+    - windows
+  goarch:
+    - amd64
+
 archives:
 - format: tar.gz
   format_overrides:
