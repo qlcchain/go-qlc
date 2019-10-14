@@ -38,8 +38,16 @@ build-test:
 	@echo "Run \"$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
 
 mining:
-	GO111MODULE=on go build -tags "testnet" -ldflags $(TESTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-miner $(shell pwd)/cmd/miner/
-	GO111MODULE=on go build -tags "testnet" -ldflags $(TESTLDFLAGS) -v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-stratum $(shell pwd)/cmd/stratum/
+	go build -ldflags "-X main.Version=${VERSION} \
+		-X main.GitRev=${GITREV} \
+		-X main.BuildTime=${BUILDTIME} \
+		-X main.Mode=MainNet" \
+		-v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-miner $(shell pwd)/cmd/miner/
+	go build -ldflags "-X main.Version=${VERSION} \
+		-X main.GitRev=${GITREV} \
+		-X main.BuildTime=${BUILDTIME} \
+		-X main.Mode=MainNet" \
+		-v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-stratum $(shell pwd)/cmd/stratum/
 	@echo "Build mining done."
 
 clean:

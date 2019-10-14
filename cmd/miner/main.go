@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"flag"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -24,6 +25,7 @@ var flagNodeUrl string
 var flagMiner string
 var flagAlgo string
 var flagAuxPow bool
+var flagVersion bool
 
 var extraNonce1 uint32
 var extraNonce2 uint64
@@ -35,7 +37,13 @@ func main() {
 	flag.StringVar(&flagMiner, "miner", "", "address of miner account")
 	flag.StringVar(&flagAlgo, "algo", "SHA256D", "algo name, such as SHA256D/X11/SCRYPT")
 	flag.BoolVar(&flagAuxPow, "auxpow", false, "enable AuxPOW")
+	flag.BoolVar(&flagVersion, "version", false, "print version info")
 	flag.Parse()
+
+	if flagVersion {
+		fmt.Println(VersionString())
+		return
+	}
 
 	minerAddr, err := types.HexToAddress(flagMiner)
 	if err != nil {

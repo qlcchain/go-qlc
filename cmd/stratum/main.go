@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/lestrrat-go/file-rotatelogs"
 	"github.com/rifflock/lfshook"
 	log "github.com/sirupsen/logrus"
@@ -18,6 +19,7 @@ var flagHost string
 var flagPort uint
 var flagServerID uint
 var flagDebug bool
+var flagVersion bool
 
 func main() {
 	initLog()
@@ -33,8 +35,14 @@ func main() {
 	flag.UintVar(&flagPort, "port", 3333, "port of server listen(1024~65534)")
 
 	flag.BoolVar(&flagDebug, "debug", false, "enable debug")
+	flag.BoolVar(&flagVersion, "version", false, "print version info")
 
 	flag.Parse()
+
+	if flagVersion {
+		fmt.Println(VersionString())
+		return
+	}
 
 	if flagServerID > 65534 {
 		log.Errorf("invalid serverid")
