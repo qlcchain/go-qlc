@@ -336,7 +336,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
 	if startHash.IsZero() {
 		for {
-			blk, err = ss.qlcLedger.GetStateBlock(endHash)
+			blk, err = ss.qlcLedger.GetStateBlockConfirmed(endHash)
 			if err != nil {
 				ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
 				break
@@ -379,7 +379,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				} else {
 					bulkBlk = bulkBlk[:0:0]
 					for {
-						blk, err = ss.qlcLedger.GetStateBlock(endHash)
+						blk, err = ss.qlcLedger.GetStateBlockConfirmed(endHash)
 						if err != nil {
 							ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
 							break
@@ -391,12 +391,11 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 						}
 					}
 				}
-			default:
 			}
 		}
 	} else {
 		for {
-			blk, err = ss.qlcLedger.GetStateBlock(endHash)
+			blk, err = ss.qlcLedger.GetStateBlockConfirmed(endHash)
 			if err != nil {
 				ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
 				break
@@ -439,7 +438,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				} else {
 					bulkBlk = bulkBlk[:0:0]
 					for {
-						blk, err = ss.qlcLedger.GetStateBlock(endHash)
+						blk, err = ss.qlcLedger.GetStateBlockConfirmed(endHash)
 						if err != nil {
 							ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
 							break
@@ -451,7 +450,6 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 						}
 					}
 				}
-			default:
 			}
 		}
 	}
@@ -471,7 +469,7 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 		ss.logger.Debugf("need to send %d blocks by backward", blkCnt)
 
 		for {
-			blk, err = ss.qlcLedger.GetStateBlock(scanHash)
+			blk, err = ss.qlcLedger.GetStateBlockConfirmed(scanHash)
 			if err != nil {
 				break
 			}
@@ -492,7 +490,7 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 
 		ss.logger.Debugf("need to send %d blocks by forward", blkCnt)
 
-		blk, err = ss.qlcLedger.GetStateBlock(startHash)
+		blk, err = ss.qlcLedger.GetStateBlockConfirmed(startHash)
 		if err != nil {
 			return err
 		}
@@ -507,7 +505,7 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 				break
 			}
 
-			blk, err = ss.qlcLedger.GetStateBlock(scanHash)
+			blk, err = ss.qlcLedger.GetStateBlockConfirmed(scanHash)
 			if err != nil {
 				break
 			}
@@ -531,7 +529,7 @@ func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos
 				continue
 			}
 
-			blk, err = ss.qlcLedger.GetStateBlock(*scanHash)
+			blk, err = ss.qlcLedger.GetStateBlockConfirmed(*scanHash)
 			if err != nil {
 				continue
 			}
