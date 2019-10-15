@@ -1019,6 +1019,11 @@ func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBl
 func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.PovBlock) error {
 	allTxs := block.GetAllTxs()
 	for _, txPov := range allTxs {
+		txPov.Block, _ = bc.getLedger().GetStateBlock(txPov.Hash, txn)
+		if txPov.Block == nil {
+			bc.logger.Errorf("failed to get state block %s", txPov.Hash)
+		}
+
 		err := bc.getLedger().DeletePovTxLookup(txPov.Hash, txn)
 		if err != nil {
 			return err
