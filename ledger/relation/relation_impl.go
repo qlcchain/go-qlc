@@ -394,7 +394,7 @@ func (r *Relation) UnsubscribeEvent() error {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Unsubscribe(common.EventAddRelation, r.waitAddSyncBlocks)
+	err = r.eb.Unsubscribe(common.EventAddSyncBlocks, r.waitAddSyncBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
