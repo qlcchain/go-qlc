@@ -30,7 +30,7 @@ var (
 )
 
 // p2p protocol version
-var p2pVersion = 5
+var p2pVersion = 6
 
 type netAttribute byte
 

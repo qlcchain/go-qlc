@@ -2,14 +2,14 @@ package p2p
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"testing"
-
 	"github.com/google/uuid"
 	swarmt "github.com/libp2p/go-libp2p-swarm/testing"
 	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	qcontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/config"
+	"os"
+	"path/filepath"
+	"testing"
 )
 
 func TestQlcNode(t *testing.T) {
@@ -35,5 +35,22 @@ func TestQlcNode(t *testing.T) {
 	err = node.buildHost()
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestLocalNetAttribute(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	cc := qcontext.NewChainContext(dir)
+	cfg, _ := cc.Config()
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19998"
+	b := "/ip4/127.0.0.1/tcp/19747/ipfs/" + cfg.P2P.ID.PeerID
+	cfg.P2P.BootNodes = []string{b}
+	node, _ := NewQlcService(dir)
+	err := node.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.node.localNetAttribute != Intranet {
+		t.Fatal("net attribute should be Intranet")
 	}
 }
