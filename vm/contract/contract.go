@@ -44,8 +44,9 @@ type ChainContractV1 interface {
 }
 
 type qlcchainContractV1 struct {
-	m   map[string]ChainContractV1
-	abi abi.ABIContract
+	m       map[string]ChainContractV1
+	abi     abi.ABIContract
+	abiJson string
 }
 
 var contractCacheV1 = map[types.Address]*qlcchainContractV1{
@@ -55,6 +56,7 @@ var contractCacheV1 = map[types.Address]*qlcchainContractV1{
 			cabi.MethodNameMintageWithdraw: &WithdrawMintage{},
 		},
 		cabi.MintageABI,
+		cabi.JsonMintage,
 	},
 	types.NEP5PledgeAddress: {
 		map[string]ChainContractV1{
@@ -62,6 +64,7 @@ var contractCacheV1 = map[types.Address]*qlcchainContractV1{
 			cabi.MethodWithdrawNEP5Pledge: &WithdrawNep5Pledge{},
 		},
 		cabi.NEP5PledgeABI,
+		cabi.JsonNEP5Pledge,
 	},
 	types.RewardsAddress: {
 		map[string]ChainContractV1{
@@ -69,12 +72,14 @@ var contractCacheV1 = map[types.Address]*qlcchainContractV1{
 			cabi.MethodNameConfidantRewards: &ConfidantRewards{},
 		},
 		cabi.RewardsABI,
+		cabi.JsonRewards,
 	},
 	types.MinerAddress: {
 		map[string]ChainContractV1{
 			cabi.MethodNameMinerReward: &MinerReward{},
 		},
 		cabi.MinerABI,
+		cabi.JsonMiner,
 	},
 }
 
@@ -85,8 +90,9 @@ type ChainContractV2 interface {
 }
 
 type qlcchainContractV2 struct {
-	m   map[string]ChainContractV2
-	abi abi.ABIContract
+	m       map[string]ChainContractV2
+	abi     abi.ABIContract
+	abiJson string
 }
 
 var contractCacheV2 = map[types.Address]*qlcchainContractV2{
@@ -94,7 +100,8 @@ var contractCacheV2 = map[types.Address]*qlcchainContractV2{
 		m: map[string]ChainContractV2{
 			cabi.MethodNameDestroy: &BlackHole{},
 		},
-		abi: cabi.BlackHoleABI,
+		abi:     cabi.BlackHoleABI,
+		abiJson: cabi.JsonDestroy,
 	},
 }
 
@@ -144,4 +151,13 @@ func IsChainContract(addr types.Address) bool {
 		return true
 	}
 	return false
+}
+
+func GetAbiByContractAddress(addr types.Address) (string, error) {
+	if contract, ok := contractCacheV1[addr]; ok {
+		return contract.abiJson, nil
+	} else if contract, ok := contractCacheV2[addr]; ok {
+		return contract.abiJson, nil
+	}
+	return "", errors.New("contract not found")
 }

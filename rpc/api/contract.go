@@ -18,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"go.uber.org/zap"
 )
 
@@ -28,6 +29,10 @@ type ContractApi struct {
 
 func NewContractApi(ledger *ledger.Ledger) *ContractApi {
 	return &ContractApi{logger: log.NewLogger("api_contract"), ledger: ledger}
+}
+
+func (c *ContractApi) GetAbiByContractAddress(address types.Address) (string, error) {
+	return contract.GetAbiByContractAddress(address)
 }
 
 func (c *ContractApi) PackContractData(abiStr string, methodName string, params []string) ([]byte, error) {

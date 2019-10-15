@@ -14,16 +14,15 @@ import (
 	"strings"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const (
-	jsonDestroy = `[
+	JsonDestroy = `[
   {
     "type": "function",
     "name": "Destroy",
@@ -55,7 +54,7 @@ const (
 )
 
 var (
-	BlackHoleABI, _ = abi.JSONToABIContract(strings.NewReader(jsonDestroy))
+	BlackHoleABI, _ = abi.JSONToABIContract(strings.NewReader(JsonDestroy))
 )
 
 type DestroyParam struct {
