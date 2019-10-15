@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
 	"time"
 
@@ -388,7 +389,7 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 
 	if message.Version() < byte(p2pVersion) {
 		node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
-		return errors.New("P2P protocol version is low")
+		return fmt.Errorf("peer %s P2P protocol version is low", peerID)
 	}
 	m := NewMessage(message.MessageType(), peerID, message.MessageData(), message.content)
 	node.netService.PutMessage(m)
