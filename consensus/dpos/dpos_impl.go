@@ -60,7 +60,7 @@ type DPoS struct {
 	logger          *zap.SugaredLogger
 	cfg             *config.Config
 	eb              event.EventBus
-	handlerIds      map[common.TopicType]string //topic->handler id
+	handlerIds      map[common.TopicType]string // topic->handler id
 	lv              *process.LedgerVerifier
 	cacheBlocks     chan *consensus.BlockSource
 	povReady        chan bool

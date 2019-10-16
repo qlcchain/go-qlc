@@ -86,17 +86,17 @@ func SimpleEventBus() EventBus {
 }
 
 func GetEventBus(id string) EventBus {
-	if len(id) == 0 {
+	if id == "" {
 		return SimpleEventBus()
 	}
 
 	if v, ok := cache.GetStringKey(id); ok {
 		return v.(EventBus)
-	} else {
-		eb := New()
-		cache.Set(id, eb)
-		return eb
 	}
+
+	eb := New()
+	cache.Set(id, eb)
+	return eb
 }
 
 // doSubscribe handles the subscription logic and is utilized by the public Subscribe functions
@@ -155,14 +155,14 @@ func (eb *DefaultEventBus) CloseTopic(topic common.TopicType) {
 // Returns error if there are no callbacks subscribed to the topic.
 func (eb *DefaultEventBus) Unsubscribe(topic common.TopicType, handler string) error {
 	if value, ok := eb.handlers.GetStringKey(string(topic)); ok {
-		if err := value.(*eventHandlers).RemoveCallback(handler); err == nil {
-			return nil
-		} else {
+		if err := value.(*eventHandlers).RemoveCallback(handler); err != nil {
 			return err
 		}
-	} else {
-		return fmt.Errorf("topic %s doesn't exist", topic)
+
+		return nil
 	}
+
+	return fmt.Errorf("topic %s doesn't exist", topic)
 }
 
 // Publish executes callback defined for a topic. Any additional argument will be transferred to the callback.
@@ -176,7 +176,7 @@ func (eb *DefaultEventBus) Publish(topic common.TopicType, args ...interface{}) 
 			for _, handler := range all {
 				h := handler
 
-				//waiting until the queue is ready
+				// waiting until the queue is ready
 				if h.pool.WaitingQueueSize() >= common.EventBusWaitingQueueSize {
 					checkInterval := time.NewTicker(10 * time.Millisecond)
 

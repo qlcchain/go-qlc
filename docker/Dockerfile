@@ -7,7 +7,7 @@ COPY . /qlcchain/go-qlc
 RUN cd /qlcchain/go-qlc && make clean ${BUILD_ACT}
 
 # Pull gqlc into a second stage deploy alpine container
-FROM alpine:3.9.3
+FROM alpine:3.10.2
 
 COPY --from=builder /qlcchain/go-qlc/build/gqlc .
 

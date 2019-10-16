@@ -17,12 +17,6 @@ services:
         source: ./data/
         target: /root/.gqlcchain/
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.backend=qlcchain_node"
-      - "traefik.rpc.port=9735"
-      - "traefik.rpc.frontend.rule=Host:rpc.qlcchain.online" 
-      - "traefik.docker.network=traefik"
  
 networks:
   qlcchain:

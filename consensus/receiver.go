@@ -17,7 +17,7 @@ var (
 
 type Receiver struct {
 	eb           event.EventBus
-	handlerIds   map[common.TopicType]string //topic->handler id
+	handlerIds   map[common.TopicType]string // topic->handler id
 	c            *Consensus
 	cache        gcache.Cache
 	lastSyncTime time.Time

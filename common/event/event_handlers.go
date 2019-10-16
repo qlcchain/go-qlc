@@ -31,12 +31,12 @@ func (eh *eventHandlers) Add(handler *eventHandler) {
 	eh.handlers = append(eh.handlers, handler)
 }
 
-func (eh *eventHandlers) RemoveCallback(handlerId string) error {
+func (eh *eventHandlers) RemoveCallback(handlerID string) error {
 	eh.locker.Lock()
 	defer eh.locker.Unlock()
 	i := len(eh.handlers)
 	for idx, h := range eh.handlers {
-		if h.id == handlerId {
+		if h.id == handlerID {
 			i = idx
 			break
 		}
@@ -46,7 +46,7 @@ func (eh *eventHandlers) RemoveCallback(handlerId string) error {
 		eh.handlers = append(eh.handlers[:i], eh.handlers[i+1:]...)
 		return nil
 	}
-	return fmt.Errorf("remove callback %s failed", handlerId)
+	return fmt.Errorf("remove callback %s failed", handlerID)
 }
 
 func (eh *eventHandlers) Remove(handler *eventHandler) bool {

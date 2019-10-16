@@ -13,19 +13,19 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 )
 
-//subscriber defines subscription-related bus behavior
+// subscriber defines subscription-related bus behavior
 type subscriber interface {
 	Subscribe(topic common.TopicType, fn interface{}) (string, error)
 	SubscribeSync(topic common.TopicType, fn interface{}) (string, error)
-	Unsubscribe(topic common.TopicType, handlerId string) error
+	Unsubscribe(topic common.TopicType, handlerID string) error
 }
 
-//publisher defines publishing-related bus behavior
+// publisher defines publishing-related bus behavior
 type publisher interface {
 	Publish(topic common.TopicType, args ...interface{})
 }
 
-//controller defines bus control behavior (checking handler's presence, synchronization)
+// controller defines bus control behavior (checking handler's presence, synchronization)
 type controller interface {
 	HasCallback(topic common.TopicType) bool
 	CloseTopic(topic common.TopicType)
