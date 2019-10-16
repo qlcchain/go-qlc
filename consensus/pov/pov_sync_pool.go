@@ -112,7 +112,7 @@ func (ss *PovSyncer) onSyncPeerTimer() {
 
 		syncErr = true
 	} else if syncPeer.syncSeqID != ss.syncSeqID.Load() {
-		ss.logger.Infof("sync peer %s sequence id changed, % != %d", ss.syncPeerID, ss.syncSeqID, ss.syncSeqID.Load())
+		ss.logger.Infof("sync peer %s sequence id changed, %d != %d", ss.syncPeerID, ss.syncSeqID, ss.syncSeqID.Load())
 
 		syncErr = true
 	} else if syncPeer.waitSyncRspMsg {
