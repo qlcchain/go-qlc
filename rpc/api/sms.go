@@ -36,13 +36,16 @@ func phoneNumberSeri(number string) ([]byte, error) {
 func (s *SMSApi) getApiBlocksByHash(hashes []types.Hash) ([]*APIBlock, error) {
 	ab := make([]*APIBlock, 0)
 	vmContext := vmstore.NewVMContext(s.ledger)
+
+	latestPov, _ := s.ledger.GetLatestPovHeader()
+
 	for _, h := range hashes {
 		block, err := s.ledger.GetStateBlock(h)
 		if err != nil && err != ledger.ErrBlockNotFound {
 			return nil, err
 		}
 		if block != nil {
-			b, err := generateAPIBlock(vmContext, block)
+			b, err := generateAPIBlock(vmContext, block, latestPov)
 			if err != nil {
 				return nil, err
 			}

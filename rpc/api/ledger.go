@@ -55,6 +55,9 @@ type APIBlock struct {
 	TokenName string        `json:"tokenName"`
 	Amount    types.Balance `json:"amount"`
 	Hash      types.Hash    `json:"hash"`
+
+	PovConfirmHeight uint64 `json:"povConfirmHeight"`
+	PovConfirmCount  uint64 `json:"povConfirmCount"`
 }
 
 type APIAccount struct {
@@ -133,7 +136,7 @@ func checkOffset(count int, offset *int) (int, int, error) {
 	return count, o, nil
 }
 
-func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock) (*APIBlock, error) {
+func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock, latestPov *types.PovHeader) (*APIBlock, error) {
 	ab := new(APIBlock)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
@@ -147,6 +150,18 @@ func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock) (*APIBloc
 		return nil, err
 	}
 	ab.TokenName = token.TokenName
+
+	// pov tx lookup
+	if latestPov != nil {
+		povTxl, _ := ctx.GetPovTxLookup(ab.Hash)
+		if povTxl != nil {
+			ab.PovConfirmHeight = povTxl.BlockHeight
+			if latestPov.GetHeight() > ab.PovConfirmHeight {
+				ab.PovConfirmCount = latestPov.GetHeight() - ab.PovConfirmHeight
+			}
+		}
+	}
+
 	return ab, nil
 }
 
@@ -164,9 +179,11 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 	bs := make([]*APIBlock, 0)
 	vmContext := vmstore.NewVMContext(l.ledger)
 
+	latestPov, err := l.ledger.GetLatestPovHeader()
+
 	for _, h := range hashes {
 		block, _ := l.ledger.GetStateBlockConfirmed(h)
-		b, err := generateAPIBlock(vmContext, block)
+		b, err := generateAPIBlock(vmContext, block, latestPov)
 		if err != nil {
 			return nil, err
 		}
@@ -505,6 +522,8 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	bs := make([]*APIBlock, 0)
 	vmContext := vmstore.NewVMContext(l.ledger)
 
+	latestPov, _ := l.ledger.GetLatestPovHeader()
+
 	for _, h := range hash {
 		block, err := l.ledger.GetStateBlock(h)
 		if err != nil {
@@ -513,7 +532,7 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b, err := generateAPIBlock(vmContext, block)
+		b, err := generateAPIBlock(vmContext, block, latestPov)
 		if err != nil {
 			return nil, err
 		}
@@ -534,13 +553,15 @@ func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
 	bs := make([]*APIBlock, 0)
 	vmContext := vmstore.NewVMContext(l.ledger)
 
+	latestPov, err := l.ledger.GetLatestPovHeader()
+
 	for _, h := range hashes {
 		block, err := l.ledger.GetStateBlock(h)
 		if err != nil && err != ledger.ErrBlockNotFound {
 			return nil, err
 		}
 		if block != nil {
-			b, err := generateAPIBlock(vmContext, block)
+			b, err := generateAPIBlock(vmContext, block, latestPov)
 			if err != nil {
 				return nil, err
 			}

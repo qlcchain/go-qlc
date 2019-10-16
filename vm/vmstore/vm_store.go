@@ -236,3 +236,7 @@ func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
 func (v *VMContext) GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error) {
 	return v.ledger.GetPovMinerStat(dayIndex)
 }
+
+func (v *VMContext) GetPovTxLookup(txHash types.Hash) (*types.PovTxLookup, error) {
+	return v.ledger.GetPovTxLookup(txHash)
+}
