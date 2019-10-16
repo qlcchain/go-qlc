@@ -25,7 +25,7 @@ build:
 	go build -ldflags "-X github.com/qlcchain/go-qlc/chain.Version=${VERSION} \
 		-X github.com/qlcchain/go-qlc/chain.GitRev=${GITREV} \
         -X github.com/qlcchain/go-qlc/chain.BuildTime=${BUILDTIME} \
-        -X github.com/qlcchain/go-qlc/chain.Mode=MainNet" -v -i -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
+        -X github.com/qlcchain/go-qlc/chain.Mode=MainNet" -i -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
 	@echo "Build $(BINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
 
@@ -33,7 +33,7 @@ build-test:
 	go build -tags "testnet" -ldflags "-X github.com/qlcchain/go-qlc/chain.Version=${VERSION} \
 		-X github.com/qlcchain/go-qlc/chain.GitRev=${GITREV} \
 		-X github.com/qlcchain/go-qlc/chain.BuildTime=${BUILDTIME} \
-		-X github.com/qlcchain/go-qlc/chain.Mode=TestNet" -v -i -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
+		-X github.com/qlcchain/go-qlc/chain.Mode=TestNet" -i -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
 	@echo "Build testnet $(BINARY) done."
 	@echo "Run \"$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
 
