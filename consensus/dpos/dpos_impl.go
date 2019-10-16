@@ -242,7 +242,7 @@ func (dps *DPoS) Start() {
 					dps.logger.Debugf("pov sync state[%s] cache blocks", dps.povSyncState)
 					dps.cacheBlocks <- bs
 				} else {
-					dps.logger.Errorf("pov not ready! cache block too much, drop it!")
+					dps.logger.Debugf("pov not ready! cache block too much, drop it!")
 				}
 			}
 		case <-timerRefreshPri.C:
