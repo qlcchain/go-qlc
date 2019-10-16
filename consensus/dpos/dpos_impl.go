@@ -318,7 +318,6 @@ func (dps *DPoS) Start() {
 				if dps.lastGapHeight <= dps.curPovHeight {
 					if dps.dequeueGapPovBlocksFromDb(dps.lastGapHeight) {
 						dps.lastGapHeight++
-						continue
 					} else {
 						break
 					}
@@ -1210,6 +1209,10 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 }
 
 func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
+	if height < common.PovMinerRewardHeightGapToLatest {
+		return true
+	}
+
 	if blocks, kind, err := dps.ledger.GetGapPovBlock(height); err != nil {
 		return true
 	} else {
