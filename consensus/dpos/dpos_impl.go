@@ -2,7 +2,6 @@ package dpos
 
 import (
 	"context"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
 	"sort"
 	"sync"
@@ -21,6 +20,7 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
@@ -1057,7 +1057,7 @@ func (dps *DPoS) blockSyncDone() error {
 		return err
 	}
 
-	dps.logger.Info("sync done, common block process finished ")
+	dps.logger.Info("sync done, common block process finished, order blocks:  ", len(contractBlocks))
 	if len(contractBlocks) > 0 {
 		sort.Slice(contractBlocks, func(i, j int) bool {
 			return contractBlocks[i].Timestamp < contractBlocks[j].Timestamp

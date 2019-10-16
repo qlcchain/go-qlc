@@ -705,7 +705,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 			clone := block.Clone()
 			vmCtx := vmstore.NewVMContext(lv.l)
 			switch v := c.(type) {
-			case contract.ChainContractV1:
+			case contract.InternalContract:
 				g, err := v.DoReceive(vmCtx, clone, input)
 				if err != nil {
 					return err
