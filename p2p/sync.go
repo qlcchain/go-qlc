@@ -301,6 +301,7 @@ func getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
 func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	var blk *types.StateBlock
 	var bulkBlk types.StateBlockList
+	var temp types.Hash
 	pullRemote, err := protos.BulkPullReqPacketFromProto(message.Data())
 	if err != nil {
 		return err
@@ -310,7 +311,11 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
 	pullType := pullRemote.PullType
-
+	f, err := ss.qlcLedger.GetFrontier(endHash)
+	if err != nil {
+		ss.logger.Error(err)
+		return err
+	}
 	if pullType != protos.PullTypeSegment {
 		return ss.onBulkPullRequestExt(message, pullRemote)
 	}
@@ -335,119 +340,88 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	exitPullRsp.pullRspHash = types.ZeroHash
 	ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
 	if startHash.IsZero() {
+		temp = f.OpenBlock
 		for {
-			blk, err = ss.qlcLedger.GetStateBlockConfirmed(endHash)
+			blk, err = ss.qlcLedger.GetStateBlockConfirmed(temp)
 			if err != nil {
 				ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
 				break
 			}
 			bulkBlk = append(bulkBlk, blk)
-			endHash = blk.GetPrevious()
-			if endHash.IsZero() == true || len(bulkBlk) == maxPushTxPerTime {
+			if temp.String() == endHash.String() || len(bulkBlk) == maxPushTxPerTime {
 				break
 			}
-		}
-		for {
-			reverseBlocks := make(types.StateBlockList, 0)
-			for i := len(bulkBlk) - 1; i >= 0; i-- {
-				reverseBlocks = append(reverseBlocks, bulkBlk[i])
-			}
-			select {
-			case <-exitPullRsp.pullRspTimer.C:
-				return nil
-			case <-exitPullRsp.pullRspStartCh:
-				if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-					return ErrStreamIsNotConnected
-				}
-				req := new(protos.BulkPullRspPacket)
-				req.PullType = protos.PullTypeSegment
-				req.Blocks = reverseBlocks
-				data, err := marshalMessage(BulkPullRsp, req)
-				if err != nil {
-					ss.logger.Error(err)
-					return err
-				}
-				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
-				exitPullRsp.pullRspHash, _ = types.HashBytes(qData)
-				err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
-				if err != nil {
-					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
-				}
-				exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
-				if endHash.IsZero() == true {
-					return nil
-				} else {
-					bulkBlk = bulkBlk[:0:0]
-					for {
-						blk, err = ss.qlcLedger.GetStateBlockConfirmed(endHash)
-						if err != nil {
-							ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
-							break
-						}
-						bulkBlk = append(bulkBlk, blk)
-						endHash = blk.GetPrevious()
-						if endHash.IsZero() == true || len(bulkBlk) == maxPushTxPerTime {
-							break
-						}
-					}
-				}
+			temp, err = ss.qlcLedger.GetChild(temp)
+			if err != nil {
+				ss.logger.Error(err)
+				return err
 			}
 		}
 	} else {
+		temp = startHash
 		for {
-			blk, err = ss.qlcLedger.GetStateBlockConfirmed(endHash)
+			blk, err = ss.qlcLedger.GetStateBlockConfirmed(temp)
 			if err != nil {
 				ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
 				break
 			}
 			bulkBlk = append(bulkBlk, blk)
-			endHash = blk.GetPrevious()
-			if endHash == startHash || len(bulkBlk) == maxPushTxPerTime {
+			if temp.String() == endHash.String() || len(bulkBlk) == maxPushTxPerTime {
 				break
 			}
-		}
-		for {
-			reverseBlocks := make(types.StateBlockList, 0)
-			for i := len(bulkBlk) - 1; i >= 0; i-- {
-				reverseBlocks = append(reverseBlocks, bulkBlk[i])
+			temp, err = ss.qlcLedger.GetChild(temp)
+			if err != nil {
+				ss.logger.Error(err)
+				return err
 			}
-			select {
-			case <-exitPullRsp.pullRspTimer.C:
+		}
+	}
+	for {
+		select {
+		case <-exitPullRsp.pullRspTimer.C:
+			return nil
+		case <-exitPullRsp.pullRspStartCh:
+			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+				return ErrStreamIsNotConnected
+			}
+			req := new(protos.BulkPullRspPacket)
+			req.PullType = protos.PullTypeSegment
+			req.Blocks = bulkBlk
+			data, err := marshalMessage(BulkPullRsp, req)
+			if err != nil {
+				ss.logger.Error(err)
+				return err
+			}
+			qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
+			exitPullRsp.pullRspHash, _ = types.HashBytes(qData)
+			err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
+			if err != nil {
+				ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
+			}
+			exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
+			if temp.String() == endHash.String() {
 				return nil
-			case <-exitPullRsp.pullRspStartCh:
-				if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-					return ErrStreamIsNotConnected
-				}
-				req := new(protos.BulkPullRspPacket)
-				req.PullType = protos.PullTypeSegment
-				req.Blocks = reverseBlocks
-				data, err := marshalMessage(BulkPullRsp, req)
+			} else {
+				bulkBlk = bulkBlk[:0:0]
+				temp, err = ss.qlcLedger.GetChild(temp)
 				if err != nil {
 					ss.logger.Error(err)
 					return err
 				}
-				qData := NewQlcMessage(data, byte(p2pVersion), BulkPullRsp)
-				exitPullRsp.pullRspHash, _ = types.HashBytes(qData)
-				err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
-				if err != nil {
-					ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
-				}
-				exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
-				if endHash == startHash {
-					return nil
-				} else {
-					bulkBlk = bulkBlk[:0:0]
-					for {
-						blk, err = ss.qlcLedger.GetStateBlockConfirmed(endHash)
-						if err != nil {
-							ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
-							break
-						}
-						bulkBlk = append(bulkBlk, blk)
-						endHash = blk.GetPrevious()
-						if endHash == startHash || len(bulkBlk) == maxPushTxPerTime {
-							break
-						}
+				for {
+					blk, err = ss.qlcLedger.GetStateBlockConfirmed(temp)
+					if err != nil {
+						ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+						break
+					}
+					bulkBlk = append(bulkBlk, blk)
+					if temp.String() == endHash.String() || len(bulkBlk) == maxPushTxPerTime {
+						break
+					}
+					temp, err = ss.qlcLedger.GetChild(temp)
+					if err != nil {
+						ss.logger.Error(err)
+						return err
 					}
 				}
 			}
