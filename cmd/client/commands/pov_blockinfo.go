@@ -19,8 +19,8 @@ func addPovHeaderInfoCmdByShell(parentCmd *ishell.Cmd) {
 	}
 
 	cmd := &ishell.Cmd{
-		Name: "getHeader",
-		Help: "get header info",
+		Name: "getHeaderInfo",
+		Help: "get pov header info",
 		Func: func(c *ishell.Context) {
 			args := []util.Flag{idFlag}
 			if util.HelpText(c, args) {
@@ -109,6 +109,91 @@ func runPovHeaderInfoCmd(idStr string) error {
 		fmt.Printf("Miner:         %s\n", rspInfo.GetMinerAddr())
 		fmt.Printf("Reward(M):     %s QGAS\n", formatPovReward(rspInfo.GetMinerReward()))
 		fmt.Printf("Reward(R):     %s QGAS\n", formatPovReward(rspInfo.GetRepReward()))
+	}
+
+	return nil
+}
+
+func addPovHeaderListCmdByShell(parentCmd *ishell.Cmd) {
+	heightFlag := util.Flag{
+		Name:  "height",
+		Must:  false,
+		Usage: "height of pov blocks",
+		Value: -1,
+	}
+	countFlag := util.Flag{
+		Name:  "count",
+		Must:  false,
+		Usage: "count of pov blocks",
+		Value: 10,
+	}
+	ascFlag := util.Flag{
+		Name:  "ascend",
+		Must:  false,
+		Usage: "order is ascend or descend",
+		Value: false,
+	}
+
+	cmd := &ishell.Cmd{
+		Name: "getHeaderList",
+		Help: "get pov header list",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{heightFlag, countFlag, ascFlag}
+			if util.HelpText(c, args) {
+				return
+			}
+			height, _ := util.IntVar(c.Args, heightFlag)
+			count, _ := util.IntVar(c.Args, countFlag)
+			asc := util.BoolVar(c.Args, ascFlag)
+
+			err := runPovHeaderListCmd(height, count, asc)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(cmd)
+}
+
+func runPovHeaderListCmd(height int, count int, asc bool) error {
+	client, err := rpc.Dial(endpointP)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if height < 0 {
+		rspLatestInfo := new(api.PovApiHeader)
+		err = client.Call(rspLatestInfo, "pov_getLatestHeader")
+		if err != nil {
+			return err
+		}
+
+		height = int(rspLatestInfo.GetHeight())
+	}
+
+	rspInfo := new(api.PovApiBatchHeader)
+
+	err = client.Call(rspInfo, "pov_batchGetHeadersByHeight", height, count, asc)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%-10s %-64s %-6s %-7s %-3s %-7s %-19s\n", "Height", "Hash", "TxNum", "Algo", "Aux", "Diff", "Time")
+	for _, apiHeader := range rspInfo.Headers {
+		isAux := 0
+		if apiHeader.AuxHdr != nil {
+			isAux = 1
+		}
+
+		blkTm := time.Unix(int64(apiHeader.GetTimestamp()), 0)
+
+		fmt.Printf("%-10d %-64s %-6d %-7s %-3d %-7s %-19s\n",
+			apiHeader.GetHeight(), apiHeader.GetHash(), apiHeader.GetTxNum(),
+			apiHeader.AlgoName, isAux,
+			formatPovDifficulty(apiHeader.NormDifficulty),
+			blkTm.Format("2006-01-02 15:04:05"))
 	}
 
 	return nil

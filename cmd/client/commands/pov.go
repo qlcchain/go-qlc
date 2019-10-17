@@ -20,6 +20,7 @@ func addPovCmd() {
 
 		addPovMiningInfoCmdByShell(povCmd)
 		addPovHeaderInfoCmdByShell(povCmd)
+		addPovHeaderListCmdByShell(povCmd)
 		addPovMinerInfoCmdByShell(povCmd)
 		addPovAccountInfoCmdByShell(povCmd)
 		addPovLastNHourInfoCmdByShell(povCmd)

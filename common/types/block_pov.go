@@ -346,6 +346,10 @@ func (h *PovHeader) GetNonce() uint32 {
 	return h.BasHdr.Nonce
 }
 
+func (h *PovHeader) GetTxNum() uint32 {
+	return h.CbTx.TxNum
+}
+
 func (h *PovHeader) GetStateHash() Hash {
 	return h.CbTx.StateHash
 }

@@ -236,6 +236,10 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 }
 
 func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool) (*PovApiBatchHeader, error) {
+	if count <= 0 || count > 1000 {
+		return nil, errors.New("count should be 1 ~ 1000")
+	}
+
 	var dbHeaders []*types.PovHeader
 	var err error
 	if asc {

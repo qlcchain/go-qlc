@@ -78,7 +78,14 @@ func BoolVar(rawArgs []string, args Flag) bool {
 	if i < 0 {
 		return args.Value.(bool)
 	}
-	return true
+
+	s := rawArgs[i+1]
+	c, err := strconv.ParseBool(s)
+	if err != nil {
+		return false
+	}
+
+	return c
 }
 
 func CheckArgs(c *ishell.Context, args []Flag) error {
