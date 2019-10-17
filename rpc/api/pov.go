@@ -75,6 +75,9 @@ type PovApiRepState struct {
 type PovApiTxLookup struct {
 	TxHash   types.Hash         `json:"txHash"`
 	TxLookup *types.PovTxLookup `json:"txLookup"`
+
+	CoinbaseTx *types.PovCoinBaseTx `json:"coinbaseTx"`
+	AccountTx  *types.StateBlock    `json:"accountTx"`
 }
 
 type PovLedgerStats struct {
@@ -341,6 +344,15 @@ func (api *PovApi) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {
 	apiTxl := &PovApiTxLookup{
 		TxHash:   txHash,
 		TxLookup: txl,
+	}
+
+	if txl.TxIndex == 0 {
+		header, _ := api.ledger.GetPovHeaderByHash(txl.BlockHash)
+		if header != nil {
+			apiTxl.CoinbaseTx = header.CbTx
+		}
+	} else {
+		apiTxl.AccountTx, _ = api.ledger.GetStateBlock(txHash)
 	}
 
 	return apiTxl, nil

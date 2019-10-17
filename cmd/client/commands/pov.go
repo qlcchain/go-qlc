@@ -23,6 +23,7 @@ func addPovCmd() {
 		addPovMinerInfoCmdByShell(povCmd)
 		addPovAccountInfoCmdByShell(povCmd)
 		addPovLastNHourInfoCmdByShell(povCmd)
+		addPovTxInfoCmdByShell(povCmd)
 	} else {
 		var povCmd = &cobra.Command{
 			Use:   "pov",
@@ -58,5 +59,5 @@ func formatPovDifficulty(diff float64) string {
 		divisor = 1000
 	}
 
-	return fmt.Sprintf("%.2f %s", diff/divisor, unit)
+	return fmt.Sprintf("%.2f%s", diff/divisor, unit)
 }
