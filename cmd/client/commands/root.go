@@ -124,4 +124,5 @@ func addcommands() {
 	dumpledger()
 	repReward()
 	repRewardRecvPend()
+	addPovCmd()
 }
