@@ -1,11 +1,13 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	rpc "github.com/qlcchain/jsonrpc2"
+	"time"
 )
 
 func addPovLastNHourInfoCmdByShell(parentCmd *ishell.Cmd) {
@@ -54,6 +56,15 @@ func runPovLastNHourInfoCmd(beginTime int, endTime int) error {
 		return err
 	}
 	defer client.Close()
+
+	if beginTime == 0 && endTime != 0 {
+		if endTime%3600 != 0 {
+			return errors.New("endTime must be multiple of 3600 seconds when beginTime is 0")
+		}
+		intervalTime := endTime
+		endTime = int(time.Now().Unix())
+		beginTime = endTime - intervalTime
+	}
 
 	rspInfo := new(api.PovApiGetLastNHourInfo)
 	err = client.Call(rspInfo, "pov_getLastNHourInfo", beginTime, endTime)

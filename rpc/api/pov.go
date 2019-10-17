@@ -1140,6 +1140,15 @@ func (api *PovApi) GetLastNHourInfo(beginTime uint32, endTime uint32) (*PovApiGe
 	endHourTime := uint32(time.Now().Unix())
 	beginHourTime := endHourTime - (3600 * 24)
 
+	if beginTime == 0 && endTime != 0 {
+		if endTime%3600 != 0 {
+			return nil, errors.New("endTime must be multiple of 3600 seconds when beginTime is 0")
+		}
+		intervalTime := endTime
+		endTime = uint32(time.Now().Unix())
+		beginTime = endTime - intervalTime
+	}
+
 	if beginTime != 0 || endTime != 0 {
 		if beginTime >= endTime {
 			return nil, errors.New("endTime must be greater than beginTime")
@@ -1148,8 +1157,8 @@ func (api *PovApi) GetLastNHourInfo(beginTime uint32, endTime uint32) (*PovApiGe
 		if paraDiffTime%(2*3600) != 0 {
 			return nil, errors.New("(endTime - beginTime) must be multiplier of 2 hour")
 		}
-		if paraDiffTime < 4*3600 || paraDiffTime > 24*3600 {
-			return nil, errors.New("(endTime - beginTime) must be 4 ~ 24 hour")
+		if paraDiffTime < 2*3600 || paraDiffTime > 24*3600 {
+			return nil, errors.New("(endTime - beginTime) must be 2 ~ 24 hour")
 		}
 
 		endHourTime = endTime
