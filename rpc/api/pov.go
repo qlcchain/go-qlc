@@ -81,11 +81,12 @@ type PovApiTxLookup struct {
 }
 
 type PovLedgerStats struct {
-	PovBlockCount    uint64 `json:"povBlockCount"`
-	PovBestCount     uint64 `json:"povBestCount"`
-	PovTxLookupCount uint64 `json:"povTxLookupCount"`
-	PovStateTxCount  uint64 `json:"povStateTxCount"`
-	StateBlockCount  uint64 `json:"stateBlockCount"`
+	PovBlockCount   uint64 `json:"povBlockCount"`
+	PovBestCount    uint64 `json:"povBestCount"`
+	PovAllTxCount   uint64 `json:"povAllTxCount"`
+	PovCbTxCount    uint64 `json:"povCbTxCount"`
+	PovStateTxCount uint64 `json:"povStateTxCount"`
+	StateBlockCount uint64 `json:"stateBlockCount"`
 }
 
 type PovApiTD struct {
@@ -572,13 +573,14 @@ func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
 		return nil, err
 	}
 
-	stats.PovTxLookupCount, err = api.ledger.CountPovTxs()
+	stats.PovAllTxCount, err = api.ledger.CountPovTxs()
 	if err != nil {
 		return nil, err
 	}
 
-	if stats.PovTxLookupCount > stats.PovBestCount {
-		stats.PovStateTxCount = stats.PovTxLookupCount - stats.PovBestCount
+	stats.PovCbTxCount = stats.PovBestCount
+	if stats.PovAllTxCount > stats.PovCbTxCount {
+		stats.PovStateTxCount = stats.PovAllTxCount - stats.PovCbTxCount
 	}
 
 	stats.StateBlockCount, err = api.ledger.CountStateBlocks()

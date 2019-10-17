@@ -97,7 +97,7 @@ func runPovHeaderInfoCmd(idStr string) error {
 		fmt.Printf("AuxPoW:      true\n")
 		fmt.Printf("ParentHash:  %s\n", rspInfo.AuxHdr.ParentHash)
 		parHeader := rspInfo.AuxHdr.ParBlockHeader
-		fmt.Printf("Time:        %d(%s)\n", parHeader.Timestamp, time.Unix(int64(parHeader.Timestamp), 0))
+		fmt.Printf("ParentTime:  %d(%s)\n", parHeader.Timestamp, time.Unix(int64(parHeader.Timestamp), 0))
 		fmt.Printf("ParentBits:  %d(0x%x)\n", parHeader.Bits, parHeader.Bits)
 		fmt.Printf("ParentNonce: %d(0x%x)\n", parHeader.Nonce, parHeader.Nonce)
 	}

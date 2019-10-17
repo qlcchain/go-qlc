@@ -63,5 +63,19 @@ func runPovMiningInfoCmd() error {
 	fmt.Printf(" X11:     %d\n", rspInfo.HashInfo.X11HashPS)
 	fmt.Printf(" SCRYPT:  %d\n", rspInfo.HashInfo.ScryptHashPS)
 
+	rspLs := new(api.PovLedgerStats)
+	err = client.Call(rspLs, "pov_getLedgerStats")
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Ledger Statistics:\n")
+	fmt.Printf(" PovBestCount:    %d\n", rspLs.PovBestCount)
+	fmt.Printf(" PovBlockCount:   %d\n", rspLs.PovBlockCount)
+	fmt.Printf(" PovAllTxCount:   %d\n", rspLs.PovAllTxCount)
+	fmt.Printf(" PovCbTxCount:    %d\n", rspLs.PovCbTxCount)
+	fmt.Printf(" PovStateTxCount: %d\n", rspLs.PovStateTxCount)
+	fmt.Printf(" StateBlockCount: %d\n", rspLs.StateBlockCount)
+
 	return nil
 }
