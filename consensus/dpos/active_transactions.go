@@ -135,6 +135,22 @@ func (act *ActiveTrx) updatePerformanceTime(hash types.Hash, curTime int64, conf
 	}
 }
 
+func (act *ActiveTrx) cleanFrontierVotes() {
+	dps := act.dps
+
+	act.roots.Range(func(key, value interface{}) bool {
+		el := value.(*Election)
+		block := el.status.winner
+		hash := block.GetHash()
+
+		if dps.isReceivedFrontier(hash) {
+			act.roots.Delete(el.vote.id)
+		}
+
+		return true
+	})
+}
+
 func (act *ActiveTrx) checkVotes() {
 	nowTime := time.Now().Unix()
 	dps := act.dps
@@ -164,8 +180,6 @@ func (act *ActiveTrx) checkVotes() {
 
 			if dps.isReceivedFrontier(hash) {
 				dps.logger.Infof("sync finish abnormally because of frontier not confirmed")
-				dps.frontiersStatus = new(sync.Map)
-				dps.CleanSyncCache()
 				dps.eb.Publish(common.EventConsensusSyncFinished)
 			}
 		} else {

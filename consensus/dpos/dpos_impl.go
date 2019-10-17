@@ -273,7 +273,6 @@ func (dps *DPoS) Start() {
 		case <-dps.checkFinish:
 			dps.checkSyncFinished()
 		case <-dps.syncFinish:
-			dps.frontiersStatus = new(sync.Map)
 			dps.CleanSyncCache()
 			dps.logger.Infof("sync finished abnormally")
 		case bs := <-dps.gapPovCh:
@@ -1142,7 +1141,6 @@ func (dps *DPoS) checkSyncFinished() {
 		}
 		dps.syncStateNotifyWait.Wait()
 
-		dps.frontiersStatus = new(sync.Map)
 		dps.CleanSyncCache()
 		dps.eb.Publish(common.EventConsensusSyncFinished)
 		dps.logger.Infof("sync finished")
@@ -1200,6 +1198,7 @@ func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 
 	switch state {
 	case common.Syncing:
+		dps.acTrx.cleanFrontierVotes()
 		dps.frontiersStatus = new(sync.Map)
 		dps.totalVote = make(map[types.Address]types.Balance)
 	case common.SyncDone:
