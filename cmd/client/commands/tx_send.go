@@ -22,81 +22,81 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func send() {
+func addTxSendCmdByShell(parentCmd *ishell.Cmd) {
+	from := util.Flag{
+		Name:  "from",
+		Must:  true,
+		Usage: "send account private key",
+		Value: "",
+	}
+	to := util.Flag{
+		Name:  "to",
+		Must:  true,
+		Usage: "receive account",
+		Value: "",
+	}
+	token := util.Flag{
+		Name:  "token",
+		Must:  false,
+		Usage: "token name for send action(defalut is QLC)",
+		Value: "QLC",
+	}
+	amount := util.Flag{
+		Name:  "amount",
+		Must:  true,
+		Usage: "send amount",
+		Value: "0",
+	}
+	c := &ishell.Cmd{
+		Name: "send",
+		Help: "send transaction",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{from, to, token, amount}
+			if util.HelpText(c, args) {
+				return
+			}
+			if err := util.CheckArgs(c, args); err != nil {
+				util.Warn(err)
+				return
+			}
+			fromP := util.StringVar(c.Args, from)
+			toP := util.StringVar(c.Args, to)
+			tokenP := util.StringVar(c.Args, token)
+			amountP := util.StringVar(c.Args, amount)
+			err := sendAction(fromP, toP, tokenP, amountP)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+			util.Info("send transaction success!")
+		},
+	}
+	parentCmd.AddCmd(c)
+}
+
+func addTxSendCmdByCobra(parentCmd *cobra.Command) {
 	var fromP string
 	var toP string
 	var tokenP string
 	var amountP string
 
-	if interactive {
-		from := util.Flag{
-			Name:  "from",
-			Must:  true,
-			Usage: "send account private key",
-			Value: "",
-		}
-		to := util.Flag{
-			Name:  "to",
-			Must:  true,
-			Usage: "receive account",
-			Value: "",
-		}
-		token := util.Flag{
-			Name:  "token",
-			Must:  false,
-			Usage: "token name for send action(defalut is QLC)",
-			Value: "QLC",
-		}
-		amount := util.Flag{
-			Name:  "amount",
-			Must:  true,
-			Usage: "send amount",
-			Value: "0",
-		}
-		c := &ishell.Cmd{
-			Name: "send",
-			Help: "send transaction",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{from, to, token, amount}
-				if util.HelpText(c, args) {
-					return
-				}
-				if err := util.CheckArgs(c, args); err != nil {
-					util.Warn(err)
-					return
-				}
-				fromP = util.StringVar(c.Args, from)
-				toP = util.StringVar(c.Args, to)
-				tokenP = util.StringVar(c.Args, token)
-				amountP = util.StringVar(c.Args, amount)
-				err := sendAction(fromP, toP, tokenP, amountP)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-				util.Info("send transaction success!")
-			},
-		}
-		shell.AddCmd(c)
-	} else {
-		var sendCmd = &cobra.Command{
-			Use:   "send",
-			Short: "send transaction",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := sendAction(fromP, toP, tokenP, amountP)
-				if err != nil {
-					cmd.Println(err)
-					return
-				}
-				fmt.Println("send transaction success!")
-			},
-		}
-		sendCmd.Flags().StringVarP(&fromP, "from", "f", "", "send account private key")
-		sendCmd.Flags().StringVarP(&toP, "to", "t", "", "receive account")
-		sendCmd.Flags().StringVarP(&tokenP, "token", "k", "QLC", "token for send action")
-		sendCmd.Flags().StringVarP(&amountP, "amount", "m", "", "send amount")
-		rootCmd.AddCommand(sendCmd)
+	var sendCmd = &cobra.Command{
+		Use:   "send",
+		Short: "send transaction",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := sendAction(fromP, toP, tokenP, amountP)
+			if err != nil {
+				cmd.Println(err)
+				return
+			}
+			fmt.Println("send transaction success!")
+		},
 	}
+	sendCmd.Flags().StringVarP(&fromP, "from", "f", "", "send account private key")
+	sendCmd.Flags().StringVarP(&toP, "to", "t", "", "receive account")
+	sendCmd.Flags().StringVarP(&tokenP, "token", "k", "QLC", "token for send action")
+	sendCmd.Flags().StringVarP(&amountP, "amount", "m", "", "send amount")
+	parentCmd.AddCommand(sendCmd)
 }
 
 func sendAction(fromP, toP, tokenP, amountP string) error {

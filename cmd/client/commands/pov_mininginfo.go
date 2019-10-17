@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addPovMiningInfoCmd(parentCmd *cobra.Command) {
+func addPovMiningInfoCmdByCobra(parentCmd *cobra.Command) {
 }
 
 func addPovMiningInfoCmdByShell(parentCmd *ishell.Cmd) {

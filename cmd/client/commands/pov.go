@@ -33,7 +33,7 @@ func addPovCmd() {
 		}
 		rootCmd.AddCommand(povCmd)
 
-		addPovMiningInfoCmd(povCmd)
+		addPovMiningInfoCmdByCobra(povCmd)
 	}
 }
 
