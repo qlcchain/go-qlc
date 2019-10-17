@@ -572,6 +572,10 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 		}
 	}
 
+	for i, b := range blocks {
+		ss.logger.Debugf("sync block acc[%s]-index[%d]-hash[%s]-prev[%s]", b.Address, i, b.GetHash(), b.Previous)
+	}
+
 	if blkPacket.PullType == protos.PullTypeSegment {
 		ss.pullTimer.Stop()
 
