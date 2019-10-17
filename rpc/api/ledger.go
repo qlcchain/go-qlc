@@ -91,6 +91,8 @@ type APIPending struct {
 	*types.PendingInfo
 	TokenName string `json:"tokenName"`
 	Timestamp int64  `json:"timestamp"`
+
+	BlockType types.BlockType `json:"blockType"`
 }
 
 type ApiTokenInfo struct {
@@ -385,8 +387,11 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 			ap := APIPending{
 				PendingKey:  key,
 				PendingInfo: info,
-				TokenName:   tokenName,
-				Timestamp:   blk.Timestamp,
+
+				TokenName: tokenName,
+				Timestamp: blk.Timestamp,
+
+				BlockType: blk.Type,
 			}
 			ps = append(ps, &ap)
 			return nil

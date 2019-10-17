@@ -80,7 +80,7 @@ func pendingAction(address string) error {
 	defer client.Close()
 
 	allPendInfos := make(map[types.Address][]*api.APIPending)
-	err = client.Call(&allPendInfos, "ledger_accountsPending", []types.Address{account}, 100)
+	err = client.Call(&allPendInfos, "ledger_accountsPending", []types.Address{account}, 1000)
 	if err != nil {
 		return err
 	}
@@ -89,11 +89,21 @@ func pendingAction(address string) error {
 		return nil
 	}
 
-	fmt.Printf("%-64s %-10s %-18s %-20s\n", "Hash", "Token", "Amount", "Timestamp")
+	pendCnt := 0
+	for _, addrInfos := range allPendInfos {
+		pendCnt += len(addrInfos)
+	}
+
+	fmt.Printf("Pendings Count: %d\n", pendCnt)
+
+	fmt.Printf("%-64s %-15s %-10s %-18s %-20s\n", "Hash", "Type", "Token", "Amount", "Timestamp")
 	for _, addrInfos := range allPendInfos {
 		for _, info := range addrInfos {
 			ts := time.Unix(info.Timestamp, 0)
-			fmt.Printf("%-64s %-10s %-18d %-20s\n", info.Hash, info.TokenName, info.Amount, ts.Format("2006-01-02 15:04:05"))
+			fmt.Printf("%-64s %-15s %-10s %-18d %-20s\n",
+				info.Hash, info.BlockType,
+				info.TokenName, info.Amount,
+				ts.Format("2006-01-02 15:04:05"))
 		}
 	}
 

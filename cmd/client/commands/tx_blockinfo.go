@@ -65,6 +65,12 @@ func runTxBlockInfoCmd(hashStrList []string) error {
 }
 
 func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
+	addressFlag := util.Flag{
+		Name:  "address",
+		Must:  false,
+		Usage: "address of account hex string",
+		Value: "",
+	}
 	offsetFlag := util.Flag{
 		Name:  "offset",
 		Must:  false,
@@ -82,7 +88,7 @@ func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
 		Name: "getBlockList",
 		Help: "get account blocks list",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{offsetFlag, limitFlag}
+			args := []util.Flag{addressFlag, offsetFlag, limitFlag}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -91,10 +97,11 @@ func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
 				return
 			}
 
+			address := util.StringVar(c.Args, addressFlag)
 			offset, _ := util.IntVar(c.Args, offsetFlag)
 			limit, _ := util.IntVar(c.Args, limitFlag)
 
-			err := runTxBlockListCmd(offset, limit)
+			err := runTxBlockListCmd(address, offset, limit)
 			if err != nil {
 				util.Warn(err)
 				return
@@ -104,7 +111,7 @@ func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runTxBlockListCmd(offset int, limit int) error {
+func runTxBlockListCmd(address string, offset int, limit int) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -112,7 +119,12 @@ func runTxBlockListCmd(offset int, limit int) error {
 	defer client.Close()
 
 	var rspInfo []*api.APIBlock
-	err = client.Call(&rspInfo, "ledger_blocks", limit, offset)
+
+	if len(address) > 0 {
+		err = client.Call(&rspInfo, "ledger_accountHistoryTopn", address, limit, offset)
+	} else {
+		err = client.Call(&rspInfo, "ledger_blocks", limit, offset)
+	}
 	if err != nil {
 		return err
 	}
