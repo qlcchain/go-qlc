@@ -76,13 +76,13 @@ func runPovLastNHourInfoCmd(beginTime int, endTime int) error {
 	fmt.Printf("MaxTxPerHour: %d, MinTxPerHour: %d, AvgTxPerHour:%d\n",
 		rspInfo.MaxTxPerHour, rspInfo.MinTxPerHour, rspInfo.AvgTxPerHour)
 
-	fmt.Printf("%-4s %-6s %-10s %-13s %-13s %-7s %-7s %-7s\n",
-		"Hour", "Blocks", "Txs", "RewardsM", "RewardsR", "SHA256D", "X11", "SCRYPT")
+	fmt.Printf("%-4s %-6s %-10s %-13s %-13s %-7s %-7s %-7s %-7s\n",
+		"Hour", "Blocks", "Txs", "RewardsM", "RewardsR", "SHA256D", "X11", "SCRYPT", "AUX")
 	for _, hourItem := range rspInfo.HourItemList {
-		fmt.Printf("%-4d %-6d %-10d %-13.2f %-13.2f %-7d %-7d %-7d\n",
+		fmt.Printf("%-4d %-6d %-10d %-13.2f %-13.2f %-7d %-7d %-7d %-7d\n",
 			hourItem.Hour, hourItem.AllBlockNum, hourItem.AllTxNum,
 			float64(hourItem.AllMinerReward.Uint64())/1e8, float64(hourItem.AllRepReward.Uint64())/1e8,
-			hourItem.Sha256dBlockNum, hourItem.X11BlockNum, hourItem.ScryptBlockNum)
+			hourItem.Sha256dBlockNum, hourItem.X11BlockNum, hourItem.ScryptBlockNum, hourItem.AuxBlockNum)
 	}
 
 	return nil
