@@ -1140,7 +1140,7 @@ type PovApiGetLastNHourInfo struct {
 	HourItemList []*PovApiGetLastNHourItem
 }
 
-func (api *PovApi) GetLastNHourInfo(endHeight uint64, hourSpan uint32) (*PovApiGetLastNHourInfo, error) {
+func (api *PovApi) GetLastNHourInfo(endHeight uint64, timeSpan uint32) (*PovApiGetLastNHourInfo, error) {
 	endHourTime := uint32(0)
 	beginHourTime := uint32(0)
 
@@ -1159,24 +1159,24 @@ func (api *PovApi) GetLastNHourInfo(endHeight uint64, hourSpan uint32) (*PovApiG
 	}
 	endHourTime = latestHeader.GetTimestamp()
 
-	if hourSpan <= 0 {
+	if timeSpan <= 0 {
 		beginHourTime = endHourTime - (24 * 3600)
-	} else if hourSpan >= 3600 {
-		if hourSpan%(2*3600) != 0 {
-			return nil, errors.New("hourSpan must be multiplier of 7200 seconds")
+	} else if timeSpan >= 3600 {
+		if timeSpan%(2*3600) != 0 {
+			return nil, errors.New("timeSpan must be multiplier of 7200 seconds")
 		}
-		if (hourSpan < (2 * 3600)) || (hourSpan > (24 * 3600)) {
-			return nil, errors.New("hourSpan must be in range [2 * 3600 ~ 24 * 3600] hour")
+		if (timeSpan < (2 * 3600)) || (timeSpan > (24 * 3600)) {
+			return nil, errors.New("timeSpan must be in range [2 * 3600 ~ 24 * 3600] hour")
 		}
-		beginHourTime = endHourTime - hourSpan
+		beginHourTime = endHourTime - timeSpan
 	} else {
-		if hourSpan%2 != 0 {
-			return nil, errors.New("hourSpan must be multiplier of 2 hours")
+		if timeSpan%2 != 0 {
+			return nil, errors.New("timeSpan must be multiplier of 2 hours")
 		}
-		if (hourSpan < 2) || (hourSpan > 24) {
-			return nil, errors.New("hourSpan must be in range [2 ~ 24] hour")
+		if (timeSpan < 2) || (timeSpan > 24) {
+			return nil, errors.New("timeSpan must be in range [2 ~ 24] hour")
 		}
-		beginHourTime = endHourTime - (hourSpan * 3600)
+		beginHourTime = endHourTime - (timeSpan * 3600)
 	}
 
 	minBeginHourTime := beginHourTime - 3600
