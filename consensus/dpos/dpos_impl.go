@@ -56,6 +56,11 @@ type subMsg struct {
 	hash  types.Hash
 }
 
+type sortContract struct {
+	hash      types.Hash
+	timestamp int64
+}
+
 type frontierStatus byte
 
 const (
@@ -213,7 +218,7 @@ func (dps *DPoS) Init() {
 	if id, err := dps.eb.SubscribeSync(common.EventSyncStateChange, dps.onSyncStateChange); err != nil {
 		dps.logger.Errorf("subscribe sync state change event err")
 	} else {
-		dps.handlerIds[common.EventFrontierConfirmed] = id
+		dps.handlerIds[common.EventSyncStateChange] = id
 	}
 
 	if len(dps.accounts) != 0 {
@@ -229,6 +234,7 @@ func (dps *DPoS) Start() {
 	go dps.acTrx.start()
 	go dps.batchVoteStart()
 	go dps.processSubMsg()
+	go dps.processBlocks()
 	dps.processorStart()
 
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
@@ -240,35 +246,9 @@ func (dps *DPoS) Start() {
 		case <-dps.ctx.Done():
 			dps.logger.Info("Stopped DPOS.")
 			return
-		case bs := <-dps.recvBlocks:
-			if dps.povSyncState == common.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
-				dps.dispatchMsg(bs)
-			} else {
-				if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
-					dps.logger.Debugf("pov sync state[%s] cache blocks", dps.povSyncState)
-					dps.cacheBlocks <- bs
-				} else {
-					dps.logger.Debugf("pov not ready! cache block too much, drop it!")
-				}
-			}
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		case state := <-dps.povState:
-			dps.povSyncState = state
-			if state == common.SyncDone {
-				close(dps.cacheBlocks)
-
-				err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.handlerIds[common.EventPovSyncState])
-				if err != nil {
-					dps.logger.Errorf("unsubscribe pov sync state err %s", err)
-				}
-
-				for bs := range dps.cacheBlocks {
-					dps.logger.Infof("process cache block[%s]", bs.Block.GetHash())
-					dps.dispatchMsg(bs)
-				}
-			}
 		case <-timerDebug.C:
 			num := 0
 			dps.hash2el.Range(func(key, value interface{}) bool {
@@ -339,7 +319,46 @@ func (dps *DPoS) Stop() {
 	dps.cancel()
 	dps.processorStop()
 	dps.acTrx.stop()
-	// TODO: unsubscribe EventRollbackUnchecked ??
+
+	for k, v := range dps.handlerIds {
+		_ = dps.eb.Unsubscribe(k, v)
+	}
+}
+
+func (dps *DPoS) processBlocks() {
+	for {
+		select {
+		case <-dps.ctx.Done():
+			dps.logger.Info("Stop processBlocks.")
+			return
+		case bs := <-dps.recvBlocks:
+			if dps.povSyncState == common.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
+				dps.dispatchMsg(bs)
+			} else {
+				if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
+					dps.logger.Debugf("pov sync state[%s] cache blocks", dps.povSyncState)
+					dps.cacheBlocks <- bs
+				} else {
+					dps.logger.Debugf("pov not ready! cache block too much, drop it!")
+				}
+			}
+		case state := <-dps.povState:
+			dps.povSyncState = state
+			if state == common.SyncDone {
+				close(dps.cacheBlocks)
+
+				err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.handlerIds[common.EventPovSyncState])
+				if err != nil {
+					dps.logger.Errorf("unsubscribe pov sync state err %s", err)
+				}
+
+				for bs := range dps.cacheBlocks {
+					dps.logger.Infof("process cache block[%s]", bs.Block.GetHash())
+					dps.dispatchMsg(bs)
+				}
+			}
+		}
+	}
 }
 
 func (dps *DPoS) processorStart() {
@@ -1036,18 +1055,20 @@ func (dps *DPoS) blockSyncDone() error {
 	dps.logger.Info("sync done, start process")
 	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
 
-	contractBlocks := make([]*types.StateBlock, 0)
+	scs := make([]*sortContract, 0)
 	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
 		if b, err := dps.isRelatedOrderBlock(block); err != nil {
 			dps.logger.Errorf("block[%s] type check error, %s", block.GetHash(), err)
 		} else {
 			if b {
-				contractBlocks = append(contractBlocks, block)
-			} else {
-				err := dps.lv.BlockSyncDoneProcess(block)
-				if err != nil {
-					dps.logger.Errorf("process sync block[%s] err when sync is done[%s]", block.GetHash(), err)
+				sortC := &sortContract{
+					hash:      block.GetHash(),
+					timestamp: block.Timestamp,
 				}
+				scs = append(scs, sortC)
+			} else {
+				index := dps.getProcessorIndex(block.Address)
+				dps.processors[index].doneBlock <- block
 			}
 		}
 		return nil
@@ -1055,14 +1076,20 @@ func (dps *DPoS) blockSyncDone() error {
 		return err
 	}
 
-	dps.logger.Info("sync done, common block process finished, order blocks:  ", len(contractBlocks))
-	if len(contractBlocks) > 0 {
-		sort.Slice(contractBlocks, func(i, j int) bool {
-			return contractBlocks[i].Timestamp < contractBlocks[j].Timestamp
+	dps.logger.Info("sync done, common block process finished, order blocks:  ", len(scs))
+	if len(scs) > 0 {
+		sort.Slice(scs, func(i, j int) bool {
+			return scs[i].timestamp < scs[j].timestamp
 		})
 
-		for _, blk := range contractBlocks {
-			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
+		for _, sc := range scs {
+			blk, err := dps.ledger.GetSyncCacheBlock(sc.hash)
+			if err != nil {
+				dps.logger.Errorf("get sync cache block[%s] err[%s]", sc.hash, err)
+				continue
+			}
+
+			if err := dps.lv.BlockSyncDoneProcessContract(blk); err != nil {
 				dps.logger.Errorf("process sync contract block[%s] err when sync is done[%s]", blk.GetHash(), err)
 			}
 		}

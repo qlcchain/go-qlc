@@ -734,6 +734,31 @@ func (l *Ledger) AddSyncCacheBlock(value *types.StateBlock, txns ...db.StoreTxn)
 	return txn.Set(k, v)
 }
 
+func (l *Ledger) GetSyncCacheBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixSyncCacheBlock, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	value := new(types.StateBlock)
+	err = txn.Get(k, func(v []byte, b byte) error {
+		if err := value.Deserialize(v); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, err
+	}
+	return value, nil
+}
+
 func (l *Ledger) GetSyncCacheBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
