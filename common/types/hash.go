@@ -13,9 +13,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"gitlab.com/samli88/go-x11-hash"
 	"golang.org/x/crypto/scrypt"
-	"math/big"
 
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"

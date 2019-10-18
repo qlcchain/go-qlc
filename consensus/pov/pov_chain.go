@@ -3,13 +3,14 @@ package pov
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/event"
-	"go.uber.org/atomic"
 	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/event"
+	"go.uber.org/atomic"
 
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"

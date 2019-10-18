@@ -1,8 +1,9 @@
 package protos
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func TestMessageAck(t *testing.T) {

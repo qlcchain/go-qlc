@@ -1,8 +1,9 @@
 package p2p
 
 import (
-	ma "github.com/multiformats/go-multiaddr"
 	"testing"
+
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 func TestIsPublicIP(t *testing.T) {

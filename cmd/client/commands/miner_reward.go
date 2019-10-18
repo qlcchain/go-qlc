@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/qlcchain/jsonrpc2"
-
 	"github.com/qlcchain/go-qlc/cmd/util"
+	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"

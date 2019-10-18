@@ -1,6 +1,6 @@
 package pubsub
 
-import "github.com/libp2p/go-libp2p-pubsub"
+import pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 // Publisher publishes to pubsub topics
 type Publisher struct {

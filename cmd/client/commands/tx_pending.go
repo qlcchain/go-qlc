@@ -3,9 +3,10 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
-	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 

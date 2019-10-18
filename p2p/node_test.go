@@ -2,13 +2,14 @@ package p2p
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
 	swarmt "github.com/libp2p/go-libp2p-swarm/testing"
 	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/qlcchain/go-qlc/config"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func TestQlcNode(t *testing.T) {

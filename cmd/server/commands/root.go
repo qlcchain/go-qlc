@@ -10,7 +10,6 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -22,6 +21,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"

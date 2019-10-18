@@ -12,8 +12,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/chain/context"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/chain/context"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"

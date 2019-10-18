@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/p2p/pubsub"
 	"time"
+
+	"github.com/qlcchain/go-qlc/p2p/pubsub"
 
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"

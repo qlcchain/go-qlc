@@ -2,8 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/cmd/util"

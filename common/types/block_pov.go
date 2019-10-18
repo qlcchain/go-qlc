@@ -3,8 +3,9 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common/util"
 	"math/big"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 //go:generate msgp

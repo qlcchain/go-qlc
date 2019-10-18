@@ -2,11 +2,12 @@ package dpos
 
 import (
 	"encoding/json"
+	"sync"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/p2p"
-	"sync"
 )
 
 type onlineKind byte
