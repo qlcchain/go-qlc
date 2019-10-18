@@ -27,6 +27,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
+	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869 // indirect
 	github.com/jmoiron/sqlx v0.0.0-20190426154859-38398a30ed85
 	github.com/lestrrat-go/file-rotatelogs v2.2.0+incompatible
@@ -48,6 +49,7 @@ require (
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/prometheus/common v0.4.0
 	github.com/qlcchain/jsonrpc2 v0.0.5
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5

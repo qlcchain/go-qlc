@@ -1,10 +1,10 @@
 package dpos
 
 import (
-	"github.com/prometheus/common/log"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
-	"testing"
 )
 
 func TestOnGetOnlineInfo(t *testing.T) {
@@ -22,5 +22,5 @@ func TestOnGetOnlineInfo(t *testing.T) {
 	}
 	rep.Statistic[mock.Address()] = ack
 
-	log.Infof("%s", rep)
+	t.Logf("%s", rep)
 }
