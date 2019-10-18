@@ -1,20 +1,16 @@
 # Build gqlc in a stock Go builder container
-FROM qlcchain/go-qlc-builder as builder
+FROM qlcchain/go-qlc-builder:1.13.1 as builder
 
 ARG BUILD_ACT=build
 
-ADD . /qlcchain/go-qlc
+COPY . /qlcchain/go-qlc
 RUN cd /qlcchain/go-qlc && make clean ${BUILD_ACT}
 
 # Pull gqlc into a second stage deploy alpine container
-FROM alpine:3.9.3
+FROM alpine:3.10.2
 
 COPY --from=builder /qlcchain/go-qlc/build/gqlc .
-COPY --from=builder /qlcchain/go-qlc/docker/entrypoint.sh .
-
-RUN apk add --no-cache bash \
-    && chmod +x entrypoint.sh
 
 # EXPOSE 9734 9735 9736
 
-ENTRYPOINT [ "/bin/bash", "entrypoint.sh" ]
+ENTRYPOINT [ "/gqlc"]

@@ -37,7 +37,7 @@ type PovSyncerChainReader interface {
 
 type PovSyncer struct {
 	eb         event.EventBus
-	handlerIds map[common.TopicType]string //topic->handler id
+	handlerIds map[common.TopicType]string // topic->handler id
 	ledger     ledger.Store
 	chain      PovSyncerChainReader
 

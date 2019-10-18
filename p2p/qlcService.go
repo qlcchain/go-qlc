@@ -12,7 +12,7 @@ import (
 
 // QlcService service for qlc p2p network
 type QlcService struct {
-	handlerIds map[common.TopicType]string //topic->handler id
+	handlerIds map[common.TopicType]string // topic->handler id
 	node       *QlcNode
 	dispatcher *Dispatcher
 	msgEvent   event.EventBus

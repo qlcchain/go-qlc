@@ -17,7 +17,7 @@ import (
 type Relation struct {
 	store         db.DbStore
 	eb            event.EventBus
-	handlerIds    map[common.TopicType]string //topic->handler id
+	handlerIds    map[common.TopicType]string // topic->handler id
 	dir           string
 	logger        *zap.SugaredLogger
 	addBlkChan    chan *types.StateBlock

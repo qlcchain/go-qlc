@@ -65,12 +65,44 @@ You only need to assign a value to the environment variable `seed` to run the ac
 
 ```bash
 docker container run -d --name go-qlc \
-    -e seed = "B4F6494E3DD8A036EFF547C0293055B2A0644605DE4D9AC91B45343CD0E0E559" \
     -p 9734:9734 \
     -p 127.0.0.1:9735:9735 \
     -p 127.0.0.1:9736:9736 \
-    qlcchain/go-qlc:latest
+    qlcchain/go-qlc:latest --seed=B4F6494E3DD8A036EFF547C0293055B2A0644605DE4D9AC91B45343CD0E0E559
 ```
+#### Run node by Docker Compose
+
+- create `docker-compose.yml`
+
+    ```yml
+    version: "3.5"
+
+    services:
+    qlcchain_node:
+        image: qlcchain/go-qlc:${version}
+        container_name: qlcchain_node
+        command: ["--configParams=rpc.rpcEnabled=true", "--seed=B4F6494E3DD8A036EFF547C0293055B2A0644605DE4D9AC91B45343CD0E0E559", "--nobootnode=true"]
+        ports:
+        - "9734:9734"
+        - "9735:9735"
+        - "127.0.0.1:9736:9736"
+        networks:
+        - qlcchain
+        volumes:
+        - type: bind
+            source: ./data/
+            target: /root/.gqlcchain/
+        restart: unless-stopped
+    
+    networks:
+    qlcchain:
+        name: qlcchain
+
+    ```
+- run 
+    ```bash
+    docker-compose down -v && docker-compose up -d
+    ```
 
 ## Contributions
 
