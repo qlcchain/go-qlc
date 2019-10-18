@@ -16,7 +16,8 @@ import (
 
 func Test_StreamManager(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	removeDir := filepath.Join(config.QlcTestDataDir(), "streamManager")
+	dir := filepath.Join(config.QlcTestDataDir(), "streamManager", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19747"
@@ -24,7 +25,7 @@ func Test_StreamManager(t *testing.T) {
 	b := "/ip4/127.0.0.1/tcp/19747/ipfs/" + cfg.P2P.ID.PeerID
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir1 := filepath.Join(config.QlcTestDataDir(), "streamManager", uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19748"
@@ -32,7 +33,7 @@ func Test_StreamManager(t *testing.T) {
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir2 := filepath.Join(config.QlcTestDataDir(), "streamManager", uuid.New().String(), config.QlcConfigFile)
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19749"
@@ -86,7 +87,7 @@ func Test_StreamManager(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(config.QlcTestDataDir())
+		err = os.RemoveAll(removeDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -133,26 +134,27 @@ func Test_StreamManager(t *testing.T) {
 
 func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	removeDir := filepath.Join(config.QlcTestDataDir(), "peersInfo")
+	dir := filepath.Join(config.QlcTestDataDir(), "peersInfo", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
-	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19747"
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19750"
 	cfg.P2P.BootNodes = []string{}
-	b := "/ip4/127.0.0.1/tcp/19747/ipfs/" + cfg.P2P.ID.PeerID
+	b := "/ip4/127.0.0.1/tcp/19750/ipfs/" + cfg.P2P.ID.PeerID
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir1 := filepath.Join(config.QlcTestDataDir(), "peersInfo", uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
-	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19748"
+	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19751"
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir2 := filepath.Join(config.QlcTestDataDir(), "peersInfo", uuid.New().String(), config.QlcConfigFile)
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
-	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19749"
+	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19752"
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
@@ -203,7 +205,7 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(config.QlcTestDataDir())
+		err = os.RemoveAll(removeDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -234,26 +236,27 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 
 func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	removeDir := filepath.Join(config.QlcTestDataDir(), "isConnect")
+	dir := filepath.Join(config.QlcTestDataDir(), "isConnect", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
-	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19747"
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19753"
 	cfg.P2P.BootNodes = []string{}
-	b := "/ip4/127.0.0.1/tcp/19747/ipfs/" + cfg.P2P.ID.PeerID
+	b := "/ip4/127.0.0.1/tcp/19753/ipfs/" + cfg.P2P.ID.PeerID
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir1 := filepath.Join(config.QlcTestDataDir(), "isConnect", uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
-	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19748"
+	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19754"
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir2 := filepath.Join(config.QlcTestDataDir(), "isConnect", uuid.New().String(), config.QlcConfigFile)
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
-	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19749"
+	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19755"
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
@@ -304,7 +307,7 @@ func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(config.QlcTestDataDir())
+		err = os.RemoveAll(removeDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -334,26 +337,27 @@ func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
 
 func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	removeDir := filepath.Join(config.QlcTestDataDir(), "latency")
+	dir := filepath.Join(config.QlcTestDataDir(), "latency", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
-	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19747"
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19756"
 	cfg.P2P.BootNodes = []string{}
-	b := "/ip4/127.0.0.1/tcp/19747/ipfs/" + cfg.P2P.ID.PeerID
+	b := "/ip4/127.0.0.1/tcp/19756/ipfs/" + cfg.P2P.ID.PeerID
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir1 := filepath.Join(config.QlcTestDataDir(), "latency", uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
-	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19748"
+	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19757"
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir2 := filepath.Join(config.QlcTestDataDir(), "latency", uuid.New().String(), config.QlcConfigFile)
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
-	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19749"
+	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19758"
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
@@ -412,7 +416,7 @@ func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(config.QlcTestDataDir())
+		err = os.RemoveAll(removeDir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -445,26 +449,27 @@ func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 
 func TestGetBandwidthStats(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	removeDir := filepath.Join(config.QlcTestDataDir(), "bandwidth", uuid.New().String(), config.QlcConfigFile)
+	dir := filepath.Join(config.QlcTestDataDir(), "bandwidth", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
-	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19750"
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19762"
 	cfg.P2P.BootNodes = []string{}
-	b := "/ip4/127.0.0.1/tcp/19750/ipfs/" + cfg.P2P.ID.PeerID
+	b := "/ip4/127.0.0.1/tcp/19762/ipfs/" + cfg.P2P.ID.PeerID
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir1 := filepath.Join(config.QlcTestDataDir(), "bandwidth", uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
-	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19751"
+	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19760"
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir2 := filepath.Join(config.QlcTestDataDir(), "bandwidth", uuid.New().String(), config.QlcConfigFile)
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
-	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19752"
+	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19761"
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
@@ -515,7 +520,7 @@ func TestGetBandwidthStats(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(config.QlcTestDataDir())
+		err = os.RemoveAll(removeDir)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -263,8 +263,9 @@ func Test_MarshalMessage(t *testing.T) {
 }
 
 func Test_SendMessage(t *testing.T) {
+	removeDir := filepath.Join(config.QlcTestDataDir(), "sendMessage")
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir := filepath.Join(config.QlcTestDataDir(), "sendMessage", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
 	b := "/ip4/127.0.0.1/tcp/19740/ipfs/" + cfg.P2P.ID.PeerID
@@ -280,7 +281,7 @@ func Test_SendMessage(t *testing.T) {
 	}
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir1 := filepath.Join(config.QlcTestDataDir(), "sendMessage", uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
@@ -296,7 +297,7 @@ func Test_SendMessage(t *testing.T) {
 	}
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir2 := filepath.Join(config.QlcTestDataDir(), "sendMessage", uuid.New().String(), config.QlcConfigFile)
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
@@ -337,7 +338,7 @@ func Test_SendMessage(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(config.QlcTestDataDir())
+		err = os.RemoveAll(removeDir)
 		if err != nil {
 			t.Fatal(err)
 		}
