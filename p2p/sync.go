@@ -41,6 +41,7 @@ type ServiceSync struct {
 	lastSyncHash       types.Hash
 	quitChanForSync    chan bool
 	mu                 *sync.Mutex
+	muForPullRsp       *sync.Mutex
 }
 
 // NewService return new Service.
@@ -54,6 +55,7 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		pullRequestStartCh: make(chan bool, 1),
 		quitChanForSync:    make(chan bool, 1),
 		mu:                 &sync.Mutex{},
+		muForPullRsp:       &sync.Mutex{},
 	}
 	ss.syncState.Store(common.SyncNotStart)
 	return ss
@@ -316,6 +318,14 @@ func (ss *ServiceSync) getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontie
 }
 
 func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
+	if v, ok := ss.netService.msgService.pullRspMap.Load(message.from); ok {
+		select {
+		case v.(*peerPullRsp).pullRspQuitCh <- true:
+		default:
+		}
+	}
+	ss.muForPullRsp.Lock()
+	defer ss.muForPullRsp.Unlock()
 	var blk *types.StateBlock
 	var bulkBlk types.StateBlockList
 	var temp types.Hash
@@ -343,11 +353,15 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			<-exitPullRsp.pullRspTimer.C
 		}
 		exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
+		if len(exitPullRsp.pullRspQuitCh) > 0 {
+			<-exitPullRsp.pullRspQuitCh
+		}
 
 	} else {
 		exitPullRsp = &peerPullRsp{
 			pullRspStartCh: make(chan bool, 1),
 			pullRspTimer:   time.NewTimer(pullRspTimeOut),
+			pullRspQuitCh:  make(chan bool, 1),
 		}
 	}
 	select {
@@ -396,6 +410,9 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	for {
 		select {
 		case <-exitPullRsp.pullRspTimer.C:
+			return nil
+		case <-exitPullRsp.pullRspQuitCh:
+			ss.logger.Info("exit pullRsp loop because received another pullReq")
 			return nil
 		case <-exitPullRsp.pullRspStartCh:
 			if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
