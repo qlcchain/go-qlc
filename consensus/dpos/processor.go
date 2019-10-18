@@ -45,7 +45,7 @@ type Processor struct {
 	syncCache       chan *syncCacheInfo
 	orderedChain    *sync.Map
 	chainHeight     map[chainKey]uint64
-	doneBlock		chan *types.StateBlock
+	doneBlock       chan *types.StateBlock
 }
 
 func newProcessors(num int) []*Processor {
@@ -66,7 +66,7 @@ func newProcessors(num int) []*Processor {
 			syncState:       common.SyncNotStart,
 			orderedChain:    new(sync.Map),
 			chainHeight:     make(map[chainKey]uint64),
-			doneBlock:		make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			doneBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
 		}
 		processors = append(processors, p)
 	}
