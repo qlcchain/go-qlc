@@ -140,7 +140,9 @@ func (p *Processor) processMsg() {
 			case frontier := <-p.frontiers:
 				p.processFrontier(frontier)
 			case block := <-p.doneBlock:
-				_ = p.dps.lv.BlockSyncDoneProcessCommon(block)
+				if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
+					p.dps.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
+				}
 			default:
 				break PriorityOut
 			}

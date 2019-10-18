@@ -1089,8 +1089,8 @@ func (dps *DPoS) blockSyncDone() error {
 				continue
 			}
 
-			if err := dps.lv.BlockSyncDoneProcessContract(blk); err != nil {
-				dps.logger.Errorf("process sync contract block[%s] err when sync is done[%s]", blk.GetHash(), err)
+			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
+				dps.logger.Errorf("contract block(%s) sync done error: %s", blk.GetHash(), err)
 			}
 		}
 	}

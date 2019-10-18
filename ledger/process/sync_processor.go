@@ -186,86 +186,58 @@ func (lv *LedgerVerifier) processSyncBlock(block *types.StateBlock, txn db.Store
 	return nil
 }
 
-func (lv *LedgerVerifier) BlockSyncDoneProcessCommon(block *types.StateBlock) error {
+func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 	txn := lv.l.Store.NewTransaction(true)
-
-	if _, err := lv.l.GetLinkBlock(block.GetHash(), txn); err == ledger.ErrLinkNotFound {
-		lv.logger.Info("sync done, process send block, ", block.GetHash())
-		hash := block.GetHash()
-		switch block.Type {
-		case types.Send:
-			preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous, txn)
-			if err != nil {
-				return errors.New("previous block not found")
-			}
-			pending := types.PendingInfo{
-				Source: block.GetAddress(),
-				Type:   block.GetToken(),
-				Amount: preBlk.Balance.Sub(block.GetBalance()),
-			}
-			pendingKey := types.PendingKey{
-				Address: types.Address(block.GetLink()),
-				Hash:    hash,
-			}
-			lv.logger.Info("sync done, add pending, ", pendingKey)
-			if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
-				return err
-			}
-		}
-	}
-
-	if block.IsReceiveBlock() {
-		// if send block sync done in last time, it will create pending
-		pendingKey := types.PendingKey{
-			Address: block.GetAddress(),
-			Hash:    block.GetLink(),
-		}
-		if pi, err := lv.l.GetPending(&pendingKey, txn); pi != nil && err == nil {
-			lv.logger.Info("sync done, delete pending, ", pendingKey)
-			if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
-				return err
-			}
-		}
-	}
-
-	if err := lv.l.DeleteSyncCacheBlock(block.GetHash(), txn); err != nil {
-		return fmt.Errorf("delete sync cache block error: %s ", err)
-	}
-
-	if err := txn.Commit(nil); err != nil {
-		return fmt.Errorf("txn commit error: %s", err)
-	}
-
-	return nil
-}
-
-func (lv *LedgerVerifier) BlockSyncDoneProcessContract(block *types.StateBlock) error {
-	txn := lv.l.Store.NewTransaction(true)
-	if _, err := lv.l.GetLinkBlock(block.GetHash(), txn); err == ledger.ErrLinkNotFound {
-		lv.logger.Info("sync done, process send block, ", block.GetHash())
-		switch block.Type {
-		case types.ContractSend:
-			if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
-				switch v := c.(type) {
-				case contract.ChainContractV1:
-					if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
-						lv.logger.Info("sync done, add pending contract1, ", pendingKey)
-						if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-							return err
+	if block.IsSendBlock() {
+		if _, err := lv.l.GetLinkBlock(block.GetHash(), txn); err == ledger.ErrLinkNotFound {
+			lv.logger.Info("sync done, process send block, ", block.GetHash())
+			hash := block.GetHash()
+			switch block.Type {
+			case types.Send:
+				preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous, txn)
+				if err != nil {
+					return errors.New("previous block not found")
+				}
+				pending := types.PendingInfo{
+					Source: block.GetAddress(),
+					Type:   block.GetToken(),
+					Amount: preBlk.Balance.Sub(block.GetBalance()),
+				}
+				pendingKey := types.PendingKey{
+					Address: types.Address(block.GetLink()),
+					Hash:    hash,
+				}
+				lv.logger.Info("sync done, add pending, ", pendingKey)
+				if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
+					return err
+				}
+			case types.ContractSend:
+				if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
+					switch v := c.(type) {
+					case contract.ChainContractV1:
+						if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
+							lv.logger.Info("sync done, add pending contract1, ", pendingKey)
+							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+								return err
+							}
 						}
-					}
-				case contract.ChainContractV2:
-					vmCtx := vmstore.NewVMContext(lv.l)
-					if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
-						lv.logger.Debug("contractSend add sync pending , ", pendingKey)
-						if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-							return err
+					case contract.ChainContractV2:
+						vmCtx := vmstore.NewVMContext(lv.l)
+						if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
+							lv.logger.Info("sync done, add pending contract2, ", pendingKey)
+							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+								return err
+							}
 						}
+					default:
+						return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 					}
-				default:
-					return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 				}
 			}
+		} else {
+			if err != nil {
+				lv.logger.Info("sync done, process send block error, ", block.GetHash())
+			}
 		}
 	}
 
@@ -281,11 +253,14 @@ func (lv *LedgerVerifier) BlockSyncDoneProcessContract(block *types.StateBlock) 
 				return err
 			}
 		}
+		return nil
 	}
 
-	lv.logger.Info("sync done, process contract block, ", block.GetHash())
-	if err := lv.updateContractData(block, txn); err != nil {
-		return fmt.Errorf(" update contract data error(%s): %s", block.GetHash().String(), err)
+	if block.IsContractBlock() {
+		lv.logger.Info("sync done, process contract block, ", block.GetHash())
+		if err := lv.updateContractData(block, txn); err != nil {
+			return fmt.Errorf(" update contract data error(%s): %s", block.GetHash().String(), err)
+		}
 	}
 
 	if err := lv.l.DeleteSyncCacheBlock(block.GetHash(), txn); err != nil {
