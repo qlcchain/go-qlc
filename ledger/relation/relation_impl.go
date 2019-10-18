@@ -18,6 +18,7 @@ import (
 type Relation struct {
 	store         db.DbStore
 	eb            event.EventBus
+	handlerIds    map[common.TopicType]string //topic->handler id
 	dir           string
 	logger        *zap.SugaredLogger
 	addBlkChan    chan *types.StateBlock
@@ -67,6 +68,7 @@ func NewRelation(cfgFile string) (*Relation, error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		relation := &Relation{store: store,
 			eb:            cc.EventBus(),
+			handlerIds:    make(map[common.TopicType]string),
 			dir:           cfgFile,
 			addBlkChan:    make(chan *types.StateBlock, 100),
 			deleteBlkChan: make(chan types.Hash, 100),
@@ -370,39 +372,33 @@ func (r *Relation) waitDeleteBlocks(hash types.Hash) {
 }
 
 func (r *Relation) SetEvent() error {
-	err := r.eb.Subscribe(common.EventAddRelation, r.waitAddBlocks)
+	id, err := r.eb.Subscribe(common.EventAddRelation, r.waitAddBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Subscribe(common.EventAddSyncBlocks, r.waitAddSyncBlocks)
+	r.handlerIds[common.EventAddRelation] = id
+	id, err = r.eb.Subscribe(common.EventAddSyncBlocks, r.waitAddSyncBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
-	err = r.eb.Subscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
+	r.handlerIds[common.EventAddSyncBlocks] = id
+	id, err = r.eb.Subscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
 	if err != nil {
 		r.logger.Error(err)
 		return err
 	}
+	r.handlerIds[common.EventDeleteRelation] = id
 	return nil
 }
 
 func (r *Relation) UnsubscribeEvent() error {
-	err := r.eb.Unsubscribe(common.EventAddRelation, r.waitAddBlocks)
-	if err != nil {
-		r.logger.Error(err)
-		return err
-	}
-	err = r.eb.Unsubscribe(common.EventAddSyncBlocks, r.waitAddSyncBlocks)
-	if err != nil {
-		r.logger.Error(err)
-		return err
-	}
-	err = r.eb.Unsubscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
-	if err != nil {
-		r.logger.Error(err)
-		return err
+	for k, v := range r.handlerIds {
+		if err := r.eb.Unsubscribe(k, v); err != nil {
+			r.logger.Error(err)
+			return err
+		}
 	}
 	return nil
 }

@@ -30,6 +30,7 @@ type PovTxEntry struct {
 type PovTxPool struct {
 	logger      *zap.SugaredLogger
 	eb          event.EventBus
+	handlerIds  map[common.TopicType]string //topic->handler id
 	ledger      ledger.Store
 	chain       PovTxChainReader
 	txMu        sync.RWMutex
@@ -48,10 +49,11 @@ type PovTxChainReader interface {
 
 func NewPovTxPool(eb event.EventBus, ledger ledger.Store, chain PovTxChainReader) *PovTxPool {
 	txPool := &PovTxPool{
-		logger: log.NewLogger("pov_txpool"),
-		eb:     eb,
-		ledger: ledger,
-		chain:  chain,
+		logger:     log.NewLogger("pov_txpool"),
+		eb:         eb,
+		handlerIds: make(map[common.TopicType]string),
+		ledger:     ledger,
+		chain:      chain,
 	}
 	txPool.txEventCh = make(chan *PovTxEvent, 5000)
 	txPool.quitCh = make(chan struct{})
@@ -67,9 +69,24 @@ func (tp *PovTxPool) Init() {
 func (tp *PovTxPool) Start() {
 	if tp.ledger != nil {
 		ebL := tp.ledger.EventBus()
-		ebL.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
-		ebL.SubscribeSync(common.EventAddSyncBlocks, tp.onAddSyncStateBlock)
-		ebL.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
+		id, err := ebL.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
+		if err != nil {
+			tp.logger.Errorf("failed to subscribe EventAddRelation")
+			return
+		}
+		tp.handlerIds[common.EventAddRelation] = id
+		id, err = ebL.SubscribeSync(common.EventAddSyncBlocks, tp.onAddSyncStateBlock)
+		if err != nil {
+			tp.logger.Errorf("failed to subscribe EventAddSyncBlocks")
+			return
+		}
+		tp.handlerIds[common.EventAddSyncBlocks] = id
+		id, err = ebL.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
+		if err != nil {
+			tp.logger.Errorf("failed to subscribe EventDeleteRelation")
+			return
+		}
+		tp.handlerIds[common.EventDeleteRelation] = id
 	}
 
 	tp.chain.RegisterListener(tp)
@@ -82,9 +99,18 @@ func (tp *PovTxPool) Stop() {
 
 	if tp.ledger != nil {
 		ebL := tp.ledger.EventBus()
-		ebL.Unsubscribe(common.EventAddRelation, tp.onAddStateBlock)
-		ebL.Unsubscribe(common.EventAddSyncBlocks, tp.onAddSyncStateBlock)
-		ebL.Unsubscribe(common.EventDeleteRelation, tp.onDeleteStateBlock)
+		err := ebL.Unsubscribe(common.EventAddRelation, tp.handlerIds[common.EventAddRelation])
+		if err != nil {
+			tp.logger.Error(err)
+		}
+		err = ebL.Unsubscribe(common.EventAddSyncBlocks, tp.handlerIds[common.EventAddSyncBlocks])
+		if err != nil {
+			tp.logger.Error(err)
+		}
+		err = ebL.Unsubscribe(common.EventDeleteRelation, tp.handlerIds[common.EventDeleteRelation])
+		if err != nil {
+			tp.logger.Error(err)
+		}
 	}
 
 	close(tp.quitCh)

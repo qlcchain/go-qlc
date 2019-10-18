@@ -9,6 +9,7 @@ import (
 )
 
 type ChainManage struct {
+	id string
 	common.ServiceLifecycle
 	cfgFile string
 	logger  *zap.SugaredLogger
@@ -37,9 +38,10 @@ func (c *ChainManage) Start() error {
 	defer c.PostStart()
 	cc := context.NewChainContext(c.cfgFile)
 	eb := cc.EventBus()
-
-	if err := eb.Subscribe(common.EventRestartChain, restartChain); err != nil {
+	if id, err := eb.Subscribe(common.EventRestartChain, restartChain); err != nil {
 		c.logger.Error(err)
+	} else {
+		c.id = id
 	}
 	return nil
 }
@@ -51,7 +53,7 @@ func (c *ChainManage) Stop() error {
 	defer c.PostStop()
 	cc := context.NewChainContext(c.cfgFile)
 	eb := cc.EventBus()
-	if err := eb.Unsubscribe(common.EventRestartChain, restartChain); err != nil {
+	if err := eb.Unsubscribe(common.EventRestartChain, c.id); err != nil {
 		c.logger.Error(err)
 	}
 	return nil

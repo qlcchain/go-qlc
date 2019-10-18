@@ -74,6 +74,7 @@ type DPoS struct {
 	logger              *zap.SugaredLogger
 	cfg                 *config.Config
 	eb                  event.EventBus
+	handlerIds          map[common.TopicType]string //topic->handler id
 	lv                  *process.LedgerVerifier
 	cacheBlocks         chan *consensus.BlockSource
 	recvBlocks          chan *consensus.BlockSource
@@ -123,6 +124,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		logger:              log.NewLogger("dpos"),
 		cfg:                 cfg,
 		eb:                  cc.EventBus(),
+		handlerIds:          make(map[common.TopicType]string),
 		lv:                  process.NewLedgerVerifier(l),
 		cacheBlocks:         make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
 		recvBlocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
@@ -145,7 +147,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		syncFinish:          make(chan struct{}, 1),
 		gapPovCh:            make(chan *consensus.BlockSource, 10240),
 		povChange:           make(chan *types.PovBlock, 10240),
-		voteCache:			gcache.New(voteCacheSize).LRU().Build(),
+		voteCache:           gcache.New(voteCacheSize).LRU().Build(),
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -165,9 +167,10 @@ func (dps *DPoS) Init() {
 	if dps.cfg.PoV.PovEnabled {
 		dps.povSyncState = common.SyncNotStart
 
-		err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState)
-		if err != nil {
+		if id, err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState); err != nil {
 			dps.logger.Errorf("subscribe pov sync state event err")
+		} else {
+			dps.handlerIds[common.EventPovSyncState] = id
 		}
 	} else {
 		dps.povSyncState = common.SyncDone
@@ -177,34 +180,40 @@ func (dps *DPoS) Init() {
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 	dps.voteThreshold, _ = supply.Div(2)
 
-	err := dps.eb.SubscribeSync(common.EventRollback, dps.onRollback)
-	if err != nil {
-		dps.logger.Errorf("subscribe rollback unchecked block event err")
+	if id, err := dps.eb.SubscribeSync(common.EventRollback, dps.onRollback); err != nil {
+		dps.logger.Errorf("subscribe rollback block event err")
+	} else {
+		dps.handlerIds[common.EventRollback] = id
 	}
 
-	err = dps.eb.SubscribeSync(common.EventPovConnectBestBlock, dps.onPovHeightChange)
-	if err != nil {
-		dps.logger.Errorf("subscribe rollback unchecked block event err")
+	if id, err := dps.eb.SubscribeSync(common.EventPovConnectBestBlock, dps.onPovHeightChange); err != nil {
+		dps.logger.Errorf("subscribe pov connect best block event err")
+	} else {
+		dps.handlerIds[common.EventPovConnectBestBlock] = id
 	}
 
-	err = dps.eb.SubscribeSync(common.EventRpcSyncCall, dps.onRpcSyncCall)
-	if err != nil {
+	if id, err := dps.eb.SubscribeSync(common.EventRpcSyncCall, dps.onRpcSyncCall); err != nil {
 		dps.logger.Errorf("subscribe rpc sync call event err")
+	} else {
+		dps.handlerIds[common.EventRpcSyncCall] = id
 	}
 
-	err = dps.eb.SubscribeSync(common.EventFrontierConsensus, dps.onGetFrontier)
-	if err != nil {
-		dps.logger.Errorf("subscribe frontier block event err")
+	if id, err := dps.eb.SubscribeSync(common.EventFrontierConsensus, dps.onGetFrontier); err != nil {
+		dps.logger.Errorf("subscribe frontier consensus event err")
+	} else {
+		dps.handlerIds[common.EventFrontierConsensus] = id
 	}
 
-	err = dps.eb.SubscribeSync(common.EventFrontierConfirmed, dps.onFrontierConfirmed)
-	if err != nil {
-		dps.logger.Errorf("subscribe frontier confirmed event err")
+	if id, err := dps.eb.SubscribeSync(common.EventFrontierConfirmed, dps.onFrontierConfirmed); err != nil {
+		dps.logger.Errorf("subscribe frontier confirm event err")
+	} else {
+		dps.handlerIds[common.EventFrontierConfirmed] = id
 	}
 
-	err = dps.eb.SubscribeSync(common.EventSyncStateChange, dps.onSyncStateChange)
-	if err != nil {
-		dps.logger.Errorf("subscribe frontier confirmed event err")
+	if id, err := dps.eb.SubscribeSync(common.EventSyncStateChange, dps.onSyncStateChange); err != nil {
+		dps.logger.Errorf("subscribe sync state change event err")
+	} else {
+		dps.handlerIds[common.EventFrontierConfirmed] = id
 	}
 
 	if len(dps.accounts) != 0 {
@@ -250,7 +259,7 @@ func (dps *DPoS) Start() {
 			if state == common.SyncDone {
 				close(dps.cacheBlocks)
 
-				err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.onPovSyncState)
+				err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.handlerIds[common.EventPovSyncState])
 				if err != nil {
 					dps.logger.Errorf("unsubscribe pov sync state err %s", err)
 				}
@@ -330,6 +339,7 @@ func (dps *DPoS) Stop() {
 	dps.cancel()
 	dps.processorStop()
 	dps.acTrx.stop()
+	// TODO: unsubscribe EventRollbackUnchecked ??
 }
 
 func (dps *DPoS) processorStart() {

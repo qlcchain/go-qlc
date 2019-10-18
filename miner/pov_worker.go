@@ -31,6 +31,8 @@ type PovWorker struct {
 	lastMineHeight  uint64
 	muxMineBlock    sync.Mutex
 
+	handlerIds map[common.TopicType]string //topic->handler id
+
 	quitCh chan struct{}
 }
 
@@ -43,6 +45,8 @@ func NewPovWorker(miner *Miner) *PovWorker {
 	worker := &PovWorker{
 		miner:  miner,
 		logger: log.NewLogger("pov_miner"),
+
+		handlerIds: make(map[common.TopicType]string),
 
 		quitCh: make(chan struct{}),
 	}
@@ -75,16 +79,17 @@ func (w *PovWorker) Init() error {
 }
 
 func (w *PovWorker) Start() error {
-	err := w.miner.eb.SubscribeSync(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
+	id, err := w.miner.eb.SubscribeSync(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
 	if err != nil {
 		return err
 	}
+	w.handlerIds[common.EventRpcSyncCall] = id
 
 	return nil
 }
 
 func (w *PovWorker) Stop() error {
-	_ = w.miner.eb.Unsubscribe(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
+	_ = w.miner.eb.Unsubscribe(common.EventRpcSyncCall, w.handlerIds[common.EventRpcSyncCall])
 
 	if w.quitCh != nil {
 		close(w.quitCh)

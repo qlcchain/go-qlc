@@ -5,15 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/mock"
+	rpc "github.com/qlcchain/jsonrpc2"
 )
 
 func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerApi) {
@@ -83,4 +86,47 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 	if ledgerApi.processLock.Len() != 1000 {
 		t.Fatal("get error when delete idle lock")
 	}
+}
+
+func TestLedgerApi_Subscription(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupTestCaseLedger(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			blk := mock.StateBlock()
+			blk.Address = addr
+			blk.Type = types.Send
+			ledgerApi.ledger.EB.Publish(common.EventAddRelation, blk)
+		}
+	}()
+	ctx := rpc.SubscriptionContext()
+	r, err := ledgerApi.NewBlock(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+
+	ctx2 := rpc.SubscriptionContext()
+	r, err = ledgerApi.NewBlock(ctx2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+
+	ctx3 := rpc.SubscriptionContext()
+	r, err = ledgerApi.BalanceChange(ctx3, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+
+	ctx4 := rpc.SubscriptionContext()
+	r, err = ledgerApi.BalanceChange(ctx4, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
 }

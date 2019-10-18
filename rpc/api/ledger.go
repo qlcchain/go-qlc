@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 )
 
@@ -44,10 +46,11 @@ type lockValue struct {
 type LedgerApi struct {
 	ledger *ledger.Ledger
 	//vmContext *vmstore.VMContext
-	eb          event.EventBus
-	relation    *relation.Relation
-	logger      *zap.SugaredLogger
-	processLock *hashmap.HashMap
+	eb                event.EventBus
+	relation          *relation.Relation
+	logger            *zap.SugaredLogger
+	blockSubscription *BlockSubscription
+	processLock       *hashmap.HashMap
 }
 
 type APIBlock struct {
@@ -100,7 +103,13 @@ type ApiTokenInfo struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
-	return &LedgerApi{ledger: l, eb: eb, relation: relation, logger: log.NewLogger("api_ledger"), processLock: hashmap.New(defaultLockSize)}
+	return &LedgerApi{
+		ledger:            l,
+		eb:                eb,
+		relation:          relation,
+		logger:            log.NewLogger("api_ledger"),
+		blockSubscription: NewBlockSubscription(eb),
+		processLock:       hashmap.New(defaultLockSize)}
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
@@ -985,4 +994,105 @@ func (l *LedgerApi) GetAccountOnlineBlock(account types.Address) ([]*types.State
 	} else {
 		return nil, err
 	}
+}
+
+func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
+	ch := make(chan *types.StateBlock)
+	l.logger.Infof("blocks ctx: %p, ch %p", ctx, ch)
+	l.blockSubscription.addChan(ch)
+	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+		go func() {
+			for {
+				select {
+				case block := <-ch:
+					if err := notifier.Notify(subscription.ID, block); err != nil {
+						l.logger.Errorf("notify error: %s", err)
+						return
+					}
+				case err := <-subscription.Err():
+					l.logger.Infof("subscription exception %s", err)
+					l.blockSubscription.removeChan(ch)
+					return
+				}
+			}
+		}()
+	})
+}
+
+func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
+	ch := make(chan *types.StateBlock)
+	l.logger.Infof("amount ctx: %p, ch %p", ctx, ch)
+	l.blockSubscription.addChan(ch)
+	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+		go func() {
+			for {
+				select {
+				case block := <-ch:
+					if block.GetAddress() == address {
+						ac, err := l.ledger.GetAccountMeta(address)
+						if err != nil {
+							l.logger.Errorf("get account meta: %s", err)
+							return
+						}
+						if err := notifier.Notify(subscription.ID, ac); err != nil {
+							l.logger.Errorf("notify error: %s", err)
+							return
+						}
+					}
+				case err := <-subscription.Err():
+					l.logger.Infof("subscription exception %s", err)
+					l.blockSubscription.removeChan(ch)
+					return
+				}
+			}
+		}()
+	})
+}
+
+func (l *LedgerApi) NewPending(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
+	ch := make(chan *types.StateBlock)
+	l.blockSubscription.addChan(ch)
+	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+		go func() {
+			for {
+				select {
+				case block := <-ch:
+					if block.IsSendBlock() {
+						pk := &types.PendingKey{
+							Address: address,
+							Hash:    block.GetHash(),
+						}
+						if pi, _ := l.ledger.GetPending(pk); pi != nil {
+							vmContext := vmstore.NewVMContext(l.ledger)
+							token, err := abi.GetTokenById(vmContext, pi.Type)
+							if err != nil {
+								l.logger.Errorf("get token info: %s", err)
+								return
+							}
+							blk, err := l.ledger.GetStateBlockConfirmed(pk.Hash)
+							if err != nil {
+								l.logger.Errorf("get block info: %s", err)
+								return
+							}
+
+							ap := APIPending{
+								PendingKey:  pk,
+								PendingInfo: pi,
+								TokenName:   token.TokenName,
+								Timestamp:   blk.Timestamp,
+							}
+							if err := notifier.Notify(subscription.ID, ap); err != nil {
+								l.logger.Errorf("notify error: %s", err)
+								return
+							}
+						}
+					}
+				case err := <-subscription.Err():
+					l.logger.Infof("subscription exception %s", err)
+					l.blockSubscription.removeChan(ch)
+					return
+				}
+			}
+		}()
+	})
 }

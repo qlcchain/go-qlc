@@ -15,17 +15,15 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
-
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/vm/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const (
-	jsonRewards = `[
+	JsonRewards = `[
 		{"type":"function","name":"AirdropRewards","inputs":[{"name":"id","type":"hash"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"},{"name":"sign","type":"signature"}]  },
 		{"type":"function","name":"UnsignedAirdropRewards","inputs":[{"name":"id","type":"hash"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"}]  },
 		{"type":"function","name":"ConfidantRewards","inputs":[{"name":"id","type":"bytes32"},{"name":"beneficial","type":"address"},{"name":"txHeader","type":"hash"},{"name":"rxHeader","type":"hash"},{"name":"amount","type":"uint256"},{"name":"sign","type":"signature"}]  },
@@ -42,7 +40,7 @@ const (
 )
 
 var (
-	RewardsABI, _ = abi.JSONToABIContract(strings.NewReader(jsonRewards))
+	RewardsABI, _ = abi.JSONToABIContract(strings.NewReader(JsonRewards))
 )
 
 const (

@@ -11,6 +11,7 @@ import (
 
 // QlcService service for qlc p2p network
 type QlcService struct {
+	handlerIds map[common.TopicType]string //topic->handler id
 	node       *QlcNode
 	dispatcher *Dispatcher
 	msgEvent   event.EventBus
@@ -29,6 +30,7 @@ func NewQlcService(cfgFile string) (*QlcService, error) {
 		node:       node,
 		dispatcher: NewDispatcher(),
 		msgEvent:   cc.EventBus(),
+		handlerIds: make(map[common.TopicType]string),
 	}
 	node.SetQlcService(ns)
 	l := ledger.NewLedger(cfgFile)
@@ -72,69 +74,62 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-	err := ns.msgEvent.Subscribe(common.EventBroadcast, ns.Broadcast)
+	id, err := ns.msgEvent.Subscribe(common.EventBroadcast, ns.Broadcast)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
+	ns.handlerIds[common.EventBroadcast] = id
+	id, err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeSync(common.EventPeersInfo, ns.node.streamManager.GetAllConnectPeersInfo)
+	ns.handlerIds[common.EventSendMsgToSingle] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventPeersInfo, ns.node.streamManager.GetAllConnectPeersInfo)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(common.EventFrontiersReq, ns.msgService.syncService.requestFrontiersFromPov)
+	ns.handlerIds[common.EventPeersInfo] = id
+	id, err = ns.msgEvent.Subscribe(common.EventFrontiersReq, ns.msgService.syncService.requestFrontiersFromPov)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.Subscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
+	ns.handlerIds[common.EventFrontiersReq] = id
+	id, err = ns.msgEvent.Subscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeSync(common.EventGetBandwidthStats, ns.node.GetBandwidthStats)
+	ns.handlerIds[common.EventRepresentativeNode] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventGetBandwidthStats, ns.node.GetBandwidthStats)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ns.msgService.syncService.onConsensusSyncFinished)
+	ns.handlerIds[common.EventGetBandwidthStats] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ns.msgService.syncService.onConsensusSyncFinished)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
-	err = ns.msgEvent.SubscribeSync(common.EventSyncStatus, ns.msgService.syncService.GetSyncState)
+	ns.handlerIds[common.EventConsensusSyncFinished] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventSyncStatus, ns.msgService.syncService.GetSyncState)
 	if err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
+	ns.handlerIds[common.EventSyncStatus] = id
 	return nil
 }
 
 func (ns *QlcService) unsubscribeEvent() error {
-	err := ns.msgEvent.Unsubscribe(common.EventBroadcast, ns.Broadcast)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	err = ns.msgEvent.Unsubscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	err = ns.msgEvent.Unsubscribe(common.EventFrontiersReq, ns.msgService.syncService.requestFrontiersFromPov)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	err = ns.msgEvent.Unsubscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
+	for k, v := range ns.handlerIds {
+		if err := ns.msgEvent.Unsubscribe(k, v); err != nil {
+			return err
+		}
 	}
 	return nil
 }

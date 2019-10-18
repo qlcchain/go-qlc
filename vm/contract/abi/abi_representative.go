@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	jsonRep = `
+	JsonRep = `
 	[
 		{"type":"function","name":"RepReward","inputs":[
 			{"name":"account","type":"address"},
@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	RepABI, _ = abi.JSONToABIContract(strings.NewReader(jsonRep))
+	RepABI, _ = abi.JSONToABIContract(strings.NewReader(JsonRep))
 )
 
 type RepRewardParam struct {

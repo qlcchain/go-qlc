@@ -70,12 +70,13 @@ type PovTxPendingEntry struct {
 }
 
 type PovBlockProcessor struct {
-	eb       event.EventBus
-	ledger   ledger.Store
-	chain    PovProcessorChainReader
-	verifier PovProcessorVerifier
-	syncer   PovProcessorSyncer
-	logger   *zap.SugaredLogger
+	eb         event.EventBus
+	handlerIds map[common.TopicType]string //topic->handler id
+	ledger     ledger.Store
+	chain      PovProcessorChainReader
+	verifier   PovProcessorVerifier
+	syncer     PovProcessorSyncer
+	logger     *zap.SugaredLogger
 
 	orphanBlocks  map[types.Hash]*PovOrphanBlock   // blockHash -> block
 	parentOrphans map[types.Hash][]*PovOrphanBlock // blockHash -> child blocks
@@ -110,7 +111,7 @@ func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
 		verifier: verifier,
 		syncer:   syncer,
 	}
-
+	bp.handlerIds = make(map[common.TopicType]string)
 	bp.orphanBlocks = make(map[types.Hash]*PovOrphanBlock)
 	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
 	bp.pendingBlocks = make(map[types.Hash]*PovPendingBlock)
@@ -133,11 +134,23 @@ func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
 func (bp *PovBlockProcessor) Start() error {
 	if bp.ledger != nil {
 		ebL := bp.ledger.EventBus()
-		ebL.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
-		ebL.Subscribe(common.EventAddSyncBlocks, bp.onAddSyncStateBlock)
+		id, err := ebL.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
+		if err != nil {
+			return err
+		}
+		bp.handlerIds[common.EventAddRelation] = id
+		id, err = ebL.Subscribe(common.EventAddSyncBlocks, bp.onAddSyncStateBlock)
+		if err != nil {
+			return err
+		}
+		bp.handlerIds[common.EventAddSyncBlocks] = id
 	}
 	if bp.eb != nil {
-		bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState)
+		id, err := bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState)
+		if err != nil {
+			return err
+		}
+		bp.handlerIds[common.EventPovSyncState] = id
 	}
 
 	common.Go(bp.loop)
@@ -152,11 +165,20 @@ func (bp *PovBlockProcessor) Init() error {
 func (bp *PovBlockProcessor) Stop() error {
 	if bp.ledger != nil {
 		ebL := bp.ledger.EventBus()
-		ebL.Unsubscribe(common.EventAddRelation, bp.onAddStateBlock)
-		ebL.Unsubscribe(common.EventAddSyncBlocks, bp.onAddSyncStateBlock)
+		err := ebL.Unsubscribe(common.EventAddRelation, bp.handlerIds[common.EventAddRelation])
+		if err != nil {
+			bp.logger.Error(err)
+		}
+		err = ebL.Unsubscribe(common.EventAddSyncBlocks, bp.handlerIds[common.EventAddSyncBlocks])
+		if err != nil {
+			bp.logger.Error(err)
+		}
 	}
 	if bp.eb != nil {
-		bp.eb.Unsubscribe(common.EventPovSyncState, bp.onPovSyncState)
+		err := bp.eb.Unsubscribe(common.EventPovSyncState, bp.handlerIds[common.EventPovSyncState])
+		if err != nil {
+			bp.logger.Error(err)
+		}
 	}
 
 	close(bp.quitCh)

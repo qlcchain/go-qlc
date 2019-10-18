@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	jsonMiner = `
+	JsonMiner = `
 	[
 		{"type":"function","name":"MinerReward","inputs":[
 			{"name":"coinbase","type":"address"},
@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	MinerABI, _ = abi.JSONToABIContract(strings.NewReader(jsonMiner))
+	MinerABI, _ = abi.JSONToABIContract(strings.NewReader(JsonMiner))
 )
 
 type MinerRewardParam struct {
