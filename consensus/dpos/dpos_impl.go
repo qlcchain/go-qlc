@@ -145,10 +145,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		syncFinish:          make(chan struct{}, 1),
 		gapPovCh:            make(chan *consensus.BlockSource, 10240),
 		povChange:           make(chan *types.PovBlock, 10240),
-	}
-
-	if common.DPoSVoteCacheEn {
-		dps.voteCache = gcache.New(voteCacheSize).LRU().Build()
+		voteCache:			gcache.New(voteCacheSize).LRU().Build(),
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -415,24 +412,22 @@ func (dps *DPoS) batchVoteStart() {
 }
 
 func (dps *DPoS) cacheAck(vi *voteInfo) {
-	if common.DPoSVoteCacheEn {
-		if dps.voteCache.Has(vi.hash) {
-			v, err := dps.voteCache.Get(vi.hash)
-			if err != nil {
-				dps.logger.Error("get vote cache err")
-				return
-			}
+	if dps.voteCache.Has(vi.hash) {
+		v, err := dps.voteCache.Get(vi.hash)
+		if err != nil {
+			dps.logger.Error("get vote cache err")
+			return
+		}
 
-			vc := v.(*sync.Map)
-			vc.Store(vi.account, vi)
-		} else {
-			vc := new(sync.Map)
-			vc.Store(vi.account, vi)
-			err := dps.voteCache.Set(vi.hash, vc)
-			if err != nil {
-				dps.logger.Error("set vote cache err")
-				return
-			}
+		vc := v.(*sync.Map)
+		vc.Store(vi.account, vi)
+	} else {
+		vc := new(sync.Map)
+		vc.Store(vi.account, vi)
+		err := dps.voteCache.Set(vi.hash, vc)
+		if err != nil {
+			dps.logger.Error("set vote cache err")
+			return
 		}
 	}
 }
@@ -451,23 +446,18 @@ func (dps *DPoS) processSubMsg() {
 			case subMsgKindSub:
 				_ = dps.subAck.Set(msg.hash, msg.index)
 
-				if common.DPoSVoteCacheEn {
-					vote, err := dps.voteCache.Get(msg.hash)
-					if err == nil {
-						vc := vote.(*sync.Map)
-						vc.Range(func(key, value interface{}) bool {
-							dps.pubAck(msg.index, value.(*voteInfo))
-							return true
-						})
-						dps.voteCache.Remove(msg.hash)
-					}
+				vote, err := dps.voteCache.Get(msg.hash)
+				if err == nil {
+					vc := vote.(*sync.Map)
+					vc.Range(func(key, value interface{}) bool {
+						dps.pubAck(msg.index, value.(*voteInfo))
+						return true
+					})
+					dps.voteCache.Remove(msg.hash)
 				}
 			case subMsgKindUnsub:
 				dps.subAck.Remove(msg.hash)
-
-				if common.DPoSVoteCacheEn {
-					dps.voteCache.Remove(msg.hash)
-				}
+				dps.voteCache.Remove(msg.hash)
 			}
 		}
 	}

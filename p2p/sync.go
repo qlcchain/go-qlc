@@ -583,7 +583,7 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 			firstBlock := blocks[0]
 			if !firstBlock.IsOpen() {
 				if has, _ := ss.qlcLedger.HasStateBlockConfirmed(firstBlock.Previous); !has {
-					ss.logger.Errorf("get wrong sync block")
+					ss.logger.Errorf("get wrong sync block[%s] prev[%s] not in ledger", firstBlock.GetHash(), firstBlock.Previous)
 					ss.pullTimer.Reset(time.Second)
 					ss.lastSyncHash = types.ZeroHash
 					return nil
@@ -594,7 +594,7 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 
 		for _, block := range blocks {
 			if block.Previous != ss.lastSyncHash {
-				ss.logger.Errorf("get wrong sync block")
+				ss.logger.Errorf("get wrong sync block[%s]-prev[%s]-expect[%s]", block.GetHash(), block.Previous, ss.lastSyncHash)
 				ss.pullTimer.Reset(time.Second)
 				ss.lastSyncHash = types.ZeroHash
 				return nil
