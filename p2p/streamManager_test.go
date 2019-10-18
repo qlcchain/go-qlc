@@ -543,10 +543,6 @@ func TestGetBandwidthStats(t *testing.T) {
 		}
 	}
 	stats := new(p2pmetrics.Stats)
-	node1.node.GetBandwidthStats(stats)
-	if stats.RateIn != 0 || stats.RateOut != 0 || stats.TotalIn != 0 || stats.TotalOut != 0 {
-		t.Fatal("stats of bandWith error 1")
-	}
 	blk := mock.StateBlockWithoutWork()
 	node1.Broadcast(PublishReq, blk)
 	time.Sleep(2 * time.Second)
