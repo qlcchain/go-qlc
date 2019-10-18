@@ -1140,41 +1140,46 @@ type PovApiGetLastNHourInfo struct {
 	HourItemList []*PovApiGetLastNHourItem
 }
 
-func (api *PovApi) GetLastNHourInfo(beginTime uint32, endTime uint32) (*PovApiGetLastNHourInfo, error) {
-	endHourTime := uint32(time.Now().Unix())
-	beginHourTime := endHourTime - (3600 * 24)
+func (api *PovApi) GetLastNHourInfo(endHeight uint64, hourSpan uint32) (*PovApiGetLastNHourInfo, error) {
+	endHourTime := uint32(0)
+	beginHourTime := uint32(0)
 
-	if beginTime == 0 && endTime != 0 {
-		if endTime%3600 != 0 {
-			return nil, errors.New("endTime must be multiple of 3600 seconds when beginTime is 0")
+	var err error
+	var latestHeader *types.PovHeader
+	if endHeight > 0 {
+		latestHeader, err = api.ledger.GetPovHeaderByHeight(endHeight)
+		if err != nil {
+			return nil, err
 		}
-		intervalTime := endTime
-		endTime = uint32(time.Now().Unix())
-		beginTime = endTime - intervalTime
+	} else {
+		latestHeader, err = api.ledger.GetLatestPovHeader()
+		if err != nil {
+			return nil, err
+		}
 	}
+	endHourTime = latestHeader.GetTimestamp()
 
-	if beginTime != 0 || endTime != 0 {
-		if beginTime >= endTime {
-			return nil, errors.New("endTime must be greater than beginTime")
+	if hourSpan <= 0 {
+		beginHourTime = endHourTime - (24 * 3600)
+	} else if hourSpan >= 3600 {
+		if hourSpan%(2*3600) != 0 {
+			return nil, errors.New("hourSpan must be multiplier of 7200 seconds")
 		}
-		paraDiffTime := endTime - beginTime
-		if paraDiffTime%(2*3600) != 0 {
-			return nil, errors.New("(endTime - beginTime) must be multiplier of 2 hour")
+		if (hourSpan < (2 * 3600)) || (hourSpan > (24 * 3600)) {
+			return nil, errors.New("hourSpan must be in range [2 * 3600 ~ 24 * 3600] hour")
 		}
-		if paraDiffTime < 2*3600 || paraDiffTime > 24*3600 {
-			return nil, errors.New("(endTime - beginTime) must be 2 ~ 24 hour")
+		beginHourTime = endHourTime - hourSpan
+	} else {
+		if hourSpan%2 != 0 {
+			return nil, errors.New("hourSpan must be multiplier of 2 hours")
 		}
-
-		endHourTime = endTime
-		beginHourTime = beginTime
+		if (hourSpan < 2) || (hourSpan > 24) {
+			return nil, errors.New("hourSpan must be in range [2 ~ 24] hour")
+		}
+		beginHourTime = endHourTime - (hourSpan * 3600)
 	}
 
 	minBeginHourTime := beginHourTime - 3600
-
-	latestHeader, err := api.ledger.GetLatestPovHeader()
-	if err != nil {
-		return nil, err
-	}
 
 	apiRsp := new(PovApiGetLastNHourInfo)
 
