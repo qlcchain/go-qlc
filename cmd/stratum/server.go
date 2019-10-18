@@ -371,8 +371,6 @@ func (cs *StratumSession) handleMessage(msg *StratumMsg) error {
 		log.Warnf("Unknown method %s", msg.Method)
 		return cs.sendError(msg.ID, 20, "Unknown method")
 	}
-
-	return nil
 }
 
 func (cs *StratumSession) handleMiningAuthorize(reqMsg *StratumMsg) error {

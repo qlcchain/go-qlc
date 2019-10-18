@@ -418,8 +418,6 @@ func (h *PovHeader) GetAlgoEfficiency() uint {
 	default:
 		return 1 // TODO: we should not be here
 	}
-
-	return 1 // TODO: we should not be here
 }
 
 func (h *PovHeader) BuildHashData() []byte {
