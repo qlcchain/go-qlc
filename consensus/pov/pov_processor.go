@@ -71,7 +71,7 @@ type PovTxPendingEntry struct {
 
 type PovBlockProcessor struct {
 	eb         event.EventBus
-	handlerIds map[common.TopicType]string //topic->handler id
+	handlerIds map[common.TopicType]string // topic->handler id
 	ledger     ledger.Store
 	chain      PovProcessorChainReader
 	verifier   PovProcessorVerifier
