@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/chain/context"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -34,7 +33,7 @@ func NewQlcService(cfgFile string) (*QlcService, error) {
 		handlerIds: make(map[common.TopicType]string),
 	}
 	node.SetQlcService(ns)
-	l := ledger.NewLedger(cfg.LedgerDir())
+	l := ledger.NewLedger(cfgFile)
 	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
 	return ns, nil
@@ -75,36 +74,54 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-	if id, err := ns.msgEvent.Subscribe(common.EventBroadcast, ns.Broadcast); err != nil {
+	id, err := ns.msgEvent.Subscribe(common.EventBroadcast, ns.Broadcast)
+	if err != nil {
 		ns.node.logger.Error(err)
 		return err
-	} else {
-		ns.handlerIds[common.EventBroadcast] = id
 	}
-	if id, err := ns.msgEvent.Subscribe(common.EventSendMsgToPeers, ns.SendMessageToPeers); err != nil {
+	ns.handlerIds[common.EventBroadcast] = id
+	id, err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
+	if err != nil {
 		ns.node.logger.Error(err)
 		return err
-	} else {
-		ns.handlerIds[common.EventSendMsgToPeers] = id
 	}
-	if id, err := ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer); err != nil {
+	ns.handlerIds[common.EventSendMsgToSingle] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventPeersInfo, ns.node.streamManager.GetAllConnectPeersInfo)
+	if err != nil {
 		ns.node.logger.Error(err)
 		return err
-	} else {
-		ns.handlerIds[common.EventSendMsgToSingle] = id
 	}
-	if id, err := ns.msgEvent.SubscribeSync(common.EventPeersInfo, ns.node.streamManager.GetAllConnectPeersInfo); err != nil {
+	ns.handlerIds[common.EventPeersInfo] = id
+	id, err = ns.msgEvent.Subscribe(common.EventFrontiersReq, ns.msgService.syncService.requestFrontiersFromPov)
+	if err != nil {
 		ns.node.logger.Error(err)
 		return err
-	} else {
-		ns.handlerIds[common.EventPeersInfo] = id
 	}
-	if id, err := ns.msgEvent.Subscribe(common.EventSyncing, ns.msgService.syncService.LastSyncTime); err != nil {
+	ns.handlerIds[common.EventFrontiersReq] = id
+	id, err = ns.msgEvent.Subscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
+	if err != nil {
 		ns.node.logger.Error(err)
 		return err
-	} else {
-		ns.handlerIds[common.EventSyncing] = id
 	}
+	ns.handlerIds[common.EventRepresentativeNode] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventGetBandwidthStats, ns.node.GetBandwidthStats)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	ns.handlerIds[common.EventGetBandwidthStats] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ns.msgService.syncService.onConsensusSyncFinished)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	ns.handlerIds[common.EventConsensusSyncFinished] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventSyncStatus, ns.msgService.syncService.GetSyncState)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	ns.handlerIds[common.EventSyncStatus] = id
 	return nil
 }
 
@@ -140,25 +157,30 @@ func (ns *QlcService) Register(subscribers ...*Subscriber) {
 }
 
 // Deregister Deregister the subscribers.
-func (ns *QlcService) Deregister(subscribers ...*Subscriber) {
-	ns.dispatcher.Deregister(subscribers...)
+func (ns *QlcService) Deregister(subscribers *Subscriber) {
+	ns.dispatcher.Deregister(subscribers)
 }
 
-// PutMessage put message to dispatcher.
+// PutMessage put snyc message to dispatcher.
+func (ns *QlcService) PutSyncMessage(msg *Message) {
+	ns.dispatcher.PutSyncMessage(msg)
+}
+
+// PutMessage put dpos message to dispatcher.
 func (ns *QlcService) PutMessage(msg *Message) {
 	ns.dispatcher.PutMessage(msg)
 }
 
 // Broadcast message.
-func (ns *QlcService) Broadcast(name string, value interface{}) {
+func (ns *QlcService) Broadcast(name MessageType, value interface{}) {
 	ns.node.BroadcastMessage(name, value)
 }
 
-func (ns *QlcService) SendMessageToPeers(messageName string, value interface{}, peerID string) {
-	ns.node.SendMessageToPeers(messageName, value, peerID)
-}
+//func (ns *QlcService) SendMessageToPeers(messageName MessageType, value interface{}, peerID string) {
+//	ns.node.SendMessageToPeers(messageName, value, peerID)
+//}
 
 // SendMessageToPeer send message to a peer.
-func (ns *QlcService) SendMessageToPeer(messageName string, value interface{}, peerID string) error {
+func (ns *QlcService) SendMessageToPeer(messageName MessageType, value interface{}, peerID string) error {
 	return ns.node.SendMessageToPeer(messageName, value, peerID)
 }

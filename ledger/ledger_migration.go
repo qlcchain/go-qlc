@@ -374,3 +374,68 @@ func (m MigrationV7ToV8) StartVersion() int {
 func (m MigrationV7ToV8) EndVersion() int {
 	return 8
 }
+
+type MigrationV8ToV9 struct {
+}
+
+func (m MigrationV8ToV9) Migrate(txn db.StoreTxn) error {
+	b, err := checkVersion(m, txn)
+	if err != nil {
+		return err
+	}
+	if b {
+		fmt.Println("migrate ledger v8 to v9 ")
+		representMap := make(map[types.Address]*types.Benefit)
+		err = txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
+			am := new(types.AccountMeta)
+			if err := am.Deserialize(val); err != nil {
+				return err
+			}
+			tm := am.Token(common.ChainToken())
+			if tm != nil {
+				if _, ok := representMap[tm.Representative]; !ok {
+					representMap[tm.Representative] = &types.Benefit{
+						Balance: types.ZeroBalance,
+						Vote:    types.ZeroBalance,
+						Network: types.ZeroBalance,
+						Storage: types.ZeroBalance,
+						Oracle:  types.ZeroBalance,
+						Total:   types.ZeroBalance,
+					}
+				}
+				representMap[tm.Representative].Balance = representMap[tm.Representative].Balance.Add(am.CoinBalance)
+				representMap[tm.Representative].Vote = representMap[tm.Representative].Vote.Add(am.CoinVote)
+				representMap[tm.Representative].Network = representMap[tm.Representative].Network.Add(am.CoinNetwork)
+				representMap[tm.Representative].Total = representMap[tm.Representative].Total.Add(am.VoteWeight())
+			}
+			return nil
+		})
+		for address, benefit := range representMap {
+			key, err := getKeyOfParts(idPrefixRepresentation, address)
+			if err != nil {
+				return err
+			}
+			val, err := benefit.MarshalMsg(nil)
+			if err != nil {
+				return err
+			}
+			if err := txn.Set(key, val); err != nil {
+				return err
+			}
+		}
+		// delete cache
+		if err := txn.Drop([]byte{idPrefixRepresentationCache}); err != nil {
+			return err
+		}
+		return updateVersion(m, txn)
+	}
+	return nil
+}
+
+func (m MigrationV8ToV9) StartVersion() int {
+	return 8
+}
+
+func (m MigrationV8ToV9) EndVersion() int {
+	return 9
+}

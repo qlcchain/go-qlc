@@ -588,7 +588,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 			return types.ZeroBalance, err
 		}
 		return block.TotalBalance().Sub(prev.TotalBalance()), nil
-	case types.Change:
+	case types.Change, types.Online:
 		return types.ZeroBalance, nil
 	case types.ContractReward:
 		prevHash := block.GetPrevious()

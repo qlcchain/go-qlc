@@ -8,7 +8,7 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
 # server
-VERSION ?= 1.2.6.6
+VERSION ?= 1.3.0
 BINARY = gqlc
 MAIN = cmd/main.go
 
@@ -36,6 +36,19 @@ build-test:
 		-X github.com/qlcchain/go-qlc/chain.Mode=TestNet" -i -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
 	@echo "Build testnet $(BINARY) done."
 	@echo "Run \"$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
+
+mining:
+	go build -ldflags "-X main.Version=${VERSION} \
+		-X main.GitRev=${GITREV} \
+		-X main.BuildTime=${BUILDTIME} \
+		-X main.Mode=MainNet" \
+		-v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-miner $(shell pwd)/cmd/miner/
+	go build -ldflags "-X main.Version=${VERSION} \
+		-X main.GitRev=${GITREV} \
+		-X main.BuildTime=${BUILDTIME} \
+		-X main.Mode=MainNet" \
+		-v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-stratum $(shell pwd)/cmd/stratum/
+	@echo "Build mining done."
 
 clean:
 	rm -rf $(shell pwd)/$(BUILDDIR)/

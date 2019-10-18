@@ -39,7 +39,7 @@ func (c *mockPovProcessorChainReader) HasBestBlock(hash types.Hash, height uint6
 
 func (c *mockPovProcessorChainReader) GetBlockByHash(hash types.Hash) *types.PovBlock {
 	genesisBlk := common.GenesisPovBlock()
-	if hash == genesisBlk.Hash {
+	if hash == genesisBlk.GetHash() {
 		return &genesisBlk
 	}
 	blk := c.blocks[hash]
@@ -51,7 +51,7 @@ func (c *mockPovProcessorChainReader) GetBlockByHash(hash types.Hash) *types.Pov
 }
 
 func (c *mockPovProcessorChainReader) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
-	c.blocks[block.Hash] = block
+	c.blocks[block.GetHash()] = block
 	return nil
 }
 
@@ -84,7 +84,10 @@ func setupPovProcessorTestCase(t *testing.T) (func(t *testing.T), *povProcessorM
 
 	lDir := filepath.Join(rootDir, "ledger")
 	_ = os.RemoveAll(lDir)
-	md.ledger = ledger.NewLedger(lDir)
+
+	cm := config.NewCfgManager(lDir)
+	cm.Load()
+	md.ledger = ledger.NewLedger(cm.ConfigFile)
 
 	md.eb = event.GetEventBus(lDir)
 
@@ -155,7 +158,7 @@ func TestPovProcessor_OrphanBlock(t *testing.T) {
 	processor.Init()
 	processor.Start()
 
-	processor.onPovSyncState(common.Syncdone)
+	processor.onPovSyncState(common.SyncDone)
 
 	genesisBlk := common.GenesisPovBlock()
 

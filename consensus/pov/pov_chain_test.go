@@ -1,6 +1,7 @@
 package pov
 
 import (
+	"github.com/qlcchain/go-qlc/common/event"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,6 +16,7 @@ import (
 type povChainMockData struct {
 	config *config.Config
 	ledger ledger.Store
+	eb     event.EventBus
 }
 
 func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData) {
@@ -28,7 +30,11 @@ func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData)
 
 	lDir := filepath.Join(rootDir, "ledger")
 	_ = os.RemoveAll(lDir)
-	md.ledger = ledger.NewLedger(lDir)
+	cm := config.NewCfgManager(lDir)
+	cm.Load()
+	md.ledger = ledger.NewLedger(cm.ConfigFile)
+
+	md.eb = event.GetEventBus(uid)
 
 	return func(t *testing.T) {
 		err := md.ledger.DBStore().Close()
@@ -47,7 +53,7 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 	teardownTestCase, md := setupPovChainTestCase(t)
 	defer teardownTestCase(t)
 
-	chain := NewPovBlockChain(md.config, md.ledger)
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
 	chain.Init()
 	chain.Start()
@@ -55,11 +61,12 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 	genesisBlk := chain.GenesisBlock()
 	latestBlk := chain.LatestBlock()
 
-	if latestBlk.Hash != genesisBlk.Hash {
+	if latestBlk.GetHash() != genesisBlk.GetHash() {
 		t.Fatal("genesis hash invalid")
 	}
 
-	statTrie := trie.NewTrie(md.ledger.DBStore(), &(latestBlk.StateHash), trie.NewSimpleTrieNodePool())
+	stateHash := latestBlk.GetStateHash()
+	statTrie := trie.NewTrie(md.ledger.DBStore(), &stateHash, trie.NewSimpleTrieNodePool())
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 0)
 	err := chain.InsertBlock(blk1, statTrie)
@@ -80,17 +87,17 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 	}
 
 	retBlk1 := chain.GetBlockByHash(blk1.GetHash())
-	if retBlk1 == nil || retBlk1.Hash != blk1.GetHash() {
+	if retBlk1 == nil || retBlk1.GetHash() != blk1.GetHash() {
 		t.Fatalf("failed to get block1 %s", blk1.GetHash())
 	}
 
 	retBlk2 := chain.GetBlockByHash(blk2.GetHash())
-	if retBlk2 == nil || retBlk2.Hash != blk2.GetHash() {
+	if retBlk2 == nil || retBlk2.GetHash() != blk2.GetHash() {
 		t.Fatalf("failed to get block2 %s", blk2.GetHash())
 	}
 
 	retBlk3 := chain.GetBlockByHash(blk3.GetHash())
-	if retBlk3 == nil || retBlk3.Hash != blk3.GetHash() {
+	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
 		t.Fatalf("failed to get block3 %s", blk3.GetHash())
 	}
 
@@ -101,7 +108,7 @@ func TestPovChain_ForkChain(t *testing.T) {
 	teardownTestCase, md := setupPovChainTestCase(t)
 	defer teardownTestCase(t)
 
-	chain := NewPovBlockChain(md.config, md.ledger)
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
 	chain.Init()
 	chain.Start()
@@ -109,11 +116,12 @@ func TestPovChain_ForkChain(t *testing.T) {
 	genesisBlk := chain.GenesisBlock()
 	latestBlk := chain.LatestBlock()
 
-	if latestBlk.Hash != genesisBlk.Hash {
+	if latestBlk.GetHash() != genesisBlk.GetHash() {
 		t.Fatal("genesis hash invalid")
 	}
 
-	statTrie := trie.NewTrie(md.ledger.DBStore(), &(latestBlk.StateHash), trie.NewSimpleTrieNodePool())
+	stateHash := latestBlk.GetStateHash()
+	statTrie := trie.NewTrie(md.ledger.DBStore(), &stateHash, trie.NewSimpleTrieNodePool())
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 0)
 	err := chain.InsertBlock(blk1, statTrie)
@@ -140,12 +148,12 @@ func TestPovChain_ForkChain(t *testing.T) {
 	}
 
 	retBlk22, err := chain.GetBlockByHeight(blk22.GetHeight())
-	if retBlk22 == nil || retBlk22.Hash != retBlk22.GetHash() {
+	if retBlk22 == nil || retBlk22.GetHash() != retBlk22.GetHash() {
 		t.Fatalf("failed to get block22 %s", blk22.GetHash())
 	}
 
 	retBlk3, err := chain.GetBlockByHeight(blk3.GetHeight())
-	if retBlk3 == nil || retBlk3.Hash != blk3.GetHash() {
+	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
 		t.Fatalf("failed to get block3 %s", blk3.GetHash())
 	}
 
@@ -156,7 +164,7 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	teardownTestCase, md := setupPovChainTestCase(t)
 	defer teardownTestCase(t)
 
-	chain := NewPovBlockChain(md.config, md.ledger)
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
 	chain.Init()
 	chain.Start()
@@ -164,11 +172,12 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	genesisBlk := chain.GenesisBlock()
 	latestBlk := chain.LatestBlock()
 
-	if latestBlk.Hash != genesisBlk.Hash {
+	if latestBlk.GetHash() != genesisBlk.GetHash() {
 		t.Fatal("genesis hash invalid")
 	}
 
-	statTrie := trie.NewTrie(md.ledger.DBStore(), &(latestBlk.StateHash), trie.NewSimpleTrieNodePool())
+	stateHash := latestBlk.GetStateHash()
+	statTrie := trie.NewTrie(md.ledger.DBStore(), &stateHash, trie.NewSimpleTrieNodePool())
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 5)
 	err := chain.InsertBlock(blk1, statTrie)
@@ -195,12 +204,12 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	}
 
 	retBlk22, err := chain.GetBlockByHeight(blk22.GetHeight())
-	if retBlk22 == nil || retBlk22.Hash != retBlk22.GetHash() {
+	if retBlk22 == nil || retBlk22.GetHash() != retBlk22.GetHash() {
 		t.Fatalf("failed to get block22 %s", blk22.GetHash())
 	}
 
 	retBlk3, err := chain.GetBlockByHeight(blk3.GetHeight())
-	if retBlk3 == nil || retBlk3.Hash != blk3.GetHash() {
+	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
 		t.Fatalf("failed to get block3 %s", blk3.GetHash())
 	}
 

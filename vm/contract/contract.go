@@ -74,19 +74,13 @@ var contractCacheV1 = map[types.Address]*qlcchainContractV1{
 		cabi.RewardsABI,
 		cabi.JsonRewards,
 	},
-	types.MinerAddress: {
-		map[string]ChainContractV1{
-			cabi.MethodNameMinerReward: &MinerReward{},
-		},
-		cabi.MinerABI,
-		cabi.JsonMiner,
-	},
 }
 
 type ChainContractV2 interface {
 	InternalContract
 	// ProcessSend verify or update StateBlock.Data
 	ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error)
+	DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error)
 }
 
 type qlcchainContractV2 struct {
@@ -102,6 +96,20 @@ var contractCacheV2 = map[types.Address]*qlcchainContractV2{
 		},
 		abi:     cabi.BlackHoleABI,
 		abiJson: cabi.JsonDestroy,
+	},
+	types.MinerAddress: {
+		map[string]ChainContractV2{
+			cabi.MethodNameMinerReward: &MinerReward{},
+		},
+		cabi.MinerABI,
+		cabi.JsonMiner,
+	},
+	types.RepAddress: {
+		map[string]ChainContractV2{
+			cabi.MethodNameRepReward: &RepReward{},
+		},
+		cabi.RepABI,
+		cabi.JsonRep,
 	},
 }
 

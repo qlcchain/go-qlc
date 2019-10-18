@@ -39,7 +39,10 @@ func TestDBSQL_Create(t *testing.T) {
 		t.Fatal(err)
 	}
 	var b []blocksHash
-	if err := d.Read(TableBlockHash, condition, -1, -1, ColumnNoNeed, &b); err != nil {
+	order := make(map[Column]bool)
+	order[ColumnTimestamp] = false
+	order[ColumnType] = true
+	if err := d.Read(TableBlockHash, condition, -1, -1, order, &b); err != nil {
 		t.Fatal(err)
 	}
 	var i int

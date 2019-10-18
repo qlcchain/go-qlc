@@ -61,6 +61,9 @@ func (a *AccountMeta) VoteWeight() Balance {
 	if a.CoinVote.Int != nil {
 		balance = balance.Add(a.CoinVote)
 	}
+	if a.CoinNetwork.Int != nil {
+		balance = balance.Add(a.CoinNetwork)
+	}
 	return balance
 }
 

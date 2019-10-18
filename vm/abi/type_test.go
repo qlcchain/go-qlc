@@ -73,7 +73,7 @@ func TestTypeRegexp(t *testing.T) {
 		{"tokenId", Type{Kind: reflect.Array, Type: tokenIdT, Size: 32, T: TokenIdTy, stringKind: "tokenId"}},
 		{"tokenId[]", Type{T: SliceTy, Kind: reflect.Slice, Type: reflect.TypeOf([]types.Hash{}), Elem: &Type{Kind: reflect.Array, Type: tokenIdT, Size: 32, T: TokenIdTy, stringKind: "tokenId"}, stringKind: "tokenId[]"}},
 		{"tokenId[2]", Type{Kind: reflect.Array, T: ArrayTy, Size: 2, Type: reflect.TypeOf([2]types.Hash{}), Elem: &Type{Kind: reflect.Array, Type: tokenIdT, Size: 32, T: TokenIdTy, stringKind: "tokenId"}, stringKind: "tokenId[2]"}},
-		{"balance", Type{Kind: reflect.Array, Type: balanceT, Size: 256, T: BalanceTy, stringKind: "balance"}},
+		{"balance", Type{Kind: reflect.Struct, Type: balanceT, Size: 64, T: BalanceTy, stringKind: "balance"}},
 		{"signature", Type{Kind: reflect.Array, Type: signatureT, Size: 64, T: SignatureTy, stringKind: "signature"}},
 	}
 

@@ -8,9 +8,7 @@ message FrontierReq {
     uint32 Count = 3;
 }
 message FrontierRsp {
-    uint32 TotalFrontierNum = 1;
-    bytes HeaderBlock = 2;
-    bytes OpenBlock = 3;
+    repeated bytes Frontiers = 1;
 }
 message BulkPullReq {
     bytes StartHash = 1;
@@ -20,21 +18,17 @@ message BulkPullReq {
     bytes  Hashes = 5;
 }
 message BulkPullRsp {
-    uint32  blocktype = 1;
-    bytes   block = 2;
-    bytes   blocks = 3;
+    uint32 PullType = 1;
+    bytes blocks = 2;
 }
 message BulkPushBlock {
-    uint32  blocktype = 1;
-    bytes   block = 2;
+    bytes blocks = 1;
 }
 message PublishBlock {
-    uint32  blocktype = 1;
-    bytes   block = 2;
+    bytes block = 1;
 }
 message ConfirmReq {
-    uint32  blocktype = 1;
-    bytes   block = 2;
+     repeated bytes block = 1;
 }
 message ConfirmAck {
     bytes   Account = 1;
@@ -50,21 +44,21 @@ message PovStatus {
     int64  Timestamp = 5;
 }
 message PovPublishBlock {
-    uint32 blocktype = 1;
-    bytes  block = 2;
+    bytes  block = 1;
 }
 message PovPullBlockReq {
-    uint32 blocktype = 1;
-    bytes  StartHash = 2;
-    uint64 StartHeight = 3;
-    uint32 Count = 4;
-    uint32 PullType = 5;
-    uint32 Reason = 6;
-    bytes  Locators = 7;
+    bytes  StartHash = 1;
+    uint64 StartHeight = 2;
+    uint32 Count = 3;
+    uint32 PullType = 4;
+    uint32 Reason = 5;
+    bytes  Locators = 6;
 }
 message PovPullBlockRsp {
-    uint32 blocktype = 1;
-    uint32 count = 2;
-    bytes  block = 3;
-    uint32 Reason = 4;
-}
+     uint32 count = 1;
+     bytes  block = 2;
+     uint32 Reason = 3;
+ }
+ message MessageAck {
+     bytes messageHash = 1;
+ }

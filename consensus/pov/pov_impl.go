@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/chain/context"
-
 	"github.com/bluele/gcache"
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -44,7 +43,7 @@ type PoVEngine struct {
 func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
-	l := ledger.NewLedger(cfg.LedgerDir())
+	l := ledger.NewLedger(cfgFile)
 
 	pov := &PoVEngine{
 		logger:   log.NewLogger("pov_engine"),
@@ -56,7 +55,7 @@ func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 
 	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()
 
-	pov.chain = NewPovBlockChain(cfg, pov.ledger)
+	pov.chain = NewPovBlockChain(cfg, pov.eb, pov.ledger)
 	pov.txpool = NewPovTxPool(pov.eb, pov.ledger, pov.chain)
 	pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
 	pov.verifier = NewPovVerifier(l, pov.chain, pov.cs)
@@ -190,8 +189,21 @@ func (pov *PoVEngine) unsetEvent() error {
 }
 
 func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockFrom, msgPeer string) error {
+	if from == types.PovBlockFromLocal {
+		return pov.AddMinedBlock(block)
+	}
+
 	if from == types.PovBlockFromRemoteBroadcast {
 		blockHash := block.GetHash()
+
+		/*
+			peer := pov.syncer.FindPeer(msgPeer)
+			if peer == nil || peer.status == peerStatusInit {
+				pov.logger.Infof("discard broadcast block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
+				return nil
+			}
+		*/
+
 		if pov.blkRecvCache.Has(blockHash) {
 			return nil
 		}

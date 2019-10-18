@@ -25,7 +25,6 @@ const (
 	ColumnReceiver  Column = "receiver"
 	ColumnMessage   Column = "message"
 	ColumnTimestamp Column = "timestamp"
-	ColumnNoNeed    Column = ""
 )
 
 type DbStore interface {
@@ -33,7 +32,7 @@ type DbStore interface {
 	NewTransaction() *sqlx.Tx
 	Create(table TableName, condition map[Column]interface{}) error
 	BatchCreate(table TableName, cols []Column, vals [][]interface{}) error
-	Read(table TableName, condition map[Column]interface{}, offset int, limit int, order Column, dest interface{}) error
+	Read(table TableName, condition map[Column]interface{}, offset int, limit int, order map[Column]bool, dest interface{}) error
 	Update(table TableName, condition map[Column]interface{}) error
 	Delete(table TableName, condition map[Column]interface{}) error
 	Count(table TableName, dest interface{}) error

@@ -56,7 +56,7 @@ func (s *DBSQL) BatchCreate(table TableName, cols []Column, vals [][]interface{}
 	return nil
 }
 
-func (s *DBSQL) Read(table TableName, condition map[Column]interface{}, offset int, limit int, order Column, dest interface{}) error {
+func (s *DBSQL) Read(table TableName, condition map[Column]interface{}, offset int, limit int, order map[Column]bool, dest interface{}) error {
 	sql := readSql(table, condition, offset, limit, order)
 	s.logger.Debug(sql)
 	err := s.db.Select(dest, sql)
@@ -162,7 +162,7 @@ func createBatchSql(table TableName, cols []Column, vals [][]interface{}) string
 	return sql
 }
 
-func readSql(table TableName, condition map[Column]interface{}, offset int, limit int, order Column) string {
+func readSql(table TableName, condition map[Column]interface{}, offset int, limit int, order map[Column]bool) string {
 	var sql string
 	var para []string
 	if condition != nil {
@@ -185,9 +185,18 @@ func readSql(table TableName, condition map[Column]interface{}, offset int, limi
 	} else {
 		sql = fmt.Sprintf("select * from %s ", string(table))
 	}
-	if order != ColumnNoNeed {
-		sql = sql + " order by  " + string(order) + " desc "
+	if order != nil {
+		oStr := ""
+		for k, v := range order {
+			if v { // if v is true , ascending order
+				oStr = oStr + string(k) + " asc ,"
+			} else {
+				oStr = oStr + string(k) + " desc ,"
+			}
+		}
+		sql = sql + " order by  " + strings.TrimRight(oStr, ",")
 	}
+
 	if limit != -1 {
 		sql = sql + " limit " + strconv.Itoa(limit)
 	}

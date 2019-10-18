@@ -86,7 +86,7 @@ import (
 
 func TestNodeDiscovery(t *testing.T) {
 	//bootNode config
-	dir := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir := filepath.Join(config.QlcTestDataDir(), "discovery", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19736"
@@ -95,7 +95,7 @@ func TestNodeDiscovery(t *testing.T) {
 	b := "/ip4/127.0.0.1/tcp/19736/ipfs/" + cfg.P2P.ID.PeerID
 
 	//node1 config
-	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir1 := filepath.Join(config.QlcTestDataDir(), "discovery", uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19737"
@@ -104,7 +104,7 @@ func TestNodeDiscovery(t *testing.T) {
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
-	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String(), config.QlcConfigFile)
+	dir2 := filepath.Join(config.QlcTestDataDir(), "discovery", uuid.New().String(), config.QlcConfigFile)
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19738"
@@ -159,7 +159,7 @@ func TestNodeDiscovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = os.RemoveAll(config.QlcTestDataDir())
+		err = os.RemoveAll(filepath.Join(config.QlcTestDataDir(), "discovery"))
 		if err != nil {
 			t.Fatal(err)
 		}

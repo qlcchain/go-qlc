@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -18,16 +19,27 @@ var (
 	ErrCloseStream          = errors.New("stream close error")
 )
 
+// Message Priority.
+const (
+	MessagePriorityHigh = iota
+	MessagePriorityNormal
+	MessagePriorityLow
+)
+
 // Stream define the structure of a stream in p2p network
 type Stream struct {
-	syncMutex   sync.Mutex
-	pid         peer.ID
-	addr        ma.Multiaddr
-	stream      network.Stream
-	node        *QlcNode
-	quitWriteCh chan bool
-	messageChan chan []byte
-	ctrlMsgChan chan []byte
+	syncMutex                 sync.Mutex
+	pid                       peer.ID
+	addr                      ma.Multiaddr
+	stream                    network.Stream
+	node                      *QlcNode
+	quitWriteCh               chan bool
+	messageNotifyChan         chan int
+	highPriorityMessageChan   chan *QlcMessage
+	normalPriorityMessageChan chan *QlcMessage
+	lowPriorityMessageChan    chan *QlcMessage
+	rtt                       time.Duration
+	remoteNetAttribute        netAttribute
 }
 
 // NewStream return a new Stream
@@ -42,13 +54,15 @@ func NewStreamFromPID(pid peer.ID, node *QlcNode) *Stream {
 
 func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream network.Stream, node *QlcNode) *Stream {
 	return &Stream{
-		pid:         pid,
-		addr:        addr,
-		stream:      stream,
-		node:        node,
-		quitWriteCh: make(chan bool, 1),
-		messageChan: make(chan []byte, 40*1024),
-		ctrlMsgChan: make(chan []byte, 10*1024),
+		pid:                       pid,
+		addr:                      addr,
+		stream:                    stream,
+		node:                      node,
+		quitWriteCh:               make(chan bool, 1),
+		messageNotifyChan:         make(chan int, 60*1024),
+		highPriorityMessageChan:   make(chan *QlcMessage, 20*1024),
+		normalPriorityMessageChan: make(chan *QlcMessage, 20*1024),
+		lowPriorityMessageChan:    make(chan *QlcMessage, 20*1024),
 	}
 }
 
@@ -163,34 +177,32 @@ func (s *Stream) readLoop() {
 }
 
 func (s *Stream) writeLoop() {
-	// ping func
-	/*	ts, err := s.node.ping.Ping(s.node.ctx, s.pid)
-		if err != nil {
-			logger.Debug("ping error:", err)
-			return
-		}
-	*/
+
 	for {
 		select {
-		/*		case took := <-ts:
-				//logger.Info("ping took: ", took)
-				if took == 0 {
-					logger.Debug("failed to receive ping")
-					s.close()
-					return
-				}*/
 		case <-s.quitWriteCh:
 			s.node.logger.Debug("Quiting Stream Write Loop.")
 			return
-		case message := <-s.ctrlMsgChan:
-			err := s.WriteQlcMessage(message)
-			if err != nil {
-				s.node.logger.Debug(err)
+		case <-s.messageNotifyChan:
+			select {
+			case message := <-s.highPriorityMessageChan:
+				_ = s.WriteQlcMessage(message)
+				continue
+			default:
 			}
-		case message := <-s.messageChan:
-			err := s.WriteQlcMessage(message)
-			if err != nil {
-				s.node.logger.Debug(err)
+
+			select {
+			case message := <-s.normalPriorityMessageChan:
+				_ = s.WriteQlcMessage(message)
+				continue
+			default:
+			}
+
+			select {
+			case message := <-s.lowPriorityMessageChan:
+				_ = s.WriteQlcMessage(message)
+				continue
+			default:
 			}
 		}
 	}
@@ -213,7 +225,6 @@ func (s *Stream) close() error {
 
 	// quit.
 	s.quitWriteCh <- true
-
 	// close stream.
 	if s.stream != nil {
 		if err := s.stream.Close(); err != nil {
@@ -224,21 +235,23 @@ func (s *Stream) close() error {
 }
 
 // SendMessage send msg to peer
-func (s *Stream) SendMessageToPeer(messageType string, data []byte) error {
+func (s *Stream) SendMessageToPeer(messageType MessageType, data []byte) error {
 	version := p2pVersion
 	message := NewQlcMessage(data, byte(version), messageType)
-	if MessageResponse == messageType {
-		s.SendMessageToCtrlChan(message)
-	} else {
-		s.SendMessageToChan(message)
+	qlcMessage := &QlcMessage{
+		messageType: messageType,
+		content:     message,
 	}
-	return nil
+
+	err := s.SendMessageToChan(qlcMessage)
+
+	return err
 }
 
 // WriteQlcMessage write qlc msg in the stream
-func (s *Stream) WriteQlcMessage(message []byte) error {
+func (s *Stream) WriteQlcMessage(message *QlcMessage) error {
 
-	err := s.Write(message)
+	err := s.Write(message.content)
 
 	return err
 }
@@ -250,6 +263,12 @@ func (s *Stream) Write(data []byte) error {
 		}
 
 		return ErrStreamIsNotConnected
+	}
+
+	// at least 5kb/s to write message
+	deadline := time.Now().Add(time.Duration(len(data)/1024/5+1) * time.Second)
+	if err := s.stream.SetWriteDeadline(deadline); err != nil {
+		return err
 	}
 
 	n, err := s.stream.Write(data)
@@ -268,21 +287,45 @@ func (s *Stream) handleMessage(message *QlcMessage) {
 		return
 	}
 	m := NewMessage(message.MessageType(), s.pid.Pretty(), message.MessageData(), message.content)
-	s.node.netService.PutMessage(m)
+	s.node.netService.PutSyncMessage(m)
 }
 
-func (s *Stream) SendMessageToChan(message []byte) {
-	select {
-	case s.messageChan <- message:
-	default:
-		s.node.logger.Debugf("send message to [%s] timeout", s.pid.Pretty())
+// SendMessage send msg to buffer
+func (s *Stream) SendMessageToChan(message *QlcMessage) error {
+	var priority uint32
+	if message.messageType == MessageResponse {
+		priority = MessagePriorityHigh
+	} else {
+		priority = MessagePriorityNormal
 	}
-}
-
-func (s *Stream) SendMessageToCtrlChan(message []byte) {
-	select {
-	case s.ctrlMsgChan <- message:
+	switch priority {
+	case MessagePriorityHigh:
+		select {
+		case s.highPriorityMessageChan <- message:
+		default:
+			s.node.logger.Debugf("Received too many normal priority message.")
+			return nil
+		}
+	case MessagePriorityNormal:
+		select {
+		case s.normalPriorityMessageChan <- message:
+		default:
+			s.node.logger.Debugf("Received too many normal priority message.")
+			return nil
+		}
 	default:
-		s.node.logger.Debugf("send ctrl message to [%s] timeout", s.pid.Pretty())
+		select {
+		case s.lowPriorityMessageChan <- message:
+		default:
+			s.node.logger.Debugf("Received too many low priority message.")
+			return nil
+		}
 	}
+	select {
+	case s.messageNotifyChan <- 1:
+	default:
+		s.node.logger.Debugf("Received too many message notifyChan.")
+		return nil
+	}
+	return nil
 }

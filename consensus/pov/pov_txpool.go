@@ -30,6 +30,7 @@ type PovTxEntry struct {
 type PovTxPool struct {
 	logger      *zap.SugaredLogger
 	eb          event.EventBus
+	handlerIds  map[common.TopicType]string //topic->handler id
 	ledger      ledger.Store
 	chain       PovTxChainReader
 	txMu        sync.RWMutex
@@ -48,10 +49,11 @@ type PovTxChainReader interface {
 
 func NewPovTxPool(eb event.EventBus, ledger ledger.Store, chain PovTxChainReader) *PovTxPool {
 	txPool := &PovTxPool{
-		logger: log.NewLogger("pov_txpool"),
-		eb:     eb,
-		ledger: ledger,
-		chain:  chain,
+		logger:     log.NewLogger("pov_txpool"),
+		eb:         eb,
+		handlerIds: make(map[common.TopicType]string),
+		ledger:     ledger,
+		chain:      chain,
 	}
 	txPool.txEventCh = make(chan *PovTxEvent, 5000)
 	txPool.quitCh = make(chan struct{})
@@ -65,9 +67,26 @@ func (tp *PovTxPool) Init() {
 }
 
 func (tp *PovTxPool) Start() {
-	if tp.eb != nil {
-		tp.eb.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
-		tp.eb.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
+	if tp.ledger != nil {
+		ebL := tp.ledger.EventBus()
+		id, err := ebL.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
+		if err != nil {
+			tp.logger.Errorf("failed to subscribe EventAddRelation")
+			return
+		}
+		tp.handlerIds[common.EventAddRelation] = id
+		id, err = ebL.SubscribeSync(common.EventAddSyncBlocks, tp.onAddSyncStateBlock)
+		if err != nil {
+			tp.logger.Errorf("failed to subscribe EventAddSyncBlocks")
+			return
+		}
+		tp.handlerIds[common.EventAddSyncBlocks] = id
+		id, err = ebL.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
+		if err != nil {
+			tp.logger.Errorf("failed to subscribe EventDeleteRelation")
+			return
+		}
+		tp.handlerIds[common.EventDeleteRelation] = id
 	}
 
 	tp.chain.RegisterListener(tp)
@@ -77,6 +96,22 @@ func (tp *PovTxPool) Start() {
 
 func (tp *PovTxPool) Stop() {
 	tp.chain.UnRegisterListener(tp)
+
+	if tp.ledger != nil {
+		ebL := tp.ledger.EventBus()
+		err := ebL.Unsubscribe(common.EventAddRelation, tp.handlerIds[common.EventAddRelation])
+		if err != nil {
+			tp.logger.Error(err)
+		}
+		err = ebL.Unsubscribe(common.EventAddSyncBlocks, tp.handlerIds[common.EventAddSyncBlocks])
+		if err != nil {
+			tp.logger.Error(err)
+		}
+		err = ebL.Unsubscribe(common.EventDeleteRelation, tp.handlerIds[common.EventDeleteRelation])
+		if err != nil {
+			tp.logger.Error(err)
+		}
+	}
 
 	close(tp.quitCh)
 }
@@ -88,6 +123,16 @@ func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) error {
 	return nil
 }
 
+func (tp *PovTxPool) onAddSyncStateBlock(block *types.StateBlock, done bool) error {
+	if done {
+		return nil
+	}
+	txHash := block.GetHash()
+	//tp.logger.Debugf("recv event, add sync state block hash %s", txHash)
+	tp.txEventCh <- &PovTxEvent{event: common.EventAddSyncBlocks, txHash: txHash, txBlock: block}
+	return nil
+}
+
 func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
 	//tp.logger.Debugf("recv event, delete state block hash %s", hash)
 	tp.txEventCh <- &PovTxEvent{event: common.EventDeleteRelation, txHash: hash}
@@ -95,16 +140,19 @@ func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
 }
 
 func (tp *PovTxPool) OnPovBlockEvent(event byte, block *types.PovBlock) {
-	if len(block.Transactions) <= 0 {
+	txs := block.GetAccountTxs()
+	if len(txs) <= 0 {
 		return
 	}
 
 	if event == EventConnectPovBlock {
-		for _, tx := range block.Transactions {
+		tp.logger.Debugf("connect pov block %s delete txs %d", block.GetHash(), len(txs))
+		for _, tx := range txs {
 			tp.delTx(tx.Hash)
 		}
 	} else if event == EventDisconnectPovBlock {
-		for _, tx := range block.Transactions {
+		tp.logger.Debugf("disconnect pov block %s add txs %d", block.GetHash(), len(txs))
+		for _, tx := range txs {
 			tp.addTx(tx.Hash, tx.Block)
 		}
 	}
@@ -290,7 +338,7 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 }
 
 func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
-	if txEvent.event == common.EventAddRelation {
+	if txEvent.event == common.EventAddRelation || txEvent.event == common.EventAddSyncBlocks {
 		tp.addTx(txEvent.txHash, txEvent.txBlock)
 	} else if txEvent.event == common.EventDeleteRelation {
 		tp.delTx(txEvent.txHash)
@@ -298,6 +346,11 @@ func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
 }
 
 func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
+	if txBlock == nil {
+		tp.logger.Errorf("add tx %s but block is nil", txHash)
+		return
+	}
+
 	tp.txMu.Lock()
 	defer tp.txMu.Unlock()
 
@@ -308,7 +361,7 @@ func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
 
 	addrToken := types.AddressToken{Address: txBlock.GetAddress(), Token: txBlock.GetToken()}
 
-	tp.logger.Debugf("add tx %s", txHash)
+	//tp.logger.Debugf("add tx %s", txHash)
 
 	accTxList, ok := tp.accountTxs[addrToken]
 	if !ok {
@@ -364,7 +417,7 @@ func (tp *PovTxPool) delTx(txHash types.Hash) {
 		return
 	}
 
-	tp.logger.Debugf("delete tx %s", txHash)
+	//tp.logger.Debugf("delete tx %s", txHash)
 
 	delete(tp.allTxs, txHash)
 
@@ -408,16 +461,21 @@ func (tp *PovTxPool) getTx(txHash types.Hash) *types.StateBlock {
 }
 
 func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.StateBlock {
+	//return tp.SelectPendingTxsByGreedy(stateTrie, limit)
+	return tp.SelectPendingTxsByFair(stateTrie, limit)
+}
+
+func (tp *PovTxPool) SelectPendingTxsByGreedy(stateTrie *trie.Trie, limit int) []*types.StateBlock {
 	tp.txMu.RLock()
 	defer tp.txMu.RUnlock()
 
 	var retTxs []*types.StateBlock
 
-	if limit <= 0 {
+	if limit <= 0 || len(tp.accountTxs) <= 0 {
 		return retTxs
 	}
 
-	//tp.povEngine.GetLogger().Debugf("select pending txs in pool, txs %d", len(tp.allTxs))
+	//tp.logger.Debugf("select pending txs in pool, txs %d", len(tp.allTxs))
 
 	addrTokenPrevHashes := make(map[types.AddressToken]types.Hash)
 	for addrToken, accTxList := range tp.accountTxs {
@@ -456,8 +514,8 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 					}
 				}
 
-				//tp.povEngine.GetLogger().Debugf("AddrToken %s block %s", addrToken, txHash)
-				//tp.povEngine.GetLogger().Debugf("prevHashWant %s txPrevious %s", prevHashWant, txBlock.GetPrevious())
+				//tp.logger.Debugf("AddrToken %s block %s", addrToken, txHash)
+				//tp.logger.Debugf("prevHashWant %s txPrevious %s", prevHashWant, txBlock.GetPrevious())
 				if txBlock.GetPrevious() == prevHashWant {
 					retTxs = append(retTxs, txBlock)
 
@@ -495,6 +553,155 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 	return retTxs
 }
 
+func (tp *PovTxPool) SelectPendingTxsByFair(stateTrie *trie.Trie, limit int) []*types.StateBlock {
+	tp.txMu.RLock()
+	defer tp.txMu.RUnlock()
+
+	var retTxs []*types.StateBlock
+
+	if limit <= 0 || len(tp.accountTxs) <= 0 {
+		return retTxs
+	}
+	addrTokenNum := len(tp.accountTxs)
+
+	//tp.logger.Debugf("select pending txs in pool, addrTokens %d txs %d", addrTokenNum, len(tp.allTxs))
+
+	addrTokenNeedScans := make(map[types.AddressToken]struct{}, addrTokenNum)
+	addrTokenPrevHashes := make(map[types.AddressToken]types.Hash, addrTokenNum)
+	addrTokenSelectedTxHashes := make(map[types.AddressToken]map[types.Hash]struct{})
+	addrTokenScanIters := make(map[types.AddressToken]*list.Element, addrTokenNum)
+
+	for addrToken, accTxList := range tp.accountTxs {
+		if accTxList.Len() > 0 {
+			//tp.logger.Debugf("addrToken %s has txs %d pending", addrToken, accTxList.Len())
+			addrTokenNeedScans[addrToken] = struct{}{}
+		}
+	}
+
+LoopMain:
+	for {
+		if len(addrTokenNeedScans) <= 0 {
+			break
+		}
+
+	LoopAddrToken:
+		for addrToken := range addrTokenNeedScans {
+			accTxList := tp.accountTxs[addrToken]
+			if accTxList.Len() <= 0 {
+				delete(addrTokenNeedScans, addrToken)
+				continue
+			}
+
+			selectedTxHashes := addrTokenSelectedTxHashes[addrToken]
+			if selectedTxHashes == nil {
+				selectedTxHashes = make(map[types.Hash]struct{})
+				addrTokenSelectedTxHashes[addrToken] = selectedTxHashes
+			}
+			if len(selectedTxHashes) >= accTxList.Len() {
+				delete(addrTokenNeedScans, addrToken)
+				continue
+			}
+
+			//tp.logger.Debugf("scan addrToken %s txs %d (%d)", addrToken, len(selectedTxHashes), accTxList.Len())
+
+			isCA := types.IsContractAddress(addrToken.Address)
+
+			notInOrderTxNum := 0
+			inOrderTxNum := 0
+			accTxIter := addrTokenScanIters[addrToken]
+			if accTxIter == nil {
+				accTxIter = accTxList.Front()
+			} else {
+				accTxIter = accTxIter.Next()
+			}
+		LoopAccTx:
+			for ; accTxIter != nil; accTxIter = accTxIter.Next() {
+				txEntry := accTxIter.Value.(*PovTxEntry)
+				txBlock := txEntry.txBlock
+				txHash := txEntry.txHash
+				if _, ok := selectedTxHashes[txHash]; ok {
+					continue
+				}
+
+				// contract address's blocks are all independent, no previous
+				prevHashWant, ok := addrTokenPrevHashes[addrToken]
+				if !ok {
+					if isCA {
+						prevHashWant = types.ZeroHash
+					} else {
+						as := tp.chain.GetAccountState(stateTrie, addrToken.Address)
+						if as != nil {
+							rs := as.GetTokenState(addrToken.Token)
+							if rs != nil {
+								prevHashWant = rs.Hash
+							} else {
+								prevHashWant = types.ZeroHash
+							}
+						} else {
+							prevHashWant = types.ZeroHash
+						}
+					}
+				}
+
+				//tp.logger.Debugf("addrToken %s block %s", addrToken, txHash)
+				//tp.logger.Debugf("prevHashWant %s txPrevious %s", prevHashWant, txBlock.GetPrevious())
+				if txBlock.GetPrevious() == prevHashWant {
+					retTxs = append(retTxs, txBlock)
+
+					selectedTxHashes[txHash] = struct{}{}
+					// contract address's blocks are all independent, no previous
+					if !isCA {
+						addrTokenPrevHashes[addrToken] = txHash
+					}
+					inOrderTxNum++
+
+					// choose 1 tx in each loop
+					limit--
+					break LoopAccTx
+				} else {
+					notInOrderTxNum++
+				}
+			}
+			if accTxIter == nil {
+				addrTokenScanIters[addrToken] = accTxList.Back()
+			} else {
+				addrTokenScanIters[addrToken] = accTxIter
+			}
+
+			// check account token is skip or not
+			if inOrderTxNum == 0 {
+				delete(addrTokenNeedScans, addrToken)
+				if notInOrderTxNum > 0 {
+					tp.logger.Debugf("addrToken %s has txs %d not in order", addrToken, notInOrderTxNum)
+				}
+			}
+
+			if limit == 0 {
+				break LoopAddrToken
+			}
+		}
+
+		if limit == 0 {
+			break LoopMain
+		}
+	}
+
+	/*
+		for addrToken, hashes := range addrTokenSelectedTxHashes {
+			tp.logger.Debugf("addrToken %s has txs %d selected", addrToken, len(hashes))
+		}
+	*/
+
+	return retTxs
+}
+
 func (tp *PovTxPool) LastUpdated() time.Time {
 	return time.Unix(tp.lastUpdated, 0)
+}
+
+func (tp *PovTxPool) GetPendingTxNum() uint32 {
+	tp.txMu.RLock()
+	defer tp.txMu.RUnlock()
+
+	return uint32(len(tp.allTxs))
 }

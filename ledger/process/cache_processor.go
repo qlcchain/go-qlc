@@ -16,6 +16,7 @@ import (
 
 func (lv *LedgerVerifier) BlockCacheCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
+		lv.logger.Info("check cache block, ", b.GetHash())
 		if fn, ok := lv.checkCacheBlockFns[b.Type]; ok {
 			r, err := fn(lv, b)
 			if err != nil {
@@ -289,10 +290,20 @@ func checkCacheContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (P
 					return InvalidData, nil
 				}
 			} else {
-				lv.logger.Error("ProcessSend error")
+				lv.logger.Errorf("v1 ProcessSend error, block: %s, err: ", block.GetHash(), err)
 				return Other, err
 			}
 		case contract.ChainContractV2:
+			if types.IsRewardContractAddress(types.Address(block.GetLink())) {
+				h, err := v.DoGapPov(vmCtx, clone)
+				if err != nil {
+					lv.logger.Errorf("do gapPov error: %s", err)
+					return Other, err
+				}
+				if h != 0 {
+					return GapPovHeight, nil
+				}
+			}
 			if _, _, err := v.ProcessSend(vmCtx, clone); err == nil {
 				if bytes.EqualFold(block.Data, clone.Data) {
 					return Progress, nil
@@ -301,7 +312,7 @@ func checkCacheContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (P
 					return InvalidData, nil
 				}
 			} else {
-				lv.logger.Error("ProcessSend error")
+				lv.logger.Errorf("v2 ProcessSend error, block: %s, err: ", block.GetHash(), err)
 				return Other, err
 			}
 		default:
@@ -416,6 +427,7 @@ func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
 	}
 	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
+			lv.logger.Info("process cache block, ", state.GetHash())
 			err := lv.processCacheBlock(state, am, txn)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("%s, cache block:%s", err.Error(), state.GetHash().String()))
@@ -430,7 +442,6 @@ func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processCacheBlock(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
-	lv.logger.Debug("process block cache, ", block.GetHash())
 	if err := lv.l.AddBlockCache(block, txn); err != nil {
 		return err
 	}

@@ -29,6 +29,7 @@ const (
 	GapSmartContract
 	GapTransaction
 	GapTokenInfo
+	GapPovHeight
 	BalanceMismatch
 	UnReceivable
 	InvalidData
@@ -38,6 +39,7 @@ const (
 	InvalidTxOrder
 	BadConsensus
 	ReceiveRepeated
+	BadAuxHeader
 	Other
 )
 
@@ -73,6 +75,8 @@ func (r ProcessResult) String() string {
 		return "GapTransaction"
 	case GapTokenInfo:
 		return "GapTokenInfo"
+	case GapPovHeight:
+		return "GapPovHeight"
 	case BalanceMismatch:
 		return "BalanceMismatch"
 	case UnReceivable:
@@ -91,6 +95,8 @@ func (r ProcessResult) String() string {
 		return "BadConsensus"
 	case ReceiveRepeated:
 		return "ReceiveRepeated"
+	case BadAuxHeader:
+		return "BadAuxHeader"
 	default:
 		return "<invalid>"
 	}

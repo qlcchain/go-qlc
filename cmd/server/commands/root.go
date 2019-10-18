@@ -10,6 +10,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -50,6 +51,7 @@ var (
 	isProfileP    bool
 	noBootstrapP  bool
 	configParamsP string
+	testModeP     string
 
 	privateKey   cmdutil.Flag
 	account      cmdutil.Flag
@@ -59,6 +61,7 @@ var (
 	isProfile    cmdutil.Flag
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
+	testMode     cmdutil.Flag
 	//chainContext   *context.ChainContext
 	maxAccountSize = 100
 	logger         = qlclog.NewLogger("config_detail")
@@ -105,6 +108,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
+		rootCmd.PersistentFlags().StringVar(&testModeP, "testMode", "", "testing mode")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)
@@ -123,6 +127,11 @@ func addCommand() {
 }
 
 func start() error {
+	if testModeP != "" {
+		fmt.Println("GQLC_TEST_MODE:", testModeP)
+		common.SetTestMode(testModeP)
+	}
+
 	var accounts []*types.Account
 	chainContext := context.NewChainContext(cfgPathP)
 	fmt.Println("Run node id: ", chainContext.Id())
@@ -133,6 +142,37 @@ func start() error {
 	cfg, err := cm.Config()
 	if err != nil {
 		return err
+	}
+
+	if common.CheckTestMode("POV") {
+		cfg.AutoGenerateReceive = true
+		cfg.LogLevel = "info"
+		if common.CheckTestMode("DEBUG") {
+			cfg.LogLevel = "debug"
+		}
+
+		cfg.RPC.Enable = true
+		cfg.RPC.HTTPEnabled = true
+		cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
+		cfg.RPC.WSEnabled = true
+		cfg.RPC.WSEndpoint = "tcp4://0.0.0.0:29736"
+		cfg.RPC.IPCEnabled = true
+
+		cfg.P2P.Listen = "/ip4/0.0.0.0/tcp/29734"
+		if common.CheckTestMode("CFGBOOT") {
+		} else {
+			cfg.P2P.BootNodes = []string{
+				"/ip4/47.103.97.9/tcp/29734/ipfs/QmRULwy6G5VW63tS3LXSy2oPR1qZXMvut6mf2MPKnvpewb",
+				"/ip4/47.103.54.171/tcp/29734/ipfs/QmNUnsefyemyEBzPtNQYM699bDxBBdBcGjMHDNFh4nCqxW",
+			}
+		}
+
+		cfg.PoV.PovEnabled = true
+
+		err = cm.CommitAndSave()
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(configParamsP) > 0 {
@@ -172,7 +212,7 @@ func start() error {
 			return err
 		}
 
-		w := wallet.NewWalletStore(cfg)
+		w := wallet.NewWalletStore(cm.ConfigFile)
 		defer func() {
 			if w != nil {
 				_ = w.Close()
@@ -353,6 +393,13 @@ func run() {
 		Value: "",
 	}
 
+	testMode = cmdutil.Flag{
+		Name:  "testMode",
+		Must:  false,
+		Usage: "testing mode",
+		Value: "",
+	}
+
 	s := &ishell.Cmd{
 		Name: "run",
 		Help: "start qlc server",
@@ -373,6 +420,7 @@ func run() {
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
 			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
 			configParamsP = cmdutil.StringVar(c.Args, configParams)
+			testModeP = cmdutil.StringVar(c.Args, testMode)
 
 			err := start()
 			if err != nil {

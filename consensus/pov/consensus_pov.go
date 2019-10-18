@@ -25,7 +25,7 @@ type ConsensusPov interface {
 	PrepareHeader(header *types.PovHeader) error
 	FinalizeHeader(header *types.PovHeader) error
 	VerifyHeader(header *types.PovHeader) error
-	SealHeader(header *types.PovHeader, cbAccount *types.Account, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error
+	SealHeader(header *types.PovHeader, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error
 }
 
 func NewPovConsensus(mode int, chainR PovConsensusChainReader) ConsensusPov {

@@ -61,7 +61,6 @@ linters:
     - dupl
     - errcheck
     - funlen
-    - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
@@ -93,6 +92,7 @@ linters:
   # - godox
   # - maligned
   # - prealloc
+  # - gochecknoinits
 
 run:
   # timeout for analysis, e.g. 30s, 5m, default is 1m

@@ -99,7 +99,9 @@ func TestLedger_Rollback_ContractData(t *testing.T) {
 	t.Skip()
 	dir := filepath.Join(config.DefaultDataDir(), "ledger")
 	t.Log(dir)
-	l := ledger.NewLedger(dir)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	l := ledger.NewLedger(cm.ConfigFile)
 	lv := NewLedgerVerifier(l)
 
 	defer func() {

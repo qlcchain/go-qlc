@@ -1,11 +1,12 @@
 package relation
 
 import (
+	"context"
 	"encoding/base64"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/qlcchain/go-qlc/chain/context"
+	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -22,6 +23,11 @@ type Relation struct {
 	logger        *zap.SugaredLogger
 	addBlkChan    chan *types.StateBlock
 	deleteBlkChan chan types.Hash
+	syncBlkChan   chan *types.StateBlock
+	syncBlocks    []*types.StateBlock
+	syncDone      chan bool
+	ctx           context.Context
+	cancel        context.CancelFunc
 }
 
 type blocksHash struct {
@@ -41,6 +47,8 @@ type blocksMessage struct {
 	Timestamp int64
 }
 
+const batchMaxCount = 199
+
 var (
 	cache = make(map[string]*Relation)
 	lock  = sync.RWMutex{}
@@ -51,18 +59,24 @@ func NewRelation(cfgFile string) (*Relation, error) {
 	defer lock.Unlock()
 	if _, ok := cache[cfgFile]; !ok {
 		//store := new(db.DBSQL)
-		cc := context.NewChainContext(cfgFile)
+		cc := chaincontext.NewChainContext(cfgFile)
 		cfg, _ := cc.Config()
 		store, err := db.NewSQLDB(cfg)
 		if err != nil {
 			return nil, err
 		}
+		ctx, cancel := context.WithCancel(context.Background())
 		relation := &Relation{store: store,
 			eb:            cc.EventBus(),
 			handlerIds:    make(map[common.TopicType]string),
 			dir:           cfgFile,
-			addBlkChan:    make(chan *types.StateBlock, 102400),
-			deleteBlkChan: make(chan types.Hash, 65535),
+			addBlkChan:    make(chan *types.StateBlock, 100),
+			deleteBlkChan: make(chan types.Hash, 100),
+			syncBlkChan:   make(chan *types.StateBlock, 1024),
+			syncBlocks:    make([]*types.StateBlock, 0),
+			syncDone:      make(chan bool),
+			ctx:           ctx,
+			cancel:        cancel,
 			logger:        log.NewLogger("relation")}
 		go relation.processBlocks()
 		cache[cfgFile] = relation
@@ -80,6 +94,7 @@ func (r *Relation) Close() error {
 			return err
 		}
 		r.logger.Info("sqlite closed")
+		r.cancel()
 		delete(cache, r.dir)
 		return err
 	}
@@ -90,7 +105,10 @@ func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) (
 	condition := make(map[db.Column]interface{})
 	condition[db.ColumnAddress] = address.String()
 	var h []blocksHash
-	err := r.store.Read(db.TableBlockHash, condition, offset, limit, db.ColumnTimestamp, &h)
+	order := make(map[db.Column]bool)
+	order[db.ColumnTimestamp] = false
+	order[db.ColumnType] = false
+	err := r.store.Read(db.TableBlockHash, condition, offset, limit, order, &h)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +140,10 @@ func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
 
 func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 	var h []blocksHash
-	err := r.store.Read(db.TableBlockHash, nil, offset, limit, db.ColumnTimestamp, &h)
+	order := make(map[db.Column]bool)
+	order[db.ColumnTimestamp] = false
+	order[db.ColumnType] = false
+	err := r.store.Read(db.TableBlockHash, nil, offset, limit, order, &h)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +157,11 @@ func (r *Relation) PhoneBlocks(phone []byte, sender bool, limit int, offset int)
 	} else {
 		condition[db.ColumnReceiver] = phoneToString(phone)
 	}
+	order := make(map[db.Column]bool)
+	order[db.ColumnTimestamp] = false
+	order[db.ColumnType] = false
 	var m []blocksMessage
-	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, db.ColumnTimestamp, &m)
+	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, order, &m)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +172,10 @@ func (r *Relation) MessageBlocks(hash types.Hash, limit int, offset int) ([]type
 	condition := make(map[db.Column]interface{})
 	condition[db.ColumnMessage] = hash.String()
 	var m []blocksMessage
-	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, db.ColumnTimestamp, &m)
+	order := make(map[db.Column]bool)
+	order[db.ColumnTimestamp] = false
+	order[db.ColumnType] = false
+	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, order, &m)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +230,9 @@ func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
 }
 
 func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
+	if len(blocks) == 0 {
+		return nil
+	}
 	blksHashes := make([]*blocksHash, 0)
 	blksMessage := make([]*blocksMessage, 0)
 	//r.logger.Info("batch block count: ", len(blocks))
@@ -288,6 +318,8 @@ func blockType(bs []blocksType) map[string]uint64 {
 func (r *Relation) processBlocks() {
 	for {
 		select {
+		case <-r.ctx.Done():
+			return
 		case blk := <-r.addBlkChan:
 			if err := r.AddBlock(blk); err != nil {
 				r.logger.Error(err)
@@ -295,6 +327,17 @@ func (r *Relation) processBlocks() {
 		case blk := <-r.deleteBlkChan:
 			if err := r.DeleteBlock(blk); err != nil {
 				r.logger.Error(err)
+			}
+		case blk := <-r.syncBlkChan:
+			r.syncBlocks = append(r.syncBlocks, blk)
+			if len(r.syncBlocks) == batchMaxCount {
+				r.batchUpdateBlocks()
+				r.syncBlocks = r.syncBlocks[:0]
+			}
+		case <-r.syncDone:
+			if len(r.syncBlocks) > 0 {
+				r.batchUpdateBlocks()
+				r.syncBlocks = r.syncBlocks[:0]
 			}
 		}
 	}
@@ -304,23 +347,49 @@ func (r *Relation) waitAddBlocks(block *types.StateBlock) {
 	r.addBlkChan <- block
 }
 
+func (r *Relation) waitAddSyncBlocks(block *types.StateBlock, done bool) {
+	if done {
+		r.syncDone <- true
+	} else {
+		r.syncBlkChan <- block
+	}
+}
+
+func (r *Relation) batchUpdateBlocks() {
+	err := r.BatchUpdate(func(txn *sqlx.Tx) error {
+		if err := r.AddBlocks(txn, r.syncBlocks); err != nil {
+			r.logger.Errorf("batch add blocks error: %s", err)
+		}
+		return nil
+	})
+	if err != nil {
+		r.logger.Errorf("batch update blocks error: %s", err)
+	}
+}
+
 func (r *Relation) waitDeleteBlocks(hash types.Hash) {
 	r.deleteBlkChan <- hash
 }
 
 func (r *Relation) SetEvent() error {
-	if id, err := r.eb.Subscribe(common.EventAddRelation, r.waitAddBlocks); err != nil {
+	id, err := r.eb.Subscribe(common.EventAddRelation, r.waitAddBlocks)
+	if err != nil {
 		r.logger.Error(err)
 		return err
-	} else {
-		r.handlerIds[common.EventAddRelation] = id
 	}
-	if id, err := r.eb.Subscribe(common.EventDeleteRelation, r.waitDeleteBlocks); err != nil {
+	r.handlerIds[common.EventAddRelation] = id
+	id, err = r.eb.Subscribe(common.EventAddSyncBlocks, r.waitAddSyncBlocks)
+	if err != nil {
 		r.logger.Error(err)
 		return err
-	} else {
-		r.handlerIds[common.EventDeleteRelation] = id
 	}
+	r.handlerIds[common.EventAddSyncBlocks] = id
+	id, err = r.eb.Subscribe(common.EventDeleteRelation, r.waitDeleteBlocks)
+	if err != nil {
+		r.logger.Error(err)
+		return err
+	}
+	r.handlerIds[common.EventDeleteRelation] = id
 	return nil
 }
 

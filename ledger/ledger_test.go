@@ -20,7 +20,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	l := NewLedger(dir)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	l := NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()
@@ -40,8 +42,10 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 
 func TestLedger_Instance1(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	l1 := NewLedger(dir)
-	l2 := NewLedger(dir)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	l1 := NewLedger(cm.ConfigFile)
+	l2 := NewLedger(cm.ConfigFile)
 	t.Logf("l1:%v,l2:%v", l1, l2)
 	defer func() {
 		l1.Close()
@@ -58,8 +62,12 @@ func TestLedger_Instance1(t *testing.T) {
 func TestLedger_Instance2(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	dir2 := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	l1 := NewLedger(dir)
-	l2 := NewLedger(dir2)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	cm2 := config.NewCfgManager(dir2)
+	cm2.Load()
+	l1 := NewLedger(cm.ConfigFile)
+	l2 := NewLedger(cm2.ConfigFile)
 	defer func() {
 		l1.Close()
 		l2.Close()
@@ -131,8 +139,12 @@ func TestReleaseLedger(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
 	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
 
-	l1 := NewLedger(dir)
-	_ = NewLedger(dir2)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	cm2 := config.NewCfgManager(dir2)
+	cm2.Load()
+	l1 := NewLedger(cm.ConfigFile)
+	_ = NewLedger(cm2.ConfigFile)
 	defer func() {
 		//only release ledger1
 		l1.Close()

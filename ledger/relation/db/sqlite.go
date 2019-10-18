@@ -21,8 +21,8 @@ func openSqlite(cfg *config.Config) (*sqlx.DB, error) {
 		fmt.Println("connect sqlite error: ", err)
 		return nil, err
 	}
-	db.SetMaxOpenConns(200)
-	db.SetMaxIdleConns(100)
+	//db.SetMaxOpenConns(200)
+	//db.SetMaxIdleConns(100)
 
 	sqls := []string{
 		`CREATE TABLE IF NOT EXISTS BLOCKHASH

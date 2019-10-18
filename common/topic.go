@@ -12,11 +12,13 @@ const (
 	EventBroadcast         TopicType = "broadcast"
 	EventSendMsgToPeers    TopicType = "sendMsgToPeers"
 	EventPeersInfo         TopicType = "peersInfo"
-	EventSyncing           TopicType = "syncing"
+	EventSyncStatus        TopicType = "syncing"
+	EventGetBandwidthStats TopicType = "getBandwidthStats"
 	EventAddRelation       TopicType = "addRelation"
+	EventAddSyncBlocks     TopicType = "addSyncBlocks"
 	EventDeleteRelation    TopicType = "deleteRelation"
 	EventGenerateBlock     TopicType = "generateBlock"
-	EventRollbackUnchecked TopicType = "rollbackUnchecked"
+	EventRollback          TopicType = "rollback"
 	EventRestartChain      TopicType = "restartChain"
 
 	EventSendMsgToSingle TopicType = "sendMsgToSingle"
@@ -27,6 +29,16 @@ const (
 	EventPovBulkPullReq  TopicType = "povBulkPullReq"
 	EventPovBulkPullRsp  TopicType = "povBulkPullRsp"
 	EventPovSyncState    TopicType = "povSyncState"
+
+	EventPovConnectBestBlock    TopicType = "povConnectBestBlock"
+	EventPovDisconnectBestBlock TopicType = "povDisconnectBestBlock"
+	EventRpcSyncCall            TopicType = "rpcSyncCall"
+	EventFrontiersReq           TopicType = "FrontiersReq"
+	EventFrontierConsensus      TopicType = "frontierConsensus"
+	EventFrontierConfirmed      TopicType = "frontierConfirmed"
+	EventSyncStateChange        TopicType = "syncStateChange"
+	EventConsensusSyncFinished  TopicType = "consensusSyncFinished"
+	EventRepresentativeNode     TopicType = "representativeNode"
 )
 
 // Sync state
@@ -35,24 +47,26 @@ type SyncState uint
 const (
 	SyncNotStart SyncState = iota
 	Syncing
-	Syncdone
+	SyncDone
+	SyncFinish
 )
 
 var syncStatus = [...]string{
 	SyncNotStart: "SyncNotStart",
 	Syncing:      "Synchronising",
-	Syncdone:     "Syncdone",
+	SyncDone:     "SyncDone",
+	SyncFinish:   "SyncFinish",
 }
 
 func (s SyncState) String() string {
-	if s > Syncdone {
+	if s > SyncFinish {
 		return "unknown sync state"
 	}
 	return syncStatus[s]
 }
 
 func (s SyncState) IsSyncExited() bool {
-	if s == Syncdone {
+	if s == SyncDone {
 		return true
 	}
 

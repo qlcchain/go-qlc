@@ -10,13 +10,14 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
+	ic "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
-
-	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 // identityConfig initializes a new identity.
@@ -46,6 +47,15 @@ func identityConfig() (string, string, error) {
 func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
+		if common.CheckTestMode("POV") {
+			if runtime.GOOS == "darwin" {
+				return filepath.Join(home, "Library", "Application Support", cfgDir+"_pov")
+			} else if runtime.GOOS == "windows" {
+				return filepath.Join(home, "AppData", "Roaming", cfgDir+"_pov")
+			} else {
+				return filepath.Join(home, nixCfgDir+"_pov")
+			}
+		}
 		if runtime.GOOS == "darwin" {
 			return filepath.Join(home, "Library", "Application Support", cfgDir)
 		} else if runtime.GOOS == "windows" {
@@ -60,7 +70,8 @@ func DefaultDataDir() string {
 func defaultIPCEndpoint(dir string) string {
 	ipc := filepath.Join(dir, ipcName)
 	if runtime.GOOS == "windows" {
-		return fmt.Sprintf(`\\.\pipe\%s`, ipcName)
+		prefix := random.RandomHexString(2)
+		return fmt.Sprintf(`\\.\pipe\%s-%s`, prefix, ipcName)
 	}
 	return ipc
 }

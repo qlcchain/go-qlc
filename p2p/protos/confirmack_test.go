@@ -64,8 +64,7 @@ func TestConfirmAckBlockPacket(t *testing.T) {
 		Signature: sign,
 		Sequence:  0,
 	}
-	rsp.Hash = append(rsp.Hash, blk1.GetHash())
-	rsp.Hash = append(rsp.Hash, blk2.GetHash())
+	rsp.Hash = append(rsp.Hash, blk1.GetHash(), blk2.GetHash())
 
 	bytes, err := ConfirmAckBlockToProto(&rsp)
 	if err != nil {

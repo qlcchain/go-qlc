@@ -16,10 +16,8 @@ func PublishBlockToProto(publish *PublishBlock) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	blockType := publish.Blk.GetType()
 	bpPb := &pb.PublishBlock{
-		Blocktype: uint32(blockType),
-		Block:     blkData,
+		Block: blkData,
 	}
 	data, err := proto.Marshal(bpPb)
 	if err != nil {

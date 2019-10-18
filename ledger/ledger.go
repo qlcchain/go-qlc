@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -88,7 +89,10 @@ const (
 	idPrefixUncheckedTokenInfo
 	idPrefixBlockCacheAccount
 	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
-	idPrefixSyncBlock
+	idPrefixUnconfirmedSync
+	idPrefixUncheckedSync
+	idPrefixSyncCacheBlock
+	idPrefixUncheckedPovHeight
 )
 
 var (
@@ -96,11 +100,15 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 8
+const version = 9
 
-func NewLedger(dir string) *Ledger {
+func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
 	defer lock.Unlock()
+	cc := chainctx.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
+	dir := cfg.LedgerDir()
+
 	if _, ok := cache[dir]; !ok {
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
@@ -111,7 +119,7 @@ func NewLedger(dir string) *Ledger {
 			Store:          store,
 			dir:            dir,
 			RollbackChan:   make(chan types.Hash, 65535),
-			EB:             event.GetEventBus(dir),
+			EB:             cc.EventBus(),
 			ctx:            ctx,
 			cancel:         cancel,
 			representCache: NewRepresentationCache(),
@@ -168,7 +176,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8)}
+		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8), new(MigrationV8ToV9)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
@@ -192,7 +200,7 @@ func (l *Ledger) initCache() error {
 	}
 
 	go func() {
-		ticker := time.NewTicker(15 * time.Second)
+		ticker := time.NewTicker(5 * time.Minute)
 		for {
 			select {
 			case <-l.ctx.Done():
@@ -215,7 +223,7 @@ func (l *Ledger) processCache() {
 				l.logger.Error(err)
 			}
 		}()
-		if err := l.representCache.cacheToConfirmed(txn); err != nil {
+		if err := l.representCache.memoryToConfirmed(txn); err != nil {
 			l.logger.Errorf("cache to confirmed error : %s", err)
 		}
 	}
@@ -239,6 +247,10 @@ func (l *Ledger) Empty(txns ...db.StoreTxn) (bool, error) {
 
 func (l *Ledger) DBStore() db.Store {
 	return l.Store
+}
+
+func (l *Ledger) EventBus() event.EventBus {
+	return l.EB
 }
 
 // BatchUpdate MUST pass the same txn
@@ -268,6 +280,7 @@ func (l *Ledger) BatchView(fn func(txn db.StoreTxn) error) error {
 	if err := fn(txn); err != nil {
 		return err
 	}
+
 	return txn.Commit(nil)
 }
 
@@ -517,6 +530,48 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,
 		Timestamp:      common.TimeNow().Unix(),
+	}
+	if prk != nil {
+		acc := types.NewAccount(prk)
+		addr := acc.Address()
+		if addr.String() != account.String() {
+			return nil, fmt.Errorf("change address (%s) is mismatch privateKey (%s)", account.String(), acc.Address().String())
+		}
+		sb.Signature = acc.Sign(sb.GetHash())
+		sb.Work = l.generateWork(sb.Root())
+	}
+	return &sb, nil
+}
+
+func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error) {
+	am, err := l.GetAccountMeta(account)
+	if err != nil {
+		return nil, fmt.Errorf("account[%s] is not exist", account.String())
+	}
+	tm := am.Token(common.ChainToken())
+	if tm == nil {
+		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
+	}
+	prev, err := l.GetStateBlock(tm.Header)
+	if err != nil {
+		return nil, fmt.Errorf("token header block not found")
+	}
+
+	sb := types.StateBlock{
+		Type:           types.Online,
+		Address:        account,
+		Balance:        tm.Balance,
+		Vote:           prev.GetVote(),
+		Oracle:         prev.GetOracle(),
+		Network:        prev.GetNetwork(),
+		Storage:        prev.GetStorage(),
+		Previous:       tm.Header,
+		Link:           types.ZeroHash,
+		Representative: tm.Representative,
+		Token:          tm.Type,
+		Extra:          types.ZeroHash,
+		Timestamp:      common.TimeNow().Unix(),
+		PoVHeight:      povHeight,
 	}
 	if prk != nil {
 		acc := types.NewAccount(prk)

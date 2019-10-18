@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	confirmReqMaxTimes = 30
+	confirmReqMaxTimes = 3
 	confirmReqInterval = 60
 )
 
@@ -135,6 +135,22 @@ func (act *ActiveTrx) updatePerformanceTime(hash types.Hash, curTime int64, conf
 	}
 }
 
+func (act *ActiveTrx) cleanFrontierVotes() {
+	dps := act.dps
+
+	act.roots.Range(func(key, value interface{}) bool {
+		el := value.(*Election)
+		block := el.status.winner
+		hash := block.GetHash()
+
+		if dps.isReceivedFrontier(hash) {
+			act.roots.Delete(el.vote.id)
+		}
+
+		return true
+	})
+}
+
 func (act *ActiveTrx) checkVotes() {
 	nowTime := time.Now().Unix()
 	dps := act.dps
@@ -151,19 +167,26 @@ func (act *ActiveTrx) checkVotes() {
 		hash := block.GetHash()
 
 		el.announcements++
-		if el.announcements == confirmReqMaxTimes {
+		if el.announcements == confirmReqMaxTimes || el.status.winner.Type == types.Online {
 			if !el.ifValidAndSetInvalid() {
 				return true
 			}
 
-			dps.logger.Infof("block[%s] was not confirmed after 30 times resend", hash)
+			dps.logger.Infof("block[%s] was not confirmed after %d times resend", hash, confirmReqMaxTimes)
 			act.roots.Delete(el.vote.id)
-			dps.deleteBlockCache(block)
-			dps.rollbackUncheckedFromDb(hash)
+			_ = dps.lv.Rollback(hash)
 			el.cleanBlockInfo()
+			dps.syncBlockRollback(hash)
+
+			if dps.isReceivedFrontier(hash) {
+				dps.logger.Infof("sync finish abnormally because of frontier not confirmed")
+				dps.eb.Publish(common.EventConsensusSyncFinished)
+			}
 		} else {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)
-			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, block)
+			confirmReqBlocks := make([]*types.StateBlock, 0)
+			confirmReqBlocks = append(confirmReqBlocks, block)
+			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmReqBlocks)
 		}
 
 		return true
@@ -185,6 +208,25 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 	} else {
 		dps.logger.Debugf("%s, %v", hash, err)
 	}
+}
+
+func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
+	hash := block.GetHash()
+	dps := act.dps
+	dps.logger.Infof("sync block[%s] confirmed", hash)
+
+	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
+		err := dps.lv.BlockSyncProcess(block)
+		if err != nil {
+			dps.logger.Error(err)
+		} else {
+			dps.logger.Debugf("save block[%s]", hash)
+		}
+	} else {
+		dps.logger.Debugf("%s, %v", hash, err)
+	}
+
+	dps.chainFinished(hash)
 }
 
 func (act *ActiveTrx) rollBack(blocks []*types.StateBlock) {
@@ -214,6 +256,14 @@ func (act *ActiveTrx) vote(vi *voteInfo) {
 		el := v.(*Election)
 		el.voteAction(vi)
 	}
+}
+
+func (act *ActiveTrx) voteFrontier(vi *voteInfo) (confirmed bool) {
+	if v, ok := act.dps.hash2el.Load(vi.hash); ok {
+		el := v.(*Election)
+		return el.voteFrontier(vi)
+	}
+	return false
 }
 
 func (act *ActiveTrx) isVoting(block *types.StateBlock) bool {

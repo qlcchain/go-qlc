@@ -38,6 +38,7 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 	checkBlockFns[types.Send] = checkSendBlock
 	checkBlockFns[types.Receive] = checkReceiveBlock
 	checkBlockFns[types.Change] = checkChangeBlock
+	checkBlockFns[types.Online] = checkChangeBlock
 	checkBlockFns[types.Open] = checkOpenBlock
 	checkBlockFns[types.ContractSend] = checkContractSendBlock
 	checkBlockFns[types.ContractReward] = checkContractReceiveBlock
@@ -46,6 +47,7 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 	checkCacheBlockFns[types.Send] = checkCacheSendBlock
 	checkCacheBlockFns[types.Receive] = checkCacheReceiveBlock
 	checkCacheBlockFns[types.Change] = checkCacheChangeBlock
+	checkCacheBlockFns[types.Online] = checkCacheChangeBlock
 	checkCacheBlockFns[types.Open] = checkCacheOpenBlock
 	checkCacheBlockFns[types.ContractSend] = checkCacheContractSendBlock
 	checkCacheBlockFns[types.ContractReward] = checkCacheContractReceiveBlock
@@ -54,6 +56,7 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 	checkSyncBlockFns[types.Send] = checkSendBlock
 	checkSyncBlockFns[types.Receive] = checkSyncReceiveBlock
 	checkSyncBlockFns[types.Change] = checkChangeBlock
+	checkSyncBlockFns[types.Online] = checkChangeBlock
 	checkSyncBlockFns[types.Open] = checkSyncOpenBlock
 	checkSyncBlockFns[types.ContractSend] = checkContractSendBlock
 	checkSyncBlockFns[types.ContractReward] = checkSyncContractReceiveBlock
@@ -79,6 +82,7 @@ func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
 
 func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
+		lv.logger.Info("check block, ", b.GetHash())
 		if fn, ok := lv.checkBlockFns[b.Type]; ok {
 			r, err := fn(lv, b)
 			if err != nil {
@@ -349,10 +353,20 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return InvalidData, nil
 				}
 			} else {
-				lv.logger.Error("ProcessSend error")
+				lv.logger.Errorf("v1 ProcessSend error, block: %s, err: ", block.GetHash(), err)
 				return Other, err
 			}
 		case contract.ChainContractV2:
+			if types.IsRewardContractAddress(types.Address(block.GetLink())) {
+				h, err := v.DoGapPov(vmCtx, clone)
+				if err != nil {
+					lv.logger.Errorf("do gapPov error: %s", err)
+					return Other, err
+				}
+				if h != 0 {
+					return GapPovHeight, nil
+				}
+			}
 			if _, _, err := v.ProcessSend(vmCtx, clone); err == nil {
 				if bytes.EqualFold(block.Data, clone.Data) {
 					return Progress, nil
@@ -361,7 +375,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return InvalidData, nil
 				}
 			} else {
-				lv.logger.Error("ProcessSend error")
+				lv.logger.Errorf("v2 ProcessSend error, block: %s, err: ", block.GetHash(), err)
 				return Other, err
 			}
 		default:
@@ -450,6 +464,7 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (Pro
 func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 		if state, ok := block.(*types.StateBlock); ok {
+			lv.logger.Info("process block, ", state.GetHash())
 			err := lv.processStateBlock(state, txn)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
@@ -464,7 +479,6 @@ func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
 }
 
 func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
-	lv.logger.Debug("process block, ", block.GetHash())
 	if err := lv.l.AddStateBlock(block, txn); err != nil {
 		return err
 	}

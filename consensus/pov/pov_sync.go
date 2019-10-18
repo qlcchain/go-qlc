@@ -1,7 +1,6 @@
 package pov
 
 import (
-	"math/big"
 	"sync"
 	"time"
 
@@ -22,9 +21,10 @@ const (
 	checkPeerStatusTime       = 30
 	forceSyncTimeInSec        = 60
 
-	maxSyncBlockPerReq = 100
-	maxPullBlockPerReq = 100
-	maxPullTxPerReq    = 100
+	maxSyncBlockPerReq = 1000
+	maxPullBlockPerReq = 1000
+	maxPullTxPerReq    = 1000
+	maxSyncBlockInQue  = 3000
 )
 
 type PovSyncerChainReader interface {
@@ -32,7 +32,7 @@ type PovSyncerChainReader interface {
 	LatestBlock() *types.PovBlock
 	GetBlockLocator(hash types.Hash) []*types.Hash
 	LocateBestBlock(locator []*types.Hash) *types.PovBlock
-	GetBlockTDByHash(hash types.Hash) *big.Int
+	GetBlockTDByHash(hash types.Hash) *types.PovTD
 }
 
 type PovSyncer struct {
@@ -50,12 +50,15 @@ type PovSyncer struct {
 	syncStartTime time.Time
 	syncEndTime   time.Time
 
+	syncSeqID     atomic.Uint32
 	syncPeerID    string
 	syncToHeight  uint64
 	syncCurHeight uint64
 	syncRcvHeight uint64
 	syncReqHeight uint64
 	syncBlocks    map[uint64]*PovSyncBlock
+
+	lastReqTxTime atomic.Int64 // time.Time.Unix()
 
 	messageCh chan *PovSyncMessage
 	eventCh   chan *PovSyncEvent
@@ -64,7 +67,6 @@ type PovSyncer struct {
 
 type PovSyncMessage struct {
 	msgValue interface{}
-	msgHash  types.Hash
 	msgPeer  string
 }
 
@@ -164,12 +166,12 @@ func (ss *PovSyncer) mainLoop() {
 	}
 }
 
-func (ss *PovSyncer) onPovBulkPullReq(req *protos.PovBulkPullReq, msgHash types.Hash, msgPeer string) {
-	ss.messageCh <- &PovSyncMessage{msgValue: req, msgHash: msgHash, msgPeer: msgPeer}
+func (ss *PovSyncer) onPovBulkPullReq(req *protos.PovBulkPullReq, msgPeer string) {
+	ss.messageCh <- &PovSyncMessage{msgValue: req, msgPeer: msgPeer}
 }
 
-func (ss *PovSyncer) onPovBulkPullRsp(rsp *protos.PovBulkPullRsp, msgHash types.Hash, msgPeer string) {
-	ss.messageCh <- &PovSyncMessage{msgValue: rsp, msgHash: msgHash, msgPeer: msgPeer}
+func (ss *PovSyncer) onPovBulkPullRsp(rsp *protos.PovBulkPullRsp, msgPeer string) {
+	ss.messageCh <- &PovSyncMessage{msgValue: rsp, msgPeer: msgPeer}
 }
 
 func (ss *PovSyncer) processMessage(msg *PovSyncMessage) {
@@ -405,13 +407,17 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 		}
 
 		if ss.syncPeerID != msg.msgPeer {
-			ss.logger.Infof("recv PovBulkPullRsp from peer %s is not sync peer", msg.msgPeer)
+			ss.logger.Infof("recv PovBulkPullRsp but peer %s is not sync peer", msg.msgPeer)
 			return
 		}
 
 		syncPeer := ss.FindPeerWithStatus(msg.msgPeer, peerStatusGood)
 		if syncPeer == nil {
-			ss.logger.Infof("recv PovBulkPullRsp from peer %s is not exist", msg.msgPeer)
+			ss.logger.Infof("recv PovBulkPullRsp but peer %s is not exist", msg.msgPeer)
+			return
+		}
+		if syncPeer.syncSeqID != ss.syncSeqID.Load() {
+			ss.logger.Infof("recv PovBulkPullRsp but syncSeqID is not equal, %d, %d", syncPeer.syncSeqID, ss.syncSeqID.Load())
 			return
 		}
 
@@ -450,7 +456,7 @@ func (ss *PovSyncer) setInitState(st common.SyncState) {
 	ss.initSyncState = st
 	if st == common.Syncing {
 		ss.syncStartTime = time.Now()
-	} else if st == common.Syncdone {
+	} else if st == common.SyncDone {
 		ss.syncEndTime = time.Now()
 		usedTime := ss.syncEndTime.Sub(ss.syncStartTime)
 		ss.logger.Infof("pov init sync used time: %s", usedTime)
@@ -526,6 +532,10 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		return
 	}
 
+	if time.Now().Unix() < (ss.lastReqTxTime.Load() + 15) {
+		return
+	}
+
 	var peer *PovSyncPeer
 	if peerID != "" {
 		peer = ss.FindPeerWithStatus(peerID, peerStatusGood)
@@ -537,26 +547,10 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 		return
 	}
 
-	for len(reqTxHashes) > 0 {
-		sendHashNum := 0
-		if len(reqTxHashes) > maxPullTxPerReq {
-			sendHashNum = maxPullTxPerReq
-		} else {
-			sendHashNum = len(reqTxHashes)
-		}
+	ss.logger.Infof("request txs %d from peer %s", len(reqTxHashes), peer.peerID)
 
-		sendTxHashes := reqTxHashes[0:sendHashNum]
-
-		req := new(protos.BulkPullReqPacket)
-		req.PullType = protos.PullTypeBatch
-		req.Hashes = sendTxHashes
-		req.Count = uint32(len(sendTxHashes))
-
-		ss.logger.Debugf("request txs %d from peer %s", len(sendTxHashes), peer.peerID)
-		ss.eb.Publish(common.EventSendMsgToSingle, p2p.BulkPullRequest, req, peer.peerID)
-
-		reqTxHashes = reqTxHashes[sendHashNum:]
-	}
+	ss.eb.Publish(common.EventFrontiersReq, peer.peerID)
+	ss.lastReqTxTime.Store(time.Now().Unix())
 }
 
 func (ss *PovSyncer) absDiffHeight(lhs uint64, rhs uint64) uint64 {

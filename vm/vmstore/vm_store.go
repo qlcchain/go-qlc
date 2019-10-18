@@ -63,6 +63,10 @@ func (v *VMContext) GetLogger() *zap.SugaredLogger {
 	return v.logger
 }
 
+func (v *VMContext) GetLedger() *ledger.Ledger {
+	return v.ledger
+}
+
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
 	if _, err := v.ledger.HasAccountMeta(address); err == nil {
 		return true, nil
@@ -231,4 +235,8 @@ func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
 
 func (v *VMContext) GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error) {
 	return v.ledger.GetPovMinerStat(dayIndex)
+}
+
+func (v *VMContext) GetPovTxLookup(txHash types.Hash) (*types.PovTxLookup, error) {
+	return v.ledger.GetPovTxLookup(txHash)
 }

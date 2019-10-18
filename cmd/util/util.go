@@ -47,7 +47,14 @@ func StringVar(rawArgs []string, args Flag) string {
 func StringSliceVar(rawArgs []string, args Flag) []string {
 	i := sliceIndex(rawArgs, prefix+args.Name)
 	if i < 0 {
-		return args.Value.([]string)
+		s, ok := args.Value.(string)
+		if !ok {
+			return nil
+		}
+		if len(s) <= 0 {
+			return nil
+		}
+		return strings.Split(s, ",")
 	}
 	s := rawArgs[i+1]
 	return strings.Split(s, ",")
@@ -71,7 +78,14 @@ func BoolVar(rawArgs []string, args Flag) bool {
 	if i < 0 {
 		return args.Value.(bool)
 	}
-	return true
+
+	s := rawArgs[i+1]
+	c, err := strconv.ParseBool(s)
+	if err != nil {
+		return false
+	}
+
+	return c
 }
 
 func CheckArgs(c *ishell.Context, args []Flag) error {

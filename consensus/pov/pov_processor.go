@@ -132,17 +132,25 @@ func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
 }
 
 func (bp *PovBlockProcessor) Start() error {
+	if bp.ledger != nil {
+		ebL := bp.ledger.EventBus()
+		id, err := ebL.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
+		if err != nil {
+			return err
+		}
+		bp.handlerIds[common.EventAddRelation] = id
+		id, err = ebL.Subscribe(common.EventAddSyncBlocks, bp.onAddSyncStateBlock)
+		if err != nil {
+			return err
+		}
+		bp.handlerIds[common.EventAddSyncBlocks] = id
+	}
 	if bp.eb != nil {
-		if id, err := bp.eb.Subscribe(common.EventAddRelation, bp.onAddStateBlock); err == nil {
-			bp.handlerIds[common.EventAddRelation] = id
-		} else {
+		id, err := bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState)
+		if err != nil {
 			return err
 		}
-		if id, err := bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState); err == nil {
-			bp.handlerIds[common.EventPovSyncState] = id
-		} else {
-			return err
-		}
+		bp.handlerIds[common.EventPovSyncState] = id
 	}
 
 	common.Go(bp.loop)
@@ -155,11 +163,21 @@ func (bp *PovBlockProcessor) Init() error {
 }
 
 func (bp *PovBlockProcessor) Stop() error {
+	if bp.ledger != nil {
+		ebL := bp.ledger.EventBus()
+		err := ebL.Unsubscribe(common.EventAddRelation, bp.handlerIds[common.EventAddRelation])
+		if err != nil {
+			bp.logger.Error(err)
+		}
+		err = ebL.Unsubscribe(common.EventAddSyncBlocks, bp.handlerIds[common.EventAddSyncBlocks])
+		if err != nil {
+			bp.logger.Error(err)
+		}
+	}
 	if bp.eb != nil {
-		for k, v := range bp.handlerIds {
-			if err := bp.eb.Unsubscribe(k, v); err != nil {
-				bp.logger.Error(err)
-			}
+		err := bp.eb.Unsubscribe(common.EventPovSyncState, bp.handlerIds[common.EventPovSyncState])
+		if err != nil {
+			bp.logger.Error(err)
 		}
 	}
 
@@ -192,6 +210,13 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 			bp.releaseTxPendingBlock(pendingBlock)
 		}
 	}
+}
+
+func (bp *PovBlockProcessor) onAddSyncStateBlock(tx *types.StateBlock, done bool) {
+	if done {
+		return
+	}
+	bp.onAddStateBlock(tx)
 }
 
 func (bp *PovBlockProcessor) onPovSyncState(state common.SyncState) {
@@ -304,6 +329,7 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	block := blockSrc.block
 	blockHash := blockSrc.block.GetHash()
 	bp.logger.Debugf("process block, %d/%s", blockSrc.block.GetHeight(), blockHash)
+	//bp.logger.Debugf("block: %+v", blockSrc.block)
 
 	// check duplicate block
 	if bp.HasOrphanBlock(blockHash) {
@@ -584,7 +610,9 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *P
 
 	bp.pendingBlocks[blockHash] = pendingBlock
 
-	bp.syncer.requestTxsByHashes(reqTxHashes, blockSrc.peerID)
+	if len(reqTxHashes) > 0 {
+		bp.syncer.requestTxsByHashes(reqTxHashes, blockSrc.peerID)
+	}
 }
 
 func (bp *PovBlockProcessor) removeTxPendingBlockNoLock(pendingBlock *PovPendingBlock) {
@@ -652,7 +680,9 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 		}
 	}
 
-	bp.syncer.requestTxsByHashes(reqTxHashes, "")
+	if len(reqTxHashes) > 0 {
+		bp.syncer.requestTxsByHashes(reqTxHashes, "")
+	}
 }
 
 func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock) {
