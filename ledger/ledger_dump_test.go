@@ -3,6 +3,7 @@ package ledger
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
@@ -63,4 +64,5 @@ func TestLedger_dump(t *testing.T) {
 	if _, err := l.Dump(); err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(2 * time.Second)
 }
