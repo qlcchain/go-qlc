@@ -49,7 +49,6 @@ require (
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1
-	github.com/prometheus/common v0.4.0
 	github.com/qlcchain/jsonrpc2 v0.0.5
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
