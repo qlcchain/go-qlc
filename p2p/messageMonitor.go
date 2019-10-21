@@ -23,6 +23,7 @@ type peerPullRsp struct {
 	pullRspTimer   *time.Timer
 	pullRspHash    types.Hash
 	pullRspStartCh chan bool
+	pullRspQuitCh  chan bool
 }
 
 //  Message Type
