@@ -4,12 +4,13 @@ import (
 	"context"
 	"sync"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
 )
 
 func createSubscription(ctx context.Context, fn func(notifier *rpc.Notifier, subscription *rpc.Subscription)) (*rpc.Subscription, error) {

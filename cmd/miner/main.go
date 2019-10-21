@@ -11,14 +11,15 @@ import (
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	rpc "github.com/qlcchain/jsonrpc2"
+	"github.com/rifflock/lfshook"
+	"github.com/sirupsen/logrus"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
-	rpc "github.com/qlcchain/jsonrpc2"
-	"github.com/rifflock/lfshook"
-	"github.com/sirupsen/logrus"
 )
 
 var flagNodeUrl string

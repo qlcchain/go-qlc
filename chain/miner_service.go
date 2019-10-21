@@ -12,9 +12,10 @@ import (
 
 	"github.com/qlcchain/go-qlc/consensus/pov"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/miner"
-	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
 )

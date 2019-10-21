@@ -14,9 +14,10 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/spf13/viper"
 	"gopkg.in/validator.v2"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 type CfgManager struct {

@@ -5,14 +5,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/rpc/api"
 	rpc "github.com/qlcchain/jsonrpc2"
 
+	"github.com/qlcchain/go-qlc/rpc/api"
+
 	"github.com/abiosoft/ishell"
+	"github.com/spf13/cobra"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
-	"github.com/spf13/cobra"
 )
 
 func repReward() {

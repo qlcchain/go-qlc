@@ -13,8 +13,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/qlcchain/go-qlc/common/types"
 	"gopkg.in/validator.v2"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 // qlc address validator

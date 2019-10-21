@@ -10,9 +10,10 @@ import (
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
+	"github.com/spf13/cobra"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
-	"github.com/spf13/cobra"
 )
 
 func repRewardRecvPend() {

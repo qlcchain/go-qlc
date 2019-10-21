@@ -14,8 +14,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/qlcchain/go-qlc/crypto"
 	"golang.org/x/crypto/scrypt"
+
+	"github.com/qlcchain/go-qlc/crypto"
 )
 
 const (

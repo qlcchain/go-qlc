@@ -13,8 +13,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/qlcchain/go-qlc/common/simplejson"
 	"github.com/willf/bitset"
+
+	"github.com/qlcchain/go-qlc/common/simplejson"
 )
 
 const (

@@ -4,10 +4,11 @@ import (
 	"fmt"
 
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 	cutil "github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
-	rpc "github.com/qlcchain/jsonrpc2"
 )
 
 func addPovAccountInfoCmdByShell(parentCmd *ishell.Cmd) {

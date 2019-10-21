@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+
 	"github.com/qlcchain/go-qlc/config"
 )
 

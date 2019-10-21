@@ -18,9 +18,10 @@ import (
 	"gitlab.com/samli88/go-x11-hash"
 	"golang.org/x/crypto/scrypt"
 
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func init() {

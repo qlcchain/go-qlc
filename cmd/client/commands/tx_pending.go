@@ -11,8 +11,9 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/abiosoft/ishell"
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/spf13/cobra"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func addTxPendingCmdByShell(parentCmd *ishell.Cmd) {

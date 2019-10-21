@@ -1,12 +1,13 @@
 package consensus
 
 import (
+	"go.uber.org/atomic"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/atomic"
-	"go.uber.org/zap"
 )
 
 type ConsensusAlgorithm interface {

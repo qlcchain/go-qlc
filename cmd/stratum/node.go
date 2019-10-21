@@ -3,10 +3,11 @@ package main
 import (
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/rpc/api"
 	rpc "github.com/qlcchain/jsonrpc2"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
 type NodeClient struct {

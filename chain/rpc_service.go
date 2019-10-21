@@ -10,10 +10,11 @@ package chain
 import (
 	"errors"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/rpc"
-	"go.uber.org/zap"
 )
 
 type RPCService struct {

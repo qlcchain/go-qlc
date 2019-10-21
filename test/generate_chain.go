@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/qlcchain/go-qlc/chain"
 	rpc "github.com/qlcchain/jsonrpc2"
 
+	"github.com/qlcchain/go-qlc/chain"
+
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
 )

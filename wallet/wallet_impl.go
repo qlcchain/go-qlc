@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -24,7 +26,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/monitor"
-	"go.uber.org/zap"
 )
 
 const (

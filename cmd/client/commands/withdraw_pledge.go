@@ -16,9 +16,10 @@ import (
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
+	"github.com/spf13/cobra"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc/api"
-	"github.com/spf13/cobra"
 )
 
 func withdrawPledge() {

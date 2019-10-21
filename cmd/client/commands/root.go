@@ -13,8 +13,9 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
-	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/spf13/cobra"
+
+	"github.com/qlcchain/go-qlc/cmd/util"
 )
 
 var (
