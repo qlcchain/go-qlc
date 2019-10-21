@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"math/big"
 	"sync"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -21,13 +22,21 @@ func GeneratePovCoinbase() *types.Account {
 	return povCoinbaseAcc
 }
 
-func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock, *types.PovTD) {
-	if prevBlock == nil {
-		genesis := common.GenesisPovBlock()
-		prevBlock = &genesis
-	}
+func GenerateGenesisPovBlock() (*types.PovBlock, *types.PovTD) {
+	genBlk := common.GenesisPovBlock()
 
-	prevTD := prevBlock.Header.GetAlgoTargetInt()
+	curWorkAlgo := types.CalcWorkIntToBigNum(genBlk.Header.GetAlgoTargetInt())
+	genTD := new(types.PovTD)
+	genTD.Chain = *curWorkAlgo
+
+	return &genBlk, genTD
+}
+
+func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock, *types.PovTD) {
+	genBlk, genTD := GenerateGenesisPovBlock()
+	if prevBlock == nil {
+		prevBlock = genBlk
+	}
 
 	block := prevBlock.Clone()
 	block.Header.BasHdr.Timestamp = prevBlock.GetTimestamp() + 1
@@ -62,7 +71,8 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 	block.Header.BasHdr.Hash = block.ComputeHash()
 
 	nextTD := types.NewPovTD()
-	nextTD.Chain.AddBigInt(prevTD, prevTD)
+	tdUint := genTD.Chain.Int.Uint64() * block.GetHeight()
+	nextTD.Chain.AddBigInt(big.NewInt(0), big.NewInt(int64(tdUint)))
 
 	return block, nextTD
 }
