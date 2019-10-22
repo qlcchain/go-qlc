@@ -272,7 +272,7 @@ func (dps *DPoS) Start() {
 			dps.logger.Infof("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 			dps.curPovHeight = pb.Header.BasHdr.Height
 
-			//need calculate heart num, so use the pov height to trigger online
+			// need calculate heart num, so use the pov height to trigger online
 			if dps.curPovHeight%2 == 0 {
 				go func() {
 					err := dps.findOnlineRepresentatives()
