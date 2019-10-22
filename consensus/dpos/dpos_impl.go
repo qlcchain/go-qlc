@@ -273,18 +273,18 @@ func (dps *DPoS) Start() {
 			dps.logger.Infof("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 			dps.curPovHeight = pb.Header.BasHdr.Height
 
-			// need calculate heart num, so use the pov height to trigger online
-			if dps.curPovHeight%2 == 0 {
-				go func() {
-					err := dps.findOnlineRepresentatives()
-					if err != nil {
-						dps.logger.Error(err)
-					}
-					dps.cleanOnlineReps()
-				}()
-			}
-
 			if dps.povSyncState == common.SyncDone {
+				// need calculate heart num, so use the pov height to trigger online
+				if dps.curPovHeight%2 == 0 {
+					go func() {
+						err := dps.findOnlineRepresentatives()
+						if err != nil {
+							dps.logger.Error(err)
+						}
+						dps.cleanOnlineReps()
+					}()
+				}
+
 				if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
 					dps.curPovHeight%common.DPosOnlinePeriod >= common.DPosOnlineSectionLeft &&
 					dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight {
