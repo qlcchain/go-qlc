@@ -85,12 +85,18 @@ func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "count of blocks",
 		Value: 10,
 	}
+	showFlag := util.Flag{
+		Name:  "show",
+		Must:  false,
+		Usage: "show style, etc list, detail",
+		Value: "list",
+	}
 
 	cmd := &ishell.Cmd{
 		Name: "getBlockList",
 		Help: "get account blocks list",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{addressFlag, offsetFlag, limitFlag}
+			args := []util.Flag{addressFlag, offsetFlag, limitFlag, showFlag}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -102,8 +108,9 @@ func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
 			address := util.StringVar(c.Args, addressFlag)
 			offset, _ := util.IntVar(c.Args, offsetFlag)
 			limit, _ := util.IntVar(c.Args, limitFlag)
+			show := util.StringVar(c.Args, showFlag)
 
-			err := runTxBlockListCmd(address, offset, limit)
+			err := runTxBlockListCmd(address, offset, limit, show)
 			if err != nil {
 				util.Warn(err)
 				return
@@ -113,7 +120,7 @@ func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runTxBlockListCmd(address string, offset int, limit int) error {
+func runTxBlockListCmd(address string, offset, limit int, show string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -129,6 +136,19 @@ func runTxBlockListCmd(address string, offset int, limit int) error {
 	}
 	if err != nil {
 		return err
+	}
+
+	if show == "list" {
+		fmt.Printf("%-64s %-15s %-10s %-10s %-10s %-10s %s\n",
+			"Hash", "Type", "TokenName", "Amount", "PovH", "PovC", "Time")
+		for _, apiBlk := range rspInfo {
+			fmt.Printf("%-64s %-15s %-10s %-10s %-10d %-10d %s\n",
+				apiBlk.Hash, apiBlk.Type,
+				apiBlk.TokenName, txFormatBalance(apiBlk.Amount),
+				apiBlk.PovConfirmHeight, apiBlk.PovConfirmCount,
+				time.Unix(apiBlk.Timestamp, 0).Format("2006-01-02 15:04:05"))
+		}
+		return nil
 	}
 
 	for _, apiBlk := range rspInfo {

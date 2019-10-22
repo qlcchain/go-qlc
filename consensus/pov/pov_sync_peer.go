@@ -75,7 +75,13 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgPeer string) {
 		td := new(big.Int).SetBytes(status.CurrentTD)
 		ss.logger.Infof("recv PovStatus from peer %s, head %d/%s, td %d/%s",
 			msgPeer, status.CurrentHeight, status.CurrentHash, td.BitLen(), td.Text(16))
-		if status.GenesisHash != ss.chain.GenesisBlock().GetHash() {
+
+		genBlk := ss.chain.GenesisBlock()
+		if genBlk == nil {
+			ss.logger.Error("failed to get genesis block")
+			return
+		}
+		if status.GenesisHash != genBlk.GetHash() {
 			ss.logger.Warnf("peer %s genesis hash %s is invalid", msgPeer, status.GenesisHash)
 			return
 		}

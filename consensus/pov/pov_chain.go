@@ -1128,35 +1128,3 @@ func (bc *PovBlockChain) CalcBlockRewardByQLC(header *types.PovHeader) (types.Ba
 
 	return types.NewBalanceFromBigInt(miner2), types.NewBalanceFromBigInt(rep2)
 }
-
-func (bc *PovBlockChain) CalcBlockRewardByFXTC(header *types.PovHeader) types.Balance {
-	// dynamic block reward by algo efficiency
-	// ConvertBitsToDouble(nBits) * COIN / (49500000 / GetAlgoEfficiency(nHeight))
-
-	nBits := header.GetBits()
-	nShift := (nBits >> 24) & 0xff
-
-	dDiff := float64(0x0000ffff) / float64(nBits&0x00ffffff)
-
-	for nShift < 29 {
-		dDiff *= 256.0
-		nShift++
-	}
-
-	for nShift > 29 {
-		dDiff /= 256.0
-		nShift--
-	}
-
-	dDiffFlt := big.NewFloat(dDiff)
-
-	reward1 := new(big.Float).Mul(dDiffFlt, new(big.Float).SetInt(common.PovMinerRewardPerBlockInt))
-	reward2 := new(big.Float).Quo(big.NewFloat(49500000.0), new(big.Float).SetUint64(uint64(header.GetAlgoEfficiency())))
-	reward3 := new(big.Float).Quo(reward1, reward2)
-	reward4, _ := reward3.Int64()
-	//bc.logger.Debugf("dDiffFlt:%v, reward1:%v, reward2:%v, reward3:%v, reward4:%v", dDiffFlt, reward1, reward2, reward3, reward4)
-	if reward4 < int64(common.PovMinerMinRewardPerBlock) {
-		reward4 = int64(common.PovMinerMinRewardPerBlock)
-	}
-	return types.NewBalance(reward4)
-}
