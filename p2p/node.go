@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/p2p/pubsub"
 	"time"
 
-	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/p2p/pubsub"
+
 	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -22,6 +24,7 @@ import (
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
+
 	"github.com/qlcchain/go-qlc/config"
 )
 

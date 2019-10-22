@@ -2,12 +2,13 @@ package abi
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"strings"
 )
 
 const (

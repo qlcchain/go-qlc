@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
+	"go.uber.org/zap"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -23,7 +25,6 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"go.uber.org/zap"
 )
 
 const (

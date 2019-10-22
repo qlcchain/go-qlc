@@ -11,6 +11,7 @@ import (
 
 	//"github.com/go-interpreter/wagon/validate"
 	"github.com/go-interpreter/wagon/wasm/leb128"
+
 	"github.com/qlcchain/go-qlc/vm/compiler/opcodes"
 	"github.com/qlcchain/go-qlc/vm/utils"
 )

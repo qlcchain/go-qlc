@@ -5,13 +5,14 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/yireyun/go-queue"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"github.com/yireyun/go-queue"
 )
 
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {

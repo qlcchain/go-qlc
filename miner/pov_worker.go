@@ -7,13 +7,14 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus/pov"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type PovWorker struct {

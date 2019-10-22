@@ -19,7 +19,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/qlcchain/go-qlc/crypto/secp256k1"
+	"github.com/ipsn/go-secp256k1"
 )
 
 const (
@@ -27,8 +27,8 @@ const (
 )
 
 var (
-	secp256k1N, _  = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
-	secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))
+	secp256k1N, _ = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
+	// secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))
 )
 
 // HexToECDSA parses a secp256k1 private key.
@@ -78,7 +78,6 @@ func S256() elliptic.Curve {
 }
 
 func AesGCMEncrypt(key, inText []byte) (outText, nonce []byte, err error) {
-
 	aesBlock, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, nil, err
@@ -95,7 +94,6 @@ func AesGCMEncrypt(key, inText []byte) (outText, nonce []byte, err error) {
 }
 
 func AesGCMDecrypt(key, cipherText, nonce []byte) ([]byte, error) {
-
 	aesBlock, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

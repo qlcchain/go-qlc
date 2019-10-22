@@ -1,10 +1,11 @@
 package merkle
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/crypto/random"
 	"math/rand"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 func TestCalcCoinbaseMerkleRoot_1(t *testing.T) {

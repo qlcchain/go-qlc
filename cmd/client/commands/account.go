@@ -14,8 +14,9 @@ import (
 	"github.com/qlcchain/go-qlc/cmd/util"
 
 	"github.com/abiosoft/ishell"
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/spf13/cobra"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func account() {

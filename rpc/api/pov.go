@@ -10,13 +10,14 @@ import (
 
 	"github.com/qlcchain/go-qlc/config"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
-	"go.uber.org/zap"
 )
 
 type PovApi struct {

@@ -12,12 +12,13 @@ import (
 	"errors"
 
 	"github.com/dgraph-io/badger"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
-	"go.uber.org/zap"
 )
 
 type ContractStore interface {

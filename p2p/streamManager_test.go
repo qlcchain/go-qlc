@@ -1,16 +1,18 @@
 package p2p
 
 import (
-	"github.com/qlcchain/go-qlc/mock"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/mock"
+
 	"github.com/qlcchain/go-qlc/chain/context"
 
 	"github.com/google/uuid"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+
 	"github.com/qlcchain/go-qlc/config"
 )
 

@@ -2,13 +2,15 @@ package api
 
 import (
 	"fmt"
+
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type NetApi struct {

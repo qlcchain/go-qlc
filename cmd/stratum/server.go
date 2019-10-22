@@ -5,15 +5,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"net"
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/simplejson"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/willf/bitset"
+
+	"github.com/qlcchain/go-qlc/common/simplejson"
 )
 
 const (

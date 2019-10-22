@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+
 	"github.com/qlcchain/go-qlc/common/util"
 )
 

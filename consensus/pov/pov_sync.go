@@ -4,6 +4,9 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -11,8 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"go.uber.org/atomic"
-	"go.uber.org/zap"
 )
 
 const (

@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	jsonrpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
-	jsonrpc "github.com/qlcchain/jsonrpc2"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {

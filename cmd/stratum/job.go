@@ -3,13 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"time"
+
+	log "github.com/sirupsen/logrus"
+
 	"github.com/qlcchain/go-qlc/cmd/stratum/txscript"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
-	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 const (

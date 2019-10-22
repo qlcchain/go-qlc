@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/lestrrat-go/file-rotatelogs"
-	"github.com/rifflock/lfshook"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	"github.com/rifflock/lfshook"
+	log "github.com/sirupsen/logrus"
 )
 
 var flagNodeUrl string

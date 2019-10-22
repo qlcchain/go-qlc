@@ -7,9 +7,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type DBSQL struct {

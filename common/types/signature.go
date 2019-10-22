@@ -12,9 +12,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/tinylib/msgp/msgp"
+
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
-	"github.com/tinylib/msgp/msgp"
 )
 
 func init() {

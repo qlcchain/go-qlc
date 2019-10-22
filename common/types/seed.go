@@ -13,10 +13,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/crypto/ed25519"
-	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
+
+	"github.com/qlcchain/go-qlc/crypto/ed25519"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 func init() {

@@ -1,8 +1,9 @@
 package rpc
 
 import (
-	"github.com/qlcchain/go-qlc/rpc/api"
 	rpc "github.com/qlcchain/jsonrpc2"
+
+	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
 func (r *RPC) getApi(apiModule string) rpc.API {

@@ -11,8 +11,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/config"
 	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestNewLogger(t *testing.T) {

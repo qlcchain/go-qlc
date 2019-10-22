@@ -6,8 +6,9 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/tinylib/msgp/msgp"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func init() {

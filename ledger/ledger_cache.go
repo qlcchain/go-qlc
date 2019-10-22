@@ -3,13 +3,14 @@ package ledger
 import (
 	"sync/atomic"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type LedgerCache interface {

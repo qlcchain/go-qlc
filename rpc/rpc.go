@@ -9,6 +9,9 @@ import (
 	"strings"
 	"sync"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
@@ -16,8 +19,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
 )
 
 type RPC struct {

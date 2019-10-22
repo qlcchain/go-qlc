@@ -1,11 +1,13 @@
 package p2p
 
 import (
-	"github.com/qlcchain/go-qlc/common"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/common"
+
 	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	lru "github.com/hashicorp/golang-lru"
 )

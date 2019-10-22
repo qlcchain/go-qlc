@@ -1,9 +1,10 @@
 package p2p
 
 import (
-	ma "github.com/multiformats/go-multiaddr"
 	"net"
 	"strings"
+
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 func judgeNetAttribute(ms []ma.Multiaddr) netAttribute {

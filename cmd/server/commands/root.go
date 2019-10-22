@@ -10,7 +10,6 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,8 +22,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
+	"github.com/spf13/cobra"
+
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
@@ -33,7 +36,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	qlclog "github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
-	"github.com/spf13/cobra"
 )
 
 var (

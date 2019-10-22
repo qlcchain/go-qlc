@@ -6,12 +6,13 @@ import (
 
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/wallet"
-	"go.uber.org/zap"
 )
 
 type WalletApi struct {

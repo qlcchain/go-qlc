@@ -8,12 +8,13 @@
 package api
 
 import (
-	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/monitor"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/net"
 	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/monitor"
 )
 
 type MetricsApi struct {

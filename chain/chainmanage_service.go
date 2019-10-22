@@ -2,10 +2,11 @@ package chain
 
 import (
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type ChainManage struct {

@@ -9,6 +9,7 @@ import (
 	"github.com/qlcchain/go-qlc/chain/context"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/config"
 )
 

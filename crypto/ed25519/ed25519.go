@@ -20,8 +20,9 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/qlcchain/go-qlc/crypto/ed25519/internal/edwards25519"
 	"golang.org/x/crypto/blake2b"
+
+	"github.com/qlcchain/go-qlc/crypto/ed25519/internal/edwards25519"
 )
 
 const (

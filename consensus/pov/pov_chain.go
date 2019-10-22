@@ -3,15 +3,19 @@ package pov
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/event"
-	"go.uber.org/atomic"
 	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
+
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/bluele/gcache"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -19,7 +23,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
-	"go.uber.org/zap"
 )
 
 const (

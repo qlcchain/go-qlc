@@ -13,13 +13,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"gitlab.com/samli88/go-x11-hash"
-	"golang.org/x/crypto/scrypt"
 	"math/big"
 
-	"github.com/qlcchain/go-qlc/common/util"
+	"gitlab.com/samli88/go-x11-hash"
+	"golang.org/x/crypto/scrypt"
+
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/blake2b"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 func init() {

@@ -10,14 +10,16 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
-	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/crypto/random"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+
+	ic "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 // identityConfig initializes a new identity.

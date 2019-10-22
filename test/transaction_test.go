@@ -22,11 +22,12 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 
 	"github.com/google/uuid"
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/rpc/api"
-	rpc "github.com/qlcchain/jsonrpc2"
 )
 
 var (

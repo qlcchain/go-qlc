@@ -1,9 +1,10 @@
 package abi
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"math/big"
 	"reflect"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/common/util"
 )
