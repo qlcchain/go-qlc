@@ -2,8 +2,9 @@ package ledger
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/common/util"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/dgraph-io/badger"
 	"github.com/qlcchain/go-qlc/common/types"
