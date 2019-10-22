@@ -104,7 +104,7 @@ type PovBlockChain struct {
 	trieCache    gcache.Cache // stateHash => trie
 	trieNodePool *trie.NodePool
 
-	doingMinerStat atomic.Bool
+	doingMinerStat *atomic.Bool
 
 	quitCh chan struct{}
 	wg     sync.WaitGroup
@@ -112,10 +112,11 @@ type PovBlockChain struct {
 
 func NewPovBlockChain(cfg *config.Config, eb event.EventBus, ledger ledger.Store) *PovBlockChain {
 	chain := &PovBlockChain{
-		config: cfg,
-		eb:     eb,
-		ledger: ledger,
-		logger: log.NewLogger("pov_chain"),
+		config:         cfg,
+		eb:             eb,
+		ledger:         ledger,
+		logger:         log.NewLogger("pov_chain"),
+		doingMinerStat: atomic.NewBool(false),
 	}
 	chain.em = newEventManager()
 
