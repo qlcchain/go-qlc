@@ -8,9 +8,8 @@ import (
 
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
 
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -24,7 +23,6 @@ import (
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
-
 	"github.com/qlcchain/go-qlc/config"
 )
 
@@ -51,27 +49,26 @@ const (
 )
 
 type QlcNode struct {
-	ID                peer.ID
-	privateKey        crypto.PrivKey
-	cfg               *config.Config
-	ctx               context.Context
-	cancel            context.CancelFunc
-	localDiscovery    localdiscovery.Service
-	host              host.Host
-	peerStore         peerstore.Peerstore
-	boostrapAddrs     []string
-	streamManager     *StreamManager
-	dis               *discovery.RoutingDiscovery
-	kadDht            *dht.IpfsDHT
-	netService        *QlcService
-	logger            *zap.SugaredLogger
-	localNetAttribute netAttribute
-	publisher         *pubsub.Publisher
-	subscriber        *pubsub.Subscriber
-	MessageSub        pubsub.Subscription
-	isMiner           bool
-	isRepresentative  bool
-	reporter          p2pmetrics.Reporter
+	ID               peer.ID
+	privateKey       crypto.PrivKey
+	cfg              *config.Config
+	ctx              context.Context
+	cancel           context.CancelFunc
+	localDiscovery   localdiscovery.Service
+	host             host.Host
+	peerStore        peerstore.Peerstore
+	boostrapAddrs    []string
+	streamManager    *StreamManager
+	dis              *discovery.RoutingDiscovery
+	kadDht           *dht.IpfsDHT
+	netService       *QlcService
+	logger           *zap.SugaredLogger
+	publisher        *pubsub.Publisher
+	subscriber       *pubsub.Subscriber
+	MessageSub       pubsub.Subscription
+	isMiner          bool
+	isRepresentative bool
+	reporter         p2pmetrics.Reporter
 }
 
 // NewNode return new QlcNode according to the config.
@@ -118,8 +115,6 @@ func (node *QlcNode) buildHost() error {
 	if err != nil {
 		return err
 	}
-	ms := qlcHost.Addrs()
-	node.localNetAttribute = judgeNetAttribute(ms)
 	qlcHost.SetStreamHandler(QlcProtocolID, node.handleStream)
 	node.host = qlcHost
 	kadDht, err := dht.New(node.ctx, node.host)

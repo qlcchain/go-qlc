@@ -9,7 +9,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-
 	"github.com/qlcchain/go-qlc/common"
 )
 
@@ -40,7 +39,6 @@ type Stream struct {
 	normalPriorityMessageChan chan *QlcMessage
 	lowPriorityMessageChan    chan *QlcMessage
 	rtt                       time.Duration
-	remoteNetAttribute        netAttribute
 }
 
 // NewStream return a new Stream

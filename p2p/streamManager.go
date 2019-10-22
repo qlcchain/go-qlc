@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	MaxStreamNumForPublicNet = 50
-	MaxStreamNumForIntranet  = 8
+	MaxStreamNum = 50
 )
 
 // StreamManager manages all streams
@@ -35,12 +34,7 @@ func NewStreamManager() *StreamManager {
 //SetQlcService set netService
 func (sm *StreamManager) SetQlcNodeAndMaxStreamNum(node *QlcNode) {
 	sm.node = node
-	if node.localNetAttribute == PublicNet {
-		sm.maxStreamNum = MaxStreamNumForPublicNet
-	}
-	if node.localNetAttribute == Intranet {
-		sm.maxStreamNum = MaxStreamNumForIntranet
-	}
+	sm.maxStreamNum = MaxStreamNum
 }
 
 // Add a new stream into the stream manager
@@ -51,7 +45,6 @@ func (sm *StreamManager) Add(s network.Stream) {
 
 // AddStream into the stream manager
 func (sm *StreamManager) AddStream(stream *Stream) {
-
 	if sm.activePeersCount >= sm.maxStreamNum {
 		if stream.stream != nil {
 			_ = stream.stream.Close()
