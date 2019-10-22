@@ -238,7 +238,6 @@ func (dps *DPoS) Start() {
 	dps.processorStart()
 
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
-	timerRepUpdate := time.NewTicker(2 * time.Minute)
 	timerDequeueGap := time.NewTicker(10 * time.Second)
 
 	for {
@@ -249,14 +248,6 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		case <-timerRepUpdate.C:
-			go func() {
-				err := dps.findOnlineRepresentatives()
-				if err != nil {
-					dps.logger.Error(err)
-				}
-				dps.cleanOnlineReps()
-			}()
 		case <-dps.checkFinish:
 			dps.checkSyncFinished()
 		case <-dps.syncFinish:
@@ -280,6 +271,17 @@ func (dps *DPoS) Start() {
 		case pb := <-dps.povChange:
 			dps.logger.Infof("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 			dps.curPovHeight = pb.Header.BasHdr.Height
+
+			//need calculate heart num, so use the pov height to trigger online
+			if dps.curPovHeight%2 == 0 {
+				go func() {
+					err := dps.findOnlineRepresentatives()
+					if err != nil {
+						dps.logger.Error(err)
+					}
+					dps.cleanOnlineReps()
+				}()
+			}
 
 			if dps.povSyncState == common.SyncDone {
 				if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
