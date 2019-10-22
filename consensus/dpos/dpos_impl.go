@@ -238,8 +238,8 @@ func (dps *DPoS) Start() {
 	dps.processorStart()
 
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
-	timerDebug := time.NewTicker(time.Minute)
-	timerDequeueGap := time.NewTicker(time.Minute)
+	timerRepUpdate := time.NewTicker(2 * time.Minute)
+	timerDequeueGap := time.NewTicker(10 * time.Second)
 
 	for {
 		select {
@@ -249,13 +249,14 @@ func (dps *DPoS) Start() {
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
 			go dps.refreshAccount()
-		case <-timerDebug.C:
-			num := 0
-			dps.hash2el.Range(func(key, value interface{}) bool {
-				num++
-				return true
-			})
-			dps.logger.Debugf("hash2el len:%d", num)
+		case <-timerRepUpdate.C:
+			go func() {
+				err := dps.findOnlineRepresentatives()
+				if err != nil {
+					dps.logger.Error(err)
+				}
+				dps.cleanOnlineReps()
+			}()
 		case <-dps.checkFinish:
 			dps.checkSyncFinished()
 		case <-dps.syncFinish:
@@ -281,16 +282,6 @@ func (dps *DPoS) Start() {
 			dps.curPovHeight = pb.Header.BasHdr.Height
 
 			if dps.povSyncState == common.SyncDone {
-				if dps.curPovHeight%2 == 0 {
-					go func() {
-						err := dps.findOnlineRepresentatives()
-						if err != nil {
-							dps.logger.Error(err)
-						}
-						dps.cleanOnlineReps()
-					}()
-				}
-
 				if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
 					dps.curPovHeight%common.DPosOnlinePeriod >= common.DPosOnlineSectionLeft &&
 					dps.curPovHeight%common.DPosOnlinePeriod <= common.DPosOnlineSectionRight {

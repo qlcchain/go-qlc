@@ -27,6 +27,7 @@ type APIUncheckBlock struct {
 	Link        types.Hash             `json:"link"`
 	UnCheckType string                 `json:"uncheckType"`
 	SyncType    types.SynchronizedKind `json:"syncType"`
+	Height      uint64                 `json:"povHeight"`
 }
 
 func (l *DebugApi) BlockCacheCount() (map[string]uint64, error) {
@@ -62,6 +63,23 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	err = l.ledger.WalkGapPovBlocks(func(blocks types.StateBlockList, height uint64, sync types.SynchronizedKind) error {
+		for _, blk := range blocks {
+			uncheck := new(APIUncheckBlock)
+			uncheck.Block = blk
+			uncheck.UnCheckType = "GapPovHeight"
+			uncheck.SyncType = sync
+			uncheck.Height = height
+			unchecks = append(unchecks, uncheck)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return unchecks, nil
 }
 
