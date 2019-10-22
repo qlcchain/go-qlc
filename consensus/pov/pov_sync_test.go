@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -16,6 +17,9 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
+
+const ID_PEER1 = "peer1"
+const ID_PEER2 = "peer2"
 
 type povSyncMockData struct {
 	eb     event.EventBus
@@ -120,8 +124,8 @@ func TestPovSync_AddDelPeer1(t *testing.T) {
 
 	povSync.Start()
 
-	peerID1 := "peer1"
-	peerID2 := "peer2"
+	peerID1 := ID_PEER1
+	peerID2 := ID_PEER2
 	povSync.onAddP2PStream(peerID1)
 	povSync.onAddP2PStream(peerID2)
 
@@ -196,7 +200,7 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 
 	povSync.Start()
 
-	peerID1 := "peer1"
+	peerID1 := ID_PEER1
 	povSync.onAddP2PStream(peerID1)
 
 	bestPeer := povSync.GetBestPeer("")
@@ -277,23 +281,18 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 
 	povSync.Start()
 
-	peerID1 := "peer1"
+	peerID1 := ID_PEER1
 	povSync.onAddP2PStream(peerID1)
 
 	blk1, td1 := mock.GeneratePovBlock(nil, 0)
-	// blk1Hash := blk1.GetHash()
 
 	blk2, td2 := mock.GeneratePovBlock(blk1, 0)
-	// blk2Hash := blk1.GetHash()
 
 	blk3, td3 := mock.GeneratePovBlock(blk2, 0)
-	// blk3Hash := blk3.GetHash()
 
 	blk4, td4 := mock.GeneratePovBlock(blk3, 0)
-	// blk4Hash := blk4.GetHash()
 
 	genBlk := md.chain.GenesisBlock()
-	// genHash := genBlk.GetHash()
 
 	peer1Status := new(protos.PovStatus)
 	peer1Status.GenesisHash = genBlk.GetHash()

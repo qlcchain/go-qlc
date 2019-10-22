@@ -52,7 +52,7 @@ func addPovBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runPovBlockInfoCmd(idStr string, txOffset int, txCount int) error {
+func runPovBlockInfoCmd(idStr string, txOffset, txCount int) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -181,7 +181,7 @@ func addPovBlockListCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runPovBlockListCmd(height int, count int, asc bool) error {
+func runPovBlockListCmd(height, count int, asc bool) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err

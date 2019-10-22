@@ -118,7 +118,7 @@ func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runTxBlockListCmd(address string, offset int, limit int, show string) error {
+func runTxBlockListCmd(address string, offset, limit int, show string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
