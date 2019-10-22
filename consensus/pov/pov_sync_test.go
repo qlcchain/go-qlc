@@ -1,6 +1,11 @@
 package pov
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -10,10 +15,6 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 type povSyncMockData struct {
@@ -280,19 +281,19 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	povSync.onAddP2PStream(peerID1)
 
 	blk1, td1 := mock.GeneratePovBlock(nil, 0)
-	//blk1Hash := blk1.GetHash()
+	// blk1Hash := blk1.GetHash()
 
 	blk2, td2 := mock.GeneratePovBlock(blk1, 0)
-	//blk2Hash := blk1.GetHash()
+	// blk2Hash := blk1.GetHash()
 
 	blk3, td3 := mock.GeneratePovBlock(blk2, 0)
-	//blk3Hash := blk3.GetHash()
+	// blk3Hash := blk3.GetHash()
 
 	blk4, td4 := mock.GeneratePovBlock(blk3, 0)
-	//blk4Hash := blk4.GetHash()
+	// blk4Hash := blk4.GetHash()
 
 	genBlk := md.chain.GenesisBlock()
-	//genHash := genBlk.GetHash()
+	// genHash := genBlk.GetHash()
 
 	peer1Status := new(protos.PovStatus)
 	peer1Status.GenesisHash = genBlk.GetHash()
@@ -319,7 +320,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	if req.Reason != protos.PovReasonSync {
 		t.Fatalf("failed to get PovBulkPullReq 1 Reason")
 	}
-	if len(req.Locators) <= 0 {
+	if len(req.Locators) == 0 {
 		t.Fatalf("failed to get PovBulkPullReq 1 Locators")
 	}
 
@@ -330,10 +331,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 
 	rsp := new(protos.PovBulkPullRsp)
 	rsp.Reason = protos.PovReasonSync
-	rsp.Blocks = append(rsp.Blocks, blk1)
-	rsp.Blocks = append(rsp.Blocks, blk2)
-	rsp.Blocks = append(rsp.Blocks, blk3)
-	rsp.Blocks = append(rsp.Blocks, blk4)
+	rsp.Blocks = append(rsp.Blocks, blk1, blk2, blk3, blk4)
 	rsp.Count = uint32(len(rsp.Blocks))
 	povSync.onPovBulkPullRsp(rsp, peerID1)
 
