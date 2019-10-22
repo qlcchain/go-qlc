@@ -45,13 +45,13 @@ type PovSyncer struct {
 	logger   *zap.SugaredLogger
 	allPeers sync.Map // map[string]*PovSyncPeer
 
-	initSyncOver  atomic.Bool
+	initSyncOver  *atomic.Bool
 	initSyncState common.SyncState
-	inSyncing     atomic.Bool
+	inSyncing     *atomic.Bool
 	syncStartTime time.Time
 	syncEndTime   time.Time
 
-	syncSeqID     atomic.Uint32
+	syncSeqID     *atomic.Uint32
 	syncPeerID    string
 	syncToHeight  uint64
 	syncCurHeight uint64
@@ -59,7 +59,7 @@ type PovSyncer struct {
 	syncReqHeight uint64
 	syncBlocks    map[uint64]*PovSyncBlock
 
-	lastReqTxTime atomic.Int64 // time.Time.Unix()
+	lastReqTxTime *atomic.Int64 // time.Time.Unix()
 
 	messageCh chan *PovSyncMessage
 	eventCh   chan *PovSyncEvent
@@ -87,6 +87,10 @@ func NewPovSyncer(eb event.EventBus, ledger ledger.Store, chain PovSyncerChainRe
 		quitCh:        make(chan struct{}),
 		logger:        log.NewLogger("pov_sync"),
 		handlerIds:    make(map[common.TopicType]string),
+		lastReqTxTime: atomic.NewInt64(0),
+		syncSeqID:     atomic.NewUint32(0),
+		initSyncOver:  atomic.NewBool(false),
+		inSyncing:     atomic.NewBool(false),
 	}
 	return ss
 }
