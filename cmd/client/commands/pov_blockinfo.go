@@ -10,25 +10,39 @@ import (
 	"time"
 )
 
-func addPovHeaderInfoCmdByShell(parentCmd *ishell.Cmd) {
+func addPovBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 	idFlag := util.Flag{
 		Name:  "id",
 		Must:  true,
 		Usage: "height or hash of pov block",
 		Value: "-1",
 	}
+	txOffsetFlag := util.Flag{
+		Name:  "txOffset",
+		Must:  false,
+		Usage: "tx offset of pov block",
+		Value: 0,
+	}
+	txCountFlag := util.Flag{
+		Name:  "txCount",
+		Must:  false,
+		Usage: "tx count of pov block",
+		Value: 100,
+	}
 
 	cmd := &ishell.Cmd{
-		Name: "getHeaderInfo",
-		Help: "get pov header info",
+		Name: "getBlockInfo",
+		Help: "get pov block info",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{idFlag}
+			args := []util.Flag{idFlag, txOffsetFlag, txCountFlag}
 			if util.HelpText(c, args) {
 				return
 			}
 			idStr := util.StringVar(c.Args, idFlag)
+			txOffset, _ := util.IntVar(c.Args, txOffsetFlag)
+			txCount, _ := util.IntVar(c.Args, txCountFlag)
 
-			err := runPovHeaderInfoCmd(idStr)
+			err := runPovBlockInfoCmd(idStr, txOffset, txCount)
 			if err != nil {
 				util.Warn(err)
 				return
@@ -38,17 +52,17 @@ func addPovHeaderInfoCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runPovHeaderInfoCmd(idStr string) error {
+func runPovBlockInfoCmd(idStr string, txOffset int, txCount int) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 
-	rspInfo := new(api.PovApiHeader)
+	rspInfo := new(api.PovApiBlock)
 
 	if len(idStr) == 64 {
-		err = client.Call(rspInfo, "pov_getHeaderByHash", idStr)
+		err = client.Call(rspInfo, "pov_getBlockByHash", idStr, txOffset, txCount)
 		if err != nil {
 			return err
 		}
@@ -64,25 +78,27 @@ func runPovHeaderInfoCmd(idStr string) error {
 		}
 
 		if height < 0 {
-			err = client.Call(rspInfo, "pov_getLatestHeader")
+			err = client.Call(rspInfo, "pov_getLatestBlock", txOffset, txCount)
 		} else {
-			err = client.Call(rspInfo, "pov_getHeaderByHeight", height)
+			err = client.Call(rspInfo, "pov_getBlockByHeight", height, txOffset, txCount)
 		}
 		if err != nil {
 			return err
 		}
 	}
 
-	fmt.Printf("Hash:       %s\n", rspInfo.BasHdr.Hash)
-	fmt.Printf("Height:     %d\n", rspInfo.BasHdr.Height)
-	fmt.Printf("Version:    %d(0x%x)\n", rspInfo.BasHdr.Version, rspInfo.BasHdr.Version)
-	fmt.Printf("Previous:   %s\n", rspInfo.BasHdr.Previous)
-	fmt.Printf("MerkleRoot: %s\n", rspInfo.BasHdr.MerkleRoot)
-	fmt.Printf("Time:       %d(%s)\n", rspInfo.BasHdr.Timestamp, time.Unix(int64(rspInfo.BasHdr.Timestamp), 0))
-	fmt.Printf("Bits:       %d(0x%x)\n", rspInfo.BasHdr.Bits, rspInfo.BasHdr.Bits)
-	fmt.Printf("Nonce:      %d(0x%x)\n", rspInfo.BasHdr.Nonce, rspInfo.BasHdr.Nonce)
-	fmt.Printf("TxNum:      %d\n", rspInfo.CbTx.TxNum)
-	fmt.Printf("StateHash:  %s\n", rspInfo.CbTx.StateHash)
+	header := &(rspInfo.Header)
+
+	fmt.Printf("Hash:       %s\n", header.BasHdr.Hash)
+	fmt.Printf("Height:     %d\n", header.BasHdr.Height)
+	fmt.Printf("Version:    %d(0x%x)\n", header.BasHdr.Version, header.BasHdr.Version)
+	fmt.Printf("Previous:   %s\n", header.BasHdr.Previous)
+	fmt.Printf("MerkleRoot: %s\n", header.BasHdr.MerkleRoot)
+	fmt.Printf("Time:       %d(%s)\n", header.BasHdr.Timestamp, time.Unix(int64(header.BasHdr.Timestamp), 0))
+	fmt.Printf("Bits:       %d(0x%x)\n", header.BasHdr.Bits, header.BasHdr.Bits)
+	fmt.Printf("Nonce:      %d(0x%x)\n", header.BasHdr.Nonce, header.BasHdr.Nonce)
+	fmt.Printf("TxNum:      %d\n", header.CbTx.TxNum)
+	fmt.Printf("StateHash:  %s\n", header.CbTx.StateHash)
 
 	fmt.Printf("\n")
 	fmt.Printf("AlgoName:       %s\n", rspInfo.AlgoName)
@@ -91,30 +107,39 @@ func runPovHeaderInfoCmd(idStr string) error {
 	fmt.Printf("NormDifficulty: %s\n", formatPovDifficulty(rspInfo.NormDifficulty))
 
 	fmt.Printf("\n")
-	if rspInfo.AuxHdr == nil {
+	if header.AuxHdr == nil {
 		fmt.Printf("AuxPoW: false\n")
 	} else {
 		fmt.Printf("AuxPoW:      true\n")
-		fmt.Printf("ParentHash:  %s\n", rspInfo.AuxHdr.ParentHash)
-		parHeader := rspInfo.AuxHdr.ParBlockHeader
+		fmt.Printf("ParentHash:  %s\n", header.AuxHdr.ParentHash)
+		parHeader := header.AuxHdr.ParBlockHeader
 		fmt.Printf("ParentTime:  %d(%s)\n", parHeader.Timestamp, time.Unix(int64(parHeader.Timestamp), 0))
 		fmt.Printf("ParentBits:  %d(0x%x)\n", parHeader.Bits, parHeader.Bits)
 		fmt.Printf("ParentNonce: %d(0x%x)\n", parHeader.Nonce, parHeader.Nonce)
 	}
 
 	fmt.Printf("\n")
-	if rspInfo.CbTx != nil && len(rspInfo.CbTx.TxIns) > 0 {
-		fmt.Printf("CoinbaseHash:  %s\n", rspInfo.CbTx.Hash)
-		fmt.Printf("CoinbaseExtra: %s\n", rspInfo.CbTx.TxIns[0].Extra)
-		fmt.Printf("Miner:         %s\n", rspInfo.GetMinerAddr())
-		fmt.Printf("Reward(M):     %s QGAS\n", formatPovReward(rspInfo.GetMinerReward()))
-		fmt.Printf("Reward(R):     %s QGAS\n", formatPovReward(rspInfo.GetRepReward()))
+	if header.CbTx != nil && len(header.CbTx.TxIns) > 0 {
+		fmt.Printf("CoinbaseHash:  %s\n", header.CbTx.Hash)
+		fmt.Printf("CoinbaseExtra: %s\n", header.CbTx.TxIns[0].Extra)
+		fmt.Printf("Miner:         %s\n", header.GetMinerAddr())
+		fmt.Printf("Reward(M):     %s QGAS\n", formatPovReward(header.GetMinerReward()))
+		fmt.Printf("Reward(R):     %s QGAS\n", formatPovReward(header.GetRepReward()))
+	}
+
+	body := &(rspInfo.Body)
+	if body != nil && len(body.Txs) > 0 {
+		fmt.Printf("\n")
+		fmt.Printf("%-7s %-64s\n", "TxIndex", "TxHash")
+		for txIdx, txPov := range body.Txs {
+			fmt.Printf("%-7d %-64s\n", txOffset+txIdx, txPov.GetHash())
+		}
 	}
 
 	return nil
 }
 
-func addPovHeaderListCmdByShell(parentCmd *ishell.Cmd) {
+func addPovBlockListCmdByShell(parentCmd *ishell.Cmd) {
 	heightFlag := util.Flag{
 		Name:  "height",
 		Must:  false,
@@ -135,8 +160,8 @@ func addPovHeaderListCmdByShell(parentCmd *ishell.Cmd) {
 	}
 
 	cmd := &ishell.Cmd{
-		Name: "getHeaderList",
-		Help: "get pov header list",
+		Name: "getBlockList",
+		Help: "get pov block list",
 		Func: func(c *ishell.Context) {
 			args := []util.Flag{heightFlag, countFlag, ascFlag}
 			if util.HelpText(c, args) {
@@ -146,7 +171,7 @@ func addPovHeaderListCmdByShell(parentCmd *ishell.Cmd) {
 			count, _ := util.IntVar(c.Args, countFlag)
 			asc := util.BoolVar(c.Args, ascFlag)
 
-			err := runPovHeaderListCmd(height, count, asc)
+			err := runPovBlockListCmd(height, count, asc)
 			if err != nil {
 				util.Warn(err)
 				return
@@ -156,7 +181,7 @@ func addPovHeaderListCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runPovHeaderListCmd(height int, count int, asc bool) error {
+func runPovBlockListCmd(height int, count int, asc bool) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err

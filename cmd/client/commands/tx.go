@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/abiosoft/ishell"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/spf13/cobra"
 )
 
@@ -36,4 +38,8 @@ func addTxCmd() {
 		addTxRecvCmdByCobra(txCmd)
 		addTxSendCmdByCobra(txCmd)
 	}
+}
+
+func txFormatBalance(amount types.Balance) string {
+	return fmt.Sprintf("%.2f", float64(amount.Uint64())/1e8)
 }
