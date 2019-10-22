@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/common/util"
+
 	"github.com/dgraph-io/badger"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -200,7 +202,7 @@ func (l *Ledger) GetGapPovBlock(height uint64, txns ...db.StoreTxn) (types.State
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	kind := make([]types.SynchronizedKind, 1)
+	kind := make([]types.SynchronizedKind, 0)
 
 	blocks1 := types.StateBlockList{}
 	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.Synchronized.String()))
@@ -285,5 +287,34 @@ func (l *Ledger) DeleteGapPovBlock(height uint64, txns ...db.StoreTxn) error {
 		return err2
 	}
 
+	return nil
+}
+
+func (l *Ledger) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	errStr := make([]string, 0)
+	err := txn.Iterator(idPrefixUncheckedPovHeight, func(key []byte, val []byte, b byte) error {
+		blocks := types.StateBlockList{}
+		if err := blocks.Deserialize(val); err != nil {
+			errStr = append(errStr, err.Error())
+			return nil
+		}
+
+		height := util.BE_BytesToUint64(key[1:9])
+		kind := types.StringToSyncKind(string(key[9:]))
+		if err := visit(blocks, height, kind); err != nil {
+			l.logger.Error("visit error %s", err)
+			errStr = append(errStr, err.Error())
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
+	}
 	return nil
 }

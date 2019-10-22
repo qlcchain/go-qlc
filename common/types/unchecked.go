@@ -64,6 +64,7 @@ type SynchronizedKind byte
 const (
 	Synchronized SynchronizedKind = iota
 	UnSynchronized
+	InvalidSynchronized
 )
 
 func (s SynchronizedKind) String() string {
@@ -77,4 +78,16 @@ func (s SynchronizedKind) String() string {
 	}
 }
 
+func StringToSyncKind(str string) SynchronizedKind {
+	switch str {
+	case "sync":
+		return Synchronized
+	case "unsync":
+		return UnSynchronized
+	default:
+		return InvalidSynchronized
+	}
+}
+
 type UncheckedBlockWalkFunc func(block *StateBlock, link Hash, unCheckType UncheckedKind, sync SynchronizedKind) error
+type GapPovBlockWalkFunc func(blocks StateBlockList, height uint64, sync SynchronizedKind) error
