@@ -179,7 +179,7 @@ func (act *ActiveTrx) checkVotes() {
 			dps.syncBlockRollback(hash)
 
 			if dps.isReceivedFrontier(hash) {
-				dps.logger.Infof("sync finish abnormally because of frontier not confirmed")
+				dps.logger.Warn("sync finish abnormally because of frontier not confirmed")
 				dps.eb.Publish(common.EventConsensusSyncFinished)
 			}
 		} else {

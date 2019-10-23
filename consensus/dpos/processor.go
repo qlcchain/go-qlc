@@ -15,11 +15,6 @@ import (
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
-type syncCacheInfo struct {
-	kind byte
-	hash types.Hash
-}
-
 type chainKey struct {
 	addr  types.Address
 	token types.Hash
@@ -43,7 +38,6 @@ type Processor struct {
 	frontiers       chan *types.StateBlock
 	syncStateChange chan common.SyncState
 	syncState       common.SyncState
-	syncCache       chan *syncCacheInfo
 	orderedChain    *sync.Map
 	chainHeight     map[chainKey]uint64
 	doneBlock       chan *types.StateBlock
@@ -62,7 +56,6 @@ func newProcessors(num int) []*Processor {
 			syncBlockAcked:  make(chan types.Hash, common.DPoSMaxBlocks),
 			acks:            make(chan *voteInfo, common.DPoSMaxBlocks),
 			frontiers:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncCache:       make(chan *syncCacheInfo, common.DPoSMaxBlocks),
 			syncStateChange: make(chan common.SyncState, 1),
 			syncState:       common.SyncNotStart,
 			orderedChain:    new(sync.Map),
@@ -133,7 +126,7 @@ func (p *Processor) processMsg() {
 					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
 					go p.confirmChain(hash)
 				}
-				//p.dequeueUncheckedSync(hash)
+				p.dequeueUncheckedSync(hash)
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
 			case ack := <-p.acks:
@@ -156,12 +149,6 @@ func (p *Processor) processMsg() {
 			p.processMsgDo(bs)
 		case block := <-p.syncBlock:
 			p.syncBlockCheck(block)
-		case cache := <-p.syncCache:
-			if cache.kind == common.SyncCacheUnconfirmed {
-				_ = p.dps.ledger.DeleteUnconfirmedSyncBlock(cache.hash)
-			} else {
-				_ = p.dps.ledger.DeleteUncheckedSyncBlock(cache.hash)
-			}
 		case <-getTimeout.C:
 			//
 		}

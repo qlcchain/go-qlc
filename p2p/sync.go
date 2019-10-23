@@ -164,7 +164,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		ss.syncState.Store(common.Syncing)
 		ss.lastSyncHash = types.ZeroHash
 		ss.netService.msgEvent.Publish(common.EventSyncStateChange, common.Syncing)
-		ss.logger.Info("sync start")
+		ss.logger.Warn("sync start")
 
 		for _, f := range rsp.Fs {
 			remoteFrontiers = append(remoteFrontiers, f.Fr)
@@ -181,7 +181,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			ss.syncState.Store(state)
 			ss.netService.msgEvent.Publish(common.EventSyncStateChange, state)
 		}
-		ss.logger.Infof("sync pull all blocks done")
+		ss.logger.Warn("sync pull all blocks done")
 	}
 }
 
@@ -258,7 +258,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 						for {
 							select {
 							case <-ss.quitChanForSync:
-								ss.logger.Info("sync already finish,exit pull blocks loop")
+								ss.logger.Warn("sync already finish,exit pull blocks loop")
 								return common.SyncFinish
 							case <-ss.pullTimer.C:
 								blkReq := &protos.BulkPullReqPacket{
@@ -270,9 +270,9 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)
 								}
 								resend++
-								ss.logger.Infof("resend pull request startHash is [%s],endHash is [%s]", ss.pullStartHash, ss.pullEndHash)
+								ss.logger.Warnf("resend pull request startHash is [%s],endHash is [%s]", ss.pullStartHash, ss.pullEndHash)
 								if resend == maxResendTime {
-									ss.logger.Infof("resend pull request timeout")
+									ss.logger.Warn("resend pull request timeout")
 									return common.SyncFinish
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
@@ -290,7 +290,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 									StartHash: ss.bulkPull[index].StartHash,
 									EndHash:   ss.bulkPull[index].EndHash,
 								}
-								ss.logger.Infof("pull request startHash is [%s],endHash is [%s]", ss.pullStartHash, ss.pullEndHash)
+								ss.logger.Warnf("pull request startHash is [%s],endHash is [%s]", ss.pullStartHash, ss.pullEndHash)
 								err := ss.netService.SendMessageToPeer(BulkPullRequest, blkReq, peerID)
 								if err != nil {
 									ss.logger.Errorf("err [%s] when send BulkPullRequest", err)

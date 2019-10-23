@@ -184,3 +184,20 @@ func (l *Ledger) WalkSyncCache(visit common.SyncCacheWalkFunc, txns ...db.StoreT
 		return nil
 	})
 }
+
+func (l *Ledger) CleanSyncCache(txns ...db.StoreTxn) {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	_ = txn.Iterator(idPrefixUnconfirmedSync, func(key []byte, val []byte, b byte) error {
+		hash, _ := types.BytesToHash(key[1:])
+		_ = l.DeleteUnconfirmedSyncBlock(hash)
+		return nil
+	})
+
+	_ = txn.Iterator(idPrefixUncheckedSync, func(key []byte, val []byte, b byte) error {
+		hash, _ := types.BytesToHash(key[1:])
+		_ = l.DeleteUncheckedSyncBlock(hash)
+		return nil
+	})
+}
