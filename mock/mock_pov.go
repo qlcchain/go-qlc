@@ -39,6 +39,8 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 	}
 
 	block := prevBlock.Clone()
+	block.Body.Txs = nil
+
 	block.Header.BasHdr.Timestamp = prevBlock.GetTimestamp() + 1
 	block.Header.BasHdr.Previous = prevBlock.GetHash()
 	block.Header.BasHdr.Height = prevBlock.GetHeight() + 1
