@@ -358,6 +358,10 @@ func checkCacheContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock)
 		return GapSource, nil
 	}
 
+	if r, err := checkContractPending(lv, block); r != Progress || err != nil {
+		return r, err
+	}
+
 	address := types.Address(input.GetLink())
 
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {

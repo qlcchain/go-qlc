@@ -5,7 +5,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-package chain
+package version
 
 import "testing"
 

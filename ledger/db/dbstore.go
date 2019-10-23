@@ -15,6 +15,7 @@ type Store interface {
 	ViewInTx(fn func(txn StoreTxn) error) error
 	UpdateInTx(fn func(txn StoreTxn) error) error
 	NewTransaction(update bool) *BadgerStoreTxn
+	Size() (int64, int64)
 }
 
 type StoreTxn interface {

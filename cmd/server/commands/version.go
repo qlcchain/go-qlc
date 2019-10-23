@@ -10,14 +10,13 @@ package commands
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/chain"
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
+	"github.com/qlcchain/go-qlc/chain/version"
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/spf13/cobra"
 )
 
-func version() {
+func chainVersion() {
 	if interactive {
 		c := &ishell.Cmd{
 			Name: "version",
@@ -47,7 +46,7 @@ func version() {
 }
 
 func versionInfo() {
-	v := chain.VersionString()
+	v := version.VersionString()
 	if interactive {
 		util.Info(v)
 	} else {
