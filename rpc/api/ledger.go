@@ -224,7 +224,8 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		if err != nil {
 			return nil, err
 		}
-		// pendingKeys, err := l.ledger.TokenPending(address, t.Type)
+		// TODO: to implement token pending in AccountInfo cache
+		//pendingKeys, err := l.ledger.TokenPending(address, t.Type)
 		//if err != nil {
 		//	return nil, err
 		//}
