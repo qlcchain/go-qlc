@@ -585,3 +585,7 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 	}
 	return &sb, nil
 }
+
+func (l *Ledger) Size() (int64, int64) {
+	return l.Store.Size()
+}

@@ -224,22 +224,22 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		if err != nil {
 			return nil, err
 		}
-		pendingKeys, err := l.ledger.TokenPending(address, t.Type)
-		if err != nil {
-			return nil, err
-		}
-		pendingAmount := types.ZeroBalance
-		for _, key := range pendingKeys {
-			pendinginfo, err := l.ledger.GetPending(key)
-			if err != nil {
-				return nil, err
-			}
-			pendingAmount = pendingAmount.Add(pendinginfo.Amount)
-		}
+		// pendingKeys, err := l.ledger.TokenPending(address, t.Type)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//pendingAmount := types.ZeroBalance
+		//for _, key := range pendingKeys {
+		//	pendinginfo, err := l.ledger.GetPending(key)
+		//	if err != nil {
+		//		return nil, err
+		//	}
+		//	pendingAmount = pendingAmount.Add(pendinginfo.Amount)
+		//}
 		tm := APITokenMeta{
 			TokenMeta: t,
 			TokenName: info.TokenName,
-			Pending:   pendingAmount,
+			//Pending:   pendingAmount,
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
 

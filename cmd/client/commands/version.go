@@ -10,10 +10,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/chain"
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
+	version2 "github.com/qlcchain/go-qlc/chain/version"
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +46,7 @@ func version() {
 }
 
 func versionInfo() {
-	v := chain.VersionString()
+	v := version2.VersionString()
 	if interactive {
 		util.Info(v)
 	} else {
