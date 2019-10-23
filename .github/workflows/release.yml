@@ -20,8 +20,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GIT_CHGLOG_VERION: 0.9.1
         run: |
-          wget -O /usr/bin/git-chglog https://github.com/git-chglog/git-chglog/releases/download/${GIT_CHGLOG_VERION}/git-chglog_linux_amd64
-          chmod +x /usr/bin/git-chglog
+          sudo wget -O /usr/local/bin/git-chglog https://github.com/git-chglog/git-chglog/releases/download/${GIT_CHGLOG_VERION}/git-chglog_linux_amd64
+          sudo chmod +x /usr/local/bin/git-chglog
+          export PATH=$PATH:/usr/local/bin
           export TAG=${GITHUB_REF/refs\/tags\//}
           make VERSION=${TAG} release
       - name: Publish the Docker image to DockerHub
