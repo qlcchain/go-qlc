@@ -310,7 +310,7 @@ func (dps *DPoS) Start() {
 				}
 			}
 		case state := <-dps.syncState:
-			//notify processors
+			// notify processors
 			dps.syncStateNotifyWait.Add(dps.processorNum)
 			for _, p := range dps.processors {
 				p.syncStateChange <- state
@@ -992,7 +992,7 @@ func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
 		}
 	}
 
-	//gap token
+	// gap token
 	blk, err := dps.ledger.GetStateBlock(hash)
 	if err != nil {
 		dps.logger.Errorf("get block error [%s]", hash)
@@ -1181,7 +1181,7 @@ func (dps *DPoS) checkSyncFinished() {
 			dps.logger.Error("block sync down err", err)
 		}
 
-		//notify processors
+		// notify processors
 		dps.syncStateNotifyWait.Add(dps.processorNum)
 		for _, p := range dps.processors {
 			p.syncStateChange <- common.SyncFinish
@@ -1212,7 +1212,7 @@ func (dps *DPoS) onFrontierConfirmed(hash types.Hash, result *bool) {
 			*result = false
 		}
 	} else {
-		//filter confirmed blocks
+		// filter confirmed blocks
 		if has, _ := dps.ledger.HasStateBlockConfirmed(hash); has {
 			*result = true
 		} else {
