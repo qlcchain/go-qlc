@@ -85,10 +85,12 @@ type DPoS struct {
 	cacheBlocks         chan *consensus.BlockSource
 	recvBlocks          chan *consensus.BlockSource
 	povState            chan common.SyncState
+	syncState           chan common.SyncState
 	processors          []*Processor
 	processorNum        int
 	localRepAccount     sync.Map
 	povSyncState        common.SyncState
+	blockSyncState      common.SyncState
 	minVoteWeight       types.Balance
 	voteThreshold       types.Balance
 	subAck              gcache.Cache
@@ -107,10 +109,11 @@ type DPoS struct {
 	lastSendHeight      uint64
 	curPovHeight        uint64
 	checkFinish         chan struct{}
-	syncFinish          chan struct{}
 	gapPovCh            chan *consensus.BlockSource
 	povChange           chan *types.PovBlock
 	lastGapHeight       uint64
+	getFrontier         chan types.StateBlockList
+	isFindingRep        int32
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -135,6 +138,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		cacheBlocks:         make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
 		recvBlocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
 		povState:            make(chan common.SyncState, 1),
+		syncState:           make(chan common.SyncState, 1),
 		processorNum:        processorNum,
 		processors:          newProcessors(processorNum),
 		subMsg:              make(chan *subMsg, 10240),
@@ -150,10 +154,12 @@ func NewDPoS(cfgFile string) *DPoS {
 		lastSendHeight:      1,
 		curPovHeight:        1,
 		checkFinish:         make(chan struct{}, 10240),
-		syncFinish:          make(chan struct{}, 1),
 		gapPovCh:            make(chan *consensus.BlockSource, 10240),
 		povChange:           make(chan *types.PovBlock, 10240),
 		voteCache:           gcache.New(voteCacheSize).LRU().Build(),
+		blockSyncState:      common.SyncNotStart,
+		getFrontier:         make(chan types.StateBlockList, 1),
+		isFindingRep:        0,
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -251,9 +257,6 @@ func (dps *DPoS) Start() {
 			go dps.refreshAccount()
 		case <-dps.checkFinish:
 			dps.checkSyncFinished()
-		case <-dps.syncFinish:
-			dps.CleanSyncCache()
-			dps.logger.Infof("sync finished abnormally")
 		case bs := <-dps.gapPovCh:
 			if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
 				switch cType := c.(type) {
@@ -275,13 +278,15 @@ func (dps *DPoS) Start() {
 
 			if dps.povSyncState == common.SyncDone {
 				// need calculate heart num, so use the pov height to trigger online
-				if dps.curPovHeight%2 == 0 {
+				// isFindingRep is used to forbidding too many goroutings
+				if dps.curPovHeight%2 == 0 && atomic.CompareAndSwapInt32(&dps.isFindingRep, 0, 1) {
 					go func() {
 						err := dps.findOnlineRepresentatives()
 						if err != nil {
 							dps.logger.Error(err)
 						}
 						dps.cleanOnlineReps()
+						atomic.StoreInt32(&dps.isFindingRep, 0)
 					}()
 				}
 
@@ -303,6 +308,68 @@ func (dps *DPoS) Start() {
 				} else {
 					break
 				}
+			}
+		case state := <-dps.syncState:
+			//notify processors
+			dps.syncStateNotifyWait.Add(dps.processorNum)
+			for _, p := range dps.processors {
+				p.syncStateChange <- state
+			}
+			dps.syncStateNotifyWait.Wait()
+
+			switch state {
+			case common.Syncing:
+				dps.acTrx.cleanFrontierVotes()
+				dps.frontiersStatus = new(sync.Map)
+				dps.totalVote = make(map[types.Address]types.Balance)
+				dps.CleanSyncCache()
+			case common.SyncDone:
+			case common.SyncFinish:
+				dps.CleanSyncCache()
+				dps.logger.Warn("sync finished abnormally")
+			}
+		case frontiers := <-dps.getFrontier:
+			var unconfirmed []*types.StateBlock
+
+			for _, block := range frontiers {
+				if block.Token == common.ChainToken() {
+					dps.totalVote[block.Address] = block.Balance.Add(block.Vote).Add(block.Oracle).Add(block.Network).Add(block.Storage)
+					dps.logger.Infof("account[%s] vote weight[%s]", block.Address, dps.totalVote[block.Address])
+				}
+			}
+
+			for _, block := range frontiers {
+				hash := block.GetHash()
+
+				if dps.isReceivedFrontier(hash) {
+					continue
+				}
+
+				has, _ := dps.ledger.HasStateBlockConfirmed(hash)
+				if !has {
+					dps.logger.Infof("get frontier %s need ack", hash)
+					unconfirmed = append(unconfirmed, block)
+					index := dps.getProcessorIndex(block.Address)
+					dps.processors[index].frontiers <- block
+				}
+			}
+
+			unconfirmedLen := len(unconfirmed)
+			sendStart := 0
+			sendEnd := 0
+			sendLen := unconfirmedLen
+
+			for sendLen > 0 {
+				if sendLen >= blockNumPerReq {
+					sendEnd = sendStart + blockNumPerReq
+					sendLen -= blockNumPerReq
+				} else {
+					sendEnd = sendStart + sendLen
+					sendLen = 0
+				}
+
+				dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, unconfirmed[sendStart:sendEnd])
+				sendStart = sendEnd
 			}
 		}
 	}
@@ -368,48 +435,7 @@ func (dps *DPoS) processorStop() {
 }
 
 func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
-	var unconfirmed []*types.StateBlock
-
-	for _, block := range blocks {
-		if block.Token == common.ChainToken() {
-			dps.totalVote[block.Address] = block.Balance.Add(block.Vote).Add(block.Oracle).Add(block.Network).Add(block.Storage)
-			dps.logger.Infof("account[%s] vote weight[%s]", block.Address, dps.totalVote[block.Address])
-		}
-	}
-
-	for _, block := range blocks {
-		hash := block.GetHash()
-
-		if dps.isReceivedFrontier(hash) {
-			continue
-		}
-
-		has, _ := dps.ledger.HasStateBlockConfirmed(hash)
-		if !has {
-			dps.logger.Infof("get frontier %s need ack", hash)
-			unconfirmed = append(unconfirmed, block)
-			index := dps.getProcessorIndex(block.Address)
-			dps.processors[index].frontiers <- block
-		}
-	}
-
-	unconfirmedLen := len(unconfirmed)
-	sendStart := 0
-	sendEnd := 0
-	sendLen := unconfirmedLen
-
-	for sendLen > 0 {
-		if sendLen >= blockNumPerReq {
-			sendEnd = sendStart + blockNumPerReq
-			sendLen -= blockNumPerReq
-		} else {
-			sendEnd = sendStart + sendLen
-			sendLen = 0
-		}
-
-		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, unconfirmed[sendStart:sendEnd])
-		sendStart = sendEnd
-	}
+	dps.getFrontier <- blocks
 }
 
 func (dps *DPoS) onPovSyncState(state common.SyncState) {
@@ -1164,7 +1190,7 @@ func (dps *DPoS) checkSyncFinished() {
 
 		dps.CleanSyncCache()
 		dps.eb.Publish(common.EventConsensusSyncFinished)
-		dps.logger.Infof("sync finished")
+		dps.logger.Warn("sync finished")
 	}
 }
 
@@ -1196,36 +1222,11 @@ func (dps *DPoS) onFrontierConfirmed(hash types.Hash, result *bool) {
 }
 
 func (dps *DPoS) CleanSyncCache() {
-	dps.ledger.WalkSyncCache(func(kind byte, key []byte) {
-		hash, _ := types.BytesToHash(key[1:])
-		if block, err := dps.ledger.GetStateBlockConfirmed(hash); err == nil {
-			index := dps.getProcessorIndex(block.Address)
-			sc := &syncCacheInfo{
-				kind: kind,
-				hash: hash,
-			}
-			dps.processors[index].syncCache <- sc
-		}
-	})
+	dps.ledger.CleanSyncCache()
 }
 
 func (dps *DPoS) onSyncStateChange(state common.SyncState) {
-	//notify processors
-	dps.syncStateNotifyWait.Add(dps.processorNum)
-	for _, p := range dps.processors {
-		p.syncStateChange <- state
-	}
-	dps.syncStateNotifyWait.Wait()
-
-	switch state {
-	case common.Syncing:
-		dps.acTrx.cleanFrontierVotes()
-		dps.frontiersStatus = new(sync.Map)
-		dps.totalVote = make(map[types.Address]types.Balance)
-	case common.SyncDone:
-	case common.SyncFinish:
-		dps.syncFinish <- struct{}{}
-	}
+	dps.syncState <- state
 }
 
 func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {

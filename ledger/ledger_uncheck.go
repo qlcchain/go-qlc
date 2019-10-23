@@ -189,6 +189,12 @@ func (l *Ledger) AddGapPovBlock(height uint64, block *types.StateBlock, sync typ
 		return nil
 	})
 
+	for _, blk := range blocks {
+		if blk.GetHash() == block.GetHash() {
+			return nil
+		}
+	}
+
 	blocks = append(blocks, block)
 	v, err := blocks.Serialize()
 	if err != nil {
