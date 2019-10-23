@@ -15,18 +15,14 @@ jobs:
         uses: actions/checkout@v1
         with:
           fetch-depth: 10
-      - name: Set up Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.13.x
-        id: go
       - name: Publish GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GIT_CHGLOG_VERION: 0.9.1
         run: |
+          wget -O /usr/bin/git-chglog https://github.com/git-chglog/git-chglog/releases/download/${GIT_CHGLOG_VERION}/git-chglog_linux_amd64
+          chmod +x /usr/bin/git-chglog
           export TAG=${GITHUB_REF/refs\/tags\//}
-          go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
-          export PATH=$PATH:$(go env GOPATH)/bin
           make VERSION=${TAG} release
       - name: Publish the Docker image to DockerHub
         uses: docker://goreng/publish-docker-github-action:v2.4
