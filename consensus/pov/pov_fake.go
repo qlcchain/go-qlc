@@ -2,8 +2,6 @@ package pov
 
 import (
 	"errors"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -46,23 +44,6 @@ func (c *ConsensusFake) VerifyHeader(header *types.PovHeader) error {
 	if header.BasHdr.Nonce != header.BasHdr.Timestamp {
 		return errors.New("bad nonce")
 	}
-	return nil
-}
-
-func (c *ConsensusFake) SealHeader(header *types.PovHeader, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error {
-	go func() {
-		copyHdr := header.Copy()
-
-		select {
-		case <-quitCh:
-		case <-time.After(time.Second):
-			copyHdr.BasHdr.Nonce = copyHdr.GetTimestamp()
-			select {
-			case resultCh <- copyHdr:
-			default:
-			}
-		}
-	}()
 	return nil
 }
 
