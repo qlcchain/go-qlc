@@ -11,12 +11,20 @@ jobs:
     runs-on: ubuntu-18.04
  
     steps:
-      - uses: actions/checkout@v1
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 10
       - name: Publish GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          VERSION: ${{ GITHUB_REF/refs\/tags\// }}
-        run:  make release
+          GIT_CHGLOG_VERION: 0.9.1
+        run: |
+          sudo wget -O /usr/local/bin/git-chglog https://github.com/git-chglog/git-chglog/releases/download/${GIT_CHGLOG_VERION}/git-chglog_linux_amd64
+          sudo chmod +x /usr/local/bin/git-chglog
+          export PATH=$PATH:/usr/local/bin
+          export TAG=${GITHUB_REF/refs\/tags\//}
+          make VERSION=${TAG} release
       - name: Publish the Docker image to DockerHub
         uses: docker://goreng/publish-docker-github-action:v2.4
         with:
