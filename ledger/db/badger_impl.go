@@ -10,7 +10,6 @@ import (
 	"github.com/dgraph-io/badger"
 	badgerOpts "github.com/dgraph-io/badger/options"
 	"github.com/dgraph-io/badger/pb"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -69,6 +68,11 @@ func (s *BadgerStore) NewTransaction(update bool) *BadgerStoreTxn {
 // Close closes the database
 func (s *BadgerStore) Close() error {
 	return s.db.Close()
+}
+
+// Close closes the database
+func (s *BadgerStore) Size() (int64, int64) {
+	return s.db.Size()
 }
 
 // Purge purges any old/deleted keys from the database.
