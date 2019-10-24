@@ -5,14 +5,13 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/yireyun/go-queue"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"github.com/yireyun/go-queue"
 )
 
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
@@ -229,7 +228,7 @@ func (lv *LedgerVerifier) rollbackCacheData(blocks []*types.StateBlock, txn db.S
 	}
 
 	blk := blocks[0]
-	if err := lv.rollbackCacheAccount(blk.GetAddress(), blk.GetHash(), txn); err != nil {
+	if err := lv.rollbackCacheAccount(blk.GetAddress(), blk.GetToken(), txn); err != nil {
 		return err
 	}
 	return nil
