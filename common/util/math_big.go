@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	convertError = errors.New("convert error")
+	errConvert = errors.New("convert error")
 )
 
 // BigPow returns a ** b as a big integer.
@@ -129,12 +129,12 @@ func BigMax(x, y *big.Int) *big.Int {
 
 func StringToBigInt(str *string) (*big.Int, error) {
 	if str == nil {
-		return nil, convertError
+		return nil, errConvert
 	}
 	n := new(big.Int)
 	n, ok := n.SetString(*str, 10)
 	if n == nil || !ok {
-		return nil, convertError
+		return nil, errConvert
 	}
 	return n, nil
 }

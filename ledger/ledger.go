@@ -342,7 +342,7 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 				return nil, fmt.Errorf("pending key serialize: %s", err)
 			}
 		default:
-			return nil, errors.New("Key contains of invalid part.")
+			return nil, errors.New("key contains of invalid part")
 		}
 
 		buffer = append(buffer, src...)

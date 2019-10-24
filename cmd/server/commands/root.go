@@ -315,7 +315,7 @@ func start() error {
 
 func trapSignal() {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 	chainContext := context.NewChainContext(cfgPathP)
 	err := chainContext.Stop()

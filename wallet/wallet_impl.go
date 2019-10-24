@@ -62,7 +62,7 @@ type Session struct {
 }
 
 var (
-	EmptyIdErr = errors.New("empty wallet id")
+	ErrEmptyId = errors.New("empty wallet id")
 )
 
 func (ws *WalletStore) NewSession(walletId types.Address) *Session {
@@ -123,7 +123,7 @@ func (s *Session) VerifyPassword(password string) (bool, error) {
 
 func (s *Session) GetWalletId() ([]byte, error) {
 	if len(s.walletId) == 0 {
-		return nil, EmptyIdErr
+		return nil, ErrEmptyId
 	}
 	return s.walletId, nil
 }

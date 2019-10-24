@@ -115,7 +115,7 @@ func TestReadBits(t *testing.T) {
 	}
 	for _, test := range tests {
 		ReadBits(test.data, test.buf)
-		if bytes.Compare(test.buf, test.result) != 0 {
+		if !bytes.Equal(test.buf, test.result) {
 			t.Fatalf("read bits fail, data: [%v], expected [%v], got [%v]", test.data, test.result, test.buf)
 		}
 	}

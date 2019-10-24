@@ -204,13 +204,13 @@ func HashBytes(inputs ...[]byte) (Hash, error) {
 	return result, nil
 }
 
-func Sha256D_HashData(data []byte) Hash {
-	h, _ := Sha256D_HashBytes(data)
+func Sha256DHashData(data []byte) Hash {
+	h, _ := Sha256DHashBytes(data)
 	return h
 }
 
-//Sha256D_HashBytes hash data by sha256
-func Sha256D_HashBytes(inputs ...[]byte) (Hash, error) {
+// Sha256DHashBytes hash data by sha256
+func Sha256DHashBytes(inputs ...[]byte) (Hash, error) {
 	hash := sha256.New()
 
 	for _, data := range inputs {
@@ -228,7 +228,7 @@ func Sha256D_HashBytes(inputs ...[]byte) (Hash, error) {
 	return result, nil
 }
 
-func Scrypt_HashData(data []byte) Hash {
+func ScryptHashData(data []byte) Hash {
 	scryptHash, err := scrypt.Key(data, data, 1024, 1, 1, 32)
 	if err != nil {
 		return ZeroHash
@@ -239,7 +239,7 @@ func Scrypt_HashData(data []byte) Hash {
 	return result
 }
 
-func Scrypt_HashBytes(inputs ...[]byte) (Hash, error) {
+func ScryptHashBytes(inputs ...[]byte) (Hash, error) {
 	buf := new(bytes.Buffer)
 
 	for _, data := range inputs {
@@ -256,7 +256,7 @@ func Scrypt_HashBytes(inputs ...[]byte) (Hash, error) {
 	return result, nil
 }
 
-func X11_HashData(data []byte) Hash {
+func X11HashData(data []byte) Hash {
 	out := make([]byte, 32)
 	hs := x11.New()
 	hs.Hash(data, out)

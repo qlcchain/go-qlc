@@ -175,7 +175,8 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	if err := json.Unmarshal([]byte(blks_data), &blocks); err != nil {
 		t.Fatal(err)
 	}
-	for _, block := range blocks[0:2] {
+	for i := range blocks[0:2] {
+		block := blocks[i]
 		err := l.BatchUpdate(func(txn db.StoreTxn) error {
 			err := l.AddStateBlock(block, txn)
 			if err != nil {

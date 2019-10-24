@@ -162,12 +162,12 @@ func incCounter(ctr []byte) {
 }
 
 // NIST SP 800-56 Concatenation Key Derivation Function (see section 5.8.1).
-func concatKDF(hash hash.Hash, z, s1 []byte, kdLen int) (k []byte, err error) {
+func concatKDF(h hash.Hash, z, s1 []byte, kdLen int) (k []byte, err error) {
 	if s1 == nil {
 		s1 = make([]byte, 0)
 	}
 
-	reps := ((kdLen + 7) * 8) / (hash.BlockSize() * 8)
+	reps := ((kdLen + 7) * 8) / (h.BlockSize() * 8)
 	if big.NewInt(int64(reps)).Cmp(big2To32M1) > 0 {
 		fmt.Println(big2To32M1)
 		return nil, ErrKeyDataTooLong
@@ -177,11 +177,11 @@ func concatKDF(hash hash.Hash, z, s1 []byte, kdLen int) (k []byte, err error) {
 	k = make([]byte, 0)
 
 	for i := 0; i <= reps; i++ {
-		hash.Write(counter)
-		hash.Write(z)
-		hash.Write(s1)
-		k = append(k, hash.Sum(nil)...)
-		hash.Reset()
+		h.Write(counter)
+		h.Write(z)
+		h.Write(s1)
+		k = append(k, h.Sum(nil)...)
+		h.Reset()
 		incCounter(counter)
 	}
 
@@ -191,8 +191,8 @@ func concatKDF(hash hash.Hash, z, s1 []byte, kdLen int) (k []byte, err error) {
 
 // messageTag computes the MAC of a message (called the tag) as per
 // SEC 1, 3.5.
-func messageTag(hash func() hash.Hash, km, msg, shared []byte) []byte {
-	mac := hmac.New(hash, km)
+func messageTag(hashFunc func() hash.Hash, km, msg, shared []byte) []byte {
+	mac := hmac.New(hashFunc, km)
 	mac.Write(msg)
 	mac.Write(shared)
 	tag := mac.Sum(nil)

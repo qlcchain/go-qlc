@@ -272,7 +272,7 @@ func (cbtx *PovCoinBaseTx) BuildHashData() []byte {
 
 func (cbtx *PovCoinBaseTx) ComputeHash() Hash {
 	data := cbtx.BuildHashData()
-	txHash := Sha256D_HashData(data)
+	txHash := Sha256DHashData(data)
 	return txHash
 }
 
@@ -444,13 +444,13 @@ func (h *PovHeader) ComputePowHash() Hash {
 	algo := h.GetAlgoType()
 	switch algo {
 	case ALGO_SHA256D:
-		powHash := Sha256D_HashData(d)
+		powHash := Sha256DHashData(d)
 		return powHash
 	case ALGO_SCRYPT:
-		powHash := Scrypt_HashData(d)
+		powHash := ScryptHashData(d)
 		return powHash
 	case ALGO_X11:
-		powHash := X11_HashData(d)
+		powHash := X11HashData(d)
 		return powHash
 	}
 
@@ -458,7 +458,7 @@ func (h *PovHeader) ComputePowHash() Hash {
 }
 
 func (h *PovHeader) ComputeHash() Hash {
-	hash, _ := Sha256D_HashBytes(h.BuildHashData())
+	hash, _ := Sha256DHashBytes(h.BuildHashData())
 	return hash
 }
 

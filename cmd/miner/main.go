@@ -141,7 +141,7 @@ func doWorkBySelf(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp *a
 
 	cbTxDataBuf.Write(getWorkRsp.CoinBaseData2)
 
-	cbTxHash := types.Sha256D_HashData(cbTxDataBuf.Bytes())
+	cbTxHash := types.Sha256DHashData(cbTxDataBuf.Bytes())
 
 	povHeader.BasHdr.MerkleRoot = merkle.CalcCoinbaseMerkleRoot(&cbTxHash, getWorkRsp.MerkleBranch)
 
@@ -206,7 +206,7 @@ func doWorkByAuxPow(nodeClient *rpc.Client, minerAddr types.Address, getWorkRsp 
 
 	cbTxDataBuf.Write(getWorkRsp.CoinBaseData2)
 
-	cbTxHash := types.Sha256D_HashData(cbTxDataBuf.Bytes())
+	cbTxHash := types.Sha256DHashData(cbTxDataBuf.Bytes())
 
 	povHeader.BasHdr.MerkleRoot = merkle.CalcCoinbaseMerkleRoot(&cbTxHash, getWorkRsp.MerkleBranch)
 

@@ -653,6 +653,7 @@ func TestTrieConcurrence(t *testing.T) {
 	fmt.Println()
 
 	var sw sync.WaitGroup
+	errs := make(chan error)
 	for i := 0; i < 1000; i++ {
 		sw.Add(1)
 		go func() {
@@ -660,11 +661,21 @@ func TestTrieConcurrence(t *testing.T) {
 
 			_, err := trie.Save()
 			if err != nil {
-				t.Fatal(err)
+				errs <- err
 			}
 		}()
 	}
-	sw.Wait()
+
+	go func() {
+		sw.Wait()
+		close(errs)
+	}()
+
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	store := trie.db
 	cache := NewSimpleTrieNodePool()
 
