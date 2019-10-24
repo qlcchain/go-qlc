@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"github.com/qlcchain/go-qlc/crypto/random"
+	"math"
 	"math/big"
 	"sync"
 
@@ -75,4 +77,18 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 	nextTD.Chain.AddBigInt(big.NewInt(0), big.NewInt(int64(tdUint)))
 
 	return block, nextTD
+}
+
+func PovHeader() *types.PovHeader {
+	i, _ := random.Intn(math.MaxInt16)
+	return &types.PovHeader{
+		BasHdr: types.PovBaseHeader{
+			Hash:       Hash(),
+			Previous:   Hash(),
+			MerkleRoot: Hash(),
+			Height:     uint64(i),
+			//Coinbase:   Address(),
+			//StateHash:  Hash(),
+		},
+	}
 }

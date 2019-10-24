@@ -54,14 +54,14 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "mintage",
 			Version:   "1.0",
-			Service:   api.NewMintageApi(r.ledger),
+			Service:   api.NewMintageApi(r.ledger, r.eb),
 			Public:    true,
 		}
 	case "pledge":
 		return rpc.API{
 			Namespace: "pledge",
 			Version:   "1.0",
-			Service:   api.NewNEP5PledgeApi(r.ledger),
+			Service:   api.NewNEP5PledgeApi(r.ledger, r.eb),
 			Public:    true,
 		}
 	case "sms":
@@ -75,7 +75,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "rewards",
 			Version:   "1.0",
-			Service:   api.NewRewardsApi(r.ledger),
+			Service:   api.NewRewardsApi(r.ledger, r.eb),
 			Public:    true,
 		}
 	case "pov":

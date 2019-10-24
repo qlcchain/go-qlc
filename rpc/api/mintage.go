@@ -10,6 +10,8 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/event"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 
@@ -24,15 +26,23 @@ import (
 )
 
 type MintageApi struct {
-	logger   *zap.SugaredLogger
-	ledger   *ledger.Ledger
-	mintage  *contract.Mintage
-	withdraw *contract.WithdrawMintage
+	logger    *zap.SugaredLogger
+	ledger    *ledger.Ledger
+	mintage   *contract.Mintage
+	withdraw  *contract.WithdrawMintage
+	syncState atomic.Value
 }
 
-func NewMintageApi(ledger *ledger.Ledger) *MintageApi {
-	return &MintageApi{ledger: ledger, logger: log.NewLogger("api_mintage"),
-		mintage: &contract.Mintage{}, withdraw: &contract.WithdrawMintage{}}
+func NewMintageApi(ledger *ledger.Ledger, eb event.EventBus) *MintageApi {
+	api := &MintageApi{
+		ledger:   ledger,
+		mintage:  &contract.Mintage{},
+		withdraw: &contract.WithdrawMintage{},
+		logger:   log.NewLogger("api_mintage"),
+	}
+	api.syncState.Store(common.SyncNotStart)
+	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	return api
 }
 
 type MintageParams struct {
@@ -44,6 +54,11 @@ type MintageParams struct {
 	Decimals    uint8         `json:"decimals"`
 	Beneficial  types.Address `json:"beneficial"`
 	NEP5TxId    string        `json:"nep5TxId"`
+}
+
+func (m *MintageApi) OnPovSyncState(state common.SyncState) {
+	m.logger.Infof("mintage receive pov sync state [%s]", state)
+	m.syncState.Store(state)
 }
 
 func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
@@ -62,6 +77,10 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	if param == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := m.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
 	tokenId := cabi.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
 	totalSupply, err := util.StringToBigInt(&param.TotalSupply)
 	if err != nil {
@@ -87,6 +106,10 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	if tm.Balance.Compare(minPledgeAmount) == types.BalanceCompSmaller {
 		return nil, fmt.Errorf("%s have no enough balance %s, expect %s", param.SelfAddr.String(), tm.Balance.String(), minPledgeAmount.String())
 	}
+	povHeader, err := m.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	send := &types.StateBlock{
 		Type:           types.ContractSend,
 		Token:          tm.Type,
@@ -96,6 +119,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		Link:           types.Hash(types.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,
+		PoVHeight:      povHeader.GetHeight(),
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
@@ -112,6 +136,10 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 	if input == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := m.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
 	reward := &types.StateBlock{}
 	vmContext := vmstore.NewVMContext(m.ledger)
 	blocks, err := m.mintage.DoReceive(vmContext, reward, input)
@@ -119,6 +147,11 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 		return nil, err
 	}
 	if len(blocks) > 0 {
+		povHeader, err := m.ledger.GetLatestPovHeader()
+		if err != nil {
+			return nil, fmt.Errorf("get pov header error: %s", err)
+		}
+		reward.PoVHeight = povHeader.GetHeight()
 		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		if h == nil {
@@ -144,6 +177,9 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 	if param == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := m.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	tm, _ := m.ledger.GetTokenMeta(param.SelfAddr, common.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not hava any chain token", param.SelfAddr.String())
@@ -152,7 +188,10 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 	if err != nil {
 		return nil, err
 	}
-
+	povHeader, err := m.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	send := &types.StateBlock{
 		Type:           types.ContractSend,
 		Token:          tm.Type,
@@ -166,6 +205,7 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		Link:           types.Hash(types.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,
+		PoVHeight:      povHeader.GetHeight(),
 		Timestamp:      common.TimeNow().Unix(),
 	}
 	vmContext := vmstore.NewVMContext(m.ledger)
@@ -181,6 +221,9 @@ func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 	if input == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := m.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	reward := &types.StateBlock{}
 	vmContext := vmstore.NewVMContext(m.ledger)
 	blocks, err := m.withdraw.DoReceive(vmContext, reward, input)
@@ -189,6 +232,11 @@ func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 	}
 
 	if len(blocks) > 0 {
+		povHeader, err := m.ledger.GetLatestPovHeader()
+		if err != nil {
+			return nil, fmt.Errorf("get pov header error: %s", err)
+		}
+		reward.PoVHeight = povHeader.GetHeight()
 		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
 		reward.Extra = *h
