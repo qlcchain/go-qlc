@@ -231,7 +231,6 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 				Data:      []byte{},
 			},
 		}, nil
-
 	} else {
 		return nil, fmt.Errorf("invalid token hash %s or amount %s", input.Token.String(), amount.String())
 	}

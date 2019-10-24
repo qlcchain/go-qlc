@@ -49,7 +49,6 @@ func blockCount() {
 					cmd.Println(err)
 					return
 				}
-
 			},
 		}
 		rootCmd.AddCommand(blockcountCmd)
@@ -79,5 +78,4 @@ func blocks() error {
 	}
 
 	return nil
-
 }

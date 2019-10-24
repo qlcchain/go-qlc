@@ -357,7 +357,6 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		if len(exitPullRsp.pullRspQuitCh) > 0 {
 			<-exitPullRsp.pullRspQuitCh
 		}
-
 	} else {
 		exitPullRsp = &peerPullRsp{
 			pullRspStartCh: make(chan bool, 1),

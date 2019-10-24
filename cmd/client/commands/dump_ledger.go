@@ -48,7 +48,6 @@ func dumpledger() {
 					cmd.Println(err)
 					return
 				}
-
 			},
 		}
 		rootCmd.AddCommand(dumpCmd)

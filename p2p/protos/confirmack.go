@@ -22,7 +22,7 @@ func ConfirmAckBlockToProto(confirmAck *ConfirmAckBlock) ([]byte, error) {
 		Sequence:  confirmAck.Sequence,
 	}
 
-	for i, _ := range confirmAck.Hash {
+	for i := range confirmAck.Hash {
 		bpPb.Hash = append(bpPb.Hash, confirmAck.Hash[i][:])
 	}
 

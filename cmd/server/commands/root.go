@@ -98,7 +98,6 @@ func Execute(osArgs []string) {
 				if err != nil {
 					cmd.Println(err)
 				}
-
 			},
 		}
 		rootCmd.PersistentFlags().StringVar(&cfgPathP, "config", "", "config file")

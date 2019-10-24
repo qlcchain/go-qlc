@@ -101,7 +101,6 @@ func TestGetRewardsDetail(t *testing.T) {
 			t.Fatal("invalid total", rewards, total)
 		}
 	}
-
 }
 
 func TestGetConfidantDetail(t *testing.T) {
@@ -152,7 +151,6 @@ func TestGetConfidantDetail(t *testing.T) {
 			t.Log(util.ToIndentString(rewards))
 		}
 	}
-
 }
 
 type mockData struct {

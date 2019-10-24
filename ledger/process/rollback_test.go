@@ -62,7 +62,7 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	}
 
 	fmt.Println("----account----")
-	for k, _ := range addrs {
+	for k := range addrs {
 		ac, err := l.GetAccountMeta(k)
 		if err != nil {
 			t.Fatal(err, k)
@@ -74,7 +74,7 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	}
 
 	fmt.Println("----representation----")
-	for k, _ := range addrs {
+	for k := range addrs {
 		b, err := l.GetRepresentation(k)
 		if err != nil {
 			if err == ledger.ErrRepresentationNotFound {

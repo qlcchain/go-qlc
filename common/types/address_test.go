@@ -30,7 +30,6 @@ func TestAddressToPub(t *testing.T) {
 	if hex.EncodeToString(pub.Bytes()) != "e89208dd038fbb269987689621d52292ae9c35941a7484756ecced92a65093ba" {
 		t.Errorf("Address got wrong public key")
 	}
-
 }
 
 func TestValidateAddress(t *testing.T) {

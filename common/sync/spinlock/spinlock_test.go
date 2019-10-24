@@ -34,7 +34,6 @@ func TestLock(t *testing.T) {
 	if !sl.TryLock() {
 		t.Error("TryLock() returned false when it shouldn't have.")
 	}
-
 }
 
 type SpinMap struct {

@@ -108,7 +108,6 @@ func TrimBuffToString(bytes []byte) string {
 		}
 	}
 	return string(bytes)
-
 }
 
 const (

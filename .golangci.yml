@@ -1,6 +1,6 @@
 linters-settings:
   govet:
-    check-shadowing: true
+    check-shadowing: false
     settings:
       printf:
         funcs:
@@ -45,6 +45,7 @@ linters-settings:
       - dupImport # https://github.com/go-critic/go-critic/issues/845
       - ifElseChain
       - octalLiteral
+      - commentFormatting
   funlen:
     lines: 100
     statements: 50
@@ -106,6 +107,7 @@ run:
   skip-files:
     - ".*\\.my\\.go$"
     - "\\w+_gen.go$"
+    - "\\w+_gen_test.go$"
     - edwards25519.go
 
 issues:

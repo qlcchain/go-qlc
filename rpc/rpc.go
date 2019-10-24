@@ -219,11 +219,9 @@ func (r *RPC) StopRPC() {
 	if r.config.RPC.Enable && r.config.RPC.WSEnabled {
 		r.stopWS()
 	}
-
 }
 
 func (r *RPC) StartRPC() error {
-
 	// Init rpc log
 	//rpcapi.Init(node.config.DataDir, node.config.LogLevel, node.config.TestTokenHexPrivKey, node.config.TestTokenTti)
 

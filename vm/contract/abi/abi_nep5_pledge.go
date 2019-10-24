@@ -125,7 +125,6 @@ func GetTotalPledgeAmount(ctx *vmstore.VMContext) *big.Int {
 			} else {
 				logger.Error(err)
 			}
-
 		}
 		return nil
 	})
@@ -153,7 +152,6 @@ func GetPledgeBeneficialAmount(ctx *vmstore.VMContext, beneficial types.Address,
 			} else {
 				logger.Error(err)
 			}
-
 		}
 		return nil
 	})
@@ -206,7 +204,6 @@ func GetPledgeInfos(ctx *vmstore.VMContext, addr types.Address) ([]*NEP5PledgeIn
 			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
 				piList = append(piList, pledgeInfo)
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
-
 			} else {
 				logger.Error(err)
 			}
@@ -237,7 +234,6 @@ func GetBeneficialInfos(ctx *vmstore.VMContext, addr types.Address) ([]*NEP5Pled
 			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {
 				piList = append(piList, pledgeInfo)
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
-
 			} else {
 				logger.Error(err)
 			}
@@ -270,7 +266,6 @@ func GetBeneficialPledgeInfos(ctx *vmstore.VMContext, beneficial types.Address, 
 					piList = append(piList, pledgeInfo)
 					result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
 				}
-
 			} else {
 				logger.Error(err)
 			}

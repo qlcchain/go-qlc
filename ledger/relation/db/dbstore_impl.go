@@ -30,7 +30,6 @@ func NewSQLDB(cfg *config.Config) (*DBSQL, error) {
 		dbsql = &DBSQL{db: db, logger: log.NewLogger("relation/dbsql")}
 	}
 	return dbsql, nil
-
 }
 
 func (s *DBSQL) NewTransaction() *sqlx.Tx {

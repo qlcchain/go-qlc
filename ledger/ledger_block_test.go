@@ -332,7 +332,6 @@ func TestLedger_BlockChild(t *testing.T) {
 	if h != b3.GetHash() {
 		t.Fatal()
 	}
-
 }
 
 func TestLedger_MessageInfo(t *testing.T) {
@@ -384,5 +383,4 @@ func TestLedger_SyncBlock(t *testing.T) {
 	if count2 != 0 {
 		t.Fatal("sync count error")
 	}
-
 }

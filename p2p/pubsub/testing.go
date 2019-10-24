@@ -28,7 +28,7 @@ type FakeSubscription struct {
 	topic       string
 	pending     chan Message
 	err         error
-	cancelled   bool
+	canceled    bool
 	awaitCancel sync.WaitGroup
 }
 
@@ -65,10 +65,10 @@ func (s *FakeSubscription) Next(ctx context.Context) (Message, error) {
 
 // Cancel cancels this subscription, after which no subsequently posted messages will be received.
 func (s *FakeSubscription) Cancel() {
-	if s.cancelled {
-		panic("subscription already cancelled")
+	if s.canceled {
+		panic("subscription already canceled")
 	}
-	s.cancelled = true
+	s.canceled = true
 	s.awaitCancel.Done()
 }
 
@@ -79,7 +79,7 @@ func (s *FakeSubscription) Post(msg Message) {
 	if s.err != nil {
 		panic("subscription has failed")
 	}
-	if !s.cancelled {
+	if !s.canceled {
 		s.pending <- msg
 	}
 }
@@ -89,7 +89,7 @@ func (s *FakeSubscription) Fail(err error) {
 	if err != nil {
 		panic("error is nil")
 	}
-	if !s.cancelled {
+	if !s.canceled {
 		s.err = err
 	}
 }

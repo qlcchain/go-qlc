@@ -269,5 +269,4 @@ func remove(ids []types.Address, id types.Address) ([]types.Address, error) {
 	} else {
 		return ids, err
 	}
-
 }

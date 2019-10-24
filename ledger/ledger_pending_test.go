@@ -165,7 +165,6 @@ func TestLedger_SearchPending(t *testing.T) {
 	if count4 != 10 {
 		t.Fatal("invalid", count4)
 	}
-
 }
 
 func TestLedger_Pending(t *testing.T) {

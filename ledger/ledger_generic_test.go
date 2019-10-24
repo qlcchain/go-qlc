@@ -62,7 +62,6 @@ func TestLedger_AddOrUpdateGenericType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 }
 
 func TestLedger_UpdateGenericType(t *testing.T) {

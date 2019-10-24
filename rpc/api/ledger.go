@@ -253,7 +253,6 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 			//Pending:   pendingAmount,
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
-
 	}
 	aa.Address = address
 	return aa, nil
@@ -297,7 +296,6 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 			Pending:   pendingAmount,
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
-
 	}
 	aa.Address = address
 	return aa, nil

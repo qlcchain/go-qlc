@@ -10,12 +10,13 @@ package api
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/event"
 	"math/big"
 	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/event"
 
 	"go.uber.org/zap"
 
