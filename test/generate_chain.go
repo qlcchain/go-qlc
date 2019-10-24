@@ -3,6 +3,10 @@ package test
 import (
 	"encoding/json"
 	"errors"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/mock"
 	"os"
 	"path/filepath"
 
@@ -89,6 +93,7 @@ func generateChain() (func() error, *rpc.Client, *chain.LedgerService, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	setPovHeader(cfgFile, l)
 	return func() error {
 		if client != nil {
 			client.Close()
@@ -107,4 +112,13 @@ func generateChain() (func() error, *rpc.Client, *chain.LedgerService, error) {
 		}
 		return nil
 	}, client, ls, nil
+}
+
+func setPovHeader(id string, l *ledger.Ledger) {
+	bus := event.GetEventBus(id)
+	bus.Publish(common.EventPovSyncState, common.SyncDone)
+	header := mock.PovHeader()
+	l.AddPovHeader(header)
+	l.AddPovHeight(header.BasHdr.Hash, header.BasHdr.Height)
+	l.AddPovBestHash(header.BasHdr.Height, header.BasHdr.Hash)
 }
