@@ -1,6 +1,7 @@
 package pov
 
 import (
+	"go.uber.org/atomic"
 	"sync"
 	"time"
 
@@ -96,8 +97,7 @@ type PovBlockProcessor struct {
 	blockNormCh chan *PovBlockSource
 	quitCh      chan struct{}
 
-	syncState common.SyncState
-	syncMux   sync.RWMutex
+	syncState atomic.Value
 }
 
 func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
@@ -127,7 +127,7 @@ func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
 	bp.blockNormCh = make(chan *PovBlockSource, blockChanSize)
 	bp.quitCh = make(chan struct{})
 
-	bp.syncState = common.SyncNotStart
+	bp.syncState.Store(common.SyncNotStart)
 
 	return bp
 }
@@ -221,14 +221,19 @@ func (bp *PovBlockProcessor) onAddSyncStateBlock(tx *types.StateBlock, done bool
 }
 
 func (bp *PovBlockProcessor) onPovSyncState(state common.SyncState) {
-	bp.syncMux.Lock()
-	defer bp.syncMux.Unlock()
-
 	if state.IsSyncExited() == false {
 		return
 	}
 
-	bp.syncState = state
+	bp.syncState.Store(state)
+}
+
+func (bp *PovBlockProcessor) isPovSyncDone() bool {
+	s := bp.syncState.Load().(common.SyncState)
+	if s.IsSyncExited() {
+		return true
+	}
+	return false
 }
 
 func (bp *PovBlockProcessor) checkAndSetBlockInChan(block *types.PovBlock) bool {
@@ -483,7 +488,7 @@ func (bp *PovBlockProcessor) GetOrphanRoot(oHash types.Hash) types.Hash {
 
 func (bp *PovBlockProcessor) requestOrphanBlock(oBlock *PovOrphanBlock) {
 	// no need request orphan in syncing phase
-	if bp.syncState.IsSyncExited() == false {
+	if bp.isPovSyncDone() == false {
 		return
 	}
 
@@ -497,7 +502,7 @@ func (bp *PovBlockProcessor) onRequestOrphanBlocksTimer() {
 		return
 	}
 	// no need request orphan in syncing phase
-	if bp.syncState.IsSyncExited() == false {
+	if bp.isPovSyncDone() == false {
 		return
 	}
 
@@ -539,7 +544,7 @@ func (bp *PovBlockProcessor) onCheckOrphanBlocksTimer() {
 		return
 	}
 	// no need request orphan in syncing phase
-	if bp.syncState.IsSyncExited() == false {
+	if bp.isPovSyncDone() == false {
 		return
 	}
 
@@ -696,4 +701,17 @@ func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock
 		return
 	}
 	bp.blockHighCh <- pendingBlock.blockSrc
+}
+
+func (bp *PovBlockProcessor) GetDebugInfo() map[string]interface{} {
+	// !!! be very careful about to map concurrent read !!!
+
+	info := make(map[string]interface{})
+	info["blockNormCh"] = len(bp.blockNormCh)
+	info["blockHighCh"] = len(bp.blockHighCh)
+	info["orphanBlocks"] = len(bp.orphanBlocks)
+	info["pendingBlocks"] = len(bp.pendingBlocks)
+	info["txPendingBlocks"] = len(bp.txPendingBlocks)
+
+	return info
 }

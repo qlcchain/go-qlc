@@ -58,6 +58,7 @@ type PovSyncer struct {
 	syncRcvHeight uint64
 	syncReqHeight uint64
 	syncBlocks    map[uint64]*PovSyncBlock
+	syncBlocksMux sync.RWMutex
 
 	lastReqTxTime *atomic.Int64 // time.Time.Unix()
 
@@ -563,4 +564,36 @@ func (ss *PovSyncer) absDiffHeight(lhs uint64, rhs uint64) uint64 {
 		return lhs - rhs
 	}
 	return rhs - lhs
+}
+
+func (ss *PovSyncer) GetDebugInfo() map[string]interface{} {
+	// !!! be very careful about to map concurrent read !!!
+
+	info := make(map[string]interface{})
+	info["initSyncOver"] = ss.initSyncOver.Load()
+	info["inSyncing"] = ss.inSyncing.Load()
+	info["syncToHeight"] = ss.syncToHeight
+	info["syncCurHeight"] = ss.syncCurHeight
+	info["syncRcvHeight"] = ss.syncRcvHeight
+	info["syncStartTime"] = ss.syncStartTime
+	info["syncEndTime"] = ss.syncEndTime
+	info["syncQueueNum"] = len(ss.syncBlocks)
+
+	info["syncPeerID"] = ss.syncPeerID
+	if ss.syncPeerID != "" {
+		syncPeer := ss.FindPeer(ss.syncPeerID)
+		if syncPeer != nil {
+			peerInfo := make(map[string]interface{})
+			info["syncPeerInfo"] = peerInfo
+			peerInfo["status"] = syncPeer.status
+			peerInfo["syncSeqID"] = syncPeer.syncSeqID
+			peerInfo["waitLocatorRsp"] = syncPeer.waitLocatorRsp
+			peerInfo["lastStatusTime"] = syncPeer.lastStatusTime
+			peerInfo["lastSyncReqTime"] = syncPeer.lastSyncReqTime
+			peerInfo["currentHeight"] = syncPeer.currentHeight
+			peerInfo["currentTD"] = syncPeer.currentTD
+		}
+	}
+
+	return info
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -275,4 +276,23 @@ func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	repOnline := make(map[uint64]*dpos.RepOnlinePeriod, 0)
 	l.eb.Publish(common.EventRpcSyncCall, "DPoS.Online", "info", repOnline)
 	return repOnline, nil
+}
+
+func (l *DebugApi) GetPovInfo() (map[string]interface{}, error) {
+	inArgs := make(map[string]interface{})
+	outArgs := make(map[string]interface{})
+
+	l.eb.Publish(common.EventRpcSyncCall, "Debug.PovInfo", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+	delete(outArgs, "err")
+
+	return outArgs, nil
 }

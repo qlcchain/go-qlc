@@ -646,3 +646,13 @@ func (tp *PovTxPool) GetPendingTxNum() uint32 {
 
 	return uint32(len(tp.allTxs))
 }
+
+func (tp *PovTxPool) GetDebugInfo() map[string]interface{} {
+	// !!! be very careful about to map concurrent read !!!
+
+	info := make(map[string]interface{})
+	info["allTxs"] = len(tp.allTxs)
+	info["accountTxs"] = len(tp.accountTxs)
+
+	return info
+}
