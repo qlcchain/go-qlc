@@ -6,7 +6,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -21,10 +20,17 @@ const (
 			{"name":"endHeight","type":"uint64"},
 			{"name":"rewardBlocks","type":"uint64"},
 			{"name":"rewardAmount","type":"balance"}
+		]},
+		{"type":"variable","name":"RepRewardInfo","inputs":[
+			{"name":"endHeight","type":"uint64"},
+			{"name":"rewardBlocks","type":"uint64"},
+			{"name":"timestamp","type":"int64"},
+			{"name":"rewardAmount","type":"balance"}
 		]}
 	]`
 
-	MethodNameRepReward = "RepReward"
+	MethodNameRepReward   = "RepReward"
+	VariableNameRepReward = "RepRewardInfo"
 )
 
 var (
@@ -71,12 +77,19 @@ type RepRewardInfo struct {
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
 	RewardAmount types.Balance `json:"rewardAmount"`
+	Timestamp    int64         `json:"_"`
 }
 
 func GetLastRepRewardHeightByAccount(ctx *vmstore.VMContext, account types.Address) (uint64, error) {
 	data, err := ctx.GetStorage(types.RepAddress[:], account[:])
 	if err == nil {
-		return util.BE_BytesToUint64(data), nil
+		info := new(RepRewardInfo)
+		err := RepABI.UnpackVariable(info, VariableNameRepReward, data)
+		if err != nil {
+			return 0, err
+		} else {
+			return info.EndHeight, nil
+		}
 	} else {
 		return 0, err
 	}

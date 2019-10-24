@@ -45,11 +45,10 @@ type MinerAvailRewardInfo struct {
 }
 
 type MinerHistoryRewardInfo struct {
-	RewardInfos       []*cabi.MinerRewardInfo `json:"rewardInfos"`
-	FirstRewardHeight uint64                  `json:"firstRewardHeight"`
-	LastRewardHeight  uint64                  `json:"lastRewardHeight"`
-	AllRewardBlocks   uint64                  `json:"allRewardBlocks"`
-	AllRewardAmount   types.Balance           `json:"allRewardAmount"`
+	LastEndHeight  uint64        `json:"lastEndHeight"`
+	RewardBlocks   uint64        `json:"rewardBlocks"`
+	RewardAmount   types.Balance `json:"rewardAmount"`
+	LastRewardTime int64         `json:"lastRewardTime"`
 }
 
 func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
@@ -242,4 +241,20 @@ func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.Sta
 	}
 
 	return m.GetRewardRecvBlock(input)
+}
+
+func (m *MinerApi) GetRewardHistory(coinbase types.Address) (*MinerHistoryRewardInfo, error) {
+	history := new(MinerHistoryRewardInfo)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	info, err := m.reward.GetRewardHistory(vmContext, coinbase)
+	if err != nil {
+		return nil, err
+	}
+
+	history.LastEndHeight = info.EndHeight
+	history.RewardBlocks = info.RewardBlocks
+	history.RewardAmount = info.RewardAmount
+	history.LastRewardTime = info.Timestamp
+
+	return history, nil
 }

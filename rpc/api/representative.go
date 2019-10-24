@@ -45,6 +45,13 @@ type RepAvailRewardInfo struct {
 	NeedCallReward    bool          `json:"needCallReward"`
 }
 
+type RepHistoryRewardInfo struct {
+	LastEndHeight  uint64        `json:"lastEndHeight"`
+	RewardBlocks   uint64        `json:"rewardBlocks"`
+	RewardAmount   types.Balance `json:"rewardAmount"`
+	LastRewardTime int64         `json:"lastRewardTime"`
+}
+
 func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
 	return &RepApi{
 		cfg:    cfg,
@@ -280,4 +287,20 @@ func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepSta
 	}
 
 	return rs, nil
+}
+
+func (r *RepApi) GetRewardHistory(account types.Address) (*RepHistoryRewardInfo, error) {
+	history := new(RepHistoryRewardInfo)
+	vmContext := vmstore.NewVMContext(r.ledger)
+	info, err := r.reward.GetRewardHistory(vmContext, account)
+	if err != nil {
+		return nil, err
+	}
+
+	history.LastEndHeight = info.EndHeight
+	history.RewardBlocks = info.RewardBlocks
+	history.RewardAmount = info.RewardAmount
+	history.LastRewardTime = info.Timestamp
+
+	return history, nil
 }

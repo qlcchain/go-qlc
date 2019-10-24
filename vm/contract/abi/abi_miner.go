@@ -6,7 +6,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -21,10 +20,17 @@ const (
 			{"name":"endHeight","type":"uint64"},
 			{"name":"rewardBlocks","type":"uint64"},
 			{"name":"rewardAmount","type":"balance"}
+		]},
+		{"type":"variable","name":"MinerRewardInfo","inputs":[
+			{"name":"endHeight","type":"uint64"},
+			{"name":"rewardBlocks","type":"uint64"},
+			{"name":"timestamp","type":"int64"},
+			{"name":"rewardAmount","type":"balance"}
 		]}
 	]`
 
-	MethodNameMinerReward = "MinerReward"
+	MethodNameMinerReward   = "MinerReward"
+	VariableNameMinerReward = "MinerRewardInfo"
 )
 
 var (
@@ -69,12 +75,19 @@ type MinerRewardInfo struct {
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
 	RewardAmount types.Balance `json:"rewardAmount"`
+	Timestamp    int64         `json:"_"`
 }
 
 func GetLastMinerRewardHeightByAccount(ctx *vmstore.VMContext, coinbase types.Address) (uint64, error) {
 	data, err := ctx.GetStorage(types.MinerAddress[:], coinbase[:])
 	if err == nil {
-		return util.BE_BytesToUint64(data), nil
+		info := new(MinerRewardInfo)
+		err := MinerABI.UnpackVariable(info, VariableNameMinerReward, data)
+		if err != nil {
+			return 0, err
+		} else {
+			return info.EndHeight, nil
+		}
 	} else {
 		return 0, err
 	}

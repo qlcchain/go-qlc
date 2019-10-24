@@ -32,11 +32,13 @@ func repReward() {
 			Name:  "bnfPriKey",
 			Must:  false,
 			Usage: "beneficial account private hex string",
+			Value: "",
 		}
 		bnfAddr := util.Flag{
 			Name:  "bnfAddr",
 			Must:  false,
 			Usage: "beneficial account address hex string",
+			Value: "",
 		}
 
 		cmd := &ishell.Cmd{

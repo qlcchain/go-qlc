@@ -6,7 +6,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -20,6 +19,21 @@ func (r *RepReward) GetLastRewardHeight(ctx *vmstore.VMContext, account types.Ad
 	}
 
 	return height, nil
+}
+
+func (r *RepReward) GetRewardHistory(ctx *vmstore.VMContext, account types.Address) (*cabi.RepRewardInfo, error) {
+	data, err := ctx.GetStorage(types.RepAddress[:], account[:])
+	if err == nil {
+		info := new(cabi.RepRewardInfo)
+		err := cabi.RepABI.UnpackVariable(info, cabi.VariableNameRepReward, data)
+		if err != nil {
+			return nil, err
+		} else {
+			return info, nil
+		}
+	} else {
+		return nil, err
+	}
 }
 
 func (r *RepReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
@@ -121,7 +135,8 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		return nil, nil, err
 	}
 
-	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], util.BE_Uint64ToBytes(param.EndHeight))
+	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, param.EndHeight, param.RewardBlocks, block.Timestamp, param.RewardAmount)
+	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")
 	}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -20,6 +19,23 @@ func (m *MinerReward) GetLastRewardHeight(ctx *vmstore.VMContext, coinbase types
 	}
 
 	return height, nil
+}
+
+func (m *MinerReward) GetRewardHistory(ctx *vmstore.VMContext, coinbase types.Address) (*cabi.MinerRewardInfo, error) {
+	data, err := ctx.GetStorage(types.MinerAddress[:], coinbase[:])
+	if err == nil {
+		info := new(cabi.MinerRewardInfo)
+		fmt.Println(data)
+		err := cabi.MinerABI.UnpackVariable(info, cabi.VariableNameMinerReward, data)
+		if err != nil {
+			return nil, err
+		} else {
+			fmt.Println(info)
+			return info, nil
+		}
+	} else {
+		return nil, err
+	}
 }
 
 func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
@@ -126,7 +142,8 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 		return nil, nil, err
 	}
 
-	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], util.BE_Uint64ToBytes(param.EndHeight))
+	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, param.EndHeight, param.RewardBlocks, block.Timestamp, param.RewardAmount)
+	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")
 	}

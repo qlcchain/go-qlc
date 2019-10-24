@@ -32,11 +32,13 @@ func minerReward() {
 			Name:  "bnfprikey",
 			Must:  false,
 			Usage: "beneficial account private hex string",
+			Value: "",
 		}
 		bnfAddr := util.Flag{
 			Name:  "bnfaddr",
 			Must:  false,
 			Usage: "beneficial account address hex string",
+			Value: "",
 		}
 
 		cmd := &ishell.Cmd{
