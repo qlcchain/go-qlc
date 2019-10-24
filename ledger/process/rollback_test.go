@@ -95,6 +95,38 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	}
 }
 
+func TestLedgerVerifier_BlockCacheCheck(t *testing.T) {
+	teardownTestCase, _, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+	addr := mock.Address()
+	ac := mock.AccountMeta(addr)
+	token := ac.Tokens[0].Type
+	block := mock.StateBlock()
+	block.Address = addr
+	block.Token = token
+
+	if err := lv.l.AddBlockCache(block); err != nil {
+		t.Fatal(err)
+	}
+	if err := lv.l.AddAccountMetaCache(ac); err != nil {
+		t.Fatal(err)
+	}
+	if err := lv.RollbackBlock(block.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+
+	if b, err := lv.l.HasBlockCache(block.GetHash()); b || err != nil {
+		t.Fatal(err)
+	}
+	ac, err := lv.l.GetAccountMetaCache(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tm := ac.Token(token); tm != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestLedger_Rollback_ContractData(t *testing.T) {
 	t.Skip()
 	dir := filepath.Join(config.DefaultDataDir(), "ledger")
