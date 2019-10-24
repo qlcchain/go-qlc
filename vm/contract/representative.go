@@ -25,12 +25,11 @@ func (r *RepReward) GetRewardHistory(ctx *vmstore.VMContext, account types.Addre
 	data, err := ctx.GetStorage(types.RepAddress[:], account[:])
 	if err == nil {
 		info := new(cabi.RepRewardInfo)
-		err := cabi.RepABI.UnpackVariable(info, cabi.VariableNameRepReward, data)
-		if err != nil {
-			return nil, err
-		} else {
-			return info, nil
+		er := cabi.RepABI.UnpackVariable(info, cabi.VariableNameRepReward, data)
+		if er != nil {
+			return nil, er
 		}
+		return info, nil
 	} else {
 		return nil, err
 	}
@@ -130,12 +129,14 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		return nil, nil, fmt.Errorf("calc reward %d not equal param reward %v", calcRewardAmount, param.RewardAmount)
 	}
 
-	block.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
+	block.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial,
+		param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, param.EndHeight, param.RewardBlocks, block.Timestamp, param.RewardAmount)
+	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, param.EndHeight, param.RewardBlocks,
+		block.Timestamp, param.RewardAmount)
 	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")

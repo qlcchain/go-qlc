@@ -84,12 +84,11 @@ func GetLastRepRewardHeightByAccount(ctx *vmstore.VMContext, account types.Addre
 	data, err := ctx.GetStorage(types.RepAddress[:], account[:])
 	if err == nil {
 		info := new(RepRewardInfo)
-		err := RepABI.UnpackVariable(info, VariableNameRepReward, data)
-		if err != nil {
-			return 0, err
-		} else {
-			return info.EndHeight, nil
+		er := RepABI.UnpackVariable(info, VariableNameRepReward, data)
+		if er != nil {
+			return 0, er
 		}
+		return info.EndHeight, nil
 	} else {
 		return 0, err
 	}

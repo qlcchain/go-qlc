@@ -25,14 +25,11 @@ func (m *MinerReward) GetRewardHistory(ctx *vmstore.VMContext, coinbase types.Ad
 	data, err := ctx.GetStorage(types.MinerAddress[:], coinbase[:])
 	if err == nil {
 		info := new(cabi.MinerRewardInfo)
-		fmt.Println(data)
-		err := cabi.MinerABI.UnpackVariable(info, cabi.VariableNameMinerReward, data)
-		if err != nil {
-			return nil, err
-		} else {
-			fmt.Println(info)
-			return info, nil
+		er := cabi.MinerABI.UnpackVariable(info, cabi.VariableNameMinerReward, data)
+		if er != nil {
+			return nil, er
 		}
+		return info, nil
 	} else {
 		return nil, err
 	}
@@ -137,12 +134,14 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 		return nil, nil, fmt.Errorf("calc reward %d not equal param reward %v", calcRewardAmount, param.RewardAmount)
 	}
 
-	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
+	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial,
+		param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, param.EndHeight, param.RewardBlocks, block.Timestamp, param.RewardAmount)
+	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, param.EndHeight, param.RewardBlocks,
+		block.Timestamp, param.RewardAmount)
 	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")

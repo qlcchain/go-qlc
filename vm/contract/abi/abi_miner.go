@@ -82,12 +82,11 @@ func GetLastMinerRewardHeightByAccount(ctx *vmstore.VMContext, coinbase types.Ad
 	data, err := ctx.GetStorage(types.MinerAddress[:], coinbase[:])
 	if err == nil {
 		info := new(MinerRewardInfo)
-		err := MinerABI.UnpackVariable(info, VariableNameMinerReward, data)
-		if err != nil {
-			return 0, err
-		} else {
-			return info.EndHeight, nil
+		er := MinerABI.UnpackVariable(info, VariableNameMinerReward, data)
+		if er != nil {
+			return 0, er
 		}
+		return info.EndHeight, nil
 	} else {
 		return 0, err
 	}

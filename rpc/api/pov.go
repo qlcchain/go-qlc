@@ -782,14 +782,14 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 }
 
 func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRepStats, error) {
-	rspMap := make(map[types.Address]*PovRepStats)
+	checkAddrMap := make(map[types.Address]bool)
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
-			rspMap[addr] = new(PovRepStats)
-			rspMap[addr].MainRewardAmount = types.NewBalance(0)
-			rspMap[addr].StableRewardAmount = types.NewBalance(0)
+			checkAddrMap[addr] = true
 		}
 	}
+
+	rspMap := make(map[types.Address]*PovRepStats)
 
 	// scan rep stats per day
 	lastDayIndex := uint32(0)
@@ -799,14 +799,23 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 		}
 
 		for addrHex, minerStat := range stat.MinerStats {
-			fmt.Println(minerStat)
 			repAddr, _ := types.HexToAddress(addrHex)
-			if stat, ok := rspMap[repAddr]; ok {
-				stat.MainRewardAmount = stat.MainRewardAmount.Add(minerStat.RepReward)
-				stat.StableRewardAmount = stat.MainRewardAmount
-				stat.MainBlockNum += minerStat.RepBlockNum
-				stat.StableBlockNum = stat.MainBlockNum
+			if len(checkAddrMap) > 0 && checkAddrMap[repAddr] == false {
+				continue
 			}
+
+			repStat, ok := rspMap[repAddr]
+			if !ok {
+				rspMap[repAddr] = new(PovRepStats)
+				rspMap[repAddr].MainRewardAmount = types.NewBalance(0)
+				rspMap[repAddr].StableRewardAmount = types.NewBalance(0)
+				repStat = rspMap[repAddr]
+			}
+
+			repStat.MainRewardAmount = repStat.MainRewardAmount.Add(minerStat.RepReward)
+			repStat.StableRewardAmount = repStat.MainRewardAmount
+			repStat.MainBlockNum += minerStat.RepBlockNum
+			repStat.StableBlockNum = repStat.MainBlockNum
 		}
 		return nil
 	})
@@ -850,16 +859,26 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 
 				// divide reward to each rep
 				for _, rep := range repStates {
+					if len(checkAddrMap) > 0 && checkAddrMap[rep.Account] == false {
+						continue
+					}
+
 					// repReward = totalReward / repWeight * totalWeight
 					repRewardBig := big.NewInt(rep.CalcTotal().Int64())
 					repRewardBig = repRewardBig.Mul(repRewardBig, repRewardAllBig.Int)
 					amountBig := repRewardBig.Div(repRewardBig, repWeightTotalBig)
 					amount := types.NewBalance(amountBig.Int64())
 
-					if stat, ok := rspMap[rep.Account]; ok {
-						stat.MainBlockNum += 1
-						stat.MainRewardAmount = stat.MainRewardAmount.Add(amount)
+					repStat, ok := rspMap[rep.Account]
+					if !ok {
+						rspMap[rep.Account] = new(PovRepStats)
+						rspMap[rep.Account].MainRewardAmount = types.NewBalance(0)
+						rspMap[rep.Account].StableRewardAmount = types.NewBalance(0)
+						repStat = rspMap[rep.Account]
 					}
+
+					repStat.MainBlockNum += 1
+					repStat.MainRewardAmount = repStat.MainRewardAmount.Add(amount)
 				}
 			}
 		}
@@ -1408,7 +1427,7 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 
 	key, valBytes, ok := it.Next()
 	for ; ok; key, valBytes, ok = it.Next() {
-		if len(valBytes) <= 0 {
+		if len(valBytes) == 0 {
 			continue
 		}
 
