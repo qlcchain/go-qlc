@@ -1,9 +1,10 @@
 package pov
 
 import (
-	"go.uber.org/atomic"
 	"sync"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"go.uber.org/zap"
 

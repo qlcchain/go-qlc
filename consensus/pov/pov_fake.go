@@ -2,6 +2,7 @@ package pov
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 )
