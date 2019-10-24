@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/event"
@@ -15,6 +16,10 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/trie"
+)
+
+const (
+	MaxTxsInPool = 100000
 )
 
 type PovTxEvent struct {
@@ -40,6 +45,7 @@ type PovTxPool struct {
 	accountTxs  map[types.AddressToken]*list.List
 	allTxs      map[types.Hash]*PovTxEntry
 	lastUpdated int64
+	syncState   atomic.Value
 }
 
 type PovTxChainReader interface {
@@ -60,11 +66,11 @@ func NewPovTxPool(eb event.EventBus, ledger ledger.Store, chain PovTxChainReader
 	txPool.quitCh = make(chan struct{})
 	txPool.accountTxs = make(map[types.AddressToken]*list.List)
 	txPool.allTxs = make(map[types.Hash]*PovTxEntry)
+	txPool.syncState.Store(common.SyncNotStart)
 	return txPool
 }
 
 func (tp *PovTxPool) Init() {
-	tp.recoverUnconfirmedTxs()
 }
 
 func (tp *PovTxPool) Start() {
@@ -88,6 +94,15 @@ func (tp *PovTxPool) Start() {
 			return
 		}
 		tp.handlerIds[common.EventDeleteRelation] = id
+	}
+
+	if tp.eb != nil {
+		id, err := tp.eb.SubscribeSync(common.EventPovSyncState, tp.onPovSyncState)
+		if err != nil {
+			tp.logger.Errorf("failed to subscribe EventPovSyncState")
+			return
+		}
+		tp.handlerIds[common.EventPovSyncState] = id
 	}
 
 	tp.chain.RegisterListener(tp)
@@ -114,33 +129,53 @@ func (tp *PovTxPool) Stop() {
 		}
 	}
 
+	if tp.eb != nil {
+		err := tp.eb.Unsubscribe(common.EventPovSyncState, tp.handlerIds[common.EventPovSyncState])
+		if err != nil {
+			tp.logger.Error(err)
+		}
+	}
+
 	close(tp.quitCh)
 }
 
-func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) error {
+func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) {
+	if !tp.isPovSyncDone() {
+		return
+	}
+	if tp.isTxExceedLimit() {
+		return
+	}
 	txHash := block.GetHash()
 	//tp.logger.Debugf("recv event, add state block hash %s", txHash)
 	tp.txEventCh <- &PovTxEvent{event: common.EventAddRelation, txHash: txHash, txBlock: block}
-	return nil
 }
 
-func (tp *PovTxPool) onAddSyncStateBlock(block *types.StateBlock, done bool) error {
+func (tp *PovTxPool) onAddSyncStateBlock(block *types.StateBlock, done bool) {
 	if done {
-		return nil
+		return
+	}
+	if !tp.isPovSyncDone() {
+		return
+	}
+	if tp.isTxExceedLimit() {
+		return
 	}
 	txHash := block.GetHash()
 	//tp.logger.Debugf("recv event, add sync state block hash %s", txHash)
 	tp.txEventCh <- &PovTxEvent{event: common.EventAddSyncBlocks, txHash: txHash, txBlock: block}
-	return nil
 }
 
-func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) error {
+func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) {
 	//tp.logger.Debugf("recv event, delete state block hash %s", hash)
 	tp.txEventCh <- &PovTxEvent{event: common.EventDeleteRelation, txHash: hash}
-	return nil
 }
 
 func (tp *PovTxPool) OnPovBlockEvent(event byte, block *types.PovBlock) {
+	if !tp.isPovSyncDone() {
+		return
+	}
+
 	txs := block.GetAccountTxs()
 	if len(txs) <= 0 {
 		return
@@ -159,7 +194,39 @@ func (tp *PovTxPool) OnPovBlockEvent(event byte, block *types.PovBlock) {
 	}
 }
 
+func (tp *PovTxPool) onPovSyncState(state common.SyncState) {
+	tp.syncState.Store(state)
+}
+
+func (tp *PovTxPool) isPovSyncDone() bool {
+	if tp.syncState.Load().(common.SyncState) == common.SyncDone {
+		return true
+	}
+	return false
+}
+
+func (tp *PovTxPool) isTxExceedLimit() bool {
+	tp.txMu.Lock()
+	defer tp.txMu.Unlock()
+
+	txNum := len(tp.allTxs)
+	if txNum >= MaxTxsInPool {
+		return true
+	}
+
+	return false
+}
+
 func (tp *PovTxPool) loop() {
+	// wait pov init sync done
+	for {
+		if tp.isPovSyncDone() {
+			tp.recoverUnconfirmedTxs()
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
 	checkTicker := time.NewTicker(100 * time.Millisecond)
 	defer checkTicker.Stop()
 
@@ -260,48 +327,6 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 			blockCopy := block
 			accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: &blockCopy})
 			unconfirmedTxNum++
-		}
-
-		return nil
-	})
-	if err != nil {
-		tp.logger.Errorf("scan all state blocks failed")
-	}
-
-	usedTime := time.Since(startTime)
-
-	tp.logger.Infof("finished to scan all state blocks used time %s, unconfirmed %d", usedTime.String(), unconfirmedTxNum)
-
-	return accountTxs, unconfirmedTxNum
-}
-
-func (tp *PovTxPool) getUnconfirmedTxsBySlow() (map[types.AddressToken][]*PovTxEntry, int) {
-	stateBlockNum, _ := tp.ledger.CountStateBlocks()
-	uncheckedStateBlockNum, _ := tp.ledger.CountUncheckedBlocks()
-
-	tp.logger.Infof("begin to scan all state blocks, block %d, unchecked %d", stateBlockNum, uncheckedStateBlockNum)
-
-	accountTxs := make(map[types.AddressToken][]*PovTxEntry, 1000)
-	unconfirmedTxNum := 0
-
-	startTime := time.Now()
-
-	err := tp.ledger.BatchView(func(txn db.StoreTxn) error {
-		err := tp.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-			txHash := block.GetHash()
-			if tp.ledger.HasPovTxLookup(txHash, txn) {
-				return nil
-			}
-
-			addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
-			accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: block})
-			unconfirmedTxNum++
-			return nil
-		}, txn)
-
-		if err != nil {
-			tp.logger.Errorf("failed to get state blocks, err %s", err)
-			return err
 		}
 
 		return nil
@@ -462,99 +487,11 @@ func (tp *PovTxPool) getTx(txHash types.Hash) *types.StateBlock {
 }
 
 func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.StateBlock {
-	//return tp.SelectPendingTxsByGreedy(stateTrie, limit)
-	return tp.SelectPendingTxsByFair(stateTrie, limit)
+	//return tp.selectPendingTxsByGreedy(stateTrie, limit)
+	return tp.selectPendingTxsByFair(stateTrie, limit)
 }
 
-func (tp *PovTxPool) SelectPendingTxsByGreedy(stateTrie *trie.Trie, limit int) []*types.StateBlock {
-	tp.txMu.RLock()
-	defer tp.txMu.RUnlock()
-
-	var retTxs []*types.StateBlock
-
-	if limit <= 0 || len(tp.accountTxs) <= 0 {
-		return retTxs
-	}
-
-	//tp.logger.Debugf("select pending txs in pool, txs %d", len(tp.allTxs))
-
-	addrTokenPrevHashes := make(map[types.AddressToken]types.Hash)
-	for addrToken, accTxList := range tp.accountTxs {
-		isCA := types.IsContractAddress(addrToken.Address)
-
-		selectedTxHashes := make(map[types.Hash]struct{})
-		for accTxList.Len() > len(selectedTxHashes) {
-			notInOrderTxNum := 0
-			inOrderTxNum := 0
-			for e := accTxList.Front(); e != nil; e = e.Next() {
-				txEntry := e.Value.(*PovTxEntry)
-				txBlock := txEntry.txBlock
-				txHash := txEntry.txHash
-				if _, ok := selectedTxHashes[txHash]; ok {
-					continue
-				}
-				token := addrToken.Token
-
-				// contract address's blocks are all independent, no previous
-				prevHashWant, ok := addrTokenPrevHashes[addrToken]
-				if !ok {
-					if isCA {
-						prevHashWant = types.ZeroHash
-					} else {
-						as := tp.chain.GetAccountState(stateTrie, addrToken.Address)
-						if as != nil {
-							rs := as.GetTokenState(token)
-							if rs != nil {
-								prevHashWant = rs.Hash
-							} else {
-								prevHashWant = types.ZeroHash
-							}
-						} else {
-							prevHashWant = types.ZeroHash
-						}
-					}
-				}
-
-				//tp.logger.Debugf("AddrToken %s block %s", addrToken, txHash)
-				//tp.logger.Debugf("prevHashWant %s txPrevious %s", prevHashWant, txBlock.GetPrevious())
-				if txBlock.GetPrevious() == prevHashWant {
-					retTxs = append(retTxs, txBlock)
-
-					selectedTxHashes[txHash] = struct{}{}
-					// contract address's blocks are all independent, no previous
-					if !isCA {
-						addrTokenPrevHashes[addrToken] = txHash
-					}
-					inOrderTxNum++
-
-					limit--
-					if limit == 0 {
-						break
-					}
-				} else {
-					notInOrderTxNum++
-				}
-			}
-			if inOrderTxNum == 0 {
-				if notInOrderTxNum > 0 {
-					tp.logger.Debugf("AddrToken %s has txs %d not in order", addrToken, notInOrderTxNum)
-				}
-				break
-			}
-			if limit == 0 {
-				break
-			}
-		}
-
-		if limit == 0 {
-			break
-		}
-	}
-
-	return retTxs
-}
-
-func (tp *PovTxPool) SelectPendingTxsByFair(stateTrie *trie.Trie, limit int) []*types.StateBlock {
+func (tp *PovTxPool) selectPendingTxsByFair(stateTrie *trie.Trie, limit int) []*types.StateBlock {
 	tp.txMu.RLock()
 	defer tp.txMu.RUnlock()
 
@@ -571,11 +508,14 @@ func (tp *PovTxPool) SelectPendingTxsByFair(stateTrie *trie.Trie, limit int) []*
 	addrTokenPrevHashes := make(map[types.AddressToken]types.Hash, addrTokenNum)
 	addrTokenSelectedTxHashes := make(map[types.AddressToken]map[types.Hash]struct{})
 	addrTokenScanIters := make(map[types.AddressToken]*list.Element, addrTokenNum)
+	addrTokenIsCA := make(map[types.AddressToken]bool)
 
 	for addrToken, accTxList := range tp.accountTxs {
 		if accTxList.Len() > 0 {
 			//tp.logger.Debugf("addrToken %s has txs %d pending", addrToken, accTxList.Len())
 			addrTokenNeedScans[addrToken] = struct{}{}
+
+			addrTokenIsCA[addrToken] = types.IsContractAddress(addrToken.Address)
 		}
 	}
 
@@ -605,7 +545,7 @@ LoopMain:
 
 			//tp.logger.Debugf("scan addrToken %s txs %d (%d)", addrToken, len(selectedTxHashes), accTxList.Len())
 
-			isCA := types.IsContractAddress(addrToken.Address)
+			isCA := addrTokenIsCA[addrToken]
 
 			notInOrderTxNum := 0
 			inOrderTxNum := 0
@@ -705,4 +645,14 @@ func (tp *PovTxPool) GetPendingTxNum() uint32 {
 	defer tp.txMu.RUnlock()
 
 	return uint32(len(tp.allTxs))
+}
+
+func (tp *PovTxPool) GetDebugInfo() map[string]interface{} {
+	// !!! be very careful about to map concurrent read !!!
+
+	info := make(map[string]interface{})
+	info["allTxs"] = len(tp.allTxs)
+	info["accountTxs"] = len(tp.accountTxs)
+
+	return info
 }

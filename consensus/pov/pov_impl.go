@@ -24,11 +24,11 @@ const (
 )
 
 type PoVEngine struct {
-	id       string
 	logger   *zap.SugaredLogger
 	cfg      *config.Config
 	ledger   *ledger.Ledger
 	eb       event.EventBus
+	ebSubIds map[common.TopicType]string // topic->handler id
 	accounts []*types.Account
 
 	blkRecvCache gcache.Cache
@@ -50,6 +50,7 @@ func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 		logger:   log.NewLogger("pov_engine"),
 		cfg:      cfg,
 		eb:       cc.EventBus(),
+		ebSubIds: make(map[common.TopicType]string),
 		accounts: cc.Accounts(),
 		ledger:   l,
 	}
@@ -171,18 +172,33 @@ func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom, p
 }
 
 func (pov *PoVEngine) setEvent() error {
-	if id, err := pov.eb.Subscribe(common.EventPovRecvBlock, pov.onRecvPovBlock); err != nil {
+	id, err := pov.eb.Subscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
+	if err != nil {
+		pov.logger.Error("failed to subscribe EventPovRecvBlock")
 		return err
-	} else {
-		pov.id = id
-		return nil
 	}
+	pov.ebSubIds[common.EventPovRecvBlock] = id
 
+	id, err = pov.eb.SubscribeSync(common.EventRpcSyncCall, pov.onEventRpcSyncCall)
+	if err != nil {
+		pov.logger.Error("failed to subscribe EventRpcSyncCall")
+		return err
+	}
+	pov.ebSubIds[common.EventRpcSyncCall] = id
+
+	return nil
 }
 
 func (pov *PoVEngine) unsetEvent() error {
-	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.id)
+	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.ebSubIds[common.EventPovRecvBlock])
 	if err != nil {
+		pov.logger.Error("failed to unsubscribe EventPovRecvBlock")
+		return err
+	}
+
+	err = pov.eb.Unsubscribe(common.EventRpcSyncCall, pov.ebSubIds[common.EventRpcSyncCall])
+	if err != nil {
+		pov.logger.Error("failed to unsubscribe EventRpcSyncCall")
 		return err
 	}
 
@@ -221,4 +237,33 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockF
 	}
 
 	return err
+}
+
+func (pov *PoVEngine) onEventRpcSyncCall(name string, in interface{}, out interface{}) {
+	switch name {
+	case "Debug.PovInfo":
+		pov.getDebugInfo(in, out)
+	}
+}
+
+func (pov *PoVEngine) getDebugInfo(in interface{}, out interface{}) {
+	outArgs := out.(map[string]interface{})
+
+	outArgs["err"] = nil
+
+	if pov.syncer != nil {
+		outArgs["syncInfo"] = pov.syncer.GetDebugInfo()
+	}
+
+	if pov.bp != nil {
+		outArgs["procInfo"] = pov.bp.GetDebugInfo()
+	}
+
+	if pov.chain != nil {
+		outArgs["chainInfo"] = pov.chain.GetDebugInfo()
+	}
+
+	if pov.txpool != nil {
+		outArgs["poolInfo"] = pov.txpool.GetDebugInfo()
+	}
 }

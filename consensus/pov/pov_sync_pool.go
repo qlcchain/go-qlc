@@ -177,7 +177,8 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 	ss.syncCurHeight = 0
 	ss.syncRcvHeight = 0
 	ss.syncReqHeight = 0
-	ss.syncBlocks = make(map[uint64]*PovSyncBlock)
+
+	ss.resetSynBlockQueue(true)
 
 	ss.logger.Infof("sync starting with peer %s height %d", peer.peerID, peer.currentHeight)
 
@@ -194,7 +195,8 @@ func (ss *PovSyncer) resetSyncPeer(peer *PovSyncPeer) {
 	ss.syncCurHeight = 0
 	ss.syncRcvHeight = 0
 	ss.syncReqHeight = 0
-	ss.syncBlocks = nil
+
+	ss.resetSynBlockQueue(false)
 
 	if peer != nil {
 		peer.waitLocatorRsp = false
@@ -208,8 +210,7 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 		return
 	}
 
-	if len(ss.syncBlocks) >= maxSyncBlockInQue*80/100 {
-		ss.logger.Infof("request syncing blocks but queue full (%d)", len(ss.syncBlocks))
+	if ss.checkSyncQueueFull() {
 		return
 	}
 
@@ -253,6 +254,9 @@ func (ss *PovSyncer) onCheckSyncBlockTimer() {
 		return
 	}
 
+	ss.syncBlocksMux.Lock()
+	defer ss.syncBlocksMux.Unlock()
+
 	for height := ss.syncCurHeight; height <= ss.syncRcvHeight; height++ {
 		syncBlk := ss.syncBlocks[height]
 		if syncBlk == nil || syncBlk.Block == nil {
@@ -275,6 +279,9 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 	if ss.inSyncing.Load() != true {
 		return
 	}
+
+	ss.syncBlocksMux.Lock()
+	defer ss.syncBlocksMux.Unlock()
 
 	syncBlk := ss.syncBlocks[block.GetHeight()]
 	if syncBlk == nil {
@@ -331,4 +338,27 @@ func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
 		ss.requestTxsByHashes(reqTxHashes, syncBlk.PeerID)
 	}
 	return true
+}
+
+func (ss *PovSyncer) checkSyncQueueFull() bool {
+	ss.syncBlocksMux.RLock()
+	defer ss.syncBlocksMux.RUnlock()
+
+	if len(ss.syncBlocks) >= maxSyncBlockInQue*80/100 {
+		ss.logger.Infof("request syncing blocks but queue full (%d)", len(ss.syncBlocks))
+		return true
+	}
+
+	return false
+}
+
+func (ss *PovSyncer) resetSynBlockQueue(reInit bool) {
+	ss.syncBlocksMux.RLock()
+	defer ss.syncBlocksMux.RUnlock()
+
+	if reInit {
+		ss.syncBlocks = make(map[uint64]*PovSyncBlock)
+	} else {
+		ss.syncBlocks = nil
+	}
 }

@@ -53,10 +53,10 @@ func runPovMiningInfoCmd() error {
 	fmt.Printf("Difficulty: %s\n", formatPovDifficulty(rspInfo.Difficulty))
 	fmt.Printf("Pending Txs In Pool: %d\n", rspInfo.PooledTx)
 
-	fmt.Printf("Current Block Num:  %d\n", rspInfo.BlockNum)
-	fmt.Printf("Current Block Hash: %s\n", rspInfo.CurrentBlockHash)
-	fmt.Printf("Current Block Tx:   %d\n", rspInfo.CurrentBlockTx)
-	fmt.Printf("Current Block Size: %d\n", rspInfo.CurrentBlockSize)
+	fmt.Printf("Current Block Height: %d\n", rspInfo.CurrentBlockHeight)
+	fmt.Printf("Current Block Hash:   %s\n", rspInfo.CurrentBlockHash)
+	fmt.Printf("Current Block Tx:     %d\n", rspInfo.CurrentBlockTx)
+	fmt.Printf("Current Block Size:   %d\n", rspInfo.CurrentBlockSize)
 
 	fmt.Printf("Network Hashes Per Second In Last 120 Blocks:\n")
 	fmt.Printf(" Chain:   %d\n", rspInfo.HashInfo.ChainHashPS)

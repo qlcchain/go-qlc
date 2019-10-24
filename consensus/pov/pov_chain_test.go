@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -33,8 +33,11 @@ func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData)
 	lDir := filepath.Join(rootDir, "ledger")
 	_ = os.RemoveAll(lDir)
 	cm := config.NewCfgManager(lDir)
-	cm.Load()
+	_, _ = cm.Load()
 	md.ledger = ledger.NewLedger(cm.ConfigFile)
+
+	genBlk, genTd := mock.GenerateGenesisPovBlock()
+	_ = md.ledger.AddPovBlock(genBlk, genTd)
 
 	md.eb = event.GetEventBus(uid)
 
@@ -182,24 +185,28 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	statTrie := trie.NewTrie(md.ledger.DBStore(), &stateHash, trie.NewSimpleTrieNodePool())
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 5)
+	setupPovTxBlock2Ledger(md, blk1)
 	err := chain.InsertBlock(blk1, statTrie)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk21, _ := mock.GeneratePovBlock(blk1, 5)
+	setupPovTxBlock2Ledger(md, blk21)
 	err = chain.InsertBlock(blk21, statTrie)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk22, _ := mock.GeneratePovBlock(blk1, 5)
+	setupPovTxBlock2Ledger(md, blk22)
 	err = chain.InsertBlock(blk22, statTrie)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk3, _ := mock.GeneratePovBlock(blk22, 5)
+	setupPovTxBlock2Ledger(md, blk3)
 	err = chain.InsertBlock(blk3, statTrie)
 	if err != nil {
 		t.Fatal(err)
@@ -216,4 +223,12 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	}
 
 	chain.Stop()
+}
+
+func setupPovTxBlock2Ledger(md *povChainMockData, povBlock *types.PovBlock) {
+	for _, txPov := range povBlock.Body.Txs {
+		if txPov.Block != nil {
+			_ = md.ledger.AddStateBlock(txPov.Block)
+		}
+	}
 }

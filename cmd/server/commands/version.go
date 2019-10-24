@@ -11,9 +11,10 @@ import (
 	"fmt"
 
 	"github.com/abiosoft/ishell"
+	"github.com/spf13/cobra"
+
 	"github.com/qlcchain/go-qlc/chain/version"
 	"github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/spf13/cobra"
 )
 
 func chainVersion() {

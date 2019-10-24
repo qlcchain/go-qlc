@@ -3,7 +3,6 @@ package miner
 import (
 	"errors"
 	"fmt"
-	"runtime"
 	"sync"
 	"time"
 
@@ -22,10 +21,6 @@ type PovWorker struct {
 	logger *zap.SugaredLogger
 
 	maxTxPerBlock int
-	minerAddr     types.Address
-	minerAccount  *types.Account
-	algoType      types.PovAlgoType
-	cpuMining     bool
 
 	mineBlockPool   map[types.Hash]*types.PovMineBlock
 	minerAlgoBlocks map[types.Address]map[types.PovAlgoType]*PovMinerAlgoBlock
@@ -74,8 +69,6 @@ func (w *PovWorker) Init() error {
 	w.logger.Infof("MaxBlockSize:%d, MaxHeaderSize:%d, MaxTxSize:%d, MaxTxNum:%d",
 		common.PovChainBlockSize, blkHdrSize, tx.Msgsize(), w.maxTxPerBlock)
 
-	w.algoType = types.ALGO_UNKNOWN
-
 	return nil
 }
 
@@ -115,44 +108,12 @@ func (w *PovWorker) GetPovConsensus() pov.ConsensusPov {
 	return w.miner.GetPovEngine().GetConsensus()
 }
 
-func (w *PovWorker) GetMinerAccount() *types.Account {
-	if w.minerAccount != nil {
-		return w.minerAccount
-	}
-
-	if w.minerAddr.IsZero() {
-		return nil
-	}
-
-	accounts := w.miner.GetPovEngine().GetAccounts()
-	for _, account := range accounts {
-		if account.Address() == w.minerAddr {
-			w.minerAccount = account
-			return w.minerAccount
-		}
-	}
-
-	return nil
-}
-
-func (w *PovWorker) GetMinerAddress() types.Address {
-	return w.minerAddr
-}
-
-func (w *PovWorker) GetAlgoType() types.PovAlgoType {
-	return w.algoType
-}
-
 func (w *PovWorker) OnEventRpcSyncCall(name string, in interface{}, out interface{}) {
 	switch name {
 	case "Miner.GetWork":
 		w.GetWork(in, out)
 	case "Miner.SubmitWork":
 		w.SubmitWork(in, out)
-	case "Miner.StartMining":
-		w.StartMining(in, out)
-	case "Miner.StopMining":
-		w.StopMining(in, out)
 	case "Miner.GetMiningInfo":
 		w.GetMiningInfo(in, out)
 	}
@@ -210,53 +171,6 @@ func (w *PovWorker) SubmitWork(in interface{}, out interface{}) {
 	outArgs["err"] = nil
 }
 
-func (w *PovWorker) StartMining(in interface{}, out interface{}) {
-	inArgs := in.(map[interface{}]interface{})
-	outArgs := out.(map[interface{}]interface{})
-
-	if w.cpuMining {
-		outArgs["err"] = errors.New("cpu mining has been enabled already")
-		return
-	}
-
-	minerAddr := inArgs["minerAddr"].(types.Address)
-	algoName := inArgs["algoName"].(string)
-	algoType := types.NewPoVHashAlgoFromStr(algoName)
-
-	if algoType == types.ALGO_UNKNOWN {
-		outArgs["err"] = errors.New("invalid algo name")
-		return
-	}
-
-	err := w.checkMinerPledge(minerAddr)
-	if err != nil {
-		outArgs["err"] = err
-		return
-	}
-
-	w.minerAddr = minerAddr
-	w.algoType = algoType
-
-	w.cpuMining = true
-	common.Go(w.cpuMiningLoop)
-
-	outArgs["err"] = nil
-}
-
-func (w *PovWorker) StopMining(in interface{}, out interface{}) {
-	//inArgs := in.(map[interface{}]interface{})
-	outArgs := out.(map[interface{}]interface{})
-
-	if !w.cpuMining {
-		outArgs["err"] = errors.New("cpu mining has been disabled already")
-		return
-	}
-
-	w.cpuMining = false
-
-	outArgs["err"] = nil
-}
-
 func (w *PovWorker) GetMiningInfo(in interface{}, out interface{}) {
 	//inArgs := in.(map[interface{}]interface{})
 	outArgs := out.(map[interface{}]interface{})
@@ -267,10 +181,6 @@ func (w *PovWorker) GetMiningInfo(in interface{}, out interface{}) {
 
 	outArgs["latestBlock"] = latestBlock
 	outArgs["pooledTx"] = w.GetTxPool().GetPendingTxNum()
-
-	outArgs["minerAddr"] = w.minerAddr
-	outArgs["minerAlgo"] = w.algoType
-	outArgs["cpuMining"] = w.cpuMining
 
 	outArgs["err"] = nil
 }
@@ -488,152 +398,6 @@ func (w *PovWorker) checkMinerPledge(minerAddr types.Address) error {
 	}
 
 	return nil
-}
-
-func (w *PovWorker) cpuMiningLoop() {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	w.logger.Infof("running cpu mining loop, miner:%s, algo:%s", w.GetMinerAddress(), w.GetAlgoType())
-
-	for {
-		select {
-		case <-w.quitCh:
-			w.logger.Info("exiting cpu mining loop")
-			return
-		default:
-			if !w.cpuMining {
-				w.logger.Info("stopping cpu mining loop")
-				return
-			}
-
-			if w.checkValidMiner() {
-				w.mineNextBlock()
-			} else {
-				time.Sleep(time.Minute)
-			}
-		}
-	}
-}
-
-func (w *PovWorker) checkValidMiner() bool {
-	if w.miner.GetSyncState() != common.SyncDone {
-		w.logger.Infof("miner pausing for sync state %s", w.miner.GetSyncState())
-		return false
-	}
-
-	minerAddr := w.GetMinerAddress()
-	if minerAddr.IsZero() {
-		w.logger.Warnf("miner pausing for miner account not exist")
-		return false
-	}
-
-	latestBlock := w.GetChain().LatestBlock()
-
-	tmNow := time.Now()
-	if tmNow.Add(time.Hour).Unix() < int64(latestBlock.GetTimestamp()) {
-		w.logger.Warnf("miner pausing for time now %d is older than latest block %d", tmNow.Unix(), latestBlock.GetTimestamp())
-		return false
-	}
-
-	err := w.checkMinerPledge(minerAddr)
-	if err != nil {
-		w.logger.Warn(err)
-		return false
-	}
-
-	return true
-}
-
-func (w *PovWorker) mineNextBlock() *types.PovMineBlock {
-	mineBlock, err := w.newBlockTemplate(w.GetMinerAddress(), w.GetAlgoType())
-	if err != nil {
-		w.logger.Warnf("failed to generate block, err %s", err)
-	}
-
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	solveOK := w.solveBlock(mineBlock, ticker, w.quitCh)
-	if !solveOK {
-		return nil
-	}
-
-	w.submitBlock(mineBlock)
-	return mineBlock
-}
-
-func (w *PovWorker) solveBlock(mineBlock *types.PovMineBlock, ticker *time.Ticker, quitCh chan struct{}) bool {
-	loopBeginTime := time.Now()
-	lastTxUpdateBegin := w.GetTxPool().LastUpdated()
-
-	sealResultCh := make(chan *types.PovHeader)
-	sealQuitCh := make(chan struct{})
-
-	//w.logger.Debugf("before seal header %+v", genBlock.Header)
-
-	err := w.GetPovConsensus().SealHeader(mineBlock.Header, sealQuitCh, sealResultCh)
-	if err != nil {
-		w.logger.Errorf("failed to seal header, err %s", err)
-		return false
-	}
-
-	foundNonce := false
-Loop:
-	for {
-		select {
-		case <-w.quitCh:
-			break Loop
-
-		case resultHeader := <-sealResultCh:
-			if resultHeader != nil {
-				foundNonce = true
-
-				// fill coinbase tx
-				mineBlock.Header.CbTx.TxIns[0].Extra = make([]byte, len(resultHeader.CbTx.TxIns[0].Extra))
-				copy(mineBlock.Header.CbTx.TxIns[0].Extra, resultHeader.CbTx.TxIns[0].Extra)
-				mineBlock.Header.CbTx.Hash = mineBlock.Header.CbTx.ComputeHash()
-
-				mineBlock.Body.Txs[0].Hash = mineBlock.Header.CbTx.Hash
-
-				// fill block header
-				mineBlock.Header.BasHdr.Timestamp = resultHeader.BasHdr.Timestamp
-				mineBlock.Header.BasHdr.MerkleRoot = resultHeader.BasHdr.MerkleRoot
-				mineBlock.Header.BasHdr.Nonce = resultHeader.BasHdr.Nonce
-				mineBlock.Header.BasHdr.Hash = mineBlock.Header.ComputeHash()
-			}
-			break Loop
-
-		case <-ticker.C:
-			tmNow := time.Now()
-			latestBlock := w.GetChain().LatestBlock()
-			if latestBlock.GetHash() != mineBlock.Header.GetPrevious() {
-				w.logger.Debugf("abort generate block because latest block changed")
-				break Loop
-			}
-
-			lastTxUpdateNow := w.GetTxPool().LastUpdated()
-			if lastTxUpdateBegin != lastTxUpdateNow && tmNow.After(loopBeginTime.Add(time.Minute)) {
-				w.logger.Debugf("abort generate block because tx pool changed")
-				break Loop
-			}
-
-			if tmNow.After(loopBeginTime.Add(time.Duration(common.PovMinerMaxFindNonceTimeSec) * time.Second)) {
-				w.logger.Debugf("abort generate block because exceed max timeout")
-				break Loop
-			}
-		}
-	}
-
-	//w.logger.Debugf("after seal header %+v", genBlock.Header)
-
-	close(sealQuitCh)
-
-	if !foundNonce {
-		return false
-	}
-
-	return true
 }
 
 func (w *PovWorker) submitBlock(mineBlock *types.PovMineBlock) {

@@ -52,6 +52,10 @@ func (p *NodePool) Clear() {
 	}
 }
 
+func (p *NodePool) Len() int {
+	return p.cache.Len()
+}
+
 func (p *NodePool) clear() {
 	i := 0
 	for key := range p.cache.Iter() {

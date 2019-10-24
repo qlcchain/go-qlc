@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -15,9 +14,8 @@ import (
 )
 
 type ConsensusPow struct {
-	chainR        PovConsensusChainReader
-	logger        *zap.SugaredLogger
-	mineWorkerNum int
+	chainR PovConsensusChainReader
+	logger *zap.SugaredLogger
 }
 
 func NewConsensusPow(chainR PovConsensusChainReader) *ConsensusPow {
@@ -27,15 +25,6 @@ func NewConsensusPow(chainR PovConsensusChainReader) *ConsensusPow {
 }
 
 func (c *ConsensusPow) Init() error {
-	/*
-		cpuNum := runtime.NumCPU()
-		if cpuNum >= 4 {
-			c.mineWorkerNum = cpuNum / 2
-		} else {
-			c.mineWorkerNum = 1
-		}
-	*/
-	c.mineWorkerNum = 1
 	return nil
 }
 
@@ -143,73 +132,6 @@ func (c *ConsensusPow) verifyTarget(header *types.PovHeader) error {
 	}
 
 	return nil
-}
-
-func (c *ConsensusPow) SealHeader(header *types.PovHeader, quitCh chan struct{}, resultCh chan<- *types.PovHeader) error {
-	var wgMine sync.WaitGroup
-
-	abortCh := make(chan struct{})
-	localCh := make(chan *types.PovHeader)
-
-	for id := 1; id <= c.mineWorkerNum; id++ {
-		wgMine.Add(1)
-		go func(id int, gap int) {
-			defer wgMine.Done()
-			c.mineWorker(id, gap, header, abortCh, localCh)
-		}(id, c.mineWorkerNum)
-	}
-
-	go func() {
-		select {
-		case <-quitCh:
-			close(abortCh)
-		case result := <-localCh:
-			select {
-			case resultCh <- result:
-			default:
-				// there's no hash
-				c.logger.Warnf("failed to send sealing result to miner")
-			}
-			close(abortCh)
-		}
-		wgMine.Wait()
-	}()
-
-	return nil
-}
-
-func (c *ConsensusPow) mineWorker(id int, gap int, header *types.PovHeader, abortCh chan struct{}, localCh chan *types.PovHeader) {
-	copyHdr := header.Copy()
-	targetIntAlgo := copyHdr.GetAlgoTargetInt()
-
-	tryCnt := 0
-	for nonce := uint32(gap); nonce < common.PovMaxNonce; nonce += uint32(gap) {
-		tryCnt++
-		if tryCnt >= 100 {
-			tryCnt = 0
-			select {
-			case <-abortCh:
-				c.logger.Debugf("mine worker %d abort search nonce", id)
-				localCh <- nil
-				return
-			default:
-				//Non-blocking select to fall through
-			}
-		}
-
-		copyHdr.BasHdr.Nonce = nonce
-
-		powHash := copyHdr.ComputePowHash()
-		powInt := powHash.ToBigInt()
-		if powInt.Cmp(targetIntAlgo) <= 0 {
-			c.logger.Debugf("mine worker %d found nonce %d", id, nonce)
-			localCh <- copyHdr
-			return
-		}
-	}
-
-	c.logger.Debugf("mine worker %d exhaust nonce", id)
-	localCh <- nil
 }
 
 func (c *ConsensusPow) calcNextRequiredTarget(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {

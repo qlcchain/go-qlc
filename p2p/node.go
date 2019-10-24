@@ -8,8 +8,9 @@ import (
 
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
 
-	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -23,6 +24,7 @@ import (
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
+
 	"github.com/qlcchain/go-qlc/config"
 )
 
