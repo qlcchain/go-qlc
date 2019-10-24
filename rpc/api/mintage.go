@@ -10,12 +10,12 @@ package api
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/event"
 	"sync/atomic"
 
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -33,9 +33,9 @@ type MintageApi struct {
 	syncState atomic.Value
 }
 
-func NewMintageApi(ledger *ledger.Ledger, eb event.EventBus) *MintageApi {
+func NewMintageApi(l *ledger.Ledger, eb event.EventBus) *MintageApi {
 	api := &MintageApi{
-		ledger:   ledger,
+		ledger:   l,
 		mintage:  &contract.Mintage{},
 		withdraw: &contract.WithdrawMintage{},
 		logger:   log.NewLogger("api_mintage"),

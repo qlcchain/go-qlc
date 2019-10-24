@@ -36,9 +36,9 @@ type NEP5PledgeApi struct {
 	syncState atomic.Value
 }
 
-func NewNEP5PledgeApi(ledger *ledger.Ledger, eb event.EventBus) *NEP5PledgeApi {
+func NewNEP5PledgeApi(l *ledger.Ledger, eb event.EventBus) *NEP5PledgeApi {
 	api := &NEP5PledgeApi{
-		ledger:   ledger,
+		ledger:   l,
 		pledge:   &contract.Nep5Pledge{},
 		withdraw: &contract.WithdrawNep5Pledge{},
 		logger:   log.NewLogger("api_nep5_pledge"),

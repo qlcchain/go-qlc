@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"github.com/qlcchain/go-qlc/crypto/random"
 	"math"
 	"math/big"
 	"sync"
@@ -9,6 +8,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 var povCoinbaseOnce sync.Once

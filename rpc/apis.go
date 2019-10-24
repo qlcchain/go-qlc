@@ -117,7 +117,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "destroy",
 			Version:   "1.0",
-			Service:   api.NewBlackHoleApi(r.ledger),
+			Service:   api.NewBlackHoleApi(r.ledger, r.eb),
 			Public:    true,
 		}
 	case "metrics":
