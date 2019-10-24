@@ -572,12 +572,34 @@ func (ss *PovSyncer) GetDebugInfo() map[string]interface{} {
 	info := make(map[string]interface{})
 	info["initSyncOver"] = ss.initSyncOver.Load()
 	info["inSyncing"] = ss.inSyncing.Load()
+	info["syncSeqID"] = ss.syncSeqID.Load()
 	info["syncToHeight"] = ss.syncToHeight
 	info["syncCurHeight"] = ss.syncCurHeight
 	info["syncRcvHeight"] = ss.syncRcvHeight
 	info["syncStartTime"] = ss.syncStartTime
 	info["syncEndTime"] = ss.syncEndTime
 	info["syncQueueNum"] = len(ss.syncBlocks)
+
+	syncCurBlock := ss.getSyncCurBlock()
+	if syncCurBlock != nil {
+		blkInfo := make(map[string]interface{})
+		info["syncCurBlock"] = blkInfo
+		blkInfo["height"] = syncCurBlock.Height
+		blkInfo["peerID"] = syncCurBlock.PeerID
+		if syncCurBlock.Block != nil {
+			blkInfo["hash"] = syncCurBlock.Block.GetHash()
+			blkInfo["txNum"] = syncCurBlock.Block.GetTxNum()
+			blkInfo["existTxs"] = len(syncCurBlock.ExistTxs)
+			reqTxNum := len(syncCurBlock.ReqTxHashes)
+			if reqTxNum > 0 {
+				blkInfo["reqTxNum"] = reqTxNum
+				if reqTxNum > 5 {
+					reqTxNum = 5
+				}
+				blkInfo["reqTxHashes"] = syncCurBlock.ReqTxHashes[0:reqTxNum]
+			}
+		}
+	}
 
 	info["syncPeerID"] = ss.syncPeerID
 	if ss.syncPeerID != "" {
@@ -592,7 +614,25 @@ func (ss *PovSyncer) GetDebugInfo() map[string]interface{} {
 			peerInfo["lastSyncReqTime"] = syncPeer.lastSyncReqTime
 			peerInfo["currentHeight"] = syncPeer.currentHeight
 			peerInfo["currentTD"] = syncPeer.currentTD
+			peerInfo["currentHash"] = syncPeer.currentHash
 		}
+	}
+
+	info["peerCount"] = ss.PeerCount()
+	info["peerGoodCount"] = ss.PeerCountWithStatus(peerStatusGood)
+	topPeers := ss.GetBestPeers(5)
+	if len(topPeers) > 0 {
+		topInfos := make([]map[string]interface{}, 0)
+		for _, tp := range topPeers {
+			topInfo := make(map[string]interface{})
+			topInfo["peerID"] = tp.peerID
+			topInfo["currentHeight"] = tp.currentHeight
+			topInfo["currentTD"] = tp.currentTD
+			topInfo["currentHash"] = tp.currentHash
+			topInfo["status"] = tp.status
+			topInfos = append(topInfos, topInfo)
+		}
+		info["topPeers"] = topInfos
 	}
 
 	return info
