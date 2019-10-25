@@ -349,3 +349,22 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	_ = md.eb.Unsubscribe(common.EventPovRecvBlock, id2)
 	povSync.Stop()
 }
+
+func TestPovSync_SimpleTest1(t *testing.T) {
+	teardownTestCase, md := setupPovSyncTestCase(t)
+	defer teardownTestCase(t)
+
+	povSync := NewPovSyncer(md.eb, md.ledger, md.chain)
+	if povSync == nil {
+		t.Fatal("NewPovSyncer is nil")
+	}
+
+	povSync.Start()
+
+	info := povSync.GetDebugInfo()
+	if info == nil || len(info) == 0 {
+		t.Fatal("debug info not exist")
+	}
+
+	povSync.Stop()
+}

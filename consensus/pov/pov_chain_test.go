@@ -54,6 +54,23 @@ func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData)
 	}, md
 }
 
+func TestPovChain_SimpleTest1(t *testing.T) {
+	teardownTestCase, md := setupPovChainTestCase(t)
+	defer teardownTestCase(t)
+
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
+
+	_ = chain.Init()
+	_ = chain.Start()
+
+	info := chain.GetDebugInfo()
+	if info == nil || len(info) == 0 {
+		t.Fatal("debug info not exist")
+	}
+
+	_ = chain.Stop()
+}
+
 func TestPovChain_InsertBlocks(t *testing.T) {
 	teardownTestCase, md := setupPovChainTestCase(t)
 	defer teardownTestCase(t)
@@ -105,6 +122,23 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
 		t.Fatalf("failed to get block3 %s", blk3.GetHash())
 	}
+
+	retBlk3 = chain.GetBestBlockByHash(blk3.GetHash())
+	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
+		t.Fatalf("failed to get best block3 %s", blk3.GetHash())
+	}
+
+	retBlk3, _ = chain.GetBlockByHeight(blk3.GetHeight())
+	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
+		t.Fatalf("failed to get block3 by height %d", blk3.GetHeight())
+	}
+
+	retHdr3 := chain.GetHeaderByHeight(blk3.GetHeight())
+	if retHdr3 == nil || retHdr3.GetHash() != blk3.GetHash() {
+		t.Fatalf("failed to get header3 by height %d", blk3.GetHeight())
+	}
+
+	chain.CalcPastMedianTime(blk3.GetHeader())
 
 	chain.Stop()
 }

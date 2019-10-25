@@ -114,6 +114,23 @@ func setupPovProcessorTestCase(t *testing.T) (func(t *testing.T), *povProcessorM
 	}, md
 }
 
+func TestPovProcessor_SimplteTest(t *testing.T) {
+	teardownTestCase, md := setupPovProcessorTestCase(t)
+	defer teardownTestCase(t)
+
+	processor := NewPovBlockProcessor(md.eb, md.ledger, md.chain, md.verifier, md.syncer)
+
+	processor.Init()
+	processor.Start()
+
+	info := processor.GetDebugInfo()
+	if info == nil || len(info) == 0 {
+		t.Fatal("debug info not exist")
+	}
+
+	processor.Stop()
+}
+
 func TestPovProcessor_AddBlock(t *testing.T) {
 	teardownTestCase, md := setupPovProcessorTestCase(t)
 	defer teardownTestCase(t)
