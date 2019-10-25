@@ -677,7 +677,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		for addrHex, minerStat := range stat.MinerStats {
 			minerAddr, _ := types.HexToAddress(addrHex)
 
-			if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
+			if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
 				return nil
 			}
 
@@ -724,7 +724,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		}
 
 		minerAddr := header.GetMinerAddr()
-		if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
+		if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
 			continue
 		}
 
@@ -800,7 +800,7 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 
 		for addrHex, minerStat := range stat.MinerStats {
 			repAddr, _ := types.HexToAddress(addrHex)
-			if len(checkAddrMap) > 0 && checkAddrMap[repAddr] == false {
+			if len(checkAddrMap) > 0 && !checkAddrMap[repAddr] {
 				continue
 			}
 
@@ -859,7 +859,7 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 
 				// divide reward to each rep
 				for _, rep := range repStates {
-					if len(checkAddrMap) > 0 && checkAddrMap[rep.Account] == false {
+					if len(checkAddrMap) > 0 && !checkAddrMap[rep.Account] {
 						continue
 					}
 
@@ -877,7 +877,7 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 						repStat = rspMap[rep.Account]
 					}
 
-					repStat.MainBlockNum += 1
+					repStat.MainBlockNum++
 					repStat.MainRewardAmount = repStat.MainRewardAmount.Add(amount)
 				}
 			}

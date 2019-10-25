@@ -30,9 +30,9 @@ func (m *MinerReward) GetRewardHistory(ctx *vmstore.VMContext, coinbase types.Ad
 			return nil, er
 		}
 		return info, nil
-	} else {
-		return nil, err
 	}
+
+	return nil, err
 }
 
 func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
@@ -140,8 +140,18 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 		return nil, nil, err
 	}
 
-	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, param.EndHeight, param.RewardBlocks,
-		block.Timestamp, param.RewardAmount)
+	oldInfo, err := m.GetRewardHistory(ctx, param.Coinbase)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return nil, nil, fmt.Errorf("get storage err %s", err)
+	}
+
+	if oldInfo == nil {
+		oldInfo = new(cabi.MinerRewardInfo)
+		oldInfo.RewardAmount = types.NewBalance(0)
+	}
+
+	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, param.EndHeight,
+		param.RewardBlocks+oldInfo.RewardBlocks, block.Timestamp, param.RewardAmount.Add(oldInfo.RewardAmount))
 	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")

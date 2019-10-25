@@ -30,9 +30,9 @@ func (r *RepReward) GetRewardHistory(ctx *vmstore.VMContext, account types.Addre
 			return nil, er
 		}
 		return info, nil
-	} else {
-		return nil, err
 	}
+
+	return nil, err
 }
 
 func (r *RepReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
@@ -135,8 +135,18 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		return nil, nil, err
 	}
 
-	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, param.EndHeight, param.RewardBlocks,
-		block.Timestamp, param.RewardAmount)
+	oldInfo, err := r.GetRewardHistory(ctx, param.Account)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return nil, nil, fmt.Errorf("get storage err %s", err)
+	}
+
+	if oldInfo == nil {
+		oldInfo = new(cabi.RepRewardInfo)
+		oldInfo.RewardAmount = types.NewBalance(0)
+	}
+
+	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, param.EndHeight,
+		param.RewardBlocks+oldInfo.RewardBlocks, block.Timestamp, param.RewardAmount.Add(oldInfo.RewardAmount))
 	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")
