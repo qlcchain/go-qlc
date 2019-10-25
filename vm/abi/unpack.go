@@ -152,8 +152,12 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if t.T == SignatureTy || t.T == BalanceTy {
+	} else if t.T == SignatureTy {
 		returnOutput = output[index : index+util.WordSize*2]
+	} else if t.T == BalanceTy {
+		l := int(big.NewInt(0).SetBytes(output[index : index+util.WordSize]).Int64())
+		begin = index + util.WordSize
+		end = (l + util.WordSize - 1) / util.WordSize * util.WordSize
 	} else {
 		returnOutput = output[index : index+util.WordSize]
 	}
@@ -184,7 +188,8 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 	case FunctionTy:
 		return readFunctionType(t, returnOutput)
 	case BalanceTy:
-		return types.BytesToBalance(returnOutput), nil
+		v := output[begin : begin+end]
+		return types.BytesToBalance(v), nil
 	default:
 		return nil, fmt.Errorf("abi: unknown type %v", t.T)
 	}

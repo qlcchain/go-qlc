@@ -43,7 +43,10 @@ func packElement(t Type, reflectValue reflect.Value) []byte {
 
 		return util.LeftPadBytes(reflectValue.Bytes(), util.WordSize*2)
 	case BalanceTy:
-		return util.LeftPadBytes(reflectValue.Interface().(types.Balance).Bytes(), util.WordSize*2)
+		v := reflectValue.Interface().(types.Balance).Bytes()
+		l := len(v)
+		r := packNum(reflect.ValueOf(len(v)))
+		return append(r, util.LeftPadBytes(v, (l+util.WordSize-1)/util.WordSize*util.WordSize)...)
 	case BoolTy:
 		if reflectValue.Bool() {
 			return util.PaddedBigBytes(util.Big1, util.WordSize)
