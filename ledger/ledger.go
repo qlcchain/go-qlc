@@ -5,7 +5,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/config"
 	"io"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -588,4 +592,17 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 
 func (l *Ledger) Size() (int64, int64) {
 	return l.Store.Size()
+}
+
+func NewTestLedger() (func(), *Ledger) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	l := NewLedger(cm.ConfigFile)
+
+	return func() {
+		_ = l.Close()
+		_ = os.RemoveAll(dir)
+	}, l
 }
