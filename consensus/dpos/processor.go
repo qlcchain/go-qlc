@@ -134,6 +134,7 @@ func (p *Processor) processMsg() {
 			case frontier := <-p.frontiers:
 				p.processFrontier(frontier)
 			case block := <-p.doneBlock:
+				p.dps.updateLastProcessSyncTime()
 				if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
 					p.dps.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
 				}
@@ -148,6 +149,7 @@ func (p *Processor) processMsg() {
 		case bs := <-p.blocks:
 			p.processMsgDo(bs)
 		case block := <-p.syncBlock:
+			p.dps.updateLastProcessSyncTime()
 			p.syncBlockCheck(block)
 		case <-getTimeout.C:
 			//
@@ -258,6 +260,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	var err error
 
 	if bs.BlockFrom == types.Synchronized {
+		p.dps.updateLastProcessSyncTime()
 		result, err = dps.lv.BlockSyncCheck(bs.Block)
 		if err != nil {
 			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
