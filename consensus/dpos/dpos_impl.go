@@ -345,7 +345,7 @@ func (dps *DPoS) Start() {
 			}
 
 			if dps.blockSyncState == common.Syncing || dps.blockSyncState == common.SyncDone {
-				if time.Now().Sub(dps.lastProcessSyncTime) >= time.Minute*2 {
+				if time.Now().Sub(dps.lastProcessSyncTime) >= time.Minute*3 {
 					dps.logger.Warnf("sync finished because of process timeout last[%s] now[%s]",
 						dps.lastProcessSyncTime, time.Now())
 					dps.eb.Publish(common.EventConsensusSyncFinished)
