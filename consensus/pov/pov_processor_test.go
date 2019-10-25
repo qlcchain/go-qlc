@@ -56,6 +56,10 @@ func (c *mockPovProcessorChainReader) InsertBlock(block *types.PovBlock, stateTr
 	return nil
 }
 
+func (c *mockPovProcessorChainReader) LatestHeader() *types.PovHeader {
+	return nil
+}
+
 type mockPovProcessorVerifier struct{}
 
 func (v *mockPovProcessorVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
@@ -66,7 +70,7 @@ type mockPovProcessorSyncer struct{}
 
 func (s *mockPovProcessorSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID string) {}
 
-func (s *mockPovProcessorSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string) {}
+func (s *mockPovProcessorSyncer) requestSyncFrontiers(peerID string) {}
 
 func setupPovProcessorTestCase(t *testing.T) (func(t *testing.T), *povProcessorMockData) {
 	t.Parallel()
