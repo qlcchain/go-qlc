@@ -99,8 +99,8 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgPeer string) {
 	}
 }
 
-func (ss *PovSyncer) processStreamEvent(event *PovSyncEvent) {
-	peerID := event.eventData.(string)
+func (ss *PovSyncer) processStreamEvent(evt *PovSyncEvent) {
+	peerID := evt.eventData.(string)
 
 	genesisBlock := ss.chain.GenesisBlock()
 	if genesisBlock == nil {
@@ -232,7 +232,7 @@ func (ss *PovSyncer) GetBestPeer(lastPeerID string) *PovSyncPeer {
 		return bestPeer
 	}
 
-	if len(allBestPeers) <= 0 {
+	if len(allBestPeers) == 0 {
 		return nil
 	}
 	if len(allBestPeers) <= 1 {
@@ -241,7 +241,6 @@ func (ss *PovSyncer) GetBestPeer(lastPeerID string) *PovSyncPeer {
 
 	// random best peer
 	idx := rand.Intn(len(allBestPeers))
-	//ss.logger.Debugf("random choose best peer idx %d all %d", idx, len(allBestPeers))
 	return allBestPeers[idx]
 }
 
@@ -268,7 +267,7 @@ func (ss *PovSyncer) GetBestPeers(limit int) []*PovSyncPeer {
 // GetRandomTopPeer select one peer from top peers
 func (ss *PovSyncer) GetRandomTopPeer(top int) *PovSyncPeer {
 	peers := ss.GetBestPeers(top)
-	if len(peers) <= 0 {
+	if len(peers) == 0 {
 		return nil
 	}
 	if len(peers) == 1 {
@@ -323,9 +322,7 @@ func (ss *PovSyncer) GetPeerLocators() []*PovSyncPeer {
 	}
 
 	var selectPeers []*PovSyncPeer
-	selectPeers = append(selectPeers, allPeers[0])
-	selectPeers = append(selectPeers, allPeers[len(allPeers)/2])
-	selectPeers = append(selectPeers, allPeers[len(allPeers)-1])
+	selectPeers = append(selectPeers, allPeers[0], allPeers[len(allPeers)/2], allPeers[len(allPeers)-1])
 	return selectPeers
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/trie"
 )
@@ -22,9 +23,9 @@ type povProcessorMockData struct {
 	eb     event.EventBus
 	ledger ledger.Store
 
-	chain    PovProcessorChainReader
-	verifier PovProcessorVerifier
-	syncer   PovProcessorSyncer
+	chain    *mockPovProcessorChainReader
+	verifier *mockPovProcessorVerifier
+	syncer   *mockPovProcessorSyncer
 }
 
 type mockPovProcessorChainReader struct {
@@ -60,10 +61,17 @@ func (c *mockPovProcessorChainReader) LatestHeader() *types.PovHeader {
 	return nil
 }
 
-type mockPovProcessorVerifier struct{}
+type mockPovProcessorVerifier struct {
+	resultStat *PovVerifyStat
+}
 
 func (v *mockPovProcessorVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
-	return &PovVerifyStat{}
+	if v.resultStat != nil {
+		return v.resultStat
+	}
+	return &PovVerifyStat{
+		Result: process.Progress,
+	}
 }
 
 type mockPovProcessorSyncer struct{}
@@ -231,4 +239,56 @@ func TestPovProcessor_OrphanBlock(t *testing.T) {
 	}
 
 	processor.Stop()
+}
+
+func TestPovProcessor_PendingBlock(t *testing.T) {
+	teardownTestCase, md := setupPovProcessorTestCase(t)
+	defer teardownTestCase(t)
+
+	processor := NewPovBlockProcessor(md.eb, md.ledger, md.chain, md.verifier, md.syncer)
+
+	_ = processor.Init()
+	_ = processor.Start()
+
+	processor.onPovSyncState(common.SyncDone)
+
+	genesisBlk := common.GenesisPovBlock()
+
+	blk1, _ := mock.GeneratePovBlock(&genesisBlk, 1)
+
+	md.verifier.resultStat = &PovVerifyStat{
+		Result: process.GapTransaction,
+		GapTxs: make(map[types.Hash]process.ProcessResult),
+	}
+	accTxs := blk1.GetAccountTxs()
+	for _, txPov := range accTxs {
+		md.verifier.resultStat.GapTxs[txPov.Hash] = process.GapTransaction
+	}
+
+	_ = processor.AddBlock(blk1, types.PovBlockFromRemoteBroadcast, "test")
+
+	time.Sleep(100 * time.Millisecond)
+
+	retBlk1 := md.chain.GetBlockByHash(blk1.GetHash())
+	if retBlk1 != nil {
+		t.Fatalf("block1 %s should in pending", blk1.GetHash())
+	}
+
+	for _, txPov := range blk1.Body.Txs {
+		if txPov.Block != nil {
+			_ = md.ledger.AddStateBlock(txPov.Block)
+		}
+	}
+	md.verifier.resultStat = nil
+
+	processor.onCheckTxPendingBlocksTimer()
+
+	time.Sleep(100 * time.Millisecond)
+
+	retBlk1 = md.chain.GetBlockByHash(blk1.GetHash())
+	if retBlk1 == nil {
+		t.Fatalf("block1 %s should exist", blk1.GetHash())
+	}
+
+	_ = processor.Stop()
 }

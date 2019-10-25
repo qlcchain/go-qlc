@@ -17,14 +17,11 @@ import (
 )
 
 const (
-	minForcePovSyncPeerCount  = 1
-	minEnoughPovSyncPeerCount = 3
-	checkPeerStatusTime       = 30
-	forceSyncTimeInSec        = 60
+	checkPeerStatusTime = 30
+	forceSyncTimeInSec  = 60
 
 	maxSyncBlockPerReq = 1000
 	maxPullBlockPerReq = 1000
-	maxPullTxPerReq    = 1000
 	maxSyncBlockInQue  = 3000
 )
 
@@ -77,10 +74,10 @@ type PovSyncEvent struct {
 	eventData interface{}
 }
 
-func NewPovSyncer(eb event.EventBus, ledger ledger.Store, chain PovSyncerChainReader) *PovSyncer {
+func NewPovSyncer(eb event.EventBus, l ledger.Store, chain PovSyncerChainReader) *PovSyncer {
 	ss := &PovSyncer{
 		eb:            eb,
-		ledger:        ledger,
+		ledger:        l,
 		chain:         chain,
 		initSyncState: common.SyncNotStart,
 		messageCh:     make(chan *PovSyncMessage, 2000),
@@ -97,36 +94,36 @@ func NewPovSyncer(eb event.EventBus, ledger ledger.Store, chain PovSyncerChainRe
 	return ss
 }
 
-func (ss *PovSyncer) Start() {
+func (ss *PovSyncer) Start() error {
 	eb := ss.eb
 	if eb != nil {
 		if id, err := eb.SubscribeSync(common.EventAddP2PStream, ss.onAddP2PStream); err != nil {
 			ss.logger.Error(err)
-			return
+			return err
 		} else {
 			ss.handlerIds[common.EventAddP2PStream] = id
 		}
 		if id, err := eb.SubscribeSync(common.EventDeleteP2PStream, ss.onDeleteP2PStream); err != nil {
 			ss.logger.Error(err)
-			return
+			return err
 		} else {
 			ss.handlerIds[common.EventDeleteP2PStream] = id
 		}
 		if id, err := eb.SubscribeSync(common.EventPovPeerStatus, ss.onPovStatus); err != nil {
 			ss.logger.Error(err)
-			return
+			return err
 		} else {
 			ss.handlerIds[common.EventPovPeerStatus] = id
 		}
 		if id, err := eb.Subscribe(common.EventPovBulkPullReq, ss.onPovBulkPullReq); err != nil {
 			ss.logger.Error(err)
-			return
+			return err
 		} else {
 			ss.handlerIds[common.EventPovBulkPullReq] = id
 		}
 		if id, err := eb.Subscribe(common.EventPovBulkPullRsp, ss.onPovBulkPullRsp); err != nil {
 			ss.logger.Error(err)
-			return
+			return err
 		} else {
 			ss.handlerIds[common.EventPovBulkPullRsp] = id
 		}
@@ -134,6 +131,8 @@ func (ss *PovSyncer) Start() {
 
 	common.Go(ss.mainLoop)
 	common.Go(ss.syncLoop)
+
+	return nil
 }
 
 func (ss *PovSyncer) Stop() {
@@ -147,10 +146,6 @@ func (ss *PovSyncer) Stop() {
 	}
 
 	close(ss.quitCh)
-}
-
-func (ss *PovSyncer) getInitState() common.SyncState {
-	return ss.initSyncState
 }
 
 func (ss *PovSyncer) mainLoop() {
@@ -167,8 +162,8 @@ func (ss *PovSyncer) mainLoop() {
 		case msg := <-ss.messageCh:
 			ss.processMessage(msg)
 
-		case event := <-ss.eventCh:
-			ss.processEvent(event)
+		case evt := <-ss.eventCh:
+			ss.processEvent(evt)
 		}
 	}
 }
@@ -214,19 +209,25 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 
 	if req.Reason == protos.PovReasonSync {
 		if len(req.Locators) > 0 {
-			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
+			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d locator %s count %d",
+				msg.msgPeer, req.Reason, req.Locators[0], req.Count)
 		} else if !req.StartHash.IsZero() {
-			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d hash %s count %d",
+				msg.msgPeer, req.Reason, req.StartHash, req.Count)
 		} else {
-			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+			ss.logger.Infof("recv PovBulkPullReq by forward from peer %s, reason %d height %d count %d",
+				msg.msgPeer, req.Reason, req.StartHeight, req.Count)
 		}
 	} else {
 		if len(req.Locators) > 0 {
-			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
+			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d locator %s count %d",
+				msg.msgPeer, req.Reason, req.Locators[0], req.Count)
 		} else if !req.StartHash.IsZero() {
-			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d hash %s count %d",
+				msg.msgPeer, req.Reason, req.StartHash, req.Count)
 		} else {
-			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+			ss.logger.Debugf("recv PovBulkPullReq by forward from peer %s, reason %d height %d count %d",
+				msg.msgPeer, req.Reason, req.StartHeight, req.Count)
 		}
 	}
 
@@ -246,7 +247,7 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
 		startHeight = block.GetHeight() + 1
-		blockCount = blockCount - 1
+		blockCount--
 	} else if !req.StartHash.IsZero() {
 		block, _ := ss.ledger.GetPovBlockByHash(req.StartHash)
 		if block == nil {
@@ -255,7 +256,7 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
 		startHeight = block.GetHeight() + 1
-		blockCount = blockCount - 1
+		blockCount--
 	}
 
 	maxBlockSize := common.PovChainBlockSize
@@ -270,7 +271,7 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
 
-		curBlkMsgSize = curBlkMsgSize + block.Msgsize()
+		curBlkMsgSize += block.Msgsize()
 		if curBlkMsgSize >= maxBlockSize {
 			break
 		}
@@ -285,11 +286,14 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 	req := msg.msgValue.(*protos.PovBulkPullReq)
 
 	if len(req.Locators) > 0 {
-		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d locator %s count %d", msg.msgPeer, req.Reason, req.Locators[0], req.Count)
+		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d locator %s count %d",
+			msg.msgPeer, req.Reason, req.Locators[0], req.Count)
 	} else if !req.StartHash.IsZero() {
-		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d hash %s count %d", msg.msgPeer, req.Reason, req.StartHash, req.Count)
+		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d hash %s count %d",
+			msg.msgPeer, req.Reason, req.StartHash, req.Count)
 	} else {
-		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d height %d count %d", msg.msgPeer, req.Reason, req.StartHeight, req.Count)
+		ss.logger.Debugf("recv PovBulkPullReq by backward from peer %s, reason %d height %d count %d",
+			msg.msgPeer, req.Reason, req.StartHeight, req.Count)
 	}
 
 	rsp := new(protos.PovBulkPullRsp)
@@ -314,7 +318,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 			startHeight = 0
 		}
 
-		blockCount = blockCount - 1
+		blockCount--
 	} else if !req.StartHash.IsZero() {
 		block, _ := ss.ledger.GetPovBlockByHash(req.StartHash)
 		if block == nil {
@@ -329,7 +333,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 			startHeight = 0
 		}
 
-		blockCount = blockCount - 1
+		blockCount--
 	}
 
 	maxBlockSize := common.PovChainBlockSize
@@ -347,7 +351,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 		}
 		rsp.Blocks = append(rsp.Blocks, block)
 
-		curBlkMsgSize = curBlkMsgSize + block.Msgsize()
+		curBlkMsgSize += block.Msgsize()
 		if curBlkMsgSize >= maxBlockSize {
 			break
 		}
@@ -383,7 +387,7 @@ func (ss *PovSyncer) processPovBulkPullReqByBatch(msg *PovSyncMessage) {
 
 		rsp.Blocks = append(rsp.Blocks, block)
 
-		curBlkMsgSize = curBlkMsgSize + block.Msgsize()
+		curBlkMsgSize += block.Msgsize()
 		if curBlkMsgSize >= maxBlockSize {
 			break
 		}
@@ -398,9 +402,11 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 	rsp := msg.msgValue.(*protos.PovBulkPullRsp)
 
 	if rsp.Reason == protos.PovReasonSync {
-		ss.logger.Infof("recv PovBulkPullRsp from peer %s, reason %d count %d", msg.msgPeer, rsp.Reason, rsp.Count)
+		ss.logger.Infof("recv PovBulkPullRsp from peer %s, reason %d count %d",
+			msg.msgPeer, rsp.Reason, rsp.Count)
 	} else {
-		ss.logger.Debugf("recv PovBulkPullRsp from peer %s, reason %d count %d", msg.msgPeer, rsp.Reason, rsp.Count)
+		ss.logger.Debugf("recv PovBulkPullRsp from peer %s, reason %d count %d",
+			msg.msgPeer, rsp.Reason, rsp.Count)
 	}
 
 	if rsp.Count == 0 {
@@ -408,7 +414,7 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 	}
 
 	if rsp.Reason == protos.PovReasonSync {
-		if ss.inSyncing.Load() != true {
+		if !ss.inSyncing.Load() {
 			ss.logger.Infof("recv PovBulkPullRsp but state not in syncing")
 			return
 		}
@@ -424,7 +430,8 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 			return
 		}
 		if syncPeer.syncSeqID != ss.syncSeqID.Load() {
-			ss.logger.Infof("recv PovBulkPullRsp but syncSeqID is not equal, %d, %d", syncPeer.syncSeqID, ss.syncSeqID.Load())
+			ss.logger.Infof("recv PovBulkPullRsp but syncSeqID is not equal, %d, %d",
+				syncPeer.syncSeqID, ss.syncSeqID.Load())
 			return
 		}
 
@@ -440,19 +447,19 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 	}
 }
 
-func (ss *PovSyncer) processEvent(event *PovSyncEvent) {
-	switch event.eventType {
+func (ss *PovSyncer) processEvent(evt *PovSyncEvent) {
+	switch evt.eventType {
 	case common.EventAddP2PStream:
-		ss.processStreamEvent(event)
+		ss.processStreamEvent(evt)
 	case common.EventDeleteP2PStream:
 		break
 	default:
-		ss.logger.Infof("unknown event type %T!\n", event.eventType)
+		ss.logger.Infof("unknown event type %T!\n", evt.eventType)
 	}
 }
 
 func (ss *PovSyncer) setInitState(st common.SyncState) {
-	if ss.initSyncOver.Load() == true {
+	if ss.initSyncOver.Load() {
 		return
 	}
 
@@ -472,31 +479,8 @@ func (ss *PovSyncer) setInitState(st common.SyncState) {
 	ss.eb.Publish(common.EventPovSyncState, ss.initSyncState)
 }
 
-func (ss *PovSyncer) isFinished() bool {
-	if ss.initSyncState == common.SyncNotStart || ss.initSyncState == common.Syncing {
-		return false
-	}
-
-	return true
-}
-
-func (ss *PovSyncer) requestBlocksByHeight(startHeight uint64, count uint32) {
-	peer := ss.GetBestPeer("")
-	if peer == nil {
-		return
-	}
-
-	req := new(protos.PovBulkPullReq)
-
-	req.Count = count
-	req.StartHeight = startHeight
-	req.Reason = protos.PovReasonFetch
-
-	ss.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullReq, req, peer.peerID)
-}
-
 func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID string) {
-	if len(reqBlkHashes) <= 0 {
+	if len(reqBlkHashes) == 0 {
 		return
 	}
 
@@ -535,7 +519,7 @@ func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID st
 }
 
 func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string) {
-	if len(reqTxHashes) <= 0 {
+	if len(reqTxHashes) == 0 {
 		return
 	}
 

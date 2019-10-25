@@ -42,7 +42,8 @@ func (c *mockPovVerifierChainReader) CalcPastMedianTime(prevHeader *types.PovHea
 	return prevHeader.GetTimestamp()
 }
 
-func (c *mockPovVerifierChainReader) GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
+func (c *mockPovVerifierChainReader) GenStateTrie(height uint64, prevStateHash types.Hash,
+	txs []*types.PovTransaction) (*trie.Trie, error) {
 	t := trie.NewTrie(c.ledger.DBStore(), nil, trie.NewSimpleTrieNodePool())
 	return t, nil
 }
@@ -101,7 +102,7 @@ func setupPovVerifierTestCase(t *testing.T) (func(t *testing.T), *povVerifierMoc
 	lDir := filepath.Join(rootDir, "ledger")
 	_ = os.RemoveAll(lDir)
 	cm := config.NewCfgManager(lDir)
-	cm.Load()
+	_, _ = cm.Load()
 	md.ledger = ledger.NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {

@@ -18,13 +18,13 @@ const (
 type eventManager struct {
 	listenerList []EventListener
 
-	maxHandlerId uint32
+	maxHandlerID uint32
 	mu           sync.Mutex
 }
 
 func newEventManager() *eventManager {
 	return &eventManager{
-		maxHandlerId: 0,
+		maxHandlerID: 0,
 		listenerList: make([]EventListener, 0),
 	}
 }
@@ -40,8 +40,8 @@ func (em *eventManager) UnRegisterListener(listener EventListener) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 
-	for index, listener := range em.listenerList {
-		if listener == listener {
+	for index, ln := range em.listenerList {
+		if ln == listener {
 			em.listenerList = append(em.listenerList[:index], em.listenerList[index+1:]...)
 			break
 		}

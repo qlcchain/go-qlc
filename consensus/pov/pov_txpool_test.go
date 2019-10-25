@@ -42,7 +42,7 @@ func setupPovTxPoolTestCase(t *testing.T) (func(t *testing.T), *povTxPoolMockDat
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uid)
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	cm.Load()
+	_, _ = cm.Load()
 	md.ledger = ledger.NewLedger(cm.ConfigFile)
 
 	md.eb = event.GetEventBus(uid)
@@ -75,9 +75,9 @@ func TestPovTxPool_AddDelTx(t *testing.T) {
 		t.Fatal("NewPovTxPool is nil")
 	}
 
-	txPool.Init()
+	_ = txPool.Init()
 
-	txPool.Start()
+	_ = txPool.Start()
 
 	txBlk1 := mock.StateBlockWithoutWork()
 	txHash1 := txBlk1.GetHash()
@@ -107,9 +107,9 @@ func TestPovTxPool_SelectTx(t *testing.T) {
 		t.Fatal("NewPovTxPool is nil")
 	}
 
-	txPool.Init()
+	_ = txPool.Init()
 
-	txPool.Start()
+	_ = txPool.Start()
 
 	txBlk1 := mock.StateBlockWithoutWork()
 	txHash1 := txBlk1.GetHash()
@@ -121,7 +121,6 @@ func TestPovTxPool_SelectTx(t *testing.T) {
 
 	statTrie := trie.NewTrie(md.ledger.DBStore(), nil, trie.NewSimpleTrieNodePool())
 	retTxs := txPool.SelectPendingTxs(statTrie, 10)
-	//t.Logf("retTxs %d", len(retTxs))
 
 	tx1Exist := false
 	for _, retTx := range retTxs {

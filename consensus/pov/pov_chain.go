@@ -113,11 +113,11 @@ type PovBlockChain struct {
 	wg     sync.WaitGroup
 }
 
-func NewPovBlockChain(cfg *config.Config, eb event.EventBus, ledger ledger.Store) *PovBlockChain {
+func NewPovBlockChain(cfg *config.Config, eb event.EventBus, l ledger.Store) *PovBlockChain {
 	chain := &PovBlockChain{
 		config:         cfg,
 		eb:             eb,
-		ledger:         ledger,
+		ledger:         l,
 		logger:         log.NewLogger("pov_chain"),
 		doingMinerStat: atomic.NewBool(false),
 	}
@@ -141,17 +141,13 @@ func (bc *PovBlockChain) getLedger() ledger.Store {
 	return bc.ledger
 }
 
-func (bc *PovBlockChain) getConfig() *config.Config {
-	return bc.config
-}
-
 func (bc *PovBlockChain) Init() error {
 	var err error
 
 	bc.trieNodePool = trie.NewSimpleTrieNodePool()
 
 	needReset := false
-	genesisBlock, err := bc.getLedger().GetPovBlockByHeight(0)
+	genesisBlock, _ := bc.getLedger().GetPovBlockByHeight(0)
 	if genesisBlock == nil {
 		needReset = true
 	} else if !bc.IsGenesisBlock(genesisBlock) {
@@ -221,10 +217,10 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 	}
 
 	for {
-		dayStartHeight := uint64(uint64(curDayIndex) * uint64(common.POVChainBlocksPerDay))
+		dayStartHeight := uint64(curDayIndex) * uint64(common.POVChainBlocksPerDay)
 		dayEndHeight := dayStartHeight + uint64(common.POVChainBlocksPerDay) - 1
 
-		if dayEndHeight+uint64(common.PovMinerRewardHeightGapToLatest) > latestBlock.GetHeight() {
+		if dayEndHeight+(common.PovMinerRewardHeightGapToLatest) > latestBlock.GetHeight() {
 			break
 		}
 
@@ -243,11 +239,6 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 			if height%common.DPosOnlinePeriod == common.DPosOnlinePeriod-1 {
 				repStates := bc.GetAllOnlineRepStates(header)
 				bc.logger.Debugf("get online rep states %d at block height %d", len(repStates), height)
-				/*
-					for idx, rs := range repStates {
-						bc.logger.Debugf("%d-%s-%d", idx, rs.Account, rs.Height)
-					}
-				*/
 
 				// calc total weight of all reps
 				repWeightTotal := types.NewBalance(0)
@@ -268,7 +259,7 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 
 					// divide reward to each rep
 					for _, rep := range repStates {
-						// repReward = totalReward / repWeight * totalWeight
+						// calc rule is : repReward = totalReward / repWeight * totalWeight
 						repRewardBig := big.NewInt(rep.CalcTotal().Int64())
 						repRewardBig = repRewardBig.Mul(repRewardBig, repRewardAllBig.Int)
 						amountBig := repRewardBig.Div(repRewardBig, repWeightTotalBig)
@@ -280,10 +271,8 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 							minerStat = types.NewPovMinerStatItem()
 							dayStat.MinerStats[repAddrStr] = minerStat
 						}
-						minerStat.RepBlockNum += 1
+						minerStat.RepBlockNum++
 						minerStat.RepReward = minerStat.RepReward.Add(amount)
-
-						//bc.logger.Debugf("repStat: %s-%d-%s", repAddrStr, minerStat.RepBlockNum, minerStat.RepReward)
 					}
 				}
 			}
@@ -363,7 +352,7 @@ func (bc *PovBlockChain) ResetChainState() error {
 		return err
 	}
 
-	err = bc.getLedger().DBStore().Purge()
+	_ = bc.getLedger().DBStore().Purge()
 
 	// init with genesis block
 	genesisBlock := common.GenesisPovBlock()
@@ -430,7 +419,7 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	bc.genesisBlock = genesis
 	bc.StoreLatestBlock(genesis)
 
-	err = bc.getLedger().DBStore().Purge()
+	_ = bc.getLedger().DBStore().Purge()
 
 	return nil
 }
@@ -650,9 +639,9 @@ func (bc *PovBlockChain) GetBlockLocator(hash types.Hash) []*types.Hash {
 
 		// Calculate height of previous node to include ensuring the
 		// final node is the genesis block.
-		height := header.GetHeight() - step
-		if height < 0 {
-			height = 0
+		height := uint64(0)
+		if header.GetHeight() > step {
+			height = header.GetHeight() - step
 		}
 
 		header = bc.FindAncestor(header, height)
@@ -724,7 +713,7 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 	blockTD := bc.CalcTotalDifficulty(prevTD, block.GetHeader())
 
 	// save block to db
-	if bc.getLedger().HasPovBlock(block.GetHeight(), block.GetHash(), txn) == false {
+	if !bc.getLedger().HasPovBlock(block.GetHeight(), block.GetHash(), txn) {
 		err = bc.getLedger().AddPovBlock(block, blockTD, txn)
 		if err != nil && err != ledger.ErrBlockExists {
 			bc.logger.Errorf("add pov block %d/%s failed, err %s", block.GetHeight(), block.GetHash(), err)
@@ -740,7 +729,7 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 		saveCallback()
 	}
 
-	bc.hashTdCache.Set(block.GetHash(), blockTD)
+	_ = bc.hashTdCache.Set(block.GetHash(), blockTD)
 
 	tdCmpRet := blockTD.Chain.Cmp(&bestTD.Chain)
 	isBest := tdCmpRet > 0
@@ -770,11 +759,11 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 			block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 		err := bc.processFork(txn, block)
 		return ChainStateMain, err
-	} else {
-		bc.sideProcNum++
-		bc.logger.Debugf("block %d/%s td %d/%s in side chain, prev %s",
-			block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 	}
+
+	bc.sideProcNum++
+	bc.logger.Debugf("block %d/%s td %d/%s in side chain, prev %s",
+		block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 
 	return ChainStateSide, nil
 }
@@ -1049,7 +1038,7 @@ func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.Po
 }
 
 func (bc *PovBlockChain) FindAncestor(header *types.PovHeader, height uint64) *types.PovHeader {
-	if height < 0 || height > header.GetHeight() {
+	if height > header.GetHeight() {
 		return nil
 	}
 

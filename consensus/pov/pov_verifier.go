@@ -188,7 +188,7 @@ func (pv *PovVerifier) verifyDataIntegrity(block *types.PovBlock, stat *PovVerif
 }
 
 func (pv *PovVerifier) verifyTimestamp(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
-	if block.GetTimestamp() <= 0 {
+	if block.GetTimestamp() == 0 {
 		return process.InvalidTime, errors.New("timestamp is zero")
 	}
 
@@ -302,9 +302,6 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 				}
 			}
 		}
-
-		//pv.logger.Debugf("address %s token %s block %s", tx.Block.GetAddress(), tx.Block.GetToken(), tx.GetHash())
-		//pv.logger.Debugf("prevHashWant %s txPrevHash %s", prevHashWant, tx.Block.GetPrevious())
 
 		if prevHashWant != tx.Block.GetPrevious() {
 			return process.InvalidTxOrder, errors.New("tx is not in order")
