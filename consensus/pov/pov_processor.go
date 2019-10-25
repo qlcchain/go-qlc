@@ -22,6 +22,7 @@ type PovProcessorChainReader interface {
 	HasBestBlock(hash types.Hash, height uint64) bool
 	GetBlockByHash(hash types.Hash) *types.PovBlock
 	InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error
+	LatestHeader() *types.PovHeader
 }
 
 type PovProcessorVerifier interface {
@@ -30,7 +31,7 @@ type PovProcessorVerifier interface {
 
 type PovProcessorSyncer interface {
 	requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID string)
-	requestTxsByHashes(reqTxHashes []*types.Hash, peerID string)
+	requestSyncFrontiers(peerID string)
 }
 
 const (
@@ -62,9 +63,9 @@ type PovOrphanBlock struct {
 }
 
 type PovPendingBlock struct {
-	addTime   time.Time
-	blockSrc  *PovBlockSource
-	txResults map[types.Hash]process.ProcessResult
+	addTime  time.Time
+	blockSrc *PovBlockSource
+	gapTxs   map[types.Hash]process.ProcessResult
 }
 
 type PovTxPendingEntry struct {
@@ -203,12 +204,12 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 	delete(bp.txPendingBlocks, txHash)
 
 	for _, pendingBlock := range txPendEntry.pendingBlocks {
-		if _, ok := pendingBlock.txResults[txHash]; !ok {
+		if _, ok := pendingBlock.gapTxs[txHash]; !ok {
 			continue
 		}
-		delete(pendingBlock.txResults, txHash)
+		delete(pendingBlock.gapTxs, txHash)
 
-		if len(pendingBlock.txResults) <= 0 {
+		if len(pendingBlock.gapTxs) <= 0 {
 			bp.releaseTxPendingBlock(pendingBlock)
 		}
 	}
@@ -590,16 +591,16 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *P
 
 	blockHash := blockSrc.block.GetHash()
 	pendingBlock := &PovPendingBlock{
-		addTime:   time.Now(),
-		blockSrc:  blockSrc,
-		txResults: stat.TxResults,
+		addTime:  time.Now(),
+		blockSrc: blockSrc,
+		gapTxs:   stat.GapTxs,
 	}
 
-	bp.logger.Infof("add tx pending block %s txs %d", blockHash, len(stat.TxResults))
+	bp.logger.Infof("add tx pending block %s txs %d", blockHash, len(stat.GapTxs))
 
-	var reqTxHashes []*types.Hash
+	needReqTxNum := 0
 
-	for txHashTmp, result := range stat.TxResults {
+	for txHashTmp, result := range stat.GapTxs {
 		if result == process.GapTransaction {
 			txHash := txHashTmp
 			txPendEntry, ok := bp.txPendingBlocks[txHash]
@@ -611,22 +612,22 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *P
 			}
 			txPendEntry.pendingBlocks = append(txPendEntry.pendingBlocks, pendingBlock)
 
-			reqTxHashes = append(reqTxHashes, &txHash)
+			needReqTxNum++
 		}
 	}
 
 	bp.pendingBlocks[blockHash] = pendingBlock
 
-	if len(reqTxHashes) > 0 {
-		bp.syncer.requestTxsByHashes(reqTxHashes, blockSrc.peerID)
+	if needReqTxNum > 0 {
+		bp.syncer.requestSyncFrontiers(blockSrc.peerID)
 	}
 }
 
 func (bp *PovBlockProcessor) removeTxPendingBlockNoLock(pendingBlock *PovPendingBlock) {
 	blockHash := pendingBlock.blockSrc.block.GetHash()
-	bp.logger.Infof("remove tx pending block %s txs %d", blockHash, len(pendingBlock.txResults))
+	bp.logger.Infof("remove tx pending block %s txs %d", blockHash, len(pendingBlock.gapTxs))
 
-	for txHash := range pendingBlock.txResults {
+	for txHash := range pendingBlock.gapTxs {
 		delete(bp.txPendingBlocks, txHash)
 	}
 	delete(bp.pendingBlocks, blockHash)
@@ -654,7 +655,7 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 		bp.logger.Infof("check tx pending, txs %d blocks %d", txPendingNum, blockPendingNum)
 	}
 
-	var reqTxHashes []*types.Hash
+	needReqTxNum := 0
 
 	for txHash, txPendEntry := range bp.txPendingBlocks {
 		if len(txPendEntry.pendingBlocks) <= 0 {
@@ -666,8 +667,7 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 		// tx is not exist to pull from some peer
 		if txBlock == nil {
 			if nowTime.After(txPendEntry.lastPullTime.Add(minPullTxIntervalSec * time.Second)) {
-				txHashCopy := txHash
-				reqTxHashes = append(reqTxHashes, &txHashCopy)
+				needReqTxNum++
 				txPendEntry.lastPullTime = nowTime
 			}
 			continue
@@ -675,20 +675,20 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 
 		// tx is exist to release pending blocks
 		for _, pendingBlock := range txPendEntry.pendingBlocks {
-			delete(pendingBlock.txResults, txHash)
+			delete(pendingBlock.gapTxs, txHash)
 		}
 
 		delete(bp.txPendingBlocks, txHash)
 	}
 
 	for _, pendingBlock := range bp.pendingBlocks {
-		if len(pendingBlock.txResults) <= 0 {
+		if len(pendingBlock.gapTxs) <= 0 {
 			bp.releaseTxPendingBlock(pendingBlock)
 		}
 	}
 
-	if len(reqTxHashes) > 0 {
-		bp.syncer.requestTxsByHashes(reqTxHashes, "")
+	if needReqTxNum > 0 {
+		bp.syncer.requestSyncFrontiers("")
 	}
 }
 
@@ -704,6 +704,36 @@ func (bp *PovBlockProcessor) releaseTxPendingBlock(pendingBlock *PovPendingBlock
 	bp.blockHighCh <- pendingBlock.blockSrc
 }
 
+func (bp *PovBlockProcessor) GetNextPendingBlockForDebug() *PovPendingBlock {
+	bp.txPendingMux.Lock()
+	defer bp.txPendingMux.Unlock()
+
+	latestHeader := bp.chain.LatestHeader()
+	if latestHeader == nil {
+		return nil
+	}
+	latestHash := latestHeader.GetHash()
+
+	var pbNext *PovPendingBlock
+	for _, pb := range bp.pendingBlocks {
+		if pb.blockSrc.block.GetPrevious() == latestHash {
+			pbNext = pb
+			break
+		}
+	}
+	if pbNext == nil {
+		return nil
+	}
+
+	pbCopy := *pbNext
+	pbCopy.gapTxs = make(map[types.Hash]process.ProcessResult)
+	for txHash, gapTx := range pbNext.gapTxs {
+		pbCopy.gapTxs[txHash] = gapTx
+	}
+
+	return &pbCopy
+}
+
 func (bp *PovBlockProcessor) GetDebugInfo() map[string]interface{} {
 	// !!! be very careful about to map concurrent read !!!
 
@@ -713,6 +743,29 @@ func (bp *PovBlockProcessor) GetDebugInfo() map[string]interface{} {
 	info["orphanBlocks"] = len(bp.orphanBlocks)
 	info["pendingBlocks"] = len(bp.pendingBlocks)
 	info["txPendingBlocks"] = len(bp.txPendingBlocks)
+
+	pendingBlock := bp.GetNextPendingBlockForDebug()
+	if pendingBlock != nil {
+		pbInfo := make(map[string]interface{})
+		info["pendingBlockInfo"] = pbInfo
+		pbInfo["fromType"] = pendingBlock.blockSrc.from
+		pbInfo["fromPeer"] = pendingBlock.blockSrc.peerID
+		pbInfo["hash"] = pendingBlock.blockSrc.block.GetHash()
+		pbInfo["height"] = pendingBlock.blockSrc.block.GetHeight()
+		pbInfo["txNum"] = pendingBlock.blockSrc.block.GetTxNum()
+
+		gapTxNum := len(pendingBlock.gapTxs)
+		pbInfo["gapTxNum"] = gapTxNum
+		gapTxHashes := make([]*types.Hash, 0)
+		for txHash := range pendingBlock.gapTxs {
+			txHashCopy := txHash
+			gapTxHashes = append(gapTxHashes, &txHashCopy)
+			if len(gapTxHashes) > 5 {
+				break
+			}
+		}
+		pbInfo["gapTxHashes"] = gapTxHashes
+	}
 
 	return info
 }

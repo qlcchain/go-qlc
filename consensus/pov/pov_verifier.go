@@ -27,9 +27,9 @@ type PovVerifier struct {
 }
 
 type PovVerifyStat struct {
-	Result    process.ProcessResult
-	ErrMsg    string
-	TxResults map[types.Hash]process.ProcessResult
+	Result process.ProcessResult
+	ErrMsg string
+	GapTxs map[types.Hash]process.ProcessResult
 
 	CurHeader     *types.PovHeader
 	PrevHeader    *types.PovHeader
@@ -40,7 +40,7 @@ type PovVerifyStat struct {
 
 func NewPovVerifyStat() *PovVerifyStat {
 	pvs := new(PovVerifyStat)
-	pvs.TxResults = make(map[types.Hash]process.ProcessResult)
+	pvs.GapTxs = make(map[types.Hash]process.ProcessResult)
 	pvs.TxBlocks = make(map[types.Hash]*types.StateBlock)
 	return pvs
 }
@@ -258,7 +258,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 		} else {
 			txBlock, _ := pv.store.GetStateBlock(tx.Hash)
 			if txBlock == nil {
-				stat.TxResults[tx.Hash] = process.GapTransaction
+				stat.GapTxs[tx.Hash] = process.GapTransaction
 			} else {
 				tx.Block = txBlock
 				stat.TxBlocks[tx.Hash] = txBlock
@@ -266,8 +266,8 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 		}
 	}
 
-	if len(stat.TxResults) > 0 {
-		return process.GapTransaction, fmt.Errorf("total %d txs in pending", len(stat.TxResults))
+	if len(stat.GapTxs) > 0 {
+		return process.GapTransaction, fmt.Errorf("total %d txs in pending", len(stat.GapTxs))
 	}
 
 	prevTrie := stat.getPrevStateTrie(pv, block.GetPrevious())

@@ -840,17 +840,6 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 		return ErrPovInvalidHead
 	}
 
-	diffHeight := uint64(0)
-	if newBlock.GetHeight() > oldHeadBlock.GetHeight() {
-		diffHeight = newBlock.GetHeight() - oldHeadBlock.GetHeight()
-	} else {
-		diffHeight = oldHeadBlock.GetHeight() - newBlock.GetHeight()
-	}
-	if diffHeight >= common.PoVMaxForkHeight {
-		bc.logger.Errorf("fork diff height %d exceed max limit %d", diffHeight, common.PoVMaxForkHeight)
-		return ErrPovInvalidFork
-	}
-
 	bc.logger.Infof("before fork process, head %d/%s", oldHeadBlock.GetHeight(), oldHeadBlock.GetHash())
 
 	var detachBlocks []*types.PovBlock
@@ -954,8 +943,13 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 		return ErrPovInvalidHash
 	}
 
-	bc.logger.Infof("find fork block %d/%s, detach %d, attach %d",
+	bc.logger.Infof("find fork block %d/%s, detach blocks %d, attach blocks %d",
 		forkBlock.GetHeight(), forkBlock.GetHash(), len(detachBlocks), len(attachBlocks))
+
+	if len(detachBlocks) > int(common.PoVMaxForkHeight) {
+		bc.logger.Errorf("fork detach blocks %d exceed max limit %d", len(detachBlocks), common.PoVMaxForkHeight)
+		return ErrPovInvalidFork
+	}
 
 	// detach from high to low
 	for _, detachBlock := range detachBlocks {

@@ -570,6 +570,13 @@ func (blk *PovBlock) GetAccountTxs() []*PovTransaction {
 	return blk.Body.Txs[1:]
 }
 
+func (blk *PovBlock) GetTxByIndex(index int) *PovTransaction {
+	if index >= len(blk.Body.Txs) {
+		return nil
+	}
+	return blk.Body.Txs[index]
+}
+
 func (blk *PovBlock) GetBits() uint32 {
 	return blk.Header.BasHdr.Bits
 }

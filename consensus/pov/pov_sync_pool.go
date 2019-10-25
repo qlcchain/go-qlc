@@ -10,11 +10,10 @@ import (
 )
 
 type PovSyncBlock struct {
-	PeerID      string
-	Height      uint64
-	Block       *types.PovBlock
-	ExistTxs    map[types.Hash]struct{}
-	ReqTxHashes []*types.Hash
+	PeerID       string
+	Height       uint64
+	Block        *types.PovBlock
+	CheckTxIndex int
 }
 
 func (ss *PovSyncer) syncLoop() {
@@ -286,8 +285,7 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 
 	syncBlk := ss.syncBlocks[block.GetHeight()]
 	if syncBlk == nil {
-		syncBlk = &PovSyncBlock{Height: block.GetHeight(), Block: block, PeerID: peer.peerID}
-		syncBlk.ExistTxs = make(map[types.Hash]struct{})
+		syncBlk = &PovSyncBlock{Height: block.GetHeight(), Block: block, PeerID: peer.peerID, CheckTxIndex: 0}
 		ss.syncBlocks[block.GetHeight()] = syncBlk
 	} else if syncBlk.Block != nil {
 		if syncBlk.Block.GetHash() != block.GetHash() {
@@ -312,33 +310,29 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 }
 
 func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
-	var reqTxHashes []*types.Hash
+	hasPendTx := false
 	txs := syncBlk.Block.GetAllTxs()
-	for txIdx, tx := range txs {
-		txHash := tx.GetHash()
-		if _, exist := syncBlk.ExistTxs[txHash]; exist {
+	for ; syncBlk.CheckTxIndex < len(txs); syncBlk.CheckTxIndex++ {
+		if syncBlk.CheckTxIndex == 0 {
 			continue
 		}
-		if txIdx == 0 {
-			syncBlk.ExistTxs[txHash] = struct{}{}
-		} else {
-			ok, _ := ss.ledger.HasStateBlock(txHash)
-			if ok {
-				syncBlk.ExistTxs[txHash] = struct{}{}
-			} else {
-				reqTxHashes = append(reqTxHashes, &txHash)
-			}
-		}
-	}
-	syncBlk.ReqTxHashes = reqTxHashes
+		tx := txs[syncBlk.CheckTxIndex]
+		txHash := tx.GetHash()
 
-	if uint32(len(syncBlk.ExistTxs)) >= syncBlk.Block.GetTxNum() {
+		ok, _ := ss.ledger.HasStateBlock(txHash)
+		if ok {
+			continue
+		}
+
+		hasPendTx = true
+		break
+	}
+
+	if !hasPendTx {
 		return false
 	}
 
-	if len(reqTxHashes) > 0 {
-		ss.requestTxsByHashes(reqTxHashes, syncBlk.PeerID)
-	}
+	ss.requestSyncFrontiers(syncBlk.PeerID)
 	return true
 }
 
@@ -365,7 +359,7 @@ func (ss *PovSyncer) resetSyncBlockQueue(reInit bool) {
 	}
 }
 
-func (ss *PovSyncer) getSyncCurBlock() *PovSyncBlock {
+func (ss *PovSyncer) findSyncCurBlockForDebug() *PovSyncBlock {
 	ss.syncBlocksMux.RLock()
 	defer ss.syncBlocksMux.RUnlock()
 

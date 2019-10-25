@@ -40,7 +40,7 @@ var (
 	PovMinerRewardRatioMiner      = 80     // 80%
 	PovMinerRewardRatioRep        = 20     // 20%
 
-	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 12)
+	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 23)
 
 	PovGenesisPowHex    = "00000ffff0000000000000000000000000000000000000000000000000000000"
 	PovGenesisPowInt, _ = new(big.Int).SetString(PovGenesisPowHex, 16)
