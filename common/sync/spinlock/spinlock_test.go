@@ -34,7 +34,6 @@ func TestLock(t *testing.T) {
 	if !sl.TryLock() {
 		t.Error("TryLock() returned false when it shouldn't have.")
 	}
-
 }
 
 type SpinMap struct {
@@ -191,10 +190,11 @@ func testLock(threads, n int, l sync.Locker) time.Duration {
 }
 
 func TestSpinLock(t *testing.T) {
-	fmt.Printf("[1] spinlock %4.0fms\n", testLock(1, 1000000, &SpinLock{}).Seconds()*1000)
-	fmt.Printf("[1] mutex    %4.0fms\n", testLock(1, 1000000, &sync.Mutex{}).Seconds()*1000)
-	fmt.Printf("[4] spinlock %4.0fms\n", testLock(4, 1000000, &SpinLock{}).Seconds()*1000)
-	fmt.Printf("[4] mutex    %4.0fms\n", testLock(4, 1000000, &sync.Mutex{}).Seconds()*1000)
-	fmt.Printf("[8] spinlock %4.0fms\n", testLock(8, 1000000, &SpinLock{}).Seconds()*1000)
-	fmt.Printf("[8] mutex    %4.0fms\n", testLock(8, 1000000, &sync.Mutex{}).Seconds()*1000)
+	n := 1000000
+	fmt.Printf("[1] spinlock %4.0fms\n", testLock(1, n, &SpinLock{}).Seconds()*1000)
+	fmt.Printf("[1] mutex    %4.0fms\n", testLock(1, n, &sync.Mutex{}).Seconds()*1000)
+	fmt.Printf("[4] spinlock %4.0fms\n", testLock(4, n, &SpinLock{}).Seconds()*1000)
+	fmt.Printf("[4] mutex    %4.0fms\n", testLock(4, n, &sync.Mutex{}).Seconds()*1000)
+	fmt.Printf("[8] spinlock %4.0fms\n", testLock(8, n, &SpinLock{}).Seconds()*1000)
+	fmt.Printf("[8] mutex    %4.0fms\n", testLock(8, n, &sync.Mutex{}).Seconds()*1000)
 }

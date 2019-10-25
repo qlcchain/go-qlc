@@ -73,5 +73,4 @@ func TestLedger_AddOrUpdatePerformance2(t *testing.T) {
 	if b {
 		t.Fatal("error exist2")
 	}
-
 }

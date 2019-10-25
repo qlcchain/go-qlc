@@ -54,7 +54,6 @@ func (s *SMSApi) getApiBlocksByHash(hashes []types.Hash) ([]*APIBlock, error) {
 		}
 	}
 	return ab, nil
-
 }
 
 func (s *SMSApi) PhoneBlocks(sender string) (map[string][]*APIBlock, error) {

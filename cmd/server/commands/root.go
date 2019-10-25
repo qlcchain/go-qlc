@@ -98,7 +98,6 @@ func Execute(osArgs []string) {
 				if err != nil {
 					cmd.Println(err)
 				}
-
 			},
 		}
 		rootCmd.PersistentFlags().StringVar(&cfgPathP, "config", "", "config file")
@@ -316,7 +315,7 @@ func start() error {
 
 func trapSignal() {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 	chainContext := context.NewChainContext(cfgPathP)
 	err := chainContext.Stop()

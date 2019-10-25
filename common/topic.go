@@ -53,7 +53,7 @@ const (
 
 var syncStatus = [...]string{
 	SyncNotStart: "SyncNotStart",
-	Syncing:      "Synchronising",
+	Syncing:      "Synchronizing",
 	SyncDone:     "SyncDone",
 	SyncFinish:   "SyncFinish",
 }

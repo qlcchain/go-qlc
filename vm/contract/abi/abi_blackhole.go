@@ -138,7 +138,6 @@ func PackSendBlock(ctx *vmstore.VMContext, param *DestroyParam) (*types.StateBlo
 
 		if singedData, err := BlackHoleABI.PackMethod(MethodNameDestroy, param.Owner, param.Previous, param.Token,
 			param.Amount, param.Sign); err == nil {
-
 			return &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,

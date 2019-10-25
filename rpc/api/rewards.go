@@ -11,9 +11,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/event"
 	"math/big"
 	"sync/atomic"
+
+	"github.com/qlcchain/go-qlc/common/event"
 
 	"go.uber.org/zap"
 
@@ -252,7 +253,6 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 	} else {
 		return nil, err
 	}
-
 }
 
 func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock, error) {

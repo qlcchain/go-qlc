@@ -118,7 +118,6 @@ func TestSet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			m := New(4)
 			elephant := "elephant"
 			monkey := "monkey"
@@ -341,7 +340,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestIterator(t *testing.T) {
-
 	tests := []struct {
 		name string
 		key  func(int) interface{}
@@ -642,7 +640,6 @@ func TestHashMap_SetConcurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
-
 		wg.Add(1)
 		go func(blocks *HashMap, i int) {
 			defer wg.Done()

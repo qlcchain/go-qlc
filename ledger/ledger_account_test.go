@@ -8,7 +8,6 @@ import (
 )
 
 func addAccountMeta(t *testing.T, l *Ledger) *types.AccountMeta {
-
 	ac := mock.Account()
 	am := mock.AccountMeta(ac.Address())
 	if err := l.AddAccountMeta(am); err != nil {
@@ -81,7 +80,6 @@ func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 }
 
 func TestLedger_UpdateAccountMeta(t *testing.T) {
@@ -257,7 +255,6 @@ func TestLedger_GetAccountMetaCache(t *testing.T) {
 	if err != nil || count != 1 {
 		t.Fatal(err)
 	}
-
 }
 
 func TestLedger_HasAccountMetaCache(t *testing.T) {

@@ -12,7 +12,7 @@ func TestCalcCoinbaseMerkleRoot_1(t *testing.T) {
 	txHashes := make([]*types.Hash, 0)
 	txData := make([]byte, 300)
 	_ = random.Bytes(txData)
-	txHash := types.Sha256D_HashData(txData)
+	txHash := types.Sha256DHashData(txData)
 	txHashes = append(txHashes, &txHash)
 
 	mr := CalcMerkleTreeRootHash(txHashes)
@@ -28,13 +28,13 @@ func TestCalcCoinbaseMerkleRoot_2(t *testing.T) {
 	for txCnt := 0; txCnt < txNum; txCnt++ {
 		txData := make([]byte, 300)
 		_ = random.Bytes(txData)
-		txHash := types.Sha256D_HashData(txData)
+		txHash := types.Sha256DHashData(txData)
 		txHashes = append(txHashes, &txHash)
 	}
 
 	cbTxData := make([]byte, 200)
 	_ = random.Bytes(cbTxData)
-	cbTxHash := types.Sha256D_HashData(cbTxData)
+	cbTxHash := types.Sha256DHashData(cbTxData)
 
 	allTxHash := make([]*types.Hash, 0, txNum+1)
 	allTxHash = append(allTxHash, &cbTxHash)

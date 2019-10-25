@@ -21,7 +21,6 @@ import (
 )
 
 func tokens() {
-
 	if interactive {
 		c := &ishell.Cmd{
 			Name: "tokens",
@@ -52,7 +51,6 @@ func tokens() {
 					cmd.Println(err)
 					return
 				}
-
 			},
 		}
 		rootCmd.AddCommand(tlCmd)
@@ -79,5 +77,4 @@ func tokensinfo() error {
 		fmt.Println()
 	}
 	return nil
-
 }

@@ -25,7 +25,6 @@ var contract = `
 `
 
 func TestSmartContractBlock_Serialize(t *testing.T) {
-
 	b := SmartContractBlock{}
 	err := json.Unmarshal([]byte(contract), &b)
 	if err != nil {

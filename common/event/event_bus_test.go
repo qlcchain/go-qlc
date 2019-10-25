@@ -120,20 +120,17 @@ func TestClose(t *testing.T) {
 
 	original, ok := bus.(*DefaultEventBus)
 	if !ok {
-		fmt.Println("Could not cast message bus to its original type")
-		t.Fail()
+		t.Fatal("Could not cast message bus to its original type")
 	}
 
-	if 0 == original.handlers.Len() {
-		fmt.Println("Did not subscribed handler to topic")
-		t.Fail()
+	if original.handlers.Len() == 0 {
+		t.Fatal("Did not subscribed handler to topic")
 	}
 
 	bus.CloseTopic("test")
 
-	if 0 != original.handlers.Len() {
-		fmt.Println("Did not unsubscribed handlers from topic")
-		t.Fail()
+	if original.handlers.Len() != 0 {
+		t.Fatal("Did not unsubscribed handlers from topic")
 	}
 }
 

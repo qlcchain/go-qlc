@@ -9,11 +9,12 @@ package api
 
 import (
 	"encoding/hex"
-	"github.com/qlcchain/go-qlc/common/event"
 	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/event"
 
 	"github.com/google/uuid"
 

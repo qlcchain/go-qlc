@@ -51,7 +51,7 @@ type cryptoSeedJSON struct {
 	Timestamp int64      `json:"timestamp"`
 }
 
-func Encrypt(raw string, passphrase string) (string, error) {
+func Encrypt(raw, passphrase string) (string, error) {
 	s, err := hex.DecodeString(raw)
 	if err != nil {
 		return "", err
@@ -65,7 +65,7 @@ func Encrypt(raw string, passphrase string) (string, error) {
 }
 
 //EncryptBytes encrypts raw by passphrase to json binary
-func EncryptBytes(raw []byte, passphrase []byte) ([]byte, error) {
+func EncryptBytes(raw, passphrase []byte) ([]byte, error) {
 	n := StandardScryptN
 	p := StandardScryptP
 	salt := crypto.GetEntropyCSPRNG(32)
@@ -102,8 +102,8 @@ func EncryptBytes(raw []byte, passphrase []byte) ([]byte, error) {
 	return json.Marshal(encryptedJSON)
 }
 
-func Decrypt(cryptograph string, passphrase string) (string, error) {
-	encryptedJSON, err := base64.StdEncoding.DecodeString(cryptograph)
+func Decrypt(cryptoGraph, passphrase string) (string, error) {
+	encryptedJSON, err := base64.StdEncoding.DecodeString(cryptoGraph)
 	if err != nil {
 		return "", nil
 	}
@@ -114,28 +114,28 @@ func Decrypt(cryptograph string, passphrase string) (string, error) {
 	return hex.EncodeToString(r), nil
 }
 
-//DecryptBytes decrypt raw json to raw
-func DecryptBytes(encryptedJSON []byte, passphrase []byte) ([]byte, error) {
-	cryptograph := cryptoSeedJSON{}
-	err := json.Unmarshal(encryptedJSON, &cryptograph)
+// DecryptBytes decrypt raw json to raw
+func DecryptBytes(encryptedJSON, passphrase []byte) ([]byte, error) {
+	cryptoGraph := cryptoSeedJSON{}
+	err := json.Unmarshal(encryptedJSON, &cryptoGraph)
 	if err != nil {
-		return nil, errors.New("invalid cryptograph json")
+		return nil, errors.New("invalid crypto graph json")
 	}
 
-	cipherData, err := hex.DecodeString(cryptograph.Crypto.CipherText)
+	cipherData, err := hex.DecodeString(cryptoGraph.Crypto.CipherText)
 	if err != nil {
-		return nil, errors.New("invalid cryptograph cipher text")
+		return nil, errors.New("invalid crypto graph cipher text")
 	}
 
-	nonce, err := hex.DecodeString(cryptograph.Crypto.Nonce)
+	nonce, err := hex.DecodeString(cryptoGraph.Crypto.Nonce)
 	if err != nil {
-		return nil, errors.New("invalid cryptograph nonce")
+		return nil, errors.New("invalid crypto graph nonce")
 	}
 
-	scryptParams := cryptograph.Crypto.ScryptParams
+	scryptParams := cryptoGraph.Crypto.ScryptParams
 	salt, err := hex.DecodeString(scryptParams.Salt)
 	if err != nil {
-		return nil, errors.New("invalid cryptograph salt")
+		return nil, errors.New("invalid crypto graph salt")
 	}
 	// begin decrypt
 	derivedKey, err := scrypt.Key(passphrase, salt, scryptParams.N, scryptParams.R, scryptParams.P, scryptParams.KeyLen)
@@ -145,7 +145,7 @@ func DecryptBytes(encryptedJSON []byte, passphrase []byte) ([]byte, error) {
 
 	s, err := crypto.AesGCMDecrypt(derivedKey[:32], cipherData, nonce)
 	if err != nil {
-		return nil, errors.New("error decrypt cryptograph")
+		return nil, errors.New("error decrypt crypto graph")
 	}
 
 	return s, nil

@@ -39,7 +39,6 @@ func walletList() {
 					util.Warn(err)
 					return
 				}
-
 			},
 		}
 		shell.AddCmd(c)

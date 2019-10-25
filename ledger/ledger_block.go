@@ -459,7 +459,6 @@ func addLink(block *types.StateBlock, txn db.StoreTxn) error {
 func (l *Ledger) deleteChild(blk *types.StateBlock, txn db.StoreTxn) error {
 	pHash := blk.Parent()
 	if !pHash.IsZero() {
-
 		k, err := getKeyOfParts(idPrefixChild, pHash)
 		if err != nil {
 			return err

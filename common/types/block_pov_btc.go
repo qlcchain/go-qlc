@@ -45,13 +45,13 @@ func (h *PovBtcHeader) ComputePowHash(algo PovAlgoType) Hash {
 
 	switch algo {
 	case ALGO_SHA256D:
-		powHash := Sha256D_HashData(d)
+		powHash := Sha256DHashData(d)
 		return powHash
 	case ALGO_SCRYPT:
-		powHash := Scrypt_HashData(d)
+		powHash := ScryptHashData(d)
 		return powHash
 	case ALGO_X11:
-		powHash := X11_HashData(d)
+		powHash := X11HashData(d)
 		return powHash
 	}
 
@@ -60,7 +60,7 @@ func (h *PovBtcHeader) ComputePowHash(algo PovAlgoType) Hash {
 
 func (h *PovBtcHeader) ComputeHash() Hash {
 	d := h.BuildHashData()
-	powHash := Sha256D_HashData(d)
+	powHash := Sha256DHashData(d)
 	return powHash
 }
 
@@ -173,7 +173,7 @@ func (tx *PovBtcTx) BuildHashData() []byte {
 
 func (tx *PovBtcTx) ComputeHash() Hash {
 	d := tx.BuildHashData()
-	powHash := Sha256D_HashData(d)
+	powHash := Sha256DHashData(d)
 	return powHash
 }
 

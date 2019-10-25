@@ -358,17 +358,20 @@ func TestGenerateWork(t *testing.T) {
 
 	done := make(chan string)
 	session := store.NewSession(id)
-
 	go func() {
 		hash := mock.Hash()
 		work := session.generateWork(hash)
 		if !work.IsValid(hash) {
-			t.Fatal("generateWork failed =>", hash.String())
+			done <- ""
 		}
 		done <- fmt.Sprintf("hash[%s]=>%s", hash.String(), work.String())
 	}()
-
-	t.Log(<-done)
+	r := <-done
+	if r == "" {
+		t.Fatal("failed to generate work...")
+	} else {
+		t.Log(r)
+	}
 }
 
 func TestSession_GetAccounts(t *testing.T) {

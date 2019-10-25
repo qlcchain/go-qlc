@@ -157,7 +157,6 @@ func (sm *StreamManager) CloseStream(peerID string) error {
 
 // CreateStreamWithPeer create stream with a peer.
 func (sm *StreamManager) createStreamWithPeer(pid peer.ID) {
-
 	stream := sm.FindByPeerID(pid.Pretty())
 
 	if stream == nil {

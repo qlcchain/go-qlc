@@ -37,7 +37,6 @@ func TestLedger_GetUncheckedBlock(t *testing.T) {
 		t.Logf("unchecked,%s", b)
 		t.Log(s)
 	}
-
 }
 
 func TestLedger_CountUncheckedBlocks(t *testing.T) {

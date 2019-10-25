@@ -196,7 +196,6 @@ func TestBadgerPerformance_CheckBlockMissing(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-
 }
 
 func TestBadgerPerformance_ReadBlock(t *testing.T) {
@@ -256,7 +255,6 @@ func TestBadgerPerformance_ReadBlock(t *testing.T) {
 
 	fmt.Println("total, ", index)
 	fmt.Printf("read benchmark: %d s\n", span.Second())
-
 }
 
 func TestBadgerPerformance_ReadBlockByGoroutine(t *testing.T) {
@@ -299,7 +297,6 @@ func TestBadgerPerformance_ReadBlockByGoroutine(t *testing.T) {
 					})
 					wg.Done()
 				}(hs)
-
 			} else {
 				t.Fatal(err)
 			}
@@ -309,7 +306,6 @@ func TestBadgerPerformance_ReadBlockByGoroutine(t *testing.T) {
 	fmt.Println(index)
 	end := time.Now()
 	fmt.Printf("read benchmark: %f s\n", end.Sub(start).Seconds())
-
 }
 
 func TestLedger_RemoveDB(t *testing.T) {

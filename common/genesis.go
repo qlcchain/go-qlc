@@ -133,7 +133,6 @@ func GenesisAddress() types.Address {
 
 func GasAddress() types.Address {
 	return gasAddress
-
 }
 
 func ChainToken() types.Hash {
@@ -166,7 +165,6 @@ func GenesisBlock() types.StateBlock {
 
 func GasBlock() types.StateBlock {
 	return gasBlock
-
 }
 
 func GenesisBlockHash() types.Hash {

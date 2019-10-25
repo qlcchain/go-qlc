@@ -15,7 +15,6 @@ func TestGo(t *testing.T) {
 		var s *sss = &sss{aaa: "aaa"}
 
 		println(s.aaa)
-
 	})
 
 	time.Sleep(time.Second)

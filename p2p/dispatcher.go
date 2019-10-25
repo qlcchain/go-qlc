@@ -55,7 +55,6 @@ func (dp *Dispatcher) Deregister(subscribers *Subscriber) {
 
 // Start start message dispatch goroutine.
 func (dp *Dispatcher) Start() {
-
 	go dp.loop()
 }
 

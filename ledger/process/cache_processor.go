@@ -398,7 +398,6 @@ func checkCacheContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock)
 		default:
 			return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 		}
-
 	} else {
 		//call vm.Run();
 		return Other, fmt.Errorf("can not find chain contract %s", address.String())
