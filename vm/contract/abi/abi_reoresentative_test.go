@@ -82,8 +82,8 @@ func TestGetLastRepRewardHeightByAccount(t *testing.T) {
 
 func TestRepCalcRewardEndHeight(t *testing.T) {
 	startHeight := common.PovMinerRewardHeightStart
-	maxEndHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay * 10)
-	expectHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay * 7) - 1
+	maxEndHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay*10)
+	expectHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay*7) - 1
 
 	height := RepCalcRewardEndHeight(startHeight, maxEndHeight)
 	if height != expectHeight {
