@@ -147,7 +147,7 @@ func repRewardAction(repPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) e
 		StartHeight:  rspRewardInfo.AvailStartHeight,
 		EndHeight:    rspRewardInfo.AvailEndHeight,
 		RewardBlocks: rspRewardInfo.AvailRewardBlocks,
-		RewardAmount: rspRewardInfo.AvailRewardAmount,
+		RewardAmount: rspRewardInfo.AvailRewardAmount.Int,
 	}
 
 	// generate contract send block

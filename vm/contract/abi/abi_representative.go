@@ -2,6 +2,7 @@ package abi
 
 import (
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -19,13 +20,13 @@ const (
 			{"name":"startHeight","type":"uint64"},
 			{"name":"endHeight","type":"uint64"},
 			{"name":"rewardBlocks","type":"uint64"},
-			{"name":"rewardAmount","type":"balance"}
+			{"name":"rewardAmount","type":"uint256"}
 		]},
 		{"type":"variable","name":"RepRewardInfo","inputs":[
 			{"name":"endHeight","type":"uint64"},
 			{"name":"rewardBlocks","type":"uint64"},
 			{"name":"timestamp","type":"int64"},
-			{"name":"rewardAmount","type":"balance"}
+			{"name":"rewardAmount","type":"uint256"}
 		]}
 	]`
 
@@ -43,7 +44,7 @@ type RepRewardParam struct {
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
-	RewardAmount types.Balance `json:"rewardAmount"`
+	RewardAmount *big.Int      `json:"rewardAmount"`
 }
 
 func (p *RepRewardParam) Verify() (bool, error) {
@@ -76,7 +77,7 @@ type RepRewardInfo struct {
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
-	RewardAmount types.Balance `json:"rewardAmount"`
+	RewardAmount *big.Int      `json:"rewardAmount"`
 	Timestamp    int64         `json:"_"`
 }
 

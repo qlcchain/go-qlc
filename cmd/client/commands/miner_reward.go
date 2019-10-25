@@ -144,7 +144,7 @@ func minerRewardAction(cbPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) 
 		StartHeight:  rspRewardInfo.AvailStartHeight,
 		EndHeight:    rspRewardInfo.AvailEndHeight,
 		RewardBlocks: rspRewardInfo.AvailRewardBlocks,
-		RewardAmount: rspRewardInfo.AvailRewardAmount,
+		RewardAmount: rspRewardInfo.AvailRewardAmount.Int,
 	}
 
 	// generate contract send block
