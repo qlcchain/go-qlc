@@ -3,10 +3,10 @@ package contract
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -20,6 +20,20 @@ func (r *RepReward) GetLastRewardHeight(ctx *vmstore.VMContext, account types.Ad
 	}
 
 	return height, nil
+}
+
+func (r *RepReward) GetRewardHistory(ctx *vmstore.VMContext, account types.Address) (*cabi.RepRewardInfo, error) {
+	data, err := ctx.GetStorage(types.RepAddress[:], account[:])
+	if err == nil {
+		info := new(cabi.RepRewardInfo)
+		er := cabi.RepABI.UnpackVariable(info, cabi.VariableNameRepReward, data)
+		if er != nil {
+			return nil, er
+		}
+		return info, nil
+	}
+
+	return nil, err
 }
 
 func (r *RepReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
@@ -40,7 +54,7 @@ func (r *RepReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) 
 
 func (r *RepReward) GetAvailRewardInfo(ctx *vmstore.VMContext, account types.Address, nodeHeight uint64, lastRewardHeight uint64) (*cabi.RepRewardInfo, error) {
 	availInfo := new(cabi.RepRewardInfo)
-	availInfo.RewardAmount = types.NewBalance(0)
+	availInfo.RewardAmount = big.NewInt(0)
 
 	startHeight := lastRewardHeight + 1
 	endHeight := cabi.RepCalcRewardEndHeight(startHeight, nodeHeight)
@@ -56,7 +70,7 @@ func (r *RepReward) GetAvailRewardInfo(ctx *vmstore.VMContext, account types.Add
 	availInfo.StartHeight = startHeight
 	availInfo.EndHeight = endHeight
 	availInfo.RewardBlocks = availBlocks
-	availInfo.RewardAmount = availReward
+	availInfo.RewardAmount = availReward.Int
 	return availInfo, nil
 }
 
@@ -112,16 +126,30 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	if calcRewardBlocks != param.RewardBlocks {
 		return nil, nil, fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
 	}
-	if calcRewardAmount.Compare(param.RewardAmount) != types.BalanceCompEqual {
+	if calcRewardAmount.Compare(types.Balance{Int: param.RewardAmount}) != types.BalanceCompEqual {
 		return nil, nil, fmt.Errorf("calc reward %d not equal param reward %v", calcRewardAmount, param.RewardAmount)
 	}
 
-	block.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
+	block.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial,
+		param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], util.BE_Uint64ToBytes(param.EndHeight))
+	oldInfo, err := r.GetRewardHistory(ctx, param.Account)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return nil, nil, fmt.Errorf("get storage err %s", err)
+	}
+
+	if oldInfo == nil {
+		oldInfo = new(cabi.RepRewardInfo)
+		oldInfo.RewardAmount = big.NewInt(0)
+	}
+
+	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, param.EndHeight,
+		param.RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
+		param.RewardAmount.Add(param.RewardAmount, oldInfo.RewardAmount))
+	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")
 	}
@@ -131,7 +159,7 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 			Hash:    block.GetHash(),
 		}, &types.PendingInfo{
 			Source: types.Address(block.Link),
-			Amount: param.RewardAmount,
+			Amount: types.Balance{Int: param.RewardAmount},
 			Type:   common.GasToken(),
 		}, nil
 }
@@ -170,11 +198,11 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	if amBnf != nil {
 		tmBnf := amBnf.Token(common.GasToken())
 		if tmBnf != nil {
-			block.Balance = tmBnf.Balance.Add(param.RewardAmount)
+			block.Balance = tmBnf.Balance.Add(types.Balance{Int: param.RewardAmount})
 			block.Representative = tmBnf.Representative
 			block.Previous = tmBnf.Header
 		} else {
-			block.Balance = param.RewardAmount
+			block.Balance = types.Balance{Int: param.RewardAmount}
 			if len(amBnf.Tokens) > 0 {
 				block.Representative = amBnf.Tokens[0].Representative
 			} else {
@@ -183,7 +211,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 			block.Previous = types.ZeroHash
 		}
 	} else {
-		block.Balance = param.RewardAmount
+		block.Balance = types.Balance{Int: param.RewardAmount}
 		block.Representative = input.Representative
 		block.Previous = types.ZeroHash
 	}
@@ -194,7 +222,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 			Block:     block,
 			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
-			Amount:    param.RewardAmount,
+			Amount:    types.Balance{Int: param.RewardAmount},
 			Token:     common.GasToken(),
 			Data:      []byte{},
 		},

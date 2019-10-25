@@ -32,11 +32,13 @@ func minerReward() {
 			Name:  "bnfprikey",
 			Must:  false,
 			Usage: "beneficial account private hex string",
+			Value: "",
 		}
 		bnfAddr := util.Flag{
 			Name:  "bnfaddr",
 			Must:  false,
 			Usage: "beneficial account address hex string",
+			Value: "",
 		}
 
 		cmd := &ishell.Cmd{
@@ -142,7 +144,7 @@ func minerRewardAction(cbPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) 
 		StartHeight:  rspRewardInfo.AvailStartHeight,
 		EndHeight:    rspRewardInfo.AvailEndHeight,
 		RewardBlocks: rspRewardInfo.AvailRewardBlocks,
-		RewardAmount: rspRewardInfo.AvailRewardAmount,
+		RewardAmount: rspRewardInfo.AvailRewardAmount.Int,
 	}
 
 	// generate contract send block

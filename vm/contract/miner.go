@@ -3,10 +3,10 @@ package contract
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -20,6 +20,20 @@ func (m *MinerReward) GetLastRewardHeight(ctx *vmstore.VMContext, coinbase types
 	}
 
 	return height, nil
+}
+
+func (m *MinerReward) GetRewardHistory(ctx *vmstore.VMContext, coinbase types.Address) (*cabi.MinerRewardInfo, error) {
+	data, err := ctx.GetStorage(types.MinerAddress[:], coinbase[:])
+	if err == nil {
+		info := new(cabi.MinerRewardInfo)
+		er := cabi.MinerABI.UnpackVariable(info, cabi.VariableNameMinerReward, data)
+		if er != nil {
+			return nil, er
+		}
+		return info, nil
+	}
+
+	return nil, err
 }
 
 func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
@@ -47,7 +61,7 @@ func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error
 
 func (m *MinerReward) GetAvailRewardInfo(ctx *vmstore.VMContext, coinbase types.Address, nodeHeight uint64, lastRewardHeight uint64) (*cabi.MinerRewardInfo, error) {
 	availInfo := new(cabi.MinerRewardInfo)
-	availInfo.RewardAmount = types.NewBalance(0)
+	availInfo.RewardAmount = big.NewInt(0)
 
 	startHeight := lastRewardHeight + 1
 	endHeight := cabi.MinerCalcRewardEndHeight(startHeight, nodeHeight)
@@ -63,7 +77,7 @@ func (m *MinerReward) GetAvailRewardInfo(ctx *vmstore.VMContext, coinbase types.
 	availInfo.StartHeight = startHeight
 	availInfo.EndHeight = endHeight
 	availInfo.RewardBlocks = availBlocks
-	availInfo.RewardAmount = availReward
+	availInfo.RewardAmount = availReward.Int
 	return availInfo, nil
 }
 
@@ -117,16 +131,30 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	if calcRewardBlocks != param.RewardBlocks {
 		return nil, nil, fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
 	}
-	if calcRewardAmount.Compare(param.RewardAmount) != types.BalanceCompEqual {
+	if calcRewardAmount.Compare(types.Balance{Int: param.RewardAmount}) != types.BalanceCompEqual {
 		return nil, nil, fmt.Errorf("calc reward %d not equal param reward %v", calcRewardAmount, param.RewardAmount)
 	}
 
-	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial, param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
+	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial,
+		param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], util.BE_Uint64ToBytes(param.EndHeight))
+	oldInfo, err := m.GetRewardHistory(ctx, param.Coinbase)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return nil, nil, fmt.Errorf("get storage err %s", err)
+	}
+
+	if oldInfo == nil {
+		oldInfo = new(cabi.MinerRewardInfo)
+		oldInfo.RewardAmount = big.NewInt(0)
+	}
+
+	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, param.EndHeight,
+		param.RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
+		param.RewardAmount.Add(param.RewardAmount, oldInfo.RewardAmount))
+	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")
 	}
@@ -136,7 +164,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 			Hash:    block.GetHash(),
 		}, &types.PendingInfo{
 			Source: types.Address(block.Link),
-			Amount: param.RewardAmount,
+			Amount: types.Balance{Int: param.RewardAmount},
 			Type:   common.GasToken(),
 		}, nil
 }
@@ -175,11 +203,11 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	if amBnf != nil {
 		tmBnf := amBnf.Token(common.GasToken())
 		if tmBnf != nil {
-			block.Balance = tmBnf.Balance.Add(param.RewardAmount)
+			block.Balance = tmBnf.Balance.Add(types.Balance{Int: param.RewardAmount})
 			block.Representative = tmBnf.Representative
 			block.Previous = tmBnf.Header
 		} else {
-			block.Balance = param.RewardAmount
+			block.Balance = types.Balance{Int: param.RewardAmount}
 			if len(amBnf.Tokens) > 0 {
 				block.Representative = amBnf.Tokens[0].Representative
 			} else {
@@ -188,7 +216,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 			block.Previous = types.ZeroHash
 		}
 	} else {
-		block.Balance = param.RewardAmount
+		block.Balance = types.Balance{Int: param.RewardAmount}
 		block.Representative = input.Representative
 		block.Previous = types.ZeroHash
 	}
@@ -199,7 +227,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 			Block:     block,
 			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
-			Amount:    param.RewardAmount,
+			Amount:    types.Balance{Int: param.RewardAmount},
 			Token:     common.GasToken(),
 			Data:      []byte{},
 		},

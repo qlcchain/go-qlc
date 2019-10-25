@@ -114,6 +114,7 @@ type DPoS struct {
 	lastGapHeight       uint64
 	getFrontier         chan types.StateBlockList
 	isFindingRep        int32
+	ebDone              chan struct{}
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -158,8 +159,8 @@ func NewDPoS(cfgFile string) *DPoS {
 		povChange:           make(chan *types.PovBlock, 10240),
 		voteCache:           gcache.New(voteCacheSize).LRU().Build(),
 		blockSyncState:      common.SyncNotStart,
-		getFrontier:         make(chan types.StateBlockList, 1),
 		isFindingRep:        0,
+		ebDone:              make(chan struct{}, 1),
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -328,49 +329,8 @@ func (dps *DPoS) Start() {
 				dps.CleanSyncCache()
 				dps.logger.Warn("sync finished abnormally")
 			}
-		case frontiers := <-dps.getFrontier:
-			var unconfirmed []*types.StateBlock
 
-			for _, block := range frontiers {
-				if block.Token == common.ChainToken() {
-					dps.totalVote[block.Address] = block.Balance.Add(block.Vote).Add(block.Oracle).Add(block.Network).Add(block.Storage)
-					dps.logger.Infof("account[%s] vote weight[%s]", block.Address, dps.totalVote[block.Address])
-				}
-			}
-
-			for _, block := range frontiers {
-				hash := block.GetHash()
-
-				if dps.isReceivedFrontier(hash) {
-					continue
-				}
-
-				has, _ := dps.ledger.HasStateBlockConfirmed(hash)
-				if !has {
-					dps.logger.Infof("get frontier %s need ack", hash)
-					unconfirmed = append(unconfirmed, block)
-					index := dps.getProcessorIndex(block.Address)
-					dps.processors[index].frontiers <- block
-				}
-			}
-
-			unconfirmedLen := len(unconfirmed)
-			sendStart := 0
-			sendEnd := 0
-			sendLen := unconfirmedLen
-
-			for sendLen > 0 {
-				if sendLen >= blockNumPerReq {
-					sendEnd = sendStart + blockNumPerReq
-					sendLen -= blockNumPerReq
-				} else {
-					sendEnd = sendStart + sendLen
-					sendLen = 0
-				}
-
-				dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, unconfirmed[sendStart:sendEnd])
-				sendStart = sendEnd
-			}
+			dps.ebDone <- struct{}{}
 		}
 	}
 }
@@ -435,7 +395,48 @@ func (dps *DPoS) processorStop() {
 }
 
 func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
-	dps.getFrontier <- blocks
+	var unconfirmed []*types.StateBlock
+
+	for _, block := range blocks {
+		if block.Token == common.ChainToken() {
+			dps.totalVote[block.Address] = block.Balance.Add(block.Vote).Add(block.Oracle).Add(block.Network).Add(block.Storage)
+			dps.logger.Infof("account[%s] vote weight[%s]", block.Address, dps.totalVote[block.Address])
+		}
+	}
+
+	for _, block := range blocks {
+		hash := block.GetHash()
+
+		if dps.isReceivedFrontier(hash) {
+			continue
+		}
+
+		has, _ := dps.ledger.HasStateBlockConfirmed(hash)
+		if !has {
+			dps.logger.Infof("get frontier %s need ack", hash)
+			unconfirmed = append(unconfirmed, block)
+			index := dps.getProcessorIndex(block.Address)
+			dps.processors[index].frontiers <- block
+		}
+	}
+
+	unconfirmedLen := len(unconfirmed)
+	sendStart := 0
+	sendEnd := 0
+	sendLen := unconfirmedLen
+
+	for sendLen > 0 {
+		if sendLen >= blockNumPerReq {
+			sendEnd = sendStart + blockNumPerReq
+			sendLen -= blockNumPerReq
+		} else {
+			sendEnd = sendStart + sendLen
+			sendLen = 0
+		}
+
+		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, unconfirmed[sendStart:sendEnd])
+		sendStart = sendEnd
+	}
 }
 
 func (dps *DPoS) onPovSyncState(state common.SyncState) {
@@ -1227,6 +1228,7 @@ func (dps *DPoS) CleanSyncCache() {
 
 func (dps *DPoS) onSyncStateChange(state common.SyncState) {
 	dps.syncState <- state
+	<-dps.ebDone
 }
 
 func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
@@ -1237,6 +1239,10 @@ func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
 	if blocks, kind, err := dps.ledger.GetGapPovBlock(height); err != nil {
 		return true
 	} else {
+		if len(blocks) == 0 {
+			return true
+		}
+
 		dayIndex := uint32((height - common.PovMinerRewardHeightGapToLatest) / uint64(common.POVChainBlocksPerDay))
 		if !dps.ledger.HasPovMinerStat(dayIndex) {
 			dps.logger.Infof("miner stat [%d] not exist", dayIndex)

@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/trie"
@@ -31,7 +32,7 @@ type RepRewardParam struct {
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
-	RewardAmount types.Balance `json:"rewardAmount"`
+	RewardAmount *big.Int      `json:"rewardAmount"`
 }
 
 type RepAvailRewardInfo struct {
@@ -43,6 +44,13 @@ type RepAvailRewardInfo struct {
 	AvailRewardBlocks uint64        `json:"availRewardBlocks"`
 	AvailRewardAmount types.Balance `json:"availRewardAmount"`
 	NeedCallReward    bool          `json:"needCallReward"`
+}
+
+type RepHistoryRewardInfo struct {
+	LastEndHeight  uint64        `json:"lastEndHeight"`
+	RewardBlocks   uint64        `json:"rewardBlocks"`
+	RewardAmount   types.Balance `json:"rewardAmount"`
+	LastRewardTime int64         `json:"lastRewardTime"`
 }
 
 func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
@@ -107,7 +115,7 @@ func (r *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo,
 	}
 
 	availInfo := new(cabi.RepRewardInfo)
-	availInfo.RewardAmount = types.NewBalance(0)
+	availInfo.RewardAmount = big.NewInt(0)
 	for {
 		info, err := r.reward.GetAvailRewardInfo(vmContext, account, rsp.NodeRewardHeight, lastHeight)
 		if err != nil {
@@ -125,7 +133,7 @@ func (r *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo,
 	rsp.AvailStartHeight = availInfo.StartHeight
 	rsp.AvailEndHeight = availInfo.EndHeight
 	rsp.AvailRewardBlocks = availInfo.RewardBlocks
-	rsp.AvailRewardAmount = availInfo.RewardAmount
+	rsp.AvailRewardAmount = types.Balance{Int: availInfo.RewardAmount}
 
 	if rsp.AvailStartHeight > lastRewardHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight &&
 		rsp.AvailRewardAmount.Int64() > 0 {
@@ -280,4 +288,20 @@ func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepSta
 	}
 
 	return rs, nil
+}
+
+func (r *RepApi) GetRewardHistory(account types.Address) (*RepHistoryRewardInfo, error) {
+	history := new(RepHistoryRewardInfo)
+	vmContext := vmstore.NewVMContext(r.ledger)
+	info, err := r.reward.GetRewardHistory(vmContext, account)
+	if err != nil {
+		return nil, err
+	}
+
+	history.LastEndHeight = info.EndHeight
+	history.RewardBlocks = info.RewardBlocks
+	history.RewardAmount = types.Balance{Int: info.RewardAmount}
+	history.LastRewardTime = info.Timestamp
+
+	return history, nil
 }

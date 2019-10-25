@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/qlcchain/go-qlc/config"
 
@@ -30,7 +31,7 @@ type RewardParam struct {
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
-	RewardAmount types.Balance `json:"rewardAmount"`
+	RewardAmount *big.Int      `json:"rewardAmount"`
 }
 
 type MinerAvailRewardInfo struct {
@@ -45,11 +46,10 @@ type MinerAvailRewardInfo struct {
 }
 
 type MinerHistoryRewardInfo struct {
-	RewardInfos       []*cabi.MinerRewardInfo `json:"rewardInfos"`
-	FirstRewardHeight uint64                  `json:"firstRewardHeight"`
-	LastRewardHeight  uint64                  `json:"lastRewardHeight"`
-	AllRewardBlocks   uint64                  `json:"allRewardBlocks"`
-	AllRewardAmount   types.Balance           `json:"allRewardAmount"`
+	LastEndHeight  uint64        `json:"lastEndHeight"`
+	RewardBlocks   uint64        `json:"rewardBlocks"`
+	RewardAmount   types.Balance `json:"rewardAmount"`
+	LastRewardTime int64         `json:"lastRewardTime"`
 }
 
 func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
@@ -114,7 +114,7 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 	}
 
 	availInfo := new(cabi.MinerRewardInfo)
-	availInfo.RewardAmount = types.NewBalance(0)
+	availInfo.RewardAmount = big.NewInt(0)
 	for {
 		info, err := m.reward.GetAvailRewardInfo(vmContext, coinbase, rsp.NodeRewardHeight, lastHeight)
 		if err != nil {
@@ -132,7 +132,7 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 	rsp.AvailStartHeight = availInfo.StartHeight
 	rsp.AvailEndHeight = availInfo.EndHeight
 	rsp.AvailRewardBlocks = availInfo.RewardBlocks
-	rsp.AvailRewardAmount = availInfo.RewardAmount
+	rsp.AvailRewardAmount = types.Balance{Int: availInfo.RewardAmount}
 
 	if rsp.AvailStartHeight > lastRewardHeight && rsp.AvailEndHeight <= rsp.NodeRewardHeight &&
 		rsp.AvailRewardAmount.Int64() > 0 {
@@ -242,4 +242,20 @@ func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.Sta
 	}
 
 	return m.GetRewardRecvBlock(input)
+}
+
+func (m *MinerApi) GetRewardHistory(coinbase types.Address) (*MinerHistoryRewardInfo, error) {
+	history := new(MinerHistoryRewardInfo)
+	vmContext := vmstore.NewVMContext(m.ledger)
+	info, err := m.reward.GetRewardHistory(vmContext, coinbase)
+	if err != nil {
+		return nil, err
+	}
+
+	history.LastEndHeight = info.EndHeight
+	history.RewardBlocks = info.RewardBlocks
+	history.RewardAmount = types.Balance{Int: info.RewardAmount}
+	history.LastRewardTime = info.Timestamp
+
+	return history, nil
 }

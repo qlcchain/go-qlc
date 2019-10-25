@@ -32,11 +32,13 @@ func repReward() {
 			Name:  "bnfPriKey",
 			Must:  false,
 			Usage: "beneficial account private hex string",
+			Value: "",
 		}
 		bnfAddr := util.Flag{
 			Name:  "bnfAddr",
 			Must:  false,
 			Usage: "beneficial account address hex string",
+			Value: "",
 		}
 
 		cmd := &ishell.Cmd{
@@ -145,7 +147,7 @@ func repRewardAction(repPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) e
 		StartHeight:  rspRewardInfo.AvailStartHeight,
 		EndHeight:    rspRewardInfo.AvailEndHeight,
 		RewardBlocks: rspRewardInfo.AvailRewardBlocks,
-		RewardAmount: rspRewardInfo.AvailRewardAmount,
+		RewardAmount: rspRewardInfo.AvailRewardAmount.Int,
 	}
 
 	// generate contract send block

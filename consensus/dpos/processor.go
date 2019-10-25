@@ -278,7 +278,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	case consensus.MsgConfirmReq:
 		dps.logger.Infof("dps recv confirmReq block[%s]", hash)
 
-		//vote if the result is progress and old
+		// vote if the result is progress and old
 		if result == process.Progress {
 			if el := dps.acTrx.getVoteInfo(bs.Block); el != nil {
 				if el.voteHash == types.ZeroHash {
@@ -291,9 +291,9 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 			dps.localRepVote(bs.Block)
 		}
 	case consensus.MsgSync:
-		//do nothing
+		// do nothing
 	case consensus.MsgGenerateBlock:
-		//cache fork
+		// cache fork
 		if result == process.Progress {
 			el := dps.acTrx.getVoteInfo(bs.Block)
 			if el != nil && el.status.winner.GetHash() != hash {

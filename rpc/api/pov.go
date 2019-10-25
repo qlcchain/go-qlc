@@ -96,14 +96,16 @@ type PovApiTD struct {
 }
 
 type PovMinerStatItem struct {
-	MainBlockNum     uint32        `json:"mainBlockNum"`
-	MainRewardAmount types.Balance `json:"mainRewardAmount"`
-	FirstBlockTime   time.Time     `json:"firstBlockTime"`
-	LastBlockTime    time.Time     `json:"lastBlockTime"`
-	FirstBlockHeight uint64        `json:"firstBlockHeight"`
-	LastBlockHeight  uint64        `json:"lastBlockHeight"`
-	IsHourOnline     bool          `json:"isHourOnline"`
-	IsDayOnline      bool          `json:"isDayOnline"`
+	MainBlockNum       uint32        `json:"mainBlockNum"`
+	MainRewardAmount   types.Balance `json:"mainRewardAmount"`
+	StableBlockNum     uint32        `json:"stableBlockNum"`
+	StableRewardAmount types.Balance `json:"stableRewardAmount"`
+	FirstBlockTime     time.Time     `json:"firstBlockTime"`
+	LastBlockTime      time.Time     `json:"lastBlockTime"`
+	FirstBlockHeight   uint64        `json:"firstBlockHeight"`
+	LastBlockHeight    uint64        `json:"lastBlockHeight"`
+	IsHourOnline       bool          `json:"isHourOnline"`
+	IsDayOnline        bool          `json:"isDayOnline"`
 }
 
 type PovMinerStats struct {
@@ -115,6 +117,13 @@ type PovMinerStats struct {
 
 	TotalBlockNum     uint32 `json:"totalBlockNum"`
 	LatestBlockHeight uint64 `json:"latestBlockHeight"`
+}
+
+type PovRepStats struct {
+	MainBlockNum       uint32        `json:"mainBlockNum"`
+	MainRewardAmount   types.Balance `json:"mainRewardAmount"`
+	StableBlockNum     uint32        `json:"stableBlockNum"`
+	StableRewardAmount types.Balance `json:"stableRewardAmount"`
 }
 
 func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *PovApi {
@@ -668,7 +677,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		for addrHex, minerStat := range stat.MinerStats {
 			minerAddr, _ := types.HexToAddress(addrHex)
 
-			if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
+			if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
 				return nil
 			}
 
@@ -676,6 +685,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			if !ok {
 				item = &PovMinerStatItem{}
 				item.MainRewardAmount = types.ZeroBalance
+				item.StableRewardAmount = types.ZeroBalance
 				item.FirstBlockHeight = minerStat.FirstHeight
 				item.LastBlockHeight = minerStat.LastHeight
 
@@ -689,7 +699,9 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 				}
 			}
 			item.MainRewardAmount = item.MainRewardAmount.Add(minerStat.RewardAmount)
+			item.StableRewardAmount = item.MainRewardAmount
 			item.MainBlockNum += minerStat.BlockNum
+			item.StableBlockNum = item.MainBlockNum
 			totalBlockNum += minerStat.BlockNum
 		}
 
@@ -712,7 +724,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		}
 
 		minerAddr := header.GetMinerAddr()
-		if len(checkAddrMap) > 0 && checkAddrMap[minerAddr] == false {
+		if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
 			continue
 		}
 
@@ -767,6 +779,112 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	}
 
 	return apiRsp, nil
+}
+
+func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRepStats, error) {
+	checkAddrMap := make(map[types.Address]bool)
+	if len(addrs) > 0 {
+		for _, addr := range addrs {
+			checkAddrMap[addr] = true
+		}
+	}
+
+	rspMap := make(map[types.Address]*PovRepStats)
+
+	// scan rep stats per day
+	lastDayIndex := uint32(0)
+	err := api.ledger.GetAllPovMinerStats(func(stat *types.PovMinerDayStat) error {
+		if stat.DayIndex > lastDayIndex {
+			lastDayIndex = stat.DayIndex
+		}
+
+		for addrHex, minerStat := range stat.MinerStats {
+			repAddr, _ := types.HexToAddress(addrHex)
+			if len(checkAddrMap) > 0 && !checkAddrMap[repAddr] {
+				continue
+			}
+
+			repStat, ok := rspMap[repAddr]
+			if !ok {
+				rspMap[repAddr] = new(PovRepStats)
+				rspMap[repAddr].MainRewardAmount = types.NewBalance(0)
+				rspMap[repAddr].StableRewardAmount = types.NewBalance(0)
+				repStat = rspMap[repAddr]
+			}
+
+			repStat.MainRewardAmount = repStat.MainRewardAmount.Add(minerStat.RepReward)
+			repStat.StableRewardAmount = repStat.MainRewardAmount
+			repStat.MainBlockNum += minerStat.RepBlockNum
+			repStat.StableBlockNum = repStat.MainBlockNum
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// scan best block not in miner stats per day
+	latestHeader, _ := api.ledger.GetLatestPovHeader()
+
+	notStatHeightStart := uint64(lastDayIndex) * uint64(common.POVChainBlocksPerDay)
+	notStatHeightEnd := latestHeader.GetHeight()
+
+	for height := notStatHeightStart; height <= notStatHeightEnd; height++ {
+		header, _ := api.ledger.GetPovHeaderByHeight(height)
+		if header == nil {
+			break
+		}
+
+		// calc repReward
+		if height%common.DPosOnlinePeriod == common.DPosOnlinePeriod-1 {
+			repStates := api.GetAllOnlineRepStates(header)
+			api.logger.Debugf("get online rep states %d at block height %d", len(repStates), height)
+
+			// calc total weight of all reps
+			repWeightTotal := types.NewBalance(0)
+			for _, rep := range repStates {
+				repWeightTotal = repWeightTotal.Add(rep.CalcTotal())
+			}
+			repWeightTotalBig := big.NewInt(repWeightTotal.Int64())
+
+			// calc total reward of all blocks in period
+			var i uint64
+			for i = 0; i < common.DPosOnlinePeriod; i++ {
+				povHead, err := api.ledger.GetPovHeaderByHeight(height - i)
+				if err != nil {
+					api.logger.Warnf("failed to get pov header %d, err %s", height-i, err)
+					break
+				}
+				repRewardAllBig := povHead.GetRepReward()
+
+				// divide reward to each rep
+				for _, rep := range repStates {
+					if len(checkAddrMap) > 0 && !checkAddrMap[rep.Account] {
+						continue
+					}
+
+					// repReward = totalReward / repWeight * totalWeight
+					repRewardBig := big.NewInt(rep.CalcTotal().Int64())
+					repRewardBig = repRewardBig.Mul(repRewardBig, repRewardAllBig.Int)
+					amountBig := repRewardBig.Div(repRewardBig, repWeightTotalBig)
+					amount := types.NewBalance(amountBig.Int64())
+
+					repStat, ok := rspMap[rep.Account]
+					if !ok {
+						rspMap[rep.Account] = new(PovRepStats)
+						rspMap[rep.Account].MainRewardAmount = types.NewBalance(0)
+						rspMap[rep.Account].StableRewardAmount = types.NewBalance(0)
+						repStat = rspMap[rep.Account]
+					}
+
+					repStat.MainBlockNum++
+					repStat.MainRewardAmount = repStat.MainRewardAmount.Add(amount)
+				}
+			}
+		}
+	}
+
+	return rspMap, nil
 }
 
 func (api *PovApi) GetMinerDayStats(dayIndex uint32) (*types.PovMinerDayStat, error) {
@@ -1230,4 +1348,52 @@ func (api *PovApi) GetLastNHourInfo(endHeight uint64, timeSpan uint32) (*PovApiG
 	apiRsp.AvgBlockPerHour = apiRsp.AllBlockNum / (maxDiffHour + 1)
 
 	return apiRsp, nil
+}
+
+func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
+	var allRss []*types.PovRepState
+	supply := common.GenesisBlock().Balance
+	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
+
+	stateHash := header.GetStateHash()
+	stateTrie := trie.NewTrie(api.ledger.DBStore(), &stateHash, nil)
+	if stateTrie == nil {
+		return nil
+	}
+
+	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	it := stateTrie.NewIterator(repPrefix)
+	if it == nil {
+		return nil
+	}
+
+	key, valBytes, ok := it.Next()
+	for ; ok; key, valBytes, ok = it.Next() {
+		if len(valBytes) == 0 {
+			continue
+		}
+
+		rs := types.NewPovRepState()
+		err := rs.Deserialize(valBytes)
+		if err != nil {
+			api.logger.Errorf("deserialize old rep state, key %s err %s", hex.EncodeToString(key), err)
+			return nil
+		}
+
+		if rs.Status != types.PovStatusOnline {
+			continue
+		}
+
+		if rs.Height > header.GetHeight() || rs.Height < (header.GetHeight()+1-common.DPosOnlinePeriod) {
+			continue
+		}
+
+		if rs.CalcTotal().Compare(minVoteWeight) != types.BalanceCompBigger {
+			continue
+		}
+
+		allRss = append(allRss, rs)
+	}
+
+	return allRss
 }

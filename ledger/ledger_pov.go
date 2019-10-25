@@ -729,6 +729,10 @@ func (l *Ledger) GetAllPovMinerStats(fn func(*types.PovMinerDayStat) error, txns
 		if err != nil {
 			return err
 		}
+
+		if err := fn(dayStat); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {

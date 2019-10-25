@@ -167,6 +167,10 @@ func (dps *DPoS) isOnline(addr types.Address) bool {
 
 func (dps *DPoS) sendOnline(povHeight uint64) {
 	for _, acc := range dps.accounts {
+		if !dps.isOnline(acc.Address()) {
+			continue
+		}
+
 		weight := dps.ledger.Weight(acc.Address())
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 			continue
