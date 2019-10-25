@@ -31,7 +31,7 @@ type RewardParam struct {
 	StartHeight  uint64        `json:"startHeight"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardBlocks uint64        `json:"rewardBlocks"`
-	RewardAmount *big.Int `json:"rewardAmount"`
+	RewardAmount *big.Int      `json:"rewardAmount"`
 }
 
 type MinerAvailRewardInfo struct {
