@@ -347,7 +347,6 @@ func (ms *MessageService) onPovStatus(message *Message) {
 }
 
 func (ms *MessageService) onPovPublishReq(message *Message) {
-
 	p, err := protos.PovPublishBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)

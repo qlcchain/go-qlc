@@ -8,8 +8,9 @@ import (
 
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
 
-	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -23,6 +24,7 @@ import (
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
+
 	"github.com/qlcchain/go-qlc/config"
 )
 
@@ -159,7 +161,6 @@ func (node *QlcNode) startLocalDiscovery() error {
 }
 
 func (node *QlcNode) StartServices() error {
-
 	if node.host == nil {
 		err := node.buildHost()
 		if err != nil {
@@ -225,7 +226,6 @@ func (node *QlcNode) startPingService() {
 }
 
 func (node *QlcNode) connectBootstrap(pInfoS []peer.AddrInfo) {
-
 	err := bootstrapConnect(node.ctx, node.host, pInfoS)
 	if err != nil {
 		return
@@ -263,7 +263,6 @@ func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 
 // findPeers
 func (node *QlcNode) findPeers() error {
-
 	peers, err := node.dhtFoundPeers()
 	if err != nil {
 		return err
@@ -294,7 +293,6 @@ func (node *QlcNode) StreamManager() *StreamManager {
 }
 
 func (node *QlcNode) stopHost() error {
-
 	if node.host == nil {
 		return errors.New("host not exit")
 	}
@@ -326,7 +324,6 @@ func (node *QlcNode) Stop() error {
 
 // BroadcastMessage broadcast message.
 func (node *QlcNode) BroadcastMessage(messageName MessageType, value interface{}) {
-
 	node.streamManager.BroadcastMessage(messageName, value)
 }
 

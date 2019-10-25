@@ -1,12 +1,14 @@
 package mock
 
 import (
+	"math"
 	"math/big"
 	"sync"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 var povCoinbaseOnce sync.Once
@@ -39,6 +41,8 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 	}
 
 	block := prevBlock.Clone()
+	block.Body.Txs = nil
+
 	block.Header.BasHdr.Timestamp = prevBlock.GetTimestamp() + 1
 	block.Header.BasHdr.Previous = prevBlock.GetHash()
 	block.Header.BasHdr.Height = prevBlock.GetHeight() + 1
@@ -75,4 +79,18 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 	nextTD.Chain.AddBigInt(big.NewInt(0), big.NewInt(int64(tdUint)))
 
 	return block, nextTD
+}
+
+func PovHeader() *types.PovHeader {
+	i, _ := random.Intn(math.MaxInt16)
+	return &types.PovHeader{
+		BasHdr: types.PovBaseHeader{
+			Hash:       Hash(),
+			Previous:   Hash(),
+			MerkleRoot: Hash(),
+			Height:     uint64(i),
+			//Coinbase:   Address(),
+			//StateHash:  Hash(),
+		},
+	}
 }

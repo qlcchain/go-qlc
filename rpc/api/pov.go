@@ -1025,65 +1025,16 @@ type PovApiSubmitWork struct {
 	AuxPow *types.PovAuxHeader `json:"auxPow"`
 }
 
-func (api *PovApi) StartMining(minerAddr types.Address, algoName string) error {
-	if !api.cfg.PoV.PovEnabled {
-		return errors.New("pov service is disabled")
-	}
-
-	inArgs := make(map[interface{}]interface{})
-	inArgs["minerAddr"] = minerAddr
-	inArgs["algoName"] = algoName
-
-	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(common.EventRpcSyncCall, "Miner.StartMining", inArgs, outArgs)
-
-	err, ok := outArgs["err"]
-	if !ok {
-		return errors.New("api not support")
-	}
-	if err != nil {
-		err := outArgs["err"].(error)
-		return err
-	}
-
-	return nil
-}
-
-func (api *PovApi) StopMining() error {
-	if !api.cfg.PoV.PovEnabled {
-		return errors.New("pov service is disabled")
-	}
-
-	inArgs := make(map[interface{}]interface{})
-
-	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(common.EventRpcSyncCall, "Miner.StopMining", inArgs, outArgs)
-
-	err, ok := outArgs["err"]
-	if !ok {
-		return errors.New("api not support")
-	}
-	if err != nil {
-		err := outArgs["err"].(error)
-		return err
-	}
-
-	return nil
-}
-
 type PovApiGetMiningInfo struct {
-	SyncState        int             `json:"syncState"`
-	MinerAddr        string          `json:"minerAddr"`
-	AlgoName         string          `json:"algoName"`
-	AlgoEfficiency   uint            `json:"algoEfficiency"`
-	CpuMining        bool            `json:"cpuMining"`
-	CurrentBlockHash types.Hash      `json:"currentBlockHash"`
-	CurrentBlockSize uint32          `json:"currentBlockSize"`
-	CurrentBlockTx   uint32          `json:"currentBlockTx"`
-	PooledTx         uint32          `json:"pooledTx"`
-	BlockNum         uint64          `json:"blockNum"`
-	Difficulty       float64         `json:"difficulty"`
-	HashInfo         *PovApiHashInfo `json:"hashInfo"`
+	SyncState          int               `json:"syncState"`
+	CurrentBlockHeight uint64            `json:"currentBlockHeight"`
+	CurrentBlockHash   types.Hash        `json:"currentBlockHash"`
+	CurrentBlockSize   uint32            `json:"currentBlockSize"`
+	CurrentBlockTx     uint32            `json:"currentBlockTx"`
+	CurrentBlockAlgo   types.PovAlgoType `json:"currentBlockAlgo"`
+	PooledTx           uint32            `json:"pooledTx"`
+	Difficulty         float64           `json:"difficulty"`
+	HashInfo           *PovApiHashInfo   `json:"hashInfo"`
 }
 
 func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
@@ -1107,21 +1058,12 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	}
 
 	latestBlock := outArgs["latestBlock"].(*types.PovBlock)
-	minerAddr := outArgs["minerAddr"].(types.Address)
-	algoType := outArgs["minerAlgo"].(types.PovAlgoType)
 
 	apiRsp := new(PovApiGetMiningInfo)
 	apiRsp.SyncState = outArgs["syncState"].(int)
-	if !minerAddr.IsZero() {
-		apiRsp.MinerAddr = minerAddr.String()
-	}
-	if algoType != types.ALGO_UNKNOWN {
-		apiRsp.AlgoName = algoType.String()
-	}
-	apiRsp.AlgoEfficiency = latestBlock.GetAlgoEfficiency()
-	apiRsp.CpuMining = outArgs["cpuMining"].(bool)
 
-	apiRsp.BlockNum = latestBlock.GetHeight()
+	apiRsp.CurrentBlockAlgo = latestBlock.GetAlgoType()
+	apiRsp.CurrentBlockHeight = latestBlock.GetHeight()
 	apiRsp.CurrentBlockHash = latestBlock.GetHash()
 	apiRsp.CurrentBlockSize = uint32(latestBlock.Msgsize())
 	apiRsp.CurrentBlockTx = latestBlock.GetTxNum()

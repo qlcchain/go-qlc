@@ -106,6 +106,9 @@ type PovBlockChain struct {
 
 	doingMinerStat *atomic.Bool
 
+	sideProcNum int
+	forkProcNum int
+
 	quitCh chan struct{}
 	wg     sync.WaitGroup
 }
@@ -762,11 +765,13 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 			return ChainStateMain, err
 		}
 
+		bc.forkProcNum++
 		bc.logger.Infof("block %d/%s td %d/%s, need to doing fork, prev %s",
 			block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 		err := bc.processFork(txn, block)
 		return ChainStateMain, err
 	} else {
+		bc.sideProcNum++
 		bc.logger.Debugf("block %d/%s td %d/%s in side chain, prev %s",
 			block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 	}
@@ -1127,4 +1132,27 @@ func (bc *PovBlockChain) CalcBlockRewardByQLC(header *types.PovHeader) (types.Ba
 	rep2 := new(big.Int).Div(rep1, big.NewInt(100))
 
 	return types.NewBalanceFromBigInt(miner2), types.NewBalanceFromBigInt(rep2)
+}
+
+func (bc *PovBlockChain) GetDebugInfo() map[string]interface{} {
+	// !!! be very careful about to map concurrent read !!!
+
+	info := make(map[string]interface{})
+	info["hashBlockCache"] = bc.hashBlockCache.Len(false)
+	info["hashHeaderCache"] = bc.hashHeaderCache.Len(false)
+	info["heightBlockCache"] = bc.heightBlockCache.Len(false)
+	info["heightHeaderCache"] = bc.heightHeaderCache.Len(false)
+	info["hashTdCache"] = bc.hashTdCache.Len(false)
+	info["trieCache"] = bc.trieCache.Len(false)
+	info["trieNodePool"] = bc.trieNodePool.Len()
+
+	info["sideProcNum"] = bc.sideProcNum
+	info["forkProcNum"] = bc.forkProcNum
+
+	latestHdr := bc.LatestHeader()
+	if latestHdr != nil {
+		info["latestHeight"] = latestHdr.GetHeight()
+	}
+
+	return info
 }

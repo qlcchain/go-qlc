@@ -29,7 +29,7 @@ func HashMerkleBranches(left *types.Hash, right *types.Hash) *types.Hash {
 	copy(hash[:types.HashSize], left[:])
 	copy(hash[types.HashSize:], right[:])
 
-	newHash := types.Sha256D_HashData(hash[:])
+	newHash := types.Sha256DHashData(hash[:])
 	return &newHash
 }
 
@@ -93,7 +93,7 @@ func BuildMerkleTreeStore(txHashs []*types.Hash) []*types.Hash {
 			merkles[offset] = newHash
 
 		// The normal case sets the parent node to the double sha256
-		// of the concatentation of the left and right children.
+		// of the concatenation of the left and right children.
 		default:
 			newHash := HashMerkleBranches(merkles[i], merkles[i+1])
 			merkles[offset] = newHash
@@ -172,11 +172,11 @@ func CalcMerkleRootByIndex(hash types.Hash, merkleBranch []*types.Hash, index in
 		if (index & 1) == 1 {
 			copy(sha[:32], it[:])
 			copy(sha[32:], hash[:])
-			hash = types.Sha256D_HashData(sha[:])
+			hash = types.Sha256DHashData(sha[:])
 		} else {
 			copy(sha[:32], hash[:])
 			copy(sha[32:], it[:])
-			hash = types.Sha256D_HashData(sha[:])
+			hash = types.Sha256DHashData(sha[:])
 		}
 		index >>= 1
 	}

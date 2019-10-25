@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+
 	"github.com/qlcchain/go-qlc/common"
 )
 
@@ -106,7 +107,6 @@ func (s *Stream) StartLoop() {
 }
 
 func (s *Stream) readLoop() {
-
 	if !s.IsConnected() {
 		if err := s.Connect(); err != nil {
 			//			s.node.logger.Error(err)
@@ -116,7 +116,6 @@ func (s *Stream) readLoop() {
 			}
 			return
 		}
-
 	}
 	s.node.logger.Info("connect ", s.pid.Pretty(), " success")
 
@@ -154,7 +153,6 @@ func (s *Stream) readLoop() {
 					return
 				}
 				messageBuffer = messageBuffer[QlcMessageHeaderLength:]
-
 			}
 			// waiting for data.
 			if len(messageBuffer) < int(message.DataLength()) {
@@ -176,7 +174,6 @@ func (s *Stream) readLoop() {
 }
 
 func (s *Stream) writeLoop() {
-
 	for {
 		select {
 		case <-s.quitWriteCh:
@@ -205,7 +202,6 @@ func (s *Stream) writeLoop() {
 			}
 		}
 	}
-
 }
 
 // Close close the stream
@@ -249,7 +245,6 @@ func (s *Stream) SendMessageToPeer(messageType MessageType, data []byte) error {
 
 // WriteQlcMessage write qlc msg in the stream
 func (s *Stream) WriteQlcMessage(message *QlcMessage) error {
-
 	err := s.Write(message.content)
 
 	return err

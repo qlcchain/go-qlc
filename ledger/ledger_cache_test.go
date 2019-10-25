@@ -75,5 +75,4 @@ func TestRepresentationCache(t *testing.T) {
 	if !r2.Vote.Equal(rd.Vote) || !r2.Balance.Equal(rd.Balance) || !r2.Total.Equal(rd.Total) {
 		t.Fatal("benefit not equal")
 	}
-
 }

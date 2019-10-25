@@ -122,4 +122,5 @@ func addcommands() {
 	repRewardRecvPend()
 	addPovCmd()
 	addTxCmd()
+	addDebugCmd()
 }

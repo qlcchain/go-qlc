@@ -207,5 +207,4 @@ func TestBadgerStoreTxn_Drop(t *testing.T) {
 	if err != badger.ErrKeyNotFound {
 		t.Fatal(err)
 	}
-
 }

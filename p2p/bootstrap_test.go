@@ -24,7 +24,6 @@ func TestBootstrap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 }
 
 func TestConvertPeers(t *testing.T) {
@@ -36,5 +35,4 @@ func TestConvertPeers(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(len(pInfoS))
-
 }

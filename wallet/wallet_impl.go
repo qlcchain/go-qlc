@@ -62,7 +62,7 @@ type Session struct {
 }
 
 var (
-	EmptyIdErr = errors.New("empty wallet id")
+	ErrEmptyId = errors.New("empty wallet id")
 )
 
 func (ws *WalletStore) NewSession(walletId types.Address) *Session {
@@ -123,7 +123,7 @@ func (s *Session) VerifyPassword(password string) (bool, error) {
 
 func (s *Session) GetWalletId() ([]byte, error) {
 	if len(s.walletId) == 0 {
-		return nil, EmptyIdErr
+		return nil, ErrEmptyId
 	}
 	return s.walletId, nil
 }
@@ -131,7 +131,6 @@ func (s *Session) GetWalletId() ([]byte, error) {
 func (s *Session) GetRepresentative() (types.Address, error) {
 	var address types.Address
 	err := s.ViewInTx(func(txn db.StoreTxn) error {
-
 		key := s.getKey(idPrefixRepresentation)
 		return txn.Get(key, func(val []byte, b byte) error {
 			addr, err := types.BytesToAddress(val)
@@ -401,7 +400,6 @@ func (s *Session) GenerateChangeBlock(account types.Address, representative type
 		}
 	}
 	return changeBlock, nil
-
 }
 
 func (s *Session) Import(content string, password string) error {
@@ -415,7 +413,6 @@ func (s *Session) Export(path string) error {
 func (s *Session) GetVersion() (int64, error) {
 	var i int64
 	err := s.ViewInTx(func(txn db.StoreTxn) error {
-
 		key := s.getKey(idPrefixVersion)
 		return txn.Get(key, func(val []byte, b byte) error {
 			i, _ = binary.Varint(val)
@@ -442,7 +439,6 @@ func (s *Session) setVersion(txn db.StoreTxn, version int64) error {
 func (s *Session) GetDeterministicIndex() (int64, error) {
 	var i int64
 	err := s.ViewInTx(func(txn db.StoreTxn) error {
-
 		key := s.getKey(idPrefixIndex)
 		return txn.Get(key, func(val []byte, b byte) error {
 			i, _ = binary.Varint(val)

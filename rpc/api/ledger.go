@@ -52,6 +52,7 @@ type LedgerApi struct {
 	logger            *zap.SugaredLogger
 	blockSubscription *BlockSubscription
 	processLock       *hashmap.HashMap
+	syncState         atomic.Value
 }
 
 type APIBlock struct {
@@ -104,19 +105,28 @@ type ApiTokenInfo struct {
 }
 
 func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
-	return &LedgerApi{
+	api := LedgerApi{
 		ledger:            l,
 		eb:                eb,
 		relation:          relation,
 		logger:            log.NewLogger("api_ledger"),
 		blockSubscription: NewBlockSubscription(eb),
-		processLock:       hashmap.New(defaultLockSize)}
+		processLock:       hashmap.New(defaultLockSize),
+	}
+	api.syncState.Store(common.SyncNotStart)
+	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	return &api
 }
 
 func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
 	b.StateBlock = block
 	b.Hash = block.GetHash()
 	return b
+}
+
+func (l *LedgerApi) OnPovSyncState(state common.SyncState) {
+	l.logger.Infof("ledger receive pov sync state [%s]", state)
+	l.syncState.Store(state)
 }
 
 func (l *LedgerApi) AccountBlocksCount(addr types.Address) (int64, error) {
@@ -243,7 +253,6 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 			//Pending:   pendingAmount,
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
-
 	}
 	aa.Address = address
 	return aa, nil
@@ -287,7 +296,6 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 			Pending:   pendingAmount,
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
-
 	}
 	aa.Address = address
 	return aa, nil
@@ -664,6 +672,9 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
+	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	var prk []byte
 	if prkStr != nil {
 		var err error
@@ -705,6 +716,9 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 	if sendBlock == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	var prk []byte
 	if prkStr != nil {
 		var err error
@@ -721,6 +735,9 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 }
 
 func (l *LedgerApi) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *string) (*types.StateBlock, error) {
+	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
 	var prk []byte
 	if prkStr != nil {
 		var err error
@@ -829,6 +846,9 @@ func (l *LedgerApi) getProcessLock(addr types.Address, token types.Hash) *lockVa
 func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	if block == nil {
 		return types.ZeroHash, ErrParameterNil
+	}
+	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return types.ZeroHash, errors.New("pov sync is not finished, please check it")
 	}
 	lv := l.getProcessLock(block.Address, block.Token)
 	lv.mutex.Lock()

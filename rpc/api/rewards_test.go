@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -34,6 +36,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	cm := cfg.NewCfgManager(dir)
 	cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
+	addPovHeader(l)
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()
@@ -49,10 +52,20 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	}, l
 }
 
+func addPovHeader(l *ledger.Ledger) {
+	header := mock.PovHeader()
+	l.AddPovHeader(header)
+	l.AddPovHeight(header.BasHdr.Hash, header.BasHdr.Height)
+	l.AddPovBestHash(header.BasHdr.Height, header.BasHdr.Hash)
+}
+
 func TestRewardsApi_GetRewardData(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	api := NewRewardsApi(l)
+	bus := event.GetEventBus(uuid.New().String())
+
+	api := NewRewardsApi(l, bus)
+	bus.Publish(common.EventPovSyncState, common.SyncDone)
 
 	tx := mock.Account()
 	rx := mock.Account()
@@ -140,7 +153,9 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	api := NewRewardsApi(l)
+	bus := event.GetEventBus(uuid.New().String())
+	api := NewRewardsApi(l, bus)
+	bus.Publish(common.EventPovSyncState, common.SyncDone)
 
 	tx := mock.Account()
 	rx := mock.Account()

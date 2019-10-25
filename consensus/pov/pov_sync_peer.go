@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
@@ -20,6 +21,7 @@ const (
 
 type PovSyncPeer struct {
 	peerID         string
+	currentHash    types.Hash
 	currentHeight  uint64
 	currentTD      *big.Int
 	timestamp      int64
@@ -86,6 +88,7 @@ func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgPeer string) {
 			return
 		}
 
+		peer.currentHash = status.CurrentHash
 		peer.currentHeight = status.CurrentHeight
 		peer.currentTD = td
 		peer.timestamp = status.Timestamp

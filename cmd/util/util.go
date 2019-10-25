@@ -8,7 +8,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -122,7 +121,7 @@ func CheckArgs(c *ishell.Context, args []Flag) error {
 				index = index + 2
 			}
 		} else {
-			return errors.New(fmt.Sprintf("'%s' is not a qlcc command. Please see 'COMMAND --help'", rawArgs[index]))
+			return fmt.Errorf("'%s' is not a qlcc command. Please see 'COMMAND --help'", rawArgs[index])
 		}
 	}
 

@@ -385,7 +385,6 @@ func testParamSelection(t *testing.T, c testCase) {
 			c.Name)
 		t.FailNow()
 	}
-
 }
 
 // Ensure that the basic public key validation in the decryption operation

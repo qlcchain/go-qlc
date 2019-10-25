@@ -209,7 +209,7 @@ func (r *JobRepository) consumeMinerSubmit(event Event) {
 	cbTxDataBuf.Write(util.LE_EncodeVarInt(uint64(work.CBExtraLen)))
 	cbTxDataBuf.Write(work.CoinbaseExtra)
 	cbTxDataBuf.Write(work.CoinBaseData2)
-	cbTxHash, _ := types.Sha256D_HashBytes(cbTxDataBuf.Bytes())
+	cbTxHash, _ := types.Sha256DHashBytes(cbTxDataBuf.Bytes())
 	work.CoinbaseHash = cbTxHash
 
 	work.MerkleRoot = merkle.CalcCoinbaseMerkleRoot(&cbTxHash, work.MerkleBranch)

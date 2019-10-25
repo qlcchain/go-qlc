@@ -26,6 +26,7 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
+
 	l := ledger.NewLedger(cm.ConfigFile)
 	rl, err := relation.NewRelation(cm.ConfigFile)
 	if err != nil {
@@ -59,6 +60,7 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupTestCaseLedger(t)
 	defer teardownTestCase(t)
 
+	ledgerApi.ledger.EB.Publish(common.EventPovSyncState, common.SyncDone)
 	chainToken := common.ChainToken()
 	gasToken := common.GasToken()
 	addr, _ := types.HexToAddress("qlc_361j3uiqdkjrzirttrpu9pn7eeussymty4rz4gifs9ijdx1p46xnpu3je7sy")

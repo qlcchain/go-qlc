@@ -24,6 +24,8 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
+	"github.com/spf13/cobra"
+
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
@@ -33,7 +35,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	qlclog "github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -97,7 +98,6 @@ func Execute(osArgs []string) {
 				if err != nil {
 					cmd.Println(err)
 				}
-
 			},
 		}
 		rootCmd.PersistentFlags().StringVar(&cfgPathP, "config", "", "config file")
@@ -315,7 +315,7 @@ func start() error {
 
 func trapSignal() {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 	chainContext := context.NewChainContext(cfgPathP)
 	err := chainContext.Stop()

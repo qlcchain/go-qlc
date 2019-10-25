@@ -38,7 +38,6 @@ func (message *QlcMessage) MagicNumber() []byte {
 }
 
 func (message *QlcMessage) Version() byte {
-
 	return message.content[QlcMessageMagicNumberEndIdx]
 }
 

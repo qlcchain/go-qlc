@@ -104,7 +104,6 @@ func (t *TrieNode) LeafCallback(completeFunc func()) {
 			}
 			return
 		}
-
 	}
 }
 

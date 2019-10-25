@@ -346,7 +346,7 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 				return nil, fmt.Errorf("pending key serialize: %s", err)
 			}
 		default:
-			return nil, errors.New("Key contains of invalid part.")
+			return nil, errors.New("key contains of invalid part")
 		}
 
 		buffer = append(buffer, src...)
@@ -400,6 +400,10 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 	if err != nil {
 		return nil, err
 	}
+	povHeader, err := l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	if tm.Balance.Compare(amount) != types.BalanceCompSmaller {
 		block.Type = types.Send
 		block.Balance = tm.Balance.Sub(amount)
@@ -410,6 +414,7 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 		block.Network = prev.GetNetwork()
 		block.Oracle = prev.GetOracle()
 		block.Storage = prev.GetStorage()
+		block.PoVHeight = povHeader.GetHeight()
 
 		if prk != nil {
 			acc := types.NewAccount(prk)
@@ -495,6 +500,11 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 			Timestamp:      common.TimeNow().Unix(),
 		}
 	}
+	povHeader, err := l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
+	sb.PoVHeight = povHeader.GetHeight()
 
 	if prk != nil && acc != nil {
 		sb.Signature = acc.Sign(sb.GetHash())
@@ -520,7 +530,10 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	if err != nil {
 		return nil, fmt.Errorf("token header block not found")
 	}
-
+	povHeader, err := l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	sb := types.StateBlock{
 		Type:           types.Change,
 		Address:        account,
@@ -531,6 +544,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Storage:        prev.GetStorage(),
 		Previous:       tm.Header,
 		Link:           types.ZeroHash,
+		PoVHeight:      povHeader.GetHeight(),
 		Representative: representative,
 		Token:          tm.Type,
 		Extra:          types.ZeroHash,

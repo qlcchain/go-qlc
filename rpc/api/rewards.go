@@ -12,6 +12,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync/atomic"
+
+	"github.com/qlcchain/go-qlc/common/event"
 
 	"go.uber.org/zap"
 
@@ -29,6 +32,7 @@ type RewardsApi struct {
 	ledger           *ledger.Ledger
 	rewards          *contract.AirdropRewords
 	confidantRewards *contract.ConfidantRewards
+	syncState        atomic.Value
 }
 
 type sendParam struct {
@@ -38,9 +42,16 @@ type sendParam struct {
 	tm *types.TokenMeta
 }
 
-func NewRewardsApi(l *ledger.Ledger) *RewardsApi {
-	return &RewardsApi{ledger: l, logger: log.NewLogger("api_rewards"),
-		rewards: &contract.AirdropRewords{}, confidantRewards: &contract.ConfidantRewards{}}
+func NewRewardsApi(l *ledger.Ledger, eb event.EventBus) *RewardsApi {
+	api := &RewardsApi{
+		ledger:           l,
+		logger:           log.NewLogger("api_rewards"),
+		rewards:          &contract.AirdropRewords{},
+		confidantRewards: &contract.ConfidantRewards{},
+	}
+	api.syncState.Store(common.SyncNotStart)
+	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	return api
 }
 
 type RewardsParam struct {
@@ -48,6 +59,11 @@ type RewardsParam struct {
 	Amount types.Balance `json:"amount"`
 	Self   types.Address `json:"self"`
 	To     types.Address `json:"to"`
+}
+
+func (r *RewardsApi) OnPovSyncState(state common.SyncState) {
+	r.logger.Infof("reward receive pov sync state [%s]", state)
+	r.syncState.Store(state)
 }
 
 func (r *RewardsApi) GetUnsignedRewardData(param *RewardsParam) (types.Hash, error) {
@@ -114,6 +130,10 @@ func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signatu
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := r.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
 	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedAirdropRewards, func(param *RewardsParam) (types.Hash, error) {
 		bytes, err := hex.DecodeString(param.Id)
 		if err != nil {
@@ -135,6 +155,10 @@ func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Sign
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := r.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
 	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedConfidantRewards, func(param *RewardsParam) (types.Hash, error) {
 		h := types.HashData([]byte(param.Id))
 		return h, nil
@@ -205,6 +229,10 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 	if param == nil {
 		return nil, ErrParameterNil
 	}
+	povHeader, err := r.ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
 	if singedData, err := cabi.RewardsABI.PackMethod(methodName, param.Id, param.Beneficial, param.TxHeader, param.RxHeader, param.Amount, param.Sign); err == nil {
 		return &types.StateBlock{
 			Type:           types.ContractSend,
@@ -219,18 +247,22 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 			Link:           types.Hash(types.RewardsAddress),
 			Representative: param.tm.Representative,
 			Data:           singedData,
+			PoVHeight:      povHeader.GetHeight(),
 			Timestamp:      common.TimeNow().Unix(),
 		}, nil
 	} else {
 		return nil, err
 	}
-
 }
 
 func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock, error) {
 	if send == nil {
 		return nil, ErrParameterNil
 	}
+	if ss := r.syncState.Load().(common.SyncState); ss != common.SyncDone {
+		return nil, errors.New("pov sync is not finished, please check it")
+	}
+
 	blk, err := r.ledger.GetStateBlock(*send)
 	if err != nil {
 		return nil, err
@@ -248,6 +280,11 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 	}
 	if err == nil {
 		if len(result) > 0 {
+			povHeader, err := r.ledger.GetLatestPovHeader()
+			if err != nil {
+				return nil, fmt.Errorf("get pov header error: %s", err)
+			}
+			rev.PoVHeight = povHeader.GetHeight()
 			rev.Timestamp = common.TimeNow().Unix()
 			h := result[0].VMContext.Cache.Trie().Hash()
 			if h != nil {

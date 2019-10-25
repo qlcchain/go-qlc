@@ -127,7 +127,6 @@ func Test_MessageService_Stop(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-
 }
 
 func Test_MarshalMessage(t *testing.T) {
@@ -347,7 +346,6 @@ func Test_SendMessage(t *testing.T) {
 
 	ticker1 := time.NewTicker(60 * time.Second)
 	for {
-
 		select {
 		case <-ticker1.C:
 			t.Fatal("connect peer timeout")

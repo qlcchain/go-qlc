@@ -10,10 +10,11 @@ import (
 )
 
 type PovSyncBlock struct {
-	PeerID   string
-	Height   uint64
-	Block    *types.PovBlock
-	TxExists map[types.Hash]struct{}
+	PeerID      string
+	Height      uint64
+	Block       *types.PovBlock
+	ExistTxs    map[types.Hash]struct{}
+	ReqTxHashes []*types.Hash
 }
 
 func (ss *PovSyncer) syncLoop() {
@@ -177,7 +178,8 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 	ss.syncCurHeight = 0
 	ss.syncRcvHeight = 0
 	ss.syncReqHeight = 0
-	ss.syncBlocks = make(map[uint64]*PovSyncBlock)
+
+	ss.resetSyncBlockQueue(true)
 
 	ss.logger.Infof("sync starting with peer %s height %d", peer.peerID, peer.currentHeight)
 
@@ -194,7 +196,8 @@ func (ss *PovSyncer) resetSyncPeer(peer *PovSyncPeer) {
 	ss.syncCurHeight = 0
 	ss.syncRcvHeight = 0
 	ss.syncReqHeight = 0
-	ss.syncBlocks = nil
+
+	ss.resetSyncBlockQueue(false)
 
 	if peer != nil {
 		peer.waitLocatorRsp = false
@@ -208,8 +211,7 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 		return
 	}
 
-	if len(ss.syncBlocks) >= maxSyncBlockInQue*80/100 {
-		ss.logger.Infof("request syncing blocks but queue full (%d)", len(ss.syncBlocks))
+	if ss.checkSyncQueueFull() {
 		return
 	}
 
@@ -253,6 +255,9 @@ func (ss *PovSyncer) onCheckSyncBlockTimer() {
 		return
 	}
 
+	ss.syncBlocksMux.Lock()
+	defer ss.syncBlocksMux.Unlock()
+
 	for height := ss.syncCurHeight; height <= ss.syncRcvHeight; height++ {
 		syncBlk := ss.syncBlocks[height]
 		if syncBlk == nil || syncBlk.Block == nil {
@@ -276,10 +281,13 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 		return
 	}
 
+	ss.syncBlocksMux.Lock()
+	defer ss.syncBlocksMux.Unlock()
+
 	syncBlk := ss.syncBlocks[block.GetHeight()]
 	if syncBlk == nil {
 		syncBlk = &PovSyncBlock{Height: block.GetHeight(), Block: block, PeerID: peer.peerID}
-		syncBlk.TxExists = make(map[types.Hash]struct{})
+		syncBlk.ExistTxs = make(map[types.Hash]struct{})
 		ss.syncBlocks[block.GetHeight()] = syncBlk
 	} else if syncBlk.Block != nil {
 		if syncBlk.Block.GetHash() != block.GetHash() {
@@ -308,22 +316,23 @@ func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
 	txs := syncBlk.Block.GetAllTxs()
 	for txIdx, tx := range txs {
 		txHash := tx.GetHash()
-		if _, exist := syncBlk.TxExists[txHash]; exist {
+		if _, exist := syncBlk.ExistTxs[txHash]; exist {
 			continue
 		}
 		if txIdx == 0 {
-			syncBlk.TxExists[txHash] = struct{}{}
+			syncBlk.ExistTxs[txHash] = struct{}{}
 		} else {
 			ok, _ := ss.ledger.HasStateBlock(txHash)
 			if ok {
-				syncBlk.TxExists[txHash] = struct{}{}
+				syncBlk.ExistTxs[txHash] = struct{}{}
 			} else {
 				reqTxHashes = append(reqTxHashes, &txHash)
 			}
 		}
 	}
+	syncBlk.ReqTxHashes = reqTxHashes
 
-	if uint32(len(syncBlk.TxExists)) >= syncBlk.Block.GetTxNum() {
+	if uint32(len(syncBlk.ExistTxs)) >= syncBlk.Block.GetTxNum() {
 		return false
 	}
 
@@ -331,4 +340,38 @@ func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
 		ss.requestTxsByHashes(reqTxHashes, syncBlk.PeerID)
 	}
 	return true
+}
+
+func (ss *PovSyncer) checkSyncQueueFull() bool {
+	ss.syncBlocksMux.RLock()
+	defer ss.syncBlocksMux.RUnlock()
+
+	if len(ss.syncBlocks) >= maxSyncBlockInQue*80/100 {
+		ss.logger.Infof("request syncing blocks but queue full (%d)", len(ss.syncBlocks))
+		return true
+	}
+
+	return false
+}
+
+func (ss *PovSyncer) resetSyncBlockQueue(reInit bool) {
+	ss.syncBlocksMux.RLock()
+	defer ss.syncBlocksMux.RUnlock()
+
+	if reInit {
+		ss.syncBlocks = make(map[uint64]*PovSyncBlock)
+	} else {
+		ss.syncBlocks = nil
+	}
+}
+
+func (ss *PovSyncer) getSyncCurBlock() *PovSyncBlock {
+	ss.syncBlocksMux.RLock()
+	defer ss.syncBlocksMux.RUnlock()
+
+	if len(ss.syncBlocks) == 0 {
+		return nil
+	}
+
+	return ss.syncBlocks[ss.syncCurHeight]
 }

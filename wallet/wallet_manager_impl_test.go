@@ -155,5 +155,4 @@ func TestWalletStore_NewWalletBySeed(t *testing.T) {
 	if !b {
 		t.Fatal("invalid password")
 	}
-
 }

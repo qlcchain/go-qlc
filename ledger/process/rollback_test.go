@@ -62,7 +62,7 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	}
 
 	fmt.Println("----account----")
-	for k, _ := range addrs {
+	for k := range addrs {
 		ac, err := l.GetAccountMeta(k)
 		if err != nil {
 			t.Fatal(err, k)
@@ -74,7 +74,7 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	}
 
 	fmt.Println("----representation----")
-	for k, _ := range addrs {
+	for k := range addrs {
 		b, err := l.GetRepresentation(k)
 		if err != nil {
 			if err == ledger.ErrRepresentationNotFound {
@@ -91,6 +91,38 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 		return nil
 	})
 	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedgerVerifier_BlockCacheCheck(t *testing.T) {
+	teardownTestCase, _, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+	addr := mock.Address()
+	ac := mock.AccountMeta(addr)
+	token := ac.Tokens[0].Type
+	block := mock.StateBlock()
+	block.Address = addr
+	block.Token = token
+
+	if err := lv.l.AddBlockCache(block); err != nil {
+		t.Fatal(err)
+	}
+	if err := lv.l.AddAccountMetaCache(ac); err != nil {
+		t.Fatal(err)
+	}
+	if err := lv.RollbackBlock(block.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+
+	if b, err := lv.l.HasBlockCache(block.GetHash()); b || err != nil {
+		t.Fatal(err)
+	}
+	ac, err := lv.l.GetAccountMetaCache(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tm := ac.Token(token); tm != nil {
 		t.Fatal(err)
 	}
 }

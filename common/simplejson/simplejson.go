@@ -543,7 +543,6 @@ func handleArray(val interface{}) interface{} {
 		typ := reflect.TypeOf(val)
 		kind := typ.Kind()
 		if kind == reflect.Array || kind == reflect.Slice {
-
 			v := reflect.ValueOf(val)
 			arr := make([]interface{}, v.Len())
 			for i := 0; i < v.Len(); i++ {

@@ -83,7 +83,6 @@ func TestLedger_Storage(t *testing.T) {
 		if !bytes.EqualFold(get, value) {
 			t.Fatal("invalid val")
 		} else {
-
 			t.Log(get, err)
 		}
 	}
@@ -120,10 +119,8 @@ func TestGetStorageKey(t *testing.T) {
 			if !bytes.HasSuffix(storageKey, key) {
 				t.Error("invalid key data")
 			}
-
 		}()
 	}
 
 	wg.Wait()
-
 }
