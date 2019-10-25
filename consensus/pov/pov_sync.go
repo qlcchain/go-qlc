@@ -559,6 +559,28 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 	ss.lastReqTxTime.Store(time.Now().Unix())
 }
 
+func (ss *PovSyncer) requestSyncFrontiers(peerID string) {
+	if time.Now().Unix() < (ss.lastReqTxTime.Load() + 15) {
+		return
+	}
+
+	var peer *PovSyncPeer
+	if peerID != "" {
+		peer = ss.FindPeerWithStatus(peerID, peerStatusGood)
+	}
+	if peer == nil {
+		peer = ss.GetRandomTopPeer(3)
+	}
+	if peer == nil {
+		return
+	}
+
+	ss.logger.Infof("request frontiers from peer %s", peer.peerID)
+
+	ss.eb.Publish(common.EventFrontiersReq, peer.peerID)
+	ss.lastReqTxTime.Store(time.Now().Unix())
+}
+
 func (ss *PovSyncer) absDiffHeight(lhs uint64, rhs uint64) uint64 {
 	if lhs > rhs {
 		return lhs - rhs
@@ -580,7 +602,7 @@ func (ss *PovSyncer) GetDebugInfo() map[string]interface{} {
 	info["syncEndTime"] = ss.syncEndTime
 	info["syncQueueNum"] = len(ss.syncBlocks)
 
-	syncCurBlock := ss.getSyncCurBlock()
+	syncCurBlock := ss.findSyncCurBlockForDebug()
 	if syncCurBlock != nil {
 		blkInfo := make(map[string]interface{})
 		info["syncCurBlock"] = blkInfo
@@ -589,14 +611,10 @@ func (ss *PovSyncer) GetDebugInfo() map[string]interface{} {
 		if syncCurBlock.Block != nil {
 			blkInfo["hash"] = syncCurBlock.Block.GetHash()
 			blkInfo["txNum"] = syncCurBlock.Block.GetTxNum()
-			blkInfo["existTxs"] = len(syncCurBlock.ExistTxs)
-			reqTxNum := len(syncCurBlock.ReqTxHashes)
-			if reqTxNum > 0 {
-				blkInfo["reqTxNum"] = reqTxNum
-				if reqTxNum > 5 {
-					reqTxNum = 5
-				}
-				blkInfo["reqTxHashes"] = syncCurBlock.ReqTxHashes[0:reqTxNum]
+			blkInfo["checkTxIndex"] = syncCurBlock.CheckTxIndex
+			txPov := syncCurBlock.Block.GetTxByIndex(syncCurBlock.CheckTxIndex)
+			if txPov != nil {
+				blkInfo["checkTxHash"] = txPov.Hash
 			}
 		}
 	}
@@ -609,6 +627,7 @@ func (ss *PovSyncer) GetDebugInfo() map[string]interface{} {
 			info["syncPeerInfo"] = peerInfo
 			peerInfo["status"] = syncPeer.status
 			peerInfo["syncSeqID"] = syncPeer.syncSeqID
+			peerInfo["waitSyncRspMsg"] = syncPeer.waitSyncRspMsg
 			peerInfo["waitLocatorRsp"] = syncPeer.waitLocatorRsp
 			peerInfo["lastStatusTime"] = syncPeer.lastStatusTime
 			peerInfo["lastSyncReqTime"] = syncPeer.lastSyncReqTime
