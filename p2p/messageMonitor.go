@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	checkBlockCacheInterval = 60 * time.Second
+	checkBlockCacheInterval = 2 * time.Minute
 	maxPullTxPerReq         = 100
 	maxPushTxPerTime        = 1000
 )
@@ -130,13 +130,25 @@ func (ms *MessageService) processBlockCache() {
 		ms.netService.node.logger.Error("get block cache error")
 	}
 	for _, blk := range blocks {
+		hash := blk.GetHash()
 		if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
-			_ = ms.ledger.DeleteBlockCache(blk.GetHash())
+			_ = ms.ledger.DeleteBlockCache(hash)
 		} else {
-			b, _ := ms.ledger.HasStateBlock(blk.GetHash())
+			b, _ := ms.ledger.HasStateBlock(hash)
 			if b {
-				ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
-				ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
+				if uk, err := ms.ledger.HasUncheckedBlock(blk.Link, types.UncheckedKindLink); !uk {
+					if err != nil {
+						ms.netService.node.logger.Error(err)
+					}
+					if up, err := ms.ledger.HasUncheckedBlock(blk.Previous, types.UncheckedKindPrevious); !up {
+						if err != nil {
+							ms.netService.node.logger.Error(err)
+						}
+						ms.netService.node.logger.Infof("resend blockCache hash is %s:", hash.String())
+						ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
+						ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
+					}
+				}
 			}
 		}
 	}
