@@ -169,7 +169,7 @@ var (
 func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	dir := filepath.Join(cfg.QlcTestDataDir(), "destroy", uuid.New().String())
 
-	_ = os.RemoveAll(dir)
+	_ = os.RemoveAll(filepath.Join(cfg.QlcTestDataDir(), "destroy"))
 	l := ledger.NewLedger(dir)
 	var blocks []*types.StateBlock
 	if err := json.Unmarshal([]byte(blks_data), &blocks); err != nil {

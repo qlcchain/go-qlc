@@ -339,7 +339,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
 	pullType := pullRemote.PullType
-	f, err := ss.qlcLedger.GetFrontier(endHash)
+	openBlockHash, err := ss.getOpenBlockHash(endHash)
 	if err != nil {
 		ss.logger.Error(err)
 		return err
@@ -371,7 +371,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	exitPullRsp.pullRspHash = types.ZeroHash
 	ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
 	if startHash.IsZero() {
-		temp = f.OpenBlock
+		temp = openBlockHash
 		for {
 			blk, err = ss.qlcLedger.GetStateBlockConfirmed(temp)
 			if err != nil {
@@ -713,4 +713,16 @@ func (ss *ServiceSync) requestTxsByHashes(reqTxHashes []*types.Hash, peerID stri
 func (ss *ServiceSync) GetSyncState(s *common.SyncState) {
 	state := ss.syncState.Load().(common.SyncState)
 	*s = state
+}
+
+func (ss *ServiceSync) getOpenBlockHash(hash types.Hash) (types.Hash, error) {
+	blk, err := ss.qlcLedger.GetStateBlockConfirmed(hash)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	tm, err := ss.qlcLedger.GetTokenMetaConfirmed(blk.Address, blk.Token)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	return tm.OpenBlock, nil
 }

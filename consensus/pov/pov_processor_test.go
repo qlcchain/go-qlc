@@ -56,6 +56,10 @@ func (c *mockPovProcessorChainReader) InsertBlock(block *types.PovBlock, stateTr
 	return nil
 }
 
+func (c *mockPovProcessorChainReader) LatestHeader() *types.PovHeader {
+	return nil
+}
+
 type mockPovProcessorVerifier struct{}
 
 func (v *mockPovProcessorVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
@@ -66,7 +70,7 @@ type mockPovProcessorSyncer struct{}
 
 func (s *mockPovProcessorSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID string) {}
 
-func (s *mockPovProcessorSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string) {}
+func (s *mockPovProcessorSyncer) requestSyncFrontiers(peerID string) {}
 
 func setupPovProcessorTestCase(t *testing.T) (func(t *testing.T), *povProcessorMockData) {
 	t.Parallel()
@@ -108,6 +112,23 @@ func setupPovProcessorTestCase(t *testing.T) (func(t *testing.T), *povProcessorM
 			t.Fatal(err)
 		}
 	}, md
+}
+
+func TestPovProcessor_SimplteTest(t *testing.T) {
+	teardownTestCase, md := setupPovProcessorTestCase(t)
+	defer teardownTestCase(t)
+
+	processor := NewPovBlockProcessor(md.eb, md.ledger, md.chain, md.verifier, md.syncer)
+
+	processor.Init()
+	processor.Start()
+
+	info := processor.GetDebugInfo()
+	if info == nil || len(info) == 0 {
+		t.Fatal("debug info not exist")
+	}
+
+	processor.Stop()
 }
 
 func TestPovProcessor_AddBlock(t *testing.T) {

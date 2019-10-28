@@ -148,6 +148,12 @@ func (arguments Arguments) unpackAtomic(v interface{}, marshalledValues []interf
 	kind := elem.Kind()
 	reflectValue := reflect.ValueOf(marshalledValues[0])
 
+	// if src can AssignableTo dst, just set it
+	if elem.Type().AssignableTo(reflectValue.Type()) {
+		elem.Set(reflectValue)
+		return nil
+	}
+
 	var abi2struct map[string]string
 	if kind == reflect.Struct {
 		var err error
@@ -162,7 +168,6 @@ func (arguments Arguments) unpackAtomic(v interface{}, marshalledValues []interf
 	}
 
 	return set(elem, reflectValue, arguments.NonIndexed()[0])
-
 }
 
 // Computes the full size of an array;

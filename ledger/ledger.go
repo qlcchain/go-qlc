@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/config"
 	"io"
 	"os"
 	"path/filepath"
