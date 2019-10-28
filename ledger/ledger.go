@@ -5,13 +5,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/config"
 	"io"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/dgraph-io/badger"
 	"go.uber.org/zap"
@@ -612,7 +614,7 @@ func NewTestLedger() (func(), *Ledger) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	cm.Load()
+	_, _ = cm.Load()
 	l := NewLedger(cm.ConfigFile)
 
 	return func() {

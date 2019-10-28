@@ -1,7 +1,9 @@
 package dpos
 
 import (
+	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bluele/gcache"
@@ -15,6 +17,8 @@ import (
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
+const ConfirmChainParallelNum = 10
+
 type chainKey struct {
 	addr  types.Address
 	token types.Hash
@@ -26,41 +30,51 @@ type chainOrderKey struct {
 }
 
 type Processor struct {
-	index           int
-	dps             *DPoS
-	uncheckedCache  gcache.Cache //gap blocks
-	quitCh          chan bool
-	blocks          chan *consensus.BlockSource
-	blocksAcked     chan types.Hash
-	syncBlock       chan *types.StateBlock
-	syncBlockAcked  chan types.Hash
-	acks            chan *voteInfo
-	frontiers       chan *types.StateBlock
-	syncStateChange chan common.SyncState
-	syncState       common.SyncState
-	orderedChain    *sync.Map
-	chainHeight     map[chainKey]uint64
-	doneBlock       chan *types.StateBlock
+	index              int
+	dps                *DPoS
+	uncheckedCache     gcache.Cache //gap blocks
+	quitCh             chan bool
+	blocks             chan *consensus.BlockSource
+	blocksAcked        chan types.Hash
+	syncBlock          chan *types.StateBlock
+	syncBlockAcked     chan types.Hash
+	acks               chan *voteInfo
+	frontiers          chan *types.StateBlock
+	syncStateChange    chan common.SyncState
+	syncState          common.SyncState
+	orderedChain       *sync.Map
+	chainHeight        map[chainKey]uint64
+	doneBlock          chan *types.StateBlock
+	confirmedChain     map[types.Hash]bool
+	confirmParallelNum int32
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 func newProcessors(num int) []*Processor {
 	processors := make([]*Processor, 0)
 
 	for i := 0; i < num; i++ {
+		ctx, cancel := context.WithCancel(context.Background())
+
 		p := &Processor{
-			index:           i,
-			quitCh:          make(chan bool, 1),
-			blocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
-			blocksAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
-			syncBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncBlockAcked:  make(chan types.Hash, common.DPoSMaxBlocks),
-			acks:            make(chan *voteInfo, common.DPoSMaxBlocks),
-			frontiers:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncStateChange: make(chan common.SyncState, 1),
-			syncState:       common.SyncNotStart,
-			orderedChain:    new(sync.Map),
-			chainHeight:     make(map[chainKey]uint64),
-			doneBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			index:              i,
+			quitCh:             make(chan bool, 1),
+			blocks:             make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+			blocksAcked:        make(chan types.Hash, common.DPoSMaxBlocks),
+			syncBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncBlockAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
+			acks:               make(chan *voteInfo, common.DPoSMaxBlocks),
+			frontiers:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncStateChange:    make(chan common.SyncState, 1),
+			syncState:          common.SyncNotStart,
+			orderedChain:       new(sync.Map),
+			chainHeight:        make(map[chainKey]uint64),
+			doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			confirmedChain:     make(map[types.Hash]bool),
+			confirmParallelNum: ConfirmChainParallelNum,
+			ctx:                ctx,
+			cancel:             cancel,
 		}
 		processors = append(processors, p)
 	}
@@ -78,6 +92,7 @@ func (p *Processor) start() {
 
 func (p *Processor) stop() {
 	p.quitCh <- true
+	p.cancel()
 }
 
 func (p *Processor) syncBlockCheck(block *types.StateBlock) {
@@ -94,7 +109,7 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 			if has, _ := dps.ledger.HasStateBlockConfirmed(block.Previous); has {
 				checked = true
 			} else {
-				p.enqueueUncheckedSync(block)
+				//p.enqueueUncheckedSync(block)
 			}
 		}
 	}
@@ -108,25 +123,36 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 }
 
 func (p *Processor) processMsg() {
-	getTimeout := time.NewTicker(10 * time.Millisecond)
+	timerRest := time.NewTicker(10 * time.Millisecond)
+	timerConfirm := time.NewTicker(time.Second)
 
 	for {
 	PriorityOut:
 		for {
 			select {
+			case <-p.quitCh:
+				return
 			case p.syncState = <-p.syncStateChange:
 				p.dps.syncStateNotifyWait.Done()
 
-				if p.syncState == common.SyncFinish {
+				if p.syncState == common.Syncing {
 					p.orderedChain = new(sync.Map)
 					p.chainHeight = make(map[chainKey]uint64)
+					p.confirmedChain = make(map[types.Hash]bool)
+				} else if p.syncState == common.SyncFinish {
+					p.cancel()
 				}
 			case hash := <-p.syncBlockAcked:
 				if p.dps.isConfirmedFrontier(hash) {
-					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
-					go p.confirmChain(hash)
+					if s, ok := p.dps.frontiersStatus.Load(hash); ok && s == frontierConfirmed {
+						p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
+					}
+
+					if _, ok := p.confirmedChain[hash]; !ok {
+						p.confirmedChain[hash] = false
+					}
 				}
-				p.dequeueUncheckedSync(hash)
+				//p.dequeueUncheckedSync(hash)
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
 			case ack := <-p.acks:
@@ -151,8 +177,24 @@ func (p *Processor) processMsg() {
 		case block := <-p.syncBlock:
 			p.dps.updateLastProcessSyncTime()
 			p.syncBlockCheck(block)
-		case <-getTimeout.C:
+		case <-timerRest.C:
 			//
+		case <-timerConfirm.C:
+			if p.syncState == common.SyncDone {
+				for hash, dealt := range p.confirmedChain {
+					if dealt {
+						continue
+					}
+
+					if atomic.LoadInt32(&p.confirmParallelNum) > 0 {
+						// use gorouting to forbid blocking the thead
+						p.confirmedChain[hash] = true
+						go p.confirmChain(hash)
+					} else {
+						break
+					}
+				}
+			}
 		}
 	}
 }
@@ -197,11 +239,14 @@ func (p *Processor) processFrontier(block *types.StateBlock) {
 }
 
 func (p *Processor) confirmChain(hash types.Hash) {
+	atomic.AddInt32(&p.confirmParallelNum, -1)
+	defer atomic.AddInt32(&p.confirmParallelNum, 1)
+
 	dps := p.dps
 	dps.logger.Debugf("confirm chain %s", hash)
 
 	if block, err := dps.ledger.GetUnconfirmedSyncBlock(hash); err != nil {
-		dps.logger.Errorf("get unconfirmed sync block err", err)
+		dps.logger.Errorf("get unconfirmed sync block err %s", err)
 		return
 	} else {
 		cok := chainOrderKey{
@@ -219,7 +264,12 @@ func (p *Processor) confirmChain(hash types.Hash) {
 						BlockFrom: types.Synchronized,
 						Type:      consensus.MsgSync,
 					}
-					p.blocks <- bs
+
+					select {
+					case <-p.ctx.Done():
+						return
+					case p.blocks <- bs:
+					}
 
 					if err := dps.ledger.DeleteUnconfirmedSyncBlock(bHash); err != nil {
 						dps.logger.Errorf("delete unconfirmed sync block err", err)
