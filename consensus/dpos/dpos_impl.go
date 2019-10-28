@@ -115,6 +115,8 @@ type DPoS struct {
 	getFrontier         chan types.StateBlockList
 	isFindingRep        int32
 	ebDone              chan struct{}
+	lastProcessSyncTime time.Time
+	updateSync          chan struct{}
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -161,6 +163,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		blockSyncState:      common.SyncNotStart,
 		isFindingRep:        0,
 		ebDone:              make(chan struct{}, 1),
+		updateSync:          make(chan struct{}, 1),
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -247,6 +250,7 @@ func (dps *DPoS) Start() {
 
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDequeueGap := time.NewTicker(10 * time.Second)
+	timerUpdateSyncTime := time.NewTicker(5 * time.Second)
 
 	for {
 		select {
@@ -310,16 +314,18 @@ func (dps *DPoS) Start() {
 					break
 				}
 			}
-		case state := <-dps.syncState:
+		case dps.blockSyncState = <-dps.syncState:
+
 			// notify processors
 			dps.syncStateNotifyWait.Add(dps.processorNum)
 			for _, p := range dps.processors {
-				p.syncStateChange <- state
+				p.syncStateChange <- dps.blockSyncState
 			}
 			dps.syncStateNotifyWait.Wait()
 
-			switch state {
+			switch dps.blockSyncState {
 			case common.Syncing:
+				dps.updateLastProcessSyncTime()
 				dps.acTrx.cleanFrontierVotes()
 				dps.frontiersStatus = new(sync.Map)
 				dps.totalVote = make(map[types.Address]types.Balance)
@@ -331,6 +337,20 @@ func (dps *DPoS) Start() {
 			}
 
 			dps.ebDone <- struct{}{}
+		case <-timerUpdateSyncTime.C:
+			select {
+			case <-dps.updateSync:
+				dps.lastProcessSyncTime = time.Now()
+			default:
+			}
+
+			if dps.blockSyncState == common.Syncing || dps.blockSyncState == common.SyncDone {
+				if time.Now().Sub(dps.lastProcessSyncTime) >= time.Minute*3 {
+					dps.logger.Warnf("sync finished because of process timeout last[%s] now[%s]",
+						dps.lastProcessSyncTime, time.Now())
+					dps.eb.Publish(common.EventConsensusSyncFinished)
+				}
+			}
 		}
 	}
 }
@@ -1104,6 +1124,8 @@ func (dps *DPoS) blockSyncDone() error {
 		})
 
 		for _, sc := range scs {
+			dps.updateLastProcessSyncTime()
+
 			blk, err := dps.ledger.GetSyncCacheBlock(sc.hash)
 			if err != nil {
 				dps.logger.Errorf("get sync cache block[%s] err[%s]", sc.hash, err)
@@ -1265,5 +1287,12 @@ func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
 		}
 
 		return true
+	}
+}
+
+func (dps *DPoS) updateLastProcessSyncTime() {
+	select {
+	case dps.updateSync <- struct{}{}:
+	default:
 	}
 }
