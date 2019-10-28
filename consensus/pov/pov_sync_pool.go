@@ -178,7 +178,7 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 	ss.syncRcvHeight = 0
 	ss.syncReqHeight = 0
 
-	ss.resetSyncBlockQueue(true)
+	ss.resetSyncBlockQueue()
 
 	ss.logger.Infof("sync starting with peer %s height %d", peer.peerID, peer.currentHeight)
 
@@ -196,7 +196,7 @@ func (ss *PovSyncer) resetSyncPeer(peer *PovSyncPeer) {
 	ss.syncRcvHeight = 0
 	ss.syncReqHeight = 0
 
-	ss.resetSyncBlockQueue(false)
+	ss.resetSyncBlockQueue()
 
 	if peer != nil {
 		peer.waitLocatorRsp = false
@@ -283,6 +283,10 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 	ss.syncBlocksMux.Lock()
 	defer ss.syncBlocksMux.Unlock()
 
+	if ss.syncBlocks == nil {
+		ss.syncBlocks = make(map[uint64]*PovSyncBlock)
+	}
+
 	syncBlk := ss.syncBlocks[block.GetHeight()]
 	if syncBlk == nil {
 		syncBlk = &PovSyncBlock{Height: block.GetHeight(), Block: block, PeerID: peer.peerID, CheckTxIndex: 0}
@@ -348,15 +352,11 @@ func (ss *PovSyncer) checkSyncQueueFull() bool {
 	return false
 }
 
-func (ss *PovSyncer) resetSyncBlockQueue(reInit bool) {
+func (ss *PovSyncer) resetSyncBlockQueue() {
 	ss.syncBlocksMux.RLock()
 	defer ss.syncBlocksMux.RUnlock()
 
-	if reInit {
-		ss.syncBlocks = make(map[uint64]*PovSyncBlock)
-	} else {
-		ss.syncBlocks = nil
-	}
+	ss.syncBlocks = make(map[uint64]*PovSyncBlock)
 }
 
 func (ss *PovSyncer) findSyncCurBlockForDebug() *PovSyncBlock {

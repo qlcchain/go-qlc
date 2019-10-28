@@ -92,6 +92,7 @@ func NewPovSyncer(eb event.EventBus, ledger ledger.Store, chain PovSyncerChainRe
 		syncSeqID:     atomic.NewUint32(0),
 		initSyncOver:  atomic.NewBool(false),
 		inSyncing:     atomic.NewBool(false),
+		syncBlocks:    make(map[uint64]*PovSyncBlock),
 	}
 	return ss
 }
