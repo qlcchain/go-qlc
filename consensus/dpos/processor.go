@@ -54,9 +54,9 @@ type Processor struct {
 func newProcessors(num int) []*Processor {
 	processors := make([]*Processor, 0)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	for i := 0; i < num; i++ {
+		ctx, cancel := context.WithCancel(context.Background())
+
 		p := &Processor{
 			index:              i,
 			quitCh:             make(chan bool, 1),
