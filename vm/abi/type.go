@@ -120,7 +120,7 @@ func NewType(t string) (typ Type, err error) {
 	case "bool":
 		typ.Kind = reflect.Bool
 		typ.T = BoolTy
-		typ.Type = reflect.TypeOf(bool(false))
+		typ.Type = reflect.TypeOf(false)
 	case "address":
 		typ.Kind = reflect.Array
 		typ.Type = addressT
@@ -142,8 +142,7 @@ func NewType(t string) (typ Type, err error) {
 		typ.Size = types.SignatureSize
 		typ.T = SignatureTy
 	case "balance":
-		typ.Kind = reflect.Struct
-		typ.Size = types.BalanceSize
+		typ.Kind = reflect.Array
 		typ.Type = balanceT
 		typ.T = BalanceTy
 	case "string":
