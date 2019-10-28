@@ -1,12 +1,15 @@
 package api
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/qlcchain/go-qlc/config"
 
@@ -25,6 +28,7 @@ type PovApi struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 	eb     event.EventBus
+	pubsub *PovSubscription
 
 	syncState atomic.Value
 }
@@ -131,6 +135,7 @@ func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *Po
 		cfg:    cfg,
 		ledger: ledger,
 		eb:     eb,
+		pubsub: NewPovSubscription(eb),
 		logger: log.NewLogger("rpc/pov"),
 	}
 	api.syncState.Store(common.SyncNotStart)
@@ -1396,4 +1401,27 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 	}
 
 	return allRss
+}
+
+func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
+	ch := make(chan *types.PovBlock)
+	api.pubsub.addChan(ch)
+	return CreatePovSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+		go func() {
+			for {
+				select {
+				case block := <-ch:
+					header := block.GetHeader()
+					if err := notifier.Notify(subscription.ID, header); err != nil {
+						api.logger.Errorf("notify error: %s", err)
+						return
+					}
+				case err := <-subscription.Err():
+					api.logger.Infof("subscription exception %s", err)
+					api.pubsub.removeChan(ch)
+					return
+				}
+			}
+		}()
+	})
 }
