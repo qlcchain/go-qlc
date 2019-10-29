@@ -153,24 +153,8 @@ func pledgeAction(beneficialAccount, beneficialAddressP, pledgeAccount, amount, 
 	worker, _ := types.NewWorker(w, send.Root())
 	send.Work = worker.NewWork()
 
-	// reward block
-	var rewardPtr *types.StateBlock
-	if bnfAccount != nil {
-		reward := types.StateBlock{}
-		rewardPtr = &reward
-		err = client.Call(&reward, "pledge_getPledgeRewardBlock", &send)
-		if err != nil {
-			return err
-		}
-		rewardHash := reward.GetHash()
-		reward.Signature = bnfAccount.Sign(rewardHash)
-		var w2 types.Work
-		worker2, _ := types.NewWorker(w2, reward.Root())
-		reward.Work = worker2.NewWork()
-	}
-
-	//TODO: batch process send/reward
 	fmt.Printf("sendHash:%s\n", sendHash)
+	sendOk := false
 	for try := 0; try < 3; try++ {
 		err = client.Call(nil, "ledger_process", &send)
 		if err != nil {
@@ -179,21 +163,43 @@ func pledgeAction(beneficialAccount, beneficialAddressP, pledgeAccount, amount, 
 			continue
 		}
 
+		sendOk = true
 		break
 	}
+	if !sendOk {
+		return errors.New("failed process send block")
+	}
 
-	if rewardPtr != nil {
-		rewardHash := rewardPtr.GetHash()
+	// reward block
+	if bnfAccount != nil {
+		time.Sleep(3 * time.Second)
+
+		reward := types.StateBlock{}
+		err = client.Call(&reward, "pledge_getPledgeRewardBlockBySendHash", sendHash)
+		if err != nil {
+			return err
+		}
+		rewardHash := reward.GetHash()
+		reward.Signature = bnfAccount.Sign(rewardHash)
+		var w2 types.Work
+		worker2, _ := types.NewWorker(w2, reward.Root())
+		reward.Work = worker2.NewWork()
+
 		fmt.Printf("rewardHash:%s\n", rewardHash)
+		recvOk := false
 		for try := 0; try < 3; try++ {
-			err = client.Call(nil, "ledger_process", rewardPtr)
+			err = client.Call(nil, "ledger_process", &reward)
 			if err != nil {
 				fmt.Printf("reward block, try %d err %s\n", try, err)
 				time.Sleep(1 * time.Second)
 				continue
 			}
 
+			recvOk = true
 			break
+		}
+		if !recvOk {
+			return errors.New("failed process recv block")
 		}
 	}
 
