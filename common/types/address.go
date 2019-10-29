@@ -51,9 +51,10 @@ var (
 	BlackHoleAddress, _ = GenerateBuiltinContractAddress(22)
 	RepAddress, _       = GenerateBuiltinContractAddress(23)
 
-	ChainContractAddressList  = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress, BlackHoleAddress, RepAddress}
-	NoSignContractAddressList = []Address{RewardsAddress, BlackHoleAddress}
-	RewardContractAddressList = []Address{MinerAddress, RepAddress}
+	ChainContractAddressList   = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress, BlackHoleAddress, RepAddress}
+	PendingContractAddressList = []Address{RewardsAddress, BlackHoleAddress, RepAddress, MinerAddress}
+	NoSignContractAddressList  = []Address{RewardsAddress, BlackHoleAddress}
+	RewardContractAddressList  = []Address{MinerAddress, RepAddress}
 
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
 	// alphabet.
@@ -145,6 +146,15 @@ func IsChainContractAddress(address Address) bool {
 		}
 	}
 
+	return false
+}
+
+func IsPendingContractAddress(address Address) bool {
+	for _, itAddr := range PendingContractAddressList {
+		if itAddr == address {
+			return true
+		}
+	}
 	return false
 }
 

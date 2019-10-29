@@ -472,6 +472,9 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 	if err != nil {
 		return GapSource, nil
 	}
+	if !types.IsPendingContractAddress(types.Address(input.Link)) {
+		return Progress, nil
+	}
 
 	pendingKey := types.PendingKey{
 		Address: block.GetAddress(),
