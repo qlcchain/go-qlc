@@ -21,7 +21,9 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type Mintage struct{}
+type Mintage struct {
+	WithSignNoPending
+}
 
 func (m *Mintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
 	return types.ZeroBalance, nil
@@ -162,7 +164,9 @@ func (m *Mintage) GetRefundData() []byte {
 	return []byte{1}
 }
 
-type WithdrawMintage struct{}
+type WithdrawMintage struct {
+	WithSignNoPending
+}
 
 func (m *WithdrawMintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
 	return types.ZeroBalance, nil

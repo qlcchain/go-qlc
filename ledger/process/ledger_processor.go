@@ -479,40 +479,50 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 	}
 
 	// check pending
-	if pending, err := lv.l.GetPending(&pendingKey); err == nil {
-		if c, ok, err := contract.GetChainContract(types.Address(input.Link), input.Data); ok && err == nil {
-			switch v := c.(type) {
-			case contract.ChainContractV1:
-				if pendingKey, pendingInfo, err := v.DoPending(input); err == nil && pendingKey != nil {
-					if pending.Type == pendingInfo.Type && pending.Amount.Equal(pendingInfo.Amount) && pending.Source == pendingInfo.Source {
-						return Progress, nil
-					} else {
-						lv.logger.Errorf("pending from chain, %s, %s, %s, %s, pending from contract, %s, %s, %s, %s",
-							pending.Type, pending.Source, pending.Amount, pendingInfo.Type, pendingInfo.Source, pendingInfo.Amount)
-						return InvalidData, nil
+	if c, ok, err := contract.GetChainContract(types.Address(input.Link), input.Data); ok && err == nil {
+		switch v := c.(type) {
+		case contract.ChainContractV1:
+			if v.GetDescribe().WithPending() {
+				if pending, err := lv.l.GetPending(&pendingKey); err == nil {
+					if pendingKey, pendingInfo, err := v.DoPending(input); err == nil && pendingKey != nil {
+						if pending.Type == pendingInfo.Type && pending.Amount.Equal(pendingInfo.Amount) && pending.Source == pendingInfo.Source {
+							return Progress, nil
+						} else {
+							lv.logger.Errorf("pending from chain, %s, %s, %s, %s, pending from contract, %s, %s, %s, %s",
+								pending.Type, pending.Source, pending.Amount, pendingInfo.Type, pendingInfo.Source, pendingInfo.Amount)
+							return InvalidData, nil
+						}
 					}
+				} else if err == ledger.ErrPendingNotFound {
+					return UnReceivable, nil
+				} else {
+					return Other, err
 				}
-			case contract.ChainContractV2:
-				vmCtx := vmstore.NewVMContext(lv.l)
-				if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, input); err == nil && pendingKey != nil {
-					if pending.Type == pendingInfo.Type && pending.Amount.Equal(pendingInfo.Amount) && pending.Source == pendingInfo.Source {
-						return Progress, nil
-					} else {
-						lv.logger.Errorf("pending from chain, %s, %s, %s, %s, pending from contract, %s, %s, %s, %s",
-							pending.Type, pending.Source, pending.Amount, pendingInfo.Type, pendingInfo.Source, pendingInfo.Amount)
-						return InvalidData, nil
-					}
-				}
-			default:
-				return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 			}
-		} else {
-			return Other, fmt.Errorf("can not find chain contract %s", input.GetLink().String())
+		case contract.ChainContractV2:
+			if v.GetDescribe().WithPending() {
+				if pending, err := lv.l.GetPending(&pendingKey); err == nil {
+					vmCtx := vmstore.NewVMContext(lv.l)
+					if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, input); err == nil && pendingKey != nil {
+						if pending.Type == pendingInfo.Type && pending.Amount.Equal(pendingInfo.Amount) && pending.Source == pendingInfo.Source {
+							return Progress, nil
+						} else {
+							lv.logger.Errorf("pending from chain, %s, %s, %s, %s, pending from contract, %s, %s, %s, %s",
+								pending.Type, pending.Source, pending.Amount, pendingInfo.Type, pendingInfo.Source, pendingInfo.Amount)
+							return InvalidData, nil
+						}
+					}
+				} else if err == ledger.ErrPendingNotFound {
+					return UnReceivable, nil
+				} else {
+					return Other, err
+				}
+			}
+		default:
+			return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 		}
-	} else if err == ledger.ErrPendingNotFound {
-		return UnReceivable, nil
 	} else {
-		return Other, err
+		return Other, fmt.Errorf("can not find chain contract %s", input.GetLink().String())
 	}
 	return Progress, nil
 }
