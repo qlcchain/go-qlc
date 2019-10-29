@@ -9,6 +9,7 @@ package commands
 
 import (
 	"encoding/hex"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/qlcchain/go-qlc/cmd/util"

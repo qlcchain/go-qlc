@@ -33,7 +33,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
-	qlclog "github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
@@ -65,7 +64,7 @@ var (
 	testMode     cmdutil.Flag
 	//chainContext   *context.ChainContext
 	maxAccountSize = 100
-	logger         = qlclog.NewLogger("config_detail")
+	//logger         = qlclog.NewLogger("config_detail")
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -291,8 +290,8 @@ func start() error {
 		//remove all p2p bootstrap node
 		cfg.P2P.BootNodes = []string{}
 	}
-	configDetails := util.ToIndentString(cfg)
-	logger.Debugf("%s", configDetails)
+	//configDetails := util.ToIndentString(cfg)
+	//logger.Debugf("%s", configDetails)
 
 	// save accounts to context
 	chainContext.SetAccounts(accounts)

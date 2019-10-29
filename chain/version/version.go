@@ -36,3 +36,11 @@ func VersionString() string {
 	b.WriteString(fmt.Sprintf("%-15s%s\n", "mode:", Mode))
 	return b.String()
 }
+
+func ShortVersion() string {
+	t := BuildTime
+	if parse, err := time.Parse(time.RFC3339, BuildTime); err == nil {
+		t = parse.Local().Format("2006-01-02 15:04:05-0700")
+	}
+	return fmt.Sprintf("gqlc v%s-%s(%s) @ %s", Version, GitRev, Mode, t)
+}
