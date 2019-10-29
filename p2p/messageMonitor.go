@@ -136,14 +136,8 @@ func (ms *MessageService) processBlockCache() {
 		} else {
 			b, _ := ms.ledger.HasStateBlock(hash)
 			if b {
-				if uk, err := ms.ledger.HasUncheckedBlock(blk.Link, types.UncheckedKindLink); !uk {
-					if err != nil {
-						ms.netService.node.logger.Error(err)
-					}
-					if up, err := ms.ledger.HasUncheckedBlock(blk.Previous, types.UncheckedKindPrevious); !up {
-						if err != nil {
-							ms.netService.node.logger.Error(err)
-						}
+				if uk, _ := ms.ledger.HasUncheckedBlock(blk.Link, types.UncheckedKindLink); !uk {
+					if up, _ := ms.ledger.HasUncheckedBlock(blk.Previous, types.UncheckedKindPrevious); !up {
 						ms.netService.node.logger.Infof("resend blockCache hash is %s:", hash.String())
 						ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
 						ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
