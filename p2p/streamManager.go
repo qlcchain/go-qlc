@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	MaxStreamNum = 50
+	MaxStreamNum         = 50
+	MaxPeersNumForRandom = 8
 )
 
 // StreamManager manages all streams
@@ -141,6 +142,43 @@ func (sm *StreamManager) lowestLatencyPeer() (string, error) {
 	}
 	sort.Slice(allPeers, func(i, j int) bool { return allPeers[i].rtt < allPeers[j].rtt })
 	return allPeers[0].peerId, nil
+}
+
+func (sm *StreamManager) randomLowerLatencyPeer() (string, error) {
+	var allPeers []*peerLatency
+	sm.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		if stream.IsConnected() {
+			p := &peerLatency{
+				peerId: stream.pid.Pretty(),
+				rtt:    stream.rtt,
+			}
+			allPeers = append(allPeers, p)
+		}
+		return true
+	})
+	if (len(allPeers)) == 0 {
+		return "", ErrNoStream
+	}
+	sort.Slice(allPeers, func(i, j int) bool { return allPeers[i].rtt < allPeers[j].rtt })
+	var peerID string
+	rand.Seed(time.Now().Unix())
+	if (len(allPeers)) == 0 {
+		return "", ErrNoStream
+	}
+	var temp []*peerLatency
+	if len(allPeers) >= MaxPeersNumForRandom {
+		temp = allPeers[:MaxPeersNumForRandom]
+	} else {
+		temp = allPeers
+	}
+	randNum := rand.Intn(len(temp))
+	for i, v := range temp {
+		if i == randNum {
+			peerID = v.peerId
+		}
+	}
+	return peerID, nil
 }
 
 // CloseStream with the given pid and reason
