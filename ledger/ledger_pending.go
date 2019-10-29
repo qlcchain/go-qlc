@@ -267,7 +267,7 @@ func (l *Ledger) PendingAmount(address types.Address, token types.Hash, txns ...
 		}
 		pendingAmount = pendingAmount.Add(pendinginfo.Amount)
 	}
-	if err := l.cache.AddAccountPending(adderss, token, pendingAmount); err != nil {
+	if err := l.cache.AddAccountPending(address, token, pendingAmount); err != nil {
 		return types.ZeroBalance, err
 	}
 	return pendingAmount, nil
