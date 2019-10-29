@@ -3,6 +3,7 @@ package ledger
 import (
 	"sync/atomic"
 
+	"github.com/bluele/gcache"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/sync/hashmap"
@@ -184,4 +185,26 @@ func (r *RepresentationCache) memoryToConfirmed(txn db.StoreTxn) error {
 		return err
 	}
 	return nil
+}
+
+const (
+	cacheLimit = 200
+)
+
+type Cache struct {
+	confirmedAccount   gcache.Cache
+	confirmedBlock     gcache.Cache
+	unConfirmedAccount gcache.Cache
+	unConfirmedBlock   gcache.Cache
+	accountPending     gcache.Cache
+}
+
+func NewCache() *Cache {
+	return &Cache{
+		confirmedAccount:   gcache.New(cacheLimit).LRU().Build(),
+		confirmedBlock:     gcache.New(cacheLimit).LRU().Build(),
+		unConfirmedAccount: gcache.New(cacheLimit).LRU().Build(),
+		unConfirmedBlock:   gcache.New(cacheLimit).LRU().Build(),
+		accountPending:     gcache.New(cacheLimit).LRU().Build(),
+	}
 }

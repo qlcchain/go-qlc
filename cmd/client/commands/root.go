@@ -115,7 +115,7 @@ func addcommands() {
 	withdrawMintage()
 	minerReward()
 	minerRecvPend()
-	dumpledger()
+	addLedgerCmd()
 	repReward()
 	repRewardRecvPend()
 	addPovCmd()

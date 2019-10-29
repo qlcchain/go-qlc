@@ -86,8 +86,8 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	return unchecks, nil
 }
 
-func (l *DebugApi) Dump() (string, error) {
-	return l.ledger.Dump()
+func (l *DebugApi) Action(t ledger.ActionType) (string, error) {
+	return l.ledger.Action(t)
 }
 
 func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {

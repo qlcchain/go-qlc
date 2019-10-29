@@ -52,7 +52,10 @@ func addSmartContractBlock(t *testing.T, l *Ledger) *types.SmartContractBlock {
 func TestLedger_AddBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	addStateBlock(t, l)
+	b := addStateBlock(t, l)
+	if bc, err := l.cache.GetBlockConfirmed(b.GetHash()); err != nil || b.GetHash() != bc.GetHash() {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetBlock(t *testing.T) {
@@ -213,7 +216,10 @@ func addBlockCache(t *testing.T, l *Ledger) *types.StateBlock {
 func TestLedger_AddBlockCache(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	addBlockCache(t, l)
+	b1 := addBlockCache(t, l)
+	if bc, err := l.cache.GetBlockUnConfirmed(b1.GetHash()); err != nil || b1.GetHash() != bc.GetHash() {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_HasBlockCache(t *testing.T) {
