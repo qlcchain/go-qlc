@@ -1,4 +1,11 @@
 
+<a name="v1.2.6.7"></a>
+## [v1.2.6.7](https://github.com/qlcchain/go-qlc/compare/v1.2.6.6...v1.2.6.7) (2019-10-29)
+
+### Bug Fixes
+
+* temp disable calculate pending amount
+
 <a name="v1.2.6.6"></a>
 ## [v1.2.6.6](https://github.com/qlcchain/go-qlc/compare/v1.2.6.5...v1.2.6.6) (2019-09-06)
 
