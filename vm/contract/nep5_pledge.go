@@ -25,6 +25,7 @@ type pledgeInfo struct {
 }
 
 type Nep5Pledge struct {
+	WithSignNoPending
 }
 
 func (p *Nep5Pledge) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -207,6 +208,7 @@ func (*Nep5Pledge) GetRefundData() []byte {
 }
 
 type WithdrawNep5Pledge struct {
+	WithSignNoPending
 }
 
 func (*WithdrawNep5Pledge) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
