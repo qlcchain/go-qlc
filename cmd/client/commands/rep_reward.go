@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 
@@ -167,10 +168,18 @@ func repRewardAction(repPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) e
 	fmt.Printf("SendBlock:\n%s\n", cutil.ToIndentString(sendBlock))
 	fmt.Println("address", sendBlock.Address, "sendHash", sendHash)
 
+	err = client.Call(nil, "ledger_process", &sendBlock)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("success to send reward, delta balance %s blocks %d\n", rewardParam.RewardAmount.String(), rewardParam.RewardBlocks)
+
 	// generate contract recv block if we have beneficial prikey
 	rewardBlock := types.StateBlock{}
 	if bnfAcc != nil {
-		err = client.Call(&rewardBlock, "rep_getRewardRecvBlock", &sendBlock)
+		time.Sleep(3 * time.Second)
+
+		err = client.Call(&rewardBlock, "rep_getRewardRecvBlockBySendHash", sendHash)
 		if err != nil {
 			return err
 		}
@@ -184,23 +193,12 @@ func repRewardAction(repPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) e
 
 		fmt.Printf("RewardBlock:\n%s\n", cutil.ToIndentString(rewardBlock))
 		fmt.Println("address", rewardBlock.Address, "rewardHash", rewardHash)
-	}
 
-	// publish all blocks to node
-	err = client.Call(nil, "ledger_process", &sendBlock)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("success to send reward, delta balance %s blocks %d\n", rewardParam.RewardAmount.String(), rewardParam.RewardBlocks)
-
-	if bnfAcc != nil {
 		err = client.Call(nil, "ledger_process", &rewardBlock)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("success to recv reward, account balance %s\n", rewardBlock.Balance)
-	} else {
-		fmt.Printf("please to recv reward, send hash %s\n", sendHash)
 	}
 
 	return nil

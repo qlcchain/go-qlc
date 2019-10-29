@@ -169,6 +169,15 @@ func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 	return nil, errors.New("can not generate pledge reward block")
 }
 
+func (p *NEP5PledgeApi) GetPledgeRewardBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+	sendBlock, err := p.ledger.GetStateBlock(sendHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.GetPledgeRewardBlock(sendBlock)
+}
+
 type WithdrawPledgeParam struct {
 	Beneficial types.Address `json:"beneficial"`
 	Amount     types.Balance `json:"amount"`
@@ -295,6 +304,15 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 	}
 
 	return nil, errors.New("can not generate pledge withdraw reward block")
+}
+
+func (p *NEP5PledgeApi) GetWithdrawRewardBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+	sendBlock, err := p.ledger.GetStateBlock(sendHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.GetWithdrawRewardBlock(sendBlock)
 }
 
 type NEP5PledgeInfo struct {
