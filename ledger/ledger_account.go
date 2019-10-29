@@ -55,13 +55,10 @@ func (l *Ledger) GetAccountMeta(key types.Address, txns ...db.StoreTxn) (*types.
 	if v, err := l.cache.GetAccountMetaConfirmed(key); err == nil {
 		meta = &v
 	} else {
-		err = txn.Get(k, func(v []byte, b byte) (err error) {
-			if err = meta.Deserialize(v); err != nil {
-				return err
-			}
-			return nil
+		er := txn.Get(k, func(v []byte, b byte) (err error) {
+			return meta.Deserialize(v)
 		})
-		if err != nil {
+		if er != nil {
 			meta = nil
 		}
 	}
@@ -449,7 +446,6 @@ func (l *Ledger) AddOrUpdateAccountMetaCache(value *types.AccountMeta, txns ...d
 		return err
 	}
 	return l.cache.UpdateAccountMetaUnConfirmed(*value)
-
 }
 
 func (l *Ledger) UpdateAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {

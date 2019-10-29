@@ -294,10 +294,7 @@ func TestLedger_UpdateAccountMetaCache(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMetaCache(t, l)
-	//token := mock.TokenMeta(am.Address)
-	//am.Tokens = append(am.Tokens, token)
 	a, _ := l.cache.GetAccountMetaUnConfirmed(am.Address)
-	//fmt.Println(a)
 
 	amount1 := types.Balance{Int: big.NewInt(101)}
 	am.CoinBalance = amount1

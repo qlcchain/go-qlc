@@ -247,15 +247,15 @@ func (l *Ledger) Pending(account types.Address, txns ...db.StoreTxn) ([]*types.P
 	return cache, nil
 }
 
-func (l *Ledger) PendingAmount(adderss types.Address, token types.Hash, txns ...db.StoreTxn) (types.Balance, error) {
-	b, err := l.cache.GetAccountPending(adderss, token)
+func (l *Ledger) PendingAmount(address types.Address, token types.Hash, txns ...db.StoreTxn) (types.Balance, error) {
+	b, err := l.cache.GetAccountPending(address, token)
 	if err == nil {
 		return b, nil
 	}
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	pendingKeys, err := l.TokenPending(adderss, token)
+	pendingKeys, err := l.TokenPending(address, token)
 	if err != nil {
 		return types.ZeroBalance, err
 	}

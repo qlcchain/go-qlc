@@ -9,6 +9,9 @@ import (
 	"sync"
 	"sync/atomic"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/sync/hashmap"
@@ -21,8 +24,6 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
 )
 
 var (

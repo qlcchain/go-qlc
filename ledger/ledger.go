@@ -647,5 +647,4 @@ func (l *Ledger) Action(action ActionType) (string, error) {
 	default:
 		return "", nil
 	}
-
 }
