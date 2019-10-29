@@ -18,6 +18,7 @@ import (
 )
 
 type BlackHole struct {
+	NoSignWithPending
 }
 
 // TODO: save contract data

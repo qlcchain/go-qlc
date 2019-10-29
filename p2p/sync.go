@@ -20,7 +20,7 @@ import (
 const (
 	maxResendTime  = 3
 	pullRspTimeOut = 10 * time.Minute
-	pullReqTimeOut = 15 * time.Second
+	pullReqTimeOut = 60 * time.Second
 )
 
 // Service manage sync tasks
@@ -76,7 +76,7 @@ func (ss *ServiceSync) Start() {
 		case <-ss.syncTicker.C:
 			syncState := ss.syncState.Load()
 			if syncState == common.SyncFinish || syncState == common.SyncNotStart {
-				peerID, err := ss.netService.node.StreamManager().lowestLatencyPeer()
+				peerID, err := ss.netService.node.StreamManager().randomLowerLatencyPeer()
 				if err != nil {
 					ss.logger.Error(err)
 					continue
@@ -273,7 +273,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 								ss.logger.Warnf("resend pull request startHash is [%s],endHash is [%s]", ss.pullStartHash, ss.pullEndHash)
 								if resend == maxResendTime {
 									ss.logger.Warn("resend pull request timeout")
-									return common.SyncFinish
+									return common.SyncDone
 								}
 								ss.pullTimer.Reset(pullReqTimeOut)
 							case <-ss.pullRequestStartCh:

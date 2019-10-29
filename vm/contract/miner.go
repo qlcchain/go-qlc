@@ -11,7 +11,9 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type MinerReward struct{}
+type MinerReward struct {
+	WithSignAndPending
+}
 
 func (m *MinerReward) GetLastRewardHeight(ctx *vmstore.VMContext, coinbase types.Address) (uint64, error) {
 	height, err := cabi.GetLastMinerRewardHeightByAccount(ctx, coinbase)

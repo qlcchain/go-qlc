@@ -11,7 +11,9 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type RepReward struct{}
+type RepReward struct {
+	WithSignAndPending
+}
 
 func (r *RepReward) GetLastRewardHeight(ctx *vmstore.VMContext, account types.Address) (uint64, error) {
 	height, err := cabi.GetLastRepRewardHeightByAccount(ctx, account)

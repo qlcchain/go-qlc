@@ -27,12 +27,55 @@ type ContractBlock struct {
 	Data      []byte
 }
 
+type Describe struct {
+	withSignature bool
+	withPending   bool
+}
+
+func (d Describe) WithSignature() bool {
+	return d.withSignature
+}
+func (d Describe) WithPending() bool {
+	return d.withPending
+}
+
+type WithSignAndPending struct {
+}
+
+func (WithSignAndPending) GetDescribe() Describe {
+	return Describe{
+		withSignature: true,
+		withPending:   true,
+	}
+}
+
+type NoSignWithPending struct {
+}
+
+func (NoSignWithPending) GetDescribe() Describe {
+	return Describe{
+		withSignature: false,
+		withPending:   true,
+	}
+}
+
+type WithSignNoPending struct {
+}
+
+func (WithSignNoPending) GetDescribe() Describe {
+	return Describe{
+		withSignature: true,
+		withPending:   false,
+	}
+}
+
 type InternalContract interface {
 	GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error)
 	// check status, update state
 	DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error)
 	// refund data at receive error
 	GetRefundData() []byte
+	GetDescribe() Describe
 }
 
 type ChainContractV1 interface {
