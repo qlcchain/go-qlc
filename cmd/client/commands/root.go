@@ -112,8 +112,6 @@ func addcommands() {
 	walletRemove()
 	mintage()
 	generateTestLedger()
-	pledge()
-	withdrawPledge()
 	withdrawMintage()
 	minerReward()
 	minerRecvPend()
@@ -122,5 +120,6 @@ func addcommands() {
 	repRewardRecvPend()
 	addPovCmd()
 	addTxCmd()
+	addPledgeCmd()
 	addDebugCmd()
 }
