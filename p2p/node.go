@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
 
 	"go.uber.org/zap"
@@ -50,6 +52,8 @@ const (
 	BlockTopic = "/qlc/blocks"
 )
 
+const MaxPingTimeOutTimes = 4
+
 type QlcNode struct {
 	ID               peer.ID
 	privateKey       crypto.PrivKey
@@ -71,6 +75,7 @@ type QlcNode struct {
 	isMiner          bool
 	isRepresentative bool
 	reporter         p2pmetrics.Reporter
+	ping             *Pinger
 }
 
 // NewNode return new QlcNode according to the config.
@@ -112,7 +117,7 @@ func (node *QlcNode) buildHost() error {
 		libp2p.Identity(node.privateKey),
 		//libp2p.NATPortMap(),
 		libp2p.BandwidthReporter(node.reporter),
-		libp2p.DefaultMuxers,
+		// libp2p.DefaultMuxers,
 	)
 	if err != nil {
 		return err
@@ -140,6 +145,8 @@ func (node *QlcNode) buildHost() error {
 	}
 	node.publisher = pubsub.NewPublisher(gsub)
 	node.subscriber = pubsub.NewSubscriber(gsub)
+	// New ping service
+	node.ping = NewPinger(node.host)
 	return nil
 }
 
@@ -206,6 +213,7 @@ func (node *QlcNode) StartServices() error {
 
 func (node *QlcNode) startPingService() {
 	node.logger.Info("start pingService Loop.")
+	var err error
 	ticker := time.NewTicker(30 * time.Second)
 	for {
 		select {
@@ -216,8 +224,36 @@ func (node *QlcNode) startPingService() {
 			node.streamManager.allStreams.Range(func(key, value interface{}) bool {
 				stream := value.(*Stream)
 				if stream.pid != node.ID && stream.IsConnected() {
-					stream.rtt = node.peerStore.LatencyEWMA(stream.pid)
-					node.logger.Infof("ping peer %s,took: %f s", stream.pid, stream.rtt.Seconds())
+					if stream.pingResult == nil {
+						stream.pingResult = make(<-chan ping.Result, 1)
+						stream.pingResult, err = stream.node.ping.Ping(stream.pingCtx, stream.pid)
+						if err != nil {
+							stream.pingTimeoutTimes++
+							if stream.pingTimeoutTimes >= MaxPingTimeOutTimes {
+								_ = stream.close()
+							}
+						}
+						res := <-stream.pingResult
+						node.logger.Infof("ping peer %s took %f s", stream.pid, res.RTT.Seconds())
+						stream.rtt = res.RTT
+						stream.pingTimeoutTimes = 0
+					} else {
+						select {
+						case res := <-stream.pingResult:
+							if res.Error != nil {
+								node.logger.Errorf("error:[%s] when ping peer [%s]", res.Error, stream.pid)
+								stream.pingTimeoutTimes++
+								if stream.pingTimeoutTimes >= MaxPingTimeOutTimes {
+									_ = stream.close()
+								}
+							} else {
+								node.logger.Infof("ping peer %s took %f s", stream.pid, res.RTT.Seconds())
+								stream.rtt = res.RTT
+								stream.pingTimeoutTimes = 0
+							}
+						default:
+						}
+					}
 				}
 				return true
 			})

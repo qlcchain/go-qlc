@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -84,8 +83,7 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 	_, _ = ledgerApi.Process(sb)
 	addr2, _ := types.HexToAddress("qlc_1gnggt8b6cwro3b4z9gootipykqd6x5gucfd7exsi4xqkryiijciegfhon4u")
 	_ = ledgerApi.getProcessLock(addr2, chainToken)
-	fmt.Println(ledgerApi.processLock.Len())
-	if ledgerApi.processLock.Len() != 1000 {
+	if ledgerApi.processLock.Len() != 1001 {
 		t.Fatal("get error when delete idle lock")
 	}
 }

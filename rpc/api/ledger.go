@@ -837,6 +837,11 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
 		return types.ZeroHash, errors.New("pov sync is not finished, please check it")
 	}
+	p := make(map[string]string)
+	l.eb.Publish(common.EventPeersInfo, p)
+	if len(p) == 0 {
+		return types.ZeroHash, errors.New("no peer connect,please check it")
+	}
 	lv := l.getProcessLock(block.Address, block.Token)
 	lv.mutex.Lock()
 	defer func() {

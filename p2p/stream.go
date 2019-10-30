@@ -1,10 +1,13 @@
 package p2p
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -40,6 +43,10 @@ type Stream struct {
 	normalPriorityMessageChan chan *QlcMessage
 	lowPriorityMessageChan    chan *QlcMessage
 	rtt                       time.Duration
+	pingCtx                   context.Context
+	pingCancel                context.CancelFunc
+	pingTimeoutTimes          int
+	pingResult                <-chan ping.Result
 }
 
 // NewStream return a new Stream
@@ -53,6 +60,7 @@ func NewStreamFromPID(pid peer.ID, node *QlcNode) *Stream {
 }
 
 func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream network.Stream, node *QlcNode) *Stream {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Stream{
 		pid:                       pid,
 		addr:                      addr,
@@ -63,6 +71,9 @@ func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream network.Stream, no
 		highPriorityMessageChan:   make(chan *QlcMessage, 20*1024),
 		normalPriorityMessageChan: make(chan *QlcMessage, 20*1024),
 		lowPriorityMessageChan:    make(chan *QlcMessage, 20*1024),
+		pingCtx:                   ctx,
+		pingCancel:                cancel,
+		pingTimeoutTimes:          0,
 	}
 }
 
@@ -82,7 +93,6 @@ func (s *Stream) Connect() error {
 	//s.node.logger.Info("connect success to :", s.pid.Pretty())
 	s.stream = stream
 	s.addr = stream.Conn().RemoteMultiaddr()
-
 	return nil
 }
 
@@ -220,6 +230,7 @@ func (s *Stream) close() error {
 
 	// quit.
 	s.quitWriteCh <- true
+	s.pingCancel()
 	// close stream.
 	if s.stream != nil {
 		if err := s.stream.Close(); err != nil {
@@ -260,10 +271,10 @@ func (s *Stream) Write(data []byte) error {
 	}
 
 	// at least 5kb/s to write message
-	deadline := time.Now().Add(time.Duration(len(data)/1024/5+1) * time.Second)
-	if err := s.stream.SetWriteDeadline(deadline); err != nil {
-		return err
-	}
+	//deadline := time.Now().Add(time.Duration(len(data)/1024/5+1) * time.Second)
+	//if err := s.stream.SetWriteDeadline(deadline); err != nil {
+	//	return err
+	//}
 
 	n, err := s.stream.Write(data)
 	if err != nil {
