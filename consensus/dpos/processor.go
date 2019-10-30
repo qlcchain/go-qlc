@@ -139,8 +139,6 @@ func (p *Processor) processMsg() {
 					p.orderedChain = new(sync.Map)
 					p.chainHeight = make(map[chainKey]uint64)
 					p.confirmedChain = make(map[types.Hash]bool)
-				} else if p.syncState == common.SyncFinish {
-					p.cancel()
 				}
 			case hash := <-p.syncBlockAcked:
 				if p.dps.isConfirmedFrontier(hash) {
