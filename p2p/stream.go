@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"sync"
 	"time"
 
