@@ -24,6 +24,7 @@ type peerPullRsp struct {
 	pullRspHash    types.Hash
 	pullRspStartCh chan bool
 	pullRspQuitCh  chan bool
+	muForPullRsp   *sync.Mutex
 }
 
 //  Message Type
