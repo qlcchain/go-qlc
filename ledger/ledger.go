@@ -11,11 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-
-	"github.com/qlcchain/go-qlc/config"
-
 	"github.com/dgraph-io/badger"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -23,6 +20,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -37,6 +35,7 @@ type Ledger struct {
 	representCache *RepresentationCache
 	ctx            context.Context
 	cancel         context.CancelFunc
+	cache          *Cache
 	logger         *zap.SugaredLogger
 }
 
@@ -125,10 +124,11 @@ func NewLedger(cfgFile string) *Ledger {
 		l := &Ledger{
 			Store:          store,
 			dir:            dir,
-			RollbackChan:   make(chan types.Hash, 65535),
+			RollbackChan:   make(chan types.Hash, 100),
 			EB:             cc.EventBus(),
 			ctx:            ctx,
 			cancel:         cancel,
+			cache:          NewCache(),
 			representCache: NewRepresentationCache(),
 		}
 		l.logger = log.NewLogger("ledger")
@@ -610,6 +610,10 @@ func (l *Ledger) Size() (int64, int64) {
 	return l.Store.Size()
 }
 
+func (l *Ledger) GC() error {
+	return l.Store.Purge()
+}
+
 func NewTestLedger() (func(), *Ledger) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
@@ -621,4 +625,26 @@ func NewTestLedger() (func(), *Ledger) {
 		_ = l.Close()
 		_ = os.RemoveAll(dir)
 	}, l
+}
+
+type ActionType byte
+
+const (
+	Dump ActionType = iota
+	GC
+	BackUp
+)
+
+func (l *Ledger) Action(action ActionType) (string, error) {
+	switch action {
+	case Dump:
+		return l.Dump()
+	case GC:
+		if err := l.GC(); err != nil {
+			return "", err
+		}
+		return "", nil
+	default:
+		return "", nil
+	}
 }

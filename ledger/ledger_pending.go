@@ -34,7 +34,10 @@ func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, txn
 		return err
 	}
 
-	return txn.SetWithMeta(k, v, byte(types.PendingNotUsed))
+	if err := txn.SetWithMeta(k, v, byte(types.PendingNotUsed)); err != nil {
+		return err
+	}
+	return l.cache.UpdateAccountPending(key, value, true)
 	//return txn.Set(key, pendingBytes)
 }
 
@@ -203,7 +206,21 @@ func (l *Ledger) DeletePending(key *types.PendingKey, txns ...db.StoreTxn) error
 	if err != nil {
 		return err
 	}
-	return txn.Delete(k)
+
+	value := new(types.PendingInfo)
+	err = txn.Get(k, func(v []byte, b byte) error {
+		if err := value.Deserialize(v); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err == nil {
+		if err := txn.Delete(k); err != nil {
+			return err
+		}
+		return l.cache.UpdateAccountPending(key, value, true)
+	}
+	return nil
 }
 
 func (l *Ledger) Pending(account types.Address, txns ...db.StoreTxn) ([]*types.PendingKey, error) {
@@ -228,6 +245,32 @@ func (l *Ledger) Pending(account types.Address, txns ...db.StoreTxn) ([]*types.P
 	}
 
 	return cache, nil
+}
+
+func (l *Ledger) PendingAmount(address types.Address, token types.Hash, txns ...db.StoreTxn) (types.Balance, error) {
+	b, err := l.cache.GetAccountPending(address, token)
+	if err == nil {
+		return b, nil
+	}
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	pendingKeys, err := l.TokenPending(address, token)
+	if err != nil {
+		return types.ZeroBalance, err
+	}
+	pendingAmount := types.ZeroBalance
+	for _, key := range pendingKeys {
+		pendinginfo, err := l.GetPending(key)
+		if err != nil {
+			return types.ZeroBalance, err
+		}
+		pendingAmount = pendingAmount.Add(pendinginfo.Amount)
+	}
+	if err := l.cache.AddAccountPending(address, token, pendingAmount); err != nil {
+		return types.ZeroBalance, err
+	}
+	return pendingAmount, nil
 }
 
 func (l *Ledger) TokenPending(account types.Address, token types.Hash, txns ...db.StoreTxn) ([]*types.PendingKey, error) {

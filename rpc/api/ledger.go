@@ -234,23 +234,16 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 		if err != nil {
 			return nil, err
 		}
-		// TODO: to implement token pending in AccountInfo cache
-		//pendingKeys, err := l.ledger.TokenPending(address, t.Type)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//pendingAmount := types.ZeroBalance
-		//for _, key := range pendingKeys {
-		//	pendinginfo, err := l.ledger.GetPending(key)
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//	pendingAmount = pendingAmount.Add(pendinginfo.Amount)
-		//}
+		amount, err := l.ledger.PendingAmount(address, t.Type)
+		if err != nil {
+			l.logger.Errorf("pending amount error: %s", err)
+			return nil, err
+		}
+
 		tm := APITokenMeta{
 			TokenMeta: t,
 			TokenName: info.TokenName,
-			//Pending:   pendingAmount,
+			Pending:   amount,
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
 	}
@@ -278,22 +271,16 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 		if err != nil {
 			return nil, err
 		}
-		pendingKeys, err := l.ledger.TokenPending(address, t.Type)
+		amount, err := l.ledger.PendingAmount(address, t.Type)
 		if err != nil {
+			l.logger.Errorf("pending amount error: %s", err)
 			return nil, err
 		}
-		pendingAmount := types.ZeroBalance
-		for _, key := range pendingKeys {
-			pendinginfo, err := l.ledger.GetPending(key)
-			if err != nil {
-				return nil, err
-			}
-			pendingAmount = pendingAmount.Add(pendinginfo.Amount)
-		}
+
 		tm := APITokenMeta{
 			TokenMeta: t,
 			TokenName: info.TokenName,
-			Pending:   pendingAmount,
+			Pending:   amount,
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
 	}

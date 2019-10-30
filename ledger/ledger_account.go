@@ -32,7 +32,10 @@ func (l *Ledger) AddAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn) e
 	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(k, v)
+	if err := txn.Set(k, v); err != nil {
+		return err
+	}
+	return l.cache.UpdateAccountMetaConfirmed(value)
 }
 
 func (l *Ledger) GetAccountMeta(key types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
@@ -49,15 +52,15 @@ func (l *Ledger) GetAccountMeta(key types.Address, txns ...db.StoreTxn) (*types.
 		return nil, err
 	}
 	meta := new(types.AccountMeta)
-	err = txn.Get(k, func(v []byte, b byte) (err error) {
-		if err = meta.Deserialize(v); err != nil {
-			return err
+	if v, err := l.cache.GetAccountMetaConfirmed(key); err == nil {
+		meta = v
+	} else {
+		er := txn.Get(k, func(v []byte, b byte) (err error) {
+			return meta.Deserialize(v)
+		})
+		if er != nil {
+			meta = nil
 		}
-		return nil
-	})
-
-	if err != nil {
-		meta = nil
 	}
 	if am != nil && meta == nil {
 		return am, nil
@@ -89,6 +92,9 @@ func (l *Ledger) GetAccountMeta(key types.Address, txns ...db.StoreTxn) (*types.
 }
 
 func (l *Ledger) GetAccountMetaConfirmed(key types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
+	if am, err := l.cache.GetAccountMetaConfirmed(key); err == nil {
+		return am, nil
+	}
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -163,7 +169,10 @@ func (l *Ledger) UpdateAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn
 		}
 		return err
 	}
-	return txn.Set(k, v)
+	if err := txn.Set(k, v); err != nil {
+		return err
+	}
+	return l.cache.UpdateAccountMetaConfirmed(value)
 }
 
 func (l *Ledger) AddOrUpdateAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn) error {
@@ -178,18 +187,21 @@ func (l *Ledger) AddOrUpdateAccountMeta(value *types.AccountMeta, txns ...db.Sto
 	if err != nil {
 		return err
 	}
-	return txn.Set(k, v)
+	if err := txn.Set(k, v); err != nil {
+		return err
+	}
+	return l.cache.UpdateAccountMetaConfirmed(value)
 }
 
 func (l *Ledger) DeleteAccountMeta(key types.Address, txns ...db.StoreTxn) error {
+	l.cache.DeleteAccountMetaConfirmed(key)
+
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
-
 	k, err := getKeyOfParts(idPrefixAccount, key)
 	if err != nil {
 		return err
 	}
-
 	return txn.Delete(k)
 }
 
@@ -363,10 +375,17 @@ func (l *Ledger) AddAccountMetaCache(value *types.AccountMeta, txns ...db.StoreT
 	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(k, v)
+	if err := txn.Set(k, v); err != nil {
+		return err
+	}
+	return l.cache.UpdateAccountMetaUnConfirmed(value)
 }
 
 func (l *Ledger) GetAccountMetaCache(key types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
+	if am, err := l.cache.GetAccountMetaUnConfirmed(key); err == nil {
+		return am, nil
+	}
+
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -423,7 +442,10 @@ func (l *Ledger) AddOrUpdateAccountMetaCache(value *types.AccountMeta, txns ...d
 	if err != nil {
 		return err
 	}
-	return txn.Set(k, v)
+	if err := txn.Set(k, v); err != nil {
+		return err
+	}
+	return l.cache.UpdateAccountMetaUnConfirmed(value)
 }
 
 func (l *Ledger) UpdateAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {
@@ -448,18 +470,21 @@ func (l *Ledger) UpdateAccountMetaCache(value *types.AccountMeta, txns ...db.Sto
 		}
 		return err
 	}
-	return txn.Set(k, v)
+	if err := txn.Set(k, v); err != nil {
+		return err
+	}
+	return l.cache.UpdateAccountMetaUnConfirmed(value)
 }
 
 func (l *Ledger) DeleteAccountMetaCache(key types.Address, txns ...db.StoreTxn) error {
+	l.cache.DeleteAccountMetaUnConfirmed(key)
+
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
-
 	k, err := getKeyOfParts(idPrefixBlockCacheAccount, key)
 	if err != nil {
 		return err
 	}
-
 	return txn.Delete(k)
 }
 

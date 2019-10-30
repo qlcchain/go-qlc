@@ -35,7 +35,22 @@ func TestLedger_AddPending(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addPending(t, l)
+	pk, pv := addPending(t, l)
+	if _, err := l.cache.GetAccountPending(pk.Address, pv.Type); err == nil {
+		t.Fatal(err)
+	}
+	a, err := l.PendingAmount(pk.Address, pv.Type)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(a)
+	b, err := l.cache.GetAccountPending(pk.Address, pv.Type)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !a.Equal(b) {
+		t.Fatal("balance not equal")
+	}
 }
 
 func TestLedger_GetPending(t *testing.T) {
@@ -192,5 +207,27 @@ func TestLedger_TokenPending(t *testing.T) {
 	}
 	for k, v := range pending {
 		t.Log(k, v)
+	}
+}
+
+func TestLedger_PendingAmount(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	pendingkey, pendinginfo := addPending(t, l)
+	if _, err := l.cache.GetAccountPending(pendingkey.Address, pendinginfo.Type); err == nil {
+		t.Fatal("pending should not found")
+	}
+	a, err := l.PendingAmount(pendingkey.Address, pendinginfo.Type)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(a)
+	b, err := l.cache.GetAccountPending(pendingkey.Address, pendinginfo.Type)
+	if err != nil {
+		t.Fatal()
+	}
+	if !a.Equal(b) {
+		t.Fatal("balance should equal")
 	}
 }

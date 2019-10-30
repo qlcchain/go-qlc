@@ -18,6 +18,9 @@ func (l *Ledger) AddStateBlock(value *types.StateBlock, txns ...db.StoreTxn) err
 	if err := l.addStateBlock(value, txns...); err != nil {
 		return err
 	}
+	if err := l.cache.UpdateBlockConfirmed(value); err != nil {
+		l.logger.Error(err)
+	}
 	l.logger.Debug("publish addRelation,", value.GetHash())
 	l.EB.Publish(common.EventAddRelation, value)
 	return nil
@@ -74,6 +77,9 @@ func (l *Ledger) addStateBlock(value *types.StateBlock, txns ...db.StoreTxn) err
 func (l *Ledger) GetStateBlock(key types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
 	if blkCache, err := l.GetBlockCache(key); err == nil {
 		return blkCache, nil
+	}
+	if b, _ := l.cache.GetBlockConfirmed(key); b != nil {
+		return b, nil
 	}
 
 	txn, flag := l.getTxn(false, txns...)
@@ -154,6 +160,7 @@ func (l *Ledger) GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.Sto
 }
 
 func (l *Ledger) DeleteStateBlock(key types.Hash, txns ...db.StoreTxn) error {
+	l.cache.DeleteBlockConfirmed(key)
 	txn, flag := l.getTxn(true, txns...)
 
 	k, err := getKeyOfParts(idPrefixBlock, key)
@@ -575,10 +582,19 @@ func (l *Ledger) AddBlockCache(value *types.StateBlock, txns ...db.StoreTxn) err
 	} else if err != badger.ErrKeyNotFound {
 		return err
 	}
-	return txn.Set(k, v)
+	if err := txn.Set(k, v); err != nil {
+		return err
+	}
+	if err := l.cache.UpdateBlockUnConfirmed(value); err != nil {
+		l.logger.Error(err)
+	}
+	return nil
 }
 
 func (l *Ledger) GetBlockCache(key types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error) {
+	if b, _ := l.cache.GetBlockUnConfirmed(key); b != nil {
+		return b, nil
+	}
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -625,6 +641,7 @@ func (l *Ledger) HasBlockCache(key types.Hash, txns ...db.StoreTxn) (bool, error
 }
 
 func (l *Ledger) DeleteBlockCache(key types.Hash, txns ...db.StoreTxn) error {
+	l.cache.DeleteBlockUnConfirmed(key)
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 

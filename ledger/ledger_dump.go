@@ -700,5 +700,6 @@ func convertToDumpAccount(tm *types.TokenMeta) *Account {
 		OpenBlock:      tm.OpenBlock,
 		Modified:       tm.Modified,
 		BlockCount:     tm.BlockCount,
+		Balance:        tm.Balance,
 	}
 }

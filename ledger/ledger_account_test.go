@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -19,7 +20,10 @@ func addAccountMeta(t *testing.T, l *Ledger) *types.AccountMeta {
 func TestLedger_AddAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	addAccountMeta(t, l)
+	am := addAccountMeta(t, l)
+	if _, err := l.cache.GetAccountMetaConfirmed(am.Address); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetAccountMeta_Empty(t *testing.T) {
@@ -73,12 +77,17 @@ func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMeta(t, l)
+	a, _ := l.cache.GetAccountMetaConfirmed(am.Address)
+
 	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
-
 	err := l.AddOrUpdateAccountMeta(am)
 	if err != nil {
 		t.Fatal(err)
+	}
+	b, _ := l.cache.GetAccountMetaConfirmed(am.Address)
+	if len(a.Tokens)+1 != len(b.Tokens) {
+		t.Fatal(len(a.Tokens), len(b.Tokens))
 	}
 }
 
@@ -285,16 +294,29 @@ func TestLedger_UpdateAccountMetaCache(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMetaCache(t, l)
-	token := mock.TokenMeta(am.Address)
-	am.Tokens = append(am.Tokens, token)
+	a, _ := l.cache.GetAccountMetaUnConfirmed(am.Address)
 
+	amount1 := types.Balance{Int: big.NewInt(101)}
+	am.CoinBalance = amount1
 	err := l.UpdateAccountMetaCache(am)
 	if err != nil {
 		t.Fatal(err)
 	}
+	b, _ := l.cache.GetAccountMetaUnConfirmed(am.Address)
+	am2, _ := l.GetAccountMetaCache(am.Address)
+	if !b.CoinBalance.Equal(amount1) || !am2.CoinBalance.Equal(amount1) {
+		t.Fatal("amount not equal")
+	}
+
+	token := mock.TokenMeta(am.Address)
+	am.Tokens = append(am.Tokens, token)
 	err = l.AddOrUpdateAccountMetaCache(am)
 	if err != nil {
 		t.Fatal(err)
+	}
+	c, _ := l.cache.GetAccountMetaUnConfirmed(am.Address)
+	if len(a.Tokens)+1 != len(c.Tokens) {
+		t.Fatal(len(a.Tokens), len(c.Tokens))
 	}
 }
 
