@@ -9,8 +9,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/chain/version"
 	"os"
+
+	"github.com/qlcchain/go-qlc/chain/version"
 
 	client "github.com/qlcchain/go-qlc/cmd/client/commands"
 	server "github.com/qlcchain/go-qlc/cmd/server/commands"

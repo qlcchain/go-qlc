@@ -86,7 +86,6 @@ func (r *RPC) startIPC(apis []rpc.API) error {
 	}
 	r.ipcListener = listener
 	r.ipcHandler = handler
-	r.logger.Info("IPC endpoint opened, ", "url:", r.config.RPC.IPCEndpoint)
 	return nil
 }
 
@@ -194,7 +193,7 @@ func (r *RPC) startInProcess(apis []rpc.API) error {
 		}
 		//r.logger.Debug("InProc registered ", "service ", api.Service, " namespace ", api.Namespace)
 	}
-	r.logger.Info("InProc start successfully")
+	r.logger.Debug("InProc start successfully")
 	r.inProcessHandler = handler
 	return nil
 }
@@ -278,7 +277,6 @@ func (r *RPC) StartHTTPEndpoint(endpoint string, apis []rpc.API, modules []strin
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 				return nil, nil, err
 			}
-			r.logger.Debug("HTTP registered ", "namespace ", api.Namespace)
 		}
 	}
 	// All APIs registered, start the HTTP listener
@@ -321,7 +319,7 @@ func (r *RPC) StartWSEndpoint(endpoint string, apis []rpc.API, modules []string,
 			if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
 				return nil, nil, err
 			}
-			r.logger.Debug("WebSocket registered ", " service ", api.Service, " namespace ", api.Namespace)
+			//r.logger.Debug("WebSocket registered ", " service ", api.Service, " namespace ", api.Namespace)
 		}
 	}
 	// All APIs registered, start the HTTP listener

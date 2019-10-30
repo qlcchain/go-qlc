@@ -1,14 +1,16 @@
 /*
- * Copyright (c) 2018 QLC Chain Team
+ * Copyright (c) 2019 QLC Chain Team
  *
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
  */
 
-package log
+package chain
 
 import (
 	"errors"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 
@@ -18,27 +20,27 @@ import (
 
 type LogService struct {
 	common.ServiceLifecycle
-	config *config.Config
+	cfg *config.Config
 }
 
 func NewLogService(cfgFile string) *LogService {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
-	return &LogService{config: cfg}
+	return &LogService{cfg: cfg}
 }
 
 func (ls *LogService) Init() error {
 	if !ls.PreInit() {
-		return errors.New("pre init fail")
+		return errors.New("LogService pre init fail")
 	}
 	defer ls.PostInit()
 
-	return InitLog(ls.config)
+	return log.Setup(ls.cfg)
 }
 
 func (ls *LogService) Start() error {
 	if !ls.PreStart() {
-		return errors.New("pre start fail")
+		return errors.New("LogService pre start fail")
 	}
 	defer ls.PostStart()
 
@@ -47,11 +49,11 @@ func (ls *LogService) Start() error {
 
 func (ls *LogService) Stop() error {
 	if !ls.PreStop() {
-		return errors.New("pre stop fail")
+		return errors.New("LogService pre stop fail")
 	}
 	defer ls.PostStop()
 
-	return nil
+	return log.Teardown()
 }
 
 func (ls *LogService) Status() int32 {

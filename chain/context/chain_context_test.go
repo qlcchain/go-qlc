@@ -111,6 +111,18 @@ func Test_serviceContainer(t *testing.T) {
 		t.Logf("%s: %p", name, service)
 		return nil
 	})
+	var i int
+	sc.IterWithPredicate(func(name string, service common.Service) error {
+		t.Logf("IterWithPredicate ==>%s: %p", name, service)
+		i++
+		return nil
+	}, func(name string) bool {
+		return name != "TestService"
+	})
+
+	if i != 1 {
+		t.Fatal("invalid IterWithPredicate ", i)
+	}
 
 	err = sc.UnRegister(LedgerService)
 	if err != nil {
