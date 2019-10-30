@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"sync"
 	"time"
+
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
