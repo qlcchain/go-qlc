@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"errors"
 	"math"
 	"sort"
 	"sync"
@@ -42,7 +43,7 @@ type ServiceSync struct {
 	lastSyncHash       types.Hash
 	quitChanForSync    chan bool
 	mu                 *sync.Mutex
-	muForPullRsp       *sync.Mutex
+	//muForPullRsp       *sync.Mutex
 }
 
 // NewService return new Service.
@@ -56,7 +57,7 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		pullRequestStartCh: make(chan bool, 1),
 		quitChanForSync:    make(chan bool, 1),
 		mu:                 &sync.Mutex{},
-		muForPullRsp:       &sync.Mutex{},
+		//		muForPullRsp:       &sync.Mutex{},
 	}
 	ss.syncState.Store(common.SyncNotStart)
 	return ss
@@ -81,7 +82,7 @@ func (ss *ServiceSync) Start() {
 					ss.logger.Error(err)
 					continue
 				}
-				ss.logger.Infof("begin sync block from [%s]", peerID)
+				ss.logger.Warnf("begin sync block from [%s]", peerID)
 				err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
 				if err != nil {
 					ss.logger.Errorf("err [%s] when send FrontierRequest", err)
@@ -319,14 +320,25 @@ func (ss *ServiceSync) getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontie
 }
 
 func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
+	exitPullRsp := &peerPullRsp{}
 	if v, ok := ss.netService.msgService.pullRspMap.Load(message.from); ok {
+		exitPullRsp, _ = v.(*peerPullRsp)
 		select {
-		case v.(*peerPullRsp).pullRspQuitCh <- true:
+		case exitPullRsp.pullRspQuitCh <- true:
 		default:
 		}
+	} else {
+		exitPullRsp = &peerPullRsp{
+			pullRspStartCh: make(chan bool, 1),
+			pullRspTimer:   time.NewTimer(pullRspTimeOut),
+			pullRspQuitCh:  make(chan bool, 1),
+			muForPullRsp:   &sync.Mutex{},
+		}
 	}
-	ss.muForPullRsp.Lock()
-	defer ss.muForPullRsp.Unlock()
+
+	exitPullRsp.muForPullRsp.Lock()
+	defer exitPullRsp.muForPullRsp.Unlock()
+
 	var blk *types.StateBlock
 	var bulkBlk types.StateBlockList
 	var temp types.Hash
@@ -347,29 +359,22 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	if pullType != protos.PullTypeSegment {
 		return ss.onBulkPullRequestExt(message, pullRemote)
 	}
-	exitPullRsp := &peerPullRsp{}
-	if v, ok := ss.netService.msgService.pullRspMap.Load(message.from); ok {
-		exitPullRsp, _ = v.(*peerPullRsp)
-		if len(exitPullRsp.pullRspTimer.C) > 0 {
-			<-exitPullRsp.pullRspTimer.C
-		}
+
+	if exitPullRsp != nil {
 		exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
 		if len(exitPullRsp.pullRspQuitCh) > 0 {
 			<-exitPullRsp.pullRspQuitCh
 		}
-	} else {
-		exitPullRsp = &peerPullRsp{
-			pullRspStartCh: make(chan bool, 1),
-			pullRspTimer:   time.NewTimer(pullRspTimeOut),
-			pullRspQuitCh:  make(chan bool, 1),
+		select {
+		case exitPullRsp.pullRspStartCh <- true:
+		default:
 		}
+		exitPullRsp.pullRspHash = types.ZeroHash
+		ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
+	} else {
+		return errors.New("exitPullRsp is nil")
 	}
-	select {
-	case exitPullRsp.pullRspStartCh <- true:
-	default:
-	}
-	exitPullRsp.pullRspHash = types.ZeroHash
-	ss.netService.msgService.pullRspMap.Store(message.from, exitPullRsp)
+
 	if startHash.IsZero() {
 		temp = openBlockHash
 		for {
@@ -667,13 +672,13 @@ func (ss *ServiceSync) next() {
 }
 
 func (ss *ServiceSync) requestFrontiersFromPov(peerID string) {
-	ss.logger.Info("request frontier from pov")
+	ss.logger.Warn("request frontier from pov")
 	syncState := ss.syncState.Load()
 	if syncState == common.SyncFinish || syncState == common.SyncNotStart {
 		var err error
 		address := types.Address{}
 		Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
-		ss.logger.Infof("begin sync block from [%s]", peerID)
+		ss.logger.Warnf("begin sync block from [%s]", peerID)
 		err = ss.netService.node.SendMessageToPeer(FrontierRequest, Req, peerID)
 		if err != nil {
 			ss.logger.Errorf("err [%s] when send FrontierRequest", err)
