@@ -253,7 +253,6 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 				return err
 			}
 		}
-		return nil
 	}
 
 	if block.IsContractBlock() {
