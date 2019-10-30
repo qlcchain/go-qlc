@@ -21,6 +21,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/abiosoft/ishell"
@@ -134,8 +136,27 @@ func start() error {
 
 	var accounts []*types.Account
 	chainContext := context.NewChainContext(cfgPathP)
-	log.Root.Info("Run node id: ", chainContext.Id())
-	cm, err := chainContext.ConfigManager()
+	cm, err := chainContext.ConfigManager(func(cm *config.CfgManager) error {
+		cfg, _ := cm.Config()
+		if len(configParamsP) > 0 {
+			params := strings.Split(configParamsP, ";")
+
+			if len(params) > 0 {
+				_, err := cm.PatchParams(params, cfg)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if noBootstrapP {
+			// remove all p2p bootstrap node
+			cfg.P2P.BootNodes = []string{}
+		}
+
+		// log.Root.Debug(util.ToIndentString(cfg))
+
+		return nil
+	})
 	if err != nil {
 		return err
 	}
@@ -143,6 +164,8 @@ func start() error {
 	if err != nil {
 		return err
 	}
+
+	log.Root.Info("Run node id: ", chainContext.Id())
 
 	if common.CheckTestMode("POV") {
 		cfg.AutoGenerateReceive = true
@@ -175,19 +198,6 @@ func start() error {
 		}
 	}
 
-	if len(configParamsP) > 0 {
-		params := strings.Split(configParamsP, ";")
-		if len(params) > 0 {
-			cfg, err = cm.UpdateParams(params)
-			if err != nil {
-				return err
-			}
-			err := cm.Commit()
-			if err != nil {
-				return err
-			}
-		}
-	}
 	if len(seedP) > 0 {
 		log.Root.Info("run node SEED mode")
 		sByte, _ := hex.DecodeString(seedP)
@@ -286,17 +296,8 @@ func start() error {
 		}()
 	}
 
-	if noBootstrapP {
-		//remove all p2p bootstrap node
-		cfg.P2P.BootNodes = []string{}
-	}
-
-	configDetails := util.ToIndentString(cfg)
-	log.Root.Debug(configDetails)
-
 	// save accounts to context
 	chainContext.SetAccounts(accounts)
-
 	// start all services by chain context
 	err = chainContext.Init(func() error {
 		return chain.RegisterServices(chainContext)

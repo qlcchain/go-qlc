@@ -57,6 +57,8 @@ type serviceManager interface {
 	EventBus() event.EventBus
 }
 
+type Option func(cm *config.CfgManager) error
+
 func NewChainContext(cfgFile string) *ChainContext {
 	var dataDir string
 	if len(cfgFile) == 0 {
@@ -80,41 +82,22 @@ func NewChainContext(cfgFile string) *ChainContext {
 	}
 }
 
-func NewChainContextWithOriginalContext(cc *ChainContext) *ChainContext {
+func NewChainContextFromOriginal(cc *ChainContext) *ChainContext {
 	cfgFile := cc.cfgFile
-	var dataDir string
-	if len(cfgFile) == 0 {
-		dataDir = config.DefaultDataDir()
-		cfgFile = path.Join(dataDir, config.QlcConfigFile)
-	} else {
-		cm := config.NewCfgManagerWithFile(cfgFile)
-		dataDir, _ = cm.ParseDataDir()
+	ctx := NewChainContext(cfgFile)
+	cfg, err := cc.Config()
+	if err != nil {
+		log.Root.Error(err)
 	}
-	id := types.HashData([]byte(dataDir)).String()
-	if v, ok := cache.GetStringKey(id); ok {
-		return v.(*ChainContext)
-	} else {
-		c, err := cc.Config()
-		if err != nil {
-
-		}
-		sr := &ChainContext{
-			services: newServiceContainer(),
-			cfgFile:  cfgFile,
-			chainId:  id,
-			cm:       config.NewCfgManagerWithConfig(cfgFile, c),
-			accounts: cc.accounts,
-		}
-		cache.Set(id, sr)
-		return sr
-	}
+	ctx.accounts = cc.accounts
+	ctx.cm = config.NewCfgManagerWithConfig(cfgFile, cfg)
+	return ctx
 }
 
 type ChainContext struct {
 	common.ServiceLifecycle
 	services *serviceContainer
 	cm       *config.CfgManager
-	cfg      *config.Config
 	cfgFile  string
 	chainId  string
 	locker   sync.RWMutex
@@ -284,7 +267,7 @@ func (cc *ChainContext) Destroy() error {
 	return nil
 }
 
-func (cc *ChainContext) ConfigManager() (*config.CfgManager, error) {
+func (cc *ChainContext) ConfigManager(opts ...Option) (*config.CfgManager, error) {
 	cc.locker.Lock()
 	defer cc.locker.Unlock()
 	if cc.cm == nil {
@@ -294,6 +277,10 @@ func (cc *ChainContext) ConfigManager() (*config.CfgManager, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	for _, opt := range opts {
+		_ = opt(cc.cm)
 	}
 
 	return cc.cm, nil

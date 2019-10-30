@@ -9,6 +9,7 @@ package context
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -227,5 +228,79 @@ func TestChainContext_WaitForever(t *testing.T) {
 		}
 	} else {
 		t.Fatal(err)
+	}
+}
+
+func TestChainContext_ConfigManager(t *testing.T) {
+	cfgFile := filepath.Join(config.QlcTestDataDir(), "config2", "test.json")
+	ctx := NewChainContext(cfgFile)
+	err := ctx.Init(func() error {
+		return ctx.Register("waitService", &waitService{})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg, err := ctx.ConfigManager(func(cm *config.CfgManager) error {
+		if cfg, err := cm.Config(); err != nil {
+			return err
+		} else {
+			cfg.P2P.BootNodes = []string{}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("1, ctx==>%p,cfg==>%p", ctx, cfg)
+	}
+	ctx2 := NewChainContext(cfgFile)
+	if cfg2, err := ctx2.Config(); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("2, ctx==>%p,cfg==>%p", ctx2, cfg2)
+		if len(cfg2.P2P.BootNodes) != 0 {
+			t.Fatal("invalid p2p boot nodes")
+		}
+	}
+
+	params := []string{"rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	var p1, p2 string
+	if tmp, err := ctx.cm.UpdateParams(params); err != nil {
+		t.Fatal(err)
+	} else {
+		if err := ctx.cm.Commit(); err != nil {
+			t.Fatal(err)
+		}
+		cfg3, _ := ctx.Config()
+
+		if fmt.Sprintf("%p", tmp) == fmt.Sprintf("%p", cfg3) {
+			t.Fatalf("invalid cfg3 ptr, exp=%s,act=%s ", fmt.Sprintf("%p", tmp), fmt.Sprintf("%p", cfg3))
+		}
+		t.Logf("3, ctx==>%p,cfg==>%p", ctx, cfg3)
+		p1 = fmt.Sprintf("%p", cfg3)
+		if len(cfg3.P2P.BootNodes) != 0 {
+			t.Fatal("invalid p2p boot nodes")
+		}
+
+		if len(cfg3.RPC.HTTPCors) != 2 || cfg3.RPC.HTTPCors[0] != "localhost" || cfg3.RPC.HTTPCors[1] != "localhost2" {
+			t.Fatal("invalid rpc.httpCors", cfg3.RPC.HTTPCors)
+		}
+	}
+
+	if cfg4, err := ctx2.Config(); err != nil {
+		t.Fatal(err)
+	} else {
+		p2 = fmt.Sprintf("%p", cfg4)
+		t.Logf("4, ctx2==>%p,cfg==>%p", ctx2, cfg4)
+		if len(cfg4.P2P.BootNodes) != 0 {
+			t.Fatal("invalid p2p boot nodes")
+		}
+
+		if len(cfg4.RPC.HTTPCors) != 2 || cfg4.RPC.HTTPCors[0] != "localhost" || cfg4.RPC.HTTPCors[1] != "localhost2" {
+			t.Fatal("invalid rpc.httpCors", cfg4.RPC.HTTPCors)
+		}
+	}
+
+	if p1 != p2 {
+		t.Fatal("invalid cfg ptr", p1, "==>", p2)
 	}
 }
