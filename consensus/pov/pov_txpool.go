@@ -46,6 +46,11 @@ type PovTxPool struct {
 	allTxs      map[types.Hash]*PovTxEntry
 	lastUpdated int64
 	syncState   atomic.Value
+
+	statLimitTxNum     int64
+	statNotInOrderNum  int64
+	statMaxSelectTime  int64 // Microseconds
+	statLastSelectTime int64 // Microseconds
 }
 
 type PovTxChainReader interface {
@@ -147,6 +152,7 @@ func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) {
 		return
 	}
 	if tp.isTxExceedLimit() {
+		tp.statLimitTxNum++
 		return
 	}
 	txHash := block.GetHash()
@@ -161,6 +167,7 @@ func (tp *PovTxPool) onAddSyncStateBlock(block *types.StateBlock, done bool) {
 		return
 	}
 	if tp.isTxExceedLimit() {
+		tp.statLimitTxNum++
 		return
 	}
 	txHash := block.GetHash()
@@ -481,13 +488,22 @@ func (tp *PovTxPool) getTx(txHash types.Hash) *types.StateBlock {
 }
 
 func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.StateBlock {
-	return tp.selectPendingTxsByFair(stateTrie, limit)
-}
-
-func (tp *PovTxPool) selectPendingTxsByFair(stateTrie *trie.Trie, limit int) []*types.StateBlock {
 	tp.txMu.RLock()
 	defer tp.txMu.RUnlock()
 
+	startTm := time.Now()
+
+	retTxs := tp.selectPendingTxsByFair(stateTrie, limit)
+
+	tp.statLastSelectTime = time.Since(startTm).Microseconds()
+	if tp.statLastSelectTime > tp.statMaxSelectTime {
+		tp.statMaxSelectTime = tp.statLastSelectTime
+	}
+
+	return retTxs
+}
+
+func (tp *PovTxPool) selectPendingTxsByFair(stateTrie *trie.Trie, limit int) []*types.StateBlock {
 	var retTxs []*types.StateBlock
 
 	if limit <= 0 || len(tp.accountTxs) == 0 {
@@ -599,6 +615,7 @@ LoopMain:
 			if inOrderTxNum == 0 {
 				delete(addrTokenNeedScans, addrToken)
 				if notInOrderTxNum > 0 {
+					tp.statNotInOrderNum++
 					tp.logger.Debugf("addrToken %s has txs %d not in order", addrToken, notInOrderTxNum)
 				}
 			}
@@ -633,6 +650,10 @@ func (tp *PovTxPool) GetDebugInfo() map[string]interface{} {
 	info := make(map[string]interface{})
 	info["allTxs"] = len(tp.allTxs)
 	info["accountTxs"] = len(tp.accountTxs)
+	info["statLimitTxNum"] = tp.statLimitTxNum
+	info["statNotInOrderNum"] = tp.statNotInOrderNum
+	info["statLastSelectTime"] = tp.statLastSelectTime
+	info["statMaxSelectTime"] = tp.statMaxSelectTime
 
 	return info
 }

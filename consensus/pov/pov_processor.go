@@ -707,6 +707,12 @@ func (bp *PovBlockProcessor) GetNextPendingBlockForDebug() *PovPendingBlock {
 			pbNext = pb
 			break
 		}
+
+		if pbNext == nil {
+			pbNext = pb
+		} else if pbNext.blockSrc.block.GetHeight() < pb.blockSrc.block.GetHeight() {
+			pbNext = pb
+		}
 	}
 	if pbNext == nil {
 		return nil

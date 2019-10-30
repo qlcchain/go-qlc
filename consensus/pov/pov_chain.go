@@ -106,8 +106,10 @@ type PovBlockChain struct {
 
 	doingMinerStat *atomic.Bool
 
-	sideProcNum int
-	forkProcNum int
+	statSideProcNum    int64
+	statForkProcNum    int64
+	statLastInsertTime int64 //Microseconds
+	statMaxInsertTime  int64 //Microseconds
 
 	quitCh chan struct{}
 	wg     sync.WaitGroup
@@ -676,6 +678,8 @@ func (bc *PovBlockChain) LocateBestBlock(locator []*types.Hash) *types.PovBlock 
 func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
 	chainState := ChainStateNone
 
+	startTm := time.Now()
+
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		var dbErr error
 		chainState, dbErr = bc.insertBlock(txn, block, stateTrie)
@@ -683,13 +687,18 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie
 	})
 
 	if err != nil {
-		bc.logger.Errorf("failed to insert block %d/%s to chain", block.GetHeight(), block.GetHash())
+		bc.logger.Errorf("failed to insert block %d/%s to chain, err %s", block.GetHeight(), block.GetHash(), err)
 	} else {
 		bc.logger.Infof("success to insert block %d/%s to %s chain", block.GetHeight(), block.GetHash(), chainState)
 	}
 
 	if (block.GetHeight()+1)%uint64(common.POVChainBlocksPerDay) == 0 {
 		bc.onMinerDayStatTimer()
+	}
+
+	bc.statLastInsertTime = time.Since(startTm).Microseconds()
+	if bc.statLastInsertTime > bc.statMaxInsertTime {
+		bc.statMaxInsertTime = bc.statLastInsertTime
 	}
 
 	return err
@@ -723,6 +732,7 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 
 	saveCallback, dbErr := stateTrie.SaveInTxn(txn)
 	if dbErr != nil {
+		bc.logger.Errorf("pov block %d/%s save state trie failed, err %s", block.GetHeight(), block.GetHash(), dbErr)
 		return ChainStateNone, dbErr
 	}
 	if saveCallback != nil {
@@ -754,14 +764,14 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 			return ChainStateMain, err
 		}
 
-		bc.forkProcNum++
+		bc.statForkProcNum++
 		bc.logger.Infof("block %d/%s td %d/%s, need to doing fork, prev %s",
 			block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 		err := bc.processFork(txn, block)
 		return ChainStateMain, err
 	}
 
-	bc.sideProcNum++
+	bc.statSideProcNum++
 	bc.logger.Debugf("block %d/%s td %d/%s in side chain, prev %s",
 		block.GetHeight(), block.GetHash(), blockTD.Chain.BitLen(), blockTD.Chain.Text(16), block.GetPrevious())
 
@@ -944,6 +954,7 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 	for _, detachBlock := range detachBlocks {
 		err := bc.disconnectBestBlock(txn, detachBlock)
 		if err != nil {
+			bc.logger.Errorf("fork detach block %d/%s failed, err %s", detachBlock.GetHeight(), detachBlock.GetHash(), err)
 			return err
 		}
 	}
@@ -961,6 +972,7 @@ func (bc *PovBlockChain) processFork(txn db.StoreTxn, newBlock *types.PovBlock) 
 	for _, attachBlock := range attachBlocks {
 		err := bc.connectBestBlock(txn, attachBlock)
 		if err != nil {
+			bc.logger.Errorf("fork attach block %d/%s failed, err %s", attachBlock.GetHeight(), attachBlock.GetHash(), err)
 			return err
 		}
 	}
@@ -1129,8 +1141,10 @@ func (bc *PovBlockChain) GetDebugInfo() map[string]interface{} {
 	info["trieCache"] = bc.trieCache.Len(false)
 	info["trieNodePool"] = bc.trieNodePool.Len()
 
-	info["sideProcNum"] = bc.sideProcNum
-	info["forkProcNum"] = bc.forkProcNum
+	info["statSideProcNum"] = bc.statSideProcNum
+	info["statForkProcNum"] = bc.statForkProcNum
+	info["statLastInsertTime"] = bc.statLastInsertTime
+	info["statMaxInsertTime"] = bc.statMaxInsertTime
 
 	latestHdr := bc.LatestHeader()
 	if latestHdr != nil {
