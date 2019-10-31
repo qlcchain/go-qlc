@@ -1014,7 +1014,7 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	ch := make(chan *types.StateBlock)
 	l.logger.Infof("blocks ctx: %p, ch %p", ctx, ch)
 	l.blockSubscription.addChan(ch)
-	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			for {
 				select {
@@ -1031,6 +1031,12 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 			}
 		}()
 	})
+	if err != nil || sub == nil {
+		l.logger.Errorf("create subscription error, %s", err)
+		return nil, err
+	}
+	l.logger.Infof("blocks subscription: %s", sub.ID)
+	return sub, nil
 }
 
 func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*rpc.Subscription, error) {

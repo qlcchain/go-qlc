@@ -1,8 +1,11 @@
 package api
 
 import (
+	"context"
 	"errors"
+	"time"
 
+	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -11,6 +14,7 @@ import (
 	"github.com/qlcchain/go-qlc/consensus/dpos"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -19,10 +23,17 @@ type DebugApi struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 	eb     event.EventBus
+
+	blockSubscription *BlockSubscription
 }
 
 func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
-	return &DebugApi{ledger: l, logger: log.NewLogger("api_debug"), eb: eb}
+	return &DebugApi{
+		ledger:            l,
+		logger:            log.NewLogger("api_debug"),
+		eb:                eb,
+		blockSubscription: NewBlockSubscription(eb),
+	}
 }
 
 type APIUncheckBlock struct {
@@ -296,4 +307,32 @@ func (l *DebugApi) GetPovInfo() (map[string]interface{}, error) {
 	delete(outArgs, "err")
 
 	return outArgs, nil
+}
+
+func (l *DebugApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
+	l.logger.Infof("debug blocks ctx: %p", ctx)
+	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+		go func() {
+			t := time.NewTicker(60 * time.Second)
+			for {
+				select {
+				case <-t.C:
+					if err := notifier.Notify(subscription.ID, mock.StateBlock()); err != nil {
+						l.logger.Errorf("notify error: %s", err)
+						return
+					}
+					l.logger.Info("notify success!")
+				case err := <-subscription.Err():
+					l.logger.Infof("subscription exception %s", err)
+					return
+				}
+			}
+		}()
+	})
+	if err != nil || sub == nil {
+		l.logger.Errorf("create subscription error, %s", err)
+		return nil, err
+	}
+	l.logger.Infof("blocks subscription: %s", sub.ID)
+	return sub, nil
 }

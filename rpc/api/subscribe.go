@@ -62,6 +62,11 @@ func (r *BlockSubscription) subscribeEvent() {
 	} else {
 		r.handlerIds[common.EventAddRelation] = id
 	}
+	if id, err := r.eb.Subscribe(common.EventAddSyncBlocks, r.setSyncBlocks); err != nil {
+		r.logger.Error("subscribe event error, ", err)
+	} else {
+		r.handlerIds[common.EventAddSyncBlocks] = id
+	}
 	r.logger.Info("event subscribed ")
 }
 
@@ -78,6 +83,14 @@ func (r *BlockSubscription) unsubscribeEvent() {
 func (r *BlockSubscription) setBlocks(block *types.StateBlock) {
 	if len(r.chans) > 0 {
 		r.blocks <- block
+	}
+}
+
+func (r *BlockSubscription) setSyncBlocks(block *types.StateBlock, done bool) {
+	if !done {
+		if len(r.chans) > 0 {
+			r.blocks <- block
+		}
 	}
 }
 
