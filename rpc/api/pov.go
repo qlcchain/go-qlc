@@ -373,7 +373,7 @@ func (api *PovApi) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {
 			apiTxl.CoinbaseTx = header.CbTx
 		}
 	} else {
-		apiTxl.AccountTx, _ = api.ledger.GetStateBlock(txHash)
+		apiTxl.AccountTx, _ = api.ledger.GetStateBlockConfirmed(txHash)
 	}
 
 	return apiTxl, nil

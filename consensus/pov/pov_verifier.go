@@ -256,7 +256,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 			}
 			tx.CbTx = cbTx
 		} else {
-			txBlock, _ := pv.store.GetStateBlock(tx.Hash)
+			txBlock, _ := pv.store.GetStateBlockConfirmed(tx.Hash)
 			if txBlock == nil {
 				stat.GapTxs[tx.Hash] = process.GapTransaction
 			} else {

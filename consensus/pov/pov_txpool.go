@@ -287,7 +287,7 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 			for _, tm := range am.Tokens {
 				prevHash := tm.Header
 				for !prevHash.IsZero() {
-					block, err := tp.ledger.GetStateBlock(prevHash, txn)
+					block, err := tp.ledger.GetStateBlockConfirmed(prevHash, txn)
 					if err != nil {
 						break
 					}

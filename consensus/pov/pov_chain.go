@@ -1006,7 +1006,7 @@ func (bc *PovBlockChain) connectTransactions(txn db.StoreTxn, block *types.PovBl
 	for txIndex, txPov := range allTxs {
 		// txIndex == 0 is CoinBaseTX
 		if txIndex > 0 && txPov.Block == nil {
-			txPov.Block, _ = bc.getLedger().GetStateBlock(txPov.Hash, txn)
+			txPov.Block, _ = bc.getLedger().GetStateBlockConfirmed(txPov.Hash, txn)
 			if txPov.Block == nil {
 				bc.logger.Errorf("connect txs failed to get state block %s", txPov.Hash)
 			}
@@ -1032,7 +1032,7 @@ func (bc *PovBlockChain) disconnectTransactions(txn db.StoreTxn, block *types.Po
 	for txIndex, txPov := range allTxs {
 		// txIndex == 0 is CoinBaseTX
 		if txIndex > 0 && txPov.Block == nil {
-			txPov.Block, _ = bc.getLedger().GetStateBlock(txPov.Hash, txn)
+			txPov.Block, _ = bc.getLedger().GetStateBlockConfirmed(txPov.Hash, txn)
 			if txPov.Block == nil {
 				bc.logger.Errorf("disconnect txs failed to get state block %s", txPov.Hash)
 			}
