@@ -89,7 +89,7 @@ func (c *ConsensusPow) verifyProducer(header *types.PovHeader) error {
 
 	rsKey := types.PovCreateRepStateKey(prevHeader.GetMinerAddr())
 	rsVal := prevTrie.GetValue(rsKey)
-	if len(rsVal) <= 0 {
+	if len(rsVal) == 0 {
 		return errors.New("failed to get rep state value")
 	}
 
@@ -136,8 +136,6 @@ func (c *ConsensusPow) verifyTarget(header *types.PovHeader) error {
 
 func (c *ConsensusPow) calcNextRequiredTarget(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
 	return c.calcNextRequiredTargetByQLC(lastHeader, curHeader)
-	//return c.calcNextRequiredTargetByDGW(lastHeader, curHeader)
-	//return c.calcNextRequiredTargetByAlgo(lastHeader, curHeader)
 }
 
 func (c *ConsensusPow) calcNextRequiredTargetByQLC(lastHeader *types.PovHeader, curHeader *types.PovHeader) (uint32, error) {
@@ -148,7 +146,7 @@ func (c *ConsensusPow) calcNextRequiredTargetByQLC(lastHeader *types.PovHeader, 
 		return nextTargetIntBitsAlgo, nil
 	}
 
-	// nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
+	// calc rule: nextTarget = prevTarget * (lastBlock.Timestamp - firstBlock.Timestamp) / (blockInterval * targetCycle)
 
 	distance := uint64(common.PovChainTargetCycle - 1)
 	firstHeader := c.chainR.RelativeAncestor(lastHeader, distance)
@@ -174,7 +172,7 @@ func (c *ConsensusPow) calcNextRequiredTargetByQLC(lastHeader *types.PovHeader, 
 	// convert to normalized target by algo efficiency
 	oldTargetInt := lastHeader.GetNormTargetInt()
 
-	// nextTargetInt = oldTargetInt * actualTimespan / targetTimeSpan
+	// calc rule: nextTargetInt = oldTargetInt * actualTimespan / targetTimeSpan
 	nextTargetInt := new(big.Int).Mul(oldTargetInt, big.NewInt(int64(actualTimespan)))
 	nextTargetInt = new(big.Int).Div(nextTargetInt, big.NewInt(int64(targetTimeSpan)))
 

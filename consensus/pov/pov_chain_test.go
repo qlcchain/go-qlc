@@ -77,8 +77,8 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 
 	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
-	chain.Init()
-	chain.Start()
+	_ = chain.Init()
+	_ = chain.Start()
 
 	genesisBlk := chain.GenesisBlock()
 	latestBlk := chain.LatestBlock()
@@ -140,7 +140,7 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 
 	chain.CalcPastMedianTime(blk3.GetHeader())
 
-	chain.Stop()
+	_ = chain.Stop()
 }
 
 func TestPovChain_ForkChain(t *testing.T) {
@@ -149,8 +149,8 @@ func TestPovChain_ForkChain(t *testing.T) {
 
 	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
-	chain.Init()
-	chain.Start()
+	_ = chain.Init()
+	_ = chain.Start()
 
 	genesisBlk := chain.GenesisBlock()
 	latestBlk := chain.LatestBlock()
@@ -186,17 +186,17 @@ func TestPovChain_ForkChain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	retBlk22, err := chain.GetBlockByHeight(blk22.GetHeight())
+	retBlk22, _ := chain.GetBlockByHeight(blk22.GetHeight())
 	if retBlk22 == nil || retBlk22.GetHash() != retBlk22.GetHash() {
 		t.Fatalf("failed to get block22 %s", blk22.GetHash())
 	}
 
-	retBlk3, err := chain.GetBlockByHeight(blk3.GetHeight())
+	retBlk3, _ := chain.GetBlockByHeight(blk3.GetHeight())
 	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
 		t.Fatalf("failed to get block3 %s", blk3.GetHash())
 	}
 
-	chain.Stop()
+	_ = chain.Stop()
 }
 
 func TestPovChain_ForkChain_WithTx(t *testing.T) {
@@ -205,8 +205,8 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 
 	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
 
-	chain.Init()
-	chain.Start()
+	_ = chain.Init()
+	_ = chain.Start()
 
 	genesisBlk := chain.GenesisBlock()
 	latestBlk := chain.LatestBlock()
@@ -246,17 +246,17 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	retBlk22, err := chain.GetBlockByHeight(blk22.GetHeight())
+	retBlk22, _ := chain.GetBlockByHeight(blk22.GetHeight())
 	if retBlk22 == nil || retBlk22.GetHash() != retBlk22.GetHash() {
 		t.Fatalf("failed to get block22 %s", blk22.GetHash())
 	}
 
-	retBlk3, err := chain.GetBlockByHeight(blk3.GetHeight())
+	retBlk3, _ := chain.GetBlockByHeight(blk3.GetHeight())
 	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
 		t.Fatalf("failed to get block3 %s", blk3.GetHash())
 	}
 
-	chain.Stop()
+	_ = chain.Stop()
 }
 
 func setupPovTxBlock2Ledger(md *povChainMockData, povBlock *types.PovBlock) {

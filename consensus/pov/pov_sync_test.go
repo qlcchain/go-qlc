@@ -18,8 +18,8 @@ import (
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
-const ID_PEER1 = "peer1"
-const ID_PEER2 = "peer2"
+const TestPeerID1 = "peer1"
+const TestPeerID2 = "peer2"
 
 type povSyncMockData struct {
 	eb     event.EventBus
@@ -124,8 +124,8 @@ func TestPovSync_AddDelPeer1(t *testing.T) {
 
 	povSync.Start()
 
-	peerID1 := ID_PEER1
-	peerID2 := ID_PEER2
+	peerID1 := TestPeerID1
+	peerID2 := TestPeerID2
 	povSync.onAddP2PStream(peerID1)
 	povSync.onAddP2PStream(peerID2)
 
@@ -200,7 +200,7 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 
 	povSync.Start()
 
-	peerID1 := ID_PEER1
+	peerID1 := TestPeerID1
 	povSync.onAddP2PStream(peerID1)
 
 	bestPeer := povSync.GetBestPeer("")
@@ -281,7 +281,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 
 	povSync.Start()
 
-	peerID1 := ID_PEER1
+	peerID1 := TestPeerID1
 	povSync.onAddP2PStream(peerID1)
 
 	blk1, td1 := mock.GeneratePovBlock(nil, 0)

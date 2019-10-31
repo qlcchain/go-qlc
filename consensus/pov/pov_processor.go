@@ -102,13 +102,13 @@ type PovBlockProcessor struct {
 	syncState atomic.Value
 }
 
-func NewPovBlockProcessor(eb event.EventBus, ledger ledger.Store,
+func NewPovBlockProcessor(eb event.EventBus, l ledger.Store,
 	chain PovProcessorChainReader,
 	verifier PovProcessorVerifier,
 	syncer PovProcessorSyncer) *PovBlockProcessor {
 	bp := &PovBlockProcessor{
 		eb:       eb,
-		ledger:   ledger,
+		ledger:   l,
 		logger:   log.NewLogger("pov_processor"),
 		chain:    chain,
 		verifier: verifier,
@@ -209,7 +209,7 @@ func (bp *PovBlockProcessor) onAddStateBlock(tx *types.StateBlock) {
 		}
 		delete(pendingBlock.gapTxs, txHash)
 
-		if len(pendingBlock.gapTxs) <= 0 {
+		if len(pendingBlock.gapTxs) == 0 {
 			bp.releaseTxPendingBlock(pendingBlock)
 		}
 	}
@@ -223,7 +223,7 @@ func (bp *PovBlockProcessor) onAddSyncStateBlock(tx *types.StateBlock, done bool
 }
 
 func (bp *PovBlockProcessor) onPovSyncState(state common.SyncState) {
-	if state.IsSyncExited() == false {
+	if !state.IsSyncExited() {
 		return
 	}
 
@@ -337,7 +337,6 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	block := blockSrc.block
 	blockHash := blockSrc.block.GetHash()
 	bp.logger.Debugf("process block, %d/%s", blockSrc.block.GetHeight(), blockHash)
-	//bp.logger.Debugf("block: %+v", blockSrc.block)
 
 	// check duplicate block
 	if bp.HasOrphanBlock(blockHash) {
@@ -381,7 +380,7 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 	err := bp.chain.InsertBlock(block, stat.StateTrie)
 
 	if err == nil {
-		_ = bp.enqueueOrphanBlocks(blockSrc)
+		bp.enqueueOrphanBlocks(blockSrc)
 	}
 
 	return err
@@ -444,15 +443,15 @@ func (bp *PovBlockProcessor) HasOrphanBlock(blockHash types.Hash) bool {
 	return false
 }
 
-func (bp *PovBlockProcessor) enqueueOrphanBlocks(blockSrc *PovBlockSource) error {
+func (bp *PovBlockProcessor) enqueueOrphanBlocks(blockSrc *PovBlockSource) {
 	blockHash := blockSrc.block.GetHash()
 	orphans, ok := bp.parentOrphans[blockHash]
 	if !ok {
-		return nil
+		return
 	}
-	if len(orphans) <= 0 {
+	if len(orphans) == 0 {
 		delete(bp.parentOrphans, blockHash)
-		return nil
+		return
 	}
 
 	bp.logger.Debugf("parent %s has %d orphan blocks", blockHash, len(orphans))
@@ -470,8 +469,6 @@ func (bp *PovBlockProcessor) enqueueOrphanBlocks(blockSrc *PovBlockSource) error
 		bp.logger.Debugf("move orphan block %s to queue", orphanHash)
 		bp.deOrphanBlocks = append(bp.deOrphanBlocks, orphan.blockSrc)
 	}
-
-	return nil
 }
 
 func (bp *PovBlockProcessor) GetOrphanRoot(oHash types.Hash) types.Hash {
@@ -490,7 +487,7 @@ func (bp *PovBlockProcessor) GetOrphanRoot(oHash types.Hash) types.Hash {
 
 func (bp *PovBlockProcessor) requestOrphanBlock(oBlock *PovOrphanBlock) {
 	// no need request orphan in syncing phase
-	if bp.isPovSyncDone() == false {
+	if !bp.isPovSyncDone() {
 		return
 	}
 
@@ -500,11 +497,11 @@ func (bp *PovBlockProcessor) requestOrphanBlock(oBlock *PovOrphanBlock) {
 }
 
 func (bp *PovBlockProcessor) onRequestOrphanBlocksTimer() {
-	if len(bp.reqOrphanBlocks) <= 0 {
+	if len(bp.reqOrphanBlocks) == 0 {
 		return
 	}
 	// no need request orphan in syncing phase
-	if bp.isPovSyncDone() == false {
+	if !bp.isPovSyncDone() {
 		return
 	}
 
@@ -542,11 +539,11 @@ func (bp *PovBlockProcessor) onRequestOrphanBlocksTimer() {
 }
 
 func (bp *PovBlockProcessor) onCheckOrphanBlocksTimer() {
-	if len(bp.orphanBlocks) <= 0 {
+	if len(bp.orphanBlocks) == 0 {
 		return
 	}
 	// no need request orphan in syncing phase
-	if bp.isPovSyncDone() == false {
+	if !bp.isPovSyncDone() {
 		return
 	}
 
@@ -623,16 +620,6 @@ func (bp *PovBlockProcessor) addTxPendingBlock(blockSrc *PovBlockSource, stat *P
 	}
 }
 
-func (bp *PovBlockProcessor) removeTxPendingBlockNoLock(pendingBlock *PovPendingBlock) {
-	blockHash := pendingBlock.blockSrc.block.GetHash()
-	bp.logger.Infof("remove tx pending block %s txs %d", blockHash, len(pendingBlock.gapTxs))
-
-	for txHash := range pendingBlock.gapTxs {
-		delete(bp.txPendingBlocks, txHash)
-	}
-	delete(bp.pendingBlocks, blockHash)
-}
-
 func (bp *PovBlockProcessor) HasPendingBlock(blockHash types.Hash) bool {
 	bp.txPendingMux.Lock()
 	defer bp.txPendingMux.Unlock()
@@ -658,7 +645,7 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 	needReqTxNum := 0
 
 	for txHash, txPendEntry := range bp.txPendingBlocks {
-		if len(txPendEntry.pendingBlocks) <= 0 {
+		if len(txPendEntry.pendingBlocks) == 0 {
 			delete(bp.txPendingBlocks, txHash)
 			continue
 		}
@@ -682,7 +669,7 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 	}
 
 	for _, pendingBlock := range bp.pendingBlocks {
-		if len(pendingBlock.gapTxs) <= 0 {
+		if len(pendingBlock.gapTxs) == 0 {
 			bp.releaseTxPendingBlock(pendingBlock)
 		}
 	}
@@ -719,6 +706,12 @@ func (bp *PovBlockProcessor) GetNextPendingBlockForDebug() *PovPendingBlock {
 		if pb.blockSrc.block.GetPrevious() == latestHash {
 			pbNext = pb
 			break
+		}
+
+		if pbNext == nil {
+			pbNext = pb
+		} else if pbNext.blockSrc.block.GetHeight() < pb.blockSrc.block.GetHeight() {
+			pbNext = pb
 		}
 	}
 	if pbNext == nil {

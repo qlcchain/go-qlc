@@ -48,12 +48,10 @@ func (ss *PovSyncer) syncLoop() {
 			ss.onSyncPeerTimer()
 		}
 	}
-
-	//ss.logger.Infof("exit pov sync loop")
 }
 
 func (ss *PovSyncer) onPeriodicSyncTimer() {
-	if ss.inSyncing.Load() == true {
+	if ss.inSyncing.Load() {
 		return
 	}
 
@@ -100,7 +98,7 @@ func (ss *PovSyncer) onPeriodicSyncTimer() {
 }
 
 func (ss *PovSyncer) onSyncPeerTimer() {
-	if ss.inSyncing.Load() != true {
+	if !ss.inSyncing.Load() {
 		return
 	}
 
@@ -132,7 +130,7 @@ func (ss *PovSyncer) onSyncPeerTimer() {
 }
 
 func (ss *PovSyncer) onRequestSyncTimer() {
-	if ss.inSyncing.Load() != true {
+	if !ss.inSyncing.Load() {
 		return
 	}
 
@@ -150,7 +148,7 @@ func (ss *PovSyncer) onRequestSyncTimer() {
 }
 
 func (ss *PovSyncer) onCheckChainTimer() {
-	if ss.inSyncing.Load() != true {
+	if !ss.inSyncing.Load() {
 		return
 	}
 
@@ -206,7 +204,7 @@ func (ss *PovSyncer) resetSyncPeer(peer *PovSyncPeer) {
 }
 
 func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool) {
-	if ss.inSyncing.Load() != true {
+	if !ss.inSyncing.Load() {
 		return
 	}
 
@@ -250,7 +248,7 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 }
 
 func (ss *PovSyncer) onCheckSyncBlockTimer() {
-	if ss.inSyncing.Load() != true {
+	if !ss.inSyncing.Load() {
 		return
 	}
 
@@ -276,7 +274,7 @@ func (ss *PovSyncer) onCheckSyncBlockTimer() {
 }
 
 func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
-	if ss.inSyncing.Load() != true {
+	if !ss.inSyncing.Load() {
 		return
 	}
 

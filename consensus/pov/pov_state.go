@@ -33,7 +33,8 @@ func (bc *PovBlockChain) NewStateTrie() *trie.Trie {
 	return trie.NewTrie(bc.TrieDb(), nil, bc.trieNodePool)
 }
 
-func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error) {
+func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash,
+	txs []*types.PovTransaction) (*trie.Trie, error) {
 	var currentTrie *trie.Trie
 	prevTrie := bc.GetStateTrie(&prevStateHash)
 	if prevTrie == nil {
@@ -88,7 +89,8 @@ func (bc *PovBlockChain) ApplyTransaction(height uint64, trie *trie.Trie, stateB
 	return nil
 }
 
-func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateBlock, oldAs *types.PovAccountState, newAs *types.PovAccountState) error {
+func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateBlock,
+	oldAs *types.PovAccountState, newAs *types.PovAccountState) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
 	token := block.GetToken()
@@ -138,7 +140,8 @@ func (bc *PovBlockChain) updateAccountState(trie *trie.Trie, block *types.StateB
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock, oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
+func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock,
+	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	if block.GetToken() != common.ChainToken() {
 		return nil
 	}
@@ -212,7 +215,8 @@ func (bc *PovBlockChain) updateRepState(trie *trie.Trie, block *types.StateBlock
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepOnline(height uint64, trie *trie.Trie, block *types.StateBlock, oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
+func (bc *PovBlockChain) updateRepOnline(height uint64, trie *trie.Trie, block *types.StateBlock,
+	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	var newRs *types.PovRepState
 
 	oldRs := bc.GetRepState(trie, block.GetAddress())
@@ -236,7 +240,7 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, trie *trie.Trie, block *
 func (bc *PovBlockChain) GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState {
 	keyBytes := types.PovCreateAccountStateKey(address)
 	valBytes := trie.GetValue(keyBytes)
-	if len(valBytes) <= 0 {
+	if len(valBytes) == 0 {
 		return nil
 	}
 
@@ -247,14 +251,10 @@ func (bc *PovBlockChain) GetAccountState(trie *trie.Trie, address types.Address)
 		return nil
 	}
 
-	//bc.logger.Debugf("get account %s state %s", address, as)
-
 	return as
 }
 
 func (bc *PovBlockChain) SetAccountState(trie *trie.Trie, address types.Address, as *types.PovAccountState) error {
-	//bc.logger.Debugf("set account %s state %s", address, as)
-
 	as.Account = address
 
 	valBytes, err := as.Serialize()
@@ -262,7 +262,7 @@ func (bc *PovBlockChain) SetAccountState(trie *trie.Trie, address types.Address,
 		bc.logger.Errorf("serialize new account state err %s", err)
 		return err
 	}
-	if len(valBytes) <= 0 {
+	if len(valBytes) == 0 {
 		return errors.New("serialize new account state got empty value")
 	}
 
@@ -274,7 +274,7 @@ func (bc *PovBlockChain) SetAccountState(trie *trie.Trie, address types.Address,
 func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState {
 	keyBytes := types.PovCreateRepStateKey(address)
 	valBytes := trie.GetValue(keyBytes)
-	if len(valBytes) <= 0 {
+	if len(valBytes) == 0 {
 		return nil
 	}
 
@@ -285,13 +285,10 @@ func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *ty
 		return nil
 	}
 
-	//bc.logger.Debugf("get rep %s state %s", address, rs)
-
 	return rs
 }
 
 func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs *types.PovRepState) error {
-	//bc.logger.Debugf("set rep %s state %s", address, rs)
 	rs.Account = address
 
 	valBytes, err := rs.Serialize()
@@ -299,7 +296,7 @@ func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs 
 		bc.logger.Errorf("serialize new rep state err %s", err)
 		return err
 	}
-	if len(valBytes) <= 0 {
+	if len(valBytes) == 0 {
 		return errors.New("serialize new rep state got empty value")
 	}
 
@@ -327,7 +324,7 @@ func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types
 
 	key, valBytes, ok := it.Next()
 	for ; ok; key, valBytes, ok = it.Next() {
-		if len(valBytes) <= 0 {
+		if len(valBytes) == 0 {
 			continue
 		}
 

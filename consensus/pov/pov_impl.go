@@ -69,10 +69,22 @@ func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 }
 
 func (pov *PoVEngine) Init() error {
-	pov.bp.Init()
-	pov.chain.Init()
-	pov.cs.Init()
-	pov.txpool.Init()
+	err := pov.bp.Init()
+	if err != nil {
+		return err
+	}
+	err = pov.chain.Init()
+	if err != nil {
+		return err
+	}
+	err = pov.cs.Init()
+	if err != nil {
+		return err
+	}
+	err = pov.txpool.Init()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -80,17 +92,35 @@ func (pov *PoVEngine) Init() error {
 func (pov *PoVEngine) Start() error {
 	pov.logger.Info("start pov engine service")
 
-	pov.txpool.Start()
+	err := pov.txpool.Start()
+	if err != nil {
+		return err
+	}
 
-	pov.chain.Start()
+	err = pov.chain.Start()
+	if err != nil {
+		return err
+	}
 
-	pov.cs.Start()
+	err = pov.cs.Start()
+	if err != nil {
+		return err
+	}
 
-	pov.bp.Start()
+	err = pov.bp.Start()
+	if err != nil {
+		return err
+	}
 
-	pov.syncer.Start()
+	err = pov.syncer.Start()
+	if err != nil {
+		return err
+	}
 
-	pov.setEvent()
+	err = pov.setEvent()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -104,11 +134,11 @@ func (pov *PoVEngine) Stop() error {
 
 	pov.txpool.Stop()
 
-	pov.cs.Stop()
+	_ = pov.cs.Stop()
 
-	pov.chain.Stop()
+	_ = pov.chain.Stop()
 
-	pov.bp.Stop()
+	_ = pov.bp.Stop()
 
 	return nil
 }
@@ -179,7 +209,7 @@ func (pov *PoVEngine) setEvent() error {
 	}
 	pov.ebSubIds[common.EventPovRecvBlock] = id
 
-	id, err = pov.eb.SubscribeSync(common.EventRpcSyncCall, pov.onEventRpcSyncCall)
+	id, err = pov.eb.SubscribeSync(common.EventRpcSyncCall, pov.onEventRPCSyncCall)
 	if err != nil {
 		pov.logger.Error("failed to subscribe EventRpcSyncCall")
 		return err
@@ -189,20 +219,18 @@ func (pov *PoVEngine) setEvent() error {
 	return nil
 }
 
-func (pov *PoVEngine) unsetEvent() error {
+func (pov *PoVEngine) unsetEvent() {
 	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.ebSubIds[common.EventPovRecvBlock])
 	if err != nil {
 		pov.logger.Error("failed to unsubscribe EventPovRecvBlock")
-		return err
+		return
 	}
 
 	err = pov.eb.Unsubscribe(common.EventRpcSyncCall, pov.ebSubIds[common.EventRpcSyncCall])
 	if err != nil {
 		pov.logger.Error("failed to unsubscribe EventRpcSyncCall")
-		return err
+		return
 	}
-
-	return nil
 }
 
 func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockFrom, msgPeer string) error {
@@ -212,14 +240,6 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockF
 
 	if from == types.PovBlockFromRemoteBroadcast {
 		blockHash := block.GetHash()
-
-		/*
-			peer := pov.syncer.FindPeer(msgPeer)
-			if peer == nil || peer.status == peerStatusInit {
-				pov.logger.Infof("discard broadcast block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
-				return nil
-			}
-		*/
 
 		if pov.blkRecvCache.Has(blockHash) {
 			return nil
@@ -239,9 +259,8 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockF
 	return err
 }
 
-func (pov *PoVEngine) onEventRpcSyncCall(name string, in interface{}, out interface{}) {
-	switch name {
-	case "Debug.PovInfo":
+func (pov *PoVEngine) onEventRPCSyncCall(name string, in interface{}, out interface{}) {
+	if name == "Debug.PovInfo" {
 		pov.getDebugInfo(in, out)
 	}
 }
