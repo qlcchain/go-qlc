@@ -321,7 +321,7 @@ func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
 		tx := txs[syncBlk.CheckTxIndex]
 		txHash := tx.GetHash()
 
-		ok, _ := ss.ledger.HasStateBlock(txHash)
+		ok, _ := ss.ledger.HasStateBlockConfirmed(txHash)
 		if ok {
 			continue
 		}

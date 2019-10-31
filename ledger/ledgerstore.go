@@ -37,9 +37,11 @@ type Store interface {
 	// state block CURD
 	AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)
+	GetStateBlockConfirmed(key types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)
 	GetStateBlocks(fn func(*types.StateBlock) error, txns ...db.StoreTxn) error
 	DeleteStateBlock(hash types.Hash, txns ...db.StoreTxn) error
 	HasStateBlock(hash types.Hash, txns ...db.StoreTxn) (bool, error)
+	HasStateBlockConfirmed(key types.Hash, txns ...db.StoreTxn) (bool, error)
 	CountStateBlocks(txns ...db.StoreTxn) (uint64, error)
 	GetRandomStateBlock(txns ...db.StoreTxn) (*types.StateBlock, error)
 	// smart contract block CURD

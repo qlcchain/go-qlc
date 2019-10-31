@@ -650,7 +650,7 @@ func (bp *PovBlockProcessor) onCheckTxPendingBlocksTimer() {
 			continue
 		}
 
-		txBlock, _ := bp.ledger.GetStateBlock(txHash)
+		txBlock, _ := bp.ledger.GetStateBlockConfirmed(txHash)
 		// tx is not exist to pull from some peer
 		if txBlock == nil {
 			if nowTime.After(txPendEntry.lastPullTime.Add(minPullTxIntervalSec * time.Second)) {
