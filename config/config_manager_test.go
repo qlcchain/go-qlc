@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -337,7 +338,7 @@ func TestCfgManager_Discard(t *testing.T) {
 	}
 
 	cm.Discard()
-	if cm.isDirty != false {
+	if cm.isDirty.Load() {
 		t.Fatal("invalid is dirty")
 	}
 }
@@ -434,5 +435,31 @@ func TestCfgManager_Diff(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		t.Log(diff)
+	}
+}
+
+func TestCfgManager_PatchParams(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	params := []string{"rpc.rpcEnabled=true", "rpc.httpCors=localhost,localhost2", "p2p.syncInterval=200", "rpc.rpcEnabled="}
+	cm := NewCfgManager(configDir)
+	cfg, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg2, err := cm.PatchParams(params, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg2.RPC.Enable {
+		t.Fatal("invalid rpc.rpcEnabled")
+	}
+
+	p1 := fmt.Sprintf("%p", cfg)
+	p2 := fmt.Sprintf("%p", cfg2)
+	if p2 != p1 {
+		t.Fatal("invalid cfg")
 	}
 }

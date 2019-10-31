@@ -10,7 +10,6 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -21,6 +20,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/qlcchain/go-qlc/config"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
@@ -110,7 +113,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().StringVar(&testModeP, "testMode", "", "testing mode")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
-			fmt.Println(err)
+			log.Root.Info(err)
 			os.Exit(1)
 		}
 	}
@@ -127,14 +130,33 @@ func addCommand() {
 
 func start() error {
 	if testModeP != "" {
-		fmt.Println("GQLC_TEST_MODE:", testModeP)
+		log.Root.Info("GQLC_TEST_MODE:", testModeP)
 		common.SetTestMode(testModeP)
 	}
 
 	var accounts []*types.Account
 	chainContext := context.NewChainContext(cfgPathP)
-	fmt.Println("Run node id: ", chainContext.Id())
-	cm, err := chainContext.ConfigManager()
+	cm, err := chainContext.ConfigManager(func(cm *config.CfgManager) error {
+		cfg, _ := cm.Config()
+		if len(configParamsP) > 0 {
+			params := strings.Split(configParamsP, ";")
+
+			if len(params) > 0 {
+				_, err := cm.PatchParams(params, cfg)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if noBootstrapP {
+			// remove all p2p bootstrap node
+			cfg.P2P.BootNodes = []string{}
+		}
+
+		// log.Root.Debug(util.ToIndentString(cfg))
+
+		return nil
+	})
 	if err != nil {
 		return err
 	}
@@ -142,6 +164,8 @@ func start() error {
 	if err != nil {
 		return err
 	}
+
+	log.Root.Info("Run node id: ", chainContext.Id())
 
 	if common.CheckTestMode("POV") {
 		cfg.AutoGenerateReceive = true
@@ -174,22 +198,8 @@ func start() error {
 		}
 	}
 
-	if len(configParamsP) > 0 {
-		fmt.Println("need set parameter")
-		params := strings.Split(configParamsP, ";")
-		if len(params) > 0 {
-			cfg, err = cm.UpdateParams(params)
-			if err != nil {
-				return err
-			}
-			err := cm.Commit()
-			if err != nil {
-				return err
-			}
-		}
-	}
 	if len(seedP) > 0 {
-		fmt.Println("run node SEED mode")
+		log.Root.Info("run node SEED mode")
 		sByte, _ := hex.DecodeString(seedP)
 		tmp, err := seedToAccounts(sByte)
 		if err != nil {
@@ -197,7 +207,7 @@ func start() error {
 		}
 		accounts = append(accounts, tmp...)
 	} else if len(privateKeyP) > 0 {
-		fmt.Println("run node PRIVATE KEY mode")
+		log.Root.Info("run node PRIVATE KEY mode")
 		bytes, err := hex.DecodeString(privateKeyP)
 		if err != nil {
 			return err
@@ -205,7 +215,7 @@ func start() error {
 		account := types.NewAccount(bytes)
 		accounts = append(accounts, account)
 	} else if len(accountP) > 0 {
-		fmt.Println("run node WALLET mode")
+		log.Root.Info("run node WALLET mode")
 		address, err := types.HexToAddress(accountP)
 		if err != nil {
 			return err
@@ -223,7 +233,7 @@ func start() error {
 		defer func() {
 			err := w.Close()
 			if err != nil {
-				fmt.Println(err)
+				log.Root.Info(err)
 			}
 		}()
 
@@ -238,7 +248,7 @@ func start() error {
 			return fmt.Errorf("invalid wallet password of %s", accountP)
 		}
 	} else {
-		fmt.Println("run node without account")
+		log.Root.Info("run node without account")
 	}
 
 	if isProfileP {
@@ -247,16 +257,16 @@ func start() error {
 		//CPU profile
 		cpuProfile, err := os.Create(filepath.Join(profDir, "cpu.prof"))
 		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
+			log.Root.Error("could not create CPU profile: ", err)
 		} else {
-			log.Println("create CPU profile: ", cpuProfile.Name())
+			log.Root.Info("create CPU profile: ", cpuProfile.Name())
 		}
 
 		runtime.SetCPUProfileRate(500)
 		if err := pprof.StartCPUProfile(cpuProfile); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
+			log.Root.Error("could not start CPU profile: ", err)
 		} else {
-			log.Println("start CPU profile")
+			log.Root.Info("start CPU profile")
 		}
 		defer func() {
 			_ = cpuProfile.Close()
@@ -266,15 +276,15 @@ func start() error {
 		//MEM profile
 		memProfile, err := os.Create(filepath.Join(profDir, "mem.prof"))
 		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
+			log.Root.Error("could not create memory profile: ", err)
 		} else {
-			log.Println("create MEM profile: ", memProfile.Name())
+			log.Root.Info("create MEM profile: ", memProfile.Name())
 		}
 		runtime.GC()
 		if err := pprof.WriteHeapProfile(memProfile); err != nil {
-			log.Fatal("could not write memory profile: ", err)
+			log.Root.Error("could not write memory profile: ", err)
 		} else {
-			log.Println("start MEM profile")
+			log.Root.Info("start MEM profile")
 		}
 		defer func() {
 			_ = memProfile.Close()
@@ -282,20 +292,12 @@ func start() error {
 
 		go func() {
 			//view result in http://localhost:6060/debug/pprof/
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			log.Root.Info(http.ListenAndServe("localhost:6060", nil))
 		}()
 	}
 
-	if noBootstrapP {
-		//remove all p2p bootstrap node
-		cfg.P2P.BootNodes = []string{}
-	}
-	//configDetails := util.ToIndentString(cfg)
-	//logger.Debugf("%s", configDetails)
-
 	// save accounts to context
 	chainContext.SetAccounts(accounts)
-
 	// start all services by chain context
 	err = chainContext.Init(func() error {
 		return chain.RegisterServices(chainContext)
@@ -319,10 +321,10 @@ func trapSignal() {
 	chainContext := context.NewChainContext(cfgPathP)
 	err := chainContext.Stop()
 	if err != nil {
-		fmt.Println(err)
+		log.Root.Info(err)
 	}
 
-	fmt.Println("qlc node closed successfully")
+	log.Root.Info("qlc node closed successfully")
 }
 
 func seedToAccounts(data []byte) ([]*types.Account, error) {

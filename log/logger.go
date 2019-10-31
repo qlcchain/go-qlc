@@ -10,18 +10,16 @@
 package log
 
 import (
-	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
-	"sync"
-	"time"
-
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 const (
@@ -29,68 +27,63 @@ const (
 )
 
 var (
-	once      sync.Once
-	lumlog    lumberjack.Logger
-	logger, _ = zap.NewDevelopment()
-	Root      *zap.SugaredLogger
+	logger *zap.Logger
+	Root   *zap.SugaredLogger
 )
 
 func init() {
-	production, _ := zap.NewProduction()
-	Root = production.Sugar()
+	//atom := zap.NewAtomicLevelAt(zap.WarnLevel)
+	//encoderCfg := zap.NewDevelopmentEncoderConfig()
+	//
+	//defaultLogger := zap.New(zapcore.NewCore(
+	//	zapcore.NewJSONEncoder(encoderCfg),
+	//	zapcore.Lock(os.Stdout),
+	//	atom,
+	//))
+	defaultLogger, _ := zap.NewDevelopment()
+	logger = defaultLogger
+	Root = defaultLogger.Sugar().Named("chain")
 }
 
-func InitLog(config *config.Config) error {
-	var initErr error
-	once.Do(func() {
-		logFolder := config.LogDir()
-		err := util.CreateDirIfNotExist(logFolder)
-		if err != nil {
-			initErr = err
-		}
-		logfile, _ := filepath.Abs(filepath.Join(logFolder, logfile))
-		lumlog = lumberjack.Logger{
-			Filename:   logfile,
-			MaxSize:    10, // megabytesÒ
-			MaxBackups: 10,
-			MaxAge:     28, // days
-			Compress:   true,
-			LocalTime:  true,
-		}
-		var logCfg zap.Config
-		err = json.Unmarshal([]byte(`{
-		"level": "error",
-		"outputPaths": ["stdout"],
-		"errorOutputPaths": ["stderr"],
-		"encoding": "json",
-		"encoderConfig": {
-			"messageKey": "message",
-			"levelKey": "level",
-			"levelEncoder": "lowercase"
-		}
-	}`), &logCfg)
-		if err != nil {
-			initErr = err
-			fmt.Println(err)
-		}
-		err = logCfg.Level.UnmarshalText([]byte(config.LogLevel))
-		if err != nil {
-			initErr = err
-			fmt.Println(err)
-		}
-		logCfg.EncoderConfig = zap.NewProductionEncoderConfig()
-		logger, _ = logCfg.Build(zap.Hooks(lumberjackZapHook))
+func Setup(cfg *config.Config) (err error) {
+	logFolder := cfg.LogDir()
+	err = util.CreateDirIfNotExist(logFolder)
+	if err != nil {
+		return
+	}
+	logfile, _ := filepath.Abs(filepath.Join(logFolder, logfile))
+	w := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   logfile,
+		MaxSize:    10, // megabytes
+		MaxBackups: 10,
+		MaxAge:     28, // days
+		Compress:   true,
+		LocalTime:  true,
 	})
+	l := zap.ErrorLevel
+	if err := l.Set(cfg.LogLevel); err != nil {
+		fmt.Println(err)
+	}
+	consoleDebugging := zapcore.Lock(os.Stdout)
+	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+	core := zapcore.NewTee(
+		zapcore.NewCore(consoleEncoder, consoleDebugging, l),
+		zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()), w, l),
+	)
 
-	return initErr
+	logger = zap.New(core, zap.AddCaller())
+
+	return nil
+}
+
+func Teardown() error {
+	if logger != nil {
+		return logger.Sync()
+	}
+	return nil
 }
 
 //NewLogger create logger by name
 func NewLogger(name string) *zap.SugaredLogger {
 	return logger.Sugar().Named(name)
-}
-
-func lumberjackZapHook(e zapcore.Entry) error {
-	_, err := lumlog.Write([]byte(fmt.Sprintf("%s %s [%s] %s %s\n", e.Time.Format(time.RFC3339Nano), e.Level.CapitalString(), e.LoggerName, e.Caller.TrimmedPath(), e.Message)))
-	return err
 }

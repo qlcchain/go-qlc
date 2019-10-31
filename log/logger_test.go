@@ -32,14 +32,14 @@ func TestNewLogger(t *testing.T) {
 			"levelEncoder": "lowercase"
 		}
 	}`)
-	var config zap.Config
-	if err := json.Unmarshal(rawJSON, &config); err != nil {
+	var cfg zap.Config
+	if err := json.Unmarshal(rawJSON, &cfg); err != nil {
 		t.Fatal(err)
 	}
-	//config.DisableStacktrace = false
-	config.EncoderConfig = zap.NewProductionEncoderConfig()
-	//t.Log(config)
-	logger, _ := config.Build()
+	//cfg.DisableStacktrace = false
+	cfg.EncoderConfig = zap.NewProductionEncoderConfig()
+	//t.Log(cfg)
+	logger, _ := cfg.Build()
 	logger.Sugar().Named("rrrrr").Warn("xxxxx")
 }
 
@@ -49,7 +49,7 @@ func TestInit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = InitLog(cfg)
+	err = Setup(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,3 +57,22 @@ func TestInit(t *testing.T) {
 	logger := NewLogger("test2")
 	logger.Warn("xxxxxxxxxxxxxxxxxxxxxx")
 }
+
+//
+//func TestDynamicLevel(t *testing.T) {
+//	ctx, cancel := context.WithCancel(context.Background())
+//	var i int
+//	go func(ctx context.Context, i int) {
+//		select {
+//		case <-ctx.Done():
+//			return
+//		default:
+//			i++
+//			Root.Info(i)
+//		}
+//	}(ctx, i)
+//	time.Sleep(3 * time.Second)
+//	Root.Desugar()
+//	time.Sleep(3 * time.Second)
+//	cancel()
+//}

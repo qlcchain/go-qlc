@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/log"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/sync/hashmap"
@@ -36,6 +38,7 @@ const (
 	RollbackService    = "rollbackService"
 	MetricsService     = "metricsService"
 	ChainManageService = "chainManageService"
+	LogService         = "logService"
 )
 
 type serviceManager interface {
@@ -53,6 +56,8 @@ type serviceManager interface {
 	Config() (*config.Config, error)
 	EventBus() event.EventBus
 }
+
+type Option func(cm *config.CfgManager) error
 
 func NewChainContext(cfgFile string) *ChainContext {
 	var dataDir string
@@ -77,41 +82,22 @@ func NewChainContext(cfgFile string) *ChainContext {
 	}
 }
 
-func NewChainContextWithOriginalContext(cc *ChainContext) *ChainContext {
+func NewChainContextFromOriginal(cc *ChainContext) *ChainContext {
 	cfgFile := cc.cfgFile
-	var dataDir string
-	if len(cfgFile) == 0 {
-		dataDir = config.DefaultDataDir()
-		cfgFile = path.Join(dataDir, config.QlcConfigFile)
-	} else {
-		cm := config.NewCfgManagerWithFile(cfgFile)
-		dataDir, _ = cm.ParseDataDir()
+	ctx := NewChainContext(cfgFile)
+	cfg, err := cc.Config()
+	if err != nil {
+		log.Root.Error(err)
 	}
-	id := types.HashData([]byte(dataDir)).String()
-	if v, ok := cache.GetStringKey(id); ok {
-		return v.(*ChainContext)
-	} else {
-		c, err := cc.Config()
-		if err != nil {
-
-		}
-		sr := &ChainContext{
-			services: newServiceContainer(),
-			cfgFile:  cfgFile,
-			chainId:  id,
-			cm:       config.NewCfgManagerWithConfig(cfgFile, c),
-			accounts: cc.accounts,
-		}
-		cache.Set(id, sr)
-		return sr
-	}
+	ctx.accounts = cc.accounts
+	ctx.cm = config.NewCfgManagerWithConfig(cfgFile, cfg)
+	return ctx
 }
 
 type ChainContext struct {
 	common.ServiceLifecycle
 	services *serviceContainer
 	cm       *config.CfgManager
-	cfg      *config.Config
 	cfgFile  string
 	chainId  string
 	locker   sync.RWMutex
@@ -138,13 +124,16 @@ func (cc *ChainContext) Init(fn func() error) error {
 			return err
 		}
 	}
-	cc.services.Iter(func(name string, service common.Service) error {
+
+	cc.services.IterWithPredicate(func(name string, service common.Service) error {
 		err := service.Init()
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s init successfully.\n", name)
+		log.Root.Infof("%s init successfully", name)
 		return nil
+	}, func(name string) bool {
+		return name != LogService
 	})
 
 	return nil
@@ -155,12 +144,13 @@ func (cc *ChainContext) Start() error {
 		return errors.New("pre start fail")
 	}
 	defer cc.PostStart()
+
 	cc.services.Iter(func(name string, service common.Service) error {
 		err := service.Start()
 		if err != nil {
 			return fmt.Errorf("%s, %s", name, err)
 		}
-		fmt.Printf("%s start successfully.\n", name)
+		log.Root.Infof("%s start successfully", name)
 		return nil
 	})
 
@@ -277,7 +267,7 @@ func (cc *ChainContext) Destroy() error {
 	return nil
 }
 
-func (cc *ChainContext) ConfigManager() (*config.CfgManager, error) {
+func (cc *ChainContext) ConfigManager(opts ...Option) (*config.CfgManager, error) {
 	cc.locker.Lock()
 	defer cc.locker.Unlock()
 	if cc.cm == nil {
@@ -287,6 +277,10 @@ func (cc *ChainContext) ConfigManager() (*config.CfgManager, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	for _, opt := range opts {
+		_ = opt(cc.cm)
 	}
 
 	return cc.cm, nil
@@ -386,11 +380,18 @@ func (sc *serviceContainer) HasService(name string) bool {
 }
 
 func (sc *serviceContainer) Iter(fn func(name string, service common.Service) error) {
+	sc.IterWithPredicate(fn, func(name string) bool {
+		return true
+	})
+}
+
+func (sc *serviceContainer) IterWithPredicate(fn func(name string, service common.Service) error,
+	predicate func(name string) bool) {
 	sc.locker.RLock()
 	defer sc.locker.RUnlock()
 	for idx := range sc.names {
 		name := sc.names[idx]
-		if service, ok := sc.services[name]; ok {
+		if service, ok := sc.services[name]; ok && predicate(name) {
 			err := fn(name, service)
 			if err != nil {
 				break
@@ -398,7 +399,6 @@ func (sc *serviceContainer) Iter(fn func(name string, service common.Service) er
 		}
 	}
 }
-
 func (sc *serviceContainer) ReverseIter(fn func(name string, service common.Service) error) {
 	sc.locker.RLock()
 	defer sc.locker.RUnlock()

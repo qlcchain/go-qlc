@@ -9,21 +9,21 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 )
 
-type ChainManage struct {
+type Manager struct {
 	id string
 	common.ServiceLifecycle
 	cfgFile string
 	logger  *zap.SugaredLogger
 }
 
-func NewChainManageService(cfgFile string) *ChainManage {
-	return &ChainManage{
+func NewChainManageService(cfgFile string) *Manager {
+	return &Manager{
 		cfgFile: cfgFile,
 		logger:  log.NewLogger("chainManage_service"),
 	}
 }
 
-func (c *ChainManage) Init() error {
+func (c *Manager) Init() error {
 	if !c.PreInit() {
 		return errors.New("pre init fail")
 	}
@@ -32,7 +32,7 @@ func (c *ChainManage) Init() error {
 	return nil
 }
 
-func (c *ChainManage) Start() error {
+func (c *Manager) Start() error {
 	if !c.PreStart() {
 		return errors.New("pre start fail ")
 	}
@@ -47,7 +47,7 @@ func (c *ChainManage) Start() error {
 	return nil
 }
 
-func (c *ChainManage) Stop() error {
+func (c *Manager) Stop() error {
 	if !c.PreStop() {
 		return errors.New("pre stop fail")
 	}
@@ -60,7 +60,7 @@ func (c *ChainManage) Stop() error {
 	return nil
 }
 
-func (c *ChainManage) Status() int32 {
+func (c *Manager) Status() int32 {
 	return c.State()
 }
 
@@ -96,7 +96,7 @@ func restartChain(cfgFile string, isSave bool) {
 			if err := cc.Destroy(); err != nil {
 				logger.Error(err)
 			}
-			ccNew := context.NewChainContextWithOriginalContext(cc)
+			ccNew := context.NewChainContextFromOriginal(cc)
 			err = ccNew.Init(func() error {
 				return RegisterServices(ccNew)
 			})

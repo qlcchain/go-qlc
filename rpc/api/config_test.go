@@ -22,11 +22,13 @@ func TestConfig(t *testing.T) {
 	token := cfg.Manager.AdminToken
 	c := NewConfigApi(cm.ConfigFile)
 	mark := "abc"
-	if _, err := c.Update([]string{"pov.povEnabled==false"}, token, mark); err != nil {
+	if cfg, err := c.Update([]string{"pov.povEnabled=false"}, token, mark); err != nil {
 		t.Fatal(err)
+	} else {
+		t.Log(cfg.PoV.PovEnabled)
 	}
 	diff, err := c.Difference(token, mark)
-	if err == nil {
+	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(diff)

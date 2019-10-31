@@ -13,7 +13,6 @@ import (
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/log"
 )
 
 //RegisterServices register services to chain context
@@ -24,7 +23,8 @@ func RegisterServices(cc *context.ChainContext) error {
 		return err
 	}
 
-	logService := log.NewLogService(cfgFile)
+	logService := NewLogService(cfgFile)
+	_ = cc.Register(context.LogService, logService)
 	_ = logService.Init()
 	ledgerService := NewLedgerService(cfgFile)
 	_ = cc.Register(context.LedgerService, ledgerService)

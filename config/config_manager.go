@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/viper"
 	"gopkg.in/validator.v2"
@@ -25,8 +27,8 @@ type CfgManager struct {
 	v          *viper.Viper
 	cfg        *Config
 	cfgB       *Config
-	locker     *sync.Mutex
-	isDirty    bool
+	locker     sync.Mutex
+	isDirty    *atomic.Bool
 }
 
 func NewCfgManager(path string) *CfgManager {
@@ -41,19 +43,19 @@ func NewCfgManagerWithName(path string, name string) *CfgManager {
 	file := filepath.Join(path, name)
 	cm := &CfgManager{
 		ConfigFile: file,
-		locker:     &sync.Mutex{},
-		isDirty:    false,
+		locker:     sync.Mutex{},
+		isDirty:    atomic.NewBool(false),
 	}
 	_, _ = cm.Load()
 	return cm
 }
 
-func NewCfgManagerWithConfig(cfgFile string, config *Config) *CfgManager {
+func NewCfgManagerWithConfig(cfgFile string, cfg *Config) *CfgManager {
 	cm := &CfgManager{
 		ConfigFile: cfgFile,
-		locker:     &sync.Mutex{},
-		isDirty:    false,
-		cfg:        config,
+		locker:     sync.Mutex{},
+		isDirty:    atomic.NewBool(false),
+		cfg:        cfg,
 	}
 	return cm
 }
@@ -73,60 +75,63 @@ func (cm *CfgManager) verify(data interface{}) error {
 	return validator.Validate(data)
 }
 
-func (cm *CfgManager) UpdateParams(params []string) (*Config, error) {
+func (cm *CfgManager) PatchParams(params []string, cfg *Config) (*Config, error) {
 	cm.locker.Lock()
 	defer cm.locker.Unlock()
 
-	if cm.cfgB == nil {
-		cfg, err := cm.Config()
-		if err != nil {
-			return nil, err
-		}
-		cm.cfgB, err = cfg.Clone()
-		if err != nil {
-			return nil, err
-		}
-		if cm.v == nil {
-			cm.v = viper.New()
-			s := strings.Split(filepath.Base(cm.ConfigFile), ".")
-			if len(s) != 2 {
-				return nil, errors.New("get config path error")
-			}
-			cm.v.SetConfigName(s[0])
-			cm.v.AddConfigPath(cfg.DataDir)
-			cm.v.AddConfigPath(cm.ConfigDir())
-		}
-
-		b, err := json.Marshal(cm.cfgB)
-		if err != nil {
-			return nil, err
-		}
-		r := bytes.NewReader(b)
-		err = cm.v.ReadConfig(r)
-		if err != nil {
-			return nil, err
-		}
+	v := cm.v
+	if v == nil {
+		v = viper.New()
+	}
+	s := strings.Split(filepath.Base(cm.ConfigFile), ".")
+	if len(s) != 2 {
+		return nil, errors.New("get config path error")
+	}
+	v.SetConfigName(s[0])
+	v.AddConfigPath(cfg.DataDir)
+	v.AddConfigPath(cm.ConfigDir())
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, err
+	}
+	r := bytes.NewReader(b)
+	err = v.ReadConfig(r)
+	if err != nil {
+		return nil, err
 	}
 	for _, param := range params {
 		k := strings.Split(param, "=")
 		if len(k) != 2 || len(k[0]) == 0 || len(k[1]) == 0 {
 			continue
 		}
-		if oldValue := cm.v.Get(k[0]); oldValue != nil {
-			cm.isDirty = true
-			cm.v.Set(k[0], k[1])
+		// TODO: clear slice, maybe there is a issue of mapstructure
+		if oldValue := v.Get(k[0]); oldValue != nil {
+			v.Set(k[0], k[1])
 		}
 	}
-	err := cm.v.Unmarshal(cm.cfgB)
+	err = v.Unmarshal(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	err = cm.verify(cm.cfgB)
+	err = cm.verify(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return cm.cfgB, nil
+
+	return cfg, nil
+}
+
+func (cm *CfgManager) UpdateParams(params []string) (*Config, error) {
+	if cm.cfgB == nil {
+		cfg, err := cm.Config()
+		if err != nil {
+			return nil, err
+		}
+		cm.cfgB, err = cfg.Clone()
+	}
+	cm.isDirty.Store(true)
+	return cm.PatchParams(params, cm.cfgB)
 }
 
 func (cm *CfgManager) Discard() {
@@ -135,7 +140,7 @@ func (cm *CfgManager) Discard() {
 
 	cm.cfgB = nil
 	cm.v = nil
-	cm.isDirty = false
+	cm.isDirty.Store(false)
 }
 
 // Commit changed cfg to runtime
@@ -147,13 +152,13 @@ func (cm *CfgManager) Commit() error {
 }
 
 func (cm *CfgManager) commitCfg() error {
-	if cm.isDirty && cm.cfgB != nil {
+	if cm.isDirty.Load() && cm.cfgB != nil {
 		if cfg, err := cm.cfgB.Clone(); err == nil {
 			cm.cfg = cfg
 			// clear buff vars
 			cm.cfgB = nil
 			cm.v = nil
-			cm.isDirty = false
+			cm.isDirty.Store(false)
 		} else {
 			return err
 		}
@@ -206,7 +211,7 @@ func (cm *CfgManager) ParseDataDir() (string, error) {
 
 	if v, ok := objMap["dataDir"]; ok {
 		var dataDir string
-		if err := json.Unmarshal([]byte(*v), &dataDir); err == nil {
+		if err := json.Unmarshal(*v, &dataDir); err == nil {
 			return dataDir, nil
 		} else {
 			return "", err
@@ -304,7 +309,7 @@ func (cm *CfgManager) Diff() (string, error) {
 	cm.locker.Lock()
 	defer cm.locker.Unlock()
 
-	if cm.isDirty && cm.cfgB != nil {
+	if cm.isDirty.Load() && cm.cfgB != nil {
 		cfg, err := cm.Config()
 		if err != nil {
 			return "", err
