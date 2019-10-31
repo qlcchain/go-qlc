@@ -178,7 +178,7 @@ func (p *Processor) processMsg() {
 		case <-timerRest.C:
 			//
 		case <-timerConfirm.C:
-			if p.syncState == common.SyncDone {
+			if p.syncState == common.SyncDone || p.syncState == common.Syncing {
 				for hash, dealt := range p.confirmedChain {
 					if dealt {
 						continue
@@ -472,11 +472,6 @@ func (p *Processor) processFork(bs *consensus.BlockSource) {
 	}
 
 	dps.logger.Errorf("fork:[new:%s]--[local:%s]--pov not packed", newHash, confirmedHash)
-
-	if bs.Type == consensus.MsgGenerateBlock {
-		_ = dps.lv.Rollback(bs.Block.GetHash())
-		return
-	}
 
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		confirmReqBlocks := make([]*types.StateBlock, 0)
