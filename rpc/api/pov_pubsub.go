@@ -13,6 +13,10 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 )
 
+const (
+	MaxNotifyPovBlocks = 100
+)
+
 func CreatePovSubscription(ctx context.Context,
 	fn func(notifier *rpc.Notifier, subscription *rpc.Subscription)) (*rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
@@ -30,11 +34,12 @@ func CreatePovSubscription(ctx context.Context,
 
 // PovSubscription subscript event from chain, and deliver to every connected websocket
 type PovSubscription struct {
-	mu         *sync.Mutex
+	mu         sync.Mutex
 	eb         event.EventBus
 	handlerIds map[common.TopicType]string // subscript event from chain
-	chans      []chan *types.PovBlock      // deliver to every channel for each connected websocket
-	blocks     chan *types.PovBlock
+	chans      []chan struct{}             // deliver to every channel for each connected websocket
+	newBlockCh chan struct{}
+	blocks     []*types.PovBlock
 	stoped     chan bool
 	logger     *zap.SugaredLogger
 }
@@ -42,10 +47,10 @@ type PovSubscription struct {
 func NewPovSubscription(eb event.EventBus) *PovSubscription {
 	be := &PovSubscription{
 		eb:         eb,
-		mu:         &sync.Mutex{},
 		handlerIds: make(map[common.TopicType]string),
-		chans:      make([]chan *types.PovBlock, 0),
-		blocks:     make(chan *types.PovBlock, 100),
+		chans:      make([]chan struct{}, 0),
+		newBlockCh: make(chan struct{}, 1),
+		blocks:     make([]*types.PovBlock, 0, MaxNotifyPovBlocks),
 		stoped:     make(chan bool),
 		logger:     log.NewLogger("pov_pubsub"),
 	}
@@ -69,12 +74,34 @@ func (r *PovSubscription) unsubscribeEvent() {
 }
 
 func (r *PovSubscription) setBlocks(block *types.PovBlock) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if len(r.chans) > 0 {
-		r.blocks <- block
+		if len(r.blocks) >= cap(r.blocks) {
+			copy(r.blocks, r.blocks[1:len(r.blocks)])
+			r.blocks[cap(r.blocks)-1] = block
+		} else {
+			r.blocks = append(r.blocks, block)
+		}
+
+		select {
+		case r.newBlockCh <- struct{}{}:
+		default:
+		}
 	}
 }
 
-func (r *PovSubscription) addChan(ch chan *types.PovBlock) {
+func (r *PovSubscription) getBlocks() []*types.PovBlock {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	retBlks := make([]*types.PovBlock, len(r.blocks))
+	copy(retBlks, r.blocks)
+	return retBlks
+}
+
+func (r *PovSubscription) addChan(ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
@@ -86,10 +113,12 @@ func (r *PovSubscription) addChan(ch chan *types.PovBlock) {
 		go func() {
 			for {
 				select {
-				case b := <-r.blocks:
+				case <-r.newBlockCh:
 					for _, c := range r.chans { // broadcast event to every websocket channel
-						r.logger.Infof("broadcast (%s) to channel %p (%d, %d)", b.GetHash(), c, len(r.chans), len(r.blocks))
-						c <- b
+						select {
+						case c <- struct{}{}:
+						default:
+						}
 					}
 				case <-r.stoped:
 					r.logger.Info("broadcast subscription stopped")
@@ -100,7 +129,7 @@ func (r *PovSubscription) addChan(ch chan *types.PovBlock) {
 	}
 }
 
-func (r *PovSubscription) removeChan(ch chan *types.PovBlock) {
+func (r *PovSubscription) removeChan(ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
@@ -115,5 +144,8 @@ func (r *PovSubscription) removeChan(ch chan *types.PovBlock) {
 			}
 			break
 		}
+	}
+	if len(r.chans) == 0 {
+		r.blocks = make([]*types.PovBlock, 0, MaxNotifyPovBlocks)
 	}
 }

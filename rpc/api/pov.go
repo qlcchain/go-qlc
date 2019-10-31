@@ -1404,21 +1404,38 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 }
 
 func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
-	ch := make(chan *types.PovBlock)
-	api.pubsub.addChan(ch)
+	notifyCh := make(chan struct{})
+	api.pubsub.addChan(notifyCh)
 	return CreatePovSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
+			lastBlockHashes := make(map[types.Hash]struct{})
+
 			for {
 				select {
-				case block := <-ch:
-					header := block.GetHeader()
-					if err := notifier.Notify(subscription.ID, header); err != nil {
-						api.logger.Errorf("notify error: %s", err)
-						return
+				case <-notifyCh:
+					blocks := api.pubsub.getBlocks()
+					curBlockHashes := make(map[types.Hash]struct{})
+
+					for _, block := range blocks {
+						blkHash := block.GetHash()
+						curBlockHashes[blkHash] = struct{}{}
+
+						if _, ok := lastBlockHashes[blkHash]; ok {
+							continue
+						}
+
+						header := block.GetHeader()
+						err := notifier.Notify(subscription.ID, header)
+						if err != nil {
+							api.logger.Errorf("notify pov header %d/%s error: %s",
+								err, header.GetHeight(), header.GetHash())
+							return
+						}
 					}
+					lastBlockHashes = curBlockHashes
 				case err := <-subscription.Err():
 					api.logger.Infof("subscription exception %s", err)
-					api.pubsub.removeChan(ch)
+					api.pubsub.removeChan(notifyCh)
 					return
 				}
 			}
