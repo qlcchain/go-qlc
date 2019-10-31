@@ -21,8 +21,24 @@ func TestLedger_AddAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMeta(t, l)
-	if _, err := l.cache.GetAccountMetaConfirmed(am.Address); err != nil {
+	a, err := l.cache.GetAccountMetaConfirmed(am.Address)
+	if err != nil {
 		t.Fatal(err)
+	}
+	amount := types.Balance{Int: big.NewInt(50)}
+	a.CoinVote = amount
+	a.Tokens[0].Balance = amount
+	b, err := l.cache.GetAccountMetaConfirmed(am.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.CoinVote.Equal(amount) {
+		t.Fatal()
+	}
+	for _, tm := range b.Tokens {
+		if tm.Type == a.Tokens[0].Type && tm.Balance.Equal(amount) {
+			t.Fatal()
+		}
 	}
 }
 

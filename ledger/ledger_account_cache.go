@@ -1,9 +1,11 @@
 package ledger
 
-import "github.com/qlcchain/go-qlc/common/types"
+import (
+	"github.com/qlcchain/go-qlc/common/types"
+)
 
 func (c *Cache) UpdateAccountMetaUnConfirmed(am *types.AccountMeta) error {
-	return c.unConfirmedAccount.Set(am.Address, *am)
+	return c.unConfirmedAccount.Set(am.Address, am.Clone())
 }
 
 func (c *Cache) GetAccountMetaUnConfirmed(address types.Address) (*types.AccountMeta, error) {
@@ -11,8 +13,8 @@ func (c *Cache) GetAccountMetaUnConfirmed(address types.Address) (*types.Account
 	if err != nil {
 		return nil, err
 	}
-	am := v.(types.AccountMeta)
-	return &am, nil
+	am := v.(*types.AccountMeta)
+	return am.Clone(), nil
 }
 
 func (c *Cache) DeleteAccountMetaUnConfirmed(address types.Address) {
@@ -20,7 +22,7 @@ func (c *Cache) DeleteAccountMetaUnConfirmed(address types.Address) {
 }
 
 func (c *Cache) UpdateAccountMetaConfirmed(am *types.AccountMeta) error {
-	return c.confirmedAccount.Set(am.Address, *am)
+	return c.confirmedAccount.Set(am.Address, am.Clone())
 }
 
 func (c *Cache) GetAccountMetaConfirmed(address types.Address) (*types.AccountMeta, error) {
@@ -28,8 +30,8 @@ func (c *Cache) GetAccountMetaConfirmed(address types.Address) (*types.AccountMe
 	if err != nil {
 		return nil, err
 	}
-	am := v.(types.AccountMeta)
-	return &am, nil
+	am := v.(*types.AccountMeta)
+	return am.Clone(), nil
 }
 
 func (c *Cache) DeleteAccountMetaConfirmed(address types.Address) {

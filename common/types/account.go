@@ -9,6 +9,7 @@ package types
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
@@ -132,6 +133,28 @@ func (am *AccountMeta) Deserialize(text []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (am *AccountMeta) Clone() *AccountMeta {
+	clone := AccountMeta{}
+	clone.Address = am.Address
+	clone.CoinBalance = am.CoinBalance
+	clone.CoinNetwork = am.CoinNetwork
+	clone.CoinVote = am.CoinVote
+	clone.CoinOracle = am.CoinOracle
+	clone.CoinStorage = am.CoinStorage
+	for _, tm := range am.Tokens {
+		t := TokenMeta{}
+		bytes, _ := tm.MarshalMsg(nil)
+		t.UnmarshalMsg(bytes)
+		clone.Tokens = append(clone.Tokens, &t)
+	}
+	return &clone
+}
+
+func (am *AccountMeta) String() string {
+	bytes, _ := json.Marshal(am)
+	return string(bytes)
 }
 
 // NewAccount creates a new account with the given private key.
