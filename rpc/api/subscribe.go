@@ -13,6 +13,10 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 )
 
+const (
+	MaxNotifyBlocks = 100
+)
+
 func createSubscription(ctx context.Context, fn func(notifier *rpc.Notifier, subscription *rpc.Subscription)) (*rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
@@ -27,18 +31,15 @@ func createSubscription(ctx context.Context, fn func(notifier *rpc.Notifier, sub
 	return subscription, nil
 }
 
-type subscription interface {
-	subscribeEvent()
-	unsubscribeEvent()
-}
-
 // BlockSubscription subscript event from chain, and deliver to every connected websocket
 type BlockSubscription struct {
 	mu         *sync.Mutex
 	eb         event.EventBus
 	handlerIds map[common.TopicType]string // subscript event from chain
-	chans      []chan *types.StateBlock    // deliver to every channel for each connected websocket
-	blocks     chan *types.StateBlock
+	chans      []chan struct{}             // deliver to every channel for each connected websocket
+	blocks     []*types.StateBlock
+	addrBlocks map[types.Address]*types.StateBlock
+	newBlockCh chan struct{}
 	stoped     chan bool
 	logger     *zap.SugaredLogger
 }
@@ -48,8 +49,10 @@ func NewBlockSubscription(eb event.EventBus) *BlockSubscription {
 		eb:         eb,
 		mu:         &sync.Mutex{},
 		handlerIds: make(map[common.TopicType]string),
-		chans:      make([]chan *types.StateBlock, 0),
-		blocks:     make(chan *types.StateBlock, 100),
+		chans:      make([]chan struct{}, 0),
+		blocks:     make([]*types.StateBlock, 0, MaxNotifyBlocks),
+		addrBlocks: make(map[types.Address]*types.StateBlock),
+		newBlockCh: make(chan struct{}),
 		stoped:     make(chan bool),
 		logger:     log.NewLogger("api_sub"),
 	}
@@ -81,24 +84,63 @@ func (r *BlockSubscription) unsubscribeEvent() {
 }
 
 func (r *BlockSubscription) setBlocks(block *types.StateBlock) {
-	if len(r.chans) > 0 {
-		r.blocks <- block
-	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.setBlockNoLock(block)
 }
 
 func (r *BlockSubscription) setSyncBlocks(block *types.StateBlock, done bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if !done {
-		if len(r.chans) > 0 {
-			r.blocks <- block
+		r.setBlockNoLock(block)
+	}
+}
+
+func (r *BlockSubscription) setBlockNoLock(block *types.StateBlock) {
+	if len(r.chans) > 0 {
+		if _, ok := r.addrBlocks[block.GetAddress()]; ok {
+			r.addrBlocks[block.GetAddress()] = block
+		}
+
+		if len(r.blocks) >= cap(r.blocks) {
+			copy(r.blocks, r.blocks[1:len(r.blocks)])
+			r.blocks[cap(r.blocks)-1] = block
+		} else {
+			r.blocks = append(r.blocks, block)
+		}
+
+		select {
+		case r.newBlockCh <- struct{}{}:
+		default:
 		}
 	}
 }
 
-func (r *BlockSubscription) addChan(ch chan *types.StateBlock) {
+func (r *BlockSubscription) getBlocks() []*types.StateBlock {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	retBlks := make([]*types.StateBlock, len(r.blocks))
+	copy(retBlks, r.blocks)
+	return retBlks
+}
+
+func (r *BlockSubscription) getAddressBlock(addr types.Address) *types.StateBlock {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.addrBlocks[addr]
+}
+
+func (r *BlockSubscription) addChan(addr types.Address, ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
 	}()
+	r.addrBlocks[addr] = nil
 	r.chans = append(r.chans, ch)
 	r.logger.Infof("add chan %p to blockEvent, chan length %d", ch, len(r.chans))
 	if len(r.chans) == 1 {
@@ -106,10 +148,12 @@ func (r *BlockSubscription) addChan(ch chan *types.StateBlock) {
 		go func() {
 			for {
 				select {
-				case b := <-r.blocks:
+				case <-r.newBlockCh:
 					for _, c := range r.chans { // broadcast event to every websocket channel
-						r.logger.Infof("broadcast (%s) to channel %p (%d, %d)", b.GetHash(), c, len(r.chans), len(r.blocks))
-						c <- b
+						select {
+						case c <- struct{}{}:
+						default:
+						}
 					}
 				case <-r.stoped:
 					r.logger.Info("broadcast subscription stopped")
@@ -120,7 +164,7 @@ func (r *BlockSubscription) addChan(ch chan *types.StateBlock) {
 	}
 }
 
-func (r *BlockSubscription) removeChan(ch chan *types.StateBlock) {
+func (r *BlockSubscription) removeChan(ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
@@ -135,5 +179,9 @@ func (r *BlockSubscription) removeChan(ch chan *types.StateBlock) {
 			}
 			break
 		}
+	}
+	if len(r.chans) == 0 {
+		r.blocks = make([]*types.StateBlock, 0, MaxNotifyBlocks)
+		r.addrBlocks = make(map[types.Address]*types.StateBlock)
 	}
 }
