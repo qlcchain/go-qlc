@@ -1011,11 +1011,12 @@ func (l *LedgerApi) GetAccountOnlineBlock(account types.Address) ([]*types.State
 }
 
 func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
-	ch := make(chan struct{})
-	l.logger.Infof("blocks ctx: %p, ch %p", ctx, ch)
-	l.blockSubscription.addChan(types.ZeroAddress, ch)
 	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
+			ch := make(chan struct{})
+			l.blockSubscription.addChan(types.ZeroAddress, ch)
+			defer l.blockSubscription.removeChan(ch)
+
 			lastBlockHashes := make(map[types.Hash]struct{})
 
 			for {
@@ -1040,7 +1041,6 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 					lastBlockHashes = curBlockHashes
 				case err := <-subscription.Err():
 					l.logger.Infof("subscription exception %s", err)
-					l.blockSubscription.removeChan(ch)
 					return
 				}
 			}
@@ -1055,11 +1055,12 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
-	ch := make(chan struct{})
-	l.logger.Infof("amount ctx: %p, ch %p", ctx, ch)
-	l.blockSubscription.addChan(address, ch)
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
+			ch := make(chan struct{})
+			l.blockSubscription.addChan(address, ch)
+			defer l.blockSubscription.removeChan(ch)
+
 			var lastBlockHash types.Hash
 
 			for {
@@ -1088,7 +1089,6 @@ func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*
 					}
 				case err := <-subscription.Err():
 					l.logger.Infof("subscription exception %s", err)
-					l.blockSubscription.removeChan(ch)
 					return
 				}
 			}
@@ -1097,10 +1097,12 @@ func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*
 }
 
 func (l *LedgerApi) NewPending(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
-	ch := make(chan struct{})
-	l.blockSubscription.addChan(address, ch)
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
+			ch := make(chan struct{})
+			l.blockSubscription.addChan(address, ch)
+			defer l.blockSubscription.removeChan(ch)
+
 			var lastBlockHash types.Hash
 
 			for {
@@ -1148,7 +1150,6 @@ func (l *LedgerApi) NewPending(ctx context.Context, address types.Address) (*rpc
 					}
 				case err := <-subscription.Err():
 					l.logger.Infof("subscription exception %s", err)
-					l.blockSubscription.removeChan(ch)
 					return
 				}
 			}
