@@ -27,6 +27,7 @@ func addPovCmd() {
 		addPovAccountInfoCmdByShell(povCmd)
 		addPovLastNHourInfoCmdByShell(povCmd)
 		addPovTxInfoCmdByShell(povCmd)
+		addPovRepInfoCmdByShell(povCmd)
 	} else {
 		var povCmd = &cobra.Command{
 			Use:   "pov",

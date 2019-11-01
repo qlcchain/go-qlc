@@ -18,6 +18,7 @@ type Store interface {
 	Empty(txns ...db.StoreTxn) (bool, error)
 	BatchUpdate(fn func(txn db.StoreTxn) error) error
 	BatchView(fn func(txn db.StoreTxn) error) error
+	BatchWrite(fn func(batch db.StoreBatch) error) error
 	DBStore() db.Store
 	EventBus() event.EventBus
 
@@ -140,11 +141,18 @@ type Store interface {
 	DeletePovTxLookup(txHash types.Hash, txns ...db.StoreTxn) error
 	GetPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) (*types.PovTxLookup, error)
 	HasPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) bool
+	AddPovTxLookupInBatch(txHash types.Hash, txLookup *types.PovTxLookup, batch db.StoreBatch) error
+	DeletePovTxLookupInBatch(txHash types.Hash, batch db.StoreBatch) error
+	SetPovTxlScanCursor(height uint64, txns ...db.StoreTxn) error
+	GetPovTxlScanCursor(txns ...db.StoreTxn) (uint64, error)
 
 	// POV best chain CURD
 	AddPovBestHash(height uint64, hash types.Hash, txns ...db.StoreTxn) error
 	DeletePovBestHash(height uint64, txns ...db.StoreTxn) error
 	GetPovBestHash(height uint64, txns ...db.StoreTxn) (types.Hash, error)
+	AddPovLatestHeight(height uint64, txns ...db.StoreTxn) error
+	DeletePovLatestHeight(txns ...db.StoreTxn) error
+	GetPovLatestHeight(txns ...db.StoreTxn) (uint64, error)
 
 	AddPovMinerStat(dayStat *types.PovMinerDayStat, txns ...db.StoreTxn) error
 	DeletePovMinerStat(dayIndex uint32, txns ...db.StoreTxn) error

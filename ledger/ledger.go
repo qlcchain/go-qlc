@@ -99,6 +99,8 @@ const (
 	idPrefixUncheckedSync
 	idPrefixSyncCacheBlock
 	idPrefixUncheckedPovHeight
+	idPrefixPovLatestHeight  // prefix => height
+	idPrefixPovTxlScanCursor // prefix => height
 )
 
 var (
@@ -106,7 +108,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 9
+const version = 10
 
 func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
@@ -183,7 +185,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8), new(MigrationV8ToV9)}
+		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8), new(MigrationV8ToV9), new(MigrationV9ToV10)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
@@ -289,6 +291,16 @@ func (l *Ledger) BatchView(fn func(txn db.StoreTxn) error) error {
 	}
 
 	return txn.Commit(nil)
+}
+
+func (l *Ledger) BatchWrite(fn func(batch db.StoreBatch) error) error {
+	batch := l.Store.NewWriteBatch()
+	err := fn(batch)
+	if err != nil {
+		batch.Cancel()
+		return err
+	}
+	return batch.Flush()
 }
 
 //getTxn get txn by `update` mode
