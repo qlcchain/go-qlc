@@ -10,6 +10,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -36,6 +37,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
@@ -55,6 +57,7 @@ var (
 	noBootstrapP  bool
 	configParamsP string
 	testModeP     string
+	genesisSeedP  string
 
 	privateKey   cmdutil.Flag
 	account      cmdutil.Flag
@@ -65,6 +68,7 @@ var (
 	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
 	testMode     cmdutil.Flag
+	genesisSeed  cmdutil.Flag
 	//chainContext   *context.ChainContext
 	maxAccountSize = 100
 	//logger         = qlclog.NewLogger("config_detail")
@@ -111,6 +115,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
 		rootCmd.PersistentFlags().StringVar(&testModeP, "testMode", "", "testing mode")
+		rootCmd.PersistentFlags().StringVar(&genesisSeedP, "genesisSeed", "", "genesis seed")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			log.Root.Info(err)
@@ -151,6 +156,10 @@ func start() error {
 		if noBootstrapP {
 			// remove all p2p bootstrap node
 			cfg.P2P.BootNodes = []string{}
+		}
+		if genesisSeedP != "" {
+			cfg.Genesis.GenesisBlocks = []*config.GenesisInfo{}
+			generateGenesisBlock(genesisSeedP, cfg)
 		}
 
 		// log.Root.Debug(util.ToIndentString(cfg))
@@ -303,6 +312,7 @@ func start() error {
 		return chain.RegisterServices(chainContext)
 	})
 	if err != nil {
+		log.Root.Error(err)
 		return err
 	}
 	err = chainContext.Start()
@@ -401,6 +411,13 @@ func run() {
 		Value: "",
 	}
 
+	genesisSeed = cmdutil.Flag{
+		Name:  "genesisSeed",
+		Must:  false,
+		Usage: "genesis seed",
+		Value: "",
+	}
+
 	s := &ishell.Cmd{
 		Name: "run",
 		Help: "start qlc server",
@@ -422,6 +439,7 @@ func run() {
 			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
 			configParamsP = cmdutil.StringVar(c.Args, configParams)
 			testModeP = cmdutil.StringVar(c.Args, testMode)
+			genesisSeedP = cmdutil.StringVar(c.Args, genesisSeed)
 
 			err := start()
 			if err != nil {
@@ -430,4 +448,81 @@ func run() {
 		},
 	}
 	shell.AddCmd(s)
+}
+
+func generateGenesisBlock(seedString string, cfg *config.Config) {
+	genesisInfos := &config.GenesisInfo{
+		ChainToken: true,
+		GasToken:   true,
+	}
+	genesisTime := time.Unix(1573208071, 0)
+	bytes, _ := hex.DecodeString(seedString)
+	seed, _ := types.BytesToSeed(bytes)
+	account, _ := seed.Account(0)
+	log.Root.Infof("seed %s", seed.String())
+	log.Root.Infof("account: %s", account.String())
+	tokenName := "QTest"
+	tokenSymbol := "QTest"
+	decimals := uint8(8)
+	address := account.Address()
+	tokenHash := cabi.NewTokenHash(address, types.ZeroHash, tokenName)
+	var totalSupply = big.NewInt(6e16)
+	mintageData, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenHash, tokenName, tokenSymbol, totalSupply, decimals, address, "")
+	if err != nil {
+		log.Root.Error(err)
+	}
+	send := types.StateBlock{
+		Type:           types.ContractSend,
+		Address:        types.MintageAddress,
+		Link:           address.ToHash(),
+		Balance:        types.ZeroBalance,
+		Vote:           types.ZeroBalance,
+		Network:        types.ZeroBalance,
+		Storage:        types.ZeroBalance,
+		Oracle:         types.ZeroBalance,
+		Token:          tokenHash,
+		Data:           mintageData,
+		Representative: address,
+		Timestamp:      genesisTime.Add(time.Second * 1).Unix(),
+	}
+	var w types.Work
+	worker, _ := types.NewWorker(w, send.Root())
+	send.Work = worker.NewWork()
+	h1 := send.GetHash()
+	send.Signature = account.Sign(h1)
+	genesisInfos.Mintage = send.String()
+	//log.Root.Info(util.ToIndentString(send))
+	//log.Root.Info(h1.String())
+
+	genesisData, err := cabi.MintageABI.PackVariable(cabi.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
+		decimals, address, big.NewInt(0), int64(0), address, "")
+
+	if err != nil {
+		log.Root.Error(err)
+	}
+
+	receive := types.StateBlock{
+		Type:           types.ContractReward,
+		Previous:       types.ZeroHash,
+		Address:        address,
+		Link:           h1,
+		Balance:        types.Balance{Int: totalSupply},
+		Vote:           types.ZeroBalance,
+		Network:        types.ZeroBalance,
+		Storage:        types.ZeroBalance,
+		Oracle:         types.ZeroBalance,
+		Token:          tokenHash,
+		Data:           genesisData,
+		Representative: address,
+		Timestamp:      genesisTime.Add(time.Second * 10).Unix(),
+	}
+	//var w types.Work
+	worker2, _ := types.NewWorker(w, receive.Root())
+	receive.Work = worker2.NewWork()
+	h2 := receive.GetHash()
+	receive.Signature = account.Sign(h2)
+	//log.Root.Info(util.ToIndentString(receive))
+	//log.Root.Info(h2.String())
+	genesisInfos.Genesis = receive.String()
+	cfg.Genesis.GenesisBlocks = append(cfg.Genesis.GenesisBlocks, genesisInfos)
 }

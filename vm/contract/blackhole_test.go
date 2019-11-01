@@ -169,8 +169,25 @@ var (
 func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	dir := filepath.Join(cfg.QlcTestDataDir(), "destroy", uuid.New().String())
 
-	_ = os.RemoveAll(filepath.Join(cfg.QlcTestDataDir(), "destroy"))
-	l := ledger.NewLedger(dir)
+	_ = os.RemoveAll(dir)
+	cm := cfg.NewCfgManager(dir)
+	c, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mintageBlock, genesisBlock types.StateBlock
+	for _, v := range c.Genesis.GenesisBlocks {
+		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
+		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: mintageBlock,
+			GenesisBlock:        genesisBlock,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
+	l := ledger.NewLedger(cm.ConfigFile)
 	var blocks []*types.StateBlock
 	if err := json.Unmarshal([]byte(blks_data), &blocks); err != nil {
 		t.Fatal(err)
