@@ -1404,10 +1404,12 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 }
 
 func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
-	notifyCh := make(chan struct{})
-	api.pubsub.addChan(notifyCh)
 	return CreatePovSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
+			notifyCh := make(chan struct{})
+			api.pubsub.addChan(notifyCh)
+			defer api.pubsub.removeChan(notifyCh)
+
 			lastBlockHashes := make(map[types.Hash]struct{})
 
 			for {
@@ -1435,7 +1437,6 @@ func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 					lastBlockHashes = curBlockHashes
 				case err := <-subscription.Err():
 					api.logger.Infof("subscription exception %s", err)
-					api.pubsub.removeChan(notifyCh)
 					return
 				}
 			}
