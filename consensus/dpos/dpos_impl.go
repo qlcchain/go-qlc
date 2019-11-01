@@ -248,6 +248,10 @@ func (dps *DPoS) Start() {
 	go dps.processBlocks()
 	dps.processorStart()
 
+	if err := dps.blockSyncDone(); err != nil {
+		dps.logger.Error("block sync down err", err)
+	}
+
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDequeueGap := time.NewTicker(10 * time.Second)
 	timerUpdateSyncTime := time.NewTicker(5 * time.Second)
@@ -349,8 +353,7 @@ func (dps *DPoS) Start() {
 					dps.logger.Warnf("sync finished because of process timeout last[%s] now[%s]",
 						dps.lastProcessSyncTime, time.Now())
 					dps.blockSyncState = common.SyncFinish
-					_ = dps.blockSyncDone()
-					dps.eb.Publish(common.EventConsensusSyncFinished)
+					dps.syncFinish()
 				}
 			}
 		}
@@ -1160,6 +1163,21 @@ func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
 	return false, nil
 }
 
+func (dps *DPoS) syncFinish() {
+	if err := dps.blockSyncDone(); err != nil {
+		dps.logger.Error("block sync down err", err)
+	}
+
+	// notify processors
+	dps.syncStateNotifyWait.Add(dps.processorNum)
+	for _, p := range dps.processors {
+		p.syncStateChange <- common.SyncFinish
+	}
+	dps.syncStateNotifyWait.Wait()
+
+	dps.eb.Publish(common.EventConsensusSyncFinished)
+}
+
 func (dps *DPoS) checkSyncFinished() {
 	allFinished := true
 	dps.frontiersStatus.Range(func(k, v interface{}) bool {
@@ -1202,19 +1220,7 @@ func (dps *DPoS) checkSyncFinished() {
 			}
 		}
 
-		if err := dps.blockSyncDone(); err != nil {
-			dps.logger.Error("block sync down err", err)
-		}
-
-		// notify processors
-		dps.syncStateNotifyWait.Add(dps.processorNum)
-		for _, p := range dps.processors {
-			p.syncStateChange <- common.SyncFinish
-		}
-		dps.syncStateNotifyWait.Wait()
-
-		dps.CleanSyncCache()
-		dps.eb.Publish(common.EventConsensusSyncFinished)
+		dps.syncFinish()
 		dps.logger.Warn("sync finished")
 	}
 }
