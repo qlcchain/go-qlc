@@ -73,6 +73,13 @@ func (l *Ledger) GetAccountMeta(key types.Address, txns ...db.StoreTxn) (*types.
 			temp := am.Token(v.Type)
 			if temp != nil {
 				if temp.BlockCount < v.BlockCount {
+					if temp.Type == common.ChainToken() {
+						am.CoinBalance = meta.GetBalance()
+						am.CoinOracle = meta.GetOracle()
+						am.CoinNetwork = meta.GetNetwork()
+						am.CoinVote = meta.GetVote()
+						am.CoinStorage = meta.GetStorage()
+					}
 					temp.BlockCount = v.BlockCount
 					temp.Type = v.Type
 					temp.BelongTo = v.BelongTo
