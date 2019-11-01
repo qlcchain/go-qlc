@@ -8,7 +8,11 @@
 package chain
 
 import (
+	"encoding/json"
 	"errors"
+
+	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/config"
 
 	"go.uber.org/zap"
 
@@ -24,12 +28,16 @@ type LedgerService struct {
 	common.ServiceLifecycle
 	Ledger *ledger.Ledger
 	logger *zap.SugaredLogger
+	cfg    *config.Config
 }
 
 func NewLedgerService(cfgFile string) *LedgerService {
+	cc := context.NewChainContext(cfgFile)
+	cfg, _ := cc.Config()
 	return &LedgerService{
 		Ledger: ledger.NewLedger(cfgFile),
 		logger: log.NewLogger("ledger_service"),
+		cfg:    cfg,
 	}
 }
 
@@ -39,69 +47,43 @@ func (ls *LedgerService) Init() error {
 	}
 	defer ls.PostInit()
 	l := ls.Ledger
-
-	genesis := common.GenesisBlock()
 	ctx := vmstore.NewVMContext(l)
-	err := ctx.SetStorage(types.MintageAddress[:], genesis.Token[:], genesis.Data)
-	if err != nil {
-		ls.logger.Error(err)
-	}
-	verifier := process.NewLedgerVerifier(l)
-	mintageHash := common.GenesisMintageHash()
-	if b, err := l.HasStateBlock(mintageHash); !b && err == nil {
-		mintage := common.GenesisMintageBlock()
-		if err := l.AddStateBlock(&mintage); err != nil {
+	var mintageBlock, genesisBlock types.StateBlock
+	for _, v := range ls.cfg.Genesis.GenesisBlocks {
+		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
+		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
+		err := ctx.SetStorage(types.MintageAddress[:], genesisBlock.Token[:], genesisBlock.Data)
+		if err != nil {
 			ls.logger.Error(err)
 		}
-	} else {
-		if err != nil {
-			return err
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: mintageBlock,
+			GenesisBlock:        genesisBlock,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+		verifier := process.NewLedgerVerifier(l)
+		if b, err := l.HasStateBlock(mintageBlock.GetHash()); !b && err == nil {
+			if err := l.AddStateBlock(&mintageBlock); err != nil {
+				ls.logger.Error(err)
+			}
+		} else {
+			if err != nil {
+				return err
+			}
+		}
+
+		if b, err := l.HasStateBlock(genesisBlock.GetHash()); !b && err == nil {
+			if err := verifier.BlockProcess(&genesisBlock); err != nil {
+				ls.logger.Error(err)
+			}
+		} else {
+			if err != nil {
+				return err
+			}
 		}
 	}
-
-	genesisHash := common.GenesisBlockHash()
-	if b, err := l.HasStateBlock(genesisHash); !b && err == nil {
-		if err := verifier.BlockProcess(&genesis); err != nil {
-			ls.logger.Error(err)
-		}
-	} else {
-		if err != nil {
-			return err
-		}
-	}
-
-	//gas block storage
-	gas := common.GasBlock()
-	err = ctx.SetStorage(types.MintageAddress[:], gas.Token[:], gas.Data)
-	if err != nil {
-		ls.logger.Error(err)
-	}
-
-	_ = ctx.SaveStorage()
-
-	gasMintageHash := common.GasMintageHash()
-	if b, err := l.HasStateBlock(gasMintageHash); !b && err == nil {
-		gasMintage := common.GasMintageBlock()
-		if err := l.AddStateBlock(&gasMintage); err != nil {
-			ls.logger.Error(err)
-		}
-	} else {
-		if err != nil {
-			return err
-		}
-	}
-
-	gasHash := common.GasBlockHash()
-	if b, err := l.HasStateBlock(gasHash); !b && err == nil {
-		if err := verifier.BlockProcess(&gas); err != nil {
-			ls.logger.Error(err)
-		}
-	} else {
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
