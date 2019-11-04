@@ -20,7 +20,7 @@ func addPovTxInfoCmdByShell(parentCmd *ishell.Cmd) {
 	}
 
 	cmd := &ishell.Cmd{
-		Name: "getTx",
+		Name: "getTxInfo",
 		Help: "get transaction info",
 		Func: func(c *ishell.Context) {
 			args := []util.Flag{txHashFlag}

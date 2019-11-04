@@ -5,72 +5,73 @@ import (
 	"errors"
 	"fmt"
 
-	rpc "github.com/qlcchain/jsonrpc2"
+	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/abiosoft/ishell"
-	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
 )
 
-func minerRecvPend() {
+func addMinerRecvPendCmdByShell(parentCmd *ishell.Cmd) {
+	account := util.Flag{
+		Name:  "account",
+		Must:  true,
+		Usage: "account private hex string",
+	}
+	sendHash := util.Flag{
+		Name:  "hash",
+		Must:  true,
+		Usage: "reward send block hash string",
+	}
+
+	cmd := &ishell.Cmd{
+		Name: "recvPending",
+		Help: "miner recv pending reward (gas token)",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{account, sendHash}
+			if util.HelpText(c, args) {
+				return
+			}
+			err := util.CheckArgs(c, args)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+
+			accountP := util.StringVar(c.Args, account)
+			sendHashP := util.StringVar(c.Args, sendHash)
+
+			if err := minerRecvPendAction(accountP, sendHashP); err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(cmd)
+}
+
+func addMinerRecvPendCmdByCobra(parentCmd *cobra.Command) {
 	var accountP string
 	var sendHashP string
 
-	if interactive {
-		account := util.Flag{
-			Name:  "account",
-			Must:  true,
-			Usage: "account private hex string",
-		}
-		sendHash := util.Flag{
-			Name:  "hash",
-			Must:  true,
-			Usage: "reward send block hash string",
-		}
-
-		cmd := &ishell.Cmd{
-			Name: "minerrecvpend",
-			Help: "miner recv pending reward (gas token)",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{account, sendHash}
-				if util.HelpText(c, args) {
-					return
-				}
-				err := util.CheckArgs(c, args)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-
-				accountP = util.StringVar(c.Args, account)
-				sendHashP = util.StringVar(c.Args, sendHash)
-
-				if err := minerRecvPendAction(accountP, sendHashP); err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(cmd)
-	} else {
-		var cmd = &cobra.Command{
-			Use:   "minerrecvpend",
-			Short: "miner recv pending reward (gas token)",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := minerRecvPendAction(accountP, sendHashP)
-				if err != nil {
-					cmd.Println(err)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&accountP, "account", "", "account private hex string")
-		cmd.Flags().StringVar(&sendHashP, "hash", "", "reward send block hash string")
-		rootCmd.AddCommand(cmd)
+	var cmd = &cobra.Command{
+		Use:   "recvPending",
+		Short: "miner recv pending reward (gas token)",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := minerRecvPendAction(accountP, sendHashP)
+			if err != nil {
+				cmd.Println(err)
+			}
+		},
 	}
+	cmd.Flags().StringVar(&accountP, "account", "", "account private hex string")
+	cmd.Flags().StringVar(&sendHashP, "hash", "", "reward send block hash string")
+	parentCmd.AddCommand(cmd)
 }
 
 func minerRecvPendAction(accountP, sendHashP string) error {
