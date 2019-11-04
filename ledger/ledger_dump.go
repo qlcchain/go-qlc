@@ -637,29 +637,29 @@ func batchSql(table string, cols []string, rows [][]interface{}, db *sqlx.DB) er
 }
 
 func convertField(field interface{}) interface{} {
-	switch field.(type) {
-	case types.BlockType:
-		return field.(types.BlockType).String()
-	case types.Balance:
-		return field.(types.Balance).String()
-	case types.Hash:
-		return field.(types.Hash).String()
+	switch v := field.(type) {
 	case []byte:
-		return hex.EncodeToString(field.([]byte))
+		return hex.EncodeToString(v)
+	case types.BlockType:
+		return v.String()
+	case types.Balance:
+		return v.String()
+	case types.Hash:
+		return v.String()
 	case types.Work:
-		return field.(types.Work).String()
+		return v.String()
 	case types.Signature:
-		return field.(types.Signature).String()
+		return v.String()
 	case types.Address:
-		return field.(types.Address).String()
+		return v.String()
 	case uint64:
-		return field.(uint64)
+		return v
 	case int64:
-		return field.(int64)
+		return v
 	case int:
-		return field.(int)
+		return v
 	case string:
-		return field.(string)
+		return v
 	default:
 		return ""
 	}

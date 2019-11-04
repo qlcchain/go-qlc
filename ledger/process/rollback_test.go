@@ -111,7 +111,7 @@ func TestLedgerVerifier_BlockCacheCheck(t *testing.T) {
 	if err := lv.l.AddAccountMetaCache(ac); err != nil {
 		t.Fatal(err)
 	}
-	if err := lv.RollbackBlock(block.GetHash()); err != nil {
+	if err := lv.Rollback(block.GetHash()); err != nil {
 		t.Fatal(err)
 	}
 
