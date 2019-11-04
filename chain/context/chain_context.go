@@ -35,7 +35,6 @@ const (
 	PovService         = "povService"
 	MinerService       = "minerService"
 	AutoReceiveService = "autoReceiveService"
-	RollbackService    = "rollbackService"
 	MetricsService     = "metricsService"
 	ChainManageService = "chainManageService"
 	LogService         = "logService"
