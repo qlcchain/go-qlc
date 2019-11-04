@@ -383,7 +383,7 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 		if dbErr != nil {
 			return dbErr
 		}
-		dbErr = bc.getLedger().AddPovLatestHeight(genesis.GetHeight(), txn)
+		dbErr = bc.getLedger().SetPovLatestHeight(genesis.GetHeight(), txn)
 		if dbErr != nil {
 			return dbErr
 		}
@@ -808,7 +808,7 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 		return err
 	}
 
-	err = bc.getLedger().AddPovLatestHeight(block.GetHeight(), txn)
+	err = bc.getLedger().SetPovLatestHeight(block.GetHeight(), txn)
 	if err != nil {
 		bc.logger.Errorf("add pov latest height %d failed, err %s", block.GetHeight(), err)
 		return err
@@ -842,7 +842,7 @@ func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBl
 		return ErrPovInvalidPrevious
 	}
 
-	err = bc.getLedger().AddPovLatestHeight(prevBlock.GetHeight(), txn)
+	err = bc.getLedger().SetPovLatestHeight(prevBlock.GetHeight(), txn)
 	if err != nil {
 		bc.logger.Errorf("add pov latest height %d failed, err %s", prevBlock.GetHeight(), err)
 		return err

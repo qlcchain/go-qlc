@@ -709,7 +709,7 @@ func (l *Ledger) GetAllPovBestHashes(fn func(height uint64, hash types.Hash) err
 	return nil
 }
 
-func (l *Ledger) AddPovLatestHeight(height uint64, txns ...db.StoreTxn) error {
+func (l *Ledger) SetPovLatestHeight(height uint64, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
@@ -722,22 +722,6 @@ func (l *Ledger) AddPovLatestHeight(height uint64, txns ...db.StoreTxn) error {
 	binary.BigEndian.PutUint64(valBytes, height)
 
 	if err := txn.Set(key, valBytes); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (l *Ledger) DeletePovLatestHeight(txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	key, err := getKeyOfParts(idPrefixPovLatestHeight)
-	if err != nil {
-		return err
-	}
-
-	if err := txn.Delete(key); err != nil {
 		return err
 	}
 

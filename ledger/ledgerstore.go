@@ -150,8 +150,7 @@ type Store interface {
 	AddPovBestHash(height uint64, hash types.Hash, txns ...db.StoreTxn) error
 	DeletePovBestHash(height uint64, txns ...db.StoreTxn) error
 	GetPovBestHash(height uint64, txns ...db.StoreTxn) (types.Hash, error)
-	AddPovLatestHeight(height uint64, txns ...db.StoreTxn) error
-	DeletePovLatestHeight(txns ...db.StoreTxn) error
+	SetPovLatestHeight(height uint64, txns ...db.StoreTxn) error
 	GetPovLatestHeight(txns ...db.StoreTxn) (uint64, error)
 
 	AddPovMinerStat(dayStat *types.PovMinerDayStat, txns ...db.StoreTxn) error

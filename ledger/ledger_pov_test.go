@@ -127,7 +127,7 @@ func TestLedger_LatestPovBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = l.AddPovLatestHeight(block.GetHeight())
+	err = l.SetPovLatestHeight(block.GetHeight())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestLedger_PovTxLookup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = l.AddPovLatestHeight(block.GetHeight())
+	err = l.SetPovLatestHeight(block.GetHeight())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +328,7 @@ func TestLedger_PovTxLookupBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = l.AddPovLatestHeight(block.GetHeight())
+	err = l.SetPovLatestHeight(block.GetHeight())
 	if err != nil {
 		t.Fatal(err)
 	}
