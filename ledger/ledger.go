@@ -330,28 +330,25 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 	var buffer = []byte{t}
 	for _, part := range partList {
 		var src []byte
-		switch part.(type) {
+		switch v := part.(type) {
 		case int:
-			src = util.BE_Uint64ToBytes(uint64(part.(int)))
+			src = util.BE_Uint64ToBytes(uint64(v))
 		case int32:
-			src = util.BE_Uint64ToBytes(uint64(part.(int32)))
+			src = util.BE_Uint64ToBytes(uint64(v))
 		case uint32:
-			src = util.BE_Uint64ToBytes(uint64(part.(uint32)))
+			src = util.BE_Uint64ToBytes(uint64(v))
 		case int64:
-			src = util.BE_Uint64ToBytes(uint64(part.(int64)))
+			src = util.BE_Uint64ToBytes(uint64(v))
 		case uint64:
-			src = util.BE_Uint64ToBytes(part.(uint64))
+			src = util.BE_Uint64ToBytes(v)
 		case []byte:
-			src = part.([]byte)
+			src = v
 		case types.Hash:
-			hash := part.(types.Hash)
-			src = hash[:]
+			src = v[:]
 		case *types.Hash:
-			hash := part.(*types.Hash)
-			src = hash[:]
+			src = v[:]
 		case types.Address:
-			hash := part.(types.Address)
-			src = hash[:]
+			src = v[:]
 		case *types.PendingKey:
 			pk := part.(*types.PendingKey)
 			var err error
