@@ -68,10 +68,22 @@ func Setup(cfg *config.Config) (err error) {
 	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
 	core := zapcore.NewTee(
 		zapcore.NewCore(consoleEncoder, consoleDebugging, l),
-		zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()), w, l),
+		zapcore.NewCore(zapcore.NewJSONEncoder(zapcore.EncoderConfig{
+			TimeKey:        "ts",
+			LevelKey:       "level",
+			NameKey:        "logger",
+			CallerKey:      "caller",
+			MessageKey:     "msg",
+			StacktraceKey:  "stacktrace",
+			LineEnding:     zapcore.DefaultLineEnding,
+			EncodeLevel:    zapcore.LowercaseLevelEncoder,
+			EncodeTime:     zapcore.ISO8601TimeEncoder,
+			EncodeDuration: zapcore.SecondsDurationEncoder,
+			EncodeCaller:   zapcore.ShortCallerEncoder,
+		}), w, l),
 	)
 
-	logger = zap.New(core, zap.AddCaller())
+	logger = zap.New(core, zap.AddCaller(), zap.AddStacktrace(zap.ErrorLevel))
 
 	return nil
 }
