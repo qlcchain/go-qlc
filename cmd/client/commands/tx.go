@@ -44,5 +44,9 @@ func addTxCmd() {
 }
 
 func txFormatBalance(amount types.Balance) string {
-	return fmt.Sprintf("%.2f", float64(amount.Uint64())/1e8)
+	n := float64(amount.Uint64())
+	if n >= 1e8 {
+		return fmt.Sprintf("%.2f", n/1e8)
+	}
+	return fmt.Sprintf("%.8f", n/1e8)
 }

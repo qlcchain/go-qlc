@@ -127,6 +127,11 @@ func TestLedger_LatestPovBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err = l.SetPovLatestHeight(block.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	latestBlk, err := l.GetLatestPovBlock()
 	if err != nil {
 		t.Fatal(err)
@@ -194,10 +199,19 @@ func TestLedger_PovTxLookup(t *testing.T) {
 	defer teardownTestCase(t)
 
 	block, _ := generatePovBlock(nil)
+	err := l.AddPovBestHash(block.GetHeight(), block.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(block.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	txH0, _ := types.NewHash("0000000000000000000000000000000000000000000000000000000000000001")
 	txL0 := &types.PovTxLookup{BlockHash: block.GetHash(), BlockHeight: block.GetHeight(), TxIndex: 0}
-	err := l.AddPovTxLookup(txH0, txL0)
+	err = l.AddPovTxLookup(txH0, txL0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,6 +312,103 @@ func TestLedger_PovMinerStats(t *testing.T) {
 
 	err = l.DeletePovMinerStat(2)
 	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_PovTxLookupBatch(t *testing.T) {
+	teardownTestCase, l := setupPovTestCase(t)
+	defer teardownTestCase(t)
+
+	batchAdd := l.Store.NewWriteBatch()
+
+	block, _ := generatePovBlock(nil)
+	err := l.AddPovBestHash(block.GetHeight(), block.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(block.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txH0, _ := types.NewHash("0000000000000000000000000000000000000000000000000000000000000001")
+	txL0 := &types.PovTxLookup{BlockHash: block.GetHash(), BlockHeight: block.GetHeight(), TxIndex: 0}
+	err = l.AddPovTxLookupInBatch(txH0, txL0, batchAdd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txH1, _ := types.NewHash("0000000000000000000000000000000000000000000000000000000000000002")
+	txL1 := &types.PovTxLookup{BlockHash: block.GetHash(), BlockHeight: block.GetHeight(), TxIndex: 1}
+	err = l.AddPovTxLookupInBatch(txH1, txL1, batchAdd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txH2, _ := types.NewHash("0000000000000000000000000000000000000000000000000000000000000003")
+	txL2 := &types.PovTxLookup{BlockHash: block.GetHash(), BlockHeight: block.GetHeight(), TxIndex: 2}
+	err = l.AddPovTxLookupInBatch(txH2, txL2, batchAdd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = batchAdd.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	retTxL0, err := l.GetPovTxLookup(txH0)
+	if retTxL0 == nil {
+		t.Fatalf("tx %s not exist", txH0)
+	}
+
+	retTxL1, err := l.GetPovTxLookup(txH0)
+	if retTxL1 == nil {
+		t.Fatalf("tx %s not exist", txH1)
+	}
+
+	retTxL2, err := l.GetPovTxLookup(txH0)
+	if retTxL2 == nil {
+		t.Fatalf("tx %s not exist", txH2)
+	}
+
+	batchDel := l.Store.NewWriteBatch()
+	err = l.DeletePovTxLookupInBatch(txH0, batchDel)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.DeletePovTxLookupInBatch(txH1, batchDel)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.DeletePovTxLookupInBatch(txH2, batchDel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = batchDel.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_PovTxlScanCursor(t *testing.T) {
+	teardownTestCase, l := setupPovTestCase(t)
+	defer teardownTestCase(t)
+
+	err := l.SetPovTxlScanCursor(34127856)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	height, err := l.GetPovTxlScanCursor()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if height != 34127856 {
 		t.Fatal(err)
 	}
 }

@@ -71,6 +71,10 @@ func TestPovAPI_GetHeaders(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		err = md.l.SetPovLatestHeight(blk1.GetHeight())
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		prevBlk = blk1
 	}

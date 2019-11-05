@@ -15,6 +15,8 @@ type Store interface {
 	ViewInTx(fn func(txn StoreTxn) error) error
 	UpdateInTx(fn func(txn StoreTxn) error) error
 	NewTransaction(update bool) *BadgerStoreTxn
+	NewWriteBatch() *BadgerStoreBatch
+	UpdateInBatch(fn func(batch StoreBatch) error) error
 	Size() (int64, int64)
 }
 
@@ -32,4 +34,12 @@ type StoreTxn interface {
 	Upgrade(migrations []Migration) error
 	Count(prefix []byte) (uint64, error)
 	Stream(prefix []byte, filter func(item *badger.Item) bool, callback func(list *pb.KVList) error) error
+}
+
+type StoreBatch interface {
+	Set(key, val []byte) error
+	SetWithMeta(key, val []byte, meta byte) error
+	Delete(key []byte) error
+	Cancel()
+	Flush() error
 }
