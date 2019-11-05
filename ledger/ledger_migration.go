@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
@@ -439,4 +441,86 @@ func (m MigrationV8ToV9) StartVersion() int {
 
 func (m MigrationV8ToV9) EndVersion() int {
 	return 9
+}
+
+type MigrationV9ToV10 struct {
+}
+
+func (m MigrationV9ToV10) Migrate(txn db.StoreTxn) error {
+	b, err := checkVersion(m, txn)
+	if err != nil {
+		return err
+	}
+	if b {
+		var err error
+		fmt.Println("migrate ledger v9 to v10 ")
+		latestPovHeight := m.findPovLatestHeight(txn)
+		err = m.migratePovTxlScanCursor(txn, latestPovHeight)
+		if err != nil {
+			return err
+		}
+		err = m.migratePovLatestHeight(txn, latestPovHeight)
+		if err != nil {
+			return err
+		}
+
+		return updateVersion(m, txn)
+	}
+	return nil
+}
+
+func (m MigrationV9ToV10) findPovLatestHeight(txn db.StoreTxn) uint64 {
+	var latestKey []byte
+	err := txn.Iterator(idPrefixPovBestHash, func(key []byte, val []byte, meta byte) error {
+		// just safe copy, iterator will reuse item(key, value)
+		latestKey = append(latestKey[:0], key...)
+		return nil
+	})
+	if err != nil {
+		return 0
+	}
+	if len(latestKey) <= 0 {
+		return 0
+	}
+	return util.BE_BytesToUint64(latestKey[1:])
+}
+
+func (m MigrationV9ToV10) migratePovTxlScanCursor(txn db.StoreTxn, height uint64) error {
+	key, err := getKeyOfParts(idPrefixPovTxlScanCursor)
+	if err != nil {
+		return err
+	}
+
+	valBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(valBytes, height)
+
+	if err := txn.Set(key, valBytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m MigrationV9ToV10) migratePovLatestHeight(txn db.StoreTxn, height uint64) error {
+	key, err := getKeyOfParts(idPrefixPovLatestHeight)
+	if err != nil {
+		return err
+	}
+
+	valBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(valBytes, height)
+
+	if err := txn.Set(key, valBytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m MigrationV9ToV10) StartVersion() int {
+	return 9
+}
+
+func (m MigrationV9ToV10) EndVersion() int {
+	return 10
 }

@@ -680,6 +680,9 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			lastDayIndex = stat.DayIndex
 		}
 		for addrHex, minerStat := range stat.MinerStats {
+			if minerStat.BlockNum == 0 {
+				continue
+			}
 			minerAddr, _ := types.HexToAddress(addrHex)
 
 			if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
@@ -754,6 +757,10 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		totalBlockNum += 1
 	}
 
+	//exclude genesis block miner
+	gBlk := common.GenesisPovBlock()
+	delete(apiRsp.MinerStats, gBlk.GetMinerAddr())
+
 	// fill time
 	for _, minerItem := range apiRsp.MinerStats {
 		firstBlock, _ := api.ledger.GetPovHeaderByHeight(minerItem.FirstBlockHeight)
@@ -804,6 +811,9 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 		}
 
 		for addrHex, minerStat := range stat.MinerStats {
+			if minerStat.RepBlockNum == 0 {
+				continue
+			}
 			repAddr, _ := types.HexToAddress(addrHex)
 			if len(checkAddrMap) > 0 && !checkAddrMap[repAddr] {
 				continue

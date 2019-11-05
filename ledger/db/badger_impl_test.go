@@ -208,3 +208,37 @@ func TestBadgerStoreTxn_Drop(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestBadgerStoreBatch_Simple(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	var blks []*types.StateBlock
+	for i := 0; i < 100; i++ {
+		blk := new(types.StateBlock)
+		blk.Timestamp = int64(i)
+		blks = append(blks, blk)
+	}
+
+	err := db.UpdateInBatch(func(batch StoreBatch) error {
+		for _, blk := range blks {
+			key := blk.GetHash()
+			val, _ := blk.Serialize()
+			if err := batch.Set(key[:], val); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		for _, blk := range blks {
+			key := blk.GetHash()
+			if err := batch.Delete(key[:]); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

@@ -54,9 +54,10 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 
 func addPovHeader(l *ledger.Ledger) {
 	header := mock.PovHeader()
-	l.AddPovHeader(header)
-	l.AddPovHeight(header.BasHdr.Hash, header.BasHdr.Height)
-	l.AddPovBestHash(header.BasHdr.Height, header.BasHdr.Hash)
+	_ = l.AddPovHeader(header)
+	_ = l.AddPovHeight(header.BasHdr.Hash, header.BasHdr.Height)
+	_ = l.AddPovBestHash(header.BasHdr.Height, header.BasHdr.Hash)
+	_ = l.SetPovLatestHeight(header.BasHdr.Height)
 }
 
 func TestRewardsApi_GetRewardData(t *testing.T) {
