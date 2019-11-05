@@ -362,13 +362,15 @@ func (dps *DPoS) Start() {
 
 func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
-	dps.cancel()
-	dps.processorStop()
-	dps.acTrx.stop()
 
+	//do this first
 	for k, v := range dps.handlerIds {
 		_ = dps.eb.Unsubscribe(k, v)
 	}
+
+	dps.cancel()
+	dps.processorStop()
+	dps.acTrx.stop()
 }
 
 func (dps *DPoS) processBlocks() {
