@@ -870,15 +870,14 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 		//TODO: refine
 		if block.IsOpen() {
 			l.eb.Publish(common.EventBroadcast, p2p.PublishReq, block)
-			l.eb.Publish(common.EventGenerateBlock, flag, block)
 		} else {
 			if b, _ := l.ledger.HasStateBlockConfirmed(block.Previous); !b {
 				l.logger.Debugf("wait for the previous block [%s] to confirm before broadcasting block [%s]", block.Previous.String(), hash.String())
 			} else {
 				l.eb.Publish(common.EventBroadcast, p2p.PublishReq, block)
-				l.eb.Publish(common.EventGenerateBlock, flag, block)
 			}
 		}
+		l.eb.Publish(common.EventGenerateBlock, flag, block)
 		return hash, nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")
