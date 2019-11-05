@@ -16,11 +16,6 @@ import (
 )
 
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
-	lv.l.RollbackChan <- hash
-	return nil
-}
-
-func (lv *LedgerVerifier) RollbackBlock(hash types.Hash) error {
 	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
 		lv.logger.Errorf("process rollback cache block: %s", hash.String())
 		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
