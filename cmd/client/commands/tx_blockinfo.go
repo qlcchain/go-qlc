@@ -139,10 +139,10 @@ func runTxBlockListCmd(address string, offset, limit int, show string) error {
 	}
 
 	if show == "list" {
-		fmt.Printf("%-64s %-15s %-10s %-10s %-10s %-10s %s\n",
+		fmt.Printf("%-64s %-15s %-10s %-13s %-10s %-10s %s\n",
 			"Hash", "Type", "TokenName", "Amount", "PovH", "PovC", "Time")
 		for _, apiBlk := range rspInfo {
-			fmt.Printf("%-64s %-15s %-10s %-10s %-10d %-10d %s\n",
+			fmt.Printf("%-64s %-15s %-10s %-13s %-10d %-10d %s\n",
 				apiBlk.Hash, apiBlk.Type,
 				apiBlk.TokenName, txFormatBalance(apiBlk.Amount),
 				apiBlk.PovConfirmHeight, apiBlk.PovConfirmCount,
