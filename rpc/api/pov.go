@@ -34,8 +34,9 @@ type PovApi struct {
 }
 
 type PovStatus struct {
-	PovEnabled bool `json:"povEnabled"`
-	SyncState  int  `json:"syncState"`
+	PovEnabled   bool   `json:"povEnabled"`
+	SyncState    int    `json:"syncState"`
+	SyncStateStr string `json:"syncStateStr"`
 }
 
 type PovApiHeader struct {
@@ -152,7 +153,9 @@ func (api *PovApi) OnPovSyncState(state common.SyncState) {
 func (api *PovApi) GetPovStatus() (*PovStatus, error) {
 	apiRsp := new(PovStatus)
 	apiRsp.PovEnabled = api.cfg.PoV.PovEnabled
-	apiRsp.SyncState = int(api.syncState.Load().(common.SyncState))
+	ss := api.syncState.Load().(common.SyncState)
+	apiRsp.SyncState = int(ss)
+	apiRsp.SyncStateStr = ss.String()
 	return apiRsp, nil
 }
 
@@ -680,6 +683,9 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			lastDayIndex = stat.DayIndex
 		}
 		for addrHex, minerStat := range stat.MinerStats {
+			if minerStat.BlockNum == 0 {
+				continue
+			}
 			minerAddr, _ := types.HexToAddress(addrHex)
 
 			if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
@@ -754,6 +760,10 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		totalBlockNum += 1
 	}
 
+	//exclude genesis block miner
+	gBlk := common.GenesisPovBlock()
+	delete(apiRsp.MinerStats, gBlk.GetMinerAddr())
+
 	// fill time
 	for _, minerItem := range apiRsp.MinerStats {
 		firstBlock, _ := api.ledger.GetPovHeaderByHeight(minerItem.FirstBlockHeight)
@@ -804,6 +814,9 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 		}
 
 		for addrHex, minerStat := range stat.MinerStats {
+			if minerStat.RepBlockNum == 0 {
+				continue
+			}
 			repAddr, _ := types.HexToAddress(addrHex)
 			if len(checkAddrMap) > 0 && !checkAddrMap[repAddr] {
 				continue
@@ -1032,6 +1045,7 @@ type PovApiSubmitWork struct {
 
 type PovApiGetMiningInfo struct {
 	SyncState          int               `json:"syncState"`
+	SyncStateStr       string            `json:"syncStateStr"`
 	CurrentBlockHeight uint64            `json:"currentBlockHeight"`
 	CurrentBlockHash   types.Hash        `json:"currentBlockHash"`
 	CurrentBlockSize   uint32            `json:"currentBlockSize"`
@@ -1066,6 +1080,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 
 	apiRsp := new(PovApiGetMiningInfo)
 	apiRsp.SyncState = outArgs["syncState"].(int)
+	apiRsp.SyncStateStr = common.SyncState(apiRsp.SyncState).String()
 
 	apiRsp.CurrentBlockAlgo = latestBlock.GetAlgoType()
 	apiRsp.CurrentBlockHeight = latestBlock.GetHeight()

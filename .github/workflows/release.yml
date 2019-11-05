@@ -25,7 +25,7 @@ jobs:
           export PATH=$PATH:/usr/local/bin
           export TAG=${GITHUB_REF/refs\/tags\//}
           make VERSION=${TAG} release
-      - name: Publish the Docker image to DockerHub
+      - name: Publish mainnet Docker image to DockerHub
         uses: docker://goreng/publish-docker-github-action:v2.4
         with:
           name: qlcchain/go-qlc
@@ -33,6 +33,14 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: docker/Dockerfile
           buildargs: BUILD_ACT=build
+      - name: Publish testnet Docker image to DockerHub
+        uses: docker://goreng/publish-docker-github-action:v2.4
+        with:
+          name: qlcchain/go-qlc-test
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          dockerfile: docker/Dockerfile
+          buildargs: BUILD_ACT=build-test
       - name: Publish the Docker image to GitHub Packages
         uses: docker://goreng/publish-docker-github-action:v2.4
         with:

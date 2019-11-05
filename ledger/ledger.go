@@ -99,6 +99,8 @@ const (
 	idPrefixUncheckedSync
 	idPrefixSyncCacheBlock
 	idPrefixUncheckedPovHeight
+	idPrefixPovLatestHeight  // prefix => height
+	idPrefixPovTxlScanCursor // prefix => height
 )
 
 var (
@@ -106,7 +108,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 9
+const version = 10
 
 func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
@@ -183,7 +185,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8), new(MigrationV8ToV9)}
+		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8), new(MigrationV8ToV9), new(MigrationV9ToV10)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
@@ -291,6 +293,16 @@ func (l *Ledger) BatchView(fn func(txn db.StoreTxn) error) error {
 	return txn.Commit(nil)
 }
 
+func (l *Ledger) BatchWrite(fn func(batch db.StoreBatch) error) error {
+	batch := l.Store.NewWriteBatch()
+	err := fn(batch)
+	if err != nil {
+		batch.Cancel()
+		return err
+	}
+	return batch.Flush()
+}
+
 //getTxn get txn by `update` mode
 func (l *Ledger) getTxn(update bool, txns ...db.StoreTxn) (db.StoreTxn, bool) {
 	if len(txns) > 0 {
@@ -318,28 +330,25 @@ func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
 	var buffer = []byte{t}
 	for _, part := range partList {
 		var src []byte
-		switch part.(type) {
+		switch v := part.(type) {
 		case int:
-			src = util.BE_Uint64ToBytes(uint64(part.(int)))
+			src = util.BE_Uint64ToBytes(uint64(v))
 		case int32:
-			src = util.BE_Uint64ToBytes(uint64(part.(int32)))
+			src = util.BE_Uint64ToBytes(uint64(v))
 		case uint32:
-			src = util.BE_Uint64ToBytes(uint64(part.(uint32)))
+			src = util.BE_Uint64ToBytes(uint64(v))
 		case int64:
-			src = util.BE_Uint64ToBytes(uint64(part.(int64)))
+			src = util.BE_Uint64ToBytes(uint64(v))
 		case uint64:
-			src = util.BE_Uint64ToBytes(part.(uint64))
+			src = util.BE_Uint64ToBytes(v)
 		case []byte:
-			src = part.([]byte)
+			src = v
 		case types.Hash:
-			hash := part.(types.Hash)
-			src = hash[:]
+			src = v[:]
 		case *types.Hash:
-			hash := part.(*types.Hash)
-			src = hash[:]
+			src = v[:]
 		case types.Address:
-			hash := part.(types.Address)
-			src = hash[:]
+			src = v[:]
 		case *types.PendingKey:
 			pk := part.(*types.PendingKey)
 			var err error

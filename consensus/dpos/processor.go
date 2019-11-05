@@ -660,6 +660,10 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 				BlockFrom: bf,
 			}
 
+			if has, _ := dps.ledger.HasBlockCache(blkPre.GetHash()); has {
+				dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, blkPre)
+			}
+
 			p.processUncheckedBlock(bs)
 
 			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
