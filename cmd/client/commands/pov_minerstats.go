@@ -56,9 +56,10 @@ func runPovMinerInfoCmd(minerAddrStrList []string) error {
 		return err
 	}
 
-	fmt.Printf("TotalCount: %d, LastDayOnlineCount: %d, LastHourOnlineCount: %d\n", rspInfo.MinerCount, rspInfo.DayOnlineCount, rspInfo.HourOnlineCount)
+	fmt.Printf("TotalBlockNum: %d, LatestBlockHeight: %d\n", rspInfo.TotalBlockNum, rspInfo.LatestBlockHeight)
+	fmt.Printf("TotalMinerCount: %d, LastDayOnlineCount: %d, LastHourOnlineCount: %d\n", rspInfo.MinerCount, rspInfo.DayOnlineCount, rspInfo.HourOnlineCount)
 
-	fmt.Printf("%-64s %-6s %-10s %-13s %-10s %-10s\n", "Address", "Online", "Blocks", "Rewards", "FirstH", "LastH")
+	fmt.Printf("%-64s %-6s %-10s %-13s %-10s %-10s\n", "Address", "Online", "MBlocks", "MRewards", "FirstH", "LastH")
 	for minerAddr, minerItem := range rspInfo.MinerStats {
 		isDayInt := 0
 		isHourInt := 0

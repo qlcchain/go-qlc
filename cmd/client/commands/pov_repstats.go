@@ -59,12 +59,14 @@ func runPovRepInfoCmd(repAddrStrList []string) error {
 
 	fmt.Printf("TotalCount: %d\n", len(rspInfo))
 
-	fmt.Printf("%-64s %-10s %-13s\n", "Address", "Blocks", "Rewards")
+	fmt.Printf("%-64s %-10s %-13s %-10s %-13s\n", "Address", "MBlocks", "MRewards", "SBlocks", "SRewards")
 	for repAddr, repItem := range rspInfo {
-		fmt.Printf("%-64s %-10d %-13.2f\n",
+		fmt.Printf("%-64s %-10d %-13.2f %-10d %-13.2f\n",
 			repAddr,
 			repItem.MainBlockNum,
-			float64(repItem.MainRewardAmount.Uint64())/1e8)
+			float64(repItem.MainRewardAmount.Uint64())/1e8,
+			repItem.StableBlockNum,
+			float64(repItem.StableRewardAmount.Uint64())/1e8)
 	}
 
 	return nil
