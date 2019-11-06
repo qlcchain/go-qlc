@@ -255,17 +255,13 @@ func (l *Ledger) PendingAmount(address types.Address, token types.Hash, txns ...
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	pendingKeys, err := l.TokenPending(address, token)
+	pendingInfos, err := l.TokenPendingInfo(address, token)
 	if err != nil {
 		return types.ZeroBalance, err
 	}
 	pendingAmount := types.ZeroBalance
-	for _, key := range pendingKeys {
-		pendinginfo, err := l.GetPending(key)
-		if err != nil {
-			return types.ZeroBalance, err
-		}
-		pendingAmount = pendingAmount.Add(pendinginfo.Amount)
+	for _, info := range pendingInfos {
+		pendingAmount = pendingAmount.Add(info.Amount)
 	}
 	if err := l.cache.AddAccountPending(address, token, pendingAmount); err != nil {
 		return types.ZeroBalance, err
