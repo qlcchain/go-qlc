@@ -18,6 +18,7 @@ func addMinerCmd() {
 
 		addMinerRewardCmdByShell(cmd)
 		addMinerRecvPendCmdByShell(cmd)
+		addMinerRewardInfoCmdByShell(cmd)
 	} else {
 		var cmd = &cobra.Command{
 			Use:   "miner",
