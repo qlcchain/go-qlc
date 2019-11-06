@@ -215,48 +215,23 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 }
 
 func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
-	aa := new(APIAccount)
 	am, err := l.ledger.GetAccountMeta(address)
 	if err != nil {
 		return nil, err
 	}
-	vmContext := vmstore.NewVMContext(l.ledger)
-	for _, t := range am.Tokens {
-		if t.Type == common.ChainToken() {
-			aa.CoinBalance = &t.Balance
-			aa.Representative = &t.Representative
-			aa.CoinVote = &am.CoinVote
-			aa.CoinNetwork = &am.CoinNetwork
-			aa.CoinOracle = &am.CoinOracle
-			aa.CoinStorage = &am.CoinStorage
-		}
-		info, err := abi.GetTokenById(vmContext, t.Type)
-		if err != nil {
-			return nil, err
-		}
-		amount, err := l.ledger.PendingAmount(address, t.Type)
-		if err != nil {
-			l.logger.Errorf("pending amount error: %s", err)
-			return nil, err
-		}
-
-		tm := APITokenMeta{
-			TokenMeta: t,
-			TokenName: info.TokenName,
-			Pending:   amount,
-		}
-		aa.Tokens = append(aa.Tokens, &tm)
-	}
-	aa.Address = address
-	return aa, nil
+	return l.generateAPIAccountMeta(am)
 }
 
 func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, error) {
-	aa := new(APIAccount)
 	am, err := l.ledger.GetAccountMetaConfirmed(address)
 	if err != nil {
 		return nil, err
 	}
+	return l.generateAPIAccountMeta(am)
+}
+
+func (l *LedgerApi) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, error) {
+	aa := new(APIAccount)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, t := range am.Tokens {
 		if t.Type == common.ChainToken() {
@@ -271,7 +246,7 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 		if err != nil {
 			return nil, err
 		}
-		amount, err := l.ledger.PendingAmount(address, t.Type)
+		amount, err := l.ledger.PendingAmount(am.Address, t.Type)
 		if err != nil {
 			l.logger.Errorf("pending amount error: %s", err)
 			return nil, err
@@ -284,7 +259,7 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
 	}
-	aa.Address = address
+	aa.Address = am.Address
 	return aa, nil
 }
 
@@ -327,14 +302,12 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 				return nil, err
 			}
 			b := new(APIAccountsBalance)
-			pendings, err := l.ledger.TokenPendingInfo(addr, t.Type)
+			amount, err := l.ledger.PendingAmount(addr, t.Type)
 			if err != nil {
+				l.logger.Errorf("pending amount error: %s", err)
 				return nil, err
 			}
-			amount := types.ZeroBalance
-			for _, pending := range pendings {
-				amount = amount.Add(pending.Amount)
-			}
+
 			b.Balance = t.Balance
 			b.Pending = amount
 			if info.TokenId == common.ChainToken() {
@@ -1093,12 +1066,17 @@ func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*
 					lastBlockHash = blkHash
 
 					if block.GetAddress() == address {
-						ac, err := l.ledger.GetAccountMeta(address)
+						am, err := l.ledger.GetAccountMeta(address)
 						if err != nil {
 							l.logger.Errorf("get account meta: %s", err)
 							return
 						}
-						if err := notifier.Notify(subscription.ID, ac); err != nil {
+						aa, err := l.generateAPIAccountMeta(am)
+						if err != nil {
+							l.logger.Errorf("generate APIAccountMeta error: %s", err)
+							return
+						}
+						if err := notifier.Notify(subscription.ID, aa); err != nil {
 							l.logger.Errorf("notify error: %s", err)
 							return
 						}
