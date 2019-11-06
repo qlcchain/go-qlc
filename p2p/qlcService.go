@@ -138,15 +138,19 @@ func (ns *QlcService) unsubscribeEvent() error {
 func (ns *QlcService) Stop() error {
 	//ns.node.logger.Info("Stopping QlcService...")
 
-	if err := ns.node.Stop(); err != nil {
-		return err
-	}
-	ns.dispatcher.Stop()
-	ns.msgService.Stop()
+	//this must be the first step
 	err := ns.unsubscribeEvent()
 	if err != nil {
 		return err
 	}
+
+	if err := ns.node.Stop(); err != nil {
+		return err
+	}
+
+	ns.dispatcher.Stop()
+	ns.msgService.Stop()
+
 	time.Sleep(100 * time.Millisecond)
 	return nil
 }

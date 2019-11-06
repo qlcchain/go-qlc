@@ -66,15 +66,15 @@ func (miner *Miner) Start() error {
 func (miner *Miner) Stop() error {
 	miner.logger.Info("stop miner service")
 
-	err := miner.povWorker.Stop()
-	if err != nil {
-		return err
-	}
-
 	if len(miner.id) > 0 {
 		if err := miner.eb.Unsubscribe(common.EventPovSyncState, miner.id); err != nil {
 			return err
 		}
+	}
+
+	err := miner.povWorker.Stop()
+	if err != nil {
+		return err
 	}
 
 	return nil
