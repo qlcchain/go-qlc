@@ -56,6 +56,7 @@ func (ls *LedgerService) Init() error {
 		if err != nil {
 			ls.logger.Error(err)
 		}
+		_ = ctx.SaveStorage()
 		genesisInfo := &common.GenesisInfo{
 			ChainToken:          v.ChainToken,
 			GasToken:            v.GasToken,
