@@ -689,7 +689,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			minerAddr, _ := types.HexToAddress(addrHex)
 
 			if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
-				return nil
+				continue
 			}
 
 			item, ok := apiRsp.MinerStats[minerAddr]
