@@ -725,7 +725,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	// scan best block not in miner stats per day
 	latestHeader, _ := api.ledger.GetLatestPovHeader()
 
-	notStatHeightStart := uint64(lastDayIndex) * uint64(common.POVChainBlocksPerDay)
+	notStatHeightStart := uint64(lastDayIndex+1) * uint64(common.POVChainBlocksPerDay)
 	notStatHeightEnd := latestHeader.GetHeight()
 
 	for height := notStatHeightStart; height <= notStatHeightEnd; height++ {
@@ -844,7 +844,7 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 	// scan best block not in miner stats per day
 	latestHeader, _ := api.ledger.GetLatestPovHeader()
 
-	notStatHeightStart := uint64(lastDayIndex) * uint64(common.POVChainBlocksPerDay)
+	notStatHeightStart := uint64(lastDayIndex+1) * uint64(common.POVChainBlocksPerDay)
 	notStatHeightEnd := latestHeader.GetHeight()
 
 	for height := notStatHeightStart; height <= notStatHeightEnd; height++ {
