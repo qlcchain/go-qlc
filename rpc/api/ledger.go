@@ -1033,6 +1033,9 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 					blocks := l.blockSubscription.getBlocks()
 					curBlockHashes := make(map[types.Hash]struct{})
 
+					vmContext := vmstore.NewVMContext(l.ledger)
+					latestPov, _ := l.ledger.GetLatestPovHeader()
+
 					for _, block := range blocks {
 						blkHash := block.GetHash()
 						curBlockHashes[blkHash] = struct{}{}
@@ -1041,7 +1044,12 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 							continue
 						}
 
-						if err := notifier.Notify(subscription.ID, block); err != nil {
+						apiBlk, err := generateAPIBlock(vmContext, block, latestPov)
+						if err != nil {
+							l.logger.Errorf("generateAPIBlock error: %s", err)
+							continue
+						}
+						if err := notifier.Notify(subscription.ID, apiBlk); err != nil {
 							l.logger.Errorf("notify error: %s", err)
 							return
 						}

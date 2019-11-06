@@ -1442,7 +1442,9 @@ func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 						}
 
 						header := block.GetHeader()
-						err := notifier.Notify(subscription.ID, header)
+						apiHdr := &PovApiHeader{PovHeader: header}
+						api.fillHeader(apiHdr)
+						err := notifier.Notify(subscription.ID, apiHdr)
 						if err != nil {
 							api.logger.Errorf("notify pov header %d/%s error: %s",
 								err, header.GetHeight(), header.GetHash())
