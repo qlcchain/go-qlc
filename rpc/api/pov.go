@@ -131,10 +131,10 @@ type PovRepStats struct {
 	StableRewardAmount types.Balance `json:"stableRewardAmount"`
 }
 
-func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus, ctx context.Context) *PovApi {
+func NewPovApi(cfg *config.Config, l *ledger.Ledger, eb event.EventBus, ctx context.Context) *PovApi {
 	api := &PovApi{
 		cfg:    cfg,
-		ledger: ledger,
+		ledger: l,
 		eb:     eb,
 		pubsub: NewPovSubscription(eb, ctx),
 		logger: log.NewLogger("rpc/pov"),

@@ -45,7 +45,7 @@ type PovSubscription struct {
 	logger     *zap.SugaredLogger
 }
 
-func NewPovSubscription(eb event.EventBus, ctx context.Context) *PovSubscription {
+func NewPovSubscription(ctx context.Context, eb event.EventBus) *PovSubscription {
 	be := &PovSubscription{
 		eb:         eb,
 		handlerIds: make(map[common.TopicType]string),
@@ -67,10 +67,8 @@ func (r *PovSubscription) subscribeEvent() {
 		r.handlerIds[common.EventPovConnectBestBlock] = id
 	}
 	go func() {
-		select {
-		case <-r.ctx.Done():
-			r.unsubscribeEvent()
-		}
+		<-r.ctx.Done()
+		r.unsubscribeEvent()
 	}()
 }
 

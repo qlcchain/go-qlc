@@ -45,7 +45,7 @@ type BlockSubscription struct {
 	logger     *zap.SugaredLogger
 }
 
-func NewBlockSubscription(eb event.EventBus, ctx context.Context) *BlockSubscription {
+func NewBlockSubscription(ctx context.Context, eb event.EventBus) *BlockSubscription {
 	bs := &BlockSubscription{
 		eb:         eb,
 		mu:         &sync.Mutex{},
@@ -75,10 +75,8 @@ func (r *BlockSubscription) subscribeEvent() {
 	}
 	r.logger.Info("event subscribed ")
 	go func() {
-		select {
-		case <-r.ctx.Done():
-			r.unsubscribeEvent()
-		}
+		<-r.ctx.Done()
+		r.unsubscribeEvent()
 	}()
 }
 
