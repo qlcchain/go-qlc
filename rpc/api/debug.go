@@ -25,10 +25,11 @@ type DebugApi struct {
 	eb     event.EventBus
 }
 
-func NewDebugApi(l *ledger.Ledger) *DebugApi {
+func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
 	return &DebugApi{
 		ledger: l,
 		logger: log.NewLogger("api_debug"),
+		eb:     eb,
 	}
 }
 
@@ -337,4 +338,20 @@ func (l *DebugApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	}
 	l.logger.Infof("blocks subscription: %s", subscription.ID)
 	return subscription, nil
+}
+
+func (l *DebugApi) ContractCount() (map[string]int64, error) {
+	r := make(map[string]int64)
+	ctx := vmstore.NewVMContext(l.ledger)
+	for _, addr := range types.ChainContractAddressList {
+		var n int64 = 0
+		if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+			n++
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		r[addr.String()] = n
+	}
+	return r, nil
 }

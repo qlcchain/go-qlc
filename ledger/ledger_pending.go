@@ -218,7 +218,7 @@ func (l *Ledger) DeletePending(key *types.PendingKey, txns ...db.StoreTxn) error
 		if err := txn.Delete(k); err != nil {
 			return err
 		}
-		return l.cache.UpdateAccountPending(key, value, true)
+		return l.cache.UpdateAccountPending(key, value, false)
 	}
 	return nil
 }
