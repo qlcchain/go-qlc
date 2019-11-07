@@ -141,6 +141,18 @@ func (l *DebugApi) SyncCacheBlocks() ([]types.Hash, error) {
 	return blocks, nil
 }
 
+func (l *DebugApi) SyncCacheBlocksCount() (int64, error) {
+	var n int64
+	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
+		n++
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, error) {
 	balance := types.ZeroBalance
 	vote := types.ZeroBalance
@@ -267,18 +279,6 @@ func (l *DebugApi) PendingsAmount() (map[types.Address]map[string]types.Balance,
 		return nil, err
 	}
 	return abs, nil
-}
-
-func (l *DebugApi) SyncBlocks() ([]types.Hash, error) {
-	blocks := make([]types.Hash, 0)
-	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
-		blocks = append(blocks, block.GetHash())
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return blocks, nil
 }
 
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
