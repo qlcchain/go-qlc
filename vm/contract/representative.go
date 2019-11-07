@@ -150,7 +150,7 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 
 	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, param.EndHeight,
 		param.RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
-		param.RewardAmount.Add(param.RewardAmount, oldInfo.RewardAmount))
+		new(big.Int).Add(param.RewardAmount, oldInfo.RewardAmount))
 	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")
