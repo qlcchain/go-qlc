@@ -131,12 +131,12 @@ type PovRepStats struct {
 	StableRewardAmount types.Balance `json:"stableRewardAmount"`
 }
 
-func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *PovApi {
+func NewPovApi(cfg *config.Config, l *ledger.Ledger, eb event.EventBus, ctx context.Context) *PovApi {
 	api := &PovApi{
 		cfg:    cfg,
-		ledger: ledger,
+		ledger: l,
 		eb:     eb,
-		pubsub: NewPovSubscription(eb),
+		pubsub: NewPovSubscription(ctx, eb),
 		logger: log.NewLogger("rpc/pov"),
 	}
 	api.syncState.Store(common.SyncNotStart)
@@ -1422,25 +1422,15 @@ func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	return CreatePovSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			notifyCh := make(chan struct{})
-			api.pubsub.addChan(notifyCh)
-			defer api.pubsub.removeChan(notifyCh)
-
-			lastBlockHashes := make(map[types.Hash]struct{})
+			api.pubsub.addChan(subscription.ID, notifyCh)
+			defer api.pubsub.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-notifyCh:
-					blocks := api.pubsub.getBlocks()
-					curBlockHashes := make(map[types.Hash]struct{})
+					blocks := api.pubsub.fetchBlocks(subscription.ID)
 
 					for _, block := range blocks {
-						blkHash := block.GetHash()
-						curBlockHashes[blkHash] = struct{}{}
-
-						if _, ok := lastBlockHashes[blkHash]; ok {
-							continue
-						}
-
 						header := block.GetHeader()
 						apiHdr := &PovApiHeader{PovHeader: header}
 						api.fillHeader(apiHdr)
@@ -1451,7 +1441,6 @@ func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 							return
 						}
 					}
-					lastBlockHashes = curBlockHashes
 				case err := <-subscription.Err():
 					api.logger.Infof("subscription exception %s", err)
 					return

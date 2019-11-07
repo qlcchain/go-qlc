@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -41,7 +42,7 @@ func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {
 
 	md.eb = cc.EventBus()
 
-	md.api = NewPovApi(md.cfg, md.l, md.eb)
+	md.api = NewPovApi(md.cfg, md.l, md.eb, context.Background())
 
 	return func(t *testing.T) {
 		_ = md.eb.Close()

@@ -19,7 +19,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "ledger",
 			Version:   "1.0",
-			Service:   api.NewLedgerApi(r.ledger, r.relation, r.eb),
+			Service:   api.NewLedgerApi(r.ledger, r.relation, r.eb, r.ctx),
 			Public:    true,
 		}
 	case "net":
@@ -82,7 +82,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "pov",
 			Version:   "1.0",
-			Service:   api.NewPovApi(r.config, r.ledger, r.eb),
+			Service:   api.NewPovApi(r.config, r.ledger, r.eb, r.ctx),
 			Public:    true,
 		}
 	case "miner":
@@ -110,7 +110,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "debug",
 			Version:   "1.0",
-			Service:   api.NewDebugApi(r.ledger, r.eb),
+			Service:   api.NewDebugApi(r.ledger),
 			Public:    true,
 		}
 	case "destroy":
