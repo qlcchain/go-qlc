@@ -2,9 +2,10 @@ package dpos
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"path/filepath"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/google/uuid"
 
