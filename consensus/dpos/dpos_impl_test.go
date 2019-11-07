@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/types"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/config"
@@ -71,5 +73,32 @@ func TestOnFrontierConfirmed(t *testing.T) {
 
 	if !confirmed {
 		t.Fatal()
+	}
+}
+
+func TestBatchVote(t *testing.T) {
+	acc := mock.Account()
+
+	hashes := make([]types.Hash, 0)
+	hashBytes := make([]byte, 0)
+
+	for i := 0; i < 1024; i++ {
+		h := types.HashData([]byte(fmt.Sprintf("%d", i)))
+		hashes = append(hashes, h)
+		hashBytes = append(hashBytes, h[:]...)
+	}
+
+	hash, _ := types.HashBytes(hashBytes)
+	sign1 := acc.Sign(hash)
+
+	hashBytes2 := make([]byte, 0)
+	for _, h := range hashes {
+		hashBytes2 = append(hashBytes2, h[:]...)
+	}
+
+	signHash, _ := types.HashBytes(hashBytes2)
+	valid := acc.Address().Verify(signHash[:], sign1[:])
+	if !valid {
+		t.Fatal("sign err")
 	}
 }

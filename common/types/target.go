@@ -2,7 +2,6 @@ package types
 
 import (
 	"math/big"
-	"strconv"
 )
 
 var (
@@ -76,6 +75,9 @@ func BigToHash(num *big.Int) *Hash {
 // which represent difficulty targets, thus there really is not a need for a
 // sign bit, but it is implemented here to stay consistent with bitcoind.
 func CompactToBig(compact uint32) *big.Int {
+	if compact == 0 {
+		return big.NewInt(0)
+	}
 	// Extract the mantissa, sign bit, and exponent.
 	mantissa := compact & 0x007fffff
 	isNegative := compact&0x00800000 != 0
@@ -191,13 +193,17 @@ func CalcDifficultyRatio(bits uint32, powLimitBits uint32) float64 {
 	// work limit directly because the block difficulty is encoded in a block
 	// with the compact form which loses precision.
 	max := CompactToBig(powLimitBits)
-	target := CompactToBig(bits)
-
-	difficulty := new(big.Rat).SetFrac(max, target)
-	outString := difficulty.FloatString(8)
-	diff, err := strconv.ParseFloat(outString, 64)
-	if err != nil {
+	if max.Sign() == 0 {
 		return 0
 	}
+	target := CompactToBig(bits)
+	if target.Sign() == 0 {
+		return 0
+	}
+
+	maxFlt := new(big.Float).SetInt(max)
+	targetFlt := new(big.Float).SetInt(target)
+	diffFlt := new(big.Float).Quo(maxFlt, targetFlt)
+	diff, _ := diffFlt.Float64()
 	return diff
 }

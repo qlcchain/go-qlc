@@ -857,7 +857,7 @@ out:
 				dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 
 				total = 0
-				hashes = hashes[0:0]
+				hashes = make([]types.Hash, 0)
 				hashBytes = hashBytes[0:0]
 			}
 		}
