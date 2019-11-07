@@ -41,10 +41,11 @@ type PovSubscription struct {
 	newBlockCh chan struct{}
 	blocks     []*types.PovBlock
 	stoped     chan bool
+	ctx        context.Context
 	logger     *zap.SugaredLogger
 }
 
-func NewPovSubscription(eb event.EventBus) *PovSubscription {
+func NewPovSubscription(eb event.EventBus, ctx context.Context) *PovSubscription {
 	be := &PovSubscription{
 		eb:         eb,
 		handlerIds: make(map[common.TopicType]string),
@@ -52,8 +53,10 @@ func NewPovSubscription(eb event.EventBus) *PovSubscription {
 		newBlockCh: make(chan struct{}, 1),
 		blocks:     make([]*types.PovBlock, 0, MaxNotifyPovBlocks),
 		stoped:     make(chan bool),
+		ctx:        ctx,
 		logger:     log.NewLogger("pov_pubsub"),
 	}
+	be.subscribeEvent()
 	return be
 }
 
@@ -63,6 +66,12 @@ func (r *PovSubscription) subscribeEvent() {
 	} else {
 		r.handlerIds[common.EventPovConnectBestBlock] = id
 	}
+	go func() {
+		select {
+		case <-r.ctx.Done():
+			r.unsubscribeEvent()
+		}
+	}()
 }
 
 func (r *PovSubscription) unsubscribeEvent() {
@@ -109,7 +118,6 @@ func (r *PovSubscription) addChan(ch chan struct{}) {
 	r.chans = append(r.chans, ch)
 	r.logger.Infof("add chan %p to blockEvent, chan length %d", ch, len(r.chans))
 	if len(r.chans) == 1 {
-		r.subscribeEvent() // only when first websocket to connect, should subscript event from chain
 		go func() {
 			for {
 				select {
@@ -139,7 +147,6 @@ func (r *PovSubscription) removeChan(ch chan struct{}) {
 			r.logger.Infof("remove chan %p ", c)
 			r.chans = append(r.chans[:index], r.chans[index+1:]...)
 			if len(r.chans) == 0 { // when websocket all disconnected, should unsubscribe event from chain
-				r.unsubscribeEvent()
 				r.stoped <- true
 			}
 			break

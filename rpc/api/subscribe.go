@@ -41,11 +41,12 @@ type BlockSubscription struct {
 	addrBlocks map[types.Address]*types.StateBlock
 	newBlockCh chan struct{}
 	stoped     chan bool
+	ctx        context.Context
 	logger     *zap.SugaredLogger
 }
 
-func NewBlockSubscription(eb event.EventBus) *BlockSubscription {
-	be := &BlockSubscription{
+func NewBlockSubscription(eb event.EventBus, ctx context.Context) *BlockSubscription {
+	bs := &BlockSubscription{
 		eb:         eb,
 		mu:         &sync.Mutex{},
 		handlerIds: make(map[common.TopicType]string),
@@ -54,9 +55,11 @@ func NewBlockSubscription(eb event.EventBus) *BlockSubscription {
 		addrBlocks: make(map[types.Address]*types.StateBlock),
 		newBlockCh: make(chan struct{}),
 		stoped:     make(chan bool),
+		ctx:        ctx,
 		logger:     log.NewLogger("api_sub"),
 	}
-	return be
+	bs.subscribeEvent()
+	return bs
 }
 
 func (r *BlockSubscription) subscribeEvent() {
@@ -71,6 +74,12 @@ func (r *BlockSubscription) subscribeEvent() {
 		r.handlerIds[common.EventAddSyncBlocks] = id
 	}
 	r.logger.Info("event subscribed ")
+	go func() {
+		select {
+		case <-r.ctx.Done():
+			r.unsubscribeEvent()
+		}
+	}()
 }
 
 func (r *BlockSubscription) unsubscribeEvent() {
@@ -144,7 +153,6 @@ func (r *BlockSubscription) addChan(addr types.Address, ch chan struct{}) {
 	r.chans = append(r.chans, ch)
 	r.logger.Infof("add chan %p to blockEvent, chan length %d", ch, len(r.chans))
 	if len(r.chans) == 1 {
-		r.subscribeEvent() // only when first websocket to connect, should subscript event from chain
 		go func() {
 			for {
 				select {
@@ -173,8 +181,7 @@ func (r *BlockSubscription) removeChan(ch chan struct{}) {
 		if c == ch {
 			r.logger.Infof("remove chan %p ", c)
 			r.chans = append(r.chans[:index], r.chans[index+1:]...)
-			if len(r.chans) == 0 { // when websocket all disconnected, should unsubscribe event from chain
-				r.unsubscribeEvent()
+			if len(r.chans) == 0 {
 				r.stoped <- true
 			}
 			break

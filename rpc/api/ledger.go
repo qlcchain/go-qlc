@@ -104,13 +104,13 @@ type ApiTokenInfo struct {
 	types.TokenInfo
 }
 
-func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
+func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus, ctx context.Context) *LedgerApi {
 	api := LedgerApi{
 		ledger:            l,
 		eb:                eb,
 		relation:          relation,
 		logger:            log.NewLogger("api_ledger"),
-		blockSubscription: NewBlockSubscription(eb),
+		blockSubscription: NewBlockSubscription(eb, ctx),
 		processLock:       hashmap.New(defaultLockSize),
 	}
 	api.syncState.Store(common.SyncNotStart)

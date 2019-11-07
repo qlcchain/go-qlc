@@ -131,12 +131,12 @@ type PovRepStats struct {
 	StableRewardAmount types.Balance `json:"stableRewardAmount"`
 }
 
-func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *PovApi {
+func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus, ctx context.Context) *PovApi {
 	api := &PovApi{
 		cfg:    cfg,
 		ledger: ledger,
 		eb:     eb,
-		pubsub: NewPovSubscription(eb),
+		pubsub: NewPovSubscription(eb, ctx),
 		logger: log.NewLogger("rpc/pov"),
 	}
 	api.syncState.Store(common.SyncNotStart)
