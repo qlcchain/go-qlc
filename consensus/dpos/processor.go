@@ -528,6 +528,10 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 	dps := p.dps
 	var result process.ProcessResult
 
+	if has, _ := dps.ledger.HasBlockCache(bs.Block.GetHash()); has {
+		dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, bs.Block)
+	}
+
 	if bs.BlockFrom == types.Synchronized {
 		result, _ = dps.lv.BlockSyncCheck(bs.Block)
 	} else {
@@ -658,10 +662,6 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			bs := &consensus.BlockSource{
 				Block:     blkPre,
 				BlockFrom: bf,
-			}
-
-			if has, _ := dps.ledger.HasBlockCache(blkPre.GetHash()); has {
-				dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, blkPre)
 			}
 
 			p.processUncheckedBlock(bs)
