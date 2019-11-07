@@ -987,28 +987,21 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(types.ZeroAddress, ch)
-			defer l.blockSubscription.removeChan(ch)
-
-			lastBlockHashes := make(map[types.Hash]struct{})
+			l.blockSubscription.addChan(subscription.ID, types.ZeroAddress, ch)
+			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-ch:
-					blocks := l.blockSubscription.getBlocks()
-					curBlockHashes := make(map[types.Hash]struct{})
+					blocks := l.blockSubscription.fetchBlocks(subscription.ID)
+					if len(blocks) == 0 {
+						continue
+					}
 
 					vmContext := vmstore.NewVMContext(l.ledger)
 					latestPov, _ := l.ledger.GetLatestPovHeader()
 
 					for _, block := range blocks {
-						blkHash := block.GetHash()
-						curBlockHashes[blkHash] = struct{}{}
-
-						if _, ok := lastBlockHashes[blkHash]; ok {
-							continue
-						}
-
 						apiBlk, err := generateAPIBlock(vmContext, block, latestPov)
 						if err != nil {
 							l.logger.Errorf("generateAPIBlock error: %s", err)
@@ -1019,7 +1012,6 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 							return
 						}
 					}
-					lastBlockHashes = curBlockHashes
 				case err := <-subscription.Err():
 					l.logger.Infof("subscription exception %s", err)
 					return
@@ -1039,23 +1031,16 @@ func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(address, ch)
-			defer l.blockSubscription.removeChan(ch)
-
-			var lastBlockHash types.Hash
+			l.blockSubscription.addChan(subscription.ID, address, ch)
+			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-ch:
-					block := l.blockSubscription.getAddressBlock(address)
+					block := l.blockSubscription.fetchAddrBlock(subscription.ID)
 					if block == nil {
 						continue
 					}
-					blkHash := block.GetHash()
-					if lastBlockHash == blkHash {
-						continue
-					}
-					lastBlockHash = blkHash
 
 					if block.GetAddress() == address {
 						am, err := l.ledger.GetAccountMeta(address)
@@ -1086,23 +1071,16 @@ func (l *LedgerApi) NewPending(ctx context.Context, address types.Address) (*rpc
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(address, ch)
-			defer l.blockSubscription.removeChan(ch)
-
-			var lastBlockHash types.Hash
+			l.blockSubscription.addChan(subscription.ID, address, ch)
+			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-ch:
-					block := l.blockSubscription.getAddressBlock(address)
+					block := l.blockSubscription.fetchAddrBlock(subscription.ID)
 					if block == nil {
 						continue
 					}
-					blkHash := block.GetHash()
-					if lastBlockHash == blkHash {
-						continue
-					}
-					lastBlockHash = blkHash
 
 					if block.IsSendBlock() {
 						pk := &types.PendingKey{

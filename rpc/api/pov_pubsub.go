@@ -37,26 +37,28 @@ type PovSubscription struct {
 	mu         sync.Mutex
 	eb         event.EventBus
 	handlerIds map[common.TopicType]string // subscript event from chain
-	chans      []chan struct{}             // deliver to every channel for each connected websocket
-	newBlockCh chan struct{}
-	blocks     []*types.PovBlock
-	stoped     chan bool
+	allSubs    map[rpc.ID]*PovSubscriber
+	blocksCh   chan *types.PovBlock
 	ctx        context.Context
 	logger     *zap.SugaredLogger
+}
+
+type PovSubscriber struct {
+	notifyCh chan struct{}
+	blocks   []*types.PovBlock
 }
 
 func NewPovSubscription(ctx context.Context, eb event.EventBus) *PovSubscription {
 	be := &PovSubscription{
 		eb:         eb,
 		handlerIds: make(map[common.TopicType]string),
-		chans:      make([]chan struct{}, 0),
-		newBlockCh: make(chan struct{}, 1),
-		blocks:     make([]*types.PovBlock, 0, MaxNotifyPovBlocks),
-		stoped:     make(chan bool),
+		allSubs:    make(map[rpc.ID]*PovSubscriber),
+		blocksCh:   make(chan *types.PovBlock, MaxNotifyPovBlocks),
 		ctx:        ctx,
 		logger:     log.NewLogger("pov_pubsub"),
 	}
 	be.subscribeEvent()
+	go be.notifyLoop()
 	return be
 }
 
@@ -66,10 +68,6 @@ func (r *PovSubscription) subscribeEvent() {
 	} else {
 		r.handlerIds[common.EventPovConnectBestBlock] = id
 	}
-	go func() {
-		<-r.ctx.Done()
-		r.unsubscribeEvent()
-	}()
 }
 
 func (r *PovSubscription) unsubscribeEvent() {
@@ -84,73 +82,94 @@ func (r *PovSubscription) setBlocks(block *types.PovBlock) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if len(r.chans) > 0 {
-		if len(r.blocks) >= cap(r.blocks) {
-			copy(r.blocks, r.blocks[1:len(r.blocks)])
-			r.blocks[cap(r.blocks)-1] = block
-		} else {
-			r.blocks = append(r.blocks, block)
-		}
+	if len(r.allSubs) == 0 {
+		return
+	}
 
-		select {
-		case r.newBlockCh <- struct{}{}:
-		default:
-		}
+	select {
+	case r.blocksCh <- block:
+	default:
 	}
 }
 
-func (r *PovSubscription) getBlocks() []*types.PovBlock {
+func (r *PovSubscription) fetchBlocks(subID rpc.ID) []*types.PovBlock {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	retBlks := make([]*types.PovBlock, len(r.blocks))
-	copy(retBlks, r.blocks)
+	sub := r.allSubs[subID]
+	if sub == nil {
+		return nil
+	}
+	if len(sub.blocks) == 0 {
+		return nil
+	}
+
+	retBlks := sub.blocks
+	sub.blocks = make([]*types.PovBlock, 0, MaxNotifyPovBlocks)
 	return retBlks
 }
 
-func (r *PovSubscription) addChan(ch chan struct{}) {
+func (r *PovSubscription) addChan(subID rpc.ID, ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
 	}()
-	r.chans = append(r.chans, ch)
-	r.logger.Infof("add chan %p to blockEvent, chan length %d", ch, len(r.chans))
-	if len(r.chans) == 1 {
-		go func() {
-			for {
-				select {
-				case <-r.newBlockCh:
-					for _, c := range r.chans { // broadcast event to every websocket channel
-						select {
-						case c <- struct{}{}:
-						default:
-						}
-					}
-				case <-r.stoped:
-					r.logger.Info("broadcast subscription stopped")
-					return
-				}
-			}
-		}()
+
+	sub := r.allSubs[subID]
+	if sub != nil {
+		r.logger.Errorf("chan %d exist already", subID)
+		return
+	}
+
+	sub = new(PovSubscriber)
+	sub.notifyCh = ch
+	sub.blocks = make([]*types.PovBlock, 0, MaxNotifyPovBlocks)
+	r.allSubs[subID] = sub
+}
+
+func (r *PovSubscription) removeChan(subID rpc.ID) {
+	r.mu.Lock()
+	defer func() {
+		r.mu.Unlock()
+	}()
+
+	sub := r.allSubs[subID]
+	if sub == nil {
+		return
+	}
+
+	delete(r.allSubs, subID)
+}
+
+func (r *PovSubscription) notifyLoop() {
+	defer r.unsubscribeEvent()
+
+	for {
+		select {
+		case block := <-r.blocksCh:
+			r.notifyAllSubs(block)
+		case <-r.ctx.Done():
+			r.logger.Info("broadcast subscription stopped")
+			return
+		}
 	}
 }
 
-func (r *PovSubscription) removeChan(ch chan struct{}) {
+func (r *PovSubscription) notifyAllSubs(block *types.PovBlock) {
 	r.mu.Lock()
-	defer func() {
-		r.mu.Unlock()
-	}()
-	for index, c := range r.chans {
-		if c == ch {
-			r.logger.Infof("remove chan %p ", c)
-			r.chans = append(r.chans[:index], r.chans[index+1:]...)
-			if len(r.chans) == 0 { // when websocket all disconnected, should unsubscribe event from chain
-				r.stoped <- true
-			}
-			break
+	defer r.mu.Unlock()
+
+	for _, sub := range r.allSubs {
+		if len(sub.blocks) >= cap(sub.blocks) {
+			copy(sub.blocks, sub.blocks[1:len(sub.blocks)])
+			sub.blocks[cap(sub.blocks)-1] = block
+		} else {
+			sub.blocks = append(sub.blocks, block)
 		}
-	}
-	if len(r.chans) == 0 {
-		r.blocks = make([]*types.PovBlock, 0, MaxNotifyPovBlocks)
+
+		select {
+		case sub.notifyCh <- struct{}{}:
+		default:
+		}
 	}
 }
