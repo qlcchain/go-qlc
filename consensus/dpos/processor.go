@@ -160,7 +160,7 @@ func (p *Processor) processMsg() {
 			case block := <-p.doneBlock:
 				p.dps.updateLastProcessSyncTime()
 				if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
-					p.dps.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
+					p.dps.logger.Warn("block(%s) sync done error: %s", block.GetHash(), err)
 				}
 			default:
 				break PriorityOut

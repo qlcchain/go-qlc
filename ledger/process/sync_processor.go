@@ -196,7 +196,8 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 			case types.Send:
 				preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous, txn)
 				if err != nil {
-					return errors.New("previous block not found")
+					lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
+					return err
 				}
 				pending := types.PendingInfo{
 					Source: block.GetAddress(),
@@ -209,6 +210,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 				}
 				lv.logger.Info("sync done, add pending, ", pendingKey)
 				if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
+					lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
 					return err
 				}
 			case types.ContractSend:
@@ -218,6 +220,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 						if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
 							lv.logger.Info("sync done, add pending contract1, ", pendingKey)
 							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+								lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
 								return err
 							}
 						}
@@ -226,11 +229,13 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 						if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 							lv.logger.Info("sync done, add pending contract2, ", pendingKey)
 							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+								lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
 								return err
 							}
 						}
 					default:
-						return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+						lv.logger.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+						return errors.New("unsupported chain contract")
 					}
 				}
 			}
@@ -250,6 +255,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 		if pi, err := lv.l.GetPending(&pendingKey, txn); pi != nil && err == nil {
 			lv.logger.Info("sync done, delete pending, ", pendingKey)
 			if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
+				lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
 				return err
 			}
 		}
@@ -263,11 +269,13 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 	}
 
 	if err := lv.l.DeleteSyncCacheBlock(block.GetHash(), txn); err != nil {
-		return fmt.Errorf("delete sync cache block error: %s ", err)
+		lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
+		return err
 	}
 
 	if err := txn.Commit(nil); err != nil {
-		return fmt.Errorf("txn commit error: %s", err)
+		lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
+		return err
 	}
 
 	return nil
