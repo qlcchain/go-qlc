@@ -23,16 +23,12 @@ type DebugApi struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 	eb     event.EventBus
-
-	blockSubscription *BlockSubscription
 }
 
-func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
+func NewDebugApi(l *ledger.Ledger) *DebugApi {
 	return &DebugApi{
-		ledger:            l,
-		logger:            log.NewLogger("api_debug"),
-		eb:                eb,
-		blockSubscription: NewBlockSubscription(eb),
+		ledger: l,
+		logger: log.NewLogger("api_debug"),
 	}
 }
 
@@ -311,28 +307,34 @@ func (l *DebugApi) GetPovInfo() (map[string]interface{}, error) {
 
 func (l *DebugApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	l.logger.Infof("debug blocks ctx: %p", ctx)
-	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
-		go func() {
-			t := time.NewTicker(60 * time.Second)
-			for {
-				select {
-				case <-t.C:
-					if err := notifier.Notify(subscription.ID, mock.StateBlock()); err != nil {
-						l.logger.Errorf("notify error: %s", err)
-						return
-					}
-					l.logger.Info("notify success!")
-				case err := <-subscription.Err():
-					l.logger.Infof("subscription exception %s", err)
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return nil, rpc.ErrNotificationsUnsupported
+	}
+
+	// by explicitly creating an subscription we make sure that the subscription id is send back to the client
+	// before the first subscription.Notify is called.
+	subscription := notifier.CreateSubscription()
+	go func() {
+		t := time.NewTicker(30 * time.Second)
+		for {
+			select {
+			case <-t.C:
+				if err := notifier.Notify(subscription.ID, mock.StateBlock()); err != nil {
+					l.logger.Errorf("notify error: %s", err)
 					return
 				}
+				l.logger.Info("notify success!")
+			case err := <-subscription.Err():
+				l.logger.Infof("subscription exception %s", err)
+				return
 			}
-		}()
-	})
-	if err != nil || sub == nil {
-		l.logger.Errorf("create subscription error, %s", err)
-		return nil, err
+		}
+	}()
+
+	if subscription == nil {
+		return nil, errors.New("create subscription error")
 	}
-	l.logger.Infof("blocks subscription: %s", sub.ID)
-	return sub, nil
+	l.logger.Infof("blocks subscription: %s", subscription.ID)
+	return subscription, nil
 }
