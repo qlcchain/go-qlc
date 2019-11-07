@@ -136,7 +136,7 @@ func NewPovApi(cfg *config.Config, l *ledger.Ledger, eb event.EventBus, ctx cont
 		cfg:    cfg,
 		ledger: l,
 		eb:     eb,
-		pubsub: NewPovSubscription(eb, ctx),
+		pubsub: NewPovSubscription(ctx, eb),
 		logger: log.NewLogger("rpc/pov"),
 	}
 	api.syncState.Store(common.SyncNotStart)

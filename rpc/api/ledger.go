@@ -110,7 +110,7 @@ func NewLedgerApi(l *ledger.Ledger, r *relation.Relation, eb event.EventBus, ctx
 		eb:                eb,
 		relation:          r,
 		logger:            log.NewLogger("api_ledger"),
-		blockSubscription: NewBlockSubscription(eb, ctx),
+		blockSubscription: NewBlockSubscription(ctx, eb),
 		processLock:       hashmap.New(defaultLockSize),
 	}
 	api.syncState.Store(common.SyncNotStart)
