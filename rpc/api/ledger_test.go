@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	rpc "github.com/qlcchain/jsonrpc2"
 
-	"github.com/qlcchain/go-qlc/chain/context"
+	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -32,10 +33,10 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 		t.Fatal(err)
 	}
 
-	cc := context.NewChainContext(cm.ConfigFile)
+	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
 	eb := cc.EventBus()
 
-	ledgerApi := NewLedgerApi(l, rl, eb)
+	ledgerApi := NewLedgerApi(l, rl, eb, context.Background())
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()
