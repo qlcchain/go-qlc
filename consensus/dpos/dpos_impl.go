@@ -1106,7 +1106,7 @@ func (dps *DPoS) blockSyncDone() error {
 	scs := make([]*sortContract, 0)
 	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
 		if b, err := dps.isRelatedOrderBlock(block); err != nil {
-			dps.logger.Errorf("block[%s] type check error, %s", block.GetHash(), err)
+			dps.logger.Infof("block[%s] type check error, %s", block.GetHash(), err)
 		} else {
 			if b {
 				sortC := &sortContract{
@@ -1140,7 +1140,7 @@ func (dps *DPoS) blockSyncDone() error {
 			}
 
 			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
-				dps.logger.Errorf("contract block(%s) sync done error: %s", blk.GetHash(), err)
+				dps.logger.Warn("contract block(%s) sync done error: %s", blk.GetHash(), err)
 			}
 		}
 	}
