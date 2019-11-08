@@ -29,7 +29,7 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 	}
 
 	if b, err := lv.l.HasStateBlockConfirmed(hash); !b || err != nil {
-		lv.logger.Errorf("rollback block not found: %s", hash.String())
+		lv.logger.Warnf("rollback block not found: %s", hash.String())
 		return nil
 	}
 	lv.logger.Errorf("process rollback  block: %s", hash.String())
