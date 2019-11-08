@@ -1176,23 +1176,22 @@ func (dps *DPoS) blockSyncDone() error {
 	timerCheckProcessor := time.NewTicker(time.Second)
 	defer timerCheckProcessor.Stop()
 
-	for {
-		select {
-		case <-timerCheckProcessor.C:
-			allDone = true
-			for _, p := range dps.processors {
-				if len(p.doneBlock) > 0 {
-					allDone = false
-					break
-				}
-			}
-
-			if allDone {
-				dps.logger.Warn("end: process sync cache blocks")
-				return nil
+	for range timerCheckProcessor.C {
+		allDone = true
+		for _, p := range dps.processors {
+			if len(p.doneBlock) > 0 {
+				allDone = false
+				break
 			}
 		}
+
+		if allDone {
+			dps.logger.Warn("end: process sync cache blocks")
+			return nil
+		}
 	}
+
+	return nil
 }
 
 func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
