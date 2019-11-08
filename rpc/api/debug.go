@@ -25,10 +25,11 @@ type DebugApi struct {
 	eb     event.EventBus
 }
 
-func NewDebugApi(l *ledger.Ledger) *DebugApi {
+func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
 	return &DebugApi{
 		ledger: l,
 		logger: log.NewLogger("api_debug"),
+		eb:     eb,
 	}
 }
 
@@ -110,6 +111,30 @@ func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
 	return r, nil
 }
 
+func (l *DebugApi) BlocksCountByType(typ string) (map[string]int64, error) {
+	r := make(map[string]int64)
+	if err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+		var t string
+		switch typ {
+		case "address":
+			t = block.GetAddress().String()
+		case "type":
+			t = block.GetType().String()
+		case "token":
+			t = block.GetToken().String()
+		}
+		if v, ok := r[t]; ok {
+			r[t] = v + 1
+		} else {
+			r[t] = 1
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func (l *DebugApi) GetSyncBlockNum() (map[string]uint64, error) {
 	data := make(map[string]uint64)
 
@@ -138,6 +163,18 @@ func (l *DebugApi) SyncCacheBlocks() ([]types.Hash, error) {
 		return nil, err
 	}
 	return blocks, nil
+}
+
+func (l *DebugApi) SyncCacheBlocksCount() (int64, error) {
+	var n int64
+	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
+		n++
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
 }
 
 func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, error) {
@@ -169,7 +206,7 @@ func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, er
 	}, nil
 }
 
-func (l *DebugApi) Representations(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
+func (l *DebugApi) Representatives(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
 	r := make(map[types.Address]map[string]*types.Benefit)
 	if address == nil {
 		err := l.ledger.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
@@ -268,16 +305,15 @@ func (l *DebugApi) PendingsAmount() (map[types.Address]map[string]types.Balance,
 	return abs, nil
 }
 
-func (l *DebugApi) SyncBlocks() ([]types.Hash, error) {
-	blocks := make([]types.Hash, 0)
-	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
-		blocks = append(blocks, block.GetHash())
+func (l *DebugApi) PendingsCount() (int, error) {
+	n := 0
+	if err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		n++
 		return nil
-	})
-	if err != nil {
-		return nil, err
+	}); err != nil {
+		return 0, err
 	}
-	return blocks, nil
+	return n, nil
 }
 
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
@@ -337,4 +373,20 @@ func (l *DebugApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	}
 	l.logger.Infof("blocks subscription: %s", subscription.ID)
 	return subscription, nil
+}
+
+func (l *DebugApi) ContractCount() (map[string]int64, error) {
+	r := make(map[string]int64)
+	ctx := vmstore.NewVMContext(l.ledger)
+	for _, addr := range types.ChainContractAddressList {
+		var n int64 = 0
+		if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+			n++
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		r[addr.String()] = n
+	}
+	return r, nil
 }
