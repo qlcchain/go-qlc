@@ -117,6 +117,7 @@ type DPoS struct {
 	ebDone              chan struct{}
 	lastProcessSyncTime time.Time
 	updateSync          chan struct{}
+	syncDone            chan struct{}
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -164,6 +165,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		isFindingRep:        0,
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
+		syncDone:            make(chan struct{}, 1024),
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -246,6 +248,7 @@ func (dps *DPoS) Start() {
 	go dps.batchVoteStart()
 	go dps.processSubMsg()
 	go dps.processBlocks()
+	go dps.processSyncDone()
 	dps.processorStart()
 
 	if err := dps.blockSyncDone(); err != nil {
@@ -337,7 +340,7 @@ func (dps *DPoS) Start() {
 			case common.SyncDone:
 			case common.SyncFinish:
 				dps.CleanSyncCache()
-				dps.logger.Warn("sync finished abnormally")
+				dps.logger.Warn("p2p concluded the sync")
 			}
 
 			dps.ebDone <- struct{}{}
@@ -350,7 +353,7 @@ func (dps *DPoS) Start() {
 
 			if dps.blockSyncState == common.Syncing || dps.blockSyncState == common.SyncDone {
 				if time.Since(dps.lastProcessSyncTime) >= 2*time.Minute {
-					dps.logger.Warnf("sync finished because of process timeout last[%s] now[%s]",
+					dps.logger.Warnf("timeout concluded the sync. last[%s] now[%s]",
 						dps.lastProcessSyncTime, time.Now())
 					dps.blockSyncState = common.SyncFinish
 					dps.syncFinish()
@@ -371,6 +374,30 @@ func (dps *DPoS) Stop() {
 	dps.cancel()
 	dps.processorStop()
 	dps.acTrx.stop()
+}
+
+func (dps *DPoS) processSyncDone() {
+	for {
+		select {
+		case <-dps.ctx.Done():
+			dps.logger.Info("Stopped processSyncDone.")
+			return
+		case <-dps.syncDone:
+			if err := dps.blockSyncDone(); err != nil {
+				dps.logger.Error("block sync down err", err)
+			}
+
+			// notify processors
+			dps.syncStateNotifyWait.Add(dps.processorNum)
+			for _, p := range dps.processors {
+				p.syncStateChange <- common.SyncFinish
+			}
+			dps.syncStateNotifyWait.Wait()
+
+			dps.eb.Publish(common.EventConsensusSyncFinished)
+			dps.logger.Warn("sync finished")
+		}
+	}
 }
 
 func (dps *DPoS) processBlocks() {
@@ -1100,7 +1127,7 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 }
 
 func (dps *DPoS) blockSyncDone() error {
-	dps.logger.Info("sync done, start process")
+	dps.logger.Warn("begin: process sync cache blocks")
 	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
 
 	scs := make([]*sortContract, 0)
@@ -1144,7 +1171,26 @@ func (dps *DPoS) blockSyncDone() error {
 			}
 		}
 	}
-	dps.logger.Info("sync done, end process")
+
+	var allDone bool
+	timerCheckProcessor := time.NewTicker(time.Second)
+	defer timerCheckProcessor.Stop()
+
+	for range timerCheckProcessor.C {
+		allDone = true
+		for _, p := range dps.processors {
+			if len(p.doneBlock) > 0 {
+				allDone = false
+				break
+			}
+		}
+
+		if allDone {
+			dps.logger.Warn("end: process sync cache blocks")
+			return nil
+		}
+	}
+
 	return nil
 }
 
@@ -1166,18 +1212,12 @@ func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
 }
 
 func (dps *DPoS) syncFinish() {
-	if err := dps.blockSyncDone(); err != nil {
-		dps.logger.Error("block sync down err", err)
-	}
+	dps.logger.Warn("process state blocks finished")
 
-	// notify processors
-	dps.syncStateNotifyWait.Add(dps.processorNum)
-	for _, p := range dps.processors {
-		p.syncStateChange <- common.SyncFinish
+	select {
+	case dps.syncDone <- struct{}{}:
+	default:
 	}
-	dps.syncStateNotifyWait.Wait()
-
-	dps.eb.Publish(common.EventConsensusSyncFinished)
 }
 
 func (dps *DPoS) checkSyncFinished() {
@@ -1223,7 +1263,6 @@ func (dps *DPoS) checkSyncFinished() {
 		}
 
 		dps.syncFinish()
-		dps.logger.Warn("sync finished")
 	}
 }
 
