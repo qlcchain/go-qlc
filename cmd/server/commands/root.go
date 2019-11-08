@@ -303,6 +303,7 @@ func start() error {
 		return chain.RegisterServices(chainContext)
 	})
 	if err != nil {
+		log.Root.Error(err)
 		return err
 	}
 	err = chainContext.Start()

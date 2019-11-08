@@ -76,6 +76,15 @@ func GenesisBlockHash() types.Hash {
 	return types.ZeroHash
 }
 
+func GasBlockHash() types.Hash {
+	for _, v := range GenesisInfos {
+		if v.GasToken {
+			return v.GenesisBlock.GetHash()
+		}
+	}
+	return types.ZeroHash
+}
+
 // IsGenesis check block is chain token genesis
 func IsGenesisBlock(block *types.StateBlock) bool {
 	hash := block.GetHash()

@@ -125,7 +125,7 @@ func (cc *ChainContext) Init(fn func() error) error {
 		}
 	}
 
-	cc.services.IterWithPredicate(func(name string, service common.Service) error {
+	err := cc.services.IterWithPredicate(func(name string, service common.Service) error {
 		err := service.Init()
 		if err != nil {
 			return err
@@ -135,6 +135,9 @@ func (cc *ChainContext) Init(fn func() error) error {
 	}, func(name string) bool {
 		return name != LogService
 	})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -380,13 +383,13 @@ func (sc *serviceContainer) HasService(name string) bool {
 }
 
 func (sc *serviceContainer) Iter(fn func(name string, service common.Service) error) {
-	sc.IterWithPredicate(fn, func(name string) bool {
+	_ = sc.IterWithPredicate(fn, func(name string) bool {
 		return true
 	})
 }
 
 func (sc *serviceContainer) IterWithPredicate(fn func(name string, service common.Service) error,
-	predicate func(name string) bool) {
+	predicate func(name string) bool) error {
 	sc.locker.RLock()
 	defer sc.locker.RUnlock()
 	for idx := range sc.names {
@@ -394,11 +397,13 @@ func (sc *serviceContainer) IterWithPredicate(fn func(name string, service commo
 		if service, ok := sc.services[name]; ok && predicate(name) {
 			err := fn(name, service)
 			if err != nil {
-				break
+				return err
 			}
 		}
 	}
+	return nil
 }
+
 func (sc *serviceContainer) ReverseIter(fn func(name string, service common.Service) error) {
 	sc.locker.RLock()
 	defer sc.locker.RUnlock()

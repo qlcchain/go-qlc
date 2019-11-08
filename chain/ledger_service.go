@@ -11,6 +11,9 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/config"
 
@@ -19,9 +22,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type LedgerService struct {
@@ -47,16 +48,10 @@ func (ls *LedgerService) Init() error {
 	}
 	defer ls.PostInit()
 	l := ls.Ledger
-	ctx := vmstore.NewVMContext(l)
 	var mintageBlock, genesisBlock types.StateBlock
 	for _, v := range ls.cfg.Genesis.GenesisBlocks {
 		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
 		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
-		err := ctx.SetStorage(types.MintageAddress[:], genesisBlock.Token[:], genesisBlock.Data)
-		if err != nil {
-			ls.logger.Error(err)
-		}
-		_ = ctx.SaveStorage()
 		genesisInfo := &common.GenesisInfo{
 			ChainToken:          v.ChainToken,
 			GasToken:            v.GasToken,
@@ -64,6 +59,28 @@ func (ls *LedgerService) Init() error {
 			GenesisBlock:        genesisBlock,
 		}
 		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
+	if len(common.GenesisInfos) == 0 {
+		return errors.New("no genesis info")
+	} else if common.ChainToken() == types.ZeroHash || common.GasToken() == types.ZeroHash {
+		return errors.New("no chain token info or gas token info")
+	} else {
+		if c, _ := l.CountStateBlocks(); c != 0 {
+			chainHash := common.GenesisBlockHash()
+			gasHash := common.GasBlockHash()
+			b1, _ := l.HasStateBlockConfirmed(chainHash)
+			b2, _ := l.HasStateBlockConfirmed(gasHash)
+			if !b1 || !b2 {
+				return errors.New("chain token info or gas token info mismatch")
+			}
+		}
+	}
+	ctx := vmstore.NewVMContext(l)
+	for _, v := range common.GenesisInfos {
+		err := ctx.SetStorage(types.MintageAddress[:], v.GenesisBlock.Token[:], v.GenesisBlock.Data)
+		if err != nil {
+			ls.logger.Error(err)
+		}
 		verifier := process.NewLedgerVerifier(l)
 		if b, err := l.HasStateBlock(mintageBlock.GetHash()); !b && err == nil {
 			if err := l.AddStateBlock(&mintageBlock); err != nil {
@@ -85,6 +102,7 @@ func (ls *LedgerService) Init() error {
 			}
 		}
 	}
+	_ = ctx.SaveStorage()
 	return nil
 }
 
