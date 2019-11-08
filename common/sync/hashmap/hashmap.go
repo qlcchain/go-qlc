@@ -126,9 +126,9 @@ func (m *HashMap) Del(key interface{}) {
 ElementLoop:
 	for _, element = m.indexElement(h); element != nil; element = element.Next() {
 		if element.keyHash == h {
-			switch v := key.(type) {
+			switch key.(type) {
 			case []byte:
-				if bytes.Equal(element.key.([]byte), v) {
+				if bytes.Compare(element.key.([]byte), key.([]byte)) == 0 {
 					break ElementLoop
 				}
 			default:
@@ -157,11 +157,24 @@ func (m *HashMap) DelHashedKey(hashedKey uintptr) {
 		return
 	}
 
-	_, element := m.indexElement(hashedKey)
+	// inline HashMap.searchItem()
+	var element *ListElement
+ElementLoop:
+	for _, element = m.indexElement(hashedKey); element != nil; element = element.Next() {
+		if element.keyHash == hashedKey {
+
+			break ElementLoop
+
+		}
+
+		if element.keyHash > hashedKey {
+			return
+		}
+	}
+
 	if element == nil {
 		return
 	}
-
 	m.deleteElement(element)
 	list.Delete(element)
 }

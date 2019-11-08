@@ -21,9 +21,9 @@ func (m *HashMap) Get(key interface{}) (value interface{}, ok bool) {
 	// inline HashMap.searchItem()
 	for element != nil {
 		if element.keyHash == h {
-			switch v := key.(type) {
+			switch key.(type) {
 			case []byte:
-				if bytes.Equal(element.key.([]byte), v) {
+				if bytes.Compare(element.key.([]byte), key.([]byte)) == 0 {
 					return element.Value(), true
 				}
 			default:
@@ -145,7 +145,7 @@ func (m *HashMap) GetOrInsert(key interface{}, value interface{}) (actual interf
 			if element.keyHash == h {
 				switch key.(type) {
 				case []byte:
-					if bytes.Equal(element.key.([]byte), key.([]byte)) {
+					if bytes.Compare(element.key.([]byte), key.([]byte)) == 0 {
 						return element.Value(), true
 					}
 				default:
