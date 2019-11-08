@@ -14,12 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 )
 
-const (
-	QlcProtocolID        = "qlc/1.0.0"
-	QlcProtocolFOUND     = "/qlc/discovery/1.0.0"
-	discoveryConnTimeout = time.Second * 30
-)
-
 func (node *QlcNode) dhtFoundPeers() ([]peer.AddrInfo, error) {
 	//discovery peers
 	peers, err := discovery.FindPeers(node.ctx, node.dis, QlcProtocolFOUND, corediscovery.Limit(node.cfg.P2P.Discovery.Limit))
@@ -50,7 +44,7 @@ func setupDiscoveryOption(cfg *config.Config) DiscoveryOption {
 			if cfg.P2P.Discovery.MDNSInterval == 0 {
 				cfg.P2P.Discovery.MDNSInterval = 5
 			}
-			return mdns.NewMdnsService(ctx, h, time.Duration(cfg.P2P.Discovery.MDNSInterval)*time.Second, QlcProtocolID)
+			return mdns.NewMdnsService(ctx, h, time.Duration(cfg.P2P.Discovery.MDNSInterval)*time.Second, QlcMDnsFOUND)
 		}
 	}
 	return nil
