@@ -155,7 +155,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 
 	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, param.EndHeight,
 		param.RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
-		param.RewardAmount.Add(param.RewardAmount, oldInfo.RewardAmount))
+		new(big.Int).Add(param.RewardAmount, oldInfo.RewardAmount))
 	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], data)
 	if err != nil {
 		return nil, nil, errors.New("save contract data err")
