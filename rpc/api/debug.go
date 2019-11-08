@@ -305,6 +305,17 @@ func (l *DebugApi) PendingsAmount() (map[types.Address]map[string]types.Balance,
 	return abs, nil
 }
 
+func (l *DebugApi) PendingsCount() (int, error) {
+	n := 0
+	if err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		n++
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	repOnline := make(map[uint64]*dpos.RepOnlinePeriod, 0)
 	l.eb.Publish(common.EventRpcSyncCall, "DPoS.Online", "info", repOnline)
