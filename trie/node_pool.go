@@ -8,7 +8,8 @@
 package trie
 
 import (
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
+	"github.com/cornelk/hashmap"
+
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -24,7 +25,7 @@ func NewTrieNodePool(limit int, clearNum int) *NodePool {
 	if limit <= 0 {
 		limit = cacheSize
 	}
-	return &NodePool{limit: limit, clearNum: clearNum}
+	return &NodePool{limit: limit, cache: hashmap.New(uintptr(limit)), clearNum: clearNum}
 }
 
 func NewSimpleTrieNodePool() *NodePool {

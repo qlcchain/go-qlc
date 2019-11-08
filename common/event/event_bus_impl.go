@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cornelk/hashmap"
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 
 	"github.com/gammazero/workerpool"
 )

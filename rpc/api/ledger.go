@@ -9,12 +9,12 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/cornelk/hashmap"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
