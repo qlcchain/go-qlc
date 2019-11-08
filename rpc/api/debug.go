@@ -111,6 +111,30 @@ func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
 	return r, nil
 }
 
+func (l *DebugApi) BlocksCountByType(typ string) (map[string]int64, error) {
+	r := make(map[string]int64)
+	if err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+		var t string
+		switch typ {
+		case "address":
+			t = block.GetAddress().String()
+		case "type":
+			t = block.GetType().String()
+		case "token":
+			t = block.GetToken().String()
+		}
+		if v, ok := r[t]; ok {
+			r[t] = v + 1
+		} else {
+			r[t] = 1
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func (l *DebugApi) GetSyncBlockNum() (map[string]uint64, error) {
 	data := make(map[string]uint64)
 
@@ -182,7 +206,7 @@ func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, er
 	}, nil
 }
 
-func (l *DebugApi) Representations(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
+func (l *DebugApi) Representatives(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
 	r := make(map[types.Address]map[string]*types.Benefit)
 	if address == nil {
 		err := l.ledger.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {

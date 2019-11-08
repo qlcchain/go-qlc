@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/hex"
 	"sync/atomic"
 
 	"github.com/bluele/gcache"
@@ -161,6 +162,15 @@ func (r *RepresentationCache) cacheToConfirmed(txn db.StoreTxn) error {
 }
 
 func (r *RepresentationCache) memoryToConfirmed(txn db.StoreTxn) error {
+	cache := make([]string, 0)
+	if err := txn.Iterator(idPrefixRepresentationCache, func(cacheKey []byte, cacheVal []byte, b byte) error {
+		if len(cache) < 5000 { // delete old record, txn limit
+			cache = append(cache, hex.EncodeToString(cacheKey))
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
 	err := r.iterMemory(func(s string, i interface{}) error {
 		address, err := types.HexToAddress(s)
 		if err != nil {
@@ -184,11 +194,20 @@ func (r *RepresentationCache) memoryToConfirmed(txn db.StoreTxn) error {
 	if err != nil {
 		return err
 	}
+	for _, k := range cache {
+		b, err := hex.DecodeString(k)
+		if err != nil {
+			return err
+		}
+		if err := txn.Delete(b); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 const (
-	cacheLimit = 200
+	cacheLimit = 512
 )
 
 type Cache struct {
