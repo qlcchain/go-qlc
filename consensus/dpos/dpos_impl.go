@@ -764,9 +764,10 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 }
 
 func (dps *DPoS) localRepVote(block *types.StateBlock) {
+	hash := block.GetHash()
+
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
-		hash := block.GetHash()
 
 		weight := dps.ledger.Weight(address)
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
