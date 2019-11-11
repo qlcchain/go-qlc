@@ -217,6 +217,41 @@ func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBloc
 	p.syncBlockAcked <- hash
 }
 
+func (p *Processor) localRepVoteFrontier(block *types.StateBlock) {
+	hash := block.GetHash()
+	dps := p.dps
+
+	dps.localRepAccount.Range(func(key, value interface{}) bool {
+		address := key.(types.Address)
+
+		weight := dps.ledger.Weight(address)
+		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
+			return true
+		}
+
+		if block.Type == types.Online {
+			if !dps.isOnline(block.Address) {
+				dps.logger.Debugf("block[%s] is not online", hash)
+				return false
+			}
+		}
+
+		vi := &voteInfo{
+			hash:    hash,
+			account: address,
+		}
+
+		select {
+		case p.acks <- vi:
+			dps.acTrx.setVoteHash(block)
+			dps.logger.Debugf("rep [%s] vote for block[%s] type[%s]", address, hash, block.Type)
+		default:
+		}
+
+		return true
+	})
+}
+
 func (p *Processor) processFrontier(block *types.StateBlock) {
 	hash := block.GetHash()
 	dps := p.dps
@@ -226,11 +261,16 @@ func (p *Processor) processFrontier(block *types.StateBlock) {
 
 	if !p.dps.acTrx.addToRoots(block) {
 		if el := dps.acTrx.getVoteInfo(block); el != nil {
-			el.blocks.LoadOrStore(hash, block)
-			dps.hash2el.LoadOrStore(hash, el)
+			el.blocks.Store(hash, block)
+			dps.hash2el.Store(hash, el)
 		} else {
 			dps.logger.Errorf("get election err[%s]", hash)
 		}
+	}
+
+	result, _ := dps.lv.BlockCheck(block)
+	if result == process.Progress {
+		p.localRepVoteFrontier(block)
 	}
 
 	//p.syncBlock <- block
