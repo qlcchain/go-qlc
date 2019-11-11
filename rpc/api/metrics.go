@@ -25,9 +25,9 @@ func NewMetricsApi() *MetricsApi {
 	return &MetricsApi{logger: log.NewLogger("api_metrics")}
 }
 
-// GetCpuInfo get cpu info by core
+// GetCPUInfo get cpu info by core
 func (m *MetricsApi) GetCPUInfo() ([]cpu.InfoStat, error) {
-	return monitor.CpuInfo()
+	return monitor.CPUInfo()
 }
 
 // GetAllCPUTimeStats get total CPU time status
@@ -35,7 +35,7 @@ func (m *MetricsApi) GetAllCPUTimeStats() ([]cpu.TimesStat, error) {
 	return cpu.Times(false)
 }
 
-// GetAllCPUTimeStats get CPU time status per core
+// GetCPUTimeStats get CPU time status per core
 func (m *MetricsApi) GetCPUTimeStats() ([]cpu.TimesStat, error) {
 	return cpu.Times(true)
 }
