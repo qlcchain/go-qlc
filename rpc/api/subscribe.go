@@ -47,6 +47,7 @@ type BlockSubscriber struct {
 	address   types.Address
 	blocks    []*types.StateBlock
 	addrBlock *types.StateBlock
+	batch     bool
 }
 
 func NewBlockSubscription(ctx context.Context, eb event.EventBus) *BlockSubscription {
@@ -149,7 +150,7 @@ func (r *BlockSubscription) fetchAddrBlock(subID rpc.ID) *types.StateBlock {
 	return retBlk
 }
 
-func (r *BlockSubscription) addChan(subID rpc.ID, addr types.Address, ch chan struct{}) {
+func (r *BlockSubscription) addChan(subID rpc.ID, addr types.Address, batch bool, ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
@@ -164,6 +165,7 @@ func (r *BlockSubscription) addChan(subID rpc.ID, addr types.Address, ch chan st
 	sub = new(BlockSubscriber)
 	sub.notifyCh = ch
 	sub.address = addr
+	sub.batch = batch
 	sub.blocks = make([]*types.StateBlock, 0, MaxNotifyBlocks)
 	r.allSubs[subID] = sub
 }
@@ -201,7 +203,7 @@ func (r *BlockSubscription) notifyAllSubs(block *types.StateBlock) {
 	defer r.mu.Unlock()
 
 	for _, sub := range r.allSubs {
-		if sub.address.IsZero() {
+		if sub.address.IsZero() || (block.GetAddress() == sub.address && sub.batch) {
 			if len(sub.blocks) >= cap(sub.blocks) {
 				copy(sub.blocks, sub.blocks[1:len(sub.blocks)])
 				sub.blocks[cap(sub.blocks)-1] = block
