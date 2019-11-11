@@ -987,7 +987,7 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(subscription.ID, types.ZeroAddress, ch)
+			l.blockSubscription.addChan(subscription.ID, types.ZeroAddress, true, ch)
 			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
@@ -1027,11 +1027,55 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	return sub, nil
 }
 
+func (l *LedgerApi) NewAccountBlock(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
+	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+		go func() {
+			ch := make(chan struct{})
+			l.blockSubscription.addChan(subscription.ID, address, true, ch)
+			defer l.blockSubscription.removeChan(subscription.ID)
+
+			for {
+				select {
+				case <-ch:
+					blocks := l.blockSubscription.fetchBlocks(subscription.ID)
+					if len(blocks) == 0 {
+						continue
+					}
+
+					vmContext := vmstore.NewVMContext(l.ledger)
+					latestPov, _ := l.ledger.GetLatestPovHeader()
+
+					for _, block := range blocks {
+						apiBlk, err := generateAPIBlock(vmContext, block, latestPov)
+						if err != nil {
+							l.logger.Errorf("generateAPIBlock error: %s", err)
+							continue
+						}
+						if err := notifier.Notify(subscription.ID, apiBlk); err != nil {
+							l.logger.Errorf("notify error: %s", err)
+							return
+						}
+					}
+				case err := <-subscription.Err():
+					l.logger.Infof("subscription exception %s", err)
+					return
+				}
+			}
+		}()
+	})
+	if err != nil || sub == nil {
+		l.logger.Errorf("create subscription error, %s", err)
+		return nil, err
+	}
+	l.logger.Infof("account blocks subscription: %s", sub.ID)
+	return sub, nil
+}
+
 func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(subscription.ID, address, ch)
+			l.blockSubscription.addChan(subscription.ID, address, false, ch)
 			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
@@ -1071,7 +1115,7 @@ func (l *LedgerApi) NewPending(ctx context.Context, address types.Address) (*rpc
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(subscription.ID, address, ch)
+			l.blockSubscription.addChan(subscription.ID, address, false, ch)
 			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
