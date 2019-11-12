@@ -203,6 +203,7 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 		if err != nil {
 			dps.logger.Error(err)
 		} else {
+			dps.statBlockInc()
 			dps.logger.Debugf("save block[%s]", hash)
 		}
 	} else {
@@ -220,6 +221,7 @@ func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
 		if err != nil {
 			dps.logger.Error(err)
 		} else {
+			dps.statBlockInc()
 			dps.logger.Debugf("save block[%s]", hash)
 		}
 	} else {
