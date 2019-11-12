@@ -62,6 +62,15 @@ type sortContract struct {
 	timestamp int64
 }
 
+type processorStat struct {
+	Index      int `json:"1-index"`
+	BlockQueue int `json:"2-blockQueue"`
+	SyncQueue  int `json:"3-syncQueue"`
+	AckQueue   int `json:"4-ackQueue"`
+	DoneQueue  int `json:"5-doneQueue"`
+	ChainQueue int `json:"6-chainQueue"`
+}
+
 type frontierStatus byte
 
 const (
@@ -118,6 +127,8 @@ type DPoS struct {
 	lastProcessSyncTime time.Time
 	updateSync          chan struct{}
 	syncDone            chan struct{}
+	tps                 [10]uint32
+	block2Ledger        chan struct{}
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -166,6 +177,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
 		syncDone:            make(chan struct{}, 1024),
+		block2Ledger:        make(chan struct{}, 409600),
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -249,6 +261,7 @@ func (dps *DPoS) Start() {
 	go dps.processSubMsg()
 	go dps.processBlocks()
 	go dps.processSyncDone()
+	go dps.stat()
 	dps.processorStart()
 
 	if err := dps.blockSyncDone(); err != nil {
@@ -374,6 +387,33 @@ func (dps *DPoS) Stop() {
 	dps.cancel()
 	dps.processorStop()
 	dps.acTrx.stop()
+}
+
+func (dps *DPoS) stat() {
+	timerStatInterval := time.NewTicker(15 * time.Second)
+
+	for {
+		select {
+		case <-dps.ctx.Done():
+			dps.logger.Info("Stop stat.")
+			return
+		case <-timerStatInterval.C:
+			dps.tps[0] /= 15
+			for i := len(dps.tps) - 1; i > 0; i-- {
+				dps.tps[i] = dps.tps[i-1]
+			}
+			dps.tps[0] = 0
+		case <-dps.block2Ledger:
+			dps.tps[0]++
+		}
+	}
+}
+
+func (dps *DPoS) statBlockInc() {
+	select {
+	case dps.block2Ledger <- struct{}{}:
+	default:
+	}
 }
 
 func (dps *DPoS) processSyncDone() {
@@ -1094,6 +1134,8 @@ func (dps *DPoS) onRpcSyncCall(name string, in interface{}, out interface{}) {
 	switch name {
 	case "DPoS.Online":
 		dps.onGetOnlineInfo(in, out)
+	case "Debug.ConsInfo":
+		dps.info(in, out)
 	}
 }
 
@@ -1168,7 +1210,7 @@ func (dps *DPoS) blockSyncDone() error {
 			}
 
 			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
-				dps.logger.Warn("contract block(%s) sync done error: %s", blk.GetHash(), err)
+				dps.logger.Warnf("contract block(%s) sync done error: %s", blk.GetHash(), err)
 			}
 		}
 	}
@@ -1345,4 +1387,35 @@ func (dps *DPoS) updateLastProcessSyncTime() {
 	case dps.updateSync <- struct{}{}:
 	default:
 	}
+}
+
+func (dps *DPoS) info(in interface{}, out interface{}) {
+	outArgs := out.(map[string]interface{})
+
+	outArgs["err"] = nil
+	outArgs["tps"] = dps.tps
+	outArgs["povSyncState"] = dps.povSyncState.String()
+	outArgs["blockSyncState"] = dps.blockSyncState.String()
+	outArgs["blockQueue"] = len(dps.recvBlocks)
+
+	pStats := make([]*processorStat, 0)
+	for _, p := range dps.processors {
+		ps := &processorStat{
+			Index:      p.index,
+			BlockQueue: len(p.blocks),
+			SyncQueue:  len(p.syncBlock),
+			AckQueue:   len(p.acks),
+			DoneQueue:  len(p.doneBlock),
+		}
+
+		for _, dealt := range p.confirmedChain {
+			if dealt == false {
+				ps.ChainQueue++
+			}
+		}
+
+		ps.ChainQueue += ConfirmChainParallelNum - int(p.confirmParallelNum)
+		pStats = append(pStats, ps)
+	}
+	outArgs["processors"] = pStats
 }
