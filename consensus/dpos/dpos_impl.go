@@ -1409,7 +1409,7 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 		}
 
 		for _, dealt := range p.confirmedChain {
-			if dealt == false {
+			if !dealt {
 				ps.ChainQueue++
 			}
 		}
