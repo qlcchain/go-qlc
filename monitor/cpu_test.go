@@ -14,7 +14,7 @@ import (
 )
 
 func TestCpuInfo(t *testing.T) {
-	infos, err := CpuInfo()
+	infos, err := CPUInfo()
 	if err != nil {
 		t.Fatal(err)
 	}

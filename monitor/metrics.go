@@ -21,7 +21,7 @@ var (
 func init() {
 	metrics.RegisterRuntimeMemStats(SystemRegistry)
 	metrics.RegisterDebugGCStats(SystemRegistry)
-	RegisterRuntimeCpuStats(SystemRegistry)
+	RegisterRuntimeCPUStats(SystemRegistry)
 	RegisterDiskStats(SystemRegistry)
 	RegisterRuntimeNetworkStats(SystemRegistry)
 }
