@@ -390,3 +390,22 @@ func (l *DebugApi) ContractCount() (map[string]int64, error) {
 	}
 	return r, nil
 }
+
+func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
+	inArgs := make(map[string]interface{})
+	outArgs := make(map[string]interface{})
+
+	l.eb.Publish(common.EventRpcSyncCall, "Debug.ConsInfo", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+	delete(outArgs, "err")
+
+	return outArgs, nil
+}
