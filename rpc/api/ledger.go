@@ -525,6 +525,29 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	return bs, nil
 }
 
+func (l *LedgerApi) ConfirmedBlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
+	bs := make([]*APIBlock, 0)
+	vmContext := vmstore.NewVMContext(l.ledger)
+
+	latestPov, _ := l.ledger.GetLatestPovHeader()
+
+	for _, h := range hash {
+		block, err := l.ledger.GetStateBlockConfirmed(h)
+		if err != nil {
+			if err == ledger.ErrBlockNotFound {
+				continue
+			}
+			return nil, fmt.Errorf("%s, %s", h, err)
+		}
+		b, err := generateAPIBlock(vmContext, block, latestPov)
+		if err != nil {
+			return nil, err
+		}
+		bs = append(bs, b)
+	}
+	return bs, nil
+}
+
 func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
 	c, o, err := checkOffset(count, offset)
 	if err != nil {
