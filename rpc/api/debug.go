@@ -51,6 +51,18 @@ func (l *DebugApi) BlockCacheCount() (map[string]uint64, error) {
 	return c, nil
 }
 
+func (l *DebugApi) BlockCaches() ([]types.Hash, error) {
+	r := make([]types.Hash, 0)
+	err := l.ledger.GetBlockCaches(func(block *types.StateBlock) error {
+		r = append(r, block.GetHash())
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	unchecks := make([]*APIUncheckBlock, 0)
 	err := l.ledger.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
