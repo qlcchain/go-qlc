@@ -17,15 +17,7 @@ import (
 
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
-		lv.logger.Errorf("process rollback cache block: %s", hash.String())
-		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
-			err = lv.rollbackCache(hash, txn)
-			if err != nil {
-				lv.logger.Error(err)
-				return err
-			}
-			return nil
-		})
+		return lv.RollbackCache(hash)
 	}
 
 	if b, err := lv.l.HasStateBlockConfirmed(hash); !b || err != nil {
@@ -129,6 +121,21 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 		}
 		return err
 	})
+}
+
+func (lv *LedgerVerifier) RollbackCache(hash types.Hash) error {
+	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
+		lv.logger.Errorf("process rollback cache block: %s", hash.String())
+		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
+			err = lv.rollbackCache(hash, txn)
+			if err != nil {
+				lv.logger.Error(err)
+				return err
+			}
+			return nil
+		})
+	}
+	return nil
 }
 
 // rollback cache blocks
