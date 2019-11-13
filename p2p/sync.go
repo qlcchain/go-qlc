@@ -380,7 +380,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		for {
 			blk, err = ss.qlcLedger.GetStateBlockConfirmed(temp)
 			if err != nil {
-				ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+				ss.logger.Errorf("err [%s] when get StateBlock:[%s]", err, temp.String())
 				break
 			}
 			bulkBlk = append(bulkBlk, blk)
@@ -398,7 +398,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		for {
 			blk, err = ss.qlcLedger.GetStateBlockConfirmed(temp)
 			if err != nil {
-				ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+				ss.logger.Errorf("err [%s] when get StateBlock:[%s]", err, temp.String())
 				break
 			}
 			bulkBlk = append(bulkBlk, blk)
@@ -450,7 +450,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				for {
 					blk, err = ss.qlcLedger.GetStateBlockConfirmed(temp)
 					if err != nil {
-						ss.logger.Errorf("err when get StateBlock:[%s]", endHash.String())
+						ss.logger.Errorf("err [%s] when get StateBlock:[%s]", err, temp.String())
 						break
 					}
 					bulkBlk = append(bulkBlk, blk)
