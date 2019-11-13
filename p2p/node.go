@@ -117,6 +117,7 @@ func (node *QlcNode) buildHost() error {
 		libp2p.Identity(node.privateKey),
 		//libp2p.NATPortMap(),
 		libp2p.BandwidthReporter(node.reporter),
+		libp2p.Ping(false),
 		// libp2p.DefaultMuxers,
 	)
 	if err != nil {
