@@ -14,7 +14,7 @@ import (
 )
 
 func getTestDpos() *DPoS {
-	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "dpos", uuid.New().String())
 	cm := config.NewCfgManager(dir)
 	return NewDPoS(cm.ConfigFile)
 }

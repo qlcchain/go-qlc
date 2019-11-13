@@ -1391,6 +1391,7 @@ func (dps *DPoS) updateLastProcessSyncTime() {
 
 func (dps *DPoS) info(in interface{}, out interface{}) {
 	outArgs := out.(map[string]interface{})
+	rootsNum := 0
 
 	outArgs["err"] = nil
 	outArgs["tps"] = dps.tps
@@ -1418,4 +1419,10 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 		pStats = append(pStats, ps)
 	}
 	outArgs["processors"] = pStats
+
+	dps.acTrx.roots.Range(func(key, value interface{}) bool {
+		rootsNum++
+		return true
+	})
+	outArgs["rootsNum"] = rootsNum
 }
