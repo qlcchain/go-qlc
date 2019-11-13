@@ -36,7 +36,7 @@ func sliceIndex(array []string, s string) int {
 
 func StringVar(rawArgs []string, args Flag) string {
 	i := sliceIndex(rawArgs, prefix+args.Name)
-	if i < 0 {
+	if i < 0 || i+1 >= len(rawArgs) {
 		return args.Value.(string)
 	}
 	s := rawArgs[i+1]
@@ -45,7 +45,7 @@ func StringVar(rawArgs []string, args Flag) string {
 
 func StringSliceVar(rawArgs []string, args Flag) []string {
 	i := sliceIndex(rawArgs, prefix+args.Name)
-	if i < 0 {
+	if i < 0 || i+1 >= len(rawArgs) {
 		s, ok := args.Value.(string)
 		if !ok {
 			return nil
@@ -61,7 +61,7 @@ func StringSliceVar(rawArgs []string, args Flag) []string {
 
 func IntVar(rawArgs []string, args Flag) (int, error) {
 	i := sliceIndex(rawArgs, prefix+args.Name)
-	if i < 0 {
+	if i < 0 || i+1 >= len(rawArgs) {
 		return args.Value.(int), nil
 	}
 	s := rawArgs[i+1]
@@ -74,7 +74,7 @@ func IntVar(rawArgs []string, args Flag) (int, error) {
 
 func BoolVar(rawArgs []string, args Flag) bool {
 	i := sliceIndex(rawArgs, prefix+args.Name)
-	if i < 0 {
+	if i < 0 || i+1 >= len(rawArgs) {
 		return args.Value.(bool)
 	}
 
