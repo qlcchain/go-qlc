@@ -172,7 +172,7 @@ func (act *ActiveTrx) checkVotes() {
 				return true
 			}
 
-			dps.logger.Infof("block[%s] was not confirmed after %d times resend", hash, confirmReqMaxTimes)
+			dps.logger.Warnf("block[%s] was not confirmed after %d times resend", hash, confirmReqMaxTimes)
 			act.roots.Delete(el.vote.id)
 			_ = dps.lv.Rollback(hash)
 			el.cleanBlockInfo()
