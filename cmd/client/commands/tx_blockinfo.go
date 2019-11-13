@@ -21,12 +21,18 @@ func addTxBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "hashes of account blocks",
 		Value: "",
 	}
+	statusFlag := util.Flag{
+		Name:  "status",
+		Must:  false,
+		Usage: "unconfirmed-0, confirmed-1",
+		Value: 1,
+	}
 
 	cmd := &ishell.Cmd{
 		Name: "getBlockInfo",
 		Help: "get account blocks info by hashes",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{hashFlag}
+			args := []util.Flag{hashFlag, statusFlag}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -36,8 +42,9 @@ func addTxBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 			}
 
 			hashStrList := util.StringSliceVar(c.Args, hashFlag)
+			status, _ := util.IntVar(c.Args, statusFlag)
 
-			err := runTxBlockInfoCmd(hashStrList)
+			err := runTxBlockInfoCmd(hashStrList, status)
 			if err != nil {
 				util.Warn(err)
 				return
@@ -47,16 +54,22 @@ func addTxBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runTxBlockInfoCmd(hashStrList []string) error {
+func runTxBlockInfoCmd(hashStrList []string, status int) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 
+	fmt.Println("hashes", hashStrList, "status", status)
+
 	//rspInfo := make([]*api.APIBlock, len(hashStrList))
 	var rspInfo []*api.APIBlock
-	err = client.Call(&rspInfo, "ledger_blocksInfo", hashStrList)
+	if status == 1 {
+		err = client.Call(&rspInfo, "ledger_confirmedBlocksInfo", hashStrList)
+	} else {
+		err = client.Call(&rspInfo, "ledger_blocksInfo", hashStrList)
+	}
 	if err != nil {
 		return err
 	}
