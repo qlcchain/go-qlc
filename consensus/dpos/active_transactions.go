@@ -174,9 +174,7 @@ func (act *ActiveTrx) checkVotes() {
 
 			dps.logger.Warnf("block[%s] was not confirmed after %d times resend", hash, confirmReqMaxTimes)
 			act.roots.Delete(el.vote.id)
-			_ = dps.lv.Rollback(hash)
 			el.cleanBlockInfo()
-			dps.syncBlockRollback(hash)
 
 			if dps.isReceivedFrontier(hash) {
 				dps.logger.Warn("sync finish abnormally because of frontier not confirmed")
