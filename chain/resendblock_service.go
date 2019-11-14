@@ -152,35 +152,28 @@ func (rb *ResendBlockService) Start() error {
 				rb.hashSet.Range(func(key, value interface{}) bool {
 					h := key.(types.Hash)
 					hs = value.([]*ResendTimes)
-					if hs[0].resendTimes >= maxResendBlockCache {
-						rb.hashSet.Delete(h)
-						_ = verifier.RollbackCache(hs[0].hash)
-					} else {
-						for _, j := range hs {
-							if b, _ := l.HasStateBlockConfirmed(j.hash); b {
-								hsTemp = append(hsTemp, j)
-							} else {
-								if j.resendTimes >= maxResendBlockCache {
-									rb.hashSet.Delete(h)
-									_ = verifier.RollbackCache(j.hash)
-									break
-								} else {
-									if sb, err := l.GetStateBlock(j.hash); err == nil {
-										cc.EventBus().Publish(common.EventBroadcast, p2p.PublishReq, sb)
-										cc.EventBus().Publish(common.EventGenerateBlock, process.Progress, sb)
-									}
-									j.resendTimes++
-									break
-								}
-							}
-
-						}
-						if len(hsTemp) == len(hs) {
-							rb.hashSet.Delete(h)
+					for _, j := range hs {
+						if b, _ := l.HasStateBlockConfirmed(j.hash); b {
+							hsTemp = append(hsTemp, j)
 						} else {
-							hsDiff := sliceDiff(hs, hsTemp)
-							rb.hashSet.Store(h, hsDiff)
+							if j.resendTimes >= maxResendBlockCache {
+								hsTemp = hs
+								rb.hashSet.Delete(h)
+								_ = verifier.RollbackCache(j.hash)
+								break
+							} else {
+								if sb, err := l.GetStateBlock(j.hash); err == nil {
+									cc.EventBus().Publish(common.EventBroadcast, p2p.PublishReq, sb)
+									cc.EventBus().Publish(common.EventGenerateBlock, process.Progress, sb)
+								}
+								j.resendTimes++
+								break
+							}
 						}
+					}
+					if len(hsTemp) < len(hs) {
+						hsDiff := sliceDiff(hs, hsTemp)
+						rb.hashSet.Store(h, hsDiff)
 					}
 					return true
 				})
