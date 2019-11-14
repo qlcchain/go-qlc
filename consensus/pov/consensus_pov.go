@@ -15,6 +15,7 @@ type PovConsensusChainReader interface {
 	RelativeAncestor(header *types.PovHeader, distance uint64) *types.PovHeader
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
+	GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState
 }
 
 type ConsensusPov interface {

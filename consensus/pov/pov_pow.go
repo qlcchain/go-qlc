@@ -87,16 +87,9 @@ func (c *ConsensusPow) verifyProducer(header *types.PovHeader) error {
 		return errors.New("failed to get previous state tire")
 	}
 
-	rsKey := types.PovCreateRepStateKey(prevHeader.GetMinerAddr())
-	rsVal := prevTrie.GetValue(rsKey)
-	if len(rsVal) == 0 {
-		return errors.New("failed to get rep state value")
-	}
-
-	rs := types.NewPovRepState()
-	err := rs.Deserialize(rsVal)
-	if err != nil {
-		return errors.New("failed to deserialize rep state value")
+	rs := c.chainR.GetRepState(prevTrie, header.GetMinerAddr())
+	if rs == nil {
+		return errors.New("failed to get rep state")
 	}
 
 	if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
