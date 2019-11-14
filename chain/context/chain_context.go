@@ -39,6 +39,7 @@ const (
 	MetricsService     = "metricsService"
 	ChainManageService = "chainManageService"
 	LogService         = "logService"
+	ResendBlockService = "resendBlockService"
 )
 
 type serviceManager interface {
