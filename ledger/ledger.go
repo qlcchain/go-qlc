@@ -101,6 +101,7 @@ const (
 	idPrefixUncheckedPovHeight
 	idPrefixPovLatestHeight  // prefix => height
 	idPrefixPovTxlScanCursor // prefix => height
+	idPrefixVoteHistory
 )
 
 var (
