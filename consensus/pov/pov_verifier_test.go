@@ -57,6 +57,10 @@ func (c *mockPovVerifierChainReader) GetAccountState(trie *trie.Trie, address ty
 	return nil
 }
 
+func (c *mockPovVerifierChainReader) GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState {
+	return nil
+}
+
 func (c *mockPovVerifierChainReader) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance) {
 	return types.ZeroBalance, types.ZeroBalance
 }
@@ -80,6 +84,10 @@ func (c *mockPovConsensusChainReader) GetStateTrie(stateHash *types.Hash) *trie.
 }
 
 func (c *mockPovConsensusChainReader) GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState {
+	return nil
+}
+
+func (c *mockPovConsensusChainReader) GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState {
 	return nil
 }
 
