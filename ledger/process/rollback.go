@@ -125,7 +125,7 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 
 func (lv *LedgerVerifier) RollbackCache(hash types.Hash) error {
 	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
-		lv.logger.Errorf("process rollback cache block: %s", hash.String())
+		lv.logger.Infof("process rollback cache block: %s", hash.String())
 		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
 			err = lv.rollbackCache(hash, txn)
 			if err != nil {
@@ -229,7 +229,7 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache 
 				return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
 			}
 			lv.l.EB.Publish(common.EventRollback, block.GetHash())
-			lv.logger.Errorf("rollback delete cache block %s (previous: %s, type: %s,  address: %s)", block.GetHash().String(), block.GetPrevious().String(), block.GetType(), block.GetAddress().String())
+			lv.logger.Infof("rollback delete cache block %s (previous: %s, type: %s,  address: %s)", block.GetHash().String(), block.GetPrevious().String(), block.GetType(), block.GetAddress().String())
 
 			if b, _ := lv.l.HasBlockCache(block.GetPrevious()); b {
 				if err := lv.rollbackCacheAccount(block, txn); err != nil {
@@ -323,7 +323,7 @@ func (lv *LedgerVerifier) rollbackCacheAccountDel(address types.Address, token t
 			if err := lv.l.DeleteAccountMetaCache(address, txn); err != nil {
 				return err
 			}
-			lv.logger.Errorf("rollback delete account cache, %s", address.String())
+			lv.logger.Infof("rollback delete account cache, %s", address.String())
 			return nil
 		} else {
 			if err := lv.l.DeleteTokenMetaCache(address, token, txn); err != nil {
