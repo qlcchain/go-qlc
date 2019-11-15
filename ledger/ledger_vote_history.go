@@ -2,9 +2,7 @@ package ledger
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"time"
 )
 
 func (l *Ledger) AddVoteHistory(hash types.Hash, address types.Address, txns ...db.StoreTxn) error {
@@ -16,7 +14,7 @@ func (l *Ledger) AddVoteHistory(hash types.Hash, address types.Address, txns ...
 		return err
 	}
 
-	return txn.Set(k, util.BE_Uint64ToBytes(uint64(time.Now().Unix())))
+	return txn.Set(k, nil)
 }
 
 func (l *Ledger) HasVoteHistory(hash types.Hash, address types.Address, txns ...db.StoreTxn) bool {
@@ -37,21 +35,33 @@ func (l *Ledger) HasVoteHistory(hash types.Hash, address types.Address, txns ...
 	return true
 }
 
-func (l *Ledger) CleanVoteHistoryTimeout(txns ...db.StoreTxn) error {
+func (l *Ledger) CleanBlockVoteHistory(hash types.Hash, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	now := uint64(time.Now().Unix())
-	err := txn.Iterator(idPrefixVoteHistory, func(key []byte, val []byte, b byte) error {
-		addTime := util.BE_BytesToUint64(val)
-		if now - addTime > 600 {
-			er := txn.Delete(key)
-			if er != nil {
-				l.logger.Error(er)
-			}
-		}
-		return nil
-	})
+	k, err := getKeyOfParts(idPrefixVoteHistory, hash)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Drop(k)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) CleanAllVoteHistory(txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixVoteHistory)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Drop(k)
 	if err != nil {
 		return err
 	}

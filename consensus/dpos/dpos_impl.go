@@ -33,7 +33,7 @@ const (
 	refreshPriInterval    = 1 * time.Minute
 	subAckMaxSize         = 102400
 	maxStatisticsPeriod   = 3
-	confirmedCacheMaxLen  = 102400
+	confirmedCacheMaxLen  = 1024000
 	confirmedCacheMaxTime = 10 * time.Minute
 	hashNumPerAck         = 1024
 	blockNumPerReq        = 128
@@ -114,7 +114,7 @@ type DPoS struct {
 	syncStateNotifyWait *sync.WaitGroup
 	totalVote           map[types.Address]types.Balance
 	online              gcache.Cache
-	confirmedBlocks     gcache.Cache
+	confirmedBlocks     *cache
 	lastSendHeight      uint64
 	curPovHeight        uint64
 	checkFinish         chan struct{}
@@ -165,7 +165,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		frontiersStatus:     new(sync.Map),
 		syncStateNotifyWait: new(sync.WaitGroup),
 		online:              gcache.New(maxStatisticsPeriod).LRU().Build(),
-		confirmedBlocks:     gcache.New(confirmedCacheMaxLen).Expiration(confirmedCacheMaxTime).LRU().Build(),
+		confirmedBlocks:     newCache(confirmedCacheMaxLen, confirmedCacheMaxTime),
 		lastSendHeight:      1,
 		curPovHeight:        1,
 		checkFinish:         make(chan struct{}, 10240),
@@ -188,6 +188,14 @@ func NewDPoS(cfgFile string) *DPoS {
 	pb, err := dps.ledger.GetLatestPovBlock()
 	if err == nil {
 		dps.curPovHeight = pb.Header.BasHdr.Height
+	}
+
+	dps.confirmedBlocks.evictedFunc = func(key interface{}, val interface{}) {
+		hash := key.(types.Hash)
+		err = dps.ledger.CleanBlockVoteHistory(hash)
+		if err != nil {
+			dps.logger.Error("clean vote history err", err)
+		}
 	}
 
 	return dps
@@ -268,9 +276,14 @@ func (dps *DPoS) Start() {
 		dps.logger.Error("block sync down err", err)
 	}
 
+	if err := dps.ledger.CleanAllVoteHistory(); err != nil {
+		dps.logger.Error("clean all vote history err")
+	}
+
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDequeueGap := time.NewTicker(10 * time.Second)
 	timerUpdateSyncTime := time.NewTicker(5 * time.Second)
+	timerGC := time.NewTicker(time.Minute)
 
 	for {
 		select {
@@ -372,6 +385,8 @@ func (dps *DPoS) Start() {
 					dps.syncFinish()
 				}
 			}
+		case <-timerGC.C:
+			dps.confirmedBlocks.gc()
 		}
 	}
 }
@@ -387,6 +402,10 @@ func (dps *DPoS) Stop() {
 	dps.cancel()
 	dps.processorStop()
 	dps.acTrx.stop()
+}
+
+func (dps *DPoS) voteHistoryClean() {
+
 }
 
 func (dps *DPoS) stat() {
@@ -433,6 +452,7 @@ func (dps *DPoS) processSyncDone() {
 				p.syncStateChange <- common.SyncFinish
 			}
 			dps.syncStateNotifyWait.Wait()
+			dps.blockSyncState = common.SyncFinish
 
 			dps.eb.Publish(common.EventConsensusSyncFinished)
 			dps.logger.Warn("sync finished")
@@ -619,9 +639,9 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 		if dps.getAckType(ack.Sequence) != ackTypeFindRep {
 			for _, h := range ack.Hash {
 				dps.logger.Infof("dps recv confirmAck block[%s]", h)
+				dps.heartAndVoteInc(h, ack.Account, onlineKindVote)
 
 				if has, _ := dps.ledger.HasStateBlockConfirmed(h); has {
-					dps.heartAndVoteInc(h, ack.Account, onlineKindVote)
 					continue
 				}
 

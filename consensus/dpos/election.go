@@ -72,8 +72,6 @@ func (el *Election) updateVoteStatistic(confirmedHash types.Hash) {
 
 	//ignore fork ack
 	if has, _ := dps.ledger.HasStateBlockConfirmed(confirmedHash); !has {
-		dps.confirmedBlockInc()
-
 		el.vote.repVotes.Range(func(key, value interface{}) bool {
 			vi := value.(*voteInfo)
 			if vi.hash == confirmedHash {
@@ -168,12 +166,12 @@ func (el *Election) haveQuorum() {
 			}
 		}
 
-		el.updateVoteStatistic(confirmedHash)
-		el.cleanBlockInfo()
 		dps.acTrx.rollBack(el.status.loser)
 		dps.acTrx.addWinner2Ledger(blk)
+		el.updateVoteStatistic(confirmedHash)
 		dps.dispatchAckedBlock(blk, confirmedHash, -1)
 		dps.eb.Publish(common.EventConfirmedBlock, blk)
+		el.cleanBlockInfo()
 	} else {
 		dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance)
 	}

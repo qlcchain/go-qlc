@@ -35,6 +35,22 @@ func (op *RepOnlinePeriod) String() string {
 	return string(bytes)
 }
 
+func (dps *DPoS) isValidVote(hash types.Hash, addr types.Address) bool {
+	if dps.confirmedBlocks.has(hash) {
+		if dps.ledger.HasVoteHistory(hash, addr) {
+			return false
+		} else {
+			err := dps.ledger.AddVoteHistory(hash, addr)
+			if err != nil {
+				dps.logger.Error("add vote history err", err)
+			}
+			return true
+		}
+	}
+
+	return false
+}
+
 func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlineKind) {
 	period := (dps.curPovHeight - 1) / common.DPosOnlinePeriod
 	var repPeriod *RepOnlinePeriod
@@ -63,22 +79,8 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 			v.HeartCount++
 			v.LastHeartHeight = dps.curPovHeight
 		} else if kind == onlineKindVote {
-			c, err := dps.confirmedBlocks.Get(hash)
-			if err != nil {
-				reps := make(map[types.Address]struct{})
-				err := dps.confirmedBlocks.Set(hash, reps)
-				if err != nil {
-					dps.logger.Error("add confirmed block cache err", err)
-				}
-
-				reps[addr] = struct{}{}
+			if dps.isValidVote(hash, addr) {
 				v.VoteCount++
-			} else {
-				reps := c.(map[types.Address]struct{})
-				if _, ok := reps[addr]; !ok {
-					v.VoteCount++
-					reps[addr] = struct{}{}
-				}
 			}
 		}
 	} else {
@@ -88,27 +90,17 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 			repPeriod.Statistic[addr].HeartCount++
 			repPeriod.Statistic[addr].LastHeartHeight = dps.curPovHeight
 		} else {
-			c, err := dps.confirmedBlocks.Get(hash)
-			if err != nil {
-				reps := make(map[types.Address]struct{})
-				err := dps.confirmedBlocks.Set(hash, reps)
-				if err != nil {
-					dps.logger.Error("add confirmed block cache err", err)
-				}
-
-				reps[addr] = struct{}{}
-				repPeriod.Statistic[addr].VoteCount++
-			} else {
-				reps := c.(map[types.Address]struct{})
-				reps[addr] = struct{}{}
+			if dps.isValidVote(hash, addr) {
 				repPeriod.Statistic[addr].VoteCount++
 			}
 		}
 	}
 }
 
-func (dps *DPoS) confirmedBlockInc() {
+func (dps *DPoS) confirmedBlockInc(hash types.Hash) {
 	period := (dps.curPovHeight - 1) / common.DPosOnlinePeriod
+
+	dps.confirmedBlocks.set(hash, nil)
 
 	if s, err := dps.online.Get(period); err == nil {
 		repPeriod := s.(*RepOnlinePeriod)
