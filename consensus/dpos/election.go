@@ -71,15 +71,13 @@ func (el *Election) updateVoteStatistic(confirmedHash types.Hash) {
 	dps := el.dps
 
 	//ignore fork ack
-	if has, _ := dps.ledger.HasStateBlockConfirmed(confirmedHash); !has {
-		el.vote.repVotes.Range(func(key, value interface{}) bool {
-			vi := value.(*voteInfo)
-			if vi.hash == confirmedHash {
-				dps.heartAndVoteInc(confirmedHash, vi.account, onlineKindVote)
-			}
-			return true
-		})
-	}
+	el.vote.repVotes.Range(func(key, value interface{}) bool {
+		vi := value.(*voteInfo)
+		if vi.hash == confirmedHash {
+			dps.heartAndVoteInc(confirmedHash, vi.account, onlineKindVote)
+		}
+		return true
+	})
 }
 
 func (el *Election) voteFrontier(vi *voteInfo) bool {

@@ -34,7 +34,7 @@ const (
 	subAckMaxSize         = 102400
 	maxStatisticsPeriod   = 3
 	confirmedCacheMaxLen  = 1024000
-	confirmedCacheMaxTime = 10 * time.Minute
+	confirmedCacheMaxTime = 1 * time.Minute
 	hashNumPerAck         = 1024
 	blockNumPerReq        = 128
 )
@@ -167,7 +167,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		online:              gcache.New(maxStatisticsPeriod).LRU().Build(),
 		confirmedBlocks:     newCache(confirmedCacheMaxLen, confirmedCacheMaxTime),
 		lastSendHeight:      1,
-		curPovHeight:        1,
+		curPovHeight:        0,
 		checkFinish:         make(chan struct{}, 10240),
 		gapPovCh:            make(chan *consensus.BlockSource, 10240),
 		povChange:           make(chan *types.PovBlock, 10240),
@@ -283,7 +283,7 @@ func (dps *DPoS) Start() {
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDequeueGap := time.NewTicker(10 * time.Second)
 	timerUpdateSyncTime := time.NewTicker(5 * time.Second)
-	timerGC := time.NewTicker(time.Minute)
+	timerGC := time.NewTicker(1 * time.Minute)
 
 	for {
 		select {

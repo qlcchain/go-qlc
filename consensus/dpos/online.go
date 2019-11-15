@@ -52,7 +52,7 @@ func (dps *DPoS) isValidVote(hash types.Hash, addr types.Address) bool {
 }
 
 func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlineKind) {
-	period := (dps.curPovHeight - 1) / common.DPosOnlinePeriod
+	period := dps.curPovHeight / common.DPosOnlinePeriod
 	var repPeriod *RepOnlinePeriod
 
 	if s, err := dps.online.Get(period); err == nil {
@@ -98,7 +98,7 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 }
 
 func (dps *DPoS) confirmedBlockInc(hash types.Hash) {
-	period := (dps.curPovHeight - 1) / common.DPosOnlinePeriod
+	period := dps.curPovHeight / common.DPosOnlinePeriod
 
 	dps.confirmedBlocks.set(hash, nil)
 
@@ -123,7 +123,7 @@ func (dps *DPoS) confirmedBlockInc(hash types.Hash) {
 }
 
 func (dps *DPoS) isOnline(addr types.Address) bool {
-	period := (dps.curPovHeight-1)/common.DPosOnlinePeriod - 1
+	period := dps.curPovHeight/common.DPosOnlinePeriod - 1
 
 	//the first period will be ignored
 	if s, err := dps.online.Get(period); err == nil {

@@ -45,6 +45,9 @@ func (c *cache) set(key, val interface{}) {
 		if ent == nil {
 			return
 		} else {
+			c.evictList.Remove(ent)
+			it := ent.Value.(*item)
+			delete(c.items, it.key)
 			c.evict(ent)
 		}
 	}
@@ -73,9 +76,7 @@ func (c *cache) has(key interface{}) bool {
 }
 
 func (c *cache) evict(em *list.Element) {
-	c.evictList.Remove(em)
 	entry := em.Value.(*item)
-	delete(c.items, entry.key)
 
 	if c.evictedFunc != nil {
 		c.evictedFunc(entry.key, entry.value)
@@ -83,11 +84,21 @@ func (c *cache) evict(em *list.Element) {
 }
 
 func (c *cache) gc() {
+	exp := make([]*list.Element, 0)
+
+	c.lock.Lock()
 	for _, val := range c.items {
 		it := val.Value.(*item)
 		if it.isExpired() {
-			c.evict(val)
+			exp = append(exp, val)
+			c.evictList.Remove(val)
+			delete(c.items, it.key)
 		}
+	}
+	c.lock.Unlock()
+
+	for _, en := range exp {
+		c.evict(en)
 	}
 }
 
