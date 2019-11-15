@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	MaxTxsInPool = 100000
+	MaxTxsInPool = 1000000
 )
 
 type PovTxEvent struct {
