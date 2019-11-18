@@ -120,8 +120,11 @@ type PovMinerStats struct {
 
 	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
 
-	TotalBlockNum     uint32 `json:"totalBlockNum"`
-	LatestBlockHeight uint64 `json:"latestBlockHeight"`
+	TotalBlockNum     uint32        `json:"totalBlockNum"`
+	TotalRewardAmount types.Balance `json:"totalRewardAmount"`
+	TotalMinerReward  types.Balance `json:"totalMinerReward"`
+	TotalRepReward    types.Balance `json:"totalRepReward"`
+	LatestBlockHeight uint64        `json:"latestBlockHeight"`
 }
 
 type PovRepStats struct {
@@ -675,6 +678,8 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	}
 
 	totalBlockNum := uint32(0)
+	totalMinerReward := types.NewBalance(0)
+	totalRepReward := types.NewBalance(0)
 
 	// scan miner stats per day
 	dbDayCnt := 0
@@ -685,12 +690,17 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			lastDayIndex = stat.DayIndex
 		}
 		for addrHex, minerStat := range stat.MinerStats {
-			if minerStat.BlockNum == 0 {
-				continue
-			}
 			minerAddr, _ := types.HexToAddress(addrHex)
 
 			if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
+				continue
+			}
+
+			totalMinerReward = totalMinerReward.Add(minerStat.RewardAmount)
+			totalRepReward = totalRepReward.Add(minerStat.RepReward)
+
+			// just exist rep stats in this item
+			if minerStat.BlockNum == 0 {
 				continue
 			}
 
@@ -764,6 +774,8 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		item.MainRewardAmount = item.MainRewardAmount.Add(header.GetMinerReward())
 		item.MainBlockNum += 1
 		totalBlockNum += 1
+		totalMinerReward = totalMinerReward.Add(header.GetMinerReward())
+		totalRepReward = totalRepReward.Add(header.GetRepReward())
 	}
 
 	//exclude genesis block miner
@@ -786,6 +798,13 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 
 	apiRsp.TotalBlockNum = totalBlockNum
 	apiRsp.LatestBlockHeight = latestHeader.GetHeight()
+
+	apiRsp.TotalMinerReward = totalMinerReward
+	apiRsp.TotalRepReward = totalRepReward
+
+	apiRsp.TotalRewardAmount = types.NewBalance(0)
+	apiRsp.TotalRewardAmount = apiRsp.TotalRewardAmount.Add(totalMinerReward)
+	apiRsp.TotalRewardAmount = apiRsp.TotalRewardAmount.Add(totalRepReward)
 
 	// miner is online if it generate blocks in last N hours
 	for _, item := range apiRsp.MinerStats {

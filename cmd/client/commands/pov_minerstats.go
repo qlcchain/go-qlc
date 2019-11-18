@@ -57,6 +57,10 @@ func runPovMinerInfoCmd(minerAddrStrList []string) error {
 	}
 
 	fmt.Printf("TotalBlockNum: %d, LatestBlockHeight: %d\n", rspInfo.TotalBlockNum, rspInfo.LatestBlockHeight)
+	fmt.Printf("TotalRewardAmount: %s, TotalMinerReward: %s, TotalRepReward: %s\n",
+		formatPovReward(rspInfo.TotalRewardAmount),
+		formatPovReward(rspInfo.TotalMinerReward),
+		formatPovReward(rspInfo.TotalRepReward))
 	fmt.Printf("TotalMinerCount: %d, LastDayOnlineCount: %d, LastHourOnlineCount: %d\n", rspInfo.MinerCount, rspInfo.DayOnlineCount, rspInfo.HourOnlineCount)
 
 	fmt.Printf("%-64s %-6s %-10s %-13s %-10s %-10s\n", "Address", "Online", "MBlocks", "MRewards", "FirstH", "LastH")
