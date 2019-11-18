@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -56,6 +57,17 @@ func runPovMinerInfoCmd(minerAddrStrList []string) error {
 		return err
 	}
 
+	var sortMiners []*api.PovMinerStatItem
+	for _, miner := range rspInfo.MinerStats {
+		sortMiners = append(sortMiners, miner)
+	}
+	sort.Slice(sortMiners, func(i, j int) bool {
+		if sortMiners[i].LastBlockHeight > sortMiners[j].LastBlockHeight {
+			return true
+		}
+		return false
+	})
+
 	fmt.Printf("TotalBlockNum: %d, LatestBlockHeight: %d\n", rspInfo.TotalBlockNum, rspInfo.LatestBlockHeight)
 	fmt.Printf("TotalRewardAmount: %s, TotalMinerReward: %s, TotalRepReward: %s\n",
 		formatPovReward(rspInfo.TotalRewardAmount),
@@ -64,7 +76,7 @@ func runPovMinerInfoCmd(minerAddrStrList []string) error {
 	fmt.Printf("TotalMinerCount: %d, LastDayOnlineCount: %d, LastHourOnlineCount: %d\n", rspInfo.MinerCount, rspInfo.DayOnlineCount, rspInfo.HourOnlineCount)
 
 	fmt.Printf("%-64s %-6s %-10s %-13s %-10s %-10s\n", "Address", "Online", "MBlocks", "MRewards", "FirstH", "LastH")
-	for minerAddr, minerItem := range rspInfo.MinerStats {
+	for _, minerItem := range sortMiners {
 		isDayInt := 0
 		isHourInt := 0
 		if minerItem.IsDayOnline {
@@ -74,7 +86,7 @@ func runPovMinerInfoCmd(minerAddrStrList []string) error {
 			isHourInt = 1
 		}
 		fmt.Printf("%-64s %-6s %-10d %-13.2f %-10d %-10d\n",
-			minerAddr,
+			minerItem.Account,
 			fmt.Sprintf("%d/%d", isDayInt, isHourInt),
 			minerItem.MainBlockNum,
 			float64(minerItem.MainRewardAmount.Uint64())/1e8,

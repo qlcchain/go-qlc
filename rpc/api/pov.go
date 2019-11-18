@@ -101,6 +101,7 @@ type PovApiTD struct {
 }
 
 type PovMinerStatItem struct {
+	Account            types.Address `json:"account"`
 	MainBlockNum       uint32        `json:"mainBlockNum"`
 	MainRewardAmount   types.Balance `json:"mainRewardAmount"`
 	StableBlockNum     uint32        `json:"stableBlockNum"`
@@ -707,6 +708,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			item, ok := apiRsp.MinerStats[minerAddr]
 			if !ok {
 				item = &PovMinerStatItem{}
+				item.Account = minerAddr
 				item.MainRewardAmount = types.ZeroBalance
 				item.StableRewardAmount = types.ZeroBalance
 				item.FirstBlockHeight = minerStat.FirstHeight
@@ -758,6 +760,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		item, ok := apiRsp.MinerStats[minerAddr]
 		if !ok {
 			item = &PovMinerStatItem{}
+			item.Account = minerAddr
 			item.MainRewardAmount = types.ZeroBalance
 			item.FirstBlockHeight = header.GetHeight()
 			item.LastBlockHeight = header.GetHeight()
