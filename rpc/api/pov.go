@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/qlcchain/go-qlc/config"
@@ -157,13 +159,13 @@ func NewPovApi(cfg *config.Config, l *ledger.Ledger, eb event.EventBus, ctx cont
 		pubsub: NewPovSubscription(ctx, eb),
 		logger: log.NewLogger("rpc/pov"),
 	}
-	api.syncState.Store(common.SyncNotStart)
+	api.syncState.Store(topic.SyncNotStart)
 	// TODO: remove
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	_ = eb.SubscribeSync(topic.EventPovSyncState, api.OnPovSyncState)
 	return api
 }
 
-func (api *PovApi) OnPovSyncState(state common.SyncState) {
+func (api *PovApi) OnPovSyncState(state topic.SyncState) {
 	api.logger.Infof("receive pov sync state [%s]", state)
 	api.syncState.Store(state)
 }
@@ -171,7 +173,7 @@ func (api *PovApi) OnPovSyncState(state common.SyncState) {
 func (api *PovApi) GetPovStatus() (*PovStatus, error) {
 	apiRsp := new(PovStatus)
 	apiRsp.PovEnabled = api.cfg.PoV.PovEnabled
-	ss := api.syncState.Load().(common.SyncState)
+	ss := api.syncState.Load().(topic.SyncState)
 	apiRsp.SyncState = int(ss)
 	apiRsp.SyncStateStr = ss.String()
 	return apiRsp, nil
@@ -242,8 +244,8 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 		return nil, errors.New("pov service is disabled")
 	}
 
-	ss := api.syncState.Load().(common.SyncState)
-	if ss != common.SyncDone {
+	ss := api.syncState.Load().(topic.SyncState)
+	if ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -1163,7 +1165,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	inArgs := make(map[interface{}]interface{})
 
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(common.EventRpcSyncCall, "Miner.GetMiningInfo", inArgs, outArgs)
+	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRpcSyncCallMsg{Name: "Miner.GetMiningInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1183,7 +1185,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 
 	apiRsp := new(PovApiGetMiningInfo)
 	apiRsp.SyncState = outArgs["syncState"].(int)
-	apiRsp.SyncStateStr = common.SyncState(apiRsp.SyncState).String()
+	apiRsp.SyncStateStr = topic.SyncState(apiRsp.SyncState).String()
 
 	apiRsp.CurrentBlockAlgo = latestBlock.GetAlgoType()
 	apiRsp.CurrentBlockHeight = latestBlock.GetHeight()
@@ -1204,8 +1206,8 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 		return nil, errors.New("pov service is disabled")
 	}
 
-	ss := api.syncState.Load().(common.SyncState)
-	if ss != common.SyncDone {
+	ss := api.syncState.Load().(topic.SyncState)
+	if ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -1213,7 +1215,7 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	inArgs["minerAddr"] = minerAddr
 	inArgs["algoName"] = algoName
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(common.EventRpcSyncCall, "Miner.GetWork", inArgs, outArgs)
+	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRpcSyncCallMsg{Name: "Miner.GetWork", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1248,8 +1250,8 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 		return errors.New("pov service is disabled")
 	}
 
-	ss := api.syncState.Load().(common.SyncState)
-	if ss != common.SyncDone {
+	ss := api.syncState.Load().(topic.SyncState)
+	if ss != topic.SyncDone {
 		return errors.New("pov sync is not finished, please check it")
 	}
 
@@ -1269,7 +1271,7 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	inArgs["mineResult"] = mineResult
 
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(common.EventRpcSyncCall, "Miner.SubmitWork", inArgs, outArgs)
+	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRpcSyncCallMsg{Name: "Miner.SubmitWork", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {

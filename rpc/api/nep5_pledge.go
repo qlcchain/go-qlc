@@ -16,6 +16,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common/event"
 
 	"go.uber.org/zap"
@@ -44,8 +46,8 @@ func NewNEP5PledgeApi(l *ledger.Ledger, eb event.EventBus) *NEP5PledgeApi {
 		withdraw: &contract.WithdrawNep5Pledge{},
 		logger:   log.NewLogger("api_nep5_pledge"),
 	}
-	api.syncState.Store(common.SyncNotStart)
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	api.syncState.Store(topic.SyncNotStart)
+	_ = eb.SubscribeSync(topic.EventPovSyncState, api.OnPovSyncState)
 	return api
 }
 
@@ -57,7 +59,7 @@ type PledgeParam struct {
 	NEP5TxId      string
 }
 
-func (p *NEP5PledgeApi) OnPovSyncState(state common.SyncState) {
+func (p *NEP5PledgeApi) OnPovSyncState(state topic.SyncState) {
 	p.logger.Infof("NEP5Pledge receive pov sync state [%s]", state)
 	p.syncState.Store(state)
 }
@@ -91,7 +93,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
-	if ss := p.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := p.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -145,7 +147,7 @@ func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 	if input == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := p.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := p.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -214,7 +216,7 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 	if param.Beneficial.IsZero() || param.Amount.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
-	if ss := p.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := p.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -280,7 +282,7 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 	if input == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := p.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := p.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 

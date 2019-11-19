@@ -4,10 +4,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
@@ -36,7 +39,7 @@ func CreatePovSubscription(ctx context.Context,
 type PovSubscription struct {
 	mu         sync.Mutex
 	eb         event.EventBus
-	handlerIds map[common.TopicType]string // subscript event from chain
+	subscriber *event.ActorSubscriber
 	allSubs    map[rpc.ID]*PovSubscriber
 	blocksCh   chan *types.PovBlock
 	ctx        context.Context
@@ -50,12 +53,11 @@ type PovSubscriber struct {
 
 func NewPovSubscription(ctx context.Context, eb event.EventBus) *PovSubscription {
 	be := &PovSubscription{
-		eb:         eb,
-		handlerIds: make(map[common.TopicType]string),
-		allSubs:    make(map[rpc.ID]*PovSubscriber),
-		blocksCh:   make(chan *types.PovBlock, MaxNotifyPovBlocks),
-		ctx:        ctx,
-		logger:     log.NewLogger("pov_pubsub"),
+		eb:       eb,
+		allSubs:  make(map[rpc.ID]*PovSubscriber),
+		blocksCh: make(chan *types.PovBlock, MaxNotifyPovBlocks),
+		ctx:      ctx,
+		logger:   log.NewLogger("pov_pubsub"),
 	}
 	be.subscribeEvent()
 	go be.notifyLoop()
@@ -63,18 +65,15 @@ func NewPovSubscription(ctx context.Context, eb event.EventBus) *PovSubscription
 }
 
 func (r *PovSubscription) subscribeEvent() {
-	if id, err := r.eb.Subscribe(common.EventPovConnectBestBlock, r.setBlocks); err != nil {
-		r.logger.Error("subscribe EventPovConnectBestBlock error, ", err)
-	} else {
-		r.handlerIds[common.EventPovConnectBestBlock] = id
-	}
-}
-
-func (r *PovSubscription) unsubscribeEvent() {
-	for k, v := range r.handlerIds {
-		if err := r.eb.Unsubscribe(k, v); err != nil {
-			r.logger.Error("unsubscribe event error, ", err)
+	r.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *types.PovBlock:
+			r.setBlocks(msg)
 		}
+	}))
+
+	if err := r.subscriber.Subscribe(topic.EventPovConnectBestBlock); err != nil {
+		r.logger.Error("subscribe EventPovConnectBestBlock error, ", err)
 	}
 }
 
@@ -142,7 +141,11 @@ func (r *PovSubscription) removeChan(subID rpc.ID) {
 }
 
 func (r *PovSubscription) notifyLoop() {
-	defer r.unsubscribeEvent()
+	defer func() {
+		if err := r.subscriber.UnsubscribeAll(); err != nil {
+			r.logger.Error(err)
+		}
+	}()
 
 	for {
 		select {

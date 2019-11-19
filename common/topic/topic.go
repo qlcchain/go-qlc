@@ -1,16 +1,23 @@
-package common
+/*
+ * Copyright (c) 2019 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
+package topic
 
 type TopicType string
 
 //Topic type
 const (
-	EventPublish           TopicType = "publish"
-	EventConfirmReq        TopicType = "confirmReq"
-	EventConfirmAck        TopicType = "confirmAck"
-	EventSyncBlock         TopicType = "syncBlock"
-	EventConfirmedBlock    TopicType = "confirmedBlock"
-	EventBroadcast         TopicType = "broadcast"
-	EventSendMsgToPeers    TopicType = "sendMsgToPeers"
+	EventPublish        TopicType = "publish"
+	EventConfirmReq     TopicType = "confirmReq"
+	EventConfirmAck     TopicType = "confirmAck"
+	EventSyncBlock      TopicType = "syncBlock"
+	EventConfirmedBlock TopicType = "confirmedBlock"
+	EventBroadcast      TopicType = "broadcast"
+	//EventSendMsgToPeers    TopicType = "sendMsgToPeers"
 	EventPeersInfo         TopicType = "peersInfo"
 	EventSyncStatus        TopicType = "syncing"
 	EventGetBandwidthStats TopicType = "getBandwidthStats"

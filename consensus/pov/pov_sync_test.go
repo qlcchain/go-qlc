@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -226,7 +228,7 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	}
 
 	var rsp *protos.PovBulkPullRsp
-	id, _ := md.eb.SubscribeSync(common.EventSendMsgToSingle, func(msgType p2p.MessageType, msgData interface{}, toPeer string) {
+	_ := md.eb.SubscribeSync(topic.EventSendMsgToSingle, func(msgType p2p.MessageType, msgData interface{}, toPeer string) {
 		if msgType == p2p.PovBulkPullRsp {
 			rsp = msgData.(*protos.PovBulkPullRsp)
 		}
@@ -241,10 +243,10 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	time.Sleep(time.Second)
 
 	if rsp == nil {
-		t.Fatalf("failed to get PovBulkPullRsp 1 msg")
+		t.Fatalf("failed to get Message 1 msg")
 	}
 	if rsp.Count == 0 || rsp.Blocks[0].GetHash() != genBlk.GetHash() {
-		t.Fatalf("failed to get PovBulkPullRsp 1 Count & Hash")
+		t.Fatalf("failed to get Message 1 Count & Hash")
 	}
 
 	blk1, td1 := mock.GeneratePovBlock(genBlk, 0)
@@ -260,13 +262,13 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	time.Sleep(time.Second)
 
 	if rsp == nil {
-		t.Fatalf("failed to get PovBulkPullRsp 2 msg")
+		t.Fatalf("failed to get Message 2 msg")
 	}
 	if rsp.Count == 0 || rsp.Blocks[0].GetHash() != blk1.GetHash() {
-		t.Fatalf("failed to get PovBulkPullRsp 2 Count & Hash")
+		t.Fatalf("failed to get Message 2 Count & Hash")
 	}
 
-	_ = md.eb.Unsubscribe(common.EventSendMsgToSingle, id)
+	_ = md.eb.Unsubscribe(topic.EventSendMsgToSingle, id)
 	povSync.Stop()
 }
 
@@ -302,7 +304,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	povSync.onPovStatus(peer1Status, peerID1)
 
 	var req *protos.PovBulkPullReq
-	id, _ := md.eb.SubscribeSync(common.EventSendMsgToSingle, func(msgType p2p.MessageType, msgData interface{}, toPeer string) {
+	_ := md.eb.SubscribeSync(topic.EventSendMsgToSingle, func(msgType p2p.MessageType, msgData interface{}, toPeer string) {
 		if msgType == p2p.PovBulkPullReq {
 			req = msgData.(*protos.PovBulkPullReq)
 		}
@@ -324,7 +326,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	}
 
 	var syncBlocks []*types.PovBlock
-	id2, _ := md.eb.SubscribeSync(common.EventPovRecvBlock, func(block *types.PovBlock, from types.PovBlockFrom, peer string) {
+	_ := md.eb.SubscribeSync(topic.EventPovRecvBlock, func(block *types.PovBlock, from types.PovBlockFrom, peer string) {
 		syncBlocks = append(syncBlocks, block)
 	})
 
@@ -345,8 +347,8 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	time.Sleep(time.Second)
 	povSync.onCheckChainTimer()
 
-	_ = md.eb.Unsubscribe(common.EventSendMsgToSingle, id)
-	_ = md.eb.Unsubscribe(common.EventPovRecvBlock, id2)
+	_ = md.eb.Unsubscribe(topic.EventSendMsgToSingle, id)
+	_ = md.eb.Unsubscribe(topic.EventPovRecvBlock, id2)
 	povSync.Stop()
 }
 

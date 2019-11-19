@@ -12,6 +12,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/event"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
@@ -22,7 +28,7 @@ import (
 
 type AutoReceiveService struct {
 	common.ServiceLifecycle
-	id         string
+	subscriber *event.ActorSubscriber
 	cfgFile    string
 	blockCache chan *types.StateBlock
 	quit       chan interface{}
@@ -41,13 +47,18 @@ func (as *AutoReceiveService) Init() error {
 	}
 	defer as.PostInit()
 	cc := context.NewChainContext(as.cfgFile)
-	as.id, _ = cc.EventBus().Subscribe(common.EventConfirmedBlock, func(blk *types.StateBlock) {
-		if blk != nil {
-			as.blockCache <- blk
+	bus := cc.EventBus()
+	as.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *types.StateBlock:
+			if msg != nil {
+				as.blockCache <- msg
+			}
 		}
-	})
+	}), bus)
 
-	return nil
+	// TODO: Subscribe by address
+	return as.subscriber.Subscribe(topic.EventConfirmedBlock)
 }
 
 func (as *AutoReceiveService) Start() error {
@@ -101,7 +112,7 @@ func (as *AutoReceiveService) Start() error {
 			case <-as.quit:
 				atomic.StoreUint32(&as.state, 0)
 				cc := context.NewChainContext(as.cfgFile)
-				if err := cc.EventBus().Unsubscribe(common.EventConfirmedBlock, as.id); err != nil {
+				if err := cc.EventBus().Unsubscribe(topic.EventConfirmedBlock, as.subscriber); err != nil {
 					as.logger.Error(err)
 				}
 				return
@@ -143,7 +154,7 @@ func (as *AutoReceiveService) Stop() error {
 
 	as.quit <- struct{}{}
 
-	return nil
+	return as.subscriber.Unsubscribe(topic.EventConfirmedBlock)
 }
 
 func (as *AutoReceiveService) Status() int32 {

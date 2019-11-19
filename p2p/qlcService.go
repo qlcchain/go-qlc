@@ -3,15 +3,20 @@ package p2p
 import (
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
+	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+
 	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/ledger"
 )
 
 // QlcService service for qlc p2p network
 type QlcService struct {
-	handlerIds map[common.TopicType]string // topic->handler id
+	subscriber *event.ActorSubscriber
 	node       *QlcNode
 	dispatcher *Dispatcher
 	msgEvent   event.EventBus
@@ -30,7 +35,6 @@ func NewQlcService(cfgFile string) (*QlcService, error) {
 		node:       node,
 		dispatcher: NewDispatcher(),
 		msgEvent:   cc.EventBus(),
-		handlerIds: make(map[common.TopicType]string),
 	}
 	node.SetQlcService(ns)
 	l := ledger.NewLedger(cfgFile)
@@ -74,62 +78,39 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-	id, err := ns.msgEvent.Subscribe(common.EventBroadcast, ns.Broadcast)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	ns.handlerIds[common.EventBroadcast] = id
-	id, err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	ns.handlerIds[common.EventSendMsgToSingle] = id
-	id, err = ns.msgEvent.SubscribeSync(common.EventPeersInfo, ns.node.streamManager.GetAllConnectPeersInfo)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	ns.handlerIds[common.EventPeersInfo] = id
-	id, err = ns.msgEvent.Subscribe(common.EventFrontiersReq, ns.msgService.syncService.requestFrontiersFromPov)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	ns.handlerIds[common.EventFrontiersReq] = id
-	id, err = ns.msgEvent.Subscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	ns.handlerIds[common.EventRepresentativeNode] = id
-	id, err = ns.msgEvent.SubscribeSync(common.EventGetBandwidthStats, ns.node.GetBandwidthStats)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	ns.handlerIds[common.EventGetBandwidthStats] = id
-	id, err = ns.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ns.msgService.syncService.onConsensusSyncFinished)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	ns.handlerIds[common.EventConsensusSyncFinished] = id
-	id, err = ns.msgEvent.SubscribeSync(common.EventSyncStatus, ns.msgService.syncService.GetSyncState)
-	if err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	ns.handlerIds[common.EventSyncStatus] = id
-	return nil
-}
-
-func (ns *QlcService) unsubscribeEvent() error {
-	for k, v := range ns.handlerIds {
-		if err := ns.msgEvent.Unsubscribe(k, v); err != nil {
-			return err
+	ns.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *EventBroadcastMsg:
+			ns.Broadcast(msg.Type, msg.Message)
+		case *EventSendMsgToSingleMsg:
+			if err := ns.SendMessageToPeer(msg.Type, msg.Message, msg.PeerID); err != nil {
+				ns.node.logger.Error(err)
+			}
+		case map[string]string:
+			// TODO: sync??
+			ns.node.streamManager.GetAllConnectPeersInfo(msg)
+		case *EventFrontiersReqMsg:
+			ns.msgService.syncService.requestFrontiersFromPov(msg.PeerID)
+		case bool:
+			ns.node.setRepresentativeNode(msg)
+		case *p2pmetrics.Stats:
+			ns.node.GetBandwidthStats(msg)
+		case *topic.SyncState:
+			ns.msgService.syncService.GetSyncState(msg)
+		case struct{}:
+			ns.msgService.syncService.onConsensusSyncFinished()
 		}
+	}), ns.msgEvent)
+
+	if err := ns.subscriber.Subscribe(topic.EventBroadcast, topic.EventSendMsgToSingle, topic.EventPeersInfo,
+		topic.EventRepresentativeNode); err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	if err := ns.subscriber.SubscribeSync(topic.EventPeersInfo, topic.EventGetBandwidthStats,
+		topic.EventConsensusSyncFinished, topic.EventSyncStatus); err != nil {
+		ns.node.logger.Error(err)
+		return err
 	}
 	return nil
 }
@@ -139,7 +120,7 @@ func (ns *QlcService) Stop() error {
 	//ns.node.logger.Info("Stopping QlcService...")
 
 	//this must be the first step
-	err := ns.unsubscribeEvent()
+	err := ns.subscriber.UnsubscribeAll()
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/bluele/gcache"
 	"go.uber.org/zap"
 
@@ -89,17 +93,17 @@ type DPoS struct {
 	logger              *zap.SugaredLogger
 	cfg                 *config.Config
 	eb                  event.EventBus
-	handlerIds          map[common.TopicType]string //topic->handler id
+	subscriber          *event.ActorSubscriber
 	lv                  *process.LedgerVerifier
 	cacheBlocks         chan *consensus.BlockSource
 	recvBlocks          chan *consensus.BlockSource
-	povState            chan common.SyncState
-	syncState           chan common.SyncState
+	povState            chan topic.SyncState
+	syncState           chan topic.SyncState
 	processors          []*Processor
 	processorNum        int
 	localRepAccount     sync.Map
-	povSyncState        common.SyncState
-	blockSyncState      common.SyncState
+	povSyncState        topic.SyncState
+	blockSyncState      topic.SyncState
 	minVoteWeight       types.Balance
 	voteThreshold       types.Balance
 	subAck              gcache.Cache
@@ -148,12 +152,11 @@ func NewDPoS(cfgFile string) *DPoS {
 		logger:              log.NewLogger("dpos"),
 		cfg:                 cfg,
 		eb:                  cc.EventBus(),
-		handlerIds:          make(map[common.TopicType]string),
 		lv:                  process.NewLedgerVerifier(l),
 		cacheBlocks:         make(chan *consensus.BlockSource, common.DPoSMaxCacheBlocks),
 		recvBlocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
-		povState:            make(chan common.SyncState, 1),
-		syncState:           make(chan common.SyncState, 1),
+		povState:            make(chan topic.SyncState, 1),
+		syncState:           make(chan topic.SyncState, 1),
 		processorNum:        processorNum,
 		processors:          newProcessors(processorNum),
 		subMsg:              make(chan *subMsg, 10240),
@@ -172,7 +175,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		gapPovCh:            make(chan *consensus.BlockSource, 10240),
 		povChange:           make(chan *types.PovBlock, 10240),
 		voteCache:           gcache.New(voteCacheSize).LRU().Build(),
-		blockSyncState:      common.SyncNotStart,
+		blockSyncState:      topic.SyncNotStart,
 		isFindingRep:        0,
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
@@ -202,62 +205,52 @@ func NewDPoS(cfgFile string) *DPoS {
 }
 
 func (dps *DPoS) Init() {
-	if dps.cfg.PoV.PovEnabled {
-		dps.povSyncState = common.SyncNotStart
-
-		if id, err := dps.eb.SubscribeSync(common.EventPovSyncState, dps.onPovSyncState); err != nil {
-			dps.logger.Errorf("subscribe pov sync state event err")
-		} else {
-			dps.handlerIds[common.EventPovSyncState] = id
-		}
-	} else {
-		dps.povSyncState = common.SyncDone
-	}
-
 	supply := common.GenesisBlock().Balance
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 	dps.voteThreshold, _ = supply.Div(2)
 
-	if id, err := dps.eb.SubscribeSync(common.EventRollback, dps.onRollback); err != nil {
-		dps.logger.Errorf("subscribe rollback block event err")
+	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case types.Hash:
+			dps.onRollback(msg)
+		case *types.PovBlock:
+			dps.onPovHeightChange(msg)
+		case *topic.EventRpcSyncCallMsg:
+			dps.onRpcSyncCall(msg.Name, msg.In, msg.Out)
+		case types.StateBlockList:
+			dps.onGetFrontier(msg)
+		case *types.Tuple:
+			dps.onFrontierConfirmed(msg.First.(types.Hash), msg.Second.(*bool))
+		case topic.SyncState:
+			dps.onSyncStateChange(msg)
+		}
+	}), dps.eb)
+
+	if err := subscriber.SubscribeSync(topic.EventRollback, topic.EventPovConnectBestBlock, topic.EventRpcSyncCall,
+		topic.EventFrontierConsensus, topic.EventFrontierConfirmed, topic.EventSyncStateChange); err != nil {
+		dps.logger.Errorf("failed to subscribe event %s", err)
 	} else {
-		dps.handlerIds[common.EventRollback] = id
+		dps.subscriber = subscriber
 	}
 
-	if id, err := dps.eb.SubscribeSync(common.EventPovConnectBestBlock, dps.onPovHeightChange); err != nil {
-		dps.logger.Errorf("subscribe pov connect best block event err")
-	} else {
-		dps.handlerIds[common.EventPovConnectBestBlock] = id
-	}
+	if dps.cfg.PoV.PovEnabled {
+		dps.povSyncState = topic.SyncNotStart
 
-	if id, err := dps.eb.SubscribeSync(common.EventRpcSyncCall, dps.onRpcSyncCall); err != nil {
-		dps.logger.Errorf("subscribe rpc sync call event err")
+		if err := subscriber.SubscribeSyncOne(topic.EventPovSyncState, event.Spawn(func(c actor.Context) {
+			switch msg := c.Message().(type) {
+			case topic.SyncState:
+				dps.onPovSyncState(msg)
+			}
+		})); err != nil {
+			dps.logger.Errorf("subscribe pov sync state event err")
+		}
 	} else {
-		dps.handlerIds[common.EventRpcSyncCall] = id
+		dps.povSyncState = topic.SyncDone
 	}
-
-	if id, err := dps.eb.SubscribeSync(common.EventFrontierConsensus, dps.onGetFrontier); err != nil {
-		dps.logger.Errorf("subscribe frontier consensus event err")
-	} else {
-		dps.handlerIds[common.EventFrontierConsensus] = id
-	}
-
-	if id, err := dps.eb.SubscribeSync(common.EventFrontierConfirmed, dps.onFrontierConfirmed); err != nil {
-		dps.logger.Errorf("subscribe frontier confirm event err")
-	} else {
-		dps.handlerIds[common.EventFrontierConfirmed] = id
-	}
-
-	if id, err := dps.eb.SubscribeSync(common.EventSyncStateChange, dps.onSyncStateChange); err != nil {
-		dps.logger.Errorf("subscribe sync state change event err")
-	} else {
-		dps.handlerIds[common.EventSyncStateChange] = id
-	}
-
 	if len(dps.accounts) != 0 {
 		dps.refreshAccount()
 	} else {
-		dps.eb.Publish(common.EventRepresentativeNode, false)
+		dps.eb.Publish(topic.EventRepresentativeNode, false)
 	}
 }
 
@@ -314,7 +307,7 @@ func (dps *DPoS) Start() {
 			dps.logger.Infof("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 			dps.curPovHeight = pb.Header.BasHdr.Height
 
-			if dps.povSyncState == common.SyncDone {
+			if dps.povSyncState == topic.SyncDone {
 				// need calculate heart num, so use the pov height to trigger online
 				// isFindingRep is used to forbidding too many goroutings
 				if dps.curPovHeight%2 == 0 && atomic.CompareAndSwapInt32(&dps.isFindingRep, 0, 1) {
@@ -357,14 +350,14 @@ func (dps *DPoS) Start() {
 			dps.syncStateNotifyWait.Wait()
 
 			switch dps.blockSyncState {
-			case common.Syncing:
+			case topic.Syncing:
 				dps.updateLastProcessSyncTime()
 				dps.acTrx.cleanFrontierVotes()
 				dps.frontiersStatus = new(sync.Map)
 				dps.totalVote = make(map[types.Address]types.Balance)
 				dps.CleanSyncCache()
-			case common.SyncDone:
-			case common.SyncFinish:
+			case topic.SyncDone:
+			case topic.SyncFinish:
 				dps.CleanSyncCache()
 				dps.logger.Warn("p2p concluded the sync")
 			}
@@ -377,11 +370,11 @@ func (dps *DPoS) Start() {
 			default:
 			}
 
-			if dps.blockSyncState == common.Syncing || dps.blockSyncState == common.SyncDone {
+			if dps.blockSyncState == topic.Syncing || dps.blockSyncState == topic.SyncDone {
 				if time.Since(dps.lastProcessSyncTime) >= 2*time.Minute {
 					dps.logger.Warnf("timeout concluded the sync. last[%s] now[%s]",
 						dps.lastProcessSyncTime, time.Now())
-					dps.blockSyncState = common.SyncFinish
+					dps.blockSyncState = topic.SyncFinish
 					dps.syncFinish()
 				}
 			}
@@ -395,10 +388,9 @@ func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
 
 	//do this first
-	for k, v := range dps.handlerIds {
-		_ = dps.eb.Unsubscribe(k, v)
+	if err := dps.subscriber.UnsubscribeAll(); err != nil {
+		dps.logger.Error(err)
 	}
-
 	dps.cancel()
 	dps.processorStop()
 	dps.acTrx.stop()
@@ -445,12 +437,12 @@ func (dps *DPoS) processSyncDone() {
 			// notify processors
 			dps.syncStateNotifyWait.Add(dps.processorNum)
 			for _, p := range dps.processors {
-				p.syncStateChange <- common.SyncFinish
+				p.syncStateChange <- topic.SyncFinish
 			}
 			dps.syncStateNotifyWait.Wait()
 			dps.blockSyncState = common.SyncFinish
 
-			dps.eb.Publish(common.EventConsensusSyncFinished)
+			dps.eb.Publish(topic.EventConsensusSyncFinished, struct{}{})
 			dps.logger.Warn("sync finished")
 		}
 	}
@@ -463,7 +455,7 @@ func (dps *DPoS) processBlocks() {
 			dps.logger.Info("Stop processBlocks.")
 			return
 		case bs := <-dps.recvBlocks:
-			if dps.povSyncState == common.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
+			if dps.povSyncState == topic.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
 				dps.dispatchMsg(bs)
 			} else {
 				if len(dps.cacheBlocks) < cap(dps.cacheBlocks) {
@@ -475,10 +467,10 @@ func (dps *DPoS) processBlocks() {
 			}
 		case state := <-dps.povState:
 			dps.povSyncState = state
-			if state == common.SyncDone {
+			if state == topic.SyncDone {
 				close(dps.cacheBlocks)
 
-				err := dps.eb.Unsubscribe(common.EventPovSyncState, dps.handlerIds[common.EventPovSyncState])
+				err := dps.subscriber.Unsubscribe(topic.EventPovSyncState)
 				if err != nil {
 					dps.logger.Errorf("unsubscribe pov sync state err %s", err)
 				}
@@ -544,12 +536,12 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 			sendLen = 0
 		}
 
-		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, unconfirmed[sendStart:sendEnd])
+		dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.ConfirmReq, Message: unconfirmed[sendStart:sendEnd]})
 		sendStart = sendEnd
 	}
 }
 
-func (dps *DPoS) onPovSyncState(state common.SyncState) {
+func (dps *DPoS) onPovSyncState(state topic.SyncState) {
 	dps.povState <- state
 	dps.logger.Infof("pov sync state to [%s]", state)
 }
@@ -938,7 +930,7 @@ out:
 					Signature: acc.Sign(hash),
 				}
 
-				dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
+				dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.ConfirmAck, Message: va})
 
 				total = 0
 				hashes = make([]types.Hash, 0)
@@ -959,7 +951,7 @@ out:
 		Signature: acc.Sign(hash),
 	}
 
-	dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
+	dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.ConfirmAck, Message: va})
 }
 
 func (dps *DPoS) refreshAccount() {
@@ -983,13 +975,13 @@ func (dps *DPoS) refreshAccount() {
 
 	dps.logger.Infof("there is %d local reps", count)
 	if count > 0 {
-		dps.eb.Publish(common.EventRepresentativeNode, true)
+		dps.eb.Publish(topic.EventRepresentativeNode, true)
 
 		if count > 1 {
 			dps.logger.Error("it is very dangerous to run two or more representatives on one node")
 		}
 	} else {
-		dps.eb.Publish(common.EventRepresentativeNode, false)
+		dps.eb.Publish(topic.EventRepresentativeNode, false)
 	}
 }
 
@@ -1031,7 +1023,7 @@ func (dps *DPoS) findOnlineRepresentatives() error {
 			if err != nil {
 				return true
 			}
-			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
+			dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.ConfirmAck, Message: va})
 			dps.heartAndVoteInc(va.Hash[0], va.Account, onlineKindHeart)
 		}
 
@@ -1187,7 +1179,7 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 
 func (dps *DPoS) blockSyncDone() error {
 	dps.logger.Warn("begin: process sync cache blocks")
-	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
+	dps.eb.Publish(topic.EventAddSyncBlocks, types.NewTuple(&types.StateBlock{}, true))
 
 	scs := make([]*sortContract, 0)
 	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
@@ -1356,7 +1348,7 @@ func (dps *DPoS) CleanSyncCache() {
 	dps.ledger.CleanSyncCache()
 }
 
-func (dps *DPoS) onSyncStateChange(state common.SyncState) {
+func (dps *DPoS) onSyncStateChange(state topic.SyncState) {
 	dps.syncState <- state
 	<-dps.ebDone
 }

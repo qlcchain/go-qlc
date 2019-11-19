@@ -1,23 +1,23 @@
 package consensus
 
 import (
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
 type Receiver struct {
 	eb         event.EventBus
-	handlerIds map[common.TopicType]string //topic->handler id
+	subscriber *event.ActorSubscriber
 	c          *Consensus
 }
 
 func NewReceiver(eb event.EventBus) *Receiver {
 	r := &Receiver{
-		eb:         eb,
-		handlerIds: make(map[common.TopicType]string),
+		eb: eb,
 	}
 	return r
 }
@@ -27,48 +27,33 @@ func (r *Receiver) init(c *Consensus) {
 }
 
 func (r *Receiver) start() error {
-	id, err := r.eb.SubscribeSync(common.EventPublish, r.ReceivePublish)
-	if err != nil {
-		return err
-	}
-	r.handlerIds[common.EventPublish] = id
 
-	id, err = r.eb.SubscribeSync(common.EventConfirmReq, r.ReceiveConfirmReq)
-	if err != nil {
-		return err
-	}
-	r.handlerIds[common.EventConfirmReq] = id
+	r.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *topic.EventPublishMsg:
+			r.ReceivePublish(msg.Block, msg.From)
+		case *topic.EventConfirmReqMsg:
+			r.ReceiveConfirmReq(msg.Blocks, msg.From)
+		case *p2p.EventConfirmAckMsg:
+			r.ReceiveConfirmAck(msg.Block, msg.From)
+		case types.StateBlockList:
+			r.ReceiveSyncBlock(msg)
+		case *types.StateBlock:
+			r.ReceiveGenerateBlock(msg)
+		}
+	}), r.eb)
 
-	id, err = r.eb.SubscribeSync(common.EventConfirmAck, r.ReceiveConfirmAck)
-	if err != nil {
+	if err := r.subscriber.SubscribeSync(topic.EventPublish, topic.EventConfirmReq, topic.EventConfirmAck, topic.EventSyncBlock,
+		topic.EventGenerateBlock); err != nil {
 		return err
 	}
-	r.handlerIds[common.EventConfirmAck] = id
-
-	id, err = r.eb.SubscribeSync(common.EventSyncBlock, r.ReceiveSyncBlock)
-	if err != nil {
-		return err
-	}
-	r.handlerIds[common.EventSyncBlock] = id
-
-	id, err = r.eb.SubscribeSync(common.EventGenerateBlock, r.ReceiveGenerateBlock)
-	if err != nil {
-		return err
-	}
-	r.handlerIds[common.EventGenerateBlock] = id
 
 	return nil
 }
 
 func (r *Receiver) stop() error {
 	//r.cleanCacheStop()
-	for k, v := range r.handlerIds {
-		if err := r.eb.Unsubscribe(k, v); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return r.subscriber.UnsubscribeAll()
 }
 
 func (r *Receiver) ReceivePublish(blk *types.StateBlock, msgFrom string) {
@@ -123,7 +108,7 @@ func (r *Receiver) ReceiveSyncBlock(blocks types.StateBlockList) {
 	}
 }
 
-func (r *Receiver) ReceiveGenerateBlock(result process.ProcessResult, blk *types.StateBlock) {
+func (r *Receiver) ReceiveGenerateBlock(blk *types.StateBlock) {
 	r.c.logger.Infof("GenerateBlock Event for block:[%s]", blk.GetHash())
 	bs := &BlockSource{
 		Block:     blk,

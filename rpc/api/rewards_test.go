@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common/event"
 
 	"github.com/google/uuid"
@@ -66,7 +68,7 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 	bus := event.GetEventBus(uuid.New().String())
 
 	api := NewRewardsApi(l, bus)
-	bus.Publish(common.EventPovSyncState, common.SyncDone)
+	bus.Publish(topic.EventPovSyncState, topic.SyncDone)
 
 	tx := mock.Account()
 	rx := mock.Account()
@@ -156,7 +158,7 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 	defer teardownTestCase(t)
 	bus := event.GetEventBus(uuid.New().String())
 	api := NewRewardsApi(l, bus)
-	bus.Publish(common.EventPovSyncState, common.SyncDone)
+	bus.Publish(topic.EventPovSyncState, topic.SyncDone)
 
 	tx := mock.Account()
 	rx := mock.Account()

@@ -4,10 +4,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
+	"github.com/qlcchain/go-qlc/common/types"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
@@ -34,12 +37,12 @@ var (
 func NewConfigApi(cfgFile string) *ConfigApi {
 	cc := context.NewChainContext(cfgFile)
 	cfgManager, _ := cc.ConfigManager()
-	config, _ := cfgManager.Config()
+	cfg, _ := cfgManager.Config()
 	return &ConfigApi{
 		context:    cc,
 		eb:         cc.EventBus(),
 		cfgManager: cfgManager,
-		token:      config.Manager.AdminToken,
+		token:      cfg.Manager.AdminToken,
 		logger:     log.NewLogger("rpc/config"),
 	}
 }
@@ -87,7 +90,7 @@ func (c *ConfigApi) Commit(token string, mark string) (bool, error) {
 	if mark != c.mark {
 		return false, ErrOperation
 	}
-	c.eb.Publish(common.EventRestartChain, c.cfgManager.ConfigFile, false)
+	c.eb.Publish(topic.EventRestartChain, types.NewTuple(c.cfgManager.ConfigFile, false))
 	return true, nil
 }
 
@@ -98,6 +101,6 @@ func (c *ConfigApi) Save(token string, mark string) (bool, error) {
 	if mark != c.mark {
 		return false, ErrOperation
 	}
-	c.eb.Publish(common.EventRestartChain, c.cfgManager.ConfigFile, true)
+	c.eb.Publish(topic.EventRestartChain, types.NewTuple(c.cfgManager.ConfigFile, true))
 	return true, nil
 }

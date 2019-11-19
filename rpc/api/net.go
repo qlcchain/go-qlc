@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"go.uber.org/zap"
 
@@ -81,7 +83,7 @@ type PeersInfo struct {
 
 func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 	p := make(map[string]string)
-	q.eb.Publish(common.EventPeersInfo, p)
+	q.eb.Publish(topic.EventPeersInfo, p)
 	i := &PeersInfo{
 		Count: len(p),
 		Infos: p,
@@ -91,14 +93,14 @@ func (q *NetApi) ConnectPeersInfo() *PeersInfo {
 
 func (q *NetApi) GetBandwidthStats() *p2pmetrics.Stats {
 	stats := new(p2pmetrics.Stats)
-	q.eb.Publish(common.EventGetBandwidthStats, stats)
+	q.eb.Publish(topic.EventGetBandwidthStats, stats)
 	return stats
 }
 
 func (q *NetApi) Syncing() bool {
-	var ss common.SyncState
-	q.eb.Publish(common.EventSyncStatus, &ss)
-	if ss == common.Syncing || ss == common.SyncDone {
+	var ss topic.SyncState
+	q.eb.Publish(topic.EventSyncStatus, &ss)
+	if ss == topic.Syncing || ss == topic.SyncDone {
 		return true
 	}
 	return false

@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	topic2 "github.com/qlcchain/go-qlc/common/topic"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/google/uuid"
 )
 
 func TestNew(t *testing.T) {
@@ -32,11 +32,11 @@ func TestNew(t *testing.T) {
 func TestSubscribe(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
 
-	if _, err := bus.Subscribe("test", func() {}); err != nil {
+	if err := bus.Subscribe("test", func() {}); err != nil {
 		t.Fail()
 	}
 
-	if _, err := bus.Subscribe("test", 2); err == nil {
+	if err := bus.Subscribe("test", 2); err == nil {
 		t.Fail()
 	}
 }
@@ -45,14 +45,14 @@ func TestSubscribeSync(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
 
 	counter := int64(0)
-	topic := common.TopicType("test")
-	if _, err := bus.SubscribeSync(topic, func() {
+	topic := topic2.TopicType("test")
+	if err := bus.SubscribeSync(topic, func() {
 		atomic.AddInt64(&counter, 1)
 		t.Log("sub1")
 	}); err != nil {
 		t.Fail()
 	}
-	if _, err := bus.Subscribe(topic, func() {
+	if err := bus.Subscribe(topic, func() {
 		t.Log("sub2")
 	}); err != nil {
 		t.Fail()
@@ -72,9 +72,9 @@ func TestUnsubscribe(t *testing.T) {
 
 	handler := func() {}
 
-	id, _ := bus.Subscribe("test", handler)
+	_ = bus.Subscribe("test", handler)
 
-	if err := bus.Unsubscribe("test", id); err != nil {
+	if err := bus.Unsubscribe("test", handler); err != nil {
 		fmt.Println(err)
 		t.Fail()
 	}
@@ -90,14 +90,14 @@ func TestUnsubscribe2(t *testing.T) {
 
 	handler := func() {}
 
-	id, _ := bus.Subscribe("test", handler)
+	_ = bus.Subscribe("test", handler)
 
 	t.Log(bus.(*DefaultEventBus).handlers.Len())
 	if value, ok := bus.(*DefaultEventBus).handlers.GetStringKey("test"); ok {
 		t.Log(value.(*eventHandlers).Size())
 	}
 
-	if err := bus.Unsubscribe("test", id); err != nil {
+	if err := bus.Unsubscribe("test", handler); err != nil {
 		fmt.Println(err)
 		t.Fail()
 	}
@@ -116,7 +116,7 @@ func TestClose(t *testing.T) {
 
 	handler := func() {}
 
-	_, _ = bus.Subscribe("test", handler)
+	_ = bus.Subscribe("test", handler)
 
 	original, ok := bus.(*DefaultEventBus)
 	if !ok {
@@ -143,12 +143,12 @@ func TestPublish(t *testing.T) {
 	first := false
 	second := false
 
-	_, _ = bus.Subscribe("topic", func(v bool) {
+	_ = bus.Subscribe("topic", func(v bool) {
 		defer wg.Done()
 		first = v
 	})
 
-	_, _ = bus.Subscribe("topic", func(v bool) {
+	_ = bus.Subscribe("topic", func(v bool) {
 		defer wg.Done()
 		second = v
 	})
@@ -164,7 +164,7 @@ func TestPublish(t *testing.T) {
 
 func TestHandleError(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
-	_, _ = bus.Subscribe("topic", func(out chan<- error) {
+	_ = bus.Subscribe("topic", func(out chan<- error) {
 		out <- errors.New("I do throw error")
 	})
 
@@ -180,7 +180,7 @@ func TestHandleError(t *testing.T) {
 
 func TestHasCallback(t *testing.T) {
 	bus := New()
-	_, err := bus.Subscribe("topic", func() {})
+	err := bus.Subscribe("topic", func() {})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,14 +216,14 @@ func TestGetEventBus(t *testing.T) {
 
 func TestEventSubscribe(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
-	topic := common.TopicType("test")
+	topic := topic2.TopicType("test")
 
 	counter := int64(0)
-	_, _ = bus.Subscribe(topic, func(i int64) {
+	_ = bus.Subscribe(topic, func(i int64) {
 		fmt.Println("sub1", i, atomic.AddInt64(&counter, 1))
 	})
 
-	_, _ = bus.Subscribe(topic, func(i int64) {
+	_ = bus.Subscribe(topic, func(i int64) {
 		time.Sleep(time.Second)
 		fmt.Println("sub2", i, atomic.AddInt64(&counter, 1))
 	})
@@ -256,7 +256,7 @@ func (f *foo) Test(arg int) {
 
 func TestFooSubscribe(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
-	topic := common.TopicType("test")
+	topic := topic2.TopicType("test")
 	foo := &foo{id: uuid.New().String()}
 
 	wg := sync.WaitGroup{}
@@ -268,8 +268,7 @@ func TestFooSubscribe(t *testing.T) {
 			bus.Publish(topic, i)
 		}
 	}(i)
-	id, err := bus.Subscribe(topic, foo.Test)
-	t.Log(id)
+	err := bus.Subscribe(topic, foo.Test)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +276,7 @@ func TestFooSubscribe(t *testing.T) {
 	if flag := bus.HasCallback(topic); !flag {
 		t.Fatal()
 	}
-	if err = bus.Unsubscribe(topic, id); err != nil {
+	if err = bus.Unsubscribe(topic, foo.Test); err != nil {
 		t.Fatal(err)
 	}
 	if flag := bus.HasCallback(topic); flag {

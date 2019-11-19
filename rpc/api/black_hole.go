@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -37,18 +39,18 @@ func NewBlackHoleApi(l *ledger.Ledger, eb event.EventBus) *BlackHoleApi {
 		l:                 l,
 		blackHoleContract: &contract.BlackHole{},
 	}
-	api.syncState.Store(common.SyncNotStart)
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	api.syncState.Store(topic.SyncNotStart)
+	_ = eb.SubscribeSync(topic.EventPovSyncState, api.OnPovSyncState)
 	return api
 }
 
-func (b *BlackHoleApi) OnPovSyncState(state common.SyncState) {
+func (b *BlackHoleApi) OnPovSyncState(state topic.SyncState) {
 	b.logger.Infof("blackhole receive pov sync state [%s]", state)
 	b.syncState.Store(state)
 }
 
 func (b *BlackHoleApi) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
-	if ss := b.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := b.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -73,7 +75,7 @@ func (b *BlackHoleApi) GetRewardsBlock(send *types.Hash) (*types.StateBlock, err
 	if send == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := b.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := b.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 

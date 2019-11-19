@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -40,8 +42,8 @@ func NewMintageApi(l *ledger.Ledger, eb event.EventBus) *MintageApi {
 		withdraw: &contract.WithdrawMintage{},
 		logger:   log.NewLogger("api_mintage"),
 	}
-	api.syncState.Store(common.SyncNotStart)
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	api.syncState.Store(topic.SyncNotStart)
+	_ = eb.SubscribeSync(topic.EventPovSyncState, api.OnPovSyncState)
 	return api
 }
 
@@ -56,7 +58,7 @@ type MintageParams struct {
 	NEP5TxId    string        `json:"nep5TxId"`
 }
 
-func (m *MintageApi) OnPovSyncState(state common.SyncState) {
+func (m *MintageApi) OnPovSyncState(state topic.SyncState) {
 	m.logger.Infof("mintage receive pov sync state [%s]", state)
 	m.syncState.Store(state)
 }
@@ -77,7 +79,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := m.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := m.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -136,7 +138,7 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 	if input == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := m.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := m.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -177,7 +179,7 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := m.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := m.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 	tm, _ := m.ledger.GetTokenMeta(param.SelfAddr, common.ChainToken())
@@ -221,7 +223,7 @@ func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 	if input == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := m.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := m.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 	reward := &types.StateBlock{}

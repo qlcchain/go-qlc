@@ -1,8 +1,13 @@
 package chain
 
 import (
+	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -10,10 +15,10 @@ import (
 )
 
 type Manager struct {
-	id string
 	common.ServiceLifecycle
-	cfgFile string
-	logger  *zap.SugaredLogger
+	subscriber *event.ActorSubscriber
+	cfgFile    string
+	logger     *zap.SugaredLogger
 }
 
 func NewChainManageService(cfgFile string) *Manager {
@@ -39,12 +44,14 @@ func (c *Manager) Start() error {
 	defer c.PostStart()
 	cc := context.NewChainContext(c.cfgFile)
 	eb := cc.EventBus()
-	if id, err := eb.Subscribe(common.EventRestartChain, restartChain); err != nil {
-		c.logger.Error(err)
-	} else {
-		c.id = id
-	}
-	return nil
+	c.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *types.Tuple:
+			restartChain(msg.First.(string), msg.Second.(bool))
+		}
+	}), eb)
+
+	return c.subscriber.Subscribe(topic.EventRestartChain)
 }
 
 func (c *Manager) Stop() error {
@@ -52,12 +59,8 @@ func (c *Manager) Stop() error {
 		return errors.New("pre stop fail")
 	}
 	defer c.PostStop()
-	cc := context.NewChainContext(c.cfgFile)
-	eb := cc.EventBus()
-	if err := eb.Unsubscribe(common.EventRestartChain, c.id); err != nil {
-		c.logger.Error(err)
-	}
-	return nil
+
+	return c.subscriber.Unsubscribe(topic.EventRestartChain)
 }
 
 func (c *Manager) Status() int32 {

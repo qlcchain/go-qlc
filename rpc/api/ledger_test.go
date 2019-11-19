@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/google/uuid"
 	rpc "github.com/qlcchain/jsonrpc2"
 
@@ -73,7 +75,7 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupTestCaseLedger(t)
 	defer teardownTestCase(t)
 
-	ledgerApi.ledger.EB.Publish(common.EventPovSyncState, common.SyncDone)
+	ledgerApi.ledger.EB.Publish(topic.EventPovSyncState, topic.SyncDone)
 	chainToken := common.ChainToken()
 	gasToken := common.GasToken()
 	addr, _ := types.HexToAddress("qlc_361j3uiqdkjrzirttrpu9pn7eeussymty4rz4gifs9ijdx1p46xnpu3je7sy")
@@ -113,7 +115,7 @@ func TestLedgerApi_Subscription(t *testing.T) {
 			blk := mock.StateBlock()
 			blk.Address = addr
 			blk.Type = types.Send
-			ledgerApi.ledger.EB.Publish(common.EventAddRelation, blk)
+			ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
 		}
 	}()
 	ctx := rpc.SubscriptionContext()

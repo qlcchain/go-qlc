@@ -4,7 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p"
 )
@@ -185,7 +186,7 @@ func (act *ActiveTrx) checkVotes() {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)
 			confirmReqBlocks := make([]*types.StateBlock, 0)
 			confirmReqBlocks = append(confirmReqBlocks, block)
-			dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmReqBlocks)
+			dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.ConfirmReq, Message: confirmReqBlocks})
 		}
 
 		return true

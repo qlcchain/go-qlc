@@ -3,12 +3,14 @@ package test
 import (
 	"encoding/json"
 	"errors"
-	"github.com/qlcchain/go-qlc/common"
+	"os"
+	"path/filepath"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
-	"os"
-	"path/filepath"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 
@@ -116,7 +118,7 @@ func generateChain() (func() error, *rpc.Client, *chain.LedgerService, error) {
 
 func setPovHeader(id string, l *ledger.Ledger) {
 	bus := event.GetEventBus(id)
-	bus.Publish(common.EventPovSyncState, common.SyncDone)
+	bus.Publish(topic.EventPovSyncState, topic.SyncDone)
 	header := mock.PovHeader()
 	l.AddPovHeader(header)
 	l.AddPovHeight(header.BasHdr.Hash, header.BasHdr.Height)

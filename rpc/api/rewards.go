@@ -14,6 +14,8 @@ import (
 	"math/big"
 	"sync/atomic"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common/event"
 
 	"go.uber.org/zap"
@@ -49,8 +51,8 @@ func NewRewardsApi(l *ledger.Ledger, eb event.EventBus) *RewardsApi {
 		rewards:          &contract.AirdropRewords{},
 		confidantRewards: &contract.ConfidantRewards{},
 	}
-	api.syncState.Store(common.SyncNotStart)
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	api.syncState.Store(topic.SyncNotStart)
+	_ = eb.SubscribeSync(topic.EventPovSyncState, api.OnPovSyncState)
 	return api
 }
 
@@ -61,7 +63,7 @@ type RewardsParam struct {
 	To     types.Address `json:"to"`
 }
 
-func (r *RewardsApi) OnPovSyncState(state common.SyncState) {
+func (r *RewardsApi) OnPovSyncState(state topic.SyncState) {
 	r.logger.Infof("reward receive pov sync state [%s]", state)
 	r.syncState.Store(state)
 }
@@ -130,7 +132,7 @@ func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signatu
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := r.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := r.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -155,7 +157,7 @@ func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Sign
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := r.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := r.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 
@@ -259,7 +261,7 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 	if send == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := r.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := r.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 

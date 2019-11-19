@@ -1,10 +1,12 @@
 package miner
 
 import (
+	"github.com/AsynkronIT/protoactor-go/actor"
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus/pov"
@@ -12,14 +14,14 @@ import (
 )
 
 type Miner struct {
-	logger    *zap.SugaredLogger
-	cfg       *config.Config
-	eb        event.EventBus
-	id        string
-	povEngine *pov.PoVEngine
+	logger     *zap.SugaredLogger
+	cfg        *config.Config
+	eb         event.EventBus
+	subscriber *event.ActorSubscriber
+	povEngine  *pov.PoVEngine
 
 	povWorker *PovWorker
-	syncState common.SyncState
+	syncState topic.SyncState
 }
 
 func NewMiner(cfgFile string, povEngine *pov.PoVEngine) *Miner {
@@ -49,10 +51,15 @@ func (miner *Miner) Init() error {
 func (miner *Miner) Start() error {
 	miner.logger.Info("start miner service")
 
-	if id, err := miner.eb.SubscribeSync(common.EventPovSyncState, miner.onRecvPovSyncState); err != nil {
+	miner.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case topic.SyncState:
+			miner.onRecvPovSyncState(msg)
+		}
+	}), miner.eb)
+
+	if err := miner.subscriber.SubscribeSync(topic.EventPovSyncState); err != nil {
 		return err
-	} else {
-		miner.id = id
 	}
 
 	err := miner.povWorker.Start()
@@ -66,10 +73,8 @@ func (miner *Miner) Start() error {
 func (miner *Miner) Stop() error {
 	miner.logger.Info("stop miner service")
 
-	if len(miner.id) > 0 {
-		if err := miner.eb.Unsubscribe(common.EventPovSyncState, miner.id); err != nil {
-			return err
-		}
+	if err := miner.subscriber.Unsubscribe(topic.EventPovSyncState); err != nil {
+		return err
 	}
 
 	err := miner.povWorker.Stop()
@@ -92,11 +97,11 @@ func (miner *Miner) GetPovEngine() *pov.PoVEngine {
 	return miner.povEngine
 }
 
-func (miner *Miner) GetSyncState() common.SyncState {
+func (miner *Miner) GetSyncState() topic.SyncState {
 	return miner.syncState
 }
 
-func (miner *Miner) onRecvPovSyncState(state common.SyncState) {
+func (miner *Miner) onRecvPovSyncState(state topic.SyncState) {
 	miner.logger.Infof("receive pov sync state [%s]", state)
 	miner.syncState = state
 }

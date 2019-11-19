@@ -9,6 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/cornelk/hashmap"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
@@ -113,8 +115,8 @@ func NewLedgerApi(l *ledger.Ledger, r *relation.Relation, eb event.EventBus, ctx
 		blockSubscription: NewBlockSubscription(ctx, eb),
 		processLock:       hashmap.New(defaultLockSize),
 	}
-	api.syncState.Store(common.SyncNotStart)
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	api.syncState.Store(topic.SyncNotStart)
+	_ = eb.SubscribeSync(topic.EventPovSyncState, api.OnPovSyncState)
 	return &api
 }
 
@@ -124,7 +126,7 @@ func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
 	return b
 }
 
-func (l *LedgerApi) OnPovSyncState(state common.SyncState) {
+func (l *LedgerApi) OnPovSyncState(state topic.SyncState) {
 	l.logger.Infof("ledger receive pov sync state [%s]", state)
 	l.syncState.Store(state)
 }
@@ -658,7 +660,7 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
-	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := l.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 	var prk []byte
@@ -702,7 +704,7 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 	if sendBlock == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := l.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 	var prk []byte
@@ -721,7 +723,7 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 }
 
 func (l *LedgerApi) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *string) (*types.StateBlock, error) {
-	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := l.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return nil, errors.New("pov sync is not finished, please check it")
 	}
 	var prk []byte
@@ -833,11 +835,11 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	if block == nil {
 		return types.ZeroHash, ErrParameterNil
 	}
-	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
+	if ss := l.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
 		return types.ZeroHash, errors.New("pov sync is not finished, please check it")
 	}
 	p := make(map[string]string)
-	l.eb.Publish(common.EventPeersInfo, p)
+	l.eb.Publish(topic.EventPeersInfo, p)
 	if len(p) == 0 {
 		return types.ZeroHash, errors.New("no peer connect,please check it")
 	}
@@ -864,11 +866,11 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)
 			return types.ZeroHash, err
 		}
-		l.eb.Publish(common.EventAddBlockCache, block)
+		l.eb.Publish(topic.EventAddBlockCache, block)
 		l.logger.Debug("broadcast block")
 		//TODO: refine
-		l.eb.Publish(common.EventBroadcast, p2p.PublishReq, block)
-		l.eb.Publish(common.EventGenerateBlock, flag, block)
+		l.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: block})
+		l.eb.Publish(topic.EventGenerateBlock, block)
 		return hash, nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")

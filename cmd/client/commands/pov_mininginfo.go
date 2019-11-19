@@ -3,12 +3,13 @@ package commands
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
@@ -48,7 +49,7 @@ func runPovMiningInfoCmd() error {
 		return err
 	}
 
-	ss := common.SyncState(rspInfo.SyncState)
+	ss := topic.SyncState(rspInfo.SyncState)
 	fmt.Printf("Init Sync State: %d(%s)\n", rspInfo.SyncState, ss)
 	fmt.Printf("Difficulty: %s\n", formatPovDifficulty(rspInfo.Difficulty))
 	fmt.Printf("Pending Txs In Pool: %d\n", rspInfo.PooledTx)

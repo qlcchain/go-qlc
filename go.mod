@@ -1,6 +1,7 @@
 module github.com/qlcchain/go-qlc
 
 require (
+	github.com/AsynkronIT/protoactor-go v0.0.0-20191118225719-e21ff1a235dd
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db
