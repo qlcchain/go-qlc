@@ -14,7 +14,6 @@ require (
 	github.com/cornelk/hashmap v1.0.1
 	github.com/dchest/siphash v1.2.1 // indirect
 	github.com/dgraph-io/badger v1.6.0
-	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/gammazero/workerpool v0.0.0-20190608213748-0ed5e40ec55e
@@ -28,10 +27,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
-	github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869 // indirect
 	github.com/jmoiron/sqlx v0.0.0-20190426154859-38398a30ed85
-	github.com/lestrrat-go/file-rotatelogs v2.2.0+incompatible
-	github.com/lestrrat-go/strftime v0.0.0-20190725011945-5c849dd2c51d // indirect
 	github.com/lib/pq v1.1.1 // indirect
 	github.com/libp2p/go-libp2p v0.4.1
 	github.com/libp2p/go-libp2p-core v0.2.4
@@ -50,18 +46,14 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/qlcchain/jsonrpc2 v0.0.6
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
-	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
 	github.com/shirou/gopsutil v2.19.10+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
-	github.com/sirupsen/logrus v1.2.0
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0
-	github.com/tebeka/strftime v0.1.3 // indirect
 	github.com/tinylib/msgp v1.1.0
-	github.com/willf/bitset v1.1.10
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
 	go.uber.org/atomic v1.4.0
