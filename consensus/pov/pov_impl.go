@@ -252,7 +252,7 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockF
 	err := pov.AddBlock(block, from, msgPeer)
 	if err == nil {
 		if from == types.PovBlockFromRemoteBroadcast {
-			pov.eb.Publish(common.EventSendMsgToPeers, p2p.PovPublishReq, block, msgPeer)
+			pov.eb.Publish(common.EventBroadcast, p2p.PovPublishReq, block)
 		}
 	}
 
