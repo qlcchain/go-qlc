@@ -1060,7 +1060,7 @@ func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error
 }
 
 func (dps *DPoS) onRollback(hash types.Hash) {
-	dps.rollbackUncheckedFromDb(hash)
+	//dps.rollbackUncheckedFromDb(hash)
 
 	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
 	if err == nil && blk.Type == types.Online {
@@ -1073,49 +1073,49 @@ func (dps *DPoS) onRollback(hash types.Hash) {
 	}
 }
 
-func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
-	if blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
-		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-		if err != nil {
-			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
-		}
-	}
-
-	if blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious); blkPrevious != nil {
-		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-		if err != nil {
-			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
-		}
-	}
-
-	// gap token
-	blk, err := dps.ledger.GetStateBlock(hash)
-	if err != nil {
-		dps.logger.Errorf("get block error [%s]", hash)
-		return
-	}
-
-	if blk.GetType() == types.ContractReward {
-		input, err := dps.ledger.GetStateBlock(blk.GetLink())
-		if err != nil {
-			dps.logger.Errorf("dequeue get block link error [%s]", hash)
-			return
-		}
-
-		address := types.Address(input.GetLink())
-		if address == types.MintageAddress {
-			var param = new(cabi.ParamMintage)
-			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
-				if blkToken, _, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
-					err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
-					if err != nil {
-						dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
-					}
-				}
-			}
-		}
-	}
-}
+//func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
+//	if blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
+//		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+//		if err != nil {
+//			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+//		}
+//	}
+//
+//	if blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious); blkPrevious != nil {
+//		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+//		if err != nil {
+//			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
+//		}
+//	}
+//
+//	// gap token
+//	blk, err := dps.ledger.GetStateBlock(hash)
+//	if err != nil {
+//		dps.logger.Errorf("get block error [%s]", hash)
+//		return
+//	}
+//
+//	if blk.GetType() == types.ContractReward {
+//		input, err := dps.ledger.GetStateBlock(blk.GetLink())
+//		if err != nil {
+//			dps.logger.Errorf("dequeue get block link error [%s]", hash)
+//			return
+//		}
+//
+//		address := types.Address(input.GetLink())
+//		if address == types.MintageAddress {
+//			var param = new(cabi.ParamMintage)
+//			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+//				if blkToken, _, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
+//					err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
+//					if err != nil {
+//						dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+//					}
+//				}
+//			}
+//		}
+//	}
+//}
 
 func (dps *DPoS) getSeq(kind uint32) uint32 {
 	var seq, ackSeq uint32
