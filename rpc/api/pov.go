@@ -101,6 +101,7 @@ type PovApiTD struct {
 }
 
 type PovMinerStatItem struct {
+	Account            types.Address `json:"account"`
 	MainBlockNum       uint32        `json:"mainBlockNum"`
 	MainRewardAmount   types.Balance `json:"mainRewardAmount"`
 	StableBlockNum     uint32        `json:"stableBlockNum"`
@@ -120,8 +121,11 @@ type PovMinerStats struct {
 
 	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
 
-	TotalBlockNum     uint32 `json:"totalBlockNum"`
-	LatestBlockHeight uint64 `json:"latestBlockHeight"`
+	TotalBlockNum     uint32        `json:"totalBlockNum"`
+	TotalRewardAmount types.Balance `json:"totalRewardAmount"`
+	TotalMinerReward  types.Balance `json:"totalMinerReward"`
+	TotalRepReward    types.Balance `json:"totalRepReward"`
+	LatestBlockHeight uint64        `json:"latestBlockHeight"`
 }
 
 type PovRepStats struct {
@@ -675,6 +679,8 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	}
 
 	totalBlockNum := uint32(0)
+	totalMinerReward := types.NewBalance(0)
+	totalRepReward := types.NewBalance(0)
 
 	// scan miner stats per day
 	dbDayCnt := 0
@@ -694,9 +700,18 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 				continue
 			}
 
+			totalMinerReward = totalMinerReward.Add(minerStat.RewardAmount)
+			totalRepReward = totalRepReward.Add(minerStat.RepReward)
+
+			// just exist rep stats in this item
+			if minerStat.BlockNum == 0 {
+				continue
+			}
+
 			item, ok := apiRsp.MinerStats[minerAddr]
 			if !ok {
 				item = &PovMinerStatItem{}
+				item.Account = minerAddr
 				item.MainRewardAmount = types.ZeroBalance
 				item.StableRewardAmount = types.ZeroBalance
 				item.FirstBlockHeight = minerStat.FirstHeight
@@ -748,6 +763,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		item, ok := apiRsp.MinerStats[minerAddr]
 		if !ok {
 			item = &PovMinerStatItem{}
+			item.Account = minerAddr
 			item.MainRewardAmount = types.ZeroBalance
 			item.FirstBlockHeight = header.GetHeight()
 			item.LastBlockHeight = header.GetHeight()
@@ -764,6 +780,8 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		item.MainRewardAmount = item.MainRewardAmount.Add(header.GetMinerReward())
 		item.MainBlockNum += 1
 		totalBlockNum += 1
+		totalMinerReward = totalMinerReward.Add(header.GetMinerReward())
+		totalRepReward = totalRepReward.Add(header.GetRepReward())
 	}
 
 	//exclude genesis block miner
@@ -786,6 +804,13 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 
 	apiRsp.TotalBlockNum = totalBlockNum
 	apiRsp.LatestBlockHeight = latestHeader.GetHeight()
+
+	apiRsp.TotalMinerReward = totalMinerReward
+	apiRsp.TotalRepReward = totalRepReward
+
+	apiRsp.TotalRewardAmount = types.NewBalance(0)
+	apiRsp.TotalRewardAmount = apiRsp.TotalRewardAmount.Add(totalMinerReward)
+	apiRsp.TotalRewardAmount = apiRsp.TotalRewardAmount.Add(totalRepReward)
 
 	// miner is online if it generate blocks in last N hours
 	for _, item := range apiRsp.MinerStats {
