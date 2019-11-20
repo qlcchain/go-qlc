@@ -14,9 +14,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/chain/context"
 
-	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/google/uuid"
 
@@ -29,7 +29,7 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
+func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *context.ChainContext) {
 	t.Parallel()
 
 	dir := filepath.Join(cfg.QlcTestDataDir(), "rewards", uuid.New().String())
@@ -37,6 +37,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 
 	cm := cfg.NewCfgManager(dir)
 	cm.Load()
+	cc := context.NewChainContext(cm.ConfigFile)
 	l := ledger.NewLedger(cm.ConfigFile)
 	addPovHeader(l)
 
@@ -51,7 +52,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	}, l
+	}, l, cc
 }
 
 func addPovHeader(l *ledger.Ledger) {
@@ -63,12 +64,11 @@ func addPovHeader(l *ledger.Ledger) {
 }
 
 func TestRewardsApi_GetRewardData(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l, cc := setupTestCase(t)
 	defer teardownTestCase(t)
-	bus := event.GetEventBus(uuid.New().String())
 
-	api := NewRewardsApi(l, bus)
-	bus.Publish(topic.EventPovSyncState, topic.SyncDone)
+	api := NewRewardsApi(l, cc)
+	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
 
 	tx := mock.Account()
 	rx := mock.Account()
@@ -154,11 +154,10 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 }
 
 func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l, cc := setupTestCase(t)
 	defer teardownTestCase(t)
-	bus := event.GetEventBus(uuid.New().String())
-	api := NewRewardsApi(l, bus)
-	bus.Publish(topic.EventPovSyncState, topic.SyncDone)
+	api := NewRewardsApi(l, cc)
+	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
 
 	tx := mock.Account()
 	rx := mock.Account()

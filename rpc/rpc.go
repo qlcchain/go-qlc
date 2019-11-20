@@ -49,6 +49,7 @@ type RPC struct {
 	eb       event.EventBus
 	cfgFile  string
 	logger   *zap.SugaredLogger
+	cc       *chainctx.ChainContext
 }
 
 func NewRPC(cfgFile string) (*RPC, error) {
@@ -71,6 +72,7 @@ func NewRPC(cfgFile string) (*RPC, error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		logger:   log.NewLogger("rpc"),
+		cc:       cc,
 	}
 	return &r, nil
 }

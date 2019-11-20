@@ -35,7 +35,7 @@ func TestNewActorSubscriber(t *testing.T) {
 	subPID2, _ := actor.EmptyRootContext.SpawnNamed(actor.PropsFromFunc(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *testMessage:
-			fmt.Printf("PID:%s receive message after sleep:%s\n", c.Self().Id, msg.Message)
+			t.Logf("PID:%s receive message after sleep:%s\n", c.Self().Id, msg.Message)
 		}
 	}), "sub2")
 	sub1 := NewActorSubscriber(subPID1)

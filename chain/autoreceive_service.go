@@ -111,8 +111,7 @@ func (as *AutoReceiveService) Start() error {
 			select {
 			case <-as.quit:
 				atomic.StoreUint32(&as.state, 0)
-				cc := context.NewChainContext(as.cfgFile)
-				if err := cc.EventBus().Unsubscribe(topic.EventConfirmedBlock, as.subscriber); err != nil {
+				if err := as.subscriber.Unsubscribe(topic.EventConfirmedBlock); err != nil {
 					as.logger.Error(err)
 				}
 				return

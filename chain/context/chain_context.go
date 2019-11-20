@@ -14,6 +14,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+	"go.uber.org/atomic"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/cornelk/hashmap"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -25,6 +30,8 @@ import (
 )
 
 var cache = hashmap.New(10)
+
+var ErrPoVNotFinish = errors.New("pov sync is not finished, please check it")
 
 const (
 	LedgerService      = "ledgerService"
@@ -78,6 +85,7 @@ func NewChainContext(cfgFile string) *ChainContext {
 			cfgFile:  cfgFile,
 			chainId:  id,
 		}
+		sr.syncState.Store(topic.SyncNotStart)
 		cache.Set(id, sr)
 		return sr
 	}
@@ -97,16 +105,25 @@ func NewChainContextFromOriginal(cc *ChainContext) *ChainContext {
 
 type ChainContext struct {
 	common.ServiceLifecycle
-	services *serviceContainer
-	cm       *config.CfgManager
-	cfgFile  string
-	chainId  string
-	locker   sync.RWMutex
-	accounts []*types.Account
+	services   *serviceContainer
+	cm         *config.CfgManager
+	cfgFile    string
+	chainId    string
+	locker     sync.RWMutex
+	accounts   []*types.Account
+	syncState  atomic.Value
+	subscriber *event.ActorSubscriber
 }
 
 func (cc *ChainContext) EventBus() event.EventBus {
 	return event.GetEventBus(cc.Id())
+}
+func (cc *ChainContext) PoVState() topic.SyncState {
+	return cc.syncState.Load().(topic.SyncState)
+}
+
+func (cc *ChainContext) IsPoVDone() bool {
+	return cc.syncState.Load().(topic.SyncState) == topic.SyncDone
 }
 
 func (cc *ChainContext) ConfigFile() string {
@@ -140,7 +157,14 @@ func (cc *ChainContext) Init(fn func() error) error {
 		return err
 	}
 
-	return nil
+	cc.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case topic.SyncState:
+			cc.syncState.Store(msg)
+		}
+	}), cc.EventBus())
+
+	return cc.subscriber.Subscribe(topic.EventPovSyncState)
 }
 
 func (cc *ChainContext) Start() error {
@@ -172,9 +196,13 @@ func (cc *ChainContext) Stop() error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s stop successfully.\n", name)
+		log.Root.Infof("%s stop successfully", name)
 		return nil
 	})
+
+	if cc.subscriber != nil {
+		return cc.subscriber.UnsubscribeAll()
+	}
 
 	return nil
 }

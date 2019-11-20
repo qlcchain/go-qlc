@@ -60,11 +60,11 @@ func TestEventHandler(t *testing.T) {
 
 	wg.Wait()
 
-	if err := handlers.RemoveCallback(fn); err != nil {
+	if err := handlers.RemoveCallback(reflect.ValueOf(fn)); err != nil {
 		t.Fatal("remove fn failed")
 	}
 
-	if err := handlers.RemoveCallback("v2"); err == nil {
+	if err := handlers.RemoveCallback(reflect.ValueOf(nil)); err == nil {
 		t.Fatal("remove failed")
 	}
 

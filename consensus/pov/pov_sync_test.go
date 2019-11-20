@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
 	"github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/google/uuid"
@@ -228,11 +230,15 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	}
 
 	var rsp *protos.PovBulkPullRsp
-	_ := md.eb.SubscribeSync(topic.EventSendMsgToSingle, func(msgType p2p.MessageType, msgData interface{}, toPeer string) {
-		if msgType == p2p.PovBulkPullRsp {
-			rsp = msgData.(*protos.PovBulkPullRsp)
+	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *p2p.EventSendMsgToSingleMsg:
+			if msg.Type == p2p.PovBulkPullRsp {
+				rsp = msg.Message.(*protos.PovBulkPullRsp)
+			}
 		}
-	})
+	}), md.eb)
+	_ = subscriber.SubscribeSync(topic.EventSendMsgToSingle)
 
 	req1 := new(protos.PovBulkPullReq)
 	req1.PullType = protos.PovPullTypeForward
@@ -268,7 +274,7 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 		t.Fatalf("failed to get Message 2 Count & Hash")
 	}
 
-	_ = md.eb.Unsubscribe(topic.EventSendMsgToSingle, id)
+	_ = subscriber.UnsubscribeAll()
 	povSync.Stop()
 }
 
@@ -304,11 +310,16 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	povSync.onPovStatus(peer1Status, peerID1)
 
 	var req *protos.PovBulkPullReq
-	_ := md.eb.SubscribeSync(topic.EventSendMsgToSingle, func(msgType p2p.MessageType, msgData interface{}, toPeer string) {
-		if msgType == p2p.PovBulkPullReq {
-			req = msgData.(*protos.PovBulkPullReq)
+
+	subscriber := event.NewActorSubscriber(nil, md.eb)
+	_ = subscriber.SubscribeSyncOne(topic.EventSendMsgToSingle, event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *p2p.EventSendMsgToSingleMsg:
+			if msg.Type == p2p.PovBulkPullReq {
+				req = msg.Message.(*protos.PovBulkPullReq)
+			}
 		}
-	})
+	}))
 
 	povSync.onPeriodicSyncTimer()
 
@@ -326,9 +337,12 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	}
 
 	var syncBlocks []*types.PovBlock
-	_ := md.eb.SubscribeSync(topic.EventPovRecvBlock, func(block *types.PovBlock, from types.PovBlockFrom, peer string) {
-		syncBlocks = append(syncBlocks, block)
-	})
+	_ = subscriber.SubscribeSyncOne(topic.EventPovRecvBlock, event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *topic.EventPovRecvBlockMsg:
+			syncBlocks = append(syncBlocks, msg.Block)
+		}
+	}))
 
 	rsp := new(protos.PovBulkPullRsp)
 	rsp.Reason = protos.PovReasonSync
@@ -347,8 +361,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	time.Sleep(time.Second)
 	povSync.onCheckChainTimer()
 
-	_ = md.eb.Unsubscribe(topic.EventSendMsgToSingle, id)
-	_ = md.eb.Unsubscribe(topic.EventPovRecvBlock, id2)
+	_ = subscriber.UnsubscribeAll()
 	povSync.Stop()
 }
 

@@ -10,12 +10,12 @@ package event
 import (
 	"fmt"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/cornelk/hashmap"
+
 	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/gammazero/workerpool"
@@ -26,7 +26,7 @@ const (
 	defaultHandlerSize = 1024
 )
 
-// DefaultEventBus
+// Deprecated: DefaultEventBus use ActorEventBus instead
 type DefaultEventBus struct {
 	handlers  *hashmap.HashMap
 	queueSize int
@@ -64,19 +64,6 @@ func NewEventBus(queueSize int) EventBus {
 		queueSize: queueSize,
 	}
 	return EventBus(b)
-}
-
-var (
-	once sync.Once
-	eb   EventBus
-)
-
-func SimpleEventBus() EventBus {
-	once.Do(func() {
-		eb = New()
-	})
-
-	return eb
 }
 
 // doSubscribe handles the subscription logic and is utilized by the public Subscribe functions
@@ -138,8 +125,13 @@ func (eb *DefaultEventBus) CloseTopic(topic topic.TopicType) error {
 // Unsubscribe removes callback defined for a topic.
 // Returns error if there are no callbacks subscribed to the topic.
 func (eb *DefaultEventBus) Unsubscribe(topic topic.TopicType, handler interface{}) error {
+	kind := reflect.TypeOf(handler).Kind()
+	if kind != reflect.Func {
+		return fmt.Errorf("%s is not of type reflect.Func", kind)
+	}
+
 	if value, ok := eb.handlers.GetStringKey(string(topic)); ok {
-		if err := value.(*eventHandlers).RemoveCallback(handler); err != nil {
+		if err := value.(*eventHandlers).RemoveCallback(reflect.ValueOf(handler)); err != nil {
 			return err
 		}
 
@@ -151,7 +143,7 @@ func (eb *DefaultEventBus) Unsubscribe(topic topic.TopicType, handler interface{
 
 // Publish executes callback defined for a topic. Any additional argument will be transferred to the callback.
 func (eb *DefaultEventBus) Publish(topic topic.TopicType, args ...interface{}) {
-	rArgs := eb.setUpPublish(topic, args)
+	rArgs := eb.setUpPublish(topic, args...)
 	for kv := range eb.handlers.Iter() {
 		topicPattern := kv.Key.(string)
 		handlers := kv.Value.(*eventHandlers)

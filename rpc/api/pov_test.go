@@ -42,7 +42,7 @@ func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {
 
 	md.eb = cc.EventBus()
 
-	md.api = NewPovApi(md.cfg, md.l, md.eb, context.Background())
+	md.api = NewPovApi(context.Background(), md.cfg, md.l, md.eb, cc)
 
 	return func(t *testing.T) {
 		_ = md.eb.Close()

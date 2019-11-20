@@ -9,6 +9,7 @@ package event
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -31,12 +32,12 @@ func (eh *eventHandlers) Add(handler *eventHandler) {
 	eh.handlers = append(eh.handlers, handler)
 }
 
-func (eh *eventHandlers) RemoveCallback(handler interface{}) error {
+func (eh *eventHandlers) RemoveCallback(callback reflect.Value) error {
 	eh.locker.Lock()
 	defer eh.locker.Unlock()
 	i := len(eh.handlers)
-	for idx, h := range eh.handlers {
-		if h == handler {
+	for idx := range eh.handlers {
+		if eh.handlers[idx].callBack == callback {
 			i = idx
 			break
 		}
@@ -46,7 +47,7 @@ func (eh *eventHandlers) RemoveCallback(handler interface{}) error {
 		eh.handlers = append(eh.handlers[:i], eh.handlers[i+1:]...)
 		return nil
 	}
-	return fmt.Errorf("remove callback %v failed", handler)
+	return fmt.Errorf("remove callback %v failed", callback)
 }
 
 func (eh *eventHandlers) Remove(handler *eventHandler) bool {

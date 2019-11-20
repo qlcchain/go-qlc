@@ -75,18 +75,16 @@ func TestUnsubscribe(t *testing.T) {
 	_ = bus.Subscribe("test", handler)
 
 	if err := bus.Unsubscribe("test", handler); err != nil {
-		fmt.Println(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 
 	if err := bus.Unsubscribe("unexisted", "xxx"); err == nil {
-		fmt.Println(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 }
 
 func TestUnsubscribe2(t *testing.T) {
-	bus := SimpleEventBus()
+	bus := New()
 
 	handler := func() {}
 
@@ -192,28 +190,6 @@ func TestHasCallback(t *testing.T) {
 	}
 }
 
-func TestGetEventBus(t *testing.T) {
-	eb0 := SimpleEventBus()
-	eb1 := GetEventBus("")
-	if eb0 != eb1 {
-		t.Fatal("invalid default eb")
-	}
-
-	id1 := "111111"
-	eb2 := GetEventBus(id1)
-	eb3 := GetEventBus(id1)
-
-	if eb2 != eb3 {
-		t.Fatal("invalid eb of same id")
-	}
-
-	id2 := "222222"
-	eb4 := GetEventBus(id2)
-	if eb3 == eb4 {
-		t.Fatal("invalid eb of diff ids")
-	}
-}
-
 func TestEventSubscribe(t *testing.T) {
 	bus := NewEventBus(runtime.NumCPU())
 	topic := topic2.TopicType("test")
@@ -268,7 +244,8 @@ func TestFooSubscribe(t *testing.T) {
 			bus.Publish(topic, i)
 		}
 	}(i)
-	err := bus.Subscribe(topic, foo.Test)
+	fn := foo.Test
+	err := bus.Subscribe(topic, fn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +253,7 @@ func TestFooSubscribe(t *testing.T) {
 	if flag := bus.HasCallback(topic); !flag {
 		t.Fatal()
 	}
-	if err = bus.Unsubscribe(topic, foo.Test); err != nil {
+	if err = bus.Unsubscribe(topic, fn); err != nil {
 		t.Fatal(err)
 	}
 	if flag := bus.HasCallback(topic); flag {

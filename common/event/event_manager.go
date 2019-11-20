@@ -7,20 +7,25 @@
 
 package event
 
-import "github.com/cornelk/hashmap"
+import (
+	"github.com/cornelk/hashmap"
+)
 
-var cache = hashmap.New(50)
+var (
+	cache           = hashmap.New(50)
+	DefaultActorBus = NewActorEventBus()
+)
 
 func GetEventBus(id string) EventBus {
 	if id == "" {
-		return NewActorEventBus()
+		return DefaultActorBus
 	}
 
 	if v, ok := cache.GetStringKey(id); ok {
 		return v.(EventBus)
 	}
 
-	eb := New()
+	eb := NewActorEventBus()
 	cache.Set(id, eb)
 	return eb
 }

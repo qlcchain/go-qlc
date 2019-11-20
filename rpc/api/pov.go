@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -17,6 +16,7 @@ import (
 
 	"go.uber.org/zap"
 
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -31,8 +31,7 @@ type PovApi struct {
 	logger *zap.SugaredLogger
 	eb     event.EventBus
 	pubsub *PovSubscription
-
-	syncState atomic.Value
+	cc     *chainctx.ChainContext
 }
 
 type PovStatus struct {
@@ -151,29 +150,22 @@ type PovRepStats struct {
 	LatestBlockHeight uint64                            `json:"latestBlockHeight"`
 }
 
-func NewPovApi(cfg *config.Config, l *ledger.Ledger, eb event.EventBus, ctx context.Context) *PovApi {
+func NewPovApi(ctx context.Context, cfg *config.Config, l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *PovApi {
 	api := &PovApi{
 		cfg:    cfg,
 		ledger: l,
 		eb:     eb,
 		pubsub: NewPovSubscription(ctx, eb),
 		logger: log.NewLogger("rpc/pov"),
+		cc:     cc,
 	}
-	api.syncState.Store(topic.SyncNotStart)
-	// TODO: remove
-	_ = eb.SubscribeSync(topic.EventPovSyncState, api.OnPovSyncState)
 	return api
-}
-
-func (api *PovApi) OnPovSyncState(state topic.SyncState) {
-	api.logger.Infof("receive pov sync state [%s]", state)
-	api.syncState.Store(state)
 }
 
 func (api *PovApi) GetPovStatus() (*PovStatus, error) {
 	apiRsp := new(PovStatus)
 	apiRsp.PovEnabled = api.cfg.PoV.PovEnabled
-	ss := api.syncState.Load().(topic.SyncState)
+	ss := api.cc.PoVState()
 	apiRsp.SyncState = int(ss)
 	apiRsp.SyncStateStr = ss.String()
 	return apiRsp, nil
@@ -244,9 +236,8 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 		return nil, errors.New("pov service is disabled")
 	}
 
-	ss := api.syncState.Load().(topic.SyncState)
-	if ss != topic.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+	if api.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
 	}
 
 	var header *types.PovHeader
@@ -1205,10 +1196,8 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	if !api.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
-
-	ss := api.syncState.Load().(topic.SyncState)
-	if ss != topic.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+	if api.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
 	}
 
 	inArgs := make(map[interface{}]interface{})
@@ -1250,9 +1239,8 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 		return errors.New("pov service is disabled")
 	}
 
-	ss := api.syncState.Load().(topic.SyncState)
-	if ss != topic.SyncDone {
-		return errors.New("pov sync is not finished, please check it")
+	if api.cc.IsPoVDone() {
+		return chainctx.ErrPoVNotFinish
 	}
 
 	mineResult := types.NewPovMineResult()

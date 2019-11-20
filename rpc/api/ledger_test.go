@@ -51,7 +51,7 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
 	eb := cc.EventBus()
 
-	ledgerApi := NewLedgerApi(l, rl, eb, context.Background())
+	ledgerApi := NewLedgerApi(context.Background(), l, rl, eb, cc)
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()

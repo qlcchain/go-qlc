@@ -12,14 +12,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync/atomic"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
-	"github.com/qlcchain/go-qlc/common/event"
 
 	"go.uber.org/zap"
 
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -34,7 +30,7 @@ type RewardsApi struct {
 	ledger           *ledger.Ledger
 	rewards          *contract.AirdropRewords
 	confidantRewards *contract.ConfidantRewards
-	syncState        atomic.Value
+	cc               *chainctx.ChainContext
 }
 
 type sendParam struct {
@@ -44,15 +40,15 @@ type sendParam struct {
 	tm *types.TokenMeta
 }
 
-func NewRewardsApi(l *ledger.Ledger, eb event.EventBus) *RewardsApi {
+func NewRewardsApi(l *ledger.Ledger, cc *chainctx.ChainContext) *RewardsApi {
 	api := &RewardsApi{
 		ledger:           l,
 		logger:           log.NewLogger("api_rewards"),
 		rewards:          &contract.AirdropRewords{},
 		confidantRewards: &contract.ConfidantRewards{},
+		cc:               cc,
 	}
-	api.syncState.Store(topic.SyncNotStart)
-	_ = eb.SubscribeSync(topic.EventPovSyncState, api.OnPovSyncState)
+
 	return api
 }
 
@@ -61,11 +57,6 @@ type RewardsParam struct {
 	Amount types.Balance `json:"amount"`
 	Self   types.Address `json:"self"`
 	To     types.Address `json:"to"`
-}
-
-func (r *RewardsApi) OnPovSyncState(state topic.SyncState) {
-	r.logger.Infof("reward receive pov sync state [%s]", state)
-	r.syncState.Store(state)
 }
 
 func (r *RewardsApi) GetUnsignedRewardData(param *RewardsParam) (types.Hash, error) {
@@ -132,8 +123,8 @@ func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signatu
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := r.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+	if r.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
 	}
 
 	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedAirdropRewards, func(param *RewardsParam) (types.Hash, error) {
@@ -157,8 +148,8 @@ func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Sign
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := r.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+	if r.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
 	}
 
 	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedConfidantRewards, func(param *RewardsParam) (types.Hash, error) {
@@ -261,8 +252,8 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 	if send == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := r.syncState.Load().(topic.SyncState); ss != topic.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+	if r.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
 	}
 
 	blk, err := r.ledger.GetStateBlock(*send)

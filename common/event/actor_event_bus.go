@@ -43,7 +43,7 @@ func (eb *ActorEventBus) SubscribeSync(topic topic.TopicType, fn interface{}) er
 	return eb.doSubscribe(topic, fn, true, timeout)
 }
 
-func NewActorEventBus() *ActorEventBus {
+func NewActorEventBus() EventBus {
 	// root context
 	//rootContext := actor.NewRootContext(nil).WithGuardian(actor.NewRestartingStrategy()).
 	//	WithSpawnMiddleware(func(next actor.SpawnFunc) actor.SpawnFunc {
@@ -115,7 +115,7 @@ func (eb *ActorEventBus) Unsubscribe(topic topic.TopicType, subscriber interface
 			subscribers := value.([]*subscriberOption)
 			for i := range subscribers {
 				if subscribers[i].subscriber == s {
-					eb.subscribers.Set(topic, append(subscribers[0:i], subscribers[i+1:]...))
+					eb.subscribers.Set(t, append(subscribers[0:i], subscribers[i+1:]...))
 				}
 			}
 
@@ -148,7 +148,7 @@ func (eb *ActorEventBus) Publish(topic topic.TopicType, args ...interface{}) {
 
 func (eb *ActorEventBus) HasCallback(topic topic.TopicType) bool {
 	if v, ok := eb.subscribers.GetStringKey(string(topic)); ok {
-		subscribers := v.([]*actor.PID)
+		subscribers := v.([]*subscriberOption)
 		return len(subscribers) > 0
 	}
 	return false
@@ -186,7 +186,6 @@ func (eb *ActorEventBus) Close() error {
 }
 
 var (
-	DefaultActorBus  = NewActorEventBus()
 	errNilSubscriber = errors.New("default subscriber is Nil")
 )
 
@@ -368,25 +367,3 @@ func joinErrs(errs ...error) error {
 	}
 	return joinErrsR("", 0, errs...)
 }
-
-//type ActorPublisher struct {
-//	bus       *ActorEventBus
-//	publisher *actor.PID
-//}
-//
-//func NewActorPublisher(publisher *actor.PID, bus ...*ActorEventBus) *ActorPublisher {
-//	var b *ActorEventBus
-//	if len(bus) == 0 {
-//		b = DefaultActorBus
-//	} else {
-//		b = bus[0]
-//	}
-//	return &ActorPublisher{
-//		bus:       b,
-//		publisher: publisher,
-//	}
-//}
-//
-//func (p *ActorPublisher) Publish(topic topic.TopicType, msg interface{}) {
-//	p.bus.PublishWithID(topic, p.publisher, msg)
-//}

@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"github.com/AsynkronIT/protoactor-go/actor"
+
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -27,7 +28,6 @@ func (r *Receiver) init(c *Consensus) {
 }
 
 func (r *Receiver) start() error {
-
 	r.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *topic.EventPublishMsg:
