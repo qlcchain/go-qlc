@@ -34,7 +34,7 @@ const (
 	subAckMaxSize         = 102400
 	maxStatisticsPeriod   = 3
 	confirmedCacheMaxLen  = 1024000
-	confirmedCacheMaxTime = 1 * time.Minute
+	confirmedCacheMaxTime = 10 * time.Minute
 	hashNumPerAck         = 1024
 	blockNumPerReq        = 128
 )
