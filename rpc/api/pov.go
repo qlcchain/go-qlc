@@ -691,6 +691,9 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 			lastDayIndex = stat.DayIndex
 		}
 		for addrHex, minerStat := range stat.MinerStats {
+			if minerStat.BlockNum == 0 {
+				continue
+			}
 			minerAddr, _ := types.HexToAddress(addrHex)
 
 			if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
