@@ -294,6 +294,7 @@ func (bc *PovBlockChain) onMinerDayStatTimer() {
 				minerStat.LastHeight = header.GetHeight()
 			} else {
 				minerStat.FirstHeight = header.GetHeight()
+				minerStat.LastHeight = header.GetHeight()
 				minerStat.IsMiner = true
 			}
 
