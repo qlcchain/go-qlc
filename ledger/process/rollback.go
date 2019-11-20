@@ -12,6 +12,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -136,6 +137,59 @@ func (lv *LedgerVerifier) RollbackCache(hash types.Hash) error {
 		})
 	}
 	return nil
+}
+
+// rollback unchecked
+func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {
+	// gap source
+	blkLink, _, _ := lv.l.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	// gap previous
+	blkPrevious, _, _ := lv.l.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+	// gap token
+	var blkToken *types.StateBlock
+	var tokenId types.Hash
+	if blk, err := lv.l.GetStateBlock(hash); err == nil {
+		if blk.GetType() == types.ContractReward {
+			input, err := lv.l.GetStateBlock(blk.GetLink())
+			if err != nil {
+				lv.logger.Errorf("dequeue get block link error [%s]", hash)
+				return
+			}
+			address := types.Address(input.GetLink())
+			if address == types.MintageAddress {
+				var param = new(cabi.ParamMintage)
+				tokenId = param.TokenId
+				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+					blkToken, _, _ = lv.l.GetUncheckedBlock(tokenId, types.UncheckedKindTokenInfo)
+				}
+			}
+		}
+	}
+
+	if blkLink == nil && blkPrevious == nil && blkToken == nil {
+		return
+	}
+	if blkLink != nil {
+		err := lv.l.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+		if err != nil {
+			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+		}
+		lv.RollbackUnchecked(blkLink.GetHash())
+	}
+	if blkPrevious != nil {
+		err := lv.l.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+		if err != nil {
+			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
+		}
+		lv.RollbackUnchecked(blkPrevious.GetHash())
+	}
+	if blkToken != nil {
+		err := lv.l.DeleteUncheckedBlock(tokenId, types.UncheckedKindTokenInfo)
+		if err != nil {
+			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+		}
+		lv.RollbackUnchecked(blkToken.GetHash())
+	}
 }
 
 // rollback cache blocks
