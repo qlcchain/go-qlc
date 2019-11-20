@@ -48,7 +48,6 @@ func (c *cache) set(key, val interface{}) {
 			delete(c.items, it.key)
 			c.evict(ent)
 		}
-		return
 	}
 
 	expire := time.Now().Add(c.expiration)
