@@ -75,6 +75,12 @@ func (c *cache) has(key interface{}) bool {
 	return false
 }
 
+func (c *cache) len() int {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return len(c.items)
+}
+
 func (c *cache) evict(em *list.Element) {
 	entry := em.Value.(*item)
 
