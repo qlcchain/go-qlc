@@ -1,7 +1,6 @@
 package dpos
 
 import (
-	"math/big"
 	"path/filepath"
 	"testing"
 
@@ -48,15 +47,15 @@ func TestIfValid(t *testing.T) {
 	}
 }
 
-func TestGetGenesisBalance(t *testing.T) {
-	el := getTestEl()
-
-	b, err := el.getGenesisBalance()
-	if err != nil {
-		t.Fatal()
-	}
-
-	if b.Cmp(big.NewInt(60000000000000000)) != 0 {
-		t.Fatal()
-	}
-}
+//func TestGetGenesisBalance(t *testing.T) {
+//	el := getTestEl()
+//
+//	b, err := el.getGenesisBalance()
+//	if err != nil {
+//		t.Fatal()
+//	}
+//
+//	if b.Cmp(big.NewInt(60000000000000000)) != 0 {
+//		t.Fatal()
+//	}
+//}
