@@ -37,9 +37,7 @@ func (op *RepOnlinePeriod) String() string {
 
 func (dps *DPoS) isValidVote(hash types.Hash, addr types.Address) bool {
 	if dps.confirmedBlocks.has(hash) {
-		if dps.ledger.HasVoteHistory(hash, addr) {
-			return false
-		} else {
+		if !dps.ledger.HasVoteHistory(hash, addr) {
 			err := dps.ledger.AddVoteHistory(hash, addr)
 			if err != nil {
 				dps.logger.Error("add vote history err", err)

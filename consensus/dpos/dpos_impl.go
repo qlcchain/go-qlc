@@ -404,10 +404,6 @@ func (dps *DPoS) Stop() {
 	dps.acTrx.stop()
 }
 
-func (dps *DPoS) voteHistoryClean() {
-
-}
-
 func (dps *DPoS) stat() {
 	timerStatInterval := time.NewTicker(15 * time.Second)
 

@@ -1,10 +1,11 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/mock"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestCache_set(t *testing.T) {

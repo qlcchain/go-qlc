@@ -42,14 +42,13 @@ func (c *cache) set(key, val interface{}) {
 
 	if c.evictList.Len() >= c.size {
 		ent := c.evictList.Back()
-		if ent == nil {
-			return
-		} else {
+		if ent != nil {
 			c.evictList.Remove(ent)
 			it := ent.Value.(*item)
 			delete(c.items, it.key)
 			c.evict(ent)
 		}
+		return
 	}
 
 	expire := time.Now().Add(c.expiration)

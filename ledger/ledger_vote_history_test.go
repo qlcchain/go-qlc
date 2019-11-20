@@ -1,8 +1,9 @@
 package ledger
 
 import (
-	"github.com/qlcchain/go-qlc/mock"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestLedger_AddVoteHistory(t *testing.T) {
