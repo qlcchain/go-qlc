@@ -175,7 +175,7 @@ func TestCfgManager_Load(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg3.P2P.Discovery.MDNSEnabled {
+	if !cfg3.P2P.Discovery.MDNSEnabled {
 		t.Fatal("migration p2p error")
 	}
 

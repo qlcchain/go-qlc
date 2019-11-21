@@ -23,6 +23,7 @@ func Test_StreamManager(t *testing.T) {
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19747"
+	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.P2P.BootNodes = []string{}
 	b := "/ip4/127.0.0.1/tcp/19747/ipfs/" + cfg.P2P.ID.PeerID
 
@@ -31,6 +32,7 @@ func Test_StreamManager(t *testing.T) {
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19748"
+	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
@@ -39,6 +41,7 @@ func Test_StreamManager(t *testing.T) {
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19749"
+	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
@@ -141,6 +144,7 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19750"
+	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.P2P.BootNodes = []string{}
 	b := "/ip4/127.0.0.1/tcp/19750/ipfs/" + cfg.P2P.ID.PeerID
 
@@ -149,6 +153,7 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19751"
+	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
@@ -157,6 +162,7 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19752"
+	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
@@ -243,6 +249,7 @@ func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19753"
+	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.P2P.BootNodes = []string{}
 	b := "/ip4/127.0.0.1/tcp/19753/ipfs/" + cfg.P2P.ID.PeerID
 
@@ -251,6 +258,7 @@ func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19754"
+	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
@@ -259,6 +267,7 @@ func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19755"
+	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
@@ -344,6 +353,7 @@ func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19756"
+	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.P2P.BootNodes = []string{}
 	b := "/ip4/127.0.0.1/tcp/19756/ipfs/" + cfg.P2P.ID.PeerID
 
@@ -352,6 +362,7 @@ func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19757"
+	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
@@ -360,6 +371,7 @@ func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19758"
+	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
@@ -456,6 +468,7 @@ func TestGetBandwidthStats(t *testing.T) {
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19762"
+	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.P2P.BootNodes = []string{}
 	b := "/ip4/127.0.0.1/tcp/19762/ipfs/" + cfg.P2P.ID.PeerID
 
@@ -464,6 +477,7 @@ func TestGetBandwidthStats(t *testing.T) {
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19760"
+	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
@@ -472,6 +486,7 @@ func TestGetBandwidthStats(t *testing.T) {
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19761"
+	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 

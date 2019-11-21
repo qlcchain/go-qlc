@@ -45,7 +45,7 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 			Discovery: &DiscoveryConfigV2{
 				DiscoveryInterval: 30,
 				Limit:             20,
-				MDNSEnabled:       false,
+				MDNSEnabled:       true,
 				MDNSInterval:      30,
 			},
 			ID: &IdentityConfigV2{id, pk},
