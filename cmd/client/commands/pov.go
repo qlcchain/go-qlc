@@ -27,6 +27,8 @@ func addPovCmd() {
 		addPovAccountInfoCmdByShell(povCmd)
 		addPovLastNHourInfoCmdByShell(povCmd)
 		addPovTxInfoCmdByShell(povCmd)
+		addPovRepInfoCmdByShell(povCmd)
+		addPovRepStateListCmdByShell(povCmd)
 	} else {
 		var povCmd = &cobra.Command{
 			Use:   "pov",
@@ -40,8 +42,12 @@ func addPovCmd() {
 	}
 }
 
-func formatPovReward(reward types.Balance) string {
-	return fmt.Sprintf("%.2f", float64(reward.Uint64())/1e8)
+func formatPovReward(amount types.Balance) string {
+	n := float64(amount.Uint64())
+	if n >= 1e8 {
+		return fmt.Sprintf("%.2f", n/1e8)
+	}
+	return fmt.Sprintf("%.8f", n/1e8)
 }
 
 func formatPovDifficulty(diff float64) string {

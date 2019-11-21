@@ -36,41 +36,46 @@ type BlockSubscription struct {
 	mu         *sync.Mutex
 	eb         event.EventBus
 	handlerIds map[common.TopicType]string // subscript event from chain
-	chans      []chan struct{}             // deliver to every channel for each connected websocket
-	blocks     []*types.StateBlock
-	addrBlocks map[types.Address]*types.StateBlock
-	newBlockCh chan struct{}
-	stoped     chan bool
+	allSubs    map[rpc.ID]*BlockSubscriber
+	blocksCh   chan *types.StateBlock
+	ctx        context.Context
 	logger     *zap.SugaredLogger
 }
 
-func NewBlockSubscription(eb event.EventBus) *BlockSubscription {
-	be := &BlockSubscription{
+type BlockSubscriber struct {
+	notifyCh  chan struct{}
+	address   types.Address
+	blocks    []*types.StateBlock
+	addrBlock *types.StateBlock
+	batch     bool
+}
+
+func NewBlockSubscription(ctx context.Context, eb event.EventBus) *BlockSubscription {
+	bs := &BlockSubscription{
 		eb:         eb,
 		mu:         &sync.Mutex{},
 		handlerIds: make(map[common.TopicType]string),
-		chans:      make([]chan struct{}, 0),
-		blocks:     make([]*types.StateBlock, 0, MaxNotifyBlocks),
-		addrBlocks: make(map[types.Address]*types.StateBlock),
-		newBlockCh: make(chan struct{}),
-		stoped:     make(chan bool),
+		allSubs:    make(map[rpc.ID]*BlockSubscriber),
+		blocksCh:   make(chan *types.StateBlock, MaxNotifyBlocks),
+		ctx:        ctx,
 		logger:     log.NewLogger("api_sub"),
 	}
-	return be
+	bs.subscribeEvent()
+	go bs.notifyLoop()
+	return bs
 }
 
 func (r *BlockSubscription) subscribeEvent() {
 	if id, err := r.eb.Subscribe(common.EventAddRelation, r.setBlocks); err != nil {
-		r.logger.Error("subscribe event error, ", err)
+		r.logger.Error("subscribe EventAddRelation error, ", err)
 	} else {
 		r.handlerIds[common.EventAddRelation] = id
 	}
 	if id, err := r.eb.Subscribe(common.EventAddSyncBlocks, r.setSyncBlocks); err != nil {
-		r.logger.Error("subscribe event error, ", err)
+		r.logger.Error("subscribe EventAddSyncBlocks error, ", err)
 	} else {
 		r.handlerIds[common.EventAddSyncBlocks] = id
 	}
-	r.logger.Info("event subscribed ")
 }
 
 func (r *BlockSubscription) unsubscribeEvent() {
@@ -80,108 +85,143 @@ func (r *BlockSubscription) unsubscribeEvent() {
 			r.logger.Error("unsubscribe event error, ", err)
 		}
 	}
-	r.logger.Info("event unsubscribed ")
 }
 
 func (r *BlockSubscription) setBlocks(block *types.StateBlock) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.setBlockNoLock(block)
+	if len(r.allSubs) == 0 {
+		return
+	}
+
+	select {
+	case r.blocksCh <- block:
+	default:
+	}
 }
 
 func (r *BlockSubscription) setSyncBlocks(block *types.StateBlock, done bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if !done {
-		r.setBlockNoLock(block)
+	if done {
+		return
+	}
+
+	if len(r.allSubs) == 0 {
+		return
+	}
+
+	select {
+	case r.blocksCh <- block:
+	default:
 	}
 }
 
-func (r *BlockSubscription) setBlockNoLock(block *types.StateBlock) {
-	if len(r.chans) > 0 {
-		if _, ok := r.addrBlocks[block.GetAddress()]; ok {
-			r.addrBlocks[block.GetAddress()] = block
-		}
-
-		if len(r.blocks) >= cap(r.blocks) {
-			copy(r.blocks, r.blocks[1:len(r.blocks)])
-			r.blocks[cap(r.blocks)-1] = block
-		} else {
-			r.blocks = append(r.blocks, block)
-		}
-
-		select {
-		case r.newBlockCh <- struct{}{}:
-		default:
-		}
-	}
-}
-
-func (r *BlockSubscription) getBlocks() []*types.StateBlock {
+func (r *BlockSubscription) fetchBlocks(subID rpc.ID) []*types.StateBlock {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	retBlks := make([]*types.StateBlock, len(r.blocks))
-	copy(retBlks, r.blocks)
+	sub := r.allSubs[subID]
+	if sub == nil {
+		return nil
+	}
+	if len(sub.blocks) == 0 {
+		return nil
+	}
+
+	retBlks := sub.blocks
+	sub.blocks = make([]*types.StateBlock, 0, MaxNotifyBlocks)
 	return retBlks
 }
 
-func (r *BlockSubscription) getAddressBlock(addr types.Address) *types.StateBlock {
+func (r *BlockSubscription) fetchAddrBlock(subID rpc.ID) *types.StateBlock {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	return r.addrBlocks[addr]
-}
-
-func (r *BlockSubscription) addChan(addr types.Address, ch chan struct{}) {
-	r.mu.Lock()
-	defer func() {
-		r.mu.Unlock()
-	}()
-	r.addrBlocks[addr] = nil
-	r.chans = append(r.chans, ch)
-	r.logger.Infof("add chan %p to blockEvent, chan length %d", ch, len(r.chans))
-	if len(r.chans) == 1 {
-		r.subscribeEvent() // only when first websocket to connect, should subscript event from chain
-		go func() {
-			for {
-				select {
-				case <-r.newBlockCh:
-					for _, c := range r.chans { // broadcast event to every websocket channel
-						select {
-						case c <- struct{}{}:
-						default:
-						}
-					}
-				case <-r.stoped:
-					r.logger.Info("broadcast subscription stopped")
-					return
-				}
-			}
-		}()
+	sub := r.allSubs[subID]
+	if sub == nil {
+		return nil
 	}
+
+	retBlk := sub.addrBlock
+	sub.addrBlock = nil
+	return retBlk
 }
 
-func (r *BlockSubscription) removeChan(ch chan struct{}) {
+func (r *BlockSubscription) addChan(subID rpc.ID, addr types.Address, batch bool, ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
 	}()
-	for index, c := range r.chans {
-		if c == ch {
-			r.logger.Infof("remove chan %p ", c)
-			r.chans = append(r.chans[:index], r.chans[index+1:]...)
-			if len(r.chans) == 0 { // when websocket all disconnected, should unsubscribe event from chain
-				r.unsubscribeEvent()
-				r.stoped <- true
-			}
-			break
+
+	sub := r.allSubs[subID]
+	if sub != nil {
+		r.logger.Errorf("chan %d exist already", subID)
+		return
+	}
+
+	sub = new(BlockSubscriber)
+	sub.notifyCh = ch
+	sub.address = addr
+	sub.batch = batch
+	sub.blocks = make([]*types.StateBlock, 0, MaxNotifyBlocks)
+	r.allSubs[subID] = sub
+}
+
+func (r *BlockSubscription) removeChan(subID rpc.ID) {
+	r.mu.Lock()
+	defer func() {
+		r.mu.Unlock()
+	}()
+
+	sub := r.allSubs[subID]
+	if sub == nil {
+		return
+	}
+
+	delete(r.allSubs, subID)
+}
+
+func (r *BlockSubscription) notifyLoop() {
+	defer r.unsubscribeEvent()
+
+	for {
+		select {
+		case block := <-r.blocksCh:
+			r.notifyAllSubs(block)
+		case <-r.ctx.Done():
+			r.logger.Info("broadcast subscription stopped")
+			return
 		}
 	}
-	if len(r.chans) == 0 {
-		r.blocks = make([]*types.StateBlock, 0, MaxNotifyBlocks)
-		r.addrBlocks = make(map[types.Address]*types.StateBlock)
+}
+
+func (r *BlockSubscription) notifyAllSubs(block *types.StateBlock) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, sub := range r.allSubs {
+		if sub.address.IsZero() || (block.GetAddress() == sub.address && sub.batch) {
+			if len(sub.blocks) >= cap(sub.blocks) {
+				copy(sub.blocks, sub.blocks[1:len(sub.blocks)])
+				sub.blocks[cap(sub.blocks)-1] = block
+			} else {
+				sub.blocks = append(sub.blocks, block)
+			}
+
+			select {
+			case sub.notifyCh <- struct{}{}:
+			default:
+			}
+		} else if block.GetAddress() == sub.address {
+			sub.addrBlock = block
+
+			select {
+			case sub.notifyCh <- struct{}{}:
+			default:
+			}
+		}
 	}
 }

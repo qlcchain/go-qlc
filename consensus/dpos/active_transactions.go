@@ -172,15 +172,14 @@ func (act *ActiveTrx) checkVotes() {
 				return true
 			}
 
-			dps.logger.Infof("block[%s] was not confirmed after %d times resend", hash, confirmReqMaxTimes)
+			dps.logger.Warnf("block[%s] was not confirmed after %d times resend", hash, confirmReqMaxTimes)
 			act.roots.Delete(el.vote.id)
-			_ = dps.lv.Rollback(hash)
 			el.cleanBlockInfo()
-			dps.syncBlockRollback(hash)
+			act.dps.lv.RollbackUnchecked(hash)
 
 			if dps.isReceivedFrontier(hash) {
 				dps.logger.Warn("sync finish abnormally because of frontier not confirmed")
-				dps.eb.Publish(common.EventConsensusSyncFinished)
+				dps.syncFinish()
 			}
 		} else {
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)
@@ -203,6 +202,8 @@ func (act *ActiveTrx) addWinner2Ledger(block *types.StateBlock) {
 		if err != nil {
 			dps.logger.Error(err)
 		} else {
+			dps.confirmedBlockInc(hash)
+			dps.statBlockInc()
 			dps.logger.Debugf("save block[%s]", hash)
 		}
 	} else {
@@ -220,6 +221,8 @@ func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
 		if err != nil {
 			dps.logger.Error(err)
 		} else {
+			dps.confirmedBlockInc(hash)
+			dps.statBlockInc()
 			dps.logger.Debugf("save block[%s]", hash)
 		}
 	} else {

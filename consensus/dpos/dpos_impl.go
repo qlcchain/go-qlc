@@ -33,7 +33,7 @@ const (
 	refreshPriInterval    = 1 * time.Minute
 	subAckMaxSize         = 102400
 	maxStatisticsPeriod   = 3
-	confirmedCacheMaxLen  = 102400
+	confirmedCacheMaxLen  = 1024000
 	confirmedCacheMaxTime = 10 * time.Minute
 	hashNumPerAck         = 1024
 	blockNumPerReq        = 128
@@ -60,6 +60,15 @@ type subMsg struct {
 type sortContract struct {
 	hash      types.Hash
 	timestamp int64
+}
+
+type processorStat struct {
+	Index      int `json:"1-index"`
+	BlockQueue int `json:"2-blockQueue"`
+	SyncQueue  int `json:"3-syncQueue"`
+	AckQueue   int `json:"4-ackQueue"`
+	DoneQueue  int `json:"5-doneQueue"`
+	ChainQueue int `json:"6-chainQueue"`
 }
 
 type frontierStatus byte
@@ -105,7 +114,7 @@ type DPoS struct {
 	syncStateNotifyWait *sync.WaitGroup
 	totalVote           map[types.Address]types.Balance
 	online              gcache.Cache
-	confirmedBlocks     gcache.Cache
+	confirmedBlocks     *cache
 	lastSendHeight      uint64
 	curPovHeight        uint64
 	checkFinish         chan struct{}
@@ -117,6 +126,9 @@ type DPoS struct {
 	ebDone              chan struct{}
 	lastProcessSyncTime time.Time
 	updateSync          chan struct{}
+	syncDone            chan struct{}
+	tps                 [10]uint32
+	block2Ledger        chan struct{}
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -153,9 +165,9 @@ func NewDPoS(cfgFile string) *DPoS {
 		frontiersStatus:     new(sync.Map),
 		syncStateNotifyWait: new(sync.WaitGroup),
 		online:              gcache.New(maxStatisticsPeriod).LRU().Build(),
-		confirmedBlocks:     gcache.New(confirmedCacheMaxLen).Expiration(confirmedCacheMaxTime).LRU().Build(),
+		confirmedBlocks:     newCache(confirmedCacheMaxLen, confirmedCacheMaxTime),
 		lastSendHeight:      1,
-		curPovHeight:        1,
+		curPovHeight:        0,
 		checkFinish:         make(chan struct{}, 10240),
 		gapPovCh:            make(chan *consensus.BlockSource, 10240),
 		povChange:           make(chan *types.PovBlock, 10240),
@@ -164,6 +176,8 @@ func NewDPoS(cfgFile string) *DPoS {
 		isFindingRep:        0,
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
+		syncDone:            make(chan struct{}, 1024),
+		block2Ledger:        make(chan struct{}, 409600),
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -174,6 +188,14 @@ func NewDPoS(cfgFile string) *DPoS {
 	pb, err := dps.ledger.GetLatestPovBlock()
 	if err == nil {
 		dps.curPovHeight = pb.Header.BasHdr.Height
+	}
+
+	dps.confirmedBlocks.evictedFunc = func(key interface{}, val interface{}) {
+		hash := key.(types.Hash)
+		err = dps.ledger.CleanBlockVoteHistory(hash)
+		if err != nil {
+			dps.logger.Error("clean vote history err", err)
+		}
 	}
 
 	return dps
@@ -246,11 +268,22 @@ func (dps *DPoS) Start() {
 	go dps.batchVoteStart()
 	go dps.processSubMsg()
 	go dps.processBlocks()
+	go dps.processSyncDone()
+	go dps.stat()
 	dps.processorStart()
+
+	if err := dps.blockSyncDone(); err != nil {
+		dps.logger.Error("block sync down err", err)
+	}
+
+	if err := dps.ledger.CleanAllVoteHistory(); err != nil {
+		dps.logger.Error("clean all vote history err")
+	}
 
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDequeueGap := time.NewTicker(10 * time.Second)
 	timerUpdateSyncTime := time.NewTicker(5 * time.Second)
+	timerGC := time.NewTicker(1 * time.Minute)
 
 	for {
 		select {
@@ -333,7 +366,7 @@ func (dps *DPoS) Start() {
 			case common.SyncDone:
 			case common.SyncFinish:
 				dps.CleanSyncCache()
-				dps.logger.Warn("sync finished abnormally")
+				dps.logger.Warn("p2p concluded the sync")
 			}
 
 			dps.ebDone <- struct{}{}
@@ -346,25 +379,80 @@ func (dps *DPoS) Start() {
 
 			if dps.blockSyncState == common.Syncing || dps.blockSyncState == common.SyncDone {
 				if time.Since(dps.lastProcessSyncTime) >= 2*time.Minute {
-					dps.logger.Warnf("sync finished because of process timeout last[%s] now[%s]",
+					dps.logger.Warnf("timeout concluded the sync. last[%s] now[%s]",
 						dps.lastProcessSyncTime, time.Now())
 					dps.blockSyncState = common.SyncFinish
-					_ = dps.blockSyncDone()
-					dps.eb.Publish(common.EventConsensusSyncFinished)
+					dps.syncFinish()
 				}
 			}
+		case <-timerGC.C:
+			dps.confirmedBlocks.gc()
 		}
 	}
 }
 
 func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
+
+	//do this first
+	for k, v := range dps.handlerIds {
+		_ = dps.eb.Unsubscribe(k, v)
+	}
+
 	dps.cancel()
 	dps.processorStop()
 	dps.acTrx.stop()
+}
 
-	for k, v := range dps.handlerIds {
-		_ = dps.eb.Unsubscribe(k, v)
+func (dps *DPoS) stat() {
+	timerStatInterval := time.NewTicker(15 * time.Second)
+
+	for {
+		select {
+		case <-dps.ctx.Done():
+			dps.logger.Info("Stop stat.")
+			return
+		case <-timerStatInterval.C:
+			dps.tps[0] /= 15
+			for i := len(dps.tps) - 1; i > 0; i-- {
+				dps.tps[i] = dps.tps[i-1]
+			}
+			dps.tps[0] = 0
+		case <-dps.block2Ledger:
+			dps.tps[0]++
+		}
+	}
+}
+
+func (dps *DPoS) statBlockInc() {
+	select {
+	case dps.block2Ledger <- struct{}{}:
+	default:
+	}
+}
+
+func (dps *DPoS) processSyncDone() {
+	for {
+		select {
+		case <-dps.ctx.Done():
+			dps.logger.Info("Stopped processSyncDone.")
+			return
+		case <-dps.syncDone:
+			if err := dps.blockSyncDone(); err != nil {
+				dps.logger.Error("block sync down err", err)
+			}
+
+			// notify processors
+			dps.syncStateNotifyWait.Add(dps.processorNum)
+			for _, p := range dps.processors {
+				p.syncStateChange <- common.SyncFinish
+			}
+			dps.syncStateNotifyWait.Wait()
+			dps.blockSyncState = common.SyncFinish
+
+			dps.eb.Publish(common.EventConsensusSyncFinished)
+			dps.logger.Warn("sync finished")
+		}
 	}
 }
 
@@ -547,9 +635,9 @@ func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
 		if dps.getAckType(ack.Sequence) != ackTypeFindRep {
 			for _, h := range ack.Hash {
 				dps.logger.Infof("dps recv confirmAck block[%s]", h)
+				dps.heartAndVoteInc(h, ack.Account, onlineKindVote)
 
 				if has, _ := dps.ledger.HasStateBlockConfirmed(h); has {
-					dps.heartAndVoteInc(h, ack.Account, onlineKindVote)
 					continue
 				}
 
@@ -732,9 +820,10 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 }
 
 func (dps *DPoS) localRepVote(block *types.StateBlock) {
+	hash := block.GetHash()
+
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
-		hash := block.GetHash()
 
 		weight := dps.ledger.Weight(address)
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
@@ -852,7 +941,7 @@ out:
 				dps.eb.Publish(common.EventBroadcast, p2p.ConfirmAck, va)
 
 				total = 0
-				hashes = hashes[0:0]
+				hashes = make([]types.Hash, 0)
 				hashBytes = hashBytes[0:0]
 			}
 		}
@@ -987,7 +1076,7 @@ func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error
 }
 
 func (dps *DPoS) onRollback(hash types.Hash) {
-	dps.rollbackUncheckedFromDb(hash)
+	//dps.rollbackUncheckedFromDb(hash)
 
 	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
 	if err == nil && blk.Type == types.Online {
@@ -1000,49 +1089,49 @@ func (dps *DPoS) onRollback(hash types.Hash) {
 	}
 }
 
-func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
-	if blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
-		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-		if err != nil {
-			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
-		}
-	}
-
-	if blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious); blkPrevious != nil {
-		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-		if err != nil {
-			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
-		}
-	}
-
-	// gap token
-	blk, err := dps.ledger.GetStateBlock(hash)
-	if err != nil {
-		dps.logger.Errorf("get block error [%s]", hash)
-		return
-	}
-
-	if blk.GetType() == types.ContractReward {
-		input, err := dps.ledger.GetStateBlock(blk.GetLink())
-		if err != nil {
-			dps.logger.Errorf("dequeue get block link error [%s]", hash)
-			return
-		}
-
-		address := types.Address(input.GetLink())
-		if address == types.MintageAddress {
-			var param = new(cabi.ParamMintage)
-			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
-				if blkToken, _, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
-					err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
-					if err != nil {
-						dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
-					}
-				}
-			}
-		}
-	}
-}
+//func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
+//	if blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
+//		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+//		if err != nil {
+//			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+//		}
+//	}
+//
+//	if blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious); blkPrevious != nil {
+//		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+//		if err != nil {
+//			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
+//		}
+//	}
+//
+//	// gap token
+//	blk, err := dps.ledger.GetStateBlock(hash)
+//	if err != nil {
+//		dps.logger.Errorf("get block error [%s]", hash)
+//		return
+//	}
+//
+//	if blk.GetType() == types.ContractReward {
+//		input, err := dps.ledger.GetStateBlock(blk.GetLink())
+//		if err != nil {
+//			dps.logger.Errorf("dequeue get block link error [%s]", hash)
+//			return
+//		}
+//
+//		address := types.Address(input.GetLink())
+//		if address == types.MintageAddress {
+//			var param = new(cabi.ParamMintage)
+//			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+//				if blkToken, _, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
+//					err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
+//					if err != nil {
+//						dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+//					}
+//				}
+//			}
+//		}
+//	}
+//}
 
 func (dps *DPoS) getSeq(kind uint32) uint32 {
 	var seq, ackSeq uint32
@@ -1061,6 +1150,8 @@ func (dps *DPoS) onRpcSyncCall(name string, in interface{}, out interface{}) {
 	switch name {
 	case "DPoS.Online":
 		dps.onGetOnlineInfo(in, out)
+	case "Debug.ConsInfo":
+		dps.info(in, out)
 	}
 }
 
@@ -1095,13 +1186,13 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 }
 
 func (dps *DPoS) blockSyncDone() error {
-	dps.logger.Info("sync done, start process")
+	dps.logger.Warn("begin: process sync cache blocks")
 	dps.eb.Publish(common.EventAddSyncBlocks, &types.StateBlock{}, true)
 
 	scs := make([]*sortContract, 0)
 	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
 		if b, err := dps.isRelatedOrderBlock(block); err != nil {
-			dps.logger.Errorf("block[%s] type check error, %s", block.GetHash(), err)
+			dps.logger.Infof("block[%s] type check error, %s", block.GetHash(), err)
 		} else {
 			if b {
 				sortC := &sortContract{
@@ -1135,11 +1226,30 @@ func (dps *DPoS) blockSyncDone() error {
 			}
 
 			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
-				dps.logger.Errorf("contract block(%s) sync done error: %s", blk.GetHash(), err)
+				dps.logger.Warnf("contract block(%s) sync done error: %s", blk.GetHash(), err)
 			}
 		}
 	}
-	dps.logger.Info("sync done, end process")
+
+	var allDone bool
+	timerCheckProcessor := time.NewTicker(time.Second)
+	defer timerCheckProcessor.Stop()
+
+	for range timerCheckProcessor.C {
+		allDone = true
+		for _, p := range dps.processors {
+			if len(p.doneBlock) > 0 {
+				allDone = false
+				break
+			}
+		}
+
+		if allDone {
+			dps.logger.Warn("end: process sync cache blocks")
+			return nil
+		}
+	}
+
 	return nil
 }
 
@@ -1158,6 +1268,15 @@ func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func (dps *DPoS) syncFinish() {
+	dps.logger.Warn("process state blocks finished")
+
+	select {
+	case dps.syncDone <- struct{}{}:
+	default:
+	}
 }
 
 func (dps *DPoS) checkSyncFinished() {
@@ -1202,20 +1321,7 @@ func (dps *DPoS) checkSyncFinished() {
 			}
 		}
 
-		if err := dps.blockSyncDone(); err != nil {
-			dps.logger.Error("block sync down err", err)
-		}
-
-		// notify processors
-		dps.syncStateNotifyWait.Add(dps.processorNum)
-		for _, p := range dps.processors {
-			p.syncStateChange <- common.SyncFinish
-		}
-		dps.syncStateNotifyWait.Wait()
-
-		dps.CleanSyncCache()
-		dps.eb.Publish(common.EventConsensusSyncFinished)
-		dps.logger.Warn("sync finished")
+		dps.syncFinish()
 	}
 }
 
@@ -1297,4 +1403,42 @@ func (dps *DPoS) updateLastProcessSyncTime() {
 	case dps.updateSync <- struct{}{}:
 	default:
 	}
+}
+
+func (dps *DPoS) info(in interface{}, out interface{}) {
+	outArgs := out.(map[string]interface{})
+	rootsNum := 0
+
+	outArgs["err"] = nil
+	outArgs["tps"] = dps.tps
+	outArgs["povSyncState"] = dps.povSyncState.String()
+	outArgs["blockSyncState"] = dps.blockSyncState.String()
+	outArgs["blockQueue"] = len(dps.recvBlocks)
+
+	pStats := make([]*processorStat, 0)
+	for _, p := range dps.processors {
+		ps := &processorStat{
+			Index:      p.index,
+			BlockQueue: len(p.blocks),
+			SyncQueue:  len(p.syncBlock),
+			AckQueue:   len(p.acks),
+			DoneQueue:  len(p.doneBlock),
+		}
+
+		for _, dealt := range p.confirmedChain {
+			if !dealt {
+				ps.ChainQueue++
+			}
+		}
+
+		ps.ChainQueue += ConfirmChainParallelNum - int(p.confirmParallelNum)
+		pStats = append(pStats, ps)
+	}
+	outArgs["processors"] = pStats
+
+	dps.acTrx.roots.Range(func(key, value interface{}) bool {
+		rootsNum++
+		return true
+	})
+	outArgs["rootsNum"] = rootsNum
 }

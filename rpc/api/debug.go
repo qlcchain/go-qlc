@@ -23,16 +23,13 @@ type DebugApi struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 	eb     event.EventBus
-
-	blockSubscription *BlockSubscription
 }
 
 func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
 	return &DebugApi{
-		ledger:            l,
-		logger:            log.NewLogger("api_debug"),
-		eb:                eb,
-		blockSubscription: NewBlockSubscription(eb),
+		ledger: l,
+		logger: log.NewLogger("api_debug"),
+		eb:     eb,
 	}
 }
 
@@ -52,6 +49,18 @@ func (l *DebugApi) BlockCacheCount() (map[string]uint64, error) {
 	c := make(map[string]uint64)
 	c["blockCache"] = unCount
 	return c, nil
+}
+
+func (l *DebugApi) BlockCaches() ([]types.Hash, error) {
+	r := make([]types.Hash, 0)
+	err := l.ledger.GetBlockCaches(func(block *types.StateBlock) error {
+		r = append(r, block.GetHash())
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
@@ -114,6 +123,30 @@ func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
 	return r, nil
 }
 
+func (l *DebugApi) BlocksCountByType(typ string) (map[string]int64, error) {
+	r := make(map[string]int64)
+	if err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+		var t string
+		switch typ {
+		case "address":
+			t = block.GetAddress().String()
+		case "type":
+			t = block.GetType().String()
+		case "token":
+			t = block.GetToken().String()
+		}
+		if v, ok := r[t]; ok {
+			r[t] = v + 1
+		} else {
+			r[t] = 1
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func (l *DebugApi) GetSyncBlockNum() (map[string]uint64, error) {
 	data := make(map[string]uint64)
 
@@ -142,6 +175,18 @@ func (l *DebugApi) SyncCacheBlocks() ([]types.Hash, error) {
 		return nil, err
 	}
 	return blocks, nil
+}
+
+func (l *DebugApi) SyncCacheBlocksCount() (int64, error) {
+	var n int64
+	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
+		n++
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
 }
 
 func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, error) {
@@ -173,7 +218,7 @@ func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, er
 	}, nil
 }
 
-func (l *DebugApi) Representations(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
+func (l *DebugApi) Representatives(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
 	r := make(map[types.Address]map[string]*types.Benefit)
 	if address == nil {
 		err := l.ledger.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
@@ -272,16 +317,15 @@ func (l *DebugApi) PendingsAmount() (map[types.Address]map[string]types.Balance,
 	return abs, nil
 }
 
-func (l *DebugApi) SyncBlocks() ([]types.Hash, error) {
-	blocks := make([]types.Hash, 0)
-	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
-		blocks = append(blocks, block.GetHash())
+func (l *DebugApi) PendingsCount() (int, error) {
+	n := 0
+	if err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		n++
 		return nil
-	})
-	if err != nil {
-		return nil, err
+	}); err != nil {
+		return 0, err
 	}
-	return blocks, nil
+	return n, nil
 }
 
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
@@ -311,28 +355,69 @@ func (l *DebugApi) GetPovInfo() (map[string]interface{}, error) {
 
 func (l *DebugApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	l.logger.Infof("debug blocks ctx: %p", ctx)
-	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
-		go func() {
-			t := time.NewTicker(60 * time.Second)
-			for {
-				select {
-				case <-t.C:
-					if err := notifier.Notify(subscription.ID, mock.StateBlock()); err != nil {
-						l.logger.Errorf("notify error: %s", err)
-						return
-					}
-					l.logger.Info("notify success!")
-				case err := <-subscription.Err():
-					l.logger.Infof("subscription exception %s", err)
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return nil, rpc.ErrNotificationsUnsupported
+	}
+
+	// by explicitly creating an subscription we make sure that the subscription id is send back to the client
+	// before the first subscription.Notify is called.
+	subscription := notifier.CreateSubscription()
+	go func() {
+		t := time.NewTicker(30 * time.Second)
+		for {
+			select {
+			case <-t.C:
+				if err := notifier.Notify(subscription.ID, mock.StateBlock()); err != nil {
+					l.logger.Errorf("notify error: %s", err)
 					return
 				}
+				l.logger.Info("notify success!")
+			case err := <-subscription.Err():
+				l.logger.Infof("subscription exception %s", err)
+				return
 			}
-		}()
-	})
-	if err != nil || sub == nil {
-		l.logger.Errorf("create subscription error, %s", err)
+		}
+	}()
+
+	if subscription == nil {
+		return nil, errors.New("create subscription error")
+	}
+	l.logger.Infof("blocks subscription: %s", subscription.ID)
+	return subscription, nil
+}
+
+func (l *DebugApi) ContractCount() (map[string]int64, error) {
+	r := make(map[string]int64)
+	ctx := vmstore.NewVMContext(l.ledger)
+	for _, addr := range types.ChainContractAddressList {
+		var n int64 = 0
+		if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+			n++
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		r[addr.String()] = n
+	}
+	return r, nil
+}
+
+func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
+	inArgs := make(map[string]interface{})
+	outArgs := make(map[string]interface{})
+
+	l.eb.Publish(common.EventRpcSyncCall, "Debug.ConsInfo", inArgs, outArgs)
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
 		return nil, err
 	}
-	l.logger.Infof("blocks subscription: %s", sub.ID)
-	return sub, nil
+	delete(outArgs, "err")
+
+	return outArgs, nil
 }

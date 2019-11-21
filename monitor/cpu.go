@@ -19,10 +19,11 @@ import (
 
 var (
 	registerCPUOnce = sync.Once{}
-	cpuStats        map[string]CpuStat
+	cpuStats        map[string]CPUStat
 )
 
-type CpuStat struct {
+// CPUStat cpu metrics holder
+type CPUStat struct {
 	User         metrics.GaugeFloat64
 	System       metrics.GaugeFloat64
 	Idle         metrics.GaugeFloat64
@@ -33,17 +34,17 @@ type CpuStat struct {
 	Steal        metrics.GaugeFloat64
 	Guest        metrics.GaugeFloat64
 	GuestNice    metrics.GaugeFloat64
-	Stolen       metrics.GaugeFloat64
 	ReadCpuStats metrics.Timer
 }
 
-func RegisterRuntimeCpuStats(r metrics.Registry) {
+// RegisterRuntimeCPUStats register cpu metrics to registry
+func RegisterRuntimeCPUStats(r metrics.Registry) {
 	registerCPUOnce.Do(func() {
 		stats, err := cpu.Times(true)
 		if err == nil {
-			cpuStats = make(map[string]CpuStat)
+			cpuStats = make(map[string]CPUStat)
 			for _, stat := range stats {
-				cpuStat := CpuStat{}
+				cpuStat := CPUStat{}
 				cpuStat.User = metrics.NewGaugeFloat64()
 				cpuStat.System = metrics.NewGaugeFloat64()
 				cpuStat.Idle = metrics.NewGaugeFloat64()
@@ -54,7 +55,6 @@ func RegisterRuntimeCpuStats(r metrics.Registry) {
 				cpuStat.Steal = metrics.NewGaugeFloat64()
 				cpuStat.Guest = metrics.NewGaugeFloat64()
 				cpuStat.GuestNice = metrics.NewGaugeFloat64()
-				cpuStat.Stolen = metrics.NewGaugeFloat64()
 				cpuStat.ReadCpuStats = metrics.NewTimer()
 
 				cpuStats[stat.CPU] = cpuStat
@@ -69,17 +69,17 @@ func RegisterRuntimeCpuStats(r metrics.Registry) {
 				r.Register(fmt.Sprintf("runtime.cpuStat[%s].Steal", stat.CPU), cpuStat.Steal)
 				r.Register(fmt.Sprintf("runtime.cpuStat[%s].Guest", stat.CPU), cpuStat.Guest)
 				r.Register(fmt.Sprintf("runtime.cpuStat[%s].GuestNice", stat.CPU), cpuStat.GuestNice)
-				r.Register(fmt.Sprintf("runtime.cpuStat[%s].Stolen", stat.CPU), cpuStat.Stolen)
 				r.Register(fmt.Sprintf("runtime.cpuStat[%s].ReadCpuStats", stat.CPU), cpuStat.ReadCpuStats)
 			}
 		}
 	})
 }
 
+// CaptureRuntimeCPUStatsOnce Capture cpu status once
 func CaptureRuntimeCPUStatsOnce(r metrics.Registry) {
 	stats, err := cpu.Times(true)
 	if err == nil {
-		t := time.Now()
+		now := time.Now()
 		for _, stat := range stats {
 			if cpuStat, ok := cpuStats[stat.CPU]; ok {
 				cpuStat.User.Update(stat.User)
@@ -93,13 +93,13 @@ func CaptureRuntimeCPUStatsOnce(r metrics.Registry) {
 				cpuStat.Steal.Update(stat.Steal)
 				cpuStat.Guest.Update(stat.Guest)
 				cpuStat.GuestNice.Update(stat.GuestNice)
-				cpuStat.Stolen.Update(stat.Stolen)
-				cpuStat.ReadCpuStats.UpdateSince(t)
+				cpuStat.ReadCpuStats.UpdateSince(now)
 			}
 		}
 	}
 }
 
+// CaptureRuntimeCPUStats Capture cpu status
 func CaptureRuntimeCPUStats(ctx context.Context, d time.Duration) {
 	ticker := time.NewTicker(d)
 	defer ticker.Stop()
@@ -113,6 +113,7 @@ func CaptureRuntimeCPUStats(ctx context.Context, d time.Duration) {
 	}
 }
 
-func CpuInfo() ([]cpu.InfoStat, error) {
+// CPUInfo get cpu info
+func CPUInfo() ([]cpu.InfoStat, error) {
 	return cpu.Info()
 }

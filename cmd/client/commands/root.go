@@ -113,8 +113,6 @@ func addcommands() {
 	mintage()
 	generateTestLedger()
 	withdrawMintage()
-	minerReward()
-	minerRecvPend()
 	addLedgerCmd()
 	repReward()
 	repRewardRecvPend()
@@ -122,4 +120,5 @@ func addcommands() {
 	addTxCmd()
 	addPledgeCmd()
 	addDebugCmd()
+	addMinerCmd()
 }

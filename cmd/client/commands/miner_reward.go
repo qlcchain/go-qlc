@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
 	"github.com/qlcchain/go-qlc/cmd/util"
+
+	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/abiosoft/ishell"
 	"github.com/spf13/cobra"
@@ -18,71 +18,71 @@ import (
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
-func minerReward() {
+func addMinerRewardCmdByShell(parentCmd *ishell.Cmd) {
+	cbPriKey := util.Flag{
+		Name:  "cbPriKey",
+		Must:  true,
+		Usage: "coinbase account private hex string",
+	}
+	bnfPriKey := util.Flag{
+		Name:  "bnfPriKey",
+		Must:  false,
+		Usage: "beneficial account private hex string",
+		Value: "",
+	}
+	bnfAddr := util.Flag{
+		Name:  "bnfAddr",
+		Must:  false,
+		Usage: "beneficial account address hex string",
+		Value: "",
+	}
+
+	cmd := &ishell.Cmd{
+		Name: "reward",
+		Help: "miner reward (gas token)",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{cbPriKey, bnfPriKey, bnfAddr}
+			if util.HelpText(c, args) {
+				return
+			}
+			err := util.CheckArgs(c, args)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+
+			cbPriKeyP := util.StringVar(c.Args, cbPriKey)
+			bnfPriKeyP := util.StringVar(c.Args, bnfPriKey)
+			bnfAddrP := util.StringVar(c.Args, bnfAddr)
+
+			if err := minerRewardAction(cbPriKeyP, bnfPriKeyP, bnfAddrP); err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(cmd)
+}
+
+func addMinerRewardCmdByCobra(parentCmd *cobra.Command) {
 	var cbPriKeyP string
 	var bnfPriKeyP string
 	var bnfAddrP string
 
-	if interactive {
-		cbPriKey := util.Flag{
-			Name:  "cbprikey",
-			Must:  true,
-			Usage: "coinbase account private hex string",
-		}
-		bnfPriKey := util.Flag{
-			Name:  "bnfprikey",
-			Must:  false,
-			Usage: "beneficial account private hex string",
-			Value: "",
-		}
-		bnfAddr := util.Flag{
-			Name:  "bnfaddr",
-			Must:  false,
-			Usage: "beneficial account address hex string",
-			Value: "",
-		}
-
-		cmd := &ishell.Cmd{
-			Name: "minerreward",
-			Help: "miner get reward (gas token)",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{cbPriKey, bnfPriKey, bnfAddr}
-				if util.HelpText(c, args) {
-					return
-				}
-				err := util.CheckArgs(c, args)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-
-				cbPriKeyP = util.StringVar(c.Args, cbPriKey)
-				bnfPriKeyP = util.StringVar(c.Args, bnfPriKey)
-				bnfAddrP = util.StringVar(c.Args, bnfAddr)
-
-				if err := minerRewardAction(cbPriKeyP, bnfPriKeyP, bnfAddrP); err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(cmd)
-	} else {
-		var cmd = &cobra.Command{
-			Use:   "minerreward",
-			Short: "miner get reward (gas token)",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := minerRewardAction(cbPriKeyP, bnfPriKeyP, bnfAddrP)
-				if err != nil {
-					cmd.Println(err)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&cbPriKeyP, "cbprikey", "", "coinbase account private hex string")
-		cmd.Flags().StringVar(&bnfPriKeyP, "bnfprikey", "", "beneficial account private hex string")
-		cmd.Flags().StringVar(&bnfAddrP, "bnfaddr", "", "beneficial account address hex string")
-		rootCmd.AddCommand(cmd)
+	var cmd = &cobra.Command{
+		Use:   "reward",
+		Short: "miner reward (gas token)",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := minerRewardAction(cbPriKeyP, bnfPriKeyP, bnfAddrP)
+			if err != nil {
+				cmd.Println(err)
+			}
+		},
 	}
+	cmd.Flags().StringVar(&cbPriKeyP, "cbPriKey", "", "coinbase account private hex string")
+	cmd.Flags().StringVar(&bnfPriKeyP, "bnfPriKey", "", "beneficial account private hex string")
+	cmd.Flags().StringVar(&bnfAddrP, "bnfAddr", "", "beneficial account address hex string")
+	parentCmd.AddCommand(cmd)
 }
 
 func minerRewardAction(cbPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) error {

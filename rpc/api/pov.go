@@ -34,8 +34,9 @@ type PovApi struct {
 }
 
 type PovStatus struct {
-	PovEnabled bool `json:"povEnabled"`
-	SyncState  int  `json:"syncState"`
+	PovEnabled   bool   `json:"povEnabled"`
+	SyncState    int    `json:"syncState"`
+	SyncStateStr string `json:"syncStateStr"`
 }
 
 type PovApiHeader struct {
@@ -100,6 +101,7 @@ type PovApiTD struct {
 }
 
 type PovMinerStatItem struct {
+	Account            types.Address `json:"account"`
 	MainBlockNum       uint32        `json:"mainBlockNum"`
 	MainRewardAmount   types.Balance `json:"mainRewardAmount"`
 	StableBlockNum     uint32        `json:"stableBlockNum"`
@@ -119,8 +121,11 @@ type PovMinerStats struct {
 
 	MinerStats map[types.Address]*PovMinerStatItem `json:"minerStats"`
 
-	TotalBlockNum     uint32 `json:"totalBlockNum"`
-	LatestBlockHeight uint64 `json:"latestBlockHeight"`
+	TotalBlockNum     uint32        `json:"totalBlockNum"`
+	TotalRewardAmount types.Balance `json:"totalRewardAmount"`
+	TotalMinerReward  types.Balance `json:"totalMinerReward"`
+	TotalRepReward    types.Balance `json:"totalRepReward"`
+	LatestBlockHeight uint64        `json:"latestBlockHeight"`
 }
 
 type PovRepStats struct {
@@ -130,12 +135,12 @@ type PovRepStats struct {
 	StableRewardAmount types.Balance `json:"stableRewardAmount"`
 }
 
-func NewPovApi(cfg *config.Config, ledger *ledger.Ledger, eb event.EventBus) *PovApi {
+func NewPovApi(cfg *config.Config, l *ledger.Ledger, eb event.EventBus, ctx context.Context) *PovApi {
 	api := &PovApi{
 		cfg:    cfg,
-		ledger: ledger,
+		ledger: l,
 		eb:     eb,
-		pubsub: NewPovSubscription(eb),
+		pubsub: NewPovSubscription(ctx, eb),
 		logger: log.NewLogger("rpc/pov"),
 	}
 	api.syncState.Store(common.SyncNotStart)
@@ -152,7 +157,9 @@ func (api *PovApi) OnPovSyncState(state common.SyncState) {
 func (api *PovApi) GetPovStatus() (*PovStatus, error) {
 	apiRsp := new(PovStatus)
 	apiRsp.PovEnabled = api.cfg.PoV.PovEnabled
-	apiRsp.SyncState = int(api.syncState.Load().(common.SyncState))
+	ss := api.syncState.Load().(common.SyncState)
+	apiRsp.SyncState = int(ss)
+	apiRsp.SyncStateStr = ss.String()
 	return apiRsp, nil
 }
 
@@ -672,23 +679,39 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	}
 
 	totalBlockNum := uint32(0)
+	totalMinerReward := types.NewBalance(0)
+	totalRepReward := types.NewBalance(0)
 
 	// scan miner stats per day
+	dbDayCnt := 0
 	lastDayIndex := uint32(0)
 	err := api.ledger.GetAllPovMinerStats(func(stat *types.PovMinerDayStat) error {
+		dbDayCnt++
 		if stat.DayIndex > lastDayIndex {
 			lastDayIndex = stat.DayIndex
 		}
 		for addrHex, minerStat := range stat.MinerStats {
+			if minerStat.BlockNum == 0 {
+				continue
+			}
 			minerAddr, _ := types.HexToAddress(addrHex)
 
 			if len(checkAddrMap) > 0 && !checkAddrMap[minerAddr] {
-				return nil
+				continue
+			}
+
+			totalMinerReward = totalMinerReward.Add(minerStat.RewardAmount)
+			totalRepReward = totalRepReward.Add(minerStat.RepReward)
+
+			// just exist rep stats in this item
+			if minerStat.BlockNum == 0 {
+				continue
 			}
 
 			item, ok := apiRsp.MinerStats[minerAddr]
 			if !ok {
 				item = &PovMinerStatItem{}
+				item.Account = minerAddr
 				item.MainRewardAmount = types.ZeroBalance
 				item.StableRewardAmount = types.ZeroBalance
 				item.FirstBlockHeight = minerStat.FirstHeight
@@ -719,7 +742,11 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	// scan best block not in miner stats per day
 	latestHeader, _ := api.ledger.GetLatestPovHeader()
 
-	notStatHeightStart := uint64(lastDayIndex) * uint64(common.POVChainBlocksPerDay)
+	notStatHeightStart := uint64(0)
+	if dbDayCnt > 0 {
+		notStatHeightStart = uint64(lastDayIndex+1) * uint64(common.POVChainBlocksPerDay)
+	}
+
 	notStatHeightEnd := latestHeader.GetHeight()
 
 	for height := notStatHeightStart; height <= notStatHeightEnd; height++ {
@@ -736,6 +763,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		item, ok := apiRsp.MinerStats[minerAddr]
 		if !ok {
 			item = &PovMinerStatItem{}
+			item.Account = minerAddr
 			item.MainRewardAmount = types.ZeroBalance
 			item.FirstBlockHeight = header.GetHeight()
 			item.LastBlockHeight = header.GetHeight()
@@ -752,7 +780,13 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 		item.MainRewardAmount = item.MainRewardAmount.Add(header.GetMinerReward())
 		item.MainBlockNum += 1
 		totalBlockNum += 1
+		totalMinerReward = totalMinerReward.Add(header.GetMinerReward())
+		totalRepReward = totalRepReward.Add(header.GetRepReward())
 	}
+
+	//exclude genesis block miner
+	gBlk := common.GenesisPovBlock()
+	delete(apiRsp.MinerStats, gBlk.GetMinerAddr())
 
 	// fill time
 	for _, minerItem := range apiRsp.MinerStats {
@@ -770,6 +804,13 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 
 	apiRsp.TotalBlockNum = totalBlockNum
 	apiRsp.LatestBlockHeight = latestHeader.GetHeight()
+
+	apiRsp.TotalMinerReward = totalMinerReward
+	apiRsp.TotalRepReward = totalRepReward
+
+	apiRsp.TotalRewardAmount = types.NewBalance(0)
+	apiRsp.TotalRewardAmount = apiRsp.TotalRewardAmount.Add(totalMinerReward)
+	apiRsp.TotalRewardAmount = apiRsp.TotalRewardAmount.Add(totalRepReward)
 
 	// miner is online if it generate blocks in last N hours
 	for _, item := range apiRsp.MinerStats {
@@ -797,13 +838,18 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 	rspMap := make(map[types.Address]*PovRepStats)
 
 	// scan rep stats per day
+	dbDayCnt := 0
 	lastDayIndex := uint32(0)
 	err := api.ledger.GetAllPovMinerStats(func(stat *types.PovMinerDayStat) error {
+		dbDayCnt++
 		if stat.DayIndex > lastDayIndex {
 			lastDayIndex = stat.DayIndex
 		}
 
 		for addrHex, minerStat := range stat.MinerStats {
+			if minerStat.RepBlockNum == 0 {
+				continue
+			}
 			repAddr, _ := types.HexToAddress(addrHex)
 			if len(checkAddrMap) > 0 && !checkAddrMap[repAddr] {
 				continue
@@ -831,7 +877,10 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 	// scan best block not in miner stats per day
 	latestHeader, _ := api.ledger.GetLatestPovHeader()
 
-	notStatHeightStart := uint64(lastDayIndex) * uint64(common.POVChainBlocksPerDay)
+	notStatHeightStart := uint64(0)
+	if dbDayCnt > 0 {
+		notStatHeightStart = uint64(lastDayIndex+1) * uint64(common.POVChainBlocksPerDay)
+	}
 	notStatHeightEnd := latestHeader.GetHeight()
 
 	for height := notStatHeightStart; height <= notStatHeightEnd; height++ {
@@ -1032,6 +1081,7 @@ type PovApiSubmitWork struct {
 
 type PovApiGetMiningInfo struct {
 	SyncState          int               `json:"syncState"`
+	SyncStateStr       string            `json:"syncStateStr"`
 	CurrentBlockHeight uint64            `json:"currentBlockHeight"`
 	CurrentBlockHash   types.Hash        `json:"currentBlockHash"`
 	CurrentBlockSize   uint32            `json:"currentBlockSize"`
@@ -1066,6 +1116,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 
 	apiRsp := new(PovApiGetMiningInfo)
 	apiRsp.SyncState = outArgs["syncState"].(int)
+	apiRsp.SyncStateStr = common.SyncState(apiRsp.SyncState).String()
 
 	apiRsp.CurrentBlockAlgo = latestBlock.GetAlgoType()
 	apiRsp.CurrentBlockHeight = latestBlock.GetHeight()
@@ -1407,34 +1458,25 @@ func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	return CreatePovSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			notifyCh := make(chan struct{})
-			api.pubsub.addChan(notifyCh)
-			defer api.pubsub.removeChan(notifyCh)
-
-			lastBlockHashes := make(map[types.Hash]struct{})
+			api.pubsub.addChan(subscription.ID, notifyCh)
+			defer api.pubsub.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-notifyCh:
-					blocks := api.pubsub.getBlocks()
-					curBlockHashes := make(map[types.Hash]struct{})
+					blocks := api.pubsub.fetchBlocks(subscription.ID)
 
 					for _, block := range blocks {
-						blkHash := block.GetHash()
-						curBlockHashes[blkHash] = struct{}{}
-
-						if _, ok := lastBlockHashes[blkHash]; ok {
-							continue
-						}
-
 						header := block.GetHeader()
-						err := notifier.Notify(subscription.ID, header)
+						apiHdr := &PovApiHeader{PovHeader: header}
+						api.fillHeader(apiHdr)
+						err := notifier.Notify(subscription.ID, apiHdr)
 						if err != nil {
 							api.logger.Errorf("notify pov header %d/%s error: %s",
 								err, header.GetHeight(), header.GetHash())
 							return
 						}
 					}
-					lastBlockHashes = curBlockHashes
 				case err := <-subscription.Err():
 					api.logger.Infof("subscription exception %s", err)
 					return

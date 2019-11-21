@@ -50,8 +50,8 @@ func DefaultConfigV5(dir string) (*ConfigV5, error) {
 
 func defaultMetrics() *MetricsConfig {
 	return &MetricsConfig{
-		Enable:         true,
-		SampleInterval: 1,
+		Enable:         false,
+		SampleInterval: 60,
 		Influx: &Influx{
 			Enable:   false,
 			URL:      "http://localhost:8086",

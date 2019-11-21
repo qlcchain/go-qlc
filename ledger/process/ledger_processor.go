@@ -761,12 +761,13 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 		case types.ContractReward:
 			input, err := lv.l.GetStateBlock(block.GetLink())
 			if err != nil {
-				return nil
+				return err
 			}
 			address := types.Address(input.GetLink())
 			c, ok, err := contract.GetChainContract(address, input.Data)
 			if !ok || err != nil {
-				return fmt.Errorf("invaild contract %s", err)
+				lv.logger.Errorf("invaild contract %s", err)
+				return err
 			}
 			clone := block.Clone()
 			vmCtx := vmstore.NewVMContext(lv.l)
@@ -774,6 +775,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 			case contract.InternalContract:
 				g, err := v.DoReceive(vmCtx, clone, input)
 				if err != nil {
+					lv.logger.Warn("DoReceive error: ", err)
 					return err
 				}
 				if len(g) > 0 {

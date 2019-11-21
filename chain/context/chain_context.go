@@ -14,11 +14,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cornelk/hashmap"
+
 	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -35,10 +36,10 @@ const (
 	PovService         = "povService"
 	MinerService       = "minerService"
 	AutoReceiveService = "autoReceiveService"
-	RollbackService    = "rollbackService"
 	MetricsService     = "metricsService"
 	ChainManageService = "chainManageService"
 	LogService         = "logService"
+	ResendBlockService = "resendBlockService"
 )
 
 type serviceManager interface {

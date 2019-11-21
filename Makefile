@@ -37,19 +37,6 @@ build-test:
 	@echo "Build testnet $(BINARY) done."
 	@echo "Run \"$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
 
-mining:
-	go build -ldflags "-X main.Version=${VERSION} \
-		-X main.GitRev=${GITREV} \
-		-X main.BuildTime=${BUILDTIME} \
-		-X main.Mode=MainNet" \
-		-v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-miner $(shell pwd)/cmd/miner/
-	go build -ldflags "-X main.Version=${VERSION} \
-		-X main.GitRev=${GITREV} \
-		-X main.BuildTime=${BUILDTIME} \
-		-X main.Mode=MainNet" \
-		-v -i -o $(shell pwd)/$(BUILDDIR)/gqlc-stratum $(shell pwd)/cmd/stratum/
-	@echo "Build mining done."
-
 clean:
 	rm -rf $(shell pwd)/$(BUILDDIR)/
 

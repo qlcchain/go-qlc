@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/abiosoft/ishell"
@@ -13,11 +12,17 @@ import (
 )
 
 func addPovBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
-	idFlag := util.Flag{
-		Name:  "id",
-		Must:  true,
-		Usage: "height or hash of pov block",
-		Value: "-1",
+	heightFlag := util.Flag{
+		Name:  "height",
+		Must:  false,
+		Usage: "height of pov block",
+		Value: -1,
+	}
+	hashFlag := util.Flag{
+		Name:  "hash",
+		Must:  false,
+		Usage: "hash of pov block",
+		Value: "",
 	}
 	txOffsetFlag := util.Flag{
 		Name:  "txOffset",
@@ -29,22 +34,23 @@ func addPovBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Name:  "txCount",
 		Must:  false,
 		Usage: "tx count of pov block",
-		Value: 100,
+		Value: 10,
 	}
 
 	cmd := &ishell.Cmd{
 		Name: "getBlockInfo",
 		Help: "get pov block info",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{idFlag, txOffsetFlag, txCountFlag}
+			args := []util.Flag{heightFlag, hashFlag, txOffsetFlag, txCountFlag}
 			if util.HelpText(c, args) {
 				return
 			}
-			idStr := util.StringVar(c.Args, idFlag)
+			height, _ := util.IntVar(c.Args, heightFlag)
+			hash := util.StringVar(c.Args, hashFlag)
 			txOffset, _ := util.IntVar(c.Args, txOffsetFlag)
 			txCount, _ := util.IntVar(c.Args, txCountFlag)
 
-			err := runPovBlockInfoCmd(idStr, txOffset, txCount)
+			err := runPovBlockInfoCmd(height, hash, txOffset, txCount)
 			if err != nil {
 				util.Warn(err)
 				return
@@ -54,7 +60,7 @@ func addPovBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func runPovBlockInfoCmd(idStr string, txOffset, txCount int) error {
+func runPovBlockInfoCmd(height int, hash string, txOffset, txCount int) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -63,27 +69,18 @@ func runPovBlockInfoCmd(idStr string, txOffset, txCount int) error {
 
 	rspInfo := new(api.PovApiBlock)
 
-	if len(idStr) == 64 {
-		err = client.Call(rspInfo, "pov_getBlockByHash", idStr, txOffset, txCount)
+	if hash != "" {
+		err = client.Call(rspInfo, "pov_getBlockByHash", hash, txOffset, txCount)
+		if err != nil {
+			return err
+		}
+	} else if height >= 0 {
+		err = client.Call(rspInfo, "pov_getBlockByHeight", height, txOffset, txCount)
 		if err != nil {
 			return err
 		}
 	} else {
-		var height int64
-		if idStr == "latest" {
-			height = int64(-1)
-		} else {
-			height, err = strconv.ParseInt(idStr, 10, 64)
-			if err != nil {
-				return err
-			}
-		}
-
-		if height < 0 {
-			err = client.Call(rspInfo, "pov_getLatestBlock", txOffset, txCount)
-		} else {
-			err = client.Call(rspInfo, "pov_getBlockByHeight", height, txOffset, txCount)
-		}
+		err = client.Call(rspInfo, "pov_getLatestBlock", txOffset, txCount)
 		if err != nil {
 			return err
 		}

@@ -34,9 +34,6 @@ func RegisterServices(cc *context.ChainContext) error {
 		_ = cc.Register(context.WalletService, walletService)
 	}
 
-	rollbackService := NewRollbackService(cfgFile)
-	_ = cc.Register(context.RollbackService, rollbackService)
-
 	if len(cfg.P2P.BootNodes) > 0 {
 		netService, err := NewP2PService(cfgFile)
 		if err != nil {
@@ -77,6 +74,9 @@ func RegisterServices(cc *context.ChainContext) error {
 
 	chainManageService := NewChainManageService(cfgFile)
 	_ = cc.Register(context.ChainManageService, chainManageService)
+
+	resendBlockService := NewResendBlockService(cfgFile)
+	_ = cc.Register(context.ResendBlockService, resendBlockService)
 
 	return nil
 }

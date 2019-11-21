@@ -25,6 +25,11 @@ type BadgerStoreTxn struct {
 	txn *badger.Txn
 }
 
+type BadgerStoreBatch struct {
+	db    *badger.DB
+	batch *badger.WriteBatch
+}
+
 //var logger = log2.NewLogger("badger")
 
 // NewBadgerStore initializes/opens a badger database in the given directory.
@@ -92,6 +97,21 @@ func (s *BadgerStore) UpdateInTx(fn func(txn StoreTxn) error) error {
 		t := &BadgerStoreTxn{txn: txn, db: s.db}
 		return fn(t)
 	})
+}
+
+func (s *BadgerStore) NewWriteBatch() *BadgerStoreBatch {
+	batch := &BadgerStoreBatch{batch: s.db.NewWriteBatch(), db: s.db}
+	return batch
+}
+
+func (s *BadgerStore) UpdateInBatch(fn func(batch StoreBatch) error) error {
+	batch := s.NewWriteBatch()
+	err := fn(batch)
+	if err != nil {
+		batch.Cancel()
+		return err
+	}
+	return batch.Flush()
 }
 
 func (t *BadgerStoreTxn) Set(key []byte, val []byte) error {
@@ -270,4 +290,24 @@ func (t *BadgerStoreTxn) Stream(prefix []byte, filter func(item *badger.Item) bo
 		return err
 	}
 	return nil
+}
+
+func (b *BadgerStoreBatch) Set(key, val []byte) error {
+	return b.batch.Set(key, val)
+}
+
+func (b *BadgerStoreBatch) SetWithMeta(key, val []byte, meta byte) error {
+	return b.batch.SetEntry(&badger.Entry{Key: key, Value: val, UserMeta: meta})
+}
+
+func (b *BadgerStoreBatch) Delete(key []byte) error {
+	return b.batch.Delete(key)
+}
+
+func (b *BadgerStoreBatch) Cancel() {
+	b.batch.Cancel()
+}
+
+func (b *BadgerStoreBatch) Flush() error {
+	return b.batch.Flush()
 }

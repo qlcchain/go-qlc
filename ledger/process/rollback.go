@@ -12,29 +12,17 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
-	lv.l.RollbackChan <- hash
-	return nil
-}
-
-func (lv *LedgerVerifier) RollbackBlock(hash types.Hash) error {
 	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
-		lv.logger.Errorf("process rollback cache block: %s", hash.String())
-		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
-			err = lv.rollbackCache(hash, txn)
-			if err != nil {
-				lv.logger.Error(err)
-				return err
-			}
-			return nil
-		})
+		return lv.RollbackCache(hash)
 	}
 
 	if b, err := lv.l.HasStateBlockConfirmed(hash); !b || err != nil {
-		lv.logger.Errorf("rollback block not found: %s", hash.String())
+		lv.logger.Warnf("rollback block not found: %s", hash.String())
 		return nil
 	}
 	lv.logger.Errorf("process rollback  block: %s", hash.String())
@@ -136,6 +124,74 @@ func (lv *LedgerVerifier) RollbackBlock(hash types.Hash) error {
 	})
 }
 
+func (lv *LedgerVerifier) RollbackCache(hash types.Hash) error {
+	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
+		lv.logger.Infof("process rollback cache block: %s", hash.String())
+		return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
+			err = lv.rollbackCache(hash, txn)
+			if err != nil {
+				lv.logger.Error(err)
+				return err
+			}
+			return nil
+		})
+	}
+	return nil
+}
+
+// rollback unchecked
+func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {
+	// gap source
+	blkLink, _, _ := lv.l.GetUncheckedBlock(hash, types.UncheckedKindLink)
+	// gap previous
+	blkPrevious, _, _ := lv.l.GetUncheckedBlock(hash, types.UncheckedKindPrevious)
+	// gap token
+	var blkToken *types.StateBlock
+	var tokenId types.Hash
+	if blk, err := lv.l.GetStateBlock(hash); err == nil {
+		if blk.GetType() == types.ContractReward {
+			input, err := lv.l.GetStateBlock(blk.GetLink())
+			if err != nil {
+				lv.logger.Errorf("dequeue get block link error [%s]", hash)
+				return
+			}
+			address := types.Address(input.GetLink())
+			if address == types.MintageAddress {
+				var param = new(cabi.ParamMintage)
+				tokenId = param.TokenId
+				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+					blkToken, _, _ = lv.l.GetUncheckedBlock(tokenId, types.UncheckedKindTokenInfo)
+				}
+			}
+		}
+	}
+
+	if blkLink == nil && blkPrevious == nil && blkToken == nil {
+		return
+	}
+	if blkLink != nil {
+		err := lv.l.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+		if err != nil {
+			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+		}
+		lv.RollbackUnchecked(blkLink.GetHash())
+	}
+	if blkPrevious != nil {
+		err := lv.l.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+		if err != nil {
+			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
+		}
+		lv.RollbackUnchecked(blkPrevious.GetHash())
+	}
+	if blkToken != nil {
+		err := lv.l.DeleteUncheckedBlock(tokenId, types.UncheckedKindTokenInfo)
+		if err != nil {
+			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+		}
+		lv.RollbackUnchecked(blkToken.GetHash())
+	}
+}
+
 // rollback cache blocks
 func (lv *LedgerVerifier) rollbackCache(hash types.Hash, txn db.StoreTxn) error {
 	block, err := lv.l.GetBlockCache(hash, txn)
@@ -199,15 +255,48 @@ func (lv *LedgerVerifier) rollbackCache(hash types.Hash, txn db.StoreTxn) error 
 	}
 
 	// delete blocks
-	if err := lv.rollbackCacheBlocks(rollBlocks, txn); err != nil {
+	if err := lv.rollbackCacheBlocks(rollBlocks, true, txn); err != nil {
 		lv.logger.Error(err)
 		return err
 	}
 	return nil
 }
 
-func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache bool, txn db.StoreTxn) error {
 	if len(blocks) == 0 {
+		return nil
+	}
+	if cache {
+		for i := len(blocks) - 1; i >= 0; i-- {
+			block := blocks[i]
+			if block.IsReceiveBlock() {
+				pendingKey := types.PendingKey{
+					Address: block.GetAddress(),
+					Hash:    block.GetLink(),
+				}
+				if err := lv.l.UpdatePending(&pendingKey, types.PendingNotUsed, txn); err != nil {
+					return err
+				}
+			}
+
+			if err := lv.l.DeleteBlockCache(block.GetHash(), txn); err != nil {
+				return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
+			}
+			lv.l.EB.Publish(common.EventRollback, block.GetHash())
+			lv.logger.Infof("rollback delete cache block %s (previous: %s, type: %s,  address: %s)", block.GetHash().String(), block.GetPrevious().String(), block.GetType(), block.GetAddress().String())
+
+			if b, _ := lv.l.HasBlockCache(block.GetPrevious()); b {
+				if err := lv.rollbackCacheAccount(block, txn); err != nil {
+					lv.logger.Errorf("roll back cache account error : %s", err)
+					return err
+				}
+			} else {
+				if err := lv.rollbackCacheAccountDel(block.GetAddress(), block.GetToken(), txn); err != nil {
+					lv.logger.Errorf("roll back cache account del error : %s", err)
+					return err
+				}
+			}
+		}
 		return nil
 	}
 	for _, block := range blocks {
@@ -229,14 +318,50 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, txn db
 	}
 
 	blk := blocks[0]
-	if err := lv.rollbackCacheAccount(blk.GetAddress(), blk.GetToken(), txn); err != nil {
+	if err := lv.rollbackCacheAccountDel(blk.GetAddress(), blk.GetToken(), txn); err != nil {
 		lv.logger.Errorf("roll back cache account error : %s", err)
 		return err
 	}
 	return nil
 }
 
-func (lv *LedgerVerifier) rollbackCacheAccount(address types.Address, token types.Hash, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) rollbackCacheAccount(block *types.StateBlock, txn db.StoreTxn) error {
+	ac, err := lv.l.GetAccountMetaCache(block.GetAddress(), txn)
+	if err == nil {
+		preBlk, err := lv.l.GetBlockCache(block.GetPrevious())
+		if err == nil {
+			if preBlk.GetToken() == common.ChainToken() {
+				ac.CoinVote = preBlk.GetVote()
+				ac.CoinOracle = preBlk.GetOracle()
+				ac.CoinNetwork = preBlk.GetNetwork()
+				ac.CoinStorage = preBlk.GetStorage()
+				ac.CoinBalance = preBlk.GetBalance()
+			}
+			tm := ac.Token(block.GetToken())
+			if tm != nil {
+				tm.Balance = preBlk.GetBalance()
+				tm.Header = preBlk.GetHash()
+				tm.Representative = preBlk.GetRepresentative()
+				tm.BlockCount = tm.BlockCount - 1
+				tm.Modified = common.TimeNow().Unix()
+				lv.logger.Debug("update token, ", tm)
+				for index, t := range ac.Tokens {
+					if t.Type == tm.Type {
+						ac.Tokens[index] = tm
+						if err := lv.l.UpdateAccountMetaCache(ac, txn); err != nil {
+							return err
+						}
+						lv.logger.Warnf("rollback update account cache, %s", ac.String())
+						return nil
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (lv *LedgerVerifier) rollbackCacheAccountDel(address types.Address, token types.Hash, txn db.StoreTxn) error {
 	ac, err := lv.l.GetAccountMetaCache(address, txn)
 	if err != nil {
 		if err == ledger.ErrAccountNotFound {
@@ -252,7 +377,7 @@ func (lv *LedgerVerifier) rollbackCacheAccount(address types.Address, token type
 			if err := lv.l.DeleteAccountMetaCache(address, txn); err != nil {
 				return err
 			}
-			lv.logger.Errorf("rollback delete account cache, %s", address.String())
+			lv.logger.Infof("rollback delete account cache, %s", address.String())
 			return nil
 		} else {
 			if err := lv.l.DeleteTokenMetaCache(address, token, txn); err != nil {
@@ -396,7 +521,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 				lv.logger.Errorf("roll back block cache error : %s", err)
 				return err
 			}
-			if err := lv.rollbackCacheAccount(blockCur.GetAddress(), blockCur.GetToken(), txn); err != nil {
+			if err := lv.rollbackCacheAccountDel(blockCur.GetAddress(), blockCur.GetToken(), txn); err != nil {
 				lv.logger.Errorf("roll back account cache error : %s", err)
 				return err
 			}
@@ -426,7 +551,7 @@ func (lv *LedgerVerifier) checkBlockCache(block *types.StateBlock, txn db.StoreT
 	if err != nil {
 		return err
 	}
-	if err = lv.rollbackCacheBlocks(rollbacks, txn); err != nil {
+	if err = lv.rollbackCacheBlocks(rollbacks, false, txn); err != nil {
 		return err
 	}
 

@@ -9,12 +9,12 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/cornelk/hashmap"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/common/sync/hashmap"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -104,13 +104,13 @@ type ApiTokenInfo struct {
 	types.TokenInfo
 }
 
-func NewLedgerApi(l *ledger.Ledger, relation *relation.Relation, eb event.EventBus) *LedgerApi {
+func NewLedgerApi(l *ledger.Ledger, r *relation.Relation, eb event.EventBus, ctx context.Context) *LedgerApi {
 	api := LedgerApi{
 		ledger:            l,
 		eb:                eb,
-		relation:          relation,
+		relation:          r,
 		logger:            log.NewLogger("api_ledger"),
-		blockSubscription: NewBlockSubscription(eb),
+		blockSubscription: NewBlockSubscription(ctx, eb),
 		processLock:       hashmap.New(defaultLockSize),
 	}
 	api.syncState.Store(common.SyncNotStart)
@@ -215,48 +215,23 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 }
 
 func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
-	aa := new(APIAccount)
 	am, err := l.ledger.GetAccountMeta(address)
 	if err != nil {
 		return nil, err
 	}
-	vmContext := vmstore.NewVMContext(l.ledger)
-	for _, t := range am.Tokens {
-		if t.Type == common.ChainToken() {
-			aa.CoinBalance = &t.Balance
-			aa.Representative = &t.Representative
-			aa.CoinVote = &am.CoinVote
-			aa.CoinNetwork = &am.CoinNetwork
-			aa.CoinOracle = &am.CoinOracle
-			aa.CoinStorage = &am.CoinStorage
-		}
-		info, err := abi.GetTokenById(vmContext, t.Type)
-		if err != nil {
-			return nil, err
-		}
-		amount, err := l.ledger.PendingAmount(address, t.Type)
-		if err != nil {
-			l.logger.Errorf("pending amount error: %s", err)
-			return nil, err
-		}
-
-		tm := APITokenMeta{
-			TokenMeta: t,
-			TokenName: info.TokenName,
-			Pending:   amount,
-		}
-		aa.Tokens = append(aa.Tokens, &tm)
-	}
-	aa.Address = address
-	return aa, nil
+	return l.generateAPIAccountMeta(am)
 }
 
 func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, error) {
-	aa := new(APIAccount)
 	am, err := l.ledger.GetAccountMetaConfirmed(address)
 	if err != nil {
 		return nil, err
 	}
+	return l.generateAPIAccountMeta(am)
+}
+
+func (l *LedgerApi) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, error) {
+	aa := new(APIAccount)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, t := range am.Tokens {
 		if t.Type == common.ChainToken() {
@@ -271,7 +246,7 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 		if err != nil {
 			return nil, err
 		}
-		amount, err := l.ledger.PendingAmount(address, t.Type)
+		amount, err := l.ledger.PendingAmount(am.Address, t.Type)
 		if err != nil {
 			l.logger.Errorf("pending amount error: %s", err)
 			return nil, err
@@ -284,7 +259,7 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 		}
 		aa.Tokens = append(aa.Tokens, &tm)
 	}
-	aa.Address = address
+	aa.Address = am.Address
 	return aa, nil
 }
 
@@ -327,14 +302,12 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 				return nil, err
 			}
 			b := new(APIAccountsBalance)
-			pendings, err := l.ledger.TokenPendingInfo(addr, t.Type)
+			amount, err := l.ledger.PendingAmount(addr, t.Type)
 			if err != nil {
+				l.logger.Errorf("pending amount error: %s", err)
 				return nil, err
 			}
-			amount := types.ZeroBalance
-			for _, pending := range pendings {
-				amount = amount.Add(pending.Amount)
-			}
+
 			b.Balance = t.Balance
 			b.Pending = amount
 			if info.TokenId == common.ChainToken() {
@@ -537,6 +510,29 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 
 	for _, h := range hash {
 		block, err := l.ledger.GetStateBlock(h)
+		if err != nil {
+			if err == ledger.ErrBlockNotFound {
+				continue
+			}
+			return nil, fmt.Errorf("%s, %s", h, err)
+		}
+		b, err := generateAPIBlock(vmContext, block, latestPov)
+		if err != nil {
+			return nil, err
+		}
+		bs = append(bs, b)
+	}
+	return bs, nil
+}
+
+func (l *LedgerApi) ConfirmedBlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
+	bs := make([]*APIBlock, 0)
+	vmContext := vmstore.NewVMContext(l.ledger)
+
+	latestPov, _ := l.ledger.GetLatestPovHeader()
+
+	for _, h := range hash {
+		block, err := l.ledger.GetStateBlockConfirmed(h)
 		if err != nil {
 			if err == ledger.ErrBlockNotFound {
 				continue
@@ -865,7 +861,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)
 			return types.ZeroHash, err
 		}
-
+		l.eb.Publish(common.EventAddBlockCache, block)
 		l.logger.Debug("broadcast block")
 		//TODO: refine
 		l.eb.Publish(common.EventBroadcast, p2p.PublishReq, block)
@@ -1014,31 +1010,31 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(types.ZeroAddress, ch)
-			defer l.blockSubscription.removeChan(ch)
-
-			lastBlockHashes := make(map[types.Hash]struct{})
+			l.blockSubscription.addChan(subscription.ID, types.ZeroAddress, true, ch)
+			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-ch:
-					blocks := l.blockSubscription.getBlocks()
-					curBlockHashes := make(map[types.Hash]struct{})
+					blocks := l.blockSubscription.fetchBlocks(subscription.ID)
+					if len(blocks) == 0 {
+						continue
+					}
+
+					vmContext := vmstore.NewVMContext(l.ledger)
+					latestPov, _ := l.ledger.GetLatestPovHeader()
 
 					for _, block := range blocks {
-						blkHash := block.GetHash()
-						curBlockHashes[blkHash] = struct{}{}
-
-						if _, ok := lastBlockHashes[blkHash]; ok {
+						apiBlk, err := generateAPIBlock(vmContext, block, latestPov)
+						if err != nil {
+							l.logger.Errorf("generateAPIBlock error: %s", err)
 							continue
 						}
-
-						if err := notifier.Notify(subscription.ID, block); err != nil {
+						if err := notifier.Notify(subscription.ID, apiBlk); err != nil {
 							l.logger.Errorf("notify error: %s", err)
 							return
 						}
 					}
-					lastBlockHashes = curBlockHashes
 				case err := <-subscription.Err():
 					l.logger.Infof("subscription exception %s", err)
 					return
@@ -1054,35 +1050,77 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	return sub, nil
 }
 
-func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
-	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+func (l *LedgerApi) NewAccountBlock(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
+	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(address, ch)
-			defer l.blockSubscription.removeChan(ch)
-
-			var lastBlockHash types.Hash
+			l.blockSubscription.addChan(subscription.ID, address, true, ch)
+			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-ch:
-					block := l.blockSubscription.getAddressBlock(address)
+					blocks := l.blockSubscription.fetchBlocks(subscription.ID)
+					if len(blocks) == 0 {
+						continue
+					}
+
+					vmContext := vmstore.NewVMContext(l.ledger)
+					latestPov, _ := l.ledger.GetLatestPovHeader()
+
+					for _, block := range blocks {
+						apiBlk, err := generateAPIBlock(vmContext, block, latestPov)
+						if err != nil {
+							l.logger.Errorf("generateAPIBlock error: %s", err)
+							continue
+						}
+						if err := notifier.Notify(subscription.ID, apiBlk); err != nil {
+							l.logger.Errorf("notify error: %s", err)
+							return
+						}
+					}
+				case err := <-subscription.Err():
+					l.logger.Infof("subscription exception %s", err)
+					return
+				}
+			}
+		}()
+	})
+	if err != nil || sub == nil {
+		l.logger.Errorf("create subscription error, %s", err)
+		return nil, err
+	}
+	l.logger.Infof("account blocks subscription: %s", sub.ID)
+	return sub, nil
+}
+
+func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
+	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
+		go func() {
+			ch := make(chan struct{})
+			l.blockSubscription.addChan(subscription.ID, address, false, ch)
+			defer l.blockSubscription.removeChan(subscription.ID)
+
+			for {
+				select {
+				case <-ch:
+					block := l.blockSubscription.fetchAddrBlock(subscription.ID)
 					if block == nil {
 						continue
 					}
-					blkHash := block.GetHash()
-					if lastBlockHash == blkHash {
-						continue
-					}
-					lastBlockHash = blkHash
 
 					if block.GetAddress() == address {
-						ac, err := l.ledger.GetAccountMeta(address)
+						am, err := l.ledger.GetAccountMeta(address)
 						if err != nil {
 							l.logger.Errorf("get account meta: %s", err)
 							return
 						}
-						if err := notifier.Notify(subscription.ID, ac); err != nil {
+						aa, err := l.generateAPIAccountMeta(am)
+						if err != nil {
+							l.logger.Errorf("generate APIAccountMeta error: %s", err)
+							return
+						}
+						if err := notifier.Notify(subscription.ID, aa); err != nil {
 							l.logger.Errorf("notify error: %s", err)
 							return
 						}
@@ -1100,23 +1138,16 @@ func (l *LedgerApi) NewPending(ctx context.Context, address types.Address) (*rpc
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(address, ch)
-			defer l.blockSubscription.removeChan(ch)
-
-			var lastBlockHash types.Hash
+			l.blockSubscription.addChan(subscription.ID, address, false, ch)
+			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-ch:
-					block := l.blockSubscription.getAddressBlock(address)
+					block := l.blockSubscription.fetchAddrBlock(subscription.ID)
 					if block == nil {
 						continue
 					}
-					blkHash := block.GetHash()
-					if lastBlockHash == blkHash {
-						continue
-					}
-					lastBlockHash = blkHash
 
 					if block.IsSendBlock() {
 						pk := &types.PendingKey{

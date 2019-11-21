@@ -387,8 +387,11 @@ func (w *PovWorker) checkMinerPledge(minerAddr types.Address) error {
 
 	if latestBlock.GetHeight() >= (common.PovMinerVerifyHeightStart - 1) {
 		prevStateHash := latestBlock.GetStateHash()
-		stateTrie := w.GetChain().GetStateTrie(&prevStateHash)
-		rs := w.GetChain().GetRepState(stateTrie, minerAddr)
+		prevTrie := w.GetChain().GetStateTrie(&prevStateHash)
+		if prevTrie == nil {
+			return errors.New("miner pausing for get previous state tire failed")
+		}
+		rs := w.GetChain().GetRepState(prevTrie, minerAddr)
 		if rs == nil {
 			return errors.New("miner pausing for account state not exist")
 		}

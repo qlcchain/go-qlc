@@ -19,6 +19,7 @@ var (
 	ErrPovHeightNotFound   = errors.New("pov height not found")
 	ErrPovHashNotFound     = errors.New("pov hash not found")
 	ErrPovTxLookupNotFound = errors.New("pov tx lookup not found")
+	ErrPovTxLookupNotBest  = errors.New("pov tx lookup not best")
 	ErrPovTDNotFound       = errors.New("pov total difficulty not found")
 
 	ErrPovMinerStatNotFound = errors.New("pov miner state not found")
@@ -499,6 +500,15 @@ func (l *Ledger) GetPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) (*types.
 		}
 		return nil, err
 	}
+
+	bestHash, err := l.GetPovBestHash(txLookup.BlockHeight, txn)
+	if err != nil {
+		return nil, ErrPovTxLookupNotBest
+	}
+	if bestHash != txLookup.BlockHash {
+		return nil, ErrPovTxLookupNotBest
+	}
+
 	return txLookup, nil
 }
 
@@ -511,14 +521,99 @@ func (l *Ledger) HasPovTxLookup(txHash types.Hash, txns ...db.StoreTxn) bool {
 		return false
 	}
 
+	txLookup := new(types.PovTxLookup)
 	err = txn.Get(key, func(val []byte, b byte) error {
+		if err := txLookup.Deserialize(val); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
 		return false
 	}
 
+	bestHash, err := l.GetPovBestHash(txLookup.BlockHeight, txn)
+	if err != nil {
+		return false
+	}
+	if bestHash != txLookup.BlockHash {
+		return false
+	}
+
 	return true
+}
+
+func (l *Ledger) AddPovTxLookupInBatch(txHash types.Hash, txLookup *types.PovTxLookup, batch db.StoreBatch) error {
+	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
+	if err != nil {
+		return err
+	}
+
+	dataTypes, err := txLookup.Serialize()
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Set(key, dataTypes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) DeletePovTxLookupInBatch(txHash types.Hash, batch db.StoreBatch) error {
+	key, err := getKeyOfParts(idPrefixPovTxLookup, txHash)
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Delete(key); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) SetPovTxlScanCursor(height uint64, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key, err := getKeyOfParts(idPrefixPovTxlScanCursor)
+	if err != nil {
+		return err
+	}
+
+	valBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(valBytes, height)
+
+	if err := txn.Set(key, valBytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) GetPovTxlScanCursor(txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key, err := getKeyOfParts(idPrefixPovTxlScanCursor)
+	if err != nil {
+		return 0, err
+	}
+
+	var height uint64
+	err = txn.Get(key, func(val []byte, b byte) error {
+		height = binary.BigEndian.Uint64(val)
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return 0, ErrPovKeyNotFound
+		}
+		return 0, err
+	}
+	return height, nil
 }
 
 func (l *Ledger) AddPovBestHash(height uint64, hash types.Hash, txns ...db.StoreTxn) error {
@@ -612,6 +707,48 @@ func (l *Ledger) GetAllPovBestHashes(fn func(height uint64, hash types.Hash) err
 		return err
 	}
 	return nil
+}
+
+func (l *Ledger) SetPovLatestHeight(height uint64, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key, err := getKeyOfParts(idPrefixPovLatestHeight)
+	if err != nil {
+		return err
+	}
+
+	valBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(valBytes, height)
+
+	if err := txn.Set(key, valBytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) GetPovLatestHeight(txns ...db.StoreTxn) (uint64, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key, err := getKeyOfParts(idPrefixPovLatestHeight)
+	if err != nil {
+		return 0, err
+	}
+
+	var height uint64
+	err = txn.Get(key, func(val []byte, b byte) error {
+		height = binary.BigEndian.Uint64(val)
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return 0, ErrPovHeightNotFound
+		}
+		return 0, err
+	}
+	return height, nil
 }
 
 func (l *Ledger) AddPovMinerStat(dayStat *types.PovMinerDayStat, txns ...db.StoreTxn) error {
@@ -981,20 +1118,12 @@ func (l *Ledger) GetLatestPovBestHash(txns ...db.StoreTxn) (types.Hash, error) {
 	txn, flag := l.getTxn(false, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	var latestKey []byte
-	err := txn.Iterator(idPrefixPovBestHash, func(key []byte, val []byte, meta byte) error {
-		// just safe copy, iterator will reuse item(key, value)
-		latestKey = append(latestKey[:0], key...)
-		return nil
-	})
+	latestHeight, err := l.GetPovLatestHeight(txn)
 	if err != nil {
 		return types.ZeroHash, err
 	}
-	if len(latestKey) <= 0 {
-		return types.ZeroHash, fmt.Errorf("latest best hash key is zero")
-	}
 
-	latestHash, err := l.getPovBestHash(latestKey, txn)
+	latestHash, err := l.GetPovBestHash(latestHeight, txn)
 	if err != nil {
 		return types.ZeroHash, err
 	}
