@@ -562,6 +562,10 @@ func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepS
 			return nil, err
 		}
 
+		if rs.Total.Compare(types.ZeroBalance) != types.BalanceCompBigger {
+			continue
+		}
+
 		apiRsp.Reps[addr] = rs
 	}
 
