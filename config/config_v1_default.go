@@ -51,10 +51,10 @@ func DefaultConfigV1(dir string) (*ConfigV1, error) {
 		},
 		P2P: &P2PConfigV1{
 			BootNodes: []string{
-				"/ip4/47.244.138.61/tcp/9734/ipfs/QmdFSukPUMF3t1JxjvTo14SEEb5JV9JBT6PukGRo6A2g4f",
-				"/ip4/47.75.145.146/tcp/9734/ipfs/QmW9ocg4fRjckCMQvRNYGyKxQd6GiutAY4HBRxMrGrZRfc",
+				"/ip4/47.244.138.61/udp/9734/quic/p2p/QmdFSukPUMF3t1JxjvTo14SEEb5JV9JBT6PukGRo6A2g4f",
+				"/ip4/47.75.145.146/udp/9734/quic/p2p/QmW9ocg4fRjckCMQvRNYGyKxQd6GiutAY4HBRxMrGrZRfc",
 			},
-			Listen:       "/ip4/0.0.0.0/tcp/9734",
+			Listen:       "/ip4/0.0.0.0/udp/9734/quic",
 			SyncInterval: 120,
 		},
 		Discovery: &DiscoveryConfigV1{

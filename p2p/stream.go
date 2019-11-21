@@ -233,7 +233,7 @@ func (s *Stream) close() error {
 	s.pingCancel()
 	// close stream.
 	if s.stream != nil {
-		if err := s.stream.Close(); err != nil {
+		if err := s.stream.Reset(); err != nil {
 			return ErrCloseStream
 		}
 	}

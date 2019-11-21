@@ -30,16 +30,17 @@ require (
 	github.com/jmoiron/sqlx v0.0.0-20190426154859-38398a30ed85
 	github.com/lib/pq v1.1.1 // indirect
 	github.com/libp2p/go-libp2p v0.4.1
-	github.com/libp2p/go-libp2p-core v0.2.4
+	github.com/libp2p/go-libp2p-core v0.2.5
 	github.com/libp2p/go-libp2p-discovery v0.2.0
 	github.com/libp2p/go-libp2p-kad-dht v0.2.2
 	github.com/libp2p/go-libp2p-pubsub v0.2.1
+	github.com/libp2p/go-libp2p-quic-transport v0.2.2
 	github.com/libp2p/go-libp2p-swarm v0.2.2
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/miekg/dns v1.1.14 // indirect
-	github.com/multiformats/go-multiaddr v0.1.1
+	github.com/multiformats/go-multiaddr v0.1.2
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect

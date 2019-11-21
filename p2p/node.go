@@ -24,6 +24,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
+	quic "github.com/libp2p/go-libp2p-quic-transport"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
 
@@ -111,6 +112,10 @@ func (node *QlcNode) setRepresentativeNode(isRepresentative bool) {
 func (node *QlcNode) buildHost() error {
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
+	qt, err := quic.NewTransport(node.privateKey)
+	if err != nil {
+		return err
+	}
 	qlcHost, err := libp2p.New(
 		node.ctx,
 		libp2p.ListenAddrs(sourceMultiAddr),
@@ -118,6 +123,7 @@ func (node *QlcNode) buildHost() error {
 		//libp2p.NATPortMap(),
 		libp2p.BandwidthReporter(node.reporter),
 		libp2p.Ping(false),
+		libp2p.Transport(qt),
 		// libp2p.DefaultMuxers,
 	)
 	if err != nil {
