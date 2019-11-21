@@ -128,11 +128,25 @@ type PovMinerStats struct {
 	LatestBlockHeight uint64        `json:"latestBlockHeight"`
 }
 
-type PovRepStats struct {
+type PovRepStatItem struct {
 	MainBlockNum       uint32        `json:"mainBlockNum"`
 	MainRewardAmount   types.Balance `json:"mainRewardAmount"`
+	MainOnlinePeriod   uint32        `json:"mainOnlinePeriod"`
 	StableBlockNum     uint32        `json:"stableBlockNum"`
 	StableRewardAmount types.Balance `json:"stableRewardAmount"`
+	StableOnlinePeriod uint32        `json:"stableOnlinePeriod"`
+	LastOnlineTime     time.Time     `json:"lastOnlineTime"`
+	LastOnlineHeight   uint64        `json:"lastOnlineHeight"`
+	IsOnline           bool          `json:"isOnline"`
+}
+
+type PovRepStats struct {
+	RepCount          uint32                            `json:"repCount"`
+	RepStats          map[types.Address]*PovRepStatItem `json:"repStats"`
+	TotalBlockNum     uint32                            `json:"totalBlockNum"`
+	TotalPeriod       uint32                            `json:"totalPeriod"`
+	TotalRewardAmount types.Balance                     `json:"totalRewardAmount"`
+	LatestBlockHeight uint64                            `json:"latestBlockHeight"`
 }
 
 func NewPovApi(cfg *config.Config, l *ledger.Ledger, eb event.EventBus, ctx context.Context) *PovApi {
@@ -827,7 +841,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	return apiRsp, nil
 }
 
-func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRepStats, error) {
+func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	checkAddrMap := make(map[types.Address]bool)
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
@@ -835,7 +849,14 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 		}
 	}
 
-	rspMap := make(map[types.Address]*PovRepStats)
+	rspMap := &PovRepStats{
+		RepCount:          0,
+		RepStats:          make(map[types.Address]*PovRepStatItem),
+		TotalBlockNum:     0,
+		TotalPeriod:       0,
+		TotalRewardAmount: types.NewBalance(0),
+		LatestBlockHeight: 0,
+	}
 
 	// scan rep stats per day
 	dbDayCnt := 0
@@ -847,20 +868,23 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 		}
 
 		for addrHex, minerStat := range stat.MinerStats {
+			rspMap.TotalBlockNum += minerStat.BlockNum
+
 			if minerStat.RepBlockNum == 0 {
 				continue
 			}
+
 			repAddr, _ := types.HexToAddress(addrHex)
 			if len(checkAddrMap) > 0 && !checkAddrMap[repAddr] {
 				continue
 			}
 
-			repStat, ok := rspMap[repAddr]
+			repStat, ok := rspMap.RepStats[repAddr]
 			if !ok {
-				rspMap[repAddr] = new(PovRepStats)
-				rspMap[repAddr].MainRewardAmount = types.NewBalance(0)
-				rspMap[repAddr].StableRewardAmount = types.NewBalance(0)
-				repStat = rspMap[repAddr]
+				rspMap.RepStats[repAddr] = new(PovRepStatItem)
+				rspMap.RepStats[repAddr].MainRewardAmount = types.NewBalance(0)
+				rspMap.RepStats[repAddr].StableRewardAmount = types.NewBalance(0)
+				repStat = rspMap.RepStats[repAddr]
 			}
 
 			repStat.MainRewardAmount = repStat.MainRewardAmount.Add(minerStat.RepReward)
@@ -876,64 +900,103 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (map[types.Address]*PovRep
 
 	// scan best block not in miner stats per day
 	latestHeader, _ := api.ledger.GetLatestPovHeader()
+	rspMap.LatestBlockHeight = latestHeader.GetHeight()
 
 	notStatHeightStart := uint64(0)
 	if dbDayCnt > 0 {
-		notStatHeightStart = uint64(lastDayIndex+1) * uint64(common.POVChainBlocksPerDay)
+		notStatHeightStart = uint64(lastDayIndex+1)*uint64(common.POVChainBlocksPerDay) + common.DPosOnlinePeriod - 1
 	}
 	notStatHeightEnd := latestHeader.GetHeight()
 
-	for height := notStatHeightStart; height <= notStatHeightEnd; height++ {
+	var height uint64
+	for height = notStatHeightStart; height <= notStatHeightEnd; height += common.DPosOnlinePeriod {
 		header, _ := api.ledger.GetPovHeaderByHeight(height)
 		if header == nil {
 			break
 		}
 
 		// calc repReward
-		if height%common.DPosOnlinePeriod == common.DPosOnlinePeriod-1 {
-			repStates := api.GetAllOnlineRepStates(header)
-			api.logger.Debugf("get online rep states %d at block height %d", len(repStates), height)
+		repStates := api.GetAllOnlineRepStates(header)
+		api.logger.Debugf("get online rep states %d at block height %d", len(repStates), height)
 
-			// calc total weight of all reps
-			repWeightTotal := types.NewBalance(0)
-			for _, rep := range repStates {
-				repWeightTotal = repWeightTotal.Add(rep.CalcTotal())
+		// calc total weight of all reps
+		repWeightTotal := types.NewBalance(0)
+		for _, rep := range repStates {
+			repWeightTotal = repWeightTotal.Add(rep.CalcTotal())
+		}
+		repWeightTotalBig := big.NewInt(repWeightTotal.Int64())
+
+		// calc total reward of all blocks in period
+		var i uint64
+		for i = 0; i < common.DPosOnlinePeriod; i++ {
+			rspMap.TotalBlockNum++
+
+			povHead, err := api.ledger.GetPovHeaderByHeight(height - i)
+			if err != nil {
+				api.logger.Warnf("failed to get pov header %d, err %s", height-i, err)
+				break
 			}
-			repWeightTotalBig := big.NewInt(repWeightTotal.Int64())
+			repRewardAllBig := povHead.GetRepReward()
 
-			// calc total reward of all blocks in period
-			var i uint64
-			for i = 0; i < common.DPosOnlinePeriod; i++ {
-				povHead, err := api.ledger.GetPovHeaderByHeight(height - i)
-				if err != nil {
-					api.logger.Warnf("failed to get pov header %d, err %s", height-i, err)
-					break
+			// divide reward to each rep
+			for _, rep := range repStates {
+				if len(checkAddrMap) > 0 && !checkAddrMap[rep.Account] {
+					continue
 				}
-				repRewardAllBig := povHead.GetRepReward()
 
-				// divide reward to each rep
-				for _, rep := range repStates {
-					if len(checkAddrMap) > 0 && !checkAddrMap[rep.Account] {
-						continue
-					}
+				// repReward = totalReward / repWeight * totalWeight
+				repRewardBig := big.NewInt(rep.CalcTotal().Int64())
+				repRewardBig = repRewardBig.Mul(repRewardBig, repRewardAllBig.Int)
+				amountBig := repRewardBig.Div(repRewardBig, repWeightTotalBig)
+				amount := types.NewBalance(amountBig.Int64())
 
-					// repReward = totalReward / repWeight * totalWeight
-					repRewardBig := big.NewInt(rep.CalcTotal().Int64())
-					repRewardBig = repRewardBig.Mul(repRewardBig, repRewardAllBig.Int)
-					amountBig := repRewardBig.Div(repRewardBig, repWeightTotalBig)
-					amount := types.NewBalance(amountBig.Int64())
-
-					repStat, ok := rspMap[rep.Account]
-					if !ok {
-						rspMap[rep.Account] = new(PovRepStats)
-						rspMap[rep.Account].MainRewardAmount = types.NewBalance(0)
-						rspMap[rep.Account].StableRewardAmount = types.NewBalance(0)
-						repStat = rspMap[rep.Account]
-					}
-
-					repStat.MainBlockNum++
-					repStat.MainRewardAmount = repStat.MainRewardAmount.Add(amount)
+				repStat, ok := rspMap.RepStats[rep.Account]
+				if !ok {
+					rspMap.RepStats[rep.Account] = new(PovRepStatItem)
+					rspMap.RepStats[rep.Account].MainRewardAmount = types.NewBalance(0)
+					rspMap.RepStats[rep.Account].StableRewardAmount = types.NewBalance(0)
+					repStat = rspMap.RepStats[rep.Account]
 				}
+
+				repStat.MainBlockNum++
+				repStat.MainRewardAmount = repStat.MainRewardAmount.Add(amount)
+			}
+		}
+	}
+
+	lastHeader, err := api.ledger.GetPovHeaderByHeight(height - common.DPosOnlinePeriod)
+	if err != nil {
+		return nil, fmt.Errorf("get pov header[%d] err", height)
+	}
+
+	ols, err := api.ledger.GetOnlineRepresentations()
+	if err != nil {
+		return nil, fmt.Errorf("get online reps err")
+	}
+
+	rspMap.TotalPeriod = rspMap.TotalBlockNum / uint32(common.DPosOnlinePeriod)
+	for acc, r := range rspMap.RepStats {
+		rspMap.RepCount++
+		rspMap.TotalRewardAmount = rspMap.TotalRewardAmount.Add(r.MainRewardAmount)
+		r.MainOnlinePeriod = r.MainBlockNum / uint32(common.DPosOnlinePeriod)
+		r.StableOnlinePeriod = r.StableBlockNum / uint32(common.DPosOnlinePeriod)
+
+		rs := api.GetRepStatesByHeightAndAccount(lastHeader, acc)
+		if rs != nil {
+			r.LastOnlineHeight = rs.Height / common.DPosOnlinePeriod * common.DPosOnlinePeriod
+
+			pb, err := api.ledger.GetPovHeaderByHeight(r.LastOnlineHeight)
+			if err != nil {
+				return nil, fmt.Errorf("get pov header[%d] err", r.LastOnlineHeight)
+			}
+
+			r.LastOnlineTime = time.Unix(int64(pb.GetTimestamp()), 0)
+		}
+
+		for _, ac := range ols {
+			if ac == acc {
+				r.IsOnline = true
+				break
 			}
 		}
 	}
@@ -1444,7 +1507,7 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 			continue
 		}
 
-		if rs.CalcTotal().Compare(minVoteWeight) != types.BalanceCompBigger {
+		if rs.CalcTotal().Compare(minVoteWeight) == types.BalanceCompSmaller {
 			continue
 		}
 
@@ -1452,6 +1515,40 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 	}
 
 	return allRss
+}
+
+func (api *PovApi) GetRepStatesByHeightAndAccount(header *types.PovHeader, acc types.Address) *types.PovRepState {
+	stateHash := header.GetStateHash()
+	stateTrie := trie.NewTrie(api.ledger.DBStore(), &stateHash, nil)
+	if stateTrie == nil {
+		return nil
+	}
+
+	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	it := stateTrie.NewIterator(repPrefix)
+	if it == nil {
+		return nil
+	}
+
+	key, valBytes, ok := it.Next()
+	for ; ok; key, valBytes, ok = it.Next() {
+		if len(valBytes) == 0 {
+			continue
+		}
+
+		rs := types.NewPovRepState()
+		err := rs.Deserialize(valBytes)
+		if err != nil {
+			api.logger.Errorf("deserialize old rep state, key %s err %s", hex.EncodeToString(key), err)
+			return nil
+		}
+
+		if rs.Account == acc {
+			return rs
+		}
+	}
+
+	return nil
 }
 
 func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {

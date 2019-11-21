@@ -343,7 +343,7 @@ func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types
 			continue
 		}
 
-		if rs.CalcTotal().Compare(minVoteWeight) != types.BalanceCompBigger {
+		if rs.CalcTotal().Compare(minVoteWeight) == types.BalanceCompSmaller {
 			continue
 		}
 
