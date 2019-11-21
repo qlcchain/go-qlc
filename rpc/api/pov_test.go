@@ -21,7 +21,7 @@ type mockDataTestPovApi struct {
 	cfg *config.Config
 	eb  event.EventBus
 	l   *ledger.Ledger
-	api *PovApi
+	api *PovAPI
 }
 
 func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {

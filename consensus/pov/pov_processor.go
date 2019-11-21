@@ -232,10 +232,7 @@ func (bp *PovBlockProcessor) onPovSyncState(state topic.SyncState) {
 
 func (bp *PovBlockProcessor) isPovSyncDone() bool {
 	s := bp.syncState.Load().(topic.SyncState)
-	if s.IsSyncExited() {
-		return true
-	}
-	return false
+	return s.IsSyncExited()
 }
 
 func (bp *PovBlockProcessor) checkAndSetBlockInChan(block *types.PovBlock) bool {

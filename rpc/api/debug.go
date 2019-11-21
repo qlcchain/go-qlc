@@ -332,7 +332,7 @@ func (l *DebugApi) PendingsCount() (int, error) {
 
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	repOnline := make(map[uint64]*dpos.RepOnlinePeriod, 0)
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRpcSyncCallMsg{Name: "DPoS.Online", In: "info", Out: repOnline})
+	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "DPoS.Online", In: "info", Out: repOnline})
 	return repOnline, nil
 }
 
@@ -340,7 +340,7 @@ func (l *DebugApi) GetPovInfo() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRpcSyncCallMsg{Name: "Debug.PovInfo", In: inArgs, Out: outArgs})
+	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Debug.PovInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -409,7 +409,7 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRpcSyncCallMsg{Name: "Debug.ConsInfo", In: inArgs, Out: outArgs})
+	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Debug.ConsInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {

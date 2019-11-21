@@ -61,7 +61,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "pledge",
 			Version:   "1.0",
-			Service:   api.NewNEP5PledgeApi(r.ledger),
+			Service:   api.NewNEP5PledgeAPI(r.ledger),
 			Public:    true,
 		}
 	case "sms":

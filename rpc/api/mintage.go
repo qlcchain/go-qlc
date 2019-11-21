@@ -24,7 +24,7 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type MintageApi struct {
+type MintageAPI struct {
 	logger   *zap.SugaredLogger
 	l        *ledger.Ledger
 	mintage  *contract.Mintage
@@ -32,8 +32,8 @@ type MintageApi struct {
 	cc       *chainctx.ChainContext
 }
 
-func NewMintageApi(l *ledger.Ledger) *MintageApi {
-	api := &MintageApi{
+func NewMintageApi(l *ledger.Ledger) *MintageAPI {
+	api := &MintageAPI{
 		l:        l,
 		mintage:  &contract.Mintage{},
 		withdraw: &contract.WithdrawMintage{},
@@ -53,7 +53,7 @@ type MintageParams struct {
 	NEP5TxId    string        `json:"nep5TxId"`
 }
 
-func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
+func (m *MintageAPI) GetMintageData(param *MintageParams) ([]byte, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -65,7 +65,7 @@ func (m *MintageApi) GetMintageData(param *MintageParams) ([]byte, error) {
 	return cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals)
 }
 
-func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, error) {
+func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -124,7 +124,7 @@ func (m *MintageApi) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	return send, nil
 }
 
-func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+func (m *MintageAPI) GetRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	if input == nil {
 		return nil, ErrParameterNil
 	}
@@ -156,7 +156,7 @@ func (m *MintageApi) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 	return nil, errors.New("can not generate mintage reward block")
 }
 
-func (m *MintageApi) GetWithdrawMintageData(tokenId types.Hash) ([]byte, error) {
+func (m *MintageAPI) GetWithdrawMintageData(tokenId types.Hash) ([]byte, error) {
 	return cabi.MintageABI.PackMethod(cabi.MethodNameMintageWithdraw, tokenId)
 }
 
@@ -165,7 +165,7 @@ type WithdrawParams struct {
 	TokenId  types.Hash    `json:"tokenId"`
 }
 
-func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.StateBlock, error) {
+func (m *MintageAPI) GetWithdrawMintageBlock(param *WithdrawParams) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -209,7 +209,7 @@ func (m *MintageApi) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 	return send, nil
 }
 
-func (m *MintageApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+func (m *MintageAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	if input == nil {
 		return nil, ErrParameterNil
 	}

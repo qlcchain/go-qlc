@@ -143,7 +143,7 @@ func (eb *DefaultEventBus) Unsubscribe(topic topic.TopicType, handler interface{
 
 // Publish executes callback defined for a topic. Any additional argument will be transferred to the callback.
 func (eb *DefaultEventBus) Publish(topic topic.TopicType, args ...interface{}) {
-	rArgs := eb.setUpPublish(topic, args...)
+	rArgs := eb.setUpPublish(args...)
 	for kv := range eb.handlers.Iter() {
 		topicPattern := kv.Key.(string)
 		handlers := kv.Value.(*eventHandlers)
@@ -182,7 +182,7 @@ func (eb *DefaultEventBus) Publish(topic topic.TopicType, args ...interface{}) {
 	}
 }
 
-func (eb *DefaultEventBus) setUpPublish(topic topic.TopicType, args ...interface{}) []reflect.Value {
+func (eb *DefaultEventBus) setUpPublish(args ...interface{}) []reflect.Value {
 	passedArguments := make([]reflect.Value, 0)
 	for _, arg := range args {
 		passedArguments = append(passedArguments, reflect.ValueOf(arg))

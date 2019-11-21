@@ -35,7 +35,7 @@ type NEP5PledgeApi struct {
 	cc       *chainctx.ChainContext
 }
 
-func NewNEP5PledgeApi(l *ledger.Ledger) *NEP5PledgeApi {
+func NewNEP5PledgeAPI(l *ledger.Ledger) *NEP5PledgeApi {
 	api := &NEP5PledgeApi{
 		l:        l,
 		pledge:   &contract.Nep5Pledge{},

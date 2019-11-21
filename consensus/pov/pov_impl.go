@@ -210,7 +210,7 @@ func (pov *PoVEngine) setEvent() error {
 			if err := pov.onRecvPovBlock(msg.Block, msg.From, msg.MsgPeer); err != nil {
 				pov.logger.Error(err)
 			}
-		case *topic.EventRpcSyncCallMsg:
+		case *topic.EventRPCSyncCallMsg:
 			pov.onEventRPCSyncCall(msg.Name, msg.In, msg.Out)
 		}
 	}), pov.eb)

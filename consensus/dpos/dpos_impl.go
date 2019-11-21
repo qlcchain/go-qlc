@@ -215,7 +215,7 @@ func (dps *DPoS) Init() {
 			dps.onRollback(msg)
 		case *types.PovBlock:
 			dps.onPovHeightChange(msg)
-		case *topic.EventRpcSyncCallMsg:
+		case *topic.EventRPCSyncCallMsg:
 			dps.onRpcSyncCall(msg.Name, msg.In, msg.Out)
 		case types.StateBlockList:
 			dps.onGetFrontier(msg)
@@ -226,7 +226,7 @@ func (dps *DPoS) Init() {
 		}
 	}), dps.eb)
 
-	if err := subscriber.SubscribeSync(topic.EventRollback, topic.EventPovConnectBestBlock, topic.EventRpcSyncCall,
+	if err := subscriber.Subscribe(topic.EventRollback, topic.EventPovConnectBestBlock, topic.EventRpcSyncCall,
 		topic.EventFrontierConsensus, topic.EventFrontierConfirmed, topic.EventSyncStateChange); err != nil {
 		dps.logger.Errorf("failed to subscribe event %s", err)
 	} else {
@@ -236,7 +236,7 @@ func (dps *DPoS) Init() {
 	if dps.cfg.PoV.PovEnabled {
 		dps.povSyncState = topic.SyncNotStart
 
-		if err := subscriber.SubscribeSyncOne(topic.EventPovSyncState, event.Spawn(func(c actor.Context) {
+		if err := subscriber.SubscribeOne(topic.EventPovSyncState, event.Spawn(func(c actor.Context) {
 			switch msg := c.Message().(type) {
 			case topic.SyncState:
 				dps.onPovSyncState(msg)
@@ -440,7 +440,7 @@ func (dps *DPoS) processSyncDone() {
 				p.syncStateChange <- topic.SyncFinish
 			}
 			dps.syncStateNotifyWait.Wait()
-			dps.blockSyncState = common.SyncFinish
+			dps.blockSyncState = topic.SyncFinish
 
 			dps.eb.Publish(topic.EventConsensusSyncFinished, struct{}{})
 			dps.logger.Warn("sync finished")

@@ -78,7 +78,7 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-	ns.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+	ns.subscriber = event.NewActorSubscriber(event.SpawnWithPool(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *EventBroadcastMsg:
 			ns.Broadcast(msg.Type, msg.Message)
@@ -86,8 +86,7 @@ func (ns *QlcService) setEvent() error {
 			if err := ns.SendMessageToPeer(msg.Type, msg.Message, msg.PeerID); err != nil {
 				ns.node.logger.Error(err)
 			}
-		case map[string]string:
-			// TODO: sync??
+		case map[string]string: // topic.EventPeersInfo
 			ns.node.streamManager.GetAllConnectPeersInfo(msg)
 		case *EventFrontiersReqMsg:
 			ns.msgService.syncService.requestFrontiersFromPov(msg.PeerID)
@@ -103,15 +102,12 @@ func (ns *QlcService) setEvent() error {
 	}), ns.msgEvent)
 
 	if err := ns.subscriber.Subscribe(topic.EventBroadcast, topic.EventSendMsgToSingle, topic.EventPeersInfo,
-		topic.EventRepresentativeNode); err != nil {
-		ns.node.logger.Error(err)
-		return err
-	}
-	if err := ns.subscriber.SubscribeSync(topic.EventPeersInfo, topic.EventGetBandwidthStats,
+		topic.EventRepresentativeNode, topic.EventPeersInfo, topic.EventGetBandwidthStats,
 		topic.EventConsensusSyncFinished, topic.EventSyncStatus); err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
+
 	return nil
 }
 

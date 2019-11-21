@@ -3,6 +3,7 @@ package pov
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -230,15 +231,18 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	}
 
 	var rsp *protos.PovBulkPullRsp
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *p2p.EventSendMsgToSingleMsg:
 			if msg.Type == p2p.PovBulkPullRsp {
 				rsp = msg.Message.(*protos.PovBulkPullRsp)
+				wg.Done()
 			}
 		}
 	}), md.eb)
-	_ = subscriber.SubscribeSync(topic.EventSendMsgToSingle)
+	_ = subscriber.Subscribe(topic.EventSendMsgToSingle)
 
 	req1 := new(protos.PovBulkPullReq)
 	req1.PullType = protos.PovPullTypeForward
@@ -246,7 +250,7 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	req1.Locators = append(req1.Locators, &genHash)
 	req1.Count = 1
 	povSync.onPovBulkPullReq(req1, bestPeer.peerID)
-	time.Sleep(time.Second)
+	wg.Wait()
 
 	if rsp == nil {
 		t.Fatalf("failed to get Message 1 msg")
@@ -309,19 +313,22 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	peer1Status.CurrentTD = td4.Chain.Bytes()
 	povSync.onPovStatus(peer1Status, peerID1)
 
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	var req *protos.PovBulkPullReq
-
-	subscriber := event.NewActorSubscriber(nil, md.eb)
-	_ = subscriber.SubscribeSyncOne(topic.EventSendMsgToSingle, event.Spawn(func(c actor.Context) {
+	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *p2p.EventSendMsgToSingleMsg:
 			if msg.Type == p2p.PovBulkPullReq {
 				req = msg.Message.(*protos.PovBulkPullReq)
+				wg.Done()
 			}
 		}
-	}))
+	}), md.eb).WithTimeout(20 * time.Second)
+	_ = subscriber.Subscribe(topic.EventSendMsgToSingle)
 
 	povSync.onPeriodicSyncTimer()
+	wg.Wait()
 
 	if req == nil {
 		t.Fatalf("failed to get PovBulkPullReq 1 msg")
@@ -336,11 +343,13 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 		t.Fatalf("failed to get PovBulkPullReq 1 Locators")
 	}
 
+	wg.Add(1)
 	var syncBlocks []*types.PovBlock
-	_ = subscriber.SubscribeSyncOne(topic.EventPovRecvBlock, event.Spawn(func(c actor.Context) {
+	_ = subscriber.SubscribeOne(topic.EventPovRecvBlock, event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *topic.EventPovRecvBlockMsg:
 			syncBlocks = append(syncBlocks, msg.Block)
+			wg.Done()
 		}
 	}))
 
@@ -349,8 +358,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	rsp.Blocks = append(rsp.Blocks, blk1, blk2, blk3, blk4)
 	rsp.Count = uint32(len(rsp.Blocks))
 	povSync.onPovBulkPullRsp(rsp, peerID1)
-
-	time.Sleep(time.Second)
+	wg.Done()
 	povSync.onCheckChainTimer()
 
 	md.chain.InsertBlock(blk1, td1)
@@ -363,6 +371,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 
 	_ = subscriber.UnsubscribeAll()
 	povSync.Stop()
+	_ = md.eb.Close()
 }
 
 func TestPovSync_SimpleTest1(t *testing.T) {

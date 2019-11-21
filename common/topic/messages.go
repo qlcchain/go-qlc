@@ -15,7 +15,7 @@ type EventPovRecvBlockMsg struct {
 	MsgPeer string
 }
 
-type EventRpcSyncCallMsg struct {
+type EventRPCSyncCallMsg struct {
 	Name string
 	In   interface{}
 	Out  interface{}

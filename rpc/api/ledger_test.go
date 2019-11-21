@@ -22,7 +22,7 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 )
 
-func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerApi) {
+func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerAPI) {
 	t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())

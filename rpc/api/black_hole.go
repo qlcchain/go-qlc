@@ -24,15 +24,15 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type BlackHoleApi struct {
+type BlackHoleAPI struct {
 	logger            *zap.SugaredLogger
 	l                 *ledger.Ledger
 	blackHoleContract *contract.BlackHole
 	cc                *context.ChainContext
 }
 
-func NewBlackHoleApi(l *ledger.Ledger, cc *context.ChainContext) *BlackHoleApi {
-	api := &BlackHoleApi{
+func NewBlackHoleApi(l *ledger.Ledger, cc *context.ChainContext) *BlackHoleAPI {
+	api := &BlackHoleAPI{
 		logger:            log.NewLogger("rpc/black_hole"),
 		l:                 l,
 		blackHoleContract: &contract.BlackHole{},
@@ -41,7 +41,7 @@ func NewBlackHoleApi(l *ledger.Ledger, cc *context.ChainContext) *BlackHoleApi {
 	return api
 }
 
-func (b *BlackHoleApi) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
+func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
 	if b.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}
@@ -63,7 +63,7 @@ func (b *BlackHoleApi) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock
 	return stateBlock, nil
 }
 
-func (b *BlackHoleApi) GetRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+func (b *BlackHoleAPI) GetRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
 	if send == nil {
 		return nil, ErrParameterNil
 	}
@@ -96,7 +96,7 @@ func (b *BlackHoleApi) GetRewardsBlock(send *types.Hash) (*types.StateBlock, err
 	}
 }
 
-func (b *BlackHoleApi) GetTotalDestroyInfo(addr *types.Address) (types.Balance, error) {
+func (b *BlackHoleAPI) GetTotalDestroyInfo(addr *types.Address) (types.Balance, error) {
 	if addr == nil || addr.IsZero() {
 		return types.ZeroBalance, ErrParameterNil
 	}
@@ -105,7 +105,7 @@ func (b *BlackHoleApi) GetTotalDestroyInfo(addr *types.Address) (types.Balance, 
 	return cabi.GetTotalDestroyInfo(vmContext, addr)
 }
 
-func (b *BlackHoleApi) GetDestroyInfoDetail(addr *types.Address) ([]*cabi.DestroyInfo, error) {
+func (b *BlackHoleAPI) GetDestroyInfoDetail(addr *types.Address) ([]*cabi.DestroyInfo, error) {
 	if addr == nil || addr.IsZero() {
 		return nil, ErrParameterNil
 	}

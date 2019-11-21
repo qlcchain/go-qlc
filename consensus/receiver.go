@@ -43,7 +43,7 @@ func (r *Receiver) start() error {
 		}
 	}), r.eb)
 
-	if err := r.subscriber.SubscribeSync(topic.EventPublish, topic.EventConfirmReq, topic.EventConfirmAck, topic.EventSyncBlock,
+	if err := r.subscriber.Subscribe(topic.EventPublish, topic.EventConfirmReq, topic.EventConfirmAck, topic.EventSyncBlock,
 		topic.EventGenerateBlock); err != nil {
 		return err
 	}

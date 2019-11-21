@@ -77,7 +77,7 @@ func (w *PovWorker) Init() error {
 func (w *PovWorker) Start() error {
 	w.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
-		case *topic.EventRpcSyncCallMsg:
+		case *topic.EventRPCSyncCallMsg:
 			w.OnEventRpcSyncCall(msg.Name, msg.In, msg.Out)
 		}
 	}), w.miner.eb)

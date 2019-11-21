@@ -83,7 +83,7 @@ func NewChainContext(cfgFile string) *ChainContext {
 		sr := &ChainContext{
 			services: newServiceContainer(),
 			cfgFile:  cfgFile,
-			chainId:  id,
+			chainID:  id,
 		}
 		sr.syncState.Store(topic.SyncNotStart)
 		cache.Set(id, sr)
@@ -108,7 +108,7 @@ type ChainContext struct {
 	services   *serviceContainer
 	cm         *config.CfgManager
 	cfgFile    string
-	chainId    string
+	chainID    string
 	locker     sync.RWMutex
 	accounts   []*types.Account
 	syncState  atomic.Value
@@ -224,7 +224,7 @@ func (cc *ChainContext) Accounts() []*types.Account {
 }
 
 func (cc *ChainContext) Id() string {
-	return cc.chainId
+	return cc.chainID
 }
 
 func (cc *ChainContext) Register(name string, service common.Service) error {

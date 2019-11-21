@@ -40,7 +40,7 @@ type PovTxEntry struct {
 type PovTxPool struct {
 	logger      *zap.SugaredLogger
 	eb          event.EventBus
-	subscribers []*event.ActorSubscriber
+	subscriber  *event.ActorSubscriber
 	ledger      ledger.Store
 	chain       PovTxChainReader
 	txMu        sync.RWMutex
@@ -83,7 +83,11 @@ func (tp *PovTxPool) Init() error {
 }
 
 func (tp *PovTxPool) Start() error {
-	pid := event.Spawn(func(c actor.Context) {
+	eb := tp.eb
+	if eb == nil {
+		eb = tp.ledger.EventBus()
+	}
+	tp.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *types.Tuple:
 			tp.onAddSyncStateBlock(msg.First.(*types.StateBlock), msg.Second.(bool))
@@ -92,27 +96,11 @@ func (tp *PovTxPool) Start() error {
 		case topic.SyncState:
 			tp.onPovSyncState(msg)
 		}
-	})
+	}), eb)
 
-	if tp.ledger != nil {
-		ebL := tp.ledger.EventBus()
-
-		sub := event.NewActorSubscriber(pid, ebL)
-		if err := sub.SubscribeSync(topic.EventAddRelation,
-			topic.EventAddSyncBlocks, topic.EventPovSyncState); err != nil {
-			return err
-		} else {
-			tp.subscribers = append(tp.subscribers, sub)
-		}
-	}
-
-	if tp.eb != nil {
-		sub2 := event.NewActorSubscriber(pid, tp.eb)
-		if err := sub2.SubscribeSync(topic.EventPovSyncState); err != nil {
-			return err
-		} else {
-			tp.subscribers = append(tp.subscribers, sub2)
-		}
+	if err := tp.subscriber.Subscribe(topic.EventAddRelation,
+		topic.EventAddSyncBlocks, topic.EventPovSyncState); err != nil {
+		return err
 	}
 
 	tp.chain.RegisterListener(tp)
@@ -124,12 +112,8 @@ func (tp *PovTxPool) Start() error {
 
 func (tp *PovTxPool) Stop() {
 	tp.chain.UnRegisterListener(tp)
-	if len(tp.subscribers) > 0 {
-		for i := range tp.subscribers {
-			if err := tp.subscribers[i].UnsubscribeAll(); err != nil {
-				tp.logger.Error(err)
-			}
-		}
+	if err := tp.subscriber.UnsubscribeAll(); err != nil {
+		tp.logger.Error(err)
 	}
 
 	close(tp.quitCh)
@@ -194,10 +178,7 @@ func (tp *PovTxPool) onPovSyncState(state topic.SyncState) {
 }
 
 func (tp *PovTxPool) isPovSyncDone() bool {
-	if tp.syncState.Load().(topic.SyncState) == topic.SyncDone {
-		return true
-	}
-	return false
+	return tp.syncState.Load().(topic.SyncState) == topic.SyncDone
 }
 
 func (tp *PovTxPool) isTxExceedLimit() bool {

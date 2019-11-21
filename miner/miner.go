@@ -58,7 +58,7 @@ func (miner *Miner) Start() error {
 		}
 	}), miner.eb)
 
-	if err := miner.subscriber.SubscribeSync(topic.EventPovSyncState); err != nil {
+	if err := miner.subscriber.Subscribe(topic.EventPovSyncState); err != nil {
 		return err
 	}
 

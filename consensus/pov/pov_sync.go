@@ -115,7 +115,7 @@ func (ss *PovSyncer) Start() error {
 			}
 		}), eb)
 
-		if err := ss.subscriber.SubscribeSync(topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventPovPeerStatus,
+		if err := ss.subscriber.Subscribe(topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventPovPeerStatus,
 			topic.EventPovBulkPullReq, topic.EventPovBulkPullRsp); err != nil {
 			ss.logger.Error(err)
 			return err
