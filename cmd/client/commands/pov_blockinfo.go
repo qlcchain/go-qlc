@@ -103,6 +103,7 @@ func runPovBlockInfoCmd(height int, hash string, txOffset, txCount int) error {
 	fmt.Printf("AlgoName:       %s\n", rspInfo.AlgoName)
 	fmt.Printf("AlgoEfficiency: %d\n", rspInfo.AlgoEfficiency)
 	fmt.Printf("AlgoDifficulty: %s\n", formatPovDifficulty(rspInfo.AlgoDifficulty))
+	fmt.Printf("NormBits:       %d(0x%x)\n", rspInfo.NormBits, rspInfo.NormBits)
 	fmt.Printf("NormDifficulty: %s\n", formatPovDifficulty(rspInfo.NormDifficulty))
 
 	fmt.Printf("\n")
