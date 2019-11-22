@@ -40,7 +40,7 @@ func DefaultConfigV5(dir string) (*ConfigV5, error) {
 	var cfg ConfigV5
 	cfg4, _ := DefaultConfigV4(dir)
 	cfg.ConfigV4 = *cfg4
-	cfg.Version = configVersion
+	cfg.Version = 5
 	cfg.PoV.PovEnabled = true
 	cfg.Metrics = defaultMetrics()
 	cfg.Manager = &Manager{AdminToken: util.RandomFixedString(tokenLength)}

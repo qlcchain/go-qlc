@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +26,19 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	_, _ = cm.Load()
+	cfg, _ := cm.Load()
+	var mintageBlock, genesisBlock types.StateBlock
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
+		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: mintageBlock,
+			GenesisBlock:        genesisBlock,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
 
 	l := ledger.NewLedger(cm.ConfigFile)
 	rl, err := relation.NewRelation(cm.ConfigFile)

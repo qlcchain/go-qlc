@@ -1,12 +1,15 @@
 package ledger
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/google/uuid"
 
@@ -22,9 +25,20 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	cm.Load()
+	cfg, _ := cm.Load()
 	l := NewLedger(cm.ConfigFile)
-
+	var mintageBlock, genesisBlock types.StateBlock
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
+		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: mintageBlock,
+			GenesisBlock:        genesisBlock,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
 	return func(t *testing.T) {
 		//err := l.Store.Erase()
 		err := l.Close()
