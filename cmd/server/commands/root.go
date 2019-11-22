@@ -126,6 +126,7 @@ func addCommand() {
 	walletimport()
 	chainVersion()
 	removeDB()
+	purgePov()
 }
 
 func start() error {

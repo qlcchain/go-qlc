@@ -10,6 +10,8 @@ package commands
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/chain/context"
+
 	"github.com/qlcchain/go-qlc/chain"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common"
@@ -54,17 +56,35 @@ func removeDBAction() {
 		common.SetTestMode(testModeP)
 	}
 
+	var err error
+
+	chainContext := context.NewChainContext(cfgPathP)
+	cm, err := chainContext.ConfigManager()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	cfg, err := cm.Config()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	cmdutil.Info("ConfigFile", cm.ConfigFile)
+	cmdutil.Info("DataDir", cfg.DataDir)
+
 	cmdutil.Info("starting to remove database, please wait...")
-	ledgerService := chain.NewLedgerService("")
+	ledgerService := chain.NewLedgerService(cm.ConfigFile)
 	cmdutil.Info("drop all data in ledger ...")
-	err := ledgerService.Ledger.BatchUpdate(func(txn db.StoreTxn) error {
+	err = ledgerService.Ledger.BatchUpdate(func(txn db.StoreTxn) error {
 		return txn.Drop(nil)
 	})
 	if err != nil {
 		cmdutil.Warn(err)
 		return
 	}
-	sqliteService, err := chain.NewSqliteService("")
+	sqliteService, err := chain.NewSqliteService(cm.ConfigFile)
 	if sqliteService != nil {
 		cmdutil.Info("drop all data in relation ...")
 		err = sqliteService.Relation.EmptyStore()
