@@ -141,7 +141,7 @@ func purgePovAction(startHeight int) {
 
 	newLH := uint64(0)
 	if startHeight > 0 {
-		newLH = uint64(startHeight)-1
+		newLH = uint64(startHeight) - 1
 	}
 
 	cmdutil.Info("set pov latest height", newLH)
