@@ -45,8 +45,9 @@ func (l *Ledger) CleanBlockVoteHistory(hash types.Hash, txns ...db.StoreTxn) err
 	}
 
 	err = txn.PrefixIterator(k, func(key []byte, val []byte, b byte) error {
-		er := txn.Delete(key)
-		if er != nil {
+		k := make([]byte, len(key))
+		copy(k[:], key)
+		if er := txn.Delete(k); er != nil {
 			l.logger.Error(er)
 		}
 		return nil
@@ -65,8 +66,9 @@ func (l *Ledger) CleanAllVoteHistory(txns ...db.StoreTxn) error {
 	}
 
 	err = txn.PrefixIterator(k, func(key []byte, val []byte, b byte) error {
-		er := txn.Delete(key)
-		if er != nil {
+		k := make([]byte, len(key))
+		copy(k[:], key)
+		if er := txn.Delete(k); er != nil {
 			l.logger.Error(er)
 		}
 		return nil

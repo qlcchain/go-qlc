@@ -926,16 +926,18 @@ type APIRepresentative struct {
 func (l *LedgerApi) Representatives(sorting *bool) ([]*APIRepresentative, error) {
 	rs := make([]*APIRepresentative, 0)
 	err := l.ledger.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
-		r := &APIRepresentative{
-			Address: address,
-			Balance: benefit.Balance,
-			Vote:    benefit.Vote,
-			Network: benefit.Network,
-			Storage: benefit.Storage,
-			Oracle:  benefit.Oracle,
-			Total:   benefit.Total,
+		if !benefit.Total.Equal(types.ZeroBalance) {
+			r := &APIRepresentative{
+				Address: address,
+				Balance: benefit.Balance,
+				Vote:    benefit.Vote,
+				Network: benefit.Network,
+				Storage: benefit.Storage,
+				Oracle:  benefit.Oracle,
+				Total:   benefit.Total,
+			}
+			rs = append(rs, r)
 		}
-		rs = append(rs, r)
 		return nil
 	})
 	if err != nil {
