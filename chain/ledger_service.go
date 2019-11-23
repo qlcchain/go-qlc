@@ -77,6 +77,8 @@ func (ls *LedgerService) Init() error {
 	}
 	ctx := vmstore.NewVMContext(l)
 	for _, v := range common.GenesisInfos {
+		mintageBlock = v.GenesisMintageBlock
+		genesisBlock = v.GenesisBlock
 		err := ctx.SetStorage(types.MintageAddress[:], v.GenesisBlock.Token[:], v.GenesisBlock.Data)
 		if err != nil {
 			ls.logger.Error(err)
