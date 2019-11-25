@@ -19,7 +19,7 @@ func (lv *LedgerVerifier) BlockCacheCheck(block types.Block) (ProcessResult, err
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
-				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
+				lv.logger.Infof(fmt.Sprintf("check cache result:%s,(%s)", r.String(), b.GetHash().String()))
 			}
 			return r, err
 		} else {

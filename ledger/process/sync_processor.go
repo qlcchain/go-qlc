@@ -22,7 +22,7 @@ func (lv *LedgerVerifier) BlockSyncCheck(block types.Block) (ProcessResult, erro
 				lv.logger.Error(fmt.Sprintf("error:%s, sync block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
-				lv.logger.Debugf(fmt.Sprintf("process result:%s, sync block:%s", r.String(), b.GetHash().String()))
+				lv.logger.Infof(fmt.Sprintf("check sync result:%s, (%s)", r.String(), b.GetHash().String()))
 			}
 			return r, err
 		} else {

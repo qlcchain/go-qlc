@@ -60,7 +60,7 @@ func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
-				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
+				lv.logger.Infof(fmt.Sprintf("check result:%s, (%s)", r.String(), b.GetHash().String()))
 			}
 			return r, err
 		} else {
