@@ -204,7 +204,8 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 	latestPov, err := l.ledger.GetLatestPovHeader()
 
 	for _, h := range hashes {
-		block, _ := l.ledger.GetStateBlockConfirmed(h)
+		block, err := l.ledger.GetStateBlockConfirmed(h)
+		fmt.Println(err)
 		b, err := generateAPIBlock(vmContext, block, latestPov)
 		if err != nil {
 			return nil, err
