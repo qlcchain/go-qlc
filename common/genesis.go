@@ -89,7 +89,7 @@ func GasBlockHash() types.Hash {
 func IsGenesisBlock(block *types.StateBlock) bool {
 	hash := block.GetHash()
 	for _, v := range GenesisInfos {
-		if hash.String() == v.GenesisBlock.GetHash().String() {
+		if hash.Cmp(v.GenesisBlock.GetHash()) == 0 || hash.Cmp(v.GenesisMintageBlock.GetHash()) == 0 {
 			return true
 		}
 	}
@@ -99,7 +99,7 @@ func IsGenesisBlock(block *types.StateBlock) bool {
 // IsGenesis check token is chain token genesis
 func IsGenesisToken(hash types.Hash) bool {
 	for _, v := range GenesisInfos {
-		if hash.String() == v.GenesisMintageBlock.Token.String() {
+		if hash.Cmp(v.GenesisMintageBlock.Token) == 0 {
 			return true
 		}
 	}
