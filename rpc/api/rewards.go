@@ -123,7 +123,7 @@ func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signatu
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
-	if r.cc.IsPoVDone() {
+	if !r.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -148,7 +148,7 @@ func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Sign
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
-	if r.cc.IsPoVDone() {
+	if !r.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -252,7 +252,7 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 	if send == nil {
 		return nil, ErrParameterNil
 	}
-	if r.cc.IsPoVDone() {
+	if !r.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 

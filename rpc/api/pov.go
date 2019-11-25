@@ -236,7 +236,7 @@ func (api *PovAPI) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 		return nil, errors.New("pov service is disabled")
 	}
 
-	if api.cc.IsPoVDone() {
+	if !api.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -1196,7 +1196,7 @@ func (api *PovAPI) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	if !api.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
-	if api.cc.IsPoVDone() {
+	if !api.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -1239,7 +1239,7 @@ func (api *PovAPI) SubmitWork(work *PovApiSubmitWork) error {
 		return errors.New("pov service is disabled")
 	}
 
-	if api.cc.IsPoVDone() {
+	if !api.cc.IsPoVDone() {
 		return chainctx.ErrPoVNotFinish
 	}
 

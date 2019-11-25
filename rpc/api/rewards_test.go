@@ -38,6 +38,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *context.C
 	cm := cfg.NewCfgManager(dir)
 	cm.Load()
 	cc := context.NewChainContext(cm.ConfigFile)
+	cc.Init(func() error {
+		return nil
+	})
 	l := ledger.NewLedger(cm.ConfigFile)
 	addPovHeader(l)
 

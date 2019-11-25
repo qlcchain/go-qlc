@@ -82,7 +82,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
-	if p.cc.IsPoVDone() {
+	if !p.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -136,7 +136,7 @@ func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 	if input == nil {
 		return nil, ErrParameterNil
 	}
-	if p.cc.IsPoVDone() {
+	if !p.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -205,7 +205,7 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 	if param.Beneficial.IsZero() || param.Amount.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
 	}
-	if p.cc.IsPoVDone() {
+	if !p.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -271,7 +271,7 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 	if input == nil {
 		return nil, ErrParameterNil
 	}
-	if p.cc.IsPoVDone() {
+	if !p.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 

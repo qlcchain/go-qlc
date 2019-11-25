@@ -10,10 +10,10 @@ package event
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/log"
 	"sort"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor/middleware"
 	"github.com/AsynkronIT/protoactor-go/router"
 
 	ct "github.com/qlcchain/go-qlc/common/topic"
@@ -23,24 +23,20 @@ import (
 )
 
 const (
-	maxConcurrency = 10
-	maxTimeout     = 30 * time.Second
+	defaultQueueSize   = 100
+	defaultHandlerSize = 1024
+	maxConcurrency     = 10
 )
 
 type ActorEventBus struct {
 	subscribers *hashmap.HashMap
 	queueSize   int
-	ctx         *actor.RootContext
+	Context     *actor.RootContext
 }
 
 type subscriberOption struct {
-	subscriber *actor.PID
-	isSync     bool
-	timeout    time.Duration
-}
-
-func (eb *ActorEventBus) SubscribeSync(topic ct.TopicType, fn interface{}) error {
-	return eb.doSubscribe(topic, fn, true, maxTimeout)
+	Subscriber *actor.PID
+	index      int
 }
 
 func NewActorEventBus() EventBus {
@@ -60,19 +56,15 @@ func NewActorEventBus() EventBus {
 	return &ActorEventBus{
 		subscribers: hashmap.New(defaultHandlerSize),
 		queueSize:   defaultQueueSize,
-		ctx:         rootContext,
+		Context:     rootContext,
 	}
 }
 
-func (eb *ActorEventBus) SubscribeSyncTimeout(topic ct.TopicType, fn interface{}, timeout time.Duration) error {
-	return eb.doSubscribe(topic, fn, true, timeout)
-}
-
 func (eb *ActorEventBus) Subscribe(topic ct.TopicType, fn interface{}) error {
-	return eb.doSubscribe(topic, fn, false, 0)
+	return eb.doSubscribe(topic, fn)
 }
 
-func (eb *ActorEventBus) doSubscribe(topic ct.TopicType, subscriber interface{}, isSync bool, timeout time.Duration) error {
+func (eb *ActorEventBus) doSubscribe(topic ct.TopicType, subscriber interface{}) error {
 	t := string(topic)
 	s, ok := subscriber.(*actor.PID)
 	if !ok {
@@ -80,31 +72,23 @@ func (eb *ActorEventBus) doSubscribe(topic ct.TopicType, subscriber interface{},
 	}
 
 	if value, ok := eb.subscribers.GetStringKey(t); ok {
-		list := append(value.([]*subscriberOption), &subscriberOption{
-			subscriber: s,
-			isSync:     isSync,
-			timeout:    timeout,
+		opts := value.([]*subscriberOption)
+		list := append(opts, &subscriberOption{
+			Subscriber: s,
+			index:      len(opts),
 		})
 		sort.Slice(list, func(i, j int) bool {
-			return bool2Int(list[i].isSync) > bool2Int(list[j].isSync)
+			return list[i].index < list[j].index
 		})
 		eb.subscribers.Set(t, list)
 	} else {
 		eb.subscribers.Set(t, []*subscriberOption{{
-			subscriber: s,
-			isSync:     isSync,
-			timeout:    timeout,
+			Subscriber: s,
+			index:      0,
 		}})
 	}
 
 	return nil
-}
-
-func bool2Int(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 func (eb *ActorEventBus) Unsubscribe(topic ct.TopicType, subscriber interface{}) error {
@@ -117,7 +101,7 @@ func (eb *ActorEventBus) Unsubscribe(topic ct.TopicType, subscriber interface{})
 	if value, ok := eb.subscribers.GetStringKey(t); ok {
 		subscribers := value.([]*subscriberOption)
 		for i := range subscribers {
-			if subscribers[i].subscriber == s {
+			if subscribers[i].Subscriber == s {
 				eb.subscribers.Set(t, append(subscribers[0:i], subscribers[i+1:]...))
 			}
 		}
@@ -128,21 +112,32 @@ func (eb *ActorEventBus) Unsubscribe(topic ct.TopicType, subscriber interface{})
 	return fmt.Errorf("topic %s doesn't exist", t)
 }
 
-func (eb *ActorEventBus) Publish(topic ct.TopicType, args ...interface{}) {
+func (eb *ActorEventBus) Publish(topic ct.TopicType, msg interface{}) {
+	eb.Subscribers(topic, func(subscriber *actor.PID) {
+		eb.Context.Send(subscriber, msg)
+	})
+}
+
+func (eb *ActorEventBus) PublishFrom(topic ct.TopicType, msg interface{}, publisher interface{}) error {
+	p, ok := publisher.(*actor.PID)
+	if !ok {
+		return errors.New("invalid publisher")
+	}
+	eb.Subscribers(topic, func(subscriber *actor.PID) {
+		eb.Context.RequestWithCustomSender(subscriber, msg, p)
+	})
+
+	return nil
+}
+
+func (eb *ActorEventBus) Subscribers(topic ct.TopicType, callback func(subscriber *actor.PID)) {
 	t := string(topic)
-	msg := args[0]
 	for kv := range eb.subscribers.Iter() {
 		topicPattern := kv.Key.(string)
 		options := kv.Value.([]*subscriberOption)
 		if len(options) > 0 && MatchSimple(topicPattern, t) {
 			for _, subscriber := range options {
-				if subscriber.isSync {
-					if err := eb.ctx.RequestFuture(subscriber.subscriber, msg, subscriber.timeout).Wait(); err != nil {
-						log.Root.Warn(err)
-					}
-				} else {
-					eb.ctx.Send(subscriber.subscriber, msg)
-				}
+				callback(subscriber.Subscriber)
 			}
 		}
 	}
@@ -162,7 +157,7 @@ func (eb *ActorEventBus) CloseTopic(topic ct.TopicType) error {
 		var errs []error
 		subscribers := value.([]*subscriberOption)
 		for i := range subscribers {
-			if err := eb.ctx.PoisonFuture(subscribers[i].subscriber).Wait(); err != nil {
+			if err := eb.Context.PoisonFuture(subscribers[i].Subscriber).Wait(); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -187,15 +182,10 @@ func (eb *ActorEventBus) Close() error {
 	return nil
 }
 
-var (
-	errNilSubscriber = errors.New("default subscriber is Nil")
-)
-
 type ActorSubscriber struct {
 	Bus         EventBus
 	subscribers []*subscriberContainer
 	subscriber  *actor.PID
-	timeout     time.Duration
 }
 
 type subscriberContainer struct {
@@ -227,18 +217,12 @@ func NewActorSubscriber(subscriber *actor.PID, bus ...EventBus) *ActorSubscriber
 		Bus:         b,
 		subscriber:  subscriber,
 		subscribers: make([]*subscriberContainer, 0),
-		timeout:     maxTimeout,
 	}
 }
 
 // WithSubscribe set default handler
 func (s *ActorSubscriber) WithSubscribe(subscriber *actor.PID) *ActorSubscriber {
 	s.subscriber = subscriber
-	return s
-}
-
-func (s *ActorSubscriber) WithTimeout(timeout time.Duration) *ActorSubscriber {
-	s.timeout = timeout
 	return s
 }
 
@@ -253,44 +237,6 @@ func (s *ActorSubscriber) SubscribeOne(topic ct.TopicType, subscriber *actor.PID
 		topic:      topic,
 	})
 
-	return nil
-}
-
-func (s *ActorSubscriber) SubscribeSyncOne(topic ct.TopicType, subscriber *actor.PID) error {
-	if subscriber == nil {
-		return errNilSubscriber
-	}
-	if err := s.Bus.SubscribeSyncTimeout(topic, subscriber, s.timeout); err != nil {
-		return err
-	} else {
-		s.subscribers = append(s.subscribers, &subscriberContainer{
-			subscriber: subscriber,
-			topic:      topic,
-		})
-	}
-
-	return nil
-}
-
-// SubscribeSync multiple topics by default handler
-func (s *ActorSubscriber) SubscribeSync(topic ...ct.TopicType) error {
-	if s.subscriber == nil {
-		return errNilSubscriber
-	}
-	var errs []error
-	for _, t := range topic {
-		if err := s.Bus.SubscribeSyncTimeout(t, s.subscriber, s.timeout); err != nil {
-			errs = append(errs, err)
-		} else {
-			s.subscribers = append(s.subscribers, &subscriberContainer{
-				subscriber: s.subscriber,
-				topic:      t,
-			})
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%s", joinErrs(errs...))
-	}
 	return nil
 }
 
@@ -316,6 +262,7 @@ func (s *ActorSubscriber) Subscribe(topic ...ct.TopicType) error {
 	return nil
 }
 
+// Unsubscribe by topic
 func (s *ActorSubscriber) Unsubscribe(topic ct.TopicType) error {
 	var errs []error
 	temp := s.subscribers[:0]
@@ -336,6 +283,7 @@ func (s *ActorSubscriber) Unsubscribe(topic ct.TopicType) error {
 	return nil
 }
 
+// UnsubscribeAll topic
 func (s *ActorSubscriber) UnsubscribeAll() error {
 	var errs []error
 	temp := s.subscribers[:0]
@@ -350,6 +298,58 @@ func (s *ActorSubscriber) UnsubscribeAll() error {
 		return fmt.Errorf("%s", joinErrs(errs...))
 	}
 	return nil
+}
+
+var (
+	DefaultPublisher = actor.EmptyRootContext.Spawn(actor.PropsFromFunc(func(c actor.Context) {
+
+	}).WithReceiverMiddleware(middleware.Logger))
+	defaultTimeout = 3 * time.Second
+)
+
+type ActorPublisher struct {
+	Bus       EventBus
+	publisher *actor.PID
+	timeout   time.Duration
+}
+
+// NewActorPublisher with publisher and eventbus
+func NewActorPublisher(publisher *actor.PID, bus ...EventBus) *ActorPublisher {
+	var b EventBus
+	if len(bus) == 0 {
+		b = DefaultActorBus
+	} else {
+		b = bus[0]
+	}
+
+	if publisher == nil {
+		publisher = DefaultPublisher
+	}
+
+	return &ActorPublisher{
+		Bus:       b,
+		publisher: publisher,
+		timeout:   defaultTimeout,
+	}
+}
+
+// WithTimeout change default timeout
+func (p *ActorPublisher) WithTimeout(timeout time.Duration) *ActorPublisher {
+	p.timeout = timeout
+	return p
+}
+
+// Publish msg to topic
+func (p *ActorPublisher) Publish(topic ct.TopicType, msg interface{}) error {
+	return p.Bus.PublishFrom(topic, msg, p.publisher)
+}
+
+func (p *ActorPublisher) PublishFuture(topic ct.TopicType, msg interface{}, callback func(msg interface{}, err error)) {
+	eb := p.Bus.(*ActorEventBus)
+	eb.Subscribers(topic, func(subscriber *actor.PID) {
+		result, err := eb.Context.RequestFuture(subscriber, msg, p.timeout).Result()
+		callback(result, err)
+	})
 }
 
 func joinErrs(errs ...error) error {

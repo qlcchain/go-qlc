@@ -324,7 +324,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 				wg.Done()
 			}
 		}
-	}), md.eb).WithTimeout(20 * time.Second)
+	}), md.eb)
 	_ = subscriber.Subscribe(topic.EventSendMsgToSingle)
 
 	povSync.onPeriodicSyncTimer()

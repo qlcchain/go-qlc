@@ -69,7 +69,7 @@ func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	if m.cc.IsPoVDone() {
+	if !m.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -128,7 +128,7 @@ func (m *MintageAPI) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 	if input == nil {
 		return nil, ErrParameterNil
 	}
-	if m.cc.IsPoVDone() {
+	if !m.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
@@ -169,7 +169,7 @@ func (m *MintageAPI) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	if m.cc.IsPoVDone() {
+	if !m.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 	tm, _ := m.l.GetTokenMeta(param.SelfAddr, common.ChainToken())
@@ -213,7 +213,7 @@ func (m *MintageAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 	if input == nil {
 		return nil, ErrParameterNil
 	}
-	if m.cc.IsPoVDone() {
+	if !m.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 	reward := &types.StateBlock{}

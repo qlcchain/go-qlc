@@ -42,7 +42,7 @@ func NewBlackHoleApi(l *ledger.Ledger, cc *context.ChainContext) *BlackHoleAPI {
 }
 
 func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
-	if b.cc.IsPoVDone() {
+	if !b.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}
 
@@ -67,7 +67,7 @@ func (b *BlackHoleAPI) GetRewardsBlock(send *types.Hash) (*types.StateBlock, err
 	if send == nil {
 		return nil, ErrParameterNil
 	}
-	if b.cc.IsPoVDone() {
+	if !b.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}
 
