@@ -10,14 +10,10 @@ import (
 	"sync/atomic"
 
 	"github.com/cornelk/hashmap"
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
-
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -27,6 +23,8 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
 )
 
 var (
@@ -655,7 +653,7 @@ func (l *LedgerAPI) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
-	if l.cc.IsPoVDone() {
+	if !l.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 	var prk []byte
@@ -699,7 +697,7 @@ func (l *LedgerAPI) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 	if sendBlock == nil {
 		return nil, ErrParameterNil
 	}
-	if l.cc.IsPoVDone() {
+	if !l.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 	var prk []byte
@@ -718,7 +716,7 @@ func (l *LedgerAPI) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 }
 
 func (l *LedgerAPI) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *string) (*types.StateBlock, error) {
-	if l.cc.IsPoVDone() {
+	if !l.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 	var prk []byte
@@ -830,7 +828,7 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 	if block == nil {
 		return types.ZeroHash, ErrParameterNil
 	}
-	if l.cc.IsPoVDone() {
+	if !l.cc.IsPoVDone() {
 		return types.ZeroHash, chainctx.ErrPoVNotFinish
 	}
 	p := make(map[string]string)
