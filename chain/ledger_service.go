@@ -77,15 +77,15 @@ func (ls *LedgerService) Init() error {
 	}
 	ctx := vmstore.NewVMContext(l)
 	for _, v := range common.GenesisInfos {
-		mintageBlock = v.GenesisMintageBlock
-		genesisBlock = v.GenesisBlock
+		mb := v.GenesisMintageBlock
+		gb := v.GenesisBlock
 		err := ctx.SetStorage(types.MintageAddress[:], v.GenesisBlock.Token[:], v.GenesisBlock.Data)
 		if err != nil {
 			ls.logger.Error(err)
 		}
 		verifier := process.NewLedgerVerifier(l)
-		if b, err := l.HasStateBlock(mintageBlock.GetHash()); !b && err == nil {
-			if err := l.AddStateBlock(&mintageBlock); err != nil {
+		if b, err := l.HasStateBlock(mb.GetHash()); !b && err == nil {
+			if err := l.AddStateBlock(&mb); err != nil {
 				ls.logger.Error(err)
 			}
 		} else {
@@ -94,8 +94,8 @@ func (ls *LedgerService) Init() error {
 			}
 		}
 
-		if b, err := l.HasStateBlock(genesisBlock.GetHash()); !b && err == nil {
-			if err := verifier.BlockProcess(&genesisBlock); err != nil {
+		if b, err := l.HasStateBlock(gb.GetHash()); !b && err == nil {
+			if err := verifier.BlockProcess(&gb); err != nil {
 				ls.logger.Error(err)
 			}
 		} else {
