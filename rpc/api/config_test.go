@@ -11,7 +11,7 @@ import (
 )
 
 func TestConfig(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "l", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
 	cm.Load()

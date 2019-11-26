@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -299,7 +301,7 @@ func (ms *MessageService) onPublishReq(message *Message) {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventPublish, p.Blk, message.MessageFrom())
+	ms.netService.msgEvent.Publish(topic.EventPublish, &topic.EventPublishMsg{Block: p.Blk, From: message.MessageFrom()})
 }
 
 func (ms *MessageService) onConfirmReq(message *Message) {
@@ -320,7 +322,7 @@ func (ms *MessageService) onConfirmReq(message *Message) {
 		ms.netService.node.logger.Error(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventConfirmReq, r.Blk, message.MessageFrom())
+	ms.netService.msgEvent.Publish(topic.EventConfirmReq, &topic.EventConfirmReqMsg{Blocks: r.Blk, From: message.MessageFrom()})
 }
 
 func (ms *MessageService) onConfirmAck(message *Message) {
@@ -340,7 +342,7 @@ func (ms *MessageService) onConfirmAck(message *Message) {
 		ms.netService.node.logger.Info(err)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventConfirmAck, ack, message.MessageFrom())
+	ms.netService.msgEvent.Publish(topic.EventConfirmAck, &EventConfirmAckMsg{ack, message.MessageFrom()})
 }
 
 func (ms *MessageService) onPovStatus(message *Message) {
@@ -349,7 +351,8 @@ func (ms *MessageService) onPovStatus(message *Message) {
 		ms.netService.node.logger.Errorf("failed to decode PovStatus from peer %s", message.from)
 		return
 	}
-	ms.netService.msgEvent.Publish(common.EventPovPeerStatus, status, message.MessageFrom())
+	ms.netService.msgEvent.Publish(topic.EventPovPeerStatus,
+		&EventPovPeerStatusMsg{Status: status, From: message.MessageFrom()})
 }
 
 func (ms *MessageService) onPovPublishReq(message *Message) {
@@ -359,7 +362,11 @@ func (ms *MessageService) onPovPublishReq(message *Message) {
 		return
 	}
 
-	ms.netService.msgEvent.Publish(common.EventPovRecvBlock, p.Blk, types.PovBlockFromRemoteBroadcast, message.MessageFrom())
+	ms.netService.msgEvent.Publish(topic.EventPovRecvBlock, &topic.EventPovRecvBlockMsg{
+		Block:   p.Blk,
+		From:    types.PovBlockFromRemoteBroadcast,
+		MsgPeer: message.MessageFrom(),
+	})
 }
 
 func (ms *MessageService) onPovBulkPullReq(message *Message) {
@@ -369,7 +376,8 @@ func (ms *MessageService) onPovBulkPullReq(message *Message) {
 		return
 	}
 
-	ms.netService.msgEvent.Publish(common.EventPovBulkPullReq, req, message.MessageFrom())
+	ms.netService.msgEvent.Publish(topic.EventPovBulkPullReq,
+		&EventPovBulkPullReqMsg{Req: req, From: message.MessageFrom()})
 }
 
 func (ms *MessageService) onPovBulkPullRsp(message *Message) {
@@ -379,7 +387,8 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 		return
 	}
 
-	ms.netService.msgEvent.Publish(common.EventPovBulkPullRsp, rsp, message.MessageFrom())
+	ms.netService.msgEvent.Publish(topic.EventPovBulkPullRsp,
+		&EventPovBulkPullRspMsg{Resp: rsp, From: message.MessageFrom()})
 }
 
 func (ms *MessageService) Stop() {

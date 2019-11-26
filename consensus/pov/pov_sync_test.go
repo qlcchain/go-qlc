@@ -3,8 +3,13 @@ package pov
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/google/uuid"
 
@@ -226,11 +231,18 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	}
 
 	var rsp *protos.PovBulkPullRsp
-	id, _ := md.eb.SubscribeSync(common.EventSendMsgToSingle, func(msgType p2p.MessageType, msgData interface{}, toPeer string) {
-		if msgType == p2p.PovBulkPullRsp {
-			rsp = msgData.(*protos.PovBulkPullRsp)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *p2p.EventSendMsgToSingleMsg:
+			if msg.Type == p2p.PovBulkPullRsp {
+				rsp = msg.Message.(*protos.PovBulkPullRsp)
+				wg.Done()
+			}
 		}
-	})
+	}), md.eb)
+	_ = subscriber.Subscribe(topic.EventSendMsgToSingle)
 
 	req1 := new(protos.PovBulkPullReq)
 	req1.PullType = protos.PovPullTypeForward
@@ -238,13 +250,13 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	req1.Locators = append(req1.Locators, &genHash)
 	req1.Count = 1
 	povSync.onPovBulkPullReq(req1, bestPeer.peerID)
-	time.Sleep(time.Second)
+	wg.Wait()
 
 	if rsp == nil {
-		t.Fatalf("failed to get PovBulkPullRsp 1 msg")
+		t.Fatalf("failed to get Message 1 msg")
 	}
 	if rsp.Count == 0 || rsp.Blocks[0].GetHash() != genBlk.GetHash() {
-		t.Fatalf("failed to get PovBulkPullRsp 1 Count & Hash")
+		t.Fatalf("failed to get Message 1 Count & Hash")
 	}
 
 	blk1, td1 := mock.GeneratePovBlock(genBlk, 0)
@@ -260,13 +272,13 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	time.Sleep(time.Second)
 
 	if rsp == nil {
-		t.Fatalf("failed to get PovBulkPullRsp 2 msg")
+		t.Fatalf("failed to get Message 2 msg")
 	}
 	if rsp.Count == 0 || rsp.Blocks[0].GetHash() != blk1.GetHash() {
-		t.Fatalf("failed to get PovBulkPullRsp 2 Count & Hash")
+		t.Fatalf("failed to get Message 2 Count & Hash")
 	}
 
-	_ = md.eb.Unsubscribe(common.EventSendMsgToSingle, id)
+	_ = subscriber.UnsubscribeAll()
 	povSync.Stop()
 }
 
@@ -301,14 +313,22 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	peer1Status.CurrentTD = td4.Chain.Bytes()
 	povSync.onPovStatus(peer1Status, peerID1)
 
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	var req *protos.PovBulkPullReq
-	id, _ := md.eb.SubscribeSync(common.EventSendMsgToSingle, func(msgType p2p.MessageType, msgData interface{}, toPeer string) {
-		if msgType == p2p.PovBulkPullReq {
-			req = msgData.(*protos.PovBulkPullReq)
+	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *p2p.EventSendMsgToSingleMsg:
+			if msg.Type == p2p.PovBulkPullReq {
+				req = msg.Message.(*protos.PovBulkPullReq)
+				wg.Done()
+			}
 		}
-	})
+	}), md.eb)
+	_ = subscriber.Subscribe(topic.EventSendMsgToSingle)
 
 	povSync.onPeriodicSyncTimer()
+	wg.Wait()
 
 	if req == nil {
 		t.Fatalf("failed to get PovBulkPullReq 1 msg")
@@ -323,18 +343,22 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 		t.Fatalf("failed to get PovBulkPullReq 1 Locators")
 	}
 
+	wg.Add(1)
 	var syncBlocks []*types.PovBlock
-	id2, _ := md.eb.SubscribeSync(common.EventPovRecvBlock, func(block *types.PovBlock, from types.PovBlockFrom, peer string) {
-		syncBlocks = append(syncBlocks, block)
-	})
+	_ = subscriber.SubscribeOne(topic.EventPovRecvBlock, event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *topic.EventPovRecvBlockMsg:
+			syncBlocks = append(syncBlocks, msg.Block)
+			wg.Done()
+		}
+	}))
 
 	rsp := new(protos.PovBulkPullRsp)
 	rsp.Reason = protos.PovReasonSync
 	rsp.Blocks = append(rsp.Blocks, blk1, blk2, blk3, blk4)
 	rsp.Count = uint32(len(rsp.Blocks))
 	povSync.onPovBulkPullRsp(rsp, peerID1)
-
-	time.Sleep(time.Second)
+	wg.Done()
 	povSync.onCheckChainTimer()
 
 	md.chain.InsertBlock(blk1, td1)
@@ -345,9 +369,9 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	time.Sleep(time.Second)
 	povSync.onCheckChainTimer()
 
-	_ = md.eb.Unsubscribe(common.EventSendMsgToSingle, id)
-	_ = md.eb.Unsubscribe(common.EventPovRecvBlock, id2)
+	_ = subscriber.UnsubscribeAll()
 	povSync.Stop()
+	_ = md.eb.Close()
 }
 
 func TestPovSync_SimpleTest1(t *testing.T) {

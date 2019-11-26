@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -173,7 +175,7 @@ func (dps *DPoS) sendOnline(povHeight uint64) {
 		}
 
 		dps.logger.Debugf("send online block[%s]", blk.GetHash())
-		dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, blk)
+		dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: blk})
 
 		bs := &consensus.BlockSource{
 			Block:     blk,
@@ -196,7 +198,7 @@ func (dps *DPoS) sendOnlineWithAccount(acc *types.Account, povHeight uint64) {
 		return
 	}
 
-	dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, blk)
+	dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: blk})
 
 	bs := &consensus.BlockSource{
 		Block:     blk,

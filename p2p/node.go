@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
@@ -195,7 +197,7 @@ func (node *QlcNode) StartServices() error {
 	}
 
 	go func() {
-		node.startPingService()
+		node.startPingAndBandwidthService()
 	}()
 
 	if node.dis != nil {
@@ -212,16 +214,17 @@ func (node *QlcNode) StartServices() error {
 	return nil
 }
 
-func (node *QlcNode) startPingService() {
+func (node *QlcNode) startPingAndBandwidthService() {
 	node.logger.Info("start pingService Loop.")
 	var err error
-	ticker := time.NewTicker(30 * time.Second)
+	ticker1 := time.NewTicker(30 * time.Second)
+	ticker2 := time.NewTicker(20 * time.Second)
 	for {
 		select {
 		case <-node.ctx.Done():
 			node.logger.Info("Stopped pingService Loop.")
 			return
-		case <-ticker.C:
+		case <-ticker1.C:
 			node.streamManager.allStreams.Range(func(key, value interface{}) bool {
 				stream := value.(*Stream)
 				if stream.pid != node.ID && stream.IsConnected() {
@@ -258,6 +261,15 @@ func (node *QlcNode) startPingService() {
 				}
 				return true
 			})
+		case <-ticker2.C:
+			stats := node.reporter.GetBandwidthTotals()
+			bwState := &topic.EventBandwidthStats{
+				TotalIn:  stats.TotalIn,
+				TotalOut: stats.TotalOut,
+				RateIn:   stats.RateIn,
+				RateOut:  stats.RateOut,
+			}
+			node.netService.msgEvent.Publish(topic.EventGetBandwidthStats, bwState)
 		}
 	}
 }

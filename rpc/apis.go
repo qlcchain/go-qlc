@@ -19,14 +19,14 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "ledger",
 			Version:   "1.0",
-			Service:   api.NewLedgerApi(r.ledger, r.relation, r.eb, r.ctx),
+			Service:   api.NewLedgerApi(r.ctx, r.ledger, r.relation, r.eb, r.cc),
 			Public:    true,
 		}
 	case "net":
 		return rpc.API{
 			Namespace: "net",
 			Version:   "1.0",
-			Service:   api.NewNetApi(r.ledger, r.eb),
+			Service:   api.NewNetApi(r.ledger, r.eb, r.cc),
 			Public:    true,
 		}
 	case "util":
@@ -54,14 +54,14 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "mintage",
 			Version:   "1.0",
-			Service:   api.NewMintageApi(r.ledger, r.eb),
+			Service:   api.NewMintageApi(r.ledger),
 			Public:    true,
 		}
 	case "pledge":
 		return rpc.API{
 			Namespace: "pledge",
 			Version:   "1.0",
-			Service:   api.NewNEP5PledgeApi(r.ledger, r.eb),
+			Service:   api.NewNEP5PledgeAPI(r.ledger),
 			Public:    true,
 		}
 	case "sms":
@@ -75,14 +75,14 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "rewards",
 			Version:   "1.0",
-			Service:   api.NewRewardsApi(r.ledger, r.eb),
+			Service:   api.NewRewardsApi(r.ledger, r.cc),
 			Public:    true,
 		}
 	case "pov":
 		return rpc.API{
 			Namespace: "pov",
 			Version:   "1.0",
-			Service:   api.NewPovApi(r.config, r.ledger, r.eb, r.ctx),
+			Service:   api.NewPovApi(r.ctx, r.config, r.ledger, r.eb, r.cc),
 			Public:    true,
 		}
 	case "miner":
@@ -117,7 +117,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "destroy",
 			Version:   "1.0",
-			Service:   api.NewBlackHoleApi(r.ledger, r.eb),
+			Service:   api.NewBlackHoleApi(r.ledger, r.cc),
 			Public:    true,
 		}
 	case "metrics":

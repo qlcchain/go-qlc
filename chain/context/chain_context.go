@@ -14,6 +14,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+	"go.uber.org/atomic"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/cornelk/hashmap"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -25,6 +30,8 @@ import (
 )
 
 var cache = hashmap.New(10)
+
+var ErrPoVNotFinish = errors.New("pov sync is not finished, please check it")
 
 const (
 	LedgerService      = "ledgerService"
@@ -74,10 +81,14 @@ func NewChainContext(cfgFile string) *ChainContext {
 		return v.(*ChainContext)
 	} else {
 		sr := &ChainContext{
-			services: newServiceContainer(),
-			cfgFile:  cfgFile,
-			chainId:  id,
+			services:       newServiceContainer(),
+			cfgFile:        cfgFile,
+			chainID:        id,
+			peersPool:      new(sync.Map),
+			bandwidthStats: new(topic.EventBandwidthStats),
 		}
+		sr.povSyncState.Store(topic.SyncNotStart)
+		sr.p2pSyncState.Store(topic.SyncNotStart)
 		cache.Set(id, sr)
 		return sr
 	}
@@ -97,16 +108,48 @@ func NewChainContextFromOriginal(cc *ChainContext) *ChainContext {
 
 type ChainContext struct {
 	common.ServiceLifecycle
-	services *serviceContainer
-	cm       *config.CfgManager
-	cfgFile  string
-	chainId  string
-	locker   sync.RWMutex
-	accounts []*types.Account
+	services       *serviceContainer
+	cm             *config.CfgManager
+	cfgFile        string
+	chainID        string
+	locker         sync.RWMutex
+	accounts       []*types.Account
+	povSyncState   atomic.Value
+	p2pSyncState   atomic.Value
+	subscriber     *event.ActorSubscriber
+	peersPool      *sync.Map
+	bandwidthStats *topic.EventBandwidthStats
 }
 
 func (cc *ChainContext) EventBus() event.EventBus {
 	return event.GetEventBus(cc.Id())
+}
+
+func (cc *ChainContext) PoVState() topic.SyncState {
+	return cc.povSyncState.Load().(topic.SyncState)
+}
+
+func (cc *ChainContext) IsPoVDone() bool {
+	return cc.povSyncState.Load().(topic.SyncState) == topic.SyncDone
+}
+
+func (cc *ChainContext) P2PSyncState() topic.SyncState {
+	return cc.p2pSyncState.Load().(topic.SyncState)
+}
+
+func (cc *ChainContext) GetPeersPool() map[string]string {
+	p := make(map[string]string)
+	cc.peersPool.Range(func(key, value interface{}) bool {
+		peerId := key.(string)
+		addr := value.(string)
+		p[peerId] = addr
+		return true
+	})
+	return p
+}
+
+func (cc *ChainContext) GetBandwidthStats() *topic.EventBandwidthStats {
+	return cc.bandwidthStats
 }
 
 func (cc *ChainContext) ConfigFile() string {
@@ -140,7 +183,27 @@ func (cc *ChainContext) Init(fn func() error) error {
 		return err
 	}
 
-	return nil
+	cc.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case topic.SyncState:
+			cc.povSyncState.Store(msg)
+		case *topic.EventP2PSyncStateMsg:
+			cc.p2pSyncState.Store(msg.P2pSyncState)
+		case *topic.EventAddP2PStreamMsg:
+			if _, ok := cc.peersPool.Load(msg.PeerID); ok {
+				cc.peersPool.Delete(msg.PeerID)
+			}
+			cc.peersPool.Store(msg.PeerID, msg.PeerInfo)
+		case *topic.EventDeleteP2PStreamMsg:
+			if _, ok := cc.peersPool.Load(msg.PeerID); ok {
+				cc.peersPool.Delete(msg.PeerID)
+			}
+		case *topic.EventBandwidthStats:
+			cc.bandwidthStats = msg
+		}
+	}), cc.EventBus())
+
+	return cc.subscriber.Subscribe(topic.EventPovSyncState, topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventSyncStateChange, topic.EventConsensusSyncFinished, topic.EventGetBandwidthStats)
 }
 
 func (cc *ChainContext) Start() error {
@@ -172,9 +235,13 @@ func (cc *ChainContext) Stop() error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s stop successfully.\n", name)
+		log.Root.Infof("%s stop successfully", name)
 		return nil
 	})
+
+	if cc.subscriber != nil {
+		return cc.subscriber.UnsubscribeAll()
+	}
 
 	return nil
 }
@@ -196,7 +263,7 @@ func (cc *ChainContext) Accounts() []*types.Account {
 }
 
 func (cc *ChainContext) Id() string {
-	return cc.chainId
+	return cc.chainID
 }
 
 func (cc *ChainContext) Register(name string, service common.Service) error {

@@ -21,7 +21,7 @@ type mockDataTestPovApi struct {
 	cfg *config.Config
 	eb  event.EventBus
 	l   *ledger.Ledger
-	api *PovApi
+	api *PovAPI
 }
 
 func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {
@@ -42,7 +42,7 @@ func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {
 
 	md.eb = cc.EventBus()
 
-	md.api = NewPovApi(md.cfg, md.l, md.eb, context.Background())
+	md.api = NewPovApi(context.Background(), md.cfg, md.l, md.eb, cc)
 
 	return func(t *testing.T) {
 		_ = md.eb.Close()

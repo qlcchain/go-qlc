@@ -6,6 +6,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/event"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -27,9 +33,8 @@ type PovWorker struct {
 	lastMineHeight  uint64
 	muxMineBlock    sync.Mutex
 
-	handlerIds map[common.TopicType]string //topic->handler id
-
-	quitCh chan struct{}
+	quitCh     chan struct{}
+	subscriber *event.ActorSubscriber
 }
 
 type PovMinerAlgoBlock struct {
@@ -41,9 +46,6 @@ func NewPovWorker(miner *Miner) *PovWorker {
 	worker := &PovWorker{
 		miner:  miner,
 		logger: log.NewLogger("pov_miner"),
-
-		handlerIds: make(map[common.TopicType]string),
-
 		quitCh: make(chan struct{}),
 	}
 	worker.mineBlockPool = make(map[types.Hash]*types.PovMineBlock)
@@ -73,17 +75,18 @@ func (w *PovWorker) Init() error {
 }
 
 func (w *PovWorker) Start() error {
-	id, err := w.miner.eb.SubscribeSync(common.EventRpcSyncCall, w.OnEventRpcSyncCall)
-	if err != nil {
-		return err
-	}
-	w.handlerIds[common.EventRpcSyncCall] = id
+	w.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *topic.EventRPCSyncCallMsg:
+			w.OnEventRpcSyncCall(msg.Name, msg.In, msg.Out)
+		}
+	}), w.miner.eb)
 
-	return nil
+	return w.subscriber.Subscribe(topic.EventRpcSyncCall)
 }
 
 func (w *PovWorker) Stop() error {
-	_ = w.miner.eb.Unsubscribe(common.EventRpcSyncCall, w.handlerIds[common.EventRpcSyncCall])
+	_ = w.subscriber.UnsubscribeAll()
 
 	if w.quitCh != nil {
 		close(w.quitCh)
@@ -123,7 +126,7 @@ func (w *PovWorker) GetWork(in interface{}, out interface{}) {
 	inArgs := in.(map[interface{}]interface{})
 	outArgs := out.(map[interface{}]interface{})
 
-	if w.miner.GetSyncState() != common.SyncDone {
+	if w.miner.GetSyncState() != topic.SyncDone {
 		outArgs["err"] = fmt.Errorf("miner pausing for sync state %s", w.miner.GetSyncState())
 		return
 	}

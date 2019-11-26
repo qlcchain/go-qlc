@@ -5,6 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
@@ -25,7 +29,7 @@ const (
 type PovTxEvent struct {
 	txHash  types.Hash
 	txBlock *types.StateBlock
-	event   common.TopicType
+	event   topic.TopicType
 }
 
 type PovTxEntry struct {
@@ -36,7 +40,7 @@ type PovTxEntry struct {
 type PovTxPool struct {
 	logger      *zap.SugaredLogger
 	eb          event.EventBus
-	handlerIds  map[common.TopicType]string //topic->handler id
+	subscriber  *event.ActorSubscriber
 	ledger      ledger.Store
 	chain       PovTxChainReader
 	txMu        sync.RWMutex
@@ -61,17 +65,16 @@ type PovTxChainReader interface {
 
 func NewPovTxPool(eb event.EventBus, l ledger.Store, chain PovTxChainReader) *PovTxPool {
 	txPool := &PovTxPool{
-		logger:     log.NewLogger("pov_txpool"),
-		eb:         eb,
-		handlerIds: make(map[common.TopicType]string),
-		ledger:     l,
-		chain:      chain,
+		logger: log.NewLogger("pov_txpool"),
+		eb:     eb,
+		ledger: l,
+		chain:  chain,
 	}
 	txPool.txEventCh = make(chan *PovTxEvent, 5000)
 	txPool.quitCh = make(chan struct{})
 	txPool.accountTxs = make(map[types.AddressToken]*list.List)
 	txPool.allTxs = make(map[types.Hash]*PovTxEntry)
-	txPool.syncState.Store(common.SyncNotStart)
+	txPool.syncState.Store(topic.SyncNotStart)
 	return txPool
 }
 
@@ -80,35 +83,24 @@ func (tp *PovTxPool) Init() error {
 }
 
 func (tp *PovTxPool) Start() error {
-	if tp.ledger != nil {
-		ebL := tp.ledger.EventBus()
-		id, err := ebL.SubscribeSync(common.EventAddRelation, tp.onAddStateBlock)
-		if err != nil {
-			tp.logger.Errorf("failed to subscribe EventAddRelation")
-			return err
-		}
-		tp.handlerIds[common.EventAddRelation] = id
-		id, err = ebL.SubscribeSync(common.EventAddSyncBlocks, tp.onAddSyncStateBlock)
-		if err != nil {
-			tp.logger.Errorf("failed to subscribe EventAddSyncBlocks")
-			return err
-		}
-		tp.handlerIds[common.EventAddSyncBlocks] = id
-		id, err = ebL.SubscribeSync(common.EventDeleteRelation, tp.onDeleteStateBlock)
-		if err != nil {
-			tp.logger.Errorf("failed to subscribe EventDeleteRelation")
-			return err
-		}
-		tp.handlerIds[common.EventDeleteRelation] = id
+	eb := tp.eb
+	if eb == nil {
+		eb = tp.ledger.EventBus()
 	}
-
-	if tp.eb != nil {
-		id, err := tp.eb.SubscribeSync(common.EventPovSyncState, tp.onPovSyncState)
-		if err != nil {
-			tp.logger.Errorf("failed to subscribe EventPovSyncState")
-			return err
+	tp.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *types.Tuple:
+			tp.onAddSyncStateBlock(msg.First.(*types.StateBlock), msg.Second.(bool))
+		case *types.StateBlock:
+			tp.onAddStateBlock(msg)
+		case topic.SyncState:
+			tp.onPovSyncState(msg)
 		}
-		tp.handlerIds[common.EventPovSyncState] = id
+	}), eb)
+
+	if err := tp.subscriber.Subscribe(topic.EventAddRelation,
+		topic.EventAddSyncBlocks, topic.EventPovSyncState); err != nil {
+		return err
 	}
 
 	tp.chain.RegisterListener(tp)
@@ -120,28 +112,8 @@ func (tp *PovTxPool) Start() error {
 
 func (tp *PovTxPool) Stop() {
 	tp.chain.UnRegisterListener(tp)
-
-	if tp.ledger != nil {
-		ebL := tp.ledger.EventBus()
-		err := ebL.Unsubscribe(common.EventAddRelation, tp.handlerIds[common.EventAddRelation])
-		if err != nil {
-			tp.logger.Error(err)
-		}
-		err = ebL.Unsubscribe(common.EventAddSyncBlocks, tp.handlerIds[common.EventAddSyncBlocks])
-		if err != nil {
-			tp.logger.Error(err)
-		}
-		err = ebL.Unsubscribe(common.EventDeleteRelation, tp.handlerIds[common.EventDeleteRelation])
-		if err != nil {
-			tp.logger.Error(err)
-		}
-	}
-
-	if tp.eb != nil {
-		err := tp.eb.Unsubscribe(common.EventPovSyncState, tp.handlerIds[common.EventPovSyncState])
-		if err != nil {
-			tp.logger.Error(err)
-		}
+	if err := tp.subscriber.UnsubscribeAll(); err != nil {
+		tp.logger.Error(err)
 	}
 
 	close(tp.quitCh)
@@ -156,7 +128,7 @@ func (tp *PovTxPool) onAddStateBlock(block *types.StateBlock) {
 		return
 	}
 	txHash := block.GetHash()
-	tp.txEventCh <- &PovTxEvent{event: common.EventAddRelation, txHash: txHash, txBlock: block}
+	tp.txEventCh <- &PovTxEvent{event: topic.EventAddRelation, txHash: txHash, txBlock: block}
 }
 
 func (tp *PovTxPool) onAddSyncStateBlock(block *types.StateBlock, done bool) {
@@ -171,11 +143,11 @@ func (tp *PovTxPool) onAddSyncStateBlock(block *types.StateBlock, done bool) {
 		return
 	}
 	txHash := block.GetHash()
-	tp.txEventCh <- &PovTxEvent{event: common.EventAddSyncBlocks, txHash: txHash, txBlock: block}
+	tp.txEventCh <- &PovTxEvent{event: topic.EventAddSyncBlocks, txHash: txHash, txBlock: block}
 }
 
 func (tp *PovTxPool) onDeleteStateBlock(hash types.Hash) {
-	tp.txEventCh <- &PovTxEvent{event: common.EventDeleteRelation, txHash: hash}
+	tp.txEventCh <- &PovTxEvent{event: topic.EventDeleteRelation, txHash: hash}
 }
 
 func (tp *PovTxPool) OnPovBlockEvent(evt byte, block *types.PovBlock) {
@@ -201,15 +173,12 @@ func (tp *PovTxPool) OnPovBlockEvent(evt byte, block *types.PovBlock) {
 	}
 }
 
-func (tp *PovTxPool) onPovSyncState(state common.SyncState) {
+func (tp *PovTxPool) onPovSyncState(state topic.SyncState) {
 	tp.syncState.Store(state)
 }
 
 func (tp *PovTxPool) isPovSyncDone() bool {
-	if tp.syncState.Load().(common.SyncState) == common.SyncDone {
-		return true
-	}
-	return false
+	return tp.syncState.Load().(topic.SyncState) == topic.SyncDone
 }
 
 func (tp *PovTxPool) isTxExceedLimit() bool {
@@ -369,9 +338,9 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 }
 
 func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
-	if txEvent.event == common.EventAddRelation || txEvent.event == common.EventAddSyncBlocks {
+	if txEvent.event == topic.EventAddRelation || txEvent.event == topic.EventAddSyncBlocks {
 		tp.addTx(txEvent.txHash, txEvent.txBlock)
-	} else if txEvent.event == common.EventDeleteRelation {
+	} else if txEvent.event == topic.EventDeleteRelation {
 		tp.delTx(txEvent.txHash)
 	}
 }

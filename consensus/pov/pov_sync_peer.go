@@ -6,7 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -60,14 +61,14 @@ func (ss *PovSyncer) onAddP2PStream(peerID string) {
 
 	ss.allPeers.Store(peerID, peer)
 
-	ss.eventCh <- &PovSyncEvent{eventType: common.EventAddP2PStream, eventData: peerID}
+	ss.eventCh <- &PovSyncEvent{eventType: topic.EventAddP2PStream, eventData: peerID}
 }
 
 func (ss *PovSyncer) onDeleteP2PStream(peerID string) {
 	ss.logger.Debugf("delete peer %s", peerID)
 	ss.allPeers.Delete(peerID)
 
-	ss.eventCh <- &PovSyncEvent{eventType: common.EventDeleteP2PStream, eventData: peerID}
+	ss.eventCh <- &PovSyncEvent{eventType: topic.EventDeleteP2PStream, eventData: peerID}
 }
 
 func (ss *PovSyncer) onPovStatus(status *protos.PovStatus, msgPeer string) {
@@ -126,7 +127,7 @@ func (ss *PovSyncer) processStreamEvent(evt *PovSyncEvent) {
 		Timestamp:     time.Now().Unix(),
 	}
 	ss.logger.Debugf("send PovStatus to peer %s", peerID)
-	ss.eb.Publish(common.EventSendMsgToSingle, p2p.PovStatus, status, peerID)
+	ss.eb.Publish(topic.EventSendMsgToSingle, &p2p.EventSendMsgToSingleMsg{Type: p2p.PovStatus, Message: status, PeerID: peerID})
 }
 
 func (ss *PovSyncer) checkAllPeers() {
@@ -159,7 +160,7 @@ func (ss *PovSyncer) checkAllPeers() {
 		Timestamp:     time.Now().Unix(),
 	}
 	ss.logger.Infof("broadcast PovStatus to %d peers", peerCount)
-	ss.eb.Publish(common.EventBroadcast, p2p.PovStatus, status)
+	ss.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PovStatus, Message: status})
 
 	now := time.Now()
 	ss.allPeers.Range(func(key, value interface{}) bool {

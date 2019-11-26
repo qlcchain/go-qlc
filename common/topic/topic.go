@@ -1,4 +1,11 @@
-package common
+/*
+ * Copyright (c) 2019 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
+package topic
 
 type TopicType string
 
@@ -10,9 +17,6 @@ const (
 	EventSyncBlock         TopicType = "syncBlock"
 	EventConfirmedBlock    TopicType = "confirmedBlock"
 	EventBroadcast         TopicType = "broadcast"
-	EventSendMsgToPeers    TopicType = "sendMsgToPeers"
-	EventPeersInfo         TopicType = "peersInfo"
-	EventSyncStatus        TopicType = "syncing"
 	EventGetBandwidthStats TopicType = "getBandwidthStats"
 	EventAddRelation       TopicType = "addRelation"
 	EventAddSyncBlocks     TopicType = "addSyncBlocks"

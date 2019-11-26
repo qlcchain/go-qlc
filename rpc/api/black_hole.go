@@ -10,12 +10,12 @@ package api
 import (
 	"errors"
 	"fmt"
-	"sync/atomic"
 
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/chain/context"
+
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -24,32 +24,26 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type BlackHoleApi struct {
+type BlackHoleAPI struct {
 	logger            *zap.SugaredLogger
 	l                 *ledger.Ledger
 	blackHoleContract *contract.BlackHole
-	syncState         atomic.Value
+	cc                *context.ChainContext
 }
 
-func NewBlackHoleApi(l *ledger.Ledger, eb event.EventBus) *BlackHoleApi {
-	api := &BlackHoleApi{
+func NewBlackHoleApi(l *ledger.Ledger, cc *context.ChainContext) *BlackHoleAPI {
+	api := &BlackHoleAPI{
 		logger:            log.NewLogger("rpc/black_hole"),
 		l:                 l,
 		blackHoleContract: &contract.BlackHole{},
+		cc:                cc,
 	}
-	api.syncState.Store(common.SyncNotStart)
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
 	return api
 }
 
-func (b *BlackHoleApi) OnPovSyncState(state common.SyncState) {
-	b.logger.Infof("blackhole receive pov sync state [%s]", state)
-	b.syncState.Store(state)
-}
-
-func (b *BlackHoleApi) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
-	if ss := b.syncState.Load().(common.SyncState); ss != common.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock, error) {
+	if !b.cc.IsPoVDone() {
+		return nil, context.ErrPoVNotFinish
 	}
 
 	vmContext := vmstore.NewVMContext(b.l)
@@ -69,12 +63,12 @@ func (b *BlackHoleApi) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock
 	return stateBlock, nil
 }
 
-func (b *BlackHoleApi) GetRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+func (b *BlackHoleAPI) GetRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
 	if send == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := b.syncState.Load().(common.SyncState); ss != common.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+	if !b.cc.IsPoVDone() {
+		return nil, context.ErrPoVNotFinish
 	}
 
 	blk, err := b.l.GetStateBlock(*send)
@@ -102,7 +96,7 @@ func (b *BlackHoleApi) GetRewardsBlock(send *types.Hash) (*types.StateBlock, err
 	}
 }
 
-func (b *BlackHoleApi) GetTotalDestroyInfo(addr *types.Address) (types.Balance, error) {
+func (b *BlackHoleAPI) GetTotalDestroyInfo(addr *types.Address) (types.Balance, error) {
 	if addr == nil || addr.IsZero() {
 		return types.ZeroBalance, ErrParameterNil
 	}
@@ -111,7 +105,7 @@ func (b *BlackHoleApi) GetTotalDestroyInfo(addr *types.Address) (types.Balance, 
 	return cabi.GetTotalDestroyInfo(vmContext, addr)
 }
 
-func (b *BlackHoleApi) GetDestroyInfoDetail(addr *types.Address) ([]*cabi.DestroyInfo, error) {
+func (b *BlackHoleAPI) GetDestroyInfoDetail(addr *types.Address) ([]*cabi.DestroyInfo, error) {
 	if addr == nil || addr.IsZero() {
 		return nil, ErrParameterNil
 	}

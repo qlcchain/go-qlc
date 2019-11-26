@@ -13,6 +13,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/event"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 
@@ -33,7 +39,7 @@ const (
 type ResendBlockService struct {
 	common.ServiceLifecycle
 	hashSet    *sync.Map
-	id         string
+	subscriber *event.ActorSubscriber
 	cfgFile    string
 	blockCache chan *types.StateBlock
 	ctx        context.Context
@@ -64,12 +70,17 @@ func (rb *ResendBlockService) Init() error {
 	}
 	defer rb.PostInit()
 	cc := qcontext.NewChainContext(rb.cfgFile)
-	rb.id, _ = cc.EventBus().Subscribe(common.EventAddBlockCache, func(blk *types.StateBlock) {
-		if blk != nil {
-			rb.blockCache <- blk
+
+	rb.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *types.StateBlock:
+			if msg != nil {
+				rb.blockCache <- msg
+			}
 		}
-	})
-	return nil
+	}), cc.EventBus())
+
+	return rb.subscriber.Subscribe(topic.EventAddBlockCache)
 }
 
 func (rb *ResendBlockService) Start() error {
@@ -130,7 +141,6 @@ func (rb *ResendBlockService) Start() error {
 					var hs []*ResendTimes
 					hs = append(hs, rt)
 					rb.hashSet.Store(key, hs)
-
 				} else {
 					hs := v.([]*ResendTimes)
 					hs = append(hs, rt)
@@ -163,8 +173,8 @@ func (rb *ResendBlockService) Start() error {
 								break
 							} else {
 								if sb, err := l.GetStateBlock(j.hash); err == nil {
-									cc.EventBus().Publish(common.EventBroadcast, p2p.PublishReq, sb)
-									cc.EventBus().Publish(common.EventGenerateBlock, process.Progress, sb)
+									cc.EventBus().Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: sb})
+									cc.EventBus().Publish(topic.EventGenerateBlock, sb)
 								}
 								j.resendTimes++
 								break
@@ -185,7 +195,7 @@ func (rb *ResendBlockService) Start() error {
 		for {
 			select {
 			case <-rb.ctx.Done():
-				if err := cc.EventBus().Unsubscribe(common.EventAddBlockCache, rb.id); err != nil {
+				if err := rb.subscriber.UnsubscribeAll(); err != nil {
 					rb.logger.Error(err)
 				}
 				return
@@ -199,7 +209,6 @@ func (rb *ResendBlockService) Start() error {
 					var hs []*ResendTimes
 					hs = append(hs, rt)
 					rb.hashSet.Store(key, hs)
-
 				} else {
 					hs := v.([]*ResendTimes)
 					hs = append(hs, rt)

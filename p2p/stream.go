@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/qlcchain/go-qlc/common"
 )
 
 // Stream Errors
@@ -129,7 +129,7 @@ func (s *Stream) readLoop() {
 	}
 	s.node.logger.Info("connect ", s.pid.Pretty(), " success")
 
-	s.node.netService.MessageEvent().Publish(common.EventAddP2PStream, s.pid.Pretty())
+	s.node.netService.MessageEvent().Publish(topic.EventAddP2PStream, &topic.EventAddP2PStreamMsg{PeerID: s.pid.Pretty(), PeerInfo: s.addr.String()})
 
 	// loop.
 	buf := make([]byte, 1024*4)
@@ -222,7 +222,8 @@ func (s *Stream) close() error {
 	//s.node.logger.Info("Closing stream.")
 
 	if s.stream != nil {
-		s.node.netService.MessageEvent().Publish(common.EventDeleteP2PStream, s.pid.Pretty())
+		s.node.netService.MessageEvent().Publish(topic.EventDeleteP2PStream,
+			&topic.EventDeleteP2PStreamMsg{PeerID: s.pid.Pretty()})
 	}
 
 	// cleanup.

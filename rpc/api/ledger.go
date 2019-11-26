@@ -13,8 +13,10 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -44,7 +46,7 @@ type lockValue struct {
 	mutex      *sync.Mutex
 }
 
-type LedgerApi struct {
+type LedgerAPI struct {
 	ledger *ledger.Ledger
 	//vmContext *vmstore.VMContext
 	eb                event.EventBus
@@ -52,7 +54,7 @@ type LedgerApi struct {
 	logger            *zap.SugaredLogger
 	blockSubscription *BlockSubscription
 	processLock       *hashmap.HashMap
-	syncState         atomic.Value
+	cc                *chainctx.ChainContext
 }
 
 type APIBlock struct {
@@ -104,17 +106,16 @@ type ApiTokenInfo struct {
 	types.TokenInfo
 }
 
-func NewLedgerApi(l *ledger.Ledger, r *relation.Relation, eb event.EventBus, ctx context.Context) *LedgerApi {
-	api := LedgerApi{
+func NewLedgerApi(ctx context.Context, l *ledger.Ledger, r *relation.Relation, eb event.EventBus, cc *chainctx.ChainContext) *LedgerAPI {
+	api := LedgerAPI{
 		ledger:            l,
 		eb:                eb,
 		relation:          r,
 		logger:            log.NewLogger("api_ledger"),
 		blockSubscription: NewBlockSubscription(ctx, eb),
 		processLock:       hashmap.New(defaultLockSize),
+		cc:                cc,
 	}
-	api.syncState.Store(common.SyncNotStart)
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
 	return &api
 }
 
@@ -124,12 +125,7 @@ func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
 	return b
 }
 
-func (l *LedgerApi) OnPovSyncState(state common.SyncState) {
-	l.logger.Infof("ledger receive pov sync state [%s]", state)
-	l.syncState.Store(state)
-}
-
-func (l *LedgerApi) AccountBlocksCount(addr types.Address) (int64, error) {
+func (l *LedgerAPI) AccountBlocksCount(addr types.Address) (int64, error) {
 	am, err := l.ledger.GetAccountMetaConfirmed(addr)
 	if err != nil {
 		if err == ledger.ErrAccountNotFound {
@@ -188,7 +184,7 @@ func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock, latestPov
 }
 
 // AccountHistoryTopn returns blocks of the account, blocks count of each token in the account up to n
-func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset *int) ([]*APIBlock, error) {
+func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset *int) ([]*APIBlock, error) {
 	c, o, err := checkOffset(count, offset)
 	if err != nil {
 		return nil, err
@@ -217,7 +213,7 @@ func (l *LedgerApi) AccountHistoryTopn(address types.Address, count int, offset 
 	return bs, nil
 }
 
-func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
+func (l *LedgerAPI) AccountInfo(address types.Address) (*APIAccount, error) {
 	am, err := l.ledger.GetAccountMeta(address)
 	if err != nil {
 		return nil, err
@@ -225,7 +221,7 @@ func (l *LedgerApi) AccountInfo(address types.Address) (*APIAccount, error) {
 	return l.generateAPIAccountMeta(am)
 }
 
-func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, error) {
+func (l *LedgerAPI) ConfirmedAccountInfo(address types.Address) (*APIAccount, error) {
 	am, err := l.ledger.GetAccountMetaConfirmed(address)
 	if err != nil {
 		return nil, err
@@ -233,7 +229,7 @@ func (l *LedgerApi) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 	return l.generateAPIAccountMeta(am)
 }
 
-func (l *LedgerApi) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, error) {
+func (l *LedgerAPI) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, error) {
 	aa := new(APIAccount)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, t := range am.Tokens {
@@ -266,7 +262,7 @@ func (l *LedgerApi) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, 
 	return aa, nil
 }
 
-func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, error) {
+func (l *LedgerAPI) AccountRepresentative(addr types.Address) (types.Address, error) {
 	am, err := l.ledger.GetAccountMetaConfirmed(addr)
 	if err != nil {
 		return types.ZeroAddress, err
@@ -279,7 +275,7 @@ func (l *LedgerApi) AccountRepresentative(addr types.Address) (types.Address, er
 	return types.ZeroAddress, errors.New("account has no representative")
 }
 
-func (l *LedgerApi) AccountVotingWeight(addr types.Address) (types.Balance, error) {
+func (l *LedgerAPI) AccountVotingWeight(addr types.Address) (types.Balance, error) {
 	b, err := l.ledger.GetRepresentation(addr)
 	if err != nil {
 		return types.ZeroBalance, nil
@@ -287,7 +283,7 @@ func (l *LedgerApi) AccountVotingWeight(addr types.Address) (types.Balance, erro
 	return b.Total, err
 }
 
-func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Address]map[string]*APIAccountsBalance, error) {
+func (l *LedgerAPI) AccountsBalance(addresses []types.Address) (map[types.Address]map[string]*APIAccountsBalance, error) {
 	as := make(map[types.Address]map[string]*APIAccountsBalance)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
@@ -326,7 +322,7 @@ func (l *LedgerApi) AccountsBalance(addresses []types.Address) (map[types.Addres
 	return as, nil
 }
 
-func (l *LedgerApi) AccountsFrontiers(addresses []types.Address) (map[types.Address]map[string]types.Hash, error) {
+func (l *LedgerAPI) AccountsFrontiers(addresses []types.Address) (map[types.Address]map[string]types.Hash, error) {
 	r := make(map[types.Address]map[string]types.Hash)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
@@ -350,7 +346,7 @@ func (l *LedgerApi) AccountsFrontiers(addresses []types.Address) (map[types.Addr
 	return r, nil
 }
 
-func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types.Address][]*APIPending, error) {
+func (l *LedgerAPI) AccountsPending(addresses []types.Address, n int) (map[types.Address][]*APIPending, error) {
 	apMap := make(map[types.Address][]*APIPending)
 	vmContext := vmstore.NewVMContext(l.ledger)
 
@@ -397,11 +393,11 @@ func (l *LedgerApi) AccountsPending(addresses []types.Address, n int) (map[types
 	return apMap, nil
 }
 
-func (l *LedgerApi) AccountsCount() (uint64, error) {
+func (l *LedgerAPI) AccountsCount() (uint64, error) {
 	return l.ledger.CountAccountMetas()
 }
 
-func (l *LedgerApi) Accounts(count int, offset *int) ([]*types.Address, error) {
+func (l *LedgerAPI) Accounts(count int, offset *int) ([]*types.Address, error) {
 	c, o, err := checkOffset(count, offset)
 	if err != nil {
 		return nil, err
@@ -421,7 +417,7 @@ func (l *LedgerApi) Accounts(count int, offset *int) ([]*types.Address, error) {
 	return as, nil
 }
 
-func (l *LedgerApi) BlockAccount(hash types.Hash) (types.Address, error) {
+func (l *LedgerAPI) BlockAccount(hash types.Hash) (types.Address, error) {
 	sb, err := l.ledger.GetStateBlockConfirmed(hash)
 	if err != nil {
 		return types.ZeroAddress, err
@@ -429,7 +425,7 @@ func (l *LedgerApi) BlockAccount(hash types.Hash) (types.Address, error) {
 	return sb.GetAddress(), nil
 }
 
-func (l *LedgerApi) BlockConfirmedStatus(hash types.Hash) (bool, error) {
+func (l *LedgerAPI) BlockConfirmedStatus(hash types.Hash) (bool, error) {
 	b, err := l.ledger.HasStateBlockConfirmed(hash)
 	if err != nil {
 		return false, err
@@ -437,12 +433,12 @@ func (l *LedgerApi) BlockConfirmedStatus(hash types.Hash) (bool, error) {
 	return b, nil
 }
 
-func (l *LedgerApi) BlockHash(block types.StateBlock) types.Hash {
+func (l *LedgerAPI) BlockHash(block types.StateBlock) types.Hash {
 	return block.GetHash()
 }
 
 // BlocksCount returns the number of blocks (include smartcontrant block) in the ctx and unchecked synchronizing blocks
-func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
+func (l *LedgerAPI) BlocksCount() (map[string]uint64, error) {
 	sbCount, err := l.relation.BlocksCount()
 	if err != nil {
 		return nil, err
@@ -463,7 +459,7 @@ func (l *LedgerApi) BlocksCount() (map[string]uint64, error) {
 	return c, nil
 }
 
-func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
+func (l *LedgerAPI) BlocksCount2() (map[string]uint64, error) {
 	sbCount, err := l.ledger.CountStateBlocks()
 	if err != nil {
 		return nil, err
@@ -485,7 +481,7 @@ func (l *LedgerApi) BlocksCount2() (map[string]uint64, error) {
 }
 
 //BlocksCountByType reports the number of blocks in the ctx by type (send, receive, open, change)
-func (l *LedgerApi) BlocksCountByType() (map[string]uint64, error) {
+func (l *LedgerAPI) BlocksCountByType() (map[string]uint64, error) {
 	c := make(map[string]uint64)
 	c[types.Open.String()] = 0
 	c[types.Send.String()] = 0
@@ -505,7 +501,7 @@ func (l *LedgerApi) BlocksCountByType() (map[string]uint64, error) {
 	return c, nil
 }
 
-func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
+func (l *LedgerAPI) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	bs := make([]*APIBlock, 0)
 	vmContext := vmstore.NewVMContext(l.ledger)
 
@@ -528,7 +524,7 @@ func (l *LedgerApi) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	return bs, nil
 }
 
-func (l *LedgerApi) ConfirmedBlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
+func (l *LedgerAPI) ConfirmedBlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	bs := make([]*APIBlock, 0)
 	vmContext := vmstore.NewVMContext(l.ledger)
 
@@ -551,7 +547,7 @@ func (l *LedgerApi) ConfirmedBlocksInfo(hash []types.Hash) ([]*APIBlock, error) 
 	return bs, nil
 }
 
-func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
+func (l *LedgerAPI) Blocks(count int, offset *int) ([]*APIBlock, error) {
 	c, o, err := checkOffset(count, offset)
 	if err != nil {
 		return nil, err
@@ -582,7 +578,7 @@ func (l *LedgerApi) Blocks(count int, offset *int) ([]*APIBlock, error) {
 }
 
 // Chain returns a consecutive list of block hashes in the account chain starting at block up to count
-func (l *LedgerApi) Chain(hash types.Hash, n int) ([]types.Hash, error) {
+func (l *LedgerAPI) Chain(hash types.Hash, n int) ([]types.Hash, error) {
 	if n < -1 {
 		return nil, errors.New("wrong count number")
 	}
@@ -604,7 +600,7 @@ func (l *LedgerApi) Chain(hash types.Hash, n int) ([]types.Hash, error) {
 }
 
 // Delegators returns a list of pairs of delegator names given account a representative and its balance
-func (l *LedgerApi) Delegators(hash types.Address) ([]*APIAccountBalance, error) {
+func (l *LedgerAPI) Delegators(hash types.Address) ([]*APIAccountBalance, error) {
 	abs := make([]*APIAccountBalance, 0)
 
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
@@ -624,7 +620,7 @@ func (l *LedgerApi) Delegators(hash types.Address) ([]*APIAccountBalance, error)
 }
 
 // DelegatorsCount gets number of delegators for a specific representative account
-func (l *LedgerApi) DelegatorsCount(hash types.Address) (int64, error) {
+func (l *LedgerAPI) DelegatorsCount(hash types.Address) (int64, error) {
 	var count int64
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
 		t := am.Token(common.ChainToken())
@@ -651,15 +647,15 @@ type APISendBlockPara struct {
 	Message   types.Hash    `json:"message"`
 }
 
-func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*types.StateBlock, error) {
+func (l *LedgerAPI) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*types.StateBlock, error) {
 	if para == nil {
 		return nil, ErrParameterNil
 	}
 	if para.Amount.Int == nil || para.From.IsZero() || para.To.IsZero() || para.TokenName == "" {
 		return nil, errors.New("invalid transaction parameter")
 	}
-	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+	if !l.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
 	}
 	var prk []byte
 	if prkStr != nil {
@@ -698,12 +694,12 @@ func (l *LedgerApi) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 	return block, nil
 }
 
-func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *string) (*types.StateBlock, error) {
+func (l *LedgerAPI) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *string) (*types.StateBlock, error) {
 	if sendBlock == nil {
 		return nil, ErrParameterNil
 	}
-	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+	if !l.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
 	}
 	var prk []byte
 	if prkStr != nil {
@@ -720,9 +716,9 @@ func (l *LedgerApi) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 	return block, nil
 }
 
-func (l *LedgerApi) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *string) (*types.StateBlock, error) {
-	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
-		return nil, errors.New("pov sync is not finished, please check it")
+func (l *LedgerAPI) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *string) (*types.StateBlock, error) {
+	if !l.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
 	}
 	var prk []byte
 	if prkStr != nil {
@@ -745,7 +741,7 @@ func (l *LedgerApi) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *stri
 	return block, nil
 }
 
-func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative types.Address, prkStr *string) (*types.StateBlock, error) {
+func (l *LedgerAPI) GenerateChangeBlock(account types.Address, representative types.Address, prkStr *string) (*types.StateBlock, error) {
 	var prk []byte
 	if prkStr != nil {
 		var err error
@@ -763,7 +759,7 @@ func (l *LedgerApi) GenerateChangeBlock(account types.Address, representative ty
 	return block, nil
 }
 
-func (l *LedgerApi) Pendings() ([]*APIPending, error) {
+func (l *LedgerAPI) Pendings() ([]*APIPending, error) {
 	aps := make([]*APIPending, 0)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
@@ -799,14 +795,14 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 	return aps, nil
 }
 
-func (l *LedgerApi) getLockKey(addr types.Address, token types.Hash) []byte {
+func (l *LedgerAPI) getLockKey(addr types.Address, token types.Hash) []byte {
 	key := make([]byte, 0)
 	key = append(key, addr.Bytes()...)
 	key = append(key, token.Bytes()...)
 	return key
 }
 
-func (l *LedgerApi) getProcessLock(addr types.Address, token types.Hash) *lockValue {
+func (l *LedgerAPI) getProcessLock(addr types.Address, token types.Hash) *lockValue {
 	key := l.getLockKey(addr, token)
 	v, b := l.processLock.Get(key)
 	if b {
@@ -829,15 +825,14 @@ func (l *LedgerApi) getProcessLock(addr types.Address, token types.Hash) *lockVa
 	}
 }
 
-func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
+func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 	if block == nil {
 		return types.ZeroHash, ErrParameterNil
 	}
-	if ss := l.syncState.Load().(common.SyncState); ss != common.SyncDone {
-		return types.ZeroHash, errors.New("pov sync is not finished, please check it")
+	if !l.cc.IsPoVDone() {
+		return types.ZeroHash, chainctx.ErrPoVNotFinish
 	}
-	p := make(map[string]string)
-	l.eb.Publish(common.EventPeersInfo, p)
+	p := l.cc.GetPeersPool()
 	if len(p) == 0 {
 		return types.ZeroHash, errors.New("no peer connect,please check it")
 	}
@@ -864,11 +859,11 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)
 			return types.ZeroHash, err
 		}
-		l.eb.Publish(common.EventAddBlockCache, block)
+		l.eb.Publish(topic.EventAddBlockCache, block)
 		l.logger.Debug("broadcast block")
 		//TODO: refine
-		l.eb.Publish(common.EventBroadcast, p2p.PublishReq, block)
-		l.eb.Publish(common.EventGenerateBlock, flag, block)
+		l.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: block})
+		l.eb.Publish(topic.EventGenerateBlock, block)
 		return hash, nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")
@@ -899,7 +894,7 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	}
 }
 
-func (l *LedgerApi) Performance() ([]*types.PerformanceTime, error) {
+func (l *LedgerAPI) Performance() ([]*types.PerformanceTime, error) {
 	pts := make([]*types.PerformanceTime, 0)
 	err := l.ledger.PerformanceTimes(func(p *types.PerformanceTime) {
 		pts = append(pts, p)
@@ -926,7 +921,7 @@ type APIRepresentative struct {
 }
 
 //Representatives returns a list of pairs of representative and its voting weight
-func (l *LedgerApi) Representatives(sorting *bool) ([]*APIRepresentative, error) {
+func (l *LedgerAPI) Representatives(sorting *bool) ([]*APIRepresentative, error) {
 	rs := make([]*APIRepresentative, 0)
 	err := l.ledger.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
 		if !benefit.Total.Equal(types.ZeroBalance) {
@@ -955,13 +950,13 @@ func (l *LedgerApi) Representatives(sorting *bool) ([]*APIRepresentative, error)
 	return rs, nil
 }
 
-func (l *LedgerApi) Tokens() ([]*types.TokenInfo, error) {
+func (l *LedgerAPI) Tokens() ([]*types.TokenInfo, error) {
 	vmContext := vmstore.NewVMContext(l.ledger)
 	return abi.ListTokens(vmContext)
 }
 
 // BlocksCount returns the number of blocks (not include smartcontrant block) in the ctx and unchecked synchronizing blocks
-func (l *LedgerApi) TransactionsCount() (map[string]uint64, error) {
+func (l *LedgerAPI) TransactionsCount() (map[string]uint64, error) {
 	sbCount, err := l.relation.BlocksCount()
 	if err != nil {
 		return nil, err
@@ -976,7 +971,7 @@ func (l *LedgerApi) TransactionsCount() (map[string]uint64, error) {
 	return c, nil
 }
 
-func (l *LedgerApi) TokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
+func (l *LedgerAPI) TokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
 	vmContext := vmstore.NewVMContext(l.ledger)
 	token, err := abi.GetTokenById(vmContext, tokenId)
 	if err != nil {
@@ -985,7 +980,7 @@ func (l *LedgerApi) TokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
 	return &ApiTokenInfo{*token}, nil
 }
 
-func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
+func (l *LedgerAPI) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 	vmContext := vmstore.NewVMContext(l.ledger)
 	token, err := abi.GetTokenByName(vmContext, tokenName)
 	if err != nil {
@@ -994,7 +989,7 @@ func (l *LedgerApi) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 	return &ApiTokenInfo{*token}, nil
 }
 
-func (l *LedgerApi) GetAccountOnlineBlock(account types.Address) ([]*types.StateBlock, error) {
+func (l *LedgerAPI) GetAccountOnlineBlock(account types.Address) ([]*types.StateBlock, error) {
 	blocks := make([]*types.StateBlock, 0)
 	hashes, err := l.relation.AccountBlocks(account, -1, -1)
 	if err == nil {
@@ -1011,7 +1006,7 @@ func (l *LedgerApi) GetAccountOnlineBlock(account types.Address) ([]*types.State
 	}
 }
 
-func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
+func (l *LedgerAPI) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
@@ -1055,7 +1050,7 @@ func (l *LedgerApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	return sub, nil
 }
 
-func (l *LedgerApi) NewAccountBlock(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
+func (l *LedgerAPI) NewAccountBlock(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
 	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
@@ -1099,7 +1094,7 @@ func (l *LedgerApi) NewAccountBlock(ctx context.Context, address types.Address) 
 	return sub, nil
 }
 
-func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
+func (l *LedgerAPI) BalanceChange(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
@@ -1139,7 +1134,7 @@ func (l *LedgerApi) BalanceChange(ctx context.Context, address types.Address) (*
 	})
 }
 
-func (l *LedgerApi) NewPending(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
+func (l *LedgerAPI) NewPending(ctx context.Context, address types.Address) (*rpc.Subscription, error) {
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})

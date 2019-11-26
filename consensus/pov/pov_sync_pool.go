@@ -3,7 +3,8 @@ package pov
 import (
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
@@ -79,8 +80,8 @@ func (ss *PovSyncer) onPeriodicSyncTimer() {
 		syncOver = true
 	}
 	if syncOver {
-		ss.setInitState(common.Syncing)
-		ss.setInitState(common.SyncDone)
+		ss.setInitState(topic.Syncing)
+		ss.setInitState(topic.SyncDone)
 		return
 	}
 
@@ -92,7 +93,7 @@ func (ss *PovSyncer) onPeriodicSyncTimer() {
 
 	ss.inSyncing.Store(true)
 
-	ss.setInitState(common.Syncing)
+	ss.setInitState(topic.Syncing)
 
 	ss.syncWithPeer(bestPeer)
 }
@@ -161,7 +162,7 @@ func (ss *PovSyncer) onCheckChainTimer() {
 	if ss.syncCurHeight >= ss.syncToHeight && latestBlock.GetHeight() >= ss.syncToHeight {
 		ss.logger.Infof("sync done, current height:%d", latestBlock.GetHeight())
 		ss.inSyncing.Store(false)
-		ss.setInitState(common.SyncDone)
+		ss.setInitState(topic.SyncDone)
 		return
 	}
 
@@ -239,7 +240,7 @@ func (ss *PovSyncer) requestSyncingBlocks(syncPeer *PovSyncPeer, useLocator bool
 		ss.logger.Infof("request syncing blocks use height %d with peer %s", req.StartHeight, ss.syncPeerID)
 	}
 
-	ss.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullReq, req, ss.syncPeerID)
+	ss.eb.Publish(topic.EventSendMsgToSingle, &p2p.EventSendMsgToSingleMsg{Type: p2p.PovBulkPullReq, Message: req, PeerID: ss.syncPeerID})
 
 	syncPeer.lastSyncReqTime = time.Now()
 	syncPeer.waitSyncRspMsg = true
@@ -266,7 +267,11 @@ func (ss *PovSyncer) onCheckSyncBlockTimer() {
 			return
 		}
 
-		ss.eb.Publish(common.EventPovRecvBlock, syncBlk.Block, types.PovBlockFromRemoteSync, syncBlk.PeerID)
+		ss.eb.Publish(topic.EventPovRecvBlock, &topic.EventPovRecvBlockMsg{
+			Block:   syncBlk.Block,
+			From:    types.PovBlockFromRemoteSync,
+			MsgPeer: syncBlk.PeerID,
+		})
 		ss.syncCurHeight = height + 1
 
 		delete(ss.syncBlocks, height)
