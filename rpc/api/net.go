@@ -8,6 +8,7 @@ import (
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"go.uber.org/zap"
 
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -19,6 +20,7 @@ type NetApi struct {
 	ledger *ledger.Ledger
 	eb     event.EventBus
 	logger *zap.SugaredLogger
+	cc     *chainctx.ChainContext
 }
 
 type OnlineRepTotal struct {
@@ -32,8 +34,8 @@ type OnlineRepInfo struct {
 	Vote    types.Balance
 }
 
-func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
-	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net")}
+func NewNetApi(l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *NetApi {
+	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net"), cc: cc}
 }
 
 func (q *NetApi) OnlineRepresentatives() []types.Address {
@@ -82,8 +84,7 @@ type PeersInfo struct {
 }
 
 func (q *NetApi) ConnectPeersInfo() *PeersInfo {
-	p := make(map[string]string)
-	q.eb.Publish(topic.EventPeersInfo, p)
+	p := q.cc.GetPeersPool()
 	i := &PeersInfo{
 		Count: len(p),
 		Infos: p,

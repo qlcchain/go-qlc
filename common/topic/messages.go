@@ -30,3 +30,12 @@ type EventConfirmReqMsg struct {
 	Blocks []*types.StateBlock
 	From   string
 }
+
+type EventAddP2PStreamMsg struct {
+	PeerID   string
+	PeerInfo string
+}
+
+type EventDeleteP2PStreamMsg struct {
+	PeerID string
+}

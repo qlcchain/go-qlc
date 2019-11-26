@@ -129,7 +129,7 @@ func (s *Stream) readLoop() {
 	}
 	s.node.logger.Info("connect ", s.pid.Pretty(), " success")
 
-	s.node.netService.MessageEvent().Publish(topic.EventAddP2PStream, &EventAddP2PStreamMsg{PeerID: s.pid.Pretty()})
+	s.node.netService.MessageEvent().Publish(topic.EventAddP2PStream, &topic.EventAddP2PStreamMsg{PeerID: s.pid.Pretty(), PeerInfo: s.addr.String()})
 
 	// loop.
 	buf := make([]byte, 1024*4)
@@ -223,7 +223,7 @@ func (s *Stream) close() error {
 
 	if s.stream != nil {
 		s.node.netService.MessageEvent().Publish(topic.EventDeleteP2PStream,
-			&EventDeleteP2PStreamMsg{PeerID: s.pid.Pretty()})
+			&topic.EventDeleteP2PStreamMsg{PeerID: s.pid.Pretty()})
 	}
 
 	// cleanup.

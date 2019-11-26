@@ -17,14 +17,6 @@ type EventSendMsgToSingleMsg struct {
 	PeerID  string
 }
 
-type EventAddP2PStreamMsg struct {
-	PeerID string
-}
-
-type EventDeleteP2PStreamMsg struct {
-	PeerID string
-}
-
 type EventPovPeerStatusMsg struct {
 	Status *protos.PovStatus
 	From   string

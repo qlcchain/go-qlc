@@ -102,9 +102,9 @@ func (ss *PovSyncer) Start() error {
 	if eb != nil {
 		ss.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 			switch msg := c.Message().(type) {
-			case *p2p.EventAddP2PStreamMsg:
+			case *topic.EventAddP2PStreamMsg:
 				ss.onAddP2PStream(msg.PeerID)
-			case *p2p.EventDeleteP2PStreamMsg:
+			case *topic.EventDeleteP2PStreamMsg:
 				ss.onDeleteP2PStream(msg.PeerID)
 			case *p2p.EventPovPeerStatusMsg:
 				ss.onPovStatus(msg.Status, msg.From)

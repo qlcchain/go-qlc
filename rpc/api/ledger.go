@@ -832,8 +832,7 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 	if !l.cc.IsPoVDone() {
 		return types.ZeroHash, chainctx.ErrPoVNotFinish
 	}
-	p := make(map[string]string)
-	l.eb.Publish(topic.EventPeersInfo, p)
+	p := l.cc.GetPeersPool()
 	if len(p) == 0 {
 		return types.ZeroHash, errors.New("no peer connect,please check it")
 	}

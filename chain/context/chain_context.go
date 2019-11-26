@@ -81,9 +81,10 @@ func NewChainContext(cfgFile string) *ChainContext {
 		return v.(*ChainContext)
 	} else {
 		sr := &ChainContext{
-			services: newServiceContainer(),
-			cfgFile:  cfgFile,
-			chainID:  id,
+			services:  newServiceContainer(),
+			cfgFile:   cfgFile,
+			chainID:   id,
+			peersPool: make(map[string]string),
 		}
 		sr.syncState.Store(topic.SyncNotStart)
 		cache.Set(id, sr)
@@ -113,17 +114,23 @@ type ChainContext struct {
 	accounts   []*types.Account
 	syncState  atomic.Value
 	subscriber *event.ActorSubscriber
+	peersPool  map[string]string
 }
 
 func (cc *ChainContext) EventBus() event.EventBus {
 	return event.GetEventBus(cc.Id())
 }
+
 func (cc *ChainContext) PoVState() topic.SyncState {
 	return cc.syncState.Load().(topic.SyncState)
 }
 
 func (cc *ChainContext) IsPoVDone() bool {
 	return cc.syncState.Load().(topic.SyncState) == topic.SyncDone
+}
+
+func (cc *ChainContext) GetPeersPool() map[string]string {
+	return cc.peersPool
 }
 
 func (cc *ChainContext) ConfigFile() string {
@@ -161,10 +168,15 @@ func (cc *ChainContext) Init(fn func() error) error {
 		switch msg := c.Message().(type) {
 		case topic.SyncState:
 			cc.syncState.Store(msg)
+		case *topic.EventAddP2PStreamMsg:
+			cc.peersPool[msg.PeerID] = msg.PeerInfo
+		case *topic.EventDeleteP2PStreamMsg:
+			delete(cc.peersPool, msg.PeerID)
+
 		}
 	}), cc.EventBus())
 
-	return cc.subscriber.Subscribe(topic.EventPovSyncState)
+	return cc.subscriber.Subscribe(topic.EventPovSyncState, topic.EventAddP2PStream, topic.EventDeleteP2PStream)
 }
 
 func (cc *ChainContext) Start() error {

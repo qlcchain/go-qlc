@@ -26,7 +26,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "net",
 			Version:   "1.0",
-			Service:   api.NewNetApi(r.ledger, r.eb),
+			Service:   api.NewNetApi(r.ledger, r.eb, r.cc),
 			Public:    true,
 		}
 	case "util":
