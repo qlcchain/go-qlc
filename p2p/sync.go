@@ -56,7 +56,6 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		quitChanForSync:    make(chan bool, 1),
 		mu:                 &sync.Mutex{},
 	}
-	//	ss.syncState.Store(topic.SyncNotStart)
 	return ss
 }
 

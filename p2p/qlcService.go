@@ -7,8 +7,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/topic"
 
-	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
-
 	"github.com/qlcchain/go-qlc/chain/context"
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -93,16 +91,13 @@ func (ns *QlcService) setEvent() error {
 			ns.msgService.syncService.requestFrontiersFromPov(msg.PeerID)
 		case bool:
 			ns.node.setRepresentativeNode(msg)
-		case *p2pmetrics.Stats:
-			ns.node.GetBandwidthStats(msg)
 		case *topic.EventP2PSyncStateMsg:
 			ns.msgService.syncService.onConsensusSyncFinished()
 		}
 	}), ns.msgEvent)
 
 	if err := ns.subscriber.Subscribe(topic.EventBroadcast, topic.EventSendMsgToSingle, topic.EventFrontiersReq,
-		topic.EventRepresentativeNode, topic.EventGetBandwidthStats,
-		topic.EventConsensusSyncFinished); err != nil {
+		topic.EventRepresentativeNode, topic.EventConsensusSyncFinished); err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
