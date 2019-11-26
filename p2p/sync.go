@@ -5,7 +5,6 @@ import (
 	"math"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -26,12 +25,12 @@ const (
 
 // Service manage sync tasks
 type ServiceSync struct {
-	netService         *QlcService
-	qlcLedger          *ledger.Ledger
-	frontiers          []*types.Frontier
-	quitCh             chan bool
-	logger             *zap.SugaredLogger
-	syncState          atomic.Value
+	netService *QlcService
+	qlcLedger  *ledger.Ledger
+	frontiers  []*types.Frontier
+	quitCh     chan bool
+	logger     *zap.SugaredLogger
+	//	syncState          atomic.Value
 	syncTicker         *time.Ticker
 	pullTimer          *time.Timer
 	pullRequestStartCh chan bool
@@ -43,7 +42,6 @@ type ServiceSync struct {
 	lastSyncHash       types.Hash
 	quitChanForSync    chan bool
 	mu                 *sync.Mutex
-	//muForPullRsp       *sync.Mutex
 }
 
 // NewService return new Service.
@@ -57,9 +55,8 @@ func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync 
 		pullRequestStartCh: make(chan bool, 1),
 		quitChanForSync:    make(chan bool, 1),
 		mu:                 &sync.Mutex{},
-		//		muForPullRsp:       &sync.Mutex{},
 	}
-	ss.syncState.Store(topic.SyncNotStart)
+	//	ss.syncState.Store(topic.SyncNotStart)
 	return ss
 }
 
@@ -75,7 +72,7 @@ func (ss *ServiceSync) Start() {
 			ss.logger.Info("Stopped Sync Loop.")
 			return
 		case <-ss.syncTicker.C:
-			syncState := ss.syncState.Load()
+			syncState := ss.netService.cc.P2PSyncState()
 			if syncState == topic.SyncFinish || syncState == topic.SyncNotStart {
 				peerID, err := ss.netService.node.StreamManager().randomLowerLatencyPeer()
 				if err != nil {
@@ -108,7 +105,6 @@ func (ss *ServiceSync) onConsensusSyncFinished() {
 	case ss.quitChanForSync <- true:
 	default:
 	}
-	ss.syncState.Store(topic.SyncFinish)
 }
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
@@ -145,7 +141,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 	var err error
-	syncState := ss.syncState.Load()
+	syncState := ss.netService.cc.P2PSyncState()
 	if syncState == topic.SyncFinish || syncState == topic.SyncNotStart {
 		ss.frontiers, err = ss.getLocalFrontier(ss.qlcLedger)
 		if err != nil {
@@ -162,9 +158,8 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 
 		var remoteFrontiers []*types.Frontier
 		var blks types.StateBlockList
-		ss.syncState.Store(topic.Syncing)
 		ss.lastSyncHash = types.ZeroHash
-		ss.netService.msgEvent.Publish(topic.EventSyncStateChange, topic.Syncing)
+		ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: topic.Syncing})
 		ss.logger.Warn("sync start")
 
 		for _, f := range rsp.Fs {
@@ -179,8 +174,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			zeroFrontier := new(types.Frontier)
 			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 			state := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-			ss.syncState.Store(state)
-			ss.netService.msgEvent.Publish(topic.EventSyncStateChange, state)
+			ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: state})
 		}
 		ss.logger.Warn("sync pull all blocks done")
 	}
@@ -673,7 +667,7 @@ func (ss *ServiceSync) next() {
 
 func (ss *ServiceSync) requestFrontiersFromPov(peerID string) {
 	ss.logger.Warn("request frontier from pov")
-	syncState := ss.syncState.Load()
+	syncState := ss.netService.cc.P2PSyncState()
 	if syncState == topic.SyncFinish || syncState == topic.SyncNotStart {
 		var err error
 		address := types.Address{}
@@ -714,11 +708,6 @@ func (ss *ServiceSync) requestTxsByHashes(reqTxHashes []*types.Hash, peerID stri
 
 		reqTxHashes = reqTxHashes[sendHashNum:]
 	}
-}
-
-func (ss *ServiceSync) GetSyncState(s *topic.SyncState) {
-	state := ss.syncState.Load().(topic.SyncState)
-	*s = state
 }
 
 func (ss *ServiceSync) getOpenBlockHash(hash types.Hash) (types.Hash, error) {

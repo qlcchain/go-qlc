@@ -84,9 +84,10 @@ func NewChainContext(cfgFile string) *ChainContext {
 			services:  newServiceContainer(),
 			cfgFile:   cfgFile,
 			chainID:   id,
-			peersPool: make(map[string]string),
+			peersPool: new(sync.Map),
 		}
-		sr.syncState.Store(topic.SyncNotStart)
+		sr.povSyncState.Store(topic.SyncNotStart)
+		sr.p2pSyncState.Store(topic.SyncNotStart)
 		cache.Set(id, sr)
 		return sr
 	}
@@ -106,15 +107,16 @@ func NewChainContextFromOriginal(cc *ChainContext) *ChainContext {
 
 type ChainContext struct {
 	common.ServiceLifecycle
-	services   *serviceContainer
-	cm         *config.CfgManager
-	cfgFile    string
-	chainID    string
-	locker     sync.RWMutex
-	accounts   []*types.Account
-	syncState  atomic.Value
-	subscriber *event.ActorSubscriber
-	peersPool  map[string]string
+	services     *serviceContainer
+	cm           *config.CfgManager
+	cfgFile      string
+	chainID      string
+	locker       sync.RWMutex
+	accounts     []*types.Account
+	povSyncState atomic.Value
+	p2pSyncState atomic.Value
+	subscriber   *event.ActorSubscriber
+	peersPool    *sync.Map
 }
 
 func (cc *ChainContext) EventBus() event.EventBus {
@@ -122,15 +124,26 @@ func (cc *ChainContext) EventBus() event.EventBus {
 }
 
 func (cc *ChainContext) PoVState() topic.SyncState {
-	return cc.syncState.Load().(topic.SyncState)
+	return cc.povSyncState.Load().(topic.SyncState)
 }
 
 func (cc *ChainContext) IsPoVDone() bool {
-	return cc.syncState.Load().(topic.SyncState) == topic.SyncDone
+	return cc.povSyncState.Load().(topic.SyncState) == topic.SyncDone
+}
+
+func (cc *ChainContext) P2PSyncState() topic.SyncState {
+	return cc.p2pSyncState.Load().(topic.SyncState)
 }
 
 func (cc *ChainContext) GetPeersPool() map[string]string {
-	return cc.peersPool
+	p := make(map[string]string)
+	cc.peersPool.Range(func(key, value interface{}) bool {
+		peerId := key.(string)
+		addr := value.(string)
+		p[peerId] = addr
+		return true
+	})
+	return p
 }
 
 func (cc *ChainContext) ConfigFile() string {
@@ -167,16 +180,23 @@ func (cc *ChainContext) Init(fn func() error) error {
 	cc.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case topic.SyncState:
-			cc.syncState.Store(msg)
+			cc.povSyncState.Store(msg)
+		case *topic.EventP2PSyncStateMsg:
+			cc.p2pSyncState.Store(msg.P2pSyncState)
 		case *topic.EventAddP2PStreamMsg:
-			cc.peersPool[msg.PeerID] = msg.PeerInfo
+			if _, ok := cc.peersPool.Load(msg.PeerID); ok {
+				cc.peersPool.Delete(msg.PeerID)
+			}
+			cc.peersPool.Store(msg.PeerID, msg.PeerInfo)
 		case *topic.EventDeleteP2PStreamMsg:
-			delete(cc.peersPool, msg.PeerID)
+			if _, ok := cc.peersPool.Load(msg.PeerID); ok {
+				cc.peersPool.Delete(msg.PeerID)
+			}
 
 		}
 	}), cc.EventBus())
 
-	return cc.subscriber.Subscribe(topic.EventPovSyncState, topic.EventAddP2PStream, topic.EventDeleteP2PStream)
+	return cc.subscriber.Subscribe(topic.EventPovSyncState, topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventSyncStateChange, topic.EventConsensusSyncFinished)
 }
 
 func (cc *ChainContext) Start() error {

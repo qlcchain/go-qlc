@@ -99,8 +99,7 @@ func (q *NetApi) GetBandwidthStats() *p2pmetrics.Stats {
 }
 
 func (q *NetApi) Syncing() bool {
-	var ss topic.SyncState
-	q.eb.Publish(topic.EventSyncStatus, &ss)
+	ss := q.cc.P2PSyncState()
 	if ss == topic.Syncing || ss == topic.SyncDone {
 		return true
 	}

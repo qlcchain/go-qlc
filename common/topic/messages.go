@@ -39,3 +39,7 @@ type EventAddP2PStreamMsg struct {
 type EventDeleteP2PStreamMsg struct {
 	PeerID string
 }
+
+type EventP2PSyncStateMsg struct {
+	P2pSyncState SyncState
+}

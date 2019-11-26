@@ -221,8 +221,8 @@ func (dps *DPoS) Init() {
 			dps.onGetFrontier(msg)
 		case *types.Tuple:
 			dps.onFrontierConfirmed(msg.First.(types.Hash), msg.Second.(*bool))
-		case topic.SyncState:
-			dps.onSyncStateChange(msg)
+		case *topic.EventP2PSyncStateMsg:
+			dps.onSyncStateChange(msg.P2pSyncState)
 		}
 	}), dps.eb)
 
@@ -442,7 +442,7 @@ func (dps *DPoS) processSyncDone() {
 			dps.syncStateNotifyWait.Wait()
 			dps.blockSyncState = topic.SyncFinish
 
-			dps.eb.Publish(topic.EventConsensusSyncFinished, struct{}{})
+			dps.eb.Publish(topic.EventConsensusSyncFinished, &topic.EventP2PSyncStateMsg{P2pSyncState: topic.SyncFinish})
 			dps.logger.Warn("sync finished")
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 
 	"github.com/qlcchain/go-qlc/chain/context"
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/ledger"
 )
@@ -21,6 +22,7 @@ type QlcService struct {
 	dispatcher *Dispatcher
 	msgEvent   event.EventBus
 	msgService *MessageService
+	cc         *chainctx.ChainContext
 }
 
 // NewQlcService create netService
@@ -35,6 +37,7 @@ func NewQlcService(cfgFile string) (*QlcService, error) {
 		node:       node,
 		dispatcher: NewDispatcher(),
 		msgEvent:   cc.EventBus(),
+		cc:         cc,
 	}
 	node.SetQlcService(ns)
 	l := ledger.NewLedger(cfgFile)
@@ -86,24 +89,20 @@ func (ns *QlcService) setEvent() error {
 			if err := ns.SendMessageToPeer(msg.Type, msg.Message, msg.PeerID); err != nil {
 				ns.node.logger.Error(err)
 			}
-		case map[string]string: // topic.EventPeersInfo
-			ns.node.streamManager.GetAllConnectPeersInfo(msg)
 		case *EventFrontiersReqMsg:
 			ns.msgService.syncService.requestFrontiersFromPov(msg.PeerID)
 		case bool:
 			ns.node.setRepresentativeNode(msg)
 		case *p2pmetrics.Stats:
 			ns.node.GetBandwidthStats(msg)
-		case *topic.SyncState:
-			ns.msgService.syncService.GetSyncState(msg)
-		case struct{}:
+		case *topic.EventP2PSyncStateMsg:
 			ns.msgService.syncService.onConsensusSyncFinished()
 		}
 	}), ns.msgEvent)
 
-	if err := ns.subscriber.Subscribe(topic.EventBroadcast, topic.EventSendMsgToSingle, topic.EventPeersInfo,
-		topic.EventRepresentativeNode, topic.EventPeersInfo, topic.EventGetBandwidthStats,
-		topic.EventConsensusSyncFinished, topic.EventSyncStatus); err != nil {
+	if err := ns.subscriber.Subscribe(topic.EventBroadcast, topic.EventSendMsgToSingle, topic.EventFrontiersReq,
+		topic.EventRepresentativeNode, topic.EventGetBandwidthStats,
+		topic.EventConsensusSyncFinished); err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
