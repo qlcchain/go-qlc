@@ -81,10 +81,11 @@ func NewChainContext(cfgFile string) *ChainContext {
 		return v.(*ChainContext)
 	} else {
 		sr := &ChainContext{
-			services:  newServiceContainer(),
-			cfgFile:   cfgFile,
-			chainID:   id,
-			peersPool: new(sync.Map),
+			services:       newServiceContainer(),
+			cfgFile:        cfgFile,
+			chainID:        id,
+			peersPool:      new(sync.Map),
+			bandwidthStats: new(topic.EventBandwidthStats),
 		}
 		sr.povSyncState.Store(topic.SyncNotStart)
 		sr.p2pSyncState.Store(topic.SyncNotStart)
@@ -107,16 +108,17 @@ func NewChainContextFromOriginal(cc *ChainContext) *ChainContext {
 
 type ChainContext struct {
 	common.ServiceLifecycle
-	services     *serviceContainer
-	cm           *config.CfgManager
-	cfgFile      string
-	chainID      string
-	locker       sync.RWMutex
-	accounts     []*types.Account
-	povSyncState atomic.Value
-	p2pSyncState atomic.Value
-	subscriber   *event.ActorSubscriber
-	peersPool    *sync.Map
+	services       *serviceContainer
+	cm             *config.CfgManager
+	cfgFile        string
+	chainID        string
+	locker         sync.RWMutex
+	accounts       []*types.Account
+	povSyncState   atomic.Value
+	p2pSyncState   atomic.Value
+	subscriber     *event.ActorSubscriber
+	peersPool      *sync.Map
+	bandwidthStats *topic.EventBandwidthStats
 }
 
 func (cc *ChainContext) EventBus() event.EventBus {
@@ -144,6 +146,10 @@ func (cc *ChainContext) GetPeersPool() map[string]string {
 		return true
 	})
 	return p
+}
+
+func (cc *ChainContext) GetBandwidthStats() *topic.EventBandwidthStats {
+	return cc.bandwidthStats
 }
 
 func (cc *ChainContext) ConfigFile() string {
@@ -192,11 +198,12 @@ func (cc *ChainContext) Init(fn func() error) error {
 			if _, ok := cc.peersPool.Load(msg.PeerID); ok {
 				cc.peersPool.Delete(msg.PeerID)
 			}
-
+		case *topic.EventBandwidthStats:
+			cc.bandwidthStats = msg
 		}
 	}), cc.EventBus())
 
-	return cc.subscriber.Subscribe(topic.EventPovSyncState, topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventSyncStateChange, topic.EventConsensusSyncFinished)
+	return cc.subscriber.Subscribe(topic.EventPovSyncState, topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventSyncStateChange, topic.EventConsensusSyncFinished, topic.EventGetBandwidthStats)
 }
 
 func (cc *ChainContext) Start() error {

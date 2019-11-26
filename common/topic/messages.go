@@ -43,3 +43,10 @@ type EventDeleteP2PStreamMsg struct {
 type EventP2PSyncStateMsg struct {
 	P2pSyncState SyncState
 }
+
+type EventBandwidthStats struct {
+	TotalIn  int64
+	TotalOut int64
+	RateIn   float64
+	RateOut  float64
+}
