@@ -102,6 +102,7 @@ const (
 	idPrefixPovLatestHeight  // prefix => height
 	idPrefixPovTxlScanCursor // prefix => height
 	idPrefixVoteHistory
+	idPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
 )
 
 var (

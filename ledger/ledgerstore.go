@@ -158,6 +158,12 @@ type Store interface {
 	GetPovMinerStat(dayIndex uint32, txns ...db.StoreTxn) (*types.PovMinerDayStat, error)
 	GetLatestPovMinerStat(txns ...db.StoreTxn) (*types.PovMinerDayStat, error)
 
+	AddPovDiffStat(dayStat *types.PovDiffDayStat, txns ...db.StoreTxn) error
+	DeletePovDiffStat(dayIndex uint32, txns ...db.StoreTxn) error
+	GetPovDiffStat(dayIndex uint32, txns ...db.StoreTxn) (*types.PovDiffDayStat, error)
+	GetLatestPovDiffStat(txns ...db.StoreTxn) (*types.PovDiffDayStat, error)
+	GetAllPovDiffStats(fn func(*types.PovDiffDayStat) error, txns ...db.StoreTxn) error
+
 	// POV blocks complex queries
 	GetPovBlockByHeightAndHash(height uint64, hash types.Hash, txns ...db.StoreTxn) (*types.PovBlock, error)
 	GetPovBlockByHeight(height uint64, txns ...db.StoreTxn) (*types.PovBlock, error)

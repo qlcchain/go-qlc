@@ -22,7 +22,8 @@ var (
 	ErrPovTxLookupNotBest  = errors.New("pov tx lookup not best")
 	ErrPovTDNotFound       = errors.New("pov total difficulty not found")
 
-	ErrPovMinerStatNotFound = errors.New("pov miner state not found")
+	ErrPovMinerStatNotFound = errors.New("pov miner statistics not found")
+	ErrPovDiffStatNotFound  = errors.New("pov difficulty statistics not found")
 )
 
 func (l *Ledger) AddPovBlock(blk *types.PovBlock, td *types.PovTD, txns ...db.StoreTxn) error {
@@ -843,7 +844,10 @@ func (l *Ledger) GetLatestPovMinerStat(txns ...db.StoreTxn) (*types.PovMinerDayS
 	var latestKey []byte
 	err := txn.Iterator(idPrefixPovMinerStat, func(key []byte, val []byte, meta byte) error {
 		// just safe copy, iterator will reuse item(key, value)
-		latestKey = append(latestKey[:0], key...)
+		if latestKey == nil || len(latestKey) != len(key) {
+			latestKey = make([]byte, len(key))
+		}
+		copy(latestKey, key)
 		return nil
 	})
 	if err != nil {
@@ -862,6 +866,119 @@ func (l *Ledger) GetAllPovMinerStats(fn func(*types.PovMinerDayStat) error, txns
 
 	err := txn.Iterator(idPrefixPovMinerStat, func(key []byte, val []byte, meta byte) error {
 		dayStat := new(types.PovMinerDayStat)
+		err := dayStat.Deserialize(val)
+		if err != nil {
+			return err
+		}
+
+		if err := fn(dayStat); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) AddPovDiffStat(dayStat *types.PovDiffDayStat, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key, err := getKeyOfParts(idPrefixPovDiffStat, dayStat.DayIndex)
+	if err != nil {
+		return err
+	}
+
+	valBytes, err := dayStat.Serialize()
+	if err != nil {
+		return err
+	}
+
+	if err := txn.Set(key, valBytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) DeletePovDiffStat(dayIndex uint32, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	key, err := getKeyOfParts(idPrefixPovDiffStat, dayIndex)
+	if err != nil {
+		return err
+	}
+
+	if err := txn.Delete(key); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) getPovDiffStat(key []byte, txn db.StoreTxn) (*types.PovDiffDayStat, error) {
+	dayStat := new(types.PovDiffDayStat)
+	err := txn.Get(key, func(val []byte, b byte) error {
+		err := dayStat.Deserialize(val)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, ErrPovDiffStatNotFound
+		}
+		return nil, err
+	}
+	return dayStat, nil
+}
+
+func (l *Ledger) GetPovDiffStat(dayIndex uint32, txns ...db.StoreTxn) (*types.PovDiffDayStat, error) {
+	key, err := getKeyOfParts(idPrefixPovDiffStat, dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	return l.getPovDiffStat(key, txn)
+}
+
+func (l *Ledger) GetLatestPovDiffStat(txns ...db.StoreTxn) (*types.PovDiffDayStat, error) {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	var latestKey []byte
+	err := txn.Iterator(idPrefixPovDiffStat, func(key []byte, val []byte, meta byte) error {
+		// just safe copy, iterator will reuse item(key, value)
+		if latestKey == nil || len(latestKey) != len(key) {
+			latestKey = make([]byte, len(key))
+		}
+		copy(latestKey, key)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(latestKey) <= 0 {
+		return nil, ErrPovDiffStatNotFound
+	}
+
+	return l.getPovDiffStat(latestKey, txn)
+}
+
+func (l *Ledger) GetAllPovDiffStats(fn func(*types.PovDiffDayStat) error, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(false, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	err := txn.Iterator(idPrefixPovDiffStat, func(key []byte, val []byte, meta byte) error {
+		dayStat := new(types.PovDiffDayStat)
 		err := dayStat.Deserialize(val)
 		if err != nil {
 			return err
@@ -1201,6 +1318,15 @@ func (l *Ledger) DropAllPovBlocks() error {
 	_ = txn.Drop(prefix)
 
 	prefix, _ = getKeyOfParts(idPrefixPovMinerStat)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovLatestHeight)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovTxlScanCursor)
+	_ = txn.Drop(prefix)
+
+	prefix, _ = getKeyOfParts(idPrefixPovDiffStat)
 	_ = txn.Drop(prefix)
 
 	return nil

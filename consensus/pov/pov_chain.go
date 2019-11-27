@@ -105,6 +105,7 @@ type PovBlockChain struct {
 	trieNodePool *trie.NodePool
 
 	doingMinerStat *atomic.Bool
+	doingDiffStat  *atomic.Bool
 
 	statSideProcNum    int64
 	statForkProcNum    int64
@@ -122,6 +123,7 @@ func NewPovBlockChain(cfg *config.Config, eb event.EventBus, l ledger.Store) *Po
 		ledger:         l,
 		logger:         log.NewLogger("pov_chain"),
 		doingMinerStat: atomic.NewBool(false),
+		doingDiffStat:  atomic.NewBool(false),
 	}
 	chain.em = newEventManager()
 
@@ -172,6 +174,8 @@ func (bc *PovBlockChain) Init() error {
 	}
 
 	err = bc.batchUpdateTxLookupInSync(nil)
+
+	bc.updateDiffDayStatInSync(nil)
 
 	bc.onMinerDayStatTimer()
 
@@ -705,6 +709,13 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie
 		bc.logger.Infof("success to insert block %d/%s to %s chain", block.GetHeight(), block.GetHash(), chainState)
 	}
 
+	latestBlock := bc.LatestBlock()
+
+	oneDayPoint := false
+	if (latestBlock.GetHeight()+1)%uint64(common.POVChainBlocksPerDay) == 0 {
+		oneDayPoint = true
+	}
+
 	_ = bc.batchUpdateTxLookupInSync(forkBlock)
 
 	bc.statLastInsertTime = time.Since(startTm).Microseconds()
@@ -712,7 +723,11 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie
 		bc.statMaxInsertTime = bc.statLastInsertTime
 	}
 
-	if (block.GetHeight()+1)%uint64(common.POVChainBlocksPerDay) == 0 {
+	if oneDayPoint || forkBlock != nil {
+		bc.updateDiffDayStatInSync(forkBlock)
+	}
+
+	if (latestBlock.GetHeight()+1)%uint64(common.POVChainBlocksPerDay) == 0 {
 		bc.onMinerDayStatTimer()
 	}
 
@@ -1219,18 +1234,173 @@ func (bc *PovBlockChain) CalcPastMedianTime(prevHeader *types.PovHeader) uint32 
 	return medianTimestamp
 }
 
-func (bc *PovBlockChain) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance) {
+func (bc *PovBlockChain) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance, error) {
 	return bc.CalcBlockRewardByQLC(header)
 }
 
-func (bc *PovBlockChain) CalcBlockRewardByQLC(header *types.PovHeader) (types.Balance, types.Balance) {
+func (bc *PovBlockChain) CalcBlockRewardByQLC(header *types.PovHeader) (types.Balance, types.Balance, error) {
 	miner1 := new(big.Int).Mul(common.PovMinerRewardPerBlockInt, big.NewInt(int64(common.PovMinerRewardRatioMiner)))
 	miner2 := new(big.Int).Div(miner1, big.NewInt(100))
 
 	rep1 := new(big.Int).Mul(common.PovMinerRewardPerBlockInt, big.NewInt(int64(common.PovMinerRewardRatioRep)))
 	rep2 := new(big.Int).Div(rep1, big.NewInt(100))
 
-	return types.NewBalanceFromBigInt(miner2), types.NewBalanceFromBigInt(rep2)
+	return types.NewBalanceFromBigInt(miner2), types.NewBalanceFromBigInt(rep2), nil
+}
+
+func (bc *PovBlockChain) CalcBlockRewardByStakingBonus(header *types.PovHeader) (types.Balance, types.Balance, error) {
+	diffRatio, err := bc.GetPreviousDayAvgDiffRatio(header)
+	if err != nil {
+		return types.ZeroBalance, types.ZeroBalance, err
+	}
+
+	// formula: (diffRatio / 1K) * bonusPerDayPerKD
+	var diffBonusPerDay *big.Int
+	if diffRatio >= uint64(common.PovMinerBonusDiffRatioMin) {
+		if diffRatio > uint64(common.PovMinerBonusDiffRatioMax) {
+			diffBonusPerDay = big.NewInt(int64(common.PovMinerBonusMaxPerDay))
+		} else {
+			diffRatioKilo := diffRatio / 1000
+			diffBonusPerDay = new(big.Int).Mul(big.NewInt(int64(diffRatioKilo)), big.NewInt(int64(common.PovMinerBonusPerKiloPerDay)))
+		}
+
+		bc.logger.Debugf("add bonus to mining, diffRatio %d diffBonus %s", diffRatio, diffBonusPerDay)
+	} else {
+		diffBonusPerDay = big.NewInt(0)
+	}
+
+	// formula: (minerRewardPerDay + bonusPerDay) / blocksPerDay)
+	rewardPerDay := new(big.Int).Add(big.NewInt(int64(common.PovMinerRewardPerDay)), diffBonusPerDay)
+	rewardPerBlock := new(big.Int).Div(rewardPerDay, big.NewInt(int64(common.POVChainBlocksPerDay)))
+
+	miner1 := new(big.Int).Mul(rewardPerBlock, big.NewInt(int64(common.PovMinerRewardRatioMiner)))
+	miner2 := new(big.Int).Div(miner1, big.NewInt(100))
+
+	rep1 := new(big.Int).Mul(rewardPerBlock, big.NewInt(int64(common.PovMinerRewardRatioRep)))
+	rep2 := new(big.Int).Div(rep1, big.NewInt(100))
+
+	return types.NewBalanceFromBigInt(miner2), types.NewBalanceFromBigInt(rep2), nil
+}
+
+func (bc *PovBlockChain) GetPreviousDayAvgDiffRatio(header *types.PovHeader) (uint64, error) {
+	if header.GetHeight() < uint64(common.POVChainBlocksPerDay) {
+		return 1, nil
+	}
+
+	curDayIdx := header.GetHeight() / uint64(common.POVChainBlocksPerDay)
+
+	lastDiffStat, err := bc.ledger.GetPovDiffStat(uint32(curDayIdx - 1))
+	if err != nil {
+		return 0, nil
+	}
+
+	return lastDiffStat.AvgDiffRatio, nil
+}
+
+func (bc *PovBlockChain) updateDiffDayStatInSync(forkBlock *types.PovBlock) {
+	if !bc.doingDiffStat.CAS(false, true) {
+		return
+	}
+	defer bc.doingDiffStat.CAS(true, false)
+
+	latestBlock := bc.LatestBlock()
+	if latestBlock.GetHeight() < uint64(common.POVChainBlocksPerDay) {
+		return
+	}
+
+	endDayIndex := uint32(latestBlock.GetHeight() / uint64(common.POVChainBlocksPerDay))
+	startDayIndex := endDayIndex
+
+	// day after fork point must be recalculated
+	if forkBlock != nil {
+		startDayIndex = uint32(forkBlock.GetHeight() + 1/uint64(common.POVChainBlocksPerDay))
+	}
+
+	// day after last saved diff stat must be recalculated
+	latestDayStat, err := bc.getLedger().GetLatestPovDiffStat()
+	if err != nil {
+		bc.logger.Warnf("failed to get latest pov difficulty stat, err %s", err)
+		// no need return
+	}
+	if latestDayStat != nil {
+		if latestDayStat.DayIndex >= endDayIndex {
+			bc.logger.Warnf("delete pov difficulty stat, latestDayStat: %d, endDayIndex: %d",
+				latestDayStat.DayIndex, endDayIndex)
+			for delDayIndex := endDayIndex; delDayIndex <= latestDayStat.DayIndex; delDayIndex++ {
+				_ = bc.getLedger().DeletePovDiffStat(delDayIndex)
+			}
+		}
+
+		if latestDayStat.DayIndex < startDayIndex {
+			startDayIndex = latestDayStat.DayIndex + 1
+		}
+	} else {
+		startDayIndex = 0
+	}
+
+	bc.logger.Infof("update pov difficulty stat, startDayIndex: %d, latestBlock: %d",
+		startDayIndex, latestBlock.GetHeight())
+
+	for curDayIndex := startDayIndex; curDayIndex <= endDayIndex; curDayIndex++ {
+		dayStartHeight := uint64(curDayIndex) * uint64(common.POVChainBlocksPerDay)
+		dayEndHeight := dayStartHeight + uint64(common.POVChainBlocksPerDay) - 1
+
+		if dayEndHeight > latestBlock.GetHeight() {
+			break
+		}
+
+		dayStat := types.NewPovDiffDayStat()
+		dayStat.DayIndex = curDayIndex
+
+		blkCount := 0
+		totalTarget := big.NewInt(0)
+		blkDiffRatioFlt := float64(0)
+		blkDiffRatioUint := uint64(0)
+		blkTime := uint32(0)
+		for height := dayStartHeight; height <= dayEndHeight; height++ {
+			header, err := bc.getLedger().GetPovHeaderByHeight(height)
+			if err != nil {
+				bc.logger.Errorf("failed to get pov header %d, err %s", height, err)
+				return
+			}
+			blkCount++
+
+			blkNormTarget := header.GetNormTargetInt()
+
+			blkDiffRatioFlt = types.CalcDifficultyRatioByBigInt(blkNormTarget, common.PovPowLimitInt)
+			blkDiffRatioUint = uint64(blkDiffRatioFlt)
+
+			if dayStat.MaxDiffRatio == 0 || blkDiffRatioUint > dayStat.MaxDiffRatio {
+				dayStat.MaxDiffRatio = blkDiffRatioUint
+			}
+			if dayStat.MinDiffRatio == 0 || blkDiffRatioUint < dayStat.MinDiffRatio {
+				dayStat.MinDiffRatio = blkDiffRatioUint
+			}
+
+			blkTime = header.GetTimestamp()
+
+			if dayStat.MaxBlockTime == 0 || blkTime > dayStat.MaxBlockTime {
+				dayStat.MaxBlockTime = blkTime
+			}
+			if dayStat.MinBlockTime == 0 || blkTime < dayStat.MinBlockTime {
+				dayStat.MinBlockTime = blkTime
+			}
+
+			totalTarget = new(big.Int).Add(totalTarget, blkNormTarget)
+		}
+
+		avgTarget := new(big.Int).Div(totalTarget, big.NewInt(int64(blkCount)))
+		diffRatio := types.CalcDifficultyRatioByBigInt(avgTarget, common.PovPowLimitInt)
+		dayStat.AvgDiffRatio = uint64(diffRatio)
+
+		err = bc.getLedger().AddPovDiffStat(dayStat)
+		if err != nil {
+			bc.logger.Errorf("failed to add pov difficulty stat, day %d, err %s", dayStat.DayIndex, err)
+			return
+		}
+
+		bc.logger.Infof("add pov difficulty stat, %d-%d-%d", curDayIndex, dayStartHeight, dayEndHeight)
+	}
 }
 
 func (bc *PovBlockChain) GetDebugInfo() map[string]interface{} {

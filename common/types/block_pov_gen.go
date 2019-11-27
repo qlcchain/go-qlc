@@ -2159,6 +2159,234 @@ func (z PovCoinBaseTxOut) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *PovDiffDayStat) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "di":
+			z.DayIndex, err = dc.ReadUint32()
+			if err != nil {
+				err = msgp.WrapError(err, "DayIndex")
+				return
+			}
+		case "avgdr":
+			z.AvgDiffRatio, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "AvgDiffRatio")
+				return
+			}
+		case "maxdr":
+			z.MaxDiffRatio, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxDiffRatio")
+				return
+			}
+		case "mindr":
+			z.MinDiffRatio, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "MinDiffRatio")
+				return
+			}
+		case "maxbt":
+			z.MaxBlockTime, err = dc.ReadUint32()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxBlockTime")
+				return
+			}
+		case "minbt":
+			z.MinBlockTime, err = dc.ReadUint32()
+			if err != nil {
+				err = msgp.WrapError(err, "MinBlockTime")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *PovDiffDayStat) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 6
+	// write "di"
+	err = en.Append(0x86, 0xa2, 0x64, 0x69)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint32(z.DayIndex)
+	if err != nil {
+		err = msgp.WrapError(err, "DayIndex")
+		return
+	}
+	// write "avgdr"
+	err = en.Append(0xa5, 0x61, 0x76, 0x67, 0x64, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.AvgDiffRatio)
+	if err != nil {
+		err = msgp.WrapError(err, "AvgDiffRatio")
+		return
+	}
+	// write "maxdr"
+	err = en.Append(0xa5, 0x6d, 0x61, 0x78, 0x64, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.MaxDiffRatio)
+	if err != nil {
+		err = msgp.WrapError(err, "MaxDiffRatio")
+		return
+	}
+	// write "mindr"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x64, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.MinDiffRatio)
+	if err != nil {
+		err = msgp.WrapError(err, "MinDiffRatio")
+		return
+	}
+	// write "maxbt"
+	err = en.Append(0xa5, 0x6d, 0x61, 0x78, 0x62, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint32(z.MaxBlockTime)
+	if err != nil {
+		err = msgp.WrapError(err, "MaxBlockTime")
+		return
+	}
+	// write "minbt"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x62, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint32(z.MinBlockTime)
+	if err != nil {
+		err = msgp.WrapError(err, "MinBlockTime")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *PovDiffDayStat) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 6
+	// string "di"
+	o = append(o, 0x86, 0xa2, 0x64, 0x69)
+	o = msgp.AppendUint32(o, z.DayIndex)
+	// string "avgdr"
+	o = append(o, 0xa5, 0x61, 0x76, 0x67, 0x64, 0x72)
+	o = msgp.AppendUint64(o, z.AvgDiffRatio)
+	// string "maxdr"
+	o = append(o, 0xa5, 0x6d, 0x61, 0x78, 0x64, 0x72)
+	o = msgp.AppendUint64(o, z.MaxDiffRatio)
+	// string "mindr"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x64, 0x72)
+	o = msgp.AppendUint64(o, z.MinDiffRatio)
+	// string "maxbt"
+	o = append(o, 0xa5, 0x6d, 0x61, 0x78, 0x62, 0x74)
+	o = msgp.AppendUint32(o, z.MaxBlockTime)
+	// string "minbt"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x62, 0x74)
+	o = msgp.AppendUint32(o, z.MinBlockTime)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *PovDiffDayStat) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "di":
+			z.DayIndex, bts, err = msgp.ReadUint32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DayIndex")
+				return
+			}
+		case "avgdr":
+			z.AvgDiffRatio, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AvgDiffRatio")
+				return
+			}
+		case "maxdr":
+			z.MaxDiffRatio, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxDiffRatio")
+				return
+			}
+		case "mindr":
+			z.MinDiffRatio, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinDiffRatio")
+				return
+			}
+		case "maxbt":
+			z.MaxBlockTime, bts, err = msgp.ReadUint32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxBlockTime")
+				return
+			}
+		case "minbt":
+			z.MinBlockTime, bts, err = msgp.ReadUint32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinBlockTime")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *PovDiffDayStat) Msgsize() (s int) {
+	s = 1 + 3 + msgp.Uint32Size + 6 + msgp.Uint64Size + 6 + msgp.Uint64Size + 6 + msgp.Uint64Size + 6 + msgp.Uint32Size + 6 + msgp.Uint32Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *PovHeader) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field

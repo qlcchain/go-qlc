@@ -192,18 +192,23 @@ func CalcDifficultyRatio(bits uint32, powLimitBits uint32) float64 {
 	// converted back to a number.  Note this is not the same as the proof of
 	// work limit directly because the block difficulty is encoded in a block
 	// with the compact form which loses precision.
-	max := CompactToBig(powLimitBits)
-	if max.Sign() == 0 {
+	powLimitInt := CompactToBig(powLimitBits)
+	diffInt := CompactToBig(bits)
+
+	return CalcDifficultyRatioByBigInt(diffInt, powLimitInt)
+}
+
+func CalcDifficultyRatioByBigInt(diffInt *big.Int, powLimitInt *big.Int) float64 {
+	if powLimitInt.Sign() == 0 {
 		return 0
 	}
-	target := CompactToBig(bits)
-	if target.Sign() == 0 {
+	if diffInt.Sign() == 0 {
 		return 0
 	}
 
-	maxFlt := new(big.Float).SetInt(max)
-	targetFlt := new(big.Float).SetInt(target)
-	diffFlt := new(big.Float).Quo(maxFlt, targetFlt)
-	diff, _ := diffFlt.Float64()
-	return diff
+	maxFlt := new(big.Float).SetInt(powLimitInt)
+	diffFlt := new(big.Float).SetInt(diffInt)
+	diffRatioFlt := new(big.Float).Quo(maxFlt, diffFlt)
+	diffRatio, _ := diffRatioFlt.Float64()
+	return diffRatio
 }
