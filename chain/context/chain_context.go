@@ -34,19 +34,20 @@ var cache = hashmap.New(10)
 var ErrPoVNotFinish = errors.New("pov sync is not finished, please check it")
 
 const (
-	LedgerService      = "ledgerService"
-	WalletService      = "walletService"
-	P2PService         = "P2PService"
-	ConsensusService   = "consensusService"
-	RPCService         = "rpcService"
-	IndexService       = "indexService"
-	PovService         = "povService"
-	MinerService       = "minerService"
-	AutoReceiveService = "autoReceiveService"
-	MetricsService     = "metricsService"
-	ChainManageService = "chainManageService"
-	LogService         = "logService"
-	ResendBlockService = "resendBlockService"
+	LedgerService       = "ledgerService"
+	WalletService       = "walletService"
+	BootNodeHttpService = "bootNodeHttpService"
+	P2PService          = "P2PService"
+	ConsensusService    = "consensusService"
+	RPCService          = "rpcService"
+	IndexService        = "indexService"
+	PovService          = "povService"
+	MinerService        = "minerService"
+	AutoReceiveService  = "autoReceiveService"
+	MetricsService      = "metricsService"
+	ChainManageService  = "chainManageService"
+	LogService          = "logService"
+	ResendBlockService  = "resendBlockService"
 )
 
 type serviceManager interface {
