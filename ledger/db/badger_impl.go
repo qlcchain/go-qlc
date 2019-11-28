@@ -239,7 +239,7 @@ func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {
 	return nil
 }
 
-func (t *BadgerStoreTxn) Commit(callback func(error)) error {
+func (t *BadgerStoreTxn) Commit() error {
 	return t.txn.Commit()
 }
 

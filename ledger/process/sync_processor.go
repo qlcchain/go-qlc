@@ -273,7 +273,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 		return err
 	}
 
-	if err := txn.Commit(nil); err != nil {
+	if err := txn.Commit(); err != nil {
 		lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
 		return err
 	}

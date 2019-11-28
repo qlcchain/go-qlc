@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/types"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/config"
@@ -57,6 +59,13 @@ func TestLedger_Storage(t *testing.T) {
 	if err := context.SetStorage(prefix[:], key, value); err != nil {
 		t.Fatal(err)
 	}
+
+	for i := 0; i < 10; i++ {
+		if err := context.SetStorage(prefix[:], []byte{10, 20, 40, byte(i)}, value); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	v, err := context.GetStorage(prefix[:], key)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +75,7 @@ func TestLedger_Storage(t *testing.T) {
 	}
 
 	storageKey := getStorageKey(prefix[:], key)
-	if get, err := context.get(storageKey); get != nil {
+	if get, err := context.get(storageKey); err == nil {
 		t.Fatal("invalid storage", err)
 	} else {
 		t.Log(get, err)
@@ -87,6 +96,30 @@ func TestLedger_Storage(t *testing.T) {
 		}
 	}
 
+	if err := context.RemoveStorage(prefix[:], key); err != nil {
+		t.Fatal(err)
+	}
+
+	if storage, err := context.GetStorage(prefix[:], key); err == nil && storage != nil {
+		t.Fatal("failed to remove storage")
+	}
+
+	counter := 0
+	if err = context.Iterator(prefix[:], func(key []byte, value []byte) error {
+		counter++
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if counter != 10 {
+		t.Fatal("failed to iterator context data")
+	}
+
+	storage := context.Cache.Storage()
+	if len(storage) != 10 {
+		t.Fatal("failed to iterator cache data")
+	}
 	cacheTrie := context.Cache.Trie()
 	if cacheTrie == nil {
 		t.Fatal("invalid trie")
@@ -96,6 +129,9 @@ func TestLedger_Storage(t *testing.T) {
 		t.Fatal("invalid hash")
 	} else {
 		t.Log(hash.String())
+	}
+	if err = context.SaveTrie(); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -123,4 +159,30 @@ func TestGetStorageKey(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestVMCache_AppendLog(t *testing.T) {
+	teardownTestCase, ctx := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx.Cache.AppendLog(&types.VmLog{
+		Topics: []types.Hash{mock.Hash()},
+		Data:   []byte{10, 20, 30, 40},
+	})
+
+	ctx.Cache.AppendLog(&types.VmLog{
+		Topics: []types.Hash{mock.Hash()},
+		Data:   []byte{10, 20, 30, 50},
+	})
+
+	logs := ctx.Cache.LogList()
+	for idx, l := range logs.Logs {
+		t.Log(idx, " >>>", l.Topics, ":", l.Data)
+	}
+
+	ctx.Cache.Clear()
+
+	if len(ctx.Cache.logList.Logs) != 0 {
+		t.Fatal("invalid logs ")
+	}
 }

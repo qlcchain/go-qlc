@@ -199,7 +199,7 @@ func (l *Ledger) upgrade() error {
 func (l *Ledger) initCache() error {
 	txn := l.Store.NewTransaction(true)
 	defer func() {
-		if err := txn.Commit(nil); err != nil {
+		if err := txn.Commit(); err != nil {
 			l.logger.Error(err)
 		}
 	}()
@@ -229,7 +229,7 @@ func (l *Ledger) processCache() {
 	if _, ok := cache[l.dir]; ok {
 		txn := l.Store.NewTransaction(true)
 		defer func() {
-			if err := txn.Commit(nil); err != nil {
+			if err := txn.Commit(); err != nil {
 				l.logger.Error(err)
 			}
 		}()
@@ -275,7 +275,7 @@ func (l *Ledger) BatchUpdate(fn func(txn db.StoreTxn) error) error {
 	if err := fn(txn); err != nil {
 		return err
 	}
-	return txn.Commit(nil)
+	return txn.Commit()
 }
 
 // BatchView MUST pass the same txn
@@ -291,7 +291,7 @@ func (l *Ledger) BatchView(fn func(txn db.StoreTxn) error) error {
 		return err
 	}
 
-	return txn.Commit(nil)
+	return txn.Commit()
 }
 
 func (l *Ledger) BatchWrite(fn func(batch db.StoreBatch) error) error {
@@ -319,7 +319,7 @@ func (l *Ledger) getTxn(update bool, txns ...db.StoreTxn) (db.StoreTxn, bool) {
 // releaseTxn commit change and close txn
 func (l *Ledger) releaseTxn(txn db.StoreTxn, flag bool) {
 	if flag {
-		err := txn.Commit(nil)
+		err := txn.Commit()
 		if err != nil {
 			l.logger.Error(err)
 		}

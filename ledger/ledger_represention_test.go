@@ -103,7 +103,7 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	if err := l.representCache.memoryToConfirmed(txn); err != nil {
 		l.logger.Errorf("cache to confirmed error : %s", err)
 	}
-	txn.Commit(nil)
+	txn.Commit()
 	count, err := l.CountRepresentations()
 	if err != nil {
 		t.Fatal(err)

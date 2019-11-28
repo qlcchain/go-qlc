@@ -57,6 +57,19 @@ func (cache *VMCache) GetStorage(key []byte) []byte {
 	return cache.trie.GetValue(key)
 }
 
+func (cache *VMCache) RemoveStorage(key []byte) {
+	if _, ok := cache.storage[string(key)]; ok {
+		delete(cache.storage, string(key))
+	}
+}
+
+func (cache *VMCache) AppendLog(log *types.VmLog) {
+	if cache.logList.Logs == nil {
+		cache.logList.Logs = make([]*types.VmLog, 0)
+	}
+	cache.logList.Logs = append(cache.logList.Logs, log)
+}
+
 func (cache *VMCache) LogList() types.VmLogs {
 	return cache.logList
 }
