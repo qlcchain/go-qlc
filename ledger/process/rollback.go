@@ -1,7 +1,9 @@
 package process
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/qlcchain/go-qlc/trie"
 	"reflect"
 	"sort"
 
@@ -479,13 +481,16 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 					if err := lv.rollBackTokenDel(tm, txn); err != nil {
 						return fmt.Errorf("rollback token fail(%s), ContractReward(%s)", err, hashCur)
 					}
+					if err := lv.rollBackFrontier(types.Hash{}, blockCur.GetHash(), txn); err != nil {
+						return fmt.Errorf("rollback frontier fail(%s), ContractReward(%s)", err, hashCur)
+					}
 				} else {
 					if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
 						return fmt.Errorf("rollback token fail(%s), ContractReward(%s)", err, hashCur)
 					}
-				}
-				if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
-					return fmt.Errorf("rollback frontier fail(%s), ContractReward(%s)", err, hashCur)
+					if err := lv.rollBackFrontier(blockPre.GetHash(), blockCur.GetHash(), txn); err != nil {
+						return fmt.Errorf("rollback frontier fail(%s), ContractReward(%s)", err, hashCur)
+					}
 				}
 				if _, ok := sendBlocks[blockCur.GetLink()]; !ok {
 					if err := lv.rollBackPendingAdd(blockCur, types.ZeroBalance, types.ZeroHash, txn); err != nil {
@@ -493,7 +498,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.St
 					}
 				}
 				if err := lv.rollBackContractData(blockCur, txn); err != nil {
-					return fmt.Errorf("rollback contract data fail(%s), ContractReward(%s)", err, blockCur.String())
+					return fmt.Errorf("rollback contract data fail(%s), ContractReward(%s)", err, blockCur.GetHash().String())
 				}
 			case types.ContractSend:
 				if err := lv.rollBackToken(tm, blockPre, txn); err != nil {
@@ -872,38 +877,32 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, txn db.
 func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.StoreTxn) error {
 	extra := block.GetExtra()
 	if !extra.IsZero() {
-		//t := trie.NewTrie(lv.l.Store, &extra, nil)
-		//
-		//nodes := t.NewNodeIterator(func(node *trie.TrieNode) bool {
-		//	return true
-		//})
-		//
-		//for node := range nodes {
-		//	trieData, err := node.Serialize()
-		//	if err != nil {
-		//		return err
-		//	}
-		//
-		//	vmContext := vmstore.NewVMContext(lv.l)
-		//	h := node.Hash()
-		//	contractData, _ := vmContext.GetStorage(h[:], nil)
-		//	if contractData != nil {
-		//		if !bytes.Equal(contractData, trieData) {
-		//			return errors.New("contract data invalid")
-		//		}
-		//		//move contract data to new table
-		//		if err := lv.l.AddTemporaryData(h[:], contractData, txn); err != nil {
-		//			return err
-		//		}
-		//		//delete trie and contract data
-		//		if err := t.DeleteNode(h[:], txn); err != nil {
-		//			return err
-		//		}
-		//		if err := vmContext.DeleteStorage(h[:], txn); err != nil {
-		//			return err
-		//		}
-		//	}
-		//}
+		lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
+		t := trie.NewTrie(lv.l.Store, &extra, trie.NewSimpleTrieNodePool())
+		iterator := t.NewIterator(nil)
+		vmContext := vmstore.NewVMContext(lv.l)
+		for {
+			if key, value, ok := iterator.Next(); !ok {
+				break
+			} else {
+				if contractData, err := vmContext.GetStorageByKey(key); err == nil {
+					if !bytes.Equal(contractData, value) {
+						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
+					}
+					// TODO: move contract data to a new table
+					lv.logger.Warnf("rollback contract data, remove storage: %s", key)
+					if err := vmContext.RemoveStorageByKey(key, txn); err == nil {
+						if err := t.Remove(txn); err != nil {
+							return err
+						}
+					} else {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+		}
 	}
 	return nil
 }

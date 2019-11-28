@@ -65,7 +65,7 @@ func TestRepresentationCache(t *testing.T) {
 
 	txn := l.Store.NewTransaction(true)
 	l.representCache.cacheToConfirmed(txn)
-	txn.Commit(nil)
+	txn.Commit()
 
 	rd, err := l.getRepresentation(address)
 	if err != nil {

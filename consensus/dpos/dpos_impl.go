@@ -1265,6 +1265,13 @@ func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
 			return true, nil
 		case types.MintageAddress:
 			return true, nil
+		case types.BlackHoleAddress:
+			return true, nil
+		}
+	case types.ContractSend:
+		switch types.Address(block.GetLink()) {
+		case types.BlackHoleAddress:
+			return true, nil
 		}
 	}
 	return false, nil

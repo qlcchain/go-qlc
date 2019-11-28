@@ -2,14 +2,13 @@ package process
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/trie"
 )
 
 func TestProcess_Rollback(t *testing.T) {
@@ -128,26 +127,53 @@ func TestLedgerVerifier_BlockCacheCheck(t *testing.T) {
 }
 
 func TestLedger_Rollback_ContractData(t *testing.T) {
-	t.Skip()
-	dir := filepath.Join(config.DefaultDataDir(), "ledger")
-	t.Log(dir)
-	cm := config.NewCfgManager(dir)
-	cm.Load()
-	l := ledger.NewLedger(cm.ConfigFile)
-	lv := NewLedgerVerifier(l)
+	teardownTestCase, l, lv := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	defer func() {
-		err := l.Close()
-		if err != nil {
-			t.Fatal(err)
+	bs := mock.ContractBlocks()
+	if err := lv.BlockProcess(bs[0]); err != nil {
+		t.Fatal(err)
+	}
+	for i, b := range bs[1:] {
+		fmt.Println(i + 1)
+		fmt.Println("bc.previous", b.GetPrevious())
+		if p, err := lv.Process(b); err != nil || p != Progress {
+			t.Fatal(p, err)
 		}
-	}()
-
-	hash := new(types.Hash)
-	hash.Of("06910e3bfea136a891709f2bace609f12135d8766325fca328fc519e9f638157")
-	block, err := lv.l.GetStateBlock(*hash)
+	}
+	c, err := l.CountStateBlocks()
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(block)
+	fmt.Println(c)
+
+	if err := lv.Rollback(bs[2].GetHash()); err != nil {
+		t.Fatal(err)
+	}
+
+	extra := bs[2].GetExtra()
+	tr := trie.NewTrie(lv.l.Store, &extra, trie.NewSimpleTrieNodePool())
+	iterator := tr.NewIterator(nil)
+	counter := 0
+	for {
+		if _, _, ok := iterator.Next(); !ok {
+			break
+		} else {
+			counter++
+		}
+	}
+	if counter > 0 {
+		t.Fatal("failed to remove nodes", counter)
+	}
+
+	fmt.Println("rollback again")
+	if p, err := lv.Process(bs[2]); err != nil || p != Progress {
+		t.Fatal(p, err)
+	}
+	if err := lv.Rollback(bs[2].GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	if p, err := lv.Process(bs[2]); err != nil || p != Progress {
+		t.Fatal(p, err)
+	}
 }

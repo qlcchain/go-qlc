@@ -721,3 +721,34 @@ func TestEncodeKey(t *testing.T) {
 	t.Log(h[:])
 	t.Log(key)
 }
+
+func TestTrie_Remove(t *testing.T) {
+	teardownTestCase, trie := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	trie.SetValue(nil, []byte("NilNilNilNilNil"))
+	trie.SetValue([]byte("IamG"), []byte("ki10$%^%&@#!@#"))
+	trie.SetValue([]byte("IamGood"), []byte("a1230xm90zm19ma"))
+	trie.SetValue([]byte("tesab"), []byte("value.555value.555value.555value.555value.555value.555value.555value.555value.555value.555value.555value.555value.555value.555value.555value.555value.555"))
+
+	trie.SetValue([]byte("tesab"), []byte("value.555val"))
+	trie.SetValue([]byte("tesa"), []byte("vale....asdfasdfasdfvalue.555val"))
+	trie.SetValue([]byte("tesa"), []byte("vale....asdfasdfasdfvalue.555val"))
+	trie.SetValue([]byte("tes"), []byte("asdfvale....asdfasdfasdfvalue.555val"))
+	trie.SetValue([]byte("tesabcd"), []byte("asdfvale....asdfasdfasdfvalue.555val"))
+	trie.SetValue([]byte("t"), []byte("asdfvale....asdfasdfasdfvalue.555valasd"))
+	root := trie.Hash()
+
+	_, _ = trie.Save()
+	store := trie.db
+
+	t2 := NewTrie(store, root, NewSimpleTrieNodePool())
+	if err := t2.Remove(); err != nil {
+		t.Fatal(err)
+	}
+
+	t3 := NewTrie(store, root, NewSimpleTrieNodePool())
+	if t3.Root != nil {
+		t.Fatal("load trie error")
+	}
+}
