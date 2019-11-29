@@ -12,29 +12,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addMintageCmd() {
+func addRepCmd() {
 	if interactive {
 		cmd := &ishell.Cmd{
-			Name: "mintage",
-			Help: "mintage commands",
+			Name: "rep",
+			Help: "rep commands",
 			Func: func(c *ishell.Context) {
 				c.Println(c.Cmd.HelpText())
 			},
 		}
 		shell.AddCmd(cmd)
 
-		addMintageMintageCmdByShell(cmd)
-		addMintageWithdrawCmdByShell(cmd)
+		addRepRewardCmdByShell(cmd)
+		addRepRewardRecvpendCmdByShell(cmd)
 	} else {
 		var cmd = &cobra.Command{
-			Use:   "mintage",
-			Short: "mintage commands",
+			Use:   "rep",
+			Short: "rep commands",
 			Run: func(cmd *cobra.Command, args []string) {
 			},
 		}
 		rootCmd.AddCommand(cmd)
 
-		addMintageMintageCmdByCobra(cmd)
-		addMintageWithdrawCmdByCobra(cmd)
+		addRepRewardCmdByCobra(cmd)
+		addRepRewardRecvpendByCobra(cmd)
 	}
 }

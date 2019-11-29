@@ -18,72 +18,71 @@ import (
 	cutil "github.com/qlcchain/go-qlc/common/util"
 )
 
-func repReward() {
+func addRepRewardCmdByShell(parentCmd *ishell.Cmd) {
+	repPriKey := util.Flag{
+		Name:  "repPriKey",
+		Must:  true,
+		Usage: "representative account private hex string",
+	}
+	bnfPriKey := util.Flag{
+		Name:  "bnfPriKey",
+		Must:  false,
+		Usage: "beneficial account private hex string",
+		Value: "",
+	}
+	bnfAddr := util.Flag{
+		Name:  "bnfAddr",
+		Must:  false,
+		Usage: "beneficial account address hex string",
+		Value: "",
+	}
+
+	cmd := &ishell.Cmd{
+		Name: "repReward",
+		Help: "representative get reward (gas token)",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{repPriKey, bnfPriKey, bnfAddr}
+			if util.HelpText(c, args) {
+				return
+			}
+
+			err := util.CheckArgs(c, args)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+
+			repPriKeyP := util.StringVar(c.Args, repPriKey)
+			bnfPriKeyP := util.StringVar(c.Args, bnfPriKey)
+			bnfAddrP := util.StringVar(c.Args, bnfAddr)
+
+			if err := repRewardAction(repPriKeyP, bnfPriKeyP, bnfAddrP); err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(cmd)
+}
+
+func addRepRewardCmdByCobra(parentCmd *cobra.Command) {
 	var repPriKeyP string
 	var bnfPriKeyP string
 	var bnfAddrP string
-
-	if interactive {
-		repPriKey := util.Flag{
-			Name:  "repPriKey",
-			Must:  true,
-			Usage: "representative account private hex string",
-		}
-		bnfPriKey := util.Flag{
-			Name:  "bnfPriKey",
-			Must:  false,
-			Usage: "beneficial account private hex string",
-			Value: "",
-		}
-		bnfAddr := util.Flag{
-			Name:  "bnfAddr",
-			Must:  false,
-			Usage: "beneficial account address hex string",
-			Value: "",
-		}
-
-		cmd := &ishell.Cmd{
-			Name: "repReward",
-			Help: "representative get reward (gas token)",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{repPriKey, bnfPriKey, bnfAddr}
-				if util.HelpText(c, args) {
-					return
-				}
-
-				err := util.CheckArgs(c, args)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-
-				repPriKeyP = util.StringVar(c.Args, repPriKey)
-				bnfPriKeyP = util.StringVar(c.Args, bnfPriKey)
-				bnfAddrP = util.StringVar(c.Args, bnfAddr)
-
-				if err := repRewardAction(repPriKeyP, bnfPriKeyP, bnfAddrP); err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(cmd)
-	} else {
-		var cmd = &cobra.Command{
-			Use:   "repReward",
-			Short: "representative get reward (gas token)",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := repRewardAction(repPriKeyP, bnfPriKeyP, bnfAddrP)
-				if err != nil {
-					cmd.Println(err)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&repPriKeyP, "repPriKey", "", "representative account private hex string")
-		cmd.Flags().StringVar(&bnfPriKeyP, "bnfPriKey", "", "beneficial account private hex string")
-		cmd.Flags().StringVar(&bnfAddrP, "bnfAddr", "", "beneficial account address hex string")
-		rootCmd.AddCommand(cmd)
+	var cmd = &cobra.Command{
+		Use:   "repReward",
+		Short: "representative get reward (gas token)",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := repRewardAction(repPriKeyP, bnfPriKeyP, bnfAddrP)
+			if err != nil {
+				cmd.Println(err)
+			}
+		},
 	}
+	cmd.Flags().StringVar(&repPriKeyP, "repPriKey", "", "representative account private hex string")
+	cmd.Flags().StringVar(&bnfPriKeyP, "bnfPriKey", "", "beneficial account private hex string")
+	cmd.Flags().StringVar(&bnfAddrP, "bnfAddr", "", "beneficial account address hex string")
+	parentCmd.AddCommand(cmd)
 }
 
 func repRewardAction(repPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) error {
@@ -200,6 +199,5 @@ func repRewardAction(repPriKeyP string, bnfPriKeyP string, bnfAddrHexP string) e
 		}
 		fmt.Printf("success to recv reward, account balance %s\n", rewardBlock.Balance)
 	}
-
 	return nil
 }
