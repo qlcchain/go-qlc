@@ -16,62 +16,60 @@ import (
 	cutil "github.com/qlcchain/go-qlc/common/util"
 )
 
-func repRewardRecvPend() {
-	var accountP string
-	var sendHashP string
-
-	if interactive {
-		account := util.Flag{
-			Name:  "account",
-			Must:  true,
-			Usage: "account private hex string",
-		}
-		sendHash := util.Flag{
-			Name:  "hash",
-			Must:  true,
-			Usage: "reward send block hash string",
-		}
-
-		cmd := &ishell.Cmd{
-			Name: "repRecvPend",
-			Help: "representative recv pending reward (gas token)",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{account, sendHash}
-				if util.HelpText(c, args) {
-					return
-				}
-
-				err := util.CheckArgs(c, args)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-
-				accountP = util.StringVar(c.Args, account)
-				sendHashP = util.StringVar(c.Args, sendHash)
-
-				if err := repRewardRecvPendAction(accountP, sendHashP); err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(cmd)
-	} else {
-		var cmd = &cobra.Command{
-			Use:   "repRecvPend",
-			Short: "representative recv pending reward (gas token)",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := repRewardRecvPendAction(accountP, sendHashP)
-				if err != nil {
-					cmd.Println(err)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&accountP, "account", "", "account private hex string")
-		cmd.Flags().StringVar(&sendHashP, "hash", "", "reward send block hash string")
-		rootCmd.AddCommand(cmd)
+func addRepRewardRecvpendCmdByShell(parentCmd *ishell.Cmd) {
+	account := util.Flag{
+		Name:  "account",
+		Must:  true,
+		Usage: "account private hex string",
 	}
+	sendHash := util.Flag{
+		Name:  "hash",
+		Must:  true,
+		Usage: "reward send block hash string",
+	}
+
+	cmd := &ishell.Cmd{
+		Name: "repRecvPend",
+		Help: "representative recv pending reward (gas token)",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{account, sendHash}
+			if util.HelpText(c, args) {
+				return
+			}
+
+			err := util.CheckArgs(c, args)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+
+			accountP := util.StringVar(c.Args, account)
+			sendHashP := util.StringVar(c.Args, sendHash)
+
+			if err := repRewardRecvPendAction(accountP, sendHashP); err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(cmd)
+}
+
+func addRepRewardRecvpendByCobra(parentCmd *cobra.Command) {
+	var accountP, sendHashP string
+	var cmd = &cobra.Command{
+		Use:   "repRecvPend",
+		Short: "representative recv pending reward (gas token)",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := repRewardRecvPendAction(accountP, sendHashP)
+			if err != nil {
+				cmd.Println(err)
+			}
+		},
+	}
+	cmd.Flags().StringVar(&accountP, "account", "", "account private hex string")
+	cmd.Flags().StringVar(&sendHashP, "hash", "", "reward send block hash string")
+	parentCmd.AddCommand(cmd)
 }
 
 func repRewardRecvPendAction(accountP, sendHashP string) error {

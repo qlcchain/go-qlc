@@ -20,60 +20,60 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-func walletCreate() {
+func addWalletCreateCmdByShell(parentCmd *ishell.Cmd) {
+	pwd := util.Flag{
+		Name:  "password",
+		Must:  false,
+		Usage: "password for new wallet",
+		Value: "",
+	}
+	seed := util.Flag{
+		Name:  "seed",
+		Must:  false,
+		Usage: "seed for wallet",
+		Value: "",
+	}
+	c := &ishell.Cmd{
+		Name: "create",
+		Help: "create a wallet for QLCChain node",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{pwd, seed}
+			if util.HelpText(c, args) {
+				return
+			}
+			if err := util.CheckArgs(c, args); err != nil {
+				util.Warn(err)
+				return
+			}
+			pwdP := util.StringVar(c.Args, pwd)
+			seedP := util.StringVar(c.Args, seed)
+			err := createWallet(pwdP, seedP)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(c)
+}
+
+func addWalletCreateCmdByCobra(parentCmd *cobra.Command) {
 	var pwdP string
 	var seedP string
-	if interactive {
-		pwd := util.Flag{
-			Name:  "password",
-			Must:  false,
-			Usage: "password for new wallet",
-			Value: "",
-		}
-		seed := util.Flag{
-			Name:  "seed",
-			Must:  false,
-			Usage: "seed for wallet",
-			Value: "",
-		}
-		c := &ishell.Cmd{
-			Name: "walletcreate",
-			Help: "create a wallet for QLCChain node",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{pwd, seed}
-				if util.HelpText(c, args) {
-					return
-				}
-				if err := util.CheckArgs(c, args); err != nil {
-					util.Warn(err)
-					return
-				}
-				pwdP = util.StringVar(c.Args, pwd)
-				seedP = util.StringVar(c.Args, seed)
-				err := createWallet(pwdP, seedP)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(c)
-	} else {
-		var wcCmd = &cobra.Command{
-			Use:   "walletcreate",
-			Short: "create a wallet for QLCChain node",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := createWallet(pwdP, seedP)
-				if err != nil {
-					cmd.Println(err)
-					return
-				}
-			},
-		}
-		wcCmd.Flags().StringVarP(&seedP, "seed", "s", "", "seed for wallet")
-		wcCmd.Flags().StringVarP(&pwdP, "password", "p", "", "password for wallet")
-		rootCmd.AddCommand(wcCmd)
+	var wcCmd = &cobra.Command{
+		Use:   "create",
+		Short: "create a wallet for QLCChain node",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := createWallet(pwdP, seedP)
+			if err != nil {
+				cmd.Println(err)
+				return
+			}
+		},
 	}
+	wcCmd.Flags().StringVarP(&seedP, "seed", "s", "", "seed for wallet")
+	wcCmd.Flags().StringVarP(&pwdP, "password", "p", "", "password for wallet")
+	parentCmd.AddCommand(wcCmd)
 }
 
 func createWallet(pwdP, seedP string) error {

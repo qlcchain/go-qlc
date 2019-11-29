@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2019 QLC Chain Team
- *
- * This software is released under the MIT License.
- * https://opensource.org/licenses/MIT
- */
-
 package commands
 
 import (
@@ -14,62 +7,60 @@ import (
 	"sort"
 	"time"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
-	"github.com/spf13/cobra"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	rpc "github.com/qlcchain/jsonrpc2"
+	"github.com/spf13/cobra"
+
+	"github.com/qlcchain/go-qlc/cmd/util"
 )
 
-func performance() {
-	var cfgPathP string
-	if interactive {
-		cfgPath := util.Flag{
-			Name:  "config",
-			Must:  false,
-			Usage: "config file path",
-			Value: "",
-		}
-		c := &ishell.Cmd{
-			Name: "performance",
-			Help: "get performance time",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{cfgPath}
-				if util.HelpText(c, args) {
-					return
-				}
-				if err := util.CheckArgs(c, args); err != nil {
-					util.Warn(err)
-					return
-				}
-				cfgPathP := util.StringVar(c.Args, cfgPath)
-				err := getPerformanceTime(cfgPathP)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(c)
-	} else {
-		var performanceTimeCmd = &cobra.Command{
-			Use:   "performance",
-			Short: "get performance time",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := getPerformanceTime(cfgPathP)
-				if err != nil {
-					cmd.Println(err)
-					return
-				}
-			},
-		}
-		rootCmd.PersistentFlags().StringVarP(&cfgPathP, "config", "c", "", "config file path")
-		rootCmd.AddCommand(performanceTimeCmd)
+func addTxPerformanceByShell(parentCmd *ishell.Cmd) {
+	cfgPath := util.Flag{
+		Name:  "config",
+		Must:  false,
+		Usage: "config file path",
+		Value: "",
 	}
+	c := &ishell.Cmd{
+		Name: "performance",
+		Help: "get performance time",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{cfgPath}
+			if util.HelpText(c, args) {
+				return
+			}
+			if err := util.CheckArgs(c, args); err != nil {
+				util.Warn(err)
+				return
+			}
+			cfgPathP := util.StringVar(c.Args, cfgPath)
+			err := getPerformanceTime(cfgPathP)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(c)
+}
+
+func addTxPerformanceByCobra(parentCmd *cobra.Command) {
+	var cfgPathP string
+	var performanceTimeCmd = &cobra.Command{
+		Use:   "performance",
+		Short: "get performance time",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := getPerformanceTime(cfgPathP)
+			if err != nil {
+				cmd.Println(err)
+				return
+			}
+		},
+	}
+	performanceTimeCmd.PersistentFlags().StringVarP(&cfgPathP, "config", "c", "", "config file path")
+	parentCmd.AddCommand(performanceTimeCmd)
 }
 
 func getPerformanceTime(cfgPathP string) error {

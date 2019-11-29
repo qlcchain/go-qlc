@@ -12,29 +12,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addMintageCmd() {
+func addWalletCmd() {
 	if interactive {
 		cmd := &ishell.Cmd{
-			Name: "mintage",
-			Help: "mintage commands",
+			Name: "wallet",
+			Help: "wallet commands",
 			Func: func(c *ishell.Context) {
 				c.Println(c.Cmd.HelpText())
 			},
 		}
 		shell.AddCmd(cmd)
 
-		addMintageMintageCmdByShell(cmd)
-		addMintageWithdrawCmdByShell(cmd)
+		addWalletChangePasswordCmdByShell(cmd)
+		addWalletCreateCmdByShell(cmd)
+		addWalletListCmdByShell(cmd)
+		addWalletRemoveCmdByShell(cmd)
 	} else {
 		var cmd = &cobra.Command{
-			Use:   "mintage",
-			Short: "mintage commands",
+			Use:   "wallet",
+			Short: "wallet commands",
 			Run: func(cmd *cobra.Command, args []string) {
 			},
 		}
 		rootCmd.AddCommand(cmd)
 
-		addMintageMintageCmdByCobra(cmd)
-		addMintageWithdrawCmdByCobra(cmd)
+		addWalletChangePasswordCmdByCobra(cmd)
+		addWalletCreateCmdByCobra(cmd)
+		addWalletListCmdByCobra(cmd)
+		addWalletRemoveCmdByCobra(cmd)
 	}
 }

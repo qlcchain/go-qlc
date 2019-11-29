@@ -8,23 +8,19 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
-	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/cmd/util"
 )
 
-func addWalletListCmdByShell(parentCmd *ishell.Cmd) {
+func addLedgerBlockCountByIshell(parentCmd *ishell.Cmd) {
 	c := &ishell.Cmd{
-		Name: "list",
-		Help: "return wallet list",
+		Name: "blockcount",
+		Help: "return the total count of block in db",
 		Func: func(c *ishell.Context) {
 			if util.HelpText(c, nil) {
 				return
@@ -33,7 +29,7 @@ func addWalletListCmdByShell(parentCmd *ishell.Cmd) {
 				util.Warn(err)
 				return
 			}
-			err := wallets()
+			err := blocks()
 			if err != nil {
 				util.Warn(err)
 				return
@@ -43,43 +39,41 @@ func addWalletListCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func addWalletListCmdByCobra(parentCmd *cobra.Command) {
-	var wlCmd = &cobra.Command{
-		Use:   "list",
-		Short: "wallet address list",
+func addLedgerBlockCountByCobra(parentCmd *cobra.Command) {
+	var blockcountCmd = &cobra.Command{
+		Use:   "blockcount",
+		Short: "block count",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := wallets()
+			err := blocks()
 			if err != nil {
 				cmd.Println(err)
 				return
 			}
 		},
 	}
-	parentCmd.AddCommand(wlCmd)
+	parentCmd.AddCommand(blockcountCmd)
 }
 
-func wallets() error {
+func blocks() error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	var addresses []types.Address
-	err = client.Call(&addresses, "wallet_list")
+
+	var resp map[string]uint64
+	err = client.Call(&resp, "ledger_transactionsCount")
 	if err != nil {
 		return err
 	}
 
-	if len(addresses) == 0 {
-		return errors.New("no account ,you can try import one!")
+	state := resp["count"]
+	unchecked := resp["unchecked"]
+	s := fmt.Sprintf("total state block count is: %d, unchecked block count is: %d", state, unchecked)
+	if interactive {
+		util.Info(s)
 	} else {
-		for _, v := range addresses {
-			if interactive {
-				util.Info(v)
-			} else {
-				fmt.Println(v)
-			}
-		}
+		fmt.Println(s)
 	}
 
 	return nil
