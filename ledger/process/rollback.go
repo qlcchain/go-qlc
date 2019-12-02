@@ -3,7 +3,6 @@ package process
 import (
 	"bytes"
 	"fmt"
-	"github.com/qlcchain/go-qlc/trie"
 	"reflect"
 	"sort"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/trie"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -900,6 +900,25 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 					}
 				} else {
 					return err
+				}
+				if types.IsRewardContractAddress(types.Address(block.GetLink())) {
+					preHash := block.GetPrevious()
+					for {
+						if preHash.IsZero() {
+							break
+						}
+						preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
+						if err != nil {
+							return fmt.Errorf("contract block previous not found (%s)", block.GetHash())
+						}
+						if preBlock.GetType() == block.GetType() && preBlock.GetLink() == block.GetLink() {
+							if err := lv.updateContractData(preBlock, txn); err != nil {
+								return fmt.Errorf("contract block (%s) update data fail: %s", preBlock.GetHash(), err)
+							}
+							break
+						}
+						preHash = preBlock.GetPrevious()
+					}
 				}
 			}
 		}
