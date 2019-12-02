@@ -1008,8 +1008,39 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	return rspMap, nil
 }
 
-func (api *PovApi) GetMinerDayStats(dayIndex uint32) (*types.PovMinerDayStat, error) {
+func (api *PovApi) GetMinerDayStat(dayIndex uint32) (*types.PovMinerDayStat, error) {
 	dayStat, err := api.ledger.GetPovMinerStat(dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	return dayStat, nil
+}
+
+func (api *PovApi) GetMinerDayStatByHeight(height uint64) (*types.PovMinerDayStat, error) {
+	dayIndex := uint32(height / uint64(common.POVChainBlocksPerDay))
+
+	dayStat, err := api.ledger.GetPovMinerStat(dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	return dayStat, nil
+}
+
+func (api *PovApi) GetDiffDayStat(dayIndex uint32) (*types.PovDiffDayStat, error) {
+	dayStat, err := api.ledger.GetPovDiffStat(dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	return dayStat, nil
+}
+
+func (api *PovApi) GetDiffDayStatByHeight(height uint64) (*types.PovDiffDayStat, error) {
+	dayIndex := uint32(height / uint64(common.POVChainBlocksPerDay))
+
+	dayStat, err := api.ledger.GetPovDiffStat(dayIndex)
 	if err != nil {
 		return nil, err
 	}

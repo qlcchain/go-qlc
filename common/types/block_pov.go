@@ -794,3 +794,29 @@ func NewPovTD() *PovTD {
 	td := new(PovTD)
 	return td
 }
+
+type PovDiffDayStat struct {
+	DayIndex     uint32 `msg:"di" json:"dayIndex"`
+	AvgDiffRatio uint64 `msg:"avgdr" json:"avgDiffRatio"`
+	MaxDiffRatio uint64 `msg:"maxdr" json:"maxDiffRatio"`
+	MinDiffRatio uint64 `msg:"mindr" json:"minDiffRatio"`
+	MaxBlockTime uint32 `msg:"maxbt" json:"maxBlockTime"`
+	MinBlockTime uint32 `msg:"minbt" json:"minBlockTime"`
+}
+
+func (ds *PovDiffDayStat) Serialize() ([]byte, error) {
+	return ds.MarshalMsg(nil)
+}
+
+func (ds *PovDiffDayStat) Deserialize(text []byte) error {
+	_, err := ds.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func NewPovDiffDayStat() *PovDiffDayStat {
+	ds := new(PovDiffDayStat)
+	return ds
+}

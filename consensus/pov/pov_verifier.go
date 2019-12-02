@@ -86,7 +86,7 @@ type PovVerifierChainReader interface {
 	GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
 	GetStateTrie(stateHash *types.Hash) *trie.Trie
 	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
-	CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance)
+	CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance, error)
 }
 
 func NewPovVerifier(store ledger.Store, chain PovVerifierChainReader, cs ConsensusPov) *PovVerifier {
@@ -327,7 +327,10 @@ func (pv *PovVerifier) verifyCoinBaseTx(cbTx *types.PovCoinBaseTx, stat *PovVeri
 		return process.BadCoinbase, errors.New("rep address is zero")
 	}
 
-	calcMinerRwd, calcRepRwd := pv.chain.CalcBlockReward(stat.CurHeader)
+	calcMinerRwd, calcRepRwd, err := pv.chain.CalcBlockReward(stat.CurHeader)
+	if err != nil {
+		return process.BadCoinbase, errors.New("calc block reward error")
+	}
 
 	minerReward := minerTxOut.Value
 	if minerReward.Compare(calcMinerRwd) == types.BalanceCompBigger {

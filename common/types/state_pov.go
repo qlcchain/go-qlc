@@ -21,19 +21,20 @@ func PovCreateStatePrefix(prefix byte) []byte {
 }
 
 func PovCreateStateKey(prefix byte, rawKey []byte) []byte {
-	key := make([]byte, 2+len(rawKey))
-	key[0] = TriePrefixPovState
-	key[1] = prefix
-	copy(key[2:], rawKey)
+	var key []byte
+	key = append(key, TriePrefixPovState, prefix)
+	key = append(key, rawKey...)
 	return key
 }
 
 func PovCreateAccountStateKey(address Address) []byte {
-	return PovCreateStateKey(PovStatePrefixAcc, address.Bytes())
+	addrBytes := address.Bytes()
+	return PovCreateStateKey(PovStatePrefixAcc, addrBytes)
 }
 
 func PovCreateRepStateKey(address Address) []byte {
-	return PovCreateStateKey(PovStatePrefixRep, address.Bytes())
+	addrBytes := address.Bytes()
+	return PovCreateStateKey(PovStatePrefixRep, addrBytes)
 }
 
 func PovStateKeyToAddress(key []byte) (Address, error) {
