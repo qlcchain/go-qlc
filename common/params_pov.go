@@ -34,20 +34,20 @@ var (
 
 	// Reward per block, rewardPerBlock * blockNumPerYear / gasTotalSupply = 3%
 	// 10000000000000000 * 0.03 / (3600 * 24 * 365 / 60)
-	PovMinerRewardPerDay          = 821917808219
-	PovMinerRewardPerBlock        = 570776255
+	PovMinerRewardPerDay          = uint64(821917808219)
+	PovMinerRewardPerBlock        = uint64(570776255)
 	PovMinerRewardPerBlockInt     = big.NewInt(int64(PovMinerRewardPerBlock))
 	PovMinerRewardPerBlockBalance = types.NewBalance(int64(PovMinerRewardPerBlock))
-	PovMinerMinRewardPerBlock     = 570776 // 0.001 * 570776255
-	PovMinerRewardRatioMiner      = 60     // 60%
-	PovMinerRewardRatioRep        = 40     // 40%
+	PovMinerMinRewardPerBlock     = uint64(570776) // 0.001 * 570776255
+	PovMinerRewardRatioMiner      = 60             // 60%
+	PovMinerRewardRatioRep        = 40             // 40%
 
 	// Bonus per block, bonusPerBlock * blockNumPerYear / stakingRewardPerYear = 90%(max)
-	PovStakingRewardPerDay     = 830200000000
-	PovMinerBonusMaxPerDay     = 747180000000 // 830200000000 * 90 / 100
-	PovMinerBonusPerKiloPerDay = 747180       // 747180000000 / (1G / 1M)
-	PovMinerBonusDiffRatioMax  = 1000000000   // 1G
-	PovMinerBonusDiffRatioMin  = 1000         // 1K
+	PovStakingRewardPerDay     = uint64(830200000000)
+	PovMinerBonusMaxPerDay     = uint64(747180000000) // 830200000000 * 90 / 100
+	PovMinerBonusPerKiloPerDay = uint64(747180)       // 747180000000 / (1G / 1M)
+	PovMinerBonusDiffRatioMax  = uint64(1000000000)   // 1G
+	PovMinerBonusDiffRatioMin  = 1000                 // 1K
 
 	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 23)
 
