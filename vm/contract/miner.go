@@ -128,7 +128,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 
 	calcRewardBlocks, calcRewardAmount, err := m.calcRewardBlocksByDayStats(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("calcRewardBlocksByDayStats, %s", err)
 	}
 	if calcRewardBlocks != param.RewardBlocks {
 		return nil, nil, fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
