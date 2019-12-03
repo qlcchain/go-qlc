@@ -756,7 +756,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 }
 
 func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.StoreTxn) error {
-	lv.logger.Warn("updateContractData")
+	lv.logger.Warnf("updateContractData, %s", block.GetHash())
 	if !common.IsGenesisBlock(block) {
 		lv.logger.Warn("updateContractData, ", block.GetType().String())
 		switch block.GetType() {
