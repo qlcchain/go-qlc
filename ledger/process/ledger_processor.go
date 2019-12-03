@@ -756,9 +756,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 }
 
 func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.StoreTxn) error {
-	lv.logger.Warnf("updateContractData, %s", block.GetHash())
 	if !common.IsGenesisBlock(block) {
-		lv.logger.Warn("updateContractData, ", block.GetType().String())
 		switch block.GetType() {
 		case types.ContractReward:
 			input, err := lv.l.GetStateBlock(block.GetLink())
@@ -802,11 +800,9 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 			}
 		case types.ContractSend:
 			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data)
-			lv.logger.Warn(ok, err)
 			if ok && err == nil {
 				switch v := c.(type) {
 				case contract.ChainContractV2:
-					lv.logger.Warn("ChainContractV2")
 					vmCtx := vmstore.NewVMContext(lv.l)
 					if _, _, err := v.ProcessSend(vmCtx, block); err == nil {
 						if err := vmCtx.SaveStorage(txn); err != nil {
@@ -818,7 +814,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 							return err
 						}
 					} else {
-						lv.logger.Warn(err)
+						lv.logger.Errorf("process send error, ", err)
 					}
 				}
 			}

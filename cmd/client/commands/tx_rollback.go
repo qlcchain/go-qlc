@@ -75,7 +75,6 @@ func rollbackAction(hashP string) error {
 	if err := rollbackTx(hash); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -90,6 +89,5 @@ func rollbackTx(hash types.Hash) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
