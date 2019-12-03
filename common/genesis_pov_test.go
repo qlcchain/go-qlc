@@ -10,7 +10,7 @@ import (
 )
 
 func TestGenesisPovBlock1(t *testing.T) {
-	expectHash, _ := types.NewHash("739c718881caedbced5b59b3700df85e3f879e25d626b385eb2deed7e10e0000")
+	expectHash, _ := types.NewHash("5e66d8b374409cdf3b94dad3e6d3854803077a654ce0f770311b6fa429395626")
 
 	expectStateHash, _ := types.NewHash("1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49")
 
@@ -24,5 +24,15 @@ func TestGenesisPovBlock1(t *testing.T) {
 	if checkHash != expectHash {
 		t.Log(util.ToString(genesisPovBlock))
 		t.Fatal("invalid main net genesis pov block hash", checkHash.String(), expectHash.String())
+	}
+
+	powHash := genesisPovBlock.Header.ComputePowHash()
+	powInt := powHash.ToBigInt()
+	algoInt := genesisPovBlock.Header.GetAlgoTargetInt()
+	normInt := genesisPovBlock.Header.GetNormTargetInt()
+	t.Logf("powInt %064x algoInt %064x", powInt, algoInt)
+	t.Logf("normInt %064x paramInt %064x", normInt, PovGenesisPowInt)
+	if powInt.Cmp(algoInt) > 0 {
+		t.Fatal("invalid main net genesis pov pow hash", powHash.String())
 	}
 }

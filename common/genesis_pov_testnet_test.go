@@ -25,4 +25,14 @@ func TestGenesisPovBlock1(t *testing.T) {
 		t.Log(util.ToString(genesisPovBlock))
 		t.Fatal("invalid test net genesis pov block hash", checkHash.String(), expectHash.String())
 	}
+
+	powHash := genesisPovBlock.Header.ComputePowHash()
+	powInt := powHash.ToBigInt()
+	algoInt := genesisPovBlock.Header.GetAlgoTargetInt()
+	normInt := genesisPovBlock.Header.GetNormTargetInt()
+	t.Logf("powInt %064x algoInt %064x", powInt, algoInt)
+	t.Logf("normInt %064x paramInt %064x", normInt, PovGenesisPowInt)
+	if powInt.Cmp(algoInt) > 0 {
+		t.Fatal("invalid test net genesis pov pow hash", powHash.String())
+	}
 }

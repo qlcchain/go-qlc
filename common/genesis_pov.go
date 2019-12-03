@@ -12,13 +12,13 @@ var (
 	jsonPovGenesis = `{
     "header":{
         "basHdr":{
-            "version":0,
+            "version":256,
             "previous":"0000000000000000000000000000000000000000000000000000000000000000",
             "merkleRoot":"0ca279bf861acd7acb33bbc6c44471185ea88f4fad36fb3f973423b73aa9aa07",
-            "timestamp":1569024012,
-            "bits":504365040,
-            "nonce":107292460,
-            "hash":"739c718881caedbced5b59b3700df85e3f879e25d626b385eb2deed7e10e0000",
+            "timestamp":1569024018,
+            "bits":506640333,
+            "nonce":645962481,
+            "hash":"5e66d8b374409cdf3b94dad3e6d3854803077a654ce0f770311b6fa429395626",
             "height":0
         },
         "auxHdr":null,
