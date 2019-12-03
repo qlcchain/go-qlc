@@ -171,6 +171,28 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 		}, nil
 }
 
+func (m *MinerReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, RewardAmount *big.Int, RewardBlocks uint64, block *types.StateBlock) error {
+	oldInfo, err := m.GetRewardHistory(ctx, block.Address)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return fmt.Errorf("get storage err %s", err)
+	}
+
+	if oldInfo == nil {
+		oldInfo = new(cabi.MinerRewardInfo)
+		oldInfo.RewardAmount = big.NewInt(0)
+	}
+
+	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, endHeight,
+		RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
+		new(big.Int).Add(RewardAmount, oldInfo.RewardAmount))
+	err = ctx.SetStorage(types.MinerAddress.Bytes(), block.Address[:], data)
+	if err != nil {
+		return errors.New("save contract data err")
+	}
+
+	return nil
+}
+
 func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.MinerRewardParam)
 

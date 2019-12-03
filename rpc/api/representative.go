@@ -213,6 +213,11 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 	}
 
 	vmContext := vmstore.NewVMContext(r.ledger)
+	err = r.reward.SetStorage(vmContext, param.EndHeight, param.RewardAmount, param.RewardBlocks, send)
+	if err != nil {
+		return nil, err
+	}
+
 	h := vmContext.Cache.Trie().Hash()
 	if h != nil {
 		send.Extra = *h
