@@ -846,7 +846,6 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, txn db.StoreTxn) error {
 	if blockCur.GetType() == types.ContractSend {
 		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.Data); ok && err == nil {
-			lv.logger.Warn(ok, err)
 			switch v := c.(type) {
 			case contract.ChainContractV1:
 				if pendingKey, _, err := v.DoPending(blockCur); err == nil && pendingKey != nil {
@@ -856,21 +855,16 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, txn db.
 					}
 				}
 			case contract.ChainContractV2:
-				lv.logger.Warn("ChainContractV2")
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, _, err := v.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
 					if err := lv.l.DeletePending(pendingKey, txn); err != nil {
 						return err
 					}
-				} else {
-					lv.logger.Warn("pending not found")
 				}
 			default:
 				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 			}
-		} else {
-			lv.logger.Warn(ok, err)
 		}
 		return nil
 	} else {
@@ -897,7 +891,6 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 		vmContext := vmstore.NewVMContext(lv.l)
 		for {
 			if key, value, ok := iterator.Next(); !ok {
-				lv.logger.Warn("iterator break")
 				break
 			} else {
 				if contractData, err := vmContext.GetStorageByKey(key); err == nil {
@@ -905,7 +898,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
 					}
 					// TODO: move contract data to a new table
-					lv.logger.Warnf("rollback contract data, remove storage key: %s", key)
+					lv.logger.Warnf("rollback contract data, remove storage key: %v", key)
 					if err := vmContext.RemoveStorageByKey(key, txn); err == nil {
 						if err := t.Remove(txn); err != nil {
 							return err
@@ -914,7 +907,6 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 						return err
 					}
 				} else {
-					lv.logger.Error(err)
 					return err
 				}
 			}
@@ -923,7 +915,6 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 			preHash := block.GetPrevious()
 			for {
 				if preHash.IsZero() {
-					lv.logger.Warn("preHash.IsZero")
 					break
 				}
 				preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
@@ -936,12 +927,8 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 					iter := tr.NewIterator(nil)
 					for {
 						if key, value, ok := iter.Next(); !ok {
-							lv.logger.Warn("iterator break")
 							break
 						} else {
-							lv.logger.Warn(key)
-							lv.logger.Warn(value)
-
 							if err := txn.Set(key, value); err != nil {
 								lv.logger.Errorf("set storage error: %s", err)
 							}

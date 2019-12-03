@@ -91,11 +91,11 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	param := new(cabi.MinerRewardParam)
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.Data)
 	if err != nil {
-		return nil, nil, fmt.Errorf("UnpackMethod, %s", err)
+		return nil, nil, err
 	}
 
 	if _, err := param.Verify(); err != nil {
-		return nil, nil, fmt.Errorf("verify, %s", err)
+		return nil, nil, err
 	}
 
 	if param.Coinbase != block.Address {
@@ -114,7 +114,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 
 	nodeRewardHeight, err := m.GetNodeRewardHeight(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("GetNodeRewardHeight, %s", err)
+		return nil, nil, err
 	}
 	if param.EndHeight > nodeRewardHeight {
 		return nil, nil, fmt.Errorf("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
@@ -123,12 +123,12 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	// check same start & end height exist in old reward infos
 	err = m.checkParamExistInOldRewardInfos(ctx, param)
 	if err != nil {
-		return nil, nil, errors.New("section exist")
+		return nil, nil, fmt.Errorf("section exist, %s", err)
 	}
 
 	calcRewardBlocks, calcRewardAmount, err := m.calcRewardBlocksByDayStats(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
 	if err != nil {
-		return nil, nil, fmt.Errorf("calcRewardBlocksByDayStats, %s", err)
+		return nil, nil, err
 	}
 	if calcRewardBlocks != param.RewardBlocks {
 		return nil, nil, fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
