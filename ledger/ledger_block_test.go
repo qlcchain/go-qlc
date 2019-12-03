@@ -15,12 +15,17 @@ func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
 	blk := mock.StateBlockWithoutWork()
 	com := common.GenesisBlock()
 	blk.Link = com.GetHash()
-	if err := l.AddStateBlock(&com); err != nil {
+	txn := l.Store.NewTransaction(true)
+	if err := l.AddStateBlock(&com, txn); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.AddStateBlock(blk); err != nil {
+	if err := l.AddStateBlock(blk, txn); err != nil {
 		t.Fatal(err)
 	}
+	l.DeleteStateBlock(blk.GetHash())
+	b, err := l.HasStateBlock(blk.GetHash(), txn)
+	fmt.Println(b, err)
+	txn.Commit()
 	return blk
 }
 

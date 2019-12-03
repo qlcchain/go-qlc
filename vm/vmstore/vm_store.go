@@ -224,6 +224,7 @@ func (v *VMContext) remove(key []byte, txns ...db.StoreTxn) (err error) {
 			txn.Discard()
 		}()
 	}
+	v.logger.Errorf("delete strage key, ", key)
 	return txn.Delete(key)
 }
 

@@ -528,7 +528,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Hash]*types.State
 				return fmt.Errorf("delete state block error: %s, %s", err, hashCur)
 			}
 			lv.l.EB.Publish(common.EventRollback, hashCur)
-			lv.logger.Errorf("rollback delete block %s (previous: %s, type: %s,  address: %s) ", hashCur.String(), blockCur.GetPrevious().String(), blockCur.GetType(), blockCur.GetAddress().String())
+			lv.logger.Warnf("rollback delete block %s (previous: %s, type: %s,  address: %s) ", hashCur.String(), blockCur.GetPrevious().String(), blockCur.GetType(), blockCur.GetAddress().String())
 
 			if err := lv.checkBlockCache(blockCur, txn); err != nil {
 				lv.logger.Errorf("roll back block cache error : %s", err)
@@ -917,27 +917,36 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 					lv.logger.Error(err)
 					return err
 				}
-				if types.IsRewardContractAddress(types.Address(block.GetLink())) {
-					preHash := block.GetPrevious()
-					for {
-						if preHash.IsZero() {
-							lv.logger.Warn("preHash.IsZero")
-							break
-						}
-						preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
-						if err != nil {
-							return fmt.Errorf("contract block previous not found (%s)", block.GetHash())
-						}
-						if preBlock.GetType() == block.GetType() && preBlock.GetLink() == block.GetLink() {
-							if err := lv.updateContractData(preBlock, txn); err != nil {
-								return fmt.Errorf("contract block (%s) update data fail: %s", preBlock.GetHash(), err)
-							}
-							lv.logger.Warn("write done")
-							break
-						}
-						preHash = preBlock.GetPrevious()
-					}
+			}
+		}
+		if types.IsRewardContractAddress(types.Address(block.GetLink())) {
+			preHash := block.GetPrevious()
+			for {
+				if preHash.IsZero() {
+					lv.logger.Warn("preHash.IsZero")
+					break
 				}
+				preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
+				if err != nil {
+					return fmt.Errorf("contract block previous not found (%s)", block.GetHash())
+				}
+				if preBlock.GetType() == block.GetType() && preBlock.GetLink() == block.GetLink() {
+					ex := preBlock.GetExtra()
+					tr := trie.NewTrie(lv.l.Store, &ex, trie.NewSimpleTrieNodePool())
+					iter := tr.NewIterator(nil)
+					for {
+						if key, value, ok := iter.Next(); !ok {
+							lv.logger.Warn("iterator break")
+							break
+						} else {
+							if err := txn.Set(key, value); err != nil {
+								lv.logger.Errorf("set storage error: %s", err)
+							}
+						}
+					}
+					break
+				}
+				preHash = preBlock.GetPrevious()
 			}
 		}
 	}
