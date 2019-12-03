@@ -91,11 +91,11 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	param := new(cabi.MinerRewardParam)
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.Data)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("UnpackMethod, %s", err)
 	}
 
 	if _, err := param.Verify(); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("verify, %s", err)
 	}
 
 	if param.Coinbase != block.Address {
@@ -114,7 +114,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 
 	nodeRewardHeight, err := m.GetNodeRewardHeight(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("GetNodeRewardHeight, %s", err)
 	}
 	if param.EndHeight > nodeRewardHeight {
 		return nil, nil, fmt.Errorf("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
