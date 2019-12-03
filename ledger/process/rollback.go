@@ -846,6 +846,7 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, txn db.StoreTxn) error {
 	if blockCur.GetType() == types.ContractSend {
 		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.Data); ok && err == nil {
+			lv.logger.Warn(ok, err)
 			switch v := c.(type) {
 			case contract.ChainContractV1:
 				if pendingKey, _, err := v.DoPending(blockCur); err == nil && pendingKey != nil {
@@ -855,16 +856,21 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, txn db.
 					}
 				}
 			case contract.ChainContractV2:
+				lv.logger.Warn("ChainContractV2")
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, _, err := v.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
 					if err := lv.l.DeletePending(pendingKey, txn); err != nil {
 						return err
 					}
+				} else {
+					lv.logger.Warn("pending not found")
 				}
 			default:
 				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 			}
+		} else {
+			lv.logger.Warn(ok, err)
 		}
 		return nil
 	} else {

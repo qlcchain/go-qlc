@@ -817,6 +817,8 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 							lv.logger.Error("save trie error: ", err)
 							return err
 						}
+					} else {
+						lv.logger.Warn(err)
 					}
 				}
 			}
