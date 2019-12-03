@@ -197,6 +197,11 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	}
 
 	vmContext := vmstore.NewVMContext(m.ledger)
+	err = m.reward.SetStorage(vmContext, param.EndHeight, param.RewardAmount, param.RewardBlocks, send)
+	if err != nil {
+		return nil, err
+	}
+
 	h := vmContext.Cache.Trie().Hash()
 	if h != nil {
 		send.Extra = *h

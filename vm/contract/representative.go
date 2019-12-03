@@ -166,6 +166,28 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		}, nil
 }
 
+func (r *RepReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, RewardAmount *big.Int, RewardBlocks uint64, block *types.StateBlock) error {
+	oldInfo, err := r.GetRewardHistory(ctx, block.Address)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return fmt.Errorf("get storage err %s", err)
+	}
+
+	if oldInfo == nil {
+		oldInfo = new(cabi.RepRewardInfo)
+		oldInfo.RewardAmount = big.NewInt(0)
+	}
+
+	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, endHeight,
+		RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
+		new(big.Int).Add(RewardAmount, oldInfo.RewardAmount))
+	err = ctx.SetStorage(types.RepAddress.Bytes(), block.Address[:], data)
+	if err != nil {
+		return errors.New("save contract data err")
+	}
+
+	return nil
+}
+
 func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.RepRewardParam)
 

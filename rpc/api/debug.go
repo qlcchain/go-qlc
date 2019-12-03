@@ -254,37 +254,34 @@ type APIPendingInfo struct {
 	Used      bool   `json:"used"`
 }
 
-func (l *DebugApi) AccountPending(address types.Address) (*APIPendingInfo, error) {
+func (l *DebugApi) AccountPending(address types.Address, hash types.Hash) (*APIPendingInfo, error) {
 	vmContext := vmstore.NewVMContext(l.ledger)
 	ap := new(APIPendingInfo)
-	err := l.ledger.SearchAllKindPending(address, func(key *types.PendingKey, info *types.PendingInfo, kind types.PendingKind) error {
-		token, err := abi.GetTokenById(vmContext, info.Type)
-		if err != nil {
-			return err
-		}
-		tokenName := token.TokenName
-		blk, err := l.ledger.GetStateBlockConfirmed(key.Hash)
-		if err != nil {
-			return err
-		}
-		var used bool
-		if kind == types.PendingUsed {
-			used = true
-		} else {
-			used = false
-		}
-		ap = &APIPendingInfo{
-			PendingKey:  key,
-			PendingInfo: info,
-			TokenName:   tokenName,
-			Timestamp:   blk.Timestamp,
-			Used:        used,
-		}
-		return nil
-	})
+	key := &types.PendingKey{
+		Address: address,
+		Hash:    hash,
+	}
+	info, err := l.ledger.GetPending(key)
 	if err != nil {
 		return nil, err
 	}
+
+	token, err := abi.GetTokenById(vmContext, info.Type)
+	if err != nil {
+		return nil, err
+	}
+	tokenName := token.TokenName
+	blk, err := l.ledger.GetStateBlockConfirmed(key.Hash)
+	if err != nil {
+		return nil, err
+	}
+	ap = &APIPendingInfo{
+		PendingKey:  key,
+		PendingInfo: info,
+		TokenName:   tokenName,
+		Timestamp:   blk.Timestamp,
+	}
+
 	return ap, nil
 }
 
@@ -421,3 +418,8 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 
 	return outArgs, nil
 }
+
+//func (l *DebugApi) Rollback(hash types.Hash) error {
+//	lv := process.NewLedgerVerifier(l.ledger)
+//	return lv.Rollback(hash)
+//}
