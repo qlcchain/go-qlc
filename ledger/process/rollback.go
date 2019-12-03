@@ -27,9 +27,9 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 		lv.logger.Warnf("rollback block not found: %s", hash.String())
 		return nil
 	}
-	lv.logger.Errorf("process rollback  block: %s", hash.String())
+	lv.logger.Warnf("process rollback  block: %s", hash.String())
 	// get blocks to roll back
-	rollbackMap := make(map[types.Address]*types.StateBlock)
+	rollbackMap := make(map[types.Hash]*types.StateBlock)
 	relatedBlocks := queue.NewQueue(512)
 	relatedBlocks.Put(hash)
 	lv.logger.Debugf("put block to queue %s ", hash.String())
@@ -45,17 +45,21 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 			lv.logger.Debugf("get block from  queue %s (%s) ,%s  ", oldestBlock.GetHash().String(), oldestBlock.GetType().String(), oldestBlock.Address.String())
 
 			// put oldest block to rollbackMap
-			if rBlock, ok := rollbackMap[oldestBlock.GetAddress()]; ok {
+			h, err := types.HashBytes(oldestBlock.Address[:], oldestBlock.Token[:])
+			if err != nil {
+				return fmt.Errorf("get hash key error %s", err)
+			}
+			if rBlock, ok := rollbackMap[h]; ok {
 				lv.logger.Debugf("get %s from rollback of %s ", rBlock.GetHash().String(), oldestBlock.GetAddress().String())
 				if t, err := lv.blockOrderCompare(oldestBlock, rBlock); t && err == nil {
 					lv.logger.Debugf("put block to rollback %s (%s), %s ", oldestBlock.GetHash().String(), oldestBlock.GetType().String(), oldestBlock.Address.String())
-					rollbackMap[oldestBlock.GetAddress()] = oldestBlock
+					rollbackMap[h] = oldestBlock
 				} else if err != nil {
 					return err
 				}
 			} else {
 				lv.logger.Debugf("put block  to rollback %s (%s), %s ", oldestBlock.GetHash().String(), oldestBlock.GetType().String(), oldestBlock.Address.String())
-				rollbackMap[oldestBlock.GetAddress()] = oldestBlock
+				rollbackMap[h] = oldestBlock
 			}
 
 			// get header block
@@ -87,7 +91,11 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 						if err != nil {
 							return fmt.Errorf("can not get link block %s", linkHash.String())
 						}
-						if rBlock, ok := rollbackMap[linkBlock.GetAddress()]; ok {
+						ha, err := types.HashBytes(linkBlock.Address[:], linkBlock.Token[:])
+						if err != nil {
+							return fmt.Errorf("get hash key error %s", err)
+						}
+						if rBlock, ok := rollbackMap[ha]; ok {
 							lv.logger.Debugf("get link %s from rollback of %s ", rBlock.GetHash().String(), linkBlock.GetAddress().String())
 							if t, err := lv.blockOrderCompare(linkBlock, rBlock); t && err == nil {
 								lv.logger.Debugf("put block to queue %s (%s) ,%s ", linkBlock.GetHash().String(), linkBlock.GetType().String(), linkBlock.Address.String())
@@ -392,14 +400,14 @@ func (lv *LedgerVerifier) rollbackCacheAccountDel(address types.Address, token t
 }
 
 // rollback confirmed blocks
-func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Address]*types.StateBlock, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Hash]*types.StateBlock, txn db.StoreTxn) error {
 	sendBlocks, err := lv.sendBlocksInRollback(rollbackMap, txn)
 	if err != nil {
 		return err
 	}
 
-	for address, oldestBlock := range rollbackMap {
-		tm, err := lv.l.GetTokenMetaConfirmed(address, oldestBlock.GetToken())
+	for _, oldestBlock := range rollbackMap {
+		tm, err := lv.l.GetTokenMetaConfirmed(oldestBlock.GetAddress(), oldestBlock.GetToken())
 		if err != nil {
 			return fmt.Errorf("get tokenmeta error: %s (%s)", err, oldestBlock.GetHash().String())
 		}
@@ -592,10 +600,10 @@ func (lv *LedgerVerifier) rollBackPendingKind(block *types.StateBlock, txn db.St
 }
 
 // all Send block to rollback
-func (lv *LedgerVerifier) sendBlocksInRollback(blocks map[types.Address]*types.StateBlock, txn db.StoreTxn) (map[types.Hash]types.Address, error) {
+func (lv *LedgerVerifier) sendBlocksInRollback(blocks map[types.Hash]*types.StateBlock, txn db.StoreTxn) (map[types.Hash]types.Address, error) {
 	sendBlocks := make(map[types.Hash]types.Address)
-	for address, oldestBlock := range blocks {
-		tm, err := lv.l.GetTokenMetaConfirmed(address, oldestBlock.GetToken(), txn)
+	for _, oldestBlock := range blocks {
+		tm, err := lv.l.GetTokenMetaConfirmed(oldestBlock.GetAddress(), oldestBlock.GetToken(), txn)
 		if err != nil {
 			return nil, fmt.Errorf("get tokenmeta error: %s (%s)", err, oldestBlock.GetHash().String())
 		}
