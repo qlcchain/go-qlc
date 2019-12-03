@@ -939,6 +939,9 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 							lv.logger.Warn("iterator break")
 							break
 						} else {
+							lv.logger.Warn(key)
+							lv.logger.Warn(value)
+
 							if err := txn.Set(key, value); err != nil {
 								lv.logger.Errorf("set storage error: %s", err)
 							}
