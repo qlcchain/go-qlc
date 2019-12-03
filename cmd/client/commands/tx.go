@@ -27,6 +27,7 @@ func addTxCmd() {
 		addTxChangeCmdByShell(txCmd)
 		addTxRecvCmdByShell(txCmd)
 		addTxSendCmdByShell(txCmd)
+		addTxRollbackCmdByShell(txCmd)
 	} else {
 		var txCmd = &cobra.Command{
 			Use:   "tx",
@@ -40,6 +41,7 @@ func addTxCmd() {
 		addTxChangeCmdByCobra(txCmd)
 		addTxRecvCmdByCobra(txCmd)
 		addTxSendCmdByCobra(txCmd)
+		addTxRollbackCmdByCobra(txCmd)
 	}
 }
 

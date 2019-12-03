@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -420,4 +421,9 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	delete(outArgs, "err")
 
 	return outArgs, nil
+}
+
+func (l *DebugApi) Rollback(hash types.Hash) error {
+	lv := process.NewLedgerVerifier(l.ledger)
+	return lv.Rollback(hash)
 }
