@@ -891,6 +891,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 		vmContext := vmstore.NewVMContext(lv.l)
 		for {
 			if key, value, ok := iterator.Next(); !ok {
+				lv.logger.Warn("iterator break")
 				break
 			} else {
 				if contractData, err := vmContext.GetStorageByKey(key); err == nil {
@@ -898,7 +899,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
 					}
 					// TODO: move contract data to a new table
-					lv.logger.Warnf("rollback contract data, remove storage: %s", key)
+					lv.logger.Warnf("rollback contract data, remove storage key: %s", key)
 					if err := vmContext.RemoveStorageByKey(key, txn); err == nil {
 						if err := t.Remove(txn); err != nil {
 							return err
@@ -907,12 +908,14 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 						return err
 					}
 				} else {
+					lv.logger.Error(err)
 					return err
 				}
 				if types.IsRewardContractAddress(types.Address(block.GetLink())) {
 					preHash := block.GetPrevious()
 					for {
 						if preHash.IsZero() {
+							lv.logger.Warn("preHash.IsZero")
 							break
 						}
 						preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
@@ -923,6 +926,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, txn db.S
 							if err := lv.updateContractData(preBlock, txn); err != nil {
 								return fmt.Errorf("contract block (%s) update data fail: %s", preBlock.GetHash(), err)
 							}
+							lv.logger.Warn("write done")
 							break
 						}
 						preHash = preBlock.GetPrevious()

@@ -208,6 +208,8 @@ func (v *VMContext) set(key []byte, value []byte, txns ...db.StoreTxn) (err erro
 			txn.Discard()
 		}()
 	}
+	v.logger.Warn("set storage key: ", key)
+	v.logger.Warn("set storage value: ", value)
 	return txn.Set(key, value)
 }
 
