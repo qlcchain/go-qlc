@@ -51,15 +51,15 @@ var (
 
 	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 23)
 
-	PovGenesisPowHex    = "00000ffff0000000000000000000000000000000000000000000000000000000"
+	PovGenesisPowHex    = "00000000ffff0000000000000000000000000000000000000000000000000000"
 	PovGenesisPowInt, _ = new(big.Int).SetString(PovGenesisPowHex, 16)
-	PovGenesisPowBits   = types.BigToCompact(PovGenesisPowInt) //0x1e0ffff0
+	PovGenesisPowBits   = types.BigToCompact(PovGenesisPowInt) //0x1d00ffff
 
 	// PowLimit is the highest proof of work value a Bitcoin block
 	// can have for the test network.
-	PovPowLimitHex    = "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	PovPowLimitHex    = "00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	PovPowLimitInt, _ = new(big.Int).SetString(PovPowLimitHex, 16)
-	PovPowLimitBits   = types.BigToCompact(PovPowLimitInt) //0x1e0ffff0
+	PovPowLimitBits   = types.BigToCompact(PovPowLimitInt) //0x1d00ffff
 
 	// maximum number of seconds a block time is allowed to be ahead of the now time.
 	PovMaxAllowedFutureTimeSec = 300
