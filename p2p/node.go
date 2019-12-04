@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	"github.com/qlcchain/go-qlc/common/types"
+
+	ping "github.com/qlcchain/go-qlc/p2p/pinger"
 
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
 
@@ -75,7 +77,7 @@ type QlcNode struct {
 	isMiner          bool
 	isRepresentative bool
 	reporter         p2pmetrics.Reporter
-	ping             *Pinger
+	ping             *ping.Pinger
 }
 
 // NewNode return new QlcNode according to the config.
@@ -147,7 +149,7 @@ func (node *QlcNode) buildHost() error {
 	node.publisher = pubsub.NewPublisher(gsub)
 	node.subscriber = pubsub.NewSubscriber(gsub)
 	// New ping service
-	node.ping = NewPinger(node.host)
+	node.ping = ping.NewPinger(node.host)
 	return nil
 }
 
@@ -235,22 +237,37 @@ func (node *QlcNode) startPingService() {
 							}
 						}
 						res := <-stream.pingResult
-						node.logger.Infof("ping peer %s took %f s", stream.pid, res.RTT.Seconds())
+						node.logger.Infof("ping peer %s took %f s version %s", stream.pid, res.RTT.Seconds(), res.Version)
 						stream.rtt = res.RTT
 						stream.pingTimeoutTimes = 0
+						stream.version = res.Version
+						pi := &types.PeerInfo{
+							PeerID:  stream.pid.Pretty(),
+							Address: stream.addr.String(),
+							Version: stream.version,
+							Rtt:     stream.rtt.Seconds(),
+						}
+						_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 					} else {
 						select {
 						case res := <-stream.pingResult:
 							if res.Error != nil {
-								node.logger.Errorf("error:[%s] when ping peer [%s]", res.Error, stream.pid)
 								stream.pingTimeoutTimes++
 								if stream.pingTimeoutTimes >= MaxPingTimeOutTimes {
 									_ = stream.close()
 								}
 							} else {
-								node.logger.Infof("ping peer %s took %f s", stream.pid, res.RTT.Seconds())
+								node.logger.Infof("ping peer %s took %f s version %s", stream.pid, res.RTT.Seconds(), res.Version)
 								stream.rtt = res.RTT
 								stream.pingTimeoutTimes = 0
+								stream.version = res.Version
+								pi := &types.PeerInfo{
+									PeerID:  stream.pid.Pretty(),
+									Address: stream.addr.String(),
+									Version: stream.version,
+									Rtt:     stream.rtt.Seconds(),
+								}
+								_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 							}
 						default:
 						}

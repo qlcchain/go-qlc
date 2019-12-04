@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/types"
+
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -66,7 +68,6 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 			}
 		}
 	}
-
 	sm.node.logger.Infof("Added a new stream:[%s]", stream.pid.Pretty())
 	sm.activePeersCount++
 	sm.allStreams.Store(stream.pid.Pretty(), stream)
@@ -233,14 +234,22 @@ func (sm *StreamManager) PeerCounts() int {
 	return len(allPeers)
 }
 
-func (sm *StreamManager) GetAllConnectPeersInfo(p map[string]string) {
+func (sm *StreamManager) GetAllConnectPeersInfo(pr *[]*types.PeerInfo) {
+	var p []*types.PeerInfo
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
 		if stream.IsConnected() {
-			p[value.(*Stream).pid.Pretty()] = value.(*Stream).addr.String()
+			ps := &types.PeerInfo{
+				PeerID:  stream.pid.Pretty(),
+				Address: stream.addr.String(),
+				Version: stream.version,
+				Rtt:     stream.rtt.Seconds(),
+			}
+			p = append(p, ps)
 		}
 		return true
 	})
+	*pr = p
 }
 
 func (sm *StreamManager) IsConnectWithPeerId(peerID string) bool {

@@ -61,6 +61,8 @@ var (
 	//ErrChildNotFound          = errors.New("child not found")
 	ErrVersionNotFound = errors.New("version not found")
 	ErrLinkNotFound    = errors.New("link not found")
+	ErrPeerExists      = errors.New("peer already exists")
+	ErrPeerNotFound    = errors.New("peer not found")
 )
 
 const (
@@ -103,6 +105,7 @@ const (
 	idPrefixPovTxlScanCursor // prefix => height
 	idPrefixVoteHistory
 	idPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
+	idPrefixPeerInfo    //prefix+peerID => peerInfo
 )
 
 var (
