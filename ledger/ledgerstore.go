@@ -184,4 +184,11 @@ type Store interface {
 	CountPovBlocks(txns ...db.StoreTxn) (uint64, error)
 	CountPovTxs(txns ...db.StoreTxn) (uint64, error)
 	CountPovBestHashs(txns ...db.StoreTxn) (uint64, error)
+
+	AddPeerInfo(info *types.PeerInfo, txns ...db.StoreTxn) error
+	GetPeerInfo(peerID string, txns ...db.StoreTxn) (*types.PeerInfo, error)
+	GetPeersInfo(fn func(info *types.PeerInfo) error, txns ...db.StoreTxn) error
+	CountPeersInfo(txns ...db.StoreTxn) (uint64, error)
+	UpdatePeerInfo(value *types.PeerInfo, txns ...db.StoreTxn) error
+	AddOrUpdatePeerInfo(value *types.PeerInfo, txns ...db.StoreTxn) error
 }

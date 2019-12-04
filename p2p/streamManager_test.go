@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/types"
+
 	"github.com/qlcchain/go-qlc/mock"
 
 	"github.com/qlcchain/go-qlc/chain/context"
@@ -235,8 +237,8 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 			}
 		}
 	}
-	p := make(map[string]string)
-	node1.node.streamManager.GetAllConnectPeersInfo(p)
+	var p []*types.PeerInfo
+	node1.node.streamManager.GetAllConnectPeersInfo(&p)
 	if len(p) != 1 {
 		t.Fatal("get info error")
 	}

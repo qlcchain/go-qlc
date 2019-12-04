@@ -76,17 +76,33 @@ func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
 
 type PeersInfo struct {
 	Count int               `json:"count"`
-	Infos map[string]string `json:"infos"`
+	Infos []*types.PeerInfo `json:"infos"`
 }
 
 func (q *NetApi) ConnectPeersInfo() *PeersInfo {
-	p := make(map[string]string)
-	q.eb.Publish(common.EventPeersInfo, p)
+	var p []*types.PeerInfo
+	q.eb.Publish(common.EventPeersInfo, &p)
 	i := &PeersInfo{
 		Count: len(p),
 		Infos: p,
 	}
 	return i
+}
+
+func (q *NetApi) GetAllPeersInfo() (*PeersInfo, error) {
+	pis := make([]*types.PeerInfo, 0)
+	err := q.ledger.GetPeersInfo(func(pi *types.PeerInfo) error {
+		pis = append(pis, pi)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	i := &PeersInfo{
+		Count: len(pis),
+		Infos: pis,
+	}
+	return i, nil
 }
 
 func (q *NetApi) GetBandwidthStats() *p2pmetrics.Stats {
