@@ -15,10 +15,10 @@ var (
             "version":0,
             "previous":"0000000000000000000000000000000000000000000000000000000000000000",
             "merkleRoot":"0ca279bf861acd7acb33bbc6c44471185ea88f4fad36fb3f973423b73aa9aa07",
-            "timestamp":1569024021,
+            "timestamp":1575590409,
             "bits":486604799,
-            "nonce":3776166188,
-            "hash":"f9b322a0b87057122ef30c780245614c90be780b68f0f1ae355b0b0e00000000",
+            "nonce":1908745832,
+            "hash":"92bafc7a0079ffd173c1228bbeb2bf95285df578bf1c7a9b5881b1a500000000",
             "height":0
         },
         "auxHdr":null,
