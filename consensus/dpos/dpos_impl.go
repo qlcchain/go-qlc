@@ -514,8 +514,11 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 			} else {
 				dps.totalVote[block.Representative] = block.GetBalance().Add(block.GetVote()).Add(block.GetOracle()).Add(block.GetNetwork()).Add(block.GetStorage())
 			}
-			dps.logger.Infof("account[%s] vote weight[%s]", block.Representative, dps.totalVote[block.Representative])
 		}
+	}
+
+	for addr, vote := range dps.totalVote {
+		dps.logger.Infof("account[%s] vote weight[%s]", addr, vote)
 	}
 
 	for _, block := range blocks {
