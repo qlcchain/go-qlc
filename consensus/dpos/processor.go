@@ -566,13 +566,7 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 	if has, _ := dps.ledger.HasBlockCache(bs.Block.GetHash()); has {
 		dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, bs.Block)
 	}
-
-	if bs.BlockFrom == types.Synchronized {
-		result, _ = dps.lv.BlockSyncCheck(bs.Block)
-	} else {
-		result, _ = dps.lv.BlockCheck(bs.Block)
-	}
-
+	result, _ = dps.lv.BlockCheck(bs.Block)
 	p.processResult(result, bs)
 }
 
