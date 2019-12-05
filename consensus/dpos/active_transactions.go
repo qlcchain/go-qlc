@@ -217,7 +217,7 @@ func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
 	dps.logger.Infof("sync block[%s] confirmed", hash)
 
 	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
-		err := dps.lv.BlockSyncProcess(block)
+		err := dps.lv.BlockProcess(block)
 		if err != nil {
 			dps.logger.Error(err)
 		} else {

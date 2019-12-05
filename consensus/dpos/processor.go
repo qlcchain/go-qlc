@@ -349,17 +349,12 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 
 	if bs.BlockFrom == types.Synchronized {
 		p.dps.updateLastProcessSyncTime()
-		result, err = dps.lv.BlockSyncCheck(bs.Block)
-		if err != nil {
-			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
-			return
-		}
-	} else {
-		result, err = dps.lv.BlockCheck(bs.Block)
-		if err != nil {
-			dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
-			return
-		}
+	}
+
+	result, err = dps.lv.BlockCheck(bs.Block)
+	if err != nil {
+		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
+		return
 	}
 	p.processResult(result, bs)
 

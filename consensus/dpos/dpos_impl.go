@@ -272,9 +272,9 @@ func (dps *DPoS) Start() {
 	go dps.stat()
 	dps.processorStart()
 
-	if err := dps.blockSyncDone(); err != nil {
-		dps.logger.Error("block sync down err", err)
-	}
+	//if err := dps.blockSyncDone(); err != nil {
+	//	dps.logger.Error("block sync down err", err)
+	//}
 
 	if err := dps.ledger.CleanAllVoteHistory(); err != nil {
 		dps.logger.Error("clean all vote history err")
@@ -438,9 +438,9 @@ func (dps *DPoS) processSyncDone() {
 			dps.logger.Info("Stopped processSyncDone.")
 			return
 		case <-dps.syncDone:
-			if err := dps.blockSyncDone(); err != nil {
-				dps.logger.Error("block sync down err", err)
-			}
+			//if err := dps.blockSyncDone(); err != nil {
+			//	dps.logger.Error("block sync down err", err)
+			//}
 
 			// notify processors
 			dps.syncStateNotifyWait.Add(dps.processorNum)
@@ -509,8 +509,12 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 
 	for _, block := range blocks {
 		if block.Token == common.ChainToken() {
-			dps.totalVote[block.Address] = block.Balance.Add(block.Vote).Add(block.Oracle).Add(block.Network).Add(block.Storage)
-			dps.logger.Infof("account[%s] vote weight[%s]", block.Address, dps.totalVote[block.Address])
+			if _, ok := dps.totalVote[block.Representative]; ok {
+				dps.totalVote[block.Representative] = dps.totalVote[block.Representative].Add(block.GetBalance()).Add(block.GetVote()).Add(block.GetOracle()).Add(block.GetNetwork()).Add(block.GetStorage())
+			} else {
+				dps.totalVote[block.Representative] = block.GetBalance().Add(block.GetVote()).Add(block.GetOracle()).Add(block.GetNetwork()).Add(block.GetStorage())
+			}
+			dps.logger.Infof("account[%s] vote weight[%s]", block.Representative, dps.totalVote[block.Representative])
 		}
 	}
 
