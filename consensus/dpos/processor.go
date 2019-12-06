@@ -257,14 +257,18 @@ func (p *Processor) processFrontier(block *types.StateBlock) {
 	dps := p.dps
 
 	dps.subAckDo(p.index, hash)
-	dps.frontiersStatus.Store(hash, frontierWaitingForVote)
 
 	if !p.dps.acTrx.addToRoots(block) {
 		if el := dps.acTrx.getVoteInfo(block); el != nil {
 			el.blocks.Store(hash, block)
+			el.frontier.Store(hash, nil)
 			dps.hash2el.Store(hash, el)
 		} else {
 			dps.logger.Errorf("get election err[%s]", hash)
+		}
+	} else {
+		if el := dps.acTrx.getVoteInfo(block); el != nil {
+			el.frontier.Store(hash, nil)
 		}
 	}
 
@@ -326,17 +330,20 @@ func (p *Processor) processAck(vi *voteInfo) {
 	dps := p.dps
 	dps.logger.Infof("processor recv confirmAck block[%s]", vi.hash)
 
-	if ok, status := p.dps.isWaitingFrontier(vi.hash); !ok {
-		if has, _ := dps.ledger.HasStateBlockConfirmed(vi.hash); !has {
-			dps.acTrx.vote(vi)
+	if val, ok := dps.hash2el.Load(vi.hash); ok {
+		el := val.(*Election)
+		if _, ok := el.frontier.Load(vi.hash); ok {
+			if dps.acTrx.voteFrontier(vi) {
+				p.dps.frontiersStatus.Store(vi.hash, frontierConfirmed)
+				p.syncBlockAcked <- vi.hash
+				dps.logger.Infof("frontier %s confirmed", vi.hash)
+			}
 		} else {
-			dps.heartAndVoteInc(vi.hash, vi.account, onlineKindVote)
-		}
-	} else {
-		if status == frontierWaitingForVote && dps.acTrx.voteFrontier(vi) {
-			p.dps.frontiersStatus.Store(vi.hash, frontierConfirmed)
-			p.syncBlockAcked <- vi.hash
-			dps.logger.Infof("frontier %s confirmed", vi.hash)
+			if has, _ := dps.ledger.HasStateBlockConfirmed(vi.hash); !has {
+				dps.acTrx.vote(vi)
+			} else {
+				dps.heartAndVoteInc(vi.hash, vi.account, onlineKindVote)
+			}
 		}
 	}
 }
@@ -566,6 +573,11 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 	if has, _ := dps.ledger.HasBlockCache(bs.Block.GetHash()); has {
 		dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, bs.Block)
 	}
+
+	if bs.BlockFrom == types.Synchronized {
+		p.dps.updateLastProcessSyncTime()
+	}
+
 	result, _ = dps.lv.BlockCheck(bs.Block)
 	p.processResult(result, bs)
 }

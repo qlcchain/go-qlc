@@ -31,7 +31,7 @@ const (
 	repTimeout            = 5 * time.Minute
 	voteCacheSize         = 102400
 	refreshPriInterval    = 1 * time.Minute
-	subAckMaxSize         = 102400
+	subAckMaxSize         = 1024000
 	maxStatisticsPeriod   = 3
 	confirmedCacheMaxLen  = 1024000
 	confirmedCacheMaxTime = 10 * time.Minute
@@ -157,7 +157,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		processorNum:        processorNum,
 		processors:          newProcessors(processorNum),
 		subMsg:              make(chan *subMsg, 10240),
-		subAck:              gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
+		subAck:              gcache.New(subAckMaxSize).Expiration(confirmWaitMaxTime * time.Second).LRU().Build(),
 		hash2el:             new(sync.Map),
 		batchVote:           make(chan types.Hash, 102400),
 		ctx:                 ctx,
@@ -348,7 +348,6 @@ func (dps *DPoS) Start() {
 				}
 			}
 		case dps.blockSyncState = <-dps.syncState:
-
 			// notify processors
 			dps.syncStateNotifyWait.Add(dps.processorNum)
 			for _, p := range dps.processors {
@@ -359,12 +358,11 @@ func (dps *DPoS) Start() {
 			switch dps.blockSyncState {
 			case common.Syncing:
 				dps.updateLastProcessSyncTime()
-				dps.acTrx.cleanFrontierVotes()
-				dps.frontiersStatus = new(sync.Map)
 				dps.totalVote = make(map[types.Address]types.Balance)
-				dps.CleanSyncCache()
+				dps.frontiersStatus = new(sync.Map)
 			case common.SyncDone:
 			case common.SyncFinish:
+				dps.acTrx.cleanFrontierVotes()
 				dps.CleanSyncCache()
 				dps.logger.Warn("p2p concluded the sync")
 			}
@@ -443,13 +441,7 @@ func (dps *DPoS) processSyncDone() {
 			//}
 
 			// notify processors
-			dps.syncStateNotifyWait.Add(dps.processorNum)
-			for _, p := range dps.processors {
-				p.syncStateChange <- common.SyncFinish
-			}
-			dps.syncStateNotifyWait.Wait()
-			dps.blockSyncState = common.SyncFinish
-
+			dps.syncState <- common.SyncFinish
 			dps.eb.Publish(common.EventConsensusSyncFinished)
 			dps.logger.Warn("sync finished")
 		}
@@ -531,6 +523,7 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 		has, _ := dps.ledger.HasStateBlockConfirmed(hash)
 		if !has {
 			dps.logger.Infof("get frontier %s need ack", hash)
+			dps.frontiersStatus.Store(hash, frontierWaitingForVote)
 			unconfirmed = append(unconfirmed, block)
 			index := dps.getProcessorIndex(block.Address)
 			dps.processors[index].frontiers <- block
@@ -1096,50 +1089,6 @@ func (dps *DPoS) onRollback(hash types.Hash) {
 	}
 }
 
-//func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
-//	if blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
-//		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-//		if err != nil {
-//			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
-//		}
-//	}
-//
-//	if blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious); blkPrevious != nil {
-//		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-//		if err != nil {
-//			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
-//		}
-//	}
-//
-//	// gap token
-//	blk, err := dps.ledger.GetStateBlock(hash)
-//	if err != nil {
-//		dps.logger.Errorf("get block error [%s]", hash)
-//		return
-//	}
-//
-//	if blk.GetType() == types.ContractReward {
-//		input, err := dps.ledger.GetStateBlock(blk.GetLink())
-//		if err != nil {
-//			dps.logger.Errorf("dequeue get block link error [%s]", hash)
-//			return
-//		}
-//
-//		address := types.Address(input.GetLink())
-//		if address == types.MintageAddress {
-//			var param = new(cabi.ParamMintage)
-//			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
-//				if blkToken, _, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
-//					err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
-//					if err != nil {
-//						dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
-//					}
-//				}
-//			}
-//		}
-//	}
-//}
-
 func (dps *DPoS) getSeq(kind uint32) uint32 {
 	var seq, ackSeq uint32
 
@@ -1288,6 +1237,9 @@ func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
 
 func (dps *DPoS) syncFinish() {
 	dps.logger.Warn("process state blocks finished")
+
+	dps.acTrx.cleanFrontierVotes()
+	dps.CleanSyncCache()
 
 	select {
 	case dps.syncDone <- struct{}{}:
