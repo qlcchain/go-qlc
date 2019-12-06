@@ -101,7 +101,6 @@ type PovBlockChain struct {
 	hashHeaderCache   gcache.Cache // hash => header
 	heightHeaderCache gcache.Cache // height => best header
 
-	trieCache    gcache.Cache // stateHash => trie
 	trieNodePool *trie.NodePool
 
 	doingMinerStat *atomic.Bool
@@ -133,8 +132,6 @@ func NewPovBlockChain(cfg *config.Config, eb event.EventBus, l ledger.Store) *Po
 
 	chain.hashHeaderCache = gcache.New(headerCacheLimit).LRU().Build()
 	chain.heightHeaderCache = gcache.New(headerCacheLimit).LRU().Build()
-
-	chain.trieCache = gcache.New(128).LRU().Build()
 
 	chain.quitCh = make(chan struct{})
 
@@ -1412,7 +1409,6 @@ func (bc *PovBlockChain) GetDebugInfo() map[string]interface{} {
 	info["heightBlockCache"] = bc.heightBlockCache.Len(false)
 	info["heightHeaderCache"] = bc.heightHeaderCache.Len(false)
 	info["hashTdCache"] = bc.hashTdCache.Len(false)
-	info["trieCache"] = bc.trieCache.Len(false)
 	info["trieNodePool"] = bc.trieNodePool.Len()
 
 	info["statSideProcNum"] = bc.statSideProcNum

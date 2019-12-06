@@ -16,16 +16,7 @@ func (bc *PovBlockChain) TrieDb() db.Store {
 }
 
 func (bc *PovBlockChain) GetStateTrie(stateHash *types.Hash) *trie.Trie {
-	if stateHash != nil {
-		v, _ := bc.trieCache.Get(*stateHash)
-		if v != nil {
-			return v.(*trie.Trie)
-		}
-	}
 	t := trie.NewTrie(bc.TrieDb(), stateHash, bc.trieNodePool)
-	if stateHash != nil {
-		_ = bc.trieCache.Set(*stateHash, t)
-	}
 	return t
 }
 
