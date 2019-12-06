@@ -19,6 +19,8 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+var ErrNotImplemented = errors.New("not implemented")
+
 type pledgeInfo struct {
 	pledgeTime   *timeSpan
 	pledgeAmount *big.Int
@@ -79,7 +81,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 }
 
 func (*Nep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return nil, nil, errors.New("not implemented")
+	return nil, nil, ErrNotImplemented
 }
 
 func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
@@ -236,7 +238,7 @@ func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBloc
 }
 
 func (m *WithdrawNep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return nil, nil, errors.New("not implemented")
+	return nil, nil, ErrNotImplemented
 }
 
 func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {

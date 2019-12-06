@@ -596,6 +596,10 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, chec
 		}
 	}
 
+	if r, err := checkContractPending(lv, block); r != Progress || err != nil {
+		return r, err
+	}
+
 	address := types.Address(input.GetLink())
 
 	if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
@@ -631,6 +635,41 @@ func checkContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock, chec
 		//call vm.Run();
 		return Other, fmt.Errorf("can not find chain contract %s", address.String())
 	}
+}
+
+func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+	input, err := lv.l.GetStateBlockConfirmed(block.GetLink())
+	if err != nil {
+		return GapSource, nil
+	}
+
+	if v, ok, err := contract.GetChainContract(types.Address(input.Link), input.Data); ok && err == nil {
+		if pendingKey, pendingInfo, err := v.DoPending(input); err == nil && pendingKey != nil {
+			pk := types.PendingKey{
+				Address: block.GetAddress(),
+				Hash:    block.GetLink(),
+			}
+			if pending, err := lv.l.GetPending(pk); err == nil {
+				if pending.Type == pendingInfo.Type && pending.Amount.Equal(pendingInfo.Amount) && pending.Source == pendingInfo.Source {
+					return Progress, nil
+				} else {
+					lv.logger.Errorf("pending from chain, %s, %s, %s, %s, pending from contract, %s, %s, %s, %s",
+						pending.Type, pending.Source, pending.Amount, pendingInfo.Type, pendingInfo.Source, pendingInfo.Amount)
+					return InvalidData, nil
+				}
+			} else if err == ledger.ErrPendingNotFound {
+				return UnReceivable, nil
+			} else {
+				return Other, err
+			}
+		} else if err != contract.ErrNotImplemented {
+			return Other, err
+		}
+	} else {
+		return Other, fmt.Errorf("can not find chain contract: %s", input.GetLink().String())
+	}
+
+	return Progress, nil
 }
 
 func checkReceiveBlockRepeat(lv *LedgerVerifier, block *types.StateBlock) ProcessResult {
