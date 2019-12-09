@@ -54,7 +54,7 @@ func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData)
 	}, md
 }
 
-func TestPovChain_SimpleTest1(t *testing.T) {
+func TestPovChain_DebugInfo(t *testing.T) {
 	teardownTestCase, md := setupPovChainTestCase(t)
 	defer teardownTestCase(t)
 
@@ -96,7 +96,8 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blk2, _ := mock.GeneratePovBlock(blk1, 0)
+	blk2, _ := mock.GeneratePovBlock(blk1, 10)
+	setupPovTxBlock2Ledger(md, blk2)
 	err = chain.InsertBlock(blk2, statTrie)
 	if err != nil {
 		t.Fatal(err)
@@ -254,6 +255,57 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	retBlk3, _ := chain.GetBlockByHeight(blk3.GetHeight())
 	if retBlk3 == nil || retBlk3.GetHash() != blk3.GetHash() {
 		t.Fatalf("failed to get block3 %s", blk3.GetHash())
+	}
+
+	_ = chain.Stop()
+}
+
+func TestPovChain_TrieState(t *testing.T) {
+	teardownTestCase, md := setupPovChainTestCase(t)
+	defer teardownTestCase(t)
+
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
+
+	_ = chain.Init()
+	_ = chain.Start()
+
+	latestBlk := chain.LatestBlock()
+
+	prevStateHash := latestBlk.GetStateHash()
+
+	blk1, _ := mock.GeneratePovBlock(latestBlk, 5)
+	setupPovTxBlock2Ledger(md, blk1)
+
+	accTxsBlk1 := blk1.GetAccountTxs()
+	curStatTrie, err := chain.GenStateTrie(blk1.GetHeight(), prevStateHash, accTxsBlk1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = chain.InsertBlock(blk1, curStatTrie)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	curStatHash := curStatTrie.Hash()
+	if *curStatHash == prevStateHash {
+		t.Fatalf("state hash should not equal")
+	}
+
+	curStatTrieInDB := trie.NewTrie(md.ledger.DBStore(), curStatHash, nil)
+
+	for _, accTx := range accTxsBlk1 {
+		as := chain.GetAccountState(curStatTrieInDB, accTx.Block.GetAddress())
+		if as == nil || as.Balance.Compare(accTx.Block.Balance) != types.BalanceCompEqual {
+			t.Fatalf("invalid account state in state trie")
+		}
+		repAddr := accTx.Block.GetRepresentative()
+		if !repAddr.IsZero() {
+			rs := chain.GetRepState(curStatTrieInDB, repAddr)
+			if rs == nil {
+				t.Fatalf("invalid rep state in state trie")
+			}
+		}
 	}
 
 	_ = chain.Stop()

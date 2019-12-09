@@ -131,6 +131,10 @@ func StateBlockWithoutWork() *types.StateBlock {
 	i, _ := random.Intn(math.MaxInt16)
 	sb.Type = types.Open
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
+	sb.Vote = types.NewBalance(0)
+	sb.Network = types.NewBalance(0)
+	sb.Oracle = types.NewBalance(0)
+	sb.Storage = types.NewBalance(0)
 	sb.Address = a.Address()
 	sb.Token = common.ChainToken()
 	sb.Previous = types.ZeroHash
