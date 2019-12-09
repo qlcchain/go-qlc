@@ -394,7 +394,12 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			}
 		}
 	} else {
-		temp = startHash
+		blk, err = ss.qlcLedger.GetStateBlockConfirmed(startHash)
+		if err == ledger.ErrBlockNotFound {
+			temp = openBlockHash
+		} else {
+			temp = startHash
+		}
 		for {
 			blk, err = ss.qlcLedger.GetStateBlockConfirmed(temp)
 			if err != nil {

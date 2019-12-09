@@ -64,5 +64,5 @@ func TestLedger_dump(t *testing.T) {
 	if _, err := l.Dump(); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 }
