@@ -211,21 +211,8 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
 						dstAddr = param.Beneficial
 					}
-				} else if method.Name == cabi.MethodNameMintageWithdraw {
-					tokenId := new(types.Hash)
-					if err = method.Inputs.Unpack(tokenId, data[4:]); err == nil {
-						ctx := vmstore.NewVMContext(dps.ledger)
-						tokenInfoData, err := ctx.GetStorage(types.MintageAddress[:], tokenId[:])
-						if err != nil {
-							return
-						}
-
-						tokenInfo := new(types.TokenInfo)
-						err = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, tokenInfoData)
-						if err == nil {
-							dstAddr = tokenInfo.PledgeAddress
-						}
-					}
+				} else {
+					return
 				}
 			}
 		case types.NEP5PledgeAddress:
@@ -275,18 +262,19 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			}
 		}
 	case types.ContractReward: //deal gap tokenInfo
-		input, err := dps.ledger.GetStateBlock(blk.GetLink())
-		if err != nil {
-			dps.logger.Errorf("get block link error [%s]", hash)
-			return
-		}
+		if blk.IsOpen() {
+			input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
+			if err != nil {
+				return
+			}
 
-		if types.Address(input.GetLink()) == types.MintageAddress {
-			param := new(cabi.ParamMintage)
-			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
-				index := dps.getProcessorIndex(input.Address)
-				if localIndex != index {
-					dps.processors[index].blocksAcked <- param.TokenId
+			if types.Address(input.GetLink()) == types.MintageAddress {
+				param := new(cabi.ParamMintage)
+				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+					index := dps.getProcessorIndex(input.Address)
+					if localIndex != index {
+						dps.processors[index].blocksAcked <- param.TokenId
+					}
 				}
 			}
 		}
