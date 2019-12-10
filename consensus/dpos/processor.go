@@ -566,7 +566,7 @@ func (p *Processor) findAnotherForkedBlock(block *types.StateBlock) *types.State
 	return forkedBlock
 }
 
-func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
+func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) bool {
 	dps := p.dps
 	var result process.ProcessResult
 
@@ -574,12 +574,17 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 		dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, bs.Block)
 	}
 
-	if bs.BlockFrom == types.Synchronized {
-		p.dps.updateLastProcessSyncTime()
-	}
-
 	result, _ = dps.lv.BlockCheck(bs.Block)
-	p.processResult(result, bs)
+	if result == bs.Gap {
+		p.blocksAcked <- bs.GapHash
+		return false
+	} else {
+		if bs.BlockFrom == types.Synchronized {
+			p.dps.updateLastProcessSyncTime()
+		}
+		p.processResult(result, bs)
+		return true
+	}
 }
 
 func (p *Processor) enqueueUnchecked(result process.ProcessResult, bs *consensus.BlockSource) {
@@ -669,12 +674,15 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			bs := &consensus.BlockSource{
 				Block:     blkToken,
 				BlockFrom: bf,
+				Gap:       process.GapTokenInfo,
+				GapHash:   hash,
 			}
 
-			p.processUncheckedBlock(bs)
-			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindTokenInfo)
-			if err != nil {
-				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+			if p.processUncheckedBlock(bs) {
+				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindTokenInfo)
+				if err != nil {
+					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+				}
 			}
 		}
 		return
@@ -686,13 +694,15 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			bs := &consensus.BlockSource{
 				Block:     blkLink,
 				BlockFrom: bf,
+				Gap:       process.GapSource,
+				GapHash:   hash,
 			}
 
-			p.processUncheckedBlock(bs)
-
-			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-			if err != nil {
-				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+			if p.processUncheckedBlock(bs) {
+				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+				if err != nil {
+					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
+				}
 			}
 		}
 	}
@@ -703,13 +713,15 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			bs := &consensus.BlockSource{
 				Block:     blkPre,
 				BlockFrom: bf,
+				Gap:       process.GapPrevious,
+				GapHash:   hash,
 			}
 
-			p.processUncheckedBlock(bs)
-
-			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-			if err != nil {
-				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+			if p.processUncheckedBlock(bs) {
+				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+				if err != nil {
+					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
+				}
 			}
 		}
 	}
