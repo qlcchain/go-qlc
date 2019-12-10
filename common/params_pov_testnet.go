@@ -39,8 +39,8 @@ var (
 	PovMinerRewardPerBlockInt     = big.NewInt(int64(PovMinerRewardPerBlock))
 	PovMinerRewardPerBlockBalance = types.NewBalance(int64(PovMinerRewardPerBlock))
 	PovMinerMinRewardPerBlock     = uint64(570776) // 0.001 * 570776255
-	PovMinerRewardRatioMiner      = 80             // 80%
-	PovMinerRewardRatioRep        = 20             // 20%
+	PovMinerRewardRatioMiner      = 60             // 60%
+	PovMinerRewardRatioRep        = 40             // 40%
 
 	// Bonus per block, bonusPerBlock * blockNumPerYear / stakingRewardPerYear = 90%(max)
 	PovStakingRewardPerDay     = uint64(830200000000)
@@ -51,20 +51,18 @@ var (
 
 	PoVMaxForkHeight = uint64(POVChainBlocksPerHour * 23)
 
-	PovGenesisPowHex    = "00000ffff0000000000000000000000000000000000000000000000000000000"
+	PovGenesisPowHex    = "00000000ffff0000000000000000000000000000000000000000000000000000"
 	PovGenesisPowInt, _ = new(big.Int).SetString(PovGenesisPowHex, 16)
-	PovGenesisPowBits   = types.BigToCompact(PovGenesisPowInt) //0x1e0ffff0
+	PovGenesisPowBits   = types.BigToCompact(PovGenesisPowInt) //0x1d00ffff
 
 	// PowLimit is the highest proof of work value a Bitcoin block
 	// can have for the test network.
-	PovPowLimitHex    = "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	PovPowLimitHex    = "00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	PovPowLimitInt, _ = new(big.Int).SetString(PovPowLimitHex, 16)
-	PovPowLimitBits   = types.BigToCompact(PovPowLimitInt) //0x1e0ffff0
+	PovPowLimitBits   = types.BigToCompact(PovPowLimitInt) //0x1d00ffff
 
 	// maximum number of seconds a block time is allowed to be ahead of the now time.
 	PovMaxAllowedFutureTimeSec = 300
-
-	PovMaxNonce = ^uint32(0) // 2^32 - 1
 
 	PovMinCoinbaseExtraSize = 2
 	PovMaxCoinbaseExtraSize = 100
