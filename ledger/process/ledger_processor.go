@@ -71,6 +71,11 @@ func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
+				if r == UnReceivable {
+					if _, ok := lv.l.VerifiedData[b.GetHash()]; ok {
+						return Progress, nil
+					}
+				}
 				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
 			}
 			return r, err

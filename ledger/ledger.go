@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,7 @@ type Ledger struct {
 	cacheRound     *int64
 	cacheOrder     *int64
 	closed         chan bool
+	VerifiedData   map[types.Hash]int
 	logger         *zap.SugaredLogger
 }
 
@@ -104,7 +106,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 8
+const version = 11
 
 func NewLedger(dir string) *Ledger {
 	lock.Lock()
@@ -131,6 +133,11 @@ func NewLedger(dir string) *Ledger {
 		if err := l.init(); err != nil {
 			l.logger.Error(err)
 		}
+		vd, err := l.getVerifiedData()
+		if err != nil {
+			l.logger.Error(err)
+		}
+		l.VerifiedData = vd
 		cache[dir] = l
 	}
 	//cache[dir].logger = log.NewLogger("ledger")
@@ -175,7 +182,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8)}
+		ms := []db.Migration{new(MigrationV1ToV11)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
@@ -183,6 +190,34 @@ func (l *Ledger) upgrade() error {
 		}
 		return err
 	})
+}
+
+func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {
+	//pwd, err := os.Getwd()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//dir := filepath.Join(pwd, "ledger", "verifieddata")
+	//f, err := os.Open(dir)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer f.Close()
+	//
+	//d, err := ioutil.ReadAll(f)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//data, err := hex.DecodeString(string(d))
+	data, err := hex.DecodeString(verifieddata)
+	if err != nil {
+		return nil, err
+	}
+	verifiedMap := make(map[types.Hash]int)
+	if err := json.Unmarshal(data, &verifiedMap); err != nil {
+		return nil, err
+	}
+	return verifiedMap, nil
 }
 
 func (l *Ledger) init() error {

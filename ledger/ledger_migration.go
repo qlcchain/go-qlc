@@ -368,3 +368,27 @@ func (m MigrationV7ToV8) StartVersion() int {
 func (m MigrationV7ToV8) EndVersion() int {
 	return 8
 }
+
+type MigrationV1ToV11 struct {
+}
+
+func (m MigrationV1ToV11) Migrate(txn db.StoreTxn) error {
+	if b, err := checkVersion(m, txn); err == nil && b {
+		fmt.Println("migrate ledger to v11")
+		if err := txn.Drop(nil); err == nil {
+			return updateVersion(m, txn)
+		} else {
+			return err
+		}
+	} else {
+		return err
+	}
+}
+
+func (m MigrationV1ToV11) StartVersion() int {
+	return 1
+}
+
+func (m MigrationV1ToV11) EndVersion() int {
+	return 11
+}
