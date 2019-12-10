@@ -21,14 +21,14 @@ type electionStatus struct {
 }
 
 type Election struct {
-	vote          *Votes
-	status        electionStatus
-	dps           *DPoS
-	announcements uint
-	lastTime      int64
-	voteHash      types.Hash //vote for this hash
-	blocks        *sync.Map
-	valid         int32
+	vote     *Votes
+	status   electionStatus
+	dps      *DPoS
+	lastTime int64
+	voteHash types.Hash //vote for this hash
+	blocks   *sync.Map
+	frontier *sync.Map
+	valid    int32
 }
 
 func newElection(dps *DPoS, block *types.StateBlock) *Election {
@@ -37,14 +37,14 @@ func newElection(dps *DPoS, block *types.StateBlock) *Election {
 	status := electionStatus{block, types.ZeroBalance, nil}
 
 	el := &Election{
-		vote:          vt,
-		status:        status,
-		dps:           dps,
-		announcements: 0,
-		lastTime:      time.Now().Unix(),
-		voteHash:      types.ZeroHash,
-		blocks:        new(sync.Map),
-		valid:         1,
+		vote:     vt,
+		status:   status,
+		dps:      dps,
+		lastTime: time.Now().Unix(),
+		voteHash: types.ZeroHash,
+		blocks:   new(sync.Map),
+		valid:    1,
+		frontier: new(sync.Map),
 	}
 
 	el.blocks.Store(hash, block)
