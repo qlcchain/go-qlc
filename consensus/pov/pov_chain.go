@@ -1195,18 +1195,18 @@ func (bc *PovBlockChain) RelativeAncestor(header *types.PovHeader, distance uint
 func (bc *PovBlockChain) CalcTotalDifficulty(prevTD *types.PovTD, header *types.PovHeader) *types.PovTD {
 	curTD := prevTD.Copy()
 
-	curWorkAlgo := types.CalcWorkIntToBigNum(header.GetAlgoTargetInt())
+	curWorkNorm := types.CalcWorkIntToBigNum(header.GetNormTargetInt())
 
-	curTD.Chain.Add(&prevTD.Chain, curWorkAlgo)
+	curTD.Chain.Add(&prevTD.Chain, curWorkNorm)
 
 	algoType := header.GetAlgoType()
 	switch algoType {
 	case types.ALGO_SHA256D:
-		curTD.Sha256d.Add(&prevTD.Sha256d, curWorkAlgo)
+		curTD.Sha256d.Add(&prevTD.Sha256d, curWorkNorm)
 	case types.ALGO_SCRYPT:
-		curTD.Scrypt.Add(&prevTD.Scrypt, curWorkAlgo)
+		curTD.Scrypt.Add(&prevTD.Scrypt, curWorkNorm)
 	case types.ALGO_X11:
-		curTD.X11.Add(&prevTD.X11, curWorkAlgo)
+		curTD.X11.Add(&prevTD.X11, curWorkNorm)
 	}
 
 	return curTD
