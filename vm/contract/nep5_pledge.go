@@ -179,13 +179,13 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	//TODO: query snapshot balance
 	switch cabi.PledgeType(param.PType) {
 	case cabi.Network:
-		block.Network = block.Network.Add(amount)
+		block.Network = block.GetNetwork().Add(amount)
 	case cabi.Oracle:
-		block.Oracle = block.Oracle.Add(amount)
+		block.Oracle = block.GetOracle().Add(amount)
 	case cabi.Storage:
-		block.Storage = block.Storage.Add(amount)
+		block.Storage = block.GetStorage().Add(amount)
 	case cabi.Vote:
-		block.Vote = block.Vote.Add(amount)
+		block.Vote = block.GetVote().Add(amount)
 	default:
 		break
 	}

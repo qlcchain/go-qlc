@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
@@ -20,6 +21,8 @@ type BlockSource struct {
 	BlockFrom types.SynchronizedKind
 	Type      MsgType
 	Para      interface{}
+	Gap       process.ProcessResult
+	GapHash   types.Hash
 }
 
 func IsAckSignValidate(va *protos.ConfirmAckBlock) bool {
