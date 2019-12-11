@@ -247,6 +247,7 @@ func (node *QlcNode) startPingService() {
 							Version: stream.version,
 							Rtt:     stream.rtt.Seconds(),
 						}
+						node.streamManager.AddOrUpdateStream(pi)
 						_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 					} else {
 						select {
@@ -267,6 +268,7 @@ func (node *QlcNode) startPingService() {
 									Version: stream.version,
 									Rtt:     stream.rtt.Seconds(),
 								}
+								node.streamManager.AddOrUpdateStream(pi)
 								_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 							}
 						default:
@@ -305,6 +307,10 @@ func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 			node.logger.Info("Stopped peer discovery Loop.")
 			return
 		case <-ticker.C:
+			node.streamManager.onlinePeersInfo.Range(func(key interface{}, value interface{}) bool {
+				node.streamManager.onlinePeersInfo.Delete(key)
+				return true
+			})
 			if err := node.findPeers(); err != nil {
 				node.logger.Errorf("find node error[%s]", err)
 				continue
@@ -326,6 +332,13 @@ func (node *QlcNode) findPeers() error {
 			// No sense connecting to ourselves or if addrs are not available
 			continue
 		}
+		pi := &types.PeerInfo{
+			PeerID:  p.ID.Pretty(),
+			Address: findPublicIP(p.Addrs),
+		}
+
+		_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
+		node.streamManager.AddOrUpdateStream(pi)
 		node.streamManager.createStreamWithPeer(p.ID)
 	}
 	return nil

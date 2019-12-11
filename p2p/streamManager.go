@@ -24,6 +24,7 @@ type StreamManager struct {
 	activePeersCount int32
 	maxStreamNum     int32
 	node             *QlcNode
+	onlinePeersInfo  *sync.Map
 }
 
 // NewStreamManager return a new stream manager
@@ -31,6 +32,7 @@ func NewStreamManager() *StreamManager {
 	return &StreamManager{
 		allStreams:       new(sync.Map),
 		activePeersCount: 0,
+		onlinePeersInfo:  new(sync.Map),
 	}
 }
 
@@ -72,6 +74,14 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 	sm.activePeersCount++
 	sm.allStreams.Store(stream.pid.Pretty(), stream)
 	stream.StartLoop()
+}
+
+func (sm *StreamManager) AddOrUpdateStream(info *types.PeerInfo) {
+	// check & close old stream
+	if _, ok := sm.onlinePeersInfo.Load(info.PeerID); ok {
+		sm.onlinePeersInfo.Delete(info.PeerID)
+	}
+	sm.onlinePeersInfo.Store(info.PeerID, info)
 }
 
 // RemoveStream from the stream manager
@@ -247,6 +257,16 @@ func (sm *StreamManager) GetAllConnectPeersInfo(pr *[]*types.PeerInfo) {
 			}
 			p = append(p, ps)
 		}
+		return true
+	})
+	*pr = p
+}
+
+func (sm *StreamManager) GetOnlinePeersInfo(pr *[]*types.PeerInfo) {
+	var p []*types.PeerInfo
+	sm.onlinePeersInfo.Range(func(key, value interface{}) bool {
+		ps := value.(*types.PeerInfo)
+		p = append(p, ps)
 		return true
 	})
 	*pr = p

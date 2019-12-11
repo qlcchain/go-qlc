@@ -92,6 +92,12 @@ func (ns *QlcService) setEvent() error {
 		return err
 	}
 	ns.handlerIds[common.EventPeersInfo] = id
+	id, err = ns.msgEvent.SubscribeSync(common.EventOnlinePeersInfo, ns.node.streamManager.GetOnlinePeersInfo)
+	if err != nil {
+		ns.node.logger.Error(err)
+		return err
+	}
+	ns.handlerIds[common.EventOnlinePeersInfo] = id
 	id, err = ns.msgEvent.Subscribe(common.EventFrontiersReq, ns.msgService.syncService.requestFrontiersFromPov)
 	if err != nil {
 		ns.node.logger.Error(err)

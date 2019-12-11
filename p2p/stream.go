@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	ping "github.com/qlcchain/go-qlc/p2p/pinger"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -95,11 +93,6 @@ func (s *Stream) Connect() error {
 	}
 	s.stream = stream
 	s.addr = stream.Conn().RemoteMultiaddr()
-	pi := &types.PeerInfo{
-		PeerID:  s.pid.Pretty(),
-		Address: s.addr.String(),
-	}
-	_ = s.node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 	return nil
 }
 
