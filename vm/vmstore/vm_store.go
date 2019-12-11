@@ -8,7 +8,6 @@
 package vmstore
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/dgraph-io/badger"
@@ -106,12 +105,22 @@ func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) er
 		txn.Discard()
 	}()
 
-	err := txn.Iterator(idPrefixStorage, func(key []byte, val []byte, b byte) error {
-		if bytes.HasPrefix(key[1:], prefix) {
-			err := fn(key, val)
-			if err != nil {
-				v.logger.Error(err)
-			}
+	//err := txn.Iterator(idPrefixStorage, func(key []byte, val []byte, b byte) error {
+	//	if bytes.HasPrefix(key[1:], prefix) {
+	//		err := fn(key, val)
+	//		if err != nil {
+	//			v.logger.Error(err)
+	//		}
+	//	}
+	//	return nil
+	//})
+	pre := make([]byte, 0)
+	pre = append(pre, idPrefixStorage)
+	pre = append(pre, prefix...)
+	err := txn.PrefixIterator(pre, func(key []byte, val []byte, b byte) error {
+		err := fn(key, val)
+		if err != nil {
+			v.logger.Error(err)
 		}
 		return nil
 	})
