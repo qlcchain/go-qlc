@@ -31,6 +31,7 @@ func addPovCmd() {
 		addPovRepStateListCmdByShell(povCmd)
 		addPovDiffDayStatCmdByShell(povCmd)
 		addPovMinerDayStatCmdByShell(povCmd)
+		addPovTdInfoCmdByShell(povCmd)
 	} else {
 		var povCmd = &cobra.Command{
 			Use:   "pov",
@@ -55,6 +56,10 @@ func formatPovReward(amount types.Balance) string {
 func formatPovDifficulty(diff float64) string {
 	divisor := 1.0
 	unit := ""
+
+	if diff < 1.0 {
+		return fmt.Sprintf("%.6f", diff)
+	}
 
 	if diff >= 1000000000000 {
 		unit = "T"
