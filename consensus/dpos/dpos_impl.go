@@ -126,7 +126,6 @@ type DPoS struct {
 	ebDone              chan struct{}
 	lastProcessSyncTime time.Time
 	updateSync          chan struct{}
-	syncDone            chan struct{}
 	tps                 [10]uint32
 	block2Ledger        chan struct{}
 }
@@ -176,7 +175,6 @@ func NewDPoS(cfgFile string) *DPoS {
 		isFindingRep:        0,
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
-		syncDone:            make(chan struct{}, 1024),
 		block2Ledger:        make(chan struct{}, 409600),
 	}
 
@@ -268,7 +266,6 @@ func (dps *DPoS) Start() {
 	go dps.batchVoteStart()
 	go dps.processSubMsg()
 	go dps.processBlocks()
-	go dps.processSyncDone()
 	go dps.stat()
 	dps.processorStart()
 
@@ -426,25 +423,6 @@ func (dps *DPoS) statBlockInc() {
 	select {
 	case dps.block2Ledger <- struct{}{}:
 	default:
-	}
-}
-
-func (dps *DPoS) processSyncDone() {
-	for {
-		select {
-		case <-dps.ctx.Done():
-			dps.logger.Info("Stopped processSyncDone.")
-			return
-		case <-dps.syncDone:
-			//if err := dps.blockSyncDone(); err != nil {
-			//	dps.logger.Error("block sync down err", err)
-			//}
-
-			// notify processors
-			dps.syncState <- common.SyncFinish
-			dps.eb.Publish(common.EventConsensusSyncFinished)
-			dps.logger.Warn("sync finished")
-		}
 	}
 }
 
@@ -1225,15 +1203,18 @@ func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
 }
 
 func (dps *DPoS) syncFinish() {
-	dps.logger.Warn("process state blocks finished")
-
 	dps.acTrx.cleanFrontierVotes()
 	dps.CleanSyncCache()
 
-	select {
-	case dps.syncDone <- struct{}{}:
-	default:
+	// notify processors
+	dps.syncStateNotifyWait.Add(dps.processorNum)
+	for _, p := range dps.processors {
+		p.syncStateChange <- dps.blockSyncState
 	}
+	dps.syncStateNotifyWait.Wait()
+
+	dps.eb.Publish(common.EventConsensusSyncFinished)
+	dps.logger.Warn("sync finished")
 }
 
 func (dps *DPoS) checkSyncFinished() {
