@@ -157,6 +157,9 @@ func ping(s network.Stream) (time.Duration, string, error) {
 	l := binary.BigEndian.Uint32(rbuf[:dataLen])
 	v := string(rbuf[dataLen : dataLen+l])
 	hash := string(rbuf[dataLen+l : dataLen+l+gitRevLen])
+	if len(v) == 0 || len(hash) == 0 {
+		return time.Since(before), "", nil
+	}
 	version := v + "-" + hash
 	return time.Since(before), version, nil
 }

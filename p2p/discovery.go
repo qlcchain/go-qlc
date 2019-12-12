@@ -22,7 +22,7 @@ func (node *QlcNode) dhtFoundPeers() ([]peer.AddrInfo, error) {
 	}
 	node.logger.Infof("Found %d peers!", len(peers))
 	//for _, p := range peers {
-	//	node.logger.Info("Peer: ", p)
+	//	node.logger.Info("Peer: ", p.Addrs)
 	//}
 	return peers, nil
 }
