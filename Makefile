@@ -8,7 +8,7 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
 # server
-VERSION ?= 1.3.0
+VERSION ?= $(shell git describe --abbrev=0 --tags)
 BINARY = gqlc
 MAIN = cmd/main.go
 
