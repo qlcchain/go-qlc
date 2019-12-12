@@ -85,11 +85,8 @@ func (q *NetApi) ConnectPeersInfo(count int, offset *int) ([]*types.PeerInfo, er
 		return nil, err
 	}
 	var p []*types.PeerInfo
-	var r []*types.PeerInfo
 	q.eb.Publish(common.EventPeersInfo, &p)
-	for i := o; i < (c + o); i++ {
-		r = append(r, p[i])
-	}
+	r := p[o : c+o]
 	return r, nil
 }
 
@@ -99,11 +96,8 @@ func (q *NetApi) GetOnlinePeersInfo(count int, offset *int) ([]*types.PeerInfo, 
 		return nil, err
 	}
 	var p []*types.PeerInfo
-	var r []*types.PeerInfo
 	q.eb.Publish(common.EventOnlinePeersInfo, &p)
-	for i := o; i < (c + o); i++ {
-		r = append(r, p[i])
-	}
+	r := p[o : c+o]
 	return r, nil
 }
 
@@ -113,7 +107,6 @@ func (q *NetApi) GetAllPeersInfo(count int, offset *int) ([]*types.PeerInfo, err
 		return nil, err
 	}
 	pis := make([]*types.PeerInfo, 0)
-	pis2 := make([]*types.PeerInfo, 0)
 	err = q.ledger.GetPeersInfo(func(pi *types.PeerInfo) error {
 		pis = append(pis, pi)
 		return nil
@@ -121,9 +114,7 @@ func (q *NetApi) GetAllPeersInfo(count int, offset *int) ([]*types.PeerInfo, err
 	if err != nil {
 		return nil, err
 	}
-	for i := o; i < (c + o); i++ {
-		pis2 = append(pis2, pis[i])
-	}
+	pis2 := pis[o : c+o]
 	return pis2, nil
 }
 
