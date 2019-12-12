@@ -8,14 +8,14 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
 
 # server
-VERSION ?= 1.3.0
+VERSION ?= $(shell git describe --abbrev=0 --tags)
 BINARY = gqlc
 MAIN = cmd/main.go
 
 BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%FT%TZ%z')
-GO_BUILDER_VERSION=v1.13.1
+GO_BUILDER_VERSION=v1.13.5
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
