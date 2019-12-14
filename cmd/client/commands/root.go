@@ -14,8 +14,6 @@ import (
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
 	"github.com/spf13/cobra"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
 )
 
 var (
@@ -25,21 +23,8 @@ var (
 )
 
 var (
-	endpointP  string
-	endpoint   util.Flag
-	commonFlag []util.Flag
-)
-
-// set global variable
-func init() {
 	endpointP = "ws://0.0.0.0:9736"
-	endpoint = util.Flag{
-		Name:  "endpoint",
-		Must:  false,
-		Usage: "endpoint for client to connect to server",
-		Value: endpointP,
-	}
-}
+)
 
 func Execute(osArgs []string) {
 	interactive = isInteractive(osArgs)
@@ -55,14 +40,12 @@ func Execute(osArgs []string) {
 		})
 		shell.Println("QLC Chain Client")
 		//set common variable
-		commonFlag = make([]util.Flag, 0)
 		addcommands()
-		// commonFlag = append(commonFlag, p)
 		// run shell
 		shell.Run()
 	} else {
 		rootCmd = &cobra.Command{
-			Use:   "QLCC",
+			Use:   "QLC",
 			Short: "CLI for QLCChain Client.",
 			Long:  `QLC Chain is the next generation public blockchain designed for the NaaS.`,
 			Run: func(cmd *cobra.Command, args []string) {
@@ -72,9 +55,6 @@ func Execute(osArgs []string) {
 				//}
 			},
 		}
-		//rootCmd.PersistentFlags().StringVarP(&account, "account", "a", "", "wallet address")
-		//rootCmd.PersistentFlags().StringVarP(&pwd, "password", "p", "", "password for wallet")
-		//rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file")
 		rootCmd.PersistentFlags().StringVarP(&endpointP, "endpoint", "e", endpointP, "endpoint for client")
 		addcommands()
 		if err := rootCmd.Execute(); err != nil {
@@ -100,7 +80,7 @@ func isInteractive(osArgs []string) bool {
 
 func addcommands() {
 	version()
-	addCommonCmd()
+	addAccountCmd()
 	addDebugCmd()
 	addLedgerCmd()
 	addMinerCmd()
