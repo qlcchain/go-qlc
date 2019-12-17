@@ -29,6 +29,7 @@ func TestQlcNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg.P2P.BootNodes[0] = h1.Addrs()[0].String() + "/" + "ipfs/" + h1.ID().Pretty()
+	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/18888"
 	node, err := NewNode(cfg)
 	if err != nil {
 		t.Fatal(err)

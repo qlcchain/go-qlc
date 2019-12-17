@@ -43,8 +43,8 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 			Listen:       "/ip4/0.0.0.0/tcp/19734",
 			SyncInterval: 120,
 			Discovery: &DiscoveryConfigV2{
-				DiscoveryInterval: 30,
-				Limit:             20,
+				DiscoveryInterval: 60,
+				Limit:             2000,
 				MDNSEnabled:       true,
 				MDNSInterval:      30,
 			},

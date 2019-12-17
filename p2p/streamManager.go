@@ -80,10 +80,18 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 	stream.StartLoop()
 }
 
-func (sm *StreamManager) AddOrUpdateStream(info *types.PeerInfo) {
+func (sm *StreamManager) AddOrUpdateOnlineInfo(info *types.PeerInfo) {
 	// check & close old stream
 	if _, ok := sm.onlinePeersInfo.Load(info.PeerID); ok {
 		sm.onlinePeersInfo.Delete(info.PeerID)
+	}
+	sm.onlinePeersInfo.Store(info.PeerID, info)
+}
+
+func (sm *StreamManager) AddOnlineInfo(info *types.PeerInfo) {
+	// check & close old stream
+	if _, ok := sm.onlinePeersInfo.Load(info.PeerID); ok {
+		return
 	}
 	sm.onlinePeersInfo.Store(info.PeerID, info)
 }
@@ -193,7 +201,7 @@ func (sm *StreamManager) randomLowerLatencyPeer() (string, error) {
 		}
 	}
 	if (len(ps)) == 0 {
-		return "", ErrNoStream
+		ps = allPeers
 	}
 	sort.Slice(ps, func(i, j int) bool { return ps[i].rtt < ps[j].rtt })
 	var peerID string
@@ -271,10 +279,11 @@ func (sm *StreamManager) GetAllConnectPeersInfo(pr *[]*types.PeerInfo) {
 		stream := value.(*Stream)
 		if stream.IsConnected() {
 			ps := &types.PeerInfo{
-				PeerID:  stream.pid.Pretty(),
-				Address: stream.addr.String(),
-				Version: stream.globalVersion,
-				Rtt:     stream.rtt.Seconds(),
+				PeerID:         stream.pid.Pretty(),
+				Address:        stream.addr.String(),
+				Version:        stream.globalVersion,
+				Rtt:            stream.rtt.Seconds(),
+				LastUpdateTime: stream.lastUpdateTime,
 			}
 			p = append(p, ps)
 		}

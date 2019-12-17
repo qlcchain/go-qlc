@@ -48,6 +48,12 @@ func (z *PeerInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Rtt")
 				return
 			}
+		case "LastUpdateTime":
+			z.LastUpdateTime, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "LastUpdateTime")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -61,9 +67,9 @@ func (z *PeerInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *PeerInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 5
 	// write "PeerID"
-	err = en.Append(0x84, 0xa6, 0x50, 0x65, 0x65, 0x72, 0x49, 0x44)
+	err = en.Append(0x85, 0xa6, 0x50, 0x65, 0x65, 0x72, 0x49, 0x44)
 	if err != nil {
 		return
 	}
@@ -102,15 +108,25 @@ func (z *PeerInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Rtt")
 		return
 	}
+	// write "LastUpdateTime"
+	err = en.Append(0xae, 0x4c, 0x61, 0x73, 0x74, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.LastUpdateTime)
+	if err != nil {
+		err = msgp.WrapError(err, "LastUpdateTime")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *PeerInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 5
 	// string "PeerID"
-	o = append(o, 0x84, 0xa6, 0x50, 0x65, 0x65, 0x72, 0x49, 0x44)
+	o = append(o, 0x85, 0xa6, 0x50, 0x65, 0x65, 0x72, 0x49, 0x44)
 	o = msgp.AppendString(o, z.PeerID)
 	// string "Address"
 	o = append(o, 0xa7, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
@@ -121,6 +137,9 @@ func (z *PeerInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "Rtt"
 	o = append(o, 0xa3, 0x52, 0x74, 0x74)
 	o = msgp.AppendFloat64(o, z.Rtt)
+	// string "LastUpdateTime"
+	o = append(o, 0xae, 0x4c, 0x61, 0x73, 0x74, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65)
+	o = msgp.AppendString(o, z.LastUpdateTime)
 	return
 }
 
@@ -166,6 +185,12 @@ func (z *PeerInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Rtt")
 				return
 			}
+		case "LastUpdateTime":
+			z.LastUpdateTime, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastUpdateTime")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -180,6 +205,6 @@ func (z *PeerInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PeerInfo) Msgsize() (s int) {
-	s = 1 + 7 + msgp.StringPrefixSize + len(z.PeerID) + 8 + msgp.StringPrefixSize + len(z.Address) + 8 + msgp.StringPrefixSize + len(z.Version) + 4 + msgp.Float64Size
+	s = 1 + 7 + msgp.StringPrefixSize + len(z.PeerID) + 8 + msgp.StringPrefixSize + len(z.Address) + 8 + msgp.StringPrefixSize + len(z.Version) + 4 + msgp.Float64Size + 15 + msgp.StringPrefixSize + len(z.LastUpdateTime)
 	return
 }

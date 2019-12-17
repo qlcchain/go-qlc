@@ -1,10 +1,11 @@
 package types
 
 type PeerInfo struct {
-	PeerID  string  `json:"peerid"`
-	Address string  `json:"address"`
-	Version string  `json:"version"`
-	Rtt     float64 `json:"rtt"`
+	PeerID         string  `json:"peerid"`
+	Address        string  `json:"address"`
+	Version        string  `json:"version"`
+	Rtt            float64 `json:"rtt"`
+	LastUpdateTime string  `json:"lastUpdateTime"`
 }
 
 func (p *PeerInfo) Serialize() ([]byte, error) {
