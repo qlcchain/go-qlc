@@ -47,7 +47,8 @@ type Stream struct {
 	pingCancel                context.CancelFunc
 	pingTimeoutTimes          int
 	pingResult                <-chan ping.Result
-	version                   string
+	globalVersion             string
+	p2pVersion                byte
 }
 
 // NewStream return a new Stream

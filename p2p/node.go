@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -38,7 +37,7 @@ var (
 )
 
 // p2p protocol version
-var p2pVersion = 8
+var p2pVersion byte = 8
 
 type netAttribute byte
 
@@ -240,11 +239,11 @@ func (node *QlcNode) startPingService() {
 						node.logger.Infof("ping peer %s took %f s version %s", stream.pid, res.RTT.Seconds(), res.Version)
 						stream.rtt = res.RTT
 						stream.pingTimeoutTimes = 0
-						stream.version = res.Version
+						stream.globalVersion = res.Version
 						pi := &types.PeerInfo{
 							PeerID:  stream.pid.Pretty(),
 							Address: stream.addr.String(),
-							Version: stream.version,
+							Version: stream.globalVersion,
 							Rtt:     stream.rtt.Seconds(),
 						}
 						node.streamManager.AddOrUpdateStream(pi)
@@ -261,11 +260,11 @@ func (node *QlcNode) startPingService() {
 								node.logger.Infof("ping peer %s took %f s version %s", stream.pid, res.RTT.Seconds(), res.Version)
 								stream.rtt = res.RTT
 								stream.pingTimeoutTimes = 0
-								stream.version = res.Version
+								stream.globalVersion = res.Version
 								pi := &types.PeerInfo{
 									PeerID:  stream.pid.Pretty(),
 									Address: stream.addr.String(),
-									Version: stream.version,
+									Version: stream.globalVersion,
 									Rtt:     stream.rtt.Seconds(),
 								}
 								node.streamManager.AddOrUpdateStream(pi)
@@ -448,10 +447,13 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 	if err := message.ParseMessageData(messageBuffer); err != nil {
 		return err
 	}
-
-	if message.Version() < byte(p2pVersion) {
-		node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
-		return fmt.Errorf("peer %s P2P protocol version is low", peerID)
+	s := node.streamManager.FindByPeerID(peerID)
+	if s != nil {
+		s.p2pVersion = message.Version()
+	}
+	if message.Version() < p2pVersion {
+		node.logger.Warnf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
+		return nil
 	}
 	m := NewMessage(message.MessageType(), peerID, message.MessageData(), message.content)
 	node.netService.PutMessage(m)
