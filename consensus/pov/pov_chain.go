@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"go.uber.org/atomic"
 
 	"github.com/qlcchain/go-qlc/common/event"
@@ -829,7 +831,7 @@ func (bc *PovBlockChain) connectBestBlock(txn db.StoreTxn, block *types.PovBlock
 
 	bc.StoreLatestBlock(block)
 
-	bc.eb.Publish(common.EventPovConnectBestBlock, block)
+	bc.eb.Publish(topic.EventPovConnectBestBlock, block)
 
 	return nil
 }
@@ -867,7 +869,7 @@ func (bc *PovBlockChain) disconnectBestBlock(txn db.StoreTxn, block *types.PovBl
 
 	bc.StoreLatestBlock(prevBlock)
 
-	bc.eb.Publish(common.EventPovDisconnectBestBlock, block)
+	bc.eb.Publish(topic.EventPovDisconnectBestBlock, block)
 
 	return nil
 }

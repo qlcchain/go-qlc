@@ -1,9 +1,13 @@
 package dpos
 
 import (
+	"encoding/json"
 	"math/big"
 	"path/filepath"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/google/uuid"
 
@@ -14,6 +18,19 @@ import (
 func getTestEl() *Election {
 	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
 	cm := config.NewCfgManager(dir)
+	cfg, _ := cm.Load()
+	var mintageBlock, genesisBlock types.StateBlock
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
+		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: mintageBlock,
+			GenesisBlock:        genesisBlock,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
 
 	dps := NewDPoS(cm.ConfigFile)
 	blk := mock.StateBlock()

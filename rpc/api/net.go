@@ -3,9 +3,11 @@ package api
 import (
 	"fmt"
 
-	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"go.uber.org/zap"
 
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -17,6 +19,7 @@ type NetApi struct {
 	ledger *ledger.Ledger
 	eb     event.EventBus
 	logger *zap.SugaredLogger
+	cc     *chainctx.ChainContext
 }
 
 type OnlineRepTotal struct {
@@ -30,8 +33,8 @@ type OnlineRepInfo struct {
 	Vote    types.Balance
 }
 
-func NewNetApi(l *ledger.Ledger, eb event.EventBus) *NetApi {
-	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net")}
+func NewNetApi(l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *NetApi {
+	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net"), cc: cc}
 }
 
 func (q *NetApi) OnlineRepresentatives() []types.Address {
@@ -74,18 +77,12 @@ func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
 	return ot
 }
 
-//type PeersInfo struct {
-//	Count int               `json:"count"`
-//	Infos []*types.PeerInfo `json:"infos"`
-//}
-
 func (q *NetApi) ConnectPeersInfo(count int, offset *int) ([]*types.PeerInfo, error) {
 	c, o, err := checkOffset(count, offset)
 	if err != nil {
 		return nil, err
 	}
-	var p []*types.PeerInfo
-	q.eb.Publish(common.EventPeersInfo, &p)
+	p := q.cc.GetConnectPeersInfo()
 	r := p[o : c+o]
 	return r, nil
 }
@@ -95,8 +92,7 @@ func (q *NetApi) GetOnlinePeersInfo(count int, offset *int) ([]*types.PeerInfo, 
 	if err != nil {
 		return nil, err
 	}
-	var p []*types.PeerInfo
-	q.eb.Publish(common.EventOnlinePeersInfo, &p)
+	p := q.cc.GetOnlinePeersInfo()
 	r := p[o : c+o]
 	return r, nil
 }
@@ -119,12 +115,10 @@ func (q *NetApi) GetAllPeersInfo(count int, offset *int) ([]*types.PeerInfo, err
 }
 
 func (q *NetApi) PeersCount() (map[string]uint64, error) {
-	var p []*types.PeerInfo
-
-	q.eb.Publish(common.EventPeersInfo, &p)
+	p := q.cc.GetConnectPeersInfo()
 	connectCount := len(p)
 
-	q.eb.Publish(common.EventOnlinePeersInfo, &p)
+	p = q.cc.GetOnlinePeersInfo()
 	onlineCount := len(p)
 
 	var pa []*types.PeerInfo
@@ -145,16 +139,13 @@ func (q *NetApi) PeersCount() (map[string]uint64, error) {
 	return c, nil
 }
 
-func (q *NetApi) GetBandwidthStats() *p2pmetrics.Stats {
-	stats := new(p2pmetrics.Stats)
-	q.eb.Publish(common.EventGetBandwidthStats, stats)
-	return stats
+func (q *NetApi) GetBandwidthStats() *topic.EventBandwidthStats {
+	return q.cc.GetBandwidthStats()
 }
 
 func (q *NetApi) Syncing() bool {
-	var ss common.SyncState
-	q.eb.Publish(common.EventSyncStatus, &ss)
-	if ss == common.Syncing || ss == common.SyncDone {
+	ss := q.cc.P2PSyncState()
+	if ss == topic.Syncing || ss == topic.SyncDone {
 		return true
 	}
 	return false

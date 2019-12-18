@@ -16,13 +16,13 @@ import (
 func (lv *LedgerVerifier) BlockSyncCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
 		lv.logger.Info("check sync block, ", b.GetHash())
-		if fn, ok := lv.checkSyncBlockFns[b.Type]; ok {
-			r, err := fn(lv, b)
+		if c, ok := lv.syncBlockCheck[b.Type]; ok {
+			r, err := c.Check(lv, b)
 			if err != nil {
 				lv.logger.Error(fmt.Sprintf("error:%s, sync block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
-				lv.logger.Debugf(fmt.Sprintf("process result:%s, sync block:%s", r.String(), b.GetHash().String()))
+				lv.logger.Infof(fmt.Sprintf("check sync result:%s, (%s)", r.String(), b.GetHash().String()))
 			}
 			return r, err
 		} else {
@@ -34,110 +34,68 @@ func (lv *LedgerVerifier) BlockSyncCheck(block types.Block) (ProcessResult, erro
 	return Other, errors.New("invalid block")
 }
 
-func checkSyncStateBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	hash := block.GetHash()
-	address := block.GetAddress()
-
-	lv.logger.Debug("check block ", hash)
-	blockExist, err := lv.l.HasStateBlockConfirmed(hash)
-	if err != nil {
-		return Other, err
-	}
-
-	if blockExist {
-		return Old, nil
-	}
-
-	if block.GetType() == types.ContractSend {
-		if block.GetLink() == types.Hash(types.RewardsAddress) {
-			return Progress, nil
-		}
-	}
-	if block.GetType() == types.ContractReward {
-		//linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
-		//if err != nil {
-		//	return GapSource, nil
-		//}
-		//if linkBlk.GetLink() == types.Hash(types.RewardsAddress) {
-		//	return Progress, nil
-		//}
-		return Progress, nil
-	}
-
-	if !block.IsValid() {
-		return BadWork, errors.New("bad work")
-	}
-
-	signature := block.GetSignature()
-	if !address.Verify(hash[:], signature[:]) {
-		return BadSignature, errors.New("bad signature")
-	}
-
-	return Progress, nil
+func newSyncBlockCheck() map[types.BlockType]blockCheck {
+	c := make(map[types.BlockType]blockCheck)
+	c[types.Open] = &syncOpenBlockCheck{}
+	c[types.Send] = &sendBlockCheck{}
+	c[types.Receive] = &syncReceiveBlockCheck{}
+	c[types.Change] = &changeBlockCheck{}
+	c[types.Online] = &changeBlockCheck{}
+	c[types.ContractSend] = &contractSendBlockCheck{}
+	c[types.ContractReward] = &syncContractReceiveBlockCheck{}
+	return c
 }
 
-func checkSyncReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkSyncStateBlock(lv, block)
-	if err != nil || result != Progress {
-		return result, err
-	}
+type syncReceiveBlockCheck struct {
+	syncBlockBaseInfoCheck
+	blockForkCheck
+}
 
-	// check previous
-	if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
-		return GapPrevious, nil
-	} else {
-		//check fork
-		if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-			return Fork, nil
-		}
+func (c *syncReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
+		return r, err
+	}
+	if r, err := c.fork(lv, block); r != Progress || err != nil {
+		return r, err
 	}
 	return Progress, nil
 }
 
-func checkSyncOpenBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	result, err := checkSyncStateBlock(lv, block)
-	if err != nil || result != Progress {
-		return result, err
-	}
+type syncOpenBlockCheck struct {
+	syncBlockBaseInfoCheck
+	blockForkCheck
+}
 
+func (c *syncOpenBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	//check previous
 	if !block.Previous.IsZero() {
 		return Other, fmt.Errorf("open block previous is not zero")
 	}
 
-	//check fork
-	if _, err := lv.l.GetTokenMetaConfirmed(block.Address, block.Token); err == nil {
-		return Fork, nil
+	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
+		return r, err
+	}
+	if r, err := c.fork(lv, block); r != Progress || err != nil {
+		return r, err
 	}
 	return Progress, nil
 }
 
-func checkSyncContractReceiveBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+type syncContractReceiveBlockCheck struct {
+	syncBlockBaseInfoCheck
+	blockForkCheck
+}
+
+func (c *syncContractReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	//ignore chain genesis block
 	if common.IsGenesisBlock(block) {
 		return Progress, nil
 	}
-
-	result, err := checkSyncStateBlock(lv, block)
-	if err != nil || result != Progress {
-		return result, err
+	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
+		return r, err
 	}
-	// check previous
-	if !block.IsOpen() {
-		// check previous
-		if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
-			return GapPrevious, nil
-		} else {
-			//check fork
-			if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-				return Fork, nil
-			}
-		}
-	} else {
-		//check fork
-		if _, err := lv.l.GetTokenMetaConfirmed(block.Address, block.Token); err == nil {
-			return Fork, nil
-		}
+	if r, err := c.fork(lv, block); r != Progress || err != nil {
+		return r, err
 	}
 	return Progress, nil
 }

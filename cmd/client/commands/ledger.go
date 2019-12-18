@@ -8,25 +8,32 @@ import (
 
 func addLedgerCmd() {
 	if interactive {
-		txCmd := &ishell.Cmd{
+		ledgerCmd := &ishell.Cmd{
 			Name: "ledger",
 			Help: "ledger commands",
 			Func: func(c *ishell.Context) {
 				c.Println(c.Cmd.HelpText())
 			},
 		}
-		shell.AddCmd(txCmd)
-		addLedgerDumpByIshell(txCmd)
-		addLedgerGCByIshell(txCmd)
+		shell.AddCmd(ledgerCmd)
+		addLedgerDumpByIshell(ledgerCmd)
+		addLedgerGCByIshell(ledgerCmd)
+		addLedgerGenerateTestLedgerByIshell(ledgerCmd)
+		addLedgerBlockCountByIshell(ledgerCmd)
+		addLedgerTokensByIshell(ledgerCmd)
+		addLedgerBalanceByIshell(ledgerCmd)
 	} else {
-		var txCmd = &cobra.Command{
-			Use:   "tx",
-			Short: "tx commands",
+		var ledgerCmd = &cobra.Command{
+			Use:   "ledger",
+			Short: "ledger commands",
 			Run: func(cmd *cobra.Command, args []string) {
 			},
 		}
-		rootCmd.AddCommand(txCmd)
-		addLedgerDumpByCobra(txCmd)
-		addLedgerGCByCobra(txCmd)
+		rootCmd.AddCommand(ledgerCmd)
+		addLedgerDumpByCobra(ledgerCmd)
+		addLedgerGCByCobra(ledgerCmd)
+		addLedgerGenerateTestLedgerByCobra(ledgerCmd)
+		addLedgerBlockCountByCobra(ledgerCmd)
+		addLedgerBalanceByCobra(ledgerCmd)
 	}
 }

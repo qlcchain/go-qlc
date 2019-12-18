@@ -22,62 +22,60 @@ import (
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
-func withdrawMintage() {
-	var accountP string
-	var tokenIdP string
-
-	if interactive {
-		account := util.Flag{
-			Name:  "account",
-			Must:  true,
-			Usage: "account private hex string",
-		}
-		tokenId := util.Flag{
-			Name:  "tokenId",
-			Must:  true,
-			Usage: "token id hash hex string",
-		}
-
-		s := &ishell.Cmd{
-			Name: "withdrawMine",
-			Help: "withdraw mine token",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{account, tokenId}
-				if util.HelpText(c, args) {
-					return
-				}
-				err := util.CheckArgs(c, args)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-
-				accountP = util.StringVar(c.Args, account)
-				tokenIdP = util.StringVar(c.Args, tokenId)
-
-				fmt.Println(accountP, tokenIdP)
-				if err := withdrawMintageAction(accountP, tokenIdP); err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(s)
-	} else {
-		var accountCmd = &cobra.Command{
-			Use:   "withdrawMine",
-			Short: "withdraw mine token",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := withdrawMintageAction(accountP, tokenIdP)
-				if err != nil {
-					cmd.Println(err)
-				}
-			},
-		}
-		accountCmd.Flags().StringVar(&accountP, "account", "", "account private hex string")
-		accountCmd.Flags().StringVar(&tokenIdP, "tokenId", "", "token id hash hex string")
-		rootCmd.AddCommand(accountCmd)
+func addMintageWithdrawCmdByShell(parentCmd *ishell.Cmd) {
+	account := util.Flag{
+		Name:  "account",
+		Must:  true,
+		Usage: "account private hex string",
 	}
+	tokenId := util.Flag{
+		Name:  "tokenId",
+		Must:  true,
+		Usage: "token id hash hex string",
+	}
+
+	s := &ishell.Cmd{
+		Name: "withdrawMine",
+		Help: "withdraw mine token",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{account, tokenId}
+			if util.HelpText(c, args) {
+				return
+			}
+			err := util.CheckArgs(c, args)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+
+			accountP := util.StringVar(c.Args, account)
+			tokenIdP := util.StringVar(c.Args, tokenId)
+
+			fmt.Println(accountP, tokenIdP)
+			if err := withdrawMintageAction(accountP, tokenIdP); err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(s)
+}
+
+func addMintageWithdrawCmdByCobra(parentCmd *cobra.Command) {
+	var accountP, tokenIdP string
+	var accountCmd = &cobra.Command{
+		Use:   "withdrawMine",
+		Short: "withdraw mine token",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := withdrawMintageAction(accountP, tokenIdP)
+			if err != nil {
+				cmd.Println(err)
+			}
+		},
+	}
+	accountCmd.Flags().StringVar(&accountP, "account", "", "account private hex string")
+	accountCmd.Flags().StringVar(&tokenIdP, "tokenId", "", "token id hash hex string")
+	parentCmd.AddCommand(accountCmd)
 }
 
 func withdrawMintageAction(account, tokenId string) error {

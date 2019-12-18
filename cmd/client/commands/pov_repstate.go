@@ -2,10 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"github.com/abiosoft/ishell"
-	"github.com/qlcchain/go-qlc/common/types"
-	rpc "github.com/qlcchain/jsonrpc2"
 	"sort"
+
+	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/rpc/api"

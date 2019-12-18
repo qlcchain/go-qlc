@@ -18,52 +18,52 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func walletRemove() {
-	var accountP string
-	if interactive {
-		account := util.Flag{
-			Name:  "account",
-			Must:  true,
-			Usage: "account for wallet",
-			Value: "",
-		}
-		c := &ishell.Cmd{
-			Name: "walletremove",
-			Help: "remove a wallet",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{account}
-				if util.HelpText(c, args) {
-					return
-				}
-				if err := util.CheckArgs(c, args); err != nil {
-					util.Warn(err)
-					return
-				}
-				accountP = util.StringVar(c.Args, account)
-
-				err := removeWallet(accountP)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(c)
-	} else {
-		var wrCmd = &cobra.Command{
-			Use:   "walletremove",
-			Short: "remove wallet",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := removeWallet(accountP)
-				if err != nil {
-					cmd.Println(err)
-					return
-				}
-			},
-		}
-		wrCmd.Flags().StringVarP(&accountP, "account", "a", "", "wallet address")
-		rootCmd.AddCommand(wrCmd)
+func addWalletRemoveCmdByShell(parentCmd *ishell.Cmd) {
+	account := util.Flag{
+		Name:  "account",
+		Must:  true,
+		Usage: "account for wallet",
+		Value: "",
 	}
+	c := &ishell.Cmd{
+		Name: "remove",
+		Help: "remove a wallet",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{account}
+			if util.HelpText(c, args) {
+				return
+			}
+			if err := util.CheckArgs(c, args); err != nil {
+				util.Warn(err)
+				return
+			}
+			accountP := util.StringVar(c.Args, account)
+
+			err := removeWallet(accountP)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(c)
+}
+
+func addWalletRemoveCmdByCobra(parentCmd *cobra.Command) {
+	var accountP string
+	var wrCmd = &cobra.Command{
+		Use:   "remove",
+		Short: "remove wallet",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := removeWallet(accountP)
+			if err != nil {
+				cmd.Println(err)
+				return
+			}
+		},
+	}
+	wrCmd.Flags().StringVarP(&accountP, "account", "a", "", "wallet address")
+	parentCmd.AddCommand(wrCmd)
 }
 
 func removeWallet(accountP string) error {

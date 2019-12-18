@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -168,7 +170,7 @@ func (el *Election) haveQuorum() {
 		dps.acTrx.addWinner2Ledger(blk)
 		el.updateVoteStatistic(confirmedHash)
 		dps.dispatchAckedBlock(blk, confirmedHash, -1)
-		dps.eb.Publish(common.EventConfirmedBlock, blk)
+		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 		el.cleanBlockInfo()
 	} else {
 		dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance)

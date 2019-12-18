@@ -4,6 +4,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
@@ -35,7 +39,7 @@ type PovSyncerChainReader interface {
 
 type PovSyncer struct {
 	eb         event.EventBus
-	handlerIds map[common.TopicType]string // topic->handler id
+	subscriber *event.ActorSubscriber
 	ledger     ledger.Store
 	chain      PovSyncerChainReader
 
@@ -43,7 +47,7 @@ type PovSyncer struct {
 	allPeers sync.Map // map[string]*PovSyncPeer
 
 	initSyncOver  *atomic.Bool
-	initSyncState common.SyncState
+	initSyncState topic.SyncState
 	inSyncing     *atomic.Bool
 	syncStartTime time.Time
 	syncEndTime   time.Time
@@ -70,7 +74,7 @@ type PovSyncMessage struct {
 }
 
 type PovSyncEvent struct {
-	eventType common.TopicType
+	eventType topic.TopicType
 	eventData interface{}
 }
 
@@ -79,12 +83,11 @@ func NewPovSyncer(eb event.EventBus, l ledger.Store, chain PovSyncerChainReader)
 		eb:            eb,
 		ledger:        l,
 		chain:         chain,
-		initSyncState: common.SyncNotStart,
+		initSyncState: topic.SyncNotStart,
 		messageCh:     make(chan *PovSyncMessage, 2000),
 		eventCh:       make(chan *PovSyncEvent, 200),
 		quitCh:        make(chan struct{}),
 		logger:        log.NewLogger("pov_sync"),
-		handlerIds:    make(map[common.TopicType]string),
 		lastReqTxTime: atomic.NewInt64(0),
 		syncSeqID:     atomic.NewUint32(0),
 		initSyncOver:  atomic.NewBool(false),
@@ -97,35 +100,25 @@ func NewPovSyncer(eb event.EventBus, l ledger.Store, chain PovSyncerChainReader)
 func (ss *PovSyncer) Start() error {
 	eb := ss.eb
 	if eb != nil {
-		if id, err := eb.SubscribeSync(common.EventAddP2PStream, ss.onAddP2PStream); err != nil {
+		ss.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+			switch msg := c.Message().(type) {
+			case *topic.EventAddP2PStreamMsg:
+				ss.onAddP2PStream(msg.PeerID)
+			case *topic.EventDeleteP2PStreamMsg:
+				ss.onDeleteP2PStream(msg.PeerID)
+			case *p2p.EventPovPeerStatusMsg:
+				ss.onPovStatus(msg.Status, msg.From)
+			case *p2p.EventPovBulkPullReqMsg:
+				ss.onPovBulkPullReq(msg.Req, msg.From)
+			case *p2p.EventPovBulkPullRspMsg:
+				ss.onPovBulkPullRsp(msg.Resp, msg.From)
+			}
+		}), eb)
+
+		if err := ss.subscriber.Subscribe(topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventPovPeerStatus,
+			topic.EventPovBulkPullReq, topic.EventPovBulkPullRsp); err != nil {
 			ss.logger.Error(err)
 			return err
-		} else {
-			ss.handlerIds[common.EventAddP2PStream] = id
-		}
-		if id, err := eb.SubscribeSync(common.EventDeleteP2PStream, ss.onDeleteP2PStream); err != nil {
-			ss.logger.Error(err)
-			return err
-		} else {
-			ss.handlerIds[common.EventDeleteP2PStream] = id
-		}
-		if id, err := eb.SubscribeSync(common.EventPovPeerStatus, ss.onPovStatus); err != nil {
-			ss.logger.Error(err)
-			return err
-		} else {
-			ss.handlerIds[common.EventPovPeerStatus] = id
-		}
-		if id, err := eb.Subscribe(common.EventPovBulkPullReq, ss.onPovBulkPullReq); err != nil {
-			ss.logger.Error(err)
-			return err
-		} else {
-			ss.handlerIds[common.EventPovBulkPullReq] = id
-		}
-		if id, err := eb.Subscribe(common.EventPovBulkPullRsp, ss.onPovBulkPullRsp); err != nil {
-			ss.logger.Error(err)
-			return err
-		} else {
-			ss.handlerIds[common.EventPovBulkPullRsp] = id
 		}
 	}
 
@@ -136,12 +129,9 @@ func (ss *PovSyncer) Start() error {
 }
 
 func (ss *PovSyncer) Stop() {
-	eb := ss.eb
-	if eb != nil {
-		for k, v := range ss.handlerIds {
-			if err := eb.Unsubscribe(k, v); err != nil {
-				ss.logger.Error(err)
-			}
+	if ss.subscriber != nil {
+		if err := ss.subscriber.UnsubscribeAll(); err != nil {
+			ss.logger.Error(err)
 		}
 	}
 
@@ -279,7 +269,11 @@ func (ss *PovSyncer) processPovBulkPullReqByForward(msg *PovSyncMessage) {
 
 	rsp.Count = uint32(len(rsp.Blocks))
 
-	ss.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+	ss.eb.Publish(topic.EventSendMsgToSingle, &p2p.EventSendMsgToSingleMsg{
+		Type:    p2p.PovBulkPullRsp,
+		Message: rsp,
+		PeerID:  msg.msgPeer,
+	})
 }
 
 func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
@@ -359,7 +353,11 @@ func (ss *PovSyncer) processPovBulkPullReqByBackward(msg *PovSyncMessage) {
 
 	rsp.Count = uint32(len(rsp.Blocks))
 
-	ss.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+	ss.eb.Publish(topic.EventSendMsgToSingle, &p2p.EventSendMsgToSingleMsg{
+		Type:    p2p.PovBulkPullRsp,
+		Message: rsp,
+		PeerID:  msg.msgPeer,
+	})
 }
 
 func (ss *PovSyncer) processPovBulkPullReqByBatch(msg *PovSyncMessage) {
@@ -395,17 +393,21 @@ func (ss *PovSyncer) processPovBulkPullReqByBatch(msg *PovSyncMessage) {
 
 	rsp.Count = uint32(len(rsp.Blocks))
 
-	ss.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullRsp, rsp, msg.msgPeer)
+	ss.eb.Publish(topic.EventSendMsgToSingle, &p2p.EventSendMsgToSingleMsg{
+		Type:    p2p.PovBulkPullRsp,
+		Message: rsp,
+		PeerID:  msg.msgPeer,
+	})
 }
 
 func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 	rsp := msg.msgValue.(*protos.PovBulkPullRsp)
 
 	if rsp.Reason == protos.PovReasonSync {
-		ss.logger.Infof("recv PovBulkPullRsp from peer %s, reason %d count %d",
+		ss.logger.Infof("recv Message from peer %s, reason %d count %d",
 			msg.msgPeer, rsp.Reason, rsp.Count)
 	} else {
-		ss.logger.Debugf("recv PovBulkPullRsp from peer %s, reason %d count %d",
+		ss.logger.Debugf("recv Message from peer %s, reason %d count %d",
 			msg.msgPeer, rsp.Reason, rsp.Count)
 	}
 
@@ -415,22 +417,22 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 
 	if rsp.Reason == protos.PovReasonSync {
 		if !ss.inSyncing.Load() {
-			ss.logger.Infof("recv PovBulkPullRsp but state not in syncing")
+			ss.logger.Infof("recv Message but state not in syncing")
 			return
 		}
 
 		if ss.syncPeerID != msg.msgPeer {
-			ss.logger.Infof("recv PovBulkPullRsp but peer %s is not sync peer", msg.msgPeer)
+			ss.logger.Infof("recv Message but peer %s is not sync peer", msg.msgPeer)
 			return
 		}
 
 		syncPeer := ss.FindPeerWithStatus(msg.msgPeer, peerStatusGood)
 		if syncPeer == nil {
-			ss.logger.Infof("recv PovBulkPullRsp but peer %s is not exist", msg.msgPeer)
+			ss.logger.Infof("recv Message but peer %s is not exist", msg.msgPeer)
 			return
 		}
 		if syncPeer.syncSeqID != ss.syncSeqID.Load() {
-			ss.logger.Infof("recv PovBulkPullRsp but syncSeqID is not equal, %d, %d",
+			ss.logger.Infof("recv Message but syncSeqID is not equal, %d, %d",
 				syncPeer.syncSeqID, ss.syncSeqID.Load())
 			return
 		}
@@ -442,23 +444,24 @@ func (ss *PovSyncer) processPovBulkPullRsp(msg *PovSyncMessage) {
 		}
 	} else {
 		for _, block := range rsp.Blocks {
-			ss.eb.Publish(common.EventPovRecvBlock, block, types.PovBlockFromRemoteFetch, msg.msgPeer)
+			ss.eb.Publish(topic.EventPovRecvBlock,
+				&topic.EventPovRecvBlockMsg{Block: block, From: types.PovBlockFromRemoteFetch, MsgPeer: msg.msgPeer})
 		}
 	}
 }
 
 func (ss *PovSyncer) processEvent(evt *PovSyncEvent) {
 	switch evt.eventType {
-	case common.EventAddP2PStream:
+	case topic.EventAddP2PStream:
 		ss.processStreamEvent(evt)
-	case common.EventDeleteP2PStream:
+	case topic.EventDeleteP2PStream:
 		break
 	default:
 		ss.logger.Infof("unknown event type %T!\n", evt.eventType)
 	}
 }
 
-func (ss *PovSyncer) setInitState(st common.SyncState) {
+func (ss *PovSyncer) setInitState(st topic.SyncState) {
 	if ss.initSyncOver.Load() {
 		return
 	}
@@ -468,15 +471,15 @@ func (ss *PovSyncer) setInitState(st common.SyncState) {
 	}
 
 	ss.initSyncState = st
-	if st == common.Syncing {
+	if st == topic.Syncing {
 		ss.syncStartTime = time.Now()
-	} else if st == common.SyncDone {
+	} else if st == topic.SyncDone {
 		ss.syncEndTime = time.Now()
 		usedTime := ss.syncEndTime.Sub(ss.syncStartTime)
 		ss.logger.Infof("pov init sync used time: %s", usedTime)
 		ss.initSyncOver.Store(true)
 	}
-	ss.eb.Publish(common.EventPovSyncState, ss.initSyncState)
+	ss.eb.Publish(topic.EventPovSyncState, ss.initSyncState)
 }
 
 func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID string) {
@@ -512,7 +515,8 @@ func (ss *PovSyncer) requestBlocksByHashes(reqBlkHashes []*types.Hash, peerID st
 		req.Reason = protos.PovReasonFetch
 
 		ss.logger.Debugf("request blocks %d from peer %s", len(sendBlkHashes), peer.peerID)
-		ss.eb.Publish(common.EventSendMsgToSingle, p2p.PovBulkPullReq, req, peer.peerID)
+		ss.eb.Publish(topic.EventSendMsgToSingle,
+			&p2p.EventSendMsgToSingleMsg{Type: p2p.PovBulkPullReq, Message: req, PeerID: peer.peerID})
 
 		reqBlkHashes = reqBlkHashes[sendHashNum:]
 	}
@@ -540,7 +544,7 @@ func (ss *PovSyncer) requestTxsByHashes(reqTxHashes []*types.Hash, peerID string
 
 	ss.logger.Infof("request txs %d from peer %s", len(reqTxHashes), peer.peerID)
 
-	ss.eb.Publish(common.EventFrontiersReq, peer.peerID)
+	ss.eb.Publish(topic.EventFrontiersReq, peer.peerID)
 	ss.lastReqTxTime.Store(time.Now().Unix())
 }
 
@@ -562,7 +566,7 @@ func (ss *PovSyncer) requestSyncFrontiers(peerID string) {
 
 	ss.logger.Infof("request frontiers from peer %s", peer.peerID)
 
-	ss.eb.Publish(common.EventFrontiersReq, peer.peerID)
+	ss.eb.Publish(topic.EventFrontiersReq, peer.peerID)
 	ss.lastReqTxTime.Store(time.Now().Unix())
 }
 

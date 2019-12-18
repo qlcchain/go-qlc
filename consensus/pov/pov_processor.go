@@ -4,6 +4,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"go.uber.org/atomic"
 
 	"go.uber.org/zap"
@@ -74,13 +78,13 @@ type PovTxPendingEntry struct {
 }
 
 type PovBlockProcessor struct {
-	eb         event.EventBus
-	handlerIds map[common.TopicType]string // topic->handler id
-	ledger     ledger.Store
-	chain      PovProcessorChainReader
-	verifier   PovProcessorVerifier
-	syncer     PovProcessorSyncer
-	logger     *zap.SugaredLogger
+	eb          event.EventBus
+	subscribers []*event.ActorSubscriber
+	ledger      ledger.Store
+	chain       PovProcessorChainReader
+	verifier    PovProcessorVerifier
+	syncer      PovProcessorSyncer
+	logger      *zap.SugaredLogger
 
 	orphanBlocks  map[types.Hash]*PovOrphanBlock   // blockHash -> block
 	parentOrphans map[types.Hash][]*PovOrphanBlock // blockHash -> child blocks
@@ -117,7 +121,7 @@ func NewPovBlockProcessor(eb event.EventBus, l ledger.Store,
 		verifier: verifier,
 		syncer:   syncer,
 	}
-	bp.handlerIds = make(map[common.TopicType]string)
+	bp.subscribers = make([]*event.ActorSubscriber, 0)
 	bp.orphanBlocks = make(map[types.Hash]*PovOrphanBlock)
 	bp.parentOrphans = make(map[types.Hash][]*PovOrphanBlock)
 	bp.pendingBlocks = make(map[types.Hash]*PovPendingBlock)
@@ -132,31 +136,37 @@ func NewPovBlockProcessor(eb event.EventBus, l ledger.Store,
 	bp.blockNormCh = make(chan *PovBlockSource, blockChanSize)
 	bp.quitCh = make(chan struct{})
 
-	bp.syncState.Store(common.SyncNotStart)
+	bp.syncState.Store(topic.SyncNotStart)
 
 	return bp
 }
 
 func (bp *PovBlockProcessor) Start() error {
+	pid := event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *types.Tuple:
+			bp.onAddSyncStateBlock(msg.First.(*types.StateBlock), msg.Second.(bool))
+		case *types.StateBlock:
+			bp.onAddStateBlock(msg)
+		case topic.SyncState:
+			bp.onPovSyncState(msg)
+		}
+	})
 	if bp.ledger != nil {
 		ebL := bp.ledger.EventBus()
-		id, err := ebL.Subscribe(common.EventAddRelation, bp.onAddStateBlock)
-		if err != nil {
+		sub := event.NewActorSubscriber(pid, ebL)
+		if err := sub.Subscribe(topic.EventAddRelation,
+			topic.EventAddSyncBlocks, topic.EventPovSyncState); err != nil {
 			return err
 		}
-		bp.handlerIds[common.EventAddRelation] = id
-		id, err = ebL.Subscribe(common.EventAddSyncBlocks, bp.onAddSyncStateBlock)
-		if err != nil {
-			return err
-		}
-		bp.handlerIds[common.EventAddSyncBlocks] = id
+		bp.subscribers = append(bp.subscribers, sub)
 	}
 	if bp.eb != nil {
-		id, err := bp.eb.Subscribe(common.EventPovSyncState, bp.onPovSyncState)
-		if err != nil {
+		sub2 := event.NewActorSubscriber(pid, bp.eb)
+		if err := sub2.Subscribe(topic.EventPovSyncState); err != nil {
 			return err
 		}
-		bp.handlerIds[common.EventPovSyncState] = id
+		bp.subscribers = append(bp.subscribers, sub2)
 	}
 
 	common.Go(bp.loop)
@@ -169,21 +179,11 @@ func (bp *PovBlockProcessor) Init() error {
 }
 
 func (bp *PovBlockProcessor) Stop() error {
-	if bp.ledger != nil {
-		ebL := bp.ledger.EventBus()
-		err := ebL.Unsubscribe(common.EventAddRelation, bp.handlerIds[common.EventAddRelation])
-		if err != nil {
-			bp.logger.Error(err)
-		}
-		err = ebL.Unsubscribe(common.EventAddSyncBlocks, bp.handlerIds[common.EventAddSyncBlocks])
-		if err != nil {
-			bp.logger.Error(err)
-		}
-	}
-	if bp.eb != nil {
-		err := bp.eb.Unsubscribe(common.EventPovSyncState, bp.handlerIds[common.EventPovSyncState])
-		if err != nil {
-			bp.logger.Error(err)
+	if len(bp.subscribers) > 0 {
+		for i := range bp.subscribers {
+			if err := bp.subscribers[i].UnsubscribeAll(); err != nil {
+				bp.logger.Error(err)
+			}
 		}
 	}
 
@@ -225,7 +225,7 @@ func (bp *PovBlockProcessor) onAddSyncStateBlock(tx *types.StateBlock, done bool
 	bp.onAddStateBlock(tx)
 }
 
-func (bp *PovBlockProcessor) onPovSyncState(state common.SyncState) {
+func (bp *PovBlockProcessor) onPovSyncState(state topic.SyncState) {
 	if !state.IsSyncExited() {
 		return
 	}
@@ -234,11 +234,8 @@ func (bp *PovBlockProcessor) onPovSyncState(state common.SyncState) {
 }
 
 func (bp *PovBlockProcessor) isPovSyncDone() bool {
-	s := bp.syncState.Load().(common.SyncState)
-	if s.IsSyncExited() {
-		return true
-	}
-	return false
+	s := bp.syncState.Load().(topic.SyncState)
+	return s.IsSyncExited()
 }
 
 func (bp *PovBlockProcessor) checkAndSetBlockInChan(block *types.PovBlock) bool {

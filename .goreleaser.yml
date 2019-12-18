@@ -3,7 +3,7 @@
 project_name: go-qlc
 env:
   - GO111MODULE=on
-  - GOPROXY=https://goproxy.cn
+  # - GOPROXY=https://goproxy.cn
 before:
   hooks:
     # - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint

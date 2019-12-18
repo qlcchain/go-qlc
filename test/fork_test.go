@@ -6,6 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
@@ -15,16 +23,11 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
-	"math/big"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
-var povSyncState common.SyncState
+var povSyncState topic.SyncState
 
-func onPovSyncState(state common.SyncState) {
+func onPovSyncState(state topic.SyncState) {
 	povSyncState = state
 }
 
@@ -72,11 +75,11 @@ func envSetup(t *testing.T, ctx1 *context.ChainContext, ctx2 *context.ChainConte
 	}
 
 	eb := ctx1.EventBus()
-	_, _ = eb.SubscribeSync(common.EventPovSyncState, onPovSyncState)
+	_ = eb.SubscribeSync(topic.EventPovSyncState, onPovSyncState)
 }
 
 func TestFork(t *testing.T) {
-	povSyncState = common.SyncNotStart
+	povSyncState = topic.SyncNotStart
 	testBytes, _ := hex.DecodeString(testPrivateKey)
 	testAccount := types.NewAccount(testBytes)
 	rootDir := filepath.Join(config.QlcTestDataDir(), "fork")
@@ -167,7 +170,7 @@ func TestFork(t *testing.T) {
 	for !checkQuit {
 		select {
 		case <-timerCheckState.C:
-			if povSyncState == common.SyncDone {
+			if povSyncState == topic.SyncDone {
 				checkQuit = true
 				break
 			} else {
@@ -242,7 +245,7 @@ func TestFork(t *testing.T) {
 }
 
 func TestPovFork(t *testing.T) {
-	povSyncState = common.SyncNotStart
+	povSyncState = topic.SyncNotStart
 	testBytes, _ := hex.DecodeString(testPrivateKey)
 	testAccount := types.NewAccount(testBytes)
 	rootDir := filepath.Join(config.QlcTestDataDir(), "fork")
@@ -333,7 +336,7 @@ func TestPovFork(t *testing.T) {
 	for !checkQuit {
 		select {
 		case <-timerCheckState.C:
-			if povSyncState == common.SyncDone {
+			if povSyncState == topic.SyncDone {
 				checkQuit = true
 				break
 			} else {
@@ -423,7 +426,7 @@ func TestPovFork(t *testing.T) {
 }
 
 func TestCacheFork(t *testing.T) {
-	povSyncState = common.SyncNotStart
+	povSyncState = topic.SyncNotStart
 	testBytes, _ := hex.DecodeString(testPrivateKey)
 	testAccount := types.NewAccount(testBytes)
 	rootDir := filepath.Join(config.QlcTestDataDir(), "fork")
@@ -514,7 +517,7 @@ func TestCacheFork(t *testing.T) {
 	for !checkQuit {
 		select {
 		case <-timerCheckState.C:
-			if povSyncState == common.SyncDone {
+			if povSyncState == topic.SyncDone {
 				checkQuit = true
 				break
 			} else {
@@ -564,7 +567,7 @@ func TestCacheFork(t *testing.T) {
 		t.Fatal(r)
 	}
 
-	l1.EB.Publish(common.EventGenerateBlock, process.Progress, blk2)
+	l1.EB.Publish(topic.EventGenerateBlock, process.Progress, blk2)
 
 	time.Sleep(3 * time.Second)
 

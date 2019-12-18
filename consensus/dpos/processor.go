@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -40,8 +42,8 @@ type Processor struct {
 	syncBlockAcked     chan types.Hash
 	acks               chan *voteInfo
 	frontiers          chan *types.StateBlock
-	syncStateChange    chan common.SyncState
-	syncState          common.SyncState
+	syncStateChange    chan topic.SyncState
+	syncState          topic.SyncState
 	orderedChain       *sync.Map
 	chainHeight        map[chainKey]uint64
 	doneBlock          chan *types.StateBlock
@@ -66,8 +68,8 @@ func newProcessors(num int) []*Processor {
 			syncBlockAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
 			acks:               make(chan *voteInfo, common.DPoSMaxBlocks),
 			frontiers:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncStateChange:    make(chan common.SyncState, 1),
-			syncState:          common.SyncNotStart,
+			syncStateChange:    make(chan topic.SyncState, 1),
+			syncState:          topic.SyncNotStart,
 			orderedChain:       new(sync.Map),
 			chainHeight:        make(map[chainKey]uint64),
 			doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
@@ -135,7 +137,7 @@ func (p *Processor) processMsg() {
 			case p.syncState = <-p.syncStateChange:
 				p.dps.syncStateNotifyWait.Done()
 
-				if p.syncState == common.Syncing {
+				if p.syncState == topic.Syncing {
 					p.orderedChain = new(sync.Map)
 					p.chainHeight = make(map[chainKey]uint64)
 					p.confirmedChain = make(map[types.Hash]bool)
@@ -178,7 +180,7 @@ func (p *Processor) processMsg() {
 		case <-timerRest.C:
 			//
 		case <-timerConfirm.C:
-			if p.syncState == common.SyncDone || p.syncState == common.Syncing {
+			if p.syncState == topic.SyncDone || p.syncState == topic.Syncing {
 				for hash, dealt := range p.confirmedChain {
 					if dealt {
 						continue
@@ -484,12 +486,12 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 		dps.acTrx.addSyncBlock2Ledger(blk)
 		p.blocksAcked <- hash
 		dps.dispatchAckedBlock(blk, hash, p.index)
-		dps.eb.Publish(common.EventConfirmedBlock, blk)
+		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 	} else {
 		dps.acTrx.addSyncBlock2Ledger(blk)
 		p.blocksAcked <- hash
 		dps.dispatchAckedBlock(blk, hash, p.index)
-		dps.eb.Publish(common.EventConfirmedBlock, blk)
+		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 	}
 }
 
@@ -518,7 +520,7 @@ func (p *Processor) processFork(bs *consensus.BlockSource) {
 	if dps.acTrx.addToRoots(confirmedBlock) {
 		confirmReqBlocks := make([]*types.StateBlock, 0)
 		confirmReqBlocks = append(confirmReqBlocks, confirmedBlock)
-		dps.eb.Publish(common.EventBroadcast, p2p.ConfirmReq, confirmReqBlocks)
+		dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.ConfirmReq, Message: confirmReqBlocks})
 		dps.subAckDo(p.index, confirmedBlock.GetHash())
 
 		dps.subAckDo(p.index, newHash)
@@ -571,7 +573,7 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) bool {
 	var result process.ProcessResult
 
 	if has, _ := dps.ledger.HasBlockCache(bs.Block.GetHash()); has {
-		dps.eb.Publish(common.EventBroadcast, p2p.PublishReq, bs.Block)
+		dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: bs.Block})
 	}
 
 	result, _ = dps.lv.BlockCheck(bs.Block)

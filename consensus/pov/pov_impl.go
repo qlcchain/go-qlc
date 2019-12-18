@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/bluele/gcache"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -24,12 +27,12 @@ const (
 )
 
 type PoVEngine struct {
-	logger   *zap.SugaredLogger
-	cfg      *config.Config
-	ledger   *ledger.Ledger
-	eb       event.EventBus
-	ebSubIds map[common.TopicType]string // topic->handler id
-	accounts []*types.Account
+	logger     *zap.SugaredLogger
+	cfg        *config.Config
+	ledger     *ledger.Ledger
+	eb         event.EventBus
+	subscriber *event.ActorSubscriber
+	accounts   []*types.Account
 
 	blkRecvCache gcache.Cache
 
@@ -50,7 +53,6 @@ func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 		logger:   log.NewLogger("pov_engine"),
 		cfg:      cfg,
 		eb:       cc.EventBus(),
-		ebSubIds: make(map[common.TopicType]string),
 		accounts: cc.Accounts(),
 		ledger:   l,
 	}
@@ -183,7 +185,7 @@ func (pov *PoVEngine) AddMinedBlock(block *types.PovBlock) error {
 	_ = pov.blkRecvCache.Set(block.GetHash(), struct{}{})
 	err := pov.bp.AddMinedBlock(block)
 	if err == nil {
-		pov.eb.Publish(common.EventBroadcast, p2p.PovPublishReq, block)
+		pov.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PovPublishReq, Message: block})
 	}
 	return err
 }
@@ -202,34 +204,28 @@ func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom, p
 }
 
 func (pov *PoVEngine) setEvent() error {
-	id, err := pov.eb.Subscribe(common.EventPovRecvBlock, pov.onRecvPovBlock)
-	if err != nil {
-		pov.logger.Error("failed to subscribe EventPovRecvBlock")
-		return err
-	}
-	pov.ebSubIds[common.EventPovRecvBlock] = id
+	pov.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *topic.EventPovRecvBlockMsg:
+			if err := pov.onRecvPovBlock(msg.Block, msg.From, msg.MsgPeer); err != nil {
+				pov.logger.Error(err)
+			}
+		case *topic.EventRPCSyncCallMsg:
+			pov.onEventRPCSyncCall(msg.Name, msg.In, msg.Out)
+		}
+	}), pov.eb)
 
-	id, err = pov.eb.SubscribeSync(common.EventRpcSyncCall, pov.onEventRPCSyncCall)
-	if err != nil {
-		pov.logger.Error("failed to subscribe EventRpcSyncCall")
+	if err := pov.subscriber.Subscribe(topic.EventPovRecvBlock, topic.EventRpcSyncCall); err != nil {
+		pov.logger.Error("failed to subscribe events")
 		return err
 	}
-	pov.ebSubIds[common.EventRpcSyncCall] = id
 
 	return nil
 }
 
 func (pov *PoVEngine) unsetEvent() {
-	err := pov.eb.Unsubscribe(common.EventPovRecvBlock, pov.ebSubIds[common.EventPovRecvBlock])
-	if err != nil {
-		pov.logger.Error("failed to unsubscribe EventPovRecvBlock")
-		return
-	}
-
-	err = pov.eb.Unsubscribe(common.EventRpcSyncCall, pov.ebSubIds[common.EventRpcSyncCall])
-	if err != nil {
-		pov.logger.Error("failed to unsubscribe EventRpcSyncCall")
-		return
+	if err := pov.subscriber.UnsubscribeAll(); err != nil {
+		pov.logger.Errorf("failed to unsubscribe events %s", err)
 	}
 }
 
@@ -252,7 +248,7 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockF
 	err := pov.AddBlock(block, from, msgPeer)
 	if err == nil {
 		if from == types.PovBlockFromRemoteBroadcast {
-			pov.eb.Publish(common.EventBroadcast, p2p.PovPublishReq, block)
+			pov.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PovPublishReq, Message: block})
 		}
 	}
 

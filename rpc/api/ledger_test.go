@@ -2,10 +2,13 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/google/uuid"
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -19,13 +22,25 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 )
 
-func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerApi) {
+func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerAPI) {
 	t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	_, _ = cm.Load()
+	cfg, _ := cm.Load()
+	var mintageBlock, genesisBlock types.StateBlock
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
+		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: mintageBlock,
+			GenesisBlock:        genesisBlock,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
 
 	l := ledger.NewLedger(cm.ConfigFile)
 	rl, err := relation.NewRelation(cm.ConfigFile)
@@ -36,7 +51,7 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
 	eb := cc.EventBus()
 
-	ledgerApi := NewLedgerApi(l, rl, eb, context.Background())
+	ledgerApi := NewLedgerApi(context.Background(), l, rl, eb, cc)
 
 	return func(t *testing.T) {
 		//err := l.Store.Erase()
@@ -60,7 +75,7 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupTestCaseLedger(t)
 	defer teardownTestCase(t)
 
-	ledgerApi.ledger.EB.Publish(common.EventPovSyncState, common.SyncDone)
+	ledgerApi.ledger.EB.Publish(topic.EventPovSyncState, topic.SyncDone)
 	chainToken := common.ChainToken()
 	gasToken := common.GasToken()
 	addr, _ := types.HexToAddress("qlc_361j3uiqdkjrzirttrpu9pn7eeussymty4rz4gifs9ijdx1p46xnpu3je7sy")
@@ -100,7 +115,7 @@ func TestLedgerApi_Subscription(t *testing.T) {
 			blk := mock.StateBlock()
 			blk.Address = addr
 			blk.Type = types.Send
-			ledgerApi.ledger.EB.Publish(common.EventAddRelation, blk)
+			ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
 		}
 	}()
 	ctx := rpc.SubscriptionContext()

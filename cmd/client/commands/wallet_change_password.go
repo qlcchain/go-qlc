@@ -20,73 +20,73 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-func changePassword() {
+func addWalletChangePasswordCmdByShell(parentCmd *ishell.Cmd) {
+	account := util.Flag{
+		Name:  "account",
+		Must:  true,
+		Usage: "account for wallet",
+		Value: "",
+	}
+	pwd := util.Flag{
+		Name:  "password",
+		Must:  true,
+		Usage: "password for wallet",
+		Value: "",
+	}
+	newPwd := util.Flag{
+		Name:  "newpassword",
+		Must:  true,
+		Usage: "new password for wallet",
+		Value: "",
+	}
+	c := &ishell.Cmd{
+		Name: "changepassword",
+		Help: "change wallet password",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{account, pwd, newPwd}
+			if util.HelpText(c, args) {
+				return
+			}
+			if err := util.CheckArgs(c, args); err != nil {
+				util.Warn(err)
+				return
+			}
+			accountP := util.StringVar(c.Args, account)
+			passwordP := util.StringVar(c.Args, pwd)
+			newpasswordP := util.StringVar(c.Args, newPwd)
+			err := changePwd(accountP, passwordP, newpasswordP)
+			if err != nil {
+				util.Warn(err)
+			} else {
+				util.Info(fmt.Sprintf("change password success for account: %s", accountP))
+			}
+		},
+	}
+	parentCmd.AddCmd(c)
+}
+
+func addWalletChangePasswordCmdByCobra(parentCmd *cobra.Command) {
 	var accountP string
 	var passwordP string
 	var newpasswordP string
-	if interactive {
-		account := util.Flag{
-			Name:  "account",
-			Must:  true,
-			Usage: "account for wallet",
-			Value: "",
-		}
-		pwd := util.Flag{
-			Name:  "password",
-			Must:  true,
-			Usage: "password for wallet",
-			Value: "",
-		}
-		newPwd := util.Flag{
-			Name:  "newpassword",
-			Must:  true,
-			Usage: "new password for wallet",
-			Value: "",
-		}
-		c := &ishell.Cmd{
-			Name: "changepassword",
-			Help: "change wallet password",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{account, pwd, newPwd}
-				if util.HelpText(c, args) {
-					return
-				}
-				if err := util.CheckArgs(c, args); err != nil {
-					util.Warn(err)
-					return
-				}
-				accountP = util.StringVar(c.Args, account)
-				passwordP = util.StringVar(c.Args, pwd)
-				newpasswordP = util.StringVar(c.Args, newPwd)
-				err := changePwd(accountP, passwordP, newpasswordP)
-				if err != nil {
-					util.Warn(err)
-				} else {
-					util.Info(fmt.Sprintf("change password success for account: %s", accountP))
-				}
-			},
-		}
-		shell.AddCmd(c)
-	} else {
-		var wcpCmd = &cobra.Command{
-			Use:   "changepassword",
-			Short: "change wallet password",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := changePwd(accountP, passwordP, newpasswordP)
-				if err != nil {
-					cmd.Println(err)
-				} else {
-					cmd.Printf("change password success for account: %s", accountP)
-					cmd.Println()
-					return
-				}
-			},
-		}
-		wcpCmd.Flags().StringVarP(&accountP, "account", "a", "", "wallet address")
-		wcpCmd.Flags().StringVarP(&passwordP, "password", "p", "", "password for wallet")
-		wcpCmd.Flags().StringVarP(&newpasswordP, "newpassword", "n", "", "new password for wallet")
-		rootCmd.AddCommand(wcpCmd)
+	var wcpCmd = &cobra.Command{
+		Use:   "changepassword",
+		Short: "change wallet password",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := changePwd(accountP, passwordP, newpasswordP)
+			if err != nil {
+				cmd.Println(err)
+			} else {
+				cmd.Printf("change password success for account: %s", accountP)
+				cmd.Println()
+				return
+			}
+		},
 	}
+	wcpCmd.Flags().StringVarP(&accountP, "account", "a", "", "wallet address")
+	wcpCmd.Flags().StringVarP(&passwordP, "password", "p", "", "password for wallet")
+	wcpCmd.Flags().StringVarP(&newpasswordP, "newpassword", "n", "", "new password for wallet")
+	parentCmd.AddCommand(wcpCmd)
 }
 
 func changePwd(accountP, pwdP, newPwdP string) error {

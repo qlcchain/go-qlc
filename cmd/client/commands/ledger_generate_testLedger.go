@@ -11,89 +11,87 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
+	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc/api"
-
-	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
+
+	"github.com/qlcchain/go-qlc/cmd/util"
 )
 
-func generateTestLedger() {
+func addLedgerGenerateTestLedgerByIshell(parentCmd *ishell.Cmd) {
+	from := util.Flag{
+		Name:  "from",
+		Must:  true,
+		Usage: "send account private key",
+		Value: "",
+	}
+	repCounts := util.Flag{
+		Name:  "repCounts",
+		Must:  true,
+		Usage: "rep counts",
+		Value: "",
+	}
+	to := util.Flag{
+		Name:  "to",
+		Must:  false,
+		Usage: "receive accounts",
+		Value: []string{},
+	}
+	c := &ishell.Cmd{
+		Name: "generateTestLedger",
+		Help: "generate test ledger",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{from, repCounts, to}
+			if util.HelpText(c, args) {
+				return
+			}
+			if err := util.CheckArgs(c, args); err != nil {
+				util.Warn(err)
+				return
+			}
+			fromAccountP := util.StringVar(c.Args, from)
+			repCountsP, _ := util.IntVar(c.Args, repCounts)
+			toAccountsP := util.StringSliceVar(c.Args, to)
+			if len(toAccountsP) != 0 {
+				if (repCountsP - 1) != len(toAccountsP) {
+					util.Info("account count is not match rep count,pls check")
+					return
+				}
+			}
+			err := generateLedger(fromAccountP, repCountsP, toAccountsP)
+			if err != nil {
+				util.Info(err)
+				return
+			}
+
+			util.Info("generate test ledger success")
+		},
+	}
+	parentCmd.AddCmd(c)
+}
+
+func addLedgerGenerateTestLedgerByCobra(parentCmd *cobra.Command) {
 	var fromAccountP string
 	var repCountsP int
 	var toAccountsP []string
-	if interactive {
-		from := util.Flag{
-			Name:  "from",
-			Must:  true,
-			Usage: "send account private key",
-			Value: "",
-		}
-		repCounts := util.Flag{
-			Name:  "repCounts",
-			Must:  true,
-			Usage: "rep counts",
-			Value: "",
-		}
-		to := util.Flag{
-			Name:  "to",
-			Must:  false,
-			Usage: "receive accounts",
-			Value: []string{},
-		}
-		c := &ishell.Cmd{
-			Name: "generateTestLedger",
-			Help: "generate test ledger",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{from, repCounts, to}
-				if util.HelpText(c, args) {
-					return
-				}
-				if err := util.CheckArgs(c, args); err != nil {
-					util.Warn(err)
-					return
-				}
-				fromAccountP = util.StringVar(c.Args, from)
-				repCountsP, _ = util.IntVar(c.Args, repCounts)
-				toAccountsP = util.StringSliceVar(c.Args, to)
-				if len(toAccountsP) != 0 {
-					if (repCountsP - 1) != len(toAccountsP) {
-						util.Info("account count is not match rep count,pls check")
-						return
-					}
-				}
-				err := generateLedger(fromAccountP, repCountsP, toAccountsP)
-				if err != nil {
-					util.Info(err)
-					return
-				}
-
-				util.Info("generate test ledger success")
-			},
-		}
-		shell.AddCmd(c)
-	} else {
-		var generateTestLedgerCmd = &cobra.Command{
-			Use:   "generateTestLedger",
-			Short: "generate test ledger",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := generateLedger(fromAccountP, repCountsP, toAccountsP)
-				if err != nil {
-					cmd.Println(err)
-					return
-				}
-				cmd.Println("generate test ledger success")
-			},
-		}
-		generateTestLedgerCmd.Flags().StringVar(&fromAccountP, "from", "", "send account private key")
-		generateTestLedgerCmd.Flags().IntVar(&repCountsP, "repCounts", 1, "rep counts")
-		generateTestLedgerCmd.Flags().StringSliceVar(&toAccountsP, "to", []string{}, "receive accounts")
-		rootCmd.AddCommand(generateTestLedgerCmd)
+	var generateTestLedgerCmd = &cobra.Command{
+		Use:   "generateTestLedger",
+		Short: "generate test ledger",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := generateLedger(fromAccountP, repCountsP, toAccountsP)
+			if err != nil {
+				cmd.Println(err)
+				return
+			}
+			cmd.Println("generate test ledger success")
+		},
 	}
+	generateTestLedgerCmd.Flags().StringVar(&fromAccountP, "from", "", "send account private key")
+	generateTestLedgerCmd.Flags().IntVar(&repCountsP, "repCounts", 1, "rep counts")
+	generateTestLedgerCmd.Flags().StringSliceVar(&toAccountsP, "to", []string{}, "receive accounts")
+	parentCmd.AddCommand(generateTestLedgerCmd)
 }
 
 func generateLedger(fromAccountP string, repCountsP int, toAccountsP []string) error {

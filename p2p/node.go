@@ -9,6 +9,8 @@ import (
 
 	ping "github.com/qlcchain/go-qlc/p2p/pinger"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
 
 	"go.uber.org/zap"
@@ -57,6 +59,9 @@ const (
 	MaxPingTimeOutTimes      = 4
 	PingTimeInterval         = 30 * time.Second
 	ConnectBootstrapInterval = 20 * time.Second
+	PublishConnectPeersInfo  = 20 * time.Second
+	PublishOnlinePeersInfo   = 25 * time.Second
+	PublishBandWithPeersInfo = 60 * time.Second
 )
 
 type QlcNode struct {
@@ -202,6 +207,9 @@ func (node *QlcNode) StartServices() error {
 	go func() {
 		node.startPingService()
 	}()
+	go func() {
+		node.publishPeersInfoToChainContext()
+	}()
 
 	if node.dis != nil {
 		go func() {
@@ -285,6 +293,53 @@ func (node *QlcNode) startPingService() {
 				}
 				return true
 			})
+		}
+	}
+}
+
+func (node *QlcNode) publishPeersInfoToChainContext() {
+	node.logger.Info("start publish Peers Info Loop.")
+	ticker1 := time.NewTicker(PublishConnectPeersInfo)
+	ticker2 := time.NewTicker(PublishOnlinePeersInfo)
+	ticker3 := time.NewTicker(PublishBandWithPeersInfo)
+	for {
+		select {
+		case <-node.ctx.Done():
+			return
+		case <-ticker1.C:
+			var p []*types.PeerInfo
+			node.streamManager.allStreams.Range(func(key, value interface{}) bool {
+				stream := value.(*Stream)
+				if stream.IsConnected() {
+					ps := &types.PeerInfo{
+						PeerID:         stream.pid.Pretty(),
+						Address:        stream.addr.String(),
+						Version:        stream.globalVersion,
+						Rtt:            stream.rtt.Seconds(),
+						LastUpdateTime: stream.lastUpdateTime,
+					}
+					p = append(p, ps)
+				}
+				return true
+			})
+			node.netService.MessageEvent().Publish(topic.EventPeersInfo, &topic.EventP2PConnectPeersMsg{PeersInfo: p})
+		case <-ticker2.C:
+			var p []*types.PeerInfo
+			node.streamManager.onlinePeersInfo.Range(func(key, value interface{}) bool {
+				ps := value.(*types.PeerInfo)
+				p = append(p, ps)
+				return true
+			})
+			node.netService.MessageEvent().Publish(topic.EventOnlinePeersInfo, &topic.EventP2POnlinePeersMsg{PeersInfo: p})
+		case <-ticker3.C:
+			stats := node.reporter.GetBandwidthTotals()
+			bwState := &topic.EventBandwidthStats{
+				TotalIn:  stats.TotalIn,
+				TotalOut: stats.TotalOut,
+				RateIn:   stats.RateIn,
+				RateOut:  stats.RateOut,
+			}
+			node.netService.msgEvent.Publish(topic.EventGetBandwidthStats, bwState)
 		}
 	}
 }

@@ -108,7 +108,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	}
 
 	if _, err := ctx.GetStorage(types.NEP5PledgeAddress[:], []byte(param.NEP5TxId)); err == nil {
-		return nil, fmt.Errorf("invalid nep5 tx id")
+		return nil, fmt.Errorf("invalid nep5 tx id, %s", param.NEP5TxId)
 	} else {
 		if err := ctx.SetStorage(types.NEP5PledgeAddress[:], []byte(param.NEP5TxId), nil); err != nil {
 			return nil, err

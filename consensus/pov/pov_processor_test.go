@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -188,7 +190,7 @@ func TestPovProcessor_OrphanBlock(t *testing.T) {
 	processor.Init()
 	processor.Start()
 
-	processor.onPovSyncState(common.SyncDone)
+	processor.onPovSyncState(topic.SyncDone)
 
 	genesisBlk := common.GenesisPovBlock()
 
@@ -250,7 +252,7 @@ func TestPovProcessor_PendingBlock(t *testing.T) {
 	_ = processor.Init()
 	_ = processor.Start()
 
-	processor.onPovSyncState(common.SyncDone)
+	processor.onPovSyncState(topic.SyncDone)
 
 	genesisBlk := common.GenesisPovBlock()
 

@@ -4,10 +4,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
@@ -35,7 +38,7 @@ func createSubscription(ctx context.Context, fn func(notifier *rpc.Notifier, sub
 type BlockSubscription struct {
 	mu         *sync.Mutex
 	eb         event.EventBus
-	handlerIds map[common.TopicType]string // subscript event from chain
+	subscriber *event.ActorSubscriber
 	allSubs    map[rpc.ID]*BlockSubscriber
 	blocksCh   chan *types.StateBlock
 	ctx        context.Context
@@ -52,13 +55,12 @@ type BlockSubscriber struct {
 
 func NewBlockSubscription(ctx context.Context, eb event.EventBus) *BlockSubscription {
 	bs := &BlockSubscription{
-		eb:         eb,
-		mu:         &sync.Mutex{},
-		handlerIds: make(map[common.TopicType]string),
-		allSubs:    make(map[rpc.ID]*BlockSubscriber),
-		blocksCh:   make(chan *types.StateBlock, MaxNotifyBlocks),
-		ctx:        ctx,
-		logger:     log.NewLogger("api_sub"),
+		eb:       eb,
+		mu:       &sync.Mutex{},
+		allSubs:  make(map[rpc.ID]*BlockSubscriber),
+		blocksCh: make(chan *types.StateBlock, MaxNotifyBlocks),
+		ctx:      ctx,
+		logger:   log.NewLogger("api_sub"),
 	}
 	bs.subscribeEvent()
 	go bs.notifyLoop()
@@ -66,24 +68,17 @@ func NewBlockSubscription(ctx context.Context, eb event.EventBus) *BlockSubscrip
 }
 
 func (r *BlockSubscription) subscribeEvent() {
-	if id, err := r.eb.Subscribe(common.EventAddRelation, r.setBlocks); err != nil {
-		r.logger.Error("subscribe EventAddRelation error, ", err)
-	} else {
-		r.handlerIds[common.EventAddRelation] = id
-	}
-	if id, err := r.eb.Subscribe(common.EventAddSyncBlocks, r.setSyncBlocks); err != nil {
-		r.logger.Error("subscribe EventAddSyncBlocks error, ", err)
-	} else {
-		r.handlerIds[common.EventAddSyncBlocks] = id
-	}
-}
-
-func (r *BlockSubscription) unsubscribeEvent() {
-	r.logger.Info("unsubscribe event")
-	for k, v := range r.handlerIds {
-		if err := r.eb.Unsubscribe(k, v); err != nil {
-			r.logger.Error("unsubscribe event error, ", err)
+	r.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *types.StateBlock:
+			r.setBlocks(msg)
+		case *types.Tuple:
+			r.setSyncBlocks(msg.First.(*types.StateBlock), msg.Second.(bool))
 		}
+	}), r.eb)
+
+	if err := r.subscriber.Subscribe(topic.EventAddRelation, topic.EventAddSyncBlocks); err != nil {
+		r.logger.Error(err)
 	}
 }
 
@@ -185,7 +180,11 @@ func (r *BlockSubscription) removeChan(subID rpc.ID) {
 }
 
 func (r *BlockSubscription) notifyLoop() {
-	defer r.unsubscribeEvent()
+	defer func() {
+		if err := r.subscriber.UnsubscribeAll(); err != nil {
+			r.logger.Error(err)
+		}
+	}()
 
 	for {
 		select {

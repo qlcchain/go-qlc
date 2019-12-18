@@ -10,25 +10,27 @@ package event
 import (
 	"io"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
 )
 
 // subscriber defines subscription-related bus behavior
 type subscriber interface {
-	Subscribe(topic common.TopicType, fn interface{}) (string, error)
-	SubscribeSync(topic common.TopicType, fn interface{}) (string, error)
-	Unsubscribe(topic common.TopicType, handlerID string) error
+	Subscribe(topic topic.TopicType, fn interface{}) error
+	//SubscribeSync(topic topic.TopicType, fn interface{}) error
+	//SubscribeSyncTimeout(topic topic.TopicType, fn interface{}, timeout time.Duration) error
+	Unsubscribe(topic topic.TopicType, fn interface{}) error
 }
 
 // publisher defines publishing-related bus behavior
 type publisher interface {
-	Publish(topic common.TopicType, args ...interface{})
+	Publish(topic topic.TopicType, msg interface{})
+	PublishFrom(topic topic.TopicType, msg interface{}, publisher interface{}) error
 }
 
 // controller defines bus control behavior (checking handler's presence, synchronization)
 type controller interface {
-	HasCallback(topic common.TopicType) bool
-	CloseTopic(topic common.TopicType)
+	HasCallback(topic topic.TopicType) bool
+	CloseTopic(topic topic.TopicType) error
 }
 
 type EventBus interface {

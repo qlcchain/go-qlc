@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/dgraph-io/badger"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -22,7 +24,7 @@ func (l *Ledger) AddStateBlock(value *types.StateBlock, txns ...db.StoreTxn) err
 		l.logger.Error(err)
 	}
 	l.logger.Debug("publish addRelation,", value.GetHash())
-	l.EB.Publish(common.EventAddRelation, value)
+	l.EB.Publish(topic.EventAddRelation, value)
 	return nil
 }
 
@@ -31,7 +33,7 @@ func (l *Ledger) AddSyncStateBlock(value *types.StateBlock, txns ...db.StoreTxn)
 		return err
 	}
 	l.logger.Debug("publish sync addRelation,", value.GetHash())
-	l.EB.Publish(common.EventAddSyncBlocks, value, false)
+	l.EB.Publish(topic.EventAddSyncBlocks, types.NewTuple(value, false))
 	return nil
 }
 
@@ -192,7 +194,7 @@ func (l *Ledger) DeleteStateBlock(key types.Hash, txns ...db.StoreTxn) error {
 
 	l.releaseTxn(txn, flag)
 	l.logger.Info("publish deleteRelation,", key.String())
-	l.EB.Publish(common.EventDeleteRelation, key)
+	l.EB.Publish(topic.EventDeleteRelation, key)
 	return nil
 }
 

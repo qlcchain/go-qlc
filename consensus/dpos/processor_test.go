@@ -1,14 +1,15 @@
 package dpos
 
 import (
+	"math"
+	"math/big"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
-	"math"
-	"math/big"
-	"testing"
 )
 
 func generateForkBlock() (block1, block2 *types.StateBlock) {

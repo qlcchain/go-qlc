@@ -1,9 +1,10 @@
 package dpos
 
 import (
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 	"time"
-
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -188,6 +189,10 @@ func (act *ActiveTrx) checkVotes() {
 			dps.logger.Warnf("frontier[%s] wait for vote timeout", hash)
 		} else {
 			dps.logger.Warnf("block[%s] wait for vote timeout", hash)
+			dps.logger.Infof("resend confirmReq for block[%s]", hash)
+			confirmReqBlocks := make([]*types.StateBlock, 0)
+			confirmReqBlocks = append(confirmReqBlocks, block)
+			dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.ConfirmReq, Message: confirmReqBlocks})
 		}
 
 		return true
