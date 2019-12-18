@@ -228,6 +228,14 @@ func (t *BadgerStoreTxn) Drop(prefix []byte) error {
 	}
 }
 
+func (t *BadgerStoreTxn) DropOfTxn(prefix []byte) error {
+	return t.PrefixIterator(prefix, func(key []byte, val []byte, b byte) error {
+		k := make([]byte, len(key))
+		copy(k, key)
+		return t.Delete(k)
+	})
+}
+
 func (t *BadgerStoreTxn) Upgrade(migrations []Migration) error {
 	sort.Sort(Migrations(migrations))
 	for _, m := range migrations {

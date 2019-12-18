@@ -315,6 +315,10 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlockBySendHash(sendHash types.Hash) (*
 	return p.GetWithdrawRewardBlock(sendBlock)
 }
 
+func (p *NEP5PledgeApi) ParsePledgeInfo(data []byte) (*cabi.NEP5PledgeInfo, error) {
+	return cabi.ParsePledgeInfo(data)
+}
+
 type NEP5PledgeInfo struct {
 	PType         string
 	Amount        *big.Int
