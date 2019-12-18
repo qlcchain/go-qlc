@@ -8,10 +8,14 @@
 package process
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/google/uuid"
 
@@ -26,8 +30,20 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	cm.Load()
+	cfg, _ := cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
+	var mintageBlock, genesisBlock types.StateBlock
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
+		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: mintageBlock,
+			GenesisBlock:        genesisBlock,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
 
 	return func(t *testing.T) {
 		//err := l.db.Erase()

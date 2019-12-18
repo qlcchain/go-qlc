@@ -7,9 +7,8 @@ import (
 	"sync"
 	"time"
 
-	ping "github.com/qlcchain/go-qlc/p2p/pinger"
 	"github.com/qlcchain/go-qlc/common/topic"
-
+	ping "github.com/qlcchain/go-qlc/p2p/pinger"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"

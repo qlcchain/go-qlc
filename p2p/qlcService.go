@@ -79,58 +79,6 @@ func (ns *QlcService) Start() error {
 }
 
 func (ns *QlcService) setEvent() error {
-//<<<<<<< HEAD
-//	id, err := ns.msgEvent.Subscribe(common.EventBroadcast, ns.Broadcast)
-//	if err != nil {
-//		ns.node.logger.Error(err)
-//		return err
-//	}
-//	ns.handlerIds[common.EventBroadcast] = id
-//	id, err = ns.msgEvent.Subscribe(common.EventSendMsgToSingle, ns.SendMessageToPeer)
-//	if err != nil {
-//		ns.node.logger.Error(err)
-//		return err
-//	}
-//	ns.handlerIds[common.EventSendMsgToSingle] = id
-//	id, err = ns.msgEvent.SubscribeSync(common.EventPeersInfo, ns.node.streamManager.GetAllConnectPeersInfo)
-//	if err != nil {
-//		ns.node.logger.Error(err)
-//		return err
-//	}
-//	ns.handlerIds[common.EventPeersInfo] = id
-//	id, err = ns.msgEvent.SubscribeSync(common.EventOnlinePeersInfo, ns.node.streamManager.GetOnlinePeersInfo)
-//	if err != nil {
-//		ns.node.logger.Error(err)
-//		return err
-//	}
-//	ns.handlerIds[common.EventOnlinePeersInfo] = id
-//	id, err = ns.msgEvent.Subscribe(common.EventFrontiersReq, ns.msgService.syncService.requestFrontiersFromPov)
-//	if err != nil {
-//		ns.node.logger.Error(err)
-//		return err
-//	}
-//	ns.handlerIds[common.EventFrontiersReq] = id
-//	id, err = ns.msgEvent.Subscribe(common.EventRepresentativeNode, ns.node.setRepresentativeNode)
-//	if err != nil {
-//		ns.node.logger.Error(err)
-//		return err
-//	}
-//	ns.handlerIds[common.EventRepresentativeNode] = id
-//	id, err = ns.msgEvent.SubscribeSync(common.EventGetBandwidthStats, ns.node.GetBandwidthStats)
-//	if err != nil {
-//		ns.node.logger.Error(err)
-//		return err
-//	}
-//	ns.handlerIds[common.EventGetBandwidthStats] = id
-//	id, err = ns.msgEvent.SubscribeSync(common.EventConsensusSyncFinished, ns.msgService.syncService.onConsensusSyncFinished)
-//	if err != nil {
-//		ns.node.logger.Error(err)
-//		return err
-//	}
-//	ns.handlerIds[common.EventConsensusSyncFinished] = id
-//	id, err = ns.msgEvent.SubscribeSync(common.EventSyncStatus, ns.msgService.syncService.GetSyncState)
-//	if err != nil {
-//=======
 	ns.subscriber = event.NewActorSubscriber(event.SpawnWithPool(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *EventBroadcastMsg:

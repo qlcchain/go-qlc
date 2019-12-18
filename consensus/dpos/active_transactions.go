@@ -1,11 +1,12 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/common/topic"
-	"github.com/qlcchain/go-qlc/p2p"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/p2p"
 )
 
 const (

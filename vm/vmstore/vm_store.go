@@ -9,6 +9,7 @@ package vmstore
 
 import (
 	"errors"
+
 	"github.com/dgraph-io/badger"
 	"go.uber.org/zap"
 
