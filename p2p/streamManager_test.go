@@ -70,19 +70,7 @@ func Test_StreamManager(t *testing.T) {
 
 	//remove test file
 	defer func() {
-		err := node.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node1.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node2.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node.Stop()
+		err := node.Stop()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,6 +79,18 @@ func Test_StreamManager(t *testing.T) {
 			t.Fatal(err)
 		}
 		err = node2.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node1.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node2.msgService.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,19 +191,7 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 
 	//remove test file
 	defer func() {
-		err := node.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node1.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node2.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node.Stop()
+		err := node.Stop()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -212,6 +200,18 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 			t.Fatal(err)
 		}
 		err = node2.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node1.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node2.msgService.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -296,18 +296,6 @@ func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
 
 	//remove test file
 	defer func() {
-		err := node.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node1.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node2.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
 		err = node.Stop()
 		if err != nil {
 			t.Fatal(err)
@@ -317,6 +305,18 @@ func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
 			t.Fatal(err)
 		}
 		err = node2.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node1.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node2.msgService.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -408,18 +408,6 @@ func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 
 	//remove test file
 	defer func() {
-		err := node.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node1.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node2.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
 		err = node.Stop()
 		if err != nil {
 			t.Fatal(err)
@@ -429,6 +417,18 @@ func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 			t.Fatal(err)
 		}
 		err = node2.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err := node.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node1.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node2.msgService.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -515,18 +515,6 @@ func TestGetBandwidthStats(t *testing.T) {
 
 	//remove test file
 	defer func() {
-		err := node.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node1.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node2.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
 		err = node.Stop()
 		if err != nil {
 			t.Fatal(err)
@@ -536,6 +524,18 @@ func TestGetBandwidthStats(t *testing.T) {
 			t.Fatal(err)
 		}
 		err = node2.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err := node.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node1.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node2.msgService.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

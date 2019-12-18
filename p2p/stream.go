@@ -49,6 +49,7 @@ type Stream struct {
 	pingResult                <-chan ping.Result
 	globalVersion             string
 	p2pVersion                byte
+	lastUpdateTime            string
 }
 
 // NewStream return a new Stream
@@ -288,6 +289,7 @@ func (s *Stream) Write(data []byte) error {
 }
 
 func (s *Stream) handleMessage(message *QlcMessage) {
+	s.p2pVersion = message.Version()
 	if message.Version() < byte(p2pVersion) {
 		s.node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
 		return

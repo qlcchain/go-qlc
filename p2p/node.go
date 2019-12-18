@@ -53,7 +53,11 @@ const (
 	BlockTopic = "/qlc/blocks"
 )
 
-const MaxPingTimeOutTimes = 4
+const (
+	MaxPingTimeOutTimes      = 4
+	PingTimeInterval         = 30 * time.Second
+	ConnectBootstrapInterval = 20 * time.Second
+)
 
 type QlcNode struct {
 	ID               peer.ID
@@ -216,7 +220,7 @@ func (node *QlcNode) StartServices() error {
 func (node *QlcNode) startPingService() {
 	node.logger.Info("start pingService Loop.")
 	var err error
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(PingTimeInterval)
 	for {
 		select {
 		case <-node.ctx.Done():
@@ -239,14 +243,17 @@ func (node *QlcNode) startPingService() {
 						node.logger.Infof("ping peer %s took %f s version %s", stream.pid, res.RTT.Seconds(), res.Version)
 						stream.rtt = res.RTT
 						stream.pingTimeoutTimes = 0
+						stream.lastUpdateTime = time.Now().Format(time.RFC3339)
 						stream.globalVersion = res.Version
 						pi := &types.PeerInfo{
-							PeerID:  stream.pid.Pretty(),
-							Address: stream.addr.String(),
-							Version: stream.globalVersion,
-							Rtt:     stream.rtt.Seconds(),
+							PeerID:         stream.pid.Pretty(),
+							Address:        stream.addr.String(),
+							Version:        stream.globalVersion,
+							Rtt:            stream.rtt.Seconds(),
+							LastUpdateTime: time.Now().Format(time.RFC3339),
 						}
-						node.streamManager.AddOrUpdateStream(pi)
+
+						node.streamManager.AddOrUpdateOnlineInfo(pi)
 						_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 					} else {
 						select {
@@ -260,14 +267,16 @@ func (node *QlcNode) startPingService() {
 								node.logger.Infof("ping peer %s took %f s version %s", stream.pid, res.RTT.Seconds(), res.Version)
 								stream.rtt = res.RTT
 								stream.pingTimeoutTimes = 0
+								stream.lastUpdateTime = time.Now().Format(time.RFC3339)
 								stream.globalVersion = res.Version
 								pi := &types.PeerInfo{
-									PeerID:  stream.pid.Pretty(),
-									Address: stream.addr.String(),
-									Version: stream.globalVersion,
-									Rtt:     stream.rtt.Seconds(),
+									PeerID:         stream.pid.Pretty(),
+									Address:        stream.addr.String(),
+									Version:        stream.globalVersion,
+									Rtt:            stream.rtt.Seconds(),
+									LastUpdateTime: time.Now().Format(time.RFC3339),
 								}
-								node.streamManager.AddOrUpdateStream(pi)
+								node.streamManager.AddOrUpdateOnlineInfo(pi)
 								_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 							}
 						default:
@@ -295,7 +304,7 @@ func (node *QlcNode) connectBootstrap(pInfoS []peer.AddrInfo) {
 
 func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 	ticker := time.NewTicker(time.Duration(node.cfg.P2P.Discovery.DiscoveryInterval) * time.Second)
-	ticker1 := time.NewTicker(15 * time.Second)
+	ticker1 := time.NewTicker(ConnectBootstrapInterval)
 	node.connectBootstrap(pInfoS)
 	if err := node.findPeers(); err != nil {
 		node.logger.Errorf("find node error[%s]", err)
@@ -306,10 +315,6 @@ func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 			node.logger.Info("Stopped peer discovery Loop.")
 			return
 		case <-ticker.C:
-			node.streamManager.onlinePeersInfo.Range(func(key interface{}, value interface{}) bool {
-				node.streamManager.onlinePeersInfo.Delete(key)
-				return true
-			})
 			if err := node.findPeers(); err != nil {
 				node.logger.Errorf("find node error[%s]", err)
 				continue
@@ -327,17 +332,26 @@ func (node *QlcNode) findPeers() error {
 		return err
 	}
 	for _, p := range peers {
+		var pi *types.PeerInfo
+		if v, ok := node.streamManager.onlinePeersInfo.Load(p.ID.Pretty()); ok {
+			pi = v.(*types.PeerInfo)
+		} else {
+			pi = &types.PeerInfo{
+				PeerID: p.ID.Pretty(),
+			}
+			if p.ID == node.ID {
+				pi.Address = node.cfg.P2P.Listen
+			} else if len(p.Addrs) != 0 {
+				pi.Address = findPublicIP(p.Addrs)
+			}
+		}
+		pi.LastUpdateTime = time.Now().Format(time.RFC3339)
+		_ = node.netService.msgService.ledger.AddPeerInfo(pi)
+		node.streamManager.AddOnlineInfo(pi)
 		if p.ID == node.ID || len(p.Addrs) == 0 {
 			// No sense connecting to ourselves or if addrs are not available
 			continue
 		}
-		pi := &types.PeerInfo{
-			PeerID:  p.ID.Pretty(),
-			Address: findPublicIP(p.Addrs),
-		}
-
-		_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
-		node.streamManager.AddOrUpdateStream(pi)
 		node.streamManager.createStreamWithPeer(p.ID)
 	}
 	return nil
@@ -362,7 +376,9 @@ func (node *QlcNode) stopHost() error {
 	if node.host == nil {
 		return errors.New("host not exit")
 	}
-
+	if node.localDiscovery != nil {
+		node.localDiscovery.UnregisterNotifee(node)
+	}
 	if err := node.host.Close(); err != nil {
 		return err
 	}
@@ -447,12 +463,8 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 	if err := message.ParseMessageData(messageBuffer); err != nil {
 		return err
 	}
-	s := node.streamManager.FindByPeerID(peerID)
-	if s != nil {
-		s.p2pVersion = message.Version()
-	}
 	if message.Version() < p2pVersion {
-		node.logger.Warnf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
+		node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
 		return nil
 	}
 	m := NewMessage(message.MessageType(), peerID, message.MessageData(), message.content)

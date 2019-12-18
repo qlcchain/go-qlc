@@ -14,7 +14,9 @@ func judgeNetAttribute(ms []ma.Multiaddr) netAttribute {
 		for _, m := range ms {
 			s := m.String()
 			ss := strings.Split(s, "/")
-			ips = append(ips, ss[2])
+			if len(ss) >= 5 {
+				ips = append(ips, ss[2])
+			}
 		}
 	} else {
 		return na
@@ -53,7 +55,9 @@ func findPublicIP(ms []ma.Multiaddr) string {
 		for _, m := range ms {
 			s := m.String()
 			ss := strings.Split(s, "/")
-			ips = append(ips, ss[2])
+			if len(ss) >= 5 {
+				ips = append(ips, ss[2])
+			}
 		}
 	} else {
 		return ""
@@ -87,8 +91,10 @@ func findPublicIP(ms []ma.Multiaddr) string {
 		for _, m := range ms {
 			s := m.String()
 			ss := strings.Split(s, "/")
-			if ss[2] == publicIP {
-				return s
+			if len(ss) >= 5 {
+				if ss[2] == publicIP {
+					return s
+				}
 			}
 		}
 	}
