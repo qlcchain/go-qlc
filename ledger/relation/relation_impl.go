@@ -71,7 +71,7 @@ func NewRelation(cfgFile string) (*Relation, error) {
 			eb:            cc.EventBus(),
 			handlerIds:    make(map[common.TopicType]string),
 			dir:           cfgFile,
-			addBlkChan:    make(chan *types.StateBlock, 100),
+			addBlkChan:    make(chan *types.StateBlock, 1024),
 			deleteBlkChan: make(chan types.Hash, 100),
 			syncBlkChan:   make(chan *types.StateBlock, 1024),
 			syncBlocks:    make([]*types.StateBlock, 0),
@@ -322,8 +322,28 @@ func (r *Relation) processBlocks() {
 		case <-r.ctx.Done():
 			return
 		case blk := <-r.addBlkChan:
-			if err := r.AddBlock(blk); err != nil {
-				r.logger.Error(err)
+			blocks := make([]*types.StateBlock, 0)
+			blocks = append(blocks, blk)
+			if len(r.addBlkChan) > 0 {
+				for b := range r.addBlkChan {
+					blocks = append(blocks, b)
+					if len(blocks) >= batchMaxCount {
+						break
+					}
+					if len(r.addBlkChan) == 0 {
+						break
+					}
+				}
+			}
+
+			err := r.BatchUpdate(func(txn *sqlx.Tx) error {
+				if err := r.AddBlocks(txn, blocks); err != nil {
+					r.logger.Errorf("batch add blocks error: %s", err)
+				}
+				return nil
+			})
+			if err != nil {
+				r.logger.Errorf("batch update blocks error: %s", err)
 			}
 		case blk := <-r.deleteBlkChan:
 			if err := r.DeleteBlock(blk); err != nil {

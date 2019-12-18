@@ -35,6 +35,7 @@ func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
 
 type APIUncheckBlock struct {
 	Block       *types.StateBlock      `json:"block"`
+	Hash        types.Hash             `json:"hash"`
 	Link        types.Hash             `json:"link"`
 	UnCheckType string                 `json:"uncheckType"`
 	SyncType    types.SynchronizedKind `json:"syncType"`
@@ -68,6 +69,7 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	err := l.ledger.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
 		uncheck := new(APIUncheckBlock)
 		uncheck.Block = block
+		uncheck.Hash = block.GetHash()
 		uncheck.Link = link
 
 		switch unCheckType {
@@ -91,6 +93,7 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 		for _, blk := range blocks {
 			uncheck := new(APIUncheckBlock)
 			uncheck.Block = blk
+			uncheck.Hash = blk.GetHash()
 			uncheck.UnCheckType = "GapPovHeight"
 			uncheck.SyncType = sync
 			uncheck.Height = height

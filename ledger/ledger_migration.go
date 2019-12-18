@@ -378,16 +378,16 @@ func (m MigrationV7ToV8) EndVersion() int {
 	return 8
 }
 
-type MigrationV8ToV9 struct {
+type MigrationV11ToV12 struct {
 }
 
-func (m MigrationV8ToV9) Migrate(txn db.StoreTxn) error {
+func (m MigrationV11ToV12) Migrate(txn db.StoreTxn) error {
 	b, err := checkVersion(m, txn)
 	if err != nil {
 		return err
 	}
 	if b {
-		fmt.Println("migrate ledger v8 to v9 ")
+		fmt.Println("migrate ledger v11 to v12 ")
 		representMap := make(map[types.Address]*types.Benefit)
 		err = txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
 			am := new(types.AccountMeta)
@@ -413,6 +413,9 @@ func (m MigrationV8ToV9) Migrate(txn db.StoreTxn) error {
 			}
 			return nil
 		})
+		if err := txn.DropOfTxn([]byte{idPrefixRepresentation}); err != nil {
+			return err
+		}
 		for address, benefit := range representMap {
 			key, err := getKeyOfParts(idPrefixRepresentation, address)
 			if err != nil {
@@ -435,12 +438,12 @@ func (m MigrationV8ToV9) Migrate(txn db.StoreTxn) error {
 	return nil
 }
 
-func (m MigrationV8ToV9) StartVersion() int {
-	return 8
+func (m MigrationV11ToV12) StartVersion() int {
+	return 11
 }
 
-func (m MigrationV8ToV9) EndVersion() int {
-	return 9
+func (m MigrationV11ToV12) EndVersion() int {
+	return 12
 }
 
 type MigrationV9ToV10 struct {
@@ -523,4 +526,28 @@ func (m MigrationV9ToV10) StartVersion() int {
 
 func (m MigrationV9ToV10) EndVersion() int {
 	return 10
+}
+
+type MigrationV1ToV11 struct {
+}
+
+func (m MigrationV1ToV11) Migrate(txn db.StoreTxn) error {
+	if b, err := checkVersion(m, txn); err == nil && b {
+		fmt.Println("migrate ledger to v11")
+		if err := txn.Drop(nil); err == nil {
+			return updateVersion(m, txn)
+		} else {
+			return err
+		}
+	} else {
+		return err
+	}
+}
+
+func (m MigrationV1ToV11) StartVersion() int {
+	return 1
+}
+
+func (m MigrationV1ToV11) EndVersion() int {
+	return 11
 }

@@ -31,6 +31,7 @@ type StoreTxn interface {
 	Commit() error
 	Discard()
 	Drop(prefix []byte) error
+	DropOfTxn(prefix []byte) error
 	Upgrade(migrations []Migration) error
 	Count(prefix []byte) (uint64, error)
 	Stream(prefix []byte, filter func(item *badger.Item) bool, callback func(list *pb.KVList) error) error
