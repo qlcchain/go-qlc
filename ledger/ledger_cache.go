@@ -155,9 +155,9 @@ func (r *RepresentationCache) cacheToConfirmed(txn db.StoreTxn) error {
 	}
 
 	// delete cache
-	if err := txn.Drop([]byte{idPrefixRepresentationCache}); err != nil {
-		return err
-	}
+	//if err := txn.Drop([]byte{idPrefixRepresentationCache}); err != nil {
+	//	return err
+	//}
 	return nil
 }
 

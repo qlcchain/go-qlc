@@ -168,6 +168,10 @@ func (m *MintageApi) GetWithdrawMintageData(tokenId types.Hash) ([]byte, error) 
 	return cabi.MintageABI.PackMethod(cabi.MethodNameMintageWithdraw, tokenId)
 }
 
+func (p *MintageApi) ParseTokenInfo(data []byte) (*types.TokenInfo, error) {
+	return cabi.ParseTokenInfo(data)
+}
+
 type WithdrawParams struct {
 	SelfAddr types.Address `json:"selfAddr"`
 	TokenId  types.Hash    `json:"tokenId"`

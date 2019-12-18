@@ -3,6 +3,8 @@ package ledger
 import (
 	"context"
 	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -36,6 +38,7 @@ type Ledger struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	cache          *Cache
+	VerifiedData   map[types.Hash]int
 	logger         *zap.SugaredLogger
 }
 
@@ -113,7 +116,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
-const version = 10
+const version = 12
 
 func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
@@ -146,6 +149,11 @@ func NewLedger(cfgFile string) *Ledger {
 		if err := l.initCache(); err != nil {
 			l.logger.Error(err)
 		}
+		vd, err := l.getVerifiedData()
+		if err != nil {
+			l.logger.Error(err)
+		}
+		l.VerifiedData = vd
 		cache[dir] = l
 	}
 	//cache[dir].logger = log.NewLogger("ledger")
@@ -190,7 +198,7 @@ func (l *Ledger) upgrade() error {
 				return err
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV7), new(MigrationV7ToV8), new(MigrationV8ToV9), new(MigrationV9ToV10)}
+		ms := []db.Migration{new(MigrationV1ToV11), new(MigrationV11ToV12)}
 
 		err = txn.Upgrade(ms)
 		if err != nil {
@@ -198,6 +206,18 @@ func (l *Ledger) upgrade() error {
 		}
 		return err
 	})
+}
+
+func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {
+	data, err := hex.DecodeString(verifieddata)
+	if err != nil {
+		return nil, err
+	}
+	verifiedMap := make(map[types.Hash]int)
+	if err := json.Unmarshal(data, &verifiedMap); err != nil {
+		return nil, err
+	}
+	return verifiedMap, nil
 }
 
 func (l *Ledger) initCache() error {
