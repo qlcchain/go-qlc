@@ -254,7 +254,10 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 	cbtx.TxNum = uint32(len(accTxs) + 1)
 	cbtx.StateHash = *stateTrie.Hash()
 
-	minerRwd, repRwd := w.GetChain().CalcBlockReward(header)
+	minerRwd, repRwd, err := w.GetChain().CalcBlockReward(header)
+	if err != nil {
+		return nil, err
+	}
 
 	minerTxOut := cbtx.GetMinerTxOut()
 	minerTxOut.Address = minerAddr

@@ -25,7 +25,7 @@ import (
 	"github.com/qlcchain/go-qlc/trie"
 )
 
-type PovAPI struct {
+type PovApi struct {
 	cfg    *config.Config
 	l      *ledger.Ledger
 	logger *zap.SugaredLogger
@@ -150,8 +150,8 @@ type PovRepStats struct {
 	LatestBlockHeight uint64                            `json:"latestBlockHeight"`
 }
 
-func NewPovApi(ctx context.Context, cfg *config.Config, l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *PovAPI {
-	api := &PovAPI{
+func NewPovApi(ctx context.Context, cfg *config.Config, l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *PovApi {
+	api := &PovApi{
 		cfg:    cfg,
 		l:      l,
 		eb:     eb,
@@ -162,7 +162,7 @@ func NewPovApi(ctx context.Context, cfg *config.Config, l *ledger.Ledger, eb eve
 	return api
 }
 
-func (api *PovAPI) GetPovStatus() (*PovStatus, error) {
+func (api *PovApi) GetPovStatus() (*PovStatus, error) {
 	apiRsp := new(PovStatus)
 	apiRsp.PovEnabled = api.cfg.PoV.PovEnabled
 	ss := api.cc.PoVState()
@@ -171,7 +171,7 @@ func (api *PovAPI) GetPovStatus() (*PovStatus, error) {
 	return apiRsp, nil
 }
 
-func (api *PovAPI) fillHeader(header *PovApiHeader) {
+func (api *PovApi) fillHeader(header *PovApiHeader) {
 	header.AlgoEfficiency = header.GetAlgoEfficiency()
 	header.AlgoName = header.GetAlgoType().String()
 	header.NormBits = header.GetNormBits()
@@ -179,7 +179,7 @@ func (api *PovAPI) fillHeader(header *PovApiHeader) {
 	header.AlgoDifficulty = types.CalcDifficultyRatio(header.BasHdr.Bits, common.PovPowLimitBits)
 }
 
-func (api *PovAPI) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
+func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
 	blockHash, err := api.l.GetPovBestHash(height)
 	if err != nil {
 		return nil, err
@@ -198,7 +198,7 @@ func (api *PovAPI) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
 	return apiHeader, nil
 }
 
-func (api *PovAPI) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) {
+func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) {
 	height, err := api.l.GetPovHeight(blockHash)
 	if err != nil {
 		return nil, err
@@ -217,7 +217,7 @@ func (api *PovAPI) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) 
 	return apiHeader, nil
 }
 
-func (api *PovAPI) GetLatestHeader() (*PovApiHeader, error) {
+func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 	header, err := api.l.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
@@ -231,7 +231,7 @@ func (api *PovAPI) GetLatestHeader() (*PovApiHeader, error) {
 	return apiHeader, nil
 }
 
-func (api *PovAPI) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
+func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 	if !api.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
@@ -265,9 +265,9 @@ func (api *PovAPI) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 	return apiHeader, nil
 }
 
-func (api *PovAPI) BatchGetHeadersByHeight(height uint64, count uint64, asc bool) (*PovApiBatchHeader, error) {
-	if count <= 0 || count > 1000 {
-		return nil, errors.New("count should be 1 ~ 1000")
+func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool) (*PovApiBatchHeader, error) {
+	if count <= 0 || count > uint64(common.POVChainBlocksPerDay) {
+		return nil, fmt.Errorf("count should be 1 ~ %d", common.POVChainBlocksPerDay)
 	}
 
 	var dbHeaders []*types.PovHeader
@@ -298,7 +298,7 @@ func (api *PovAPI) BatchGetHeadersByHeight(height uint64, count uint64, asc bool
 	return apiHeader, nil
 }
 
-func (api *PovAPI) fillBlock(block *PovApiBlock) {
+func (api *PovApi) fillBlock(block *PovApiBlock) {
 	block.AlgoEfficiency = block.GetAlgoEfficiency()
 	block.AlgoName = block.GetAlgoType().String()
 	block.NormBits = block.GetHeader().GetNormBits()
@@ -306,7 +306,7 @@ func (api *PovAPI) fillBlock(block *PovApiBlock) {
 	block.AlgoDifficulty = types.CalcDifficultyRatio(block.Header.BasHdr.Bits, common.PovPowLimitBits)
 }
 
-func (api *PovAPI) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
+func (api *PovApi) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.l.GetPovBlockByHeight(height)
 	if err != nil {
 		return nil, err
@@ -322,7 +322,7 @@ func (api *PovAPI) GetBlockByHeight(height uint64, txOffset uint32, txLimit uint
 	return apiBlock, nil
 }
 
-func (api *PovAPI) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
+func (api *PovApi) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.l.GetPovBlockByHash(blockHash)
 	if err != nil {
 		return nil, err
@@ -338,7 +338,7 @@ func (api *PovAPI) GetBlockByHash(blockHash types.Hash, txOffset uint32, txLimit
 	return apiBlock, nil
 }
 
-func (api *PovAPI) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
+func (api *PovApi) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock, error) {
 	block, err := api.l.GetLatestPovBlock()
 	if err != nil {
 		return nil, err
@@ -354,7 +354,7 @@ func (api *PovAPI) GetLatestBlock(txOffset uint32, txLimit uint32) (*PovApiBlock
 	return apiBlock, nil
 }
 
-func (api *PovAPI) pagingTxs(txs []*types.PovTransaction, txOffset uint32, txLimit uint32) []*types.PovTransaction {
+func (api *PovApi) pagingTxs(txs []*types.PovTransaction, txOffset uint32, txLimit uint32) []*types.PovTransaction {
 	txNum := uint32(len(txs))
 
 	if txOffset >= txNum {
@@ -370,7 +370,7 @@ func (api *PovAPI) pagingTxs(txs []*types.PovTransaction, txOffset uint32, txLim
 	return txs[txOffset : txOffset+txLimit]
 }
 
-func (api *PovAPI) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {
+func (api *PovApi) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {
 	txl, err := api.l.GetPovTxLookup(txHash)
 	if err != nil {
 		return nil, err
@@ -393,7 +393,7 @@ func (api *PovAPI) GetTransaction(txHash types.Hash) (*PovApiTxLookup, error) {
 	return apiTxl, nil
 }
 
-func (api *PovAPI) GetTransactionByBlockHashAndIndex(blockHash types.Hash, index uint32) (*PovApiTxLookup, error) {
+func (api *PovApi) GetTransactionByBlockHashAndIndex(blockHash types.Hash, index uint32) (*PovApiTxLookup, error) {
 	block, err := api.l.GetPovBlockByHash(blockHash)
 	if err != nil {
 		return nil, err
@@ -406,7 +406,7 @@ func (api *PovAPI) GetTransactionByBlockHashAndIndex(blockHash types.Hash, index
 	return api.GetTransaction(tx.Hash)
 }
 
-func (api *PovAPI) GetTransactionByBlockHeightAndIndex(height uint64, index uint32) (*PovApiTxLookup, error) {
+func (api *PovApi) GetTransactionByBlockHeightAndIndex(height uint64, index uint32) (*PovApiTxLookup, error) {
 	block, err := api.l.GetPovBlockByHeight(height)
 	if err != nil {
 		return nil, err
@@ -419,7 +419,7 @@ func (api *PovAPI) GetTransactionByBlockHeightAndIndex(height uint64, index uint
 	return api.GetTransaction(tx.Hash)
 }
 
-func (api *PovAPI) GetAccountState(address types.Address, stateHash types.Hash) (*PovApiState, error) {
+func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) (*PovApiState, error) {
 	apiState := &PovApiState{}
 
 	db := api.l.Store
@@ -453,7 +453,7 @@ func (api *PovAPI) GetAccountState(address types.Address, stateHash types.Hash) 
 	return apiState, nil
 }
 
-func (api *PovAPI) GetLatestAccountState(address types.Address) (*PovApiState, error) {
+func (api *PovApi) GetLatestAccountState(address types.Address) (*PovApiState, error) {
 	header, err := api.l.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
@@ -462,7 +462,7 @@ func (api *PovAPI) GetLatestAccountState(address types.Address) (*PovApiState, e
 	return api.GetAccountState(address, header.GetStateHash())
 }
 
-func (api *PovAPI) GetAccountStateByBlockHash(address types.Address, blockHash types.Hash) (*PovApiState, error) {
+func (api *PovApi) GetAccountStateByBlockHash(address types.Address, blockHash types.Hash) (*PovApiState, error) {
 	header, err := api.l.GetPovHeaderByHash(blockHash)
 	if err != nil {
 		return nil, err
@@ -471,7 +471,7 @@ func (api *PovAPI) GetAccountStateByBlockHash(address types.Address, blockHash t
 	return api.GetAccountState(address, header.GetStateHash())
 }
 
-func (api *PovAPI) GetAccountStateByBlockHeight(address types.Address, height uint64) (*PovApiState, error) {
+func (api *PovApi) GetAccountStateByBlockHeight(address types.Address, height uint64) (*PovApiState, error) {
 	header, err := api.l.GetPovHeaderByHeight(height)
 	if err != nil {
 		return nil, err
@@ -480,7 +480,7 @@ func (api *PovAPI) GetAccountStateByBlockHeight(address types.Address, height ui
 	return api.GetAccountState(address, header.GetStateHash())
 }
 
-func (api *PovAPI) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error) {
+func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error) {
 	block, err := api.l.GetPovBlockByHash(blockHash)
 	if err != nil {
 		return nil, err
@@ -541,7 +541,7 @@ func (api *PovAPI) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 	return dump, nil
 }
 
-func (api *PovAPI) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepState, error) {
+func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepState, error) {
 	apiRsp := new(PovApiRepState)
 
 	apiRsp.StateHash = stateHash
@@ -579,7 +579,7 @@ func (api *PovAPI) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepS
 	return apiRsp, nil
 }
 
-func (api *PovAPI) GetAllRepStatesByBlockHash(blockHash types.Hash) (*PovApiRepState, error) {
+func (api *PovApi) GetAllRepStatesByBlockHash(blockHash types.Hash) (*PovApiRepState, error) {
 	header, err := api.l.GetPovHeaderByHash(blockHash)
 	if err != nil {
 		return nil, err
@@ -588,7 +588,7 @@ func (api *PovAPI) GetAllRepStatesByBlockHash(blockHash types.Hash) (*PovApiRepS
 	return api.GetAllRepStatesByStateHash(header.GetStateHash())
 }
 
-func (api *PovAPI) GetAllRepStatesByBlockHeight(blockHeight uint64) (*PovApiRepState, error) {
+func (api *PovApi) GetAllRepStatesByBlockHeight(blockHeight uint64) (*PovApiRepState, error) {
 	header, err := api.l.GetPovHeaderByHeight(blockHeight)
 	if err != nil {
 		return nil, err
@@ -597,7 +597,7 @@ func (api *PovAPI) GetAllRepStatesByBlockHeight(blockHeight uint64) (*PovApiRepS
 	return api.GetAllRepStatesByStateHash(header.GetStateHash())
 }
 
-func (api *PovAPI) GetLedgerStats() (*PovLedgerStats, error) {
+func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
 	stats := &PovLedgerStats{}
 
 	var err error
@@ -629,7 +629,7 @@ func (api *PovAPI) GetLedgerStats() (*PovLedgerStats, error) {
 	return stats, nil
 }
 
-func (api *PovAPI) GetBlockTDByHash(blockHash types.Hash) (*PovApiTD, error) {
+func (api *PovApi) GetBlockTDByHash(blockHash types.Hash) (*PovApiTD, error) {
 	height, err := api.l.GetPovHeight(blockHash)
 	if err != nil {
 		return nil, err
@@ -652,7 +652,7 @@ func (api *PovAPI) GetBlockTDByHash(blockHash types.Hash) (*PovApiTD, error) {
 	return apiTD, nil
 }
 
-func (api *PovAPI) GetBlockTDByHeight(height uint64) (*PovApiTD, error) {
+func (api *PovApi) GetBlockTDByHeight(height uint64) (*PovApiTD, error) {
 	blockHash, err := api.l.GetPovBestHash(height)
 	if err != nil {
 		return nil, err
@@ -675,7 +675,7 @@ func (api *PovAPI) GetBlockTDByHeight(height uint64) (*PovApiTD, error) {
 	return apiTD, nil
 }
 
-func (api *PovAPI) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) {
+func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) {
 	apiRsp := &PovMinerStats{
 		MinerStats: make(map[types.Address]*PovMinerStatItem),
 	}
@@ -838,7 +838,7 @@ func (api *PovAPI) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	return apiRsp, nil
 }
 
-func (api *PovAPI) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
+func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	checkAddrMap := make(map[types.Address]bool)
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
@@ -1001,8 +1001,39 @@ func (api *PovAPI) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	return rspMap, nil
 }
 
-func (api *PovAPI) GetMinerDayStats(dayIndex uint32) (*types.PovMinerDayStat, error) {
+func (api *PovApi) GetMinerDayStat(dayIndex uint32) (*types.PovMinerDayStat, error) {
 	dayStat, err := api.l.GetPovMinerStat(dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	return dayStat, nil
+}
+
+func (api *PovApi) GetMinerDayStatByHeight(height uint64) (*types.PovMinerDayStat, error) {
+	dayIndex := uint32(height / uint64(common.POVChainBlocksPerDay))
+
+	dayStat, err := api.l.GetPovMinerStat(dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	return dayStat, nil
+}
+
+func (api *PovApi) GetDiffDayStat(dayIndex uint32) (*types.PovDiffDayStat, error) {
+	dayStat, err := api.l.GetPovDiffStat(dayIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	return dayStat, nil
+}
+
+func (api *PovApi) GetDiffDayStatByHeight(height uint64) (*types.PovDiffDayStat, error) {
+	dayIndex := uint32(height / uint64(common.POVChainBlocksPerDay))
+
+	dayStat, err := api.l.GetPovDiffStat(dayIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -1017,7 +1048,7 @@ type PovApiHashInfo struct {
 	X11HashPS     uint64 `json:"x11HashPS"`
 }
 
-func (api *PovAPI) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, error) {
+func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, error) {
 	if lookup > uint64(common.POVChainBlocksPerDay) {
 		return nil, fmt.Errorf("lookup must be 0 ~ %d", common.POVChainBlocksPerDay)
 	}
@@ -1152,7 +1183,7 @@ type PovApiGetMiningInfo struct {
 	HashInfo           *PovApiHashInfo   `json:"hashInfo"`
 }
 
-func (api *PovAPI) GetMiningInfo() (*PovApiGetMiningInfo, error) {
+func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	inArgs := make(map[interface{}]interface{})
 
 	outArgs := make(map[interface{}]interface{})
@@ -1192,7 +1223,7 @@ func (api *PovAPI) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	return apiRsp, nil
 }
 
-func (api *PovAPI) GetWork(minerAddr types.Address, algoName string) (*PovApiGetWork, error) {
+func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGetWork, error) {
 	if !api.cfg.PoV.PovEnabled {
 		return nil, errors.New("pov service is disabled")
 	}
@@ -1234,7 +1265,7 @@ func (api *PovAPI) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	return apiRsp, nil
 }
 
-func (api *PovAPI) SubmitWork(work *PovApiSubmitWork) error {
+func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	if !api.cfg.PoV.PovEnabled {
 		return errors.New("pov service is disabled")
 	}
@@ -1315,7 +1346,7 @@ type PovApiGetLastNHourInfo struct {
 	HourItemList []*PovApiGetLastNHourItem
 }
 
-func (api *PovAPI) GetLastNHourInfo(endHeight uint64, timeSpan uint32) (*PovApiGetLastNHourInfo, error) {
+func (api *PovApi) GetLastNHourInfo(endHeight uint64, timeSpan uint32) (*PovApiGetLastNHourInfo, error) {
 	endHourTime := uint32(0)
 	beginHourTime := uint32(0)
 
@@ -1463,7 +1494,7 @@ func (api *PovAPI) GetLastNHourInfo(endHeight uint64, timeSpan uint32) (*PovApiG
 	return apiRsp, nil
 }
 
-func (api *PovAPI) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
+func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
 	var allRss []*types.PovRepState
 	supply := common.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
@@ -1511,7 +1542,7 @@ func (api *PovAPI) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 	return allRss
 }
 
-func (api *PovAPI) GetRepStatesByHeightAndAccount(header *types.PovHeader, acc types.Address) *types.PovRepState {
+func (api *PovApi) GetRepStatesByHeightAndAccount(header *types.PovHeader, acc types.Address) *types.PovRepState {
 	stateHash := header.GetStateHash()
 	stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
 	if stateTrie == nil {
@@ -1545,7 +1576,7 @@ func (api *PovAPI) GetRepStatesByHeightAndAccount(header *types.PovHeader, acc t
 	return nil
 }
 
-func (api *PovAPI) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
+func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	return CreatePovSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			notifyCh := make(chan struct{})

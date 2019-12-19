@@ -169,14 +169,13 @@ func (c *ConsensusPow) calcNextRequiredTargetByQLC(lastHeader *types.PovHeader, 
 	nextTargetInt := new(big.Int).Mul(oldTargetInt, big.NewInt(int64(actualTimespan)))
 	nextTargetInt = new(big.Int).Div(nextTargetInt, big.NewInt(int64(targetTimeSpan)))
 
-	// convert to algo target
-	nextTargetIntAlgo := new(big.Int).Mul(nextTargetInt, big.NewInt(int64(curHeader.GetAlgoEfficiency())))
-
 	// at least pow limit
-	if nextTargetIntAlgo.Cmp(common.PovPowLimitInt) > 0 {
-		nextTargetIntAlgo = common.PovPowLimitInt
+	if nextTargetInt.Cmp(common.PovPowLimitInt) > 0 {
+		nextTargetInt = common.PovPowLimitInt
 	}
 
+	// convert to algo target
+	nextTargetIntAlgo := new(big.Int).Mul(nextTargetInt, big.NewInt(int64(curHeader.GetAlgoEfficiency())))
 	nextTargetBitsAlgo := types.BigToCompact(nextTargetIntAlgo)
 
 	c.logger.Infof("Difficulty target at block height %d", lastHeader.GetHeight()+1)

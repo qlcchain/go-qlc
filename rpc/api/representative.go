@@ -213,6 +213,11 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 	}
 
 	vmContext := vmstore.NewVMContext(r.ledger)
+	err = r.reward.SetStorage(vmContext, param.EndHeight, param.RewardAmount, param.RewardBlocks, send)
+	if err != nil {
+		return nil, err
+	}
+
 	h := vmContext.Cache.Trie().Hash()
 	if h != nil {
 		send.Extra = *h
@@ -273,7 +278,7 @@ func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepSta
 	}
 
 	stateHash := block.GetStateHash()
-	stateTrie := trie.NewTrie(ctx.GetLedger().Store, &stateHash, nil)
+	stateTrie := trie.NewTrie(ctx.Ledger.Store, &stateHash, nil)
 	keyBytes := types.PovCreateRepStateKey(params.Account)
 
 	valBytes := stateTrie.GetValue(keyBytes)

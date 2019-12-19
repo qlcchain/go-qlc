@@ -166,29 +166,41 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 					Address: types.Address(block.GetLink()),
 					Hash:    hash,
 				}
-				lv.logger.Info("sync done, add pending, ", pendingKey)
-				if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
-					lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
-					return err
+				if _, err := lv.l.GetPending(&pendingKey); err == ledger.ErrPendingNotFound {
+					lv.logger.Info("sync done, add pending, ", pendingKey)
+					if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
+						lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
+						return err
+					}
+				} else {
+					lv.logger.Info("sync done, pending already exists, ", pendingKey)
 				}
 			case types.ContractSend:
 				if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
 					switch v := c.(type) {
 					case contract.ChainContractV1:
 						if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
-							lv.logger.Info("sync done, add pending contract1, ", pendingKey)
-							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-								lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
-								return err
+							if _, err := lv.l.GetPending(pendingKey); err == ledger.ErrPendingNotFound {
+								lv.logger.Info("sync done, add pending contract1, ", pendingKey)
+								if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+									lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
+									return err
+								}
+							} else {
+								lv.logger.Info("sync done, pending already exists, ", pendingKey)
 							}
 						}
 					case contract.ChainContractV2:
 						vmCtx := vmstore.NewVMContext(lv.l)
 						if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
-							lv.logger.Info("sync done, add pending contract2, ", pendingKey)
-							if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
-								lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
-								return err
+							if _, err := lv.l.GetPending(pendingKey); err == ledger.ErrPendingNotFound {
+								lv.logger.Info("sync done, add pending contract2, ", pendingKey)
+								if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+									lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
+									return err
+								}
+							} else {
+								lv.logger.Info("sync done, pending already exists, ", pendingKey)
 							}
 						}
 					default:
@@ -231,7 +243,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 		return err
 	}
 
-	if err := txn.Commit(nil); err != nil {
+	if err := txn.Commit(); err != nil {
 		lv.logger.Errorf("block(%s) sync done error: %s", block.GetHash(), err)
 		return err
 	}

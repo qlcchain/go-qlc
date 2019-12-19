@@ -81,11 +81,11 @@ func NewChainContext(cfgFile string) *ChainContext {
 		return v.(*ChainContext)
 	} else {
 		sr := &ChainContext{
-			services:       newServiceContainer(),
-			cfgFile:        cfgFile,
-			chainID:        id,
-			peersPool:      new(sync.Map),
-			bandwidthStats: new(topic.EventBandwidthStats),
+			services:         newServiceContainer(),
+			cfgFile:          cfgFile,
+			chainID:          id,
+			connectPeersPool: new(sync.Map),
+			bandwidthStats:   new(topic.EventBandwidthStats),
 		}
 		sr.povSyncState.Store(topic.SyncNotStart)
 		sr.p2pSyncState.Store(topic.SyncNotStart)
@@ -108,17 +108,19 @@ func NewChainContextFromOriginal(cc *ChainContext) *ChainContext {
 
 type ChainContext struct {
 	common.ServiceLifecycle
-	services       *serviceContainer
-	cm             *config.CfgManager
-	cfgFile        string
-	chainID        string
-	locker         sync.RWMutex
-	accounts       []*types.Account
-	povSyncState   atomic.Value
-	p2pSyncState   atomic.Value
-	subscriber     *event.ActorSubscriber
-	peersPool      *sync.Map
-	bandwidthStats *topic.EventBandwidthStats
+	services         *serviceContainer
+	cm               *config.CfgManager
+	cfgFile          string
+	chainID          string
+	locker           sync.RWMutex
+	accounts         []*types.Account
+	povSyncState     atomic.Value
+	p2pSyncState     atomic.Value
+	subscriber       *event.ActorSubscriber
+	connectPeersPool *sync.Map
+	connectPeersInfo []*types.PeerInfo
+	onlinePeersInfo  []*types.PeerInfo
+	bandwidthStats   *topic.EventBandwidthStats
 }
 
 func (cc *ChainContext) EventBus() event.EventBus {
@@ -139,13 +141,21 @@ func (cc *ChainContext) P2PSyncState() topic.SyncState {
 
 func (cc *ChainContext) GetPeersPool() map[string]string {
 	p := make(map[string]string)
-	cc.peersPool.Range(func(key, value interface{}) bool {
+	cc.connectPeersPool.Range(func(key, value interface{}) bool {
 		peerId := key.(string)
 		addr := value.(string)
 		p[peerId] = addr
 		return true
 	})
 	return p
+}
+
+func (cc *ChainContext) GetConnectPeersInfo() []*types.PeerInfo {
+	return cc.connectPeersInfo
+}
+
+func (cc *ChainContext) GetOnlinePeersInfo() []*types.PeerInfo {
+	return cc.onlinePeersInfo
 }
 
 func (cc *ChainContext) GetBandwidthStats() *topic.EventBandwidthStats {
@@ -190,20 +200,24 @@ func (cc *ChainContext) Init(fn func() error) error {
 		case *topic.EventP2PSyncStateMsg:
 			cc.p2pSyncState.Store(msg.P2pSyncState)
 		case *topic.EventAddP2PStreamMsg:
-			if _, ok := cc.peersPool.Load(msg.PeerID); ok {
-				cc.peersPool.Delete(msg.PeerID)
+			if _, ok := cc.connectPeersPool.Load(msg.PeerID); ok {
+				cc.connectPeersPool.Delete(msg.PeerID)
 			}
-			cc.peersPool.Store(msg.PeerID, msg.PeerInfo)
+			cc.connectPeersPool.Store(msg.PeerID, msg.PeerInfo)
 		case *topic.EventDeleteP2PStreamMsg:
-			if _, ok := cc.peersPool.Load(msg.PeerID); ok {
-				cc.peersPool.Delete(msg.PeerID)
+			if _, ok := cc.connectPeersPool.Load(msg.PeerID); ok {
+				cc.connectPeersPool.Delete(msg.PeerID)
 			}
 		case *topic.EventBandwidthStats:
 			cc.bandwidthStats = msg
+		case *topic.EventP2PConnectPeersMsg:
+			cc.connectPeersInfo = msg.PeersInfo
+		case *topic.EventP2POnlinePeersMsg:
+			cc.onlinePeersInfo = msg.PeersInfo
 		}
 	}), cc.EventBus())
 
-	return cc.subscriber.Subscribe(topic.EventPovSyncState, topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventSyncStateChange, topic.EventConsensusSyncFinished, topic.EventGetBandwidthStats)
+	return cc.subscriber.Subscribe(topic.EventOnlinePeersInfo, topic.EventPeersInfo, topic.EventPovSyncState, topic.EventAddP2PStream, topic.EventDeleteP2PStream, topic.EventSyncStateChange, topic.EventConsensusSyncFinished, topic.EventGetBandwidthStats)
 }
 
 func (cc *ChainContext) Start() error {

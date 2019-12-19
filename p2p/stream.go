@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/topic"
-
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	ping "github.com/qlcchain/go-qlc/p2p/pinger"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -47,6 +46,9 @@ type Stream struct {
 	pingCancel                context.CancelFunc
 	pingTimeoutTimes          int
 	pingResult                <-chan ping.Result
+	globalVersion             string
+	p2pVersion                byte
+	lastUpdateTime            string
 }
 
 // NewStream return a new Stream
@@ -90,7 +92,6 @@ func (s *Stream) Connect() error {
 	if err != nil {
 		return err
 	}
-	//s.node.logger.Info("connect success to :", s.pid.Pretty())
 	s.stream = stream
 	s.addr = stream.Conn().RemoteMultiaddr()
 	return nil
@@ -288,6 +289,7 @@ func (s *Stream) Write(data []byte) error {
 }
 
 func (s *Stream) handleMessage(message *QlcMessage) {
+	s.p2pVersion = message.Version()
 	if message.Version() < byte(p2pVersion) {
 		s.node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
 		return

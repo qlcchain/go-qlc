@@ -5,14 +5,12 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/p2p"
 )
 
 const (
-	confirmReqMaxTimes = 3
-	confirmReqInterval = 60
+	confirmWaitMaxTime = 180
 )
 
 type voteKey [types.HashSize]byte
@@ -139,14 +137,29 @@ func (act *ActiveTrx) updatePerformanceTime(hash types.Hash, curTime int64, conf
 func (act *ActiveTrx) cleanFrontierVotes() {
 	dps := act.dps
 
-	act.roots.Range(func(key, value interface{}) bool {
-		el := value.(*Election)
-		block := el.status.winner
-		hash := block.GetHash()
+	dps.frontiersStatus.Range(func(k, v interface{}) bool {
+		fHash := k.(types.Hash)
+		dps.hash2el.Delete(fHash)
 
-		if dps.isReceivedFrontier(hash) {
-			act.roots.Delete(el.vote.id)
-		}
+		act.roots.Range(func(key, value interface{}) bool {
+			el := value.(*Election)
+			if _, ok := el.blocks.Load(fHash); ok {
+				el.blocks.Delete(fHash)
+
+				num := 0
+				el.blocks.Range(func(kk, vv interface{}) bool {
+					num++
+					return true
+				})
+
+				if num == 0 {
+					act.roots.Delete(el.vote.id)
+				}
+
+				return false
+			}
+			return true
+		})
 
 		return true
 	})
@@ -158,31 +171,25 @@ func (act *ActiveTrx) checkVotes() {
 
 	act.roots.Range(func(key, value interface{}) bool {
 		el := value.(*Election)
-		if nowTime-el.lastTime < confirmReqInterval {
+		if nowTime-el.lastTime < confirmWaitMaxTime {
 			return true
-		} else {
-			el.lastTime = nowTime
 		}
 
 		block := el.status.winner
 		hash := block.GetHash()
 
-		el.announcements++
-		if el.announcements == confirmReqMaxTimes || el.status.winner.Type == types.Online {
-			if !el.ifValidAndSetInvalid() {
-				return true
-			}
+		if !el.ifValidAndSetInvalid() {
+			return true
+		}
 
-			dps.logger.Warnf("block[%s] was not confirmed after %d times resend", hash, confirmReqMaxTimes)
-			act.roots.Delete(el.vote.id)
-			el.cleanBlockInfo()
-			act.dps.lv.RollbackUnchecked(hash)
+		act.roots.Delete(el.vote.id)
+		el.cleanBlockInfo()
+		act.dps.lv.RollbackUnchecked(hash)
 
-			if dps.isReceivedFrontier(hash) {
-				dps.logger.Warn("sync finish abnormally because of frontier not confirmed")
-				dps.syncFinish()
-			}
+		if dps.isReceivedFrontier(hash) {
+			dps.logger.Warnf("frontier[%s] wait for vote timeout", hash)
 		} else {
+			dps.logger.Warnf("block[%s] wait for vote timeout", hash)
 			dps.logger.Infof("resend confirmReq for block[%s]", hash)
 			confirmReqBlocks := make([]*types.StateBlock, 0)
 			confirmReqBlocks = append(confirmReqBlocks, block)
@@ -218,7 +225,7 @@ func (act *ActiveTrx) addSyncBlock2Ledger(block *types.StateBlock) {
 	dps.logger.Infof("sync block[%s] confirmed", hash)
 
 	if exist, err := dps.ledger.HasStateBlockConfirmed(hash); !exist && err == nil {
-		err := dps.lv.BlockSyncProcess(block)
+		err := dps.lv.BlockProcess(block)
 		if err != nil {
 			dps.logger.Error(err)
 		} else {

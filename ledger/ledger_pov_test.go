@@ -412,3 +412,68 @@ func TestLedger_PovTxlScanCursor(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLedger_PovDiffStats(t *testing.T) {
+	teardownTestCase, l := setupPovTestCase(t)
+	defer teardownTestCase(t)
+
+	dayStat0 := types.NewPovDiffDayStat()
+	dayStat0.DayIndex = 0
+	dayStat0.AvgDiffRatio = 10
+	err := l.AddPovDiffStat(dayStat0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dayStat2 := types.NewPovDiffDayStat()
+	dayStat2.DayIndex = 2
+	dayStat2.AvgDiffRatio = 200
+	err = l.AddPovDiffStat(dayStat2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dayStat1 := types.NewPovDiffDayStat()
+	dayStat1.DayIndex = 1
+	dayStat1.AvgDiffRatio = 100
+	err = l.AddPovDiffStat(dayStat1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	latestDayStat, err := l.GetLatestPovDiffStat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latestDayStat.DayIndex != dayStat2.DayIndex {
+		t.Fatalf("latest day index not equal, %d != %d", latestDayStat.DayIndex, dayStat2.DayIndex)
+	}
+
+	err = l.DeletePovDiffStat(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	latestDayStat, err = l.GetLatestPovDiffStat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latestDayStat.DayIndex != dayStat1.DayIndex {
+		t.Fatalf("latest day index not equal, %d != %d", latestDayStat.DayIndex, dayStat1.DayIndex)
+	}
+
+	err = l.DeletePovDiffStat(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.DeletePovDiffStat(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	latestDayStat, err = l.GetLatestPovDiffStat()
+	if err == nil {
+		t.Fatal(err)
+	}
+}

@@ -1138,44 +1138,51 @@ func (l *LedgerAPI) NewPending(ctx context.Context, address types.Address) (*rpc
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(subscription.ID, address, false, ch)
+			l.blockSubscription.addChan(subscription.ID, types.ZeroAddress, true, ch)
 			defer l.blockSubscription.removeChan(subscription.ID)
 
 			for {
 				select {
 				case <-ch:
-					block := l.blockSubscription.fetchAddrBlock(subscription.ID)
-					if block == nil {
+					blocks := l.blockSubscription.fetchBlocks(subscription.ID)
+					if len(blocks) == 0 {
 						continue
 					}
 
-					if block.IsSendBlock() {
-						pk := &types.PendingKey{
-							Address: address,
-							Hash:    block.GetHash(),
-						}
-						if pi, _ := l.ledger.GetPending(pk); pi != nil {
-							vmContext := vmstore.NewVMContext(l.ledger)
-							token, err := abi.GetTokenById(vmContext, pi.Type)
-							if err != nil {
-								l.logger.Errorf("get token info: %s", err)
-								return
+					for _, block := range blocks {
+						if block.IsSendBlock() {
+							if block.Type == types.Send && block.GetLink() != types.Hash(address) {
+								continue
 							}
-							blk, err := l.ledger.GetStateBlockConfirmed(pk.Hash)
-							if err != nil {
-								l.logger.Errorf("get block info: %s", err)
-								return
+							pk := &types.PendingKey{
+								Address: address,
+								Hash:    block.GetHash(),
 							}
+							if pi, _ := l.ledger.GetPending(pk); pi != nil {
+								vmContext := vmstore.NewVMContext(l.ledger)
+								token, err := abi.GetTokenById(vmContext, pi.Type)
+								if err != nil {
+									l.logger.Errorf("get token info: %s", err)
+									return
+								}
 
-							ap := APIPending{
-								PendingKey:  pk,
-								PendingInfo: pi,
-								TokenName:   token.TokenName,
-								Timestamp:   blk.Timestamp,
-							}
-							if err := notifier.Notify(subscription.ID, ap); err != nil {
-								l.logger.Errorf("notify error: %s", err)
-								return
+								blk, err := l.ledger.GetStateBlockConfirmed(pk.Hash)
+								if err != nil {
+									l.logger.Errorf("get block info: %s", err)
+									return
+								}
+
+								ap := APIPending{
+									PendingKey:  pk,
+									PendingInfo: pi,
+									TokenName:   token.TokenName,
+									Timestamp:   blk.Timestamp,
+									BlockType:   blk.GetType(),
+								}
+								if err := notifier.Notify(subscription.ID, ap); err != nil {
+									l.logger.Errorf("notify error: %s", err)
+									return
+								}
 							}
 						}
 					}

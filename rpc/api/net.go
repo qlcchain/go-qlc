@@ -77,18 +77,66 @@ func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
 	return ot
 }
 
-type PeersInfo struct {
-	Count int               `json:"count"`
-	Infos map[string]string `json:"infos"`
+func (q *NetApi) ConnectPeersInfo(count int, offset *int) ([]*types.PeerInfo, error) {
+	c, o, err := checkOffset(count, offset)
+	if err != nil {
+		return nil, err
+	}
+	p := q.cc.GetConnectPeersInfo()
+	r := p[o : c+o]
+	return r, nil
 }
 
-func (q *NetApi) ConnectPeersInfo() *PeersInfo {
-	p := q.cc.GetPeersPool()
-	i := &PeersInfo{
-		Count: len(p),
-		Infos: p,
+func (q *NetApi) GetOnlinePeersInfo(count int, offset *int) ([]*types.PeerInfo, error) {
+	c, o, err := checkOffset(count, offset)
+	if err != nil {
+		return nil, err
 	}
-	return i
+	p := q.cc.GetOnlinePeersInfo()
+	r := p[o : c+o]
+	return r, nil
+}
+
+func (q *NetApi) GetAllPeersInfo(count int, offset *int) ([]*types.PeerInfo, error) {
+	c, o, err := checkOffset(count, offset)
+	if err != nil {
+		return nil, err
+	}
+	pis := make([]*types.PeerInfo, 0)
+	err = q.ledger.GetPeersInfo(func(pi *types.PeerInfo) error {
+		pis = append(pis, pi)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	pis2 := pis[o : c+o]
+	return pis2, nil
+}
+
+func (q *NetApi) PeersCount() (map[string]uint64, error) {
+	p := q.cc.GetConnectPeersInfo()
+	connectCount := len(p)
+
+	p = q.cc.GetOnlinePeersInfo()
+	onlineCount := len(p)
+
+	var pa []*types.PeerInfo
+	err := q.ledger.GetPeersInfo(func(pi *types.PeerInfo) error {
+		pa = append(pa, pi)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	allCount := len(pa)
+
+	c := make(map[string]uint64)
+	c["connect"] = uint64(connectCount)
+	c["online"] = uint64(onlineCount)
+	c["all"] = uint64(allCount)
+
+	return c, nil
 }
 
 func (q *NetApi) GetBandwidthStats() *topic.EventBandwidthStats {

@@ -136,19 +136,7 @@ func TestNodeDiscovery(t *testing.T) {
 
 	//remove test file
 	defer func() {
-		err := node.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node1.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node2.msgService.ledger.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = node.Stop()
+		err := node.Stop()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -157,6 +145,18 @@ func TestNodeDiscovery(t *testing.T) {
 			t.Fatal(err)
 		}
 		err = node2.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node1.msgService.ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = node2.msgService.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

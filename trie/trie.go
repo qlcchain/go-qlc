@@ -52,7 +52,7 @@ func (trie *Trie) getNodeFromDb(key *types.Hash) *TrieNode {
 	}
 	txn := trie.db.NewTransaction(false)
 	defer func() {
-		txn.Commit(nil)
+		txn.Commit()
 		txn.Discard()
 	}()
 
@@ -76,8 +76,8 @@ func (trie *Trie) saveNodeToDb(txn db.StoreTxn, node *TrieNode) error {
 	} else {
 		h := node.Hash()
 		k := encodeKey(h[:])
-		//trie.log.Debugf("save %s, %s", hex.EncodeToString(k), node.String())
 		err := txn.Set(k, data)
+		//trie.log.Debugf("save %s, s%==>%s", h.String(), hex.EncodeToString(k), node.String())
 		if err != nil {
 			return err
 		}
@@ -124,7 +124,7 @@ func (trie *Trie) getRefValue(key []byte) ([]byte, error) {
 	}
 	txn := trie.db.NewTransaction(false)
 	defer func() {
-		txn.Commit(nil)
+		txn.Commit()
 		txn.Discard()
 	}()
 
@@ -150,7 +150,6 @@ func (trie *Trie) getNode(key *types.Hash) *TrieNode {
 
 	node := trie.getNodeFromDb(key)
 	if node != nil && trie.cache != nil {
-		//trie.log.Debug("load from db ", node)
 		trie.cache.Set(key, node)
 	}
 	return node
@@ -208,19 +207,19 @@ func (trie *Trie) Clone() *Trie {
 	return newTrie
 }
 
-func (trie *Trie) Save(txns ...db.StoreTxn) (func(), error) {
+func (trie *Trie) Save(txns ...db.StoreTxn) (fn func(), err error) {
 	var txn db.StoreTxn
 	if len(txns) > 0 {
 		txn = txns[0]
 	} else {
 		txn = trie.db.NewTransaction(true)
 		defer func() {
-			txn.Commit(nil)
+			err = txn.Commit()
 			txn.Discard()
 		}()
 	}
 
-	err := trie.traverseSave(txn, trie.Root)
+	err = trie.traverseSave(txn, trie.Root)
 	if err != nil {
 		return nil, err
 	}
@@ -230,6 +229,24 @@ func (trie *Trie) Save(txns ...db.StoreTxn) (func(), error) {
 	return func() {
 		trie.unSavedRefValueMap = make(map[types.Hash][]byte)
 	}, nil
+}
+
+func (trie *Trie) Remove(txns ...db.StoreTxn) (err error) {
+	var txn db.StoreTxn
+	if len(txns) > 0 {
+		txn = txns[0]
+	} else {
+		txn = trie.db.NewTransaction(true)
+		defer func() {
+			err = txn.Commit()
+			txn.Discard()
+		}()
+	}
+
+	if err = trie.traverseRemove(txn, trie.Root); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (trie *Trie) SaveInTxn(txn db.StoreTxn) (func(), error) {
@@ -495,6 +512,53 @@ func (trie *Trie) getLeafNode(node *TrieNode, key []byte) *TrieNode {
 	default:
 		return nil
 	}
+}
+
+func (trie *Trie) removeNodeFromDb(txn db.StoreTxn, node *TrieNode) error {
+	h := node.Hash()
+	k := encodeKey(h[:])
+
+	if err := txn.Delete(k); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (trie *Trie) traverseRemove(txn db.StoreTxn, node *TrieNode) error {
+	if node == nil {
+		return nil
+	}
+
+	trie.deleteUnSavedRefValueMap(node)
+	err := trie.removeNodeFromDb(txn, node)
+	if err != nil {
+		return err
+	}
+
+	switch node.NodeType() {
+	case FullNode:
+		if node.child != nil {
+			err := trie.traverseRemove(txn, node.child)
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, child := range node.children {
+			err := trie.traverseRemove(txn, child)
+			if err != nil {
+				return err
+			}
+		}
+
+	case ShortNode:
+		err := trie.traverseRemove(txn, node.child)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func encodeKey(key []byte) []byte {

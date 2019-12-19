@@ -35,7 +35,7 @@ const (
 	repTimeout            = 5 * time.Minute
 	voteCacheSize         = 102400
 	refreshPriInterval    = 1 * time.Minute
-	subAckMaxSize         = 102400
+	subAckMaxSize         = 1024000
 	maxStatisticsPeriod   = 3
 	confirmedCacheMaxLen  = 1024000
 	confirmedCacheMaxTime = 10 * time.Minute
@@ -130,7 +130,6 @@ type DPoS struct {
 	ebDone              chan struct{}
 	lastProcessSyncTime time.Time
 	updateSync          chan struct{}
-	syncDone            chan struct{}
 	tps                 [10]uint32
 	block2Ledger        chan struct{}
 }
@@ -160,7 +159,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		processorNum:        processorNum,
 		processors:          newProcessors(processorNum),
 		subMsg:              make(chan *subMsg, 10240),
-		subAck:              gcache.New(subAckMaxSize).Expiration(confirmReqMaxTimes * time.Minute).LRU().Build(),
+		subAck:              gcache.New(subAckMaxSize).Expiration(confirmWaitMaxTime * time.Second).LRU().Build(),
 		hash2el:             new(sync.Map),
 		batchVote:           make(chan types.Hash, 102400),
 		ctx:                 ctx,
@@ -179,7 +178,6 @@ func NewDPoS(cfgFile string) *DPoS {
 		isFindingRep:        0,
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
-		syncDone:            make(chan struct{}, 1024),
 		block2Ledger:        make(chan struct{}, 409600),
 	}
 
@@ -261,13 +259,12 @@ func (dps *DPoS) Start() {
 	go dps.batchVoteStart()
 	go dps.processSubMsg()
 	go dps.processBlocks()
-	go dps.processSyncDone()
 	go dps.stat()
 	dps.processorStart()
 
-	if err := dps.blockSyncDone(); err != nil {
-		dps.logger.Error("block sync down err", err)
-	}
+	//if err := dps.blockSyncDone(); err != nil {
+	//	dps.logger.Error("block sync down err", err)
+	//}
 
 	if err := dps.ledger.CleanAllVoteHistory(); err != nil {
 		dps.logger.Error("clean all vote history err")
@@ -341,7 +338,6 @@ func (dps *DPoS) Start() {
 				}
 			}
 		case dps.blockSyncState = <-dps.syncState:
-
 			// notify processors
 			dps.syncStateNotifyWait.Add(dps.processorNum)
 			for _, p := range dps.processors {
@@ -352,12 +348,11 @@ func (dps *DPoS) Start() {
 			switch dps.blockSyncState {
 			case topic.Syncing:
 				dps.updateLastProcessSyncTime()
-				dps.acTrx.cleanFrontierVotes()
-				dps.frontiersStatus = new(sync.Map)
 				dps.totalVote = make(map[types.Address]types.Balance)
-				dps.CleanSyncCache()
+				dps.frontiersStatus = new(sync.Map)
 			case topic.SyncDone:
 			case topic.SyncFinish:
+				dps.acTrx.cleanFrontierVotes()
 				dps.CleanSyncCache()
 				dps.logger.Warn("p2p concluded the sync")
 			}
@@ -423,31 +418,6 @@ func (dps *DPoS) statBlockInc() {
 	}
 }
 
-func (dps *DPoS) processSyncDone() {
-	for {
-		select {
-		case <-dps.ctx.Done():
-			dps.logger.Info("Stopped processSyncDone.")
-			return
-		case <-dps.syncDone:
-			if err := dps.blockSyncDone(); err != nil {
-				dps.logger.Error("block sync down err", err)
-			}
-
-			// notify processors
-			dps.syncStateNotifyWait.Add(dps.processorNum)
-			for _, p := range dps.processors {
-				p.syncStateChange <- topic.SyncFinish
-			}
-			dps.syncStateNotifyWait.Wait()
-			dps.blockSyncState = topic.SyncFinish
-
-			dps.eb.Publish(topic.EventConsensusSyncFinished, &topic.EventP2PSyncStateMsg{P2pSyncState: topic.SyncFinish})
-			dps.logger.Warn("sync finished")
-		}
-	}
-}
-
 func (dps *DPoS) processBlocks() {
 	for {
 		select {
@@ -501,9 +471,16 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 
 	for _, block := range blocks {
 		if block.Token == common.ChainToken() {
-			dps.totalVote[block.Address] = block.Balance.Add(block.Vote).Add(block.Oracle).Add(block.Network).Add(block.Storage)
-			dps.logger.Infof("account[%s] vote weight[%s]", block.Address, dps.totalVote[block.Address])
+			if _, ok := dps.totalVote[block.Representative]; ok {
+				dps.totalVote[block.Representative] = dps.totalVote[block.Representative].Add(block.GetBalance()).Add(block.GetVote()).Add(block.GetOracle()).Add(block.GetNetwork()).Add(block.GetStorage())
+			} else {
+				dps.totalVote[block.Representative] = block.GetBalance().Add(block.GetVote()).Add(block.GetOracle()).Add(block.GetNetwork()).Add(block.GetStorage())
+			}
 		}
+	}
+
+	for addr, vote := range dps.totalVote {
+		dps.logger.Infof("account[%s] vote weight[%s]", addr, vote)
 	}
 
 	for _, block := range blocks {
@@ -516,6 +493,7 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 		has, _ := dps.ledger.HasStateBlockConfirmed(hash)
 		if !has {
 			dps.logger.Infof("get frontier %s need ack", hash)
+			dps.frontiersStatus.Store(hash, frontierWaitingForVote)
 			unconfirmed = append(unconfirmed, block)
 			index := dps.getProcessorIndex(block.Address)
 			dps.processors[index].frontiers <- block
@@ -688,7 +666,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		if localIndex != index {
 			dps.processors[index].blocksAcked <- hash
 		}
-	case types.ContractSend: //beneficial maybe another account
+	case types.ContractSend: // beneficial maybe another account
 		dstAddr := types.ZeroAddress
 
 		switch types.Address(blk.GetLink()) {
@@ -700,21 +678,8 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
 						dstAddr = param.Beneficial
 					}
-				} else if method.Name == cabi.MethodNameMintageWithdraw {
-					tokenId := new(types.Hash)
-					if err = method.Inputs.Unpack(tokenId, data[4:]); err == nil {
-						ctx := vmstore.NewVMContext(dps.ledger)
-						tokenInfoData, err := ctx.GetStorage(types.MintageAddress[:], tokenId[:])
-						if err != nil {
-							return
-						}
-
-						tokenInfo := new(types.TokenInfo)
-						err = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, tokenInfoData)
-						if err == nil {
-							dstAddr = tokenInfo.PledgeAddress
-						}
-					}
+				} else {
+					return
 				}
 			}
 		case types.NEP5PledgeAddress:
@@ -768,22 +733,24 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				dps.processors[index].blocksAcked <- hash
 			}
 		}
-		//case types.ContractReward: //deal gap tokenInfo
-		//	input, err := dps.ledger.GetStateBlock(blk.GetLink())
-		//	if err != nil {
-		//		dps.logger.Errorf("get block link error [%s]", hash)
-		//		return
-		//	}
-		//
-		//	if types.Address(input.GetLink()) == types.MintageAddress {
-		//		param := new(cabi.ParamMintage)
-		//		if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
-		//			index := dps.getProcessorIndex(input.Address)
-		//			if localIndex != index {
-		//				dps.processors[index].blocksAcked <- param.TokenId
-		//			}
-		//		}
-		//	}
+	case types.ContractReward: // deal gap tokenInfo
+		if blk.IsOpen() {
+			input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
+			if err != nil {
+				dps.logger.Errorf("get block link error [%s]", hash)
+				return
+			}
+
+			if types.Address(input.GetLink()) == types.MintageAddress {
+				param := new(cabi.ParamMintage)
+				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+					index := dps.getProcessorIndex(input.Address)
+					if localIndex != index {
+						dps.processors[index].blocksAcked <- param.TokenId
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1081,50 +1048,6 @@ func (dps *DPoS) onRollback(hash types.Hash) {
 	}
 }
 
-//func (dps *DPoS) rollbackUncheckedFromDb(hash types.Hash) {
-//	if blkLink, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
-//		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-//		if err != nil {
-//			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
-//		}
-//	}
-//
-//	if blkPrevious, _, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindPrevious); blkPrevious != nil {
-//		err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-//		if err != nil {
-//			dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
-//		}
-//	}
-//
-//	// gap token
-//	blk, err := dps.ledger.GetStateBlock(hash)
-//	if err != nil {
-//		dps.logger.Errorf("get block error [%s]", hash)
-//		return
-//	}
-//
-//	if blk.GetType() == types.ContractReward {
-//		input, err := dps.ledger.GetStateBlock(blk.GetLink())
-//		if err != nil {
-//			dps.logger.Errorf("dequeue get block link error [%s]", hash)
-//			return
-//		}
-//
-//		address := types.Address(input.GetLink())
-//		if address == types.MintageAddress {
-//			var param = new(cabi.ParamMintage)
-//			if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
-//				if blkToken, _, _ := dps.ledger.GetUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo); blkToken != nil {
-//					err := dps.ledger.DeleteUncheckedBlock(param.TokenId, types.UncheckedKindTokenInfo)
-//					if err != nil {
-//						dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
-//					}
-//				}
-//			}
-//		}
-//	}
-//}
-
 func (dps *DPoS) getSeq(kind uint32) uint32 {
 	var seq, ackSeq uint32
 
@@ -1257,18 +1180,33 @@ func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
 			return true, nil
 		case types.MintageAddress:
 			return true, nil
+		case types.BlackHoleAddress:
+			return true, nil
+		}
+	case types.ContractSend:
+		switch types.Address(block.GetLink()) {
+		case types.BlackHoleAddress:
+			return true, nil
+		case types.MinerAddress, types.RepAddress:
+			return true, nil
 		}
 	}
 	return false, nil
 }
 
 func (dps *DPoS) syncFinish() {
-	dps.logger.Warn("process state blocks finished")
+	dps.acTrx.cleanFrontierVotes()
+	dps.CleanSyncCache()
 
-	select {
-	case dps.syncDone <- struct{}{}:
-	default:
+	// notify processors
+	dps.syncStateNotifyWait.Add(dps.processorNum)
+	for _, p := range dps.processors {
+		p.syncStateChange <- dps.blockSyncState
 	}
+	dps.syncStateNotifyWait.Wait()
+
+	dps.eb.Publish(topic.EventConsensusSyncFinished, &topic.EventP2PSyncStateMsg{P2pSyncState: topic.SyncFinish})
+	dps.logger.Warn("sync finished")
 }
 
 func (dps *DPoS) checkSyncFinished() {

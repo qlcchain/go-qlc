@@ -9,7 +9,11 @@ package trie
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestNewIterator(t *testing.T) {
@@ -92,4 +96,76 @@ func TestNewIterator(t *testing.T) {
 		fmt.Printf("%s: %s\n", key, value)
 	}
 	fmt.Println()
+}
+
+func TestIteratorByRoot(t *testing.T) {
+	teardownTestCase, trie := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	store := trie.db
+	cache := make(map[types.Hash]types.Address)
+
+	for i := 0; i < 10; i++ {
+		k := mock.Hash()
+		v := mock.Address()
+		trie.SetValue(k[:], v[:])
+		cache[k] = v
+	}
+	root := trie.Root.Hash()
+	if callback, err := trie.Save(); err == nil {
+		callback()
+	}
+	t.Log(strings.Repeat("*", 64))
+
+	for idx := 0; idx < 10; idx++ {
+		t2 := NewTrie(store, nil, NewSimpleTrieNodePool())
+		for i := 0; i < 10; i++ {
+			k := mock.Hash()
+			v := mock.Address()
+			trie.SetValue(k[:], v[:])
+		}
+		if callback, err := t2.Save(); err == nil {
+			callback()
+		}
+	}
+	t.Log("TO FETCH ALL NODES BY ROOT")
+	t3 := NewTrie(store, root, NewSimpleTrieNodePool())
+	iterator := t3.NewIterator(nil)
+	for {
+		if key, value, ok := iterator.Next(); !ok {
+			break
+		} else {
+			hash, _ := types.BytesToHash(key)
+			address, _ := types.BytesToAddress(value)
+			if v, ok := cache[hash]; ok && v == address {
+				t.Logf("%s: %s\n", hash, address)
+			} else {
+				t.Errorf("can not find %s, %s->%s", hash, v, address)
+			}
+		}
+	}
+	t.Log(strings.Repeat("-", 64))
+
+	t.Log("TO REMOVE NODES BY ROOT")
+	t4 := NewTrie(store, root, NewSimpleTrieNodePool())
+	if err := t4.Remove(); err != nil {
+		t.Fatal(err)
+	}
+
+	t5 := NewTrie(store, root, NewSimpleTrieNodePool())
+	newIterator := t5.NewIterator(nil)
+	counter := 0
+	for {
+		if key, value, ok := newIterator.Next(); !ok {
+			break
+		} else {
+			counter++
+			hash, _ := types.BytesToHash(key)
+			address, _ := types.BytesToAddress(value)
+			t.Logf("recover %s: %s\n", hash, address)
+		}
+	}
+	if counter > 0 {
+		t.Fatal("failed to remove nodes", counter)
+	}
 }

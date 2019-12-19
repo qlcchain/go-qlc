@@ -20,10 +20,10 @@ func (node *QlcNode) dhtFoundPeers() ([]peer.AddrInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	node.logger.Infof("Found %d peers!", len(peers))
-	//for _, p := range peers {
-	//	node.logger.Info("Peer: ", p)
-	//}
+	node.logger.Warnf("Found %d peers!", len(peers))
+	for _, p := range peers {
+		node.logger.Debug("Peer: ", p)
+	}
 	return peers, nil
 }
 

@@ -50,3 +50,11 @@ type EventBandwidthStats struct {
 	RateIn   float64
 	RateOut  float64
 }
+
+type EventP2PConnectPeersMsg struct {
+	PeersInfo []*types.PeerInfo
+}
+
+type EventP2POnlinePeersMsg struct {
+	PeersInfo []*types.PeerInfo
+}

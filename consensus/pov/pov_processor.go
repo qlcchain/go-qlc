@@ -104,6 +104,9 @@ type PovBlockProcessor struct {
 	quitCh      chan struct{}
 
 	syncState atomic.Value
+
+	statLastProcTime int64 //Microseconds
+	statMaxProcTime  int64 //Microseconds
 }
 
 func NewPovBlockProcessor(eb event.EventBus, l ledger.Store,
@@ -331,6 +334,8 @@ func (bp *PovBlockProcessor) processOneBlock(blockSrc *PovBlockSource) {
 }
 
 func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
+	startTm := time.Now()
+
 	block := blockSrc.block
 	blockHash := blockSrc.block.GetHash()
 	bp.logger.Debugf("process block, %d/%s", blockSrc.block.GetHeight(), blockHash)
@@ -378,6 +383,11 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 
 	if err == nil {
 		bp.enqueueOrphanBlocks(blockSrc)
+	}
+
+	bp.statLastProcTime = time.Since(startTm).Microseconds()
+	if bp.statLastProcTime > bp.statMaxProcTime {
+		bp.statMaxProcTime = bp.statLastProcTime
 	}
 
 	return err
@@ -756,6 +766,9 @@ func (bp *PovBlockProcessor) GetDebugInfo() map[string]interface{} {
 		}
 		pbInfo["gapTxHashes"] = gapTxHashes
 	}
+
+	info["statLastProcTime"] = bp.statLastProcTime
+	info["statMaxProcTime"] = bp.statMaxProcTime
 
 	return info
 }

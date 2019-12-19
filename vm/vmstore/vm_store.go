@@ -8,7 +8,6 @@
 package vmstore
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/dgraph-io/badger"
@@ -33,6 +32,7 @@ type ContractStore interface {
 	GetStateBlock(hash types.Hash) (*types.StateBlock, error)
 	HasTokenMeta(address types.Address, token types.Hash) (bool, error)
 	SaveStorage(txns ...db.StoreTxn) error
+	RemoveStorage(prefix, key []byte, txns ...db.StoreTxn) error
 }
 
 const (
@@ -45,31 +45,22 @@ var (
 )
 
 type VMContext struct {
-	ledger *ledger.Ledger
+	Ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 	Cache  *VMCache
 }
 
 func NewVMContext(l *ledger.Ledger) *VMContext {
-	//TODO: fix trie
 	t := trie.NewTrie(l.Store, nil, trie.NewSimpleTrieNodePool())
 	return &VMContext{
-		ledger: l,
+		Ledger: l,
 		logger: log.NewLogger("vm_context"),
 		Cache:  NewVMCache(t),
 	}
 }
 
-func (v *VMContext) GetLogger() *zap.SugaredLogger {
-	return v.logger
-}
-
-func (v *VMContext) GetLedger() *ledger.Ledger {
-	return v.ledger
-}
-
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
-	if _, err := v.ledger.HasAccountMeta(address); err == nil {
+	if _, err := v.Ledger.HasAccountMeta(address); err == nil {
 		return true, nil
 	} else {
 		return false, err
@@ -97,6 +88,29 @@ func (v *VMContext) GetStorage(prefix, key []byte) ([]byte, error) {
 	}
 }
 
+func (v *VMContext) GetStorageByKey(key []byte) ([]byte, error) {
+	if storage := v.Cache.GetStorage(key); storage == nil {
+		if val, err := v.get(key); err == nil {
+			return val, nil
+		} else {
+			return nil, err
+		}
+	} else {
+		return storage, nil
+	}
+}
+
+func (v *VMContext) RemoveStorage(prefix, key []byte, txns ...db.StoreTxn) error {
+	storageKey := getStorageKey(prefix, key)
+	v.Cache.RemoveStorage(storageKey)
+	return v.remove(storageKey, txns...)
+}
+
+func (v *VMContext) RemoveStorageByKey(key []byte, txns ...db.StoreTxn) error {
+	v.Cache.RemoveStorage(key)
+	return v.remove(key, txns...)
+}
+
 func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 	storageKey := getStorageKey(prefix, key)
 
@@ -106,17 +120,18 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 }
 
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
-	txn := v.ledger.Store.NewTransaction(false)
+	txn := v.Ledger.Store.NewTransaction(false)
 	defer func() {
 		txn.Discard()
 	}()
 
-	err := txn.Iterator(idPrefixStorage, func(key []byte, val []byte, b byte) error {
-		if bytes.HasPrefix(key[1:], prefix) {
-			err := fn(key, val)
-			if err != nil {
-				v.logger.Error(err)
-			}
+	pre := make([]byte, 0)
+	pre = append(pre, idPrefixStorage)
+	pre = append(pre, prefix...)
+	err := txn.PrefixIterator(pre, func(key []byte, val []byte, b byte) error {
+		err := fn(key, val)
+		if err != nil {
+			v.logger.Error(err)
 		}
 		return nil
 	})
@@ -129,7 +144,7 @@ func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) er
 }
 
 func (v *VMContext) CalculateAmount(block *types.StateBlock) (types.Balance, error) {
-	b, err := v.ledger.CalculateAmount(block)
+	b, err := v.Ledger.CalculateAmount(block)
 	if err != nil {
 		v.logger.Error("calculate amount error: ", err)
 		return types.ZeroBalance, err
@@ -138,7 +153,7 @@ func (v *VMContext) CalculateAmount(block *types.StateBlock) (types.Balance, err
 }
 
 func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, error) {
-	return v.ledger.GetAccountMeta(address)
+	return v.Ledger.GetAccountMeta(address)
 }
 
 func (v *VMContext) SaveStorage(txns ...db.StoreTxn) error {
@@ -163,9 +178,9 @@ func (v *VMContext) SaveTrie(txns ...db.StoreTxn) error {
 }
 
 func (v *VMContext) get(key []byte) ([]byte, error) {
-	txn := v.ledger.Store.NewTransaction(false)
+	txn := v.Ledger.Store.NewTransaction(false)
 	defer func() {
-		txn.Commit(nil)
+		txn.Commit()
 		txn.Discard()
 	}()
 
@@ -183,61 +198,66 @@ func (v *VMContext) get(key []byte) ([]byte, error) {
 	return storage, nil
 }
 
-func (v *VMContext) set(key []byte, value []byte, txns ...db.StoreTxn) error {
+func (v *VMContext) set(key []byte, value []byte, txns ...db.StoreTxn) (err error) {
 	var txn db.StoreTxn
 	if len(txns) > 0 {
 		txn = txns[0]
 	} else {
-		txn = v.ledger.Store.NewTransaction(true)
+		txn = v.Ledger.Store.NewTransaction(true)
 		defer func() {
-			txn.Commit(nil)
+			err = txn.Commit()
 			txn.Discard()
 		}()
 	}
-
-	//err := txn.Get(key, func(bytes []byte, b byte) error {
-	//	return nil
-	//})
-	//if err == nil {
-	//	return ErrStorageExists
-	//} else if err != badger.ErrKeyNotFound {
-	//	return err
-	//}
 	return txn.Set(key, value)
 }
 
+func (v *VMContext) remove(key []byte, txns ...db.StoreTxn) (err error) {
+	var txn db.StoreTxn
+	if len(txns) > 0 {
+		txn = txns[0]
+	} else {
+		txn = v.Ledger.Store.NewTransaction(true)
+		defer func() {
+			err = txn.Commit()
+			txn.Discard()
+		}()
+	}
+	return txn.Delete(key)
+}
+
 func (v *VMContext) HasTokenMeta(address types.Address, token types.Hash) (bool, error) {
-	return v.ledger.HasTokenMeta(address, token)
+	return v.Ledger.HasTokenMeta(address, token)
 }
 
 func (v *VMContext) GetTokenMeta(address types.Address, token types.Hash) (*types.TokenMeta, error) {
-	return v.ledger.GetTokenMeta(address, token)
+	return v.Ledger.GetTokenMeta(address, token)
 }
 
 func (v *VMContext) GetRepresentation(address types.Address) (*types.Benefit, error) {
-	return v.ledger.GetRepresentation(address)
+	return v.Ledger.GetRepresentation(address)
 }
 
 func (v *VMContext) GetStateBlock(hash types.Hash) (*types.StateBlock, error) {
-	return v.ledger.GetStateBlock(hash)
+	return v.Ledger.GetStateBlock(hash)
 }
 
 func (v *VMContext) GetPovHeaderByHeight(height uint64) (*types.PovHeader, error) {
-	return v.ledger.GetPovHeaderByHeight(height)
+	return v.Ledger.GetPovHeaderByHeight(height)
 }
 
 func (v *VMContext) GetPovBlockByHeight(height uint64) (*types.PovBlock, error) {
-	return v.ledger.GetPovBlockByHeight(height)
+	return v.Ledger.GetPovBlockByHeight(height)
 }
 
 func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
-	return v.ledger.GetLatestPovBlock()
+	return v.Ledger.GetLatestPovBlock()
 }
 
 func (v *VMContext) GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error) {
-	return v.ledger.GetPovMinerStat(dayIndex)
+	return v.Ledger.GetPovMinerStat(dayIndex)
 }
 
 func (v *VMContext) GetPovTxLookup(txHash types.Hash) (*types.PovTxLookup, error) {
-	return v.ledger.GetPovTxLookup(txHash)
+	return v.Ledger.GetPovTxLookup(txHash)
 }

@@ -14,11 +14,11 @@ var (
         "basHdr":{
             "version":0,
             "previous":"0000000000000000000000000000000000000000000000000000000000000000",
-            "merkleRoot":"beaafa1f9789bacde739050287da41450a05c3c7c7b00786e1707aa97cdbafc0",
-            "timestamp":1569024000,
-            "bits":504365040,
-            "nonce":1289884,
-            "hash":"145b6cf60a4b0254f69a245ed89f342966e75acbb6254b5e52567ebbb2040000",
+            "merkleRoot":"0ca279bf861acd7acb33bbc6c44471185ea88f4fad36fb3f973423b73aa9aa07",
+            "timestamp":1575590409,
+            "bits":486604799,
+            "nonce":1908745832,
+            "hash":"92bafc7a0079ffd173c1228bbeb2bf95285df578bf1c7a9b5881b1a500000000",
             "height":0
         },
         "auxHdr":null,
@@ -34,23 +34,23 @@ var (
             ],
             "txOuts":[
                 {
-                    "address":"qlc_1afnoj8acwikgsazz1ocgakss3hck6htgxcm4wafuit7439izg8kzdu6twou",
-                    "value":"456621004"
+                    "value":"342465753",
+                    "address":"qlc_1afnoj8acwikgsazz1ocgakss3hck6htgxcm4wafuit7439izg8kzdu6twou"
                 },
                 {
-                    "address":"qlc_111111111111111111111111111111111111111111111111111ommygmckp",
-                    "value":"114155251"
+                    "value":"228310502",
+                    "address":"qlc_111111111111111111111111111111111111111111111111111ommygmckp"
                 }
             ],
             "stateHash":"1e78dcddbe569968e758251ada684d313104ca72285285e21cc381770fd3ee49",
             "txNum":1,
-            "hash":"beaafa1f9789bacde739050287da41450a05c3c7c7b00786e1707aa97cdbafc0"
+            "hash":"0ca279bf861acd7acb33bbc6c44471185ea88f4fad36fb3f973423b73aa9aa07"
         }
     },
     "body":{
         "txs":[
             {
-                "hash":"beaafa1f9789bacde739050287da41450a05c3c7c7b00786e1707aa97cdbafc0"
+                "hash":"0ca279bf861acd7acb33bbc6c44471185ea88f4fad36fb3f973423b73aa9aa07"
             }
         ]
     }

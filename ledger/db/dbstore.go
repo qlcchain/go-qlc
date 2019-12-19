@@ -28,9 +28,10 @@ type StoreTxn interface {
 	Iterator(pre byte, fn func([]byte, []byte, byte) error) error
 	PrefixIterator(prefix []byte, fn func([]byte, []byte, byte) error) error
 	RangeIterator(startKey []byte, endKey []byte, fn func([]byte, []byte, byte) error) error
-	Commit(callback func(error)) error
+	Commit() error
 	Discard()
 	Drop(prefix []byte) error
+	DropOfTxn(prefix []byte) error
 	Upgrade(migrations []Migration) error
 	Count(prefix []byte) (uint64, error)
 	Stream(prefix []byte, filter func(item *badger.Item) bool, callback func(list *pb.KVList) error) error

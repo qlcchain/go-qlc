@@ -61,8 +61,8 @@ func (c *mockPovVerifierChainReader) GetRepState(trie *trie.Trie, address types.
 	return nil
 }
 
-func (c *mockPovVerifierChainReader) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance) {
-	return types.ZeroBalance, types.ZeroBalance
+func (c *mockPovVerifierChainReader) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance, error) {
+	return types.ZeroBalance, types.ZeroBalance, nil
 }
 
 type mockPovConsensusChainReader struct{}

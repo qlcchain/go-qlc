@@ -27,6 +27,7 @@ func addTxCmd() {
 		addTxChangeCmdByShell(txCmd)
 		addTxRecvCmdByShell(txCmd)
 		addTxSendCmdByShell(txCmd)
+		addTxRollbackCmdByShell(txCmd)
 		addTxBatchSendByShell(txCmd)
 		addTxPerformanceByShell(txCmd)
 	} else {
@@ -42,6 +43,7 @@ func addTxCmd() {
 		addTxChangeCmdByCobra(txCmd)
 		addTxRecvCmdByCobra(txCmd)
 		addTxSendCmdByCobra(txCmd)
+		addTxRollbackCmdByCobra(txCmd)
 		addTxBatchSendByCobra(txCmd)
 		addTxPerformanceByCobra(txCmd)
 	}

@@ -27,6 +27,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
+	github.com/ipfs/go-log v0.0.1
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jmoiron/sqlx v0.0.0-20190426154859-38398a30ed85
 	github.com/lib/pq v1.1.1 // indirect

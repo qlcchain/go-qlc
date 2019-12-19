@@ -3,12 +3,13 @@ package p2p
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
 
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	ping "github.com/qlcchain/go-qlc/p2p/pinger"
+
+	"github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
 
@@ -38,7 +39,7 @@ var (
 )
 
 // p2p protocol version
-var p2pVersion = 7
+var p2pVersion byte = 8
 
 type netAttribute byte
 
@@ -54,7 +55,14 @@ const (
 	BlockTopic = "/qlc/blocks"
 )
 
-const MaxPingTimeOutTimes = 4
+const (
+	MaxPingTimeOutTimes      = 4
+	PingTimeInterval         = 30 * time.Second
+	ConnectBootstrapInterval = 20 * time.Second
+	PublishConnectPeersInfo  = 20 * time.Second
+	PublishOnlinePeersInfo   = 25 * time.Second
+	PublishBandWithPeersInfo = 60 * time.Second
+)
 
 type QlcNode struct {
 	ID               peer.ID
@@ -77,7 +85,7 @@ type QlcNode struct {
 	isMiner          bool
 	isRepresentative bool
 	reporter         p2pmetrics.Reporter
-	ping             *Pinger
+	ping             *ping.Pinger
 }
 
 // NewNode return new QlcNode according to the config.
@@ -149,7 +157,7 @@ func (node *QlcNode) buildHost() error {
 	node.publisher = pubsub.NewPublisher(gsub)
 	node.subscriber = pubsub.NewSubscriber(gsub)
 	// New ping service
-	node.ping = NewPinger(node.host)
+	node.ping = ping.NewPinger(node.host)
 	return nil
 }
 
@@ -197,7 +205,10 @@ func (node *QlcNode) StartServices() error {
 	}
 
 	go func() {
-		node.startPingAndBandwidthService()
+		node.startPingService()
+	}()
+	go func() {
+		node.publishPeersInfoToChainContext()
 	}()
 
 	if node.dis != nil {
@@ -214,17 +225,16 @@ func (node *QlcNode) StartServices() error {
 	return nil
 }
 
-func (node *QlcNode) startPingAndBandwidthService() {
+func (node *QlcNode) startPingService() {
 	node.logger.Info("start pingService Loop.")
 	var err error
-	ticker1 := time.NewTicker(30 * time.Second)
-	ticker2 := time.NewTicker(20 * time.Second)
+	ticker := time.NewTicker(PingTimeInterval)
 	for {
 		select {
 		case <-node.ctx.Done():
 			node.logger.Info("Stopped pingService Loop.")
 			return
-		case <-ticker1.C:
+		case <-ticker.C:
 			node.streamManager.allStreams.Range(func(key, value interface{}) bool {
 				stream := value.(*Stream)
 				if stream.pid != node.ID && stream.IsConnected() {
@@ -238,22 +248,44 @@ func (node *QlcNode) startPingAndBandwidthService() {
 							}
 						}
 						res := <-stream.pingResult
-						node.logger.Infof("ping peer %s took %f s", stream.pid, res.RTT.Seconds())
+						node.logger.Infof("ping peer %s took %f s version %s", stream.pid, res.RTT.Seconds(), res.Version)
 						stream.rtt = res.RTT
 						stream.pingTimeoutTimes = 0
+						stream.lastUpdateTime = time.Now().Format(time.RFC3339)
+						stream.globalVersion = res.Version
+						pi := &types.PeerInfo{
+							PeerID:         stream.pid.Pretty(),
+							Address:        stream.addr.String(),
+							Version:        stream.globalVersion,
+							Rtt:            stream.rtt.Seconds(),
+							LastUpdateTime: time.Now().Format(time.RFC3339),
+						}
+
+						node.streamManager.AddOrUpdateOnlineInfo(pi)
+						_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 					} else {
 						select {
 						case res := <-stream.pingResult:
 							if res.Error != nil {
-								node.logger.Errorf("error:[%s] when ping peer [%s]", res.Error, stream.pid)
 								stream.pingTimeoutTimes++
 								if stream.pingTimeoutTimes >= MaxPingTimeOutTimes {
 									_ = stream.close()
 								}
 							} else {
-								node.logger.Infof("ping peer %s took %f s", stream.pid, res.RTT.Seconds())
+								node.logger.Infof("ping peer %s took %f s version %s", stream.pid, res.RTT.Seconds(), res.Version)
 								stream.rtt = res.RTT
 								stream.pingTimeoutTimes = 0
+								stream.lastUpdateTime = time.Now().Format(time.RFC3339)
+								stream.globalVersion = res.Version
+								pi := &types.PeerInfo{
+									PeerID:         stream.pid.Pretty(),
+									Address:        stream.addr.String(),
+									Version:        stream.globalVersion,
+									Rtt:            stream.rtt.Seconds(),
+									LastUpdateTime: time.Now().Format(time.RFC3339),
+								}
+								node.streamManager.AddOrUpdateOnlineInfo(pi)
+								_ = node.netService.msgService.ledger.AddOrUpdatePeerInfo(pi)
 							}
 						default:
 						}
@@ -261,7 +293,45 @@ func (node *QlcNode) startPingAndBandwidthService() {
 				}
 				return true
 			})
+		}
+	}
+}
+
+func (node *QlcNode) publishPeersInfoToChainContext() {
+	node.logger.Info("start publish Peers Info Loop.")
+	ticker1 := time.NewTicker(PublishConnectPeersInfo)
+	ticker2 := time.NewTicker(PublishOnlinePeersInfo)
+	ticker3 := time.NewTicker(PublishBandWithPeersInfo)
+	for {
+		select {
+		case <-node.ctx.Done():
+			return
+		case <-ticker1.C:
+			var p []*types.PeerInfo
+			node.streamManager.allStreams.Range(func(key, value interface{}) bool {
+				stream := value.(*Stream)
+				if stream.IsConnected() {
+					ps := &types.PeerInfo{
+						PeerID:         stream.pid.Pretty(),
+						Address:        stream.addr.String(),
+						Version:        stream.globalVersion,
+						Rtt:            stream.rtt.Seconds(),
+						LastUpdateTime: stream.lastUpdateTime,
+					}
+					p = append(p, ps)
+				}
+				return true
+			})
+			node.netService.MessageEvent().Publish(topic.EventPeersInfo, &topic.EventP2PConnectPeersMsg{PeersInfo: p})
 		case <-ticker2.C:
+			var p []*types.PeerInfo
+			node.streamManager.onlinePeersInfo.Range(func(key, value interface{}) bool {
+				ps := value.(*types.PeerInfo)
+				p = append(p, ps)
+				return true
+			})
+			node.netService.MessageEvent().Publish(topic.EventOnlinePeersInfo, &topic.EventP2POnlinePeersMsg{PeersInfo: p})
+		case <-ticker3.C:
 			stats := node.reporter.GetBandwidthTotals()
 			bwState := &topic.EventBandwidthStats{
 				TotalIn:  stats.TotalIn,
@@ -289,7 +359,7 @@ func (node *QlcNode) connectBootstrap(pInfoS []peer.AddrInfo) {
 
 func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 	ticker := time.NewTicker(time.Duration(node.cfg.P2P.Discovery.DiscoveryInterval) * time.Second)
-	ticker1 := time.NewTicker(15 * time.Second)
+	ticker1 := time.NewTicker(ConnectBootstrapInterval)
 	node.connectBootstrap(pInfoS)
 	if err := node.findPeers(); err != nil {
 		node.logger.Errorf("find node error[%s]", err)
@@ -317,6 +387,22 @@ func (node *QlcNode) findPeers() error {
 		return err
 	}
 	for _, p := range peers {
+		var pi *types.PeerInfo
+		if v, ok := node.streamManager.onlinePeersInfo.Load(p.ID.Pretty()); ok {
+			pi = v.(*types.PeerInfo)
+		} else {
+			pi = &types.PeerInfo{
+				PeerID: p.ID.Pretty(),
+			}
+			if p.ID == node.ID {
+				pi.Address = node.cfg.P2P.Listen
+			} else if len(p.Addrs) != 0 {
+				pi.Address = findPublicIP(p.Addrs)
+			}
+		}
+		pi.LastUpdateTime = time.Now().Format(time.RFC3339)
+		_ = node.netService.msgService.ledger.AddPeerInfo(pi)
+		node.streamManager.AddOnlineInfo(pi)
 		if p.ID == node.ID || len(p.Addrs) == 0 {
 			// No sense connecting to ourselves or if addrs are not available
 			continue
@@ -345,7 +431,9 @@ func (node *QlcNode) stopHost() error {
 	if node.host == nil {
 		return errors.New("host not exit")
 	}
-
+	if node.localDiscovery != nil {
+		node.localDiscovery.UnregisterNotifee(node)
+	}
 	if err := node.host.Close(); err != nil {
 		return err
 	}
@@ -430,10 +518,9 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 	if err := message.ParseMessageData(messageBuffer); err != nil {
 		return err
 	}
-
-	if message.Version() < byte(p2pVersion) {
+	if message.Version() < p2pVersion {
 		node.logger.Debugf("message Version [%d] is less then p2pVersion [%d]", message.Version(), p2pVersion)
-		return fmt.Errorf("peer %s P2P protocol version is low", peerID)
+		return nil
 	}
 	m := NewMessage(message.MessageType(), peerID, message.MessageData(), message.content)
 	node.netService.PutMessage(m)

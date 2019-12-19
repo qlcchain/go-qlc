@@ -2,12 +2,19 @@ package p2p
 
 import (
 	"math/rand"
+	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/types"
+
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	version2 "github.com/qlcchain/go-qlc/chain/version"
 )
 
 const (
@@ -22,6 +29,7 @@ type StreamManager struct {
 	activePeersCount int32
 	maxStreamNum     int32
 	node             *QlcNode
+	onlinePeersInfo  *sync.Map
 }
 
 // NewStreamManager return a new stream manager
@@ -29,6 +37,7 @@ func NewStreamManager() *StreamManager {
 	return &StreamManager{
 		allStreams:       new(sync.Map),
 		activePeersCount: 0,
+		onlinePeersInfo:  new(sync.Map),
 	}
 }
 
@@ -66,11 +75,26 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 			}
 		}
 	}
-
 	sm.node.logger.Infof("Added a new stream:[%s]", stream.pid.Pretty())
 	sm.activePeersCount++
 	sm.allStreams.Store(stream.pid.Pretty(), stream)
 	stream.StartLoop()
+}
+
+func (sm *StreamManager) AddOrUpdateOnlineInfo(info *types.PeerInfo) {
+	// check & close old stream
+	if _, ok := sm.onlinePeersInfo.Load(info.PeerID); ok {
+		sm.onlinePeersInfo.Delete(info.PeerID)
+	}
+	sm.onlinePeersInfo.Store(info.PeerID, info)
+}
+
+func (sm *StreamManager) AddOnlineInfo(info *types.PeerInfo) {
+	// check & close old stream
+	if _, ok := sm.onlinePeersInfo.Load(info.PeerID); ok {
+		return
+	}
+	sm.onlinePeersInfo.Store(info.PeerID, info)
 }
 
 // RemoveStream from the stream manager
@@ -119,21 +143,12 @@ func (sm *StreamManager) RandomPeer() (string, error) {
 	return peerID, nil
 }
 
-type peerLatency struct {
-	peerId string
-	rtt    time.Duration
-}
-
 func (sm *StreamManager) lowestLatencyPeer() (string, error) {
-	var allPeers []*peerLatency
+	var allPeers []*Stream
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
 		if stream.IsConnected() {
-			p := &peerLatency{
-				peerId: stream.pid.Pretty(),
-				rtt:    stream.rtt,
-			}
-			allPeers = append(allPeers, p)
+			allPeers = append(allPeers, stream)
 		}
 		return true
 	})
@@ -141,41 +156,67 @@ func (sm *StreamManager) lowestLatencyPeer() (string, error) {
 		return "", ErrNoStream
 	}
 	sort.Slice(allPeers, func(i, j int) bool { return allPeers[i].rtt < allPeers[j].rtt })
-	return allPeers[0].peerId, nil
+	return allPeers[0].pid.Pretty(), nil
 }
 
 func (sm *StreamManager) randomLowerLatencyPeer() (string, error) {
-	var allPeers []*peerLatency
+	var allPeers []*Stream
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
 		if stream.IsConnected() {
-			p := &peerLatency{
-				peerId: stream.pid.Pretty(),
-				rtt:    stream.rtt,
-			}
-			allPeers = append(allPeers, p)
+			allPeers = append(allPeers, stream)
 		}
 		return true
 	})
+
 	if (len(allPeers)) == 0 {
 		return "", ErrNoStream
 	}
-	sort.Slice(allPeers, func(i, j int) bool { return allPeers[i].rtt < allPeers[j].rtt })
+	var ps []*Stream
+	if version2.Version == "" {
+		for i := 0; i < len(allPeers); i++ {
+			if allPeers[i].p2pVersion >= p2pVersion {
+				ps = append(ps, allPeers[i])
+			}
+		}
+	} else {
+		vs := regexp.MustCompile("[0-9]").FindAllString(version2.Version, 3)
+		c := strings.Join(vs, "")
+		v, err := strconv.Atoi(c)
+		if err != nil {
+			return "", ErrNoStream
+		}
+		for i := 0; i < len(allPeers); i++ {
+			if allPeers[i].globalVersion != "" {
+				a := strings.Split(allPeers[i].globalVersion, "-")
+				vsp := regexp.MustCompile("[0-9]").FindAllString(a[0], 3)
+				c := strings.Join(vsp, "")
+				vp, err := strconv.Atoi(c)
+				if err != nil {
+					continue
+				}
+				if vp >= v {
+					ps = append(ps, allPeers[i])
+				}
+			}
+		}
+	}
+	if (len(ps)) == 0 {
+		ps = allPeers
+	}
+	sort.Slice(ps, func(i, j int) bool { return ps[i].rtt < ps[j].rtt })
 	var peerID string
 	rand.Seed(time.Now().Unix())
-	if (len(allPeers)) == 0 {
-		return "", ErrNoStream
-	}
-	var temp []*peerLatency
-	if len(allPeers) >= MaxPeersNumForRandom {
-		temp = allPeers[:MaxPeersNumForRandom]
+	var temp []*Stream
+	if len(ps) >= MaxPeersNumForRandom {
+		temp = ps[:MaxPeersNumForRandom]
 	} else {
-		temp = allPeers
+		temp = ps
 	}
 	randNum := rand.Intn(len(temp))
 	for i, v := range temp {
 		if i == randNum {
-			peerID = v.peerId
+			peerID = v.pid.Pretty()
 		}
 	}
 	return peerID, nil
@@ -233,14 +274,33 @@ func (sm *StreamManager) PeerCounts() int {
 	return len(allPeers)
 }
 
-func (sm *StreamManager) GetAllConnectPeersInfo(p map[string]string) {
+func (sm *StreamManager) GetAllConnectPeersInfo(pr *[]*types.PeerInfo) {
+	var p []*types.PeerInfo
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
 		if stream.IsConnected() {
-			p[value.(*Stream).pid.Pretty()] = value.(*Stream).addr.String()
+			ps := &types.PeerInfo{
+				PeerID:         stream.pid.Pretty(),
+				Address:        stream.addr.String(),
+				Version:        stream.globalVersion,
+				Rtt:            stream.rtt.Seconds(),
+				LastUpdateTime: stream.lastUpdateTime,
+			}
+			p = append(p, ps)
 		}
 		return true
 	})
+	*pr = p
+}
+
+func (sm *StreamManager) GetOnlinePeersInfo(pr *[]*types.PeerInfo) {
+	var p []*types.PeerInfo
+	sm.onlinePeersInfo.Range(func(key, value interface{}) bool {
+		ps := value.(*types.PeerInfo)
+		p = append(p, ps)
+		return true
+	})
+	*pr = p
 }
 
 func (sm *StreamManager) IsConnectWithPeerId(peerID string) bool {

@@ -123,7 +123,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	// check same start & end height exist in old reward infos
 	err = m.checkParamExistInOldRewardInfos(ctx, param)
 	if err != nil {
-		return nil, nil, errors.New("section exist")
+		return nil, nil, fmt.Errorf("section exist, %s", err)
 	}
 
 	calcRewardBlocks, calcRewardAmount, err := m.calcRewardBlocksByDayStats(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
@@ -169,6 +169,28 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 			Amount: types.Balance{Int: param.RewardAmount},
 			Type:   common.GasToken(),
 		}, nil
+}
+
+func (m *MinerReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, RewardAmount *big.Int, RewardBlocks uint64, block *types.StateBlock) error {
+	oldInfo, err := m.GetRewardHistory(ctx, block.Address)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return fmt.Errorf("get storage err %s", err)
+	}
+
+	if oldInfo == nil {
+		oldInfo = new(cabi.MinerRewardInfo)
+		oldInfo.RewardAmount = big.NewInt(0)
+	}
+
+	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, endHeight,
+		RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
+		new(big.Int).Add(RewardAmount, oldInfo.RewardAmount))
+	err = ctx.SetStorage(types.MinerAddress.Bytes(), block.Address[:], data)
+	if err != nil {
+		return errors.New("save contract data err")
+	}
+
+	return nil
 }
 
 func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {

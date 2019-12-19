@@ -60,7 +60,12 @@ func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
-				lv.logger.Infof(fmt.Sprintf("check result:%s, (%s)", r.String(), b.GetHash().String()))
+				if r == UnReceivable {
+					if _, ok := lv.l.VerifiedData[b.GetHash()]; ok {
+						return Progress, nil
+					}
+				}
+				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
 			}
 			return r, err
 		} else {
@@ -268,20 +273,20 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.Stor
 	if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
 		return fmt.Errorf("get token meta error: %s", err)
 	}
-	if err := lv.updateRepresentative(block, am, tm, txn); err != nil {
-		return fmt.Errorf("update representative error: %s", err)
-	}
 	if err := lv.updatePending(block, tm, txn); err != nil {
 		return fmt.Errorf("update pending error: %s", err)
 	}
 	if err := lv.updateFrontier(block, tm, txn); err != nil {
 		return fmt.Errorf("update frontier error: %s", err)
 	}
-	if err := lv.updateAccountMeta(block, am, txn); err != nil {
-		return fmt.Errorf("update account meta error: %s", err)
-	}
 	if err := lv.updateContractData(block, txn); err != nil {
 		return fmt.Errorf("update contract data error: %s", err)
+	}
+	if err := lv.updateRepresentative(block, am, tm, txn); err != nil {
+		return fmt.Errorf("update representative error: %s", err)
+	}
+	if err := lv.updateAccountMeta(block, am, txn); err != nil {
+		return fmt.Errorf("update account meta error: %s", err)
 	}
 	return nil
 }
@@ -525,6 +530,8 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 							lv.logger.Error("save trie error: ", err)
 							return err
 						}
+					} else {
+						lv.logger.Errorf("process send error, ", err)
 					}
 				}
 			}

@@ -191,7 +191,7 @@ func TestBadgerStoreTxn_Drop(t *testing.T) {
 	if err := txn.Set(key[:], val); err != nil {
 		t.Fatal(err)
 	}
-	if err := txn.Commit(nil); err != nil {
+	if err := txn.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -199,7 +199,7 @@ func TestBadgerStoreTxn_Drop(t *testing.T) {
 	if err := txn.Drop(nil); err != nil {
 		t.Fatal(err)
 	}
-	txn.Commit(nil)
+	txn.Commit()
 	txn = db.NewTransaction(false)
 	err := txn.Get(key[:], func(bytes []byte, b byte) error {
 		return nil
