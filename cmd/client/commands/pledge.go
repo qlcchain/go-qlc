@@ -26,6 +26,7 @@ func addPledgeCmd() {
 		addPledgePledgeCmdByShell(cmd)
 		addPledgeRecvPendCmdByShell(cmd)
 		addPledgeWithdrawCmdByShell(cmd)
+		addPledgeGetInfoCmdByShell(cmd)
 	} else {
 		var cmd = &cobra.Command{
 			Use:   "pledge",

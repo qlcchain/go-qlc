@@ -9,6 +9,9 @@ package commands
 
 import (
 	"encoding/hex"
+	"errors"
+	"fmt"
+	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 
@@ -42,12 +45,17 @@ func addPledgeWithdrawCmdByShell(parentCmd *ishell.Cmd) {
 		Must:  true,
 		Usage: "pledge type",
 	}
+	nep5TxId := util.Flag{
+		Name:  "nep5TxId",
+		Must:  true,
+		Usage: "NEP5 TX ID",
+	}
 
 	s := &ishell.Cmd{
 		Name: "withdraw",
 		Help: "withdraw token",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{beneficialAccount, pledgeAccount, amount, pType}
+			args := []util.Flag{beneficialAccount, pledgeAccount, amount, pType, nep5TxId}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -61,8 +69,9 @@ func addPledgeWithdrawCmdByShell(parentCmd *ishell.Cmd) {
 			pledgeAccountP := util.StringVar(c.Args, pledgeAccount)
 			amountP := util.StringVar(c.Args, amount)
 			pTypeP := util.StringVar(c.Args, pType)
+			nep5TxIdP := util.StringVar(c.Args, nep5TxId)
 
-			if err := withdrawPledgeAction(beneficialAccountP, pledgeAccountP, amountP, pTypeP); err != nil {
+			if err := withdrawPledgeAction(beneficialAccountP, pledgeAccountP, amountP, pTypeP, nep5TxIdP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -76,12 +85,13 @@ func addPledgeWithdrawCmdByCobra(parentCmd *cobra.Command) {
 	var pledgeAccountP string
 	var amountP string
 	var pTypeP string
+	var nep5TxIdP string
 
 	var cmd = &cobra.Command{
 		Use:   "withdraw",
 		Short: "withdraw token",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := withdrawPledgeAction(beneficialAccountP, pledgeAccountP, amountP, pTypeP)
+			err := withdrawPledgeAction(beneficialAccountP, pledgeAccountP, amountP, pTypeP, nep5TxIdP)
 			if err != nil {
 				cmd.Println(err)
 			}
@@ -91,10 +101,11 @@ func addPledgeWithdrawCmdByCobra(parentCmd *cobra.Command) {
 	cmd.Flags().StringVar(&beneficialAccountP, "bAccount", "", "beneficial account private hex string")
 	cmd.Flags().StringVar(&amountP, "amount", "", "pledge amount")
 	cmd.Flags().StringVar(&pTypeP, "pledgeType", "", "pledge type")
+	cmd.Flags().StringVar(&nep5TxIdP, "nep5TxId", "", "NEP5 TX ID")
 	parentCmd.AddCommand(cmd)
 }
 
-func withdrawPledgeAction(beneficialAccount, pledgeAccount, amount, pType string) error {
+func withdrawPledgeAction(beneficialAccount, pledgeAccount, amount, pType, NEP5TxId string) error {
 	pBytes, err := hex.DecodeString(pledgeAccount)
 	if err != nil {
 		return err
@@ -116,7 +127,7 @@ func withdrawPledgeAction(beneficialAccount, pledgeAccount, amount, pType string
 	am := types.StringToBalance(amount)
 
 	withdrawPledgeParam := api.WithdrawPledgeParam{
-		Beneficial: b.Address(), Amount: am, PType: pType}
+		Beneficial: b.Address(), Amount: am, PType: pType, NEP5TxId: NEP5TxId}
 
 	send := types.StateBlock{}
 	err = client.Call(&send, "pledge_getWithdrawPledgeBlock", &withdrawPledgeParam)
@@ -129,26 +140,53 @@ func withdrawPledgeAction(beneficialAccount, pledgeAccount, amount, pType string
 	worker, _ := types.NewWorker(w, send.Root())
 	send.Work = worker.NewWork()
 
-	reward := types.StateBlock{}
-	err = client.Call(&reward, "pledge_getWithdrawRewardBlock", &send)
+	fmt.Printf("sendHash:%s\n", sendHash)
+	sendOk := false
+	for try := 0; try < 3; try++ {
+		err = client.Call(nil, "ledger_process", &send)
+		if err != nil {
+			fmt.Printf("send block, try %d err %s\n", try, err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
 
+		sendOk = true
+		break
+	}
+	if !sendOk {
+		return errors.New("failed process send block")
+	}
+
+	time.Sleep(3 * time.Second)
+
+	reward := types.StateBlock{}
+	err = client.Call(&reward, "pledge_getWithdrawRewardBlockBySendHash", &sendHash)
 	if err != nil {
 		return err
 	}
-	reward.Signature = p.Sign(reward.GetHash())
+
+	rewardHash := reward.GetHash()
+	reward.Signature = p.Sign(rewardHash)
 	var w2 types.Work
 	worker2, _ := types.NewWorker(w2, reward.Root())
 	reward.Work = worker2.NewWork()
 
-	//TODO: batch process send/reward
-	err = client.Call(nil, "ledger_process", &send)
-	if err != nil {
-		return err
+	fmt.Printf("rewardHash:%s\n", rewardHash)
+	recvOk := false
+	for try := 0; try < 3; try++ {
+		err = client.Call(nil, "ledger_process", &reward)
+		if err != nil {
+			fmt.Printf("reward block, try %d err %s\n", try, err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		recvOk = true
+		break
+	}
+	if !recvOk {
+		return errors.New("failed process recv block")
 	}
 
-	err = client.Call(nil, "ledger_process", &reward)
-	if err != nil {
-		return err
-	}
 	return nil
 }
