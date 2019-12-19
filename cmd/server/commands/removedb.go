@@ -14,7 +14,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/chain"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/ledger/db"
 
 	"github.com/abiosoft/ishell"
@@ -51,11 +50,6 @@ func removeDB() {
 }
 
 func removeDBAction() {
-	if testModeP != "" {
-		fmt.Println("GQLC_TEST_MODE:", testModeP)
-		common.SetTestMode(testModeP)
-	}
-
 	var err error
 
 	chainContext := context.NewChainContext(cfgPathP)

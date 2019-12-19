@@ -33,7 +33,6 @@ import (
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -56,7 +55,6 @@ var (
 	isProfileP    bool
 	noBootstrapP  bool
 	configParamsP string
-	testModeP     string
 	genesisSeedP  string
 
 	privateKey   cmdutil.Flag
@@ -114,7 +112,6 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
 		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
-		rootCmd.PersistentFlags().StringVar(&testModeP, "testMode", "", "testing mode")
 		rootCmd.PersistentFlags().StringVar(&genesisSeedP, "genesisSeed", "", "genesis seed")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
@@ -135,11 +132,6 @@ func addCommand() {
 }
 
 func start() error {
-	if testModeP != "" {
-		log.Root.Info("GQLC_TEST_MODE:", testModeP)
-		common.SetTestMode(testModeP)
-	}
-
 	var accounts []*types.Account
 	chainContext := context.NewChainContext(cfgPathP)
 	cm, err := chainContext.ConfigManager(func(cm *config.CfgManager) error {
@@ -176,37 +168,6 @@ func start() error {
 	}
 
 	log.Root.Info("Run node id: ", chainContext.Id())
-
-	if common.CheckTestMode("POV") {
-		cfg.AutoGenerateReceive = true
-		cfg.LogLevel = "info"
-		if common.CheckTestMode("DEBUG") {
-			cfg.LogLevel = "debug"
-		}
-
-		cfg.RPC.Enable = true
-		cfg.RPC.HTTPEnabled = true
-		cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
-		cfg.RPC.WSEnabled = true
-		cfg.RPC.WSEndpoint = "tcp4://0.0.0.0:29736"
-		cfg.RPC.IPCEnabled = true
-
-		cfg.P2P.Listen = "/ip4/0.0.0.0/tcp/29734"
-		if common.CheckTestMode("CFGBOOT") {
-		} else {
-			cfg.P2P.BootNodes = []string{
-				"/ip4/47.103.97.9/tcp/29734/ipfs/QmRULwy6G5VW63tS3LXSy2oPR1qZXMvut6mf2MPKnvpewb",
-				"/ip4/47.103.54.171/tcp/29734/ipfs/QmNUnsefyemyEBzPtNQYM699bDxBBdBcGjMHDNFh4nCqxW",
-			}
-		}
-
-		cfg.PoV.PovEnabled = true
-
-		err = cm.CommitAndSave()
-		if err != nil {
-			return err
-		}
-	}
 
 	if len(seedP) > 0 {
 		log.Root.Info("run node SEED mode")
@@ -439,7 +400,6 @@ func run() {
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
 			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
 			configParamsP = cmdutil.StringVar(c.Args, configParams)
-			testModeP = cmdutil.StringVar(c.Args, testMode)
 			genesisSeedP = cmdutil.StringVar(c.Args, genesisSeed)
 
 			err := start()
