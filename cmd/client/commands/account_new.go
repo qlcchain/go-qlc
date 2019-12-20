@@ -34,7 +34,7 @@ func addGenerateAccountCmdByShell(parentCmd *ishell.Cmd) {
 	}
 
 	c := &ishell.Cmd{
-		Name: "account",
+		Name: "new",
 		Help: "generate account",
 		Func: func(c *ishell.Context) {
 			args := []util.Flag{count, seed}
@@ -52,7 +52,7 @@ func addGenerateAccountCmdByShell(parentCmd *ishell.Cmd) {
 				return
 			}
 			seedP := util.StringVar(c.Args, seed)
-			if err := accountAction(countP, seedP); err != nil {
+			if err := accountAction(countP, seedP, newShellPrinter()); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -65,10 +65,10 @@ func addGenerateAccountCmdByCobra(parentCmd *cobra.Command) {
 	var countP int
 	var seedP string
 	var accountCmd = &cobra.Command{
-		Use:   "account",
+		Use:   "new",
 		Short: "generate account",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := accountAction(countP, seedP)
+			err := accountAction(countP, seedP, newCmdPrinter(cmd))
 			if err != nil {
 				cmd.Println(err)
 			}
@@ -79,40 +79,29 @@ func addGenerateAccountCmdByCobra(parentCmd *cobra.Command) {
 	parentCmd.AddCommand(accountCmd)
 }
 
-func accountAction(countP int, seedP string) error {
+func accountAction(countP int, seedP string, log printer) error {
+	var s *types.Seed
 	if len(seedP) > 0 {
 		bytes, err := hex.DecodeString(seedP)
 		if err != nil {
 			return err
 		}
-		s, err := types.BytesToSeed(bytes)
+		s, err = types.BytesToSeed(bytes)
 		if err != nil {
 			return err
 		}
-		a, err := s.Account(0)
-		if err != nil {
-			return err
-		}
-		if interactive {
-			util.Info("account created:")
-		}
-		fmt.Println("Seed:", s.String())
-		fmt.Println("Address:", a.Address())
-		fmt.Println("Private:", hex.EncodeToString(a.PrivateKey()))
 	} else {
-		if interactive {
-			util.Info(fmt.Sprintf("%d accounts created:", countP))
-		}
-		for i := 0; i < countP; i++ {
-			seed, err := types.NewSeed()
-			if err == nil {
-				if a, err := seed.Account(0); err == nil {
-					fmt.Println("Seed:", seed.String())
-					fmt.Println("Address:", a.Address())
-					fmt.Println("Private:", hex.EncodeToString(a.PrivateKey()))
-				}
-			}
+		s, _ = types.NewSeed()
+	}
+
+	log.Info(fmt.Sprintf("%d accounts created from %s", countP, s.String()))
+	for i := 0; i < countP; i++ {
+		if a, err := s.Account(uint32(i)); err == nil {
+			log.Info("Index:", i)
+			log.Info("Address:", a.Address())
+			log.Info("Private:", hex.EncodeToString(a.PrivateKey()))
 		}
 	}
+
 	return nil
 }

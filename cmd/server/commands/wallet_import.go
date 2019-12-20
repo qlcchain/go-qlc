@@ -21,54 +21,53 @@ import (
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
-func walletimport() {
-	var seedP string
-	if interactive {
-		seed := util.Flag{
-			Name:  "seed",
-			Must:  true,
-			Usage: "seed for a wallet",
-			Value: "",
-		}
-		s := &ishell.Cmd{
-			Name: "walletimport",
-			Help: "import a wallet",
-			Func: func(c *ishell.Context) {
-				args := []util.Flag{seed, password, cfgPath}
-				if util.HelpText(c, args) {
-					return
-				}
-				if err := util.CheckArgs(c, args); err != nil {
-					util.Warn(err)
-					return
-				}
-				seedP = util.StringVar(c.Args, seed)
-				passwordP = util.StringVar(c.Args, password)
-				cfgPathP = util.StringVar(c.Args, cfgPath)
-				//if passwordP = ""
-				err := importWallet(seedP)
-				if err != nil {
-					util.Warn(err)
-					return
-				}
-			},
-		}
-		shell.AddCmd(s)
-	} else {
-		var wiCmd = &cobra.Command{
-			Use:   "walletimport",
-			Short: "import a wallet",
-			Run: func(cmd *cobra.Command, args []string) {
-				err := importWallet(seedP)
-				if err != nil {
-					cmd.Println(err)
-					return
-				}
-			},
-		}
-		wiCmd.Flags().StringVarP(&seedP, "seed", "s", "", "seed for a wallet")
-		rootCmd.AddCommand(wiCmd)
+func addImportWalletCmdByShell(parentCmd *ishell.Cmd) {
+	seed := util.Flag{
+		Name:  "seed",
+		Must:  true,
+		Usage: "seed for a wallet",
+		Value: "",
 	}
+	s := &ishell.Cmd{
+		Name: "import",
+		Help: "import a wallet",
+		Func: func(c *ishell.Context) {
+			args := []util.Flag{seed, password, cfgPath}
+			if util.HelpText(c, args) {
+				return
+			}
+			if err := util.CheckArgs(c, args); err != nil {
+				util.Warn(err)
+				return
+			}
+			seedP = util.StringVar(c.Args, seed)
+			passwordP = util.StringVar(c.Args, password)
+			cfgPathP = util.StringVar(c.Args, cfgPath)
+			//if passwordP = ""
+			err := importWallet(seedP)
+			if err != nil {
+				util.Warn(err)
+				return
+			}
+		},
+	}
+	parentCmd.AddCmd(s)
+}
+
+func addImportWalletCmdByCobra(parentCmd *cobra.Command) {
+	wiCmd := &cobra.Command{
+		Use:   "import",
+		Short: "import a wallet",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := importWallet(seedP)
+			if err != nil {
+				cmd.PrintErr(err)
+				return
+			}
+		},
+	}
+	wiCmd.Flags().StringVarP(&seedP, "seed", "s", "", "seed for a wallet")
+	parentCmd.AddCommand(wiCmd)
 }
 
 func importWallet(seedP string) error {

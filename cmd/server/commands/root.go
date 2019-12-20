@@ -54,7 +54,6 @@ var (
 	passwordP     string
 	cfgPathP      string
 	isProfileP    bool
-	noBootstrapP  bool
 	configParamsP string
 	testModeP     string
 	genesisSeedP  string
@@ -77,7 +76,7 @@ var (
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(osArgs []string) {
-	if len(osArgs) == 2 && osArgs[1] == "-i" {
+	if len(osArgs) == 2 && osArgs[1] == "-s" {
 		interactive = true
 	}
 	if interactive {
@@ -112,7 +111,6 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().StringVar(&seedP, "seed", "", "seed for accounts")
 		rootCmd.PersistentFlags().StringVar(&privateKeyP, "privateKey", "", "seed for accounts")
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
-		rootCmd.PersistentFlags().BoolVar(&noBootstrapP, "nobootnode", false, "disable bootstrap node")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
 		rootCmd.PersistentFlags().StringVar(&testModeP, "testMode", "", "testing mode")
 		rootCmd.PersistentFlags().StringVar(&genesisSeedP, "genesisSeed", "", "genesis seed")
@@ -128,7 +126,7 @@ func addCommand() {
 	if interactive {
 		run()
 	}
-	walletimport()
+	addWalletCmd()
 	chainVersion()
 	removeDB()
 	purgePov()
@@ -153,10 +151,6 @@ func start() error {
 					return err
 				}
 			}
-		}
-		if noBootstrapP {
-			// remove all p2p bootstrap node
-			cfg.P2P.BootNodes = []string{}
 		}
 		if genesisSeedP != "" {
 			cfg.Genesis.GenesisBlocks = []*config.GenesisInfo{}
@@ -437,7 +431,6 @@ func run() {
 			seedP = cmdutil.StringVar(c.Args, seed)
 			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
-			noBootstrapP = cmdutil.BoolVar(c.Args, noBootstrap)
 			configParamsP = cmdutil.StringVar(c.Args, configParams)
 			testModeP = cmdutil.StringVar(c.Args, testMode)
 			genesisSeedP = cmdutil.StringVar(c.Args, genesisSeed)
