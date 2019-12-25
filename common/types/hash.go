@@ -265,3 +265,9 @@ func X11HashData(data []byte) Hash {
 	copy(result[:], out)
 	return result
 }
+
+func Sha256HashData(data []byte) (Hash, error) {
+	h := sha256.New()
+	h.Write(data)
+	return BytesToHash(h.Sum(nil))
+}

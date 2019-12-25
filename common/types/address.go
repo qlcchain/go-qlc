@@ -50,8 +50,12 @@ var (
 	MinerAddress, _     = GenerateBuiltinContractAddress(21)
 	BlackHoleAddress, _ = GenerateBuiltinContractAddress(22)
 	RepAddress, _       = GenerateBuiltinContractAddress(23)
+	VerifierAddress, _  = GenerateBuiltinContractAddress(24)
+	PublisherAddress, _ = GenerateBuiltinContractAddress(25)
+	OracleAddress, _    = GenerateBuiltinContractAddress(26)
 
-	ChainContractAddressList  = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress, BlackHoleAddress, RepAddress}
+	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress,
+		BlackHoleAddress, RepAddress, VerifierAddress, PublisherAddress, OracleAddress}
 	NoSignContractAddressList = []Address{RewardsAddress, BlackHoleAddress}
 	RewardContractAddressList = []Address{MinerAddress, RepAddress}
 

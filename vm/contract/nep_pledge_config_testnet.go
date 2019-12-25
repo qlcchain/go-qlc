@@ -25,5 +25,9 @@ var (
 			pledgeTime:   &timeSpan{minutes: 10}, //  10 minutes
 			pledgeAmount: big.NewInt(1 * 1e8),
 		},
+		cabi.Oracle: {
+			pledgeTime:   &timeSpan{minutes: 1},     // 1 minutes
+			pledgeAmount: big.NewInt(3000000 * 1e8), // 3M
+		},
 	}
 )

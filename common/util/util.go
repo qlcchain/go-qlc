@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -191,4 +192,25 @@ func RandomFixedString(length int) string {
 	}
 
 	return string(b)
+}
+
+func RandomFixedStringWithSeed(length int, seed int64) string {
+	if length == 0 {
+		return ""
+	}
+	rand.Seed(seed)
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = chars[rand.Intn(len(chars))]
+	}
+
+	return string(b)
+}
+
+func VerifyEmailFormat(email string) bool {
+	// pattern := `\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*`
+	pattern := `^[0-9a-z][_.0-9a-z-]{0,31}@([0-9a-z][0-9a-z-]{0,30}[0-9a-z]\.){1,4}[a-z]{2,4}$`
+	reg := regexp.MustCompile(pattern)
+	return reg.MatchString(email)
 }

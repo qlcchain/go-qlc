@@ -10,6 +10,7 @@ package abi
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"sort"
 	"strings"
@@ -46,6 +47,7 @@ const (
 	Vote
 	Storage
 	Oracle
+	Invalid
 )
 
 type PledgeParam struct {
@@ -74,6 +76,20 @@ type NEP5PledgeInfo struct {
 	Beneficial    types.Address
 	PledgeAddress types.Address
 	NEP5TxId      string
+}
+
+// string to pledge type
+func StringToPledgeType(sType string) (PledgeType, error) {
+	switch strings.ToLower(sType) {
+	case "network", "confidant":
+		return Network, nil
+	case "vote":
+		return Vote, nil
+	case "oracle":
+		return Oracle, nil
+	default:
+		return Invalid, fmt.Errorf("unsupport type: %s", sType)
+	}
 }
 
 // ParsePledgeParam convert data to PledgeParam

@@ -72,7 +72,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 	}
 
 	block.Data, err = cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial,
-		param.PledgeAddress, uint8(param.PType), param.NEP5TxId)
+		param.PledgeAddress, param.PType, param.NEP5TxId)
 	if err != nil {
 		return err
 	}

@@ -154,6 +154,29 @@ var contractCacheV2 = map[types.Address]*qlcchainContractV2{
 		cabi.RepABI,
 		cabi.JsonRep,
 	},
+	types.VerifierAddress: {
+		map[string]ChainContractV2{
+			cabi.MethodNameVerifierRegister:   &VerifierRegister{},
+			cabi.MethodNameVerifierUnregister: &VerifierUnregister{},
+		},
+		cabi.VerifierABI,
+		cabi.JsonVerifier,
+	},
+	types.PublisherAddress: {
+		map[string]ChainContractV2{
+			cabi.MethodNamePublish:   &Publish{},
+			cabi.MethodNameUnPublish: &UnPublish{},
+		},
+		cabi.PublisherABI,
+		cabi.JsonPublisher,
+	},
+	types.OracleAddress: {
+		map[string]ChainContractV2{
+			cabi.MethodNameOracle:   &Oracle{},
+		},
+		cabi.OracleABI,
+		cabi.JsonOracle,
+	},
 }
 
 func GetChainContract(addr types.Address, methodSelector []byte) (interface{}, bool, error) {

@@ -101,7 +101,7 @@ func TestLedger_Storage(t *testing.T) {
 	}
 
 	if storage, err := context.GetStorage(prefix[:], key); err == nil && storage != nil {
-		t.Fatal("failed to remove storage")
+		t.Fatal("failed to delete storage")
 	}
 
 	counter := 0

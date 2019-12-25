@@ -786,7 +786,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 				if bytes.EqualFold(block.Data, clone.Data) {
 					return Progress, nil
 				} else {
-					lv.logger.Errorf("data not equal: %s, %s", block.Data, clone.Data)
+					lv.logger.Errorf("data not equal: %v, %v", block.Data, clone.Data)
 					return InvalidData, nil
 				}
 			} else {
