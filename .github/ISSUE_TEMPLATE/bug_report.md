@@ -1,7 +1,16 @@
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: 'Type: Bug'
+assignees: ''
+
+---
+
 ### Description of the issue
 Describe the issue you are experiencing.
 
-_Please put an `x` against the checkboxes._  
+_Please put an `x` against the check boxes._  
 
 ### Issue-Type
 - [ ] bug report
@@ -27,5 +36,5 @@ What is actually happening?
 1. Provide detailed steps
 2. how to reproduce this issue
 
-### Any extra info ( for eg. code snippet to reproduce, logs, etc. )
+### Any extra info (for e.g. code snippet to reproduce, logs, etc.)
 If necessary, provide some extra information like code-snippets or error-logs.
