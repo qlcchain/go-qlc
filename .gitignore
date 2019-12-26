@@ -177,6 +177,7 @@ coverage*.txt
 **/dist
 *.coverprofile
 CHANGELOG.md
+FOOTER.md
 docker/data/*
 !docker/data/.gitkeep
 

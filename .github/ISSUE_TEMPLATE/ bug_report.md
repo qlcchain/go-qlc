@@ -5,7 +5,7 @@ _Please put an `x` against the checkboxes._
 
 ### Issue-Type
 - [ ] bug report
-- [ ] feature request
+- [ ] question
 - [ ] Documentation improvement
 
 ### Checklist
@@ -26,7 +26,6 @@ What is actually happening?
 ### Steps to reproduce
 1. Provide detailed steps
 2. how to reproduce this issue
-
 
 ### Any extra info ( for eg. code snippet to reproduce, logs, etc. )
 If necessary, provide some extra information like code-snippets or error-logs.
