@@ -148,6 +148,33 @@ func (o *OracleApi) GetOracleInfosByType(oType string) ([]*OracleParam, error) {
 	return oi, nil
 }
 
+func (o *OracleApi) GetOracleInfosByTypeAndID(oType string, id string) ([]*OracleParam, error) {
+	ot := types.OracleStringToType(oType)
+	oi := make([]*OracleParam, 0)
+
+	idHash, err := types.Sha256HashData([]byte(id))
+	if err != nil {
+		return nil, err
+	}
+
+	infos := cabi.GetOracleInfoByTypeAndID(o.ctx, ot, idHash)
+	if infos != nil {
+		for _, i := range infos {
+			or := &OracleParam{
+				Account: i.Account,
+				OType:   types.OracleTypeToString(i.OType),
+				OID:     i.OID.String(),
+				PubKey:  types.NewHexBytesFromData(i.PubKey).String(),
+				Code:    i.Code,
+				Hash:    i.Hash.String(),
+			}
+			oi = append(oi, or)
+		}
+	}
+
+	return oi, nil
+}
+
 func (o *OracleApi) GetOracleInfosByAccountAndType(account types.Address, oType string) ([]*OracleParam, error) {
 	ot := types.OracleStringToType(oType)
 	oi := make([]*OracleParam, 0)

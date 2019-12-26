@@ -182,3 +182,100 @@ func TestLedger_WalkGapPovBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLedger_AddGapPublishBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk1 := mock.StateBlockWithoutWork()
+	blk2 := mock.StateBlockWithoutWork()
+	hash := mock.Hash()
+
+	err := l.AddGapPublishBlock(hash, blk1, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddGapPublishBlock(hash, blk2, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b1Match := false
+	b2Match := false
+	err = l.WalkGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		bHash := block.GetHash()
+		if bHash == blk1.GetHash() {
+			b1Match = true
+		}
+		if bHash == blk2.GetHash() {
+			b2Match = true
+		}
+		return nil
+	})
+
+	if !b1Match || !b2Match {
+		t.Fatal()
+	}
+}
+
+func TestLedger_DeleteGapPublishBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk1 := mock.StateBlockWithoutWork()
+	blk2 := mock.StateBlockWithoutWork()
+	hash := mock.Hash()
+
+	err := l.AddGapPublishBlock(hash, blk1, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddGapPublishBlock(hash, blk2, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b1Match := false
+	b2Match := false
+	err = l.WalkGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		bHash := block.GetHash()
+		if bHash == blk1.GetHash() {
+			b1Match = true
+		}
+		if bHash == blk2.GetHash() {
+			b2Match = true
+		}
+		return nil
+	})
+
+	if !b1Match || !b2Match {
+		t.Fatal()
+	}
+
+	err = l.WalkGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		err := l.DeleteGapPublishBlock(hash, block.GetHash())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+
+	b1Match = false
+	b2Match = false
+	err = l.WalkGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		bHash := block.GetHash()
+		if bHash == blk1.GetHash() {
+			b1Match = true
+		}
+		if bHash == blk2.GetHash() {
+			b2Match = true
+		}
+		return nil
+	})
+
+	if b1Match || b2Match {
+		t.Fatal()
+	}
+}

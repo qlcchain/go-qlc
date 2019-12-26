@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"reflect"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -782,6 +783,19 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return GapPovHeight, nil
 				}
 			}
+
+			if types.OracleAddress == types.Address(block.GetLink()) {
+				info := new(abi.OracleInfo)
+				err := abi.OracleABI.UnpackMethod(info, abi.MethodNameOracle, block.GetData())
+				if err != nil {
+					return Other, err
+				}
+
+				if has, _ := lv.l.HasStateBlockConfirmed(info.Hash); !has {
+					return GapPublish, nil
+				}
+			}
+
 			if _, _, err := v.ProcessSend(vmCtx, clone); err == nil {
 				if bytes.EqualFold(block.Data, clone.Data) {
 					return Progress, nil

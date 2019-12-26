@@ -84,7 +84,7 @@ func newProcessors(num int) []*Processor {
 	return processors
 }
 
-func (p *Processor) setDposService(dps *DPoS) {
+func (p *Processor) setDPoSService(dps *DPoS) {
 	p.dps = dps
 }
 
@@ -125,11 +125,10 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 }
 
 func (p *Processor) processMsg() {
-	timerRest := time.NewTicker(10 * time.Millisecond)
 	timerConfirm := time.NewTicker(time.Second)
 
 	for {
-	PriorityOut:
+	P1:
 		for {
 			select {
 			case <-p.quitCh:
@@ -165,7 +164,7 @@ func (p *Processor) processMsg() {
 					p.dps.logger.Warnf("block(%s) sync done error: %s", block.GetHash(), err)
 				}
 			default:
-				break PriorityOut
+				break P1
 			}
 		}
 
@@ -177,8 +176,6 @@ func (p *Processor) processMsg() {
 		case block := <-p.syncBlock:
 			p.dps.updateLastProcessSyncTime()
 			p.syncBlockCheck(block)
-		case <-timerRest.C:
-			//
 		case <-timerConfirm.C:
 			if p.syncState == topic.SyncDone || p.syncState == topic.Syncing {
 				for hash, dealt := range p.confirmedChain {
@@ -195,6 +192,8 @@ func (p *Processor) processMsg() {
 					}
 				}
 			}
+		default:
+			time.Sleep(time.Millisecond)
 		}
 	}
 }
@@ -320,6 +319,7 @@ func (p *Processor) confirmChain(hash types.Hash) {
 					}
 				}
 			} else {
+				dps.logger.Infof("get chain block(%s-%s) err order[%d]", block.Address, block.Token, cok.order)
 				break
 			}
 
@@ -356,6 +356,8 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	var result process.ProcessResult
 	var err error
 
+	//dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
+
 	if bs.BlockFrom == types.Synchronized {
 		p.dps.updateLastProcessSyncTime()
 	}
@@ -365,7 +367,12 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
 		return
 	}
+
+	//dps.perfBlockProcessCheckPointAdd(hash, checkPointProcessResult)
+
 	p.processResult(result, bs)
+
+	//dps.perfBlockProcessCheckPointAdd(hash, checkPointEnd)
 
 	switch bs.Type {
 	case consensus.MsgPublishReq:
@@ -396,8 +403,6 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 				return
 			}
 		}
-
-		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
 	default:
 		//
 	}
@@ -455,6 +460,9 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 	case process.GapPovHeight:
 		dps.logger.Infof("block:[%s] Gap pov height", hash)
 		p.dps.gapPovCh <- bs
+	case process.GapPublish:
+		dps.logger.Infof("block:[%s] Gap publish", hash)
+		p.enqueueUnchecked(result, bs)
 	}
 }
 
@@ -472,7 +480,6 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 		}
 
 		dps.acTrx.roots.Delete(el.vote.id)
-		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), true)
 
 		el.blocks.Range(func(key, value interface{}) bool {
 			if key.(types.Hash) != hash {
@@ -628,6 +635,17 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 		if err != nil && err != ledger.ErrUncheckedBlockExists {
 			dps.logger.Errorf("add unchecked block to ledger err %s", err)
 		}
+	case process.GapPublish:
+		info := new(cabi.OracleInfo)
+		err := cabi.OracleABI.UnpackMethod(info, cabi.MethodNameOracle, blk.GetData())
+		if err != nil {
+			dps.logger.Errorf("unpack oracle data err %s", err)
+		}
+
+		err = dps.ledger.AddGapPublishBlock(info.Hash, blk, bs.BlockFrom)
+		if err != nil && err != ledger.ErrUncheckedBlockExists {
+			dps.logger.Errorf("add gap publish block to ledger err %s", err)
+		}
 	}
 }
 
@@ -726,6 +744,29 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 				}
 			}
 		}
+	}
+
+	if err := dps.ledger.WalkGapPublishBlock(hash, func(block *types.StateBlock, bf types.SynchronizedKind) error {
+		if dps.getProcessorIndex(block.Address) == p.index {
+			dps.logger.Debugf("dequeue gap publish[%s] block[%s]", hash, block.GetHash())
+			bs := &consensus.BlockSource{
+				Block:     block,
+				BlockFrom: bf,
+				Gap:       process.GapPublish,
+				GapHash:   hash,
+			}
+
+			if p.processUncheckedBlock(bs) {
+				err := dps.ledger.DeleteGapPublishBlock(hash, block.GetHash())
+				if err != nil {
+					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete gapPublishBlock", err, block.GetHash())
+				}
+			}
+		}
+
+		return nil
+	}); err != nil {
+		dps.logger.Errorf("dequeue gap publish err %s", err)
 	}
 }
 

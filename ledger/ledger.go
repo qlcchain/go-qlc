@@ -109,6 +109,7 @@ const (
 	idPrefixVoteHistory
 	idPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
 	idPrefixPeerInfo    //prefix+peerID => peerInfo
+	idPrefixGapPublish
 )
 
 var (

@@ -4,13 +4,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/p2p"
 )
 
 const (
-	confirmWaitMaxTime = 180
+	waitingVoteMaxTime = 180
 )
 
 type voteKey [types.HashSize]byte
@@ -19,24 +17,16 @@ type ActiveTrx struct {
 	dps    *DPoS
 	roots  *sync.Map
 	quitCh chan bool
-	perfCh chan *PerformanceTime
-}
-
-type PerformanceTime struct {
-	hash      types.Hash
-	curTime   int64
-	confirmed bool
 }
 
 func newActiveTrx() *ActiveTrx {
 	return &ActiveTrx{
 		roots:  new(sync.Map),
 		quitCh: make(chan bool, 1),
-		perfCh: make(chan *PerformanceTime, 1024000),
 	}
 }
 
-func (act *ActiveTrx) setDposService(dps *DPoS) {
+func (act *ActiveTrx) setDPoSService(dps *DPoS) {
 	act.dps = dps
 }
 
@@ -48,8 +38,6 @@ func (act *ActiveTrx) start() {
 		case <-act.quitCh:
 			act.dps.logger.Info("act stopped")
 			return
-		case perf := <-act.perfCh:
-			act.updatePerformanceTime(perf.hash, perf.curTime, perf.confirmed)
 		case <-timerCheckVotes.C:
 			act.checkVotes()
 		}
@@ -84,20 +72,6 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 		act.dps.logger.Debugf("block :%s already exist in roots", block.GetHash())
 		return false
 	}
-}
-
-func (act *ActiveTrx) updatePerfTime(hash types.Hash, curTime int64, confirmed bool) {
-	if !act.dps.cfg.PerformanceEnabled {
-		return
-	}
-
-	perf := &PerformanceTime{
-		hash:      hash,
-		curTime:   curTime,
-		confirmed: confirmed,
-	}
-
-	act.perfCh <- perf
 }
 
 func (act *ActiveTrx) updatePerformanceTime(hash types.Hash, curTime int64, confirmed bool) {
@@ -171,7 +145,7 @@ func (act *ActiveTrx) checkVotes() {
 
 	act.roots.Range(func(key, value interface{}) bool {
 		el := value.(*Election)
-		if nowTime-el.lastTime < confirmWaitMaxTime {
+		if nowTime-el.lastTime < waitingVoteMaxTime {
 			return true
 		}
 
@@ -187,13 +161,9 @@ func (act *ActiveTrx) checkVotes() {
 		act.dps.lv.RollbackUnchecked(hash)
 
 		if dps.isReceivedFrontier(hash) {
-			dps.logger.Warnf("frontier[%s] wait for vote timeout", hash)
+			dps.logger.Warnf("frontier[%s] was not confirmed in %d seconds", hash, waitingVoteMaxTime)
 		} else {
-			dps.logger.Warnf("block[%s] wait for vote timeout", hash)
-			dps.logger.Infof("resend confirmReq for block[%s]", hash)
-			confirmReqBlocks := make([]*types.StateBlock, 0)
-			confirmReqBlocks = append(confirmReqBlocks, block)
-			dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.ConfirmReq, Message: confirmReqBlocks})
+			dps.logger.Warnf("block[%s] was not confirmed in %d seconds", hash, waitingVoteMaxTime)
 		}
 
 		return true

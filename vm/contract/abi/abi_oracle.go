@@ -70,16 +70,6 @@ func OracleInfoCheck(ctx *vmstore.VMContext, account types.Address, ot uint32, i
 			return fmt.Errorf("pk len err")
 		}
 
-		err := VerifierPledgeCheck(ctx, account)
-		if err != nil {
-			return err
-		}
-
-		_, err = GetVerifierInfoByAccountAndType(ctx, account, ot)
-		if err != nil {
-			return err
-		}
-
 		blk, err := ctx.Ledger.GetStateBlockConfirmed(hash)
 		if err != nil {
 			return err

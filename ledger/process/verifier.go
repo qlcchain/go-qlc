@@ -30,6 +30,7 @@ const (
 	GapTransaction
 	GapTokenInfo
 	GapPovHeight
+	GapPublish
 	BalanceMismatch
 	UnReceivable
 	InvalidData

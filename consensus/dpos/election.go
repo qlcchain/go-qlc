@@ -152,7 +152,6 @@ func (el *Election) haveQuorum() {
 
 		dps.acTrx.roots.Delete(el.vote.id)
 		el.dps.logger.Infof("hash:%s block has confirmed,total vote is [%s]", confirmedHash, balance)
-		dps.acTrx.updatePerfTime(blk.GetHash(), time.Now().UnixNano(), true)
 
 		if el.status.winner.GetHash() != confirmedHash {
 			dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash().String())
@@ -166,12 +165,14 @@ func (el *Election) haveQuorum() {
 			}
 		}
 
+		//dps.perfBlockProcessCheckPointAdd(confirmedHash, checkPointSectionStart)
 		dps.acTrx.rollBack(el.status.loser)
 		dps.acTrx.addWinner2Ledger(blk)
 		el.updateVoteStatistic(confirmedHash)
 		dps.dispatchAckedBlock(blk, confirmedHash, -1)
 		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 		el.cleanBlockInfo()
+		//dps.perfBlockProcessCheckPointAdd(confirmedHash, checkPointSectionEnd)
 	} else {
 		dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance)
 	}

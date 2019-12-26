@@ -324,3 +324,75 @@ func (l *Ledger) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc, txns ...db.St
 	}
 	return nil
 }
+
+func (l *Ledger) AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixGapPublish, key, blk.GetHash())
+	if err != nil {
+		return err
+	}
+
+	v, err := blk.Serialize()
+	if err != nil {
+		return err
+	}
+
+	err = txn.Get(k, func(v []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrUncheckedBlockExists
+	} else if err != badger.ErrKeyNotFound {
+		return err
+	}
+	return txn.SetWithMeta(k, v, byte(sync))
+}
+
+func (l *Ledger) DeleteGapPublishBlock(key types.Hash, blkHash types.Hash, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixGapPublish, key, blkHash)
+	if err != nil {
+		return err
+	}
+
+	return txn.Delete(k)
+}
+
+func (l *Ledger) WalkGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixGapPublish, key)
+	if err != nil {
+		return err
+	}
+
+	errStr := make([]string, 0)
+	err = txn.PrefixIterator(k, func(bytes []byte, bytes2 []byte, b byte) error {
+		block := types.StateBlock{}
+		err := block.Deserialize(bytes2)
+		if err != nil {
+			errStr = append(errStr, err.Error())
+			return nil
+		}
+
+		err = visit(&block, types.SynchronizedKind(b))
+		if err != nil {
+			errStr = append(errStr, err.Error())
+			return nil
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
+	}
+	return nil
+}

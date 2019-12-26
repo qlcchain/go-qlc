@@ -27,7 +27,8 @@ func TestCache_set(t *testing.T) {
 	}
 
 	repPeriod := val.(*RepOnlinePeriod)
-	if s, ok := repPeriod.Statistic[addr]; ok {
+	if val, ok := repPeriod.Statistic.Load(addr); ok {
+		s := val.(*RepAckStatistics)
 		if s.VoteCount != 1 {
 			t.Fatal()
 		}

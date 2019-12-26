@@ -132,6 +132,8 @@ type DPoS struct {
 	updateSync          chan struct{}
 	tps                 [10]uint32
 	block2Ledger        chan struct{}
+	pf                  *perfInfo
+	lockPool            *sync.Map
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -159,7 +161,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		processorNum:        processorNum,
 		processors:          newProcessors(processorNum),
 		subMsg:              make(chan *subMsg, 10240),
-		subAck:              gcache.New(subAckMaxSize).Expiration(confirmWaitMaxTime * time.Second).LRU().Build(),
+		subAck:              gcache.New(subAckMaxSize).Expiration(waitingVoteMaxTime * time.Second).LRU().Build(),
 		hash2el:             new(sync.Map),
 		batchVote:           make(chan types.Hash, 102400),
 		ctx:                 ctx,
@@ -179,11 +181,13 @@ func NewDPoS(cfgFile string) *DPoS {
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
 		block2Ledger:        make(chan struct{}, 409600),
+		pf:                  new(perfInfo),
+		lockPool:            new(sync.Map),
 	}
 
-	dps.acTrx.setDposService(dps)
+	dps.acTrx.setDPoSService(dps)
 	for _, p := range dps.processors {
-		p.setDposService(dps)
+		p.setDPoSService(dps)
 	}
 
 	pb, err := dps.ledger.GetLatestPovBlock()
@@ -779,9 +783,8 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 }
 
 func (dps *DPoS) localRepVote(block *types.StateBlock) {
-	hash := block.GetHash()
-
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
+		hash := block.GetHash()
 		address := key.(types.Address)
 
 		weight := dps.ledger.Weight(address)
@@ -794,6 +797,28 @@ func (dps *DPoS) localRepVote(block *types.StateBlock) {
 
 			if !has && !dps.isOnline(block.Address) {
 				dps.logger.Debugf("block[%s] is not online", hash)
+				return false
+			}
+		}
+
+		if types.Address(block.GetLink()) == types.OracleAddress {
+			ctx := vmstore.NewVMContext(dps.ledger)
+			err := cabi.VerifierPledgeCheck(ctx, block.GetAddress())
+			if err != nil {
+				dps.logger.Errorf("invalid verifier [%s]", hash)
+				return false
+			}
+
+			info := new(cabi.OracleInfo)
+			err = cabi.OracleABI.UnpackMethod(info, cabi.MethodNameOracle, block.GetData())
+			if err != nil {
+				dps.logger.Errorf("unpack oracle err [%s]", hash)
+				return false
+			}
+
+			_, err = cabi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), info.OType)
+			if err != nil {
+				dps.logger.Errorf("invalid verifier [%s]", hash)
 				return false
 			}
 		}
@@ -870,19 +895,13 @@ func (dps *DPoS) voteGenerateWithSeq(block *types.StateBlock, account types.Addr
 }
 
 func (dps *DPoS) batchVoteDo(account types.Address, acc *types.Account, kind uint32) {
-	timerWait := time.NewTimer(10 * time.Millisecond)
 	hashes := make([]types.Hash, 0)
 	hashBytes := make([]byte, 0)
 	total := 0
 
 out:
 	for {
-		timerWait.Reset(10 * time.Millisecond)
-
 		select {
-		case <-timerWait.C:
-			timerWait.Stop()
-			break out
 		case h := <-dps.batchVote:
 			hashes = append(hashes, h)
 			hashBytes = append(hashBytes, h[:]...)
@@ -903,6 +922,8 @@ out:
 				hashes = make([]types.Hash, 0)
 				hashBytes = hashBytes[0:0]
 			}
+		default:
+			break out
 		}
 	}
 
@@ -943,10 +964,6 @@ func (dps *DPoS) refreshAccount() {
 	dps.logger.Infof("there is %d local reps", count)
 	if count > 0 {
 		dps.eb.Publish(topic.EventRepresentativeNode, true)
-
-		if count > 1 {
-			dps.logger.Error("it is very dangerous to run two or more representatives on one node")
-		}
 	} else {
 		dps.eb.Publish(topic.EventRepresentativeNode, false)
 	}
@@ -1067,6 +1084,10 @@ func (dps *DPoS) onRpcSyncCall(name string, in interface{}, out interface{}) {
 		dps.onGetOnlineInfo(in, out)
 	case "Debug.ConsInfo":
 		dps.info(in, out)
+	case "Debug.SetConsPerf":
+		dps.setPerf(in, out)
+	case "Debug.GetConsPerf":
+		dps.getPerf(in, out)
 	}
 }
 

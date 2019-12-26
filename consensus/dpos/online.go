@@ -3,6 +3,7 @@ package dpos
 import (
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 
 	"github.com/qlcchain/go-qlc/common/topic"
 
@@ -27,12 +28,21 @@ type RepAckStatistics struct {
 
 type RepOnlinePeriod struct {
 	Period     uint64                              `json:"period"`
-	Statistic  map[types.Address]*RepAckStatistics `json:"statistics"`
+	Statistic  *sync.Map                           `json:"-"`
+	Stat       map[types.Address]*RepAckStatistics `json:"statistics"`
 	BlockCount uint64                              `json:"blockCount"`
-	lock       *sync.RWMutex
 }
 
 func (op *RepOnlinePeriod) String() string {
+	op.Stat = make(map[types.Address]*RepAckStatistics)
+
+	op.Statistic.Range(func(key, value interface{}) bool {
+		addr := key.(types.Address)
+		ras := value.(*RepAckStatistics)
+		op.Stat[addr] = ras
+		return true
+	})
+
 	bytes, _ := json.Marshal(op)
 	return string(bytes)
 }
@@ -60,9 +70,8 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 	} else {
 		repPeriod = &RepOnlinePeriod{
 			Period:     period,
-			Statistic:  make(map[types.Address]*RepAckStatistics),
+			Statistic:  new(sync.Map),
 			BlockCount: 0,
-			lock:       new(sync.RWMutex),
 		}
 
 		err := dps.online.Set(period, repPeriod)
@@ -71,27 +80,29 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 		}
 	}
 
-	repPeriod.lock.Lock()
-	defer repPeriod.lock.Unlock()
+	val, ok := repPeriod.Statistic.LoadOrStore(addr, &RepAckStatistics{})
+	stat := val.(*RepAckStatistics)
+	lk, _ := dps.lockPool.LoadOrStore(addr, new(sync.RWMutex))
+	lock := lk.(*sync.RWMutex)
+	lock.Lock()
+	defer lock.Unlock()
 
-	if v, ok := repPeriod.Statistic[addr]; ok {
-		if kind == onlineKindHeart && dps.curPovHeight-v.LastHeartHeight >= 2 {
-			v.HeartCount++
-			v.LastHeartHeight = dps.curPovHeight
+	if ok {
+		if kind == onlineKindHeart && dps.curPovHeight-stat.LastHeartHeight >= 2 {
+			stat.HeartCount++
+			stat.LastHeartHeight = dps.curPovHeight
 		} else if kind == onlineKindVote {
 			if dps.isValidVote(hash, addr) {
-				v.VoteCount++
+				stat.VoteCount++
 			}
 		}
 	} else {
-		repPeriod.Statistic[addr] = &RepAckStatistics{}
-
 		if kind == onlineKindHeart {
-			repPeriod.Statistic[addr].HeartCount++
-			repPeriod.Statistic[addr].LastHeartHeight = dps.curPovHeight
+			stat.HeartCount++
+			stat.LastHeartHeight = dps.curPovHeight
 		} else {
 			if dps.isValidVote(hash, addr) {
-				repPeriod.Statistic[addr].VoteCount++
+				stat.VoteCount++
 			}
 		}
 	}
@@ -99,20 +110,16 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 
 func (dps *DPoS) confirmedBlockInc(hash types.Hash) {
 	period := dps.curPovHeight / common.DPosOnlinePeriod
-
 	dps.confirmedBlocks.set(hash, nil)
 
 	if s, err := dps.online.Get(period); err == nil {
 		repPeriod := s.(*RepOnlinePeriod)
-		repPeriod.lock.Lock()
-		repPeriod.BlockCount++
-		repPeriod.lock.Unlock()
+		atomic.AddUint64(&repPeriod.BlockCount, 1)
 	} else {
 		repPeriod := &RepOnlinePeriod{
 			Period:     period,
-			Statistic:  make(map[types.Address]*RepAckStatistics),
+			Statistic:  new(sync.Map),
 			BlockCount: 1,
-			lock:       new(sync.RWMutex),
 		}
 
 		err := dps.online.Set(period, repPeriod)
@@ -125,44 +132,42 @@ func (dps *DPoS) confirmedBlockInc(hash types.Hash) {
 func (dps *DPoS) isOnline(addr types.Address) bool {
 	period := dps.curPovHeight/common.DPosOnlinePeriod - 1
 
+	lk, _ := dps.lockPool.LoadOrStore(addr, new(sync.RWMutex))
+	lock := lk.(*sync.RWMutex)
+
 	//the first period will be ignored
 	if s, err := dps.online.Get(period); err == nil {
 		repPeriod := s.(*RepOnlinePeriod)
-		repPeriod.lock.RLock()
-		defer repPeriod.lock.RUnlock()
 
-		if repPeriod.BlockCount == 0 {
-			if v, ok := repPeriod.Statistic[addr]; ok {
+		if val, ok := repPeriod.Statistic.Load(addr); ok {
+			lock.RLock()
+			defer lock.RUnlock()
+			v := val.(*RepAckStatistics)
+
+			if atomic.LoadUint64(&repPeriod.BlockCount) == 0 {
 				if v.HeartCount*100 > common.DPosHeartCountPerPeriod*common.DPosOnlineRate {
 					dps.logger.Debugf("[%s] heart online: heart[%d] expect[%d]", addr, v.HeartCount, common.DPosHeartCountPerPeriod)
 					return true
+				} else {
+					dps.logger.Debugf("[%s] heart offline: heart[%d] expect[%d]", addr, v.HeartCount, common.DPosHeartCountPerPeriod)
 				}
-				dps.logger.Debugf("[%s] heart offline: heart[%d] expect[%d]", addr, v.HeartCount, common.DPosHeartCountPerPeriod)
-			}
-			dps.logger.Debugf("[%s] heart offline: no heart", addr)
-		} else {
-			if v, ok := repPeriod.Statistic[addr]; ok {
+			} else {
 				if v.VoteCount*100 > repPeriod.BlockCount*common.DPosOnlineRate {
 					dps.logger.Debugf("[%s] vote online: vote[%d] expect[%d]", addr, v.VoteCount, repPeriod.BlockCount)
 					return true
+				} else {
+					dps.logger.Debugf("[%s] vote offline: vote[%d] expect[%d]", addr, v.VoteCount, repPeriod.BlockCount)
 				}
-				dps.logger.Debugf("[%s] vote offline: vote[%d] expect[%d]", addr, v.VoteCount, repPeriod.BlockCount)
 			}
-			dps.logger.Debugf("[%s] vote offline: no vote", addr)
 		}
-	} else {
-		dps.logger.Debugf("[%s] offline: no heart and no vote", addr)
 	}
 
+	dps.logger.Debugf("[%s] offline: no heart and no vote", addr)
 	return false
 }
 
 func (dps *DPoS) sendOnline(povHeight uint64) {
 	for _, acc := range dps.accounts {
-		if !dps.isOnline(acc.Address()) {
-			continue
-		}
-
 		weight := dps.ledger.Weight(acc.Address())
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
 			continue
@@ -218,7 +223,17 @@ func (dps *DPoS) onGetOnlineInfo(in interface{}, out interface{}) {
 	online := dps.online.GetALL(true)
 	if online != nil {
 		for p, o := range online {
-			op[p.(uint64)] = o.(*RepOnlinePeriod)
+			rop := o.(*RepOnlinePeriod)
+			rop.Stat = make(map[types.Address]*RepAckStatistics)
+
+			rop.Statistic.Range(func(key, value interface{}) bool {
+				addr := key.(types.Address)
+				ras := value.(*RepAckStatistics)
+				rop.Stat[addr] = ras
+				return true
+			})
+
+			op[p.(uint64)] = rop
 		}
 	}
 }
