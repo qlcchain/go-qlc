@@ -149,6 +149,8 @@ func (rb *ResendBlockService) Start() error {
 			case <-rb.ctx.Done():
 				return
 			case <-ticker.C:
+				hs = hs[:0:0]
+				hsTemp = hsTemp[:0:0]
 				rb.hashSet.Range(func(key, value interface{}) bool {
 					h := key.(types.Hash)
 					hs = value.([]*ResendTimes)
