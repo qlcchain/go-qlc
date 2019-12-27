@@ -39,6 +39,10 @@ func (*testService) Status() int32 {
 	panic("implement me")
 }
 
+func (*testService) RpcCall(kind uint, in, out interface{}) {
+
+}
+
 type waitService struct {
 	common.ServiceLifecycle
 }
@@ -71,6 +75,10 @@ func (w *waitService) Stop() error {
 
 func (w *waitService) Status() int32 {
 	return w.State()
+}
+
+func (w *waitService) RpcCall(kind uint, in, out interface{}) {
+
 }
 
 func Test_serviceContainer(t *testing.T) {
