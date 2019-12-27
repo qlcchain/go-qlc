@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	qctx "github.com/qlcchain/go-qlc/chain/context"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -22,16 +23,18 @@ import (
 )
 
 type DebugApi struct {
-	ledger *ledger.Ledger
-	logger *zap.SugaredLogger
-	eb     event.EventBus
+	ledger  *ledger.Ledger
+	logger  *zap.SugaredLogger
+	eb      event.EventBus
+	cfgFile string
 }
 
-func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
+func NewDebugApi(cfgFile string, eb event.EventBus) *DebugApi {
 	return &DebugApi{
-		ledger: l,
-		logger: log.NewLogger("api_debug"),
-		eb:     eb,
+		ledger:  ledger.NewLedger(cfgFile),
+		logger:  log.NewLogger("api_debug"),
+		eb:      eb,
+		cfgFile: cfgFile,
 	}
 }
 
@@ -332,7 +335,14 @@ func (l *DebugApi) PendingsCount() (int, error) {
 
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	repOnline := make(map[uint64]*dpos.RepOnlinePeriod, 0)
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "DPoS.Online", In: "info", Out: repOnline})
+
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return nil, err
+	}
+	sv.RpcCall(common.RpcDPosOnlineInfo, nil, repOnline)
+
 	return repOnline, nil
 }
 
@@ -409,13 +419,65 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Debug.ConsInfo", In: inArgs, Out: outArgs})
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return nil, err
+	}
+	sv.RpcCall(common.RpcDPosConsInfo, inArgs, outArgs)
 
-	err, ok := outArgs["err"]
+	er, ok := outArgs["err"]
 	if !ok {
 		return nil, errors.New("api not support")
 	}
+	if er != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+	delete(outArgs, "err")
+
+	return outArgs, nil
+}
+
+func (l *DebugApi) SetConsPerf(op int) (map[string]interface{}, error) {
+	outArgs := make(map[string]interface{})
+
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
 	if err != nil {
+		return nil, err
+	}
+	sv.RpcCall(common.RpcDPosSetConsPerf, int32(op), outArgs)
+
+	er, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if er != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+	delete(outArgs, "err")
+
+	return outArgs, nil
+}
+
+func (l *DebugApi) GetConsPerf() (map[string]interface{}, error) {
+	inArgs := make(map[string]interface{})
+	outArgs := make(map[string]interface{})
+
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return nil, err
+	}
+	sv.RpcCall(common.RpcDPosGetConsPerf, inArgs, outArgs)
+
+	er, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if er != nil {
 		err := outArgs["err"].(error)
 		return nil, err
 	}

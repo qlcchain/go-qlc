@@ -68,6 +68,10 @@ func (rs *RPCService) Status() int32 {
 	return rs.State()
 }
 
+func (rs *RPCService) RpcCall(kind uint, in, out interface{}) {
+
+}
+
 func (rs *RPCService) RPC() *rpc.RPC {
 	return rs.rpc
 }

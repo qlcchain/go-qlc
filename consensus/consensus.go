@@ -15,6 +15,7 @@ type ConsensusAlgorithm interface {
 	Start()
 	Stop()
 	ProcessMsg(bs *BlockSource)
+	RPC(kind uint, in, out interface{})
 }
 
 type Consensus struct {
@@ -60,4 +61,8 @@ func (c *Consensus) Stop() {
 	}
 
 	c.ca.Stop()
+}
+
+func (c *Consensus) RPC(kind uint, in, out interface{}) {
+	c.ca.RPC(kind, in ,out)
 }

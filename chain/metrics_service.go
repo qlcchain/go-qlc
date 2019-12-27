@@ -89,3 +89,7 @@ func (m *MetricsService) Stop() error {
 func (m *MetricsService) Status() int32 {
 	return m.State()
 }
+
+func (m *MetricsService) RpcCall(kind uint, in, out interface{}) {
+
+}

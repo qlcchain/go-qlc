@@ -217,19 +217,12 @@ func (dps *DPoS) Init() {
 			dps.onRollback(msg)
 		case *types.PovBlock:
 			dps.onPovHeightChange(msg)
-		case *topic.EventRPCSyncCallMsg:
-			dps.onRpcSyncCall(msg.Name, msg.In, msg.Out)
-		case types.StateBlockList:
-			dps.onGetFrontier(msg)
 		case *types.Tuple:
 			dps.onFrontierConfirmed(msg.First.(types.Hash), msg.Second.(*bool))
-		case *topic.EventP2PSyncStateMsg:
-			dps.onSyncStateChange(msg.P2pSyncState)
 		}
 	}), dps.eb)
 
-	if err := subscriber.Subscribe(topic.EventRollback, topic.EventPovConnectBestBlock, topic.EventRpcSyncCall,
-		topic.EventFrontierConsensus, topic.EventFrontierConfirmed, topic.EventSyncStateChange); err != nil {
+	if err := subscriber.Subscribe(topic.EventRollback, topic.EventPovConnectBestBlock); err != nil {
 		dps.logger.Errorf("failed to subscribe event %s", err)
 	} else {
 		dps.subscriber = subscriber
@@ -412,6 +405,25 @@ func (dps *DPoS) stat() {
 		case <-dps.block2Ledger:
 			dps.tps[0]++
 		}
+	}
+}
+
+func (dps *DPoS) RPC(kind uint, in, out interface{}) {
+	switch kind {
+	case common.RpcDPosOnlineInfo:
+		dps.onGetOnlineInfo(in, out)
+	case common.RpcDPosConsInfo:
+		dps.info(in, out)
+	case common.RpcDPosSetConsPerf:
+		dps.setPerf(in, out)
+	case common.RpcDPosGetConsPerf:
+		dps.getPerf(in, out)
+	case common.RpcDPosProcessFrontier:
+		blocks := in.(types.StateBlockList)
+		dps.onGetFrontier(blocks)
+	case common.RpcDPosOnSyncStateChange:
+		state := in.(topic.SyncState)
+		dps.onSyncStateChange(state)
 	}
 }
 
@@ -1076,19 +1088,6 @@ func (dps *DPoS) getSeq(kind uint32) uint32 {
 
 func (dps *DPoS) getAckType(seq uint32) uint32 {
 	return seq >> 28
-}
-
-func (dps *DPoS) onRpcSyncCall(name string, in interface{}, out interface{}) {
-	switch name {
-	case "DPoS.Online":
-		dps.onGetOnlineInfo(in, out)
-	case "Debug.ConsInfo":
-		dps.info(in, out)
-	case "Debug.SetConsPerf":
-		dps.setPerf(in, out)
-	case "Debug.GetConsPerf":
-		dps.getPerf(in, out)
-	}
 }
 
 func (dps *DPoS) isWaitingFrontier(hash types.Hash) (bool, frontierStatus) {

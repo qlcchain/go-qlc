@@ -7,7 +7,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/topic"
 
-	"github.com/qlcchain/go-qlc/chain/context"
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -25,7 +24,7 @@ type QlcService struct {
 
 // NewQlcService create netService
 func NewQlcService(cfgFile string) (*QlcService, error) {
-	cc := context.NewChainContext(cfgFile)
+	cc := chainctx.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 	node, err := NewNode(cfg)
 	if err != nil {

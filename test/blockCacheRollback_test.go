@@ -58,7 +58,7 @@ func TestBlockCacheRollback(t *testing.T) {
 		//cfg.LogLevel = "info"
 		cfg.RPC.Enable = true
 		cfg.RPC.HTTPEnabled = false
-		//cfg.RPC.HTTPEndpoint = "tcp4://0.0.0.0:29735"
+		//cfg.RpcCall.HTTPEndpoint = "tcp4://0.0.0.0:29735"
 		cfg.RPC.WSEnabled = false
 		cfg.RPC.IPCEnabled = true
 		cfg.PoV.PovEnabled = false

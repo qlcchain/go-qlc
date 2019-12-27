@@ -236,6 +236,10 @@ func (rb *ResendBlockService) Status() int32 {
 	return rb.State()
 }
 
+func (rb *ResendBlockService) RpcCall(kind uint, in, out interface{}) {
+
+}
+
 func (rb *ResendBlockService) getKey(addr types.Address, token types.Hash) types.Hash {
 	key := make([]byte, 0)
 	key = append(key, addr.Bytes()...)

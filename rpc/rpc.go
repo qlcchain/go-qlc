@@ -77,7 +77,7 @@ func NewRPC(cfgFile string) (*RPC, error) {
 	return &r, nil
 }
 
-// startIPC initializes and starts the IPC RPC endpoint.
+// startIPC initializes and starts the IPC RpcCall endpoint.
 func (r *RPC) startIPC(apis []rpc.API) error {
 	if r.config.RPC.IPCEndpoint == "" {
 		return nil // IPC disabled.
@@ -91,7 +91,7 @@ func (r *RPC) startIPC(apis []rpc.API) error {
 	return nil
 }
 
-// stopIPC terminates the IPC RPC endpoint.
+// stopIPC terminates the IPC RpcCall endpoint.
 func (r *RPC) stopIPC() {
 	if r.ipcListener != nil {
 		r.ipcListener.Close()
@@ -105,7 +105,7 @@ func (r *RPC) stopIPC() {
 	}
 }
 
-// startHTTP initializes and starts the HTTP RPC endpoint.
+// startHTTP initializes and starts the HTTP RpcCall endpoint.
 func (r *RPC) startHTTP(endpoint string, apis []rpc.API, modules []string, cors []string, vhosts []string, timeouts rpc.HTTPTimeouts) error {
 	// Short circuit if the HTTP endpoint isn't being exposed
 	if endpoint == "" {
@@ -124,7 +124,7 @@ func (r *RPC) startHTTP(endpoint string, apis []rpc.API, modules []string, cors 
 	return nil
 }
 
-// stopHTTP terminates the HTTP RPC endpoint.
+// stopHTTP terminates the HTTP RpcCall endpoint.
 func (r *RPC) stopHTTP() {
 	if r.httpListener != nil {
 		r.httpListener.Close()
@@ -138,7 +138,7 @@ func (r *RPC) stopHTTP() {
 	}
 }
 
-// startWS initializes and starts the websocket RPC endpoint.
+// startWS initializes and starts the websocket RpcCall endpoint.
 func (r *RPC) startWS(endpoint string, apis []rpc.API, modules []string, wsOrigins []string, exposeAll bool) error {
 	// Short circuit if the WS endpoint isn't being exposed
 	if endpoint == "" {
@@ -157,7 +157,7 @@ func (r *RPC) startWS(endpoint string, apis []rpc.API, modules []string, wsOrigi
 	return nil
 }
 
-// stopWS terminates the websocket RPC endpoint.
+// stopWS terminates the websocket RpcCall endpoint.
 func (r *RPC) stopWS() {
 	if r.wsListener != nil {
 		r.wsListener.Close()
@@ -184,7 +184,7 @@ func (r *RPC) Attach() (*rpc.Client, error) {
 	return rpc.DialInProc(r.inProcessHandler), nil
 }
 
-// startInProc initializes an in-process RPC endpoint.
+// startInProc initializes an in-process RpcCall endpoint.
 func (r *RPC) startInProcess(apis []rpc.API) error {
 	// Register all the APIs exposed by the services
 	handler := rpc.NewServer()
@@ -200,7 +200,7 @@ func (r *RPC) startInProcess(apis []rpc.API) error {
 	return nil
 }
 
-// stopInProc terminates the in-process RPC endpoint.
+// stopInProc terminates the in-process RpcCall endpoint.
 func (r *RPC) stopInProcess() {
 	if r.inProcessHandler != nil {
 		r.inProcessHandler.Stop()
@@ -264,7 +264,7 @@ func (r *RPC) StartRPC() error {
 	return nil
 }
 
-// StartHTTPEndpoint starts the HTTP RPC endpoint, configured with cors/vhosts/modules
+// StartHTTPEndpoint starts the HTTP RpcCall endpoint, configured with cors/vhosts/modules
 func (r *RPC) StartHTTPEndpoint(endpoint string, apis []rpc.API, modules []string, cors []string, vhosts []string, timeouts rpc.HTTPTimeouts) (net.Listener, *rpc.Server, error) {
 	// Generate the whitelist based on the allowed modules
 	whitelist := make(map[string]bool)

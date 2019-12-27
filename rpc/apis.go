@@ -110,7 +110,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "debug",
 			Version:   "1.0",
-			Service:   api.NewDebugApi(r.ledger, r.eb),
+			Service:   api.NewDebugApi(r.cfgFile, r.eb),
 			Public:    true,
 		}
 	case "destroy":
