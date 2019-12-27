@@ -317,12 +317,12 @@ func blockType(bs []blocksType) map[string]uint64 {
 }
 
 func (r *Relation) processBlocks() {
+	blocks := make([]*types.StateBlock, 0)
 	for {
 		select {
 		case <-r.ctx.Done():
 			return
 		case blk := <-r.addBlkChan:
-			blocks := make([]*types.StateBlock, 0)
 			blocks = append(blocks, blk)
 			if len(r.addBlkChan) > 0 {
 				for b := range r.addBlkChan {
@@ -345,6 +345,7 @@ func (r *Relation) processBlocks() {
 			if err != nil {
 				r.logger.Errorf("batch update blocks error: %s", err)
 			}
+			blocks = blocks[:0:0]
 		case blk := <-r.deleteBlkChan:
 			if err := r.DeleteBlock(blk); err != nil {
 				r.logger.Error(err)
