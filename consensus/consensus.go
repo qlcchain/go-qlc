@@ -64,5 +64,5 @@ func (c *Consensus) Stop() {
 }
 
 func (c *Consensus) RPC(kind uint, in, out interface{}) {
-	c.ca.RPC(kind, in ,out)
+	c.ca.RPC(kind, in, out)
 }

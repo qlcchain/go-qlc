@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestPublisherPackAndUnPack(t *testing.T)  {
+func TestPublisherPackAndUnPack(t *testing.T) {
 	pk := make([]byte, 32)
 	verifiers := make([]types.Address, 0)
 	codes := make([]types.Hash, 0)

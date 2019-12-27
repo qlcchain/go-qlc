@@ -172,7 +172,7 @@ var contractCacheV2 = map[types.Address]*qlcchainContractV2{
 	},
 	types.OracleAddress: {
 		map[string]ChainContractV2{
-			cabi.MethodNameOracle:   &Oracle{},
+			cabi.MethodNameOracle: &Oracle{},
 		},
 		cabi.OracleABI,
 		cabi.JsonOracle,

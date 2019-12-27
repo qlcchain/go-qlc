@@ -182,12 +182,12 @@ func (v *VerifierApi) GetUnregisterBlock(param *VerifierUnRegInfo) (*types.State
 
 func (v *VerifierApi) GetAllVerifiers() ([]*VerifierRegInfo, error) {
 	vrs := make([]*VerifierRegInfo, 0)
-	
+
 	rawVr, err := cabi.GetAllVerifiers(v.ctx)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	for _, v := range rawVr {
 		vr := &VerifierRegInfo{
 			Account: v.Account,
