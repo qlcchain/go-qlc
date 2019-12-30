@@ -386,6 +386,19 @@ func (node *QlcNode) findPeers() error {
 	if err != nil {
 		return err
 	}
+	node.streamManager.onlinePeersInfo.Range(func(key, value interface{}) bool {
+		k := key.(string)
+		var i int
+		for i = 0; i < len(peers); i++ {
+			if peers[i].ID.Pretty() == k {
+				break
+			}
+		}
+		if i == len(peers) {
+			node.streamManager.onlinePeersInfo.Delete(k)
+		}
+		return true
+	})
 	for _, p := range peers {
 		var pi *types.PeerInfo
 		if v, ok := node.streamManager.onlinePeersInfo.Load(p.ID.Pretty()); ok {
