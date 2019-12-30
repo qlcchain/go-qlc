@@ -6,16 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/AsynkronIT/protoactor-go/actor"
-
-	"github.com/qlcchain/go-qlc/common/event"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/merkle"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus/pov"
@@ -33,8 +30,10 @@ type PovWorker struct {
 	lastMineHeight  uint64
 	muxMineBlock    sync.Mutex
 
-	quitCh     chan struct{}
-	subscriber *event.ActorSubscriber
+	quitCh         chan struct{}
+	feb            *event.FeedEventBus
+	febRpcMsgCh    chan *topic.EventRPCSyncCallMsg
+	febRpcMsgSubID event.FeedSubscription
 }
 
 type PovMinerAlgoBlock struct {
@@ -42,11 +41,14 @@ type PovMinerAlgoBlock struct {
 	lastMineTime time.Time
 }
 
-func NewPovWorker(miner *Miner) *PovWorker {
+func NewPovWorker(cc *context.ChainContext, miner *Miner) *PovWorker {
 	worker := &PovWorker{
 		miner:  miner,
 		logger: log.NewLogger("pov_miner"),
 		quitCh: make(chan struct{}),
+		feb:    cc.FeedEventBus(),
+
+		febRpcMsgCh: make(chan *topic.EventRPCSyncCallMsg, 1),
 	}
 	worker.mineBlockPool = make(map[types.Hash]*types.PovMineBlock)
 	worker.minerAlgoBlocks = make(map[types.Address]map[types.PovAlgoType]*PovMinerAlgoBlock)
@@ -75,18 +77,13 @@ func (w *PovWorker) Init() error {
 }
 
 func (w *PovWorker) Start() error {
-	w.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
-		switch msg := c.Message().(type) {
-		case *topic.EventRPCSyncCallMsg:
-			w.OnEventRpcSyncCall(msg.Name, msg.In, msg.Out)
-		}
-	}), w.miner.eb)
-
-	return w.subscriber.Subscribe(topic.EventRpcSyncCall)
+	w.febRpcMsgSubID = w.feb.Subscribe(topic.EventRpcSyncCall, w.febRpcMsgCh)
+	common.Go(w.loop)
+	return nil
 }
 
 func (w *PovWorker) Stop() error {
-	_ = w.subscriber.UnsubscribeAll()
+	w.febRpcMsgSubID.Unsubscribe()
 
 	if w.quitCh != nil {
 		close(w.quitCh)
@@ -111,14 +108,32 @@ func (w *PovWorker) GetPovConsensus() pov.ConsensusPov {
 	return w.miner.GetPovEngine().GetConsensus()
 }
 
-func (w *PovWorker) OnEventRpcSyncCall(name string, in interface{}, out interface{}) {
-	switch name {
+func (w *PovWorker) loop() {
+	for {
+		select {
+		case <-w.quitCh:
+			return
+		case msg := <-w.febRpcMsgCh:
+			w.OnEventRpcSyncCall(msg)
+		}
+	}
+}
+
+func (w *PovWorker) OnEventRpcSyncCall(msg *topic.EventRPCSyncCallMsg) {
+	needRsp := false
+	switch msg.Name {
 	case "Miner.GetWork":
-		w.GetWork(in, out)
+		w.GetWork(msg.In, msg.Out)
+		needRsp = true
 	case "Miner.SubmitWork":
-		w.SubmitWork(in, out)
+		w.SubmitWork(msg.In, msg.Out)
+		needRsp = true
 	case "Miner.GetMiningInfo":
-		w.GetMiningInfo(in, out)
+		w.GetMiningInfo(msg.In, msg.Out)
+		needRsp = true
+	}
+	if needRsp && msg.ResponseChan != nil {
+		msg.ResponseChan <- msg.Out
 	}
 }
 

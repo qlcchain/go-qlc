@@ -30,6 +30,7 @@ type PovApi struct {
 	l      *ledger.Ledger
 	logger *zap.SugaredLogger
 	eb     event.EventBus
+	feb    *event.FeedEventBus
 	pubsub *PovSubscription
 	cc     *chainctx.ChainContext
 }
@@ -155,6 +156,7 @@ func NewPovApi(ctx context.Context, cfg *config.Config, l *ledger.Ledger, eb eve
 		cfg:    cfg,
 		l:      l,
 		eb:     eb,
+		feb:    cc.FeedEventBus(),
 		pubsub: NewPovSubscription(ctx, eb),
 		logger: log.NewLogger("rpc/pov"),
 		cc:     cc,
@@ -1187,7 +1189,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	inArgs := make(map[interface{}]interface{})
 
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Miner.GetMiningInfo", In: inArgs, Out: outArgs})
+	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.GetMiningInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1235,7 +1237,7 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	inArgs["minerAddr"] = minerAddr
 	inArgs["algoName"] = algoName
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Miner.GetWork", In: inArgs, Out: outArgs})
+	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.GetWork", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1290,7 +1292,7 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	inArgs["mineResult"] = mineResult
 
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Miner.SubmitWork", In: inArgs, Out: outArgs})
+	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.SubmitWork", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
