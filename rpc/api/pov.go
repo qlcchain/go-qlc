@@ -1622,13 +1622,13 @@ func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
 	apiRsp.RepStates = make(map[types.Address]*types.PovRepState)
 	apiRsp.RepMetas = make(map[types.Address]*types.Benefit)
 
-	latestHdr, err := api.ledger.GetLatestPovHeader()
+	latestHdr, err := api.l.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
 	stateHash := latestHdr.GetStateHash()
 
-	db := api.ledger.Store
+	db := api.l.Store
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
 	it := stateTrie.NewIterator([]byte{types.TriePrefixPovState})
@@ -1655,7 +1655,7 @@ func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
 			}
 
 			chkOk := true
-			am, _ := api.ledger.GetAccountMeta(addr)
+			am, _ := api.l.GetAccountMeta(addr)
 			if am != nil {
 				if am.CoinBalance.Compare(as.Balance) != types.BalanceCompEqual {
 					chkOk = false
@@ -1707,7 +1707,7 @@ func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
 			}
 
 			chkOk := true
-			rm, _ := api.ledger.GetRepresentation(addr)
+			rm, _ := api.l.GetRepresentation(addr)
 			if rm != nil {
 				if rm.Balance.Compare(rs.Balance) != types.BalanceCompEqual {
 					chkOk = false
