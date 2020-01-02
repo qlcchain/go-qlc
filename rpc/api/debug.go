@@ -84,6 +84,8 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 			uncheck.UnCheckType = "GapLink"
 		case types.UncheckedKindTokenInfo:
 			uncheck.UnCheckType = "GapTokenInfo"
+		case types.UncheckedKindPublish:
+			uncheck.UnCheckType = "GapPublish"
 		}
 
 		uncheck.SyncType = sync

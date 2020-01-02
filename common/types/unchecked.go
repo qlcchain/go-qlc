@@ -57,6 +57,7 @@ const (
 	UncheckedKindPrevious UncheckedKind = iota
 	UncheckedKindLink
 	UncheckedKindTokenInfo
+	UncheckedKindPublish
 )
 
 type SynchronizedKind byte

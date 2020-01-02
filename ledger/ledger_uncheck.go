@@ -20,6 +20,8 @@ func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
 		return idPrefixUncheckedBlockLink
 	case types.UncheckedKindTokenInfo:
 		return idPrefixUncheckedTokenInfo
+	case types.UncheckedKindPublish:
+		return idPrefixGapPublish
 	default:
 		panic("bad unchecked block kind")
 	}
@@ -149,7 +151,11 @@ func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ..
 		return err
 	}
 
-	return l.walkUncheckedBlocks(types.UncheckedKindTokenInfo, visit, txns...)
+	if err := l.walkUncheckedBlocks(types.UncheckedKindTokenInfo, visit, txns...); err != nil {
+		return err
+	}
+
+	return l.walkUncheckedBlocks(types.UncheckedKindPublish, visit, txns...)
 }
 
 func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
@@ -169,7 +175,12 @@ func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
 
 	count3 := l.CountGapPovBlocks()
 
-	return count + count2 + count3, nil
+	count4, err := txn.Count([]byte{idPrefixGapPublish})
+	if err != nil {
+		return 0, err
+	}
+
+	return count + count2 + count3 + count4, nil
 }
 
 func (l *Ledger) AddGapPovBlock(height uint64, block *types.StateBlock, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
@@ -362,7 +373,7 @@ func (l *Ledger) DeleteGapPublishBlock(key types.Hash, blkHash types.Hash, txns 
 	return txn.Delete(k)
 }
 
-func (l *Ledger) WalkGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc, txns ...db.StoreTxn) error {
+func (l *Ledger) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 

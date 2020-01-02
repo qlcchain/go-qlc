@@ -746,7 +746,7 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 		}
 	}
 
-	if err := dps.ledger.WalkGapPublishBlock(hash, func(block *types.StateBlock, bf types.SynchronizedKind) error {
+	if err := dps.ledger.GetGapPublishBlock(hash, func(block *types.StateBlock, bf types.SynchronizedKind) error {
 		if dps.getProcessorIndex(block.Address) == p.index {
 			dps.logger.Debugf("dequeue gap publish[%s] block[%s]", hash, block.GetHash())
 			bs := &consensus.BlockSource{

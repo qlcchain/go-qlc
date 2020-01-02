@@ -203,7 +203,7 @@ func TestLedger_AddGapPublishBlock(t *testing.T) {
 
 	b1Match := false
 	b2Match := false
-	err = l.WalkGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		bHash := block.GetHash()
 		if bHash == blk1.GetHash() {
 			b1Match = true
@@ -239,7 +239,7 @@ func TestLedger_DeleteGapPublishBlock(t *testing.T) {
 
 	b1Match := false
 	b2Match := false
-	err = l.WalkGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		bHash := block.GetHash()
 		if bHash == blk1.GetHash() {
 			b1Match = true
@@ -254,7 +254,7 @@ func TestLedger_DeleteGapPublishBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = l.WalkGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		err := l.DeleteGapPublishBlock(hash, block.GetHash())
 		if err != nil {
 			t.Fatal(err)
@@ -264,7 +264,7 @@ func TestLedger_DeleteGapPublishBlock(t *testing.T) {
 
 	b1Match = false
 	b2Match = false
-	err = l.WalkGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		bHash := block.GetHash()
 		if bHash == blk1.GetHash() {
 			b1Match = true
@@ -276,6 +276,31 @@ func TestLedger_DeleteGapPublishBlock(t *testing.T) {
 	})
 
 	if b1Match || b2Match {
+		t.Fatal()
+	}
+}
+
+func TestLedger_GetGapPublishBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := mock.StateBlockWithoutWork()
+	hash := mock.Hash()
+
+	err := l.AddGapPublishBlock(hash, blk, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	get := false
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		if blk.GetHash() == block.GetHash() {
+			get = true
+		}
+		return nil
+	})
+
+	if !get {
 		t.Fatal()
 	}
 }
