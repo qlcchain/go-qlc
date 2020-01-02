@@ -12,7 +12,7 @@ import (
 func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	t.Parallel()
 
-	dir := filepath.Join(config.QlcTestDataDir(), "abi", uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "abiTest", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
 	cm.Load()

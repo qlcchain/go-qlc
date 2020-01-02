@@ -12,43 +12,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"os"
-	"path/filepath"
 	"testing"
-
-	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
-	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
-
-func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
-	t.Parallel()
-
-	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
-	_ = os.RemoveAll(dir)
-	cm := config.NewCfgManager(dir)
-	cm.Load()
-	l := ledger.NewLedger(cm.ConfigFile)
-
-	return func(t *testing.T) {
-		//err := l.Store.Erase()
-		err := l.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		//CloseLedger()
-		err = os.RemoveAll(dir)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}, l
-}
 
 func TestGetRewardsDetail(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
