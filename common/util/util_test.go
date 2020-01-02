@@ -17,3 +17,21 @@ func TestRandomFixedString(t *testing.T) {
 	}
 	t.Log(pw)
 }
+
+func TestVerifyEmailFormat(t *testing.T) {
+	e1 := "11@qq.com"
+	e2 := "2222@com"
+	e3 := " abc.d@qlink.online"
+
+	if !VerifyEmailFormat(e1) {
+		t.Fatal()
+	}
+
+	if VerifyEmailFormat(e2) {
+		t.Fatal()
+	}
+
+	if !VerifyEmailFormat(e3) {
+		t.Fatal()
+	}
+}

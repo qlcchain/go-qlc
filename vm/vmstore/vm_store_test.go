@@ -186,3 +186,42 @@ func TestVMCache_AppendLog(t *testing.T) {
 		t.Fatal("invalid logs ")
 	}
 }
+
+func TestVMContext_DelStorage(t *testing.T) {
+	teardownTestCase, context := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	prefix := mock.Hash()
+	key := []byte{10, 20, 31}
+	value := []byte{10, 20, 30, 41}
+	if err := context.SetStorage(prefix[:], key, value); err != nil {
+		t.Fatal(err)
+	}
+
+	err := context.SaveStorage()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := NewVMContext(context.Ledger)
+	val, err := ctx.GetStorage(prefix[:], key)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		if !bytes.Equal(val, value) {
+			t.Fatal()
+		}
+	}
+
+	ctx.DelStorage(prefix[:], key)
+	err = ctx.SaveStorage()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx2 := NewVMContext(context.Ledger)
+	_, err = ctx2.GetStorage(prefix[:], key)
+	if err == nil {
+		t.Fatal()
+	}
+}
