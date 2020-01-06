@@ -132,6 +132,10 @@ type DPoS struct {
 	updateSync          chan struct{}
 	tps                 [10]uint32
 	block2Ledger        chan struct{}
+
+	feb            *event.FeedEventBus
+	febRpcMsgCh    chan *topic.EventRPCSyncCallMsg
+	febRpcMsgSubID event.FeedSubscription
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -179,6 +183,9 @@ func NewDPoS(cfgFile string) *DPoS {
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
 		block2Ledger:        make(chan struct{}, 409600),
+
+		feb:         cc.FeedEventBus(),
+		febRpcMsgCh: make(chan *topic.EventRPCSyncCallMsg, 1),
 	}
 
 	dps.acTrx.setDposService(dps)
@@ -213,8 +220,6 @@ func (dps *DPoS) Init() {
 			dps.onRollback(msg)
 		case *types.PovBlock:
 			dps.onPovHeightChange(msg)
-		case *topic.EventRPCSyncCallMsg:
-			dps.onRpcSyncCall(msg.Name, msg.In, msg.Out)
 		case types.StateBlockList:
 			dps.onGetFrontier(msg)
 		case *types.Tuple:
@@ -224,11 +229,16 @@ func (dps *DPoS) Init() {
 		}
 	}), dps.eb)
 
-	if err := subscriber.Subscribe(topic.EventRollback, topic.EventPovConnectBestBlock, topic.EventRpcSyncCall,
+	if err := subscriber.Subscribe(topic.EventRollback, topic.EventPovConnectBestBlock,
 		topic.EventFrontierConsensus, topic.EventFrontierConfirmed, topic.EventSyncStateChange); err != nil {
 		dps.logger.Errorf("failed to subscribe event %s", err)
 	} else {
 		dps.subscriber = subscriber
+	}
+
+	dps.febRpcMsgSubID = dps.feb.Subscribe(topic.EventRpcSyncCall, dps.febRpcMsgCh)
+	if dps.febRpcMsgSubID == nil {
+		dps.logger.Errorf("failed to subscribe EventRpcSyncCall")
 	}
 
 	if dps.cfg.PoV.PovEnabled {
@@ -375,6 +385,8 @@ func (dps *DPoS) Start() {
 			}
 		case <-timerGC.C:
 			dps.confirmedBlocks.gc()
+		case msg := <-dps.febRpcMsgCh:
+			dps.onRpcSyncCall(msg)
 		}
 	}
 }
@@ -383,6 +395,7 @@ func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
 
 	//do this first
+	dps.febRpcMsgSubID.Unsubscribe()
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
 		dps.logger.Error(err)
 	}
@@ -1061,12 +1074,18 @@ func (dps *DPoS) getAckType(seq uint32) uint32 {
 	return seq >> 28
 }
 
-func (dps *DPoS) onRpcSyncCall(name string, in interface{}, out interface{}) {
-	switch name {
+func (dps *DPoS) onRpcSyncCall(msg *topic.EventRPCSyncCallMsg) {
+	needRsp := false
+	switch msg.Name {
 	case "DPoS.Online":
-		dps.onGetOnlineInfo(in, out)
+		dps.onGetOnlineInfo(msg.In, msg.Out)
+		needRsp = true
 	case "Debug.ConsInfo":
-		dps.info(in, out)
+		dps.info(msg.In, msg.Out)
+		needRsp = true
+	}
+	if needRsp && msg.ResponseChan != nil {
+		msg.ResponseChan <- msg.Out
 	}
 }
 

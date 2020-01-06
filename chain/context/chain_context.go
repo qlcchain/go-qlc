@@ -127,6 +127,10 @@ func (cc *ChainContext) EventBus() event.EventBus {
 	return event.GetEventBus(cc.Id())
 }
 
+func (cc *ChainContext) FeedEventBus() *event.FeedEventBus {
+	return event.GetFeedEventBus(cc.Id())
+}
+
 func (cc *ChainContext) PoVState() topic.SyncState {
 	return cc.povSyncState.Load().(topic.SyncState)
 }

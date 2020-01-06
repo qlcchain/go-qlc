@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -31,6 +32,7 @@ type PoVEngine struct {
 	cfg        *config.Config
 	ledger     *ledger.Ledger
 	eb         event.EventBus
+	feb        *event.FeedEventBus
 	subscriber *event.ActorSubscriber
 	accounts   []*types.Account
 
@@ -42,6 +44,10 @@ type PoVEngine struct {
 	cs       ConsensusPov
 	verifier *PovVerifier
 	syncer   *PovSyncer
+
+	quitCh         chan struct{}
+	febRpcMsgCh    chan *topic.EventRPCSyncCallMsg
+	febRpcMsgSubID event.FeedSubscription
 }
 
 func NewPovEngine(cfgFile string) (*PoVEngine, error) {
@@ -53,8 +59,12 @@ func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 		logger:   log.NewLogger("pov_engine"),
 		cfg:      cfg,
 		eb:       cc.EventBus(),
+		feb:      cc.FeedEventBus(),
 		accounts: cc.Accounts(),
 		ledger:   l,
+
+		quitCh:      make(chan struct{}),
+		febRpcMsgCh: make(chan *topic.EventRPCSyncCallMsg, 1),
 	}
 
 	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()
@@ -124,11 +134,15 @@ func (pov *PoVEngine) Start() error {
 		return err
 	}
 
+	common.Go(pov.loop)
+
 	return nil
 }
 
 func (pov *PoVEngine) Stop() error {
 	pov.logger.Info("stop pov engine service")
+
+	close(pov.quitCh)
 
 	pov.unsetEvent()
 
@@ -204,18 +218,21 @@ func (pov *PoVEngine) AddBlock(block *types.PovBlock, from types.PovBlockFrom, p
 }
 
 func (pov *PoVEngine) setEvent() error {
+	pov.febRpcMsgSubID = pov.feb.Subscribe(topic.EventRpcSyncCall, pov.febRpcMsgCh)
+	if pov.febRpcMsgSubID == nil {
+		pov.logger.Error("failed to subscribe EventRpcSyncCall")
+	}
+
 	pov.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *topic.EventPovRecvBlockMsg:
 			if err := pov.onRecvPovBlock(msg.Block, msg.From, msg.MsgPeer); err != nil {
 				pov.logger.Error(err)
 			}
-		case *topic.EventRPCSyncCallMsg:
-			pov.onEventRPCSyncCall(msg.Name, msg.In, msg.Out)
 		}
 	}), pov.eb)
 
-	if err := pov.subscriber.Subscribe(topic.EventPovRecvBlock, topic.EventRpcSyncCall); err != nil {
+	if err := pov.subscriber.Subscribe(topic.EventPovRecvBlock); err != nil {
 		pov.logger.Error("failed to subscribe events")
 		return err
 	}
@@ -224,6 +241,8 @@ func (pov *PoVEngine) setEvent() error {
 }
 
 func (pov *PoVEngine) unsetEvent() {
+	pov.febRpcMsgSubID.Unsubscribe()
+
 	if err := pov.subscriber.UnsubscribeAll(); err != nil {
 		pov.logger.Errorf("failed to unsubscribe events %s", err)
 	}
@@ -255,9 +274,25 @@ func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockF
 	return err
 }
 
-func (pov *PoVEngine) onEventRPCSyncCall(name string, in interface{}, out interface{}) {
-	if name == "Debug.PovInfo" {
-		pov.getDebugInfo(in, out)
+func (pov *PoVEngine) loop() {
+	for {
+		select {
+		case <-pov.quitCh:
+			return
+		case msg := <-pov.febRpcMsgCh:
+			pov.onEventRPCSyncCall(msg)
+		}
+	}
+}
+
+func (pov *PoVEngine) onEventRPCSyncCall(msg *topic.EventRPCSyncCallMsg) {
+	needRsp := false
+	if msg.Name == "Debug.PovInfo" {
+		pov.getDebugInfo(msg.In, msg.Out)
+		needRsp = true
+	}
+	if needRsp && msg.ResponseChan != nil {
+		msg.ResponseChan <- msg.Out
 	}
 }
 

@@ -5,13 +5,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus/dpos"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -25,13 +25,15 @@ type DebugApi struct {
 	ledger *ledger.Ledger
 	logger *zap.SugaredLogger
 	eb     event.EventBus
+	feb    *event.FeedEventBus
 }
 
-func NewDebugApi(l *ledger.Ledger, eb event.EventBus) *DebugApi {
+func NewDebugApi(cc *chainctx.ChainContext, l *ledger.Ledger, eb event.EventBus) *DebugApi {
 	return &DebugApi{
 		ledger: l,
 		logger: log.NewLogger("api_debug"),
 		eb:     eb,
+		feb:    cc.FeedEventBus(),
 	}
 }
 
@@ -332,7 +334,7 @@ func (l *DebugApi) PendingsCount() (int, error) {
 
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	repOnline := make(map[uint64]*dpos.RepOnlinePeriod, 0)
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "DPoS.Online", In: "info", Out: repOnline})
+	l.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "DPoS.Online", In: "info", Out: repOnline})
 	return repOnline, nil
 }
 
@@ -340,7 +342,7 @@ func (l *DebugApi) GetPovInfo() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Debug.PovInfo", In: inArgs, Out: outArgs})
+	l.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Debug.PovInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -409,7 +411,7 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Debug.ConsInfo", In: inArgs, Out: outArgs})
+	l.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Debug.ConsInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
