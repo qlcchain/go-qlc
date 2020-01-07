@@ -15,7 +15,6 @@ import (
 type VMCache struct {
 	logList types.VmLogs
 	storage map[string][]byte
-	delete  map[string]struct{}
 
 	trie      *trie.Trie
 	trieDirty bool
@@ -24,7 +23,6 @@ type VMCache struct {
 func NewVMCache(trie *trie.Trie) *VMCache {
 	return &VMCache{
 		storage:   make(map[string][]byte),
-		delete:    make(map[string]struct{}),
 		trie:      trie.Clone(),
 		trieDirty: false,
 	}
@@ -70,14 +68,6 @@ func (cache *VMCache) AppendLog(log *types.VmLog) {
 		cache.logList.Logs = make([]*types.VmLog, 0)
 	}
 	cache.logList.Logs = append(cache.logList.Logs, log)
-}
-
-func (cache *VMCache) DelStorage(key []byte) {
-	if _, ok := cache.delete[string(key)]; ok {
-		return
-	} else {
-		cache.delete[string(key)] = struct{}{}
-	}
 }
 
 func (cache *VMCache) LogList() types.VmLogs {

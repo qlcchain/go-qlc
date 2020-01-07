@@ -119,11 +119,6 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 	return nil
 }
 
-func (v *VMContext) DelStorage(prefix, key []byte) {
-	storageKey := getStorageKey(prefix, key)
-	v.Cache.DelStorage(storageKey)
-}
-
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
 	txn := v.Ledger.Store.NewTransaction(false)
 	defer func() {
@@ -162,28 +157,14 @@ func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, e
 }
 
 func (v *VMContext) SaveStorage(txns ...db.StoreTxn) error {
-	txn := v.Ledger.Store.NewTransaction(true)
-
 	storage := v.Cache.storage
 	for k, val := range storage {
-		err := v.set([]byte(k), val, txn)
+		err := v.set([]byte(k), val)
 		if err != nil {
 			v.logger.Error(err)
 			return err
 		}
 	}
-
-	delKeys := v.Cache.delete
-	for k, _ := range delKeys {
-		err := v.remove([]byte(k), txn)
-		if err != nil {
-			v.logger.Error(err)
-			return err
-		}
-	}
-
-	txn.Commit()
-	txn.Discard()
 	return nil
 }
 

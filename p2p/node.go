@@ -298,7 +298,7 @@ func (node *QlcNode) startPingService() {
 }
 
 func (node *QlcNode) publishPeersInfoToChainContext() {
-	node.logger.Info("start publish Peers Info Loop.")
+	node.logger.Info("start publish Peers VInfo Loop.")
 	ticker1 := time.NewTicker(PublishConnectPeersInfo)
 	ticker2 := time.NewTicker(PublishOnlinePeersInfo)
 	ticker3 := time.NewTicker(PublishBandWithPeersInfo)

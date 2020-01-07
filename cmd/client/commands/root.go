@@ -90,7 +90,5 @@ func addcommands() {
 	addPledgeCmd()
 	addRepCmd()
 	addTxCmd()
-	addVerifierCmd()
-	addPublisherCmd()
-	addOracleCmd()
+	addPKDCmd()
 }

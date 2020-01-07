@@ -55,7 +55,7 @@ func (ns *QlcService) MessageEvent() event.EventBus {
 
 // Start start p2p manager.
 func (ns *QlcService) Start() error {
-	//ns.node.logger.Info("Starting QlcService...")
+	//ns.node.logger.VInfo("Starting QlcService...")
 
 	// start dispatcher.
 	ns.dispatcher.Start()
@@ -106,7 +106,7 @@ func (ns *QlcService) setEvent() error {
 
 // Stop stop p2p manager.
 func (ns *QlcService) Stop() error {
-	//ns.node.logger.Info("Stopping QlcService...")
+	//ns.node.logger.VInfo("Stopping QlcService...")
 
 	//this must be the first step
 	err := ns.subscriber.UnsubscribeAll()

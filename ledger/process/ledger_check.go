@@ -784,15 +784,13 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 				}
 			}
 
-			if types.OracleAddress == types.Address(block.GetLink()) {
+			if types.PubKeyDistributionAddress == types.Address(block.GetLink()) {
 				info := new(abi.OracleInfo)
-				err := abi.OracleABI.UnpackMethod(info, abi.MethodNameOracle, block.GetData())
-				if err != nil {
-					return Other, err
-				}
-
-				if has, _ := lv.l.HasStateBlockConfirmed(info.Hash); !has {
-					return GapPublish, nil
+				err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDOracle, block.GetData())
+				if err == nil {
+					if has, _ := lv.l.HasStateBlockConfirmed(info.Hash); !has {
+						return GapPublish, nil
+					}
 				}
 			}
 

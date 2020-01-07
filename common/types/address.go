@@ -47,15 +47,13 @@ var (
 	RewardsAddress, _    = HexToAddress("qlc_3oinqggowa7f1rsjfmib476ggz6s4fp8578odjzerzztkrifqkqdz5zjztb3")
 
 	// Builtin contract addresses without private key hold by anyone
-	MinerAddress, _     = GenerateBuiltinContractAddress(21)
-	BlackHoleAddress, _ = GenerateBuiltinContractAddress(22)
-	RepAddress, _       = GenerateBuiltinContractAddress(23)
-	VerifierAddress, _  = GenerateBuiltinContractAddress(24)
-	PublisherAddress, _ = GenerateBuiltinContractAddress(25)
-	OracleAddress, _    = GenerateBuiltinContractAddress(26)
+	MinerAddress, _              = GenerateBuiltinContractAddress(21)
+	BlackHoleAddress, _          = GenerateBuiltinContractAddress(22)
+	RepAddress, _                = GenerateBuiltinContractAddress(23)
+	PubKeyDistributionAddress, _ = GenerateBuiltinContractAddress(24)
 
 	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress,
-		BlackHoleAddress, RepAddress, VerifierAddress, PublisherAddress, OracleAddress}
+		BlackHoleAddress, RepAddress, PubKeyDistributionAddress}
 	NoSignContractAddressList = []Address{RewardsAddress, BlackHoleAddress}
 	RewardContractAddressList = []Address{MinerAddress, RepAddress}
 

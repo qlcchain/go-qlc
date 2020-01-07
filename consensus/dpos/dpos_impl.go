@@ -813,25 +813,22 @@ func (dps *DPoS) localRepVote(block *types.StateBlock) {
 			}
 		}
 
-		if types.Address(block.GetLink()) == types.OracleAddress {
-			ctx := vmstore.NewVMContext(dps.ledger)
-			err := cabi.VerifierPledgeCheck(ctx, block.GetAddress())
-			if err != nil {
-				dps.logger.Errorf("invalid verifier [%s]", hash)
-				return false
-			}
-
+		if types.Address(block.GetLink()) == types.PubKeyDistributionAddress {
 			info := new(cabi.OracleInfo)
-			err = cabi.OracleABI.UnpackMethod(info, cabi.MethodNameOracle, block.GetData())
-			if err != nil {
-				dps.logger.Errorf("unpack oracle err [%s]", hash)
-				return false
-			}
+			err := cabi.PublicKeyDistributionABI.UnpackMethod(info, cabi.MethodNamePKDOracle, block.GetData())
+			if err == nil {
+				ctx := vmstore.NewVMContext(dps.ledger)
+				err = cabi.VerifierPledgeCheck(ctx, block.GetAddress())
+				if err != nil {
+					dps.logger.Errorf("invalid verifier [%s]", hash)
+					return false
+				}
 
-			_, err = cabi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), info.OType)
-			if err != nil {
-				dps.logger.Errorf("invalid verifier [%s]", hash)
-				return false
+				_, err = cabi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), info.OType)
+				if err != nil {
+					dps.logger.Errorf("invalid verifier [%s]", hash)
+					return false
+				}
 			}
 		}
 

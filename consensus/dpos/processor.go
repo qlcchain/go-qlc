@@ -637,7 +637,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 		}
 	case process.GapPublish:
 		info := new(cabi.OracleInfo)
-		err := cabi.OracleABI.UnpackMethod(info, cabi.MethodNameOracle, blk.GetData())
+		err := cabi.PublicKeyDistributionABI.UnpackMethod(info, cabi.MethodNamePKDOracle, blk.GetData())
 		if err != nil {
 			dps.logger.Errorf("unpack oracle data err %s", err)
 		}

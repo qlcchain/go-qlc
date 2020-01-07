@@ -11,30 +11,30 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 )
 
-func addUnPublishCmdByShell(parentCmd *ishell.Cmd) {
+func addVerifierRegisterCmdByShell(parentCmd *ishell.Cmd) {
 	account := util.Flag{
 		Name:  "account",
 		Must:  true,
-		Usage: "account to publish (private key in hex string)",
+		Usage: "account to register (private key in hex string)",
 		Value: "",
 	}
-	typ := util.Flag{
+	vType := util.Flag{
 		Name:  "type",
 		Must:  true,
-		Usage: "unPublish id type (email/weChat)",
+		Usage: "verifier type(email/weChat)",
 		Value: "",
 	}
-	id := util.Flag{
-		Name:  "id",
+	vInfo := util.Flag{
+		Name:  "info",
 		Must:  true,
-		Usage: "unPublish id (email address/weChat id)",
+		Usage: "verifiers address(email address/weChat ID)",
 		Value: "",
 	}
 	c := &ishell.Cmd{
-		Name: "unPublish",
-		Help: "unPublish id and key",
+		Name: "register",
+		Help: "register verifier",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id}
+			args := []util.Flag{account, vType, vInfo}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -45,10 +45,10 @@ func addUnPublishCmdByShell(parentCmd *ishell.Cmd) {
 			}
 
 			accountP := util.StringVar(c.Args, account)
-			typeP := util.StringVar(c.Args, typ)
-			idP := util.StringVar(c.Args, id)
+			vTypeP := util.StringVar(c.Args, vType)
+			vInfoP := util.StringVar(c.Args, vInfo)
 
-			err := unPublish(accountP, typeP, idP)
+			err := verifierRegister(accountP, vTypeP, vInfoP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -57,17 +57,17 @@ func addUnPublishCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func unPublish(accountP, typeP, idP string) error {
+func verifierRegister(accountP, vTypeP, vInfoP string) error {
 	if accountP == "" {
 		return fmt.Errorf("account can not be null")
 	}
 
-	if typeP == "" {
-		return fmt.Errorf("publish type can not be null")
+	if vTypeP == "" {
+		return fmt.Errorf("verifier type can not be null")
 	}
 
-	if idP == "" {
-		return fmt.Errorf("publish id can not be null")
+	if vInfoP == "" {
+		return fmt.Errorf("verifier info can not be null")
 	}
 
 	accBytes, err := hex.DecodeString(accountP)
@@ -86,14 +86,14 @@ func unPublish(accountP, typeP, idP string) error {
 	}
 	defer client.Close()
 
-	param := &api.UnPublishParam{
+	param := &api.VerifierRegParam{
 		Account: acc.Address(),
-		PType:   typeP,
-		PID:     idP,
+		VType:   vTypeP,
+		VInfo:   vInfoP,
 	}
 
 	var block types.StateBlock
-	err = client.Call(&block, "publisher_getUnPublishBlock", param)
+	err = client.Call(&block, "pkd_getRegisterBlock", param)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func unPublish(accountP, typeP, idP string) error {
 	hash := block.GetHash()
 	block.Signature = acc.Sign(hash)
 
-	fmt.Printf("unPublish block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
+	fmt.Printf("register block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &block)

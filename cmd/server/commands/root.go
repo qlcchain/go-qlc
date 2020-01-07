@@ -445,8 +445,8 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 	h1 := send.GetHash()
 	send.Signature = account.Sign(h1)
 	genesisInfos.Mintage = send.String()
-	//log.Root.Info(util.ToIndentString(send))
-	//log.Root.Info(h1.String())
+	//log.Root.VInfo(util.ToIndentString(send))
+	//log.Root.VInfo(h1.String())
 
 	genesisData, err := cabi.MintageABI.PackVariable(cabi.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
 		decimals, address, big.NewInt(0), int64(0), address, "")
@@ -475,8 +475,8 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 	receive.Work = worker2.NewWork()
 	h2 := receive.GetHash()
 	receive.Signature = account.Sign(h2)
-	//log.Root.Info(util.ToIndentString(receive))
-	//log.Root.Info(h2.String())
+	//log.Root.VInfo(util.ToIndentString(receive))
+	//log.Root.VInfo(h2.String())
 	genesisInfos.Genesis = receive.String()
 	cfg.Genesis.GenesisBlocks = append(cfg.Genesis.GenesisBlocks, genesisInfos)
 }

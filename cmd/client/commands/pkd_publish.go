@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/cmd/util"
@@ -11,7 +12,7 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 )
 
-func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
+func addPublishCmdByShell(parentCmd *ishell.Cmd) {
 	account := util.Flag{
 		Name:  "account",
 		Must:  true,
@@ -36,23 +37,23 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "publish public key",
 		Value: "",
 	}
-	code := util.Flag{
-		Name:  "code",
+	fee := util.Flag{
+		Name:  "fee",
 		Must:  true,
-		Usage: "verification code",
+		Usage: "publish fee (at least 5 QGAS)",
 		Value: "",
 	}
-	hash := util.Flag{
-		Name:  "hash",
+	verifiers := util.Flag{
+		Name:  "verifiers",
 		Must:  true,
-		Usage: "hash verified for",
+		Usage: "verifiers",
 		Value: "",
 	}
 	c := &ishell.Cmd{
 		Name: "publish",
 		Help: "publish id and key",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id, pk, code, hash}
+			args := []util.Flag{account, typ, id, pk, fee, verifiers}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -66,10 +67,10 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 			typeP := util.StringVar(c.Args, typ)
 			idP := util.StringVar(c.Args, id)
 			pkP := util.StringVar(c.Args, pk)
-			codeP := util.StringVar(c.Args, code)
-			hashP := util.StringVar(c.Args, hash)
+			feeP := util.StringVar(c.Args, fee)
+			verifiersP := util.StringVar(c.Args, verifiers)
 
-			err := oraclePublish(accountP, typeP, idP, pkP, codeP, hashP)
+			err := publish(accountP, typeP, idP, pkP, feeP, verifiersP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -78,7 +79,7 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
+func publish(accountP, typeP, idP, pkP, feeP, verifiersP string) error {
 	if accountP == "" {
 		return fmt.Errorf("account can not be null")
 	}
@@ -95,12 +96,12 @@ func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
 		return fmt.Errorf("publish public key can not be null")
 	}
 
-	if codeP == "" {
-		return fmt.Errorf("verification can not be null")
+	if feeP == "" {
+		return fmt.Errorf("publish fee can not be null")
 	}
 
-	if hashP == "" {
-		return fmt.Errorf("verified hash can not be null")
+	if verifiersP == "" {
+		return fmt.Errorf("verifiers can not be null")
 	}
 
 	accBytes, err := hex.DecodeString(accountP)
@@ -119,29 +120,37 @@ func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
 	}
 	defer client.Close()
 
-	param := &api.OracleParam{
-		Account: acc.Address(),
-		OType:   typeP,
-		OID:     idP,
-		PubKey:  pkP,
-		Code:    codeP,
-		Hash:    hashP,
+	verifiers := make([]types.Address, 0)
+	err = json.Unmarshal([]byte(verifiersP), &verifiers)
+	if err != nil {
+		return err
 	}
 
-	var block types.StateBlock
-	err = client.Call(&block, "oracle_getOracleBlock", param)
+	param := &api.PublishParam{
+		Account:   acc.Address(),
+		PType:     typeP,
+		PID:       idP,
+		PubKey:    pkP,
+		Fee:       types.StringToBalance(feeP),
+		Verifiers: verifiers,
+	}
+
+	var blockInfo api.PublishRet
+	err = client.Call(&blockInfo, "pkd_getPublishBlock", param)
 	if err != nil {
 		return err
 	}
 
 	var w types.Work
+	block := blockInfo.Block
 	worker, _ := types.NewWorker(w, block.Root())
 	block.Work = worker.NewWork()
 
 	hash := block.GetHash()
 	block.Signature = acc.Sign(hash)
 
-	fmt.Printf("oracle block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
+	fmt.Printf("publish block:\n%s\nhash[%s]\nverifiers:\n%s\n", cutil.ToIndentString(block), block.GetHash(),
+		cutil.ToIndentString(blockInfo.Verifiers))
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &block)

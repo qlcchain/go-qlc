@@ -238,7 +238,7 @@ func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
 	}
 	blksHashes := make([]*blocksHash, 0)
 	blksMessage := make([]*blocksMessage, 0)
-	//r.logger.Info("batch block count: ", len(blocks))
+	//r.logger.VInfo("batch block count: ", len(blocks))
 	for _, block := range blocks {
 		blksHashes = append(blksHashes, &blocksHash{
 			Hash:      block.GetHash().String(),

@@ -67,7 +67,7 @@ func minerRewardInfoAction(addressP string) error {
 	if minerInfo == nil {
 		return errors.New("miner not exist")
 	}
-	fmt.Printf("Miner Statistic Info:\n")
+	fmt.Printf("Miner Statistic VInfo:\n")
 	fmt.Printf("MainBlockNum:       %d\n", minerInfo.MainBlockNum)
 	fmt.Printf("MainRewardAmount:   %s\n", txFormatBalance(minerInfo.MainRewardAmount))
 	fmt.Printf("StableBlockNum:     %d\n", minerInfo.StableBlockNum)
@@ -76,7 +76,7 @@ func minerRewardInfoAction(addressP string) error {
 	// history reward info
 	histInfo := new(api.MinerHistoryRewardInfo)
 	err = client.Call(histInfo, "miner_getRewardHistory", minerAddr)
-	fmt.Printf("\nReward History Info:\n")
+	fmt.Printf("\nReward History VInfo:\n")
 	if err != nil {
 		fmt.Printf("%s\n", err)
 	} else {
@@ -89,7 +89,7 @@ func minerRewardInfoAction(addressP string) error {
 	// avail reward info
 	availInfo := new(api.MinerAvailRewardInfo)
 	err = client.Call(availInfo, "miner_getAvailRewardInfo", minerAddr)
-	fmt.Printf("\nReward Available Info:\n")
+	fmt.Printf("\nReward Available VInfo:\n")
 	if err != nil {
 		fmt.Printf("%s\n", err)
 	} else {

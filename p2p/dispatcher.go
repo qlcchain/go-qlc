@@ -98,7 +98,7 @@ func (dp *Dispatcher) loop() {
 
 // Stop stop goroutine.
 func (dp *Dispatcher) Stop() {
-	//dp.logger.Info("Stopping QlcService Dispatcher...")
+	//dp.logger.VInfo("Stopping QlcService Dispatcher...")
 
 	dp.quitCh <- true
 }

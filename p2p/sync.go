@@ -92,7 +92,7 @@ func (ss *ServiceSync) Start() {
 
 // Stop sync service
 func (ss *ServiceSync) Stop() {
-	//ss.logger.Info("Stop Qlc sync...")
+	//ss.logger.VInfo("Stop Qlc sync...")
 
 	ss.quitCh <- true
 }

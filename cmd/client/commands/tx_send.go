@@ -149,7 +149,7 @@ func sendTx(account *types.Account, to types.Address, token string, amount types
 	} else {
 		fmt.Println(s)
 	}
-	//Info(fmt.Sprintf("block hash: %s", sendBlock.GetHash()))
+	//VInfo(fmt.Sprintf("block hash: %s", sendBlock.GetHash()))
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &sendBlock)

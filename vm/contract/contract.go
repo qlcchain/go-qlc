@@ -154,28 +154,16 @@ var contractCacheV2 = map[types.Address]*qlcchainContractV2{
 		cabi.RepABI,
 		cabi.JsonRep,
 	},
-	types.VerifierAddress: {
+	types.PubKeyDistributionAddress: {
 		map[string]ChainContractV2{
-			cabi.MethodNameVerifierRegister:   &VerifierRegister{},
-			cabi.MethodNameVerifierUnregister: &VerifierUnregister{},
+			cabi.MethodNamePKDVerifierRegister:   &VerifierRegister{},
+			cabi.MethodNamePKDVerifierUnregister: &VerifierUnregister{},
+			cabi.MethodNamePKDPublish:            &Publish{},
+			cabi.MethodNamePKDUnPublish:          &UnPublish{},
+			cabi.MethodNamePKDOracle:             &Oracle{},
 		},
-		cabi.VerifierABI,
-		cabi.JsonVerifier,
-	},
-	types.PublisherAddress: {
-		map[string]ChainContractV2{
-			cabi.MethodNamePublish:   &Publish{},
-			cabi.MethodNameUnPublish: &UnPublish{},
-		},
-		cabi.PublisherABI,
-		cabi.JsonPublisher,
-	},
-	types.OracleAddress: {
-		map[string]ChainContractV2{
-			cabi.MethodNameOracle: &Oracle{},
-		},
-		cabi.OracleABI,
-		cabi.JsonOracle,
+		cabi.PublicKeyDistributionABI,
+		cabi.JsonPublicKeyDistribution,
 	},
 }
 

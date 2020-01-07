@@ -81,7 +81,7 @@ func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream network.Stream, no
 
 // Connect to the stream
 func (s *Stream) Connect() error {
-	//s.node.logger.Info("Connecting to peer.")
+	//s.node.logger.VInfo("Connecting to peer.")
 
 	// connect to host.
 	stream, err := s.node.host.NewStream(
@@ -220,7 +220,7 @@ func (s *Stream) close() error {
 	// Add lock & close flag to prevent multi call.
 	//s.syncMutex.Lock()
 	//defer s.syncMutex.Unlock()
-	//s.node.logger.Info("Closing stream.")
+	//s.node.logger.VInfo("Closing stream.")
 
 	if s.stream != nil {
 		s.node.netService.MessageEvent().Publish(topic.EventDeleteP2PStream,
