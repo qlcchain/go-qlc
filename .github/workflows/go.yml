@@ -54,9 +54,12 @@ jobs:
         if: success()
 
       - name: Build snapshot
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         run: |
           make snapshot
-          mkdir -p artifact; cp dist/*.tar.gz artifact/; cp dist/*.zip artifact/; cp dist/*.txt artifact/
+          mkdir -p artifact
+          cp dist/*.tar.gz artifact/; cp dist/*.zip artifact/; cp dist/*.txt artifact/; cp dist/*.sig artifact/
 
       - name: Upload snapshot artifacts
         uses: actions/upload-artifact@v1.0.0

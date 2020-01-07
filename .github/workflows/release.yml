@@ -18,6 +18,7 @@ jobs:
       - name: Publish GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           GIT_CHGLOG_VERION: 0.9.1
         run: |
           sudo wget -O /usr/local/bin/git-chglog https://github.com/git-chglog/git-chglog/releases/download/${GIT_CHGLOG_VERION}/git-chglog_linux_amd64

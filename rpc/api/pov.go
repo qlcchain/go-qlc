@@ -30,6 +30,7 @@ type PovApi struct {
 	l      *ledger.Ledger
 	logger *zap.SugaredLogger
 	eb     event.EventBus
+	feb    *event.FeedEventBus
 	pubsub *PovSubscription
 	cc     *chainctx.ChainContext
 }
@@ -155,6 +156,7 @@ func NewPovApi(ctx context.Context, cfg *config.Config, l *ledger.Ledger, eb eve
 		cfg:    cfg,
 		l:      l,
 		eb:     eb,
+		feb:    cc.FeedEventBus(),
 		pubsub: NewPovSubscription(ctx, eb),
 		logger: log.NewLogger("rpc/pov"),
 		cc:     cc,
@@ -1187,7 +1189,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 	inArgs := make(map[interface{}]interface{})
 
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Miner.GetMiningInfo", In: inArgs, Out: outArgs})
+	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.GetMiningInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1235,7 +1237,7 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	inArgs["minerAddr"] = minerAddr
 	inArgs["algoName"] = algoName
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Miner.GetWork", In: inArgs, Out: outArgs})
+	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.GetWork", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1290,7 +1292,7 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	inArgs["mineResult"] = mineResult
 
 	outArgs := make(map[interface{}]interface{})
-	api.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Miner.SubmitWork", In: inArgs, Out: outArgs})
+	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.SubmitWork", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1606,4 +1608,137 @@ func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 			}
 		}()
 	})
+}
+
+type PovApiCheckStateRsp struct {
+	AccountStates map[types.Address]*types.PovAccountState
+	AccountMetas  map[types.Address]*types.AccountMeta
+	RepStates     map[types.Address]*types.PovRepState
+	RepMetas      map[types.Address]*types.Benefit
+}
+
+func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
+	apiRsp := new(PovApiCheckStateRsp)
+	apiRsp.AccountStates = make(map[types.Address]*types.PovAccountState)
+	apiRsp.AccountMetas = make(map[types.Address]*types.AccountMeta)
+	apiRsp.RepStates = make(map[types.Address]*types.PovRepState)
+	apiRsp.RepMetas = make(map[types.Address]*types.Benefit)
+
+	latestHdr, err := api.l.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+	stateHash := latestHdr.GetStateHash()
+
+	db := api.l.Store
+	stateTrie := trie.NewTrie(db, &stateHash, nil)
+
+	it := stateTrie.NewIterator([]byte{types.TriePrefixPovState})
+	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
+		if len(val) <= 0 {
+			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
+			continue
+		}
+
+		if key[0] != types.TriePrefixPovState {
+			continue
+		}
+
+		if key[1] == types.PovStatePrefixAcc {
+			addr, err := types.PovStateKeyToAddress(key)
+			if err != nil {
+				return nil, err
+			}
+
+			as := types.NewPovAccountState()
+			err = as.Deserialize(val)
+			if err != nil {
+				return nil, err
+			}
+
+			chkOk := true
+			am, _ := api.l.GetAccountMeta(addr)
+			if am != nil {
+				if am.CoinBalance.Compare(as.Balance) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if am.CoinVote.Compare(as.Vote) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if am.CoinOracle.Compare(as.Oracle) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if am.CoinNetwork.Compare(as.Network) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if am.CoinStorage.Compare(as.Storage) != types.BalanceCompEqual {
+					chkOk = false
+				}
+
+				for _, tm := range am.Tokens {
+					ts := as.GetTokenState(tm.Type)
+					if ts != nil {
+						if ts.Balance.Compare(tm.Balance) != types.BalanceCompEqual {
+							chkOk = false
+						}
+						if ts.Representative != tm.Representative {
+							chkOk = false
+						}
+					}
+				}
+			} else {
+				chkOk = false
+			}
+
+			if !chkOk {
+				apiRsp.AccountStates[addr] = as
+				apiRsp.AccountMetas[addr] = am
+			}
+		}
+
+		if key[1] == types.PovStatePrefixRep {
+			addr, err := types.PovStateKeyToAddress(key)
+			if err != nil {
+				return nil, err
+			}
+
+			rs := types.NewPovRepState()
+			err = rs.Deserialize(val)
+			if err != nil {
+				return nil, err
+			}
+
+			chkOk := true
+			rm, _ := api.l.GetRepresentation(addr)
+			if rm != nil {
+				if rm.Balance.Compare(rs.Balance) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if rm.Vote.Compare(rs.Vote) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if rm.Oracle.Compare(rs.Oracle) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if rm.Network.Compare(rs.Network) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if rm.Storage.Compare(rs.Storage) != types.BalanceCompEqual {
+					chkOk = false
+				}
+				if rm.Total.Compare(rs.Total) != types.BalanceCompEqual {
+					chkOk = false
+				}
+			} else {
+				chkOk = false
+			}
+
+			if !chkOk {
+				apiRsp.RepStates[addr] = rs
+				apiRsp.RepMetas[addr] = rm
+			}
+		}
+	}
+
+	return apiRsp, nil
 }

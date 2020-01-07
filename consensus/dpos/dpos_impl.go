@@ -134,6 +134,9 @@ type DPoS struct {
 	block2Ledger        chan struct{}
 	pf                  *perfInfo
 	lockPool            *sync.Map
+	feb                 *event.FeedEventBus
+	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
+	febRpcMsgSubID      event.FeedSubscription
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -183,6 +186,8 @@ func NewDPoS(cfgFile string) *DPoS {
 		block2Ledger:        make(chan struct{}, 409600),
 		pf:                  new(perfInfo),
 		lockPool:            new(sync.Map),
+		feb:                 cc.FeedEventBus(),
+		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
 	}
 
 	dps.acTrx.setDPoSService(dps)
@@ -226,6 +231,11 @@ func (dps *DPoS) Init() {
 		dps.logger.Errorf("failed to subscribe event %s", err)
 	} else {
 		dps.subscriber = subscriber
+	}
+
+	dps.febRpcMsgSubID = dps.feb.Subscribe(topic.EventRpcSyncCall, dps.febRpcMsgCh)
+	if dps.febRpcMsgSubID == nil {
+		dps.logger.Errorf("failed to subscribe EventRpcSyncCall")
 	}
 
 	if dps.cfg.PoV.PovEnabled {
@@ -380,6 +390,7 @@ func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
 
 	//do this first
+	dps.febRpcMsgSubID.Unsubscribe()
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
 		dps.logger.Error(err)
 	}

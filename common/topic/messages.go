@@ -19,6 +19,8 @@ type EventRPCSyncCallMsg struct {
 	Name string
 	In   interface{}
 	Out  interface{}
+
+	ResponseChan chan interface{}
 }
 
 type EventPublishMsg struct {

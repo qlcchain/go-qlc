@@ -26,7 +26,7 @@ var (
 	// Miner core parameters
 	PovMinerPledgeAmountMin         = types.NewBalance(10000000000000)
 	PovMinerVerifyHeightStart       = uint64(POVChainBlocksPerDay * 1)
-	PovMinerRewardHeightStart       = uint64(POVChainBlocksPerDay * 3)
+	PovMinerRewardHeightStart       = uint64(POVChainBlocksPerDay * 1)
 	PovMinerRewardHeightGapToLatest = uint64(POVChainBlocksPerDay * 1)
 	PovMinerMaxRewardBlocksPerCall  = uint64(POVChainBlocksPerDay * 7)
 	PovMinerRewardHeightRound       = uint64(POVChainBlocksPerDay * 1)

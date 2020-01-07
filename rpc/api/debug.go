@@ -6,13 +6,12 @@ import (
 	qctx "github.com/qlcchain/go-qlc/chain/context"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/consensus/dpos"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -26,14 +25,17 @@ type DebugApi struct {
 	ledger  *ledger.Ledger
 	logger  *zap.SugaredLogger
 	eb      event.EventBus
+	feb     *event.FeedEventBus
 	cfgFile string
 }
 
 func NewDebugApi(cfgFile string, eb event.EventBus) *DebugApi {
+	cc := qctx.NewChainContext(cfgFile)
 	return &DebugApi{
 		ledger:  ledger.NewLedger(cfgFile),
 		logger:  log.NewLogger("api_debug"),
 		eb:      eb,
+		feb:     cc.FeedEventBus(),
 		cfgFile: cfgFile,
 	}
 }
@@ -352,7 +354,7 @@ func (l *DebugApi) GetPovInfo() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	l.eb.Publish(topic.EventRpcSyncCall, &topic.EventRPCSyncCallMsg{Name: "Debug.PovInfo", In: inArgs, Out: outArgs})
+	l.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Debug.PovInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {

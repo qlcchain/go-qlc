@@ -12,8 +12,11 @@ import (
 )
 
 var (
-	cache           = hashmap.New(50)
+	cache          = hashmap.New(50)
+	cacheFeedBusID = hashmap.New(50)
+
 	DefaultActorBus = NewActorEventBus()
+	DefaultFeedBus  = NewFeedEventBus()
 )
 
 func GetEventBus(id string) EventBus {
@@ -27,5 +30,19 @@ func GetEventBus(id string) EventBus {
 
 	eb := NewActorEventBus()
 	cache.Set(id, eb)
+	return eb
+}
+
+func GetFeedEventBus(id string) *FeedEventBus {
+	if id == "" {
+		return DefaultFeedBus
+	}
+
+	if v, ok := cacheFeedBusID.GetStringKey(id); ok {
+		return v.(*FeedEventBus)
+	}
+
+	eb := NewFeedEventBus()
+	cacheFeedBusID.Set(id, eb)
 	return eb
 }
