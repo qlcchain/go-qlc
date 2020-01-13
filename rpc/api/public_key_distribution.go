@@ -53,7 +53,7 @@ type VerifierUnRegParam struct {
 	VType   string        `json:"type"`
 }
 
-func (p *PublicKeyDistributionApi) GetRegisterBlock(param *VerifierRegParam) (*types.StateBlock, error) {
+func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -123,7 +123,7 @@ func (p *PublicKeyDistributionApi) GetRegisterBlock(param *VerifierRegParam) (*t
 	return send, nil
 }
 
-func (p *PublicKeyDistributionApi) GetUnregisterBlock(param *VerifierUnRegParam) (*types.StateBlock, error) {
+func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnRegParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}

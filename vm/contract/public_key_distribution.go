@@ -303,6 +303,19 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 		return nil, nil, err
 	}
 
+	// check verifier if the block is not synced
+	if !block.IsSync() {
+		err = abi.VerifierPledgeCheck(ctx, block.GetAddress())
+		if err != nil {
+			return nil, nil, err
+		}
+
+		_, err = abi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), info.OType)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	err = abi.OracleInfoCheck(ctx, block.Address, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
 	if err != nil {
 		return nil, nil, err

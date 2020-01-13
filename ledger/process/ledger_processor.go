@@ -83,7 +83,7 @@ func newBlockCheck() map[types.BlockType]blockCheck {
 	r[types.Send] = &sendBlockCheck{}
 	r[types.Receive] = &receiveBlockCheck{}
 	r[types.Change] = &changeBlockCheck{}
-	r[types.Online] = &changeBlockCheck{}
+	r[types.Online] = &onlineBlockCheck{}
 	r[types.ContractSend] = &contractSendBlockCheck{}
 	r[types.ContractReward] = &contractReceiveBlockCheck{}
 	return r
@@ -224,6 +224,33 @@ type changeBlockCheck struct {
 }
 
 func (c *changeBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+	// check link
+	if !block.Link.IsZero() {
+		return Other, fmt.Errorf("invalid link hash")
+	}
+	// check chain token
+	if block.GetToken() != common.ChainToken() {
+		return Other, fmt.Errorf("invalid token %s, common chain token is %s", block.GetToken().String(), common.ChainToken().String())
+	}
+	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
+		return r, err
+	}
+	if r, err := c.fork(lv, block); r != Progress || err != nil {
+		return r, err
+	}
+	if r, err := c.balance(lv, block); r != Progress || err != nil {
+		return r, err
+	}
+	return Progress, nil
+}
+
+type onlineBlockCheck struct {
+	blockBaseInfoCheck
+	blockForkCheck
+	blockBalanceCheck
+}
+
+func (c *onlineBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	// check link
 	if !block.Link.IsZero() {
 		return Other, fmt.Errorf("invalid link hash")

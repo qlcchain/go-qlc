@@ -93,7 +93,7 @@ func verifierRegister(accountP, vTypeP, vInfoP string) error {
 	}
 
 	var block types.StateBlock
-	err = client.Call(&block, "pkd_getRegisterBlock", param)
+	err = client.Call(&block, "pkd_getVerifierRegisterBlock", param)
 	if err != nil {
 		return err
 	}

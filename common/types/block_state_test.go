@@ -116,7 +116,9 @@ func TestStateBlock_Clone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Log(b.Balance)
+	b.Flag = BlockFlagNonSync
 	b1 := b.Clone()
 
 	if reflect.DeepEqual(b, b1) {
@@ -124,5 +126,8 @@ func TestStateBlock_Clone(t *testing.T) {
 	}
 	if b.String() != b1.String() {
 		t.Fatal("invalid clone ", b.String(), b1.String())
+	}
+	if b.Flag != b1.Flag {
+		t.Fatal()
 	}
 }

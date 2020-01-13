@@ -81,7 +81,7 @@ func verifierUnRegister(accountP, vTypeP string) error {
 	}
 
 	var block types.StateBlock
-	err = client.Call(&block, "pkd_getUnregisterBlock", param)
+	err = client.Call(&block, "pkd_getVerifierUnregisterBlock", param)
 	if err != nil {
 		return err
 	}
