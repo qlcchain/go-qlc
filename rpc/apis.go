@@ -134,9 +134,9 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewChainApi(r.ledger),
 			Public:    true,
 		}
-	case "pkd":
+	case "dpki":
 		return rpc.API{
-			Namespace: "pkd",
+			Namespace: "dpki",
 			Version:   "1.0",
 			Service:   api.NewPublicKeyDistributionApi(r.cfgFile, r.ledger),
 			Public:    true,

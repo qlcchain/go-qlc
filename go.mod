@@ -17,7 +17,6 @@ require (
 	github.com/dgraph-io/badger v1.6.0
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
-	github.com/gammazero/workerpool v0.0.0-20190608213748-0ed5e40ec55e
 	github.com/go-interpreter/wagon v0.6.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect

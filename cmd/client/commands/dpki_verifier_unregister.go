@@ -11,7 +11,7 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 )
 
-func addVerifierRegisterCmdByShell(parentCmd *ishell.Cmd) {
+func addVerifierUnRegisterCmdByShell(parentCmd *ishell.Cmd) {
 	account := util.Flag{
 		Name:  "account",
 		Must:  true,
@@ -24,17 +24,11 @@ func addVerifierRegisterCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "verifier type(email/weChat)",
 		Value: "",
 	}
-	vInfo := util.Flag{
-		Name:  "info",
-		Must:  true,
-		Usage: "verifiers address(email address/weChat ID)",
-		Value: "",
-	}
 	c := &ishell.Cmd{
-		Name: "register",
-		Help: "register verifier",
+		Name: "unregister",
+		Help: "unregister verifier",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, vType, vInfo}
+			args := []util.Flag{account, vType}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -46,9 +40,8 @@ func addVerifierRegisterCmdByShell(parentCmd *ishell.Cmd) {
 
 			accountP := util.StringVar(c.Args, account)
 			vTypeP := util.StringVar(c.Args, vType)
-			vInfoP := util.StringVar(c.Args, vInfo)
 
-			err := verifierRegister(accountP, vTypeP, vInfoP)
+			err := verifierUnRegister(accountP, vTypeP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -57,17 +50,13 @@ func addVerifierRegisterCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func verifierRegister(accountP, vTypeP, vInfoP string) error {
+func verifierUnRegister(accountP, vTypeP string) error {
 	if accountP == "" {
 		return fmt.Errorf("account can not be null")
 	}
 
 	if vTypeP == "" {
 		return fmt.Errorf("verifier type can not be null")
-	}
-
-	if vInfoP == "" {
-		return fmt.Errorf("verifier info can not be null")
 	}
 
 	accBytes, err := hex.DecodeString(accountP)
@@ -86,14 +75,13 @@ func verifierRegister(accountP, vTypeP, vInfoP string) error {
 	}
 	defer client.Close()
 
-	param := &api.VerifierRegParam{
+	param := &api.VerifierUnRegParam{
 		Account: acc.Address(),
 		VType:   vTypeP,
-		VInfo:   vInfoP,
 	}
 
 	var block types.StateBlock
-	err = client.Call(&block, "pkd_getVerifierRegisterBlock", param)
+	err = client.Call(&block, "dpki_getVerifierUnregisterBlock", param)
 	if err != nil {
 		return err
 	}
@@ -105,7 +93,7 @@ func verifierRegister(accountP, vTypeP, vInfoP string) error {
 	hash := block.GetHash()
 	block.Signature = acc.Sign(hash)
 
-	fmt.Printf("register block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
+	fmt.Printf("unregister block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &block)

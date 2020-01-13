@@ -11,7 +11,7 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 )
 
-func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
+func addUnPublishCmdByShell(parentCmd *ishell.Cmd) {
 	account := util.Flag{
 		Name:  "account",
 		Must:  true,
@@ -21,38 +21,20 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 	typ := util.Flag{
 		Name:  "type",
 		Must:  true,
-		Usage: "publish id type (email/weChat)",
+		Usage: "unPublish id type (email/weChat)",
 		Value: "",
 	}
 	id := util.Flag{
 		Name:  "id",
 		Must:  true,
-		Usage: "publish id (email address/weChat id)",
-		Value: "",
-	}
-	pk := util.Flag{
-		Name:  "pk",
-		Must:  true,
-		Usage: "publish public key",
-		Value: "",
-	}
-	code := util.Flag{
-		Name:  "code",
-		Must:  true,
-		Usage: "verification code",
-		Value: "",
-	}
-	hash := util.Flag{
-		Name:  "hash",
-		Must:  true,
-		Usage: "hash verified for",
+		Usage: "unPublish id (email address/weChat id)",
 		Value: "",
 	}
 	c := &ishell.Cmd{
-		Name: "oracle",
-		Help: "oracle publish id and key",
+		Name: "unPublish",
+		Help: "unPublish id and key",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id, pk, code, hash}
+			args := []util.Flag{account, typ, id}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -65,11 +47,8 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 			accountP := util.StringVar(c.Args, account)
 			typeP := util.StringVar(c.Args, typ)
 			idP := util.StringVar(c.Args, id)
-			pkP := util.StringVar(c.Args, pk)
-			codeP := util.StringVar(c.Args, code)
-			hashP := util.StringVar(c.Args, hash)
 
-			err := oraclePublish(accountP, typeP, idP, pkP, codeP, hashP)
+			err := unPublish(accountP, typeP, idP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -78,7 +57,7 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
+func unPublish(accountP, typeP, idP string) error {
 	if accountP == "" {
 		return fmt.Errorf("account can not be null")
 	}
@@ -89,18 +68,6 @@ func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
 
 	if idP == "" {
 		return fmt.Errorf("publish id can not be null")
-	}
-
-	if pkP == "" {
-		return fmt.Errorf("publish public key can not be null")
-	}
-
-	if codeP == "" {
-		return fmt.Errorf("verification can not be null")
-	}
-
-	if hashP == "" {
-		return fmt.Errorf("verified hash can not be null")
 	}
 
 	accBytes, err := hex.DecodeString(accountP)
@@ -119,17 +86,14 @@ func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
 	}
 	defer client.Close()
 
-	param := &api.OracleParam{
+	param := &api.UnPublishParam{
 		Account: acc.Address(),
-		OType:   typeP,
-		OID:     idP,
-		PubKey:  pkP,
-		Code:    codeP,
-		Hash:    hashP,
+		PType:   typeP,
+		PID:     idP,
 	}
 
 	var block types.StateBlock
-	err = client.Call(&block, "pkd_getOracleBlock", param)
+	err = client.Call(&block, "dpki_getUnPublishBlock", param)
 	if err != nil {
 		return err
 	}
@@ -141,7 +105,7 @@ func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
 	hash := block.GetHash()
 	block.Signature = acc.Sign(hash)
 
-	fmt.Printf("oracle block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
+	fmt.Printf("unPublish block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &block)
