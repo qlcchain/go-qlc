@@ -77,9 +77,8 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		return nil, fmt.Errorf("%s do not have qlc token", param.Account)
 	}
 
-	minPledgeAmount := types.Balance{Int: types.MinVerifierPledgeAmount}
-	if am.CoinOracle.Compare(minPledgeAmount) == types.BalanceCompSmaller {
-		return nil, fmt.Errorf("%s have not enough oracle pledge %s, expect %s", param.Account, am.CoinOracle, minPledgeAmount)
+	if am.CoinOracle.Compare(types.MinVerifierPledgeAmount) == types.BalanceCompSmaller {
+		return nil, fmt.Errorf("%s have not enough oracle pledge %s, expect %s", param.Account, am.CoinOracle, types.MinVerifierPledgeAmount)
 	}
 
 	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, vt, param.VInfo)
@@ -605,9 +604,8 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		return nil, fmt.Errorf("%s do not have gas token", param.Account)
 	}
 
-	oracleCost := types.Balance{Int: types.OracleCost}
-	if tm.Balance.Compare(oracleCost) == types.BalanceCompSmaller {
-		return nil, fmt.Errorf("%s have not enough qgas %s, expect %s", param.Account, tm.Balance, oracleCost)
+	if tm.Balance.Compare(types.OracleCost) == types.BalanceCompSmaller {
+		return nil, fmt.Errorf("%s have not enough qgas %s, expect %s", param.Account, tm.Balance, types.OracleCost)
 	}
 
 	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, param.Code, hash)
@@ -624,7 +622,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		Type:           types.ContractSend,
 		Token:          tm.Type,
 		Address:        param.Account,
-		Balance:        tm.Balance.Sub(oracleCost),
+		Balance:        tm.Balance.Sub(types.OracleCost),
 		Previous:       tm.Header,
 		Link:           types.Hash(types.PubKeyDistributionAddress),
 		Representative: tm.Representative,

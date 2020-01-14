@@ -141,8 +141,7 @@ func VerifierPledgeCheck(ctx *vmstore.VMContext, account types.Address) error {
 		return err
 	}
 
-	minPledgeAmount := types.Balance{Int: types.MinVerifierPledgeAmount}
-	if am.CoinOracle.Compare(minPledgeAmount) == types.BalanceCompSmaller {
+	if am.CoinOracle.Compare(types.MinVerifierPledgeAmount) == types.BalanceCompSmaller {
 		return fmt.Errorf("%s have not enough oracle pledge %s", account, am.CoinOracle)
 	}
 
@@ -731,8 +730,7 @@ type PubKeyInfo struct {
 func PublishInfoCheck(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte, fee types.Balance) error {
 	switch pt {
 	case types.OracleTypeEmail, types.OracleTypeWeChat:
-		publishCost := types.Balance{Int: types.PublishCost}
-		if fee.Compare(publishCost) == types.BalanceCompSmaller {
+		if fee.Compare(types.PublishCost) == types.BalanceCompSmaller {
 			return fmt.Errorf("fee is not enough")
 		}
 
@@ -769,14 +767,11 @@ func CheckPublishKeyRegistered(ctx *vmstore.VMContext, account types.Address, pt
 
 	pis := GetPublishInfoByTypeAndId(ctx, pt, id)
 	if pis != nil {
-		piNum := len(pis)
-		if piNum == 1 {
-			if bytes.Equal(account[:], pis[0].Account[:]) && bytes.Equal(pk, pis[0].PubKey) {
+		for _, pi := range pis {
+			if bytes.Equal(account[:], pi.Account[:]) && bytes.Equal(pk, pi.PubKey) {
 				return fmt.Errorf("you have regisered the pubkey(%s) for id(%s) of kind(%s)",
 					types.NewHexBytesFromData(pk), id, typeStr)
 			}
-		} else if piNum > 1 {
-			return fmt.Errorf("id(%s) of kind(%s) has been registered by more than one user", id, typeStr)
 		}
 	}
 

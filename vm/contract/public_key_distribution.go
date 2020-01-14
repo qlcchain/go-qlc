@@ -2,6 +2,7 @@ package contract
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -13,6 +14,10 @@ type VerifierRegister struct {
 }
 
 func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if block.GetToken() != common.ChainToken() {
+		return nil, nil, fmt.Errorf("not qlc chain")
+	}
+
 	reg := new(abi.VerifierRegInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(reg, abi.MethodNamePKDVerifierRegister, block.Data)
 	if err != nil {
@@ -81,6 +86,10 @@ type VerifierUnregister struct {
 }
 
 func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if block.GetToken() != common.ChainToken() {
+		return nil, nil, fmt.Errorf("not qlc chain")
+	}
+
 	reg := new(abi.VerifierRegInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(reg, abi.MethodNamePKDVerifierUnregister, block.Data)
 	if err != nil {
@@ -149,6 +158,10 @@ type Publish struct {
 }
 
 func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if block.GetToken() != common.GasToken() {
+		return nil, nil, fmt.Errorf("not gas chain")
+	}
+
 	info := new(abi.PublishInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDPublish, block.GetData())
 	if err != nil {
@@ -226,6 +239,10 @@ type UnPublish struct {
 }
 
 func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if block.GetToken() != common.GasToken() {
+		return nil, nil, fmt.Errorf("not gas chain")
+	}
+
 	info := new(abi.UnPublishInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDUnPublish, block.GetData())
 	if err != nil {
@@ -297,6 +314,10 @@ type Oracle struct {
 }
 
 func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if block.GetToken() != common.GasToken() {
+		return nil, nil, fmt.Errorf("not gas chain")
+	}
+
 	info := new(abi.OracleInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDOracle, block.GetData())
 	if err != nil {
@@ -326,9 +347,8 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 		return nil, nil, err
 	}
 
-	fee := types.Balance{Int: types.OracleCost}
-	if amount.Compare(fee) != types.BalanceCompEqual {
-		return nil, nil, fmt.Errorf("balance(exp:%s-%s) wrong", fee, amount)
+	if amount.Compare(types.OracleCost) != types.BalanceCompEqual {
+		return nil, nil, fmt.Errorf("balance(exp:%s-%s) wrong", types.OracleCost, amount)
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
