@@ -6,8 +6,10 @@ import (
 )
 
 const (
-	PovStatePrefixAcc = byte(1)
-	PovStatePrefixRep = byte(2)
+	PovStatePrefixAcc   = byte(1)
+	PovStatePrefixRep   = byte(2)
+	PovStatePrefixPKDPS = byte(3) // PKD publish state
+	PovStatePrefixPKDVS = byte(4) // PKD verifier state
 
 	PovStatusOffline = 0
 	PovStatusOnline  = 1
@@ -39,6 +41,11 @@ func PovCreateRepStateKey(address Address) []byte {
 
 func PovStateKeyToAddress(key []byte) (Address, error) {
 	return BytesToAddress(key[2:])
+}
+
+type PovStateSerdeser interface {
+	Serialize() ([]byte, error)
+	Deserialize(text []byte) error
 }
 
 //go:generate msgp
@@ -208,4 +215,59 @@ func (rs *PovRepState) CalcTotal() Balance {
 func (rs *PovRepState) String() string {
 	return fmt.Sprintf("{Account:%s, Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s, Total:%s, Status:%d, Height:%d}",
 		rs.Account, rs.Balance, rs.Vote, rs.Network, rs.Storage, rs.Oracle, rs.Total, rs.Status, rs.Height)
+}
+
+const (
+	PovPublishStatusInit     = 0
+	PovPublishStatusVerified = 1
+)
+
+// key = type + id + pubkey + sendBlockHash
+type PovPublishState struct {
+	OracleAccounts []Address `msg:"oas,extension" json:"oracleAccounts"`
+	VerifiedHeight uint64    `msg:"vh" json:"verifiedHeight"`
+	VerifiedStatus int8      `msg:"vs" json:"verifiedStatus"`
+	BonusFee       *BigNum   `msg:"bf,extension" json:"bonusFee"`
+}
+
+func NewPovPublishState() *PovPublishState {
+	ps := new(PovPublishState)
+	ps.VerifiedStatus = PovPublishStatusInit
+	return ps
+}
+
+func (ps *PovPublishState) Serialize() ([]byte, error) {
+	return ps.MarshalMsg(nil)
+}
+
+func (ps *PovPublishState) Deserialize(text []byte) error {
+	_, err := ps.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// key = address
+type PovVerifierState struct {
+	TotalVerify uint64  `msg:"tv" json:"totalVerify"`
+	TotalReward *BigNum `msg:"tr,extension" json:"totalReward"`
+}
+
+func NewPovVerifierState() *PovVerifierState {
+	vs := new(PovVerifierState)
+	vs.TotalReward = NewBigNumFromInt(0)
+	return vs
+}
+
+func (vs *PovVerifierState) Serialize() ([]byte, error) {
+	return vs.MarshalMsg(nil)
+}
+
+func (vs *PovVerifierState) Deserialize(text []byte) error {
+	_, err := vs.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
 }

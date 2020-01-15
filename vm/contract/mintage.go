@@ -22,7 +22,7 @@ import (
 )
 
 type Mintage struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (m *Mintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -165,7 +165,7 @@ func (m *Mintage) GetRefundData() []byte {
 }
 
 type WithdrawMintage struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (m *WithdrawMintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {

@@ -804,6 +804,28 @@ func CheckPublishInfoExist(ctx *vmstore.VMContext, account types.Address, pt uin
 	return true
 }
 
+func GetPublishInfoByKey(ctx *vmstore.VMContext, pt uint32, pid types.Hash, pk []byte, blkHash types.Hash) *PubKeyInfo {
+	var key []byte
+	key = append(key, PKDStorageTypePublisher)
+	key = append(key, util.BE_Uint32ToBytes(pt)...)
+	key = append(key, pid[:]...)
+	key = append(key, pk...)
+	key = append(key, blkHash.Bytes()...)
+
+	data, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	if err != nil {
+		return nil
+	}
+
+	var info PubKeyInfo
+	err = PublicKeyDistributionABI.UnpackVariable(&info, VariableNamePKDPublishInfo, data)
+	if err != nil || !info.Valid {
+		return nil
+	}
+
+	return &info
+}
+
 func GetPublishInfoByTypeAndId(ctx *vmstore.VMContext, pt uint32, id types.Hash) []*PublishInfo {
 	pis := make([]*PublishInfo, 0)
 

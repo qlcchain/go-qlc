@@ -17,7 +17,7 @@ import (
 )
 
 type AirdropRewords struct {
-	NoSignWithPending
+	BaseContract
 }
 
 func (ar *AirdropRewords) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -55,7 +55,7 @@ func (*AirdropRewords) GetRefundData() []byte {
 }
 
 type ConfidantRewards struct {
-	NoSignWithPending
+	BaseContract
 }
 
 func (*ConfidantRewards) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {

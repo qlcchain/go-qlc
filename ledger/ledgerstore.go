@@ -35,6 +35,7 @@ type Store interface {
 	GetTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error)
 	UpdateTokenMeta(address types.Address, meta *types.TokenMeta, txns ...db.StoreTxn) error
 	DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error
+	HasTokenMeta(address types.Address, token types.Hash, txns ...db.StoreTxn) (bool, error)
 	// state block CURD
 	AddStateBlock(blk *types.StateBlock, txns ...db.StoreTxn) error
 	GetStateBlock(hash types.Hash, txns ...db.StoreTxn) (*types.StateBlock, error)

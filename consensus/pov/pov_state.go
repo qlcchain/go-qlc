@@ -4,110 +4,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/trie"
+	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
-
-type PovStateDB struct {
-	treeRoot *trie.Trie
-	asCache  map[types.Address]*types.PovAccountState
-	rsCache  map[types.Address]*types.PovRepState
-}
-
-func NewPovStateDB(t *trie.Trie) *PovStateDB {
-	return &PovStateDB{
-		treeRoot: t,
-		asCache:  make(map[types.Address]*types.PovAccountState),
-		rsCache:  make(map[types.Address]*types.PovRepState),
-	}
-}
-
-func (sdb *PovStateDB) SetAccountState(address types.Address, as *types.PovAccountState) error {
-	as.Account = address
-	sdb.asCache[address] = as
-	return nil
-}
-
-func (sdb *PovStateDB) GetAccountState(address types.Address) (*types.PovAccountState, error) {
-	if as := sdb.asCache[address]; as != nil {
-		return as, nil
-	}
-
-	keyBytes := types.PovCreateAccountStateKey(address)
-	valBytes := sdb.treeRoot.GetValue(keyBytes)
-	if len(valBytes) == 0 {
-		return nil, errors.New("trie get value return empty")
-	}
-
-	as := types.NewPovAccountState()
-	err := as.Deserialize(valBytes)
-	if err != nil {
-		return nil, fmt.Errorf("deserialize account state err %s", err)
-	}
-	sdb.asCache[address] = as
-
-	return as, nil
-}
-
-func (sdb *PovStateDB) SetRepState(address types.Address, rs *types.PovRepState) error {
-	rs.Account = address
-	sdb.rsCache[address] = rs
-	return nil
-}
-
-func (sdb *PovStateDB) GetRepState(address types.Address) (*types.PovRepState, error) {
-	if rs := sdb.rsCache[address]; rs != nil {
-		return rs, nil
-	}
-
-	keyBytes := types.PovCreateRepStateKey(address)
-	valBytes := sdb.treeRoot.GetValue(keyBytes)
-	if len(valBytes) == 0 {
-		return nil, errors.New("trie get value return empty")
-	}
-
-	rs := types.NewPovRepState()
-	err := rs.Deserialize(valBytes)
-	if err != nil {
-		return nil, fmt.Errorf("deserialize rep state err %s", err)
-	}
-	sdb.rsCache[address] = rs
-
-	return rs, nil
-}
-
-func (sdb *PovStateDB) CommitToTrie() error {
-	for address, as := range sdb.asCache {
-		valBytes, err := as.Serialize()
-		if err != nil {
-			return fmt.Errorf("serialize new account state err %s", err)
-		}
-		if len(valBytes) == 0 {
-			return errors.New("serialize new account state got empty value")
-		}
-
-		keyBytes := types.PovCreateAccountStateKey(address)
-		sdb.treeRoot.SetValue(keyBytes, valBytes)
-	}
-
-	for address, rs := range sdb.rsCache {
-		valBytes, err := rs.Serialize()
-		if err != nil {
-			return fmt.Errorf("serialize new rep state err %s", err)
-		}
-		if len(valBytes) == 0 {
-			return errors.New("serialize new rep state got empty value")
-		}
-
-		keyBytes := types.PovCreateRepStateKey(address)
-		sdb.treeRoot.SetValue(keyBytes, valBytes)
-	}
-
-	return nil
-}
 
 func (bc *PovBlockChain) TrieDb() db.Store {
 	return bc.getLedger().DBStore()
@@ -134,7 +38,7 @@ func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash,
 		return nil, errors.New("failed to make current trie by clone prev trie")
 	}
 
-	sdb := NewPovStateDB(currentTrie)
+	sdb := statedb.NewPovStateDB(currentTrie)
 
 	for _, tx := range txs {
 		err := bc.ApplyTransaction(height, sdb, tx.Block)
@@ -153,7 +57,7 @@ func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash,
 	return currentTrie, nil
 }
 
-func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *PovStateDB, stateBlock *types.StateBlock) error {
+func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovStateDB, stateBlock *types.StateBlock) error {
 	var err error
 
 	oldAs, _ := sdb.GetAccountState(stateBlock.GetAddress())
@@ -183,10 +87,15 @@ func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *PovStateDB, stateB
 		}
 	}
 
+	err = bc.updateContractState(height, sdb, stateBlock)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (bc *PovBlockChain) updateAccountState(sdb *PovStateDB, block *types.StateBlock,
+func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovStateDB, block *types.StateBlock,
 	oldAs *types.PovAccountState, newAs *types.PovAccountState) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
@@ -237,7 +146,7 @@ func (bc *PovBlockChain) updateAccountState(sdb *PovStateDB, block *types.StateB
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepState(sdb *PovStateDB, block *types.StateBlock,
+func (bc *PovBlockChain) updateRepState(sdb *statedb.PovStateDB, block *types.StateBlock,
 	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	if block.GetToken() != common.ChainToken() {
 		return nil
@@ -312,7 +221,7 @@ func (bc *PovBlockChain) updateRepState(sdb *PovStateDB, block *types.StateBlock
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *PovStateDB, block *types.StateBlock,
+func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovStateDB, block *types.StateBlock,
 	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	var newRs *types.PovRepState
 
@@ -329,6 +238,39 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *PovStateDB, block *
 	err := sdb.SetRepState(block.GetAddress(), newRs)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStateDB, txBlock *types.StateBlock) error {
+	if !txBlock.IsContractBlock() {
+		return nil
+	}
+
+	ca := types.Address(txBlock.Link)
+	cf, ok, err := contract.GetChainContract(ca, txBlock.Data)
+	if !ok || err != nil {
+		bc.logger.Errorf("failed to get chain contract err %s", err)
+		return err
+	}
+
+	if !cf.GetDescribe().WithPovState() {
+		return nil
+	}
+
+	if txBlock.GetType() == types.ContractSend {
+		vmCtx := vmstore.NewVMContext(bc.ledger)
+		err = cf.DoSendOnPov(vmCtx, sdb, height, txBlock)
+		if err != nil {
+			return err
+		}
+	} else if txBlock.GetType() == types.ContractReward {
+		vmCtx := vmstore.NewVMContext(bc.ledger)
+		err = cf.DoReceiveOnPov(vmCtx, sdb, height, txBlock)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

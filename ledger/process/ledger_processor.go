@@ -10,8 +10,6 @@ package process
 import (
 	"errors"
 	"fmt"
-	"reflect"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -350,24 +348,25 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 		}
 	case types.ContractSend:
 		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
-			switch v := c.(type) {
-			case contract.ChainContractV1:
-				if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
+			d := c.GetDescribe()
+			switch d.GetVersion() {
+			case contract.SpecVer1:
+				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
 						return err
 					}
 				}
-			case contract.ChainContractV2:
+			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
-				if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
+				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
 						return err
 					}
 				}
 			default:
-				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+				return fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
 			}
 		}
 	case types.ContractReward:
@@ -515,9 +514,10 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 			}
 			clone := block.Clone()
 			vmCtx := vmstore.NewVMContext(lv.l)
-			switch v := c.(type) {
-			case contract.InternalContract:
-				g, err := v.DoReceive(vmCtx, clone, input)
+			d := c.GetDescribe()
+			switch d.GetVersion() {
+			case contract.SpecVer1:
+				g, err := c.DoReceive(vmCtx, clone, input)
 				if err != nil {
 					lv.logger.Warn("DoReceive error: ", err)
 					return err
@@ -540,15 +540,16 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 				}
 				return errors.New("invalid contract data")
 			default:
-				return fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+				return fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
 			}
 		case types.ContractSend:
 			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data)
 			if ok && err == nil {
-				switch v := c.(type) {
-				case contract.ChainContractV2:
+				d := c.GetDescribe()
+				switch d.GetVersion() {
+				case contract.SpecVer2:
 					vmCtx := vmstore.NewVMContext(lv.l)
-					if _, _, err := v.ProcessSend(vmCtx, block); err == nil {
+					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
 						if err := vmCtx.SaveStorage(txn); err != nil {
 							lv.logger.Error("save storage error: ", err)
 							return err

@@ -3,8 +3,6 @@ package process
 import (
 	"errors"
 	"fmt"
-	"reflect"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -177,9 +175,9 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 				}
 			case types.ContractSend:
 				if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
-					switch v := c.(type) {
-					case contract.ChainContractV1:
-						if pendingKey, pendingInfo, err := v.DoPending(block); err == nil && pendingKey != nil {
+					switch c.GetDescribe().GetVersion() {
+					case contract.SpecVer1:
+						if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 							if _, err := lv.l.GetPending(pendingKey); err == ledger.ErrPendingNotFound {
 								lv.logger.Info("sync done, add pending contract1, ", pendingKey)
 								if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
@@ -190,9 +188,9 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 								lv.logger.Info("sync done, pending already exists, ", pendingKey)
 							}
 						}
-					case contract.ChainContractV2:
+					case contract.SpecVer2:
 						vmCtx := vmstore.NewVMContext(lv.l)
-						if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
+						if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 							if _, err := lv.l.GetPending(pendingKey); err == ledger.ErrPendingNotFound {
 								lv.logger.Info("sync done, add pending contract2, ", pendingKey)
 								if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
@@ -204,7 +202,7 @@ func (lv *LedgerVerifier) BlockSyncDoneProcess(block *types.StateBlock) error {
 							}
 						}
 					default:
-						lv.logger.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+						lv.logger.Errorf("unsupported chain contract version %s", c.GetDescribe().GetVersion())
 						return errors.New("unsupported chain contract")
 					}
 				}

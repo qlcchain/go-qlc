@@ -136,7 +136,6 @@ type DPoS struct {
 	lockPool            *sync.Map
 	feb                 *event.FeedEventBus
 	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
-	febRpcMsgSubID      event.FeedSubscription
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -233,11 +232,6 @@ func (dps *DPoS) Init() {
 		dps.subscriber = subscriber
 	}
 
-	dps.febRpcMsgSubID = dps.feb.Subscribe(topic.EventRpcSyncCall, dps.febRpcMsgCh)
-	if dps.febRpcMsgSubID == nil {
-		dps.logger.Errorf("failed to subscribe EventRpcSyncCall")
-	}
-
 	if dps.cfg.PoV.PovEnabled {
 		dps.povSyncState = topic.SyncNotStart
 
@@ -294,10 +288,10 @@ func (dps *DPoS) Start() {
 			dps.checkSyncFinished()
 		case bs := <-dps.gapPovCh:
 			if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
-				switch cType := c.(type) {
-				case contract.ChainContractV2:
+				switch c.GetDescribe().GetVersion() {
+				case contract.SpecVer2:
 					vmCtx := vmstore.NewVMContext(dps.ledger)
-					height, _ := cType.DoGapPov(vmCtx, bs.Block)
+					height, _ := c.DoGapPov(vmCtx, bs.Block)
 					if height > 0 {
 						dps.logger.Infof("add gap pov[%s][%d]", bs.Block.GetHash(), height)
 						err := dps.ledger.AddGapPovBlock(height, bs.Block, bs.BlockFrom)
@@ -390,7 +384,6 @@ func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
 
 	//do this first
-	dps.febRpcMsgSubID.Unsubscribe()
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
 		dps.logger.Error(err)
 	}

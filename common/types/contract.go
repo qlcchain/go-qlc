@@ -8,6 +8,12 @@ const (
 
 const RandomCodeLen = 16
 
+const (
+	OracleExpirePovHeight  = 10
+	OracleVerifyMinAccount = 3
+	OracleVerifyMaxAccount = 5
+)
+
 var (
 	MinVerifierPledgeAmount = NewBalance(3e+14) // 3M
 	OracleCost              = NewBalance(1e+7)  // 0.1
