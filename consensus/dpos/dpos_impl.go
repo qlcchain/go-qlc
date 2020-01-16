@@ -135,7 +135,6 @@ type DPoS struct {
 	lockPool            *sync.Map
 	feb                 *event.FeedEventBus
 	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
-	febRpcMsgSubID      event.FeedSubscription
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -230,11 +229,6 @@ func (dps *DPoS) Init() {
 		dps.logger.Errorf("failed to subscribe event %s", err)
 	} else {
 		dps.subscriber = subscriber
-	}
-
-	dps.febRpcMsgSubID = dps.feb.Subscribe(topic.EventRpcSyncCall, dps.febRpcMsgCh)
-	if dps.febRpcMsgSubID == nil {
-		dps.logger.Errorf("failed to subscribe EventRpcSyncCall")
 	}
 
 	if dps.cfg.PoV.PovEnabled {
@@ -374,7 +368,6 @@ func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
 
 	//do this first
-	dps.febRpcMsgSubID.Unsubscribe()
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
 		dps.logger.Error(err)
 	}

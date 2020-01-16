@@ -6,6 +6,18 @@ type BigNum struct {
 	big.Int
 }
 
+func NewBigNumFromInt(x int64) *BigNum {
+	bn := new(BigNum)
+	bn.Int.SetInt64(x)
+	return bn
+}
+
+func NewBigNumFromUint(x uint64) *BigNum {
+	bn := new(BigNum)
+	bn.Int.SetUint64(x)
+	return bn
+}
+
 func NewBigNumFromBigInt(int *big.Int) *BigNum {
 	bn := new(BigNum)
 	bn.Int.SetBytes(int.Bytes())
@@ -41,6 +53,26 @@ func (bn *BigNum) Sub(x *BigNum, y *BigNum) *BigNum {
 
 func (bn *BigNum) SubBigInt(x *big.Int, y *big.Int) *BigNum {
 	bn.Int.Sub(x, y)
+	return bn
+}
+
+func (bn *BigNum) Div(x *BigNum, y *BigNum) *BigNum {
+	bn.Int.Div(&x.Int, &y.Int)
+	return bn
+}
+
+func (bn *BigNum) DivBigInt(x *big.Int, y *big.Int) *BigNum {
+	bn.Int.Div(x, y)
+	return bn
+}
+
+func (bn *BigNum) Mul(x *BigNum, y *BigNum) *BigNum {
+	bn.Int.Mul(&x.Int, &y.Int)
+	return bn
+}
+
+func (bn *BigNum) MulBigInt(x *big.Int, y *big.Int) *BigNum {
+	bn.Int.Mul(x, y)
 	return bn
 }
 

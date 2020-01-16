@@ -649,10 +649,11 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 		}
 	case process.GapPovHeight:
 		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
-			switch cType := c.(type) {
-			case contract.ChainContractV2:
+			d := c.GetDescribe()
+			switch d.GetVersion() {
+			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(dps.ledger)
-				gapResult, gapInfo, err := cType.DoGap(vmCtx, bs.Block)
+				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
 				if err != nil || gapResult != common.ContractRewardGapPov {
 					dps.logger.Errorf("add gap pov block to ledger err %s", err)
 				}

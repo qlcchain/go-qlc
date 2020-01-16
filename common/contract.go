@@ -18,6 +18,12 @@ const (
 	ContractDPKIGapPublish
 )
 
+const (
+	OracleExpirePovHeight  = 10
+	OracleVerifyMinAccount = 3
+	OracleVerifyMaxAccount = 5
+)
+
 var (
 	MinVerifierPledgeAmount = types.NewBalance(3e+14) // 3M
 	OracleCost              = types.NewBalance(1e+7)  // 0.1

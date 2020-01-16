@@ -1,8 +1,10 @@
 package contract
 
 import (
+	"errors"
 	"fmt"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -10,7 +12,7 @@ import (
 )
 
 type VerifierRegister struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -82,7 +84,7 @@ func (vr *VerifierRegister) DoReceive(ctx *vmstore.VMContext, block *types.State
 }
 
 type VerifierUnregister struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -154,7 +156,7 @@ func (vu *VerifierUnregister) DoReceive(ctx *vmstore.VMContext, block *types.Sta
 }
 
 type Publish struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -235,7 +237,7 @@ func (p *Publish) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 }
 
 type UnPublish struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -315,7 +317,7 @@ func (up *UnPublish) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, 
 }
 
 type Oracle struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -415,4 +417,86 @@ func (o *Oracle) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.
 
 func (o *Oracle) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return nil, nil
+}
+
+func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock) error {
+	oraInfo := new(abi.OracleInfo)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(oraInfo, abi.MethodNamePKDOracle, block.GetData())
+	if err != nil {
+		return err
+	}
+
+	var psRawKey []byte
+	psRawKey = append(psRawKey, util.BE_Uint32ToBytes(oraInfo.OType)...)
+	psRawKey = append(psRawKey, oraInfo.OID[:]...)
+	psRawKey = append(psRawKey, oraInfo.PubKey...)
+	psRawKey = append(psRawKey, oraInfo.Hash.Bytes()...)
+
+	psKey := types.PovCreateStateKey(types.PovStatePrefixPKDPS, psRawKey)
+	psVal, _ := sdb.GetPublishState(psKey)
+	if psVal == nil {
+		psVal = types.NewPovPublishState()
+
+		pubInfo := abi.GetPublishInfoByKey(ctx, oraInfo.OType, oraInfo.OID, oraInfo.PubKey, oraInfo.Hash)
+		if pubInfo == nil {
+			return errors.New("publish info not exist")
+		}
+
+		psVal.BonusFee = types.NewBigNumFromBigInt(pubInfo.Fee)
+	}
+
+	if psVal.VerifiedStatus == types.PovPublishStatusVerified {
+		if povHeight > psVal.VerifiedHeight+common.OracleExpirePovHeight {
+			return nil
+		}
+		if len(psVal.OracleAccounts) >= common.OracleVerifyMaxAccount {
+			return nil
+		}
+	}
+
+	for _, oa := range psVal.OracleAccounts {
+		if oa == block.Address {
+			return nil
+		}
+	}
+	psVal.OracleAccounts = append(psVal.OracleAccounts, block.Address)
+
+	vsChangeAddrs := make([]types.Address, 0)
+
+	if psVal.VerifiedStatus == types.PovPublishStatusInit {
+		if len(psVal.OracleAccounts) >= common.OracleVerifyMinAccount {
+			psVal.VerifiedStatus = types.PovPublishStatusVerified
+			psVal.VerifiedHeight = povHeight
+
+			vsChangeAddrs = psVal.OracleAccounts
+		}
+	} else {
+		vsChangeAddrs = append(vsChangeAddrs, block.Address)
+	}
+
+	err = sdb.SetPublishState(psKey, psVal)
+
+	// update verifier state
+	divBonusFee := new(types.BigNum).Div(psVal.BonusFee, types.NewBigNumFromInt(5))
+	for _, vsAddr := range vsChangeAddrs {
+		var vsRawKey []byte
+		vsRawKey = append(vsRawKey, vsAddr.Bytes()...)
+
+		vsKey := types.PovCreateStateKey(types.PovStatePrefixPKDPS, vsRawKey)
+
+		vsVal, _ := sdb.GetVerifierState(vsKey)
+		if vsVal == nil {
+			vsVal = types.NewPovVerifierState()
+		}
+
+		vsVal.TotalVerify += 1
+		vsVal.TotalReward = new(types.BigNum).Add(vsVal.TotalReward, divBonusFee)
+
+		err = sdb.SetVerifierState(vsRawKey, vsVal)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

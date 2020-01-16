@@ -12,7 +12,7 @@ import (
 )
 
 type MinerReward struct {
-	WithSignAndPending
+	BaseContract
 }
 
 func (m *MinerReward) GetLastRewardHeight(ctx *vmstore.VMContext, coinbase types.Address) (uint64, error) {

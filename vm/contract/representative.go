@@ -12,7 +12,7 @@ import (
 )
 
 type RepReward struct {
-	WithSignAndPending
+	BaseContract
 }
 
 func (r *RepReward) GetLastRewardHeight(ctx *vmstore.VMContext, account types.Address) (uint64, error) {
