@@ -74,7 +74,7 @@ type Contract interface {
 	DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error)
 
 	DoSendOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock) error
-	DoReceiveOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock) error
+	DoReceiveOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock, input *types.StateBlock) error
 }
 
 type BaseContract struct {
@@ -122,7 +122,7 @@ func (c *BaseContract) DoSendOnPov(ctx *vmstore.VMContext, sdb *statedb.PovState
 	return errors.New("not implemented")
 }
 
-func (c *BaseContract) DoReceiveOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock) error {
+func (c *BaseContract) DoReceiveOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock, input *types.StateBlock) error {
 	return errors.New("not implemented")
 }
 

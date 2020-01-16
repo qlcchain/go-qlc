@@ -514,34 +514,28 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 			}
 			clone := block.Clone()
 			vmCtx := vmstore.NewVMContext(lv.l)
-			d := c.GetDescribe()
-			switch d.GetVersion() {
-			case contract.SpecVer1:
-				g, err := c.DoReceive(vmCtx, clone, input)
-				if err != nil {
-					lv.logger.Warn("DoReceive error: ", err)
-					return err
-				}
-				if len(g) > 0 {
-					ctx := g[0].VMContext
-					if ctx != nil {
-						err := ctx.SaveStorage(txn)
-						if err != nil {
-							lv.logger.Error("save storage error: ", err)
-							return err
-						}
-						err = ctx.SaveTrie(txn)
-						if err != nil {
-							lv.logger.Error("save trie error: ", err)
-							return err
-						}
-						return nil
-					}
-				}
-				return errors.New("invalid contract data")
-			default:
-				return fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
+			g, err := c.DoReceive(vmCtx, clone, input)
+			if err != nil {
+				lv.logger.Warn("DoReceive error: ", err)
+				return err
 			}
+			if len(g) > 0 {
+				ctx := g[0].VMContext
+				if ctx != nil {
+					err := ctx.SaveStorage(txn)
+					if err != nil {
+						lv.logger.Error("save storage error: ", err)
+						return err
+					}
+					err = ctx.SaveTrie(txn)
+					if err != nil {
+						lv.logger.Error("save trie error: ", err)
+						return err
+					}
+					return nil
+				}
+			}
+			return errors.New("invalid contract data")
 		case types.ContractSend:
 			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data)
 			if ok && err == nil {

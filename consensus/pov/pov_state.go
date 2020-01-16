@@ -244,13 +244,33 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovStateDB,
 }
 
 func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStateDB, txBlock *types.StateBlock) error {
-	if !txBlock.IsContractBlock() {
+	var sendBlk *types.StateBlock
+	var methodSig []byte
+	var err error
+
+	ca := types.Address{}
+	if txBlock.GetType() == types.ContractSend {
+		ca = types.Address(txBlock.GetLink())
+		methodSig = txBlock.GetData()
+	} else if txBlock.GetType() == types.ContractReward {
+		sendBlk, err = bc.ledger.GetStateBlockConfirmed(txBlock.GetLink())
+		if err != nil {
+			bc.logger.Errorf("failed to get chain contract send block err %s", err)
+			return err
+		}
+		ca = types.Address(sendBlk.GetLink())
+		methodSig = sendBlk.GetData()
+	} else {
 		return nil
 	}
 
-	ca := types.Address(txBlock.Link)
-	cf, ok, err := contract.GetChainContract(ca, txBlock.Data)
-	if !ok || err != nil {
+	cf, ok, err := contract.GetChainContract(ca, methodSig)
+	if err != nil {
+		bc.logger.Errorf("failed to get chain contract err %s", err)
+		return err
+	}
+	if !ok {
+		err := fmt.Errorf("chain contract method %s not exist", hex.EncodeToString(txBlock.Data[0:4]))
 		bc.logger.Errorf("failed to get chain contract err %s", err)
 		return err
 	}
@@ -267,7 +287,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStat
 		}
 	} else if txBlock.GetType() == types.ContractReward {
 		vmCtx := vmstore.NewVMContext(bc.ledger)
-		err = cf.DoReceiveOnPov(vmCtx, sdb, height, txBlock)
+		err = cf.DoReceiveOnPov(vmCtx, sdb, height, txBlock, sendBlk)
 		if err != nil {
 			return err
 		}
