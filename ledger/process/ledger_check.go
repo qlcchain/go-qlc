@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/common"
 	"reflect"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -746,7 +746,7 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 }
 
 func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	//check smart c exist
+	// check smart c exist
 	address := types.Address(block.GetLink())
 
 	if !contract.IsChainContract(address) {
@@ -755,7 +755,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 		}
 	}
 
-	//verify data
+	// verify data
 	if c, ok, err := contract.GetChainContract(address, block.Data); ok && err == nil {
 		clone := block.Clone()
 		vmCtx := vmstore.NewVMContext(lv.l)
@@ -773,25 +773,16 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 				return Other, err
 			}
 		case contract.ChainContractV2:
-			if types.IsRewardContractAddress(types.Address(block.GetLink())) {
-				h, err := v.DoGapPov(vmCtx, clone)
-				if err != nil {
-					lv.logger.Errorf("do gapPov error: %s", err)
-					return Other, err
-				}
-				if h != 0 {
+			if gapResult, _, err := v.DoGap(vmCtx, clone); err == nil {
+				switch gapResult {
+				case common.ContractRewardGapPov:
 					return GapPovHeight, nil
+				case common.ContractDPKIGapPublish:
+					return GapPublish, nil
 				}
-			}
-
-			if types.PubKeyDistributionAddress == types.Address(block.GetLink()) {
-				info := new(abi.OracleInfo)
-				err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDOracle, block.GetData())
-				if err == nil {
-					if has, _ := lv.l.HasStateBlockConfirmed(info.Hash); !has {
-						return GapPublish, nil
-					}
-				}
+			} else {
+				lv.logger.Errorf("do gap error: %s", err)
+				return Other, err
 			}
 
 			if _, _, err := v.ProcessSend(vmCtx, clone); err == nil {
@@ -809,7 +800,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 			return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
 		}
 	} else {
-		//call vm.Run();
+		// call vm.Run();
 		return Other, fmt.Errorf("can not find chain contract %s", address.String())
 	}
 }

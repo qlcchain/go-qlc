@@ -26,7 +26,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -292,21 +291,6 @@ func (dps *DPoS) Start() {
 			go dps.refreshAccount()
 		case <-dps.checkFinish:
 			dps.checkSyncFinished()
-		case bs := <-dps.gapPovCh:
-			if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
-				switch cType := c.(type) {
-				case contract.ChainContractV2:
-					vmCtx := vmstore.NewVMContext(dps.ledger)
-					height, _ := cType.DoGapPov(vmCtx, bs.Block)
-					if height > 0 {
-						dps.logger.Infof("add gap pov[%s][%d]", bs.Block.GetHash(), height)
-						err := dps.ledger.AddGapPovBlock(height, bs.Block, bs.BlockFrom)
-						if err != nil {
-							dps.logger.Errorf("add gap pov block to ledger err %s", err)
-						}
-					}
-				}
-			}
 		case pb := <-dps.povChange:
 			dps.logger.Infof("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 			dps.curPovHeight = pb.Header.BasHdr.Height
@@ -1305,36 +1289,31 @@ func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
 		return true
 	}
 
-	if blocks, kind, err := dps.ledger.GetGapPovBlock(height); err != nil {
-		return true
-	} else {
-		if len(blocks) == 0 {
-			return true
+	dayIndex := uint32((height - common.PovMinerRewardHeightGapToLatest) / uint64(common.POVChainBlocksPerDay))
+	if !dps.ledger.HasPovMinerStat(dayIndex) {
+		dps.logger.Infof("miner stat [%d] not exist", dayIndex)
+		return false
+	}
+
+	_ = dps.ledger.WalkGapPovBlocksWithHeight(height, func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		bs := &consensus.BlockSource{
+			Block:     block,
+			BlockFrom: sync,
 		}
 
-		dayIndex := uint32((height - common.PovMinerRewardHeightGapToLatest) / uint64(common.POVChainBlocksPerDay))
-		if !dps.ledger.HasPovMinerStat(dayIndex) {
-			dps.logger.Infof("miner stat [%d] not exist", dayIndex)
-			return false
-		}
+		hash := block.GetHash()
+		index := dps.getProcessorIndex(block.GetAddress())
+		dps.processors[index].blocks <- bs
+		dps.logger.Infof("dequeue gap pov block[%s] height[%d]", hash, height)
 
-		for i, b := range blocks {
-			bs := &consensus.BlockSource{
-				Block:     b,
-				BlockFrom: kind[i],
-			}
-
-			dps.logger.Infof("dequeue gap pov[%s][%s]", b.GetHash(), kind[i])
-			index := dps.getProcessorIndex(b.GetAddress())
-			dps.processors[index].blocks <- bs
-		}
-
-		if err := dps.ledger.DeleteGapPovBlock(height); err != nil {
+		if err := dps.ledger.DeleteGapPovBlock(height, hash); err != nil {
 			dps.logger.Errorf("del gap pov block err", err)
 		}
 
-		return true
-	}
+		return nil
+	})
+
+	return true
 }
 
 func (dps *DPoS) updateLastProcessSyncTime() {

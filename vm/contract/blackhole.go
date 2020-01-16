@@ -10,7 +10,6 @@ package contract
 import (
 	"errors"
 	"fmt"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -140,6 +139,6 @@ func (b *BlackHole) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (b *BlackHole) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
+func (b *BlackHole) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	return common.ContractNoGap, nil, nil
 }

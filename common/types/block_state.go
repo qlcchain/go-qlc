@@ -214,7 +214,7 @@ func (b *StateBlock) Clone() *StateBlock {
 	return &clone
 }
 
-func (b *StateBlock) IsSync() bool {
+func (b *StateBlock) IsFromSync() bool {
 	return b.Flag&BlockFlagNonSync == 0
 }
 

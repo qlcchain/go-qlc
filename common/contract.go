@@ -1,4 +1,6 @@
-package types
+package common
+
+import "github.com/qlcchain/go-qlc/common/types"
 
 const (
 	OracleTypeEmail uint32 = iota
@@ -8,10 +10,18 @@ const (
 
 const RandomCodeLen = 16
 
+type ContractGapType byte
+
+const (
+	ContractNoGap ContractGapType = iota
+	ContractRewardGapPov
+	ContractDPKIGapPublish
+)
+
 var (
-	MinVerifierPledgeAmount = NewBalance(3e+14) // 3M
-	OracleCost              = NewBalance(1e+7)  // 0.1
-	PublishCost             = NewBalance(5e+8)  // 5
+	MinVerifierPledgeAmount = types.NewBalance(3e+14) // 3M
+	OracleCost              = types.NewBalance(1e+7)  // 0.1
+	PublishCost             = types.NewBalance(5e+8)  // 5
 )
 
 func OracleStringToType(os string) uint32 {

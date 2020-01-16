@@ -9,7 +9,7 @@ package contract
 
 import (
 	"errors"
-
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -123,7 +123,7 @@ type ChainContractV2 interface {
 	InternalContract
 	// ProcessSend verify or update StateBlock.Data
 	ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error)
-	DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error)
+	DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error)
 }
 
 type qlcchainContractV2 struct {

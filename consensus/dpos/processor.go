@@ -2,6 +2,8 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -151,7 +153,7 @@ func (p *Processor) processMsg() {
 						p.confirmedChain[hash] = false
 					}
 				}
-				//p.dequeueUncheckedSync(hash)
+				// p.dequeueUncheckedSync(hash)
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
 			case ack := <-p.acks:
@@ -461,7 +463,7 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		p.enqueueUnchecked(result, bs)
 	case process.GapPovHeight:
 		dps.logger.Infof("block:[%s] Gap pov height", hash)
-		p.dps.gapPovCh <- bs
+		p.enqueueUnchecked(result, bs)
 	case process.GapPublish:
 		dps.logger.Infof("block:[%s] Gap publish", hash)
 		p.enqueueUnchecked(result, bs)
@@ -577,7 +579,7 @@ func (p *Processor) findAnotherForkedBlock(block *types.StateBlock) *types.State
 	return forkedBlock
 }
 
-func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) bool {
+func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 	dps := p.dps
 	var result process.ProcessResult
 
@@ -587,23 +589,16 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) bool {
 
 	if bs.BlockFrom != types.Synchronized {
 		bs.Block.Flag = types.BlockFlagNonSync
+	} else {
+		p.dps.updateLastProcessSyncTime()
 	}
 
 	result, _ = dps.lv.BlockCheck(bs.Block)
-	if result == bs.Gap {
-		p.blocksAcked <- bs.GapHash
-		return false
-	} else {
-		if bs.BlockFrom == types.Synchronized {
-			p.dps.updateLastProcessSyncTime()
-		}
-		p.processResult(result, bs)
-		return true
-	}
+	p.processResult(result, bs)
 }
 
 func (p *Processor) enqueueUnchecked(result process.ProcessResult, bs *consensus.BlockSource) {
-	//frontier confirmReq may cause problem
+	// frontier confirmReq may cause problem
 	if bs.Type != consensus.MsgConfirmReq {
 		p.enqueueUncheckedToDb(result, bs)
 	}
@@ -652,6 +647,26 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 		if err != nil && err != ledger.ErrUncheckedBlockExists {
 			dps.logger.Errorf("add gap publish block to ledger err %s", err)
 		}
+	case process.GapPovHeight:
+		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
+			switch cType := c.(type) {
+			case contract.ChainContractV2:
+				vmCtx := vmstore.NewVMContext(dps.ledger)
+				gapResult, gapInfo, err := cType.DoGap(vmCtx, bs.Block)
+				if err != nil || gapResult != common.ContractRewardGapPov {
+					dps.logger.Errorf("add gap pov block to ledger err %s", err)
+				}
+
+				height := gapInfo.(uint64)
+				if height > 0 {
+					dps.logger.Infof("add gap pov[%s][%d]", bs.Block.GetHash(), height)
+					err := dps.ledger.AddGapPovBlock(height, bs.Block, bs.BlockFrom)
+					if err != nil {
+						dps.logger.Errorf("add gap pov block to ledger err %s", err)
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -693,22 +708,27 @@ func (p *Processor) dequeueUnchecked(hash types.Hash) {
 func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 	dps := p.dps
 
-	//hash is token id
+	// check if the block is existed, may be from another thread
+	if has, _ := dps.ledger.HasStateBlockConfirmed(hash); !has {
+		time.Sleep(time.Millisecond)
+		p.blocksAcked <- hash
+		return
+	}
+
+	// hash is token id
 	if blkToken, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindTokenInfo); blkToken != nil {
 		if dps.getProcessorIndex(blkToken.Address) == p.index {
 			dps.logger.Debugf("dequeue gap token info[%s] block[%s]", hash, blkToken.GetHash())
 			bs := &consensus.BlockSource{
 				Block:     blkToken,
 				BlockFrom: bf,
-				Gap:       process.GapTokenInfo,
-				GapHash:   hash,
 			}
 
-			if p.processUncheckedBlock(bs) {
-				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindTokenInfo)
-				if err != nil {
-					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
-				}
+			p.processUncheckedBlock(bs)
+
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindTokenInfo)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
 			}
 		}
 		return
@@ -720,15 +740,13 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			bs := &consensus.BlockSource{
 				Block:     blkLink,
 				BlockFrom: bf,
-				Gap:       process.GapSource,
-				GapHash:   hash,
 			}
 
-			if p.processUncheckedBlock(bs) {
-				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-				if err != nil {
-					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
-				}
+			p.processUncheckedBlock(bs)
+
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 			}
 		}
 	}
@@ -739,40 +757,53 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			bs := &consensus.BlockSource{
 				Block:     blkPre,
 				BlockFrom: bf,
-				Gap:       process.GapPrevious,
-				GapHash:   hash,
 			}
 
-			if p.processUncheckedBlock(bs) {
-				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-				if err != nil {
-					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
-				}
+			p.processUncheckedBlock(bs)
+
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
 			}
 		}
 	}
 
-	if err := dps.ledger.GetGapPublishBlock(hash, func(block *types.StateBlock, bf types.SynchronizedKind) error {
-		if dps.getProcessorIndex(block.Address) == p.index {
-			dps.logger.Debugf("dequeue gap publish[%s] block[%s]", hash, block.GetHash())
-			bs := &consensus.BlockSource{
-				Block:     block,
-				BlockFrom: bf,
-				Gap:       process.GapPublish,
-				GapHash:   hash,
-			}
+	// deal gap publish
+	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
+	if err != nil {
+		p.blocksAcked <- hash
+		dps.logger.Errorf("get confirmed block err(%s)", err)
+	} else {
+		if types.Address(blk.GetLink()) == types.PubKeyDistributionAddress {
+			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.Data)
+			if err != nil {
+				dps.logger.Errorf("get contract method err")
+			} else {
+				if method.Name == cabi.MethodNamePKDPublish {
+					depHash := blk.Previous
+					if err := dps.ledger.GetGapPublishBlock(depHash, func(block *types.StateBlock, bf types.SynchronizedKind) error {
+						if dps.getProcessorIndex(block.Address) == p.index {
+							dps.logger.Debugf("dequeue gap publish[%s] block[%s]", hash, block.GetHash())
+							bs := &consensus.BlockSource{
+								Block:     block,
+								BlockFrom: bf,
+							}
 
-			if p.processUncheckedBlock(bs) {
-				err := dps.ledger.DeleteGapPublishBlock(hash, block.GetHash())
-				if err != nil {
-					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete gapPublishBlock", err, block.GetHash())
+							p.processUncheckedBlock(bs)
+
+							err := dps.ledger.DeleteGapPublishBlock(depHash, block.GetHash())
+							if err != nil {
+								dps.logger.Errorf("Get err [%s] for hash: [%s] when delete gapPublishBlock", err, block.GetHash())
+							}
+						}
+
+						return nil
+					}); err != nil {
+						dps.logger.Errorf("dequeue gap publish err %s", err)
+					}
 				}
 			}
 		}
-
-		return nil
-	}); err != nil {
-		dps.logger.Errorf("dequeue gap publish err %s", err)
 	}
 }
 

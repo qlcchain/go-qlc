@@ -258,26 +258,26 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	}, nil
 }
 
-func (m *MinerReward) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
+func (m *MinerReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
 	param := new(cabi.MinerRewardParam)
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.Data)
 	if err != nil {
-		return 0, err
+		return common.ContractNoGap, nil, err
 	}
 
 	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
 
 	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
-		return needHeight, nil
+		return common.ContractRewardGapPov, needHeight, nil
 	}
 
 	nodeHeight := latestBlock.GetHeight()
 	if nodeHeight < needHeight {
-		return needHeight, nil
+		return common.ContractRewardGapPov, needHeight, nil
 	}
 
-	return 0, nil
+	return common.ContractNoGap, nil, err
 }
 
 func (m *MinerReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, param *cabi.MinerRewardParam) error {

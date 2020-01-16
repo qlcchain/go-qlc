@@ -30,11 +30,23 @@ func addUnPublishCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "unPublish id (email address/weChat id)",
 		Value: "",
 	}
+	pk := util.Flag{
+		Name:  "pk",
+		Must:  true,
+		Usage: "unPublish public key",
+		Value: "",
+	}
+	hash := util.Flag{
+		Name:  "hash",
+		Must:  true,
+		Usage: "unPublish hash",
+		Value: "",
+	}
 	c := &ishell.Cmd{
 		Name: "unPublish",
 		Help: "unPublish id and key",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id}
+			args := []util.Flag{account, typ, id, pk, hash}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -47,8 +59,10 @@ func addUnPublishCmdByShell(parentCmd *ishell.Cmd) {
 			accountP := util.StringVar(c.Args, account)
 			typeP := util.StringVar(c.Args, typ)
 			idP := util.StringVar(c.Args, id)
+			pkP := util.StringVar(c.Args, pk)
+			hashP := util.StringVar(c.Args, hash)
 
-			err := unPublish(accountP, typeP, idP)
+			err := unPublish(accountP, typeP, idP, pkP, hashP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -57,17 +71,25 @@ func addUnPublishCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func unPublish(accountP, typeP, idP string) error {
+func unPublish(accountP, typeP, idP, pkP, hashP string) error {
 	if accountP == "" {
 		return fmt.Errorf("account can not be null")
 	}
 
 	if typeP == "" {
-		return fmt.Errorf("publish type can not be null")
+		return fmt.Errorf("unpublish type can not be null")
 	}
 
 	if idP == "" {
-		return fmt.Errorf("publish id can not be null")
+		return fmt.Errorf("unpublish id can not be null")
+	}
+
+	if pkP == "" {
+		return fmt.Errorf("unpublish public key can not be null")
+	}
+
+	if hashP == "" {
+		return fmt.Errorf("unpublish hash can not be null")
 	}
 
 	accBytes, err := hex.DecodeString(accountP)
@@ -90,6 +112,8 @@ func unPublish(accountP, typeP, idP string) error {
 		Account: acc.Address(),
 		PType:   typeP,
 		PID:     idP,
+		PubKey:  pkP,
+		Hash:    hashP,
 	}
 
 	var block types.StateBlock

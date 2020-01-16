@@ -73,8 +73,8 @@ func (vr *VerifierRegister) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (vr *VerifierRegister) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
+func (vr *VerifierRegister) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	return common.ContractNoGap, nil, nil
 }
 
 func (vr *VerifierRegister) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
@@ -103,7 +103,7 @@ func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.S
 
 	vs, _ := abi.GetVerifierInfoByAccountAndType(ctx, block.Address, reg.VType)
 	if vs == nil {
-		return nil, nil, fmt.Errorf("there is no valid verifier to unregister(%s-%s)", block.Address, types.OracleTypeToString(reg.VType))
+		return nil, nil, fmt.Errorf("there is no valid verifier to unregister(%s-%s)", block.Address, common.OracleTypeToString(reg.VType))
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierUnregister, reg.VType)
@@ -145,8 +145,8 @@ func (vu *VerifierUnregister) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (vu *VerifierUnregister) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
+func (vu *VerifierUnregister) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	return common.ContractNoGap, nil, nil
 }
 
 func (vu *VerifierUnregister) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
@@ -189,7 +189,7 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 		return nil, nil, err
 	}
 
-	err = p.SetStorage(ctx, block.Address, info.PType, info.PID, info.PubKey, info.Verifiers, info.Codes, fee)
+	err = p.SetStorage(ctx, block.Address, info.PType, info.PID, info.PubKey, info.Verifiers, info.Codes, fee, block.Previous)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -198,8 +198,8 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 }
 
 func (p *Publish) SetStorage(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte,
-	vs []types.Address, cs []types.Hash, fee types.Balance) error {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, vs, cs, fee.Int, true)
+	vs []types.Address, cs []types.Hash, fee types.Balance, hash types.Hash) error {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, account, vs, cs, fee.Int, true)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func (p *Publish) SetStorage(ctx *vmstore.VMContext, account types.Address, pt u
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
 	key = append(key, pk...)
-	key = append(key, account[:]...)
+	key = append(key, hash[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
@@ -226,8 +226,8 @@ func (p *Publish) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (p *Publish) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
+func (p *Publish) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	return common.ContractNoGap, nil, nil
 }
 
 func (p *Publish) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
@@ -249,17 +249,17 @@ func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		return nil, nil, err
 	}
 
-	err = abi.UnPublishInfoCheck(ctx, block.Address, info.PType, info.PID)
+	err = abi.UnPublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.PubKey, info.Hash)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, info.PType, info.PID)
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, info.PType, info.PID, info.PubKey, info.Hash)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	err = up.SetStorage(ctx, block.Address, info.PType, info.PID)
+	err = up.SetStorage(ctx, info.PType, info.PID, info.PubKey, info.Hash)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -267,25 +267,30 @@ func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	return nil, nil, nil
 }
 
-func (up *UnPublish) SetStorage(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash) error {
-	pubInfo := abi.GetPublishInfo(ctx, account, pt, id)
-	if len(pubInfo) == 0 {
-		return fmt.Errorf("get publish info err(%s-%s-%s)", account, types.OracleTypeToString(pt), id)
-	}
-
-	info := pubInfo[0]
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, info.Verifiers, info.Codes, info.Fee, false)
-	if err != nil {
-		return err
-	}
-
+func (up *UnPublish) SetStorage(ctx *vmstore.VMContext, pt uint32, id types.Hash, pk []byte, hash types.Hash) error {
 	var key []byte
 	key = append(key, abi.PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
-	key = append(key, info.PubKey...)
-	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	key = append(key, pk...)
+	key = append(key, hash[:]...)
+	dataOld, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	if err != nil {
+		return err
+	}
+
+	var info abi.PubKeyInfo
+	err = abi.PublicKeyDistributionABI.UnpackVariable(&info, abi.VariableNamePKDPublishInfo, dataOld)
+	if err != nil {
+		return nil
+	}
+
+	dataNew, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, info.Account, info.Verifiers, info.Codes, info.Fee, false)
+	if err != nil {
+		return err
+	}
+
+	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, dataNew)
 	if err != nil {
 		return err
 	}
@@ -301,8 +306,8 @@ func (up *UnPublish) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (up *UnPublish) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
+func (up *UnPublish) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	return common.ContractNoGap, nil, nil
 }
 
 func (up *UnPublish) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
@@ -325,7 +330,7 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 	}
 
 	// check verifier if the block is not synced
-	if !block.IsSync() {
+	if !block.IsFromSync() {
 		err = abi.VerifierPledgeCheck(ctx, block.GetAddress())
 		if err != nil {
 			return nil, nil, err
@@ -347,8 +352,8 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 		return nil, nil, err
 	}
 
-	if amount.Compare(types.OracleCost) != types.BalanceCompEqual {
-		return nil, nil, fmt.Errorf("balance(exp:%s-%s) wrong", types.OracleCost, amount)
+	if amount.Compare(common.OracleCost) != types.BalanceCompEqual {
+		return nil, nil, fmt.Errorf("balance(exp:%s-%s) wrong", common.OracleCost, amount)
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
@@ -365,7 +370,7 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 }
 
 func (o *Oracle) SetStorage(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, pk []byte, code string, hash types.Hash) error {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDOracleInfo, code, hash)
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDOracleInfo, code)
 	if err != nil {
 		return err
 	}
@@ -375,6 +380,7 @@ func (o *Oracle) SetStorage(ctx *vmstore.VMContext, account types.Address, ot ui
 	key = append(key, util.BE_Uint32ToBytes(ot)...)
 	key = append(key, id[:]...)
 	key = append(key, pk...)
+	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
@@ -392,8 +398,19 @@ func (o *Oracle) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (o *Oracle) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
+func (o *Oracle) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	info := new(abi.OracleInfo)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDOracle, block.GetData())
+	if err != nil {
+		return common.ContractNoGap, nil, err
+	}
+
+	pi := abi.GetPublishInfo(ctx, info.OType, info.OID, info.PubKey, info.Hash)
+	if pi == nil {
+		return common.ContractDPKIGapPublish, nil, nil
+	}
+
+	return common.ContractNoGap, nil, nil
 }
 
 func (o *Oracle) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {

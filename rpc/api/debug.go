@@ -98,17 +98,14 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 		return nil, err
 	}
 
-	err = l.ledger.WalkGapPovBlocks(func(blocks types.StateBlockList, height uint64, sync types.SynchronizedKind) error {
-		for _, blk := range blocks {
-			uncheck := new(APIUncheckBlock)
-			uncheck.Block = blk
-			uncheck.Hash = blk.GetHash()
-			uncheck.UnCheckType = "GapPovHeight"
-			uncheck.SyncType = sync
-			uncheck.Height = height
-			unchecks = append(unchecks, uncheck)
-		}
-
+	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		uncheck := new(APIUncheckBlock)
+		uncheck.Block = blk
+		uncheck.Hash = blk.GetHash()
+		uncheck.UnCheckType = "GapPovHeight"
+		uncheck.SyncType = sync
+		uncheck.Height = height
+		unchecks = append(unchecks, uncheck)
 		return nil
 	})
 	if err != nil {
