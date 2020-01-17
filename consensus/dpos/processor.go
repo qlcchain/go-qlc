@@ -294,8 +294,10 @@ func (p *Processor) confirmChain(hash types.Hash) {
 		dps.logger.Errorf("get unconfirmed sync block err %s", err)
 		return
 	} else {
+		ck := chainKey{block.Address, block.Token}
+		height := p.chainHeight[ck]
 		cok := chainOrderKey{
-			chainKey: chainKey{block.Address, block.Token},
+			chainKey: ck,
 			order:    1,
 		}
 
@@ -321,11 +323,14 @@ func (p *Processor) confirmChain(hash types.Hash) {
 					}
 				}
 			} else {
-				dps.logger.Infof("get chain block(%s-%s) err order[%d]", block.Address, block.Token, cok.order)
+				dps.logger.Infof("get chain block err(%s-%s) order(%d)", block.Address, block.Token, cok.order)
 				break
 			}
 
 			cok.order++
+			if cok.order >= height {
+				break
+			}
 		}
 	}
 }
@@ -424,7 +429,7 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 			dps.logger.Infof("Block %s from sync", hash)
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Add block %s to roots", hash)
-			//make sure we only vote one of the forked blocks
+			// make sure we only vote one of the forked blocks
 			if dps.acTrx.addToRoots(blk) && bs.Type != consensus.MsgConfirmReq {
 				dps.localRepVote(bs.Block)
 			}
@@ -444,7 +449,7 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		dps.logger.Errorf("UnReceivable for block: %s", hash)
 	case process.GapSmartContract:
 		dps.logger.Errorf("GapSmartContract for block: %s", hash)
-		//dps.processGapSmartContract(blk)
+		// dps.processGapSmartContract(blk)
 	case process.InvalidData:
 		dps.logger.Errorf("InvalidData for block: %s", hash)
 	case process.Other:
