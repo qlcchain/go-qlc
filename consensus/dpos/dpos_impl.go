@@ -496,7 +496,7 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 
 		has, _ := dps.ledger.HasStateBlockConfirmed(hash)
 		if !has {
-			dps.logger.Infof("get frontier %s need ack", hash)
+			dps.logger.Infof("get frontier [%s-%s] need ack", block.Address, hash)
 			dps.frontiersStatus.Store(hash, frontierWaitingForVote)
 			unconfirmed = append(unconfirmed, block)
 			index := dps.getProcessorIndex(block.Address)
@@ -722,6 +722,19 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 					dstAddr = param.Beneficial
 				}
 			}
+		case types.PubKeyDistributionAddress:
+			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.Data)
+			if err != nil {
+				dps.logger.Errorf("get contract method err")
+			} else {
+				if method.Name == cabi.MethodNamePKDPublish {
+					for _, p := range dps.processors {
+						if localIndex != p.index {
+							p.publishBlock <- hash
+						}
+					}
+				}
+			}
 		default:
 			for _, p := range dps.processors {
 				if localIndex != p.index {
@@ -750,7 +763,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
 					index := dps.getProcessorIndex(input.Address)
 					if localIndex != index {
-						dps.processors[index].blocksAcked <- param.TokenId
+						dps.processors[index].tokenCreate <- hash
 					}
 				}
 			}
