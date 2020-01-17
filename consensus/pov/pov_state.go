@@ -41,7 +41,7 @@ func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash,
 	sdb := statedb.NewPovStateDB(currentTrie)
 
 	for _, tx := range txs {
-		err := bc.ApplyTransaction(height, sdb, tx.Block)
+		err := bc.ApplyTransaction(height, sdb, tx)
 		if err != nil {
 			bc.logger.Errorf("failed to apply tx %s", tx.Hash)
 			return nil, err
@@ -57,10 +57,10 @@ func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash,
 	return currentTrie, nil
 }
 
-func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovStateDB, stateBlock *types.StateBlock) error {
+func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovStateDB, tx *types.PovTransaction) error {
 	var err error
 
-	oldAs, _ := sdb.GetAccountState(stateBlock.GetAddress())
+	oldAs, _ := sdb.GetAccountState(tx.Block.GetAddress())
 	var newAs *types.PovAccountState
 	if oldAs != nil {
 		newAs = oldAs.Clone()
@@ -68,26 +68,26 @@ func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovStateDB
 		newAs = types.NewPovAccountState()
 	}
 
-	err = bc.updateAccountState(sdb, stateBlock, oldAs, newAs)
+	err = bc.updateAccountState(sdb, tx, oldAs, newAs)
 	if err != nil {
 		return err
 	}
 
-	if stateBlock.GetType() != types.Online {
-		err = bc.updateRepState(sdb, stateBlock, oldAs, newAs)
+	if tx.Block.GetType() != types.Online {
+		err = bc.updateRepState(sdb, tx, oldAs, newAs)
 		if err != nil {
 			return err
 		}
 	}
 
-	if stateBlock.GetType() == types.Online {
-		err = bc.updateRepOnline(height, sdb, stateBlock, oldAs, newAs)
+	if tx.Block.GetType() == types.Online {
+		err = bc.updateRepOnline(height, sdb, tx, oldAs, newAs)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = bc.updateContractState(height, sdb, stateBlock)
+	err = bc.updateContractState(height, sdb, tx)
 	if err != nil {
 		return err
 	}
@@ -95,9 +95,11 @@ func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovStateDB
 	return nil
 }
 
-func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovStateDB, block *types.StateBlock,
+func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovStateDB, tx *types.PovTransaction,
 	oldAs *types.PovAccountState, newAs *types.PovAccountState) error {
-	hash := block.GetHash()
+	block := tx.Block
+	hash := tx.GetHash()
+
 	rep := block.GetRepresentative()
 	token := block.GetToken()
 	balance := block.GetBalance()
@@ -146,8 +148,10 @@ func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovStateDB, block *type
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepState(sdb *statedb.PovStateDB, block *types.StateBlock,
+func (bc *PovBlockChain) updateRepState(sdb *statedb.PovStateDB, tx *types.PovTransaction,
 	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
+	block := tx.Block
+
 	if block.GetToken() != common.ChainToken() {
 		return nil
 	}
@@ -221,9 +225,11 @@ func (bc *PovBlockChain) updateRepState(sdb *statedb.PovStateDB, block *types.St
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovStateDB, block *types.StateBlock,
+func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovStateDB, tx *types.PovTransaction,
 	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	var newRs *types.PovRepState
+
+	block := tx.Block
 
 	oldRs, _ := sdb.GetRepState(block.GetAddress())
 	if oldRs != nil {
@@ -243,10 +249,17 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovStateDB,
 	return nil
 }
 
-func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStateDB, txBlock *types.StateBlock) error {
+func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStateDB, tx *types.PovTransaction) error {
 	var sendBlk *types.StateBlock
 	var methodSig []byte
 	var err error
+
+	txBlock := tx.Block
+
+	if common.IsGenesisBlock(txBlock) {
+		bc.logger.Infof("no need to update contract state for genesis block %s", tx.Hash)
+		return nil
+	}
 
 	ca := types.Address{}
 	if txBlock.GetType() == types.ContractSend {
@@ -258,6 +271,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStat
 			bc.logger.Errorf("failed to get chain contract send block err %s", err)
 			return err
 		}
+
 		ca = types.Address(sendBlk.GetLink())
 		methodSig = sendBlk.GetData()
 	} else {
@@ -270,7 +284,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStat
 		return err
 	}
 	if !ok {
-		err := fmt.Errorf("chain contract method %s not exist", hex.EncodeToString(txBlock.Data[0:4]))
+		err := fmt.Errorf("chain contract %s method %s not exist", ca, hex.EncodeToString(methodSig[0:4]))
 		bc.logger.Errorf("failed to get chain contract err %s", err)
 		return err
 	}
