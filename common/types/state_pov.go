@@ -6,10 +6,9 @@ import (
 )
 
 const (
-	PovStatePrefixAcc   = byte(1)
-	PovStatePrefixRep   = byte(2)
-	PovStatePrefixPKDPS = byte(3) // PKD publish state
-	PovStatePrefixPKDVS = byte(4) // PKD verifier state
+	PovStatePrefixAcc = byte(1)
+	PovStatePrefixRep = byte(2)
+	PovStatePrefixCCS = byte(201) // Common Contract Storage
 
 	PovStatusOffline = 0
 	PovStatusOnline  = 1
@@ -215,6 +214,30 @@ func (rs *PovRepState) CalcTotal() Balance {
 func (rs *PovRepState) String() string {
 	return fmt.Sprintf("{Account:%s, Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s, Total:%s, Status:%d, Height:%d}",
 		rs.Account, rs.Balance, rs.Vote, rs.Network, rs.Storage, rs.Oracle, rs.Total, rs.Status, rs.Height)
+}
+
+// Common Contract State, key value in trie for each contract
+// key = contract address
+type PovContractState struct {
+	StateRoot Hash     `msg:"sr,extension" json:"stateRoot"`
+	CodeHash  HexBytes `msg:"ch,extension" json:"codeHash"`
+}
+
+func NewPovContractState() *PovContractState {
+	cs := new(PovContractState)
+	return cs
+}
+
+func (cs *PovContractState) Serialize() ([]byte, error) {
+	return cs.MarshalMsg(nil)
+}
+
+func (cs *PovContractState) Deserialize(text []byte) error {
+	_, err := cs.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 const (

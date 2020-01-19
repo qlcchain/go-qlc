@@ -9,6 +9,7 @@ package contract
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -73,8 +74,8 @@ type Contract interface {
 	ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error)
 	DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error)
 
-	DoSendOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock) error
-	DoReceiveOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock, input *types.StateBlock) error
+	DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error
+	DoReceiveOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock, input *types.StateBlock) error
 }
 
 type BaseContract struct {
@@ -118,11 +119,11 @@ func (c *BaseContract) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (c
 	return common.ContractNoGap, nil, nil
 }
 
-func (c *BaseContract) DoSendOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock) error {
+func (c *BaseContract) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error {
 	return errors.New("not implemented")
 }
 
-func (c *BaseContract) DoReceiveOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock, input *types.StateBlock) error {
+func (c *BaseContract) DoReceiveOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock, input *types.StateBlock) error {
 	return errors.New("not implemented")
 }
 

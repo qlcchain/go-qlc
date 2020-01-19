@@ -5,13 +5,14 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"fmt"
+	"math/big"
+	"strings"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"math/big"
-	"strings"
 )
 
 const (
@@ -724,6 +725,22 @@ const (
 	PublishHashIndexS = PublishPkIndexE
 	PublishHashIndexE = PublishHashIndexS + 32
 )
+
+type PublishInfoKey struct {
+	PType  uint32
+	PID    types.Hash
+	PubKey []byte
+	Hash   types.Hash
+}
+
+func (k *PublishInfoKey) ToRawKey() []byte {
+	var psRawKey []byte
+	psRawKey = append(psRawKey, util.BE_Uint32ToBytes(k.PType)...)
+	psRawKey = append(psRawKey, k.PID[:]...)
+	psRawKey = append(psRawKey, k.PubKey...)
+	psRawKey = append(psRawKey, k.Hash.Bytes()...)
+	return psRawKey
+}
 
 type PublishInfo struct {
 	Account   types.Address

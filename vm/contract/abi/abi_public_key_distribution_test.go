@@ -3,6 +3,11 @@ package abi
 import (
 	"bytes"
 	"crypto/ed25519"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -10,10 +15,6 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"math/big"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestPackAndUnpack(t *testing.T) {

@@ -1,12 +1,14 @@
 package abi
 
 import (
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {

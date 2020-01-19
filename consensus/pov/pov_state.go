@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -38,7 +39,7 @@ func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash,
 		return nil, errors.New("failed to make current trie by clone prev trie")
 	}
 
-	sdb := statedb.NewPovStateDB(currentTrie)
+	sdb := statedb.NewPovGlobalStateDB(currentTrie)
 
 	for _, tx := range txs {
 		err := bc.ApplyTransaction(height, sdb, tx)
@@ -57,7 +58,7 @@ func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash,
 	return currentTrie, nil
 }
 
-func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovStateDB, tx *types.PovTransaction) error {
+func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction) error {
 	var err error
 
 	oldAs, _ := sdb.GetAccountState(tx.Block.GetAddress())
@@ -95,7 +96,7 @@ func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovStateDB
 	return nil
 }
 
-func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovStateDB, tx *types.PovTransaction,
+func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction,
 	oldAs *types.PovAccountState, newAs *types.PovAccountState) error {
 	block := tx.Block
 	hash := tx.GetHash()
@@ -148,7 +149,7 @@ func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovStateDB, tx *types.P
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepState(sdb *statedb.PovStateDB, tx *types.PovTransaction,
+func (bc *PovBlockChain) updateRepState(sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction,
 	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	block := tx.Block
 
@@ -225,7 +226,7 @@ func (bc *PovBlockChain) updateRepState(sdb *statedb.PovStateDB, tx *types.PovTr
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovStateDB, tx *types.PovTransaction,
+func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction,
 	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	var newRs *types.PovRepState
 
@@ -249,7 +250,7 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovStateDB,
 	return nil
 }
 
-func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStateDB, tx *types.PovTransaction) error {
+func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction) error {
 	var sendBlk *types.StateBlock
 	var methodSig []byte
 	var err error
@@ -293,15 +294,27 @@ func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovStat
 		return nil
 	}
 
+	var csRootHashPtr *types.Hash
+	cs, _ := sdb.GetContractState(ca)
+	if cs == nil {
+		cs = types.NewPovContractState()
+	} else if !cs.StateRoot.IsZero() {
+		csRootHashPtr = &cs.StateRoot
+	}
+
+	csTrie := trie.NewTrie(bc.TrieDb(), csRootHashPtr, nil)
+
+	csdb := statedb.NewPovContractStateDB(csTrie)
+
 	if txBlock.GetType() == types.ContractSend {
 		vmCtx := vmstore.NewVMContext(bc.ledger)
-		err = cf.DoSendOnPov(vmCtx, sdb, height, txBlock)
+		err = cf.DoSendOnPov(vmCtx, csdb, height, txBlock)
 		if err != nil {
 			return err
 		}
 	} else if txBlock.GetType() == types.ContractReward {
 		vmCtx := vmstore.NewVMContext(bc.ledger)
-		err = cf.DoReceiveOnPov(vmCtx, sdb, height, txBlock, sendBlk)
+		err = cf.DoReceiveOnPov(vmCtx, csdb, height, txBlock, sendBlk)
 		if err != nil {
 			return err
 		}

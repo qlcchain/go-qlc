@@ -365,6 +365,142 @@ func (z *PovAccountState) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *PovContractState) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "sr":
+			err = dc.ReadExtension(&z.StateRoot)
+			if err != nil {
+				err = msgp.WrapError(err, "StateRoot")
+				return
+			}
+		case "ch":
+			err = dc.ReadExtension(&z.CodeHash)
+			if err != nil {
+				err = msgp.WrapError(err, "CodeHash")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z PovContractState) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "sr"
+	err = en.Append(0x82, 0xa2, 0x73, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.StateRoot)
+	if err != nil {
+		err = msgp.WrapError(err, "StateRoot")
+		return
+	}
+	// write "ch"
+	err = en.Append(0xa2, 0x63, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.CodeHash)
+	if err != nil {
+		err = msgp.WrapError(err, "CodeHash")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z PovContractState) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "sr"
+	o = append(o, 0x82, 0xa2, 0x73, 0x72)
+	o, err = msgp.AppendExtension(o, &z.StateRoot)
+	if err != nil {
+		err = msgp.WrapError(err, "StateRoot")
+		return
+	}
+	// string "ch"
+	o = append(o, 0xa2, 0x63, 0x68)
+	o, err = msgp.AppendExtension(o, &z.CodeHash)
+	if err != nil {
+		err = msgp.WrapError(err, "CodeHash")
+		return
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *PovContractState) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "sr":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.StateRoot)
+			if err != nil {
+				err = msgp.WrapError(err, "StateRoot")
+				return
+			}
+		case "ch":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.CodeHash)
+			if err != nil {
+				err = msgp.WrapError(err, "CodeHash")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z PovContractState) Msgsize() (s int) {
+	s = 1 + 3 + msgp.ExtensionPrefixSize + z.StateRoot.Len() + 3 + msgp.ExtensionPrefixSize + z.CodeHash.Len()
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *PovPublishState) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field

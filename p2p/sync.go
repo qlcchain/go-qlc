@@ -2,12 +2,13 @@ package p2p
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"math"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/qlcchain/go-qlc/common/topic"
 

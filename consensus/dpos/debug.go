@@ -2,12 +2,13 @@ package dpos
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 type checkPointPos byte

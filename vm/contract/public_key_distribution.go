@@ -3,12 +3,18 @@ package contract
 import (
 	"errors"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+)
+
+const (
+	PovStatePrefixPKDPS = byte(1) // publish state
+	PovStatePrefixPKDVS = byte(2) // verifier state
 )
 
 type VerifierRegister struct {
@@ -419,72 +425,73 @@ func (o *Oracle) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inpu
 	return nil, nil
 }
 
-func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, povHeight uint64, block *types.StateBlock) error {
+func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error {
 	oraInfo := new(abi.OracleInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(oraInfo, abi.MethodNamePKDOracle, block.GetData())
 	if err != nil {
 		return err
 	}
 
-	var psRawKey []byte
-	psRawKey = append(psRawKey, util.BE_Uint32ToBytes(oraInfo.OType)...)
-	psRawKey = append(psRawKey, oraInfo.OID[:]...)
-	psRawKey = append(psRawKey, oraInfo.PubKey...)
-	psRawKey = append(psRawKey, oraInfo.Hash.Bytes()...)
+	pubInfoKey := &abi.PublishInfoKey{
+		PType:  oraInfo.OType,
+		PID:    oraInfo.OID,
+		PubKey: oraInfo.PubKey,
+		Hash:   oraInfo.Hash,
+	}
+	psRawKey := pubInfoKey.ToRawKey()
 
-	psKey := types.PovCreateStateKey(types.PovStatePrefixPKDPS, psRawKey)
-	psVal, _ := sdb.GetPublishState(psKey)
-	if psVal == nil {
-		psVal = types.NewPovPublishState()
+	ps, _ := o.GetPublishState(csdb, psRawKey)
+	if ps == nil {
+		ps = types.NewPovPublishState()
 
 		pubInfo := abi.GetPublishInfoByKey(ctx, oraInfo.OType, oraInfo.OID, oraInfo.PubKey, oraInfo.Hash)
 		if pubInfo == nil {
 			return errors.New("publish info not exist")
 		}
 
-		psVal.BonusFee = types.NewBigNumFromBigInt(pubInfo.Fee)
+		ps.BonusFee = types.NewBigNumFromBigInt(pubInfo.Fee)
 	}
 
-	if psVal.VerifiedStatus == types.PovPublishStatusVerified {
-		if povHeight > psVal.VerifiedHeight+common.OracleExpirePovHeight {
+	if ps.VerifiedStatus == types.PovPublishStatusVerified {
+		if povHeight > ps.VerifiedHeight+common.OracleExpirePovHeight {
 			return nil
 		}
-		if len(psVal.OracleAccounts) >= common.OracleVerifyMaxAccount {
+		if len(ps.OracleAccounts) >= common.OracleVerifyMaxAccount {
 			return nil
 		}
 	}
 
-	for _, oa := range psVal.OracleAccounts {
+	for _, oa := range ps.OracleAccounts {
 		if oa == block.Address {
 			return nil
 		}
 	}
-	psVal.OracleAccounts = append(psVal.OracleAccounts, block.Address)
+	ps.OracleAccounts = append(ps.OracleAccounts, block.Address)
 
 	vsChangeAddrs := make([]types.Address, 0)
 
-	if psVal.VerifiedStatus == types.PovPublishStatusInit {
-		if len(psVal.OracleAccounts) >= common.OracleVerifyMinAccount {
-			psVal.VerifiedStatus = types.PovPublishStatusVerified
-			psVal.VerifiedHeight = povHeight
+	if ps.VerifiedStatus == types.PovPublishStatusInit {
+		if len(ps.OracleAccounts) >= common.OracleVerifyMinAccount {
+			ps.VerifiedStatus = types.PovPublishStatusVerified
+			ps.VerifiedHeight = povHeight
 
-			vsChangeAddrs = psVal.OracleAccounts
+			vsChangeAddrs = ps.OracleAccounts
 		}
 	} else {
 		vsChangeAddrs = append(vsChangeAddrs, block.Address)
 	}
 
-	err = sdb.SetPublishState(psKey, psVal)
+	err = o.SetPublishState(csdb, psRawKey, ps)
+	if err != nil {
+		return err
+	}
 
 	// update verifier state
-	divBonusFee := new(types.BigNum).Div(psVal.BonusFee, types.NewBigNumFromInt(5))
+	divBonusFee := new(types.BigNum).Div(ps.BonusFee, types.NewBigNumFromInt(5))
 	for _, vsAddr := range vsChangeAddrs {
 		var vsRawKey []byte
 		vsRawKey = append(vsRawKey, vsAddr.Bytes()...)
-
-		vsKey := types.PovCreateStateKey(types.PovStatePrefixPKDPS, vsRawKey)
-
-		vsVal, _ := sdb.GetVerifierState(vsKey)
+		vsVal, _ := o.GetVerifierState(csdb, vsRawKey)
 		if vsVal == nil {
 			vsVal = types.NewPovVerifierState()
 		}
@@ -492,11 +499,73 @@ func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, sdb *statedb.PovStateDB, po
 		vsVal.TotalVerify += 1
 		vsVal.TotalReward = new(types.BigNum).Add(vsVal.TotalReward, divBonusFee)
 
-		err = sdb.SetVerifierState(vsRawKey, vsVal)
+		err = o.SetVerifierState(csdb, vsRawKey, vsVal)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (o *Oracle) SetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *types.PovPublishState) error {
+	trieKey := types.PovCreateStateKey(PovStatePrefixPKDPS, rawKey)
+
+	val, err := ps.Serialize()
+	if err != nil {
+		return err
+	}
+
+	return csdb.SetValue(trieKey, val)
+}
+
+func (o *Oracle) GetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte) (*types.PovPublishState, error) {
+	trieKey := types.PovCreateStateKey(PovStatePrefixPKDPS, rawKey)
+
+	valBytes, err := csdb.GetValue(trieKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(valBytes) == 0 {
+		return nil, errors.New("trie get value return empty")
+	}
+
+	ps := types.NewPovPublishState()
+	err = ps.Deserialize(valBytes)
+	if err != nil {
+		return nil, fmt.Errorf("deserialize publish state err %s", err)
+	}
+
+	return ps, nil
+}
+
+func (o *Oracle) SetVerifierState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *types.PovVerifierState) error {
+	trieKey := types.PovCreateStateKey(PovStatePrefixPKDPS, rawKey)
+
+	val, err := ps.Serialize()
+	if err != nil {
+		return err
+	}
+
+	return csdb.SetValue(trieKey, val)
+}
+
+func (o *Oracle) GetVerifierState(csdb *statedb.PovContractStateDB, rawKey []byte) (*types.PovVerifierState, error) {
+	trieKey := types.PovCreateStateKey(PovStatePrefixPKDVS, rawKey)
+
+	valBytes, err := csdb.GetValue(trieKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(valBytes) == 0 {
+		return nil, errors.New("trie get value return empty")
+	}
+
+	vs := types.NewPovVerifierState()
+	err = vs.Deserialize(valBytes)
+	if err != nil {
+		return nil, fmt.Errorf("deserialize verifier state err %s", err)
+	}
+
+	return vs, nil
 }
