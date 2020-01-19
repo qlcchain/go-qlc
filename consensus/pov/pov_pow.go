@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -82,12 +84,13 @@ func (c *ConsensusPow) verifyProducer(header *types.PovHeader) error {
 	}
 
 	prevStateHash := prevHeader.GetStateHash()
-	prevTrie := c.chainR.GetStateTrie(&prevStateHash)
+	gsdb := statedb.NewPovGlobalStateDB(c.chainR.TrieDb(), prevStateHash)
+	prevTrie := gsdb.GetPrevTrie()
 	if prevTrie == nil {
 		return errors.New("failed to get previous state tire")
 	}
 
-	rs := c.chainR.GetRepState(prevTrie, header.GetMinerAddr())
+	rs, _ := gsdb.GetRepState(header.GetMinerAddr())
 	if rs == nil {
 		return errors.New("failed to get rep state")
 	}

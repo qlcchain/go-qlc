@@ -2,14 +2,12 @@ package pov
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/trie"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -18,44 +16,22 @@ func (bc *PovBlockChain) TrieDb() db.Store {
 	return bc.getLedger().DBStore()
 }
 
-func (bc *PovBlockChain) GetStateTrie(stateHash *types.Hash) *trie.Trie {
-	t := trie.NewTrie(bc.TrieDb(), stateHash, bc.trieNodePool)
-	return t
-}
-
-func (bc *PovBlockChain) NewStateTrie() *trie.Trie {
-	return trie.NewTrie(bc.TrieDb(), nil, bc.trieNodePool)
-}
-
-func (bc *PovBlockChain) GenStateTrie(height uint64, prevStateHash types.Hash,
-	txs []*types.PovTransaction) (*trie.Trie, error) {
-	var currentTrie *trie.Trie
-	prevTrie := bc.GetStateTrie(&prevStateHash)
-	if prevTrie == nil {
-		return nil, fmt.Errorf("failed to get prev trie %s", prevStateHash)
-	}
-	currentTrie = prevTrie.Clone()
-	if currentTrie == nil {
-		return nil, errors.New("failed to make current trie by clone prev trie")
-	}
-
-	sdb := statedb.NewPovGlobalStateDB(currentTrie)
-
+func (bc *PovBlockChain) TransitStateDB(height uint64, txs []*types.PovTransaction, gsdb *statedb.PovGlobalStateDB) error {
 	for _, tx := range txs {
-		err := bc.ApplyTransaction(height, sdb, tx)
+		err := bc.ApplyTransaction(height, gsdb, tx)
 		if err != nil {
 			bc.logger.Errorf("failed to apply tx %s", tx.Hash)
-			return nil, err
+			return err
 		}
 	}
 
-	err := sdb.CommitToTrie()
+	err := gsdb.CommitToTrie()
 	if err != nil {
 		bc.logger.Errorf("failed to commit trie for block %d", height)
-		return nil, err
+		return err
 	}
 
-	return currentTrie, nil
+	return nil
 }
 
 func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction) error {
@@ -82,7 +58,7 @@ func (bc *PovBlockChain) ApplyTransaction(height uint64, sdb *statedb.PovGlobalS
 	}
 
 	if tx.Block.GetType() == types.Online {
-		err = bc.updateRepOnline(height, sdb, tx, oldAs, newAs)
+		err = bc.updateRepOnline(height, sdb, tx)
 		if err != nil {
 			return err
 		}
@@ -226,8 +202,7 @@ func (bc *PovBlockChain) updateRepState(sdb *statedb.PovGlobalStateDB, tx *types
 	return nil
 }
 
-func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction,
-	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
+func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction) error {
 	var newRs *types.PovRepState
 
 	block := tx.Block
@@ -250,7 +225,7 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovGlobalSt
 	return nil
 }
 
-func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovGlobalStateDB, tx *types.PovTransaction) error {
+func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlobalStateDB, tx *types.PovTransaction) error {
 	var sendBlk *types.StateBlock
 	var methodSig []byte
 	var err error
@@ -294,17 +269,10 @@ func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovGlob
 		return nil
 	}
 
-	var csRootHashPtr *types.Hash
-	cs, _ := sdb.GetContractState(ca)
-	if cs == nil {
-		cs = types.NewPovContractState()
-	} else if !cs.StateRoot.IsZero() {
-		csRootHashPtr = &cs.StateRoot
+	csdb, err := gsdb.GetContractStateDB(ca)
+	if err != nil {
+		return err
 	}
-
-	csTrie := trie.NewTrie(bc.TrieDb(), csRootHashPtr, nil)
-
-	csdb := statedb.NewPovContractStateDB(csTrie)
 
 	if txBlock.GetType() == types.ContractSend {
 		vmCtx := vmstore.NewVMContext(bc.ledger)
@@ -323,81 +291,13 @@ func (bc *PovBlockChain) updateContractState(height uint64, sdb *statedb.PovGlob
 	return nil
 }
 
-func (bc *PovBlockChain) GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState {
-	keyBytes := types.PovCreateAccountStateKey(address)
-	valBytes := trie.GetValue(keyBytes)
-	if len(valBytes) == 0 {
-		return nil
-	}
-
-	as := types.NewPovAccountState()
-	err := as.Deserialize(valBytes)
-	if err != nil {
-		bc.logger.Errorf("deserialize old account state err %s", err)
-		return nil
-	}
-
-	return as
-}
-
-func (bc *PovBlockChain) SetAccountState(trie *trie.Trie, address types.Address, as *types.PovAccountState) error {
-	as.Account = address
-
-	valBytes, err := as.Serialize()
-	if err != nil {
-		bc.logger.Errorf("serialize new account state err %s", err)
-		return err
-	}
-	if len(valBytes) == 0 {
-		return errors.New("serialize new account state got empty value")
-	}
-
-	keyBytes := types.PovCreateAccountStateKey(address)
-	trie.SetValue(keyBytes, valBytes)
-	return nil
-}
-
-func (bc *PovBlockChain) GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState {
-	keyBytes := types.PovCreateRepStateKey(address)
-	valBytes := trie.GetValue(keyBytes)
-	if len(valBytes) == 0 {
-		return nil
-	}
-
-	rs := types.NewPovRepState()
-	err := rs.Deserialize(valBytes)
-	if err != nil {
-		bc.logger.Errorf("deserialize old rep state err %s", err)
-		return nil
-	}
-
-	return rs
-}
-
-func (bc *PovBlockChain) SetRepState(trie *trie.Trie, address types.Address, rs *types.PovRepState) error {
-	rs.Account = address
-
-	valBytes, err := rs.Serialize()
-	if err != nil {
-		bc.logger.Errorf("serialize new rep state err %s", err)
-		return err
-	}
-	if len(valBytes) == 0 {
-		return errors.New("serialize new rep state got empty value")
-	}
-
-	keyBytes := types.PovCreateRepStateKey(address)
-	trie.SetValue(keyBytes, valBytes)
-	return nil
-}
-
 func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
 	var allRss []*types.PovRepState
 	supply := common.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
-	stateHash := header.GetStateHash()
-	stateTrie := bc.GetStateTrie(&stateHash)
+	gsdb := statedb.NewPovGlobalStateDB(bc.TrieDb(), header.GetStateHash())
+	stateTrie := gsdb.GetPrevTrie()
 	if stateTrie == nil {
 		return nil
 	}

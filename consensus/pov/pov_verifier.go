@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/ledger/db"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -16,7 +19,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/trie"
 )
 
 type PovVerifier struct {
@@ -31,11 +33,10 @@ type PovVerifyStat struct {
 	ErrMsg string
 	GapTxs map[types.Hash]process.ProcessResult
 
-	CurHeader     *types.PovHeader
-	PrevHeader    *types.PovHeader
-	PrevStateTrie *trie.Trie
-	StateTrie     *trie.Trie
-	TxBlocks      map[types.Hash]*types.StateBlock
+	CurHeader  *types.PovHeader
+	PrevHeader *types.PovHeader
+	StateDB    *statedb.PovGlobalStateDB
+	TxBlocks   map[types.Hash]*types.StateBlock
 }
 
 func NewPovVerifyStat() *PovVerifyStat {
@@ -68,24 +69,23 @@ func (pvs *PovVerifyStat) getPrevHeader(pv *PovVerifier, prevHash types.Hash) *t
 	return pvs.PrevHeader
 }
 
-func (pvs *PovVerifyStat) getPrevStateTrie(pv *PovVerifier, prevHash types.Hash) *trie.Trie {
-	if pvs.PrevStateTrie == nil {
+func (pvs *PovVerifyStat) getStateDB(pv *PovVerifier, prevHash types.Hash) *statedb.PovGlobalStateDB {
+	if pvs.StateDB == nil {
 		prevHeader := pvs.getPrevHeader(pv, prevHash)
 		if prevHeader != nil {
 			prevStateHash := prevHeader.GetStateHash()
-			pvs.PrevStateTrie = pv.chain.GetStateTrie(&prevStateHash)
+			pvs.StateDB = statedb.NewPovGlobalStateDB(pv.chain.TrieDb(), prevStateHash)
 		}
 	}
 
-	return pvs.PrevStateTrie
+	return pvs.StateDB
 }
 
 type PovVerifierChainReader interface {
+	TrieDb() db.Store
 	GetHeaderByHash(hash types.Hash) *types.PovHeader
 	CalcPastMedianTime(prevHeader *types.PovHeader) uint32
-	GenStateTrie(height uint64, prevStateHash types.Hash, txs []*types.PovTransaction) (*trie.Trie, error)
-	GetStateTrie(stateHash *types.Hash) *trie.Trie
-	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
+	TransitStateDB(height uint64, txs []*types.PovTransaction, gsdb *statedb.PovGlobalStateDB) error
 	CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance, error)
 }
 
@@ -270,9 +270,9 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 		return process.GapTransaction, fmt.Errorf("total %d txs in pending", len(stat.GapTxs))
 	}
 
-	prevTrie := stat.getPrevStateTrie(pv, block.GetPrevious())
-	if prevTrie == nil {
-		return process.BadStateHash, errors.New("failed to get prev state tire")
+	gsdb := stat.getStateDB(pv, block.GetPrevious())
+	if gsdb == nil {
+		return process.BadStateHash, errors.New("failed to get state db")
 	}
 	addrTokenPrevHashes := make(map[types.AddressToken]types.Hash)
 
@@ -289,7 +289,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 			if isCA {
 				prevHashWant = types.ZeroHash
 			} else {
-				as := pv.chain.GetAccountState(prevTrie, tx.Block.GetAddress())
+				as, _ := gsdb.GetAccountState(tx.Block.GetAddress())
 				if as != nil {
 					ts := as.GetTokenState(tx.Block.GetToken())
 					if ts != nil {
@@ -351,19 +351,19 @@ func (pv *PovVerifier) verifyState(block *types.PovBlock, stat *PovVerifyStat) (
 		return process.GapPrevious, fmt.Errorf("prev block %s pending", block.GetPrevious())
 	}
 
-	stateTrie, err := pv.chain.GenStateTrie(block.GetHeight(), prevHeader.GetStateHash(), block.GetAccountTxs())
+	gsdb := stat.getStateDB(pv, prevHeader.GetStateHash())
+	if gsdb == nil {
+		return process.BadStateHash, errors.New("failed to gen state db")
+	}
+	err := pv.chain.TransitStateDB(block.GetHeight(), block.GetAccountTxs(), gsdb)
 	if err != nil {
 		return process.BadStateHash, err
 	}
-	if stateTrie == nil {
-		return process.BadStateHash, errors.New("failed to gen state trie")
-	}
 
-	stateHash := *stateTrie.Hash()
+	stateHash := gsdb.GetCurHash()
 	if stateHash != block.GetStateHash() {
 		return process.BadStateHash, fmt.Errorf("state hash is not equals %s != %s", stateHash, block.GetStateHash())
 	}
-	stat.StateTrie = stateTrie
 
 	return process.Progress, nil
 }

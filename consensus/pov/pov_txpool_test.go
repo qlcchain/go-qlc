@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/event"
@@ -119,8 +121,8 @@ func TestPovTxPool_SelectTx(t *testing.T) {
 	txHash2 := txBlk2.GetHash()
 	txPool.addTx(txHash2, txBlk2)
 
-	statTrie := trie.NewTrie(md.ledger.DBStore(), nil, trie.NewSimpleTrieNodePool())
-	retTxs := txPool.SelectPendingTxs(statTrie, 10)
+	gsdb := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), types.ZeroHash)
+	retTxs := txPool.SelectPendingTxs(gsdb, 10)
 
 	tx1Exist := false
 	for _, retTx := range retTxs {

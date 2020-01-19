@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/event"
@@ -12,7 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/trie"
 )
 
 type povChainMockData struct {
@@ -88,23 +89,23 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 	}
 
 	stateHash := latestBlk.GetStateHash()
-	statTrie := trie.NewTrie(md.ledger.DBStore(), &stateHash, trie.NewSimpleTrieNodePool())
+	statDB := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), stateHash)
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 0)
-	err := chain.InsertBlock(blk1, statTrie)
+	err := chain.InsertBlock(blk1, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk2, _ := mock.GeneratePovBlock(blk1, 10)
 	setupPovTxBlock2Ledger(md, blk2)
-	err = chain.InsertBlock(blk2, statTrie)
+	err = chain.InsertBlock(blk2, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk3, _ := mock.GeneratePovBlock(blk2, 0)
-	err = chain.InsertBlock(blk3, statTrie)
+	err = chain.InsertBlock(blk3, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,28 +162,28 @@ func TestPovChain_ForkChain(t *testing.T) {
 	}
 
 	stateHash := latestBlk.GetStateHash()
-	statTrie := trie.NewTrie(md.ledger.DBStore(), &stateHash, trie.NewSimpleTrieNodePool())
+	statDB := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), stateHash)
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 0)
-	err := chain.InsertBlock(blk1, statTrie)
+	err := chain.InsertBlock(blk1, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk21, _ := mock.GeneratePovBlock(blk1, 0)
-	err = chain.InsertBlock(blk21, statTrie)
+	err = chain.InsertBlock(blk21, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk22, _ := mock.GeneratePovBlock(blk1, 0)
-	err = chain.InsertBlock(blk22, statTrie)
+	err = chain.InsertBlock(blk22, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk3, _ := mock.GeneratePovBlock(blk22, 0)
-	err = chain.InsertBlock(blk3, statTrie)
+	err = chain.InsertBlock(blk3, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,32 +218,32 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	}
 
 	stateHash := latestBlk.GetStateHash()
-	statTrie := trie.NewTrie(md.ledger.DBStore(), &stateHash, trie.NewSimpleTrieNodePool())
+	statDB := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), stateHash)
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 5)
 	setupPovTxBlock2Ledger(md, blk1)
-	err := chain.InsertBlock(blk1, statTrie)
+	err := chain.InsertBlock(blk1, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk21, _ := mock.GeneratePovBlock(blk1, 5)
 	setupPovTxBlock2Ledger(md, blk21)
-	err = chain.InsertBlock(blk21, statTrie)
+	err = chain.InsertBlock(blk21, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk22, _ := mock.GeneratePovBlock(blk1, 5)
 	setupPovTxBlock2Ledger(md, blk22)
-	err = chain.InsertBlock(blk22, statTrie)
+	err = chain.InsertBlock(blk22, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk3, _ := mock.GeneratePovBlock(blk22, 5)
 	setupPovTxBlock2Ledger(md, blk3)
-	err = chain.InsertBlock(blk3, statTrie)
+	err = chain.InsertBlock(blk3, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,31 +278,32 @@ func TestPovChain_TrieState(t *testing.T) {
 	setupPovTxBlock2Ledger(md, blk1)
 
 	accTxsBlk1 := blk1.GetAccountTxs()
-	curStatTrie, err := chain.GenStateTrie(blk1.GetHeight(), prevStateHash, accTxsBlk1)
+	gsdb := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), prevStateHash)
+	err := chain.TransitStateDB(blk1.GetHeight(), accTxsBlk1, gsdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = chain.InsertBlock(blk1, curStatTrie)
+	err = chain.InsertBlock(blk1, gsdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	curStatHash := curStatTrie.Hash()
-	if *curStatHash == prevStateHash {
+	curStatHash := gsdb.GetCurHash()
+	if curStatHash == prevStateHash {
 		t.Fatalf("state hash should not equal")
 	}
 
-	curStatTrieInDB := trie.NewTrie(md.ledger.DBStore(), curStatHash, nil)
+	curGsdb := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), curStatHash)
 
 	for _, accTx := range accTxsBlk1 {
-		as := chain.GetAccountState(curStatTrieInDB, accTx.Block.GetAddress())
+		as, _ := curGsdb.GetAccountState(accTx.Block.GetAddress())
 		if as == nil || as.Balance.Compare(accTx.Block.Balance) != types.BalanceCompEqual {
 			t.Fatalf("invalid account state in state trie")
 		}
 		repAddr := accTx.Block.GetRepresentative()
 		if !repAddr.IsZero() {
-			rs := chain.GetRepState(curStatTrieInDB, repAddr)
+			rs, _ := curGsdb.GetRepState(repAddr)
 			if rs == nil {
 				t.Fatalf("invalid rep state in state trie")
 			}

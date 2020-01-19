@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
@@ -227,16 +229,16 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 	header.BasHdr.Timestamp = uint32(time.Now().Unix())
 
 	prevStateHash := latestHeader.GetStateHash()
-	prevStateTrie := w.GetChain().GetStateTrie(&prevStateHash)
-	if prevStateTrie == nil {
-		return nil, fmt.Errorf("failed to get prev state trie %s", prevStateHash)
+	gsdb := statedb.NewPovGlobalStateDB(w.GetChain().TrieDb(), latestHeader.GetStateHash())
+	if gsdb == nil {
+		return nil, fmt.Errorf("failed to get state db %s", prevStateHash)
 	}
 
 	// coinbase tx
 	cbtx := header.CbTx
 
 	// pack account block txs
-	accBlocks := w.GetTxPool().SelectPendingTxs(prevStateTrie, w.maxTxPerBlock)
+	accBlocks := w.GetTxPool().SelectPendingTxs(gsdb, w.maxTxPerBlock)
 
 	w.logger.Debugf("current block select pending txs %d", len(accBlocks))
 
@@ -256,18 +258,18 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 		return nil, err
 	}
 
-	stateTrie, err := w.GetChain().GenStateTrie(header.GetHeight(), prevStateHash, accTxs)
+	err = w.GetChain().TransitStateDB(header.GetHeight(), accTxs, gsdb)
 	if err != nil {
 		return nil, err
 	}
-	if stateTrie == nil {
+	if gsdb.GetCurTrie() == nil {
 		return nil, fmt.Errorf("failed to generate state trie")
 	}
 
 	// build coinbase tx
 	cbtx = mineBlock.Header.CbTx
 	cbtx.TxNum = uint32(len(accTxs) + 1)
-	cbtx.StateHash = *stateTrie.Hash()
+	cbtx.StateHash = gsdb.GetCurHash()
 
 	minerRwd, repRwd, err := w.GetChain().CalcBlockReward(header)
 	if err != nil {
@@ -408,11 +410,11 @@ func (w *PovWorker) checkMinerPledge(minerAddr types.Address) error {
 
 	if latestBlock.GetHeight() >= (common.PovMinerVerifyHeightStart - 1) {
 		prevStateHash := latestBlock.GetStateHash()
-		prevTrie := w.GetChain().GetStateTrie(&prevStateHash)
-		if prevTrie == nil {
+		gsdb := statedb.NewPovGlobalStateDB(w.GetChain().TrieDb(), prevStateHash)
+		if gsdb == nil {
 			return errors.New("miner pausing for get previous state tire failed")
 		}
-		rs := w.GetChain().GetRepState(prevTrie, minerAddr)
+		rs, _ := gsdb.GetRepState(minerAddr)
 		if rs == nil {
 			return errors.New("miner pausing for account state not exist")
 		}

@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -19,7 +21,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/db"
-	"github.com/qlcchain/go-qlc/trie"
 )
 
 const (
@@ -60,7 +61,6 @@ type PovTxPool struct {
 type PovTxChainReader interface {
 	RegisterListener(listener EventListener)
 	UnRegisterListener(listener EventListener)
-	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
 }
 
 func NewPovTxPool(eb event.EventBus, l ledger.Store, chain PovTxChainReader) *PovTxPool {
@@ -456,13 +456,13 @@ func (tp *PovTxPool) getTx(txHash types.Hash) *types.StateBlock {
 	return txEntry.txBlock
 }
 
-func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.StateBlock {
+func (tp *PovTxPool) SelectPendingTxs(gsdb *statedb.PovGlobalStateDB, limit int) []*types.StateBlock {
 	tp.txMu.RLock()
 	defer tp.txMu.RUnlock()
 
 	startTm := time.Now()
 
-	retTxs := tp.selectPendingTxsByFair(stateTrie, limit)
+	retTxs := tp.selectPendingTxsByFair(gsdb, limit)
 
 	tp.statLastSelectTime = time.Since(startTm).Microseconds()
 	if tp.statLastSelectTime > tp.statMaxSelectTime {
@@ -472,7 +472,7 @@ func (tp *PovTxPool) SelectPendingTxs(stateTrie *trie.Trie, limit int) []*types.
 	return retTxs
 }
 
-func (tp *PovTxPool) selectPendingTxsByFair(stateTrie *trie.Trie, limit int) []*types.StateBlock {
+func (tp *PovTxPool) selectPendingTxsByFair(gsdb *statedb.PovGlobalStateDB, limit int) []*types.StateBlock {
 	var retTxs []*types.StateBlock
 
 	if limit <= 0 || len(tp.accountTxs) == 0 {
@@ -543,7 +543,7 @@ LoopMain:
 					if isCA {
 						prevHashWant = types.ZeroHash
 					} else {
-						as := tp.chain.GetAccountState(stateTrie, addrToken.Address)
+						as, _ := gsdb.GetAccountState(addrToken.Address)
 						if as != nil {
 							rs := as.GetTokenState(addrToken.Token)
 							if rs != nil {

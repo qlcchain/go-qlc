@@ -4,12 +4,20 @@ import (
 	"errors"
 	"fmt"
 
+	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/ledger/db"
+
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 )
 
 type PovGlobalStateDB struct {
-	treeRoot *trie.Trie
+	db       db.Store
+	logger   *zap.SugaredLogger
+	prevTrie *trie.Trie
+	curTrie  *trie.Trie
 
 	asCache map[types.Address]*types.PovAccountState
 	asDirty map[types.Address]struct{}
@@ -17,19 +25,23 @@ type PovGlobalStateDB struct {
 	rsCache map[types.Address]*types.PovRepState
 	rsDirty map[types.Address]struct{}
 
-	csCache map[types.Address]*types.PovContractState
+	csCache map[types.Address]*PovContractStateDB
 	csDirty map[types.Address]struct{}
 }
 
 type PovContractStateDB struct {
-	treeRoot *trie.Trie
+	cs       *types.PovContractState
+	db       db.Store
+	prevTrie *trie.Trie
+	curTrie  *trie.Trie
 	kvCache  map[string][]byte
 	kvDirty  map[string]struct{}
 }
 
-func NewPovGlobalStateDB(t *trie.Trie) *PovGlobalStateDB {
-	return &PovGlobalStateDB{
-		treeRoot: t,
+func NewPovGlobalStateDB(db db.Store, prevStateHash types.Hash) *PovGlobalStateDB {
+	gsdb := &PovGlobalStateDB{
+		db:     db,
+		logger: log.NewLogger("pov_statedb"),
 
 		asCache: make(map[types.Address]*types.PovAccountState),
 		asDirty: make(map[types.Address]struct{}),
@@ -37,9 +49,50 @@ func NewPovGlobalStateDB(t *trie.Trie) *PovGlobalStateDB {
 		rsCache: make(map[types.Address]*types.PovRepState),
 		rsDirty: make(map[types.Address]struct{}),
 
-		csCache: make(map[types.Address]*types.PovContractState),
+		csCache: make(map[types.Address]*PovContractStateDB),
 		csDirty: make(map[types.Address]struct{}),
 	}
+
+	if prevStateHash.IsZero() {
+		gsdb.curTrie = trie.NewTrie(db, nil, nil)
+	} else {
+		gsdb.prevTrie = trie.NewTrie(db, &prevStateHash, nil)
+		if gsdb.prevTrie != nil {
+			gsdb.curTrie = gsdb.prevTrie.Clone()
+		} else {
+			gsdb.curTrie = trie.NewTrie(db, nil, nil)
+		}
+	}
+
+	return gsdb
+}
+
+func (gsdb *PovGlobalStateDB) GetPrevHash() types.Hash {
+	if gsdb.prevTrie != nil {
+		rootHashPtr := gsdb.prevTrie.Hash()
+		if rootHashPtr != nil {
+			return *rootHashPtr
+		}
+	}
+	return types.ZeroHash
+}
+
+func (gsdb *PovGlobalStateDB) GetCurHash() types.Hash {
+	if gsdb.curTrie != nil {
+		rootHashPtr := gsdb.curTrie.Hash()
+		if rootHashPtr != nil {
+			return *rootHashPtr
+		}
+	}
+	return types.ZeroHash
+}
+
+func (gsdb *PovGlobalStateDB) GetPrevTrie() *trie.Trie {
+	return gsdb.prevTrie
+}
+
+func (gsdb *PovGlobalStateDB) GetCurTrie() *trie.Trie {
+	return gsdb.curTrie
 }
 
 func (gsdb *PovGlobalStateDB) SetAccountState(address types.Address, as *types.PovAccountState) error {
@@ -55,7 +108,7 @@ func (gsdb *PovGlobalStateDB) GetAccountState(address types.Address) (*types.Pov
 	}
 
 	keyBytes := types.PovCreateAccountStateKey(address)
-	valBytes := gsdb.treeRoot.GetValue(keyBytes)
+	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
 		return nil, errors.New("trie get value return empty")
 	}
@@ -83,7 +136,7 @@ func (gsdb *PovGlobalStateDB) GetRepState(address types.Address) (*types.PovRepS
 	}
 
 	keyBytes := types.PovCreateRepStateKey(address)
-	valBytes := gsdb.treeRoot.GetValue(keyBytes)
+	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
 		return nil, errors.New("trie get value return empty")
 	}
@@ -98,19 +151,13 @@ func (gsdb *PovGlobalStateDB) GetRepState(address types.Address) (*types.PovRepS
 	return rs, nil
 }
 
-func (gsdb *PovGlobalStateDB) SetContractState(address types.Address, cs *types.PovContractState) error {
-	gsdb.csCache[address] = cs
-	gsdb.csDirty[address] = struct{}{}
-	return nil
-}
-
-func (gsdb *PovGlobalStateDB) GetContractState(address types.Address) (*types.PovContractState, error) {
+func (gsdb *PovGlobalStateDB) GetContractStateDB(address types.Address) (*PovContractStateDB, error) {
 	if cs := gsdb.csCache[address]; cs != nil {
 		return cs, nil
 	}
 
 	keyBytes := types.PovCreateStateKey(types.PovStatePrefixCCS, address.Bytes())
-	valBytes := gsdb.treeRoot.GetValue(keyBytes)
+	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
 		return nil, errors.New("trie get value return empty")
 	}
@@ -121,8 +168,30 @@ func (gsdb *PovGlobalStateDB) GetContractState(address types.Address) (*types.Po
 		return nil, fmt.Errorf("deserialize contract state err %s", err)
 	}
 
-	gsdb.csCache[address] = cs
-	return cs, nil
+	csdb := NewPovContractStateDB(gsdb.db, cs)
+	gsdb.csCache[address] = csdb
+	return csdb, nil
+}
+
+func (gsdb *PovGlobalStateDB) SetContractState(address types.Address, key []byte, val []byte) error {
+	csdb, err := gsdb.GetContractStateDB(address)
+	if err != nil {
+		return err
+	}
+	err = csdb.SetValue(key, val)
+	if err == nil {
+		gsdb.csDirty[address] = struct{}{}
+	}
+	return err
+}
+
+func (gsdb *PovGlobalStateDB) GetContractState(address types.Address, key []byte) ([]byte, error) {
+	csdb, err := gsdb.GetContractStateDB(address)
+	if err != nil {
+		return nil, err
+	}
+	val, err := csdb.GetValue(key)
+	return val, err
 }
 
 func (gsdb *PovGlobalStateDB) CommitToTrie() error {
@@ -141,7 +210,7 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 		}
 
 		keyBytes := types.PovCreateAccountStateKey(address)
-		gsdb.treeRoot.SetValue(keyBytes, valBytes)
+		gsdb.curTrie.SetValue(keyBytes, valBytes)
 	}
 
 	for address := range gsdb.rsDirty {
@@ -159,7 +228,7 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 		}
 
 		keyBytes := types.PovCreateRepStateKey(address)
-		gsdb.treeRoot.SetValue(keyBytes, valBytes)
+		gsdb.curTrie.SetValue(keyBytes, valBytes)
 	}
 
 	for address := range gsdb.csDirty {
@@ -168,7 +237,12 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 			continue
 		}
 
-		valBytes, err := cs.Serialize()
+		err := cs.CommitToTrie()
+		if err != nil {
+			return err
+		}
+
+		valBytes, err := cs.cs.Serialize()
 		if err != nil {
 			return fmt.Errorf("serialize new contract state err %s", err)
 		}
@@ -177,18 +251,73 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 		}
 
 		keyBytes := types.PovCreateStateKey(types.PovStatePrefixCCS, address.Bytes())
-		gsdb.treeRoot.SetValue(keyBytes, valBytes)
+		gsdb.curTrie.SetValue(keyBytes, valBytes)
 	}
 
 	return nil
 }
 
-func NewPovContractStateDB(t *trie.Trie) *PovContractStateDB {
-	return &PovContractStateDB{
-		treeRoot: t,
-		kvCache:  make(map[string][]byte),
-		kvDirty:  make(map[string]struct{}),
+func (gsdb *PovGlobalStateDB) CommitToDB(txn db.StoreTxn) error {
+	saveCallback, dbErr := gsdb.curTrie.SaveInTxn(txn)
+	if dbErr != nil {
+		return dbErr
 	}
+	if saveCallback != nil {
+		saveCallback()
+	}
+	return nil
+}
+
+func NewPovContractStateDB(db db.Store, cs *types.PovContractState) *PovContractStateDB {
+	var currentTrie *trie.Trie
+
+	prevStateHash := cs.StateRoot
+	if prevStateHash.IsZero() {
+		currentTrie = trie.NewTrie(db, nil, nil)
+	} else {
+		prevTrie := trie.NewTrie(db, &prevStateHash, nil)
+		if prevTrie != nil {
+			currentTrie = prevTrie.Clone()
+		} else {
+			currentTrie = trie.NewTrie(db, nil, nil)
+		}
+	}
+
+	return &PovContractStateDB{
+		db:      db,
+		cs:      cs,
+		curTrie: currentTrie,
+		kvCache: make(map[string][]byte),
+		kvDirty: make(map[string]struct{}),
+	}
+}
+
+func (csdb *PovContractStateDB) GetPrevHash() types.Hash {
+	if csdb.prevTrie != nil {
+		rootHashPtr := csdb.prevTrie.Hash()
+		if rootHashPtr != nil {
+			return *rootHashPtr
+		}
+	}
+	return types.ZeroHash
+}
+
+func (csdb *PovContractStateDB) GetCurHash() types.Hash {
+	if csdb.curTrie != nil {
+		rootHashPtr := csdb.curTrie.Hash()
+		if rootHashPtr != nil {
+			return *rootHashPtr
+		}
+	}
+	return types.ZeroHash
+}
+
+func (csdb *PovContractStateDB) GetPrevTrie() *trie.Trie {
+	return csdb.prevTrie
+}
+
+func (csdb *PovContractStateDB) GetCurTrie() *trie.Trie {
+	return csdb.curTrie
 }
 
 func (csdb *PovContractStateDB) SetValue(key []byte, val []byte) error {
@@ -202,21 +331,27 @@ func (csdb *PovContractStateDB) GetValue(key []byte) ([]byte, error) {
 		return val, nil
 	}
 
-	val := csdb.treeRoot.GetValue(key)
+	val := csdb.curTrie.GetValue(key)
 	csdb.kvCache[string(key)] = val
 
 	return val, nil
 }
 
 func (csdb *PovContractStateDB) CommitToTrie() error {
+	if len(csdb.kvDirty) == 0 {
+		return nil
+	}
+
 	for key := range csdb.kvDirty {
 		val := csdb.kvCache[key]
 		if val == nil {
 			continue
 		}
 
-		csdb.treeRoot.SetValue([]byte(key), csdb.kvCache[key])
+		csdb.curTrie.SetValue([]byte(key), csdb.kvCache[key])
 	}
+
+	csdb.cs.StateRoot = *csdb.curTrie.Hash()
 
 	return nil
 }

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"github.com/qlcchain/go-qlc/common/topic"
 
 	"go.uber.org/atomic"
@@ -343,8 +345,8 @@ func (bc *PovBlockChain) loadLastState() error {
 
 	latestStateHash := latestBlock.GetStateHash()
 	bc.logger.Infof("loaded latest state hash %s", latestStateHash)
-	latestTrie := bc.GetStateTrie(&latestStateHash)
-	if latestTrie == nil || latestTrie.Root == nil {
+	latestStateDB := statedb.NewPovGlobalStateDB(bc.TrieDb(), latestStateHash)
+	if latestStateDB == nil || latestStateDB.GetPrevTrie() == nil {
 		panic(fmt.Errorf("invalid latest state hash %s", latestStateHash))
 	}
 
@@ -691,14 +693,14 @@ func (bc *PovBlockChain) LocateBestBlock(locator []*types.Hash) *types.PovBlock 
 	return startBlock
 }
 
-func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
+func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, gsdb *statedb.PovGlobalStateDB) error {
 	chainState := ChainStateNone
 	var forkBlock *types.PovBlock
 	startTm := time.Now()
 
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		var dbErr error
-		chainState, forkBlock, dbErr = bc.insertBlock(txn, block, stateTrie)
+		chainState, forkBlock, dbErr = bc.insertBlock(txn, block, gsdb)
 		return dbErr
 	})
 
@@ -733,7 +735,7 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie
 	return err
 }
 
-func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, stateTrie *trie.Trie) (ChainState, *types.PovBlock, error) {
+func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, gsdb *statedb.PovGlobalStateDB) (ChainState, *types.PovBlock, error) {
 	currentBlock := bc.LatestBlock()
 
 	bestTD, err := bc.getLedger().GetPovTD(currentBlock.GetHash(), currentBlock.GetHeight(), txn)
@@ -759,13 +761,10 @@ func (bc *PovBlockChain) insertBlock(txn db.StoreTxn, block *types.PovBlock, sta
 		}
 	}
 
-	saveCallback, dbErr := stateTrie.SaveInTxn(txn)
+	dbErr := gsdb.CommitToDB(txn)
 	if dbErr != nil {
 		bc.logger.Errorf("pov block %d/%s save state trie failed, err %s", block.GetHeight(), block.GetHash(), dbErr)
 		return ChainStateNone, nil, dbErr
-	}
-	if saveCallback != nil {
-		saveCallback()
 	}
 
 	_ = bc.hashTdCache.Set(block.GetHash(), blockTD)
