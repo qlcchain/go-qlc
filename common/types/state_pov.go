@@ -8,7 +8,7 @@ import (
 const (
 	PovStatePrefixAcc = byte(1)
 	PovStatePrefixRep = byte(2)
-	PovStatePrefixCCS = byte(201) // Common Contract Storage
+	PovStatePrefixCS  = byte(201) // Contract State
 
 	PovStatusOffline = 0
 	PovStatusOnline  = 1
@@ -219,8 +219,8 @@ func (rs *PovRepState) String() string {
 // Common Contract State, key value in trie for each contract
 // key = contract address
 type PovContractState struct {
-	StateRoot Hash     `msg:"sr,extension" json:"stateRoot"`
-	CodeHash  HexBytes `msg:"ch,extension" json:"codeHash"`
+	StateHash Hash `msg:"sh,extension" json:"stateHash"`
+	CodeHash  Hash `msg:"ch,extension" json:"codeHash"`
 }
 
 func NewPovContractState() *PovContractState {
@@ -247,7 +247,7 @@ const (
 
 // key = type + id + pubkey + sendBlockHash
 type PovPublishState struct {
-	OracleAccounts []Address `msg:"oas,extension" json:"oracleAccounts"`
+	OracleAccounts []Address `msg:"oas" json:"oracleAccounts"`
 	VerifiedHeight uint64    `msg:"vh" json:"verifiedHeight"`
 	VerifiedStatus int8      `msg:"vs" json:"verifiedStatus"`
 	BonusFee       *BigNum   `msg:"bf,extension" json:"bonusFee"`

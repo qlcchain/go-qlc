@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"github.com/qlcchain/go-qlc/common/topic"
 
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -65,19 +67,33 @@ type PovApiBlock struct {
 }
 
 type PovApiState struct {
-	AccountState *types.PovAccountState `json:"accountState"`
-	RepState     *types.PovRepState     `json:"repState"`
+	AccountState  *types.PovAccountState  `json:"accountState"`
+	RepState      *types.PovRepState      `json:"repState"`
+	ContractState *types.PovContractState `json:"contractState"`
 }
 
 type PovApiDumpState struct {
-	StateHash types.Hash                               `json:"stateHash"`
-	Accounts  map[types.Address]*types.PovAccountState `json:"accounts"`
-	Reps      map[types.Address]*types.PovRepState     `json:"reps"`
+	StateHash types.Hash                                `json:"stateHash"`
+	Accounts  map[types.Address]*types.PovAccountState  `json:"accounts"`
+	Reps      map[types.Address]*types.PovRepState      `json:"reps"`
+	Contracts map[types.Address]*types.PovContractState `json:"contracts"`
 }
 
 type PovApiRepState struct {
 	StateHash types.Hash                           `json:"stateHash"`
 	Reps      map[types.Address]*types.PovRepState `json:"reps"`
+}
+
+type PovApiKeyValPair struct {
+	Key   types.HexBytes `json:"key"`
+	Value types.HexBytes
+}
+
+type PovApiContractState struct {
+	StateHash types.Hash          `json:"stateHash"`
+	CodeHash  types.Hash          `json:"codeHash"`
+	KVNum     int                 `json:"kvNum"`
+	AllKVs    [][2]types.HexBytes `json:"allKVs"`
 }
 
 type PovApiTxLookup struct {
@@ -423,33 +439,30 @@ func (api *PovApi) GetTransactionByBlockHeightAndIndex(height uint64, index uint
 
 func (api *PovApi) GetAccountState(address types.Address, stateHash types.Hash) (*PovApiState, error) {
 	apiState := &PovApiState{}
+	stateExist := false
 
-	db := api.l.Store
-	stateTrie := trie.NewTrie(db, &stateHash, nil)
+	gsdb := statedb.NewPovGlobalStateDB(api.l.DBStore(), stateHash)
 
-	asKey := types.PovCreateAccountStateKey(address)
-	asVal := stateTrie.GetValue(asKey)
-	if len(asVal) <= 0 {
-		return nil, errors.New("account state value not exist")
+	as, _ := gsdb.GetAccountState(address)
+	if as != nil {
+		stateExist = true
+		apiState.AccountState = as
 	}
 
-	as := types.NewPovAccountState()
-	err := as.Deserialize(asVal)
-	if err != nil {
-		return nil, err
-	}
-
-	apiState.AccountState = as
-
-	rsKey := types.PovCreateRepStateKey(address)
-	rsVal := stateTrie.GetValue(rsKey)
-	if len(rsVal) > 0 {
-		rs := types.NewPovRepState()
-		err = rs.Deserialize(rsVal)
-		if err != nil {
-			return nil, err
-		}
+	rs, _ := gsdb.GetRepState(address)
+	if rs != nil {
+		stateExist = true
 		apiState.RepState = rs
+	}
+
+	cs, _ := gsdb.GetContractState(address)
+	if cs != nil {
+		stateExist = true
+		apiState.ContractState = cs
+	}
+
+	if !stateExist {
+		return nil, errors.New("account state value not exist")
 	}
 
 	return apiState, nil
@@ -538,9 +551,50 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 
 			dump.Reps[addr] = rs
 		}
+
+		if key[1] == types.PovStatePrefixCS {
+			addr, err := types.PovStateKeyToAddress(key)
+			if err != nil {
+				return nil, err
+			}
+
+			cs := types.NewPovContractState()
+			err = cs.Deserialize(val)
+			if err != nil {
+				return nil, err
+			}
+
+			dump.Contracts[addr] = cs
+		}
 	}
 
 	return dump, nil
+}
+
+func (api *PovApi) DumpContractState(stateHash types.Hash, address types.Address) (*PovApiContractState, error) {
+	gsdb := statedb.NewPovGlobalStateDB(api.l.DBStore(), stateHash)
+	csdb, err := gsdb.LookupContractStateDB(address)
+	if err != nil {
+		return nil, err
+	}
+
+	apiCs := new(PovApiContractState)
+	apiCs.StateHash = csdb.CS.StateHash
+	apiCs.CodeHash = csdb.CS.CodeHash
+
+	csTrie := csdb.GetCurTrie()
+	it := csTrie.NewIterator(nil)
+	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
+		if len(val) <= 0 {
+			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
+			continue
+		}
+
+		apiCs.AllKVs = append(apiCs.AllKVs, [2]types.HexBytes{key, val})
+	}
+	apiCs.KVNum = len(apiCs.AllKVs)
+
+	return apiCs, nil
 }
 
 func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepState, error) {

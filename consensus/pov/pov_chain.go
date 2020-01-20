@@ -375,8 +375,6 @@ func (bc *PovBlockChain) ResetChainState() error {
 func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	bc.logger.Infof("reset with genesis block %d/%s", genesis.GetHeight(), genesis.GetHash())
 
-	var saveCallback func()
-
 	err := bc.getLedger().BatchUpdate(func(txn db.StoreTxn) error {
 		var dbErr error
 
@@ -409,23 +407,28 @@ func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 			return dbErr
 		}
 
-		stateTrie := trie.NewTrie(bc.getLedger().DBStore(), nil, bc.trieNodePool)
+		gsdb := statedb.NewPovGlobalStateDB(bc.TrieDb(), types.ZeroHash)
+
 		stateKeys, stateValues := common.GenesisPovStateKVs()
 		for i := range stateKeys {
-			stateTrie.SetValue(stateKeys[i], stateValues[i])
+			err := gsdb.SetValue(stateKeys[i], stateValues[i])
+			if err != nil {
+				return err
+			}
 		}
 
-		if *stateTrie.Hash() != genesis.GetStateHash() {
-			panic(fmt.Sprintf("genesis block state hash not same %s != %s", *stateTrie.Hash(), genesis.GetStateHash()))
+		err := gsdb.CommitToTrie()
+		if err != nil {
+			return err
 		}
 
-		saveCallback, dbErr = stateTrie.SaveInTxn(txn)
+		if gsdb.GetCurHash() != genesis.GetStateHash() {
+			panic(fmt.Sprintf("genesis block state hash not same %s != %s", gsdb.GetCurHash(), genesis.GetStateHash()))
+		}
+
+		dbErr = gsdb.CommitToDB(txn)
 		if dbErr != nil {
 			return dbErr
-		}
-
-		if saveCallback != nil {
-			saveCallback()
 		}
 
 		return nil

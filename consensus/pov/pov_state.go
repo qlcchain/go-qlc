@@ -20,7 +20,7 @@ func (bc *PovBlockChain) TransitStateDB(height uint64, txs []*types.PovTransacti
 	for _, tx := range txs {
 		err := bc.ApplyTransaction(height, gsdb, tx)
 		if err != nil {
-			bc.logger.Errorf("failed to apply tx %s", tx.Hash)
+			bc.logger.Errorf("failed to apply tx %s, err %s", tx.Hash, err)
 			return err
 		}
 	}
@@ -269,7 +269,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 		return nil
 	}
 
-	csdb, err := gsdb.GetContractStateDB(ca)
+	csdb, err := gsdb.LookupContractStateDB(ca)
 	if err != nil {
 		return err
 	}

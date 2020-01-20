@@ -412,7 +412,7 @@ func (w *PovWorker) checkMinerPledge(minerAddr types.Address) error {
 		prevStateHash := latestBlock.GetStateHash()
 		gsdb := statedb.NewPovGlobalStateDB(w.GetChain().TrieDb(), prevStateHash)
 		if gsdb == nil {
-			return errors.New("miner pausing for get previous state tire failed")
+			return errors.New("miner pausing for get state db failed")
 		}
 		rs, _ := gsdb.GetRepState(minerAddr)
 		if rs == nil {

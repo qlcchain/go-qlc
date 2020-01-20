@@ -19,6 +19,9 @@ type PovGlobalStateDB struct {
 	prevTrie *trie.Trie
 	curTrie  *trie.Trie
 
+	kvCache map[string][]byte
+	kvDirty map[string]struct{}
+
 	asCache map[types.Address]*types.PovAccountState
 	asDirty map[types.Address]struct{}
 
@@ -29,7 +32,7 @@ type PovGlobalStateDB struct {
 }
 
 type PovContractStateDB struct {
-	cs       *types.PovContractState
+	CS       *types.PovContractState
 	dirty    bool // means fields in cs have been updated
 	db       db.Store
 	prevTrie *trie.Trie
@@ -42,6 +45,9 @@ func NewPovGlobalStateDB(db db.Store, prevStateHash types.Hash) *PovGlobalStateD
 	gsdb := &PovGlobalStateDB{
 		db:     db,
 		logger: log.NewLogger("pov_statedb"),
+
+		kvCache: make(map[string][]byte),
+		kvDirty: make(map[string]struct{}),
 
 		asCache: make(map[types.Address]*types.PovAccountState),
 		asDirty: make(map[types.Address]struct{}),
@@ -94,6 +100,26 @@ func (gsdb *PovGlobalStateDB) GetCurTrie() *trie.Trie {
 	return gsdb.curTrie
 }
 
+func (gsdb *PovGlobalStateDB) SetValue(key []byte, val []byte) error {
+	gsdb.kvCache[string(key)] = val
+	gsdb.kvDirty[string(key)] = struct{}{}
+	return nil
+}
+
+func (gsdb *PovGlobalStateDB) GetValue(key []byte) ([]byte, error) {
+	if val, ok := gsdb.kvCache[string(key)]; ok {
+		return val, nil
+	}
+
+	val := gsdb.curTrie.GetValue(key)
+	if len(val) == 0 {
+		return nil, errors.New("key not exist in trie")
+	}
+	gsdb.kvCache[string(key)] = val
+
+	return val, nil
+}
+
 func (gsdb *PovGlobalStateDB) SetAccountState(address types.Address, as *types.PovAccountState) error {
 	as.Account = address
 	gsdb.asCache[address] = as
@@ -109,7 +135,7 @@ func (gsdb *PovGlobalStateDB) GetAccountState(address types.Address) (*types.Pov
 	keyBytes := types.PovCreateAccountStateKey(address)
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
-		return nil, errors.New("trie get value return empty")
+		return nil, errors.New("key not exist in trie")
 	}
 
 	as := types.NewPovAccountState()
@@ -137,7 +163,7 @@ func (gsdb *PovGlobalStateDB) GetRepState(address types.Address) (*types.PovRepS
 	keyBytes := types.PovCreateRepStateKey(address)
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
-		return nil, errors.New("trie get value return empty")
+		return nil, errors.New("key not exist in trie")
 	}
 
 	rs := types.NewPovRepState()
@@ -150,15 +176,11 @@ func (gsdb *PovGlobalStateDB) GetRepState(address types.Address) (*types.PovRepS
 	return rs, nil
 }
 
-func (gsdb *PovGlobalStateDB) GetContractStateDB(address types.Address) (*PovContractStateDB, error) {
-	if cs := gsdb.allCSDBs[address]; cs != nil {
-		return cs, nil
-	}
-
-	keyBytes := types.PovCreateStateKey(types.PovStatePrefixCCS, address.Bytes())
+func (gsdb *PovGlobalStateDB) GetContractState(address types.Address) (*types.PovContractState, error) {
+	keyBytes := types.PovCreateStateKey(types.PovStatePrefixCS, address.Bytes())
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
-		return nil, errors.New("trie get value return empty")
+		return nil, errors.New("key not exist in trie")
 	}
 
 	cs := types.NewPovContractState()
@@ -167,13 +189,32 @@ func (gsdb *PovGlobalStateDB) GetContractStateDB(address types.Address) (*PovCon
 		return nil, fmt.Errorf("deserialize contract state err %s", err)
 	}
 
+	return cs, nil
+}
+
+func (gsdb *PovGlobalStateDB) LookupContractStateDB(address types.Address) (*PovContractStateDB, error) {
+	if cs := gsdb.allCSDBs[address]; cs != nil {
+		return cs, nil
+	}
+
+	cs := types.NewPovContractState()
+
+	keyBytes := types.PovCreateStateKey(types.PovStatePrefixCS, address.Bytes())
+	valBytes := gsdb.curTrie.GetValue(keyBytes)
+	if len(valBytes) > 0 {
+		err := cs.Deserialize(valBytes)
+		if err != nil {
+			return nil, fmt.Errorf("deserialize contract state err %s", err)
+		}
+	}
+
 	csdb := NewPovContractStateDB(gsdb.db, cs)
 	gsdb.allCSDBs[address] = csdb
 	return csdb, nil
 }
 
-func (gsdb *PovGlobalStateDB) SetContractState(address types.Address, key []byte, val []byte) error {
-	csdb, err := gsdb.GetContractStateDB(address)
+func (gsdb *PovGlobalStateDB) SetContractValue(address types.Address, key []byte, val []byte) error {
+	csdb, err := gsdb.LookupContractStateDB(address)
 	if err != nil {
 		return err
 	}
@@ -181,8 +222,8 @@ func (gsdb *PovGlobalStateDB) SetContractState(address types.Address, key []byte
 	return err
 }
 
-func (gsdb *PovGlobalStateDB) GetContractState(address types.Address, key []byte) ([]byte, error) {
-	csdb, err := gsdb.GetContractStateDB(address)
+func (gsdb *PovGlobalStateDB) GetContractValue(address types.Address, key []byte) ([]byte, error) {
+	csdb, err := gsdb.LookupContractStateDB(address)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +232,19 @@ func (gsdb *PovGlobalStateDB) GetContractState(address types.Address, key []byte
 }
 
 func (gsdb *PovGlobalStateDB) CommitToTrie() error {
+	// global key value
+	if len(gsdb.kvDirty) > 0 {
+		for key := range gsdb.kvDirty {
+			val := gsdb.kvCache[key]
+			if val == nil {
+				continue
+			}
+
+			gsdb.curTrie.SetValue([]byte(key), gsdb.kvCache[key])
+		}
+		gsdb.kvDirty = make(map[string]struct{})
+	}
+
 	// global account state
 	if len(gsdb.asDirty) > 0 {
 		for address := range gsdb.asDirty {
@@ -245,7 +299,7 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 			continue
 		}
 
-		valBytes, err := csdb.cs.Serialize()
+		valBytes, err := csdb.CS.Serialize()
 		if err != nil {
 			return fmt.Errorf("serialize new contract state err %s", err)
 		}
@@ -253,7 +307,7 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 			return errors.New("serialize new contract state got empty value")
 		}
 
-		keyBytes := types.PovCreateStateKey(types.PovStatePrefixCCS, address.Bytes())
+		keyBytes := types.PovCreateStateKey(types.PovStatePrefixCS, address.Bytes())
 		gsdb.curTrie.SetValue(keyBytes, valBytes)
 	}
 
@@ -284,7 +338,7 @@ func (gsdb *PovGlobalStateDB) CommitToDB(txn db.StoreTxn) error {
 func NewPovContractStateDB(db db.Store, cs *types.PovContractState) *PovContractStateDB {
 	var currentTrie *trie.Trie
 
-	prevStateHash := cs.StateRoot
+	prevStateHash := cs.StateHash
 	if prevStateHash.IsZero() {
 		currentTrie = trie.NewTrie(db, nil, nil)
 	} else {
@@ -298,7 +352,7 @@ func NewPovContractStateDB(db db.Store, cs *types.PovContractState) *PovContract
 
 	return &PovContractStateDB{
 		db:      db,
-		cs:      cs,
+		CS:      cs,
 		curTrie: currentTrie,
 		kvCache: make(map[string][]byte),
 		kvDirty: make(map[string]struct{}),
@@ -345,6 +399,9 @@ func (csdb *PovContractStateDB) GetValue(key []byte) ([]byte, error) {
 	}
 
 	val := csdb.curTrie.GetValue(key)
+	if len(val) == 0 {
+		return nil, errors.New("key not exist in trie")
+	}
 	csdb.kvCache[string(key)] = val
 
 	return val, nil
@@ -362,7 +419,7 @@ func (csdb *PovContractStateDB) CommitToTrie() (bool, error) {
 		}
 		csdb.kvDirty = make(map[string]struct{})
 
-		csdb.cs.StateRoot = *csdb.curTrie.Hash()
+		csdb.CS.StateHash = *csdb.curTrie.Hash()
 
 		csdb.dirty = true
 	}

@@ -1,8 +1,12 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/vm/contract/dpki"
 
 	"go.uber.org/zap"
 
@@ -53,6 +57,12 @@ type VerifierRegParam struct {
 type VerifierUnRegParam struct {
 	Account types.Address `json:"account"`
 	VType   string        `json:"type"`
+}
+
+type PublishInfoState struct {
+	*PublishParam
+
+	State *types.PovPublishState `json:"State"`
 }
 
 func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegParam) (*types.StateBlock, error) {
@@ -263,6 +273,21 @@ func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account string) ([]*Ver
 	}
 
 	return vrs, nil
+}
+
+func (p *PublicKeyDistributionApi) GetVerifierRewardInfo(address types.Address) (*types.PovVerifierState, error) {
+	csDB := p.getCSDB()
+	if csDB == nil {
+		return nil, errors.New("failed to get contract state db")
+	}
+	vsRawKey := address.Bytes()
+
+	vs, err := dpki.PovGetVerifierState(csDB, vsRawKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return vs, nil
 }
 
 type PublishParam struct {
@@ -479,8 +504,46 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 	return send, nil
 }
 
-func (p *PublicKeyDistributionApi) GetPubKeyByTypeAndID(pType string, pID string) ([]*PublishParam, error) {
-	pubs := make([]*PublishParam, 0)
+func (p *PublicKeyDistributionApi) getCSDB() *statedb.PovContractStateDB {
+	latestPov, _ := p.l.GetLatestPovHeader()
+	if latestPov != nil {
+		gsdb := statedb.NewPovGlobalStateDB(p.l.DBStore(), latestPov.GetStateHash())
+		csdb, _ := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+		return csdb
+	}
+
+	return nil
+}
+
+func (p *PublicKeyDistributionApi) fillPublishInfoState(csdb *statedb.PovContractStateDB, pubInfo *abi.PublishInfo) *PublishInfoState {
+	pubInfoKey := &abi.PublishInfoKey{
+		PType:  pubInfo.PType,
+		PID:    pubInfo.PID,
+		PubKey: pubInfo.PubKey,
+		Hash:   pubInfo.Hash,
+	}
+	psRawKey := pubInfoKey.ToRawKey()
+
+	pis := &PublishInfoState{}
+	pis.PublishParam = &PublishParam{
+		Account:   pubInfo.Account,
+		PType:     common.OracleTypeToString(pubInfo.PType),
+		PID:       pubInfo.PID.String(),
+		PubKey:    types.NewHexBytesFromData(pubInfo.PubKey).String(),
+		Fee:       types.Balance{Int: pubInfo.Fee},
+		Verifiers: pubInfo.Verifiers,
+		Codes:     pubInfo.Codes,
+		Hash:      pubInfo.Hash.String(),
+	}
+	if csdb != nil {
+		pis.State, _ = dpki.PovGetPublishState(csdb, psRawKey)
+	}
+
+	return pis
+}
+
+func (p *PublicKeyDistributionApi) GetPubKeyByTypeAndID(pType string, pID string) ([]*PublishInfoState, error) {
+	pubs := make([]*PublishInfoState, 0)
 
 	pt := common.OracleStringToType(pType)
 	id, err := types.Sha256HashData([]byte(pID))
@@ -488,29 +551,22 @@ func (p *PublicKeyDistributionApi) GetPubKeyByTypeAndID(pType string, pID string
 		return nil, fmt.Errorf("get id hash err")
 	}
 
+	csDB := p.getCSDB()
+
 	infos := abi.GetPublishInfoByTypeAndId(p.ctx, pt, id)
 	if infos != nil {
 		for _, i := range infos {
-			p := &PublishParam{
-				Account:   i.Account,
-				PType:     common.OracleTypeToString(i.PType),
-				PID:       i.PID.String(),
-				PubKey:    types.NewHexBytesFromData(i.PubKey).String(),
-				Fee:       types.Balance{Int: i.Fee},
-				Verifiers: i.Verifiers,
-				Codes:     i.Codes,
-				Hash:      i.Hash.String(),
-			}
-			pubs = append(pubs, p)
+			pis := p.fillPublishInfoState(csDB, i)
+			pubs = append(pubs, pis)
 		}
 	}
 
 	return pubs, nil
 }
 
-func (p *PublicKeyDistributionApi) GetPublishInfosByType(pType string) ([]*PublishParam, error) {
+func (p *PublicKeyDistributionApi) GetPublishInfosByType(pType string) ([]*PublishInfoState, error) {
 	pt := common.OracleStringToType(pType)
-	pubs := make([]*PublishParam, 0)
+	pubs := make([]*PublishInfoState, 0)
 	var infos []*abi.PublishInfo
 
 	if pType == "" {
@@ -520,27 +576,20 @@ func (p *PublicKeyDistributionApi) GetPublishInfosByType(pType string) ([]*Publi
 	}
 
 	if infos != nil {
+		csDB := p.getCSDB()
+
 		for _, i := range infos {
-			p := &PublishParam{
-				Account:   i.Account,
-				PType:     common.OracleTypeToString(i.PType),
-				PID:       i.PID.String(),
-				PubKey:    types.NewHexBytesFromData(i.PubKey).String(),
-				Fee:       types.Balance{Int: i.Fee},
-				Verifiers: i.Verifiers,
-				Codes:     i.Codes,
-				Hash:      i.Hash.String(),
-			}
-			pubs = append(pubs, p)
+			pis := p.fillPublishInfoState(csDB, i)
+			pubs = append(pubs, pis)
 		}
 	}
 
 	return pubs, nil
 }
 
-func (p *PublicKeyDistributionApi) GetPublishInfosByAccountAndType(account types.Address, pType string) ([]*PublishParam, error) {
+func (p *PublicKeyDistributionApi) GetPublishInfosByAccountAndType(account types.Address, pType string) ([]*PublishInfoState, error) {
 	pt := common.OracleStringToType(pType)
-	pubs := make([]*PublishParam, 0)
+	pubs := make([]*PublishInfoState, 0)
 	var infos []*abi.PublishInfo
 
 	if pType == "" {
@@ -550,18 +599,11 @@ func (p *PublicKeyDistributionApi) GetPublishInfosByAccountAndType(account types
 	}
 
 	if infos != nil {
+		csDB := p.getCSDB()
+
 		for _, i := range infos {
-			p := &PublishParam{
-				Account:   i.Account,
-				PType:     common.OracleTypeToString(i.PType),
-				PID:       i.PID.String(),
-				PubKey:    types.NewHexBytesFromData(i.PubKey).String(),
-				Fee:       types.Balance{Int: i.Fee},
-				Verifiers: i.Verifiers,
-				Codes:     i.Codes,
-				Hash:      i.Hash.String(),
-			}
-			pubs = append(pubs, p)
+			pis := p.fillPublishInfoState(csDB, i)
+			pubs = append(pubs, pis)
 		}
 	}
 
