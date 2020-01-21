@@ -260,6 +260,14 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 		cabi.RepABI,
 		cabi.JsonRep,
 	},
+	types.SettlementAddress: {
+		map[string]ChainContractV2{
+			cabi.MethodNameCreateContract: &CreateContract{},
+			cabi.MethodNameSignContract:   &SignContract{},
+			cabi.MethodNameProcessCDR:     &ProcessCDR{},
+		},
+		cabi.SettlementABI,
+		cabi.JsonSettlement,
 	types.PubKeyDistributionAddress: {
 		map[string]Contract{
 			cabi.MethodNamePKDVerifierRegister: &VerifierRegister{
