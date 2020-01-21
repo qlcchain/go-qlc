@@ -287,6 +287,15 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 					},
 				},
 			},
+			cabi.MethodNamePKDReward: &PKDReward{
+				BaseContract: BaseContract{
+					Describe: Describe{
+						specVer:       SpecVer2,
+						withSignature: true,
+						withPending:   true,
+					},
+				},
+			},
 		},
 		cabi.PublicKeyDistributionABI,
 		cabi.JsonPublicKeyDistribution,

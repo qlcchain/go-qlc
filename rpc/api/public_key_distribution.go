@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/statedb"
@@ -30,6 +31,7 @@ type PublicKeyDistributionApi struct {
 	pu     *contract.Publish
 	up     *contract.UnPublish
 	or     *contract.Oracle
+	reward *contract.PKDReward
 	ctx    *vmstore.VMContext
 }
 
@@ -807,4 +809,220 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByHash(hash string) ([]*OracleP
 	}
 
 	return oi, nil
+}
+
+type PKDRewardParam struct {
+	Account      types.Address `json:"account"`
+	Beneficial   types.Address `json:"beneficial"`
+	EndHeight    uint64        `json:"endHeight"`
+	RewardAmount *big.Int      `json:"rewardAmount"`
+}
+
+func (p *PublicKeyDistributionApi) PackRewardData(param *PKDRewardParam) ([]byte, error) {
+	return abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDReward,
+		param.Account, param.Beneficial, param.Beneficial, param.EndHeight, param.RewardAmount)
+}
+
+func (p *PublicKeyDistributionApi) UnpackRewardData(data []byte) (*PKDRewardParam, error) {
+	abiParam := new(dpki.PKDRewardParam)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(abiParam, abi.MethodNamePKDReward, data)
+	if err != nil {
+		return nil, err
+	}
+	apiParam := new(PKDRewardParam)
+	apiParam.Account = abiParam.Account
+	apiParam.Beneficial = abiParam.Beneficial
+	apiParam.EndHeight = abiParam.EndHeight
+	apiParam.RewardAmount = abiParam.RewardAmount
+	return apiParam, nil
+}
+
+func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*types.StateBlock, error) {
+	if !p.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
+	}
+
+	if param.Account.IsZero() {
+		return nil, errors.New("invalid reward param account")
+	}
+
+	if param.Beneficial.IsZero() {
+		return nil, errors.New("invalid reward param beneficial")
+	}
+
+	am, err := p.l.GetAccountMeta(param.Account)
+	if am == nil {
+		return nil, fmt.Errorf("rep account not exist, %s", err)
+	}
+
+	tm := am.Token(common.GasToken())
+	if tm == nil {
+		return nil, fmt.Errorf("rep account does not have gas token, %s", err)
+	}
+
+	data, err := p.PackRewardData(param)
+	if err != nil {
+		return nil, err
+	}
+
+	latestPovHeader, err := p.l.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	send := &types.StateBlock{
+		Type:    types.ContractSend,
+		Token:   common.GasToken(),
+		Address: param.Account,
+
+		Balance:        tm.Balance,
+		Previous:       tm.Header,
+		Representative: tm.Representative,
+
+		Vote:    am.CoinVote,
+		Network: am.CoinNetwork,
+		Oracle:  am.CoinOracle,
+		Storage: am.CoinStorage,
+
+		Link:      types.Hash(types.PubKeyDistributionAddress),
+		Data:      data,
+		Timestamp: common.TimeNow().Unix(),
+
+		PoVHeight: latestPovHeader.GetHeight(),
+	}
+
+	vmContext := vmstore.NewVMContext(p.l)
+	_, _, err = p.reward.ProcessSend(vmContext, send)
+	if err != nil {
+		return nil, err
+	}
+
+	h := vmContext.Cache.Trie().Hash()
+	if h != nil {
+		send.Extra = *h
+	}
+
+	return send, nil
+}
+
+func (p *PublicKeyDistributionApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock, error) {
+	if !p.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
+	}
+
+	if input.GetType() != types.ContractSend {
+		return nil, errors.New("input block type is not contract send")
+	}
+	if input.GetLink() != types.PubKeyDistributionAddress.ToHash() {
+		return nil, errors.New("input address is not contract PublicKeyDistribution")
+	}
+
+	reward := &types.StateBlock{}
+
+	vmContext := vmstore.NewVMContext(p.l)
+	blocks, err := p.reward.DoReceive(vmContext, reward, input)
+	if err != nil {
+		return nil, err
+	}
+	if len(blocks) > 0 {
+		return reward, nil
+	}
+
+	return nil, errors.New("can not generate reward recv block")
+}
+
+func (p *PublicKeyDistributionApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+	if !p.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
+	}
+
+	input, err := p.l.GetStateBlock(sendHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.GetRewardRecvBlock(input)
+}
+
+type PKDHistoryRewardInfo struct {
+	LastEndHeight  uint64        `json:"lastEndHeight"`
+	LastBeneficial types.Address `json:"lastBeneficial"`
+	LastRewardTime int64         `json:"lastRewardTime"`
+	RewardAmount   types.Balance `json:"rewardAmount"`
+}
+
+func (p *PublicKeyDistributionApi) GetRewardHistory(account types.Address) (*PKDHistoryRewardInfo, error) {
+	history := new(PKDHistoryRewardInfo)
+	vmContext := vmstore.NewVMContext(p.l)
+	info, err := p.reward.GetRewardInfo(vmContext, account)
+	if err != nil {
+		return nil, err
+	}
+
+	history.LastEndHeight = info.EndHeight
+	history.LastBeneficial = info.Beneficial
+	history.LastRewardTime = info.Timestamp
+	history.RewardAmount = types.Balance{Int: info.RewardAmount}
+
+	return history, nil
+}
+
+type PKDAvailRewardInfo struct {
+	LastEndHeight     uint64        `json:"lastEndHeight"`
+	LatestBlockHeight uint64        `json:"latestBlockHeight"`
+	NodeRewardHeight  uint64        `json:"nodeRewardHeight"`
+	AvailEndHeight    uint64        `json:"availEndHeight"`
+	AvailRewardAmount types.Balance `json:"availRewardAmount"`
+	NeedCallReward    bool          `json:"needCallReward"`
+}
+
+func (p *PublicKeyDistributionApi) GetAvailRewardInfo(account types.Address) (*PKDAvailRewardInfo, error) {
+	if !p.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
+	}
+
+	rsp := new(PKDAvailRewardInfo)
+
+	latestPovHeader, err := p.l.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
+
+	vmContext := vmstore.NewVMContext(p.l)
+
+	lastRwdInfo, _ := p.GetRewardHistory(account)
+	if lastRwdInfo != nil {
+		rsp.LastEndHeight = lastRwdInfo.LastEndHeight
+	}
+
+	rsp.NodeRewardHeight, err = abi.GetNodeRewardHeight(vmContext)
+	if err != nil {
+		return nil, err
+	}
+
+	if rsp.LastEndHeight >= rsp.NodeRewardHeight {
+		return rsp, err
+	}
+
+	rsp.AvailEndHeight = rsp.NodeRewardHeight
+
+	lastVs, err := p.reward.GetVerifierState(vmContext, rsp.LastEndHeight, account)
+	if err != nil {
+		return nil, err
+	}
+
+	curVs, err := p.reward.GetVerifierState(vmContext, rsp.NodeRewardHeight, account)
+	if err != nil {
+		return nil, err
+	}
+
+	availRwdAmount := types.NewBigNumFromInt(0).Sub(curVs.TotalReward, lastVs.TotalReward)
+	rsp.AvailRewardAmount = types.NewBalanceFromBigInt(availRwdAmount.ToBigInt())
+
+	if rsp.AvailEndHeight <= rsp.NodeRewardHeight && rsp.AvailRewardAmount.Int64() > 0 {
+		rsp.NeedCallReward = true
+	}
+
+	return rsp, nil
 }

@@ -3,6 +3,7 @@ package contract
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/qlcchain/go-qlc/vm/contract/dpki"
 
@@ -503,4 +504,225 @@ func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractSt
 	}
 
 	return nil
+}
+
+type PKDReward struct {
+	BaseContract
+}
+
+func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	param := new(dpki.PKDRewardParam)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if param.Account != block.Address {
+		return nil, nil, errors.New("account is not verifier")
+	}
+
+	if block.Token != common.GasToken() {
+		return nil, nil, errors.New("token is not gas token")
+	}
+
+	// check account exist
+	am, _ := ctx.GetAccountMeta(param.Account)
+	if am == nil {
+		return nil, nil, errors.New("verifier account not exist")
+	}
+
+	nodeRewardHeight, err := abi.GetNodeRewardHeight(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if param.EndHeight > nodeRewardHeight {
+		return nil, nil, fmt.Errorf("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
+	}
+
+	oldInfo, err := r.GetRewardInfo(ctx, param.Account)
+	if err != nil && err != vmstore.ErrStorageNotFound {
+		return nil, nil, err
+	}
+	if oldInfo == nil {
+		oldInfo = new(dpki.PKDRewardInfo)
+		oldInfo.RewardAmount = big.NewInt(0)
+	}
+
+	if param.EndHeight <= oldInfo.EndHeight {
+		return nil, nil, fmt.Errorf("param height %d lesser than last height %d", param.EndHeight, oldInfo.EndHeight)
+	}
+
+	lastVs, err := r.GetVerifierState(ctx, param.EndHeight, param.Account)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	curVs, err := r.GetVerifierState(ctx, param.EndHeight, param.Account)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	calcRewardAmount := types.NewBigNumFromInt(0).Sub(curVs.TotalReward, lastVs.TotalReward)
+	if calcRewardAmount.CmpBigInt(param.RewardAmount) != 0 {
+		return nil, nil, fmt.Errorf("calc reward %s not equal param reward %s", calcRewardAmount, param.RewardAmount)
+	}
+
+	newInfo := new(dpki.PKDRewardInfo)
+	newInfo.Beneficial = param.Beneficial
+	newInfo.EndHeight = param.EndHeight
+	newInfo.RewardAmount = new(big.Int).Add(param.RewardAmount, oldInfo.RewardAmount)
+	newInfo.Timestamp = block.Timestamp
+
+	err = r.SetRewardInfo(ctx, param.Account, newInfo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &types.PendingKey{
+			Address: param.Beneficial,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: types.Balance{Int: param.RewardAmount},
+			Type:   common.GasToken(),
+		}, nil
+}
+
+func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	param := new(dpki.PKDRewardParam)
+
+	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, input.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	if param.Account != input.Address {
+		return nil, errors.New("input account is not verifier")
+	}
+
+	// generate contract reward block
+	block.Type = types.ContractReward
+	block.Address = param.Beneficial
+	block.Token = common.GasToken()
+	block.Link = input.GetHash()
+	block.PoVHeight = input.PoVHeight
+	block.Timestamp = common.TimeNow().Unix()
+
+	// pledge fields only for QLC token
+	block.Vote = types.NewBalance(0)
+	block.Oracle = types.NewBalance(0)
+	block.Storage = types.NewBalance(0)
+	block.Network = types.NewBalance(0)
+
+	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
+	if amBnf != nil {
+		tmBnf := amBnf.Token(common.GasToken())
+		if tmBnf != nil {
+			block.Balance = tmBnf.Balance.Add(types.Balance{Int: param.RewardAmount})
+			block.Representative = tmBnf.Representative
+			block.Previous = tmBnf.Header
+		} else {
+			block.Balance = types.Balance{Int: param.RewardAmount}
+			if len(amBnf.Tokens) > 0 {
+				block.Representative = amBnf.Tokens[0].Representative
+			} else {
+				block.Representative = input.Representative
+			}
+			block.Previous = types.ZeroHash
+		}
+	} else {
+		block.Balance = types.Balance{Int: param.RewardAmount}
+		block.Representative = input.Representative
+		block.Previous = types.ZeroHash
+	}
+
+	return []*ContractBlock{
+		{
+			VMContext: ctx,
+			Block:     block,
+			ToAddress: param.Beneficial,
+			BlockType: types.ContractReward,
+			Amount:    types.Balance{Int: param.RewardAmount},
+			Token:     common.GasToken(),
+			Data:      []byte{},
+		},
+	}, nil
+}
+
+func (r *PKDReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	param := new(dpki.PKDRewardParam)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, block.Data)
+	if err != nil {
+		return common.ContractNoGap, nil, err
+	}
+
+	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
+
+	latestBlock, err := ctx.GetLatestPovBlock()
+	if err != nil || latestBlock == nil {
+		return common.ContractRewardGapPov, needHeight, nil
+	}
+
+	nodeHeight := latestBlock.GetHeight()
+	if nodeHeight < needHeight {
+		return common.ContractRewardGapPov, needHeight, nil
+	}
+
+	return common.ContractNoGap, nil, err
+}
+
+func (r *PKDReward) SetRewardInfo(ctx *vmstore.VMContext, address types.Address, rwdInfo *dpki.PKDRewardInfo) error {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDRewardInfo,
+		rwdInfo.Beneficial, rwdInfo.EndHeight, rwdInfo.RewardAmount, rwdInfo.Timestamp)
+	if err != nil {
+		return err
+	}
+
+	var rwdInfoKey []byte
+	rwdInfoKey = append(rwdInfoKey, abi.PKDStorageTypeReward)
+	rwdInfoKey = append(rwdInfoKey, address.Bytes()...)
+	err = ctx.SetStorage(types.PubKeyDistributionAddress.Bytes(), rwdInfoKey, data)
+	if err != nil {
+		return errors.New("save contract data err")
+	}
+
+	return nil
+}
+
+func (r *PKDReward) GetRewardInfo(ctx *vmstore.VMContext, address types.Address) (*dpki.PKDRewardInfo, error) {
+	var rwdInfoKey []byte
+	rwdInfoKey = append(rwdInfoKey, abi.PKDStorageTypeReward)
+	rwdInfoKey = append(rwdInfoKey, address.Bytes()...)
+
+	valBytes, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], rwdInfoKey)
+	if err != nil {
+		return nil, err
+	}
+
+	rwdInfo := new(dpki.PKDRewardInfo)
+	rwdInfo.RewardAmount = big.NewInt(0)
+
+	err = abi.PublicKeyDistributionABI.UnpackVariable(&rwdInfo, abi.VariableNamePKDRewardInfo, valBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return rwdInfo, nil
+}
+
+func (r *PKDReward) GetVerifierState(ctx *vmstore.VMContext, povHeight uint64, address types.Address) (*types.PovVerifierState, error) {
+	povHdr, err := ctx.GetPovHeaderByHeight(povHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	gsdb := statedb.NewPovGlobalStateDB(ctx.Ledger.DBStore(), povHdr.GetStateHash())
+	csdb, err := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	vsRawKey := address.Bytes()
+	return dpki.PovGetVerifierState(csdb, vsRawKey)
 }

@@ -46,6 +46,12 @@ const (
 			{"name":"pubKey","type":"uint8[]"},
 			{"name":"hash","type":"hash"}
 		]},
+		{"type":"function","name":"PKDWithdrawReward","inputs":[
+			{"name":"account","type":"address"},
+			{"name":"beneficial","type":"address"},
+			{"name":"endHeight","type":"uint64"},
+			{"name":"rewardAmount","type":"uint256"}
+		]},
 		{"type":"variable","name":"PKDVerifierInfo","inputs":[
 			{"name":"vInfo","type":"string"},
 			{"name":"valid","type":"bool"}
@@ -59,6 +65,12 @@ const (
 			{"name":"codes","type":"hash[]"},
 			{"name":"fee","type":"uint256"},
 			{"name":"valid","type":"bool"}
+		]},
+		{"type":"variable","name":"PKDRewardInfo","inputs":[
+			{"name":"beneficial","type":"address"},
+			{"name":"endHeight","type":"uint64"},
+			{"name":"rewardAmount","type":"uint256"}
+			{"name":"timestamp","type":"int64"},
 		]}
 	]`
 
@@ -67,9 +79,11 @@ const (
 	MethodNamePKDOracle             = "PKDOracle"
 	MethodNamePKDPublish            = "PKDPublish"
 	MethodNamePKDUnPublish          = "PKDUnPublish"
+	MethodNamePKDReward             = "PKDReward"
 	VariableNamePKDPublishInfo      = "PKDPublishInfo"
 	VariableNamePKDOracleInfo       = "PKDOracleInfo"
 	VariableNamePKDVerifierInfo     = "PKDVerifierInfo"
+	VariableNamePKDRewardInfo       = "PKDRewardInfo"
 )
 
 var (
@@ -80,6 +94,7 @@ const (
 	PKDStorageTypeVerifier byte = iota
 	PKDStorageTypePublisher
 	PKDStorageTypeOracle
+	PKDStorageTypeReward
 )
 
 const (
