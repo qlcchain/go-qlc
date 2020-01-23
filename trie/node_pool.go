@@ -48,9 +48,11 @@ func (p *NodePool) Set(key *types.Hash, trieNode *TrieNode) {
 }
 
 func (p *NodePool) Clear() {
-	for k := range p.cache.Iter() {
+	quitCh := make(chan struct{})
+	for k := range p.cache.Iter(quitCh) {
 		p.cache.Del(k.Key)
 	}
+	close(quitCh)
 }
 
 func (p *NodePool) Len() int {
@@ -59,11 +61,14 @@ func (p *NodePool) Len() int {
 
 func (p *NodePool) clear() {
 	i := 0
-	for key := range p.cache.Iter() {
+	quitCh := make(chan struct{})
+	for key := range p.cache.Iter(quitCh) {
 		p.cache.Del(key.Key)
 		i++
 		if i >= p.clearNum {
+			close(quitCh)
 			return
 		}
 	}
+	close(quitCh)
 }

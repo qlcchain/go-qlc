@@ -815,12 +815,14 @@ func (l *LedgerApi) getProcessLock(addr types.Address, token types.Hash) *lockVa
 		lv.mutex = &sync.Mutex{}
 		l.processLock.Set(key, lv)
 		if l.processLock.Len() >= defaultLockSize {
-			for key := range l.processLock.Iter() {
+			quitCh := make(chan struct{})
+			for key := range l.processLock.Iter(quitCh) {
 				s := (key.Value).(*lockValue).lockStatus.Load()
 				if s.(lockStatus) == idle {
 					l.processLock.Del(key.Key)
 				}
 			}
+			close(quitCh)
 		}
 		return lv
 	}

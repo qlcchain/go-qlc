@@ -33,9 +33,11 @@ type DefaultEventBus struct {
 }
 
 func (eb *DefaultEventBus) Close() error {
-	for k := range eb.handlers.Iter() {
+	quitCh := make(chan struct{})
+	for k := range eb.handlers.Iter(quitCh) {
 		eb.CloseTopic(common.TopicType(k.Key.(string)))
 	}
+	close(quitCh)
 	return nil
 }
 
@@ -168,7 +170,8 @@ func (eb *DefaultEventBus) Unsubscribe(topic common.TopicType, handler string) e
 // Publish executes callback defined for a topic. Any additional argument will be transferred to the callback.
 func (eb *DefaultEventBus) Publish(topic common.TopicType, args ...interface{}) {
 	rArgs := eb.setUpPublish(topic, args...)
-	for kv := range eb.handlers.Iter() {
+	quitCh := make(chan struct{})
+	for kv := range eb.handlers.Iter(quitCh) {
 		topicPattern := kv.Key.(string)
 		handlers := kv.Value.(*eventHandlers)
 		if handlers.Size() > 0 && MatchSimple(topicPattern, string(topic)) {
@@ -204,6 +207,7 @@ func (eb *DefaultEventBus) Publish(topic common.TopicType, args ...interface{}) 
 			}
 		}
 	}
+	close(quitCh)
 }
 
 func (eb *DefaultEventBus) setUpPublish(topic common.TopicType, args ...interface{}) []reflect.Value {
@@ -215,7 +219,9 @@ func (eb *DefaultEventBus) setUpPublish(topic common.TopicType, args ...interfac
 }
 
 func (eb *DefaultEventBus) dump() {
-	for kv := range eb.handlers.Iter() {
+	quitCh := make(chan struct{})
+	for kv := range eb.handlers.Iter(quitCh) {
 		fmt.Println(kv.Key.(string), kv.Value.(*eventHandlers).String())
 	}
+	close(quitCh)
 }

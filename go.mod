@@ -1,5 +1,7 @@
 module github.com/qlcchain/go-qlc
 
+replace github.com/cornelk/hashmap v1.0.1 => github.com/qlcchain/hashmap v1.0.2
+
 require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/abiosoft/ishell v2.0.0+incompatible
