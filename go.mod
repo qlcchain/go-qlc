@@ -1,7 +1,5 @@
 module github.com/qlcchain/go-qlc
 
-replace github.com/cornelk/hashmap v1.0.1 => github.com/qlcchain/hashmap v1.0.2
-
 require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/abiosoft/ishell v2.0.0+incompatible
@@ -13,8 +11,7 @@ require (
 	github.com/cheekybits/genny v1.0.0
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
-	github.com/cornelk/hashmap v1.0.1
-	github.com/dchest/siphash v1.2.1 // indirect
+	github.com/dchest/siphash v1.2.1
 	github.com/dgraph-io/badger v1.6.0
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect

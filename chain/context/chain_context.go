@@ -14,12 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cornelk/hashmap"
-
 	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/hashmap"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 )

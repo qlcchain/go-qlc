@@ -3,12 +3,13 @@ package test
 import (
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
-	"os"
-	"path/filepath"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 
