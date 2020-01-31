@@ -8,8 +8,7 @@
 package trie
 
 import (
-	"github.com/cornelk/hashmap"
-
+	"github.com/qlcchain/go-qlc/common/hashmap"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 

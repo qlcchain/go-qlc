@@ -6,7 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -15,11 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
-	"math/big"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 var povSyncState common.SyncState
