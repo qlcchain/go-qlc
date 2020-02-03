@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
 	"sort"
 	"sync"
@@ -673,60 +674,21 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 	case types.ContractSend: // beneficial maybe another account
 		dstAddr := types.ZeroAddress
 
-		switch types.Address(blk.GetLink()) {
-		case types.MintageAddress:
-			data := blk.GetData()
-			if method, err := cabi.MintageABI.MethodById(data[0:4]); err == nil {
-				if method.Name == cabi.MethodNameMintage {
-					param := new(cabi.ParamMintage)
-					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
-						dstAddr = param.Beneficial
-					}
-				} else {
-					return
-				}
+		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+			ctx := vmstore.NewVMContext(dps.ledger)
+			dstAddr = c.GetTargetReceiver(ctx, blk)
+		}
+
+		if dstAddr != types.ZeroAddress {
+			index := dps.getProcessorIndex(dstAddr)
+			if localIndex != index {
+				dps.processors[index].blocksAcked <- hash
 			}
-		case types.NEP5PledgeAddress:
-			data := blk.GetData()
-			if method, err := cabi.NEP5PledgeABI.MethodById(data[0:4]); err == nil {
-				if method.Name == cabi.MethodNEP5Pledge {
-					param := new(cabi.PledgeParam)
-					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
-						dstAddr = param.Beneficial
-					}
-				} else if method.Name == cabi.MethodWithdrawNEP5Pledge {
-					param := new(cabi.WithdrawPledgeParam)
-					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
-						pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(vmstore.NewVMContext(dps.ledger), param)
-						if pledgeResult != nil {
-							dstAddr = pledgeResult.PledgeInfo.PledgeAddress
-						}
-					}
-				}
-			}
-		case types.MinerAddress:
-			param := new(cabi.MinerRewardParam)
-			if err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, blk.GetData()); err == nil {
-				dstAddr = param.Beneficial
-			}
-		case types.RepAddress:
-			param := new(cabi.RepRewardParam)
-			if err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, blk.GetData()); err == nil {
-				dstAddr = param.Beneficial
-			}
-		case types.RewardsAddress:
-			param := new(cabi.RewardsParam)
-			data := blk.GetData()
-			if method, err := cabi.RewardsABI.MethodById(data[0:4]); err == nil {
-				if err = method.Inputs.Unpack(param, data[4:]); err == nil {
-					dstAddr = param.Beneficial
-				}
-			}
-		case types.PubKeyDistributionAddress:
+		}
+
+		if types.Address(blk.GetLink()) == types.PubKeyDistributionAddress {
 			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.Data)
-			if err != nil {
-				dps.logger.Errorf("get contract method err")
-			} else {
+			if err == nil {
 				if method.Name == cabi.MethodNamePKDPublish {
 					for _, p := range dps.processors {
 						if localIndex != p.index {
@@ -734,20 +696,8 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 						}
 					}
 				}
-			}
-		default:
-			for _, p := range dps.processors {
-				if localIndex != p.index {
-					p.blocksAcked <- hash
-				}
-			}
-			return
-		}
-
-		if dstAddr != types.ZeroAddress {
-			index := dps.getProcessorIndex(dstAddr)
-			if localIndex != index {
-				dps.processors[index].blocksAcked <- hash
+			} else {
+				dps.logger.Errorf("get contract method err")
 			}
 		}
 	case types.ContractReward: // deal gap tokenInfo

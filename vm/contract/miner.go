@@ -332,3 +332,14 @@ func (m *MinerReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, coinbas
 func (m *MinerReward) GetRefundData() []byte {
 	return []byte{1}
 }
+
+func (m *MinerReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	tr := types.ZeroAddress
+
+	param := new(cabi.MinerRewardParam)
+	if err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.GetData()); err == nil {
+		tr = param.Beneficial
+	}
+
+	return tr
+}

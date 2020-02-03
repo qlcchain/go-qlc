@@ -164,6 +164,22 @@ func (m *Mintage) GetRefundData() []byte {
 	return []byte{1}
 }
 
+func (m *Mintage) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	data := block.GetData()
+	tr := types.ZeroAddress
+
+	if method, err := cabi.MintageABI.MethodById(data[0:4]); err == nil {
+		if method.Name == cabi.MethodNameMintage {
+			param := new(cabi.ParamMintage)
+			if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+				tr = param.Beneficial
+			}
+		}
+	}
+
+	return tr
+}
+
 type WithdrawMintage struct {
 	BaseContract
 }

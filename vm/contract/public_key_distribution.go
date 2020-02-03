@@ -726,3 +726,15 @@ func (r *PKDReward) GetVerifierState(ctx *vmstore.VMContext, povHeight uint64, a
 	vsRawKey := address.Bytes()
 	return dpki.PovGetVerifierState(csdb, vsRawKey)
 }
+
+func (r *PKDReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	tr := types.ZeroAddress
+
+	param := new(dpki.PKDRewardParam)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, block.Data)
+	if err == nil {
+		tr = param.Beneficial
+	}
+
+	return tr
+}

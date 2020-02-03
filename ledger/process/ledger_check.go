@@ -23,6 +23,8 @@ type blockBaseInfoCheck struct {
 func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	hash := block.GetHash()
 	address := block.GetAddress()
+	checkWork := true
+	checkSign := true
 
 	lv.logger.Debug("check block ", hash)
 	blockExist, err := lv.l.HasStateBlockConfirmed(hash)
@@ -35,27 +37,33 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 	}
 
 	if block.GetType() == types.ContractSend {
-		if types.IsNoSignContractAddress(types.Address(block.GetLink())) {
-			return Progress, nil
+		if c, ok, err := contract.GetChainContract(types.Address(block.GetLink()), block.Data); ok && err == nil {
+			checkWork = c.GetDescribe().WithWork()
+			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
+
 	if block.GetType() == types.ContractReward {
 		linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 		if err != nil {
 			return GapSource, nil
 		}
-		if types.IsNoSignContractAddress(types.Address(linkBlk.GetLink())) {
-			return Progress, nil
+
+		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.Data); ok && err == nil {
+			checkWork = c.GetDescribe().WithWork()
+			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
 
-	if !block.IsValid() {
+	if checkWork && !block.IsValid() {
 		return BadWork, errors.New("bad work")
 	}
 
-	signature := block.GetSignature()
-	if !address.Verify(hash[:], signature[:]) {
-		return BadSignature, errors.New("bad signature")
+	if checkSign {
+		signature := block.GetSignature()
+		if !address.Verify(hash[:], signature[:]) {
+			return BadSignature, errors.New("bad signature")
+		}
 	}
 
 	return Progress, nil
@@ -67,6 +75,8 @@ type cacheBlockBaseInfoCheck struct {
 func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	hash := block.GetHash()
 	address := block.GetAddress()
+	checkWork := true
+	checkSign := true
 
 	lv.logger.Debug("check block ", hash)
 	if err := checkReceiveBlockRepeat(lv, block); err != Progress {
@@ -82,27 +92,33 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	}
 
 	if block.GetType() == types.ContractSend {
-		if types.IsNoSignContractAddress(types.Address(block.GetLink())) {
-			return Progress, nil
+		if c, ok, err := contract.GetChainContract(types.Address(block.GetLink()), block.Data); ok && err == nil {
+			checkWork = c.GetDescribe().WithWork()
+			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
+
 	if block.GetType() == types.ContractReward {
-		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
+		linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 		if err != nil {
 			return GapSource, nil
 		}
-		if types.IsNoSignContractAddress(types.Address(linkBlk.GetLink())) {
-			return Progress, nil
+
+		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.Data); ok && err == nil {
+			checkWork = c.GetDescribe().WithWork()
+			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
 
-	if !block.IsValid() {
+	if checkWork && !block.IsValid() {
 		return BadWork, errors.New("bad work")
 	}
 
-	signature := block.GetSignature()
-	if !address.Verify(hash[:], signature[:]) {
-		return BadSignature, errors.New("bad signature")
+	if checkSign {
+		signature := block.GetSignature()
+		if !address.Verify(hash[:], signature[:]) {
+			return BadSignature, errors.New("bad signature")
+		}
 	}
 
 	return Progress, nil

@@ -327,3 +327,14 @@ func (r *RepReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, account t
 func (r *RepReward) GetRefundData() []byte {
 	return []byte{1}
 }
+
+func (r *RepReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	tr := types.ZeroAddress
+
+	param := new(cabi.RepRewardParam)
+	if err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.GetData()); err == nil {
+		tr = param.Beneficial
+	}
+
+	return tr
+}

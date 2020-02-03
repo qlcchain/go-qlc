@@ -40,6 +40,7 @@ type Describe struct {
 	withSignature bool
 	withPending   bool
 	withPovState  bool
+	withWork      bool
 }
 
 func (d Describe) GetVersion() int {
@@ -54,10 +55,15 @@ func (d Describe) WithPending() bool {
 func (d Describe) WithPovState() bool {
 	return d.withPovState
 }
+func (d Describe) WithWork() bool {
+	return d.withWork
+}
 
 type Contract interface {
 	// Contract meta describe
 	GetDescribe() Describe
+	// Target receiver address
+	GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address
 
 	GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error)
 	// check status, update state
@@ -84,6 +90,10 @@ type BaseContract struct {
 
 func (c *BaseContract) GetDescribe() Describe {
 	return c.Describe
+}
+
+func (c *BaseContract) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	return types.ZeroAddress
 }
 
 func (c *BaseContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -141,6 +151,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 					Describe: Describe{
 						specVer:       SpecVer1,
 						withSignature: true,
+						withWork:      true,
 					},
 				},
 			},
@@ -149,6 +160,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 					Describe: Describe{
 						specVer:       SpecVer1,
 						withSignature: true,
+						withWork:      true,
 					},
 				},
 			},
@@ -163,6 +175,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 					Describe: Describe{
 						specVer:       SpecVer1,
 						withSignature: true,
+						withWork:      true,
 					},
 				},
 			},
@@ -171,6 +184,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 					Describe: Describe{
 						specVer:       SpecVer1,
 						withSignature: true,
+						withWork:      true,
 					},
 				},
 			},
@@ -222,6 +236,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 						specVer:       SpecVer2,
 						withSignature: true,
 						withPending:   true,
+						withWork:      true,
 					},
 				},
 			},
@@ -237,6 +252,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 						specVer:       SpecVer2,
 						withSignature: true,
 						withPending:   true,
+						withWork:      true,
 					},
 				},
 			},
@@ -251,6 +267,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 					Describe: Describe{
 						specVer:       SpecVer2,
 						withSignature: true,
+						withWork:      true,
 					},
 				},
 			},
@@ -259,6 +276,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 					Describe: Describe{
 						specVer:       SpecVer2,
 						withSignature: true,
+						withWork:      true,
 					},
 				},
 			},

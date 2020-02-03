@@ -207,6 +207,22 @@ func (*Nep5Pledge) GetRefundData() []byte {
 	return []byte{1}
 }
 
+func (*Nep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	data := block.GetData()
+	tr := types.ZeroAddress
+
+	if method, err := cabi.NEP5PledgeABI.MethodById(data[0:4]); err == nil {
+		if method.Name == cabi.MethodNEP5Pledge {
+			param := new(cabi.PledgeParam)
+			if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+				tr = param.Beneficial
+			}
+		}
+	}
+
+	return tr
+}
+
 type WithdrawNep5Pledge struct {
 	BaseContract
 }
@@ -328,4 +344,23 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 
 func (*WithdrawNep5Pledge) GetRefundData() []byte {
 	return []byte{2}
+}
+
+func (*WithdrawNep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	data := block.GetData()
+	tr := types.ZeroAddress
+
+	if method, err := cabi.NEP5PledgeABI.MethodById(data[0:4]); err == nil {
+		if method.Name == cabi.MethodWithdrawNEP5Pledge {
+			param := new(cabi.WithdrawPledgeParam)
+			if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+				pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(ctx, param)
+				if pledgeResult != nil {
+					tr = pledgeResult.PledgeInfo.PledgeAddress
+				}
+			}
+		}
+	}
+
+	return tr
 }
