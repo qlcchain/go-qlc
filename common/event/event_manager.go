@@ -8,7 +8,7 @@
 package event
 
 import (
-	"github.com/cornelk/hashmap"
+	"github.com/qlcchain/go-qlc/common/hashmap"
 )
 
 var (
