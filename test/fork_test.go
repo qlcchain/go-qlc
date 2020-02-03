@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/chain"

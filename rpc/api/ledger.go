@@ -9,13 +9,13 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/cornelk/hashmap"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/hashmap"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -814,12 +814,14 @@ func (l *LedgerAPI) getProcessLock(addr types.Address, token types.Hash) *lockVa
 		lv.mutex = &sync.Mutex{}
 		l.processLock.Set(key, lv)
 		if l.processLock.Len() >= defaultLockSize {
-			for key := range l.processLock.Iter() {
+			quitCh := make(chan struct{})
+			for key := range l.processLock.Iter(quitCh) {
 				s := (key.Value).(*lockValue).lockStatus.Load()
 				if s.(lockStatus) == idle {
 					l.processLock.Del(key.Key)
 				}
 			}
+			close(quitCh)
 		}
 		return lv
 	}

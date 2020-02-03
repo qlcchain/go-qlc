@@ -5,9 +5,9 @@ import (
 	"sync/atomic"
 
 	"github.com/bluele/gcache"
-	"github.com/cornelk/hashmap"
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/common/hashmap"
 	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -41,13 +41,16 @@ func NewRepresentationCache() *RepresentationCache {
 }
 
 func (r *RepresentationCache) iterMemory(fn func(string, interface{}) error) error {
-	for kv := range r.representation.Iter() {
+	quitCh := make(chan struct{})
+	for kv := range r.representation.Iter(quitCh) {
 		k := kv.Key.(string)
 		v := kv.Value.(*types.Benefit)
 		if err := fn(k, v); err != nil {
+			close(quitCh)
 			return err
 		}
 	}
+	close(quitCh)
 	return nil
 }
 
