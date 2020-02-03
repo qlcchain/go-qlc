@@ -16,10 +16,10 @@ import (
 	"github.com/AsynkronIT/protoactor-go/actor/middleware"
 	"github.com/AsynkronIT/protoactor-go/router"
 
+	"github.com/qlcchain/go-qlc/common/hashmap"
 	ct "github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/cornelk/hashmap"
 )
 
 const (
@@ -132,7 +132,9 @@ func (eb *ActorEventBus) PublishFrom(topic ct.TopicType, msg interface{}, publis
 
 func (eb *ActorEventBus) Subscribers(topic ct.TopicType, callback func(subscriber *actor.PID)) {
 	t := string(topic)
-	for kv := range eb.subscribers.Iter() {
+	quitCh := make(chan struct{})
+	defer close(quitCh)
+	for kv := range eb.subscribers.Iter(quitCh) {
 		topicPattern := kv.Key.(string)
 		options := kv.Value.([]*subscriberOption)
 		if len(options) > 0 && MatchSimple(topicPattern, t) {
@@ -171,7 +173,9 @@ func (eb *ActorEventBus) CloseTopic(topic ct.TopicType) error {
 
 func (eb *ActorEventBus) Close() error {
 	var errs []error
-	for k := range eb.subscribers.Iter() {
+	quitCh := make(chan struct{})
+	defer close(quitCh)
+	for k := range eb.subscribers.Iter(quitCh) {
 		if err := eb.CloseTopic(ct.TopicType(k.Key.(string))); err != nil {
 			errs = append(errs, err)
 		}

@@ -69,8 +69,8 @@ const (
 		{"type":"variable","name":"PKDRewardInfo","inputs":[
 			{"name":"beneficial","type":"address"},
 			{"name":"endHeight","type":"uint64"},
-			{"name":"rewardAmount","type":"uint256"}
-			{"name":"timestamp","type":"int64"},
+			{"name":"rewardAmount","type":"uint256"},
+			{"name":"timestamp","type":"int64"}
 		]}
 	]`
 

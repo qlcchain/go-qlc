@@ -10,13 +10,12 @@ require (
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/cheekybits/genny v1.0.0
-	github.com/cornelk/hashmap v1.0.1
-	github.com/cosiner/argv v0.0.1 // indirect
-	github.com/dchest/siphash v1.2.1 // indirect
+	github.com/chzyer/logex v1.1.10 // indirect
+	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
+	github.com/dchest/siphash v1.2.1
 	github.com/dgraph-io/badger v1.6.0
 	github.com/fatih/color v1.7.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
-	github.com/go-delve/delve v1.3.2 // indirect
 	github.com/go-interpreter/wagon v0.6.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect

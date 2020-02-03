@@ -77,7 +77,7 @@ func NewRPC(cfgFile string) (*RPC, error) {
 	return &r, nil
 }
 
-// startIPC initializes and starts the IPC RpcCall endpoint.
+// startIPC initializes and starts the IPC RPC endpoint.
 func (r *RPC) startIPC(apis []rpc.API) error {
 	if r.config.RPC.IPCEndpoint == "" {
 		return nil // IPC disabled.
