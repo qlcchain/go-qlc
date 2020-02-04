@@ -13,9 +13,21 @@ type PKDRewardParam struct {
 	RewardAmount *big.Int      `json:"rewardAmount"`
 }
 
+func NewPKDRewardParam() *PKDRewardParam {
+	i := new(PKDRewardParam)
+	i.RewardAmount = big.NewInt(0)
+	return i
+}
+
 type PKDRewardInfo struct {
 	Beneficial   types.Address `json:"beneficial"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardAmount *big.Int      `json:"rewardAmount"`
 	Timestamp    int64         `json:"_"`
+}
+
+func NewPKDRewardInfo() *PKDRewardInfo {
+	i := new(PKDRewardInfo)
+	i.RewardAmount = big.NewInt(0)
+	return i
 }

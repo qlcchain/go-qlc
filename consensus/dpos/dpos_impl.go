@@ -2,12 +2,13 @@ package dpos
 
 import (
 	"context"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/vm/contract"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 

@@ -522,7 +522,7 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 			continue
 		}
 
-		if key[1] == types.PovStatePrefixAcc {
+		if key[1] == types.PovGlobalStatePrefixAcc {
 			addr, err := types.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
@@ -537,7 +537,7 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 			dump.Accounts[addr] = as
 		}
 
-		if key[1] == types.PovStatePrefixRep {
+		if key[1] == types.PovGlobalStatePrefixRep {
 			addr, err := types.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
@@ -552,7 +552,7 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 			dump.Reps[addr] = rs
 		}
 
-		if key[1] == types.PovStatePrefixCS {
+		if key[1] == types.PovGlobalStatePrefixCS {
 			addr, err := types.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
@@ -606,7 +606,7 @@ func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepS
 	db := api.l.Store
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
-	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
 		if len(val) <= 0 {
@@ -1561,7 +1561,7 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 		return nil
 	}
 
-	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	if it == nil {
 		return nil
@@ -1605,7 +1605,7 @@ func (api *PovApi) GetRepStatesByHeightAndAccount(header *types.PovHeader, acc t
 		return nil
 	}
 
-	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	if it == nil {
 		return nil
@@ -1698,7 +1698,7 @@ func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
 			continue
 		}
 
-		if key[1] == types.PovStatePrefixAcc {
+		if key[1] == types.PovGlobalStatePrefixAcc {
 			addr, err := types.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
@@ -1750,7 +1750,7 @@ func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
 			}
 		}
 
-		if key[1] == types.PovStatePrefixRep {
+		if key[1] == types.PovGlobalStatePrefixRep {
 			addr, err := types.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err

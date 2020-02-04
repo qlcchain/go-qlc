@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	PovStatePrefixPKDPS = byte(1) // publish state
-	PovStatePrefixPKDVS = byte(2) // verifier state
+	// following prefix should be unique in DPKI contract, not global
+	PovContractStatePrefixPKDPS = byte(1) // publish state
+	PovContractStatePrefixPKDVS = byte(2) // verifier state
 )
 
 func PovSetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *types.PovPublishState) error {
-	trieKey := types.PovCreateStateKey(PovStatePrefixPKDPS, rawKey)
+	trieKey := types.PovCreateContractLocalStateKey(PovContractStatePrefixPKDPS, rawKey)
 
 	val, err := ps.Serialize()
 	if err != nil {
@@ -25,7 +26,7 @@ func PovSetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *typ
 }
 
 func PovGetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte) (*types.PovPublishState, error) {
-	trieKey := types.PovCreateStateKey(PovStatePrefixPKDPS, rawKey)
+	trieKey := types.PovCreateContractLocalStateKey(PovContractStatePrefixPKDPS, rawKey)
 
 	valBytes, err := csdb.GetValue(trieKey)
 	if err != nil {
@@ -45,7 +46,7 @@ func PovGetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte) (*types
 }
 
 func PovSetVerifierState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *types.PovVerifierState) error {
-	trieKey := types.PovCreateStateKey(PovStatePrefixPKDVS, rawKey)
+	trieKey := types.PovCreateContractLocalStateKey(PovContractStatePrefixPKDVS, rawKey)
 
 	val, err := ps.Serialize()
 	if err != nil {
@@ -56,7 +57,7 @@ func PovSetVerifierState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *ty
 }
 
 func PovGetVerifierState(csdb *statedb.PovContractStateDB, rawKey []byte) (*types.PovVerifierState, error) {
-	trieKey := types.PovCreateStateKey(PovStatePrefixPKDVS, rawKey)
+	trieKey := types.PovCreateContractLocalStateKey(PovContractStatePrefixPKDVS, rawKey)
 
 	valBytes, err := csdb.GetValue(trieKey)
 	if err != nil {

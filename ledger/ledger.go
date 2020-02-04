@@ -81,7 +81,7 @@ const (
 	idPrefixPerformance
 	idPrefixChild
 	idPrefixVersion
-	idPrefixStorage
+	idPrefixStorage  //discard, pls see vm_store's idPrefixStorage
 	idPrefixToken    //discard
 	idPrefixSender   //discard
 	idPrefixReceiver //discard

@@ -537,25 +537,27 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	}
 
 	if param.EndHeight > nodeRewardHeight {
-		return nil, nil, fmt.Errorf("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
+		return nil, nil, fmt.Errorf("param end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
 	}
+
+	var lastVs *types.PovVerifierState
 
 	oldInfo, err := r.GetRewardInfo(ctx, param.Account)
 	if err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, nil, err
 	}
 	if oldInfo == nil {
-		oldInfo = new(dpki.PKDRewardInfo)
-		oldInfo.RewardAmount = big.NewInt(0)
-	}
+		oldInfo = dpki.NewPKDRewardInfo()
+		lastVs = types.NewPovVerifierState()
+	} else {
+		if param.EndHeight <= oldInfo.EndHeight {
+			return nil, nil, fmt.Errorf("param end height %d lesser than last end height %d", param.EndHeight, oldInfo.EndHeight)
+		}
 
-	if param.EndHeight <= oldInfo.EndHeight {
-		return nil, nil, fmt.Errorf("param height %d lesser than last height %d", param.EndHeight, oldInfo.EndHeight)
-	}
-
-	lastVs, err := r.GetVerifierState(ctx, param.EndHeight, param.Account)
-	if err != nil {
-		return nil, nil, err
+		lastVs, err = r.GetVerifierState(ctx, oldInfo.EndHeight, param.Account)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	curVs, err := r.GetVerifierState(ctx, param.EndHeight, param.Account)

@@ -177,7 +177,7 @@ func (gsdb *PovGlobalStateDB) GetRepState(address types.Address) (*types.PovRepS
 }
 
 func (gsdb *PovGlobalStateDB) GetContractState(address types.Address) (*types.PovContractState, error) {
-	keyBytes := types.PovCreateStateKey(types.PovStatePrefixCS, address.Bytes())
+	keyBytes := types.PovCreateContractStateKey(address)
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
 		return nil, errors.New("key not exist in trie")
@@ -199,7 +199,7 @@ func (gsdb *PovGlobalStateDB) LookupContractStateDB(address types.Address) (*Pov
 
 	cs := types.NewPovContractState()
 
-	keyBytes := types.PovCreateStateKey(types.PovStatePrefixCS, address.Bytes())
+	keyBytes := types.PovCreateContractStateKey(address)
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) > 0 {
 		err := cs.Deserialize(valBytes)
@@ -307,7 +307,7 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 			return errors.New("serialize new contract state got empty value")
 		}
 
-		keyBytes := types.PovCreateStateKey(types.PovStatePrefixCS, address.Bytes())
+		keyBytes := types.PovCreateContractStateKey(address)
 		gsdb.curTrie.SetValue(keyBytes, valBytes)
 	}
 
@@ -333,6 +333,14 @@ func (gsdb *PovGlobalStateDB) CommitToDB(txn db.StoreTxn) error {
 	}
 
 	return nil
+}
+
+func (gsdb *PovGlobalStateDB) NewCurTireIterator(prefix []byte) *trie.Iterator {
+	return gsdb.curTrie.NewIterator(prefix)
+}
+
+func (gsdb *PovGlobalStateDB) NewPrevTireIterator(prefix []byte) *trie.Iterator {
+	return gsdb.prevTrie.NewIterator(prefix)
 }
 
 func NewPovContractStateDB(db db.Store, cs *types.PovContractState) *PovContractStateDB {
@@ -436,4 +444,12 @@ func (csdb *PovContractStateDB) CommitToDB(txn db.StoreTxn) error {
 		saveCallback()
 	}
 	return nil
+}
+
+func (csdb *PovContractStateDB) NewCurTireIterator(prefix []byte) *trie.Iterator {
+	return csdb.curTrie.NewIterator(prefix)
+}
+
+func (csdb *PovContractStateDB) NewPrevTireIterator(prefix []byte) *trie.Iterator {
+	return csdb.prevTrie.NewIterator(prefix)
 }

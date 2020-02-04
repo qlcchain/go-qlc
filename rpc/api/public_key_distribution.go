@@ -277,8 +277,8 @@ func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account string) ([]*Ver
 	return vrs, nil
 }
 
-func (p *PublicKeyDistributionApi) GetVerifierRewardInfo(address types.Address) (*types.PovVerifierState, error) {
-	csDB := p.getCSDB()
+func (p *PublicKeyDistributionApi) GetVerifierStateByBlockHeight(height uint64, address types.Address) (*types.PovVerifierState, error) {
+	csDB := p.getCSDB(false, height)
 	if csDB == nil {
 		return nil, errors.New("failed to get contract state db")
 	}
@@ -290,6 +290,41 @@ func (p *PublicKeyDistributionApi) GetVerifierRewardInfo(address types.Address) 
 	}
 
 	return vs, nil
+}
+
+type PKDVerifierStateList struct {
+	VerifierNum  int                                       `json:"verifierNum"`
+	AllVerifiers map[types.Address]*types.PovVerifierState `json:"allVerifiers"`
+}
+
+func (p *PublicKeyDistributionApi) GetAllVerifierStatesByBlockHeight(height uint64) (*PKDVerifierStateList, error) {
+	csDB := p.getCSDB(false, height)
+	if csDB == nil {
+		return nil, errors.New("failed to get contract state db")
+	}
+
+	rspData := new(PKDVerifierStateList)
+	rspData.AllVerifiers = make(map[types.Address]*types.PovVerifierState)
+
+	itor := csDB.NewCurTireIterator(types.PovCreateContractLocalStateKey(dpki.PovContractStatePrefixPKDVS, nil))
+
+	for key, val, ok := itor.Next(); ok; key, val, ok = itor.Next() {
+		verAddr, err := types.BytesToAddress(key[2:])
+		if err != nil {
+			return nil, fmt.Errorf("deserialize verifier state key err %s", err)
+		}
+
+		ps := types.NewPovVerifierState()
+		err = ps.Deserialize(val)
+		if err != nil {
+			return nil, fmt.Errorf("deserialize verifier state value err %s", err)
+		}
+
+		rspData.AllVerifiers[verAddr] = ps
+	}
+	rspData.VerifierNum = len(rspData.AllVerifiers)
+
+	return rspData, nil
 }
 
 type PublishParam struct {
@@ -506,10 +541,17 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 	return send, nil
 }
 
-func (p *PublicKeyDistributionApi) getCSDB() *statedb.PovContractStateDB {
-	latestPov, _ := p.l.GetLatestPovHeader()
-	if latestPov != nil {
-		gsdb := statedb.NewPovGlobalStateDB(p.l.DBStore(), latestPov.GetStateHash())
+func (p *PublicKeyDistributionApi) getCSDB(isLatest bool, height uint64) *statedb.PovContractStateDB {
+	var povHdr *types.PovHeader
+
+	if isLatest {
+		povHdr, _ = p.l.GetLatestPovHeader()
+	} else {
+		povHdr, _ = p.l.GetPovHeaderByHeight(height)
+	}
+
+	if povHdr != nil {
+		gsdb := statedb.NewPovGlobalStateDB(p.l.DBStore(), povHdr.GetStateHash())
 		csdb, _ := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
 		return csdb
 	}
@@ -553,7 +595,7 @@ func (p *PublicKeyDistributionApi) GetPubKeyByTypeAndID(pType string, pID string
 		return nil, fmt.Errorf("get id hash err")
 	}
 
-	csDB := p.getCSDB()
+	csDB := p.getCSDB(true, 0)
 
 	infos := abi.GetPublishInfoByTypeAndId(p.ctx, pt, id)
 	if infos != nil {
@@ -578,7 +620,7 @@ func (p *PublicKeyDistributionApi) GetPublishInfosByType(pType string) ([]*Publi
 	}
 
 	if infos != nil {
-		csDB := p.getCSDB()
+		csDB := p.getCSDB(true, 0)
 
 		for _, i := range infos {
 			pis := p.fillPublishInfoState(csDB, i)
@@ -601,7 +643,7 @@ func (p *PublicKeyDistributionApi) GetPublishInfosByAccountAndType(account types
 	}
 
 	if infos != nil {
-		csDB := p.getCSDB()
+		csDB := p.getCSDB(true, 0)
 
 		for _, i := range infos {
 			pis := p.fillPublishInfoState(csDB, i)

@@ -6,40 +6,55 @@ import (
 )
 
 const (
-	PovStatePrefixAcc = byte(1)
-	PovStatePrefixRep = byte(2)
-	PovStatePrefixCS  = byte(201) // Contract State
+	PovGlobalStatePrefixAcc = byte(1)
+	PovGlobalStatePrefixRep = byte(2)
+	PovGlobalStatePrefixCS  = byte(201) // Contract State
 
 	PovStatusOffline = 0
 	PovStatusOnline  = 1
 )
 
-func PovCreateStatePrefix(prefix byte) []byte {
-	key := make([]byte, 2)
-	key[0] = TriePrefixPovState
-	key[1] = prefix
-	return key
-}
-
-func PovCreateStateKey(prefix byte, rawKey []byte) []byte {
+// PovCreateGlobalStateKey used for global trie key only
+// prefix MUST be UNIQUE in global namespace
+func PovCreateGlobalStateKey(prefix byte, rawKey []byte) []byte {
 	var key []byte
-	key = append(key, TriePrefixPovState, prefix)
-	key = append(key, rawKey...)
+	key = append(key, TriePrefixPovState)
+	key = append(key, prefix)
+	if rawKey != nil {
+		key = append(key, rawKey...)
+	}
 	return key
 }
 
 func PovCreateAccountStateKey(address Address) []byte {
 	addrBytes := address.Bytes()
-	return PovCreateStateKey(PovStatePrefixAcc, addrBytes)
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixAcc, addrBytes)
 }
 
 func PovCreateRepStateKey(address Address) []byte {
 	addrBytes := address.Bytes()
-	return PovCreateStateKey(PovStatePrefixRep, addrBytes)
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixRep, addrBytes)
+}
+
+func PovCreateContractStateKey(address Address) []byte {
+	addrBytes := address.Bytes()
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixCS, addrBytes)
 }
 
 func PovStateKeyToAddress(key []byte) (Address, error) {
 	return BytesToAddress(key[2:])
+}
+
+// PovCreateContractLocalStateKey used for contract trie tree key only
+// prefix MUST be UNIQUE in contract namespace, not in global namespace
+func PovCreateContractLocalStateKey(prefix byte, rawKey []byte) []byte {
+	var key []byte
+	key = append(key, TriePrefixPovState)
+	key = append(key, prefix)
+	if rawKey != nil {
+		key = append(key, rawKey...)
+	}
+	return key
 }
 
 type PovStateSerdeser interface {
