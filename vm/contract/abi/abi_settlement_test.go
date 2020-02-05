@@ -21,7 +21,7 @@ func TestCreateContractParam(t *testing.T) {
 		PartyAName:  "c1",
 		PartyB:      mock.Address(),
 		PartyBName:  "c2",
-		PreHash:     mock.Hash(),
+		Previous:    mock.Hash(),
 		ServiceId:   mock.Hash().String(),
 		MCC:         1,
 		MNC:         2,

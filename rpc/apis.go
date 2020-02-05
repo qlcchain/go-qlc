@@ -138,6 +138,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "settlement",
 			Version:   "1.0",
+			Service:   api.NewSettlement(r.ledger, r.cc),
 			Service:   api.NewSettlement(),
 	case "dpki":
 		return rpc.API{

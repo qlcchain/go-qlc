@@ -90,7 +90,7 @@ type SignContract struct {
 
 func (z *SignContract) Verify(addr types.Address) (bool, error) {
 	if z.ContractAddress.IsZero() {
-		return false, fmt.Errorf("invalid contract address %z", z.ContractAddress.String())
+		return false, fmt.Errorf("invalid contract address %s", z.ContractAddress.String())
 	}
 	if z.ConfirmDate == 0 {
 		return false, errors.New("invalid contract confirm date")
@@ -110,7 +110,7 @@ func (z *SignContract) ToABI() ([]byte, error) {
 type CreateContractParam struct {
 	PartyA      types.Address    `msg:"pa,extension" json:"partyA"`
 	PartyAName  string           `msg:"an" json:"partyAName"`
-	PartyB      types.Address    `msg:"pb,extension" json:"partyA"`
+	PartyB      types.Address    `msg:"pb,extension" json:"partyB"`
 	PartyBName  string           `msg:"bn" json:"partyBName"`
 	Previous    types.Hash       `msg:"pre,extension" json:"previous"`
 	ServiceId   string           `msg:"s" json:"serviceId"`
