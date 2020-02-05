@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
 	"sort"
@@ -21,7 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
@@ -368,7 +368,7 @@ func (dps *DPoS) Start() {
 func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
 
-	//do this first
+	// do this first
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
 		dps.logger.Error(err)
 	}
@@ -808,7 +808,7 @@ func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, ac
 	//va := &protos.ConfirmAckBlock{
 	//	Sequence:  0,
 	//	Hash:      hash,
-	//	Account:   account,
+	//	account:   account,
 	//	Signature: acc.Sign(hash),
 	//}
 	//return va, nil

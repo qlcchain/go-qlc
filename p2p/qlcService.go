@@ -106,9 +106,9 @@ func (ns *QlcService) setEvent() error {
 
 // Stop stop p2p manager.
 func (ns *QlcService) Stop() error {
-	//ns.node.logger.VInfo("Stopping QlcService...")
+	// ns.node.logger.VInfo("Stopping QlcService...")
 
-	//this must be the first step
+	// this must be the first step
 	err := ns.subscriber.UnsubscribeAll()
 	if err != nil {
 		return err

@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/consensus"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
