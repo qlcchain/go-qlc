@@ -416,6 +416,8 @@ func (h *PovHeader) GetAlgoEfficiency() uint {
 		return 513
 	case ALGO_X16R:
 		return 257849
+	case ALGO_HYBRID:
+		return 1000000000
 	default:
 		return 1 // TODO: we should not be here
 	}
@@ -451,6 +453,9 @@ func (h *PovHeader) ComputePowHash() Hash {
 		return powHash
 	case ALGO_X11:
 		powHash := X11HashData(d)
+		return powHash
+	case ALGO_HYBRID:
+		powHash := HybridHashData(d)
 		return powHash
 	}
 
@@ -767,6 +772,7 @@ type PovTD struct {
 	Sha256d BigNum `msg:"sha,extension" json:"sha256d"`
 	Scrypt  BigNum `msg:"scr,extension" json:"scrypt"`
 	X11     BigNum `msg:"x11,extension" json:"x11"`
+	Hybrid  BigNum `msg:"hybrid,extension" json:"hybrid"`
 }
 
 func (td *PovTD) Serialize() ([]byte, error) {

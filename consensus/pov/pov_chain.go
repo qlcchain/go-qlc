@@ -1207,6 +1207,8 @@ func (bc *PovBlockChain) CalcTotalDifficulty(prevTD *types.PovTD, header *types.
 		curTD.Scrypt.Add(&prevTD.Scrypt, curWorkNorm)
 	case types.ALGO_X11:
 		curTD.X11.Add(&prevTD.X11, curWorkNorm)
+	case types.ALGO_HYBRID:
+		curTD.Hybrid.Add(&prevTD.Hybrid, curWorkNorm)
 	}
 
 	return curTD

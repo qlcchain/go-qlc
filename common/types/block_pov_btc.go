@@ -53,6 +53,9 @@ func (h *PovBtcHeader) ComputePowHash(algo PovAlgoType) Hash {
 	case ALGO_X11:
 		powHash := X11HashData(d)
 		return powHash
+	case ALGO_HYBRID:
+		powHash := HybridHashData(d)
+		return powHash
 	}
 
 	return FFFFHash

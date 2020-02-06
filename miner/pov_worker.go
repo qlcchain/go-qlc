@@ -131,6 +131,10 @@ func (w *PovWorker) GetWork(in interface{}, out interface{}) {
 	minerAddr := inArgs["minerAddr"].(types.Address)
 	algoName := inArgs["algoName"].(string)
 	algoType := types.NewPoVHashAlgoFromStr(algoName)
+	if !common.PovIsAlgoSupported(algoType) {
+		outArgs["err"] = errors.New("unknown algorithm name")
+		return
+	}
 
 	err := w.checkMinerPledge(minerAddr)
 	if err != nil {

@@ -265,3 +265,10 @@ func X11HashData(data []byte) Hash {
 	copy(result[:], out)
 	return result
 }
+
+func HybridHashData(data []byte) Hash {
+	res1 := Sha256DHashData(data)
+	res2 := ScryptHashData(res1.Bytes())
+	res3 := X11HashData(res2.Bytes())
+	return res3
+}
