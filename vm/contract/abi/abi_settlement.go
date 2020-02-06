@@ -34,8 +34,8 @@ const (
       { "name": "partyBName", "type": "string" },
       { "name": "previous", "type": "hash" },
       { "name": "serviceId", "type": "string" },
-      { "name": "mcc", "type": "int64" },
-      { "name": "mnc", "type": "int64" },
+      { "name": "mcc", "type": "uint64" },
+      { "name": "mnc", "type": "uint64" },
       { "name": "totalAmount", "type": "uint64" },
       { "name": "unitPrice", "type": "uint64" },
       { "name": "currency", "type": "string" },
@@ -67,7 +67,7 @@ const (
       { "name": "customerName", "type": "string" },
       { "name": "customerID", "type": "string" },
       { "name": "sendingStatus", "type": "string" },
-      { "name": "dlrStatus", "type": "string" },
+      { "name": "dlrStatus", "type": "string" }
     ]
   }
 ]
@@ -103,27 +103,51 @@ func (z *SignContract) Verify(addr types.Address) (bool, error) {
 }
 
 func (z *SignContract) ToABI() ([]byte, error) {
-	return SettlementABI.PackMethod(MethodNameSignContract, z.ContractAddress, z.ConfirmDate, z.SignatureB)
+	//return SettlementABI.PackMethod(MethodNameSignContract, z.ContractAddress, z.ConfirmDate, z.SignatureB)
+	return z.MarshalMsg(nil)
+}
+
+func (z *SignContract) FromABI(data []byte) error {
+	//return SettlementABI.UnpackMethod(z, MethodNameSignContract, data)
+	_, err := z.UnmarshalMsg(data)
+	return err
 }
 
 //go:generate msgp
 type CreateContractParam struct {
-	PartyA      types.Address    `msg:"pa,extension" json:"partyA"`
-	PartyAName  string           `msg:"an" json:"partyAName"`
-	PartyB      types.Address    `msg:"pb,extension" json:"partyB"`
-	PartyBName  string           `msg:"bn" json:"partyBName"`
-	Previous    types.Hash       `msg:"pre,extension" json:"previous"`
-	ServiceId   string           `msg:"s" json:"serviceId"`
-	MCC         uint64           `msg:"mcc" json:"mcc"`
-	MNC         uint64           `msg:"mnc" json:"mnc"`
-	TotalAmount uint64           `msg:"t" json:"totalAmount"`
-	UnitPrice   uint64           `msg:"u" json:"unitPrice"`
-	Currency    string           `msg:"c" json:"currency"`
-	SignDate    int64            `msg:"t1" json:"signDate"`
-	SignatureA  *types.Signature `msg:"sa,extension" json:"signatureA"`
+	PartyA      types.Address   `msg:"pa,extension" json:"partyA"`
+	PartyAName  string          `msg:"an" json:"partyAName"`
+	PartyB      types.Address   `msg:"pb,extension" json:"partyB"`
+	PartyBName  string          `msg:"bn" json:"partyBName"`
+	Previous    types.Hash      `msg:"pre,extension" json:"previous"`
+	ServiceId   string          `msg:"id" json:"serviceId"`
+	Mcc         uint64          `msg:"mcc" json:"mcc"`
+	Mnc         uint64          `msg:"mnc" json:"mnc"`
+	TotalAmount uint64          `msg:"t" json:"totalAmount"`
+	UnitPrice   uint64          `msg:"u" json:"unitPrice"`
+	Currency    string          `msg:"c" json:"currency"`
+	SignDate    int64           `msg:"t1" json:"signDate"`
+	SignatureA  types.Signature `msg:"sa,extension" json:"signatureA"`
 }
 
 func (z *CreateContractParam) Verify() (bool, error) {
+	if _, err := z.verifyParam(); err != nil {
+		return false, err
+	}
+
+	if !z.SignatureA.IsZero() {
+		a, _ := z.Address()
+		if verify := z.PartyA.Verify(a[:], z.SignatureA[:]); !verify {
+			return false, fmt.Errorf("invalid signature %s of %s", z.SignatureA, z.PartyA.String())
+		}
+	} else {
+		return false, fmt.Errorf("invalid signature")
+	}
+
+	return true, nil
+}
+
+func (z *CreateContractParam) verifyParam() (bool, error) {
 	if z.PartyA.IsZero() || len(z.PartyAName) == 0 {
 		return false, fmt.Errorf("invalid partyA params")
 	}
@@ -134,6 +158,10 @@ func (z *CreateContractParam) Verify() (bool, error) {
 
 	if z.Previous.IsZero() {
 		return false, errors.New("invalid preivous hash")
+	}
+
+	if len(z.ServiceId) == 0 {
+		return false, errors.New("invalid service ID")
 	}
 
 	if z.TotalAmount == 0 {
@@ -148,13 +176,8 @@ func (z *CreateContractParam) Verify() (bool, error) {
 		return false, errors.New("invalid currency")
 	}
 
-	if z.SignatureA != nil {
-		a, _ := z.Address()
-		if verify := z.PartyA.Verify(a[:], z.SignatureA[:]); !verify {
-			return false, fmt.Errorf("invalid signature %s of %s", z.SignatureA, z.PartyA.String())
-		}
-	} else {
-		return false, errors.New("invalid signature")
+	if z.SignDate <= 0 {
+		return false, fmt.Errorf("invalid sign date %d", z.SignDate)
 	}
 
 	return true, nil
@@ -177,8 +200,15 @@ func (z *CreateContractParam) ToContractParam() *ContractParam {
 }
 
 func (z *CreateContractParam) ToABI() ([]byte, error) {
-	return SettlementABI.PackMethod(MethodNameCreateContract, z.PartyA, z.PartyAName, z.PartyB, z.PartyBName, z.Previous,
-		z.ServiceId, z.MCC, z.MNC, z.TotalAmount, z.UnitPrice, z.Currency, z.SignDate, z.SignatureA)
+	//return SettlementABI.PackMethod(MethodNameCreateContract, z.PartyA, z.PartyAName, z.PartyB, z.PartyBName, z.Previous,
+	//	z.ServiceId, z.Mcc, z.Mnc, z.TotalAmount, z.UnitPrice, z.Currency, z.SignDate, z.SignatureA)
+	return z.MarshalMsg(nil)
+}
+
+func (z *CreateContractParam) FromABI(data []byte) error {
+	//return SettlementABI.UnpackMethod(z, MethodNameCreateContract, data)
+	_, err := z.UnmarshalMsg(data)
+	return err
 }
 
 func (z *CreateContractParam) String() string {
@@ -187,7 +217,7 @@ func (z *CreateContractParam) String() string {
 
 func ParseContractParam(v []byte) (*ContractParam, error) {
 	cp := &ContractParam{}
-	if _, err := cp.UnmarshalMsg(v); err != nil {
+	if err := cp.FromABI(v); err != nil {
 		return nil, err
 	} else {
 		return cp, nil
@@ -195,18 +225,13 @@ func ParseContractParam(v []byte) (*ContractParam, error) {
 }
 
 func (z *CreateContractParam) Address() (types.Address, error) {
-	partyA, err := z.PartyA.MarshalMsg(nil)
-	if err != nil {
-		return types.ZeroAddress, err
-	}
-	partyB, err := z.PartyB.MarshalMsg(nil)
-	if err != nil {
+	if _, err := z.verifyParam(); err != nil {
 		return types.ZeroAddress, err
 	}
 
-	hash, err := types.HashBytes(partyA, []byte(z.PartyAName), partyB, []byte(z.PartyBName),
-		z.Previous[:], []byte(z.ServiceId), util.BE_Uint64ToBytes(z.MCC),
-		util.BE_Uint64ToBytes(z.MNC), util.BE_Uint64ToBytes(z.TotalAmount), util.BE_Uint64ToBytes(z.UnitPrice),
+	hash, err := types.HashBytes(z.PartyA[:], []byte(z.PartyAName), z.PartyB[:], []byte(z.PartyBName),
+		z.Previous[:], []byte(z.ServiceId), util.BE_Uint64ToBytes(z.Mcc),
+		util.BE_Uint64ToBytes(z.Mnc), util.BE_Uint64ToBytes(z.TotalAmount), util.BE_Uint64ToBytes(z.UnitPrice),
 		[]byte(z.Currency), util.BE_Int2Bytes(z.SignDate))
 	if err != nil {
 		return types.ZeroAddress, err
@@ -223,8 +248,7 @@ func (z *CreateContractParam) Sign(account *types.Account) error {
 	if err != nil {
 		return err
 	}
-	s := account.Sign(h)
-	z.SignatureA = &s
+	z.SignatureA = account.Sign(h)
 	return nil
 }
 
@@ -233,6 +257,15 @@ type ContractParam struct {
 	CreateContractParam
 	ConfirmDate int64            `msg:"t2" json:"confirmDate"`
 	SignatureB  *types.Signature `msg:"sb,extension" json:"signatureB,omitempty"`
+}
+
+func (z *ContractParam) ToABI() ([]byte, error) {
+	return z.MarshalMsg(nil)
+}
+
+func (z *ContractParam) FromABI(data []byte) error {
+	_, err := z.UnmarshalMsg(data)
+	return err
 }
 
 func (z *ContractParam) Sign(account *types.Account) error {
@@ -265,7 +298,7 @@ func (z *ContractParam) Equal(cp *CreateContractParam) (bool, error) {
 		return false, err
 	}
 
-	if z.SignatureA == nil || cp.SignatureA == nil {
+	if z.SignatureA.IsZero() || cp.SignatureA.IsZero() {
 		return false, errors.New("empty signature")
 	}
 
@@ -319,10 +352,9 @@ type CDRParam struct {
 // IsContractAvailable check contract status by contract ID
 func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
 	if value, err := ctx.GetStorage(types.SettlementAddress[:], addr[:]); err == nil {
-		param := &ContractParam{}
-		if _, err := param.UnmarshalMsg(value); err == nil {
+		if param, err := ParseContractParam(value); err == nil {
 			// TODO: verify end date??
-			if param.SignatureB != nil && param.SignatureA != nil {
+			if param.SignatureB != nil && !param.SignatureB.IsZero() && !param.SignatureA.IsZero() {
 				return true
 			}
 		}
@@ -362,7 +394,7 @@ func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp
 	if err := ctx.Iterator(types.SettlementAddress[:], func(key []byte, value []byte) error {
 		if len(key) == keySize && len(value) > 0 {
 			cp := &ContractParam{}
-			if _, err := cp.UnmarshalMsg(value); err != nil {
+			if err := cp.FromABI(value); err != nil {
 				logger.Error(err)
 			} else {
 				if fn(cp) {

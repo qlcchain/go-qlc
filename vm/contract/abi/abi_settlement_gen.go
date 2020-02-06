@@ -338,22 +338,22 @@ func (z *CreateContractParam) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Previous")
 				return
 			}
-		case "s":
+		case "id":
 			z.ServiceId, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "ServiceId")
 				return
 			}
 		case "mcc":
-			z.MCC, err = dc.ReadUint64()
+			z.Mcc, err = dc.ReadUint64()
 			if err != nil {
-				err = msgp.WrapError(err, "MCC")
+				err = msgp.WrapError(err, "Mcc")
 				return
 			}
 		case "mnc":
-			z.MNC, err = dc.ReadUint64()
+			z.Mnc, err = dc.ReadUint64()
 			if err != nil {
-				err = msgp.WrapError(err, "MNC")
+				err = msgp.WrapError(err, "Mnc")
 				return
 			}
 		case "t":
@@ -381,22 +381,10 @@ func (z *CreateContractParam) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "sa":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "SignatureA")
-					return
-				}
-				z.SignatureA = nil
-			} else {
-				if z.SignatureA == nil {
-					z.SignatureA = new(types.Signature)
-				}
-				err = dc.ReadExtension(z.SignatureA)
-				if err != nil {
-					err = msgp.WrapError(err, "SignatureA")
-					return
-				}
+			err = dc.ReadExtension(&z.SignatureA)
+			if err != nil {
+				err = msgp.WrapError(err, "SignatureA")
+				return
 			}
 		default:
 			err = dc.Skip()
@@ -462,8 +450,8 @@ func (z *CreateContractParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Previous")
 		return
 	}
-	// write "s"
-	err = en.Append(0xa1, 0x73)
+	// write "id"
+	err = en.Append(0xa2, 0x69, 0x64)
 	if err != nil {
 		return
 	}
@@ -477,9 +465,9 @@ func (z *CreateContractParam) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteUint64(z.MCC)
+	err = en.WriteUint64(z.Mcc)
 	if err != nil {
-		err = msgp.WrapError(err, "MCC")
+		err = msgp.WrapError(err, "Mcc")
 		return
 	}
 	// write "mnc"
@@ -487,9 +475,9 @@ func (z *CreateContractParam) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteUint64(z.MNC)
+	err = en.WriteUint64(z.Mnc)
 	if err != nil {
-		err = msgp.WrapError(err, "MNC")
+		err = msgp.WrapError(err, "Mnc")
 		return
 	}
 	// write "t"
@@ -537,17 +525,10 @@ func (z *CreateContractParam) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	if z.SignatureA == nil {
-		err = en.WriteNil()
-		if err != nil {
-			return
-		}
-	} else {
-		err = en.WriteExtension(z.SignatureA)
-		if err != nil {
-			err = msgp.WrapError(err, "SignatureA")
-			return
-		}
+	err = en.WriteExtension(&z.SignatureA)
+	if err != nil {
+		err = msgp.WrapError(err, "SignatureA")
+		return
 	}
 	return
 }
@@ -583,15 +564,15 @@ func (z *CreateContractParam) MarshalMsg(b []byte) (o []byte, err error) {
 		err = msgp.WrapError(err, "Previous")
 		return
 	}
-	// string "s"
-	o = append(o, 0xa1, 0x73)
+	// string "id"
+	o = append(o, 0xa2, 0x69, 0x64)
 	o = msgp.AppendString(o, z.ServiceId)
 	// string "mcc"
 	o = append(o, 0xa3, 0x6d, 0x63, 0x63)
-	o = msgp.AppendUint64(o, z.MCC)
+	o = msgp.AppendUint64(o, z.Mcc)
 	// string "mnc"
 	o = append(o, 0xa3, 0x6d, 0x6e, 0x63)
-	o = msgp.AppendUint64(o, z.MNC)
+	o = msgp.AppendUint64(o, z.Mnc)
 	// string "t"
 	o = append(o, 0xa1, 0x74)
 	o = msgp.AppendUint64(o, z.TotalAmount)
@@ -606,14 +587,10 @@ func (z *CreateContractParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendInt64(o, z.SignDate)
 	// string "sa"
 	o = append(o, 0xa2, 0x73, 0x61)
-	if z.SignatureA == nil {
-		o = msgp.AppendNil(o)
-	} else {
-		o, err = msgp.AppendExtension(o, z.SignatureA)
-		if err != nil {
-			err = msgp.WrapError(err, "SignatureA")
-			return
-		}
+	o, err = msgp.AppendExtension(o, &z.SignatureA)
+	if err != nil {
+		err = msgp.WrapError(err, "SignatureA")
+		return
 	}
 	return
 }
@@ -666,22 +643,22 @@ func (z *CreateContractParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Previous")
 				return
 			}
-		case "s":
+		case "id":
 			z.ServiceId, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ServiceId")
 				return
 			}
 		case "mcc":
-			z.MCC, bts, err = msgp.ReadUint64Bytes(bts)
+			z.Mcc, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "MCC")
+				err = msgp.WrapError(err, "Mcc")
 				return
 			}
 		case "mnc":
-			z.MNC, bts, err = msgp.ReadUint64Bytes(bts)
+			z.Mnc, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "MNC")
+				err = msgp.WrapError(err, "Mnc")
 				return
 			}
 		case "t":
@@ -709,21 +686,10 @@ func (z *CreateContractParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "sa":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.SignatureA = nil
-			} else {
-				if z.SignatureA == nil {
-					z.SignatureA = new(types.Signature)
-				}
-				bts, err = msgp.ReadExtensionBytes(bts, z.SignatureA)
-				if err != nil {
-					err = msgp.WrapError(err, "SignatureA")
-					return
-				}
+			bts, err = msgp.ReadExtensionBytes(bts, &z.SignatureA)
+			if err != nil {
+				err = msgp.WrapError(err, "SignatureA")
+				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -739,12 +705,7 @@ func (z *CreateContractParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CreateContractParam) Msgsize() (s int) {
-	s = 1 + 3 + msgp.ExtensionPrefixSize + z.PartyA.Len() + 3 + msgp.StringPrefixSize + len(z.PartyAName) + 3 + msgp.ExtensionPrefixSize + z.PartyB.Len() + 3 + msgp.StringPrefixSize + len(z.PartyBName) + 4 + msgp.ExtensionPrefixSize + z.Previous.Len() + 2 + msgp.StringPrefixSize + len(z.ServiceId) + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.StringPrefixSize + len(z.Currency) + 3 + msgp.Int64Size + 3
-	if z.SignatureA == nil {
-		s += msgp.NilSize
-	} else {
-		s += msgp.ExtensionPrefixSize + z.SignatureA.Len()
-	}
+	s = 1 + 3 + msgp.ExtensionPrefixSize + z.PartyA.Len() + 3 + msgp.StringPrefixSize + len(z.PartyAName) + 3 + msgp.ExtensionPrefixSize + z.PartyB.Len() + 3 + msgp.StringPrefixSize + len(z.PartyBName) + 4 + msgp.ExtensionPrefixSize + z.Previous.Len() + 3 + msgp.StringPrefixSize + len(z.ServiceId) + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.StringPrefixSize + len(z.Currency) + 3 + msgp.Int64Size + 3 + msgp.ExtensionPrefixSize + z.SignatureA.Len()
 	return
 }
 

@@ -27,7 +27,7 @@ func (c *CreateContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock)
 func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	// verify send block data
 	param := new(cabi.CreateContractParam)
-	err := cabi.SettlementABI.UnpackMethod(param, cabi.MethodNameCreateContract, input.Data)
+	err := param.FromABI(input.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 	}
 
 	param := new(cabi.CreateContractParam)
-	err := cabi.SettlementABI.UnpackMethod(param, cabi.MethodNameCreateContract, block.Data)
+	err := param.FromABI(block.Data)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,7 +177,7 @@ func (s *SignContract) GetDescribe() Describe {
 
 func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	param := new(cabi.SignContract)
-	err := cabi.SettlementABI.UnpackMethod(param, cabi.MethodNameSignContract, block.Data)
+	err := param.FromABI(block.Data)
 	if err != nil {
 		return nil, nil, err
 	}
