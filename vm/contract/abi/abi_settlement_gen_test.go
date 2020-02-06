@@ -348,8 +348,8 @@ func BenchmarkDecodeCreateContractParam(b *testing.B) {
 	}
 }
 
-func TestMarshalUnmarshalSignContract(t *testing.T) {
-	v := SignContract{}
+func TestMarshalUnmarshalSignContractParam(t *testing.T) {
+	v := SignContractParam{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -371,8 +371,8 @@ func TestMarshalUnmarshalSignContract(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgSignContract(b *testing.B) {
-	v := SignContract{}
+func BenchmarkMarshalMsgSignContractParam(b *testing.B) {
+	v := SignContractParam{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -380,8 +380,8 @@ func BenchmarkMarshalMsgSignContract(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgSignContract(b *testing.B) {
-	v := SignContract{}
+func BenchmarkAppendMsgSignContractParam(b *testing.B) {
+	v := SignContractParam{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -392,8 +392,8 @@ func BenchmarkAppendMsgSignContract(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalSignContract(b *testing.B) {
-	v := SignContract{}
+func BenchmarkUnmarshalSignContractParam(b *testing.B) {
+	v := SignContractParam{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -406,8 +406,8 @@ func BenchmarkUnmarshalSignContract(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeSignContract(t *testing.T) {
-	v := SignContract{}
+func TestEncodeDecodeSignContractParam(t *testing.T) {
+	v := SignContractParam{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
@@ -416,7 +416,7 @@ func TestEncodeDecodeSignContract(t *testing.T) {
 		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
 	}
 
-	vn := SignContract{}
+	vn := SignContractParam{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -430,8 +430,8 @@ func TestEncodeDecodeSignContract(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeSignContract(b *testing.B) {
-	v := SignContract{}
+func BenchmarkEncodeSignContractParam(b *testing.B) {
+	v := SignContractParam{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -444,8 +444,8 @@ func BenchmarkEncodeSignContract(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeSignContract(b *testing.B) {
-	v := SignContract{}
+func BenchmarkDecodeSignContractParam(b *testing.B) {
+	v := SignContractParam{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

@@ -36,7 +36,7 @@ type SettlementAPI struct {
 
 // SignContractParam for confirm contract which created by PartyA
 type SignContractParam struct {
-	cabi.SignContract
+	cabi.SignContractParam
 	Address types.Address // PartyB address
 }
 
@@ -157,7 +157,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 		return nil, errors.New("invalid input param")
 	}
 
-	if isVerified, err := param.SignContract.Verify(param.Address); err != nil {
+	if isVerified, err := param.SignContractParam.Verify(param.Address); err != nil {
 		return nil, err
 	} else if !isVerified {
 		return nil, errors.New("invalid input param")
@@ -184,7 +184,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 	if tm, err := ctx.GetTokenMeta(param.Address, common.GasToken()); err != nil {
 		return nil, err
 	} else {
-		if singedData, err := param.SignContract.ToABI(); err == nil {
+		if singedData, err := param.SignContractParam.ToABI(); err == nil {
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,

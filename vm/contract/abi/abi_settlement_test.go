@@ -1268,7 +1268,7 @@ func TestSettlement_ParseContractParam(t *testing.T) {
 
 func TestSettlement_SignContract_ToABI(t *testing.T) {
 	a := mock.Account()
-	sc := &SignContract{
+	sc := &SignContractParam{
 		ContractAddress: mock.Address(),
 		ConfirmDate:     time.Now().Unix(),
 		SignatureB:      types.Signature{},
@@ -1283,7 +1283,7 @@ func TestSettlement_SignContract_ToABI(t *testing.T) {
 	if abi, err := sc.ToABI(); err != nil {
 		t.Fatal(err)
 	} else {
-		sc2 := &SignContract{}
+		sc2 := &SignContractParam{}
 		if err := sc2.FromABI(abi); err != nil {
 			t.Fatal(err)
 		} else {

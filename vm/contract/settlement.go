@@ -164,7 +164,50 @@ func (s *SignContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (
 }
 
 func (s *SignContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	panic("implement me")
+	// verify send block data
+	param := new(cabi.SignContractParam)
+	err := param.FromABI(input.Data)
+	if err != nil {
+		return nil, err
+	}
+	if b, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+		if _, err := cabi.ParseContractParam(b); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
+	}
+
+	rxMeta, _ := ctx.GetAccountMeta(input.Address)
+	// qgas token should be exist
+	rxToken := rxMeta.Token(input.Token)
+	txHash := input.GetHash()
+
+	block.Type = types.ContractReward
+	block.Address = input.Address
+	block.Link = txHash
+	block.Token = input.Token
+	block.Extra = types.ZeroHash
+	block.Vote = types.ZeroBalance
+	block.Network = types.ZeroBalance
+	block.Oracle = types.ZeroBalance
+	block.Storage = types.ZeroBalance
+
+	block.Balance = rxToken.Balance
+	block.Previous = rxToken.Header
+	block.Representative = input.Representative
+
+	return []*ContractBlock{
+		{
+			VMContext: ctx,
+			Block:     block,
+			ToAddress: input.Address,
+			BlockType: types.ContractReward,
+			Amount:    types.ZeroBalance,
+			Token:     input.Token,
+			Data:      []byte{},
+		},
+	}, nil
 }
 
 func (s *SignContract) GetRefundData() []byte {
@@ -172,11 +215,11 @@ func (s *SignContract) GetRefundData() []byte {
 }
 
 func (s *SignContract) GetDescribe() Describe {
-	return Describe{withSignature: true, withPending: false}
+	return Describe{withSignature: false, withPending: true}
 }
 
 func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(cabi.SignContract)
+	param := new(cabi.SignContractParam)
 	err := param.FromABI(block.Data)
 	if err != nil {
 		return nil, nil, err

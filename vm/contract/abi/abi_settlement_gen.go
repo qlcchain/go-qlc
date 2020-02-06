@@ -710,7 +710,7 @@ func (z *CreateContractParam) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
-func (z *SignContract) DecodeMsg(dc *msgp.Reader) (err error) {
+func (z *SignContractParam) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
@@ -757,7 +757,7 @@ func (z *SignContract) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z SignContract) EncodeMsg(en *msgp.Writer) (err error) {
+func (z SignContractParam) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 3
 	// write "a"
 	err = en.Append(0x83, 0xa1, 0x61)
@@ -793,7 +793,7 @@ func (z SignContract) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z SignContract) MarshalMsg(b []byte) (o []byte, err error) {
+func (z SignContractParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 3
 	// string "a"
@@ -817,7 +817,7 @@ func (z SignContract) MarshalMsg(b []byte) (o []byte, err error) {
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
-func (z *SignContract) UnmarshalMsg(bts []byte) (o []byte, err error) {
+func (z *SignContractParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
@@ -865,7 +865,7 @@ func (z *SignContract) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z SignContract) Msgsize() (s int) {
+func (z SignContractParam) Msgsize() (s int) {
 	s = 1 + 2 + msgp.ExtensionPrefixSize + z.ContractAddress.Len() + 3 + msgp.Int64Size + 3 + msgp.ExtensionPrefixSize + z.SignatureB.Len()
 	return
 }

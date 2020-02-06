@@ -82,13 +82,13 @@ var (
 	keySize          = types.AddressSize*2 + 1
 )
 
-type SignContract struct {
+type SignContractParam struct {
 	ContractAddress types.Address   `msg:"a,extension" json:"contractAddress"`
 	ConfirmDate     int64           `msg:"cd" json:"confirmDate"`
 	SignatureB      types.Signature `msg:"sb,extension" json:"signatureB"`
 }
 
-func (z *SignContract) Verify(addr types.Address) (bool, error) {
+func (z *SignContractParam) Verify(addr types.Address) (bool, error) {
 	if z.ContractAddress.IsZero() {
 		return false, fmt.Errorf("invalid contract address %s", z.ContractAddress.String())
 	}
@@ -102,12 +102,12 @@ func (z *SignContract) Verify(addr types.Address) (bool, error) {
 	}
 }
 
-func (z *SignContract) ToABI() ([]byte, error) {
+func (z *SignContractParam) ToABI() ([]byte, error) {
 	//return SettlementABI.PackMethod(MethodNameSignContract, z.ContractAddress, z.ConfirmDate, z.SignatureB)
 	return z.MarshalMsg(nil)
 }
 
-func (z *SignContract) FromABI(data []byte) error {
+func (z *SignContractParam) FromABI(data []byte) error {
 	//return SettlementABI.UnpackMethod(z, MethodNameSignContract, data)
 	_, err := z.UnmarshalMsg(data)
 	return err
