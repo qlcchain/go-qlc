@@ -32,7 +32,7 @@ func (node *QlcNode) HandlePeerFound(p peer.AddrInfo) {
 	ctx, cancel := context.WithTimeout(node.ctx, discoveryConnTimeout)
 	defer cancel()
 	if err := node.host.Connect(ctx, p); err != nil {
-		node.logger.Error("Failed to connect to peer found by discovery: ", err)
+		node.logger.Info("Failed to connect to peer found by discovery: ", err)
 	}
 	node.logger.Info("find a local peer , ID:", p.ID.Pretty())
 	node.streamManager.createStreamWithPeer(p.ID)

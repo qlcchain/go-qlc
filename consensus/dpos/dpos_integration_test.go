@@ -1,7 +1,6 @@
 package dpos
 
 import (
-	"fmt"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -32,52 +31,10 @@ func TestFork1(t *testing.T) {
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-
 	n1.InitStatus()
 	n2.InitStatus()
 
-	acc := mock.Account()
-	send1 := n1.GenerateSendBlock(testAccount, acc.Address(), types.NewBalance(10), "QLC")
-	n1.ProcessBlockLocal(send1)
-
-	recv1 := n1.GenerateReceiveBlock(send1, acc)
-	n1.ProcessBlockLocal(recv1)
-
-	// fork block on node 1, sleep to make different timestamp
-	time.Sleep(2 * time.Second)
-	send2 := n2.GenerateSendBlock(testAccount, acc.Address(), types.NewBalance(10), "QLC")
-
-	n2.ProcessBlock(send2)
-	time.Sleep(10 * time.Second)
-
-	if has, _ := n1.ledger.HasStateBlockConfirmed(send2.GetHash()); has {
-		t.Fatal()
-	}
-}
-
-func TestFork2(t *testing.T) {
-	nodes, err := InitNodes(2, t)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		for _, n := range nodes {
-			n.StopNodeAndRemoveDir()
-		}
-	}()
-
-	for _, n := range nodes {
-		n.RunNode()
-		n.InitLedger()
-	}
-
-	n1 := nodes[0]
-	n2 := nodes[1]
-
-	n1.InitStatus()
-	n2.InitStatus()
-
+	// open fork
 	acc1 := mock.Account()
 	acc2 := mock.Account()
 
@@ -85,54 +42,43 @@ func TestFork2(t *testing.T) {
 	n2.WaitBlockConfirmed(s1.GetHash())
 	n2.WaitBlockConfirmed(r1.GetHash())
 
-	send1 := n1.GenerateSendBlock(testAccount, acc2.Address(), types.NewBalance(10), "QLC")
-	n1.ProcessBlockAndWaitConfirmed(send1)
+	s2 := n1.GenerateSendBlock(testAccount, acc2.Address(), types.NewBalance(10), "QLC")
+	n1.ProcessBlockAndWaitConfirmed(s2)
 
-	send2 := n1.GenerateSendBlock(acc1, acc2.Address(), types.NewBalance(20), "QLC")
-	n1.ProcessBlockAndWaitConfirmed(send2)
-	n2.WaitBlockConfirmed(send2.GetHash())
+	s3 := n1.GenerateSendBlock(acc1, acc2.Address(), types.NewBalance(20), "QLC")
+	n1.ProcessBlockAndWaitConfirmed(s3)
+	n2.WaitBlockConfirmed(s3.GetHash())
 
-	recv1 := n1.GenerateReceiveBlock(send1, acc2)
-	recv2 := n2.GenerateReceiveBlock(send2, acc2)
-	n1.ProcessBlock(recv1)
-	n2.ProcessBlock(recv2)
+	r2 := n1.GenerateReceiveBlock(s2, acc2)
+	r3 := n2.GenerateReceiveBlock(s3, acc2)
+	n1.ProcessBlock(r2)
+	n2.ProcessBlock(r3)
 
-	time.Sleep(10 * time.Second)
-	has1, _ := n1.ledger.HasStateBlockConfirmed(recv1.GetHash())
-	has2, _ := n1.ledger.HasStateBlockConfirmed(recv2.GetHash())
-	t.Log(has1, has2)
+	time.Sleep(3 * time.Second)
+	has1, _ := n1.ledger.HasStateBlockConfirmed(r2.GetHash())
+	has2, _ := n1.ledger.HasStateBlockConfirmed(r3.GetHash())
 	if has1 == has2 {
 		t.Fatal()
 	}
-}
 
-func TestTransaction(t *testing.T) {
-	nodes, err := InitNodes(2, t)
-	if err != nil {
-		t.Fatal(err)
+	// common fork
+	acc3 := mock.Account()
+	s4 := n1.GenerateSendBlock(testAccount, acc3.Address(), types.NewBalance(10), "QLC")
+	n1.ProcessBlockLocal(s4)
+
+	r4 := n1.GenerateReceiveBlock(s4, acc3)
+	n1.ProcessBlockLocal(r4)
+
+	// fork block on node 1, sleep to make different timestamp
+	time.Sleep(time.Second)
+	s5 := n2.GenerateSendBlock(testAccount, acc3.Address(), types.NewBalance(10), "QLC")
+
+	n2.ProcessBlock(s5)
+	time.Sleep(3 * time.Second)
+
+	if has, _ := n1.ledger.HasStateBlockConfirmed(s5.GetHash()); has {
+		t.Fatal()
 	}
-
-	defer func() {
-		for _, n := range nodes {
-			n.StopNodeAndRemoveDir()
-		}
-	}()
-
-	for _, n := range nodes {
-		n.RunNode()
-		n.InitLedger()
-	}
-
-	n1 := nodes[0]
-	n2 := nodes[1]
-
-	n1.InitStatus()
-	n2.InitStatus()
-
-	toAcc := mock.Account()
-	send := n1.GenerateSendBlock(testAccount, toAcc.Address(), types.NewBalance(10), "QLC")
-	n1.ProcessBlockAndWaitConfirmed(send)
-	n2.WaitBlockConfirmed(send.GetHash())
 }
 
 func TestBatchVoteDo(t *testing.T) {
@@ -154,7 +100,6 @@ func TestBatchVoteDo(t *testing.T) {
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-
 	n1.InitStatus()
 	n2.InitStatus()
 
@@ -169,7 +114,7 @@ func TestBatchVoteDo(t *testing.T) {
 		n1.dps.batchVote <- h
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 	repOnline := make(map[uint64]*RepOnlinePeriod, 0)
 	n2.cons.RPC(common.RpcDPosOnlineInfo, nil, repOnline)
 	if repOnline[0].Stat[testAccount.Address()].VoteCount != 2000 {
@@ -196,7 +141,6 @@ func TestOnline(t *testing.T) {
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-
 	n1.InitStatus()
 	n2.InitStatus()
 
@@ -205,7 +149,7 @@ func TestOnline(t *testing.T) {
 		pb, _ := mock.GeneratePovBlock(prevPov, 0)
 		prevPov = pb
 		n1.ctx.EventBus().Publish(topic.EventPovConnectBestBlock, pb)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	repOnline := make(map[uint64]*RepOnlinePeriod, 0)
@@ -218,7 +162,6 @@ func TestOnline(t *testing.T) {
 
 	hasOnline := false
 	err = n1.dps.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		fmt.Println(block.Type)
 		if block.Type == types.Online && block.Address == testAccount.Address() {
 			hasOnline = true
 		}
@@ -249,13 +192,12 @@ func TestSynchronize(t *testing.T) {
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-
 	n1.InitStatus()
 	n2.InitStatus()
 
 	toAcc := mock.Account()
 	var blocks types.StateBlockList
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 3; i++ {
 		b := n1.GenerateSendBlock(testAccount, toAcc.Address(), types.NewBalance(10), "QLC")
 		n1.ProcessBlockLocal(b)
 		blocks = append(blocks, b)
@@ -275,7 +217,7 @@ func TestSynchronize(t *testing.T) {
 	for {
 		select {
 		case <-finishTimer.C:
-			t.Fatal(n2.dps.blockSyncState)
+			t.Fatal(n2.dps.blockSyncState, n2.dps.povSyncState)
 		default:
 			if n2.dps.blockSyncState == topic.SyncFinish {
 				n2.WaitBlockConfirmed(frontier.GetHash())
@@ -332,12 +274,14 @@ func TestRollback(t *testing.T) {
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-
-	n1.InitStatus()
-	n2.InitStatus()
+	n1.dps.povSyncState = topic.SyncDone
+	n2.dps.povSyncState = topic.SyncDone
 
 	toAcc := mock.Account()
-	s, r := n1.TokenTransactionAndConfirmed(testAccount, toAcc, types.NewBalance(10), "QLC")
+	s := n1.GenerateSendBlock(testAccount, toAcc.Address(), types.NewBalance(10), "QLC")
+	n1.ProcessBlockLocal(s)
+	r := n1.GenerateReceiveBlock(s, toAcc)
+	n1.ProcessBlockLocal(r)
 
 	if has, _ := n1.ledger.HasStateBlockConfirmed(s.GetHash()); !has {
 		t.Fatal()
@@ -379,7 +323,6 @@ func TestGap(t *testing.T) {
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-
 	n1.InitStatus()
 	n2.InitStatus()
 
