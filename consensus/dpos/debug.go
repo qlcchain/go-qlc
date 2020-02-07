@@ -51,10 +51,10 @@ const (
 	bpBut
 )
 
-type perfType int32
+type PerfType int32
 
 const (
-	perfTypeClose int32 = iota
+	perfTypeClose PerfType = iota
 	perfTypeBlockLife
 	perfTypeBlockProcess
 	perfTypeAll
@@ -62,15 +62,13 @@ const (
 )
 
 type perfInfo struct {
-	status       int32
+	status       atomic.Value
 	blockLife    *sync.Map
 	blockProcess *sync.Map
 }
 
-func (pt perfType) String() string {
-	pti := int32(pt)
-
-	switch pti {
+func (pt PerfType) String() string {
+	switch pt {
 	case perfTypeClose:
 		return "close"
 	case perfTypeBlockLife:
@@ -85,19 +83,19 @@ func (pt perfType) String() string {
 }
 
 func (dps *DPoS) setPerf(in interface{}, out interface{}) {
-	op := in.(int32)
+	op := in.(PerfType)
 	rsp := out.(map[string]interface{})
 	rsp["err"] = nil
 
 	switch op {
 	case perfTypeClose:
-		atomic.StoreInt32(&dps.pf.status, op)
+		dps.pf.status.Store(op)
 	case perfTypeBlockLife, perfTypeBlockProcess, perfTypeAll:
-		atomic.StoreInt32(&dps.pf.status, op)
+		dps.pf.status.Store(op)
 		dps.pf.blockLife = new(sync.Map)
 		dps.pf.blockProcess = new(sync.Map)
 	case perfTypeExport:
-		if atomic.LoadInt32(&dps.pf.status) == perfTypeClose {
+		if dps.pf.status.Load() == perfTypeClose {
 			rsp["err"] = fmt.Errorf("performance test is closed")
 		} else {
 			err := dps.perfDataExport()
@@ -114,7 +112,7 @@ func (dps *DPoS) getPerf(in interface{}, out interface{}) {
 	rsp := out.(map[string]interface{})
 	rsp["err"] = nil
 
-	rsp["status"] = fmt.Sprintf("%s", perfType(dps.pf.status))
+	rsp["status"] = fmt.Sprintf("%s", dps.pf.status.Load())
 	blNum := 0
 	bpNum := 0
 
@@ -137,7 +135,7 @@ func (dps *DPoS) getPerf(in interface{}, out interface{}) {
 }
 
 func (dps *DPoS) perfBlockLifeCheckPointAdd(hash types.Hash, pos checkPointPos) {
-	if atomic.LoadInt32(&dps.pf.status) == perfTypeClose || atomic.LoadInt32(&dps.pf.status) == perfTypeBlockProcess {
+	if dps.pf.status.Load() == perfTypeClose || dps.pf.status.Load() == perfTypeBlockProcess {
 		return
 	}
 
@@ -188,7 +186,7 @@ func (dps *DPoS) perfBlockLifeCheckPointAdd(hash types.Hash, pos checkPointPos) 
 }
 
 func (dps *DPoS) perfBlockProcessCheckPointAdd(hash types.Hash, pos checkPointPos) {
-	if atomic.LoadInt32(&dps.pf.status) == perfTypeClose || atomic.LoadInt32(&dps.pf.status) == perfTypeBlockLife {
+	if dps.pf.status.Load() == perfTypeClose || dps.pf.status.Load() == perfTypeBlockLife {
 		return
 	}
 

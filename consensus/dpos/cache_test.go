@@ -10,6 +10,7 @@ import (
 
 func TestCache_set(t *testing.T) {
 	dps := getTestDpos()
+	dps.confirmedBlocks = newCache(1, confirmedCacheMaxTime)
 
 	hash := mock.Hash()
 	dps.confirmedBlocks.set(hash, nil)
@@ -33,6 +34,17 @@ func TestCache_set(t *testing.T) {
 			t.Fatal()
 		}
 	} else {
+		t.Fatal()
+	}
+
+	hash2 := mock.Hash()
+	dps.confirmedBlocks.set(hash2, nil)
+
+	if dps.confirmedBlocks.has(hash) {
+		t.Fatal()
+	}
+
+	if !dps.confirmedBlocks.has(hash2) {
 		t.Fatal()
 	}
 }

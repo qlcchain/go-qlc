@@ -49,8 +49,8 @@ func TestVotes(t *testing.T) {
 	if exit != false {
 		t.Fatal("vote exit func error")
 	}
-	var seedstring = "DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9"
-	s, err := hex.DecodeString(seedstring)
+	var seedString = "DB68096C0E2D2954F59DA5DAAE112B7B6F72BE35FC96327FE0D81FD0CE5794A9"
+	s, err := hex.DecodeString(seedString)
 	if err != nil {
 		t.Fatal("hex string error")
 	}

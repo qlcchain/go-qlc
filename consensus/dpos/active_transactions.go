@@ -74,40 +74,6 @@ func (act *ActiveTrx) addToRoots(block *types.StateBlock) bool {
 	}
 }
 
-func (act *ActiveTrx) updatePerformanceTime(hash types.Hash, curTime int64, confirmed bool) {
-	if confirmed {
-		if p, err := act.dps.ledger.GetPerformanceTime(hash); p != nil && err == nil {
-			t := &types.PerformanceTime{
-				Hash: hash,
-				T0:   p.T0,
-				T1:   curTime,
-				T2:   p.T2,
-				T3:   p.T3,
-			}
-
-			err := act.dps.ledger.AddOrUpdatePerformance(t)
-			if err != nil {
-				act.dps.logger.Info("AddOrUpdatePerformance error T1")
-			}
-		} else {
-			act.dps.logger.Info("get performanceTime error T1")
-		}
-	} else {
-		t := &types.PerformanceTime{
-			Hash: hash,
-			T0:   curTime,
-			T1:   0,
-			T2:   0,
-			T3:   0,
-		}
-
-		err := act.dps.ledger.AddOrUpdatePerformance(t)
-		if err != nil {
-			act.dps.logger.Infof("AddOrUpdatePerformance error T0")
-		}
-	}
-}
-
 func (act *ActiveTrx) cleanFrontierVotes() {
 	dps := act.dps
 

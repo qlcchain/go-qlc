@@ -13,14 +13,17 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/consensus/pov"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/miner"
 	"github.com/qlcchain/go-qlc/p2p"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -48,6 +51,7 @@ type Node struct {
 	miner     *miner.Miner
 	cons      *consensus.Consensus
 	p2p       *p2p.QlcService
+	dps       *DPoS
 }
 
 func InitBootNode(t *testing.T) (*Node, error) {
@@ -106,9 +110,9 @@ func setDefaultConfig(cfg *config.Config, port int) {
 	cfg.RPC.HTTPEndpoint = fmt.Sprintf("tcp4://0.0.0.0:%s", strconv.Itoa(port+1))
 	cfg.RPC.WSEndpoint = fmt.Sprintf("tcp4://0.0.0.0:%s", strconv.Itoa(port+2))
 	cfg.RPC.IPCEnabled = false
-	cfg.P2P.SyncInterval = 120
+	cfg.P2P.SyncInterval = 12000
 	cfg.PoV.PovEnabled = true
-	cfg.LogLevel = "debug"
+	cfg.LogLevel = "error"
 }
 
 func InitNodes(count int, t *testing.T) ([]*Node, error) {
@@ -129,6 +133,32 @@ func InitNodes(count int, t *testing.T) ([]*Node, error) {
 	}
 
 	return nodes, nil
+}
+
+func generateRangeNum(min, max int) int {
+	rand.Seed(time.Now().UnixNano())
+	randNum := rand.Intn(max-min) + min
+	return randNum
+}
+
+func save(cfg *config.Config) (string, error) {
+	err := util.CreateDirIfNotExist(cfg.DataDir)
+	if err != nil {
+		return "", err
+	}
+
+	s := util.ToIndentString(cfg)
+	cfgPath := filepath.Join(cfg.DataDir, config.QlcConfigFile)
+	if err := ioutil.WriteFile(cfgPath, []byte(s), 0600); err != nil {
+		return "", err
+	}
+	return cfgPath, nil
+}
+
+func calcWork(hash types.Hash) types.Work {
+	var work types.Work
+	worker, _ := types.NewWorker(work, hash)
+	return worker.NewWork()
 }
 
 func (n *Node) CommitConfig() error {
@@ -240,6 +270,7 @@ func (n *Node) startConsensusService() {
 	DPoS := NewDPoS(n.ctx.ConfigFile())
 	cons := consensus.NewConsensus(DPoS, n.ctx.ConfigFile())
 	n.cons = cons
+	n.dps = DPoS
 	cons.Init()
 	cons.Start()
 }
@@ -317,26 +348,6 @@ func (n *Node) StopNodeAndRemoveDir() {
 	n.t.Log("node stopped ", n.config.RPC.HTTPEndpoint)
 }
 
-func generateRangeNum(min, max int) int {
-	rand.Seed(time.Now().UnixNano())
-	randNum := rand.Intn(max-min) + min
-	return randNum
-}
-
-func save(cfg *config.Config) (string, error) {
-	err := util.CreateDirIfNotExist(cfg.DataDir)
-	if err != nil {
-		return "", err
-	}
-
-	s := util.ToIndentString(cfg)
-	cfgPath := filepath.Join(cfg.DataDir, config.QlcConfigFile)
-	if err := ioutil.WriteFile(cfgPath, []byte(s), 0600); err != nil {
-		return "", err
-	}
-	return cfgPath, nil
-}
-
 func (n *Node) InitStatus() {
 	ticker := time.NewTicker(300 * time.Second)
 	for {
@@ -391,6 +402,146 @@ func (n *Node) GenerateChangeBlock(account *types.Account, representative types.
 		n.t.Fatal(err)
 	}
 	return block
+}
+
+func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Address, method string, param interface{}) *types.StateBlock {
+	switch ca {
+	case types.MintageAddress:
+		if method == abi.MethodNameMintage {
+			totalSupply := big.NewInt(1000)
+			decimals := uint8(8)
+			tokenName := "testToken"
+			tokenSymbol := "testToken"
+			NEP5tTxId := random.RandomHexString(32)
+			tokenId := abi.NewTokenHash(from.Address(), param.(types.Hash), tokenName)
+
+			data, err := abi.MintageABI.PackMethod(abi.MethodNameMintage, tokenId, tokenName, tokenSymbol, totalSupply, decimals, to.Address(), NEP5tTxId)
+			if err != nil {
+				n.t.Fatal(err)
+			}
+
+			am, err := n.ledger.GetAccountMeta(from.Address())
+			if err != nil {
+				n.t.Fatal(err)
+			}
+
+			tm := am.Token(common.ChainToken())
+			if tm == nil {
+				n.t.Fatal()
+			}
+
+			minPledgeAmount := types.Balance{Int: contract.MinPledgeAmount}
+			if tm.Balance.Compare(minPledgeAmount) == types.BalanceCompSmaller {
+				n.t.Fatal()
+			}
+
+			send := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        from.Address(),
+				Balance:        tm.Balance.Sub(minPledgeAmount),
+				Previous:       tm.Header,
+				Link:           types.Hash(types.MintageAddress),
+				Representative: tm.Representative,
+				Data:           data,
+				PoVHeight:      0,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+			send.Signature = from.Sign(send.GetHash())
+			send.Work = calcWork(send.Root())
+
+			return send
+		} else if method == abi.MethodNameMintageWithdraw {
+			tm, _ := n.ledger.GetTokenMeta(from.Address(), common.ChainToken())
+			if tm == nil {
+				n.t.Fatal()
+			}
+			data, err := abi.MintageABI.PackMethod(abi.MethodNameMintageWithdraw, param.(types.Hash))
+			if err != nil {
+				n.t.Fatal(err)
+			}
+
+			send := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        from.Address(),
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.MintageAddress),
+				Representative: tm.Representative,
+				Data:           data,
+				PoVHeight:      0,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+			send.Signature = from.Sign(send.GetHash())
+			send.Work = calcWork(send.Root())
+
+			return send
+		} else {
+			n.t.Fatal()
+		}
+	default:
+		n.t.Fatal()
+	}
+
+	return nil
+}
+
+func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address, method string, send *types.StateBlock) *types.StateBlock {
+	switch ca {
+	case types.MintageAddress:
+		if method == abi.MethodNameMintage {
+			recv := &types.StateBlock{}
+			mintage := &contract.Mintage{}
+			vmContext := vmstore.NewVMContext(n.ledger)
+			contract.SetMinMintageTimeForTest()
+
+			blocks, err := mintage.DoReceive(vmContext, recv, send)
+			if err != nil {
+				n.t.Fatal(err)
+			}
+
+			if len(blocks) > 0 {
+				recv.Timestamp = common.TimeNow().Unix()
+				h := blocks[0].VMContext.Cache.Trie().Hash()
+				recv.Extra = *h
+			}
+
+			recv.Signature = to.Sign(recv.GetHash())
+			recv.Work = calcWork(recv.Root())
+
+			return recv
+		} else if method == abi.MethodNameMintageWithdraw {
+			recv := &types.StateBlock{}
+			withdraw := &contract.WithdrawMintage{}
+			vmContext := vmstore.NewVMContext(n.ledger)
+			blocks, err := withdraw.DoReceive(vmContext, recv, send)
+			if err != nil {
+				n.t.Fatal(err)
+			}
+
+			if len(blocks) > 0 {
+				recv.Timestamp = common.TimeNow().Unix()
+				h := blocks[0].VMContext.Cache.Trie().Hash()
+				recv.Extra = *h
+			}
+
+			recv.Signature = to.Sign(recv.GetHash())
+			recv.Work = calcWork(recv.Root())
+
+			return recv
+		} else {
+			n.t.Fatal()
+		}
+	default:
+		n.t.Fatal()
+	}
+
+	return nil
 }
 
 // process block to node
@@ -513,6 +664,14 @@ func (n *Node) WaitBlockConfirmed(hash types.Hash) {
 func (n *Node) WaitBlocksConfirmed(hashes []types.Hash) {
 	for _, hash := range hashes {
 		n.WaitBlockConfirmed(hash)
+	}
+}
+
+func (n *Node) CheckBlocksConfirmed(hashes []types.Hash) {
+	for _, hash := range hashes {
+		if has, _ := n.ledger.HasStateBlockConfirmed(hash); !has {
+			n.t.Fatal()
+		}
 	}
 }
 

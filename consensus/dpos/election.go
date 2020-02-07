@@ -216,19 +216,6 @@ func (el *Election) tally(isSync bool) map[types.Hash]*BlockReceivedVotes {
 	return totals
 }
 
-func (el *Election) getOnlineRepresentativesBalance() types.Balance {
-	b := types.ZeroBalance
-	reps := el.dps.getOnlineRepresentatives()
-
-	for _, addr := range reps {
-		if b1, _ := el.dps.ledger.GetRepresentation(addr); b1 != nil {
-			b = b.Add(b1.Total)
-		}
-	}
-
-	return b
-}
-
 func (el *Election) getGenesisBalance() (types.Balance, error) {
 	genesis := common.GenesisBlock()
 	return genesis.Balance, nil

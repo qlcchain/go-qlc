@@ -35,23 +35,23 @@ type chainOrderKey struct {
 }
 
 type Processor struct {
-	index              int
-	dps                *DPoS
-	uncheckedCache     gcache.Cache //gap blocks
-	quitCh             chan bool
-	blocks             chan *consensus.BlockSource
-	blocksAcked        chan types.Hash
-	tokenCreate        chan types.Hash
-	publishBlock       chan types.Hash
-	syncBlock          chan *types.StateBlock
-	syncBlockAcked     chan types.Hash
-	acks               chan *voteInfo
-	frontiers          chan *types.StateBlock
-	syncStateChange    chan topic.SyncState
-	syncState          topic.SyncState
-	orderedChain       *sync.Map
-	chainHeight        map[chainKey]uint64
-	doneBlock          chan *types.StateBlock
+	index           int
+	dps             *DPoS
+	uncheckedCache  gcache.Cache // gap blocks
+	quitCh          chan bool
+	blocks          chan *consensus.BlockSource
+	blocksAcked     chan types.Hash
+	tokenCreate     chan types.Hash
+	publishBlock    chan types.Hash
+	syncBlock       chan *types.StateBlock
+	syncBlockAcked  chan types.Hash
+	acks            chan *voteInfo
+	frontiers       chan *types.StateBlock
+	syncStateChange chan topic.SyncState
+	syncState       topic.SyncState
+	orderedChain    *sync.Map
+	chainHeight     map[chainKey]uint64
+	// doneBlock          chan *types.StateBlock
 	confirmedChain     map[types.Hash]bool
 	confirmParallelNum int32
 	ctx                context.Context
@@ -65,21 +65,21 @@ func newProcessors(num int) []*Processor {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		p := &Processor{
-			index:              i,
-			quitCh:             make(chan bool, 1),
-			blocks:             make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
-			blocksAcked:        make(chan types.Hash, common.DPoSMaxBlocks),
-			tokenCreate:        make(chan types.Hash, 1024),
-			publishBlock:       make(chan types.Hash, common.DPoSMaxBlocks),
-			syncBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncBlockAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
-			acks:               make(chan *voteInfo, common.DPoSMaxBlocks),
-			frontiers:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncStateChange:    make(chan topic.SyncState, 1),
-			syncState:          topic.SyncNotStart,
-			orderedChain:       new(sync.Map),
-			chainHeight:        make(map[chainKey]uint64),
-			doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			index:           i,
+			quitCh:          make(chan bool, 1),
+			blocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+			blocksAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
+			tokenCreate:     make(chan types.Hash, 1024),
+			publishBlock:    make(chan types.Hash, common.DPoSMaxBlocks),
+			syncBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncBlockAcked:  make(chan types.Hash, common.DPoSMaxBlocks),
+			acks:            make(chan *voteInfo, common.DPoSMaxBlocks),
+			frontiers:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncStateChange: make(chan topic.SyncState, 1),
+			syncState:       topic.SyncNotStart,
+			orderedChain:    new(sync.Map),
+			chainHeight:     make(map[chainKey]uint64),
+			// doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
 			confirmedChain:     make(map[types.Hash]bool),
 			confirmParallelNum: ConfirmChainParallelNum,
 			ctx:                ctx,
@@ -171,11 +171,11 @@ func (p *Processor) processMsg() {
 				p.processAck(ack)
 			case frontier := <-p.frontiers:
 				p.processFrontier(frontier)
-			case block := <-p.doneBlock:
-				p.dps.updateLastProcessSyncTime()
-				if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
-					p.dps.logger.Warnf("block(%s) sync done error: %s", block.GetHash(), err)
-				}
+			// case block := <-p.doneBlock:
+			// 	p.dps.updateLastProcessSyncTime()
+			// 	if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
+			// 		p.dps.logger.Warnf("block(%s) sync done error: %s", block.GetHash(), err)
+			// 	}
 			default:
 				break P1
 			}
@@ -688,26 +688,26 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 	}
 }
 
-func (p *Processor) enqueueUncheckedToMem(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
-	if !p.uncheckedCache.Has(depHash) {
-		consensus.GlobalUncheckedBlockNum.Inc()
-		blocks := new(sync.Map)
-		blocks.Store(hash, bs)
-
-		err := p.uncheckedCache.Set(depHash, blocks)
-		if err != nil {
-			p.dps.logger.Errorf("Gap previous set cache err for block:%s", hash)
-		}
-	} else {
-		c, err := p.uncheckedCache.Get(depHash)
-		if err != nil {
-			p.dps.logger.Errorf("Gap previous get cache err for block:%s", hash)
-		}
-
-		blocks := c.(*sync.Map)
-		blocks.Store(hash, bs)
-	}
-}
+// func (p *Processor) enqueueUncheckedToMem(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
+// 	if !p.uncheckedCache.Has(depHash) {
+// 		consensus.GlobalUncheckedBlockNum.Inc()
+// 		blocks := new(sync.Map)
+// 		blocks.Store(hash, bs)
+//
+// 		err := p.uncheckedCache.Set(depHash, blocks)
+// 		if err != nil {
+// 			p.dps.logger.Errorf("Gap previous set cache err for block:%s", hash)
+// 		}
+// 	} else {
+// 		c, err := p.uncheckedCache.Get(depHash)
+// 		if err != nil {
+// 			p.dps.logger.Errorf("Gap previous get cache err for block:%s", hash)
+// 		}
+//
+// 		blocks := c.(*sync.Map)
+// 		blocks.Store(hash, bs)
+// 	}
+// }
 
 func (p *Processor) enqueueUncheckedSync(block *types.StateBlock) {
 	p.enqueueUncheckedSyncToDb(block)
@@ -848,105 +848,89 @@ func (p *Processor) dequeueGapPublish(hash types.Hash) {
 	}
 }
 
-func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
-	dps := p.dps
-	dps.logger.Debugf("dequeue gap[%s]", hash.String())
+// func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
+// 	dps := p.dps
+// 	dps.logger.Debugf("dequeue gap[%s]", hash.String())
+//
+// 	if !p.uncheckedCache.Has(hash) {
+// 		return
+// 	}
+//
+// 	m, err := p.uncheckedCache.Get(hash)
+// 	if err != nil {
+// 		dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
+// 		return
+// 	}
+//
+// 	cm := m.(*sync.Map)
+// 	cm.Range(func(key, value interface{}) bool {
+// 		bs := value.(*consensus.BlockSource)
+// 		dps.logger.Debugf("dequeue gap[%s] block[%s]", hash, bs.Block.GetHash())
+//
+// 		result, _ := dps.lv.BlockCheck(bs.Block)
+// 		p.processResult(result, bs)
+//
+// 		if p.isResultValid(result) {
+// 			if bs.BlockFrom == types.Synchronized {
+// 				p.confirmBlock(bs.Block)
+// 				return true
+// 			}
+//
+// 			dps.localRepVote(bs.Block)
+// 		}
+//
+// 		return true
+// 	})
+//
+// 	r := p.uncheckedCache.Remove(hash)
+// 	if !r {
+// 		dps.logger.Error("remove cache for unchecked fail")
+// 	}
+//
+// 	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
+// 		consensus.GlobalUncheckedBlockNum.Dec()
+// 	}
+// }
 
-	if !p.uncheckedCache.Has(hash) {
-		return
-	}
+// func (p *Processor) dequeueUncheckedSync(hash types.Hash) {
+// 	p.dequeueUncheckedSyncFromDb(hash)
+// }
 
-	m, err := p.uncheckedCache.Get(hash)
-	if err != nil {
-		dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
-		return
-	}
+// func (p *Processor) dequeueUncheckedSyncFromDb(hash types.Hash) {
+// 	dps := p.dps
+//
+// 	if block, err := dps.ledger.GetUncheckedSyncBlock(hash); err != nil {
+// 		return
+// 	} else {
+// 		confirmedHash := block.GetHash()
+// 		if err := dps.ledger.AddUnconfirmedSyncBlock(confirmedHash, block); err != nil {
+// 			dps.logger.Errorf("add unconfirmed sync block err", err)
+// 		}
+// 		p.processConfirmedSync(confirmedHash, block)
+//
+// 		if err := dps.ledger.DeleteUncheckedSyncBlock(hash); err != nil {
+// 			dps.logger.Errorf("del uncheck sync block err", err)
+// 		}
+// 	}
+// }
 
-	cm := m.(*sync.Map)
-	cm.Range(func(key, value interface{}) bool {
-		bs := value.(*consensus.BlockSource)
-		dps.logger.Debugf("dequeue gap[%s] block[%s]", hash, bs.Block.GetHash())
-
-		result, _ := dps.lv.BlockCheck(bs.Block)
-		p.processResult(result, bs)
-
-		if p.isResultValid(result) {
-			if bs.BlockFrom == types.Synchronized {
-				p.confirmBlock(bs.Block)
-				return true
-			}
-
-			dps.localRepVote(bs.Block)
-		}
-
-		return true
-	})
-
-	r := p.uncheckedCache.Remove(hash)
-	if !r {
-		dps.logger.Error("remove cache for unchecked fail")
-	}
-
-	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
-		consensus.GlobalUncheckedBlockNum.Dec()
-	}
-}
-
-func (p *Processor) dequeueUncheckedSync(hash types.Hash) {
-	p.dequeueUncheckedSyncFromDb(hash)
-}
-
-func (p *Processor) dequeueUncheckedSyncFromDb(hash types.Hash) {
-	dps := p.dps
-
-	if block, err := dps.ledger.GetUncheckedSyncBlock(hash); err != nil {
-		return
-	} else {
-		confirmedHash := block.GetHash()
-		if err := dps.ledger.AddUnconfirmedSyncBlock(confirmedHash, block); err != nil {
-			dps.logger.Errorf("add unconfirmed sync block err", err)
-		}
-		p.processConfirmedSync(confirmedHash, block)
-
-		if err := dps.ledger.DeleteUncheckedSyncBlock(hash); err != nil {
-			dps.logger.Errorf("del uncheck sync block err", err)
-		}
-	}
-}
-
-func (p *Processor) rollbackUncheckedFromMem(hash types.Hash) {
-	if !p.uncheckedCache.Has(hash) {
-		return
-	}
-
-	_, err := p.uncheckedCache.Get(hash)
-	if err != nil {
-		p.dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
-		return
-	}
-
-	r := p.uncheckedCache.Remove(hash)
-	if !r {
-		p.dps.logger.Error("remove cache for unchecked fail")
-	}
-
-	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
-		consensus.GlobalUncheckedBlockNum.Dec()
-	}
-}
-
-func (p *Processor) isResultValid(result process.ProcessResult) bool {
-	if result == process.Progress || result == process.Old {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (p *Processor) isResultGap(result process.ProcessResult) bool {
-	if result == process.GapPrevious || result == process.GapSource || result == process.GapTokenInfo {
-		return true
-	} else {
-		return false
-	}
-}
+// func (p *Processor) rollbackUncheckedFromMem(hash types.Hash) {
+// 	if !p.uncheckedCache.Has(hash) {
+// 		return
+// 	}
+//
+// 	_, err := p.uncheckedCache.Get(hash)
+// 	if err != nil {
+// 		p.dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
+// 		return
+// 	}
+//
+// 	r := p.uncheckedCache.Remove(hash)
+// 	if !r {
+// 		p.dps.logger.Error("remove cache for unchecked fail")
+// 	}
+//
+// 	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
+// 		consensus.GlobalUncheckedBlockNum.Dec()
+// 	}
+// }

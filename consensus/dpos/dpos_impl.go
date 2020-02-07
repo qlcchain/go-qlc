@@ -5,7 +5,6 @@ import (
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -355,7 +354,6 @@ func (dps *DPoS) Start() {
 				if time.Since(dps.lastProcessSyncTime) >= 2*time.Minute {
 					dps.logger.Warnf("timeout concluded the sync. last[%s] now[%s]",
 						dps.lastProcessSyncTime, time.Now())
-					dps.blockSyncState = topic.SyncFinish
 					dps.syncFinish()
 				}
 			}
@@ -790,31 +788,6 @@ func (dps *DPoS) hasLocalValidRep() bool {
 	return has
 }
 
-func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
-	//if dps.cfg.PoV.PovEnabled {
-	//	povHeader, err := dps.ledger.GetLatestPovHeader()
-	//	if povHeader == nil {
-	//		dps.logger.Errorf("get pov header err %s", err)
-	//		return nil, errors.New("get pov header err")
-	//	}
-	//
-	//	if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
-	//		dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
-	//		return nil, errors.New("pov height invalid")
-	//	}
-	//}
-	//
-	//hash := block.GetHash()
-	//va := &protos.ConfirmAckBlock{
-	//	Sequence:  0,
-	//	Hash:      hash,
-	//	account:   account,
-	//	Signature: acc.Sign(hash),
-	//}
-	//return va, nil
-	return nil, nil
-}
-
 func (dps *DPoS) voteGenerateWithSeq(block *types.StateBlock, account types.Address, acc *types.Account, kind uint32) (*protos.ConfirmAckBlock, error) {
 	hashes := make([]types.Hash, 0)
 	hash := block.GetHash()
@@ -922,29 +895,13 @@ func (dps *DPoS) saveOnlineRep(addr types.Address) {
 	dps.onlineReps.Store(addr, now)
 }
 
-func (dps *DPoS) getOnlineRepresentatives() []types.Address {
-	var repAddresses []types.Address
-
-	dps.onlineReps.Range(func(key, value interface{}) bool {
-		addr := key.(types.Address)
-		repAddresses = append(repAddresses, addr)
-		return true
-	})
-
-	return repAddresses
-}
-
 func (dps *DPoS) findOnlineRepresentatives() error {
-	blk, err := dps.ledger.GetRandomStateBlock()
-	if err != nil {
-		return err
-	}
-
+	blk := common.GenesisBlock()
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 
 		if dps.isRepresentation(address) {
-			va, err := dps.voteGenerateWithSeq(blk, address, value.(*types.Account), ackTypeFindRep)
+			va, err := dps.voteGenerateWithSeq(&blk, address, value.(*types.Account), ackTypeFindRep)
 			if err != nil {
 				return true
 			}
@@ -976,24 +933,8 @@ func (dps *DPoS) cleanOnlineReps() {
 	_ = dps.ledger.SetOnlineRepresentations(repAddresses)
 }
 
-func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error) {
-	data, err := protos.ConfirmAckBlockToProto(va)
-	if err != nil {
-		return types.ZeroHash, err
-	}
-
-	version := dps.cfg.Version
-	message := p2p.NewQlcMessage(data, byte(version), p2p.ConfirmAck)
-	hash, err := types.HashBytes(message)
-	if err != nil {
-		return types.ZeroHash, err
-	}
-
-	return hash, nil
-}
-
 func (dps *DPoS) onRollback(hash types.Hash) {
-	//dps.rollbackUncheckedFromDb(hash)
+	// dps.rollbackUncheckedFromDb(hash)
 
 	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
 	if err == nil && blk.Type == types.Online {
@@ -1049,101 +990,102 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 	}
 }
 
-func (dps *DPoS) blockSyncDone() error {
-	dps.logger.Warn("begin: process sync cache blocks")
-	dps.eb.Publish(topic.EventAddSyncBlocks, types.NewTuple(&types.StateBlock{}, true))
+// func (dps *DPoS) blockSyncDone() error {
+// 	dps.logger.Warn("begin: process sync cache blocks")
+// 	dps.eb.Publish(topic.EventAddSyncBlocks, types.NewTuple(&types.StateBlock{}, true))
+//
+// 	scs := make([]*sortContract, 0)
+// 	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
+// 		if b, err := dps.isRelatedOrderBlock(block); err != nil {
+// 			dps.logger.Infof("block[%s] type check error, %s", block.GetHash(), err)
+// 		} else {
+// 			if b {
+// 				sortC := &sortContract{
+// 					hash:      block.GetHash(),
+// 					timestamp: block.Timestamp,
+// 				}
+// 				scs = append(scs, sortC)
+// 			} else {
+// 				index := dps.getProcessorIndex(block.Address)
+// 				dps.processors[index].doneBlock <- block
+// 			}
+// 		}
+// 		return nil
+// 	}); err != nil {
+// 		return err
+// 	}
+//
+// 	dps.logger.Info("sync done, common block process finished, order blocks:  ", len(scs))
+// 	if len(scs) > 0 {
+// 		sort.Slice(scs, func(i, j int) bool {
+// 			return scs[i].timestamp < scs[j].timestamp
+// 		})
+//
+// 		for _, sc := range scs {
+// 			dps.updateLastProcessSyncTime()
+//
+// 			blk, err := dps.ledger.GetSyncCacheBlock(sc.hash)
+// 			if err != nil {
+// 				dps.logger.Errorf("get sync cache block[%s] err[%s]", sc.hash, err)
+// 				continue
+// 			}
+//
+// 			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
+// 				dps.logger.Warnf("contract block(%s) sync done error: %s", blk.GetHash(), err)
+// 			}
+// 		}
+// 	}
+//
+// 	var allDone bool
+// 	timerCheckProcessor := time.NewTicker(time.Second)
+// 	defer timerCheckProcessor.Stop()
+//
+// 	for range timerCheckProcessor.C {
+// 		allDone = true
+// 		for _, p := range dps.processors {
+// 			if len(p.doneBlock) > 0 {
+// 				allDone = false
+// 				break
+// 			}
+// 		}
+//
+// 		if allDone {
+// 			dps.logger.Warn("end: process sync cache blocks")
+// 			return nil
+// 		}
+// 	}
+//
+// 	return nil
+// }
 
-	scs := make([]*sortContract, 0)
-	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
-		if b, err := dps.isRelatedOrderBlock(block); err != nil {
-			dps.logger.Infof("block[%s] type check error, %s", block.GetHash(), err)
-		} else {
-			if b {
-				sortC := &sortContract{
-					hash:      block.GetHash(),
-					timestamp: block.Timestamp,
-				}
-				scs = append(scs, sortC)
-			} else {
-				index := dps.getProcessorIndex(block.Address)
-				dps.processors[index].doneBlock <- block
-			}
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	dps.logger.Info("sync done, common block process finished, order blocks:  ", len(scs))
-	if len(scs) > 0 {
-		sort.Slice(scs, func(i, j int) bool {
-			return scs[i].timestamp < scs[j].timestamp
-		})
-
-		for _, sc := range scs {
-			dps.updateLastProcessSyncTime()
-
-			blk, err := dps.ledger.GetSyncCacheBlock(sc.hash)
-			if err != nil {
-				dps.logger.Errorf("get sync cache block[%s] err[%s]", sc.hash, err)
-				continue
-			}
-
-			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
-				dps.logger.Warnf("contract block(%s) sync done error: %s", blk.GetHash(), err)
-			}
-		}
-	}
-
-	var allDone bool
-	timerCheckProcessor := time.NewTicker(time.Second)
-	defer timerCheckProcessor.Stop()
-
-	for range timerCheckProcessor.C {
-		allDone = true
-		for _, p := range dps.processors {
-			if len(p.doneBlock) > 0 {
-				allDone = false
-				break
-			}
-		}
-
-		if allDone {
-			dps.logger.Warn("end: process sync cache blocks")
-			return nil
-		}
-	}
-
-	return nil
-}
-
-func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
-	switch block.GetType() {
-	case types.ContractReward:
-		sendblk, err := dps.ledger.GetStateBlockConfirmed(block.GetLink())
-		if err != nil {
-			return false, err
-		}
-		switch types.Address(sendblk.GetLink()) {
-		case types.NEP5PledgeAddress:
-			return true, nil
-		case types.MintageAddress:
-			return true, nil
-		case types.BlackHoleAddress:
-			return true, nil
-		}
-	case types.ContractSend:
-		switch types.Address(block.GetLink()) {
-		case types.BlackHoleAddress:
-			return true, nil
-		case types.MinerAddress, types.RepAddress:
-			return true, nil
-		}
-	}
-	return false, nil
-}
+// func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
+// 	switch block.GetType() {
+// 	case types.ContractReward:
+// 		sendblk, err := dps.ledger.GetStateBlockConfirmed(block.GetLink())
+// 		if err != nil {
+// 			return false, err
+// 		}
+// 		switch types.Address(sendblk.GetLink()) {
+// 		case types.NEP5PledgeAddress:
+// 			return true, nil
+// 		case types.MintageAddress:
+// 			return true, nil
+// 		case types.BlackHoleAddress:
+// 			return true, nil
+// 		}
+// 	case types.ContractSend:
+// 		switch types.Address(block.GetLink()) {
+// 		case types.BlackHoleAddress:
+// 			return true, nil
+// 		case types.MinerAddress, types.RepAddress:
+// 			return true, nil
+// 		}
+// 	}
+// 	return false, nil
+// }
 
 func (dps *DPoS) syncFinish() {
+	dps.blockSyncState = topic.SyncFinish
 	dps.acTrx.cleanFrontierVotes()
 	dps.CleanSyncCache()
 
@@ -1204,15 +1146,15 @@ func (dps *DPoS) checkSyncFinished() {
 	}
 }
 
-func (dps *DPoS) syncBlockRollback(hash types.Hash) {
-	block, err := dps.ledger.GetUnconfirmedSyncBlock(hash)
-	if err != nil {
-		return
-	}
-
-	_ = dps.ledger.DeleteUnconfirmedSyncBlock(hash)
-	dps.syncBlockRollback(block.Previous)
-}
+// func (dps *DPoS) syncBlockRollback(hash types.Hash) {
+// 	block, err := dps.ledger.GetUnconfirmedSyncBlock(hash)
+// 	if err != nil {
+// 		return
+// 	}
+//
+// 	_ = dps.ledger.DeleteUnconfirmedSyncBlock(hash)
+// 	dps.syncBlockRollback(block.Previous)
+// }
 
 func (dps *DPoS) onFrontierConfirmed(hash types.Hash, result *bool) {
 	if status, ok := dps.frontiersStatus.Load(hash); ok {
@@ -1296,7 +1238,6 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 			BlockQueue: len(p.blocks),
 			SyncQueue:  len(p.syncBlock),
 			AckQueue:   len(p.acks),
-			DoneQueue:  len(p.doneBlock),
 		}
 
 		for _, dealt := range p.confirmedChain {
