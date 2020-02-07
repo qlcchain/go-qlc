@@ -2,8 +2,10 @@ package dpos
 
 import (
 	"context"
+
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
+
 	"runtime"
 	"sync"
 	"sync/atomic"

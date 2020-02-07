@@ -302,7 +302,7 @@ func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types
 		return nil
 	}
 
-	repPrefix := types.PovCreateStatePrefix(types.PovStatePrefixRep)
+	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	if it == nil {
 		return nil

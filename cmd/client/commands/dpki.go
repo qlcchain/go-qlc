@@ -22,6 +22,10 @@ func addPKDCmd() {
 		addPublishCmdByShell(DPKICmd)
 		addUnPublishCmdByShell(DPKICmd)
 		addOraclePublishCmdByShell(DPKICmd)
+		addDpkiRewardInfoCmdByShell(DPKICmd)
+		addDpkiRewardCmdByShell(DPKICmd)
+		addDpkiGetVerifierStateListCmdByShell(DPKICmd)
+		addDpkiGetPublishInfoCmdByShell(DPKICmd)
 	} else {
 		var DPKICmd = &cobra.Command{
 			Use:   "dpki",
