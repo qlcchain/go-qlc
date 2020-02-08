@@ -531,7 +531,7 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		return nil, nil, errors.New("verifier account not exist")
 	}
 
-	nodeRewardHeight, err := abi.GetNodeRewardHeight(ctx)
+	nodeRewardHeight, err := abi.PovGetNodeRewardHeightByDay(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -705,7 +705,7 @@ func (r *PKDReward) GetRewardInfo(ctx *vmstore.VMContext, address types.Address)
 	rwdInfo := new(dpki.PKDRewardInfo)
 	rwdInfo.RewardAmount = big.NewInt(0)
 
-	err = abi.PublicKeyDistributionABI.UnpackVariable(&rwdInfo, abi.VariableNamePKDRewardInfo, valBytes)
+	err = abi.PublicKeyDistributionABI.UnpackVariable(rwdInfo, abi.VariableNamePKDRewardInfo, valBytes)
 	if err != nil {
 		return nil, err
 	}

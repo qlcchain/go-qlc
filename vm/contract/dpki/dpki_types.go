@@ -23,7 +23,7 @@ type PKDRewardInfo struct {
 	Beneficial   types.Address `json:"beneficial"`
 	EndHeight    uint64        `json:"endHeight"`
 	RewardAmount *big.Int      `json:"rewardAmount"`
-	Timestamp    int64         `json:"_"`
+	Timestamp    int64         `json:"timestamp"`
 }
 
 func NewPKDRewardInfo() *PKDRewardInfo {

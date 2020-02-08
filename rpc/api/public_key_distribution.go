@@ -862,7 +862,7 @@ type PKDRewardParam struct {
 
 func (p *PublicKeyDistributionApi) PackRewardData(param *PKDRewardParam) ([]byte, error) {
 	return abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDReward,
-		param.Account, param.Beneficial, param.Beneficial, param.EndHeight, param.RewardAmount)
+		param.Account, param.Beneficial, param.EndHeight, param.RewardAmount)
 }
 
 func (p *PublicKeyDistributionApi) UnpackRewardData(data []byte) (*PKDRewardParam, error) {
@@ -914,17 +914,17 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 
 	send := &types.StateBlock{
 		Type:    types.ContractSend,
-		Token:   common.GasToken(),
 		Address: param.Account,
 
+		Token:          tm.Type,
 		Balance:        tm.Balance,
 		Previous:       tm.Header,
 		Representative: tm.Representative,
 
-		Vote:    am.CoinVote,
-		Network: am.CoinNetwork,
-		Oracle:  am.CoinOracle,
-		Storage: am.CoinStorage,
+		Vote:    types.ZeroBalance,
+		Network: types.ZeroBalance,
+		Oracle:  types.ZeroBalance,
+		Storage: types.ZeroBalance,
 
 		Link:      types.Hash(types.PubKeyDistributionAddress),
 		Data:      data,
@@ -1038,7 +1038,7 @@ func (p *PublicKeyDistributionApi) GetAvailRewardInfo(account types.Address) (*P
 		rsp.LastEndHeight = lastRwdInfo.LastEndHeight
 	}
 
-	rsp.NodeRewardHeight, err = abi.GetNodeRewardHeight(vmContext)
+	rsp.NodeRewardHeight, err = abi.PovGetNodeRewardHeightByDay(vmContext)
 	if err != nil {
 		return nil, err
 	}
@@ -1049,9 +1049,14 @@ func (p *PublicKeyDistributionApi) GetAvailRewardInfo(account types.Address) (*P
 
 	rsp.AvailEndHeight = rsp.NodeRewardHeight
 
-	lastVs, err := p.reward.GetVerifierState(vmContext, rsp.LastEndHeight, account)
-	if err != nil {
-		return nil, err
+	var lastVs *types.PovVerifierState
+	if lastRwdInfo != nil {
+		lastVs, err = p.reward.GetVerifierState(vmContext, rsp.LastEndHeight, account)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		lastVs = types.NewPovVerifierState()
 	}
 
 	curVs, err := p.reward.GetVerifierState(vmContext, rsp.NodeRewardHeight, account)

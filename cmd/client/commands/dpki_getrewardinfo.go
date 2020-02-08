@@ -65,10 +65,10 @@ func dpkiRewardInfoAction(addressP string) error {
 	if err != nil {
 		fmt.Printf("%s\n", err)
 	} else {
-		fmt.Printf("LastEndHeight:  %d\n", histInfo.LastEndHeight)
-		fmt.Printf("LastBeneficial:   %d\n", histInfo.LastBeneficial)
-		fmt.Printf("LastRewardTime: %s\n", time.Unix(histInfo.LastRewardTime, 0))
-		fmt.Printf("RewardAmount:   %s\n", txFormatBalance(histInfo.RewardAmount))
+		fmt.Printf("LastEndHeight:     %d\n", histInfo.LastEndHeight)
+		fmt.Printf("LastBeneficial:    %s\n", histInfo.LastBeneficial)
+		fmt.Printf("LastRewardTime:    %s\n", time.Unix(histInfo.LastRewardTime, 0))
+		fmt.Printf("TotalRewardAmount: %s\n", txFormatBalance(histInfo.RewardAmount))
 	}
 
 	// avail reward info

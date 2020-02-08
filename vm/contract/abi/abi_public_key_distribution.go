@@ -46,7 +46,7 @@ const (
 			{"name":"pubKey","type":"uint8[]"},
 			{"name":"hash","type":"hash"}
 		]},
-		{"type":"function","name":"PKDWithdrawReward","inputs":[
+		{"type":"function","name":"PKDReward","inputs":[
 			{"name":"account","type":"address"},
 			{"name":"beneficial","type":"address"},
 			{"name":"endHeight","type":"uint64"},
