@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"strings"
 
+	"gopkg.in/validator.v2"
+
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 
@@ -54,8 +56,8 @@ const (
     "type": "function",
     "name": "ProcessCDR",
     "inputs": [
+      { "name": "index", "type": "uint64" },
       { "name": "smsDt", "type": "int64" },
-      { "name": "messageID", "type": "string" },
       { "name": "sender", "type": "string" },
       { "name": "destination", "type": "string" },
       { "name": "dstCountry", "type": "string" },
@@ -81,6 +83,11 @@ var (
 	SettlementABI, _ = abi.JSONToABIContract(strings.NewReader(JsonSettlement))
 	keySize          = types.AddressSize*2 + 1
 )
+
+type ABIer interface {
+	ToABI() ([]byte, error)
+	FromABI(data []byte) error
+}
 
 type SignContractParam struct {
 	ContractAddress types.Address   `msg:"a,extension" json:"contractAddress"`
@@ -134,6 +141,15 @@ func (z *CreateContractParam) Verify() (bool, error) {
 	if _, err := z.verifyParam(); err != nil {
 		return false, err
 	}
+	//ctx *vmstore.VMContext
+	// verify previous block hash
+	//if tm, err := ctx.GetTokenMeta(z.PartyA, common.GasToken()); err != nil {
+	//	return false, err
+	//} else {
+	//	if tm.Header != z.Previous {
+	//		return false, fmt.Errorf("invalid previous, exp: %s, act: %s", tm.Header.String(), z.Previous.String())
+	//	}
+	//}
 
 	if !z.SignatureA.IsZero() {
 		a, _ := z.Address()
@@ -320,22 +336,22 @@ func (z *ContractParam) String() string {
 // TODO:
 // we should make sure that can use CDR data to match to a specific settlement contract
 type CDRParam struct {
-	Index        uint64
-	SmsDt        string
-	MessageID    string
-	Sender       string
-	Destination  string
-	DstCountry   string
-	DstOperator  string
-	DstMcc       string
-	DstMnc       string
-	SellPrice    float64
-	SellCurrency string
+	Index         uint64  `msg:"i" json:"index" validate:"min=1"`
+	SmsDt         int64   `msg:"dt" json:"smsDt" validate:"min=1"`
+	Sender        string  `msg:"tx" json:"sender" validate:"nonzero"`
+	Destination   string  `msg:"d" json:"destination" validate:"nonzero"`
+	DstCountry    string  `msg:"dc" json:"dstCountry" validate:"nonzero"`
+	DstOperator   string  `msg:"do" json:"dstOperator" validate:"nonzero"`
+	DstMcc        string  `msg:"mcc" json:"dstMcc" validate:"nonzero"`
+	DstMnc        string  `msg:"mnc" json:"dstMnc" validate:"nonzero"`
+	SellPrice     float64 `msg:"p" json:"sellPrice" validate:"nonzero"`
+	SellCurrency  string  `msg:"c" json:"sellCurrency" validate:"nonzero"`
+	CustomerName  string  `msg:"cn" json:"customerName" validate:"nonzero"`
+	CustomerID    string  `msg:"cid" json:"customerID" validate:"nonzero"`
+	SendingStatus string  `msg:"s" json:"sendingStatus" validate:"nonzero"`
+	DlrStatus     string  `msg:"ds" json:"dlrStatus" validate:"nonzero"`
+	//MessageID    string  `msg:"id" json:"messageID"`
 	//connection         string
-	CustomerName  string
-	CustomerID    string
-	SendingStatus string
-	DlrStatus     string
 	//clientIp           string
 	//failureCode        string
 	//dlrDt              string
@@ -350,6 +366,79 @@ type CDRParam struct {
 	//foreignMessageID   string
 }
 
+func (z *CDRParam) ToABI() ([]byte, error) {
+	return z.MarshalMsg(nil)
+}
+
+func (z *CDRParam) FromABI(data []byte) error {
+	_, err := z.UnmarshalMsg(data)
+	return err
+}
+
+func (z *CDRParam) String() string {
+	return util.ToIndentString(z)
+}
+
+func (z *CDRParam) Verify() error {
+	if errs := validator.Validate(z); errs != nil {
+		return errs
+	}
+	return nil
+}
+
+func (z *CDRParam) ToHash() (types.Hash, error) {
+	return types.HashBytes(util.BE_Uint64ToBytes(z.Index), []byte(z.Sender), []byte(z.Destination))
+}
+
+//go:generate go-enum -f=$GOFILE --marshal --names
+/*
+ENUM(
+stage1
+success
+failure
+missing
+duplicate
+)
+*/
+type SettlementStatus int
+
+type SettlementCDR struct {
+	CDRParam
+	From types.Address `msg:"f,extension" json:"from"`
+}
+
+//go:generate msgp
+type CDRStatus struct {
+	Params []SettlementCDR  `msg:"p" json:"params"`
+	Status SettlementStatus `msg:"s" json:"status"`
+}
+
+func (z *CDRStatus) ToABI() ([]byte, error) {
+	return z.MarshalMsg(nil)
+}
+
+func (z *CDRStatus) FromABI(data []byte) error {
+	_, err := z.UnmarshalMsg(data)
+	return err
+}
+
+func (z *CDRStatus) String() string {
+	return util.ToIndentString(z)
+}
+
+// TODO:
+// DoSettlement process settlement
+// @param addr smart contract addr
+// @param cdr  cdr data
+func (z *CDRStatus) DoSettlement(contract *ContractParam, cdr *SettlementCDR) error {
+	z.Params = append(z.Params, *cdr)
+	if len(z.Params) == 1 {
+		z.Status = SettlementStatusStage1
+	} else {
+	}
+	return nil
+}
+
 // IsContractAvailable check contract status by contract ID
 func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
 	if value, err := ctx.GetStorage(types.SettlementAddress[:], addr[:]); err == nil {
@@ -361,6 +450,32 @@ func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
 		}
 	}
 	return false
+}
+
+// GetContract
+// @param addr smart contract address
+func GetContract(ctx *vmstore.VMContext, addr *types.Address) (*ContractParam, error) {
+	logger := log.NewLogger("GetContract")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	if storage, err := ctx.GetStorage(types.SettlementAddress[:], addr[:]); err != nil {
+		return nil, err
+	} else {
+		cp := &ContractParam{}
+		if err := cp.FromABI(storage); err != nil {
+			return nil, err
+		} else {
+			return cp, nil
+		}
+	}
+}
+
+func GetAllSettlementContract(ctx *vmstore.VMContext) ([]*ContractParam, error) {
+	return queryContractParamByAddress(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
+		return true
+	})
 }
 
 // GetContractsByAddress get all contract data by address both Party A and Party B

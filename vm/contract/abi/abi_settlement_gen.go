@@ -25,91 +25,85 @@ func (z *CDRParam) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Index":
+		case "i":
 			z.Index, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "Index")
 				return
 			}
-		case "SmsDt":
-			z.SmsDt, err = dc.ReadString()
+		case "dt":
+			z.SmsDt, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "SmsDt")
 				return
 			}
-		case "MessageID":
-			z.MessageID, err = dc.ReadString()
-			if err != nil {
-				err = msgp.WrapError(err, "MessageID")
-				return
-			}
-		case "Sender":
+		case "tx":
 			z.Sender, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Sender")
 				return
 			}
-		case "Destination":
+		case "d":
 			z.Destination, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Destination")
 				return
 			}
-		case "DstCountry":
+		case "dc":
 			z.DstCountry, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "DstCountry")
 				return
 			}
-		case "DstOperator":
+		case "do":
 			z.DstOperator, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "DstOperator")
 				return
 			}
-		case "DstMcc":
+		case "mcc":
 			z.DstMcc, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "DstMcc")
 				return
 			}
-		case "DstMnc":
+		case "mnc":
 			z.DstMnc, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "DstMnc")
 				return
 			}
-		case "SellPrice":
+		case "p":
 			z.SellPrice, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "SellPrice")
 				return
 			}
-		case "SellCurrency":
+		case "c":
 			z.SellCurrency, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "SellCurrency")
 				return
 			}
-		case "CustomerName":
+		case "cn":
 			z.CustomerName, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "CustomerName")
 				return
 			}
-		case "CustomerID":
+		case "cid":
 			z.CustomerID, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "CustomerID")
 				return
 			}
-		case "SendingStatus":
+		case "s":
 			z.SendingStatus, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "SendingStatus")
 				return
 			}
-		case "DlrStatus":
+		case "ds":
 			z.DlrStatus, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "DlrStatus")
@@ -128,9 +122,9 @@ func (z *CDRParam) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 15
-	// write "Index"
-	err = en.Append(0x8f, 0xa5, 0x49, 0x6e, 0x64, 0x65, 0x78)
+	// map header, size 14
+	// write "i"
+	err = en.Append(0x8e, 0xa1, 0x69)
 	if err != nil {
 		return
 	}
@@ -139,28 +133,18 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Index")
 		return
 	}
-	// write "SmsDt"
-	err = en.Append(0xa5, 0x53, 0x6d, 0x73, 0x44, 0x74)
+	// write "dt"
+	err = en.Append(0xa2, 0x64, 0x74)
 	if err != nil {
 		return
 	}
-	err = en.WriteString(z.SmsDt)
+	err = en.WriteInt64(z.SmsDt)
 	if err != nil {
 		err = msgp.WrapError(err, "SmsDt")
 		return
 	}
-	// write "MessageID"
-	err = en.Append(0xa9, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x49, 0x44)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.MessageID)
-	if err != nil {
-		err = msgp.WrapError(err, "MessageID")
-		return
-	}
-	// write "Sender"
-	err = en.Append(0xa6, 0x53, 0x65, 0x6e, 0x64, 0x65, 0x72)
+	// write "tx"
+	err = en.Append(0xa2, 0x74, 0x78)
 	if err != nil {
 		return
 	}
@@ -169,8 +153,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Sender")
 		return
 	}
-	// write "Destination"
-	err = en.Append(0xab, 0x44, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	// write "d"
+	err = en.Append(0xa1, 0x64)
 	if err != nil {
 		return
 	}
@@ -179,8 +163,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Destination")
 		return
 	}
-	// write "DstCountry"
-	err = en.Append(0xaa, 0x44, 0x73, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x72, 0x79)
+	// write "dc"
+	err = en.Append(0xa2, 0x64, 0x63)
 	if err != nil {
 		return
 	}
@@ -189,8 +173,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "DstCountry")
 		return
 	}
-	// write "DstOperator"
-	err = en.Append(0xab, 0x44, 0x73, 0x74, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72)
+	// write "do"
+	err = en.Append(0xa2, 0x64, 0x6f)
 	if err != nil {
 		return
 	}
@@ -199,8 +183,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "DstOperator")
 		return
 	}
-	// write "DstMcc"
-	err = en.Append(0xa6, 0x44, 0x73, 0x74, 0x4d, 0x63, 0x63)
+	// write "mcc"
+	err = en.Append(0xa3, 0x6d, 0x63, 0x63)
 	if err != nil {
 		return
 	}
@@ -209,8 +193,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "DstMcc")
 		return
 	}
-	// write "DstMnc"
-	err = en.Append(0xa6, 0x44, 0x73, 0x74, 0x4d, 0x6e, 0x63)
+	// write "mnc"
+	err = en.Append(0xa3, 0x6d, 0x6e, 0x63)
 	if err != nil {
 		return
 	}
@@ -219,8 +203,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "DstMnc")
 		return
 	}
-	// write "SellPrice"
-	err = en.Append(0xa9, 0x53, 0x65, 0x6c, 0x6c, 0x50, 0x72, 0x69, 0x63, 0x65)
+	// write "p"
+	err = en.Append(0xa1, 0x70)
 	if err != nil {
 		return
 	}
@@ -229,8 +213,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "SellPrice")
 		return
 	}
-	// write "SellCurrency"
-	err = en.Append(0xac, 0x53, 0x65, 0x6c, 0x6c, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x63, 0x79)
+	// write "c"
+	err = en.Append(0xa1, 0x63)
 	if err != nil {
 		return
 	}
@@ -239,8 +223,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "SellCurrency")
 		return
 	}
-	// write "CustomerName"
-	err = en.Append(0xac, 0x43, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x65, 0x72, 0x4e, 0x61, 0x6d, 0x65)
+	// write "cn"
+	err = en.Append(0xa2, 0x63, 0x6e)
 	if err != nil {
 		return
 	}
@@ -249,8 +233,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "CustomerName")
 		return
 	}
-	// write "CustomerID"
-	err = en.Append(0xaa, 0x43, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x65, 0x72, 0x49, 0x44)
+	// write "cid"
+	err = en.Append(0xa3, 0x63, 0x69, 0x64)
 	if err != nil {
 		return
 	}
@@ -259,8 +243,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "CustomerID")
 		return
 	}
-	// write "SendingStatus"
-	err = en.Append(0xad, 0x53, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	// write "s"
+	err = en.Append(0xa1, 0x73)
 	if err != nil {
 		return
 	}
@@ -269,8 +253,8 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "SendingStatus")
 		return
 	}
-	// write "DlrStatus"
-	err = en.Append(0xa9, 0x44, 0x6c, 0x72, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	// write "ds"
+	err = en.Append(0xa2, 0x64, 0x73)
 	if err != nil {
 		return
 	}
@@ -285,51 +269,48 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *CDRParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 15
-	// string "Index"
-	o = append(o, 0x8f, 0xa5, 0x49, 0x6e, 0x64, 0x65, 0x78)
+	// map header, size 14
+	// string "i"
+	o = append(o, 0x8e, 0xa1, 0x69)
 	o = msgp.AppendUint64(o, z.Index)
-	// string "SmsDt"
-	o = append(o, 0xa5, 0x53, 0x6d, 0x73, 0x44, 0x74)
-	o = msgp.AppendString(o, z.SmsDt)
-	// string "MessageID"
-	o = append(o, 0xa9, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x49, 0x44)
-	o = msgp.AppendString(o, z.MessageID)
-	// string "Sender"
-	o = append(o, 0xa6, 0x53, 0x65, 0x6e, 0x64, 0x65, 0x72)
+	// string "dt"
+	o = append(o, 0xa2, 0x64, 0x74)
+	o = msgp.AppendInt64(o, z.SmsDt)
+	// string "tx"
+	o = append(o, 0xa2, 0x74, 0x78)
 	o = msgp.AppendString(o, z.Sender)
-	// string "Destination"
-	o = append(o, 0xab, 0x44, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	// string "d"
+	o = append(o, 0xa1, 0x64)
 	o = msgp.AppendString(o, z.Destination)
-	// string "DstCountry"
-	o = append(o, 0xaa, 0x44, 0x73, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x72, 0x79)
+	// string "dc"
+	o = append(o, 0xa2, 0x64, 0x63)
 	o = msgp.AppendString(o, z.DstCountry)
-	// string "DstOperator"
-	o = append(o, 0xab, 0x44, 0x73, 0x74, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72)
+	// string "do"
+	o = append(o, 0xa2, 0x64, 0x6f)
 	o = msgp.AppendString(o, z.DstOperator)
-	// string "DstMcc"
-	o = append(o, 0xa6, 0x44, 0x73, 0x74, 0x4d, 0x63, 0x63)
+	// string "mcc"
+	o = append(o, 0xa3, 0x6d, 0x63, 0x63)
 	o = msgp.AppendString(o, z.DstMcc)
-	// string "DstMnc"
-	o = append(o, 0xa6, 0x44, 0x73, 0x74, 0x4d, 0x6e, 0x63)
+	// string "mnc"
+	o = append(o, 0xa3, 0x6d, 0x6e, 0x63)
 	o = msgp.AppendString(o, z.DstMnc)
-	// string "SellPrice"
-	o = append(o, 0xa9, 0x53, 0x65, 0x6c, 0x6c, 0x50, 0x72, 0x69, 0x63, 0x65)
+	// string "p"
+	o = append(o, 0xa1, 0x70)
 	o = msgp.AppendFloat64(o, z.SellPrice)
-	// string "SellCurrency"
-	o = append(o, 0xac, 0x53, 0x65, 0x6c, 0x6c, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x63, 0x79)
+	// string "c"
+	o = append(o, 0xa1, 0x63)
 	o = msgp.AppendString(o, z.SellCurrency)
-	// string "CustomerName"
-	o = append(o, 0xac, 0x43, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x65, 0x72, 0x4e, 0x61, 0x6d, 0x65)
+	// string "cn"
+	o = append(o, 0xa2, 0x63, 0x6e)
 	o = msgp.AppendString(o, z.CustomerName)
-	// string "CustomerID"
-	o = append(o, 0xaa, 0x43, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x65, 0x72, 0x49, 0x44)
+	// string "cid"
+	o = append(o, 0xa3, 0x63, 0x69, 0x64)
 	o = msgp.AppendString(o, z.CustomerID)
-	// string "SendingStatus"
-	o = append(o, 0xad, 0x53, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	// string "s"
+	o = append(o, 0xa1, 0x73)
 	o = msgp.AppendString(o, z.SendingStatus)
-	// string "DlrStatus"
-	o = append(o, 0xa9, 0x44, 0x6c, 0x72, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	// string "ds"
+	o = append(o, 0xa2, 0x64, 0x73)
 	o = msgp.AppendString(o, z.DlrStatus)
 	return
 }
@@ -352,91 +333,85 @@ func (z *CDRParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Index":
+		case "i":
 			z.Index, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Index")
 				return
 			}
-		case "SmsDt":
-			z.SmsDt, bts, err = msgp.ReadStringBytes(bts)
+		case "dt":
+			z.SmsDt, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "SmsDt")
 				return
 			}
-		case "MessageID":
-			z.MessageID, bts, err = msgp.ReadStringBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "MessageID")
-				return
-			}
-		case "Sender":
+		case "tx":
 			z.Sender, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Sender")
 				return
 			}
-		case "Destination":
+		case "d":
 			z.Destination, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Destination")
 				return
 			}
-		case "DstCountry":
+		case "dc":
 			z.DstCountry, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DstCountry")
 				return
 			}
-		case "DstOperator":
+		case "do":
 			z.DstOperator, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DstOperator")
 				return
 			}
-		case "DstMcc":
+		case "mcc":
 			z.DstMcc, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DstMcc")
 				return
 			}
-		case "DstMnc":
+		case "mnc":
 			z.DstMnc, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DstMnc")
 				return
 			}
-		case "SellPrice":
+		case "p":
 			z.SellPrice, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "SellPrice")
 				return
 			}
-		case "SellCurrency":
+		case "c":
 			z.SellCurrency, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "SellCurrency")
 				return
 			}
-		case "CustomerName":
+		case "cn":
 			z.CustomerName, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CustomerName")
 				return
 			}
-		case "CustomerID":
+		case "cid":
 			z.CustomerID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CustomerID")
 				return
 			}
-		case "SendingStatus":
+		case "s":
 			z.SendingStatus, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "SendingStatus")
 				return
 			}
-		case "DlrStatus":
+		case "ds":
 			z.DlrStatus, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DlrStatus")
@@ -456,7 +431,271 @@ func (z *CDRParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CDRParam) Msgsize() (s int) {
-	s = 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.SmsDt) + 10 + msgp.StringPrefixSize + len(z.MessageID) + 7 + msgp.StringPrefixSize + len(z.Sender) + 12 + msgp.StringPrefixSize + len(z.Destination) + 11 + msgp.StringPrefixSize + len(z.DstCountry) + 12 + msgp.StringPrefixSize + len(z.DstOperator) + 7 + msgp.StringPrefixSize + len(z.DstMcc) + 7 + msgp.StringPrefixSize + len(z.DstMnc) + 10 + msgp.Float64Size + 13 + msgp.StringPrefixSize + len(z.SellCurrency) + 13 + msgp.StringPrefixSize + len(z.CustomerName) + 11 + msgp.StringPrefixSize + len(z.CustomerID) + 14 + msgp.StringPrefixSize + len(z.SendingStatus) + 10 + msgp.StringPrefixSize + len(z.DlrStatus)
+	s = 1 + 2 + msgp.Uint64Size + 3 + msgp.Int64Size + 3 + msgp.StringPrefixSize + len(z.Sender) + 2 + msgp.StringPrefixSize + len(z.Destination) + 3 + msgp.StringPrefixSize + len(z.DstCountry) + 3 + msgp.StringPrefixSize + len(z.DstOperator) + 4 + msgp.StringPrefixSize + len(z.DstMcc) + 4 + msgp.StringPrefixSize + len(z.DstMnc) + 2 + msgp.Float64Size + 2 + msgp.StringPrefixSize + len(z.SellCurrency) + 3 + msgp.StringPrefixSize + len(z.CustomerName) + 4 + msgp.StringPrefixSize + len(z.CustomerID) + 2 + msgp.StringPrefixSize + len(z.SendingStatus) + 3 + msgp.StringPrefixSize + len(z.DlrStatus)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *CDRStatus) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "p":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Params")
+				return
+			}
+			if cap(z.Params) >= int(zb0002) {
+				z.Params = (z.Params)[:zb0002]
+			} else {
+				z.Params = make([]SettlementCDR, zb0002)
+			}
+			for za0001 := range z.Params {
+				var zb0003 uint32
+				zb0003, err = dc.ReadMapHeader()
+				if err != nil {
+					err = msgp.WrapError(err, "Params", za0001)
+					return
+				}
+				for zb0003 > 0 {
+					zb0003--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						err = msgp.WrapError(err, "Params", za0001)
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "CDRParam":
+						err = z.Params[za0001].CDRParam.DecodeMsg(dc)
+						if err != nil {
+							err = msgp.WrapError(err, "Params", za0001, "CDRParam")
+							return
+						}
+					case "f":
+						err = dc.ReadExtension(&z.Params[za0001].From)
+						if err != nil {
+							err = msgp.WrapError(err, "Params", za0001, "From")
+							return
+						}
+					default:
+						err = dc.Skip()
+						if err != nil {
+							err = msgp.WrapError(err, "Params", za0001)
+							return
+						}
+					}
+				}
+			}
+		case "s":
+			{
+				var zb0004 int
+				zb0004, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "Status")
+					return
+				}
+				z.Status = SettlementStatus(zb0004)
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *CDRStatus) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "p"
+	err = en.Append(0x82, 0xa1, 0x70)
+	if err != nil {
+		return
+	}
+	err = en.WriteArrayHeader(uint32(len(z.Params)))
+	if err != nil {
+		err = msgp.WrapError(err, "Params")
+		return
+	}
+	for za0001 := range z.Params {
+		// map header, size 2
+		// write "CDRParam"
+		err = en.Append(0x82, 0xa8, 0x43, 0x44, 0x52, 0x50, 0x61, 0x72, 0x61, 0x6d)
+		if err != nil {
+			return
+		}
+		err = z.Params[za0001].CDRParam.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Params", za0001, "CDRParam")
+			return
+		}
+		// write "f"
+		err = en.Append(0xa1, 0x66)
+		if err != nil {
+			return
+		}
+		err = en.WriteExtension(&z.Params[za0001].From)
+		if err != nil {
+			err = msgp.WrapError(err, "Params", za0001, "From")
+			return
+		}
+	}
+	// write "s"
+	err = en.Append(0xa1, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(int(z.Status))
+	if err != nil {
+		err = msgp.WrapError(err, "Status")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *CDRStatus) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "p"
+	o = append(o, 0x82, 0xa1, 0x70)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.Params)))
+	for za0001 := range z.Params {
+		// map header, size 2
+		// string "CDRParam"
+		o = append(o, 0x82, 0xa8, 0x43, 0x44, 0x52, 0x50, 0x61, 0x72, 0x61, 0x6d)
+		o, err = z.Params[za0001].CDRParam.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Params", za0001, "CDRParam")
+			return
+		}
+		// string "f"
+		o = append(o, 0xa1, 0x66)
+		o, err = msgp.AppendExtension(o, &z.Params[za0001].From)
+		if err != nil {
+			err = msgp.WrapError(err, "Params", za0001, "From")
+			return
+		}
+	}
+	// string "s"
+	o = append(o, 0xa1, 0x73)
+	o = msgp.AppendInt(o, int(z.Status))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *CDRStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "p":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Params")
+				return
+			}
+			if cap(z.Params) >= int(zb0002) {
+				z.Params = (z.Params)[:zb0002]
+			} else {
+				z.Params = make([]SettlementCDR, zb0002)
+			}
+			for za0001 := range z.Params {
+				var zb0003 uint32
+				zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Params", za0001)
+					return
+				}
+				for zb0003 > 0 {
+					zb0003--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Params", za0001)
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "CDRParam":
+						bts, err = z.Params[za0001].CDRParam.UnmarshalMsg(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Params", za0001, "CDRParam")
+							return
+						}
+					case "f":
+						bts, err = msgp.ReadExtensionBytes(bts, &z.Params[za0001].From)
+						if err != nil {
+							err = msgp.WrapError(err, "Params", za0001, "From")
+							return
+						}
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Params", za0001)
+							return
+						}
+					}
+				}
+			}
+		case "s":
+			{
+				var zb0004 int
+				zb0004, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Status")
+					return
+				}
+				z.Status = SettlementStatus(zb0004)
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *CDRStatus) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ArrayHeaderSize
+	for za0001 := range z.Params {
+		s += 1 + 9 + z.Params[za0001].CDRParam.Msgsize() + 2 + msgp.ExtensionPrefixSize + z.Params[za0001].From.Len()
+	}
+	s += 2 + msgp.IntSize
 	return
 }
 
@@ -1076,6 +1315,194 @@ func (z *CreateContractParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CreateContractParam) Msgsize() (s int) {
 	s = 1 + 3 + msgp.ExtensionPrefixSize + z.PartyA.Len() + 3 + msgp.StringPrefixSize + len(z.PartyAName) + 3 + msgp.ExtensionPrefixSize + z.PartyB.Len() + 3 + msgp.StringPrefixSize + len(z.PartyBName) + 4 + msgp.ExtensionPrefixSize + z.Previous.Len() + 3 + msgp.StringPrefixSize + len(z.ServiceId) + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.StringPrefixSize + len(z.Currency) + 3 + msgp.Int64Size + 3 + msgp.ExtensionPrefixSize + z.SignatureA.Len()
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *SettlementCDR) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "CDRParam":
+			err = z.CDRParam.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "CDRParam")
+				return
+			}
+		case "f":
+			err = dc.ReadExtension(&z.From)
+			if err != nil {
+				err = msgp.WrapError(err, "From")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *SettlementCDR) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "CDRParam"
+	err = en.Append(0x82, 0xa8, 0x43, 0x44, 0x52, 0x50, 0x61, 0x72, 0x61, 0x6d)
+	if err != nil {
+		return
+	}
+	err = z.CDRParam.EncodeMsg(en)
+	if err != nil {
+		err = msgp.WrapError(err, "CDRParam")
+		return
+	}
+	// write "f"
+	err = en.Append(0xa1, 0x66)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.From)
+	if err != nil {
+		err = msgp.WrapError(err, "From")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *SettlementCDR) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "CDRParam"
+	o = append(o, 0x82, 0xa8, 0x43, 0x44, 0x52, 0x50, 0x61, 0x72, 0x61, 0x6d)
+	o, err = z.CDRParam.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "CDRParam")
+		return
+	}
+	// string "f"
+	o = append(o, 0xa1, 0x66)
+	o, err = msgp.AppendExtension(o, &z.From)
+	if err != nil {
+		err = msgp.WrapError(err, "From")
+		return
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *SettlementCDR) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "CDRParam":
+			bts, err = z.CDRParam.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CDRParam")
+				return
+			}
+		case "f":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.From)
+			if err != nil {
+				err = msgp.WrapError(err, "From")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *SettlementCDR) Msgsize() (s int) {
+	s = 1 + 9 + z.CDRParam.Msgsize() + 2 + msgp.ExtensionPrefixSize + z.From.Len()
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *SettlementStatus) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int
+		zb0001, err = dc.ReadInt()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = SettlementStatus(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z SettlementStatus) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt(int(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z SettlementStatus) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt(o, int(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *SettlementStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int
+		zb0001, bts, err = msgp.ReadIntBytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = SettlementStatus(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z SettlementStatus) Msgsize() (s int) {
+	s = msgp.IntSize
 	return
 }
 

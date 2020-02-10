@@ -439,6 +439,7 @@ func TestCreateContract_GetDescribe(t *testing.T) {
 		{
 			name: "default",
 			want: Describe{
+				specVer:       SpecVer2,
 				withSignature: false,
 				withPending:   true,
 			},
@@ -554,6 +555,7 @@ func TestProcessCDR_GetDescribe(t *testing.T) {
 		{
 			name: "default",
 			want: Describe{
+				specVer:       SpecVer2,
 				withSignature: false,
 				withPending:   true,
 			},
@@ -669,6 +671,7 @@ func TestSignContract_GetDescribe(t *testing.T) {
 		{
 			name: "",
 			want: Describe{
+				specVer:       SpecVer2,
 				withSignature: false,
 				withPending:   true,
 			},

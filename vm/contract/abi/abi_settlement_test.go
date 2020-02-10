@@ -1634,3 +1634,487 @@ func TestCreateContractParam_verifyParam(t *testing.T) {
 		})
 	}
 }
+
+func TestCDRStatus(t *testing.T) {
+	param1 := CDRParam{
+		Index:         1,
+		SmsDt:         time.Now().Unix(),
+		Sender:        "PCCWG",
+		Destination:   "85257***343",
+		DstCountry:    "Hong Kong",
+		DstOperator:   "HKTCSL",
+		DstMcc:        "454",
+		DstMnc:        "0",
+		SellPrice:     1,
+		SellCurrency:  "USD",
+		CustomerName:  "Tencent",
+		CustomerID:    "11667",
+		SendingStatus: "Send",
+		DlrStatus:     "Delivered",
+	}
+
+	if data, err := param1.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		cp := &CDRParam{}
+		if err := cp.FromABI(data); err != nil {
+			t.Fatal(err)
+		} else {
+			if !reflect.DeepEqual(cp, &param1) {
+				t.Fatal("invalid param")
+			} else {
+				t.Log(cp.String())
+			}
+		}
+	}
+
+	param2 := param1
+	param2.Sender = "PCCWG"
+
+	a1 := mock.Address()
+	a2 := mock.Address()
+	s := CDRStatus{
+		Params: []SettlementCDR{{
+			CDRParam: param1,
+			From:     a1,
+		}, {
+			CDRParam: param2,
+			From:     a2,
+		}},
+		Status: SettlementStatusSuccess,
+	}
+
+	if data, err := s.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		s1 := &CDRStatus{}
+		if err := s1.FromABI(data); err != nil {
+			t.Fatal(err)
+		} else {
+			if len(s1.Params) != 2 {
+				t.Fatalf("invalid param size, exp: 2, act:%d", len(s1.Params))
+			}
+			if !reflect.DeepEqual(param1, s1.Params[0].CDRParam) {
+				t.Fatalf("invalid csl data, exp: %s, act: %s", util.ToIndentString(param1), util.ToIndentString(s1.Params[0]))
+			}
+			if !reflect.DeepEqual(param2, s1.Params[1].CDRParam) {
+				t.Fatal("invalid pccwg data")
+			}
+			t.Log(util.ToIndentString(s1))
+		}
+	}
+}
+
+func TestGetAllSettlementContract(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	for i := 0; i < 4; i++ {
+		param, _, _ := buildContractParam()
+		a, _ := param.Address()
+		abi, _ := param.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	type args struct {
+		ctx  *vmstore.VMContext
+		size int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*ContractParam
+		wantErr bool
+	}{
+		{
+			name: "",
+			args: args{
+				ctx:  ctx,
+				size: 4,
+			},
+			want:    nil,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetAllSettlementContract(tt.args.ctx)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetAllSettlementContract() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if len(got) != tt.args.size {
+				t.Fatalf("invalid size: exp: %d, act: %d", tt.args.size, len(got))
+			}
+			for _, c := range got {
+				t.Log(c.String())
+			}
+		})
+	}
+}
+
+func TestCDRParam_Verify(t *testing.T) {
+	type fields struct {
+		Index         uint64
+		SmsDt         int64
+		Sender        string
+		Destination   string
+		DstCountry    string
+		DstOperator   string
+		DstMcc        string
+		DstMnc        string
+		SellPrice     float64
+		SellCurrency  string
+		CustomerName  string
+		CustomerID    string
+		SendingStatus string
+		DlrStatus     string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: false,
+		},
+		{
+			name: "f1",
+			fields: fields{
+				Index:         0,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		},
+		{
+			name: "f2",
+			fields: fields{
+				Index:         1,
+				SmsDt:         0,
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		},
+		{
+			name: "f3",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		},
+		{
+			name: "f4",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		},
+		{
+			name: "f5",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		}, {
+			name: "f6",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		}, {
+			name: "f7",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		}, {
+			name: "f8",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		}, {
+			name: "f9",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     0,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		}, {
+			name: "f10",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		}, {
+			name: "f11",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		}, {
+			name: "f12",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		},
+		{
+			name: "f13",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "",
+				SendingStatus: "Send",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		},
+		{
+			name: "f14",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "",
+				DlrStatus:     "Delivered",
+			},
+			wantErr: true,
+		}, {
+			name: "f15",
+			fields: fields{
+				Index:         1,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***343",
+				DstCountry:    "Hong Kong",
+				DstOperator:   "HKTCSL",
+				DstMcc:        "454",
+				DstMnc:        "0",
+				SellPrice:     1,
+				SellCurrency:  "USD",
+				CustomerName:  "Tencent",
+				CustomerID:    "11667",
+				SendingStatus: "Send",
+				DlrStatus:     "",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CDRParam{
+				Index:         tt.fields.Index,
+				SmsDt:         tt.fields.SmsDt,
+				Sender:        tt.fields.Sender,
+				Destination:   tt.fields.Destination,
+				DstCountry:    tt.fields.DstCountry,
+				DstOperator:   tt.fields.DstOperator,
+				DstMcc:        tt.fields.DstMcc,
+				DstMnc:        tt.fields.DstMnc,
+				SellPrice:     tt.fields.SellPrice,
+				SellCurrency:  tt.fields.SellCurrency,
+				CustomerName:  tt.fields.CustomerName,
+				CustomerID:    tt.fields.CustomerID,
+				SendingStatus: tt.fields.SendingStatus,
+				DlrStatus:     tt.fields.DlrStatus,
+			}
+			if err := z.Verify(); (err != nil) != tt.wantErr {
+				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

@@ -284,6 +284,7 @@ func (s *SettlementAPI) GetContractsAsPartyB(addr *types.Address, count int, off
 // TODO: to be confirmed
 type CDRParam struct {
 	cabi.CDRParam
+	Signature types.Signature
 }
 
 // GetProcessCDRBlock save CDR data for the settlement

@@ -18,6 +18,7 @@ import (
 )
 
 type CreateContract struct {
+	BaseContract
 }
 
 func (c *CreateContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -80,7 +81,7 @@ func (c *CreateContract) GetRefundData() []byte {
 }
 
 func (c *CreateContract) GetDescribe() Describe {
-	return Describe{withPending: true, withSignature: false}
+	return Describe{withPending: true, withSignature: false, specVer: SpecVer2}
 }
 
 func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -157,6 +158,7 @@ func (c *CreateContract) DoGapPov(ctx *vmstore.VMContext, block *types.StateBloc
 }
 
 type SignContract struct {
+	BaseContract
 }
 
 func (s *SignContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -215,7 +217,7 @@ func (s *SignContract) GetRefundData() []byte {
 }
 
 func (s *SignContract) GetDescribe() Describe {
-	return Describe{withSignature: false, withPending: true}
+	return Describe{withSignature: false, withPending: true, specVer: SpecVer2}
 }
 
 func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -274,6 +276,7 @@ func (s *SignContract) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock)
 }
 
 type ProcessCDR struct {
+	BaseContract
 }
 
 func (p *ProcessCDR) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -289,7 +292,7 @@ func (p *ProcessCDR) GetRefundData() []byte {
 }
 
 func (p *ProcessCDR) GetDescribe() Describe {
-	return Describe{withPending: true, withSignature: false}
+	return Describe{withPending: true, withSignature: false, specVer: SpecVer2}
 }
 
 func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
