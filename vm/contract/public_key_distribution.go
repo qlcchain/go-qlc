@@ -521,6 +521,10 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		return nil, nil, errors.New("account is not verifier")
 	}
 
+	if param.RewardAmount == nil || param.RewardAmount.Sign() <= 0 {
+		return nil, nil, errors.New("param reward amount is zero")
+	}
+
 	if block.Token != common.GasToken() {
 		return nil, nil, errors.New("token is not gas token")
 	}
