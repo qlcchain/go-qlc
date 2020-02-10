@@ -20,6 +20,8 @@ func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) byte {
 		return idPrefixUncheckedBlockLink
 	case types.UncheckedKindTokenInfo:
 		return idPrefixUncheckedTokenInfo
+	case types.UncheckedKindPublish:
+		return idPrefixGapPublish
 	default:
 		panic("bad unchecked block kind")
 	}
@@ -149,7 +151,11 @@ func (l *Ledger) WalkUncheckedBlocks(visit types.UncheckedBlockWalkFunc, txns ..
 		return err
 	}
 
-	return l.walkUncheckedBlocks(types.UncheckedKindTokenInfo, visit, txns...)
+	if err := l.walkUncheckedBlocks(types.UncheckedKindTokenInfo, visit, txns...); err != nil {
+		return err
+	}
+
+	return l.walkUncheckedBlocks(types.UncheckedKindPublish, visit, txns...)
 }
 
 func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
@@ -167,130 +173,65 @@ func (l *Ledger) CountUncheckedBlocks(txns ...db.StoreTxn) (uint64, error) {
 		return 0, err
 	}
 
-	count3 := l.CountGapPovBlocks()
+	count3, err := txn.Count([]byte{idPrefixUncheckedPovHeight})
+	if err != nil {
+		return 0, err
+	}
 
-	return count + count2 + count3, nil
+	count4, err := txn.Count([]byte{idPrefixGapPublish})
+	if err != nil {
+		return 0, err
+	}
+
+	return count + count2 + count3 + count4, nil
 }
 
 func (l *Ledger) AddGapPovBlock(height uint64, block *types.StateBlock, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(sync.String()))
+	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, block.GetHash())
 	if err != nil {
 		return err
 	}
 
-	blocks := types.StateBlockList{}
-	err = txn.Get(k, func(val []byte, b byte) (err error) {
-		if err = blocks.Deserialize(val); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	for _, blk := range blocks {
-		if blk.GetHash() == block.GetHash() {
-			return nil
-		}
-	}
-
-	blocks = append(blocks, block)
-	v, err := blocks.Serialize()
+	v, err := block.Serialize()
 	if err != nil {
 		return err
 	}
 
-	return txn.Set(k, v)
+	return txn.SetWithMeta(k, v, byte(sync))
 }
 
-func (l *Ledger) GetGapPovBlock(height uint64, txns ...db.StoreTxn) (types.StateBlockList, []types.SynchronizedKind, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	kind := make([]types.SynchronizedKind, 0)
-
-	blocks1 := types.StateBlockList{}
-	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.Synchronized.String()))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = txn.Get(k, func(val []byte, b byte) (err error) {
-		if err = blocks1.Deserialize(val); err != nil {
-			return err
-		}
-
-		for i := 0; i < len(blocks1); i++ {
-			kind = append(kind, types.Synchronized)
-		}
-
-		return nil
-	})
-
-	blocks2 := types.StateBlockList{}
-	k, err = getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.UnSynchronized.String()))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = txn.Get(k, func(val []byte, b byte) (err error) {
-		if err = blocks2.Deserialize(val); err != nil {
-			return err
-		}
-
-		for i := 0; i < len(blocks2); i++ {
-			kind = append(kind, types.UnSynchronized)
-		}
-
-		return nil
-	})
-
-	blocks1 = append(blocks1, blocks2...)
-	return blocks1, kind, nil
-}
-
-func (l *Ledger) CountGapPovBlocks(txns ...db.StoreTxn) uint64 {
+func (l *Ledger) DeleteGapPovBlock(height uint64, hash types.Hash, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	var count uint64
-	_ = txn.Iterator(idPrefixUncheckedPovHeight, func(key []byte, val []byte, b byte) error {
-		blocks := types.StateBlockList{}
-		if err := blocks.Deserialize(val); err != nil {
-			return nil
-		}
-		count += uint64(len(blocks))
-		return nil
-	})
+	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, hash)
+	if err != nil {
+		return err
+	}
 
-	return count
+	return txn.Delete(k)
 }
 
-func (l *Ledger) DeleteGapPovBlock(height uint64, txns ...db.StoreTxn) error {
+func (l *Ledger) WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlockWalkFunc, txns ...db.StoreTxn) error {
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	k, err := getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.Synchronized.String()))
+	var itKey []byte
+	itKey = append(itKey, idPrefixUncheckedPovHeight)
+	itKey = append(itKey, util.BE_Uint64ToBytes(height)...)
+	err := txn.PrefixIterator(itKey, func(key []byte, val []byte, b byte) error {
+		block := new(types.StateBlock)
+		if err := block.Deserialize(val); err != nil {
+			return err
+		}
+
+		return visit(block, height, types.SynchronizedKind(b))
+	})
 	if err != nil {
 		return err
-	}
-
-	err1 := txn.Delete(k)
-
-	k, err = getKeyOfParts(idPrefixUncheckedPovHeight, height, []byte(types.UnSynchronized.String()))
-	if err != nil {
-		return err
-	}
-
-	err2 := txn.Delete(k)
-
-	if err1 != nil {
-		return err1
-	}
-
-	if err2 != nil {
-		return err2
 	}
 
 	return nil
@@ -300,20 +241,83 @@ func (l *Ledger) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc, txns ...db.St
 	txn, flag := l.getTxn(true, txns...)
 	defer l.releaseTxn(txn, flag)
 
-	errStr := make([]string, 0)
 	err := txn.Iterator(idPrefixUncheckedPovHeight, func(key []byte, val []byte, b byte) error {
-		blocks := types.StateBlockList{}
-		if err := blocks.Deserialize(val); err != nil {
-			errStr = append(errStr, err.Error())
+		block := new(types.StateBlock)
+		if err := block.Deserialize(val); err != nil {
 			return nil
 		}
 
 		height := util.BE_BytesToUint64(key[1:9])
-		kind := types.StringToSyncKind(string(key[9:]))
-		if err := visit(blocks, height, kind); err != nil {
-			l.logger.Error("visit error %s", err)
+		return visit(block, height, types.SynchronizedKind(b))
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixGapPublish, key, blk.GetHash())
+	if err != nil {
+		return err
+	}
+
+	v, err := blk.Serialize()
+	if err != nil {
+		return err
+	}
+
+	err = txn.Get(k, func(v []byte, b byte) error {
+		return nil
+	})
+	if err == nil {
+		return ErrUncheckedBlockExists
+	} else if err != badger.ErrKeyNotFound {
+		return err
+	}
+	return txn.SetWithMeta(k, v, byte(sync))
+}
+
+func (l *Ledger) DeleteGapPublishBlock(key types.Hash, blkHash types.Hash, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixGapPublish, key, blkHash)
+	if err != nil {
+		return err
+	}
+
+	return txn.Delete(k)
+}
+
+func (l *Ledger) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc, txns ...db.StoreTxn) error {
+	txn, flag := l.getTxn(true, txns...)
+	defer l.releaseTxn(txn, flag)
+
+	k, err := getKeyOfParts(idPrefixGapPublish, key)
+	if err != nil {
+		return err
+	}
+
+	errStr := make([]string, 0)
+	err = txn.PrefixIterator(k, func(bytes []byte, bytes2 []byte, b byte) error {
+		block := types.StateBlock{}
+		err := block.Deserialize(bytes2)
+		if err != nil {
 			errStr = append(errStr, err.Error())
+			return nil
 		}
+
+		err = visit(&block, types.SynchronizedKind(b))
+		if err != nil {
+			errStr = append(errStr, err.Error())
+			return nil
+		}
+
 		return nil
 	})
 	if err != nil {

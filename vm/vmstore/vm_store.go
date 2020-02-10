@@ -23,6 +23,7 @@ import (
 type ContractStore interface {
 	GetStorage(prefix, key []byte) ([]byte, error)
 	SetStorage(prefix, key []byte, value []byte) error
+	DelStorage(prefix, key []byte)
 	Iterator(prefix []byte, fn func(key []byte, value []byte) error) error
 
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
@@ -45,13 +46,13 @@ var (
 )
 
 type VMContext struct {
-	Ledger *ledger.Ledger
+	Ledger ledger.Store
 	logger *zap.SugaredLogger
 	Cache  *VMCache
 }
 
-func NewVMContext(l *ledger.Ledger) *VMContext {
-	t := trie.NewTrie(l.Store, nil, trie.NewSimpleTrieNodePool())
+func NewVMContext(l ledger.Store) *VMContext {
+	t := trie.NewTrie(l.DBStore(), nil, trie.NewSimpleTrieNodePool())
 	return &VMContext{
 		Ledger: l,
 		logger: log.NewLogger("vm_context"),
@@ -120,7 +121,7 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 }
 
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
-	txn := v.Ledger.Store.NewTransaction(false)
+	txn := v.Ledger.DBStore().NewTransaction(false)
 	defer func() {
 		txn.Discard()
 	}()
@@ -159,7 +160,7 @@ func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, e
 func (v *VMContext) SaveStorage(txns ...db.StoreTxn) error {
 	storage := v.Cache.storage
 	for k, val := range storage {
-		err := v.set([]byte(k), val, txns...)
+		err := v.set([]byte(k), val)
 		if err != nil {
 			v.logger.Error(err)
 			return err
@@ -178,7 +179,7 @@ func (v *VMContext) SaveTrie(txns ...db.StoreTxn) error {
 }
 
 func (v *VMContext) get(key []byte) ([]byte, error) {
-	txn := v.Ledger.Store.NewTransaction(false)
+	txn := v.Ledger.DBStore().NewTransaction(false)
 	defer func() {
 		txn.Commit()
 		txn.Discard()
@@ -203,7 +204,7 @@ func (v *VMContext) set(key []byte, value []byte, txns ...db.StoreTxn) (err erro
 	if len(txns) > 0 {
 		txn = txns[0]
 	} else {
-		txn = v.Ledger.Store.NewTransaction(true)
+		txn = v.Ledger.DBStore().NewTransaction(true)
 		defer func() {
 			err = txn.Commit()
 			txn.Discard()
@@ -217,7 +218,7 @@ func (v *VMContext) remove(key []byte, txns ...db.StoreTxn) (err error) {
 	if len(txns) > 0 {
 		txn = txns[0]
 	} else {
-		txn = v.Ledger.Store.NewTransaction(true)
+		txn = v.Ledger.DBStore().NewTransaction(true)
 		defer func() {
 			err = txn.Commit()
 			txn.Discard()

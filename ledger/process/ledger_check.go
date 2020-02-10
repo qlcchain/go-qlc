@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"reflect"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -23,6 +23,8 @@ type blockBaseInfoCheck struct {
 func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	hash := block.GetHash()
 	address := block.GetAddress()
+	checkWork := true
+	checkSign := true
 
 	lv.logger.Debug("check block ", hash)
 	blockExist, err := lv.l.HasStateBlockConfirmed(hash)
@@ -35,27 +37,33 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 	}
 
 	if block.GetType() == types.ContractSend {
-		if types.IsNoSignContractAddress(types.Address(block.GetLink())) {
-			return Progress, nil
+		if c, ok, err := contract.GetChainContract(types.Address(block.GetLink()), block.Data); ok && err == nil {
+			checkWork = c.GetDescribe().WithWork()
+			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
+
 	if block.GetType() == types.ContractReward {
 		linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 		if err != nil {
 			return GapSource, nil
 		}
-		if types.IsNoSignContractAddress(types.Address(linkBlk.GetLink())) {
-			return Progress, nil
+
+		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.Data); ok && err == nil {
+			checkWork = c.GetDescribe().WithWork()
+			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
 
-	if !block.IsValid() {
+	if checkWork && !block.IsValid() {
 		return BadWork, errors.New("bad work")
 	}
 
-	signature := block.GetSignature()
-	if !address.Verify(hash[:], signature[:]) {
-		return BadSignature, errors.New("bad signature")
+	if checkSign {
+		signature := block.GetSignature()
+		if !address.Verify(hash[:], signature[:]) {
+			return BadSignature, errors.New("bad signature")
+		}
 	}
 
 	return Progress, nil
@@ -67,6 +75,8 @@ type cacheBlockBaseInfoCheck struct {
 func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	hash := block.GetHash()
 	address := block.GetAddress()
+	checkWork := true
+	checkSign := true
 
 	lv.logger.Debug("check block ", hash)
 	if err := checkReceiveBlockRepeat(lv, block); err != Progress {
@@ -82,27 +92,33 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	}
 
 	if block.GetType() == types.ContractSend {
-		if types.IsNoSignContractAddress(types.Address(block.GetLink())) {
-			return Progress, nil
+		if c, ok, err := contract.GetChainContract(types.Address(block.GetLink()), block.Data); ok && err == nil {
+			checkWork = c.GetDescribe().WithWork()
+			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
+
 	if block.GetType() == types.ContractReward {
-		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
+		linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 		if err != nil {
 			return GapSource, nil
 		}
-		if types.IsNoSignContractAddress(types.Address(linkBlk.GetLink())) {
-			return Progress, nil
+
+		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.Data); ok && err == nil {
+			checkWork = c.GetDescribe().WithWork()
+			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
 
-	if !block.IsValid() {
+	if checkWork && !block.IsValid() {
 		return BadWork, errors.New("bad work")
 	}
 
-	signature := block.GetSignature()
-	if !address.Verify(hash[:], signature[:]) {
-		return BadSignature, errors.New("bad signature")
+	if checkSign {
+		signature := block.GetSignature()
+		if !address.Verify(hash[:], signature[:]) {
+			return BadSignature, errors.New("bad signature")
+		}
 	}
 
 	return Progress, nil
@@ -535,11 +551,12 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 
 	// check pending
 	if c, ok, err := contract.GetChainContract(types.Address(input.Link), input.Data); ok && err == nil {
-		switch v := c.(type) {
-		case contract.ChainContractV1:
-			if v.GetDescribe().WithPending() {
+		d := c.GetDescribe()
+		switch d.GetVersion() {
+		case contract.SpecVer1:
+			if d.WithPending() {
 				if pending, err := lv.l.GetPending(&pendingKey); err == nil {
-					if pendingKey, pendingInfo, err := v.DoPending(input); err == nil && pendingKey != nil {
+					if pendingKey, pendingInfo, err := c.DoPending(input); err == nil && pendingKey != nil {
 						if pending.Type == pendingInfo.Type && pending.Amount.Equal(pendingInfo.Amount) && pending.Source == pendingInfo.Source {
 							return Progress, nil
 						} else {
@@ -554,11 +571,11 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 					return Other, err
 				}
 			}
-		case contract.ChainContractV2:
-			if v.GetDescribe().WithPending() {
+		case contract.SpecVer2:
+			if d.WithPending() {
 				if pending, err := lv.l.GetPending(&pendingKey); err == nil {
 					vmCtx := vmstore.NewVMContext(lv.l)
-					if pendingKey, pendingInfo, err := v.ProcessSend(vmCtx, input); err == nil && pendingKey != nil {
+					if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, input); err == nil && pendingKey != nil {
 						if pending.Type == pendingInfo.Type && pending.Amount.Equal(pendingInfo.Amount) && pending.Source == pendingInfo.Source {
 							return Progress, nil
 						} else {
@@ -574,7 +591,7 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 				}
 			}
 		default:
-			return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+			return Other, fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
 		}
 	} else {
 		return Other, fmt.Errorf("can not find chain contract %s", input.GetLink().String())
@@ -647,35 +664,30 @@ func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) 
 			clone := block.Clone()
 			//TODO:verify extra hash and commit to db
 			vmCtx := vmstore.NewVMContext(lv.l)
-			switch v := c.(type) {
-			case contract.InternalContract:
-				if g, e := v.DoReceive(vmCtx, clone, input); e == nil {
-					if len(g) > 0 {
-						amount, err := lv.l.CalculateAmount(block)
-						if err != nil {
-							lv.logger.Error("calculate amount error:", err)
-						}
-						if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
-							g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
-							return Progress, nil
-						} else {
-							lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
-								g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
-							return InvalidData, nil
-						}
+			if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
+				if len(g) > 0 {
+					amount, err := lv.l.CalculateAmount(block)
+					if err != nil {
+						lv.logger.Error("calculate amount error:", err)
+					}
+					if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
+						g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
+						return Progress, nil
 					} else {
-						return Other, fmt.Errorf("can not generate receive block")
+						lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
+							g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
+						return InvalidData, nil
 					}
 				} else {
-					if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
-						return GapTokenInfo, nil
-					} else {
-						lv.logger.Error("DoReceive error ", e)
-						return Other, e
-					}
+					return Other, fmt.Errorf("can not generate receive block")
 				}
-			default:
-				return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+			} else {
+				if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
+					return GapTokenInfo, nil
+				} else {
+					lv.logger.Error("DoReceive error ", e)
+					return Other, e
+				}
 			}
 		} else {
 			//call vm.Run();
@@ -705,35 +717,30 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 			clone := block.Clone()
 			//TODO:verify extra hash and commit to db
 			vmCtx := vmstore.NewVMContext(lv.l)
-			switch v := c.(type) {
-			case contract.InternalContract:
-				if g, e := v.DoReceive(vmCtx, clone, input); e == nil {
-					if len(g) > 0 {
-						amount, err := lv.l.CalculateAmount(block)
-						if err != nil {
-							lv.logger.Error("calculate amount error:", err)
-						}
-						if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
-							g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
-							return Progress, nil
-						} else {
-							lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
-								g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
-							return InvalidData, nil
-						}
+			if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
+				if len(g) > 0 {
+					amount, err := lv.l.CalculateAmount(block)
+					if err != nil {
+						lv.logger.Error("calculate amount error:", err)
+					}
+					if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
+						g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
+						return Progress, nil
 					} else {
-						return Other, fmt.Errorf("can not generate receive block")
+						lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
+							g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
+						return InvalidData, nil
 					}
 				} else {
-					if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
-						return GapTokenInfo, nil
-					} else {
-						lv.logger.Error("DoReceive error ", e)
-						return Other, e
-					}
+					return Other, fmt.Errorf("can not generate receive block")
 				}
-			default:
-				return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+			} else {
+				if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
+					return GapTokenInfo, nil
+				} else {
+					lv.logger.Error("DoReceive error ", e)
+					return Other, e
+				}
 			}
 		} else {
 			//call vm.Run();
@@ -745,7 +752,7 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 }
 
 func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	//check smart c exist
+	// check smart c exist
 	address := types.Address(block.GetLink())
 
 	if !contract.IsChainContract(address) {
@@ -754,13 +761,14 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 		}
 	}
 
-	//verify data
+	// verify data
 	if c, ok, err := contract.GetChainContract(address, block.Data); ok && err == nil {
 		clone := block.Clone()
 		vmCtx := vmstore.NewVMContext(lv.l)
-		switch v := c.(type) {
-		case contract.ChainContractV1:
-			if err := v.DoSend(vmCtx, clone); err == nil {
+		d := c.GetDescribe()
+		switch d.GetVersion() {
+		case contract.SpecVer1:
+			if err := c.DoSend(vmCtx, clone); err == nil {
 				if bytes.EqualFold(block.Data, clone.Data) {
 					return Progress, nil
 				} else {
@@ -771,22 +779,24 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 				lv.logger.Errorf("v1 ProcessSend error, block: %s, err: ", block.GetHash(), err)
 				return Other, err
 			}
-		case contract.ChainContractV2:
-			if types.IsRewardContractAddress(types.Address(block.GetLink())) {
-				h, err := v.DoGapPov(vmCtx, clone)
-				if err != nil {
-					lv.logger.Errorf("do gapPov error: %s", err)
-					return Other, err
-				}
-				if h != 0 {
+		case contract.SpecVer2:
+			if gapResult, _, err := c.DoGap(vmCtx, clone); err == nil {
+				switch gapResult {
+				case common.ContractRewardGapPov:
 					return GapPovHeight, nil
+				case common.ContractDPKIGapPublish:
+					return GapPublish, nil
 				}
+			} else {
+				lv.logger.Errorf("do gap error: %s", err)
+				return Other, err
 			}
-			if _, _, err := v.ProcessSend(vmCtx, clone); err == nil {
+
+			if _, _, err := c.ProcessSend(vmCtx, clone); err == nil {
 				if bytes.EqualFold(block.Data, clone.Data) {
 					return Progress, nil
 				} else {
-					lv.logger.Errorf("data not equal: %s, %s", block.Data, clone.Data)
+					lv.logger.Errorf("data not equal: %v, %v", block.Data, clone.Data)
 					return InvalidData, nil
 				}
 			} else {
@@ -794,10 +804,10 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 				return Other, err
 			}
 		default:
-			return Other, fmt.Errorf("unsupported chain contract %s", reflect.TypeOf(v))
+			return Other, fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
 		}
 	} else {
-		//call vm.Run();
+		// call vm.Run();
 		return Other, fmt.Errorf("can not find chain contract %s", address.String())
 	}
 }

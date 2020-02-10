@@ -1,13 +1,13 @@
 package dpos
 
 import (
+	"github.com/qlcchain/go-qlc/consensus"
 	"math"
 	"math/big"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
 )

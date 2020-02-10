@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -12,20 +14,18 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/trie"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/log"
 )
 
 type PovProcessorChainReader interface {
 	HasBestBlock(hash types.Hash, height uint64) bool
 	GetBlockByHash(hash types.Hash) *types.PovBlock
-	InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error
+	InsertBlock(block *types.PovBlock, stateDB *statedb.PovGlobalStateDB) error
 	LatestHeader() *types.PovHeader
 }
 
@@ -379,7 +379,7 @@ func (bp *PovBlockProcessor) processBlock(blockSrc *PovBlockSource) error {
 		return ErrPovFailedVerify
 	}
 
-	err := bp.chain.InsertBlock(block, stat.StateTrie)
+	err := bp.chain.InsertBlock(block, stat.StateDB)
 
 	if err == nil {
 		bp.enqueueOrphanBlocks(blockSrc)

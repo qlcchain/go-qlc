@@ -3,6 +3,7 @@ package dpos
 import (
 	"fmt"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -100,5 +101,30 @@ func TestBatchVote(t *testing.T) {
 	valid := acc.Address().Verify(signHash[:], sign1[:])
 	if !valid {
 		t.Fatal("sign err")
+	}
+}
+
+func TestCacheAck(t *testing.T) {
+	dps := getTestDpos()
+
+	vi := &voteInfo{
+		hash:    mock.Hash(),
+		account: mock.Account().Address(),
+	}
+
+	dps.cacheAck(vi)
+	v, err := dps.voteCache.Get(vi.hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vc := v.(*sync.Map)
+	if v, ok := vc.Load(vi.account); ok {
+		vil := v.(*voteInfo)
+		if vil.hash != vi.hash || vil.account != vi.account {
+			t.Fatal()
+		}
+	} else {
+		t.Fatal()
 	}
 }

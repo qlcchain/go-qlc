@@ -2,7 +2,7 @@ package pov
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/trie"
+	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
 const (
@@ -11,11 +11,9 @@ const (
 )
 
 type PovConsensusChainReader interface {
+	TrieDb() db.Store
 	GetHeaderByHash(hash types.Hash) *types.PovHeader
 	RelativeAncestor(header *types.PovHeader, distance uint64) *types.PovHeader
-	GetStateTrie(stateHash *types.Hash) *trie.Trie
-	GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState
-	GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState
 }
 
 type ConsensusPov interface {

@@ -47,12 +47,13 @@ var (
 	RewardsAddress, _    = HexToAddress("qlc_3oinqggowa7f1rsjfmib476ggz6s4fp8578odjzerzztkrifqkqdz5zjztb3")
 
 	// Builtin contract addresses without private key hold by anyone
-	MinerAddress, _     = GenerateBuiltinContractAddress(21)
-	BlackHoleAddress, _ = GenerateBuiltinContractAddress(22)
-	RepAddress, _       = GenerateBuiltinContractAddress(23)
+	MinerAddress, _              = GenerateBuiltinContractAddress(21)
+	BlackHoleAddress, _          = GenerateBuiltinContractAddress(22)
+	RepAddress, _                = GenerateBuiltinContractAddress(23)
+	PubKeyDistributionAddress, _ = GenerateBuiltinContractAddress(24)
 
-	ChainContractAddressList  = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress, BlackHoleAddress, RepAddress}
-	NoSignContractAddressList = []Address{RewardsAddress, BlackHoleAddress}
+	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress,
+		BlackHoleAddress, RepAddress, PubKeyDistributionAddress}
 	RewardContractAddressList = []Address{MinerAddress, RepAddress}
 
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its
@@ -153,15 +154,6 @@ func IsContractAddress(address Address) bool {
 		return true
 	}
 
-	return false
-}
-
-func IsNoSignContractAddress(address Address) bool {
-	for _, itAddr := range NoSignContractAddressList {
-		if itAddr == address {
-			return true
-		}
-	}
 	return false
 }
 

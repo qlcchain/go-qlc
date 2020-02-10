@@ -35,12 +35,13 @@ type NEP5PledgeApi struct {
 	cc       *chainctx.ChainContext
 }
 
-func NewNEP5PledgeAPI(l *ledger.Ledger) *NEP5PledgeApi {
+func NewNEP5PledgeAPI(cfgFile string, l *ledger.Ledger) *NEP5PledgeApi {
 	api := &NEP5PledgeApi{
 		l:        l,
 		pledge:   &contract.Nep5Pledge{},
 		withdraw: &contract.WithdrawNep5Pledge{},
 		logger:   log.NewLogger("api_nep5_pledge"),
+		cc:       chainctx.NewChainContext(cfgFile),
 	}
 	return api
 }
@@ -57,22 +58,13 @@ func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	var t uint8
-	switch strings.ToLower(param.PType) {
-	case "network", "confidant":
-		t = uint8(0)
-	case "vote":
-		t = uint8(1)
-		//TODO: support soon
-	//case "storage":
-	//	t=uint8(2)
-	//case "oracle":
-	//	t=uint8(3)
-	default:
-		return nil, fmt.Errorf("unsupport pledge type %s", param.PType)
+
+	t, err := cabi.StringToPledgeType(param.PType)
+	if err != nil {
+		return nil, err
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, t, param.NEP5TxId)
+	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, uint8(t), param.NEP5TxId)
 }
 
 func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, error) {
@@ -180,22 +172,13 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byt
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	var t uint8
-	switch strings.ToLower(param.PType) {
-	case "network", "confidant":
-		t = uint8(0)
-	case "vote":
-		t = uint8(1)
-		//TODO: support soon
-	//case "storage":
-	//	t=uint8(2)
-	//case "oracle":
-	//	t=uint8(3)
-	default:
-		return nil, fmt.Errorf("unsupport pledge type %s", param.PType)
+
+	t, err := cabi.StringToPledgeType(param.PType)
+	if err != nil {
+		return nil, err
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial, param.Amount.Int, t, param.NEP5TxId)
+	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial, param.Amount.Int, uint8(t), param.NEP5TxId)
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*types.StateBlock, error) {
@@ -250,11 +233,11 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 		send.Network = send.Network.Sub(param.Amount)
 	case "vote":
 		send.Vote = send.Vote.Sub(param.Amount)
+	case "oracle":
+		send.Oracle = send.Oracle.Sub(param.Amount)
 		//TODO: support soon
 	//case "storage":
 	//	send.Storage = send.Storage.Sub(param.Amount)
-	//case "oracle":
-	//	send.Oracle = send.Oracle.Sub(param.Amount)
 	default:
 		return nil, fmt.Errorf("unsupport pledge type %s", param.PType)
 	}
@@ -376,15 +359,11 @@ func (p *NEP5PledgeApi) GetBeneficialPledgeInfosByAddress(beneficial types.Addre
 
 //get pledge info by beneficial,pType ,return PledgeInfos
 func (p *NEP5PledgeApi) GetBeneficialPledgeInfos(beneficial types.Address, pType string) (*PledgeInfos, error) {
-	var pt cabi.PledgeType
-	switch strings.ToLower(pType) {
-	case "network", "confidant":
-		pt = cabi.Network
-	case "vote":
-		pt = cabi.Vote
-	default:
-		return nil, fmt.Errorf("unsupport type: %s", pType)
+	pt, err := cabi.StringToPledgeType(pType)
+	if err != nil {
+		return nil, err
 	}
+
 	infos, am := cabi.GetBeneficialPledgeInfos(vmstore.NewVMContext(p.l), beneficial, pt)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
@@ -407,16 +386,12 @@ func (p *NEP5PledgeApi) GetBeneficialPledgeInfos(beneficial types.Address, pType
 
 //search pledge info by beneficial address,pType,return total amount
 func (p *NEP5PledgeApi) GetPledgeBeneficialAmount(beneficial types.Address, pType string) (*big.Int, error) {
-	var pt uint8
-	switch strings.ToLower(pType) {
-	case "network", "confidant":
-		pt = uint8(0)
-	case "vote":
-		pt = uint8(1)
-	default:
-		return nil, fmt.Errorf("unsupport type: %s", pType)
+	pt, err := cabi.StringToPledgeType(pType)
+	if err != nil {
+		return nil, err
 	}
-	am := cabi.GetPledgeBeneficialAmount(vmstore.NewVMContext(p.l), beneficial, pt)
+
+	am := cabi.GetPledgeBeneficialAmount(vmstore.NewVMContext(p.l), beneficial, uint8(pt))
 	return am, nil
 }
 
@@ -425,19 +400,16 @@ func (p *NEP5PledgeApi) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5Pledge
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	var pType uint8
-	switch strings.ToLower(param.PType) {
-	case "network", "confidant":
-		pType = uint8(0)
-	case "vote":
-		pType = uint8(1)
-	default:
-		return nil, fmt.Errorf("unsupport type: %s", param.PType)
+
+	pType, err := cabi.StringToPledgeType(param.PType)
+	if err != nil {
+		return nil, err
 	}
+
 	pm := &cabi.WithdrawPledgeParam{
 		Beneficial: param.Beneficial,
 		Amount:     param.Amount.Int,
-		PType:      pType,
+		PType:      uint8(pType),
 	}
 	pr := cabi.SearchBeneficialPledgeInfoIgnoreWithdrawTime(vmstore.NewVMContext(p.l), pm)
 	var pledgeInfo []*NEP5PledgeInfo
@@ -461,19 +433,16 @@ func (p *NEP5PledgeApi) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	var pType uint8
-	switch strings.ToLower(param.PType) {
-	case "network", "confidant":
-		pType = uint8(0)
-	case "vote":
-		pType = uint8(1)
-	default:
-		return nil, fmt.Errorf("unsupport type: %s", param.PType)
+
+	pType, err := cabi.StringToPledgeType(param.PType)
+	if err != nil {
+		return nil, err
 	}
+
 	pm := &cabi.WithdrawPledgeParam{
 		Beneficial: param.Beneficial,
 		Amount:     param.Amount.Int,
-		PType:      pType,
+		PType:      uint8(pType),
 		NEP5TxId:   param.NEP5TxId,
 	}
 	pr := cabi.SearchPledgeInfoWithNEP5TxId(vmstore.NewVMContext(p.l), pm)
@@ -496,19 +465,16 @@ func (p *NEP5PledgeApi) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam)
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	var pType uint8
-	switch strings.ToLower(param.PType) {
-	case "network", "confidant":
-		pType = uint8(0)
-	case "vote":
-		pType = uint8(1)
-	default:
-		return nil, fmt.Errorf("unsupport type: %s", param.PType)
+
+	pType, err := cabi.StringToPledgeType(param.PType)
+	if err != nil {
+		return nil, err
 	}
+
 	pm := &cabi.WithdrawPledgeParam{
 		Beneficial: param.Beneficial,
 		Amount:     param.Amount.Int,
-		PType:      pType,
+		PType:      uint8(pType),
 	}
 	pr := cabi.SearchBeneficialPledgeInfo(vmstore.NewVMContext(p.l), pm)
 	var pledgeInfo []*NEP5PledgeInfo
@@ -538,10 +504,12 @@ func (p *NEP5PledgeApi) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 	for _, val := range infos {
 		var t string
 		switch val.PType {
-		case uint8(0):
+		case uint8(cabi.Network):
 			t = "network"
-		case uint8(1):
+		case uint8(cabi.Vote):
 			t = "vote"
+		case uint8(cabi.Oracle):
+			t = "oracle"
 		}
 		p := &NEP5PledgeInfo{
 			PType:         t,

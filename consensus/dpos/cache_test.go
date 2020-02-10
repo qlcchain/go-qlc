@@ -10,6 +10,7 @@ import (
 
 func TestCache_set(t *testing.T) {
 	dps := getTestDpos()
+	dps.confirmedBlocks = newCache(1, confirmedCacheMaxTime)
 
 	hash := mock.Hash()
 	dps.confirmedBlocks.set(hash, nil)
@@ -27,11 +28,23 @@ func TestCache_set(t *testing.T) {
 	}
 
 	repPeriod := val.(*RepOnlinePeriod)
-	if s, ok := repPeriod.Statistic[addr]; ok {
+	if val, ok := repPeriod.Statistic.Load(addr); ok {
+		s := val.(*RepAckStatistics)
 		if s.VoteCount != 1 {
 			t.Fatal()
 		}
 	} else {
+		t.Fatal()
+	}
+
+	hash2 := mock.Hash()
+	dps.confirmedBlocks.set(hash2, nil)
+
+	if dps.confirmedBlocks.has(hash) {
+		t.Fatal()
+	}
+
+	if !dps.confirmedBlocks.has(hash2) {
 		t.Fatal()
 	}
 }

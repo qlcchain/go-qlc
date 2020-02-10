@@ -6,39 +6,60 @@ import (
 )
 
 const (
-	PovStatePrefixAcc = byte(1)
-	PovStatePrefixRep = byte(2)
+	PovGlobalStatePrefixAcc = byte(1)
+	PovGlobalStatePrefixRep = byte(2)
+	PovGlobalStatePrefixCS  = byte(201) // Contract State
 
 	PovStatusOffline = 0
 	PovStatusOnline  = 1
 )
 
-func PovCreateStatePrefix(prefix byte) []byte {
-	key := make([]byte, 2)
-	key[0] = TriePrefixPovState
-	key[1] = prefix
-	return key
-}
-
-func PovCreateStateKey(prefix byte, rawKey []byte) []byte {
+// PovCreateGlobalStateKey used for global trie key only
+// prefix MUST be UNIQUE in global namespace
+func PovCreateGlobalStateKey(prefix byte, rawKey []byte) []byte {
 	var key []byte
-	key = append(key, TriePrefixPovState, prefix)
-	key = append(key, rawKey...)
+	key = append(key, TriePrefixPovState)
+	key = append(key, prefix)
+	if rawKey != nil {
+		key = append(key, rawKey...)
+	}
 	return key
 }
 
 func PovCreateAccountStateKey(address Address) []byte {
 	addrBytes := address.Bytes()
-	return PovCreateStateKey(PovStatePrefixAcc, addrBytes)
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixAcc, addrBytes)
 }
 
 func PovCreateRepStateKey(address Address) []byte {
 	addrBytes := address.Bytes()
-	return PovCreateStateKey(PovStatePrefixRep, addrBytes)
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixRep, addrBytes)
+}
+
+func PovCreateContractStateKey(address Address) []byte {
+	addrBytes := address.Bytes()
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixCS, addrBytes)
 }
 
 func PovStateKeyToAddress(key []byte) (Address, error) {
 	return BytesToAddress(key[2:])
+}
+
+// PovCreateContractLocalStateKey used for contract trie tree key only
+// prefix MUST be UNIQUE in contract namespace, not in global namespace
+func PovCreateContractLocalStateKey(prefix byte, rawKey []byte) []byte {
+	var key []byte
+	key = append(key, TriePrefixPovState)
+	key = append(key, prefix)
+	if rawKey != nil {
+		key = append(key, rawKey...)
+	}
+	return key
+}
+
+type PovStateSerdeser interface {
+	Serialize() ([]byte, error)
+	Deserialize(text []byte) error
 }
 
 //go:generate msgp
@@ -208,4 +229,83 @@ func (rs *PovRepState) CalcTotal() Balance {
 func (rs *PovRepState) String() string {
 	return fmt.Sprintf("{Account:%s, Balance:%s, Vote:%s, Network:%s, Storage:%s, Oracle:%s, Total:%s, Status:%d, Height:%d}",
 		rs.Account, rs.Balance, rs.Vote, rs.Network, rs.Storage, rs.Oracle, rs.Total, rs.Status, rs.Height)
+}
+
+// Common Contract State, key value in trie for each contract
+// key = contract address
+type PovContractState struct {
+	StateHash Hash `msg:"sh,extension" json:"stateHash"`
+	CodeHash  Hash `msg:"ch,extension" json:"codeHash"`
+}
+
+func NewPovContractState() *PovContractState {
+	cs := new(PovContractState)
+	return cs
+}
+
+func (cs *PovContractState) Serialize() ([]byte, error) {
+	return cs.MarshalMsg(nil)
+}
+
+func (cs *PovContractState) Deserialize(text []byte) error {
+	_, err := cs.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+const (
+	PovPublishStatusInit     = 0
+	PovPublishStatusVerified = 1
+)
+
+// key = type + id + pubkey + sendBlockHash
+type PovPublishState struct {
+	OracleAccounts []Address `msg:"oas" json:"oracleAccounts"`
+	VerifiedHeight uint64    `msg:"vh" json:"verifiedHeight"`
+	VerifiedStatus int8      `msg:"vs" json:"verifiedStatus"`
+	BonusFee       *BigNum   `msg:"bf,extension" json:"bonusFee"`
+}
+
+func NewPovPublishState() *PovPublishState {
+	ps := new(PovPublishState)
+	ps.VerifiedStatus = PovPublishStatusInit
+	return ps
+}
+
+func (ps *PovPublishState) Serialize() ([]byte, error) {
+	return ps.MarshalMsg(nil)
+}
+
+func (ps *PovPublishState) Deserialize(text []byte) error {
+	_, err := ps.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// key = address
+type PovVerifierState struct {
+	TotalVerify uint64  `msg:"tv" json:"totalVerify"`
+	TotalReward *BigNum `msg:"tr,extension" json:"totalReward"`
+}
+
+func NewPovVerifierState() *PovVerifierState {
+	vs := new(PovVerifierState)
+	vs.TotalReward = NewBigNumFromInt(0)
+	return vs
+}
+
+func (vs *PovVerifierState) Serialize() ([]byte, error) {
+	return vs.MarshalMsg(nil)
+}
+
+func (vs *PovVerifierState) Deserialize(text []byte) error {
+	_, err := vs.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
 }

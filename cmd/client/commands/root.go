@@ -90,4 +90,5 @@ func addcommands() {
 	addPledgeCmd()
 	addRepCmd()
 	addTxCmd()
+	addPKDCmd()
 }

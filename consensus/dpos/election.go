@@ -152,7 +152,6 @@ func (el *Election) haveQuorum() {
 
 		dps.acTrx.roots.Delete(el.vote.id)
 		el.dps.logger.Infof("hash:%s block has confirmed,total vote is [%s]", confirmedHash, balance)
-		dps.acTrx.updatePerfTime(blk.GetHash(), time.Now().UnixNano(), true)
 
 		if el.status.winner.GetHash() != confirmedHash {
 			dps.logger.Infof("hash:%s ...is loser", el.status.winner.GetHash().String())
@@ -166,12 +165,14 @@ func (el *Election) haveQuorum() {
 			}
 		}
 
+		//dps.perfBlockProcessCheckPointAdd(confirmedHash, checkPointSectionStart)
 		dps.acTrx.rollBack(el.status.loser)
 		dps.acTrx.addWinner2Ledger(blk)
 		el.updateVoteStatistic(confirmedHash)
 		dps.dispatchAckedBlock(blk, confirmedHash, -1)
 		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 		el.cleanBlockInfo()
+		//dps.perfBlockProcessCheckPointAdd(confirmedHash, checkPointSectionEnd)
 	} else {
 		dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance)
 	}
@@ -213,19 +214,6 @@ func (el *Election) tally(isSync bool) map[types.Hash]*BlockReceivedVotes {
 	})
 
 	return totals
-}
-
-func (el *Election) getOnlineRepresentativesBalance() types.Balance {
-	b := types.ZeroBalance
-	reps := el.dps.getOnlineRepresentatives()
-
-	for _, addr := range reps {
-		if b1, _ := el.dps.ledger.GetRepresentation(addr); b1 != nil {
-			b = b.Add(b1.Total)
-		}
-	}
-
-	return b
 }
 
 func (el *Election) getGenesisBalance() (types.Balance, error) {

@@ -67,3 +67,7 @@ func (ms *MinerService) Stop() error {
 func (ms *MinerService) Status() int32 {
 	return ms.State()
 }
+
+func (ms *MinerService) RpcCall(kind uint, in, out interface{}) {
+
+}

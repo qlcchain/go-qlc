@@ -6,6 +6,10 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
+const (
+	BlockFlagNonSync uint64 = 1 << iota
+)
+
 //go:generate msgp
 type StateBlock struct {
 	Type           BlockType `msg:"type" json:"type"`
@@ -28,6 +32,7 @@ type StateBlock struct {
 	Representative Address   `msg:"representative,extension" json:"representative"`
 	Work           Work      `msg:"work,extension" json:"work"`
 	Signature      Signature `msg:"signature,extension" json:"signature"`
+	Flag           uint64    `msg:"-" json:"-"`
 }
 
 func (b *StateBlock) GetHash() Hash {
@@ -206,7 +211,12 @@ func (b *StateBlock) Clone() *StateBlock {
 	clone := StateBlock{}
 	bytes, _ := b.Serialize()
 	_ = clone.Deserialize(bytes)
+	clone.Flag = b.Flag
 	return &clone
+}
+
+func (b *StateBlock) IsFromSync() bool {
+	return b.Flag&BlockFlagNonSync == 0
 }
 
 type StateBlockList []*StateBlock

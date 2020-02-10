@@ -159,3 +159,7 @@ func (as *AutoReceiveService) Stop() error {
 func (as *AutoReceiveService) Status() int32 {
 	return as.State()
 }
+
+func (as *AutoReceiveService) RpcCall(kind uint, in, out interface{}) {
+
+}

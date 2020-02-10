@@ -109,30 +109,72 @@ func TestLedger_AddGapPovBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blks, kinds, err := l.GetGapPovBlock(10)
+	b1m := false
+	b2m := false
+	err = l.WalkGapPovBlocksWithHeight(10, func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		if height != 10 {
+			t.Fatal()
+		}
+
+		hash := block.GetHash()
+		if hash == blk1.GetHash() && sync == types.Synchronized {
+			b1m = true
+		}
+		if hash == blk2.GetHash() && sync == types.UnSynchronized {
+			b2m = true
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(blks) != 2 || len(kinds) != 2 {
-		t.Fatal("len err", len(blks), len(kinds))
+	if b1m == false || b2m == false {
+		t.Fatal()
 	}
+}
 
-	if blks[0].GetHash() != blk1.GetHash() || blks[1].GetHash() != blk2.GetHash() {
-		t.Fatal("block err", blks[0].GetHash(), blks[1].GetHash())
-	}
+func TestLedger_DeleteGapPovBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	if kinds[0] != types.Synchronized || kinds[1] != types.UnSynchronized {
-		t.Fatal("kind err", kinds)
-	}
+	blk := mock.StateBlockWithoutWork()
 
-	err = l.DeleteGapPovBlock(10)
+	err := l.AddGapPovBlock(10, blk, types.Synchronized)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	blks, kinds, err = l.GetGapPovBlock(10)
-	if len(blks) != 0 || len(kinds) != 0 {
+	err = l.WalkGapPovBlocksWithHeight(10, func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		if height != 10 {
+			t.Fatal()
+		}
+
+		hash := block.GetHash()
+		if hash != blk.GetHash() || sync != types.Synchronized {
+			t.Fatal()
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.DeleteGapPovBlock(10, blk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.WalkGapPovBlocksWithHeight(10, func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		t.Fatal()
+		return nil
+	})
+
+	if err != nil {
 		t.Fatal(err)
 	}
 }
@@ -154,31 +196,151 @@ func TestLedger_WalkGapPovBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = l.WalkGapPovBlocks(func(blocks types.StateBlockList, height uint64, sync types.SynchronizedKind) error {
+	b1m := false
+	b2m := false
+	err = l.WalkGapPovBlocks(func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
 		switch height {
 		case 10:
-			if blocks[0].GetHash() != blk1.GetHash() {
-				t.Fatal("block err")
-			}
-
-			if sync != types.Synchronized {
-				t.Fatal("sync kind err")
+			if block.GetHash() == blk1.GetHash() && sync == types.Synchronized {
+				b1m = true
 			}
 		case 100:
-			if blocks[0].GetHash() != blk2.GetHash() {
-				t.Fatal("block err")
-			}
-
-			if sync != types.UnSynchronized {
-				t.Fatal("sync kind err")
+			if block.GetHash() == blk2.GetHash() && sync == types.UnSynchronized {
+				b2m = true
 			}
 		default:
-			t.Fatal("height err", height)
+			t.Fatal()
 		}
 
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if b1m == false || b2m == false {
+		t.Fatal()
+	}
+}
+
+func TestLedger_AddGapPublishBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk1 := mock.StateBlockWithoutWork()
+	blk2 := mock.StateBlockWithoutWork()
+	hash := mock.Hash()
+
+	err := l.AddGapPublishBlock(hash, blk1, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddGapPublishBlock(hash, blk2, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b1Match := false
+	b2Match := false
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		bHash := block.GetHash()
+		if bHash == blk1.GetHash() {
+			b1Match = true
+		}
+		if bHash == blk2.GetHash() {
+			b2Match = true
+		}
+		return nil
+	})
+
+	if !b1Match || !b2Match {
+		t.Fatal()
+	}
+}
+
+func TestLedger_DeleteGapPublishBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk1 := mock.StateBlockWithoutWork()
+	blk2 := mock.StateBlockWithoutWork()
+	hash := mock.Hash()
+
+	err := l.AddGapPublishBlock(hash, blk1, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddGapPublishBlock(hash, blk2, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b1Match := false
+	b2Match := false
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		bHash := block.GetHash()
+		if bHash == blk1.GetHash() {
+			b1Match = true
+		}
+		if bHash == blk2.GetHash() {
+			b2Match = true
+		}
+		return nil
+	})
+
+	if !b1Match || !b2Match {
+		t.Fatal()
+	}
+
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		err := l.DeleteGapPublishBlock(hash, block.GetHash())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	})
+
+	b1Match = false
+	b2Match = false
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		bHash := block.GetHash()
+		if bHash == blk1.GetHash() {
+			b1Match = true
+		}
+		if bHash == blk2.GetHash() {
+			b2Match = true
+		}
+		return nil
+	})
+
+	if b1Match || b2Match {
+		t.Fatal()
+	}
+}
+
+func TestLedger_GetGapPublishBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := mock.StateBlockWithoutWork()
+	hash := mock.Hash()
+
+	err := l.AddGapPublishBlock(hash, blk, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	get := false
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		if blk.GetHash() == block.GetHash() {
+			get = true
+		}
+		return nil
+	})
+
+	if !get {
+		t.Fatal()
 	}
 }

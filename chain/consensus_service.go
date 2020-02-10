@@ -55,3 +55,7 @@ func (cs *ConsensusService) Stop() error {
 func (cs *ConsensusService) Status() int32 {
 	return cs.State()
 }
+
+func (cs *ConsensusService) RpcCall(kind uint, in, out interface{}) {
+	cs.c.RPC(kind, in, out)
+}

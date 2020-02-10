@@ -2,8 +2,11 @@ package dpos
 
 import (
 	"context"
+
+	"github.com/qlcchain/go-qlc/consensus"
+	"github.com/qlcchain/go-qlc/vm/contract"
+
 	"runtime"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,13 +23,11 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -132,10 +133,10 @@ type DPoS struct {
 	updateSync          chan struct{}
 	tps                 [10]uint32
 	block2Ledger        chan struct{}
-
-	feb            *event.FeedEventBus
-	febRpcMsgCh    chan *topic.EventRPCSyncCallMsg
-	febRpcMsgSubID event.FeedSubscription
+	pf                  *perfInfo
+	lockPool            *sync.Map
+	feb                 *event.FeedEventBus
+	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -163,7 +164,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		processorNum:        processorNum,
 		processors:          newProcessors(processorNum),
 		subMsg:              make(chan *subMsg, 10240),
-		subAck:              gcache.New(subAckMaxSize).Expiration(confirmWaitMaxTime * time.Second).LRU().Build(),
+		subAck:              gcache.New(subAckMaxSize).Expiration(waitingVoteMaxTime * time.Second).LRU().Build(),
 		hash2el:             new(sync.Map),
 		batchVote:           make(chan types.Hash, 102400),
 		ctx:                 ctx,
@@ -183,14 +184,15 @@ func NewDPoS(cfgFile string) *DPoS {
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
 		block2Ledger:        make(chan struct{}, 409600),
-
-		feb:         cc.FeedEventBus(),
-		febRpcMsgCh: make(chan *topic.EventRPCSyncCallMsg, 1),
+		pf:                  new(perfInfo),
+		lockPool:            new(sync.Map),
+		feb:                 cc.FeedEventBus(),
+		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
 	}
 
-	dps.acTrx.setDposService(dps)
+	dps.acTrx.setDPoSService(dps)
 	for _, p := range dps.processors {
-		p.setDposService(dps)
+		p.setDPoSService(dps)
 	}
 
 	pb, err := dps.ledger.GetLatestPovBlock()
@@ -220,25 +222,15 @@ func (dps *DPoS) Init() {
 			dps.onRollback(msg)
 		case *types.PovBlock:
 			dps.onPovHeightChange(msg)
-		case types.StateBlockList:
-			dps.onGetFrontier(msg)
 		case *types.Tuple:
 			dps.onFrontierConfirmed(msg.First.(types.Hash), msg.Second.(*bool))
-		case *topic.EventP2PSyncStateMsg:
-			dps.onSyncStateChange(msg.P2pSyncState)
 		}
 	}), dps.eb)
 
-	if err := subscriber.Subscribe(topic.EventRollback, topic.EventPovConnectBestBlock,
-		topic.EventFrontierConsensus, topic.EventFrontierConfirmed, topic.EventSyncStateChange); err != nil {
+	if err := subscriber.Subscribe(topic.EventRollback, topic.EventPovConnectBestBlock); err != nil {
 		dps.logger.Errorf("failed to subscribe event %s", err)
 	} else {
 		dps.subscriber = subscriber
-	}
-
-	dps.febRpcMsgSubID = dps.feb.Subscribe(topic.EventRpcSyncCall, dps.febRpcMsgCh)
-	if dps.febRpcMsgSubID == nil {
-		dps.logger.Errorf("failed to subscribe EventRpcSyncCall")
 	}
 
 	if dps.cfg.PoV.PovEnabled {
@@ -295,21 +287,6 @@ func (dps *DPoS) Start() {
 			go dps.refreshAccount()
 		case <-dps.checkFinish:
 			dps.checkSyncFinished()
-		case bs := <-dps.gapPovCh:
-			if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
-				switch cType := c.(type) {
-				case contract.ChainContractV2:
-					vmCtx := vmstore.NewVMContext(dps.ledger)
-					height, _ := cType.DoGapPov(vmCtx, bs.Block)
-					if height > 0 {
-						dps.logger.Infof("add gap pov[%s][%d]", bs.Block.GetHash(), height)
-						err := dps.ledger.AddGapPovBlock(height, bs.Block, bs.BlockFrom)
-						if err != nil {
-							dps.logger.Errorf("add gap pov block to ledger err %s", err)
-						}
-					}
-				}
-			}
 		case pb := <-dps.povChange:
 			dps.logger.Infof("pov height changed [%d]->[%d]", dps.curPovHeight, pb.Header.BasHdr.Height)
 			dps.curPovHeight = pb.Header.BasHdr.Height
@@ -379,14 +356,11 @@ func (dps *DPoS) Start() {
 				if time.Since(dps.lastProcessSyncTime) >= 2*time.Minute {
 					dps.logger.Warnf("timeout concluded the sync. last[%s] now[%s]",
 						dps.lastProcessSyncTime, time.Now())
-					dps.blockSyncState = topic.SyncFinish
 					dps.syncFinish()
 				}
 			}
 		case <-timerGC.C:
 			dps.confirmedBlocks.gc()
-		case msg := <-dps.febRpcMsgCh:
-			dps.onRpcSyncCall(msg)
 		}
 	}
 }
@@ -394,8 +368,7 @@ func (dps *DPoS) Start() {
 func (dps *DPoS) Stop() {
 	dps.logger.Info("DPOS service stopped!")
 
-	//do this first
-	dps.febRpcMsgSubID.Unsubscribe()
+	// do this first
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
 		dps.logger.Error(err)
 	}
@@ -421,6 +394,25 @@ func (dps *DPoS) stat() {
 		case <-dps.block2Ledger:
 			dps.tps[0]++
 		}
+	}
+}
+
+func (dps *DPoS) RPC(kind uint, in, out interface{}) {
+	switch kind {
+	case common.RpcDPosOnlineInfo:
+		dps.onGetOnlineInfo(in, out)
+	case common.RpcDPosConsInfo:
+		dps.info(in, out)
+	case common.RpcDPosSetConsPerf:
+		dps.setPerf(in, out)
+	case common.RpcDPosGetConsPerf:
+		dps.getPerf(in, out)
+	case common.RpcDPosProcessFrontier:
+		blocks := in.(types.StateBlockList)
+		dps.onGetFrontier(blocks)
+	case common.RpcDPosOnSyncStateChange:
+		state := in.(topic.SyncState)
+		dps.onSyncStateChange(state)
 	}
 }
 
@@ -505,7 +497,7 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 
 		has, _ := dps.ledger.HasStateBlockConfirmed(hash)
 		if !has {
-			dps.logger.Infof("get frontier %s need ack", hash)
+			dps.logger.Infof("get frontier [%s-%s] need ack", block.Address, hash)
 			dps.frontiersStatus.Store(hash, frontierWaitingForVote)
 			unconfirmed = append(unconfirmed, block)
 			index := dps.getProcessorIndex(block.Address)
@@ -682,68 +674,30 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 	case types.ContractSend: // beneficial maybe another account
 		dstAddr := types.ZeroAddress
 
-		switch types.Address(blk.GetLink()) {
-		case types.MintageAddress:
-			data := blk.GetData()
-			if method, err := cabi.MintageABI.MethodById(data[0:4]); err == nil {
-				if method.Name == cabi.MethodNameMintage {
-					param := new(cabi.ParamMintage)
-					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
-						dstAddr = param.Beneficial
-					}
-				} else {
-					return
-				}
-			}
-		case types.NEP5PledgeAddress:
-			data := blk.GetData()
-			if method, err := cabi.NEP5PledgeABI.MethodById(data[0:4]); err == nil {
-				if method.Name == cabi.MethodNEP5Pledge {
-					param := new(cabi.PledgeParam)
-					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
-						dstAddr = param.Beneficial
-					}
-				} else if method.Name == cabi.MethodWithdrawNEP5Pledge {
-					param := new(cabi.WithdrawPledgeParam)
-					if err = method.Inputs.Unpack(param, data[4:]); err == nil {
-						pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(vmstore.NewVMContext(dps.ledger), param)
-						if pledgeResult != nil {
-							dstAddr = pledgeResult.PledgeInfo.PledgeAddress
-						}
-					}
-				}
-			}
-		case types.MinerAddress:
-			param := new(cabi.MinerRewardParam)
-			if err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, blk.GetData()); err == nil {
-				dstAddr = param.Beneficial
-			}
-		case types.RepAddress:
-			param := new(cabi.RepRewardParam)
-			if err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, blk.GetData()); err == nil {
-				dstAddr = param.Beneficial
-			}
-		case types.RewardsAddress:
-			param := new(cabi.RewardsParam)
-			data := blk.GetData()
-			if method, err := cabi.RewardsABI.MethodById(data[0:4]); err == nil {
-				if err = method.Inputs.Unpack(param, data[4:]); err == nil {
-					dstAddr = param.Beneficial
-				}
-			}
-		default:
-			for _, p := range dps.processors {
-				if localIndex != p.index {
-					p.blocksAcked <- hash
-				}
-			}
-			return
+		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+			ctx := vmstore.NewVMContext(dps.ledger)
+			dstAddr = c.GetTargetReceiver(ctx, blk)
 		}
 
 		if dstAddr != types.ZeroAddress {
 			index := dps.getProcessorIndex(dstAddr)
 			if localIndex != index {
 				dps.processors[index].blocksAcked <- hash
+			}
+		}
+
+		if types.Address(blk.GetLink()) == types.PubKeyDistributionAddress {
+			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.Data)
+			if err == nil {
+				if method.Name == cabi.MethodNamePKDPublish {
+					for _, p := range dps.processors {
+						if localIndex != p.index {
+							p.publishBlock <- hash
+						}
+					}
+				}
+			} else {
+				dps.logger.Errorf("get contract method err")
 			}
 		}
 	case types.ContractReward: // deal gap tokenInfo
@@ -759,7 +713,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
 					index := dps.getProcessorIndex(input.Address)
 					if localIndex != index {
-						dps.processors[index].blocksAcked <- param.TokenId
+						dps.processors[index].tokenCreate <- hash
 					}
 				}
 			}
@@ -792,9 +746,8 @@ func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
 }
 
 func (dps *DPoS) localRepVote(block *types.StateBlock) {
-	hash := block.GetHash()
-
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
+		hash := block.GetHash()
 		address := key.(types.Address)
 
 		weight := dps.ledger.Weight(address)
@@ -837,31 +790,6 @@ func (dps *DPoS) hasLocalValidRep() bool {
 	return has
 }
 
-func (dps *DPoS) voteGenerate(block *types.StateBlock, account types.Address, acc *types.Account) (*protos.ConfirmAckBlock, error) {
-	//if dps.cfg.PoV.PovEnabled {
-	//	povHeader, err := dps.ledger.GetLatestPovHeader()
-	//	if povHeader == nil {
-	//		dps.logger.Errorf("get pov header err %s", err)
-	//		return nil, errors.New("get pov header err")
-	//	}
-	//
-	//	if block.PoVHeight > povHeader.Height+povBlockNumDay || block.PoVHeight+povBlockNumDay < povHeader.Height {
-	//		dps.logger.Errorf("pov height invalid height:%d cur:%d", block.PoVHeight, povHeader.Height)
-	//		return nil, errors.New("pov height invalid")
-	//	}
-	//}
-	//
-	//hash := block.GetHash()
-	//va := &protos.ConfirmAckBlock{
-	//	Sequence:  0,
-	//	Hash:      hash,
-	//	Account:   account,
-	//	Signature: acc.Sign(hash),
-	//}
-	//return va, nil
-	return nil, nil
-}
-
 func (dps *DPoS) voteGenerateWithSeq(block *types.StateBlock, account types.Address, acc *types.Account, kind uint32) (*protos.ConfirmAckBlock, error) {
 	hashes := make([]types.Hash, 0)
 	hash := block.GetHash()
@@ -883,19 +811,13 @@ func (dps *DPoS) voteGenerateWithSeq(block *types.StateBlock, account types.Addr
 }
 
 func (dps *DPoS) batchVoteDo(account types.Address, acc *types.Account, kind uint32) {
-	timerWait := time.NewTimer(10 * time.Millisecond)
 	hashes := make([]types.Hash, 0)
 	hashBytes := make([]byte, 0)
 	total := 0
 
 out:
 	for {
-		timerWait.Reset(10 * time.Millisecond)
-
 		select {
-		case <-timerWait.C:
-			timerWait.Stop()
-			break out
 		case h := <-dps.batchVote:
 			hashes = append(hashes, h)
 			hashBytes = append(hashBytes, h[:]...)
@@ -916,6 +838,8 @@ out:
 				hashes = make([]types.Hash, 0)
 				hashBytes = hashBytes[0:0]
 			}
+		default:
+			break out
 		}
 	}
 
@@ -956,10 +880,6 @@ func (dps *DPoS) refreshAccount() {
 	dps.logger.Infof("there is %d local reps", count)
 	if count > 0 {
 		dps.eb.Publish(topic.EventRepresentativeNode, true)
-
-		if count > 1 {
-			dps.logger.Error("it is very dangerous to run two or more representatives on one node")
-		}
 	} else {
 		dps.eb.Publish(topic.EventRepresentativeNode, false)
 	}
@@ -977,29 +897,13 @@ func (dps *DPoS) saveOnlineRep(addr types.Address) {
 	dps.onlineReps.Store(addr, now)
 }
 
-func (dps *DPoS) getOnlineRepresentatives() []types.Address {
-	var repAddresses []types.Address
-
-	dps.onlineReps.Range(func(key, value interface{}) bool {
-		addr := key.(types.Address)
-		repAddresses = append(repAddresses, addr)
-		return true
-	})
-
-	return repAddresses
-}
-
 func (dps *DPoS) findOnlineRepresentatives() error {
-	blk, err := dps.ledger.GetRandomStateBlock()
-	if err != nil {
-		return err
-	}
-
+	blk := common.GenesisBlock()
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 
 		if dps.isRepresentation(address) {
-			va, err := dps.voteGenerateWithSeq(blk, address, value.(*types.Account), ackTypeFindRep)
+			va, err := dps.voteGenerateWithSeq(&blk, address, value.(*types.Account), ackTypeFindRep)
 			if err != nil {
 				return true
 			}
@@ -1031,24 +935,8 @@ func (dps *DPoS) cleanOnlineReps() {
 	_ = dps.ledger.SetOnlineRepresentations(repAddresses)
 }
 
-func (dps *DPoS) calculateAckHash(va *protos.ConfirmAckBlock) (types.Hash, error) {
-	data, err := protos.ConfirmAckBlockToProto(va)
-	if err != nil {
-		return types.ZeroHash, err
-	}
-
-	version := dps.cfg.Version
-	message := p2p.NewQlcMessage(data, byte(version), p2p.ConfirmAck)
-	hash, err := types.HashBytes(message)
-	if err != nil {
-		return types.ZeroHash, err
-	}
-
-	return hash, nil
-}
-
 func (dps *DPoS) onRollback(hash types.Hash) {
-	//dps.rollbackUncheckedFromDb(hash)
+	// dps.rollbackUncheckedFromDb(hash)
 
 	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
 	if err == nil && blk.Type == types.Online {
@@ -1072,21 +960,6 @@ func (dps *DPoS) getSeq(kind uint32) uint32 {
 
 func (dps *DPoS) getAckType(seq uint32) uint32 {
 	return seq >> 28
-}
-
-func (dps *DPoS) onRpcSyncCall(msg *topic.EventRPCSyncCallMsg) {
-	needRsp := false
-	switch msg.Name {
-	case "DPoS.Online":
-		dps.onGetOnlineInfo(msg.In, msg.Out)
-		needRsp = true
-	case "Debug.ConsInfo":
-		dps.info(msg.In, msg.Out)
-		needRsp = true
-	}
-	if needRsp && msg.ResponseChan != nil {
-		msg.ResponseChan <- msg.Out
-	}
 }
 
 func (dps *DPoS) isWaitingFrontier(hash types.Hash) (bool, frontierStatus) {
@@ -1119,101 +992,102 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 	}
 }
 
-func (dps *DPoS) blockSyncDone() error {
-	dps.logger.Warn("begin: process sync cache blocks")
-	dps.eb.Publish(topic.EventAddSyncBlocks, types.NewTuple(&types.StateBlock{}, true))
+// func (dps *DPoS) blockSyncDone() error {
+// 	dps.logger.Warn("begin: process sync cache blocks")
+// 	dps.eb.Publish(topic.EventAddSyncBlocks, types.NewTuple(&types.StateBlock{}, true))
+//
+// 	scs := make([]*sortContract, 0)
+// 	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
+// 		if b, err := dps.isRelatedOrderBlock(block); err != nil {
+// 			dps.logger.Infof("block[%s] type check error, %s", block.GetHash(), err)
+// 		} else {
+// 			if b {
+// 				sortC := &sortContract{
+// 					hash:      block.GetHash(),
+// 					timestamp: block.Timestamp,
+// 				}
+// 				scs = append(scs, sortC)
+// 			} else {
+// 				index := dps.getProcessorIndex(block.Address)
+// 				dps.processors[index].doneBlock <- block
+// 			}
+// 		}
+// 		return nil
+// 	}); err != nil {
+// 		return err
+// 	}
+//
+// 	dps.logger.Info("sync done, common block process finished, order blocks:  ", len(scs))
+// 	if len(scs) > 0 {
+// 		sort.Slice(scs, func(i, j int) bool {
+// 			return scs[i].timestamp < scs[j].timestamp
+// 		})
+//
+// 		for _, sc := range scs {
+// 			dps.updateLastProcessSyncTime()
+//
+// 			blk, err := dps.ledger.GetSyncCacheBlock(sc.hash)
+// 			if err != nil {
+// 				dps.logger.Errorf("get sync cache block[%s] err[%s]", sc.hash, err)
+// 				continue
+// 			}
+//
+// 			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
+// 				dps.logger.Warnf("contract block(%s) sync done error: %s", blk.GetHash(), err)
+// 			}
+// 		}
+// 	}
+//
+// 	var allDone bool
+// 	timerCheckProcessor := time.NewTicker(time.Second)
+// 	defer timerCheckProcessor.Stop()
+//
+// 	for range timerCheckProcessor.C {
+// 		allDone = true
+// 		for _, p := range dps.processors {
+// 			if len(p.doneBlock) > 0 {
+// 				allDone = false
+// 				break
+// 			}
+// 		}
+//
+// 		if allDone {
+// 			dps.logger.Warn("end: process sync cache blocks")
+// 			return nil
+// 		}
+// 	}
+//
+// 	return nil
+// }
 
-	scs := make([]*sortContract, 0)
-	if err := dps.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
-		if b, err := dps.isRelatedOrderBlock(block); err != nil {
-			dps.logger.Infof("block[%s] type check error, %s", block.GetHash(), err)
-		} else {
-			if b {
-				sortC := &sortContract{
-					hash:      block.GetHash(),
-					timestamp: block.Timestamp,
-				}
-				scs = append(scs, sortC)
-			} else {
-				index := dps.getProcessorIndex(block.Address)
-				dps.processors[index].doneBlock <- block
-			}
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	dps.logger.Info("sync done, common block process finished, order blocks:  ", len(scs))
-	if len(scs) > 0 {
-		sort.Slice(scs, func(i, j int) bool {
-			return scs[i].timestamp < scs[j].timestamp
-		})
-
-		for _, sc := range scs {
-			dps.updateLastProcessSyncTime()
-
-			blk, err := dps.ledger.GetSyncCacheBlock(sc.hash)
-			if err != nil {
-				dps.logger.Errorf("get sync cache block[%s] err[%s]", sc.hash, err)
-				continue
-			}
-
-			if err := dps.lv.BlockSyncDoneProcess(blk); err != nil {
-				dps.logger.Warnf("contract block(%s) sync done error: %s", blk.GetHash(), err)
-			}
-		}
-	}
-
-	var allDone bool
-	timerCheckProcessor := time.NewTicker(time.Second)
-	defer timerCheckProcessor.Stop()
-
-	for range timerCheckProcessor.C {
-		allDone = true
-		for _, p := range dps.processors {
-			if len(p.doneBlock) > 0 {
-				allDone = false
-				break
-			}
-		}
-
-		if allDone {
-			dps.logger.Warn("end: process sync cache blocks")
-			return nil
-		}
-	}
-
-	return nil
-}
-
-func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
-	switch block.GetType() {
-	case types.ContractReward:
-		sendblk, err := dps.ledger.GetStateBlockConfirmed(block.GetLink())
-		if err != nil {
-			return false, err
-		}
-		switch types.Address(sendblk.GetLink()) {
-		case types.NEP5PledgeAddress:
-			return true, nil
-		case types.MintageAddress:
-			return true, nil
-		case types.BlackHoleAddress:
-			return true, nil
-		}
-	case types.ContractSend:
-		switch types.Address(block.GetLink()) {
-		case types.BlackHoleAddress:
-			return true, nil
-		case types.MinerAddress, types.RepAddress:
-			return true, nil
-		}
-	}
-	return false, nil
-}
+// func (dps *DPoS) isRelatedOrderBlock(block *types.StateBlock) (bool, error) {
+// 	switch block.GetType() {
+// 	case types.ContractReward:
+// 		sendblk, err := dps.ledger.GetStateBlockConfirmed(block.GetLink())
+// 		if err != nil {
+// 			return false, err
+// 		}
+// 		switch types.Address(sendblk.GetLink()) {
+// 		case types.NEP5PledgeAddress:
+// 			return true, nil
+// 		case types.MintageAddress:
+// 			return true, nil
+// 		case types.BlackHoleAddress:
+// 			return true, nil
+// 		}
+// 	case types.ContractSend:
+// 		switch types.Address(block.GetLink()) {
+// 		case types.BlackHoleAddress:
+// 			return true, nil
+// 		case types.MinerAddress, types.RepAddress:
+// 			return true, nil
+// 		}
+// 	}
+// 	return false, nil
+// }
 
 func (dps *DPoS) syncFinish() {
+	dps.blockSyncState = topic.SyncFinish
 	dps.acTrx.cleanFrontierVotes()
 	dps.CleanSyncCache()
 
@@ -1274,15 +1148,15 @@ func (dps *DPoS) checkSyncFinished() {
 	}
 }
 
-func (dps *DPoS) syncBlockRollback(hash types.Hash) {
-	block, err := dps.ledger.GetUnconfirmedSyncBlock(hash)
-	if err != nil {
-		return
-	}
-
-	_ = dps.ledger.DeleteUnconfirmedSyncBlock(hash)
-	dps.syncBlockRollback(block.Previous)
-}
+// func (dps *DPoS) syncBlockRollback(hash types.Hash) {
+// 	block, err := dps.ledger.GetUnconfirmedSyncBlock(hash)
+// 	if err != nil {
+// 		return
+// 	}
+//
+// 	_ = dps.ledger.DeleteUnconfirmedSyncBlock(hash)
+// 	dps.syncBlockRollback(block.Previous)
+// }
 
 func (dps *DPoS) onFrontierConfirmed(hash types.Hash, result *bool) {
 	if status, ok := dps.frontiersStatus.Load(hash); ok {
@@ -1315,36 +1189,31 @@ func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
 		return true
 	}
 
-	if blocks, kind, err := dps.ledger.GetGapPovBlock(height); err != nil {
-		return true
-	} else {
-		if len(blocks) == 0 {
-			return true
+	dayIndex := uint32((height - common.PovMinerRewardHeightGapToLatest) / uint64(common.POVChainBlocksPerDay))
+	if !dps.ledger.HasPovMinerStat(dayIndex) {
+		dps.logger.Infof("miner stat [%d] not exist", dayIndex)
+		return false
+	}
+
+	_ = dps.ledger.WalkGapPovBlocksWithHeight(height, func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		bs := &consensus.BlockSource{
+			Block:     block,
+			BlockFrom: sync,
 		}
 
-		dayIndex := uint32((height - common.PovMinerRewardHeightGapToLatest) / uint64(common.POVChainBlocksPerDay))
-		if !dps.ledger.HasPovMinerStat(dayIndex) {
-			dps.logger.Infof("miner stat [%d] not exist", dayIndex)
-			return false
-		}
+		hash := block.GetHash()
+		index := dps.getProcessorIndex(block.GetAddress())
+		dps.processors[index].blocks <- bs
+		dps.logger.Infof("dequeue gap pov block[%s] height[%d]", hash, height)
 
-		for i, b := range blocks {
-			bs := &consensus.BlockSource{
-				Block:     b,
-				BlockFrom: kind[i],
-			}
-
-			dps.logger.Infof("dequeue gap pov[%s][%s]", b.GetHash(), kind[i])
-			index := dps.getProcessorIndex(b.GetAddress())
-			dps.processors[index].blocks <- bs
-		}
-
-		if err := dps.ledger.DeleteGapPovBlock(height); err != nil {
+		if err := dps.ledger.DeleteGapPovBlock(height, hash); err != nil {
 			dps.logger.Errorf("del gap pov block err", err)
 		}
 
-		return true
-	}
+		return nil
+	})
+
+	return true
 }
 
 func (dps *DPoS) updateLastProcessSyncTime() {
@@ -1371,7 +1240,6 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 			BlockQueue: len(p.blocks),
 			SyncQueue:  len(p.syncBlock),
 			AckQueue:   len(p.acks),
-			DoneQueue:  len(p.doneBlock),
 		}
 
 		for _, dealt := range p.confirmedChain {

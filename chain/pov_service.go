@@ -66,3 +66,7 @@ func (pov *PoVService) Stop() error {
 func (pov *PoVService) Status() int32 {
 	return pov.State()
 }
+
+func (pov *PoVService) RpcCall(kind uint, in, out interface{}) {
+
+}

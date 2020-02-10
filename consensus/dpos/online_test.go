@@ -1,11 +1,11 @@
 package dpos
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common"
 
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
@@ -14,9 +14,8 @@ func TestOnGetOnlineInfo(t *testing.T) {
 
 	rep := &RepOnlinePeriod{
 		Period:     1,
-		Statistic:  make(map[types.Address]*RepAckStatistics),
+		Statistic:  new(sync.Map),
 		BlockCount: 2,
-		lock:       nil,
 	}
 
 	ack := &RepAckStatistics{
@@ -25,7 +24,7 @@ func TestOnGetOnlineInfo(t *testing.T) {
 		VoteCount:       20,
 	}
 	addr := mock.Address()
-	rep.Statistic[addr] = ack
+	rep.Statistic.Store(addr, ack)
 
 	period := dps.curPovHeight / common.DPosOnlinePeriod
 	err := dps.online.Set(period, rep)
@@ -39,7 +38,9 @@ func TestOnGetOnlineInfo(t *testing.T) {
 	}
 
 	repg := val.(*RepOnlinePeriod)
-	if s, ok := repg.Statistic[addr]; ok {
+	if val, ok := repg.Statistic.Load(addr); ok {
+		t.Log(repg)
+		s := val.(*RepAckStatistics)
 		if s.VoteCount != 20 || s.HeartCount != 10 {
 			t.Fatal()
 		}

@@ -61,7 +61,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "pledge",
 			Version:   "1.0",
-			Service:   api.NewNEP5PledgeAPI(r.ledger),
+			Service:   api.NewNEP5PledgeAPI(r.cfgFile, r.ledger),
 			Public:    true,
 		}
 	case "sms":
@@ -110,7 +110,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "debug",
 			Version:   "1.0",
-			Service:   api.NewDebugApi(r.cc, r.ledger, r.eb),
+			Service:   api.NewDebugApi(r.cfgFile, r.eb),
 			Public:    true,
 		}
 	case "destroy":
@@ -132,6 +132,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Namespace: "chain",
 			Version:   "1.0",
 			Service:   api.NewChainApi(r.ledger),
+			Public:    true,
+		}
+	case "dpki":
+		return rpc.API{
+			Namespace: "dpki",
+			Version:   "1.0",
+			Service:   api.NewPublicKeyDistributionApi(r.cfgFile, r.ledger),
 			Public:    true,
 		}
 	default:
@@ -169,6 +176,6 @@ func (r *RPC) GetWSApis() []rpc.API {
 
 func (r *RPC) GetPublicApis() []rpc.API {
 	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge",
-		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain"}
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki"}
 	return r.GetApis(apiModules...)
 }

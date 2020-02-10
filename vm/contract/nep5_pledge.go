@@ -25,7 +25,7 @@ type pledgeInfo struct {
 }
 
 type Nep5Pledge struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (p *Nep5Pledge) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -72,7 +72,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 	}
 
 	block.Data, err = cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial,
-		param.PledgeAddress, uint8(param.PType), param.NEP5TxId)
+		param.PledgeAddress, param.PType, param.NEP5TxId)
 	if err != nil {
 		return err
 	}
@@ -207,8 +207,24 @@ func (*Nep5Pledge) GetRefundData() []byte {
 	return []byte{1}
 }
 
+func (*Nep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	data := block.GetData()
+	tr := types.ZeroAddress
+
+	if method, err := cabi.NEP5PledgeABI.MethodById(data[0:4]); err == nil {
+		if method.Name == cabi.MethodNEP5Pledge {
+			param := new(cabi.PledgeParam)
+			if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+				tr = param.Beneficial
+			}
+		}
+	}
+
+	return tr
+}
+
 type WithdrawNep5Pledge struct {
-	WithSignNoPending
+	BaseContract
 }
 
 func (*WithdrawNep5Pledge) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -328,4 +344,23 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 
 func (*WithdrawNep5Pledge) GetRefundData() []byte {
 	return []byte{2}
+}
+
+func (*WithdrawNep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	data := block.GetData()
+	tr := types.ZeroAddress
+
+	if method, err := cabi.NEP5PledgeABI.MethodById(data[0:4]); err == nil {
+		if method.Name == cabi.MethodWithdrawNEP5Pledge {
+			param := new(cabi.WithdrawPledgeParam)
+			if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+				pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(ctx, param)
+				if pledgeResult != nil {
+					tr = pledgeResult.PledgeInfo.PledgeAddress
+				}
+			}
+		}
+	}
+
+	return tr
 }

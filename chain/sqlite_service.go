@@ -120,3 +120,7 @@ func (r *SqliteService) Stop() error {
 func (r *SqliteService) Status() int32 {
 	return r.State()
 }
+
+func (r *SqliteService) RpcCall(kind uint, in, out interface{}) {
+
+}

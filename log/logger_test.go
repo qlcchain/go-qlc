@@ -68,7 +68,7 @@ func TestInit(t *testing.T) {
 //			return
 //		default:
 //			i++
-//			Root.Info(i)
+//			Root.VInfo(i)
 //		}
 //	}(ctx, i)
 //	time.Sleep(3 * time.Second)

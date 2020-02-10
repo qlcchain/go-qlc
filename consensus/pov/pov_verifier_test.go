@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/ledger/db"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -13,7 +16,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/trie"
 )
 
 type povVerifierMockData struct {
@@ -42,27 +44,16 @@ func (c *mockPovVerifierChainReader) CalcPastMedianTime(prevHeader *types.PovHea
 	return prevHeader.GetTimestamp()
 }
 
-func (c *mockPovVerifierChainReader) GenStateTrie(height uint64, prevStateHash types.Hash,
-	txs []*types.PovTransaction) (*trie.Trie, error) {
-	t := trie.NewTrie(c.ledger.DBStore(), nil, trie.NewSimpleTrieNodePool())
-	return t, nil
-}
-
-func (c *mockPovVerifierChainReader) GetStateTrie(stateHash *types.Hash) *trie.Trie {
-	t := trie.NewTrie(c.ledger.DBStore(), nil, trie.NewSimpleTrieNodePool())
-	return t
-}
-
-func (c *mockPovVerifierChainReader) GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState {
-	return nil
-}
-
-func (c *mockPovVerifierChainReader) GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState {
-	return nil
-}
-
 func (c *mockPovVerifierChainReader) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance, error) {
 	return types.ZeroBalance, types.ZeroBalance, nil
+}
+
+func (c *mockPovVerifierChainReader) TransitStateDB(height uint64, txs []*types.PovTransaction, gsdb *statedb.PovGlobalStateDB) error {
+	return nil
+}
+
+func (c *mockPovVerifierChainReader) TrieDb() db.Store {
+	return nil
 }
 
 type mockPovConsensusChainReader struct{}
@@ -79,15 +70,7 @@ func (c *mockPovConsensusChainReader) RelativeAncestor(header *types.PovHeader, 
 	return nil
 }
 
-func (c *mockPovConsensusChainReader) GetStateTrie(stateHash *types.Hash) *trie.Trie {
-	return nil
-}
-
-func (c *mockPovConsensusChainReader) GetAccountState(trie *trie.Trie, address types.Address) *types.PovAccountState {
-	return nil
-}
-
-func (c *mockPovConsensusChainReader) GetRepState(trie *trie.Trie, address types.Address) *types.PovRepState {
+func (c *mockPovConsensusChainReader) TrieDb() db.Store {
 	return nil
 }
 

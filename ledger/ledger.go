@@ -81,7 +81,7 @@ const (
 	idPrefixPerformance
 	idPrefixChild
 	idPrefixVersion
-	idPrefixStorage
+	idPrefixStorage  //discard, pls see vm_store's idPrefixStorage
 	idPrefixToken    //discard
 	idPrefixSender   //discard
 	idPrefixReceiver //discard
@@ -109,6 +109,7 @@ const (
 	idPrefixVoteHistory
 	idPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
 	idPrefixPeerInfo    //prefix+peerID => peerInfo
+	idPrefixGapPublish
 )
 
 var (

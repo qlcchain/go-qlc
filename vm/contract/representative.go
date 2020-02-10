@@ -12,7 +12,7 @@ import (
 )
 
 type RepReward struct {
-	WithSignAndPending
+	BaseContract
 }
 
 func (r *RepReward) GetLastRewardHeight(ctx *vmstore.VMContext, account types.Address) (uint64, error) {
@@ -253,26 +253,26 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	}, nil
 }
 
-func (r *RepReward) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
+func (r *RepReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
 	param := new(cabi.RepRewardParam)
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.Data)
 	if err != nil {
-		return 0, err
+		return common.ContractNoGap, nil, err
 	}
 
 	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
 
 	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
-		return needHeight, nil
+		return common.ContractRewardGapPov, needHeight, nil
 	}
 
 	nodeHeight := latestBlock.GetHeight()
 	if nodeHeight < needHeight {
-		return needHeight, nil
+		return common.ContractRewardGapPov, needHeight, nil
 	}
 
-	return 0, nil
+	return common.ContractNoGap, nil, err
 }
 
 func (r *RepReward) checkParamExistInOldRewardInfos(ctx *vmstore.VMContext, param *cabi.RepRewardParam) error {
@@ -326,4 +326,15 @@ func (r *RepReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, account t
 
 func (r *RepReward) GetRefundData() []byte {
 	return []byte{1}
+}
+
+func (r *RepReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	tr := types.ZeroAddress
+
+	param := new(cabi.RepRewardParam)
+	if err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.GetData()); err == nil {
+		tr = param.Beneficial
+	}
+
+	return tr
 }

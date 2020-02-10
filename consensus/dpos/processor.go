@@ -2,9 +2,13 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/consensus"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/common/topic"
 
@@ -12,7 +16,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
@@ -32,21 +35,23 @@ type chainOrderKey struct {
 }
 
 type Processor struct {
-	index              int
-	dps                *DPoS
-	uncheckedCache     gcache.Cache //gap blocks
-	quitCh             chan bool
-	blocks             chan *consensus.BlockSource
-	blocksAcked        chan types.Hash
-	syncBlock          chan *types.StateBlock
-	syncBlockAcked     chan types.Hash
-	acks               chan *voteInfo
-	frontiers          chan *types.StateBlock
-	syncStateChange    chan topic.SyncState
-	syncState          topic.SyncState
-	orderedChain       *sync.Map
-	chainHeight        map[chainKey]uint64
-	doneBlock          chan *types.StateBlock
+	index           int
+	dps             *DPoS
+	uncheckedCache  gcache.Cache // gap blocks
+	quitCh          chan bool
+	blocks          chan *consensus.BlockSource
+	blocksAcked     chan types.Hash
+	tokenCreate     chan types.Hash
+	publishBlock    chan types.Hash
+	syncBlock       chan *types.StateBlock
+	syncBlockAcked  chan types.Hash
+	acks            chan *voteInfo
+	frontiers       chan *types.StateBlock
+	syncStateChange chan topic.SyncState
+	syncState       topic.SyncState
+	orderedChain    *sync.Map
+	chainHeight     map[chainKey]uint64
+	// doneBlock          chan *types.StateBlock
 	confirmedChain     map[types.Hash]bool
 	confirmParallelNum int32
 	ctx                context.Context
@@ -60,19 +65,21 @@ func newProcessors(num int) []*Processor {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		p := &Processor{
-			index:              i,
-			quitCh:             make(chan bool, 1),
-			blocks:             make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
-			blocksAcked:        make(chan types.Hash, common.DPoSMaxBlocks),
-			syncBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncBlockAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
-			acks:               make(chan *voteInfo, common.DPoSMaxBlocks),
-			frontiers:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncStateChange:    make(chan topic.SyncState, 1),
-			syncState:          topic.SyncNotStart,
-			orderedChain:       new(sync.Map),
-			chainHeight:        make(map[chainKey]uint64),
-			doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			index:           i,
+			quitCh:          make(chan bool, 1),
+			blocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+			blocksAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
+			tokenCreate:     make(chan types.Hash, 1024),
+			publishBlock:    make(chan types.Hash, common.DPoSMaxBlocks),
+			syncBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncBlockAcked:  make(chan types.Hash, common.DPoSMaxBlocks),
+			acks:            make(chan *voteInfo, common.DPoSMaxBlocks),
+			frontiers:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncStateChange: make(chan topic.SyncState, 1),
+			syncState:       topic.SyncNotStart,
+			orderedChain:    new(sync.Map),
+			chainHeight:     make(map[chainKey]uint64),
+			// doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
 			confirmedChain:     make(map[types.Hash]bool),
 			confirmParallelNum: ConfirmChainParallelNum,
 			ctx:                ctx,
@@ -84,7 +91,7 @@ func newProcessors(num int) []*Processor {
 	return processors
 }
 
-func (p *Processor) setDposService(dps *DPoS) {
+func (p *Processor) setDPoSService(dps *DPoS) {
 	p.dps = dps
 }
 
@@ -111,7 +118,7 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 			if has, _ := dps.ledger.HasStateBlockConfirmed(block.Previous); has {
 				checked = true
 			} else {
-				//p.enqueueUncheckedSync(block)
+				// p.enqueueUncheckedSync(block)
 			}
 		}
 	}
@@ -121,15 +128,16 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 			dps.logger.Errorf("add unconfirmed sync block err", err)
 		}
 		p.processConfirmedSync(hash, block)
+	} else {
+		dps.logger.Errorf("sync block not confirmed %s", hash)
 	}
 }
 
 func (p *Processor) processMsg() {
-	timerRest := time.NewTicker(10 * time.Millisecond)
 	timerConfirm := time.NewTicker(time.Second)
 
 	for {
-	PriorityOut:
+	P1:
 		for {
 			select {
 			case <-p.quitCh:
@@ -152,20 +160,24 @@ func (p *Processor) processMsg() {
 						p.confirmedChain[hash] = false
 					}
 				}
-				//p.dequeueUncheckedSync(hash)
+				// p.dequeueUncheckedSync(hash)
 			case hash := <-p.blocksAcked:
 				p.dequeueUnchecked(hash)
+			case hash := <-p.tokenCreate:
+				p.dequeueGapToken(hash)
+			case hash := <-p.publishBlock:
+				p.dequeueGapPublish(hash)
 			case ack := <-p.acks:
 				p.processAck(ack)
 			case frontier := <-p.frontiers:
 				p.processFrontier(frontier)
-			case block := <-p.doneBlock:
-				p.dps.updateLastProcessSyncTime()
-				if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
-					p.dps.logger.Warnf("block(%s) sync done error: %s", block.GetHash(), err)
-				}
+			// case block := <-p.doneBlock:
+			// 	p.dps.updateLastProcessSyncTime()
+			// 	if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
+			// 		p.dps.logger.Warnf("block(%s) sync done error: %s", block.GetHash(), err)
+			// 	}
 			default:
-				break PriorityOut
+				break P1
 			}
 		}
 
@@ -177,8 +189,6 @@ func (p *Processor) processMsg() {
 		case block := <-p.syncBlock:
 			p.dps.updateLastProcessSyncTime()
 			p.syncBlockCheck(block)
-		case <-timerRest.C:
-			//
 		case <-timerConfirm.C:
 			if p.syncState == topic.SyncDone || p.syncState == topic.Syncing {
 				for hash, dealt := range p.confirmedChain {
@@ -187,7 +197,7 @@ func (p *Processor) processMsg() {
 					}
 
 					if atomic.LoadInt32(&p.confirmParallelNum) > 0 {
-						// use gorouting to forbid blocking the thead
+						// use go-routing to forbid blocking the thread
 						p.confirmedChain[hash] = true
 						go p.confirmChain(hash)
 					} else {
@@ -195,6 +205,8 @@ func (p *Processor) processMsg() {
 					}
 				}
 			}
+		default:
+			time.Sleep(time.Millisecond)
 		}
 	}
 }
@@ -278,8 +290,6 @@ func (p *Processor) processFrontier(block *types.StateBlock) {
 	if result == process.Progress {
 		p.localRepVoteFrontier(block)
 	}
-
-	//p.syncBlock <- block
 }
 
 func (p *Processor) confirmChain(hash types.Hash) {
@@ -293,8 +303,13 @@ func (p *Processor) confirmChain(hash types.Hash) {
 		dps.logger.Errorf("get unconfirmed sync block err %s", err)
 		return
 	} else {
+		ck := chainKey{
+			addr:  block.Address,
+			token: block.Token,
+		}
+		height := p.chainHeight[ck]
 		cok := chainOrderKey{
-			chainKey: chainKey{block.Address, block.Token},
+			chainKey: ck,
 			order:    1,
 		}
 
@@ -320,10 +335,14 @@ func (p *Processor) confirmChain(hash types.Hash) {
 					}
 				}
 			} else {
+				dps.logger.Infof("get chain block err(%s-%s) order(%d)", block.Address, block.Token, cok.order)
 				break
 			}
 
 			cok.order++
+			if cok.order > height {
+				break
+			}
 		}
 	}
 }
@@ -356,8 +375,12 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	var result process.ProcessResult
 	var err error
 
+	// dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
+
 	if bs.BlockFrom == types.Synchronized {
 		p.dps.updateLastProcessSyncTime()
+	} else {
+		bs.Block.Flag = types.BlockFlagNonSync
 	}
 
 	result, err = dps.lv.BlockCheck(bs.Block)
@@ -365,7 +388,12 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
 		return
 	}
+
+	// dps.perfBlockProcessCheckPointAdd(hash, checkPointProcessResult)
+
 	p.processResult(result, bs)
+
+	// dps.perfBlockProcessCheckPointAdd(hash, checkPointEnd)
 
 	switch bs.Type {
 	case consensus.MsgPublishReq:
@@ -396,8 +424,6 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 				return
 			}
 		}
-
-		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), false)
 	default:
 		//
 	}
@@ -415,7 +441,7 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 			dps.logger.Infof("Block %s from sync", hash)
 		} else if bs.BlockFrom == types.UnSynchronized {
 			dps.logger.Infof("Add block %s to roots", hash)
-			//make sure we only vote one of the forked blocks
+			// make sure we only vote one of the forked blocks
 			if dps.acTrx.addToRoots(blk) && bs.Type != consensus.MsgConfirmReq {
 				dps.localRepVote(bs.Block)
 			}
@@ -435,7 +461,7 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		dps.logger.Errorf("UnReceivable for block: %s", hash)
 	case process.GapSmartContract:
 		dps.logger.Errorf("GapSmartContract for block: %s", hash)
-		//dps.processGapSmartContract(blk)
+		// dps.processGapSmartContract(blk)
 	case process.InvalidData:
 		dps.logger.Errorf("InvalidData for block: %s", hash)
 	case process.Other:
@@ -454,7 +480,10 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		p.enqueueUnchecked(result, bs)
 	case process.GapPovHeight:
 		dps.logger.Infof("block:[%s] Gap pov height", hash)
-		p.dps.gapPovCh <- bs
+		p.enqueueUnchecked(result, bs)
+	case process.GapPublish:
+		dps.logger.Infof("block:[%s] Gap publish", hash)
+		p.enqueueUnchecked(result, bs)
 	}
 }
 
@@ -472,7 +501,6 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 		}
 
 		dps.acTrx.roots.Delete(el.vote.id)
-		dps.acTrx.updatePerfTime(hash, time.Now().UnixNano(), true)
 
 		el.blocks.Range(func(key, value interface{}) bool {
 			if key.(types.Hash) != hash {
@@ -568,7 +596,7 @@ func (p *Processor) findAnotherForkedBlock(block *types.StateBlock) *types.State
 	return forkedBlock
 }
 
-func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) bool {
+func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 	dps := p.dps
 	var result process.ProcessResult
 
@@ -576,21 +604,18 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) bool {
 		dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: bs.Block})
 	}
 
-	result, _ = dps.lv.BlockCheck(bs.Block)
-	if result == bs.Gap {
-		p.blocksAcked <- bs.GapHash
-		return false
+	if bs.BlockFrom != types.Synchronized {
+		bs.Block.Flag = types.BlockFlagNonSync
 	} else {
-		if bs.BlockFrom == types.Synchronized {
-			p.dps.updateLastProcessSyncTime()
-		}
-		p.processResult(result, bs)
-		return true
+		p.dps.updateLastProcessSyncTime()
 	}
+
+	result, _ = dps.lv.BlockCheck(bs.Block)
+	p.processResult(result, bs)
 }
 
 func (p *Processor) enqueueUnchecked(result process.ProcessResult, bs *consensus.BlockSource) {
-	//frontier confirmReq may cause problem
+	// frontier confirmReq may cause problem
 	if bs.Type != consensus.MsgConfirmReq {
 		p.enqueueUncheckedToDb(result, bs)
 	}
@@ -628,29 +653,61 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 		if err != nil && err != ledger.ErrUncheckedBlockExists {
 			dps.logger.Errorf("add unchecked block to ledger err %s", err)
 		}
+	case process.GapPublish:
+		info := new(cabi.OracleInfo)
+		err := cabi.PublicKeyDistributionABI.UnpackMethod(info, cabi.MethodNamePKDOracle, blk.GetData())
+		if err != nil {
+			dps.logger.Errorf("unpack oracle data err %s", err)
+		}
+
+		err = dps.ledger.AddGapPublishBlock(info.Hash, blk, bs.BlockFrom)
+		if err != nil && err != ledger.ErrUncheckedBlockExists {
+			dps.logger.Errorf("add gap publish block to ledger err %s", err)
+		}
+	case process.GapPovHeight:
+		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
+			d := c.GetDescribe()
+			switch d.GetVersion() {
+			case contract.SpecVer2:
+				vmCtx := vmstore.NewVMContext(dps.ledger)
+				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
+				if err != nil || gapResult != common.ContractRewardGapPov {
+					dps.logger.Errorf("add gap pov block to ledger err %s", err)
+				}
+
+				height := gapInfo.(uint64)
+				if height > 0 {
+					dps.logger.Infof("add gap pov[%s][%d]", bs.Block.GetHash(), height)
+					err := dps.ledger.AddGapPovBlock(height, bs.Block, bs.BlockFrom)
+					if err != nil {
+						dps.logger.Errorf("add gap pov block to ledger err %s", err)
+					}
+				}
+			}
+		}
 	}
 }
 
-func (p *Processor) enqueueUncheckedToMem(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
-	if !p.uncheckedCache.Has(depHash) {
-		consensus.GlobalUncheckedBlockNum.Inc()
-		blocks := new(sync.Map)
-		blocks.Store(hash, bs)
-
-		err := p.uncheckedCache.Set(depHash, blocks)
-		if err != nil {
-			p.dps.logger.Errorf("Gap previous set cache err for block:%s", hash)
-		}
-	} else {
-		c, err := p.uncheckedCache.Get(depHash)
-		if err != nil {
-			p.dps.logger.Errorf("Gap previous get cache err for block:%s", hash)
-		}
-
-		blocks := c.(*sync.Map)
-		blocks.Store(hash, bs)
-	}
-}
+// func (p *Processor) enqueueUncheckedToMem(hash types.Hash, depHash types.Hash, bs *consensus.BlockSource) {
+// 	if !p.uncheckedCache.Has(depHash) {
+// 		consensus.GlobalUncheckedBlockNum.Inc()
+// 		blocks := new(sync.Map)
+// 		blocks.Store(hash, bs)
+//
+// 		err := p.uncheckedCache.Set(depHash, blocks)
+// 		if err != nil {
+// 			p.dps.logger.Errorf("Gap previous set cache err for block:%s", hash)
+// 		}
+// 	} else {
+// 		c, err := p.uncheckedCache.Get(depHash)
+// 		if err != nil {
+// 			p.dps.logger.Errorf("Gap previous get cache err for block:%s", hash)
+// 		}
+//
+// 		blocks := c.(*sync.Map)
+// 		blocks.Store(hash, bs)
+// 	}
+// }
 
 func (p *Processor) enqueueUncheckedSync(block *types.StateBlock) {
 	p.enqueueUncheckedSyncToDb(block)
@@ -669,24 +726,11 @@ func (p *Processor) dequeueUnchecked(hash types.Hash) {
 func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 	dps := p.dps
 
-	//hash is token id
-	if blkToken, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindTokenInfo); blkToken != nil {
-		if dps.getProcessorIndex(blkToken.Address) == p.index {
-			dps.logger.Debugf("dequeue gap token info[%s] block[%s]", hash, blkToken.GetHash())
-			bs := &consensus.BlockSource{
-				Block:     blkToken,
-				BlockFrom: bf,
-				Gap:       process.GapTokenInfo,
-				GapHash:   hash,
-			}
-
-			if p.processUncheckedBlock(bs) {
-				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindTokenInfo)
-				if err != nil {
-					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
-				}
-			}
-		}
+	// check if the block is existed, may be from another thread
+	if has, _ := dps.ledger.HasStateBlockConfirmed(hash); !has {
+		dps.logger.Debugf("get confirmed block fail %s", hash)
+		time.Sleep(time.Millisecond)
+		p.blocksAcked <- hash
 		return
 	}
 
@@ -696,15 +740,13 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			bs := &consensus.BlockSource{
 				Block:     blkLink,
 				BlockFrom: bf,
-				Gap:       process.GapSource,
-				GapHash:   hash,
 			}
 
-			if p.processUncheckedBlock(bs) {
-				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-				if err != nil {
-					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
-				}
+			p.processUncheckedBlock(bs)
+
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 			}
 		}
 	}
@@ -715,119 +757,180 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 			bs := &consensus.BlockSource{
 				Block:     blkPre,
 				BlockFrom: bf,
-				Gap:       process.GapPrevious,
-				GapHash:   hash,
 			}
 
-			if p.processUncheckedBlock(bs) {
-				err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-				if err != nil {
-					dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
-				}
+			p.processUncheckedBlock(bs)
+
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPre.GetHash())
 			}
 		}
 	}
 }
 
-func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
-	dps := p.dps
-	dps.logger.Debugf("dequeue gap[%s]", hash.String())
-
-	if !p.uncheckedCache.Has(hash) {
-		return
-	}
-
-	m, err := p.uncheckedCache.Get(hash)
-	if err != nil {
-		dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
-		return
-	}
-
-	cm := m.(*sync.Map)
-	cm.Range(func(key, value interface{}) bool {
-		bs := value.(*consensus.BlockSource)
-		dps.logger.Debugf("dequeue gap[%s] block[%s]", hash, bs.Block.GetHash())
-
-		result, _ := dps.lv.BlockCheck(bs.Block)
-		p.processResult(result, bs)
-
-		if p.isResultValid(result) {
-			if bs.BlockFrom == types.Synchronized {
-				p.confirmBlock(bs.Block)
-				return true
-			}
-
-			dps.localRepVote(bs.Block)
-		}
-
-		return true
-	})
-
-	r := p.uncheckedCache.Remove(hash)
-	if !r {
-		dps.logger.Error("remove cache for unchecked fail")
-	}
-
-	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
-		consensus.GlobalUncheckedBlockNum.Dec()
-	}
-}
-
-func (p *Processor) dequeueUncheckedSync(hash types.Hash) {
-	p.dequeueUncheckedSyncFromDb(hash)
-}
-
-func (p *Processor) dequeueUncheckedSyncFromDb(hash types.Hash) {
+func (p *Processor) dequeueGapToken(hash types.Hash) {
 	dps := p.dps
 
-	if block, err := dps.ledger.GetUncheckedSyncBlock(hash); err != nil {
-		return
-	} else {
-		confirmedHash := block.GetHash()
-		if err := dps.ledger.AddUnconfirmedSyncBlock(confirmedHash, block); err != nil {
-			dps.logger.Errorf("add unconfirmed sync block err", err)
-		}
-		p.processConfirmedSync(confirmedHash, block)
-
-		if err := dps.ledger.DeleteUncheckedSyncBlock(hash); err != nil {
-			dps.logger.Errorf("del uncheck sync block err", err)
-		}
-	}
-}
-
-func (p *Processor) rollbackUncheckedFromMem(hash types.Hash) {
-	if !p.uncheckedCache.Has(hash) {
+	// check if the block is existed, may be from another thread
+	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
+	if err != nil || blk == nil {
+		dps.logger.Debugf("get confirmed block fail %s", hash)
+		time.Sleep(time.Millisecond)
+		p.tokenCreate <- hash
 		return
 	}
 
-	_, err := p.uncheckedCache.Get(hash)
+	input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
 	if err != nil {
-		p.dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
+		dps.logger.Errorf("get block link error [%s]", hash)
 		return
 	}
 
-	r := p.uncheckedCache.Remove(hash)
-	if !r {
-		p.dps.logger.Error("remove cache for unchecked fail")
+	param := new(cabi.ParamMintage)
+	if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err != nil {
+		return
 	}
 
-	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
-		consensus.GlobalUncheckedBlockNum.Dec()
+	tokenId := param.TokenId
+	if blkToken, bf, _ := dps.ledger.GetUncheckedBlock(tokenId, types.UncheckedKindTokenInfo); blkToken != nil {
+		if dps.getProcessorIndex(blkToken.Address) == p.index {
+			dps.logger.Debugf("dequeue gap token info[%s] block[%s]", tokenId, blkToken.GetHash())
+			bs := &consensus.BlockSource{
+				Block:     blkToken,
+				BlockFrom: bf,
+			}
+
+			p.processUncheckedBlock(bs)
+
+			err := dps.ledger.DeleteUncheckedBlock(tokenId, types.UncheckedKindTokenInfo)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
+			}
+		}
+		return
 	}
 }
 
-func (p *Processor) isResultValid(result process.ProcessResult) bool {
-	if result == process.Progress || result == process.Old {
-		return true
-	} else {
-		return false
+func (p *Processor) dequeueGapPublish(hash types.Hash) {
+	dps := p.dps
+
+	// check if the block is existed, may be from another thread
+	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
+	if err != nil || blk == nil {
+		dps.logger.Debugf("get confirmed block fail %s", hash)
+		time.Sleep(time.Millisecond)
+		p.publishBlock <- hash
+		return
+	}
+
+	// deal gap publish
+	depHash := blk.Previous
+	if err := dps.ledger.GetGapPublishBlock(depHash, func(block *types.StateBlock, bf types.SynchronizedKind) error {
+		if dps.getProcessorIndex(block.Address) == p.index {
+			dps.logger.Debugf("dequeue gap publish[%s] block[%s]", hash, block.GetHash())
+			bs := &consensus.BlockSource{
+				Block:     block,
+				BlockFrom: bf,
+			}
+
+			p.processUncheckedBlock(bs)
+
+			err := dps.ledger.DeleteGapPublishBlock(depHash, block.GetHash())
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete gapPublishBlock", err, block.GetHash())
+			}
+		}
+
+		return nil
+	}); err != nil {
+		dps.logger.Errorf("dequeue gap publish err %s", err)
 	}
 }
 
-func (p *Processor) isResultGap(result process.ProcessResult) bool {
-	if result == process.GapPrevious || result == process.GapSource || result == process.GapTokenInfo {
-		return true
-	} else {
-		return false
-	}
-}
+// func (p *Processor) dequeueUncheckedFromMem(hash types.Hash) {
+// 	dps := p.dps
+// 	dps.logger.Debugf("dequeue gap[%s]", hash.String())
+//
+// 	if !p.uncheckedCache.Has(hash) {
+// 		return
+// 	}
+//
+// 	m, err := p.uncheckedCache.Get(hash)
+// 	if err != nil {
+// 		dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
+// 		return
+// 	}
+//
+// 	cm := m.(*sync.Map)
+// 	cm.Range(func(key, value interface{}) bool {
+// 		bs := value.(*consensus.BlockSource)
+// 		dps.logger.Debugf("dequeue gap[%s] block[%s]", hash, bs.Block.GetHash())
+//
+// 		result, _ := dps.lv.BlockCheck(bs.Block)
+// 		p.processResult(result, bs)
+//
+// 		if p.isResultValid(result) {
+// 			if bs.BlockFrom == types.Synchronized {
+// 				p.confirmBlock(bs.Block)
+// 				return true
+// 			}
+//
+// 			dps.localRepVote(bs.Block)
+// 		}
+//
+// 		return true
+// 	})
+//
+// 	r := p.uncheckedCache.Remove(hash)
+// 	if !r {
+// 		dps.logger.Error("remove cache for unchecked fail")
+// 	}
+//
+// 	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
+// 		consensus.GlobalUncheckedBlockNum.Dec()
+// 	}
+// }
+
+// func (p *Processor) dequeueUncheckedSync(hash types.Hash) {
+// 	p.dequeueUncheckedSyncFromDb(hash)
+// }
+
+// func (p *Processor) dequeueUncheckedSyncFromDb(hash types.Hash) {
+// 	dps := p.dps
+//
+// 	if block, err := dps.ledger.GetUncheckedSyncBlock(hash); err != nil {
+// 		return
+// 	} else {
+// 		confirmedHash := block.GetHash()
+// 		if err := dps.ledger.AddUnconfirmedSyncBlock(confirmedHash, block); err != nil {
+// 			dps.logger.Errorf("add unconfirmed sync block err", err)
+// 		}
+// 		p.processConfirmedSync(confirmedHash, block)
+//
+// 		if err := dps.ledger.DeleteUncheckedSyncBlock(hash); err != nil {
+// 			dps.logger.Errorf("del uncheck sync block err", err)
+// 		}
+// 	}
+// }
+
+// func (p *Processor) rollbackUncheckedFromMem(hash types.Hash) {
+// 	if !p.uncheckedCache.Has(hash) {
+// 		return
+// 	}
+//
+// 	_, err := p.uncheckedCache.Get(hash)
+// 	if err != nil {
+// 		p.dps.logger.Errorf("dequeue unchecked err [%s] for hash [%s]", err, hash)
+// 		return
+// 	}
+//
+// 	r := p.uncheckedCache.Remove(hash)
+// 	if !r {
+// 		p.dps.logger.Error("remove cache for unchecked fail")
+// 	}
+//
+// 	if consensus.GlobalUncheckedBlockNum.Load() > 0 {
+// 		consensus.GlobalUncheckedBlockNum.Dec()
+// 	}
+// }

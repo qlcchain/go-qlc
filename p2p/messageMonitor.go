@@ -110,7 +110,7 @@ func (ms *MessageService) Start() {
 }
 
 //func (ms *MessageService) processBlockCacheLoop() {
-//	ms.netService.node.logger.Info("Started process blockCache loop.")
+//	ms.netService.node.logger.VInfo("Started process blockCache loop.")
 //	ticker := time.NewTicker(checkBlockCacheInterval)
 //	for {
 //		select {
@@ -392,7 +392,7 @@ func (ms *MessageService) onPovBulkPullRsp(message *Message) {
 }
 
 func (ms *MessageService) Stop() {
-	//ms.netService.node.logger.Info("stopped message monitor")
+	//ms.netService.node.logger.VInfo("stopped message monitor")
 	// quit.
 	ms.cancel()
 	ms.syncService.quitCh <- true

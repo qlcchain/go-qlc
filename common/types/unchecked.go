@@ -57,6 +57,7 @@ const (
 	UncheckedKindPrevious UncheckedKind = iota
 	UncheckedKindLink
 	UncheckedKindTokenInfo
+	UncheckedKindPublish
 )
 
 type SynchronizedKind byte
@@ -90,4 +91,5 @@ func StringToSyncKind(str string) SynchronizedKind {
 }
 
 type UncheckedBlockWalkFunc func(block *StateBlock, link Hash, unCheckType UncheckedKind, sync SynchronizedKind) error
-type GapPovBlockWalkFunc func(blocks StateBlockList, height uint64, sync SynchronizedKind) error
+type GapPovBlockWalkFunc func(block *StateBlock, height uint64, sync SynchronizedKind) error
+type GapPublishBlockWalkFunc func(block *StateBlock, sync SynchronizedKind) error

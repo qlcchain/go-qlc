@@ -17,7 +17,7 @@ import (
 )
 
 type AirdropRewords struct {
-	NoSignWithPending
+	BaseContract
 }
 
 func (ar *AirdropRewords) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -54,8 +54,22 @@ func (*AirdropRewords) GetRefundData() []byte {
 	return []byte{1}
 }
 
+func (*AirdropRewords) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	data := block.GetData()
+	tr := types.ZeroAddress
+
+	if method, err := cabi.RewardsABI.MethodById(data[0:4]); err == nil {
+		param := new(cabi.RewardsParam)
+		if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+			tr = param.Beneficial
+		}
+	}
+
+	return tr
+}
+
 type ConfidantRewards struct {
-	NoSignWithPending
+	BaseContract
 }
 
 func (*ConfidantRewards) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
@@ -111,6 +125,20 @@ func (*ConfidantRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlo
 
 func (*ConfidantRewards) GetRefundData() []byte {
 	return []byte{2}
+}
+
+func (*ConfidantRewards) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+	data := block.GetData()
+	tr := types.ZeroAddress
+
+	if method, err := cabi.RewardsABI.MethodById(data[0:4]); err == nil {
+		param := new(cabi.RewardsParam)
+		if err = method.Inputs.Unpack(param, data[4:]); err == nil {
+			tr = param.Beneficial
+		}
+	}
+
+	return tr
 }
 
 func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock,

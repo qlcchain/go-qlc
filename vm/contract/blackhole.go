@@ -18,7 +18,7 @@ import (
 )
 
 type BlackHole struct {
-	NoSignWithPending
+	BaseContract
 }
 
 // TODO: save contract data
@@ -140,6 +140,6 @@ func (b *BlackHole) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (b *BlackHole) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
+func (b *BlackHole) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	return common.ContractNoGap, nil, nil
 }

@@ -28,6 +28,7 @@ type Service interface {
 	Start() error
 	Stop() error
 	Status() int32
+	RpcCall(kind uint, in, out interface{})
 }
 
 type ServiceLifecycle struct {

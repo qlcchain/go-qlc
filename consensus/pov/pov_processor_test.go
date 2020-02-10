@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/google/uuid"
@@ -17,7 +19,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/trie"
 )
 
 type povProcessorMockData struct {
@@ -54,7 +55,7 @@ func (c *mockPovProcessorChainReader) GetBlockByHash(hash types.Hash) *types.Pov
 	return nil
 }
 
-func (c *mockPovProcessorChainReader) InsertBlock(block *types.PovBlock, stateTrie *trie.Trie) error {
+func (c *mockPovProcessorChainReader) InsertBlock(block *types.PovBlock, sdb *statedb.PovGlobalStateDB) error {
 	c.blocks[block.GetHash()] = block
 	return nil
 }

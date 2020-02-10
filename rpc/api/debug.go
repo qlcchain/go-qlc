@@ -5,10 +5,11 @@ import (
 	"errors"
 	"time"
 
+	qctx "github.com/qlcchain/go-qlc/chain/context"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
-	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -22,18 +23,21 @@ import (
 )
 
 type DebugApi struct {
-	ledger *ledger.Ledger
-	logger *zap.SugaredLogger
-	eb     event.EventBus
-	feb    *event.FeedEventBus
+	ledger  *ledger.Ledger
+	logger  *zap.SugaredLogger
+	eb      event.EventBus
+	feb     *event.FeedEventBus
+	cfgFile string
 }
 
-func NewDebugApi(cc *chainctx.ChainContext, l *ledger.Ledger, eb event.EventBus) *DebugApi {
+func NewDebugApi(cfgFile string, eb event.EventBus) *DebugApi {
+	cc := qctx.NewChainContext(cfgFile)
 	return &DebugApi{
-		ledger: l,
-		logger: log.NewLogger("api_debug"),
-		eb:     eb,
-		feb:    cc.FeedEventBus(),
+		ledger:  ledger.NewLedger(cfgFile),
+		logger:  log.NewLogger("api_debug"),
+		eb:      eb,
+		feb:     cc.FeedEventBus(),
+		cfgFile: cfgFile,
 	}
 }
 
@@ -83,6 +87,8 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 			uncheck.UnCheckType = "GapLink"
 		case types.UncheckedKindTokenInfo:
 			uncheck.UnCheckType = "GapTokenInfo"
+		case types.UncheckedKindPublish:
+			uncheck.UnCheckType = "GapPublish"
 		}
 
 		uncheck.SyncType = sync
@@ -93,17 +99,14 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 		return nil, err
 	}
 
-	err = l.ledger.WalkGapPovBlocks(func(blocks types.StateBlockList, height uint64, sync types.SynchronizedKind) error {
-		for _, blk := range blocks {
-			uncheck := new(APIUncheckBlock)
-			uncheck.Block = blk
-			uncheck.Hash = blk.GetHash()
-			uncheck.UnCheckType = "GapPovHeight"
-			uncheck.SyncType = sync
-			uncheck.Height = height
-			unchecks = append(unchecks, uncheck)
-		}
-
+	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		uncheck := new(APIUncheckBlock)
+		uncheck.Block = blk
+		uncheck.Hash = blk.GetHash()
+		uncheck.UnCheckType = "GapPovHeight"
+		uncheck.SyncType = sync
+		uncheck.Height = height
+		unchecks = append(unchecks, uncheck)
 		return nil
 	})
 	if err != nil {
@@ -334,7 +337,14 @@ func (l *DebugApi) PendingsCount() (int, error) {
 
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	repOnline := make(map[uint64]*dpos.RepOnlinePeriod, 0)
-	l.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "DPoS.Online", In: "info", Out: repOnline})
+
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return nil, err
+	}
+	sv.RpcCall(common.RpcDPosOnlineInfo, nil, repOnline)
+
 	return repOnline, nil
 }
 
@@ -411,13 +421,65 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	l.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Debug.ConsInfo", In: inArgs, Out: outArgs})
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return nil, err
+	}
+	sv.RpcCall(common.RpcDPosConsInfo, inArgs, outArgs)
 
-	err, ok := outArgs["err"]
+	er, ok := outArgs["err"]
 	if !ok {
 		return nil, errors.New("api not support")
 	}
+	if er != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+	delete(outArgs, "err")
+
+	return outArgs, nil
+}
+
+func (l *DebugApi) SetConsPerf(op dpos.PerfType) (map[string]interface{}, error) {
+	outArgs := make(map[string]interface{})
+
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
 	if err != nil {
+		return nil, err
+	}
+	sv.RpcCall(common.RpcDPosSetConsPerf, op, outArgs)
+
+	er, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if er != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+	delete(outArgs, "err")
+
+	return outArgs, nil
+}
+
+func (l *DebugApi) GetConsPerf() (map[string]interface{}, error) {
+	inArgs := make(map[string]interface{})
+	outArgs := make(map[string]interface{})
+
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return nil, err
+	}
+	sv.RpcCall(common.RpcDPosGetConsPerf, inArgs, outArgs)
+
+	er, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if er != nil {
 		err := outArgs["err"].(error)
 		return nil, err
 	}

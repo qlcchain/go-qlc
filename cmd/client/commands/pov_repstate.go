@@ -69,7 +69,7 @@ func runPovRepStateListCmd(hash string, height int, sortType string) error {
 
 	repStateList := new(api.PovApiRepState)
 	if len(hash) > 0 {
-		err = client.Call(repStateList, "pov_getAllRepStatesByBlockHash")
+		err = client.Call(repStateList, "pov_getAllRepStatesByBlockHash", hash)
 		if err != nil {
 			return err
 		}

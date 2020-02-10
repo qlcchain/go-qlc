@@ -21,7 +21,7 @@ type voteInfo struct {
 }
 
 type Votes struct {
-	id       voteKey   //Previous block of fork
+	id       voteKey   // Previous block of fork
 	repVotes *sync.Map // All votes received by account
 }
 

@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -135,7 +136,8 @@ var (
 	Tt256   = BigPow(2, 256)
 	Tt256m1 = new(big.Int).Sub(Tt256, big.NewInt(1))
 
-	chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	chars       = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	emailRegexp = regexp.MustCompile("([A-Za-z0-9\u4e00-\u9fa5]+)@([a-zA-Z0-9_-]+)(\\.[a-zA-Z0-9_-]+)+")
 )
 
 // ToWordSize returns the ceiled word size required for memory expansion.
@@ -191,4 +193,22 @@ func RandomFixedString(length int) string {
 	}
 
 	return string(b)
+}
+
+func RandomFixedStringWithSeed(length int, seed int64) string {
+	if length == 0 {
+		return ""
+	}
+	rand.Seed(seed)
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = chars[rand.Intn(len(chars))]
+	}
+
+	return string(b)
+}
+
+func VerifyEmailFormat(email string) bool {
+	return emailRegexp.MatchString(email)
 }

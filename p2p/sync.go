@@ -7,6 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/qlcchain/go-qlc/common/topic"
 
 	"go.uber.org/zap"
@@ -90,7 +93,7 @@ func (ss *ServiceSync) Start() {
 
 // Stop sync service
 func (ss *ServiceSync) Stop() {
-	//ss.logger.Info("Stop Qlc sync...")
+	//ss.logger.VInfo("Stop Qlc sync...")
 
 	ss.quitCh <- true
 }
@@ -155,10 +158,16 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			return
 		}
 
+		sv, err := ss.netService.cc.Service(context.ConsensusService)
+		if err != nil {
+			ss.logger.Error(err)
+			return
+		}
+
 		var remoteFrontiers []*types.Frontier
 		var blks types.StateBlockList
 		ss.lastSyncHash = types.ZeroHash
-		ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: topic.Syncing})
+		sv.RpcCall(common.RpcDPosOnSyncStateChange, topic.Syncing, nil)
 		ss.logger.Warn("sync start")
 
 		for _, f := range rsp.Fs {
@@ -168,12 +177,12 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		remoteFrontiersLen := len(remoteFrontiers)
 
 		if remoteFrontiersLen > 0 {
-			ss.netService.msgEvent.Publish(topic.EventFrontierConsensus, blks)
+			sv.RpcCall(common.RpcDPosProcessFrontier, blks, nil)
 			sort.Sort(types.Frontiers(remoteFrontiers))
 			zeroFrontier := new(types.Frontier)
 			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 			state := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
-			ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: state})
+			sv.RpcCall(common.RpcDPosOnSyncStateChange, state, nil)
 		}
 		ss.logger.Warn("sync pull all blocks done")
 	}

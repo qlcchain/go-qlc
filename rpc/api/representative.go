@@ -278,7 +278,7 @@ func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepSta
 	}
 
 	stateHash := block.GetStateHash()
-	stateTrie := trie.NewTrie(ctx.Ledger.Store, &stateHash, nil)
+	stateTrie := trie.NewTrie(ctx.Ledger.DBStore(), &stateHash, nil)
 	keyBytes := types.PovCreateRepStateKey(params.Account)
 
 	valBytes := stateTrie.GetValue(keyBytes)

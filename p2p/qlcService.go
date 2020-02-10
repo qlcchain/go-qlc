@@ -7,7 +7,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/topic"
 
-	"github.com/qlcchain/go-qlc/chain/context"
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -25,7 +24,7 @@ type QlcService struct {
 
 // NewQlcService create netService
 func NewQlcService(cfgFile string) (*QlcService, error) {
-	cc := context.NewChainContext(cfgFile)
+	cc := chainctx.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 	node, err := NewNode(cfg)
 	if err != nil {
@@ -56,7 +55,7 @@ func (ns *QlcService) MessageEvent() event.EventBus {
 
 // Start start p2p manager.
 func (ns *QlcService) Start() error {
-	//ns.node.logger.Info("Starting QlcService...")
+	//ns.node.logger.VInfo("Starting QlcService...")
 
 	// start dispatcher.
 	ns.dispatcher.Start()
@@ -107,9 +106,9 @@ func (ns *QlcService) setEvent() error {
 
 // Stop stop p2p manager.
 func (ns *QlcService) Stop() error {
-	//ns.node.logger.Info("Stopping QlcService...")
+	// ns.node.logger.VInfo("Stopping QlcService...")
 
-	//this must be the first step
+	// this must be the first step
 	err := ns.subscriber.UnsubscribeAll()
 	if err != nil {
 		return err

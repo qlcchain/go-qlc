@@ -130,7 +130,7 @@ func TestRPC_WebSocket(t *testing.T) {
 //	teardownTestCase := setupTestCase(t)
 //	defer teardownTestCase(t)
 //
-//	client, err := Dial(rpc.config.RPC.IPCEndpoint)
+//	client, err := Dial(rpc.config.RpcCall.IPCEndpoint)
 //	defer func() {
 //		if client != nil {
 //			client.Close()
