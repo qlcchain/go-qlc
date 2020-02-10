@@ -320,21 +320,22 @@ func (z *ContractParam) String() string {
 // TODO:
 // we should make sure that can use CDR data to match to a specific settlement contract
 type CDRParam struct {
-	smsDt        string
-	messageID    string
-	sender       string
-	destination  string
-	dstCountry   string
-	dstOperator  string
-	dstMcc       string
-	dstMnc       string
-	sellPrice    float64
-	sellCurrency string
+	Index        uint64
+	SmsDt        string
+	MessageID    string
+	Sender       string
+	Destination  string
+	DstCountry   string
+	DstOperator  string
+	DstMcc       string
+	DstMnc       string
+	SellPrice    float64
+	SellCurrency string
 	//connection         string
-	customerName  string
-	customerID    string
-	sendingStatus string
-	dlrStatus     string
+	CustomerName  string
+	CustomerID    string
+	SendingStatus string
+	DlrStatus     string
 	//clientIp           string
 	//failureCode        string
 	//dlrDt              string
