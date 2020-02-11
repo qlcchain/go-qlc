@@ -67,3 +67,13 @@ var (
 	PovMinCoinbaseExtraSize = 2
 	PovMaxCoinbaseExtraSize = 100
 )
+
+func PovIsAlgoSupported(algoType types.PovAlgoType) bool {
+	if algoType == types.ALGO_SHA256D ||
+		algoType == types.ALGO_SCRYPT ||
+		algoType == types.ALGO_X11 ||
+		algoType == types.ALGO_HYBRID {
+		return true
+	}
+	return false
+}
