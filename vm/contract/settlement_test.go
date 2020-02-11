@@ -19,6 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bluele/gcache"
+	"github.com/qlcchain/go-qlc/common/sync"
+
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -109,19 +112,33 @@ var (
 	ac2      = types.NewAccount(priv2)
 
 	createContractParam = cabi.CreateContractParam{
-		PartyA:      ac1.Address(),
-		PartyAName:  "c1",
-		PartyB:      ac2.Address(),
-		PartyBName:  "c2",
-		Previous:    mock.Hash(),
-		ServiceId:   mock.Hash().String(),
-		Mcc:         1,
-		Mnc:         2,
-		TotalAmount: 100,
-		UnitPrice:   2,
-		Currency:    "USD",
-		SignDate:    time.Now().Unix(),
-		SignatureA:  types.ZeroSignature,
+		PartyA: cabi.Contractor{
+			Address: mock.Address(),
+			Name:    "PCCWG",
+		},
+		PartyB: cabi.Contractor{
+			Address: mock.Address(),
+			Name:    "HKTCSL",
+		},
+		Previous: mock.Hash(),
+		Services: []cabi.ContractService{{
+			ServiceId:   mock.Hash().String(),
+			Mcc:         1,
+			Mnc:         2,
+			TotalAmount: 10,
+			UnitPrice:   2,
+			Currency:    "USD",
+		}, {
+			ServiceId:   mock.Hash().String(),
+			Mcc:         22,
+			Mnc:         1,
+			TotalAmount: 30,
+			UnitPrice:   4,
+			Currency:    "USD",
+		}},
+		SignDate:  time.Now().AddDate(0, 0, -5).Unix(),
+		StartDate: time.Now().AddDate(0, 0, -2).Unix(),
+		EndData:   time.Now().AddDate(1, 0, 2).Unix(),
 	}
 )
 
@@ -229,6 +246,7 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 	defer teardownTestCase(t)
 
 	a1 := ac1.Address()
+	a2 := ac2.Address()
 	if am, err := l.GetAccountMeta(a1); err != nil {
 		t.Fatal(err)
 	} else {
@@ -249,10 +267,10 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 	}
 
 	param := createContractParam
+	param.PartyA.Address = a1
+	param.PartyB.Address = a2
 	param.Previous = tm.Header
-	if err = param.Sign(ac1); err != nil {
-		t.Fatal(err)
-	}
+
 	balance, err := param.Balance()
 	if err != nil {
 		t.Fatal(err)
@@ -261,11 +279,11 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 		t.Fatalf("not enough balance, [%s] of [%s]", balance.String(), tm.Balance.String())
 	}
 
-	if singedData, err := param.ToABI(); err == nil {
+	if abi, err := param.ToABI(); err == nil {
 		sb := &types.StateBlock{
 			Type:           types.ContractSend,
 			Token:          tm.Type,
-			Address:        param.PartyA,
+			Address:        param.PartyA.Address,
 			Balance:        tm.Balance.Sub(balance),
 			Vote:           types.ZeroBalance,
 			Network:        types.ZeroBalance,
@@ -274,9 +292,11 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 			Previous:       param.Previous,
 			Link:           types.Hash(types.SettlementAddress),
 			Representative: tm.Representative,
-			Data:           singedData,
+			Data:           abi,
 			Timestamp:      common.TimeNow().Unix(),
 		}
+
+		sb.Signature = ac1.Sign(sb.GetHash())
 
 		h := ctx.Cache.Trie().Hash()
 		if h != nil {
@@ -309,7 +329,9 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 			t.Fatal(err)
 		} else {
 			if len(rb) > 0 {
-				t.Log(rb[0].Block)
+				rb1 := rb[0].Block
+				rb1.Signature = ac1.Sign(rb1.GetHash())
+				t.Log(rb1.String())
 			} else {
 				t.Fatal("fail to generate create contract reward block")
 			}
@@ -318,11 +340,13 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 		if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
 			t.Fatal(err)
 		} else {
-			a2 := ac2.Address()
+			if len(contractParams) == 0 {
+				t.Fatal("can not find any contact params")
+			}
 			for _, cp := range contractParams {
 				t.Log(cp.String())
-				if cp.PartyB != a2 {
-					t.Fatalf("invalid contract, partyB exp: %s,act: %s", a2.String(), cp.PartyB.String())
+				if cp.PartyB.Address != a2 {
+					t.Fatalf("invalid contract, partyB exp: %s,act: %s", a2.String(), cp.PartyB.Address.String())
 				}
 				if address, err := cp.Address(); err != nil {
 					t.Fatal(err)
@@ -330,64 +354,64 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 					sc := cabi.SignContractParam{
 						ContractAddress: address,
 						ConfirmDate:     time.Now().Unix(),
-						SignatureB:      types.Signature{},
 					}
-					if h, err := types.HashBytes(sc.ContractAddress[:], util.BE_Int2Bytes(sc.ConfirmDate)); err != nil {
+					tm2, err := ctx.GetTokenMeta(a2, common.GasToken())
+					if err != nil {
 						t.Fatal(err)
-					} else {
-						sc.SignatureB = ac2.Sign(h)
-						tm2, err := ctx.GetTokenMeta(a2, common.GasToken())
-						if err != nil {
+					}
+					if tm2 == nil {
+						t.Fatalf("failed to find token from %s", a2.String())
+					}
+
+					signContract := &SignContract{}
+
+					if singedData, err := sc.ToABI(); err == nil {
+						sb2 := &types.StateBlock{
+							Type:           types.ContractSend,
+							Token:          tm2.Type,
+							Address:        a2,
+							Balance:        tm2.Balance,
+							Vote:           types.ZeroBalance,
+							Network:        types.ZeroBalance,
+							Oracle:         types.ZeroBalance,
+							Storage:        types.ZeroBalance,
+							Previous:       tm2.Header,
+							Link:           types.Hash(types.SettlementAddress),
+							Representative: tm.Representative,
+							Data:           singedData,
+							Timestamp:      common.TimeNow().Unix(),
+						}
+
+						sb2.Signature = ac2.Sign(sb2.GetHash())
+						if pk, info, err := signContract.ProcessSend(ctx, sb2); err != nil {
 							t.Fatal(err)
-						}
-						if tm2 == nil {
-							t.Fatalf("failed to find token from %s", a2.String())
-						}
-
-						signContract := &SignContract{}
-
-						if singedData, err := sc.ToABI(); err == nil {
-							sb2 := &types.StateBlock{
-								Type:           types.ContractSend,
-								Token:          tm.Type,
-								Address:        a2,
-								Balance:        tm.Balance,
-								Vote:           types.ZeroBalance,
-								Network:        types.ZeroBalance,
-								Oracle:         types.ZeroBalance,
-								Storage:        types.ZeroBalance,
-								Previous:       tm.Header,
-								Link:           types.Hash(types.SettlementAddress),
-								Representative: tm.Representative,
-								Data:           singedData,
-								Timestamp:      common.TimeNow().Unix(),
-							}
-							if pk, info, err := signContract.ProcessSend(ctx, sb2); err != nil {
+						} else {
+							t.Log(pk, " >>> ", info)
+							if err := ctx.SaveStorage(); err != nil {
 								t.Fatal(err)
-							} else {
-								t.Log(pk, " >>> ", info)
-								if err := ctx.SaveStorage(); err != nil {
-									t.Fatal(err)
-								}
+							}
 
-								if available := cabi.IsContractAvailable(ctx, &address); !available {
-									t.Fatalf("failed to verify contract %s", address.String())
+							if available := cabi.IsContractAvailable(ctx, &address); !available {
+								t.Fatalf("failed to verify contract %s", address.String())
+							} else {
+								rev2 := &types.StateBlock{
+									Timestamp: common.TimeNow().Unix(),
+								}
+								if rb, err := signContract.DoReceive(ctx, rev2, sb2); err != nil {
+									t.Fatal(err)
 								} else {
-									rev2 := &types.StateBlock{
-										Timestamp: common.TimeNow().Unix(),
-									}
-									if rb, err := signContract.DoReceive(ctx, rev2, sb2); err != nil {
-										t.Fatal(err)
+									if len(rb) > 0 {
+										rb2 := rb[0].Block
+										rb2.Signature = ac2.Sign(rb2.GetHash())
+										t.Log(rb2.String())
 									} else {
-										if len(rb) > 0 {
-											t.Log(rb[0].Block)
-										} else {
-											t.Fatal("fail to generate sign contract reward block")
-										}
+										t.Fatal("fail to generate sign contract reward block")
 									}
 								}
 							}
 						}
+					} else {
+						t.Fatal(err)
 					}
 				}
 			}
@@ -440,7 +464,7 @@ func TestCreateContract_GetDescribe(t *testing.T) {
 			name: "default",
 			want: Describe{
 				specVer:       SpecVer2,
-				withSignature: false,
+				withSignature: true,
 				withPending:   true,
 			},
 		},
@@ -556,7 +580,7 @@ func TestProcessCDR_GetDescribe(t *testing.T) {
 			name: "default",
 			want: Describe{
 				specVer:       SpecVer2,
-				withSignature: false,
+				withSignature: true,
 				withPending:   true,
 			},
 		},
@@ -672,7 +696,7 @@ func TestSignContract_GetDescribe(t *testing.T) {
 			name: "",
 			want: Describe{
 				specVer:       SpecVer2,
-				withSignature: false,
+				withSignature: true,
 				withPending:   true,
 			},
 		},
@@ -740,5 +764,57 @@ func TestSignContract_GetRefundData(t *testing.T) {
 				t.Errorf("GetRefundData() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_newLocker(t *testing.T) {
+	l := &locker{cache: gcache.New(100).LRU().LoaderFunc(func(key interface{}) (i interface{}, err error) {
+		return sync.NewMutex(), nil
+	}).Expiration(time.Second * 2).Build()}
+	k := []byte("test")
+
+	var m1 *sync.Mutex
+	if m, err := l.Get(k); err != nil {
+		t.Fatal(err)
+	} else {
+		m1 = m
+		m1.Lock()
+		if b := m1.IsLocked(); !b {
+			t.Fatal("invalid lock status")
+		}
+		m1.Unlock()
+		if m2, err := l.Get(k); err != nil {
+			t.Fatal(err)
+		} else {
+			if m1 != m2 {
+				t.Fatalf("invalid m1: %v, m2: %v", m1, m2)
+			} else {
+				t.Log(m1, m2)
+			}
+		}
+	}
+
+	time.Sleep(3 * time.Second)
+
+	all := l.cache.GetALL(true)
+
+	for k, v := range all {
+		t.Log(k, v)
+	}
+
+	if m3, err := l.Get(k); err != nil {
+		t.Fatal(err)
+	} else {
+		if m3 == m1 {
+			t.Fatalf("invalid expire locker, %v,%v", m1, m3)
+		} else {
+			t.Log(m1, m3)
+		}
+	}
+
+	all = l.cache.GetALL(true)
+
+	for k, v := range all {
+		t.Log("all2: ", k, v)
 	}
 }

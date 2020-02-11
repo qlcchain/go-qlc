@@ -98,7 +98,8 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 	}
 	ctx := vmstore.NewVMContext(s.l)
 
-	if tm, err := ctx.GetTokenMeta(param.PartyA, common.GasToken()); err != nil {
+	addr := param.PartyA.Address
+	if tm, err := ctx.GetTokenMeta(addr, common.GasToken()); err != nil {
 		return nil, err
 	} else {
 		balance, err := param.Balance()
@@ -113,7 +114,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,
-				Address:        param.PartyA,
+				Address:        addr,
 				Balance:        tm.Balance.Sub(balance),
 				Vote:           types.ZeroBalance,
 				Network:        types.ZeroBalance,
@@ -157,7 +158,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 		return nil, errors.New("invalid input param")
 	}
 
-	if isVerified, err := param.SignContractParam.Verify(param.Address); err != nil {
+	if isVerified, err := param.SignContractParam.Verify(); err != nil {
 		return nil, err
 	} else if !isVerified {
 		return nil, errors.New("invalid input param")
@@ -172,8 +173,8 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 				return nil, err
 			} else {
 				// verify partyB
-				if cp.PartyB != param.Address {
-					return nil, fmt.Errorf("invalid partyB, exp: %s, act: %s", cp.PartyB.String(), param.Address.String())
+				if cp.PartyB.Address != param.Address {
+					return nil, fmt.Errorf("invalid partyB, exp: %s, act: %s", cp.PartyB.Address.String(), param.Address.String())
 				}
 			}
 		} else {
@@ -281,18 +282,55 @@ func (s *SettlementAPI) GetContractsAsPartyB(addr *types.Address, count int, off
 	})
 }
 
-// TODO: to be confirmed
-type CDRParam struct {
-	cabi.CDRParam
-	Signature types.Signature
-}
-
 // GetProcessCDRBlock save CDR data for the settlement
-// @param addr settlement smart contract address
-// @param params CDR params to be processed
-// @return contract send block to be processed
-func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, params []*CDRParam) ([]*types.StateBlock, error) {
-	return nil, nil
+// @param addr user qlc address
+// @param param CDR params to be processed
+// @return contract send block without signature
+func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRParam) (*types.StateBlock, error) {
+	ctx := vmstore.NewVMContext(s.l)
+
+	if c, err := cabi.GetSettlementContract(ctx, addr, param); err != nil {
+		return nil, err
+	} else {
+		if tm, err := ctx.GetTokenMeta(*addr, common.GasToken()); err != nil {
+			return nil, err
+		} else {
+			address, err := c.Address()
+			if err != nil {
+				return nil, err
+			}
+			if singedData, err := param.ToABI(); err == nil {
+				sb := &types.StateBlock{
+					Type:           types.ContractSend,
+					Token:          tm.Type,
+					Address:        *addr,
+					Balance:        tm.Balance,
+					Vote:           types.ZeroBalance,
+					Network:        types.ZeroBalance,
+					Oracle:         types.ZeroBalance,
+					Storage:        types.ZeroBalance,
+					Previous:       tm.Header,
+					Link:           types.Hash(address),
+					Representative: tm.Representative,
+					Data:           singedData,
+					Timestamp:      common.TimeNow().Unix(),
+				}
+
+				h := ctx.Cache.Trie().Hash()
+				if h != nil {
+					povHeader, err := s.l.GetLatestPovHeader()
+					if err != nil {
+						return nil, fmt.Errorf("get pov header error: %s", err)
+					}
+					sb.PoVHeight = povHeader.GetHeight()
+					sb.Extra = *h
+				}
+				return sb, nil
+			} else {
+				return nil, err
+			}
+		}
+	}
 }
 
 // TODO: report data te be confirmed

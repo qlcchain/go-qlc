@@ -9,8 +9,83 @@ import (
 )
 
 const (
+	// ContractStatusActiveStage1 is a ContractStatus of type ActiveStage1
+	ContractStatusActiveStage1 ContractStatus = iota
+	// ContractStatusActived is a ContractStatus of type Actived
+	ContractStatusActived
+	// ContractStatusDestroyStage1 is a ContractStatus of type DestroyStage1
+	ContractStatusDestroyStage1
+	// ContractStatusDestroyed is a ContractStatus of type Destroyed
+	ContractStatusDestroyed
+)
+
+const _ContractStatusName = "ActiveStage1ActivedDestroyStage1Destroyed"
+
+var _ContractStatusNames = []string{
+	_ContractStatusName[0:12],
+	_ContractStatusName[12:19],
+	_ContractStatusName[19:32],
+	_ContractStatusName[32:41],
+}
+
+// ContractStatusNames returns a list of possible string values of ContractStatus.
+func ContractStatusNames() []string {
+	tmp := make([]string, len(_ContractStatusNames))
+	copy(tmp, _ContractStatusNames)
+	return tmp
+}
+
+var _ContractStatusMap = map[ContractStatus]string{
+	0: _ContractStatusName[0:12],
+	1: _ContractStatusName[12:19],
+	2: _ContractStatusName[19:32],
+	3: _ContractStatusName[32:41],
+}
+
+// String implements the Stringer interface.
+func (x ContractStatus) String() string {
+	if str, ok := _ContractStatusMap[x]; ok {
+		return str
+	}
+	return fmt.Sprintf("ContractStatus(%d)", x)
+}
+
+var _ContractStatusValue = map[string]ContractStatus{
+	_ContractStatusName[0:12]:  0,
+	_ContractStatusName[12:19]: 1,
+	_ContractStatusName[19:32]: 2,
+	_ContractStatusName[32:41]: 3,
+}
+
+// ParseContractStatus attempts to convert a string to a ContractStatus
+func ParseContractStatus(name string) (ContractStatus, error) {
+	if x, ok := _ContractStatusValue[name]; ok {
+		return x, nil
+	}
+	return ContractStatus(0), fmt.Errorf("%s is not a valid ContractStatus, try [%s]", name, strings.Join(_ContractStatusNames, ", "))
+}
+
+// MarshalText implements the text marshaller method
+func (x *ContractStatus) MarshalText() ([]byte, error) {
+	return []byte(x.String()), nil
+}
+
+// UnmarshalText implements the text unmarshaller method
+func (x *ContractStatus) UnmarshalText(text []byte) error {
+	name := string(text)
+	tmp, err := ParseContractStatus(name)
+	if err != nil {
+		return err
+	}
+	*x = tmp
+	return nil
+}
+
+const (
+	// SettlementStatusUnknown is a SettlementStatus of type Unknown
+	SettlementStatusUnknown SettlementStatus = iota
 	// SettlementStatusStage1 is a SettlementStatus of type Stage1
-	SettlementStatusStage1 SettlementStatus = iota
+	SettlementStatusStage1
 	// SettlementStatusSuccess is a SettlementStatus of type Success
 	SettlementStatusSuccess
 	// SettlementStatusFailure is a SettlementStatus of type Failure
@@ -21,14 +96,15 @@ const (
 	SettlementStatusDuplicate
 )
 
-const _SettlementStatusName = "stage1successfailuremissingduplicate"
+const _SettlementStatusName = "unknownstage1successfailuremissingduplicate"
 
 var _SettlementStatusNames = []string{
-	_SettlementStatusName[0:6],
-	_SettlementStatusName[6:13],
+	_SettlementStatusName[0:7],
+	_SettlementStatusName[7:13],
 	_SettlementStatusName[13:20],
 	_SettlementStatusName[20:27],
-	_SettlementStatusName[27:36],
+	_SettlementStatusName[27:34],
+	_SettlementStatusName[34:43],
 }
 
 // SettlementStatusNames returns a list of possible string values of SettlementStatus.
@@ -39,11 +115,12 @@ func SettlementStatusNames() []string {
 }
 
 var _SettlementStatusMap = map[SettlementStatus]string{
-	0: _SettlementStatusName[0:6],
-	1: _SettlementStatusName[6:13],
+	0: _SettlementStatusName[0:7],
+	1: _SettlementStatusName[7:13],
 	2: _SettlementStatusName[13:20],
 	3: _SettlementStatusName[20:27],
-	4: _SettlementStatusName[27:36],
+	4: _SettlementStatusName[27:34],
+	5: _SettlementStatusName[34:43],
 }
 
 // String implements the Stringer interface.
@@ -55,11 +132,12 @@ func (x SettlementStatus) String() string {
 }
 
 var _SettlementStatusValue = map[string]SettlementStatus{
-	_SettlementStatusName[0:6]:   0,
-	_SettlementStatusName[6:13]:  1,
+	_SettlementStatusName[0:7]:   0,
+	_SettlementStatusName[7:13]:  1,
 	_SettlementStatusName[13:20]: 2,
 	_SettlementStatusName[20:27]: 3,
-	_SettlementStatusName[27:36]: 4,
+	_SettlementStatusName[27:34]: 4,
+	_SettlementStatusName[34:43]: 5,
 }
 
 // ParseSettlementStatus attempts to convert a string to a SettlementStatus

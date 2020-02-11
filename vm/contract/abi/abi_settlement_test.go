@@ -9,7 +9,6 @@ package abi
 
 import (
 	"bytes"
-	"fmt"
 	"math"
 	"math/big"
 	"os"
@@ -30,27 +29,52 @@ import (
 
 var (
 	createContractParam = CreateContractParam{
-		PartyA:      mock.Address(),
-		PartyAName:  "c1",
-		PartyB:      mock.Address(),
-		PartyBName:  "c2",
-		Previous:    mock.Hash(),
-		ServiceId:   mock.Hash().String(),
-		Mcc:         1,
-		Mnc:         2,
-		TotalAmount: 100,
-		UnitPrice:   2,
-		Currency:    "USD",
-		SignDate:    time.Now().Unix(),
-		SignatureA:  types.ZeroSignature,
+		PartyA: Contractor{
+			Address: mock.Address(),
+			Name:    "PCCWG",
+		},
+		PartyB: Contractor{
+			Address: mock.Address(),
+			Name:    "HKTCSL",
+		},
+		Previous: mock.Hash(),
+		Services: []ContractService{{
+			ServiceId:   mock.Hash().String(),
+			Mcc:         1,
+			Mnc:         2,
+			TotalAmount: 100,
+			UnitPrice:   2,
+			Currency:    "USD",
+		}, {
+			ServiceId:   mock.Hash().String(),
+			Mcc:         22,
+			Mnc:         1,
+			TotalAmount: 300,
+			UnitPrice:   4,
+			Currency:    "USD",
+		}},
+		SignDate:  time.Now().AddDate(0, 0, -5).Unix(),
+		StartDate: time.Now().AddDate(0, 0, -2).Unix(),
+		EndData:   time.Now().AddDate(1, 0, 2).Unix(),
+	}
+
+	cdrParam = CDRParam{
+		Index:         1,
+		SmsDt:         time.Now().Unix(),
+		Sender:        "PCCWG",
+		Destination:   "85257***343",
+		DstCountry:    "Hong Kong",
+		DstOperator:   "HKTCSL",
+		DstMcc:        454,
+		DstMnc:        0,
+		SellPrice:     1,
+		SellCurrency:  "USD",
+		CustomerName:  "Tencent",
+		CustomerID:    "11667",
+		SendingStatus: "Send",
+		DlrStatus:     "Delivered",
 	}
 )
-
-type contractContainer struct {
-	contract *ContractParam
-	a1       *types.Account
-	a2       *types.Account
-}
 
 func setupSettlementTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	t.Parallel()
@@ -75,833 +99,32 @@ func setupSettlementTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) 
 	}, l
 }
 
-func buildContractParam() (param *ContractParam, a1 *types.Account, a2 *types.Account) {
+func buildContractParam() (param *ContractParam) {
 	cp := createContractParam
-	a1 = mock.Account()
-	a2 = mock.Account()
-	cp.PartyA = a1.Address()
-	cp.PartyB = a2.Address()
-	if err := cp.Sign(a1); err != nil {
-		fmt.Println(err)
-	}
+	cp.PartyA.Address = mock.Address()
+	cp.PartyB.Address = mock.Address()
 
 	cd := time.Now().Unix()
 	param = &ContractParam{
 		CreateContractParam: cp,
+		PreStops:            []string{"PCCWG", "test1"},
+		NextStops:           []string{"HKTCSL", "test2"},
 		ConfirmDate:         cd,
-		SignatureB:          nil,
+		Status:              ContractStatusActived,
 	}
-	_ = param.Sign(a2)
 	return
 }
 
-func TestSettlement_CreateContractParam(t *testing.T) {
-	a1 := mock.Account()
-	if err := createContractParam.Sign(a1); err != nil {
-		t.Fatal(err)
-	}
-	t.Log(createContractParam.String())
-	addr1, err := createContractParam.Address()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cp := ContractParam{
-		CreateContractParam: createContractParam,
-		ConfirmDate:         time.Now().Unix() + 100,
-	}
-
-	a2 := mock.Account()
-	if err = cp.Sign(a2); err != nil {
-		t.Fatal(err)
-	}
-	addr2, err := cp.Address()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if addr1 != addr2 {
-		t.Fatalf("invalid addr,%s==>%s", addr1, addr2)
-	}
-	t.Log(cp.String())
-
-	msg, err := createContractParam.MarshalMsg(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	param2 := &CreateContractParam{}
-	_, err = param2.UnmarshalMsg(msg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(createContractParam, *param2) {
-		t.Fatalf("invaid createContractParam,%s,%s", createContractParam.String(), param2.String())
-	}
-
-	msg, err = cp.MarshalMsg(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cp2 := &ContractParam{}
-	_, err = cp2.UnmarshalMsg(msg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(cp, *cp2) {
-		t.Fatalf("invaid createContractParam,%s,%s", cp.String(), cp2.String())
-	}
-}
-
-func TestSettlement_Pack_UnPack(t *testing.T) {
-	a1 := mock.Account()
-	param := createContractParam
-	if err := param.Sign(a1); err != nil {
-		t.Fatal(err)
-	}
-	//t.Log(param.String())
-	if abi, err := param.ToABI(); err == nil {
-		// test convert to json
-		//var js bytes.Buffer
-		//if _, err := msgp.UnmarshalAsJSON(&js, abi); err == nil {
-		//	tmp := &CreateContractParam{}
-		//	if err := json.Unmarshal(js.Bytes(), tmp); err == nil {
-		//		t.Log(tmp.String())
-		//	} else {
-		//		t.Fatal(err)
-		//	}
-		//} else {
-		//	t.Fatal(err)
-		//}
-
-		param2 := new(CreateContractParam)
-		if err := param2.FromABI(abi); err != nil {
-			t.Fatal(err)
-		} else {
-			a1, _ := param.Address()
-			a2, _ := param2.Address()
-			if a1 != a2 {
-				t.Fatalf("invalid pack/unpack exp: %v, act: %v", param, param2)
-			}
-		}
-	} else {
-		t.Fatal(err)
-	}
-}
-
-func TestSettlement_ContractParam_Equal(t *testing.T) {
-	param, a1, a2 := buildContractParam()
-	cp := param.CreateContractParam
-	cp.PartyA = a1.Address()
-	cp.PartyB = a2.Address()
-
-	cp2 := cp
-	cp2.PartyA = mock.Address()
-
-	cp3 := cp
-	cp3.SignatureA = types.ZeroSignature
-
-	type fields struct {
-		CreateContractParam CreateContractParam
-		ConfirmDate         int64
-		SignatureB          *types.Signature
-	}
-	type args struct {
-		cp *CreateContractParam
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "equal",
-			fields: fields{
-				CreateContractParam: cp,
-				ConfirmDate:         param.ConfirmDate,
-				SignatureB:          param.SignatureB,
-			},
-			args: args{
-				cp: &cp,
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "invalid signB",
-			fields: fields{
-				CreateContractParam: cp,
-				ConfirmDate:         param.ConfirmDate,
-				SignatureB:          &types.ZeroSignature,
-			},
-			args: args{
-				cp: &cp,
-			},
-			want:    true,
-			wantErr: false,
-		}, {
-			name: "invalid signA",
-			fields: fields{
-				CreateContractParam: cp2,
-				ConfirmDate:         param.ConfirmDate,
-				SignatureB:          param.SignatureB,
-			},
-			args: args{
-				cp: &cp,
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "zero signA",
-			fields: fields{
-				CreateContractParam: cp3,
-				ConfirmDate:         param.ConfirmDate,
-				SignatureB:          param.SignatureB,
-			},
-			args: args{
-				cp: &cp,
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "nil",
-			fields: fields{
-				CreateContractParam: cp3,
-				ConfirmDate:         param.ConfirmDate,
-				SignatureB:          param.SignatureB,
-			},
-			args: args{
-				cp: nil,
-			},
-			want:    false,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &ContractParam{
-				CreateContractParam: tt.fields.CreateContractParam,
-				ConfirmDate:         tt.fields.ConfirmDate,
-				SignatureB:          tt.fields.SignatureB,
-			}
-			got, err := z.Equal(tt.args.cp)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Equal() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Equal() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSettlement_ContractParam_Sign(t *testing.T) {
-	param, _, a2 := buildContractParam()
-
-	type fields struct {
-		CreateContractParam CreateContractParam
-		ConfirmDate         int64
-		SignatureB          *types.Signature
-	}
-	type args struct {
-		account *types.Account
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "normal",
-			fields: fields{
-				CreateContractParam: param.CreateContractParam,
-				ConfirmDate:         param.ConfirmDate,
-				SignatureB:          param.SignatureB,
-			},
-			args:    args{account: a2},
-			wantErr: false,
-		},
-		{
-			name: "invalid confirm data",
-			fields: fields{
-				CreateContractParam: param.CreateContractParam,
-				ConfirmDate:         0,
-				SignatureB:          param.SignatureB,
-			},
-			args:    args{account: a2},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &ContractParam{
-				CreateContractParam: tt.fields.CreateContractParam,
-				ConfirmDate:         tt.fields.ConfirmDate,
-				SignatureB:          tt.fields.SignatureB,
-			}
-			if err := z.Sign(tt.args.account); (err != nil) != tt.wantErr {
-				t.Errorf("Sign() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestSettlement_ContractParam_String(t *testing.T) {
-	param, _, _ := buildContractParam()
-	s := param.String()
-	if len(s) == 0 {
-		t.Fatal("invalid string")
-	}
-}
-
-func TestSettlement_CreateContractParam_Address(t *testing.T) {
-	param, _, _ := buildContractParam()
-	cp := param.CreateContractParam
-
-	address, err := cp.Address()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	type fields struct {
-		PartyA      types.Address
-		PartyAName  string
-		PartyB      types.Address
-		PartyBName  string
-		Previous    types.Hash
-		ServiceId   string
-		Mcc         uint64
-		Mnc         uint64
-		TotalAmount uint64
-		UnitPrice   uint64
-		Currency    string
-		SignDate    int64
-		SignatureA  types.Signature
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		want    types.Address
-		wantErr bool
-	}{
-		{
-			name: "normal",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    address,
-			wantErr: false,
-		},
-		{
-			name: "invalid name",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  "",
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    types.ZeroAddress,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &CreateContractParam{
-				PartyA:      tt.fields.PartyA,
-				PartyAName:  tt.fields.PartyAName,
-				PartyB:      tt.fields.PartyB,
-				PartyBName:  tt.fields.PartyBName,
-				Previous:    tt.fields.Previous,
-				ServiceId:   tt.fields.ServiceId,
-				Mcc:         tt.fields.Mcc,
-				Mnc:         tt.fields.Mnc,
-				TotalAmount: tt.fields.TotalAmount,
-				UnitPrice:   tt.fields.UnitPrice,
-				Currency:    tt.fields.Currency,
-				SignDate:    tt.fields.SignDate,
-				SignatureA:  tt.fields.SignatureA,
-			}
-			got, err := z.Address()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Address() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Address() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestCreateContractParam_Balance(t *testing.T) {
-	param, _, _ := buildContractParam()
-	cp := param.CreateContractParam
-
-	type fields struct {
-		PartyA      types.Address
-		PartyAName  string
-		PartyB      types.Address
-		PartyBName  string
-		Previous    types.Hash
-		ServiceId   string
-		Mcc         uint64
-		Mnc         uint64
-		TotalAmount uint64
-		UnitPrice   uint64
-		Currency    string
-		SignDate    int64
-		SignatureA  types.Signature
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		want    types.Balance
-		wantErr bool
-	}{
-		{
-			name: "equal",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    types.Balance{Int: new(big.Int).Mul(new(big.Int).SetUint64(cp.TotalAmount), new(big.Int).SetUint64(cp.UnitPrice))},
-			wantErr: false,
-		},
-		{
-			name: "overflow",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: math.MaxUint64,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    types.ZeroBalance,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &CreateContractParam{
-				PartyA:      tt.fields.PartyA,
-				PartyAName:  tt.fields.PartyAName,
-				PartyB:      tt.fields.PartyB,
-				PartyBName:  tt.fields.PartyBName,
-				Previous:    tt.fields.Previous,
-				ServiceId:   tt.fields.ServiceId,
-				Mcc:         tt.fields.Mcc,
-				Mnc:         tt.fields.Mnc,
-				TotalAmount: tt.fields.TotalAmount,
-				UnitPrice:   tt.fields.UnitPrice,
-				Currency:    tt.fields.Currency,
-				SignDate:    tt.fields.SignDate,
-				SignatureA:  tt.fields.SignatureA,
-			}
-			got, err := z.Balance()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Balance() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Balance() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSettlement_CreateContractParam_FromABI(t *testing.T) {
-	param, _, _ := buildContractParam()
-	cp := param.CreateContractParam
-	abi, err := cp.ToABI()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	type fields struct {
-		PartyA      types.Address
-		PartyAName  string
-		PartyB      types.Address
-		PartyBName  string
-		Previous    types.Hash
-		ServiceId   string
-		Mcc         uint64
-		Mnc         uint64
-		TotalAmount uint64
-		UnitPrice   uint64
-		Currency    string
-		SignDate    int64
-		SignatureA  types.Signature
-	}
-	type args struct {
-		data []byte
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "equal",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			args: args{
-				data: abi,
-			},
-			wantErr: false,
-		}, {
-			name: "invalid data",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			args: args{
-				data: abi[5:],
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &CreateContractParam{
-				PartyA:      tt.fields.PartyA,
-				PartyAName:  tt.fields.PartyAName,
-				PartyB:      tt.fields.PartyB,
-				PartyBName:  tt.fields.PartyBName,
-				Previous:    tt.fields.Previous,
-				ServiceId:   tt.fields.ServiceId,
-				Mcc:         tt.fields.Mcc,
-				Mnc:         tt.fields.Mnc,
-				TotalAmount: tt.fields.TotalAmount,
-				UnitPrice:   tt.fields.UnitPrice,
-				Currency:    tt.fields.Currency,
-				SignDate:    tt.fields.SignDate,
-				SignatureA:  tt.fields.SignatureA,
-			}
-			if err := z.FromABI(tt.args.data); (err != nil) != tt.wantErr {
-				t.Errorf("FromABI() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestSettlement_CreateContractParam_Sign(t *testing.T) {
-	param, a1, _ := buildContractParam()
-	cp := param.CreateContractParam
-
-	type fields struct {
-		PartyA      types.Address
-		PartyAName  string
-		PartyB      types.Address
-		PartyBName  string
-		Previous    types.Hash
-		ServiceId   string
-		Mcc         uint64
-		Mnc         uint64
-		TotalAmount uint64
-		UnitPrice   uint64
-		Currency    string
-		SignDate    int64
-		SignatureA  types.Signature
-	}
-	type args struct {
-		account *types.Account
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "normal",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			args: args{
-				account: a1,
-			},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &CreateContractParam{
-				PartyA:      tt.fields.PartyA,
-				PartyAName:  tt.fields.PartyAName,
-				PartyB:      tt.fields.PartyB,
-				PartyBName:  tt.fields.PartyBName,
-				Previous:    tt.fields.Previous,
-				ServiceId:   tt.fields.ServiceId,
-				Mcc:         tt.fields.Mcc,
-				Mnc:         tt.fields.Mnc,
-				TotalAmount: tt.fields.TotalAmount,
-				UnitPrice:   tt.fields.UnitPrice,
-				Currency:    tt.fields.Currency,
-				SignDate:    tt.fields.SignDate,
-				SignatureA:  tt.fields.SignatureA,
-			}
-			if err := z.Sign(tt.args.account); (err != nil) != tt.wantErr {
-				t.Errorf("Sign() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestSettlement_CreateContractParam_String(t *testing.T) {
-	param, _, _ := buildContractParam()
-	cp := param.CreateContractParam
-	s := cp.String()
-	if len(s) == 0 {
-		t.Fatal("invalid string")
-	}
-}
-
-func TestSettlement_CreateContractParam_ToABI(t *testing.T) {
-	param, _, _ := buildContractParam()
-	cp := param.CreateContractParam
-
-	abi, err := cp.ToABI()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	type fields struct {
-		PartyA      types.Address
-		PartyAName  string
-		PartyB      types.Address
-		PartyBName  string
-		Previous    types.Hash
-		ServiceId   string
-		Mcc         uint64
-		Mnc         uint64
-		TotalAmount uint64
-		UnitPrice   uint64
-		Currency    string
-		SignDate    int64
-		SignatureA  types.Signature
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		want    []byte
-		wantErr bool
-	}{
-		{
-			name: "normal",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    abi,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &CreateContractParam{
-				PartyA:      tt.fields.PartyA,
-				PartyAName:  tt.fields.PartyAName,
-				PartyB:      tt.fields.PartyB,
-				PartyBName:  tt.fields.PartyBName,
-				Previous:    tt.fields.Previous,
-				ServiceId:   tt.fields.ServiceId,
-				Mcc:         tt.fields.Mcc,
-				Mnc:         tt.fields.Mnc,
-				TotalAmount: tt.fields.TotalAmount,
-				UnitPrice:   tt.fields.UnitPrice,
-				Currency:    tt.fields.Currency,
-				SignDate:    tt.fields.SignDate,
-				SignatureA:  tt.fields.SignatureA,
-			}
-			got, err := z.ToABI()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ToABI() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ToABI() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSettlement_CreateContractParam_ToContractParam(t *testing.T) {
-	param, _, _ := buildContractParam()
-	cp := param.CreateContractParam
-	exp := &ContractParam{
-		CreateContractParam: cp,
-		ConfirmDate:         0,
-		SignatureB:          nil,
-	}
-	type fields struct {
-		PartyA      types.Address
-		PartyAName  string
-		PartyB      types.Address
-		PartyBName  string
-		Previous    types.Hash
-		ServiceId   string
-		Mcc         uint64
-		Mnc         uint64
-		TotalAmount uint64
-		UnitPrice   uint64
-		Currency    string
-		SignDate    int64
-		SignatureA  types.Signature
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *ContractParam
-	}{
-		{
-			name: "normal",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want: exp,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &CreateContractParam{
-				PartyA:      tt.fields.PartyA,
-				PartyAName:  tt.fields.PartyAName,
-				PartyB:      tt.fields.PartyB,
-				PartyBName:  tt.fields.PartyBName,
-				Previous:    tt.fields.Previous,
-				ServiceId:   tt.fields.ServiceId,
-				Mcc:         tt.fields.Mcc,
-				Mnc:         tt.fields.Mnc,
-				TotalAmount: tt.fields.TotalAmount,
-				UnitPrice:   tt.fields.UnitPrice,
-				Currency:    tt.fields.Currency,
-				SignDate:    tt.fields.SignDate,
-				SignatureA:  tt.fields.SignatureA,
-			}
-			if got := z.ToContractParam(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ToContractParam() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSettlement_GetContractsByAddress(t *testing.T) {
+func TestGetContractsByAddress(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
-	var contracts []*contractContainer
+	var contracts []*ContractParam
+
 	for i := 0; i < 4; i++ {
-		param, a1, a2 := buildContractParam()
-		contracts = append(contracts, &contractContainer{
-			contract: param,
-			a1:       a1,
-			a2:       a2,
-		})
+		param := buildContractParam()
+		contracts = append(contracts, param)
 		a, _ := param.Address()
 		abi, _ := param.ToABI()
 		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
@@ -923,7 +146,8 @@ func TestSettlement_GetContractsByAddress(t *testing.T) {
 		t.Fatalf("invalid mock contract data, exp: 4, act: %d", len(contracts))
 	}
 
-	a := contracts[0].a1.Address()
+	a := contracts[0].PartyA.Address
+
 	type args struct {
 		ctx  *vmstore.VMContext
 		addr *types.Address
@@ -940,7 +164,7 @@ func TestSettlement_GetContractsByAddress(t *testing.T) {
 				ctx:  ctx,
 				addr: &a,
 			},
-			want:    []*ContractParam{contracts[0].contract},
+			want:    []*ContractParam{contracts[0]},
 			wantErr: false,
 		},
 	}
@@ -966,14 +190,15 @@ func TestSettlement_GetContractsByAddress(t *testing.T) {
 	}
 }
 
-func mockContractData(size int) []*contractContainer {
-	var contracts []*contractContainer
-	accounts := []*types.Account{mock.Account(), mock.Account()}
+func mockContractData(size int) []*ContractParam {
+	var contracts []*ContractParam
+	accounts := []types.Address{mock.Address(), mock.Address()}
 
 	for i := 0; i < size; i++ {
 		cp := createContractParam
-		var a1 *types.Account
-		var a2 *types.Account
+
+		var a1 types.Address
+		var a2 types.Address
 		if i%2 == 0 {
 			a1 = accounts[0]
 			a2 = accounts[1]
@@ -981,255 +206,112 @@ func mockContractData(size int) []*contractContainer {
 			a1 = accounts[1]
 			a2 = accounts[0]
 		}
-		cp.PartyA = a1.Address()
-		cp.PartyB = a2.Address()
-		if err := cp.Sign(a1); err != nil {
-			fmt.Println(err)
+		cp.PartyA.Address = a1
+		cp.PartyB.Address = a2
+
+		for _, s := range cp.Services {
+			s.Mcc = s.Mcc + uint64(i)
+			s.Mnc = s.Mnc + uint64(i)
 		}
 
 		cd := time.Now().Unix()
 		param := &ContractParam{
 			CreateContractParam: cp,
 			ConfirmDate:         cd,
-			SignatureB:          nil,
 		}
-		_ = param.Sign(a2)
-		contracts = append(contracts, &contractContainer{
-			contract: param,
-			a1:       a1,
-			a2:       a2,
-		})
+		contracts = append(contracts, param)
 	}
 	return contracts
 }
 
-func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
-	data := mockContractData(2)
+//
+//func TestSettlement_IsContractAvailable(t *testing.T) {
+//	teardownTestCase, l := setupTestCase(t)
+//	defer teardownTestCase(t)
+//
+//	ctx := vmstore.NewVMContext(l)
+//
+//	var contracts []*contractContainer
+//
+//	for i := 0; i < 2; i++ {
+//		param, a1, a2 := buildContractParam()
+//		if i%2 == 1 {
+//			param.SignatureB = &types.ZeroSignature
+//		}
+//		contracts = append(contracts, &contractContainer{
+//			contract: param,
+//			a1:       a1,
+//			a2:       a2,
+//		})
+//		a, _ := param.Address()
+//		abi, _ := param.ToABI()
+//		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+//			t.Fatal(err)
+//		}
+//
+//		if storage, err := ctx.GetStorage(types.SettlementAddress[:], a[:]); err == nil {
+//			if !bytes.Equal(storage, abi) {
+//				t.Fatalf("invalid saved contract, exp: %v, act: %v", abi, storage)
+//			} else {
+//				if p, err := ParseContractParam(storage); err == nil {
+//					t.Log(a.String(), ": ", p.String())
+//				} else {
+//					t.Fatal(err)
+//				}
+//			}
+//		}
+//	}
+//
+//	if err := ctx.SaveStorage(); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	if contracts == nil || len(contracts) != 2 {
+//		t.Fatal("invalid mock contract data")
+//	}
+//
+//	a1, _ := contracts[0].contract.Address()
+//	a2, _ := contracts[1].contract.Address()
+//
+//	t.Log(a1.String(), " >>> ", a2.String())
+//
+//	type args struct {
+//		ctx  *vmstore.VMContext
+//		addr *types.Address
+//	}
+//	tests := []struct {
+//		name string
+//		args args
+//		want bool
+//	}{
+//		{
+//			name: "ok",
+//			args: args{
+//				ctx:  ctx,
+//				addr: &a1,
+//			},
+//			want: true,
+//		},
+//		{
+//			name: "fail",
+//			args: args{
+//				ctx:  ctx,
+//				addr: &a2,
+//			},
+//			want: false,
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			if got := IsContractAvailable(tt.args.ctx, tt.args.addr); got != tt.want {
+//				t.Errorf("IsContractAvailable() of %s = %v, want %v", tt.args.addr.String(), got, tt.want)
+//			}
+//		})
+//	}
+//}
 
-	if len(data) != 2 {
-		t.Fatalf("invalid mock data, %v", data)
-	}
-
-	for _, d := range data {
-		a, _ := d.contract.Address()
-		abi, _ := d.contract.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := ctx.SaveStorage(); err != nil {
-		t.Fatal(err)
-	}
-
-	a1 := data[0].a1.Address()
-
-	type args struct {
-		ctx  *vmstore.VMContext
-		addr *types.Address
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []*ContractParam
-		wantErr bool
-	}{
-		{
-			name: "ok",
-			args: args{
-				ctx:  ctx,
-				addr: &a1,
-			},
-			want:    []*ContractParam{data[0].contract},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetContractsIDByAddressAsPartyA(tt.args.ctx, tt.args.addr)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetContractsIDByAddressAsPartyA() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if len(got) != len(tt.want) {
-				t.Fatalf("GetContractsIDByAddressAsPartyA() len(go) != len(tt.want), %d,%d", len(got), len(tt.want))
-			}
-
-			for i := 0; i < len(got); i++ {
-				a1, _ := got[i].Address()
-				a2, _ := tt.want[i].Address()
-				if a1 != a2 {
-					t.Fatalf("GetContractsIDByAddressAsPartyA() i[%d] %v,%v", i, got[i], tt.want[i])
-				}
-			}
-		})
-	}
-}
-
-func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
-	data := mockContractData(2)
-
-	if len(data) != 2 {
-		t.Fatalf("invalid mock data, %v", data)
-	}
-
-	for _, d := range data {
-		a, _ := d.contract.Address()
-		abi, _ := d.contract.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := ctx.SaveStorage(); err != nil {
-		t.Fatal(err)
-	}
-
-	a1 := mock.Address()
-	a2 := data[0].a2.Address()
-
-	type args struct {
-		ctx  *vmstore.VMContext
-		addr *types.Address
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []*ContractParam
-		wantErr bool
-	}{
-		{
-			name: "ok",
-			args: args{
-				ctx:  ctx,
-				addr: &a2,
-			},
-			want:    []*ContractParam{data[0].contract},
-			wantErr: false,
-		},
-		{
-			name: "empty",
-			args: args{
-				ctx:  ctx,
-				addr: &a1,
-			},
-			want:    []*ContractParam{},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetContractsIDByAddressAsPartyB(tt.args.ctx, tt.args.addr)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetContractsIDByAddressAsPartyB() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if len(got) != len(tt.want) {
-				t.Fatalf("GetContractsIDByAddressAsPartyB() len(go) != len(tt.want), %d,%d", len(got), len(tt.want))
-			}
-
-			for i := 0; i < len(got); i++ {
-				a1, _ := got[i].Address()
-				a2, _ := tt.want[i].Address()
-				if a1 != a2 {
-					t.Fatalf("GetContractsIDByAddressAsPartyB() i[%d] %v,%v", i, got[i], tt.want[i])
-				}
-			}
-		})
-	}
-}
-
-func TestSettlement_IsContractAvailable(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	ctx := vmstore.NewVMContext(l)
-
-	var contracts []*contractContainer
-
-	for i := 0; i < 2; i++ {
-		param, a1, a2 := buildContractParam()
-		if i%2 == 1 {
-			param.SignatureB = &types.ZeroSignature
-		}
-		contracts = append(contracts, &contractContainer{
-			contract: param,
-			a1:       a1,
-			a2:       a2,
-		})
-		a, _ := param.Address()
-		abi, _ := param.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
-			t.Fatal(err)
-		}
-
-		if storage, err := ctx.GetStorage(types.SettlementAddress[:], a[:]); err == nil {
-			if !bytes.Equal(storage, abi) {
-				t.Fatalf("invalid saved contract, exp: %v, act: %v", abi, storage)
-			} else {
-				if p, err := ParseContractParam(storage); err == nil {
-					t.Log(a.String(), ": ", p.String())
-				} else {
-					t.Fatal(err)
-				}
-			}
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
-		t.Fatal(err)
-	}
-
-	if contracts == nil || len(contracts) != 2 {
-		t.Fatal("invalid mock contract data")
-	}
-
-	a1, _ := contracts[0].contract.Address()
-	a2, _ := contracts[1].contract.Address()
-
-	t.Log(a1.String(), " >>> ", a2.String())
-
-	type args struct {
-		ctx  *vmstore.VMContext
-		addr *types.Address
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "ok",
-			args: args{
-				ctx:  ctx,
-				addr: &a1,
-			},
-			want: true,
-		},
-		{
-			name: "fail",
-			args: args{
-				ctx:  ctx,
-				addr: &a2,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsContractAvailable(tt.args.ctx, tt.args.addr); got != tt.want {
-				t.Errorf("IsContractAvailable() of %s = %v, want %v", tt.args.addr.String(), got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSettlement_ParseContractParam(t *testing.T) {
-	param, _, _ := buildContractParam()
+func TestParseContractParam(t *testing.T) {
+	param := buildContractParam()
 	abi, err := param.ToABI()
 	if err != nil {
 		t.Fatal(err)
@@ -1266,392 +348,8 @@ func TestSettlement_ParseContractParam(t *testing.T) {
 	}
 }
 
-func TestSettlement_SignContract_ToABI(t *testing.T) {
-	a := mock.Account()
-	sc := &SignContractParam{
-		ContractAddress: mock.Address(),
-		ConfirmDate:     time.Now().Unix(),
-		SignatureB:      types.Signature{},
-	}
-
-	if h, err := types.HashBytes(sc.ContractAddress[:], util.BE_Int2Bytes(sc.ConfirmDate)); err != nil {
-		t.Fatal(err)
-	} else {
-		sc.SignatureB = a.Sign(h)
-	}
-
-	if abi, err := sc.ToABI(); err != nil {
-		t.Fatal(err)
-	} else {
-		sc2 := &SignContractParam{}
-		if err := sc2.FromABI(abi); err != nil {
-			t.Fatal(err)
-		} else {
-			if !reflect.DeepEqual(sc, sc2) {
-				t.Errorf("ToABI() got = %v, want %v", sc2, sc)
-			}
-		}
-	}
-
-	addr := a.Address()
-	if verify, err := sc.Verify(addr); err != nil {
-		t.Fatal(err)
-	} else {
-		if !verify {
-			t.Fatalf("veirfy signature failed, got: %s", sc.SignatureB.String())
-		}
-	}
-}
-
-func TestSettlement_CreateContractParam_Verify(t *testing.T) {
-	param, _, _ := buildContractParam()
-	cp := param.CreateContractParam
-
-	type fields struct {
-		PartyA      types.Address
-		PartyAName  string
-		PartyB      types.Address
-		PartyBName  string
-		Previous    types.Hash
-		ServiceId   string
-		Mcc         uint64
-		Mnc         uint64
-		TotalAmount uint64
-		UnitPrice   uint64
-		Currency    string
-		SignDate    int64
-		SignatureA  types.Signature
-	}
-
-	cp2 := cp
-	cp2.SignatureA = types.ZeroSignature
-
-	tests := []struct {
-		name    string
-		fields  fields
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "ok",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "failure",
-			fields: fields{
-				PartyA:      cp2.PartyA,
-				PartyAName:  cp2.PartyAName,
-				PartyB:      cp2.PartyB,
-				PartyBName:  cp2.PartyBName,
-				Previous:    cp2.Previous,
-				ServiceId:   cp2.ServiceId,
-				Mcc:         cp2.Mcc,
-				Mnc:         cp2.Mnc,
-				TotalAmount: cp2.TotalAmount,
-				UnitPrice:   cp2.UnitPrice,
-				Currency:    cp2.Currency,
-				SignDate:    cp2.SignDate,
-				SignatureA:  cp2.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &CreateContractParam{
-				PartyA:      tt.fields.PartyA,
-				PartyAName:  tt.fields.PartyAName,
-				PartyB:      tt.fields.PartyB,
-				PartyBName:  tt.fields.PartyBName,
-				Previous:    tt.fields.Previous,
-				ServiceId:   tt.fields.ServiceId,
-				Mcc:         tt.fields.Mcc,
-				Mnc:         tt.fields.Mnc,
-				TotalAmount: tt.fields.TotalAmount,
-				UnitPrice:   tt.fields.UnitPrice,
-				Currency:    tt.fields.Currency,
-				SignDate:    tt.fields.SignDate,
-				SignatureA:  tt.fields.SignatureA,
-			}
-			got, err := z.Verify()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Verify() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestCreateContractParam_verifyParam(t *testing.T) {
-	param, _, _ := buildContractParam()
-	cp := param.CreateContractParam
-
-	type fields struct {
-		PartyA      types.Address
-		PartyAName  string
-		PartyB      types.Address
-		PartyBName  string
-		Previous    types.Hash
-		ServiceId   string
-		Mcc         uint64
-		Mnc         uint64
-		TotalAmount uint64
-		UnitPrice   uint64
-		Currency    string
-		SignDate    int64
-		SignatureA  types.Signature
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "ok",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "f1",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  "",
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "f2",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      types.ZeroAddress,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "f3",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    types.ZeroHash,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "f4",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   "",
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "f5",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: 0,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "f6",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   0,
-				Currency:    cp.Currency,
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		}, {
-			name: "f7",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    "",
-				SignDate:    cp.SignDate,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		}, {
-			name: "f8",
-			fields: fields{
-				PartyA:      cp.PartyA,
-				PartyAName:  cp.PartyAName,
-				PartyB:      cp.PartyB,
-				PartyBName:  cp.PartyBName,
-				Previous:    cp.Previous,
-				ServiceId:   cp.ServiceId,
-				Mcc:         cp.Mcc,
-				Mnc:         cp.Mnc,
-				TotalAmount: cp.TotalAmount,
-				UnitPrice:   cp.UnitPrice,
-				Currency:    cp.Currency,
-				SignDate:    0,
-				SignatureA:  cp.SignatureA,
-			},
-			want:    false,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			z := &CreateContractParam{
-				PartyA:      tt.fields.PartyA,
-				PartyAName:  tt.fields.PartyAName,
-				PartyB:      tt.fields.PartyB,
-				PartyBName:  tt.fields.PartyBName,
-				Previous:    tt.fields.Previous,
-				ServiceId:   tt.fields.ServiceId,
-				Mcc:         tt.fields.Mcc,
-				Mnc:         tt.fields.Mnc,
-				TotalAmount: tt.fields.TotalAmount,
-				UnitPrice:   tt.fields.UnitPrice,
-				Currency:    tt.fields.Currency,
-				SignDate:    tt.fields.SignDate,
-				SignatureA:  tt.fields.SignatureA,
-			}
-			got, err := z.verifyParam()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("verifyParam() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("verifyParam() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestCDRStatus(t *testing.T) {
-	param1 := CDRParam{
-		Index:         1,
-		SmsDt:         time.Now().Unix(),
-		Sender:        "PCCWG",
-		Destination:   "85257***343",
-		DstCountry:    "Hong Kong",
-		DstOperator:   "HKTCSL",
-		DstMcc:        "454",
-		DstMnc:        "0",
-		SellPrice:     1,
-		SellCurrency:  "USD",
-		CustomerName:  "Tencent",
-		CustomerID:    "11667",
-		SendingStatus: "Send",
-		DlrStatus:     "Delivered",
-	}
+	param1 := cdrParam
 
 	if data, err := param1.ToABI(); err != nil {
 		t.Fatal(err)
@@ -1700,7 +398,7 @@ func TestCDRStatus(t *testing.T) {
 			if !reflect.DeepEqual(param2, s1.Params[1].CDRParam) {
 				t.Fatal("invalid pccwg data")
 			}
-			t.Log(util.ToIndentString(s1))
+			t.Log(s1.String())
 		}
 	}
 }
@@ -1711,7 +409,7 @@ func TestGetAllSettlementContract(t *testing.T) {
 	ctx := vmstore.NewVMContext(l)
 
 	for i := 0; i < 4; i++ {
-		param, _, _ := buildContractParam()
+		param := buildContractParam()
 		a, _ := param.Address()
 		abi, _ := param.ToABI()
 		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
@@ -1767,8 +465,8 @@ func TestCDRParam_Verify(t *testing.T) {
 		Destination   string
 		DstCountry    string
 		DstOperator   string
-		DstMcc        string
-		DstMnc        string
+		DstMcc        uint64
+		DstMnc        uint64
 		SellPrice     float64
 		SellCurrency  string
 		CustomerName  string
@@ -1790,8 +488,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -1810,8 +508,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -1830,8 +528,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -1850,8 +548,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -1870,8 +568,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -1890,8 +588,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -1909,8 +607,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -1919,45 +617,47 @@ func TestCDRParam_Verify(t *testing.T) {
 				DlrStatus:     "Delivered",
 			},
 			wantErr: true,
-		}, {
-			name: "f7",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        "",
-				DstMnc:        "0",
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		}, {
-			name: "f8",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "",
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		}, {
+		},
+		//{
+		//	name: "f7",
+		//	fields: fields{
+		//		Index:         1,
+		//		SmsDt:         time.Now().Unix(),
+		//		Sender:        "PCCWG",
+		//		Destination:   "85257***343",
+		//		DstCountry:    "Hong Kong",
+		//		DstOperator:   "HKTCSL",
+		//		DstMcc:        0,
+		//		DstMnc:        0,
+		//		SellPrice:     1,
+		//		SellCurrency:  "USD",
+		//		CustomerName:  "Tencent",
+		//		CustomerID:    "11667",
+		//		SendingStatus: "Send",
+		//		DlrStatus:     "Delivered",
+		//	},
+		//	wantErr: true,
+		//}, {
+		//	name: "f8",
+		//	fields: fields{
+		//		Index:         1,
+		//		SmsDt:         time.Now().Unix(),
+		//		Sender:        "PCCWG",
+		//		Destination:   "85257***343",
+		//		DstCountry:    "Hong Kong",
+		//		DstOperator:   "HKTCSL",
+		//		DstMcc:        454,
+		//		DstMnc:        0,
+		//		SellPrice:     1,
+		//		SellCurrency:  "USD",
+		//		CustomerName:  "Tencent",
+		//		CustomerID:    "11667",
+		//		SendingStatus: "Send",
+		//		DlrStatus:     "Delivered",
+		//	},
+		//	wantErr: true,
+		//},
+		{
 			name: "f9",
 			fields: fields{
 				Index:         1,
@@ -1966,8 +666,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     0,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -1985,8 +685,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "",
 				CustomerName:  "Tencent",
@@ -2004,8 +704,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "",
@@ -2023,8 +723,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -2043,8 +743,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -2063,8 +763,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -2082,8 +782,8 @@ func TestCDRParam_Verify(t *testing.T) {
 				Destination:   "85257***343",
 				DstCountry:    "Hong Kong",
 				DstOperator:   "HKTCSL",
-				DstMcc:        "454",
-				DstMnc:        "0",
+				DstMcc:        454,
+				DstMnc:        0,
 				SellPrice:     1,
 				SellCurrency:  "USD",
 				CustomerName:  "Tencent",
@@ -2116,5 +816,1228 @@ func TestCDRParam_Verify(t *testing.T) {
 				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestParseCDRStatus(t *testing.T) {
+	status := &CDRStatus{
+		Params: []SettlementCDR{{
+			CDRParam: cdrParam,
+			From:     mock.Address(),
+		}},
+		Status: SettlementStatusStage1,
+	}
+
+	if abi, err := status.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		if s2, err := ParseCDRStatus(abi); err != nil {
+			t.Fatal(err)
+		} else {
+			if !reflect.DeepEqual(status, s2) {
+				t.Fatalf("invalid cdr status %v, %v", status, s2)
+			}
+		}
+	}
+}
+
+func TestCDRParam_ToHash(t *testing.T) {
+	if h, err := cdrParam.ToHash(); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(h)
+	}
+}
+
+func TestGetContracts(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	data := mockContractData(2)
+
+	if len(data) != 2 {
+		t.Fatalf("invalid mock data, %v", data)
+	}
+
+	ctx := vmstore.NewVMContext(l)
+	for _, d := range data {
+		a, _ := d.Address()
+		abi, _ := d.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		} else {
+			//t.Log(hex.EncodeToString(abi))
+		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, d := range data {
+		if addr, err := d.Address(); err != nil {
+			t.Fatal(err)
+		} else {
+			if contract, err := GetContracts(ctx, &addr); err != nil {
+				t.Fatal(err)
+			} else {
+				if !reflect.DeepEqual(contract, d) {
+					t.Fatalf("invalid %v, %v", contract, d)
+				}
+			}
+		}
+	}
+}
+
+func TestCDRStatus_DoSettlement(t *testing.T) {
+	type fields struct {
+		Params []SettlementCDR
+		Status SettlementStatus
+	}
+
+	type args struct {
+		contract *ContractParam
+		cdr      SettlementCDR
+	}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				Params: []SettlementCDR{{
+					CDRParam: CDRParam{
+						Index:         1,
+						SmsDt:         time.Now().Unix(),
+						Sender:        "PCCWG",
+						Destination:   "85257***343",
+						DstCountry:    "Hong Kong",
+						DstOperator:   "HKTCSL",
+						DstMcc:        454,
+						DstMnc:        0,
+						SellPrice:     1,
+						SellCurrency:  "USD",
+						CustomerName:  "Tencent",
+						CustomerID:    "11668",
+						SendingStatus: "Send",
+						DlrStatus:     "Delivered",
+					},
+					From: mock.Address(),
+				}},
+				Status: 0,
+			},
+			args: args{
+				contract: nil,
+				cdr: SettlementCDR{
+					CDRParam: CDRParam{
+						Index:         1,
+						SmsDt:         time.Now().Unix(),
+						Sender:        "HKTCSL",
+						Destination:   "85257***343",
+						DstCountry:    "Hong Kong",
+						DstOperator:   "HKTCSL",
+						DstMcc:        454,
+						DstMnc:        0,
+						SellPrice:     1,
+						SellCurrency:  "USD",
+						CustomerName:  "Tencent",
+						CustomerID:    "11667",
+						SendingStatus: "Send",
+						DlrStatus:     "Delivered",
+					},
+					From: mock.Address(),
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CDRStatus{
+				Params: tt.fields.Params,
+				Status: tt.fields.Status,
+			}
+			if err := z.DoSettlement(tt.args.contract, tt.args.cdr); (err != nil) != tt.wantErr {
+				t.Errorf("DoSettlement() error = %v, wantErr %v", err, tt.wantErr)
+			} else {
+				if z.Status != SettlementStatusSuccess {
+					t.Fatalf("invalid status, exp: %s, act: %s", SettlementStatusSuccess.String(), z.Status.String())
+				}
+			}
+		})
+	}
+}
+
+func TestContractParam_FromABI(t *testing.T) {
+	cp := buildContractParam()
+
+	abi, err := cp.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type fields struct {
+		CreateContractParam CreateContractParam
+		PreStops            []string
+		NextStops           []string
+		ConfirmDate         int64
+		Status              ContractStatus
+	}
+	type args struct {
+		data []byte
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "OK",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              cp.Status,
+			},
+			args: args{
+				data: abi,
+			},
+			wantErr: false,
+		}, {
+			name: "failed",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              cp.Status,
+			},
+			args: args{
+				data: abi[:10],
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractParam{
+				CreateContractParam: tt.fields.CreateContractParam,
+				PreStops:            tt.fields.PreStops,
+				NextStops:           tt.fields.NextStops,
+				ConfirmDate:         tt.fields.ConfirmDate,
+				Status:              tt.fields.Status,
+			}
+			if err := z.FromABI(tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("FromABI() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestContractService_Balance(t *testing.T) {
+	type fields struct {
+		ServiceId   string
+		Mcc         uint64
+		Mnc         uint64
+		TotalAmount uint64
+		UnitPrice   float64
+		Currency    string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    types.Balance
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				ServiceId:   mock.Hash().String(),
+				Mcc:         22,
+				Mnc:         1,
+				TotalAmount: 100,
+				UnitPrice:   0.04,
+				Currency:    "USD",
+			},
+			want:    types.Balance{Int: new(big.Int).Mul(new(big.Int).SetUint64(100), new(big.Int).SetUint64(0.04*1e8))},
+			wantErr: false,
+		}, {
+			name: "overflow",
+			fields: fields{
+				ServiceId:   mock.Hash().String(),
+				Mcc:         22,
+				Mnc:         1,
+				TotalAmount: math.MaxUint64,
+				UnitPrice:   0.04,
+				Currency:    "USD",
+			},
+			want:    types.ZeroBalance,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractService{
+				ServiceId:   tt.fields.ServiceId,
+				Mcc:         tt.fields.Mcc,
+				Mnc:         tt.fields.Mnc,
+				TotalAmount: tt.fields.TotalAmount,
+				UnitPrice:   tt.fields.UnitPrice,
+				Currency:    tt.fields.Currency,
+			}
+			got, err := z.Balance()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Balance() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Balance() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateContractParam_Balance(t *testing.T) {
+	type fields struct {
+		PartyA    Contractor
+		PartyB    Contractor
+		Previous  types.Hash
+		Services  []ContractService
+		SignDate  int64
+		StartDate int64
+		EndData   int64
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    types.Balance
+		wantErr bool
+	}{
+		{
+			name: "OK",
+			fields: fields{
+				PartyA: Contractor{
+					Address: mock.Address(),
+					Name:    "PCCWG",
+				},
+				PartyB: Contractor{
+					Address: mock.Address(),
+					Name:    "HKTCSL",
+				},
+				Previous: mock.Hash(),
+				Services: []ContractService{{
+					ServiceId:   mock.Hash().String(),
+					Mcc:         1,
+					Mnc:         2,
+					TotalAmount: 100,
+					UnitPrice:   2,
+					Currency:    "USD",
+				}, {
+					ServiceId:   mock.Hash().String(),
+					Mcc:         22,
+					Mnc:         1,
+					TotalAmount: 300,
+					UnitPrice:   4,
+					Currency:    "USD",
+				}},
+				SignDate:  time.Now().Unix(),
+				StartDate: time.Now().AddDate(0, 0, 2).Unix(),
+				EndData:   time.Now().AddDate(1, 0, 2).Unix(),
+			},
+			want:    types.Balance{Int: new(big.Int).Mul(big.NewInt(100), big.NewInt(2*1e8))}.Add(types.Balance{Int: new(big.Int).Mul(big.NewInt(300), big.NewInt(4*1e8))}),
+			wantErr: false,
+		},
+		{
+			name: "overflow",
+			fields: fields{
+				PartyA: Contractor{
+					Address: mock.Address(),
+					Name:    "PCCWG",
+				},
+				PartyB: Contractor{
+					Address: mock.Address(),
+					Name:    "HKTCSL",
+				},
+				Previous: mock.Hash(),
+				Services: []ContractService{{
+					ServiceId:   mock.Hash().String(),
+					Mcc:         1,
+					Mnc:         2,
+					TotalAmount: 100,
+					UnitPrice:   2,
+					Currency:    "USD",
+				}, {
+					ServiceId:   mock.Hash().String(),
+					Mcc:         22,
+					Mnc:         1,
+					TotalAmount: math.MaxUint64,
+					UnitPrice:   4,
+					Currency:    "USD",
+				}},
+				SignDate:  time.Now().Unix(),
+				StartDate: time.Now().AddDate(0, 0, 2).Unix(),
+				EndData:   time.Now().AddDate(1, 0, 2).Unix(),
+			},
+			want:    types.ZeroBalance,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CreateContractParam{
+				PartyA:    tt.fields.PartyA,
+				PartyB:    tt.fields.PartyB,
+				Previous:  tt.fields.Previous,
+				Services:  tt.fields.Services,
+				SignDate:  tt.fields.SignDate,
+				StartDate: tt.fields.StartDate,
+				EndData:   tt.fields.EndData,
+			}
+			got, err := z.Balance()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Balance() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Balance() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateContractParam_ToABI(t *testing.T) {
+	cp := createContractParam
+
+	abi, err := cp.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cp2 := &CreateContractParam{}
+	if err = cp2.FromABI(abi); err != nil {
+		t.Fatal(err)
+	} else {
+		a1, err := cp.Address()
+		if err != nil {
+			t.Fatal(err)
+		}
+		a2, err := cp2.Address()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if a1 != a2 {
+			t.Fatalf("invalid create contract params, %v, %v", cp, cp2)
+		}
+	}
+}
+
+func TestCDRParam_FromABI(t *testing.T) {
+	cdr := cdrParam
+	abi, err := cdr.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	type fields struct {
+		Index         uint64
+		SmsDt         int64
+		Sender        string
+		Destination   string
+		DstCountry    string
+		DstOperator   string
+		DstMcc        uint64
+		DstMnc        uint64
+		SellPrice     float64
+		SellCurrency  string
+		CustomerName  string
+		CustomerID    string
+		SendingStatus string
+		DlrStatus     string
+	}
+	type args struct {
+		data []byte
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				Index:         cdr.Index,
+				SmsDt:         cdr.SmsDt,
+				Sender:        cdr.Sender,
+				Destination:   cdr.Destination,
+				DstCountry:    cdr.DstCountry,
+				DstOperator:   cdr.DstOperator,
+				DstMcc:        cdr.DstMcc,
+				DstMnc:        cdr.DstMnc,
+				SellPrice:     cdr.SellPrice,
+				SellCurrency:  cdr.SellCurrency,
+				CustomerName:  cdr.CustomerName,
+				CustomerID:    cdr.CustomerID,
+				SendingStatus: cdr.SendingStatus,
+				DlrStatus:     cdr.DlrStatus,
+			},
+			args: args{
+				data: abi,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CDRParam{
+				Index:         tt.fields.Index,
+				SmsDt:         tt.fields.SmsDt,
+				Sender:        tt.fields.Sender,
+				Destination:   tt.fields.Destination,
+				DstCountry:    tt.fields.DstCountry,
+				DstOperator:   tt.fields.DstOperator,
+				DstMcc:        tt.fields.DstMcc,
+				DstMnc:        tt.fields.DstMnc,
+				SellPrice:     tt.fields.SellPrice,
+				SellCurrency:  tt.fields.SellCurrency,
+				CustomerName:  tt.fields.CustomerName,
+				CustomerID:    tt.fields.CustomerID,
+				SendingStatus: tt.fields.SendingStatus,
+				DlrStatus:     tt.fields.DlrStatus,
+			}
+			if err := z.FromABI(tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("FromABI() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCDRParam_String(t *testing.T) {
+	s := cdrParam.String()
+	if len(s) == 0 {
+		t.Fatal("invalid string")
+	}
+}
+
+func TestCDRStatus_FromABI(t *testing.T) {
+	status := CDRStatus{
+		Params: []SettlementCDR{{
+			CDRParam: cdrParam,
+			From:     mock.Address(),
+		}},
+		Status: SettlementStatusSuccess,
+	}
+
+	abi, err := status.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s2 := &CDRStatus{}
+	if err = s2.FromABI(abi); err != nil {
+		t.Fatal(err)
+	} else {
+		if !reflect.DeepEqual(&status, s2) {
+			t.Fatalf("invalid cdr status data, %v, %v", &status, s2)
+		}
+	}
+}
+
+func TestCDRStatus_String(t *testing.T) {
+	status := CDRStatus{
+		Params: []SettlementCDR{{
+			CDRParam: cdrParam,
+			From:     mock.Address(),
+		}},
+		Status: SettlementStatusSuccess,
+	}
+	s := status.String()
+	if len(s) == 0 {
+		t.Fatal("invalid string")
+	}
+
+}
+
+func TestContractParam_Equal(t *testing.T) {
+	param := buildContractParam()
+	cp := param.CreateContractParam
+
+	type fields struct {
+		CreateContractParam CreateContractParam
+		ConfirmDate         int64
+		SignatureB          *types.Signature
+	}
+	type args struct {
+		cp *CreateContractParam
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "equal",
+			fields: fields{
+				CreateContractParam: cp,
+				ConfirmDate:         param.ConfirmDate,
+			},
+			args: args{
+				cp: &cp,
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "nil",
+			fields: fields{
+				CreateContractParam: cp,
+				ConfirmDate:         param.ConfirmDate,
+			},
+			args: args{
+				cp: nil,
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractParam{
+				CreateContractParam: tt.fields.CreateContractParam,
+				ConfirmDate:         tt.fields.ConfirmDate,
+			}
+			got, err := z.Equal(tt.args.cp)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Equal() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Equal() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestContractParam_String(t *testing.T) {
+	param := buildContractParam()
+	s := param.String()
+	if len(s) == 0 {
+		t.Fatal("invalid string")
+	}
+}
+
+func TestContractParam_ToABI(t *testing.T) {
+	param := buildContractParam()
+	abi, err := param.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p2 := &ContractParam{}
+	if err = p2.FromABI(abi); err != nil {
+		t.Fatal(err)
+	} else {
+		if param.String() != p2.String() {
+			t.Fatalf("invalid contract param data, %s, %s", param.String(), p2.String())
+		}
+	}
+}
+
+func TestContractService_ToABI(t *testing.T) {
+	param := ContractService{
+		ServiceId:   mock.Hash().String(),
+		Mcc:         1,
+		Mnc:         2,
+		TotalAmount: 100,
+		UnitPrice:   2,
+		Currency:    "USD",
+	}
+	abi, err := param.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p2 := &ContractService{}
+	if err = p2.FromABI(abi); err != nil {
+		t.Fatal(err)
+	} else {
+		if !reflect.DeepEqual(&param, p2) {
+			t.Fatalf("invalid contract service data, %v, %v", &param, p2)
+		}
+	}
+}
+
+func TestContractor_FromABI(t *testing.T) {
+	c := createContractParam.PartyA
+	abi, err := c.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c2 := &Contractor{}
+	if err = c2.FromABI(abi); err != nil {
+		t.Fatal(err)
+	} else {
+		if !reflect.DeepEqual(&c, c2) {
+			t.Fatalf("invalid contractor, %v, %v", &c, c2)
+		}
+	}
+}
+
+func TestCreateContractParam_Address(t *testing.T) {
+	cp := createContractParam
+	if address, err := cp.Address(); err != nil {
+		t.Fatal(err)
+	} else {
+		cp2 := createContractParam
+		if address2, err := cp2.Address(); err != nil {
+			t.Fatal(err)
+		} else {
+			if address != address2 {
+				t.Fatalf("invalid address, %v, %v", address, address2)
+			}
+		}
+	}
+}
+
+func TestCreateContractParam_String(t *testing.T) {
+	param := buildContractParam()
+	s := param.String()
+	if len(s) == 0 {
+		t.Fatal("invalid string")
+	}
+}
+
+func TestCreateContractParam_ToContractParam(t *testing.T) {
+	cp := createContractParam
+	type fields struct {
+		PartyA    Contractor
+		PartyB    Contractor
+		Previous  types.Hash
+		Services  []ContractService
+		SignDate  int64
+		StartDate int64
+		EndData   int64
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   *ContractParam
+	}{
+		{
+			name: "OK",
+			fields: fields{
+				PartyA:    cp.PartyA,
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want: &ContractParam{
+				CreateContractParam: cp,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              0,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CreateContractParam{
+				PartyA:    tt.fields.PartyA,
+				PartyB:    tt.fields.PartyB,
+				Previous:  tt.fields.Previous,
+				Services:  tt.fields.Services,
+				SignDate:  tt.fields.SignDate,
+				StartDate: tt.fields.StartDate,
+				EndData:   tt.fields.EndData,
+			}
+			if got := z.ToContractParam(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ToContractParam() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateContractParam_Verify(t *testing.T) {
+	cp := createContractParam
+
+	type fields struct {
+		PartyA    Contractor
+		PartyB    Contractor
+		Previous  types.Hash
+		Services  []ContractService
+		SignDate  int64
+		StartDate int64
+		EndData   int64
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				PartyA:    cp.PartyA,
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "f1",
+			fields: fields{
+				PartyA: Contractor{
+					Address: types.ZeroAddress,
+					Name:    "CC",
+				},
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				PartyA: Contractor{
+					Address: mock.Address(),
+					Name:    "",
+				},
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f3",
+			fields: fields{
+				PartyA: cp.PartyA,
+				PartyB: Contractor{
+					Address: mock.Address(),
+					Name:    "",
+				},
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f4",
+			fields: fields{
+				PartyA: cp.PartyA,
+				PartyB: Contractor{
+					Address: types.ZeroAddress,
+					Name:    "CC",
+				},
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f5",
+			fields: fields{
+				PartyA:    cp.PartyA,
+				PartyB:    cp.PartyB,
+				Previous:  types.ZeroHash,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f6",
+			fields: fields{
+				PartyA:    cp.PartyA,
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  nil,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f7",
+			fields: fields{
+				PartyA:    cp.PartyA,
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  0,
+				StartDate: cp.StartDate,
+				EndData:   cp.EndData,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f8",
+			fields: fields{
+				PartyA:    cp.PartyA,
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: 0,
+				EndData:   cp.EndData,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f9",
+			fields: fields{
+				PartyA:    cp.PartyA,
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndData:   0,
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CreateContractParam{
+				PartyA:    tt.fields.PartyA,
+				PartyB:    tt.fields.PartyB,
+				Previous:  tt.fields.Previous,
+				Services:  tt.fields.Services,
+				SignDate:  tt.fields.SignDate,
+				StartDate: tt.fields.StartDate,
+				EndData:   tt.fields.EndData,
+			}
+			got, err := z.Verify()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Verify() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+	data := mockContractData(2)
+
+	if len(data) != 2 {
+		t.Fatalf("invalid mock data, %v", data)
+	}
+
+	for _, d := range data {
+		a, _ := d.Address()
+		abi, _ := d.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	a1 := data[0].PartyA.Address
+
+	type args struct {
+		ctx  *vmstore.VMContext
+		addr *types.Address
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*ContractParam
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				ctx:  ctx,
+				addr: &a1,
+			},
+			want:    []*ContractParam{data[0]},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetContractsIDByAddressAsPartyA(tt.args.ctx, tt.args.addr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetContractsIDByAddressAsPartyA() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if len(got) != len(tt.want) {
+				t.Fatalf("GetContractsIDByAddressAsPartyA() len(go) != len(tt.want), %d,%d", len(got), len(tt.want))
+			}
+
+			for i := 0; i < len(got); i++ {
+				a1, _ := got[i].Address()
+				a2, _ := tt.want[i].Address()
+				if a1 != a2 {
+					t.Fatalf("GetContractsIDByAddressAsPartyA() i[%d] %v,%v", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+	data := mockContractData(2)
+
+	if len(data) != 2 {
+		t.Fatalf("invalid mock data, %v", data)
+	}
+
+	for _, d := range data {
+		a, _ := d.Address()
+		abi, _ := d.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	a2 := data[0].PartyB.Address
+
+	type args struct {
+		ctx  *vmstore.VMContext
+		addr *types.Address
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*ContractParam
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				ctx:  ctx,
+				addr: &a2,
+			},
+			want:    []*ContractParam{data[0]},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetContractsIDByAddressAsPartyB(tt.args.ctx, tt.args.addr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestGetContractsIDByAddressAsPartyB() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if len(got) != len(tt.want) {
+				t.Fatalf("TestGetContractsIDByAddressAsPartyB() len(go) != len(tt.want), %d,%d", len(got), len(tt.want))
+			}
+
+			for i := 0; i < len(got); i++ {
+				a1, _ := got[i].Address()
+				a2, _ := tt.want[i].Address()
+				if a1 != a2 {
+					t.Fatalf("TestGetContractsIDByAddressAsPartyB() i[%d] %v,%v", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestIsContractAvailable(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+
+	var contracts []*ContractParam
+
+	for i := 0; i < 2; i++ {
+		param := buildContractParam()
+
+		if i%2 == 1 {
+			param.Status = ContractStatusActiveStage1
+		}
+
+		contracts = append(contracts, param)
+		a, _ := param.Address()
+		abi, _ := param.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+
+		if storage, err := ctx.GetStorage(types.SettlementAddress[:], a[:]); err == nil {
+			if !bytes.Equal(storage, abi) {
+				t.Fatalf("invalid saved contract, exp: %v, act: %v", abi, storage)
+			} else {
+				if p, err := ParseContractParam(storage); err == nil {
+					t.Log(a.String(), ": ", p.String())
+				} else {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	if contracts == nil || len(contracts) != 2 {
+		t.Fatal("invalid mock contract data")
+	}
+
+	a1, _ := contracts[0].Address()
+	a2, _ := contracts[1].Address()
+
+	t.Log(a1.String(), " >>> ", a2.String())
+
+	type args struct {
+		ctx  *vmstore.VMContext
+		addr *types.Address
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				ctx:  ctx,
+				addr: &a1,
+			},
+			want: true,
+		},
+		{
+			name: "fail",
+			args: args{
+				ctx:  ctx,
+				addr: &a2,
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsContractAvailable(tt.args.ctx, tt.args.addr); got != tt.want {
+				t.Errorf("IsContractAvailable() of %s = %v, want %v", tt.args.addr.String(), got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSignContractParam_ToABI(t *testing.T) {
+	sc := &SignContractParam{
+		ContractAddress: mock.Address(),
+		ConfirmDate:     time.Now().Unix(),
+	}
+
+	if abi, err := sc.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		sc2 := &SignContractParam{}
+		if err := sc2.FromABI(abi); err != nil {
+			t.Fatal(err)
+		} else {
+			if !reflect.DeepEqual(sc, sc2) {
+				t.Errorf("ToABI() got = %v, want %v", sc2, sc)
+			}
+		}
+	}
+}
+
+func TestGetSettlementContract(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+
+	var contracts []*ContractParam
+
+	for i := 0; i < 2; i++ {
+		param := buildContractParam()
+
+		if i%2 == 1 {
+			param.Status = ContractStatusActiveStage1
+		}
+
+		contracts = append(contracts, param)
+		a, _ := param.Address()
+		abi, _ := param.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+
+		//if storage, err := ctx.GetStorage(types.SettlementAddress[:], a[:]); err == nil {
+		//	if !bytes.Equal(storage, abi) {
+		//		t.Fatalf("invalid saved contract, exp: %v, act: %v", abi, storage)
+		//	} else {
+		//		if p, err := ParseContractParam(storage); err == nil {
+		//			t.Log(a.String(), ": ", p.String())
+		//		} else {
+		//			t.Fatal(err)
+		//		}
+		//	}
+		//}
+	}
+
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	if contracts == nil || len(contracts) != 2 {
+		t.Fatal("invalid mock contract data")
+	}
+	a1 := contracts[0].PartyA.Address
+	cdr := cdrParam
+	cdr.NextStop = "HKTCSL"
+
+	if c, err := GetSettlementContract(ctx, &a1, &cdr); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(c)
 	}
 }
