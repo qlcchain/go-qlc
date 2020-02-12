@@ -10,7 +10,10 @@ package contract
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/statedb"
 
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common"
@@ -20,71 +23,73 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type CreateContract struct {
-	BaseContract
+var ErrNotImplement = errors.New("not implemented")
+
+type internalContract struct {
 }
 
-func (c *CreateContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
+func (i internalContract) GetDescribe() Describe {
+	return Describe{withPending: true, withSignature: true, specVer: SpecVer2}
+}
+
+func (i internalContract) GetTargetReceiver(_ *vmstore.VMContext, _ *types.StateBlock) types.Address {
+	return types.ZeroAddress
+}
+
+func (i internalContract) GetFee(_ *vmstore.VMContext, _ *types.StateBlock) (types.Balance, error) {
 	return types.ZeroBalance, nil
 }
 
-func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	// verify send block data
-	param := new(cabi.CreateContractParam)
-	err := param.FromABI(input.Data)
-	if err != nil {
-		return nil, err
-	}
-	address, err := param.Address()
-	if err != nil {
-		return nil, err
-	}
-	if b, err := ctx.GetStorage(types.SettlementAddress[:], address[:]); err == nil && len(b) > 0 {
-		if _, err := cabi.ParseContractParam(b); err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
-	}
-
-	rxMeta, _ := ctx.GetAccountMeta(input.Address)
-	// qgas token should be exist
-	rxToken := rxMeta.Token(input.Token)
-	txHash := input.GetHash()
-
-	block.Type = types.ContractReward
-	block.Address = input.Address
-	block.Link = txHash
-	block.Token = input.Token
-	block.Extra = types.ZeroHash
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
-
-	block.Balance = rxToken.Balance
-	block.Previous = rxToken.Header
-	block.Representative = input.Representative
-
-	return []*ContractBlock{
-		{
-			VMContext: ctx,
-			Block:     block,
-			ToAddress: input.Address,
-			BlockType: types.ContractReward,
-			Amount:    types.ZeroBalance,
-			Token:     input.Token,
-			Data:      []byte{},
-		},
-	}, nil
-}
-
-func (c *CreateContract) GetRefundData() []byte {
+func (i internalContract) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (c *CreateContract) GetDescribe() Describe {
-	return Describe{withPending: true, withSignature: true, specVer: SpecVer2}
+func (i internalContract) DoPending(_ *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return nil, nil, ErrNotImplement
+}
+
+func (i internalContract) DoSend(_ *vmstore.VMContext, _ *types.StateBlock) error {
+	return ErrNotImplement
+}
+
+func (i internalContract) DoGap(_ *vmstore.VMContext, _ *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	return common.ContractNoGap, nil, nil
+}
+
+func (i internalContract) DoSendOnPov(_ *vmstore.VMContext, _ *statedb.PovContractStateDB, _ uint64, _ *types.StateBlock) error {
+	return ErrNotImplement
+}
+
+func (i internalContract) DoReceiveOnPov(_ *vmstore.VMContext, _ *statedb.PovContractStateDB, _ uint64, _ *types.StateBlock, _ *types.StateBlock) error {
+	return ErrNotImplement
+}
+
+type CreateContract struct {
+	internalContract
+}
+
+func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		// verify send block data
+		param := new(cabi.CreateContractParam)
+		err := param.FromABI(data)
+		if err != nil {
+			return err
+		}
+		address, err := param.Address()
+		if err != nil {
+			return err
+		}
+		if b, err := ctx.GetStorage(types.SettlementAddress[:], address[:]); err == nil && len(b) > 0 {
+			if _, err := cabi.ParseContractParam(b); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
+		}
+
+		return nil
+	})
 }
 
 func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -134,7 +139,7 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 				return nil, nil, errors.New("invalid saved create contract data")
 			}
 		} else {
-			if data, err := param.ToContractParam().MarshalMsg(nil); err == nil {
+			if data, err := param.ToContractParam().ToABI(); err == nil {
 				if err := ctx.SetStorage(types.SettlementAddress[:], address[:], data); err != nil {
 					return nil, nil, err
 				}
@@ -156,71 +161,27 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 	}
 }
 
-func (c *CreateContract) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
-}
-
 type SignContract struct {
-	BaseContract
-}
-
-func (s *SignContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
+	internalContract
 }
 
 func (s *SignContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	// verify send block data
-	param := new(cabi.SignContractParam)
-	err := param.FromABI(input.Data)
-	if err != nil {
-		return nil, err
-	}
-	if b, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
-		if _, err := cabi.ParseContractParam(b); err != nil {
-			return nil, err
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		// verify send block data
+		param := new(cabi.SignContractParam)
+		err := param.FromABI(input.Data)
+		if err != nil {
+			return err
 		}
-	} else {
-		return nil, fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
-	}
-
-	rxMeta, _ := ctx.GetAccountMeta(input.Address)
-	// qgas token should be exist
-	rxToken := rxMeta.Token(input.Token)
-	txHash := input.GetHash()
-
-	block.Type = types.ContractReward
-	block.Address = input.Address
-	block.Link = txHash
-	block.Token = input.Token
-	block.Extra = types.ZeroHash
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
-
-	block.Balance = rxToken.Balance
-	block.Previous = rxToken.Header
-	block.Representative = input.Representative
-
-	return []*ContractBlock{
-		{
-			VMContext: ctx,
-			Block:     block,
-			ToAddress: input.Address,
-			BlockType: types.ContractReward,
-			Amount:    types.ZeroBalance,
-			Token:     input.Token,
-			Data:      []byte{},
-		},
-	}, nil
-}
-
-func (s *SignContract) GetRefundData() []byte {
-	return []byte{1}
-}
-
-func (s *SignContract) GetDescribe() Describe {
-	return Describe{withSignature: true, withPending: true, specVer: SpecVer2}
+		if b, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+			if _, err := cabi.ParseContractParam(b); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
+		}
+		return nil
+	})
 }
 
 func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -248,7 +209,11 @@ func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 				}
 
 				cp.ConfirmDate = param.ConfirmDate
-				cp.Status = cabi.ContractStatusActived
+				if cp.Status == cabi.ContractStatusActiveStage1 {
+					cp.Status = cabi.ContractStatusActived
+				} else {
+					return nil, nil, fmt.Errorf("invalid contract status, %s", cp.Status.String())
+				}
 
 				if data, err := cp.ToABI(); err == nil {
 					// save confirm data
@@ -274,69 +239,25 @@ func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 	}
 }
 
-func (s *SignContract) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
-}
-
 var lockerCache = newLocker()
 
 type ProcessCDR struct {
-	BaseContract
-}
-
-func (p *ProcessCDR) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
+	internalContract
 }
 
 func (p *ProcessCDR) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	param := new(cabi.CDRParam)
-	err := param.FromABI(block.Data)
-	if err != nil {
-		return nil, err
-	}
-	// verify block data
-	if err := param.Verify(); err != nil {
-		return nil, err
-	}
-
-	rxMeta, _ := ctx.GetAccountMeta(input.Address)
-	// qgas token should be exist
-	rxToken := rxMeta.Token(input.Token)
-	txHash := input.GetHash()
-
-	block.Type = types.ContractReward
-	block.Address = input.Address
-	block.Link = txHash
-	block.Token = input.Token
-	block.Extra = types.ZeroHash
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
-
-	block.Balance = rxToken.Balance
-	block.Previous = rxToken.Header
-	block.Representative = input.Representative
-
-	return []*ContractBlock{
-		{
-			VMContext: ctx,
-			Block:     block,
-			ToAddress: input.Address,
-			BlockType: types.ContractReward,
-			Amount:    types.ZeroBalance,
-			Token:     input.Token,
-			Data:      []byte{},
-		},
-	}, nil
-}
-
-func (p *ProcessCDR) GetRefundData() []byte {
-	return []byte{1}
-}
-
-func (p *ProcessCDR) GetDescribe() Describe {
-	return Describe{withPending: true, withSignature: true, specVer: SpecVer2}
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		param := new(cabi.CDRParam)
+		err := param.FromABI(data)
+		if err != nil {
+			return err
+		}
+		// verify block data
+		if err := param.Verify(); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
@@ -354,6 +275,8 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// lock by CDR param
 	mutex, err := lockerCache.Get(h[:])
 	if err != nil {
 		return nil, nil, err
@@ -361,16 +284,17 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	// match settlement contract
-	contract, err := cabi.GetSettlementContract(ctx, &block.Address, param)
+	contractAddress := types.Address(block.Link)
+
+	contract, err := cabi.GetContracts(ctx, &contractAddress)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	contractAddress, err := contract.Address()
-	if err != nil {
-		return nil, nil, err
+	if !(contract.PartyA.Address == block.Address || contract.PartyB.Address == block.Address) {
+		return nil, nil, fmt.Errorf("%s can not upload CDR data to contract %s", block.Address.String(), contractAddress.String())
 	}
+
 	sr := cabi.SettlementCDR{
 		CDRParam: *param,
 		From:     block.Address,
@@ -379,6 +303,7 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		if err != vmstore.ErrStorageNotFound {
 			return nil, nil, err
 		} else {
+			// 1st upload data
 			state := &cabi.CDRStatus{
 				Params: []cabi.SettlementCDR{sr},
 				Status: cabi.SettlementStatusStage1,
@@ -395,7 +320,8 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		if state, err := cabi.ParseCDRStatus(storage); err != nil {
 			return nil, nil, err
 		} else {
-			if err := state.DoSettlement(contract, sr); err != nil {
+			// update contract status
+			if err := state.DoSettlement(sr); err != nil {
 				return nil, nil, err
 			} else {
 				if abi, err := state.ToABI(); err != nil {
@@ -419,8 +345,170 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		}, nil
 }
 
-func (p *ProcessCDR) DoGapPov(ctx *vmstore.VMContext, block *types.StateBlock) (uint64, error) {
-	return 0, nil
+type AddPreStop struct {
+	internalContract
+}
+
+func (a *AddPreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		stopParam := new(cabi.StopParam)
+		return stopParam.FromABI(cabi.MethodNameAddPreStop, data)
+	})
+}
+
+func (a *AddPreStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return handleSend(ctx, block, false, func(data []byte) (interface{}, error) {
+		stopParam := new(cabi.StopParam)
+		err := stopParam.FromABI(cabi.MethodNameAddPreStop, data)
+		if err != nil {
+			return nil, err
+		}
+		return stopParam, nil
+	}, func(param *cabi.ContractParam, v interface{}) error {
+		p := v.(*cabi.StopParam)
+		return add(param.PreStops, p.StopName)
+	})
+}
+
+type RemovePreStop struct {
+	internalContract
+}
+
+func (r *RemovePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		stopParam := new(cabi.StopParam)
+		return stopParam.FromABI(cabi.MethodNameRemovePreStop, data)
+	})
+}
+
+func (r *RemovePreStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return handleSend(ctx, block, false, func(data []byte) (interface{}, error) {
+		stopParam := new(cabi.StopParam)
+		err := stopParam.FromABI(cabi.MethodNameRemovePreStop, data)
+		if err != nil {
+			return nil, err
+		}
+		return stopParam, nil
+	}, func(param *cabi.ContractParam, v interface{}) error {
+		p := v.(*cabi.StopParam)
+		return remove(param.PreStops, p.StopName)
+	})
+}
+
+type UpdatePreStop struct {
+	internalContract
+}
+
+func (u *UpdatePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		// verify block data
+		param := new(cabi.UpdateStopParam)
+		err := param.FromABI(cabi.MethodNameUpdatePreStop, data)
+		if err != nil {
+			return err
+		}
+		if err := param.Verify(); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (u *UpdatePreStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return handleSend(ctx, block, false, func(data []byte) (interface{}, error) {
+		stopParam := new(cabi.UpdateStopParam)
+		err := stopParam.FromABI(cabi.MethodNameUpdatePreStop, data)
+		if err != nil {
+			return nil, err
+		}
+		return stopParam, nil
+	}, func(param *cabi.ContractParam, v interface{}) error {
+		p := v.(*cabi.UpdateStopParam)
+		return update(param.PreStops, p.StopName, p.New)
+	})
+}
+
+type AddNextStop struct {
+	internalContract
+}
+
+func (a *AddNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		stopParam := new(cabi.StopParam)
+		return stopParam.FromABI(cabi.MethodNameAddNextStop, data)
+	})
+}
+
+func (a *AddNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return handleSend(ctx, block, true, func(data []byte) (interface{}, error) {
+		stopParam := new(cabi.StopParam)
+		err := stopParam.FromABI(cabi.MethodNameAddNextStop, data)
+		if err != nil {
+			return nil, err
+		}
+		return stopParam, nil
+	}, func(param *cabi.ContractParam, v interface{}) error {
+		p := v.(*cabi.StopParam)
+		return add(param.NextStops, p.StopName)
+	})
+}
+
+type RemoveNextStop struct {
+	internalContract
+}
+
+func (r *RemoveNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		stopParam := new(cabi.StopParam)
+		return stopParam.FromABI(cabi.MethodNameRemoveNextStop, data)
+	})
+}
+
+func (r *RemoveNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return handleSend(ctx, block, true, func(data []byte) (interface{}, error) {
+		stopParam := new(cabi.StopParam)
+		err := stopParam.FromABI(cabi.MethodNameRemoveNextStop, data)
+		if err != nil {
+			return nil, err
+		}
+		return stopParam, nil
+	}, func(param *cabi.ContractParam, v interface{}) error {
+		p := v.(*cabi.StopParam)
+		return add(param.NextStops, p.StopName)
+	})
+}
+
+type UpdateNextStop struct {
+	internalContract
+}
+
+func (u *UpdateNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		// verify block data
+		param := new(cabi.UpdateStopParam)
+		err := param.FromABI(cabi.MethodNameUpdateNextStop, data)
+		if err != nil {
+			return err
+		}
+		if err := param.Verify(); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (u *UpdateNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	return handleSend(ctx, block, true, func(data []byte) (interface{}, error) {
+		stopParam := new(cabi.UpdateStopParam)
+		err := stopParam.FromABI(cabi.MethodNameUpdateNextStop, data)
+		if err != nil {
+			return nil, err
+		}
+		return stopParam, nil
+	}, func(param *cabi.ContractParam, v interface{}) error {
+		p := v.(*cabi.UpdateStopParam)
+		return update(param.NextStops, p.StopName, p.New)
+	})
 }
 
 type locker struct {
@@ -438,5 +526,129 @@ func (l *locker) Get(key []byte) (*sync.Mutex, error) {
 		return nil, err
 	} else {
 		return b.(*sync.Mutex), nil
+	}
+}
+
+func add(s []string, name string) error {
+	sort.Strings(s)
+	i := sort.SearchStrings(s, name)
+	if i == len(s) {
+		s = append(s, name)
+		return nil
+	}
+	return fmt.Errorf("name: %s already exist", name)
+}
+
+func remove(s []string, name string) error {
+	sort.Strings(s)
+	i := sort.SearchStrings(s, name)
+	if i == len(s) {
+		return fmt.Errorf("name: %s does not exist", name)
+	}
+	s = append(s[:i], s[i+1:]...)
+	return nil
+}
+
+func update(s []string, old, new string) error {
+	if err := remove(s, old); err == nil {
+		s = append(s, new)
+		return nil
+	} else {
+		return err
+	}
+}
+
+func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock, fn func(data []byte) error) ([]*ContractBlock, error) {
+	if err := fn(input.Data); err != nil {
+		return nil, err
+	}
+
+	txMeta, _ := ctx.GetAccountMeta(input.Address)
+	txToken := txMeta.Token(input.Token)
+	txHash := input.GetHash()
+
+	block.Type = types.ContractReward
+	block.Address = input.Address
+	block.Link = txHash
+	block.Token = input.Token
+	block.Extra = types.ZeroHash
+	block.Vote = types.ZeroBalance
+	block.Network = types.ZeroBalance
+	block.Oracle = types.ZeroBalance
+	block.Storage = types.ZeroBalance
+
+	block.Balance = txToken.Balance
+	block.Previous = txToken.Header
+	block.Representative = input.Representative
+
+	return []*ContractBlock{
+		{
+			VMContext: ctx,
+			Block:     block,
+			ToAddress: input.Address,
+			BlockType: types.ContractReward,
+			Amount:    types.ZeroBalance,
+			Token:     input.Token,
+			Data:      []byte{},
+		},
+	}, nil
+}
+
+func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool,
+	verifier func(data []byte) (interface{}, error),
+	process func(param *cabi.ContractParam, v interface{}) error) (*types.PendingKey, *types.PendingInfo, error) {
+	// check token is QGAS
+	if block.Token != common.GasToken() {
+		return nil, nil, fmt.Errorf("invalid token: %s", block.Token.String())
+	}
+
+	if o, err := verifier(block.Data); err == nil {
+		// make sure that the same block only process once
+		address := types.Address(block.Link)
+		storage, err := ctx.GetStorage(types.SettlementAddress[:], address[:])
+		if err != nil && err != vmstore.ErrStorageNotFound {
+			return nil, nil, err
+		}
+
+		if len(storage) > 0 {
+			// verify saved data
+			param, err := cabi.ParseContractParam(storage)
+			if err != nil {
+				return nil, nil, err
+			}
+			addr := param.PartyB.Address
+			if isPartyA {
+				addr = param.PartyA.Address
+			}
+
+			if addr == block.Address {
+				if err := process(param, o); err != nil {
+					return nil, nil, err
+				}
+
+				if data, err := param.ToABI(); err == nil {
+					if err := ctx.SetStorage(types.SettlementAddress[:], address[:], data); err != nil {
+						return nil, nil, err
+					}
+				} else {
+					return nil, nil, err
+				}
+			} else {
+				return nil, nil, fmt.Errorf("permission denied, only %s can change, but got %s", param.PartyB.Address, block.Address.String())
+			}
+		} else {
+			return nil, nil, errors.New("invalid saved contract data")
+		}
+
+		return &types.PendingKey{
+				Address: block.Address,
+				Hash:    block.GetHash(),
+			}, &types.PendingInfo{
+				Source: types.Address(block.Link),
+				Amount: types.ZeroBalance,
+				Type:   block.Token,
+			}, nil
+	} else {
+		return nil, nil, err
 	}
 }

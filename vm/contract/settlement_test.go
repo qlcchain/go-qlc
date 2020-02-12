@@ -404,6 +404,247 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 										rb2 := rb[0].Block
 										rb2.Signature = ac2.Sign(rb2.GetHash())
 										t.Log(rb2.String())
+
+										// add prestop
+										tm, err = ctx.GetTokenMeta(a1, common.GasToken())
+										if err != nil {
+											t.Fatal(err)
+										}
+										stopParam := &cabi.StopParam{StopName: "HTKCSL"}
+										abi, err := stopParam.ToABI(cabi.MethodNameAddNextStop)
+										if err != nil {
+											t.Fatal(err)
+										}
+										sb := &types.StateBlock{
+											Type:           types.ContractSend,
+											Token:          tm.Type,
+											Address:        a1,
+											Balance:        tm.Balance,
+											Vote:           types.ZeroBalance,
+											Network:        types.ZeroBalance,
+											Oracle:         types.ZeroBalance,
+											Storage:        types.ZeroBalance,
+											Previous:       tm.Header,
+											Link:           types.Hash(address),
+											Representative: tm.Representative,
+											Data:           abi,
+											Timestamp:      common.TimeNow().Unix(),
+										}
+
+										sb.Signature = ac1.Sign(sb.GetHash())
+
+										h := ctx.Cache.Trie().Hash()
+										if h != nil {
+											sb.PoVHeight = 0
+											sb.Extra = *h
+										}
+
+										if err := updateBlock(l, sb); err != nil {
+											t.Fatal(err)
+										}
+										addNextStop := &AddNextStop{}
+										if pendingKey, info, err := addNextStop.ProcessSend(ctx, sb); err != nil {
+											t.Fatal(err)
+										} else {
+											t.Log(pendingKey, info)
+											if err := ctx.SaveStorage(); err != nil {
+												t.Fatal(err)
+											}
+										}
+
+										rev := &types.StateBlock{
+											Timestamp: common.TimeNow().Unix(),
+										}
+										if rb, err := addNextStop.DoReceive(ctx, rev, sb); err != nil {
+											t.Fatal(err)
+										} else {
+											if len(rb) > 0 {
+												rb1 := rb[0].Block
+												rb1.Signature = ac1.Sign(rb1.GetHash())
+												t.Log(rb1.String())
+											} else {
+												t.Fatal("fail to generate add next stop reward block")
+											}
+										}
+
+										// add prestop
+										tm2, err := ctx.GetTokenMeta(a2, common.GasToken())
+										if err != nil {
+											t.Fatal(err)
+										}
+
+										stopParam = &cabi.StopParam{StopName: "PCCWG"}
+										abi, err = stopParam.ToABI(cabi.MethodNameAddPreStop)
+										if err != nil {
+											t.Fatal(err)
+										}
+										sb2 = &types.StateBlock{
+											Type:           types.ContractSend,
+											Token:          tm2.Type,
+											Address:        a2,
+											Balance:        tm.Balance,
+											Vote:           types.ZeroBalance,
+											Network:        types.ZeroBalance,
+											Oracle:         types.ZeroBalance,
+											Storage:        types.ZeroBalance,
+											Previous:       tm2.Header,
+											Link:           types.Hash(address),
+											Representative: tm2.Representative,
+											Data:           abi,
+											Timestamp:      common.TimeNow().Unix(),
+										}
+
+										sb2.Signature = ac2.Sign(sb.GetHash())
+
+										h = ctx.Cache.Trie().Hash()
+										if h != nil {
+											sb2.PoVHeight = 0
+											sb2.Extra = *h
+										}
+
+										if err := updateBlock(l, sb2); err != nil {
+											t.Fatal(err)
+										}
+										addPreStop := &AddPreStop{}
+										if pendingKey, info, err := addPreStop.ProcessSend(ctx, sb2); err != nil {
+											t.Fatal(err)
+										} else {
+											t.Log(pendingKey, info)
+											if err := ctx.SaveStorage(); err != nil {
+												t.Fatal(err)
+											}
+										}
+
+										rev2 := &types.StateBlock{
+											Timestamp: common.TimeNow().Unix(),
+										}
+										if rb, err := addPreStop.DoReceive(ctx, rev2, sb2); err != nil {
+											t.Fatal(err)
+										} else {
+											if len(rb) > 0 {
+												rb1 := rb[0].Block
+												rb1.Signature = ac2.Sign(rb1.GetHash())
+												t.Log(rb1.String())
+											} else {
+												t.Fatal("fail to generate add pre stop reward block")
+											}
+										}
+										// start process CDR as ac1
+										cdrContract := &ProcessCDR{}
+
+										tm, err = ctx.GetTokenMeta(a1, common.GasToken())
+										if err != nil {
+											t.Fatal(err)
+										}
+										cdr1 := &cabi.CDRParam{
+											Index:         1,
+											SmsDt:         time.Now().Unix(),
+											Sender:        "WeChat",
+											Destination:   "85257***343",
+											SendingStatus: 0,
+											DlrStatus:     0,
+											PreStop:       "",
+											NextStop:      "HKTCSL",
+										}
+										abi, err = cdr1.ToABI()
+										if err != nil {
+											t.Fatal(err)
+										}
+										sb = &types.StateBlock{
+											Type:           types.ContractSend,
+											Token:          tm.Type,
+											Address:        a1,
+											Balance:        tm.Balance,
+											Vote:           types.ZeroBalance,
+											Network:        types.ZeroBalance,
+											Oracle:         types.ZeroBalance,
+											Storage:        types.ZeroBalance,
+											Previous:       tm.Header,
+											Link:           types.Hash(address),
+											Representative: tm.Representative,
+											Data:           abi,
+											Timestamp:      common.TimeNow().Unix(),
+										}
+
+										sb.Signature = ac1.Sign(sb.GetHash())
+
+										h = ctx.Cache.Trie().Hash()
+										if h != nil {
+											sb.PoVHeight = 0
+											sb.Extra = *h
+										}
+
+										if err := updateBlock(l, sb); err != nil {
+											t.Fatal(err)
+										}
+
+										if pk, pi, err := cdrContract.ProcessSend(ctx, sb); err != nil {
+											t.Fatal(err)
+										} else {
+											t.Log(pk, pi)
+										}
+										// start process CDR as ac2
+										tm2, err = ctx.GetTokenMeta(a2, common.GasToken())
+										if err != nil {
+											t.Fatal(err)
+										}
+										cdr2 := &cabi.CDRParam{
+											Index:         1,
+											SmsDt:         time.Now().Unix(),
+											Sender:        "WeChat",
+											Destination:   "85257***343",
+											SendingStatus: 0,
+											DlrStatus:     0,
+											PreStop:       "PCCWG",
+											NextStop:      "",
+										}
+										abi, err = cdr2.ToABI()
+										if err != nil {
+											t.Fatal(err)
+										}
+										sb = &types.StateBlock{
+											Type:           types.ContractSend,
+											Token:          tm2.Type,
+											Address:        a2,
+											Balance:        tm2.Balance,
+											Vote:           types.ZeroBalance,
+											Network:        types.ZeroBalance,
+											Oracle:         types.ZeroBalance,
+											Storage:        types.ZeroBalance,
+											Previous:       tm2.Header,
+											Link:           types.Hash(address),
+											Representative: tm2.Representative,
+											Data:           abi,
+											Timestamp:      common.TimeNow().Unix(),
+										}
+
+										sb.Signature = ac2.Sign(sb.GetHash())
+
+										h = ctx.Cache.Trie().Hash()
+										if h != nil {
+											sb.PoVHeight = 0
+											sb.Extra = *h
+										}
+
+										if err := updateBlock(l, sb); err != nil {
+											t.Fatal(err)
+										}
+
+										if pk, pi, err := cdrContract.ProcessSend(ctx, sb); err != nil {
+											t.Fatal(err)
+										} else {
+											t.Log(pk, pi)
+
+											if hash, err := cdr1.ToHash(); err != nil {
+												t.Fatal(err)
+											} else {
+												if status, err := cabi.GetCDRStatus(ctx, &address, hash); err != nil {
+													t.Fatal(err)
+												} else {
+													t.Log(status)
+												}
+											}
+										}
 									} else {
 										t.Fatal("fail to generate sign contract reward block")
 									}
@@ -416,42 +657,6 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 				}
 			}
 		}
-	}
-}
-
-func TestCreateContract_DoGapPov(t *testing.T) {
-	type args struct {
-		ctx   *vmstore.VMContext
-		block *types.StateBlock
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    uint64
-		wantErr bool
-	}{
-		{
-			name: "empty",
-			args: args{
-				ctx:   nil,
-				block: nil,
-			},
-			want:    0,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &CreateContract{}
-			got, err := c.DoGapPov(tt.args.ctx, tt.args.block)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DoGapPov() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("DoGapPov() got = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
 
@@ -535,42 +740,6 @@ func TestCreateContract_GetRefundData(t *testing.T) {
 	}
 }
 
-func TestProcessCDR_DoGapPov(t *testing.T) {
-	type args struct {
-		ctx   *vmstore.VMContext
-		block *types.StateBlock
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    uint64
-		wantErr bool
-	}{
-		{
-			name: "default",
-			args: args{
-				ctx:   nil,
-				block: nil,
-			},
-			want:    0,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &ProcessCDR{}
-			got, err := p.DoGapPov(tt.args.ctx, tt.args.block)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DoGapPov() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("DoGapPov() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestProcessCDR_GetDescribe(t *testing.T) {
 	tests := []struct {
 		name string
@@ -646,42 +815,6 @@ func TestProcessCDR_GetRefundData(t *testing.T) {
 			p := &ProcessCDR{}
 			if got := p.GetRefundData(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetRefundData() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSignContract_DoGapPov(t *testing.T) {
-	type args struct {
-		ctx   *vmstore.VMContext
-		block *types.StateBlock
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    uint64
-		wantErr bool
-	}{
-		{
-			name: "default",
-			args: args{
-				ctx:   nil,
-				block: nil,
-			},
-			want:    0,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &SignContract{}
-			got, err := s.DoGapPov(tt.args.ctx, tt.args.block)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DoGapPov() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("DoGapPov() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -816,5 +949,129 @@ func Test_newLocker(t *testing.T) {
 
 	for k, v := range all {
 		t.Log("all2: ", k, v)
+	}
+}
+
+func Test_add(t *testing.T) {
+	type args struct {
+		s    []string
+		name string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				s:    nil,
+				name: "11",
+			},
+			wantErr: false,
+		},
+		{
+			name: "fail",
+			args: args{
+				s:    []string{"22", "11"},
+				name: "11",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := add(tt.args.s, tt.args.name); (err != nil) != tt.wantErr {
+				t.Errorf("add() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_remove(t *testing.T) {
+	type args struct {
+		s    []string
+		name string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				s:    []string{"11", "22"},
+				name: "22",
+			},
+			wantErr: false,
+		}, {
+			name: "f1",
+			args: args{
+				s:    nil,
+				name: "22",
+			},
+			wantErr: true,
+		}, {
+			name: "f2",
+			args: args{
+				s:    []string{"11", "22"},
+				name: "33",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := remove(tt.args.s, tt.args.name); (err != nil) != tt.wantErr {
+				t.Errorf("remove() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_update(t *testing.T) {
+	type args struct {
+		s   []string
+		old string
+		new string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				s:   []string{"11", "22"},
+				old: "11",
+				new: "33",
+			},
+			wantErr: false,
+		}, {
+			name: "f1",
+			args: args{
+				s:   nil,
+				old: "11",
+				new: "33",
+			},
+			wantErr: true,
+		}, {
+			name: "f1",
+			args: args{
+				s:   []string{"11", "22"},
+				old: "33",
+				new: "111",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := update(tt.args.s, tt.args.old, tt.args.new); (err != nil) != tt.wantErr {
+				t.Errorf("update() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }

@@ -11,17 +11,12 @@ import (
 	"bytes"
 	"math"
 	"math/big"
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/mock"
@@ -59,45 +54,22 @@ var (
 	}
 
 	cdrParam = CDRParam{
-		Index:         1,
-		SmsDt:         time.Now().Unix(),
-		Sender:        "PCCWG",
-		Destination:   "85257***343",
-		DstCountry:    "Hong Kong",
-		DstOperator:   "HKTCSL",
-		DstMcc:        454,
-		DstMnc:        0,
-		SellPrice:     1,
-		SellCurrency:  "USD",
-		CustomerName:  "Tencent",
-		CustomerID:    "11667",
-		SendingStatus: "Send",
-		DlrStatus:     "Delivered",
+		Index:       1,
+		SmsDt:       time.Now().Unix(),
+		Sender:      "PCCWG",
+		Destination: "85257***343",
+		//DstCountry:    "Hong Kong",
+		//DstOperator:   "HKTCSL",
+		//DstMcc:        454,
+		//DstMnc:        0,
+		//SellPrice:     1,
+		//SellCurrency:  "USD",
+		//CustomerName:  "Tencent",
+		//CustomerID:    "11667",
+		SendingStatus: SendingStatusSend,
+		DlrStatus:     DLRStatusDelivered,
 	}
 )
-
-func setupSettlementTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
-	t.Parallel()
-
-	dir := filepath.Join(config.QlcTestDataDir(), "settlement", uuid.New().String())
-	_ = os.RemoveAll(dir)
-	cm := config.NewCfgManager(dir)
-	_, _ = cm.Load()
-	l := ledger.NewLedger(cm.ConfigFile)
-
-	return func(t *testing.T) {
-		//err := l.Store.Erase()
-		err := l.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		//CloseLedger()
-		err = os.RemoveAll(dir)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}, l
-}
 
 func buildContractParam() (param *ContractParam) {
 	cp := createContractParam
@@ -459,20 +431,20 @@ func TestGetAllSettlementContract(t *testing.T) {
 
 func TestCDRParam_Verify(t *testing.T) {
 	type fields struct {
-		Index         uint64
-		SmsDt         int64
-		Sender        string
-		Destination   string
-		DstCountry    string
-		DstOperator   string
-		DstMcc        uint64
-		DstMnc        uint64
-		SellPrice     float64
-		SellCurrency  string
-		CustomerName  string
-		CustomerID    string
-		SendingStatus string
-		DlrStatus     string
+		Index       uint64
+		SmsDt       int64
+		Sender      string
+		Destination string
+		//DstCountry    string
+		//DstOperator   string
+		//DstMcc        uint64
+		//DstMnc        uint64
+		//SellPrice     float64
+		//SellCurrency  string
+		//CustomerName  string
+		//CustomerID    string
+		SendingStatus SendingStatus
+		DlrStatus     DLRStatus
 	}
 	tests := []struct {
 		name    string
@@ -482,144 +454,183 @@ func TestCDRParam_Verify(t *testing.T) {
 		{
 			name: "ok",
 			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
+				Index:       1,
+				SmsDt:       time.Now().Unix(),
+				Sender:      "PCCWG",
+				Destination: "85257***343",
+				//DstCountry:    "Hong Kong",
+				//DstOperator:   "HKTCSL",
+				//DstMcc:        454,
+				//DstMnc:        0,
+				//SellPrice:     1,
+				//SellCurrency:  "USD",
+				//CustomerName:  "Tencent",
+				//CustomerID:    "11667",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusDelivered,
 			},
 			wantErr: false,
 		},
 		{
 			name: "f1",
 			fields: fields{
-				Index:         0,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
+				Index:       0,
+				SmsDt:       time.Now().Unix(),
+				Sender:      "PCCWG",
+				Destination: "85257***343",
+				//DstCountry:    "Hong Kong",
+				//DstOperator:   "HKTCSL",
+				//DstMcc:        454,
+				//DstMnc:        0,
+				//SellPrice:     1,
+				//SellCurrency:  "USD",
+				//CustomerName:  "Tencent",
+				//CustomerID:    "11667",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusDelivered,
 			},
 			wantErr: true,
 		},
 		{
 			name: "f2",
 			fields: fields{
-				Index:         1,
-				SmsDt:         0,
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
+				Index:       1,
+				SmsDt:       0,
+				Sender:      "PCCWG",
+				Destination: "85257***343",
+				//DstCountry:    "Hong Kong",
+				//DstOperator:   "HKTCSL",
+				//DstMcc:        454,
+				//DstMnc:        0,
+				//SellPrice:     1,
+				//SellCurrency:  "USD",
+				//CustomerName:  "Tencent",
+				//CustomerID:    "11667",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusDelivered,
 			},
 			wantErr: true,
 		},
 		{
 			name: "f3",
 			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
+				Index:       1,
+				SmsDt:       time.Now().Unix(),
+				Sender:      "",
+				Destination: "85257***343",
+				//DstCountry:    "Hong Kong",
+				//DstOperator:   "HKTCSL",
+				//DstMcc:        454,
+				//DstMnc:        0,
+				//SellPrice:     1,
+				//SellCurrency:  "USD",
+				//CustomerName:  "Tencent",
+				//CustomerID:    "11667",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusDelivered,
 			},
 			wantErr: true,
 		},
 		{
 			name: "f4",
 			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		},
-		{
-			name: "f5",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		}, {
-			name: "f6",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
+				Index:       1,
+				SmsDt:       time.Now().Unix(),
+				Sender:      "PCCWG",
+				Destination: "",
+				//DstCountry:    "Hong Kong",
+				//DstOperator:   "HKTCSL",
+				//DstMcc:        454,
+				//DstMnc:        0,
+				//SellPrice:     1,
+				//SellCurrency:  "USD",
+				//CustomerName:  "Tencent",
+				//CustomerID:    "11667",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusDelivered,
 			},
 			wantErr: true,
 		},
 		//{
-		//	name: "f7",
+		//	name: "f5",
+		//	fields: fields{
+		//		Index:         1,
+		//		SmsDt:         time.Now().Unix(),
+		//		Sender:        "PCCWG",
+		//		Destination:   "85257***343",
+		//		//DstCountry:    "",
+		//		//DstOperator:   "HKTCSL",
+		//		//DstMcc:        454,
+		//		//DstMnc:        0,
+		//		//SellPrice:     1,
+		//		//SellCurrency:  "USD",
+		//		//CustomerName:  "Tencent",
+		//		//CustomerID:    "11667",
+		//		SendingStatus: SendingStatusSend,
+		//		DlrStatus:     DLRStatusDelivered,
+		//	},
+		//	wantErr: true,
+		//}, {
+		//	name: "f6",
+		//	fields: fields{
+		//		Index:         1,
+		//		SmsDt:         time.Now().Unix(),
+		//		Sender:        "PCCWG",
+		//		Destination:   "85257***343",
+		//		//DstCountry:    "Hong Kong",
+		//		//DstOperator:   "",
+		//		//DstMcc:        454,
+		//		//DstMnc:        0,
+		//		//SellPrice:     1,
+		//		//SellCurrency:  "USD",
+		//		//CustomerName:  "Tencent",
+		//		//CustomerID:    "11667",
+		//		SendingStatus: SendingStatusSend,
+		//		DlrStatus:     DLRStatusDelivered,
+		//	},
+		//	wantErr: true,
+		//},
+		////{
+		////	name: "f7",
+		////	fields: fields{
+		////		Index:         1,
+		////		SmsDt:         time.Now().Unix(),
+		////		Sender:        "PCCWG",
+		////		Destination:   "85257***343",
+		////		DstCountry:    "Hong Kong",
+		////		DstOperator:   "HKTCSL",
+		////		DstMcc:        0,
+		////		DstMnc:        0,
+		////		SellPrice:     1,
+		////		SellCurrency:  "USD",
+		////		CustomerName:  "Tencent",
+		////		CustomerID:    "11667",
+		////		SendingStatus: "Send",
+		////		DlrStatus:     "Delivered",
+		////	},
+		////	wantErr: true,
+		////}, {
+		////	name: "f8",
+		////	fields: fields{
+		////		Index:         1,
+		////		SmsDt:         time.Now().Unix(),
+		////		Sender:        "PCCWG",
+		////		Destination:   "85257***343",
+		////		DstCountry:    "Hong Kong",
+		////		DstOperator:   "HKTCSL",
+		////		DstMcc:        454,
+		////		DstMnc:        0,
+		////		SellPrice:     1,
+		////		SellCurrency:  "USD",
+		////		CustomerName:  "Tencent",
+		////		CustomerID:    "11667",
+		////		SendingStatus: "Send",
+		////		DlrStatus:     "Delivered",
+		////	},
+		////	wantErr: true,
+		////},
+		//{
+		//	name: "f9",
 		//	fields: fields{
 		//		Index:         1,
 		//		SmsDt:         time.Now().Unix(),
@@ -627,18 +638,56 @@ func TestCDRParam_Verify(t *testing.T) {
 		//		Destination:   "85257***343",
 		//		DstCountry:    "Hong Kong",
 		//		DstOperator:   "HKTCSL",
-		//		DstMcc:        0,
+		//		DstMcc:        454,
 		//		DstMnc:        0,
-		//		SellPrice:     1,
+		//		SellPrice:     0,
 		//		SellCurrency:  "USD",
 		//		CustomerName:  "Tencent",
 		//		CustomerID:    "11667",
-		//		SendingStatus: "Send",
-		//		DlrStatus:     "Delivered",
+		//		SendingStatus: SendingStatusSend,
+		//		DlrStatus:     DLRStatusDelivered,
 		//	},
 		//	wantErr: true,
 		//}, {
-		//	name: "f8",
+		//	name: "f10",
+		//	fields: fields{
+		//		Index:         1,
+		//		SmsDt:         time.Now().Unix(),
+		//		Sender:        "PCCWG",
+		//		Destination:   "85257***343",
+		//		DstCountry:    "Hong Kong",
+		//		DstOperator:   "HKTCSL",
+		//		DstMcc:        454,
+		//		DstMnc:        0,
+		//		SellPrice:     1,
+		//		SellCurrency:  "",
+		//		CustomerName:  "Tencent",
+		//		CustomerID:    "11667",
+		//		SendingStatus: SendingStatusSend,
+		//		DlrStatus:     DLRStatusDelivered,
+		//	},
+		//	wantErr: true,
+		//}, {
+		//	name: "f11",
+		//	fields: fields{
+		//		Index:         1,
+		//		SmsDt:         time.Now().Unix(),
+		//		Sender:        "PCCWG",
+		//		Destination:   "85257***343",
+		//		DstCountry:    "Hong Kong",
+		//		DstOperator:   "HKTCSL",
+		//		DstMcc:        454,
+		//		DstMnc:        0,
+		//		SellPrice:     1,
+		//		SellCurrency:  "USD",
+		//		CustomerName:  "",
+		//		CustomerID:    "11667",
+		//		SendingStatus: SendingStatusSend,
+		//		DlrStatus:     DLRStatusDelivered,
+		//	},
+		//	wantErr: true,
+		//}, {
+		//	name: "f12",
 		//	fields: fields{
 		//		Index:         1,
 		//		SmsDt:         time.Now().Unix(),
@@ -651,164 +700,28 @@ func TestCDRParam_Verify(t *testing.T) {
 		//		SellPrice:     1,
 		//		SellCurrency:  "USD",
 		//		CustomerName:  "Tencent",
-		//		CustomerID:    "11667",
-		//		SendingStatus: "Send",
-		//		DlrStatus:     "Delivered",
+		//		CustomerID:    "",
+		//		SendingStatus: SendingStatusSend,
+		//		DlrStatus:     DLRStatusDelivered,
 		//	},
 		//	wantErr: true,
 		//},
-		{
-			name: "f9",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     0,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		}, {
-			name: "f10",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		}, {
-			name: "f11",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		}, {
-			name: "f12",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		},
-		{
-			name: "f13",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "",
-				SendingStatus: "Send",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		},
-		{
-			name: "f14",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "",
-				DlrStatus:     "Delivered",
-			},
-			wantErr: true,
-		}, {
-			name: "f15",
-			fields: fields{
-				Index:         1,
-				SmsDt:         time.Now().Unix(),
-				Sender:        "PCCWG",
-				Destination:   "85257***343",
-				DstCountry:    "Hong Kong",
-				DstOperator:   "HKTCSL",
-				DstMcc:        454,
-				DstMnc:        0,
-				SellPrice:     1,
-				SellCurrency:  "USD",
-				CustomerName:  "Tencent",
-				CustomerID:    "11667",
-				SendingStatus: "Send",
-				DlrStatus:     "",
-			},
-			wantErr: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			z := &CDRParam{
-				Index:         tt.fields.Index,
-				SmsDt:         tt.fields.SmsDt,
-				Sender:        tt.fields.Sender,
-				Destination:   tt.fields.Destination,
-				DstCountry:    tt.fields.DstCountry,
-				DstOperator:   tt.fields.DstOperator,
-				DstMcc:        tt.fields.DstMcc,
-				DstMnc:        tt.fields.DstMnc,
-				SellPrice:     tt.fields.SellPrice,
-				SellCurrency:  tt.fields.SellCurrency,
-				CustomerName:  tt.fields.CustomerName,
-				CustomerID:    tt.fields.CustomerID,
+				Index:       tt.fields.Index,
+				SmsDt:       tt.fields.SmsDt,
+				Sender:      tt.fields.Sender,
+				Destination: tt.fields.Destination,
+				//DstCountry:    tt.fields.DstCountry,
+				//DstOperator:   tt.fields.DstOperator,
+				//DstMcc:        tt.fields.DstMcc,
+				//DstMnc:        tt.fields.DstMnc,
+				//SellPrice:     tt.fields.SellPrice,
+				//SellCurrency:  tt.fields.SellCurrency,
+				//CustomerName:  tt.fields.CustomerName,
+				//CustomerID:    tt.fields.CustomerID,
 				SendingStatus: tt.fields.SendingStatus,
 				DlrStatus:     tt.fields.DlrStatus,
 			}
@@ -895,8 +808,8 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 	}
 
 	type args struct {
-		contract *ContractParam
-		cdr      SettlementCDR
+		cdr    SettlementCDR
+		status SettlementStatus
 	}
 
 	tests := []struct {
@@ -906,50 +819,103 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "ok",
+			name: "1 records",
 			fields: fields{
-				Params: []SettlementCDR{{
-					CDRParam: CDRParam{
-						Index:         1,
-						SmsDt:         time.Now().Unix(),
-						Sender:        "PCCWG",
-						Destination:   "85257***343",
-						DstCountry:    "Hong Kong",
-						DstOperator:   "HKTCSL",
-						DstMcc:        454,
-						DstMnc:        0,
-						SellPrice:     1,
-						SellCurrency:  "USD",
-						CustomerName:  "Tencent",
-						CustomerID:    "11668",
-						SendingStatus: "Send",
-						DlrStatus:     "Delivered",
-					},
-					From: mock.Address(),
-				}},
-				Status: 0,
+				Params: []SettlementCDR{},
+				Status: SettlementStatusStage1,
 			},
 			args: args{
-				contract: nil,
 				cdr: SettlementCDR{
 					CDRParam: CDRParam{
 						Index:         1,
 						SmsDt:         time.Now().Unix(),
 						Sender:        "HKTCSL",
 						Destination:   "85257***343",
-						DstCountry:    "Hong Kong",
-						DstOperator:   "HKTCSL",
-						DstMcc:        454,
-						DstMnc:        0,
-						SellPrice:     1,
-						SellCurrency:  "USD",
-						CustomerName:  "Tencent",
-						CustomerID:    "11667",
-						SendingStatus: "Send",
-						DlrStatus:     "Delivered",
+						SendingStatus: SendingStatusSend,
+						DlrStatus:     DLRStatusDelivered,
 					},
 					From: mock.Address(),
 				},
+				status: SettlementStatusStage1,
+			},
+			wantErr: false,
+		},
+		{
+			name: "2 records",
+			fields: fields{
+				Params: []SettlementCDR{{
+					CDRParam: CDRParam{
+						Index:       1,
+						SmsDt:       time.Now().Unix(),
+						Sender:      "PCCWG",
+						Destination: "85257***343",
+						//DstCountry:    "Hong Kong",
+						//DstOperator:   "HKTCSL",
+						//DstMcc:        454,
+						//DstMnc:        0,
+						//SellPrice:     1,
+						//SellCurrency:  "USD",
+						//CustomerName:  "Tencent",
+						//CustomerID:    "11668",
+						SendingStatus: SendingStatusSend,
+						DlrStatus:     DLRStatusDelivered,
+					},
+					From: mock.Address(),
+				}},
+				Status: 0,
+			},
+			args: args{
+				cdr: SettlementCDR{
+					CDRParam: CDRParam{
+						Index:         1,
+						SmsDt:         time.Now().Unix(),
+						Sender:        "HKTCSL",
+						Destination:   "85257***343",
+						SendingStatus: SendingStatusSend,
+						DlrStatus:     DLRStatusDelivered,
+					},
+					From: mock.Address(),
+				},
+				status: SettlementStatusSuccess,
+			},
+			wantErr: false,
+		}, {
+			name: "2 records",
+			fields: fields{
+				Params: []SettlementCDR{{
+					CDRParam: CDRParam{
+						Index:       1,
+						SmsDt:       time.Now().Unix(),
+						Sender:      "PCCWG",
+						Destination: "85257***343",
+						//DstCountry:    "Hong Kong",
+						//DstOperator:   "HKTCSL",
+						//DstMcc:        454,
+						//DstMnc:        0,
+						//SellPrice:     1,
+						//SellCurrency:  "USD",
+						//CustomerName:  "Tencent",
+						//CustomerID:    "11668",
+						SendingStatus: SendingStatusSend,
+						DlrStatus:     DLRStatusUndelivered,
+					},
+					From: mock.Address(),
+				}},
+				Status: SettlementStatusFailure,
+			},
+			args: args{
+				cdr: SettlementCDR{
+					CDRParam: CDRParam{
+						Index:         1,
+						SmsDt:         time.Now().Unix(),
+						Sender:        "HKTCSL",
+						Destination:   "85257***343",
+						SendingStatus: SendingStatusSend,
+						DlrStatus:     DLRStatusDelivered,
+					},
+					From: mock.Address(),
+				},
+				status: SettlementStatusFailure,
 			},
 			wantErr: false,
 		},
@@ -961,11 +927,11 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 				Params: tt.fields.Params,
 				Status: tt.fields.Status,
 			}
-			if err := z.DoSettlement(tt.args.contract, tt.args.cdr); (err != nil) != tt.wantErr {
+			if err := z.DoSettlement(tt.args.cdr); (err != nil) != tt.wantErr {
 				t.Errorf("DoSettlement() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				if z.Status != SettlementStatusSuccess {
-					t.Fatalf("invalid status, exp: %s, act: %s", SettlementStatusSuccess.String(), z.Status.String())
+				if z.Status != tt.args.status {
+					t.Fatalf("invalid status, exp: %s, act: %s", tt.args.status.String(), z.Status.String())
 				}
 			}
 		})
@@ -1233,6 +1199,8 @@ func TestCreateContractParam_ToABI(t *testing.T) {
 		}
 		if a1 != a2 {
 			t.Fatalf("invalid create contract params, %v, %v", cp, cp2)
+		} else {
+			t.Log(cp2.String())
 		}
 	}
 }
@@ -1256,8 +1224,8 @@ func TestCDRParam_FromABI(t *testing.T) {
 		SellCurrency  string
 		CustomerName  string
 		CustomerID    string
-		SendingStatus string
-		DlrStatus     string
+		SendingStatus SendingStatus
+		DlrStatus     DLRStatus
 	}
 	type args struct {
 		data []byte
@@ -1271,18 +1239,18 @@ func TestCDRParam_FromABI(t *testing.T) {
 		{
 			name: "ok",
 			fields: fields{
-				Index:         cdr.Index,
-				SmsDt:         cdr.SmsDt,
-				Sender:        cdr.Sender,
-				Destination:   cdr.Destination,
-				DstCountry:    cdr.DstCountry,
-				DstOperator:   cdr.DstOperator,
-				DstMcc:        cdr.DstMcc,
-				DstMnc:        cdr.DstMnc,
-				SellPrice:     cdr.SellPrice,
-				SellCurrency:  cdr.SellCurrency,
-				CustomerName:  cdr.CustomerName,
-				CustomerID:    cdr.CustomerID,
+				Index:       cdr.Index,
+				SmsDt:       cdr.SmsDt,
+				Sender:      cdr.Sender,
+				Destination: cdr.Destination,
+				//DstCountry:    cdr.DstCountry,
+				//DstOperator:   cdr.DstOperator,
+				//DstMcc:        cdr.DstMcc,
+				//DstMnc:        cdr.DstMnc,
+				//SellPrice:     cdr.SellPrice,
+				//SellCurrency:  cdr.SellCurrency,
+				//CustomerName:  cdr.CustomerName,
+				//CustomerID:    cdr.CustomerID,
 				SendingStatus: cdr.SendingStatus,
 				DlrStatus:     cdr.DlrStatus,
 			},
@@ -1295,18 +1263,18 @@ func TestCDRParam_FromABI(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			z := &CDRParam{
-				Index:         tt.fields.Index,
-				SmsDt:         tt.fields.SmsDt,
-				Sender:        tt.fields.Sender,
-				Destination:   tt.fields.Destination,
-				DstCountry:    tt.fields.DstCountry,
-				DstOperator:   tt.fields.DstOperator,
-				DstMcc:        tt.fields.DstMcc,
-				DstMnc:        tt.fields.DstMnc,
-				SellPrice:     tt.fields.SellPrice,
-				SellCurrency:  tt.fields.SellCurrency,
-				CustomerName:  tt.fields.CustomerName,
-				CustomerID:    tt.fields.CustomerID,
+				Index:       tt.fields.Index,
+				SmsDt:       tt.fields.SmsDt,
+				Sender:      tt.fields.Sender,
+				Destination: tt.fields.Destination,
+				//DstCountry:    tt.fields.DstCountry,
+				//DstOperator:   tt.fields.DstOperator,
+				//DstMcc:        tt.fields.DstMcc,
+				//DstMnc:        tt.fields.DstMnc,
+				//SellPrice:     tt.fields.SellPrice,
+				//SellCurrency:  tt.fields.SellCurrency,
+				//CustomerName:  tt.fields.CustomerName,
+				//CustomerID:    tt.fields.CustomerID,
 				SendingStatus: tt.fields.SendingStatus,
 				DlrStatus:     tt.fields.DlrStatus,
 			}
@@ -2039,5 +2007,353 @@ func TestGetSettlementContract(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		t.Log(c)
+	}
+}
+
+func TestStopParam_Verify(t *testing.T) {
+	type fields struct {
+		StopName string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				StopName: "test1",
+			},
+			wantErr: false,
+		}, {
+			name: "false",
+			fields: fields{
+				StopName: "",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &StopParam{
+				StopName: tt.fields.StopName,
+			}
+			if err := z.Verify(); (err != nil) != tt.wantErr {
+				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUpdateStopParam_Verify(t *testing.T) {
+	type fields struct {
+		StopName string
+		NewName  string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				StopName: "test1",
+				NewName:  "test2",
+			},
+			wantErr: false,
+		}, {
+			name: "false",
+			fields: fields{
+				StopName: "",
+				NewName:  "222",
+			},
+			wantErr: true,
+		}, {
+			name: "false2",
+			fields: fields{
+				StopName: "111",
+				NewName:  "",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &UpdateStopParam{
+				StopName: tt.fields.StopName,
+				New:      tt.fields.NewName,
+			}
+			if err := z.Verify(); (err != nil) != tt.wantErr {
+				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSignContractParam_Verify(t *testing.T) {
+	type fields struct {
+		ContractAddress types.Address
+		ConfirmDate     int64
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				ContractAddress: mock.Address(),
+				ConfirmDate:     time.Now().Unix(),
+			},
+			want:    true,
+			wantErr: false,
+		}, {
+			name: "f1",
+			fields: fields{
+				ContractAddress: types.ZeroAddress,
+				ConfirmDate:     time.Now().Unix(),
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				ContractAddress: mock.Address(),
+				ConfirmDate:     0,
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &SignContractParam{
+				ContractAddress: tt.fields.ContractAddress,
+				ConfirmDate:     tt.fields.ConfirmDate,
+			}
+			got, err := z.Verify()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Verify() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestContractParam_IsPreStop(t *testing.T) {
+	param := buildContractParam()
+
+	type fields struct {
+		CreateContractParam CreateContractParam
+		PreStops            []string
+		NextStops           []string
+		ConfirmDate         int64
+		Status              ContractStatus
+	}
+	type args struct {
+		n string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				CreateContractParam: param.CreateContractParam,
+				PreStops:            []string{"PCCWG", "111"},
+				NextStops:           nil,
+				ConfirmDate:         param.ConfirmDate,
+				Status:              param.Status,
+			},
+			args: args{
+				n: "PCCWG",
+			},
+			want: true,
+		}, {
+			name: "ok",
+			fields: fields{
+				CreateContractParam: param.CreateContractParam,
+				PreStops:            []string{"PCCWG", "111"},
+				NextStops:           nil,
+				ConfirmDate:         param.ConfirmDate,
+				Status:              param.Status,
+			},
+			args: args{
+				n: "PCCWG1",
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractParam{
+				CreateContractParam: tt.fields.CreateContractParam,
+				PreStops:            tt.fields.PreStops,
+				NextStops:           tt.fields.NextStops,
+				ConfirmDate:         tt.fields.ConfirmDate,
+				Status:              tt.fields.Status,
+			}
+			if got := z.IsPreStop(tt.args.n); got != tt.want {
+				t.Errorf("IsPreStop() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCDRParam_Status(t *testing.T) {
+	type fields struct {
+		Index         uint64
+		SmsDt         int64
+		Sender        string
+		Destination   string
+		SendingStatus SendingStatus
+		DlrStatus     DLRStatus
+		PreStop       string
+		NextStop      string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				Index:         0,
+				SmsDt:         0,
+				Sender:        "",
+				Destination:   "",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusDelivered,
+				PreStop:       "",
+				NextStop:      "",
+			},
+			want: true,
+		}, {
+			name: "f1",
+			fields: fields{
+				Index:         0,
+				SmsDt:         0,
+				Sender:        "",
+				Destination:   "",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusUnknown,
+				PreStop:       "",
+				NextStop:      "",
+			},
+			want: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				Index:         0,
+				SmsDt:         0,
+				Sender:        "",
+				Destination:   "",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusUndelivered,
+				PreStop:       "",
+				NextStop:      "",
+			},
+			want: false,
+		}, {
+			name: "f4",
+			fields: fields{
+				Index:         0,
+				SmsDt:         0,
+				Sender:        "",
+				Destination:   "",
+				SendingStatus: SendingStatusSend,
+				DlrStatus:     DLRStatusEmpty,
+				PreStop:       "",
+				NextStop:      "",
+			},
+			want: true,
+		}, {
+			name: "f5",
+			fields: fields{
+				Index:         0,
+				SmsDt:         0,
+				Sender:        "",
+				Destination:   "",
+				SendingStatus: SendingStatusError,
+				DlrStatus:     DLRStatusEmpty,
+				PreStop:       "",
+				NextStop:      "",
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CDRParam{
+				Index:         tt.fields.Index,
+				SmsDt:         tt.fields.SmsDt,
+				Sender:        tt.fields.Sender,
+				Destination:   tt.fields.Destination,
+				SendingStatus: tt.fields.SendingStatus,
+				DlrStatus:     tt.fields.DlrStatus,
+				PreStop:       tt.fields.PreStop,
+				NextStop:      tt.fields.NextStop,
+			}
+			if got := z.Status(); got != tt.want {
+				t.Errorf("Status() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStopParam_ToABI(t *testing.T) {
+	param := StopParam{
+		StopName: "test",
+	}
+	abi, err := param.ToABI(MethodNameAddNextStop)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p2 := &StopParam{}
+	if err = p2.FromABI(MethodNameAddNextStop, abi); err != nil {
+		t.Fatal(err)
+	} else {
+		if !reflect.DeepEqual(&param, p2) {
+			t.Fatalf("invalid param, %v, %v", &param, p2)
+		} else {
+			if err := p2.Verify(); err != nil {
+				t.Fatalf("verify failed, %s", err)
+			}
+		}
+	}
+}
+
+func TestUpdateStopParam_ToABI(t *testing.T) {
+	param := UpdateStopParam{
+		StopName: "test",
+		New:      "hahah",
+	}
+	abi, err := param.ToABI(MethodNameUpdateNextStop)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p2 := &UpdateStopParam{}
+	if err = p2.FromABI(MethodNameUpdateNextStop, abi); err != nil {
+		t.Fatal(err)
+	} else {
+		if !reflect.DeepEqual(&param, p2) {
+			t.Fatalf("invalid param, %v, %v", &param, p2)
+		} else {
+			if err := p2.Verify(); err != nil {
+				t.Fatalf("verify failed, %s", err)
+			}
+		}
 	}
 }

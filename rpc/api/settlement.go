@@ -10,7 +10,6 @@ package api
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -31,6 +30,12 @@ type SettlementAPI struct {
 	createContract *contract.CreateContract
 	signContract   *contract.SignContract
 	cdrContract    *contract.ProcessCDR
+	addPreStop     *contract.AddPreStop
+	removePreStop  *contract.RemovePreStop
+	updatePreStop  *contract.UpdatePreStop
+	addNextStop    *contract.AddNextStop
+	removeNextStop *contract.RemoveNextStop
+	updateNextStop *contract.UpdateNextStop
 	cc             *context.ChainContext
 }
 
@@ -47,6 +52,12 @@ func NewSettlement(l *ledger.Ledger, cc *context.ChainContext) *SettlementAPI {
 		createContract: &contract.CreateContract{},
 		signContract:   &contract.SignContract{},
 		cdrContract:    &contract.ProcessCDR{},
+		addPreStop:     &contract.AddPreStop{},
+		removePreStop:  &contract.RemovePreStop{},
+		updatePreStop:  &contract.UpdatePreStop{},
+		addNextStop:    &contract.AddNextStop{},
+		removeNextStop: &contract.RemoveNextStop{},
+		updateNextStop: &contract.UpdateNextStop{},
 		cc:             cc,
 	}
 }
@@ -240,6 +251,267 @@ func (s *SettlementAPI) GetSignRewardsBlock(send *types.Hash) (*types.StateBlock
 	})
 }
 
+type StopParam struct {
+	cabi.StopParam
+	Address types.Address
+}
+
+type UpdateStopParam struct {
+	cabi.UpdateStopParam
+	Address types.Address
+}
+
+func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() error, abi func() ([]byte, error)) (*types.StateBlock, error) {
+	if !s.cc.IsPoVDone() {
+		return nil, context.ErrPoVNotFinish
+	}
+
+	if addr.IsZero() {
+		return nil, errors.New("invalid address")
+	}
+
+	if err := verifier(); err != nil {
+		return nil, err
+	}
+
+	ctx := vmstore.NewVMContext(s.l)
+
+	if tm, err := ctx.GetTokenMeta(addr, common.GasToken()); err != nil {
+		return nil, err
+	} else {
+		if singedData, err := abi(); err == nil {
+			sb := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        addr,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           singedData,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			h := ctx.Cache.Trie().Hash()
+			if h != nil {
+				povHeader, err := s.l.GetLatestPovHeader()
+				if err != nil {
+					return nil, fmt.Errorf("get pov header error: %s", err)
+				}
+				sb.PoVHeight = povHeader.GetHeight()
+				sb.Extra = *h
+			}
+			return sb, nil
+		} else {
+			return nil, err
+		}
+	}
+}
+
+func (s *SettlementAPI) GetAddPreStopBlock(param *StopParam) (*types.StateBlock, error) {
+	return s.handleStopAction(param.Address, func() error {
+		if param == nil || len(param.StopName) == 0 {
+			return errors.New("invalid input param")
+		}
+		return nil
+	}, func() (bytes []byte, err error) {
+		p := cabi.StopParam{
+			StopName: param.StopName,
+		}
+		return p.ToABI(cabi.MethodNameAddPreStop)
+	})
+}
+
+func (s *SettlementAPI) GetAddPreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.addPreStop.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate add pre stops reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
+func (s *SettlementAPI) GetRemovePreStopBlock(param *StopParam) (*types.StateBlock, error) {
+	return s.handleStopAction(param.Address, func() error {
+		if param == nil || len(param.StopName) == 0 {
+			return errors.New("invalid input param")
+		}
+		return nil
+	}, func() (bytes []byte, err error) {
+		p := cabi.StopParam{
+			StopName: param.StopName,
+		}
+		return p.ToABI(cabi.MethodNameRemovePreStop)
+	})
+}
+
+func (s *SettlementAPI) GetRemovePreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.removePreStop.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate remove pre stops reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
+func (s *SettlementAPI) GetUpdatePreStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
+	return s.handleStopAction(param.Address, func() error {
+		if param == nil || len(param.StopName) == 0 || len(param.New) == 0 {
+			return errors.New("invalid input param")
+		}
+		return nil
+	}, func() (bytes []byte, err error) {
+		p := cabi.UpdateStopParam{
+			StopName: param.StopName,
+			New:      param.New,
+		}
+		return p.ToABI(cabi.MethodNameUpdatePreStop)
+	})
+}
+
+func (s *SettlementAPI) GetUpdatePreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.updatePreStop.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate update pre stops reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
+func (s *SettlementAPI) GetAddNextStopBlock(param *StopParam) (*types.StateBlock, error) {
+	return s.handleStopAction(param.Address, func() error {
+		if param == nil || len(param.StopName) == 0 {
+			return errors.New("invalid input param")
+		}
+		return nil
+	}, func() (bytes []byte, err error) {
+		p := cabi.StopParam{
+			StopName: param.StopName,
+		}
+		return p.ToABI(cabi.MethodNameAddNextStop)
+	})
+}
+
+func (s *SettlementAPI) GetAddNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.addNextStop.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate add Next stops reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
+func (s *SettlementAPI) GetRemoveNextStopBlock(param *StopParam) (*types.StateBlock, error) {
+	return s.handleStopAction(param.Address, func() error {
+		if param == nil || len(param.StopName) == 0 {
+			return errors.New("invalid input param")
+		}
+		return nil
+	}, func() (bytes []byte, err error) {
+		p := cabi.StopParam{
+			StopName: param.StopName,
+		}
+		return p.ToABI(cabi.MethodNameRemoveNextStop)
+	})
+}
+
+func (s *SettlementAPI) GetRemoveNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.removeNextStop.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate remove next stops reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
+func (s *SettlementAPI) GetUpdateNextStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
+	return s.handleStopAction(param.Address, func() error {
+		if param == nil || len(param.StopName) == 0 || len(param.New) == 0 {
+			return errors.New("invalid input param")
+		}
+		return nil
+	}, func() (bytes []byte, err error) {
+		p := cabi.UpdateStopParam{
+			StopName: param.StopName,
+			New:      param.New,
+		}
+		return p.ToABI(cabi.MethodNameUpdateNextStop)
+	})
+}
+
+func (s *SettlementAPI) GetUpdateNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.updateNextStop.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate update next stops reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
 // SettlementContract settlement contract for RPC
 type SettlementContract struct {
 	cabi.ContractParam               //contract params
@@ -287,6 +559,14 @@ func (s *SettlementAPI) GetContractsAsPartyB(addr *types.Address, count int, off
 // @param param CDR params to be processed
 // @return contract send block without signature
 func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRParam) (*types.StateBlock, error) {
+	if !s.cc.IsPoVDone() {
+		return nil, context.ErrPoVNotFinish
+	}
+
+	if err := param.Verify(); err != nil {
+		return nil, err
+	}
+
 	ctx := vmstore.NewVMContext(s.l)
 
 	if c, err := cabi.GetSettlementContract(ctx, addr, param); err != nil {
@@ -333,6 +613,61 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 	}
 }
 
+func (s *SettlementAPI) GetProcessCDRRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.cdrContract.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate process CDR reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
+// GetCDRStatus get CDRstatus by settlement smart contract address and CDR hash
+// @param addr settlement smart contract address
+// @param hash CDR data hash
+func (s *SettlementAPI) GetCDRStatus(addr *types.Address, hash types.Hash) (*cabi.CDRStatus, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetCDRStatus(ctx, addr, hash)
+}
+
+// GetAllCDRStatus get all cdr status of the specific settlement smart contract
+// @param addr settlement smart contract
+// @param count max settlement contract records size
+// @param offset offset of all settlement contract records(optional)
+func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *int) ([]*cabi.CDRStatus, error) {
+	ctx := vmstore.NewVMContext(s.l)
+
+	if status, err := cabi.GetAllCDRStatus(ctx, addr); err != nil {
+		return nil, err
+	} else {
+		size := len(status)
+		if count <= 0 {
+			return nil, fmt.Errorf("invalid count: %d", count)
+		}
+
+		start := 0
+		if offset != nil && *offset >= 0 {
+			start = *offset
+		}
+		end := start + count
+		if end >= size {
+			end = size - 1
+		}
+
+		return status[start:end], nil
+	}
+}
+
 // TODO: report data te be confirmed
 type SettlementRecord struct {
 	Address                  types.Address // smart contract address
@@ -352,10 +687,10 @@ type SettlementRecord struct {
 // TODO: query condition to be confirmed, maybe more interface?
 // GenerateReport Generate reports for specified contracts based on start and end date
 // @param addr user qlcchain address
-// @param start report start date
-// @param end report end data
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
 // @return settlement report
-func (s *SettlementAPI) GenerateReport(addr *types.Address, start, end time.Time) (*[]SettlementRecord, error) {
+func (s *SettlementAPI) GenerateReport(addr *types.Address, start, end int64) (*[]SettlementRecord, error) {
 	return nil, nil
 }
 

@@ -32,46 +32,84 @@ const (
     "type": "function",
     "name": "CreateContract",
     "inputs": [
-      { "name": "partyA", "type": "address" },
-      { "name": "partyAName", "type": "string" },
-      { "name": "partyB", "type": "address" },
-      { "name": "partyBName", "type": "string" },
-      { "name": "previous", "type": "hash" },
-      { "name": "serviceId", "type": "string" },
-      { "name": "mcc", "type": "uint64" },
-      { "name": "mnc", "type": "uint64" },
-      { "name": "totalAmount", "type": "uint64" },
-      { "name": "unitPrice", "type": "uint64" },
-      { "name": "currency", "type": "string" },
-      { "name": "signDate", "type": "int64" },
-      { "name": "signatureA", "type": "signature" }
+        { "name": "partyA", "type": "address" },
+        { "name": "partyAName", "type": "string" },
+        { "name": "partyB", "type": "address" },
+        { "name": "partyBName", "type": "string" },
+        { "name": "previous", "type": "hash" },
+        { "name": "serviceId", "type": "string" },
+        { "name": "mcc", "type": "uint64" },
+        { "name": "mnc", "type": "uint64" },
+        { "name": "totalAmount", "type": "uint64" },
+        { "name": "unitPrice", "type": "uint64" },
+        { "name": "currency", "type": "string" },
+        { "name": "signDate", "type": "int64" },
+        { "name": "signatureA", "type": "signature" }
     ]
   }, {
     "type": "function",
     "name": "SignContract",
     "inputs": [
-      { "name": "contractAddress", "type": "address" },
-      { "name": "confirmDate", "type": "int64" },
-      { "name": "signatureB", "type": "signature" }
+        { "name": "contractAddress", "type": "address" },
+        { "name": "confirmDate", "type": "int64" },
+        { "name": "signatureB", "type": "signature" }
     ]
   }, {
     "type": "function",
     "name": "ProcessCDR",
     "inputs": [
-      { "name": "index", "type": "uint64" },
-      { "name": "smsDt", "type": "int64" },
-      { "name": "sender", "type": "string" },
-      { "name": "destination", "type": "string" },
-      { "name": "dstCountry", "type": "string" },
-      { "name": "dstOperator", "type": "string" },
-      { "name": "dstMcc", "type": "string" },
-      { "name": "dstMnc", "type": "string" },
-      { "name": "sellPrice", "type": "string" },
-      { "name": "sellCurrency", "type": "string" },
-      { "name": "customerName", "type": "string" },
-      { "name": "customerID", "type": "string" },
-      { "name": "sendingStatus", "type": "string" },
-      { "name": "dlrStatus", "type": "string" }
+        { "name": "index", "type": "uint64" },
+        { "name": "smsDt", "type": "int64" },
+        { "name": "sender", "type": "string" },
+        { "name": "destination", "type": "string" },
+        { "name": "dstCountry", "type": "string" },
+        { "name": "dstOperator", "type": "string" },
+        { "name": "dstMcc", "type": "string" },
+        { "name": "dstMnc", "type": "string" },
+        { "name": "sellPrice", "type": "string" },
+        { "name": "sellCurrency", "type": "string" },
+        { "name": "customerName", "type": "string" },
+        { "name": "customerID", "type": "string" },
+        { "name": "sendingStatus", "type": "string" },
+        { "name": "dlrStatus", "type": "string" }
+    ]
+  }, {
+    "type": "function",
+    "name": "AddPreStop",
+    "inputs": [
+        { "name": "stop", "type": "string" }
+    ]
+  }, {
+    "type": "function",
+    "name": "RemovePreStop",
+    "inputs": [
+        { "name": "stop", "type": "string" }
+    ]
+  },{
+    "type": "function",
+    "name": "UpdatePreStop",
+    "inputs": [
+        { "name": "old", "type": "string" },
+        { "name": "new", "type": "string" }
+    ]
+  }, {
+    "type": "function",
+    "name": "AddNextStop",
+    "inputs": [
+        { "name": "stop", "type": "string" }
+    ]
+  }, {
+    "type": "function",
+    "name": "RemoveNextStop",
+    "inputs": [
+        { "name": "stop", "type": "string" }
+    ]
+  },{
+    "type": "function",
+    "name": "UpdateNextStop",
+    "inputs": [
+        { "name": "old", "type": "string" },
+        { "name": "new", "type": "string" }
     ]
   }
 ]
@@ -79,6 +117,12 @@ const (
 	MethodNameCreateContract = "CreateContract"
 	MethodNameSignContract   = "SignContract"
 	MethodNameProcessCDR     = "ProcessCDR"
+	MethodNameAddPreStop     = "AddPreStop"
+	MethodNameRemovePreStop  = "RemovePreStop"
+	MethodNameUpdatePreStop  = "UpdatePreStop"
+	MethodNameAddNextStop    = "AddNextStop"
+	MethodNameRemoveNextStop = "RemoveNextStop"
+	MethodNameUpdateNextStop = "UpdateNextStop"
 )
 
 var (
@@ -95,7 +139,6 @@ type ABIer interface {
 type SignContractParam struct {
 	ContractAddress types.Address `msg:"a,extension" json:"contractAddress"`
 	ConfirmDate     int64         `msg:"cd" json:"confirmDate"`
-	//SignatureB      types.Signature `msg:"sb,extension" json:"signatureB"`
 }
 
 func (z *SignContractParam) Verify() (bool, error) {
@@ -239,6 +282,7 @@ func (z *CreateContractParam) ToContractParam() *ContractParam {
 	return &ContractParam{
 		CreateContractParam: *z,
 		ConfirmDate:         0,
+		Status:              ContractStatusActiveStage1,
 	}
 }
 
@@ -396,26 +440,47 @@ func (z *ContractParam) String() string {
 	return util.ToIndentString(z)
 }
 
+//go:generate go-enum -f=$GOFILE --marshal --names
+/*
+ENUM(
+Send
+Error
+Empty
+)
+*/
+type SendingStatus int
+
+//go:generate go-enum -f=$GOFILE --marshal --names
+/*
+ENUM(
+Delivered
+Unknown
+Undelivered
+Empty
+)
+*/
+type DLRStatus int
+
 // TODO:
 // we should make sure that can use CDR data to match to a specific settlement contract
 //go:generate msgp
 type CDRParam struct {
-	Index         uint64  `msg:"i" json:"index" validate:"min=1"`
-	SmsDt         int64   `msg:"dt" json:"smsDt" validate:"min=1"`
-	Sender        string  `msg:"tx" json:"sender" validate:"nonzero"`
-	Destination   string  `msg:"d" json:"destination" validate:"nonzero"`
-	DstCountry    string  `msg:"dc" json:"dstCountry" validate:"nonzero"`
-	DstOperator   string  `msg:"do" json:"dstOperator" validate:"nonzero"`
-	DstMcc        uint64  `msg:"mcc" json:"dstMcc"`
-	DstMnc        uint64  `msg:"mnc" json:"dstMnc"`
-	SellPrice     float64 `msg:"p" json:"sellPrice" validate:"nonzero"`
-	SellCurrency  string  `msg:"c" json:"sellCurrency" validate:"nonzero"`
-	CustomerName  string  `msg:"cn" json:"customerName" validate:"nonzero"`
-	CustomerID    string  `msg:"cid" json:"customerID" validate:"nonzero"`
-	SendingStatus string  `msg:"s" json:"sendingStatus" validate:"nonzero"`
-	DlrStatus     string  `msg:"ds" json:"dlrStatus" validate:"nonzero"`
-	PreStop       string  `msg:"ps" json:"preStop" `
-	NextStop      string  `msg:"ns" json:"nextStop" `
+	Index       uint64 `msg:"i" json:"index" validate:"min=1"`
+	SmsDt       int64  `msg:"dt" json:"smsDt" validate:"min=1"`
+	Sender      string `msg:"tx" json:"sender" validate:"nonzero"`
+	Destination string `msg:"d" json:"destination" validate:"nonzero"`
+	//DstCountry    string        `msg:"dc" json:"dstCountry" validate:"nonzero"`
+	//DstOperator   string        `msg:"do" json:"dstOperator" validate:"nonzero"`
+	//DstMcc        uint64        `msg:"mcc" json:"dstMcc"`
+	//DstMnc        uint64        `msg:"mnc" json:"dstMnc"`
+	//SellPrice     float64       `msg:"p" json:"sellPrice" validate:"nonzero"`
+	//SellCurrency  string        `msg:"c" json:"sellCurrency" validate:"nonzero"`
+	//CustomerName  string        `msg:"cn" json:"customerName" validate:"nonzero"`
+	//CustomerID    string        `msg:"cid" json:"customerID" validate:"nonzero"`
+	SendingStatus SendingStatus `msg:"s" json:"sendingStatus" `
+	DlrStatus     DLRStatus     `msg:"ds" json:"dlrStatus"`
+	PreStop       string        `msg:"ps" json:"preStop" `
+	NextStop      string        `msg:"ns" json:"nextStop" `
 	//MessageID    string  `msg:"id" json:"messageID"`
 	//connection         string
 	//clientIp           string
@@ -449,6 +514,25 @@ func (z *CDRParam) FromABI(data []byte) error {
 
 func (z *CDRParam) String() string {
 	return util.ToIndentString(z)
+}
+
+func (z *CDRParam) Status() bool {
+	switch z.DlrStatus {
+	case DLRStatusDelivered:
+		return true
+	case DLRStatusUndelivered:
+		return false
+	case DLRStatusUnknown:
+		fallthrough
+	case DLRStatusEmpty:
+		switch z.SendingStatus {
+		case SendingStatusSend:
+			return true
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 func (z *CDRParam) Verify() error {
@@ -501,26 +585,26 @@ func (z *CDRStatus) String() string {
 
 // TODO:
 // DoSettlement process settlement
-// @param addr smart contract addr
 // @param cdr  cdr data
-func (z *CDRStatus) DoSettlement(contract *ContractParam, cdr SettlementCDR) (err error) {
+func (z *CDRStatus) DoSettlement(cdr SettlementCDR) (err error) {
 	z.Params = append(z.Params, cdr)
 
 	switch size := len(z.Params); {
-	case size == 0:
-		z.Status = SettlementStatusUnknown
-		break
+	//case size == 0:
+	//	z.Status = SettlementStatusUnknown
+	//	break
 	case size == 1:
 		z.Status = SettlementStatusStage1
 		break
 	case size >= 2:
 		z.Status = SettlementStatusSuccess
+		b := true
+		// combine all status
 		for _, param := range z.Params {
-			// TODO: more status??
-			if param.SendingStatus != "Send" {
-				z.Status = SettlementStatusFailure
-				break
-			}
+			b = b && param.Status()
+		}
+		if !b {
+			z.Status = SettlementStatusFailure
 		}
 	}
 	return err
@@ -535,6 +619,63 @@ func ParseCDRStatus(v []byte) (*CDRStatus, error) {
 	}
 }
 
+//go:generate msgp
+type StopParam struct {
+	StopName string `msg:"n" json:"stopName" validate:"nonzero"`
+}
+
+func (z *StopParam) ToABI(methodName string) ([]byte, error) {
+	id := SettlementABI.Methods[methodName].Id()
+	if data, err := z.MarshalMsg(nil); err != nil {
+		return nil, err
+	} else {
+		id = append(id, data...)
+		return id, nil
+	}
+}
+
+func (z *StopParam) FromABI(methodName string, data []byte) error {
+	if method, err := SettlementABI.MethodById(data[:4]); err == nil && method.Name == methodName {
+		_, err := z.UnmarshalMsg(data[4:])
+		return err
+	} else {
+		return fmt.Errorf("could not locate named method: %s", methodName)
+	}
+}
+
+func (z *StopParam) Verify() error {
+	return validator.Validate(z)
+}
+
+//go:generate msgp
+type UpdateStopParam struct {
+	StopName string `msg:"n" json:"stopName" validate:"nonzero"`
+	New      string `msg:"n2" json:"newName" validate:"nonzero"`
+}
+
+func (z *UpdateStopParam) ToABI(methodName string) ([]byte, error) {
+	id := SettlementABI.Methods[methodName].Id()
+	if data, err := z.MarshalMsg(nil); err != nil {
+		return nil, err
+	} else {
+		id = append(id, data...)
+		return id, nil
+	}
+}
+
+func (z *UpdateStopParam) FromABI(methodName string, data []byte) error {
+	if method, err := SettlementABI.MethodById(data[:4]); err == nil && method.Name == methodName {
+		_, err := z.UnmarshalMsg(data[4:])
+		return err
+	} else {
+		return fmt.Errorf("could not locate named method: %s", methodName)
+	}
+}
+
+func (z *UpdateStopParam) Verify() error {
+	return validator.Validate(z)
+}
+
 // IsContractAvailable check contract status by contract ID
 func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
 	if value, err := ctx.GetStorage(types.SettlementAddress[:], addr[:]); err == nil {
@@ -544,6 +685,54 @@ func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
 		}
 	}
 	return false
+}
+
+// GetCDRStatus
+// @param addr settlement contract address
+// @param CDR data hash
+func GetCDRStatus(ctx *vmstore.VMContext, addr *types.Address, hash types.Hash) (*CDRStatus, error) {
+	logger := log.NewLogger("GetContracts")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	if storage, err := ctx.GetStorage(addr[:], hash[:]); err != nil {
+		return nil, err
+	} else {
+		status := &CDRStatus{}
+		if err := status.FromABI(storage); err != nil {
+			return nil, err
+		} else {
+			return status, nil
+		}
+	}
+}
+
+// GetAllCDRStatus get all CDR records of the specific settlement contract
+// @param addr settlement smart contract
+func GetAllCDRStatus(ctx *vmstore.VMContext, addr *types.Address) ([]*CDRStatus, error) {
+	logger := log.NewLogger("GetAllCDRStatus")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	var result []*CDRStatus
+
+	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+		if len(key) == keySize && len(value) > 0 {
+			status := &CDRStatus{}
+			if err := status.FromABI(value); err != nil {
+				logger.Error(err)
+			} else {
+				result = append(result, status)
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 //GetSettlementContract query settlement contract by user address and CDR data
