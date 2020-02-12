@@ -13,48 +13,57 @@ func (z *Benefit) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0001 uint32
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "balance":
 			err = dc.ReadExtension(&z.Balance)
 			if err != nil {
+				err = msgp.WrapError(err, "Balance")
 				return
 			}
 		case "vote":
 			err = dc.ReadExtension(&z.Vote)
 			if err != nil {
+				err = msgp.WrapError(err, "Vote")
 				return
 			}
 		case "network":
 			err = dc.ReadExtension(&z.Network)
 			if err != nil {
+				err = msgp.WrapError(err, "Network")
 				return
 			}
 		case "storage":
 			err = dc.ReadExtension(&z.Storage)
 			if err != nil {
+				err = msgp.WrapError(err, "Storage")
 				return
 			}
 		case "oracle":
 			err = dc.ReadExtension(&z.Oracle)
 			if err != nil {
+				err = msgp.WrapError(err, "Oracle")
 				return
 			}
 		case "total":
 			err = dc.ReadExtension(&z.Total)
 			if err != nil {
+				err = msgp.WrapError(err, "Total")
 				return
 			}
 		default:
 			err = dc.Skip()
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -72,6 +81,7 @@ func (z *Benefit) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Balance)
 	if err != nil {
+		err = msgp.WrapError(err, "Balance")
 		return
 	}
 	// write "vote"
@@ -81,6 +91,7 @@ func (z *Benefit) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Vote)
 	if err != nil {
+		err = msgp.WrapError(err, "Vote")
 		return
 	}
 	// write "network"
@@ -90,6 +101,7 @@ func (z *Benefit) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Network)
 	if err != nil {
+		err = msgp.WrapError(err, "Network")
 		return
 	}
 	// write "storage"
@@ -99,6 +111,7 @@ func (z *Benefit) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Storage)
 	if err != nil {
+		err = msgp.WrapError(err, "Storage")
 		return
 	}
 	// write "oracle"
@@ -108,6 +121,7 @@ func (z *Benefit) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Oracle)
 	if err != nil {
+		err = msgp.WrapError(err, "Oracle")
 		return
 	}
 	// write "total"
@@ -117,6 +131,7 @@ func (z *Benefit) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Total)
 	if err != nil {
+		err = msgp.WrapError(err, "Total")
 		return
 	}
 	return
@@ -130,36 +145,42 @@ func (z *Benefit) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0x86, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Balance)
 	if err != nil {
+		err = msgp.WrapError(err, "Balance")
 		return
 	}
 	// string "vote"
 	o = append(o, 0xa4, 0x76, 0x6f, 0x74, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Vote)
 	if err != nil {
+		err = msgp.WrapError(err, "Vote")
 		return
 	}
 	// string "network"
 	o = append(o, 0xa7, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.Network)
 	if err != nil {
+		err = msgp.WrapError(err, "Network")
 		return
 	}
 	// string "storage"
 	o = append(o, 0xa7, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Storage)
 	if err != nil {
+		err = msgp.WrapError(err, "Storage")
 		return
 	}
 	// string "oracle"
 	o = append(o, 0xa6, 0x6f, 0x72, 0x61, 0x63, 0x6c, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Oracle)
 	if err != nil {
+		err = msgp.WrapError(err, "Oracle")
 		return
 	}
 	// string "total"
 	o = append(o, 0xa5, 0x74, 0x6f, 0x74, 0x61, 0x6c)
 	o, err = msgp.AppendExtension(o, &z.Total)
 	if err != nil {
+		err = msgp.WrapError(err, "Total")
 		return
 	}
 	return
@@ -172,48 +193,57 @@ func (z *Benefit) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0001 uint32
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "balance":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Balance)
 			if err != nil {
+				err = msgp.WrapError(err, "Balance")
 				return
 			}
 		case "vote":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Vote)
 			if err != nil {
+				err = msgp.WrapError(err, "Vote")
 				return
 			}
 		case "network":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Network)
 			if err != nil {
+				err = msgp.WrapError(err, "Network")
 				return
 			}
 		case "storage":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Storage)
 			if err != nil {
+				err = msgp.WrapError(err, "Storage")
 				return
 			}
 		case "oracle":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Oracle)
 			if err != nil {
+				err = msgp.WrapError(err, "Oracle")
 				return
 			}
 		case "total":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Total)
 			if err != nil {
+				err = msgp.WrapError(err, "Total")
 				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}

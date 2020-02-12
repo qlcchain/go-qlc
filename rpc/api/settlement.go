@@ -320,7 +320,8 @@ func (s *SettlementAPI) GetAddPreStopBlock(param *StopParam) (*types.StateBlock,
 		return nil
 	}, func() (bytes []byte, err error) {
 		p := cabi.StopParam{
-			StopName: param.StopName,
+			StopName:        param.StopName,
+			ContractAddress: param.ContractAddress,
 		}
 		return p.ToABI(cabi.MethodNameAddPreStop)
 	})
@@ -353,7 +354,8 @@ func (s *SettlementAPI) GetRemovePreStopBlock(param *StopParam) (*types.StateBlo
 		return nil
 	}, func() (bytes []byte, err error) {
 		p := cabi.StopParam{
-			StopName: param.StopName,
+			StopName:        param.StopName,
+			ContractAddress: param.ContractAddress,
 		}
 		return p.ToABI(cabi.MethodNameRemovePreStop)
 	})
@@ -386,8 +388,9 @@ func (s *SettlementAPI) GetUpdatePreStopBlock(param *UpdateStopParam) (*types.St
 		return nil
 	}, func() (bytes []byte, err error) {
 		p := cabi.UpdateStopParam{
-			StopName: param.StopName,
-			New:      param.New,
+			ContractAddress: param.ContractAddress,
+			StopName:        param.StopName,
+			New:             param.New,
 		}
 		return p.ToABI(cabi.MethodNameUpdatePreStop)
 	})
@@ -414,13 +417,14 @@ func (s *SettlementAPI) GetUpdatePreStopRewardsBlock(send *types.Hash) (*types.S
 
 func (s *SettlementAPI) GetAddNextStopBlock(param *StopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
-		if param == nil || len(param.StopName) == 0 {
+		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 {
 			return errors.New("invalid input param")
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
 		p := cabi.StopParam{
-			StopName: param.StopName,
+			ContractAddress: param.ContractAddress,
+			StopName:        param.StopName,
 		}
 		return p.ToABI(cabi.MethodNameAddNextStop)
 	})
@@ -447,13 +451,14 @@ func (s *SettlementAPI) GetAddNextStopRewardsBlock(send *types.Hash) (*types.Sta
 
 func (s *SettlementAPI) GetRemoveNextStopBlock(param *StopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
-		if param == nil || len(param.StopName) == 0 {
+		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 {
 			return errors.New("invalid input param")
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
 		p := cabi.StopParam{
-			StopName: param.StopName,
+			ContractAddress: param.ContractAddress,
+			StopName:        param.StopName,
 		}
 		return p.ToABI(cabi.MethodNameRemoveNextStop)
 	})
@@ -480,14 +485,15 @@ func (s *SettlementAPI) GetRemoveNextStopRewardsBlock(send *types.Hash) (*types.
 
 func (s *SettlementAPI) GetUpdateNextStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
-		if param == nil || len(param.StopName) == 0 || len(param.New) == 0 {
+		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 || len(param.New) == 0 {
 			return errors.New("invalid input param")
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
 		p := cabi.UpdateStopParam{
-			StopName: param.StopName,
-			New:      param.New,
+			ContractAddress: param.ContractAddress,
+			StopName:        param.StopName,
+			New:             param.New,
 		}
 		return p.ToABI(cabi.MethodNameUpdateNextStop)
 	})
@@ -514,8 +520,15 @@ func (s *SettlementAPI) GetUpdateNextStopRewardsBlock(send *types.Hash) (*types.
 
 // SettlementContract settlement contract for RPC
 type SettlementContract struct {
-	cabi.ContractParam               //contract params
-	Address            types.Address // settlement smart contract address
+	cabi.ContractParam
+	Address types.Address `json:"address"`
+}
+
+func (s *SettlementAPI) GetAllContracts(count int, offset *int) ([]*SettlementContract, error) {
+	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
+		ctx := vmstore.NewVMContext(s.l)
+		return cabi.GetAllSettlementContract(ctx)
+	})
 }
 
 // GetContractsByAddress query all related settlement contracts info by address
@@ -576,6 +589,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 			return nil, err
 		} else {
 			address, err := c.Address()
+			param.ContractAddress = address
 			if err != nil {
 				return nil, err
 			}
@@ -590,7 +604,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 					Oracle:         types.ZeroBalance,
 					Storage:        types.ZeroBalance,
 					Previous:       tm.Header,
-					Link:           types.Hash(address),
+					Link:           types.Hash(types.SettlementAddress),
 					Representative: tm.Representative,
 					Data:           singedData,
 					Timestamp:      common.TimeNow().Unix(),
@@ -727,6 +741,11 @@ func (s *SettlementAPI) queryContractsByAddress(count int, offset *int, fn func(
 	}
 
 	size := len(contracts)
+
+	if size == 0 {
+		return nil, errors.New("can not find any contracts")
+	}
+
 	if count <= 0 {
 		return nil, fmt.Errorf("invalid count: %d", count)
 	}

@@ -284,7 +284,7 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	contractAddress := types.Address(block.Link)
+	contractAddress := param.ContractAddress
 
 	contract, err := cabi.GetContracts(ctx, &contractAddress)
 	if err != nil {
@@ -357,16 +357,15 @@ func (a *AddPreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, 
 }
 
 func (a *AddPreStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return handleSend(ctx, block, false, func(data []byte) (interface{}, error) {
-		stopParam := new(cabi.StopParam)
-		err := stopParam.FromABI(cabi.MethodNameAddPreStop, data)
-		if err != nil {
-			return nil, err
-		}
-		return stopParam, nil
-	}, func(param *cabi.ContractParam, v interface{}) error {
-		p := v.(*cabi.StopParam)
-		return add(param.PreStops, p.StopName)
+	stopParam := new(cabi.StopParam)
+	err := stopParam.FromABI(cabi.MethodNameAddPreStop, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return handleSend(ctx, block, false, stopParam.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		param.PreStops, err = add(param.PreStops, stopParam.StopName)
+		return err
 	})
 }
 
@@ -382,16 +381,14 @@ func (r *RemovePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBloc
 }
 
 func (r *RemovePreStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return handleSend(ctx, block, false, func(data []byte) (interface{}, error) {
-		stopParam := new(cabi.StopParam)
-		err := stopParam.FromABI(cabi.MethodNameRemovePreStop, data)
-		if err != nil {
-			return nil, err
-		}
-		return stopParam, nil
-	}, func(param *cabi.ContractParam, v interface{}) error {
-		p := v.(*cabi.StopParam)
-		return remove(param.PreStops, p.StopName)
+	stopParam := new(cabi.StopParam)
+	err := stopParam.FromABI(cabi.MethodNameRemovePreStop, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+	return handleSend(ctx, block, false, stopParam.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		param.PreStops, err = remove(param.PreStops, stopParam.StopName)
+		return err
 	})
 }
 
@@ -415,16 +412,14 @@ func (u *UpdatePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBloc
 }
 
 func (u *UpdatePreStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return handleSend(ctx, block, false, func(data []byte) (interface{}, error) {
-		stopParam := new(cabi.UpdateStopParam)
-		err := stopParam.FromABI(cabi.MethodNameUpdatePreStop, data)
-		if err != nil {
-			return nil, err
-		}
-		return stopParam, nil
-	}, func(param *cabi.ContractParam, v interface{}) error {
-		p := v.(*cabi.UpdateStopParam)
-		return update(param.PreStops, p.StopName, p.New)
+	up := new(cabi.UpdateStopParam)
+	err := up.FromABI(cabi.MethodNameUpdatePreStop, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+	return handleSend(ctx, block, false, up.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		param.PreStops, err = update(param.PreStops, up.StopName, up.New)
+		return err
 	})
 }
 
@@ -440,16 +435,14 @@ func (a *AddNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 }
 
 func (a *AddNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return handleSend(ctx, block, true, func(data []byte) (interface{}, error) {
-		stopParam := new(cabi.StopParam)
-		err := stopParam.FromABI(cabi.MethodNameAddNextStop, data)
-		if err != nil {
-			return nil, err
-		}
-		return stopParam, nil
-	}, func(param *cabi.ContractParam, v interface{}) error {
-		p := v.(*cabi.StopParam)
-		return add(param.NextStops, p.StopName)
+	stopParam := new(cabi.StopParam)
+	err := stopParam.FromABI(cabi.MethodNameAddNextStop, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+	return handleSend(ctx, block, true, stopParam.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		param.NextStops, err = add(param.NextStops, stopParam.StopName)
+		return err
 	})
 }
 
@@ -465,16 +458,14 @@ func (r *RemoveNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlo
 }
 
 func (r *RemoveNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return handleSend(ctx, block, true, func(data []byte) (interface{}, error) {
-		stopParam := new(cabi.StopParam)
-		err := stopParam.FromABI(cabi.MethodNameRemoveNextStop, data)
-		if err != nil {
-			return nil, err
-		}
-		return stopParam, nil
-	}, func(param *cabi.ContractParam, v interface{}) error {
-		p := v.(*cabi.StopParam)
-		return add(param.NextStops, p.StopName)
+	stopParam := new(cabi.StopParam)
+	err := stopParam.FromABI(cabi.MethodNameRemoveNextStop, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+	return handleSend(ctx, block, true, stopParam.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		param.NextStops, err = add(param.NextStops, stopParam.StopName)
+		return err
 	})
 }
 
@@ -498,16 +489,14 @@ func (u *UpdateNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlo
 }
 
 func (u *UpdateNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return handleSend(ctx, block, true, func(data []byte) (interface{}, error) {
-		stopParam := new(cabi.UpdateStopParam)
-		err := stopParam.FromABI(cabi.MethodNameUpdateNextStop, data)
-		if err != nil {
-			return nil, err
-		}
-		return stopParam, nil
-	}, func(param *cabi.ContractParam, v interface{}) error {
-		p := v.(*cabi.UpdateStopParam)
-		return update(param.NextStops, p.StopName, p.New)
+	up := new(cabi.UpdateStopParam)
+	err := up.FromABI(cabi.MethodNameUpdateNextStop, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+	return handleSend(ctx, block, true, up.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		param.NextStops, err = update(param.NextStops, up.StopName, up.New)
+		return err
 	})
 }
 
@@ -529,32 +518,32 @@ func (l *locker) Get(key []byte) (*sync.Mutex, error) {
 	}
 }
 
-func add(s []string, name string) error {
+func add(s []string, name string) ([]string, error) {
 	sort.Strings(s)
 	i := sort.SearchStrings(s, name)
 	if i == len(s) {
 		s = append(s, name)
-		return nil
+		return s, nil
 	}
-	return fmt.Errorf("name: %s already exist", name)
+	return s, fmt.Errorf("name: %s already exist", name)
 }
 
-func remove(s []string, name string) error {
+func remove(s []string, name string) ([]string, error) {
 	sort.Strings(s)
 	i := sort.SearchStrings(s, name)
 	if i == len(s) {
-		return fmt.Errorf("name: %s does not exist", name)
+		return s, fmt.Errorf("name: %s does not exist", name)
 	}
 	s = append(s[:i], s[i+1:]...)
-	return nil
+	return s, nil
 }
 
-func update(s []string, old, new string) error {
-	if err := remove(s, old); err == nil {
-		s = append(s, new)
-		return nil
+func update(s []string, old, new string) ([]string, error) {
+	if s1, err := remove(s, old); err == nil {
+		s1 = append(s1, new)
+		return s1, nil
 	} else {
-		return err
+		return s, err
 	}
 }
 
@@ -594,61 +583,56 @@ func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types
 	}, nil
 }
 
-func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool,
-	verifier func(data []byte) (interface{}, error),
-	process func(param *cabi.ContractParam, v interface{}) error) (*types.PendingKey, *types.PendingInfo, error) {
+func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, address types.Address,
+	process func(param *cabi.ContractParam) (err error)) (*types.PendingKey, *types.PendingInfo, error) {
 	// check token is QGAS
 	if block.Token != common.GasToken() {
 		return nil, nil, fmt.Errorf("invalid token: %s", block.Token.String())
 	}
 
-	if o, err := verifier(block.Data); err == nil {
-		// make sure that the same block only process once
-		address := types.Address(block.Link)
-		storage, err := ctx.GetStorage(types.SettlementAddress[:], address[:])
-		if err != nil && err != vmstore.ErrStorageNotFound {
+	// make sure that the same block only process once
+	//address := types.Address(block.Link)
+	storage, err := ctx.GetStorage(types.SettlementAddress[:], address[:])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(storage) > 0 {
+		// verify saved data
+		param, err := cabi.ParseContractParam(storage)
+		if err != nil {
 			return nil, nil, err
 		}
+		addr := param.PartyB.Address
+		if isPartyA {
+			addr = param.PartyA.Address
+		}
 
-		if len(storage) > 0 {
-			// verify saved data
-			param, err := cabi.ParseContractParam(storage)
-			if err != nil {
+		if addr == block.Address {
+			if err := process(param); err != nil {
 				return nil, nil, err
 			}
-			addr := param.PartyB.Address
-			if isPartyA {
-				addr = param.PartyA.Address
-			}
 
-			if addr == block.Address {
-				if err := process(param, o); err != nil {
-					return nil, nil, err
-				}
-
-				if data, err := param.ToABI(); err == nil {
-					if err := ctx.SetStorage(types.SettlementAddress[:], address[:], data); err != nil {
-						return nil, nil, err
-					}
-				} else {
+			if data, err := param.ToABI(); err == nil {
+				if err := ctx.SetStorage(types.SettlementAddress[:], address[:], data); err != nil {
 					return nil, nil, err
 				}
 			} else {
-				return nil, nil, fmt.Errorf("permission denied, only %s can change, but got %s", param.PartyB.Address, block.Address.String())
+				return nil, nil, err
 			}
 		} else {
-			return nil, nil, errors.New("invalid saved contract data")
+			return nil, nil, fmt.Errorf("permission denied, only %s can change, but got %s", param.PartyB.Address, block.Address.String())
 		}
-
-		return &types.PendingKey{
-				Address: block.Address,
-				Hash:    block.GetHash(),
-			}, &types.PendingInfo{
-				Source: types.Address(block.Link),
-				Amount: types.ZeroBalance,
-				Type:   block.Token,
-			}, nil
 	} else {
-		return nil, nil, err
+		return nil, nil, errors.New("invalid saved contract data")
 	}
+
+	return &types.PendingKey{
+			Address: block.Address,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: types.ZeroBalance,
+			Type:   block.Token,
+		}, nil
 }

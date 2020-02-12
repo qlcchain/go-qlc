@@ -24,6 +24,12 @@ func (z *CDRParam) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "a":
+			err = z.ContractAddress.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "ContractAddress")
+				return
+			}
 		case "i":
 			z.Index, err = dc.ReadUint64()
 			if err != nil {
@@ -93,9 +99,19 @@ func (z *CDRParam) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 8
+	// map header, size 9
+	// write "a"
+	err = en.Append(0x89, 0xa1, 0x61)
+	if err != nil {
+		return
+	}
+	err = z.ContractAddress.EncodeMsg(en)
+	if err != nil {
+		err = msgp.WrapError(err, "ContractAddress")
+		return
+	}
 	// write "i"
-	err = en.Append(0x88, 0xa1, 0x69)
+	err = en.Append(0xa1, 0x69)
 	if err != nil {
 		return
 	}
@@ -180,9 +196,16 @@ func (z *CDRParam) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *CDRParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 8
+	// map header, size 9
+	// string "a"
+	o = append(o, 0x89, 0xa1, 0x61)
+	o, err = z.ContractAddress.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "ContractAddress")
+		return
+	}
 	// string "i"
-	o = append(o, 0x88, 0xa1, 0x69)
+	o = append(o, 0xa1, 0x69)
 	o = msgp.AppendUint64(o, z.Index)
 	// string "dt"
 	o = append(o, 0xa2, 0x64, 0x74)
@@ -226,6 +249,12 @@ func (z *CDRParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "a":
+			bts, err = z.ContractAddress.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ContractAddress")
+				return
+			}
 		case "i":
 			z.Index, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
@@ -296,7 +325,7 @@ func (z *CDRParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CDRParam) Msgsize() (s int) {
-	s = 1 + 2 + msgp.Uint64Size + 3 + msgp.Int64Size + 3 + msgp.StringPrefixSize + len(z.Sender) + 2 + msgp.StringPrefixSize + len(z.Destination) + 2 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.PreStop) + 3 + msgp.StringPrefixSize + len(z.NextStop)
+	s = 1 + 2 + z.ContractAddress.Msgsize() + 2 + msgp.Uint64Size + 3 + msgp.Int64Size + 3 + msgp.StringPrefixSize + len(z.Sender) + 2 + msgp.StringPrefixSize + len(z.Destination) + 2 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.PreStop) + 3 + msgp.StringPrefixSize + len(z.NextStop)
 	return
 }
 
@@ -2172,6 +2201,12 @@ func (z *StopParam) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "ca":
+			err = z.ContractAddress.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "ContractAddress")
+				return
+			}
 		case "n":
 			z.StopName, err = dc.ReadString()
 			if err != nil {
@@ -2190,10 +2225,20 @@ func (z *StopParam) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z StopParam) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
+func (z *StopParam) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "ca"
+	err = en.Append(0x82, 0xa2, 0x63, 0x61)
+	if err != nil {
+		return
+	}
+	err = z.ContractAddress.EncodeMsg(en)
+	if err != nil {
+		err = msgp.WrapError(err, "ContractAddress")
+		return
+	}
 	// write "n"
-	err = en.Append(0x81, 0xa1, 0x6e)
+	err = en.Append(0xa1, 0x6e)
 	if err != nil {
 		return
 	}
@@ -2206,11 +2251,18 @@ func (z StopParam) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z StopParam) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *StopParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
+	// map header, size 2
+	// string "ca"
+	o = append(o, 0x82, 0xa2, 0x63, 0x61)
+	o, err = z.ContractAddress.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "ContractAddress")
+		return
+	}
 	// string "n"
-	o = append(o, 0x81, 0xa1, 0x6e)
+	o = append(o, 0xa1, 0x6e)
 	o = msgp.AppendString(o, z.StopName)
 	return
 }
@@ -2233,6 +2285,12 @@ func (z *StopParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "ca":
+			bts, err = z.ContractAddress.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ContractAddress")
+				return
+			}
 		case "n":
 			z.StopName, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -2252,8 +2310,8 @@ func (z *StopParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z StopParam) Msgsize() (s int) {
-	s = 1 + 2 + msgp.StringPrefixSize + len(z.StopName)
+func (z *StopParam) Msgsize() (s int) {
+	s = 1 + 3 + z.ContractAddress.Msgsize() + 2 + msgp.StringPrefixSize + len(z.StopName)
 	return
 }
 
@@ -2275,6 +2333,12 @@ func (z *UpdateStopParam) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "ca":
+			err = z.ContractAddress.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "ContractAddress")
+				return
+			}
 		case "n":
 			z.StopName, err = dc.ReadString()
 			if err != nil {
@@ -2299,10 +2363,20 @@ func (z *UpdateStopParam) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z UpdateStopParam) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+func (z *UpdateStopParam) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "ca"
+	err = en.Append(0x83, 0xa2, 0x63, 0x61)
+	if err != nil {
+		return
+	}
+	err = z.ContractAddress.EncodeMsg(en)
+	if err != nil {
+		err = msgp.WrapError(err, "ContractAddress")
+		return
+	}
 	// write "n"
-	err = en.Append(0x82, 0xa1, 0x6e)
+	err = en.Append(0xa1, 0x6e)
 	if err != nil {
 		return
 	}
@@ -2325,11 +2399,18 @@ func (z UpdateStopParam) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z UpdateStopParam) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *UpdateStopParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 3
+	// string "ca"
+	o = append(o, 0x83, 0xa2, 0x63, 0x61)
+	o, err = z.ContractAddress.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "ContractAddress")
+		return
+	}
 	// string "n"
-	o = append(o, 0x82, 0xa1, 0x6e)
+	o = append(o, 0xa1, 0x6e)
 	o = msgp.AppendString(o, z.StopName)
 	// string "n2"
 	o = append(o, 0xa2, 0x6e, 0x32)
@@ -2355,6 +2436,12 @@ func (z *UpdateStopParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "ca":
+			bts, err = z.ContractAddress.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ContractAddress")
+				return
+			}
 		case "n":
 			z.StopName, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -2380,7 +2467,7 @@ func (z *UpdateStopParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z UpdateStopParam) Msgsize() (s int) {
-	s = 1 + 2 + msgp.StringPrefixSize + len(z.StopName) + 3 + msgp.StringPrefixSize + len(z.New)
+func (z *UpdateStopParam) Msgsize() (s int) {
+	s = 1 + 3 + z.ContractAddress.Msgsize() + 2 + msgp.StringPrefixSize + len(z.StopName) + 3 + msgp.StringPrefixSize + len(z.New)
 	return
 }

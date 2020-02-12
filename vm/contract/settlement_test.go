@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -410,7 +411,7 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 										if err != nil {
 											t.Fatal(err)
 										}
-										stopParam := &cabi.StopParam{StopName: "HTKCSL"}
+										stopParam := &cabi.StopParam{StopName: "HTKCSL", ContractAddress: address}
 										abi, err := stopParam.ToABI(cabi.MethodNameAddNextStop)
 										if err != nil {
 											t.Fatal(err)
@@ -425,7 +426,7 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 											Oracle:         types.ZeroBalance,
 											Storage:        types.ZeroBalance,
 											Previous:       tm.Header,
-											Link:           types.Hash(address),
+											Link:           types.Hash(types.SettlementAddress),
 											Representative: tm.Representative,
 											Data:           abi,
 											Timestamp:      common.TimeNow().Unix(),
@@ -473,7 +474,7 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										}
 
-										stopParam = &cabi.StopParam{StopName: "PCCWG"}
+										stopParam = &cabi.StopParam{StopName: "PCCWG", ContractAddress: address}
 										abi, err = stopParam.ToABI(cabi.MethodNameAddPreStop)
 										if err != nil {
 											t.Fatal(err)
@@ -488,7 +489,7 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 											Oracle:         types.ZeroBalance,
 											Storage:        types.ZeroBalance,
 											Previous:       tm2.Header,
-											Link:           types.Hash(address),
+											Link:           types.Hash(types.SettlementAddress),
 											Representative: tm2.Representative,
 											Data:           abi,
 											Timestamp:      common.TimeNow().Unix(),
@@ -537,14 +538,15 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										}
 										cdr1 := &cabi.CDRParam{
-											Index:         1,
-											SmsDt:         time.Now().Unix(),
-											Sender:        "WeChat",
-											Destination:   "85257***343",
-											SendingStatus: 0,
-											DlrStatus:     0,
-											PreStop:       "",
-											NextStop:      "HKTCSL",
+											ContractAddress: address,
+											Index:           1,
+											SmsDt:           time.Now().Unix(),
+											Sender:          "WeChat",
+											Destination:     "85257***343",
+											SendingStatus:   0,
+											DlrStatus:       0,
+											PreStop:         "",
+											NextStop:        "HKTCSL",
 										}
 										abi, err = cdr1.ToABI()
 										if err != nil {
@@ -560,7 +562,7 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 											Oracle:         types.ZeroBalance,
 											Storage:        types.ZeroBalance,
 											Previous:       tm.Header,
-											Link:           types.Hash(address),
+											Link:           types.Hash(types.SettlementAddress),
 											Representative: tm.Representative,
 											Data:           abi,
 											Timestamp:      common.TimeNow().Unix(),
@@ -589,14 +591,15 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										}
 										cdr2 := &cabi.CDRParam{
-											Index:         1,
-											SmsDt:         time.Now().Unix(),
-											Sender:        "WeChat",
-											Destination:   "85257***343",
-											SendingStatus: 0,
-											DlrStatus:     0,
-											PreStop:       "PCCWG",
-											NextStop:      "",
+											ContractAddress: address,
+											Index:           1,
+											SmsDt:           time.Now().Unix(),
+											Sender:          "WeChat",
+											Destination:     "85257***343",
+											SendingStatus:   0,
+											DlrStatus:       0,
+											PreStop:         "PCCWG",
+											NextStop:        "",
 										}
 										abi, err = cdr2.ToABI()
 										if err != nil {
@@ -612,7 +615,7 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 											Oracle:         types.ZeroBalance,
 											Storage:        types.ZeroBalance,
 											Previous:       tm2.Header,
-											Link:           types.Hash(address),
+											Link:           types.Hash(types.SettlementAddress),
 											Representative: tm2.Representative,
 											Data:           abi,
 											Timestamp:      common.TimeNow().Unix(),
@@ -956,6 +959,7 @@ func Test_add(t *testing.T) {
 	type args struct {
 		s    []string
 		name string
+		want []string
 	}
 	tests := []struct {
 		name    string
@@ -967,6 +971,7 @@ func Test_add(t *testing.T) {
 			args: args{
 				s:    nil,
 				name: "11",
+				want: []string{"11"},
 			},
 			wantErr: false,
 		},
@@ -975,14 +980,23 @@ func Test_add(t *testing.T) {
 			args: args{
 				s:    []string{"22", "11"},
 				name: "11",
+				want: []string{"22", "11"},
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := add(tt.args.s, tt.args.name); (err != nil) != tt.wantErr {
+			if got, err := add(tt.args.s, tt.args.name); (err != nil) != tt.wantErr {
 				t.Errorf("add() error = %v, wantErr %v", err, tt.wantErr)
+				if !reflect.DeepEqual(got, tt.args.want) {
+					t.Errorf("should be the same when err, got = %v, want = %v", got, tt.args.want)
+				}
+			} else {
+				sort.Strings(tt.args.want)
+				if !reflect.DeepEqual(got, tt.args.want) {
+					t.Errorf("add() got = %v, want = %v", got, tt.args.want)
+				}
 			}
 		})
 	}
@@ -992,6 +1006,7 @@ func Test_remove(t *testing.T) {
 	type args struct {
 		s    []string
 		name string
+		want []string
 	}
 	tests := []struct {
 		name    string
@@ -1003,6 +1018,7 @@ func Test_remove(t *testing.T) {
 			args: args{
 				s:    []string{"11", "22"},
 				name: "22",
+				want: []string{"11"},
 			},
 			wantErr: false,
 		}, {
@@ -1010,6 +1026,7 @@ func Test_remove(t *testing.T) {
 			args: args{
 				s:    nil,
 				name: "22",
+				want: nil,
 			},
 			wantErr: true,
 		}, {
@@ -1017,14 +1034,23 @@ func Test_remove(t *testing.T) {
 			args: args{
 				s:    []string{"11", "22"},
 				name: "33",
+				want: []string{"11", "22"},
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := remove(tt.args.s, tt.args.name); (err != nil) != tt.wantErr {
+			if got, err := remove(tt.args.s, tt.args.name); (err != nil) != tt.wantErr {
 				t.Errorf("remove() error = %v, wantErr %v", err, tt.wantErr)
+				if !reflect.DeepEqual(got, tt.args.want) {
+					t.Errorf("should be the same when err, got = %v, want = %v", got, tt.args.want)
+				}
+			} else {
+				sort.Strings(tt.args.want)
+				if !reflect.DeepEqual(got, tt.args.want) {
+					t.Errorf("remove() got = %v, want = %v", got, tt.args.want)
+				}
 			}
 		})
 	}
@@ -1032,9 +1058,10 @@ func Test_remove(t *testing.T) {
 
 func Test_update(t *testing.T) {
 	type args struct {
-		s   []string
-		old string
-		new string
+		s    []string
+		old  string
+		new  string
+		want []string
 	}
 	tests := []struct {
 		name    string
@@ -1044,33 +1071,44 @@ func Test_update(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				s:   []string{"11", "22"},
-				old: "11",
-				new: "33",
+				s:    []string{"11", "22"},
+				old:  "11",
+				new:  "33",
+				want: []string{"22", "33"},
 			},
 			wantErr: false,
 		}, {
 			name: "f1",
 			args: args{
-				s:   nil,
-				old: "11",
-				new: "33",
+				s:    nil,
+				old:  "11",
+				new:  "33",
+				want: nil,
 			},
 			wantErr: true,
 		}, {
-			name: "f1",
+			name: "f2",
 			args: args{
-				s:   []string{"11", "22"},
-				old: "33",
-				new: "111",
+				s:    []string{"11", "22"},
+				old:  "33",
+				new:  "111",
+				want: []string{"11", "22"},
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := update(tt.args.s, tt.args.old, tt.args.new); (err != nil) != tt.wantErr {
+			if got, err := update(tt.args.s, tt.args.old, tt.args.new); (err != nil) != tt.wantErr {
 				t.Errorf("update() error = %v, wantErr %v", err, tt.wantErr)
+				if !reflect.DeepEqual(got, tt.args.want) {
+					t.Errorf("should be the same when err, got = %v, want = %v", got, tt.args.want)
+				}
+			} else {
+				sort.Strings(tt.args.want)
+				if !reflect.DeepEqual(got, tt.args.want) {
+					t.Errorf("update() got = %v, want = %v", got, tt.args.want)
+				}
 			}
 		})
 	}

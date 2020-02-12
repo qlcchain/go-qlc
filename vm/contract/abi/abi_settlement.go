@@ -465,10 +465,11 @@ type DLRStatus int
 // we should make sure that can use CDR data to match to a specific settlement contract
 //go:generate msgp
 type CDRParam struct {
-	Index       uint64 `msg:"i" json:"index" validate:"min=1"`
-	SmsDt       int64  `msg:"dt" json:"smsDt" validate:"min=1"`
-	Sender      string `msg:"tx" json:"sender" validate:"nonzero"`
-	Destination string `msg:"d" json:"destination" validate:"nonzero"`
+	ContractAddress types.Address `msg:"a" json:"contractAddress"`
+	Index           uint64        `msg:"i" json:"index" validate:"min=1"`
+	SmsDt           int64         `msg:"dt" json:"smsDt" validate:"min=1"`
+	Sender          string        `msg:"tx" json:"sender" validate:"nonzero"`
+	Destination     string        `msg:"d" json:"destination" validate:"nonzero"`
 	//DstCountry    string        `msg:"dc" json:"dstCountry" validate:"nonzero"`
 	//DstOperator   string        `msg:"do" json:"dstOperator" validate:"nonzero"`
 	//DstMcc        uint64        `msg:"mcc" json:"dstMcc"`
@@ -477,7 +478,7 @@ type CDRParam struct {
 	//SellCurrency  string        `msg:"c" json:"sellCurrency" validate:"nonzero"`
 	//CustomerName  string        `msg:"cn" json:"customerName" validate:"nonzero"`
 	//CustomerID    string        `msg:"cid" json:"customerID" validate:"nonzero"`
-	SendingStatus SendingStatus `msg:"s" json:"sendingStatus" `
+	SendingStatus SendingStatus `msg:"s" json:"sendingStatus"`
 	DlrStatus     DLRStatus     `msg:"ds" json:"dlrStatus"`
 	PreStop       string        `msg:"ps" json:"preStop" `
 	NextStop      string        `msg:"ns" json:"nextStop" `
@@ -621,7 +622,8 @@ func ParseCDRStatus(v []byte) (*CDRStatus, error) {
 
 //go:generate msgp
 type StopParam struct {
-	StopName string `msg:"n" json:"stopName" validate:"nonzero"`
+	ContractAddress types.Address `msg:"ca" json:"contractAddress"`
+	StopName        string        `msg:"n" json:"stopName" validate:"nonzero"`
 }
 
 func (z *StopParam) ToABI(methodName string) ([]byte, error) {
@@ -649,8 +651,9 @@ func (z *StopParam) Verify() error {
 
 //go:generate msgp
 type UpdateStopParam struct {
-	StopName string `msg:"n" json:"stopName" validate:"nonzero"`
-	New      string `msg:"n2" json:"newName" validate:"nonzero"`
+	ContractAddress types.Address `msg:"ca" json:"contractAddress"`
+	StopName        string        `msg:"n" json:"stopName" validate:"nonzero"`
+	New             string        `msg:"n2" json:"newName" validate:"nonzero"`
 }
 
 func (z *UpdateStopParam) ToABI(methodName string) ([]byte, error) {
