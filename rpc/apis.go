@@ -134,6 +134,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewChainApi(r.ledger),
 			Public:    true,
 		}
+	case "settlement":
+		return rpc.API{
+			Namespace: "settlement",
+			Version:   "1.0",
+			Service:   api.NewSettlement(r.ledger, r.cc),
+			Public:    true,
+		}
 	case "dpki":
 		return rpc.API{
 			Namespace: "dpki",
@@ -176,6 +183,6 @@ func (r *RPC) GetWSApis() []rpc.API {
 
 func (r *RPC) GetPublicApis() []rpc.API {
 	apiModules := []string{"ledger", "account", "net", "util", "wallet", "mintage", "contract", "sms", "pledge",
-		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki"}
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement"}
 	return r.GetApis(apiModules...)
 }
