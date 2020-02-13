@@ -524,6 +524,10 @@ type SettlementContract struct {
 	Address types.Address `json:"address"`
 }
 
+// GetAllContracts query all settlement contracts
+// @param count max settlement contract records size
+// @param offset offset of all settlement contract records(optional)
+// @return all settlement contracts
 func (s *SettlementAPI) GetAllContracts(count int, offset *int) ([]*SettlementContract, error) {
 	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
 		ctx := vmstore.NewVMContext(s.l)
@@ -627,6 +631,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 	}
 }
 
+// GetProcessCDRRewardsBlock generate rewards block by send block hash
 func (s *SettlementAPI) GetProcessCDRRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
 	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
 		rev := &types.StateBlock{
@@ -665,19 +670,10 @@ func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *
 		return nil, err
 	} else {
 		size := len(status)
-		if count <= 0 {
-			return nil, fmt.Errorf("invalid count: %d", count)
+		start, end, err := calculateRange(size, count, offset)
+		if err != nil {
+			return nil, err
 		}
-
-		start := 0
-		if offset != nil && *offset >= 0 {
-			start = *offset
-		}
-		end := start + count
-		if end >= size {
-			end = size - 1
-		}
-
 		return status[start:end], nil
 	}
 }
@@ -742,21 +738,9 @@ func (s *SettlementAPI) queryContractsByAddress(count int, offset *int, fn func(
 
 	size := len(contracts)
 
-	if size == 0 {
-		return nil, errors.New("can not find any contracts")
-	}
-
-	if count <= 0 {
-		return nil, fmt.Errorf("invalid count: %d", count)
-	}
-
-	start := 0
-	if offset != nil && *offset >= 0 {
-		start = *offset
-	}
-	end := start + count
-	if end >= size {
-		end = size - 1
+	start, end, err := calculateRange(size, count, offset)
+	if err != nil {
+		return nil, err
 	}
 
 	var result []*SettlementContract
@@ -773,4 +757,31 @@ func (s *SettlementAPI) queryContractsByAddress(count int, offset *int, fn func(
 	}
 
 	return result, nil
+}
+
+func calculateRange(size, count int, offset *int) (start, end int, err error) {
+	if size <= 0 {
+		return 0, 0, fmt.Errorf("invalid size %d", size)
+	}
+
+	o := 0
+
+	if count <= 0 {
+		return 0, 0, fmt.Errorf("invalid count: %d", count)
+	}
+
+	if offset != nil && *offset >= 0 {
+		o = *offset
+	}
+
+	if o >= size {
+		return 0, 0, fmt.Errorf("overflow, max:%d,offset:%d", size, o)
+	} else {
+		start = o
+		end = start + count
+		if end > size {
+			end = size
+		}
+		return
+	}
 }

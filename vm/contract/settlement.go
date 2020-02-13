@@ -271,6 +271,11 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		return nil, nil, err
 	}
 
+	contractAddress := param.ContractAddress
+	if contractAddress.IsZero() {
+		return nil, nil, errors.New("invalid contract address")
+	}
+
 	h, err := param.ToHash()
 	if err != nil {
 		return nil, nil, err
@@ -283,8 +288,6 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	}
 	mutex.Lock()
 	defer mutex.Unlock()
-
-	contractAddress := param.ContractAddress
 
 	contract, err := cabi.GetContracts(ctx, &contractAddress)
 	if err != nil {
