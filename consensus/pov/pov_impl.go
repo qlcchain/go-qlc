@@ -50,7 +50,7 @@ type PoVEngine struct {
 	febRpcMsgSubID event.FeedSubscription
 }
 
-func NewPovEngine(cfgFile string) (*PoVEngine, error) {
+func NewPovEngine(cfgFile string, fakePow bool) (*PoVEngine, error) {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 	l := ledger.NewLedger(cfgFile)
@@ -71,7 +71,11 @@ func NewPovEngine(cfgFile string) (*PoVEngine, error) {
 
 	pov.chain = NewPovBlockChain(cfg, pov.eb, pov.ledger)
 	pov.txpool = NewPovTxPool(pov.eb, pov.ledger, pov.chain)
-	pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
+	if fakePow {
+		pov.cs = NewPovConsensus(PovConsensusModeFake, pov.chain)
+	} else {
+		pov.cs = NewPovConsensus(PovConsensusModePow, pov.chain)
+	}
 	pov.verifier = NewPovVerifier(l, pov.chain, pov.cs)
 	pov.syncer = NewPovSyncer(pov.eb, pov.ledger, pov.chain)
 

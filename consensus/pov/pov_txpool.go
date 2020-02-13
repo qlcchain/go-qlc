@@ -51,6 +51,7 @@ type PovTxPool struct {
 	allTxs      map[types.Hash]*PovTxEntry
 	lastUpdated int64
 	syncState   atomic.Value
+	poolMu      sync.Mutex
 
 	statLimitTxNum     int64
 	statNotInOrderNum  int64
@@ -317,6 +318,9 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 }
 
 func (tp *PovTxPool) recoverUnconfirmedTxs() {
+	tp.poolMu.Lock()
+	defer tp.poolMu.Unlock()
+
 	unpackAccountTxs, unconfirmedTxNum := tp.getUnconfirmedTxsByFast()
 	if unconfirmedTxNum <= 0 {
 		return
