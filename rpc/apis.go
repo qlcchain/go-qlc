@@ -54,7 +54,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "mintage",
 			Version:   "1.0",
-			Service:   api.NewMintageApi(r.ledger),
+			Service:   api.NewMintageApi(r.cfgFile, r.ledger),
 			Public:    true,
 		}
 	case "pledge":
