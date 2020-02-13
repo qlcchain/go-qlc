@@ -173,6 +173,11 @@ func (pv *PovVerifier) VerifyFull(block *types.PovBlock) *PovVerifyStat {
 func (pv *PovVerifier) verifyDataIntegrity(block *types.PovBlock, stat *PovVerifyStat) (process.ProcessResult, error) {
 	blkHash := block.GetHash()
 
+	algoType := block.GetAlgoType()
+	if !common.PovIsAlgoSupported(algoType) {
+		return process.BadConsensus, fmt.Errorf("unknown algo %s", algoType)
+	}
+
 	if common.PovChainGenesisBlockHeight == block.GetHeight() {
 		if !common.IsGenesisPovBlock(block) {
 			return process.BadHash, fmt.Errorf("bad genesis block hash %s", blkHash)
