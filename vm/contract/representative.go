@@ -76,10 +76,6 @@ func (r *RepReward) GetAvailRewardInfo(ctx *vmstore.VMContext, account types.Add
 	return availInfo, nil
 }
 
-func (r *RepReward) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.NewBalance(0), nil
-}
-
 func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	param := new(cabi.RepRewardParam)
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.Data)
@@ -322,10 +318,6 @@ func (r *RepReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, account t
 	}
 
 	return rewardBlocks, rewardAmount, nil
-}
-
-func (r *RepReward) GetRefundData() []byte {
-	return []byte{1}
 }
 
 func (r *RepReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {

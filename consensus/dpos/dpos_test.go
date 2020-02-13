@@ -1,7 +1,6 @@
 package dpos
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -18,6 +17,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/miner"
+	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -30,13 +30,6 @@ import (
 	"strconv"
 	"testing"
 	"time"
-)
-
-var (
-	testPrivateKey = "194908c480fddb6e66b56c08f0d55d935681da0b3c9c33077010bf12a91414576c0b2cdd533ee3a21668f199e111f6c8614040e60e70a73ab6c8da036f2a7ad7"
-	testAddress    = "qlc_1u1d7mgo8hq5nad8jwesw6azfk53a31ge5minwxdfk8t1fqknypqgk8mi3z7"
-	priByte, _     = hex.DecodeString(testPrivateKey)
-	testAccount    = types.NewAccount(priByte)
 )
 
 type Node struct {
@@ -318,7 +311,7 @@ func (n *Node) RunNode() {
 
 	// save accounts to context
 	var accounts []*types.Account
-	accounts = append(accounts, testAccount)
+	accounts = append(accounts, mock.TestAccount)
 
 	if n.isBoot {
 		n.ctx.SetAccounts(accounts)
@@ -676,9 +669,9 @@ func (n *Node) CheckBlocksConfirmed(hashes []types.Hash) {
 }
 
 func (n *Node) InitLedger() {
-	n.ProcessBlockLocal(&testSendBlock)
-	n.ProcessBlockLocal(&testReceiveBlock)
-	n.ProcessBlockLocal(&testSendGasBlock)
-	n.ProcessBlockLocal(&testReceiveGasBlock)
-	n.ProcessBlockLocal(&testChangeRepresentative)
+	n.ProcessBlockLocal(&mock.TestSendBlock)
+	n.ProcessBlockLocal(&mock.TestReceiveBlock)
+	n.ProcessBlockLocal(&mock.TestSendGasBlock)
+	n.ProcessBlockLocal(&mock.TestReceiveGasBlock)
+	n.ProcessBlockLocal(&mock.TestChangeRepresentative)
 }
