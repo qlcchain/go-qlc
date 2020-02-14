@@ -26,7 +26,7 @@ type PoVService struct {
 }
 
 func NewPoVService(cfgFile string) *PoVService {
-	povEngine, _ := pov.NewPovEngine(cfgFile)
+	povEngine, _ := pov.NewPovEngine(cfgFile, false)
 	return &PoVService{
 		povEngine: povEngine,
 		logger:    log.NewLogger("pov_service"),

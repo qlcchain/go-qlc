@@ -1,9 +1,11 @@
 package pov
 
 import (
+	"github.com/qlcchain/go-qlc/common/topic"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/statedb"
 
@@ -81,16 +83,24 @@ func TestPovTxPool_AddDelTx(t *testing.T) {
 
 	_ = txPool.Start()
 
+	txPool.onPovSyncState(topic.SyncDone)
+	time.Sleep(time.Millisecond)
+
 	txBlk1 := mock.StateBlockWithoutWork()
 	txHash1 := txBlk1.GetHash()
-	txPool.addTx(txHash1, txBlk1)
+
+	txPool.onAddStateBlock(txBlk1)
+	time.Sleep(time.Millisecond)
+	//txPool.addTx(txHash1, txBlk1)
 
 	retTxBlk1 := txPool.getTx(txHash1)
 	if retTxBlk1 == nil {
 		t.Fatalf("failed to add tx %s", txHash1)
 	}
 
-	txPool.delTx(txHash1)
+	txPool.onDeleteStateBlock(txHash1)
+	time.Sleep(time.Millisecond)
+	//txPool.delTx(txHash1)
 
 	retTxBlk1 = txPool.getTx(txHash1)
 	if retTxBlk1 != nil {
@@ -113,13 +123,22 @@ func TestPovTxPool_SelectTx(t *testing.T) {
 
 	_ = txPool.Start()
 
+	txPool.onPovSyncState(topic.SyncDone)
+	time.Sleep(time.Millisecond)
+
 	txBlk1 := mock.StateBlockWithoutWork()
 	txHash1 := txBlk1.GetHash()
-	txPool.addTx(txHash1, txBlk1)
+	txPool.onAddStateBlock(txBlk1)
+	time.Sleep(time.Millisecond)
+	//txPool.addTx(txHash1, txBlk1)
 
 	txBlk2 := mock.StateBlockWithoutWork()
 	txHash2 := txBlk2.GetHash()
-	txPool.addTx(txHash2, txBlk2)
+	txPool.onAddStateBlock(txBlk2)
+	time.Sleep(time.Millisecond)
+	//txPool.addTx(txHash2, txBlk2)
+
+	time.Sleep(10 * time.Millisecond)
 
 	gsdb := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), types.ZeroHash)
 	retTxs := txPool.SelectPendingTxs(gsdb, 10)
@@ -145,6 +164,25 @@ func TestPovTxPool_SelectTx(t *testing.T) {
 	if !tx2Exist {
 		t.Fatalf("failed to select tx2 %s", txHash2)
 	}
+
+	txPool.Stop()
+}
+
+func TestPovTxPool_RecoverTxs(t *testing.T) {
+	teardownTestCase, md := setupPovTxPoolTestCase(t)
+	defer teardownTestCase(t)
+
+	txPool := NewPovTxPool(md.eb, md.ledger, md.chain)
+	if txPool == nil {
+		t.Fatal("NewPovTxPool is nil")
+	}
+
+	_ = txPool.Init()
+
+	_ = txPool.Start()
+
+	//txPool.onPovSyncState(topic.SyncDone)
+	txPool.recoverUnconfirmedTxs()
 
 	txPool.Stop()
 }

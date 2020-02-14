@@ -280,7 +280,7 @@ func (n *Node) stopConsensusService() {
 }
 
 func (n *Node) startPoVService() {
-	povEngine, _ := pov.NewPovEngine(n.ctx.ConfigFile())
+	povEngine, _ := pov.NewPovEngine(n.ctx.ConfigFile(), false)
 	err := povEngine.Init()
 	if err != nil {
 		n.t.Fatal(err)
