@@ -443,7 +443,7 @@ func (z *ContractParam) String() string {
 //go:generate go-enum -f=$GOFILE --marshal --names
 /*
 ENUM(
-Send
+Sent
 Error
 Empty
 )
@@ -454,6 +454,7 @@ type SendingStatus int
 /*
 ENUM(
 Delivered
+Rejected
 Unknown
 Undelivered
 Empty
@@ -527,7 +528,7 @@ func (z *CDRParam) Status() bool {
 		fallthrough
 	case DLRStatusEmpty:
 		switch z.SendingStatus {
-		case SendingStatusSend:
+		case SendingStatusSent:
 			return true
 		default:
 			return false

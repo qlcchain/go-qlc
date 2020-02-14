@@ -115,7 +115,7 @@ func TestDLRStatusNames(t *testing.T) {
 	}{
 		{
 			name: "ok",
-			want: []string{"Delivered", "Unknown", "Undelivered", "Empty"},
+			want: []string{"Delivered", "Rejected", "Unknown", "Undelivered", "Empty"},
 		},
 	}
 	for _, tt := range tests {
@@ -298,9 +298,9 @@ func TestParseSendingStatus(t *testing.T) {
 		{
 			name: "",
 			args: args{
-				name: "Send",
+				name: "Sent",
 			},
-			want:    SendingStatusSend,
+			want:    SendingStatusSent,
 			wantErr: false,
 		},
 	}
@@ -358,7 +358,7 @@ func TestSendingStatusNames(t *testing.T) {
 	}{
 		{
 			name: "OK",
-			want: []string{"Send", "Error", "Empty"},
+			want: []string{"Sent", "Error", "Empty"},
 		},
 	}
 	for _, tt := range tests {
@@ -379,8 +379,8 @@ func TestSendingStatus_MarshalText(t *testing.T) {
 	}{
 		{
 			name:    "",
-			x:       SendingStatusSend,
-			want:    []byte("Send"),
+			x:       SendingStatusSent,
+			want:    []byte("Sent"),
 			wantErr: false,
 		},
 	}
@@ -406,8 +406,8 @@ func TestSendingStatus_String(t *testing.T) {
 	}{
 		{
 			name: "",
-			x:    SendingStatusSend,
-			want: "Send",
+			x:    SendingStatusSent,
+			want: "Sent",
 		},
 	}
 	for _, tt := range tests {
@@ -431,9 +431,9 @@ func TestSendingStatus_UnmarshalText(t *testing.T) {
 	}{
 		{
 			name: "ok",
-			x:    SendingStatusSend,
+			x:    SendingStatusSent,
 			args: args{
-				text: []byte("Send"),
+				text: []byte("Sent"),
 			},
 			wantErr: false,
 		},

@@ -66,7 +66,7 @@ func ParseContractStatus(name string) (ContractStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x *ContractStatus) MarshalText() ([]byte, error) {
+func (x ContractStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -84,6 +84,8 @@ func (x *ContractStatus) UnmarshalText(text []byte) error {
 const (
 	// DLRStatusDelivered is a DLRStatus of type Delivered
 	DLRStatusDelivered DLRStatus = iota
+	// DLRStatusRejected is a DLRStatus of type Rejected
+	DLRStatusRejected
 	// DLRStatusUnknown is a DLRStatus of type Unknown
 	DLRStatusUnknown
 	// DLRStatusUndelivered is a DLRStatus of type Undelivered
@@ -92,13 +94,14 @@ const (
 	DLRStatusEmpty
 )
 
-const _DLRStatusName = "DeliveredUnknownUndeliveredEmpty"
+const _DLRStatusName = "DeliveredRejectedUnknownUndeliveredEmpty"
 
 var _DLRStatusNames = []string{
 	_DLRStatusName[0:9],
-	_DLRStatusName[9:16],
-	_DLRStatusName[16:27],
-	_DLRStatusName[27:32],
+	_DLRStatusName[9:17],
+	_DLRStatusName[17:24],
+	_DLRStatusName[24:35],
+	_DLRStatusName[35:40],
 }
 
 // DLRStatusNames returns a list of possible string values of DLRStatus.
@@ -110,9 +113,10 @@ func DLRStatusNames() []string {
 
 var _DLRStatusMap = map[DLRStatus]string{
 	0: _DLRStatusName[0:9],
-	1: _DLRStatusName[9:16],
-	2: _DLRStatusName[16:27],
-	3: _DLRStatusName[27:32],
+	1: _DLRStatusName[9:17],
+	2: _DLRStatusName[17:24],
+	3: _DLRStatusName[24:35],
+	4: _DLRStatusName[35:40],
 }
 
 // String implements the Stringer interface.
@@ -125,9 +129,10 @@ func (x DLRStatus) String() string {
 
 var _DLRStatusValue = map[string]DLRStatus{
 	_DLRStatusName[0:9]:   0,
-	_DLRStatusName[9:16]:  1,
-	_DLRStatusName[16:27]: 2,
-	_DLRStatusName[27:32]: 3,
+	_DLRStatusName[9:17]:  1,
+	_DLRStatusName[17:24]: 2,
+	_DLRStatusName[24:35]: 3,
+	_DLRStatusName[35:40]: 4,
 }
 
 // ParseDLRStatus attempts to convert a string to a DLRStatus
@@ -139,7 +144,7 @@ func ParseDLRStatus(name string) (DLRStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x *DLRStatus) MarshalText() ([]byte, error) {
+func (x DLRStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -155,15 +160,15 @@ func (x *DLRStatus) UnmarshalText(text []byte) error {
 }
 
 const (
-	// SendingStatusSend is a SendingStatus of type Send
-	SendingStatusSend SendingStatus = iota
+	// SendingStatusSent is a SendingStatus of type Sent
+	SendingStatusSent SendingStatus = iota
 	// SendingStatusError is a SendingStatus of type Error
 	SendingStatusError
 	// SendingStatusEmpty is a SendingStatus of type Empty
 	SendingStatusEmpty
 )
 
-const _SendingStatusName = "SendErrorEmpty"
+const _SendingStatusName = "SentErrorEmpty"
 
 var _SendingStatusNames = []string{
 	_SendingStatusName[0:4],
@@ -207,7 +212,7 @@ func ParseSendingStatus(name string) (SendingStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x *SendingStatus) MarshalText() ([]byte, error) {
+func (x SendingStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -290,7 +295,7 @@ func ParseSettlementStatus(name string) (SettlementStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x *SettlementStatus) MarshalText() ([]byte, error) {
+func (x SettlementStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
