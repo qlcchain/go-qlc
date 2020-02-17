@@ -25,18 +25,19 @@ import (
 )
 
 type SettlementAPI struct {
-	logger         *zap.SugaredLogger
-	l              *ledger.Ledger
-	createContract *contract.CreateContract
-	signContract   *contract.SignContract
-	cdrContract    *contract.ProcessCDR
-	addPreStop     *contract.AddPreStop
-	removePreStop  *contract.RemovePreStop
-	updatePreStop  *contract.UpdatePreStop
-	addNextStop    *contract.AddNextStop
-	removeNextStop *contract.RemoveNextStop
-	updateNextStop *contract.UpdateNextStop
-	cc             *context.ChainContext
+	logger            *zap.SugaredLogger
+	l                 *ledger.Ledger
+	createContract    *contract.CreateContract
+	signContract      *contract.SignContract
+	cdrContract       *contract.ProcessCDR
+	addPreStop        *contract.AddPreStop
+	removePreStop     *contract.RemovePreStop
+	updatePreStop     *contract.UpdatePreStop
+	addNextStop       *contract.AddNextStop
+	removeNextStop    *contract.RemoveNextStop
+	updateNextStop    *contract.UpdateNextStop
+	terminateContract *contract.TerminateContract
+	cc                *context.ChainContext
 }
 
 // SignContractParam for confirm contract which created by PartyA
@@ -156,8 +157,6 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 
 // GetSignContractBlock
 // generate ContractSend block to call smart contract for signing settlement contract as PartyB
-// smart contract address = hash(*abi.CreateContractParam)
-// param.SignatureB = sign(smart contract address + param.ConfirmDate)
 // @param param sign settlement contract param created by PartyA
 // @return state block(without signature) to be processed
 func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.StateBlock, error) {
@@ -175,23 +174,6 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 		return nil, errors.New("invalid input param")
 	}
 	ctx := vmstore.NewVMContext(s.l)
-
-	if storage, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err != nil {
-		return nil, err
-	} else {
-		if len(storage) > 0 {
-			if cp, err := cabi.ParseContractParam(storage); err != nil {
-				return nil, err
-			} else {
-				// verify partyB
-				if cp.PartyB.Address != param.Address {
-					return nil, fmt.Errorf("invalid partyB, exp: %s, act: %s", cp.PartyB.Address.String(), param.Address.String())
-				}
-			}
-		} else {
-			return nil, fmt.Errorf("invalid saved contract data of %s", param.ContractAddress.String())
-		}
-	}
 
 	if tm, err := ctx.GetTokenMeta(param.Address, common.GasToken()); err != nil {
 		return nil, err
@@ -222,7 +204,12 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 				sb.PoVHeight = povHeader.GetHeight()
 				sb.Extra = *h
 			}
-			return sb, nil
+
+			if _, _, err := s.signContract.ProcessSend(ctx, sb); err != nil {
+				return nil, err
+			} else {
+				return sb, nil
+			}
 		} else {
 			return nil, err
 		}
@@ -651,6 +638,92 @@ func (s *SettlementAPI) GetProcessCDRRewardsBlock(send *types.Hash) (*types.Stat
 	})
 }
 
+type TerminateParam struct {
+	cabi.TerminateParam
+	Address types.Address // PartyB address
+}
+
+// GetTerminateContractBlock
+// generate ContractSend block to call smart contract for terminating settlement contract
+// @param param sign settlement contract param created by PartyA
+// @return state block(without signature) to be processed
+func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types.StateBlock, error) {
+	if !s.cc.IsPoVDone() {
+		return nil, context.ErrPoVNotFinish
+	}
+
+	if param == nil {
+		return nil, errors.New("invalid input param")
+	}
+
+	if err := param.Verify(); err != nil {
+		return nil, err
+	}
+	ctx := vmstore.NewVMContext(s.l)
+
+	if tm, err := ctx.GetTokenMeta(param.Address, common.GasToken()); err != nil {
+		return nil, err
+	} else {
+		if singedData, err := param.ToABI(); err == nil {
+			sb := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        param.Address,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           singedData,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			h := ctx.Cache.Trie().Hash()
+			if h != nil {
+				povHeader, err := s.l.GetLatestPovHeader()
+				if err != nil {
+					return nil, fmt.Errorf("get pov header error: %s", err)
+				}
+				sb.PoVHeight = povHeader.GetHeight()
+				sb.Extra = *h
+			}
+
+			if _, _, err := s.terminateContract.ProcessSend(ctx, sb); err != nil {
+				return nil, err
+			} else {
+				return sb, nil
+			}
+		} else {
+			return nil, err
+		}
+	}
+}
+
+// GetTerminateRewardsBlock generate create contract rewords block by contract send block hash
+// @param send contract send block hash
+// @return contract rewards block
+func (s *SettlementAPI) GetTerminateRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.terminateContract.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate terminate contract reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
 // GetCDRStatus get CDRstatus by settlement smart contract address and CDR hash
 // @param addr settlement smart contract address
 // @param hash CDR data hash
@@ -761,7 +834,7 @@ func (s *SettlementAPI) queryContractsByAddress(count int, offset *int, fn func(
 
 func calculateRange(size, count int, offset *int) (start, end int, err error) {
 	if size <= 0 {
-		return 0, 0, fmt.Errorf("invalid size %d", size)
+		return 0, 0, fmt.Errorf("can not find any records, size=%d", size)
 	}
 
 	o := 0

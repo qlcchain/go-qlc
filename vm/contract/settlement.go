@@ -203,17 +203,11 @@ func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 			if cp, err := cabi.ParseContractParam(storage); err != nil {
 				return nil, nil, err
 			} else {
-				// verify partyB
-				if cp.PartyB.Address != block.Address {
-					return nil, nil, fmt.Errorf("invalid partyB, exp: %s, act: %s", cp.PartyB.Address.String(), block.Address.String())
+				// active contract
+				if err := cp.DoActive(block.Address); err != nil {
+					return nil, nil, err
 				}
-
 				cp.ConfirmDate = param.ConfirmDate
-				if cp.Status == cabi.ContractStatusActiveStage1 {
-					cp.Status = cabi.ContractStatusActived
-				} else {
-					return nil, nil, fmt.Errorf("invalid contract status, %s", cp.Status.String())
-				}
 
 				if data, err := cp.ToABI(); err == nil {
 					// save confirm data
@@ -624,7 +618,7 @@ func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, 
 				return nil, nil, err
 			}
 		} else {
-			return nil, nil, fmt.Errorf("permission denied, only %s can change, but got %s", param.PartyB.Address, block.Address.String())
+			return nil, nil, fmt.Errorf("permission denied, only %s can change, but got %s", addr.String(), block.Address.String())
 		}
 	} else {
 		return nil, nil, errors.New("invalid saved contract data")
@@ -638,4 +632,74 @@ func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, 
 			Amount: types.ZeroBalance,
 			Type:   block.Token,
 		}, nil
+}
+
+type TerminateContract struct {
+	internalContract
+}
+
+func (t *TerminateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		// verify send block data
+		param := new(cabi.TerminateParam)
+		err := param.FromABI(input.Data)
+		if err != nil {
+			return err
+		}
+		if b, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+			if _, err := cabi.ParseContractParam(b); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
+		}
+		return nil
+	})
+}
+
+func (t *TerminateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	param := new(cabi.TerminateParam)
+	err := param.FromABI(block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// verify block data
+	if err := param.Verify(); err != nil {
+		return nil, nil, err
+	}
+
+	if storage, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err != nil {
+		return nil, nil, err
+	} else {
+		if len(storage) > 0 {
+			if cp, err := cabi.ParseContractParam(storage); err != nil {
+				return nil, nil, err
+			} else {
+				if err := cp.DoTerminate(block.Address); err != nil {
+					return nil, nil, err
+				}
+
+				if data, err := cp.ToABI(); err == nil {
+					// save confirm data
+					if err := ctx.SetStorage(types.SettlementAddress[:], param.ContractAddress[:], data); err == nil {
+						return &types.PendingKey{
+								Address: block.Address,
+								Hash:    block.GetHash(),
+							}, &types.PendingInfo{
+								Source: types.Address(block.Link),
+								Amount: types.ZeroBalance,
+								Type:   block.Token,
+							}, nil
+					} else {
+						return nil, nil, err
+					}
+				} else {
+					return nil, nil, err
+				}
+			}
+		} else {
+			return nil, nil, fmt.Errorf("invalid saved contract data of %s", param.ContractAddress.String())
+		}
+	}
 }

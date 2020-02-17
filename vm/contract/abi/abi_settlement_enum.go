@@ -17,15 +17,18 @@ const (
 	ContractStatusDestroyStage1
 	// ContractStatusDestroyed is a ContractStatus of type Destroyed
 	ContractStatusDestroyed
+	// ContractStatusRejected is a ContractStatus of type Rejected
+	ContractStatusRejected
 )
 
-const _ContractStatusName = "ActiveStage1ActivedDestroyStage1Destroyed"
+const _ContractStatusName = "ActiveStage1ActivedDestroyStage1DestroyedRejected"
 
 var _ContractStatusNames = []string{
 	_ContractStatusName[0:12],
 	_ContractStatusName[12:19],
 	_ContractStatusName[19:32],
 	_ContractStatusName[32:41],
+	_ContractStatusName[41:49],
 }
 
 // ContractStatusNames returns a list of possible string values of ContractStatus.
@@ -40,6 +43,7 @@ var _ContractStatusMap = map[ContractStatus]string{
 	1: _ContractStatusName[12:19],
 	2: _ContractStatusName[19:32],
 	3: _ContractStatusName[32:41],
+	4: _ContractStatusName[41:49],
 }
 
 // String implements the Stringer interface.
@@ -55,6 +59,7 @@ var _ContractStatusValue = map[string]ContractStatus{
 	_ContractStatusName[12:19]: 1,
 	_ContractStatusName[19:32]: 2,
 	_ContractStatusName[32:41]: 3,
+	_ContractStatusName[41:49]: 4,
 }
 
 // ParseContractStatus attempts to convert a string to a ContractStatus
@@ -66,7 +71,7 @@ func ParseContractStatus(name string) (ContractStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x ContractStatus) MarshalText() ([]byte, error) {
+func (x *ContractStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -144,7 +149,7 @@ func ParseDLRStatus(name string) (DLRStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x DLRStatus) MarshalText() ([]byte, error) {
+func (x *DLRStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -212,7 +217,7 @@ func ParseSendingStatus(name string) (SendingStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x SendingStatus) MarshalText() ([]byte, error) {
+func (x *SendingStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -295,7 +300,7 @@ func ParseSettlementStatus(name string) (SettlementStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x SettlementStatus) MarshalText() ([]byte, error) {
+func (x *SettlementStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 

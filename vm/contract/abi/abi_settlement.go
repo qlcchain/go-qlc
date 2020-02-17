@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -111,18 +112,25 @@ const (
         { "name": "old", "type": "string" },
         { "name": "new", "type": "string" }
     ]
+  },{
+    "type": "function",
+    "name": "TerminateContract",
+    "inputs": [
+        { "name": "contractAddress", "type": "address" }
+    ]
   }
 ]
 `
-	MethodNameCreateContract = "CreateContract"
-	MethodNameSignContract   = "SignContract"
-	MethodNameProcessCDR     = "ProcessCDR"
-	MethodNameAddPreStop     = "AddPreStop"
-	MethodNameRemovePreStop  = "RemovePreStop"
-	MethodNameUpdatePreStop  = "UpdatePreStop"
-	MethodNameAddNextStop    = "AddNextStop"
-	MethodNameRemoveNextStop = "RemoveNextStop"
-	MethodNameUpdateNextStop = "UpdateNextStop"
+	MethodNameCreateContract    = "CreateContract"
+	MethodNameSignContract      = "SignContract"
+	MethodNameTerminateContract = "TerminateContract"
+	MethodNameProcessCDR        = "ProcessCDR"
+	MethodNameAddPreStop        = "AddPreStop"
+	MethodNameRemovePreStop     = "RemovePreStop"
+	MethodNameUpdatePreStop     = "UpdatePreStop"
+	MethodNameAddNextStop       = "AddNextStop"
+	MethodNameRemoveNextStop    = "RemoveNextStop"
+	MethodNameUpdateNextStop    = "UpdateNextStop"
 )
 
 var (
@@ -133,6 +141,10 @@ var (
 type ABIer interface {
 	ToABI() ([]byte, error)
 	FromABI(data []byte) error
+}
+
+type Verifier interface {
+	Verify() error
 }
 
 //go:generate msgp
@@ -171,6 +183,37 @@ func (z *SignContractParam) FromABI(data []byte) error {
 	//return SettlementABI.UnpackMethod(z, MethodNameSignContract, data)
 	_, err := z.UnmarshalMsg(data[4:])
 	return err
+}
+
+//go:generate msgp
+type TerminateParam struct {
+	ContractAddress types.Address `msg:"a,extension" json:"contractAddress"`
+}
+
+func (z *TerminateParam) ToABI() ([]byte, error) {
+	id := SettlementABI.Methods[MethodNameTerminateContract].Id()
+	if data, err := z.MarshalMsg(nil); err != nil {
+		return nil, err
+	} else {
+		id = append(id, data...)
+		return id, nil
+	}
+}
+
+func (z *TerminateParam) FromABI(data []byte) error {
+	_, err := z.UnmarshalMsg(data[4:])
+	return err
+}
+
+func (z *TerminateParam) Verify() error {
+	if z.ContractAddress.IsZero() {
+		return errors.New("invalid contract address")
+	}
+	return nil
+}
+
+func (z *TerminateParam) String() string {
+	return util.ToIndentString(z)
 }
 
 //func (z *SignContractParam) Sign(account *types.Account) error {
@@ -368,6 +411,7 @@ ActiveStage1
 Actived
 DestroyStage1
 Destroyed
+Rejected
 )
 */
 type ContractStatus int
@@ -375,10 +419,11 @@ type ContractStatus int
 //go:generate msgp
 type ContractParam struct {
 	CreateContractParam
-	PreStops    []string       `msg:"pre" json:"preStops"`
-	NextStops   []string       `msg:"nex" json:"nextStops"`
+	PreStops    []string       `msg:"pre" json:"preStops,omitempty"`
+	NextStops   []string       `msg:"nex" json:"nextStops,omitempty"`
 	ConfirmDate int64          `msg:"t2" json:"confirmDate"`
 	Status      ContractStatus `msg:"s" json:"status"`
+	Terminator  *types.Address `msg:"t,extension" json:"terminator,omitempty"`
 }
 
 func (z *ContractParam) IsPreStop(n string) bool {
@@ -403,6 +448,10 @@ func (z *ContractParam) IsNextStop(n string) bool {
 		}
 	}
 	return false
+}
+
+func (z *ContractParam) IsContractor(addr types.Address) bool {
+	return z.PartyA.Address == addr || z.PartyB.Address == addr
 }
 
 func (z *ContractParam) ToABI() ([]byte, error) {
@@ -434,6 +483,52 @@ func (z *ContractParam) Equal(cp *CreateContractParam) (bool, error) {
 	} else {
 		return false, fmt.Errorf("invalid address, exp: %s,act: %s", a1.String(), a2.String())
 	}
+}
+
+func (z *ContractParam) DoActive(operator types.Address) error {
+	if z.PartyB.Address != operator {
+		return fmt.Errorf("invalid partyB, exp: %s, act: %s", z.PartyB.Address.String(), operator.String())
+	}
+
+	if z.Status == ContractStatusActiveStage1 {
+		z.Status = ContractStatusActived
+		return nil
+	} else if z.Status == ContractStatusDestroyed {
+		return errors.New("contract has been destroyed")
+	} else {
+		return fmt.Errorf("invalid contract status, %s", z.Status.String())
+	}
+}
+
+func (z *ContractParam) DoTerminate(operator types.Address) error {
+	if b := z.IsContractor(operator); !b {
+		return fmt.Errorf("permission denied, only contractor can terminate it, exp: %s or %s, act: %s",
+			z.PartyA.Address.String(), z.PartyB.Address.String(), operator.String())
+	}
+
+	if z.Terminator != nil {
+		if reflect.DeepEqual(z.Terminator, &operator) {
+			return fmt.Errorf("%s already terminated contract", operator.String())
+		}
+	} else {
+		z.Terminator = &operator
+	}
+
+	if z.Status == ContractStatusActiveStage1 {
+		if z.PartyA.Address == operator {
+			z.Status = ContractStatusDestroyed
+		} else {
+			z.Status = ContractStatusRejected
+		}
+	} else if z.Status == ContractStatusActived {
+		z.Status = ContractStatusDestroyStage1
+	} else if z.Status == ContractStatusDestroyStage1 {
+		z.Status = ContractStatusDestroyed
+	} else {
+		return fmt.Errorf("invalid contract status, %s", z.Status.String())
+	}
+
+	return nil
 }
 
 func (z *ContractParam) String() string {

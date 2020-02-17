@@ -19,7 +19,7 @@ func TestContractStatusNames(t *testing.T) {
 	}{
 		{
 			name: "ok",
-			want: []string{"ActiveStage1", "Actived", "DestroyStage1", "Destroyed"},
+			want: []string{"ActiveStage1", "Actived", "DestroyStage1", "Destroyed", "Rejected"},
 		},
 	}
 	for _, tt := range tests {

@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/crypto/random"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -195,92 +197,6 @@ func mockContractData(size int) []*ContractParam {
 	}
 	return contracts
 }
-
-//
-//func TestSettlement_IsContractAvailable(t *testing.T) {
-//	teardownTestCase, l := setupTestCase(t)
-//	defer teardownTestCase(t)
-//
-//	ctx := vmstore.NewVMContext(l)
-//
-//	var contracts []*contractContainer
-//
-//	for i := 0; i < 2; i++ {
-//		param, a1, a2 := buildContractParam()
-//		if i%2 == 1 {
-//			param.SignatureB = &types.ZeroSignature
-//		}
-//		contracts = append(contracts, &contractContainer{
-//			contract: param,
-//			a1:       a1,
-//			a2:       a2,
-//		})
-//		a, _ := param.Address()
-//		abi, _ := param.ToABI()
-//		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
-//			t.Fatal(err)
-//		}
-//
-//		if storage, err := ctx.GetStorage(types.SettlementAddress[:], a[:]); err == nil {
-//			if !bytes.Equal(storage, abi) {
-//				t.Fatalf("invalid saved contract, exp: %v, act: %v", abi, storage)
-//			} else {
-//				if p, err := ParseContractParam(storage); err == nil {
-//					t.Log(a.String(), ": ", p.String())
-//				} else {
-//					t.Fatal(err)
-//				}
-//			}
-//		}
-//	}
-//
-//	if err := ctx.SaveStorage(); err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	if contracts == nil || len(contracts) != 2 {
-//		t.Fatal("invalid mock contract data")
-//	}
-//
-//	a1, _ := contracts[0].contract.Address()
-//	a2, _ := contracts[1].contract.Address()
-//
-//	t.Log(a1.String(), " >>> ", a2.String())
-//
-//	type args struct {
-//		ctx  *vmstore.VMContext
-//		addr *types.Address
-//	}
-//	tests := []struct {
-//		name string
-//		args args
-//		want bool
-//	}{
-//		{
-//			name: "ok",
-//			args: args{
-//				ctx:  ctx,
-//				addr: &a1,
-//			},
-//			want: true,
-//		},
-//		{
-//			name: "fail",
-//			args: args{
-//				ctx:  ctx,
-//				addr: &a2,
-//			},
-//			want: false,
-//		},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			if got := IsContractAvailable(tt.args.ctx, tt.args.addr); got != tt.want {
-//				t.Errorf("IsContractAvailable() of %s = %v, want %v", tt.args.addr.String(), got, tt.want)
-//			}
-//		})
-//	}
-//}
 
 func TestParseContractParam(t *testing.T) {
 	param := buildContractParam()
@@ -2355,5 +2271,519 @@ func TestUpdateStopParam_ToABI(t *testing.T) {
 				t.Fatalf("verify failed, %s", err)
 			}
 		}
+	}
+}
+
+func TestTerminateParam_ToABI(t *testing.T) {
+	param := &TerminateParam{ContractAddress: mock.Address()}
+	if abi, err := param.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		p2 := &TerminateParam{}
+		if err := p2.FromABI(abi); err != nil {
+			t.Fatal(err)
+		} else {
+			if !reflect.DeepEqual(param, p2) {
+				t.Fatalf("invalid param, %v, %v", param, p2)
+			} else {
+				t.Log(param.String())
+			}
+		}
+	}
+}
+
+func TestContractParam_IsContractor(t *testing.T) {
+	cp := buildContractParam()
+
+	type fields struct {
+		CreateContractParam CreateContractParam
+		PreStops            []string
+		NextStops           []string
+		ConfirmDate         int64
+		Status              ContractStatus
+		Terminator          *types.Address
+	}
+	type args struct {
+		addr types.Address
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "partyA",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              cp.Status,
+			},
+			args: args{
+				addr: cp.PartyA.Address,
+			},
+			want: true,
+		}, {
+			name: "partyB",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              cp.Status,
+			},
+			args: args{
+				addr: cp.PartyB.Address,
+			},
+			want: true,
+		}, {
+			name: "failed",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              cp.Status,
+			},
+			args: args{
+				addr: mock.Address(),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractParam{
+				CreateContractParam: tt.fields.CreateContractParam,
+				PreStops:            tt.fields.PreStops,
+				NextStops:           tt.fields.NextStops,
+				ConfirmDate:         tt.fields.ConfirmDate,
+				Status:              tt.fields.Status,
+				Terminator:          tt.fields.Terminator,
+			}
+			if got := z.IsContractor(tt.args.addr); got != tt.want {
+				t.Errorf("IsContractor() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestContractParam_DoActive(t *testing.T) {
+	cp := buildContractParam()
+
+	type fields struct {
+		CreateContractParam CreateContractParam
+		PreStops            []string
+		NextStops           []string
+		ConfirmDate         int64
+		Status              ContractStatus
+		Terminator          *types.Address
+	}
+	type args struct {
+		operator types.Address
+		status   ContractStatus
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusActiveStage1,
+			},
+			args: args{
+				operator: cp.PartyB.Address,
+				status:   ContractStatusActived,
+			},
+			wantErr: false,
+		}, {
+			name: "f1",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusActiveStage1,
+			},
+			args: args{
+				operator: cp.PartyA.Address,
+				status:   ContractStatusActiveStage1,
+			},
+			wantErr: true,
+		},
+		{
+			name: "f2",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusActived,
+			},
+			args: args{
+				operator: cp.PartyB.Address,
+				status:   ContractStatusActiveStage1,
+			},
+			wantErr: true,
+		}, {
+			name: "f3",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusDestroyed,
+			},
+			args: args{
+				operator: cp.PartyB.Address,
+				status:   ContractStatusActiveStage1,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractParam{
+				CreateContractParam: tt.fields.CreateContractParam,
+				PreStops:            tt.fields.PreStops,
+				NextStops:           tt.fields.NextStops,
+				ConfirmDate:         tt.fields.ConfirmDate,
+				Status:              tt.fields.Status,
+				Terminator:          tt.fields.Terminator,
+			}
+			if err := z.DoActive(tt.args.operator); (err != nil) != tt.wantErr {
+				t.Errorf("DoActive() error = %v, wantErr %v", err, tt.wantErr)
+			} else {
+				if err == nil && tt.args.status != z.Status {
+					t.Errorf("DoActive() status = %s, want = %s", z.Status.String(), tt.args.status.String())
+				}
+			}
+		})
+	}
+}
+
+func TestContractParam_DoTerminate(t *testing.T) {
+	cp := buildContractParam()
+
+	type fields struct {
+		CreateContractParam CreateContractParam
+		PreStops            []string
+		NextStops           []string
+		ConfirmDate         int64
+		Status              ContractStatus
+		Terminator          *types.Address
+	}
+	type args struct {
+		operator types.Address
+		status   ContractStatus
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "partyA_destroy_active_stage1",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusActiveStage1,
+			},
+			args: args{
+				operator: cp.PartyA.Address,
+				status:   ContractStatusDestroyed,
+			},
+			wantErr: false,
+		}, {
+			name: "partyB_destroy_active_stage1",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusActiveStage1,
+			},
+			args: args{
+				operator: cp.PartyB.Address,
+				status:   ContractStatusRejected,
+			},
+			wantErr: false,
+		}, {
+			name: "partyA_destroy_stage1",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusActived,
+			},
+			args: args{
+				operator: cp.PartyA.Address,
+				status:   ContractStatusDestroyStage1,
+			},
+			wantErr: false,
+		}, {
+			name: "partyB_destroy",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusDestroyStage1,
+				Terminator:          &cp.PartyA.Address,
+			},
+			args: args{
+				operator: cp.PartyB.Address,
+				status:   ContractStatusDestroyed,
+			},
+			wantErr: false,
+		},
+		{
+			name: "f1",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusDestroyStage1,
+				Terminator:          &cp.PartyA.Address,
+			},
+			args: args{
+				operator: cp.PartyA.Address,
+				status:   ContractStatusDestroyed,
+			},
+			wantErr: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusDestroyStage1,
+				Terminator:          &cp.PartyA.Address,
+			},
+			args: args{
+				operator: mock.Address(),
+				status:   ContractStatusDestroyed,
+			},
+			wantErr: true,
+		}, {
+			name: "f3",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusDestroyed,
+				Terminator:          &cp.PartyA.Address,
+			},
+			args: args{
+				operator: cp.PartyB.Address,
+				status:   ContractStatusDestroyed,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractParam{
+				CreateContractParam: tt.fields.CreateContractParam,
+				PreStops:            tt.fields.PreStops,
+				NextStops:           tt.fields.NextStops,
+				ConfirmDate:         tt.fields.ConfirmDate,
+				Status:              tt.fields.Status,
+				Terminator:          tt.fields.Terminator,
+			}
+			if err := z.DoTerminate(tt.args.operator); (err != nil) != tt.wantErr {
+				t.Errorf("DoTerminate() error = %v, wantErr %v", err, tt.wantErr)
+			} else {
+				if err == nil && tt.args.status != z.Status {
+					t.Errorf("DoTerminate() status = %s, want = %s", z.Status.String(), tt.args.status.String())
+				}
+			}
+		})
+	}
+}
+
+func buildCDRStatus() *CDRStatus {
+	cdr1 := cdrParam
+	i, _ := random.Intn(10000)
+	cdr1.Index = uint64(i)
+
+	status := &CDRStatus{
+		Params: []SettlementCDR{{
+			CDRParam: cdr1,
+			From:     mock.Address(),
+		}},
+		Status: SettlementStatusSuccess,
+	}
+
+	return status
+}
+
+func TestGetAllCDRStatus(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	contractAddr := mock.Address()
+
+	var data []*CDRStatus
+	for i := 0; i < 4; i++ {
+		s := buildCDRStatus()
+		if h, err := s.Params[0].ToHash(); err != nil {
+			t.Fatal(err)
+		} else {
+			if abi, err := s.ToABI(); err != nil {
+				t.Fatal(err)
+			} else {
+				if err := ctx.SetStorage(contractAddr[:], h[:], abi); err != nil {
+					t.Fatal(err)
+				} else {
+					data = append(data, s)
+				}
+			}
+		}
+
+	}
+
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	type args struct {
+		ctx  *vmstore.VMContext
+		addr *types.Address
+		size int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*CDRStatus
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				ctx:  ctx,
+				addr: &contractAddr,
+				size: len(data),
+			},
+			want:    data,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetAllCDRStatus(tt.args.ctx, tt.args.addr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetAllCDRStatus() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			for _, s := range tt.want {
+				i := s.Params[0].Index
+				for _, g := range got {
+					if g.Params[0].Index == i {
+						if !reflect.DeepEqual(g, s) {
+							t.Errorf("GetAllCDRStatus() got = %v, want %v", g, s)
+						}
+						break
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestGetCDRStatus(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	contractAddr := mock.Address()
+	contractAddr2 := mock.Address()
+
+	s := buildCDRStatus()
+	h, err := s.Params[0].ToHash()
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		if abi, err := s.ToABI(); err != nil {
+			t.Fatal(err)
+		} else {
+			if err := ctx.SetStorage(contractAddr[:], h[:], abi); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	type args struct {
+		ctx  *vmstore.VMContext
+		addr *types.Address
+		hash types.Hash
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *CDRStatus
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				ctx:  ctx,
+				addr: &contractAddr,
+				hash: h,
+			},
+			want:    s,
+			wantErr: false,
+		}, {
+			name: "fail",
+			args: args{
+				ctx:  ctx,
+				addr: &contractAddr,
+				hash: mock.Hash(),
+			},
+			want:    nil,
+			wantErr: true,
+		}, {
+			name: "f2",
+			args: args{
+				ctx:  ctx,
+				addr: &contractAddr2,
+				hash: h,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetCDRStatus(tt.args.ctx, tt.args.addr, tt.args.hash)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetCDRStatus() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetCDRStatus() got = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
