@@ -1,12 +1,12 @@
 package pov
 
 import (
+	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/statedb"
-	"github.com/qlcchain/go-qlc/ledger/db"
 
 	"github.com/google/uuid"
 
@@ -52,7 +52,7 @@ func (c *mockPovVerifierChainReader) TransitStateDB(height uint64, txs []*types.
 	return nil
 }
 
-func (c *mockPovVerifierChainReader) TrieDb() db.Store {
+func (c *mockPovVerifierChainReader) TrieDb() storage.Store {
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (c *mockPovConsensusChainReader) RelativeAncestor(header *types.PovHeader, 
 	return nil
 }
 
-func (c *mockPovConsensusChainReader) TrieDb() db.Store {
+func (c *mockPovConsensusChainReader) TrieDb() storage.Store {
 	return nil
 }
 

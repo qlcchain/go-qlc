@@ -5,12 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/crypto/random"
-
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
 func setupPeersInfoTestCase(t *testing.T) (func(t *testing.T), *Ledger) {

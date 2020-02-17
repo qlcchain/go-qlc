@@ -116,7 +116,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 	}
 
 	if _, err := ctx.GetStorage(types.MintageAddress[:], []byte(param.NEP5TxId)); err == nil {
-		return nil, fmt.Errorf("invalid nep5 tx id %s", param.NEP5TxId)
+		return nil, fmt.Errorf("invalid mintage nep5 tx id %s", param.NEP5TxId)
 	} else {
 		if err := ctx.SetStorage(types.MintageAddress[:], []byte(param.NEP5TxId), nil); err != nil {
 			return nil, err

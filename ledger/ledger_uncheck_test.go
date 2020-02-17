@@ -57,9 +57,9 @@ func TestLedger_HasUncheckedBlock(t *testing.T) {
 	defer teardownTestCase(t)
 
 	parentHash, _, kind := addUncheckedBlock(t, l)
-	r, err := l.HasUncheckedBlock(parentHash, kind)
-	if err != nil {
-		t.Fatal(err)
+	r, _ := l.HasUncheckedBlock(parentHash, kind)
+	if !r {
+		t.Fatal()
 	}
 	t.Log("has unchecked,", r)
 }
@@ -70,7 +70,7 @@ func TestLedger_GetUncheckedBlocks(t *testing.T) {
 	addUncheckedBlock(t, l)
 	addUncheckedBlock(t, l)
 
-	err := l.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+	err := l.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
 		t.Log(block)
 		t.Log(link, unCheckType, sync)
 

@@ -82,3 +82,28 @@ func TestBytesToHash(t *testing.T) {
 		t.Fatal("bytes2hash failed")
 	}
 }
+
+func TestHash_Serialize(t *testing.T) {
+	var hash Hash
+	s := `"2C353DA641277FD8379354307A54BECE090C51E52FB460EA5A8674B702BDCE5E"`
+	err := hash.Of(s)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	t.Log(hash)
+
+	v, err := hash.Serialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(v)
+	var h Hash
+	if err := h.Deserialize(v); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(h)
+	if hash.String() != h.String() {
+		t.Fatal()
+	}
+}

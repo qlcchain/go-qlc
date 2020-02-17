@@ -4,17 +4,12 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/dgraph-io/badger"
-
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-func (l *Ledger) AddPeerInfo(info *types.PeerInfo, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPeerInfo, []byte(info.PeerID))
+func (l *Ledger) AddPeerInfo(info *types.PeerInfo) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo, []byte(info.PeerID))
 	if err != nil {
 		return err
 	}
@@ -23,51 +18,43 @@ func (l *Ledger) AddPeerInfo(info *types.PeerInfo, txns ...db.StoreTxn) error {
 		return err
 	}
 
-	err = txn.Get(k, func(v []byte, b byte) error {
-		return nil
-	})
+	_, err = l.store.Get(k)
 	if err == nil {
 		return ErrPeerExists
-	} else if err != badger.ErrKeyNotFound {
+	} else if err != storage.KeyNotFound {
 		return err
 	}
-	if err := txn.Set(k, v); err != nil {
+	if err := l.store.Put(k, v); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *Ledger) GetPeerInfo(peerID string, txns ...db.StoreTxn) (*types.PeerInfo, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	key, err := getKeyOfParts(idPrefixPeerInfo, []byte(peerID))
+func (l *Ledger) GetPeerInfo(peerID string) (*types.PeerInfo, error) {
+	key, err := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo, []byte(peerID))
 	if err != nil {
 		return nil, err
 	}
 
 	pi := new(types.PeerInfo)
-	err = txn.Get(key, func(val []byte, b byte) error {
-		if err := pi.Deserialize(val); err != nil {
-			return err
-		}
-		return nil
-	})
+	val, err := l.store.Get(key)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return nil, ErrPovHeaderNotFound
 		}
+		return nil, err
+	}
+	if err := pi.Deserialize(val); err != nil {
 		return nil, err
 	}
 	return pi, nil
 }
 
-func (l *Ledger) GetPeersInfo(fn func(info *types.PeerInfo) error, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
+func (l *Ledger) GetPeersInfo(fn func(info *types.PeerInfo) error) error {
 	errStr := make([]string, 0)
-	err := txn.Iterator(idPrefixPeerInfo, func(key []byte, val []byte, b byte) error {
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo)
+
+	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		pi := new(types.PeerInfo)
 		if err := pi.Deserialize(val); err != nil {
 			l.logger.Errorf("deserialize peerInfo error: %s", err)
@@ -90,18 +77,13 @@ func (l *Ledger) GetPeersInfo(fn func(info *types.PeerInfo) error, txns ...db.St
 	return nil
 }
 
-func (l *Ledger) CountPeersInfo(txns ...db.StoreTxn) (uint64, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	return txn.Count([]byte{idPrefixPeerInfo})
+func (l *Ledger) CountPeersInfo() (uint64, error) {
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo)
+	return l.store.Count(prefix)
 }
 
-func (l *Ledger) UpdatePeerInfo(value *types.PeerInfo, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPeerInfo, []byte(value.PeerID))
+func (l *Ledger) UpdatePeerInfo(value *types.PeerInfo) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo, []byte(value.PeerID))
 	if err != nil {
 		return err
 	}
@@ -110,26 +92,21 @@ func (l *Ledger) UpdatePeerInfo(value *types.PeerInfo, txns ...db.StoreTxn) erro
 		return err
 	}
 
-	err = txn.Get(k, func(v []byte, b byte) error {
-		return nil
-	})
+	_, err = l.store.Get(k)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return ErrPeerNotFound
 		}
 		return err
 	}
-	if err := txn.Set(k, v); err != nil {
+	if err := l.store.Put(k, v); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *Ledger) AddOrUpdatePeerInfo(value *types.PeerInfo, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPeerInfo, []byte(value.PeerID))
+func (l *Ledger) AddOrUpdatePeerInfo(value *types.PeerInfo) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo, []byte(value.PeerID))
 	if err != nil {
 		return err
 	}
@@ -137,7 +114,7 @@ func (l *Ledger) AddOrUpdatePeerInfo(value *types.PeerInfo, txns ...db.StoreTxn)
 	if err != nil {
 		return err
 	}
-	if err := txn.Set(k, v); err != nil {
+	if err := l.store.Put(k, v); err != nil {
 		return err
 	}
 	return nil

@@ -9,13 +9,12 @@ package vmstore
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/common/storage"
 
-	"github.com/dgraph-io/badger"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 )
@@ -32,8 +31,8 @@ type ContractStore interface {
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	GetStateBlock(hash types.Hash) (*types.StateBlock, error)
 	HasTokenMeta(address types.Address, token types.Hash) (bool, error)
-	SaveStorage(txns ...db.StoreTxn) error
-	RemoveStorage(prefix, key []byte, txns ...db.StoreTxn) error
+	SaveStorage(batch ...storage.Batch) error
+	RemoveStorage(prefix, key []byte, batch ...storage.Batch) error
 }
 
 const (
@@ -61,9 +60,10 @@ func NewVMContext(l ledger.Store) *VMContext {
 }
 
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
-	if _, err := v.Ledger.HasAccountMeta(address); err == nil {
+	if _, err := v.Ledger.HasAccountMetaConfirmed(address); err == nil {
 		return true, nil
 	} else {
+		v.logger.Error("account not found", address)
 		return false, err
 	}
 }
@@ -101,15 +101,15 @@ func (v *VMContext) GetStorageByKey(key []byte) ([]byte, error) {
 	}
 }
 
-func (v *VMContext) RemoveStorage(prefix, key []byte, txns ...db.StoreTxn) error {
+func (v *VMContext) RemoveStorage(prefix, key []byte, batch ...storage.Batch) error {
 	storageKey := getStorageKey(prefix, key)
 	v.Cache.RemoveStorage(storageKey)
-	return v.remove(storageKey, txns...)
+	return v.remove(storageKey, batch...)
 }
 
-func (v *VMContext) RemoveStorageByKey(key []byte, txns ...db.StoreTxn) error {
+func (v *VMContext) RemoveStorageByKey(key []byte, batch ...storage.Batch) error {
 	v.Cache.RemoveStorage(key)
-	return v.remove(key, txns...)
+	return v.remove(key, batch...)
 }
 
 func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
@@ -121,15 +121,10 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 }
 
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
-	txn := v.Ledger.DBStore().NewTransaction(false)
-	defer func() {
-		txn.Discard()
-	}()
-
 	pre := make([]byte, 0)
 	pre = append(pre, idPrefixStorage)
 	pre = append(pre, prefix...)
-	err := txn.PrefixIterator(pre, func(key []byte, val []byte, b byte) error {
+	err := v.Ledger.DBStore().Iterator(pre, nil, func(key []byte, val []byte) error {
 		err := fn(key, val)
 		if err != nil {
 			v.logger.Error(err)
@@ -157,10 +152,10 @@ func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, e
 	return v.Ledger.GetAccountMeta(address)
 }
 
-func (v *VMContext) SaveStorage(txns ...db.StoreTxn) error {
+func (v *VMContext) SaveStorage(batch ...storage.Batch) error {
 	storage := v.Cache.storage
 	for k, val := range storage {
-		err := v.set([]byte(k), val)
+		err := v.set([]byte(k), val, batch...)
 		if err != nil {
 			v.logger.Error(err)
 			return err
@@ -169,8 +164,8 @@ func (v *VMContext) SaveStorage(txns ...db.StoreTxn) error {
 	return nil
 }
 
-func (v *VMContext) SaveTrie(txns ...db.StoreTxn) error {
-	fn, err := v.Cache.Trie().Save(txns...)
+func (v *VMContext) SaveTrie(batch ...storage.Batch) error {
+	fn, err := v.Cache.Trie().Save(batch...)
 	if err != nil {
 		return err
 	}
@@ -179,52 +174,64 @@ func (v *VMContext) SaveTrie(txns ...db.StoreTxn) error {
 }
 
 func (v *VMContext) get(key []byte) ([]byte, error) {
-	txn := v.Ledger.DBStore().NewTransaction(false)
-	defer func() {
-		txn.Commit()
-		txn.Discard()
-	}()
-
-	var storage []byte
-	err := txn.Get(key, func(val []byte, b byte) (err error) {
-		storage = val
-		return nil
-	})
+	i, val, err := v.Ledger.Get(key)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return nil, ErrStorageNotFound
 		}
 		return nil, err
 	}
-	return storage, nil
+	if i != nil {
+		return i.([]byte), nil
+	}
+	return val, nil
+
+	//
+	//if v, err := v.Ledger.Cache().Get(key); err == nil {
+	//	fmt.Println("================get storage 2, found")
+	//	fmt.Println("===========val", v)
+	//	return v.([]byte), nil
+	//}
+	//fmt.Println("================get storage 2, not found")
+	//val, err := v.Ledger.Store().Get(key)
+	//if err != nil {
+	//	fmt.Println("================get storage 3, not found")
+	//	if err == storage.KeyNotFound {
+	//		return nil, ErrStorageNotFound
+	//	}
+	//	return nil, err
+	//}
+	//fmt.Println("================get storage 3, found", val)
+	//
+	//s = val
+	//return s, nil
 }
 
-func (v *VMContext) set(key []byte, value []byte, txns ...db.StoreTxn) (err error) {
-	var txn db.StoreTxn
-	if len(txns) > 0 {
-		txn = txns[0]
+func (v *VMContext) set(key []byte, value []byte, batch ...storage.Batch) (err error) {
+	var b storage.Batch
+	if len(batch) > 0 {
+		b = batch[0]
 	} else {
-		txn = v.Ledger.DBStore().NewTransaction(true)
+		b = v.Ledger.DBStore().Batch(true)
 		defer func() {
-			err = txn.Commit()
-			txn.Discard()
+			v.Ledger.DBStore().PutBatch(b)
 		}()
 	}
-	return txn.Set(key, value)
+
+	return b.Put(key, value)
 }
 
-func (v *VMContext) remove(key []byte, txns ...db.StoreTxn) (err error) {
-	var txn db.StoreTxn
-	if len(txns) > 0 {
-		txn = txns[0]
+func (v *VMContext) remove(key []byte, batch ...storage.Batch) (err error) {
+	var b storage.Batch
+	if len(batch) > 0 {
+		b = batch[0]
 	} else {
-		txn = v.Ledger.DBStore().NewTransaction(true)
+		b = v.Ledger.DBStore().Batch(true)
 		defer func() {
-			err = txn.Commit()
-			txn.Discard()
+			v.Ledger.DBStore().PutBatch(b)
 		}()
 	}
-	return txn.Delete(key)
+	return b.Delete(key)
 }
 
 func (v *VMContext) HasTokenMeta(address types.Address, token types.Hash) (bool, error) {

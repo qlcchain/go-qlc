@@ -192,7 +192,7 @@ func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset 
 	if err != nil {
 		return nil, err
 	}
-	hashes, err := l.relation.AccountBlocks(address, c, o)
+	hashes, err := l.relation.BlocksByAccount(address, c, o)
 	if err != nil {
 		l.logger.Error(err)
 		return nil, err
@@ -355,7 +355,7 @@ func (l *LedgerAPI) AccountsPending(addresses []types.Address, n int) (map[types
 
 	for _, addr := range addresses {
 		ps := make([]*APIPending, 0)
-		err := l.ledger.SearchPending(addr, func(key *types.PendingKey, info *types.PendingInfo) error {
+		err := l.ledger.GetPendingsByAddress(addr, func(key *types.PendingKey, info *types.PendingInfo) error {
 			token, err := abi.GetTokenById(vmContext, info.Type)
 			if err != nil {
 				return err
@@ -996,7 +996,7 @@ func (l *LedgerAPI) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 
 func (l *LedgerAPI) GetAccountOnlineBlock(account types.Address) ([]*types.StateBlock, error) {
 	blocks := make([]*types.StateBlock, 0)
-	hashes, err := l.relation.AccountBlocks(account, -1, -1)
+	hashes, err := l.relation.BlocksByAccount(account, -1, -1)
 	if err == nil {
 		for _, hash := range hashes {
 			if blk, err := l.ledger.GetStateBlockConfirmed(hash); err == nil {

@@ -1,332 +1,143 @@
 package ledger
 
 import (
-	"errors"
-	"strings"
-
-	"github.com/dgraph-io/badger"
-	"github.com/dgraph-io/badger/pb"
-
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPending, key)
-	if err != nil {
-		return err
-	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-
-	err = txn.Get(k, func(v []byte, b byte) error {
-		return nil
-	})
-	if err == nil {
-		return ErrPendingExists
-	} else if err != badger.ErrKeyNotFound {
-		return err
-	}
-
-	if err := txn.SetWithMeta(k, v, byte(types.PendingNotUsed)); err != nil {
-		return err
-	}
-	return l.cache.UpdateAccountPending(key, value, true)
-	//return txn.Set(key, pendingBytes)
+type PendingStore interface {
+	GetPending(pendingKey *types.PendingKey) (*types.PendingInfo, error)
+	GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error) error
+	GetPendingsByAddress(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error) error
+	PendingAmount(address types.Address, token types.Hash) (types.Balance, error)
 }
 
-func (l *Ledger) UpdatePending(key *types.PendingKey, kind types.PendingKind, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPending, key)
+func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, c *Cache) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPending, key)
 	if err != nil {
 		return err
 	}
-	var pending types.PendingInfo
-	err = txn.Get(k[:], func(v []byte, b byte) (err error) {
-		if err := pending.Deserialize(v); err != nil {
+	if err := c.Put(k, value); err != nil {
+		return err
+	}
+	return l.rcache.UpdateAccountPending(key, value, true)
+}
+
+func (l *Ledger) DeletePending(key *types.PendingKey, c *Cache) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPending, key)
+	if err != nil {
+		return err
+	}
+	info, err := l.GetPending(key)
+	if err == nil {
+		if err := c.Delete(k); err != nil {
 			return err
 		}
-		return nil
-	})
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil
-		}
-		return err
+		return l.rcache.UpdateAccountPending(key, info, false)
 	}
-
-	v, err := pending.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-
-	return txn.SetWithMeta(k, v, byte(kind))
+	return nil
 }
 
-func (l *Ledger) GetPending(key *types.PendingKey, txns ...db.StoreTxn) (*types.PendingInfo, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPending, key)
+func (l *Ledger) GetPending(pendingKey *types.PendingKey) (*types.PendingInfo, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPending, pendingKey)
 	if err != nil {
 		return nil, err
 	}
-
-	value := new(types.PendingInfo)
-	err = txn.Get(k, func(v []byte, b byte) error {
-		if err := value.Deserialize(v); err != nil {
-			return err
-		}
-		return nil
-	})
+	if r, err := l.cache.Get(k); err == nil {
+		return r.(*types.PendingInfo), nil
+	}
+	v, err := l.store.Get(k)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return nil, ErrPendingNotFound
 		}
 		return nil, err
 	}
-	return value, nil
+	meta := new(types.PendingInfo)
+	if err := meta.Deserialize(v); err != nil {
+		return nil, err
+	}
+	return meta, nil
 }
 
-func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	errStr := make([]string, 0)
-	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
+func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error) error {
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPending)
+	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		pendingKey := new(types.PendingKey)
 		if err := pendingKey.Deserialize(key[1:]); err != nil {
-			errStr = append(errStr, err.Error())
-			return nil
+			l.logger.Error(err)
+			return err
 		}
 		pendingInfo := new(types.PendingInfo)
 		if err := pendingInfo.Deserialize(val); err != nil {
-			errStr = append(errStr, err.Error())
-			return nil
+			l.logger.Error(err)
+			return err
 		}
-		used := types.PendingKind(b)
-		if used == types.PendingNotUsed {
-			if err := fn(pendingKey, pendingInfo); err != nil {
-				l.logger.Error("process pending error %s", err)
-				errStr = append(errStr, err.Error())
-			}
+		if err := fn(pendingKey, pendingInfo); err != nil {
+			l.logger.Error("process pending error %s", err)
+			return err
 		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	if len(errStr) != 0 {
-		return errors.New(strings.Join(errStr, ", "))
-	}
 	return nil
 }
 
-func (l *Ledger) SearchPending(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	return txn.Stream([]byte{idPrefixPending}, func(item *badger.Item) bool {
-		key := &types.PendingKey{}
-		if err := key.Deserialize(item.Key()[1:]); err == nil {
-			return key.Address == address
-		} else {
-			l.logger.Error(util.ToString(key), err)
+func (l *Ledger) GetPendingsByAddress(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error) error {
+	pre := make([]byte, 0)
+	pre = append(pre, byte(storage.KeyPrefixPending))
+	pre = append(pre, address.Bytes()...)
+	err := l.store.Iterator(pre, nil, func(key []byte, val []byte) error {
+		pendingKey := new(types.PendingKey)
+		if err := pendingKey.Deserialize(key[1:]); err != nil {
+			return err
 		}
-
-		return false
-	}, func(list *pb.KVList) error {
-		for _, v := range list.Kv {
-			pk := &types.PendingKey{}
-			pi := &types.PendingInfo{}
-			used := types.PendingKind(v.UserMeta[0])
-
-			if used == types.PendingNotUsed {
-				if err := pk.Deserialize(v.Key[1:]); err != nil {
-					continue
-				}
-				if err := pi.Deserialize(v.Value); err != nil {
-					continue
-				}
-				err := fn(pk, pi)
-				if err != nil {
-					l.logger.Error(err)
-				}
-			}
+		pendingInfo := new(types.PendingInfo)
+		if err := pendingInfo.Deserialize(val); err != nil {
+			return err
+		}
+		if err := fn(pendingKey, pendingInfo); err != nil {
+			l.logger.Error("process pending error %s", err)
+			return err
 		}
 		return nil
 	})
-}
-
-func (l *Ledger) SearchAllKindPending(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo, kind types.PendingKind) error, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	return txn.Stream([]byte{idPrefixPending}, func(item *badger.Item) bool {
-		key := &types.PendingKey{}
-		if err := key.Deserialize(item.Key()[1:]); err == nil {
-			return key.Address == address
-		} else {
-			l.logger.Error(util.ToString(key), err)
-		}
-		return false
-	}, func(list *pb.KVList) error {
-		for _, v := range list.Kv {
-			pk := &types.PendingKey{}
-			pi := &types.PendingInfo{}
-			used := types.PendingKind(v.UserMeta[0])
-			if err := pk.Deserialize(v.Key[1:]); err != nil {
-				continue
-			}
-			if err := pi.Deserialize(v.Value); err != nil {
-				continue
-			}
-			err := fn(pk, pi, used)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-func (l *Ledger) DeletePending(key *types.PendingKey, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPending, key)
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
-	value := new(types.PendingInfo)
-	err = txn.Get(k, func(v []byte, b byte) error {
-		if err := value.Deserialize(v); err != nil {
-			return err
+func (l *Ledger) GetPendingsByToken(account types.Address, token types.Hash, fn func(key *types.PendingKey, value *types.PendingInfo) error) error {
+	err := l.GetPendingsByAddress(account, func(key *types.PendingKey, value *types.PendingInfo) error {
+		if value.Type == token {
+			return fn(key, value)
 		}
 		return nil
 	})
-	if err == nil {
-		if err := txn.Delete(k); err != nil {
-			return err
-		}
-		return l.cache.UpdateAccountPending(key, value, false)
+	if err != nil {
+		l.logger.Error(err)
+		return err
 	}
 	return nil
 }
 
-func (l *Ledger) Pending(account types.Address, txns ...db.StoreTxn) ([]*types.PendingKey, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	var cache []*types.PendingKey
-	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
-		pendingKey := types.PendingKey{}
-		_, err := pendingKey.UnmarshalMsg(key[1:])
-		if err != nil {
-			return err
-		}
-		if pendingKey.Address == account {
-			cache = append(cache, &pendingKey)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return cache, nil
-}
-
-func (l *Ledger) PendingAmount(address types.Address, token types.Hash, txns ...db.StoreTxn) (types.Balance, error) {
-	b, err := l.cache.GetAccountPending(address, token)
+func (l *Ledger) PendingAmount(address types.Address, token types.Hash) (types.Balance, error) {
+	b, err := l.rcache.GetAccountPending(address, token)
 	if err == nil {
 		return b, nil
 	}
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	pendingInfos, err := l.TokenPendingInfo(address, token)
-	if err != nil {
+	pendingAmount := types.ZeroBalance
+	if err := l.GetPendingsByToken(address, token, func(pk *types.PendingKey, pv *types.PendingInfo) error {
+		pendingAmount = pendingAmount.Add(pv.Amount)
+		return nil
+	}); err != nil {
 		return types.ZeroBalance, err
 	}
-	pendingAmount := types.ZeroBalance
-	for _, info := range pendingInfos {
-		pendingAmount = pendingAmount.Add(info.Amount)
-	}
-	if err := l.cache.AddAccountPending(address, token, pendingAmount); err != nil {
+	if err := l.rcache.AddAccountPending(address, token, pendingAmount); err != nil {
 		return types.ZeroBalance, err
 	}
 	return pendingAmount, nil
-}
-
-func (l *Ledger) TokenPending(account types.Address, token types.Hash, txns ...db.StoreTxn) ([]*types.PendingKey, error) {
-	var cache []*types.PendingKey
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
-		pendingKey := types.PendingKey{}
-		_, err := pendingKey.UnmarshalMsg(key[1:])
-		if err != nil {
-			return nil
-		}
-		if pendingKey.Address == account {
-			var pending types.PendingInfo
-			_, err := pending.UnmarshalMsg(val)
-			if err != nil {
-				return err
-			}
-			if pending.Type == token {
-				cache = append(cache, &pendingKey)
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return cache, nil
-}
-
-func (l *Ledger) TokenPendingInfo(account types.Address, token types.Hash, txns ...db.StoreTxn) ([]*types.PendingInfo, error) {
-	var cache []*types.PendingInfo
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixPending, func(key []byte, val []byte, b byte) error {
-		pendingKey := types.PendingKey{}
-		_, err := pendingKey.UnmarshalMsg(key[1:])
-		if err != nil {
-			return nil
-		}
-		if pendingKey.Address == account {
-			var pendingInfo types.PendingInfo
-			_, err := pendingInfo.UnmarshalMsg(val)
-			if err != nil {
-				return err
-			}
-			if pendingInfo.Type == token {
-				cache = append(cache, &pendingInfo)
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return cache, nil
 }

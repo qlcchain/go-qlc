@@ -9,8 +9,8 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-func TestMarshalUnmarshalPendingInfo(t *testing.T) {
-	v := PendingInfo{}
+func TestMarshalUnmarshalUnchecked(t *testing.T) {
+	v := Unchecked{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -32,8 +32,8 @@ func TestMarshalUnmarshalPendingInfo(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgPendingInfo(b *testing.B) {
-	v := PendingInfo{}
+func BenchmarkMarshalMsgUnchecked(b *testing.B) {
+	v := Unchecked{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -41,8 +41,8 @@ func BenchmarkMarshalMsgPendingInfo(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgPendingInfo(b *testing.B) {
-	v := PendingInfo{}
+func BenchmarkAppendMsgUnchecked(b *testing.B) {
+	v := Unchecked{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -53,8 +53,8 @@ func BenchmarkAppendMsgPendingInfo(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalPendingInfo(b *testing.B) {
-	v := PendingInfo{}
+func BenchmarkUnmarshalUnchecked(b *testing.B) {
+	v := Unchecked{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -67,8 +67,8 @@ func BenchmarkUnmarshalPendingInfo(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodePendingInfo(t *testing.T) {
-	v := PendingInfo{}
+func TestEncodeDecodeUnchecked(t *testing.T) {
+	v := Unchecked{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
@@ -77,7 +77,7 @@ func TestEncodeDecodePendingInfo(t *testing.T) {
 		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
 	}
 
-	vn := PendingInfo{}
+	vn := Unchecked{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -91,8 +91,8 @@ func TestEncodeDecodePendingInfo(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodePendingInfo(b *testing.B) {
-	v := PendingInfo{}
+func BenchmarkEncodeUnchecked(b *testing.B) {
+	v := Unchecked{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -105,121 +105,8 @@ func BenchmarkEncodePendingInfo(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodePendingInfo(b *testing.B) {
-	v := PendingInfo{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-	b.SetBytes(int64(buf.Len()))
-	rd := msgp.NewEndlessReader(buf.Bytes(), b)
-	dc := msgp.NewReader(rd)
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err := v.DecodeMsg(dc)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func TestMarshalUnmarshalPendingKey(t *testing.T) {
-	v := PendingKey{}
-	bts, err := v.MarshalMsg(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	left, err := v.UnmarshalMsg(bts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(left) > 0 {
-		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
-	}
-
-	left, err = msgp.Skip(bts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(left) > 0 {
-		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
-	}
-}
-
-func BenchmarkMarshalMsgPendingKey(b *testing.B) {
-	v := PendingKey{}
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		v.MarshalMsg(nil)
-	}
-}
-
-func BenchmarkAppendMsgPendingKey(b *testing.B) {
-	v := PendingKey{}
-	bts := make([]byte, 0, v.Msgsize())
-	bts, _ = v.MarshalMsg(bts[0:0])
-	b.SetBytes(int64(len(bts)))
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bts, _ = v.MarshalMsg(bts[0:0])
-	}
-}
-
-func BenchmarkUnmarshalPendingKey(b *testing.B) {
-	v := PendingKey{}
-	bts, _ := v.MarshalMsg(nil)
-	b.ReportAllocs()
-	b.SetBytes(int64(len(bts)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := v.UnmarshalMsg(bts)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func TestEncodeDecodePendingKey(t *testing.T) {
-	v := PendingKey{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-
-	m := v.Msgsize()
-	if buf.Len() > m {
-		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
-	}
-
-	vn := PendingKey{}
-	err := msgp.Decode(&buf, &vn)
-	if err != nil {
-		t.Error(err)
-	}
-
-	buf.Reset()
-	msgp.Encode(&buf, &v)
-	err = msgp.NewReader(&buf).Skip()
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-func BenchmarkEncodePendingKey(b *testing.B) {
-	v := PendingKey{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-	b.SetBytes(int64(buf.Len()))
-	en := msgp.NewWriter(msgp.Nowhere)
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		v.EncodeMsg(en)
-	}
-	en.Flush()
-}
-
-func BenchmarkDecodePendingKey(b *testing.B) {
-	v := PendingKey{}
+func BenchmarkDecodeUnchecked(b *testing.B) {
+	v := Unchecked{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

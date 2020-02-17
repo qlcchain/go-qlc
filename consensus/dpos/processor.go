@@ -581,7 +581,7 @@ func (p *Processor) findAnotherForkedBlock(block *types.StateBlock) *types.State
 	} else {
 		hash := block.Parent()
 		var err error
-		forkedHash, err = dps.ledger.GetChild(hash)
+		forkedHash, err = dps.ledger.GetBlockChild(hash)
 		if err != nil {
 			dps.logger.Error(err)
 			return block
@@ -692,7 +692,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 // 	if !p.uncheckedCache.Has(depHash) {
 // 		consensus.GlobalUncheckedBlockNum.Inc()
 // 		blocks := new(sync.Map)
-// 		blocks.Store(hash, bs)
+// 		blocks.DBStore(hash, bs)
 //
 // 		err := p.uncheckedCache.Set(depHash, blocks)
 // 		if err != nil {
@@ -705,7 +705,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 // 		}
 //
 // 		blocks := c.(*sync.Map)
-// 		blocks.Store(hash, bs)
+// 		blocks.DBStore(hash, bs)
 // 	}
 // }
 

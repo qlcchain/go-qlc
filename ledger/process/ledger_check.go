@@ -99,7 +99,7 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	}
 
 	if block.GetType() == types.ContractReward {
-		linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
+		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {
 			return GapSource, nil
 		}

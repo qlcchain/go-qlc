@@ -13,13 +13,12 @@ import (
 	"sort"
 	"time"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/AsynkronIT/protoactor-go/actor/middleware"
 	"github.com/AsynkronIT/protoactor-go/router"
 
 	"github.com/qlcchain/go-qlc/common/hashmap"
 	ct "github.com/qlcchain/go-qlc/common/topic"
-
-	"github.com/AsynkronIT/protoactor-go/actor"
 )
 
 const (

@@ -65,19 +65,6 @@ func main() {
 	}
 	_ = cm.Save()
 
-	ss, err := chain.NewSqliteService(cm.ConfigFile)
-	if err != nil {
-		logger.Fatal(err)
-		return
-	}
-	if err = ss.Init(); err != nil {
-		logger.Fatal(err)
-	}
-	if err = ss.Start(); err != nil {
-		logger.Fatal(err)
-	}
-	logger.Info("sqlite started")
-
 	l = chain.NewLedgerService(cm.ConfigFile)
 	if err := l.Init(); err != nil {
 		return
@@ -115,7 +102,6 @@ func main() {
 		l.Stop()
 		w.Stop()
 		rs.Stop()
-		ss.Stop()
 		if *testnet {
 			fmt.Println()
 		} else {
@@ -302,7 +288,7 @@ func initData(ledger *ledger.Ledger) {
 		return
 	}
 	ac.CoinVote = types.Balance{Int: big.NewInt(123)}
-	err = ledger.UpdateAccountMeta(ac)
+	err = ledger.UpdateAccountMeta(ac, ledger.Cache().GetCache())
 	if err != nil {
 		return
 	}
@@ -354,7 +340,7 @@ func initData(ledger *ledger.Ledger) {
 		Type:   blocks[3].GetToken(),
 		Source: mock.Address(),
 	}
-	if err := ledger.AddPending(&pk, &pi); err != nil {
+	if err := ledger.AddPending(&pk, &pi, ledger.Cache().GetCache()); err != nil {
 		fmt.Println(err)
 		return
 	}

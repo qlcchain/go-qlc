@@ -2,66 +2,47 @@ package ledger
 
 import (
 	"errors"
-	"fmt"
-
-	"github.com/dgraph-io/badger"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-func (l *Ledger) AddAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
+type AccountStore interface {
+	GetAccountMeta(address types.Address, c ...storage.Cache) (*types.AccountMeta, error)
+	GetAccountMetas(fn func(am *types.AccountMeta) error) error
+	CountAccountMetas() (uint64, error)
+	HasAccountMetaConfirmed(address types.Address) (bool, error)
 
-	k, err := getKeyOfParts(idPrefixAccount, value.Address)
-	if err != nil {
-		return err
-	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
+	GetAccountMetaConfirmed(address types.Address, c ...storage.Cache) (*types.AccountMeta, error)
 
-	err = txn.Get(k, func(v []byte, b byte) error {
-		return nil
-	})
-	if err == nil {
-		return ErrAccountExists
-	} else if err != badger.ErrKeyNotFound {
-		return err
-	}
-	if err := txn.Set(k, v); err != nil {
-		return err
-	}
-	return l.cache.UpdateAccountMetaConfirmed(value)
+	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+	HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error)
+
+	GetTokenMetaConfirmed(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+
+	AddOrUpdateAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error
+	UpdateAccountMeteCache(value *types.AccountMeta, batch ...storage.Batch) error
+	DeleteAccountMetaCache(key types.Address, batch ...storage.Batch) error
+	GetAccountMeteCache(key types.Address, batch ...storage.Batch) (*types.AccountMeta, error)
+	GetAccountMetaCaches(fn func(am *types.AccountMeta) error) error
+	HasAccountMetaCache(key types.Address) (bool, error)
+
+	Weight(account types.Address) types.Balance
+	CalculateAmount(block *types.StateBlock) (types.Balance, error)
 }
 
-func (l *Ledger) GetAccountMeta(key types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	am, err := l.GetAccountMetaCache(key)
+func (l *Ledger) GetAccountMeta(address types.Address, c ...storage.Cache) (*types.AccountMeta, error) {
+	am, err := l.GetAccountMeteCache(address)
 	if err != nil {
 		am = nil
 	}
 
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
+	meta, er := l.GetAccountMetaConfirmed(address, c...)
+	if er != nil {
+		meta = nil
+	}
 
-	k, err := getKeyOfParts(idPrefixAccount, key)
-	if err != nil {
-		return nil, err
-	}
-	meta := new(types.AccountMeta)
-	if v, err := l.cache.GetAccountMetaConfirmed(key); err == nil {
-		meta = v
-	} else {
-		er := txn.Get(k, func(v []byte, b byte) (err error) {
-			return meta.Deserialize(v)
-		})
-		if er != nil {
-			meta = nil
-		}
-	}
 	if am != nil && meta == nil {
 		return am, nil
 	}
@@ -98,39 +79,81 @@ func (l *Ledger) GetAccountMeta(key types.Address, txns ...db.StoreTxn) (*types.
 	return nil, ErrAccountNotFound
 }
 
-func (l *Ledger) GetAccountMetaConfirmed(key types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	if am, err := l.cache.GetAccountMetaConfirmed(key); err == nil {
-		return am, nil
+// AccountMeta Confirmed
+func (l *Ledger) AddAccountMeta(value *types.AccountMeta, c storage.Cache) error {
+	if _, err := l.GetAccountMetaConfirmed(value.Address); err == nil {
+		return ErrAccountExists
 	}
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
 
-	k, err := getKeyOfParts(idPrefixAccount, key)
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccount, value.Address)
+	if err != nil {
+		return err
+	}
+	return c.Put(k, value)
+}
+
+func (l *Ledger) UpdateAccountMeta(value *types.AccountMeta, c storage.Cache) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccount, value.Address)
+	if err != nil {
+		return err
+	}
+	return c.Put(k, value)
+}
+
+func (l *Ledger) DeleteAccountMeta(key types.Address, c storage.Cache) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccount, key)
+	if err != nil {
+		return err
+	}
+	return c.Delete(k)
+}
+
+func (l *Ledger) HasAccountMetaConfirmed(address types.Address) (bool, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccount, address)
+	if err != nil {
+		return false, err
+	}
+
+	if b, err := l.cache.Has(k); err == nil {
+		return b, nil
+	}
+
+	return l.store.Has(k)
+}
+
+func (l *Ledger) GetAccountMetaConfirmed(address types.Address, c ...storage.Cache) (*types.AccountMeta, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccount, address)
 	if err != nil {
 		return nil, err
 	}
 
-	value := new(types.AccountMeta)
-	err = txn.Get(k, func(v []byte, b byte) error {
-		if err := value.Deserialize(v); err != nil {
-			return err
+	r, err := l.getFromCache(k, c...)
+	if r != nil {
+		return r.(*types.AccountMeta).Clone(), nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, ErrAccountNotFound
 		}
-		return nil
-	})
+	}
+
+	v, err := l.store.Get(k)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return nil, ErrAccountNotFound
 		}
 		return nil, err
 	}
-	return value, nil
+	meta := new(types.AccountMeta)
+	if err := meta.Deserialize(v); err != nil {
+		return nil, err
+	}
+	return meta, nil
 }
 
-func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
+func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error) error {
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixAccount)
 
-	err := txn.Iterator(idPrefixAccount, func(key []byte, val []byte, b byte) error {
+	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		am := new(types.AccountMeta)
 		if err := am.Deserialize(val); err != nil {
 			return err
@@ -147,18 +170,16 @@ func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error, txns ...d
 	return nil
 }
 
-func (l *Ledger) CountAccountMetas(txns ...db.StoreTxn) (uint64, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	return txn.Count([]byte{idPrefixAccount})
+func (l *Ledger) CountAccountMetas() (uint64, error) {
+	return l.store.Count([]byte{byte(storage.KeyPrefixAccount)})
 }
 
-func (l *Ledger) UpdateAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
+// AccountMeta UnConfirmed
+func (l *Ledger) AddAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error {
+	b, flag := l.getBatch(true, batch...)
+	defer l.releaseBatch(b, flag)
 
-	k, err := getKeyOfParts(idPrefixAccount, value.Address)
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount, value.Address)
 	if err != nil {
 		return err
 	}
@@ -167,26 +188,18 @@ func (l *Ledger) UpdateAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn
 		return err
 	}
 
-	err = txn.Get(k, func(v []byte, b byte) error {
-		return nil
-	})
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return ErrAccountNotFound
-		}
-		return err
+	if _, err := b.Get(k); err == nil {
+		return ErrAccountExists
 	}
-	if err := txn.Set(k, v); err != nil {
-		return err
-	}
-	return l.cache.UpdateAccountMetaConfirmed(value)
+
+	return b.Put(k, v)
 }
 
-func (l *Ledger) AddOrUpdateAccountMeta(value *types.AccountMeta, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
+func (l *Ledger) AddOrUpdateAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error {
+	b, flag := l.getBatch(true, batch...)
+	defer l.releaseBatch(b, flag)
 
-	k, err := getKeyOfParts(idPrefixAccount, value.Address)
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount, value.Address)
 	if err != nil {
 		return err
 	}
@@ -194,61 +207,98 @@ func (l *Ledger) AddOrUpdateAccountMeta(value *types.AccountMeta, txns ...db.Sto
 	if err != nil {
 		return err
 	}
-	if err := txn.Set(k, v); err != nil {
-		return err
-	}
-	return l.cache.UpdateAccountMetaConfirmed(value)
+	return b.Put(k, v)
 }
 
-func (l *Ledger) DeleteAccountMeta(key types.Address, txns ...db.StoreTxn) error {
-	l.cache.DeleteAccountMetaConfirmed(key)
+func (l *Ledger) UpdateAccountMeteCache(value *types.AccountMeta, batch ...storage.Batch) error {
+	b, flag := l.getBatch(true, batch...)
+	defer l.releaseBatch(b, flag)
 
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-	k, err := getKeyOfParts(idPrefixAccount, key)
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount, value.Address)
 	if err != nil {
 		return err
 	}
-	return txn.Delete(k)
+	if _, err := b.Get(k); err != nil {
+		l.logger.Error(err)
+		return ErrAccountNotFound
+	}
+
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+	return b.Put(k, v)
 }
 
-func (l *Ledger) HasAccountMeta(key types.Address, txns ...db.StoreTxn) (bool, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
+func (l *Ledger) GetAccountMeteCache(address types.Address, batch ...storage.Batch) (*types.AccountMeta, error) {
+	b, flag := l.getBatch(true, batch...)
+	defer l.releaseBatch(b, flag)
 
-	k, err := getKeyOfParts(idPrefixAccount, key)
+	key, err := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount, address)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	err = txn.Get(k, func(v []byte, b byte) error {
+	v, err := b.Get(key)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return nil, ErrAccountNotFound
+		}
+		return nil, err
+	}
+	value := new(types.AccountMeta)
+	if err := value.Deserialize(v.([]byte)); err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+func (l *Ledger) GetAccountMetaCaches(fn func(am *types.AccountMeta) error) error {
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount)
+
+	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+		am := new(types.AccountMeta)
+		if err := am.Deserialize(val); err != nil {
+			return err
+		}
+		if err := fn(am); err != nil {
+			return err
+		}
 		return nil
 	})
 
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return false, nil
-		}
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) DeleteAccountMetaCache(address types.Address, batch ...storage.Batch) error {
+	b, flag := l.getBatch(true, batch...)
+	defer l.releaseBatch(b, flag)
+
+	key, err := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount, address)
+	if err != nil {
+		return err
+	}
+
+	if err := b.Delete(key); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) HasAccountMetaCache(address types.Address) (bool, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount, address)
+	if err != nil {
 		return false, err
 	}
-	return true, nil
+	return l.store.Has(k)
 }
 
-func (l *Ledger) AddTokenMeta(address types.Address, meta *types.TokenMeta, txns ...db.StoreTxn) error {
-	am, err := l.GetAccountMeta(address, txns...)
-	if err != nil {
-		return err
-	}
-
-	if am.Token(meta.Type) != nil {
-		return ErrTokenExists
-	}
-
-	am.Tokens = append(am.Tokens, meta)
-	return l.UpdateAccountMeta(am, txns...)
-}
-
-func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
-	am, err := l.GetAccountMeta(address, txns...)
+// Token
+func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error) {
+	am, err := l.GetAccountMeta(address)
 	if err != nil {
 		return nil, err
 	}
@@ -257,96 +307,11 @@ func (l *Ledger) GetTokenMeta(address types.Address, tokenType types.Hash, txns 
 	if tm == nil {
 		return nil, ErrTokenNotFound
 	}
-
 	return tm, nil
 }
 
-func (l *Ledger) GetTokenMetaConfirmed(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
-	am, err := l.GetAccountMetaConfirmed(address, txns...)
-	if err != nil {
-		return nil, err
-	}
-
-	tm := am.Token(tokenType)
-	if tm == nil {
-		return nil, ErrTokenNotFound
-	}
-
-	return tm, nil
-}
-
-func (l *Ledger) UpdateTokenMeta(address types.Address, meta *types.TokenMeta, txns ...db.StoreTxn) error {
-	am, err := l.GetAccountMeta(address, txns...)
-	if err != nil {
-		return err
-	}
-
-	//tm := am.Token(meta.Type)
-	//
-	//if tm != nil {
-	//	tm = meta
-	//	return l.UpdateAccountMeta(am, txns...)
-	//}
-	//tokens := am.Tokens
-	for index, token := range am.Tokens {
-		if token.Type == meta.Type {
-			//am.Tokens = append(tokens[:index], tokens[index+1:]...)
-			//am.Tokens = append(am.Tokens, meta)
-			am.Tokens[index] = meta
-			return l.UpdateAccountMeta(am, txns...)
-		}
-	}
-	return ErrTokenNotFound
-}
-
-func (l *Ledger) AddOrUpdateTokenMeta(address types.Address, meta *types.TokenMeta, txns ...db.StoreTxn) error {
-	am, err := l.GetAccountMeta(address, txns...)
-	if err != nil {
-		return err
-	}
-	tokens := am.Tokens
-	for index, token := range am.Tokens {
-		if token.Type == meta.Type {
-			am.Tokens = append(tokens[:index], tokens[index+1:]...)
-			am.Tokens = append(am.Tokens, meta)
-			return l.UpdateAccountMeta(am, txns...)
-		}
-	}
-
-	am.Tokens = append(am.Tokens, meta)
-	return l.UpdateAccountMeta(am, txns...)
-}
-
-func (l *Ledger) DeleteTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error {
-	am, err := l.GetAccountMetaConfirmed(address, txns...)
-	if err != nil {
-		return err
-	}
-	tokens := am.Tokens
-	for index, token := range tokens {
-		if token.Type == tokenType {
-			am.Tokens = append(tokens[:index], tokens[index+1:]...)
-		}
-	}
-	return l.UpdateAccountMeta(am, txns...)
-}
-
-func (l *Ledger) DeleteTokenMetaCache(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) error {
-	am, err := l.GetAccountMetaCache(address, txns...)
-	if err != nil {
-		return err
-	}
-	tokens := am.Tokens
-	for index, token := range tokens {
-		if token.Type == tokenType {
-			am.Tokens = append(tokens[:index], tokens[index+1:]...)
-		}
-	}
-	return l.UpdateAccountMetaCache(am, txns...)
-}
-
-func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns ...db.StoreTxn) (bool, error) {
-	am, err := l.GetAccountMeta(address, txns...)
+func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error) {
+	am, err := l.GetAccountMeta(address)
 	if err != nil {
 		if err == ErrAccountNotFound {
 			return false, nil
@@ -361,263 +326,85 @@ func (l *Ledger) HasTokenMeta(address types.Address, tokenType types.Hash, txns 
 	return false, nil
 }
 
-func (l *Ledger) AddAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixBlockCacheAccount, value.Address)
-	if err != nil {
-		return err
-	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-
-	err = txn.Get(k, func(v []byte, b byte) error {
-		return nil
-	})
-	if err == nil {
-		return ErrAccountExists
-	} else if err != badger.ErrKeyNotFound {
-		return err
-	}
-	if err := txn.Set(k, v); err != nil {
-		return err
-	}
-	return l.cache.UpdateAccountMetaUnConfirmed(value)
-}
-
-func (l *Ledger) GetAccountMetaCache(key types.Address, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	if am, err := l.cache.GetAccountMetaUnConfirmed(key); err == nil {
-		return am, nil
-	}
-
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixBlockCacheAccount, key)
-	if err != nil {
-		return nil, err
-	}
-	value := new(types.AccountMeta)
-	err = txn.Get(k, func(v []byte, b byte) (err error) {
-		if err := value.Deserialize(v); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, ErrAccountNotFound
-		}
-		return nil, err
-	}
-	return value, nil
-}
-
-func (l *Ledger) GetAccountMetaCaches(fn func(am *types.AccountMeta) error, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixBlockCacheAccount, func(key []byte, val []byte, b byte) error {
-		am := new(types.AccountMeta)
-		if err := am.Deserialize(val); err != nil {
-			return err
-		}
-		if err := fn(am); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *Ledger) AddOrUpdateAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixBlockCacheAccount, value.Address)
-	if err != nil {
-		return err
-	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-	if err := txn.Set(k, v); err != nil {
-		return err
-	}
-	return l.cache.UpdateAccountMetaUnConfirmed(value)
-}
-
-func (l *Ledger) UpdateAccountMetaCache(value *types.AccountMeta, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixBlockCacheAccount, value.Address)
-	if err != nil {
-		return err
-	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-
-	err = txn.Get(k, func(vals []byte, b byte) error {
-		return nil
-	})
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return ErrAccountNotFound
-		}
-		return err
-	}
-	if err := txn.Set(k, v); err != nil {
-		return err
-	}
-	return l.cache.UpdateAccountMetaUnConfirmed(value)
-}
-
-func (l *Ledger) DeleteAccountMetaCache(key types.Address, txns ...db.StoreTxn) error {
-	l.cache.DeleteAccountMetaUnConfirmed(key)
-
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-	k, err := getKeyOfParts(idPrefixBlockCacheAccount, key)
-	if err != nil {
-		return err
-	}
-	return txn.Delete(k)
-}
-
-func (l *Ledger) HasAccountMetaCache(key types.Address, txns ...db.StoreTxn) (bool, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixBlockCacheAccount, key)
-	if err != nil {
-		return false, err
-	}
-	err = txn.Get(k, func(val []byte, b byte) error {
-		return nil
-	})
-
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-func (l *Ledger) Latest(account types.Address, token types.Hash, txns ...db.StoreTxn) types.Hash {
-	zero := types.Hash{}
-	am, err := l.GetAccountMeta(account, txns...)
-	if err != nil {
-		return zero
-	}
-	tm := am.Token(token)
-	if tm != nil {
-		return tm.Header
-	}
-	return zero
-}
-
-func (l *Ledger) Account(hash types.Hash, txns ...db.StoreTxn) (*types.AccountMeta, error) {
-	block, err := l.GetStateBlock(hash, txns...)
-	if err != nil {
-		return nil, err
-	}
-	addr := block.GetAddress()
-	am, err := l.GetAccountMeta(addr, txns...)
+// Token Confirmed
+func (l *Ledger) GetTokenMetaConfirmed(address types.Address, tokenType types.Hash) (*types.TokenMeta, error) {
+	am, err := l.GetAccountMetaConfirmed(address)
 	if err != nil {
 		return nil, err
 	}
 
-	return am, nil
+	tm := am.Token(tokenType)
+	if tm == nil {
+		return nil, ErrTokenNotFound
+	}
+
+	return tm, nil
 }
 
-func (l *Ledger) Token(hash types.Hash, txns ...db.StoreTxn) (*types.TokenMeta, error) {
-	block, err := l.GetStateBlockConfirmed(hash, txns...)
+func (l *Ledger) AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache *Cache) error {
+	am, err := l.GetAccountMeta(address)
 	if err != nil {
-		return nil, err
-	}
-	token := block.GetToken()
-	addr := block.GetAddress()
-	am, err := l.GetAccountMetaConfirmed(addr, txns...)
-	if err != nil {
-		return nil, err
+		return err
 	}
 
-	tm := am.Token(token)
-	if tm != nil {
-		return tm, nil
+	if am.Token(meta.Type) != nil {
+		return ErrTokenExists
 	}
 
-	//TODO: hash to token name
-	return nil, fmt.Errorf("can not find token %s", token)
+	am.Tokens = append(am.Tokens, meta)
+	return l.UpdateAccountMeta(am, cache)
 }
 
-func (l *Ledger) Balance(account types.Address, txns ...db.StoreTxn) (map[types.Hash]types.Balance, error) {
-	cache := make(map[types.Hash]types.Balance)
-	am, err := l.GetAccountMeta(account, txns...)
+func (l *Ledger) DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *Cache) error {
+	am, err := l.GetAccountMetaConfirmed(address)
 	if err != nil {
-		return cache, err
+		return err
 	}
-	for _, tm := range am.Tokens {
-		cache[tm.Type] = tm.Balance
+	tokens := am.Tokens
+	for index, token := range tokens {
+		if token.Type == tokenType {
+			am.Tokens = append(tokens[:index], tokens[index+1:]...)
+		}
 	}
-
-	if len(cache) == 0 {
-		return nil, fmt.Errorf("can not find any token balance ")
-	}
-
-	return cache, nil
+	return l.UpdateAccountMeta(am, c)
 }
 
-func (l *Ledger) TokenBalance(account types.Address, token types.Hash, txns ...db.StoreTxn) (types.Balance, error) {
-	am, err := l.GetAccountMeta(account, txns...)
+// Token UnConfirmed
+func (l *Ledger) DeleteTokenMetaCache(address types.Address, tokenType types.Hash, batch storage.Batch) error {
+	am, err := l.GetAccountMeteCache(address)
 	if err != nil {
-		return types.ZeroBalance, err
+		return err
 	}
-	tm := am.Token(token)
-	if tm != nil {
-		return tm.Balance, nil
+	tokens := am.Tokens
+	for index, token := range tokens {
+		if token.Type == tokenType {
+			am.Tokens = append(tokens[:index], tokens[index+1:]...)
+		}
 	}
-
-	return types.ZeroBalance, fmt.Errorf("can not find %s balance", token)
+	return l.UpdateAccountMeteCache(am, batch)
 }
 
-func (l *Ledger) Weight(account types.Address, txns ...db.StoreTxn) types.Balance {
-	benefit, err := l.GetRepresentation(account, txns...)
+func (l *Ledger) Weight(account types.Address) types.Balance {
+	benefit, err := l.GetRepresentation(account)
 	if err != nil {
 		return types.ZeroBalance
 	}
 	return benefit.Total
 }
 
-func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (types.Balance, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
+func (l *Ledger) CalculateAmount(block *types.StateBlock) (types.Balance, error) {
 	var prev *types.StateBlock
 	var err error
 	switch block.GetType() {
 	case types.Open:
 		return block.TotalBalance(), err
 	case types.Send:
-		if prev, err = l.GetStateBlock(block.GetPrevious(), txn); err != nil {
+		if prev, err = l.GetStateBlock(block.GetPrevious()); err != nil {
 			return types.ZeroBalance, err
 		}
 		return prev.TotalBalance().Sub(block.TotalBalance()), nil
 	case types.Receive:
-		if prev, err = l.GetStateBlock(block.GetPrevious(), txn); err != nil {
+		if prev, err = l.GetStateBlock(block.GetPrevious()); err != nil {
 			return types.ZeroBalance, err
 		}
 		return block.TotalBalance().Sub(prev.TotalBalance()), nil
@@ -628,7 +415,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 		if prevHash.IsZero() {
 			return block.TotalBalance(), nil
 		} else {
-			if prev, err = l.GetStateBlock(prevHash, txn); err != nil {
+			if prev, err = l.GetStateBlock(prevHash); err != nil {
 				return types.ZeroBalance, err
 			}
 			return block.TotalBalance().Sub(prev.TotalBalance()), nil
@@ -637,7 +424,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock, txns ...db.StoreTxn) (
 		if common.IsGenesisBlock(block) {
 			return block.GetBalance(), nil
 		} else {
-			if prev, err = l.GetStateBlock(block.GetPrevious(), txn); err != nil {
+			if prev, err = l.GetStateBlock(block.GetPrevious()); err != nil {
 				return types.ZeroBalance, err
 			}
 			return prev.TotalBalance().Sub(block.TotalBalance()), nil

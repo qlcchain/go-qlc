@@ -7,13 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/google/uuid"
 	rpc "github.com/qlcchain/jsonrpc2"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -50,7 +49,7 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	ledgerApi := NewLedgerApi(context.Background(), l, rl, eb, cc)
 
 	return func(t *testing.T) {
-		//err := l.Store.Erase()
+		//err := l.DBStore.Erase()
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)

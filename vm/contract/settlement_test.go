@@ -21,19 +21,17 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"github.com/qlcchain/go-qlc/common/sync"
-
-	"github.com/qlcchain/go-qlc/mock"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/sync"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/mock"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const (
@@ -200,7 +198,7 @@ func setupSettlementTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) 
 	}
 
 	return func(t *testing.T) {
-		//err := l.Store.Erase()
+		//err := l.DBStore.Erase()
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)
@@ -214,24 +212,24 @@ func setupSettlementTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) 
 }
 
 func updateBlock(l *ledger.Ledger, block *types.StateBlock) error {
-	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		err := l.AddStateBlock(block, txn)
+	return l.Cache().BatchUpdate(func(c *ledger.Cache) error {
+		err := l.UpdateStateBlock(block, c)
 		if err != nil {
 			return err
 		}
-		am, err := l.GetAccountMetaConfirmed(block.GetAddress(), txn)
+		am, err := l.GetAccountMetaConfirmed(block.GetAddress(), c)
 		if err != nil && err != ledger.ErrAccountNotFound {
 			return fmt.Errorf("get account meta error: %s", err)
 		}
-		tm, err := l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken(), txn)
+		tm, err := l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken())
 		if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
 			return fmt.Errorf("get token meta error: %s", err)
 		}
-		err = updateFrontier(l, block, tm, txn)
+		err = updateFrontier(l, block, tm, c)
 		if err != nil {
 			return err
 		}
-		err = updateAccountMeta(l, block, am, txn)
+		err = updateAccountMeta(l, block, am, c)
 		if err != nil {
 			return err
 		}

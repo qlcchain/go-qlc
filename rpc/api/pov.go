@@ -8,20 +8,16 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/statedb"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
@@ -508,7 +504,7 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 		Reps:      make(map[types.Address]*types.PovRepState),
 	}
 
-	db := api.l.Store
+	db := api.l.DBStore()
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
 	it := stateTrie.NewIterator([]byte{types.TriePrefixPovState})
@@ -603,7 +599,7 @@ func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepS
 	apiRsp.StateHash = stateHash
 	apiRsp.Reps = make(map[types.Address]*types.PovRepState)
 
-	db := api.l.Store
+	db := api.l.DBStore()
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
 	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
@@ -1684,7 +1680,7 @@ func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
 	}
 	stateHash := latestHdr.GetStateHash()
 
-	db := api.l.Store
+	db := api.l.DBStore()
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
 	it := stateTrie.NewIterator([]byte{types.TriePrefixPovState})

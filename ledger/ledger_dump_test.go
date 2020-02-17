@@ -38,7 +38,7 @@ func TestLedger_dump(t *testing.T) {
 	if err := l.AddStateBlock(blk3); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.AddAccountMeta(acc1); err != nil {
+	if err := l.AddAccountMeta(acc1, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
 

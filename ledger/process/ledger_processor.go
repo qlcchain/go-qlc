@@ -14,9 +14,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -44,7 +44,7 @@ func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
 	if r, err := lv.BlockCheck(block); r != Progress || err != nil {
 		return r, err
 	}
-	if err := lv.BlockProcess(block); err != nil {
+	if err := lv.BlockProcess(block.(*types.StateBlock)); err != nil {
 		return Other, err
 	}
 	return Progress, nil
@@ -64,7 +64,7 @@ func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 						return Progress, nil
 					}
 				}
-				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s", r.String(), b.GetHash().String()))
+				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s, type: %s", r.String(), b.GetHash().String(), b.GetType().String()))
 			}
 			return r, err
 		} else {
@@ -256,7 +256,7 @@ func (c *onlineBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 	}
 	// check chain token
 	if block.GetToken() != common.ChainToken() {
-		return Other, fmt.Errorf("invalid token %s, common chain token is %s", block.GetToken().String(), common.ChainToken().String())
+		return Other, fmt.Errorf("invalid token %s, chain token is %s", block.GetToken().String(), common.ChainToken().String())
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
 		return r, err
@@ -270,54 +270,50 @@ func (c *onlineBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 	return Progress, nil
 }
 
-func (lv *LedgerVerifier) BlockProcess(block types.Block) error {
-	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
-		if state, ok := block.(*types.StateBlock); ok {
-			lv.logger.Info("process block, ", state.GetHash())
-			err := lv.processStateBlock(state, txn)
-			if err != nil {
-				lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), state.GetHash().String()))
-				return err
-			}
-			return nil
-		} else if _, ok := block.(*types.SmartContractBlock); ok {
-			return errors.New("smart contract block")
+func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
+	return lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
+		err := lv.processStateBlock(block, c)
+		if err != nil {
+			lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), block.GetHash().String()))
+			return err
 		}
-		return errors.New("invalid block")
+		lv.logger.Debug("publish addRelation,", block.GetHash())
+		lv.l.EB.Publish(topic.EventAddRelation, block)
+		return nil
 	})
 }
 
-func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, txn db.StoreTxn) error {
-	if err := lv.l.AddStateBlock(block, txn); err != nil {
-		return err
-	}
-	am, err := lv.l.GetAccountMetaConfirmed(block.GetAddress(), txn)
+func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, cache *ledger.Cache) error {
+	am, err := lv.l.GetAccountMetaConfirmed(block.GetAddress())
 	if err != nil && err != ledger.ErrAccountNotFound {
-		return fmt.Errorf("get account meta error: %s", err)
+		return fmt.Errorf("get account meta error: %s, %s", err, am.Address.String())
 	}
-	tm, err := lv.l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken(), txn)
+	tm, err := lv.l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken())
 	if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
 		return fmt.Errorf("get token meta error: %s", err)
 	}
-	if err := lv.updatePending(block, tm, txn); err != nil {
+	if err := lv.l.UpdateStateBlock(block, cache); err != nil {
+		return err
+	}
+	if err := lv.updatePending(block, tm, cache); err != nil {
 		return fmt.Errorf("update pending error: %s", err)
 	}
-	if err := lv.updateFrontier(block, tm, txn); err != nil {
+	if err := lv.updateFrontier(block, tm, cache); err != nil {
 		return fmt.Errorf("update frontier error: %s", err)
 	}
-	if err := lv.updateContractData(block, txn); err != nil {
+	if err := lv.updateContractData(block, cache); err != nil {
 		return fmt.Errorf("update contract data error: %s", err)
 	}
-	if err := lv.updateRepresentative(block, am, tm, txn); err != nil {
+	if err := lv.updateRepresentative(block, am, tm, cache); err != nil {
 		return fmt.Errorf("update representative error: %s", err)
 	}
-	if err := lv.updateAccountMeta(block, am, txn); err != nil {
+	if err := lv.updateAccountMeta(block, am, cache); err != nil {
 		return fmt.Errorf("update account meta error: %s", err)
 	}
 	return nil
 }
 
-func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.TokenMeta, cache *ledger.Cache) error {
 	hash := block.GetHash()
 	switch block.Type {
 	case types.Send:
@@ -335,7 +331,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    hash,
 		}
 		lv.logger.Debug("add pending, ", pendingKey)
-		if err := lv.l.AddPending(&pendingKey, &pending, txn); err != nil {
+		if err := lv.l.AddPending(&pendingKey, &pending, cache); err != nil {
 			return err
 		}
 	case types.Open, types.Receive:
@@ -344,7 +340,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    block.GetLink(),
 		}
 		lv.logger.Debug("delete pending, ", pendingKey)
-		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
+		if err := lv.l.DeletePending(&pendingKey, cache); err != nil {
 			return err
 		}
 	case types.ContractSend:
@@ -354,7 +350,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			case contract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
-					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
 						return err
 					}
 				}
@@ -362,7 +358,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
-					if err := lv.l.AddPending(pendingKey, pendingInfo, txn); err != nil {
+					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
 						return err
 					}
 				}
@@ -376,14 +372,14 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    block.GetLink(),
 		}
 		lv.logger.Debug("contractReward delete pending, ", pendingKey)
-		if err := lv.l.DeletePending(&pendingKey, txn); err != nil {
+		if err := lv.l.DeletePending(&pendingKey, cache); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, cache *ledger.Cache) error {
 	if block.GetToken() == common.ChainToken() {
 		if tm != nil && !tm.Representative.IsZero() {
 			oldBenefit := &types.Benefit{
@@ -395,7 +391,7 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *type
 				Total:   am.TotalBalance(),
 			}
 			lv.logger.Debugf("sub rep(%s) from %s ", oldBenefit, tm.Representative)
-			if err := lv.l.SubRepresentation(tm.Representative, oldBenefit, txn); err != nil {
+			if err := lv.l.SubRepresentation(tm.Representative, oldBenefit, cache); err != nil {
 				return err
 			}
 		}
@@ -408,22 +404,22 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *type
 			Total:   block.TotalBalance(),
 		}
 		lv.logger.Debugf("add rep(%s) to %s ", newBenefit, block.GetRepresentative())
-		if err := lv.l.AddRepresentation(block.GetRepresentative(), newBenefit, txn); err != nil {
+		if err := lv.l.AddRepresentation(block.GetRepresentative(), newBenefit, cache); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (lv *LedgerVerifier) updateFrontier(block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateFrontier(block *types.StateBlock, tm *types.TokenMeta, cache *ledger.Cache) error {
 	hash := block.GetHash()
 	frontier := &types.Frontier{
 		HeaderBlock: hash,
 	}
 	if tm != nil {
-		if frontier, err := lv.l.GetFrontier(tm.Header, txn); err == nil {
+		if frontier, err := lv.l.GetFrontier(tm.Header); err == nil {
 			lv.logger.Debug("delete frontier, ", *frontier)
-			if err := lv.l.DeleteFrontier(frontier.HeaderBlock, txn); err != nil {
+			if err := lv.l.DeleteFrontier(frontier.HeaderBlock, cache); err != nil {
 				return err
 			}
 		} else {
@@ -434,13 +430,13 @@ func (lv *LedgerVerifier) updateFrontier(block *types.StateBlock, tm *types.Toke
 		frontier.OpenBlock = hash
 	}
 	lv.logger.Debug("add frontier,", *frontier)
-	if err := lv.l.AddFrontier(frontier, txn); err != nil {
+	if err := lv.l.AddFrontier(frontier, cache); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.AccountMeta, cache *ledger.Cache) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
 	address := block.GetAddress()
@@ -476,7 +472,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
-		if err := lv.l.UpdateAccountMeta(am, txn); err != nil {
+		if err := lv.l.UpdateAccountMeta(am, cache); err != nil {
 			return err
 		}
 	} else {
@@ -492,14 +488,14 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
 		}
-		if err := lv.l.AddAccountMeta(&account, txn); err != nil {
+		if err := lv.l.AddAccountMeta(&account, cache); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *ledger.Cache) error {
 	if !common.IsGenesisBlock(block) {
 		switch block.GetType() {
 		case types.ContractReward:
@@ -523,12 +519,13 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 			if len(g) > 0 {
 				ctx := g[0].VMContext
 				if ctx != nil {
-					err := ctx.SaveStorage(txn)
+
+					err := ctx.SaveStorage(cache)
 					if err != nil {
 						lv.logger.Error("save storage error: ", err)
 						return err
 					}
-					err = ctx.SaveTrie(txn)
+					err = ctx.SaveTrie(cache)
 					if err != nil {
 						lv.logger.Error("save trie error: ", err)
 						return err
@@ -545,11 +542,11 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, txn db.Sto
 				case contract.SpecVer2:
 					vmCtx := vmstore.NewVMContext(lv.l)
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
-						if err := vmCtx.SaveStorage(txn); err != nil {
+						if err := vmCtx.SaveStorage(cache); err != nil {
 							lv.logger.Error("save storage error: ", err)
 							return err
 						}
-						if err = vmCtx.SaveTrie(txn); err != nil {
+						if err = vmCtx.SaveTrie(cache); err != nil {
 							lv.logger.Error("save trie error: ", err)
 							return err
 						}

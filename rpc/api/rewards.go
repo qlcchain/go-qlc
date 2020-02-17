@@ -176,6 +176,7 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 	}
 
 	if _, err := r.ledger.HasTokenMeta(param.Self, common.GasToken()); err != nil {
+		r.logger.Errorf("token not found, %s %s", param.Self.String(), common.GasToken().String())
 		return nil, err
 	}
 
@@ -185,6 +186,7 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 
 	var rxHash types.Hash
 	if b, err := r.ledger.HasTokenMeta(param.To, common.GasToken()); err != nil {
+		r.logger.Errorf("token not found, %s %s", param.To.String(), common.GasToken().String())
 		return nil, err
 	} else {
 		if b {

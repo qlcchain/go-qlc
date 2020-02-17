@@ -18,13 +18,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Trie) {

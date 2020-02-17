@@ -389,7 +389,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			if temp.String() == endHash.String() || len(bulkBlk) == maxPushTxPerTime {
 				break
 			}
-			temp, err = ss.qlcLedger.GetChild(temp)
+			temp, err = ss.qlcLedger.GetBlockChild(temp)
 			if err != nil {
 				ss.logger.Error(err)
 				return err
@@ -412,7 +412,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 			if temp.String() == endHash.String() || len(bulkBlk) == maxPushTxPerTime {
 				break
 			}
-			temp, err = ss.qlcLedger.GetChild(temp)
+			temp, err = ss.qlcLedger.GetBlockChild(temp)
 			if err != nil {
 				ss.logger.Error(err)
 				return err
@@ -449,7 +449,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 				return nil
 			} else {
 				bulkBlk = bulkBlk[:0:0]
-				temp, err = ss.qlcLedger.GetChild(temp)
+				temp, err = ss.qlcLedger.GetBlockChild(temp)
 				if err != nil {
 					ss.logger.Error(err)
 					return err
@@ -464,7 +464,7 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 					if temp.String() == endHash.String() || len(bulkBlk) == maxPushTxPerTime {
 						break
 					}
-					temp, err = ss.qlcLedger.GetChild(temp)
+					temp, err = ss.qlcLedger.GetBlockChild(temp)
 					if err != nil {
 						ss.logger.Error(err)
 						return err

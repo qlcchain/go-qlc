@@ -7,50 +7,6 @@
 
 package types
 
-//go:generate msgp
-type PendingKey struct {
-	Address Address `msg:"account,extension" json:"account"`
-	Hash    Hash    `msg:"hash,extension" json:"hash"`
-}
-
-//go:generate msgp
-type PendingInfo struct {
-	Source Address `msg:"source,extension" json:"source"`
-	Amount Balance `msg:"amount,extension" json:"amount"`
-	Type   Hash    `msg:"type,extension" json:"type"`
-}
-
-func (pk *PendingKey) Serialize() ([]byte, error) {
-	return pk.MarshalMsg(nil)
-}
-
-func (pk *PendingKey) Deserialize(text []byte) error {
-	_, err := pk.UnmarshalMsg(text)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (pi *PendingInfo) Serialize() ([]byte, error) {
-	return pi.MarshalMsg(nil)
-}
-
-func (pi *PendingInfo) Deserialize(text []byte) error {
-	_, err := pi.UnmarshalMsg(text)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type PendingKind byte
-
-const (
-	PendingNotUsed PendingKind = iota
-	PendingUsed
-)
-
 type UncheckedKind byte
 
 const (
@@ -93,3 +49,20 @@ func StringToSyncKind(str string) SynchronizedKind {
 type UncheckedBlockWalkFunc func(block *StateBlock, link Hash, unCheckType UncheckedKind, sync SynchronizedKind) error
 type GapPovBlockWalkFunc func(block *StateBlock, height uint64, sync SynchronizedKind) error
 type GapPublishBlockWalkFunc func(block *StateBlock, sync SynchronizedKind) error
+
+type Unchecked struct {
+	Block *StateBlock      `msg:"block" json:"block"`
+	Kind  SynchronizedKind `msg:"kind" json:"kind"`
+}
+
+func (u *Unchecked) Serialize() ([]byte, error) {
+	return u.MarshalMsg(nil)
+}
+
+func (u *Unchecked) Deserialize(text []byte) error {
+	_, err := u.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}

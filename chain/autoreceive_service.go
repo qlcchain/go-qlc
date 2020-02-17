@@ -85,7 +85,7 @@ func (as *AutoReceiveService) Start() error {
 		accounts := cc.Accounts()
 		for _, account := range accounts {
 			a := account
-			err := l.SearchPending(a.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
+			err := l.GetPendingsByAddress(a.Address(), func(key *types.PendingKey, value *types.PendingInfo) error {
 				as.logger.Debugf("%s receive %s[%s] from %s (%s)\n", key.Address, value.Type.String(), value.Source.String(), value.Amount.String(), key.Hash.String())
 				if send, err := l.GetStateBlock(key.Hash); err != nil {
 					as.logger.Error(err)

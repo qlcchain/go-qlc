@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
 func (lv *LedgerVerifier) BlockCacheCheck(block types.Block) (ProcessResult, error) {
@@ -198,42 +198,26 @@ func (c *cacheChangeBlockCheck) Check(lv *LedgerVerifier, block *types.StateBloc
 	return Progress, nil
 }
 
-func (lv *LedgerVerifier) BlockCacheProcess(block types.Block) error {
-	blk := block.(*types.StateBlock)
-	am, err := lv.l.GetAccountMeta(blk.GetAddress())
+func (lv *LedgerVerifier) BlockCacheProcess(block *types.StateBlock) error {
+	am, err := lv.l.GetAccountMeta(block.GetAddress())
 	if err != nil && err != ledger.ErrAccountNotFound {
 		return fmt.Errorf("get account meta cache error: %s", err)
 	}
-	return lv.l.BatchUpdate(func(txn db.StoreTxn) error {
-		if state, ok := block.(*types.StateBlock); ok {
-			lv.logger.Info("process cache block, ", state.GetHash())
-			err := lv.processCacheBlock(state, am, txn)
-			if err != nil {
-				lv.logger.Error(fmt.Sprintf("%s, cache block:%s", err.Error(), state.GetHash().String()))
-				return err
-			}
-			return nil
-		} else if _, ok := block.(*types.SmartContractBlock); ok {
-			return errors.New("smart contract block")
-		}
-		return errors.New("invalid block")
-	})
-}
+	batch := lv.l.DBStore().Batch(true)
+	defer func() {
+		lv.l.DBStore().PutBatch(batch)
+	}()
 
-func (lv *LedgerVerifier) processCacheBlock(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
-	if err := lv.l.AddBlockCache(block, txn); err != nil {
-		return err
+	if err := lv.l.AddBlockCache(block, batch); err != nil {
+		return fmt.Errorf("update block cache error: %s", err)
 	}
-	if err := lv.updateAccountMetaCache(block, am, txn); err != nil {
+	if err := lv.updateAccountMetaCache(block, am, batch); err != nil {
 		return fmt.Errorf("update account meta cache error: %s", err)
-	}
-	if err := lv.updatePendingKind(block, txn); err != nil {
-		return fmt.Errorf("update pending kind error: %s", err)
 	}
 	return nil
 }
 
-func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *types.AccountMeta, batch storage.Batch) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
 	address := block.GetAddress()
@@ -269,7 +253,7 @@ func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *ty
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
-		if err := lv.l.AddOrUpdateAccountMetaCache(am, txn); err != nil {
+		if err := lv.l.AddOrUpdateAccountMetaCache(am, batch); err != nil {
 			return err
 		}
 	} else {
@@ -285,20 +269,7 @@ func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *ty
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
 		}
-		if err := lv.l.AddAccountMetaCache(&account, txn); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (lv *LedgerVerifier) updatePendingKind(block *types.StateBlock, txn db.StoreTxn) error {
-	if block.IsReceiveBlock() {
-		pendingKey := &types.PendingKey{
-			Address: block.GetAddress(),
-			Hash:    block.GetLink(),
-		}
-		if err := lv.l.UpdatePending(pendingKey, types.PendingUsed, txn); err != nil {
+		if err := lv.l.AddAccountMetaCache(&account, batch); err != nil {
 			return err
 		}
 	}

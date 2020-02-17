@@ -16,14 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/util"
-
-	"github.com/qlcchain/go-qlc/crypto/random"
-
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 var (

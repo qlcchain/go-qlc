@@ -5,11 +5,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"strings"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/statedb"
-	"github.com/qlcchain/go-qlc/ledger/db"
 
 	"go.uber.org/zap"
 
@@ -82,7 +82,7 @@ func (pvs *PovVerifyStat) getStateDB(pv *PovVerifier, prevHash types.Hash) *stat
 }
 
 type PovVerifierChainReader interface {
-	TrieDb() db.Store
+	TrieDb() storage.Store
 	GetHeaderByHash(hash types.Hash) *types.PovHeader
 	CalcPastMedianTime(prevHeader *types.PovHeader) uint32
 	TransitStateDB(height uint64, txs []*types.PovTransaction, gsdb *statedb.PovGlobalStateDB) error

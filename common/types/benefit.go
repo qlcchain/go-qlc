@@ -1,6 +1,8 @@
 package types
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 //go:generate msgp
 type Benefit struct {
@@ -28,3 +30,22 @@ func (b *Benefit) Deserialize(text []byte) error {
 	}
 	return nil
 }
+
+func (b *Benefit) Clone() *Benefit {
+	clone := Benefit{}
+	bytes, _ := b.Serialize()
+	_ = clone.Deserialize(bytes)
+	return &clone
+}
+
+var (
+	// ZeroBalance zero
+	ZeroBenefit = &Benefit{
+		Vote:    ZeroBalance,
+		Network: ZeroBalance,
+		Storage: ZeroBalance,
+		Oracle:  ZeroBalance,
+		Balance: ZeroBalance,
+		Total:   ZeroBalance,
+	}
+)

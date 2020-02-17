@@ -13,14 +13,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/qlcchain/go-qlc/chain/context"
-
-	"github.com/qlcchain/go-qlc/common/topic"
+	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	cfg "github.com/qlcchain/go-qlc/config"
@@ -73,15 +72,17 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 	api := NewRewardsApi(l, cc)
 	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
 
+	time.Sleep(2 * time.Second)
+
 	tx := mock.Account()
 	rx := mock.Account()
 
 	//mock tx data
 	am := mock.AccountMeta(tx.Address())
-	if err := l.AddAccountMeta(am); err == nil {
+	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err == nil {
 		token := mock.TokenMeta(tx.Address())
 		token.Type = common.GasToken()
-		if err := l.AddTokenMeta(token.BelongTo, token); err == nil {
+		if err := l.AddTokenMetaConfirmed(token.BelongTo, token, l.Cache().GetCache()); err == nil {
 
 		} else {
 			t.Error(err)
@@ -92,7 +93,7 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 
 	//mock rx data
 	rxAm := mock.AccountMeta(rx.Address())
-	if err := l.AddAccountMeta(rxAm); err == nil {
+	if err := l.AddAccountMeta(rxAm, l.Cache().GetCache()); err == nil {
 
 	} else {
 		t.Error(err)
@@ -161,16 +162,17 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 	defer teardownTestCase(t)
 	api := NewRewardsApi(l, cc)
 	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+	time.Sleep(2 * time.Second)
 
 	tx := mock.Account()
 	rx := mock.Account()
 
 	//mock tx data
 	am := mock.AccountMeta(tx.Address())
-	if err := l.AddAccountMeta(am); err == nil {
+	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err == nil {
 		token := mock.TokenMeta(tx.Address())
 		token.Type = common.GasToken()
-		if err := l.AddTokenMeta(token.BelongTo, token); err == nil {
+		if err := l.AddTokenMetaConfirmed(token.BelongTo, token, l.Cache().GetCache()); err == nil {
 
 		} else {
 			t.Error(err)
@@ -181,7 +183,7 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 
 	//mock rx data
 	rxAm := mock.AccountMeta(rx.Address())
-	if err := l.AddAccountMeta(rxAm); err == nil {
+	if err := l.AddAccountMeta(rxAm, l.Cache().GetCache()); err == nil {
 
 	} else {
 		t.Error(err)

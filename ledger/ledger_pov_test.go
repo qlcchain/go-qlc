@@ -22,7 +22,7 @@ func setupPovTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	l := NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
-		//err := l.Store.Erase()
+		//err := l.DBStore.Erase()
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)
@@ -582,7 +582,8 @@ func TestLedger_PovTxLookupBatch(t *testing.T) {
 	teardownTestCase, l := setupPovTestCase(t)
 	defer teardownTestCase(t)
 
-	batchAdd := l.Store.NewWriteBatch()
+	//batchAdd := l.DBStore.NewWriteBatch()
+	batchAdd := l.store.Batch(false)
 
 	block, _ := generatePovBlock(nil)
 	err := l.AddPovBestHash(block.GetHeight(), block.GetHash())
@@ -616,7 +617,8 @@ func TestLedger_PovTxLookupBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = batchAdd.Flush()
+	err = l.store.PutBatch(batchAdd)
+	//err = batchAdd.Flush()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,7 +650,8 @@ func TestLedger_PovTxLookupBatch(t *testing.T) {
 		t.Fatalf("tx %s not exist", txH2)
 	}
 
-	batchDel := l.Store.NewWriteBatch()
+	//batchDel := l.DBStore.NewWriteBatch()
+	batchDel := l.store.Batch(false)
 	err = l.DeletePovTxLookupInBatch(txH0, batchDel)
 	if err != nil {
 		t.Fatal(err)
@@ -663,7 +666,9 @@ func TestLedger_PovTxLookupBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = batchDel.Flush()
+	//err = batchDel.Flush()
+	err = l.store.PutBatch(batchDel)
+
 	if err != nil {
 		t.Fatal(err)
 	}

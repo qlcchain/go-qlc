@@ -48,11 +48,6 @@ func RegisterServices(cc *context.ChainContext) error {
 	} else {
 		_ = cc.Register(context.RPCService, rpcService)
 	}
-	if sqliteService, err := NewSqliteService(cfgFile); err != nil {
-		return err
-	} else {
-		_ = cc.Register(context.IndexService, sqliteService)
-	}
 
 	if cfg.PoV.PovEnabled {
 		povService := NewPoVService(cfgFile)

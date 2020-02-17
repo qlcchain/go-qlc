@@ -10,6 +10,7 @@ package wallet
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,7 +27,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
@@ -158,7 +158,7 @@ func TestSession_IsAccountExist(t *testing.T) {
 	am := mock.AccountMeta(addr)
 	l := session.ledger
 
-	err = l.AddAccountMeta(am)
+	err = l.AddAccountMeta(am, l.Cache().GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,32 +391,24 @@ func TestSession_GetAccounts(t *testing.T) {
 	//addresses, err := insertAccountMeta(session, seedString, t)
 	ss, _ := types.BytesToSeed(seed)
 	var addresses []types.Address
-	err = s.BatchUpdate(func(txn db.StoreTxn) error {
-		for i := 0; i < 5; i++ {
-			account, _ := ss.Account(uint32(i))
-			addr := account.Address()
-			am := mock.AccountMeta(addr)
-			err = s.AddAccountMeta(am, txn)
-			if err != nil {
-				t.Fatal(err)
-			}
-			meta, err := s.GetAccountMeta(addr, txn)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if util.ToString(am) != util.ToString(meta) {
-				t.Log(am, meta)
-				t.Fatal("save am failed")
-			}
-			addresses = append(addresses, addr)
-			t.Log(addr.String())
+	for i := 0; i < 5; i++ {
+		account, _ := ss.Account(uint32(i))
+		addr := account.Address()
+		am := mock.AccountMeta(addr)
+		err = s.AddAccountMeta(am, s.Cache().GetCache())
+		if err != nil {
+			t.Fatal(err)
 		}
-
-		return nil
-	})
-
-	if err != nil {
-		t.Fatal(err)
+		meta, err := s.GetAccountMeta(addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if util.ToString(am) != util.ToString(meta) {
+			t.Log(am, meta)
+			t.Fatal("save am failed")
+		}
+		addresses = append(addresses, addr)
+		t.Log(addr.String())
 	}
 
 	_ = session.SetDeterministicIndex(5)
@@ -450,7 +442,7 @@ func TestSession_SetDeterministicIndex(t *testing.T) {
 	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 	type fields struct {
-		Store db.Store
+		Store storage.Store
 		//lock            sync.RWMutex
 		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
@@ -498,7 +490,7 @@ func TestSession_generateWork(t *testing.T) {
 	var hash types.Hash
 	_ = hash.Of("2C353DA641277FD8379354307A54BECE090C51E52FB460EA5A8674B702BDCE5E")
 	type fields struct {
-		Store           db.Store
+		Store           storage.Store
 		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
 		maxAccountCount uint64
@@ -539,7 +531,7 @@ func TestSession_setWork(t *testing.T) {
 	defer teardownTestCase(t)
 
 	type fields struct {
-		Store           db.Store
+		Store           storage.Store
 		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
 		maxAccountCount uint64
@@ -584,7 +576,7 @@ func TestSession_getKey(t *testing.T) {
 	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 	type fields struct {
-		Store db.Store
+		Store storage.Store
 		//lock            sync.RWMutex
 		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
@@ -627,7 +619,7 @@ func TestSession_getPassword(t *testing.T) {
 	pwd, _ := crypto.NewSecureString("PRxWPHK4WXmaHrW5hr9m")
 
 	type fields struct {
-		Store db.Store
+		Store storage.Store
 		//lock            sync.RWMutex
 		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
@@ -664,7 +656,7 @@ func TestSession_setPassword(t *testing.T) {
 	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 	type fields struct {
-		Store db.Store
+		Store storage.Store
 		//lock            sync.RWMutex
 		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger

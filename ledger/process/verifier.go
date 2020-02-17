@@ -76,6 +76,8 @@ func (r ProcessResult) String() string {
 		return "GapTransaction"
 	case GapTokenInfo:
 		return "GapTokenInfo"
+	case GapPublish:
+		return "GapPublish"
 	case GapPovHeight:
 		return "GapPovHeight"
 	case BalanceMismatch:

@@ -3,17 +3,12 @@ package ledger
 import (
 	"encoding/json"
 
-	"github.com/dgraph-io/badger"
-
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-func (l *Ledger) AddOrUpdatePerformance(value *types.PerformanceTime, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPerformance, value.Hash)
+func (l *Ledger) AddOrUpdatePerformance(value *types.PerformanceTime) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPerformance, value.Hash)
 	if err != nil {
 		return err
 	}
@@ -22,14 +17,12 @@ func (l *Ledger) AddOrUpdatePerformance(value *types.PerformanceTime, txns ...db
 		return err
 	}
 
-	return txn.Set(k, v)
+	return l.store.Put(k, v)
 }
 
-func (l *Ledger) PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixPerformance, func(key []byte, val []byte, b byte) error {
+func (l *Ledger) PerformanceTimes(fn func(*types.PerformanceTime)) error {
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPerformance)
+	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		pt := new(types.PerformanceTime)
 		err := json.Unmarshal(val, pt)
 		if err != nil {
@@ -45,33 +38,28 @@ func (l *Ledger) PerformanceTimes(fn func(*types.PerformanceTime), txns ...db.St
 	return nil
 }
 
-func (l *Ledger) GetPerformanceTime(key types.Hash, txns ...db.StoreTxn) (*types.PerformanceTime, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixPerformance, key)
+func (l *Ledger) GetPerformanceTime(key types.Hash) (*types.PerformanceTime, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPerformance, key)
 	if err != nil {
 		return nil, err
 	}
 
 	value := types.NewPerformanceTime()
-	err = txn.Get(k, func(val []byte, b byte) (err error) {
-		return json.Unmarshal(val, &value)
-	})
+	val, err := l.store.Get(k)
 
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return nil, ErrPerformanceNotFound
 		}
+		return nil, err
+	}
+	if err := json.Unmarshal(val, &value); err != nil {
 		return nil, err
 	}
 	return value, nil
 }
 
-func (l *Ledger) IsPerformanceTimeExist(key types.Hash, txns ...db.StoreTxn) (bool, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
+func (l *Ledger) IsPerformanceTimeExist(key types.Hash) (bool, error) {
 	if _, err := l.GetPerformanceTime(key); err == nil {
 		return true, nil
 	} else {
