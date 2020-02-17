@@ -80,12 +80,12 @@ func (b *BadgerStore) Has(k []byte) (bool, error) {
 
 func (b *BadgerStore) Batch(canRead bool) storage.Batch {
 	if canRead {
-		return &BadgerWriteBatch{
-			batch: b.db.NewWriteBatch(),
-		}
-	} else {
 		return &BadgerTransaction{
 			txn: b.db.NewTransaction(true),
+		}
+	} else {
+		return &BadgerWriteBatch{
+			batch: b.db.NewWriteBatch(),
 		}
 	}
 }

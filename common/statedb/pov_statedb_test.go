@@ -107,12 +107,12 @@ func TestPovStateDB_GlobalDB(t *testing.T) {
 
 	curHash := gsdb.GetCurHash()
 
-	txn := md.l.DBStore().NewTransaction(true)
+	txn := md.l.DBStore().Batch(true)
 	err = gsdb.CommitToDB(txn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = txn.Commit()
+	err = md.l.DBStore().PutBatch(txn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,12 +191,12 @@ func TestPovStateDB_ContractDB(t *testing.T) {
 	curHash := csdb.GetCurHash()
 	t.Log("csdb state hash", curHash)
 
-	txn := md.l.DBStore().NewTransaction(true)
+	txn := md.l.DBStore().Batch(true)
 	err = csdb.CommitToDB(txn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = txn.Commit()
+	err = md.l.DBStore().PutBatch(txn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,12 +265,12 @@ func TestPovStateDB_ContractDB2(t *testing.T) {
 
 	curHash := gsdb.GetCurHash()
 
-	txn := md.l.DBStore().NewTransaction(true)
+	txn := md.l.DBStore().Batch(true)
 	err = gsdb.CommitToDB(txn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = txn.Commit()
+	err = md.l.DBStore().PutBatch(txn)
 	if err != nil {
 		t.Fatal(err)
 	}

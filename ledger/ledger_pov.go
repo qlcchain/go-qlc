@@ -174,11 +174,10 @@ func (l *Ledger) addPovHeader(header *types.PovHeader, batch storage.Batch) erro
 
 func (l *Ledger) AddPovHeader(header *types.PovHeader) error {
 	batch := l.store.Batch(true)
-	defer func() {
-		l.store.PutBatch(batch)
-	}()
-
-	return l.addPovHeader(header, batch)
+	if err := l.addPovHeader(header, batch);err !=nil{
+		return err
+	}
+	return l.store.PutBatch(batch)
 }
 
 func (l *Ledger) deletePovHeader(height uint64, hash types.Hash, txn storage.Batch) error {
