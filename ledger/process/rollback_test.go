@@ -130,6 +130,7 @@ func TestLedgerVerifier_BlockCacheCheck(t *testing.T) {
 }
 
 func TestLedger_Rollback_ContractData(t *testing.T) {
+	t.Skip()
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 

@@ -180,6 +180,7 @@ func (l *Ledger) Close() error {
 	lock.Lock()
 	defer lock.Unlock()
 	if _, ok := lcache[l.dir]; ok {
+		l.cancel()
 		if err := l.cache.Close(); err != nil {
 			return err
 		}
@@ -189,7 +190,6 @@ func (l *Ledger) Close() error {
 		if err := l.store.Close(); err != nil {
 			return err
 		}
-		l.cancel()
 		l.logger.Info("badger closed")
 		delete(lcache, l.dir)
 		return nil

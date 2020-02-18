@@ -96,7 +96,7 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	addRepresentationWeight(t, l)
 	addRepresentationWeight(t, l)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 	err := l.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
 		t.Log(address, benefit)
 		return nil
@@ -110,7 +110,7 @@ func TestLedger_GetRepresentations(t *testing.T) {
 		t.Fatal(err)
 	}
 	if count != 2 {
-		t.Fatal("representation count error")
+		t.Fatal("representation count error", count)
 	}
 }
 

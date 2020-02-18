@@ -92,7 +92,7 @@ func TestGetTxn(t *testing.T) {
 	defer teardownTestCase(t)
 	txn := l.store.Batch(true)
 	fmt.Println(txn)
-	txn2, flag := l.getBatch(false, txn)
+	txn2, flag := l.getBatch(true, txn)
 	if flag {
 		t.Fatal("get txn flag error")
 	}

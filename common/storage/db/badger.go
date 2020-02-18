@@ -55,14 +55,18 @@ func (b *BadgerStore) Get(k []byte) ([]byte, error) {
 
 func (b *BadgerStore) Put(k, v []byte) error {
 	txn := b.db.NewTransaction(true)
-	defer txn.Commit()
-	return txn.Set(k, v)
+	if err := txn.Set(k, v); err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (b *BadgerStore) Delete(k []byte) error {
 	txn := b.db.NewTransaction(true)
-	defer txn.Commit()
-	return txn.Delete(k)
+	if err := txn.Delete(k); err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (b *BadgerStore) Has(k []byte) (bool, error) {

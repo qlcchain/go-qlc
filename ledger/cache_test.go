@@ -44,12 +44,17 @@ func TestNewCache(t *testing.T) {
 	cm := config.NewCfgManager(dir)
 	l := NewLedger(cm.ConfigFile)
 
+	defer func() {
+		if err := l.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
 	blk := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
 	blk2 := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk2, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
@@ -58,18 +63,15 @@ func TestNewCache(t *testing.T) {
 	fmt.Println(l.GetStateBlockConfirmed(blk.GetHash()))
 	fmt.Println(l.GetStateBlockConfirmed(blk2.GetHash()))
 
-	time.Sleep(1 * time.Second)
 	blk3 := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk3, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(1 * time.Second)
 
 	blk4 := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk4, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(1 * time.Second)
 
 	blk5 := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk5, l.cache.GetCache()); err != nil {
@@ -88,10 +90,6 @@ func TestNewCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(1 * time.Second)
-
-	if err := l.Close(); err != nil {
-		t.Fatal(err)
-	}
 
 	fmt.Println(l.relation.BlocksCount())
 	fmt.Println(l.relation.BlocksCountByType())
