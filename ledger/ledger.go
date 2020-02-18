@@ -255,15 +255,11 @@ func (l *Ledger) Close() error {
 	lock.Lock()
 	defer lock.Unlock()
 	if _, ok := lcache[l.dir]; ok {
-		fmt.Println("=========ledger closing")
 		l.cancel()
-		fmt.Println("==================111")
 		l.cache.closed()
-		fmt.Println("==================111222")
 		if err := l.relation.Close(); err != nil {
 			l.logger.Error(err)
 		}
-		fmt.Println("=============== store closing")
 		if err := l.store.Close(); err != nil {
 			return err
 		}

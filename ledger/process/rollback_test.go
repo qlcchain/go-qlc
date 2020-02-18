@@ -195,7 +195,6 @@ func TestLedger_Rollback_ContractData(t *testing.T) {
 }
 
 func nodesCount(db storage.Store, rootHash types.Hash) int {
-	fmt.Println("=================rootHash is ", rootHash.String())
 	tr := trie.NewTrie(db, &rootHash, trie.NewSimpleTrieNodePool())
 	iterator := tr.NewIterator(nil)
 	counter := 0

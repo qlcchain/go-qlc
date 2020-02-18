@@ -824,16 +824,13 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 	extra := block.GetExtra()
 	if !extra.IsZero() {
 		lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
-		fmt.Println("=================rootHash is ", extra.String())
 		t := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
 		iterator := t.NewIterator(nil)
 		vmContext := vmstore.NewVMContext(lv.l)
 		for {
 			if key, value, ok := iterator.Next(); !ok {
-				fmt.Println("==================iterator.Next not found ")
 				break
 			} else {
-				fmt.Println("===========vm key ", key)
 				if contractData, err := vmContext.GetStorageByKey(key); err == nil {
 					if !bytes.Equal(contractData, value) {
 						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)

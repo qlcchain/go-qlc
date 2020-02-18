@@ -95,7 +95,6 @@ func (lc *MemoryCache) flushCache() *Cache {
 		case <-lc.flushChan:
 			lc.flush()
 		case <-lc.l.ctx.Done():
-			fmt.Println("============ctx Done")
 			lc.close()
 			lc.closedChan <- true
 			//default:
@@ -127,13 +126,10 @@ func (lc *MemoryCache) flush() {
 }
 
 func (lc *MemoryCache) closed() {
-	fmt.Println("===========1")
 	<-lc.closedChan
-	fmt.Println("===========2")
 }
 
 func (lc *MemoryCache) close() error {
-	fmt.Println("=============== memory cache closing")
 	index := lc.readIndex
 	index = (index + 1) % lc.cacheCount // next read cache index to dump
 	finish := false

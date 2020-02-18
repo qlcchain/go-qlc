@@ -80,7 +80,6 @@ func (trie *Trie) saveNodeToDb(b storage.Batch, node *TrieNode) error {
 	} else {
 		h := node.Hash()
 		k := encodeKey(h[:])
-		fmt.Println("===========trie key: ", k)
 		err := b.Put(k, data)
 		//trie.log.Debugf("save %s, s%==>%s", h.String(), hex.EncodeToString(k), node.String())
 		if err != nil {

@@ -9,7 +9,6 @@ package vmstore
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -217,7 +216,6 @@ func (v *VMContext) set(key []byte, value []byte, batch ...storage.Batch) (err e
 			v.Ledger.DBStore().PutBatch(b)
 		}()
 	}
-	fmt.Println("=================vm set key: ", key)
 	return b.Put(key, value)
 }
 
@@ -231,7 +229,6 @@ func (v *VMContext) remove(key []byte, batch ...storage.Batch) (err error) {
 			v.Ledger.DBStore().PutBatch(b)
 		}()
 	}
-	fmt.Println("=============delete vm key ", key)
 	return b.Delete(key)
 }
 

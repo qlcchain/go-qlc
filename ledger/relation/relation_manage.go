@@ -35,6 +35,7 @@ var (
 	lock  = sync.RWMutex{}
 )
 
+//TODO ctx as a parameter from ledger
 func NewRelation(cfgFile string) (*Relation, error) {
 	lock.Lock()
 	defer lock.Unlock()
@@ -126,6 +127,7 @@ func (r *Relation) process() {
 	for {
 		select {
 		case <-r.ctx.Done():
+			//TODO write all chan data
 			r.closedChan <- true
 			return
 		case obj := <-r.addChan:

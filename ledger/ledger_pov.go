@@ -1223,7 +1223,6 @@ func (l *Ledger) GetLatestPovBlock() (*types.PovBlock, error) {
 
 func (l *Ledger) HasPovBlock(height uint64, hash types.Hash, batch ...storage.Batch) bool {
 	if !l.HasPovHeader(height, hash, batch...) {
-		fmt.Println("==========")
 		return false
 	}
 
