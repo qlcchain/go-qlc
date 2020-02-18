@@ -6,7 +6,6 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/options"
 	"github.com/pkg/errors"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -104,8 +103,8 @@ func (b *BadgerStore) PutBatch(batch storage.Batch) error {
 	return errors.New("error batch type")
 }
 
-func (b *BadgerStore) BatchWrite(writeBatch bool, fn func(batch storage.Batch) error) error {
-	if writeBatch {
+func (b *BadgerStore) BatchWrite(canRead bool, fn func(batch storage.Batch) error) error {
+	if !canRead {
 		b := &BadgerWriteBatch{
 			batch: b.db.NewWriteBatch(),
 		}

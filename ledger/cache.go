@@ -23,11 +23,11 @@ type MemoryCache struct {
 
 	lastFlush     time.Time
 	flushInterval time.Duration
-	flushStatue   bool
-	flushChan     chan bool
-	closedChan    chan bool
-	lock          sync.Mutex
-	logger        *zap.SugaredLogger
+	//flushStatue   bool
+	flushChan  chan bool
+	closedChan chan bool
+	lock       sync.Mutex
+	logger     *zap.SugaredLogger
 }
 
 func NewMemoryCache(ledger *Ledger) *MemoryCache {
@@ -39,11 +39,11 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 		caches:        make([]*Cache, 0),
 		lastFlush:     time.Now(),
 		flushInterval: defaultFlushSecs,
-		flushStatue:   false,
-		flushChan:     make(chan bool, 1),
-		closedChan:    make(chan bool),
-		lock:          sync.Mutex{},
-		logger:        log.NewLogger("ledger/dbcache"),
+		//flushStatue:   false,
+		flushChan:  make(chan bool, 1),
+		closedChan: make(chan bool),
+		lock:       sync.Mutex{},
+		logger:     log.NewLogger("ledger/dbcache"),
 	}
 	for i := 0; i < lc.cacheCount; i++ {
 		lc.caches = append(lc.caches, newCache())
@@ -124,6 +124,12 @@ func (lc *MemoryCache) flush() {
 		lc.readIndex = index
 		index = (index + 1) % lc.cacheCount // next read cache index to dump
 	}
+}
+
+func (lc *MemoryCache) closed() {
+	fmt.Println("===========1")
+	<-lc.closedChan
+	fmt.Println("===========2")
 }
 
 func (lc *MemoryCache) close() error {

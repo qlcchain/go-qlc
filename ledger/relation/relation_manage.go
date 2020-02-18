@@ -2,6 +2,7 @@ package relation
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -23,6 +24,7 @@ type Relation struct {
 	tables     []types.Schema
 	ctx        context.Context
 	cancel     context.CancelFunc
+	closedChan chan bool
 	logger     *zap.SugaredLogger
 }
 
@@ -52,6 +54,7 @@ func NewRelation(cfgFile string) (*Relation, error) {
 			addChan:    make(chan types.Schema, 10240),
 			ctx:        ctx,
 			cancel:     cancel,
+			closedChan: make(chan bool),
 			logger:     log.NewLogger("relation"),
 		}
 		relation.tables = []types.Schema{new(types.StateBlock)}
@@ -70,6 +73,7 @@ func (r *Relation) Close() error {
 	defer lock.Unlock()
 	if _, ok := cache[r.dir]; ok {
 		r.cancel()
+		r.closed()
 		err := r.Store.Close()
 		if err != nil {
 			return err
@@ -111,6 +115,10 @@ func (r *Relation) batchDelete(txn *sqlx.Tx, objs []types.Schema) error {
 	return nil
 }
 
+func (r *Relation) closed() {
+	<-r.closedChan
+}
+
 func (r *Relation) process() {
 	addObjs := make([]types.Schema, 0)
 	deleteObjs := make([]types.Schema, 0)
@@ -118,7 +126,7 @@ func (r *Relation) process() {
 	for {
 		select {
 		case <-r.ctx.Done():
-			r.logger.Debug("sqlite ctx done")
+			r.closedChan <- true
 			return
 		case obj := <-r.addChan:
 			addObjs = append(addObjs, obj)
@@ -182,4 +190,16 @@ func (r *Relation) process() {
 			//}
 		}
 	}
+}
+
+func (r *Relation) EmptyStore() error {
+	r.logger.Info("empty store")
+	for _, s := range r.tables {
+		sql := fmt.Sprintf("delete from %s ", s.TableName())
+		if _, err := r.Store.Exec(sql); err != nil {
+			r.logger.Errorf("exec error, sql: %s, err: %s", sql, err.Error())
+			return err
+		}
+	}
+	return nil
 }

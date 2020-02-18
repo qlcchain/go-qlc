@@ -137,7 +137,7 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 func (lv *LedgerVerifier) RollbackCache(hash types.Hash) error {
 	if b, err := lv.l.HasBlockCache(hash); b && err == nil {
 		lv.logger.Warnf("process rollback cache block: %s", hash.String())
-		err := lv.l.DBStore().BatchWrite(false, func(batch storage.Batch) error {
+		err := lv.l.DBStore().BatchWrite(true, func(batch storage.Batch) error {
 			if err := lv.rollbackCache(hash, batch); err != nil {
 				lv.logger.Error(err)
 				return err

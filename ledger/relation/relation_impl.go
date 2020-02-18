@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -114,18 +113,6 @@ func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
 	if len(blksHashes) > 0 {
 		if _, err := txn.NamedExec("INSERT INTO BLOCKHASH(hash, type,address,timestamp) VALUES (:hash,:type,:address,:timestamp) ", blksHashes); err != nil {
 			r.logger.Errorf("insert block hash, ", err)
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Relation) EmptyStore() error {
-	r.logger.Info("empty store")
-	for _, s := range r.tables {
-		sql := fmt.Sprintf("delete from %s ", s.TableName())
-		if _, err := r.Store.Exec(sql); err != nil {
-			r.logger.Errorf("exec error, sql: %s, err: %s", sql, err.Error())
 			return err
 		}
 	}

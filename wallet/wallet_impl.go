@@ -11,18 +11,18 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/monitor"
-	"go.uber.org/zap"
 	"io"
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/monitor"
+	"go.uber.org/zap"
 )
 
 const (
@@ -167,7 +167,7 @@ func (s *Session) GetSeed() ([]byte, error) {
 }
 
 func (s *Session) setSeed(seed []byte) error {
-	return s.BatchWrite(false, func(batch storage.Batch) error {
+	return s.BatchWrite(true, func(batch storage.Batch) error {
 		return s.setSeedByTxn(batch, seed)
 	})
 }
@@ -417,7 +417,7 @@ func (s *Session) GetVersion() (int64, error) {
 }
 
 func (s *Session) SetVersion(version int64) error {
-	return s.BatchWrite(false, func(batch storage.Batch) error {
+	return s.BatchWrite(true, func(batch storage.Batch) error {
 		return s.setVersion(batch, version)
 	})
 }
@@ -441,7 +441,7 @@ func (s *Session) GetDeterministicIndex() (int64, error) {
 }
 
 func (s *Session) SetDeterministicIndex(index int64) error {
-	return s.BatchWrite(false, func(batch storage.Batch) error {
+	return s.BatchWrite(true, func(batch storage.Batch) error {
 		return s.setDeterministicIndex(batch, index)
 	})
 }

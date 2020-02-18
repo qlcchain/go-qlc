@@ -147,19 +147,95 @@ func NewLedger(cfgFile string) *Ledger {
 		}
 		l.cache = NewMemoryCache(l)
 		l.logger = log.NewLogger("ledger")
+		if err := l.init(); err != nil {
+			panic(err.Error())
+		}
 
-		if err := l.upgrade(); err != nil {
-			l.logger.Error(err)
-		}
-		vd, err := l.getVerifiedData()
-		if err != nil {
-			l.logger.Error(err)
-		}
-		l.VerifiedData = vd
 		lcache[dir] = l
 	}
 	//cache2[dir].logger = log.NewLogger("ledger")
 	return lcache[dir]
+}
+
+func (l *Ledger) init() error {
+	vd, err := l.getVerifiedData()
+	if err != nil {
+		l.logger.Error(err)
+		return err
+	}
+	l.VerifiedData = vd
+
+	if err := l.upgrade(); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	if err := l.initRelation(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {
+	data, err := hex.DecodeString(verifieddata)
+	if err != nil {
+		return nil, err
+	}
+	verifiedMap := make(map[types.Hash]int)
+	if err := json.Unmarshal(data, &verifiedMap); err != nil {
+		return nil, err
+	}
+	return verifiedMap, nil
+}
+
+func (l *Ledger) upgrade() error {
+	_, err := l.getVersion()
+	if err != nil {
+		if err == ErrVersionNotFound {
+			return l.setVersion(version)
+		} else {
+			return err
+		}
+	} else {
+		ms := []migration.Migration{new(migration.MigrationV1ToV11), new(migration.MigrationV11ToV12)}
+
+		err = migration.Upgrade(ms, l.store)
+		if err != nil {
+			l.logger.Error(err)
+		}
+		return err
+	}
+}
+
+func (l *Ledger) initRelation() error {
+	count1, err := l.relation.BlocksCount()
+	if err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	count2, err := l.CountStateBlocks()
+	if err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	if count1 != count2 {
+		if err := l.relation.EmptyStore(); err != nil {
+			l.logger.Error(err)
+			return err
+		}
+		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
+			l.relation.Add(block)
+			return nil
+		})
+		if err != nil {
+			l.logger.Error(err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 //CloseLedger force release all ledger instance
@@ -181,10 +257,11 @@ func (l *Ledger) Close() error {
 	if _, ok := lcache[l.dir]; ok {
 		fmt.Println("=========ledger closing")
 		l.cancel()
-		<-l.cache.closedChan
-		fmt.Println("=============== relation closing")
+		fmt.Println("==================111")
+		l.cache.closed()
+		fmt.Println("==================111222")
 		if err := l.relation.Close(); err != nil {
-			return err
+			l.logger.Error(err)
 		}
 		fmt.Println("=============== store closing")
 		if err := l.store.Close(); err != nil {
@@ -195,40 +272,6 @@ func (l *Ledger) Close() error {
 		return nil
 	}
 	return nil
-}
-
-func (l *Ledger) upgrade() error {
-	return l.store.BatchWrite(false, func(batch storage.Batch) error {
-		_, err := getVersion(batch)
-		if err != nil {
-			if err == ErrVersionNotFound {
-				if err := setVersion(version, batch); err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
-		}
-		ms := []migration.Migration{new(migration.MigrationV1ToV11), new(migration.MigrationV11ToV12)}
-
-		err = migration.Upgrade(ms, batch)
-		if err != nil {
-			l.logger.Error(err)
-		}
-		return err
-	})
-}
-
-func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {
-	data, err := hex.DecodeString(verifieddata)
-	if err != nil {
-		return nil, err
-	}
-	verifiedMap := make(map[types.Hash]int)
-	if err := json.Unmarshal(data, &verifiedMap); err != nil {
-		return nil, err
-	}
-	return verifiedMap, nil
 }
 
 func (l *Ledger) DBStore() storage.Store {
@@ -247,24 +290,24 @@ func getVersionKey() []byte {
 	return []byte{byte(storage.KeyPrefixVersion)}
 }
 
-func setVersion(version int64, batch storage.Batch) error {
+func (l *Ledger) setVersion(version int64) error {
 	key := getVersionKey()
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutVarint(buf, version)
-	return batch.Put(key, buf[:n])
+	return l.store.Put(key, buf[:n])
 }
 
-func getVersion(batch storage.Batch) (int64, error) {
+func (l *Ledger) getVersion() (int64, error) {
 	var i int64
 	key := getVersionKey()
-	val, err := batch.Get(key)
+	val, err := l.store.Get(key)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return 0, ErrVersionNotFound
 		}
 		return i, err
 	}
-	i, _ = binary.Varint(val.([]byte))
+	i, _ = binary.Varint(val)
 	return i, nil
 }
 

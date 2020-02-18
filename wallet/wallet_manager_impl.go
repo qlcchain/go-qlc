@@ -12,13 +12,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
-	"github.com/qlcchain/go-qlc/common/types"
 	"sync"
 
 	"github.com/qlcchain/go-qlc/chain/context"
-
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/storage/db"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 )
@@ -97,7 +96,7 @@ func (ws *WalletStore) NewWalletBySeed(seed, password string) (types.Address, er
 	}
 
 	ids = append(ids, walletId)
-	err = ws.BatchWrite(false, func(batch storage.Batch) error {
+	err = ws.BatchWrite(true, func(batch storage.Batch) error {
 		//add new walletId to ids
 		key := []byte{idPrefixIds}
 		bytes, err := json.Marshal(&ids)
@@ -196,7 +195,7 @@ func (ws *WalletStore) RemoveWallet(id types.Address) error {
 		newId, _ = hex.DecodeString("")
 	}
 
-	return ws.BatchWrite(false, func(batch storage.Batch) error {
+	return ws.BatchWrite(true, func(batch storage.Batch) error {
 		//update ids
 		key := []byte{idPrefixIds}
 		bytes, err := json.Marshal(&ids)

@@ -9,4 +9,5 @@ type Store interface {
 	BlocksCountByType() (map[string]uint64, error)
 
 	Close() error
+	EmptyStore() error
 }

@@ -13,17 +13,19 @@ import (
 type MigrationV1ToV11 struct {
 }
 
-func (m MigrationV1ToV11) Migrate(batch storage.Batch) error {
-	if b, err := checkVersion(m, batch); err == nil && b {
-		fmt.Println("migrate ledger to v11")
-		if err := batch.Drop(nil); err == nil {
-			return updateVersion(m, batch)
+func (m MigrationV1ToV11) Migrate(store storage.Store) error {
+	return store.BatchWrite(true, func(batch storage.Batch) error {
+		if b, err := checkVersion(m, batch); err == nil && b {
+			fmt.Println("migrate ledger to v11")
+			if err := batch.Drop(nil); err == nil {
+				return updateVersion(m, batch)
+			} else {
+				return err
+			}
 		} else {
 			return err
 		}
-	} else {
-		return err
-	}
+	})
 }
 
 func (m MigrationV1ToV11) StartVersion() int {
@@ -37,61 +39,63 @@ func (m MigrationV1ToV11) EndVersion() int {
 type MigrationV11ToV12 struct {
 }
 
-func (m MigrationV11ToV12) Migrate(batch storage.Batch) error {
-	b, err := checkVersion(m, batch)
-	if err != nil {
-		return err
-	}
-	if b {
-		fmt.Println("migrate ledger v11 to v12 ")
-		representMap := make(map[types.Address]*types.Benefit)
-		err = batch.Iterator([]byte{byte(storage.KeyPrefixAccount)}, nil, func(key []byte, val []byte) error {
-			am := new(types.AccountMeta)
-			if err := am.Deserialize(val); err != nil {
-				return err
-			}
-			tm := am.Token(common.ChainToken())
-			if tm != nil {
-				if _, ok := representMap[tm.Representative]; !ok {
-					representMap[tm.Representative] = &types.Benefit{
-						Balance: types.ZeroBalance,
-						Vote:    types.ZeroBalance,
-						Network: types.ZeroBalance,
-						Storage: types.ZeroBalance,
-						Oracle:  types.ZeroBalance,
-						Total:   types.ZeroBalance,
-					}
+func (m MigrationV11ToV12) Migrate(store storage.Store) error {
+	return store.BatchWrite(true, func(batch storage.Batch) error {
+		b, err := checkVersion(m, batch)
+		if err != nil {
+			return err
+		}
+		if b {
+			fmt.Println("migrate ledger v11 to v12 ")
+			representMap := make(map[types.Address]*types.Benefit)
+			err = batch.Iterator([]byte{byte(storage.KeyPrefixAccount)}, nil, func(key []byte, val []byte) error {
+				am := new(types.AccountMeta)
+				if err := am.Deserialize(val); err != nil {
+					return err
 				}
-				representMap[tm.Representative].Balance = representMap[tm.Representative].Balance.Add(am.CoinBalance)
-				representMap[tm.Representative].Vote = representMap[tm.Representative].Vote.Add(am.CoinVote)
-				representMap[tm.Representative].Network = representMap[tm.Representative].Network.Add(am.CoinNetwork)
-				representMap[tm.Representative].Total = representMap[tm.Representative].Total.Add(am.VoteWeight())
-			}
-			return nil
-		})
-		if err := batch.Drop([]byte{byte(storage.KeyPrefixRepresentation)}); err != nil {
-			return err
-		}
-		for address, benefit := range representMap {
-			key, err := storage.GetKeyOfParts(storage.KeyPrefixRepresentation, address)
-			if err != nil {
+				tm := am.Token(common.ChainToken())
+				if tm != nil {
+					if _, ok := representMap[tm.Representative]; !ok {
+						representMap[tm.Representative] = &types.Benefit{
+							Balance: types.ZeroBalance,
+							Vote:    types.ZeroBalance,
+							Network: types.ZeroBalance,
+							Storage: types.ZeroBalance,
+							Oracle:  types.ZeroBalance,
+							Total:   types.ZeroBalance,
+						}
+					}
+					representMap[tm.Representative].Balance = representMap[tm.Representative].Balance.Add(am.CoinBalance)
+					representMap[tm.Representative].Vote = representMap[tm.Representative].Vote.Add(am.CoinVote)
+					representMap[tm.Representative].Network = representMap[tm.Representative].Network.Add(am.CoinNetwork)
+					representMap[tm.Representative].Total = representMap[tm.Representative].Total.Add(am.VoteWeight())
+				}
+				return nil
+			})
+			if err := batch.Drop([]byte{byte(storage.KeyPrefixRepresentation)}); err != nil {
 				return err
 			}
-			val, err := benefit.MarshalMsg(nil)
-			if err != nil {
+			for address, benefit := range representMap {
+				key, err := storage.GetKeyOfParts(storage.KeyPrefixRepresentation, address)
+				if err != nil {
+					return err
+				}
+				val, err := benefit.MarshalMsg(nil)
+				if err != nil {
+					return err
+				}
+				if err := batch.Put(key, val); err != nil {
+					return err
+				}
+			}
+			// delete cache
+			if err := batch.Drop([]byte{byte(storage.KeyPrefixRepresentationCache)}); err != nil {
 				return err
 			}
-			if err := batch.Put(key, val); err != nil {
-				return err
-			}
+			return updateVersion(m, batch)
 		}
-		// delete cache
-		if err := batch.Drop([]byte{byte(storage.KeyPrefixRepresentationCache)}); err != nil {
-			return err
-		}
-		return updateVersion(m, batch)
-	}
-	return nil
+		return nil
+	})
 }
 
 func (m MigrationV11ToV12) StartVersion() int {

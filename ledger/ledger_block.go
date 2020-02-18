@@ -95,10 +95,18 @@ func (l *Ledger) GetRandomStateBlock() (*types.StateBlock, error) {
 // Block Confirmed
 
 func (l *Ledger) AddStateBlock(block *types.StateBlock) error {
-	cache := l.cache.GetCache()
-	if err := l.UpdateStateBlock(block, cache); err != nil {
+	err := l.cache.BatchUpdate(func(c *Cache) error {
+		if err := l.UpdateStateBlock(block, c); err != nil {
+			l.logger.Error(err)
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		return err
 	}
+
 	l.logger.Debug("publish addRelation,", block.GetHash())
 	l.EB.Publish(topic.EventAddRelation, block)
 	return nil

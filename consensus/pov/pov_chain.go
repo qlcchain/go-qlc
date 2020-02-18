@@ -3,30 +3,25 @@ package pov
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
 	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/statedb"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
-	"go.uber.org/atomic"
-
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"github.com/bluele/gcache"
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
+	"go.uber.org/atomic"
+	"go.uber.org/zap"
 )
 
 const (
@@ -375,7 +370,7 @@ func (bc *PovBlockChain) ResetChainState() error {
 func (bc *PovBlockChain) resetWithGenesisBlock(genesis *types.PovBlock) error {
 	bc.logger.Infof("reset with genesis block %d/%s", genesis.GetHeight(), genesis.GetHash())
 
-	err := bc.getLedger().DBStore().BatchWrite(false, func(batch storage.Batch) error {
+	err := bc.getLedger().DBStore().BatchWrite(true, func(batch storage.Batch) error {
 		var dbErr error
 
 		td := bc.CalcTotalDifficulty(types.NewPovTD(), &genesis.Header)
@@ -701,7 +696,7 @@ func (bc *PovBlockChain) InsertBlock(block *types.PovBlock, gsdb *statedb.PovGlo
 	var forkBlock *types.PovBlock
 	startTm := time.Now()
 
-	err := bc.getLedger().DBStore().BatchWrite(false, func(batch storage.Batch) error {
+	err := bc.getLedger().DBStore().BatchWrite(true, func(batch storage.Batch) error {
 		var dbErr error
 		chainState, forkBlock, dbErr = bc.insertBlock(batch, block, gsdb)
 		return dbErr

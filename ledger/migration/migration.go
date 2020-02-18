@@ -14,7 +14,7 @@ import (
 )
 
 type Migration interface {
-	Migrate(batch storage.Batch) error
+	Migrate(store storage.Store) error
 	StartVersion() int
 	EndVersion() int
 }
@@ -41,10 +41,10 @@ func (m Migrations) Swap(i, j int) {
 	m[i], m[j] = m[j], m[i]
 }
 
-func Upgrade(migrations []Migration, batch storage.Batch) error {
+func Upgrade(migrations []Migration, store storage.Store) error {
 	sort.Sort(Migrations(migrations))
 	for _, m := range migrations {
-		err := m.Migrate(batch)
+		err := m.Migrate(store)
 		if err != nil {
 			return err
 		}
