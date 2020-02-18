@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/yireyun/go-queue"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -16,6 +14,7 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"github.com/yireyun/go-queue"
 )
 
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
@@ -825,6 +824,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 	extra := block.GetExtra()
 	if !extra.IsZero() {
 		lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
+		fmt.Println("=================rootHash is ", extra.String())
 		t := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
 		iterator := t.NewIterator(nil)
 		vmContext := vmstore.NewVMContext(lv.l)
@@ -833,6 +833,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 				fmt.Println("==================iterator.Next not found ")
 				break
 			} else {
+				fmt.Println("===========vm key ", key)
 				if contractData, err := vmContext.GetStorageByKey(key); err == nil {
 					if !bytes.Equal(contractData, value) {
 						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)

@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	rpc "github.com/qlcchain/jsonrpc2"
-
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -18,6 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/mock"
+	rpc "github.com/qlcchain/jsonrpc2"
 )
 
 func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerAPI) {
@@ -95,18 +94,17 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 }
 
 func TestLedgerApi_Subscription(t *testing.T) {
-	t.Skip()
 	teardownTestCase, _, ledgerApi := setupTestCaseLedger(t)
 	defer teardownTestCase(t)
 
 	addr := mock.Address()
 	go func() {
 		for {
-			time.Sleep(1 * time.Second)
 			blk := mock.StateBlock()
 			blk.Address = addr
 			blk.Type = types.Send
 			ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
+			time.Sleep(3 * time.Second)
 		}
 	}()
 	ctx := rpc.SubscriptionContext()

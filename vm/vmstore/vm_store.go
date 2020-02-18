@@ -9,14 +9,14 @@ package vmstore
 
 import (
 	"errors"
+	"fmt"
+
 	"github.com/qlcchain/go-qlc/common/storage"
-
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
+	"go.uber.org/zap"
 )
 
 type ContractStore interface {
@@ -217,7 +217,7 @@ func (v *VMContext) set(key []byte, value []byte, batch ...storage.Batch) (err e
 			v.Ledger.DBStore().PutBatch(b)
 		}()
 	}
-
+	fmt.Println("=================vm set key: ", key)
 	return b.Put(key, value)
 }
 
@@ -231,6 +231,7 @@ func (v *VMContext) remove(key []byte, batch ...storage.Batch) (err error) {
 			v.Ledger.DBStore().PutBatch(b)
 		}()
 	}
+	fmt.Println("=============delete vm key ", key)
 	return b.Delete(key)
 }
 

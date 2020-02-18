@@ -5,13 +5,12 @@ import (
 	"sync"
 
 	"github.com/jmoiron/sqlx"
-	"go.uber.org/zap"
-
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/storage/relationdb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type Relation struct {
@@ -119,7 +118,7 @@ func (r *Relation) process() {
 	for {
 		select {
 		case <-r.ctx.Done():
-			r.logger.Info("sqlite ctx done")
+			r.logger.Debug("sqlite ctx done")
 			return
 		case obj := <-r.addChan:
 			addObjs = append(addObjs, obj)

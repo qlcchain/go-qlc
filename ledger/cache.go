@@ -2,16 +2,16 @@ package ledger
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/bluele/gcache"
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type MemoryCache struct {
@@ -235,14 +235,17 @@ func (c *Cache) flush(l *Ledger) error {
 	batch := l.store.Batch(false)
 	for k, v := range c.cache.GetALL(false) {
 		if err := c.dumpToLevelDb(k, v, batch); err != nil {
+			c.logger.Error(err)
 			batch.Cancel()
 			return err
 		}
 		if err := c.dumpToRelation(k, v, l); err != nil {
+			c.logger.Error(err)
 			return err
 		}
 	}
 	if err := l.store.PutBatch(batch); err != nil {
+		c.logger.Error(err)
 		return err
 	}
 	c.purge()
@@ -251,7 +254,7 @@ func (c *Cache) flush(l *Ledger) error {
 
 func (c *Cache) dumpToLevelDb(k, v interface{}, b storage.Batch) error {
 	key := originalKey(k.(string))
-	if v != nil {
+	if !isDeleteKey(v) {
 		switch o := v.(type) {
 		case types.Serialize:
 			val, err := o.Serialize()
@@ -269,7 +272,7 @@ func (c *Cache) dumpToLevelDb(k, v interface{}, b storage.Batch) error {
 			}
 		default:
 			c.logger.Error("missing method serialize:  ", key[:1])
-			return errors.New("unknown type")
+			return fmt.Errorf("unknown type: %s", key[:1])
 		}
 	} else {
 		if err := b.Delete(key); err != nil {
@@ -281,7 +284,7 @@ func (c *Cache) dumpToLevelDb(k, v interface{}, b storage.Batch) error {
 
 func (c *Cache) dumpToRelation(k, v interface{}, l *Ledger) error {
 	if obj, ok := v.(types.Schema); ok {
-		if v != nil {
+		if !isDeleteKey(v) {
 			l.relation.Add(obj)
 		} else {
 			l.relation.Delete(obj)
@@ -320,7 +323,7 @@ func (c *Cache) Get(key []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if r == nil {
+	if isDeleteKey(r) {
 		return nil, ErrKeyDeleted
 	}
 	return r, nil
@@ -335,7 +338,7 @@ func (c *Cache) Cancel() {
 }
 
 func (c *Cache) Delete(key []byte) error {
-	return c.cache.Set(transformKey(key), nil)
+	return c.cache.Set(transformKey(key), deleteKeyTag)
 }
 
 func (b *Cache) Drop(prefix []byte) error {
@@ -363,6 +366,30 @@ func NewrCache() *rCache {
 		accountPending: gcache.New(cacheLimit).LRU().Build(),
 	}
 }
+
+func isDeleteKey(v interface{}) bool {
+	if _, ok := v.(*deleteKey); ok {
+		return true
+	}
+	return false
+}
+
+type deleteKey struct {
+}
+
+var deleteKeyTag = new(deleteKey)
+
+//func isDeleteKey(v interface{}) bool {
+//	if v == nil {
+//		return true
+//	} else {
+//		return false
+//	}
+//}
+//
+//type deleteKey struct {
+//}
+//var deleteKeyTag []byte = nil
 
 var ErrKeyDeleted = errors.New("key is deleted")
 var ErrKeyNotInCache = errors.New("key not in cache")

@@ -11,11 +11,10 @@ import (
 	"bytes"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 const (
@@ -81,6 +80,7 @@ func (trie *Trie) saveNodeToDb(b storage.Batch, node *TrieNode) error {
 	} else {
 		h := node.Hash()
 		k := encodeKey(h[:])
+		fmt.Println("===========trie key: ", k)
 		err := b.Put(k, data)
 		//trie.log.Debugf("save %s, s%==>%s", h.String(), hex.EncodeToString(k), node.String())
 		if err != nil {
@@ -212,7 +212,9 @@ func (trie *Trie) Save(batch ...storage.Batch) (fn func(), err error) {
 	} else {
 		b = trie.db.Batch(true)
 		defer func() {
-			trie.db.PutBatch(b)
+			if err := trie.db.PutBatch(b); err != nil {
+				trie.log.Error(err)
+			}
 		}()
 	}
 	err = trie.traverseSave(b, trie.Root)
@@ -512,6 +514,7 @@ func (trie *Trie) removeNodeFromDb(batch storage.Batch, node *TrieNode) error {
 	h := node.Hash()
 	k := encodeKey(h[:])
 
+	fmt.Println("=========delete trie key ", k)
 	if err := batch.Delete(k); err != nil {
 		return err
 	}

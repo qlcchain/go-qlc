@@ -1228,7 +1228,6 @@ func (l *Ledger) HasPovBlock(height uint64, hash types.Hash, batch ...storage.Ba
 	}
 
 	if !l.HasPovBody(height, hash, batch...) {
-		fmt.Println("=======================")
 		return false
 	}
 

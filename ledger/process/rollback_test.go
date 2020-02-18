@@ -130,7 +130,6 @@ func TestLedgerVerifier_BlockCacheCheck(t *testing.T) {
 }
 
 func TestLedger_Rollback_ContractData(t *testing.T) {
-	t.Skip()
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 
@@ -145,11 +144,14 @@ func TestLedger_Rollback_ContractData(t *testing.T) {
 			t.Fatal(p, err)
 		}
 	}
+	time.Sleep(2 * time.Second)
+
 	nodeCount := nodesCount(lv.l.DBStore(), bs[2].GetExtra())
-	t.Log(nodeCount)
+	if nodeCount == 0 {
+		t.Fatal("failed to add nodes", nodeCount)
+	}
 
 	time.Sleep(1 * time.Second)
-
 	c, err := l.CountStateBlocks()
 	if err != nil {
 		t.Fatal(err)
@@ -160,31 +162,27 @@ func TestLedger_Rollback_ContractData(t *testing.T) {
 	fmt.Println("block count === ", c)
 
 	nodeCount = nodesCount(lv.l.DBStore(), bs[2].GetExtra())
-	t.Log(nodeCount)
+	if nodeCount == 0 {
+		t.Fatal("failed to add nodes", nodeCount)
+	}
+	fmt.Println(" node count ", nodeCount)
 
 	if err := lv.Rollback(bs[2].GetHash()); err != nil {
 		t.Fatal(err)
 	}
 
-	extra := bs[2].GetExtra()
-	tr := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
-	iterator := tr.NewIterator(nil)
-	counter := 0
-	for {
-		if _, _, ok := iterator.Next(); !ok {
-			break
-		} else {
-			counter++
-		}
-	}
-	if counter > 0 {
-		t.Fatal("failed to remove nodes", counter)
+	time.Sleep(2 * time.Second)
+	nodeCount = nodesCount(lv.l.DBStore(), bs[2].GetExtra())
+	t.Log(nodeCount)
+	if nodeCount > 0 {
+		t.Fatal("failed to remove nodes", nodeCount)
 	}
 
 	fmt.Println("rollback again")
 	if p, err := lv.Process(bs[2]); err != nil || p != Progress {
 		t.Fatal(p, err)
 	}
+	time.Sleep(2 * time.Second)
 	if err := lv.Rollback(bs[2].GetHash()); err != nil {
 		t.Fatal(err)
 	}
@@ -197,6 +195,7 @@ func TestLedger_Rollback_ContractData(t *testing.T) {
 }
 
 func nodesCount(db storage.Store, rootHash types.Hash) int {
+	fmt.Println("=================rootHash is ", rootHash.String())
 	tr := trie.NewTrie(db, &rootHash, trie.NewSimpleTrieNodePool())
 	iterator := tr.NewIterator(nil)
 	counter := 0

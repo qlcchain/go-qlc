@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -84,6 +83,9 @@ func TestNewCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(1 * time.Second)
+	if err := l.DeleteStateBlock(blk6.GetHash(), l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
 
 	blk7 := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk7, l.cache.GetCache()); err != nil {
