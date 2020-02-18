@@ -139,7 +139,7 @@ var (
 		}},
 		SignDate:  time.Now().AddDate(0, 0, -5).Unix(),
 		StartDate: time.Now().AddDate(0, 0, -2).Unix(),
-		EndData:   time.Now().AddDate(1, 0, 2).Unix(),
+		EndDate:   time.Now().AddDate(1, 0, 2).Unix(),
 	}
 )
 

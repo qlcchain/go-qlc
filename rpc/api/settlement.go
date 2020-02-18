@@ -10,14 +10,14 @@ package api
 import (
 	"errors"
 	"fmt"
-
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"sort"
 
 	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -573,7 +573,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 
 	ctx := vmstore.NewVMContext(s.l)
 
-	if c, err := cabi.GetSettlementContract(ctx, addr, param); err != nil {
+	if c, err := cabi.FindSettlementContract(ctx, addr, param); err != nil {
 		return nil, err
 	} else {
 		if tm, err := ctx.GetTokenMeta(*addr, common.GasToken()); err != nil {
@@ -732,6 +732,25 @@ func (s *SettlementAPI) GetCDRStatus(addr *types.Address, hash types.Hash) (*cab
 	return cabi.GetCDRStatus(ctx, addr, hash)
 }
 
+func (s *SettlementAPI) GetCDRStatusByDate(addr *types.Address, start, end int64, count int, offset *int) ([]*cabi.CDRStatus, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	if status, err := cabi.GetCDRStatusByDate(ctx, addr, start, end); err != nil {
+		return nil, err
+	} else {
+		size := len(status)
+		if size > 0 {
+			sort.Slice(status, func(i, j int) bool {
+				return sortCDRFun(status[i], status[j])
+			})
+		}
+		start, end, err := calculateRange(size, count, offset)
+		if err != nil {
+			return nil, err
+		}
+		return status[start:end], nil
+	}
+}
+
 // GetAllCDRStatus get all cdr status of the specific settlement smart contract
 // @param addr settlement smart contract
 // @param count max settlement contract records size
@@ -743,6 +762,11 @@ func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *
 		return nil, err
 	} else {
 		size := len(status)
+		if size > 0 {
+			sort.Slice(status, func(i, j int) bool {
+				return sortCDRFun(status[i], status[j])
+			})
+		}
 		start, end, err := calculateRange(size, count, offset)
 		if err != nil {
 			return nil, err
@@ -751,30 +775,44 @@ func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *
 	}
 }
 
-// TODO: report data te be confirmed
-type SettlementRecord struct {
-	Address                  types.Address // smart contract address
-	Customer                 string
-	CustomerSr               string
-	Country                  string
-	Operator                 string
-	ServiceId                string
-	MCC                      int
-	MNC                      int
-	Currency                 string
-	UnitPrice                float64
-	SumOfBillableSMSCustomer int64
-	SumOfTOTPrice            float64
+// GetSummaryReport generate summary report by smart contract address and start/end date
+// @param addr settlement contract address
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return summary report if error not exist
+func (s *SettlementAPI) GetSummaryReport(addr *types.Address, start, end int64) (*cabi.SummaryResult, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetSummaryReport(ctx, addr, start, end)
 }
 
-// TODO: query condition to be confirmed, maybe more interface?
-// GenerateReport Generate reports for specified contracts based on start and end date
+// GenerateInvoices Generate reports for specified contracts based on start and end date
 // @param addr user qlcchain address
 // @param start report start date (UTC unix time)
 // @param end report end data (UTC unix time)
 // @return settlement report
-func (s *SettlementAPI) GenerateReport(addr *types.Address, start, end int64) (*[]SettlementRecord, error) {
-	return nil, nil
+func (s *SettlementAPI) GenerateInvoices(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GenerateInvoices(ctx, addr, start, end)
+}
+
+var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {
+	dt1, sender1, _, err := cdr1.ExtractID()
+	if err != nil {
+		return false
+	}
+	dt2, sender2, _, err := cdr2.ExtractID()
+	if err != nil {
+		return false
+	}
+	if dt1 < dt2 {
+		return true
+	}
+
+	if dt1 > dt2 {
+		return false
+	}
+
+	return sender1 < sender2
 }
 
 func (s *SettlementAPI) getContractRewardsBlock(send *types.Hash,

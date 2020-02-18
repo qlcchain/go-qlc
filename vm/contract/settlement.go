@@ -283,7 +283,7 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	contract, err := cabi.GetContracts(ctx, &contractAddress)
+	contract, err := cabi.GetSettlementContract(ctx, &contractAddress)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -292,17 +292,13 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		return nil, nil, fmt.Errorf("%s can not upload CDR data to contract %s", block.Address.String(), contractAddress.String())
 	}
 
-	sr := cabi.SettlementCDR{
-		CDRParam: *param,
-		From:     block.Address,
-	}
 	if storage, err := ctx.GetStorage(contractAddress[:], h[:]); err != nil {
 		if err != vmstore.ErrStorageNotFound {
 			return nil, nil, err
 		} else {
 			// 1st upload data
 			state := &cabi.CDRStatus{
-				Params: []cabi.SettlementCDR{sr},
+				Params: map[string][]cabi.CDRParam{block.Address.String(): {*param}},
 				Status: cabi.SettlementStatusStage1,
 			}
 			if abi, err := state.ToABI(); err != nil {
@@ -317,6 +313,10 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		if state, err := cabi.ParseCDRStatus(storage); err != nil {
 			return nil, nil, err
 		} else {
+			sr := cabi.SettlementCDR{
+				CDRParam: *param,
+				From:     block.Address,
+			}
 			// update contract status
 			if err := state.DoSettlement(sr); err != nil {
 				return nil, nil, err

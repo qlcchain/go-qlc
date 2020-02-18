@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -216,18 +217,6 @@ func (z *TerminateParam) String() string {
 	return util.ToIndentString(z)
 }
 
-//func (z *SignContractParam) Sign(account *types.Account) error {
-//	if z.ConfirmDate <= 0 {
-//		return fmt.Errorf("invalid confirm date[%d]", z.ConfirmDate)
-//	}
-//	h, err := types.HashBytes(z.ContractAddress[:], util.BE_Int2Bytes(z.ConfirmDate))
-//	if err != nil {
-//		return err
-//	}
-//	z.SignatureB = account.Sign(h)
-//	return nil
-//}
-
 //go:generate msgp
 type Contractor struct {
 	Address types.Address `msg:"a,extension" json:"address"`
@@ -279,7 +268,7 @@ type CreateContractParam struct {
 	Services  []ContractService `msg:"s" json:"services"`
 	SignDate  int64             `msg:"t1" json:"signDate"`
 	StartDate int64             `msg:"t3" json:"startDate"`
-	EndData   int64             `msg:"t4" json:"endData"`
+	EndDate   int64             `msg:"t4" json:"endDate"`
 	//SignatureA *types.Signature  `msg:"sa,extension" json:"signatureA"`
 }
 
@@ -314,8 +303,8 @@ func (z *CreateContractParam) Verify() (bool, error) {
 		return false, fmt.Errorf("invalid start date %d", z.StartDate)
 	}
 
-	if z.EndData <= 0 {
-		return false, fmt.Errorf("invalid end date %d", z.EndData)
+	if z.EndDate <= 0 {
+		return false, fmt.Errorf("invalid end date %d", z.EndDate)
 	}
 
 	return true, nil
@@ -663,8 +652,8 @@ type SettlementCDR struct {
 
 //go:generate msgp
 type CDRStatus struct {
-	Params []SettlementCDR  `msg:"p" json:"params"`
-	Status SettlementStatus `msg:"s" json:"status"`
+	Params map[string][]CDRParam `msg:"p" json:"params"`
+	Status SettlementStatus      `msg:"s" json:"status"`
 }
 
 func (z *CDRStatus) ToABI() ([]byte, error) {
@@ -676,15 +665,89 @@ func (z *CDRStatus) FromABI(data []byte) error {
 	return err
 }
 
+func (z *CDRStatus) ToHash() (types.Hash, error) {
+	if len(z.Params) > 0 {
+		for _, v := range z.Params {
+			if len(v) > 0 {
+				return v[0].ToHash()
+			}
+		}
+		//keys := reflect.ValueOf(z.Params).MapKeys()
+		//return z.Params[keys[0].Interface().(string)][0].ToHash()
+	}
+	return types.ZeroHash, errors.New("no cdr record")
+}
+
+func (z *CDRStatus) State(addr *types.Address) (string, bool) {
+	if len(z.Params) > 0 {
+		if params, ok := z.Params[addr.String()]; ok {
+			switch size := len(params); {
+			case size == 1:
+				return params[0].Sender, params[0].Status()
+			case size > 1:
+				return params[0].Sender, false
+			default:
+				return "", false
+			}
+		}
+	}
+
+	return "", false
+}
+
+func (z *CDRStatus) IsInCycle(start, end int64) bool {
+	if len(z.Params) == 0 {
+		return false
+	}
+
+	if start != 0 && end != 0 {
+		i := 0
+		for _, params := range z.Params {
+			if len(params) > 0 {
+				param := params[0]
+				if param.SmsDt >= start && param.SmsDt <= end {
+					return true
+				}
+			}
+			i++
+		}
+		if i == len(z.Params) {
+			return false
+		}
+	}
+	return true
+}
+
+func (z *CDRStatus) ExtractID() (dt int64, sender, destination string, err error) {
+	if len(z.Params) > 0 {
+		for _, v := range z.Params {
+			if len(v) >= 1 {
+				return v[0].SmsDt, v[0].Sender, v[0].Destination, nil
+			}
+		}
+	}
+
+	return 0, "", "", errors.New("can not find any CDR param")
+}
+
 func (z *CDRStatus) String() string {
 	return util.ToIndentString(z)
 }
 
-// TODO:
 // DoSettlement process settlement
 // @param cdr  cdr data
 func (z *CDRStatus) DoSettlement(cdr SettlementCDR) (err error) {
-	z.Params = append(z.Params, cdr)
+	if z.Params == nil {
+		z.Params = make(map[string][]CDRParam, 0)
+	}
+
+	from := cdr.From.String()
+	if params, ok := z.Params[from]; ok {
+		params = append(params, cdr.CDRParam)
+		z.Params[from] = params
+	} else {
+		z.Params[from] = []CDRParam{cdr.CDRParam}
+	}
 
 	switch size := len(z.Params); {
 	//case size == 0:
@@ -693,16 +756,28 @@ func (z *CDRStatus) DoSettlement(cdr SettlementCDR) (err error) {
 	case size == 1:
 		z.Status = SettlementStatusStage1
 		break
-	case size >= 2:
+	case size == 2:
 		z.Status = SettlementStatusSuccess
 		b := true
 		// combine all status
-		for _, param := range z.Params {
-			b = b && param.Status()
+		for _, params := range z.Params {
+			//for _, param := range params {
+			//	b = b && param.Status()
+			//}
+			switch l := len(params); {
+			case l > 1:
+				z.Status = SettlementStatusDuplicate
+				return
+			case l == 1:
+				b = b && params[0].Status()
+				break
+			}
 		}
 		if !b {
 			z.Status = SettlementStatusFailure
 		}
+	case size > 2:
+		err = fmt.Errorf("invalid params size %d", size)
 	}
 	return err
 }
@@ -780,7 +855,7 @@ func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
 	if value, err := ctx.GetStorage(types.SettlementAddress[:], addr[:]); err == nil {
 		if param, err := ParseContractParam(value); err == nil {
 			unix := common.TimeNow().Unix()
-			return param.Status == ContractStatusActived && unix >= param.StartDate && unix <= param.EndData
+			return param.Status == ContractStatusActived && unix >= param.StartDate && unix <= param.EndDate
 		}
 	}
 	return false
@@ -790,7 +865,7 @@ func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
 // @param addr settlement contract address
 // @param CDR data hash
 func GetCDRStatus(ctx *vmstore.VMContext, addr *types.Address, hash types.Hash) (*CDRStatus, error) {
-	logger := log.NewLogger("GetContracts")
+	logger := log.NewLogger("GetCDRStatus")
 	defer func() {
 		_ = logger.Sync()
 	}()
@@ -810,33 +885,12 @@ func GetCDRStatus(ctx *vmstore.VMContext, addr *types.Address, hash types.Hash) 
 // GetAllCDRStatus get all CDR records of the specific settlement contract
 // @param addr settlement smart contract
 func GetAllCDRStatus(ctx *vmstore.VMContext, addr *types.Address) ([]*CDRStatus, error) {
-	logger := log.NewLogger("GetAllCDRStatus")
-	defer func() {
-		_ = logger.Sync()
-	}()
-
-	var result []*CDRStatus
-
-	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
-		if len(key) == keySize && len(value) > 0 {
-			status := &CDRStatus{}
-			if err := status.FromABI(value); err != nil {
-				logger.Error(err)
-			} else {
-				result = append(result, status)
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return GetCDRStatusByDate(ctx, addr, 0, 0)
 }
 
-//GetSettlementContract query settlement contract by user address and CDR data
-func GetSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *CDRParam) (*ContractParam, error) {
-	if contracts, err := queryContractParamByAddress(ctx, "GetSettlementContract", func(cp *ContractParam) bool {
+//FindSettlementContract query settlement contract by user address and CDR data
+func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *CDRParam) (*ContractParam, error) {
+	if contracts, err := queryContractParamByAddress(ctx, "FindSettlementContract", func(cp *ContractParam) bool {
 		if cp.PartyA.Address == *addr {
 			return len(param.NextStop) > 0 && cp.IsNextStop(param.NextStop)
 		} else if cp.PartyB.Address == *addr {
@@ -857,10 +911,10 @@ func GetSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *C
 	}
 }
 
-// GetContracts
+// GetSettlementContract
 // @param addr smart contract address
-func GetContracts(ctx *vmstore.VMContext, addr *types.Address) (*ContractParam, error) {
-	logger := log.NewLogger("GetContracts")
+func GetSettlementContract(ctx *vmstore.VMContext, addr *types.Address) (*ContractParam, error) {
+	logger := log.NewLogger("GetSettlementContract")
 	defer func() {
 		_ = logger.Sync()
 	}()
@@ -902,6 +956,271 @@ func GetContractsIDByAddressAsPartyB(ctx *vmstore.VMContext, addr *types.Address
 	return queryContractParamByAddress(ctx, "GetContractsIDByAddressAsPartyB", func(cp *ContractParam) bool {
 		return cp.PartyB.Address == *addr
 	})
+}
+
+type SummaryRecord struct {
+	Total   uint64  `json:"total"`
+	Success uint64  `json:"success"`
+	Fail    uint64  `json:"fail"`
+	Result  float64 `json:"result"`
+}
+
+func (s *SummaryRecord) DoCalculate() *SummaryRecord {
+	s.Total = s.Fail + s.Success
+
+	if s.Total > 0 {
+		s.Result = float64(s.Success) / float64(s.Total)
+	}
+
+	return s
+}
+
+func (s *SummaryRecord) String() string {
+	return util.ToIndentString(s)
+}
+
+type CompareRecord struct {
+	PartyA *SummaryRecord `json:"partyA"`
+	PartyB *SummaryRecord `json:"partyB"`
+}
+
+type SummaryResult struct {
+	Contract *ContractParam            `json:"contract"`
+	Records  map[string]*CompareRecord `json:"records"`
+	PartyA   *SummaryRecord            `json:"partyA"`
+	PartyB   *SummaryRecord            `json:"partyB"`
+}
+
+func NewSummaryResult() *SummaryResult {
+	return &SummaryResult{
+		Records: make(map[string]*CompareRecord, 0),
+		PartyA:  &SummaryRecord{},
+		PartyB:  &SummaryRecord{},
+	}
+}
+
+func (s *SummaryResult) IncreaseSuccess(name string, isPartyA bool) {
+	if _, ok := s.Records[name]; !ok {
+		s.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
+	}
+
+	if isPartyA {
+		s.Records[name].PartyA.Success += 1
+	} else {
+		s.Records[name].PartyB.Success += 1
+	}
+}
+
+func (s *SummaryResult) IncreasePartyASuccess() {
+	s.PartyA.Success += 1
+}
+
+func (s *SummaryResult) IncreasePartyAFail() {
+	s.PartyA.Fail += 1
+}
+func (s *SummaryResult) IncreasePartyBSuccess() {
+	s.PartyB.Success += 1
+}
+
+func (s *SummaryResult) IncreasePartyBFail() {
+	s.PartyB.Fail += 1
+}
+
+func (s *SummaryResult) IncreaseFail(name string, isPartyA bool) {
+	if _, ok := s.Records[name]; !ok {
+		s.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
+	}
+
+	if isPartyA {
+		s.Records[name].PartyA.Fail += 1
+	} else {
+		s.Records[name].PartyB.Fail += 1
+	}
+}
+
+func (s *SummaryResult) DoCalculate() {
+	for k := range s.Records {
+		s.Records[k].PartyA.DoCalculate()
+		s.Records[k].PartyB.DoCalculate()
+	}
+	s.PartyA.DoCalculate()
+	s.PartyB.DoCalculate()
+}
+
+func (s *SummaryResult) String() string {
+	return util.ToIndentString(s)
+}
+
+// GetSummaryReport
+func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end int64) (*SummaryResult, error) {
+	records, err := GetCDRStatusByDate(ctx, addr, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := GetSettlementContract(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	result := NewSummaryResult()
+	result.Contract = c
+
+	partyA := c.PartyA.Address
+	partyB := c.PartyB.Address
+
+	for _, status := range records {
+		if s, b := status.State(&partyA); b {
+			result.IncreasePartyASuccess()
+			result.IncreaseSuccess(s, true)
+		} else {
+			result.IncreasePartyAFail()
+			if s != "" {
+				result.IncreaseSuccess(s, true)
+			}
+		}
+		if s, b := status.State(&partyB); b {
+			result.IncreasePartyBSuccess()
+			result.IncreaseSuccess(s, false)
+		} else {
+			result.IncreasePartyBFail()
+			if s != "" {
+				result.IncreaseSuccess(s, false)
+			}
+		}
+	}
+
+	result.DoCalculate()
+
+	return result, nil
+}
+
+// GetCDRStatusByDate
+func GetCDRStatusByDate(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*CDRStatus, error) {
+	logger := log.NewLogger("GetCDRStatusByDate")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	var result []*CDRStatus
+
+	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+		if len(key) == keySize && len(value) > 0 {
+			status := &CDRStatus{}
+			if err := status.FromABI(value); err != nil {
+				logger.Error(err)
+			} else {
+				if status.IsInCycle(start, end) {
+					result = append(result, status)
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+type InvoiceRecord struct {
+	Address                  types.Address `json:"contractAddress"`
+	StartDate                int64         `json:"startDate"`
+	EndDate                  int64         `json:"endDate"`
+	Customer                 string        `json:"customer"`
+	CustomerSr               string        `json:"customerSr"`
+	Country                  string        `json:"country"`
+	Operator                 string        `json:"operator"`
+	ServiceId                string        `json:"serviceId"`
+	MCC                      uint64        `json:"mcc"`
+	MNC                      uint64        `json:"mnc"`
+	Currency                 string        `json:"currency"`
+	UnitPrice                float64       `json:"unitPrice"`
+	SumOfBillableSMSCustomer uint64        `json:"sumOfBillableSMSCustomer"`
+	SumOfTOTPrice            float64       `json:"sumOfTOTPrice"`
+}
+
+// GenerateInvoices
+// @param addr user qlcchain address
+func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
+	logger := log.NewLogger("GenerateInvoices")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	contracts, err := GetContractsIDByAddressAsPartyA(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	var result []*InvoiceRecord
+	for _, c := range contracts {
+		contractAddr, err := c.Address()
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+		if IsContractAvailable(ctx, &contractAddr) {
+			cache := make(map[string]int, 0)
+			if cdrs, err := GetCDRStatusByDate(ctx, &contractAddr, start, end); err == nil {
+				if len(cdrs) == 0 {
+					continue
+				}
+
+				for _, cdr := range cdrs {
+					if cdr.Status == SettlementStatusSuccess {
+						if _, sender, _, err := cdr.ExtractID(); err == nil {
+							if _, ok := cache[sender]; ok {
+								cache[sender] += 1
+							} else {
+								cache[sender] = 1
+							}
+						}
+					}
+				}
+			} else {
+				logger.Error(err)
+			}
+
+			// TODO: how to match service???
+			service := c.Services[0]
+			for k, v := range cache {
+				if v > 0 {
+					invoice := &InvoiceRecord{
+						Address:                  contractAddr,
+						StartDate:                c.StartDate,
+						EndDate:                  c.EndDate,
+						Customer:                 k,
+						CustomerSr:               "",
+						Country:                  "",
+						Operator:                 c.PartyB.Name,
+						ServiceId:                service.ServiceId,
+						MCC:                      service.Mcc,
+						MNC:                      service.Mnc,
+						Currency:                 service.Currency,
+						UnitPrice:                service.UnitPrice,
+						SumOfBillableSMSCustomer: uint64(v),
+						SumOfTOTPrice:            service.UnitPrice * float64(v),
+					}
+					result = append(result, invoice)
+				}
+			}
+		}
+	}
+
+	if len(result) > 0 {
+		sort.Slice(result, func(i, j int) bool {
+			r1 := result[i]
+			r2 := result[j]
+			if r1.StartDate < r2.EndDate {
+				return true
+			}
+			if r1.StartDate > r2.EndDate {
+				return false
+			}
+			return r1.EndDate < r2.EndDate
+		})
+	}
+
+	return result, nil
 }
 
 func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) ([]*ContractParam, error) {

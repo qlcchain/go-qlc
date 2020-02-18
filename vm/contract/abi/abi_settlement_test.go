@@ -9,16 +9,19 @@ package abi
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"math/big"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/crypto/random"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/mock"
@@ -52,7 +55,7 @@ var (
 		}},
 		SignDate:  time.Now().AddDate(0, 0, -5).Unix(),
 		StartDate: time.Now().AddDate(0, 0, -2).Unix(),
-		EndData:   time.Now().AddDate(1, 0, 2).Unix(),
+		EndDate:   time.Now().AddDate(1, 0, 2).Unix(),
 	}
 
 	cdrParam = CDRParam{
@@ -257,17 +260,11 @@ func TestCDRStatus(t *testing.T) {
 	param2 := param1
 	param2.Sender = "PCCWG"
 
-	a1 := mock.Address()
-	a2 := mock.Address()
+	a1 := mock.Address().String()
+	a2 := mock.Address().String()
 	s := CDRStatus{
-		Params: []SettlementCDR{{
-			CDRParam: param1,
-			From:     a1,
-		}, {
-			CDRParam: param2,
-			From:     a2,
-		}},
-		Status: SettlementStatusSuccess,
+		Params: map[string][]CDRParam{a1: {param1}, a2: {param2}},
+		Status: 0,
 	}
 
 	if data, err := s.ToABI(); err != nil {
@@ -280,10 +277,10 @@ func TestCDRStatus(t *testing.T) {
 			if len(s1.Params) != 2 {
 				t.Fatalf("invalid param size, exp: 2, act:%d", len(s1.Params))
 			}
-			if !reflect.DeepEqual(param1, s1.Params[0].CDRParam) {
-				t.Fatalf("invalid csl data, exp: %s, act: %s", util.ToIndentString(param1), util.ToIndentString(s1.Params[0]))
+			if !reflect.DeepEqual(param1, s1.Params[a1][0]) {
+				t.Fatalf("invalid csl data, exp: %s, act: %s", util.ToIndentString(param1), util.ToIndentString(s1.Params[a1][0]))
 			}
-			if !reflect.DeepEqual(param2, s1.Params[1].CDRParam) {
+			if !reflect.DeepEqual(param2, s1.Params[a2][0]) {
 				t.Fatal("invalid pccwg data")
 			}
 			t.Log(s1.String())
@@ -650,10 +647,7 @@ func TestCDRParam_Verify(t *testing.T) {
 
 func TestParseCDRStatus(t *testing.T) {
 	status := &CDRStatus{
-		Params: []SettlementCDR{{
-			CDRParam: cdrParam,
-			From:     mock.Address(),
-		}},
+		Params: map[string][]CDRParam{mock.Address().String(): {cdrParam}},
 		Status: SettlementStatusStage1,
 	}
 
@@ -706,7 +700,7 @@ func TestGetContracts(t *testing.T) {
 		if addr, err := d.Address(); err != nil {
 			t.Fatal(err)
 		} else {
-			if contract, err := GetContracts(ctx, &addr); err != nil {
+			if contract, err := GetSettlementContract(ctx, &addr); err != nil {
 				t.Fatal(err)
 			} else {
 				if !reflect.DeepEqual(contract, d) {
@@ -718,8 +712,11 @@ func TestGetContracts(t *testing.T) {
 }
 
 func TestCDRStatus_DoSettlement(t *testing.T) {
+	addr1 := mock.Address()
+	smsDt := time.Now().Unix()
+
 	type fields struct {
-		Params []SettlementCDR
+		Params map[string][]CDRParam
 		Status SettlementStatus
 	}
 
@@ -737,7 +734,7 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 		{
 			name: "1 records",
 			fields: fields{
-				Params: []SettlementCDR{},
+				Params: nil,
 				Status: SettlementStatusStage1,
 			},
 			args: args{
@@ -759,8 +756,8 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 		{
 			name: "2 records",
 			fields: fields{
-				Params: []SettlementCDR{{
-					CDRParam: CDRParam{
+				Params: map[string][]CDRParam{mock.Address().String(): {
+					{
 						Index:       1,
 						SmsDt:       time.Now().Unix(),
 						Sender:      "PCCWG",
@@ -776,7 +773,6 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 						SendingStatus: SendingStatusSent,
 						DlrStatus:     DLRStatusDelivered,
 					},
-					From: mock.Address(),
 				}},
 				Status: 0,
 			},
@@ -796,10 +792,10 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 			},
 			wantErr: false,
 		}, {
-			name: "2 records",
+			name: "2 records failed",
 			fields: fields{
-				Params: []SettlementCDR{{
-					CDRParam: CDRParam{
+				Params: map[string][]CDRParam{mock.Address().String(): {
+					{
 						Index:       1,
 						SmsDt:       time.Now().Unix(),
 						Sender:      "PCCWG",
@@ -813,11 +809,10 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 						//CustomerName:  "Tencent",
 						//CustomerID:    "11668",
 						SendingStatus: SendingStatusSent,
-						DlrStatus:     DLRStatusUndelivered,
+						DlrStatus:     DLRStatusRejected,
 					},
-					From: mock.Address(),
 				}},
-				Status: SettlementStatusFailure,
+				Status: 0,
 			},
 			args: args{
 				cdr: SettlementCDR{
@@ -827,11 +822,106 @@ func TestCDRStatus_DoSettlement(t *testing.T) {
 						Sender:        "HKTCSL",
 						Destination:   "85257***343",
 						SendingStatus: SendingStatusSent,
-						DlrStatus:     DLRStatusDelivered,
+						DlrStatus:     DLRStatusRejected,
 					},
 					From: mock.Address(),
 				},
 				status: SettlementStatusFailure,
+			},
+			wantErr: false,
+		}, {
+			name: "2 duplicate records of one account",
+			fields: fields{
+				Params: map[string][]CDRParam{addr1.String(): {
+					{
+						Index:       1,
+						SmsDt:       smsDt,
+						Sender:      "PCCWG",
+						Destination: "85257***343",
+						//DstCountry:    "Hong Kong",
+						//DstOperator:   "HKTCSL",
+						//DstMcc:        454,
+						//DstMnc:        0,
+						//SellPrice:     1,
+						//SellCurrency:  "USD",
+						//CustomerName:  "Tencent",
+						//CustomerID:    "11668",
+						SendingStatus: SendingStatusSent,
+						DlrStatus:     DLRStatusUndelivered,
+					},
+				}},
+				Status: SettlementStatusFailure,
+			},
+			args: args{
+				cdr: SettlementCDR{
+					CDRParam: CDRParam{
+						Index:         1,
+						SmsDt:         smsDt,
+						Sender:        "HKTCSL",
+						Destination:   "85257***343",
+						SendingStatus: SendingStatusSent,
+						DlrStatus:     DLRStatusDelivered,
+					},
+					From: addr1,
+				},
+				status: SettlementStatusStage1,
+			},
+			wantErr: false,
+		},
+		{
+			name: "2 duplicate records",
+			fields: fields{
+				Params: map[string][]CDRParam{addr1.String(): {
+					{
+						Index:       1,
+						SmsDt:       smsDt,
+						Sender:      "PCCWG",
+						Destination: "85257***343",
+						//DstCountry:    "Hong Kong",
+						//DstOperator:   "HKTCSL",
+						//DstMcc:        454,
+						//DstMnc:        0,
+						//SellPrice:     1,
+						//SellCurrency:  "USD",
+						//CustomerName:  "Tencent",
+						//CustomerID:    "11668",
+						SendingStatus: SendingStatusSent,
+						DlrStatus:     DLRStatusUndelivered,
+					},
+				}, mock.Address().String(): {
+					{
+						Index:       1,
+						SmsDt:       smsDt,
+						Sender:      "PCCWG",
+						Destination: "85257***343",
+						//DstCountry:    "Hong Kong",
+						//DstOperator:   "HKTCSL",
+						//DstMcc:        454,
+						//DstMnc:        0,
+						//SellPrice:     1,
+						//SellCurrency:  "USD",
+						//CustomerName:  "Tencent",
+						//CustomerID:    "11668",
+						SendingStatus: SendingStatusSent,
+						DlrStatus:     DLRStatusUndelivered,
+					},
+				},
+				},
+				Status: SettlementStatusFailure,
+			},
+			args: args{
+				cdr: SettlementCDR{
+					CDRParam: CDRParam{
+						Index:         1,
+						SmsDt:         smsDt,
+						Sender:        "HKTCSL",
+						Destination:   "85257***343",
+						SendingStatus: SendingStatusSent,
+						DlrStatus:     DLRStatusDelivered,
+					},
+					From: addr1,
+				},
+				status: SettlementStatusDuplicate,
 			},
 			wantErr: false,
 		},
@@ -1079,7 +1169,7 @@ func TestCreateContractParam_Balance(t *testing.T) {
 				Services:  tt.fields.Services,
 				SignDate:  tt.fields.SignDate,
 				StartDate: tt.fields.StartDate,
-				EndData:   tt.fields.EndData,
+				EndDate:   tt.fields.EndData,
 			}
 			got, err := z.Balance()
 			if (err != nil) != tt.wantErr {
@@ -1210,10 +1300,9 @@ func TestCDRParam_String(t *testing.T) {
 
 func TestCDRStatus_FromABI(t *testing.T) {
 	status := CDRStatus{
-		Params: []SettlementCDR{{
-			CDRParam: cdrParam,
-			From:     mock.Address(),
-		}},
+		Params: map[string][]CDRParam{
+			mock.Address().String(): {cdrParam},
+		},
 		Status: SettlementStatusSuccess,
 	}
 
@@ -1234,10 +1323,9 @@ func TestCDRStatus_FromABI(t *testing.T) {
 
 func TestCDRStatus_String(t *testing.T) {
 	status := CDRStatus{
-		Params: []SettlementCDR{{
-			CDRParam: cdrParam,
-			From:     mock.Address(),
-		}},
+		Params: map[string][]CDRParam{
+			mock.Address().String(): {cdrParam},
+		},
 		Status: SettlementStatusSuccess,
 	}
 	s := status.String()
@@ -1408,7 +1496,7 @@ func TestCreateContractParam_ToContractParam(t *testing.T) {
 		Services  []ContractService
 		SignDate  int64
 		StartDate int64
-		EndData   int64
+		EndDate   int64
 	}
 	tests := []struct {
 		name   string
@@ -1424,7 +1512,7 @@ func TestCreateContractParam_ToContractParam(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want: &ContractParam{
 				CreateContractParam: cp,
@@ -1444,7 +1532,7 @@ func TestCreateContractParam_ToContractParam(t *testing.T) {
 				Services:  tt.fields.Services,
 				SignDate:  tt.fields.SignDate,
 				StartDate: tt.fields.StartDate,
-				EndData:   tt.fields.EndData,
+				EndDate:   cp.EndDate,
 			}
 			if got := z.ToContractParam(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ToContractParam() = %v, want %v", got, tt.want)
@@ -1463,7 +1551,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 		Services  []ContractService
 		SignDate  int64
 		StartDate int64
-		EndData   int64
+		EndDate   int64
 	}
 	tests := []struct {
 		name    string
@@ -1480,7 +1568,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    true,
 			wantErr: false,
@@ -1497,7 +1585,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    false,
 			wantErr: true,
@@ -1513,7 +1601,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    false,
 			wantErr: true,
@@ -1529,7 +1617,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    false,
 			wantErr: true,
@@ -1545,7 +1633,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    false,
 			wantErr: true,
@@ -1558,7 +1646,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    false,
 			wantErr: true,
@@ -1571,7 +1659,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  nil,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    false,
 			wantErr: true,
@@ -1584,7 +1672,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  0,
 				StartDate: cp.StartDate,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    false,
 			wantErr: true,
@@ -1597,7 +1685,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: 0,
-				EndData:   cp.EndData,
+				EndDate:   cp.EndDate,
 			},
 			want:    false,
 			wantErr: true,
@@ -1610,7 +1698,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  cp.Services,
 				SignDate:  cp.SignDate,
 				StartDate: cp.StartDate,
-				EndData:   0,
+				EndDate:   0,
 			},
 			want:    false,
 			wantErr: true,
@@ -1625,7 +1713,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 				Services:  tt.fields.Services,
 				SignDate:  tt.fields.SignDate,
 				StartDate: tt.fields.StartDate,
-				EndData:   tt.fields.EndData,
+				EndDate:   tt.fields.EndDate,
 			}
 			got, err := z.Verify()
 			if (err != nil) != tt.wantErr {
@@ -1919,7 +2007,7 @@ func TestGetSettlementContract(t *testing.T) {
 	cdr := cdrParam
 	cdr.NextStop = "HKTCSL"
 
-	if c, err := GetSettlementContract(ctx, &a1, &cdr); err != nil {
+	if c, err := FindSettlementContract(ctx, &a1, &cdr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(c)
@@ -2624,10 +2712,9 @@ func buildCDRStatus() *CDRStatus {
 	cdr1.Index = uint64(i)
 
 	status := &CDRStatus{
-		Params: []SettlementCDR{{
-			CDRParam: cdr1,
-			From:     mock.Address(),
-		}},
+		Params: map[string][]CDRParam{
+			mock.Address().String(): {cdr1},
+		},
 		Status: SettlementStatusSuccess,
 	}
 
@@ -2644,9 +2731,12 @@ func TestGetAllCDRStatus(t *testing.T) {
 	var data []*CDRStatus
 	for i := 0; i < 4; i++ {
 		s := buildCDRStatus()
-		if h, err := s.Params[0].ToHash(); err != nil {
+		if h, err := s.ToHash(); err != nil {
 			t.Fatal(err)
 		} else {
+			if h.IsZero() {
+				t.Fatal("invalid hash")
+			}
 			if abi, err := s.ToABI(); err != nil {
 				t.Fatal(err)
 			} else {
@@ -2657,7 +2747,6 @@ func TestGetAllCDRStatus(t *testing.T) {
 				}
 			}
 		}
-
 	}
 
 	if err := ctx.SaveStorage(); err != nil {
@@ -2693,17 +2782,17 @@ func TestGetAllCDRStatus(t *testing.T) {
 				t.Errorf("GetAllCDRStatus() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			for _, s := range tt.want {
-				i := s.Params[0].Index
-				for _, g := range got {
-					if g.Params[0].Index == i {
-						if !reflect.DeepEqual(g, s) {
-							t.Errorf("GetAllCDRStatus() got = %v, want %v", g, s)
-						}
-						break
-					}
-				}
+			if len(got) != len(data) {
+				t.Errorf("GetAllCDRStatus() got = %d, want %d", len(got), len(data))
 			}
+			//for i, s := range tt.want {
+			//	for k, v := range s.Params {
+			//		g := got[i].Params[k]
+			//		if !reflect.DeepEqual(g, v) {
+			//			t.Errorf("GetAllCDRStatus() got = %v, want %v", g, s)
+			//		}
+			//	}
+			//}
 		})
 	}
 }
@@ -2717,7 +2806,7 @@ func TestGetCDRStatus(t *testing.T) {
 	contractAddr2 := mock.Address()
 
 	s := buildCDRStatus()
-	h, err := s.Params[0].ToHash()
+	h, err := s.ToHash()
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -2786,4 +2875,201 @@ func TestGetCDRStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCDRStatus_IsInCycle(t *testing.T) {
+	param := cdrParam
+	param.SmsDt = 1582001974
+
+	type fields struct {
+		Params map[string][]CDRParam
+		Status SettlementStatus
+	}
+	type args struct {
+		start int64
+		end   int64
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "ok1",
+			fields: fields{
+				Params: map[string][]CDRParam{
+					mock.Address().String(): {cdrParam},
+				},
+				Status: 0,
+			},
+			args: args{
+				start: 0,
+				end:   100,
+			},
+			want: true,
+		}, {
+			name: "ok2",
+			fields: fields{
+				Params: map[string][]CDRParam{
+					mock.Address().String(): {param},
+				},
+				Status: 0,
+			},
+			args: args{
+				start: 1581829174,
+				end:   1582433974,
+			},
+			want: true,
+		}, {
+			name: "ok3",
+			fields: fields{
+				Params: map[string][]CDRParam{
+					mock.Address().String(): {param, param},
+				},
+				Status: 0,
+			},
+			args: args{
+				start: 1581829174,
+				end:   1582433974,
+			},
+			want: true,
+		}, {
+			name: "f1",
+			fields: fields{
+				Params: map[string][]CDRParam{
+					mock.Address().String(): {param},
+				},
+				Status: 0,
+			},
+			args: args{
+				start: 1582433974,
+				end:   1582434974,
+			},
+			want: false,
+		}, {
+			name: "f2",
+			fields: fields{
+				Params: map[string][]CDRParam{
+					mock.Address().String(): {cdrParam, cdrParam},
+				},
+				Status: 0,
+			},
+			args: args{
+				start: 1582433974,
+				end:   1582434974,
+			},
+			want: false,
+		}, {
+			name: "f3",
+			fields: fields{
+				Params: nil,
+				Status: 0,
+			},
+			args: args{
+				start: 1582433974,
+				end:   1582434974,
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CDRStatus{
+				Params: tt.fields.Params,
+				Status: tt.fields.Status,
+			}
+			if got := z.IsInCycle(tt.args.start, tt.args.end); got != tt.want {
+				t.Errorf("IsInCycle() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTerminateParam_Verify(t *testing.T) {
+	type fields struct {
+		ContractAddress types.Address
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				ContractAddress: mock.Address(),
+			},
+			wantErr: false,
+		}, {
+			name: "fail",
+			fields: fields{
+				ContractAddress: types.ZeroAddress,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &TerminateParam{
+				ContractAddress: tt.fields.ContractAddress,
+			}
+			if err := z.Verify(); (err != nil) != tt.wantErr {
+				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSummaryRecord_DoCalculate(t *testing.T) {
+	r := &SummaryRecord{
+		Total:   0,
+		Success: 10,
+		Fail:    2,
+		Result:  0,
+	}
+	r.DoCalculate()
+	if r.Total != 12 {
+		t.Fail()
+	}
+	t.Log(r.String())
+}
+
+func TestNewSummaryResult(t *testing.T) {
+	r := NewSummaryResult()
+
+	for i := 0; i < 10; i++ {
+		r.IncreasePartyASuccess()
+		r.IncreaseSuccess("WeChat", true)
+		r.IncreaseSuccess("Slack", false)
+	}
+	for i := 0; i < 2; i++ {
+		r.IncreasePartyAFail()
+		r.IncreaseFail("WeChat", true)
+		r.IncreaseFail("Slack", true)
+	}
+
+	for i := 0; i < 20; i++ {
+		r.IncreasePartyBSuccess()
+		r.IncreaseSuccess("WeChat", false)
+		r.IncreaseSuccess("Slack", true)
+	}
+
+	for i := 0; i < 3; i++ {
+		r.IncreasePartyBFail()
+		r.IncreaseFail("WeChat", false)
+		r.IncreaseFail("Slack", true)
+	}
+
+	r.DoCalculate()
+	t.Log(r.String())
+}
+
+func Test1(t *testing.T) {
+	s := []int{3, 6, 1, 9}
+	sort.Slice(s, func(i, j int) bool {
+		return s[i] < s[j]
+	})
+
+	fmt.Println(s)
 }
