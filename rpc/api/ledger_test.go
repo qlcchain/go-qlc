@@ -98,13 +98,19 @@ func TestLedgerApi_Subscription(t *testing.T) {
 	defer teardownTestCase(t)
 
 	addr := mock.Address()
+	done := make(chan bool)
 	go func() {
 		for {
-			blk := mock.StateBlock()
-			blk.Address = addr
-			blk.Type = types.Send
-			ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
-			time.Sleep(3 * time.Second)
+			select {
+			case <-done:
+				return
+			default:
+				time.Sleep(1 * time.Second)
+				blk := mock.StateBlock()
+				blk.Address = addr
+				blk.Type = types.Send
+				ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
+			}
 		}
 	}()
 	ctx := rpc.SubscriptionContext()
@@ -134,4 +140,5 @@ func TestLedgerApi_Subscription(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(r)
+	done <- true
 }
