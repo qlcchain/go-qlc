@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -180,14 +179,14 @@ func (l *Ledger) Close() error {
 	lock.Lock()
 	defer lock.Unlock()
 	if _, ok := lcache[l.dir]; ok {
+		fmt.Println("=========ledger closing")
 		l.cancel()
-		if err := l.cache.Close(); err != nil {
-			return err
-		}
-		time.Sleep(1 * time.Second)
+		<-l.cache.closedChan
+		fmt.Println("=============== relation closing")
 		if err := l.relation.Close(); err != nil {
 			return err
 		}
+		fmt.Println("=============== store closing")
 		if err := l.store.Close(); err != nil {
 			return err
 		}
@@ -491,6 +490,10 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 		sb.Work = l.generateWork(sb.Root())
 	}
 	return &sb, nil
+}
+
+func (l *Ledger) Flush() error {
+	return nil
 }
 
 func (l *Ledger) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) {

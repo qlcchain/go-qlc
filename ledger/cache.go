@@ -24,6 +24,8 @@ type MemoryCache struct {
 	lastFlush     time.Time
 	flushInterval time.Duration
 	flushStatue   bool
+	flushChan     chan bool
+	closedChan    chan bool
 	lock          sync.Mutex
 	logger        *zap.SugaredLogger
 }
@@ -38,6 +40,8 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 		lastFlush:     time.Now(),
 		flushInterval: defaultFlushSecs,
 		flushStatue:   false,
+		flushChan:     make(chan bool, 1),
+		closedChan:    make(chan bool),
 		lock:          sync.Mutex{},
 		logger:        log.NewLogger("ledger/dbcache"),
 	}
@@ -46,18 +50,6 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 	}
 	go lc.flushCache()
 	return lc
-}
-
-func (lc *MemoryCache) flushCache() *Cache {
-	ticker := time.NewTicker(defaultFlushSecs)
-	for {
-		select {
-		case <-ticker.C:
-			lc.GetCache()
-		default:
-			time.Sleep(1 * time.Second)
-		}
-	}
 }
 
 // get write cache index
@@ -75,10 +67,7 @@ func (lc *MemoryCache) GetCache() *Cache {
 			}
 			lc.logger.Debug("new write cache index: ", lc.writeIndex)
 			lc.lastFlush = time.Now()
-
-			go func() {
-				lc.flush()
-			}()
+			lc.flushChan <- true
 		}
 		lc.lock.Unlock()
 	}
@@ -97,14 +86,32 @@ func (lc *MemoryCache) needsFlush() bool {
 	return false
 }
 
-func (lc *MemoryCache) flush() {
-	if lc.flushStatue {
-		return
+func (lc *MemoryCache) flushCache() *Cache {
+	ticker := time.NewTicker(defaultFlushSecs)
+	for {
+		select {
+		case <-ticker.C:
+			lc.GetCache()
+		case <-lc.flushChan:
+			lc.flush()
+		case <-lc.l.ctx.Done():
+			fmt.Println("============ctx Done")
+			lc.close()
+			lc.closedChan <- true
+			//default:
+			//	time.Sleep(1 * time.Second)
+		}
 	}
-	lc.flushStatue = true
-	defer func() {
-		lc.flushStatue = false
-	}()
+}
+
+func (lc *MemoryCache) flush() {
+	//if lc.flushStatue {
+	//	return
+	//}
+	//lc.flushStatue = true
+	//defer func() {
+	//	lc.flushStatue = false
+	//}()
 	lc.logger.Debug("flush... ")
 	index := lc.readIndex
 	index = (index + 1) % lc.cacheCount // next read cache index to dump
@@ -117,6 +124,26 @@ func (lc *MemoryCache) flush() {
 		lc.readIndex = index
 		index = (index + 1) % lc.cacheCount // next read cache index to dump
 	}
+}
+
+func (lc *MemoryCache) close() error {
+	fmt.Println("=============== memory cache closing")
+	index := lc.readIndex
+	index = (index + 1) % lc.cacheCount // next read cache index to dump
+	finish := false
+	for !finish {
+		if index == lc.writeIndex {
+			finish = true
+		}
+		lc.logger.Debug("  begin flush cache: ", index)
+		if err := lc.caches[index].flush(lc.l); err != nil {
+			lc.logger.Error(err)
+		}
+		lc.logger.Debug("  flush done and new read index: ", index)
+		lc.readIndex = index
+		index = (index + 1) % lc.cacheCount // next read cache index to dump
+	}
+	return nil
 }
 
 func (lc *MemoryCache) Get(key []byte) (interface{}, error) {
@@ -146,16 +173,6 @@ func (lc *MemoryCache) Has(key []byte) (bool, error) {
 		return false, err
 	}
 	return true, nil
-}
-
-func (lc *MemoryCache) Close() error {
-	for _, c := range lc.caches {
-		if err := c.flush(lc.l); err != nil {
-			lc.logger.Error(err)
-			return err
-		}
-	}
-	return nil
 }
 
 func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
@@ -205,14 +222,6 @@ func newCache() *Cache {
 	}
 }
 
-type flushStatue byte
-
-const (
-	flushNoSatisfied flushStatue = iota
-	flushing
-	flushDone
-)
-
 func (c *Cache) flush(l *Ledger) error {
 	c.flushLock.Lock()
 	defer func() {
@@ -227,6 +236,7 @@ func (c *Cache) flush(l *Ledger) error {
 			break
 		}
 	}
+
 	// Nothing to do if there is no data to flush.
 	if c.isEmpty() {
 		return nil
