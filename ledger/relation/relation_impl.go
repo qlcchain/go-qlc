@@ -87,9 +87,11 @@ func blockType(bs []blocksType) map[string]uint64 {
 func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
 	tx := r.Store.MustBegin()
 	if err := fn(tx); err != nil {
+		r.logger.Error(err)
 		return err
 	}
 	if err := tx.Commit(); err != nil {
+		r.logger.Error(err)
 		return err
 	}
 	return nil

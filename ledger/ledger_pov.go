@@ -67,7 +67,7 @@ type PovStore interface {
 
 	AddPovMinerStat(dayStat *types.PovMinerDayStat) error
 	DeletePovMinerStat(dayIndex uint32) error
-	GetPovMinerStat(dayIndex uint32,batch ...storage.Batch) (*types.PovMinerDayStat, error)
+	GetPovMinerStat(dayIndex uint32, batch ...storage.Batch) (*types.PovMinerDayStat, error)
 	HasPovMinerStat(dayIndex uint32) bool
 	GetLatestPovMinerStat(batch ...storage.Batch) (*types.PovMinerDayStat, error)
 	GetAllPovMinerStats(fn func(*types.PovMinerDayStat) error) error
@@ -169,7 +169,7 @@ func (l *Ledger) addPovHeader(header *types.PovHeader, batch storage.Batch) erro
 
 func (l *Ledger) AddPovHeader(header *types.PovHeader) error {
 	batch := l.store.Batch(true)
-	if err := l.addPovHeader(header, batch);err !=nil{
+	if err := l.addPovHeader(header, batch); err != nil {
 		return err
 	}
 	return l.store.PutBatch(batch)
@@ -186,7 +186,7 @@ func (l *Ledger) deletePovHeader(height uint64, hash types.Hash, txn storage.Bat
 
 func (l *Ledger) DeletePovHeader(height uint64, hash types.Hash) error {
 	batch := l.store.Batch(true)
-	if err := l.deletePovHeader(height, hash, batch);err !=nil{
+	if err := l.deletePovHeader(height, hash, batch); err != nil {
 		l.logger.Error(err)
 		return err
 	}
@@ -254,7 +254,7 @@ func (l *Ledger) addPovBody(height uint64, hash types.Hash, body *types.PovBody,
 
 func (l *Ledger) AddPovBody(height uint64, hash types.Hash, body *types.PovBody) error {
 	batch := l.store.Batch(true)
-	if err :=  l.addPovBody(height, hash, body, batch);err !=nil{
+	if err := l.addPovBody(height, hash, body, batch); err != nil {
 		l.logger.Error(err)
 		return err
 	}
@@ -272,7 +272,7 @@ func (l *Ledger) deletePovBody(height uint64, hash types.Hash, batch storage.Bat
 
 func (l *Ledger) DeletePovBody(height uint64, hash types.Hash) error {
 	batch := l.store.Batch(true)
-	if err := l.deletePovBody(height, hash, batch);err !=nil{
+	if err := l.deletePovBody(height, hash, batch); err != nil {
 		return err
 	}
 	return l.store.PutBatch(batch)
@@ -337,7 +337,7 @@ func (l *Ledger) addPovHeight(hash types.Hash, height uint64, txn storage.Batch)
 
 func (l *Ledger) AddPovHeight(hash types.Hash, height uint64) error {
 	batch := l.store.Batch(true)
-	if err := l.addPovHeight(hash, height, batch);err !=nil{
+	if err := l.addPovHeight(hash, height, batch); err != nil {
 		return err
 	}
 	return l.store.PutBatch(batch)
@@ -354,7 +354,7 @@ func (l *Ledger) deletePovHeight(hash types.Hash, batch storage.Batch) error {
 
 func (l *Ledger) DeletePovHeight(hash types.Hash) error {
 	batch := l.store.Batch(true)
-	if err := l.deletePovHeight(hash, batch);err!=nil{
+	if err := l.deletePovHeight(hash, batch); err != nil {
 		return err
 	}
 	return l.store.PutBatch(batch)
@@ -419,7 +419,7 @@ func (l *Ledger) addPovTD(hash types.Hash, height uint64, td *types.PovTD, txn s
 
 func (l *Ledger) AddPovTD(hash types.Hash, height uint64, td *types.PovTD) error {
 	batch := l.store.Batch(true)
-	if err := l.addPovTD(hash, height, td, batch);err !=nil{
+	if err := l.addPovTD(hash, height, td, batch); err != nil {
 		return err
 	}
 	return l.store.PutBatch(batch)
@@ -436,7 +436,7 @@ func (l *Ledger) deletePovTD(hash types.Hash, height uint64, batch storage.Batch
 
 func (l *Ledger) DeletePovTD(hash types.Hash, height uint64) error {
 	batch := l.store.Batch(true)
-	if err := l.deletePovTD(hash, height, batch);err !=nil{
+	if err := l.deletePovTD(hash, height, batch); err != nil {
 		return err
 	}
 	return l.store.PutBatch(batch)
@@ -682,7 +682,7 @@ func (l *Ledger) DeletePovBestHash(height uint64, batch ...storage.Batch) error 
 	return nil
 }
 
-func (l *Ledger) GetPovBestHash(height uint64, batch ...storage.Batch ) (types.Hash, error) {
+func (l *Ledger) GetPovBestHash(height uint64, batch ...storage.Batch) (types.Hash, error) {
 	key, err := storage.GetKeyOfParts(storage.KeyPrefixPovBestHash, height)
 	if err != nil {
 		return types.ZeroHash, err
@@ -801,7 +801,7 @@ func (l *Ledger) DeletePovMinerStat(dayIndex uint32) error {
 
 func (l *Ledger) getPovMinerStat(key []byte, batch ...storage.Batch) (*types.PovMinerDayStat, error) {
 	dayStat := new(types.PovMinerDayStat)
-	val, err := l.getFromStore(key,batch...)
+	val, err := l.getFromStore(key, batch...)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return nil, ErrPovMinerStatNotFound
@@ -815,7 +815,7 @@ func (l *Ledger) getPovMinerStat(key []byte, batch ...storage.Batch) (*types.Pov
 	return dayStat, nil
 }
 
-func (l *Ledger) GetPovMinerStat(dayIndex uint32,batch ...storage.Batch) (*types.PovMinerDayStat, error) {
+func (l *Ledger) GetPovMinerStat(dayIndex uint32, batch ...storage.Batch) (*types.PovMinerDayStat, error) {
 	key, err := storage.GetKeyOfParts(storage.KeyPrefixPovMinerStat, dayIndex)
 	if err != nil {
 		return nil, err

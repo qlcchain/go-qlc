@@ -65,7 +65,7 @@ func TestLedger_GetPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("pending,", p)
-	time.Sleep(1 * time.Second)
+	time.Sleep(3 * time.Second)
 	count := 0
 	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
 		t.Log(pendingKey, pendingInfo)
@@ -122,7 +122,7 @@ func TestLedger_SearchPending(t *testing.T) {
 	}
 	//t.Log("build cache done")
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 	counter := 0
 	err := l.GetPendingsByAddress(address, func(key *types.PendingKey, value *types.PendingInfo) error {
 		t.Log(counter, util.ToString(key), util.ToString(value))

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -184,6 +185,7 @@ func (l *Ledger) Close() error {
 		if err := l.cache.Close(); err != nil {
 			return err
 		}
+		time.Sleep(2 * time.Second)
 		if err := l.relation.Close(); err != nil {
 			return err
 		}

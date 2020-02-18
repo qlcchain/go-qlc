@@ -16,7 +16,7 @@ import (
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
-	rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc")
+	rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc", uuid.New().String())
 	var rpc *RPC
 
 	cfg, _ := config.DefaultConfig(rpcDir)

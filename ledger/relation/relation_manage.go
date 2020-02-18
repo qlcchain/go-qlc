@@ -119,6 +119,7 @@ func (r *Relation) process() {
 	for {
 		select {
 		case <-r.ctx.Done():
+			r.logger.Info("sqlite ctx done")
 			return
 		case obj := <-r.addChan:
 			addObjs = append(addObjs, obj)

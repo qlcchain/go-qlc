@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/google/uuid"
 	"math/big"
 	"os"
 	"os/signal"
@@ -53,7 +54,7 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	dir := filepath.Join(config.QlcTestDataDir(), "cmd")
+	dir := filepath.Join(config.QlcTestDataDir(), "cmd", uuid.New().String())
 	if *testnet {
 		dir = filepath.Join(config.DefaultDataDir())
 	}
