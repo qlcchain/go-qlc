@@ -10,9 +10,9 @@ package trie
 import (
 	"bytes"
 	"fmt"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -25,23 +25,37 @@ type Trie struct {
 	db    storage.Store
 	cache *NodePool
 	log   *zap.SugaredLogger
-
-	Root *TrieNode
+	store ledger.Store
+	Root  *TrieNode
 
 	unSavedRefValueMap map[types.Hash][]byte
 }
 
 func NewTrie(db storage.Store, rootHash *types.Hash, pool *NodePool) *Trie {
 	trie := &Trie{
-		db:    db,
-		cache: pool,
-		log:   log.NewLogger("trie"),
-
+		db:                 db,
+		cache:              pool,
+		log:                log.NewLogger("trie"),
+		store:              ledger.DefaultStore(),
 		unSavedRefValueMap: make(map[types.Hash][]byte),
 	}
 
 	trie.loadFromDb(rootHash)
 	return trie
+}
+
+func (trie *Trie) get(k []byte) ([]byte, error) {
+	if trie.store != nil {
+		i, b, err := trie.store.Get(k)
+		if err == nil {
+			if i != nil {
+				return i.([]byte), nil
+			} else {
+				return b, nil
+			}
+		}
+	}
+	return trie.db.Get(k)
 }
 
 func (trie *Trie) getNodeFromDb(key *types.Hash) *TrieNode {
@@ -51,7 +65,8 @@ func (trie *Trie) getNodeFromDb(key *types.Hash) *TrieNode {
 
 	trieNode := new(TrieNode)
 	k := encodeKey(key[:])
-	val, err := trie.db.Get(k)
+
+	val, err := trie.get(k)
 	if len(val) == 0 || err != nil {
 		return nil
 	}
@@ -129,7 +144,7 @@ func (trie *Trie) getRefValue(key []byte) ([]byte, error) {
 
 	k := encodeKey(key)
 	var result []byte
-	i, err := trie.db.Get(k)
+	i, err := trie.get(k)
 	if err != nil {
 		return nil, err
 	}

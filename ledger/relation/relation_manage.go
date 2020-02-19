@@ -75,11 +75,11 @@ func (r *Relation) Close() error {
 	if _, ok := cache[r.dir]; ok {
 		r.cancel()
 		r.closed()
-		r.logger.Info("sqlite close")
 		err := r.Store.Close()
 		if err != nil {
 			return err
 		}
+		r.logger.Info("sqlite closed")
 		delete(cache, r.dir)
 		return err
 	}

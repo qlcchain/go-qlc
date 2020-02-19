@@ -120,6 +120,8 @@ var (
 const version = 14
 
 func NewLedger(cfgFile string) *Ledger {
+	fmt.Println("-------------", cfgFile)
+	//fmt.Println("===========", config.DefaultDataDir())
 	lock.Lock()
 	defer lock.Unlock()
 	cc := chainctx.NewChainContext(cfgFile)
@@ -157,6 +159,14 @@ func NewLedger(cfgFile string) *Ledger {
 	}
 	//cache2[dir].logger = log.NewLogger("ledger")
 	return lcache[dir]
+}
+
+func DefaultStore() Store {
+	dir := filepath.Join(config.DefaultDataDir(), "ledger")
+	if l, ok := lcache[dir]; ok {
+		return l
+	}
+	return nil
 }
 
 func (l *Ledger) init() error {

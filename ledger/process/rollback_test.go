@@ -183,6 +183,12 @@ func TestLedger_Rollback_ContractData(t *testing.T) {
 		t.Fatal(p, err)
 	}
 	time.Sleep(2 * time.Second)
+	nodeCount = nodesCount(lv.l.DBStore(), bs[2].GetExtra())
+	t.Log(nodeCount)
+	if nodeCount == 0 {
+		t.Fatal("failed to add nodes", nodeCount)
+	}
+
 	if err := lv.Rollback(bs[2].GetHash()); err != nil {
 		t.Fatal(err)
 	}
@@ -192,6 +198,12 @@ func TestLedger_Rollback_ContractData(t *testing.T) {
 	if p, err := lv.Process(bs[2]); err != nil || p != Progress {
 		t.Fatal(p, err)
 	}
+	//time.Sleep(4 * time.Second)
+	//nodeCount = nodesCount(lv.l.DBStore(), bs[2].GetExtra())
+	//t.Log(nodeCount)
+	//if nodeCount == 0 {
+	//	t.Fatal("failed to add nodes", nodeCount)
+	//}
 }
 
 func nodesCount(db storage.Store, rootHash types.Hash) int {

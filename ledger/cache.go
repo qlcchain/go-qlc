@@ -111,15 +111,15 @@ func (lc *MemoryCache) flush() {
 	//defer func() {
 	//	lc.flushStatue = false
 	//}()
-	lc.logger.Debug("flush... ")
+	//lc.logger.Debug("flush... ")
 	index := lc.readIndex
 	index = (index + 1) % lc.cacheCount // next read cache index to dump
 	for index != lc.writeIndex {
-		lc.logger.Debug("  begin flush cache: ", index)
+		//lc.logger.Debug("  begin flush cache: ", index)
 		if err := lc.caches[index].flush(lc.l); err != nil {
 			lc.logger.Error(err)
 		}
-		lc.logger.Debug("  flush done and new read index: ", index)
+		//lc.logger.Debug("  flush done and new read index: ", index)
 		lc.readIndex = index
 		index = (index + 1) % lc.cacheCount // next read cache index to dump
 	}
@@ -127,6 +127,7 @@ func (lc *MemoryCache) flush() {
 
 func (lc *MemoryCache) closed() {
 	<-lc.closedChan
+	lc.logger.Info("cache closed")
 }
 
 func (lc *MemoryCache) close() error {
@@ -137,11 +138,11 @@ func (lc *MemoryCache) close() error {
 		if index == lc.writeIndex {
 			finish = true
 		}
-		lc.logger.Debug("  begin flush cache: ", index)
+		//lc.logger.Debug("  begin flush cache: ", index)
 		if err := lc.caches[index].flush(lc.l); err != nil {
 			lc.logger.Error(err)
 		}
-		lc.logger.Debug("  flush done and new read index: ", index)
+		//lc.logger.Debug("  flush done and new read index: ", index)
 		lc.readIndex = index
 		index = (index + 1) % lc.cacheCount // next read cache index to dump
 	}
