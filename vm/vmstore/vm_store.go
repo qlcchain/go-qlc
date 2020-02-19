@@ -69,7 +69,7 @@ func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
 
 func getStorageKey(prefix, key []byte) []byte {
 	var storageKey []byte
-	storageKey = append(storageKey, []byte{idPrefixStorage}...)
+	storageKey = append(storageKey, []byte{byte(storage.KeyPrefixTrieVMStorage)}...)
 	storageKey = append(storageKey, prefix...)
 	storageKey = append(storageKey, key...)
 	return storageKey
@@ -121,7 +121,7 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
 	pre := make([]byte, 0)
-	pre = append(pre, idPrefixStorage)
+	pre = append(pre, byte(storage.KeyPrefixTrieVMStorage))
 	pre = append(pre, prefix...)
 	err := v.Ledger.DBStore().Iterator(pre, nil, func(key []byte, val []byte) error {
 		err := fn(key, val)

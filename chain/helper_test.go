@@ -8,6 +8,7 @@
 package chain
 
 import (
+	"github.com/google/uuid"
 	"path/filepath"
 	"testing"
 
@@ -16,7 +17,7 @@ import (
 )
 
 func TestRegisterServices(t *testing.T) {
-	cfgFile2 := filepath.Join(config.QlcTestDataDir(), "config1", config.QlcConfigFile)
+	cfgFile2 := filepath.Join(config.QlcTestDataDir(), "config1", uuid.New().String(), config.QlcConfigFile)
 	cm := config.NewCfgManagerWithName(filepath.Dir(cfgFile2), filepath.Base(cfgFile2))
 	cc := context.NewChainContext(cm.ConfigFile)
 

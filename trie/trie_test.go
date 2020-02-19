@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -709,7 +710,7 @@ func TestEncodeKey(t *testing.T) {
 	if len(key) != types.HashSize+1 {
 		t.Fatal("invalid size")
 	}
-	if key[0] != idPrefixTrie {
+	if key[0] != byte(storage.KeyPrefixTrie) {
 		t.Fatal("invalid prefix")
 	}
 

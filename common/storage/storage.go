@@ -79,9 +79,9 @@ const (
 	KeyPrefixGapPublish
 
 	// Trie key space should be different
-	KeyPrefixTrieVMStorage = byte(100) // vm_store.go, idPrefixStorage
-	KeyPrefixTrie          = byte(101) // 101 is used for trie intermediate node, trie.go, idPrefixTrie
-	KeyPrefixTriePovState  = byte(102)
+	KeyPrefixTrieVMStorage = 100 // vm_store.go, idPrefixStorage
+	KeyPrefixTrie          = 101 // 101 is used for trie intermediate node, trie.go, idPrefixTrie
+	//KeyPrefixTriePovState  = 102
 )
 
 func GetKeyOfParts(t KeyPrefix, partList ...interface{}) ([]byte, error) {

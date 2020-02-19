@@ -8,6 +8,7 @@
 package migration
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common/storage"
@@ -46,7 +47,7 @@ func Upgrade(migrations []Migration, store storage.Store) error {
 	for _, m := range migrations {
 		err := m.Migrate(store)
 		if err != nil {
-			return err
+			return fmt.Errorf("migrate %d error: %s", m.StartVersion(), err)
 		}
 	}
 	return nil

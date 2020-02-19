@@ -17,9 +17,9 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	idPrefixTrie = 101
-)
+//const (
+//	idPrefixTrie = 101
+//)
 
 type Trie struct {
 	db    storage.Store
@@ -515,7 +515,6 @@ func (trie *Trie) removeNodeFromDb(batch storage.Batch, node *TrieNode) error {
 	h := node.Hash()
 	k := encodeKey(h[:])
 
-	fmt.Println("=========delete trie key ", k)
 	if err := batch.Delete(k); err != nil {
 		return err
 	}
@@ -561,7 +560,7 @@ func (trie *Trie) traverseRemove(b storage.Batch, node *TrieNode) error {
 
 func encodeKey(key []byte) []byte {
 	result := make([]byte, len(key)+1)
-	result[0] = idPrefixTrie
+	result[0] = byte(storage.KeyPrefixTrie)
 	copy(result[1:], key)
 	return result
 }

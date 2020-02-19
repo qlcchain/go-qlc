@@ -15,7 +15,7 @@ type MigrationV1ToV11 struct {
 
 func (m MigrationV1ToV11) Migrate(store storage.Store) error {
 	return store.BatchWrite(true, func(batch storage.Batch) error {
-		if b, err := checkVersion(m, batch); err == nil && b {
+		if b, err := checkVersion(m, store); err == nil && b {
 			fmt.Println("migrate ledger to v11")
 			if err := batch.Drop(nil); err == nil {
 				return updateVersion(m, batch)
@@ -41,7 +41,7 @@ type MigrationV11ToV12 struct {
 
 func (m MigrationV11ToV12) Migrate(store storage.Store) error {
 	return store.BatchWrite(true, func(batch storage.Batch) error {
-		b, err := checkVersion(m, batch)
+		b, err := checkVersion(m, store)
 		if err != nil {
 			return err
 		}
@@ -106,8 +106,83 @@ func (m MigrationV11ToV12) EndVersion() int {
 	return 12
 }
 
-func checkVersion(m Migration, batch storage.Batch) (bool, error) {
-	v, err := getVersion(batch)
+type MigrationV12ToV13 struct {
+}
+
+func (m MigrationV12ToV13) Migrate(store storage.Store) error {
+	return store.BatchWrite(false, func(batch storage.Batch) error {
+		b, err := checkVersion(m, store)
+		if err != nil {
+			return err
+		}
+		if b {
+			fmt.Println("migrate ledger v12 to v13 ")
+			var frontiers []*types.Frontier
+			prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixFrontier)
+			err := store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+				var frontier types.Frontier
+				copy(frontier.HeaderBlock[:], key[1:])
+				copy(frontier.OpenBlock[:], val)
+				frontiers = append(frontiers, &frontier)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			for _, f := range frontiers {
+				k, err := storage.GetKeyOfParts(storage.KeyPrefixFrontier, f.HeaderBlock)
+				if err != nil {
+					return err
+				}
+				v, err := f.OpenBlock.Serialize()
+				if err != nil {
+					return err
+				}
+				if err := batch.Put(k, v); err != nil {
+					return err
+				}
+			}
+			return updateVersion(m, batch)
+		}
+		return nil
+	})
+}
+
+func (m MigrationV12ToV13) StartVersion() int {
+	return 12
+}
+
+func (m MigrationV12ToV13) EndVersion() int {
+	return 13
+}
+
+type MigrationV13ToV14 struct {
+}
+
+func (m MigrationV13ToV14) Migrate(store storage.Store) error {
+	return store.BatchWrite(false, func(batch storage.Batch) error {
+		b, err := checkVersion(m, store)
+		if err != nil {
+			return err
+		}
+		if b {
+			panic("not implemented")
+			//return updateVersion(m, batch)
+		}
+		return nil
+	})
+}
+
+func (m MigrationV13ToV14) StartVersion() int {
+	return 13
+}
+
+func (m MigrationV13ToV14) EndVersion() int {
+	return 14
+}
+
+func checkVersion(m Migration, s storage.Store) (bool, error) {
+	v, err := getVersion(s)
 	if err != nil {
 		return false, err
 	}
@@ -125,17 +200,17 @@ func updateVersion(m Migration, batch storage.Batch) error {
 	return nil
 }
 
-func getVersion(batch storage.Batch) (int64, error) {
+func getVersion(s storage.Store) (int64, error) {
 	var i int64
 	key := []byte{byte(storage.KeyPrefixVersion)}
-	val, err := batch.Get(key)
+	val, err := s.Get(key)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return 0, errors.New("version not found")
 		}
 		return i, err
 	}
-	i, _ = binary.Varint(val.([]byte))
+	i, _ = binary.Varint(val)
 	return i, nil
 }
 

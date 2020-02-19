@@ -344,3 +344,31 @@ func (b *BadgerWriteBatch) Drop(prefix []byte) error {
 func (b *BadgerWriteBatch) Cancel() {
 	b.batch.Cancel()
 }
+
+func (b *BadgerStore) Upgrade() error {
+	//keys := make([]storage.KeyPrefix, 0)
+	//keys = append(keys, storage.KeyPrefixUncheckedBlockLink)
+	//keys = append(keys, storage.KeyPrefixUncheckedBlockPrevious)
+	//keys = append(keys, storage.KeyPrefixUncheckedTokenInfo)
+	//keys = append(keys, storage.KeyPrefixGapPublish)
+	//keys = append(keys, storage.KeyPrefixUncheckedPovHeight)
+	//txn := b.db.NewTransaction(false)
+	//defer txn.Discard()
+	//for _, k := range keys {
+	//	prefix, _ := storage.GetKeyOfParts(k)
+	//	it := txn.NewIterator(badger.DefaultIteratorOptions)
+	//	defer it.Close()
+	//
+	//	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+	//		item := it.Item()
+	//		key := item.Key()
+	//		err := item.Value(func(val []byte) error {
+	//
+	//		})
+	//		if err != nil {
+	//			return err
+	//		}
+	//	}
+	//}
+	return nil
+}

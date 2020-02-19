@@ -117,7 +117,7 @@ var (
 	lock   = sync.RWMutex{}
 )
 
-const version = 12
+const version = 14
 
 func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
@@ -173,6 +173,7 @@ func (l *Ledger) init() error {
 	}
 
 	if err := l.initRelation(); err != nil {
+		l.logger.Error(err)
 		return err
 	}
 
@@ -182,12 +183,45 @@ func (l *Ledger) init() error {
 }
 
 func (l *Ledger) removeBlockConfirmed() {
-	for {
-		select {
-		case block := <-l.blockConfirmed:
+	err := l.GetBlockCaches(func(block *types.StateBlock) error {
+		if b, _ := l.HasStateBlockConfirmed(block.GetHash()); b {
 			if err := l.DeleteBlockCache(block.GetHash()); err != nil {
 				l.logger.Errorf("delete block cache error: %s", err)
 			}
+		}
+		return nil
+	})
+	if err != nil {
+		l.logger.Error(err)
+	}
+	blocks := make([]*types.StateBlock, 0)
+	for {
+		select {
+		case <-l.ctx.Done():
+			return
+		case block := <-l.blockConfirmed:
+			blocks = append(blocks, block)
+			if len(l.blockConfirmed) > 0 {
+				for b := range l.blockConfirmed {
+					blocks = append(blocks, b)
+					if len(l.blockConfirmed) == 0 {
+						break
+					}
+				}
+			}
+
+			err := l.store.BatchWrite(false, func(batch storage.Batch) error {
+				for _, blk := range blocks {
+					if err := l.DeleteBlockCache(blk.GetHash(), batch); err != nil {
+						l.logger.Error(err)
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				l.logger.Errorf("batch delete block cache error: %s", err)
+			}
+			blocks = blocks[:0]
 		}
 	}
 }
@@ -205,7 +239,7 @@ func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {
 }
 
 func (l *Ledger) upgrade() error {
-	_, err := l.getVersion()
+	v, err := l.getVersion()
 	if err != nil {
 		if err == ErrVersionNotFound {
 			return l.setVersion(version)
@@ -213,7 +247,15 @@ func (l *Ledger) upgrade() error {
 			return err
 		}
 	} else {
-		ms := []migration.Migration{new(migration.MigrationV1ToV11), new(migration.MigrationV11ToV12)}
+		if v >= version {
+			return nil
+		}
+		ms := []migration.Migration{
+			new(migration.MigrationV1ToV11),
+			new(migration.MigrationV11ToV12),
+			new(migration.MigrationV12ToV13),
+			new(migration.MigrationV13ToV14),
+		}
 
 		err = migration.Upgrade(ms, l.store)
 		if err != nil {
