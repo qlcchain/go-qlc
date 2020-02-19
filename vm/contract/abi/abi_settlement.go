@@ -1247,5 +1247,20 @@ func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp
 		return nil, err
 	}
 
+	if len(result) > 0 {
+		sort.Slice(result, func(i, j int) bool {
+			r1 := result[i]
+			r2 := result[j]
+			if r1.StartDate < r2.StartDate {
+				return true
+			}
+			if r1.StartDate > r2.StartDate {
+				return false
+			}
+
+			return r1.EndDate < r2.EndDate
+		})
+	}
+
 	return result, nil
 }
