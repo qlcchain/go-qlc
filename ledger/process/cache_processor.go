@@ -19,7 +19,8 @@ func (lv *LedgerVerifier) BlockCacheCheck(block types.Block) (ProcessResult, err
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
-				lv.logger.Infof(fmt.Sprintf("check cache result:%s,(%s)", r.String(), b.GetHash().String()))
+				lv.logger.Infof(fmt.Sprintf("check cache result:%s,(%s, %s)", r.String(), b.GetHash().String(), b.GetType().String()))
+				lv.logger.Info("==============block ", block.String())
 			}
 			return r, err
 		} else {
@@ -199,22 +200,19 @@ func (c *cacheChangeBlockCheck) Check(lv *LedgerVerifier, block *types.StateBloc
 }
 
 func (lv *LedgerVerifier) BlockCacheProcess(block *types.StateBlock) error {
+	lv.logger.Infof("block cache process: %s(%s) ", block.GetHash().String(), block.GetType().String())
 	am, err := lv.l.GetAccountMeta(block.GetAddress())
 	if err != nil && err != ledger.ErrAccountNotFound {
 		return fmt.Errorf("get account meta cache error: %s", err)
 	}
 	batch := lv.l.DBStore().Batch(true)
-	defer func() {
-		lv.l.DBStore().PutBatch(batch)
-	}()
-
 	if err := lv.l.AddBlockCache(block, batch); err != nil {
 		return fmt.Errorf("update block cache error: %s", err)
 	}
 	if err := lv.updateAccountMetaCache(block, am, batch); err != nil {
 		return fmt.Errorf("update account meta cache error: %s", err)
 	}
-	return nil
+	return lv.l.DBStore().PutBatch(batch)
 }
 
 func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *types.AccountMeta, batch storage.Batch) error {

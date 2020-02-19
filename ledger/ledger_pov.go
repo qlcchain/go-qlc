@@ -1235,11 +1235,7 @@ func (l *Ledger) HasPovBlock(height uint64, hash types.Hash, batch ...storage.Ba
 
 func (l *Ledger) DropAllPovBlocks() error {
 	batch := l.store.Batch(true)
-	defer func() {
-		if err := l.store.PutBatch(batch); err != nil {
-			l.logger.Error(err)
-		}
-	}()
+
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPovHeader)
 	_ = batch.Drop(prefix)
 
@@ -1270,7 +1266,7 @@ func (l *Ledger) DropAllPovBlocks() error {
 	prefix, _ = storage.GetKeyOfParts(storage.KeyPrefixPovDiffStat)
 	_ = batch.Drop(prefix)
 
-	return nil
+	return l.store.PutBatch(batch)
 }
 
 func (l *Ledger) CountPovBlocks() (uint64, error) {

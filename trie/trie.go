@@ -235,7 +235,9 @@ func (trie *Trie) Remove(batch ...storage.Batch) (err error) {
 	} else {
 		b = trie.db.Batch(true)
 		defer func() {
-			trie.db.PutBatch(b)
+			if err := trie.db.PutBatch(b); err != nil {
+				trie.log.Error(err)
+			}
 		}()
 	}
 	if err = trie.traverseRemove(b, trie.Root); err != nil {

@@ -36,6 +36,7 @@ type Ledger struct {
 	relation       *relation.Relation
 	EB             event.EventBus
 	representCache *RepresentationCache
+	blockConfirmed chan *types.StateBlock
 	ctx            context.Context
 	cancel         context.CancelFunc
 	VerifiedData   map[types.Hash]int
@@ -144,6 +145,7 @@ func NewLedger(cfgFile string) *Ledger {
 			ctx:            ctx,
 			cancel:         cancel,
 			representCache: NewRepresentationCache(),
+			blockConfirmed: make(chan *types.StateBlock, 1024),
 		}
 		l.cache = NewMemoryCache(l)
 		l.logger = log.NewLogger("ledger")
@@ -173,7 +175,21 @@ func (l *Ledger) init() error {
 	if err := l.initRelation(); err != nil {
 		return err
 	}
+
+	go l.removeBlockConfirmed()
+
 	return nil
+}
+
+func (l *Ledger) removeBlockConfirmed() {
+	for {
+		select {
+		case block := <-l.blockConfirmed:
+			if err := l.DeleteBlockCache(block.GetHash()); err != nil {
+				l.logger.Errorf("delete block cache error: %s", err)
+			}
+		}
+	}
 }
 
 func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {

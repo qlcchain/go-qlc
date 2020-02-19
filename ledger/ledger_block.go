@@ -108,6 +108,7 @@ func (l *Ledger) AddStateBlock(block *types.StateBlock) error {
 	}
 
 	l.logger.Debug("publish addRelation,", block.GetHash())
+	l.blockConfirmed <- block
 	l.EB.Publish(topic.EventAddRelation, block)
 	return nil
 }
@@ -124,12 +125,12 @@ func (l *Ledger) setStateBlock(block *types.StateBlock, c storage.Cache) error {
 	if err != nil {
 		return err
 	}
-	// TODO-cache
-	if b, err := l.HasBlockCache(block.GetHash()); b && err == nil {
-		if err := l.DeleteBlockCache(block.GetHash()); err != nil {
-			return fmt.Errorf("delete block cache error: %s", err)
-		}
-	}
+	//TODO-cache
+	//if b, err := l.HasBlockCache(block.GetHash()); b && err == nil {
+	//	if err := l.DeleteBlockCache(block.GetHash()); err != nil {
+	//		return fmt.Errorf("delete block cache error: %s", err)
+	//	}
+	//}
 	if err := l.setBlockChild(block, c); err != nil {
 		return fmt.Errorf("add block child error: %s", err)
 	}

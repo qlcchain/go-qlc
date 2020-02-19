@@ -213,7 +213,9 @@ func (v *VMContext) set(key []byte, value []byte, batch ...storage.Batch) (err e
 	} else {
 		b = v.Ledger.DBStore().Batch(true)
 		defer func() {
-			v.Ledger.DBStore().PutBatch(b)
+			if err := v.Ledger.DBStore().PutBatch(b); err != nil {
+				v.logger.Error(err)
+			}
 		}()
 	}
 	return b.Put(key, value)
@@ -226,7 +228,9 @@ func (v *VMContext) remove(key []byte, batch ...storage.Batch) (err error) {
 	} else {
 		b = v.Ledger.DBStore().Batch(true)
 		defer func() {
-			v.Ledger.DBStore().PutBatch(b)
+			if err := v.Ledger.DBStore().PutBatch(b); err != nil {
+				v.logger.Error(err)
+			}
 		}()
 	}
 	return b.Delete(key)

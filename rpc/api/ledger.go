@@ -9,9 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
-
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -26,6 +23,8 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
 )
 
 var (
@@ -693,7 +692,6 @@ func (l *LedgerAPI) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 	if err != nil {
 		return nil, err
 	}
-	l.logger.Debug(block)
 	return block, nil
 }
 
@@ -715,7 +713,6 @@ func (l *LedgerAPI) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 	if err != nil {
 		return nil, err
 	}
-	l.logger.Debug(block)
 	return block, nil
 }
 
@@ -740,7 +737,6 @@ func (l *LedgerAPI) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *stri
 	if err != nil {
 		return nil, err
 	}
-	l.logger.Debug(block)
 	return block, nil
 }
 
@@ -758,7 +754,6 @@ func (l *LedgerAPI) GenerateChangeBlock(account types.Address, representative ty
 		return nil, err
 	}
 
-	l.logger.Debug(block)
 	return block, nil
 }
 
@@ -864,6 +859,7 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)
 			return types.ZeroHash, err
 		}
+		l.logger.Info("block cache process done, ", block.GetHash().String())
 		l.eb.Publish(topic.EventAddBlockCache, block)
 		l.logger.Debug("broadcast block")
 		//TODO: refine

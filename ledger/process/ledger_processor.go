@@ -270,16 +270,21 @@ func (c *onlineBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 }
 
 func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
-	return lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
+	lv.logger.Infof("block  process: %s(%s) ", block.GetHash().String(), block.GetType().String())
+	err := lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
 		err := lv.processStateBlock(block, c)
 		if err != nil {
-			lv.logger.Error(fmt.Sprintf("%s, block:%s", err.Error(), block.GetHash().String()))
+			lv.logger.Error(fmt.Sprintf("block  process error: %s, block:%s", err.Error(), block.GetHash().String()))
 			return err
 		}
-		lv.logger.Debug("publish addRelation,", block.GetHash())
-		lv.l.EB.Publish(topic.EventAddRelation, block)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	lv.logger.Debug("publish addRelation,", block.GetHash())
+	lv.l.EB.Publish(topic.EventAddRelation, block)
+	return nil
 }
 
 func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, cache *ledger.Cache) error {
