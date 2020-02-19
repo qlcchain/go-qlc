@@ -242,7 +242,579 @@ func updateBlock(l *ledger.Ledger, block *types.StateBlock) error {
 	})
 }
 
-func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
+func buildContract(l *ledger.Ledger, t *testing.T) {
+	a1 := ac1.Address()
+	a2 := ac2.Address()
+	ctx := vmstore.NewVMContext(l)
+
+	if am, err := l.GetAccountMeta(a1); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(util.ToIndentString(am))
+	}
+
+	if am, err := l.GetAccountMeta(ac2.Address()); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(util.ToIndentString(am))
+	}
+
+	tm, err := ctx.GetTokenMeta(a1, common.GasToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	param := createContractParam
+	param.PartyA.Address = a1
+	param.PartyB.Address = a2
+	param.Previous = tm.Header
+
+	balance, err := param.Balance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tm.Balance.Compare(balance) == types.BalanceCompSmaller {
+		t.Fatalf("not enough balance, [%s] of [%s]", balance.String(), tm.Balance.String())
+	}
+
+	if abi, err := param.ToABI(); err == nil {
+		sb := &types.StateBlock{
+			Type:           types.ContractSend,
+			Token:          tm.Type,
+			Address:        param.PartyA.Address,
+			Balance:        tm.Balance.Sub(balance),
+			Vote:           types.ZeroBalance,
+			Network:        types.ZeroBalance,
+			Oracle:         types.ZeroBalance,
+			Storage:        types.ZeroBalance,
+			Previous:       param.Previous,
+			Link:           types.Hash(types.SettlementAddress),
+			Representative: tm.Representative,
+			Data:           abi,
+			Timestamp:      common.TimeNow().Unix(),
+		}
+
+		sb.Signature = ac1.Sign(sb.GetHash())
+
+		h := ctx.Cache.Trie().Hash()
+		if h != nil {
+			povHeader, err := l.GetLatestPovHeader()
+			if err != nil {
+				t.Fatalf("get pov header error: %s", err)
+			}
+			sb.PoVHeight = povHeader.GetHeight()
+			sb.Extra = *h
+		}
+
+		if err := updateBlock(l, sb); err != nil {
+			t.Fatal(err)
+		}
+
+		createContract := CreateContract{}
+		if _, _, err := createContract.ProcessSend(ctx, sb); err != nil {
+			t.Fatal(err)
+		} else {
+			if err := ctx.SaveStorage(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
+func TestCreate_And_Terminate_Contract(t *testing.T) {
+	teardownTestCase, l := setupSettlementTestCase(t)
+	defer teardownTestCase(t)
+
+	buildContract(l, t)
+	a1 := ac1.Address()
+	a2 := ac2.Address()
+	ctx := vmstore.NewVMContext(l)
+
+	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(contractParams) == 0 {
+			t.Fatal("can not find any contact params")
+		}
+		for _, cp := range contractParams {
+			t.Log(cp.String())
+			if cp.PartyB.Address != a2 {
+				t.Fatalf("invalid contract, partyB exp: %s,act: %s", a2.String(), cp.PartyB.Address.String())
+			}
+			if address, err := cp.Address(); err != nil {
+				t.Fatal(err)
+			} else {
+				terminateContract := &TerminateContract{}
+				tm, err := ctx.GetTokenMeta(a2, common.GasToken())
+				if err != nil {
+					t.Fatal(err)
+				}
+				param := cabi.TerminateParam{ContractAddress: address}
+				if abi, err := param.ToABI(); err == nil {
+					sb := &types.StateBlock{
+						Type:           types.ContractSend,
+						Token:          tm.Type,
+						Address:        a2,
+						Balance:        tm.Balance,
+						Vote:           types.ZeroBalance,
+						Network:        types.ZeroBalance,
+						Oracle:         types.ZeroBalance,
+						Storage:        types.ZeroBalance,
+						Previous:       tm.Header,
+						Link:           types.Hash(types.SettlementAddress),
+						Representative: tm.Representative,
+						Data:           abi,
+						Timestamp:      common.TimeNow().Unix(),
+					}
+
+					sb.Signature = ac2.Sign(sb.GetHash())
+
+					h := ctx.Cache.Trie().Hash()
+					if h != nil {
+						povHeader, err := l.GetLatestPovHeader()
+						if err != nil {
+							t.Fatalf("get pov header error: %s", err)
+						}
+						sb.PoVHeight = povHeader.GetHeight()
+						sb.Extra = *h
+					}
+
+					if err := updateBlock(l, sb); err != nil {
+						t.Fatal(err)
+					}
+
+					if _, _, err := terminateContract.ProcessSend(ctx, sb); err != nil {
+						t.Fatal(err)
+					} else {
+						if err := ctx.SaveStorage(); err != nil {
+							t.Fatal(err)
+						} else {
+							if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+								t.Fatal(err)
+							} else {
+								if c.Status != cabi.ContractStatusRejected {
+									t.Fatalf("invalid contract status, exp: %s, act: %s", cabi.ContractStatusRejected.String(), c.Status.String())
+								} else {
+									rb := &types.StateBlock{
+										Timestamp: time.Now().Unix(),
+									}
+
+									if _, err := terminateContract.DoReceive(ctx, rb, sb); err != nil {
+										t.Fatal(err)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestEdit_Pre_Next_Stops(t *testing.T) {
+	teardownTestCase, l := setupSettlementTestCase(t)
+	defer teardownTestCase(t)
+
+	buildContract(l, t)
+	a1 := ac1.Address()
+	a2 := ac2.Address()
+	ctx := vmstore.NewVMContext(l)
+
+	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(contractParams) == 0 {
+			t.Fatal("can not find any contact params")
+		}
+		for _, cp := range contractParams {
+			//t.Log(cp.String())
+			if cp.PartyB.Address != a2 {
+				t.Fatalf("invalid contract, partyB exp: %s,act: %s", a2.String(), cp.PartyB.Address.String())
+			}
+			address, err := cp.Address()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// add next stop
+			tm, err := ctx.GetTokenMeta(a1, common.GasToken())
+			if err != nil {
+				t.Fatal(err)
+			}
+			stopParam := &cabi.StopParam{StopName: "HTKCSL", ContractAddress: address}
+			abi, err := stopParam.ToABI(cabi.MethodNameAddNextStop)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sb := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        a1,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			sb.Signature = ac1.Sign(sb.GetHash())
+
+			h := ctx.Cache.Trie().Hash()
+			if h != nil {
+				sb.PoVHeight = 0
+				sb.Extra = *h
+			}
+
+			if err := updateBlock(l, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				addNextStop := &AddNextStop{}
+				if _, _, err := addNextStop.ProcessSend(ctx, sb); err != nil {
+					t.Fatal(err)
+				} else {
+					if err := ctx.SaveStorage(); err != nil {
+						t.Fatal(err)
+					}
+					if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+						t.Fatal(err)
+					} else {
+						if len(c.NextStops) != 1 {
+							t.Fatalf("invalid next stop size: %d", len(c.NextStops))
+						}
+
+						if c.NextStops[0] != "HTKCSL" {
+							t.Fatalf("invalid next stop, exp: HTKCSL, act: %s", c.NextStops[0])
+						}
+					}
+				}
+			}
+
+			// update next stop
+			tm, err = ctx.GetTokenMeta(a1, common.GasToken())
+			if err != nil {
+				t.Fatal(err)
+			}
+			sp := &cabi.UpdateStopParam{
+				ContractAddress: address,
+				StopName:        "HTKCSL",
+				New:             "HTK-CSL",
+			}
+			abi, err = sp.ToABI(cabi.MethodNameUpdateNextStop)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sb = &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        a1,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			sb.Signature = ac1.Sign(sb.GetHash())
+
+			h = ctx.Cache.Trie().Hash()
+			if h != nil {
+				sb.PoVHeight = 0
+				sb.Extra = *h
+			}
+
+			if err := updateBlock(l, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				updateNextStop := UpdateNextStop{}
+				if _, _, err := updateNextStop.ProcessSend(ctx, sb); err != nil {
+					t.Fatal(err)
+				} else {
+					if err := ctx.SaveStorage(); err != nil {
+						t.Fatal(err)
+					}
+					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
+					if _, err := updateNextStop.DoReceive(ctx, rb, sb); err != nil {
+						t.Fatal(err)
+					}
+					if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+						t.Fatal(err)
+					} else {
+						if len(c.NextStops) != 1 {
+							t.Fatalf("invalid next stop size: %d", len(c.NextStops))
+						}
+
+						if c.NextStops[0] != "HTK-CSL" {
+							t.Fatalf("invalid next stop, exp: HTK-CSL, act: %s", c.NextStops[0])
+						}
+					}
+				}
+			}
+
+			// remove next stop
+			tm, err = ctx.GetTokenMeta(a1, common.GasToken())
+			if err != nil {
+				t.Fatal(err)
+			}
+			s2 := &cabi.StopParam{
+				ContractAddress: address,
+				StopName:        "HTK-CSL",
+			}
+			abi, err = s2.ToABI(cabi.MethodNameRemoveNextStop)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sb = &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        a1,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			sb.Signature = ac1.Sign(sb.GetHash())
+
+			h = ctx.Cache.Trie().Hash()
+			if h != nil {
+				sb.PoVHeight = 0
+				sb.Extra = *h
+			}
+
+			if err := updateBlock(l, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				removeNextStop := RemoveNextStop{}
+				if _, _, err := removeNextStop.ProcessSend(ctx, sb); err != nil {
+					t.Fatal(err)
+				} else {
+					if err := ctx.SaveStorage(); err != nil {
+						t.Fatal(err)
+					}
+					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
+					if _, err := removeNextStop.DoReceive(ctx, rb, sb); err != nil {
+						t.Fatal(err)
+					}
+					if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+						t.Fatal(err)
+					} else {
+						if len(c.NextStops) != 0 {
+							t.Fatalf("invalid next stop size: %d", len(c.NextStops))
+						}
+					}
+				}
+			}
+
+			// add pre stop
+			tm, err = ctx.GetTokenMeta(a2, common.GasToken())
+			if err != nil {
+				t.Fatal(err)
+			}
+			stopParam = &cabi.StopParam{StopName: "PCCWG", ContractAddress: address}
+			abi, err = stopParam.ToABI(cabi.MethodNameAddPreStop)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sb = &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        a2,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			sb.Signature = ac2.Sign(sb.GetHash())
+
+			h = ctx.Cache.Trie().Hash()
+			if h != nil {
+				sb.PoVHeight = 0
+				sb.Extra = *h
+			}
+
+			if err := updateBlock(l, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				addPreStop := &AddPreStop{}
+				if _, _, err := addPreStop.ProcessSend(ctx, sb); err != nil {
+					t.Fatal(err)
+				} else {
+					if err := ctx.SaveStorage(); err != nil {
+						t.Fatal(err)
+					}
+					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
+					if _, err := addPreStop.DoReceive(ctx, rb, sb); err != nil {
+						t.Fatal(err)
+					}
+					if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+						t.Fatal(err)
+					} else {
+						if len(c.PreStops) != 1 {
+							t.Fatalf("invalid next stop size: %d", len(c.PreStops))
+						}
+
+						if c.PreStops[0] != "PCCWG" {
+							t.Fatalf("invalid next stop, exp: PCCWG, act: %s", c.PreStops[0])
+						}
+					}
+				}
+			}
+
+			// update pre stop
+			tm, err = ctx.GetTokenMeta(a2, common.GasToken())
+			if err != nil {
+				t.Fatal(err)
+			}
+			ss2 := &cabi.UpdateStopParam{
+				ContractAddress: address,
+				StopName:        "PCCWG",
+				New:             "PCCW-G",
+			}
+			abi, err = ss2.ToABI(cabi.MethodNameUpdatePreStop)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sb = &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        a2,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			sb.Signature = ac2.Sign(sb.GetHash())
+
+			h = ctx.Cache.Trie().Hash()
+			if h != nil {
+				sb.PoVHeight = 0
+				sb.Extra = *h
+			}
+
+			if err := updateBlock(l, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				updatePreStop := &UpdatePreStop{}
+				if _, _, err := updatePreStop.ProcessSend(ctx, sb); err != nil {
+					t.Fatal(err)
+				} else {
+					if err := ctx.SaveStorage(); err != nil {
+						t.Fatal(err)
+					}
+					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
+					if _, err := updatePreStop.DoReceive(ctx, rb, sb); err != nil {
+						t.Fatal(err)
+					}
+					if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+						t.Fatal(err)
+					} else {
+						if len(c.PreStops) != 1 {
+							t.Fatalf("invalid next stop size: %d", len(c.PreStops))
+						}
+
+						if c.PreStops[0] != "PCCW-G" {
+							t.Fatalf("invalid next stop, exp: PCCW-G, act: %s", c.PreStops[0])
+						}
+					}
+				}
+			}
+
+			// remove pre stop
+			tm, err = ctx.GetTokenMeta(a2, common.GasToken())
+			if err != nil {
+				t.Fatal(err)
+			}
+			ss3 := &cabi.StopParam{
+				ContractAddress: address,
+				StopName:        "PCCW-G",
+			}
+			abi, err = ss3.ToABI(cabi.MethodNameRemovePreStop)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sb = &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        a2,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			sb.Signature = ac2.Sign(sb.GetHash())
+
+			h = ctx.Cache.Trie().Hash()
+			if h != nil {
+				sb.PoVHeight = 0
+				sb.Extra = *h
+			}
+
+			if err := updateBlock(l, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				removePreStop := &RemovePreStop{}
+				if _, _, err := removePreStop.ProcessSend(ctx, sb); err != nil {
+					t.Fatal(err)
+				} else {
+					if err := ctx.SaveStorage(); err != nil {
+						t.Fatal(err)
+					}
+					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
+					if _, err := removePreStop.DoReceive(ctx, rb, sb); err != nil {
+						t.Fatal(err)
+					}
+					if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+						t.Fatal(err)
+					} else {
+						if len(c.PreStops) != 0 {
+							t.Fatalf("invalid next stop size: %d", len(c.PreStops))
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestCreate_And_Sign_Contract(t *testing.T) {
 	teardownTestCase, l := setupSettlementTestCase(t)
 	defer teardownTestCase(t)
 
@@ -630,6 +1202,14 @@ func TestSettlement_Create_And_Sign_Contract(t *testing.T) {
 										}
 
 										if err := updateBlock(l, sb); err != nil {
+											t.Fatal(err)
+										}
+
+										rb := &types.StateBlock{
+											Timestamp: time.Now().Unix(),
+										}
+
+										if _, err := cdrContract.DoReceive(ctx, rb, sb); err != nil {
 											t.Fatal(err)
 										}
 

@@ -461,7 +461,7 @@ func (r *RemoveNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 		return nil, nil, err
 	}
 	return handleSend(ctx, block, true, stopParam.ContractAddress, func(param *cabi.ContractParam) (err error) {
-		param.NextStops, err = add(param.NextStops, stopParam.StopName)
+		param.NextStops, err = remove(param.NextStops, stopParam.StopName)
 		return err
 	})
 }
