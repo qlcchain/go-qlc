@@ -82,7 +82,7 @@ func TestFork(t *testing.T) {
 	povSyncState = topic.SyncNotStart
 	testBytes, _ := hex.DecodeString(testPrivateKey)
 	testAccount := types.NewAccount(testBytes)
-	rootDir := filepath.Join(config.QlcTestDataDir(), "fork")
+	rootDir := filepath.Join(config.QlcTestDataDir(), uuid.New().String(), "fork")
 
 	//node1
 	dir1 := filepath.Join(rootDir, uuid.New().String())
@@ -248,7 +248,7 @@ func TestPovFork(t *testing.T) {
 	povSyncState = topic.SyncNotStart
 	testBytes, _ := hex.DecodeString(testPrivateKey)
 	testAccount := types.NewAccount(testBytes)
-	rootDir := filepath.Join(config.QlcTestDataDir(), "pvofork")
+	rootDir := filepath.Join(config.QlcTestDataDir(), uuid.New().String(), "pvofork")
 
 	//node1
 	dir1 := filepath.Join(rootDir, uuid.New().String())
@@ -429,7 +429,7 @@ func TestCacheFork(t *testing.T) {
 	povSyncState = topic.SyncNotStart
 	testBytes, _ := hex.DecodeString(testPrivateKey)
 	testAccount := types.NewAccount(testBytes)
-	rootDir := filepath.Join(config.QlcTestDataDir(), "cachefork")
+	rootDir := filepath.Join(config.QlcTestDataDir(), uuid.New().String(), "cachefork")
 
 	//node1
 	dir1 := filepath.Join(rootDir, uuid.New().String())

@@ -205,7 +205,7 @@ func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
 }
 
 const defaultFlushSecs = 1 * time.Second
-const defaultCapacity = 50000
+const defaultCapacity = 100000
 
 type Cache struct {
 	//used is true

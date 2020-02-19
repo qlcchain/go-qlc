@@ -34,9 +34,9 @@ type ContractStore interface {
 	RemoveStorage(prefix, key []byte, batch ...storage.Batch) error
 }
 
-const (
-	idPrefixStorage = 100
-)
+//const (
+//	idPrefixStorage = 100
+//)
 
 var (
 	ErrStorageExists   = errors.New("storage already exists")

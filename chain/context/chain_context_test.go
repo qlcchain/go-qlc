@@ -10,6 +10,7 @@ package context
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"os"
 	"path/filepath"
 	"testing"
@@ -213,7 +214,7 @@ func TestNewChainContext(t *testing.T) {
 }
 
 func TestChainContext_WaitForever(t *testing.T) {
-	cfgFile := filepath.Join(config.QlcTestDataDir(), "context", config.QlcConfigFile)
+	cfgFile := filepath.Join(config.QlcTestDataDir(), "context", uuid.New().String(), config.QlcConfigFile)
 	defer func() { _ = os.RemoveAll(cfgFile) }()
 
 	ctx := NewChainContext(cfgFile)

@@ -177,53 +177,59 @@ func (l *Ledger) init() error {
 		return err
 	}
 
-	go l.removeBlockConfirmed()
+	if err := l.removeBlockConfirmed(); err != nil {
+		l.logger.Error(err)
+		return err
+	}
 
 	return nil
 }
 
-func (l *Ledger) removeBlockConfirmed() {
+func (l *Ledger) removeBlockConfirmed() error {
 	err := l.GetBlockCaches(func(block *types.StateBlock) error {
 		if b, _ := l.HasStateBlockConfirmed(block.GetHash()); b {
 			if err := l.DeleteBlockCache(block.GetHash()); err != nil {
-				l.logger.Errorf("delete block cache error: %s", err)
+				return fmt.Errorf("delete block cache error: %s", err)
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		l.logger.Error(err)
+		return fmt.Errorf("removeBlockConfirmed error : %s", err)
 	}
-	blocks := make([]*types.StateBlock, 0)
-	for {
-		select {
-		case <-l.ctx.Done():
-			return
-		case block := <-l.blockConfirmed:
-			blocks = append(blocks, block)
-			if len(l.blockConfirmed) > 0 {
-				for b := range l.blockConfirmed {
-					blocks = append(blocks, b)
-					if len(l.blockConfirmed) == 0 {
-						break
+	go func() {
+		blocks := make([]*types.StateBlock, 0)
+		for {
+			select {
+			case <-l.ctx.Done():
+				return
+			case block := <-l.blockConfirmed:
+				blocks = append(blocks, block)
+				if len(l.blockConfirmed) > 0 {
+					for b := range l.blockConfirmed {
+						blocks = append(blocks, b)
+						if len(l.blockConfirmed) == 0 {
+							break
+						}
 					}
 				}
-			}
 
-			err := l.store.BatchWrite(false, func(batch storage.Batch) error {
-				for _, blk := range blocks {
-					if err := l.DeleteBlockCache(blk.GetHash(), batch); err != nil {
-						l.logger.Error(err)
+				err := l.store.BatchWrite(false, func(batch storage.Batch) error {
+					for _, blk := range blocks {
+						if err := l.DeleteBlockCache(blk.GetHash(), batch); err != nil {
+							l.logger.Error(err)
+						}
 					}
+					return nil
+				})
+				if err != nil {
+					l.logger.Errorf("batch delete block cache error: %s", err)
 				}
-				return nil
-			})
-			if err != nil {
-				l.logger.Errorf("batch delete block cache error: %s", err)
+				blocks = blocks[:0]
 			}
-			blocks = blocks[:0]
 		}
-	}
+	}()
+	return nil
 }
 
 func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {

@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"fmt"
+	"github.com/bluele/gcache"
 	"os"
 	"path/filepath"
 	"testing"
@@ -106,3 +107,21 @@ func TestNewCache(t *testing.T) {
 //	defer teardownTestCase(t)
 //
 //}
+
+func TestGcCache(t *testing.T) {
+	amap := map[int]int{1: 1, 2: 2, 3: 3, 4: 4, 5: 5}
+	a := gcache.New(5).Build()
+	for k, v := range amap {
+		if err := a.Set(k, v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := a.Set(6, 6); err != nil {
+		t.Fatal(err)
+	}
+	rm := a.GetALL(false)
+	for k, v := range rm {
+		t.Log(k, v)
+	}
+	t.Log(a.Len(false))
+}
