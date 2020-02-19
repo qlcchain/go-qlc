@@ -11,8 +11,8 @@ import (
 const (
 	// ContractStatusActiveStage1 is a ContractStatus of type ActiveStage1
 	ContractStatusActiveStage1 ContractStatus = iota
-	// ContractStatusActived is a ContractStatus of type Actived
-	ContractStatusActived
+	// ContractStatusActivated is a ContractStatus of type Activated
+	ContractStatusActivated
 	// ContractStatusDestroyStage1 is a ContractStatus of type DestroyStage1
 	ContractStatusDestroyStage1
 	// ContractStatusDestroyed is a ContractStatus of type Destroyed
@@ -21,14 +21,14 @@ const (
 	ContractStatusRejected
 )
 
-const _ContractStatusName = "ActiveStage1ActivedDestroyStage1DestroyedRejected"
+const _ContractStatusName = "ActiveStage1ActivatedDestroyStage1DestroyedRejected"
 
 var _ContractStatusNames = []string{
 	_ContractStatusName[0:12],
-	_ContractStatusName[12:19],
-	_ContractStatusName[19:32],
-	_ContractStatusName[32:41],
-	_ContractStatusName[41:49],
+	_ContractStatusName[12:21],
+	_ContractStatusName[21:34],
+	_ContractStatusName[34:43],
+	_ContractStatusName[43:51],
 }
 
 // ContractStatusNames returns a list of possible string values of ContractStatus.
@@ -40,10 +40,10 @@ func ContractStatusNames() []string {
 
 var _ContractStatusMap = map[ContractStatus]string{
 	0: _ContractStatusName[0:12],
-	1: _ContractStatusName[12:19],
-	2: _ContractStatusName[19:32],
-	3: _ContractStatusName[32:41],
-	4: _ContractStatusName[41:49],
+	1: _ContractStatusName[12:21],
+	2: _ContractStatusName[21:34],
+	3: _ContractStatusName[34:43],
+	4: _ContractStatusName[43:51],
 }
 
 // String implements the Stringer interface.
@@ -56,10 +56,10 @@ func (x ContractStatus) String() string {
 
 var _ContractStatusValue = map[string]ContractStatus{
 	_ContractStatusName[0:12]:  0,
-	_ContractStatusName[12:19]: 1,
-	_ContractStatusName[19:32]: 2,
-	_ContractStatusName[32:41]: 3,
-	_ContractStatusName[41:49]: 4,
+	_ContractStatusName[12:21]: 1,
+	_ContractStatusName[21:34]: 2,
+	_ContractStatusName[34:43]: 3,
+	_ContractStatusName[43:51]: 4,
 }
 
 // ParseContractStatus attempts to convert a string to a ContractStatus

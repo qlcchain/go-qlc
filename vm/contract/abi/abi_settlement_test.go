@@ -87,7 +87,7 @@ func buildContractParam() (param *ContractParam) {
 		PreStops:            []string{"PCCWG", "test1"},
 		NextStops:           []string{"HKTCSL", "test2"},
 		ConfirmDate:         cd,
-		Status:              ContractStatusActived,
+		Status:              ContractStatusActivated,
 	}
 	return
 }
@@ -2490,7 +2490,7 @@ func TestContractParam_DoActive(t *testing.T) {
 			},
 			args: args{
 				operator: cp.PartyB.Address,
-				status:   ContractStatusActived,
+				status:   ContractStatusActivated,
 			},
 			wantErr: false,
 		}, {
@@ -2515,7 +2515,7 @@ func TestContractParam_DoActive(t *testing.T) {
 				PreStops:            cp.PreStops,
 				NextStops:           cp.NextStops,
 				ConfirmDate:         cp.ConfirmDate,
-				Status:              ContractStatusActived,
+				Status:              ContractStatusActivated,
 			},
 			args: args{
 				operator: cp.PartyB.Address,
@@ -2615,7 +2615,7 @@ func TestContractParam_DoTerminate(t *testing.T) {
 				PreStops:            cp.PreStops,
 				NextStops:           cp.NextStops,
 				ConfirmDate:         cp.ConfirmDate,
-				Status:              ContractStatusActived,
+				Status:              ContractStatusActivated,
 			},
 			args: args{
 				operator: cp.PartyA.Address,

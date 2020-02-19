@@ -397,7 +397,7 @@ func (z *CreateContractParam) Balance() (types.Balance, error) {
 /*
 ENUM(
 ActiveStage1
-Actived
+Activated
 DestroyStage1
 Destroyed
 Rejected
@@ -480,7 +480,7 @@ func (z *ContractParam) DoActive(operator types.Address) error {
 	}
 
 	if z.Status == ContractStatusActiveStage1 {
-		z.Status = ContractStatusActived
+		z.Status = ContractStatusActivated
 		return nil
 	} else if z.Status == ContractStatusDestroyed {
 		return errors.New("contract has been destroyed")
@@ -509,7 +509,7 @@ func (z *ContractParam) DoTerminate(operator types.Address) error {
 		} else {
 			z.Status = ContractStatusRejected
 		}
-	} else if z.Status == ContractStatusActived {
+	} else if z.Status == ContractStatusActivated {
 		z.Status = ContractStatusDestroyStage1
 	} else if z.Status == ContractStatusDestroyStage1 {
 		z.Status = ContractStatusDestroyed
@@ -855,7 +855,7 @@ func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
 	if value, err := ctx.GetStorage(types.SettlementAddress[:], addr[:]); err == nil {
 		if param, err := ParseContractParam(value); err == nil {
 			unix := common.TimeNow().Unix()
-			return param.Status == ContractStatusActived && unix >= param.StartDate && unix <= param.EndDate
+			return param.Status == ContractStatusActivated && unix >= param.StartDate && unix <= param.EndDate
 		}
 	}
 	return false
