@@ -307,6 +307,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 					Describe: Describe{
 						specVer:       SpecVer2,
 						withSignature: true,
+						withPovState:  true,
 					},
 				},
 			},
@@ -333,6 +334,16 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 						specVer:       SpecVer2,
 						withSignature: true,
 						withPending:   true,
+						withWork:      true,
+					},
+				},
+			},
+			cabi.MethodNamePKDVerifierHeart: &VerifierHeart{
+				BaseContract: BaseContract{
+					Describe: Describe{
+						specVer:       SpecVer2,
+						withSignature: true,
+						withPovState:  true,
 					},
 				},
 			},
