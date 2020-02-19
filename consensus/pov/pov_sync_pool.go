@@ -181,8 +181,7 @@ func (ss *PovSyncer) syncWithPeer(peer *PovSyncPeer) {
 
 	ss.logger.Infof("sync starting with peer %s height %d", peer.peerID, peer.currentHeight)
 
-	ss.syncSeqID.Inc()
-	peer.syncSeqID = ss.syncSeqID.Load()
+	peer.syncSeqID = ss.syncSeqID.Inc()
 
 	peer.waitLocatorRsp = true
 	ss.requestSyncingBlocks(peer, true)
@@ -290,30 +289,27 @@ func (ss *PovSyncer) addSyncBlock(block *types.PovBlock, peer *PovSyncPeer) {
 		ss.syncBlocks = make(map[uint64]*PovSyncBlock)
 	}
 
-	syncBlk := ss.syncBlocks[block.GetHeight()]
-	if syncBlk == nil {
-		syncBlk = &PovSyncBlock{Height: block.GetHeight(), Block: block, PeerID: peer.peerID, CheckTxIndex: 0}
-		ss.syncBlocks[block.GetHeight()] = syncBlk
-	} else if syncBlk.Block != nil {
-		if syncBlk.Block.GetHash() != block.GetHash() {
-			syncBlk.Block = block
-		}
-	} else {
-		syncBlk.Block = block
-	}
-
 	if peer.waitLocatorRsp {
 		peer.waitLocatorRsp = false
 
 		ss.syncCurHeight = block.GetHeight()
 		ss.syncRcvHeight = block.GetHeight()
 
-		ss.logger.Infof("got locator response, syncCurHeight %d", ss.syncCurHeight)
+		ss.logger.Warnf("got locator response, syncCurHeight %d", ss.syncCurHeight)
 	} else {
+		// no need process lower height blocks
+		if block.GetHeight() < ss.syncCurHeight {
+			ss.logger.Warnf("got lower block, syncCurHeight %d block %d", ss.syncCurHeight, block.GetHeight())
+			return
+		}
+
 		if block.GetHeight() == (ss.syncRcvHeight + 1) {
 			ss.syncRcvHeight = block.GetHeight()
 		}
 	}
+
+	syncBlk := &PovSyncBlock{Height: block.GetHeight(), Block: block, PeerID: peer.peerID, CheckTxIndex: 0}
+	ss.syncBlocks[block.GetHeight()] = syncBlk
 }
 
 func (ss *PovSyncer) checkSyncBlock(syncBlk *PovSyncBlock) bool {
