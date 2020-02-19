@@ -51,3 +51,8 @@ func OracleTypeToString(ot uint32) string {
 		return "invalid"
 	}
 }
+
+const (
+	VerifierMinNum = 1
+	VerifierMaxNum = 5
+)

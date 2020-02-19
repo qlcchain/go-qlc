@@ -25,6 +25,9 @@ const (
 		{"type":"function","name":"PKDVerifierUnregister","inputs":[
 			{"name":"vType","type":"uint32"}
 		]},
+		{"type":"function","name":"PKDVerifierHeart","inputs":[
+			{"name":"vType","type":"uint32[]"}
+		]},
 		{"type":"function","name":"PKDOracle","inputs":[
 			{"name":"oType","type":"uint32"},
 			{"name":"oID","type":"hash"},
@@ -76,6 +79,7 @@ const (
 
 	MethodNamePKDVerifierRegister   = "PKDVerifierRegister"
 	MethodNamePKDVerifierUnregister = "PKDVerifierUnregister"
+	MethodNamePKDVerifierHeart      = "PKDVerifierHeart"
 	MethodNamePKDOracle             = "PKDOracle"
 	MethodNamePKDPublish            = "PKDPublish"
 	MethodNamePKDUnPublish          = "PKDUnPublish"
@@ -119,6 +123,10 @@ type VerifierUnRegInfo struct {
 type VerifierStorage struct {
 	VInfo string
 	Valid bool
+}
+
+type VerifierHeartInfo struct {
+	VType []uint32
 }
 
 func VerifierRegInfoCheck(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
@@ -665,7 +673,12 @@ func GetOracleInfoByAccountAndType(ctx *vmstore.VMContext, account types.Address
 
 func GetOracleInfoByHash(ctx *vmstore.VMContext, hash types.Hash) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
-	block, err := ctx.Ledger.GetStateBlockConfirmed(hash)
+	childHash, err := ctx.Ledger.GetChild(hash)
+	if err != nil {
+		return nil
+	}
+
+	block, err := ctx.Ledger.GetStateBlockConfirmed(childHash)
 	if err != nil {
 		return nil
 	}

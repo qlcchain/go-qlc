@@ -134,6 +134,84 @@ func (vu *VerifierUnregister) SetStorage(ctx *vmstore.VMContext, account types.A
 	return nil
 }
 
+type VerifierHeart struct {
+	BaseContract
+}
+
+func (vh *VerifierHeart) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if block.GetToken() != common.GasToken() {
+		logger.Info("not gas chain")
+		return nil, nil, ErrToken
+	}
+
+	info := new(abi.VerifierHeartInfo)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDVerifierHeart, block.GetData())
+	if err != nil {
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
+	}
+
+	// check verifier if the block is not synced
+	if !block.IsFromSync() {
+		err := abi.VerifierPledgeCheck(ctx, block.GetAddress())
+		if err != nil {
+			logger.Info(err)
+			return nil, nil, ErrNotEnoughPledge
+		}
+
+		for _, vt := range info.VType {
+			_, err = abi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), vt)
+			if err != nil {
+				logger.Info(err)
+				return nil, nil, ErrGetVerifier
+			}
+		}
+	}
+
+	amount, err := ctx.CalculateAmount(block)
+	if err != nil {
+		logger.Info(err)
+		return nil, nil, ErrCalcAmount
+	}
+
+	if amount.Compare(common.OracleCost) != types.BalanceCompEqual {
+		logger.Infof("balance(exp:%s-%s) wrong", common.OracleCost, amount)
+		return nil, nil, ErrNotEnoughFee
+	}
+
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, info.VType)
+	if err != nil {
+		logger.Info(err)
+		return nil, nil, ErrPackMethod
+	}
+
+	return nil, nil, nil
+}
+
+func (vh *VerifierHeart) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error {
+	hi := new(abi.VerifierHeartInfo)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(hi, abi.MethodNamePKDVerifierHeart, block.GetData())
+	if err != nil {
+		return err
+	}
+
+	vsVal, _ := dpki.PovGetVerifierState(csdb, block.Address[:])
+	if vsVal == nil {
+		vsVal = types.NewPovVerifierState()
+	}
+
+	for _, ht := range hi.VType {
+		vsVal.ActiveHeight[common.OracleTypeToString(ht)] = povHeight
+	}
+
+	err = dpki.PovSetVerifierState(csdb, block.Address[:], vsVal)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type Publish struct {
 	BaseContract
 }
@@ -151,6 +229,12 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 		return nil, nil, ErrUnpackMethod
 	}
 
+	if len(info.Verifiers) < common.VerifierMinNum || len(info.Verifiers) > common.VerifierMaxNum ||
+		len(info.Codes) < common.VerifierMinNum || len(info.Codes) > common.VerifierMaxNum {
+		logger.Info(err)
+		return nil, nil, ErrVerifierNum
+	}
+
 	fee := types.Balance{Int: info.Fee}
 	err = abi.PublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.PubKey, fee)
 	if err != nil {
@@ -165,7 +249,7 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 	}
 
 	if amount.Compare(fee) != types.BalanceCompEqual {
-		logger.Info("balance mismatch(data:%s--amount:%s)", fee, amount)
+		logger.Infof("balance mismatch(data:%s--amount:%s)", fee, amount)
 		return nil, nil, ErrNotEnoughFee
 	}
 
@@ -198,6 +282,38 @@ func (p *Publish) SetStorage(ctx *vmstore.VMContext, account types.Address, pt u
 	key = append(key, pk...)
 	key = append(key, hash[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Publish) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error {
+	info := new(abi.PublishInfo)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDPublish, block.GetData())
+	if err != nil {
+		return err
+	}
+
+	pubInfoKey := &abi.PublishInfoKey{
+		PType:  info.PType,
+		PID:    info.PID,
+		PubKey: info.PubKey,
+		Hash:   info.Hash,
+	}
+	psRawKey := pubInfoKey.ToRawKey()
+
+	ps, _ := dpki.PovGetPublishState(csdb, psRawKey)
+	if ps == nil {
+		ps = types.NewPovPublishState()
+		ps.BonusFee = types.NewBigNumFromBigInt(info.Fee)
+		ps.PublishHeight = povHeight
+	} else {
+		ps.PublishHeight = povHeight
+	}
+
+	err = dpki.PovSetPublishState(csdb, psRawKey, ps)
 	if err != nil {
 		return err
 	}
@@ -447,6 +563,7 @@ func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractSt
 
 		vsVal.TotalVerify += 1
 		vsVal.TotalReward = new(types.BigNum).Add(vsVal.TotalReward, divBonusFee)
+		vsVal.ActiveHeight[common.OracleTypeToString(oraInfo.OType)] = povHeight
 
 		err = dpki.PovSetVerifierState(csdb, vsRawKey, vsVal)
 		if err != nil {

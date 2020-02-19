@@ -558,15 +558,46 @@ func TestGetOracleInfoByTypeAndIDAndPk(t *testing.T) {
 }
 
 func TestGetOracleInfoByHash(t *testing.T) {
-	hash1 := types.Hash{1, 2, 3}
-	hash2 := types.Hash{1, 2, 3}
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
 
-	if hash1 != hash2 {
-		t.Fatal()
+	pblk := mock.StateBlock()
+	pblk.Previous = types.ZeroHash
+	err := l.AddStateBlock(pblk)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	hash3 := types.Hash{1, 3, 2}
-	if hash1 == hash3 {
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+	ot := common.OracleTypeEmail
+	id := mock.Hash()
+	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
+	hash := pblk.GetHash()
+	pk := make([]byte, ed25519.PublicKeySize)
+	err = random.Bytes(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vs := []types.Address{mock.Address(), mock.Address()}
+	cs := []types.Hash{mock.Hash(), mock.Hash()}
+	fee := types.NewBalance(5e8)
+	blk := mock.StateBlock()
+	blk.Previous = hash
+	blk.Data, _ = PublicKeyDistributionABI.PackMethod(MethodNamePKDPublish, ot, id, pk[:], vs, cs, fee.Int)
+	err = l.AddStateBlock(blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info := GetOracleInfoByHash(ctx, hash)
+	if len(info) != 1 || info[0].OID != id || info[0].OType != ot || !bytes.Equal(pk, info[0].PubKey) {
 		t.Fatal()
 	}
 }

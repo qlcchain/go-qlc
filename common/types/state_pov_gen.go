@@ -1332,6 +1332,36 @@ func (z *PovVerifierState) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
+		case "ah":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ActiveHeight")
+				return
+			}
+			if z.ActiveHeight == nil {
+				z.ActiveHeight = make(map[string]uint64, zb0002)
+			} else if len(z.ActiveHeight) > 0 {
+				for key := range z.ActiveHeight {
+					delete(z.ActiveHeight, key)
+				}
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				var za0002 uint64
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "ActiveHeight")
+					return
+				}
+				za0002, err = dc.ReadUint64()
+				if err != nil {
+					err = msgp.WrapError(err, "ActiveHeight", za0001)
+					return
+				}
+				z.ActiveHeight[za0001] = za0002
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1345,9 +1375,9 @@ func (z *PovVerifierState) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *PovVerifierState) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+	// map header, size 3
 	// write "tv"
-	err = en.Append(0x82, 0xa2, 0x74, 0x76)
+	err = en.Append(0x83, 0xa2, 0x74, 0x76)
 	if err != nil {
 		return
 	}
@@ -1373,15 +1403,37 @@ func (z *PovVerifierState) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "ah"
+	err = en.Append(0xa2, 0x61, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.ActiveHeight)))
+	if err != nil {
+		err = msgp.WrapError(err, "ActiveHeight")
+		return
+	}
+	for za0001, za0002 := range z.ActiveHeight {
+		err = en.WriteString(za0001)
+		if err != nil {
+			err = msgp.WrapError(err, "ActiveHeight")
+			return
+		}
+		err = en.WriteUint64(za0002)
+		if err != nil {
+			err = msgp.WrapError(err, "ActiveHeight", za0001)
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *PovVerifierState) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 3
 	// string "tv"
-	o = append(o, 0x82, 0xa2, 0x74, 0x76)
+	o = append(o, 0x83, 0xa2, 0x74, 0x76)
 	o = msgp.AppendUint64(o, z.TotalVerify)
 	// string "tr"
 	o = append(o, 0xa2, 0x74, 0x72)
@@ -1393,6 +1445,13 @@ func (z *PovVerifierState) MarshalMsg(b []byte) (o []byte, err error) {
 			err = msgp.WrapError(err, "TotalReward")
 			return
 		}
+	}
+	// string "ah"
+	o = append(o, 0xa2, 0x61, 0x68)
+	o = msgp.AppendMapHeader(o, uint32(len(z.ActiveHeight)))
+	for za0001, za0002 := range z.ActiveHeight {
+		o = msgp.AppendString(o, za0001)
+		o = msgp.AppendUint64(o, za0002)
 	}
 	return
 }
@@ -1438,6 +1497,36 @@ func (z *PovVerifierState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
+		case "ah":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ActiveHeight")
+				return
+			}
+			if z.ActiveHeight == nil {
+				z.ActiveHeight = make(map[string]uint64, zb0002)
+			} else if len(z.ActiveHeight) > 0 {
+				for key := range z.ActiveHeight {
+					delete(z.ActiveHeight, key)
+				}
+			}
+			for zb0002 > 0 {
+				var za0001 string
+				var za0002 uint64
+				zb0002--
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ActiveHeight")
+					return
+				}
+				za0002, bts, err = msgp.ReadUint64Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ActiveHeight", za0001)
+					return
+				}
+				z.ActiveHeight[za0001] = za0002
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -1457,6 +1546,13 @@ func (z *PovVerifierState) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += msgp.ExtensionPrefixSize + z.TotalReward.Len()
+	}
+	s += 3 + msgp.MapHeaderSize
+	if z.ActiveHeight != nil {
+		for za0001, za0002 := range z.ActiveHeight {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + msgp.Uint64Size
+		}
 	}
 	return
 }

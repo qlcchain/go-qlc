@@ -10,23 +10,23 @@ import (
 	"testing"
 )
 
-func TestRepReward_GetLastRewardHeight(t *testing.T) {
+func TestMinerReward_GetLastRewardHeight(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	account := mock.Address()
-	h, err := r.GetLastRewardHeight(ctx, account)
+	h, err := m.GetLastRewardHeight(ctx, account)
 	if h != 0 {
 		t.Fatal()
 	}
 
-	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, uint64(1440), uint64(100), common.TimeNow().Unix(), big.NewInt(200))
-	err = ctx.SetStorage(types.RepAddress.Bytes(), account[:], data)
+	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, uint64(1440), uint64(100), common.TimeNow().Unix(), big.NewInt(200))
+	err = ctx.SetStorage(types.MinerAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,30 +36,30 @@ func TestRepReward_GetLastRewardHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err = r.GetLastRewardHeight(ctx, account)
+	h, err = m.GetLastRewardHeight(ctx, account)
 	if h != 1440 || err != nil {
 		t.Fatal(h, err)
 	}
 }
 
-func TestRepReward_GetRewardHistory(t *testing.T) {
+func TestMinerReward_GetRewardHistory(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	account := mock.Address()
-	ri, err := r.GetRewardHistory(ctx, account)
-	if ri != nil || err == nil {
+	mi, err := m.GetRewardHistory(ctx, account)
+	if mi != nil || err == nil {
 		t.Fatal()
 	}
 
 	timeStamp := common.TimeNow().Unix()
-	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, uint64(1440), uint64(100), timeStamp, big.NewInt(200))
-	err = ctx.SetStorage(types.RepAddress.Bytes(), account[:], data)
+	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, uint64(1440), uint64(100), timeStamp, big.NewInt(200))
+	err = ctx.SetStorage(types.MinerAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,22 +69,22 @@ func TestRepReward_GetRewardHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ri, err = r.GetRewardHistory(ctx, account)
-	if ri == nil || ri.EndHeight != uint64(1440) || ri.RewardBlocks != uint64(100) || ri.RewardAmount.Cmp(big.NewInt(200)) != 0 || ri.Timestamp != timeStamp {
+	mi, err = m.GetRewardHistory(ctx, account)
+	if mi == nil || mi.EndHeight != uint64(1440) || mi.RewardBlocks != uint64(100) || mi.RewardAmount.Cmp(big.NewInt(200)) != 0 || mi.Timestamp != timeStamp {
 		t.Fatal()
 	}
 }
 
-func TestRepReward_GetNodeRewardHeight(t *testing.T) {
+func TestMinerReward_GetNodeRewardHeight(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
-	h, err := r.GetNodeRewardHeight(ctx)
+	h, err := m.GetNodeRewardHeight(ctx)
 	if h != 0 {
 		t.Fatal()
 	}
@@ -96,9 +96,9 @@ func TestRepReward_GetNodeRewardHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err = r.GetNodeRewardHeight(ctx)
+	h, err = m.GetNodeRewardHeight(ctx)
 	if h != 0 {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	pb, td = mock.GeneratePovBlock(pb, 0)
@@ -108,9 +108,9 @@ func TestRepReward_GetNodeRewardHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err = r.GetNodeRewardHeight(ctx)
+	h, err = m.GetNodeRewardHeight(ctx)
 	if h != 0 {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	pb, td = mock.GeneratePovBlock(pb, 0)
@@ -120,26 +120,27 @@ func TestRepReward_GetNodeRewardHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h, err = r.GetNodeRewardHeight(ctx)
+	h, err = m.GetNodeRewardHeight(ctx)
+	t.Log(h)
 	if h != common.PovMinerRewardHeightStart+uint64(common.POVChainBlocksPerDay)-1 {
-		t.Fatal()
+		t.Fatal(err)
 	}
 }
 
-func TestRepReward_GetAvailRewardInfo(t *testing.T) {
+func TestMinerReward_GetAvailRewardInfo(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	account := mock.Address()
 	lastHeight := uint64(0)
 	nodeHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay)
-	ri, err := r.GetAvailRewardInfo(ctx, account, nodeHeight, lastHeight)
-	if ri != nil {
+	mi, err := m.GetAvailRewardInfo(ctx, account, nodeHeight, lastHeight)
+	if mi != nil {
 		t.Fatal(err)
 	}
 
@@ -147,8 +148,9 @@ func TestRepReward_GetAvailRewardInfo(t *testing.T) {
 	it := types.NewPovMinerStatItem()
 	it.FirstHeight = 1440
 	it.LastHeight = 2880
-	it.RepBlockNum = 240
-	it.RepReward = types.NewBalance(100)
+	it.BlockNum = 240
+	it.RewardAmount = types.NewBalance(100)
+	it.IsMiner = true
 	ds.DayIndex = uint32(common.PovMinerRewardHeightStart / uint64(common.POVChainBlocksPerDay))
 	ds.MinerStats[account.String()] = it
 	err = l.AddPovMinerStat(ds)
@@ -156,26 +158,26 @@ func TestRepReward_GetAvailRewardInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ri, err = r.GetAvailRewardInfo(ctx, account, nodeHeight, lastHeight)
-	if err != nil || ri.RewardBlocks != uint64(it.RepBlockNum) || ri.RewardAmount.Cmp(it.RepReward.Int) != 0 || ri.EndHeight != it.LastHeight-1 {
+	mi, err = m.GetAvailRewardInfo(ctx, account, nodeHeight, lastHeight)
+	if err != nil || mi.RewardBlocks != uint64(it.BlockNum) || mi.RewardAmount.Cmp(it.RewardAmount.Int) != 0 || mi.EndHeight != it.LastHeight-1 {
 		t.Fatal(err)
 	}
 }
 
-func TestRepReward_ProcessSend(t *testing.T) {
+func TestMinerReward_ProcessSend(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	blk := mock.StateBlock()
 	blk.Address = types.ZeroAddress
 	blk.Token = types.ZeroHash
 
-	_, _, err := r.ProcessSend(ctx, blk)
+	_, _, err := m.ProcessSend(ctx, blk)
 	if err != ErrUnpackMethod {
 		t.Fatal(err)
 	}
@@ -186,27 +188,27 @@ func TestRepReward_ProcessSend(t *testing.T) {
 	endHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay) - 1
 	rewardBlocks := uint64(240)
 	rewardAmount := types.NewBalance(100)
-	blk.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
-	_, _, err = r.ProcessSend(ctx, blk)
+	blk.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
 	account = mock.Address()
-	blk.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
-	_, _, err = r.ProcessSend(ctx, blk)
+	blk.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrAccountInvalid {
 		t.Fatal(err)
 	}
 
 	blk.Address = account
-	_, _, err = r.ProcessSend(ctx, blk)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrToken {
 		t.Fatal(err)
 	}
 
 	blk.Token = common.ChainToken()
-	_, _, err = r.ProcessSend(ctx, blk)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrAccountNotExist {
 		t.Fatal(err)
 	}
@@ -216,7 +218,7 @@ func TestRepReward_ProcessSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = r.ProcessSend(ctx, blk)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrGetNodeHeight {
 		t.Fatal(err)
 	}
@@ -226,7 +228,7 @@ func TestRepReward_ProcessSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = r.ProcessSend(ctx, blk)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrEndHeightInvalid {
 		t.Fatal(err)
 	}
@@ -237,7 +239,7 @@ func TestRepReward_ProcessSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = r.ProcessSend(ctx, blk)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrCalcAmount {
 		t.Fatal(err)
 	}
@@ -246,80 +248,80 @@ func TestRepReward_ProcessSend(t *testing.T) {
 	it := types.NewPovMinerStatItem()
 	it.FirstHeight = 1440
 	it.LastHeight = 2880
-	it.RepBlockNum = 120
-	it.RepReward = types.NewBalance(10)
+	it.BlockNum = 120
+	it.RewardAmount = types.NewBalance(10)
 	ds.DayIndex = uint32(common.PovMinerRewardHeightStart / uint64(common.POVChainBlocksPerDay))
 	ds.MinerStats[account.String()] = it
 	err = l.AddPovMinerStat(ds)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = r.ProcessSend(ctx, blk)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
-	it.RepBlockNum = 240
-	it.RepReward = types.NewBalance(100)
+	it.BlockNum = 240
+	it.RewardAmount = types.NewBalance(100)
 	err = l.AddPovMinerStat(ds)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = r.ProcessSend(ctx, blk)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	timestamp := common.TimeNow().Unix()
-	data, err := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, endHeight, rewardBlocks, timestamp, rewardAmount.Int)
+	data, err := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, endHeight, rewardBlocks, timestamp, rewardAmount.Int)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx.SetStorage(types.RepAddress.Bytes(), account[:], data)
+	ctx.SetStorage(types.MinerAddress.Bytes(), account[:], data)
 	ctx.SaveStorage()
-	_, _, err = r.ProcessSend(ctx, blk)
+	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrClaimRepeat {
 		t.Fatal(err)
 	}
 }
 
-func TestRepReward_SetStorage(t *testing.T) {
+func TestMinerReward_SetStorage(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	blk := mock.StateBlock()
 	blk.Address = mock.Address()
 	blk.Timestamp = common.TimeNow().Unix()
 	amount := big.NewInt(100)
-	err := r.SetStorage(ctx, 2879, amount, 240, blk)
+	err := m.SetStorage(ctx, 2879, amount, 240, blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx.SaveStorage()
 
-	ri, err := r.GetRewardHistory(ctx, blk.Address)
-	if err != nil || ri.EndHeight != 2879 || ri.RewardBlocks != 240 || ri.RewardAmount.Cmp(amount) != 0 {
+	mi, err := m.GetRewardHistory(ctx, blk.Address)
+	if err != nil || mi.EndHeight != 2879 || mi.RewardBlocks != 240 || mi.RewardAmount.Cmp(amount) != 0 {
 		t.Fatal()
 	}
 }
 
-func TestRepReward_DoReceive(t *testing.T) {
+func TestMinerReward_DoReceive(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	sendBlk := mock.StateBlock()
 	recvBlk := mock.StateBlock()
-	blks, err := r.DoReceive(ctx, recvBlk, sendBlk)
+	blks, err := m.DoReceive(ctx, recvBlk, sendBlk)
 	if err != ErrUnpackMethod {
 		t.Fatal(err)
 	}
@@ -330,21 +332,21 @@ func TestRepReward_DoReceive(t *testing.T) {
 	endHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay) - 1
 	rewardBlocks := uint64(240)
 	rewardAmount := types.NewBalance(100)
-	sendBlk.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
-	blks, err = r.DoReceive(ctx, recvBlk, sendBlk)
+	sendBlk.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
+	blks, err = m.DoReceive(ctx, recvBlk, sendBlk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
 	account = mock.Address()
-	sendBlk.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
-	blks, err = r.DoReceive(ctx, recvBlk, sendBlk)
+	sendBlk.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
+	blks, err = m.DoReceive(ctx, recvBlk, sendBlk)
 	if err != ErrAccountInvalid {
 		t.Fatal(err)
 	}
 
 	sendBlk.Address = account
-	blks, err = r.DoReceive(ctx, recvBlk, sendBlk)
+	blks, err = m.DoReceive(ctx, recvBlk, sendBlk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +362,7 @@ func TestRepReward_DoReceive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blks, err = r.DoReceive(ctx, recvBlk, sendBlk)
+	blks, err = m.DoReceive(ctx, recvBlk, sendBlk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +380,7 @@ func TestRepReward_DoReceive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blks, err = r.DoReceive(ctx, recvBlk, sendBlk)
+	blks, err = m.DoReceive(ctx, recvBlk, sendBlk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +398,7 @@ func TestRepReward_DoReceive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blks, err = r.DoReceive(ctx, recvBlk, sendBlk)
+	blks, err = m.DoReceive(ctx, recvBlk, sendBlk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -407,17 +409,17 @@ func TestRepReward_DoReceive(t *testing.T) {
 	}
 }
 
-func TestRepReward_DoGap(t *testing.T) {
+func TestMinerReward_DoGap(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	blk := mock.StateBlock()
-	gap, _, _ := r.DoGap(ctx, blk)
+	gap, _, _ := m.DoGap(ctx, blk)
 	if gap != common.ContractNoGap {
 		t.Fatal(gap)
 	}
@@ -428,8 +430,8 @@ func TestRepReward_DoGap(t *testing.T) {
 	endHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay) - 1
 	rewardBlocks := uint64(240)
 	rewardAmount := types.NewBalance(100)
-	blk.Data, _ = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
-	gap, height, _ := r.DoGap(ctx, blk)
+	blk.Data, _ = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
+	gap, height, _ := m.DoGap(ctx, blk)
 	if gap != common.ContractRewardGapPov || height.(uint64) != endHeight+common.PovMinerRewardHeightGapToLatest {
 		t.Fatal(gap)
 	}
@@ -439,7 +441,7 @@ func TestRepReward_DoGap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gap, height, _ = r.DoGap(ctx, blk)
+	gap, height, _ = m.DoGap(ctx, blk)
 	if gap != common.ContractRewardGapPov || height.(uint64) != endHeight+common.PovMinerRewardHeightGapToLatest {
 		t.Fatal(gap)
 	}
@@ -450,33 +452,33 @@ func TestRepReward_DoGap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gap, height, _ = r.DoGap(ctx, blk)
+	gap, height, _ = m.DoGap(ctx, blk)
 	if gap != common.ContractNoGap {
 		t.Fatal(gap)
 	}
 }
 
-func TestRepReward_checkParamExistInOldRewardInfos(t *testing.T) {
+func TestMinerReward_checkParamExistInOldRewardInfos(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	blk := mock.StateBlock()
 	account := mock.Address()
 
-	param := &cabi.RepRewardParam{
-		Account:      account,
+	param := &cabi.MinerRewardParam{
+		Coinbase:     account,
 		Beneficial:   mock.Address(),
 		StartHeight:  1440,
 		EndHeight:    2879,
 		RewardBlocks: 240,
 		RewardAmount: big.NewInt(100),
 	}
-	err := r.checkParamExistInOldRewardInfos(ctx, param)
+	err := m.checkParamExistInOldRewardInfos(ctx, param)
 	if err != nil {
 		t.Fatal()
 	}
@@ -484,39 +486,39 @@ func TestRepReward_checkParamExistInOldRewardInfos(t *testing.T) {
 	blk.Address = account
 	blk.Timestamp = common.TimeNow().Unix()
 	amount := big.NewInt(100)
-	err = r.SetStorage(ctx, 2879, amount, 240, blk)
+	err = m.SetStorage(ctx, 2879, amount, 240, blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx.SaveStorage()
 
-	err = r.checkParamExistInOldRewardInfos(ctx, param)
+	err = m.checkParamExistInOldRewardInfos(ctx, param)
 	if err == nil {
 		t.Fatal()
 	}
 }
 
-func TestRepReward_calcRewardBlocksByDayStats(t *testing.T) {
+func TestMinerReward_calcRewardBlocksByDayStats(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 	account := mock.Address()
 
 	startHeight := common.PovMinerRewardHeightStart + 1
 	endHeight := uint64(1)
-	_, _, err := r.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
+	_, _, err := m.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
 	if err == nil {
 		t.Fatal()
 	}
 
 	startHeight = common.PovMinerRewardHeightStart
 	endHeight = uint64(1)
-	_, _, err = r.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
+	_, _, err = m.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
 	if err == nil {
 		t.Fatal()
 	}
@@ -525,8 +527,8 @@ func TestRepReward_calcRewardBlocksByDayStats(t *testing.T) {
 	it := types.NewPovMinerStatItem()
 	it.FirstHeight = 1440
 	it.LastHeight = 2880
-	it.RepBlockNum = 120
-	it.RepReward = types.NewBalance(10)
+	it.BlockNum = 120
+	it.RewardAmount = types.NewBalance(10)
 	ds.DayIndex = uint32(common.PovMinerRewardHeightStart / uint64(common.POVChainBlocksPerDay))
 	ds.MinerStats[mock.Address().String()] = it
 	err = l.AddPovMinerStat(ds)
@@ -536,7 +538,7 @@ func TestRepReward_calcRewardBlocksByDayStats(t *testing.T) {
 
 	startHeight = common.PovMinerRewardHeightStart
 	endHeight = startHeight + uint64(common.POVChainBlocksPerDay) - 1
-	rewardBlocks, rewardAmount, err := r.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
+	rewardBlocks, rewardAmount, err := m.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
 	if err != nil || rewardAmount.Compare(types.NewBalance(0)) != types.BalanceCompEqual || rewardBlocks != 0 {
 		t.Fatal(err)
 	}
@@ -545,8 +547,8 @@ func TestRepReward_calcRewardBlocksByDayStats(t *testing.T) {
 	it = types.NewPovMinerStatItem()
 	it.FirstHeight = 1440
 	it.LastHeight = 2880
-	it.RepBlockNum = 120
-	it.RepReward = types.NewBalance(10)
+	it.BlockNum = 120
+	it.RewardAmount = types.NewBalance(10)
 	ds.DayIndex = uint32(common.PovMinerRewardHeightStart / uint64(common.POVChainBlocksPerDay))
 	ds.MinerStats[account.String()] = it
 	err = l.AddPovMinerStat(ds)
@@ -554,20 +556,20 @@ func TestRepReward_calcRewardBlocksByDayStats(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rewardBlocks, rewardAmount, err = r.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
-	if err != nil || rewardAmount.Compare(it.RepReward) != types.BalanceCompEqual || rewardBlocks != 120 {
+	rewardBlocks, rewardAmount, err = m.calcRewardBlocksByDayStats(ctx, account, startHeight, endHeight)
+	if err != nil || rewardAmount.Compare(it.RewardAmount) != types.BalanceCompEqual || rewardBlocks != 120 {
 		t.Fatal()
 	}
 }
 
-func TestRepReward_GetTargetReceiver(t *testing.T) {
+func TestMinerReward_GetTargetReceiver(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
 	defer clear()
 
-	r := new(RepReward)
+	m := new(MinerReward)
 	ctx := vmstore.NewVMContext(l)
 
 	blk := mock.StateBlock()
@@ -577,8 +579,8 @@ func TestRepReward_GetTargetReceiver(t *testing.T) {
 	endHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay) - 1
 	rewardBlocks := uint64(240)
 	rewardAmount := types.NewBalance(100)
-	blk.Data, _ = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
-	receiver := r.GetTargetReceiver(ctx, blk)
+	blk.Data, _ = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
+	receiver := m.GetTargetReceiver(ctx, blk)
 	if receiver != beneficial {
 		t.Fatal()
 	}

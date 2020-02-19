@@ -2,52 +2,22 @@ package contract
 
 import (
 	"crypto/ed25519"
-	"encoding/json"
-	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	qcfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
-	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/contract/dpki"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"math/big"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 )
 
-func getLedger() (func(), *ledger.Ledger) {
-	dir := filepath.Join(qcfg.QlcTestDataDir(), "ledger", uuid.New().String())
-	_ = os.RemoveAll(dir)
-	cm := qcfg.NewCfgManager(dir)
-	cfg, _ := cm.Load()
-	l := ledger.NewLedger(cm.ConfigFile)
-
-	var mintageBlock, genesisBlock types.StateBlock
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
-		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: mintageBlock,
-			GenesisBlock:        genesisBlock,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
-
-	return func() {
-		l.Close()
-		os.RemoveAll(dir)
-	}, l
-}
-
 func TestVerifierRegister(t *testing.T) {
-	clear, l := getLedger()
+	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
@@ -92,7 +62,7 @@ func TestVerifierRegister(t *testing.T) {
 }
 
 func TestVerifierUnregister(t *testing.T) {
-	clear, l := getLedger()
+	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
@@ -131,7 +101,7 @@ func TestVerifierUnregister(t *testing.T) {
 }
 
 func TestPublish(t *testing.T) {
-	clear, l := getLedger()
+	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
@@ -158,9 +128,17 @@ func TestPublish(t *testing.T) {
 	id := mock.Hash()
 	pk := make([]byte, ed25519.PublicKeySize)
 	random.Bytes(pk)
-	vs := []types.Address{mock.Address(), mock.Address()}
-	cs := []types.Hash{mock.Hash(), mock.Hash()}
+	vs := make([]types.Address, 0)
+	cs := make([]types.Hash, 0)
 	fee := big.NewInt(5e8)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, pk, vs, cs, fee)
+	_, _, err = p.ProcessSend(ctx, blk)
+	if err != ErrVerifierNum {
+		t.Fatal(err)
+	}
+
+	vs = append(vs, mock.Address())
+	cs = append(cs, mock.Hash())
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, pk, vs, cs, fee)
 	_, _, err = p.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
@@ -188,7 +166,7 @@ func TestPublish(t *testing.T) {
 }
 
 func TestUnPublish(t *testing.T) {
-	clear, l := getLedger()
+	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
@@ -236,7 +214,7 @@ func TestUnPublish(t *testing.T) {
 }
 
 func TestOracle(t *testing.T) {
-	clear, l := getLedger()
+	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
@@ -315,7 +293,7 @@ func TestOracle(t *testing.T) {
 }
 
 func TestOracle_DoGap(t *testing.T) {
-	clear, l := getLedger()
+	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
 	}
@@ -349,6 +327,108 @@ func TestOracle_DoGap(t *testing.T) {
 	p.SetStorage(ctx, blk.Address, ot, id, pk, vs, cs, fee, hash)
 	gap, _, _ = o.DoGap(ctx, blk)
 	if gap != common.ContractNoGap {
+		t.Fatal()
+	}
+}
+
+func TestVerifierHeart(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	ctx := vmstore.NewVMContext(l)
+	vh := new(VerifierHeart)
+	blk := mock.StateBlock()
+
+	blk.Token = types.ZeroHash
+	_, _, err := vh.ProcessSend(ctx, blk)
+	if err != ErrToken {
+		t.Fatal()
+	}
+
+	blk.Token = common.GasToken()
+	blk.Data = []byte("test")
+	_, _, err = vh.ProcessSend(ctx, blk)
+	if err != ErrUnpackMethod {
+		t.Fatal(err)
+	}
+
+	ht := []uint32{common.OracleTypeInvalid, common.OracleTypeWeChat}
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, ht)
+	blk.Flag &= ^types.BlockFlagNonSync
+	_, _, err = vh.ProcessSend(ctx, blk)
+	if err != ErrCalcAmount {
+		t.Fatal(err)
+	}
+
+	blk.Flag |= types.BlockFlagNonSync
+	_, _, err = vh.ProcessSend(ctx, blk)
+	if err != ErrNotEnoughPledge {
+		t.Fatal(err)
+	}
+
+	vr := new(VerifierRegister)
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeWeChat, "wcid12345")
+	am := mock.AccountMeta(blk.Address)
+	am.CoinOracle = common.MinVerifierPledgeAmount
+	l.AddAccountMeta(am)
+	_, _, err = vh.ProcessSend(ctx, blk)
+	if err != ErrGetVerifier {
+		t.Fatal(err)
+	}
+
+	ht = []uint32{common.OracleTypeEmail, common.OracleTypeWeChat}
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com")
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, ht)
+	_, _, err = vh.ProcessSend(ctx, blk)
+	if err != ErrCalcAmount {
+		t.Fatal(err)
+	}
+
+	blk.Type = types.Open
+	_, _, err = vh.ProcessSend(ctx, blk)
+	if err != ErrNotEnoughFee {
+		t.Fatal(err)
+	}
+
+	blk.Balance = common.OracleCost
+	_, _, err = vh.ProcessSend(ctx, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestVerifierHeart_DoSendOnPov(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	cs := types.NewPovContractState()
+	csdb := statedb.NewPovContractStateDB(l.Store, cs)
+	ctx := vmstore.NewVMContext(l)
+	vh := new(VerifierHeart)
+	blk := mock.StateBlock()
+	var err error
+
+	ht := []uint32{common.OracleTypeWeChat}
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, ht)
+	err = vh.DoSendOnPov(ctx, csdb, 100, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var vsRawKey []byte
+	vsRawKey = append(vsRawKey, blk.Address[:]...)
+	vsVal, err := dpki.PovGetVerifierState(csdb, vsRawKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if vsVal.ActiveHeight[common.OracleTypeToString(common.OracleTypeWeChat)] != 100 {
 		t.Fatal()
 	}
 }
