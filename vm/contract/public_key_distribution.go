@@ -300,7 +300,7 @@ func (p *Publish) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractS
 		PType:  info.PType,
 		PID:    info.PID,
 		PubKey: info.PubKey,
-		Hash:   info.Hash,
+		Hash:   block.Previous,
 	}
 	psRawKey := pubInfoKey.ToRawKey()
 

@@ -537,6 +537,12 @@ func (z *PovPublishState) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
+		case "ph":
+			z.PublishHeight, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "PublishHeight")
+				return
+			}
 		case "vh":
 			z.VerifiedHeight, err = dc.ReadUint64()
 			if err != nil {
@@ -580,9 +586,9 @@ func (z *PovPublishState) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *PovPublishState) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 5
 	// write "oas"
-	err = en.Append(0x84, 0xa3, 0x6f, 0x61, 0x73)
+	err = en.Append(0x85, 0xa3, 0x6f, 0x61, 0x73)
 	if err != nil {
 		return
 	}
@@ -597,6 +603,16 @@ func (z *PovPublishState) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "OracleAccounts", za0001)
 			return
 		}
+	}
+	// write "ph"
+	err = en.Append(0xa2, 0x70, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.PublishHeight)
+	if err != nil {
+		err = msgp.WrapError(err, "PublishHeight")
+		return
 	}
 	// write "vh"
 	err = en.Append(0xa2, 0x76, 0x68)
@@ -641,9 +657,9 @@ func (z *PovPublishState) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *PovPublishState) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 5
 	// string "oas"
-	o = append(o, 0x84, 0xa3, 0x6f, 0x61, 0x73)
+	o = append(o, 0x85, 0xa3, 0x6f, 0x61, 0x73)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.OracleAccounts)))
 	for za0001 := range z.OracleAccounts {
 		o, err = z.OracleAccounts[za0001].MarshalMsg(o)
@@ -652,6 +668,9 @@ func (z *PovPublishState) MarshalMsg(b []byte) (o []byte, err error) {
 			return
 		}
 	}
+	// string "ph"
+	o = append(o, 0xa2, 0x70, 0x68)
+	o = msgp.AppendUint64(o, z.PublishHeight)
 	// string "vh"
 	o = append(o, 0xa2, 0x76, 0x68)
 	o = msgp.AppendUint64(o, z.VerifiedHeight)
@@ -709,6 +728,12 @@ func (z *PovPublishState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
+		case "ph":
+			z.PublishHeight, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PublishHeight")
+				return
+			}
 		case "vh":
 			z.VerifiedHeight, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
@@ -756,7 +781,7 @@ func (z *PovPublishState) Msgsize() (s int) {
 	for za0001 := range z.OracleAccounts {
 		s += z.OracleAccounts[za0001].Msgsize()
 	}
-	s += 3 + msgp.Uint64Size + 3 + msgp.Int8Size + 3
+	s += 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Int8Size + 3
 	if z.BonusFee == nil {
 		s += msgp.NilSize
 	} else {
