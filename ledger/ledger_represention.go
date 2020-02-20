@@ -3,8 +3,7 @@ package ledger
 import (
 	"encoding/json"
 
-	"github.com/cornelk/hashmap"
-
+	"github.com/qlcchain/go-qlc/common/hashmap"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/types"

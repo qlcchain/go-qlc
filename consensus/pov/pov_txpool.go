@@ -79,10 +79,6 @@ func NewPovTxPool(eb event.EventBus, l ledger.Store, chain PovTxChainReader) *Po
 }
 
 func (tp *PovTxPool) Init() error {
-	return nil
-}
-
-func (tp *PovTxPool) Start() error {
 	eb := tp.eb
 	if eb == nil {
 		eb = tp.ledger.EventBus()
@@ -105,6 +101,10 @@ func (tp *PovTxPool) Start() error {
 
 	tp.chain.RegisterListener(tp)
 
+	return nil
+}
+
+func (tp *PovTxPool) Start() error {
 	common.Go(tp.loop)
 
 	return nil

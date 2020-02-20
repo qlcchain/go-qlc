@@ -101,6 +101,15 @@ func (pov *PoVEngine) Init() error {
 	if err != nil {
 		return err
 	}
+	err = pov.syncer.Init()
+	if err != nil {
+		return err
+	}
+
+	err = pov.setEvent()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -129,11 +138,6 @@ func (pov *PoVEngine) Start() error {
 	}
 
 	err = pov.syncer.Start()
-	if err != nil {
-		return err
-	}
-
-	err = pov.setEvent()
 	if err != nil {
 		return err
 	}

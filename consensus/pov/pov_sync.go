@@ -99,7 +99,7 @@ func NewPovSyncer(eb event.EventBus, l ledger.Store, chain PovSyncerChainReader)
 	return ss
 }
 
-func (ss *PovSyncer) Start() error {
+func (ss *PovSyncer) Init() error {
 	eb := ss.eb
 	if eb != nil {
 		ss.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
@@ -124,6 +124,10 @@ func (ss *PovSyncer) Start() error {
 		}
 	}
 
+	return nil
+}
+
+func (ss *PovSyncer) Start() error {
 	common.Go(ss.mainLoop)
 	common.Go(ss.syncLoop)
 
