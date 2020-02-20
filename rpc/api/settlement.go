@@ -10,14 +10,15 @@ package api
 import (
 	"errors"
 	"fmt"
-
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"sort"
+	"time"
 
 	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -25,24 +26,25 @@ import (
 )
 
 type SettlementAPI struct {
-	logger         *zap.SugaredLogger
-	l              *ledger.Ledger
-	createContract *contract.CreateContract
-	signContract   *contract.SignContract
-	cdrContract    *contract.ProcessCDR
-	addPreStop     *contract.AddPreStop
-	removePreStop  *contract.RemovePreStop
-	updatePreStop  *contract.UpdatePreStop
-	addNextStop    *contract.AddNextStop
-	removeNextStop *contract.RemoveNextStop
-	updateNextStop *contract.UpdateNextStop
-	cc             *context.ChainContext
+	logger            *zap.SugaredLogger
+	l                 *ledger.Ledger
+	createContract    *contract.CreateContract
+	signContract      *contract.SignContract
+	cdrContract       *contract.ProcessCDR
+	addPreStop        *contract.AddPreStop
+	removePreStop     *contract.RemovePreStop
+	updatePreStop     *contract.UpdatePreStop
+	addNextStop       *contract.AddNextStop
+	removeNextStop    *contract.RemoveNextStop
+	updateNextStop    *contract.UpdateNextStop
+	terminateContract *contract.TerminateContract
+	cc                *context.ChainContext
 }
 
 // SignContractParam for confirm contract which created by PartyA
 type SignContractParam struct {
-	cabi.SignContractParam
-	Address types.Address // PartyB address
+	ContractAddress types.Address `json:"contractAddress"`
+	Address         types.Address `json:"address"`
 }
 
 func NewSettlement(l *ledger.Ledger, cc *context.ChainContext) *SettlementAPI {
@@ -89,11 +91,19 @@ func (s *SettlementAPI) GetContractRewardsBlock(send *types.Hash) (*types.StateB
 	})
 }
 
+type CreateContractParam struct {
+	PartyA    cabi.Contractor        `json:"partyA"`
+	PartyB    cabi.Contractor        `json:"partyB"`
+	Services  []cabi.ContractService `json:"services"`
+	StartDate int64                  `json:"startDate"`
+	EndDate   int64                  `json:"endDate"`
+}
+
 // GetCreateContractBlock
 // generate ContractSend block to call smart contract for generating settlement contract as PartyA
 // @param param smart contract params
 // @return state block to be processed
-func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) (*types.StateBlock, error) {
+func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*types.StateBlock, error) {
 	if !s.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}
@@ -102,18 +112,42 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 		return nil, errors.New("invalid input param")
 	}
 
-	if isVerified, err := param.Verify(); err != nil {
-		return nil, err
-	} else if !isVerified {
-		return nil, errors.New("invalid input param")
+	now := time.Now().Unix()
+
+	if param.StartDate < now {
+		return nil, fmt.Errorf("invalid start date, should bigger than %d, got: %d", now, param.StartDate)
 	}
+
+	if param.EndDate < now {
+		return nil, fmt.Errorf("invalid start end, should bigger than %d, got: %d", now, param.EndDate)
+	}
+
+	if param.EndDate < param.StartDate {
+		return nil, fmt.Errorf("invalid end date, should bigger than %d, got: %d", param.StartDate, param.EndDate)
+	}
+
 	ctx := vmstore.NewVMContext(s.l)
 
 	addr := param.PartyA.Address
 	if tm, err := ctx.GetTokenMeta(addr, common.GasToken()); err != nil {
 		return nil, err
 	} else {
-		balance, err := param.Balance()
+		createParam := &cabi.CreateContractParam{
+			PartyA:    param.PartyA,
+			PartyB:    param.PartyB,
+			Previous:  tm.Header,
+			Services:  param.Services,
+			SignDate:  now,
+			StartDate: param.StartDate,
+			EndDate:   param.EndDate,
+		}
+		if isVerified, err := createParam.Verify(); err != nil {
+			return nil, err
+		} else if !isVerified {
+			return nil, errors.New("invalid input param")
+		}
+
+		balance, err := createParam.Balance()
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +155,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 			return nil, fmt.Errorf("not enough balance, [%s] of [%s]", balance.String(), tm.Balance.String())
 		}
 
-		if singedData, err := param.ToABI(); err == nil {
+		if singedData, err := createParam.ToABI(); err == nil {
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,
@@ -131,7 +165,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 				Network:        types.ZeroBalance,
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
-				Previous:       param.Previous,
+				Previous:       createParam.Previous,
 				Link:           types.Hash(types.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
@@ -156,8 +190,6 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 
 // GetSignContractBlock
 // generate ContractSend block to call smart contract for signing settlement contract as PartyB
-// smart contract address = hash(*abi.CreateContractParam)
-// param.SignatureB = sign(smart contract address + param.ConfirmDate)
 // @param param sign settlement contract param created by PartyA
 // @return state block(without signature) to be processed
 func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.StateBlock, error) {
@@ -169,34 +201,22 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 		return nil, errors.New("invalid input param")
 	}
 
-	if isVerified, err := param.SignContractParam.Verify(); err != nil {
+	signParam := &cabi.SignContractParam{
+		ContractAddress: param.ContractAddress,
+		ConfirmDate:     time.Now().Unix(),
+	}
+
+	if isVerified, err := signParam.Verify(); err != nil {
 		return nil, err
 	} else if !isVerified {
 		return nil, errors.New("invalid input param")
 	}
 	ctx := vmstore.NewVMContext(s.l)
 
-	if storage, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err != nil {
-		return nil, err
-	} else {
-		if len(storage) > 0 {
-			if cp, err := cabi.ParseContractParam(storage); err != nil {
-				return nil, err
-			} else {
-				// verify partyB
-				if cp.PartyB.Address != param.Address {
-					return nil, fmt.Errorf("invalid partyB, exp: %s, act: %s", cp.PartyB.Address.String(), param.Address.String())
-				}
-			}
-		} else {
-			return nil, fmt.Errorf("invalid saved contract data of %s", param.ContractAddress.String())
-		}
-	}
-
 	if tm, err := ctx.GetTokenMeta(param.Address, common.GasToken()); err != nil {
 		return nil, err
 	} else {
-		if singedData, err := param.SignContractParam.ToABI(); err == nil {
+		if singedData, err := signParam.ToABI(); err == nil {
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,
@@ -222,7 +242,12 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 				sb.PoVHeight = povHeader.GetHeight()
 				sb.Extra = *h
 			}
-			return sb, nil
+
+			if _, _, err := s.signContract.ProcessSend(ctx, sb); err != nil {
+				return nil, err
+			} else {
+				return sb, nil
+			}
 		} else {
 			return nil, err
 		}
@@ -586,7 +611,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 
 	ctx := vmstore.NewVMContext(s.l)
 
-	if c, err := cabi.GetSettlementContract(ctx, addr, param); err != nil {
+	if c, err := cabi.FindSettlementContract(ctx, addr, param); err != nil {
 		return nil, err
 	} else {
 		if tm, err := ctx.GetTokenMeta(*addr, common.GasToken()); err != nil {
@@ -651,12 +676,117 @@ func (s *SettlementAPI) GetProcessCDRRewardsBlock(send *types.Hash) (*types.Stat
 	})
 }
 
+type TerminateParam struct {
+	cabi.TerminateParam
+	Address types.Address // PartyB address
+}
+
+// GetTerminateContractBlock
+// generate ContractSend block to call smart contract for terminating settlement contract
+// @param param sign settlement contract param created by PartyA
+// @return state block(without signature) to be processed
+func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types.StateBlock, error) {
+	if !s.cc.IsPoVDone() {
+		return nil, context.ErrPoVNotFinish
+	}
+
+	if param == nil {
+		return nil, errors.New("invalid input param")
+	}
+
+	if err := param.Verify(); err != nil {
+		return nil, err
+	}
+	ctx := vmstore.NewVMContext(s.l)
+
+	if tm, err := ctx.GetTokenMeta(param.Address, common.GasToken()); err != nil {
+		return nil, err
+	} else {
+		if singedData, err := param.ToABI(); err == nil {
+			sb := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        param.Address,
+				Balance:        tm.Balance,
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.SettlementAddress),
+				Representative: tm.Representative,
+				Data:           singedData,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			h := ctx.Cache.Trie().Hash()
+			if h != nil {
+				povHeader, err := s.l.GetLatestPovHeader()
+				if err != nil {
+					return nil, fmt.Errorf("get pov header error: %s", err)
+				}
+				sb.PoVHeight = povHeader.GetHeight()
+				sb.Extra = *h
+			}
+
+			if _, _, err := s.terminateContract.ProcessSend(ctx, sb); err != nil {
+				return nil, err
+			} else {
+				return sb, nil
+			}
+		} else {
+			return nil, err
+		}
+	}
+}
+
+// GetTerminateRewardsBlock generate create contract rewords block by contract send block hash
+// @param send contract send block hash
+// @return contract rewards block
+func (s *SettlementAPI) GetTerminateRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		ctx := vmstore.NewVMContext(s.l)
+
+		if r, err := s.terminateContract.DoReceive(ctx, rev, tx); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate terminate contract reward block")
+			}
+		} else {
+			return nil, err
+		}
+	})
+}
+
 // GetCDRStatus get CDRstatus by settlement smart contract address and CDR hash
 // @param addr settlement smart contract address
 // @param hash CDR data hash
 func (s *SettlementAPI) GetCDRStatus(addr *types.Address, hash types.Hash) (*cabi.CDRStatus, error) {
 	ctx := vmstore.NewVMContext(s.l)
 	return cabi.GetCDRStatus(ctx, addr, hash)
+}
+
+func (s *SettlementAPI) GetCDRStatusByDate(addr *types.Address, start, end int64, count int, offset *int) ([]*cabi.CDRStatus, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	if status, err := cabi.GetCDRStatusByDate(ctx, addr, start, end); err != nil {
+		return nil, err
+	} else {
+		size := len(status)
+		if size > 0 {
+			sort.Slice(status, func(i, j int) bool {
+				return sortCDRFun(status[i], status[j])
+			})
+		}
+		start, end, err := calculateRange(size, count, offset)
+		if err != nil {
+			return nil, err
+		}
+		return status[start:end], nil
+	}
 }
 
 // GetAllCDRStatus get all cdr status of the specific settlement smart contract
@@ -670,6 +800,11 @@ func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *
 		return nil, err
 	} else {
 		size := len(status)
+		if size > 0 {
+			sort.Slice(status, func(i, j int) bool {
+				return sortCDRFun(status[i], status[j])
+			})
+		}
 		start, end, err := calculateRange(size, count, offset)
 		if err != nil {
 			return nil, err
@@ -678,30 +813,44 @@ func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *
 	}
 }
 
-// TODO: report data te be confirmed
-type SettlementRecord struct {
-	Address                  types.Address // smart contract address
-	Customer                 string
-	CustomerSr               string
-	Country                  string
-	Operator                 string
-	ServiceId                string
-	MCC                      int
-	MNC                      int
-	Currency                 string
-	UnitPrice                float64
-	SumOfBillableSMSCustomer int64
-	SumOfTOTPrice            float64
+// GetSummaryReport generate summary report by smart contract address and start/end date
+// @param addr settlement contract address
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return summary report if error not exist
+func (s *SettlementAPI) GetSummaryReport(addr *types.Address, start, end int64) (*cabi.SummaryResult, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetSummaryReport(ctx, addr, start, end)
 }
 
-// TODO: query condition to be confirmed, maybe more interface?
-// GenerateReport Generate reports for specified contracts based on start and end date
+// GenerateInvoices Generate reports for specified contracts based on start and end date
 // @param addr user qlcchain address
 // @param start report start date (UTC unix time)
 // @param end report end data (UTC unix time)
 // @return settlement report
-func (s *SettlementAPI) GenerateReport(addr *types.Address, start, end int64) (*[]SettlementRecord, error) {
-	return nil, nil
+func (s *SettlementAPI) GenerateInvoices(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GenerateInvoices(ctx, addr, start, end)
+}
+
+var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {
+	dt1, sender1, _, err := cdr1.ExtractID()
+	if err != nil {
+		return false
+	}
+	dt2, sender2, _, err := cdr2.ExtractID()
+	if err != nil {
+		return false
+	}
+	if dt1 < dt2 {
+		return true
+	}
+
+	if dt1 > dt2 {
+		return false
+	}
+
+	return sender1 < sender2
 }
 
 func (s *SettlementAPI) getContractRewardsBlock(send *types.Hash,
@@ -761,7 +910,7 @@ func (s *SettlementAPI) queryContractsByAddress(count int, offset *int, fn func(
 
 func calculateRange(size, count int, offset *int) (start, end int, err error) {
 	if size <= 0 {
-		return 0, 0, fmt.Errorf("invalid size %d", size)
+		return 0, 0, fmt.Errorf("can not find any records, size=%d", size)
 	}
 
 	o := 0
