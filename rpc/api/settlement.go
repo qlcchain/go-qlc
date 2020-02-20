@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -42,8 +43,8 @@ type SettlementAPI struct {
 
 // SignContractParam for confirm contract which created by PartyA
 type SignContractParam struct {
-	cabi.SignContractParam
-	Address types.Address // PartyB address
+	ContractAddress types.Address `json:"contractAddress"`
+	Address         types.Address `json:"address"`
 }
 
 func NewSettlement(l *ledger.Ledger, cc *context.ChainContext) *SettlementAPI {
@@ -90,11 +91,19 @@ func (s *SettlementAPI) GetContractRewardsBlock(send *types.Hash) (*types.StateB
 	})
 }
 
+type CreateContractParam struct {
+	PartyA    cabi.Contractor        `json:"partyA"`
+	PartyB    cabi.Contractor        `json:"partyB"`
+	Services  []cabi.ContractService `json:"services"`
+	StartDate int64                  `json:"startDate"`
+	EndDate   int64                  `json:"endDate"`
+}
+
 // GetCreateContractBlock
 // generate ContractSend block to call smart contract for generating settlement contract as PartyA
 // @param param smart contract params
 // @return state block to be processed
-func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) (*types.StateBlock, error) {
+func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*types.StateBlock, error) {
 	if !s.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}
@@ -103,18 +112,42 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 		return nil, errors.New("invalid input param")
 	}
 
-	if isVerified, err := param.Verify(); err != nil {
-		return nil, err
-	} else if !isVerified {
-		return nil, errors.New("invalid input param")
+	now := time.Now().Unix()
+
+	if param.StartDate < now {
+		return nil, fmt.Errorf("invalid start date, should bigger than %d, got: %d", now, param.StartDate)
 	}
+
+	if param.EndDate < now {
+		return nil, fmt.Errorf("invalid start end, should bigger than %d, got: %d", now, param.EndDate)
+	}
+
+	if param.EndDate < param.StartDate {
+		return nil, fmt.Errorf("invalid end date, should bigger than %d, got: %d", param.StartDate, param.EndDate)
+	}
+
 	ctx := vmstore.NewVMContext(s.l)
 
 	addr := param.PartyA.Address
 	if tm, err := ctx.GetTokenMeta(addr, common.GasToken()); err != nil {
 		return nil, err
 	} else {
-		balance, err := param.Balance()
+		createParam := &cabi.CreateContractParam{
+			PartyA:    param.PartyA,
+			PartyB:    param.PartyB,
+			Previous:  tm.Header,
+			Services:  param.Services,
+			SignDate:  now,
+			StartDate: param.StartDate,
+			EndDate:   param.EndDate,
+		}
+		if isVerified, err := createParam.Verify(); err != nil {
+			return nil, err
+		} else if !isVerified {
+			return nil, errors.New("invalid input param")
+		}
+
+		balance, err := createParam.Balance()
 		if err != nil {
 			return nil, err
 		}
@@ -122,7 +155,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 			return nil, fmt.Errorf("not enough balance, [%s] of [%s]", balance.String(), tm.Balance.String())
 		}
 
-		if singedData, err := param.ToABI(); err == nil {
+		if singedData, err := createParam.ToABI(); err == nil {
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,
@@ -132,7 +165,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *cabi.CreateContractParam) 
 				Network:        types.ZeroBalance,
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
-				Previous:       param.Previous,
+				Previous:       createParam.Previous,
 				Link:           types.Hash(types.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
@@ -168,7 +201,12 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 		return nil, errors.New("invalid input param")
 	}
 
-	if isVerified, err := param.SignContractParam.Verify(); err != nil {
+	signParam := &cabi.SignContractParam{
+		ContractAddress: param.ContractAddress,
+		ConfirmDate:     time.Now().Unix(),
+	}
+
+	if isVerified, err := signParam.Verify(); err != nil {
 		return nil, err
 	} else if !isVerified {
 		return nil, errors.New("invalid input param")
@@ -178,7 +216,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 	if tm, err := ctx.GetTokenMeta(param.Address, common.GasToken()); err != nil {
 		return nil, err
 	} else {
-		if singedData, err := param.SignContractParam.ToABI(); err == nil {
+		if singedData, err := signParam.ToABI(); err == nil {
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,

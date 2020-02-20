@@ -1005,25 +1005,25 @@ func (s *SummaryResult) IncreaseSuccess(name string, isPartyA bool) {
 	}
 
 	if isPartyA {
-		s.Records[name].PartyA.Success += 1
+		s.Records[name].PartyA.Success++
 	} else {
-		s.Records[name].PartyB.Success += 1
+		s.Records[name].PartyB.Success++
 	}
 }
 
 func (s *SummaryResult) IncreasePartyASuccess() {
-	s.PartyA.Success += 1
+	s.PartyA.Success++
 }
 
 func (s *SummaryResult) IncreasePartyAFail() {
-	s.PartyA.Fail += 1
+	s.PartyA.Fail++
 }
 func (s *SummaryResult) IncreasePartyBSuccess() {
-	s.PartyB.Success += 1
+	s.PartyB.Success++
 }
 
 func (s *SummaryResult) IncreasePartyBFail() {
-	s.PartyB.Fail += 1
+	s.PartyB.Fail++
 }
 
 func (s *SummaryResult) IncreaseFail(name string, isPartyA bool) {
@@ -1032,9 +1032,9 @@ func (s *SummaryResult) IncreaseFail(name string, isPartyA bool) {
 	}
 
 	if isPartyA {
-		s.Records[name].PartyA.Fail += 1
+		s.Records[name].PartyA.Fail++
 	} else {
-		s.Records[name].PartyB.Fail += 1
+		s.Records[name].PartyB.Fail++
 	}
 }
 
@@ -1169,7 +1169,7 @@ func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end in
 					if cdr.Status == SettlementStatusSuccess {
 						if _, sender, _, err := cdr.ExtractID(); err == nil {
 							if _, ok := cache[sender]; ok {
-								cache[sender] += 1
+								cache[sender]++
 							} else {
 								cache[sender] = 1
 							}
