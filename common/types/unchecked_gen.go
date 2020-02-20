@@ -308,6 +308,58 @@ func (z PendingKey) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *PendingKind) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 byte
+		zb0001, err = dc.ReadByte()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = PendingKind(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z PendingKind) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteByte(byte(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z PendingKind) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendByte(o, byte(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *PendingKind) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 byte
+		zb0001, bts, err = msgp.ReadByteBytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = PendingKind(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z PendingKind) Msgsize() (s int) {
+	s = msgp.ByteSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *SynchronizedKind) DecodeMsg(dc *msgp.Reader) (err error) {
 	{
 		var zb0001 byte

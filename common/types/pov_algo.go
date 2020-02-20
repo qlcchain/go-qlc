@@ -1,6 +1,8 @@
 package types
 
-import "strings"
+import (
+	"strings"
+)
 
 type PovAlgoType uint32
 
@@ -13,6 +15,7 @@ const (
 	ALGO_LYRA2Z  = PovAlgoType(3 << 8)
 	ALGO_X11     = PovAlgoType(4 << 8)
 	ALGO_X16R    = PovAlgoType(5 << 8)
+	ALGO_HYBRID  = PovAlgoType(254 << 8)
 	ALGO_UNKNOWN = PovAlgoType(255 << 8)
 )
 
@@ -30,6 +33,8 @@ func (a PovAlgoType) String() string {
 		return "X11"
 	case ALGO_X16R:
 		return "X16R"
+	case ALGO_HYBRID:
+		return "HYBRID"
 	}
 
 	return "UNKNOWN"
@@ -50,6 +55,8 @@ func NewPoVHashAlgoFromStr(name string) PovAlgoType {
 		return ALGO_X11
 	case "X16R":
 		return ALGO_X16R
+	case "HYBRID":
+		return ALGO_HYBRID
 	}
 
 	return ALGO_UNKNOWN

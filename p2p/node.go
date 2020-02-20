@@ -39,7 +39,7 @@ var (
 )
 
 // p2p protocol version
-var p2pVersion byte = 9
+var p2pVersion byte = 8
 
 type netAttribute byte
 
@@ -168,7 +168,7 @@ func (node *QlcNode) startLocalDiscovery() error {
 	if do != nil {
 		service, err := do(node.ctx, node.host)
 		if err != nil {
-			node.logger.Error("mDNS error: ", err)
+			// node.logger.Error("mDNS error: ", err)
 			return err
 		} else {
 			service.RegisterNotifee(node)
@@ -199,7 +199,7 @@ func (node *QlcNode) StartServices() error {
 		if node.cfg.P2P.Discovery.MDNSEnabled {
 			err := node.startLocalDiscovery()
 			if err != nil {
-				return err
+				node.logger.Warnf("mDNS start fail: %s", err)
 			}
 		}
 	}

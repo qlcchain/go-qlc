@@ -997,6 +997,10 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 		return nil, errors.New("invalid reward param beneficial")
 	}
 
+	if param.RewardAmount == nil || param.RewardAmount.Sign() <= 0 {
+		return nil, errors.New("invalid reward param rewardAmount")
+	}
+
 	am, err := p.l.GetAccountMeta(param.Account)
 	if am == nil {
 		return nil, fmt.Errorf("rep account not exist, %s", err)

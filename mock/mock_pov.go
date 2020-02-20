@@ -34,7 +34,15 @@ func GenerateGenesisPovBlock() (*types.PovBlock, *types.PovTD) {
 	return &genBlk, genTD
 }
 
+func GeneratePovBlockByFakePow(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock, *types.PovTD) {
+	return doGeneratePovBlock(prevBlock, txNum, true)
+}
+
 func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock, *types.PovTD) {
+	return doGeneratePovBlock(prevBlock, txNum, false)
+}
+
+func doGeneratePovBlock(prevBlock *types.PovBlock, txNum uint32, fakePow bool) (*types.PovBlock, *types.PovTD) {
 	genBlk, genTD := GenerateGenesisPovBlock()
 	if prevBlock == nil {
 		prevBlock = genBlk
@@ -47,11 +55,17 @@ func GeneratePovBlock(prevBlock *types.PovBlock, txNum uint32) (*types.PovBlock,
 	block.Header.BasHdr.Previous = prevBlock.GetHash()
 	block.Header.BasHdr.Height = prevBlock.GetHeight() + 1
 
+	if fakePow {
+		block.Header.BasHdr.Nonce = block.Header.BasHdr.Timestamp
+	}
+
 	cb := GeneratePovCoinbase()
 	block.Header.CbTx.TxNum = txNum + 1
 	block.Header.CbTx.StateHash = prevBlock.GetStateHash()
 	block.Header.CbTx.TxOuts[0].Address = cb.Address()
-	block.Header.CbTx.TxOuts[0].Value = common.PovMinerRewardPerBlockBalance
+	block.Header.CbTx.TxOuts[0].Value = types.NewBalance(int64(common.PovMinerRewardPerBlock * uint64(common.PovMinerRewardRatioMiner) / uint64(100)))
+	block.Header.CbTx.TxOuts[1].Address = types.RepAddress
+	block.Header.CbTx.TxOuts[1].Value = types.NewBalance(int64(common.PovMinerRewardPerBlock * uint64(common.PovMinerRewardRatioRep) / uint64(100)))
 	block.Header.CbTx.Hash = block.Header.CbTx.ComputeHash()
 
 	txHashes := make([]*types.Hash, 0, txNum)

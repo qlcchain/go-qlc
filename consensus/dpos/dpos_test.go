@@ -277,7 +277,7 @@ func (n *Node) startPoVService() {
 	pov.CheckPeerStatusTime = time.Second
 	pov.ForceSyncTimeInSec = time.Second
 
-	povEngine, _ := pov.NewPovEngine(n.ctx.ConfigFile())
+	povEngine, _ := pov.NewPovEngine(n.ctx.ConfigFile(), false)
 	err := povEngine.Init()
 	if err != nil {
 		n.t.Fatal(err)

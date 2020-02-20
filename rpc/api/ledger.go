@@ -1199,3 +1199,12 @@ func (l *LedgerAPI) NewPending(ctx context.Context, address types.Address) (*rpc
 		}()
 	})
 }
+
+func (l *LedgerAPI) GenesisBlocks() (map[string]types.StateBlock, error) {
+	genesisBlk := make(map[string]types.StateBlock)
+	genesisBlk["chain"] = common.GenesisBlock()
+	genesisBlk["chain-mintage"] = common.GenesisMintageBlock()
+	genesisBlk["gas"] = common.GasBlock()
+	genesisBlk["gas-mintage"] = common.GasMintageBlock()
+	return genesisBlk, nil
+}

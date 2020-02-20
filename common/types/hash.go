@@ -271,3 +271,10 @@ func Sha256HashData(data []byte) (Hash, error) {
 	h.Write(data)
 	return BytesToHash(h.Sum(nil))
 }
+
+func HybridHashData(data []byte) Hash {
+	res1 := Sha256DHashData(data)
+	res2 := ScryptHashData(res1.Bytes())
+	res3 := X11HashData(res2.Bytes())
+	return res3
+}

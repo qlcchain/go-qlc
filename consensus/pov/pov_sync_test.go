@@ -33,6 +33,8 @@ type povSyncMockData struct {
 }
 
 type povSyncChainReaderMockChain struct {
+	md *povSyncMockData
+
 	allBlocks    []*types.PovBlock
 	heightBlocks map[uint64]*types.PovBlock
 	hashBlocks   map[types.Hash]*types.PovBlock
@@ -49,6 +51,8 @@ func (mc *povSyncChainReaderMockChain) InsertBlock(block *types.PovBlock, td *ty
 	mc.allBlocks = append(mc.allBlocks, block)
 
 	mc.hashTDs[block.GetHash()] = td
+
+	_ = mc.md.ledger.AddPovBlock(block, td)
 }
 func (mc *povSyncChainReaderMockChain) GenesisBlock() *types.PovBlock {
 	return mc.allBlocks[0]
@@ -94,6 +98,7 @@ func setupPovSyncTestCase(t *testing.T) (func(t *testing.T), *povSyncMockData) {
 	md.eb = event.GetEventBus(uid)
 
 	md.chain = new(povSyncChainReaderMockChain)
+	md.chain.md = md
 	md.chain.heightBlocks = make(map[uint64]*types.PovBlock)
 	md.chain.hashBlocks = make(map[types.Hash]*types.PovBlock)
 	md.chain.hashTDs = make(map[types.Hash]*types.PovTD)
@@ -162,6 +167,8 @@ func TestPovSync_AddDelPeer1(t *testing.T) {
 	peer2Status.CurrentTD = td2.Chain.Bytes()
 	povSync.onPovStatus(peer2Status, peerID2)
 
+	povSync.checkAllPeers()
+
 	bestPeer = povSync.GetBestPeer("")
 	if bestPeer == nil || bestPeer.peerID != peerID2 {
 		t.Fatalf("bestPeer should be %s", peerID2)
@@ -175,6 +182,16 @@ func TestPovSync_AddDelPeer1(t *testing.T) {
 	retPeers2 := povSync.GetRandomPeers(1)
 	if len(retPeers2) != 1 {
 		t.Fatalf("retPeers len not 1")
+	}
+
+	retPeer3 := povSync.GetPeerLocators()
+	if len(retPeer3) != 2 {
+		t.Fatalf("retPeers len not 2")
+	}
+
+	topPeer := povSync.GetRandomTopPeer(1)
+	if topPeer == nil {
+		t.Fatalf("topPeer is nil")
 	}
 
 	povSync.onDeleteP2PStream(peerID2)
@@ -231,14 +248,11 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	}
 
 	var rsp *protos.PovBulkPullRsp
-	wg := sync.WaitGroup{}
-	wg.Add(1)
 	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *p2p.EventSendMsgToSingleMsg:
 			if msg.Type == p2p.PovBulkPullRsp {
 				rsp = msg.Message.(*protos.PovBulkPullRsp)
-				wg.Done()
 			}
 		}
 	}), md.eb)
@@ -250,7 +264,7 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	req1.Locators = append(req1.Locators, &genHash)
 	req1.Count = 1
 	povSync.onPovBulkPullReq(req1, bestPeer.peerID)
-	wg.Wait()
+	time.Sleep(10 * time.Millisecond)
 
 	if rsp == nil {
 		t.Fatalf("failed to get Message 1 msg")
@@ -269,13 +283,146 @@ func TestPovSync_BulkPullReq1(t *testing.T) {
 	req2.Locators = append(req2.Locators, &blk1Hash)
 	req2.Count = 1
 	povSync.onPovBulkPullReq(req2, bestPeer.peerID)
-	time.Sleep(time.Second)
+	time.Sleep(10 * time.Millisecond)
 
 	if rsp == nil {
 		t.Fatalf("failed to get Message 2 msg")
 	}
 	if rsp.Count == 0 || rsp.Blocks[0].GetHash() != blk1.GetHash() {
 		t.Fatalf("failed to get Message 2 Count & Hash")
+	}
+
+	_ = subscriber.UnsubscribeAll()
+	povSync.Stop()
+}
+
+func TestPovSync_BulkPullReq2(t *testing.T) {
+	teardownTestCase, md := setupPovSyncTestCase(t)
+	defer teardownTestCase(t)
+
+	povSync := NewPovSyncer(md.eb, md.ledger, md.chain)
+	if povSync == nil {
+		t.Fatal("NewPovSyncer is nil")
+	}
+
+	povSync.Start()
+
+	peerID1 := TestPeerID1
+	povSync.onAddP2PStream(peerID1)
+
+	bestPeer := povSync.GetBestPeer("")
+	if bestPeer != nil {
+		t.Fatalf("bestPeer should be nil")
+	}
+
+	genBlk := md.chain.GenesisBlock()
+	genHash := genBlk.GetHash()
+	latestBlk := md.chain.LatestBlock()
+	latestTD := md.chain.GetBlockTDByHash(latestBlk.GetHash())
+
+	peer1Status := new(protos.PovStatus)
+	peer1Status.GenesisHash = genBlk.GetHash()
+	peer1Status.CurrentHash = latestBlk.GetHash()
+	peer1Status.CurrentHeight = latestBlk.GetHeight()
+	peer1Status.CurrentTD = latestTD.Chain.Bytes()
+	povSync.onPovStatus(peer1Status, peerID1)
+
+	bestPeer = povSync.GetBestPeer("")
+	if bestPeer == nil || bestPeer.peerID != peerID1 {
+		t.Fatalf("bestPeer should be %s", peerID1)
+	}
+
+	var rsp *protos.PovBulkPullRsp
+	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *p2p.EventSendMsgToSingleMsg:
+			if msg.Type == p2p.PovBulkPullRsp {
+				rsp = msg.Message.(*protos.PovBulkPullRsp)
+			}
+		}
+	}), md.eb)
+	_ = subscriber.Subscribe(topic.EventSendMsgToSingle)
+
+	blk1, td1 := mock.GeneratePovBlock(genBlk, 0)
+	blk1Hash := blk1.GetHash()
+	md.chain.InsertBlock(blk1, td1)
+	_ = md.ledger.AddPovBestHash(blk1.GetHeight(), blk1Hash)
+
+	blk2, td2 := mock.GeneratePovBlock(blk1, 0)
+	blk2Hash := blk2.GetHash()
+	md.chain.InsertBlock(blk2, td2)
+	_ = md.ledger.AddPovBestHash(blk2.GetHeight(), blk2Hash)
+
+	_ = md.ledger.SetPovLatestHeight(blk2.GetHeight())
+
+	// test bulk pull backward by height
+	req1 := new(protos.PovBulkPullReq)
+	req1.PullType = protos.PovPullTypeBackward
+	req1.Reason = protos.PovReasonFetch
+	req1.StartHeight = blk2.GetHeight()
+	req1.Count = 2
+	povSync.onPovBulkPullReq(req1, bestPeer.peerID)
+	time.Sleep(10 * time.Millisecond)
+
+	if rsp == nil {
+		t.Fatalf("failed to get respone msg for backward by height")
+	}
+	if rsp.Count != 2 {
+		t.Fatalf("failed to get respone msg for backward by height count %d", rsp.Count)
+	}
+	if rsp.Blocks[1].GetHash() != blk1Hash {
+		t.Fatalf("failed to get respone msg for backward by height hash %s", rsp.Blocks[0].GetHash())
+	}
+
+	// test bulk pull backward by hash
+	req1.StartHash = blk2.GetHash()
+	req1.Count = 2
+	povSync.onPovBulkPullReq(req1, bestPeer.peerID)
+	time.Sleep(10 * time.Millisecond)
+
+	if rsp == nil {
+		t.Fatalf("failed to get respone msg for backward by hash")
+	}
+	if rsp.Count != 2 {
+		t.Fatalf("failed to get respone msg for backward by hash count %d", rsp.Count)
+	}
+	if rsp.Blocks[1].GetHash() != blk1Hash {
+		t.Fatalf("failed to get respone msg for backward by hash hash %s", rsp.Blocks[0].GetHash())
+	}
+
+	// test bulk pull backward by locator
+	req1.Locators = append(req1.Locators, &blk2Hash)
+	req1.Count = 2
+	povSync.onPovBulkPullReq(req1, bestPeer.peerID)
+	time.Sleep(10 * time.Millisecond)
+
+	if rsp == nil {
+		t.Fatalf("failed to get respone msg for backward by locator")
+	}
+	if rsp.Count != 2 {
+		t.Fatalf("failed to get respone msg for backward by locator count %d", rsp.Count)
+	}
+	if rsp.Blocks[1].GetHash() != blk1Hash {
+		t.Fatalf("failed to get respone msg for backward by locator hash %s", rsp.Blocks[0].GetHash())
+	}
+
+	// test bulk pull batch
+	req2 := new(protos.PovBulkPullReq)
+	req2.PullType = protos.PovPullTypeBatch
+	req2.Reason = protos.PovReasonFetch
+	req2.Locators = append(req2.Locators, &genHash, &blk2Hash)
+	req2.Count = 2
+	povSync.onPovBulkPullReq(req2, bestPeer.peerID)
+	time.Sleep(10 * time.Millisecond)
+
+	if rsp == nil {
+		t.Fatalf("failed to get respone msg for batch")
+	}
+	if rsp.Count != 2 {
+		t.Fatalf("failed to get respone msg for batch count %d", rsp.Count)
+	}
+	if rsp.Blocks[0].GetHash() != genHash {
+		t.Fatalf("failed to get respone msg for batch hash %s", rsp.Blocks[0].GetHash())
 	}
 
 	_ = subscriber.UnsubscribeAll()
@@ -374,7 +521,7 @@ func TestPovSync_BulkPullRsp1(t *testing.T) {
 	_ = md.eb.Close()
 }
 
-func TestPovSync_SimpleTest1(t *testing.T) {
+func TestPovSync_Pending1(t *testing.T) {
 	teardownTestCase, md := setupPovSyncTestCase(t)
 	defer teardownTestCase(t)
 
@@ -385,10 +532,66 @@ func TestPovSync_SimpleTest1(t *testing.T) {
 
 	povSync.Start()
 
+	peerID1 := TestPeerID1
+	povSync.onAddP2PStream(peerID1)
+
+	genBlk := md.chain.GenesisBlock()
+	//genTd := md.chain.GetBlockTDByHash(genBlk.GetHash())
+
+	blk1, _ := mock.GeneratePovBlock(nil, 0)
+	blk1Hash := blk1.GetHash()
+
+	blk2, _ := mock.GeneratePovBlock(blk1, 0)
+	blk2Hash := blk2.GetHash()
+	blk3, _ := mock.GeneratePovBlock(blk2, 0)
+	blk3Hash := blk3.GetHash()
+	blk4, _ := mock.GeneratePovBlock(blk3, 0)
+	blk4Hash := blk4.GetHash()
+	blk5, td5 := mock.GeneratePovBlock(blk4, 0)
+	blk5Hash := blk5.GetHash()
+
+	peer1Status := new(protos.PovStatus)
+	peer1Status.GenesisHash = genBlk.GetHash()
+	peer1Status.CurrentHash = blk5.GetHash()
+	peer1Status.CurrentHeight = blk5.GetHeight()
+	peer1Status.CurrentTD = td5.Chain.Bytes()
+	povSync.onPovStatus(peer1Status, peerID1)
+
+	bestPeer := povSync.GetBestPeer("")
+	if bestPeer == nil {
+		t.Fatal("bestPeer is nil")
+	}
+
+	povSync.onPeriodicSyncTimer()
+	povSync.onSyncPeerTimer()
+	povSync.onRequestSyncTimer()
+
+	povSync.requestSyncFrontiers(TestPeerID1)
+	povSync.requestSyncingBlocks(bestPeer, true)
+	povSync.requestSyncingBlocks(bestPeer, false)
+
+	var blkHashes []*types.Hash
+	blkHashes = append(blkHashes, &blk1Hash, &blk2Hash, &blk3Hash, &blk4Hash, &blk5Hash)
+	povSync.requestBlocksByHashes(blkHashes, TestPeerID1)
+
+	tx1 := mock.StateBlock()
+	tx1Hash := tx1.GetHash()
+	tx2 := mock.StateBlock()
+	tx2Hash := tx2.GetHash()
+	tx3 := mock.StateBlock()
+	tx3Hash := tx3.GetHash()
+
+	var txHashes []*types.Hash
+	txHashes = append(txHashes, &tx1Hash, &tx2Hash, &tx3Hash)
+	povSync.requestTxsByHashes(txHashes, TestPeerID1)
+
 	info := povSync.GetDebugInfo()
 	if info == nil || len(info) == 0 {
 		t.Fatal("debug info not exist")
 	}
+
+	povSync.onDeleteP2PStream(peerID1)
+	povSync.onSyncPeerTimer()
 
 	povSync.Stop()
 }

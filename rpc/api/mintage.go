@@ -32,12 +32,13 @@ type MintageAPI struct {
 	cc       *chainctx.ChainContext
 }
 
-func NewMintageApi(l *ledger.Ledger) *MintageAPI {
+func NewMintageApi(cfgFile string, l *ledger.Ledger) *MintageAPI {
 	api := &MintageAPI{
 		l:        l,
 		mintage:  &contract.Mintage{},
 		withdraw: &contract.WithdrawMintage{},
 		logger:   log.NewLogger("api_mintage"),
+		cc:       chainctx.NewChainContext(cfgFile),
 	}
 	return api
 }
