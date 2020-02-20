@@ -1218,7 +1218,7 @@ func (p *PublicKeyDistributionApi) GetVerifierHeartBlock(account types.Address, 
 		return nil, ErrNoGas
 	}
 
-	if am.CoinBalance.Compare(common.OracleCost) == types.BalanceCompSmaller {
+	if tm.Balance.Compare(common.OracleCost) == types.BalanceCompSmaller {
 		return nil, contract.ErrNotEnoughFee
 	}
 

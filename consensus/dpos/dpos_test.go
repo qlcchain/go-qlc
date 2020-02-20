@@ -104,6 +104,7 @@ func setDefaultConfig(cfg *config.Config, port int) {
 	cfg.RPC.WSEndpoint = fmt.Sprintf("tcp4://0.0.0.0:%s", strconv.Itoa(port+2))
 	cfg.RPC.IPCEnabled = false
 	cfg.P2P.SyncInterval = 12000
+	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.PoV.PovEnabled = true
 	cfg.LogLevel = "error"
 }
