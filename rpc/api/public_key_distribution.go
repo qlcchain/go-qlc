@@ -640,13 +640,7 @@ func (p *PublicKeyDistributionApi) sortPublishInfo(pubs []*PublishInfoState) {
 			if psj.VerifiedStatus != types.PovPublishStatusVerified {
 				return true
 			} else {
-				if len(psi.OracleAccounts) > len(psj.OracleAccounts) {
-					return true
-				} else if len(psi.OracleAccounts) == len(psj.OracleAccounts) {
-					return psi.VerifiedHeight > psj.VerifiedHeight
-				} else {
-					return false
-				}
+				return psi.VerifiedHeight > psj.VerifiedHeight
 			}
 		} else {
 			return psi.PublishHeight < psj.PublishHeight
