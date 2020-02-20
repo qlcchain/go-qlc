@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"

@@ -128,4 +128,5 @@ type Cache interface {
 	Get(key []byte) (interface{}, error)
 	Put(key []byte, value interface{}) error
 	Delete(key []byte) error
+	Len() int64
 }

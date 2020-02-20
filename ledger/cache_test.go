@@ -2,13 +2,14 @@ package ledger
 
 import (
 	"fmt"
-	"github.com/bluele/gcache"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/bluele/gcache"
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -119,6 +120,7 @@ func TestGcCache(t *testing.T) {
 	if err := a.Set(6, 6); err != nil {
 		t.Fatal(err)
 	}
+	a.Purge()
 	rm := a.GetALL(false)
 	for k, v := range rm {
 		t.Log(k, v)

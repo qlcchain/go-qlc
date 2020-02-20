@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/qlcchain/go-qlc/common/types"
 )
 

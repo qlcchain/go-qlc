@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -16,7 +18,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/mock"
-	rpc "github.com/qlcchain/jsonrpc2"
 )
 
 func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerAPI) {
@@ -105,11 +106,11 @@ func TestLedgerApi_Subscription(t *testing.T) {
 			case <-done:
 				return
 			default:
-				time.Sleep(1 * time.Second)
 				blk := mock.StateBlock()
 				blk.Address = addr
 				blk.Type = types.Send
 				ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
+				time.Sleep(2 * time.Second)
 			}
 		}
 	}()

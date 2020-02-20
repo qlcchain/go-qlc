@@ -58,6 +58,23 @@ func TestLedger_AddBlock(t *testing.T) {
 	}
 }
 
+func TestLedger_GetStateBlockFromCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	b := addStateBlock(t, l)
+	v, err := l.GetStateBlockConfirmed(b.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(v)
+	time.Sleep(2 * time.Second)
+	v, err = l.GetStateBlockConfirmed(b.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(v)
+}
+
 func TestLedger_GetBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)

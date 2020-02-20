@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type MemoryCache struct {
@@ -355,6 +356,10 @@ func (c *Cache) Delete(key []byte) error {
 }
 
 func (b *Cache) Drop(prefix []byte) error {
+	panic("not implemented")
+}
+
+func (b *Cache) Len() int64 {
 	panic("not implemented")
 }
 

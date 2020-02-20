@@ -10,11 +10,13 @@ package trie
 import (
 	"bytes"
 	"fmt"
+
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 //const (
