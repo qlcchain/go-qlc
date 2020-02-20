@@ -20,10 +20,12 @@ import (
 	"github.com/qlcchain/go-qlc/p2p/protos"
 )
 
-const (
-	checkPeerStatusTime = 30
-	forceSyncTimeInSec  = 60
+var (
+	CheckPeerStatusTime = 30 * time.Second
+	ForceSyncTimeInSec  = 60 * time.Second
+)
 
+const (
 	maxSyncBlockPerReq = 1000
 	maxPullBlockPerReq = 1000
 	maxSyncBlockInQue  = 3000
@@ -139,7 +141,7 @@ func (ss *PovSyncer) Stop() {
 }
 
 func (ss *PovSyncer) mainLoop() {
-	checkPeerTicker := time.NewTicker(checkPeerStatusTime * time.Second)
+	checkPeerTicker := time.NewTicker(CheckPeerStatusTime)
 
 	for {
 		select {

@@ -274,6 +274,9 @@ func (n *Node) stopConsensusService() {
 }
 
 func (n *Node) startPoVService() {
+	pov.CheckPeerStatusTime = time.Second
+	pov.ForceSyncTimeInSec = time.Second
+
 	povEngine, _ := pov.NewPovEngine(n.ctx.ConfigFile())
 	err := povEngine.Init()
 	if err != nil {
