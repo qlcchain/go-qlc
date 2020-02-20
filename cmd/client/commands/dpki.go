@@ -26,6 +26,7 @@ func addPKDCmd() {
 		addDpkiRewardCmdByShell(DPKICmd)
 		addDpkiGetVerifierStateListCmdByShell(DPKICmd)
 		addDpkiGetPublishInfoCmdByShell(DPKICmd)
+		addVerifierHeartCmdByShell(DPKICmd)
 	} else {
 		var DPKICmd = &cobra.Command{
 			Use:   "dpki",

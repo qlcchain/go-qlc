@@ -30,6 +30,9 @@ import (
 
 var (
 	ErrParameterNil = errors.New("parameter is nil")
+	ErrVerifierType = errors.New("invalid verifier type")
+	ErrNoGas        = errors.New("there is no gas token")
+	ErrGetPovHeader = errors.New("get pov header err")
 )
 
 type lockStatus uint8

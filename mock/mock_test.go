@@ -267,7 +267,7 @@ func TestStateBlockWithoutWork(t *testing.T) {
 	}
 }
 
-func TestAccount(t *testing.T) {
+func TestAccountMock(t *testing.T) {
 	account := Account()
 	h := Hash()
 	sign := account.Sign(h)

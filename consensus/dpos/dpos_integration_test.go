@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func TestFork1(t *testing.T) {
+func TestFork(t *testing.T) {
 	nodes, err := InitNodes(2, t)
 	if err != nil {
 		t.Fatal(err)
@@ -38,11 +38,11 @@ func TestFork1(t *testing.T) {
 	acc1 := mock.Account()
 	acc2 := mock.Account()
 
-	s1, r1 := n1.TokenTransactionAndConfirmed(testAccount, acc1, types.NewBalance(10000), "QLC")
+	s1, r1 := n1.TokenTransactionAndConfirmed(mock.TestAccount, acc1, types.NewBalance(10000), "QLC")
 	n2.WaitBlockConfirmed(s1.GetHash())
 	n2.WaitBlockConfirmed(r1.GetHash())
 
-	s2 := n1.GenerateSendBlock(testAccount, acc2.Address(), types.NewBalance(10), "QLC")
+	s2 := n1.GenerateSendBlock(mock.TestAccount, acc2.Address(), types.NewBalance(10), "QLC")
 	n1.ProcessBlockAndWaitConfirmed(s2)
 
 	s3 := n1.GenerateSendBlock(acc1, acc2.Address(), types.NewBalance(20), "QLC")
@@ -63,7 +63,7 @@ func TestFork1(t *testing.T) {
 
 	// common fork
 	acc3 := mock.Account()
-	s4 := n1.GenerateSendBlock(testAccount, acc3.Address(), types.NewBalance(10), "QLC")
+	s4 := n1.GenerateSendBlock(mock.TestAccount, acc3.Address(), types.NewBalance(10), "QLC")
 	n1.ProcessBlockLocal(s4)
 
 	r4 := n1.GenerateReceiveBlock(s4, acc3)
@@ -71,7 +71,7 @@ func TestFork1(t *testing.T) {
 
 	// fork block on node 1, sleep to make different timestamp
 	time.Sleep(time.Second)
-	s5 := n2.GenerateSendBlock(testAccount, acc3.Address(), types.NewBalance(10), "QLC")
+	s5 := n2.GenerateSendBlock(mock.TestAccount, acc3.Address(), types.NewBalance(10), "QLC")
 
 	n2.ProcessBlock(s5)
 	time.Sleep(3 * time.Second)
@@ -117,7 +117,7 @@ func TestBatchVoteDo(t *testing.T) {
 	time.Sleep(3 * time.Second)
 	repOnline := make(map[uint64]*RepOnlinePeriod, 0)
 	n2.cons.RPC(common.RpcDPosOnlineInfo, nil, repOnline)
-	if repOnline[0].Stat[testAccount.Address()].VoteCount != 2000 {
+	if repOnline[0].Stat[mock.TestAccount.Address()].VoteCount != 2000 {
 		t.Fatal()
 	}
 }
@@ -154,7 +154,7 @@ func TestOnline(t *testing.T) {
 
 	repOnline := make(map[uint64]*RepOnlinePeriod, 0)
 	n1.cons.RPC(common.RpcDPosOnlineInfo, nil, repOnline)
-	if repOnline[0].Stat[testAccount.Address()].HeartCount != 59 {
+	if repOnline[0].Stat[mock.TestAccount.Address()].HeartCount != 59 {
 		t.Fatal()
 	}
 
@@ -162,7 +162,7 @@ func TestOnline(t *testing.T) {
 
 	hasOnline := false
 	err = n1.dps.ledger.GetStateBlocks(func(block *types.StateBlock) error {
-		if block.Type == types.Online && block.Address == testAccount.Address() {
+		if block.Type == types.Online && block.Address == mock.TestAccount.Address() {
 			hasOnline = true
 		}
 		return nil
@@ -198,7 +198,7 @@ func TestSynchronize(t *testing.T) {
 	toAcc := mock.Account()
 	var blocks types.StateBlockList
 	for i := 0; i < 3; i++ {
-		b := n1.GenerateSendBlock(testAccount, toAcc.Address(), types.NewBalance(10), "QLC")
+		b := n1.GenerateSendBlock(mock.TestAccount, toAcc.Address(), types.NewBalance(10), "QLC")
 		n1.ProcessBlockLocal(b)
 		blocks = append(blocks, b)
 	}
@@ -230,7 +230,7 @@ func TestSynchronize(t *testing.T) {
 
 SyncOneBlockTest:
 	var bs types.StateBlockList
-	b := n1.GenerateSendBlock(testAccount, toAcc.Address(), types.NewBalance(10), "QLC")
+	b := n1.GenerateSendBlock(mock.TestAccount, toAcc.Address(), types.NewBalance(10), "QLC")
 	n1.ProcessBlockLocal(b)
 	bs = append(bs, b)
 
@@ -278,7 +278,7 @@ func TestRollback(t *testing.T) {
 	n2.dps.povSyncState = topic.SyncDone
 
 	toAcc := mock.Account()
-	s := n1.GenerateSendBlock(testAccount, toAcc.Address(), types.NewBalance(10), "QLC")
+	s := n1.GenerateSendBlock(mock.TestAccount, toAcc.Address(), types.NewBalance(10), "QLC")
 	n1.ProcessBlockLocal(s)
 	r := n1.GenerateReceiveBlock(s, toAcc)
 	n1.ProcessBlockLocal(r)
@@ -328,22 +328,22 @@ func TestGap(t *testing.T) {
 
 	toAcc := mock.Account()
 	// gap source/gap link
-	s1 := n1.GenerateSendBlock(testAccount, toAcc.Address(), types.NewBalance(10), "QLC")
+	s1 := n1.GenerateSendBlock(mock.TestAccount, toAcc.Address(), types.NewBalance(10), "QLC")
 	n1.ProcessBlockLocal(s1)
-	s2 := n1.GenerateSendBlock(testAccount, toAcc.Address(), types.NewBalance(10), "QLC")
+	s2 := n1.GenerateSendBlock(mock.TestAccount, toAcc.Address(), types.NewBalance(10), "QLC")
 	n1.ProcessBlockLocal(s2)
 	r1 := n1.GenerateReceiveBlock(s1, toAcc)
 	n1.ProcessBlockLocal(r1)
 
 	// gap token
-	cs1 := n1.GenerateContractSendBlock(testAccount, toAcc, types.MintageAddress, abi.MethodNameMintage, s2.GetHash())
+	cs1 := n1.GenerateContractSendBlock(mock.TestAccount, toAcc, types.MintageAddress, abi.MethodNameMintage, s2.GetHash())
 	n1.ProcessBlockLocal(cs1)
 	cr1 := n1.GenerateContractReceiveBlock(toAcc, types.MintageAddress, abi.MethodNameMintage, cs1)
 	n1.ProcessBlockLocal(cr1)
 	time.Sleep(time.Second)
-	cs2 := n1.GenerateContractSendBlock(testAccount, testAccount, types.MintageAddress, abi.MethodNameMintageWithdraw, cr1.Token)
+	cs2 := n1.GenerateContractSendBlock(mock.TestAccount, mock.TestAccount, types.MintageAddress, abi.MethodNameMintageWithdraw, cr1.Token)
 	n1.ProcessBlockLocal(cs2)
-	cr2 := n1.GenerateContractReceiveBlock(testAccount, types.MintageAddress, abi.MethodNameMintageWithdraw, cs2)
+	cr2 := n1.GenerateContractReceiveBlock(mock.TestAccount, types.MintageAddress, abi.MethodNameMintageWithdraw, cs2)
 	n1.ProcessBlockLocal(cr2)
 
 	hashes := make([]types.Hash, 0)
@@ -359,8 +359,8 @@ func TestGap(t *testing.T) {
 	vote := &protos.ConfirmAckBlock{
 		Sequence:  n2.dps.getSeq(ackTypeCommon),
 		Hash:      hashes,
-		Account:   testAccount.Address(),
-		Signature: testAccount.Sign(hash),
+		Account:   mock.TestAccount.Address(),
+		Signature: mock.TestAccount.Sign(hash),
 	}
 
 	n2.ctx.EventBus().Publish(topic.EventConfirmAck, &p2p.EventConfirmAckMsg{Block: vote, From: "123"})

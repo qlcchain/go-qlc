@@ -263,6 +263,7 @@ const (
 // key = type + id + pubkey + sendBlockHash
 type PovPublishState struct {
 	OracleAccounts []Address `msg:"oas" json:"oracleAccounts"`
+	PublishHeight  uint64    `msg:"ph" json:"publishHeight"`
 	VerifiedHeight uint64    `msg:"vh" json:"verifiedHeight"`
 	VerifiedStatus int8      `msg:"vs" json:"verifiedStatus"`
 	BonusFee       *BigNum   `msg:"bf,extension" json:"bonusFee"`
@@ -288,13 +289,15 @@ func (ps *PovPublishState) Deserialize(text []byte) error {
 
 // key = address
 type PovVerifierState struct {
-	TotalVerify uint64  `msg:"tv" json:"totalVerify"`
-	TotalReward *BigNum `msg:"tr,extension" json:"totalReward"`
+	TotalVerify  uint64            `msg:"tv" json:"totalVerify"`
+	TotalReward  *BigNum           `msg:"tr,extension" json:"totalReward"`
+	ActiveHeight map[string]uint64 `msg:"ah" json:"activeHeight"`
 }
 
 func NewPovVerifierState() *PovVerifierState {
 	vs := new(PovVerifierState)
 	vs.TotalReward = NewBigNumFromInt(0)
+	vs.ActiveHeight = make(map[string]uint64)
 	return vs
 }
 

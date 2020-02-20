@@ -45,12 +45,19 @@ func (r *RepReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) 
 	}
 
 	nodeHeight := latestBlock.GetHeight()
+	if nodeHeight < common.PovMinerRewardHeightStart {
+		return 0, nil
+	}
 	if nodeHeight < common.PovMinerRewardHeightGapToLatest {
 		return 0, nil
 	}
 	nodeHeight = nodeHeight - common.PovMinerRewardHeightGapToLatest
 
 	nodeHeight = cabi.RepRoundPovHeight(nodeHeight, common.PovMinerRewardHeightRound)
+	if nodeHeight < common.PovMinerRewardHeightStart {
+		return 0, nil
+	}
+
 	return nodeHeight, nil
 }
 
@@ -76,71 +83,76 @@ func (r *RepReward) GetAvailRewardInfo(ctx *vmstore.VMContext, account types.Add
 	return availInfo, nil
 }
 
-func (r *RepReward) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.NewBalance(0), nil
-}
-
 func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	param := new(cabi.RepRewardParam)
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.Data)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
 	}
 
 	if _, err := param.Verify(); err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrCheckParam
 	}
 
 	if param.Account != block.Address {
-		return nil, nil, errors.New("account is not representative")
+		logger.Info("account is not representative")
+		return nil, nil, ErrAccountInvalid
 	}
 
 	if block.Token != common.ChainToken() {
-		return nil, nil, errors.New("token is not chain token")
+		logger.Info("token is not chain token")
+		return nil, nil, ErrToken
 	}
 
 	// check account exist
 	am, _ := ctx.GetAccountMeta(param.Account)
 	if am == nil {
-		return nil, nil, errors.New("rep account not exist")
+		logger.Info("rep account not exist")
+		return nil, nil, ErrAccountNotExist
 	}
 
 	nodeRewardHeight, err := r.GetNodeRewardHeight(ctx)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrGetNodeHeight
 	}
 
 	if param.EndHeight > nodeRewardHeight {
-		return nil, nil, fmt.Errorf("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
+		logger.Infof("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
+		return nil, nil, ErrEndHeightInvalid
 	}
 
 	// check same start & end height exist in old reward infos
 	err = r.checkParamExistInOldRewardInfos(ctx, param)
 	if err != nil {
-		return nil, nil, errors.New("section exist")
+		logger.Info("section exist")
+		return nil, nil, ErrClaimRepeat
 	}
 
 	calcRewardBlocks, calcRewardAmount, err := r.calcRewardBlocksByDayStats(ctx, param.Account, param.StartHeight, param.EndHeight)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrCalcAmount
 	}
 
-	if calcRewardBlocks != param.RewardBlocks {
-		return nil, nil, fmt.Errorf("calc blocks %d not equal param blocks %d", calcRewardBlocks, param.RewardBlocks)
-	}
-	if calcRewardAmount.Compare(types.Balance{Int: param.RewardAmount}) != types.BalanceCompEqual {
-		return nil, nil, fmt.Errorf("calc reward %d not equal param reward %v", calcRewardAmount, param.RewardAmount)
+	if calcRewardBlocks != param.RewardBlocks || calcRewardAmount.Compare(types.Balance{Int: param.RewardAmount}) != types.BalanceCompEqual {
+		logger.Infof("calc reward mismatch")
+		return nil, nil, ErrCheckParam
 	}
 
 	block.Data, err = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, param.Account, param.Beneficial,
 		param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrPackMethod
 	}
 
 	oldInfo, err := r.GetRewardHistory(ctx, param.Account)
 	if err != nil && err != vmstore.ErrStorageNotFound {
-		return nil, nil, fmt.Errorf("get storage err %s", err)
+		logger.Info(err)
+		return nil, nil, ErrGetRewardHistory
 	}
 
 	if oldInfo == nil {
@@ -153,7 +165,8 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		new(big.Int).Add(param.RewardAmount, oldInfo.RewardAmount))
 	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], data)
 	if err != nil {
-		return nil, nil, errors.New("save contract data err")
+		logger.Info(err)
+		return nil, nil, ErrSetStorage
 	}
 
 	return &types.PendingKey{
@@ -193,15 +206,18 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, input.Data)
 	if err != nil {
-		return nil, err
+		logger.Info(err)
+		return nil, ErrUnpackMethod
 	}
 
 	if _, err := param.Verify(); err != nil {
-		return nil, err
+		logger.Info(err)
+		return nil, ErrCheckParam
 	}
 
 	if param.Account != input.Address {
-		return nil, errors.New("input account is not rep")
+		logger.Info("input account is not rep")
+		return nil, ErrAccountInvalid
 	}
 
 	// generate contract reward block
@@ -322,10 +338,6 @@ func (r *RepReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, account t
 	}
 
 	return rewardBlocks, rewardAmount, nil
-}
-
-func (r *RepReward) GetRefundData() []byte {
-	return []byte{1}
 }
 
 func (r *RepReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
