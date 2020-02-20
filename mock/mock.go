@@ -8,6 +8,7 @@
 package mock
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,6 +24,28 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 )
+
+var (
+	TestPrivateKey = "194908c480fddb6e66b56c08f0d55d935681da0b3c9c33077010bf12a91414576c0b2cdd533ee3a21668f199e111f6c8614040e60e70a73ab6c8da036f2a7ad7"
+	TestAddress    = "qlc_1u1d7mgo8hq5nad8jwesw6azfk53a31ge5minwxdfk8t1fqknypqgk8mi3z7"
+	priByte, _     = hex.DecodeString(TestPrivateKey)
+	TestAccount    = types.NewAccount(priByte)
+)
+
+func InitGenesisInfos(cfg *config.Config) {
+	var mintageBlock, genesisBlock types.StateBlock
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
+		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: mintageBlock,
+			GenesisBlock:        genesisBlock,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
+}
 
 func Hash() types.Hash {
 	h := types.Hash{}

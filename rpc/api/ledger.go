@@ -30,6 +30,9 @@ import (
 
 var (
 	ErrParameterNil = errors.New("parameter is nil")
+	ErrVerifierType = errors.New("invalid verifier type")
+	ErrNoGas        = errors.New("there is no gas token")
+	ErrGetPovHeader = errors.New("get pov header err")
 )
 
 type lockStatus uint8
@@ -1195,4 +1198,13 @@ func (l *LedgerAPI) NewPending(ctx context.Context, address types.Address) (*rpc
 			}
 		}()
 	})
+}
+
+func (l *LedgerAPI) GenesisBlocks() (map[string]types.StateBlock, error) {
+	genesisBlk := make(map[string]types.StateBlock)
+	genesisBlk["chain"] = common.GenesisBlock()
+	genesisBlk["chain-mintage"] = common.GenesisMintageBlock()
+	genesisBlk["gas"] = common.GasBlock()
+	genesisBlk["gas-mintage"] = common.GasMintageBlock()
+	return genesisBlk, nil
 }

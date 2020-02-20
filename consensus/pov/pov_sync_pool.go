@@ -18,7 +18,7 @@ type PovSyncBlock struct {
 }
 
 func (ss *PovSyncer) syncLoop() {
-	forceTicker := time.NewTicker(forceSyncTimeInSec * time.Second)
+	forceTicker := time.NewTicker(ForceSyncTimeInSec)
 	checkSyncTicker := time.NewTicker(1 * time.Second)
 	checkChainTicker := time.NewTicker(10 * time.Second)
 	requestSyncTicker := time.NewTicker(2 * time.Second)

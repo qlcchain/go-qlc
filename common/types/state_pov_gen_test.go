@@ -74,7 +74,7 @@ func TestEncodeDecodePovAccountState(t *testing.T) {
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
+		t.Log("WARNING: TestEncodeDecodePovAccountState Msgsize() is inaccurate")
 	}
 
 	vn := PovAccountState{}
@@ -187,7 +187,7 @@ func TestEncodeDecodePovContractState(t *testing.T) {
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
+		t.Log("WARNING: TestEncodeDecodePovContractState Msgsize() is inaccurate")
 	}
 
 	vn := PovContractState{}
@@ -300,7 +300,7 @@ func TestEncodeDecodePovPublishState(t *testing.T) {
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
+		t.Log("WARNING: TestEncodeDecodePovPublishState Msgsize() is inaccurate")
 	}
 
 	vn := PovPublishState{}
@@ -413,7 +413,7 @@ func TestEncodeDecodePovRepState(t *testing.T) {
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
+		t.Log("WARNING: TestEncodeDecodePovRepState Msgsize() is inaccurate")
 	}
 
 	vn := PovRepState{}
@@ -526,7 +526,7 @@ func TestEncodeDecodePovTokenState(t *testing.T) {
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
+		t.Log("WARNING: TestEncodeDecodePovTokenState Msgsize() is inaccurate")
 	}
 
 	vn := PovTokenState{}
@@ -639,7 +639,7 @@ func TestEncodeDecodePovVerifierState(t *testing.T) {
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
+		t.Log("WARNING: TestEncodeDecodePovVerifierState Msgsize() is inaccurate")
 	}
 
 	vn := PovVerifierState{}

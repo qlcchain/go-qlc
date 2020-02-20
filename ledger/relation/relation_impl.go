@@ -405,7 +405,7 @@ func (r *Relation) SetEvent() error {
 		case types.Tuple:
 			r.waitAddSyncBlocks(msg.First.(*types.StateBlock), msg.Second.(bool))
 		}
-	}))
+	}), r.eb)
 
 	return r.subscriber.Subscribe(topic.EventAddRelation, topic.EventAddSyncBlocks, topic.EventDeleteRelation)
 }

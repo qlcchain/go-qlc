@@ -1,6 +1,6 @@
 // +build  !testnet
 
-package dpos
+package mock
 
 import (
 	"encoding/json"
@@ -8,19 +8,19 @@ import (
 )
 
 func init() {
-	_ = json.Unmarshal([]byte(jsonTestSend), &testSendBlock)
-	_ = json.Unmarshal([]byte(jsonTestReceive), &testReceiveBlock)
-	_ = json.Unmarshal([]byte(jsonTestGasSend), &testSendGasBlock)
-	_ = json.Unmarshal([]byte(jsonTestGasReceive), &testReceiveGasBlock)
-	_ = json.Unmarshal([]byte(jsonTestChangeRepresentative), &testChangeRepresentative)
+	_ = json.Unmarshal([]byte(jsonTestSend), &TestSendBlock)
+	_ = json.Unmarshal([]byte(jsonTestReceive), &TestReceiveBlock)
+	_ = json.Unmarshal([]byte(jsonTestGasSend), &TestSendGasBlock)
+	_ = json.Unmarshal([]byte(jsonTestGasReceive), &TestReceiveGasBlock)
+	_ = json.Unmarshal([]byte(jsonTestChangeRepresentative), &TestChangeRepresentative)
 }
 
 var (
-	testSendBlock            types.StateBlock
-	testReceiveBlock         types.StateBlock
-	testSendGasBlock         types.StateBlock
-	testReceiveGasBlock      types.StateBlock
-	testChangeRepresentative types.StateBlock
+	TestSendBlock            types.StateBlock
+	TestReceiveBlock         types.StateBlock
+	TestSendGasBlock         types.StateBlock
+	TestReceiveGasBlock      types.StateBlock
+	TestChangeRepresentative types.StateBlock
 )
 
 var (

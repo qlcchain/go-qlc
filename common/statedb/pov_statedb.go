@@ -6,9 +6,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/ledger/db"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 )
@@ -344,13 +343,14 @@ func (gsdb *PovGlobalStateDB) NewPrevTireIterator(prefix []byte) *trie.Iterator 
 }
 
 func NewPovContractStateDB(db db.Store, cs *types.PovContractState) *PovContractStateDB {
+	var prevTrie *trie.Trie
 	var currentTrie *trie.Trie
 
 	prevStateHash := cs.StateHash
 	if prevStateHash.IsZero() {
 		currentTrie = trie.NewTrie(db, nil, nil)
 	} else {
-		prevTrie := trie.NewTrie(db, &prevStateHash, nil)
+		prevTrie = trie.NewTrie(db, &prevStateHash, nil)
 		if prevTrie != nil {
 			currentTrie = prevTrie.Clone()
 		} else {
@@ -359,11 +359,12 @@ func NewPovContractStateDB(db db.Store, cs *types.PovContractState) *PovContract
 	}
 
 	return &PovContractStateDB{
-		db:      db,
-		CS:      cs,
-		curTrie: currentTrie,
-		kvCache: make(map[string][]byte),
-		kvDirty: make(map[string]struct{}),
+		db:       db,
+		CS:       cs,
+		prevTrie: prevTrie,
+		curTrie:  currentTrie,
+		kvCache:  make(map[string][]byte),
+		kvDirty:  make(map[string]struct{}),
 	}
 }
 

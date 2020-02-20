@@ -21,33 +21,39 @@ type VerifierRegister struct {
 
 func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != common.ChainToken() {
-		return nil, nil, fmt.Errorf("not qlc chain")
+		logger.Info("not qlc chain")
+		return nil, nil, ErrToken
 	}
 
 	reg := new(abi.VerifierRegInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(reg, abi.MethodNamePKDVerifierRegister, block.Data)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
 	}
 
 	err = abi.VerifierPledgeCheck(ctx, block.Address)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrNotEnoughPledge
 	}
 
 	err = abi.VerifierRegInfoCheck(ctx, block.Address, reg.VType, reg.VInfo)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrCheckParam
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, reg.VType, reg.VInfo)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrPackMethod
 	}
 
 	err = vr.SetStorage(ctx, block.Address, reg.VType, reg.VInfo)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrSetStorage
 	}
 
 	return nil, nil, nil
@@ -71,55 +77,40 @@ func (vr *VerifierRegister) SetStorage(ctx *vmstore.VMContext, account types.Add
 	return nil
 }
 
-func (vr *VerifierRegister) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.NewBalance(0), nil
-}
-
-func (vr *VerifierRegister) GetRefundData() []byte {
-	return []byte{1}
-}
-
-func (vr *VerifierRegister) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
-	return common.ContractNoGap, nil, nil
-}
-
-func (vr *VerifierRegister) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return nil, nil
-}
-
 type VerifierUnregister struct {
 	BaseContract
 }
 
 func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != common.ChainToken() {
-		return nil, nil, fmt.Errorf("not qlc chain")
+		logger.Info("not qlc chain")
+		return nil, nil, ErrToken
 	}
 
 	reg := new(abi.VerifierRegInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(reg, abi.MethodNamePKDVerifierUnregister, block.Data)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
 	}
 
 	err = abi.VerifierUnRegInfoCheck(ctx, block.Address, reg.VType)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	vs, _ := abi.GetVerifierInfoByAccountAndType(ctx, block.Address, reg.VType)
-	if vs == nil {
-		return nil, nil, fmt.Errorf("there is no valid verifier to unregister(%s-%s)", block.Address, common.OracleTypeToString(reg.VType))
+		logger.Info(err)
+		return nil, nil, ErrCheckParam
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierUnregister, reg.VType)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrPackMethod
 	}
 
+	vs, _ := abi.GetVerifierInfoByAccountAndType(ctx, block.Address, reg.VType)
 	err = vu.SetStorage(ctx, block.Address, reg.VType, vs.VInfo)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrSetStorage
 	}
 
 	return nil, nil, nil
@@ -143,20 +134,82 @@ func (vu *VerifierUnregister) SetStorage(ctx *vmstore.VMContext, account types.A
 	return nil
 }
 
-func (vu *VerifierUnregister) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.NewBalance(0), nil
+type VerifierHeart struct {
+	BaseContract
 }
 
-func (vu *VerifierUnregister) GetRefundData() []byte {
-	return []byte{1}
+func (vh *VerifierHeart) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if block.GetToken() != common.GasToken() {
+		logger.Info("not gas chain")
+		return nil, nil, ErrToken
+	}
+
+	info := new(abi.VerifierHeartInfo)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDVerifierHeart, block.GetData())
+	if err != nil {
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
+	}
+
+	// check verifier if the block is not synced
+	if !block.IsFromSync() {
+		err := abi.VerifierPledgeCheck(ctx, block.GetAddress())
+		if err != nil {
+			logger.Info(err)
+			return nil, nil, ErrNotEnoughPledge
+		}
+
+		for _, vt := range info.VType {
+			_, err = abi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), vt)
+			if err != nil {
+				logger.Info(err)
+				return nil, nil, ErrGetVerifier
+			}
+		}
+	}
+
+	amount, err := ctx.CalculateAmount(block)
+	if err != nil {
+		logger.Info(err)
+		return nil, nil, ErrCalcAmount
+	}
+
+	if amount.Compare(common.OracleCost) != types.BalanceCompEqual {
+		logger.Infof("balance(exp:%s-%s) wrong", common.OracleCost, amount)
+		return nil, nil, ErrNotEnoughFee
+	}
+
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, info.VType)
+	if err != nil {
+		logger.Info(err)
+		return nil, nil, ErrPackMethod
+	}
+
+	return nil, nil, nil
 }
 
-func (vu *VerifierUnregister) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
-	return common.ContractNoGap, nil, nil
-}
+func (vh *VerifierHeart) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error {
+	hi := new(abi.VerifierHeartInfo)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(hi, abi.MethodNamePKDVerifierHeart, block.GetData())
+	if err != nil {
+		return err
+	}
 
-func (vu *VerifierUnregister) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return nil, nil
+	vsVal, _ := dpki.PovGetVerifierState(csdb, block.Address[:])
+	if vsVal == nil {
+		vsVal = types.NewPovVerifierState()
+	}
+
+	for _, ht := range hi.VType {
+		vsVal.ActiveHeight[common.OracleTypeToString(ht)] = povHeight
+	}
+
+	err = dpki.PovSetVerifierState(csdb, block.Address[:], vsVal)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type Publish struct {
@@ -165,39 +218,51 @@ type Publish struct {
 
 func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != common.GasToken() {
-		return nil, nil, fmt.Errorf("not gas chain")
+		logger.Info("not gas chain")
+		return nil, nil, ErrToken
 	}
 
 	info := new(abi.PublishInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDPublish, block.GetData())
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
+	}
+
+	if len(info.Verifiers) < common.VerifierMinNum || len(info.Verifiers) > common.VerifierMaxNum ||
+		len(info.Codes) < common.VerifierMinNum || len(info.Codes) > common.VerifierMaxNum {
+		logger.Info(err)
+		return nil, nil, ErrVerifierNum
 	}
 
 	fee := types.Balance{Int: info.Fee}
 	err = abi.PublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.PubKey, fee)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrCheckParam
 	}
 
 	amount, err := ctx.CalculateAmount(block)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrCalcAmount
 	}
 
 	if amount.Compare(fee) != types.BalanceCompEqual {
-		return nil, nil, fmt.Errorf("balance mismatch(data:%s--amount:%s)", fee, amount)
+		logger.Infof("balance mismatch(data:%s--amount:%s)", fee, amount)
+		return nil, nil, ErrNotEnoughFee
 	}
 
-	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, info.PType, info.PID,
-		info.PubKey, info.Verifiers, info.Codes, info.Fee)
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, info.PType, info.PID, info.PubKey, info.Verifiers, info.Codes, info.Fee)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrPackMethod
 	}
 
 	err = p.SetStorage(ctx, block.Address, info.PType, info.PID, info.PubKey, info.Verifiers, info.Codes, fee, block.Previous)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrSetStorage
 	}
 
 	return nil, nil, nil
@@ -224,20 +289,36 @@ func (p *Publish) SetStorage(ctx *vmstore.VMContext, account types.Address, pt u
 	return nil
 }
 
-func (p *Publish) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.NewBalance(0), nil
-}
+func (p *Publish) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error {
+	info := new(abi.PublishInfo)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDPublish, block.GetData())
+	if err != nil {
+		return err
+	}
 
-func (p *Publish) GetRefundData() []byte {
-	return []byte{1}
-}
+	pubInfoKey := &abi.PublishInfoKey{
+		PType:  info.PType,
+		PID:    info.PID,
+		PubKey: info.PubKey,
+		Hash:   block.Previous,
+	}
+	psRawKey := pubInfoKey.ToRawKey()
 
-func (p *Publish) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
-	return common.ContractNoGap, nil, nil
-}
+	ps, _ := dpki.PovGetPublishState(csdb, psRawKey)
+	if ps == nil {
+		ps = types.NewPovPublishState()
+		ps.BonusFee = types.NewBigNumFromBigInt(info.Fee)
+		ps.PublishHeight = povHeight
+	} else {
+		ps.PublishHeight = povHeight
+	}
 
-func (p *Publish) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return nil, nil
+	err = dpki.PovSetPublishState(csdb, psRawKey, ps)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type UnPublish struct {
@@ -246,28 +327,33 @@ type UnPublish struct {
 
 func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != common.GasToken() {
-		return nil, nil, fmt.Errorf("not gas chain")
+		logger.Info("not gas chain")
+		return nil, nil, ErrToken
 	}
 
 	info := new(abi.UnPublishInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDUnPublish, block.GetData())
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
 	}
 
 	err = abi.UnPublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.PubKey, info.Hash)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrCheckParam
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, info.PType, info.PID, info.PubKey, info.Hash)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrPackMethod
 	}
 
 	err = up.SetStorage(ctx, info.PType, info.PID, info.PubKey, info.Hash)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrSetStorage
 	}
 
 	return nil, nil, nil
@@ -304,72 +390,65 @@ func (up *UnPublish) SetStorage(ctx *vmstore.VMContext, pt uint32, id types.Hash
 	return nil
 }
 
-func (up *UnPublish) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.NewBalance(0), nil
-}
-
-func (up *UnPublish) GetRefundData() []byte {
-	return []byte{1}
-}
-
-func (up *UnPublish) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
-	return common.ContractNoGap, nil, nil
-}
-
-func (up *UnPublish) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return nil, nil
-}
-
 type Oracle struct {
 	BaseContract
 }
 
 func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != common.GasToken() {
-		return nil, nil, fmt.Errorf("not gas chain")
+		logger.Info("not gas chain")
+		return nil, nil, ErrToken
 	}
 
 	info := new(abi.OracleInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDOracle, block.GetData())
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
 	}
 
 	// check verifier if the block is not synced
 	if !block.IsFromSync() {
 		err = abi.VerifierPledgeCheck(ctx, block.GetAddress())
 		if err != nil {
-			return nil, nil, err
+			logger.Info(err)
+			return nil, nil, ErrNotEnoughPledge
 		}
 
 		_, err = abi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), info.OType)
 		if err != nil {
-			return nil, nil, err
+			logger.Info(err)
+			return nil, nil, ErrGetVerifier
 		}
 	}
 
 	err = abi.OracleInfoCheck(ctx, block.Address, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrCheckParam
 	}
 
 	amount, err := ctx.CalculateAmount(block)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrCalcAmount
 	}
 
 	if amount.Compare(common.OracleCost) != types.BalanceCompEqual {
-		return nil, nil, fmt.Errorf("balance(exp:%s-%s) wrong", common.OracleCost, amount)
+		logger.Infof("balance(exp:%s-%s) wrong", common.OracleCost, amount)
+		return nil, nil, ErrNotEnoughFee
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrPackMethod
 	}
 
 	err = o.SetStorage(ctx, block.Address, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
 	if err != nil {
-		return nil, nil, err
+		logger.Info(err)
+		return nil, nil, ErrSetStorage
 	}
 
 	return nil, nil, nil
@@ -396,14 +475,6 @@ func (o *Oracle) SetStorage(ctx *vmstore.VMContext, account types.Address, ot ui
 	return nil
 }
 
-func (o *Oracle) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.NewBalance(0), nil
-}
-
-func (o *Oracle) GetRefundData() []byte {
-	return []byte{1}
-}
-
 func (o *Oracle) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
 	info := new(abi.OracleInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDOracle, block.GetData())
@@ -417,10 +488,6 @@ func (o *Oracle) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.
 	}
 
 	return common.ContractNoGap, nil, nil
-}
-
-func (o *Oracle) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
-	return nil, nil
 }
 
 func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error {
@@ -496,6 +563,7 @@ func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractSt
 
 		vsVal.TotalVerify += 1
 		vsVal.TotalReward = new(types.BigNum).Add(vsVal.TotalReward, divBonusFee)
+		vsVal.ActiveHeight[common.OracleTypeToString(oraInfo.OType)] = povHeight
 
 		err = dpki.PovSetVerifierState(csdb, vsRawKey, vsVal)
 		if err != nil {
@@ -519,6 +587,10 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 
 	if param.Account != block.Address {
 		return nil, nil, errors.New("account is not verifier")
+	}
+
+	if param.RewardAmount == nil || param.RewardAmount.Sign() <= 0 {
+		return nil, nil, errors.New("param reward amount is zero")
 	}
 
 	if block.Token != common.GasToken() {

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/statedb"
@@ -64,7 +66,7 @@ type VerifierUnRegParam struct {
 type PublishInfoState struct {
 	*PublishParam
 
-	State *types.PovPublishState `json:"State"`
+	State *types.PovPublishState `json:"state"`
 }
 
 func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegParam) (*types.StateBlock, error) {
@@ -252,6 +254,68 @@ func (p *PublicKeyDistributionApi) GetVerifiersByType(vType string) ([]*Verifier
 	return vrs, nil
 }
 
+func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*VerifierRegParam, error) {
+	vrs := make([]*VerifierRegParam, 0)
+
+	vt := common.OracleStringToType(vType)
+	if vt == common.OracleTypeInvalid {
+		return nil, fmt.Errorf("verifier type err")
+	}
+
+	if !p.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
+	}
+
+	rawVr, err := abi.GetVerifiersByType(p.ctx, vt)
+	if err != nil {
+		return nil, err
+	}
+
+	pb, err := p.ctx.GetLatestPovBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	csDB := p.getCSDB(false, pb.GetHeight())
+	if csDB == nil {
+		return nil, errors.New("failed to get contract state db")
+	}
+
+	for _, v := range rawVr {
+		var ah uint64
+		vs, _ := dpki.PovGetVerifierState(csDB, v.Account[:])
+		if vs != nil {
+			ah, _ = vs.ActiveHeight[vType]
+		}
+
+		if pb.GetHeight()-ah > uint64(common.POVChainBlocksPerDay) {
+			continue
+		}
+
+		vr := &VerifierRegParam{
+			Account: v.Account,
+			VType:   common.OracleTypeToString(v.VType),
+			VInfo:   v.VInfo,
+		}
+
+		vrs = append(vrs, vr)
+	}
+
+	// randomize the verifiers that we will get
+	if len(vrs) > common.VerifierMaxNum {
+		vrr := make([]*VerifierRegParam, 0)
+		rnd := rand.Perm(len(vrs))
+
+		for i := 0; i < common.VerifierMaxNum; i++ {
+			vrr = append(vrr, vrs[rnd[i]])
+		}
+
+		return vrr, nil
+	} else {
+		return vrs, nil
+	}
+}
+
 func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account string) ([]*VerifierRegParam, error) {
 	vrs := make([]*VerifierRegParam, 0)
 
@@ -378,7 +442,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 		return nil, err
 	}
 
-	if len(param.Verifiers) < 1 || len(param.Verifiers) > 5 {
+	if len(param.Verifiers) < 3 || len(param.Verifiers) > 5 {
 		return nil, fmt.Errorf("verifier num err")
 	}
 
@@ -559,6 +623,31 @@ func (p *PublicKeyDistributionApi) getCSDB(isLatest bool, height uint64) *stated
 	return nil
 }
 
+func (p *PublicKeyDistributionApi) sortPublishInfo(pubs []*PublishInfoState) {
+	sort.Slice(pubs, func(i, j int) bool {
+		psi := pubs[i].State
+		psj := pubs[j].State
+
+		if psi == nil {
+			psi = new(types.PovPublishState)
+		}
+
+		if psj == nil {
+			psj = new(types.PovPublishState)
+		}
+
+		if psi.VerifiedStatus == types.PovPublishStatusVerified {
+			if psj.VerifiedStatus != types.PovPublishStatusVerified {
+				return true
+			} else {
+				return psi.VerifiedHeight > psj.VerifiedHeight
+			}
+		} else {
+			return psi.PublishHeight < psj.PublishHeight
+		}
+	})
+}
+
 func (p *PublicKeyDistributionApi) fillPublishInfoState(csdb *statedb.PovContractStateDB, pubInfo *abi.PublishInfo) *PublishInfoState {
 	pubInfoKey := &abi.PublishInfoKey{
 		PType:  pubInfo.PType,
@@ -605,7 +694,21 @@ func (p *PublicKeyDistributionApi) GetPubKeyByTypeAndID(pType string, pID string
 		}
 	}
 
+	p.sortPublishInfo(pubs)
 	return pubs, nil
+}
+
+func (p *PublicKeyDistributionApi) GetRecommendPubKey(pType string, pID string) (*PublishInfoState, error) {
+	pis, err := p.GetPubKeyByTypeAndID(pType, pID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(pis) > 0 {
+		return pis[0], nil
+	}
+
+	return nil, nil
 }
 
 func (p *PublicKeyDistributionApi) GetPublishInfosByType(pType string) ([]*PublishInfoState, error) {
@@ -628,6 +731,7 @@ func (p *PublicKeyDistributionApi) GetPublishInfosByType(pType string) ([]*Publi
 		}
 	}
 
+	p.sortPublishInfo(pubs)
 	return pubs, nil
 }
 
@@ -651,6 +755,7 @@ func (p *PublicKeyDistributionApi) GetPublishInfosByAccountAndType(account types
 		}
 	}
 
+	p.sortPublishInfo(pubs)
 	return pubs, nil
 }
 
@@ -892,6 +997,10 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 		return nil, errors.New("invalid reward param beneficial")
 	}
 
+	if param.RewardAmount == nil || param.RewardAmount.Sign() <= 0 {
+		return nil, errors.New("invalid reward param rewardAmount")
+	}
+
 	am, err := p.l.GetAccountMeta(param.Account)
 	if am == nil {
 		return nil, fmt.Errorf("rep account not exist, %s", err)
@@ -1072,4 +1181,73 @@ func (p *PublicKeyDistributionApi) GetAvailRewardInfo(account types.Address) (*P
 	}
 
 	return rsp, nil
+}
+
+func (p *PublicKeyDistributionApi) GetVerifierHeartBlock(account types.Address, vTypes []string) (*types.StateBlock, error) {
+	if len(vTypes) == 0 {
+		return nil, ErrParameterNil
+	}
+
+	if !p.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
+	}
+
+	vts := make([]uint32, 0)
+	for _, v := range vTypes {
+		vt := common.OracleStringToType(v)
+		if vt == common.OracleTypeInvalid {
+			return nil, ErrVerifierType
+		}
+
+		err := abi.VerifierPledgeCheck(p.ctx, account)
+		if err != nil {
+			return nil, contract.ErrNotEnoughPledge
+		}
+
+		_, err = abi.GetVerifierInfoByAccountAndType(p.ctx, account, vt)
+		if err != nil {
+			return nil, contract.ErrGetVerifier
+		}
+
+		vts = append(vts, vt)
+	}
+
+	am, err := p.l.GetAccountMeta(account)
+	if err != nil {
+		return nil, contract.ErrAccountNotExist
+	}
+
+	tm := am.Token(common.GasToken())
+	if tm == nil {
+		return nil, ErrNoGas
+	}
+
+	if tm.Balance.Compare(common.OracleCost) == types.BalanceCompSmaller {
+		return nil, contract.ErrNotEnoughFee
+	}
+
+	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, vts)
+	if err != nil {
+		return nil, contract.ErrPackMethod
+	}
+
+	povHeader, err := p.l.GetLatestPovHeader()
+	if err != nil {
+		return nil, ErrGetPovHeader
+	}
+
+	send := &types.StateBlock{
+		Type:           types.ContractSend,
+		Token:          tm.Type,
+		Address:        account,
+		Balance:        tm.Balance.Sub(common.OracleCost),
+		Previous:       tm.Header,
+		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Representative: tm.Representative,
+		Data:           data,
+		PoVHeight:      povHeader.GetHeight(),
+		Timestamp:      common.TimeNow().Unix(),
+	}
+
+	return send, nil
 }

@@ -130,10 +130,14 @@ func TestPovVerifier_VerifyFull(t *testing.T) {
 
 	verifier := NewPovVerifier(md.ledger, md.chainV, md.cs)
 
-	blk1, _ := mock.GeneratePovBlock(nil, 0)
+	genBlk, _ := mock.GenerateGenesisPovBlock()
+	stat := verifier.VerifyFull(genBlk)
+	if stat.Result != process.Progress {
+		//t.Fatalf("result %s err %s", stat1.Result, stat1.ErrMsg)
+	}
 
+	blk1, _ := mock.GeneratePovBlock(genBlk, 5)
 	stat1 := verifier.VerifyFull(blk1)
-
 	if stat1.Result != process.Progress {
 		//t.Fatalf("result %s err %s", stat1.Result, stat1.ErrMsg)
 	}
