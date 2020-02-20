@@ -120,8 +120,6 @@ var (
 const version = 14
 
 func NewLedger(cfgFile string) *Ledger {
-	fmt.Println("-------------", cfgFile)
-	//fmt.Println("===========", config.DefaultDataDir())
 	lock.Lock()
 	defer lock.Unlock()
 	cc := chainctx.NewChainContext(cfgFile)
