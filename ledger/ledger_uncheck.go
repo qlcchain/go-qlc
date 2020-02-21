@@ -104,10 +104,12 @@ func (l *Ledger) getUncheckedBlocks(kind types.UncheckedKind, visit types.Unchec
 		if err := u.Deserialize(val); err != nil {
 			return fmt.Errorf("uncheck deserialize err: %s", err)
 		}
+
 		h, err := types.BytesToHash(key[1:])
 		if err != nil {
 			return fmt.Errorf("uncheck kind err: %s", err)
 		}
+
 		if err := visit(u.Block, h, kind, u.Kind); err != nil {
 			return fmt.Errorf("visit unchecked error %s", err)
 		}
@@ -132,6 +134,7 @@ func (l *Ledger) GetUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error {
 		return err
 	}
 	return l.getUncheckedBlocks(types.UncheckedKindPublish, visit)
+	//return nil
 }
 
 func (l *Ledger) CountUncheckedBlocks() (uint64, error) {

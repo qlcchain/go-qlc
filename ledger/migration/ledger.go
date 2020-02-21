@@ -161,13 +161,16 @@ type MigrationV13ToV14 struct {
 
 func (m MigrationV13ToV14) Migrate(store storage.Store) error {
 	return store.BatchWrite(false, func(batch storage.Batch) error {
+		fmt.Println("migrate ledger v13 to v14 ")
 		b, err := checkVersion(m, store)
 		if err != nil {
 			return err
 		}
 		if b {
-			panic("not implemented")
-			//return updateVersion(m, batch)
+			if err := store.Upgrade(m.StartVersion()); err != nil {
+				return fmt.Errorf("migrate to %d error: %s", m.EndVersion(), err)
+			}
+			return updateVersion(m, batch)
 		}
 		return nil
 	})

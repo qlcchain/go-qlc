@@ -7,6 +7,8 @@
 
 package types
 
+import "encoding/json"
+
 type UncheckedKind byte
 
 const (
@@ -65,4 +67,9 @@ func (u *Unchecked) Deserialize(text []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (u *Unchecked) String() string {
+	bytes, _ := json.Marshal(u)
+	return string(bytes)
 }

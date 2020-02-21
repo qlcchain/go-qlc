@@ -187,20 +187,15 @@ func (v *VMContext) get(key []byte) ([]byte, error) {
 
 	//
 	//if v, err := v.Ledger.Cache().Get(key); err == nil {
-	//	fmt.Println("================get storage 2, found")
-	//	fmt.Println("===========val", v)
 	//	return v.([]byte), nil
 	//}
-	//fmt.Println("================get storage 2, not found")
 	//val, err := v.Ledger.Store().Get(key)
 	//if err != nil {
-	//	fmt.Println("================get storage 3, not found")
 	//	if err == storage.KeyNotFound {
 	//		return nil, ErrStorageNotFound
 	//	}
 	//	return nil, err
 	//}
-	//fmt.Println("================get storage 3, found", val)
 	//
 	//s = val
 	//return s, nil

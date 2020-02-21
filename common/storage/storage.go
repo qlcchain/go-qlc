@@ -16,11 +16,12 @@ type Store interface {
 	Batch(bool) Batch
 	PutBatch(Batch) error
 	BatchWrite(bool, func(batch Batch) error) error
-	BatchView(func(batch Batch) error) error
+	//BatchView(func(batch Batch) error) error
 	Iterator(prefix []byte, end []byte, f func(k, v []byte) error) error
 	Count(prefix []byte) (uint64, error)
 	Purge() error
 	Drop(prefix []byte) error
+	Upgrade(version int) error
 	Close() error
 }
 
@@ -57,7 +58,7 @@ const (
 	KeyPrefixOnlineReps
 	KeyPrefixPovHeader   // prefix + height + hash => header
 	KeyPrefixPovBody     // prefix + height + hash => body
-	KeyPrefixPovHeight   // prefix + hash => height (uint64)
+	KeyPrefixPovHeight   // prefix + hash => height (uint64) 20
 	KeyPrefixPovTxLookup // prefix + txHash => TxLookup
 	KeyPrefixPovBestHash // prefix + height => hash
 	KeyPrefixPovTD       // prefix + height + hash => total difficulty (big int)
@@ -66,8 +67,8 @@ const (
 	KeyPrefixRepresentationCache
 	KeyPrefixUncheckedTokenInfo
 	KeyPrefixBlockCacheAccount
-	KeyPrefixPovMinerStat // prefix + day index => miners of best blocks per day
-	KeyPrefixUnconfirmedSync
+	KeyPrefixPovMinerStat    // prefix + day index => miners of best blocks per day
+	KeyPrefixUnconfirmedSync //30
 	KeyPrefixUncheckedSync
 	KeyPrefixSyncCacheBlock
 	KeyPrefixUncheckedPovHeight

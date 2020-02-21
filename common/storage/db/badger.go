@@ -2,6 +2,8 @@ package db
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/options"
@@ -126,20 +128,20 @@ func (b *BadgerStore) BatchWrite(canRead bool, fn func(batch storage.Batch) erro
 	}
 }
 
-func (b *BadgerStore) BatchView(fn func(batch storage.Batch) error) error {
-	tx := &BadgerTransaction{
-		txn: b.db.NewTransaction(false),
-	} //logger.Debugf("BatchView NewTransaction %p", txn)
-	defer func() {
-		//logger.Debugf("BatchView Discard %p", txn)
-		tx.txn.Discard()
-	}()
-
-	if err := fn(tx); err != nil {
-		return err
-	}
-	return nil
-}
+//func (b *BadgerStore) BatchView(fn func(batch storage.Batch) error) error {
+//	tx := &BadgerTransaction{
+//		txn: b.db.NewTransaction(false),
+//	} //logger.Debugf("BatchView NewTransaction %p", txn)
+//	defer func() {
+//		//logger.Debugf("BatchView Discard %p", txn)
+//		tx.txn.Discard()
+//	}()
+//
+//	if err := fn(tx); err != nil {
+//		return err
+//	}
+//	return nil
+//}
 
 func (b *BadgerStore) Iterator(prefix []byte, end []byte, fn func(k, v []byte) error) error {
 	if len(prefix) <= 0 {
@@ -345,30 +347,68 @@ func (b *BadgerWriteBatch) Cancel() {
 	b.batch.Cancel()
 }
 
-func (b *BadgerStore) Upgrade() error {
-	//keys := make([]storage.KeyPrefix, 0)
-	//keys = append(keys, storage.KeyPrefixUncheckedBlockLink)
-	//keys = append(keys, storage.KeyPrefixUncheckedBlockPrevious)
-	//keys = append(keys, storage.KeyPrefixUncheckedTokenInfo)
-	//keys = append(keys, storage.KeyPrefixGapPublish)
-	//keys = append(keys, storage.KeyPrefixUncheckedPovHeight)
-	//txn := b.db.NewTransaction(false)
-	//defer txn.Discard()
-	//for _, k := range keys {
-	//	prefix, _ := storage.GetKeyOfParts(k)
-	//	it := txn.NewIterator(badger.DefaultIteratorOptions)
-	//	defer it.Close()
-	//
-	//	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-	//		item := it.Item()
-	//		key := item.Key()
-	//		err := item.Value(func(val []byte) error {
-	//
-	//		})
-	//		if err != nil {
-	//			return err
-	//		}
-	//	}
-	//}
+func (b *BadgerStore) Upgrade(version int) error {
+	keys := make([]storage.KeyPrefix, 0)
+	keys = append(keys, storage.KeyPrefixUncheckedBlockLink)
+	keys = append(keys, storage.KeyPrefixUncheckedBlockPrevious)
+	keys = append(keys, storage.KeyPrefixUncheckedTokenInfo)
+	keys = append(keys, storage.KeyPrefixGapPublish)
+	keys = append(keys, storage.KeyPrefixUncheckedPovHeight)
+
+	unchecks := make([]*uncheckedMap, 0)
+	for _, k := range keys {
+		txn := b.db.NewTransaction(false)
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+
+		prefix, _ := storage.GetKeyOfParts(k)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			key := item.Key()
+			err := item.Value(func(val []byte) error {
+				blk := new(types.StateBlock)
+				if err := blk.Deserialize(val); err != nil {
+					return err
+				}
+				sync := types.SynchronizedKind(item.UserMeta())
+				uncheckVal := &types.Unchecked{
+					Block: blk,
+					Kind:  sync,
+				}
+				k := make([]byte, len(key))
+				copy(k[:], key)
+				uncheckedMap := &uncheckedMap{
+					key:   k,
+					value: uncheckVal,
+				}
+				unchecks = append(unchecks, uncheckedMap)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		it.Close()
+		txn.Discard()
+	}
+	batch := b.db.NewTransaction(true)
+	for _, u := range unchecks {
+		k := u.key
+		v, err := u.value.Serialize()
+		if err != nil {
+			return fmt.Errorf("uncheck Serialize error: %s", err)
+		}
+
+		if err := batch.Set(k, v); err != nil {
+			return err
+		}
+	}
+	if err := batch.Commit(); err != nil {
+		return fmt.Errorf("batch flush: %s", err)
+	}
 	return nil
+}
+
+type uncheckedMap struct {
+	key   []byte
+	value *types.Unchecked
 }

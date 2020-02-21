@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -106,6 +107,43 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 		uncheck.SyncType = sync
 		uncheck.Height = height
 		unchecks = append(unchecks, uncheck)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return unchecks, nil
+}
+
+func (l *DebugApi) UncheckBlocksCount() (map[string]int, error) {
+	unchecks := make(map[string]int)
+
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		hash := block.GetHash()
+		if hash.IsZero() {
+			return fmt.Errorf("invalid block : %s", block)
+		}
+		switch unCheckType {
+		case types.UncheckedKindPrevious:
+			unchecks["GapPrevious"] = unchecks["GapPrevious"] + 1
+		case types.UncheckedKindLink:
+			unchecks["GapLink"] = unchecks["GapLink"] + 1
+		case types.UncheckedKindTokenInfo:
+			unchecks["GapTokenInfo"] = unchecks["GapTokenInfo"] + 1
+		case types.UncheckedKindPublish:
+			unchecks["GapPublish"] = unchecks["GapPublish"] + 1
+		}
+		unchecks["Total"] = unchecks["Total"] + 1
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		unchecks["GapPovHeight"] = unchecks["GapPovHeight"] + 1
+		unchecks["Total"] = unchecks["Total"] + 1
 		return nil
 	})
 	if err != nil {

@@ -128,32 +128,31 @@ func NewLedger(cfgFile string) *Ledger {
 	dir := cfg.LedgerDir()
 
 	if _, ok := lcache[dir]; !ok {
-		store, err := db.NewBadgerStore(dir)
-		if err != nil {
-			panic(err.Error())
-		}
-		r, err := relation.NewRelation(cfgFile)
-		if err != nil {
-			panic(err.Error())
-		}
 		ctx, cancel := context.WithCancel(context.Background())
 		l := &Ledger{
-			store:          store,
-			relation:       r,
 			dir:            dir,
 			EB:             cc.EventBus(),
-			rcache:         NewrCache(),
 			ctx:            ctx,
 			cancel:         cancel,
-			representCache: NewRepresentationCache(),
 			blockConfirmed: make(chan *types.StateBlock, 1024),
+			logger:         log.NewLogger("ledger"),
 		}
+		store, err := db.NewBadgerStore(dir)
+		if err != nil {
+			l.logger.Fatal(err.Error())
+		}
+		l.store = store
+		r, err := relation.NewRelation(cfgFile)
+		if err != nil {
+			l.logger.Fatal(err.Error())
+		}
+		l.relation = r
 		l.cache = NewMemoryCache(l)
-		l.logger = log.NewLogger("ledger")
+		l.rcache = NewrCache()
+		l.representCache = NewRepresentationCache()
 		if err := l.init(); err != nil {
-			panic(err.Error())
+			l.logger.Fatal(err)
 		}
-
 		lcache[dir] = l
 	}
 	//cache2[dir].logger = log.NewLogger("ledger")
