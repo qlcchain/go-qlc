@@ -50,7 +50,7 @@ type Processor struct {
 	syncStateChange chan topic.SyncState
 	syncState       topic.SyncState
 	orderedChain    *sync.Map
-	chainHeight     map[chainKey]uint64
+	chainHeight     *sync.Map
 	// doneBlock          chan *types.StateBlock
 	confirmedChain     map[types.Hash]bool
 	confirmParallelNum int32
@@ -78,7 +78,7 @@ func newProcessors(num int) []*Processor {
 			syncStateChange: make(chan topic.SyncState, 1),
 			syncState:       topic.SyncNotStart,
 			orderedChain:    new(sync.Map),
-			chainHeight:     make(map[chainKey]uint64),
+			chainHeight:     new(sync.Map),
 			// doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
 			confirmedChain:     make(map[types.Hash]bool),
 			confirmParallelNum: ConfirmChainParallelNum,
@@ -147,7 +147,7 @@ func (p *Processor) processMsg() {
 
 				if p.syncState == topic.Syncing {
 					p.orderedChain = new(sync.Map)
-					p.chainHeight = make(map[chainKey]uint64)
+					p.chainHeight = new(sync.Map)
 					p.confirmedChain = make(map[types.Hash]bool)
 				}
 			case hash := <-p.syncBlockAcked:
@@ -212,19 +212,23 @@ func (p *Processor) processMsg() {
 }
 
 func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBlock) {
+	var height uint64
+
 	ck := chainKey{
 		addr:  block.Address,
 		token: block.Token,
 	}
-	if _, ok := p.chainHeight[ck]; ok {
-		p.chainHeight[ck]++
+
+	if v, ok := p.chainHeight.Load(ck); ok {
+		height = v.(uint64) + 1
 	} else {
-		p.chainHeight[ck] = 1
+		height = 1
 	}
 
+	p.chainHeight.Store(ck, height)
 	cok := chainOrderKey{
 		chainKey: ck,
-		order:    p.chainHeight[ck],
+		order:    height,
 	}
 
 	p.orderedChain.Store(cok, hash)
@@ -307,7 +311,14 @@ func (p *Processor) confirmChain(hash types.Hash) {
 			addr:  block.Address,
 			token: block.Token,
 		}
-		height := p.chainHeight[ck]
+
+		vh, ok := p.chainHeight.Load(ck)
+		if !ok {
+			dps.logger.Errorf("get chain height err")
+			return
+		}
+		height := vh.(uint64)
+
 		cok := chainOrderKey{
 			chainKey: ck,
 			order:    1,
