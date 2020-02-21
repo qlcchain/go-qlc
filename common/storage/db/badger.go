@@ -3,13 +3,13 @@ package db
 import (
 	"bytes"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/options"
 	"github.com/pkg/errors"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
@@ -43,7 +43,7 @@ func (b *BadgerStore) Get(k []byte) ([]byte, error) {
 		}
 		return nil, err
 	}
-	v := make([]byte, 0)
+	var v []byte
 	err = item.Value(func(val []byte) error {
 		v = val
 		return nil
