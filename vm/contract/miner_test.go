@@ -1,13 +1,14 @@
 package contract
 
 import (
+	"math/big"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"math/big"
-	"testing"
 )
 
 func TestMinerReward_GetLastRewardHeight(t *testing.T) {
@@ -214,7 +215,7 @@ func TestMinerReward_ProcessSend(t *testing.T) {
 	}
 
 	am := mock.AccountMeta(blk.Address)
-	err = l.AddAccountMeta(am)
+	err = l.AddAccountMeta(am, l.Cache().GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +358,7 @@ func TestMinerReward_DoReceive(t *testing.T) {
 	}
 
 	am := mock.AccountMeta(beneficial)
-	err = l.AddAccountMeta(am)
+	err = l.AddAccountMeta(am, l.Cache().GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +376,7 @@ func TestMinerReward_DoReceive(t *testing.T) {
 
 	am = mock.AccountMeta(beneficial)
 	am.Tokens[0].Type = common.GasToken()
-	err = l.UpdateAccountMeta(am)
+	err = l.UpdateAccountMeta(am, l.Cache().GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -393,7 +394,7 @@ func TestMinerReward_DoReceive(t *testing.T) {
 
 	am = mock.AccountMeta(beneficial)
 	am.Tokens = []*types.TokenMeta{}
-	err = l.UpdateAccountMeta(am)
+	err = l.UpdateAccountMeta(am, l.Cache().GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}

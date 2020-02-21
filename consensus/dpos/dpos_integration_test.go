@@ -162,7 +162,7 @@ func TestOnline(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	hasOnline := false
-	err = n1.dps.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+	err = n1.dps.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		if block.Type == types.Online && block.Address == mock.TestAccount.Address() {
 			hasOnline = true
 		}
