@@ -1071,20 +1071,24 @@ func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end in
 	for _, status := range records {
 		if s, b := status.State(&partyA); b {
 			result.IncreasePartyASuccess()
-			result.IncreaseSuccess(s, true)
+			if s != "" {
+				result.IncreaseSuccess(s, true)
+			}
 		} else {
 			result.IncreasePartyAFail()
 			if s != "" {
-				result.IncreaseSuccess(s, true)
+				result.IncreaseFail(s, true)
 			}
 		}
 		if s, b := status.State(&partyB); b {
 			result.IncreasePartyBSuccess()
-			result.IncreaseSuccess(s, false)
+			if s != "" {
+				result.IncreaseSuccess(s, false)
+			}
 		} else {
 			result.IncreasePartyBFail()
 			if s != "" {
-				result.IncreaseSuccess(s, false)
+				result.IncreaseFail(s, false)
 			}
 		}
 	}
