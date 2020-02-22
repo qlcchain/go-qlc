@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -8,11 +9,10 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type MemoryCache struct {
@@ -117,7 +117,7 @@ func (lc *MemoryCache) flush() {
 	index = (index + 1) % lc.cacheCount // next read cache index to dump
 	for index != lc.writeIndex {
 		//lc.logger.Debug("  begin flush cache: ", index)
-		if err := lc.caches[index].flush(lc.l); err != nil {
+		if err := lc.caches[index].flush(lc.l, index); err != nil {
 			lc.logger.Error(err)
 		}
 		//lc.logger.Debug("  flush done and new read index: ", index)
@@ -140,7 +140,7 @@ func (lc *MemoryCache) close() error {
 			finish = true
 		}
 		//lc.logger.Debug("  begin flush cache: ", index)
-		if err := lc.caches[index].flush(lc.l); err != nil {
+		if err := lc.caches[index].flush(lc.l, index); err != nil {
 			lc.logger.Error(err)
 		}
 		//lc.logger.Debug("  flush done and new read index: ", index)
@@ -168,6 +168,11 @@ func (lc *MemoryCache) Get(key []byte) (interface{}, error) {
 	return nil, ErrKeyNotInCache
 }
 
+func (lc *MemoryCache) Put(key []byte, value interface{}) error {
+	c := lc.GetCache()
+	return c.Put(key, value)
+}
+
 func (lc *MemoryCache) Has(key []byte) (bool, error) {
 	_, err := lc.Get(key)
 	if err != nil {
@@ -177,6 +182,21 @@ func (lc *MemoryCache) Has(key []byte) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (lc *MemoryCache) Iterator(prefix []byte, end []byte, f func(k, v []byte) error) error {
+	index := lc.writeIndex
+	for index != lc.readIndex {
+		if err := lc.caches[index].Iterator(prefix, end, f); err != nil {
+			lc.logger.Error(err)
+			return err
+		}
+		index = (index - 1) % lc.cacheCount
+		if index < 0 {
+			index = lc.cacheCount - 1
+		}
+	}
+	return nil
 }
 
 func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
@@ -226,7 +246,12 @@ func newCache() *Cache {
 	}
 }
 
-func (c *Cache) flush(l *Ledger) error {
+func (c *Cache) flush(l *Ledger, index int) error {
+	cs := new(CacheStat)
+	cs.Index = index
+	cs.Key = c.capacity()
+	cs.Start = time.Now().UnixNano()
+
 	c.flushLock.Lock()
 	defer func() {
 		c.flushLock.Unlock()
@@ -248,6 +273,10 @@ func (c *Cache) flush(l *Ledger) error {
 
 	batch := l.store.Batch(false)
 	for k, v := range c.cache.GetALL(false) {
+		t := originalKey(k.(string))
+		if bytes.EqualFold(t[:1], []byte{byte(storage.KeyPrefixBlock)}) {
+			cs.Block = cs.Block + 1
+		}
 		if err := c.dumpToLevelDb(k, v, batch); err != nil {
 			c.logger.Error(err)
 			batch.Cancel()
@@ -263,6 +292,9 @@ func (c *Cache) flush(l *Ledger) error {
 		return err
 	}
 	c.purge()
+
+	cs.End = time.Now().UnixNano()
+	l.updateCacheStat(cs)
 	return nil
 }
 
@@ -344,7 +376,16 @@ func (c *Cache) Get(key []byte) (interface{}, error) {
 }
 
 func (c *Cache) Iterator(prefix []byte, end []byte, f func(k, v []byte) error) error {
-	panic("not implemented")
+	items := c.cache.GetALL(false)
+	for k, v := range items {
+		key := originalKey(k.(string))
+		if bytes.HasPrefix(key, prefix) {
+			if err := f(key, v.([]byte)); err != nil {
+				return fmt.Errorf("cache iterator error: %s", err)
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Cache) Cancel() {

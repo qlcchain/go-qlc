@@ -29,6 +29,7 @@ type Store interface {
 	Cache() *MemoryCache
 	EventBus() event.EventBus
 	Get(k []byte, c ...storage.Cache) (interface{}, []byte, error)
+	Iterator([]byte, []byte, func([]byte, []byte) error) error
 	GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)

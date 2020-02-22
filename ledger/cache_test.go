@@ -9,7 +9,6 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/google/uuid"
-
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -126,4 +125,43 @@ func TestGcCache(t *testing.T) {
 		t.Log(k, v)
 	}
 	t.Log(a.Len(false))
+}
+
+func TestCache_TimeSpan(t *testing.T) {
+	cs := new(CacheStat)
+	cs.Start = time.Now().UnixNano()
+	time.Sleep(30 * time.Millisecond)
+	cs.End = time.Now().UnixNano()
+	fmt.Println(time.Now().Unix())
+	fmt.Println(time.Now().UnixNano())
+
+	span := cs.End - cs.Start
+	fmt.Println(span / 1000000)
+
+	fmt.Println(cs)
+	fmt.Println(time.Unix(cs.Start/1000000000, 0).Format("2006-01-02 15:04:05"))
+
+}
+
+func TestCache_Iterator(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	l := NewLedger(cm.ConfigFile)
+
+	defer func() {
+		if err := l.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	mc := l.Cache()
+	mc.Put([]byte{1, 2, 3, 4}, []byte{1, 4})
+	mc.Put([]byte{1, 2, 3, 5}, []byte{1})
+	mc.Put([]byte{1, 2, 3, 6}, []byte{4})
+	mc.Iterator([]byte{1, 2}, nil, func(k, v []byte) error {
+		t.Log(k, v)
+		return nil
+	})
+
 }

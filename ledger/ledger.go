@@ -13,8 +13,6 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"go.uber.org/zap"
-
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -26,6 +24,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/migration"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type Ledger struct {
@@ -34,6 +33,7 @@ type Ledger struct {
 	store          storage.Store
 	cache          *MemoryCache
 	rcache         *rCache
+	cacheStats     []*CacheStat
 	relation       *relation.Relation
 	EB             event.EventBus
 	representCache *RepresentationCache
@@ -150,6 +150,7 @@ func NewLedger(cfgFile string) *Ledger {
 		l.cache = NewMemoryCache(l)
 		l.rcache = NewrCache()
 		l.representCache = NewRepresentationCache()
+		l.cacheStats = make([]*CacheStat, 0)
 		if err := l.init(); err != nil {
 			l.logger.Fatal(err)
 		}
@@ -666,6 +667,18 @@ func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error)
 	return nil, ErrKeyNotInCache
 }
 
+func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
+	if err := l.Cache().Iterator(prefix, end, fn); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+	if err := l.DBStore().Iterator(prefix, end, fn); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+	return nil
+}
+
 // TODO-cache
 //func (l *Ledger) Size() (int64, int64) {
 //	return l.DBStore.Size()
@@ -718,3 +731,22 @@ const (
 //		return "", nil
 //	}
 //}
+
+type CacheStat struct {
+	Index int
+	Key   int
+	Block int
+	Start int64
+	End   int64
+}
+
+func (l *Ledger) updateCacheStat(c *CacheStat) {
+	l.cacheStats = append(l.cacheStats, c)
+	if len(l.cacheStats) > 200 {
+		l.cacheStats = l.cacheStats[:100]
+	}
+}
+
+func (l *Ledger) GetCacheStat() []*CacheStat {
+	return l.cacheStats
+}

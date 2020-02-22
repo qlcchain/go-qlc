@@ -29,6 +29,7 @@ func (l *Ledger) GetRepresentation(key types.Address, c ...storage.Cache) (*type
 		return r.(*types.Benefit).Clone(), nil
 	} else {
 		if err == ErrKeyDeleted {
+			l.logger.Error(err)
 			return types.ZeroBenefit.Clone(), ErrRepresentationNotFound
 		}
 	}

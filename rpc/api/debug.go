@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
-
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
 
 	qctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -20,6 +18,8 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
 )
 
 type DebugApi struct {
@@ -495,6 +495,31 @@ func (l *DebugApi) GetConsPerf() (map[string]interface{}, error) {
 	delete(outArgs, "err")
 
 	return outArgs, nil
+}
+
+type CacheStat struct {
+	Index int    `json:"index"`
+	Key   int    `json:"key"`
+	Block int    `json:"block"`
+	Start string `json:"start"`
+	Span  string `json:"span"`
+}
+
+func (l *DebugApi) GetCacheStat() []*CacheStat {
+	cs := l.ledger.GetCacheStat()
+	cas := make([]*CacheStat, 0)
+	for i := len(cs) - 1; i >= 0; i-- {
+		c := cs[i]
+		ca := new(CacheStat)
+		ca.Index = c.Index
+		ca.Key = c.Key
+		ca.Block = c.Block
+		ca.Start = time.Unix(c.Start/1000000000, 0).Format("2006-01-02 15:04:05")
+		ca.Span = strconv.FormatInt((c.End-c.Start)/1000000, 10) + "ms"
+		cas = append(cas, ca)
+	}
+
+	return cas
 }
 
 //func (l *DebugApi) Rollback(hash types.Hash) error {
