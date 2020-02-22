@@ -10,8 +10,7 @@ package process
 import (
 	"errors"
 	"fmt"
-
-	"go.uber.org/zap"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -20,6 +19,7 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"go.uber.org/zap"
 )
 
 type LedgerVerifier struct {
@@ -56,6 +56,16 @@ func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 		if c, ok := lv.blockCheck[b.Type]; ok {
 			r, err := c.Check(lv, b)
 			if err != nil {
+				if err == contract.ErrPledgeNotReady {
+					time.Sleep(2 * time.Second)
+					if c, ok := lv.blockCheck[b.Type]; ok {
+						r, err := c.Check(lv, b)
+						if err != nil {
+							lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
+						}
+						return r, err
+					}
+				}
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {

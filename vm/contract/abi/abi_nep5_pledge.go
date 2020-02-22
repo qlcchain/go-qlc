@@ -366,7 +366,7 @@ func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 	}()
 	result := new(PledgeResult)
 	now := common.TimeNow().Unix()
-	err := ctx.IteratorAll(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			pledgeInfo := new(NEP5PledgeInfo)
 			if err := NEP5PledgeABI.UnpackVariable(pledgeInfo, VariableNEP5PledgeInfo, value); err == nil {

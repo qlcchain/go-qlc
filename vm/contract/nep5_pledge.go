@@ -267,7 +267,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(ctx, param)
 
 	if pledgeResult == nil {
-		return nil, errors.New("pledge is not ready")
+		return nil, ErrPledgeNotReady
 	}
 
 	//if len(pledgeResults) > 2 {

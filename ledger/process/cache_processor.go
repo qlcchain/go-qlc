@@ -3,11 +3,13 @@ package process
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/vm/contract"
 )
 
 func (lv *LedgerVerifier) BlockCacheCheck(block types.Block) (ProcessResult, error) {
@@ -16,6 +18,16 @@ func (lv *LedgerVerifier) BlockCacheCheck(block types.Block) (ProcessResult, err
 		if c, ok := lv.cacheBlockCheck[b.Type]; ok {
 			r, err := c.Check(lv, b)
 			if err != nil {
+				if err == contract.ErrPledgeNotReady {
+					time.Sleep(2 * time.Second)
+					if c, ok := lv.cacheBlockCheck[b.Type]; ok {
+						r, err := c.Check(lv, b)
+						if err != nil {
+							lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
+						}
+						return r, err
+					}
+				}
 				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
 			}
 			if r != Progress {
