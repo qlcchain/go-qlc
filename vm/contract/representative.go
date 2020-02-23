@@ -179,6 +179,24 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		}, nil
 }
 
+func (r *RepReward) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	param := new(cabi.RepRewardParam)
+	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.Data)
+	if err != nil {
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
+	}
+
+	return &types.PendingKey{
+			Address: param.Beneficial,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: types.Balance{Int: param.RewardAmount},
+			Type:   common.GasToken(),
+		}, nil
+}
+
 func (r *RepReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, RewardAmount *big.Int, RewardBlocks uint64, block *types.StateBlock) error {
 	oldInfo, err := r.GetRewardHistory(ctx, block.Address)
 	if err != nil && err != vmstore.ErrStorageNotFound {
@@ -340,13 +358,11 @@ func (r *RepReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, account t
 	return rewardBlocks, rewardAmount, nil
 }
 
-func (r *RepReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
-	tr := types.ZeroAddress
-
+func (r *RepReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	param := new(cabi.RepRewardParam)
 	if err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, block.GetData()); err == nil {
-		tr = param.Beneficial
+		return param.Beneficial, nil
+	} else {
+		return types.ZeroAddress, err
 	}
-
-	return tr
 }

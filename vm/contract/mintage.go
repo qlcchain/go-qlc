@@ -164,7 +164,7 @@ func (m *Mintage) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (m *Mintage) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+func (m *Mintage) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	data := block.GetData()
 	tr := types.ZeroAddress
 
@@ -173,11 +173,16 @@ func (m *Mintage) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBl
 			param := new(cabi.ParamMintage)
 			if err = method.Inputs.Unpack(param, data[4:]); err == nil {
 				tr = param.Beneficial
+				return tr, nil
+			} else {
+				return tr, err
 			}
+		} else {
+			return tr, errors.New("method err")
 		}
+	} else {
+		return tr, err
 	}
-
-	return tr
 }
 
 type WithdrawMintage struct {

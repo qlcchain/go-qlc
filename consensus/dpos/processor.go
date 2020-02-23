@@ -481,10 +481,11 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		dps.logger.Errorf("Fork for block: %s", hash)
 		p.processFork(bs)
 	case process.GapPrevious:
-		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous.String())
+		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous)
 		p.enqueueUnchecked(result, bs)
 	case process.GapSource:
-		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link.String())
+		// dfile.WriteString(fmt.Sprintf("add gap link: [%d] [%s] [%s]", p.index, hash, blk.Link))
+		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link)
 		p.enqueueUnchecked(result, bs)
 	case process.GapTokenInfo:
 		dps.logger.Infof("block:[%s] Gap tokenInfo", hash)
@@ -745,6 +746,8 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 		return
 	}
 
+	// dfile.WriteString(fmt.Sprintf("block acked [%d] [%s]\n", p.index, hash))
+
 	if blkLink, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
 		if dps.getProcessorIndex(blkLink.Address) == p.index {
 			dps.logger.Debugf("dequeue gap link[%s] block[%s]", hash, blkLink.GetHash())
@@ -755,6 +758,7 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 
 			p.processUncheckedBlock(bs)
 
+			// dfile.WriteString(fmt.Sprintf("delete gap link [%d] [%s] [%s]", p.index, blkLink.GetHash(), hash))
 			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
 			if err != nil {
 				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())

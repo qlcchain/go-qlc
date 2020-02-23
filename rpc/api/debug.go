@@ -526,3 +526,41 @@ func (l *DebugApi) GetCacheStat() []*CacheStat {
 //	lv := process.NewLedgerVerifier(l.ledger)
 //	return lv.Rollback(hash)
 //}
+
+type UncheckInfo struct {
+	Hash      types.Hash `json:"hash"`
+	GapType   string     `json:"gapType"`
+	GapHash   types.Hash `json:"gapHash"`
+	GapHeight uint64     `json:"gapHeight"`
+}
+
+func (l *DebugApi) UncheckAnalysis() ([]*UncheckInfo, error) {
+	uis := make([]*UncheckInfo, 0)
+
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		switch unCheckType {
+		case types.UncheckedKindPrevious:
+		case types.UncheckedKindLink:
+			if has, _ := l.ledger.HasStateBlockConfirmed(block.GetLink()); has {
+				ui := &UncheckInfo{
+					Hash:    block.GetHash(),
+					GapType: "gap link",
+					GapHash: block.GetLink(),
+				}
+				uis = append(uis, ui)
+			}
+		case types.UncheckedKindTokenInfo:
+			ui := &UncheckInfo{
+				Hash:    block.GetHash(),
+				GapType: "gap token",
+			}
+			uis = append(uis, ui)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return uis, nil
+}

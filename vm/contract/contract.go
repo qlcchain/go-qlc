@@ -86,7 +86,7 @@ type Contract interface {
 	// Contract meta describe
 	GetDescribe() Describe
 	// Target receiver address
-	GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address
+	GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error)
 
 	GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error)
 	// check status, update state
@@ -115,8 +115,8 @@ func (c *BaseContract) GetDescribe() Describe {
 	return c.Describe
 }
 
-func (c *BaseContract) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
-	return types.ZeroAddress
+func (c *BaseContract) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
+	return types.ZeroAddress, nil
 }
 
 func (c *BaseContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {

@@ -2,7 +2,6 @@ package dpos
 
 import (
 	"context"
-
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
 
@@ -212,6 +211,7 @@ func NewDPoS(cfgFile string) *DPoS {
 }
 
 func (dps *DPoS) Init() {
+	// dfile, _ = os.OpenFile("./dfile", os.O_RDWR|os.O_CREATE, 0666)
 	supply := common.GenesisBlock().Balance
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 	dps.voteThreshold, _ = supply.Div(2)
@@ -255,7 +255,7 @@ func (dps *DPoS) Init() {
 }
 
 func (dps *DPoS) Start() {
-	dps.logger.Info("DPOS service started!")
+	dps.logger.Info("DPoS service started!")
 
 	go dps.acTrx.start()
 	go dps.batchVoteStart()
@@ -264,9 +264,9 @@ func (dps *DPoS) Start() {
 	go dps.stat()
 	dps.processorStart()
 
-	//if err := dps.blockSyncDone(); err != nil {
-	//	dps.logger.Error("block sync down err", err)
-	//}
+	// if err := dps.blockSyncDone(); err != nil {
+	// 	dps.logger.Error("block sync down err", err)
+	// }
 
 	if err := dps.ledger.CleanAllVoteHistory(); err != nil {
 		dps.logger.Error("clean all vote history err")
@@ -280,7 +280,7 @@ func (dps *DPoS) Start() {
 	for {
 		select {
 		case <-dps.ctx.Done():
-			dps.logger.Info("Stopped DPOS.")
+			dps.logger.Info("Stopped DPoS.")
 			return
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
@@ -311,6 +311,9 @@ func (dps *DPoS) Start() {
 					dps.sendOnline(dps.curPovHeight)
 					dps.lastSendHeight = pb.Header.BasHdr.Height
 				}
+			} else {
+				// gap pov blocks can not be confirmed, may result in p2p pulling blocks repeatedly
+				dps.updateLastProcessSyncTime()
 			}
 		case <-timerDequeueGap.C:
 			for {
@@ -354,8 +357,7 @@ func (dps *DPoS) Start() {
 
 			if dps.blockSyncState == topic.Syncing || dps.blockSyncState == topic.SyncDone {
 				if time.Since(dps.lastProcessSyncTime) >= 2*time.Minute {
-					dps.logger.Warnf("timeout concluded the sync. last[%s] now[%s]",
-						dps.lastProcessSyncTime, time.Now())
+					dps.logger.Warnf("sync timeout. last[%s] now[%s]", dps.lastProcessSyncTime, time.Now())
 					dps.syncFinish()
 				}
 			}
@@ -366,7 +368,7 @@ func (dps *DPoS) Start() {
 }
 
 func (dps *DPoS) Stop() {
-	dps.logger.Info("DPOS service stopped!")
+	dps.logger.Info("DPoS service stopped!")
 
 	// do this first
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
@@ -652,11 +654,11 @@ func (dps *DPoS) subAckDo(index int, hash types.Hash) {
 }
 
 func (dps *DPoS) unsubAckDo(hash types.Hash) {
-	//msg := &subMsg{
-	//	kind: subMsgKindUnsub,
-	//	hash: hash,
-	//}
-	//dps.subMsg <- msg
+	// msg := &subMsg{
+	// 	kind: subMsgKindUnsub,
+	// 	hash: hash,
+	// }
+	// dps.subMsg <- msg
 }
 
 func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, localIndex int) {
@@ -676,7 +678,10 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 
 		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
 			ctx := vmstore.NewVMContext(dps.ledger)
-			dstAddr = c.GetTargetReceiver(ctx, blk)
+			dstAddr, err = c.GetTargetReceiver(ctx, blk)
+			if err != nil {
+				dps.logger.Error(err)
+			}
 		}
 
 		if dstAddr != types.ZeroAddress {
@@ -1104,6 +1109,7 @@ func (dps *DPoS) syncFinish() {
 
 func (dps *DPoS) checkSyncFinished() {
 	allFinished := true
+
 	dps.frontiersStatus.Range(func(k, v interface{}) bool {
 		status := v.(frontierStatus)
 		if status != frontierChainFinished {
@@ -1114,36 +1120,6 @@ func (dps *DPoS) checkSyncFinished() {
 	})
 
 	if allFinished {
-		checkLedgerTimer := time.NewTicker(1 * time.Second)
-		defer checkLedgerTimer.Stop()
-		checkMaxTimes := 5
-		checkResult := true
-
-	checkOut:
-		for {
-			select {
-			case <-checkLedgerTimer.C:
-				if checkMaxTimes <= 0 {
-					dps.logger.Errorf("check frontier block confirmed err")
-					return
-				}
-				checkMaxTimes--
-
-				dps.frontiersStatus.Range(func(k, v interface{}) bool {
-					hash := k.(types.Hash)
-					if has, _ := dps.ledger.HasStateBlockConfirmed(hash); !has {
-						checkResult = false
-						return false
-					}
-					return true
-				})
-
-				if checkResult {
-					break checkOut
-				}
-			}
-		}
-
 		dps.syncFinish()
 	}
 }

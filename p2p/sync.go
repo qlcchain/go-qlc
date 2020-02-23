@@ -108,6 +108,15 @@ func (ss *ServiceSync) onConsensusSyncFinished() {
 	default:
 	}
 }
+func (ss *ServiceSync) syncInit() {
+	select {
+	case <-ss.quitChanForSync:
+	default:
+	}
+
+	ss.lastSyncHash = types.ZeroHash
+	ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: topic.Syncing})
+}
 
 func (ss *ServiceSync) onFrontierReq(message *Message) error {
 	ss.netService.node.logger.Debug("receive FrontierReq")
@@ -164,11 +173,12 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			return
 		}
 
-		var remoteFrontiers []*types.Frontier
-		var blks types.StateBlockList
-		ss.lastSyncHash = types.ZeroHash
+		ss.syncInit()
 		sv.RpcCall(common.RpcDPosOnSyncStateChange, topic.Syncing, nil)
 		ss.logger.Warn("sync start")
+
+		var remoteFrontiers []*types.Frontier
+		var blks types.StateBlockList
 
 		for _, f := range rsp.Fs {
 			remoteFrontiers = append(remoteFrontiers, f.Fr)
@@ -182,6 +192,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			zeroFrontier := new(types.Frontier)
 			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 			state := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
+			ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: state})
 			sv.RpcCall(common.RpcDPosOnSyncStateChange, state, nil)
 		}
 		ss.logger.Warn("sync pull all blocks done")

@@ -31,8 +31,8 @@ func (i internalContract) GetDescribe() Describe {
 	return Describe{withPending: true, withSignature: true, specVer: SpecVer2}
 }
 
-func (i internalContract) GetTargetReceiver(_ *vmstore.VMContext, _ *types.StateBlock) types.Address {
-	return types.ZeroAddress
+func (i internalContract) GetTargetReceiver(_ *vmstore.VMContext, _ *types.StateBlock) (types.Address, error) {
+	return types.ZeroAddress, nil
 }
 
 func (i internalContract) GetFee(_ *vmstore.VMContext, _ *types.StateBlock) (types.Balance, error) {
