@@ -24,10 +24,10 @@ type MemoryCache struct {
 
 	lastFlush     time.Time
 	flushInterval time.Duration
-	//flushStatue   bool
-	flushChan  chan bool
-	closedChan chan bool
-	lock       sync.Mutex
+	flushStatue   bool
+	flushChan     chan bool
+	closedChan    chan bool
+	lock          sync.Mutex
 
 	tempCaches []*Cache
 	tempLock   sync.Mutex
@@ -44,17 +44,17 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 		caches:        make([]*Cache, 0),
 		lastFlush:     time.Now(),
 		flushInterval: defaultFlushSecs,
-		//flushStatue:   false,
-		flushChan:  make(chan bool, 1),
-		closedChan: make(chan bool),
-		lock:       sync.Mutex{},
-		tempLock:   sync.Mutex{},
-		logger:     log.NewLogger("ledger/dbcache"),
+		flushStatue:   false,
+		flushChan:     make(chan bool, 10),
+		closedChan:    make(chan bool),
+		lock:          sync.Mutex{},
+		tempLock:      sync.Mutex{},
+		logger:        log.NewLogger("ledger/dbcache"),
 	}
 	for i := 0; i < lc.cacheCount; i++ {
 		lc.caches = append(lc.caches, newCache())
 	}
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 20; i++ {
 		lc.tempCaches = append(lc.tempCaches, newTempCache())
 	}
 	go lc.flushCache()
@@ -119,13 +119,13 @@ func (lc *MemoryCache) flushCache() *Cache {
 }
 
 func (lc *MemoryCache) flush() {
-	//if lc.flushStatue {
-	//	return
-	//}
-	//lc.flushStatue = true
-	//defer func() {
-	//	lc.flushStatue = false
-	//}()
+	if lc.flushStatue {
+		return
+	}
+	lc.flushStatue = true
+	defer func() {
+		lc.flushStatue = false
+	}()
 	//lc.logger.Debug("flush... ")
 	index := lc.readIndex
 	index = (index + 1) % lc.cacheCount // next read cache index to dump
@@ -189,7 +189,12 @@ func (lc *MemoryCache) releaseTempCache(c *Cache) {
 func (lc *MemoryCache) Get(key []byte) (interface{}, error) {
 	index := lc.writeIndex
 	readIndex := lc.readIndex
+	count := 0
 	for index != readIndex {
+		count++
+		if count == lc.cacheCount {
+			lc.logger.Error("cache get loop")
+		}
 		if v, err := lc.caches[index].Get(key); err == nil {
 			return v, nil
 		} else {
@@ -314,6 +319,10 @@ func (c *Cache) flush(l *Ledger, index int) error {
 	cs.Index = index
 	cs.Key = c.capacity()
 	cs.Start = time.Now().UnixNano()
+	defer func() {
+		cs.End = time.Now().UnixNano()
+	}()
+	l.updateCacheStat(cs)
 
 	c.flushLock.Lock()
 	defer func() {
@@ -330,28 +339,28 @@ func (c *Cache) flush(l *Ledger, index int) error {
 		} else {
 			time.Sleep(100 * time.Millisecond)
 		}
-		if time.Now().Sub(st) > 3*time.Second {
+		if time.Now().Sub(st) > 2*time.Second {
 			c.logger.Error("cache quote timeout")
 		}
 	}
 
 	// Nothing to do if there is no data to flush.
-	if c.isEmpty() {
+	if c.capacity() == 0 {
 		return nil
 	}
 
 	batch := l.store.Batch(false)
 	for k, v := range c.cache.GetALL(false) {
-		t := originalKey(k.(string))
-		if bytes.EqualFold(t[:1], []byte{byte(storage.KeyPrefixBlock)}) {
+		key := originalKey(k.(string))
+		if bytes.EqualFold(key[:1], []byte{byte(storage.KeyPrefixBlock)}) {
 			cs.Block = cs.Block + 1
 		}
-		if err := c.dumpToLevelDb(k, v, batch); err != nil {
+		if err := c.dumpToLevelDb(key, v, batch); err != nil {
 			c.logger.Error(err)
 			batch.Cancel()
 			return err
 		}
-		if err := c.dumpToRelation(k, v, l); err != nil {
+		if err := c.dumpToRelation(key, v, l); err != nil {
 			c.logger.Error(err)
 			return err
 		}
@@ -361,19 +370,14 @@ func (c *Cache) flush(l *Ledger, index int) error {
 		return err
 	}
 	c.purge()
-
-	cs.End = time.Now().UnixNano()
-	l.updateCacheStat(cs)
 	return nil
 }
 
-func (c *Cache) dumpToLevelDb(k, v interface{}, b storage.Batch) error {
-	key := originalKey(k.(string))
+func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error {
 	if !isDeleteKey(v) {
 		switch o := v.(type) {
 		case types.Serialize:
 			val, err := o.Serialize()
-
 			if err != nil {
 				c.logger.Error("serialize error  ", key[:1])
 				return err
@@ -397,7 +401,7 @@ func (c *Cache) dumpToLevelDb(k, v interface{}, b storage.Batch) error {
 	return nil
 }
 
-func (c *Cache) dumpToRelation(k, v interface{}, l *Ledger) error {
+func (c *Cache) dumpToRelation(key []byte, v interface{}, l *Ledger) error {
 	if obj, ok := v.(types.Schema); ok {
 		if !isDeleteKey(v) {
 			l.relation.Add(obj)
@@ -419,10 +423,6 @@ func (c *Cache) Release() {
 // Clear the Cache since it has been flushed.
 func (c *Cache) purge() {
 	c.cache.Purge()
-}
-
-func (c *Cache) isEmpty() bool {
-	return c.cache.Len(false) == 0
 }
 
 func (c *Cache) capacity() int {

@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/google/uuid"
@@ -774,10 +775,16 @@ func (l *Ledger) GetCacheStat() []*CacheStat {
 	return l.cacheStats
 }
 
-func (l *Ledger) GetCacheStatue() map[int]int {
-	r := make(map[int]int)
+func (l *Ledger) GetCacheStatue() map[string]string {
+	r := make(map[string]string)
 	for i, c := range l.cache.caches {
-		r[i] = c.capacity()
+		r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
 	}
+	r["read"] = strconv.Itoa(l.cache.readIndex)
+	r["write"] = strconv.Itoa(l.cache.writeIndex)
+	r["lastflush"] = l.cache.lastFlush.Format("2006-01-02 15:04:05")
+	r["flushStatue"] = strconv.FormatBool(l.cache.flushStatue)
+	r["flushChan"] = strconv.Itoa(len(l.cache.flushChan))
+	l.cache.GetCache()
 	return r
 }

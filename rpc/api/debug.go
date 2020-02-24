@@ -515,14 +515,18 @@ func (l *DebugApi) GetCacheStat() []*CacheStat {
 		ca.Key = c.Key
 		ca.Block = c.Block
 		ca.Start = time.Unix(c.Start/1000000000, 0).Format("2006-01-02 15:04:05")
-		ca.Span = strconv.FormatInt((c.End-c.Start)/1000000, 10) + "ms"
+		if c.End == 0 {
+			ca.Span = "ms"
+		} else {
+			ca.Span = strconv.FormatInt((c.End-c.Start)/1000000, 10) + "ms"
+		}
 		cas = append(cas, ca)
 	}
 
 	return cas
 }
 
-func (l *DebugApi) GetCacheStatus() map[int]int {
+func (l *DebugApi) GetCacheStatus() map[string]string {
 	return l.ledger.GetCacheStatue()
 }
 
