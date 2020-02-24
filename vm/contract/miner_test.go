@@ -581,7 +581,10 @@ func TestMinerReward_GetTargetReceiver(t *testing.T) {
 	rewardBlocks := uint64(240)
 	rewardAmount := types.NewBalance(100)
 	blk.Data, _ = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
-	receiver := m.GetTargetReceiver(ctx, blk)
+	receiver, err := m.GetTargetReceiver(ctx, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if receiver != beneficial {
 		t.Fatal()
 	}
