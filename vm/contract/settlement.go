@@ -10,7 +10,6 @@ package contract
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/statedb"
@@ -361,6 +360,15 @@ func (a *AddPreStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	}
 
 	return handleSend(ctx, block, false, stopParam.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		if names, err := cabi.GetPreStopNames(ctx, &block.Address); err != nil {
+			return err
+		} else {
+			if len(names) > 0 {
+				if b, _ := verifyStopName(names, stopParam.StopName); b {
+					return fmt.Errorf("stop name %s already exist", stopParam.StopName)
+				}
+			}
+		}
 		param.PreStops, err = add(param.PreStops, stopParam.StopName)
 		return err
 	})
@@ -415,6 +423,16 @@ func (u *UpdatePreStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBl
 		return nil, nil, err
 	}
 	return handleSend(ctx, block, false, up.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		if names, err := cabi.GetPreStopNames(ctx, &block.Address); err != nil {
+			return err
+		} else {
+			if len(names) > 0 {
+				if b, _ := verifyStopName(names, up.New); b {
+					return fmt.Errorf("stop name %s already exist", up.New)
+				}
+			}
+		}
+
 		param.PreStops, err = update(param.PreStops, up.StopName, up.New)
 		return err
 	})
@@ -438,6 +456,16 @@ func (a *AddNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 		return nil, nil, err
 	}
 	return handleSend(ctx, block, true, stopParam.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		if names, err := cabi.GetNextStopNames(ctx, &block.Address); err != nil {
+			return err
+		} else {
+			if len(names) > 0 {
+				if b, _ := verifyStopName(names, stopParam.StopName); b {
+					return fmt.Errorf("stop name %s already exist", stopParam.StopName)
+				}
+			}
+		}
+
 		param.NextStops, err = add(param.NextStops, stopParam.StopName)
 		return err
 	})
@@ -491,7 +519,18 @@ func (u *UpdateNextStop) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return handleSend(ctx, block, true, up.ContractAddress, func(param *cabi.ContractParam) (err error) {
+		if names, err := cabi.GetNextStopNames(ctx, &block.Address); err != nil {
+			return err
+		} else {
+			if len(names) > 0 {
+				if b, _ := verifyStopName(names, up.New); b {
+					return fmt.Errorf("stop name %s already exist", up.New)
+				}
+			}
+		}
+
 		param.NextStops, err = update(param.NextStops, up.StopName, up.New)
 		return err
 	})
@@ -516,9 +555,7 @@ func (l *locker) Get(key []byte) (*sync.Mutex, error) {
 }
 
 func add(s []string, name string) ([]string, error) {
-	sort.Strings(s)
-	i := sort.SearchStrings(s, name)
-	if i == len(s) {
+	if b, _ := verifyStopName(s, name); !b {
 		s = append(s, name)
 		return s, nil
 	}
@@ -526,22 +563,34 @@ func add(s []string, name string) ([]string, error) {
 }
 
 func remove(s []string, name string) ([]string, error) {
-	sort.Strings(s)
-	i := sort.SearchStrings(s, name)
-	if i == len(s) {
+	if b, i := verifyStopName(s, name); !b {
 		return s, fmt.Errorf("name: %s does not exist", name)
+	} else {
+		s = append(s[:i], s[i+1:]...)
 	}
-	s = append(s[:i], s[i+1:]...)
 	return s, nil
 }
 
 func update(s []string, old, new string) ([]string, error) {
 	if s1, err := remove(s, old); err == nil {
-		s1 = append(s1, new)
-		return s1, nil
+		if s1, err = add(s1, new); err == nil {
+			return s1, nil
+		} else {
+			return s, err
+		}
 	} else {
 		return s, err
 	}
+}
+
+// verifyStopName verify name is exist in s, if exist, return true
+func verifyStopName(s []string, name string) (bool, int) {
+	for i, n := range s {
+		if n == name {
+			return true, i
+		}
+	}
+	return false, 0
 }
 
 func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock, fn func(data []byte) error) ([]*ContractBlock, error) {

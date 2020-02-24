@@ -8391,3 +8391,67 @@ func TestGetSummaryReport(t *testing.T) {
 		}
 	}
 }
+
+func TestGetStopNames(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	// mock settlement contract
+	ac1 := mock.Account()
+	ac2 := mock.Account()
+	a1 := ac1.Address()
+	a2 := ac2.Address()
+
+	var contracts []*ContractParam
+
+	param := buildContractParam()
+	param.PartyA.Address = a1
+	param.PartyB.Address = a2
+	param.NextStops = []string{"CSL Hong Kong @ 3397"}
+	param.PreStops = []string{"A2P_PCCWG"}
+	contracts = append(contracts, param)
+
+	param2 := buildContractParam()
+	param2.PartyA.Address = a2
+	param2.PartyB.Address = a1
+	param2.PreStops = []string{"CSL Hong Kong @ 33971"}
+	param2.NextStops = []string{"A2P_PCCWG2"}
+
+	contracts = append(contracts, param2)
+	for _, c := range contracts {
+		contractAddr, _ := c.Address()
+		abi, _ := c.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	if names, err := GetPreStopNames(ctx, &a1); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(names) != 1 {
+			t.Fatalf("invalid len %d", len(names))
+		}
+
+		if names[0] != "CSL Hong Kong @ 33971" {
+			t.Fatal(names)
+		}
+	}
+
+	if names, err := GetNextStopNames(ctx, &a1); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(names) != 1 {
+			t.Fatalf("invalid len %d", len(names))
+		}
+
+		if names[0] != "CSL Hong Kong @ 3397" {
+			t.Fatal(names)
+		}
+	}
+}

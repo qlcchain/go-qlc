@@ -911,6 +911,40 @@ func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *
 	}
 }
 
+func GetPreStopNames(ctx *vmstore.VMContext, addr *types.Address) ([]string, error) {
+	var result []string
+	if contracts, err := queryContractParamByAddress(ctx, "GetPreStopNames", func(cp *ContractParam) bool {
+		return cp.PartyB.Address == *addr && (cp.Status == ContractStatusActivated || cp.Status == ContractStatusActiveStage1)
+	}); err != nil {
+		return nil, err
+	} else {
+		for _, c := range contracts {
+			if len(c.PreStops) > 0 {
+				result = append(result, c.PreStops...)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func GetNextStopNames(ctx *vmstore.VMContext, addr *types.Address) ([]string, error) {
+	var result []string
+	if contracts, err := queryContractParamByAddress(ctx, "GetPreStopNames", func(cp *ContractParam) bool {
+		return cp.PartyA.Address == *addr && (cp.Status == ContractStatusActivated || cp.Status == ContractStatusActiveStage1)
+	}); err != nil {
+		return nil, err
+	} else {
+		for _, c := range contracts {
+			if len(c.NextStops) > 0 {
+				result = append(result, c.NextStops...)
+			}
+		}
+	}
+
+	return result, nil
+}
+
 // GetSettlementContract
 // @param addr smart contract address
 func GetSettlementContract(ctx *vmstore.VMContext, addr *types.Address) (*ContractParam, error) {
@@ -965,18 +999,18 @@ type SummaryRecord struct {
 	Result  float64 `json:"result"`
 }
 
-func (s *SummaryRecord) DoCalculate() *SummaryRecord {
-	s.Total = s.Fail + s.Success
+func (z *SummaryRecord) DoCalculate() *SummaryRecord {
+	z.Total = z.Fail + z.Success
 
-	if s.Total > 0 {
-		s.Result = float64(s.Success) / float64(s.Total)
+	if z.Total > 0 {
+		z.Result = float64(z.Success) / float64(z.Total)
 	}
 
-	return s
+	return z
 }
 
-func (s *SummaryRecord) String() string {
-	return util.ToIndentString(s)
+func (z *SummaryRecord) String() string {
+	return util.ToIndentString(z)
 }
 
 type CompareRecord struct {
@@ -999,56 +1033,56 @@ func NewSummaryResult() *SummaryResult {
 	}
 }
 
-func (s *SummaryResult) IncreaseSuccess(name string, isPartyA bool) {
-	if _, ok := s.Records[name]; !ok {
-		s.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
+func (z *SummaryResult) IncreaseSuccess(name string, isPartyA bool) {
+	if _, ok := z.Records[name]; !ok {
+		z.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
 	}
 
 	if isPartyA {
-		s.Records[name].PartyA.Success++
+		z.Records[name].PartyA.Success++
 	} else {
-		s.Records[name].PartyB.Success++
+		z.Records[name].PartyB.Success++
 	}
 }
 
-func (s *SummaryResult) IncreasePartyASuccess() {
-	s.PartyA.Success++
+func (z *SummaryResult) IncreasePartyASuccess() {
+	z.PartyA.Success++
 }
 
-func (s *SummaryResult) IncreasePartyAFail() {
-	s.PartyA.Fail++
+func (z *SummaryResult) IncreasePartyAFail() {
+	z.PartyA.Fail++
 }
-func (s *SummaryResult) IncreasePartyBSuccess() {
-	s.PartyB.Success++
-}
-
-func (s *SummaryResult) IncreasePartyBFail() {
-	s.PartyB.Fail++
+func (z *SummaryResult) IncreasePartyBSuccess() {
+	z.PartyB.Success++
 }
 
-func (s *SummaryResult) IncreaseFail(name string, isPartyA bool) {
-	if _, ok := s.Records[name]; !ok {
-		s.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
+func (z *SummaryResult) IncreasePartyBFail() {
+	z.PartyB.Fail++
+}
+
+func (z *SummaryResult) IncreaseFail(name string, isPartyA bool) {
+	if _, ok := z.Records[name]; !ok {
+		z.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
 	}
 
 	if isPartyA {
-		s.Records[name].PartyA.Fail++
+		z.Records[name].PartyA.Fail++
 	} else {
-		s.Records[name].PartyB.Fail++
+		z.Records[name].PartyB.Fail++
 	}
 }
 
-func (s *SummaryResult) DoCalculate() {
-	for k := range s.Records {
-		s.Records[k].PartyA.DoCalculate()
-		s.Records[k].PartyB.DoCalculate()
+func (z *SummaryResult) DoCalculate() {
+	for k := range z.Records {
+		z.Records[k].PartyA.DoCalculate()
+		z.Records[k].PartyB.DoCalculate()
 	}
-	s.PartyA.DoCalculate()
-	s.PartyB.DoCalculate()
+	z.PartyA.DoCalculate()
+	z.PartyB.DoCalculate()
 }
 
-func (s *SummaryResult) String() string {
-	return util.ToIndentString(s)
+func (z *SummaryResult) String() string {
+	return util.ToIndentString(z)
 }
 
 // GetSummaryReport

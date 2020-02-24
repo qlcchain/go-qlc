@@ -9,6 +9,7 @@ package contract
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/qlcchain/go-qlc/common"
