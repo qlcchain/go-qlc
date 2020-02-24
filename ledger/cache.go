@@ -28,7 +28,11 @@ type MemoryCache struct {
 	flushChan  chan bool
 	closedChan chan bool
 	lock       sync.Mutex
-	logger     *zap.SugaredLogger
+
+	tempCaches []*Cache
+	tempLock   sync.Mutex
+
+	logger *zap.SugaredLogger
 }
 
 func NewMemoryCache(ledger *Ledger) *MemoryCache {
@@ -44,10 +48,14 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 		flushChan:  make(chan bool, 1),
 		closedChan: make(chan bool),
 		lock:       sync.Mutex{},
+		tempLock:   sync.Mutex{},
 		logger:     log.NewLogger("ledger/dbcache"),
 	}
 	for i := 0; i < lc.cacheCount; i++ {
 		lc.caches = append(lc.caches, newCache())
+	}
+	for i := 0; i < 50; i++ {
+		lc.tempCaches = append(lc.tempCaches, newTempCache())
 	}
 	go lc.flushCache()
 	return lc
@@ -156,6 +164,28 @@ func (lc *MemoryCache) close() error {
 	return nil
 }
 
+func (lc *MemoryCache) getTempCache() *Cache {
+	lc.tempLock.Lock()
+	defer lc.tempLock.Unlock()
+	for i := 0; i < len(lc.tempCaches); i++ {
+		c := lc.tempCaches[i]
+		if c.quote == 0 {
+			if c.capacity() > 0 {
+				lc.logger.Error("cache should empty")
+				break
+			}
+			c.quote = 1
+			return c
+		}
+	}
+	return newCache()
+}
+
+func (lc *MemoryCache) releaseTempCache(c *Cache) {
+	c.purge()
+	c.quote = 0
+}
+
 func (lc *MemoryCache) Get(key []byte) (interface{}, error) {
 	index := lc.writeIndex
 	readIndex := lc.readIndex
@@ -228,10 +258,7 @@ func contain(kvs []*kv, key []byte) bool {
 }
 
 func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
-	c := newCache()
-	defer func() {
-		c.purge()
-	}()
+	c := lc.getTempCache()
 	if err := fn(c); err != nil {
 		return err
 	}
@@ -244,6 +271,7 @@ func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
 		}
 	}
 	mc.Release()
+	lc.releaseTempCache(c)
 	return nil
 	//mc := lc.GetCache()
 	//mc.Quoted()
@@ -270,6 +298,13 @@ type Cache struct {
 func newCache() *Cache {
 	return &Cache{
 		cache:  gcache.New(defaultCapacity).Build(),
+		logger: log.NewLogger("ledger/cache"),
+	}
+}
+
+func newTempCache() *Cache {
+	return &Cache{
+		cache:  gcache.New(100).Build(),
 		logger: log.NewLogger("ledger/cache"),
 	}
 }
