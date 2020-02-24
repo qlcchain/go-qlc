@@ -19,8 +19,7 @@ func (l *Ledger) GetFrontier(hash types.Hash, c ...storage.Cache) (*types.Fronti
 		return nil, err
 	}
 	frontier := types.Frontier{HeaderBlock: hash}
-	r, err := l.getFromCache(k, c...)
-	if r != nil {
+	if r, err := l.getFromCache(k, c...); r != nil {
 		h := r.(*types.Hash)
 		frontier.OpenBlock = *h
 		return &frontier, nil

@@ -177,8 +177,7 @@ func (l *Ledger) GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*t
 		return nil, err
 	}
 
-	r, err := l.getFromCache(k, c...)
-	if r != nil {
+	if r, err := l.getFromCache(k, c...); r != nil {
 		return r.(*types.StateBlock).Clone(), nil
 	} else {
 		if err == ErrKeyDeleted {
@@ -227,16 +226,14 @@ func (l *Ledger) HasStateBlockConfirmed(hash types.Hash) (bool, error) {
 		return false, err
 	}
 
-	if v, err := l.cache.Get(k); err == nil {
-		if v == nil {
-			return false, nil
-		}
+	if r, err := l.getFromCache(k); r != nil {
 		return true, nil
 	} else {
+		if err == ErrKeyDeleted {
+			return false, err
+		}
 	}
-	if b, err := l.cache.Has(k); err == nil {
-		return b, nil
-	}
+
 	return l.store.Has(k)
 }
 

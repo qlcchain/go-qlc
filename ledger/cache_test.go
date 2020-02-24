@@ -159,9 +159,17 @@ func TestCache_Iterator(t *testing.T) {
 	mc.Put([]byte{1, 2, 3, 4}, []byte{1, 4})
 	mc.Put([]byte{1, 2, 3, 5}, []byte{1})
 	mc.Put([]byte{1, 2, 3, 6}, []byte{4})
-	mc.Iterator([]byte{1, 2}, nil, func(k, v []byte) error {
-		t.Log(k, v)
-		return nil
-	})
+	kvs := mc.prefixIterator([]byte{1, 2})
+	for _, kv := range kvs {
+		t.Log(kv.key, kv.value)
+	}
 
 }
+
+//func TestCache_Put(t *testing.T) {
+//	teardownTestCase, l := setupTestCase(t)
+//	defer teardownTestCase(t)
+//
+//	timer := time.
+//
+//}

@@ -43,9 +43,16 @@ func (l *Ledger) GetPending(pendingKey *types.PendingKey) (*types.PendingInfo, e
 	if err != nil {
 		return nil, err
 	}
-	if r, err := l.cache.Get(k); err == nil {
+
+	r, err := l.getFromCache(k)
+	if r != nil {
 		return r.(*types.PendingInfo), nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, ErrPendingNotFound
+		}
 	}
+
 	v, err := l.store.Get(k)
 	if err != nil {
 		if err == storage.KeyNotFound {

@@ -579,7 +579,10 @@ func TestRepReward_GetTargetReceiver(t *testing.T) {
 	rewardBlocks := uint64(240)
 	rewardAmount := types.NewBalance(100)
 	blk.Data, _ = cabi.RepABI.PackMethod(cabi.MethodNameRepReward, account, beneficial, startHeight, endHeight, rewardBlocks, rewardAmount.Int)
-	receiver := r.GetTargetReceiver(ctx, blk)
+	receiver, err := r.GetTargetReceiver(ctx, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if receiver != beneficial {
 		t.Fatal()
 	}

@@ -11,16 +11,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/big"
-	"sort"
-	"strings"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"math/big"
+	"sort"
+	"strings"
 )
 
 const (
@@ -359,6 +358,28 @@ func SearchPledgeInfoWithNEP5TxId(ctx *vmstore.VMContext, param *WithdrawPledgeP
 	return result
 }
 
+//func SearchBeneficialPledgeInfoByTxId2(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
+//	result := searchBeneficialPledgeInfoByTxId(ctx, param)
+//	if result != nil {
+//		fmt.Println("=========search ", time.Now().String(), param.NEP5TxId, result)
+//		return result
+//	}
+//	fmt.Println("=========search ", time.Now().String(), param.NEP5TxId, result)
+//	for i := 0; i < 3; i++ {
+//		time.Sleep(1 * time.Second)
+//		if ctx.Ledger.DBStore() == nil {
+//			return nil
+//		}
+//		result := searchBeneficialPledgeInfoByTxId(ctx, param)
+//		if result != nil {
+//			fmt.Println("=========search ", time.Now().String(), param.NEP5TxId, result)
+//			return result
+//		}
+//		fmt.Println("=========search ", time.Now().String(), param.NEP5TxId, result)
+//	}
+//	return nil
+//}
+
 func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
 	logger := log.NewLogger("GetBeneficialPledgeInfos")
 	defer func() {
@@ -374,6 +395,14 @@ func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 					now >= pledgeInfo.WithdrawTime && pledgeInfo.NEP5TxId == param.NEP5TxId {
 					result.Key = append(result.Key, key...)
 					result.PledgeInfo = pledgeInfo
+				} else {
+					if pledgeInfo.NEP5TxId == param.NEP5TxId {
+						logger.Errorf("data from param, %s, %s, %s, %s, data from pledgeInfo, %s, %s, %s, %s, now is %s, withdraw time is %s",
+							param.PType, param.Amount.String(), param.Beneficial.String(), param.NEP5TxId,
+							pledgeInfo.PType, pledgeInfo.Amount.String(), pledgeInfo.Beneficial.String(), pledgeInfo.NEP5TxId,
+							now, pledgeInfo.WithdrawTime,
+						)
+					}
 				}
 			} else {
 				logger.Error(err)

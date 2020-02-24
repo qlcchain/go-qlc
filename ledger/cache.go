@@ -184,19 +184,39 @@ func (lc *MemoryCache) Has(key []byte) (bool, error) {
 	return true, nil
 }
 
-func (lc *MemoryCache) Iterator(prefix []byte, end []byte, f func(k, v []byte) error) error {
+func (lc *MemoryCache) prefixIterator(prefix []byte) []*kv {
+	kvs := make([]*kv, 0)
 	index := lc.writeIndex
 	for index != lc.readIndex {
-		if err := lc.caches[index].Iterator(prefix, end, f); err != nil {
-			lc.logger.Error(err)
-			return err
+		items := lc.caches[index].cache.GetALL(false)
+		for k, v := range items {
+			key := originalKey(k.(string))
+			if bytes.HasPrefix(key, prefix) {
+				if !contain(kvs, key) && !isDeleteKey(v) {
+					value := v.([]byte)
+					temp := &kv{
+						key:   key,
+						value: value,
+					}
+					kvs = append(kvs, temp)
+				}
+			}
 		}
 		index = (index - 1) % lc.cacheCount
 		if index < 0 {
 			index = lc.cacheCount - 1
 		}
 	}
-	return nil
+	return kvs
+}
+
+func contain(kvs []*kv, key []byte) bool {
+	for _, kv := range kvs {
+		if bytes.EqualFold(kv.key, key) {
+			return true
+		}
+	}
+	return false
 }
 
 func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
@@ -376,16 +396,17 @@ func (c *Cache) Get(key []byte) (interface{}, error) {
 }
 
 func (c *Cache) Iterator(prefix []byte, end []byte, f func(k, v []byte) error) error {
-	items := c.cache.GetALL(false)
-	for k, v := range items {
-		key := originalKey(k.(string))
-		if bytes.HasPrefix(key, prefix) {
-			if err := f(key, v.([]byte)); err != nil {
-				return fmt.Errorf("cache iterator error: %s", err)
-			}
-		}
-	}
-	return nil
+	//items := c.cache.GetALL(false)
+	//for k, v := range items {
+	//	key := originalKey(k.(string))
+	//	if bytes.HasPrefix(key, prefix) {
+	//		if err := f(key, v.([]byte)); err != nil {
+	//			return fmt.Errorf("cache iterator error: %s", err)
+	//		}
+	//	}
+	//}
+	//return nil
+	panic("not implemented")
 }
 
 func (c *Cache) Cancel() {

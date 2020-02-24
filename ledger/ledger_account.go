@@ -114,8 +114,12 @@ func (l *Ledger) HasAccountMetaConfirmed(address types.Address) (bool, error) {
 		return false, err
 	}
 
-	if b, err := l.cache.Has(k); err == nil {
-		return b, nil
+	if r, err := l.getFromCache(k); r != nil {
+		return true, nil
+	} else {
+		if err == ErrKeyDeleted {
+			return false, err
+		}
 	}
 
 	return l.store.Has(k)
@@ -127,8 +131,7 @@ func (l *Ledger) GetAccountMetaConfirmed(address types.Address, c ...storage.Cac
 		return nil, err
 	}
 
-	r, err := l.getFromCache(k, c...)
-	if r != nil {
+	if r, err := l.getFromCache(k, c...); r != nil {
 		return r.(*types.AccountMeta).Clone(), nil
 	} else {
 		if err == ErrKeyDeleted {

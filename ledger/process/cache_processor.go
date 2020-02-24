@@ -1,46 +1,27 @@
 package process
 
 import (
-	"errors"
 	"fmt"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/vm/contract"
 )
 
-func (lv *LedgerVerifier) BlockCacheCheck(block types.Block) (ProcessResult, error) {
-	if b, ok := block.(*types.StateBlock); ok {
-		lv.logger.Info("check cache block, ", b.GetHash())
-		if c, ok := lv.cacheBlockCheck[b.Type]; ok {
-			r, err := c.Check(lv, b)
-			if err != nil {
-				if err == contract.ErrPledgeNotReady {
-					time.Sleep(2 * time.Second)
-					if c, ok := lv.cacheBlockCheck[b.Type]; ok {
-						r, err := c.Check(lv, b)
-						if err != nil {
-							lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
-						}
-						return r, err
-					}
-				}
-				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
-			}
-			if r != Progress {
-				lv.logger.Infof(fmt.Sprintf("check cache result:%s,(%s, %s)", r.String(), b.GetHash().String(), b.GetType().String()))
-			}
-			return r, err
-		} else {
-			return Other, fmt.Errorf("unsupport block type %s", b.Type.String())
+func (lv *LedgerVerifier) BlockCacheCheck(block *types.StateBlock) (ProcessResult, error) {
+	lv.logger.Info("check cache block, ", block.GetHash())
+	if c, ok := lv.cacheBlockCheck[block.Type]; ok {
+		r, err := c.Check(lv, block)
+		if err != nil {
+			lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), block.GetHash().String()))
 		}
-	} else if _, ok := block.(*types.SmartContractBlock); ok {
-		return Other, errors.New("smart contract block")
+		if r != Progress {
+			lv.logger.Infof(fmt.Sprintf("check cache result:%s,(%s, %s)", r.String(), block.GetHash().String(), block.GetType().String()))
+		}
+		return r, err
+	} else {
+		return Other, fmt.Errorf("unsupport block type %s", block.Type.String())
 	}
-	return Other, errors.New("invalid block")
 }
 
 func newCacheBlockCheck() map[types.BlockType]blockCheck {

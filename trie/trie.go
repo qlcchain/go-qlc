@@ -56,8 +56,10 @@ func (trie *Trie) get(k []byte) ([]byte, error) {
 				return b, nil
 			}
 		}
+		return nil, err
+	} else {
+		return trie.db.Get(k)
 	}
-	return trie.db.Get(k)
 }
 
 func (trie *Trie) getNodeFromDb(key *types.Hash) *TrieNode {

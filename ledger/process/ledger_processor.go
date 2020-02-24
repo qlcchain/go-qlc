@@ -10,8 +10,6 @@ package process
 import (
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -41,49 +39,38 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 }
 
 func (lv *LedgerVerifier) Process(block types.Block) (ProcessResult, error) {
-	if r, err := lv.BlockCheck(block); r != Progress || err != nil {
-		return r, err
-	}
-	if err := lv.BlockProcess(block.(*types.StateBlock)); err != nil {
-		return Other, err
-	}
-	return Progress, nil
-}
-
-func (lv *LedgerVerifier) BlockCheck(block types.Block) (ProcessResult, error) {
 	if b, ok := block.(*types.StateBlock); ok {
-		lv.logger.Info("check block, ", b.GetHash())
-		if c, ok := lv.blockCheck[b.Type]; ok {
-			r, err := c.Check(lv, b)
-			if err != nil {
-				if err == contract.ErrPledgeNotReady {
-					time.Sleep(2 * time.Second)
-					if c, ok := lv.blockCheck[b.Type]; ok {
-						r, err := c.Check(lv, b)
-						if err != nil {
-							lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
-						}
-						return r, err
-					}
-				}
-				lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), b.GetHash().String()))
-			}
-			if r != Progress {
-				if r == UnReceivable {
-					if _, ok := lv.l.VerifiedData[b.GetHash()]; ok {
-						return Progress, nil
-					}
-				}
-				lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s, type: %s", r.String(), b.GetHash().String(), b.GetType().String()))
-			}
+		if r, err := lv.BlockCheck(b); r != Progress || err != nil {
 			return r, err
-		} else {
-			return Other, fmt.Errorf("unsupport block type %s", b.Type.String())
 		}
-	} else if _, ok := block.(*types.SmartContractBlock); ok {
-		return Other, errors.New("smart contract block")
+		if err := lv.BlockProcess(b); err != nil {
+			return Other, err
+		}
+		return Progress, nil
 	}
 	return Other, errors.New("invalid block")
+}
+
+func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, error) {
+	lv.logger.Info("check block, ", block.GetHash())
+	if c, ok := lv.blockCheck[block.Type]; ok {
+		r, err := c.Check(lv, block)
+		if err != nil {
+			lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), block.GetHash().String()))
+		}
+		if r != Progress {
+			if r == UnReceivable {
+				if _, ok := lv.l.VerifiedData[block.GetHash()]; ok {
+					return Progress, nil
+				}
+			}
+			lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s, type: %s", r.String(), block.GetHash().String(), block.GetType().String()))
+		}
+		return r, err
+	} else {
+		return Other, fmt.Errorf("unsupport block type %s", block.Type.String())
+	}
+
 }
 
 func newBlockCheck() map[types.BlockType]blockCheck {
@@ -528,7 +515,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			vmCtx := vmstore.NewVMContext(lv.l)
 			g, err := c.DoReceive(vmCtx, clone, input)
 			if err != nil {
-				lv.logger.Warn("DoReceive error: ", err)
+				lv.logger.Error("updateContract DoReceive error: ", err)
 				return err
 			}
 			if len(g) > 0 {

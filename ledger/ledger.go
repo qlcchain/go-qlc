@@ -336,6 +336,7 @@ func (l *Ledger) Close() error {
 		if err := l.store.Close(); err != nil {
 			return err
 		}
+		l.store = nil
 		l.logger.Info("badger closed")
 		delete(lcache, l.dir)
 		return nil
@@ -667,15 +668,38 @@ func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error)
 	return nil, ErrKeyNotInCache
 }
 
+type kv struct {
+	key   []byte
+	value []byte
+}
+
 func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
-	if err := l.Cache().Iterator(prefix, end, fn); err != nil {
+	kvs := make([]*kv, 0)
+	cs := l.cache.prefixIterator(prefix)
+	if len(cs) > 0 {
+		kvs = append(kvs, cs...)
+	}
+	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
+		if !contain(kvs, k) {
+			temp := &kv{
+				key:   k,
+				value: v,
+			}
+			kvs = append(kvs, temp)
+		}
+		return nil
+	}); err != nil {
 		l.logger.Error(err)
 		return err
 	}
-	if err := l.DBStore().Iterator(prefix, end, fn); err != nil {
-		l.logger.Error(err)
-		return err
+
+	for _, kv := range kvs {
+		if err := fn(kv.key, kv.value); err != nil {
+			l.logger.Error(err)
+			return err
+		}
 	}
+
 	return nil
 }
 
