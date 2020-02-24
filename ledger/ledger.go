@@ -336,7 +336,6 @@ func (l *Ledger) Close() error {
 		if err := l.store.Close(); err != nil {
 			return err
 		}
-		l.store = nil
 		l.logger.Info("badger closed")
 		delete(lcache, l.dir)
 		return nil

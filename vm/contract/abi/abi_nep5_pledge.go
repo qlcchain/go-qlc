@@ -20,6 +20,7 @@ import (
 	"math/big"
 	"sort"
 	"strings"
+	"time"
 )
 
 const (
@@ -358,29 +359,22 @@ func SearchPledgeInfoWithNEP5TxId(ctx *vmstore.VMContext, param *WithdrawPledgeP
 	return result
 }
 
-//func SearchBeneficialPledgeInfoByTxId2(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
-//	result := searchBeneficialPledgeInfoByTxId(ctx, param)
-//	if result != nil {
-//		fmt.Println("=========search ", time.Now().String(), param.NEP5TxId, result)
-//		return result
-//	}
-//	fmt.Println("=========search ", time.Now().String(), param.NEP5TxId, result)
-//	for i := 0; i < 3; i++ {
-//		time.Sleep(1 * time.Second)
-//		if ctx.Ledger.DBStore() == nil {
-//			return nil
-//		}
-//		result := searchBeneficialPledgeInfoByTxId(ctx, param)
-//		if result != nil {
-//			fmt.Println("=========search ", time.Now().String(), param.NEP5TxId, result)
-//			return result
-//		}
-//		fmt.Println("=========search ", time.Now().String(), param.NEP5TxId, result)
-//	}
-//	return nil
-//}
-
 func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
+	result := searchBeneficialPledgeInfoByTxId(ctx, param)
+	if result != nil {
+		return result
+	}
+	for i := 0; i < 3; i++ {
+		time.Sleep(1 * time.Second)
+		result := searchBeneficialPledgeInfoByTxId(ctx, param)
+		if result != nil {
+			return result
+		}
+	}
+	return nil
+}
+
+func searchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
 	logger := log.NewLogger("GetBeneficialPledgeInfos")
 	defer func() {
 		_ = logger.Sync()
