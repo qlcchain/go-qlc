@@ -1,5 +1,11 @@
 package config
 
+import (
+	"encoding/json"
+
+	"github.com/qlcchain/go-qlc/common/types"
+)
+
 type ConfigV6 struct {
 	ConfigV5 `mapstructure:",squash"`
 	Genesis  *Genesis `json:"genesis"`
@@ -10,10 +16,10 @@ type Genesis struct {
 }
 
 type GenesisInfo struct {
-	ChainToken bool   `json:"chainToken"`
-	GasToken   bool   `json:"gasToken"`
-	Mintage    string `json:"mintage"`
-	Genesis    string `json:"genesis"`
+	ChainToken bool             `json:"chainToken"`
+	GasToken   bool             `json:"gasToken"`
+	Mintage    types.StateBlock `mapstructure:",squash" json:"mintage"`
+	Genesis    types.StateBlock `mapstructure:",squash" json:"genesis"`
 }
 
 func DefaultConfigV6(dir string) (*ConfigV6, error) {
@@ -26,17 +32,22 @@ func DefaultConfigV6(dir string) (*ConfigV6, error) {
 }
 
 func defaultGenesis() *Genesis {
+	var mintageBlock, genesisBlock, gasMintageBlock, gasGensisBlock types.StateBlock
+	_ = json.Unmarshal([]byte(jsonGenesis), &genesisBlock)
+	_ = json.Unmarshal([]byte(jsonMintage), &mintageBlock)
+	_ = json.Unmarshal([]byte(jsonGenesisQGAS), &gasGensisBlock)
+	_ = json.Unmarshal([]byte(jsonMintageQGAS), &gasMintageBlock)
 	genesisInfo := &GenesisInfo{
 		ChainToken: true,
 		GasToken:   false,
-		Mintage:    jsonMintage,
-		Genesis:    jsonGenesis,
+		Mintage:    mintageBlock,
+		Genesis:    genesisBlock,
 	}
 	gasInfo := &GenesisInfo{
 		ChainToken: false,
 		GasToken:   true,
-		Mintage:    jsonMintageQGAS,
-		Genesis:    jsonGenesisQGAS,
+		Mintage:    gasMintageBlock,
+		Genesis:    gasGensisBlock,
 	}
 
 	return &Genesis{

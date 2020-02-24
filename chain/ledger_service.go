@@ -8,7 +8,6 @@
 package chain
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/qlcchain/go-qlc/ledger/process"
@@ -48,18 +47,7 @@ func (ls *LedgerService) Init() error {
 	}
 	defer ls.PostInit()
 	l := ls.Ledger
-	var mintageBlock, genesisBlock types.StateBlock
-	for _, v := range ls.cfg.Genesis.GenesisBlocks {
-		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
-		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: mintageBlock,
-			GenesisBlock:        genesisBlock,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
+
 	if len(common.GenesisInfos) == 0 {
 		return errors.New("no genesis info")
 	} else if common.ChainToken() == types.ZeroHash || common.GasToken() == types.ZeroHash {

@@ -22,6 +22,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -134,6 +136,12 @@ func start() error {
 	chainContext := context.NewChainContext(cfgPathP)
 	cm, err := chainContext.ConfigManager(func(cm *config.CfgManager) error {
 		cfg, _ := cm.Config()
+		if genesisSeedP != "" {
+			cfg.Genesis.GenesisBlocks = []*config.GenesisInfo{}
+			generateGenesisBlock(genesisSeedP, cfg)
+			_ = cm.Save()
+		}
+		loadGenesisAccount(cfg)
 		if len(configParamsP) > 0 {
 			params := strings.Split(configParamsP, ";")
 
@@ -144,12 +152,6 @@ func start() error {
 				}
 			}
 		}
-		if genesisSeedP != "" {
-			cfg.Genesis.GenesisBlocks = []*config.GenesisInfo{}
-			generateGenesisBlock(genesisSeedP, cfg)
-		}
-
-		// log.Root.Debug(util.ToIndentString(cfg))
 
 		return nil
 	})
@@ -415,8 +417,8 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 	account, _ := seed.Account(0)
 	log.Root.Infof("seed %s", seed.String())
 	log.Root.Infof("account: %s", account.String())
-	tokenName := "QTest"
-	tokenSymbol := "QTest"
+	tokenName := "QLC"
+	tokenSymbol := "QLC"
 	decimals := uint8(8)
 	address := account.Address()
 	tokenHash := cabi.NewTokenHash(address, types.ZeroHash, tokenName)
@@ -444,9 +446,7 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 	send.Work = worker.NewWork()
 	h1 := send.GetHash()
 	send.Signature = account.Sign(h1)
-	genesisInfos.Mintage = send.String()
-	//log.Root.VInfo(util.ToIndentString(send))
-	//log.Root.VInfo(h1.String())
+	genesisInfos.Mintage = send
 
 	genesisData, err := cabi.MintageABI.PackVariable(cabi.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
 		decimals, address, big.NewInt(0), int64(0), address, "")
@@ -477,6 +477,18 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 	receive.Signature = account.Sign(h2)
 	//log.Root.VInfo(util.ToIndentString(receive))
 	//log.Root.VInfo(h2.String())
-	genesisInfos.Genesis = receive.String()
+	genesisInfos.Genesis = receive
 	cfg.Genesis.GenesisBlocks = append(cfg.Genesis.GenesisBlocks, genesisInfos)
+}
+
+func loadGenesisAccount(cfg *config.Config) {
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: v.Mintage,
+			GenesisBlock:        v.Genesis,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
 }

@@ -1,14 +1,13 @@
 package api
 
 import (
-	"encoding/json"
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/types"
-	qcfg "github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger"
 	"os"
 	"path/filepath"
+
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/common"
+	qcfg "github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 )
 
 func getTestLedger() (func(), *ledger.Ledger, string) {
@@ -18,15 +17,12 @@ func getTestLedger() (func(), *ledger.Ledger, string) {
 	cfg, _ := cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
 
-	var mintageBlock, genesisBlock types.StateBlock
 	for _, v := range cfg.Genesis.GenesisBlocks {
-		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
-		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
 		genesisInfo := &common.GenesisInfo{
 			ChainToken:          v.ChainToken,
 			GasToken:            v.GasToken,
-			GenesisMintageBlock: mintageBlock,
-			GenesisBlock:        genesisBlock,
+			GenesisMintageBlock: v.Mintage,
+			GenesisBlock:        v.Genesis,
 		}
 		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}
