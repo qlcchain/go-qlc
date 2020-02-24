@@ -474,7 +474,7 @@ func (z *PovBtcTx) DecodeMsg(dc *msgp.Reader) (err error) {
 								return
 							}
 						case "pks":
-							err = dc.ReadExtension(&z.TxOut[za0002].PkScript)
+							z.TxOut[za0002].PkScript, err = dc.ReadBytes(z.TxOut[za0002].PkScript)
 							if err != nil {
 								err = msgp.WrapError(err, "TxOut", za0002, "PkScript")
 								return
@@ -576,7 +576,7 @@ func (z *PovBtcTx) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteExtension(&z.TxOut[za0002].PkScript)
+			err = en.WriteBytes(z.TxOut[za0002].PkScript)
 			if err != nil {
 				err = msgp.WrapError(err, "TxOut", za0002, "PkScript")
 				return
@@ -630,11 +630,7 @@ func (z *PovBtcTx) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendInt64(o, z.TxOut[za0002].Value)
 			// string "pks"
 			o = append(o, 0xa3, 0x70, 0x6b, 0x73)
-			o, err = msgp.AppendExtension(o, &z.TxOut[za0002].PkScript)
-			if err != nil {
-				err = msgp.WrapError(err, "TxOut", za0002, "PkScript")
-				return
-			}
+			o = msgp.AppendBytes(o, z.TxOut[za0002].PkScript)
 		}
 	}
 	// string "lt"
@@ -741,7 +737,7 @@ func (z *PovBtcTx) UnmarshalMsg(bts []byte) (o []byte, err error) {
 								return
 							}
 						case "pks":
-							bts, err = msgp.ReadExtensionBytes(bts, &z.TxOut[za0002].PkScript)
+							z.TxOut[za0002].PkScript, bts, err = msgp.ReadBytesBytes(bts, z.TxOut[za0002].PkScript)
 							if err != nil {
 								err = msgp.WrapError(err, "TxOut", za0002, "PkScript")
 								return
@@ -789,7 +785,7 @@ func (z *PovBtcTx) Msgsize() (s int) {
 		if z.TxOut[za0002] == nil {
 			s += msgp.NilSize
 		} else {
-			s += 1 + 2 + msgp.Int64Size + 4 + msgp.ExtensionPrefixSize + z.TxOut[za0002].PkScript.Len()
+			s += 1 + 2 + msgp.Int64Size + 4 + msgp.BytesPrefixSize + len(z.TxOut[za0002].PkScript)
 		}
 	}
 	s += 3 + msgp.Uint32Size
@@ -850,7 +846,7 @@ func (z *PovBtcTxIn) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 		case "ss":
-			err = dc.ReadExtension(&z.SignatureScript)
+			z.SignatureScript, err = dc.ReadBytes(z.SignatureScript)
 			if err != nil {
 				err = msgp.WrapError(err, "SignatureScript")
 				return
@@ -902,7 +898,7 @@ func (z *PovBtcTxIn) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.SignatureScript)
+	err = en.WriteBytes(z.SignatureScript)
 	if err != nil {
 		err = msgp.WrapError(err, "SignatureScript")
 		return
@@ -938,11 +934,7 @@ func (z *PovBtcTxIn) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendUint32(o, z.PreviousOutPoint.Index)
 	// string "ss"
 	o = append(o, 0xa2, 0x73, 0x73)
-	o, err = msgp.AppendExtension(o, &z.SignatureScript)
-	if err != nil {
-		err = msgp.WrapError(err, "SignatureScript")
-		return
-	}
+	o = msgp.AppendBytes(o, z.SignatureScript)
 	// string "s"
 	o = append(o, 0xa1, 0x73)
 	o = msgp.AppendUint32(o, z.Sequence)
@@ -1003,7 +995,7 @@ func (z *PovBtcTxIn) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 		case "ss":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.SignatureScript)
+			z.SignatureScript, bts, err = msgp.ReadBytesBytes(bts, z.SignatureScript)
 			if err != nil {
 				err = msgp.WrapError(err, "SignatureScript")
 				return
@@ -1028,7 +1020,7 @@ func (z *PovBtcTxIn) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PovBtcTxIn) Msgsize() (s int) {
-	s = 1 + 4 + 1 + 2 + msgp.ExtensionPrefixSize + z.PreviousOutPoint.Hash.Len() + 2 + msgp.Uint32Size + 3 + msgp.ExtensionPrefixSize + z.SignatureScript.Len() + 2 + msgp.Uint32Size
+	s = 1 + 4 + 1 + 2 + msgp.ExtensionPrefixSize + z.PreviousOutPoint.Hash.Len() + 2 + msgp.Uint32Size + 3 + msgp.BytesPrefixSize + len(z.SignatureScript) + 2 + msgp.Uint32Size
 	return
 }
 
@@ -1057,7 +1049,7 @@ func (z *PovBtcTxOut) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "pks":
-			err = dc.ReadExtension(&z.PkScript)
+			z.PkScript, err = dc.ReadBytes(z.PkScript)
 			if err != nil {
 				err = msgp.WrapError(err, "PkScript")
 				return
@@ -1074,7 +1066,7 @@ func (z *PovBtcTxOut) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z PovBtcTxOut) EncodeMsg(en *msgp.Writer) (err error) {
+func (z *PovBtcTxOut) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 2
 	// write "v"
 	err = en.Append(0x82, 0xa1, 0x76)
@@ -1091,7 +1083,7 @@ func (z PovBtcTxOut) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.PkScript)
+	err = en.WriteBytes(z.PkScript)
 	if err != nil {
 		err = msgp.WrapError(err, "PkScript")
 		return
@@ -1100,7 +1092,7 @@ func (z PovBtcTxOut) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z PovBtcTxOut) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *PovBtcTxOut) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 2
 	// string "v"
@@ -1108,11 +1100,7 @@ func (z PovBtcTxOut) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendInt64(o, z.Value)
 	// string "pks"
 	o = append(o, 0xa3, 0x70, 0x6b, 0x73)
-	o, err = msgp.AppendExtension(o, &z.PkScript)
-	if err != nil {
-		err = msgp.WrapError(err, "PkScript")
-		return
-	}
+	o = msgp.AppendBytes(o, z.PkScript)
 	return
 }
 
@@ -1141,7 +1129,7 @@ func (z *PovBtcTxOut) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "pks":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.PkScript)
+			z.PkScript, bts, err = msgp.ReadBytesBytes(bts, z.PkScript)
 			if err != nil {
 				err = msgp.WrapError(err, "PkScript")
 				return
@@ -1159,7 +1147,7 @@ func (z *PovBtcTxOut) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z PovBtcTxOut) Msgsize() (s int) {
-	s = 1 + 2 + msgp.Int64Size + 4 + msgp.ExtensionPrefixSize + z.PkScript.Len()
+func (z *PovBtcTxOut) Msgsize() (s int) {
+	s = 1 + 2 + msgp.Int64Size + 4 + msgp.BytesPrefixSize + len(z.PkScript)
 	return
 }
