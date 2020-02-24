@@ -549,11 +549,20 @@ func (l *DebugApi) UncheckAnalysis() ([]*UncheckInfo, error) {
 		switch unCheckType {
 		case types.UncheckedKindPrevious:
 		case types.UncheckedKindLink:
-			if has, _ := l.ledger.HasStateBlockConfirmed(block.GetLink()); has {
+			if has, _ := l.ledger.HasStateBlockConfirmed(link); has {
 				ui := &UncheckInfo{
 					Hash:    block.GetHash(),
 					GapType: "gap link",
-					GapHash: block.GetLink(),
+					GapHash: link,
+				}
+				uis = append(uis, ui)
+			}
+		case types.UncheckedKindPublish:
+			if has, _ := l.ledger.HasStateBlockConfirmed(link); has {
+				ui := &UncheckInfo{
+					Hash:    block.GetHash(),
+					GapType: "gap publish",
+					GapHash: link,
 				}
 				uis = append(uis, ui)
 			}
@@ -570,5 +579,91 @@ func (l *DebugApi) UncheckAnalysis() ([]*UncheckInfo, error) {
 		return nil, err
 	}
 
+	err = l.ledger.WalkGapPovBlocks(func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		ui := &UncheckInfo{
+			Hash:      block.GetHash(),
+			GapType:   "gap pov",
+			GapHeight: height,
+		}
+		uis = append(uis, ui)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return uis, nil
+}
+
+func (l *DebugApi) uncheckBlock(hash types.Hash) *UncheckInfo {
+	ui := new(UncheckInfo)
+	find := false
+	var uncheckTypeMap = map[types.UncheckedKind]string{
+		types.UncheckedKindPrevious:  "gap previous",
+		types.UncheckedKindLink:      "gap link",
+		types.UncheckedKindPublish:   "gap publish",
+		types.UncheckedKindTokenInfo: "gap token",
+	}
+
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		if block.GetHash() == hash {
+			ui = &UncheckInfo{
+				Hash:    block.GetHash(),
+				GapType: uncheckTypeMap[unCheckType],
+				GapHash: link,
+			}
+			find = true
+		}
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	err = l.ledger.WalkGapPovBlocks(func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		if block.GetHash() == hash {
+			ui = &UncheckInfo{
+				Hash:      block.GetHash(),
+				GapType:   "gap pov",
+				GapHeight: height,
+			}
+			find = true
+		}
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	if find {
+		return ui
+	} else {
+		return nil
+	}
+}
+
+func (l *DebugApi) UncheckBlock(hash types.Hash) ([]*UncheckInfo, error) {
+	uis := make([]*UncheckInfo, 0)
+	ui := new(UncheckInfo)
+
+	for {
+		ui = l.uncheckBlock(hash)
+		if ui != nil {
+			fmt.Printf("%-64s\t%-16s\t\t%-64s\t%d\n", ui.Hash, ui.GapType, ui.GapHash, ui.GapHeight)
+			if ui.GapType == "gap previous" || ui.GapType == "gap link" {
+				hash = ui.GapHash
+				if has, _ := l.ledger.HasStateBlockConfirmed(ui.GapHash); has {
+					break
+				}
+			} else {
+				break
+			}
+		} else {
+			fmt.Printf("%s there is no uncheck info\n", hash)
+			return nil, errors.New("there is no uncheck info")
+		}
+	}
+
+	uis = append(uis, ui)
 	return uis, nil
 }
