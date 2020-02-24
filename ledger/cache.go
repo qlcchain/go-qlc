@@ -61,9 +61,15 @@ func (lc *MemoryCache) GetCache() *Cache {
 		if lc.needsFlush() {
 			lc.logger.Debug("current write cache need flush: ", lc.writeIndex)
 			lc.writeIndex = (lc.writeIndex + 1) % lc.cacheCount // next write cache index, and must flush done
+			st := time.Now()
 			for {
 				if !lc.caches[lc.writeIndex].flushStatue {
 					break
+				} else {
+					time.Sleep(100 * time.Millisecond)
+				}
+				if time.Now().Sub(st) > 2*time.Second {
+					lc.logger.Error("cache flush timeout")
 				}
 			}
 			lc.logger.Debug("new write cache index: ", lc.writeIndex)
@@ -152,7 +158,8 @@ func (lc *MemoryCache) close() error {
 
 func (lc *MemoryCache) Get(key []byte) (interface{}, error) {
 	index := lc.writeIndex
-	for index != lc.readIndex {
+	readIndex := lc.readIndex
+	for index != readIndex {
 		if v, err := lc.caches[index].Get(key); err == nil {
 			return v, nil
 		} else {
@@ -187,7 +194,8 @@ func (lc *MemoryCache) Has(key []byte) (bool, error) {
 func (lc *MemoryCache) prefixIterator(prefix []byte) []*kv {
 	kvs := make([]*kv, 0)
 	index := lc.writeIndex
-	for index != lc.readIndex {
+	readIndex := lc.readIndex
+	for index != readIndex {
 		items := lc.caches[index].cache.GetALL(false)
 		for k, v := range items {
 			key := originalKey(k.(string))
@@ -280,9 +288,15 @@ func (c *Cache) flush(l *Ledger, index int) error {
 	defer func() {
 		c.flushStatue = false
 	}()
+	st := time.Now()
 	for {
 		if c.quote == 0 {
 			break
+		} else {
+			time.Sleep(100 * time.Millisecond)
+		}
+		if time.Now().Sub(st) > 3*time.Second {
+			c.logger.Error("cache quote timeout")
 		}
 	}
 

@@ -522,6 +522,10 @@ func (l *DebugApi) GetCacheStat() []*CacheStat {
 	return cas
 }
 
+func (l *DebugApi) GetCacheStatus() map[int]int {
+	return l.ledger.GetCacheStatue()
+}
+
 //func (l *DebugApi) Rollback(hash types.Hash) error {
 //	lv := process.NewLedgerVerifier(l.ledger)
 //	return lv.Rollback(hash)

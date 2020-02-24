@@ -773,3 +773,11 @@ func (l *Ledger) updateCacheStat(c *CacheStat) {
 func (l *Ledger) GetCacheStat() []*CacheStat {
 	return l.cacheStats
 }
+
+func (l *Ledger) GetCacheStatue() map[int]int {
+	r := make(map[int]int)
+	for i, c := range l.cache.caches {
+		r[i] = c.capacity()
+	}
+	return r
+}

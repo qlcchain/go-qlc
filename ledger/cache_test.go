@@ -159,7 +159,7 @@ func TestCache_Iterator(t *testing.T) {
 	mc.Put([]byte{1, 2, 3, 4}, []byte{1, 4})
 	mc.Put([]byte{1, 2, 3, 5}, []byte{1})
 	mc.Put([]byte{1, 2, 3, 6}, []byte{4})
-	kvs := mc.prefixIterator([]byte{1, 2})
+	kvs := mc.prefixIterator([]byte{1, 2, 3})
 	for _, kv := range kvs {
 		t.Log(kv.key, kv.value)
 	}
