@@ -10,6 +10,9 @@ package process
 import (
 	"errors"
 	"fmt"
+
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -17,7 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"go.uber.org/zap"
 )
 
 type LedgerVerifier struct {

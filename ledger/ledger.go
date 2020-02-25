@@ -14,6 +14,8 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -25,7 +27,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/migration"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type Ledger struct {

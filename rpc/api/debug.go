@@ -170,6 +170,25 @@ func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
 	return r, nil
 }
 
+func (l *DebugApi) BlockLinks(hash types.Hash) (map[string][]types.Hash, error) {
+	r := make(map[string][]types.Hash)
+	r["child"] = make([]types.Hash, 0)
+	r["receiver"] = make([]types.Hash, 0)
+	err := l.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
+		if block.Previous == hash {
+			r["child"] = append(r["child"], block.GetHash())
+		}
+		if block.Link == hash {
+			r["receiver"] = append(r["receiver"], block.GetHash())
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func (l *DebugApi) BlocksCountByType(typ string) (map[string]int64, error) {
 	r := make(map[string]int64)
 	if err := l.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {

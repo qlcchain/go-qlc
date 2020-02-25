@@ -1,8 +1,6 @@
 package ledger
 
 import (
-	"github.com/dgraph-io/badger"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -39,7 +37,7 @@ func (l *Ledger) GetSmartContractBlock(key types.Hash) (*types.SmartContractBloc
 	value := new(types.SmartContractBlock)
 	val, err := l.store.Get(k)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return nil, ErrBlockNotFound
 		}
 		return nil, err
