@@ -482,13 +482,15 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 }
 
 func loadGenesisAccount(cfg *config.Config) {
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
+	if len(common.GenesisInfos)==0 {
+		for _, v := range cfg.Genesis.GenesisBlocks {
+			genesisInfo := &common.GenesisInfo{
+				ChainToken:          v.ChainToken,
+				GasToken:            v.GasToken,
+				GenesisMintageBlock: v.Mintage,
+				GenesisBlock:        v.Genesis,
+			}
+			common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}
 }
