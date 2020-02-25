@@ -18,6 +18,12 @@ func NewDB(cfg *config.Config) (*sqlx.DB, error) {
 			return nil, err
 		}
 		return db, nil
+	case "mysql":
+		db, err := openMysql(cfg)
+		if err != nil {
+			return nil, err
+		}
+		return db, nil
 	}
 	return nil, errors.New("unsupported driver")
 }

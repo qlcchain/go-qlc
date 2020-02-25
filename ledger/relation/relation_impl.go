@@ -139,14 +139,3 @@ func blockHash(bs []blocksHash) ([]types.Hash, error) {
 	}
 	return hs, nil
 }
-
-func (r *Relation) init() error {
-	for _, s := range r.tables {
-		sql := s.TableSchema()
-		if _, err := r.Store.Exec(sql); err != nil {
-			r.logger.Errorf("exec error, sql: %s, err: %s", sql, err.Error())
-			return err
-		}
-	}
-	return nil
-}

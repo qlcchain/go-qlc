@@ -23,6 +23,7 @@ type Relation struct {
 	deleteChan chan types.Schema
 	addChan    chan types.Schema
 	tables     []types.Schema
+	dbType     string
 	ctx        context.Context
 	cancel     context.CancelFunc
 	closedChan chan bool
@@ -45,7 +46,7 @@ func NewRelation(cfgFile string) (*Relation, error) {
 		cfg, _ := cc.Config()
 		store, err := relationdb.NewDB(cfg)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("open store fail: %s", err)
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		relation := &Relation{
@@ -57,17 +58,29 @@ func NewRelation(cfgFile string) (*Relation, error) {
 			ctx:        ctx,
 			cancel:     cancel,
 			closedChan: make(chan bool),
+			dbType:     cfg.DB.Driver,
 			logger:     log.NewLogger("relation"),
 		}
 		relation.tables = []types.Schema{new(types.StateBlock)}
 		if err := relation.init(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("store init fail: %s", err)
 		}
 		go relation.process()
 		cache[cfgFile] = relation
 	}
 	//cache[dir].logger = log.NewLogger("ledger")
 	return cache[cfgFile], nil
+}
+
+func (r *Relation) init() error {
+	for _, s := range r.tables {
+		sql := s.TableSchema(r.dbType)
+		if _, err := r.Store.Exec(sql); err != nil {
+			r.logger.Errorf("exec error, sql: %s, err: %s", sql, err.Error())
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *Relation) Close() error {

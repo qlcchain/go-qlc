@@ -234,27 +234,14 @@ func (bs *StateBlockList) Deserialize(text []byte) error {
 	return nil
 }
 
-func (b *StateBlock) TableSchema() string {
-	//sb := new(StateBlock)
-	//ts := TableSchema{}
-	//ts.Column = append(ts.Column, sb.GetHash())
-	//ts.Column = append(ts.Column, sb.Type)
-	//ts.Column = append(ts.Column, sb.Address)
-	//ts.Column = append(ts.Column, sb.Timestamp)
-	//return ts
-	str := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
-		(   id integer PRIMARY KEY AUTOINCREMENT,
-			hash %s,
-			type %s,
-			address %s,
-			timestamp %s
-		)`,
-		b.TableName(),
-		ConvertSchemaType(b.GetHash()),
-		ConvertSchemaType(b.Type),
-		ConvertSchemaType(b.Address),
-		ConvertSchemaType(b.Timestamp))
-	return str
+func (b *StateBlock) TableSchema(dbType string) string {
+	fields := make(map[string]interface{})
+	fields["hash"] = b.GetHash()
+	fields["type"] = b.Type
+	fields["address"] = b.Address
+	fields["timestamp"] = b.Timestamp
+
+	return CreateSchema(b.TableName(), fields, "", dbType)
 }
 
 func (b *StateBlock) TableName() string {

@@ -109,12 +109,11 @@ func GetKeyOfParts(t KeyPrefix, partList ...interface{}) ([]byte, error) {
 			src = v[:]
 		case types.Address:
 			src = v[:]
-		case *types.PendingKey:
-			pk := part.(*types.PendingKey)
+		case types.Serializer:
 			var err error
-			src, err = pk.Serialize()
+			src, err = v.Serialize()
 			if err != nil {
-				return nil, fmt.Errorf("pending key serialize: %s", err)
+				return nil, fmt.Errorf("key serialize: %s, %s", err, v)
 			}
 		default:
 			return nil, errors.New("key contains of invalid part")

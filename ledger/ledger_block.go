@@ -329,11 +329,11 @@ func (l *Ledger) setBlockLink(block *types.StateBlock, c storage.Cache) error {
 	if block.GetType() == types.Open || block.GetType() == types.Receive || block.GetType() == types.ContractReward {
 		linkHash := block.GetLink()
 		// is link block existed
-		if b, _ := l.HasBlockCache(linkHash); !b {
-			if exist, _ := l.HasStateBlockConfirmed(linkHash); !exist {
-				return fmt.Errorf("%s can not find link %s", block.GetHash().String(), linkHash.String())
-			}
-		}
+		//if b, _ := l.HasBlockCache(linkHash); !b {
+		//	if exist, _ := l.HasStateBlockConfirmed(linkHash); !exist {
+		//		return fmt.Errorf("%s can not find link %s", block.GetHash().String(), linkHash.String())
+		//	}
+		//}
 
 		h := block.GetHash()
 		k, err := storage.GetKeyOfParts(storage.KeyPrefixLink, linkHash)

@@ -376,7 +376,7 @@ func (c *Cache) flush(l *Ledger, index int) error {
 func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error {
 	if !isDeleteKey(v) {
 		switch o := v.(type) {
-		case types.Serialize:
+		case types.Serializer:
 			val, err := o.Serialize()
 			if err != nil {
 				c.logger.Error("serialize error  ", key[:1])
