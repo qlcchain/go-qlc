@@ -62,7 +62,7 @@ func blocks() error {
 	defer client.Close()
 
 	var resp map[string]uint64
-	err = client.Call(&resp, "ledger_transactionsCount")
+	err = client.Call(&resp, "ledger_blocksCount2")
 	if err != nil {
 		return err
 	}

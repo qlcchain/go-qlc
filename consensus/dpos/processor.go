@@ -206,7 +206,7 @@ func (p *Processor) processMsg() {
 				}
 			}
 		default:
-			time.Sleep(time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 }

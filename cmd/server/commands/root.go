@@ -15,9 +15,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"runtime"
-	"runtime/pprof"
 	"strings"
 	"syscall"
 	"time"
@@ -29,7 +26,6 @@ import (
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -161,10 +157,6 @@ func start() error {
 	if err != nil {
 		return err
 	}
-	cfg, err := cm.Config()
-	if err != nil {
-		return err
-	}
 
 	log.Root.Info("Run node id: ", chainContext.Id())
 
@@ -222,46 +214,6 @@ func start() error {
 	}
 
 	if isProfileP {
-		profDir := filepath.Join(cfg.DataDir, "pprof", time.Now().Format("2006-01-02T15-04"))
-		_ = util.CreateDirIfNotExist(profDir)
-		//CPU profile
-		/*
-			cpuProfile, err := os.Create(filepath.Join(profDir, "cpu.prof"))
-			if err != nil {
-				log.Root.Error("could not create CPU profile: ", err)
-			} else {
-				log.Root.Info("create CPU profile: ", cpuProfile.Name())
-			}
-
-			//runtime.SetCPUProfileRate(500)
-			if err := pprof.StartCPUProfile(cpuProfile); err != nil {
-				log.Root.Error("could not start CPU profile: ", err)
-			} else {
-				log.Root.Info("start CPU profile")
-			}
-			defer func() {
-				_ = cpuProfile.Close()
-				pprof.StopCPUProfile()
-			}()
-		*/
-
-		//MEM profile
-		memProfile, err := os.Create(filepath.Join(profDir, "mem.prof"))
-		if err != nil {
-			log.Root.Error("could not create memory profile: ", err)
-		} else {
-			log.Root.Info("create MEM profile: ", memProfile.Name())
-		}
-		runtime.GC()
-		if err := pprof.WriteHeapProfile(memProfile); err != nil {
-			log.Root.Error("could not write memory profile: ", err)
-		} else {
-			log.Root.Info("start MEM profile")
-		}
-		defer func() {
-			_ = memProfile.Close()
-		}()
-
 		go func() {
 			//view result in http://localhost:6060/debug/pprof/
 			addr := fmt.Sprintf("localhost:%d", profPortP)

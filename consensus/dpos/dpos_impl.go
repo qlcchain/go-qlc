@@ -194,6 +194,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		p.setDPoSService(dps)
 	}
 
+	dps.lastGapHeight = dps.ledger.GetLastGapPovHeight()
 	pb, err := dps.ledger.GetLatestPovBlock()
 	if err == nil {
 		dps.curPovHeight = pb.Header.BasHdr.Height
@@ -319,6 +320,11 @@ func (dps *DPoS) Start() {
 			for {
 				if dps.lastGapHeight <= dps.curPovHeight {
 					if dps.dequeueGapPovBlocksFromDb(dps.lastGapHeight) {
+						err := dps.ledger.SetLastGapPovHeight(dps.lastGapHeight)
+						if err != nil {
+							dps.logger.Error(err)
+						}
+
 						dps.lastGapHeight++
 					} else {
 						break

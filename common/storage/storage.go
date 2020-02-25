@@ -78,6 +78,7 @@ const (
 	KeyPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
 	KeyPrefixPeerInfo    //prefix+peerID => peerInfo
 	KeyPrefixGapPublish
+	KeyPrefixDPoS
 
 	// Trie key space should be different
 	KeyPrefixTrieVMStorage = 100 // vm_store.go, idPrefixStorage
