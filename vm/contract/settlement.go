@@ -300,12 +300,9 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 				Params: map[string][]cabi.CDRParam{block.Address.String(): {*param}},
 				Status: cabi.SettlementStatusStage1,
 			}
-			if abi, err := state.ToABI(); err != nil {
+
+			if err := cabi.SaveCDRStatus(ctx, &contractAddress, &h, state); err != nil {
 				return nil, nil, err
-			} else {
-				if err := ctx.SetStorage(contractAddress[:], h[:], abi); err != nil {
-					return nil, nil, err
-				}
 			}
 		}
 	} else {
@@ -320,12 +317,8 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 			if err := state.DoSettlement(sr); err != nil {
 				return nil, nil, err
 			} else {
-				if abi, err := state.ToABI(); err != nil {
+				if err := cabi.SaveCDRStatus(ctx, &contractAddress, &h, state); err != nil {
 					return nil, nil, err
-				} else {
-					if err := ctx.SetStorage(contractAddress[:], h[:], abi); err != nil {
-						return nil, nil, err
-					}
 				}
 			}
 		}

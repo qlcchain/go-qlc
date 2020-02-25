@@ -796,6 +796,190 @@ func (z *CompareRecord) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *ContractAddressList) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "a":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "AddressList")
+				return
+			}
+			if cap(z.AddressList) >= int(zb0002) {
+				z.AddressList = (z.AddressList)[:zb0002]
+			} else {
+				z.AddressList = make([]*types.Address, zb0002)
+			}
+			for za0001 := range z.AddressList {
+				if dc.IsNil() {
+					err = dc.ReadNil()
+					if err != nil {
+						err = msgp.WrapError(err, "AddressList", za0001)
+						return
+					}
+					z.AddressList[za0001] = nil
+				} else {
+					if z.AddressList[za0001] == nil {
+						z.AddressList[za0001] = new(types.Address)
+					}
+					err = z.AddressList[za0001].DecodeMsg(dc)
+					if err != nil {
+						err = msgp.WrapError(err, "AddressList", za0001)
+						return
+					}
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *ContractAddressList) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 1
+	// write "a"
+	err = en.Append(0x81, 0xa1, 0x61)
+	if err != nil {
+		return
+	}
+	err = en.WriteArrayHeader(uint32(len(z.AddressList)))
+	if err != nil {
+		err = msgp.WrapError(err, "AddressList")
+		return
+	}
+	for za0001 := range z.AddressList {
+		if z.AddressList[za0001] == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			err = z.AddressList[za0001].EncodeMsg(en)
+			if err != nil {
+				err = msgp.WrapError(err, "AddressList", za0001)
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *ContractAddressList) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 1
+	// string "a"
+	o = append(o, 0x81, 0xa1, 0x61)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.AddressList)))
+	for za0001 := range z.AddressList {
+		if z.AddressList[za0001] == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			o, err = z.AddressList[za0001].MarshalMsg(o)
+			if err != nil {
+				err = msgp.WrapError(err, "AddressList", za0001)
+				return
+			}
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *ContractAddressList) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "a":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AddressList")
+				return
+			}
+			if cap(z.AddressList) >= int(zb0002) {
+				z.AddressList = (z.AddressList)[:zb0002]
+			} else {
+				z.AddressList = make([]*types.Address, zb0002)
+			}
+			for za0001 := range z.AddressList {
+				if msgp.IsNil(bts) {
+					bts, err = msgp.ReadNilBytes(bts)
+					if err != nil {
+						return
+					}
+					z.AddressList[za0001] = nil
+				} else {
+					if z.AddressList[za0001] == nil {
+						z.AddressList[za0001] = new(types.Address)
+					}
+					bts, err = z.AddressList[za0001].UnmarshalMsg(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "AddressList", za0001)
+						return
+					}
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *ContractAddressList) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ArrayHeaderSize
+	for za0001 := range z.AddressList {
+		if z.AddressList[za0001] == nil {
+			s += msgp.NilSize
+		} else {
+			s += z.AddressList[za0001].Msgsize()
+		}
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *ContractParam) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field

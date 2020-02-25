@@ -8390,6 +8390,16 @@ func TestGetSummaryReport(t *testing.T) {
 			t.Log(util.ToIndentString(i))
 		}
 	}
+
+	if invoices, err := GenerateInvoicesByContract(ctx, &contractAddr, 0, 0); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(invoices) == 0 {
+			t.Fatal("invalid invoice")
+		}
+		t.Log(util.ToIndentString(invoices))
+	}
+
 }
 
 func TestGetStopNames(t *testing.T) {
@@ -8453,5 +8463,289 @@ func TestGetStopNames(t *testing.T) {
 		if names[0] != "CSL Hong Kong @ 3397" {
 			t.Fatal(names)
 		}
+	}
+}
+
+func TestContractAddressList_Append(t *testing.T) {
+	a1 := mock.Address()
+	a2 := mock.Address()
+	cl := newContractAddressList(&a1)
+
+	type fields struct {
+		AddressList []*types.Address
+	}
+	type args struct {
+		address *types.Address
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				AddressList: cl.AddressList,
+			},
+			args: args{
+				address: &a2,
+			},
+			want: true,
+		}, {
+			name: "exist",
+			fields: fields{
+				AddressList: cl.AddressList,
+			},
+			args: args{
+				address: &a1,
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractAddressList{
+				AddressList: tt.fields.AddressList,
+			}
+			if got := z.Append(tt.args.address); got != tt.want {
+				t.Errorf("Append() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestContractAddressList_ToABI(t *testing.T) {
+	a1 := mock.Address()
+	cl := newContractAddressList(&a1)
+
+	if abi, err := cl.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		cl2 := &ContractAddressList{}
+		if err := cl2.FromABI(abi); err != nil {
+			t.Fatal(err)
+		} else {
+			if !reflect.DeepEqual(cl, cl2) {
+				t.Fatalf("invalid %v,%v", cl, cl2)
+			} else {
+				t.Log(cl.String())
+			}
+		}
+	}
+}
+
+func TestSaveCDRStatus(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	a1 := mock.Address()
+	cdr := buildCDRStatus()
+
+	h, err := cdr.ToHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = SaveCDRStatus(ctx, &a1, &h, cdr); err != nil {
+		t.Fatal(err)
+	}
+
+	if s, err := GetCDRStatus(ctx, &a1, h); err != nil {
+		t.Fatal(err)
+	} else {
+		if !reflect.DeepEqual(cdr, s) {
+			t.Fatalf("invalid cdr, act: %v, exp: %v", s, cdr)
+		} else {
+			if addresses, err := GetCDRMapping(ctx, &h); err != nil {
+				t.Fatal(err)
+			} else {
+				if len(addresses) != 1 {
+					t.Fatalf("invalid address len: %d", len(addresses))
+				}
+
+				if !reflect.DeepEqual(addresses[0], &a1) {
+					t.Fatalf("invalid address, act: %s, exp: %s", addresses[0].String(), a1.String())
+				}
+			}
+		}
+	}
+}
+
+func TestGetCDRMapping(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	a1 := mock.Address()
+	a2 := mock.Address()
+	h := mock.Hash()
+
+	exp := []*types.Address{&a1, &a2}
+
+	if err := saveCDRMapping(ctx, &a1, &h); err != nil {
+		t.Fatal(err)
+	}
+	if err := saveCDRMapping(ctx, &a2, &h); err != nil {
+		t.Fatal(err)
+	}
+
+	if addressList, err := GetCDRMapping(ctx, &h); err != nil {
+		t.Fatal(err)
+	} else {
+		if !reflect.DeepEqual(addressList, exp) {
+			t.Fatalf("invalid address, act: %v, exp:%v", addressList, exp)
+		}
+	}
+}
+
+func TestGenerateMultiPartyInvoice(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	a1 := mock.Address()
+	a2 := mock.Address()
+	a3 := mock.Address()
+
+	//prepare two contracts
+	var contracts []*ContractParam
+
+	// Montnets-PCCWG
+	param1 := buildContractParam()
+	param1.PartyA.Address = a1
+	param1.PartyB.Address = a2
+	param1.NextStops = []string{"A2P_PCCWG"}
+	param1.PreStops = []string{"MONTNETS"}
+	contracts = append(contracts, param1)
+
+	// PCCWG-CSL
+	param2 := buildContractParam()
+	param2.PartyA.Address = a2
+	param2.PartyB.Address = a3
+	param2.NextStops = []string{"CSL Hong Kong @ 3397"}
+	param2.PreStops = []string{"A2P_PCCWG"}
+
+	contracts = append(contracts, param2)
+	for _, c := range contracts {
+		contractAddr, _ := c.Address()
+		abi, _ := c.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ca1, _ := contracts[0].Address()
+	ca2, _ := contracts[1].Address()
+
+	// upload CDR
+	template := cdrParam
+	template.SmsDt = time.Now().Unix()
+	template.Sender = "WeChat"
+
+	p1 := template
+	p1.NextStop = "A2P_PCCWG"
+
+	cdr1 := &CDRStatus{
+		Params: map[string][]CDRParam{
+			a1.String(): {p1},
+		},
+		Status: SettlementStatusSuccess,
+	}
+
+	if h, err := cdr1.ToHash(); err != nil {
+		t.Fatal(err)
+	} else {
+		if h.IsZero() {
+			t.Fatal("invalid hash")
+		}
+
+		t.Log("p1", h.String())
+		if err := SaveCDRStatus(ctx, &ca1, &h, cdr1); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	p2 := template
+	p2.PreStop = "MONTNETS"
+
+	cdr2 := &CDRStatus{
+		Params: map[string][]CDRParam{
+			a2.String(): {p2},
+		},
+		Status: SettlementStatusSuccess,
+	}
+
+	if h, err := cdr2.ToHash(); err != nil {
+		t.Fatal(err)
+	} else {
+		if h.IsZero() {
+			t.Fatal("invalid hash")
+		}
+		t.Log("p2", h.String())
+		if err := SaveCDRStatus(ctx, &ca1, &h, cdr2); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// upload CDR to PCCWG-CSL
+	p3 := template
+	p3.NextStop = "CSL Hong Kong @ 3397"
+
+	cdr3 := &CDRStatus{
+		Params: map[string][]CDRParam{
+			a2.String(): {p3},
+		},
+		Status: SettlementStatusSuccess,
+	}
+
+	if h, err := cdr3.ToHash(); err != nil {
+		t.Fatal(err)
+	} else {
+		if h.IsZero() {
+			t.Fatal("invalid hash")
+		}
+
+		t.Log("p3", h.String())
+		if err := SaveCDRStatus(ctx, &ca2, &h, cdr3); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	p4 := template
+	p4.PreStop = "A2P_PCCWG"
+
+	cdr4 := &CDRStatus{
+		Params: map[string][]CDRParam{
+			a2.String(): {p4},
+		},
+		Status: SettlementStatusSuccess,
+	}
+
+	if h, err := cdr4.ToHash(); err != nil {
+		t.Fatal(err)
+	} else {
+		if h.IsZero() {
+			t.Fatal("invalid hash")
+		}
+
+		t.Log("p4", h.String())
+		if err := SaveCDRStatus(ctx, &ca1, &h, cdr4); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// save to db
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	// generate invoice
+	if invoice, err := GenerateMultiPartyInvoice(ctx, &ca1, 0, 0); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(invoice) == 0 {
+			t.Fatal("invalid invoice")
+		}
+		t.Log(util.ToIndentString(invoice))
 	}
 }

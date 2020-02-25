@@ -688,6 +688,26 @@ func (s *SettlementAPI) GenerateInvoices(addr *types.Address, start, end int64) 
 	return cabi.GenerateInvoices(ctx, addr, start, end)
 }
 
+// GenerateInvoicesByContract generate invoice by settlement contract address
+// @param addr settlement contract address
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return settlement report
+func (s *SettlementAPI) GenerateInvoicesByContract(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GenerateInvoicesByContract(ctx, addr, start, end)
+}
+
+// GenerateMultiPartyInvoice generate multi-party invoice by settlement contract address
+// @param addr settlement contract address
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return settlement invoice
+func (s *SettlementAPI) GenerateMultiPartyInvoice(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GenerateMultiPartyInvoice(ctx, addr, start, end)
+}
+
 var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {
 	dt1, sender1, _, err := cdr1.ExtractID()
 	if err != nil {
