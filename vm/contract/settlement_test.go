@@ -887,6 +887,9 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			t.Fatal(err)
 		} else {
 			t.Log(pendingKey, info)
+			if _, _, err := createContract.ProcessSend(ctx, sb); err != nil {
+				t.Fatal(err)
+			}
 			if err := ctx.SaveStorage(); err != nil {
 				t.Fatal(err)
 			}
@@ -1712,4 +1715,12 @@ func Test_verifyStopName(t *testing.T) {
 	s := []string{"HKTCSL"}
 	b, i := verifyStopName(s, "HKT-CSL")
 	t.Log(b, i)
+}
+
+func Test_internalContract_DoPending(t *testing.T) {
+	i := internalContract{}
+	i.DoGap(nil, nil)
+	i.DoPending(nil)
+	i.DoReceiveOnPov(nil, nil, 0, nil, nil)
+	i.DoSendOnPov(nil, nil, 0, nil)
 }

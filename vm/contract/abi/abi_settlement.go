@@ -1299,9 +1299,91 @@ func GenerateInvoicesByContract(ctx *vmstore.VMContext, addr *types.Address, sta
 	if err != nil {
 		logger.Error(err)
 	}
-	if IsContractAvailable(ctx, &contractAddr) {
-		cache := make(map[string]int, 0)
+
+	cache := make(map[string]int)
+	if cdrs, err := GetCDRStatusByDate(ctx, &contractAddr, start, end); err == nil {
+		for _, cdr := range cdrs {
+			if cdr.Status == SettlementStatusSuccess {
+				if _, sender, _, err := cdr.ExtractID(); err == nil {
+					if _, ok := cache[sender]; ok {
+						cache[sender]++
+					} else {
+						cache[sender] = 1
+					}
+				}
+			}
+		}
+	} else {
+		logger.Error(err)
+	}
+
+	// TODO: how to match service???
+	service := c.Services[0]
+	for k, v := range cache {
+		if v > 0 {
+			invoice := &InvoiceRecord{
+				Address:                  contractAddr,
+				StartDate:                c.StartDate,
+				EndDate:                  c.EndDate,
+				Customer:                 k,
+				CustomerSr:               "",
+				Country:                  "",
+				Operator:                 c.PartyB.Name,
+				ServiceId:                service.ServiceId,
+				MCC:                      service.Mcc,
+				MNC:                      service.Mnc,
+				Currency:                 service.Currency,
+				UnitPrice:                service.UnitPrice,
+				SumOfBillableSMSCustomer: uint64(v),
+				SumOfTOTPrice:            service.UnitPrice * float64(v),
+			}
+			result = append(result, invoice)
+		}
+	}
+
+	if len(result) > 0 {
+		sort.Slice(result, func(i, j int) bool {
+			r1 := result[i]
+			r2 := result[j]
+			if r1.StartDate < r2.EndDate {
+				return true
+			}
+			if r1.StartDate > r2.EndDate {
+				return false
+			}
+			return r1.EndDate < r2.EndDate
+		})
+	}
+
+	return result, nil
+}
+
+// GenerateInvoices
+// @param addr user qlcchain address
+func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
+	logger := log.NewLogger("GenerateInvoices")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	contracts, err := GetContractsIDByAddressAsPartyA(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	var result []*InvoiceRecord
+	for _, c := range contracts {
+		contractAddr, err := c.Address()
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		cache := make(map[string]int)
 		if cdrs, err := GetCDRStatusByDate(ctx, &contractAddr, start, end); err == nil {
+			if len(cdrs) == 0 {
+				continue
+			}
+
 			for _, cdr := range cdrs {
 				if cdr.Status == SettlementStatusSuccess {
 					if _, sender, _, err := cdr.ExtractID(); err == nil {
@@ -1359,90 +1441,6 @@ func GenerateInvoicesByContract(ctx *vmstore.VMContext, addr *types.Address, sta
 	return result, nil
 }
 
-// GenerateInvoices
-// @param addr user qlcchain address
-func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
-	logger := log.NewLogger("GenerateInvoices")
-	defer func() {
-		_ = logger.Sync()
-	}()
-
-	contracts, err := GetContractsIDByAddressAsPartyA(ctx, addr)
-	if err != nil {
-		return nil, err
-	}
-	var result []*InvoiceRecord
-	for _, c := range contracts {
-		contractAddr, err := c.Address()
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
-		if IsContractAvailable(ctx, &contractAddr) {
-			cache := make(map[string]int, 0)
-			if cdrs, err := GetCDRStatusByDate(ctx, &contractAddr, start, end); err == nil {
-				if len(cdrs) == 0 {
-					continue
-				}
-
-				for _, cdr := range cdrs {
-					if cdr.Status == SettlementStatusSuccess {
-						if _, sender, _, err := cdr.ExtractID(); err == nil {
-							if _, ok := cache[sender]; ok {
-								cache[sender]++
-							} else {
-								cache[sender] = 1
-							}
-						}
-					}
-				}
-			} else {
-				logger.Error(err)
-			}
-
-			// TODO: how to match service???
-			service := c.Services[0]
-			for k, v := range cache {
-				if v > 0 {
-					invoice := &InvoiceRecord{
-						Address:                  contractAddr,
-						StartDate:                c.StartDate,
-						EndDate:                  c.EndDate,
-						Customer:                 k,
-						CustomerSr:               "",
-						Country:                  "",
-						Operator:                 c.PartyB.Name,
-						ServiceId:                service.ServiceId,
-						MCC:                      service.Mcc,
-						MNC:                      service.Mnc,
-						Currency:                 service.Currency,
-						UnitPrice:                service.UnitPrice,
-						SumOfBillableSMSCustomer: uint64(v),
-						SumOfTOTPrice:            service.UnitPrice * float64(v),
-					}
-					result = append(result, invoice)
-				}
-			}
-		}
-	}
-
-	if len(result) > 0 {
-		sort.Slice(result, func(i, j int) bool {
-			r1 := result[i]
-			r2 := result[j]
-			if r1.StartDate < r2.EndDate {
-				return true
-			}
-			if r1.StartDate > r2.EndDate {
-				return false
-			}
-			return r1.EndDate < r2.EndDate
-		})
-	}
-
-	return result, nil
-}
-
 // GenerateMultiPartyInvoice
 // addr settlement contract address
 func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
@@ -1457,11 +1455,11 @@ func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, addr *types.Address, star
 	}
 	var result []*InvoiceRecord
 
-	if !IsContractAvailable(ctx, addr) {
-		return nil, fmt.Errorf("contract %s is invalid", addr.String())
-	}
+	//if !IsContractAvailable(ctx, addr) {
+	//	return nil, fmt.Errorf("contract %s is invalid", addr.String())
+	//}
 
-	cache := make(map[string]int, 0)
+	cache := make(map[string]int)
 	if cdrs, err := GetCDRStatusByDate(ctx, addr, start, end); err == nil {
 		for _, cdr := range cdrs {
 			if cdr.Status == SettlementStatusSuccess {

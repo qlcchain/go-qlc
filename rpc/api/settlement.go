@@ -503,10 +503,15 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 			return nil, err
 		} else {
 			address, err := c.Address()
-			param.ContractAddress = address
 			if err != nil {
 				return nil, err
 			}
+			param.ContractAddress = address
+
+			if !cabi.IsContractAvailable(ctx, &address) {
+				return nil, fmt.Errorf("contract %s is invalid", addr.String())
+			}
+
 			if singedData, err := param.ToABI(); err == nil {
 				sb := &types.StateBlock{
 					Type:           types.ContractSend,

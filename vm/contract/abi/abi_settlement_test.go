@@ -8399,7 +8399,6 @@ func TestGetSummaryReport(t *testing.T) {
 		}
 		t.Log(util.ToIndentString(invoices))
 	}
-
 }
 
 func TestGetStopNames(t *testing.T) {
