@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -278,7 +280,7 @@ func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepSta
 
 	stateHash := block.GetStateHash()
 	stateTrie := trie.NewTrie(ctx.Ledger.DBStore(), &stateHash, nil)
-	keyBytes := types.PovCreateRepStateKey(params.Account)
+	keyBytes := statedb.PovCreateRepStateKey(params.Account)
 
 	valBytes := stateTrie.GetValue(keyBytes)
 	if len(valBytes) <= 0 {

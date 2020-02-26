@@ -893,17 +893,6 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 	}
 }
 
-func (l *LedgerAPI) Performance() ([]*types.PerformanceTime, error) {
-	pts := make([]*types.PerformanceTime, 0)
-	err := l.ledger.PerformanceTimes(func(p *types.PerformanceTime) {
-		pts = append(pts, p)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return pts, nil
-}
-
 type APIAccountBalance struct {
 	Address types.Address `json:"address"`
 	Balance types.Balance `json:"balance"`

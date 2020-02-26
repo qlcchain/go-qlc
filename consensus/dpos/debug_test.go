@@ -1,12 +1,13 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/mock"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestPerf(t *testing.T) {

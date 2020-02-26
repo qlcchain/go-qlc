@@ -13,33 +13,39 @@ func (z *PendingInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0001 uint32
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "source":
 			err = dc.ReadExtension(&z.Source)
 			if err != nil {
+				err = msgp.WrapError(err, "Source")
 				return
 			}
 		case "amount":
 			err = dc.ReadExtension(&z.Amount)
 			if err != nil {
+				err = msgp.WrapError(err, "Amount")
 				return
 			}
 		case "type":
 			err = dc.ReadExtension(&z.Type)
 			if err != nil {
+				err = msgp.WrapError(err, "Type")
 				return
 			}
 		default:
 			err = dc.Skip()
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -57,6 +63,7 @@ func (z PendingInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Source)
 	if err != nil {
+		err = msgp.WrapError(err, "Source")
 		return
 	}
 	// write "amount"
@@ -66,6 +73,7 @@ func (z PendingInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Amount)
 	if err != nil {
+		err = msgp.WrapError(err, "Amount")
 		return
 	}
 	// write "type"
@@ -75,6 +83,7 @@ func (z PendingInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Type)
 	if err != nil {
+		err = msgp.WrapError(err, "Type")
 		return
 	}
 	return
@@ -88,18 +97,21 @@ func (z PendingInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0x83, 0xa6, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Source)
 	if err != nil {
+		err = msgp.WrapError(err, "Source")
 		return
 	}
 	// string "amount"
 	o = append(o, 0xa6, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74)
 	o, err = msgp.AppendExtension(o, &z.Amount)
 	if err != nil {
+		err = msgp.WrapError(err, "Amount")
 		return
 	}
 	// string "type"
 	o = append(o, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Type)
 	if err != nil {
+		err = msgp.WrapError(err, "Type")
 		return
 	}
 	return
@@ -112,33 +124,39 @@ func (z *PendingInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0001 uint32
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "source":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Source)
 			if err != nil {
+				err = msgp.WrapError(err, "Source")
 				return
 			}
 		case "amount":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Amount)
 			if err != nil {
+				err = msgp.WrapError(err, "Amount")
 				return
 			}
 		case "type":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Type)
 			if err != nil {
+				err = msgp.WrapError(err, "Type")
 				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -160,28 +178,33 @@ func (z *PendingKey) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0001 uint32
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "account":
 			err = dc.ReadExtension(&z.Address)
 			if err != nil {
+				err = msgp.WrapError(err, "Address")
 				return
 			}
 		case "hash":
 			err = dc.ReadExtension(&z.Hash)
 			if err != nil {
+				err = msgp.WrapError(err, "Hash")
 				return
 			}
 		default:
 			err = dc.Skip()
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -199,6 +222,7 @@ func (z PendingKey) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Address)
 	if err != nil {
+		err = msgp.WrapError(err, "Address")
 		return
 	}
 	// write "hash"
@@ -208,6 +232,7 @@ func (z PendingKey) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Hash)
 	if err != nil {
+		err = msgp.WrapError(err, "Hash")
 		return
 	}
 	return
@@ -221,12 +246,14 @@ func (z PendingKey) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0x82, 0xa7, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 	o, err = msgp.AppendExtension(o, &z.Address)
 	if err != nil {
+		err = msgp.WrapError(err, "Address")
 		return
 	}
 	// string "hash"
 	o = append(o, 0xa4, 0x68, 0x61, 0x73, 0x68)
 	o, err = msgp.AppendExtension(o, &z.Hash)
 	if err != nil {
+		err = msgp.WrapError(err, "Hash")
 		return
 	}
 	return
@@ -239,28 +266,33 @@ func (z *PendingKey) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0001 uint32
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "account":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
 			if err != nil {
+				err = msgp.WrapError(err, "Address")
 				return
 			}
 		case "hash":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Hash)
 			if err != nil {
+				err = msgp.WrapError(err, "Hash")
 				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
+				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -281,6 +313,7 @@ func (z *PendingKind) DecodeMsg(dc *msgp.Reader) (err error) {
 		var zb0001 byte
 		zb0001, err = dc.ReadByte()
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		(*z) = PendingKind(zb0001)
@@ -292,6 +325,7 @@ func (z *PendingKind) DecodeMsg(dc *msgp.Reader) (err error) {
 func (z PendingKind) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteByte(byte(z))
 	if err != nil {
+		err = msgp.WrapError(err)
 		return
 	}
 	return
@@ -310,6 +344,7 @@ func (z *PendingKind) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		var zb0001 byte
 		zb0001, bts, err = msgp.ReadByteBytes(bts)
 		if err != nil {
+			err = msgp.WrapError(err)
 			return
 		}
 		(*z) = PendingKind(zb0001)

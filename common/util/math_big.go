@@ -47,41 +47,41 @@ func U256(x *big.Int) *big.Int {
 //   S256(1)        = 1
 //   S256(2**255)   = -2**255
 //   S256(2**256-1) = -1
-func S256(x *big.Int) *big.Int {
-	if x.Cmp(Tt255) < 0 {
-		return x
-	}
-	return new(big.Int).Sub(x, Tt256)
-}
+//func S256(x *big.Int) *big.Int {
+//	if x.Cmp(Tt255) < 0 {
+//		return x
+//	}
+//	return new(big.Int).Sub(x, Tt256)
+//}
 
 // Exp implements exponentiation by squaring.
 // Exp returns a newly-allocated big integer and does not change
 // base or exponent. The result is truncated to 256 bits.
-func Exp(base, exponent *big.Int) *big.Int {
-	result := big.NewInt(1)
-
-	for _, word := range exponent.Bits() {
-		for i := 0; i < WordBits; i++ {
-			if word&1 == 1 {
-				U256(result.Mul(result, base))
-			}
-			U256(base.Mul(base, base))
-			word >>= 1
-		}
-	}
-	return result
-}
+//func Exp(base, exponent *big.Int) *big.Int {
+//	result := big.NewInt(1)
+//
+//	for _, word := range exponent.Bits() {
+//		for i := 0; i < WordBits; i++ {
+//			if word&1 == 1 {
+//				U256(result.Mul(result, base))
+//			}
+//			U256(base.Mul(base, base))
+//			word >>= 1
+//		}
+//	}
+//	return result
+//}
 
 // Byte returns the byte at position n,
 // with the supplied padlength in Little-Endian encoding.
 // n==0 returns the MSB
 // Example: bigint '5', padlength 32, n=31 => 5
-func Byte(bigint *big.Int, padlength, n int) byte {
-	if n >= padlength {
-		return byte(0)
-	}
-	return bigEndianByteAt(bigint, padlength-1-n)
-}
+//func Byte(bigint *big.Int, padlength, n int) byte {
+//	if n >= padlength {
+//		return byte(0)
+//	}
+//	return bigEndianByteAt(bigint, padlength-1-n)
+//}
 
 // PaddedBigBytes encodes a big integer as a big-endian byte slice. The length
 // of the slice is at least n bytes.
@@ -97,35 +97,35 @@ func PaddedBigBytes(bigint *big.Int, n int) []byte {
 // bigEndianByteAt returns the byte at position n,
 // in Big-Endian encoding
 // So n==0 returns the least significant byte
-func bigEndianByteAt(bigint *big.Int, n int) byte {
-	words := bigint.Bits()
-	// Check word-bucket the byte will reside in
-	i := n / WordBytes
-	if i >= len(words) {
-		return byte(0)
-	}
-	word := words[i]
-	// Offset of the byte
-	shift := 8 * uint(n%WordBytes)
+//func bigEndianByteAt(bigint *big.Int, n int) byte {
+//	words := bigint.Bits()
+//	// Check word-bucket the byte will reside in
+//	i := n / WordBytes
+//	if i >= len(words) {
+//		return byte(0)
+//	}
+//	word := words[i]
+//	// Offset of the byte
+//	shift := 8 * uint(n%WordBytes)
+//
+//	return byte(word >> shift)
+//}
 
-	return byte(word >> shift)
-}
-
-// BigMin returns the smaller of x or y.
-func BigMin(x, y *big.Int) *big.Int {
-	if x.Cmp(y) > 0 {
-		return y
-	}
-	return x
-}
-
-// BigMax returns the larger of x or y.
-func BigMax(x, y *big.Int) *big.Int {
-	if x.Cmp(y) < 0 {
-		return y
-	}
-	return x
-}
+//// BigMin returns the smaller of x or y.
+//func BigMin(x, y *big.Int) *big.Int {
+//	if x.Cmp(y) > 0 {
+//		return y
+//	}
+//	return x
+//}
+//
+//// BigMax returns the larger of x or y.
+//func BigMax(x, y *big.Int) *big.Int {
+//	if x.Cmp(y) < 0 {
+//		return y
+//	}
+//	return x
+//}
 
 func StringToBigInt(str *string) (*big.Int, error) {
 	if str == nil {

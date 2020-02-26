@@ -369,7 +369,7 @@ func (p *PublicKeyDistributionApi) GetAllVerifierStatesByBlockHeight(height uint
 	rspData := new(PKDVerifierStateList)
 	rspData.AllVerifiers = make(map[types.Address]*types.PovVerifierState)
 
-	itor := csDB.NewCurTireIterator(types.PovCreateContractLocalStateKey(dpki.PovContractStatePrefixPKDVS, nil))
+	itor := csDB.NewCurTireIterator(statedb.PovCreateContractLocalStateKey(dpki.PovContractStatePrefixPKDVS, nil))
 
 	for key, val, ok := itor.Next(); ok; key, val, ok = itor.Next() {
 		verAddr, err := types.BytesToAddress(key[2:])

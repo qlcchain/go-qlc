@@ -10,7 +10,7 @@ package types
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"math/big"
 	"reflect"
 	"testing"
 
@@ -62,7 +62,7 @@ func TestNewAccount(t *testing.T) {
 
 var testAccountMeta = `{
     "account": "qlc_3hw8s1zubhxsykfsq5x7kh6eyibas9j3ga86ixd7pnqwes1cmt9mqqrngap4",
-    "coinBalance": "17966873799999699",
+    "balance": "17966873799999699",
     "vote": "0",
     "network": "0",
     "storage": "0",
@@ -93,8 +93,6 @@ func TestAccountMeta_Clone(t *testing.T) {
 	}
 	t.Log(b.String())
 	b1 := b.Clone()
-	fmt.Printf("%p ", b.Tokens[0])
-	fmt.Printf("%p ", b1.Tokens[0])
 
 	if reflect.DeepEqual(b, b1) {
 		t.Fatal("invalid clone")
@@ -102,5 +100,54 @@ func TestAccountMeta_Clone(t *testing.T) {
 
 	if b.String() != b1.String() {
 		t.Fatal("invalid clone ", b.String(), b1.String())
+	}
+
+	if data, err := b.Serialize(); err != nil {
+		t.Fatal(err)
+	} else {
+		b2 := &AccountMeta{}
+		if err := b2.Deserialize(data); err != nil {
+			t.Fatal(err)
+		} else {
+			if !reflect.DeepEqual(&b, b2) {
+				t.Fatalf("exp: %v, act: %v", &b, b2)
+			} else {
+				if storage := b.GetStorage(); !storage.IsZero() {
+					t.Fatalf("storage %s", storage.String())
+				}
+
+				if network := b.GetNetwork(); !network.IsZero() {
+					t.Fatalf("network %s", network.String())
+				}
+
+				if oracle := b.GetOracle(); !oracle.IsZero() {
+					t.Fatalf("oracle %s", oracle.String())
+				}
+			}
+		}
+	}
+}
+
+func TestAccountMeta_Token(t *testing.T) {
+	b := AccountMeta{}
+	err := json.Unmarshal([]byte(testAccountMeta), &b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h, err := NewHash("a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582")
+	if token := b.Token(h); token == nil {
+		t.Fatal()
+	}
+
+	weight := b.VoteWeight()
+	exp := Balance{Int: big.NewInt(17966873799999699)}
+	if weight.Compare(exp) != BalanceCompEqual {
+		t.Fatalf("invalid vote weight, exp: %s, act: %s", exp.String(), weight.String())
+	}
+
+	balance := b.TotalBalance()
+	if balance.Compare(exp) != BalanceCompEqual {
+		t.Fatalf("invalid balance, exp: %s, act: %s", exp.String(), weight.String())
 	}
 }

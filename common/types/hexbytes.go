@@ -8,6 +8,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
+//go:generate msgp
 type HexBytes []byte
 
 func init() {

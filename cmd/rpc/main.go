@@ -12,12 +12,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/google/uuid"
 	"math/big"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/chain"
 

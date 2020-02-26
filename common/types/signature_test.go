@@ -56,3 +56,37 @@ func TestBytesToSignature(t *testing.T) {
 		t.Fatal(sign.String(), sign1.String())
 	}
 }
+
+func TestNewSignature(t *testing.T) {
+	sign, err := NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sign.IsZero() {
+		t.Fatal()
+	}
+
+	i := sign.ToBigInt()
+	s := &Signature{}
+	if err = s.FromBigInt(i); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(&sign, s) {
+		t.Fatalf("%v,%v", &sign, s)
+	}
+}
+
+func TestSignature_Bytes(t *testing.T) {
+	sign, err := NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b2, _ := hex.DecodeString("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600")
+	b := sign.Bytes()
+	if !reflect.DeepEqual(b, b2) {
+		t.Fatalf("act: %v, exp: %v", b, b2)
+	}
+}

@@ -2,9 +2,10 @@ package contract
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"testing"
 )
 
 func TestAirdropRewords_GetTargetReceiver(t *testing.T) {

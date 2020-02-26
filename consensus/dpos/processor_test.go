@@ -1,10 +1,11 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/consensus"
 	"math"
 	"math/big"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/consensus"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"

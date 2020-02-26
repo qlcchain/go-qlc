@@ -3,6 +3,7 @@ package pov
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -214,7 +215,7 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovGlobalSt
 		newRs = types.NewPovRepState()
 	}
 
-	newRs.Status = types.PovStatusOnline
+	newRs.Status = statedb.PovStatusOnline
 	newRs.Height = height
 
 	err := sdb.SetRepState(block.GetAddress(), newRs)
@@ -302,7 +303,7 @@ func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types
 		return nil
 	}
 
-	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
+	repPrefix := statedb.PovCreateGlobalStateKey(statedb.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	if it == nil {
 		return nil
@@ -321,7 +322,7 @@ func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types
 			return nil
 		}
 
-		if rs.Status != types.PovStatusOnline {
+		if rs.Status != statedb.PovStatusOnline {
 			continue
 		}
 

@@ -1222,7 +1222,7 @@ func (bc *PovBlockChain) CalcPastMedianTime(prevHeader *types.PovHeader) uint32 
 	}
 
 	timestamps = timestamps[:numHeaders]
-	sort.Sort(types.TimeSorter(timestamps))
+	sort.Sort(TimeSorter(timestamps))
 
 	medianTimestamp := timestamps[numHeaders/2]
 

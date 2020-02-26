@@ -605,12 +605,12 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	if len(blocks) == 0 {
 		return nil
 	}
-	if ss.netService.node.cfg.PerformanceEnabled {
-		for _, b := range blocks {
-			hash := b.GetHash()
-			ss.netService.msgService.addPerformanceTime(hash)
-		}
-	}
+	//if ss.netService.node.cfg.PerformanceEnabled {
+	//	for _, b := range blocks {
+	//		hash := b.GetHash()
+	//		ss.netService.msgService.addPerformanceTime(hash)
+	//	}
+	//}
 
 	for i, b := range blocks {
 		ss.logger.Debugf("sync block acc[%s]-index[%d]-hash[%s]-prev[%s]", b.Address, i, b.GetHash(), b.Previous)
@@ -671,12 +671,12 @@ func (ss *ServiceSync) onBulkPushBlock(message *Message) error {
 	}
 	blocks := blkPacket.Blocks
 
-	if ss.netService.node.cfg.PerformanceEnabled {
-		for _, b := range blocks {
-			hash := b.GetHash()
-			ss.netService.msgService.addPerformanceTime(hash)
-		}
-	}
+	//if ss.netService.node.cfg.PerformanceEnabled {
+	//	for _, b := range blocks {
+	//		hash := b.GetHash()
+	//		ss.netService.msgService.addPerformanceTime(hash)
+	//	}
+	//}
 	ss.netService.msgEvent.Publish(topic.EventSyncBlock, blocks)
 	return nil
 }

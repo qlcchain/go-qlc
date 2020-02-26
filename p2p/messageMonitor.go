@@ -287,15 +287,6 @@ func (ms *MessageService) onMessageResponse(message *Message) {
 }
 
 func (ms *MessageService) onPublishReq(message *Message) {
-	if ms.netService.node.cfg.PerformanceEnabled {
-		blk, err := protos.PublishBlockFromProto(message.Data())
-		if err != nil {
-			ms.netService.node.logger.Error(err)
-			return
-		}
-		hash := blk.Blk.GetHash()
-		ms.addPerformanceTime(hash)
-	}
 	p, err := protos.PublishBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
@@ -305,18 +296,6 @@ func (ms *MessageService) onPublishReq(message *Message) {
 }
 
 func (ms *MessageService) onConfirmReq(message *Message) {
-	if ms.netService.node.cfg.PerformanceEnabled {
-		blk, err := protos.ConfirmReqBlockFromProto(message.Data())
-		if err != nil {
-			ms.netService.node.logger.Error(err)
-			return
-		}
-
-		for _, b := range blk.Blk {
-			hash := b.GetHash()
-			ms.addPerformanceTime(hash)
-		}
-	}
 	r, err := protos.ConfirmReqBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Error(err)
@@ -326,17 +305,6 @@ func (ms *MessageService) onConfirmReq(message *Message) {
 }
 
 func (ms *MessageService) onConfirmAck(message *Message) {
-	if ms.netService.node.cfg.PerformanceEnabled {
-		ack, err := protos.ConfirmAckBlockFromProto(message.Data())
-		if err != nil {
-			ms.netService.node.logger.Error(err)
-			return
-		}
-
-		for _, h := range ack.Hash {
-			ms.addPerformanceTime(h)
-		}
-	}
 	ack, err := protos.ConfirmAckBlockFromProto(message.Data())
 	if err != nil {
 		ms.netService.node.logger.Info(err)
@@ -512,23 +480,5 @@ func marshalMessage(messageName MessageType, value interface{}) ([]byte, error) 
 		return data, nil
 	default:
 		return nil, errors.New("unKnown Message Type")
-	}
-}
-
-func (ms *MessageService) addPerformanceTime(hash types.Hash) {
-	if exit, err := ms.ledger.IsPerformanceTimeExist(hash); !exit && err == nil {
-		if b, err := ms.ledger.HasStateBlock(hash); !b && err == nil {
-			t := &types.PerformanceTime{
-				Hash: hash,
-				T0:   time.Now().UnixNano(),
-				T1:   0,
-				T2:   0,
-				T3:   0,
-			}
-			err = ms.ledger.AddOrUpdatePerformance(t)
-			if err != nil {
-				ms.netService.node.logger.Error("error when run AddOrUpdatePerformance in onConfirmAck func")
-			}
-		}
 	}
 }

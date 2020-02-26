@@ -4,7 +4,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/crypto/ed25519"
 )
 
 var validAddresses = []string{
@@ -99,5 +102,138 @@ func TestAddress_ToHash(t *testing.T) {
 
 	if addr != addr2 {
 		t.Fatal("addr!=addr2")
+	}
+}
+
+func TestIsChainContractAddress(t *testing.T) {
+	type args struct {
+		address Address
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				address: RewardsAddress,
+			},
+			want: true,
+		}, {
+			name: "ok",
+			args: args{
+				address: Address{},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsChainContractAddress(tt.args.address); got != tt.want {
+				t.Errorf("IsChainContractAddress() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsContractAddress(t *testing.T) {
+	type args struct {
+		address Address
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				address: RewardsAddress,
+			},
+			want: true,
+		}, {
+			name: "ok",
+			args: args{
+				address: Address{},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsContractAddress(tt.args.address); got != tt.want {
+				t.Errorf("IsContractAddress() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsRewardContractAddress(t *testing.T) {
+	type args struct {
+		address Address
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "fail",
+			args: args{
+				address: Address{},
+			},
+			want: false,
+		}, {
+			name: "ok",
+			args: args{
+				address: MinerAddress,
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsRewardContractAddress(tt.args.address); got != tt.want {
+				t.Errorf("IsRewardContractAddress() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGenerateAddress(t *testing.T) {
+	if address, key, err := GenerateAddress(); err != nil {
+		t.Fatal(err)
+	} else {
+		privKey := hex.EncodeToString(key)
+		pub, _ := KeypairFromPrivateKey(privKey)
+		if address != PubToAddress(pub) {
+			t.Fatalf("exp: %s,act: %s", address, pub)
+		}
+	}
+}
+
+func TestAddress_Serialize(t *testing.T) {
+	address, priv, _ := GenerateAddress()
+	if address.IsZero() {
+		t.Fatal()
+	}
+	if data, err := address.Serialize(); err != nil {
+		t.Fatal(err)
+	} else {
+		a2 := &Address{}
+		if err := a2.Deserialize(data); err != nil {
+			t.Fatal(err)
+		} else {
+			if reflect.DeepEqual(&address, a2) {
+				data := []byte("test")
+				sig := ed25519.Sign(priv, data[:])
+				if verify := address.Verify(data, sig[:]); !verify {
+					t.Fatal()
+				}
+			} else {
+				t.Fatalf("exp: %v, act: %v", &address, a2)
+			}
+		}
 	}
 }

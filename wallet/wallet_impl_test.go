@@ -10,7 +10,6 @@ package wallet
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,6 +17,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/storage"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

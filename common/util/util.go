@@ -16,8 +16,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"golang.org/x/crypto/blake2b"
 )
 
 func ReverseBytes(str []byte) (result []byte) {
@@ -35,35 +33,35 @@ func HexToBytes(s string) []byte {
 	return bytes
 }
 
-func Hex32ToBytes(s string) [32]byte {
-	var res [32]byte
-	bytes := HexToBytes(s)
-	copy(res[:], bytes)
-	return res
-}
+//func Hex32ToBytes(s string) [32]byte {
+//	var res [32]byte
+//	bytes := HexToBytes(s)
+//	copy(res[:], bytes)
+//	return res
+//}
+//
+//func Hex64ToBytes(s string) [64]byte {
+//	var res [64]byte
+//	bytes := HexToBytes(s)
+//	copy(res[:], bytes)
+//	return res
+//}
+//
+//func Hash256(data ...[]byte) []byte {
+//	d, _ := blake2b.New256(nil)
+//	for _, item := range data {
+//		d.Write(item)
+//	}
+//	return d.Sum(nil)
+//}
 
-func Hex64ToBytes(s string) [64]byte {
-	var res [64]byte
-	bytes := HexToBytes(s)
-	copy(res[:], bytes)
-	return res
-}
-
-func Hash256(data ...[]byte) []byte {
-	d, _ := blake2b.New256(nil)
-	for _, item := range data {
-		d.Write(item)
-	}
-	return d.Sum(nil)
-}
-
-func Hash(size int, data ...[]byte) []byte {
-	d, _ := blake2b.New(size, nil)
-	for _, item := range data {
-		d.Write(item)
-	}
-	return d.Sum(nil)
-}
+//func Hash(size int, data ...[]byte) []byte {
+//	d, _ := blake2b.New(size, nil)
+//	for _, item := range data {
+//		d.Write(item)
+//	}
+//	return d.Sum(nil)
+//}
 
 // TrimQuotes trim quotes of string if quotes exist
 func TrimQuotes(s string) string {
@@ -141,45 +139,45 @@ var (
 )
 
 // ToWordSize returns the ceiled word size required for memory expansion.
-func ToWordSize(size uint64) uint64 {
-	if size > MaxUint64-WordSize+1 {
-		return MaxUint64/WordSize + 1
-	}
+//func ToWordSize(size uint64) uint64 {
+//	if size > MaxUint64-WordSize+1 {
+//		return MaxUint64/WordSize + 1
+//	}
+//
+//	return (size + WordSize - 1) / WordSize
+//}
+//
+//// BigUint64 returns the integer casted to a uint64 and returns whether it
+//// overflowed in the process.
+//func BigUint64(v *big.Int) (uint64, bool) {
+//	return v.Uint64(), v.BitLen() > 64
+//}
 
-	return (size + WordSize - 1) / WordSize
-}
-
-// BigUint64 returns the integer casted to a uint64 and returns whether it
-// overflowed in the process.
-func BigUint64(v *big.Int) (uint64, bool) {
-	return v.Uint64(), v.BitLen() > 64
-}
-
-func BytesToString(data []byte) string {
-	for i, b := range data {
-		if b == 0 {
-			return string(data[:i])
-		}
-	}
-	return string(data)
-}
-
-func AllZero(b []byte) bool {
-	for _, byte := range b {
-		if byte != 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func JoinBytes(data ...[]byte) []byte {
-	newData := []byte{}
-	for _, d := range data {
-		newData = append(newData, d...)
-	}
-	return newData
-}
+//func BytesToString(data []byte) string {
+//	for i, b := range data {
+//		if b == 0 {
+//			return string(data[:i])
+//		}
+//	}
+//	return string(data)
+//}
+//
+//func AllZero(b []byte) bool {
+//	for _, byte := range b {
+//		if byte != 0 {
+//			return false
+//		}
+//	}
+//	return true
+//}
+//
+//func JoinBytes(data ...[]byte) []byte {
+//	newData := []byte{}
+//	for _, d := range data {
+//		newData = append(newData, d...)
+//	}
+//	return newData
+//}
 
 func RandomFixedString(length int) string {
 	if length == 0 {

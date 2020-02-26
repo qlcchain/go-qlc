@@ -1,4 +1,11 @@
-package types
+/*
+ * Copyright (c) 2019 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
+package pov
 
 // timeSorter implements sort.Interface to allow a slice of timestamps to
 // be sorted.

@@ -1,4 +1,4 @@
-// +build mainnet
+// +build !testnet
 
 package common
 
@@ -35,4 +35,14 @@ func TestGenesisPovBlock1(t *testing.T) {
 	if powInt.Cmp(algoInt) > 0 {
 		t.Fatal("invalid main net genesis pov pow hash", powHash.String())
 	}
+}
+
+func TestGenesisPovBlock(t *testing.T) {
+	blk := GenesisPovBlock()
+	if b := IsGenesisPovBlock(&blk); !b {
+		t.Fatal()
+	}
+
+	vs, values := GenesisPovStateKVs()
+	t.Log(vs, values)
 }

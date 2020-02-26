@@ -8,9 +8,10 @@
 package chain
 
 import (
-	"github.com/google/uuid"
 	"path/filepath"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/config"

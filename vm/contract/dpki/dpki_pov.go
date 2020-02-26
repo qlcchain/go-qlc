@@ -15,7 +15,7 @@ const (
 )
 
 func PovSetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *types.PovPublishState) error {
-	trieKey := types.PovCreateContractLocalStateKey(PovContractStatePrefixPKDPS, rawKey)
+	trieKey := statedb.PovCreateContractLocalStateKey(PovContractStatePrefixPKDPS, rawKey)
 
 	val, err := ps.Serialize()
 	if err != nil {
@@ -26,7 +26,7 @@ func PovSetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *typ
 }
 
 func PovGetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte) (*types.PovPublishState, error) {
-	trieKey := types.PovCreateContractLocalStateKey(PovContractStatePrefixPKDPS, rawKey)
+	trieKey := statedb.PovCreateContractLocalStateKey(PovContractStatePrefixPKDPS, rawKey)
 
 	valBytes, err := csdb.GetValue(trieKey)
 	if err != nil {
@@ -46,7 +46,7 @@ func PovGetPublishState(csdb *statedb.PovContractStateDB, rawKey []byte) (*types
 }
 
 func PovSetVerifierState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *types.PovVerifierState) error {
-	trieKey := types.PovCreateContractLocalStateKey(PovContractStatePrefixPKDVS, rawKey)
+	trieKey := statedb.PovCreateContractLocalStateKey(PovContractStatePrefixPKDVS, rawKey)
 
 	val, err := ps.Serialize()
 	if err != nil {
@@ -57,7 +57,7 @@ func PovSetVerifierState(csdb *statedb.PovContractStateDB, rawKey []byte, ps *ty
 }
 
 func PovGetVerifierState(csdb *statedb.PovContractStateDB, rawKey []byte) (*types.PovVerifierState, error) {
-	trieKey := types.PovCreateContractLocalStateKey(PovContractStatePrefixPKDVS, rawKey)
+	trieKey := statedb.PovCreateContractLocalStateKey(PovContractStatePrefixPKDVS, rawKey)
 
 	valBytes, err := csdb.GetValue(trieKey)
 	if err != nil {

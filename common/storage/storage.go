@@ -83,7 +83,7 @@ const (
 	// Trie key space should be different
 	KeyPrefixTrieVMStorage = 100 // vm_store.go, idPrefixStorage
 	KeyPrefixTrie          = 101 // 101 is used for trie intermediate node, trie.go, idPrefixTrie
-	//KeyPrefixTriePovState  = 102
+	KeyPrefixTriePovState  = 102
 )
 
 func GetKeyOfParts(t KeyPrefix, partList ...interface{}) ([]byte, error) {

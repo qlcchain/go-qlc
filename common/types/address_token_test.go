@@ -7,11 +7,9 @@
 
 package types
 
-import (
-	"testing"
-)
+import "testing"
 
-func TestPerformanceTime_String(t *testing.T) {
-	p := NewPerformanceTime()
-	t.Log(p.String())
+func TestAddressToken_String(t *testing.T) {
+	at := &AddressToken{}
+	t.Log(at.String())
 }

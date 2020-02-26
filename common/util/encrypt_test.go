@@ -63,3 +63,18 @@ func TestDecryptSeed(t *testing.T) {
 	}
 	t.Logf("DecryptBytes cost %s", time.Since(start))
 }
+
+func TestEncrypt(t *testing.T) {
+	raw := hex.EncodeToString([]byte("hahah"))
+	if encrypt, err := Encrypt(raw, passphrase); err != nil {
+		t.Fatal(err)
+	} else {
+		if decrypt, err := Decrypt(encrypt, passphrase); err != nil {
+			t.Fatal(err)
+		} else {
+			if decrypt != raw {
+				t.Fatalf("exp:%s,act: %s", raw, decrypt)
+			}
+		}
+	}
+}

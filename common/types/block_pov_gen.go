@@ -3199,6 +3199,12 @@ func (z *PovTD) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "X11")
 				return
 			}
+		case "hybrid":
+			err = dc.ReadExtension(&z.Hybrid)
+			if err != nil {
+				err = msgp.WrapError(err, "Hybrid")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -3212,9 +3218,9 @@ func (z *PovTD) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *PovTD) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 5
 	// write "c"
-	err = en.Append(0x84, 0xa1, 0x63)
+	err = en.Append(0x85, 0xa1, 0x63)
 	if err != nil {
 		return
 	}
@@ -3253,15 +3259,25 @@ func (z *PovTD) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "X11")
 		return
 	}
+	// write "hybrid"
+	err = en.Append(0xa6, 0x68, 0x79, 0x62, 0x72, 0x69, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Hybrid)
+	if err != nil {
+		err = msgp.WrapError(err, "Hybrid")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *PovTD) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 5
 	// string "c"
-	o = append(o, 0x84, 0xa1, 0x63)
+	o = append(o, 0x85, 0xa1, 0x63)
 	o, err = msgp.AppendExtension(o, &z.Chain)
 	if err != nil {
 		err = msgp.WrapError(err, "Chain")
@@ -3286,6 +3302,13 @@ func (z *PovTD) MarshalMsg(b []byte) (o []byte, err error) {
 	o, err = msgp.AppendExtension(o, &z.X11)
 	if err != nil {
 		err = msgp.WrapError(err, "X11")
+		return
+	}
+	// string "hybrid"
+	o = append(o, 0xa6, 0x68, 0x79, 0x62, 0x72, 0x69, 0x64)
+	o, err = msgp.AppendExtension(o, &z.Hybrid)
+	if err != nil {
+		err = msgp.WrapError(err, "Hybrid")
 		return
 	}
 	return
@@ -3333,6 +3356,12 @@ func (z *PovTD) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "X11")
 				return
 			}
+		case "hybrid":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Hybrid)
+			if err != nil {
+				err = msgp.WrapError(err, "Hybrid")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -3347,7 +3376,7 @@ func (z *PovTD) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PovTD) Msgsize() (s int) {
-	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Chain.Len() + 4 + msgp.ExtensionPrefixSize + z.Sha256d.Len() + 4 + msgp.ExtensionPrefixSize + z.Scrypt.Len() + 4 + msgp.ExtensionPrefixSize + z.X11.Len()
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Chain.Len() + 4 + msgp.ExtensionPrefixSize + z.Sha256d.Len() + 4 + msgp.ExtensionPrefixSize + z.Scrypt.Len() + 4 + msgp.ExtensionPrefixSize + z.X11.Len() + 7 + msgp.ExtensionPrefixSize + z.Hybrid.Len()
 	return
 }
 

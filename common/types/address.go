@@ -252,7 +252,7 @@ func (addr Address) String() string {
 
 // Verify reports whether the given signature is valid for the given data.
 func (addr Address) Verify(data []byte, signature []byte) bool {
-	return ed25519.Verify(ed25519.PublicKey(addr[:]), data, signature)
+	return ed25519.Verify(addr[:], data, signature)
 }
 
 //ExtensionType implements Extension.ExtensionType interface
@@ -298,4 +298,12 @@ func (addr Address) MarshalText() (text []byte, err error) {
 
 func (addr *Address) ToHash() Hash {
 	return Hash(*addr)
+}
+
+func (addr Address) Serialize() ([]byte, error) {
+	return addr[:], nil
+}
+
+func (addr *Address) Deserialize(text []byte) error {
+	return addr.UnmarshalBinary(text)
 }
