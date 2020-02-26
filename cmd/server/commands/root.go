@@ -64,9 +64,7 @@ var (
 	seed         cmdutil.Flag
 	cfgPath      cmdutil.Flag
 	isProfile    cmdutil.Flag
-	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
-	testMode     cmdutil.Flag
 	genesisSeed  cmdutil.Flag
 	//chainContext   *context.ChainContext
 	maxAccountSize = 100
@@ -138,7 +136,12 @@ func start() error {
 		cfg, _ := cm.Config()
 		if genesisSeedP != "" {
 			cfg.Genesis.GenesisBlocks = []*config.GenesisInfo{}
-			generateGenesisBlock(genesisSeedP, cfg)
+			if err := generateChainTokenGenesisBlock(genesisSeedP, cfg); err != nil {
+				return err
+			}
+			if err := generateGasTokenGenesisBlock(genesisSeedP, cfg); err != nil {
+				return err
+			}
 			_ = cm.Save()
 		}
 		loadGenesisAccount(cfg)
@@ -348,24 +351,10 @@ func run() {
 		Value: false,
 	}
 
-	noBootstrap = cmdutil.Flag{
-		Name:  "nobootstrap",
-		Must:  false,
-		Usage: "disable p2p bootstrap node",
-		Value: false,
-	}
-
 	configParams = cmdutil.Flag{
 		Name:  "configParam",
 		Must:  false,
 		Usage: "parameter set that needs to be changed",
-		Value: "",
-	}
-
-	testMode = cmdutil.Flag{
-		Name:  "testMode",
-		Must:  false,
-		Usage: "testing mode",
 		Value: "",
 	}
 
@@ -380,7 +369,7 @@ func run() {
 		Name: "run",
 		Help: "start qlc server",
 		Func: func(c *ishell.Context) {
-			args := []cmdutil.Flag{seed, cfgPath, isProfile, noBootstrap}
+			args := []cmdutil.Flag{seed, cfgPath, isProfile}
 			if cmdutil.HelpText(c, args) {
 				return
 			}
@@ -406,17 +395,15 @@ func run() {
 	shell.AddCmd(s)
 }
 
-func generateGenesisBlock(seedString string, cfg *config.Config) {
-	genesisInfos := &config.GenesisInfo{
+func generateChainTokenGenesisBlock(seedString string, cfg *config.Config) error {
+	chainTokenInfos := &config.GenesisInfo{
 		ChainToken: true,
-		GasToken:   true,
+		GasToken:   false,
 	}
 	genesisTime := time.Unix(1573208071, 0)
 	bytes, _ := hex.DecodeString(seedString)
 	seed, _ := types.BytesToSeed(bytes)
 	account, _ := seed.Account(0)
-	log.Root.Infof("seed %s", seed.String())
-	log.Root.Infof("account: %s", account.String())
 	tokenName := "QLC"
 	tokenSymbol := "QLC"
 	decimals := uint8(8)
@@ -425,7 +412,7 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 	var totalSupply = big.NewInt(6e16)
 	mintageData, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenHash, tokenName, tokenSymbol, totalSupply, decimals, address, "")
 	if err != nil {
-		log.Root.Error(err)
+		return err
 	}
 	send := types.StateBlock{
 		Type:           types.ContractSend,
@@ -446,13 +433,13 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 	send.Work = worker.NewWork()
 	h1 := send.GetHash()
 	send.Signature = account.Sign(h1)
-	genesisInfos.Mintage = send
+	chainTokenInfos.Mintage = send
 
 	genesisData, err := cabi.MintageABI.PackVariable(cabi.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
 		decimals, address, big.NewInt(0), int64(0), address, "")
 
 	if err != nil {
-		log.Root.Error(err)
+		return err
 	}
 
 	receive := types.StateBlock{
@@ -475,22 +462,99 @@ func generateGenesisBlock(seedString string, cfg *config.Config) {
 	receive.Work = worker2.NewWork()
 	h2 := receive.GetHash()
 	receive.Signature = account.Sign(h2)
-	//log.Root.VInfo(util.ToIndentString(receive))
-	//log.Root.VInfo(h2.String())
-	genesisInfos.Genesis = receive
-	cfg.Genesis.GenesisBlocks = append(cfg.Genesis.GenesisBlocks, genesisInfos)
+	chainTokenInfos.Genesis = receive
+	cfg.Genesis.GenesisBlocks = append(cfg.Genesis.GenesisBlocks, chainTokenInfos)
+
+	return nil
+}
+
+func generateGasTokenGenesisBlock(seedString string, cfg *config.Config) error {
+	genesisGasTokenInfos := &config.GenesisInfo{
+		ChainToken: false,
+		GasToken:   true,
+	}
+	genesisTime := time.Unix(1573208071, 0)
+	bytes, _ := hex.DecodeString(seedString)
+	seed, _ := types.BytesToSeed(bytes)
+	repAccount, _ := seed.Account(0)
+	account, _ := seed.Account(1)
+	tokenName := "QGAS"
+	tokenSymbol := "QGAS"
+	decimals := uint8(8)
+	repAddress := repAccount.Address()
+	address := account.Address()
+	tokenHash := cabi.NewTokenHash(address, types.ZeroHash, tokenName)
+	var totalSupply = big.NewInt(1e16)
+	mintageData, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenHash, tokenName, tokenSymbol, totalSupply, decimals, address, "")
+	if err != nil {
+		return err
+	}
+	send := types.StateBlock{
+		Type:           types.ContractSend,
+		Address:        types.MintageAddress,
+		Link:           address.ToHash(),
+		Balance:        types.ZeroBalance,
+		Vote:           types.ZeroBalance,
+		Network:        types.ZeroBalance,
+		Storage:        types.ZeroBalance,
+		Oracle:         types.ZeroBalance,
+		Token:          tokenHash,
+		Data:           mintageData,
+		Representative: repAddress,
+		Timestamp:      genesisTime.Add(time.Second * 1).Unix(),
+	}
+	var w types.Work
+	worker, _ := types.NewWorker(w, send.Root())
+	send.Work = worker.NewWork()
+	h1 := send.GetHash()
+	send.Signature = account.Sign(h1)
+	genesisGasTokenInfos.Mintage = send
+
+	genesisData, err := cabi.MintageABI.PackVariable(cabi.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
+		decimals, address, big.NewInt(0), int64(0), address, "")
+
+	if err != nil {
+		return err
+	}
+
+	receive := types.StateBlock{
+		Type:           types.ContractReward,
+		Previous:       types.ZeroHash,
+		Address:        address,
+		Link:           h1,
+		Balance:        types.Balance{Int: totalSupply},
+		Vote:           types.ZeroBalance,
+		Network:        types.ZeroBalance,
+		Storage:        types.ZeroBalance,
+		Oracle:         types.ZeroBalance,
+		Token:          tokenHash,
+		Data:           genesisData,
+		Representative: repAddress,
+		Timestamp:      genesisTime.Add(time.Second * 10).Unix(),
+	}
+	//var w types.Work
+	worker2, _ := types.NewWorker(w, receive.Root())
+	receive.Work = worker2.NewWork()
+	h2 := receive.GetHash()
+	receive.Signature = account.Sign(h2)
+	genesisGasTokenInfos.Genesis = receive
+	cfg.Genesis.GenesisBlocks = append(cfg.Genesis.GenesisBlocks, genesisGasTokenInfos)
+
+	return nil
 }
 
 func loadGenesisAccount(cfg *config.Config) {
-	if len(common.GenesisInfos) == 0 {
-		for _, v := range cfg.Genesis.GenesisBlocks {
-			genesisInfo := &common.GenesisInfo{
-				ChainToken:          v.ChainToken,
-				GasToken:            v.GasToken,
-				GenesisMintageBlock: v.Mintage,
-				GenesisBlock:        v.Genesis,
-			}
-			common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	if len(common.GenesisInfos) > 0 {
+		common.GenesisInfos = common.GenesisInfos[:0]
+	}
+
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: v.Mintage,
+			GenesisBlock:        v.Genesis,
 		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}
 }
