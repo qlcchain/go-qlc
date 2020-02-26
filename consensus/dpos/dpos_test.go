@@ -1,8 +1,16 @@
 package dpos
 
 import (
-	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"math/big"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -22,14 +30,6 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"io/ioutil"
-	"math/big"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"strconv"
-	"testing"
-	"time"
 )
 
 type Node struct {
@@ -180,16 +180,12 @@ func (n *Node) stopServices() {
 
 func (n *Node) startLedgerService() {
 	l := n.ledger
-	var mintageBlock, genesisBlock types.StateBlock
-
 	for _, v := range n.config.Genesis.GenesisBlocks {
-		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
-		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
 		genesisInfo := &common.GenesisInfo{
 			ChainToken:          v.ChainToken,
 			GasToken:            v.GasToken,
-			GenesisMintageBlock: mintageBlock,
-			GenesisBlock:        genesisBlock,
+			GenesisMintageBlock: v.Mintage,
+			GenesisBlock:        v.Genesis,
 		}
 		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}

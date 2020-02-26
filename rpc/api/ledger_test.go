@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,15 +28,12 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
 	cfg, _ := cm.Load()
-	var mintageBlock, genesisBlock types.StateBlock
 	for _, v := range cfg.Genesis.GenesisBlocks {
-		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
-		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
 		genesisInfo := &common.GenesisInfo{
 			ChainToken:          v.ChainToken,
 			GasToken:            v.GasToken,
-			GenesisMintageBlock: mintageBlock,
-			GenesisBlock:        genesisBlock,
+			GenesisMintageBlock: v.Mintage,
+			GenesisBlock:        v.Genesis,
 		}
 		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}

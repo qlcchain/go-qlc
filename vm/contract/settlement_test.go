@@ -151,15 +151,12 @@ func setupSettlementTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	var mintageBlock, genesisBlock types.StateBlock
 	for _, v := range c.Genesis.GenesisBlocks {
-		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
-		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
 		genesisInfo := &common.GenesisInfo{
 			ChainToken:          v.ChainToken,
 			GasToken:            v.GasToken,
-			GenesisMintageBlock: mintageBlock,
-			GenesisBlock:        genesisBlock,
+			GenesisMintageBlock: v.Mintage,
+			GenesisBlock:        v.Genesis,
 		}
 		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}

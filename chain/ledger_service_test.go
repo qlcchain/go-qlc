@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/config"
@@ -20,7 +22,7 @@ import (
 func TestNewLedgerService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	cm := config.NewCfgManager(dir)
-	_, err := cm.Load()
+	cfg, err := cm.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,6 +30,15 @@ func TestNewLedgerService(t *testing.T) {
 		_ = os.RemoveAll(dir)
 	}()
 	ls := NewLedgerService(cm.ConfigFile)
+	for _, v := range cfg.Genesis.GenesisBlocks {
+		genesisInfo := &common.GenesisInfo{
+			ChainToken:          v.ChainToken,
+			GasToken:            v.GasToken,
+			GenesisMintageBlock: v.Mintage,
+			GenesisBlock:        v.Genesis,
+		}
+		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
+	}
 	err = ls.Init()
 	if err != nil {
 		t.Fatal(err)

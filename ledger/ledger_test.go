@@ -1,15 +1,12 @@
 package ledger
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
-
-	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/google/uuid"
 
@@ -27,15 +24,12 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	cm := config.NewCfgManager(dir)
 	cfg, _ := cm.Load()
 	l := NewLedger(cm.ConfigFile)
-	var mintageBlock, genesisBlock types.StateBlock
 	for _, v := range cfg.Genesis.GenesisBlocks {
-		_ = json.Unmarshal([]byte(v.Genesis), &genesisBlock)
-		_ = json.Unmarshal([]byte(v.Mintage), &mintageBlock)
 		genesisInfo := &common.GenesisInfo{
 			ChainToken:          v.ChainToken,
 			GasToken:            v.GasToken,
-			GenesisMintageBlock: mintageBlock,
-			GenesisBlock:        genesisBlock,
+			GenesisMintageBlock: v.Mintage,
+			GenesisBlock:        v.Genesis,
 		}
 		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}
