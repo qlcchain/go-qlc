@@ -8121,27 +8121,16 @@ func TestSummaryRecord_DoCalculate(t *testing.T) {
 func TestNewSummaryResult(t *testing.T) {
 	r := NewSummaryResult()
 
-	for i := 0; i < 10; i++ {
-		r.IncreasePartyASuccess()
-		r.IncreaseSuccess("WeChat", true)
-		r.IncreaseSuccess("Slack", false)
-	}
-	for i := 0; i < 2; i++ {
-		r.IncreasePartyAFail()
-		r.IncreaseFail("WeChat", true)
-		r.IncreaseFail("Slack", true)
-	}
-
 	for i := 0; i < 20; i++ {
-		r.IncreasePartyBSuccess()
-		r.IncreaseSuccess("WeChat", false)
-		r.IncreaseSuccess("Slack", true)
+		r.UpdatePartyState("WeChat", true, i%3 == 0)
+		r.UpdatePartyState("WeChat", false, i%2 == 0)
+		r.UpdatePartyState("Slack", true, i%2 == 0)
+		r.UpdatePartyState("Slack", false, i%3 == 0)
 	}
 
-	for i := 0; i < 3; i++ {
-		r.IncreasePartyBFail()
-		r.IncreaseFail("WeChat", false)
-		r.IncreaseFail("Slack", true)
+	for i := 0; i < 5; i++ {
+		r.UpdateGlobalState("WeChat", true, i%2 == 0)
+		r.UpdateGlobalState("Slack", false, i%2 == 0)
 	}
 
 	r.DoCalculate()

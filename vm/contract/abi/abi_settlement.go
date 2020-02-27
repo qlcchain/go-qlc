@@ -1117,61 +1117,96 @@ func (z *SummaryRecord) String() string {
 }
 
 type CompareRecord struct {
-	PartyA *SummaryRecord `json:"partyA"`
-	PartyB *SummaryRecord `json:"partyB"`
+	PartyA   *SummaryRecord `json:"partyA"`
+	PartyB   *SummaryRecord `json:"partyB"`
+	Orphan   *SummaryRecord `json:"orphan"`
+	Matching *SummaryRecord `json:"matching"`
+}
+
+func newCompareRecord() *CompareRecord {
+	return &CompareRecord{
+		PartyA:   &SummaryRecord{},
+		PartyB:   &SummaryRecord{},
+		Orphan:   &SummaryRecord{},
+		Matching: &SummaryRecord{},
+	}
 }
 
 type SummaryResult struct {
 	Contract *ContractParam            `json:"contract"`
 	Records  map[string]*CompareRecord `json:"records"`
-	PartyA   *SummaryRecord            `json:"partyA"`
-	PartyB   *SummaryRecord            `json:"partyB"`
+	Total    *CompareRecord            `json:"total"`
 }
 
 func NewSummaryResult() *SummaryResult {
 	return &SummaryResult{
-		Records: make(map[string]*CompareRecord, 0),
-		PartyA:  &SummaryRecord{},
-		PartyB:  &SummaryRecord{},
+		Records: make(map[string]*CompareRecord),
+		Total:   newCompareRecord(),
 	}
 }
 
-func (z *SummaryResult) IncreaseSuccess(name string, isPartyA bool) {
+func (z *SummaryResult) UpdatePartyState(name string, isPartyA, state bool) {
+	if name == "" {
+		return
+	}
 	if _, ok := z.Records[name]; !ok {
-		z.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
+		z.Records[name] = newCompareRecord()
 	}
 
 	if isPartyA {
-		z.Records[name].PartyA.Success++
+		if state {
+			z.Total.PartyA.Success++
+			z.Records[name].PartyA.Success++
+		} else {
+			z.Total.PartyA.Fail++
+			z.Records[name].PartyA.Fail++
+		}
 	} else {
-		z.Records[name].PartyB.Success++
+		if state {
+			z.Total.PartyB.Success++
+			z.Records[name].PartyB.Success++
+		} else {
+			z.Total.PartyB.Fail++
+			z.Records[name].PartyB.Fail++
+		}
 	}
 }
 
-func (z *SummaryResult) IncreasePartyASuccess() {
-	z.PartyA.Success++
-}
-
-func (z *SummaryResult) IncreasePartyAFail() {
-	z.PartyA.Fail++
-}
-func (z *SummaryResult) IncreasePartyBSuccess() {
-	z.PartyB.Success++
-}
-
-func (z *SummaryResult) IncreasePartyBFail() {
-	z.PartyB.Fail++
-}
-
-func (z *SummaryResult) IncreaseFail(name string, isPartyA bool) {
-	if _, ok := z.Records[name]; !ok {
-		z.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
+func (z *SummaryResult) UpdateGlobalState(name string, isMatching, state bool) {
+	flag := name != ""
+	if flag {
+		if _, ok := z.Records[name]; !ok {
+			z.Records[name] = newCompareRecord()
+		}
 	}
 
-	if isPartyA {
-		z.Records[name].PartyA.Fail++
+	if isMatching {
+		if state {
+			z.Total.Matching.Success++
+		} else {
+			z.Total.Matching.Fail++
+		}
+		if flag {
+			if state {
+				z.Records[name].Matching.Success++
+			} else {
+				z.Records[name].Matching.Fail++
+			}
+		}
 	} else {
-		z.Records[name].PartyB.Fail++
+		if state {
+			z.Total.Orphan.Success++
+		} else {
+			z.Total.Orphan.Fail++
+		}
+
+		if flag {
+			if state {
+				z.Records[name].Orphan.Success++
+			} else {
+				z.Records[name].Orphan.Fail++
+			}
+		}
 	}
 }
 
@@ -1179,9 +1214,13 @@ func (z *SummaryResult) DoCalculate() {
 	for k := range z.Records {
 		z.Records[k].PartyA.DoCalculate()
 		z.Records[k].PartyB.DoCalculate()
+		z.Records[k].Orphan.DoCalculate()
+		z.Records[k].Matching.DoCalculate()
 	}
-	z.PartyA.DoCalculate()
-	z.PartyB.DoCalculate()
+	z.Total.PartyA.DoCalculate()
+	z.Total.PartyB.DoCalculate()
+	z.Total.Orphan.DoCalculate()
+	z.Total.Matching.DoCalculate()
 }
 
 func (z *SummaryResult) String() string {
@@ -1207,28 +1246,31 @@ func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end in
 	partyB := c.PartyB.Address
 
 	for _, status := range records {
-		if s, b := status.State(&partyA); b {
-			result.IncreasePartyASuccess()
-			if s != "" {
-				result.IncreaseSuccess(s, true)
-			}
-		} else {
-			result.IncreasePartyAFail()
-			if s != "" {
-				result.IncreaseFail(s, true)
-			}
-		}
-		if s, b := status.State(&partyB); b {
-			result.IncreasePartyBSuccess()
-			if s != "" {
-				result.IncreaseSuccess(s, false)
-			}
-		} else {
-			result.IncreasePartyBFail()
-			if s != "" {
-				result.IncreaseFail(s, false)
+		_, sender, _, _ := status.ExtractID()
+
+		settleState := false
+		switch status.Status {
+		case SettlementStatusSuccess:
+			settleState = true
+		case SettlementStatusStage1:
+			// if only one party update load data, calculate actual status
+			if len(status.Params) == 1 {
+				for _, v := range status.Params {
+					if len(v) > 0 {
+						settleState = v[0].Status()
+					}
+				}
 			}
 		}
+
+		result.UpdateGlobalState(sender, len(status.Params) > 1, settleState)
+		//party A
+		s1, b1 := status.State(&partyA)
+		result.UpdatePartyState(s1, true, b1)
+
+		//party B
+		s2, b2 := status.State(&partyB)
+		result.UpdatePartyState(s2, false, b2)
 	}
 
 	result.DoCalculate()

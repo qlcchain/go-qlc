@@ -634,6 +634,42 @@ func (z *CompareRecord) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
+		case "Orphan":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Orphan")
+					return
+				}
+				z.Orphan = nil
+			} else {
+				if z.Orphan == nil {
+					z.Orphan = new(SummaryRecord)
+				}
+				err = z.Orphan.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Orphan")
+					return
+				}
+			}
+		case "Matching":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Matching")
+					return
+				}
+				z.Matching = nil
+			} else {
+				if z.Matching == nil {
+					z.Matching = new(SummaryRecord)
+				}
+				err = z.Matching.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Matching")
+					return
+				}
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -647,9 +683,9 @@ func (z *CompareRecord) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *CompareRecord) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+	// map header, size 4
 	// write "PartyA"
-	err = en.Append(0x82, 0xa6, 0x50, 0x61, 0x72, 0x74, 0x79, 0x41)
+	err = en.Append(0x84, 0xa6, 0x50, 0x61, 0x72, 0x74, 0x79, 0x41)
 	if err != nil {
 		return
 	}
@@ -682,15 +718,49 @@ func (z *CompareRecord) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "Orphan"
+	err = en.Append(0xa6, 0x4f, 0x72, 0x70, 0x68, 0x61, 0x6e)
+	if err != nil {
+		return
+	}
+	if z.Orphan == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.Orphan.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Orphan")
+			return
+		}
+	}
+	// write "Matching"
+	err = en.Append(0xa8, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x69, 0x6e, 0x67)
+	if err != nil {
+		return
+	}
+	if z.Matching == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.Matching.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Matching")
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *CompareRecord) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 4
 	// string "PartyA"
-	o = append(o, 0x82, 0xa6, 0x50, 0x61, 0x72, 0x74, 0x79, 0x41)
+	o = append(o, 0x84, 0xa6, 0x50, 0x61, 0x72, 0x74, 0x79, 0x41)
 	if z.PartyA == nil {
 		o = msgp.AppendNil(o)
 	} else {
@@ -708,6 +778,28 @@ func (z *CompareRecord) MarshalMsg(b []byte) (o []byte, err error) {
 		o, err = z.PartyB.MarshalMsg(o)
 		if err != nil {
 			err = msgp.WrapError(err, "PartyB")
+			return
+		}
+	}
+	// string "Orphan"
+	o = append(o, 0xa6, 0x4f, 0x72, 0x70, 0x68, 0x61, 0x6e)
+	if z.Orphan == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.Orphan.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Orphan")
+			return
+		}
+	}
+	// string "Matching"
+	o = append(o, 0xa8, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x69, 0x6e, 0x67)
+	if z.Matching == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.Matching.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Matching")
 			return
 		}
 	}
@@ -766,6 +858,40 @@ func (z *CompareRecord) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
+		case "Orphan":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Orphan = nil
+			} else {
+				if z.Orphan == nil {
+					z.Orphan = new(SummaryRecord)
+				}
+				bts, err = z.Orphan.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Orphan")
+					return
+				}
+			}
+		case "Matching":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Matching = nil
+			} else {
+				if z.Matching == nil {
+					z.Matching = new(SummaryRecord)
+				}
+				bts, err = z.Matching.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Matching")
+					return
+				}
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -791,6 +917,18 @@ func (z *CompareRecord) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += z.PartyB.Msgsize()
+	}
+	s += 7
+	if z.Orphan == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Orphan.Msgsize()
+	}
+	s += 9
+	if z.Matching == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Matching.Msgsize()
 	}
 	return
 }
@@ -3457,39 +3595,21 @@ func (z *SummaryResult) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Records[za0001] = za0002
 			}
-		case "PartyA":
+		case "Total":
 			if dc.IsNil() {
 				err = dc.ReadNil()
 				if err != nil {
-					err = msgp.WrapError(err, "PartyA")
+					err = msgp.WrapError(err, "Total")
 					return
 				}
-				z.PartyA = nil
+				z.Total = nil
 			} else {
-				if z.PartyA == nil {
-					z.PartyA = new(SummaryRecord)
+				if z.Total == nil {
+					z.Total = new(CompareRecord)
 				}
-				err = z.PartyA.DecodeMsg(dc)
+				err = z.Total.DecodeMsg(dc)
 				if err != nil {
-					err = msgp.WrapError(err, "PartyA")
-					return
-				}
-			}
-		case "PartyB":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "PartyB")
-					return
-				}
-				z.PartyB = nil
-			} else {
-				if z.PartyB == nil {
-					z.PartyB = new(SummaryRecord)
-				}
-				err = z.PartyB.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "PartyB")
+					err = msgp.WrapError(err, "Total")
 					return
 				}
 			}
@@ -3506,9 +3626,9 @@ func (z *SummaryResult) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *SummaryResult) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 3
 	// write "Contract"
-	err = en.Append(0x84, 0xa8, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74)
+	err = en.Append(0x83, 0xa8, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74)
 	if err != nil {
 		return
 	}
@@ -3553,37 +3673,20 @@ func (z *SummaryResult) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 	}
-	// write "PartyA"
-	err = en.Append(0xa6, 0x50, 0x61, 0x72, 0x74, 0x79, 0x41)
+	// write "Total"
+	err = en.Append(0xa5, 0x54, 0x6f, 0x74, 0x61, 0x6c)
 	if err != nil {
 		return
 	}
-	if z.PartyA == nil {
+	if z.Total == nil {
 		err = en.WriteNil()
 		if err != nil {
 			return
 		}
 	} else {
-		err = z.PartyA.EncodeMsg(en)
+		err = z.Total.EncodeMsg(en)
 		if err != nil {
-			err = msgp.WrapError(err, "PartyA")
-			return
-		}
-	}
-	// write "PartyB"
-	err = en.Append(0xa6, 0x50, 0x61, 0x72, 0x74, 0x79, 0x42)
-	if err != nil {
-		return
-	}
-	if z.PartyB == nil {
-		err = en.WriteNil()
-		if err != nil {
-			return
-		}
-	} else {
-		err = z.PartyB.EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "PartyB")
+			err = msgp.WrapError(err, "Total")
 			return
 		}
 	}
@@ -3593,9 +3696,9 @@ func (z *SummaryResult) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *SummaryResult) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 3
 	// string "Contract"
-	o = append(o, 0x84, 0xa8, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74)
+	o = append(o, 0x83, 0xa8, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74)
 	if z.Contract == nil {
 		o = msgp.AppendNil(o)
 	} else {
@@ -3620,25 +3723,14 @@ func (z *SummaryResult) MarshalMsg(b []byte) (o []byte, err error) {
 			}
 		}
 	}
-	// string "PartyA"
-	o = append(o, 0xa6, 0x50, 0x61, 0x72, 0x74, 0x79, 0x41)
-	if z.PartyA == nil {
+	// string "Total"
+	o = append(o, 0xa5, 0x54, 0x6f, 0x74, 0x61, 0x6c)
+	if z.Total == nil {
 		o = msgp.AppendNil(o)
 	} else {
-		o, err = z.PartyA.MarshalMsg(o)
+		o, err = z.Total.MarshalMsg(o)
 		if err != nil {
-			err = msgp.WrapError(err, "PartyA")
-			return
-		}
-	}
-	// string "PartyB"
-	o = append(o, 0xa6, 0x50, 0x61, 0x72, 0x74, 0x79, 0x42)
-	if z.PartyB == nil {
-		o = msgp.AppendNil(o)
-	} else {
-		o, err = z.PartyB.MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "PartyB")
+			err = msgp.WrapError(err, "Total")
 			return
 		}
 	}
@@ -3721,37 +3813,20 @@ func (z *SummaryResult) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Records[za0001] = za0002
 			}
-		case "PartyA":
+		case "Total":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
 				if err != nil {
 					return
 				}
-				z.PartyA = nil
+				z.Total = nil
 			} else {
-				if z.PartyA == nil {
-					z.PartyA = new(SummaryRecord)
+				if z.Total == nil {
+					z.Total = new(CompareRecord)
 				}
-				bts, err = z.PartyA.UnmarshalMsg(bts)
+				bts, err = z.Total.UnmarshalMsg(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "PartyA")
-					return
-				}
-			}
-		case "PartyB":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.PartyB = nil
-			} else {
-				if z.PartyB == nil {
-					z.PartyB = new(SummaryRecord)
-				}
-				bts, err = z.PartyB.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "PartyB")
+					err = msgp.WrapError(err, "Total")
 					return
 				}
 			}
@@ -3787,17 +3862,11 @@ func (z *SummaryResult) Msgsize() (s int) {
 			}
 		}
 	}
-	s += 7
-	if z.PartyA == nil {
+	s += 6
+	if z.Total == nil {
 		s += msgp.NilSize
 	} else {
-		s += z.PartyA.Msgsize()
-	}
-	s += 7
-	if z.PartyB == nil {
-		s += msgp.NilSize
-	} else {
-		s += z.PartyB.Msgsize()
+		s += z.Total.Msgsize()
 	}
 	return
 }
