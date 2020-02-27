@@ -89,7 +89,7 @@ func (l *Ledger) AddAccountMeta(value *types.AccountMeta, c storage.Cache) error
 	if err != nil {
 		return err
 	}
-	return c.Put(k, value)
+	return c.Put(k, value.Clone())
 }
 
 func (l *Ledger) UpdateAccountMeta(value *types.AccountMeta, c storage.Cache) error {
@@ -97,7 +97,7 @@ func (l *Ledger) UpdateAccountMeta(value *types.AccountMeta, c storage.Cache) er
 	if err != nil {
 		return err
 	}
-	return c.Put(k, value)
+	return c.Put(k, value.Clone())
 }
 
 func (l *Ledger) DeleteAccountMeta(key types.Address, c storage.Cache) error {

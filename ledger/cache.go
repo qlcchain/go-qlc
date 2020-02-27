@@ -39,7 +39,7 @@ type MemoryCache struct {
 func NewMemoryCache(ledger *Ledger) *MemoryCache {
 	lc := &MemoryCache{
 		l:             ledger,
-		cacheCount:    5,
+		cacheCount:    6,
 		writeIndex:    1,
 		readIndex:     0,
 		caches:        make([]*Cache, 0),
@@ -53,9 +53,9 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 		logger:        log.NewLogger("ledger/dbcache"),
 	}
 	for i := 0; i < lc.cacheCount; i++ {
-		lc.caches = append(lc.caches, newCache())
+		lc.caches = append(lc.caches, newCache(i))
 	}
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 30; i++ {
 		lc.tempCaches = append(lc.tempCaches, newTempCache())
 	}
 	go lc.flushCache()
@@ -68,22 +68,27 @@ func (lc *MemoryCache) GetCache() *Cache {
 	if lc.needsFlush() {
 		lc.lock.Lock()
 		if lc.needsFlush() {
-			lc.logger.Debug("current write cache need flush: ", lc.writeIndex)
-			lc.writeIndex = (lc.writeIndex + 1) % lc.cacheCount // next write cache index, and must flush done
+			//lc.logger.Debug("current write cache need flush: ", lc.writeIndex)
+			newWriteIndex := (lc.writeIndex + 1) % lc.cacheCount // next write cache index
 			st := time.Now()
 			for {
-				if !lc.caches[lc.writeIndex].flushStatue {
+				if newWriteIndex != lc.readIndex { // next write cache index must flush done
 					break
 				} else {
-					time.Sleep(100 * time.Millisecond)
+					time.Sleep(500 * time.Millisecond)
 				}
 				if time.Now().Sub(st) > 2*time.Second {
-					lc.logger.Error("cache flush timeout")
+					lc.logger.Error("cache flush timeout ", newWriteIndex)
 				}
 			}
-			lc.logger.Debug("new write cache index: ", lc.writeIndex)
 			lc.lastFlush = time.Now()
+
+			if len(lc.flushChan) > 1 { // if disk write too slowly
+				<-lc.flushChan
+			}
 			lc.flushChan <- true
+			lc.writeIndex = newWriteIndex
+			//lc.logger.Debug("new write cache index: ", lc.writeIndex)
 		}
 		lc.lock.Unlock()
 	}
@@ -102,7 +107,7 @@ func (lc *MemoryCache) needsFlush() bool {
 	return false
 }
 
-func (lc *MemoryCache) flushCache() *Cache {
+func (lc *MemoryCache) flushCache() {
 	ticker := time.NewTicker(defaultFlushSecs)
 	for {
 		select {
@@ -113,6 +118,7 @@ func (lc *MemoryCache) flushCache() *Cache {
 		case <-lc.l.ctx.Done():
 			lc.close()
 			lc.closedChan <- true
+			return
 			//default:
 			//	time.Sleep(1 * time.Second)
 		}
@@ -127,15 +133,14 @@ func (lc *MemoryCache) flush() {
 	defer func() {
 		lc.flushStatue = false
 	}()
-	//lc.logger.Debug("flush... ")
 	index := lc.readIndex
 	index = (index + 1) % lc.cacheCount // next read cache index to dump
 	for index != lc.writeIndex {
-		//lc.logger.Debug("  begin flush cache: ", index)
-		if err := lc.caches[index].flush(lc.l, index); err != nil {
+		//lc.logger.Debug("     begin flush cache: ", index)
+		if err := lc.caches[index].flush(lc.l); err != nil {
 			lc.logger.Error(err)
 		}
-		//lc.logger.Debug("  flush done and new read index: ", index)
+		//lc.logger.Debug("     flush done and new read index: ", index)
 		lc.readIndex = index
 		index = (index + 1) % lc.cacheCount // next read cache index to dump
 	}
@@ -155,7 +160,7 @@ func (lc *MemoryCache) close() error {
 			finish = true
 		}
 		//lc.logger.Debug("  begin flush cache: ", index)
-		if err := lc.caches[index].flush(lc.l, index); err != nil {
+		if err := lc.caches[index].flush(lc.l); err != nil {
 			lc.logger.Error(err)
 		}
 		//lc.logger.Debug("  flush done and new read index: ", index)
@@ -179,7 +184,7 @@ func (lc *MemoryCache) getTempCache() *Cache {
 			return c
 		}
 	}
-	return newCache()
+	return newTempCache()
 }
 
 func (lc *MemoryCache) releaseTempCache(c *Cache) {
@@ -293,6 +298,7 @@ const defaultCapacity = 100000
 
 type Cache struct {
 	//used is true
+	index       int
 	quote       int32
 	flushLock   sync.Mutex
 	flushStatue bool
@@ -301,8 +307,9 @@ type Cache struct {
 	logger *zap.SugaredLogger
 }
 
-func newCache() *Cache {
+func newCache(index int) *Cache {
 	return &Cache{
+		index:  index,
 		cache:  gcache.New(defaultCapacity).Build(),
 		logger: log.NewLogger("ledger/cache"),
 	}
@@ -315,9 +322,9 @@ func newTempCache() *Cache {
 	}
 }
 
-func (c *Cache) flush(l *Ledger, index int) error {
+func (c *Cache) flush(l *Ledger) error {
 	cs := new(CacheStat)
-	cs.Index = index
+	cs.Index = c.index
 	cs.Key = c.capacity()
 	cs.Start = time.Now().UnixNano()
 	defer func() {
@@ -329,10 +336,6 @@ func (c *Cache) flush(l *Ledger, index int) error {
 	defer func() {
 		c.flushLock.Unlock()
 	}()
-	c.flushStatue = true
-	defer func() {
-		c.flushStatue = false
-	}()
 	st := time.Now()
 	for {
 		if c.quote == 0 {
@@ -340,7 +343,7 @@ func (c *Cache) flush(l *Ledger, index int) error {
 		} else {
 			time.Sleep(100 * time.Millisecond)
 		}
-		if time.Now().Sub(st) > 2*time.Second {
+		if time.Now().Sub(st) > 1*time.Second {
 			c.logger.Error("cache quote timeout")
 		}
 	}
@@ -391,8 +394,7 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 				return err
 			}
 		default:
-			c.logger.Error("missing method serialize:  ", key[:1])
-			return fmt.Errorf("unknown type: %s", key[:1])
+			return fmt.Errorf("missing method serialize: %s", key[:1])
 		}
 	} else {
 		if err := b.Delete(key); err != nil {

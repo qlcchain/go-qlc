@@ -524,6 +524,11 @@ type CacheStat struct {
 	Span  string `json:"span"`
 }
 
+func (l *DebugApi) GetCache() error {
+	l.ledger.Cache().GetCache()
+	return nil
+}
+
 func (l *DebugApi) GetCacheStat() []*CacheStat {
 	cs := l.ledger.GetCacheStat()
 	cas := make([]*CacheStat, 0)

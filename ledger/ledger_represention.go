@@ -125,7 +125,7 @@ func (l *Ledger) setRepresentation(address types.Address, benefit *types.Benefit
 	if err != nil {
 		return err
 	}
-	return cache.Put(k, benefit)
+	return cache.Put(k, benefit.Clone())
 }
 
 func (l *Ledger) GetOnlineRepresentations() ([]types.Address, error) {

@@ -2,8 +2,11 @@ package ledger
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -103,12 +106,6 @@ func TestNewCache(t *testing.T) {
 	}
 }
 
-//func TestCache_Get(t *testing.T) {
-//	teardownTestCase, l := setupTestCase(t)
-//	defer teardownTestCase(t)
-//
-//}
-
 func TestGcCache(t *testing.T) {
 	amap := map[int]int{1: 1, 2: 2, 3: 3, 4: 4, 5: 5}
 	a := gcache.New(5).Build()
@@ -126,22 +123,6 @@ func TestGcCache(t *testing.T) {
 		t.Log(k, v)
 	}
 	t.Log(a.Len(false))
-}
-
-func TestCache_TimeSpan(t *testing.T) {
-	cs := new(CacheStat)
-	cs.Start = time.Now().UnixNano()
-	time.Sleep(30 * time.Millisecond)
-	cs.End = time.Now().UnixNano()
-	fmt.Println(time.Now().Unix())
-	fmt.Println(time.Now().UnixNano())
-
-	span := cs.End - cs.Start
-	fmt.Println(span / 1000000)
-
-	fmt.Println(cs)
-	fmt.Println(time.Unix(cs.Start/1000000000, 0).Format("2006-01-02 15:04:05"))
-
 }
 
 func TestCache_Iterator(t *testing.T) {
@@ -167,10 +148,128 @@ func TestCache_Iterator(t *testing.T) {
 
 }
 
-//func TestCache_Put(t *testing.T) {
-//	teardownTestCase, l := setupTestCase(t)
-//	defer teardownTestCase(t)
-//
-//	timer := time.
-//
-//}
+func TestCache_Put(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	c := time.NewTicker(20 * time.Second)
+	defer c.Stop()
+InfLoop:
+	for {
+		select {
+		case <-c.C:
+			break InfLoop
+		default:
+			cache := l.Cache().GetCache()
+			block := mock.StateBlockWithoutWork()
+			k, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
+			if err := cache.Put(k, block); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	for _, cs := range l.cacheStats {
+		span := strconv.FormatInt((cs.End-cs.Start)/1000000, 10) + "ms"
+		fmt.Printf("index: %d, key: %d, span: %s  \n", cs.Index, cs.Key, span)
+	}
+}
+
+func TestCache_PutConcurrency(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c := time.NewTicker(10 * time.Second)
+			defer c.Stop()
+		InfLoop:
+			for {
+				select {
+				case <-c.C:
+					break InfLoop
+				default:
+					cache := l.Cache().GetCache()
+					block := mock.StateBlockWithoutWork()
+					k, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
+					if err := cache.Put(k, block); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	for _, cs := range l.cacheStats {
+		span := strconv.FormatInt((cs.End-cs.Start)/1000000, 10) + "ms"
+		fmt.Printf("index: %d, key: %d, span: %s  \n", cs.Index, cs.Key, span)
+	}
+}
+
+func TestCache_Get(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	c := time.NewTicker(20 * time.Second)
+	defer c.Stop()
+InfLoop:
+	for {
+		select {
+		case <-c.C:
+			break InfLoop
+		default:
+			cache := l.Cache().GetCache()
+			block := mock.StateBlockWithoutWork()
+			k, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
+			if err := cache.Put(k, block); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := l.Get(k); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, cs := range l.cacheStats {
+		span := strconv.FormatInt((cs.End-cs.Start)/1000000, 10) + "ms"
+		fmt.Printf("index: %d, key: %d, span: %s  \n", cs.Index, cs.Key, span)
+	}
+}
+
+func TestCache_Get2(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	c := time.NewTicker(20 * time.Second)
+	defer c.Stop()
+	count := 0
+InfLoop:
+	for {
+		select {
+		case <-c.C:
+			break InfLoop
+		default:
+			cache := l.Cache().GetCache()
+			block := mock.StateBlockWithoutWork()
+			k, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
+			if err := cache.Put(k, block); err != nil {
+				t.Fatal(err)
+			}
+			count++
+			if count == 1000 {
+				time.Sleep(20 * time.Millisecond)
+				count = 0
+			}
+			if _, _, err := l.Get(k); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, cs := range l.cacheStats {
+		span := strconv.FormatInt((cs.End-cs.Start)/1000000, 10) + "ms"
+		fmt.Printf("index: %d, key: %d, span: %s  \n", cs.Index, cs.Key, span)
+	}
+}

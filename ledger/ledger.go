@@ -786,6 +786,5 @@ func (l *Ledger) GetCacheStatue() map[string]string {
 	r["lastflush"] = l.cache.lastFlush.Format("2006-01-02 15:04:05")
 	r["flushStatue"] = strconv.FormatBool(l.cache.flushStatue)
 	r["flushChan"] = strconv.Itoa(len(l.cache.flushChan))
-	l.cache.GetCache()
 	return r
 }
