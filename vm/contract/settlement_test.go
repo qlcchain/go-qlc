@@ -887,6 +887,9 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			t.Fatal(err)
 		} else {
 			t.Log(pendingKey, info)
+			if _, _, err := createContract.ProcessSend(ctx, sb); err != nil {
+				t.Fatal(err)
+			}
 			if err := ctx.SaveStorage(); err != nil {
 				t.Fatal(err)
 			}
@@ -1570,7 +1573,6 @@ func Test_add(t *testing.T) {
 					t.Errorf("should be the same when err, got = %v, want = %v", got, tt.args.want)
 				}
 			} else {
-				sort.Strings(tt.args.want)
 				if !reflect.DeepEqual(got, tt.args.want) {
 					t.Errorf("add() got = %v, want = %v", got, tt.args.want)
 				}
@@ -1672,6 +1674,24 @@ func Test_update(t *testing.T) {
 				want: []string{"11", "22"},
 			},
 			wantErr: true,
+		}, {
+			name: "f3",
+			args: args{
+				s:    []string{"11", "22"},
+				old:  "22",
+				new:  "11",
+				want: []string{"11", "22"},
+			},
+			wantErr: true,
+		}, {
+			name: "same",
+			args: args{
+				s:    []string{"11", "22"},
+				old:  "22",
+				new:  "22",
+				want: []string{"11", "22"},
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -1689,4 +1709,18 @@ func Test_update(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_verifyStopName(t *testing.T) {
+	s := []string{"HKTCSL"}
+	b, i := verifyStopName(s, "HKT-CSL")
+	t.Log(b, i)
+}
+
+func Test_internalContract_DoPending(t *testing.T) {
+	i := internalContract{}
+	i.DoGap(nil, nil)
+	i.DoPending(nil)
+	i.DoReceiveOnPov(nil, nil, 0, nil, nil)
+	i.DoSendOnPov(nil, nil, 0, nil)
 }

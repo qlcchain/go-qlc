@@ -137,6 +137,7 @@ const (
 var (
 	SettlementABI, _ = abi.JSONToABIContract(strings.NewReader(JsonSettlement))
 	keySize          = types.AddressSize*2 + 1
+	mappingPrefix    = []byte{33}
 )
 
 type ABIer interface {
@@ -882,6 +883,108 @@ func GetCDRStatus(ctx *vmstore.VMContext, addr *types.Address, hash types.Hash) 
 	}
 }
 
+//go:generate msgp
+type ContractAddressList struct {
+	AddressList []*types.Address `msg:"a" json:"addressList"`
+}
+
+func newContractAddressList(address *types.Address) *ContractAddressList {
+	return &ContractAddressList{AddressList: []*types.Address{address}}
+}
+
+func (z *ContractAddressList) Append(address *types.Address) bool {
+	ret := false
+	for _, a := range z.AddressList {
+		if a == address {
+			ret = true
+			break
+		}
+	}
+
+	if !ret {
+		z.AddressList = append(z.AddressList, address)
+		return true
+	}
+	return false
+}
+
+func (z *ContractAddressList) ToABI() ([]byte, error) {
+	return z.MarshalMsg(nil)
+}
+
+func (z *ContractAddressList) FromABI(data []byte) error {
+	_, err := z.UnmarshalMsg(data)
+	return err
+}
+
+func (z *ContractAddressList) String() string {
+	return util.ToIndentString(z.AddressList)
+}
+
+func SaveCDRStatus(ctx *vmstore.VMContext, addr *types.Address, hash *types.Hash, state *CDRStatus) error {
+	if data, err := state.ToABI(); err != nil {
+		return err
+	} else {
+		if err := ctx.SetStorage(addr[:], hash[:], data); err != nil {
+			return err
+		} else {
+			// save keymap
+			if err := saveCDRMapping(ctx, addr, hash); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func saveCDRMapping(ctx *vmstore.VMContext, addr *types.Address, hash *types.Hash) error {
+	if storage, err := ctx.GetStorage(mappingPrefix, hash[:]); err != nil {
+		if err == vmstore.ErrStorageNotFound {
+			cl := newContractAddressList(addr)
+			if data, err := cl.ToABI(); err != nil {
+				return err
+			} else {
+				if err := ctx.SetStorage(mappingPrefix, hash[:], data); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	} else {
+		cl := &ContractAddressList{}
+		if err := cl.FromABI(storage); err != nil {
+			return err
+		} else {
+			if b := cl.Append(addr); b {
+				if data, err := cl.ToABI(); err != nil {
+					return err
+				} else {
+					if err := ctx.SetStorage(mappingPrefix, hash[:], data); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func GetCDRMapping(ctx *vmstore.VMContext, hash *types.Hash) ([]*types.Address, error) {
+	if storage, err := ctx.GetStorage(mappingPrefix, hash[:]); err != nil {
+		return nil, err
+	} else {
+		cl := &ContractAddressList{}
+		if err := cl.FromABI(storage); err != nil {
+			return nil, err
+		} else {
+			return cl.AddressList, nil
+		}
+	}
+}
+
 // GetAllCDRStatus get all CDR records of the specific settlement contract
 // @param addr settlement smart contract
 func GetAllCDRStatus(ctx *vmstore.VMContext, addr *types.Address) ([]*CDRStatus, error) {
@@ -909,6 +1012,40 @@ func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *
 			return contracts[0], nil
 		}
 	}
+}
+
+func GetPreStopNames(ctx *vmstore.VMContext, addr *types.Address) ([]string, error) {
+	var result []string
+	if contracts, err := queryContractParamByAddress(ctx, "GetPreStopNames", func(cp *ContractParam) bool {
+		return cp.PartyB.Address == *addr && (cp.Status == ContractStatusActivated || cp.Status == ContractStatusActiveStage1)
+	}); err != nil {
+		return nil, err
+	} else {
+		for _, c := range contracts {
+			if len(c.PreStops) > 0 {
+				result = append(result, c.PreStops...)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func GetNextStopNames(ctx *vmstore.VMContext, addr *types.Address) ([]string, error) {
+	var result []string
+	if contracts, err := queryContractParamByAddress(ctx, "GetPreStopNames", func(cp *ContractParam) bool {
+		return cp.PartyA.Address == *addr && (cp.Status == ContractStatusActivated || cp.Status == ContractStatusActiveStage1)
+	}); err != nil {
+		return nil, err
+	} else {
+		for _, c := range contracts {
+			if len(c.NextStops) > 0 {
+				result = append(result, c.NextStops...)
+			}
+		}
+	}
+
+	return result, nil
 }
 
 // GetSettlementContract
@@ -965,18 +1102,18 @@ type SummaryRecord struct {
 	Result  float64 `json:"result"`
 }
 
-func (s *SummaryRecord) DoCalculate() *SummaryRecord {
-	s.Total = s.Fail + s.Success
+func (z *SummaryRecord) DoCalculate() *SummaryRecord {
+	z.Total = z.Fail + z.Success
 
-	if s.Total > 0 {
-		s.Result = float64(s.Success) / float64(s.Total)
+	if z.Total > 0 {
+		z.Result = float64(z.Success) / float64(z.Total)
 	}
 
-	return s
+	return z
 }
 
-func (s *SummaryRecord) String() string {
-	return util.ToIndentString(s)
+func (z *SummaryRecord) String() string {
+	return util.ToIndentString(z)
 }
 
 type CompareRecord struct {
@@ -999,59 +1136,60 @@ func NewSummaryResult() *SummaryResult {
 	}
 }
 
-func (s *SummaryResult) IncreaseSuccess(name string, isPartyA bool) {
-	if _, ok := s.Records[name]; !ok {
-		s.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
+func (z *SummaryResult) IncreaseSuccess(name string, isPartyA bool) {
+	if _, ok := z.Records[name]; !ok {
+		z.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
 	}
 
 	if isPartyA {
-		s.Records[name].PartyA.Success++
+		z.Records[name].PartyA.Success++
 	} else {
-		s.Records[name].PartyB.Success++
+		z.Records[name].PartyB.Success++
 	}
 }
 
-func (s *SummaryResult) IncreasePartyASuccess() {
-	s.PartyA.Success++
+func (z *SummaryResult) IncreasePartyASuccess() {
+	z.PartyA.Success++
 }
 
-func (s *SummaryResult) IncreasePartyAFail() {
-	s.PartyA.Fail++
+func (z *SummaryResult) IncreasePartyAFail() {
+	z.PartyA.Fail++
 }
-func (s *SummaryResult) IncreasePartyBSuccess() {
-	s.PartyB.Success++
-}
-
-func (s *SummaryResult) IncreasePartyBFail() {
-	s.PartyB.Fail++
+func (z *SummaryResult) IncreasePartyBSuccess() {
+	z.PartyB.Success++
 }
 
-func (s *SummaryResult) IncreaseFail(name string, isPartyA bool) {
-	if _, ok := s.Records[name]; !ok {
-		s.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
+func (z *SummaryResult) IncreasePartyBFail() {
+	z.PartyB.Fail++
+}
+
+func (z *SummaryResult) IncreaseFail(name string, isPartyA bool) {
+	if _, ok := z.Records[name]; !ok {
+		z.Records[name] = &CompareRecord{PartyA: &SummaryRecord{}, PartyB: &SummaryRecord{}}
 	}
 
 	if isPartyA {
-		s.Records[name].PartyA.Fail++
+		z.Records[name].PartyA.Fail++
 	} else {
-		s.Records[name].PartyB.Fail++
+		z.Records[name].PartyB.Fail++
 	}
 }
 
-func (s *SummaryResult) DoCalculate() {
-	for k := range s.Records {
-		s.Records[k].PartyA.DoCalculate()
-		s.Records[k].PartyB.DoCalculate()
+func (z *SummaryResult) DoCalculate() {
+	for k := range z.Records {
+		z.Records[k].PartyA.DoCalculate()
+		z.Records[k].PartyB.DoCalculate()
 	}
-	s.PartyA.DoCalculate()
-	s.PartyB.DoCalculate()
+	z.PartyA.DoCalculate()
+	z.PartyB.DoCalculate()
 }
 
-func (s *SummaryResult) String() string {
-	return util.ToIndentString(s)
+func (z *SummaryResult) String() string {
+	return util.ToIndentString(z)
 }
 
 // GetSummaryReport
+// addr settlement contract address
 func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end int64) (*SummaryResult, error) {
 	records, err := GetCDRStatusByDate(ctx, addr, start, end)
 	if err != nil {
@@ -1071,20 +1209,24 @@ func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end in
 	for _, status := range records {
 		if s, b := status.State(&partyA); b {
 			result.IncreasePartyASuccess()
-			result.IncreaseSuccess(s, true)
+			if s != "" {
+				result.IncreaseSuccess(s, true)
+			}
 		} else {
 			result.IncreasePartyAFail()
 			if s != "" {
-				result.IncreaseSuccess(s, true)
+				result.IncreaseFail(s, true)
 			}
 		}
 		if s, b := status.State(&partyB); b {
 			result.IncreasePartyBSuccess()
-			result.IncreaseSuccess(s, false)
+			if s != "" {
+				result.IncreaseSuccess(s, false)
+			}
 		} else {
 			result.IncreasePartyBFail()
 			if s != "" {
-				result.IncreaseSuccess(s, false)
+				result.IncreaseFail(s, false)
 			}
 		}
 	}
@@ -1139,6 +1281,83 @@ type InvoiceRecord struct {
 	SumOfTOTPrice            float64       `json:"sumOfTOTPrice"`
 }
 
+// GenerateInvoicesByContract
+// addr settlement contract address
+func GenerateInvoicesByContract(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
+	logger := log.NewLogger("GenerateInvoicesByContract")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	c, err := GetSettlementContract(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	var result []*InvoiceRecord
+
+	contractAddr, err := c.Address()
+	if err != nil {
+		logger.Error(err)
+	}
+
+	cache := make(map[string]int)
+	if cdrs, err := GetCDRStatusByDate(ctx, &contractAddr, start, end); err == nil {
+		for _, cdr := range cdrs {
+			if cdr.Status == SettlementStatusSuccess {
+				if _, sender, _, err := cdr.ExtractID(); err == nil {
+					if _, ok := cache[sender]; ok {
+						cache[sender]++
+					} else {
+						cache[sender] = 1
+					}
+				}
+			}
+		}
+	} else {
+		logger.Error(err)
+	}
+
+	// TODO: how to match service???
+	service := c.Services[0]
+	for k, v := range cache {
+		if v > 0 {
+			invoice := &InvoiceRecord{
+				Address:                  contractAddr,
+				StartDate:                c.StartDate,
+				EndDate:                  c.EndDate,
+				Customer:                 k,
+				CustomerSr:               "",
+				Country:                  "",
+				Operator:                 c.PartyB.Name,
+				ServiceId:                service.ServiceId,
+				MCC:                      service.Mcc,
+				MNC:                      service.Mnc,
+				Currency:                 service.Currency,
+				UnitPrice:                service.UnitPrice,
+				SumOfBillableSMSCustomer: uint64(v),
+				SumOfTOTPrice:            service.UnitPrice * float64(v),
+			}
+			result = append(result, invoice)
+		}
+	}
+
+	if len(result) > 0 {
+		sort.Slice(result, func(i, j int) bool {
+			r1 := result[i]
+			r2 := result[j]
+			if r1.StartDate < r2.EndDate {
+				return true
+			}
+			if r1.StartDate > r2.EndDate {
+				return false
+			}
+			return r1.EndDate < r2.EndDate
+		})
+	}
+
+	return result, nil
+}
+
 // GenerateInvoices
 // @param addr user qlcchain address
 func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
@@ -1158,51 +1377,151 @@ func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end in
 			logger.Error(err)
 			continue
 		}
-		if IsContractAvailable(ctx, &contractAddr) {
-			cache := make(map[string]int, 0)
-			if cdrs, err := GetCDRStatusByDate(ctx, &contractAddr, start, end); err == nil {
-				if len(cdrs) == 0 {
-					continue
-				}
 
-				for _, cdr := range cdrs {
-					if cdr.Status == SettlementStatusSuccess {
-						if _, sender, _, err := cdr.ExtractID(); err == nil {
-							if _, ok := cache[sender]; ok {
-								cache[sender]++
-							} else {
-								cache[sender] = 1
-							}
+		cache := make(map[string]int)
+		if cdrs, err := GetCDRStatusByDate(ctx, &contractAddr, start, end); err == nil {
+			if len(cdrs) == 0 {
+				continue
+			}
+
+			for _, cdr := range cdrs {
+				if cdr.Status == SettlementStatusSuccess {
+					if _, sender, _, err := cdr.ExtractID(); err == nil {
+						if _, ok := cache[sender]; ok {
+							cache[sender]++
+						} else {
+							cache[sender] = 1
 						}
 					}
 				}
-			} else {
-				logger.Error(err)
 			}
+		} else {
+			logger.Error(err)
+		}
 
-			// TODO: how to match service???
-			service := c.Services[0]
-			for k, v := range cache {
-				if v > 0 {
-					invoice := &InvoiceRecord{
-						Address:                  contractAddr,
-						StartDate:                c.StartDate,
-						EndDate:                  c.EndDate,
-						Customer:                 k,
-						CustomerSr:               "",
-						Country:                  "",
-						Operator:                 c.PartyB.Name,
-						ServiceId:                service.ServiceId,
-						MCC:                      service.Mcc,
-						MNC:                      service.Mnc,
-						Currency:                 service.Currency,
-						UnitPrice:                service.UnitPrice,
-						SumOfBillableSMSCustomer: uint64(v),
-						SumOfTOTPrice:            service.UnitPrice * float64(v),
+		// TODO: how to match service???
+		service := c.Services[0]
+		for k, v := range cache {
+			if v > 0 {
+				invoice := &InvoiceRecord{
+					Address:                  contractAddr,
+					StartDate:                c.StartDate,
+					EndDate:                  c.EndDate,
+					Customer:                 k,
+					CustomerSr:               "",
+					Country:                  "",
+					Operator:                 c.PartyB.Name,
+					ServiceId:                service.ServiceId,
+					MCC:                      service.Mcc,
+					MNC:                      service.Mnc,
+					Currency:                 service.Currency,
+					UnitPrice:                service.UnitPrice,
+					SumOfBillableSMSCustomer: uint64(v),
+					SumOfTOTPrice:            service.UnitPrice * float64(v),
+				}
+				result = append(result, invoice)
+			}
+		}
+	}
+
+	if len(result) > 0 {
+		sort.Slice(result, func(i, j int) bool {
+			r1 := result[i]
+			r2 := result[j]
+			if r1.StartDate < r2.EndDate {
+				return true
+			}
+			if r1.StartDate > r2.EndDate {
+				return false
+			}
+			return r1.EndDate < r2.EndDate
+		})
+	}
+
+	return result, nil
+}
+
+// GenerateMultiPartyInvoice
+// addr settlement contract address
+func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
+	logger := log.NewLogger("GenerateMultiPartyInvoice")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	c, err := GetSettlementContract(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	var result []*InvoiceRecord
+
+	//if !IsContractAvailable(ctx, addr) {
+	//	return nil, fmt.Errorf("contract %s is invalid", addr.String())
+	//}
+
+	cache := make(map[string]int)
+	if cdrs, err := GetCDRStatusByDate(ctx, addr, start, end); err == nil {
+		for _, cdr := range cdrs {
+			if cdr.Status == SettlementStatusSuccess {
+				// make sure that all contract status
+				if hash, err := cdr.ToHash(); err != nil {
+					logger.Error(err)
+				} else {
+					if addressList, err := GetCDRMapping(ctx, &hash); err != nil {
+						logger.Error(err)
+					} else {
+						counter := 0
+						size := len(addressList)
+						for _, a := range addressList {
+							logger.Infof("%s==>%s, %t", addr.String(), a.String())
+							if status, err := GetCDRStatus(ctx, a, hash); err != nil {
+								logger.Error(err)
+							} else {
+								if status.Status == SettlementStatusSuccess {
+									counter++
+								}
+							}
+						}
+						if size > 1 && counter == size {
+							if _, sender, _, err := cdr.ExtractID(); err == nil {
+								if _, ok := cache[sender]; ok {
+									cache[sender]++
+								} else {
+									cache[sender] = 1
+								}
+							}
+						} else {
+							logger.Infof("size: %d, counter: %d, flag: %t, %t", size, counter, size > 1, counter+1 == size)
+						}
 					}
-					result = append(result, invoice)
 				}
 			}
+		}
+	} else {
+		logger.Error(err)
+	}
+
+	// TODO: how to match service???
+	service := c.Services[0]
+	for k, v := range cache {
+		if v > 0 {
+			invoice := &InvoiceRecord{
+				Address:                  *addr,
+				StartDate:                c.StartDate,
+				EndDate:                  c.EndDate,
+				Customer:                 k,
+				CustomerSr:               "",
+				Country:                  "",
+				Operator:                 c.PartyB.Name,
+				ServiceId:                service.ServiceId,
+				MCC:                      service.Mcc,
+				MNC:                      service.Mnc,
+				Currency:                 service.Currency,
+				UnitPrice:                service.UnitPrice,
+				SumOfBillableSMSCustomer: uint64(v),
+				SumOfTOTPrice:            service.UnitPrice * float64(v),
+			}
+			result = append(result, invoice)
 		}
 	}
 

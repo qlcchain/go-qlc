@@ -73,22 +73,7 @@ func (s *SettlementAPI) ToAddress(param *cabi.CreateContractParam) (types.Addres
 // @param send contract send block hash
 // @return contract rewards block
 func (s *SettlementAPI) GetContractRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.createContract.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate create contract reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.createContract, "GetContractRewardsBlock")
 }
 
 type CreateContractParam struct {
@@ -258,22 +243,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 // @param send contract send block hash
 // @return contract rewards block
 func (s *SettlementAPI) GetSignRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.signContract.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate sign contract reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.signContract, "GetSignRewardsBlock")
 }
 
 type StopParam struct {
@@ -286,7 +256,7 @@ type UpdateStopParam struct {
 	Address types.Address
 }
 
-func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() error, abi func() ([]byte, error)) (*types.StateBlock, error) {
+func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() error, abi func() ([]byte, error), c contract.Contract) (*types.StateBlock, error) {
 	if !s.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}
@@ -330,7 +300,12 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 				sb.PoVHeight = povHeader.GetHeight()
 				sb.Extra = *h
 			}
-			return sb, nil
+
+			if _, _, err := c.ProcessSend(ctx, sb); err != nil {
+				return nil, err
+			} else {
+				return sb, nil
+			}
 		} else {
 			return nil, err
 		}
@@ -349,26 +324,11 @@ func (s *SettlementAPI) GetAddPreStopBlock(param *StopParam) (*types.StateBlock,
 			ContractAddress: param.ContractAddress,
 		}
 		return p.ToABI(cabi.MethodNameAddPreStop)
-	})
+	}, s.addPreStop)
 }
 
 func (s *SettlementAPI) GetAddPreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.addPreStop.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate add pre stops reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.addPreStop, "GetAddPreStopRewardsBlock")
 }
 
 func (s *SettlementAPI) GetRemovePreStopBlock(param *StopParam) (*types.StateBlock, error) {
@@ -383,31 +343,16 @@ func (s *SettlementAPI) GetRemovePreStopBlock(param *StopParam) (*types.StateBlo
 			ContractAddress: param.ContractAddress,
 		}
 		return p.ToABI(cabi.MethodNameRemovePreStop)
-	})
+	}, s.removePreStop)
 }
 
 func (s *SettlementAPI) GetRemovePreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.removePreStop.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate remove pre stops reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.removePreStop, "GetRemovePreStopRewardsBlock")
 }
 
 func (s *SettlementAPI) GetUpdatePreStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
-		if param == nil || len(param.StopName) == 0 || len(param.New) == 0 {
+		if param == nil || param.Address.IsZero() || len(param.StopName) == 0 || len(param.New) == 0 || param.StopName == param.New {
 			return errors.New("invalid input param")
 		}
 		return nil
@@ -418,26 +363,11 @@ func (s *SettlementAPI) GetUpdatePreStopBlock(param *UpdateStopParam) (*types.St
 			New:             param.New,
 		}
 		return p.ToABI(cabi.MethodNameUpdatePreStop)
-	})
+	}, s.updatePreStop)
 }
 
 func (s *SettlementAPI) GetUpdatePreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.updatePreStop.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate update pre stops reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.updatePreStop, "GetUpdatePreStopRewardsBlock")
 }
 
 func (s *SettlementAPI) GetAddNextStopBlock(param *StopParam) (*types.StateBlock, error) {
@@ -452,26 +382,11 @@ func (s *SettlementAPI) GetAddNextStopBlock(param *StopParam) (*types.StateBlock
 			StopName:        param.StopName,
 		}
 		return p.ToABI(cabi.MethodNameAddNextStop)
-	})
+	}, s.addNextStop)
 }
 
 func (s *SettlementAPI) GetAddNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.addNextStop.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate add Next stops reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.addNextStop, "GetAddNextStopRewardsBlock")
 }
 
 func (s *SettlementAPI) GetRemoveNextStopBlock(param *StopParam) (*types.StateBlock, error) {
@@ -486,31 +401,16 @@ func (s *SettlementAPI) GetRemoveNextStopBlock(param *StopParam) (*types.StateBl
 			StopName:        param.StopName,
 		}
 		return p.ToABI(cabi.MethodNameRemoveNextStop)
-	})
+	}, s.removeNextStop)
 }
 
 func (s *SettlementAPI) GetRemoveNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.removeNextStop.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate remove next stops reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.removeNextStop, "GetRemoveNextStopRewardsBlock")
 }
 
 func (s *SettlementAPI) GetUpdateNextStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
-		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 || len(param.New) == 0 {
+		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 || len(param.New) == 0 || param.StopName == param.New {
 			return errors.New("invalid input param")
 		}
 		return nil
@@ -521,26 +421,11 @@ func (s *SettlementAPI) GetUpdateNextStopBlock(param *UpdateStopParam) (*types.S
 			New:             param.New,
 		}
 		return p.ToABI(cabi.MethodNameUpdateNextStop)
-	})
+	}, s.updateNextStop)
 }
 
 func (s *SettlementAPI) GetUpdateNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.updateNextStop.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate update next stops reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.updateNextStop, "GetUpdateNextStopRewardsBlock")
 }
 
 // SettlementContract settlement contract for RPC
@@ -618,10 +503,15 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 			return nil, err
 		} else {
 			address, err := c.Address()
-			param.ContractAddress = address
 			if err != nil {
 				return nil, err
 			}
+			param.ContractAddress = address
+
+			if !cabi.IsContractAvailable(ctx, &address) {
+				return nil, fmt.Errorf("contract %s is invalid", addr.String())
+			}
+
 			if singedData, err := param.ToABI(); err == nil {
 				sb := &types.StateBlock{
 					Type:           types.ContractSend,
@@ -658,22 +548,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 
 // GetProcessCDRRewardsBlock generate rewards block by send block hash
 func (s *SettlementAPI) GetProcessCDRRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.cdrContract.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate process CDR reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.cdrContract, "GetProcessCDRRewardsBlock")
 }
 
 type TerminateParam struct {
@@ -744,22 +619,7 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 // @param send contract send block hash
 // @return contract rewards block
 func (s *SettlementAPI) GetTerminateRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, func(tx *types.StateBlock) (*types.StateBlock, error) {
-		rev := &types.StateBlock{
-			Timestamp: common.TimeNow().Unix(),
-		}
-		ctx := vmstore.NewVMContext(s.l)
-
-		if r, err := s.terminateContract.DoReceive(ctx, rev, tx); err == nil {
-			if len(r) > 0 {
-				return r[0].Block, nil
-			} else {
-				return nil, errors.New("fail to generate terminate contract reward block")
-			}
-		} else {
-			return nil, err
-		}
-	})
+	return s.getContractRewardsBlock(send, s.terminateContract, "GetTerminateRewardsBlock")
 }
 
 // GetCDRStatus get CDRstatus by settlement smart contract address and CDR hash
@@ -833,6 +693,26 @@ func (s *SettlementAPI) GenerateInvoices(addr *types.Address, start, end int64) 
 	return cabi.GenerateInvoices(ctx, addr, start, end)
 }
 
+// GenerateInvoicesByContract generate invoice by settlement contract address
+// @param addr settlement contract address
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return settlement report
+func (s *SettlementAPI) GenerateInvoicesByContract(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GenerateInvoicesByContract(ctx, addr, start, end)
+}
+
+// GenerateMultiPartyInvoice generate multi-party invoice by settlement contract address
+// @param addr settlement contract address
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return settlement invoice
+func (s *SettlementAPI) GenerateMultiPartyInvoice(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GenerateMultiPartyInvoice(ctx, addr, start, end)
+}
+
 var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {
 	dt1, sender1, _, err := cdr1.ExtractID()
 	if err != nil {
@@ -853,8 +733,7 @@ var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {
 	return sender1 < sender2
 }
 
-func (s *SettlementAPI) getContractRewardsBlock(send *types.Hash,
-	fn func(tx *types.StateBlock) (*types.StateBlock, error)) (*types.StateBlock, error) {
+func (s *SettlementAPI) getContractRewardsBlock(send *types.Hash, c contract.Contract, name string) (*types.StateBlock, error) {
 	if send == nil {
 		return nil, ErrParameterNil
 	}
@@ -867,13 +746,23 @@ func (s *SettlementAPI) getContractRewardsBlock(send *types.Hash,
 		return nil, err
 	}
 
-	if rx, err := fn(blk); err == nil {
-		povHeader, err := s.l.GetLatestPovHeader()
-		if err != nil {
-			return nil, fmt.Errorf("get pov header error: %s", err)
+	rev := &types.StateBlock{
+		Timestamp: common.TimeNow().Unix(),
+	}
+	povHeader, err := s.l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
+	rev.PoVHeight = povHeader.GetHeight()
+
+	ctx := vmstore.NewVMContext(s.l)
+
+	if r, err := c.DoReceive(ctx, rev, blk); err == nil {
+		if len(r) > 0 {
+			return r[0].Block, nil
+		} else {
+			return nil, fmt.Errorf("%s: fail to generate contract reward block", name)
 		}
-		rx.PoVHeight = povHeader.GetHeight()
-		return rx, nil
 	} else {
 		return nil, err
 	}
