@@ -372,7 +372,7 @@ func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPosOnlineInfo, nil, repOnline)
+	sv.RpcCall(common.RpcDPoSOnlineInfo, nil, repOnline)
 
 	return repOnline, nil
 }
@@ -455,7 +455,7 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPosConsInfo, inArgs, outArgs)
+	sv.RpcCall(common.RpcDPoSConsInfo, inArgs, outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -478,7 +478,7 @@ func (l *DebugApi) SetConsPerf(op dpos.PerfType) (map[string]interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPosSetConsPerf, op, outArgs)
+	sv.RpcCall(common.RpcDPoSSetConsPerf, op, outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -502,7 +502,7 @@ func (l *DebugApi) GetConsPerf() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPosGetConsPerf, inArgs, outArgs)
+	sv.RpcCall(common.RpcDPoSGetConsPerf, inArgs, outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -691,4 +691,14 @@ func (l *DebugApi) UncheckBlock(hash types.Hash) ([]*UncheckInfo, error) {
 
 	uis = append(uis, ui)
 	return uis, nil
+}
+
+func (l *DebugApi) FeedConsensus() error {
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return err
+	}
+	sv.RpcCall(common.RpcDPoSFeed, nil, nil)
+	return nil
 }

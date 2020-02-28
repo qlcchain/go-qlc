@@ -174,7 +174,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		}
 
 		ss.syncInit()
-		sv.RpcCall(common.RpcDPosOnSyncStateChange, topic.Syncing, nil)
+		sv.RpcCall(common.RpcDPoSOnSyncStateChange, topic.Syncing, nil)
 		ss.logger.Warn("sync start")
 
 		var remoteFrontiers []*types.Frontier
@@ -187,13 +187,13 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		remoteFrontiersLen := len(remoteFrontiers)
 
 		if remoteFrontiersLen > 0 {
-			sv.RpcCall(common.RpcDPosProcessFrontier, blks, nil)
+			sv.RpcCall(common.RpcDPoSProcessFrontier, blks, nil)
 			sort.Sort(types.Frontiers(remoteFrontiers))
 			zeroFrontier := new(types.Frontier)
 			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 			state := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
 			ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: state})
-			sv.RpcCall(common.RpcDPosOnSyncStateChange, state, nil)
+			sv.RpcCall(common.RpcDPoSOnSyncStateChange, state, nil)
 		}
 		ss.logger.Warn("sync pull all blocks done")
 	}
