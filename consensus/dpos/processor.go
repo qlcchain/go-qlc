@@ -147,7 +147,9 @@ func (p *Processor) processMsg() {
 				p.confirmedChain = make(map[types.Hash]bool)
 			}
 		case hash := <-p.blocksAcked:
+			p.dps.perfBlockProcessCheckPointAdd(hash, checkPointSectionStart)
 			p.dequeueUnchecked(hash)
+			p.dps.perfBlockProcessCheckPointAdd(hash, checkPointSectionEnd)
 		case hash := <-p.tokenCreate:
 			p.dequeueGapToken(hash)
 		case hash := <-p.publishBlock:
@@ -389,7 +391,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	var result process.ProcessResult
 	var err error
 
-	// dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
+	dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
 
 	if bs.BlockFrom == types.Synchronized {
 		p.dps.updateLastProcessSyncTime()
@@ -403,11 +405,11 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		return
 	}
 
-	// dps.perfBlockProcessCheckPointAdd(hash, checkPointProcessResult)
+	dps.perfBlockProcessCheckPointAdd(hash, checkPointProcessResult)
 
 	p.processResult(result, bs)
 
-	// dps.perfBlockProcessCheckPointAdd(hash, checkPointEnd)
+	dps.perfBlockProcessCheckPointAdd(hash, checkPointEnd)
 
 	switch bs.Type {
 	case consensus.MsgPublishReq:

@@ -189,6 +189,8 @@ func NewDPoS(cfgFile string) *DPoS {
 		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
 	}
 
+	dps.pf.status.Store(perfTypeClose)
+
 	dps.acTrx.setDPoSService(dps)
 	for _, p := range dps.processors {
 		p.setDPoSService(dps)
@@ -1245,11 +1247,10 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 }
 
 func (dps *DPoS) feedBlocks() {
-	l := ledger.NewLedger("./dataFeed/qlc.json")
+	dps.logger.Warnf("...............feed blocks.............")
+	l := ledger.NewLedger("dataFeed/qlc.json")
 	blks := make(map[types.AddressToken][]*types.StateBlock)
 	count := 0
-
-	dps.logger.Warnf("...............feed blocks.............")
 
 	for {
 		if dps.povSyncState == topic.SyncDone {
@@ -1258,7 +1259,7 @@ func (dps *DPoS) feedBlocks() {
 		time.Sleep(time.Second)
 	}
 
-	dps.logger.Warnf("...................scanning blocks.................")
+	dps.logger.Warnf("...................generating blocks.................")
 
 	frontiers, err := l.GetFrontiers()
 	if err != nil {

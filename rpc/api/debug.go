@@ -470,7 +470,7 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	return outArgs, nil
 }
 
-func (l *DebugApi) SetConsPerf(op dpos.PerfType) (map[string]interface{}, error) {
+func (l *DebugApi) SetConsPerf(op int) (map[string]interface{}, error) {
 	outArgs := make(map[string]interface{})
 
 	cc := qctx.NewChainContext(l.cfgFile)
@@ -478,7 +478,7 @@ func (l *DebugApi) SetConsPerf(op dpos.PerfType) (map[string]interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPoSSetConsPerf, op, outArgs)
+	sv.RpcCall(common.RpcDPoSSetConsPerf, dpos.PerfType(op), outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
