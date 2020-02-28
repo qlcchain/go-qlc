@@ -23,6 +23,7 @@ type Store interface {
 	RepresentationStore
 	UncheckedBlockStore
 	PovStore
+	Relation
 
 	Close() error
 	DBStore() storage.Store

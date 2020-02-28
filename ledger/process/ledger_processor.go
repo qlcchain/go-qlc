@@ -10,6 +10,8 @@ package process
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/hashmap"
+	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 
 	"go.uber.org/zap"
 
@@ -27,6 +29,7 @@ type LedgerVerifier struct {
 	blockCheck      map[types.BlockType]blockCheck
 	cacheBlockCheck map[types.BlockType]blockCheck
 	syncBlockCheck  map[types.BlockType]blockCheck
+	representLock   *hashmap.HashMap
 	logger          *zap.SugaredLogger
 }
 
@@ -36,6 +39,7 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 		blockCheck:      newBlockCheck(),
 		cacheBlockCheck: newCacheBlockCheck(),
 		syncBlockCheck:  newSyncBlockCheck(),
+		representLock:   &hashmap.HashMap{},
 		logger:          log.NewLogger("ledger_verifier"),
 	}
 }
@@ -279,6 +283,7 @@ func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 		}
 		return nil
 	})
+	lv.unlock(block.Representative)
 	if err != nil {
 		return err
 	}
@@ -308,11 +313,11 @@ func (lv *LedgerVerifier) processStateBlock(block *types.StateBlock, cache *ledg
 	if err := lv.updateContractData(block, cache); err != nil {
 		return fmt.Errorf("update contract data error: %s", err)
 	}
-	if err := lv.updateRepresentative(block, am, tm, cache); err != nil {
-		return fmt.Errorf("update representative error: %s", err)
-	}
 	if err := lv.updateAccountMeta(block, am, cache); err != nil {
 		return fmt.Errorf("update account meta error: %s", err)
+	}
+	if err := lv.updateRepresentative(block, am, tm, cache); err != nil {
+		return fmt.Errorf("update representative error: %s", err)
 	}
 	return nil
 }
@@ -383,9 +388,23 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	return nil
 }
 
+func (lv *LedgerVerifier) lock(address types.Address) {
+	i, _ := lv.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
+	spin, _ := i.(*spinlock.SpinLock)
+	spin.Lock()
+}
+
+func (lv *LedgerVerifier) unlock(address types.Address) {
+	i, _ := lv.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
+	spin, _ := i.(*spinlock.SpinLock)
+	spin.Unlock()
+}
+
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, cache *ledger.Cache) error {
 	if block.GetToken() == common.ChainToken() {
+		fmt.Println("===============common.ChainToken()", common.ChainToken())
 		if tm != nil && !tm.Representative.IsZero() {
+			lv.lock(block.Representative)
 			oldBenefit := &types.Benefit{
 				Vote:    am.GetVote(),
 				Network: am.GetNetwork(),
@@ -459,6 +478,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 	}
 
 	if am != nil {
+		am = am.Clone()
 		tm := am.Token(block.GetToken())
 		if block.GetToken() == common.ChainToken() {
 			am.CoinBalance = balance

@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -160,4 +161,13 @@ func TestLedger_SetOnlineRepresentations(t *testing.T) {
 	} else {
 		t.Fatal(err)
 	}
+}
+
+func TestLedger_AddRepresentation(t *testing.T) {
+	am := new(types.AccountMeta)
+	fmt.Printf("=======%p \n", am)
+
+	am = am.Clone()
+	fmt.Printf("=======%p \n", am)
+
 }

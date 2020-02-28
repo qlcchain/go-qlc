@@ -38,7 +38,6 @@ type Ledger struct {
 	cacheStats     []*CacheStat
 	relation       *relation.Relation
 	EB             event.EventBus
-	representCache *RepresentationCache
 	blockConfirmed chan *types.StateBlock
 	ctx            context.Context
 	cancel         context.CancelFunc
@@ -151,7 +150,6 @@ func NewLedger(cfgFile string) *Ledger {
 		l.relation = r
 		l.cache = NewMemoryCache(l)
 		l.rcache = NewrCache()
-		l.representCache = NewRepresentationCache()
 		l.cacheStats = make([]*CacheStat, 0)
 		if err := l.init(); err != nil {
 			l.logger.Fatal(err)
@@ -189,6 +187,11 @@ func (l *Ledger) init() error {
 	}
 
 	if err := l.removeBlockConfirmed(); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	if err := l.updateRepresentation(); err != nil {
 		l.logger.Error(err)
 		return err
 	}

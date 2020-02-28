@@ -2,10 +2,9 @@ package ledger
 
 import (
 	"encoding/json"
+	"github.com/qlcchain/go-qlc/common"
 
-	"github.com/qlcchain/go-qlc/common/hashmap"
 	"github.com/qlcchain/go-qlc/common/storage"
-	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -80,10 +79,6 @@ func (l *Ledger) CountRepresentations() (uint64, error) {
 }
 
 func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, c *Cache) error {
-	spin := l.representCache.getLock(address.String())
-	spin.Lock()
-	defer spin.Unlock()
-
 	value, err := l.GetRepresentation(address, c)
 	if err != nil && err != ErrRepresentationNotFound {
 		l.logger.Errorf("getRepresentation error: %s ,address: %s", err, address)
@@ -101,10 +96,6 @@ func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, c
 }
 
 func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, c *Cache) error {
-	spin := l.representCache.getLock(address.String())
-	spin.Lock()
-	defer spin.Unlock()
-
 	value, err := l.GetRepresentation(address, c)
 	if err != nil {
 		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
@@ -152,18 +143,45 @@ func (l *Ledger) SetOnlineRepresentations(addresses []*types.Address) error {
 	return l.store.Put(key, bytes)
 }
 
-type RepresentationCache struct {
-	representLock *hashmap.HashMap
-}
-
-func NewRepresentationCache() *RepresentationCache {
-	return &RepresentationCache{
-		representLock: &hashmap.HashMap{},
+func (l *Ledger) updateRepresentation() error {
+	representMap := make(map[types.Address]*types.Benefit)
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixAccount)
+	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+		am := new(types.AccountMeta)
+		if err := am.Deserialize(val); err != nil {
+			return err
+		}
+		tm := am.Token(common.ChainToken())
+		if tm != nil {
+			if _, ok := representMap[tm.Representative]; !ok {
+				representMap[tm.Representative] = types.ZeroBenefit
+			}
+			representMap[tm.Representative].Balance = representMap[tm.Representative].Balance.Add(am.CoinBalance)
+			representMap[tm.Representative].Vote = representMap[tm.Representative].Vote.Add(am.CoinVote)
+			representMap[tm.Representative].Network = representMap[tm.Representative].Network.Add(am.CoinNetwork)
+			representMap[tm.Representative].Total = representMap[tm.Representative].Total.Add(am.VoteWeight())
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-}
-
-func (r *RepresentationCache) getLock(key string) *spinlock.SpinLock {
-	i, _ := r.representLock.GetOrInsert(key, &spinlock.SpinLock{})
-	spin, _ := i.(*spinlock.SpinLock)
-	return spin
+	batch := l.store.Batch(true)
+	if err := batch.Drop([]byte{byte(storage.KeyPrefixRepresentation)}); err != nil {
+		return err
+	}
+	for address, benefit := range representMap {
+		key, err := storage.GetKeyOfParts(storage.KeyPrefixRepresentation, address)
+		if err != nil {
+			return err
+		}
+		val, err := benefit.MarshalMsg(nil)
+		if err != nil {
+			return err
+		}
+		if err := batch.Put(key, val); err != nil {
+			return err
+		}
+	}
+	return l.store.PutBatch(batch)
 }

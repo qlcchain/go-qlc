@@ -98,8 +98,8 @@ func TestNewCache(t *testing.T) {
 	}
 	time.Sleep(1 * time.Second)
 
-	fmt.Println(l.relation.BlocksCount())
-	fmt.Println(l.relation.BlocksCountByType())
+	fmt.Println(l.BlocksCount())
+	fmt.Println(l.BlocksCountByType())
 	blk8 := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk8, l.cache.GetCache()); err != nil {
 		t.Fatal(err)

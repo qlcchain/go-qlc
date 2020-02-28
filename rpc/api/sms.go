@@ -20,8 +20,8 @@ type SMSApi struct {
 	logger   *zap.SugaredLogger
 }
 
-func NewSMSApi(ledger *ledger.Ledger, relation *relation.Relation) *SMSApi {
-	return &SMSApi{ledger: ledger, relation: relation, logger: log.NewLogger("api_sms")}
+func NewSMSApi(ledger *ledger.Ledger) *SMSApi {
+	return &SMSApi{ledger: ledger, logger: log.NewLogger("api_sms")}
 }
 
 func phoneNumberSeri(number string) ([]byte, error) {

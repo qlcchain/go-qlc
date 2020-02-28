@@ -16,7 +16,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
@@ -38,15 +37,11 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	}
 
 	l := ledger.NewLedger(cm.ConfigFile)
-	rl, err := relation.NewRelation(cm.ConfigFile)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
 	eb := cc.EventBus()
 
-	ledgerApi := NewLedgerApi(context.Background(), l, rl, eb, cc)
+	ledgerApi := NewLedgerApi(context.Background(), l, eb, cc)
 
 	return func(t *testing.T) {
 		//err := l.DBStore.Erase()
