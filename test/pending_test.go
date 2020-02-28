@@ -130,7 +130,7 @@ func TestPending(t *testing.T) {
 	}
 
 	count1 := 0
-	err = l.SearchPending(receiverBlock2.Address, func(key *types.PendingKey, value *types.PendingInfo) error {
+	err = l.GetPendingsByAddress(receiverBlock2.Address, func(key *types.PendingKey, value *types.PendingInfo) error {
 		count1++
 		return nil
 	})
@@ -150,7 +150,7 @@ func TestPending(t *testing.T) {
 	time.Sleep(70 * time.Second)
 
 	count3 := 0
-	err = l.SearchPending(receiverBlock2.Address, func(key *types.PendingKey, value *types.PendingInfo) error {
+	err = l.GetPendingsByAddress(receiverBlock2.Address, func(key *types.PendingKey, value *types.PendingInfo) error {
 		count3++
 		return nil
 	})

@@ -142,6 +142,12 @@ func NewPovBlockProcessor(eb event.EventBus, l ledger.Store,
 }
 
 func (bp *PovBlockProcessor) Start() error {
+	common.Go(bp.loop)
+	common.Go(bp.loopCheckTxPending)
+	return nil
+}
+
+func (bp *PovBlockProcessor) Init() error {
 	pid := event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *types.Tuple:
@@ -169,12 +175,6 @@ func (bp *PovBlockProcessor) Start() error {
 		bp.subscribers = append(bp.subscribers, sub2)
 	}
 
-	common.Go(bp.loop)
-	common.Go(bp.loopCheckTxPending)
-	return nil
-}
-
-func (bp *PovBlockProcessor) Init() error {
 	return nil
 }
 

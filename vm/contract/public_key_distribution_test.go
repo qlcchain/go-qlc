@@ -2,6 +2,10 @@ package contract
 
 import (
 	"crypto/ed25519"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -11,9 +15,6 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/contract/dpki"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"math/big"
-	"testing"
-	"time"
 )
 
 func TestVerifierRegister(t *testing.T) {
@@ -48,7 +49,7 @@ func TestVerifierRegister(t *testing.T) {
 
 	am := mock.AccountMeta(blk.Address)
 	am.CoinOracle = common.MinVerifierPledgeAmount
-	l.AddAccountMeta(am)
+	l.AddAccountMeta(am, l.Cache().GetCache())
 	_, _, err = vr.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
@@ -257,7 +258,7 @@ func TestOracle(t *testing.T) {
 
 	am := mock.AccountMeta(blk.Address)
 	am.CoinOracle = common.MinVerifierPledgeAmount
-	l.AddAccountMeta(am)
+	l.AddAccountMeta(am, l.Cache().GetCache())
 	_, _, err = o.ProcessSend(ctx, blk)
 	if err != ErrGetVerifier {
 		t.Fatal(err)
@@ -373,7 +374,7 @@ func TestVerifierHeart(t *testing.T) {
 	vr.SetStorage(ctx, blk.Address, common.OracleTypeWeChat, "wcid12345")
 	am := mock.AccountMeta(blk.Address)
 	am.CoinOracle = common.MinVerifierPledgeAmount
-	l.AddAccountMeta(am)
+	l.AddAccountMeta(am, l.Cache().GetCache())
 	_, _, err = vh.ProcessSend(ctx, blk)
 	if err != ErrGetVerifier {
 		t.Fatal(err)
@@ -408,7 +409,7 @@ func TestVerifierHeart_DoSendOnPov(t *testing.T) {
 	defer clear()
 
 	cs := types.NewPovContractState()
-	csdb := statedb.NewPovContractStateDB(l.Store, cs)
+	csdb := statedb.NewPovContractStateDB(l.DBStore(), cs)
 	ctx := vmstore.NewVMContext(l)
 	vh := new(VerifierHeart)
 	blk := mock.StateBlock()

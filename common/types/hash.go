@@ -15,11 +15,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"gitlab.com/samli88/go-x11-hash"
-	"golang.org/x/crypto/scrypt"
-
 	"github.com/tinylib/msgp/msgp"
+	"gitlab.com/samli88/go-x11-hash"
 	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/scrypt"
 
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -144,6 +143,24 @@ func (h *Hash) UnmarshalText(text []byte) error {
 	s := util.TrimQuotes(string(text))
 	err := h.Of(s)
 	return err
+}
+
+func (h *Hash) Serialize() ([]byte, error) {
+	//return h[:], nil
+	v, err := h.MarshalMsg(nil)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+func (h *Hash) Deserialize(text []byte) error {
+	//copy(h[:], text)
+	//return nil
+	if _, err := h.UnmarshalMsg(text); err != nil {
+		return err
+	}
+	return nil
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.

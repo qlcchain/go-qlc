@@ -9,6 +9,7 @@ package vmstore
 
 import (
 	"bytes"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"sync"
@@ -145,7 +146,7 @@ func TestGetStorageKey(t *testing.T) {
 			prefix := make([]byte, 10)
 			key := make([]byte, 5)
 			storageKey := getStorageKey(prefix, key)
-			if storageKey[0] != idPrefixStorage {
+			if storageKey[0] != storage.KeyPrefixTrieVMStorage {
 				t.Errorf("invalid prefix 0x%x", storageKey[:1])
 			}
 			if !bytes.HasPrefix(storageKey[1:], prefix) {

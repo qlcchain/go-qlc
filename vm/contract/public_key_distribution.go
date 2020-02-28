@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/qlcchain/go-qlc/vm/contract/dpki"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/contract/dpki"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -663,6 +662,23 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		}, nil
 }
 
+func (r *PKDReward) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	param := new(dpki.PKDRewardParam)
+	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &types.PendingKey{
+			Address: param.Beneficial,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: types.Balance{Int: param.RewardAmount},
+			Type:   common.GasToken(),
+		}, nil
+}
+
 func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(dpki.PKDRewardParam)
 
@@ -801,14 +817,12 @@ func (r *PKDReward) GetVerifierState(ctx *vmstore.VMContext, povHeight uint64, a
 	return dpki.PovGetVerifierState(csdb, vsRawKey)
 }
 
-func (r *PKDReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
-	tr := types.ZeroAddress
-
+func (r *PKDReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	param := new(dpki.PKDRewardParam)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, block.Data)
 	if err == nil {
-		tr = param.Beneficial
+		return param.Beneficial, nil
+	} else {
+		return types.ZeroAddress, err
 	}
-
-	return tr
 }

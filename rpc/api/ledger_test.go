@@ -7,17 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/google/uuid"
 	rpc "github.com/qlcchain/jsonrpc2"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
@@ -39,27 +37,18 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	}
 
 	l := ledger.NewLedger(cm.ConfigFile)
-	rl, err := relation.NewRelation(cm.ConfigFile)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
 	eb := cc.EventBus()
 
-	ledgerApi := NewLedgerApi(context.Background(), l, rl, eb, cc)
+	ledgerApi := NewLedgerApi(context.Background(), l, eb, cc)
 
 	return func(t *testing.T) {
-		//err := l.Store.Erase()
+		//err := l.DBStore.Erase()
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = rl.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		//CloseLedger()
 		err = os.RemoveAll(dir)
 		if err != nil {
 			t.Fatal(err)
@@ -105,13 +94,19 @@ func TestLedgerApi_Subscription(t *testing.T) {
 	defer teardownTestCase(t)
 
 	addr := mock.Address()
+	done := make(chan bool)
 	go func() {
 		for {
-			time.Sleep(1 * time.Second)
-			blk := mock.StateBlock()
-			blk.Address = addr
-			blk.Type = types.Send
-			ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
+			select {
+			case <-done:
+				return
+			default:
+				blk := mock.StateBlock()
+				blk.Address = addr
+				blk.Type = types.Send
+				ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
+				time.Sleep(2 * time.Second)
+			}
 		}
 	}()
 	ctx := rpc.SubscriptionContext()
@@ -141,4 +136,5 @@ func TestLedgerApi_Subscription(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(r)
+	done <- true
 }

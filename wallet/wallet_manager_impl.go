@@ -15,12 +15,10 @@ import (
 	"sync"
 
 	"github.com/qlcchain/go-qlc/chain/context"
-
-	"github.com/dgraph-io/badger"
-
+	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 )
 
@@ -57,32 +55,32 @@ func NewWalletStore(cfgFile string) *WalletStore {
 
 func (ws *WalletStore) WalletIds() ([]types.Address, error) {
 	var ids []types.Address
-	err := ws.ViewInTx(func(txn db.StoreTxn) error {
-		key := []byte{idPrefixIds}
-		return txn.Get(key, func(val []byte, b byte) error {
-			if len(val) != 0 {
-				return json.Unmarshal(val, &ids)
-			}
-			return nil
-		})
-	})
-
-	if err != nil && err == badger.ErrKeyNotFound {
-		err = nil
+	key := []byte{idPrefixIds}
+	val, err := ws.Get(key)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return ids, nil
+		} else {
+			return ids, err
+		}
 	}
-
-	return ids, err
+	if len(val) != 0 {
+		err := json.Unmarshal(val, &ids)
+		return ids, err
+	} else {
+		return ids, nil
+	}
 }
 
 // NewWalletBySeed create wallet from hex seed string
 func (ws *WalletStore) NewWalletBySeed(seed, password string) (types.Address, error) {
 	var walletId types.Address
-	bytes, err := hex.DecodeString(seed)
+	seedBytes, err := hex.DecodeString(seed)
 	if err != nil {
 		return walletId, err
 	}
 
-	s, err := types.BytesToSeed(bytes)
+	s, err := types.BytesToSeed(seedBytes)
 	if err != nil {
 		return walletId, err
 	}
@@ -98,8 +96,7 @@ func (ws *WalletStore) NewWalletBySeed(seed, password string) (types.Address, er
 	}
 
 	ids = append(ids, walletId)
-
-	err = ws.UpdateInTx(func(txn db.StoreTxn) error {
+	err = ws.BatchWrite(true, func(batch storage.Batch) error {
 		//add new walletId to ids
 		key := []byte{idPrefixIds}
 		bytes, err := json.Marshal(&ids)
@@ -107,29 +104,29 @@ func (ws *WalletStore) NewWalletBySeed(seed, password string) (types.Address, er
 			return err
 		}
 
-		err = txn.Set(key, bytes)
+		err = batch.Put(key, bytes)
 		if err != nil {
 			return err
 		}
 
 		// update current wallet id
-		err = ws.setCurrentId(txn, walletId.Bytes())
+		err = ws.setCurrentId(batch, walletId.Bytes())
 		if err != nil {
 			return err
 		}
 
-		err = session.setDeterministicIndex(txn, 1)
+		err = session.setDeterministicIndex(batch, 1)
 		if err != nil {
 			return err
 		}
-		_ = session.setVersion(txn, Version)
+		_ = session.setVersion(batch, Version)
 
 		err = session.EnterPassword(password)
 		if err != nil {
 			return err
 		}
 
-		err = session.setSeedByTxn(txn, s[:])
+		err = session.setSeedByTxn(batch, s[:])
 
 		if err != nil {
 			return err
@@ -167,19 +164,16 @@ func (ws *WalletStore) NewWallet() (types.Address, error) {
 
 func (ws *WalletStore) CurrentId() (types.Address, error) {
 	var id types.Address
-
-	err := ws.ViewInTx(func(txn db.StoreTxn) error {
-		key := []byte{idPrefixId}
-		return txn.Get(key, func(val []byte, b byte) error {
-			if len(val) == 0 {
-				return ErrEmptyCurrentId
-			}
-			addr, err := types.BytesToAddress(val)
-			id = addr
-			return err
-		})
-	})
-
+	key := []byte{idPrefixId}
+	val, err := ws.Get(key)
+	if err != nil {
+		return id, err
+	}
+	if len(val) == 0 {
+		return id, ErrEmptyCurrentId
+	}
+	addr, err := types.BytesToAddress(val)
+	id = addr
 	return id, err
 }
 
@@ -201,26 +195,26 @@ func (ws *WalletStore) RemoveWallet(id types.Address) error {
 		newId, _ = hex.DecodeString("")
 	}
 
-	return ws.UpdateInTx(func(txn db.StoreTxn) error {
+	return ws.BatchWrite(true, func(batch storage.Batch) error {
 		//update ids
 		key := []byte{idPrefixIds}
 		bytes, err := json.Marshal(&ids)
 		if err != nil {
 			return err
 		}
-		err = txn.Set(key, bytes)
+		err = batch.Put(key, bytes)
 		if err != nil {
 			return err
 		}
 		//update current id
-		err = ws.setCurrentId(txn, newId)
+		err = ws.setCurrentId(batch, newId)
 		if err != nil {
 			return err
 		}
 
 		// remove wallet data by walletId
 		session := ws.NewSession(id)
-		err = session.removeWallet(txn)
+		err = session.removeWallet(batch)
 		if err != nil {
 			return err
 		}
@@ -240,9 +234,9 @@ func (ws *WalletStore) Close() error {
 	return nil
 }
 
-func (ws *WalletStore) setCurrentId(txn db.StoreTxn, walletId []byte) error {
+func (ws *WalletStore) setCurrentId(batch storage.Batch, walletId []byte) error {
 	key := []byte{idPrefixId}
-	return txn.Set(key, walletId)
+	return batch.Put(key, walletId)
 }
 
 func indexOf(ids []types.Address, id types.Address) (int, error) {

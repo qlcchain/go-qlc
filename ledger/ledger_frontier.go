@@ -3,65 +3,65 @@ package ledger
 import (
 	"sort"
 
-	"github.com/dgraph-io/badger"
-
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
-func (l *Ledger) AddFrontier(frontier *types.Frontier, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixFrontier, frontier.HeaderBlock)
-	if err != nil {
-		return err
-	}
-	v := frontier.OpenBlock[:]
-
-	err = txn.Get(k, func(v []byte, b byte) error {
-		return nil
-	})
-	if err == nil {
-		return ErrFrontierExists
-	} else if err != badger.ErrKeyNotFound {
-		return err
-	}
-	return txn.Set(k, v)
+type FrontierStore interface {
+	GetFrontier(hash types.Hash, cache ...storage.Cache) (*types.Frontier, error)
+	GetFrontiers() ([]*types.Frontier, error)
+	CountFrontiers() (uint64, error)
 }
 
-func (l *Ledger) GetFrontier(key types.Hash, txns ...db.StoreTxn) (*types.Frontier, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	k, err := getKeyOfParts(idPrefixFrontier, key)
+func (l *Ledger) GetFrontier(hash types.Hash, c ...storage.Cache) (*types.Frontier, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixFrontier, hash)
 	if err != nil {
 		return nil, err
 	}
+	frontier := types.Frontier{HeaderBlock: hash}
+	if r, err := l.getFromCache(k, c...); r != nil {
+		h := r.(*types.Hash)
+		frontier.OpenBlock = *h
+		return &frontier, nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, ErrFrontierNotFound
+		}
+	}
 
-	frontier := types.Frontier{HeaderBlock: key}
-	err = txn.Get(k, func(v []byte, b byte) (err error) {
-		copy(frontier.OpenBlock[:], v)
-		return nil
-	})
+	v, err := l.store.Get(k)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return nil, ErrFrontierNotFound
 		}
 		return nil, err
 	}
+	open := new(types.Hash)
+	if err := open.Deserialize(v); err != nil {
+		l.logger.Error(err)
+		return nil, err
+	}
+	//if _, err := open.UnmarshalMsg(v); err != nil {
+	//	l.logger.Error(err)
+	//	return nil, err
+	//}
+	frontier.OpenBlock = *open
 	return &frontier, nil
 }
 
-func (l *Ledger) GetFrontiers(txns ...db.StoreTxn) ([]*types.Frontier, error) {
+func (l *Ledger) GetFrontiers() ([]*types.Frontier, error) {
 	var frontiers []*types.Frontier
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixFrontier)
 
-	err := txn.Iterator(idPrefixFrontier, func(key []byte, val []byte, b byte) error {
+	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		var frontier types.Frontier
 		copy(frontier.HeaderBlock[:], key[1:])
-		copy(frontier.OpenBlock[:], val)
+		open := new(types.Hash)
+		if err := open.Deserialize(val); err != nil {
+			l.logger.Error(err)
+			return err
+		}
+		frontier.OpenBlock = *open
 		frontiers = append(frontiers, &frontier)
 		return nil
 	})
@@ -72,20 +72,24 @@ func (l *Ledger) GetFrontiers(txns ...db.StoreTxn) ([]*types.Frontier, error) {
 	return frontiers, nil
 }
 
-func (l *Ledger) DeleteFrontier(key types.Hash, txns ...db.StoreTxn) error {
-	txn, flag := l.getTxn(true, txns...)
-	defer l.releaseTxn(txn, flag)
+func (l *Ledger) CountFrontiers() (uint64, error) {
+	return l.store.Count([]byte{byte(storage.KeyPrefixFrontier)})
+}
 
-	k, err := getKeyOfParts(idPrefixFrontier, key)
+func (l *Ledger) AddFrontier(frontier *types.Frontier, c *Cache) error {
+	v := frontier.OpenBlock
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixFrontier, frontier.HeaderBlock)
 	if err != nil {
 		return err
 	}
-	return txn.Delete(k)
+
+	return c.Put(k, &v)
 }
 
-func (l *Ledger) CountFrontiers(txns ...db.StoreTxn) (uint64, error) {
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	return txn.Count([]byte{idPrefixFrontier})
+func (l *Ledger) DeleteFrontier(key types.Hash, c *Cache) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixFrontier, key)
+	if err != nil {
+		return err
+	}
+	return c.Delete(k)
 }

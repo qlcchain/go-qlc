@@ -19,7 +19,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "ledger",
 			Version:   "1.0",
-			Service:   api.NewLedgerApi(r.ctx, r.ledger, r.relation, r.eb, r.cc),
+			Service:   api.NewLedgerApi(r.ctx, r.ledger, r.eb, r.cc),
 			Public:    true,
 		}
 	case "net":
@@ -68,7 +68,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "sms",
 			Version:   "1.0",
-			Service:   api.NewSMSApi(r.ledger, r.relation),
+			Service:   api.NewSMSApi(r.ledger),
 			Public:    true,
 		}
 	case "rewards":

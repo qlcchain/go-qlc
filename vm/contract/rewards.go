@@ -54,7 +54,7 @@ func (*AirdropRewords) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (*AirdropRewords) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+func (*AirdropRewords) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	data := block.GetData()
 	tr := types.ZeroAddress
 
@@ -62,10 +62,13 @@ func (*AirdropRewords) GetTargetReceiver(ctx *vmstore.VMContext, block *types.St
 		param := new(cabi.RewardsParam)
 		if err = method.Inputs.Unpack(param, data[4:]); err == nil {
 			tr = param.Beneficial
+			return tr, nil
+		} else {
+			return tr, err
 		}
+	} else {
+		return tr, err
 	}
-
-	return tr
 }
 
 type ConfidantRewards struct {
@@ -127,7 +130,7 @@ func (*ConfidantRewards) GetRefundData() []byte {
 	return []byte{2}
 }
 
-func (*ConfidantRewards) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+func (*ConfidantRewards) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	data := block.GetData()
 	tr := types.ZeroAddress
 
@@ -135,10 +138,13 @@ func (*ConfidantRewards) GetTargetReceiver(ctx *vmstore.VMContext, block *types.
 		param := new(cabi.RewardsParam)
 		if err = method.Inputs.Unpack(param, data[4:]); err == nil {
 			tr = param.Beneficial
+			return tr, nil
+		} else {
+			return tr, err
 		}
+	} else {
+		return tr, err
 	}
-
-	return tr
 }
 
 func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock,

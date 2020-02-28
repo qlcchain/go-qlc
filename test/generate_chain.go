@@ -73,18 +73,6 @@ func generateChain() (func() error, *rpc.Client, *chain.LedgerService, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	sqliteService, err := chain.NewSqliteService(cfgFile)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	err = sqliteService.Init()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	err = sqliteService.Start()
-	if err != nil {
-		return nil, nil, nil, err
-	}
 	walletService := chain.NewWalletService(cfgFile)
 	err = walletService.Init()
 	if err != nil {
@@ -100,9 +88,6 @@ func generateChain() (func() error, *rpc.Client, *chain.LedgerService, error) {
 			client.Close()
 		}
 		if err := ls.Stop(); err != nil {
-			return err
-		}
-		if err := sqliteService.Stop(); err != nil {
 			return err
 		}
 		if err := walletService.Stop(); err != nil {

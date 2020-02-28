@@ -132,7 +132,7 @@ func (l *Ledger) dumpBlock(db *sqlx.DB) error {
 
 				inChainBlocksMap[blk.GetHash()] = inBlock
 				h++
-				if blkHash, err = l.GetChild(blkHash); err != nil {
+				if blkHash, err = l.GetBlockChild(blkHash); err != nil {
 					break
 				}
 			}
@@ -144,7 +144,7 @@ func (l *Ledger) dumpBlock(db *sqlx.DB) error {
 	}
 
 	offChainBlocksMap := make(map[types.Hash]*Block, 0)
-	err = l.GetStateBlocks(func(block *types.StateBlock) error {
+	err = l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		if _, ok := inChainBlocksMap[block.GetHash()]; !ok {
 			b := convertToDumpBlock(block)
 			b.InChain = 0
@@ -284,7 +284,7 @@ func (l *Ledger) dumpAccountCache(blockCacheMap map[types.Hash]*Block, db *sqlx.
 		}
 	}
 	for _, abs := range accountBlockMap {
-		accountCache, _ := l.GetAccountMetaCache(abs[0].Address)
+		accountCache, _ := l.GetAccountMeteCache(abs[0].Address)
 		if accountCache != nil {
 			tokenCache := accountCache.Token(abs[0].Token)
 			if tokenCache != nil {
@@ -331,7 +331,7 @@ func (l *Ledger) dumpAccountCache(blockCacheMap map[types.Hash]*Block, db *sqlx.
 
 func (l *Ledger) dumpBlockUnchecked(db *sqlx.DB) error {
 	blockUncheckedMap := make(map[types.Hash]*Block)
-	err := l.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+	err := l.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
 		b := convertToDumpBlock(block)
 		reason := ""
 		switch unCheckType {
@@ -357,16 +357,16 @@ func (l *Ledger) dumpBlockUnchecked(db *sqlx.DB) error {
 
 func (l *Ledger) dumpBlockLink(db *sqlx.DB) error {
 	blkLinks := make([]*BlockLink, 0)
-	err := l.GetStateBlocks(func(block *types.StateBlock) error {
+	err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		hash := block.GetHash()
 		blkLink := &BlockLink{
 			Hash: hash,
 			Type: block.GetType(),
 		}
-		child, _ := l.GetChild(hash)
+		child, _ := l.GetBlockChild(hash)
 		blkLink.Child = child
 		if block.IsSendBlock() {
-			link, _ := l.GetLinkBlock(hash)
+			link, _ := l.GetBlockLink(hash)
 			blkLink.Link = link
 		} else if block.IsReceiveBlock() {
 			blkLink.Link = block.GetLink()

@@ -4,14 +4,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 )

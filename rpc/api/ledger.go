@@ -21,7 +21,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -53,7 +52,6 @@ type LedgerAPI struct {
 	ledger *ledger.Ledger
 	//vmContext *vmstore.VMContext
 	eb                event.EventBus
-	relation          *relation.Relation
 	logger            *zap.SugaredLogger
 	blockSubscription *BlockSubscription
 	processLock       *hashmap.HashMap
@@ -109,11 +107,10 @@ type ApiTokenInfo struct {
 	types.TokenInfo
 }
 
-func NewLedgerApi(ctx context.Context, l *ledger.Ledger, r *relation.Relation, eb event.EventBus, cc *chainctx.ChainContext) *LedgerAPI {
+func NewLedgerApi(ctx context.Context, l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *LedgerAPI {
 	api := LedgerAPI{
 		ledger:            l,
 		eb:                eb,
-		relation:          r,
 		logger:            log.NewLogger("api_ledger"),
 		blockSubscription: NewBlockSubscription(ctx, eb),
 		processLock:       hashmap.New(defaultLockSize),
@@ -192,7 +189,7 @@ func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset 
 	if err != nil {
 		return nil, err
 	}
-	hashes, err := l.relation.AccountBlocks(address, c, o)
+	hashes, err := l.ledger.BlocksByAccount(address, c, o)
 	if err != nil {
 		l.logger.Error(err)
 		return nil, err
@@ -355,7 +352,7 @@ func (l *LedgerAPI) AccountsPending(addresses []types.Address, n int) (map[types
 
 	for _, addr := range addresses {
 		ps := make([]*APIPending, 0)
-		err := l.ledger.SearchPending(addr, func(key *types.PendingKey, info *types.PendingInfo) error {
+		err := l.ledger.GetPendingsByAddress(addr, func(key *types.PendingKey, info *types.PendingInfo) error {
 			token, err := abi.GetTokenById(vmContext, info.Type)
 			if err != nil {
 				return err
@@ -442,7 +439,7 @@ func (l *LedgerAPI) BlockHash(block types.StateBlock) types.Hash {
 
 // BlocksCount returns the number of blocks (include smartcontrant block) in the ctx and unchecked synchronizing blocks
 func (l *LedgerAPI) BlocksCount() (map[string]uint64, error) {
-	sbCount, err := l.relation.BlocksCount()
+	sbCount, err := l.ledger.BlocksCount()
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +491,7 @@ func (l *LedgerAPI) BlocksCountByType() (map[string]uint64, error) {
 	c[types.ContractReward.String()] = 0
 	c[types.ContractSend.String()] = 0
 	c[types.ContractRefund.String()] = 0
-	ts, err := l.relation.BlocksCountByType()
+	ts, err := l.ledger.BlocksCountByType()
 	if err != nil {
 		l.logger.Error(err)
 	}
@@ -555,7 +552,7 @@ func (l *LedgerAPI) Blocks(count int, offset *int) ([]*APIBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	hashes, err := l.relation.Blocks(c, o)
+	hashes, err := l.ledger.Blocks(c, o)
 	if err != nil {
 		return nil, err
 	}
@@ -693,7 +690,6 @@ func (l *LedgerAPI) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 	if err != nil {
 		return nil, err
 	}
-	l.logger.Debug(block)
 	return block, nil
 }
 
@@ -715,7 +711,6 @@ func (l *LedgerAPI) GenerateReceiveBlock(sendBlock *types.StateBlock, prkStr *st
 	if err != nil {
 		return nil, err
 	}
-	l.logger.Debug(block)
 	return block, nil
 }
 
@@ -740,7 +735,6 @@ func (l *LedgerAPI) GenerateReceiveBlockByHash(sendHash types.Hash, prkStr *stri
 	if err != nil {
 		return nil, err
 	}
-	l.logger.Debug(block)
 	return block, nil
 }
 
@@ -758,7 +752,6 @@ func (l *LedgerAPI) GenerateChangeBlock(account types.Address, representative ty
 		return nil, err
 	}
 
-	l.logger.Debug(block)
 	return block, nil
 }
 
@@ -864,6 +857,7 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)
 			return types.ZeroHash, err
 		}
+		l.logger.Info("block cache process done, ", block.GetHash().String())
 		l.eb.Publish(topic.EventAddBlockCache, block)
 		l.logger.Debug("broadcast block")
 		//TODO: refine
@@ -962,7 +956,7 @@ func (l *LedgerAPI) Tokens() ([]*types.TokenInfo, error) {
 
 // BlocksCount returns the number of blocks (not include smartcontrant block) in the ctx and unchecked synchronizing blocks
 func (l *LedgerAPI) TransactionsCount() (map[string]uint64, error) {
-	sbCount, err := l.relation.BlocksCount()
+	sbCount, err := l.ledger.BlocksCount()
 	if err != nil {
 		return nil, err
 	}
@@ -996,7 +990,7 @@ func (l *LedgerAPI) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
 
 func (l *LedgerAPI) GetAccountOnlineBlock(account types.Address) ([]*types.StateBlock, error) {
 	blocks := make([]*types.StateBlock, 0)
-	hashes, err := l.relation.AccountBlocks(account, -1, -1)
+	hashes, err := l.ledger.BlocksByAccount(account, -1, -1)
 	if err == nil {
 		for _, hash := range hashes {
 			if blk, err := l.ledger.GetStateBlockConfirmed(hash); err == nil {

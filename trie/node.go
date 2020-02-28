@@ -12,9 +12,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/common/util"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 const (

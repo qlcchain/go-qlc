@@ -5,13 +5,11 @@ import (
 	"sync"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
 )

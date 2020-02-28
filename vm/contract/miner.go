@@ -45,7 +45,6 @@ func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error
 	}
 
 	nodeHeight := latestBlock.GetHeight()
-	fmt.Println(nodeHeight)
 	if nodeHeight < common.PovMinerRewardHeightStart {
 		return 0, nil
 	}
@@ -168,6 +167,24 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrSetStorage
+	}
+
+	return &types.PendingKey{
+			Address: param.Beneficial,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: types.Balance{Int: param.RewardAmount},
+			Type:   common.GasToken(),
+		}, nil
+}
+
+func (m *MinerReward) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	param := new(cabi.MinerRewardParam)
+	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.Data)
+	if err != nil {
+		logger.Info(err)
+		return nil, nil, ErrUnpackMethod
 	}
 
 	return &types.PendingKey{
@@ -341,13 +358,11 @@ func (m *MinerReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, coinbas
 	return rewardBlocks, rewardAmount, nil
 }
 
-func (m *MinerReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
-	tr := types.ZeroAddress
-
+func (m *MinerReward) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	param := new(cabi.MinerRewardParam)
 	if err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.GetData()); err == nil {
-		tr = param.Beneficial
+		return param.Beneficial, nil
+	} else {
+		return types.ZeroAddress, err
 	}
-
-	return tr
 }

@@ -15,17 +15,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/qlcchain/go-qlc/common"
-
 	"gopkg.in/validator.v2"
 
-	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/qlcchain/go-qlc/common/util"
-
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const (

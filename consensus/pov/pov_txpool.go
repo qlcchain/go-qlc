@@ -20,7 +20,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
 )
 
 const (
@@ -80,10 +79,6 @@ func NewPovTxPool(eb event.EventBus, l ledger.Store, chain PovTxChainReader) *Po
 }
 
 func (tp *PovTxPool) Init() error {
-	return nil
-}
-
-func (tp *PovTxPool) Start() error {
 	eb := tp.eb
 	if eb == nil {
 		eb = tp.ledger.EventBus()
@@ -106,6 +101,10 @@ func (tp *PovTxPool) Start() error {
 
 	tp.chain.RegisterListener(tp)
 
+	return nil
+}
+
+func (tp *PovTxPool) Start() error {
 	common.Go(tp.loop)
 
 	return nil
@@ -236,76 +235,76 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 
 	startTime := time.Now()
 
-	err := tp.ledger.BatchView(func(txn db.StoreTxn) error {
-		// scan all account metas
-		var allAms []*types.AccountMeta
-		err := tp.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-			allAms = append(allAms, am)
-			return nil
-		}, txn)
-		if err != nil {
-			tp.logger.Errorf("failed to get account metas, err %s", err)
-			return err
-		}
-
-		tp.logger.Infof("total %d account metas", len(allAms))
-
-		accountTxs = make(map[types.AddressToken][]*PovTxEntry, len(allAms))
-
-		// scan all blocks under user accounts
-		for _, am := range allAms {
-			for _, tm := range am.Tokens {
-				prevHash := tm.Header
-				for !prevHash.IsZero() {
-					block, err := tp.ledger.GetStateBlockConfirmed(prevHash, txn)
-					if err != nil {
-						break
-					}
-
-					txHash := prevHash // no need calc hash from block
-					prevHash = block.GetPrevious()
-
-					if tp.ledger.HasPovTxLookup(txHash, txn) {
-						break // all previous tx had been packed into pov
-					}
-
-					addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
-					accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: block})
-					unconfirmedTxNum++
-				}
-			}
-		}
-
-		tp.logger.Infof("total %d unconfirmed blocks by scan %d account metas", unconfirmedTxNum, len(allAms))
-
-		// reversing txs, open <- send/recv <- header
-		for _, tokenTxs := range accountTxs {
-			for i := len(tokenTxs)/2 - 1; i >= 0; i-- {
-				opp := len(tokenTxs) - 1 - i
-				tokenTxs[i], tokenTxs[opp] = tokenTxs[opp], tokenTxs[i]
-			}
-		}
-
-		// scan all genesis blocks under contract accounts
-		allGenesisBlocks := common.AllGenesisBlocks()
-		for _, block := range allGenesisBlocks {
-			if !types.IsContractAddress(block.GetAddress()) {
-				continue
-			}
-
-			txHash := block.GetHash()
-			if tp.ledger.HasPovTxLookup(txHash, txn) {
-				continue
-			}
-
-			addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
-			blockCopy := block
-			accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: &blockCopy})
-			unconfirmedTxNum++
-		}
-
+	//err := tp.ledger.BatchView(func(txn db.StoreTxn) error {
+	//	// scan all account metas
+	var allAms []*types.AccountMeta
+	err := tp.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
+		allAms = append(allAms, am)
 		return nil
 	})
+	if err != nil {
+		tp.logger.Errorf("failed to get account metas, err %s", err)
+		//return err
+	}
+
+	tp.logger.Infof("total %d account metas", len(allAms))
+
+	accountTxs = make(map[types.AddressToken][]*PovTxEntry, len(allAms))
+
+	// scan all blocks under user accounts
+	for _, am := range allAms {
+		for _, tm := range am.Tokens {
+			prevHash := tm.Header
+			for !prevHash.IsZero() {
+				block, err := tp.ledger.GetStateBlockConfirmed(prevHash)
+				if err != nil {
+					break
+				}
+
+				txHash := prevHash // no need calc hash from block
+				prevHash = block.GetPrevious()
+
+				if tp.ledger.HasPovTxLookup(txHash) {
+					break // all previous tx had been packed into pov
+				}
+
+				addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
+				accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: block})
+				unconfirmedTxNum++
+			}
+		}
+	}
+
+	tp.logger.Infof("total %d unconfirmed blocks by scan %d account metas", unconfirmedTxNum, len(allAms))
+
+	// reversing txs, open <- send/recv <- header
+	for _, tokenTxs := range accountTxs {
+		for i := len(tokenTxs)/2 - 1; i >= 0; i-- {
+			opp := len(tokenTxs) - 1 - i
+			tokenTxs[i], tokenTxs[opp] = tokenTxs[opp], tokenTxs[i]
+		}
+	}
+
+	// scan all genesis blocks under contract accounts
+	allGenesisBlocks := common.AllGenesisBlocks()
+	for _, block := range allGenesisBlocks {
+		if !types.IsContractAddress(block.GetAddress()) {
+			continue
+		}
+
+		txHash := block.GetHash()
+		if tp.ledger.HasPovTxLookup(txHash) {
+			continue
+		}
+
+		addrToken := types.AddressToken{Address: block.GetAddress(), Token: block.GetToken()}
+		blockCopy := block
+		accountTxs[addrToken] = append(accountTxs[addrToken], &PovTxEntry{txHash: txHash, txBlock: &blockCopy})
+		unconfirmedTxNum++
+	}
+
+	//	return nil
+	//})
 	if err != nil {
 		tp.logger.Errorf("scan all state blocks failed")
 	}

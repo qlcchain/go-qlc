@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -231,6 +232,31 @@ func (bs *StateBlockList) Deserialize(text []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (b *StateBlock) TableSchema(dbType string) string {
+	fields := make(map[string]interface{})
+	fields["hash"] = b.GetHash()
+	fields["type"] = b.Type
+	fields["address"] = b.Address
+	fields["timestamp"] = b.Timestamp
+
+	return CreateSchema(b.TableName(), fields, "", dbType)
+}
+
+func (b *StateBlock) TableName() string {
+	return "BLOCKHASH"
+}
+
+func (b *StateBlock) SetRelation() (string, []interface{}) {
+	var str string
+	str = fmt.Sprintf("INSERT INTO %s (hash,type,address,timestamp) VALUES ($1, $2, $3, $4)", b.TableName())
+	val := []interface{}{b.GetHash().String(), b.GetType().String(), b.GetAddress().String(), b.GetTimestamp()}
+	return str, val
+}
+
+func (b *StateBlock) RemoveRelation() string {
+	return fmt.Sprintf("DELETE FROM %s WHERE hash = '%s'", b.TableName(), b.GetHash().String())
 }
 
 //

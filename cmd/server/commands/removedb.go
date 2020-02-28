@@ -9,14 +9,12 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/chain"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 
-	"github.com/qlcchain/go-qlc/chain"
-	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/ledger/db"
-
 	"github.com/abiosoft/ishell"
+	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/spf13/cobra"
 )
 
@@ -71,21 +69,10 @@ func removeDBAction() {
 	cmdutil.Info("starting to remove database, please wait...")
 	ledgerService := chain.NewLedgerService(cm.ConfigFile)
 	cmdutil.Info("drop all data in ledger ...")
-	err = ledgerService.Ledger.BatchUpdate(func(txn db.StoreTxn) error {
-		return txn.Drop(nil)
-	})
-	if err != nil {
+
+	if err := ledgerService.Ledger.DBStore().Drop(nil); err != nil {
 		cmdutil.Warn(err)
 		return
-	}
-	sqliteService, err := chain.NewSqliteService(cm.ConfigFile)
-	if sqliteService != nil {
-		cmdutil.Info("drop all data in relation ...")
-		err = sqliteService.Relation.EmptyStore()
-		if err != nil {
-			cmdutil.Warn(err)
-			return
-		}
 	}
 
 	cmdutil.Info("finished to remove database.")

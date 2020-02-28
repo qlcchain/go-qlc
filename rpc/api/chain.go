@@ -24,14 +24,14 @@ func NewChainApi(l *ledger.Ledger) *ChainApi {
 	return &ChainApi{ledger: l, logger: log.NewLogger("api_chain")}
 }
 
-func (c *ChainApi) LedgerSize() (map[string]int64, error) {
-	lsm, vlog := c.ledger.Size()
-	r := make(map[string]int64)
-	r["lsm"] = lsm
-	r["vlog"] = vlog
-	r["total"] = lsm + vlog
-	return r, nil
-}
+//func (c *ChainApi) LedgerSize() (map[string]int64, error) {
+//	lsm, vlog := c.ledger.Size()
+//	r := make(map[string]int64)
+//	r["lsm"] = lsm
+//	r["vlog"] = vlog
+//	r["total"] = lsm + vlog
+//	return r, nil
+//}
 
 func (c *ChainApi) Version() (map[string]string, error) {
 	r := make(map[string]string)

@@ -44,13 +44,12 @@ type Processor struct {
 	tokenCreate     chan types.Hash
 	publishBlock    chan types.Hash
 	syncBlock       chan *types.StateBlock
-	syncBlockAcked  chan types.Hash
 	acks            chan *voteInfo
 	frontiers       chan *types.StateBlock
 	syncStateChange chan topic.SyncState
 	syncState       topic.SyncState
 	orderedChain    *sync.Map
-	chainHeight     map[chainKey]uint64
+	chainHeight     *sync.Map
 	// doneBlock          chan *types.StateBlock
 	confirmedChain     map[types.Hash]bool
 	confirmParallelNum int32
@@ -72,13 +71,12 @@ func newProcessors(num int) []*Processor {
 			tokenCreate:     make(chan types.Hash, 1024),
 			publishBlock:    make(chan types.Hash, common.DPoSMaxBlocks),
 			syncBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncBlockAcked:  make(chan types.Hash, common.DPoSMaxBlocks),
 			acks:            make(chan *voteInfo, common.DPoSMaxBlocks),
 			frontiers:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
 			syncStateChange: make(chan topic.SyncState, 1),
 			syncState:       topic.SyncNotStart,
 			orderedChain:    new(sync.Map),
-			chainHeight:     make(map[chainKey]uint64),
+			chainHeight:     new(sync.Map),
 			// doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
 			confirmedChain:     make(map[types.Hash]bool),
 			confirmParallelNum: ConfirmChainParallelNum,
@@ -137,53 +135,27 @@ func (p *Processor) processMsg() {
 	timerConfirm := time.NewTicker(time.Second)
 
 	for {
-	P1:
-		for {
-			select {
-			case <-p.quitCh:
-				return
-			case p.syncState = <-p.syncStateChange:
-				p.dps.syncStateNotifyWait.Done()
-
-				if p.syncState == topic.Syncing {
-					p.orderedChain = new(sync.Map)
-					p.chainHeight = make(map[chainKey]uint64)
-					p.confirmedChain = make(map[types.Hash]bool)
-				}
-			case hash := <-p.syncBlockAcked:
-				if p.dps.isConfirmedFrontier(hash) {
-					if s, ok := p.dps.frontiersStatus.Load(hash); ok && s == frontierConfirmed {
-						p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
-					}
-
-					if _, ok := p.confirmedChain[hash]; !ok {
-						p.confirmedChain[hash] = false
-					}
-				}
-				// p.dequeueUncheckedSync(hash)
-			case hash := <-p.blocksAcked:
-				p.dequeueUnchecked(hash)
-			case hash := <-p.tokenCreate:
-				p.dequeueGapToken(hash)
-			case hash := <-p.publishBlock:
-				p.dequeueGapPublish(hash)
-			case ack := <-p.acks:
-				p.processAck(ack)
-			case frontier := <-p.frontiers:
-				p.processFrontier(frontier)
-			// case block := <-p.doneBlock:
-			// 	p.dps.updateLastProcessSyncTime()
-			// 	if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
-			// 		p.dps.logger.Warnf("block(%s) sync done error: %s", block.GetHash(), err)
-			// 	}
-			default:
-				break P1
-			}
-		}
-
 		select {
 		case <-p.quitCh:
 			return
+		case p.syncState = <-p.syncStateChange:
+			p.dps.syncStateNotifyWait.Done()
+
+			if p.syncState == topic.Syncing {
+				p.orderedChain = new(sync.Map)
+				p.chainHeight = new(sync.Map)
+				p.confirmedChain = make(map[types.Hash]bool)
+			}
+		case hash := <-p.blocksAcked:
+			p.dequeueUnchecked(hash)
+		case hash := <-p.tokenCreate:
+			p.dequeueGapToken(hash)
+		case hash := <-p.publishBlock:
+			p.dequeueGapPublish(hash)
+		case ack := <-p.acks:
+			p.processAck(ack)
+		case frontier := <-p.frontiers:
+			p.processFrontier(frontier)
 		case bs := <-p.blocks:
 			p.processMsgDo(bs)
 		case block := <-p.syncBlock:
@@ -205,30 +177,65 @@ func (p *Processor) processMsg() {
 					}
 				}
 			}
-		default:
-			time.Sleep(time.Millisecond)
 		}
 	}
 }
 
+func (p *Processor) ackedBlockNotify(hash types.Hash) {
+	select {
+	case p.blocksAcked <- hash:
+	default:
+	}
+}
+
+func (p *Processor) publishBlockNotify(hash types.Hash) {
+	select {
+	case p.publishBlock <- hash:
+	default:
+	}
+}
+
+func (p *Processor) tokenCreateNotify(hash types.Hash) {
+	select {
+	case p.tokenCreate <- hash:
+	default:
+	}
+}
+
 func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBlock) {
+	var height uint64
+
 	ck := chainKey{
 		addr:  block.Address,
 		token: block.Token,
 	}
-	if _, ok := p.chainHeight[ck]; ok {
-		p.chainHeight[ck]++
+
+	if v, ok := p.chainHeight.Load(ck); ok {
+		height = v.(uint64) + 1
 	} else {
-		p.chainHeight[ck] = 1
+		height = 1
 	}
 
+	p.chainHeight.Store(ck, height)
 	cok := chainOrderKey{
 		chainKey: ck,
-		order:    p.chainHeight[ck],
+		order:    height,
 	}
 
 	p.orderedChain.Store(cok, hash)
-	p.syncBlockAcked <- hash
+	p.processAckedSync(hash)
+}
+
+func (p *Processor) processAckedSync(hash types.Hash) {
+	if p.dps.isConfirmedFrontier(hash) {
+		if s, ok := p.dps.frontiersStatus.Load(hash); ok && s == frontierConfirmed {
+			p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
+		}
+
+		if _, ok := p.confirmedChain[hash]; !ok {
+			p.confirmedChain[hash] = false
+		}
+	}
 }
 
 func (p *Processor) localRepVoteFrontier(block *types.StateBlock) {
@@ -307,7 +314,14 @@ func (p *Processor) confirmChain(hash types.Hash) {
 			addr:  block.Address,
 			token: block.Token,
 		}
-		height := p.chainHeight[ck]
+
+		vh, ok := p.chainHeight.Load(ck)
+		if !ok {
+			dps.logger.Errorf("get chain height err")
+			return
+		}
+		height := vh.(uint64)
+
 		cok := chainOrderKey{
 			chainKey: ck,
 			order:    1,
@@ -356,7 +370,7 @@ func (p *Processor) processAck(vi *voteInfo) {
 		if _, ok := el.frontier.Load(vi.hash); ok {
 			if dps.acTrx.voteFrontier(vi) {
 				p.dps.frontiersStatus.Store(vi.hash, frontierConfirmed)
-				p.syncBlockAcked <- vi.hash
+				p.processAckedSync(vi.hash)
 				dps.logger.Infof("frontier %s confirmed", vi.hash)
 			}
 		} else {
@@ -470,10 +484,11 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		dps.logger.Errorf("Fork for block: %s", hash)
 		p.processFork(bs)
 	case process.GapPrevious:
-		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous.String())
+		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous)
 		p.enqueueUnchecked(result, bs)
 	case process.GapSource:
-		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link.String())
+		// dfile.WriteString(fmt.Sprintf("add gap link: [%d] [%s] [%s]", p.index, hash, blk.Link))
+		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link)
 		p.enqueueUnchecked(result, bs)
 	case process.GapTokenInfo:
 		dps.logger.Infof("block:[%s] Gap tokenInfo", hash)
@@ -512,12 +527,12 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 		el.cleanBlockInfo()
 		dps.acTrx.rollBack(loser)
 		dps.acTrx.addSyncBlock2Ledger(blk)
-		p.blocksAcked <- hash
+		p.ackedBlockNotify(hash)
 		dps.dispatchAckedBlock(blk, hash, p.index)
 		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 	} else {
 		dps.acTrx.addSyncBlock2Ledger(blk)
-		p.blocksAcked <- hash
+		p.ackedBlockNotify(hash)
 		dps.dispatchAckedBlock(blk, hash, p.index)
 		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 	}
@@ -581,7 +596,7 @@ func (p *Processor) findAnotherForkedBlock(block *types.StateBlock) *types.State
 	} else {
 		hash := block.Parent()
 		var err error
-		forkedHash, err = dps.ledger.GetChild(hash)
+		forkedHash, err = dps.ledger.GetBlockChild(hash)
 		if err != nil {
 			dps.logger.Error(err)
 			return block
@@ -692,7 +707,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 // 	if !p.uncheckedCache.Has(depHash) {
 // 		consensus.GlobalUncheckedBlockNum.Inc()
 // 		blocks := new(sync.Map)
-// 		blocks.Store(hash, bs)
+// 		blocks.DBStore(hash, bs)
 //
 // 		err := p.uncheckedCache.Set(depHash, blocks)
 // 		if err != nil {
@@ -705,7 +720,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 // 		}
 //
 // 		blocks := c.(*sync.Map)
-// 		blocks.Store(hash, bs)
+// 		blocks.DBStore(hash, bs)
 // 	}
 // }
 
@@ -730,7 +745,7 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 	if has, _ := dps.ledger.HasStateBlockConfirmed(hash); !has {
 		dps.logger.Debugf("get confirmed block fail %s", hash)
 		time.Sleep(time.Millisecond)
-		p.blocksAcked <- hash
+		p.ackedBlockNotify(hash)
 		return
 	}
 
@@ -777,7 +792,7 @@ func (p *Processor) dequeueGapToken(hash types.Hash) {
 	if err != nil || blk == nil {
 		dps.logger.Debugf("get confirmed block fail %s", hash)
 		time.Sleep(time.Millisecond)
-		p.tokenCreate <- hash
+		p.tokenCreateNotify(hash)
 		return
 	}
 
@@ -820,7 +835,7 @@ func (p *Processor) dequeueGapPublish(hash types.Hash) {
 	if err != nil || blk == nil {
 		dps.logger.Debugf("get confirmed block fail %s", hash)
 		time.Sleep(time.Millisecond)
-		p.publishBlock <- hash
+		p.publishBlockNotify(hash)
 		return
 	}
 

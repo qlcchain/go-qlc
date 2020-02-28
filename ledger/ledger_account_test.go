@@ -11,7 +11,7 @@ import (
 func addAccountMeta(t *testing.T, l *Ledger) *types.AccountMeta {
 	ac := mock.Account()
 	am := mock.AccountMeta(ac.Address())
-	if err := l.AddAccountMeta(am); err != nil {
+	if err := l.AddAccountMeta(am, l.cache.GetCache()); err != nil {
 		t.Fatal()
 	}
 	return am
@@ -21,14 +21,14 @@ func TestLedger_AddAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMeta(t, l)
-	a, err := l.cache.GetAccountMetaConfirmed(am.Address)
+	a, err := l.GetAccountMetaConfirmed(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	amount := types.Balance{Int: big.NewInt(50)}
 	a.CoinVote = amount
 	a.Tokens[0].Balance = amount
-	b, err := l.cache.GetAccountMetaConfirmed(am.Address)
+	b, err := l.GetAccountMetaConfirmed(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,9 +72,9 @@ func TestLedger_HasAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMeta(t, l)
-	r, err := l.HasAccountMeta(am.Address)
-	if err != nil {
-		t.Fatal(err)
+	r, _ := l.HasAccountMetaConfirmed(am.Address)
+	if !r {
+		t.Fatal()
 	}
 	t.Log("has account,", r)
 }
@@ -83,27 +83,9 @@ func TestLedger_DeleteAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMeta(t, l)
-	err := l.DeleteAccountMeta(am.Address)
+	err := l.DeleteAccountMeta(am.Address, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestLedger_AddOrUpdateAccountMeta(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-	am := addAccountMeta(t, l)
-	a, _ := l.cache.GetAccountMetaConfirmed(am.Address)
-
-	token := mock.TokenMeta(am.Address)
-	am.Tokens = append(am.Tokens, token)
-	err := l.AddOrUpdateAccountMeta(am)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, _ := l.cache.GetAccountMetaConfirmed(am.Address)
-	if len(a.Tokens)+1 != len(b.Tokens) {
-		t.Fatal(len(a.Tokens), len(b.Tokens))
 	}
 }
 
@@ -114,7 +96,7 @@ func TestLedger_UpdateAccountMeta(t *testing.T) {
 	token := mock.TokenMeta(am.Address)
 	am.Tokens = append(am.Tokens, token)
 
-	err := l.AddOrUpdateAccountMeta(am)
+	err := l.UpdateAccountMeta(am, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +105,7 @@ func TestLedger_UpdateAccountMeta(t *testing.T) {
 func addTokenMeta(t *testing.T, l *Ledger) *types.TokenMeta {
 	tm := addAccountMeta(t, l)
 	token := mock.TokenMeta(tm.Address)
-	if err := l.AddTokenMeta(token.BelongTo, token); err != nil {
+	if err := l.AddTokenMetaConfirmed(token.BelongTo, token, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
 	return token
@@ -151,39 +133,11 @@ func TestLedger_GetTokenMeta(t *testing.T) {
 	}
 }
 
-func TestLedger_AddOrUpdateTokenMeta(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	token := addTokenMeta(t, l)
-	token2 := mock.TokenMeta(token.BelongTo)
-	err := l.AddOrUpdateTokenMeta(token.BelongTo, token2)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestLedger_UpdateTokenMeta(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-	token := addTokenMeta(t, l)
-	token2 := mock.TokenMeta(token.BelongTo)
-	err := l.AddOrUpdateTokenMeta(token.BelongTo, token2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	token2.Header = mock.Hash()
-	err = l.UpdateTokenMeta(token.BelongTo, token2)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestLedger_DelTokenMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	token := addTokenMeta(t, l)
-	err := l.DeleteTokenMeta(token.BelongTo, token.Type)
+	err := l.DeleteTokenMetaConfirmed(token.BelongTo, token.Type, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,9 +178,9 @@ func TestLedger_HasTokenMeta_False(t *testing.T) {
 
 	token := addTokenMeta(t, l)
 	token2 := mock.TokenMeta(token.BelongTo)
-	has, err := l.HasTokenMeta(token.BelongTo, token2.Type)
-	if err != nil {
-		t.Fatal(err)
+	has, _ := l.HasTokenMeta(token.BelongTo, token2.Type)
+	if has {
+		t.Fatal()
 	}
 	t.Log("has token,", has)
 }
@@ -236,9 +190,9 @@ func TestLedger_HasTokenMeta_True(t *testing.T) {
 	defer teardownTestCase(t)
 
 	token := addTokenMeta(t, l)
-	r, err := l.HasTokenMeta(token.BelongTo, token.Type)
-	if err != nil {
-		t.Fatal(err)
+	r, _ := l.HasTokenMeta(token.BelongTo, token.Type)
+	if !r {
+		t.Fatal()
 	}
 	t.Log("has token,", r)
 }
@@ -263,7 +217,7 @@ func TestLedger_GetAccountMetaCache(t *testing.T) {
 	defer teardownTestCase(t)
 
 	am := addAccountMetaCache(t, l)
-	a, err := l.GetAccountMetaCache(am.Address)
+	a, err := l.GetAccountMeteCache(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,10 +240,7 @@ func TestLedger_HasAccountMetaCache(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMetaCache(t, l)
-	r, err := l.HasAccountMetaCache(am.Address)
-	if err != nil {
-		t.Fatal(err)
-	}
+	r, _ := l.HasAccountMetaCache(am.Address)
 	if r == false {
 		t.Fatal("should have accountMeta from block cache")
 	}
@@ -310,16 +261,19 @@ func TestLedger_UpdateAccountMetaCache(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMetaCache(t, l)
-	a, _ := l.cache.GetAccountMetaUnConfirmed(am.Address)
-
-	amount1 := types.Balance{Int: big.NewInt(101)}
-	am.CoinBalance = amount1
-	err := l.UpdateAccountMetaCache(am)
+	a, err := l.GetAccountMeteCache(am.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, _ := l.cache.GetAccountMetaUnConfirmed(am.Address)
-	am2, _ := l.GetAccountMetaCache(am.Address)
+
+	amount1 := types.Balance{Int: big.NewInt(101)}
+	am.CoinBalance = amount1
+	err = l.UpdateAccountMeteCache(am)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := l.GetAccountMeteCache(am.Address)
+	am2, _ := l.GetAccountMeteCache(am.Address)
 	if !b.CoinBalance.Equal(amount1) || !am2.CoinBalance.Equal(amount1) {
 		t.Fatal("amount not equal")
 	}
@@ -330,94 +284,8 @@ func TestLedger_UpdateAccountMetaCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, _ := l.cache.GetAccountMetaUnConfirmed(am.Address)
+	c, _ := l.GetAccountMeteCache(am.Address)
 	if len(a.Tokens)+1 != len(c.Tokens) {
 		t.Fatal(len(a.Tokens), len(c.Tokens))
 	}
-}
-
-func TestLedger_Latest(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	block := addStateBlock(t, l)
-	token := mock.TokenMeta(block.GetAddress())
-	token.Header = block.GetHash()
-	token.Type = block.GetToken()
-	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
-	if err := l.AddAccountMeta(&ac); err != nil {
-		t.Fatal()
-	}
-
-	hash := l.Latest(ac.Address, token.Type)
-
-	if hash != block.GetHash() {
-		t.Fatal("err")
-	}
-}
-
-func TestLedger_Account(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	block := addStateBlock(t, l)
-	token := mock.TokenMeta(block.GetAddress())
-	token.Type = block.GetToken()
-	token2 := mock.TokenMeta(block.GetAddress())
-	token2.Type = block.GetToken()
-	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token, token2}}
-	if err := l.AddAccountMeta(&ac); err != nil {
-		t.Fatal()
-	}
-
-	am, err := l.Account(block.GetHash())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(len(am.Tokens))
-}
-
-func TestLedger_Token(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	block := addStateBlock(t, l)
-	token := mock.TokenMeta(block.GetAddress())
-	token.Type = block.GetToken()
-	ac := types.AccountMeta{Address: token.BelongTo, Tokens: []*types.TokenMeta{token}}
-	if err := l.AddAccountMeta(&ac); err != nil {
-		t.Fatal()
-	}
-
-	tm, err := l.Token(block.GetHash())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(*tm)
-}
-
-func TestLedger_Balance(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	am := addAccountMeta(t, l)
-	balances, err := l.Balance(am.Address)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for k, v := range balances {
-		t.Log(k, v)
-	}
-}
-
-func TestLedger_TokenBalance(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	tm := addTokenMeta(t, l)
-	balance, err := l.TokenBalance(tm.BelongTo, tm.Type)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(balance)
 }

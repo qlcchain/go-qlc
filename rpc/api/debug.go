@@ -3,13 +3,14 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 	"time"
-
-	qctx "github.com/qlcchain/go-qlc/chain/context"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
+	qctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -51,7 +52,7 @@ type APIUncheckBlock struct {
 }
 
 func (l *DebugApi) BlockCacheCount() (map[string]uint64, error) {
-	unCount, err := l.ledger.CountBlockCache()
+	unCount, err := l.ledger.CountBlocksCache()
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func (l *DebugApi) BlockCaches() ([]types.Hash, error) {
 
 func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	unchecks := make([]*APIUncheckBlock, 0)
-	err := l.ledger.WalkUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
 		uncheck := new(APIUncheckBlock)
 		uncheck.Block = block
 		uncheck.Hash = block.GetHash()
@@ -116,26 +117,82 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	return unchecks, nil
 }
 
-func (l *DebugApi) Action(t ledger.ActionType) (string, error) {
-	return l.ledger.Action(t)
+func (l *DebugApi) UncheckBlocksCount() (map[string]int, error) {
+	unchecks := make(map[string]int)
+
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		hash := block.GetHash()
+		if hash.IsZero() {
+			return fmt.Errorf("invalid block : %s", block)
+		}
+		switch unCheckType {
+		case types.UncheckedKindPrevious:
+			unchecks["GapPrevious"] = unchecks["GapPrevious"] + 1
+		case types.UncheckedKindLink:
+			unchecks["GapLink"] = unchecks["GapLink"] + 1
+		case types.UncheckedKindTokenInfo:
+			unchecks["GapTokenInfo"] = unchecks["GapTokenInfo"] + 1
+		case types.UncheckedKindPublish:
+			unchecks["GapPublish"] = unchecks["GapPublish"] + 1
+		}
+		unchecks["Total"] = unchecks["Total"] + 1
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		unchecks["GapPovHeight"] = unchecks["GapPovHeight"] + 1
+		unchecks["Total"] = unchecks["Total"] + 1
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return unchecks, nil
 }
+
+//func (l *DebugApi) Action(t ledger.ActionType) (string, error) {
+//	return l.ledger.Action(t)
+//}
 
 func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
 	r := make(map[string]types.Hash)
-	child, err := l.ledger.GetChild(hash)
+	child, err := l.ledger.GetBlockChild(hash)
 	if err == nil {
 		r["child"] = child
 	}
-	link, _ := l.ledger.GetLinkBlock(hash)
+	link, _ := l.ledger.GetBlockLink(hash)
 	if !link.IsZero() {
 		r["receiver"] = link
 	}
 	return r, nil
 }
 
+func (l *DebugApi) BlockLinks(hash types.Hash) (map[string][]types.Hash, error) {
+	r := make(map[string][]types.Hash)
+	r["child"] = make([]types.Hash, 0)
+	r["receiver"] = make([]types.Hash, 0)
+	err := l.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
+		if block.Previous == hash {
+			r["child"] = append(r["child"], block.GetHash())
+		}
+		if block.Link == hash {
+			r["receiver"] = append(r["receiver"], block.GetHash())
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func (l *DebugApi) BlocksCountByType(typ string) (map[string]int64, error) {
 	r := make(map[string]int64)
-	if err := l.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+	if err := l.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		var t string
 		switch typ {
 		case "address":
@@ -175,29 +232,29 @@ func (l *DebugApi) GetSyncBlockNum() (map[string]uint64, error) {
 	return data, nil
 }
 
-func (l *DebugApi) SyncCacheBlocks() ([]types.Hash, error) {
-	blocks := make([]types.Hash, 0)
-	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
-		blocks = append(blocks, block.GetHash())
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return blocks, nil
-}
+//func (l *DebugApi) SyncCacheBlocks() ([]types.Hash, error) {
+//	blocks := make([]types.Hash, 0)
+//	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
+//		blocks = append(blocks, block.GetHash())
+//		return nil
+//	})
+//	if err != nil {
+//		return nil, err
+//	}
+//	return blocks, nil
+//}
 
-func (l *DebugApi) SyncCacheBlocksCount() (int64, error) {
-	var n int64
-	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
-		n++
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-	return n, nil
-}
+//func (l *DebugApi) SyncCacheBlocksCount() (int64, error) {
+//	var n int64
+//	err := l.ledger.GetSyncCacheBlocks(func(block *types.StateBlock) error {
+//		n++
+//		return nil
+//	})
+//	if err != nil {
+//		return 0, err
+//	}
+//	return n, nil
+//}
 
 func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, error) {
 	balance := types.ZeroBalance
@@ -226,34 +283,6 @@ func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, er
 		Network: network,
 		Total:   total,
 	}, nil
-}
-
-func (l *DebugApi) Representatives(address *types.Address) (map[types.Address]map[string]*types.Benefit, error) {
-	r := make(map[types.Address]map[string]*types.Benefit)
-	if address == nil {
-		err := l.ledger.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
-			beInfo := make(map[string]*types.Benefit)
-			beInfo["db"] = be
-			beInfo["memory"] = beCache
-			r[address] = beInfo
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err := l.ledger.GetRepresentationsCache(*address, func(address types.Address, be *types.Benefit, beCache *types.Benefit) error {
-			beInfo := make(map[string]*types.Benefit)
-			beInfo["db"] = be
-			beInfo["memory"] = beCache
-			r[address] = beInfo
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	return r, nil
 }
 
 type APIPendingInfo struct {
@@ -488,7 +517,178 @@ func (l *DebugApi) GetConsPerf() (map[string]interface{}, error) {
 	return outArgs, nil
 }
 
+type CacheStat struct {
+	Index int    `json:"index"`
+	Key   int    `json:"key"`
+	Block int    `json:"block"`
+	Start string `json:"start"`
+	Span  string `json:"span"`
+}
+
+func (l *DebugApi) GetCache() error {
+	l.ledger.Cache().GetCache()
+	return nil
+}
+
+func (l *DebugApi) GetCacheStat() []*CacheStat {
+	cs := l.ledger.GetCacheStat()
+	cas := make([]*CacheStat, 0)
+	for i := len(cs) - 1; i >= 0; i-- {
+		c := cs[i]
+		ca := new(CacheStat)
+		ca.Index = c.Index
+		ca.Key = c.Key
+		ca.Block = c.Block
+		ca.Start = time.Unix(c.Start/1000000000, 0).Format("2006-01-02 15:04:05")
+		if c.End == 0 {
+			ca.Span = "ms"
+		} else {
+			ca.Span = strconv.FormatInt((c.End-c.Start)/1000000, 10) + "ms"
+		}
+		cas = append(cas, ca)
+	}
+
+	return cas
+}
+
+func (l *DebugApi) GetCacheStatus() map[string]string {
+	return l.ledger.GetCacheStatue()
+}
+
 //func (l *DebugApi) Rollback(hash types.Hash) error {
 //	lv := process.NewLedgerVerifier(l.ledger)
 //	return lv.Rollback(hash)
 //}
+
+type UncheckInfo struct {
+	Hash      types.Hash `json:"hash"`
+	GapType   string     `json:"gapType"`
+	GapHash   types.Hash `json:"gapHash"`
+	GapHeight uint64     `json:"gapHeight"`
+}
+
+func (l *DebugApi) UncheckAnalysis() ([]*UncheckInfo, error) {
+	uis := make([]*UncheckInfo, 0)
+
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		switch unCheckType {
+		case types.UncheckedKindPrevious:
+		case types.UncheckedKindLink:
+			if has, _ := l.ledger.HasStateBlockConfirmed(link); has {
+				ui := &UncheckInfo{
+					Hash:    block.GetHash(),
+					GapType: "gap link",
+					GapHash: link,
+				}
+				uis = append(uis, ui)
+			}
+		case types.UncheckedKindPublish:
+			if has, _ := l.ledger.HasStateBlockConfirmed(link); has {
+				ui := &UncheckInfo{
+					Hash:    block.GetHash(),
+					GapType: "gap publish",
+					GapHash: link,
+				}
+				uis = append(uis, ui)
+			}
+		case types.UncheckedKindTokenInfo:
+			ui := &UncheckInfo{
+				Hash:    block.GetHash(),
+				GapType: "gap token",
+			}
+			uis = append(uis, ui)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = l.ledger.WalkGapPovBlocks(func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		ui := &UncheckInfo{
+			Hash:      block.GetHash(),
+			GapType:   "gap pov",
+			GapHeight: height,
+		}
+		uis = append(uis, ui)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return uis, nil
+}
+
+func (l *DebugApi) uncheckBlock(hash types.Hash) *UncheckInfo {
+	ui := new(UncheckInfo)
+	find := false
+	var uncheckTypeMap = map[types.UncheckedKind]string{
+		types.UncheckedKindPrevious:  "gap previous",
+		types.UncheckedKindLink:      "gap link",
+		types.UncheckedKindPublish:   "gap publish",
+		types.UncheckedKindTokenInfo: "gap token",
+	}
+
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		if block.GetHash() == hash {
+			ui = &UncheckInfo{
+				Hash:    block.GetHash(),
+				GapType: uncheckTypeMap[unCheckType],
+				GapHash: link,
+			}
+			find = true
+		}
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	err = l.ledger.WalkGapPovBlocks(func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		if block.GetHash() == hash {
+			ui = &UncheckInfo{
+				Hash:      block.GetHash(),
+				GapType:   "gap pov",
+				GapHeight: height,
+			}
+			find = true
+		}
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	if find {
+		return ui
+	} else {
+		return nil
+	}
+}
+
+func (l *DebugApi) UncheckBlock(hash types.Hash) ([]*UncheckInfo, error) {
+	uis := make([]*UncheckInfo, 0)
+	ui := new(UncheckInfo)
+
+	for {
+		ui = l.uncheckBlock(hash)
+		if ui != nil {
+			fmt.Printf("%-64s\t%-16s\t\t%-64s\t%d\n", ui.Hash, ui.GapType, ui.GapHash, ui.GapHeight)
+			if ui.GapType == "gap previous" || ui.GapType == "gap link" {
+				hash = ui.GapHash
+				if has, _ := l.ledger.HasStateBlockConfirmed(ui.GapHash); has {
+					break
+				}
+			} else {
+				break
+			}
+		} else {
+			fmt.Printf("%s there is no uncheck info\n", hash)
+			return nil, errors.New("there is no uncheck info")
+		}
+	}
+
+	uis = append(uis, ui)
+	return uis, nil
+}

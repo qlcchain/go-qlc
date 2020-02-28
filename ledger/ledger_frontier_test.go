@@ -11,7 +11,7 @@ func addFrontier(t *testing.T, l *Ledger) *types.Frontier {
 	frontier := new(types.Frontier)
 	frontier.HeaderBlock = mock.Hash()
 	frontier.OpenBlock = mock.Hash()
-	if err := l.AddFrontier(frontier); err != nil {
+	if err := l.AddFrontier(frontier, l.cache.GetCache()); err != nil {
 		t.Fatal()
 	}
 	return frontier
@@ -61,7 +61,7 @@ func TestLedger_DeleteFrontier(t *testing.T) {
 	defer teardownTestCase(t)
 
 	f := addFrontier(t, l)
-	err := l.DeleteFrontier(f.HeaderBlock)
+	err := l.DeleteFrontier(f.HeaderBlock, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}

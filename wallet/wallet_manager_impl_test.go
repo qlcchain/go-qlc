@@ -9,6 +9,7 @@ package wallet
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -19,7 +20,7 @@ import (
 )
 
 func TestNewWalletStore(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "wallet_test")
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String(), "wallet_test")
 	cm := config.NewCfgManager(dir)
 	cm.Load()
 	cm2 := config.NewCfgManager(dir)

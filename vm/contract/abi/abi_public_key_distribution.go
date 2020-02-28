@@ -673,7 +673,7 @@ func GetOracleInfoByAccountAndType(ctx *vmstore.VMContext, account types.Address
 
 func GetOracleInfoByHash(ctx *vmstore.VMContext, hash types.Hash) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
-	childHash, err := ctx.Ledger.GetChild(hash)
+	childHash, err := ctx.Ledger.GetBlockChild(hash)
 	if err != nil {
 		return nil
 	}

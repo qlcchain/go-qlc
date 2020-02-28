@@ -16,7 +16,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/wallet"
 )
@@ -43,36 +42,29 @@ type RPC struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	ledger   *ledger.Ledger
-	wallet   *wallet.WalletStore
-	relation *relation.Relation
-	eb       event.EventBus
-	cfgFile  string
-	logger   *zap.SugaredLogger
-	cc       *chainctx.ChainContext
+	ledger  *ledger.Ledger
+	wallet  *wallet.WalletStore
+	eb      event.EventBus
+	cfgFile string
+	logger  *zap.SugaredLogger
+	cc      *chainctx.ChainContext
 }
 
 func NewRPC(cfgFile string) (*RPC, error) {
 	cc := chainctx.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
-
-	rl, err := relation.NewRelation(cfgFile)
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	r := RPC{
-		ledger:   ledger.NewLedger(cfgFile),
-		wallet:   wallet.NewWalletStore(cfgFile),
-		relation: rl,
-		eb:       cc.EventBus(),
-		config:   cfg,
-		cfgFile:  cfgFile,
-		ctx:      ctx,
-		cancel:   cancel,
-		logger:   log.NewLogger("rpc"),
-		cc:       cc,
+		ledger:  ledger.NewLedger(cfgFile),
+		wallet:  wallet.NewWalletStore(cfgFile),
+		eb:      cc.EventBus(),
+		config:  cfg,
+		cfgFile: cfgFile,
+		ctx:     ctx,
+		cancel:  cancel,
+		logger:  log.NewLogger("rpc"),
+		cc:      cc,
 	}
 	return &r, nil
 }

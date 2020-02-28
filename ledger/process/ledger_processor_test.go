@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -25,6 +25,8 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 	t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	//dir := filepath.Join(config.DefaultDataDir()) // if want to test rollback contract and remove time sleep
+
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
 	cfg, _ := cm.Load()

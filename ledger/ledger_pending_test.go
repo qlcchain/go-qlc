@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -24,7 +25,7 @@ func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendingin
 	}
 	pendingkey = types.PendingKey{Address: address, Hash: hash}
 	t.Log(pendinginfo)
-	err := l.AddPending(&pendingkey, &pendinginfo)
+	err := l.AddPending(&pendingkey, &pendinginfo, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +37,7 @@ func TestLedger_AddPending(t *testing.T) {
 	defer teardownTestCase(t)
 
 	pk, pv := addPending(t, l)
-	if _, err := l.cache.GetAccountPending(pk.Address, pv.Type); err == nil {
+	if _, err := l.rcache.GetAccountPending(pk.Address, pv.Type); err == nil {
 		t.Fatal(err)
 	}
 	a, err := l.PendingAmount(pk.Address, pv.Type)
@@ -44,7 +45,7 @@ func TestLedger_AddPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(a)
-	b, err := l.cache.GetAccountPending(pk.Address, pv.Type)
+	b, err := l.rcache.GetAccountPending(pk.Address, pv.Type)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +65,7 @@ func TestLedger_GetPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("pending,", p)
-
+	time.Sleep(3 * time.Second)
 	count := 0
 	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
 		t.Log(pendingKey, pendingInfo)
@@ -75,7 +76,7 @@ func TestLedger_GetPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	if count != 2 {
-		t.Fatal("pending count error")
+		t.Fatal("pending count error", count)
 	}
 }
 
@@ -85,7 +86,7 @@ func TestLedger_DeletePending(t *testing.T) {
 
 	pendingkey, _ := addPending(t, l)
 
-	err := l.DeletePending(&pendingkey)
+	err := l.DeletePending(&pendingkey, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +113,7 @@ func TestLedger_SearchPending(t *testing.T) {
 			Type:   mock.Hash(),
 		}
 		k := &types.PendingKey{Address: address, Hash: hash}
-		err := l.AddPending(k, v)
+		err := l.AddPending(k, v, l.cache.GetCache())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -121,8 +122,9 @@ func TestLedger_SearchPending(t *testing.T) {
 	}
 	//t.Log("build cache done")
 
+	time.Sleep(3 * time.Second)
 	counter := 0
-	err := l.SearchPending(address, func(key *types.PendingKey, value *types.PendingInfo) error {
+	err := l.GetPendingsByAddress(address, func(key *types.PendingKey, value *types.PendingInfo) error {
 		t.Log(counter, util.ToString(key), util.ToString(value))
 		counter++
 		return nil
@@ -144,70 +146,6 @@ func TestLedger_SearchPending(t *testing.T) {
 		t.Fatal("invalid", count1)
 	}
 
-	if err := l.UpdatePending(pendingkeys[0], types.PendingUsed); err != nil {
-		t.Fatal(err)
-	}
-
-	count2 := 0
-	err = l.SearchPending(address, func(key *types.PendingKey, value *types.PendingInfo) error {
-		t.Log(count2, util.ToString(key), util.ToString(value))
-		count2++
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count2 != 9 {
-		t.Fatal("invalid", count2)
-	}
-	count3 := 0
-	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
-		count3++
-		return nil
-	})
-	if count3 != 9 {
-		t.Fatal("invalid", count3)
-	}
-	count4 := 0
-	err = l.SearchAllKindPending(address, func(key *types.PendingKey, value *types.PendingInfo, kind types.PendingKind) error {
-		t.Log(count4, util.ToString(key), util.ToString(value), kind)
-		count4++
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count4 != 10 {
-		t.Fatal("invalid", count4)
-	}
-}
-
-func TestLedger_Pending(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	pendingkey, _ := addPending(t, l)
-	pending, err := l.Pending(pendingkey.Address)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for k, v := range pending {
-		t.Log(k, v)
-	}
-}
-
-func TestLedger_TokenPending(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	pendingkey, pendinginfo := addPending(t, l)
-	pending, err := l.TokenPending(pendingkey.Address, pendinginfo.Type)
-	if err != nil && err != ErrPendingNotFound {
-		t.Fatal(err)
-	}
-	for k, v := range pending {
-		t.Log(k, v)
-	}
 }
 
 func TestLedger_PendingAmount(t *testing.T) {
@@ -215,7 +153,7 @@ func TestLedger_PendingAmount(t *testing.T) {
 	defer teardownTestCase(t)
 
 	pendingkey, pendinginfo := addPending(t, l)
-	if _, err := l.cache.GetAccountPending(pendingkey.Address, pendinginfo.Type); err == nil {
+	if _, err := l.rcache.GetAccountPending(pendingkey.Address, pendinginfo.Type); err == nil {
 		t.Fatal("pending should not found")
 	}
 	a, err := l.PendingAmount(pendingkey.Address, pendinginfo.Type)
@@ -223,7 +161,7 @@ func TestLedger_PendingAmount(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(a)
-	b, err := l.cache.GetAccountPending(pendingkey.Address, pendinginfo.Type)
+	b, err := l.rcache.GetAccountPending(pendingkey.Address, pendinginfo.Type)
 	if err != nil {
 		t.Fatal()
 	}

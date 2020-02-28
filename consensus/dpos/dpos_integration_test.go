@@ -1,6 +1,9 @@
 package dpos
 
 import (
+	"testing"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -8,8 +11,6 @@ import (
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/p2p/protos"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
-	"testing"
-	"time"
 )
 
 func TestFork(t *testing.T) {
@@ -77,7 +78,7 @@ func TestFork(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	if has, _ := n1.ledger.HasStateBlockConfirmed(s5.GetHash()); has {
-		t.Fatal()
+		t.Fatal("block not found")
 	}
 }
 
@@ -161,7 +162,7 @@ func TestOnline(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	hasOnline := false
-	err = n1.dps.ledger.GetStateBlocks(func(block *types.StateBlock) error {
+	err = n1.dps.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		if block.Type == types.Online && block.Address == mock.TestAccount.Address() {
 			hasOnline = true
 		}
@@ -169,7 +170,7 @@ func TestOnline(t *testing.T) {
 	})
 
 	if err != nil || !hasOnline {
-		t.Fatal()
+		t.Fatal(err, hasOnline)
 	}
 }
 
@@ -296,11 +297,11 @@ func TestRollback(t *testing.T) {
 	n1.dps.acTrx.rollBack(blks)
 
 	if has, _ := n1.ledger.HasStateBlockConfirmed(s.GetHash()); has {
-		t.Fatal()
+		t.Fatal(s.GetHash())
 	}
 
 	if has, _ := n1.ledger.HasStateBlockConfirmed(r.GetHash()); has {
-		t.Fatal()
+		t.Fatal(s.GetHash())
 	}
 }
 

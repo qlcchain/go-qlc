@@ -5,10 +5,17 @@
  * https://opensource.org/licenses/MIT
  */
 
-package db
+package migration
+
+import (
+	"fmt"
+	"sort"
+
+	"github.com/qlcchain/go-qlc/common/storage"
+)
 
 type Migration interface {
-	Migrate(txn StoreTxn) error
+	Migrate(store storage.Store) error
 	StartVersion() int
 	EndVersion() int
 }
@@ -33,4 +40,15 @@ func (m Migrations) Less(i, j int) bool {
 
 func (m Migrations) Swap(i, j int) {
 	m[i], m[j] = m[j], m[i]
+}
+
+func Upgrade(migrations []Migration, store storage.Store) error {
+	sort.Sort(Migrations(migrations))
+	for _, m := range migrations {
+		err := m.Migrate(store)
+		if err != nil {
+			return fmt.Errorf("migrate %d error: %s", m.StartVersion(), err)
+		}
+	}
+	return nil
 }

@@ -10,34 +10,37 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
-	"time"
 
-	"github.com/dgraph-io/badger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
-	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/ledger/migration"
+	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 )
 
 type Ledger struct {
 	io.Closer
-	Store          db.Store
 	dir            string
-	RollbackChan   chan types.Hash
+	store          storage.Store
+	cache          *MemoryCache
+	rcache         *rCache
+	cacheStats     []*CacheStat
+	relation       *relation.Relation
 	EB             event.EventBus
-	representCache *RepresentationCache
+	blockConfirmed chan *types.StateBlock
 	ctx            context.Context
 	cancel         context.CancelFunc
-	cache          *Cache
 	VerifiedData   map[types.Hash]int
 	logger         *zap.SugaredLogger
 }
@@ -68,56 +71,55 @@ var (
 	ErrPeerNotFound    = errors.New("peer not found")
 )
 
-const (
-	idPrefixBlock byte = iota
-	idPrefixSmartContractBlock
-	idPrefixUncheckedBlockPrevious
-	idPrefixUncheckedBlockLink
-	idPrefixAccount
-	//idPrefixToken
-	idPrefixFrontier
-	idPrefixPending
-	idPrefixRepresentation
-	idPrefixPerformance
-	idPrefixChild
-	idPrefixVersion
-	idPrefixStorage  //discard, pls see vm_store's idPrefixStorage
-	idPrefixToken    //discard
-	idPrefixSender   //discard
-	idPrefixReceiver //discard
-	idPrefixMessage  //discard
-	idPrefixMessageInfo
-	idPrefixOnlineReps
-	idPrefixPovHeader   // prefix + height + hash => header
-	idPrefixPovBody     // prefix + height + hash => body
-	idPrefixPovHeight   // prefix + hash => height (uint64)
-	idPrefixPovTxLookup // prefix + txHash => TxLookup
-	idPrefixPovBestHash // prefix + height => hash
-	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
-	idPrefixLink
-	idPrefixBlockCache //block store this table before consensus complete
-	idPrefixRepresentationCache
-	idPrefixUncheckedTokenInfo
-	idPrefixBlockCacheAccount
-	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
-	idPrefixUnconfirmedSync
-	idPrefixUncheckedSync
-	idPrefixSyncCacheBlock
-	idPrefixUncheckedPovHeight
-	idPrefixPovLatestHeight  // prefix => height
-	idPrefixPovTxlScanCursor // prefix => height
-	idPrefixVoteHistory
-	idPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
-	idPrefixPeerInfo    //prefix+peerID => peerInfo
-	idPrefixGapPublish
-)
+//const (
+//	idPrefixBlock byte = iota
+//	idPrefixSmartContractBlock
+//	idPrefixUncheckedBlockPrevious
+//	idPrefixUncheckedBlockLink
+//	idPrefixAccount
+//	//idPrefixToken
+//	idPrefixFrontier
+//	idPrefixPending
+//	idPrefixRepresentation
+//	idPrefixPerformance
+//	idPrefixChild
+//	idPrefixVersion
+//	idPrefixStorage
+//	idPrefixToken    //discard
+//	idPrefixSender   //discard
+//	idPrefixReceiver //discard
+//	idPrefixMessage  //discard
+//	idPrefixMessageInfo
+//	idPrefixOnlineReps
+//	idPrefixPovHeader   // prefix + height + hash => header
+//	idPrefixPovBody     // prefix + height + hash => body
+//	idPrefixPovHeight   // prefix + hash => height (uint64)
+//	idPrefixPovTxLookup // prefix + txHash => TxLookup
+//	idPrefixPovBestHash // prefix + height => hash
+//	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
+//	idPrefixLink
+//	idPrefixBlockCache //block store this table before consensus complete
+//	idPrefixRepresentationCache
+//	idPrefixUncheckedTokenInfo
+//	idPrefixBlockCacheAccount
+//	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
+//	idPrefixUnconfirmedSync
+//	idPrefixUncheckedSync
+//	idPrefixSyncCacheBlock
+//	idPrefixUncheckedPovHeight
+//	idPrefixPovLatestHeight  // prefix => height
+//	idPrefixPovTxlScanCursor // prefix => height
+//	idPrefixVoteHistory
+//	idPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
+//	idPrefixPeerInfo    //prefix+peerID => peerInfo
+//)
 
 var (
-	cache = make(map[string]*Ledger)
-	lock  = sync.RWMutex{}
+	lcache = make(map[string]*Ledger)
+	lock   = sync.RWMutex{}
 )
 
-const version = 12
+const version = 14
 
 func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
@@ -126,87 +128,122 @@ func NewLedger(cfgFile string) *Ledger {
 	cfg, _ := cc.Config()
 	dir := cfg.LedgerDir()
 
-	if _, ok := cache[dir]; !ok {
-		store, err := db.NewBadgerStore(dir)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
+	if _, ok := lcache[dir]; !ok {
 		ctx, cancel := context.WithCancel(context.Background())
 		l := &Ledger{
-			Store:          store,
 			dir:            dir,
-			RollbackChan:   make(chan types.Hash, 100),
 			EB:             cc.EventBus(),
 			ctx:            ctx,
 			cancel:         cancel,
-			cache:          NewCache(),
-			representCache: NewRepresentationCache(),
+			blockConfirmed: make(chan *types.StateBlock, 1024),
+			logger:         log.NewLogger("ledger"),
 		}
-		l.logger = log.NewLogger("ledger")
-
-		if err := l.upgrade(); err != nil {
-			l.logger.Error(err)
-		}
-		if err := l.initCache(); err != nil {
-			l.logger.Error(err)
-		}
-		vd, err := l.getVerifiedData()
+		store, err := db.NewBadgerStore(dir)
 		if err != nil {
-			l.logger.Error(err)
+			l.logger.Fatal(err.Error())
 		}
-		l.VerifiedData = vd
-		cache[dir] = l
+		l.store = store
+		r, err := relation.NewRelation(cfgFile)
+		if err != nil {
+			l.logger.Fatal(err.Error())
+		}
+		l.relation = r
+		l.cache = NewMemoryCache(l)
+		l.rcache = NewrCache()
+		l.cacheStats = make([]*CacheStat, 0)
+		if err := l.init(); err != nil {
+			l.logger.Fatal(err)
+		}
+		lcache[dir] = l
 	}
-	//cache[dir].logger = log.NewLogger("ledger")
-	return cache[dir]
+	//cache2[dir].logger = log.NewLogger("ledger")
+	return lcache[dir]
 }
 
-//CloseLedger force release all ledger instance
-func CloseLedger() {
-	for k, v := range cache {
-		if v != nil {
-			v.Close()
-			//logger.Debugf("release ledger from %s", k)
-		}
-		lock.Lock()
-		delete(cache, k)
-		lock.Unlock()
-	}
-}
-
-func (l *Ledger) Close() error {
-	lock.Lock()
-	defer lock.Unlock()
-	if _, ok := cache[l.dir]; ok {
-		err := l.Store.Close()
-		l.cancel()
-		l.logger.Info("badger closed")
-		delete(cache, l.dir)
-		return err
+func DefaultStore() Store {
+	dir := filepath.Join(config.DefaultDataDir(), "ledger")
+	if l, ok := lcache[dir]; ok {
+		return l
 	}
 	return nil
 }
 
-func (l *Ledger) upgrade() error {
-	return l.BatchUpdate(func(txn db.StoreTxn) error {
-		_, err := getVersion(txn)
-		if err != nil {
-			if err == ErrVersionNotFound {
-				if err := setVersion(version, txn); err != nil {
-					return err
-				}
-			} else {
-				return err
+func (l *Ledger) init() error {
+	vd, err := l.getVerifiedData()
+	if err != nil {
+		l.logger.Error(err)
+		return err
+	}
+	l.VerifiedData = vd
+
+	if err := l.upgrade(); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	if err := l.initRelation(); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	if err := l.removeBlockConfirmed(); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	if err := l.updateRepresentation(); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (l *Ledger) removeBlockConfirmed() error {
+	err := l.GetBlockCaches(func(block *types.StateBlock) error {
+		if b, _ := l.HasStateBlockConfirmed(block.GetHash()); b {
+			if err := l.DeleteBlockCache(block.GetHash()); err != nil {
+				return fmt.Errorf("delete block cache error: %s", err)
 			}
 		}
-		ms := []db.Migration{new(MigrationV1ToV11), new(MigrationV11ToV12)}
-
-		err = txn.Upgrade(ms)
-		if err != nil {
-			l.logger.Error(err)
-		}
-		return err
+		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("removeBlockConfirmed error : %s", err)
+	}
+	go func() {
+		blocks := make([]*types.StateBlock, 0)
+		for {
+			select {
+			case <-l.ctx.Done():
+				return
+			case block := <-l.blockConfirmed:
+				blocks = append(blocks, block)
+				if len(l.blockConfirmed) > 0 {
+					for b := range l.blockConfirmed {
+						blocks = append(blocks, b)
+						if len(l.blockConfirmed) == 0 {
+							break
+						}
+					}
+				}
+
+				err := l.store.BatchWrite(false, func(batch storage.Batch) error {
+					for _, blk := range blocks {
+						if err := l.DeleteBlockCache(blk.GetHash(), batch); err != nil {
+							l.logger.Error(err)
+						}
+					}
+					return nil
+				})
+				if err != nil {
+					l.logger.Errorf("batch delete block cache error: %s", err)
+				}
+				blocks = blocks[:0]
+			}
+		}
+	}()
+	return nil
 }
 
 func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {
@@ -221,201 +258,130 @@ func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {
 	return verifiedMap, nil
 }
 
-func (l *Ledger) initCache() error {
-	txn := l.Store.NewTransaction(true)
-	defer func() {
-		if err := txn.Commit(); err != nil {
+func (l *Ledger) upgrade() error {
+	v, err := l.getVersion()
+	if err != nil {
+		if err == ErrVersionNotFound {
+			return l.setVersion(version)
+		} else {
+			return err
+		}
+	} else {
+		if v >= version {
+			return nil
+		}
+		ms := []migration.Migration{
+			new(migration.MigrationV1ToV11),
+			new(migration.MigrationV11ToV12),
+			new(migration.MigrationV12ToV13),
+			new(migration.MigrationV13ToV14),
+		}
+
+		err = migration.Upgrade(ms, l.store)
+		if err != nil {
 			l.logger.Error(err)
 		}
-	}()
-	err := l.representCache.cacheToConfirmed(txn)
+		return err
+	}
+}
+
+func (l *Ledger) initRelation() error {
+	count1, err := l.relation.BlocksCount()
 	if err != nil {
 		l.logger.Error(err)
 		return err
 	}
 
-	go func() {
-		ticker := time.NewTicker(5 * time.Minute)
-		for {
-			select {
-			case <-l.ctx.Done():
-				return
-			case <-ticker.C:
-				l.processCache()
-			}
+	count2, err := l.CountStateBlocks()
+	if err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	if count1 != count2 {
+		if err := l.relation.EmptyStore(); err != nil {
+			l.logger.Error(err)
+			return err
 		}
-	}()
+		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
+			l.relation.Add(block)
+			return nil
+		})
+		if err != nil {
+			l.logger.Error(err)
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (l *Ledger) processCache() {
+//CloseLedger force release all ledger instance
+func CloseLedger() {
+	for k, v := range lcache {
+		if v != nil {
+			v.Close()
+			//logger.Debugf("release ledger from %s", k)
+		}
+		lock.Lock()
+		delete(lcache, k)
+		lock.Unlock()
+	}
+}
+
+func (l *Ledger) Close() error {
 	lock.Lock()
 	defer lock.Unlock()
-	if _, ok := cache[l.dir]; ok {
-		txn := l.Store.NewTransaction(true)
-		defer func() {
-			if err := txn.Commit(); err != nil {
-				l.logger.Error(err)
-			}
-		}()
-		if err := l.representCache.memoryToConfirmed(txn); err != nil {
-			l.logger.Errorf("cache to confirmed error : %s", err)
+	if _, ok := lcache[l.dir]; ok {
+		l.cancel()
+		l.cache.closed()
+		if err := l.relation.Close(); err != nil {
+			l.logger.Error(err)
 		}
-	}
-}
-
-// Empty reports whether the database is empty or not.
-func (l *Ledger) Empty(txns ...db.StoreTxn) (bool, error) {
-	r := true
-	txn, flag := l.getTxn(false, txns...)
-	defer l.releaseTxn(txn, flag)
-
-	err := txn.Iterator(idPrefixBlock, func(key []byte, val []byte, b byte) error {
-		r = false
+		if err := l.store.Close(); err != nil {
+			return err
+		}
+		l.logger.Info("badger closed")
+		delete(lcache, l.dir)
 		return nil
-	})
-	if err != nil {
-		return r, err
 	}
-	return r, nil
+	return nil
 }
 
-func (l *Ledger) DBStore() db.Store {
-	return l.Store
+func (l *Ledger) DBStore() storage.Store {
+	return l.store
+}
+
+func (l *Ledger) Cache() *MemoryCache {
+	return l.cache
 }
 
 func (l *Ledger) EventBus() event.EventBus {
 	return l.EB
 }
 
-// BatchUpdate MUST pass the same txn
-func (l *Ledger) BatchUpdate(fn func(txn db.StoreTxn) error) error {
-	txn := l.Store.NewTransaction(true)
-	//logger.Debugf("BatchUpdate NewTransaction %p", txn)
-	defer func() {
-		//logger.Debugf("BatchUpdate Discard %p", txn)
-		txn.Discard()
-	}()
-
-	if err := fn(txn); err != nil {
-		return err
-	}
-	return txn.Commit()
-}
-
-// BatchView MUST pass the same txn
-func (l *Ledger) BatchView(fn func(txn db.StoreTxn) error) error {
-	txn := l.Store.NewTransaction(false)
-	//logger.Debugf("BatchView NewTransaction %p", txn)
-	defer func() {
-		//logger.Debugf("BatchView Discard %p", txn)
-		txn.Discard()
-	}()
-
-	if err := fn(txn); err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (l *Ledger) BatchWrite(fn func(batch db.StoreBatch) error) error {
-	batch := l.Store.NewWriteBatch()
-	err := fn(batch)
-	if err != nil {
-		batch.Cancel()
-		return err
-	}
-	return batch.Flush()
-}
-
-//getTxn get txn by `update` mode
-func (l *Ledger) getTxn(update bool, txns ...db.StoreTxn) (db.StoreTxn, bool) {
-	if len(txns) > 0 {
-		//logger.Debugf("getTxn %p", txns[0])
-		return txns[0], false
-	} else {
-		txn := l.Store.NewTransaction(update)
-		//logger.Debugf("getTxn new %p", txn)
-		return txn, true
-	}
-}
-
-// releaseTxn commit change and close txn
-func (l *Ledger) releaseTxn(txn db.StoreTxn, flag bool) {
-	if flag {
-		err := txn.Commit()
-		if err != nil {
-			l.logger.Error(err)
-		}
-		txn.Discard()
-	}
-}
-
-func getKeyOfParts(t byte, partList ...interface{}) ([]byte, error) {
-	var buffer = []byte{t}
-	for _, part := range partList {
-		var src []byte
-		switch v := part.(type) {
-		case int:
-			src = util.BE_Uint64ToBytes(uint64(v))
-		case int32:
-			src = util.BE_Uint64ToBytes(uint64(v))
-		case uint32:
-			src = util.BE_Uint64ToBytes(uint64(v))
-		case int64:
-			src = util.BE_Uint64ToBytes(uint64(v))
-		case uint64:
-			src = util.BE_Uint64ToBytes(v)
-		case []byte:
-			src = v
-		case types.Hash:
-			src = v[:]
-		case *types.Hash:
-			src = v[:]
-		case types.Address:
-			src = v[:]
-		case *types.PendingKey:
-			pk := part.(*types.PendingKey)
-			var err error
-			src, err = pk.Serialize()
-			if err != nil {
-				return nil, fmt.Errorf("pending key serialize: %s", err)
-			}
-		default:
-			return nil, errors.New("key contains of invalid part")
-		}
-
-		buffer = append(buffer, src...)
-	}
-
-	return buffer, nil
-}
-
 func getVersionKey() []byte {
-	return []byte{idPrefixVersion}
+	return []byte{byte(storage.KeyPrefixVersion)}
 }
 
-func setVersion(version int64, txn db.StoreTxn) error {
+func (l *Ledger) setVersion(version int64) error {
 	key := getVersionKey()
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutVarint(buf, version)
-	return txn.Set(key, buf[:n])
+	return l.store.Put(key, buf[:n])
 }
 
-func getVersion(txn db.StoreTxn) (int64, error) {
+func (l *Ledger) getVersion() (int64, error) {
 	var i int64
 	key := getVersionKey()
-	err := txn.Get(key, func(val []byte, b byte) error {
-		i, _ = binary.Varint(val)
-		return nil
-	})
+	val, err := l.store.Get(key)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
+		if err == storage.KeyNotFound {
 			return 0, ErrVersionNotFound
 		}
 		return i, err
 	}
+	i, _ = binary.Varint(val)
 	return i, nil
 }
 
@@ -424,7 +390,7 @@ func (l *Ledger) generateWork(hash types.Hash) types.Work {
 	worker, _ := types.NewWorker(work, hash)
 	return worker.NewWork()
 	//
-	////cache to Store
+	////cache2 to DBStore
 	//_ = s.setWork(hash, work)
 }
 
@@ -492,11 +458,13 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 	}
 	has, err := l.HasTokenMeta(rxAccount, sendBlock.Token)
 	if err != nil {
+		l.logger.Errorf("token not found (%s), address: %s, token: %s", err, rxAccount.String(), sendBlock.Token.String())
 		return nil, err
 	}
 	if has {
 		rxTm, err := l.GetTokenMeta(rxAccount, sendBlock.GetToken())
 		if err != nil {
+			l.logger.Error(err)
 			return nil, err
 		}
 		prev, err := l.GetStateBlock(rxTm.Header)
@@ -641,13 +609,120 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 	return &sb, nil
 }
 
-func (l *Ledger) Size() (int64, int64) {
-	return l.Store.Size()
+func (l *Ledger) Flush() error {
+	return nil
 }
 
-func (l *Ledger) GC() error {
-	return l.Store.Purge()
+func (l *Ledger) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
+	if len(c) > 0 {
+		if r, err := c[0].Get(k); r != nil {
+			return r, nil, nil
+		} else {
+			if err == ErrKeyDeleted {
+				return nil, nil, storage.KeyNotFound
+			}
+		}
+	}
+
+	if r, err := l.cache.Get(k); r != nil {
+		return r, nil, nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, nil, storage.KeyNotFound
+		}
+	}
+
+	v, err := l.store.Get(k)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nil, v, nil
 }
+
+func (l *Ledger) getFromStore(key []byte, batch ...storage.Batch) ([]byte, error) {
+	if len(batch) > 0 {
+		v, err := batch[0].Get(key)
+		if err != nil {
+			return nil, err
+		} else {
+			return v.([]byte), nil
+		}
+	} else {
+		return l.store.Get(key)
+	}
+}
+
+func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error) {
+	if len(c) > 0 {
+		if r, err := c[0].Get(k); r != nil {
+			return r, nil
+		} else {
+			if err == ErrKeyDeleted {
+				return nil, ErrKeyDeleted
+			}
+		}
+	}
+	if r, err := l.cache.Get(k); r != nil {
+		return r, nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, ErrKeyDeleted
+		}
+	}
+	return nil, ErrKeyNotInCache
+}
+
+type kv struct {
+	key   []byte
+	value []byte
+}
+
+func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
+	kvs := make([]*kv, 0)
+	cs := l.cache.prefixIterator(prefix)
+	if len(cs) > 0 {
+		kvs = append(kvs, cs...)
+	}
+	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
+		if !contain(kvs, k) {
+			temp := &kv{
+				key:   k,
+				value: v,
+			}
+			kvs = append(kvs, temp)
+		}
+		return nil
+	}); err != nil {
+		l.logger.Error(err)
+		return err
+	}
+
+	for _, kv := range kvs {
+		if err := fn(kv.key, kv.value); err != nil {
+			l.logger.Error(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// TODO-cache
+//func (l *Ledger) Size() (int64, int64) {
+//	return l.DBStore.Size()
+//}
+//
+//func (l *Ledger) GC() error {
+//	return l.DBStore.Purge()
+//}
+
+//func (l *Ledger) LockCache() {
+//	l.dbCache.GetCache().Lock()
+//}
+//
+//func (l *Ledger) UnLockCache() {
+//	l.dbCache.GetCache().UnLock()
+//}
 
 func NewTestLedger() (func(), *Ledger) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
@@ -670,16 +745,49 @@ const (
 	BackUp
 )
 
-func (l *Ledger) Action(action ActionType) (string, error) {
-	switch action {
-	case Dump:
-		return l.Dump()
-	case GC:
-		if err := l.GC(); err != nil {
-			return "", err
-		}
-		return "", nil
-	default:
-		return "", nil
+// TODO-cache
+//func (l *Ledger) Action(action ActionType) (string, error) {
+//	switch action {
+//	case Dump:
+//		return l.Dump()
+//	case GC:
+//		if err := l.GC(); err != nil {
+//			return "", err
+//		}
+//		return "", nil
+//	default:
+//		return "", nil
+//	}
+//}
+
+type CacheStat struct {
+	Index int
+	Key   int
+	Block int
+	Start int64
+	End   int64
+}
+
+func (l *Ledger) updateCacheStat(c *CacheStat) {
+	l.cacheStats = append(l.cacheStats, c)
+	if len(l.cacheStats) > 200 {
+		l.cacheStats = l.cacheStats[:100]
 	}
+}
+
+func (l *Ledger) GetCacheStat() []*CacheStat {
+	return l.cacheStats
+}
+
+func (l *Ledger) GetCacheStatue() map[string]string {
+	r := make(map[string]string)
+	for i, c := range l.cache.caches {
+		r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
+	}
+	r["read"] = strconv.Itoa(l.cache.readIndex)
+	r["write"] = strconv.Itoa(l.cache.writeIndex)
+	r["lastflush"] = l.cache.lastFlush.Format("2006-01-02 15:04:05")
+	r["flushStatue"] = strconv.FormatBool(l.cache.flushStatue)
+	r["flushChan"] = strconv.Itoa(len(l.cache.flushChan))
+	return r
 }

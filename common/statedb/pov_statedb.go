@@ -6,14 +6,14 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/db"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
 )
 
 type PovGlobalStateDB struct {
-	db       db.Store
+	db       storage.Store
 	logger   *zap.SugaredLogger
 	prevTrie *trie.Trie
 	curTrie  *trie.Trie
@@ -33,14 +33,14 @@ type PovGlobalStateDB struct {
 type PovContractStateDB struct {
 	CS       *types.PovContractState
 	dirty    bool // means fields in cs have been updated
-	db       db.Store
+	db       storage.Store
 	prevTrie *trie.Trie
 	curTrie  *trie.Trie
 	kvCache  map[string][]byte
 	kvDirty  map[string]struct{}
 }
 
-func NewPovGlobalStateDB(db db.Store, prevStateHash types.Hash) *PovGlobalStateDB {
+func NewPovGlobalStateDB(db storage.Store, prevStateHash types.Hash) *PovGlobalStateDB {
 	gsdb := &PovGlobalStateDB{
 		db:     db,
 		logger: log.NewLogger("pov_statedb"),
@@ -313,17 +313,17 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 	return nil
 }
 
-func (gsdb *PovGlobalStateDB) CommitToDB(txn db.StoreTxn) error {
+func (gsdb *PovGlobalStateDB) CommitToDB(batch storage.Batch) error {
 	// contract state
 	for _, csdb := range gsdb.allCSDBs {
-		dbErr := csdb.CommitToDB(txn)
+		dbErr := csdb.CommitToDB(batch)
 		if dbErr != nil {
 			return dbErr
 		}
 	}
 
 	// global state
-	saveCallback, dbErr := gsdb.curTrie.SaveInTxn(txn)
+	saveCallback, dbErr := gsdb.curTrie.SaveInTxn(batch)
 	if dbErr != nil {
 		return dbErr
 	}
@@ -342,7 +342,7 @@ func (gsdb *PovGlobalStateDB) NewPrevTireIterator(prefix []byte) *trie.Iterator 
 	return gsdb.prevTrie.NewIterator(prefix)
 }
 
-func NewPovContractStateDB(db db.Store, cs *types.PovContractState) *PovContractStateDB {
+func NewPovContractStateDB(db storage.Store, cs *types.PovContractState) *PovContractStateDB {
 	var prevTrie *trie.Trie
 	var currentTrie *trie.Trie
 
@@ -436,8 +436,8 @@ func (csdb *PovContractStateDB) CommitToTrie() (bool, error) {
 	return csdb.dirty, nil
 }
 
-func (csdb *PovContractStateDB) CommitToDB(txn db.StoreTxn) error {
-	saveCallback, dbErr := csdb.curTrie.SaveInTxn(txn)
+func (csdb *PovContractStateDB) CommitToDB(batch storage.Batch) error {
+	saveCallback, dbErr := csdb.curTrie.SaveInTxn(batch)
 	if dbErr != nil {
 		return dbErr
 	}

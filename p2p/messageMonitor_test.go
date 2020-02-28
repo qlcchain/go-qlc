@@ -20,7 +20,7 @@ import (
 
 func Test_MessageService_Stop(t *testing.T) {
 	//node config
-	dir1 := filepath.Join(config.QlcTestDataDir(), config.QlcConfigFile)
+	dir1 := filepath.Join(config.QlcTestDataDir(), uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg, _ := cc1.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19739"

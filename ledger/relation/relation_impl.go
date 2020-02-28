@@ -1,130 +1,74 @@
 package relation
 
 import (
-	"context"
-	"encoding/base64"
-	"sync"
-
-	"github.com/AsynkronIT/protoactor-go/actor"
-
-	"github.com/qlcchain/go-qlc/common/topic"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"go.uber.org/zap"
 
-	chaincontext "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/relation/db"
-	"github.com/qlcchain/go-qlc/log"
 )
 
-type Relation struct {
-	store         db.DbStore
-	eb            event.EventBus
-	subscriber    *event.ActorSubscriber
-	dir           string
-	logger        *zap.SugaredLogger
-	addBlkChan    chan *types.StateBlock
-	deleteBlkChan chan types.Hash
-	syncBlkChan   chan *types.StateBlock
-	syncBlocks    []*types.StateBlock
-	syncDone      chan bool
-	ctx           context.Context
-	cancel        context.CancelFunc
-}
-
-type blocksHash struct {
-	Id        int64
-	Hash      string
-	Type      string
-	Address   string
-	Timestamp int64
-}
-
-type blocksMessage struct {
-	Id        int64
-	Hash      string
-	Sender    string
-	Receiver  string
-	Message   string
-	Timestamp int64
-}
-
-const batchMaxCount = 199
-
-var (
-	cache = make(map[string]*Relation)
-	lock  = sync.RWMutex{}
-)
-
-func NewRelation(cfgFile string) (*Relation, error) {
-	lock.Lock()
-	defer lock.Unlock()
-	if _, ok := cache[cfgFile]; !ok {
-		//store := new(db.DBSQL)
-		cc := chaincontext.NewChainContext(cfgFile)
-		cfg, _ := cc.Config()
-		store, err := db.NewSQLDB(cfg)
-		if err != nil {
-			return nil, err
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		relation := &Relation{store: store,
-			eb:            cc.EventBus(),
-			dir:           cfgFile,
-			addBlkChan:    make(chan *types.StateBlock, 1024),
-			deleteBlkChan: make(chan types.Hash, 100),
-			syncBlkChan:   make(chan *types.StateBlock, 1024),
-			syncBlocks:    make([]*types.StateBlock, 0),
-			syncDone:      make(chan bool),
-			ctx:           ctx,
-			cancel:        cancel,
-			logger:        log.NewLogger("relation")}
-		go relation.processBlocks()
-		cache[cfgFile] = relation
+func (r *Relation) count(s types.Schema) (uint64, error) {
+	sql := fmt.Sprintf("select count (*) as total from %s", s.TableName())
+	r.logger.Debug(sql)
+	var i uint64
+	err := r.Store.Get(&i, sql)
+	if err != nil {
+		r.logger.Errorf("count error, sql: %s, err: %s", sql, err.Error())
+		return 0, err
 	}
-	//cache[dir].logger = log.NewLogger("ledger")
-	return cache[cfgFile], nil
+	return i, nil
 }
 
-func (r *Relation) Close() error {
-	lock.Lock()
-	defer lock.Unlock()
-	if _, ok := cache[r.dir]; ok {
-		err := r.store.Close()
-		if err != nil {
-			return err
-		}
-		r.logger.Info("sqlite closed")
-		r.cancel()
-		delete(cache, r.dir)
+func (r *Relation) items(s types.Schema, limit int, offset int, dest interface{}) error {
+	sql := fmt.Sprintf("select * from %s limit %d offset %d", s.TableName(), limit, offset)
+	err := r.Store.Select(dest, sql)
+	if err != nil {
+		r.logger.Errorf("read error, sql: %s, err: %s", sql, err.Error())
 		return err
 	}
 	return nil
 }
 
-func (r *Relation) AccountBlocks(address types.Address, limit int, offset int) ([]types.Hash, error) {
-	condition := make(map[db.Column]interface{})
-	condition[db.ColumnAddress] = address.String()
+func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
+	block := new(types.StateBlock)
 	var h []blocksHash
-	order := make(map[db.Column]bool)
-	order[db.ColumnTimestamp] = false
-	order[db.ColumnType] = false
-	err := r.store.Read(db.TableBlockHash, condition, offset, limit, order, &h)
+	sql := fmt.Sprintf("select * from %s order by timestamp desc, type desc limit %d offset %d", block.TableName(), limit, offset)
+	err := r.Store.Select(&h, sql)
 	if err != nil {
+		r.logger.Errorf("read error, sql: %s, err: %s", sql, err.Error())
+		return nil, err
+	}
+	return blockHash(h)
+}
+
+func (r *Relation) BlocksByAccount(address types.Address, limit int, offset int) ([]types.Hash, error) {
+	block := new(types.StateBlock)
+	var h []blocksHash
+	sql := fmt.Sprintf("select * from %s where address = '%s' order by timestamp desc, type desc limit %d offset %d", block.TableName(), address.String(), limit, offset)
+	err := r.Store.Select(&h, sql)
+	if err != nil {
+		r.logger.Errorf("read error, sql: %s, err: %s", sql, err.Error())
 		return nil, err
 	}
 	return blockHash(h)
 }
 
 func (r *Relation) BlocksCount() (uint64, error) {
-	var count uint64
-	err := r.store.Count(db.TableBlockHash, &count)
+	return r.count(new(types.StateBlock))
+}
+
+func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
+	block := new(types.StateBlock)
+	var t []blocksType
+	sql := fmt.Sprintf("select type, count(*) as count from %s  group by type", block.TableName())
+	r.logger.Debug(sql)
+	err := r.Store.Select(&t, sql)
 	if err != nil {
-		return 0, err
+		r.logger.Errorf("group error, sql: %s, err: %s", sql, err.Error())
+		return nil, err
 	}
-	return count, nil
+	return blockType(t), nil
 }
 
 type blocksType struct {
@@ -132,101 +76,22 @@ type blocksType struct {
 	Count uint64
 }
 
-func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
-	var t []blocksType
-	err := r.store.Group(db.TableBlockHash, db.ColumnType, &t)
-	if err != nil {
-		return nil, err
+func blockType(bs []blocksType) map[string]uint64 {
+	t := make(map[string]uint64)
+	for _, b := range bs {
+		t[b.Type] = b.Count
 	}
-	return blockType(t), nil
-}
-
-func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
-	var h []blocksHash
-	order := make(map[db.Column]bool)
-	order[db.ColumnTimestamp] = false
-	order[db.ColumnType] = false
-	err := r.store.Read(db.TableBlockHash, nil, offset, limit, order, &h)
-	if err != nil {
-		return nil, err
-	}
-	return blockHash(h)
-}
-
-func (r *Relation) PhoneBlocks(phone []byte, sender bool, limit int, offset int) ([]types.Hash, error) {
-	condition := make(map[db.Column]interface{})
-	if sender == true {
-		condition[db.ColumnSender] = phoneToString(phone)
-	} else {
-		condition[db.ColumnReceiver] = phoneToString(phone)
-	}
-	order := make(map[db.Column]bool)
-	order[db.ColumnTimestamp] = false
-	order[db.ColumnType] = false
-	var m []blocksMessage
-	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, order, &m)
-	if err != nil {
-		return nil, err
-	}
-	return blockMessage(m)
-}
-
-func (r *Relation) MessageBlocks(hash types.Hash, limit int, offset int) ([]types.Hash, error) {
-	condition := make(map[db.Column]interface{})
-	condition[db.ColumnMessage] = hash.String()
-	var m []blocksMessage
-	order := make(map[db.Column]bool)
-	order[db.ColumnTimestamp] = false
-	order[db.ColumnType] = false
-	err := r.store.Read(db.TableBlockMessage, condition, offset, limit, order, &m)
-	if err != nil {
-		return nil, err
-	}
-	return blockMessage(m)
-}
-
-func (r *Relation) AddBlock(block *types.StateBlock) error {
-	r.logger.Debug("add relation, ", block.GetHash())
-	conHash := make(map[db.Column]interface{})
-	conHash[db.ColumnHash] = block.GetHash().String()
-	conHash[db.ColumnTimestamp] = block.GetTimestamp()
-	conHash[db.ColumnType] = block.GetType().String()
-	conHash[db.ColumnAddress] = block.GetAddress().String()
-	if err := r.store.Create(db.TableBlockHash, conHash); err != nil {
-		return err
-	}
-	message := block.GetMessage()
-	if block.GetSender() != nil || block.GetReceiver() != nil || !message.IsZero() {
-		conMessage := make(map[db.Column]interface{})
-		conMessage[db.ColumnHash] = block.GetHash().String()
-		conMessage[db.ColumnMessage] = message.String()
-		conMessage[db.ColumnSender] = phoneToString(block.GetSender())
-		conMessage[db.ColumnReceiver] = phoneToString(block.GetReceiver())
-		conMessage[db.ColumnTimestamp] = block.GetTimestamp()
-		if err := r.store.Create(db.TableBlockMessage, conMessage); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Relation) DeleteBlock(hash types.Hash) error {
-	r.logger.Info("delete relation, ", hash.String())
-	condition := make(map[db.Column]interface{})
-	condition[db.ColumnHash] = hash.String()
-	err := r.store.Delete(db.TableBlockHash, condition)
-	if err != nil {
-		return err
-	}
-	return r.store.Delete(db.TableBlockMessage, condition)
+	return t
 }
 
 func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
-	tx := r.store.NewTransaction()
+	tx := r.Store.MustBegin()
 	if err := fn(tx); err != nil {
+		r.logger.Error(err)
 		return err
 	}
 	if err := tx.Commit(); err != nil {
+		r.logger.Error(err)
 		return err
 	}
 	return nil
@@ -237,8 +102,7 @@ func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
 		return nil
 	}
 	blksHashes := make([]*blocksHash, 0)
-	blksMessage := make([]*blocksMessage, 0)
-	//r.logger.VInfo("batch block count: ", len(blocks))
+	//r.logger.Info("batch block count: ", len(blocks))
 	for _, block := range blocks {
 		blksHashes = append(blksHashes, &blocksHash{
 			Hash:      block.GetHash().String(),
@@ -246,17 +110,6 @@ func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
 			Address:   block.GetAddress().String(),
 			Timestamp: block.GetTimestamp(),
 		})
-
-		message := block.GetMessage()
-		if block.GetSender() != nil || block.GetReceiver() != nil || !message.IsZero() {
-			blksMessage = append(blksMessage, &blocksMessage{
-				Hash:      block.GetHash().String(),
-				Sender:    phoneToString(block.GetSender()),
-				Receiver:  phoneToString(block.GetReceiver()),
-				Message:   message.String(),
-				Timestamp: block.GetTimestamp(),
-			})
-		}
 	}
 	if len(blksHashes) > 0 {
 		if _, err := txn.NamedExec("INSERT INTO BLOCKHASH(hash, type,address,timestamp) VALUES (:hash,:type,:address,:timestamp) ", blksHashes); err != nil {
@@ -264,26 +117,15 @@ func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
 			return err
 		}
 	}
-	if len(blksMessage) > 0 {
-		if _, err := txn.NamedExec("INSERT INTO BLOCKMESSAGE(hash, sender,receiver,message,timestamp) VALUES (:hash,:sender,:receiver,:message,:timestamp)", blksMessage); err != nil {
-			r.logger.Error("insert message, ", err)
-			return err
-		}
-	}
 	return nil
 }
 
-func (r *Relation) EmptyStore() error {
-	r.logger.Info("empty store")
-	err := r.store.Delete(db.TableBlockHash, nil)
-	if err != nil {
-		return err
-	}
-	return r.store.Delete(db.TableBlockMessage, nil)
-}
-
-func phoneToString(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
+type blocksHash struct {
+	Id        int64
+	Hash      string
+	Type      string
+	Address   string
+	Timestamp int64
 }
 
 func blockHash(bs []blocksHash) ([]types.Hash, error) {
@@ -296,123 +138,4 @@ func blockHash(bs []blocksHash) ([]types.Hash, error) {
 		hs = append(hs, h)
 	}
 	return hs, nil
-}
-
-func blockMessage(bs []blocksMessage) ([]types.Hash, error) {
-	hs := make([]types.Hash, 0)
-	for _, b := range bs {
-		var h types.Hash
-		if err := h.Of(b.Hash); err != nil {
-			return nil, err
-		}
-		hs = append(hs, h)
-	}
-	return hs, nil
-}
-
-func blockType(bs []blocksType) map[string]uint64 {
-	t := make(map[string]uint64)
-	for _, b := range bs {
-		t[b.Type] = b.Count
-	}
-	return t
-}
-
-func (r *Relation) processBlocks() {
-	blocks := make([]*types.StateBlock, 0)
-	for {
-		select {
-		case <-r.ctx.Done():
-			return
-		case blk := <-r.addBlkChan:
-			blocks = append(blocks, blk)
-			if len(r.addBlkChan) > 0 {
-				for b := range r.addBlkChan {
-					blocks = append(blocks, b)
-					if len(blocks) >= batchMaxCount {
-						break
-					}
-					if len(r.addBlkChan) == 0 {
-						break
-					}
-				}
-			}
-
-			err := r.BatchUpdate(func(txn *sqlx.Tx) error {
-				if err := r.AddBlocks(txn, blocks); err != nil {
-					r.logger.Errorf("batch add blocks error: %s", err)
-				}
-				return nil
-			})
-			if err != nil {
-				r.logger.Errorf("batch update blocks error: %s", err)
-			}
-			blocks = blocks[:0:0]
-		case blk := <-r.deleteBlkChan:
-			if err := r.DeleteBlock(blk); err != nil {
-				r.logger.Error(err)
-			}
-		case blk := <-r.syncBlkChan:
-			r.syncBlocks = append(r.syncBlocks, blk)
-			if len(r.syncBlocks) == batchMaxCount {
-				r.batchUpdateBlocks()
-				r.syncBlocks = r.syncBlocks[:0]
-			}
-		case <-r.syncDone:
-			if len(r.syncBlocks) > 0 {
-				r.batchUpdateBlocks()
-				r.syncBlocks = r.syncBlocks[:0]
-			}
-		}
-	}
-}
-
-func (r *Relation) waitAddBlocks(block *types.StateBlock) {
-	r.addBlkChan <- block
-}
-
-func (r *Relation) waitAddSyncBlocks(block *types.StateBlock, done bool) {
-	if done {
-		r.syncDone <- true
-	} else {
-		r.syncBlkChan <- block
-	}
-}
-
-func (r *Relation) batchUpdateBlocks() {
-	err := r.BatchUpdate(func(txn *sqlx.Tx) error {
-		if err := r.AddBlocks(txn, r.syncBlocks); err != nil {
-			r.logger.Errorf("batch add blocks error: %s", err)
-		}
-		return nil
-	})
-	if err != nil {
-		r.logger.Errorf("batch update blocks error: %s", err)
-	}
-}
-
-func (r *Relation) waitDeleteBlocks(hash types.Hash) {
-	r.deleteBlkChan <- hash
-}
-
-func (r *Relation) SetEvent() error {
-	r.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
-		switch msg := c.Message().(type) {
-		case *types.StateBlock:
-			r.waitAddBlocks(msg)
-		case types.Hash:
-			r.waitDeleteBlocks(msg)
-		case types.Tuple:
-			r.waitAddSyncBlocks(msg.First.(*types.StateBlock), msg.Second.(bool))
-		}
-	}), r.eb)
-
-	return r.subscriber.Subscribe(topic.EventAddRelation, topic.EventAddSyncBlocks, topic.EventDeleteRelation)
-}
-
-func (r *Relation) UnsubscribeEvent() error {
-	if r.subscriber != nil {
-		return r.subscriber.UnsubscribeAll()
-	}
-	return nil
 }

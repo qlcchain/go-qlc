@@ -15,31 +15,23 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"runtime"
-	"runtime/pprof"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
-
-	"github.com/qlcchain/go-qlc/config"
-
-	"github.com/qlcchain/go-qlc/log"
-
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
-	"github.com/spf13/cobra"
-
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/log"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/wallet"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -55,6 +47,7 @@ var (
 	passwordP     string
 	cfgPathP      string
 	isProfileP    bool
+	profPortP     int16
 	configParamsP string
 	genesisSeedP  string
 
@@ -64,6 +57,8 @@ var (
 	seed         cmdutil.Flag
 	cfgPath      cmdutil.Flag
 	isProfile    cmdutil.Flag
+	profPort     cmdutil.Flag
+	noBootstrap  cmdutil.Flag
 	configParams cmdutil.Flag
 	genesisSeed  cmdutil.Flag
 	//chainContext   *context.ChainContext
@@ -109,6 +104,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().StringVar(&seedP, "seed", "", "seed for accounts")
 		rootCmd.PersistentFlags().StringVar(&privateKeyP, "privateKey", "", "seed for accounts")
 		rootCmd.PersistentFlags().BoolVar(&isProfileP, "profile", false, "enable profile")
+		rootCmd.PersistentFlags().Int16Var(&profPortP, "profPort", 6060, "profile port")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
 		rootCmd.PersistentFlags().StringVar(&genesisSeedP, "genesisSeed", "", "genesis seed")
 		addCommand()
@@ -158,10 +154,6 @@ func start() error {
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	cfg, err := cm.Config()
 	if err != nil {
 		return err
 	}
@@ -222,47 +214,10 @@ func start() error {
 	}
 
 	if isProfileP {
-		profDir := filepath.Join(cfg.DataDir, "pprof", time.Now().Format("2006-01-02T15-04"))
-		_ = util.CreateDirIfNotExist(profDir)
-		//CPU profile
-		cpuProfile, err := os.Create(filepath.Join(profDir, "cpu.prof"))
-		if err != nil {
-			log.Root.Error("could not create CPU profile: ", err)
-		} else {
-			log.Root.Info("create CPU profile: ", cpuProfile.Name())
-		}
-
-		runtime.SetCPUProfileRate(500)
-		if err := pprof.StartCPUProfile(cpuProfile); err != nil {
-			log.Root.Error("could not start CPU profile: ", err)
-		} else {
-			log.Root.Info("start CPU profile")
-		}
-		defer func() {
-			_ = cpuProfile.Close()
-			pprof.StopCPUProfile()
-		}()
-
-		//MEM profile
-		memProfile, err := os.Create(filepath.Join(profDir, "mem.prof"))
-		if err != nil {
-			log.Root.Error("could not create memory profile: ", err)
-		} else {
-			log.Root.Info("create MEM profile: ", memProfile.Name())
-		}
-		runtime.GC()
-		if err := pprof.WriteHeapProfile(memProfile); err != nil {
-			log.Root.Error("could not write memory profile: ", err)
-		} else {
-			log.Root.Info("start MEM profile")
-		}
-		defer func() {
-			_ = memProfile.Close()
-		}()
-
 		go func() {
 			//view result in http://localhost:6060/debug/pprof/
-			log.Root.Info(http.ListenAndServe("localhost:6060", nil))
+			addr := fmt.Sprintf("localhost:%d", profPortP)
+			log.Root.Info(http.ListenAndServe(addr, nil))
 		}()
 	}
 
@@ -369,7 +324,7 @@ func run() {
 		Name: "run",
 		Help: "start qlc server",
 		Func: func(c *ishell.Context) {
-			args := []cmdutil.Flag{seed, cfgPath, isProfile}
+			args := []cmdutil.Flag{seed, cfgPath, isProfile, profPort}
 			if cmdutil.HelpText(c, args) {
 				return
 			}
@@ -383,6 +338,12 @@ func run() {
 			seedP = cmdutil.StringVar(c.Args, seed)
 			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
+			profPortTmp, _ := cmdutil.IntVar(c.Args, profPort)
+			if profPortTmp > 0 {
+				profPortP = int16(profPortTmp)
+			} else {
+				profPortTmp = 6060
+			}
 			configParamsP = cmdutil.StringVar(c.Args, configParams)
 			genesisSeedP = cmdutil.StringVar(c.Args, genesisSeed)
 

@@ -1,8 +1,10 @@
 package ledger
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
@@ -22,7 +24,7 @@ func addRepresentationWeight(t *testing.T, l *Ledger) *types.AccountMeta {
 		Total:   ac.TotalBalance(),
 	}
 
-	err := l.AddRepresentation(address, benefit)
+	err := l.AddRepresentation(address, benefit, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,18 +43,22 @@ func TestLedger_AddRepresentationWeight(t *testing.T) {
 		Balance: types.Balance{Int: big.NewInt(int64(10))},
 		Total:   types.Balance{Int: big.NewInt(int64(20))},
 	}
-
-	err := l.AddRepresentation(ac.Address, diff)
-	if err != nil {
-		t.Fatal(err)
-	}
 	a, err := l.GetRepresentation(ac.Address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(a)
-	if !a.Total.Equal(ac.TotalBalance().Add(diff.Total)) {
+	err = l.AddRepresentation(ac.Address, diff, l.cache.GetCache())
+	if err != nil {
 		t.Fatal(err)
+	}
+	a, err = l.GetRepresentation(ac.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(a)
+	if !a.Total.Equal(ac.TotalBalance().Add(diff.Total)) {
+		t.Fatal(a.Total, ac.TotalBalance(), diff.Total)
 	}
 }
 
@@ -70,7 +76,7 @@ func TestLedger_SubRepresentationWeight(t *testing.T) {
 		Total:   types.Balance{Int: big.NewInt(int64(20))},
 	}
 
-	err := l.SubRepresentation(ac.Address, diff)
+	err := l.SubRepresentation(ac.Address, diff, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,6 +97,7 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	addRepresentationWeight(t, l)
 	addRepresentationWeight(t, l)
 
+	time.Sleep(2 * time.Second)
 	err := l.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
 		t.Log(address, benefit)
 		return nil
@@ -99,33 +106,12 @@ func TestLedger_GetRepresentations(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txn := l.Store.NewTransaction(true)
-	if err := l.representCache.memoryToConfirmed(txn); err != nil {
-		l.logger.Errorf("cache to confirmed error : %s", err)
-	}
-	txn.Commit()
 	count, err := l.CountRepresentations()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if count != 2 {
-		t.Fatal("representation count error")
-	}
-}
-
-func TestLedger_GetRepresentationsCache(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	addRepresentationWeight(t, l)
-	addRepresentationWeight(t, l)
-
-	err := l.GetRepresentationsCache(types.ZeroAddress, func(address types.Address, am *types.Benefit, amCache *types.Benefit) error {
-		t.Log(address, am, amCache)
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
+		t.Fatal("representation count error", count)
 	}
 }
 
@@ -175,4 +161,13 @@ func TestLedger_SetOnlineRepresentations(t *testing.T) {
 	} else {
 		t.Fatal(err)
 	}
+}
+
+func TestLedger_AddRepresentation(t *testing.T) {
+	am := new(types.AccountMeta)
+	fmt.Printf("=======%p \n", am)
+
+	am = am.Clone()
+	fmt.Printf("=======%p \n", am)
+
 }

@@ -18,13 +18,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/ledger/db"
-
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -191,24 +189,24 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	}
 	for i := range blocks[0:2] {
 		block := blocks[i]
-		err := l.BatchUpdate(func(txn db.StoreTxn) error {
-			err := l.AddStateBlock(block, txn)
+		err := l.Cache().BatchUpdate(func(c *ledger.Cache) error {
+			err := l.UpdateStateBlock(block, c)
 			if err != nil {
 				return err
 			}
-			am, err := l.GetAccountMetaConfirmed(block.GetAddress(), txn)
+			am, err := l.GetAccountMetaConfirmed(block.GetAddress())
 			if err != nil && err != ledger.ErrAccountNotFound {
 				return fmt.Errorf("get account meta error: %s", err)
 			}
-			tm, err := l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken(), txn)
+			tm, err := l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken())
 			if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
 				return fmt.Errorf("get token meta error: %s", err)
 			}
-			err = updateFrontier(l, block, tm, txn)
+			err = updateFrontier(l, block, tm, c)
 			if err != nil {
 				return err
 			}
-			err = updateAccountMeta(l, block, am, txn)
+			err = updateAccountMeta(l, block, am, c)
 			if err != nil {
 				return err
 			}
@@ -233,14 +231,14 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	}, l
 }
 
-func updateFrontier(l *ledger.Ledger, block *types.StateBlock, tm *types.TokenMeta, txn db.StoreTxn) error {
+func updateFrontier(l *ledger.Ledger, block *types.StateBlock, tm *types.TokenMeta, c *ledger.Cache) error {
 	hash := block.GetHash()
 	frontier := &types.Frontier{
 		HeaderBlock: hash,
 	}
 	if tm != nil {
-		if frontier, err := l.GetFrontier(tm.Header, txn); err == nil {
-			if err := l.DeleteFrontier(frontier.HeaderBlock, txn); err != nil {
+		if frontier, err := l.GetFrontier(tm.Header, c); err == nil {
+			if err := l.DeleteFrontier(frontier.HeaderBlock, c); err != nil {
 				return err
 			}
 		} else {
@@ -250,13 +248,13 @@ func updateFrontier(l *ledger.Ledger, block *types.StateBlock, tm *types.TokenMe
 	} else {
 		frontier.OpenBlock = hash
 	}
-	if err := l.AddFrontier(frontier, txn); err != nil {
+	if err := l.AddFrontier(frontier, c); err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateAccountMeta(l *ledger.Ledger, block *types.StateBlock, am *types.AccountMeta, txn db.StoreTxn) error {
+func updateAccountMeta(l *ledger.Ledger, block *types.StateBlock, am *types.AccountMeta, c *ledger.Cache) error {
 	hash := block.GetHash()
 	rep := block.GetRepresentative()
 	address := block.GetAddress()
@@ -292,7 +290,7 @@ func updateAccountMeta(l *ledger.Ledger, block *types.StateBlock, am *types.Acco
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
-		if err := l.UpdateAccountMeta(am, txn); err != nil {
+		if err := l.UpdateAccountMeta(am, c); err != nil {
 			return err
 		}
 	} else {
@@ -308,7 +306,7 @@ func updateAccountMeta(l *ledger.Ledger, block *types.StateBlock, am *types.Acco
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
 		}
-		if err := l.AddAccountMeta(&account, txn); err != nil {
+		if err := l.AddAccountMeta(&account, c); err != nil {
 			return err
 		}
 	}
@@ -321,7 +319,7 @@ func TestDestroyContract(t *testing.T) {
 
 	tm, err := l.GetTokenMeta(acc.Address(), common.GasToken())
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(err, common.GasToken())
 	}
 
 	param := &abi.DestroyParam{

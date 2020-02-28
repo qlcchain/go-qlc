@@ -21,7 +21,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	l := ledger.NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
-		//err := l.Store.Erase()
+		//err := l.DBStore.Erase()
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)

@@ -18,13 +18,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger/db"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Trie) {
@@ -710,7 +710,7 @@ func TestEncodeKey(t *testing.T) {
 	if len(key) != types.HashSize+1 {
 		t.Fatal("invalid size")
 	}
-	if key[0] != idPrefixTrie {
+	if key[0] != byte(storage.KeyPrefixTrie) {
 		t.Fatal("invalid prefix")
 	}
 

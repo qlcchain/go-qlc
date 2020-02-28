@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"

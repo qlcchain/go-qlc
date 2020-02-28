@@ -108,7 +108,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	}
 
 	if _, err := ctx.GetStorage(types.NEP5PledgeAddress[:], []byte(param.NEP5TxId)); err == nil {
-		return nil, fmt.Errorf("invalid nep5 tx id, %s", param.NEP5TxId)
+		return nil, fmt.Errorf("invalid pledge nep5 tx id, %s", param.NEP5TxId)
 	} else {
 		if err := ctx.SetStorage(types.NEP5PledgeAddress[:], []byte(param.NEP5TxId), nil); err != nil {
 			return nil, err
@@ -207,7 +207,7 @@ func (*Nep5Pledge) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (*Nep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+func (*Nep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	data := block.GetData()
 	tr := types.ZeroAddress
 
@@ -216,11 +216,16 @@ func (*Nep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateB
 			param := new(cabi.PledgeParam)
 			if err = method.Inputs.Unpack(param, data[4:]); err == nil {
 				tr = param.Beneficial
+				return tr, nil
+			} else {
+				return tr, err
 			}
+		} else {
+			return tr, errors.New("method err")
 		}
+	} else {
+		return tr, err
 	}
-
-	return tr
 }
 
 type WithdrawNep5Pledge struct {
@@ -267,7 +272,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(ctx, param)
 
 	if pledgeResult == nil {
-		return nil, errors.New("pledge is not ready")
+		return nil, ErrPledgeNotReady
 	}
 
 	//if len(pledgeResults) > 2 {
@@ -346,7 +351,7 @@ func (*WithdrawNep5Pledge) GetRefundData() []byte {
 	return []byte{2}
 }
 
-func (*WithdrawNep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) types.Address {
+func (*WithdrawNep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	data := block.GetData()
 	tr := types.ZeroAddress
 
@@ -357,10 +362,17 @@ func (*WithdrawNep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *type
 				pledgeResult := cabi.SearchBeneficialPledgeInfoByTxId(ctx, param)
 				if pledgeResult != nil {
 					tr = pledgeResult.PledgeInfo.PledgeAddress
+					return tr, nil
+				} else {
+					return tr, errors.New("find pledge err")
 				}
+			} else {
+				return tr, err
 			}
+		} else {
+			return tr, errors.New("method err")
 		}
+	} else {
+		return tr, err
 	}
-
-	return tr
 }
