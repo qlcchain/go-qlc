@@ -324,7 +324,7 @@ func run() {
 		Name: "run",
 		Help: "start qlc server",
 		Func: func(c *ishell.Context) {
-			args := []cmdutil.Flag{seed, cfgPath, isProfile}
+			args := []cmdutil.Flag{seed, cfgPath, isProfile, profPort}
 			if cmdutil.HelpText(c, args) {
 				return
 			}

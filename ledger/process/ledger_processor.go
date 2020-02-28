@@ -10,18 +10,17 @@ package process
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/hashmap"
-	"github.com/qlcchain/go-qlc/common/sync/spinlock"
-
-	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/hashmap"
+	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"go.uber.org/zap"
 )
 
 type LedgerVerifier struct {
@@ -402,7 +401,6 @@ func (lv *LedgerVerifier) unlock(address types.Address) {
 
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, cache *ledger.Cache) error {
 	if block.GetToken() == common.ChainToken() {
-		fmt.Println("===============common.ChainToken()", common.ChainToken())
 		if tm != nil && !tm.Representative.IsZero() {
 			lv.lock(block.Representative)
 			oldBenefit := &types.Benefit{

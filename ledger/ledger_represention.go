@@ -2,8 +2,8 @@ package ledger
 
 import (
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -154,7 +154,7 @@ func (l *Ledger) updateRepresentation() error {
 		tm := am.Token(common.ChainToken())
 		if tm != nil {
 			if _, ok := representMap[tm.Representative]; !ok {
-				representMap[tm.Representative] = types.ZeroBenefit
+				representMap[tm.Representative] = types.ZeroBenefit.Clone()
 			}
 			representMap[tm.Representative].Balance = representMap[tm.Representative].Balance.Add(am.CoinBalance)
 			representMap[tm.Representative].Vote = representMap[tm.Representative].Vote.Add(am.CoinVote)
