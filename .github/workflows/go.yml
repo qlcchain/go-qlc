@@ -52,7 +52,17 @@ jobs:
           flags: unittests 
           name: codecov-umbrella
         if: success()
-
+        
+      - name: Build and Publish the Docker image to DockerHub
+        # uses: gythialy/Publish-Docker-Github-Action@2.4
+        uses: docker://goreng/publish-docker-github-action:v2.4
+        with:
+          name: qlcchain/go-qlc-test
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          dockerfile: docker/Dockerfile
+          buildargs: BUILD_ACT=build-test
+      
       - name: Build snapshot
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
@@ -66,13 +76,3 @@ jobs:
         with:
           name: gqlc-artifact
           path: artifact/
-
-      - name: Build and Publish the Docker image to DockerHub
-        # uses: gythialy/Publish-Docker-Github-Action@2.4
-        uses: docker://goreng/publish-docker-github-action:v2.4
-        with:
-          name: qlcchain/go-qlc-test
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          dockerfile: docker/Dockerfile
-          buildargs: BUILD_ACT=build-test
