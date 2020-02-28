@@ -137,53 +137,38 @@ func (p *Processor) processMsg() {
 	timerConfirm := time.NewTicker(time.Second)
 
 	for {
-	P1:
-		for {
-			select {
-			case <-p.quitCh:
-				return
-			case p.syncState = <-p.syncStateChange:
-				p.dps.syncStateNotifyWait.Done()
-
-				if p.syncState == topic.Syncing {
-					p.orderedChain = new(sync.Map)
-					p.chainHeight = new(sync.Map)
-					p.confirmedChain = make(map[types.Hash]bool)
-				}
-			case hash := <-p.syncBlockAcked:
-				if p.dps.isConfirmedFrontier(hash) {
-					if s, ok := p.dps.frontiersStatus.Load(hash); ok && s == frontierConfirmed {
-						p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
-					}
-
-					if _, ok := p.confirmedChain[hash]; !ok {
-						p.confirmedChain[hash] = false
-					}
-				}
-				// p.dequeueUncheckedSync(hash)
-			case hash := <-p.blocksAcked:
-				p.dequeueUnchecked(hash)
-			case hash := <-p.tokenCreate:
-				p.dequeueGapToken(hash)
-			case hash := <-p.publishBlock:
-				p.dequeueGapPublish(hash)
-			case ack := <-p.acks:
-				p.processAck(ack)
-			case frontier := <-p.frontiers:
-				p.processFrontier(frontier)
-			// case block := <-p.doneBlock:
-			// 	p.dps.updateLastProcessSyncTime()
-			// 	if err := p.dps.lv.BlockSyncDoneProcess(block); err != nil {
-			// 		p.dps.logger.Warnf("block(%s) sync done error: %s", block.GetHash(), err)
-			// 	}
-			default:
-				break P1
-			}
-		}
-
 		select {
 		case <-p.quitCh:
 			return
+		case p.syncState = <-p.syncStateChange:
+			p.dps.syncStateNotifyWait.Done()
+
+			if p.syncState == topic.Syncing {
+				p.orderedChain = new(sync.Map)
+				p.chainHeight = new(sync.Map)
+				p.confirmedChain = make(map[types.Hash]bool)
+			}
+		case hash := <-p.syncBlockAcked:
+			if p.dps.isConfirmedFrontier(hash) {
+				if s, ok := p.dps.frontiersStatus.Load(hash); ok && s == frontierConfirmed {
+					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
+				}
+
+				if _, ok := p.confirmedChain[hash]; !ok {
+					p.confirmedChain[hash] = false
+				}
+			}
+			// p.dequeueUncheckedSync(hash)
+		case hash := <-p.blocksAcked:
+			p.dequeueUnchecked(hash)
+		case hash := <-p.tokenCreate:
+			p.dequeueGapToken(hash)
+		case hash := <-p.publishBlock:
+			p.dequeueGapPublish(hash)
+		case ack := <-p.acks:
+			p.processAck(ack)
+		case frontier := <-p.frontiers:
+			p.processFrontier(frontier)
 		case bs := <-p.blocks:
 			p.processMsgDo(bs)
 		case block := <-p.syncBlock:
@@ -205,8 +190,6 @@ func (p *Processor) processMsg() {
 					}
 				}
 			}
-		default:
-			time.Sleep(10 * time.Millisecond)
 		}
 	}
 }
