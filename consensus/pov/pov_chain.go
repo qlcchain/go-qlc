@@ -145,7 +145,7 @@ func (bc *PovBlockChain) getLedger() ledger.Store {
 func (bc *PovBlockChain) Init() error {
 	var err error
 
-	bc.trieNodePool = trie.NewSimpleTrieNodePool()
+	bc.trieNodePool = trie.NewTrieNodePool(100000, 5000)
 
 	needReset := false
 	genesisBlock, _ := bc.getLedger().GetPovBlockByHeight(0)

@@ -8,12 +8,12 @@
 package trie
 
 import (
-	"github.com/qlcchain/go-qlc/common/hashmap"
+	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
 type NodePool struct {
-	cache    *hashmap.HashMap
+	cache    gcache.Cache
 	limit    int
 	clearNum int
 }
@@ -24,50 +24,34 @@ func NewTrieNodePool(limit int, clearNum int) *NodePool {
 	if limit <= 0 {
 		limit = cacheSize
 	}
-	return &NodePool{limit: limit, cache: hashmap.New(uintptr(limit)), clearNum: clearNum}
+	p := &NodePool{limit: limit, clearNum: clearNum}
+	p.cache = gcache.New(limit).LRU().Build()
+	return p
 }
 
 func NewSimpleTrieNodePool() *NodePool {
-	return &NodePool{limit: cacheSize, cache: hashmap.New(uintptr(cacheSize)), clearNum: cacheSize / 2}
+	clearNum := cacheSize * 80 / 100
+	return NewTrieNodePool(cacheSize, clearNum)
 }
 
 func (p *NodePool) Get(key *types.Hash) *TrieNode {
-	if value, ok := p.cache.Get(key[:]); ok {
+	if value, err := p.cache.Get(*key); err == nil {
 		return value.(*TrieNode)
 	}
 	return nil
 }
 
 func (p *NodePool) Set(key *types.Hash, trieNode *TrieNode) {
-	p.cache.Set(key[:], trieNode)
-
-	if p.cache.Len() >= p.limit {
-		p.clear()
-	}
+	_ = p.cache.Set(*key, trieNode)
 }
 
 func (p *NodePool) Clear() {
-	quitCh := make(chan struct{})
-	for k := range p.cache.Iter(quitCh) {
-		p.cache.Del(k.Key)
-	}
-	close(quitCh)
+	p.cache.Purge()
 }
 
 func (p *NodePool) Len() int {
-	return p.cache.Len()
+	return p.cache.Len(false)
 }
 
 func (p *NodePool) clear() {
-	i := 0
-	quitCh := make(chan struct{})
-	for key := range p.cache.Iter(quitCh) {
-		p.cache.Del(key.Key)
-		i++
-		if i >= p.clearNum {
-			close(quitCh)
-			return
-		}
-	}
-	close(quitCh)
 }
