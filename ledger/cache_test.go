@@ -2,7 +2,6 @@ package ledger
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,7 +11,7 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/google/uuid"
-
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -210,11 +209,30 @@ func TestCache_PutConcurrency(t *testing.T) {
 	}
 }
 
+func setupTestCase2(t *testing.T) (func(t *testing.T), *Ledger) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	l := NewLedger(cm.ConfigFile)
+	return func(t *testing.T) {
+		//err := l.DBStore.Erase()
+		err := l.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		//CloseLedger()
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}, l
+}
+
 func TestCache_Get(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupTestCase2(t)
 	defer teardownTestCase(t)
 
-	c := time.NewTicker(20 * time.Second)
+	c := time.NewTicker(10 * time.Second)
 	defer c.Stop()
 InfLoop:
 	for {
@@ -240,10 +258,10 @@ InfLoop:
 }
 
 func TestCache_Get2(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupTestCase2(t)
 	defer teardownTestCase(t)
 
-	c := time.NewTicker(20 * time.Second)
+	c := time.NewTicker(10 * time.Second)
 	defer c.Stop()
 	count := 0
 InfLoop:

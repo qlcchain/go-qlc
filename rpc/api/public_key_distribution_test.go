@@ -1,9 +1,10 @@
 package api
 
 import (
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
-	"testing"
 )
 
 func TestNewPublicKeyDistributionApi_sortPublishInfo(t *testing.T) {
