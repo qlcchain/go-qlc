@@ -422,7 +422,7 @@ func (dps *DPoS) RPC(kind uint, in, out interface{}) {
 		state := in.(topic.SyncState)
 		dps.onSyncStateChange(state)
 	case common.RpcDPoSFeed:
-		dps.feedBlocks()
+		go dps.feedBlocks()
 	}
 }
 
