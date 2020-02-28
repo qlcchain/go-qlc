@@ -670,14 +670,14 @@ func (dps *DPoS) unsubAckDo(hash types.Hash) {
 func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, localIndex int) {
 	if localIndex == -1 {
 		localIndex = dps.getProcessorIndex(blk.Address)
-		dps.processors[localIndex].blocksAcked <- hash
+		dps.processors[localIndex].ackedBlockNotify(hash)
 	}
 
 	switch blk.Type {
 	case types.Send:
 		index := dps.getProcessorIndex(types.Address(blk.Link))
 		if localIndex != index {
-			dps.processors[index].blocksAcked <- hash
+			dps.processors[index].ackedBlockNotify(hash)
 		}
 	case types.ContractSend: // beneficial maybe another account
 		dstAddr := types.ZeroAddress
@@ -693,7 +693,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		if dstAddr != types.ZeroAddress {
 			index := dps.getProcessorIndex(dstAddr)
 			if localIndex != index {
-				dps.processors[index].blocksAcked <- hash
+				dps.processors[index].ackedBlockNotify(hash)
 			}
 		}
 
@@ -703,7 +703,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				if method.Name == cabi.MethodNamePKDPublish {
 					for _, p := range dps.processors {
 						if localIndex != p.index {
-							p.publishBlock <- hash
+							p.publishBlockNotify(hash)
 						}
 					}
 				}
@@ -724,7 +724,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
 					index := dps.getProcessorIndex(input.Address)
 					if localIndex != index {
-						dps.processors[index].tokenCreate <- hash
+						dps.processors[index].tokenCreateNotify(hash)
 					}
 				}
 			}

@@ -44,7 +44,6 @@ type Processor struct {
 	tokenCreate     chan types.Hash
 	publishBlock    chan types.Hash
 	syncBlock       chan *types.StateBlock
-	syncBlockAcked  chan types.Hash
 	acks            chan *voteInfo
 	frontiers       chan *types.StateBlock
 	syncStateChange chan topic.SyncState
@@ -72,7 +71,6 @@ func newProcessors(num int) []*Processor {
 			tokenCreate:     make(chan types.Hash, 1024),
 			publishBlock:    make(chan types.Hash, common.DPoSMaxBlocks),
 			syncBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncBlockAcked:  make(chan types.Hash, common.DPoSMaxBlocks),
 			acks:            make(chan *voteInfo, common.DPoSMaxBlocks),
 			frontiers:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
 			syncStateChange: make(chan topic.SyncState, 1),
@@ -148,17 +146,6 @@ func (p *Processor) processMsg() {
 				p.chainHeight = new(sync.Map)
 				p.confirmedChain = make(map[types.Hash]bool)
 			}
-		case hash := <-p.syncBlockAcked:
-			if p.dps.isConfirmedFrontier(hash) {
-				if s, ok := p.dps.frontiersStatus.Load(hash); ok && s == frontierConfirmed {
-					p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
-				}
-
-				if _, ok := p.confirmedChain[hash]; !ok {
-					p.confirmedChain[hash] = false
-				}
-			}
-			// p.dequeueUncheckedSync(hash)
 		case hash := <-p.blocksAcked:
 			p.dequeueUnchecked(hash)
 		case hash := <-p.tokenCreate:
@@ -194,6 +181,27 @@ func (p *Processor) processMsg() {
 	}
 }
 
+func (p *Processor) ackedBlockNotify(hash types.Hash) {
+	select {
+	case p.blocksAcked <- hash:
+	default:
+	}
+}
+
+func (p *Processor) publishBlockNotify(hash types.Hash) {
+	select {
+	case p.publishBlock <- hash:
+	default:
+	}
+}
+
+func (p *Processor) tokenCreateNotify(hash types.Hash) {
+	select {
+	case p.tokenCreate <- hash:
+	default:
+	}
+}
+
 func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBlock) {
 	var height uint64
 
@@ -215,7 +223,19 @@ func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBloc
 	}
 
 	p.orderedChain.Store(cok, hash)
-	p.syncBlockAcked <- hash
+	p.processAckedSync(hash)
+}
+
+func (p *Processor) processAckedSync(hash types.Hash) {
+	if p.dps.isConfirmedFrontier(hash) {
+		if s, ok := p.dps.frontiersStatus.Load(hash); ok && s == frontierConfirmed {
+			p.dps.frontiersStatus.Store(hash, frontierChainConfirmed)
+		}
+
+		if _, ok := p.confirmedChain[hash]; !ok {
+			p.confirmedChain[hash] = false
+		}
+	}
 }
 
 func (p *Processor) localRepVoteFrontier(block *types.StateBlock) {
@@ -350,7 +370,7 @@ func (p *Processor) processAck(vi *voteInfo) {
 		if _, ok := el.frontier.Load(vi.hash); ok {
 			if dps.acTrx.voteFrontier(vi) {
 				p.dps.frontiersStatus.Store(vi.hash, frontierConfirmed)
-				p.syncBlockAcked <- vi.hash
+				p.processAckedSync(vi.hash)
 				dps.logger.Infof("frontier %s confirmed", vi.hash)
 			}
 		} else {
@@ -507,12 +527,12 @@ func (p *Processor) confirmBlock(blk *types.StateBlock) {
 		el.cleanBlockInfo()
 		dps.acTrx.rollBack(loser)
 		dps.acTrx.addSyncBlock2Ledger(blk)
-		p.blocksAcked <- hash
+		p.ackedBlockNotify(hash)
 		dps.dispatchAckedBlock(blk, hash, p.index)
 		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 	} else {
 		dps.acTrx.addSyncBlock2Ledger(blk)
-		p.blocksAcked <- hash
+		p.ackedBlockNotify(hash)
 		dps.dispatchAckedBlock(blk, hash, p.index)
 		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 	}
@@ -725,11 +745,9 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 	if has, _ := dps.ledger.HasStateBlockConfirmed(hash); !has {
 		dps.logger.Debugf("get confirmed block fail %s", hash)
 		time.Sleep(time.Millisecond)
-		p.blocksAcked <- hash
+		p.ackedBlockNotify(hash)
 		return
 	}
-
-	// dfile.WriteString(fmt.Sprintf("block acked [%d] [%s]\n", p.index, hash))
 
 	if blkLink, bf, _ := dps.ledger.GetUncheckedBlock(hash, types.UncheckedKindLink); blkLink != nil {
 		if dps.getProcessorIndex(blkLink.Address) == p.index {
@@ -741,7 +759,6 @@ func (p *Processor) dequeueUncheckedFromDb(hash types.Hash) {
 
 			p.processUncheckedBlock(bs)
 
-			// dfile.WriteString(fmt.Sprintf("delete gap link [%d] [%s] [%s]", p.index, blkLink.GetHash(), hash))
 			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
 			if err != nil {
 				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
@@ -775,7 +792,7 @@ func (p *Processor) dequeueGapToken(hash types.Hash) {
 	if err != nil || blk == nil {
 		dps.logger.Debugf("get confirmed block fail %s", hash)
 		time.Sleep(time.Millisecond)
-		p.tokenCreate <- hash
+		p.tokenCreateNotify(hash)
 		return
 	}
 
@@ -818,7 +835,7 @@ func (p *Processor) dequeueGapPublish(hash types.Hash) {
 	if err != nil || blk == nil {
 		dps.logger.Debugf("get confirmed block fail %s", hash)
 		time.Sleep(time.Millisecond)
-		p.publishBlock <- hash
+		p.publishBlockNotify(hash)
 		return
 	}
 
