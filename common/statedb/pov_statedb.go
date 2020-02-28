@@ -58,13 +58,13 @@ func NewPovGlobalStateDB(db storage.Store, prevStateHash types.Hash) *PovGlobalS
 	}
 
 	if prevStateHash.IsZero() {
-		gsdb.curTrie = trie.NewTrie(db, nil, nil)
+		gsdb.curTrie = trie.NewTrie(db, nil, GetStateDBTriePool())
 	} else {
-		gsdb.prevTrie = trie.NewTrie(db, &prevStateHash, nil)
+		gsdb.prevTrie = trie.NewTrie(db, &prevStateHash, GetStateDBTriePool())
 		if gsdb.prevTrie != nil {
 			gsdb.curTrie = gsdb.prevTrie.Clone()
 		} else {
-			gsdb.curTrie = trie.NewTrie(db, nil, nil)
+			gsdb.curTrie = trie.NewTrie(db, nil, GetStateDBTriePool())
 		}
 	}
 
@@ -348,13 +348,13 @@ func NewPovContractStateDB(db storage.Store, cs *types.PovContractState) *PovCon
 
 	prevStateHash := cs.StateHash
 	if prevStateHash.IsZero() {
-		currentTrie = trie.NewTrie(db, nil, nil)
+		currentTrie = trie.NewTrie(db, nil, GetStateDBTriePool())
 	} else {
-		prevTrie = trie.NewTrie(db, &prevStateHash, nil)
+		prevTrie = trie.NewTrie(db, &prevStateHash, GetStateDBTriePool())
 		if prevTrie != nil {
 			currentTrie = prevTrie.Clone()
 		} else {
-			currentTrie = trie.NewTrie(db, nil, nil)
+			currentTrie = trie.NewTrie(db, nil, GetStateDBTriePool())
 		}
 	}
 
@@ -453,4 +453,8 @@ func (csdb *PovContractStateDB) NewCurTireIterator(prefix []byte) *trie.Iterator
 
 func (csdb *PovContractStateDB) NewPrevTireIterator(prefix []byte) *trie.Iterator {
 	return csdb.prevTrie.NewIterator(prefix)
+}
+
+func GetStateDBTriePool() *trie.NodePool {
+	return trie.GetGlobalTriePool()
 }
