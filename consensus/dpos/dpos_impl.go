@@ -136,6 +136,7 @@ type DPoS struct {
 	lockPool            *sync.Map
 	feb                 *event.FeedEventBus
 	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
+	repVH               chan *repVoteHeart
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -187,6 +188,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		lockPool:            new(sync.Map),
 		feb:                 cc.FeedEventBus(),
 		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
+		repVH:               make(chan *repVoteHeart, 409600),
 	}
 
 	dps.pf.status.Store(perfTypeClose)
@@ -371,6 +373,8 @@ func (dps *DPoS) Start() {
 			}
 		case <-timerGC.C:
 			dps.confirmedBlocks.gc()
+		case vh := <-dps.repVH:
+			dps.heartAndVoteIncDo(vh.hash, vh.addr, vh.kind)
 		}
 	}
 }

@@ -33,6 +33,12 @@ type RepOnlinePeriod struct {
 	BlockCount uint64                              `json:"blockCount"`
 }
 
+type repVoteHeart struct {
+	hash types.Hash
+	addr types.Address
+	kind onlineKind
+}
+
 func (op *RepOnlinePeriod) String() string {
 	op.Stat = make(map[types.Address]*RepAckStatistics)
 
@@ -62,6 +68,19 @@ func (dps *DPoS) isValidVote(hash types.Hash, addr types.Address) bool {
 }
 
 func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlineKind) {
+	vh := &repVoteHeart{
+		hash: hash,
+		addr: addr,
+		kind: kind,
+	}
+
+	select {
+	case dps.repVH <- vh:
+	default:
+	}
+}
+
+func (dps *DPoS) heartAndVoteIncDo(hash types.Hash, addr types.Address, kind onlineKind) {
 	period := dps.curPovHeight / common.DPosOnlinePeriod
 	var repPeriod *RepOnlinePeriod
 
@@ -135,7 +154,7 @@ func (dps *DPoS) isOnline(addr types.Address) bool {
 	lk, _ := dps.lockPool.LoadOrStore(addr, new(sync.RWMutex))
 	lock := lk.(*sync.RWMutex)
 
-	//the first period will be ignored
+	// the first period will be ignored
 	if s, err := dps.online.Get(period); err == nil {
 		repPeriod := s.(*RepOnlinePeriod)
 

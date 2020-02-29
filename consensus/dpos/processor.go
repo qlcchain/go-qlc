@@ -147,9 +147,7 @@ func (p *Processor) processMsg() {
 				p.confirmedChain = make(map[types.Hash]bool)
 			}
 		case hash := <-p.blocksAcked:
-			p.dps.perfBlockProcessCheckPointAdd(hash, checkPointSectionStart)
 			p.dequeueUnchecked(hash)
-			p.dps.perfBlockProcessCheckPointAdd(hash, checkPointSectionEnd)
 		case hash := <-p.tokenCreate:
 			p.dequeueGapToken(hash)
 		case hash := <-p.publishBlock:

@@ -26,6 +26,8 @@ const (
 	checkPointEnd
 	checkPointSectionStart
 	checkPointSectionEnd
+	checkPointSection2Start
+	checkPointSection2End
 )
 
 const (
@@ -48,6 +50,8 @@ const (
 	ed
 	ss
 	se
+	s2s
+	s2e
 	bpBut
 )
 
@@ -221,6 +225,14 @@ func (dps *DPoS) perfBlockProcessCheckPointAdd(hash types.Hash, pos checkPointPo
 		if bp[se].IsZero() {
 			bp[se] = now
 		}
+	case checkPointSection2Start:
+		if bp[s2s].IsZero() {
+			bp[s2s] = now
+		}
+	case checkPointSection2End:
+		if bp[s2e].IsZero() {
+			bp[s2e] = now
+		}
 	}
 }
 
@@ -249,11 +261,11 @@ func (dps *DPoS) perfDataExport() error {
 		return true
 	})
 
-	_, _ = bpf.Write([]byte("hash,all,bcu,pru,su\n"))
+	_, _ = bpf.Write([]byte("hash,all,bcu,pru,su,s2u\n"))
 	dps.pf.blockProcess.Range(func(hash, val interface{}) bool {
 		bp := val.([]time.Time)
-		_, _ = bpf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s\n",
-			hash, bp[ed].Sub(bp[bc]), bp[pr].Sub(bp[bc]), bp[ed].Sub(bp[pr]), bp[se].Sub(bp[ss])))
+		_, _ = bpf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s\n",
+			hash, bp[ed].Sub(bp[bc]), bp[pr].Sub(bp[bc]), bp[ed].Sub(bp[pr]), bp[se].Sub(bp[ss]), bp[s2e].Sub(bp[s2s])))
 		return true
 	})
 
