@@ -131,6 +131,17 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 	}
 }
 
+func (p *Processor) drainAck() {
+	for {
+		select {
+		case ack := <-p.acks:
+			p.processAck(ack)
+		default:
+			return
+		}
+	}
+}
+
 func (p *Processor) processMsg() {
 	timerConfirm := time.NewTicker(time.Second)
 
@@ -154,13 +165,7 @@ func (p *Processor) processMsg() {
 			p.dequeueGapPublish(hash)
 		case ack := <-p.acks:
 			p.processAck(ack)
-			for {
-				select {
-				case ack := <-p.acks:
-					p.processAck(ack)
-				default:
-				}
-			}
+			p.drainAck()
 		case frontier := <-p.frontiers:
 			p.processFrontier(frontier)
 		case bs := <-p.blocks:
