@@ -154,6 +154,13 @@ func (p *Processor) processMsg() {
 			p.dequeueGapPublish(hash)
 		case ack := <-p.acks:
 			p.processAck(ack)
+			for {
+				select {
+				case ack := <-p.acks:
+					p.processAck(ack)
+				default:
+				}
+			}
 		case frontier := <-p.frontiers:
 			p.processFrontier(frontier)
 		case bs := <-p.blocks:
