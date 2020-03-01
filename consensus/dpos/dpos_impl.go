@@ -1106,6 +1106,10 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 // }
 
 func (dps *DPoS) syncFinish() {
+	if dps.blockSyncState == topic.SyncFinish {
+		return
+	}
+
 	dps.blockSyncState = topic.SyncFinish
 	dps.acTrx.cleanFrontierVotes()
 	dps.CleanSyncCache()
