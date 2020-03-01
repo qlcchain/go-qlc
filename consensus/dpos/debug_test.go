@@ -63,6 +63,8 @@ func TestPerf(t *testing.T) {
 	dps.perfBlockProcessCheckPointAdd(hash1, checkPointEnd)
 	dps.perfBlockProcessCheckPointAdd(hash1, checkPointSectionStart)
 	dps.perfBlockProcessCheckPointAdd(hash1, checkPointSectionEnd)
+	dps.perfBlockProcessCheckPointAdd(hash1, checkPointSection2Start)
+	dps.perfBlockProcessCheckPointAdd(hash1, checkPointSection2End)
 	in = make(map[string]interface{})
 	rsp = make(map[string]interface{})
 	dps.RPC(common.RpcDPoSGetConsPerf, in, rsp)
