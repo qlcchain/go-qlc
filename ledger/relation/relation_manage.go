@@ -6,24 +6,22 @@ import (
 	"sync"
 
 	"github.com/jmoiron/sqlx"
-	"go.uber.org/zap"
-
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/storage/relationdb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type Relation struct {
-	Store      *sqlx.DB
+	db         relationdb.RelationDB
 	eb         event.EventBus
 	subscriber *event.ActorSubscriber
 	dir        string
 	deleteChan chan types.Schema
 	addChan    chan types.Schema
 	tables     []types.Schema
-	dbType     string
 	ctx        context.Context
 	cancel     context.CancelFunc
 	closedChan chan bool
@@ -50,7 +48,7 @@ func NewRelation(cfgFile string) (*Relation, error) {
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		relation := &Relation{
-			Store:      store,
+			db:         store,
 			eb:         cc.EventBus(),
 			dir:        cfgFile,
 			deleteChan: make(chan types.Schema, 10240),
@@ -58,7 +56,6 @@ func NewRelation(cfgFile string) (*Relation, error) {
 			ctx:        ctx,
 			cancel:     cancel,
 			closedChan: make(chan bool),
-			dbType:     cfg.DB.Driver,
 			logger:     log.NewLogger("relation"),
 		}
 		relation.tables = []types.Schema{new(types.StateBlock)}
@@ -74,8 +71,9 @@ func NewRelation(cfgFile string) (*Relation, error) {
 
 func (r *Relation) init() error {
 	for _, s := range r.tables {
-		sql := s.TableSchema(r.dbType)
-		if _, err := r.Store.Exec(sql); err != nil {
+		fields, key := s.TableSchema()
+		sql := r.db.CreateTable(s.TableName(), fields, key)
+		if _, err := r.db.Store().Exec(sql); err != nil {
 			r.logger.Errorf("exec error, sql: %s, err: %s", sql, err.Error())
 			return err
 		}
@@ -89,7 +87,7 @@ func (r *Relation) Close() error {
 	if _, ok := cache[r.dir]; ok {
 		r.cancel()
 		r.closed()
-		err := r.Store.Close()
+		err := r.db.Close()
 		if err != nil {
 			return err
 		}
@@ -110,7 +108,8 @@ func (r *Relation) Delete(obj types.Schema) {
 
 func (r *Relation) batchAdd(txn *sqlx.Tx, objs []types.Schema) error {
 	for _, obj := range objs {
-		s, i := obj.SetRelation()
+		vals := obj.SetRelation()
+		s, i := r.db.Set(obj.TableName(), vals)
 		//tx.MustExec(s, i...)
 		if _, err := txn.Exec(s, i...); err != nil {
 			return err
@@ -121,7 +120,8 @@ func (r *Relation) batchAdd(txn *sqlx.Tx, objs []types.Schema) error {
 
 func (r *Relation) batchDelete(txn *sqlx.Tx, objs []types.Schema) error {
 	for _, obj := range objs {
-		s := obj.RemoveRelation()
+		vals := obj.RemoveRelation()
+		s := r.db.Delete(obj.TableName(), vals)
 		//tx.MustExec(s)
 		if _, err := txn.Exec(s); err != nil {
 			return err
@@ -212,7 +212,7 @@ func (r *Relation) EmptyStore() error {
 	r.logger.Info("empty store")
 	for _, s := range r.tables {
 		sql := fmt.Sprintf("delete from %s ", s.TableName())
-		if _, err := r.Store.Exec(sql); err != nil {
+		if _, err := r.db.Store().Exec(sql); err != nil {
 			r.logger.Errorf("exec error, sql: %s, err: %s", sql, err.Error())
 			return err
 		}

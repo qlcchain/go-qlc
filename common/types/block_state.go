@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -234,29 +233,32 @@ func (bs *StateBlockList) Deserialize(text []byte) error {
 	return nil
 }
 
-func (b *StateBlock) TableSchema(dbType string) string {
+func (b *StateBlock) TableSchema() (map[string]interface{}, string) {
 	fields := make(map[string]interface{})
 	fields["hash"] = b.GetHash()
 	fields["type"] = b.Type
 	fields["address"] = b.Address
 	fields["timestamp"] = b.Timestamp
-
-	return CreateSchema(b.TableName(), fields, "", dbType)
+	return fields, ""
 }
 
 func (b *StateBlock) TableName() string {
 	return "BLOCKHASH"
 }
 
-func (b *StateBlock) SetRelation() (string, []interface{}) {
-	var str string
-	str = fmt.Sprintf("INSERT INTO %s (hash,type,address,timestamp) VALUES ($1, $2, $3, $4)", b.TableName())
-	val := []interface{}{b.GetHash().String(), b.GetType().String(), b.GetAddress().String(), b.GetTimestamp()}
-	return str, val
+func (b *StateBlock) SetRelation() map[string]interface{} {
+	val := make(map[string]interface{})
+	val["hash"] = b.GetHash().String()
+	val["type"] = b.GetType().String()
+	val["address"] = b.GetAddress().String()
+	val["timestamp"] = b.GetTimestamp()
+	return val
 }
 
-func (b *StateBlock) RemoveRelation() string {
-	return fmt.Sprintf("DELETE FROM %s WHERE hash = '%s'", b.TableName(), b.GetHash().String())
+func (b *StateBlock) RemoveRelation() map[string]interface{} {
+	val := make(map[string]interface{})
+	val["hash"] = b.GetHash().String()
+	return val
 }
 
 //
