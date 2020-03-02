@@ -1,10 +1,11 @@
 package common
 
 const (
-	RpcDPosOnSyncStateChange uint = iota
-	RpcDPosProcessFrontier
-	RpcDPosConsInfo
-	RpcDPosOnlineInfo
-	RpcDPosSetConsPerf
-	RpcDPosGetConsPerf
+	RpcDPoSOnSyncStateChange uint = iota
+	RpcDPoSProcessFrontier
+	RpcDPoSConsInfo
+	RpcDPoSOnlineInfo
+	RpcDPoSSetConsPerf
+	RpcDPoSGetConsPerf
+	RpcDPoSFeed
 )

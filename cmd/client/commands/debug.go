@@ -20,6 +20,9 @@ func addDebugCmd() {
 		addDebugPovInfoCmdByShell(dbgCmd)
 		addDebugConsensusInfoCmdByShell(dbgCmd)
 		addDebugUncheckAnalysisCmdByShell(dbgCmd)
+		addDebugFeedConsensusCmdByShell(dbgCmd)
+		addDebugConsensusSetPerfCmdByShell(dbgCmd)
+		addDebugConsensusGetPerfCmdByShell(dbgCmd)
 	} else {
 		var dbgCmd = &cobra.Command{
 			Use:   "debug",

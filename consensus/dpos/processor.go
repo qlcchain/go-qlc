@@ -131,6 +131,17 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 	}
 }
 
+func (p *Processor) drainAck() {
+	for {
+		select {
+		case ack := <-p.acks:
+			p.processAck(ack)
+		default:
+			return
+		}
+	}
+}
+
 func (p *Processor) processMsg() {
 	timerConfirm := time.NewTicker(time.Second)
 
@@ -154,6 +165,7 @@ func (p *Processor) processMsg() {
 			p.dequeueGapPublish(hash)
 		case ack := <-p.acks:
 			p.processAck(ack)
+			p.drainAck()
 		case frontier := <-p.frontiers:
 			p.processFrontier(frontier)
 		case bs := <-p.blocks:
@@ -389,7 +401,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	var result process.ProcessResult
 	var err error
 
-	// dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
+	dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
 
 	if bs.BlockFrom == types.Synchronized {
 		p.dps.updateLastProcessSyncTime()
@@ -403,11 +415,11 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 		return
 	}
 
-	// dps.perfBlockProcessCheckPointAdd(hash, checkPointProcessResult)
+	dps.perfBlockProcessCheckPointAdd(hash, checkPointProcessResult)
 
 	p.processResult(result, bs)
 
-	// dps.perfBlockProcessCheckPointAdd(hash, checkPointEnd)
+	dps.perfBlockProcessCheckPointAdd(hash, checkPointEnd)
 
 	switch bs.Type {
 	case consensus.MsgPublishReq:

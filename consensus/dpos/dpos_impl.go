@@ -136,6 +136,7 @@ type DPoS struct {
 	lockPool            *sync.Map
 	feb                 *event.FeedEventBus
 	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
+	repVH               chan *repVoteHeart
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -187,7 +188,10 @@ func NewDPoS(cfgFile string) *DPoS {
 		lockPool:            new(sync.Map),
 		feb:                 cc.FeedEventBus(),
 		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
+		repVH:               make(chan *repVoteHeart, 409600),
 	}
+
+	dps.pf.status.Store(perfTypeClose)
 
 	dps.acTrx.setDPoSService(dps)
 	for _, p := range dps.processors {
@@ -369,6 +373,8 @@ func (dps *DPoS) Start() {
 			}
 		case <-timerGC.C:
 			dps.confirmedBlocks.gc()
+		case vh := <-dps.repVH:
+			dps.heartAndVoteIncDo(vh.hash, vh.addr, vh.kind)
 		}
 	}
 }
@@ -407,20 +413,22 @@ func (dps *DPoS) stat() {
 
 func (dps *DPoS) RPC(kind uint, in, out interface{}) {
 	switch kind {
-	case common.RpcDPosOnlineInfo:
+	case common.RpcDPoSOnlineInfo:
 		dps.onGetOnlineInfo(in, out)
-	case common.RpcDPosConsInfo:
+	case common.RpcDPoSConsInfo:
 		dps.info(in, out)
-	case common.RpcDPosSetConsPerf:
+	case common.RpcDPoSSetConsPerf:
 		dps.setPerf(in, out)
-	case common.RpcDPosGetConsPerf:
+	case common.RpcDPoSGetConsPerf:
 		dps.getPerf(in, out)
-	case common.RpcDPosProcessFrontier:
+	case common.RpcDPoSProcessFrontier:
 		blocks := in.(types.StateBlockList)
 		dps.onGetFrontier(blocks)
-	case common.RpcDPosOnSyncStateChange:
+	case common.RpcDPoSOnSyncStateChange:
 		state := in.(topic.SyncState)
 		dps.onSyncStateChange(state)
+	case common.RpcDPoSFeed:
+		go dps.feedBlocks()
 	}
 }
 
@@ -1098,6 +1106,10 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 // }
 
 func (dps *DPoS) syncFinish() {
+	if dps.blockSyncState == topic.SyncFinish {
+		return
+	}
+
 	dps.blockSyncState = topic.SyncFinish
 	dps.acTrx.cleanFrontierVotes()
 	dps.CleanSyncCache()
@@ -1240,4 +1252,68 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 		return true
 	})
 	outArgs["rootsNum"] = rootsNum
+}
+
+func (dps *DPoS) feedBlocks() {
+	dps.logger.Warnf("...............feed blocks.............")
+	l := ledger.NewLedger("dataFeed/qlc.json")
+	blks := make(map[types.AddressToken][]*types.StateBlock)
+	count := 0
+
+	for {
+		if dps.povSyncState == topic.SyncDone {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	dps.logger.Warnf("...................generating blocks.................")
+
+	frontiers, err := l.GetFrontiers()
+	if err != nil {
+		dps.logger.Error(err)
+	}
+
+	for _, f := range frontiers {
+		header, err := l.GetStateBlockConfirmed(f.HeaderBlock)
+		if err != nil {
+			dps.logger.Error(err)
+		}
+
+		key := types.AddressToken{
+			Address: header.Address,
+			Token:   header.Token,
+		}
+
+		blocks := make([]*types.StateBlock, 0)
+		block := header
+		if header.Type == types.Send {
+			for {
+				blocks = append(blocks, block)
+				count++
+
+				block, err = l.GetStateBlockConfirmed(block.Previous)
+				if err != nil || block.Type != types.Send {
+					break
+				}
+			}
+
+			blks[key] = blocks
+		}
+	}
+
+	dps.logger.Warnf("..............total %d blocks, will begin the test in 5 seconds.............", count)
+	time.Sleep(5 * time.Second)
+
+	for _, b := range blks {
+		for i := len(b) - 1; i >= 0; i-- {
+			blk := b[i]
+			bs := &consensus.BlockSource{
+				Block:     blk,
+				BlockFrom: types.UnSynchronized,
+				Type:      consensus.MsgGenerateBlock,
+			}
+			dps.ProcessMsg(bs)
+		}
+	}
 }

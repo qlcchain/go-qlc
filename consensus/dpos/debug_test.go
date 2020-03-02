@@ -18,7 +18,7 @@ func TestPerf(t *testing.T) {
 	dps := getTestDpos()
 
 	out := make(map[string]interface{})
-	dps.RPC(common.RpcDPosSetConsPerf, perfTypeBlockLife, out)
+	dps.RPC(common.RpcDPoSSetConsPerf, perfTypeBlockLife, out)
 
 	hash1 := mock.Hash()
 	hash2 := mock.Hash()
@@ -37,23 +37,23 @@ func TestPerf(t *testing.T) {
 
 	in := make(map[string]interface{})
 	rsp := make(map[string]interface{})
-	dps.RPC(common.RpcDPosGetConsPerf, in, rsp)
+	dps.RPC(common.RpcDPoSGetConsPerf, in, rsp)
 	if rsp["status"] != perfTypeBlockLife.String() || rsp["blNum"] != 2 {
 		t.Fatal()
 	}
 
-	dps.RPC(common.RpcDPosSetConsPerf, perfTypeClose, out)
+	dps.RPC(common.RpcDPoSSetConsPerf, perfTypeClose, out)
 	in = make(map[string]interface{})
 	rsp = make(map[string]interface{})
-	dps.RPC(common.RpcDPosGetConsPerf, in, rsp)
+	dps.RPC(common.RpcDPoSGetConsPerf, in, rsp)
 	if rsp["status"] != perfTypeClose.String() {
 		t.Fatal()
 	}
 
-	dps.RPC(common.RpcDPosSetConsPerf, perfTypeBlockProcess, out)
+	dps.RPC(common.RpcDPoSSetConsPerf, perfTypeBlockProcess, out)
 	in = make(map[string]interface{})
 	rsp = make(map[string]interface{})
-	dps.RPC(common.RpcDPosGetConsPerf, in, rsp)
+	dps.RPC(common.RpcDPoSGetConsPerf, in, rsp)
 	if rsp["status"] != perfTypeBlockProcess.String() || rsp["bpNum"] != 0 {
 		t.Fatal()
 	}
@@ -63,14 +63,16 @@ func TestPerf(t *testing.T) {
 	dps.perfBlockProcessCheckPointAdd(hash1, checkPointEnd)
 	dps.perfBlockProcessCheckPointAdd(hash1, checkPointSectionStart)
 	dps.perfBlockProcessCheckPointAdd(hash1, checkPointSectionEnd)
+	dps.perfBlockProcessCheckPointAdd(hash1, checkPointSection2Start)
+	dps.perfBlockProcessCheckPointAdd(hash1, checkPointSection2End)
 	in = make(map[string]interface{})
 	rsp = make(map[string]interface{})
-	dps.RPC(common.RpcDPosGetConsPerf, in, rsp)
+	dps.RPC(common.RpcDPoSGetConsPerf, in, rsp)
 	if rsp["status"] != perfTypeBlockProcess.String() || rsp["bpNum"] != 1 {
 		t.Fatal()
 	}
 
-	dps.RPC(common.RpcDPosSetConsPerf, perfTypeExport, out)
+	dps.RPC(common.RpcDPoSSetConsPerf, perfTypeExport, out)
 	if out["err"] != nil {
 		t.Fatal(out["err"])
 	}
@@ -98,7 +100,7 @@ func TestGetConsInfo(t *testing.T) {
 	dps := getTestDpos()
 
 	out := make(map[string]interface{})
-	dps.RPC(common.RpcDPosConsInfo, nil, out)
+	dps.RPC(common.RpcDPoSConsInfo, nil, out)
 	if out["err"] != nil {
 		t.Fatal(out["err"])
 	}

@@ -20,7 +20,7 @@ func TestCache_set(t *testing.T) {
 	}
 
 	addr := mock.Address()
-	dps.heartAndVoteInc(hash, addr, onlineKindVote)
+	dps.heartAndVoteIncDo(hash, addr, onlineKindVote)
 
 	val, err := dps.online.Get(uint64(0))
 	if err != nil {

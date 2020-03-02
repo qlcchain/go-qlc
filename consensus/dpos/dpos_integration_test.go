@@ -117,7 +117,7 @@ func TestBatchVoteDo(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 	repOnline := make(map[uint64]*RepOnlinePeriod, 0)
-	n2.cons.RPC(common.RpcDPosOnlineInfo, nil, repOnline)
+	n2.cons.RPC(common.RpcDPoSOnlineInfo, nil, repOnline)
 	if repOnline[0].Stat[mock.TestAccount.Address()].VoteCount != 2000 {
 		t.Fatal()
 	}
@@ -154,7 +154,7 @@ func TestOnline(t *testing.T) {
 	}
 
 	repOnline := make(map[uint64]*RepOnlinePeriod, 0)
-	n1.cons.RPC(common.RpcDPosOnlineInfo, nil, repOnline)
+	n1.cons.RPC(common.RpcDPoSOnlineInfo, nil, repOnline)
 	if repOnline[0].Stat[mock.TestAccount.Address()].HeartCount != 59 {
 		t.Fatal()
 	}
@@ -208,10 +208,10 @@ func TestSynchronize(t *testing.T) {
 	frontier := blocks[len(blocks)-1]
 	bl = append(bl, frontier)
 
-	n2.cons.RPC(common.RpcDPosOnSyncStateChange, topic.Syncing, nil)
-	n2.cons.RPC(common.RpcDPosProcessFrontier, bl, nil)
+	n2.cons.RPC(common.RpcDPoSOnSyncStateChange, topic.Syncing, nil)
+	n2.cons.RPC(common.RpcDPoSProcessFrontier, bl, nil)
 	n2.ctx.EventBus().Publish(topic.EventSyncBlock, blocks)
-	n2.cons.RPC(common.RpcDPosOnSyncStateChange, topic.SyncDone, nil)
+	n2.cons.RPC(common.RpcDPoSOnSyncStateChange, topic.SyncDone, nil)
 
 	finishTimer := time.NewTimer(30 * time.Second)
 
@@ -235,10 +235,10 @@ SyncOneBlockTest:
 	n1.ProcessBlockLocal(b)
 	bs = append(bs, b)
 
-	n2.cons.RPC(common.RpcDPosOnSyncStateChange, topic.Syncing, nil)
-	n2.cons.RPC(common.RpcDPosProcessFrontier, bs, nil)
+	n2.cons.RPC(common.RpcDPoSOnSyncStateChange, topic.Syncing, nil)
+	n2.cons.RPC(common.RpcDPoSProcessFrontier, bs, nil)
 	n2.ctx.EventBus().Publish(topic.EventSyncBlock, bs)
-	n2.cons.RPC(common.RpcDPosOnSyncStateChange, topic.SyncDone, nil)
+	n2.cons.RPC(common.RpcDPoSOnSyncStateChange, topic.SyncDone, nil)
 
 	finishTimer.Reset(30 * time.Second)
 

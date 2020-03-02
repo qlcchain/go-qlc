@@ -72,7 +72,7 @@ func (el *Election) voteAction(vi *voteInfo) {
 func (el *Election) updateVoteStatistic(confirmedHash types.Hash) {
 	dps := el.dps
 
-	//ignore fork ack
+	// ignore fork ack
 	el.vote.repVotes.Range(func(key, value interface{}) bool {
 		vi := value.(*voteInfo)
 		if vi.hash == confirmedHash {
@@ -165,14 +165,14 @@ func (el *Election) haveQuorum() {
 			}
 		}
 
-		//dps.perfBlockProcessCheckPointAdd(confirmedHash, checkPointSectionStart)
 		dps.acTrx.rollBack(el.status.loser)
+		dps.perfBlockProcessCheckPointAdd(confirmedHash, checkPointSectionStart)
 		dps.acTrx.addWinner2Ledger(blk)
+		dps.perfBlockProcessCheckPointAdd(confirmedHash, checkPointSectionEnd)
 		el.updateVoteStatistic(confirmedHash)
 		dps.dispatchAckedBlock(blk, confirmedHash, -1)
 		dps.eb.Publish(topic.EventConfirmedBlock, blk)
 		el.cleanBlockInfo()
-		//dps.perfBlockProcessCheckPointAdd(confirmedHash, checkPointSectionEnd)
 	} else {
 		dps.logger.Infof("wait for enough rep vote for block [%s],current vote is [%s]", confirmedHash, balance)
 	}
