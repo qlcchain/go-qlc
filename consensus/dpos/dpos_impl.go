@@ -37,7 +37,7 @@ const (
 	refreshPriInterval    = 1 * time.Minute
 	subAckMaxSize         = 1024000
 	maxStatisticsPeriod   = 3
-	confirmedCacheMaxLen  = 1024000
+	confirmedCacheMaxLen  = 4096000
 	confirmedCacheMaxTime = 10 * time.Minute
 	hashNumPerAck         = 1024
 	blockNumPerReq        = 128
