@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"context"
+	"fmt"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
 
@@ -1248,7 +1249,7 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 }
 
 func (dps *DPoS) feedBlocks() {
-	dps.logger.Warnf("...............feed blocks.............")
+	fmt.Println("...............feed blocks.............")
 	l := ledger.NewLedger("dataFeed/qlc.json")
 	blks := make(map[types.AddressToken][]*types.StateBlock)
 	count := 0
@@ -1260,7 +1261,7 @@ func (dps *DPoS) feedBlocks() {
 		time.Sleep(time.Second)
 	}
 
-	dps.logger.Warnf("...................generating blocks.................")
+	fmt.Println("...................generating blocks.................")
 
 	frontiers, err := l.GetFrontiers()
 	if err != nil {
@@ -1268,6 +1269,10 @@ func (dps *DPoS) feedBlocks() {
 	}
 
 	for _, f := range frontiers {
+		if count >= 1000000 {
+			break
+		}
+
 		header, err := l.GetStateBlockConfirmed(f.HeaderBlock)
 		if err != nil {
 			dps.logger.Error(err)
@@ -1295,7 +1300,7 @@ func (dps *DPoS) feedBlocks() {
 		}
 	}
 
-	dps.logger.Warnf("..............total %d blocks, will begin the test in 5 seconds.............", count)
+	fmt.Printf("..............total %d blocks, will begin the test in 5 seconds.............\n", count)
 	time.Sleep(5 * time.Second)
 
 	for _, b := range blks {

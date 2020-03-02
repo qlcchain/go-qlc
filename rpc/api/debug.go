@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -701,10 +700,5 @@ func (l *DebugApi) FeedConsensus() error {
 		return err
 	}
 	sv.RpcCall(common.RpcDPoSFeed, nil, nil)
-	return nil
-}
-
-func (l *DebugApi) Gc() error {
-	runtime.GC()
 	return nil
 }
