@@ -67,6 +67,16 @@ type CreateContract struct {
 	internalContract
 }
 
+func (c *CreateContract) GetTargetReceiver(_ *vmstore.VMContext, blk *types.StateBlock) (types.Address, error) {
+	param := new(cabi.CreateContractParam)
+	err := param.FromABI(blk.GetData())
+	if err != nil {
+		return types.ZeroAddress, err
+	} else {
+		return param.PartyB.Address, nil
+	}
+}
+
 func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify send block data
@@ -678,6 +688,28 @@ func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, 
 
 type TerminateContract struct {
 	internalContract
+}
+
+func (t *TerminateContract) GetTargetReceiver(ctx *vmstore.VMContext, blk *types.StateBlock) (types.Address, error) {
+	param := new(cabi.TerminateParam)
+	err := param.FromABI(blk.Data)
+	if err != nil {
+		return types.ZeroAddress, err
+	}
+
+	if b, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+		if cp, err := cabi.ParseContractParam(b); err != nil {
+			return types.ZeroAddress, err
+		} else {
+			if cp.PartyA.Address == blk.Address {
+				return cp.PartyB.Address, nil
+			} else {
+				return cp.PartyA.Address, nil
+			}
+		}
+	} else {
+		return types.ZeroAddress, fmt.Errorf("can not find data of settlement contract[%s]", param.ContractAddress.String())
+	}
 }
 
 func (t *TerminateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
