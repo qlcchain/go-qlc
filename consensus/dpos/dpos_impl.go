@@ -204,13 +204,13 @@ func NewDPoS(cfgFile string) *DPoS {
 		dps.curPovHeight = pb.Header.BasHdr.Height
 	}
 
-	dps.confirmedBlocks.evictedFunc = func(key interface{}, val interface{}) {
-		hash := key.(types.Hash)
-		err = dps.ledger.CleanBlockVoteHistory(hash)
-		if err != nil {
-			dps.logger.Error("clean vote history err", err)
-		}
-	}
+	// dps.confirmedBlocks.evictedFunc = func(key interface{}, val interface{}) {
+	// 	hash := key.(types.Hash)
+	// 	err = dps.ledger.CleanBlockVoteHistory(hash)
+	// 	if err != nil {
+	// 		dps.logger.Error("clean vote history err", err)
+	// 	}
+	// }
 
 	return dps
 }
@@ -252,6 +252,7 @@ func (dps *DPoS) Init() {
 	} else {
 		dps.povSyncState = topic.SyncDone
 	}
+
 	if len(dps.accounts) != 0 {
 		dps.refreshAccount()
 	} else {
@@ -268,14 +269,6 @@ func (dps *DPoS) Start() {
 	go dps.processBlocks()
 	go dps.stat()
 	dps.processorStart()
-
-	// if err := dps.blockSyncDone(); err != nil {
-	// 	dps.logger.Error("block sync down err", err)
-	// }
-
-	if err := dps.ledger.CleanAllVoteHistory(); err != nil {
-		dps.logger.Error("clean all vote history err")
-	}
 
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDequeueGap := time.NewTicker(10 * time.Second)

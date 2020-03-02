@@ -73,6 +73,20 @@ func (c *cache) has(key interface{}) bool {
 	return false
 }
 
+func (c *cache) get(key interface{}) interface{} {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	if val, ok := c.items[key]; ok {
+		it := val.Value.(*item)
+		if !it.isExpired() {
+			return it.value
+		}
+	}
+
+	return nil
+}
+
 func (c *cache) len() int {
 	c.lock.RLock()
 	defer c.lock.RUnlock()

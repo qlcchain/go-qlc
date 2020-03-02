@@ -116,3 +116,16 @@ func TestCache_gc(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestCache_get(t *testing.T) {
+	dps := getTestDpos()
+	dps.confirmedBlocks = newCache(100, confirmedCacheMaxTime)
+
+	hash := mock.Hash()
+	dps.confirmedBlocks.set(hash, int(1))
+
+	v := dps.confirmedBlocks.get(hash)
+	if v.(int) != 1 {
+		t.Fatal()
+	}
+}

@@ -39,6 +39,16 @@ type repVoteHeart struct {
 	kind onlineKind
 }
 
+type voteHistory struct {
+	reps map[types.Address]struct{}
+}
+
+func newVoteHistory() *voteHistory {
+	vh := new(voteHistory)
+	vh.reps = make(map[types.Address]struct{})
+	return vh
+}
+
 func (op *RepOnlinePeriod) String() string {
 	op.Stat = make(map[types.Address]*RepAckStatistics)
 
@@ -53,15 +63,33 @@ func (op *RepOnlinePeriod) String() string {
 	return string(bytes)
 }
 
-func (dps *DPoS) isValidVote(hash types.Hash, addr types.Address) bool {
-	if dps.confirmedBlocks.has(hash) {
-		if !dps.ledger.HasVoteHistory(hash, addr) {
-			err := dps.ledger.AddVoteHistory(hash, addr)
-			if err != nil {
-				dps.logger.Error("add vote history err", err)
-			}
+func (dps *DPoS) voteHistoryUpdate(hash types.Hash, addr types.Address) bool {
+	// to db
+	// if !dps.ledger.HasVoteHistory(hash, addr) {
+	// 	err := dps.ledger.AddVoteHistory(hash, addr)
+	// 	if err != nil {
+	// 		dps.logger.Error("add vote history err", err)
+	// 	}
+	// }
+
+	// to mem
+	val := dps.confirmedBlocks.get(hash)
+	if val != nil {
+		vh := val.(*voteHistory)
+		if _, ok := vh.reps[addr]; ok {
+			return false
+		} else {
+			vh.reps[addr] = struct{}{}
 			return true
 		}
+	}
+
+	return false
+}
+
+func (dps *DPoS) isValidVote(hash types.Hash, addr types.Address) bool {
+	if dps.confirmedBlocks.has(hash) {
+		return dps.voteHistoryUpdate(hash, addr)
 	}
 
 	return false
@@ -129,7 +157,7 @@ func (dps *DPoS) heartAndVoteIncDo(hash types.Hash, addr types.Address, kind onl
 
 func (dps *DPoS) confirmedBlockInc(hash types.Hash) {
 	period := dps.curPovHeight / common.DPosOnlinePeriod
-	dps.confirmedBlocks.set(hash, nil)
+	dps.confirmedBlocks.set(hash, newVoteHistory())
 
 	if s, err := dps.online.Get(period); err == nil {
 		repPeriod := s.(*RepOnlinePeriod)

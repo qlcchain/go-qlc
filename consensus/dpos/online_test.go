@@ -9,7 +9,7 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 )
 
-func TestOnGetOnlineInfo(t *testing.T) {
+func TestGetOnlineInfo(t *testing.T) {
 	dps := getTestDpos()
 
 	rep := &RepOnlinePeriod{
@@ -45,6 +45,26 @@ func TestOnGetOnlineInfo(t *testing.T) {
 			t.Fatal()
 		}
 	} else {
+		t.Fatal()
+	}
+}
+
+func TestVoteHistoryUpdate(t *testing.T) {
+	dps := getTestDpos()
+
+	hash := mock.Hash()
+	addr := mock.Address()
+
+	if dps.isValidVote(hash, addr) {
+		t.Fatal()
+	}
+
+	dps.confirmedBlockInc(hash)
+	if !dps.isValidVote(hash, addr) {
+		t.Fatal()
+	}
+
+	if dps.isValidVote(hash, addr) {
 		t.Fatal()
 	}
 }
