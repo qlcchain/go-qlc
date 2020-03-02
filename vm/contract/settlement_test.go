@@ -384,6 +384,14 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 						if err := ctx.SaveStorage(); err != nil {
 							t.Fatal(err)
 						} else {
+							if r, err := terminateContract.GetTargetReceiver(ctx, sb); err != nil {
+								t.Fatal(err)
+							} else {
+								if r != a1 {
+									t.Fatalf("act: %s, exp: %s", r.String(), a1.String())
+								}
+							}
+
 							if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
 								t.Fatal(err)
 							} else {
@@ -890,6 +898,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			}
 			if err := ctx.SaveStorage(); err != nil {
 				t.Fatal(err)
+			}
+
+			if r, err := createContract.GetTargetReceiver(ctx, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				if r != a2 {
+					t.Fatalf("exp: %s, act: %s", a2.String(), r.String())
+				}
 			}
 		}
 

@@ -69,11 +69,46 @@ func (s *SettlementAPI) ToAddress(param *cabi.CreateContractParam) (types.Addres
 	return param.Address()
 }
 
-// GetContractRewardsBlock generate create contract rewords block by contract send block hash
+// GetSettlementRewardsBlock generate create contract rewords block by contract send block hash
 // @param send contract send block hash
 // @return contract rewards block
-func (s *SettlementAPI) GetContractRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.createContract, "GetContractRewardsBlock")
+func (s *SettlementAPI) GetSettlementRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
+	if send == nil || send.IsZero() {
+		return nil, ErrParameterNil
+	}
+	if !s.cc.IsPoVDone() {
+		return nil, context.ErrPoVNotFinish
+	}
+
+	blk, err := s.l.GetStateBlock(*send)
+	if err != nil {
+		return nil, err
+	}
+
+	rev := &types.StateBlock{
+		Timestamp: common.TimeNow().Unix(),
+	}
+	povHeader, err := s.l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
+	rev.PoVHeight = povHeader.GetHeight()
+
+	ctx := vmstore.NewVMContext(s.l)
+
+	if c, ok, err := contract.GetChainContract(types.SettlementAddress, blk.Data); c != nil && ok && err == nil {
+		if r, err := c.DoReceive(ctx, rev, blk); err == nil {
+			if len(r) > 0 {
+				return r[0].Block, nil
+			} else {
+				return nil, errors.New("fail to generate contract reward block")
+			}
+		} else {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("can not find settlement contract function from block, %s", send.String())
+	}
 }
 
 type CreateContractParam struct {
@@ -239,13 +274,6 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 	}
 }
 
-// GetSignRewardsBlock generate create contract rewords block by contract send block hash
-// @param send contract send block hash
-// @return contract rewards block
-func (s *SettlementAPI) GetSignRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.signContract, "GetSignRewardsBlock")
-}
-
 type StopParam struct {
 	cabi.StopParam
 	Address types.Address
@@ -327,10 +355,6 @@ func (s *SettlementAPI) GetAddPreStopBlock(param *StopParam) (*types.StateBlock,
 	}, s.addPreStop)
 }
 
-func (s *SettlementAPI) GetAddPreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.addPreStop, "GetAddPreStopRewardsBlock")
-}
-
 func (s *SettlementAPI) GetRemovePreStopBlock(param *StopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || len(param.StopName) == 0 {
@@ -344,10 +368,6 @@ func (s *SettlementAPI) GetRemovePreStopBlock(param *StopParam) (*types.StateBlo
 		}
 		return p.ToABI(cabi.MethodNameRemovePreStop)
 	}, s.removePreStop)
-}
-
-func (s *SettlementAPI) GetRemovePreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.removePreStop, "GetRemovePreStopRewardsBlock")
 }
 
 func (s *SettlementAPI) GetUpdatePreStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
@@ -366,10 +386,6 @@ func (s *SettlementAPI) GetUpdatePreStopBlock(param *UpdateStopParam) (*types.St
 	}, s.updatePreStop)
 }
 
-func (s *SettlementAPI) GetUpdatePreStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.updatePreStop, "GetUpdatePreStopRewardsBlock")
-}
-
 func (s *SettlementAPI) GetAddNextStopBlock(param *StopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 {
@@ -383,10 +399,6 @@ func (s *SettlementAPI) GetAddNextStopBlock(param *StopParam) (*types.StateBlock
 		}
 		return p.ToABI(cabi.MethodNameAddNextStop)
 	}, s.addNextStop)
-}
-
-func (s *SettlementAPI) GetAddNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.addNextStop, "GetAddNextStopRewardsBlock")
 }
 
 func (s *SettlementAPI) GetRemoveNextStopBlock(param *StopParam) (*types.StateBlock, error) {
@@ -404,10 +416,6 @@ func (s *SettlementAPI) GetRemoveNextStopBlock(param *StopParam) (*types.StateBl
 	}, s.removeNextStop)
 }
 
-func (s *SettlementAPI) GetRemoveNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.removeNextStop, "GetRemoveNextStopRewardsBlock")
-}
-
 func (s *SettlementAPI) GetUpdateNextStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 || len(param.New) == 0 || param.StopName == param.New {
@@ -422,10 +430,6 @@ func (s *SettlementAPI) GetUpdateNextStopBlock(param *UpdateStopParam) (*types.S
 		}
 		return p.ToABI(cabi.MethodNameUpdateNextStop)
 	}, s.updateNextStop)
-}
-
-func (s *SettlementAPI) GetUpdateNextStopRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.updateNextStop, "GetUpdateNextStopRewardsBlock")
 }
 
 // SettlementContract settlement contract for RPC
@@ -546,11 +550,6 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 	}
 }
 
-// GetProcessCDRRewardsBlock generate rewards block by send block hash
-func (s *SettlementAPI) GetProcessCDRRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.cdrContract, "GetProcessCDRRewardsBlock")
-}
-
 type TerminateParam struct {
 	cabi.TerminateParam
 	Address types.Address // PartyB address
@@ -613,13 +612,6 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 			return nil, err
 		}
 	}
-}
-
-// GetTerminateRewardsBlock generate create contract rewords block by contract send block hash
-// @param send contract send block hash
-// @return contract rewards block
-func (s *SettlementAPI) GetTerminateRewardsBlock(send *types.Hash) (*types.StateBlock, error) {
-	return s.getContractRewardsBlock(send, s.terminateContract, "GetTerminateRewardsBlock")
 }
 
 // GetCDRStatus get CDRstatus by settlement smart contract address and CDR hash
