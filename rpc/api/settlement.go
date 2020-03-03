@@ -13,6 +13,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/util"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
@@ -618,6 +620,18 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 // @param addr settlement smart contract address
 // @param hash CDR data hash
 func (s *SettlementAPI) GetCDRStatus(addr *types.Address, hash types.Hash) (*cabi.CDRStatus, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetCDRStatus(ctx, addr, hash)
+}
+
+// GetCDRStatus get CDRstatus by settlement smart contract address and CDR data
+// @param addr settlement smart contract address
+// @param index,sender,destination CDR data
+func (s *SettlementAPI) GetCDRStatusByCdrData(addr *types.Address, index uint64, sender, destination string) (*cabi.CDRStatus, error) {
+	hash, err := types.HashBytes(util.BE_Uint64ToBytes(index), []byte(sender), []byte(destination))
+	if err != nil {
+		return nil, err
+	}
 	ctx := vmstore.NewVMContext(s.l)
 	return cabi.GetCDRStatus(ctx, addr, hash)
 }
