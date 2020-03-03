@@ -172,6 +172,7 @@ func NewPovCoinBaseTx(txInNum int, txOutNum int) *PovCoinBaseTx {
 	}
 	for i := 0; i < txOutNum; i++ {
 		txOut := new(PovCoinBaseTxOut)
+		txOut.Value = NewBalance(0)
 		tx.TxOuts = append(tx.TxOuts, txOut)
 	}
 	return tx
