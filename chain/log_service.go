@@ -59,7 +59,3 @@ func (ls *LogService) Stop() error {
 func (ls *LogService) Status() int32 {
 	return ls.State()
 }
-
-func (ls *LogService) RpcCall(kind uint, in, out interface{}) {
-
-}

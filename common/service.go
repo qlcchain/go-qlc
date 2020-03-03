@@ -22,13 +22,16 @@ const (
 	Stopped
 )
 
+type InterceptCall interface {
+	RpcCall(kind uint, in, out interface{})
+}
+
 //Service action and status
 type Service interface {
 	Init() error
 	Start() error
 	Stop() error
 	Status() int32
-	RpcCall(kind uint, in, out interface{})
 }
 
 type ServiceLifecycle struct {

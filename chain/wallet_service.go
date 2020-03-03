@@ -55,7 +55,3 @@ func (ws *WalletService) Stop() error {
 func (ws *WalletService) Status() int32 {
 	return ws.State()
 }
-
-func (ws *WalletService) RpcCall(kind uint, in, out interface{}) {
-
-}

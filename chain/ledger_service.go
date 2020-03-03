@@ -123,7 +123,3 @@ func (ls *LedgerService) Stop() error {
 func (ls *LedgerService) Status() int32 {
 	return ls.State()
 }
-
-func (ls *LedgerService) RpcCall(kind uint, in, out interface{}) {
-
-}

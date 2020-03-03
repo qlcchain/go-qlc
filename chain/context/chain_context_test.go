@@ -41,10 +41,6 @@ func (*testService) Status() int32 {
 	panic("implement me")
 }
 
-func (*testService) RpcCall(kind uint, in, out interface{}) {
-
-}
-
 type waitService struct {
 	common.ServiceLifecycle
 }
@@ -170,6 +166,11 @@ func TestNewChainContext(t *testing.T) {
 	}()
 
 	c1 := NewChainContext(cfgFile1)
+
+	if f := c1.cfgFile; cfgFile1 != f {
+		t.Fatalf("invalid config, exp: %s, act: %s", cfgFile1, f)
+	}
+
 	c2 := NewChainContext(cfgFile2)
 	if c1 == nil || c2 == nil {
 		t.Fatal("failed to create context")
@@ -211,6 +212,21 @@ func TestNewChainContext(t *testing.T) {
 
 	if eb1 != eb3 {
 		t.Fatal("eb1 shouldn same as eb3")
+	}
+
+	feb1 := c1.FeedEventBus()
+	feb2 := c2.FeedEventBus()
+	feb3 := c3.FeedEventBus()
+	if feb1 == feb2 {
+		t.Fatal("eb1 shouldn't same as eb2")
+	}
+
+	if feb1 != feb3 {
+		t.Fatal("eb1 shouldn same as eb3")
+	}
+
+	if original := NewChainContextFromOriginal(c1); original == nil {
+		t.Fatal()
 	}
 }
 

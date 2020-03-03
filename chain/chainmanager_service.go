@@ -67,10 +67,6 @@ func (c *Manager) Status() int32 {
 	return c.State()
 }
 
-func (c *Manager) RpcCall(kind uint, in, out interface{}) {
-
-}
-
 func restartChain(cfgFile string, isSave bool) {
 	logger := log.NewLogger("chainManage_service")
 	go func() {
