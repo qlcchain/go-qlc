@@ -24,7 +24,6 @@ import (
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -140,7 +139,6 @@ func start() error {
 			}
 			_ = cm.Save()
 		}
-		loadGenesisAccount(cfg)
 		if len(configParamsP) > 0 {
 			params := strings.Split(configParamsP, ";")
 
@@ -502,20 +500,4 @@ func generateGasTokenGenesisBlock(seedString string, cfg *config.Config) error {
 	cfg.Genesis.GenesisBlocks = append(cfg.Genesis.GenesisBlocks, genesisGasTokenInfos)
 
 	return nil
-}
-
-func loadGenesisAccount(cfg *config.Config) {
-	if len(common.GenesisInfos) > 0 {
-		common.GenesisInfos = common.GenesisInfos[:0]
-	}
-
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
 }

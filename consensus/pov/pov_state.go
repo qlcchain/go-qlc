@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -90,7 +92,7 @@ func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovGlobalStateDB, tx *t
 	}
 
 	if oldAs != nil {
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == config.ChainToken() {
 			newAs.Balance = balance
 			newAs.Oracle = block.GetOracle()
 			newAs.Network = block.GetNetwork()
@@ -109,7 +111,7 @@ func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovGlobalStateDB, tx *t
 	} else {
 		newAs.TokenStates = []*types.PovTokenState{tsNew}
 
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == config.ChainToken() {
 			newAs.Balance = balance
 			newAs.Oracle = block.GetOracle()
 			newAs.Network = block.GetNetwork()
@@ -130,7 +132,7 @@ func (bc *PovBlockChain) updateRepState(sdb *statedb.PovGlobalStateDB, tx *types
 	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	block := tx.Block
 
-	if block.GetToken() != common.ChainToken() {
+	if block.GetToken() != config.ChainToken() {
 		return nil
 	}
 
@@ -233,7 +235,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 
 	txBlock := tx.Block
 
-	if common.IsGenesisBlock(txBlock) {
+	if config.IsGenesisBlock(txBlock) {
 		bc.logger.Infof("no need to update contract state for genesis block %s", tx.Hash)
 		return nil
 	}
@@ -294,7 +296,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 
 func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
 	var allRss []*types.PovRepState
-	supply := common.GenesisBlock().Balance
+	supply := config.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	gsdb := statedb.NewPovGlobalStateDB(bc.TrieDb(), header.GetStateHash())

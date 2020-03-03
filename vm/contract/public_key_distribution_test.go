@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -34,7 +36,7 @@ func TestVerifierRegister(t *testing.T) {
 		t.Fatal()
 	}
 
-	blk.Token = common.ChainToken()
+	blk.Token = cfg.ChainToken()
 	blk.Data = []byte("test")
 	_, _, err = vr.ProcessSend(ctx, blk)
 	if err != ErrUnpackMethod {
@@ -79,7 +81,7 @@ func TestVerifierUnregister(t *testing.T) {
 		t.Fatal()
 	}
 
-	blk.Token = common.ChainToken()
+	blk.Token = cfg.ChainToken()
 	blk.Data = []byte("test")
 	_, _, err = vu.ProcessSend(ctx, blk)
 	if err != ErrUnpackMethod {
@@ -118,7 +120,7 @@ func TestPublish(t *testing.T) {
 		t.Fatal()
 	}
 
-	blk.Token = common.GasToken()
+	blk.Token = cfg.GasToken()
 	blk.Data = []byte("test")
 	_, _, err = p.ProcessSend(ctx, blk)
 	if err != ErrUnpackMethod {
@@ -183,7 +185,7 @@ func TestUnPublish(t *testing.T) {
 		t.Fatal()
 	}
 
-	blk.Token = common.GasToken()
+	blk.Token = cfg.GasToken()
 	blk.Data = []byte("test")
 	_, _, err = up.ProcessSend(ctx, blk)
 	if err != ErrUnpackMethod {
@@ -231,7 +233,7 @@ func TestOracle(t *testing.T) {
 		t.Fatal()
 	}
 
-	blk.Token = common.GasToken()
+	blk.Token = cfg.GasToken()
 	blk.Data = []byte("test")
 	_, _, err = o.ProcessSend(ctx, blk)
 	if err != ErrUnpackMethod {
@@ -349,7 +351,7 @@ func TestVerifierHeart(t *testing.T) {
 		t.Fatal()
 	}
 
-	blk.Token = common.GasToken()
+	blk.Token = cfg.GasToken()
 	blk.Data = []byte("test")
 	_, _, err = vh.ProcessSend(ctx, blk)
 	if err != ErrUnpackMethod {

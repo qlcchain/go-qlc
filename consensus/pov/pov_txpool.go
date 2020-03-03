@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/statedb"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -286,7 +288,7 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 	}
 
 	// scan all genesis blocks under contract accounts
-	allGenesisBlocks := common.AllGenesisBlocks()
+	allGenesisBlocks := config.AllGenesisBlocks()
 	for _, block := range allGenesisBlocks {
 		if !types.IsContractAddress(block.GetAddress()) {
 			continue

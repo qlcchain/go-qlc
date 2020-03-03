@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -101,7 +103,7 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		return nil, nil, ErrAccountInvalid
 	}
 
-	if block.Token != common.ChainToken() {
+	if block.Token != cfg.ChainToken() {
 		logger.Info("token is not chain token")
 		return nil, nil, ErrToken
 	}
@@ -175,7 +177,7 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		}, &types.PendingInfo{
 			Source: types.Address(block.Link),
 			Amount: types.Balance{Int: param.RewardAmount},
-			Type:   common.GasToken(),
+			Type:   cfg.GasToken(),
 		}, nil
 }
 
@@ -193,7 +195,7 @@ func (r *RepReward) DoPending(block *types.StateBlock) (*types.PendingKey, *type
 		}, &types.PendingInfo{
 			Source: types.Address(block.Link),
 			Amount: types.Balance{Int: param.RewardAmount},
-			Type:   common.GasToken(),
+			Type:   cfg.GasToken(),
 		}, nil
 }
 
@@ -241,7 +243,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	// generate contract reward block
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
-	block.Token = common.GasToken()
+	block.Token = cfg.GasToken()
 	block.Link = input.GetHash()
 	block.PoVHeight = input.PoVHeight
 	block.Timestamp = common.TimeNow().Unix()
@@ -254,7 +256,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 
 	amBnf, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
-		tmBnf := amBnf.Token(common.GasToken())
+		tmBnf := amBnf.Token(cfg.GasToken())
 		if tmBnf != nil {
 			block.Balance = tmBnf.Balance.Add(types.Balance{Int: param.RewardAmount})
 			block.Representative = tmBnf.Representative
@@ -281,7 +283,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
 			Amount:    types.Balance{Int: param.RewardAmount},
-			Token:     common.GasToken(),
+			Token:     cfg.GasToken(),
 			Data:      []byte{},
 		},
 	}, nil

@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/topic"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -124,7 +126,7 @@ func (as *AutoReceiveService) Start() error {
 						rxAddr := types.Address(blk.Link)
 						if (blk.Type == types.Send || blk.Type == types.ContractSend) && addr == rxAddr {
 							var balance types.Balance
-							if blk.Token == common.ChainToken() {
+							if blk.Token == config.ChainToken() {
 								balance, _ = common.RawToBalance(blk.Balance, "QLC")
 								as.logger.Debugf("receive block from [%s] to [%s] balance [%s]", blk.Address.String(), rxAddr.String(), balance)
 							} else {

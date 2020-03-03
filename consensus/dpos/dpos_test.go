@@ -180,24 +180,16 @@ func (n *Node) stopServices() {
 
 func (n *Node) startLedgerService() {
 	l := n.ledger
-	for _, v := range n.config.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
 
-	if len(common.GenesisInfos) == 0 {
+	genesisInfos := config.GenesisInfos()
+	if len(genesisInfos) == 0 {
 		n.t.Fatal("no genesis info")
-	} else if common.ChainToken() == types.ZeroHash || common.GasToken() == types.ZeroHash {
+	} else if config.ChainToken() == types.ZeroHash || config.GasToken() == types.ZeroHash {
 		n.t.Fatal("no chain token info or gas token info")
 	} else {
 		if c, _ := l.CountStateBlocks(); c != 0 {
-			chainHash := common.GenesisBlockHash()
-			gasHash := common.GasBlockHash()
+			chainHash := config.GenesisBlockHash()
+			gasHash := config.GasBlockHash()
 			b1, _ := l.HasStateBlockConfirmed(chainHash)
 			b2, _ := l.HasStateBlockConfirmed(gasHash)
 			if !b1 || !b2 {
@@ -207,10 +199,10 @@ func (n *Node) startLedgerService() {
 	}
 
 	ctx := vmstore.NewVMContext(l)
-	for _, v := range common.GenesisInfos {
-		mb := v.GenesisMintageBlock
-		gb := v.GenesisBlock
-		err := ctx.SetStorage(types.MintageAddress[:], v.GenesisBlock.Token[:], v.GenesisBlock.Data)
+	for _, v := range genesisInfos {
+		mb := v.Mintage
+		gb := v.Genesis
+		err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data)
 		if err != nil {
 			n.t.Fatal(err)
 		}
@@ -418,7 +410,7 @@ func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Addre
 				n.t.Fatal(err)
 			}
 
-			tm := am.Token(common.ChainToken())
+			tm := am.Token(config.ChainToken())
 			if tm == nil {
 				n.t.Fatal()
 			}
@@ -445,7 +437,7 @@ func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Addre
 
 			return send
 		} else if method == abi.MethodNameMintageWithdraw {
-			tm, _ := n.ledger.GetTokenMeta(from.Address(), common.ChainToken())
+			tm, _ := n.ledger.GetTokenMeta(from.Address(), config.ChainToken())
 			if tm == nil {
 				n.t.Fatal()
 			}
@@ -491,7 +483,6 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 			recv := &types.StateBlock{}
 			mintage := &contract.Mintage{}
 			vmContext := vmstore.NewVMContext(n.ledger)
-			contract.SetMinMintageTimeForTest()
 
 			blocks, err := mintage.DoReceive(vmContext, recv, send)
 			if err != nil {

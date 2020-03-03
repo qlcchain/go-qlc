@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -71,7 +72,7 @@ func (l *Ledger) GetRandomStateBlock() (*types.StateBlock, error) {
 				if err = b.Deserialize(val); err != nil {
 					return err
 				}
-				if !common.IsGenesisBlock(b) {
+				if !config.IsGenesisBlock(b) {
 					blk = b
 					return errFound
 				}
@@ -305,7 +306,7 @@ func (l *Ledger) GetBlockLink(hash types.Hash, c ...storage.Cache) (types.Hash, 
 func (l *Ledger) setBlockChild(cBlock *types.StateBlock, c storage.Cache) error {
 	pHash := cBlock.Parent()
 	cHash := cBlock.GetHash()
-	if !common.IsGenesisBlock(cBlock) && pHash != types.ZeroHash && !cBlock.IsOpen() {
+	if !config.IsGenesisBlock(cBlock) && pHash != types.ZeroHash && !cBlock.IsOpen() {
 		// is parent block existed
 		if b, _ := l.HasBlockCache(pHash); !b {
 			if exist, _ := l.HasStateBlockConfirmed(pHash); !exist {

@@ -527,7 +527,7 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 	if err != nil {
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
 	}
@@ -572,7 +572,7 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 	if err != nil {
 		return nil, fmt.Errorf("account[%s] is not exist", account.String())
 	}
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("account[%s] has no chain token", account.String())
 	}

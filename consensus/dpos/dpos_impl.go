@@ -218,7 +218,7 @@ func NewDPoS(cfgFile string) *DPoS {
 
 func (dps *DPoS) Init() {
 	// dfile, _ = os.OpenFile("./dfile", os.O_RDWR|os.O_CREATE, 0666)
-	supply := common.GenesisBlock().Balance
+	supply := config.GenesisBlock().Balance
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 	dps.voteThreshold, _ = supply.Div(2)
 
@@ -492,7 +492,7 @@ func (dps *DPoS) onGetFrontier(blocks types.StateBlockList) {
 	var unconfirmed []*types.StateBlock
 
 	for _, block := range blocks {
-		if block.Token == common.ChainToken() {
+		if block.Token == config.ChainToken() {
 			if _, ok := dps.totalVote[block.Representative]; ok {
 				dps.totalVote[block.Representative] = dps.totalVote[block.Representative].Add(block.GetBalance()).Add(block.GetVote()).Add(block.GetOracle()).Add(block.GetNetwork()).Add(block.GetStorage())
 			} else {
@@ -918,7 +918,7 @@ func (dps *DPoS) saveOnlineRep(addr types.Address) {
 }
 
 func (dps *DPoS) findOnlineRepresentatives() error {
-	blk := common.GenesisBlock()
+	blk := config.GenesisBlock()
 	dps.localRepAccount.Range(func(key, value interface{}) bool {
 		address := key.(types.Address)
 

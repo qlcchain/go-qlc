@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
@@ -262,7 +264,7 @@ func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, er
 	network := types.ZeroBalance
 	total := types.ZeroBalance
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		t := am.Token(common.ChainToken())
+		t := am.Token(config.ChainToken())
 		if t != nil {
 			if t.Representative == address {
 				balance = balance.Add(t.Balance)

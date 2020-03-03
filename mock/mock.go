@@ -32,18 +32,6 @@ var (
 	TestAccount    = types.NewAccount(priByte)
 )
 
-func InitGenesisInfos(cfg *config.Config) {
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
-}
-
 func Hash() types.Hash {
 	h := types.Hash{}
 	_ = random.Bytes(h[:])
@@ -108,9 +96,9 @@ func StateBlock() *types.StateBlock {
 	sb.Network = types.ZeroBalance
 	sb.Storage = types.ZeroBalance
 	sb.Address = a.Address()
-	sb.Token = common.ChainToken()
+	sb.Token = config.ChainToken()
 	sb.Previous = Hash()
-	sb.Representative = common.GenesisAddress()
+	sb.Representative = config.GenesisAddress()
 	addr := Address()
 	sb.Link = addr.ToHash()
 	sb.Signature = a.Sign(sb.GetHash())
@@ -156,9 +144,9 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Oracle = types.NewBalance(0)
 	sb.Storage = types.NewBalance(0)
 	sb.Address = a.Address()
-	sb.Token = common.ChainToken()
+	sb.Token = config.ChainToken()
 	sb.Previous = types.ZeroHash
-	sb.Representative = common.GenesisAddress()
+	sb.Representative = config.GenesisAddress()
 	sb.Timestamp = common.TimeNow().Unix()
 	//addr := Address()
 	sb.Link = Hash()
@@ -173,9 +161,9 @@ func StateBlockWithAddress(addr types.Address) *types.StateBlock {
 	sb.Type = types.Open
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
 	sb.Address = addr
-	sb.Token = common.ChainToken()
+	sb.Token = config.ChainToken()
 	sb.Previous = types.ZeroHash
-	sb.Representative = common.GenesisAddress()
+	sb.Representative = config.GenesisAddress()
 	sb.Timestamp = common.TimeNow().Unix()
 	//addr := Address()
 	sb.Link = Hash()
@@ -207,11 +195,11 @@ func BlockChain(isGas bool) ([]*types.StateBlock, error) {
 	var token types.Hash
 	var genesis types.Hash
 	if isGas {
-		token = common.GasToken()
-		genesis = common.GenesisMintageHash()
+		token = config.GasToken()
+		genesis = config.GenesisMintageHash()
 	} else {
-		token = common.ChainToken()
-		genesis = common.GenesisBlockHash()
+		token = config.ChainToken()
+		genesis = config.GenesisBlockHash()
 	}
 
 	b0 := createBlock(types.Open, *ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(100000000000))}, genesis, ac1.Address()) //a1 open

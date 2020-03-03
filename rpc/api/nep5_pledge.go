@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -83,7 +85,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		return nil, fmt.Errorf("invalid user account:%s, %s", param.PledgeAddress.String(), err)
 	}
 
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not have any chain token", param.PledgeAddress.String())
 	}
@@ -197,7 +199,7 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 		return nil, fmt.Errorf("invalid user account:%s, %s", param.Beneficial.String(), err)
 	}
 
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not hava any chain token", param.Beneficial.String())
 	}

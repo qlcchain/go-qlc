@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"testing"
 
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
@@ -206,7 +208,7 @@ func TestRepReward_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blk.Token = common.ChainToken()
+	blk.Token = cfg.ChainToken()
 	_, _, err = r.ProcessSend(ctx, blk)
 	if err != ErrAccountNotExist {
 		t.Fatal(err)
@@ -373,7 +375,7 @@ func TestRepReward_DoReceive(t *testing.T) {
 	}
 
 	am = mock.AccountMeta(beneficial)
-	am.Tokens[0].Type = common.GasToken()
+	am.Tokens[0].Type = cfg.GasToken()
 	err = l.UpdateAccountMeta(am, l.Cache().GetCache())
 	if err != nil {
 		t.Fatal(err)

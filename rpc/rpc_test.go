@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	jsonrpc "github.com/qlcchain/jsonrpc2"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
@@ -86,7 +85,7 @@ func TestRPC_HTTP(t *testing.T) {
 	}
 
 	blk := new(types.StateBlock)
-	blk.Token = common.ChainToken()
+	blk.Token = config.ChainToken()
 	rpc.ledger.AddStateBlock(blk)
 	var resp2 types.Hash
 	err = client.Call(&resp2, "ledger_blockHash", blk)
@@ -114,7 +113,7 @@ func TestRPC_WebSocket(t *testing.T) {
 	}()
 
 	blk := new(types.StateBlock)
-	blk.Token = common.ChainToken()
+	blk.Token = config.ChainToken()
 	rpc.ledger.AddStateBlock(blk)
 	var resp2 types.Hash
 	err = client.Call(&resp2, "ledger_blockHash", blk)

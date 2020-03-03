@@ -13,7 +13,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -49,7 +50,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 		return err
 	}
 
-	if block.Token != common.ChainToken() || amount.IsZero() || !b {
+	if block.Token != cfg.ChainToken() || amount.IsZero() || !b {
 		return errors.New("invalid block data")
 	}
 
@@ -148,7 +149,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 
 	am, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if am != nil {
-		tm := am.Token(common.ChainToken())
+		tm := am.Token(cfg.ChainToken())
 		block.Balance = am.CoinBalance
 		block.Vote = am.CoinVote
 		block.Network = am.CoinNetwork
@@ -316,7 +317,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	if am == nil {
 		return nil, fmt.Errorf("%s do not found", pledgeInfo.PledgeInfo.PledgeAddress.String())
 	}
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(cfg.ChainToken())
 	if tm != nil {
 		block.Type = types.ContractReward
 		block.Address = pledgeInfo.PledgeInfo.PledgeAddress
@@ -343,7 +344,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 			},
 		}, nil
 	} else {
-		return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
+		return nil, fmt.Errorf("chain token %s do not found", cfg.ChainToken().String())
 	}
 }
 

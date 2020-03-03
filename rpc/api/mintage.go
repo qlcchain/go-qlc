@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -89,7 +91,7 @@ func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		return nil, err
 	}
 
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not hava any chain token", param.SelfAddr.String())
 	}
@@ -177,7 +179,7 @@ func (m *MintageAPI) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 	if !m.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
-	tm, _ := m.l.GetTokenMeta(param.SelfAddr, common.ChainToken())
+	tm, _ := m.l.GetTokenMeta(param.SelfAddr, config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not hava any chain token", param.SelfAddr.String())
 	}

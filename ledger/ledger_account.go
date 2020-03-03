@@ -3,7 +3,8 @@ package ledger
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -54,7 +55,7 @@ func (l *Ledger) GetAccountMeta(address types.Address, c ...storage.Cache) (*typ
 			temp := am.Token(v.Type)
 			if temp != nil {
 				if temp.BlockCount < v.BlockCount {
-					if temp.Type == common.ChainToken() {
+					if temp.Type == config.ChainToken() {
 						am.CoinBalance = meta.GetBalance()
 						am.CoinOracle = meta.GetOracle()
 						am.CoinNetwork = meta.GetNetwork()
@@ -424,7 +425,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock) (types.Balance, error)
 			return block.TotalBalance().Sub(prev.TotalBalance()), nil
 		}
 	case types.ContractSend:
-		if common.IsGenesisBlock(block) {
+		if config.IsGenesisBlock(block) {
 			return block.GetBalance(), nil
 		} else {
 			if prev, err = l.GetStateBlock(block.GetPrevious()); err != nil {

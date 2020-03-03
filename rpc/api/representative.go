@@ -177,7 +177,7 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		return nil, fmt.Errorf("rep account not exist, %s", err)
 	}
 
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("rep account does not have chain token, %s", err)
 	}
@@ -194,7 +194,7 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 
 	send := &types.StateBlock{
 		Type:    types.ContractSend,
-		Token:   common.ChainToken(),
+		Token:   config.ChainToken(),
 		Address: param.Account,
 
 		Balance:        tm.Balance,

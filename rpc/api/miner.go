@@ -159,7 +159,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		return nil, fmt.Errorf("coinbase account not exist, %s", err)
 	}
 
-	tmCb := amCb.Token(common.ChainToken())
+	tmCb := amCb.Token(config.ChainToken())
 	if tmCb == nil {
 		return nil, fmt.Errorf("coinbase account does not have chain token, %s", err)
 	}
@@ -176,7 +176,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 
 	send := &types.StateBlock{
 		Type:    types.ContractSend,
-		Token:   common.ChainToken(),
+		Token:   config.ChainToken(),
 		Address: param.Coinbase,
 
 		Balance:        tmCb.Balance,

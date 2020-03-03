@@ -3,7 +3,8 @@ package ledger
 import (
 	"encoding/json"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -151,7 +152,7 @@ func (l *Ledger) updateRepresentation() error {
 		if err := am.Deserialize(val); err != nil {
 			return err
 		}
-		tm := am.Token(common.ChainToken())
+		tm := am.Token(config.ChainToken())
 		if tm != nil {
 			if _, ok := representMap[tm.Representative]; !ok {
 				representMap[tm.Representative] = types.ZeroBenefit.Clone()

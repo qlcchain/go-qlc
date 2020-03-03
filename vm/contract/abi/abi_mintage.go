@@ -14,7 +14,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
@@ -103,7 +104,7 @@ func ListTokens(ctx *vmstore.VMContext) ([]*types.TokenInfo, error) {
 	if err := ctx.Iterator(types.MintageAddress[:], func(key []byte, value []byte) error {
 		if len(value) > 0 {
 			tokenId, _ := types.BytesToHash(key[(types.AddressSize + 1):])
-			if common.IsGenesisToken(tokenId) {
+			if config.IsGenesisToken(tokenId) {
 				if info, err := ParseGenesisTokenInfo(value); err == nil {
 					infos = append(infos, info)
 				} else {

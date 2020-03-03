@@ -1,103 +1,107 @@
-package common
+/*
+ * Copyright (c) 2019 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
+package config
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-type GenesisInfo struct {
-	ChainToken          bool
-	GasToken            bool
-	GenesisMintageBlock types.StateBlock
-	GenesisBlock        types.StateBlock
+var genesisInfos []*GenesisInfo
+
+func GenesisInfos() []*GenesisInfo {
+	return genesisInfos
 }
 
-var GenesisInfos []*GenesisInfo
-
 func GenesisAddress() types.Address {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.ChainToken {
-			return v.GenesisBlock.Address
+			return v.Genesis.Address
 		}
 	}
 	return types.ZeroAddress
 }
 
 func ChainToken() types.Hash {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.ChainToken {
-			return v.GenesisBlock.Token
+			return v.Genesis.Token
 		}
 	}
 	return types.ZeroHash
 }
 
 func GasToken() types.Hash {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.GasToken {
-			return v.GenesisBlock.Token
+			return v.Genesis.Token
 		}
 	}
 	return types.ZeroHash
 }
 
 func GenesisMintageBlock() types.StateBlock {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.ChainToken {
-			return v.GenesisMintageBlock
+			return v.Mintage
 		}
 	}
 	return types.StateBlock{}
 }
 
 func GenesisMintageHash() types.Hash {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.ChainToken {
-			return v.GenesisMintageBlock.GetHash()
+			return v.Mintage.GetHash()
 		}
 	}
 	return types.ZeroHash
 }
 
 func GenesisBlock() types.StateBlock {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.ChainToken {
-			return v.GenesisBlock
+			return v.Genesis
 		}
 	}
 	return types.StateBlock{}
 }
 
 func GenesisBlockHash() types.Hash {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.ChainToken {
-			return v.GenesisBlock.GetHash()
+			return v.Genesis.GetHash()
 		}
 	}
 	return types.ZeroHash
 }
 
 func GasBlockHash() types.Hash {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.GasToken {
-			return v.GenesisBlock.GetHash()
+			return v.Genesis.GetHash()
 		}
 	}
 	return types.ZeroHash
 }
 
 func GasMintageBlock() types.StateBlock {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.GasToken {
-			return v.GenesisMintageBlock
+			return v.Mintage
 		}
 	}
 	return types.StateBlock{}
 }
 
 func GasBlock() types.StateBlock {
-	for _, v := range GenesisInfos {
+	for _, v := range genesisInfos {
 		if v.GasToken {
-			return v.GenesisBlock
+			return v.Genesis
 		}
 	}
 	return types.StateBlock{}
@@ -106,8 +110,8 @@ func GasBlock() types.StateBlock {
 // IsGenesis check block is chain token genesis
 func IsGenesisBlock(block *types.StateBlock) bool {
 	hash := block.GetHash()
-	for _, v := range GenesisInfos {
-		if hash == v.GenesisBlock.GetHash() || hash == v.GenesisMintageBlock.GetHash() {
+	for _, v := range genesisInfos {
+		if hash == v.Genesis.GetHash() || hash == v.Mintage.GetHash() {
 			return true
 		}
 	}
@@ -116,8 +120,8 @@ func IsGenesisBlock(block *types.StateBlock) bool {
 
 // IsGenesis check token is chain token genesis
 func IsGenesisToken(hash types.Hash) bool {
-	for _, v := range GenesisInfos {
-		if hash == v.GenesisMintageBlock.Token {
+	for _, v := range genesisInfos {
+		if hash == v.Mintage.Token {
 			return true
 		}
 	}
@@ -126,9 +130,9 @@ func IsGenesisToken(hash types.Hash) bool {
 
 func AllGenesisBlocks() []types.StateBlock {
 	var blocks []types.StateBlock
-	for _, v := range GenesisInfos {
-		blocks = append(blocks, v.GenesisMintageBlock)
-		blocks = append(blocks, v.GenesisBlock)
+	for _, v := range genesisInfos {
+		blocks = append(blocks, v.Mintage)
+		blocks = append(blocks, v.Genesis)
 	}
 	return blocks
 }

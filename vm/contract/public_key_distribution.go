@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -19,7 +21,7 @@ type VerifierRegister struct {
 }
 
 func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	if block.GetToken() != common.ChainToken() {
+	if block.GetToken() != cfg.ChainToken() {
 		logger.Info("not qlc chain")
 		return nil, nil, ErrToken
 	}
@@ -81,7 +83,7 @@ type VerifierUnregister struct {
 }
 
 func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	if block.GetToken() != common.ChainToken() {
+	if block.GetToken() != cfg.ChainToken() {
 		logger.Info("not qlc chain")
 		return nil, nil, ErrToken
 	}
@@ -138,7 +140,7 @@ type VerifierHeart struct {
 }
 
 func (vh *VerifierHeart) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	if block.GetToken() != common.GasToken() {
+	if block.GetToken() != cfg.GasToken() {
 		logger.Info("not gas chain")
 		return nil, nil, ErrToken
 	}
@@ -216,7 +218,7 @@ type Publish struct {
 }
 
 func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	if block.GetToken() != common.GasToken() {
+	if block.GetToken() != cfg.GasToken() {
 		logger.Info("not gas chain")
 		return nil, nil, ErrToken
 	}
@@ -325,7 +327,7 @@ type UnPublish struct {
 }
 
 func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	if block.GetToken() != common.GasToken() {
+	if block.GetToken() != cfg.GasToken() {
 		logger.Info("not gas chain")
 		return nil, nil, ErrToken
 	}
@@ -394,7 +396,7 @@ type Oracle struct {
 }
 
 func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	if block.GetToken() != common.GasToken() {
+	if block.GetToken() != cfg.GasToken() {
 		logger.Info("not gas chain")
 		return nil, nil, ErrToken
 	}
@@ -592,7 +594,7 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		return nil, nil, errors.New("param reward amount is zero")
 	}
 
-	if block.Token != common.GasToken() {
+	if block.Token != cfg.GasToken() {
 		return nil, nil, errors.New("token is not gas token")
 	}
 
@@ -658,7 +660,7 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		}, &types.PendingInfo{
 			Source: types.Address(block.Link),
 			Amount: types.Balance{Int: param.RewardAmount},
-			Type:   common.GasToken(),
+			Type:   cfg.GasToken(),
 		}, nil
 }
 
@@ -675,7 +677,7 @@ func (r *PKDReward) DoPending(block *types.StateBlock) (*types.PendingKey, *type
 		}, &types.PendingInfo{
 			Source: types.Address(block.Link),
 			Amount: types.Balance{Int: param.RewardAmount},
-			Type:   common.GasToken(),
+			Type:   cfg.GasToken(),
 		}, nil
 }
 
@@ -694,7 +696,7 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 	// generate contract reward block
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
-	block.Token = common.GasToken()
+	block.Token = cfg.GasToken()
 	block.Link = input.GetHash()
 	block.PoVHeight = input.PoVHeight
 	block.Timestamp = common.TimeNow().Unix()
@@ -707,7 +709,7 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 
 	amBnf, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
-		tmBnf := amBnf.Token(common.GasToken())
+		tmBnf := amBnf.Token(cfg.GasToken())
 		if tmBnf != nil {
 			block.Balance = tmBnf.Balance.Add(types.Balance{Int: param.RewardAmount})
 			block.Representative = tmBnf.Representative
@@ -734,7 +736,7 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
 			Amount:    types.Balance{Int: param.RewardAmount},
-			Token:     common.GasToken(),
+			Token:     cfg.GasToken(),
 			Data:      []byte{},
 		},
 	}, nil

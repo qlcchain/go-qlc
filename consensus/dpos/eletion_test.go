@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common"
-
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -15,17 +13,7 @@ import (
 func getTestEl() *Election {
 	dir := filepath.Join(config.QlcTestDataDir(), "transaction", uuid.New().String())
 	cm := config.NewCfgManager(dir)
-	cfg, _ := cm.Load()
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
-
+	_, _ = cm.Load()
 	dps := NewDPoS(cm.ConfigFile)
 	blk := mock.StateBlock()
 	return newElection(dps, blk)

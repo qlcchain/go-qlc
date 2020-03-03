@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"time"
 
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -103,7 +105,7 @@ func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlo
 
 func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	// check token is QGAS
-	if block.Token != common.GasToken() {
+	if block.Token != cfg.GasToken() {
 		return nil, nil, fmt.Errorf("invalid token: %s", block.Token.String())
 	}
 
@@ -635,7 +637,7 @@ func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types
 func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, address types.Address,
 	process func(param *cabi.ContractParam) (err error)) (*types.PendingKey, *types.PendingInfo, error) {
 	// check token is QGAS
-	if block.Token != common.GasToken() {
+	if block.Token != cfg.GasToken() {
 		return nil, nil, fmt.Errorf("invalid token: %s", block.Token.String())
 	}
 

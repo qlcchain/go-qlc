@@ -309,3 +309,16 @@ func TestNewRandomMac(t *testing.T) {
 		t.Log(mac.String())
 	}
 }
+
+func TestSmartContractBlock(t *testing.T) {
+	if blk := SmartContractBlock(); blk == nil {
+		t.Fatal()
+	}
+}
+
+func TestStateBlockWithAddress(t *testing.T) {
+	a := Address()
+	if blk := StateBlockWithAddress(a); blk.Address != a {
+		t.Fatal()
+	}
+}

@@ -9,11 +9,12 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/hashmap"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -233,7 +234,7 @@ func (l *LedgerAPI) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, 
 	aa := new(APIAccount)
 	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, t := range am.Tokens {
-		if t.Type == common.ChainToken() {
+		if t.Type == config.ChainToken() {
 			aa.CoinBalance = &t.Balance
 			aa.Representative = &t.Representative
 			aa.CoinVote = &am.CoinVote
@@ -268,7 +269,7 @@ func (l *LedgerAPI) AccountRepresentative(addr types.Address) (types.Address, er
 		return types.ZeroAddress, err
 	}
 	for _, t := range am.Tokens {
-		if t.Type == common.ChainToken() {
+		if t.Type == config.ChainToken() {
 			return t.Representative, nil
 		}
 	}
@@ -309,7 +310,7 @@ func (l *LedgerAPI) AccountsBalance(addresses []types.Address) (map[types.Addres
 
 			b.Balance = t.Balance
 			b.Pending = amount
-			if info.TokenId == common.ChainToken() {
+			if info.TokenId == config.ChainToken() {
 				b.Vote = &ac.CoinVote
 				b.Network = &ac.CoinNetwork
 				b.Oracle = &ac.CoinOracle
@@ -604,7 +605,7 @@ func (l *LedgerAPI) Delegators(hash types.Address) ([]*APIAccountBalance, error)
 	abs := make([]*APIAccountBalance, 0)
 
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		t := am.Token(common.ChainToken())
+		t := am.Token(config.ChainToken())
 		if t != nil {
 			if t.Representative == hash {
 				ab := &APIAccountBalance{am.Address, am.VoteWeight()}
@@ -623,7 +624,7 @@ func (l *LedgerAPI) Delegators(hash types.Address) ([]*APIAccountBalance, error)
 func (l *LedgerAPI) DelegatorsCount(hash types.Address) (int64, error) {
 	var count int64
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		t := am.Token(common.ChainToken())
+		t := am.Token(config.ChainToken())
 		if t != nil {
 			if t.Representative == hash {
 				count = count + 1
@@ -1185,9 +1186,9 @@ func (l *LedgerAPI) NewPending(ctx context.Context, address types.Address) (*rpc
 
 func (l *LedgerAPI) GenesisBlocks() (map[string]types.StateBlock, error) {
 	genesisBlk := make(map[string]types.StateBlock)
-	genesisBlk["chain"] = common.GenesisBlock()
-	genesisBlk["chain-mintage"] = common.GenesisMintageBlock()
-	genesisBlk["gas"] = common.GasBlock()
-	genesisBlk["gas-mintage"] = common.GasMintageBlock()
+	genesisBlk["chain"] = config.GenesisBlock()
+	genesisBlk["chain-mintage"] = config.GenesisMintageBlock()
+	genesisBlk["gas"] = config.GasBlock()
+	genesisBlk["gas-mintage"] = config.GasMintageBlock()
 	return genesisBlk, nil
 }

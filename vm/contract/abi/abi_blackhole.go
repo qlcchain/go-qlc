@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
@@ -92,7 +94,7 @@ func (param *DestroyParam) Verify() (bool, error) {
 		return false, errors.New("invalid previous")
 	}
 
-	if param.Token != common.GasToken() {
+	if param.Token != config.GasToken() {
 		return false, errors.New("invalid token to be destroyed")
 	}
 

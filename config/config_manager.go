@@ -290,7 +290,23 @@ func (cm *CfgManager) Load(migrations ...CfgMigrate) (*Config, error) {
 		_ = cm.Save()
 	}
 
+	loadGenesisAccount(&cfg)
+
 	return &cfg, nil
+}
+
+func loadGenesisAccount(cfg *Config) {
+	if cfg.Genesis != nil && len(cfg.Genesis.GenesisBlocks) > 0 {
+		if len(genesisInfos) > 0 {
+			genesisInfos = genesisInfos[:0]
+		}
+
+		for _, v := range cfg.Genesis.GenesisBlocks {
+			if v != nil {
+				genesisInfos = append(genesisInfos, v)
+			}
+		}
+	}
 }
 
 // DiffOther diff runtime cfg with other `cfg`

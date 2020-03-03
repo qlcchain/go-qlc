@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -93,17 +95,17 @@ func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn fun
 	var txHash types.Hash
 	var rxHash types.Hash
 
-	if tm, err := r.ledger.GetTokenMeta(param.Self, common.GasToken()); tm != nil && err == nil {
+	if tm, err := r.ledger.GetTokenMeta(param.Self, config.GasToken()); tm != nil && err == nil {
 		txHash = tm.Header
 	} else {
 		return types.ZeroHash, err
 	}
 
-	if b, err := r.ledger.HasTokenMeta(param.To, common.GasToken()); err != nil {
+	if b, err := r.ledger.HasTokenMeta(param.To, config.GasToken()); err != nil {
 		return types.ZeroHash, err
 	} else {
 		if b {
-			tm, _ := r.ledger.GetTokenMeta(param.To, common.GasToken())
+			tm, _ := r.ledger.GetTokenMeta(param.To, config.GasToken())
 			rxHash = tm.Header
 		} else {
 			rxHash = types.ZeroHash
@@ -175,22 +177,22 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 		return nil, err
 	}
 
-	if _, err := r.ledger.HasTokenMeta(param.Self, common.GasToken()); err != nil {
-		r.logger.Errorf("token not found, %s %s", param.Self.String(), common.GasToken().String())
+	if _, err := r.ledger.HasTokenMeta(param.Self, config.GasToken()); err != nil {
+		r.logger.Errorf("token not found, %s %s", param.Self.String(), config.GasToken().String())
 		return nil, err
 	}
 
 	am, _ := r.ledger.GetAccountMeta(param.Self)
-	tm := am.Token(common.GasToken())
+	tm := am.Token(config.GasToken())
 	txHash := tm.Header
 
 	var rxHash types.Hash
-	if b, err := r.ledger.HasTokenMeta(param.To, common.GasToken()); err != nil {
-		r.logger.Errorf("token not found, %s %s", param.To.String(), common.GasToken().String())
+	if b, err := r.ledger.HasTokenMeta(param.To, config.GasToken()); err != nil {
+		r.logger.Errorf("token not found, %s %s", param.To.String(), config.GasToken().String())
 		return nil, err
 	} else {
 		if b {
-			tm, _ := r.ledger.GetTokenMeta(param.To, common.GasToken())
+			tm, _ := r.ledger.GetTokenMeta(param.To, config.GasToken())
 			rxHash = tm.Header
 		} else {
 			rxHash = types.ZeroHash

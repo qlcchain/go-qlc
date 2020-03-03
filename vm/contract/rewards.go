@@ -10,7 +10,8 @@ package contract
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/common"
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -164,7 +165,7 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 	if err != nil {
 		return nil, err
 	}
-	if amount.Sign() > 0 && amount.Compare(types.ZeroBalance) == types.BalanceCompBigger && input.Token == common.GasToken() {
+	if amount.Sign() > 0 && amount.Compare(types.ZeroBalance) == types.BalanceCompBigger && input.Token == cfg.GasToken() {
 		txHash := input.GetHash()
 		txAddress := input.Address
 		txMeta, err := ctx.Ledger.GetAccountMeta(txAddress)

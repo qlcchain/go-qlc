@@ -40,7 +40,6 @@ func setupPovImplTestCase(t *testing.T) (func(t *testing.T), *povImplMockData) {
 	md.ledger = ledger.NewLedger(md.cm.ConfigFile)
 
 	md.cfg, _ = md.cm.Config()
-	mock.InitGenesisInfos(md.cfg)
 
 	md.eb = event.GetEventBus(uid)
 

@@ -1550,7 +1550,7 @@ func (api *PovApi) GetLastNHourInfo(endHeight uint64, timeSpan uint32) (*PovApiG
 
 func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
 	var allRss []*types.PovRepState
-	supply := common.GenesisBlock().Balance
+	supply := config.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	stateHash := header.GetStateHash()

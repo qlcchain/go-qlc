@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -55,7 +57,7 @@ func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
 		ValidVotes: types.ZeroBalance,
 	}
 
-	supply := common.GenesisBlock().Balance
+	supply := config.GenesisBlock().Balance
 	minWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	for _, account := range as {

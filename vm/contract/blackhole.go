@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	config2 "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -92,7 +94,7 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 		return errors.New("invalid sign")
 	}
 
-	if block.Token != common.GasToken() {
+	if block.Token != config2.GasToken() {
 		return fmt.Errorf("invalid token: %s", block.Token.String())
 	}
 	if amount, err := ctx.Ledger.CalculateAmount(block); err == nil {

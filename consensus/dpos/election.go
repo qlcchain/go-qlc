@@ -5,9 +5,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/topic"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -217,7 +218,7 @@ func (el *Election) tally(isSync bool) map[types.Hash]*BlockReceivedVotes {
 }
 
 func (el *Election) getGenesisBalance() (types.Balance, error) {
-	genesis := common.GenesisBlock()
+	genesis := config.GenesisBlock()
 	return genesis.Balance, nil
 }
 

@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -83,7 +84,7 @@ type syncContractReceiveBlockCheck struct {
 
 func (c *syncContractReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	//ignore chain genesis block
-	if common.IsGenesisBlock(block) {
+	if config.IsGenesisBlock(block) {
 		return Progress, nil
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
