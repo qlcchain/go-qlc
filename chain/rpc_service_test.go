@@ -45,6 +45,9 @@ func TestNewRPCService(t *testing.T) {
 	if ls.State() != 4 {
 		t.Fatal("rpc start failed")
 	}
+	if r := ls.RPC(); r == nil {
+		t.Fatal()
+	}
 	err = ls.Stop()
 	if err != nil {
 		t.Fatal(err)
@@ -53,4 +56,5 @@ func TestNewRPCService(t *testing.T) {
 	if ls.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
+
 }

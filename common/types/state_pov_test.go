@@ -16,7 +16,7 @@ func TestPovAccountState_Serialize(t *testing.T) {
 	as1 := NewPovAccountState()
 	as1.Balance = NewBalance(rand.Int63())
 
-	as1.String()
+	t.Log(as1.String())
 
 	data, err := as1.Serialize()
 	if err != nil {
@@ -29,7 +29,7 @@ func TestPovAccountState_Serialize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	as1.String()
+	t.Log(as1.String())
 
 	if as1.Balance.Compare(as2.Balance) != BalanceCompEqual {
 		t.Fatalf("exp: %v, act: %v", as1.Balance, as2.Balance)
@@ -46,7 +46,7 @@ func TestPovTokenState_Serialize(t *testing.T) {
 	ts1 := NewPovTokenState(tHash)
 	ts1.Balance = NewBalance(rand.Int63())
 
-	ts1.String()
+	t.Log(ts1.String())
 
 	data, err := ts1.Serialize()
 	if err != nil {
@@ -59,7 +59,7 @@ func TestPovTokenState_Serialize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ts2.String()
+	t.Log(ts2.String())
 
 	if ts1.Balance.Compare(ts2.Balance) != BalanceCompEqual {
 		t.Fatalf("exp: %v, act: %v", ts1.Balance, ts2.Balance)

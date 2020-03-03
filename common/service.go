@@ -62,6 +62,10 @@ func (s *ServiceLifecycle) PostStop() bool {
 	return atomic.CompareAndSwapInt32(&s.Status, 5, 6)
 }
 
+func (s *ServiceLifecycle) Reset() bool {
+	return atomic.CompareAndSwapInt32(&s.Status, 6, 0)
+}
+
 func (s *ServiceLifecycle) Stopped() bool {
 	return s.Status == 6 || s.Status == 5
 }

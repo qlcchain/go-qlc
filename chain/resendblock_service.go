@@ -22,7 +22,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 
-	qcontext "github.com/qlcchain/go-qlc/chain/context"
+	ctx "github.com/qlcchain/go-qlc/chain/context"
 
 	"go.uber.org/zap"
 
@@ -69,7 +69,7 @@ func (rb *ResendBlockService) Init() error {
 		return errors.New("pre init fail")
 	}
 	defer rb.PostInit()
-	cc := qcontext.NewChainContext(rb.cfgFile)
+	cc := ctx.NewChainContext(rb.cfgFile)
 
 	rb.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
@@ -89,8 +89,8 @@ func (rb *ResendBlockService) Start() error {
 	}
 	defer rb.PostStart()
 
-	cc := qcontext.NewChainContext(rb.cfgFile)
-	ledgerService, _ := cc.Service(qcontext.LedgerService)
+	cc := ctx.NewChainContext(rb.cfgFile)
+	ledgerService, _ := cc.Service(ctx.LedgerService)
 	for {
 		//ledger service started
 		if ledgerService != nil && ledgerService.Status() == int32(common.Started) {

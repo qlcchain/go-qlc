@@ -12,8 +12,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 
 	"github.com/google/uuid"
 
@@ -47,7 +52,7 @@ type waitService struct {
 
 func (w *waitService) Init() error {
 	if !w.PreInit() {
-		return errors.New("pre init fail")
+		return errors.New("waitService pre init fail")
 	}
 	defer w.PostInit()
 	return nil
@@ -55,7 +60,7 @@ func (w *waitService) Init() error {
 
 func (w *waitService) Start() error {
 	if !w.PreStart() {
-		return errors.New("pre init fail")
+		return errors.New("waitService pre start fail")
 	}
 	defer w.PostStart()
 
@@ -65,18 +70,18 @@ func (w *waitService) Start() error {
 
 func (w *waitService) Stop() error {
 	if !w.PreStop() {
-		return errors.New("pre init fail")
+		return errors.New("waitService pre stop fail")
 	}
-	defer w.PostStop()
+	defer func() {
+		w.PostStop()
+		w.Reset()
+	}()
+
 	return nil
 }
 
 func (w *waitService) Status() int32 {
 	return w.State()
-}
-
-func (w *waitService) RpcCall(kind uint, in, out interface{}) {
-
 }
 
 func Test_serviceContainer(t *testing.T) {
@@ -329,4 +334,60 @@ func TestChainContext_ConfigManager(t *testing.T) {
 	if p1 != p2 {
 		t.Fatal("invalid cfg ptr", p1, "==>", p2)
 	}
+}
+
+func TestChainContext_P2PSyncState(t *testing.T) {
+	cfgFile := filepath.Join(config.QlcTestDataDir(), uuid.New().String(), "test.json")
+	ctx := NewChainContext(cfgFile)
+	const name = "waitService"
+	if err := ctx.Init(func() error {
+		return ctx.Register(name, &waitService{})
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ctx.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+	time.Sleep(10 * time.Millisecond)
+
+	if ctx.PoVState() != topic.SyncDone {
+		t.Fatalf("act: %s, exp: %s", ctx.PoVState(), topic.SyncDone)
+	}
+
+	if b := ctx.IsPoVDone(); !b {
+		t.Fatal()
+	}
+
+	if err := ctx.ReloadService(name); err != nil {
+		t.Fatal(err)
+	}
+
+	if b := ctx.HasService(name); !b {
+		t.Fatal()
+	}
+
+	if services, err := ctx.AllServices(); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(services) != 1 {
+			t.Fatal()
+		}
+	}
+
+	accounts := []*types.Account{mock.Account(), mock.Account()}
+	ctx.SetAccounts(accounts)
+	a2 := ctx.Accounts()
+
+	if !reflect.DeepEqual(accounts, a2) {
+		t.Fatal()
+	}
+
+	if err := ctx.Destroy(); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(ctx.Status())
 }

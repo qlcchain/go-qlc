@@ -13,11 +13,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func TestNewChainManageService(t *testing.T) {
+func TestNewPoVService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	cm := config.NewCfgManager(dir)
 	_, err := cm.Load()
@@ -27,13 +26,14 @@ func TestNewChainManageService(t *testing.T) {
 	defer func() {
 		_ = os.RemoveAll(dir)
 	}()
-	ls := NewChainManageService(cm.ConfigFile)
+	ls := NewPoVService(cm.ConfigFile)
+
 	err = ls.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ls.State() != 2 {
-		t.Fatal("init failed")
+		t.Fatal("pov init failed")
 	}
 	_ = ls.Start()
 	err = ls.Stop()
@@ -44,14 +44,4 @@ func TestNewChainManageService(t *testing.T) {
 	if ls.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
-}
-
-func Test_restartChain(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	cm := config.NewCfgManager(dir)
-	f := cm.ConfigFile
-	quit := restartChain(f, true)
-	<-quit
-	quit = restartChain(f, false)
-	<-quit
 }

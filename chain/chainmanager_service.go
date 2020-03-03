@@ -24,7 +24,7 @@ type Manager struct {
 func NewChainManageService(cfgFile string) *Manager {
 	return &Manager{
 		cfgFile: cfgFile,
-		logger:  log.NewLogger("chainManage_service"),
+		logger:  log.NewLogger("chain_manager_service"),
 	}
 }
 
@@ -67,11 +67,17 @@ func (c *Manager) Status() int32 {
 	return c.State()
 }
 
-func restartChain(cfgFile string, isSave bool) {
-	logger := log.NewLogger("chainManage_service")
+func restartChain(cfgFile string, isSave bool) <-chan interface{} {
+	logger := log.NewLogger("chain_manager_service")
+	quit := make(chan interface{})
+
 	go func() {
 		cc := context.NewChainContext(cfgFile)
 		cfgManager, err := cc.ConfigManager()
+		defer func() {
+			quit <- struct{}{}
+			close(quit)
+		}()
 		if err != nil {
 			logger.Error(err)
 		}
@@ -111,4 +117,6 @@ func restartChain(cfgFile string, isSave bool) {
 			}
 		}
 	}()
+
+	return quit
 }

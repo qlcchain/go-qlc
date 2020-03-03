@@ -45,4 +45,15 @@ func TestNewLedgerService(t *testing.T) {
 	if ls.Status() != 6 {
 		t.Fatal("stop failed.")
 	}
+
+	ls2 := NewLedgerService(cm.ConfigFile)
+	err = ls2.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = ls2.Start()
+	err = ls2.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
