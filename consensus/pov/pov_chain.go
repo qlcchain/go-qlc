@@ -19,7 +19,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/trie"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 )
@@ -100,8 +99,6 @@ type PovBlockChain struct {
 	hashHeaderCache   gcache.Cache // hash => header
 	heightHeaderCache gcache.Cache // height => best header
 
-	trieNodePool *trie.NodePool
-
 	doingMinerStat *atomic.Bool
 	doingDiffStat  *atomic.Bool
 
@@ -144,18 +141,17 @@ func (bc *PovBlockChain) getLedger() ledger.Store {
 func (bc *PovBlockChain) Init() error {
 	var err error
 
-	bc.trieNodePool = trie.NewSimpleTrieNodePool()
-
 	needReset := false
 	genesisBlock, _ := bc.getLedger().GetPovBlockByHeight(0)
 	if genesisBlock == nil {
+		bc.logger.Warn("pov genesis block not exist in ledger, resetting chain")
 		needReset = true
 	} else if !bc.IsGenesisBlock(genesisBlock) {
-		needReset = true
+		bc.logger.Fatal("pov genesis block not same in ledger, please check it")
+		return err
 	}
 
 	if needReset {
-		bc.logger.Warn("pov genesis block incorrect, resetting chain")
 		err := bc.ResetChainState()
 		if err != nil {
 			return err
@@ -186,7 +182,6 @@ func (bc *PovBlockChain) Start() error {
 func (bc *PovBlockChain) Stop() error {
 	close(bc.quitCh)
 	bc.wg.Wait()
-	bc.trieNodePool.Clear()
 	return nil
 }
 
@@ -325,12 +320,14 @@ func (bc *PovBlockChain) loadLastState() error {
 	// Make sure the entire head block is available
 	latestBlock, err := bc.getLedger().GetLatestPovBlock()
 	if err != nil {
-		bc.logger.Errorf("failed to get latest block, err %s", err)
+		bc.logger.Fatalf("failed to get latest block, err %s", err)
+		return err
 	}
 	if latestBlock == nil {
 		// Corrupt or empty database, init from scratch
-		bc.logger.Warn("head block missing, resetting chain")
-		return bc.ResetChainState()
+		err = fmt.Errorf("head block missing, database may corrupt, pls checkt it")
+		bc.logger.Fatalf("%s", err)
+		return err
 	}
 
 	// Everything seems to be fine, set as the head block
@@ -1410,7 +1407,10 @@ func (bc *PovBlockChain) GetDebugInfo() map[string]interface{} {
 	info["heightBlockCache"] = bc.heightBlockCache.Len(false)
 	info["heightHeaderCache"] = bc.heightHeaderCache.Len(false)
 	info["hashTdCache"] = bc.hashTdCache.Len(false)
-	info["trieNodePool"] = bc.trieNodePool.Len()
+	sdbTP := statedb.GetStateDBTriePool()
+	if sdbTP != nil {
+		info["trieNodePool"] = sdbTP.Len()
+	}
 
 	info["statSideProcNum"] = bc.statSideProcNum
 	info["statForkProcNum"] = bc.statForkProcNum

@@ -101,6 +101,7 @@ type PovStore interface {
 	CountPovBlocks() (uint64, error)
 	CountPovTxs() (uint64, error)
 	CountPovBestHashs() (uint64, error)
+	DebugAllPovInfos()
 }
 
 func (l *Ledger) AddPovBlock(blk *types.PovBlock, td *types.PovTD, batch ...storage.Batch) error {
@@ -1279,4 +1280,36 @@ func (l *Ledger) CountPovTxs() (uint64, error) {
 
 func (l *Ledger) CountPovBestHashs() (uint64, error) {
 	return l.store.Count([]byte{byte(storage.KeyPrefixPovBestHash)})
+}
+
+func (l *Ledger) DebugAllPovInfos() {
+	keyCnt, _ := l.store.Count([]byte{byte(storage.KeyPrefixPovHeader)})
+	l.logger.Infof("KeyPrefixPovHeader %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovBody)})
+	l.logger.Infof("KeyPrefixPovBody %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovHeight)})
+	l.logger.Infof("KeyPrefixPovHeight %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovTxLookup)})
+	l.logger.Infof("KeyPrefixPovTxLookup %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovBestHash)})
+	l.logger.Infof("KeyPrefixPovBestHash %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovTD)})
+	l.logger.Infof("KeyPrefixPovTD %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovMinerStat)})
+	l.logger.Infof("KeyPrefixPovMinerStat %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovLatestHeight)})
+	l.logger.Infof("KeyPrefixPovLatestHeight %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovTxlScanCursor)})
+	l.logger.Infof("KeyPrefixPovTxlScanCursor %d", keyCnt)
+
+	keyCnt, _ = l.store.Count([]byte{byte(storage.KeyPrefixPovDiffStat)})
+	l.logger.Infof("KeyPrefixPovDiffStat %d", keyCnt)
 }
