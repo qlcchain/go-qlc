@@ -702,3 +702,13 @@ func (l *DebugApi) FeedConsensus() error {
 	sv.RpcCall(common.RpcDPoSFeed, nil, nil)
 	return nil
 }
+
+func (l *DebugApi) DebugConsensus() error {
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return err
+	}
+	sv.RpcCall(common.RpcDPoSDebug, nil, nil)
+	return nil
+}

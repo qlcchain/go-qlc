@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
+	"runtime/debug"
 
 	"runtime"
 	"sync"
@@ -38,7 +39,7 @@ const (
 	refreshPriInterval    = 1 * time.Minute
 	subAckMaxSize         = 1024000
 	maxStatisticsPeriod   = 3
-	confirmedCacheMaxLen  = 4096000
+	confirmedCacheMaxLen  = 1024000
 	confirmedCacheMaxTime = 10 * time.Minute
 	hashNumPerAck         = 1024
 	blockNumPerReq        = 128
@@ -423,6 +424,8 @@ func (dps *DPoS) RPC(kind uint, in, out interface{}) {
 		dps.onSyncStateChange(state)
 	case common.RpcDPoSFeed:
 		go dps.feedBlocks()
+	case common.RpcDPoSDebug:
+		dps.debug()
 	}
 }
 
@@ -1312,6 +1315,12 @@ func (dps *DPoS) feedBlocks() {
 				Type:      consensus.MsgGenerateBlock,
 			}
 			dps.ProcessMsg(bs)
+			// dps.acTrx.addWinner2Ledger(bs.Block)
 		}
 	}
+}
+
+func (dps *DPoS) debug() {
+	dps.confirmedBlocks = newCache(confirmedCacheMaxLen, confirmedCacheMaxTime)
+	debug.FreeOSMemory()
 }

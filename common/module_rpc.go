@@ -8,4 +8,5 @@ const (
 	RpcDPoSSetConsPerf
 	RpcDPoSGetConsPerf
 	RpcDPoSFeed
+	RpcDPoSDebug
 )
