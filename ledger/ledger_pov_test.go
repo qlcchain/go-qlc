@@ -412,6 +412,9 @@ func TestLedger_AllPovBlocks(t *testing.T) {
 	if int(bhCnt) != len(blocks) {
 		t.Fatal("CountPovBestHashs", bhCnt, len(retHdrs2))
 	}
+
+	l.DebugAllPovInfos()
+
 	err = l.DropAllPovBlocks()
 	if err != nil {
 		t.Fatal(err)

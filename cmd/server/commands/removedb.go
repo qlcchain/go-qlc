@@ -20,34 +20,45 @@ import (
 
 func removeDB() {
 	if interactive {
+		dataType := cmdutil.Flag{
+			Name:  "dataType",
+			Must:  false,
+			Usage: "data type, etc all/pov",
+			Value: "all",
+		}
+
 		cmdRm := &ishell.Cmd{
 			Name: "removedb",
 			Help: "remove database",
 			Func: func(c *ishell.Context) {
-				if cmdutil.HelpText(c, nil) {
+				args := []cmdutil.Flag{dataType}
+				if cmdutil.HelpText(c, args) {
 					return
 				}
-				if err := cmdutil.CheckArgs(c, nil); err != nil {
+				if err := cmdutil.CheckArgs(c, args); err != nil {
 					cmdutil.Warn(err)
 					return
 				}
-				removeDBAction()
+				dataTypeP := cmdutil.StringVar(c.Args, dataType)
+				removeDBAction(dataTypeP)
 			},
 		}
 		shell.AddCmd(cmdRm)
 	} else {
+		var dataTypeP string
 		var cmdRm = &cobra.Command{
 			Use:   "removedb",
 			Short: "remove database",
 			Run: func(cmd *cobra.Command, args []string) {
-				removeDBAction()
+				removeDBAction(dataTypeP)
 			},
 		}
+		cmdRm.Flags().StringVarP(&dataTypeP, "dataType", "", "all", "data type, etc all/pov")
 		rootCmd.AddCommand(cmdRm)
 	}
 }
 
-func removeDBAction() {
+func removeDBAction(dataTypeP string) {
 	var err error
 
 	chainContext := context.NewChainContext(cfgPathP)
@@ -68,11 +79,21 @@ func removeDBAction() {
 
 	cmdutil.Info("starting to remove database, please wait...")
 	ledgerService := chain.NewLedgerService(cm.ConfigFile)
-	cmdutil.Info("drop all data in ledger ...")
 
-	if err := ledgerService.Ledger.DBStore().Drop(nil); err != nil {
-		cmdutil.Warn(err)
-		return
+	if dataTypeP == "all" {
+		cmdutil.Info("drop all data in ledger ...")
+
+		if err := ledgerService.Ledger.DBStore().Drop(nil); err != nil {
+			cmdutil.Warn(err)
+			return
+		}
+	} else if dataTypeP == "pov" {
+		cmdutil.Info("drop all pov in ledger ...")
+
+		if err := ledgerService.Ledger.DropAllPovBlocks(); err != nil {
+			cmdutil.Warn(err)
+			return
+		}
 	}
 
 	cmdutil.Info("finished to remove database.")

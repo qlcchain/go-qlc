@@ -219,7 +219,7 @@ func (b *BadgerStore) Drop(prefix []byte) error {
 			key := item.Key()
 			k := make([]byte, len(key))
 			copy(k, key)
-			return txn.Delete(k)
+			txn.Delete(k)
 		}
 		return nil
 	}
@@ -310,7 +310,7 @@ func (b *BadgerTransaction) Drop(prefix []byte) error {
 		key := item.Key()
 		k := make([]byte, len(key))
 		copy(k, key)
-		return b.Delete(k)
+		b.Delete(k)
 	}
 	return nil
 }
