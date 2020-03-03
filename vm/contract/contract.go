@@ -408,7 +408,3 @@ func GetAbiByContractAddress(addr types.Address) (string, error) {
 	}
 	return "", errors.New("contract not found")
 }
-
-func SetMinMintageTimeForTest() {
-	minMintageTime = &timeSpan{seconds: 1}
-}
