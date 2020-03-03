@@ -151,7 +151,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 	ctx := vmstore.NewVMContext(s.l)
 
 	addr := param.PartyA.Address
-	if tm, err := ctx.GetTokenMeta(addr, common.GasToken()); err != nil {
+	if tm, err := ctx.Ledger.GetTokenMeta(addr, common.GasToken()); err != nil {
 		return nil, err
 	} else {
 		createParam := &cabi.CreateContractParam{
@@ -235,7 +235,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 	}
 	ctx := vmstore.NewVMContext(s.l)
 
-	if tm, err := ctx.GetTokenMeta(param.Address, common.GasToken()); err != nil {
+	if tm, err := ctx.Ledger.GetTokenMeta(param.Address, common.GasToken()); err != nil {
 		return nil, err
 	} else {
 		if singedData, err := signParam.ToABI(); err == nil {
@@ -301,7 +301,7 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 
 	ctx := vmstore.NewVMContext(s.l)
 
-	if tm, err := ctx.GetTokenMeta(addr, common.GasToken()); err != nil {
+	if tm, err := ctx.Ledger.GetTokenMeta(addr, common.GasToken()); err != nil {
 		return nil, err
 	} else {
 		if singedData, err := abi(); err == nil {
@@ -505,7 +505,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 	if c, err := cabi.FindSettlementContract(ctx, addr, param); err != nil {
 		return nil, err
 	} else {
-		if tm, err := ctx.GetTokenMeta(*addr, common.GasToken()); err != nil {
+		if tm, err := ctx.Ledger.GetTokenMeta(*addr, common.GasToken()); err != nil {
 			return nil, err
 		} else {
 			address, err := c.Address()
@@ -575,7 +575,7 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 	}
 	ctx := vmstore.NewVMContext(s.l)
 
-	if tm, err := ctx.GetTokenMeta(param.Address, common.GasToken()); err != nil {
+	if tm, err := ctx.Ledger.GetTokenMeta(param.Address, common.GasToken()); err != nil {
 		return nil, err
 	} else {
 		if singedData, err := param.ToABI(); err == nil {

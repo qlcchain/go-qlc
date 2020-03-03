@@ -270,7 +270,7 @@ func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*Verifier
 		return nil, err
 	}
 
-	pb, err := p.ctx.GetLatestPovBlock()
+	pb, err := p.ctx.Ledger.GetLatestPovBlock()
 	if err != nil {
 		return nil, err
 	}

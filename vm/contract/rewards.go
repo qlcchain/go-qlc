@@ -160,21 +160,21 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 	}
 
 	//verify is QGAS
-	amount, err := ctx.CalculateAmount(input)
+	amount, err := ctx.Ledger.CalculateAmount(input)
 	if err != nil {
 		return nil, err
 	}
 	if amount.Sign() > 0 && amount.Compare(types.ZeroBalance) == types.BalanceCompBigger && input.Token == common.GasToken() {
 		txHash := input.GetHash()
 		txAddress := input.Address
-		txMeta, err := ctx.GetAccountMeta(txAddress)
+		txMeta, err := ctx.Ledger.GetAccountMeta(txAddress)
 		if err != nil {
 			return nil, err
 		}
 		txToken := txMeta.Token(input.Token)
 		rxAddress := param.Beneficial
 
-		rxMeta, _ := ctx.GetAccountMeta(rxAddress)
+		rxMeta, _ := ctx.Ledger.GetAccountMeta(rxAddress)
 
 		block.Type = types.ContractReward
 		block.Address = rxAddress

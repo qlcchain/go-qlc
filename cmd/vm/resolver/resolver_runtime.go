@@ -8,10 +8,7 @@
 package resolver
 
 import (
-	"encoding/binary"
-	"math"
-
-	"github.com/qlcchain/go-qlc/vm/exec"
+	"github.com/perlin-network/life/exec"
 )
 
 // see https://github.com/golang/go/blob/master/src/syscall/js/js.go
@@ -44,38 +41,41 @@ const (
 var curCB FCall
 
 func setJsInt(vm *exec.VirtualMachine, offset int, val int64) {
-	sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
-	v := math.Float64bits(float64(val))
-	//TODO: verify
-	binary.LittleEndian.PutUint64(vm.Memory.Memory[sp+offset:sp+offset+8], uint64(v))
+	//sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
+	//v := math.Float64bits(float64(val))
+	////TODO: verify
+	//binary.LittleEndian.PutUint64(vm.Memory.Memory[sp+offset:sp+offset+8], uint64(v))
 }
 
 func setInt64(vm *exec.VirtualMachine, offset int, val int64) {
-	sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
-	binary.LittleEndian.PutUint64(vm.Memory.Memory[sp+offset:sp+offset+8], uint64(val))
+	//sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
+	//binary.LittleEndian.PutUint64(vm.Memory.Memory[sp+offset:sp+offset+8], uint64(val))
 }
 
 func setInt8(vm *exec.VirtualMachine, offset int, val byte) {
-	sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
-	vm.Memory.Memory[sp+offset] = byte(val)
+	//sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
+	//vm.Memory.Memory[sp+offset] = byte(val)
 }
 
 func getInt64(vm *exec.VirtualMachine, offset int) int64 {
-	sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
-	//TODO: verify
-	return int64(binary.LittleEndian.Uint64(vm.Memory.Memory[sp+offset : sp+offset+8]))
+	//sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
+	////TODO: verify
+	//return int64(binary.LittleEndian.Uint64(vm.Memory.Memory[sp+offset : sp+offset+8]))
+	return 0
 }
 
 func loadString(vm *exec.VirtualMachine, offset int) string {
-	addr := getInt64(vm, offset)
-	dataLen := getInt64(vm, offset+8)
-	//TODO: verify
-	return string(vm.Memory.Memory[addr : addr+dataLen])
+	//addr := getInt64(vm, offset)
+	//dataLen := getInt64(vm, offset+8)
+	////TODO: verify
+	//return string(vm.Memory.Memory[addr : addr+dataLen])
+	return ""
 }
 
 func loadBytes(vm *exec.VirtualMachine, offset int) []byte {
-	addr := getInt64(vm, offset)
-	dataLen := getInt64(vm, offset+8)
-	//TODO: verify
-	return vm.Memory.Memory[addr : addr+dataLen]
+	//addr := getInt64(vm, offset)
+	//dataLen := getInt64(vm, offset+8)
+	////TODO: verify
+	//return vm.Memory.Memory[addr : addr+dataLen]
+	return nil
 }

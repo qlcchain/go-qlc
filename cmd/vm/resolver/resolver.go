@@ -2,19 +2,15 @@ package resolver
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
-	"strconv"
 	"time"
+
+	"github.com/perlin-network/life/exec"
 
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/exec"
-	"github.com/qlcchain/go-qlc/vm/memory"
 )
 
 // Resolver defines imports for WebAssembly modules ran in Life.
@@ -42,12 +38,12 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 			}
 		case "__life_log":
 			return func(vm *exec.VirtualMachine) int64 {
-				frame := vm.GetCurrentFrame()
-				ptr := int(uint32(frame.Locals[0]))
-				msgLen := int(uint32(frame.Locals[1]))
+				//frame := vm.GetCurrentFrame()
+				//ptr := int(uint32(frame.Locals[0]))
+				//msgLen := int(uint32(frame.Locals[1]))
 				//TODO: verify
-				msg := vm.Memory.Memory[ptr : ptr+msgLen]
-				fmt.Printf("[app] %s\n", string(msg))
+				//msg := vm.Memory.Memory[ptr : ptr+msgLen]
+				//fmt.Printf("[app] %s\n", string(msg))
 				return 0
 			}
 		case "print_i64":
@@ -66,194 +62,201 @@ func (r *Resolver) ResolveFunc(module, field string) exec.FunctionImport {
 				if dest < src && dest+length > src {
 					return 0
 				}
-				copy(vm.Memory.Memory[dest:dest+length], vm.Memory.Memory[src:src+length])
+				//copy(vm.Memory.Memory[dest:dest+length], vm.Memory.Memory[src:src+length])
 				return int64(dest)
 			}
 		case "calloc":
 			return func(vm *exec.VirtualMachine) int64 {
-				frame := vm.GetCurrentFrame()
-				count := int(frame.Locals[0])
-				length := int(frame.Locals[1])
-
-				//we don't know whats the alloc type here
-				index, err := vm.Memory.MallocPointer(count*length, memory.PUnknown)
-				if err != nil {
-					return 0
-				}
-				return int64(index)
+				//frame := vm.GetCurrentFrame()
+				//count := int(frame.Locals[0])
+				//length := int(frame.Locals[1])
+				//
+				////we don't know whats the alloc type here
+				////index, err := vm.Memory.MallocPointer(count*length, memory.PUnknown)
+				//if err != nil {
+				//	return 0
+				//}
+				//return int64(index)
+				return 0
 			}
 		case "malloc":
 			return func(vm *exec.VirtualMachine) int64 {
-				frame := vm.GetCurrentFrame()
-				count := int(frame.Locals[0])
-				index, err := vm.Memory.MallocPointer(count, memory.PUnknown)
-
-				if err != nil {
-					return 0
-				}
-				return int64(index)
+				//frame := vm.GetCurrentFrame()
+				//count := int(frame.Locals[0])
+				//index, err := vm.Memory.MallocPointer(count, memory.PUnknown)
+				//
+				//if err != nil {
+				//	return 0
+				//}
+				//return int64(index)
+				return 0
 			}
 		case "memset":
 			return func(vm *exec.VirtualMachine) int64 {
 				frame := vm.GetCurrentFrame()
 				dest := int(frame.Locals[0])
-				char := int(frame.Locals[1])
-				cnt := int(frame.Locals[2])
-
-				tmp := make([]byte, cnt)
-				for i := 0; i < cnt; i++ {
-					tmp[i] = byte(char)
-				}
-				copy(vm.Memory.Memory[dest:dest+cnt], tmp)
+				//char := int(frame.Locals[1])
+				//cnt := int(frame.Locals[2])
+				//
+				//tmp := make([]byte, cnt)
+				//for i := 0; i < cnt; i++ {
+				//	tmp[i] = byte(char)
+				//}
+				//copy(vm.Memory.Memory[dest:dest+cnt], tmp)
 
 				return int64(dest)
 			}
 		case "strcmp":
 			return func(vm *exec.VirtualMachine) int64 {
 				var ret int64
-				frame := vm.GetCurrentFrame()
-				addr1 := uint64(frame.Locals[0])
-				addr2 := uint64(frame.Locals[1])
-
-				if addr1 == addr2 {
-					ret = 0
-				} else {
-					bytes1, err := vm.Memory.GetPointerMemory(addr1)
-					if err != nil {
-						return -1
-					}
-
-					bytes2, err := vm.Memory.GetPointerMemory(addr2)
-					if err != nil {
-						return -1
-					}
-
-					if util.TrimBuffToString(bytes1) == util.TrimBuffToString(bytes2) {
-						ret = 0
-					} else {
-						ret = 1
-					}
-				}
+				//frame := vm.GetCurrentFrame()
+				//addr1 := uint64(frame.Locals[0])
+				//addr2 := uint64(frame.Locals[1])
+				//
+				//if addr1 == addr2 {
+				//	ret = 0
+				//} else {
+				//	bytes1, err := vm.Memory.GetPointerMemory(addr1)
+				//	if err != nil {
+				//		return -1
+				//	}
+				//
+				//	bytes2, err := vm.Memory.GetPointerMemory(addr2)
+				//	if err != nil {
+				//		return -1
+				//	}
+				//
+				//	if util.TrimBuffToString(bytes1) == util.TrimBuffToString(bytes2) {
+				//		ret = 0
+				//	} else {
+				//		ret = 1
+				//	}
+				//}
 				return ret
 			}
 		case "strcat":
 			return func(vm *exec.VirtualMachine) int64 {
-				frame := vm.GetCurrentFrame()
-
-				str1, err := vm.Memory.GetPointerMemory(uint64(frame.Locals[0]))
-				if err != nil {
-					return 0
-				}
-
-				str2, err := vm.Memory.GetPointerMemory(uint64(frame.Locals[1]))
-				if err != nil {
-					return 0
-				}
-
-				newString := util.TrimBuffToString(str1) + util.TrimBuffToString(str2)
-
-				idx, err := vm.Memory.SetPointerMemory(newString)
-				if err != nil {
-					return 0
-				}
-
-				return int64(idx)
+				//frame := vm.GetCurrentFrame()
+				//
+				//str1, err := vm.Memory.GetPointerMemory(uint64(frame.Locals[0]))
+				//if err != nil {
+				//	return 0
+				//}
+				//
+				//str2, err := vm.Memory.GetPointerMemory(uint64(frame.Locals[1]))
+				//if err != nil {
+				//	return 0
+				//}
+				//
+				//newString := util.TrimBuffToString(str1) + util.TrimBuffToString(str2)
+				//
+				//idx, err := vm.Memory.SetPointerMemory(newString)
+				//if err != nil {
+				//	return 0
+				//}
+				//
+				//return int64(idx)
+				return 0
 			}
 		case "atoi":
 			return func(vm *exec.VirtualMachine) int64 {
-				frame := vm.GetCurrentFrame()
-				if len(frame.Locals) != 1 {
-					return 0
-				}
-
-				addr := frame.Locals[0]
-
-				pBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
-				if err != nil {
-					return 0
-				}
-				if pBytes == nil || len(pBytes) == 0 {
-					return 0
-				}
-
-				str := util.TrimBuffToString(pBytes)
-				i, err := strconv.Atoi(str)
-				if err != nil {
-					return 0
-				}
-
-				return int64(i)
+				//frame := vm.GetCurrentFrame()
+				//if len(frame.Locals) != 1 {
+				//	return 0
+				//}
+				//
+				//addr := frame.Locals[0]
+				//
+				//pBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
+				//if err != nil {
+				//	return 0
+				//}
+				//if pBytes == nil || len(pBytes) == 0 {
+				//	return 0
+				//}
+				//
+				//str := util.TrimBuffToString(pBytes)
+				//i, err := strconv.Atoi(str)
+				//if err != nil {
+				//	return 0
+				//}
+				//
+				//return int64(i)
+				return 0
 			}
 		case "atoi64":
 			return func(vm *exec.VirtualMachine) int64 {
-				frame := vm.GetCurrentFrame()
-				if len(frame.Locals) != 1 {
-					return 0
-				}
-
-				addr := frame.Locals[0]
-
-				pBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
-				if err != nil {
-					return 0
-				}
-				if pBytes == nil || len(pBytes) == 0 {
-					return 0
-				}
-
-				str := util.TrimBuffToString(pBytes)
-				i, err := strconv.ParseInt(str, 10, 64)
-				if err != nil {
-					return 0
-				}
-
-				return int64(i)
+				//frame := vm.GetCurrentFrame()
+				//if len(frame.Locals) != 1 {
+				//	return 0
+				//}
+				//
+				//addr := frame.Locals[0]
+				//
+				//pBytes, err := vm.Memory.GetPointerMemory(uint64(addr))
+				//if err != nil {
+				//	return 0
+				//}
+				//if pBytes == nil || len(pBytes) == 0 {
+				//	return 0
+				//}
+				//
+				//str := util.TrimBuffToString(pBytes)
+				//i, err := strconv.ParseInt(str, 10, 64)
+				//if err != nil {
+				//	return 0
+				//}
+				//
+				//return int64(i)
+				return 0
 			}
 		case "itoa":
 			return func(vm *exec.VirtualMachine) int64 {
-				frame := vm.GetCurrentFrame()
-				i := int(frame.Locals[0])
-
-				str := strconv.Itoa(i)
-
-				idx, err := vm.Memory.SetPointerMemory(str)
-				if err != nil {
-					return 0
-				}
-				return int64(idx)
+				//frame := vm.GetCurrentFrame()
+				//i := int(frame.Locals[0])
+				//
+				//str := strconv.Itoa(i)
+				//
+				//idx, err := vm.Memory.SetPointerMemory(str)
+				//if err != nil {
+				//	return 0
+				//}
+				//return int64(idx)
+				return 0
 			}
 		case "i64toa":
 			return func(vm *exec.VirtualMachine) int64 {
-				frame := vm.GetCurrentFrame()
-				i := frame.Locals[0]
-				radix := int(frame.Locals[1])
-
-				str := strconv.FormatInt(i, radix)
-				idx, err := vm.Memory.SetPointerMemory(str)
-				if err != nil {
-					return 0
-				}
-
-				return int64(idx)
+				//frame := vm.GetCurrentFrame()
+				//i := frame.Locals[0]
+				//radix := int(frame.Locals[1])
+				//
+				//str := strconv.FormatInt(i, radix)
+				//idx, err := vm.Memory.SetPointerMemory(str)
+				//if err != nil {
+				//	return 0
+				//}
+				//
+				//return int64(idx)
+				return 0
 			}
-		case "QLC_ArrayLen":
-			return r.qlcArrayLen
-		case "QLC_ReadInt32Param":
-			return r.qlcReadInt32Param
-		case "QLC_ReadInt64Param":
-			return r.qlcReadInt64Param
-		case "QLC_ReadStringParam":
-			return r.qlcReadStringParam
-		case "QLC_UnmarshalInputs":
-			return r.qlcUnMarshalInputs
-		case "QLC_MarshalResult":
-			return r.qlcMarshalResult
-		case "QLC_GetCallerAddress":
-			return r.qlcGetCaller
-		case "QLC_GetSelfAddress":
-			return r.qlcGetSelfAddress
-		case "QLC_Test":
-			return r.qlcTest
+		//case "QLC_ArrayLen":
+		//	return r.qlcArrayLen
+		//case "QLC_ReadInt32Param":
+		//	return r.qlcReadInt32Param
+		//case "QLC_ReadInt64Param":
+		//	return r.qlcReadInt64Param
+		//case "QLC_ReadStringParam":
+		//	return r.qlcReadStringParam
+		//case "QLC_UnmarshalInputs":
+		//	return r.qlcUnMarshalInputs
+		//case "QLC_MarshalResult":
+		//	return r.qlcMarshalResult
+		//case "QLC_GetCallerAddress":
+		//	return r.qlcGetCaller
+		//case "QLC_GetSelfAddress":
+		//	return r.qlcGetSelfAddress
+		//case "QLC_Test":
+		//	return r.qlcTest
 		case "QLC_Hash":
 			return r.qlcHash
 		default:
@@ -341,10 +344,10 @@ func (r *Resolver) ValuePrepString(vm *exec.VirtualMachine) int64 {
 	return 0
 }
 func (r *Resolver) ValueLoadString(vm *exec.VirtualMachine) int64 {
-	arr := getInt64(vm, 16)
-	dataLen := getInt64(vm, 24)
-	//TODO: verify
-	copy(vm.Memory.Memory[arr:arr+dataLen], curCB.Output)
+	//arr := getInt64(vm, 16)
+	//dataLen := getInt64(vm, 24)
+	////TODO: verify
+	//copy(vm.Memory.Memory[arr:arr+dataLen], curCB.Output)
 	return 0
 }
 
@@ -360,24 +363,25 @@ func (r *Resolver) NanoTime(vm *exec.VirtualMachine) int64 {
 }
 
 func (r *Resolver) Write(vm *exec.VirtualMachine) int64 {
-	sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
-	//TODO: verify
-	fd := binary.LittleEndian.Uint64(vm.Memory.Memory[sp+8 : sp+16])
-	ptr := binary.LittleEndian.Uint64(vm.Memory.Memory[sp+16 : sp+24])
-	msgLen := binary.LittleEndian.Uint64(vm.Memory.Memory[sp+24 : sp+32])
-	msg := vm.Memory.Memory[ptr : ptr+msgLen]
-	var out io.Writer
-	switch fd {
-	case 2:
-		out = &r.Stderr
-	default:
-		panic("only stderr file descriptor is supported")
-	}
-	n, err := out.Write(msg)
-	if err != nil {
-		panic(err)
-	}
-	return int64(n)
+	//sp := int(uint32(vm.GetCurrentFrame().Locals[0]))
+	////TODO: verify
+	//fd := binary.LittleEndian.Uint64(vm.Memory.Memory[sp+8 : sp+16])
+	//ptr := binary.LittleEndian.Uint64(vm.Memory.Memory[sp+16 : sp+24])
+	//msgLen := binary.LittleEndian.Uint64(vm.Memory.Memory[sp+24 : sp+32])
+	//msg := vm.Memory.Memory[ptr : ptr+msgLen]
+	//var out io.Writer
+	//switch fd {
+	//case 2:
+	//	out = &r.Stderr
+	//default:
+	//	panic("only stderr file descriptor is supported")
+	//}
+	//n, err := out.Write(msg)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//return int64(n)
+	return 0
 }
 
 // function parameters as JSON in method name to

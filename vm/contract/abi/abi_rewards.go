@@ -154,11 +154,11 @@ func isValidContract(ctx *vmstore.VMContext, reward *RewardsInfo) bool {
 	//if err != nil {
 	//	return false
 	//}
-	_, err := ctx.GetStateBlock(reward.RxHeader)
+	_, err := ctx.Ledger.GetStateBlock(reward.RxHeader)
 	if err != nil {
 		return false
 	}
-	_, err = ctx.GetStateBlock(reward.TxHeader)
+	_, err = ctx.Ledger.GetStateBlock(reward.TxHeader)
 	if err != nil {
 		return false
 	}

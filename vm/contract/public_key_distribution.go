@@ -167,7 +167,7 @@ func (vh *VerifierHeart) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 		}
 	}
 
-	amount, err := ctx.CalculateAmount(block)
+	amount, err := ctx.Ledger.CalculateAmount(block)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrCalcAmount
@@ -241,7 +241,7 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 		return nil, nil, ErrCheckParam
 	}
 
-	amount, err := ctx.CalculateAmount(block)
+	amount, err := ctx.Ledger.CalculateAmount(block)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrCalcAmount
@@ -427,7 +427,7 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 		return nil, nil, ErrCheckParam
 	}
 
-	amount, err := ctx.CalculateAmount(block)
+	amount, err := ctx.Ledger.CalculateAmount(block)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrCalcAmount
@@ -597,7 +597,7 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	}
 
 	// check account exist
-	am, _ := ctx.GetAccountMeta(param.Account)
+	am, _ := ctx.Ledger.GetAccountMeta(param.Account)
 	if am == nil {
 		return nil, nil, errors.New("verifier account not exist")
 	}
@@ -705,7 +705,7 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 	block.Storage = types.NewBalance(0)
 	block.Network = types.NewBalance(0)
 
-	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
+	amBnf, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
 		tmBnf := amBnf.Token(common.GasToken())
 		if tmBnf != nil {
@@ -749,7 +749,7 @@ func (r *PKDReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (comm
 
 	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
 
-	latestBlock, err := ctx.GetLatestPovBlock()
+	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return common.ContractRewardGapPov, needHeight, nil
 	}
@@ -802,7 +802,7 @@ func (r *PKDReward) GetRewardInfo(ctx *vmstore.VMContext, address types.Address)
 }
 
 func (r *PKDReward) GetVerifierState(ctx *vmstore.VMContext, povHeight uint64, address types.Address) (*types.PovVerifierState, error) {
-	povHdr, err := ctx.GetPovHeaderByHeight(povHeight)
+	povHdr, err := ctx.Ledger.GetPovHeaderByHeight(povHeight)
 	if err != nil {
 		return nil, err
 	}

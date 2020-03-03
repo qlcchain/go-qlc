@@ -158,7 +158,7 @@ func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock, latestPov
 	ab := new(APIBlock)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
-	if amount, err := ctx.CalculateAmount(block); err != nil {
+	if amount, err := ctx.Ledger.CalculateAmount(block); err != nil {
 		return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
 	} else {
 		ab.Amount = amount
@@ -171,7 +171,7 @@ func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock, latestPov
 
 	// pov tx lookup
 	if latestPov != nil {
-		povTxl, _ := ctx.GetPovTxLookup(ab.Hash)
+		povTxl, _ := ctx.Ledger.GetPovTxLookup(ab.Hash)
 		if povTxl != nil {
 			ab.PovConfirmHeight = povTxl.BlockHeight
 			if latestPov.GetHeight() > ab.PovConfirmHeight {

@@ -273,7 +273,7 @@ type RepStateParams struct {
 
 func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepState, error) {
 	ctx := vmstore.NewVMContext(r.ledger)
-	block, err := ctx.GetPovHeaderByHeight(params.Height)
+	block, err := ctx.Ledger.GetPovHeaderByHeight(params.Height)
 	if block == nil {
 		return nil, fmt.Errorf("get pov block with height[%d] err", params.Height)
 	}

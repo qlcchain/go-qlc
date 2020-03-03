@@ -91,7 +91,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 	param := new(cabi.ParamMintage)
 	_ = cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
 	var tokenInfo []byte
-	amount, _ := ctx.CalculateAmount(input)
+	amount, _ := ctx.Ledger.CalculateAmount(input)
 	if amount.Sign() > 0 &&
 		amount.Compare(types.Balance{Int: MinPledgeAmount}) != types.BalanceCompSmaller &&
 		input.Token == common.ChainToken() {
@@ -194,7 +194,7 @@ func (m *WithdrawMintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock
 }
 
 func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
-	if amount, err := ctx.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
+	if amount, err := ctx.Ledger.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
 		amount.Compare(types.ZeroBalance) != types.BalanceCompEqual {
 		return errors.New("invalid block ")
 	}
@@ -250,7 +250,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		return nil, err
 	}
 	var tm *types.TokenMeta
-	am, _ := ctx.GetAccountMeta(tokenInfo.PledgeAddress)
+	am, _ := ctx.Ledger.GetAccountMeta(tokenInfo.PledgeAddress)
 	if am != nil {
 		tm = am.Token(common.ChainToken())
 		if tm == nil {

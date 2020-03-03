@@ -39,7 +39,7 @@ func (m *MinerReward) GetRewardHistory(ctx *vmstore.VMContext, coinbase types.Ad
 }
 
 func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
-	latestBlock, err := ctx.GetLatestPovBlock()
+	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return 0, errors.New("failed to get latest block")
 	}
@@ -107,7 +107,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	}
 
 	// check account exist
-	amCb, _ := ctx.GetAccountMeta(param.Coinbase)
+	amCb, _ := ctx.Ledger.GetAccountMeta(param.Coinbase)
 	if amCb == nil {
 		logger.Info("coinbase account not exist")
 		return nil, nil, ErrAccountNotExist
@@ -252,7 +252,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	block.Storage = types.ZeroBalance
 	block.Network = types.ZeroBalance
 
-	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
+	amBnf, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
 		tmBnf := amBnf.Token(common.GasToken())
 		if tmBnf != nil {
@@ -296,7 +296,7 @@ func (m *MinerReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (co
 
 	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
 
-	latestBlock, err := ctx.GetLatestPovBlock()
+	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return common.ContractRewardGapPov, needHeight, nil
 	}
@@ -341,7 +341,7 @@ func (m *MinerReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, coinbas
 
 	rewardAmount := types.NewBalance(0)
 	for dayIndex := startDayIndex; dayIndex <= endDayIndex; dayIndex++ {
-		dayStat, err := ctx.GetPovMinerStat(dayIndex)
+		dayStat, err := ctx.Ledger.GetPovMinerStat(dayIndex)
 		if err != nil {
 			return 0, types.NewBalance(0), fmt.Errorf("get pov miner state err[%d]", dayIndex)
 		}

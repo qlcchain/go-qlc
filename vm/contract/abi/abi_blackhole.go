@@ -129,7 +129,7 @@ func PackSendBlock(ctx *vmstore.VMContext, param *DestroyParam) (*types.StateBlo
 		return nil, errors.New("invalid sign of param")
 	}
 
-	if tm, err := ctx.GetTokenMeta(param.Owner, param.Token); err != nil {
+	if tm, err := ctx.Ledger.GetTokenMeta(param.Owner, param.Token); err != nil {
 		return nil, err
 	} else {
 		if tm.Balance.Compare(types.Balance{Int: param.Amount}) == types.BalanceCompSmaller {

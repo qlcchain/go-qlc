@@ -99,7 +99,7 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 	if block.Token != common.GasToken() {
 		return fmt.Errorf("invalid token: %s", block.Token.String())
 	}
-	if amount, err := ctx.CalculateAmount(block); err == nil {
+	if amount, err := ctx.Ledger.CalculateAmount(block); err == nil {
 		if amount.Compare(types.Balance{Int: param.Amount}) != types.BalanceCompEqual {
 			return fmt.Errorf("amount mistmatch, exp: %s,act:%s", param.Amount.String(), amount.String())
 		}
@@ -121,7 +121,7 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 		return nil, fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
 	}
 
-	rxMeta, _ := ctx.GetAccountMeta(input.Address)
+	rxMeta, _ := ctx.Ledger.GetAccountMeta(input.Address)
 	// qgas token should be exist
 	rxToken := rxMeta.Token(input.Token)
 	txHash := input.GetHash()
