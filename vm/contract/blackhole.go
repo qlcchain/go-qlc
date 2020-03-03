@@ -68,26 +68,22 @@ func (b *BlackHole) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	}
 }
 
-func (b *BlackHole) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(cabi.DestroyParam)
-	err := cabi.BlackHoleABI.UnpackMethod(param, cabi.MethodNameDestroy, block.Data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &types.PendingKey{
-			Address: param.Owner,
-			Hash:    block.GetHash(),
-		}, &types.PendingInfo{
-			Source: types.Address(block.Link),
-			Amount: types.ZeroBalance,
-			Type:   block.Token,
-		}, nil
-}
-
-func (b *BlackHole) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
-}
+//func (b *BlackHole) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+//	param := new(cabi.DestroyParam)
+//	err := cabi.BlackHoleABI.UnpackMethod(param, cabi.MethodNameDestroy, block.Data)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	return &types.PendingKey{
+//			Address: param.Owner,
+//			Hash:    block.GetHash(),
+//		}, &types.PendingInfo{
+//			Source: types.Address(block.Link),
+//			Amount: types.ZeroBalance,
+//			Type:   block.Token,
+//		}, nil
+//}
 
 func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, block *types.StateBlock) error {
 	if verify, err := param.Verify(); err != nil {
@@ -151,12 +147,4 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 			Data:      []byte{},
 		},
 	}, nil
-}
-
-func (b *BlackHole) GetRefundData() []byte {
-	return []byte{1}
-}
-
-func (b *BlackHole) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
-	return common.ContractNoGap, nil, nil
 }

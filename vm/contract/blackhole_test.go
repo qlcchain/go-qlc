@@ -353,8 +353,12 @@ func TestDestroyContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	} else {
+		if _, _, err = b.ProcessSend(vmContext, sendBlock); err != nil {
+			t.Fatal(err)
+		}
 		t.Log(util.ToIndentString(key), util.ToIndentString(info))
 	}
+
 	recv := &types.StateBlock{
 		Timestamp: common.TimeNow().Unix(),
 	}
