@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	"runtime/debug"
-
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -1321,6 +1319,5 @@ func (dps *DPoS) feedBlocks() {
 }
 
 func (dps *DPoS) debug() {
-	dps.confirmedBlocks = newCache(confirmedCacheMaxLen, confirmedCacheMaxTime)
-	debug.FreeOSMemory()
+
 }

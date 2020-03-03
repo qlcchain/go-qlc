@@ -10,6 +10,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"time"
 
@@ -32,8 +33,8 @@ import (
 )
 
 const (
-	checkBlockCacheInterval = 60 * time.Second
-	maxResendBlockCache     = 3
+	checkBlockCacheInterval = 3 * time.Second
+	maxResendBlockCache     = math.MaxInt64
 )
 
 type ResendBlockService struct {
