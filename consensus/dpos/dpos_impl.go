@@ -2,7 +2,6 @@ package dpos
 
 import (
 	"context"
-	"fmt"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
@@ -1250,7 +1249,7 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 }
 
 func (dps *DPoS) feedBlocks() {
-	fmt.Println("...............feed blocks.............")
+	dps.logger.Warnf("...............feed blocks.............")
 	l := ledger.NewLedger("dataFeed/qlc.json")
 	blks := make(map[types.AddressToken][]*types.StateBlock)
 	count := 0
@@ -1262,7 +1261,7 @@ func (dps *DPoS) feedBlocks() {
 		time.Sleep(time.Second)
 	}
 
-	fmt.Println("...................generating blocks.................")
+	dps.logger.Warnf("...................generating blocks.................")
 
 	frontiers, err := l.GetFrontiers()
 	if err != nil {
@@ -1270,10 +1269,6 @@ func (dps *DPoS) feedBlocks() {
 	}
 
 	for _, f := range frontiers {
-		if count >= 1000000 {
-			break
-		}
-
 		header, err := l.GetStateBlockConfirmed(f.HeaderBlock)
 		if err != nil {
 			dps.logger.Error(err)
@@ -1301,8 +1296,7 @@ func (dps *DPoS) feedBlocks() {
 		}
 	}
 
-	fmt.Printf("..............total %d blocks, will begin the test in 5 seconds.............\n", count)
-	time.Sleep(5 * time.Second)
+	dps.logger.Warnf("..............total %d blocks, begin feeding.............\n", count)
 
 	for _, b := range blks {
 		for i := len(b) - 1; i >= 0; i-- {
@@ -1313,11 +1307,10 @@ func (dps *DPoS) feedBlocks() {
 				Type:      consensus.MsgGenerateBlock,
 			}
 			dps.ProcessMsg(bs)
-			// dps.acTrx.addWinner2Ledger(bs.Block)
 		}
 	}
 }
 
 func (dps *DPoS) debug() {
-
+	// for debug
 }
