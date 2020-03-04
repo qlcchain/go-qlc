@@ -128,6 +128,7 @@ func (node *QlcNode) buildHost() error {
 		//libp2p.NATPortMap(),
 		libp2p.BandwidthReporter(node.reporter),
 		libp2p.Ping(false),
+		libp2p.NoSecurity,
 		// libp2p.DefaultMuxers,
 	)
 	if err != nil {
@@ -150,7 +151,7 @@ func (node *QlcNode) buildHost() error {
 	}
 	node.streamManager.SetQlcNodeAndMaxStreamNum(node)
 	// Set up libp2p pubsub
-	gsub, err := libp2pps.NewGossipSub(node.ctx, node.host)
+	gsub, err := libp2pps.NewGossipSub(node.ctx, node.host, libp2pps.WithMessageSigning(false))
 	if err != nil {
 		return errors.New("failed to set up pubsub")
 	}
