@@ -24,6 +24,10 @@ import (
 
 const (
 	MaxTxsInPool = 10000000
+
+	maxSelectRunTimeInPool  = 60 * time.Second
+	maxSelectKeepTimeInPool = 5 * time.Second
+	maxSelectWaitTimeInPool = 120 * time.Second
 )
 
 type PovTxEvent struct {
@@ -366,7 +370,7 @@ func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
 		tp.delTx(txEvent.txHash)
 	}
 
-	if tp.lastWorkTime.Add(5 * time.Second).Before(tp.lastUpdated) {
+	if tp.lastWorkTime.Add(maxSelectKeepTimeInPool).Before(tp.lastUpdated) {
 		tp.lastWorkRsp = nil
 	}
 }
@@ -481,7 +485,7 @@ func (tp *PovTxPool) SelectPendingTxs(gsdb *statedb.PovGlobalStateDB, limit int)
 	select {
 	case tp.workCh <- workReq:
 		// ok, just wait response
-	case <-time.After(5 * time.Minute):
+	case <-time.After(maxSelectWaitTimeInPool):
 		return nil
 	}
 
@@ -489,7 +493,7 @@ func (tp *PovTxPool) SelectPendingTxs(gsdb *statedb.PovGlobalStateDB, limit int)
 	select {
 	case workRsp := <-workReq.respCh:
 		return workRsp.selectedTxs
-	case <-time.After(5 * time.Minute):
+	case <-time.After(maxSelectWaitTimeInPool):
 		return nil
 	}
 }
@@ -622,7 +626,7 @@ LoopMain:
 
 			// check too much time for this selection
 			if len(retTxs)%100 == 0 {
-				if time.Since(startTm) >= 60*time.Second {
+				if time.Since(startTm) >= maxSelectRunTimeInPool {
 					limit = 0
 				}
 			}
@@ -634,6 +638,10 @@ LoopMain:
 
 		if limit == 0 {
 			break LoopMain
+		}
+
+		if time.Since(startTm) >= maxSelectRunTimeInPool {
+			limit = 0
 		}
 	}
 
@@ -653,7 +661,7 @@ func (tp *PovTxPool) processTxWorkRequest(workReq *txPoolWorkRequest) {
 	}
 
 	if tp.lastWorkRsp != nil {
-		if tp.lastWorkTime.Add(5 * time.Second).Before(tp.lastUpdated) {
+		if tp.lastWorkTime.Add(maxSelectKeepTimeInPool).Before(tp.lastUpdated) {
 			tp.lastWorkRsp = nil
 		}
 	}
